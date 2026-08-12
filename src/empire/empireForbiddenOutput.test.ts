@@ -132,7 +132,7 @@
  * tripwire`, so the fold list is measured rather than asserted.
  */
 
-import { readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { types as nodeTypes } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -182,6 +182,8 @@ import type { RosterRateSource } from './production';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
+/** This file, read as text by the two checks that scan for a domain the registry never saw. */
+const THIS_FILE = fileURLToPath(import.meta.url);
 
 // ---------------------------------------------------------------------------
 // The banned vocabulary, and the two exports that legitimately are it
@@ -721,36 +723,126 @@ const SURFACE_CENSUS = Object.freeze({
   DEPTH_CUTS: 0,
 });
 
-describe('the domain is derived from the subject and is not empty', () => {
-  it('pins how many thresholds were read and how many points came out', () => {
+describe('the domains are derived from the subject and are not empty', () => {
+  it('pins how many thresholds were filed, how many domains exist, and how many points each came out at', () => {
     // The census that says a truncated or reshaped domain reports itself. A
-    // threshold dropped from `SCALAR_THRESHOLDS` shrinks the point count here
+    // threshold dropped from `UNIT_THRESHOLDS` shrinks a point count here
     // before it shrinks anything downstream, where it would look like a clean
     // sweep.
-    expect(Object.keys(SCALAR_THRESHOLDS).length).toBe(BRANCH_POINT_CENSUS.SCALAR_THRESHOLDS);
-    expect(TABLED_THRESHOLDS.length).toBe(BRANCH_POINT_CENSUS.TABLED_THRESHOLDS);
-    expect(NUMBER_DOMAIN.length).toBe(BRANCH_POINT_CENSUS.NUMBER_DOMAIN_POINTS);
-    expect(SMALL_NUMBER_DOMAIN.length).toBe(BRANCH_POINT_CENSUS.SMALL_NUMBER_DOMAIN_POINTS);
-    expect(SECONDS_DOMAIN.length).toBe(BRANCH_POINT_CENSUS.SECONDS_DOMAIN_POINTS);
-    expect(RUN_DAY_DOMAIN.length).toBe(BRANCH_POINT_CENSUS.RUN_DAY_POINTS);
+    expect(AXIS_UNITS.length).toBe(DOMAIN_CENSUS.UNITS);
+    expect(Object.keys(UNIT_THRESHOLDS).sort()).toEqual([...AXIS_UNITS].sort());
+    const filed = AXIS_UNITS.flatMap((unit) => Object.keys(UNIT_THRESHOLDS[unit]));
+    expect(filed.length).toBe(DOMAIN_CENSUS.THRESHOLDS);
+    // Filed exactly once, so a threshold cannot be counted twice into the
+    // census while being missing from the unit that needed it.
+    expect(distinct(filed).length).toBe(DOMAIN_CENSUS.THRESHOLDS);
+    // And no unit is empty, which is what stops a domain declaring a unit and
+    // thereby declaring no obligation at all.
+    for (const unit of AXIS_UNITS) {
+      expect(Object.keys(UNIT_THRESHOLDS[unit]).length, unit).toBeGreaterThan(0);
+    }
+
+    expect(Object.keys(NUMERIC_DOMAINS).length).toBe(DOMAIN_CENSUS.DOMAINS);
+    expect(NUMBER_DOMAIN.length).toBe(DOMAIN_CENSUS.NUMBER_POINTS);
+    expect(SECONDS_DOMAIN.length).toBe(DOMAIN_CENSUS.SECONDS_POINTS);
+    expect(DAY_DOMAIN.length).toBe(DOMAIN_CENSUS.DAY_POINTS);
+    expect(COUNT_DOMAIN.length).toBe(DOMAIN_CENSUS.COUNT_POINTS);
+    expect(LEVEL_DOMAIN.length).toBe(DOMAIN_CENSUS.LEVEL_POINTS);
+    expect(ROSTER_SHAPES.length).toBe(DOMAIN_CENSUS.ROSTER_SHAPE_POINTS);
   });
 
-  it('straddles every threshold rather than sampling round numbers around it', () => {
-    // The reproduced defect divides by OFFLINE_EARNINGS_CAP_HOURS and floors,
-    // so it is zero everywhere below it. This is the assertion that says the
-    // domain sits on both sides of that division rather than beside it.
-    let straddled = 0;
-    for (const threshold of Object.values(SCALAR_THRESHOLDS)) {
-      expect(NUMBER_DOMAIN, String(threshold)).toContain(threshold);
-      expect(NUMBER_DOMAIN.some((point) => point < threshold), String(threshold)).toBe(true);
-      expect(NUMBER_DOMAIN.some((point) => point > threshold), String(threshold)).toBe(true);
-      straddled += 1;
+  it('straddles every threshold of its own units, IN EVERY DOMAIN AND NOT ONLY THE FIRST', () => {
+    // This is the assertion the sixth bypass got past, and the way it got past
+    // was not that it was wrong — it was that it looped `NUMBER_DOMAIN` and
+    // left the domain declared one line below it pinned by LENGTH alone. So it
+    // loops `NUMERIC_DOMAINS`, which is discovered at runtime: a seventh domain
+    // added to the registry is checked without this assertion being edited, and
+    // `DOMAINS` below reddens if one is added and `CONTAINMENT_CHECKS` reddens
+    // if a domain is added that obliges itself to nothing.
+    let domainsChecked = 0;
+    let checks = 0;
+    for (const [name, domain] of Object.entries(NUMERIC_DOMAINS)) {
+      const required: Record<string, number> = { ...domain.alsoContains };
+      for (const unit of domain.units) Object.assign(required, UNIT_THRESHOLDS[unit]);
+      // A domain that obliges itself to nothing would pass every check below
+      // vacuously, which is the shape of the defect one level out.
+      expect(Object.keys(required).length, name).toBeGreaterThan(0);
+      expect(domain.why.length, name).toBeGreaterThan(200);
+
+      for (const [label, threshold] of Object.entries(required)) {
+        const at = `${name}/${label}=${String(threshold)}`;
+        expect(domain.points, at).toContain(threshold);
+        expect(domain.points.some((point) => point > threshold), at).toBe(true);
+        // Zero has nothing below it. Every other threshold is straddled on
+        // both sides; a one-sided sample cannot see a `< threshold` branch.
+        if (threshold > 0) {
+          expect(domain.points.some((point) => point < threshold), at).toBe(true);
+        }
+        checks += 1;
+      }
+
+      // The shape points, which change an input's SHAPE rather than its size.
+      expect(domain.points[0], name).toBe(0);
+      expect(domain.points, name).toContain(1);
+      domainsChecked += 1;
     }
-    expect(straddled).toBe(BRANCH_POINT_CENSUS.SCALAR_THRESHOLDS);
-    // And the shape points, which change an input's SHAPE rather than its size.
-    expect(NUMBER_DOMAIN[0]).toBe(0);
-    expect(NUMBER_DOMAIN).toContain(1);
-    expect(ROSTER_SHAPES).toEqual([0, 1, EMPIRE_TUNING.ROSTER_SLOTS_MAX]);
+    expect(domainsChecked).toBe(DOMAIN_CENSUS.DOMAINS);
+    expect(checks).toBe(DOMAIN_CENSUS.CONTAINMENT_CHECKS);
+
+    // And the structural fact the units buy: the full domain contains every
+    // narrow one, so moving an axis onto NUMBER never loses a point.
+    for (const [name, domain] of Object.entries(NUMERIC_DOMAINS)) {
+      if (domain.units.length === 0) continue;
+      for (const point of domain.points) expect(NUMBER_DOMAIN, name).toContain(point);
+    }
+  });
+
+  it('defines every numeric domain inside the registry, and nowhere else', () => {
+    // The catcher for the registry's declared limit. Runtime discovery cannot
+    // see a domain that was never put in the registry, so this reads the file's
+    // own source and asserts that every module-level `readonly number[]` is an
+    // alias of a registry entry — no literal, no ad-hoc `numeric([...])`.
+    const source = readFileSync(THIS_FILE, 'utf8');
+    const declarations = [...source.matchAll(/^const (\w+): readonly number\[\] = (.+)$/gm)];
+    expect(declarations.length).toBe(DOMAIN_CENSUS.ALIASES);
+    const aliased: string[] = [];
+    for (const declaration of declarations) {
+      const initialiser = declaration[2] ?? '';
+      const key = /^NUMERIC_DOMAINS\.(\w+)\.points;$/.exec(initialiser);
+      expect(key, `${declaration[1] ?? ''} = ${initialiser}`).not.toBeNull();
+      if (key !== null) aliased.push(key[1] ?? '');
+    }
+    // Set equality both ways: an unaliased registry entry is as much a defect
+    // as an alias of something that is not in the registry.
+    expect(aliased.sort()).toEqual(Object.keys(NUMERIC_DOMAINS).sort());
+  });
+
+  it('declares every literal for-of axis, so an axis outside the registry is not silently an axis', () => {
+    // The branch immediately below the check above. A domain can also be
+    // written as an array literal at the call site, where no `readonly
+    // number[]` declaration exists to scan for — and two axes in this file
+    // were, one of them a threshold axis sampled at its two extremes.
+    const source = readFileSync(THIS_FILE, 'utf8');
+    const found = distinct([...source.matchAll(/for \(const (\w+) of \[/g)].map((hit) => hit[1] ?? ''));
+    expect(found).toEqual([...LITERAL_AXES.map(([name]) => name)].sort());
+    expect(LITERAL_AXES.length).toBe(DOMAIN_CENSUS.LITERAL_AXES);
+    for (const [name, why] of LITERAL_AXES) expect(why.length, name).toBeGreaterThan(60);
+  });
+
+  it('states a measured price for every domain that is not the full one', () => {
+    // A cost concession with no measurement beside it is how a ten-point
+    // hour-derived domain stayed on six axes that never needed to be cheap.
+    expect(DOMAIN_COST_SECONDS.length).toBe(DOMAIN_CENSUS.COST_ROWS);
+    const baseline = DOMAIN_COST_SECONDS[0]?.[1] ?? 0;
+    expect(baseline).toBeGreaterThan(0);
+    // Two axes and only two measured a real price. The other six are within
+    // noise of the baseline, and four of them measured FASTER than it — which
+    // is what says the cheap domain was not bought for them.
+    const expensive = DOMAIN_COST_SECONDS.slice(1).filter(([, cost]) => cost > baseline * 2);
+    expect(expensive.map(([axis]) => axis)).toEqual([
+      'historyFrom and four siblings / history slots',
+      'fifteen social exports / calendar day',
+    ]);
   });
 });
 
@@ -1091,52 +1183,133 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
 });
 
 // ---------------------------------------------------------------------------
-// The domain, derived from the subject's own branch points
+// The domains — one per UNIT, each derived from the branch points of the
+// quantity it is a domain OF, and every one of them asserted
 // ---------------------------------------------------------------------------
 
 /**
- * The numbers this directory branches on, read out of `EMPIRE_TUNING` rather
- * than chosen for looking extreme.
+ * The quantity a numeric driver axis is measured in.
  *
- * CLAUDE.md's "a domain that samples only extremes is empty where it matters"
- * was earned on a probe that sampled `0` and `1_000_000` while every threshold
- * in its subject sat between 260 and 680, so both endpoints were outside the
- * band and the sweep could not express the property at all. The reproduced
- * defect here has exactly that shape: `Math.floor(checkIns / 12)` is `0` for
- * every `checkIns` below twelve, so a driver sampling `0` and `1` sees a clean
- * value and a driver checking `days > 0` sees nothing at all.
+ * WHY A UNIT EXISTS AT ALL, MEASURED RATHER THAN ARGUED. An earlier version of
+ * this file had one `NUMBER_DOMAIN` derived from every threshold, and beside it
+ * a `SMALL_NUMBER_DOMAIN` of ten points — `{0,1,8,9,10,11,12,13,40,48}` —
+ * derived from the two OFFLINE_EARNINGS *hour* thresholds and captioned "a
+ * cheap subset, for the calls whose cost is a whole simulated calendar". It was
+ * then handed to eight axes that are not hours: calendar days, expansion
+ * levels, check-ins, grant seconds, upkeep Gym Bucks and history slots.
+ * `RIVAL_COMPARISON_PERIOD_DAYS` is 7, it was already in the threshold table,
+ * and the file's own header claimed the domain was "derived from the subject's
+ * own branch points" — but the axis that branches on 7 was never handed 7. A
+ * `recordFriendVisit` that returned a forbidden name on exactly day 7 was
+ * invisible to both instruments: `tsc --noEmit` exit 0, 13 files and 484 tests
+ * green.
  *
- * `straddle` therefore samples below, just below, at, just above and far above
- * each threshold, and `BRANCH_POINT_CENSUS` pins how many thresholds were read
- * and how many points came out, so a truncated or reshaped domain reports
- * itself.
+ * So a domain is not "big" or "small". It is a domain OF something, and the
+ * thing it is of is what decides which branch points it has to contain. Every
+ * threshold below is filed under its unit, every domain declares the units it
+ * is a domain of, and 'every domain straddles every threshold of its own units'
+ * loops the REGISTRY rather than one hand-picked member of it.
  */
-const SCALAR_THRESHOLDS: Readonly<Record<string, number>> = Object.freeze({
-  OFFLINE_EARNINGS_NO_PUNISH_HOURS: EMPIRE_TUNING.OFFLINE_EARNINGS_NO_PUNISH_HOURS,
-  OFFLINE_EARNINGS_CAP_HOURS: EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS,
-  TRAINING_IQ_DAILY_CEILING: EMPIRE_TUNING.TRAINING_IQ_DAILY_CEILING,
-  NPC_TENURE_DAYS_TO_FULL_LOYALTY: EMPIRE_TUNING.NPC_TENURE_DAYS_TO_FULL_LOYALTY,
-  ROSTER_SLOTS_BASE: EMPIRE_TUNING.ROSTER_SLOTS_BASE,
-  ROSTER_SLOTS_MAX: EMPIRE_TUNING.ROSTER_SLOTS_MAX,
-  SPACE_LEVEL_MAX: EMPIRE_TUNING.SPACE_LEVEL_MAX,
-  PHYSIO_MAX_DAYS_SAVED: EMPIRE_TUNING.PHYSIO_MAX_DAYS_SAVED,
-  REPUTATION_MAX: EMPIRE_TUNING.REPUTATION_MAX,
-  RIVAL_COMPARISON_PERIOD_DAYS: EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS,
-  FRIEND_VISITS_PER_DAY: EMPIRE_TUNING.FRIEND_VISITS_PER_DAY,
-  BUILD_SECONDS_BASE: EMPIRE_TUNING.BUILD_SECONDS_BASE,
-  TIMER_SKIP_SECONDS_PER_GRANT: EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT,
-  SECONDS_PER_HOUR: EMPIRE_TUNING.SECONDS_PER_HOUR,
-  COACH_LEVEL_MAX: EMPIRE_TUNING.STAFF_LEVEL_MAX.coach,
-  PHYSIO_LEVEL_MAX: EMPIRE_TUNING.STAFF_LEVEL_MAX.physio,
-  REGIONAL_BRACKET: EMPIRE_TUNING.LEADERBOARD_BRACKET_SIZE.regional,
-});
+const AXIS_UNITS = [
+  'second',
+  'hour',
+  'day',
+  'level',
+  'count',
+  'reputation',
+  'gymBucks',
+  'trainingIq',
+] as const;
 
-/** The tabled thresholds — a ladder, not a scalar — straddled the same way. */
-const TABLED_THRESHOLDS: readonly number[] = Object.freeze([
-  ...EMPIRE_TUNING.REPUTATION_TIER_THRESHOLDS,
-  ...EMPIRE_TUNING.SPACE_LEVEL_COST_GYM_BUCKS,
-  ...EMPIRE_TUNING.SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER,
-]);
+type AxisUnit = (typeof AXIS_UNITS)[number];
+
+/** One named threshold per rung, so a ladder is filed like a scalar. */
+function rungs(name: string, ladder: readonly number[]): Readonly<Record<string, number>> {
+  const table: Record<string, number> = {};
+  ladder.forEach((value, index) => {
+    table[`${name}[${String(index)}]`] = value;
+  });
+  return Object.freeze(table);
+}
+
+/**
+ * Every number this directory branches on, read out of `EMPIRE_TUNING` and
+ * filed under the unit it is measured in.
+ *
+ * Two entries are derived rather than read — the offline-earnings caps in
+ * SECONDS — because the code divides seconds by `SECONDS_PER_HOUR` and compares
+ * the result against the hour caps, so both the hour and the second are real
+ * branch points and they are different numbers.
+ *
+ * Its limit, stated because the classification is a judgement and nothing here
+ * checks it against the code: a threshold filed under the wrong unit is still
+ * in `NUMBER_DOMAIN` (which is every unit) but is missing from the narrow
+ * domain that needed it, which is exactly the bypass above one level in. What
+ * covers that is 'no unit is empty and every threshold is filed exactly once'
+ * plus the rule that a narrow domain may only be used where the full domain was
+ * MEASURED to be too expensive — the measurements are in `DOMAIN_COST_SECONDS`,
+ * and six of the eight axes that used to share the ten-point domain are on the
+ * full domain now because the measurement said they were free.
+ */
+const UNIT_THRESHOLDS: Readonly<Record<AxisUnit, Readonly<Record<string, number>>>> = Object.freeze({
+  second: Object.freeze({
+    SECONDS_PER_HOUR: EMPIRE_TUNING.SECONDS_PER_HOUR,
+    SECONDS_PER_DAY: EMPIRE_TUNING.SECONDS_PER_DAY,
+    BUILD_SECONDS_BASE: EMPIRE_TUNING.BUILD_SECONDS_BASE,
+    BUILD_SECONDS_MAX: EMPIRE_TUNING.BUILD_SECONDS_MAX,
+    TIMER_SKIP_SECONDS_PER_GRANT: EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT,
+    OFFLINE_EARNINGS_NO_PUNISH_SECONDS:
+      EMPIRE_TUNING.OFFLINE_EARNINGS_NO_PUNISH_HOURS * EMPIRE_TUNING.SECONDS_PER_HOUR,
+    OFFLINE_EARNINGS_CAP_SECONDS:
+      EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS * EMPIRE_TUNING.SECONDS_PER_HOUR,
+  }),
+  hour: Object.freeze({
+    OFFLINE_EARNINGS_NO_PUNISH_HOURS: EMPIRE_TUNING.OFFLINE_EARNINGS_NO_PUNISH_HOURS,
+    OFFLINE_EARNINGS_CAP_HOURS: EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS,
+  }),
+  day: Object.freeze({
+    NPC_TENURE_DAYS_TO_FULL_LOYALTY: EMPIRE_TUNING.NPC_TENURE_DAYS_TO_FULL_LOYALTY,
+    PHYSIO_MAX_DAYS_SAVED: EMPIRE_TUNING.PHYSIO_MAX_DAYS_SAVED,
+    RIVAL_COMPARISON_PERIOD_DAYS: EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS,
+  }),
+  level: Object.freeze({
+    SPACE_LEVEL_MAX: EMPIRE_TUNING.SPACE_LEVEL_MAX,
+    COACH_LEVEL_MAX: EMPIRE_TUNING.STAFF_LEVEL_MAX.coach,
+    // The sibling of the line above, listed because CLAUDE.md's rule is that a
+    // guard written for one arm must be applied to the arm below it. It carries
+    // the same value as the coach ceiling today and dedupes to nothing; that is
+    // a fact about this tuning and not a reason to leave it unlisted.
+    SPOTTER_LEVEL_MAX: EMPIRE_TUNING.STAFF_LEVEL_MAX.spotter,
+    PHYSIO_LEVEL_MAX: EMPIRE_TUNING.STAFF_LEVEL_MAX.physio,
+  }),
+  count: Object.freeze({
+    ROSTER_SLOTS_BASE: EMPIRE_TUNING.ROSTER_SLOTS_BASE,
+    ROSTER_SLOTS_MAX: EMPIRE_TUNING.ROSTER_SLOTS_MAX,
+    FRIEND_VISITS_PER_DAY: EMPIRE_TUNING.FRIEND_VISITS_PER_DAY,
+    REGIONAL_BRACKET: EMPIRE_TUNING.LEADERBOARD_BRACKET_SIZE.regional,
+    // The sibling again: the regional bracket was in the old table and the
+    // global one was not.
+    GLOBAL_BRACKET: EMPIRE_TUNING.LEADERBOARD_BRACKET_SIZE.global,
+  }),
+  reputation: Object.freeze({
+    REPUTATION_MAX: EMPIRE_TUNING.REPUTATION_MAX,
+    ...rungs('REPUTATION_TIER_THRESHOLDS', EMPIRE_TUNING.REPUTATION_TIER_THRESHOLDS),
+  }),
+  gymBucks: Object.freeze({
+    ...rungs('SPACE_LEVEL_COST_GYM_BUCKS', EMPIRE_TUNING.SPACE_LEVEL_COST_GYM_BUCKS),
+    ...rungs(
+      'SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER',
+      EMPIRE_TUNING.SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER,
+    ),
+    // The two payouts the upkeep axis is denominated in. That axis was on the
+    // hour-derived domain and so was never driven at either of them.
+    RIVAL_REWARD_GYM_BUCKS: EMPIRE_TUNING.RIVAL_REWARD_GYM_BUCKS,
+    ENCOURAGEMENT_REWARD_GYM_BUCKS: EMPIRE_TUNING.ENCOURAGEMENT_REWARD_GYM_BUCKS,
+  }),
+  trainingIq: Object.freeze({
+    TRAINING_IQ_DAILY_CEILING: EMPIRE_TUNING.TRAINING_IQ_DAILY_CEILING,
+  }),
+});
 
 /** Below, just below, at, just above, far above. Negatives dropped, not clamped. */
 function straddle(threshold: number): readonly number[] {
@@ -1148,51 +1321,210 @@ function straddle(threshold: number): readonly number[] {
 const numeric = (values: readonly number[]): readonly number[] =>
   [...new Set(values)].sort((left, right) => left - right);
 
+/** Every threshold of the named units, straddled, plus the two shape points. */
+function domainOf(units: readonly AxisUnit[], extra: readonly number[] = []): readonly number[] {
+  return numeric([
+    0,
+    1,
+    ...units.flatMap((unit) => Object.values(UNIT_THRESHOLDS[unit]).flatMap(straddle)),
+    ...extra,
+  ]);
+}
+
 /**
- * The whole numeric domain: every straddle of every threshold, plus the shape
- * points `0` and `1` that change an input's shape rather than its magnitude.
+ * A numeric driver axis's domain, and the units it is a domain OF.
+ *
+ * `units` is what the containment assertion reads. `alsoContains` is for a
+ * domain whose axis is narrower than any whole unit — it names individual
+ * thresholds, checked exactly the same way, so a domain can never declare zero
+ * obligations and pass. `why` is required and is required to be long, because
+ * every one of these that is not `NUMBER` is a cost concession and a concession
+ * without a stated price is how the ten-point domain survived six rounds.
  */
-const NUMBER_DOMAIN: readonly number[] = numeric([
-  0,
-  1,
-  ...Object.values(SCALAR_THRESHOLDS).flatMap(straddle),
-  ...TABLED_THRESHOLDS.flatMap(straddle),
+interface NumericDomain {
+  readonly units: readonly AxisUnit[];
+  readonly alsoContains: Readonly<Record<string, number>>;
+  readonly points: readonly number[];
+  readonly why: string;
+}
+
+/** Freeze one registry entry at the interface, so its key stays concrete. */
+function domainSpec(spec: NumericDomain): NumericDomain {
+  return Object.freeze(spec);
+}
+
+/**
+ * MEASURED, not estimated: what the whole file costs with each axis moved from
+ * the ten-point hour-derived domain to the full domain, one axis at a time,
+ * against a 6.4 s baseline on the same machine in the same session.
+ *
+ * This is the answer to "cost is the reason the small domain exists". Six of
+ * the eight axes were free — four of them measured FASTER than the baseline,
+ * which is noise and is the point: the difference is below the measurement's
+ * own resolution. Only two axes cost anything, and both cost it because the
+ * subject is linear in the axis and the full domain's top point is 480 000.
+ * Those two got a domain of their own quantity; the other six are on the full
+ * domain now.
+ */
+const DOMAIN_COST_SECONDS: readonly (readonly [string, number])[] = Object.freeze([
+  ['baseline, whole file, ten-point domain at all eight axes', 6.4],
+  ['applyAccelerant / grant seconds', 6.0],
+  ['accrueReputation / check-ins', 7.8],
+  ['axisLevelCost and three siblings / expansion level', 6.1],
+  ['applyPurchasableGrant / grant seconds', 5.9],
+  ['grantSecondsAt / grants x check-in', 6.6],
+  ['engagementWiring / upkeep', 5.8],
+  ['historyFrom and four siblings / history slots', 18.3],
+  ['fifteen social exports / calendar day', 67.3],
 ]);
 
-/** A cheap subset, for the calls whose cost is a whole simulated calendar. */
-const SMALL_NUMBER_DOMAIN: readonly number[] = numeric([
-  0,
-  1,
-  ...straddle(EMPIRE_TUNING.OFFLINE_EARNINGS_NO_PUNISH_HOURS),
-  ...straddle(EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS),
+const NUMERIC_DOMAINS = Object.freeze({
+  NUMBER: domainSpec({
+    units: [...AXIS_UNITS],
+    alsoContains: Object.freeze({}),
+    points: domainOf([...AXIS_UNITS]),
+    why:
+      'The default, and the one every axis uses unless a measurement in ' +
+      'DOMAIN_COST_SECONDS says it cannot afford to. It is the union of every ' +
+      'unit domain, so it contains every branch point this directory has, and ' +
+      'the containment assertion below is therefore trivially satisfiable for ' +
+      'it — which is fine, because for this domain the interesting property is ' +
+      'that nothing was left out rather than that anything was put in.',
+  }),
+  SECONDS: domainSpec({
+    units: ['second'],
+    alsoContains: Object.freeze({}),
+    points: domainOf(['second']),
+    why:
+      'Elapsed-seconds axes: build timers, clocks, recruitment schedules and ' +
+      'the offline banking horizon. Separate from NUMBER because a seconds ' +
+      'axis is driven at four or five call sites per point and the seconds ' +
+      'thresholds are the large ones, but the saving is small and this domain ' +
+      'could be folded into NUMBER if a future site needs it; it is kept ' +
+      'because a seconds axis handed a level-sized number tests nothing.',
+  }),
+  DAY: domainSpec({
+    units: ['day'],
+    alsoContains: Object.freeze({}),
+    points: domainOf(['day']),
+    why:
+      'Calendar days, and the axis the bypass rode in on. socialRewardSchedule ' +
+      'and rivalPeriodCloseDays are linear in the day, and every value they ' +
+      'return is deep-scanned, so the full domain costs 67.3 s against a 6.4 s ' +
+      'baseline — its top point is 480 000 and each of those is 480 000 frozen ' +
+      'objects. The day thresholds top out at 120, which is a horizon a real ' +
+      'calendar reaches, and RIVAL_COMPARISON_PERIOD_DAYS is in it by ' +
+      'construction rather than by anybody remembering.',
+  }),
+  COUNT: domainSpec({
+    units: ['count'],
+    alsoContains: Object.freeze({}),
+    points: domainOf(['count']),
+    why:
+      'Slot counts and roster-sized quantities. historyFrom allocates one ' +
+      'entry per slot and four more exports then walk the result, so the full ' +
+      'domain costs 18.3 s against a 6.4 s baseline for the same reason the ' +
+      'day axis does. The count thresholds top out at 400, which is well ' +
+      'past ROSTER_SLOTS_MAX and past both leaderboard brackets.',
+  }),
+  LEVEL: domainSpec({
+    units: ['level'],
+    alsoContains: Object.freeze({}),
+    points: domainOf(['level']),
+    why:
+      'Expansion and staff levels, for the axes that build a GymAxes per point ' +
+      'and cross it with every equipment tier and every expansion axis. This ' +
+      'one replaces an inline [0, SPACE_LEVEL_MAX] literal, which is CLAUDE.md ' +
+      'sampling only the extremes exactly: the space ceiling was sampled at ' +
+      'its two ends and never at a level in between, and the staff ceilings ' +
+      'were never sampled at all.',
+  }),
+  ROSTER_SHAPE: domainSpec({
+    units: [],
+    alsoContains: Object.freeze({
+      ROSTER_SLOTS_BASE: EMPIRE_TUNING.ROSTER_SLOTS_BASE,
+      ROSTER_SLOTS_MAX: EMPIRE_TUNING.ROSTER_SLOTS_MAX,
+    }),
+    points: numeric([
+      0,
+      1,
+      EMPIRE_TUNING.ROSTER_SLOTS_BASE,
+      EMPIRE_TUNING.ROSTER_SLOTS_MAX,
+      EMPIRE_TUNING.ROSTER_SLOTS_MAX + 1,
+    ]),
+    why:
+      'The roster sizes STATES is built at, which is the most expensive axis ' +
+      'in the file: every point here multiplies the reputation ladder and the ' +
+      'product is then crossed with tiers, clocks and the whole NUMBER domain. ' +
+      'It is declared with named thresholds rather than a unit because the ' +
+      'count unit tops out at 400 and 400 lifters per state is not affordable ' +
+      'here. It was [0, 1, ROSTER_SLOTS_MAX] and so never sampled base ' +
+      'capacity or a roster over capacity, which are both real branches in ' +
+      'rosterCapacity and in the recruitment refusals that read it.',
+  }),
+});
+
+const NUMBER_DOMAIN: readonly number[] = NUMERIC_DOMAINS.NUMBER.points;
+const SECONDS_DOMAIN: readonly number[] = NUMERIC_DOMAINS.SECONDS.points;
+const DAY_DOMAIN: readonly number[] = NUMERIC_DOMAINS.DAY.points;
+const COUNT_DOMAIN: readonly number[] = NUMERIC_DOMAINS.COUNT.points;
+const LEVEL_DOMAIN: readonly number[] = NUMERIC_DOMAINS.LEVEL.points;
+const ROSTER_SHAPES: readonly number[] = NUMERIC_DOMAINS.ROSTER_SHAPE.points;
+
+/**
+ * The horizon the composed-loop drivers run to.
+ *
+ * A named constant rather than `RUN_DAY_DOMAIN[1]`, which is what it used to
+ * be: a positional read out of a domain is a silent dependency on that domain's
+ * sort order, and this round changes the domain.
+ */
+const RUN_HORIZON_DAYS = EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS;
+
+/**
+ * The loop axes in this file that are written as an array literal at their
+ * call site rather than as a domain, each with the reason it is not a domain.
+ *
+ * This is the catcher for the registry's declared limit. `NUMERIC_DOMAINS` is
+ * discovered at runtime, so a domain inside it cannot escape the containment
+ * assertion — but an axis written as a bare array literal at its call site was
+ * never in the registry to be discovered. Two of the eight axes in this file
+ * were exactly that, and one of them (`[0, SPACE_LEVEL_MAX]`) was a threshold
+ * axis sampled at its two extremes. It is `LEVEL_DOMAIN` now; these six are
+ * what is left, and 'every literal for-of axis is declared' pins the set in
+ * both directions so a seventh cannot arrive quietly.
+ */
+const LITERAL_AXES: readonly (readonly [string, string])[] = Object.freeze([
+  ['accelerant', 'null and one purchasable accelerant: the presence of a plan, not a magnitude.'],
+  ['diagnostic', 'the fixed list of TypeScript diagnostic categories the surface walk reports.'],
+  ['encourage', 'the boolean argument to recordFriendVisit. Two points is the whole domain.'],
+  ['everyNth', 'a divisor selecting which slots are check-ins. A shape parameter — every slot, or every other — and not a magnitude with thresholds.'],
+  ['gymId', 'four caller-supplied identifiers: two friends, the player, and one that is not on the friend list. The second friend is what makes the VISITED arm reachable. Strings, not numbers.'],
+  ['identifier', 'the three sentinels fed to asNpcId, one per caller-supplied identifier position. Strings, not numbers.'],
+  ['last', 'the boolean telling spendingMoment whether this is the final moment. Two points is the whole domain.'],
 ]);
 
-/** Elapsed-seconds points, derived from the hour thresholds the code divides by. */
-const SECONDS_DOMAIN: readonly number[] = numeric([
-  0,
-  1,
-  ...straddle(EMPIRE_TUNING.SECONDS_PER_HOUR),
-  ...straddle(EMPIRE_TUNING.OFFLINE_EARNINGS_NO_PUNISH_HOURS * EMPIRE_TUNING.SECONDS_PER_HOUR),
-  ...straddle(EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS * EMPIRE_TUNING.SECONDS_PER_HOUR),
-  ...straddle(EMPIRE_TUNING.SECONDS_PER_DAY),
-  ...straddle(EMPIRE_TUNING.BUILD_SECONDS_MAX),
-]);
-
-/** The days a whole-calendar driver runs, straddling the rival period. */
-const RUN_DAY_DOMAIN: readonly number[] = Object.freeze([
-  1,
-  EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS,
-  EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS + 1,
-  EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS * 2 + 1,
-]);
-
-const BRANCH_POINT_CENSUS = Object.freeze({
-  SCALAR_THRESHOLDS: 17,
-  TABLED_THRESHOLDS: 15,
-  NUMBER_DOMAIN_POINTS: 98,
-  SMALL_NUMBER_DOMAIN_POINTS: 10,
-  SECONDS_DOMAIN_POINTS: 22,
-  RUN_DAY_POINTS: 4,
+/**
+ * What the registry measured on this tree. Counts, not bounds.
+ *
+ * `CONTAINMENT_CHECKS` is the one that says the assertion below is not looping
+ * over an empty registry or an empty obligation list — it is the number of
+ * (domain, threshold) pairs actually checked, and a domain that declares no
+ * units and no `alsoContains` would leave it short rather than pass.
+ */
+const DOMAIN_CENSUS = Object.freeze({
+  UNITS: 8,
+  THRESHOLDS: 40,
+  DOMAINS: 6,
+  CONTAINMENT_CHECKS: 61,
+  ALIASES: 6,
+  LITERAL_AXES: 7,
+  COST_ROWS: 9,
+  NUMBER_POINTS: 118,
+  SECONDS_POINTS: 27,
+  DAY_POINTS: 13,
+  COUNT_POINTS: 24,
+  LEVEL_POINTS: 9,
+  ROSTER_SHAPE_POINTS: 5,
 });
 
 // ---------------------------------------------------------------------------
@@ -1262,7 +1594,15 @@ function axesAt(equipment: EquipmentTier, spaceLevel: number, staff: Record<Staf
   return Object.freeze({ equipment, spaceLevel, staffLevel: Object.freeze({ ...staff }) });
 }
 
-/** Axes wide enough to hold the largest roster the sweep builds. */
+/**
+ * Axes wide enough to hold the largest LEGAL roster.
+ *
+ * Not the largest roster the sweep builds: `ROSTER_SHAPE` straddles
+ * `ROSTER_SLOTS_MAX` on both sides on purpose, so one of its points is one
+ * lifter OVER capacity and `empireStateFaults` has something to say about it.
+ * That is the branch a domain sampling only `[0, 1, ROSTER_SLOTS_MAX]` could
+ * not reach, and it is why the diagnostic-channel census moved.
+ */
 const WIDE_AXES: GymAxes = axesAt(
   EMPIRE_TUNING.EQUIPMENT_TIERS[EMPIRE_TUNING.EQUIPMENT_TIERS.length - 1] as EquipmentTier,
   EMPIRE_TUNING.SPACE_LEVEL_MAX,
@@ -1570,8 +1910,6 @@ const DAY_LEDGER: readonly EmpireDayEntry[] = Object.freeze(
 );
 
 /** The states the sweep drives, shaped on the roster axis and the reputation axis. */
-const ROSTER_SHAPES: readonly number[] = Object.freeze([0, 1, EMPIRE_TUNING.ROSTER_SLOTS_MAX]);
-
 const STATES: readonly (readonly [string, EmpireState])[] = Object.freeze(
   ROSTER_SHAPES.flatMap((rosterSize) =>
     EMPIRE_TUNING.REPUTATION_TIER_THRESHOLDS.map(
@@ -1745,7 +2083,7 @@ function driveEverything(): readonly DrivenRow[] {
     for (const output of core.EMPIRE_OUTPUTS) {
       drive('mayAccelerate', `${accelerant}/${output}`, () => core.mayAccelerate(accelerant, output));
       drive('acceleratedOutput', `${accelerant}/${output}`, () => acceleratedFor(accelerant, output));
-      for (const seconds of SMALL_NUMBER_DOMAIN) {
+      for (const seconds of NUMBER_DOMAIN) {
         drive('applyAccelerant', `${accelerant}/${output}/${String(seconds)}`, () =>
           appliedFor(accelerant, output, ZERO_SECONDS, seconds),
         );
@@ -1847,7 +2185,7 @@ function driveEverything(): readonly DrivenRow[] {
   }
   for (const equipment of EMPIRE_TUNING.EQUIPMENT_TIERS) {
     drive('equipmentTierCost', equipment, () => core.equipmentTierCost(equipment));
-    for (const spaceLevel of [0, EMPIRE_TUNING.SPACE_LEVEL_MAX]) {
+    for (const spaceLevel of LEVEL_DOMAIN) {
       const axes = axesAt(equipment, spaceLevel, { coach: 0, spotter: 1, physio: 1 });
       drive('rosterCapacity', `${equipment}/${String(spaceLevel)}`, () => core.rosterCapacity(axes), [axes]);
       for (const axis of expansionModule.EXPANSION_AXES) {
@@ -1899,7 +2237,7 @@ function driveEverything(): readonly DrivenRow[] {
       drive('productionRates', `${label}/${clockLabel}`, () => productionModule.productionRates(state, clock, rates), [state, rates]);
       drive('accrueProduction', `${label}/${clockLabel}`, () => productionModule.accrueProduction(state, clock, rates), [state, rates]);
       drive('accrueSponsorship', `${label}/${clockLabel}`, () => reputationModule.accrueSponsorship(state, clock), [state]);
-      for (const checkIns of SMALL_NUMBER_DOMAIN) {
+      for (const checkIns of NUMBER_DOMAIN) {
         drive('accrueReputation', `${label}/${clockLabel}/${String(checkIns)}`, () =>
           reputationModule.accrueReputation(state, clock, checkIns), [state],
         );
@@ -1926,7 +2264,7 @@ function driveEverything(): readonly DrivenRow[] {
     drive('axisBook', axis, () => expansionModule.axisBook(axis));
     drive('axisClockFamily', axis, () => expansionModule.axisClockFamily(axis));
     drive('axisCeiling', axis, () => expansionModule.axisCeiling(axis));
-    for (const level of SMALL_NUMBER_DOMAIN) {
+    for (const level of NUMBER_DOMAIN) {
       const label = `${axis}/${String(level)}`;
       drive('axisLevelCost', label, () => expansionModule.axisLevelCost(axis, level));
       drive('axisReputationRule', label, () => expansionModule.axisReputationRule(axis, level));
@@ -1975,7 +2313,7 @@ function driveEverything(): readonly DrivenRow[] {
   }
   for (const accelerant of core.PURCHASABLE_ACCELERANTS) {
     for (const output of core.IDLE_ONLY_OUTPUTS) {
-      for (const seconds of SMALL_NUMBER_DOMAIN) {
+      for (const seconds of NUMBER_DOMAIN) {
         drive('applyPurchasableGrant', `${accelerant}/${output}/${String(seconds)}`, () =>
           invariant.applyPurchasableGrant(accelerant, output, ZERO_SECONDS, seconds),
         );
@@ -2008,9 +2346,9 @@ function driveEverything(): readonly DrivenRow[] {
     }
   }
   for (const accelerant of core.PURCHASABLE_ACCELERANTS) {
-    for (const grants of SMALL_NUMBER_DOMAIN) {
+    for (const grants of NUMBER_DOMAIN) {
       const plan = planAt(accelerant, grants);
-      for (const checkIn of SMALL_NUMBER_DOMAIN) {
+      for (const checkIn of NUMBER_DOMAIN) {
         drive('grantSecondsAt', `${accelerant}/${String(grants)}/${String(checkIn)}`, () =>
           invariant.grantSecondsAt(plan, checkIn), [plan],
         );
@@ -2038,7 +2376,7 @@ function driveEverything(): readonly DrivenRow[] {
       );
     }
   }
-  for (const days of RUN_DAY_DOMAIN) {
+  for (const days of DAY_DOMAIN) {
     for (const funding of invariant.EMPIRE_FUNDINGS) {
       for (const accelerant of [null, core.PURCHASABLE_ACCELERANTS[0] as core.PurchasableAccelerant]) {
         const plan = planAt(accelerant, accelerant === null ? 0 : 1);
@@ -2077,11 +2415,11 @@ function driveEverything(): readonly DrivenRow[] {
   for (const key of engagementModule.ENGAGEMENT_WIRINGS) {
     drive('chargesUpkeep', key, () => engagementModule.chargesUpkeep(key));
     drive('wiringFunding', key, () => engagementModule.wiringFunding(key));
-    for (const upkeep of SMALL_NUMBER_DOMAIN) {
+    for (const upkeep of NUMBER_DOMAIN) {
       drive('engagementWiring', `${key}/${String(upkeep)}`, () => engagementModule.engagementWiring(key, upkeep));
     }
   }
-  for (const slots of SMALL_NUMBER_DOMAIN) {
+  for (const slots of COUNT_DOMAIN) {
     for (const everyNth of [1, 2]) {
       const label = `${String(slots)}/${String(everyNth)}`;
       // Driven at every point including the ones that refuse, so the RangeError
@@ -2100,7 +2438,7 @@ function driveEverything(): readonly DrivenRow[] {
     let tally = engagementModule.emptyEngagementTally();
     for (const spending of invariant.EMPIRE_SPENDING_POLICIES) {
       for (const key of engagementModule.ENGAGEMENT_WIRINGS) {
-        const days = RUN_DAY_DOMAIN[1] as number;
+        const days = RUN_HORIZON_DAYS;
         const slots = days * EMPIRE_SWEEP_CHECK_INS_PER_DAY;
         const history = historyAt(slots, 1);
         // The upkeep argument is what the wiring itself admits: a wiring that
@@ -2173,7 +2511,7 @@ function driveEverything(): readonly DrivenRow[] {
       );
     }
   }
-  for (const day of SMALL_NUMBER_DOMAIN) {
+  for (const day of DAY_DOMAIN) {
     const calendarDay = socialModule.asCalendarDay(day);
     const context = socialContextAt([0, 1, day]);
     const label = String(day);
@@ -2183,7 +2521,22 @@ function driveEverything(): readonly DrivenRow[] {
     drive('encouragementGymBucksOn', label, () =>
       socialModule.encouragementGymBucksOn(context.encouragementsReceived, calendarDay), [context],
     );
-    for (const gymId of [`${SENTINELS.FRIEND_GYM_ID}-0`, SENTINELS.OWN_GYM_ID, SENTINELS.FAULT_VISIT_GYM_ID]) {
+    // `friend-1` is here because of a measured hole, and it is the reason the
+    // domain fix alone was not enough. `socialContextAt([0, 1, day])` puts a
+    // visit to `friend-0` on the day being driven, so `visitRefusals` returned
+    // 'already-visited-today' for it, 'own-gym' for the player and
+    // 'not-a-friend-gym' for the third — and `recordFriendVisit`'s VISITED arm
+    // was never produced at any point of any domain. The bypass this round is
+    // about plants its name inside that arm, so widening the day domain to
+    // contain day 7 left it green: the branch was unreachable for a reason that
+    // had nothing to do with numbers. 'produced every arm of every
+    // discriminated return' is the check that says so.
+    for (const gymId of [
+      `${SENTINELS.FRIEND_GYM_ID}-0`,
+      `${SENTINELS.FRIEND_GYM_ID}-1`,
+      SENTINELS.OWN_GYM_ID,
+      SENTINELS.FAULT_VISIT_GYM_ID,
+    ]) {
       drive('visitRefusals', `${label}/${gymId}`, () => socialModule.visitRefusals(context, gymId, calendarDay), [context, gymId]);
       drive('mayVisitFriendGym', `${label}/${gymId}`, () => socialModule.mayVisitFriendGym(context, gymId, calendarDay), [context, gymId]);
       for (const encourage of [false, true]) {
@@ -2362,11 +2715,11 @@ function measureDrive(): DriveMeasurement {
 }
 
 const DRIVE_CENSUS = Object.freeze({
-  ROWS: 7377,
+  ROWS: 53162,
   EXPORTS_DRIVEN: 226,
-  NODES: 53688,
-  STRINGS: 206695,
-  DISTINCT_STRINGS: 637,
+  NODES: 338409,
+  STRINGS: 1404775,
+  DISTINCT_STRINGS: 1034,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -2443,7 +2796,7 @@ function axisReadings(): readonly AxisReading[] {
   if (axisMemo !== null) return axisMemo;
   const policy = policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY);
   const social = socialInputsAt();
-  const days = RUN_DAY_DOMAIN[1] as number;
+  const days = RUN_HORIZON_DAYS;
   const slots = days * EMPIRE_SWEEP_CHECK_INS_PER_DAY;
   const history = historyAt(slots, 1);
   const readings: AxisReading[] = [
@@ -2577,12 +2930,12 @@ const AXIS_CENSUS: readonly (readonly [string, number, number])[] = Object.freez
   ['runEngagement / wiring', 5, 4],
   ['accrueProduction / clock shape', 3, 2],
   ['accrueProduction / clock held fixed (control)', 3, 0],
-  // Ten rather than fourteen, and the gap is the finding rather than a
+  // Twenty rather than twenty-four, and the gap is the finding rather than a
   // shortfall: reputation is one of the two axes `STATES` crosses and
   // production rates do not read it, so the four other reputations at an empty
   // roster fingerprint identically to the first point. Roster size is what
-  // moves this, and it moves it ten times out of fifteen.
-  ['productionRates / gym state shape', 15, 10],
+  // moves this, and it moves it twenty times out of twenty-five.
+  ['productionRates / gym state shape', 25, 20],
 ]);
 
 /**
@@ -2596,9 +2949,40 @@ const AXIS_CENSUS: readonly (readonly [string, number, number])[] = Object.freez
  */
 const DIAGNOSTIC_CHANNEL_CENSUS: readonly (readonly [string, number])[] = Object.freeze([
   ['empireRunFaults', 3],
-  ['empireStateFaults', 2],
+  ['empireStateFaults', 7],
   ['engagementRunFaults', 1],
   ['socialContextFaults', 1],
+]);
+
+/**
+ * Every arm of every discriminated return the drive actually PRODUCED, by count.
+ *
+ * This exists because of a hole the numeric-domain fix could not close, and the
+ * distinction is the whole reason it is a separate check. A domain decides
+ * which NUMBERS an axis is driven at. It says nothing about whether the
+ * subject's own guards let the interesting branch run at all — and here they
+ * did not: every gym the social loop offered `recordFriendVisit` was refused on
+ * every day, so the VISITED arm was produced zero times, at every point of
+ * every domain this file has ever had. Instrument A knew the arm existed the
+ * whole time; it is a literal member of the return's `kind`.
+ *
+ * So the check below is a set equality between the arms instrument A DECLARES
+ * and the arms instrument B REACHED, discovered from the type rather than
+ * listed — and the counts are pinned beside it so an arm that survives on one
+ * lucky point reports how thin it is.
+ *
+ * Its limit, and the named catcher for it: this only sees a union discriminated
+ * by a property literally called `kind`. A return that branches on the presence
+ * of a field, on an empty array, or on a discriminant with another name is
+ * invisible here, and what covers those is `SENTINELS_OBSERVED` for the
+ * caller-supplied positions and nothing at all for the rest. That is the honest
+ * state of it; the four arms below are the whole population this instrument has.
+ */
+const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.freeze([
+  ['beginRecruitment#accepted', 27],
+  ['beginRecruitment#refused', 98],
+  ['recordFriendVisit#refused', 80],
+  ['recordFriendVisit#visited', 24],
 ]);
 
 /**
@@ -2707,6 +3091,30 @@ describe('instrument B — nothing this directory produces is a forbidden name',
     // not hidden: those four are checked by instrument A's literal-member pass
     // and by nothing here.
     expect([...byExport.entries()].sort()).toEqual(DIAGNOSTIC_CHANNEL_CENSUS);
+  });
+
+  it('produced every arm of every discriminated return, and not merely some of them', () => {
+    // Declared by instrument A, reached by instrument B, compared in both
+    // directions. An arm the type has and the drive never produced is a branch
+    // no point of any domain can reach, which is a domain that is empty where
+    // it matters no matter how many points it has.
+    const declared = distinct(
+      stringSurface()
+        .positions.filter((position) => position.kind === 'literal')
+        .filter((position) => positionKey(position).endsWith('#return.kind'))
+        .flatMap((position) => position.members.map((member) => `${position.export}#${member}`)),
+    );
+    const arms = new Map<string, number>();
+    for (const row of driveEverything()) {
+      const returned = row.values[0];
+      if (typeof returned !== 'object' || returned === null) continue;
+      const kind = (returned as { readonly kind?: unknown }).kind;
+      if (typeof kind !== 'string') continue;
+      const at = `${row.export}#${kind}`;
+      arms.set(at, (arms.get(at) ?? 0) + 1);
+    }
+    expect([...arms.keys()].sort()).toEqual([...declared]);
+    expect([...arms.entries()].sort()).toEqual(KINDED_RETURN_CENSUS);
   });
 
   it('pins the two strings the composed loop mints for itself', () => {
