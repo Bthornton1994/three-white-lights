@@ -135,6 +135,46 @@ import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
+import * as core from './empireCore';
+import * as invariant from './empireInvariant';
+import * as tuningModule from './empireTuning';
+import * as engagementModule from './engagement';
+import * as expansionModule from './expansion';
+import * as npcModule from './npc';
+import * as productionModule from './production';
+import * as recruitmentModule from './recruitment';
+import * as reputationModule from './reputation';
+import * as socialModule from './social';
+
+import { EMPIRE_TUNING } from './empireTuning';
+import type {
+  AccelerableOutput,
+  AppliedAccelerant,
+  EmpireAccelerant,
+  EmpireClock,
+  EmpireOutput,
+  EmpireState,
+  EquipmentTier,
+  GymAxes,
+  NpcLifter,
+  NpcTier,
+  StaffRole,
+  UnacceleratedSeconds,
+  WallClockBooks,
+  WallClockFundedOutput,
+} from './empireCore';
+import type { EmpirePolicy, EmpireDayEntry, EmpireGym, SocialInputs } from './empireInvariant';
+import type { ExpansionAxis, ExpansionBuild, ExpansionContext } from './expansion';
+import type { EngagementHistory } from './engagement';
+import type {
+  CalendarDay,
+  Encouragement,
+  GymSnapshot,
+  SocialCalendarContext,
+  SocialContext,
+} from './social';
+import type { RosterRateSource } from './production';
+
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
 
@@ -676,6 +716,39 @@ const SURFACE_CENSUS = Object.freeze({
   DEPTH_CUTS: 0,
 });
 
+describe('the domain is derived from the subject and is not empty', () => {
+  it('pins how many thresholds were read and how many points came out', () => {
+    // The census that says a truncated or reshaped domain reports itself. A
+    // threshold dropped from `SCALAR_THRESHOLDS` shrinks the point count here
+    // before it shrinks anything downstream, where it would look like a clean
+    // sweep.
+    expect(Object.keys(SCALAR_THRESHOLDS).length).toBe(BRANCH_POINT_CENSUS.SCALAR_THRESHOLDS);
+    expect(TABLED_THRESHOLDS.length).toBe(BRANCH_POINT_CENSUS.TABLED_THRESHOLDS);
+    expect(NUMBER_DOMAIN.length).toBe(BRANCH_POINT_CENSUS.NUMBER_DOMAIN_POINTS);
+    expect(SMALL_NUMBER_DOMAIN.length).toBe(BRANCH_POINT_CENSUS.SMALL_NUMBER_DOMAIN_POINTS);
+    expect(SECONDS_DOMAIN.length).toBe(BRANCH_POINT_CENSUS.SECONDS_DOMAIN_POINTS);
+    expect(RUN_DAY_DOMAIN.length).toBe(BRANCH_POINT_CENSUS.RUN_DAY_POINTS);
+  });
+
+  it('straddles every threshold rather than sampling round numbers around it', () => {
+    // The reproduced defect divides by OFFLINE_EARNINGS_CAP_HOURS and floors,
+    // so it is zero everywhere below it. This is the assertion that says the
+    // domain sits on both sides of that division rather than beside it.
+    let straddled = 0;
+    for (const threshold of Object.values(SCALAR_THRESHOLDS)) {
+      expect(NUMBER_DOMAIN, String(threshold)).toContain(threshold);
+      expect(NUMBER_DOMAIN.some((point) => point < threshold), String(threshold)).toBe(true);
+      expect(NUMBER_DOMAIN.some((point) => point > threshold), String(threshold)).toBe(true);
+      straddled += 1;
+    }
+    expect(straddled).toBe(BRANCH_POINT_CENSUS.SCALAR_THRESHOLDS);
+    // And the shape points, which change an input's SHAPE rather than its size.
+    expect(NUMBER_DOMAIN[0]).toBe(0);
+    expect(NUMBER_DOMAIN).toContain(1);
+    expect(ROSTER_SHAPES).toEqual([0, 1, EMPIRE_TUNING.ROSTER_SLOTS_MAX]);
+  });
+});
+
 describe('instrument A — no export type admits a forbidden literal, and no new string position arrives unseen', () => {
   it('walks the whole directory without truncating, and the compiler is happy with it', () => {
     const surface = stringSurface();
@@ -997,50 +1070,6 @@ function deepScan(root: unknown, label: string): ScanResult {
   };
 }
 
-// ---------------------------------------------------------------------------
-// The subject, imported whole
-// ---------------------------------------------------------------------------
-
-import * as core from './empireCore';
-import * as invariant from './empireInvariant';
-import * as tuningModule from './empireTuning';
-import * as engagementModule from './engagement';
-import * as expansionModule from './expansion';
-import * as npcModule from './npc';
-import * as productionModule from './production';
-import * as recruitmentModule from './recruitment';
-import * as reputationModule from './reputation';
-import * as socialModule from './social';
-
-import { EMPIRE_TUNING } from './empireTuning';
-import type {
-  AccelerableOutput,
-  AppliedAccelerant,
-  EmpireAccelerant,
-  EmpireClock,
-  EmpireOutput,
-  EmpireState,
-  EquipmentTier,
-  GymAxes,
-  NpcLifter,
-  NpcTier,
-  StaffRole,
-  UnacceleratedSeconds,
-  WallClockBooks,
-  WallClockFundedOutput,
-} from './empireCore';
-import type { EmpirePolicy, EmpireDayEntry, EmpireGym, SocialInputs } from './empireInvariant';
-import type { ExpansionAxis, ExpansionBuild, ExpansionContext } from './expansion';
-import type { EngagementHistory } from './engagement';
-import type {
-  CalendarDay,
-  Encouragement,
-  GymSnapshot,
-  SocialCalendarContext,
-  SocialContext,
-} from './social';
-import type { RosterRateSource } from './production';
-
 /** The ten shipped namespaces, keyed by the file name the census reports. */
 const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown>>>> = Object.freeze({
   'empireCore.ts': core as unknown as Readonly<Record<string, unknown>>,
@@ -1154,9 +1183,9 @@ const RUN_DAY_DOMAIN: readonly number[] = Object.freeze([
 const BRANCH_POINT_CENSUS = Object.freeze({
   SCALAR_THRESHOLDS: 17,
   TABLED_THRESHOLDS: 15,
-  NUMBER_DOMAIN_POINTS: 128,
-  SMALL_NUMBER_DOMAIN_POINTS: 11,
-  SECONDS_DOMAIN_POINTS: 30,
+  NUMBER_DOMAIN_POINTS: 98,
+  SMALL_NUMBER_DOMAIN_POINTS: 10,
+  SECONDS_DOMAIN_POINTS: 22,
   RUN_DAY_POINTS: 4,
 });
 
@@ -2658,6 +2687,9 @@ describe('instrument B bites — the tripwire the zeros are zero against', () =>
     );
     const hits = loaded.strings.filter((found) => BANNED_NORMALISED.has(normalise(found.value)));
     expect(hits.length).toBe(TRIPWIRE_CENSUS.HITS);
+    // Sixteen hits at sixteen distinct paths, one per declared shape. Without
+    // this the count could be sixteen because one shape fired sixteen times.
+    expect(distinct(hits.map((found) => found.path)).length).toBe(TRIPWIRE_CENSUS.HITS);
     expect(loaded.gettersInvoked).toBe(TRIPWIRE_CENSUS.GETTERS_INVOKED);
     expect(loaded.proxies).toBe(TRIPWIRE_CENSUS.PROXIES_SEEN);
     expect(TRIPWIRE_SHAPES.length).toBe(TRIPWIRE_CENSUS.SHAPES);
