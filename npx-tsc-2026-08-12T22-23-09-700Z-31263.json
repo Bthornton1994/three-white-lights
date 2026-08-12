@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "npx-tsc-2026-08-12T22-23-09-700Z-31263",
   "label": null,
   "command": [
@@ -33,12 +33,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 1,
-    "okCount": 0,
+    "count": 2,
+    "okCount": 1,
     "errors": [],
-    "lastAttemptIso": "2026-08-12T22:23:09.720Z",
-    "lastReason": "start",
+    "lastAttemptIso": "2026-08-12T22:23:19.513Z",
+    "lastReason": "final",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm"
-  }
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": true,
+    "lastOkIso": "2026-08-12T22:23:12.561Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-12T22:23:19.511Z",
+  "elapsedSeconds": 9.8
 }
