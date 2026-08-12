@@ -992,7 +992,45 @@ sincere its message. And give every sweep a non-vacuity guard that pins what it
 actually saw — counts, not bounds — so an empty domain reports itself instead of
 passing.
 
-### A NEW RULE CAN MAKE AN OLD ONE VACUOUS, AND THAT IS NOW A REQUIRED CHECK
+### MEASURED, CARRIED, DISPLAYED, NEVER COMPARED — watch for this by category
+
+**Three instances in one session, in three unrelated tools.** A quantity is
+computed correctly, threaded through the code, printed where a human can read
+it — and never compared against anything. It is the most *convincing* form of
+vacuity, because the number is right there in the output and a reader supplies
+the comparison in their head.
+
+- **`tools/test-budgets.mjs`.** `basisMs` was read from the declaration, carried
+  into the row, printed in the table beside the measured duration, and never
+  compared to it. A basis **3.5x below** what the run measured printed as
+  `11219  3246  30000  37%` and the tool reported *"no findings"*, exit 0. The
+  report for that tool claimed it "exits non-zero on a stale basis"; `grade()`
+  had four finding kinds and none of them was that.
+- **`tools/verify-meet-sound.mjs`.** `deepest` was printed inside a *non-vacuity*
+  check that only asserts stacking **happened**, so `deepest 4 against a pool of
+  3` would have displayed the mismatch and passed.
+- **`src/empire/empireInvariant.ts` §4a.** Eight mutation counts recorded as
+  prose beside the mutants they came from. Seven of the eight no longer
+  reproduced; two had stopped moving their series **entirely**. Nothing compared
+  the written number to a re-run.
+
+**The tell is grammatical, and that is what makes it scannable.** The number
+appears in a *template string* — a log line, a table cell, a message argument —
+and never in a *predicate*. Grep for a variable that reaches `console.log`,
+a report row, or an assertion's **message** argument, then ask whether it also
+reaches a `toBe`/`toEqual`/`>=`/`<=` anywhere. If it does not, it is decoration
+wearing the costume of evidence.
+
+**Why it survives review specifically.** A missing check is invisible; a
+*printed* number looks like the check already happened. All three of these sat
+in green output that a careful reader had scanned — the budgets row was on
+screen when the grader said "no findings", and nobody read the two columns
+against each other because the tool was understood to be doing that.
+
+**So when a tool prints a measurement, the question is not "is this number
+right" but "what reddens if it is wrong".** If the answer is nothing, either
+compare it or stop printing it — a number with no consequence is worse than
+absent, because absence prompts a question and a printed number answers one.
 
 **Standing check, ruled by a human after this happened twice in one session.**
 Before an added rule counts as complete: **work out whether it subsumes an
