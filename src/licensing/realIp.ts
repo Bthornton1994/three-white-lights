@@ -1431,6 +1431,23 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'src/card/sampleCards.ts', name: 'NPL', where: 'comment', count: 1 },
   { file: 'src/card/sampleCards.ts', name: 'USAPL', where: 'comment', count: 1 },
   { file: 'src/card/sampleCards.ts', name: 'USPA', where: 'comment', count: 1 },
+  // And the test file that holds the directory's own copy of that decision. Its
+  // four mentions are the allowlist's operands — three in the per-file map and
+  // one in the assertion that the map agrees with the row above it. That is the
+  // same shape as `gymScene.test.ts` further up: a check ABOUT names contains
+  // names, and the honest handling is a row rather than an exemption.
+  { file: 'src/career/careerCore.test.ts', name: 'IPF', where: 'code', count: 4 },
+  // Crossing 5 in CLAUDE.md's coordination section, approved by a human and
+  // added by the other session. `src/career/flight.ts` implements GDD §6.6's
+  // bar-loading order and placing chain from this body's published rulebook, so
+  // this is the STRUCTURAL REFERENCE arm of §3's ruling rather than the identity
+  // arm — nothing a player sees carries the name. Three mentions and not one:
+  // the prose names the body once and the rulebook URL carries the acronym
+  // twice, in its path and in its filename, which `patternFor`'s alphanumeric
+  // edges match exactly as they match the bare name. That was predicted in
+  // `flight.ts` before the row existed and is left here as the worked example of
+  // why a URL is not a free citation.
+  { file: 'src/career/flight.ts', name: 'IPF', where: 'comment', count: 3 },
   { file: 'src/game/dots.test.ts', name: 'Amanda Lawrence', where: 'comment', count: 1 },
   { file: 'src/game/dots.test.ts', name: 'IPF', where: 'comment', count: 1 },
   { file: 'src/game/dots.test.ts', name: 'Jesus Olivares', where: 'comment', count: 1 },

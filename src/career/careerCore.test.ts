@@ -33,7 +33,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 import { SOURCE_RULES, auditSource, formatFindings } from '../tuning/audit';
-import { REAL_IP_WATCHLIST, findWatchedNames } from '../licensing/realIp';
+import { REAL_IP_WATCHLIST, REVIEWABLE_CITATIONS, findWatchedNames } from '../licensing/realIp';
 import { CAREER_TUNING } from './careerTuning';
 import {
   CAREER_ELIGIBILITY_KINDS,
@@ -480,12 +480,17 @@ describe('nothing this directory ships names anybody real', () => {
     // published rule is being implemented is a structural citation that belongs
     // on `REVIEWABLE_CITATIONS` rather than being deleted.
     //
-    // The setting is still zero, for a different and weaker reason: adding that
-    // row means editing `src/licensing/`, which is outside this piece. So
-    // `flight.ts` describes the publisher instead of naming it and says so at
-    // length in its own header. That is the shape `realIp.ts` uses on itself
-    // ("a three-letter brand acronym") when it cannot afford a mention, and it
-    // is a deferral rather than a resolution — the citation is owed.
+    // THE CITATION HAS SINCE BEEN PAID, so the setting is no longer zero
+    // everywhere. `flight.ts` describes the publisher no more: crossing 5 in
+    // CLAUDE.md's coordination section was approved, a `REVIEWABLE_CITATIONS`
+    // row for that file exists, and its header now names the body and links the
+    // rulebook. The allowance below is scoped to exactly that — one file, one
+    // name, one count — rather than the ban being relaxed, because the thing
+    // worth keeping is that a SECOND real name anywhere in this directory is
+    // still a red line. Note it took two guards to get here: the tree-wide
+    // registry demanded a signed row, and this one demanded a separate decision
+    // about the directory, which is the layering working rather than a
+    // duplicate.
     //
     // THIS TEST IS LIVE AND CAUGHT SOMETHING WHILE `flight.ts` WAS BEING
     // WRITTEN: its header named the realtime service GDD §6.6 names, which is
@@ -502,12 +507,34 @@ describe('nothing this directory ships names anybody real', () => {
     // pins an exact per-file mention count tree-wide, and a builder's own
     // example of what not to write is a mention. Kept as a note because it is
     // the cheapest possible demonstration that the tree-wide guard is live.
+    //
+    // The one allowed citation, pinned by file, name and count so that widening
+    // it is a visible edit. `REVIEWABLE_CITATIONS` holds the same three facts;
+    // this is the directory's own copy of the decision rather than a pardon,
+    // and the two are asserted to agree below.
+    const ALLOWED_CITATIONS: Readonly<Record<string, readonly string[]>> = {
+      'flight.ts': ['IPF', 'IPF', 'IPF'],
+    };
     let scanned = 0;
+    let cited = 0;
     for (const name of SHIPPED) {
-      expect(findWatchedNames(source(name)), name).toEqual([]);
+      const found = findWatchedNames(source(name)).map((watched) => watched.name);
+      expect(found, name).toEqual(ALLOWED_CITATIONS[name] ?? []);
+      cited += found.length;
       scanned += 1;
     }
     expect(scanned).toBe(SHIPPED.length);
+    // Counts, not bounds: three mentions and not one, because the rulebook URL
+    // carries the acronym twice on top of the prose naming it once.
+    expect(cited).toBe(3);
+    // And the directory's copy agrees with the tree-wide registry, so the two
+    // cannot drift apart silently.
+    const registered = REVIEWABLE_CITATIONS.filter(
+      (row) => row.file === 'src/career/flight.ts',
+    );
+    expect(registered.map((row) => ({ name: row.name, count: row.count }))).toEqual([
+      { name: 'IPF', count: 3 },
+    ]);
   });
 
   it('pins every invented proper noun, so a fifth is a signed decision', () => {

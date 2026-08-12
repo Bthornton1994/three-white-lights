@@ -26,31 +26,32 @@
  * here. Every rule below was searched before it was written and the wording it
  * came from is quoted beside the constant or the function that implements it.
  *
- * THE SOURCE, described rather than named, and that is a real gap rather than
- * a stylistic choice. The rules are transcribed from the international
- * governing body's *Technical Rules Book* (2026 edition, effective 1 March
- * 2026), published on that body's own rules page, and cross-read against its
- * 2023 edition and against two national affiliates' reprints of the same
- * passages. The body's name and the document URL are deliberately absent from
- * this file:
+ * THE SOURCE, now named. The rules below are transcribed from the IPF
+ * *Technical Rules Book*, 2026 edition, effective 1 March 2026:
  *
- *   - `src/licensing/realIp.ts` watches that federation's acronym, and
- *     `REVIEWABLE_CITATIONS` pins an exact per-file mention count for the whole
- *     tree. Writing the name here reddens `realIp.test.ts` until a row is added
- *     — and `src/licensing/` is outside this piece's scope.
- *   - The document URL does not help: `patternFor`'s edges are alphanumeric, so
- *     the acronym inside the URL path matches the same literal as the bare
- *     name.
+ *     https://www.powerlifting.sport/fileadmin/ipf/data/rules/technical-rules/english/2026_IPF_Technical_Rulebook__effective_01_March_2026__v3.pdf
  *
- * `realIp.ts`'s own ruling is that a body whose published rule is being
- * implemented is a STRUCTURAL CITATION and belongs on that list rather than
- * being deleted — so the right end state is a row on it, not this paragraph.
- * Until somebody adds one, the name lives in this piece's build report and in
- * its commit message. `realIp.ts`'s own header does exactly this to itself
- * ("a three-letter brand acronym", "the open-results project") when it cannot
- * afford a mention, which is the precedent being followed; it is still weaker
- * than a URL a reader can click, and it is written here so nobody mistakes the
- * description for a full citation.
+ * cross-read against the 2023 edition on the same rules page and against two
+ * national affiliates' reprints of the same passages, and — for the claim that
+ * a flight may hold more than one weight class — against general meet-practice
+ * guides, which are a different source class and could have disagreed.
+ *
+ * THIS PARAGRAPH USED TO DESCRIBE THE BODY RATHER THAN NAME IT, and the reason
+ * is worth keeping because it is the machinery working. `realIp.ts` watches
+ * this federation's acronym and `REVIEWABLE_CITATIONS` pins an exact per-file
+ * mention count for the whole tree, so writing the name here reddened
+ * `realIp.test.ts` until a row existed — and `src/licensing/` belongs to the
+ * other session. The file therefore shipped with a paraphrase and said plainly
+ * that a paraphrase is weaker than a URL a reader can click.
+ *
+ * That is exactly the case `realIp.ts`'s own ruling covers: a body whose
+ * published rule is being implemented is a STRUCTURAL CITATION and belongs on
+ * that list rather than being deleted, as against a federation name a PLAYER
+ * SEES, which is category (A) and default-denied. A rulebook citation in a
+ * module header is the first kind. The row was approved and taken as crossing 5
+ * in CLAUDE.md's coordination section, and the guard did the thing it exists to
+ * do: it made naming a real body a decision somebody signed rather than a thing
+ * that happened.
  *
  * What could NOT be confirmed, said plainly rather than papered over:
  *
