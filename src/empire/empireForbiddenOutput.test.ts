@@ -54,8 +54,8 @@
  *   that is legitimately typed as a string. `NpcLifter.displayName` is a bare
  *   `string` on purpose, and nothing in a signature says whether the string in
  *   it is a player's chosen name or `'covered-day'`. Instrument B is the
- *   catcher for that limit, and it is pointed at exactly those six positions by
- *   `SENTINELS`.
+ *   catcher for that limit, and it is pointed at those positions by `SENTINELS`,
+ *   one benign sentinel per caller-supplied position, twelve in all.
  *
  *   Its second limit: it reads DECLARED types, so `as string`, `as unknown as
  *   T` and a `JSON.parse` round trip all erase what it reads. That is attack
@@ -192,18 +192,27 @@ const THIS_FILE = fileURLToPath(import.meta.url);
 /**
  * The names no export of this directory may produce.
  *
- * Taken from the directory's own two ban lists rather than retyped, so a name
- * added to either is swept without this file being edited — and the count pins
- * below are what say one arrived.
+ * READ out of the directory's own two ban lists rather than retyped, so a name
+ * added to either is swept without this file being edited — and the content
+ * pins in 'names no forbidden output in any closed literal union' and in
+ * 'produces no banned name from any export but the two that ARE the ban lists'
+ * are what say one arrived.
+ *
+ * THAT SENTENCE USED TO BE FALSE AND IS RECORDED HERE RATHER THAN QUIETLY
+ * CORRECTED. This was seven hardcoded literals under a comment claiming they
+ * were taken from the ban lists, which is the exact defect CLAUDE.md records
+ * eight times: a sentence that was true of an intention rather than of the
+ * code. Adding a name to `EMPIRE_FORBIDDEN_OUTPUTS` would have left this list
+ * short and swept the tree for six names while claiming seven.
+ *
+ * The vacuity risk the derivation introduces, and its catcher: an emptied ban
+ * list would empty this and every zero below would become vacuous. `BANNED`
+ * in `SURFACE_CENSUS` pins the length, and the two content pins name every
+ * member, so an emptied or shortened list reddens before the zeros do.
  */
 const BANNED_VOCABULARY: readonly string[] = Object.freeze([
-  'covered-day',
-  'chalk',
-  'e1rm',
-  'competition-total',
-  'paid-pull',
-  'currency-purchase',
-  'chance-draw',
+  ...core.EMPIRE_FORBIDDEN_OUTPUTS,
+  ...reputationModule.FORBIDDEN_UNLOCK_KEYS,
 ]);
 
 /**
@@ -610,16 +619,16 @@ const brandedKeys = (surface: StringSurface): readonly string[] =>
  * Every bare-`string` position in the directory, grouped by the FIELD it is,
  * with the reason that field is legitimately a bare string.
  *
- * Six fields, twenty-three positions. The grouping is not decoration: the same
+ * Five fields, twenty-three positions. The grouping is not decoration: the same
  * field is reached through several exports, so a per-export list would suggest
- * eighteen independent holes where there are six, and would make the count move
+ * eighteen independent holes where there are five, and would make the count move
  * for a reason that is not a new hole.
  *
  * NOTHING HERE WAS TIGHTENED, AND THAT IS A DELIBERATE CHOICE RATHER THAN AN
- * OMISSION. Every one of the six is a string a caller or a server supplies, so
+ * OMISSION. Every one of the five is a string a caller or a server supplies, so
  * a brand on it would be a brand on free text and would say nothing about what
  * the text is. The instrument's bite is the SET EQUALITY below, not the absence
- * of bare strings: a seventh field cannot arrive without this list being
+ * of bare strings: a sixth field cannot arrive without this list being
  * edited, and that is what the reproduced defect runs into.
  */
 const DECLARED_BARE_STRING_FIELDS = Object.freeze([
@@ -718,6 +727,8 @@ const SURFACE_CENSUS = Object.freeze({
   BARE_POSITIONS: 23,
   BARE_FIELDS: 5,
   BRANDED_POSITIONS: 8,
+  /** The banned vocabulary's own length, so an emptied ban list is not a clean sweep. */
+  BANNED: 7,
   LITERAL_POSITIONS: 1175,
   DISTINCT_LITERAL_MEMBERS: 93,
   DEPTH_CUTS: 0,
@@ -848,6 +859,11 @@ describe('the domains are derived from the subject and are not empty', () => {
 
 describe('instrument A — no export type admits a forbidden literal, and no new string position arrives unseen', () => {
   it('walks the whole directory without truncating, and the compiler is happy with it', () => {
+    // The non-vacuity guard for the derived ban list: every zero in this file
+    // is zero against these seven names, and an emptied ban list would make
+    // all of them vacuously true.
+    expect(BANNED_VOCABULARY.length).toBe(SURFACE_CENSUS.BANNED);
+    expect(distinct([...BANNED_VOCABULARY]).length).toBe(SURFACE_CENSUS.BANNED);
     const surface = stringSurface();
     // A depth cut means the census below is a prefix of the surface rather than
     // the surface. Pinned at zero so a deeper type reports itself.
@@ -1534,7 +1550,7 @@ const DOMAIN_CENSUS = Object.freeze({
 /**
  * A unique, benign string per caller-supplied string position.
  *
- * These exist because every one of instrument A's six bare-string fields is
+ * These exist because every one of instrument A's five bare-string fields is
  * EMPTY on the obvious fixture: `createEmpireState()` returns
  * `roster: Object.freeze([])`, `createEmpireGym()` returns an empty `pending`,
  * and all eight fault functions are pinned at `[]` on healthy input. A driver
@@ -3027,7 +3043,7 @@ describe('instrument B — nothing this directory produces is a forbidden name',
       .filter(([, sentinel]) => [...values].some((value) => value.includes(sentinel)))
       .map(([name]) => name)
       .sort();
-    // Set equality both ways. Every one of instrument A's six bare-string
+    // Set equality both ways. Every one of instrument A's five bare-string
     // fields is EMPTY on the obvious fixture, so this is the assertion that
     // says the domain is non-empty where it matters rather than merely large.
     expect(reached).toEqual([...Object.keys(SENTINELS)].sort());
