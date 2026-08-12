@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tmp-claude-0-home-user-three-white--2026-08-12T21-30-09-169Z-6290",
+  "label": null,
+  "command": [
+    "node",
+    "/tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/smoke.mjs"
+  ],
+  "budgetSeconds": 220,
+  "startedAtIso": "2026-08-12T21:30:09.169Z",
+  "startedAtMs": 1786570209169,
+  "cwd": "/home/user/wt-printed",
+  "commit": "33bebadec585fdd367a102f20b0711bbbee3b720",
+  "branch": "claude/printed-not-compared",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 6290,
+    "startTick": "243614",
+    "cmdline": "node tools/watchdog.mjs --budget 220 -- node /tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/smoke.mjs",
+    "bootId": "200f208e-b127-42d1-8e53-2232ef3ab483",
+    "bootEpochSeconds": 1786567773,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-12T21:30:09.188Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
