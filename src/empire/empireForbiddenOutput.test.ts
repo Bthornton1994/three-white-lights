@@ -127,7 +127,7 @@
  * tripwire`, so the fold list is measured rather than asserted.
  */
 
-import { readdirSync, writeFileSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -552,23 +552,282 @@ const positionKey = (position: StringPosition): string =>
 
 const distinct = (values: readonly string[]): readonly string[] => [...new Set(values)].sort();
 
-describe('SCRATCH', () => {
-  it('dumps', () => {
-    const s = stringSurface();
-    const bare = s.positions.filter((p) => p.kind === 'bare').map(positionKey);
-    const branded = s.positions.filter((p) => p.kind === 'branded').map(positionKey);
-    const lit = s.positions.filter((p) => p.kind === 'literal');
-    writeFileSync('/tmp/claude-0/-home-user-three-white-lights/a916c80b-079a-52a8-8827-509f195e0506/scratchpad/e10/census.json', JSON.stringify({
-      modules: s.modules.length,
-      exports: s.exports.length,
-      depthCuts: s.depthCuts,
-      diag: s.sourceDiagnostics.slice(0, 5),
-      bare: distinct(bare),
-      branded: distinct(branded),
-      literalPositions: lit.length,
-      literalMembers: distinct(lit.flatMap((p) => p.members)).length,
-      bannedLiterals: lit.filter((p) => p.members.some((m) => BANNED_NORMALISED.has(normalise(m)))).map((p) => `${positionKey(p)}=${p.members.join('|')}`),
-    }, null, 1));
-    expect(true).toBe(true);
+const bareKeys = (surface: StringSurface): readonly string[] =>
+  distinct(surface.positions.filter((p) => p.kind === 'bare').map(positionKey));
+
+const brandedKeys = (surface: StringSurface): readonly string[] =>
+  distinct(surface.positions.filter((p) => p.kind === 'branded').map(positionKey));
+
+/**
+ * Every bare-`string` position in the directory, grouped by the FIELD it is,
+ * with the reason that field is legitimately a bare string.
+ *
+ * Six fields, twenty-three positions. The grouping is not decoration: the same
+ * field is reached through several exports, so a per-export list would suggest
+ * eighteen independent holes where there are six, and would make the count move
+ * for a reason that is not a new hole.
+ *
+ * NOTHING HERE WAS TIGHTENED, AND THAT IS A DELIBERATE CHOICE RATHER THAN AN
+ * OMISSION. Every one of the six is a string a caller or a server supplies, so
+ * a brand on it would be a brand on free text and would say nothing about what
+ * the text is. The instrument's bite is the SET EQUALITY below, not the absence
+ * of bare strings: a seventh field cannot arrive without this list being
+ * edited, and that is what the reproduced defect runs into.
+ */
+const DECLARED_BARE_STRING_FIELDS = Object.freeze([
+  Object.freeze({
+    field: 'the eight `readonly string[]` fault lists',
+    why:
+      'Diagnostic prose. Every element is a sentence, and a sentence naming a ' +
+      'forbidden output is the module REPORTING a fault rather than paying ' +
+      'one. Instrument B checks these by equality and not by containment, and ' +
+      'pins what they produced in DIAGNOSTIC_CHANNEL_CENSUS.',
+    positions: Object.freeze([
+      'empireCore.ts#empireStateFaults#return[]',
+      'empireCore.ts#empireVocabularyFaults#return[]',
+      'empireInvariant.ts#empireRunFaults#return[]',
+      'engagement.ts#engagementRunFaults#return[]',
+      'expansion.ts#expansionVocabularyFaults#return[]',
+      'reputation.ts#reputationVocabularyFaults#return[]',
+      'social.ts#socialContextFaults#return[]',
+      'social.ts#socialVocabularyFaults#return[]',
+    ]),
+  }),
+  Object.freeze({
+    field: 'NpcLifter.displayName',
+    why:
+      "An NPC's shown name. Caller-chosen free text, checked only for " +
+      'non-emptiness by `createNpcLifter`. Covered by instrument B, which ' +
+      'drives it with a sentinel so the position is measured as REACHED ' +
+      'rather than assumed non-empty.',
+    positions: Object.freeze([
+      'empireCore.ts#createEmpireState#return.roster[].displayName',
+      'empireCore.ts#createNpcLifter#return.displayName',
+      'empireInvariant.ts#createEmpireGym#return.state.roster[].displayName',
+      'empireInvariant.ts#runEmpire#return.gym.state.roster[].displayName',
+      'empireInvariant.ts#stepGym#return.state.roster[].displayName',
+      'recruitment.ts#beginRecruitment#return.state.roster[].displayName',
+      'recruitment.ts#completeRecruitment#return.roster[].displayName',
+    ]),
+  }),
+  Object.freeze({
+    field: 'GymSnapshot.gymId and GymSnapshot.displayName',
+    why:
+      "Another gym's identity, which arrives from outside this directory " +
+      'entirely. There is no closed set of them to narrow to.',
+    positions: Object.freeze([
+      'empireInvariant.ts#gymSnapshot#return.displayName',
+      'empireInvariant.ts#gymSnapshot#return.gymId',
+      'social.ts#rankLeaderboard#return[].entry.displayName',
+      'social.ts#rankLeaderboard#return[].entry.gymId',
+    ]),
+  }),
+  Object.freeze({
+    field: 'PendingRecruit.id',
+    why:
+      'The id a recruitment will mint. It is a bare `string` where ' +
+      '`NpcLifter.id` is the `NpcId` brand, which is an inconsistency in the ' +
+      'shipped types and is recorded here rather than fixed — narrowing it is ' +
+      'an edit to a shipped module and buys nothing this census does not ' +
+      'already give, because a new position reddens whatever its type is.',
+    positions: Object.freeze([
+      'empireInvariant.ts#createEmpireGym#return.pending[].id',
+      'empireInvariant.ts#runEmpire#return.gym.pending[].id',
+      'empireInvariant.ts#stepGym#return.pending[].id',
+    ]),
+  }),
+  Object.freeze({
+    field: 'FriendVisit.gymId',
+    why:
+      "The visited gym's id, which the caller passes in and `recordFriendVisit` " +
+      'logs verbatim. Same class as GymSnapshot.gymId.',
+    positions: Object.freeze(['social.ts#recordFriendVisit#return.visits[].gymId']),
+  }),
+]);
+
+/**
+ * Every branded-string position: `NpcId`, which is `string & brand`.
+ *
+ * Listed separately from the bare ones because a brand is erased at runtime, so
+ * `asNpcId('covered-day')` returns the forbidden name. A scan for the `string`
+ * keyword misses this whole class; the checker does not.
+ */
+const DECLARED_BRANDED_STRING_POSITIONS: readonly string[] = Object.freeze([
+  'empireCore.ts#asNpcId#return',
+  'empireCore.ts#createEmpireState#return.roster[].id',
+  'empireCore.ts#createNpcLifter#return.id',
+  'empireInvariant.ts#createEmpireGym#return.state.roster[].id',
+  'empireInvariant.ts#runEmpire#return.gym.state.roster[].id',
+  'empireInvariant.ts#stepGym#return.state.roster[].id',
+  'recruitment.ts#beginRecruitment#return.state.roster[].id',
+  'recruitment.ts#completeRecruitment#return.roster[].id',
+]);
+
+/** What the census measured on the shipped tree. Counts, not bounds. */
+const SURFACE_CENSUS = Object.freeze({
+  MODULES: 10,
+  EXPORTS: 226,
+  BARE_POSITIONS: 23,
+  BARE_FIELDS: 5,
+  BRANDED_POSITIONS: 8,
+  LITERAL_POSITIONS: 1175,
+  DISTINCT_LITERAL_MEMBERS: 93,
+  DEPTH_CUTS: 0,
+});
+
+describe('instrument A — no export type admits a forbidden literal, and no new string position arrives unseen', () => {
+  it('walks the whole directory without truncating, and the compiler is happy with it', () => {
+    const surface = stringSurface();
+    // A depth cut means the census below is a prefix of the surface rather than
+    // the surface. Pinned at zero so a deeper type reports itself.
+    expect(surface.depthCuts).toBe(SURFACE_CENSUS.DEPTH_CUTS);
+    expect(surface.sourceDiagnostics).toEqual([]);
+    expect(surface.modules.length).toBe(SURFACE_CENSUS.MODULES);
+    expect(surface.exports.length).toBe(SURFACE_CENSUS.EXPORTS);
+  });
+
+  it('pins every bare-string position, in both directions, grouped by the field it is', () => {
+    const surface = stringSurface();
+    const declared = distinct(DECLARED_BARE_STRING_FIELDS.flatMap((group) => group.positions));
+    // Set equality both ways. A new bare-string return type is an unexpected
+    // member; a removed one is a stale row. Either reddens.
+    expect(bareKeys(surface)).toEqual(declared);
+    expect(declared.length).toBe(SURFACE_CENSUS.BARE_POSITIONS);
+    expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
+    // Every group carries a reason, so a position cannot be added to this list
+    // by pasting a line.
+    for (const group of DECLARED_BARE_STRING_FIELDS) {
+      expect(group.positions.length, group.field).toBeGreaterThan(0);
+      expect(group.why.length, group.field).toBeGreaterThan(80);
+    }
+  });
+
+  it('pins every branded-string position, in both directions', () => {
+    const surface = stringSurface();
+    expect(brandedKeys(surface)).toEqual([...DECLARED_BRANDED_STRING_POSITIONS].sort());
+    expect(DECLARED_BRANDED_STRING_POSITIONS.length).toBe(SURFACE_CENSUS.BRANDED_POSITIONS);
+  });
+
+  it('names no forbidden output in any closed literal union, outside the two lists that ARE the ban', () => {
+    const surface = stringSurface();
+    const literals = surface.positions.filter((position) => position.kind === 'literal');
+    expect(literals.length).toBe(SURFACE_CENSUS.LITERAL_POSITIONS);
+    expect(distinct(literals.flatMap((position) => position.members)).length).toBe(
+      SURFACE_CENSUS.DISTINCT_LITERAL_MEMBERS,
+    );
+
+    // The exemption is scoped to the two exports that ARE the ban lists and to
+    // nothing else. Anything that READS one of them is checked in full, which
+    // matters because reading the list is where the reproduced defect gets its
+    // string.
+    const offenders = literals
+      .filter((position) => !BAN_LIST_EXPORTS.includes(position.export))
+      .filter((position) => position.members.some((member) => BANNED_NORMALISED.has(normalise(member))))
+      .map((position) => `${positionKey(position)}=${position.members.join('|')}`);
+    expect(distinct(offenders)).toEqual([]);
+
+    // And the exempted pair is pinned by content, not skipped. An exemption
+    // that can grow a member quietly is a hiding place (attack shape 19).
+    const exempted = literals.filter((position) => BAN_LIST_EXPORTS.includes(position.export));
+    expect(distinct(exempted.map((position) => `${position.export}=${position.members.join('|')}`))).toEqual([
+      'EMPIRE_FORBIDDEN_OUTPUTS=chalk',
+      'EMPIRE_FORBIDDEN_OUTPUTS=competition-total',
+      'EMPIRE_FORBIDDEN_OUTPUTS=covered-day',
+      'EMPIRE_FORBIDDEN_OUTPUTS=e1rm',
+      'FORBIDDEN_UNLOCK_KEYS=chance-draw',
+      'FORBIDDEN_UNLOCK_KEYS=currency-purchase',
+      'FORBIDDEN_UNLOCK_KEYS=paid-pull',
+    ]);
+    // Every banned name is accounted for by that pair, so the ban list this
+    // file sweeps under and the ones the directory declares are the same list.
+    expect(distinct(exempted.flatMap((position) => position.members))).toEqual(
+      distinct([...BANNED_VOCABULARY]),
+    );
+  });
+});
+
+/**
+ * The probe module, served from memory and never written to disk.
+ *
+ * It is instrument A's non-vacuity guard. Every check above is a set equality
+ * that passes on a clean tree, and a set equality passes just as happily when
+ * the walker is broken — the walker WAS broken once, in exactly that way, and
+ * reported eighteen positions where there are twenty-three. So the census is
+ * re-run over an eleventh module carrying four routes and the classification of
+ * each is asserted. Nothing shipped is edited to do it.
+ *
+ * `probeProtectionDays` is here for the opposite reason: it is attack shape 16
+ * and it must produce NO position. That zero is the declared limit, measured
+ * rather than argued.
+ */
+const PROBE_SOURCE = `import { EMPIRE_FORBIDDEN_OUTPUTS, asNpcId, type NpcId } from './empireCore';
+
+export function probeMilestoneGrant(checkIns: number): { readonly kind: string; readonly days: number } {
+  return Object.freeze({ kind: EMPIRE_FORBIDDEN_OUTPUTS[0] as string, days: checkIns });
+}
+
+export const PROBE_GRANT_DATA = Object.freeze({ kind: EMPIRE_FORBIDDEN_OUTPUTS[0] });
+
+export function probeMilestoneId(checkIns: number): NpcId {
+  return asNpcId(\`\${EMPIRE_FORBIDDEN_OUTPUTS[0]}-\${String(checkIns)}\`);
+}
+
+export function probeProtectionDays(checkIns: number): number {
+  return Math.floor(checkIns / EMPIRE_FORBIDDEN_OUTPUTS.length);
+}
+`;
+
+const PROBE_MODULE = path.basename(PROBE_PATH);
+
+let probeSurfaceMemo: StringSurface | null = null;
+
+function probeSurface(): StringSurface {
+  if (probeSurfaceMemo !== null) return probeSurfaceMemo;
+  probeSurfaceMemo = surfaceOf([...shippedModulePaths(), PROBE_PATH], PROBE_SOURCE);
+  return probeSurfaceMemo;
+}
+
+describe('instrument A bites — the census is re-run over a probe carrying four routes', () => {
+  it('compiles the probe cleanly, so a refusal below is a classification and not an error', () => {
+    const surface = probeSurface();
+    expect(surface.sourceDiagnostics).toEqual([]);
+    expect(surface.depthCuts).toBe(SURFACE_CENSUS.DEPTH_CUTS);
+    expect(surface.modules.length).toBe(SURFACE_CENSUS.MODULES + 1);
+  });
+
+  it('sees the reproduced defect: `{ kind: string }` is a new bare position', () => {
+    const probeBare = bareKeys(probeSurface()).filter((key) => key.startsWith(PROBE_MODULE));
+    expect(probeBare).toEqual([`${PROBE_MODULE}#probeMilestoneGrant#return.kind`]);
+    // And it is a position the shipped census does not have, which is the whole
+    // mechanism: the set equality above goes red on arrival.
+    expect(bareKeys(stringSurface())).not.toContain(`${PROBE_MODULE}#probeMilestoneGrant#return.kind`);
+  });
+
+  it('sees a banned name that survives as a literal type in exported DATA', () => {
+    const offenders = probeSurface()
+      .positions.filter((position) => position.kind === 'literal')
+      .filter((position) => !BAN_LIST_EXPORTS.includes(position.export))
+      .filter((position) => position.members.some((member) => BANNED_NORMALISED.has(normalise(member))))
+      .map((position) => `${positionKey(position)}=${position.members.join('|')}`);
+    expect(distinct(offenders)).toEqual([`${PROBE_MODULE}#PROBE_GRANT_DATA#value.kind=covered-day`]);
+  });
+
+  it('sees the branded-string channel, which a scan for the `string` keyword misses', () => {
+    const probeBranded = brandedKeys(probeSurface()).filter((key) => key.startsWith(PROBE_MODULE));
+    expect(probeBranded).toEqual([`${PROBE_MODULE}#probeMilestoneId#return`]);
+  });
+
+  it('is BLIND to attack shape 16, and the blindness is the measurement', () => {
+    // `probeProtectionDays(checkIns): number` is a check-in-keyed day count with
+    // no forbidden name anywhere in it. It contributes zero positions of any
+    // kind. This assertion is not a pass — it is the declared limit taken as a
+    // number, and it reddens if somebody later claims this instrument covers
+    // the shape.
+    const fromShape16 = probeSurface().positions.filter(
+      (position) => position.export === 'probeProtectionDays',
+    );
+    expect(fromShape16).toEqual([]);
+    // What DOES move is the export list, and only that.
+    expect(probeSurface().exports).toContain(`${PROBE_MODULE}#probeProtectionDays`);
   });
 });
