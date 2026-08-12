@@ -408,6 +408,23 @@ const OPAQUE_PROBE = Object.freeze({
    * the walk rather than on its first step.
    */
   FLIGHT_BOMB_INDEX: 2,
+
+  /**
+   * The two award categories the flight entrants are split across.
+   *
+   * `flight.ts`'s section 1a makes a place a place within a category, so a
+   * single-category fixture here would leave `placeFlight`'s partitioning
+   * undriven under the opaque binding entirely — and the partition reads a
+   * STRING off the entry, right next to the total, which is exactly the
+   * neighbourhood a stray read would appear in.
+   *
+   * Alternating, so the two entrants that share a category are indices 0 and 2
+   * — and index 2 is `FLIGHT_BOMB_INDEX`, so one category holds a placed lifter
+   * and a bombed one while the other holds two placed lifters. Both branches of
+   * the placed/unplaced split are therefore driven inside a partition rather
+   * than across the whole flight.
+   */
+  FLIGHT_CATEGORIES: Object.freeze(['mens-93-open-raw', 'mens-105-open-raw']),
 });
 
 const FED = CAREER_FEDERATIONS[0] as CareerFederation;
@@ -654,6 +671,9 @@ function flightEntriesFor<Total>(fixtures: Fixtures<Total>): readonly FlightResu
     return {
       lifterId: `lifter-${index}`,
       lotNumber,
+      categoryId: OPAQUE_PROBE.FLIGHT_CATEGORIES[
+        index % OPAQUE_PROBE.FLIGHT_CATEGORIES.length
+      ] as string,
       bodyweightKg: OPAQUE_PROBE.BODYWEIGHTS_KG[
         index % OPAQUE_PROBE.BODYWEIGHTS_KG.length
       ] as number,

@@ -453,8 +453,11 @@ describe('nothing this directory ships names anybody real', () => {
     }
     // Counts, not bounds: the collectors really found the directory's strings.
     // 185 -> 241 when `flight.ts` landed; the 56 are its fault sentences, its
-    // tie-break labels and its `RangeError` messages.
-    expect(strings).toBe(241);
+    // tie-break labels and its `RangeError` messages. 241 -> 243 when a placing
+    // became a placing within a CATEGORY (`flight.ts`, section 1a): the empty
+    // string a blank category is compared against, and the sentence that reports
+    // one.
+    expect(strings).toBe(243);
 
     // Non-vacuity, and the probe is DERIVED from the watchlist rather than
     // transcribed, so this file adds no citation of its own and the probe

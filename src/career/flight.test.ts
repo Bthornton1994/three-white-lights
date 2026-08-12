@@ -99,6 +99,23 @@ const FLIGHT_SWEEP = Object.freeze({
    * 3 and the third rule would be untested while looking covered.
    */
   BODYWEIGHTS_KG: Object.freeze([83.25, 92.5, 92.5, 105.75]),
+
+  /**
+   * The award categories the placing fixtures are built from.
+   *
+   * Two of them, and they are strings this file never parses because
+   * `placeFlight` never parses one either — see `flight.ts`'s header, section
+   * 1a. A single-category fixture cannot tell a per-category placing from the
+   * flight-wide one it replaced, so every check about grouping needs both, and
+   * the checks that are about the tie-break chain rather than about grouping
+   * deliberately use `CATEGORY_A` alone so the chain still reaches step 3.
+   *
+   * Written the way a caller would compose them — gender, weight class, age
+   * group, division — rather than as `'a'` and `'b'`, so a reader can see what
+   * the id is supposed to be made of.
+   */
+  CATEGORY_A: 'mens-93-open-raw',
+  CATEGORY_B: 'mens-105-masters1-raw',
 });
 
 /** `Total` bound to `number` here. See this file's header on why that is safe. */
@@ -136,19 +153,34 @@ function attempt(lifterId: string, lotNumber: number, declaredKg: number): Attem
   return { lifterId, lotNumber, declaredKg };
 }
 
+/**
+ * One result row. The category defaults HERE and nowhere else.
+ *
+ * `flight.ts` refuses a default category on purpose (header, section 1a), and a
+ * defaulting test helper does not weaken that: the type still requires the
+ * field, so a shipped caller that omits it does not compile. What the default
+ * buys is that the tie-break tests read as being about the chain rather than
+ * about ids, and every check that is ABOUT the category passes one explicitly.
+ */
 function entry(
   lifterId: string,
   lotNumber: number,
   bodyweightKg: number,
   total: Kg | null,
   totalReachedAtPosition: number | null,
+  categoryId: string = FLIGHT_SWEEP.CATEGORY_A,
 ): FlightResultEntry<Kg> {
-  return { lifterId, lotNumber, bodyweightKg, total, totalReachedAtPosition };
+  return { lifterId, lotNumber, categoryId, bodyweightKg, total, totalReachedAtPosition };
 }
 
 /** A sheet as `lifterId@place`, so a failure message reads like a result sheet. */
 function sheetOf(sheet: readonly FlightPlacing[]): string {
   return sheet.map((row) => `${row.lifterId}@${row.place ?? 'none'}`).join(' ');
+}
+
+/** The same, with the category each place is a place IN. */
+function categorisedSheetOf(sheet: readonly FlightPlacing[]): string {
+  return sheet.map((row) => `${row.lifterId}@${row.categoryId}:${row.place ?? 'none'}`).join(' ');
 }
 
 // ===========================================================================
@@ -548,7 +580,32 @@ describe('the flight runs round by round and the bar drops between them', () => 
     expect(barLoadingFaults(sequence.filter((step) => step.roundIndex === 1))).toEqual([]);
     // While the whole flight read as one round is not, which is what makes the
     // round scoping of `barLoadingFaults` a real decision.
-    expect(barLoadingFaults(sequence).length).toBeGreaterThan(0);
+    //
+    // COUNTS AND THE SENTENCE, NOT A BOUND. `toBeGreaterThan(0)` was the shape
+    // here, and it is satisfied by any one fault for any reason — a duplicate
+    // lifter, a duplicate lot, a weight that is not a bar weight. Every lifter
+    // in this fixture appears in both rounds, so the reading that passed the
+    // bound was very nearly the wrong one: it is the two `takes two attempts in
+    // one round` sentences that a reader would guess at, and the round-boundary
+    // drop is a THIRD sentence that has to be named to be checked.
+    //
+    // Reddens on: `barLoadingFaults` becoming flight-scoped, which drops the
+    // descent sentence and takes the filtered count to zero.
+    //
+    // FIVE, AND THE DRAFT OF THIS LINE SAID THREE — kept as a correction rather
+    // than tidied, because a count fitted to whatever the run returned measures
+    // nothing. Both lifters appear in both rounds, so each of them lands a
+    // repeat-lifter sentence AND a repeat-lot sentence, which is four; the bar
+    // dropping at the boundary is the fifth. Writing "three" was reading the
+    // fixture for the fault being demonstrated and forgetting it carries two
+    // more per lifter, which is exactly why the sentence is filtered for by name
+    // instead of trusted to be the only one.
+    const acrossTheBoundary = barLoadingFaults(sequence);
+    expect(acrossTheBoundary.join('\n')).toContain(
+      'and inside a round it is never lowered',
+    );
+    expect(acrossTheBoundary.filter((f) => f.includes('never lowered')).length).toBe(1);
+    expect(acrossTheBoundary.length).toBe(5);
 
     // A flight of no rounds, and a round of nobody: both empty, neither a throw.
     expect(flightAttemptSequence([])).toEqual([]);
@@ -653,15 +710,26 @@ describe('a flight is placed by the published chain', () => {
     expect(sheet.map((row) => row.place)).toEqual([1, 2, 3, null]);
   });
 
-  it('shares a place when the published chain runs out, and says so', () => {
-    // The honest end of the rule: two lifters with the same total, the same
-    // bodyweight and the same moment are TIED, not separated by lot. They share
-    // a place, the row after them skips, and `decidedBy` reports the fallback
-    // rather than a published step.
+  it('shares a place when the published chain runs out, and reports the data that got it there', () => {
+    // THE FALLBACK ARM, AND THE FACT THAT IT IS A FALLBACK. The prose in
+    // `flight.ts` used to read as though a shared place were a live case of the
+    // rule; `separate`'s docstring now bounds it and this is the check that
+    // paragraph names as its first half.
+    //
+    // Both halves are here because either alone is misleading:
+    //
+    //   1. The arm behaves, on the only input that reaches it: two lifters with
+    //      the same total, the same bodyweight and no recorded moment share a
+    //      place, the row after them skips to 3, and `decidedBy` reports the
+    //      fallback rather than claiming a published step decided it.
+    //   2. That input is data `flightPlacingFaults` REJECTS, which is what makes
+    //      the arm unreachable on a clean flight. Asserting (1) without (2)
+    //      would leave a reader believing the rulebook produces ties it does not
+    //      produce here.
     //
     // Reddens on: giving the tied pair different places, on the third lifter
-    // getting place 2 instead of 3, or on `decidedBy` claiming a published step
-    // decided a pair the rulebook does not separate.
+    // getting place 2 instead of 3, on `decidedBy` claiming a published step, or
+    // on `flightPlacingFaults` going quiet about the missing moments.
     const tied = [
       entry('tied-high-lot', 8, 92.5, 600, null),
       entry('tied-low-lot', 3, 92.5, 600, null),
@@ -671,6 +739,31 @@ describe('a flight is placed by the published chain', () => {
     expect(sheetOf(sheet)).toBe('tied-low-lot@1 tied-high-lot@1 behind@3');
     expect(sheet.map((row) => row.decidedBy)).toEqual([null, 'lot-number', 'total']);
     expect(CAREER_TUNING.PLACING_UNRESOLVED_ORDER).toBe('lot-number');
+
+    // (2). Counts, not bounds — one sentence per lifter that has a total and no
+    // moment, and the two of them are exactly the pair that shared a place.
+    const reported = flightPlacingFaults(tied, ASCENDING);
+    expect(reported).toEqual([
+      'career: tied-high-lot has a total and no position it was reached at, so the published ' +
+        'tie-break cannot be applied to them',
+      'career: tied-low-lot has a total and no position it was reached at, so the published ' +
+        'tie-break cannot be applied to them',
+    ]);
+    expect(reported.length).toBe(2);
+
+    // The other route in, for completeness: moments that collide rather than
+    // are missing. Same arm, same shared place, and reported for a different
+    // reason — which is why `separate`'s docstring names two fault sentences.
+    const collided = [
+      entry('same-moment-high-lot', 8, 92.5, 600, 4),
+      entry('same-moment-low-lot', 3, 92.5, 600, 4),
+    ];
+    expect(sheetOf(placeFlight(collided, ASCENDING))).toBe(
+      'same-moment-low-lot@1 same-moment-high-lot@1',
+    );
+    expect(flightPlacingFaults(collided, ASCENDING)).toEqual([
+      'career: two lifters reached a total at position 4, and one bar holds one attempt at a time',
+    ]);
   });
 
   it('lists a lifter with no total last and out of the placings', () => {
@@ -692,7 +785,7 @@ describe('a flight is placed by the published chain', () => {
     // A flight where nobody has a total is a sheet of nobodies rather than a
     // throw, and an empty flight is an empty sheet.
     expect(placeFlight([entry('a', 1, 92.5, null, null)], ASCENDING)).toEqual([
-      { lifterId: 'a', place: null, decidedBy: null },
+      { lifterId: 'a', categoryId: FLIGHT_SWEEP.CATEGORY_A, place: null, decidedBy: null },
     ]);
     expect(placeFlight([], ASCENDING)).toEqual([]);
   });
@@ -808,6 +901,186 @@ describe('a flight is placed by the published chain', () => {
     expect(
       flightPlacingFaults([entry('a', 1, 0, 600, 0)], ASCENDING).join('\n'),
     ).toContain('which is not a weigh-in');
+    expect(
+      flightPlacingFaults([entry('a', 1, 92.5, 600, 0, '   ')], ASCENDING).join('\n'),
+    ).toContain('carries no category, so there is nothing to place them in');
     expect(flightPlacingFaults([], ASCENDING)).toEqual([]);
+  });
+});
+
+// ===========================================================================
+// 3a. A place is a place in a CATEGORY, not in a flight
+// ===========================================================================
+
+describe('a placing is awarded inside a category and a flight is not one', () => {
+  it('names the fields a lifter is placed by', () => {
+    // The catcher `FlightMember`'s docstring names. That sentence promised for a
+    // round that "bodyweight, division and total arrive later, at the functions
+    // that need them" while NO type in the module took a division — the shape
+    // CLAUDE.md's guarantee-prose section records eight times, and it was found
+    // by reading rather than by anything failing.
+    //
+    // A structural check rather than a prose one: the sentence is true exactly
+    // when the three fields it names are on the entry a placing reads, so that
+    // is what is asserted. It is deliberately a key census and not a `toContain`
+    // on the comment, because a comment scan checks the comment.
+    //
+    // Reddens on: `categoryId` leaving `FlightResultEntry`, which is the edit
+    // that makes the docstring false again, or on a field being added to the
+    // entry without a reader deciding whether the sentence still describes it.
+    const shape = entry('a', 1, 92.5, 600, 0);
+    expect(Object.keys(shape).sort()).toEqual([
+      'bodyweightKg',
+      'categoryId',
+      'lifterId',
+      'lotNumber',
+      'total',
+      'totalReachedAtPosition',
+    ]);
+    // And the row that comes back says which category the place is IN, so a
+    // leaderboard cannot print "1st" with no answer to "of what".
+    const row = placeFlight([shape], ASCENDING)[0] as FlightPlacing;
+    expect(Object.keys(row).sort()).toEqual(['categoryId', 'decidedBy', 'lifterId', 'place']);
+    expect(row.categoryId).toBe(FLIGHT_SWEEP.CATEGORY_A);
+  });
+
+  it('places each category from one and keeps the caller’s category order', () => {
+    // The behaviour the ruling in `flight.ts`'s section 1a buys. A flight that
+    // mixes two weight classes produces TWO first places, and the partitions
+    // come out in the order the caller's entries first mention them.
+    //
+    // The fixture is built so the flight-wide reading and the per-category
+    // reading disagree at every row: interleaved, and the heaviest total in the
+    // flight sits in category B. Under the old flight-wide placing this sheet
+    // was `b-big@1 a-big@2 b-small@3 a-small@4`.
+    //
+    // Reddens on: placing flight-wide (every place becomes distinct and the
+    // categories interleave), or on sorting the categories by id rather than
+    // preserving the caller's order — which would put B first here, since
+    // 'mens-105-…' sorts before 'mens-93-…'.
+    const mixed = [
+      entry('a-small', 1, 92.5, 560, 0, FLIGHT_SWEEP.CATEGORY_A),
+      entry('b-big', 2, 105.75, 700, 1, FLIGHT_SWEEP.CATEGORY_B),
+      entry('a-big', 3, 92.5, 640, 2, FLIGHT_SWEEP.CATEGORY_A),
+      entry('b-small', 4, 105.75, 600, 3, FLIGHT_SWEEP.CATEGORY_B),
+    ];
+    expect(categorisedSheetOf(placeFlight(mixed, ASCENDING))).toBe(
+      `a-big@${FLIGHT_SWEEP.CATEGORY_A}:1 a-small@${FLIGHT_SWEEP.CATEGORY_A}:2 ` +
+        `b-big@${FLIGHT_SWEEP.CATEGORY_B}:1 b-small@${FLIGHT_SWEEP.CATEGORY_B}:2`,
+    );
+    // Two firsts, and the alphabetically-earlier category is second, so neither
+    // "one winner" nor "sorted by id" can pass this.
+    expect(placeFlight(mixed, ASCENDING).filter((row) => row.place === 1).length).toBe(2);
+    expect(FLIGHT_SWEEP.CATEGORY_B < FLIGHT_SWEEP.CATEGORY_A).toBe(true);
+
+    // And the caller's order really is preserved, checked the other way round.
+    const reversed = [mixed[1], mixed[3], mixed[0], mixed[2]] as FlightResultEntry<Kg>[];
+    expect(placeFlight(reversed, ASCENDING).map((row) => row.categoryId)).toEqual([
+      FLIGHT_SWEEP.CATEGORY_B,
+      FLIGHT_SWEEP.CATEGORY_B,
+      FLIGHT_SWEEP.CATEGORY_A,
+      FLIGHT_SWEEP.CATEGORY_A,
+    ]);
+  });
+
+  it('cannot have a lifter’s place changed by somebody in another category', () => {
+    // THE PROPERTY THE RULING IS FOR, and the one a competitive lifter would
+    // check first: who else the organiser happened to put in your flight has no
+    // effect on what you placed. Under the flight-wide placing this file
+    // replaces it was false at every point — which is what made it a defect
+    // rather than a naming quibble.
+    //
+    // Exhaustive over the intruder rather than sampled: for every total in a
+    // band that straddles all three of the base flight's totals, and for the
+    // bodyweight and moment that would each have decided a tie-break had the
+    // intruder been in the same category, the base category's rows must be
+    // byte-identical to the sheet it gets alone. The band is derived from the
+    // fixture's own numbers — below, just below, at, just above, above, and far
+    // away from each — because a band of round numbers would sample nowhere near
+    // what the code branches on.
+    //
+    // Reddens on: `placeFlight` comparing across categories at all. The cheapest
+    // mutant is dropping the partition, which makes the intruder's total land
+    // among the base rows for most of the band.
+    const base = [
+      entry('base-top', 1, 92.5, 620, 0, FLIGHT_SWEEP.CATEGORY_A),
+      entry('base-middle', 2, 92.5, 600, 1, FLIGHT_SWEEP.CATEGORY_A),
+      entry('base-bottom', 3, 83.25, 600, 2, FLIGHT_SWEEP.CATEGORY_A),
+    ];
+    const alone = categorisedSheetOf(placeFlight(base, ASCENDING));
+    expect(alone).toBe(
+      `base-top@${FLIGHT_SWEEP.CATEGORY_A}:1 base-bottom@${FLIGHT_SWEEP.CATEGORY_A}:2 ` +
+        `base-middle@${FLIGHT_SWEEP.CATEGORY_A}:3`,
+    );
+
+    const straddling: number[] = [];
+    for (const anchor of [620, 600]) {
+      for (const delta of [-40, -FLIGHT_SWEEP.STEP_KG, 0, FLIGHT_SWEEP.STEP_KG, 40, 400]) {
+        straddling.push(anchor + delta);
+      }
+    }
+
+    let checked = 0;
+    let overlapped = 0;
+    for (const intruderKg of straddling) {
+      for (const intruderBw of [83.25, 92.5, 105.75]) {
+        for (const intruderAt of [0, 1, 2, 9]) {
+          const withIntruder = [
+            ...base,
+            entry('intruder', 4, intruderBw, intruderKg, intruderAt, FLIGHT_SWEEP.CATEGORY_B),
+          ];
+          const sheet = placeFlight(withIntruder, ASCENDING);
+          const baseRows = sheet.filter((row) => row.categoryId === FLIGHT_SWEEP.CATEGORY_A);
+          expect(
+            categorisedSheetOf(baseRows),
+            `intruder at ${intruderKg}kg / ${intruderBw}kg bw / moment ${intruderAt}`,
+          ).toBe(alone);
+          // The intruder is placed, and placed first, because they are the only
+          // lifter in their own category however big or small their total is.
+          const theirs = sheet.filter((row) => row.categoryId === FLIGHT_SWEEP.CATEGORY_B);
+          expect(theirs.map((row) => row.place)).toEqual([1]);
+          if (base.some((row) => row.total === intruderKg)) overlapped += 1;
+          checked += 1;
+        }
+      }
+    }
+    // Counts, not bounds, on the domain AND on the region that matters: a band
+    // that never coincided with a base total would never have put the intruder
+    // where a flight-wide sort would move somebody, which is the empty middle
+    // CLAUDE.md's extremes section is about.
+    expect(straddling.length).toBe(12);
+    expect(checked).toBe(12 * 3 * 4);
+    expect(checked).toBe(144);
+    // TWENTY-FOUR, AND THE DRAFT SAID THIRTY-SIX. Derived rather than refitted:
+    // the base holds two distinct totals (620 and 600) and the band contains
+    // each of them exactly once — the `delta: 0` point of its own anchor, and
+    // nowhere else, since the two anchors are 20 kg apart and no delta bridges
+    // them. So two of the twelve band points coincide, times three bodyweights
+    // times four moments. Writing thirty-six was counting three base ROWS rather
+    // than two base TOTALS, and two of those rows share 600.
+    expect(overlapped).toBe(2 * 3 * 4);
+    expect(overlapped).toBe(24);
+  });
+
+  it('reports a blank category rather than placing a flight against itself', () => {
+    // There is no default category in `flight.ts` and `string` cannot make a
+    // blank one a type error, so this is the fault that stands in for the
+    // compiler. Counts and the sentence, because a fault reporter that returns
+    // one sentence for the wrong reason satisfies a bound.
+    //
+    // Reddens on: the blank-category check leaving `flightPlacingFaults`, or on
+    // it firing for a category that is merely unusual rather than empty.
+    const blank = flightPlacingFaults(
+      [entry('a', 1, 92.5, 600, 0, ''), entry('b', 2, 83.25, 590, 1, FLIGHT_SWEEP.CATEGORY_A)],
+      ASCENDING,
+    );
+    expect(blank).toEqual([
+      'career: a carries no category, so there is nothing to place them in',
+    ]);
+    // Whitespace is blank too, and a one-character id is not.
+    expect(
+      flightPlacingFaults([entry('a', 1, 92.5, 600, 0, '\t ')], ASCENDING).length,
+    ).toBe(1);
+    expect(flightPlacingFaults([entry('a', 1, 92.5, 600, 0, 'x')], ASCENDING)).toEqual([]);
   });
 });

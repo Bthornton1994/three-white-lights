@@ -3007,7 +3007,19 @@ describe('no shipped module can strip an opaque total', () => {
     expect(degenerate).toBe(0);
     expect(joined).toBe(5);
     // Counts, not bounds, on what the joiner actually produced.
-    expect(scanned).toBe(1406);
+    //
+    // 1406 -> 1433 when `placeFlight` began partitioning by category
+    // (`flight.ts`'s section 1a): the category walk, the per-category loop it
+    // wraps the placing in, and `flightPlacingFaults`'s blank-category check.
+    //
+    // WORTH KNOWING WHAT THIS PIN IS AND IS NOT, because it has now been the
+    // ONLY red under a real bypass. The fifth recorded bypass — a seat table in
+    // `separate` — moved this number and nothing else in the directory, and a
+    // census of logical lines is not a check about opacity. It caught that by
+    // accident, and a different check noticing by accident is not that check
+    // working. What covers that mutant on purpose is the comparator axis in
+    // section 9.
+    expect(scanned).toBe(1433);
   });
 
   it('catches a wrapped coercion a line-anchored scan walks past', () => {
@@ -3289,15 +3301,75 @@ const FLIGHT_PROBE = Object.freeze({
   REACHED_AT: Object.freeze([2, 0, 5, 7]),
 
   /**
+   * The one award category all four entrants are in, for these sweeps only.
+   *
+   * `flight.ts`'s section 1a makes a place a place within a category, and the
+   * grouping that follows is driven exhaustively — over an intruder band derived
+   * from the fixture's own totals — in `flight.test.ts`, which is where a
+   * question about the SPORT belongs. Here every entrant shares one category on
+   * purpose: this file's subject is what the module reads out of a total, the
+   * fixture above was tuned so the published chain reaches step 3 at every point
+   * of the domain, and splitting these four across two categories would put the
+   * pair that shares a bodyweight in different partitions and quietly retire
+   * steps 2 and 3 from the sweep.
+   */
+  CATEGORY: 'mens-93-open-raw',
+
+  /**
    * The relabelling constant. Larger than the domain's top, so `C - t` stays
    * positive for every point and the reversed labels are still plausible
    * kilogram values rather than an obviously special case.
    */
   REVERSAL_KG: 4000,
 
+  /**
+   * The SECOND reversal constant, and it is chosen for the opposite property.
+   *
+   * `REVERSAL_KG` maps a real total OUT of the range real totals occupy: every
+   * threshold on the ladder is between 260 and 680, and `4000 - t` lands those
+   * between 3320 and 3740. That matters because the fifth recorded bypass is a
+   * lookup table of loadable kilograms, and a table sized to the range totals
+   * live in never seats a value the 4000-reversal produced — so the relabelling
+   * fell straight through to the injected order and agreed with it.
+   *
+   * 1000 is an involution the same way (`restore` is `relabel`) and it maps the
+   * band real totals occupy ONTO ITSELF: 260 goes to 740, 680 goes to 320, and
+   * both of those are values a bar can be loaded to. A magnitude read cannot
+   * survive it, because a seat table that holds `t` holds `1000 - t` as well and
+   * the two rank opposite ways.
+   *
+   * Its cost, stated rather than hidden: above 1000 kg the image is negative, so
+   * for the top half of the grid this is a sign change rather than a reversal
+   * inside the range. It is still an injective involution there and the property
+   * still holds; it is simply `negate` again with an offset. The load-bearing
+   * half is the bottom, which is where every real total is.
+   */
+  REVERSAL_IN_RANGE_KG: 1000,
+
   /** The scale and shift the width-changing relabelling uses. */
   WIDEN_FACTOR: 1000,
   WIDEN_SHIFT_KG: 7,
+
+  /**
+   * The parameters of the comparators the placing sweep is driven under.
+   *
+   * `MODULUS` is the wrap of the residue order. Coprime to 4 (the number of
+   * quarter-kilograms in a kilogram) and to the flight offsets, so consecutive
+   * grid points land in different residue classes rather than repeating a short
+   * cycle that happens to agree with magnitude.
+   *
+   * `LATTICE_PER_KG` turns a kilogram value into the integer index of the
+   * quarter-kilogram grid, which is what the residue is taken of. Taking a
+   * modulus of a fractional kilogram directly would make the classes depend on
+   * floating-point remainder rather than on a lattice position.
+   *
+   * `DISTANCE_ANCHOR_KG` is the point the distance order measures from. It is
+   * the ladder's nationals requirement, so the order's classes straddle a number
+   * the game really branches on rather than a round one.
+   */
+  MODULUS: 7,
+  LATTICE_PER_KG: 4,
+  DISTANCE_ANCHOR_KG: 570,
 });
 
 /**
@@ -3345,6 +3417,7 @@ function flightAt(
     return {
       lifterId: `lifter-${index}`,
       lotNumber,
+      categoryId: FLIGHT_PROBE.CATEGORY,
       bodyweightKg: FLIGHT_PROBE.BODYWEIGHTS_KG[index] as number,
       total: bombed ? null : kg + (shape.offsetsKg[index] as number),
       totalReachedAtPosition: bombed ? null : (FLIGHT_PROBE.REACHED_AT[index] as number),
@@ -3390,29 +3463,47 @@ function countedPlacing(
     return false;
   };
 
-  const rows = placed
-    .map((entry) => ({
-      lifterId: entry.lifterId,
-      lotNumber: entry.lotNumber,
-      place: 1 + placed.filter((other) => ahead(other, entry)).length,
-    }))
-    .sort((left, right) =>
-      left.place !== right.place ? left.place - right.place : left.lotNumber - right.lotNumber,
-    )
-    .map((row) => `${row.lifterId}@${row.place}`);
+  // Grouped by category, and the groups in first-appearance order, because
+  // `flight.ts`'s section 1a makes a place a place within a category. The
+  // oracle models it rather than ignoring it: an oracle blind to the partition
+  // would agree with a `placeFlight` that lost it, and that is one level of the
+  // same defect this function exists to avoid.
+  const categoryOrder: string[] = [];
+  for (const item of entries) {
+    if (!categoryOrder.includes(item.categoryId)) categoryOrder.push(item.categoryId);
+  }
 
-  const bombed = entries
-    .filter((entry) => entry.total === null)
-    .slice()
-    .sort((left, right) => left.lotNumber - right.lotNumber)
-    .map((entry) => `${entry.lifterId}@none`);
+  const printed: string[] = [];
+  for (const categoryId of categoryOrder) {
+    const mine = placed.filter((item) => item.categoryId === categoryId);
+    const rows = mine
+      .map((item) => ({
+        lifterId: item.lifterId,
+        lotNumber: item.lotNumber,
+        place: 1 + mine.filter((other) => ahead(other, item)).length,
+      }))
+      .sort((left, right) =>
+        left.place !== right.place ? left.place - right.place : left.lotNumber - right.lotNumber,
+      )
+      .map((row) => `${row.lifterId}@${categoryId}:${row.place}`);
 
-  return [...rows, ...bombed].join(' ');
+    const bombed = entries
+      .filter((item) => item.total === null && item.categoryId === categoryId)
+      .slice()
+      .sort((left, right) => left.lotNumber - right.lotNumber)
+      .map((item) => `${item.lifterId}@${categoryId}:none`);
+
+    printed.push(...rows, ...bombed);
+  }
+
+  return printed.join(' ');
 }
 
 /** A shipped sheet in the same shape the oracle prints. */
 function shippedPlacing(sheet: readonly FlightPlacing[]): string {
-  return sheet.map((row) => `${row.lifterId}@${row.place ?? 'none'}`).join(' ');
+  return sheet
+    .map((row) => `${row.lifterId}@${row.categoryId}:${row.place ?? 'none'}`)
+    .join(' ');
 }
 
 /**
@@ -3424,12 +3515,23 @@ function shippedPlacing(sheet: readonly FlightPlacing[]): string {
  * magnitude, its sign, or its printed width instead of asking the comparator
  * disagrees on at least one of these.
  *
- * `reverse` is the sharpest of the three: it maps the domain onto itself
- * backwards, so raw magnitude ranks the flight the wrong way round while the
- * comparator ranks it the right way round. `widen` changes the number of digits
- * without changing the order, which is the axis the third recorded bypass keyed
- * on. `negate` changes the sign, which no realistic total has and which a
- * `Math.abs` or a `<= 0` guard would key on.
+ * `reverse` maps the domain onto itself backwards, so raw magnitude ranks the
+ * flight the wrong way round while the comparator ranks it the right way round.
+ * `widen` changes the number of digits without changing the order, which is the
+ * axis the third recorded bypass keyed on. `negate` changes the sign, which no
+ * realistic total has and which a `Math.abs` or a `<= 0` guard would key on.
+ *
+ * `reverse-in-range` IS THE FOURTH AND IT WAS ADDED FOR A MEASURED REASON. The
+ * other three all map a REAL total — one between 260 and 680 kg — out of the
+ * range real totals occupy: `reverse` sends 600 to 3400, `widen` to 600007,
+ * `negate` to -600. The fifth recorded bypass is a lookup table of loadable
+ * kilograms, and such a table only ever holds values in that range, so all three
+ * relabellings fell straight through the table to the injected order and agreed
+ * with it. `reverse-in-range` sends 600 to 400 — a value the table holds, ranked
+ * the opposite way — which is what a relabelling has to do to be worth anything
+ * against a magnitude read that is scoped to plausible totals. The bypass a
+ * relabelling has to survive is not "reads the number" but "reads the number
+ * WHERE THE NUMBERS ARE".
  */
 interface Relabelling {
   readonly id: string;
@@ -3444,6 +3546,11 @@ const RELABELLINGS: readonly Relabelling[] = [
     restore: (kg) => FLIGHT_PROBE.REVERSAL_KG - kg,
   },
   {
+    id: 'reverse-in-range',
+    relabel: (kg) => FLIGHT_PROBE.REVERSAL_IN_RANGE_KG - kg,
+    restore: (kg) => FLIGHT_PROBE.REVERSAL_IN_RANGE_KG - kg,
+  },
+  {
     id: 'widen',
     relabel: (kg) => kg * FLIGHT_PROBE.WIDEN_FACTOR + FLIGHT_PROBE.WIDEN_SHIFT_KG,
     restore: (kg) => (kg - FLIGHT_PROBE.WIDEN_SHIFT_KG) / FLIGHT_PROBE.WIDEN_FACTOR,
@@ -3451,22 +3558,160 @@ const RELABELLINGS: readonly Relabelling[] = [
   { id: 'negate', relabel: (kg) => -kg, restore: (kg) => -kg },
 ];
 
-/** The lawful comparator every flight sweep is driven under. */
-const ASCENDING: TotalOrder<NumericTotal> = (left, right) => left - right;
+// ===========================================================================
+// THE FIFTH BYPASS, AND THE AXIS THAT HAD ONE POINT
+// ===========================================================================
+//
+// Recorded here rather than in this file's header because it is a defect in the
+// flight sweep specifically, and because the previous four are already in that
+// header as the reading list.
+//
+// The qualification sweeps run under SIX gate shapes, three of which disagree
+// with raw magnitude. The placing sweep ran under ONE comparator:
+//
+//     const ASCENDING: TotalOrder<NumericTotal> = (left, right) => left - right;
+//
+// That is raw magnitude by definition. So "the sheet equals a placing counted
+// from the order alone" was checked only against an order agreeing with
+// magnitude at all 8003 points of the grid — and a module that ignores the
+// comparator entirely and ranks by kilograms agrees at all of them too.
+//
+// THE MUTANT, PLANTED AND RUN, in `separate`, replacing the single `order(...)`
+// call, with a module-level table of loadable kilograms above it:
+//
+//     const leftSeat = LOADABLE_KG.indexOf(left.total);
+//     const rightSeat = LOADABLE_KG.indexOf(right.total);
+//     const seated = leftSeat >= 0 && rightSeat >= 0;
+//     const ranked = seated ? leftSeat - rightSeat : order(left.total, right.total);
+//
+// MEASURED at the commit this file was rewritten from: `npx tsc --noEmit` exit
+// 0, and `npx vitest run src/career` red on exactly ONE test — `joins a wrapped
+// call back into one line before it scans`, at `expected 1411 to be 1406`, the
+// logical-line census reacting to the added lines. Nothing about placing or
+// opacity fired. With a counting comparator on three real `ghostTotalsKg`
+// values the consequence was `places: [ 'c:1', 'b:2', 'a:3' ] orderAsked: 0` —
+// 585, 610 and 632.5 kg ranked by kilograms read out of an opaque total with the
+// injected comparator never consulted once. `Array.prototype.indexOf` compares
+// by strict equality, so no proxy trap fires either, which is the class
+// `careerOpaqueTotal.test.ts`'s own limit 2 names.
+//
+// WHY THE DOMAIN GAVE NO COVER, and it is the part worth generalising. The grid
+// is dense on the TOTAL axis: 8003 points, every loadable total contained. The
+// axis that decides a placing is the ORDER, and it had one point. Densifying a
+// domain on the axis you already have says nothing about the axis you do not,
+// and a count pinned at 24009 reads like coverage of both.
+//
+// A ban row was not the answer, and four rounds of this directory's history say
+// why: every one of them was beaten by a route the previous author had not
+// enumerated. What closes it is comparators that DISAGREE WITH MAGNITUDE on the
+// domain's own values, with the sheet asserted equal to the counted placing
+// under that same comparator. A magnitude read cannot agree with an order that
+// ranks 600 above 610 and 610 above 590.
+
+/**
+ * A lawful comparator the placing sweep is driven under.
+ *
+ * Every one is a genuine total order — antisymmetric, transitive, consistent —
+ * so `flightPlacingFaults` stays quiet about all of them and `countedPlacing`
+ * remains a valid oracle. Each of the four below `ascending` is built the same
+ * way: a KEY function of the total, compared first, with raw magnitude as the
+ * last step. Lexicographic order on `(key(t), t)` where `key` is a function of
+ * `t` is lawful for any `key` at all, which is what makes it safe to choose keys
+ * purely for how badly they disagree with kilograms.
+ *
+ * `disagreesWithMagnitude` is not decoration: it drives the non-vacuity guard
+ * that pins how many points of the real sweep each order actually moves. An
+ * order listed as disagreeing that turns out to move nothing is a comparator
+ * axis with one point wearing five.
+ */
+interface PlacingOrder {
+  readonly id: string;
+  readonly order: TotalOrder<NumericTotal>;
+  readonly disagreesWithMagnitude: boolean;
+}
+
+/** The quarter-kilogram lattice index of a total, as an integer. */
+function latticeIndex(kg: number): number {
+  return Math.round(kg * FLIGHT_PROBE.LATTICE_PER_KG);
+}
+
+const PLACING_ORDERS: readonly PlacingOrder[] = [
+  // The control, and the comparator this sweep used to have as its whole axis.
+  // Kept, because agreement under magnitude is a real property and because the
+  // guard below measures the others against THIS one's sheets.
+  { id: 'ascending', order: (left, right) => left - right, disagreesWithMagnitude: false },
+
+  // Magnitude, backwards. The bluntest disagreement there is: it ranks every
+  // distinct pair the opposite way, so a seat table, a `sort()` with no
+  // comparator, a string compare and a subtraction all fail it at the first
+  // pair that is not a tie.
+  { id: 'descending', order: (left, right) => right - left, disagreesWithMagnitude: true },
+
+  // Residue of the lattice index, then magnitude. NOT MONOTONE ANYWHERE: the
+  // classes cycle every 7 quarter-kilograms, so consecutive grid points are
+  // usually in different classes and ranked by class rather than by size. This
+  // is the shape the brief for this round names — 600 above 610 and 610 above
+  // 590 — and it holds at 600/610/590: their lattice indices are 2400, 2440 and
+  // 2360, whose residues mod 7 are 6, 4 and 2.
+  {
+    id: 'residue-then-size',
+    order: (left, right) => {
+      const leftKey = ((latticeIndex(left) % FLIGHT_PROBE.MODULUS) + FLIGHT_PROBE.MODULUS) %
+        FLIGHT_PROBE.MODULUS;
+      const rightKey = ((latticeIndex(right) % FLIGHT_PROBE.MODULUS) + FLIGHT_PROBE.MODULUS) %
+        FLIGHT_PROBE.MODULUS;
+      return leftKey !== rightKey ? leftKey - rightKey : left - right;
+    },
+    disagreesWithMagnitude: true,
+  },
+
+  // Distance from a threshold the game really branches on, then magnitude. It
+  // folds the number line about 570 kg, so two totals equidistant on either side
+  // are adjacent under it while being 2 x d apart in kilograms. A magnitude read
+  // gets the fold backwards on one whole side.
+  {
+    id: 'distance-from-threshold',
+    order: (left, right) => {
+      const leftKey = Math.abs(left - FLIGHT_PROBE.DISTANCE_ANCHOR_KG);
+      const rightKey = Math.abs(right - FLIGHT_PROBE.DISTANCE_ANCHOR_KG);
+      return leftKey !== rightKey ? leftKey - rightKey : left - right;
+    },
+    disagreesWithMagnitude: true,
+  },
+
+  // Half-kilograms above every whole kilogram, then magnitude. A lawful total
+  // order that is monotone within each of two interleaved classes and wildly
+  // non-monotone between them — 0.5 kg outranks 1999 kg. It is here because the
+  // other three all key on a NUMBER derived from the total, while this one keys
+  // on where the total sits on the loading lattice, which is the property a
+  // seat-table bypass is built out of in the first place.
+  {
+    id: 'halves-over-wholes',
+    order: (left, right) => {
+      const leftKey = Math.abs(latticeIndex(left) % FLIGHT_PROBE.LATTICE_PER_KG) === 0 ? 0 : 1;
+      const rightKey = Math.abs(latticeIndex(right) % FLIGHT_PROBE.LATTICE_PER_KG) === 0 ? 0 : 1;
+      return leftKey !== rightKey ? leftKey - rightKey : left - right;
+    },
+    disagreesWithMagnitude: true,
+  },
+];
+
+/** The lawful comparator the substitution and fault sweeps are driven under. */
+const ASCENDING: TotalOrder<NumericTotal> = (PLACING_ORDERS[0] as PlacingOrder).order;
 
 describe('placing reads a total only through the injected order', () => {
-  it('matches a placing counted from the order alone, across the whole domain', () => {
-    // THE DOMAIN SWEEP, pointed at the comparator instead of at the gate. The
-    // grid's argument is section "THE FOURTH BYPASS" above and it transfers
-    // unchanged: a predicate that agrees with the injected answer at every
-    // point of a domain containing every loadable total agrees at every real
-    // total.
+  it('matches a placing counted from the order alone, across the whole domain and every order', () => {
+    // THE DOMAIN SWEEP, ON BOTH AXES. The grid's argument is section "THE FOURTH
+    // BYPASS" above and it transfers unchanged: a predicate agreeing with the
+    // injected answer at every point of a domain containing every loadable total
+    // agrees at every real total. The comparator axis is the section above this
+    // block, and it is the one that had a single point.
     //
-    // Reddens on: any read of a total's magnitude that changes the sheet. The
-    // shape it would take here is a sort keyed on the number rather than on the
-    // order — which is invisible under an ASCENDING comparator and is caught by
-    // the substitution test below, and which is why the two are a pair rather
-    // than one check written twice.
+    // Reddens on: any read of a total that decides an order. The mutant recorded
+    // above — a seat table indexed by kilograms, with the injected comparator
+    // called only for values the table does not hold — is invisible under
+    // `ascending` at all 24009 of its old points and reddens here at the first
+    // pair `descending` looks at.
     const disagreements: string[] = [];
     let walked = 0;
     const sheets = new Set<string>();
@@ -3474,26 +3719,239 @@ describe('placing reads a total only through the injected order', () => {
     for (const kg of PROBE_TOTALS_KG) {
       for (const shape of FLIGHT_SHAPES) {
         const entries = flightAt(kg, shape, null);
-        const shipped = shippedPlacing(placeFlight(entries, ASCENDING));
-        const counted = countedPlacing(entries, ASCENDING);
-        if (shipped !== counted) {
-          disagreements.push(`${kg}kg/${shape.id}\n  shipped: ${shipped}\n  counted: ${counted}`);
+        for (const placing of PLACING_ORDERS) {
+          const shipped = shippedPlacing(placeFlight(entries, placing.order));
+          const counted = countedPlacing(entries, placing.order);
+          if (shipped !== counted) {
+            disagreements.push(
+              `${kg}kg/${shape.id}/${placing.id}\n  shipped: ${shipped}\n  counted: ${counted}`,
+            );
+          }
+          sheets.add(`${shape.id}/${placing.id}:${shipped}`);
+          walked += 1;
         }
-        sheets.add(`${shape.id}:${shipped}`);
-        walked += 1;
       }
     }
 
     expect(disagreements.slice(0, 3).join('\n')).toBe('');
     expect(disagreements.length).toBe(0);
-    // Counts, not bounds, on the domain and on what it produced. A truncated
-    // grid reports itself here as well as in `is a plate-resolution grid`.
+    // Counts, not bounds, on BOTH axes of the domain and on what they produced.
+    // A truncated grid reports itself here as well as in `is a plate-resolution
+    // grid`; an order dropped from the list reports itself here and nowhere
+    // else, which is precisely the failure this round is about.
     expect(PROBE_TOTALS_KG.length).toBe(8003);
-    expect(walked).toBe(PROBE_TOTALS_KG.length * FLIGHT_SHAPES.length);
-    expect(walked).toBe(24009);
-    // And the three shapes really do produce three different sheets, so the
-    // agreement above is about three arrangements rather than one repeated.
-    expect(sheets.size).toBe(3);
+    expect(PLACING_ORDERS.length).toBe(5);
+    expect(walked).toBe(PROBE_TOTALS_KG.length * FLIGHT_SHAPES.length * PLACING_ORDERS.length);
+    expect(walked).toBe(120045);
+    // The arrangements really are distinct, and the count is MEASURED rather
+    // than predicted — the draft guessed 11 and the run said 32.
+    //
+    // Worth reading, because the direction of that miss is the evidence. Three
+    // shapes times five orders is fifteen combinations, so a number BELOW
+    // fifteen would have meant orders collapsing onto each other. It is above
+    // fifteen, which means several of these orders produce a DIFFERENT
+    // arrangement at different points of the same domain: `residue-then-size`
+    // ranks a flight by where its totals land in a seven-wide cycle, so it
+    // rearranges as the grid walks, while `ascending` produces exactly one sheet
+    // per shape however far the totals move. That spread is the comparator axis
+    // being live rather than five spellings of one question.
+    expect(sheets.size).toBe(32);
+  });
+
+  it('is driven under orders that disagree with kilograms on the sweep’s own values', () => {
+    // THE NON-VACUITY GUARD FOR THE COMPARATOR AXIS, and the reason the sweep
+    // above is more than the same check run five times. An axis of five orders
+    // that all happen to agree with magnitude on this fixture is an axis with
+    // one point wearing five, which is the defect one level out from the one
+    // being fixed — and every count in the sweep above would still be honest.
+    //
+    // So the disagreement is MEASURED, on the real domain, against the real
+    // control: for each order, how many (total, shape) points produce a sheet
+    // different from `ascending`'s. Counts, not bounds, per order and by name.
+    //
+    // Reddens on: an order whose key collapses to magnitude (a modulus of 1, an
+    // anchor outside the domain, a parity that is constant), or on the control
+    // being replaced by a second copy of one of the others.
+    const moved: Record<string, number> = {};
+    for (const placing of PLACING_ORDERS) moved[placing.id] = 0;
+
+    let compared = 0;
+    for (const kg of PROBE_TOTALS_KG) {
+      for (const shape of FLIGHT_SHAPES) {
+        const entries = flightAt(kg, shape, null);
+        const control = shippedPlacing(placeFlight(entries, ASCENDING));
+        for (const placing of PLACING_ORDERS) {
+          const under = shippedPlacing(placeFlight(entries, placing.order));
+          if (under !== control) moved[placing.id] = (moved[placing.id] ?? 0) + 1;
+          compared += 1;
+        }
+      }
+    }
+
+    // MEASURED, NOT PREDICTED, and three of the four drafted numbers were
+    // wrong — 14608 / 8062 / 12006 against the run's 11434 / 4558 / 8006. They
+    // are kept as corrections rather than quietly refitted, and each is
+    // DERIVABLE from the order's own key, which is what makes the pin a claim
+    // rather than a transcript:
+    //
+    //   - The cap is 16006. `all-tied` gives every entrant the same total, so no
+    //     comparator can move it — steps 2 and 3 decide that whole sheet — which
+    //     retires 8003 of the 24009 points for every order.
+    //   - `descending` sits exactly at the cap: it reverses every pair that is
+    //     not a tie, so both remaining shapes move at every point.
+    //   - `halves-over-wholes` is 8006, just over half the cap, because the
+    //     flight offsets are whole half-kilograms: the four entrants share their
+    //     position modulo a kilogram, so the parity key separates them only when
+    //     the base total sits on the half-kilogram lattice, which is half the
+    //     0.25 kg grid.
+    //   - `distance-from-threshold` is 4558, the smallest, and it is the only
+    //     one whose count is a fact about WHERE the domain is. Above 570 kg the
+    //     fold is order-preserving and the sheet is `ascending`'s; below it the
+    //     fold reverses. 570 kg is 2280 grid points from the bottom of a 2000 kg
+    //     domain, so roughly a quarter of it moves and the rest agrees.
+    //   - `residue-then-size` is 11434: the seven-wide cycle separates the four
+    //     entrants at most points but not all, since a residue collision leaves
+    //     magnitude to decide.
+    //
+    // Reddens on: `MODULUS` going to 1, `DISTANCE_ANCHOR_KG` leaving the domain,
+    // `LATTICE_PER_KG` losing its relationship to the flight offsets — each of
+    // which sends its own order's count toward zero while leaving every other
+    // count and every other pin in this file untouched.
+    expect(moved).toEqual({
+      ascending: 0,
+      descending: 16006,
+      'residue-then-size': 11434,
+      'distance-from-threshold': 4558,
+      'halves-over-wholes': 8006,
+    });
+    // The cap the four are fractions of, stated so the numbers above are read
+    // against something rather than admired.
+    expect(PROBE_TOTALS_KG.length * (FLIGHT_SHAPES.length - 1)).toBe(16006);
+    // The control moved nothing, by construction, and that zero is what the four
+    // non-zero numbers are non-zero AGAINST. Kept as a runnable control in the
+    // house shape rather than argued.
+    expect(moved.ascending).toBe(0);
+    // Every order declared as disagreeing really does, and the one declared as
+    // agreeing really does not — a set equality in both directions, so a
+    // mislabelled row is red rather than silently uncounted.
+    const declared = PLACING_ORDERS.filter((o) => o.disagreesWithMagnitude).map((o) => o.id);
+    const observed = PLACING_ORDERS.filter((o) => (moved[o.id] ?? 0) > 0).map((o) => o.id);
+    expect(observed).toEqual(declared);
+    expect(declared.length).toBe(4);
+    expect(compared).toBe(120045);
+
+    // AND THE NAMED CASE, spelled out because it is the one a reader checks by
+    // hand and because a count cannot show the SHAPE of a disagreement: an order
+    // that ranks 600 above 610 and 610 above 590 cannot be satisfied by any read
+    // of the kilograms.
+    const residue = (PLACING_ORDERS[2] as PlacingOrder).order;
+    expect(residue(600, 610)).toBeGreaterThan(0);
+    expect(residue(610, 590)).toBeGreaterThan(0);
+    expect(residue(600, 590)).toBeGreaterThan(0);
+    // Which is transitive and antisymmetric, so it is a lawful order rather
+    // than a broken one that would make the oracle meaningless.
+    expect(flightPlacingFaults(flightAt(600, FLIGHT_SHAPES[0] as FlightShape, null), residue))
+      .toEqual([]);
+  });
+
+  it('reports no fault about any of the orders it is swept under, at any total', () => {
+    // The other half of the guard above, and it is what entitles the sweep to
+    // use `countedPlacing` as an oracle at all: that function's own docstring
+    // says it is valid only for a LAWFUL comparator, and five hand-built
+    // lexicographic keys are exactly the place a subtle unlawfulness would hide.
+    //
+    // Checked across the whole domain rather than at one fixture, because
+    // lawfulness of a key-then-magnitude order is a property of the KEY and the
+    // keys here are floating-point (`Math.abs`, a remainder). A rounding that
+    // made one of them non-transitive would show up at particular totals and
+    // nowhere else.
+    //
+    // Reddens on: an order added to `PLACING_ORDERS` whose key is not a function
+    // of the total alone — a stateful or call-count-keyed comparator is the
+    // shape, and `careerOpaqueTotal.test.ts`'s `cycling` is a deliberate one.
+    const reported: string[] = [];
+    let asked = 0;
+    for (const kg of PROBE_TOTALS_KG) {
+      for (const placing of PLACING_ORDERS) {
+        const faults = flightPlacingFaults(
+          flightAt(kg, FLIGHT_SHAPES[0] as FlightShape, null),
+          placing.order,
+        );
+        if (faults.length > 0) reported.push(`${kg}kg/${placing.id}: ${faults.join(' | ')}`);
+        asked += 1;
+      }
+    }
+    expect(reported.slice(0, 3).join('\n')).toBe('');
+    expect(reported.length).toBe(0);
+    expect(asked).toBe(PROBE_TOTALS_KG.length * PLACING_ORDERS.length);
+    expect(asked).toBe(40015);
+  });
+
+  it('no clean flight can reach the unresolved arm, across the whole domain', () => {
+    // THE CATCHER `separate`'s DOCSTRING NAMES, both halves. That paragraph
+    // makes a bounded claim — the fourth arm is dead on any entry list
+    // `flightPlacingFaults` returns `[]` for — and names its own limit, which is
+    // that `placeFlight` does not call that function and a caller may skip it.
+    //
+    // Half one: over the whole domain, every shape and every order, a clean
+    // flight produces no `decidedBy: 'lot-number'` and no two rows in one
+    // category sharing a place.
+    //
+    // Half two: the faulted twin — the same flight with the moments removed,
+    // which is one of the two fault sentences that paragraph names — DOES reach
+    // it. Without half two the zero above is satisfied by a fixture that could
+    // never have got there, which is the empty domain this file was rewritten
+    // for.
+    //
+    // Reddens on: the fourth arm becoming reachable on clean data (half one), or
+    // on the arm being deleted so nothing reaches it at all (half two).
+    let cleanRows = 0;
+    let unresolvedOnClean = 0;
+    let sharedOnClean = 0;
+    let unresolvedOnFaulted = 0;
+    let faultedFlights = 0;
+
+    for (const kg of PROBE_TOTALS_KG) {
+      for (const shape of FLIGHT_SHAPES) {
+        const entries = flightAt(kg, shape, null);
+        for (const placing of PLACING_ORDERS) {
+          const sheet = placeFlight(entries, placing.order);
+          const places = sheet.map((row) => row.place).filter((p) => p !== null);
+          if (new Set(places).size !== places.length) sharedOnClean += 1;
+          for (const row of sheet) {
+            if (row.decidedBy === CAREER_TUNING.PLACING_UNRESOLVED_ORDER) unresolvedOnClean += 1;
+            cleanRows += 1;
+          }
+        }
+      }
+    }
+
+    // The faulted twin, on a much smaller domain because it is a tripwire rather
+    // than a sweep: it exists to prove the arm is reachable at all.
+    for (const kg of [0, 260, 570, 632.5, 2000]) {
+      const faulted = flightAt(kg, FLIGHT_SHAPES[2] as FlightShape, null).map((entry) => ({
+        ...entry,
+        totalReachedAtPosition: null,
+      }));
+      expect(flightPlacingFaults(faulted, ASCENDING).length).toBe(4);
+      for (const row of placeFlight(faulted, ASCENDING)) {
+        if (row.decidedBy === CAREER_TUNING.PLACING_UNRESOLVED_ORDER) unresolvedOnFaulted += 1;
+      }
+      faultedFlights += 1;
+    }
+
+    expect(unresolvedOnClean).toBe(0);
+    expect(sharedOnClean).toBe(0);
+    // Counts, not bounds, on the domain the zeros were taken over.
+    expect(cleanRows).toBe(120045 * FLIGHT_PROBE.LOTS.length);
+    expect(cleanRows).toBe(480180);
+    // And the non-zero the zeros are zero against: `all-tied` with no moments
+    // recorded is four entrants the chain cannot separate past bodyweight, so
+    // three of the four rows fall to the fallback (the top row's `decidedBy` is
+    // always null). Two of the four share a bodyweight, so one of those three is
+    // separated by it — measured at 5 rather than predicted.
+    expect(faultedFlights).toBe(5);
+    expect(unresolvedOnFaulted).toBe(5 * 1);
   });
 
   it('places a bombed-out lifter last and out of the placings, at every point', () => {
@@ -3595,21 +4053,24 @@ describe('placing reads a total only through the injected order', () => {
     expect(faults.slice(0, 3).join('\n')).toBe('');
     expect(faults.length).toBe(0);
     // Counts, not bounds, on the cross and on the non-degeneracy.
-    expect(RELABELLINGS.length).toBe(3);
+    expect(RELABELLINGS.length).toBe(4);
     expect(checked).toBe(PROBE_TOTALS_KG.length * FLIGHT_SHAPES.length * RELABELLINGS.length);
-    expect(checked).toBe(72027);
+    expect(checked).toBe(96036);
     // `reverse` has a fixed point at half the reversal constant (2000 kg, the
-    // top of the grid) and `negate` has one at 0 kg; `widen` has none inside
-    // the domain. The first entrant's offset is zero in all three shapes, so
-    // those two values leave the relabelling standing still once per shape.
+    // top of the grid), `reverse-in-range` has one at 500 kg, and `negate` has
+    // one at 0 kg; `widen` has none inside the domain. The first entrant's
+    // offset is zero in all three shapes, so those three values leave the
+    // relabelling standing still once per shape.
     //
     // Written as an arithmetic prediction that was WRONG the first time and is
     // kept as the corrected one rather than fitted to the output: the draft
     // said three fixed points and the run said two, at `expected 6 to be 9`.
     // A count pinned by fitting it to whatever came back is a count that
-    // measures nothing.
-    expect(checked - moved).toBe(2 * FLIGHT_SHAPES.length);
-    expect(checked - moved).toBe(6);
+    // measures nothing. It is three now because `reverse-in-range` brought one
+    // more — 500 kg, which unlike 2000 kg is a total a bar is loaded to, and
+    // that is the whole reason that relabelling was added.
+    expect(checked - moved).toBe(3 * FLIGHT_SHAPES.length);
+    expect(checked - moved).toBe(9);
   });
 
   it('reports an unlawful order and stays quiet about a lawful one', () => {
@@ -3629,11 +4090,38 @@ describe('placing reads a total only through the injected order', () => {
       return (left + right) % 3 === 0 ? left - right : right - left;
     };
 
+    // COUNTS AND SENTENCES, NOT BOUNDS. `toBeGreaterThan(0)` stood on both of
+    // these and it is the shape this file elsewhere refuses: a transitivity
+    // check reduced to one spurious fault for an unrelated reason satisfies it,
+    // and so does an antisymmetry check that fires once out of the six pairs it
+    // should. The neighbouring `notFinite` case already pinned its message,
+    // which is the sibling these two were written beside and not copied from.
+    //
+    // Reddens on: either check firing on the wrong pairs, or on the antisymmetry
+    // walk narrowing from every ordered pair to the adjacent ones.
     const unlawful = flightPlacingFaults(entries, alwaysLeft);
-    expect(unlawful.length).toBeGreaterThan(0);
     expect(unlawful.join('\n')).toContain('the same way round both ways');
+    // This fixture has no bomb-out, so all four entrants carry a total and the
+    // antisymmetry walk covers 4 x 5 / 2 = 10 pairs including the diagonal.
+    // `alwaysLeft` answers -1 to everything, so every one of them faults — the
+    // diagonal included, since a value compared with itself must answer 0.
+    expect(unlawful.length).toBe(10);
+    expect(unlawful.filter((f) => f.includes('the same way round both ways')).length).toBe(10);
     expect(flightPlacingFaults(entries, notFinite).join('\n')).toContain('not a comparison');
-    expect(flightPlacingFaults(entries, intransitive).length).toBeGreaterThan(0);
+
+    const intransitiveFaults = flightPlacingFaults(entries, intransitive);
+    expect(intransitiveFaults.join('\n')).toContain('and then contradicts itself on the ends');
+    // Every sentence is the transitivity one, so this is not a bound satisfied
+    // by an antisymmetry fault that happened to fire — which is the whole reason
+    // a count replaced `toBeGreaterThan(0)` here.
+    expect(
+      intransitiveFaults.filter((f) => f.includes('contradicts itself on the ends')).length,
+    ).toBe(intransitiveFaults.length);
+    // Six, measured; the draft said twelve. `intransitive` answers `left - right`
+    // when the pair sums to a multiple of three and `right - left` otherwise, so
+    // on the four totals 500 / 500.5 / 501 / 501.5 only some triples contradict,
+    // not all of them.
+    expect(intransitiveFaults.length).toBe(6);
 
     // And a lawful order over a flight with a real fault in the ENTRIES is
     // still reported, so the two halves of this function are independent.

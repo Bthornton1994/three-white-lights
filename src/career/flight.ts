@@ -71,6 +71,83 @@
  *     more than a number nobody checked.
  *
  * ===========================================================================
+ * 1a. A FLIGHT IS NOT AN AWARD CATEGORY, and this file used to place as if it
+ *     were
+ * ===========================================================================
+ *
+ * The ruling this section records was a real fork with two defensible answers,
+ * and it is written down because picking one silently is the failure mode a
+ * competitive lifter would catch on sight.
+ *
+ * THE DEFECT. `placeFlight` used to rank every entry in a flight against every
+ * other and hand out `place: 1, 2, 3`, with no notion of who was competing
+ * against whom. That reads as a result sheet and it is not one. Nobody is
+ * awarded "1st in Flight B": a flight is a LOGISTICAL grouping — it exists so
+ * one bar can be run through a manageable number of lifters — while a placing is
+ * awarded inside a category made of gender, weight class, age group and
+ * equipment/tested division. The two are different partitions of the same
+ * session and they cut across each other.
+ *
+ * That is not an aesthetic objection, and it is what makes the tie-break chain
+ * below coherent or incoherent. Step 2 says the lighter lifter ranks above the
+ * heavier one on an equal total. Applied inside a weight class that is a real
+ * rule about who did more. Applied across a flight that mixes a 59 kg lifter and
+ * a 120 kg lifter it is arithmetic about two people who are not competing, and
+ * it would have decided a place.
+ *
+ * WHAT WAS SEARCHED, and it is the flight side that settles it rather than the
+ * placing side. The published wording found, quoted, is that flights "shall be
+ * determined logically by any or all of the following; gender, bodyweight
+ * categories, age group categories, drug-tested/untested, and/or first attempts
+ * listed during the weigh-ins", that a flight may be formed by grouping
+ * categories together "or as decided by the organizer of the event", and that
+ * mixed-gender flights exist. So a flight may hold more than one category BY
+ * RULE, not merely by accident. On the other side, placings "for every age
+ * grouping are decided by total", with medals awarded "in each weight class
+ * across all age divisions" — the award scope is the category, never the flight.
+ * As elsewhere in this file the publisher is described rather than named; see
+ * the section above for why, and the build report for the names.
+ *
+ * THE TWO ANSWERS, and why the second one was taken:
+ *
+ *   1. CALL IT A FLIGHT ORDERING. §6.6 does ask for a "live leaderboard feed",
+ *      and a feed showing the flight in total order is a real artefact. Under
+ *      this reading the fix is a rename: nothing may be called a `place`.
+ *      REJECTED, because it makes the module unable to answer the question the
+ *      game actually needs — who won — and because it would leave the
+ *      bodyweight tie-break in place while removing the only scope in which
+ *      that tie-break means anything. A rename that keeps incoherent arithmetic
+ *      and stops advertising it is the worse half of both options.
+ *
+ *   2. CARRY THE CATEGORY AND PLACE WITHIN IT. TAKEN. `FlightResultEntry` now
+ *      carries `categoryId` and `placeFlight` places inside each category. The
+ *      live-feed reading survives whole — run it partway through and each
+ *      category's rows are that category's leaderboard as it stands, which is
+ *      what a real scoreboard shows.
+ *
+ * `categoryId` IS OPAQUE TO THIS MODULE, deliberately, and that is the same
+ * decision the `Total` seam makes for the same reason. What composes a category
+ * — the weight-class table, the age bands, the equipment and testing divisions —
+ * is federation policy, it differs between the four fictional federations in
+ * `careerTuning.ts`, and a module that sorts has no business deciding it. So the
+ * caller composes an id and this module only ever asks whether two are the same
+ * string. It never parses one, never orders by one, and never invents one.
+ *
+ * THERE IS NO DEFAULT CATEGORY, for the reason there is no default order: a
+ * caller that has not decided what a lifter is competing in should fail to
+ * compile rather than silently get a flight-wide placing back, which is exactly
+ * the defect being fixed. `flightPlacingFaults` reports a blank id, because a
+ * `string` cannot make that a type error.
+ *
+ * WHAT THIS DOES NOT DO, said so it is not read as more: it does not place a
+ * category that spans more than one flight. `placeFlight` places the entries it
+ * is handed, so a category split across flights A and B is placed correctly only
+ * if the caller hands over both flights' entries at once — and then
+ * `totalReachedAtPosition` has to be a coordinate comparable across both, which
+ * `flightAttemptSequence`'s flight-local `position` is not. That seam is the
+ * caller's and is named in `FlightResultEntry`.
+ *
+ * ===========================================================================
  * 2. Placing needs an ORDER over totals, and that is more power than the gate
  * ===========================================================================
  *
@@ -183,8 +260,16 @@ export type PlacingDecidedBy = PlacingTieBreak | PlacingUnresolved | null;
  * One lifter in the field, as composition sees them.
  *
  * A lot number and nothing else, because that is all the published ordering
- * rules read. Bodyweight, division and total arrive later, at the functions
- * that need them.
+ * rules read. Bodyweight, category and total arrive later, at
+ * `FlightResultEntry` — the one function that needs them is `placeFlight`.
+ *
+ * THAT SENTENCE USED TO SAY "division" AND NO TYPE IN THIS FILE TOOK ONE. It
+ * was written while carrying a division was the plan, kept after the code went
+ * another way, and it survived a round — the pattern CLAUDE.md's guarantee-prose
+ * section records eight times. It is true now because section 1a made it true,
+ * not because the wording was softened: `FlightResultEntry.categoryId` is the
+ * thing it was promising. `names the fields a lifter is placed by` is what goes
+ * red if that field leaves again.
  *
  * `lotNumber` is drawn at weigh-in and is an input to this whole module. The
  * quoted rule: "lots will be drawn to establish the order of weigh in, and the
@@ -573,6 +658,21 @@ export type TotalOrder<Total> = (left: Total, right: Total) => number;
 export interface FlightResultEntry<Total> {
   readonly lifterId: string;
   readonly lotNumber: number;
+  /**
+   * What this lifter is competing IN, as a string this module never parses.
+   *
+   * Gender, weight class, age group and the equipment/tested division, composed
+   * by the caller into one id. Two entries are in the same award category
+   * exactly when this string is `===`. See this file's header, section 1a, for
+   * why a flight is not this and why there is no default.
+   *
+   * The coordinate `totalReachedAtPosition` speaks in must be comparable across
+   * every entry handed to one call. For a single flight that is
+   * `flightAttemptSequence`'s `position`; for a category pooled across flights
+   * the caller supplies a session-wide moment, and `one bar holds one attempt at
+   * a time` is the fault that fires if two of them collide.
+   */
+  readonly categoryId: string;
   readonly bodyweightKg: number;
   readonly total: Total | null;
   readonly totalReachedAtPosition: number | null;
@@ -581,16 +681,22 @@ export interface FlightResultEntry<Total> {
 /**
  * One row of a result sheet.
  *
- * `place` is `null` for a lifter with no total. `decidedBy` names the step that
- * separated this row from the row above it, and is `null` on the top row and on
- * every unplaced row. It carries no total: see this file's header, section 2.
+ * `place` is a place WITHIN `categoryId` and is `null` for a lifter with no
+ * total. `decidedBy` names the step that separated this row from the row above
+ * it IN THE SAME CATEGORY, and is `null` on each category's top row and on every
+ * unplaced row. It carries no total: see this file's header, section 2.
  *
- * Two rows can share a `place`. That happens exactly when the three published
- * steps all came back equal, and it is not a rounding of the rule — it is the
- * rule running out. Such rows are LISTED in lot order and `decidedBy` says so.
+ * `categoryId` is repeated back from the entry so a row is readable on its own.
+ * A leaderboard that prints `place` without it is printing "1st" with no answer
+ * to "of what", which is the defect section 1a is about.
+ *
+ * Two rows in the SAME category can share a `place` — but only on entries
+ * `flightPlacingFaults` reports, which is the whole of the paragraph on
+ * `separate` and is not repeated here.
  */
 export interface FlightPlacing {
   readonly lifterId: string;
+  readonly categoryId: string;
   readonly place: number | null;
   readonly decidedBy: PlacingDecidedBy;
 }
@@ -623,6 +729,43 @@ interface Separation {
  * moment, which is what `totalReachedAtPosition` is for.
  *
  * Past step 3 the published chain stops. See `PLACING_UNRESOLVED_ORDER`.
+ *
+ * ===========================================================================
+ * THE FOURTH ARM IS UNREACHABLE ON DATA THIS MODULE CALLS CLEAN, and the prose
+ * here used to read as though it were a live case
+ * ===========================================================================
+ *
+ * Resolved rather than left ambiguous, because a reader cannot tell a fallback
+ * from a rule by looking and the docstring on `FlightPlacing` was inviting the
+ * wrong reading.
+ *
+ * The bounded claim, in the mechanism's own terms: control reaches the fourth
+ * arm only when `totalReachedAtPosition` is `null` on one side, or equal on
+ * both. `flightPlacingFaults` reports the first as "has a total and no position
+ * it was reached at" and the second as "one bar holds one attempt at a time".
+ * So on any entry list that function returns `[]` for, the arm is dead, no row
+ * can carry `decidedBy: 'lot-number'`, and no two rows in one category can share
+ * a `place`.
+ *
+ * The limit, named concretely enough to plant: `placeFlight` does not call
+ * `flightPlacingFaults` and must not — a result sheet is not the place to
+ * refuse — so a caller that skips the report reaches the arm at runtime. That is
+ * why it is a defined fallback (list them in lot order, say `lot-number`, share
+ * the place) rather than a throw, and it is the only reason it exists.
+ *
+ * The catcher, named specifically enough to run: `no clean flight can reach the
+ * unresolved arm, across the whole domain` in `careerOpacity.test.ts` drives
+ * both halves — every point of the plate-resolution grid under every comparator
+ * with the arm counted at zero, and the faulted twin counted above zero, so an
+ * empty domain reports itself instead of passing.
+ *
+ * WHAT WOULD MAKE IT LIVE, so nobody has to rediscover it. Two lifters in
+ * DIFFERENT flights can genuinely share a position index, because
+ * `flightAttemptSequence` counts from zero per flight. A caller pooling two
+ * flights of one category (section 1a's named seam) either supplies a
+ * session-wide moment — in which case the arm stays dead — or hands over
+ * colliding indices, in which case `flightPlacingFaults` reports them and it is
+ * doing its job rather than being over-strict.
  */
 function separate<Total>(
   left: PlacedEntry<Total>,
@@ -648,7 +791,7 @@ function separate<Total>(
 }
 
 /**
- * A flight's result sheet: every lifter, in placing order.
+ * A flight's result sheet: every lifter, placed inside their own category.
  *
  * THE LIVE LEADERBOARD IS THIS FUNCTION, run again. §6.6 asks for a "live
  * leaderboard feed"; a leaderboard partway through a flight is the placing over
@@ -658,48 +801,87 @@ function separate<Total>(
  * distinguishes "not yet" from "never" is the caller's, because it is a fact
  * about attempts remaining and this module does not hold attempts.
  *
- * Unplaced lifters — no total — come last, in lot order, with `place: null`.
- * They are in the list rather than filtered out because a result sheet shows
- * them: a lifter who bombed out was at the meet.
+ * THE SHEET IS GROUPED BY CATEGORY, and both halves of that are decisions:
  *
- * The injected order is asked about pairs of totals and about nothing else.
+ *   - Rows are partitioned by `categoryId` and a place is a place within one
+ *     partition. Section 1a of this file's header is the whole argument and the
+ *     search behind it.
+ *   - The partitions come out in the order their categories FIRST APPEAR in
+ *     `entries`, which is `composeFlights`'s discipline applied again: this
+ *     module does not know what order categories should be printed in — lightest
+ *     class first is a convention, not a rule found in the published text — so
+ *     it preserves the caller's and reorders nothing. A caller that hands over a
+ *     flight sorted by class gets a sheet sorted by class.
+ *
+ * Within a category, unplaced lifters — no total — come after the placed ones,
+ * in lot order, with `place: null`. They are in the list rather than filtered
+ * out because a result sheet shows them: a lifter who bombed out was at the
+ * meet, and they bombed out of a weight class rather than out of a flight.
+ *
+ * The injected order is asked about pairs of totals and about nothing else, and
+ * it is never asked about a pair from two different categories — which is not a
+ * saving but a correctness property, since two categories are not in a race.
  */
 export function placeFlight<Total>(
   entries: readonly FlightResultEntry<Total>[],
   order: TotalOrder<Total>,
 ): readonly FlightPlacing[] {
-  const placed: PlacedEntry<Total>[] = [];
-  const unplaced: FlightResultEntry<Total>[] = [];
-
+  const categoryOrder: string[] = [];
+  const byCategory = new Map<string, FlightResultEntry<Total>[]>();
   for (const entry of entries) {
-    const total = entry.total;
-    if (total === null) unplaced.push(entry);
-    else placed.push({ entry, total });
+    const held = byCategory.get(entry.categoryId);
+    if (held === undefined) {
+      categoryOrder.push(entry.categoryId);
+      byCategory.set(entry.categoryId, [entry]);
+    } else {
+      held.push(entry);
+    }
   }
-
-  placed.sort((left, right) => separate(left, right, order).ranking);
-  unplaced.sort((left, right) => left.lotNumber - right.lotNumber);
 
   const sheet: FlightPlacing[] = [];
-  let place = 0;
-  for (let index = 0; index < placed.length; index += 1) {
-    const row = placed[index] as PlacedEntry<Total>;
-    if (index === 0) {
-      place = 1;
-      sheet.push(Object.freeze({ lifterId: row.entry.lifterId, place, decidedBy: null }));
-      continue;
-    }
-    const above = placed[index - 1] as PlacedEntry<Total>;
-    const separation = separate(above, row, order);
-    const shares = separation.by === CAREER_TUNING.PLACING_UNRESOLVED_ORDER;
-    if (!shares) place = index + 1;
-    sheet.push(
-      Object.freeze({ lifterId: row.entry.lifterId, place, decidedBy: separation.by }),
-    );
-  }
+  for (const categoryId of categoryOrder) {
+    const inCategory = byCategory.get(categoryId) ?? [];
+    const placed: PlacedEntry<Total>[] = [];
+    const unplaced: FlightResultEntry<Total>[] = [];
 
-  for (const entry of unplaced) {
-    sheet.push(Object.freeze({ lifterId: entry.lifterId, place: null, decidedBy: null }));
+    for (const entry of inCategory) {
+      const total = entry.total;
+      if (total === null) unplaced.push(entry);
+      else placed.push({ entry, total });
+    }
+
+    placed.sort((left, right) => separate(left, right, order).ranking);
+    unplaced.sort((left, right) => left.lotNumber - right.lotNumber);
+
+    let place = 0;
+    for (let index = 0; index < placed.length; index += 1) {
+      const row = placed[index] as PlacedEntry<Total>;
+      if (index === 0) {
+        place = 1;
+        sheet.push(
+          Object.freeze({ lifterId: row.entry.lifterId, categoryId, place, decidedBy: null }),
+        );
+        continue;
+      }
+      const above = placed[index - 1] as PlacedEntry<Total>;
+      const separation = separate(above, row, order);
+      const shares = separation.by === CAREER_TUNING.PLACING_UNRESOLVED_ORDER;
+      if (!shares) place = index + 1;
+      sheet.push(
+        Object.freeze({
+          lifterId: row.entry.lifterId,
+          categoryId,
+          place,
+          decidedBy: separation.by,
+        }),
+      );
+    }
+
+    for (const entry of unplaced) {
+      sheet.push(
+        Object.freeze({ lifterId: entry.lifterId, categoryId, place: null, decidedBy: null }),
+      );
+    }
   }
   return Object.freeze(sheet);
 }
@@ -722,6 +904,13 @@ export function placeFlight<Total>(
  *   - antisymmetry, on every ordered pair of the entries' own totals;
  *   - a finite answer, since `NaN` makes every comparison false;
  *   - transitivity, on every ordered triple.
+ *
+ * Those three run across CATEGORY BOUNDARIES even though `placeFlight` never
+ * compares two totals from different categories. That is deliberate and it is
+ * the stronger reading: the contract being checked belongs to the comparator,
+ * not to the sheet, and a comparator that is intransitive only on a triple this
+ * particular flight happens to split across two classes is still an unlawful
+ * comparator and will decide a place at the next meet.
  *
  * The totals are the entries' own rather than values this function invents,
  * because inventing one would mean constructing a `Total`, which this module
@@ -758,6 +947,17 @@ export function flightPlacingFaults<Total>(
     if (!Number.isFinite(entry.bodyweightKg) || entry.bodyweightKg <= 0) {
       faults.push(
         `career: ${entry.lifterId} weighed in at ${entry.bodyweightKg} kg, which is not a weigh-in`,
+      );
+    }
+
+    // A blank category is the type error `string` cannot be. There is no
+    // default category (header, section 1a), so an empty id is a caller that
+    // has not decided what this lifter is competing in — and the sheet it
+    // produces would be a flight-wide placing wearing a category's clothes,
+    // which is the exact defect that section is about.
+    if (entry.categoryId.trim() === '') {
+      faults.push(
+        `career: ${entry.lifterId} carries no category, so there is nothing to place them in`,
       );
     }
 
