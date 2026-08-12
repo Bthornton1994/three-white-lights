@@ -175,9 +175,88 @@ const FORWARD_SIGNIFICANT_PT = 1.5;
 /** Beats at which the maximal bar must be drawn significantly further forward. */
 const MIN_FURTHER_FORWARD_BEATS = 4;
 
+/**
+ * The share of the scaled `SPRITE_BOX` that must survive `CUE_HOLE`, so the
+ * DENOMINATOR of every fraction below is a real region.
+ *
+ * ===========================================================================
+ * THE DENOMINATOR WAS MEASURED, CARRIED, PRINTED AND NEVER COMPARED
+ * ===========================================================================
+ * Both pixel claims in this file are fractions: `differing / total`, held above
+ * `MIN_SPRITE_MOVE_FRAC` and `MIN_LOAD_DIFF_FRAC`. `total` is whatever
+ * `diffPixels` counted after punching the cue ring out, and until this constant
+ * existed nothing looked at it — it was assigned to `comparedRegionPx` and
+ * printed in the note as "N% of 62208 compared pixels", where it reads as the
+ * evidence that the percentage means something.
+ *
+ * A FRACTION IS THE ONE SHAPE WHERE A SHRINKING REGION MAKES THE CHECK EASIER,
+ * which is why this is not the same call as the pixel-count bounds in
+ * `capture-meet.mjs`. Halve `total` and the same handful of moved pixels
+ * doubles `frac`, so the frozen-sprite floor is cleared by half as much
+ * drawing. `CUE_HOLE`'s own header says it is load-bearing and its radius is a
+ * restatement of `CUE_RING_OUTER_R`; growing that ring in the app and updating
+ * the restatement quietly weakens both floors, and no line said so.
+ *
+ * AND AT THE END OF THAT ROAD IS A SILENT PASS, NOT A NEAR MISS. If the hole
+ * swallows the box entirely, `total` is 0, `frac` is `NaN`, and `NaN <
+ * MIN_SPRITE_MOVE_FRAC` is FALSE — so the check does not fire, `weakest` stays
+ * at its `Infinity` seed because `NaN < Infinity` is also false, and the tool
+ * signs off on a comparison of nothing at all.
+ *
+ * MEASURED, not chosen: the circle takes 12.6% of the box at every whole scale
+ * the capture can produce — 54363 of 62208 at 1x, 217415 of 248832 at 2x,
+ * 489191 of 559872 at 3x, so the surviving share is 0.8737 to 0.8739 and does
+ * not move with scale. 0.5 sits far below that spread, so it cannot fire on
+ * rounding, and far above the region where the fractions stop meaning anything.
+ * Re-derive it the same way if `CUE_HOLE` or `SPRITE_BOX` is re-cut.
+ */
+const MIN_COMPARED_REGION_SHARE = 0.5;
+
 const failures = [];
 const notes = [];
 const fail = (message) => failures.push(message);
+
+/**
+ * The lifter's pixels, compared between two stage frames — ONE function, for
+ * the two places that ask, because they are the same measurement.
+ *
+ * Both sites used to call `diffPixels` themselves and divide by `result.total`
+ * themselves, twenty lines apart in the same file, and the guard below would
+ * have been written for one of them. CLAUDE.md's finding is that proximity is
+ * the risk rather than the protection: two arms of one idea read as one
+ * decision and get written as two.
+ *
+ * @returns {{ frac: number, total: number } | null} null when it refused, with
+ *   the reason already pushed onto `failures` — a refusal is a finding here,
+ *   never a skipped comparison.
+ */
+function lifterPixelDiff(imageA, imageB, scale, tag) {
+  let result;
+  try {
+    result = diffPixels(imageA, imageB, scaleRegion(SPRITE_BOX, scale), {
+      tolerance: PIXEL_TOLERANCE,
+      holes: [scaleHole(CUE_HOLE, scale)],
+    });
+  } catch (e) {
+    fail(`${tag}: ${e.message}`);
+    return null;
+  }
+  const box = scaleRegion(SPRITE_BOX, scale);
+  const boxPx = box.w * box.h;
+  const floor = boxPx * MIN_COMPARED_REGION_SHARE;
+  if (!(result.total >= floor)) {
+    fail(
+      `${tag}: the LIFTER region compared is ${result.total} px of a ${box.w}x${box.h} (${boxPx} px) box at ` +
+        `scale ${scale} — under the ${Math.round(floor)} px floor (${MIN_COMPARED_REGION_SHARE} of the box). ` +
+        'CUE_HOLE has eaten the sprite, or SPRITE_BOX has been re-cut. Every claim below this line is a ' +
+        'FRACTION with that number underneath it, so a smaller region makes the floors easier to clear ' +
+        'rather than harder, and at zero it makes them unfireable: differing/0 is NaN and NaN fails no ' +
+        'less-than. Re-derive MIN_COMPARED_REGION_SHARE against the new geometry rather than lowering it.',
+    );
+    return null;
+  }
+  return { frac: result.differing / result.total, total: result.total };
+}
 
 async function sha256(file) {
   return createHash('sha256').update(await readFile(file)).digest('hex');
@@ -319,18 +398,15 @@ function checkSequence(seq) {
         fail(`${tag}: ${a.moment} and ${b.moment} were captured at different scales`);
         continue;
       }
-      let result;
-      try {
-        result = diffPixels(a.stageImage, b.stageImage, scaleRegion(SPRITE_BOX, a.scale), {
-          tolerance: PIXEL_TOLERANCE,
-          holes: [scaleHole(CUE_HOLE, a.scale)],
-        });
-      } catch (e) {
-        fail(`${tag}: ${a.moment} vs ${b.moment}: ${e.message}`);
-        continue;
-      }
+      const result = lifterPixelDiff(
+        a.stageImage,
+        b.stageImage,
+        a.scale,
+        `${tag}: ${a.moment} vs ${b.moment}`,
+      );
+      if (result === null) continue;
       comparedRegionPx = result.total;
-      const frac = result.differing / result.total;
+      const frac = result.frac;
       spriteMoves.push({ a: a.moment, b: b.moment, frac });
       if (frac < MIN_SPRITE_MOVE_FRAC) {
         fail(
@@ -473,12 +549,21 @@ for (const [moment] of EXPECTED) {
     row.heightGap = Number(gap.toFixed(4));
     if (gap <= HEIGHT_MATCHED) {
       matchedBeats += 1;
-      try {
-        const result = diffPixels(h.stageImage, l.stageImage, scaleRegion(SPRITE_BOX, h.scale), {
-          tolerance: PIXEL_TOLERANCE,
-          holes: [scaleHole(CUE_HOLE, h.scale)],
-        });
-        const frac = result.differing / result.total;
+      // THE SIBLING OF THE PAIR ABOVE, and it divides by the same undefended
+      // denominator, so it goes through the same function rather than growing a
+      // second copy of the guard.
+      const result = lifterPixelDiff(
+        h.stageImage,
+        l.stageImage,
+        h.scale,
+        `${moment}: cross-load pixel compare`,
+      );
+      if (result !== null) {
+        // `result.total` is deliberately NOT carried out to a variable here.
+        // This note prints no denominator, so a binding for it would be a
+        // number with no consequence — the thing this whole pass is about. The
+        // comparison it needs already happened inside `lifterPixelDiff`.
+        const frac = result.frac;
         row.lifterDiffPct = Number((frac * 100).toFixed(2));
         if (frac < weakestLoadDiff.frac) weakestLoadDiff = { moment, frac };
         if (frac < MIN_LOAD_DIFF_FRAC) {
@@ -488,8 +573,6 @@ for (const [moment] of EXPECTED) {
               `${(MIN_LOAD_DIFF_FRAC * 100).toFixed(1)}%) — the drawing is not responding to load`,
           );
         }
-      } catch (e) {
-        fail(`${moment}: cross-load pixel compare failed: ${e.message}`);
       }
     }
   }

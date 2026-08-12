@@ -1506,10 +1506,37 @@ check(
  * app's own `ENTER_MS`, and what is checked is the MEASURED opacity of the art
  * rather than the existence of a file.
  */
-const litShots = cutInShots.filter((s) => s.artOpacity >= CAP_DRIVE.DRAWN_MIN_OPACITY);
+// AND BOTH HALVES OF IT, BECAUSE THE SECOND ONE WAS MEASURED AND NEVER READ.
+//
+// `lineOpacity` has been taken beside `artOpacity` at every shutter, carried
+// into `cutInShots`, and PRINTED in this check's detail — where it reads as
+// evidence — while the only thing `litShots` filtered on was the art. A build
+// that renamed `cut-in-line`'s testID, hid the Text, or faded it to nothing
+// printed `cut-in-line 0.000` in the pass line and this check stayed green. A
+// number that reaches a template string and never a predicate is decoration
+// wearing the costume of evidence, and this file already worries about a
+// renamed testID by name a few blocks up.
+//
+// GDD §7.2's cut-in is a picture AND a line of copy. `effectiveOpacity` returns
+// 0 for an element that is absent, `display:none` or `visibility:hidden`, so the
+// one call covers "renamed", "hidden" and "transparent" without a second probe.
+//
+// NOT DOMINATED IN EITHER DIRECTION, worked out symbolically before it was
+// added rather than by intuition: `styles.line` carries no opacity of its own,
+// so in a healthy build the two readings are equal — but they are equal through
+// the OVERLAY's parent chain, not by construction. Art drawn with no line and
+// line drawn with no art are both reachable states of `CutInView`, so neither
+// reading implies the other and the existing `artOpacity` filter cannot speak
+// for this one. Same threshold on purpose: `DRAWN_MIN_OPACITY` is this file's
+// one line between present and visible and the copy does not need a second one.
+const litShots = cutInShots.filter(
+  (s) => s.artOpacity >= CAP_DRIVE.DRAWN_MIN_OPACITY && s.lineOpacity >= CAP_DRIVE.DRAWN_MIN_OPACITY,
+);
+const artDark = cutInShots.filter((s) => s.artOpacity < CAP_DRIVE.DRAWN_MIN_OPACITY);
+const lineDark = cutInShots.filter((s) => s.lineOpacity < CAP_DRIVE.DRAWN_MIN_OPACITY);
 check(
   cutInShots.length === THE_CAP && litShots.length === THE_CAP,
-  `GDD §7.2: the cut-in was PHOTOGRAPHED — ${THE_CAP} frame, with its art drawn rather than merely mounted`,
+  `GDD §7.2: the cut-in was PHOTOGRAPHED — ${THE_CAP} frame, with its art AND its line drawn rather than merely mounted`,
   cutInShots.length === 0
     ? `no frame was taken. Either nothing was ever on screen, or every appearance fell outside a watched wait — the shutter runs inside every \`until\` poll and every settle, so a miss here is a real absence rather than bad luck.`
     : cutInShots
@@ -1518,7 +1545,13 @@ check(
             `${s.file} (leg ${s.leg}): cut-in-art effective opacity ${s.artOpacity.toFixed(3)}, cut-in-line ${s.lineOpacity.toFixed(3)}, ` +
             `taken ${s.afterEnterMs}ms after the overlay appeared (ENTER_MS, read from cutInTuning.ts)`,
         )
-        .join('; '),
+        .join('; ') +
+      ` — floor ${CAP_DRIVE.DRAWN_MIN_OPACITY}` +
+      // WHICH HALF WENT DARK, named rather than left to whoever reads the list:
+      // a zero against a missing testID and a zero against a faded Text look
+      // identical above, and only one of the two is a copy change.
+      `${artDark.length === 0 ? '' : `; ART NOT DRAWN on ${artDark.length} frame(s): ${artDark.map((s) => s.file).join(', ')}`}` +
+      `${lineDark.length === 0 ? '' : `; LINE NOT DRAWN on ${lineDark.length} frame(s): ${lineDark.map((s) => s.file).join(', ')} — cut-in-line is absent, hidden or transparent, so §7.2's copy reached no player`}`,
 );
 
 // ---------------------------------------------------------------------------

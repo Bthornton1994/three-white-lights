@@ -355,15 +355,47 @@ const RECAP_SETTLE_MS = RECAP_LAST_ROW_DRAWN_AT_MS + FADE_GRACE_MS;
  */
 const BAR_LOAD_MS_RESTATED = 900;
 /**
- * The other four terms of `walkoutMs`, restated and cross-checked the same way.
- * Together with `BAR_LOAD_MS_RESTATED` they say how long the beat on screen
- * runs, which is what `beatMsForLine` needs to place the tail on the sampler's
- * own clock.
+ * The other four terms of `walkoutMs`, restated — and, since this block, ACTUALLY
+ * cross-checked.
+ *
+ * THE SENTENCE HERE USED TO SAY "restated and cross-checked the same way" AND
+ * NOTHING CROSS-CHECKED THEM. `checkMeetRestatementsMatchTuning` pinned
+ * `BAR_LOAD_MS`, the five terms of `MOTION_MS` and `HUSH_MS`; these four were
+ * four typed numbers, and `beatMsForLine`'s own docstring repeated the same
+ * false claim one screen down. `THIRD_ATTEMPT_EXTRA_RESTATED` was even PRINTED
+ * — in the detail of the check that argues the tail boundary is safe — so the
+ * number reached a template string, reached the arithmetic, and never reached a
+ * predicate that could tell it apart from the app's.
+ *
+ * WHY THAT MATTERS MORE HERE THAN IT WOULD ELSEWHERE. All four are `MEET_TUNING`
+ * knobs a playtester is expected to turn — `meetTuning.ts` tells a future tuner
+ * in as many words to lengthen `WALKOUT_MS` "here and nowhere else". Every one
+ * of them feeds `beatMsForLine` -> `beatMs` -> `tailMs` -> `setAtMs`, which is
+ * the boundary the walk-out-tail probe's decisive check is measured against. So
+ * a tuning pass could move the beat, leave this tool measuring the old window,
+ * and take the probe green the whole way: the claim "the hall is still drawing
+ * after the choreography ends" would be graded against a choreography that had
+ * stopped existing. `BAR_LOAD_MS` was protected from exactly that and its four
+ * siblings were not, which is CLAUDE.md's "apply the guard to its sibling" with
+ * the siblings sitting in the same paragraph as the guard.
+ *
+ * KEYED BY THE APP'S OWN CONSTANT NAMES, AND THAT IS THE POINT OF THE TABLE.
+ * The pin in `checkMeetRestatementsMatchTuning` walks `Object.entries` of this
+ * object rather than carrying a list of its own, so a fifth term cannot be added
+ * to the beat without the pin picking it up — there is no second list to fall
+ * behind. `BAR_LOAD_MS_RESTATED` stays a standalone binding because `MOTION_MS`
+ * needs it as a term in its own right and it already has its own pin.
  */
-const WALKOUT_MS_RESTATED = 1500;
-const THIRD_ATTEMPT_EXTRA_RESTATED = 900;
-const PR_EXTRA_RESTATED = 700;
-const BOMB_RISK_EXTRA_RESTATED = 800;
+const WALKOUT_BEAT_TERMS_RESTATED = Object.freeze({
+  WALKOUT_MS: 1500,
+  THIRD_ATTEMPT_WALKOUT_EXTRA_MS: 900,
+  PR_ATTEMPT_WALKOUT_EXTRA_MS: 700,
+  BOMB_RISK_WALKOUT_EXTRA_MS: 800,
+});
+const WALKOUT_MS_RESTATED = WALKOUT_BEAT_TERMS_RESTATED.WALKOUT_MS;
+const THIRD_ATTEMPT_EXTRA_RESTATED = WALKOUT_BEAT_TERMS_RESTATED.THIRD_ATTEMPT_WALKOUT_EXTRA_MS;
+const PR_EXTRA_RESTATED = WALKOUT_BEAT_TERMS_RESTATED.PR_ATTEMPT_WALKOUT_EXTRA_MS;
+const BOMB_RISK_EXTRA_RESTATED = WALKOUT_BEAT_TERMS_RESTATED.BOMB_RISK_WALKOUT_EXTRA_MS;
 
 const WALKOUT_TAIL_PROBE = Object.freeze({
   /**
@@ -2886,6 +2918,38 @@ async function checkMeetRestatementsMatchTuning() {
       'the bar-load window the tail probe uses as its positive control is MEET_TUNING’s own',
       `meetTuning.ts ${barLoad}ms vs this tool ${BAR_LOAD_MS_RESTATED}ms`,
     );
+
+    // ...AND THE FOUR TERMS DIRECTLY BELOW IT, WHICH IS THE BRANCH UNDER THE ONE
+    // ABOVE AND WAS THE ONE NOBODY WROTE. `BAR_LOAD_MS` is the FIRST term of the
+    // beat; the other four are `beatMsForLine`'s and had no pin at all while
+    // their own declaration said they were "cross-checked the same way". See the
+    // block above `WALKOUT_BEAT_TERMS_RESTATED` for what a drift would do to the
+    // tail probe's boundary.
+    //
+    // DRIVEN OFF THE TABLE, NOT OFF A LIST WRITTEN HERE, so this loop cannot
+    // fall behind the thing it pins — the keys ARE the app's constant names and
+    // a fifth term appears in this loop the moment it is added to the beat.
+    // A count is asserted beside it because a loop over an object is a sweep,
+    // and a sweep whose domain silently empties reports green: an object that
+    // lost its entries, or a rename that stopped every lookup resolving, would
+    // otherwise leave four pins that pass by having nothing to compare.
+    let beatTermsPinned = 0;
+    for (const [name, mine] of Object.entries(WALKOUT_BEAT_TERMS_RESTATED)) {
+      const theirs = numberInSource(meetText, name);
+      check(
+        theirs === mine,
+        `MEET_TUNING.${name} is the walk-out beat length this tool restates, not a number typed beside it`,
+        theirs === null
+          ? `${name} was not found in meetTuning.ts — it was renamed or removed, and beatMsForLine is now adding a term the app no longer has`
+          : `meetTuning.ts ${theirs}ms vs this tool ${mine}ms`,
+      );
+      beatTermsPinned += 1;
+    }
+    check(
+      beatTermsPinned === 4,
+      'CONTROL: all four of beatMsForLine’s terms were actually compared, not zero of them',
+      `${beatTermsPinned} term(s) pinned from WALKOUT_BEAT_TERMS_RESTATED: ${Object.keys(WALKOUT_BEAT_TERMS_RESTATED).join(', ')}`,
+    );
     const unrack = numberInBlock(meetText, 'WALKOUT_MOTION', 'UNRACK_MS');
     const stepCount = numberInBlock(meetText, 'WALKOUT_MOTION', 'STEP_COUNT');
     const stepMs = numberInBlock(meetText, 'WALKOUT_MOTION', 'STEP_MS');
@@ -3492,7 +3556,13 @@ async function sampleTheTailIfThisIsAThird(state) {
  * How long the beat on screen runs for, read off the line it is showing.
  *
  * `walkoutMs`'s arithmetic, restated and cross-checked against `meetTuning.ts`
- * by `checkMeetRestatementsMatchTuning`. The LINE disambiguates the shape:
+ * by `checkMeetRestatementsMatchTuning` — WHICH IS TRUE OF ALL FIVE TERMS ONLY
+ * SINCE `WALKOUT_BEAT_TERMS_RESTATED` EXISTED. This sentence was written while
+ * one of the five was pinned and read as if all of them were, for as long as the
+ * other four sat unchecked. It is kept as written rather than deleted because
+ * the fix is the pin, not the wording; the note is here so the next reader knows
+ * the claim is now backed by a loop they can find. The LINE disambiguates the
+ * shape:
  * `WalkoutView` picks it bomb-risk first, then PR, then third, so
  *
  *   'LAST ONE'                        a third attempt, no PR, no bomb  -> exact

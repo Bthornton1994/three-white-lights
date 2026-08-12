@@ -636,55 +636,95 @@ for (const beat of EXPECTED) {
  *
  * Counts, not bounds, per `CLAUDE.md`: these are what this run actually saw, so
  * a build that quietly stops retriggering reports itself.
+ *
+ * ===========================================================================
+ * ONE FUNCTION, CALLED ONCE PER ARM, BECAUSE WRITING IT TWICE ALREADY FAILED
+ * ===========================================================================
+ * This block used to be three checks here and ONE of the three, copied, three
+ * hundred lines below in section 2. The played arm got the retrigger guard and
+ * neither of the other two, so `playedDeepest` and `playedStacking` were
+ * computed, threaded into `PLAYED.totals`, printed in the summary line beside
+ * the pool — and compared to nothing. `deepest 4 against a pool of 3` on the
+ * arm a player actually hears would have printed and passed, which is the
+ * defect the debug arm's line above had just been written to close.
+ *
+ * CLAUDE.md's rule is that a guard written for one arm must be applied to its
+ * sibling MECHANICALLY, and that a twin must READ the sibling rather than copy
+ * it. A shared function is the only version of that which cannot drift: there
+ * is no second list to fall behind, and an arm added later gets all three
+ * checks by construction rather than by whoever writes it remembering.
+ *
+ * WHAT EACH OF THE THREE CAN AND CANNOT SAY, because they are not equals:
+ *
+ *   retriggering > 0   Non-dominated. Nothing else in this file notices a run
+ *                      where no cue ever fires twice, and such a run makes the
+ *                      depth measurement an empty domain.
+ *   stacking > 0       Non-dominated, and it is the one the played arm was
+ *                      missing. `tooDeep.length === 0` on the per-beat check is
+ *                      satisfied most easily by a run where nothing overlaps at
+ *                      all, so without this the pool is never actually asked
+ *                      for and every depth line is a report about nothing.
+ *   deepest <= pool    DOMINATED FOR THE EXIT CODE, and that is recorded here
+ *                      rather than left for the next reader to work out.
+ *                      Symbolically: every beat's `ok` conjunct carries
+ *                      `tooDeep.length === 0`, `tooDeep` is
+ *                      `overlaps.filter(o => o.depth !== null && o.depth >
+ *                      voicesPerCue)`, and `deepest` is
+ *                      `max(o.depth ?? 0)` over exactly those same overlaps —
+ *                      so every per-beat check passing implies `deepest <=
+ *                      voicesPerCue`, and this line can only redden in a run
+ *                      where a per-beat check is already red. It is kept
+ *                      because its GREEN text is the only place the run says
+ *                      whether there is headroom left, and deleting it would
+ *                      put `deepest` back to being printed and never compared.
+ *                      It is not kept as a discriminator and must not be read
+ *                      as one.
+ *
+ * The measurement the third line reports: the debug arm reaches EXACTLY 3
+ * against a pool of 3. `MEET_SOUND.VOICES_PER_CUE` was sized off measured
+ * delivery rather than off the schedule, and the delivered depth has now caught
+ * up with it, so there is no headroom left. One more simultaneous cue and the
+ * oldest voice starts being cut. Failing is not a claim that cutting is a crash
+ * — `meetSound.ts` says the pool degrades the right way and drops the oldest
+ * voice — it is a claim that THE SIZING DECISION IS OUT OF DATE. Raising the
+ * pool to cover a pile-up changes nothing a player hears (see the constant's
+ * own header); shortening the cue below twice its stagger is the other lever.
+ *
+ * @param {string} arm  prefixed onto every title, so a red line names its arm
+ * @param {readonly {plays: number, depth: number | null, file: string}[]} overlaps
  */
+function checkDepthAgainstThePool(arm, overlaps) {
+  const retriggering = overlaps.filter((o) => o.plays > 1);
+  const stacking = overlaps.filter((o) => o.depth !== null && o.depth > 1);
+  const deepest = overlaps.reduce((worst, o) => Math.max(worst, o.depth ?? 0), 0);
+  check(
+    retriggering.length > 0,
+    `${arm}NON-VACUITY: some cue fired more than once, so the depth measurement had a subject`,
+    `${retriggering.length} cue/beat pair(s) retriggered: ${retriggering
+      .map((o) => `${o.file} x${o.plays}`)
+      .join(', ')}`,
+  );
+  check(
+    stacking.length > 0,
+    `${arm}NON-VACUITY: some cue was sounding over itself, so the pool was actually asked for`,
+    `${stacking.length} pair(s) stacked; deepest ${deepest} against a pool of ${voicesPerCue}`,
+  );
+  check(
+    deepest <= voicesPerCue,
+    `${arm}the measured depth still fits the pool MEET_SOUND.VOICES_PER_CUE was sized for`,
+    deepest <= voicesPerCue
+      ? `deepest ${deepest} against a pool of ${voicesPerCue}` +
+        (deepest === voicesPerCue ? ' — AT CAPACITY, no headroom left' : '')
+      : `deepest ${deepest} EXCEEDS the pool of ${voicesPerCue}: a cue added since ` +
+        'that number was sized now piles up and the oldest voice is being cut. ' +
+        'Re-take the sizing decision in src/game/meetTuning.ts rather than raising ' +
+        'the pool reflexively — a pool is not a mix.',
+  );
+  return { retriggering, stacking, deepest };
+}
+
 const everyOverlap = report.flatMap((r) => r.overlaps);
-const retriggering = everyOverlap.filter((o) => o.plays > 1);
-const stacking = everyOverlap.filter((o) => o.depth !== null && o.depth > 1);
-const deepest = everyOverlap.reduce((worst, o) => Math.max(worst, o.depth ?? 0), 0);
-check(
-  retriggering.length > 0,
-  'NON-VACUITY: some cue fired more than once, so the depth measurement had a subject',
-  `${retriggering.length} cue/beat pair(s) retriggered: ${retriggering
-    .map((o) => `${o.file} x${o.plays}`)
-    .join(', ')}`,
-);
-check(
-  stacking.length > 0,
-  'NON-VACUITY: some cue was sounding over itself, so the pool was actually asked for',
-  `${stacking.length} pair(s) stacked; deepest ${deepest} against a pool of ${voicesPerCue}`,
-);
-// THE DEPTH WAS PRINTED AND NEVER COMPARED, WHICH IS HOW A NUMBER GOES STALE
-// WITHOUT ANYTHING SAYING SO. The line above reports `deepest` inside a check
-// that only asserts stacking HAPPENED, so a run measuring 4 against a pool of 3
-// printed the mismatch and passed. That is the same shape as a basis read,
-// carried into a row, displayed, and never compared — see
-// `tools/test-budgets.mjs`, where it hid a 3.5x understatement.
-//
-// The measurement this is guarding: the debug arm reaches EXACTLY 3 against a
-// pool of 3. `MEET_SOUND.VOICES_PER_CUE` was sized off measured delivery rather
-// than off the schedule, and the delivered depth has now caught up with it, so
-// there is no headroom left. One more simultaneous cue and the oldest voice
-// starts being cut.
-//
-// Failing is not a claim that cutting is a crash — `meetSound.ts` says the pool
-// degrades the right way and drops the oldest voice, which is what you would
-// choose. It is a claim that THE SIZING DECISION IS OUT OF DATE: the number was
-// chosen to cover the depth this run measures, and if the depth has grown past
-// it, whoever grew it should re-take that decision rather than inherit it
-// silently. Raising the pool to cover a pile-up changes nothing a player hears
-// (see the constant's own header); shortening the cue below twice its stagger
-// is the other lever.
-check(
-  deepest <= voicesPerCue,
-  'the measured depth still fits the pool MEET_SOUND.VOICES_PER_CUE was sized for',
-  deepest <= voicesPerCue
-    ? `deepest ${deepest} against a pool of ${voicesPerCue}` +
-      (deepest === voicesPerCue ? ' — AT CAPACITY, no headroom left' : '')
-    : `deepest ${deepest} EXCEEDS the pool of ${voicesPerCue}: a cue added since ` +
-      'that number was sized now piles up and the oldest voice is being cut. ' +
-      'Re-take the sizing decision in src/game/meetTuning.ts rather than raising ' +
-      'the pool reflexively — a pool is not a mix.',
-);
+const { retriggering, stacking, deepest } = checkDepthAgainstThePool('', everyOverlap);
 
 // ###########################################################################
 // ###  2. THE PLAYED ARM — a meet opened with a mouse, listened to           #
@@ -945,22 +985,26 @@ if (!PLAYED.reachedMeet) {
   );
 
   /**
-   * AND THE DEPTH MEASUREMENT HAD A SUBJECT ON THIS ARM TOO. The played arm is
-   * where the main thread is genuinely busy — a real screen transition rather
-   * than a page load that has already settled — so its retrigger count is the
-   * one worth reporting beside `VOICES_PER_CUE`.
+   * AND THE DEPTH MEASUREMENT IS GRADED HERE THE WAY IT IS GRADED THERE.
+   *
+   * The played arm is where the main thread is genuinely busy — a real screen
+   * transition rather than a page load that has already settled — so its depth
+   * is the one worth reporting beside `VOICES_PER_CUE`, and until this line it
+   * was the one REPORTED and not graded: `playedStacking` and `playedDeepest`
+   * were printed in the detail of a check that asserted only that something
+   * RETRIGGERED, and printed again in the closing summary beside the pool. Both
+   * numbers reached a template string and neither reached a predicate.
+   *
+   * `checkDepthAgainstThePool` is the debug arm's own block, called again
+   * rather than copied — see its header for what each of its three checks can
+   * and cannot say, and for which of them is dominated.
    */
   const playedOverlaps = PLAYED.beats.flatMap((b) => b.overlaps);
-  const playedRetriggering = playedOverlaps.filter((o) => o.plays > 1);
-  const playedStacking = playedOverlaps.filter((o) => o.depth !== null && o.depth > 1);
-  const playedDeepest = playedOverlaps.reduce((worst, o) => Math.max(worst, o.depth ?? 0), 0);
-  check(
-    playedRetriggering.length > 0,
-    'NON-VACUITY: a cue fired more than once on the played arm, so its depth check had a subject',
-    `${playedRetriggering.length} cue/beat pair(s) retriggered: ${playedRetriggering
-      .map((o) => `${o.file} x${o.plays}`)
-      .join(', ')}; ${playedStacking.length} pair(s) stacked; deepest ${playedDeepest} against a pool of ${voicesPerCue}`,
-  );
+  const {
+    retriggering: playedRetriggering,
+    stacking: playedStacking,
+    deepest: playedDeepest,
+  } = checkDepthAgainstThePool('PLAYED ARM — ', playedOverlaps);
   PLAYED.totals = {
     walkoutsMeasured: PLAYED.beats.length,
     calmWalkouts: calmBeats.length,
