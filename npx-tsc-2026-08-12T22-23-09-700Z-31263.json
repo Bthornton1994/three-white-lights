@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-tsc-2026-08-12T22-23-09-700Z-31263",
+  "label": null,
+  "command": [
+    "npx",
+    "tsc",
+    "--noEmit"
+  ],
+  "budgetSeconds": 300,
+  "startedAtIso": "2026-08-12T22:23:09.700Z",
+  "startedAtMs": 1786573389700,
+  "cwd": "/home/user/wt-printed",
+  "commit": "33bebadec585fdd367a102f20b0711bbbee3b720",
+  "branch": "claude/printed-not-compared",
+  "dirty": 4,
+  "dirtyPaths": [
+    "tools/verify-cutin-cap.mjs",
+    "tools/verify-lift-shots.mjs",
+    "tools/verify-meet-sound.mjs",
+    "tools/verify-shell-route.mjs"
+  ],
+  "runner": {
+    "pid": 31263,
+    "startTick": "561667",
+    "cmdline": "node tools/watchdog.mjs --budget 300 -- npx tsc --noEmit",
+    "bootId": "200f208e-b127-42d1-8e53-2232ef3ab483",
+    "bootEpochSeconds": 1786567773,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-12T22:23:09.720Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
