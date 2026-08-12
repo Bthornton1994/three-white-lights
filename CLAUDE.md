@@ -1254,7 +1254,42 @@ mapped real totals outside the range real totals occupy, so a magnitude read
 never engaged under them. A variation that leaves the subject's own domain is the
 same defect wearing the costume of the fix.
 
-## Architecture Rules
+## A Domain Says Which Inputs You Offered, Not Which Branches Ran
+
+**The third of this family, and it was found by a fix for the second one failing
+on its own terms.** The extremes rule asks whether the domain reaches the region
+the subject is used in. The axis rule asks whether it is rich on the axis the
+property is about. This one asks the question that survives both: *the domain
+contains the branch point, the axis varies — and did the branch actually run?*
+
+**Measured, and the sequence is the argument.** A guard drove a directory's
+exports over a domain that did not contain `RIVAL_COMPARISON_PERIOD_DAYS = 7`, so
+a producer keyed on day 7 was invisible. The domain was widened to contain 7 —
+and **the bypass was still green.** The subject's own guard refused every call:
+the fixture put a visit on the day being driven, so `visitRefusals` returned
+`already-visited-today`, and `recordFriendVisit`'s `visited` arm — the arm the
+name was planted in — **had been produced zero times at every point of every
+domain that file had ever had.**
+
+So widening the domain closed nothing. A domain decides which numbers an axis is
+offered; it says nothing about whether the subject's own preconditions let the
+interesting branch run. Fixtures that satisfy a function's *signature* routinely
+fail to satisfy its *guards*, and a sweep reports a large honest number either
+way.
+
+**What closes it: compare the arms the type DECLARES against the arms the drive
+REACHED**, set-equal in both directions, with per-arm counts pinned. In the case
+above that is four discriminated arms declared and three reached, and the missing
+one is named rather than inferred. `recordFriendVisit#visited` now sits in the
+census at 24, so a fixture change that stops reaching it reddens instead of
+quietly shrinking coverage.
+
+**The tell in review.** For any subject with a discriminated return, an early
+`return` on a refusal, or a precondition check at the top: ask what fraction of
+its *arms* the sweep produced, not how many inputs it was given. If nothing in
+the file counts arms, the sweep's size is evidence about the fixture and not
+about the subject. And when a domain fix does not close a bypass, that is the
+signal — the input was never the thing standing in the way.
 
 ### Pure logic is separate from UI
 
