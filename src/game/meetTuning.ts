@@ -1253,18 +1253,26 @@ export const MEET_SOUND = Object.freeze({
    * decision.
    *
    * READ THIS BEFORE ADDING A CUE THAT CAN SOUND WITH ANOTHER. The browser run
-   * measures the delivered depth at **exactly 3 against a pool of 3** — this
-   * number was sized off measured delivery, and delivery has caught up with it.
-   * There is no headroom. One more simultaneous cue and the oldest voice starts
-   * being cut, which is a change to what a player hears that no unit test can
-   * hear.
+   * has measured the delivered depth **at 3 against a pool of 3** — this number
+   * was sized off measured delivery, and delivery has been observed reaching it.
+   * Adding a simultaneous cue is how the oldest voice starts being cut, which is
+   * a change to what a player hears that no unit test can hear.
    *
-   * It is guarded rather than left as a note: `tools/verify-meet-sound.mjs`
-   * asserts the measured depth still fits this pool, and says "AT CAPACITY, no
-   * headroom left" on the equality. That guard exists because the depth had been
-   * PRINTED and never COMPARED — a run measuring 4 against a pool of 3 would
-   * have displayed the mismatch and passed, the same shape as a stale basis
-   * carried into a row and never checked in `tools/test-budgets.mjs`.
+   * **THE DEPTH IS NOT STABLE ACROSS RUNS AND THE FIRST VERSION OF THIS
+   * PARAGRAPH SAID IT WAS.** It read "exactly 3 … AT CAPACITY, no headroom
+   * left", which was a property claim built on the two runs that had been seen.
+   * Consecutive runs on one machine measured **3, 3, then 2**: the rattle is
+   * fired per plate against a browser that drains blocked timers in a burst, so
+   * how deep it piles depends on where the main thread was. So the honest
+   * statement is that the depth is **variable and has been observed at the pool
+   * size**, not that it sits there.
+   *
+   * That difference matters for what a green run means: a run reporting 2 is not
+   * evidence of headroom, only evidence that this run did not reach the top.
+   * `tools/verify-meet-sound.mjs` compares EVERY overlap's depth against this
+   * pool on every beat, so exceeding it reddens with the cue, the depth and the
+   * timestamps named — it does not depend on the aggregate maximum, which was
+   * deleted as dominated.
    */
   VOICES_PER_CUE: 3,
   /**

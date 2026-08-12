@@ -709,17 +709,30 @@ function checkDepthAgainstThePool(arm, overlaps) {
     `${arm}NON-VACUITY: some cue was sounding over itself, so the pool was actually asked for`,
     `${stacking.length} pair(s) stacked; deepest ${deepest} against a pool of ${voicesPerCue}`,
   );
-  check(
-    deepest <= voicesPerCue,
-    `${arm}the measured depth still fits the pool MEET_SOUND.VOICES_PER_CUE was sized for`,
-    deepest <= voicesPerCue
-      ? `deepest ${deepest} against a pool of ${voicesPerCue}` +
-        (deepest === voicesPerCue ? ' — AT CAPACITY, no headroom left' : '')
-      : `deepest ${deepest} EXCEEDS the pool of ${voicesPerCue}: a cue added since ` +
-        'that number was sized now piles up and the oldest voice is being cut. ' +
-        'Re-take the sizing decision in src/game/meetTuning.ts rather than raising ' +
-        'the pool reflexively — a pool is not a mix.',
-  );
+  // THE AGGREGATE `deepest <= voicesPerCue` CHECK THAT SAT HERE IS DELETED,
+  // ruled on the same grounds as `THIN` in `tools/test-budgets.mjs`: keep only
+  // the check proven to be doing real work.
+  //
+  // DOMINATED, VERIFIED BY MUTATION RATHER THAN ARGUED. Cutting the pool to 1
+  // reddens the per-beat checks first — `walkout`, `walkout-third` and three
+  // played-arm beats — and each names the cue, its play count, its duration,
+  // its depth and its start timestamps:
+  //
+  //   !! walkout — cues reached the audio layer, none stacked past the pool of 1
+  //      PAST THE POOL: [{"file":"bar-rattle.wav","plays":4,"depth":3,
+  //                       "starts":[2058,2282,2352,2431]}]
+  //
+  // The aggregate said only `deepest 3 EXCEEDS the pool of 1`. It could not
+  // redden unless a per-beat check was already red, and when it did redden it
+  // said less.
+  //
+  // DELETING IT DOES NOT REOPEN "printed but never compared", which is the
+  // objection that kept it alive one commit. `tooDeep` is
+  // `overlaps.filter(o => o.depth !== null && o.depth > voicesPerCue)` and it
+  // is a conjunct of EVERY per-beat `ok` — so every overlap's depth is compared
+  // against the pool individually, which is strictly stronger than comparing
+  // their maximum once. `deepest` is a report about numbers that are each
+  // already checked, not an unchecked number.
   return { retriggering, stacking, deepest };
 }
 

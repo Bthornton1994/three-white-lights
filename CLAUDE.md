@@ -1032,6 +1032,37 @@ right" but "what reddens if it is wrong".** If the answer is nothing, either
 compare it or stop printing it — a number with no consequence is worse than
 absent, because absence prompts a question and a printed number answers one.
 
+### RE-TAKING EVIDENCE AND THEN EDITING ITS SUBJECT RESTALES IT IN ONE STEP
+
+**A sequencing hazard, committed by the session that had just fixed the
+staleness it recreated.** Three evidence bundles were re-taken because their
+stamps predated the tree, and the commit doing it said *"all three stale bundles
+re-taken"*. **The very next commit edited `src/game/meetTuning.ts`**, which
+`.gauntlet/shots/cutin/frames.json` derives its timing from — so a bundle fresh
+for exactly one commit was stale again, with a message on record asserting the
+opposite. A fourth bundle had also been missed, so the count in that sentence was
+wrong as well as its freshness.
+
+**The check is mechanical and belongs immediately after any evidence re-take:
+does the next thing you commit touch a source the fresh evidence depends on?**
+If it does, re-take the affected bundle in that same commit, or say in the
+message that it is now stale. `tools/evidence.mjs` holds the dependency list; the
+failure was never asking it, not not knowing it.
+
+**Why this is its own entry and not a case of "evidence goes stale".** The
+general hazard is slow, expected decay, which `capturedFrom` exists to expose.
+This one is *fast* and arrives **with a false attestation attached**: the
+freshness claim is in the log, written in good faith, minutes before it stopped
+being true. Someone grepping the history for "re-taken" finds a sentence that was
+accurate when written — the same shape this file keeps recording in prose,
+reaching the repository through commit messages instead.
+
+**The ordering that avoids it: edit the source first, re-take the evidence last.**
+A re-take is only worth the commit it lands in if nothing underneath it moves
+afterwards.
+
+### A NEW RULE CAN MAKE AN OLD ONE VACUOUS, AND THAT IS NOW A REQUIRED CHECK
+
 **Standing check, ruled by a human after this happened twice in one session.**
 Before an added rule counts as complete: **work out whether it subsumes an
 existing check's threshold, or is subsumed by one.** A dominated check is
