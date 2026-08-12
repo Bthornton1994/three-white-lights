@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-12T23-48-34-660Z-11141",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/licensing/realIp.test.ts",
+    "src/tuning/audit.test.ts",
+    "src/game/guaranteeTags.test.ts",
+    "src/game/meetTuning.test.ts",
+    "src/meet/meetSound.test.ts"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-12T23:48:34.660Z",
+  "startedAtMs": 1786578514660,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "a312808a93396755b074dd386be19f6afb6353d0",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 4,
+  "dirtyPaths": [
+    ".gauntlet/shots/meet/sound.json",
+    "CLAUDE.md",
+    "src/game/meetTuning.ts",
+    "tools/verify-meet-sound.mjs"
+  ],
+  "runner": {
+    "pid": 11141,
+    "startTick": "66109",
+    "cmdline": "node tools/watchdog.mjs --budget 900 -- npx vitest run src/licensing/realIp.test.ts src/tuning/audit.test.ts src/game/guaranteeTags.test.ts src/game/meetTuning.test.ts src/meet/meetSound.test.ts",
+    "bootId": "4ebd4c91-43f6-44a8-8dbf-394d4fda3281",
+    "bootEpochSeconds": 1786577854,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-12T23:48:34.679Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
