@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-12T17-45-15-367Z-19305",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "tools/verifyMarker.test.ts"
+  ],
+  "budgetSeconds": 300,
+  "startedAtIso": "2026-08-12T17:45:15.367Z",
+  "startedAtMs": 1786556715367,
+  "cwd": "/home/user/wt-marker-sync",
+  "commit": "197aacd0eb662bc71d780fd25857d9e6539c0277",
+  "branch": "claude/marker-survives-tree-death",
+  "dirty": 3,
+  "dirtyPaths": [
+    "tools/verifyMarker.mjs",
+    "tools/verifyMarker.test.ts",
+    "tools/watchdog.mjs"
+  ],
+  "runner": {
+    "pid": 19305,
+    "startTick": "139192",
+    "cmdline": "node tools/watchdog.mjs --budget 300 -- npx vitest run tools/verifyMarker.test.ts",
+    "bootId": "af4e9eff-33fd-4a0f-9985-4643c4f0258b",
+    "bootEpochSeconds": 1786555323,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-12T17:45:15.401Z",
+    "lastReason": "start"
+  }
+}
