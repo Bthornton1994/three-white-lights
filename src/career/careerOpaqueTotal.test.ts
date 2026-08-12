@@ -369,8 +369,51 @@ const OPAQUE_PROBE = Object.freeze({
    * of them is supposed to come out. With one value they are indistinguishable,
    * which is how a mask keyed on the FIELD NAME reads as coverage while the
    * question of which total landed there goes unasked.
+   *
+   * IT WAS 271.75 AND IT IS ON THE HALF-KILOGRAM LATTICE NOW, and the quarter
+   * kilogram it lost was doing real damage to the flight subjects.
+   *
+   * The reasoning that put it off the lattice was about COLLISION — a stand-in
+   * equal to a day index or a threshold is masked where it appears as that
+   * quantity — and `PRINTED_NON_TOTALS` is what enforces that, by construction
+   * rather than by choosing an awkward-looking number. 271.5 collides with
+   * nothing on that census either, so the guard is unchanged and the awkwardness
+   * bought nothing there.
+   *
+   * What it cost is specific and was measured. `flightEntriesFor` gives this
+   * value to two of its four entrants, so EVERY comparable pair in the flight
+   * fixture contains it. A total off the half-kilogram lattice is a total no bar
+   * can be loaded to — which is exactly the property `careerOpacity.test.ts`'s
+   * plate-resolution argument rests on — so a bypass keyed on a table of
+   * LOADABLE kilograms never seats it, `indexOf` returns -1 for every pair, and
+   * the bypass falls straight through to the injected order. All four
+   * `ORDER_SHAPES` then see identical behaviour, `cycling` included, and it is
+   * `cycling` that would otherwise notice the shifted call count.
+   *
+   * So the old value made this file structurally blind to the fifth recorded
+   * bypass, for a reason that had nothing to do with why it was chosen. That is
+   * the shape CLAUDE.md's extremes section warns about, one axis over: a value
+   * picked for a property at the boundary of a type rather than for sitting
+   * where the code branches.
+   *
+   * MEASURED RATHER THAN ARGUED, one character apart. With the seat-table
+   * mutant planted in `separate` — its table scoped to plausible totals, so it
+   * holds 271.5 and does not hold 271.75 — this file is `Test Files 1 passed /
+   * Tests 11 passed (11)` at 271.75 and red at 271.5, on `records no read from
+   * any subject, under any gate, at any total`:
+   *
+   *   [placeFlight/refuses-everything@12.5]
+   *     opaque:  … lifter-3 … decidedBy:"total" …
+   *     numeric: … lifter-3 … decidedBy:"bodyweight" …
+   *
+   * The two runs come apart because the numeric run seats both of this value's
+   * entrants at the same index and falls through to the bodyweight step, while
+   * the opaque run gets -1 from `indexOf` and consults the injected order. That
+   * is the disagreement half of this sweep doing work the violation half
+   * cannot: `indexOf` compares by strict equality, so no trap fires and the
+   * read is invisible to the proxy.
    */
-  OTHER_STAND_IN_KG: 271.75,
+  OTHER_STAND_IN_KG: 271.5,
 
   /**
    * Two attendance patterns for the engagement subjects, one a subset.
