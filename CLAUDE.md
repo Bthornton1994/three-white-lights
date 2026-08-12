@@ -970,6 +970,58 @@ sincere its message. And give every sweep a non-vacuity guard that pins what it
 actually saw — counts, not bounds — so an empty domain reports itself instead of
 passing.
 
+## The Form That Survived: A Bounded Claim, A Declared Limit, And A Named Catcher
+
+**The three rules above catalogue failures. This one records the shape that has
+not failed**, because "write it honestly" is not actionable and this is.
+
+`src/career/`'s opacity guarantee was bypassed **four times**. Every version of
+the sentence was an absolute — *"nothing in this directory can compare a total to
+a number"* — with the enforcement mechanism unstated, and in every case the
+mechanism was weaker than the sentence or absent.
+
+`src/empire/` makes a claim on the same subject and has not been bypassed. The
+difference is not that it is better guarded. It is the **shape of the sentence**.
+`empireCore.ts` says, of its brand fence:
+
+> *"Its limit, stated because no type reaches past it: `accelerated + 0` is a
+> plain `number` and this cannot see where it came from. Arithmetic laundering is
+> deliberate in a way a re-brand is not, and E6's element-wise ledger comparison
+> is what catches it."*
+
+Three parts, and all three matter: a claim **bounded** to what the type does, the
+**limit named** exactly, and **the check that covers the limit named too**.
+
+**Both halves were then verified by mutation rather than trusted.** Measured:
+
+- **The re-brand route** — `asUnacceleratedSeconds(clock.accelerated)` in
+  `elapsedFor`: `tsc --noEmit` **exit 2**, and the error is
+  `PASS_A_VALUE_THAT_CARRIES_NO_BRAND: "this value is already branded;
+  re-branding it is how an accelerated clock reached a wall-clock argument"`.
+  A check that bites *and* explains itself in the failure.
+- **The arithmetic route** — `clock.accelerated + 0` in the same expression:
+  `tsc` **exit 0**, exactly as the comment predicts the type cannot see it — and
+  **ten behavioural tests red**, including the three the comment points at by
+  name (`pays byte-identical Training IQ, element-wise on the progression
+  ledger`; `leaves the composed Training IQ series byte-identical under every
+  skip`; `is closed: the unlock-day list is byte-identical under every skip
+  size`).
+
+So the pointer resolves, the thing it points at fires, and the sentence claims
+exactly as much as is true.
+
+**The rule to take from it.** When a comment asserts something structural, do not
+write the absolute and hope. Write:
+
+1. what the mechanism actually guarantees, in the mechanism's own terms;
+2. the route that gets past it, named concretely enough to plant;
+3. the check that covers that route, named specifically enough to run.
+
+Then **run 2 against 3**. A declared limit with no named catcher is an admission;
+a named catcher nobody ran is a pointer, and this file already records what a
+pointer to a test that cannot fail is worth. The three parts together are the
+only version that has survived contact with a critic in this codebase.
+
 ## A Domain That Samples Only Extremes Is Empty Where It Matters
 
 **A separate principle from the two above, and it needs saying separately
