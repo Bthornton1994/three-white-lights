@@ -90,6 +90,27 @@
  *      asserted nothing whatever about the pill, so the app being right there
  *      was luck rather than measurement.
  *
+ *      THAT SENTENCE WENT FALSE ON A MERGE, IN A FILE THIS ONE NEVER TOUCHED,
+ *      and it is worth recording because nothing here moved. `SHELL_NAV` grew a
+ *      third list — `EMPIRE_PHASES: ['floor']` — when GDD §5's floor was wired
+ *      into the shell. `checkNavTableMatchesTuning` cross-checked two lists,
+ *      `pillBeats` was the union of the same two, and `empire` appeared nowhere
+ *      in this file at all. So a beat `SHELL_NAV` said carried a pill was
+ *      cross-checked against nothing and probed nowhere, while the sentence
+ *      above still read as covering it. All three lists are read now, and the
+ *      pill on `floor` is seen drawn and hit-tested in section 10.
+ *
+ *  11. GDD §5'S GYM EMPIRE FLOOR IS OPENED AND LEFT THE WAY A PLAYER DOES IT,
+ *      in section 10 below: press GYM EMPIRE on the check-in, read the floor,
+ *      press BACK TO TRAINING, land back on the check-in — with the address bar
+ *      read at every one of those moments and asserted to carry no query
+ *      string. There is no debug fallback available to make that check look
+ *      complete when it is not, and that is a property of the app rather than
+ *      of this tool's discipline: `resolveEntry` has no `?empire=` arm, so the
+ *      played arm is the only arm. The floor is also asked whether it draws any
+ *      control OF ITS OWN, because the answer is no and that is what makes the
+ *      shell's pill the whole of the way back.
+ *
  * "ON SCREEN" HERE MEANS DRAWN, NOT MOUNTED. Every positive check above goes
  * through `onScreen`, which measures the element's effective opacity, because
  * Playwright's `isVisible()` and `elementFromPoint` DO NOT CONSIDER OPACITY and
@@ -435,6 +456,17 @@ const WALKOUT_TAIL_PROBE = Object.freeze({
 
 const NAV_OPEN_MEET = 'shell-open-meet';
 const NAV_LEAVE_MEET = 'shell-leave-meet';
+/**
+ * The Gym Empire round trip's two controls (GDD §5).
+ *
+ * `AppShell` builds every pill's testID as `shell-${intent}`, so these are the
+ * `open-empire` / `leave-empire` intents `shellRoute.ts` declares. Written out
+ * rather than derived, on the same principle as the four above: a check that
+ * reads its expectations out of the module under test agrees with a broken
+ * module.
+ */
+const NAV_OPEN_EMPIRE = 'shell-open-empire';
+const NAV_LEAVE_EMPIRE = 'shell-leave-empire';
 
 /**
  * WHAT EACH PHOTOGRAPHED BEAT SAYS ON SCREEN, so a filename can be checked
@@ -489,6 +521,33 @@ const BEAT_SAYS = Object.freeze({
    * "Meet complete" would be green on the sentence that was withdrawn.
    */
   SECOND_MEET: 'Meet complete — results saved to your last recorded meet. Career calendar coming soon.',
+  /**
+   * src/shell/shellTuning.ts — SHELL_COPY.EMPIRE_LEAD.
+   *
+   * THE LEAD AND NOT THE TITLE, for the reason `BEAT_SAYS.RECAP` gives about
+   * its own eyebrow. `EMPIRE_TITLE` is the string `'GYM EMPIRE'`, which is
+   * ALSO `EMPIRE_NAV_LABEL` — the pill drawn on the daily session — so a
+   * photograph identified by the title would pass on the check-in screen the
+   * floor was opened from, which is the one screen section 10 has to tell it
+   * apart from. The lead is drawn by `EmpireScreen` and by nothing else.
+   */
+  EMPIRE_FLOOR:
+    'Your gym on opening day. Idle production is live in code; this screen reads it.',
+});
+
+/**
+ * src/shell/shellTuning.ts — SHELL_COPY.EMPIRE_NAV_LABEL / LEAVE_EMPIRE_LABEL.
+ *
+ * What the two pills of GDD §5's round trip SAY, which is a different question
+ * from what their testIDs are. Section 10 reads both off the drawn screen: the
+ * floor's own pill and the daily session's are two different controls with two
+ * different labels, and a check that only asked "some pill is drawn" would be
+ * satisfied by the wrong one. Cross-checked against `shellTuning.ts` at the end
+ * of the run.
+ */
+const EMPIRE_NAV_SAYS = Object.freeze({
+  OPEN: 'GYM EMPIRE',
+  LEAVE: 'BACK TO TRAINING',
 });
 
 // ###########################################################################
@@ -915,6 +974,17 @@ const SHELL_NAV_EXPECTED = Object.freeze({
   SESSION_PHASES: Object.freeze(['check-in', 'briefing', 'close-out']),
   /** GDD §6.5. The meet is over and the way out is a route. */
   MEET_PHASES: Object.freeze(['recap']),
+  /**
+   * GDD §5. The Gym Empire floor has one beat and the pill is on it.
+   *
+   * THE LIST THAT WAS NOT HERE. `SHELL_NAV` grew this third entry when the
+   * Empire shell slice merged; this table kept two, `checkNavTableMatchesTuning`
+   * looped over two, and `pillBeats` was the union of two — so the beat carrying
+   * the whole of the way back off GDD §5's floor was cross-checked against
+   * nothing and probed nowhere, under a header sentence claiming every beat
+   * `SHELL_NAV` lists had been seen drawn.
+   */
+  EMPIRE_PHASES: Object.freeze(['floor']),
 });
 
 /**
@@ -985,6 +1055,14 @@ const PILL_IS_A_TUNING_CHOICE = Object.freeze([
   'weigh-in',
   'openers',
   'recap',
+  // GDD §5's Gym Empire floor, which has exactly one beat and carries the pill
+  // on it. It goes on THIS list rather than the one above for the reason the
+  // block gives about `weigh-in`: nothing in the GDD says a control here costs
+  // the player anything, so where the pill goes on the floor is a tuning answer
+  // rather than a refusal. What is NOT tunable is that the floor keeps a way
+  // out — see section 10, which measures that the screen draws no control of its
+  // own, so removing the pill's beat from `SHELL_NAV` would strand a player.
+  'floor',
 ]);
 
 /**
@@ -1681,6 +1759,30 @@ function phaseListInSource(source, name) {
 }
 
 /**
+ * The single-quoted members of `export type <name> = 'a' | 'b';`, or null.
+ *
+ * A FOURTH LIST PARSER, and deliberately not a widening of the one above, for
+ * the reason `stringListInSource` already gives: a parser that answers for two
+ * shapes stops being a statement about either. This one exists because the
+ * Empire surface writes its beats down as a TYPE UNION rather than as a frozen
+ * array — `export type EmpirePhase = 'floor'` in `shellTuning.ts` — which is
+ * what `SHELL_NAV.EMPIRE_PHASES` is constrained by, the same way
+ * `SessionPhase` constrains `SESSION_PHASES`. Without it the third of
+ * `SHELL_NAV`'s lists has no "is that a beat the game actually has" side at
+ * all.
+ *
+ * NULL RATHER THAN AN EMPTY LIST when the union has no string members, so a
+ * type that stopped being a union of literals is reported as unreadable instead
+ * of quietly becoming an empty domain that every membership check passes.
+ */
+function unionMembersInSource(source, name) {
+  const found = new RegExp(`export type ${name}\\s*=\\s*([^;]*);`).exec(source);
+  if (found === null) return null;
+  const members = [...found[1].matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
+  return members.length === 0 ? null : members;
+}
+
+/**
  * The number a property called `<name>` is given in a `.ts` source text, or
  * null when there is no such property.
  *
@@ -1711,6 +1813,8 @@ const PARSER_FIXTURE = `
   export const EXPORTED_PHASES = Object.freeze([
     'delta',
   ] as const satisfies readonly Thing[]);
+  export type DemoUnion = 'epsilon' | 'zeta';
+  export type OpaqueUnion = Alpha | Beta;
 `;
 
 /**
@@ -1792,6 +1896,26 @@ const LIST_FIXTURE = `
   export const FROZEN_ORDER = Object.freeze(['alpha', 'beta'] as const);
 `;
 
+/**
+ * The single-quoted string a copy property called `<name>` is given, or null.
+ *
+ * Whitespace-tolerant after the colon, because a long line of copy is wrapped
+ * onto the next line by the formatter and a `includes("NAME: '…'")` pin would
+ * be red about the wrap rather than about the words. Paired with `COPY_FIXTURE`
+ * below, like every other parser here.
+ */
+function copyLineInSource(source, name) {
+  const found = new RegExp(`${name}:\\s*'((?:\\\\.|[^'\\\\])*)'`).exec(source);
+  return found === null ? null : found[1];
+}
+
+/** What `copyLineInSource` must read: a wrapped line, an inline one, neither. */
+const COPY_FIXTURE = `
+  WRAPPED_LINE:
+    'a long one, on the next line',
+  INLINE_LINE: 'a short one',
+`;
+
 /** The number a top-level `export const NAME = <number>;` is given, or null. */
 function constInSource(source, name) {
   const found = new RegExp(`export const ${name}\\s*(?::[^=]*)?=\\s*(-?[0-9]+(?:\\.[0-9]+)?)\\s*;`).exec(
@@ -1832,8 +1956,27 @@ const BLOCK_FIXTURE = `
  * two lists the type is spelled out in.
  */
 const GAME_PHASE_LISTS = Object.freeze([
-  Object.freeze({ file: ['src', 'game', 'session.ts'], name: 'SESSION_PHASES' }),
-  Object.freeze({ file: ['src', 'game', 'meetDay.ts'], name: 'MEET_DAY_PHASES' }),
+  Object.freeze({ file: ['src', 'game', 'session.ts'], name: 'SESSION_PHASES', shape: 'frozen' }),
+  Object.freeze({ file: ['src', 'game', 'meetDay.ts'], name: 'MEET_DAY_PHASES', shape: 'frozen' }),
+  /**
+   * GDD §5's floor writes its one beat down as a type union, not a frozen list,
+   * because the Empire surface has no state machine to enumerate — so it is
+   * read with `unionMembersInSource` and marked as such rather than by widening
+   * the frozen-list parser to accept both shapes.
+   *
+   * NOTE WHAT IS WEAKER ABOUT THIS ROW, stated rather than left for a reader to
+   * work out. The other two live in `src/game/`, one directory away from the
+   * `SHELL_NAV` list they are compared against; this one lives in the SAME FILE
+   * as `SHELL_NAV.EMPIRE_PHASES`, so a rename of the beat moves both sides at
+   * once and the cross-check goes quiet about it. What still bites is the
+   * direction that matters here: ADDING a second Empire beat to the union
+   * without accounting for it lands in the unaccounted-for gap below and is
+   * red, which is the case the third direction exists for. The rename case is
+   * covered by the type checker instead — `satisfies readonly EmpirePhase[]` is
+   * what makes `SHELL_NAV.EMPIRE_PHASES` and this union agree, and that is a
+   * compile error rather than a check here.
+   */
+  Object.freeze({ file: ['src', 'shell', 'shellTuning.ts'], name: 'EmpirePhase', shape: 'union' }),
 ]);
 
 /**
@@ -2053,6 +2196,23 @@ async function checkNavTableMatchesTuning() {
     `fixture -> ${JSON.stringify(fixtureA)} / ${JSON.stringify(fixtureB)} / ${JSON.stringify(fixtureD)} / ${JSON.stringify(fixtureC)}`,
   );
 
+  // ...and the union parser, with the same two halves. The REFUSALS are the
+  // load-bearing ones: a parser that answered for a frozen list as well would
+  // let a check written about one silently start reading the other, and a union
+  // with no string members has to come back unreadable rather than empty.
+  const unionA = unionMembersInSource(PARSER_FIXTURE, 'DemoUnion');
+  const unionB = unionMembersInSource(PARSER_FIXTURE, 'OpaqueUnion');
+  const unionC = unionMembersInSource(PARSER_FIXTURE, 'AbsentUnion');
+  const unionD = unionMembersInSource(PARSER_FIXTURE, 'DEMO_PHASES');
+  check(
+    JSON.stringify(unionA) === JSON.stringify(['epsilon', 'zeta']) &&
+      unionB === null &&
+      unionC === null &&
+      unionD === null,
+    'the phase-UNION parser reads a literal union, and refuses a frozen list, an opaque union and a missing one',
+    `fixture -> ${JSON.stringify(unionA)} / ${JSON.stringify(unionB)} / ${JSON.stringify(unionC)} / ${JSON.stringify(unionD)}`,
+  );
+
   const tuningPath = path.join(srcRoot, 'src', 'shell', 'shellTuning.ts');
   let source = null;
   try {
@@ -2062,9 +2222,31 @@ async function checkNavTableMatchesTuning() {
     return;
   }
 
+  // ALL THREE OF `SHELL_NAV`'S LISTS. This loop had two rows for as long as
+  // `SHELL_NAV` had three, which is how a beat carrying a pill came to be
+  // cross-checked against nothing. Driven off `Object.keys` so a FOURTH list
+  // arriving in the app is a named failure here rather than a silent omission:
+  // the row exists the moment `shellTuning.ts` declares it, and this tool has
+  // to grow a copy of it to answer.
+  const navListsInTuning = [...source.matchAll(/([A-Z_]+_PHASES):\s*Object\.freeze\(/g)].map(
+    (m) => m[1],
+  );
+  const mineNamed = Object.keys(SHELL_NAV_EXPECTED);
+  const notCopied = navListsInTuning.filter((name) => !mineNamed.includes(name));
+  const notInTuning = mineNamed.filter((name) => !navListsInTuning.includes(name));
+  check(
+    notCopied.length === 0 && notInTuning.length === 0,
+    'this tool holds a copy of EVERY phase list SHELL_NAV declares — a new one cannot arrive uncopied',
+    notCopied.length === 0 && notInTuning.length === 0
+      ? `${navListsInTuning.length} list(s): ${navListsInTuning.join(', ')}`
+      : `${notCopied.length > 0 ? `in shellTuning.ts and not in this tool: ${notCopied.join(', ')}. ` : ''}` +
+        `${notInTuning.length > 0 ? `in this tool and not in shellTuning.ts: ${notInTuning.join(', ')}.` : ''}`,
+  );
+
   for (const [name, expected] of [
     ['SESSION_PHASES', SHELL_NAV_EXPECTED.SESSION_PHASES],
     ['MEET_PHASES', SHELL_NAV_EXPECTED.MEET_PHASES],
+    ['EMPIRE_PHASES', SHELL_NAV_EXPECTED.EMPIRE_PHASES],
   ]) {
     const inTuning = phaseListInSource(source, name);
     const mine = [...expected].sort();
@@ -2074,6 +2256,34 @@ async function checkNavTableMatchesTuning() {
       `shellTuning.ts ${JSON.stringify(inTuning)} vs this tool ${JSON.stringify(mine)}`,
     );
   }
+
+  // THE EMPIRE CHROME'S OWN COPY, cross-checked the way `checkMeetRestatements-
+  // MatchTuning` does the meet's. `BEAT_SAYS.EMPIRE_FLOOR` is the line section
+  // 10's shutter identifies GDD §5's floor by, and the two labels are what the
+  // two presses in that section are looking for; a copy edit to any of them
+  // with this pin absent would leave that section comparing a screen against a
+  // string nothing prints, which is green and measures nothing.
+  for (const [name, mine] of [
+    ['EMPIRE_LEAD', BEAT_SAYS.EMPIRE_FLOOR],
+    ['EMPIRE_NAV_LABEL', EMPIRE_NAV_SAYS.OPEN],
+    ['LEAVE_EMPIRE_LABEL', EMPIRE_NAV_SAYS.LEAVE],
+  ]) {
+    const theirs = copyLineInSource(source, name);
+    check(
+      theirs === mine,
+      `SHELL_COPY.${name} is what section 10 reads GDD §5’s floor by`,
+      `shellTuning.ts ${JSON.stringify(theirs)} vs this tool ${JSON.stringify(mine)}`,
+    );
+  }
+  check(
+    copyLineInSource(COPY_FIXTURE, 'WRAPPED_LINE') === 'a long one, on the next line' &&
+      copyLineInSource(COPY_FIXTURE, 'INLINE_LINE') === 'a short one' &&
+      copyLineInSource(COPY_FIXTURE, 'ABSENT_LINE') === null,
+    'CONTROL: the copy reader reads a wrapped line and an inline one, and reports a missing one as missing',
+    `fixture -> ${JSON.stringify(copyLineInSource(COPY_FIXTURE, 'WRAPPED_LINE'))} /` +
+      ` ${JSON.stringify(copyLineInSource(COPY_FIXTURE, 'INLINE_LINE'))} /` +
+      ` ${JSON.stringify(copyLineInSource(COPY_FIXTURE, 'ABSENT_LINE'))}`,
+  );
 
   // -------------------------------------------------------------------------
   // ...and the beats the design says may never carry one, still do not.
@@ -2090,10 +2300,11 @@ async function checkNavTableMatchesTuning() {
 
   const gamePhases = [];
   let unreadable = null;
-  for (const { file, name } of GAME_PHASE_LISTS) {
+  for (const { file, name, shape } of GAME_PHASE_LISTS) {
     const where = path.join(srcRoot, ...file);
     const text = await readFile(where, 'utf8').catch(() => null);
-    const found = text === null ? null : phaseListInSource(text, name);
+    const read = shape === 'union' ? unionMembersInSource : phaseListInSource;
+    const found = text === null ? null : read(text, name);
     if (found === null) unreadable = `${name} in ${where}`;
     else gamePhases.push(...found);
   }
@@ -2116,7 +2327,12 @@ async function checkNavTableMatchesTuning() {
     `listed ${JSON.stringify(forbidden)} vs probed ${JSON.stringify(probed)}`,
   );
 
-  const pillBeats = [...SHELL_NAV_EXPECTED.SESSION_PHASES, ...SHELL_NAV_EXPECTED.MEET_PHASES];
+  // EVERY LIST, not the two this was written with. `Object.values` rather than
+  // three named spreads, so the union tracks the table above by construction —
+  // the two-list version of this line is half of how a beat carrying a pill came
+  // to be probed nowhere, and re-spelling the names here would leave the same
+  // gap open one edit further out.
+  const pillBeats = Object.values(SHELL_NAV_EXPECTED).flatMap((list) => [...list]);
   const trespassing = NEVER_A_PILL_BEAT.filter((beat) => pillBeats.includes(beat));
   check(
     trespassing.length === 0,
@@ -5460,6 +5676,219 @@ await checkOnScreen(
   'session-screen',
   '/?meet=nonsense boots the daily session rather than a broken meet',
 );
+
+// ###########################################################################
+// ###  10. GDD §5's GYM EMPIRE FLOOR, OPENED AND LEFT THE WAY A PLAYER DOES #
+// ###########################################################################
+//
+// ===========================================================================
+// WHY THIS SECTION HAS NO DEBUG ARM TO FALL BACK TO, AND WHY THAT IS THE APP'S
+// DOING RATHER THAN THIS TOOL'S
+// ===========================================================================
+// The standing rule is that a claim about a screen needs a check arriving there
+// through the app's own controls, with the address bar asserted to carry no
+// query string at the moment the screen is read — because a tool that quietly
+// re-enters by URL leaves the section looking complete while measuring a
+// different code path. Meet day is where that was learned: `frozenMeetFor`
+// branches on `source === 'debug'`, so the played arm and the debug arm are
+// literally different code and 103 green checks had all come down the wrong one.
+//
+// `resolveEntry` HAS NO `?empire=` ARM AT ALL. There is no query string that
+// opens the floor, no preview state, no stand-in server — the only way onto it
+// is `navigate(route, 'open-empire')`, which is a press. So the substitution
+// this rule was written to catch is not available to be made here, and the
+// address-bar assertions below are a check on the tool's own honesty rather
+// than on a branch the app offers.
+//
+// A LEG THAT DOES NOT LAND IS A NAMED SKIPPED CHECK. `press` reports a control
+// it could not draw or could not press as a failure by name, and everything
+// downstream of a failed press is skipped loudly rather than run against
+// whatever happens to be on screen.
+//
+// ===========================================================================
+// WHAT IS MEASURED THAT NO NODE TEST CAN SEE
+// ===========================================================================
+// `EmpireScreen` renders no `Pressable` of its own, so the shell's pill is the
+// WHOLE of the way back off this surface — and the pill is drawn only if the
+// screen reports its beat, which is a `useEffect` a node suite cannot run.
+// `shellWiring.test.ts` closes the source half (does the module CALL its phase
+// callback); this is the half that reads the drawn screen. The "no control of
+// its own" claim is measured here rather than asserted, with a same-moment
+// positive control, because it is the premise that makes the pill load-bearing.
+{
+  const startedAt = Date.now();
+  // A FRESH APP RUN. `open()` counts it: a `goto` is a new lifter, which is
+  // irrelevant to the floor (it reads `createEmpireState()`, not the server)
+  // and is recorded anyway so a reader is not left inferring it.
+  await open('/', 'session-screen');
+  const urlAtSession = page.url();
+  check(
+    !urlAtSession.includes('?'),
+    'CONTROL: the Empire leg starts on the shipped route — the address bar carries no query string',
+    `the page is on ${JSON.stringify(urlAtSession)}`,
+  );
+
+  const openEmpireDrawn = await checkOnScreen(
+    NAV_OPEN_EMPIRE,
+    `the way to GDD §5’s Gym Empire is on screen beside the way to meet day (${NAV_OPEN_EMPIRE})`,
+  );
+  const openEmpireHit = await hitTest(NAV_OPEN_EMPIRE);
+  check(
+    openEmpireHit.hit,
+    'and the point a thumb would land on belongs to it, not to the meet pill beside it',
+    `elementFromPoint -> ${openEmpireHit.why}`,
+  );
+  // TWO PILLS, NOT ONE, AND THEY ARE TOLD APART BY WHAT THEY SAY. The check-in
+  // now offers both round trips, and a check that only asked "a pill is drawn"
+  // would be satisfied by either. The committed shot for this beat predates the
+  // Empire merge and shows one.
+  const openEmpireLabel = (await page.getByTestId(NAV_OPEN_EMPIRE).textContent().catch(() => null))
+    ?.trim();
+  check(
+    openEmpireLabel === EMPIRE_NAV_SAYS.OPEN,
+    `and it is the Gym Empire pill rather than the meet one — it says ${JSON.stringify(EMPIRE_NAV_SAYS.OPEN)}`,
+    `the control says ${JSON.stringify(openEmpireLabel)}`,
+  );
+  check(
+    await visible(NAV_OPEN_MEET),
+    'and the meet pill is still beside it — the Empire edge is additive, not a replacement',
+  );
+
+  const reachedEmpire = await press(
+    NAV_OPEN_EMPIRE,
+    'empire-screen',
+    'PRESSING IT REACHES GDD §5’s FLOOR — no URL typed, and there is no query string that would open it',
+  );
+
+  if (!reachedEmpire) {
+    // NO SUBSTITUTE. Section 3 falls back to `?meet=live` when its press misses,
+    // which is right for the claim section 3 makes; there is no equivalent here
+    // and inventing one would be photographing a different screen.
+    check(
+      false,
+      'SKIPPED: the Gym Empire floor checks need the pill to have landed, and there is no debug URL to open it with',
+    );
+  } else {
+    const urlAtFloor = page.url();
+    check(
+      !urlAtFloor.includes('?'),
+      'CONTROL: and the floor is the one the PLAYER opened — the address bar still carries no query string',
+      `on the floor the page is on ${JSON.stringify(urlAtFloor)}`,
+    );
+    check(
+      !(await visible('session-screen')),
+      'and the daily session is no longer on screen',
+    );
+    await checkOnScreen('empire-screen', 'the Gym Empire floor renders');
+    await checkOnScreen(
+      'empire-stats',
+      'and it is drawing real `createEmpireState()` fields rather than a placeholder line',
+    );
+    await shootBeat('15-empire-floor-from-session.png', 'floor', BEAT_SAYS.EMPIRE_FLOOR);
+
+    // -----------------------------------------------------------------------
+    // THE FLOOR DRAWS NO CONTROL OF ITS OWN, MEASURED
+    // -----------------------------------------------------------------------
+    // The premise the whole section rests on. If the floor had its own button
+    // the pill would be a convenience; it does not, so the pill is the only
+    // thing on the screen a thumb can press and the beat report that draws it
+    // is load-bearing. Counted in the DOM at the same instant as the positive
+    // control, so "zero buttons" cannot be a probe that stopped working.
+    const buttons = await page.evaluate(
+      ([floorId, shellId]) => {
+        const count = (id) => {
+          const root = document.querySelector(`[data-testid="${id}"]`);
+          return root === null ? -1 : root.querySelectorAll('[role="button"]').length;
+        };
+        return { floor: count(floorId), shell: count(shellId) };
+      },
+      ['empire-screen', 'app-shell'],
+    );
+    check(
+      buttons.shell > 0,
+      'CONTROL: the button counter can see a control on this very screen — the shell’s pill',
+      `${buttons.shell} control(s) inside app-shell`,
+    );
+    check(
+      buttons.floor === 0,
+      'the floor draws NO control of its own, so the shell’s pill is the whole of the way back',
+      `${buttons.floor} control(s) inside empire-screen (-1 would mean the screen was not found)`,
+    );
+
+    // -----------------------------------------------------------------------
+    // AND THE WAY BACK IS DRAWN ON IT
+    // -----------------------------------------------------------------------
+    // Bounded by the pill's own arrival arithmetic, read from `shellTuning.ts`
+    // by `deriveChromeWindows` and shared with section 4 and section 6c rather
+    // than copied — a re-tune of the fade moves all three or none.
+    const { pillArrivalMs } = CHROME_WINDOWS;
+    const leave = await waitUntilDrawn(page, NAV_LEAVE_EMPIRE, pillArrivalMs);
+    check(
+      leave.drawn,
+      `the way back off the floor is on screen (${NAV_LEAVE_EMPIRE})`,
+      `${leave.why} — bound ${pillArrivalMs}ms`,
+    );
+    const leaveHit = await hitTest(NAV_LEAVE_EMPIRE);
+    check(
+      leaveHit.hit,
+      'and it is what a thumb would hit there',
+      `elementFromPoint -> ${leaveHit.why}`,
+    );
+    const leaveLabel = (await page.getByTestId(NAV_LEAVE_EMPIRE).textContent().catch(() => null))
+      ?.trim();
+    check(
+      leaveLabel === EMPIRE_NAV_SAYS.LEAVE,
+      `and it says ${JSON.stringify(EMPIRE_NAV_SAYS.LEAVE)}`,
+      `the control says ${JSON.stringify(leaveLabel)}`,
+    );
+    // THE BEAT THE SIGHTING IS FILED UNDER. `EmpireScreen` reports `'floor'` and
+    // reports nothing else, so this is the reading `SHELL_NAV.EMPIRE_PHASES` is
+    // graded against at the end of the run.
+    sawPillOn('floor', leave.drawn, leaveHit.hit);
+    // ...and the OTHER pill is not here. `shellAffordanceFor` answers null on
+    // the empire surface, so a MEET DAY control on the floor would be the gate
+    // having stopped discriminating between surfaces.
+    check(
+      !(await visible(NAV_OPEN_MEET)),
+      'and the meet pill is NOT drawn on the floor — the gate answers per surface',
+    );
+
+    const returned = await press(
+      NAV_LEAVE_EMPIRE,
+      'session-screen',
+      'AND PRESSING IT RETURNS TO THE DAILY SESSION — the round trip closes with a mouse',
+    );
+    if (!returned) {
+      check(
+        false,
+        'SKIPPED: the return-leg checks need BACK TO TRAINING to have landed on the daily session',
+      );
+    } else {
+      const urlAtReturn = page.url();
+      check(
+        !urlAtReturn.includes('?'),
+        'CONTROL: and the session it lands on is the shipped route — no query string at any of the three moments',
+        `back on the session the page is on ${JSON.stringify(urlAtReturn)}`,
+      );
+      check(!(await visible('empire-screen')), 'and the floor is no longer on screen');
+      check(
+        await visible('session-check-in'),
+        'it lands on GDD §3.2’s check-in, which is the beat it left from',
+      );
+      // Bounded, and for the reason section 4 gives at length: the pill
+      // remounts on the way back (its `key` is the affordance) and fades in
+      // again, so reading immediately would read into its own arrival window.
+      const backAgain = await waitUntilDrawn(page, NAV_OPEN_EMPIRE, CHROME_WINDOWS.pillArrivalMs);
+      check(
+        backAgain.drawn,
+        'and the way back INTO the empire is on screen again, so the round trip is repeatable',
+        `${backAgain.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms`,
+      );
+      await page.screenshot({ path: path.join(outDir, '16-empire-round-trip-closed.png') });
+    }
+  }
+  note(`the Gym Empire round trip cost ${Date.now() - startedAt}ms of wall clock`);
+}
 
 // ###########################################################################
 // ###  8a. GDD §6.3 — "THE REAL TENSION", ON EVERY MEET A PLAYER OPENED     #
