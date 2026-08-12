@@ -992,6 +992,43 @@ sincere its message. And give every sweep a non-vacuity guard that pins what it
 actually saw — counts, not bounds — so an empty domain reports itself instead of
 passing.
 
+### A NEW RULE CAN MAKE AN OLD ONE VACUOUS, AND THAT IS NOW A REQUIRED CHECK
+
+**Standing check, ruled by a human after this happened twice in one session.**
+Before an added rule counts as complete: **work out whether it subsumes an
+existing check's threshold, or is subsumed by one.** A dominated check is
+vacuous by the definition above — no state of the subject makes it red — and it
+arrives without anyone editing it.
+
+This is not hypothetical and both instances were sharp:
+
+- **`tools/test-budgets.mjs`.** Adding `STALE` (fires above `1.5 x basis`)
+  silently killed `THIN` (fires at `0.5 x budget`). Budget is at least
+  `basis x 4`, so `THIN` implied `duration >= 2 x basis` — already past
+  `STALE`'s 1.5. Strictly dominated in every case including the floored one.
+  `THIN` was **the only check that tool originally shipped with**, and the
+  fixture that proved it *reclassified itself* from `THIN` to `STALE` the moment
+  `STALE` existed.
+- **`src/game/guaranteeTags.test.ts`.** A `COLLECTION_KILL_MUTANTS.length` pin
+  was dominated by the equality directly above it, and a title lookup scoped to
+  `witness.testFile` turned out to be dominated too — **deleting the filter left
+  the suite green**.
+
+**Why it needs its own rule rather than the general one.** The vacuity question
+above is asked of the check you are writing. This one is about a check you are
+*not* looking at: the new rule is correct, tested, and reddens on demand, while
+one file over an older assertion quietly stops being able to fail. Nothing about
+writing the new rule draws attention to the old one, and a green suite looks
+identical either way.
+
+**How to satisfy it.** For each existing check in the same file or tool, compare
+thresholds symbolically rather than by intuition — the `budget >= basis x 4`
+step is what turned "these feel different" into "one implies the other." Then
+mutate the subject into the region the older check claims, and confirm the older
+check is what reddens. If the new rule fires first in every reachable case, the
+old one is dead: **delete it and record the domination**, rather than leaving
+two checks where one can never speak.
+
 ## Architecture Rules
 
 ### Pure logic is separate from UI
