@@ -986,7 +986,15 @@ const MIN_ANCHOR_LENGTH = 24;
  * ever running that test is refused rather than recorded as a catch.
  * `@guarantee a-witness-transcript-names-its-test`
  */
-type TranscriptFault = 'names-no-test' | 'no-failure-line';
+const TRANSCRIPT_FAULTS = ['names-no-test', 'no-failure-line'] as const;
+
+/**
+ * Derived from the list above rather than written beside it, so the runtime
+ * list and the type are one declaration. The anti-vacuity drive reads the list
+ * and asserts every member of it was actually produced — an arm added to the
+ * rule without a transcript that reaches it is red rather than silent.
+ */
+type TranscriptFault = (typeof TRANSCRIPT_FAULTS)[number];
 
 /** `AssertionError: …`, `RangeError: …`, or this codebase's thrown `Error: …`. */
 const FAILURE_LINE = /\b[A-Za-z]*Error:\s/;
@@ -1057,8 +1065,6 @@ const TRANSCRIPT_BAR = {
   GRADED: 16,
   /** ...and rows excused because their transcript predates it. */
   PREDATING: 37,
-  /** Real collection-kill records the rule is driven against. */
-  COLLECTION_KILLS: 2,
 } as const;
 
 /**
@@ -3015,13 +3021,17 @@ describe('the guarantee-tag convention', () => {
     // line, so the failure-line arm is satisfied and says nothing. That is the
     // measurement behind "neither arm subsumes the other": delete the first arm
     // and both of these become admissible witnesses.
+    //
+    // AND IT IS THE COUNT PIN TOO. `refusedBy` gets one entry per record, so
+    // this equality fails on a third record and on an emptied list alike. A
+    // separate `COLLECTION_KILL_MUTANTS.length` assertion was written here
+    // first and deleted: it is the same fact one step out, and no state of the
+    // list makes it fire while this one passes. That is the shape
+    // `tools/test-budgets.mjs` had to delete a check for.
     expect(refusedBy, 'how each measured collection kill is refused').toEqual([
       'names-no-test',
       'names-no-test',
     ]);
-    expect(COLLECTION_KILL_MUTANTS.length, 'measured collection kills').toBe(
-      TRANSCRIPT_BAR.COLLECTION_KILLS,
-    );
 
     // 2. EACH ARM ON ITS OWN, on planted transcripts built to trip one and not
     //    the other. Planted rather than real for the same reason the freshness
@@ -3029,37 +3039,59 @@ describe('the guarantee-tag convention', () => {
     //    arm is not something the tree happens to contain.
     const id = 'no-accelerant-moves-a-physio-element';
     const title = titleFor(id);
-    const planted: Array<{ what: string; observed: string }> = [
-      { what: 'the shape a real catch has', observed: `${title}\nAssertionError: expected 188 to be +0` },
-      // The test ran, and the transcript says nothing about how it failed —
-      // which is also what a PASSING run's output looks like.
-      { what: 'names the test, records no failure', observed: title },
-      // An assertion really failed, in some other test. The tag's own test may
-      // have passed, or never run at all; this transcript cannot say.
-      { what: "another test's failure", observed: 'somebody else\nAssertionError: expected 1 to be 2' },
-      { what: 'neither', observed: 'it went red' },
+    const planted: Array<{ what: string; observed: string; faults: TranscriptFault[] }> = [
+      {
+        what: 'the shape a real catch has',
+        observed: `${title}\nAssertionError: expected 188 to be +0`,
+        faults: [],
+      },
+      {
+        // The test ran, and the transcript says nothing about how it failed —
+        // which is also what a PASSING run's output looks like.
+        what: 'names the test, records no failure',
+        observed: title,
+        faults: ['no-failure-line'],
+      },
+      {
+        // An assertion really failed, in some other test. The tag's own test
+        // may have passed, or never run at all; this transcript cannot say.
+        what: "another test's failure",
+        observed: 'somebody else\nAssertionError: expected 1 to be 2',
+        faults: ['names-no-test'],
+      },
+      { what: 'neither', observed: 'it went red', faults: ['names-no-test', 'no-failure-line'] },
     ];
-    expect(
-      planted.map((one) => `${one.what}: [${transcriptFaults(one.observed, title, id).join(', ')}]`),
-    ).toEqual([
-      'the shape a real catch has: []',
-      'names the test, records no failure: [no-failure-line]',
-      "another test's failure: [names-no-test]",
-      'neither: [names-no-test, no-failure-line]',
-    ]);
-    // NON-VACUITY AS A SET RATHER THAN A COUNT: every member of the fault union
-    // was actually produced above, so a fault that stopped being reachable —
-    // an arm deleted, or a predicate that can no longer fail — shows up here
-    // instead of leaving a shorter list that still passes.
+    // ONE ASSERTION PER PLANTED CASE, and that is about the failure MESSAGE
+    // rather than about coverage. Mapping all four into one array and comparing
+    // the arrays reddens correctly and prints `expected [ …(4) ] to deeply
+    // equal [ …(4) ]`, which names neither the case that moved nor the arm that
+    // moved it. CLAUDE.md's note that a check which bites but fails uselessly
+    // is half a check, applied to a check written in this same round.
+    for (const one of planted) {
+      expect(
+        transcriptFaults(one.observed, title, id),
+        `planted transcript "${one.what}" — the faults the rule finds in it`,
+      ).toEqual(one.faults);
+    }
+    // The loop is a green no-op on an empty list, and dropping a case is not
+    // caught by the fault-coverage check below: two of these four already
+    // produce both faults between them.
+    expect(planted.length, 'planted transcripts driven').toBe(4);
+    // 3. AND EVERY DECLARED FAULT WAS REACHED, against the runtime list the
+    //    type is derived from rather than against the four lines above.
+    //
+    //    Written the other way first and it was strictly dominated: comparing
+    //    the produced set with a literal pair restates what the four exact
+    //    lists already say, so no state of `transcriptFaults` reddens it while
+    //    they pass. Read from `TRANSCRIPT_FAULTS` it is independent — a third
+    //    arm added to the rule and to that list, with no planted transcript
+    //    reaching it, moves this and leaves the four alone.
     const produced = new Set(
-      [...planted.map((one) => one.observed)].flatMap((observed) =>
-        transcriptFaults(observed, title, id),
-      ),
+      planted.flatMap((one) => transcriptFaults(one.observed, title, id)),
     );
-    expect([...produced].sort(), 'faults this drive actually produced').toEqual([
-      'names-no-test',
-      'no-failure-line',
-    ]);
+    expect([...produced].sort(), 'declared faults this drive never reached').toEqual(
+      [...TRANSCRIPT_FAULTS].sort(),
+    );
   });
 
   it("counts §4a's kill-list bullets against the mutants witnessed for it", () => {

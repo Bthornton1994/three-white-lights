@@ -674,24 +674,28 @@ describe('the composed run is a run at all', () => {
 // WHAT "REDDENING EDIT" HAD TO START MEANING, and it is written once here
 // because both series checks below carried the same two defects, one each.
 //
-// The two lists used to name seven edits between them. Four hold. Of the other
-// three, two are edits this file is BLIND to and one reddens the file without
-// running a test, and the two arms each carried one of each — so checking one
-// arm and copying the fix across would have left the other exactly as wrong.
-// Every entry in both lists has now been applied to real source and its result
-// read out of a vitest JSON report, which is the only reading that separates
-// these cases:
+// The two lists used to name seven edits between them, and three of the seven
+// hold. Two are edits this file is BLIND to; two more turn the file red without
+// running a test. The two arms carried one of each, so checking one arm and
+// copying the fix across would have left the other exactly as wrong. Every
+// entry in both lists has now been applied to real source and its result read
+// out of a vitest JSON report, which is the only reading that separates these
+// cases:
 //
 //   1. `skipExpansion` moving `settledCompletion` as well as `idleCompletion`
-//      leaves every check in this file green. It was named by the
-//      PHYSIO list as a reddening edit while §4a of `empireInvariant.ts` named
-//      it, correctly, as one of the two mutants this file is blind to and
-//      `expansion.test.ts` kills. Two sentences in one directory said opposite
-//      things about the same edit for a wave; the module header was the right
-//      one.
+//      leaves every check in this file green. It was named by the PHYSIO list
+//      as a reddening edit while §4a of `empireInvariant.ts` named it,
+//      correctly, as one of the two mutants this file is blind to and
+//      `expansion.test.ts` kills. §4a's count of the checks that do kill it was
+//      re-run rather than copied, and reproduced. Two sentences in one
+//      directory said opposite things about the same edit for a wave; the
+//      module header was the right one. No number is restated here, because a
+//      second copy of a count is a second thing to go stale.
 //   2. `recruitmentRefusals` counting slots off `state.axes` instead of
 //      `state.settledAxes` is the same shape in the TRAINING IQ list, and §4a
-//      names it too: green here, killed in `recruitment.test.ts`.
+//      names it too: green here, and killed by `counts the slots on the wall
+//      clock, so a skipped space build opens none early` in
+//      `recruitment.test.ts`.
 //   3. `recruitmentRefusals` reading `state.gymBucks` for the recruit gate, and
 //      `expansionVerdict` reading `context.gymBucks` for a wall-clock-funded
 //      axis, both put the gate on one purse while the debit stays on the other.
@@ -699,10 +703,11 @@ describe('the composed run is a run at all', () => {
 //      being built at module scope, and vitest reports `Test Files 1 failed`
 //      with `Tests  no tests` — the report carries no assertion results at
 //      all. Reading the colour records that as a catch. It is not one: no
-//      check here ever ran, and what killed
-//      it was a branded constructor in `empireCore.ts`. The pair `gate AND
-//      debit moved together` is the coherent version, it does reach an
-//      assertion, and that is the version `MUTATION_WITNESSES` records.
+//      check here ever ran, and what killed it was a branded constructor in
+//      `empireCore.ts`. Moving the gate AND the debit together is the coherent
+//      version of each, it does reach an assertion, and that is the version
+//      `MUTATION_WITNESSES` records — as `axisBook` for the axis half, and as
+//      the recruit debit line for the roster half.
 //
 // So a list entry here means: applied, collected, the named test executed, and
 // an assertion inside it failed. `src/game/guaranteeTags.test.ts` enforces the
@@ -772,9 +777,10 @@ describe('no purchasable accelerant moves the progression ledger, element by ele
     //     wall-clock-funded axis is gated and debited on the accelerated book;
     //   - `accrueProduction` banking the wall-clock purse over the idle gap.
     //
-    // Each one's verbatim failure message is a row of `MUTATION_WITNESSES` in
-    // `src/game/guaranteeTags.test.ts` under this test's tag, so the readings
-    // expire there when their anchors move rather than ageing quietly here.
+    // All three are rows of `MUTATION_WITNESSES` in
+    // `src/game/guaranteeTags.test.ts` under this test's tag, holding the
+    // verbatim failure message beside two anchors, so a reading expires there
+    // when its subject is edited rather than ageing quietly here.
     const totals = seriesTotals(PAIRS, 'physio-days-saved');
     expect(totals.lists).toBe(72);
     expect(totals.elements).toBe(2616);
@@ -809,6 +815,15 @@ describe('no purchasable accelerant moves the progression ledger, element by ele
     // `settledAxisLevel` reading `idleCompletion` does the reverse — which is
     // why these are two tests carrying two tags and not one check carrying
     // both. A zero over the two series together would hide either direction.
+    //
+    // Three of the four are rows of `MUTATION_WITNESSES` under this test's tag.
+    // `reputationRates` at its call site is not, and that is stated rather than
+    // glossed: it is the `gateElapsedFor` mutant one level out, and §4a's
+    // bullet list is closed at the count `guaranteeTags.test.ts` pins, so a row
+    // for it is an edit to that header rather than to this list. Its reading
+    // was taken the same way as the other three and lives only here, which is
+    // exactly the weaker form this file keeps complaining about — recorded so
+    // the next person can close it instead of rediscovering it.
     const totals = seriesTotals(PAIRS, 'training-iq');
     expect(totals.lists).toBe(72);
     expect(totals.elements).toBe(2616);
