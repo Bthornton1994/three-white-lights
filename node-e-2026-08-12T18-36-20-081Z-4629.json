@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "node-e-2026-08-12T18-36-20-081Z-4629",
   "label": null,
   "command": [
@@ -34,14 +34,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 2,
-    "okCount": 1,
+    "count": 3,
+    "okCount": 2,
     "errors": [],
-    "lastAttemptIso": "2026-08-12T18:37:20.108Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-12T18:37:50.243Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-12T18:36:22.859Z"
-  }
+    "lastOkIso": "2026-08-12T18:37:24.250Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-12T18:37:50.238Z",
+  "elapsedSeconds": 90.2
 }
