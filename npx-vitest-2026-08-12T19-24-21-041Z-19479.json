@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-12T19-24-21-041Z-19479",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run"
+  ],
+  "budgetSeconds": 1800,
+  "startedAtIso": "2026-08-12T19:24:21.041Z",
+  "startedAtMs": 1786562661041,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "d43db9cba6e51ea5248be97fd6c12685b6839434",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 17,
+  "dirtyPaths": [
+    ".gauntlet/shots/shell/01-session-with-nav.png",
+    ".gauntlet/shots/shell/03-meet-played-walkout.png",
+    ".gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+    ".gauntlet/shots/shell/05-back-on-the-session.png",
+    ".gauntlet/shots/shell/05a-check-in-after-a-played-meet.png",
+    ".gauntlet/shots/shell/05b-check-in-after-the-second-meet.png",
+    ".gauntlet/shots/shell/07-close-out-with-nav.png",
+    ".gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+    ".gauntlet/shots/shell/10-already-trained-keeps-the-way-out.png",
+    ".gauntlet/shots/shell/12-openers-follow-the-session.png",
+    ".gauntlet/shots/shell/13-recap-before-the-return-leg.png",
+    ".gauntlet/shots/shell/14-return-leg-already-trained.png",
+    ".gauntlet/shots/shell/15-empire-floor-from-session.png",
+    ".gauntlet/shots/shell/16-empire-round-trip-closed.png",
+    ".gauntlet/shots/shell/route.json",
+    "src/shell/shellWiring.test.ts",
+    "tools/verify-shell-route.mjs"
+  ],
+  "runner": {
+    "pid": 19479,
+    "startTick": "733760",
+    "cmdline": "node tools/watchdog.mjs --budget 1800 -- npx vitest run",
+    "bootId": "af4e9eff-33fd-4a0f-9985-4643c4f0258b",
+    "bootEpochSeconds": 1786555323,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-12T19:24:21.064Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
