@@ -108,6 +108,22 @@
  * As elsewhere in this file the publisher is described rather than named; see
  * the section above for why, and the build report for the names.
  *
+ * CORROBORATED FROM A SECOND, INDEPENDENT SOURCE CLASS, because the builder
+ * flagged its own citation here as weaker than this paragraph's tone. The
+ * wording above came from a national affiliate's rulebook; the claim was then
+ * re-searched against general meet-practice guides, which are a different kind
+ * of source and could have disagreed. They do not. The sentence found there is
+ * flatter and stronger than the one quoted above: **"A flight can be composed
+ * of a single weight class or any combination of weight classes."** The same
+ * material has flights "split up into Weight Classes, Gender, and/or Division",
+ * and has directors forming them from opening attempts so the loaders change
+ * plates as little as possible — which is the same fact `barLoadingOrder`
+ * implements from the other end.
+ *
+ * Two source classes that could have disagreed and did not is what this claim
+ * rests on. It is still not the international body's own PDF, which is
+ * egress-blocked here, and that remains the honest limit of it.
+ *
  * THE TWO ANSWERS, and why the second one was taken:
  *
  *   1. CALL IT A FLIGHT ORDERING. §6.6 does ask for a "live leaderboard feed",
