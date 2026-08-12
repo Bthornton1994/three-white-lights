@@ -811,7 +811,7 @@ const UNPINNED_PROSE_NUMBERS: readonly UnpinnedProseNumber[] = [
  */
 const NUMBER_COVERAGE = {
   /** Comment paragraphs under `src` carrying at least one tag. */
-  TAGGED_PARAGRAPHS: 59,
+  TAGGED_PARAGRAPHS: 60,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 9,
   /** Numerals the rule actually demands something of. */
@@ -832,9 +832,9 @@ const NUMBER_COVERAGE = {
    * for reasons of their own. THIS IS THE WEAKNESS MEASUREMENT, not a coverage
    * one: it says how little a small number resolving is worth.
    */
-  NAMED_BODIES: 50,
-  NAMED_BODIES_HOLDING_ZERO: 40,
-  NAMED_BODIES_HOLDING_ONE: 42,
+  NAMED_BODIES: 51,
+  NAMED_BODIES_HOLDING_ZERO: 41,
+  NAMED_BODIES_HOLDING_ONE: 43,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -893,8 +893,22 @@ interface MutationWitness {
   readonly testFile: string;
   /** Verbatim text of that assertion. Must still occur inside the named test. */
   readonly redAssertion: string;
-  /** What the red run printed. Evidence for a reader; not machine-checked. */
+  /**
+   * What the red run printed.
+   *
+   * Was "evidence for a reader; not machine-checked". It is checked now, by
+   * `transcriptFaults` — see the paragraph below this interface for what that
+   * check reaches and what it does not.
+   */
   readonly observed: string;
+  /**
+   * Set on a row whose `observed` was transcribed before the transcript rule
+   * existed and does not satisfy it. Tracked debt in the shape this file
+   * already uses: closed by re-running the mutant and pasting a whole
+   * transcript, not by loosening the rule. `TRANSCRIPTS_PREDATING_THE_RULE`
+   * pins how many carry it, so the set may shrink and may not grow.
+   */
+  readonly transcriptPredatesTheRule?: true;
 }
 
 /**
@@ -902,6 +916,208 @@ interface MutationWitness {
  * would resolve against half the file and expire against nothing.
  */
 const MIN_ANCHOR_LENGTH = 24;
+
+// ---------------------------------------------------------------------------
+// A red file is not a caught mutant, and the colour does not tell them apart
+// ---------------------------------------------------------------------------
+
+/**
+ * THE GAP THIS CLOSES, and it was filed against this table by name.
+ *
+ * CLAUDE.md's bar reads "break the guarantee, watch the named test go red,
+ * restore, and record the witness". Measured on two mutants in
+ * `src/empire/expansion.ts` and `src/empire/recruitment.ts`, that is not
+ * sufficient. Both put a purchase's gate on one purse while its debit stayed on
+ * another; the balance went negative; `asGymBucks` threw while
+ * `empireInvariant.test.ts` was building its grid at module scope. vitest
+ * reported `Test Files 1 failed` and `Tests  no tests`. Exit code 1, file red,
+ * and the JSON report carries zero assertion results — no check in that file
+ * executed, and what killed the mutant was a branded constructor rather than
+ * any measurement. An author who reads the colour records it as a catch and
+ * writes a witness that looks exactly like the real ones.
+ *
+ * WHAT IS ENFORCED, stated as the two arms it is actually made of, because
+ * neither subsumes the other and a reader has to be able to tell which one is
+ * doing the work:
+ *
+ *   - `names-no-test` — the transcript must contain the title of the test that
+ *     declares the tag, read live out of `testFile` rather than transcribed.
+ *     This is the arm aimed at the filed defect: a collection error prints the
+ *     thrown value and no title, because at that point there is no test to
+ *     name. It also expires the row when the test is renamed, and it rejects a
+ *     transcript quoting some other test's failure.
+ *   - `no-failure-line` — the transcript must carry a line naming a thrown
+ *     error, which is what both `expect` (`AssertionError:`) and this
+ *     codebase's sweep helpers (`Error: offset 0 armed mask 0 …`) print. This
+ *     arm rejects a transcript that is a bare test title, which is what a
+ *     PASSING run gives you and is therefore the cheapest wrong thing to
+ *     paste. It does not reject a collection error's own text, since that is a
+ *     thrown error too — the first arm is what rejects those.
+ *
+ * WHAT IS NOT ENFORCED, said as plainly as the schema's own docstring says the
+ * rest of its limits:
+ *
+ *   - Nothing re-runs the mutant. `observed` is still author-transcribed, and a
+ *     determined author can compose a passing-looking string. What changed is
+ *     that the LAZY route is closed: the output of a collection kill does not
+ *     have this shape, so it can no longer be copied straight in.
+ *   - It cannot tell "the named assertion failed" from "the named test threw
+ *     somewhere else in its body before reaching that assertion". Both print
+ *     the title and an error line. The only thing in a vitest transcript that
+ *     would separate them is the source position, and pinning a line number
+ *     expires the row on every unrelated edit above it — a false expiry is its
+ *     own defect, so this is left open rather than closed badly.
+ *   - It says nothing about the other assertions in the same test, which is the
+ *     limit the schema's docstring already declares.
+ *
+ * WHY THIS IS NOT A REPORT PARSER. The strong version reads a vitest JSON
+ * report and asks whether the named test's `status` is `failed` with a
+ * non-empty `assertionResults` — the shape `tools/test-budgets.mjs` already
+ * walks. That needs the mutant re-applied and the suite re-run per row, inside
+ * a suite, against a table with dozens of rows in files that take minutes. It
+ * was not built. The honest consequence is written here rather than implied
+ * away: this rule grades the TRANSCRIPT, and a transcript is a thing a human
+ * pasted.
+ *
+ * The rule as one sentence, carrying its tag in the same paragraph so a blank
+ * comment line cannot quietly take the claim out of the scan's reach: a
+ * witness's recorded output must contain the title of the test its tag
+ * declares, read live out of the tree, so a mutant that reddens a file without
+ * ever running that test is refused rather than recorded as a catch.
+ * `@guarantee a-witness-transcript-names-its-test`
+ */
+const TRANSCRIPT_FAULTS = ['names-no-test', 'no-failure-line'] as const;
+
+/**
+ * Derived from the list above rather than written beside it, so the runtime
+ * list and the type are one declaration. The anti-vacuity drive reads the list
+ * and asserts every member of it was actually produced — an arm added to the
+ * rule without a transcript that reaches it is red rather than silent.
+ */
+type TranscriptFault = (typeof TRANSCRIPT_FAULTS)[number];
+
+/** `AssertionError: …`, `RangeError: …`, or this codebase's thrown `Error: …`. */
+const FAILURE_LINE = /\b[A-Za-z]*Error:\s/;
+
+/** Whitespace in a transcript is the terminal's; a title's is the source's. */
+const flatten = (text: string): string => text.split(/\s+/).join(' ').trim();
+
+/**
+ * The title as vitest prints it, minus the `[tag]` marker.
+ *
+ * The marker is dropped because every recorded transcript here drops it: an
+ * author copying a failure line trims the tag out, and requiring it back would
+ * fail every row for a reason that has nothing to do with whether the test ran.
+ */
+const titleWithoutMarker = (title: string, id: string): string =>
+  flatten(title.split(declarationOf(id)).join(' '));
+
+function transcriptFaults(observed: string, title: string, id: string): TranscriptFault[] {
+  const faults: TranscriptFault[] = [];
+  if (!flatten(observed).includes(titleWithoutMarker(title, id))) faults.push('names-no-test');
+  if (!FAILURE_LINE.test(observed)) faults.push('no-failure-line');
+  return faults;
+}
+
+/**
+ * How many times a verbatim anchor occurs in a repo-relative file.
+ *
+ * One function with two callers on purpose. `MutationWitness.mutated` and
+ * `CollectionKillMutant.mutated` are the same kind of anchor asked the same
+ * question, and a second copy of the arithmetic is how the two would drift.
+ */
+function anchorOccurrences(file: string, anchor: string): number {
+  const full = path.join(REPO_ROOT, file);
+  if (!existsSync(full)) return -1;
+  return readFileSync(full, 'utf8').split(anchor).length - 1;
+}
+
+/**
+ * The transcript rule's own census, pinned as counts rather than bounds.
+ *
+ * `GRADED` and `PREDATING` move by one when a witness row is added or when a
+ * debt row is closed, which is the friction that makes either a diff somebody
+ * wrote on purpose. A bound would let the graded set drain to nothing while the
+ * rule reported itself satisfied.
+ *
+ * WHAT FRACTION OF THE TABLE IT ACTUALLY REACHES, said in the same voice
+ * `GUARANTEE_COVERAGE` and `NUMBER_COVERAGE` are said in, because a rule that
+ * reads as tree-wide and reaches a third of its own table is the thing this
+ * file exists to make impossible: `GRADED` of `GRADED + PREDATING`. The
+ * majority of the rows recorded a failure line and no test name, which is what
+ * an author pastes when they copy the assertion and not the header above it.
+ * Those rows are not known-wrong — their mutants were run — they are simply
+ * rows whose transcript cannot say so, and that distinction is the one
+ * CLAUDE.md draws about the legacy tag list and asks not to blur in either
+ * direction.
+ *
+ * THE GRADED ROWS ARE NOT AN ARBITRARY THIRD, and the split falls exactly
+ * where the census was taken: every graded row but the last is an
+ * `src/empire/**` row — §4a's eleven, its denominator pin, and the three on the
+ * day-spending anchor — and the last is this rule's own. Those were the most
+ * recently written rows in the table and their author pasted the header line
+ * above the assertion; the older rows pasted the assertion alone. That is the
+ * whole of the pattern. Closing a debt row costs one re-run and one paste, on
+ * the module you are already inside.
+ */
+const TRANSCRIPT_BAR = {
+  /** Witness rows whose transcript is held to the rule. */
+  GRADED: 16,
+  /** ...and rows excused because their transcript predates it. */
+  PREDATING: 37,
+} as const;
+
+/**
+ * Mutants that turn a test file red WITHOUT running a test — the shape the rule
+ * above exists to refuse, kept as real records rather than as a description.
+ *
+ * Each was applied to the source named, the file was run alone with
+ * `--reporter=json`, and the report came back with `numTotalTests` at zero and
+ * one failed suite. `observed` is that run's message. They are held here for
+ * two reasons: a reader can re-apply them, and the rule is driven against them
+ * below, so loosening it until one of these would be accepted is a red test
+ * rather than a quiet widening.
+ *
+ * `mutated` is a freshness anchor exactly like a witness's: it must still occur
+ * once in its file, so a record whose subject has been edited away expires
+ * instead of standing as evidence about code that is gone.
+ */
+interface CollectionKillMutant {
+  readonly mutatedFile: string;
+  /** Verbatim text the mutant replaced. Must still occur, exactly once. */
+  readonly mutated: string;
+  /** The tag whose test the mutant was run against. */
+  readonly wouldHaveWitnessed: string;
+  /** What the red run printed. */
+  readonly observed: string;
+  readonly why: string;
+}
+
+const COLLECTION_KILL_MUTANTS: readonly CollectionKillMutant[] = [
+  {
+    mutatedFile: 'src/empire/recruitment.ts',
+    mutated: 'shared wall-clock balance, which is §4 of the header.\n  if (state.settledBooks[RECRUIT_BOOK] < quote.costGymBucks) {',
+    wouldHaveWitnessed: 'no-accelerant-moves-a-training-iq-element',
+    observed:
+      'Test Files  1 failed | Tests  no tests\n' +
+      'RangeError: gymBucks must be a finite number at or above zero, received -40.',
+    why:
+      "the recruit gate reads the accelerated purse while `beginRecruitment`'s debit " +
+      'stays on `RECRUIT_BOOK`, so the wall-clock book goes negative as the grid is built',
+  },
+  {
+    mutatedFile: 'src/empire/expansion.ts',
+    mutated: '  if (bookBalance(context, book) < quote.cost) {',
+    wouldHaveWitnessed: 'no-accelerant-moves-a-physio-element',
+    observed:
+      'Test Files  1 failed | Tests  no tests\n' +
+      'RangeError: gymBucks must be a finite number at or above zero, received -600.',
+    why:
+      'the same shape one module over, and the reason this list has two entries rather ' +
+      'than one: the defect sat in both arms of the same pair of checks, and only one ' +
+      'arm had been looked at',
+  },
+];
 
 /**
  * TAGS THAT PREDATE THE WITNESS BAR — tracked debt, closed opportunistically
@@ -1013,6 +1229,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + '\\"It read 49 before §4c\'s day-anchor block added a check\\" excuses nothing any more", '
       + 'and five more naming the Option 1 rework, both milestone counterfactuals and the '
       + 'window-boundary illustration',
+    transcriptPredatesTheRule: true,
   },
   {
     // (2) THE DEFECT ITSELF, PUT INTO PROSE. The mutant moves one digit of a
@@ -1033,6 +1250,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + '[ Array(1) ] to deeply equal [] — received [ "src/game/streak.ts:2567 '
       + '[no-tender-arrives-by-training] cites 786, which is not in the body of the test the tag '
       + 'names — \\"…measured at 105 / 305 / 733 / [786] violating pairs against 0 for…\\"" ]',
+    transcriptPredatesTheRule: true,
   },
   // -------------------------------------------------------------------------
   // GDD §5.3 — the roster's one-way door, which was a §12.3 breach.
@@ -1052,6 +1270,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     observed:
       'splits that arm by whether the extra check-in moved the day it spends at\n' +
       'AssertionError: expected 5 to be +0 // Object.is equality',
+    transcriptPredatesTheRule: true,
   },
   {
     // The timer half. Price telescoping alone left a slot that reached `club`
@@ -1066,6 +1285,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     observed:
       'splits that arm by whether the extra check-in moved the day it spends at\n' +
       'AssertionError: expected 2318 to be +0 // Object.is equality',
+    transcriptPredatesTheRule: true,
   },
   {
     // The price half, charged in full rather than as the difference — which is
@@ -1078,6 +1298,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     observed:
       'splits that arm by whether the extra check-in moved the day it spends at\n' +
       'AssertionError: expected 6 to be +0 // Object.is equality',
+    transcriptPredatesTheRule: true,
   },
   {
     // The counterfactual's own knob. With `spendsOn` ignored, the held-anchor
@@ -1375,6 +1596,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     observed:
       "AssertionError: the three words a first meet prints beside its lifts: expected [ 'PR', 'PR', 'PR' ]" +
       " to deeply equal [ 'FIRST', 'FIRST', 'FIRST' ]",
+    transcriptPredatesTheRule: true,
   },
   {
     // (2) `liftPrs` REFUSES A NULL PREVIOUS BEST — the other candidate fix,
@@ -1392,6 +1614,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     observed:
       'AssertionError: the three words a first meet prints beside its lifts: expected [ null, null, null ]' +
       " to deeply equal [ 'FIRST', 'FIRST', 'FIRST' ]",
+    transcriptPredatesTheRule: true,
   },
   {
     // (3) THE PREDICATE ITSELF, INVERTED ON THE NULL. `beatsPreviousBest` is
@@ -1409,7 +1632,8 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       "AssertionError: the three words a first meet prints beside its lifts: expected [ 'PR', 'PR', 'PR' ]" +
       " to deeply equal [ 'FIRST', 'FIRST', 'FIRST' ] (and, in the same run, 'AssertionError: 0 vs null:" +
       " expected true to be false' on the predicate's own sweep)",
-    },
+      transcriptPredatesTheRule: true,
+  },
   {
     // (4) THE RECAP IGNORES THE HISTORY IT IS HANDED, comparing this meet's
     // best against itself. Nothing ever beats anything, so every record a
@@ -1427,6 +1651,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'AssertionError: made {"squat":217.5,"bench":140,"deadlift":255} against held' +
       ' {"squat":212.5,"bench":140,"deadlift":260}: expected [ \'FIRST\', null, null ] to deeply equal' +
       " [ 'PR', null, null ]",
+    transcriptPredatesTheRule: true,
   },
   {
     // The mutant handed every option GDD §6.3's PR sentence, which is the
@@ -1442,6 +1667,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     redAssertion: '`${JSON.stringify(MEET_COPY.OPTION_PR_NOTE)}=${says} with isPrAttempt=${option.isPrAttempt}`,',
     observed:
       'AssertionError: first meet, safest cards (the played arm): squat #2 small @212.5 says "A PR on the line."=true with isPrAttempt=false: expected true to be false',
+    transcriptPredatesTheRule: true,
   },
   {
     // THE ALIASED-IMPORT HOLE, EXECUTED BEFORE IT WAS CLOSED. The covered-day
@@ -1482,6 +1708,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       "      'a declaration reaches the covered-day machinery through an identifier the textual scan cannot see, and is not on COVERED_DAY_TOUCHING_FUNCTIONS',\n    ).toEqual([]);",
     observed:
       'AssertionError: a declaration reaches the covered-day machinery through an identifier the textual scan cannot see, and is not on COVERED_DAY_TOUCHING_FUNCTIONS: expected [ Array(1) ] to deeply equal [] — received [ "shell/appServer.ts::widenForTenSessions" ]',
+    transcriptPredatesTheRule: true,
   },
   {
     // The mutant unwrapped the seal at the ONE producer of a wire, which is the
@@ -1503,6 +1730,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       '      bests.deadlift = (trueKg ?? 0) / KILOGRAMS_PER_POUND;\n    }).toThrow(TypeError);',
     observed:
       'AssertionError: expected function to throw an error, but it didn’t — src/game/sessionServer.test.ts:1321',
+    transcriptPredatesTheRule: true,
   },
   {
     // The mutant unwrapped the seal at one of the six `record` rows, in the file
@@ -1518,6 +1746,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       "      'a record or wire is built in shipped code and not sealed — pass it to sealServerValue',",
     observed:
       'AssertionError: a record or wire is built in shipped code and not sealed — pass it to sealServerValue: expected [ Array(1) ] to deeply equal [] — received [ "record src/game/meetPreview.ts previewServerRecord" ]',
+    transcriptPredatesTheRule: true,
   },
   {
     // A SECOND WITNESS FOR THE SAME TAG, AND THE ONE THAT MATTERS. The entry
@@ -1551,6 +1780,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'AssertionError: a record or wire is built in shipped code and not sealed — pass it to ' +
       'sealServerValue: expected [ Array(1) ] to deeply equal [] — received [ "record ' +
       'src/game/meetPreview.ts previewServerRecord" ]',
+    transcriptPredatesTheRule: true,
   },
   {
     // The mutant SKIPPED one of the seven runtime freeze checks the ledger
@@ -1568,6 +1798,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'AssertionError: record src/game/meetPreview.ts previewServerRecord: ' +
       'src/game/meetServer.test.ts does not declare exactly one running test called ' +
       '"freezes the debug preview record too, one meet deep": expected +0 to be 1',
+    transcriptPredatesTheRule: true,
   },
   {
     // Declared with the tag, on the round that corrected the sentence it
@@ -1583,6 +1814,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     redAssertion: "'the bar the wait is drawn with is not the attempt\u2019s bar',",
     observed:
       'AssertionError: the bar the wait is drawn with is not the attempt\u2019s bar: expected \'<MeetHallView\\n        lifter={{ tota…\' to contain \'totalKg: attempt.weightKg\'',
+    transcriptPredatesTheRule: true,
   },
   {
     // RETAKEN. The previous witness anchored on
@@ -1596,6 +1828,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     testFile: 'src/game/streak.test.ts',
     redAssertion: "expect(never.refusedPurchases, 'the client that never opens').toBe(4)",
     observed: 'AssertionError: the client that never opens: expected 3 to be 4',
+    transcriptPredatesTheRule: true,
   },
   {
     // The mutant let a client that claimed its screen had shown the offer buy
@@ -1610,6 +1843,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     testFile: 'src/game/streak.test.ts',
     redAssertion: 'the rendered offer moved the decision',
     observed: 'Error: offset 0 armed mask 0 day +0: the rendered offer moved the decision',
+    transcriptPredatesTheRule: true,
   },
   {
     // The mutant swapped the two ordering branches, so a client whose screen was
@@ -1624,6 +1858,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     redAssertion: 'refused as ${code}, expected ${expectedCode} (lag ${lag})',
     observed:
       'Error: offset 0 armed mask 5 day +0: refused as ABSENCE_ENDED_BEFORE_OFFER, expected ABSENCE_ENDED_AFTER_OFFER (lag 2)',
+    transcriptPredatesTheRule: true,
   },
   {
     // The mutant asked the authorisation question at the COMPLETION day where
@@ -1637,6 +1872,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     redAssertion: "expect(errorCodeOf(lateSale)).toBe('ABSENCE_ENDED_AFTER_OFFER')",
     observed:
       "AssertionError: expected 'ABSENCE_ENDED_BEFORE_OFFER' to be 'ABSENCE_ENDED_AFTER_OFFER'",
+    transcriptPredatesTheRule: true,
   },
   {
     // THE MUTANT IS THE SHIPPED DEFECT, PUT BACK. `streakIfTrainedToday` was two
@@ -1656,6 +1892,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     redAssertion: 'expect(streakIfTrainedToday(opening), `${opening.kind} on day ${i}`).toBe(',
     observed:
       'AssertionError: gap-covered-by-recovery-days on day 4: expected 1 to be 2 // Object.is equality',
+    transcriptPredatesTheRule: true,
   },
   {
     // The mutant turned the placeholder's one type-only import into a VALUE
@@ -1674,6 +1911,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'AssertionError: careerCalendarPlaceholder.ts may only "import type" — "import { type ' +
       "MeetDayPhaseId, meetIdFor } from '../game/meetDay'\" imports a value, which is how a " +
       'placeholder acquires a clock, a row or a meet history: expected false to be true',
+    transcriptPredatesTheRule: true,
   },
   {
     guarantee: 'settling-is-terminal',
@@ -1682,6 +1920,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     testFile: 'src/game/streak.test.ts',
     redAssertion: "expect(secondSettles, 'a settled run was settled again').toBe(0)",
     observed: 'AssertionError: a settled run was settled again: expected 500544 to be +0',
+    transcriptPredatesTheRule: true,
   },
   {
     guarantee: 'a-sale-never-follows-a-settle',
@@ -1690,6 +1929,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     testFile: 'src/game/streak.test.ts',
     redAssertion: 'sold on a day whose run had already ended',
     observed: 'Error: offset 16 armed mask 512 day +5: sold on a day whose run had already ended',
+    transcriptPredatesTheRule: true,
   },
   // -------------------------------------------------------------------------
   // ONE LIFTER. The three below were taken on the run that wired meet day to
@@ -1716,6 +1956,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     observed:
       'AssertionError: meet day and the daily session are holding two different servers,' +
       ' so they are two different lifters: expected false to be true',
+    transcriptPredatesTheRule: true,
   },
   {
     // THE SAME MUTANT, A SECOND TEST, and the pair is the point rather than a
@@ -1740,6 +1981,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     observed:
       'AssertionError: the session half cannot see the total the meet endpoint banked, so meet' +
       ' day and the daily loop are two lifters: expected null to be 490',
+    transcriptPredatesTheRule: true,
   },
   {
     // The mutant stopped the crossing reading the lifter's trained e1RM, so
@@ -1752,6 +1994,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     testFile: 'src/game/meetClient.test.ts',
     redAssertion: 'expect(a.value, lift).toBeGreaterThan(b.value);',
     observed: 'AssertionError: squat: expected 160 to be greater than 160',
+    transcriptPredatesTheRule: true,
   },
   {
     // The mutant handed `?meet=live` — the debug route to the PLAYED loop — the
@@ -1765,6 +2008,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     redAssertion: '(entry?.state !== undefined) === (entry?.serverPort !== undefined),',
     observed:
       'AssertionError: ?meet=live: state absent, serverPort present: expected false to be true',
+    transcriptPredatesTheRule: true,
   },
   {
     // The mutant swapped the `useRef` initialiser's resume for a fresh
@@ -1791,6 +2035,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     observed:
       'AssertionError: the mount does not resume the sitting it is already in — a re-mount' +
       ' inside one sitting would get a fresh slot: expected +0 to be 1',
+    transcriptPredatesTheRule: true,
   },
   {
     // The mutant taught the ONE screen that already reports a PR in the daily
@@ -1808,6 +2053,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       "AssertionError: if 'tier' has arrived here, a screen has learnt to report tier " +
       'qualification — delete this test and the paragraphs it points at in cutInGate.ts §5 and ' +
       "RecapView.tsx: expected 'e1rm, tier, total' to be 'e1rm, total'",
+    transcriptPredatesTheRule: true,
   },
   {
     // The mutant turned the bar load's merge window off, which is the state the
@@ -1831,6 +2077,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     observed:
       'AssertionError: 3 voices x 0ms against a 180ms cue: expected 0 to be greater than or ' +
       'equal to 180 — src/meet/meetSound.test.ts:542',
+    transcriptPredatesTheRule: true,
   },
   {
     // THE MUTANT IS A PLANTED VIOLATION RATHER THAN A BROKEN GUARD, because the
@@ -1874,6 +2121,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'AssertionError: declarations naming a covered day that COVERED_DAY_TOUCHING_FUNCTIONS ' +
       'does not list: shell/appServer.ts::awardCoveredDayForTenSessions: expected ' +
       "[ 'ACCELERANT_ARRIVAL', …(88) ] to deeply equal [ 'ACCELERANT_ARRIVAL', …(87) ]",
+    transcriptPredatesTheRule: true,
   },
   {
     // THE WITNESS FOR THIS ROUND'S ACTUAL FIX, and the one the other two could
@@ -1916,6 +2164,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'AssertionError: declarations naming a covered day that COVERED_DAY_TOUCHING_FUNCTIONS ' +
       'does not list: shell/appServer.ts::widenWindowForTenSessions: expected ' +
       "[ 'ACCELERANT_ARRIVAL', …(88) ] to deeply equal [ 'ACCELERANT_ARRIVAL', …(87) ]",
+    transcriptPredatesTheRule: true,
   },
   {
     // A FOURTH WITNESS, AND THE ONLY ONE WHOSE MUTANT IS THE GUARD ITSELF. The
@@ -1941,6 +2190,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'DayOpening, EMPIRE_FORBIDDEN_OUTPUTS, EntitlementTuning, GatingOfTender, ' +
       'LONGEST_REPAIRABLE_ABSENCE_DAYS, MAX_COVERED_DAYS_ONE_ABSENCE_MAY_DRAW, … 31 in all: ' +
       "expected [ 'ACCELERANT_ARRIVAL', …(56) ] to deeply equal [ 'ACCELERANT_ARRIVAL', …(87) ]",
+    transcriptPredatesTheRule: true,
   },
   {
     // A SECOND WITNESS FOR THE SAME TAG, IN THE OTHER DIRECTION, because the
@@ -1969,6 +2219,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'does not list: game/streakSweep.ts::purchaseArrivalOf | allowlist entries no declaration ' +
       "matches any more: purchaseArrivalOfX: expected [ 'ACCELERANT_ARRIVAL', …(87) ] to deeply " +
       "equal [ 'ACCELERANT_ARRIVAL', …(87) ]",
+    transcriptPredatesTheRule: true,
   },
   {
     // THE COUNTERFACTUAL'S OWN WITNESS: the pinned row really is measured off
@@ -1992,6 +2243,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     observed:
       'AssertionError: GDD §4.4 doomed-burn control row, currentStreak inversions: ' +
       'expected [ 290, 517, 472, 375 ] to deeply equal [ 561, 1051, 710, 673 ]',
+    transcriptPredatesTheRule: true,
   },
   {
     // A SECOND WITNESS FOR THE SAME TAG, ON THE OTHER ASSERTION, because the
@@ -2017,6 +2269,41 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     observed:
       'AssertionError: the sentence in streak.ts, streakEntitlement.ts and GDD §4.4 says 1051 at ' +
       '60 and 673 at 100: expected [ 561, 1051, 710, 674 ] to deeply equal [ 561, 1051, 710, 673 ]',
+    transcriptPredatesTheRule: true,
+  },
+  // -------------------------------------------------------------------------
+  // The transcript rule witnessing itself, and the mutant had to come from
+  // another file for the reason row (1) of this table already gives: `mutated`
+  // must resolve exactly once in `mutatedFile`, so quoting an anchor that lives
+  // in this file puts a second copy of it here and the row expires on itself.
+  //
+  // THE RUN THAT MOTIVATED THE RULE IS THEREFORE NOT THE ONE RECORDED. That run
+  // pasted the real collection-kill output — `Tests  no tests` and the
+  // `RangeError` from `asGymBucks` — into row (3) of the §4a block, in place of
+  // its true transcript, which is exactly the mistake an author reading the
+  // colour would make. The rule refused it and named the row. It is unanchorable
+  // here, so the two edits are held instead as `COLLECTION_KILL_MUTANTS`, whose
+  // anchors do live in another file and do expire.
+  //
+  // The recorded mutant reaches the other half of the same rule: the title is
+  // read out of the tree rather than transcribed, so renaming the test the
+  // transcripts name expires all four of its rows at once.
+  // -------------------------------------------------------------------------
+  {
+    guarantee: 'a-witness-transcript-names-its-test',
+    mutatedFile: 'src/empire/empireInvariant.test.ts',
+    mutated:
+      'compares the PHYSIO series by wall-clock day, and finds nothing moved ' +
+      '[no-accelerant-moves-a-physio-element]',
+    testFile: 'src/game/guaranteeTags.test.ts',
+    redAssertion:
+      "expect(faulty, 'witness transcripts that do not show the named test running').toEqual([]);",
+    observed:
+      'requires a witness transcript to name the test it says reddened\n' +
+      'AssertionError: witness transcripts that do not show the named test running: ' +
+      'expected [ …(4) ] to deeply equal [] — received all four physio rows, each ending ' +
+      "'— names-no-test', naming the mutants on `elapsedFor`, `axisBook`, `settledAxisLevel` " +
+      'and `accrueProduction`',
   },
 ];
 
@@ -2443,6 +2730,21 @@ function bodyOfDeclaredTest(id: string, titles: readonly TestTitle[]): string | 
   return bodyOfTestDeclaring(text, id);
 }
 
+/**
+ * The TITLE of that same test, which is what a transcript would have printed.
+ *
+ * TREE-WIDE RATHER THAN SCOPED TO THE WITNESS'S `testFile`, and that is
+ * measured rather than casual: the scoped version was written first, and
+ * deleting its file filter left the suite green. `resolves every tag in the
+ * tree to exactly one live test` pins the declaring count at one and the
+ * freshness loop pins the declaring test into `testFile`, so the filter had no
+ * state of the tree that could make it fire. A second copy of a guard that
+ * cannot fire is how two siblings in this repository drifted apart before.
+ */
+function titleDeclaring(id: string, titles: readonly TestTitle[]): string | null {
+  return titles.find((title) => title.title.includes(declarationOf(id)))?.title ?? null;
+}
+
 function testTitlesUnder(dir: string): TestTitle[] {
   const found: TestTitle[] = [];
   for (const file of sourceFilesUnder(dir)) {
@@ -2536,6 +2838,14 @@ describe('the guarantee-tag convention', () => {
     // worth having. Either anchor being edited away expires the witness.
     for (const witness of MUTATION_WITNESSES) {
       const where = `witness for ${witness.guarantee}`;
+      // WHERE THIS FLOOR STILL DOES WORK, since the transcript rule arrived
+      // after it and the two read the same field. On a GRADED row it is
+      // subsumed — that row's `observed` has to contain the declaring test's
+      // title, and no title in the tree is shorter than this. On a row carrying
+      // `transcriptPredatesTheRule` nothing else reads `observed` at all, and
+      // there are more of those than of the graded ones, so the floor is live
+      // rather than dominated. It stops being live when the debt list empties,
+      // and that is the moment to delete it.
       expect(witness.observed.length, `${where}: records no failure message`).toBeGreaterThan(
         MIN_ANCHOR_LENGTH,
       );
@@ -2545,9 +2855,12 @@ describe('the guarantee-tag convention', () => {
       );
       const mutatedPath = path.join(REPO_ROOT, witness.mutatedFile);
       expect(existsSync(mutatedPath), `${where}: ${witness.mutatedFile}`).toBe(true);
-      const mutatedText = readFileSync(mutatedPath, 'utf8');
+      // THROUGH `anchorOccurrences`, which `COLLECTION_KILL_MUTANTS` also goes
+      // through. Its records carry the same kind of anchor for the same reason,
+      // and CLAUDE.md's rule about a guard written for one arm is that the twin
+      // must read the sibling rather than copy it. One function, two callers.
       expect(
-        mutatedText.split(witness.mutated).length - 1,
+        anchorOccurrences(witness.mutatedFile, witness.mutated),
         `${where}: the mutated text does not occur exactly once in ${witness.mutatedFile}`,
       ).toBe(1);
 
@@ -2642,6 +2955,151 @@ describe('the guarantee-tag convention', () => {
     // since it existed, which is a minority, and says so.
     expect(witnessed.size + legacy.size).toBe(tags.size);
     expect(titles.length, 'the tree has tests to point at').toBeGreaterThan(100);
+  });
+
+  it('requires a witness transcript to name the test it says reddened [a-witness-transcript-names-its-test]', () => {
+    // The arm aimed at the filed gap: a mutant that stops the file collecting
+    // is red, exits 1, and runs nothing. Its output names no test, so a
+    // transcript that names none is not evidence the guarantee was measured.
+    // The long comment on `TranscriptFault` says what this reaches and what it
+    // leaves open; this is only the loop.
+    const titles = testTitlesUnder(path.join(REPO_ROOT, 'src'));
+    const faulty: string[] = [];
+    const excused: string[] = [];
+    let graded = 0;
+
+    for (const witness of MUTATION_WITNESSES) {
+      const title = titleDeclaring(witness.guarantee, titles);
+      expect(title, `witness for ${witness.guarantee}: no test declares it`).not.toBe(null);
+      const faults = transcriptFaults(witness.observed, title ?? '', witness.guarantee);
+      const key = `${witness.guarantee} :: ${(witness.mutated.split('\n')[0] ?? '').trim()}`;
+
+      if (witness.transcriptPredatesTheRule === true) {
+        // BOTH DIRECTIONS, the way `UNPINNED_PROSE_NUMBERS` is checked: an
+        // excuse that has stopped excusing anything is stale, and leaving it
+        // behind is how a debt list turns into decoration. Re-take the
+        // transcript and the flag has to come off in the same diff.
+        expect(
+          faults.length,
+          `${key}: excused as predating the rule, but its transcript satisfies it now`,
+        ).toBeGreaterThan(0);
+        excused.push(key);
+        continue;
+      }
+      graded += 1;
+      if (faults.length > 0) faulty.push(`${key} — ${faults.join(', ')}`);
+    }
+
+    expect(faulty, 'witness transcripts that do not show the named test running').toEqual([]);
+    // Counts, not bounds. An empty graded set satisfies the loop above.
+    expect(graded, 'witness rows held to the transcript rule').toBe(TRANSCRIPT_BAR.GRADED);
+    expect(excused.length, 'witness rows excused from it').toBe(TRANSCRIPT_BAR.PREDATING);
+  });
+
+  it('refuses the two measured collection kills, and each arm of the rule fires alone', () => {
+    // ANTI-VACUITY FOR THE RULE ABOVE. That loop is a set of `expect`s over rows
+    // that all satisfy it; if either arm were deleted it would stay green. So
+    // each arm is driven on its own, and the exact fault list is pinned rather
+    // than "at least one fault" — a bound here would let one arm die silently.
+    const titles = testTitlesUnder(path.join(REPO_ROOT, 'src'));
+    const titleFor = (id: string): string => {
+      const found = titleDeclaring(id, titles);
+      expect(found, `no test declares [${id}]`).not.toBe(null);
+      return found ?? '';
+    };
+
+    // 1. THE REAL RECORDS. Their anchors resolve through the same
+    //    `anchorOccurrences` the witness loop uses, so a record whose subject
+    //    was edited away expires exactly as a witness does.
+    const refusedBy: string[] = [];
+    for (const kill of COLLECTION_KILL_MUTANTS) {
+      expect(
+        anchorOccurrences(kill.mutatedFile, kill.mutated),
+        `collection kill in ${kill.mutatedFile}: its anchor does not resolve exactly once`,
+      ).toBe(1);
+      refusedBy.push(
+        transcriptFaults(
+          kill.observed,
+          titleFor(kill.wouldHaveWitnessed),
+          kill.wouldHaveWitnessed,
+        ).join(','),
+      );
+    }
+    // Both are refused by `names-no-test` ALONE — they carry a `RangeError:`
+    // line, so the failure-line arm is satisfied and says nothing. That is the
+    // measurement behind "neither arm subsumes the other": delete the first arm
+    // and both of these become admissible witnesses.
+    //
+    // AND IT IS THE COUNT PIN TOO. `refusedBy` gets one entry per record, so
+    // this equality fails on a third record and on an emptied list alike. A
+    // separate `COLLECTION_KILL_MUTANTS.length` assertion was written here
+    // first and deleted: it is the same fact one step out, and no state of the
+    // list makes it fire while this one passes. That is the shape
+    // `tools/test-budgets.mjs` had to delete a check for.
+    expect(refusedBy, 'how each measured collection kill is refused').toEqual([
+      'names-no-test',
+      'names-no-test',
+    ]);
+
+    // 2. EACH ARM ON ITS OWN, on planted transcripts built to trip one and not
+    //    the other. Planted rather than real for the same reason the freshness
+    //    check plants its witnesses: a real transcript that trips exactly one
+    //    arm is not something the tree happens to contain.
+    const id = 'no-accelerant-moves-a-physio-element';
+    const title = titleFor(id);
+    const planted: Array<{ what: string; observed: string; faults: TranscriptFault[] }> = [
+      {
+        what: 'the shape a real catch has',
+        observed: `${title}\nAssertionError: expected 188 to be +0`,
+        faults: [],
+      },
+      {
+        // The test ran, and the transcript says nothing about how it failed —
+        // which is also what a PASSING run's output looks like.
+        what: 'names the test, records no failure',
+        observed: title,
+        faults: ['no-failure-line'],
+      },
+      {
+        // An assertion really failed, in some other test. The tag's own test
+        // may have passed, or never run at all; this transcript cannot say.
+        what: "another test's failure",
+        observed: 'somebody else\nAssertionError: expected 1 to be 2',
+        faults: ['names-no-test'],
+      },
+      { what: 'neither', observed: 'it went red', faults: ['names-no-test', 'no-failure-line'] },
+    ];
+    // ONE ASSERTION PER PLANTED CASE, and that is about the failure MESSAGE
+    // rather than about coverage. Mapping all four into one array and comparing
+    // the arrays reddens correctly and prints `expected [ …(4) ] to deeply
+    // equal [ …(4) ]`, which names neither the case that moved nor the arm that
+    // moved it. CLAUDE.md's note that a check which bites but fails uselessly
+    // is half a check, applied to a check written in this same round.
+    for (const one of planted) {
+      expect(
+        transcriptFaults(one.observed, title, id),
+        `planted transcript "${one.what}" — the faults the rule finds in it`,
+      ).toEqual(one.faults);
+    }
+    // The loop is a green no-op on an empty list, and dropping a case is not
+    // caught by the fault-coverage check below: two of these four already
+    // produce both faults between them.
+    expect(planted.length, 'planted transcripts driven').toBe(4);
+    // 3. AND EVERY DECLARED FAULT WAS REACHED, against the runtime list the
+    //    type is derived from rather than against the four lines above.
+    //
+    //    Written the other way first and it was strictly dominated: comparing
+    //    the produced set with a literal pair restates what the four exact
+    //    lists already say, so no state of `transcriptFaults` reddens it while
+    //    they pass. Read from `TRANSCRIPT_FAULTS` it is independent — a third
+    //    arm added to the rule and to that list, with no planted transcript
+    //    reaching it, moves this and leaves the four alone.
+    const produced = new Set(
+      planted.flatMap((one) => transcriptFaults(one.observed, title, id)),
+    );
+    expect([...produced].sort(), 'declared faults this drive never reached').toEqual(
+      [...TRANSCRIPT_FAULTS].sort(),
+    );
   });
 
   it("counts §4a's kill-list bullets against the mutants witnessed for it", () => {
