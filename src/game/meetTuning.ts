@@ -1251,6 +1251,20 @@ export const MEET_SOUND = Object.freeze({
    * extra copies pile up or cut each other, which is not the same question.
    * NOBODY HAS HEARD IT (GDD §12.1) — this is a resource floor, not a mix
    * decision.
+   *
+   * READ THIS BEFORE ADDING A CUE THAT CAN SOUND WITH ANOTHER. The browser run
+   * measures the delivered depth at **exactly 3 against a pool of 3** — this
+   * number was sized off measured delivery, and delivery has caught up with it.
+   * There is no headroom. One more simultaneous cue and the oldest voice starts
+   * being cut, which is a change to what a player hears that no unit test can
+   * hear.
+   *
+   * It is guarded rather than left as a note: `tools/verify-meet-sound.mjs`
+   * asserts the measured depth still fits this pool, and says "AT CAPACITY, no
+   * headroom left" on the equality. That guard exists because the depth had been
+   * PRINTED and never COMPARED — a run measuring 4 against a pool of 3 would
+   * have displayed the mismatch and passed, the same shape as a stale basis
+   * carried into a row and never checked in `tools/test-budgets.mjs`.
    */
   VOICES_PER_CUE: 3,
   /**

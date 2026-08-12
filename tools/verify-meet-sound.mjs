@@ -653,6 +653,38 @@ check(
   'NON-VACUITY: some cue was sounding over itself, so the pool was actually asked for',
   `${stacking.length} pair(s) stacked; deepest ${deepest} against a pool of ${voicesPerCue}`,
 );
+// THE DEPTH WAS PRINTED AND NEVER COMPARED, WHICH IS HOW A NUMBER GOES STALE
+// WITHOUT ANYTHING SAYING SO. The line above reports `deepest` inside a check
+// that only asserts stacking HAPPENED, so a run measuring 4 against a pool of 3
+// printed the mismatch and passed. That is the same shape as a basis read,
+// carried into a row, displayed, and never compared — see
+// `tools/test-budgets.mjs`, where it hid a 3.5x understatement.
+//
+// The measurement this is guarding: the debug arm reaches EXACTLY 3 against a
+// pool of 3. `MEET_SOUND.VOICES_PER_CUE` was sized off measured delivery rather
+// than off the schedule, and the delivered depth has now caught up with it, so
+// there is no headroom left. One more simultaneous cue and the oldest voice
+// starts being cut.
+//
+// Failing is not a claim that cutting is a crash — `meetSound.ts` says the pool
+// degrades the right way and drops the oldest voice, which is what you would
+// choose. It is a claim that THE SIZING DECISION IS OUT OF DATE: the number was
+// chosen to cover the depth this run measures, and if the depth has grown past
+// it, whoever grew it should re-take that decision rather than inherit it
+// silently. Raising the pool to cover a pile-up changes nothing a player hears
+// (see the constant's own header); shortening the cue below twice its stagger
+// is the other lever.
+check(
+  deepest <= voicesPerCue,
+  'the measured depth still fits the pool MEET_SOUND.VOICES_PER_CUE was sized for',
+  deepest <= voicesPerCue
+    ? `deepest ${deepest} against a pool of ${voicesPerCue}` +
+      (deepest === voicesPerCue ? ' — AT CAPACITY, no headroom left' : '')
+    : `deepest ${deepest} EXCEEDS the pool of ${voicesPerCue}: a cue added since ` +
+      'that number was sized now piles up and the oldest voice is being cut. ' +
+      'Re-take the sizing decision in src/game/meetTuning.ts rather than raising ' +
+      'the pool reflexively — a pool is not a mix.',
+);
 
 // ###########################################################################
 // ###  2. THE PLAYED ARM — a meet opened with a mouse, listened to           #
