@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-cutin-cap-mjs-2026-08-12T22-31-55-998Z-4693",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-cutin-cap.mjs",
+    "--url",
+    "http://localhost:8082"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-12T22:31:55.998Z",
+  "startedAtMs": 1786573915998,
+  "cwd": "/home/user/wt-printed",
+  "commit": "e75501bbd503a4004169034344f893a236aefc35",
+  "branch": "claude/printed-not-compared",
+  "dirty": 1,
+  "dirtyPaths": [
+    ".gauntlet/shots/meet/sound.json"
+  ],
+  "runner": {
+    "pid": 4693,
+    "startTick": "614297",
+    "cmdline": "node tools/watchdog.mjs --budget 900 -- node tools/verify-cutin-cap.mjs --url http://localhost:8082",
+    "bootId": "200f208e-b127-42d1-8e53-2232ef3ab483",
+    "bootEpochSeconds": 1786567773,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-12T22:31:56.020Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
