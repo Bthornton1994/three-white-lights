@@ -387,7 +387,7 @@
  *     hardcodes that exactly one row is `scope: 'source'`, so a second one
  *     reddens it.
  *   - `isolated + notIsolated.length === BANNED.length`, a partition check.
- *   - `BANNED.length === 45` and `ALLOWED.length === 35`, which the file
+ *   - `BANNED.length === 46` and `ALLOWED.length === 35`, which the file
  *     already said are facts about itself rather than evidence about
  *     `src/career/`. They are pinned so a shortened list is a signed edit.
  *
@@ -2805,6 +2805,24 @@ const BANNED: readonly BannedPattern[] = [
       'the witness first recorded for this row used `(a as unknown as number) >= b`, which three ' +
       'rows match — so deleting this row left the mutant red and the witness proved nothing.',
   },
+  {
+    id: 'default-order',
+    scope: 'code',
+    pattern: /:\s*TotalOrder\s*<[^>]*>\s*=/,
+    tripwires: [
+      'order: TotalOrder<Total> = (left, right) => 0,',
+      'order: TotalOrder<NumericTotal> = () => 0,',
+    ],
+    isolating: 'order: TotalOrder<Total> = (left, right) => 0,',
+    why:
+      'THE BRANCH IMMEDIATELY BELOW `default-gate`, which is where this file has been caught ' +
+      "before. `flight.ts`'s header says \"There is deliberately no default order\" and gives the " +
+      'argument that a defaulted `(a, b) => a - b` is the locally-summed comparison the seam ' +
+      'refuses — and `default-gate` is keyed to `CareerQualifyingGate`, so it says nothing at all ' +
+      'about a comparator. Placing is strictly more power over a total than the gate is: it ranks ' +
+      'two of them against each other. The row was added because the sentence was written, which ' +
+      'is the order CLAUDE.md asks for rather than the order it usually happens in.',
+  },
 ];
 
 /**
@@ -3072,11 +3090,11 @@ describe('no shipped module can strip an opaque total', () => {
     // surely as a shortened ban list does.
     expect(scanned).toBe(5);
     expect(checks).toBe(SHIPPED.length * BANNED.length);
-    expect(checks).toBe(225);
+    expect(checks).toBe(230);
     // `BANNED.length` on its own is a fact about THIS FILE and no state of
     // `src/career/` can move it — it is pinned because a shortened list should
     // be a signed edit, not because it is evidence about the subject.
-    expect(BANNED.length).toBe(45);
+    expect(BANNED.length).toBe(46);
     expect(new Set(BANNED.map((banned) => banned.id)).size).toBe(BANNED.length);
     expect(BANNED.filter((banned) => banned.scope === 'source').length).toBe(1);
   });
@@ -3098,8 +3116,8 @@ describe('no shipped module can strip an opaque total', () => {
       }
     }
     // Counts, not bounds, on the tripwire corpus itself.
-    expect(live).toBe(108);
-    expect(new Set(BANNED.flatMap((banned) => banned.tripwires)).size).toBe(107);
+    expect(live).toBe(110);
+    expect(new Set(BANNED.flatMap((banned) => banned.tripwires)).size).toBe(109);
     // Every row says why it is here, so a reader deleting one knows what they
     // are deleting.
     expect(BANNED.filter((banned) => banned.why.length > 0).length).toBe(BANNED.length);
@@ -3133,7 +3151,7 @@ describe('no shipped module can strip an opaque total', () => {
     // One row has no isolating string and says so in its `why`: `unary-plus` is
     // subsumed by `arith-right` on every shape it catches.
     expect(notIsolated).toEqual(['unary-plus']);
-    expect(isolated).toBe(44);
+    expect(isolated).toBe(45);
     expect(isolated + notIsolated.length).toBe(BANNED.length);
   });
 
@@ -3519,8 +3537,31 @@ describe('placing reads a total only through the injected order', () => {
     // apart.
     //
     // Reddens on: any route from a total to a number that decides an order.
-    // MEASURED rather than argued — see this piece's build report for the
-    // mutant and the verbatim failure.
+    //
+    // MUTATION WITNESS. Mutant, replacing `separate`'s first two lines in
+    // `flight.ts` — round three's own bypass shape, pointed at a comparator
+    // instead of at a gate, and it never calls the injected order at all:
+    //
+    //     const pair = [left.total, right.total];
+    //     const sorted = [...pair].sort();
+    //     const ranked = sorted[0] === sorted[1] ? 0 : sorted[0] === left.total ? -1 : 1;
+    //     if (ranked !== 0) return { by: 'total', ranking: -ranked };
+    //     void order;
+    //
+    // `npx tsc --noEmit` stays exit 0 under it. Reddened here:
+    // `expect(faults.slice(0, 3).join('\n')).toBe('')`, on
+    // `0kg/all-distinct/reverse`.
+    //
+    // WHAT THE WITNESS DOES NOT SHOW, said rather than implied: this mutant is
+    // not isolated to this test. The domain sweep above catches it too (a
+    // comparator-less sort is a STRING sort, so it disagrees with an ascending
+    // numeric order at 8.5 kg), and so does `careerOpaqueTotal.test.ts`'s
+    // proxy. An attempt was made to build a magnitude-FAITHFUL ordering bypass
+    // — one the domain sweep could not see, which is the case this probe exists
+    // for — and none was found: ordering two opaque values needs a coercion,
+    // every coercion this file knows of is a property read, and the proxy traps
+    // those. That is an argument from failure to find rather than a proof, and
+    // it is the honest strength of this witness.
     const faults: string[] = [];
     let checked = 0;
     let moved = 0;
