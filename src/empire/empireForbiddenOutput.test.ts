@@ -73,13 +73,34 @@
  *   containment for every value outside the declared diagnostic channel.
  *
  *   Its limit: it samples inputs. A branch no point of the domain reaches
- *   produces nothing to scan. That is why the domain is derived from the
- *   subject's own branch points (`BRANCH_POINTS`, read out of `EMPIRE_TUNING`)
- *   rather than from what looks extreme — CLAUDE.md's "a domain that samples
- *   only extremes is empty where it matters", which was earned on a probe that
+ *   produces nothing to scan. So every threshold is filed under its UNIT in
+ *   `UNIT_THRESHOLDS`, read out of `EMPIRE_TUNING`, and every domain in
+ *   `NUMERIC_DOMAINS` declares the units it is a domain OF and is asserted to
+ *   straddle every threshold of them — CLAUDE.md's "a domain that samples only
+ *   extremes is empty where it matters", which was earned on a probe that
  *   sampled `0` and `1_000_000` while every threshold sat between 260 and 680.
  *   The reproduced defect has this property exactly: `Math.floor(checkIns / 12)`
  *   is `0` for every `checkIns` below twelve.
+ *
+ *   THAT SENTENCE USED TO BE TRUE OF ONE DOMAIN AND FALSE OF ITS NEIGHBOUR, AND
+ *   THE SIXTH BYPASS RODE THE DIFFERENCE. There was a ten-point
+ *   `SMALL_NUMBER_DOMAIN` derived from the OFFLINE_EARNINGS *hour* caps, handed
+ *   to eight axes that are not hours, and the assertion that checks straddling
+ *   looped `NUMBER_DOMAIN` and pinned its neighbour by LENGTH alone. A
+ *   `recordFriendVisit` returning a forbidden name on exactly
+ *   `RIVAL_COMPARISON_PERIOD_DAYS` was invisible: `tsc` exit 0, 484 tests green.
+ *   The assertion loops the registry now, and `DOMAIN_CENSUS.DOMAINS` and
+ *   `CONTAINMENT_CHECKS` are both pinned, so a seventh domain cannot be
+ *   unasserted and a domain that obliges itself to nothing cannot pass.
+ *
+ *   Its second limit, and the one the domain fix alone did not close: a domain
+ *   decides which NUMBERS an axis is driven at and says nothing about whether
+ *   the subject's own guards let the interesting branch run. Every gym the
+ *   social loop offered `recordFriendVisit` was refused on every day, so its
+ *   VISITED arm — the arm the bypass plants its name in — was produced zero
+ *   times at every point of every domain this file has ever had. 'produced
+ *   every arm of every discriminated return' compares the arms instrument A
+ *   declares against the arms instrument B reached, in both directions.
  *
  *   Its second limit: it is a value check, so it has a decode horizon. A
  *   function returning an INDEX that a later wiring piece uses to select a
@@ -130,6 +151,26 @@
  * translation of the word are outside every fold here and are not caught. Each
  * fold that IS applied carries its own tripwire in `fold survives its own
  * tripwire`, so the fold list is measured rather than asserted.
+ *
+ * AN `Error.stack` DISGUISED AS FRAMES. The walker skips the `stack` key
+ * because a real stack carries this checkout's absolute paths, so a census over
+ * it would be a census over the machine. That used to be a limit with no
+ * catcher at all — `Object.defineProperty(err, 'stack', { value: <read out of
+ * the ban list> })` in a shipped refusal path moved no count. The stack is now
+ * read with its `at` frames stripped and what remains is checked;
+ * `DRIVE_CENSUS.STACKS` is non-zero so the branch is pinned as live. What is
+ * still not caught is a planted value whose EVERY line matches a frame pattern,
+ * and that residual is planted and asserted in 'reads a redefined Error.stack'
+ * rather than described.
+ *
+ * AN AXIS LITERAL PASSED TO `.map()`. Two checks cover where a domain may be
+ * declared — 'defines every numeric domain inside the registry' scans for a
+ * module-level `readonly number[]`, and 'declares every literal for-of axis'
+ * scans for `for (const x of [ … ])`. Neither sees an array literal handed
+ * straight to `.map()`, which is how `axisReadings` writes its axes. What
+ * covers those is `AXIS_CENSUS`, which pins each axis's POINT COUNT as well as
+ * its disagreements, so a truncated axis moves a number. That is a weaker
+ * guarantee than the two scans and it is stated rather than implied.
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
@@ -184,6 +225,26 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
 /** This file, read as text by the two checks that scan for a domain the registry never saw. */
 const THIS_FILE = fileURLToPath(import.meta.url);
+
+/**
+ * This file's source with every comment removed.
+ *
+ * The two scans below look for code shapes, and this file describes those
+ * shapes in prose. Without the strip, writing down what the scan looks for
+ * makes the scan find it — which happened twice while this was being written
+ * and is the reason the strip exists rather than a rephrasing. A rephrasing
+ * would have made the sentence agree with the scan by making it harder to
+ * read, which is the evasion CLAUDE.md records twice.
+ *
+ * Its limit: it also strips a `//` inside a string literal. No scan here reads
+ * a string literal's contents, so that costs nothing today, and it is named so
+ * that a scan which does can see the price.
+ */
+function sourceWithoutComments(): string {
+  return readFileSync(THIS_FILE, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^[ \t]*\/\/.*$/gm, '');
+}
 
 // ---------------------------------------------------------------------------
 // The banned vocabulary, and the two exports that legitimately are it
@@ -813,7 +874,7 @@ describe('the domains are derived from the subject and are not empty', () => {
     // see a domain that was never put in the registry, so this reads the file's
     // own source and asserts that every module-level `readonly number[]` is an
     // alias of a registry entry — no literal, no ad-hoc `numeric([...])`.
-    const source = readFileSync(THIS_FILE, 'utf8');
+    const source = sourceWithoutComments();
     const declarations = [...source.matchAll(/^const (\w+): readonly number\[\] = (.+)$/gm)];
     expect(declarations.length).toBe(DOMAIN_CENSUS.ALIASES);
     const aliased: string[] = [];
@@ -833,7 +894,7 @@ describe('the domains are derived from the subject and are not empty', () => {
     // written as an array literal at the call site, where no `readonly
     // number[]` declaration exists to scan for — and two axes in this file
     // were, one of them a threshold axis sampled at its two extremes.
-    const source = readFileSync(THIS_FILE, 'utf8');
+    const source = sourceWithoutComments();
     const found = distinct([...source.matchAll(/for \(const (\w+) of \[/g)].map((hit) => hit[1] ?? ''));
     expect(found).toEqual([...LITERAL_AXES.map(([name]) => name)].sort());
     expect(LITERAL_AXES.length).toBe(DOMAIN_CENSUS.LITERAL_AXES);
@@ -1565,9 +1626,15 @@ const AXIS_PROBE_DAYS = EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS * 4 + 1;
  * assertion — but an axis written as a bare array literal at its call site was
  * never in the registry to be discovered. Two of the eight axes in this file
  * were exactly that, and one of them (`[0, SPACE_LEVEL_MAX]`) was a threshold
- * axis sampled at its two extremes. It is `LEVEL_DOMAIN` now; these six are
- * what is left, and 'every literal for-of axis is declared' pins the set in
- * both directions so a seventh cannot arrive quietly.
+ * axis sampled at its two extremes. It is `LEVEL_DOMAIN` now; these seven are
+ * what is left, and the check below pins the set in both directions so an
+ * eighth cannot arrive quietly.
+ *
+ * Its own limit, and the branch immediately below it: the scan matches
+ * `for (const x of [ … ])` and nothing else, so an array literal handed to
+ * `.map()` is invisible — which is exactly how `axisReadings` writes its axes.
+ * The named catcher for those is `AXIS_CENSUS`, which pins every axis's point
+ * count beside its disagreement count.
  */
 const LITERAL_AXES: readonly (readonly [string, string])[] = Object.freeze([
   ['accelerant', 'null and one purchasable accelerant: the presence of a plan, not a magnitude.'],
