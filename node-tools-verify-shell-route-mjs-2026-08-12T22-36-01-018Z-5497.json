@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-shell-route-mjs-2026-08-12T22-36-01-018Z-5497",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-shell-route.mjs",
+    "--url",
+    "http://localhost:8082"
+  ],
+  "budgetSeconds": 1500,
+  "startedAtIso": "2026-08-12T22:36:01.018Z",
+  "startedAtMs": 1786574161018,
+  "cwd": "/home/user/wt-printed",
+  "commit": "e75501bbd503a4004169034344f893a236aefc35",
+  "branch": "claude/printed-not-compared",
+  "dirty": 3,
+  "dirtyPaths": [
+    ".gauntlet/shots/cutin-cap/cap.json",
+    ".gauntlet/shots/cutin-cap/cut-in-leg-1.png",
+    ".gauntlet/shots/meet/sound.json"
+  ],
+  "runner": {
+    "pid": 5497,
+    "startTick": "638799",
+    "cmdline": "node tools/watchdog.mjs --budget 1500 -- node tools/verify-shell-route.mjs --url http://localhost:8082",
+    "bootId": "200f208e-b127-42d1-8e53-2232ef3ab483",
+    "bootEpochSeconds": 1786567773,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-12T22:36:01.040Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
