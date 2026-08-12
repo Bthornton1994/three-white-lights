@@ -1638,15 +1638,55 @@ physiology.
   The mechanism as built protects against the failure that has never happened
   and not against the one that happens constantly.
 
-  **Direction for whoever picks this up: sync verification state to origin
-  PERIODICALLY DURING a long run, not only at completion.** Origin is the only
-  thing that has ever survived a rewind — it has now been the sole surviving copy
-  ten times — so a marker that reaches origin while the run is still in flight is
-  the only form of this record that can outlive the tree. Completion-time sync is
-  not sufficient and repeats the original error one level out: a run that dies
-  mid-flight is exactly the run that never reaches its completion step, which is
-  the same reason the marker is written *before* the command spawns rather than
-  after it returns.
+  **BUILT. `--budget` now pushes the record to origin DURING the run**, on the
+  direction the ruling gave: origin is the only thing that has ever survived a
+  rewind — sole surviving copy ten times — and completion-time sync would repeat
+  the original error one level out, because a run that dies mid-flight never
+  reaches its completion step. One push immediately after the spawn, then every
+  `VERIFY_SYNC.INTERVAL_SECONDS`, then one at the end.
+
+  `refs/heads/verify-markers/<host>`, one ref per host, whose tree holds one
+  record per run. **Not a preference — measured**: `refs/verify/*`,
+  `refs/notes/*` and `refs/tags/*` are all HTTP 403 from this environment's
+  token, and every delete is 403 in every namespace. Refs therefore cannot be
+  pruned and tree entries can, which is why retention lives one level in.
+  `--markers` reads that namespace by default rather than behind a flag, because
+  after a rewind is exactly when nobody remembers a flag.
+
+  **Proven against the incident rather than described**: a wrapped run was
+  started, its record reached origin two seconds later while the wrapper was
+  still alive, the wrapper was SIGKILLed, the worktree was `git reset --hard` to
+  the previous commit and `.gauntlet/verify/` deleted. At the old commit the old
+  tool printed `0 verification marker(s)` and exited 0 — the silent absence. After
+  the documented recovery (`git fetch` + `git reset --hard origin/<branch>`) the
+  same command reported `INTERRUPTED_PROCESS_GONE … npx vitest run
+  src/game/streak.test.ts`, named the commit that run was verifying, and exited 1.
+
+  **What it still cannot cover, as limits rather than caveats:**
+
+  - **The first push is not instant.** The record is on local disk before the
+    spawn and on origin one round trip later. A tree death inside that window
+    still leaves nothing. The window is one push rather than one run, and no
+    cadence makes it zero.
+  - **A run whose pushes all fail is local-only.** Reported loudly at the end of
+    the run and recorded in `sync.errors`; never allowed to fail the verification
+    it is recording.
+  - **An unreachable origin is a NAMED SKIPPED check and does not move the exit
+    code.** Every other "I cannot tell" in that module is a finding. This one is
+    not, because the alternative is every offline run of the whole suite going
+    red, which is the crying-wolf failure recorded here for three instruments.
+  - **The recovery needs the tool back first.** After a rewind `watchdog.mjs`
+    gives `MODULE_NOT_FOUND` until the tree is reset to origin. The record is
+    safe throughout; reading it is the second step of a recovery, not the first.
+  - **A verification nobody wrapped still writes nothing.** Unchanged.
+
+  **AND ONE COST THAT LANDS ON THE OTHER SESSIONS, WHICH THEY DID NOT AGREE TO.**
+  The suite-level check now reads origin as well as this tree, so an interrupted
+  wrapped run pushed from **this host** reddens the full suite for *every* session
+  on it until somebody clears it. That is the bite the ruling below asks for and
+  it is also friction on people who did not choose it. Another host's run is
+  reported and never counted, so the blast radius is one host rather than the
+  repository. Flag this to a human rather than narrowing it unilaterally.
 
   **THE SUITE-LEVEL CHECK STAYS, BITING ON EVERY RUN UNTIL CLEARED. Ruled by a
   human**, on the explicit question of whether that much friction is
