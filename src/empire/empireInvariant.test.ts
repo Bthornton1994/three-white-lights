@@ -670,6 +670,45 @@ describe('the composed run is a run at all', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// WHAT "REDDENING EDIT" HAD TO START MEANING, and it is written once here
+// because both series checks below carried the same two defects, one each.
+//
+// The two lists used to name seven edits between them. Four hold. Of the other
+// three, two are edits this file is BLIND to and one reddens the file without
+// running a test, and the two arms each carried one of each — so checking one
+// arm and copying the fix across would have left the other exactly as wrong.
+// Every entry in both lists has now been applied to real source and its result
+// read out of a vitest JSON report, which is the only reading that separates
+// these cases:
+//
+//   1. `skipExpansion` moving `settledCompletion` as well as `idleCompletion`
+//      leaves every check in this file green. It was named by the
+//      PHYSIO list as a reddening edit while §4a of `empireInvariant.ts` named
+//      it, correctly, as one of the two mutants this file is blind to and
+//      `expansion.test.ts` kills. Two sentences in one directory said opposite
+//      things about the same edit for a wave; the module header was the right
+//      one.
+//   2. `recruitmentRefusals` counting slots off `state.axes` instead of
+//      `state.settledAxes` is the same shape in the TRAINING IQ list, and §4a
+//      names it too: green here, killed in `recruitment.test.ts`.
+//   3. `recruitmentRefusals` reading `state.gymBucks` for the recruit gate, and
+//      `expansionVerdict` reading `context.gymBucks` for a wall-clock-funded
+//      axis, both put the gate on one purse while the debit stays on the other.
+//      The balance goes negative, `asGymBucks` throws while this file's grid is
+//      being built at module scope, and vitest reports `Test Files 1 failed`
+//      with `Tests  no tests` — the report carries no assertion results at
+//      all. Reading the colour records that as a catch. It is not one: no
+//      check here ever ran, and what killed
+//      it was a branded constructor in `empireCore.ts`. The pair `gate AND
+//      debit moved together` is the coherent version, it does reach an
+//      assertion, and that is the version `MUTATION_WITNESSES` records.
+//
+// So a list entry here means: applied, collected, the named test executed, and
+// an assertion inside it failed. `src/game/guaranteeTags.test.ts` enforces the
+// same distinction on the witness transcripts, and holds these two
+// collection-kill edits as the worked examples of the shape it refuses.
+// ---------------------------------------------------------------------------
 describe('no purchasable accelerant moves the progression ledger, element by element', () => {
   it('compares the progression ledger position by position and finds nothing moved', () => {
     // THE INVARIANT. Not a sum, not a bound: day, output and amount, at every
@@ -722,9 +761,20 @@ describe('no purchasable accelerant moves the progression ledger, element by ele
     // `physioDaysSavedAt` readings by wall-clock day, byte-identical to the
     // list with no accelerant applied, element-wise.
     //
-    // Reddening edits, each measured: `skipExpansion` moving
-    // `settledCompletion`; `expansionVerdict` reading `context.gymBucks` for a
-    // wall-clock-funded axis; `settledAxisLevel` reading `idleCompletion`.
+    // Reddening edits — each applied to real source, and each read out of a
+    // vitest report that shows THIS test executing and the `moved` assertion
+    // below failing. See the block above the first check in this group for the
+    // two entries this list used to carry that do neither, and for what the
+    // word has to mean now:
+    //
+    //   - `settledAxisLevel` reading `idleCompletion`;
+    //   - `axisBook` returning `ACCELERATED_BOOK` unconditionally, so a
+    //     wall-clock-funded axis is gated and debited on the accelerated book;
+    //   - `accrueProduction` banking the wall-clock purse over the idle gap.
+    //
+    // Each one's verbatim failure message is a row of `MUTATION_WITNESSES` in
+    // `src/game/guaranteeTags.test.ts` under this test's tag, so the readings
+    // expire there when their anchors move rather than ageing quietly here.
     const totals = seriesTotals(PAIRS, 'physio-days-saved');
     expect(totals.lists).toBe(72);
     expect(totals.elements).toBe(2616);
@@ -742,10 +792,23 @@ describe('no purchasable accelerant moves the progression ledger, element by ele
     // over both series together can hide one series moving while the other
     // does not exist.
     //
-    // Reddening edits, each measured: `recruitmentSchedule` stamping
-    // `settlesAt` from `clock.accelerated`; `recruitmentRefusals` reading
-    // `state.gymBucks` or `state.axes`; `reputationRates` reading
-    // `elapsedFor(at, 'reputation')` — which is chain B, one module over.
+    // Reddening edits — same bar as the physio list above, and taken the same
+    // way: applied, collected, this test executed, the `moved` assertion below
+    // failed. The two entries this list used to carry that meet neither half
+    // are in the block above the first check in this group.
+    //
+    //   - `recruitmentSchedule` stamping `settlesAt` from `clock.accelerated`;
+    //   - `reputationRates` reading `elapsedFor(at, 'reputation')` — chain B at
+    //     its one call site, one module over;
+    //   - `gateElapsedFor` reverted to `elapsedFor(clock, output)`, which is
+    //     the same chain at its source and reaches every gate rather than one;
+    //   - `'roster-slot'` dropped from `GATING_OUTPUTS`, so a slot is read on
+    //     the clock it is paid into again.
+    //
+    // All four leave the PHYSIO check beside this one green, and
+    // `settledAxisLevel` reading `idleCompletion` does the reverse — which is
+    // why these are two tests carrying two tags and not one check carrying
+    // both. A zero over the two series together would hide either direction.
     const totals = seriesTotals(PAIRS, 'training-iq');
     expect(totals.lists).toBe(72);
     expect(totals.elements).toBe(2616);
