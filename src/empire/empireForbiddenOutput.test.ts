@@ -990,3 +990,454 @@ function deepScan(root: unknown, label: string): ScanResult {
     trace: Object.freeze(trace),
   };
 }
+
+// ---------------------------------------------------------------------------
+// The subject, imported whole
+// ---------------------------------------------------------------------------
+
+import * as core from './empireCore';
+import * as invariant from './empireInvariant';
+import * as tuningModule from './empireTuning';
+import * as engagementModule from './engagement';
+import * as expansionModule from './expansion';
+import * as npcModule from './npc';
+import * as productionModule from './production';
+import * as recruitmentModule from './recruitment';
+import * as reputationModule from './reputation';
+import * as socialModule from './social';
+
+import { EMPIRE_TUNING } from './empireTuning';
+import type {
+  AccelerableOutput,
+  AppliedAccelerant,
+  EmpireAccelerant,
+  EmpireClock,
+  EmpireOutput,
+  EmpireState,
+  EquipmentTier,
+  GymAxes,
+  NpcLifter,
+  NpcTier,
+  StaffRole,
+  UnacceleratedSeconds,
+  WallClockBooks,
+  WallClockFundedOutput,
+} from './empireCore';
+import type { EmpirePolicy, EmpireDayEntry, EmpireGym, SocialInputs } from './empireInvariant';
+import type { ExpansionAxis, ExpansionBuild, ExpansionContext } from './expansion';
+import type { EngagementHistory } from './engagement';
+import type {
+  CalendarDay,
+  Encouragement,
+  GymSnapshot,
+  SocialCalendarContext,
+  SocialContext,
+} from './social';
+import type { RosterRateSource } from './production';
+
+/** The ten shipped namespaces, keyed by the file name the census reports. */
+const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown>>>> = Object.freeze({
+  'empireCore.ts': core as unknown as Readonly<Record<string, unknown>>,
+  'empireInvariant.ts': invariant as unknown as Readonly<Record<string, unknown>>,
+  'empireTuning.ts': tuningModule as unknown as Readonly<Record<string, unknown>>,
+  'engagement.ts': engagementModule as unknown as Readonly<Record<string, unknown>>,
+  'expansion.ts': expansionModule as unknown as Readonly<Record<string, unknown>>,
+  'npc.ts': npcModule as unknown as Readonly<Record<string, unknown>>,
+  'production.ts': productionModule as unknown as Readonly<Record<string, unknown>>,
+  'recruitment.ts': recruitmentModule as unknown as Readonly<Record<string, unknown>>,
+  'reputation.ts': reputationModule as unknown as Readonly<Record<string, unknown>>,
+  'social.ts': socialModule as unknown as Readonly<Record<string, unknown>>,
+});
+
+// ---------------------------------------------------------------------------
+// The domain, derived from the subject's own branch points
+// ---------------------------------------------------------------------------
+
+/**
+ * The numbers this directory branches on, read out of `EMPIRE_TUNING` rather
+ * than chosen for looking extreme.
+ *
+ * CLAUDE.md's "a domain that samples only extremes is empty where it matters"
+ * was earned on a probe that sampled `0` and `1_000_000` while every threshold
+ * in its subject sat between 260 and 680, so both endpoints were outside the
+ * band and the sweep could not express the property at all. The reproduced
+ * defect here has exactly that shape: `Math.floor(checkIns / 12)` is `0` for
+ * every `checkIns` below twelve, so a driver sampling `0` and `1` sees a clean
+ * value and a driver checking `days > 0` sees nothing at all.
+ *
+ * `straddle` therefore samples below, just below, at, just above and far above
+ * each threshold, and `BRANCH_POINT_CENSUS` pins how many thresholds were read
+ * and how many points came out, so a truncated or reshaped domain reports
+ * itself.
+ */
+const SCALAR_THRESHOLDS: Readonly<Record<string, number>> = Object.freeze({
+  OFFLINE_EARNINGS_NO_PUNISH_HOURS: EMPIRE_TUNING.OFFLINE_EARNINGS_NO_PUNISH_HOURS,
+  OFFLINE_EARNINGS_CAP_HOURS: EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS,
+  TRAINING_IQ_DAILY_CEILING: EMPIRE_TUNING.TRAINING_IQ_DAILY_CEILING,
+  NPC_TENURE_DAYS_TO_FULL_LOYALTY: EMPIRE_TUNING.NPC_TENURE_DAYS_TO_FULL_LOYALTY,
+  ROSTER_SLOTS_BASE: EMPIRE_TUNING.ROSTER_SLOTS_BASE,
+  ROSTER_SLOTS_MAX: EMPIRE_TUNING.ROSTER_SLOTS_MAX,
+  SPACE_LEVEL_MAX: EMPIRE_TUNING.SPACE_LEVEL_MAX,
+  PHYSIO_MAX_DAYS_SAVED: EMPIRE_TUNING.PHYSIO_MAX_DAYS_SAVED,
+  REPUTATION_MAX: EMPIRE_TUNING.REPUTATION_MAX,
+  RIVAL_COMPARISON_PERIOD_DAYS: EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS,
+  FRIEND_VISITS_PER_DAY: EMPIRE_TUNING.FRIEND_VISITS_PER_DAY,
+  BUILD_SECONDS_BASE: EMPIRE_TUNING.BUILD_SECONDS_BASE,
+  TIMER_SKIP_SECONDS_PER_GRANT: EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT,
+  SECONDS_PER_HOUR: EMPIRE_TUNING.SECONDS_PER_HOUR,
+  COACH_LEVEL_MAX: EMPIRE_TUNING.STAFF_LEVEL_MAX.coach,
+  PHYSIO_LEVEL_MAX: EMPIRE_TUNING.STAFF_LEVEL_MAX.physio,
+  REGIONAL_BRACKET: EMPIRE_TUNING.LEADERBOARD_BRACKET_SIZE.regional,
+});
+
+/** The tabled thresholds — a ladder, not a scalar — straddled the same way. */
+const TABLED_THRESHOLDS: readonly number[] = Object.freeze([
+  ...EMPIRE_TUNING.REPUTATION_TIER_THRESHOLDS,
+  ...EMPIRE_TUNING.SPACE_LEVEL_COST_GYM_BUCKS,
+  ...EMPIRE_TUNING.SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER,
+]);
+
+/** Below, just below, at, just above, far above. Negatives dropped, not clamped. */
+function straddle(threshold: number): readonly number[] {
+  return [threshold - 2, threshold - 1, threshold, threshold + 1, threshold * 4].filter(
+    (point) => Number.isFinite(point) && point >= 0,
+  );
+}
+
+const numeric = (values: readonly number[]): readonly number[] =>
+  [...new Set(values)].sort((left, right) => left - right);
+
+/**
+ * The whole numeric domain: every straddle of every threshold, plus the shape
+ * points `0` and `1` that change an input's shape rather than its magnitude.
+ */
+const NUMBER_DOMAIN: readonly number[] = numeric([
+  0,
+  1,
+  ...Object.values(SCALAR_THRESHOLDS).flatMap(straddle),
+  ...TABLED_THRESHOLDS.flatMap(straddle),
+]);
+
+/** A cheap subset, for the calls whose cost is a whole simulated calendar. */
+const SMALL_NUMBER_DOMAIN: readonly number[] = numeric([
+  0,
+  1,
+  ...straddle(EMPIRE_TUNING.OFFLINE_EARNINGS_NO_PUNISH_HOURS),
+  ...straddle(EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS),
+]);
+
+/** Elapsed-seconds points, derived from the hour thresholds the code divides by. */
+const SECONDS_DOMAIN: readonly number[] = numeric([
+  0,
+  1,
+  ...straddle(EMPIRE_TUNING.SECONDS_PER_HOUR),
+  ...straddle(EMPIRE_TUNING.OFFLINE_EARNINGS_NO_PUNISH_HOURS * EMPIRE_TUNING.SECONDS_PER_HOUR),
+  ...straddle(EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS * EMPIRE_TUNING.SECONDS_PER_HOUR),
+  ...straddle(EMPIRE_TUNING.SECONDS_PER_DAY),
+  ...straddle(EMPIRE_TUNING.BUILD_SECONDS_MAX),
+]);
+
+/** The days a whole-calendar driver runs, straddling the rival period. */
+const RUN_DAY_DOMAIN: readonly number[] = Object.freeze([
+  1,
+  EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS,
+  EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS + 1,
+  EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS * 2 + 1,
+]);
+
+const BRANCH_POINT_CENSUS = Object.freeze({
+  SCALAR_THRESHOLDS: 17,
+  TABLED_THRESHOLDS: 15,
+  NUMBER_DOMAIN_POINTS: 128,
+  SMALL_NUMBER_DOMAIN_POINTS: 11,
+  SECONDS_DOMAIN_POINTS: 30,
+  RUN_DAY_POINTS: 4,
+});
+
+// ---------------------------------------------------------------------------
+// Sentinels — the strings that prove a position was REACHED
+// ---------------------------------------------------------------------------
+
+/**
+ * A unique, benign string per caller-supplied string position.
+ *
+ * These exist because every one of instrument A's six bare-string fields is
+ * EMPTY on the obvious fixture: `createEmpireState()` returns
+ * `roster: Object.freeze([])`, `createEmpireGym()` returns an empty `pending`,
+ * and all eight fault functions are pinned at `[]` on healthy input. A driver
+ * built on those would sample an empty string domain, pin an honest count of
+ * zero banned names, and be vacuous in the exact shape CLAUDE.md names — "a
+ * sweep whose generator never produces the failing case".
+ *
+ * So each position is fed a sentinel and `SENTINELS_OBSERVED` asserts, as a set
+ * equality, that the walk found every one of them. A position that stops being
+ * reachable reddens instead of quietly emptying.
+ *
+ * NO BANNED NAME IS EVER PASSED IN AS AN ARGUMENT, anywhere in this file. A
+ * driver that feeds poison and then finds poison has measured its own fixture.
+ * Every banned name the check reports was therefore produced by the subject.
+ */
+const SENTINELS = Object.freeze({
+  NPC_ID: 'sentinel-npc-id',
+  NPC_DISPLAY_NAME: 'sentinel-npc-display-name',
+  RECRUIT_ID: 'sentinel-recruit-id',
+  RECRUIT_DISPLAY_NAME: 'sentinel-recruit-display-name',
+  OWN_GYM_ID: 'sentinel-own-gym-id',
+  OWN_GYM_DISPLAY_NAME: 'sentinel-own-gym-display-name',
+  FRIEND_GYM_ID: 'sentinel-friend-gym-id',
+  FRIEND_GYM_DISPLAY_NAME: 'sentinel-friend-gym-display-name',
+  RIVAL_GYM_ID: 'sentinel-rival-gym-id',
+  ENCOURAGEMENT_FROM: 'sentinel-encouragement-from-gym',
+  FAULT_EQUIPMENT: 'sentinel-not-an-equipment-tier',
+  FAULT_VISIT_GYM_ID: 'sentinel-unfriended-gym-id',
+});
+
+// ---------------------------------------------------------------------------
+// Fixtures
+// ---------------------------------------------------------------------------
+
+const ZERO_SECONDS: UnacceleratedSeconds = core.asUnacceleratedSeconds(0);
+
+function booksAt(balance: number): WallClockBooks {
+  const books: Partial<Record<WallClockFundedOutput, core.GymBucks>> = {};
+  for (const output of core.WALL_CLOCK_FUNDED_OUTPUTS) books[output] = core.asGymBucks(balance);
+  return Object.freeze(books as Record<WallClockFundedOutput, core.GymBucks>);
+}
+
+function axesAt(equipment: EquipmentTier, spaceLevel: number, staff: Record<StaffRole, number>): GymAxes {
+  return Object.freeze({ equipment, spaceLevel, staffLevel: Object.freeze({ ...staff }) });
+}
+
+/** Axes wide enough to hold the largest roster the sweep builds. */
+const WIDE_AXES: GymAxes = axesAt(
+  EMPIRE_TUNING.EQUIPMENT_TIERS[EMPIRE_TUNING.EQUIPMENT_TIERS.length - 1] as EquipmentTier,
+  EMPIRE_TUNING.SPACE_LEVEL_MAX,
+  {
+    coach: EMPIRE_TUNING.STAFF_LEVEL_MAX.coach,
+    spotter: EMPIRE_TUNING.STAFF_LEVEL_MAX.spotter,
+    physio: EMPIRE_TUNING.STAFF_LEVEL_MAX.physio,
+  },
+);
+
+const OPENING_AXES: GymAxes = axesAt(EMPIRE_TUNING.EQUIPMENT_TIERS[0] as EquipmentTier, 0, {
+  coach: 0,
+  spotter: 0,
+  physio: 0,
+});
+
+function lifterAt(tier: NpcTier, index: number, joinedAt: number, settledAt: number): NpcLifter {
+  return core.createNpcLifter(
+    `${SENTINELS.NPC_ID}-${String(index)}`,
+    tier,
+    `${SENTINELS.NPC_DISPLAY_NAME}-${String(index)}`,
+    joinedAt,
+    settledAt,
+  );
+}
+
+function rosterOf(size: number, joinedAt: number, settledAt: number): readonly NpcLifter[] {
+  return Object.freeze(
+    Array.from({ length: size }, (_unused, index) =>
+      lifterAt(
+        EMPIRE_TUNING.NPC_TIERS[index % EMPIRE_TUNING.NPC_TIERS.length] as NpcTier,
+        index,
+        joinedAt,
+        settledAt,
+      ),
+    ),
+  );
+}
+
+interface StateOptions {
+  readonly reputation?: number;
+  readonly gymBucks?: number;
+  readonly settledGymBucks?: number;
+  readonly rosterSize?: number;
+  readonly elapsed?: number;
+  readonly skipped?: number;
+  readonly wide?: boolean;
+}
+
+function stateAt(options: StateOptions): EmpireState {
+  const axes = options.wide === true ? WIDE_AXES : OPENING_AXES;
+  const gymBucks = options.gymBucks ?? 0;
+  return Object.freeze({
+    clock: core.createEmpireClock(options.elapsed ?? 0, options.skipped ?? 0),
+    axes,
+    settledAxes: axes,
+    roster: rosterOf(options.rosterSize ?? 0, 0, 0),
+    reputation: core.asReputation(options.reputation ?? 0),
+    gymBucks: core.asGymBucks(gymBucks),
+    settledBooks: booksAt(options.settledGymBucks ?? gymBucks),
+    ledger: Object.freeze([]),
+    accelerants: Object.freeze([]),
+  });
+}
+
+function snapshotAt(gymId: string, displayName: string, reputation: number, totalKg: number): GymSnapshot {
+  return Object.freeze({ gymId, displayName, reputation, combinedTotalKg: totalKg });
+}
+
+function completedBuild(axis: ExpansionAxis, toLevel: number): ExpansionBuild {
+  return Object.freeze({
+    axis,
+    toLevel,
+    paid: core.asGymBucks(0),
+    startedAt: ZERO_SECONDS,
+    settledCompletion: ZERO_SECONDS,
+    idleCompletion: core.asAcceleratedSeconds(0),
+  });
+}
+
+function contextAt(gymBucks: number, reputation: number, builds: readonly ExpansionBuild[]): ExpansionContext {
+  return Object.freeze({
+    clock: core.createEmpireClock(0, 0),
+    gymBucks: core.asGymBucks(gymBucks),
+    settledBooks: booksAt(gymBucks),
+    reputation: core.asReputation(reputation),
+    builds,
+  });
+}
+
+/**
+ * An `AppliedAccelerant` for an accelerant known only at runtime.
+ *
+ * `applyAccelerant` refuses a widened accelerant type on purpose, so a loop
+ * cannot call it. The switch re-narrows per arm; the same shape exists in
+ * `expansion.test.ts` and is reproduced rather than imported because that file
+ * does not export it.
+ */
+function appliedFor(
+  accelerant: EmpireAccelerant,
+  output: EmpireOutput,
+  at: UnacceleratedSeconds,
+  seconds: number,
+): AppliedAccelerant {
+  switch (accelerant) {
+    case 'gym-empire-timer-skip':
+      return core.applyAccelerant('gym-empire-timer-skip', output as AccelerableOutput<'gym-empire-timer-skip'>, at, seconds);
+    case 'rewarded-ad-timer-skip':
+      return core.applyAccelerant('rewarded-ad-timer-skip', output as AccelerableOutput<'rewarded-ad-timer-skip'>, at, seconds);
+    case 'coach-staff-level':
+      return core.applyAccelerant('coach-staff-level', output as AccelerableOutput<'coach-staff-level'>, at, seconds);
+    case 'space-level':
+      return core.applyAccelerant('space-level', output as AccelerableOutput<'space-level'>, at, seconds);
+    case 'reputation-tier':
+      return core.applyAccelerant('reputation-tier', output as AccelerableOutput<'reputation-tier'>, at, seconds);
+  }
+}
+
+function acceleratedFor(accelerant: EmpireAccelerant, output: EmpireOutput): core.AcceleratedOutput {
+  switch (accelerant) {
+    case 'gym-empire-timer-skip':
+      return core.acceleratedOutput('gym-empire-timer-skip', output as AccelerableOutput<'gym-empire-timer-skip'>);
+    case 'rewarded-ad-timer-skip':
+      return core.acceleratedOutput('rewarded-ad-timer-skip', output as AccelerableOutput<'rewarded-ad-timer-skip'>);
+    case 'coach-staff-level':
+      return core.acceleratedOutput('coach-staff-level', output as AccelerableOutput<'coach-staff-level'>);
+    case 'space-level':
+      return core.acceleratedOutput('space-level', output as AccelerableOutput<'space-level'>);
+    case 'reputation-tier':
+      return core.acceleratedOutput('reputation-tier', output as AccelerableOutput<'reputation-tier'>);
+  }
+}
+
+const CALENDAR_ANCHOR = 0;
+
+function calendarAt(anchorDay: number): SocialCalendarContext {
+  return Object.freeze({
+    anchorDay: socialModule.asCalendarDay(anchorDay),
+    trainedDays: Object.freeze(
+      [1, 3, 4, 8, 13, 21].map((day) => socialModule.asCalendarDay(anchorDay + day)),
+    ),
+    sessionCount: EMPIRE_TUNING.ROSTER_SLOTS_MAX,
+    streakDays: EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS,
+    passTiersUnlocked: EMPIRE_TUNING.PHYSIO_MAX_DAYS_SAVED,
+  });
+}
+
+function encouragementsAt(anchorDay: number): readonly Encouragement[] {
+  return Object.freeze(
+    [2, 5, 5, 11].map((day, at) =>
+      Object.freeze({
+        day: socialModule.asCalendarDay(anchorDay + day),
+        fromGymId: `${SENTINELS.ENCOURAGEMENT_FROM}-${String(Math.floor(at / 2))}`,
+      }),
+    ),
+  );
+}
+
+const FRIENDS: readonly GymSnapshot[] = Object.freeze([
+  snapshotAt(`${SENTINELS.FRIEND_GYM_ID}-0`, `${SENTINELS.FRIEND_GYM_DISPLAY_NAME}-0`, 0, 0),
+  snapshotAt(
+    `${SENTINELS.FRIEND_GYM_ID}-1`,
+    `${SENTINELS.FRIEND_GYM_DISPLAY_NAME}-1`,
+    EMPIRE_TUNING.REPUTATION_MAX,
+    EMPIRE_TUNING.RIVAL_REWARD_GYM_BUCKS,
+  ),
+]);
+
+const OWN_GYM: GymSnapshot = snapshotAt(
+  SENTINELS.OWN_GYM_ID,
+  SENTINELS.OWN_GYM_DISPLAY_NAME,
+  EMPIRE_TUNING.REPUTATION_TIER_THRESHOLDS[1] as number,
+  0,
+);
+
+const RIVAL_GYM: GymSnapshot = snapshotAt(
+  SENTINELS.RIVAL_GYM_ID,
+  `${SENTINELS.FRIEND_GYM_DISPLAY_NAME}-rival`,
+  EMPIRE_TUNING.REPUTATION_TIER_THRESHOLDS[2] as number,
+  0,
+);
+
+function socialContextAt(visitDays: readonly number[]): SocialContext {
+  return Object.freeze({
+    ownGym: OWN_GYM,
+    calendar: calendarAt(CALENDAR_ANCHOR),
+    friends: FRIENDS,
+    visits: Object.freeze(
+      visitDays.map((day, index) =>
+        Object.freeze({
+          day: socialModule.asCalendarDay(day),
+          gymId: `${SENTINELS.FRIEND_GYM_ID}-${String(index % FRIENDS.length)}`,
+          encouraged: index % 2 === 0,
+        }),
+      ),
+    ),
+    encouragementsReceived: encouragementsAt(CALENDAR_ANCHOR),
+    rival: RIVAL_GYM,
+  });
+}
+
+function socialInputsAt(): SocialInputs {
+  return Object.freeze({
+    calendar: calendarAt(CALENDAR_ANCHOR),
+    rival: RIVAL_GYM,
+    encouragementsReceived: encouragementsAt(CALENDAR_ANCHOR),
+  });
+}
+
+function policyAt(checkInsPerDay: number): EmpirePolicy {
+  return Object.freeze({
+    checkInsPerDay,
+    axisOrder: Object.freeze([...expansionModule.EXPANSION_AXES]),
+    leaderboardMetric: 'reputation',
+  });
+}
+
+function planAt(accelerant: core.PurchasableAccelerant | null, grantsPerCheckIn: number): invariant.AccelerantPlan {
+  return Object.freeze({ accelerant, grantsPerCheckIn, firstCheckIn: 1, everyNthCheckIn: 1 });
+}
+
+function historyAt(slots: number, everyNth: number): EngagementHistory {
+  return engagementModule.historyFrom(
+    slots,
+    (slot) => slot % everyNth === 0,
+    [1, 3, 4, 8, 13],
+  );
+}
+
+function entryAt(day: number, output: EmpireOutput, amount: number): EmpireDayEntry {
+  return Object.freeze({ day, at: core.asUnacceleratedSeconds(day * EMPIRE_TUNING.SECONDS_PER_DAY), output, amount });
+}
