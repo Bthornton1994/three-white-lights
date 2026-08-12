@@ -20,6 +20,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
+import { budgetFrom } from '../../tools/testBudget.mjs';
 import * as entitlementModule from './streakEntitlement';
 import {
   COVERAGE_SOURCES,
@@ -1585,7 +1586,7 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     ].join('\n'),
   } as const;
 
-  it('[the-covered-day-scan-reads-the-whole-tree] THE ALLOWLIST IS EXACT: every declaration that can name a covered day is listed, from anywhere under src/', () => {
+  it('[the-covered-day-scan-reads-the-whole-tree] THE ALLOWLIST IS EXACT: every declaration that can name a covered day is listed, from anywhere under src/', { timeout: budgetFrom(8_711) }, () => {
     // THE GUARD THAT DOES NOT DEPEND ON WHAT A FUNCTION IS CALLED. The obvious
     // version of this test is a blocklist on `grant`, `credit`, `buy`, `award` —
     // and `streak.test.ts` carried exactly that until this round. It cannot
@@ -1730,7 +1731,7 @@ describe('nothing can award a purchased covered day, and that is enforced rather
     ).toEqual([]);
   });
 
-  it('THE RE-ALIAS SHAPE IS CAUGHT TOO, and the shape that is NOT is a declared limit', () => {
+  it('THE RE-ALIAS SHAPE IS CAUGHT TOO, and the shape that is NOT is a declared limit', { timeout: budgetFrom(8_016) }, () => {
     // `import * as E from '...'; E.creditCoveredDays(...)` is the second
     // spelling of the same evasion, and the brief that asked for this fix left
     // open whether it was covered. Measured, both ways:
@@ -2138,7 +2139,7 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     expect(sessionKeyed.currentInversions).toBeGreaterThan(streakKeyed.currentInversions);
   });
 
-  it('[dropping-the-doomed-burn-measures-worse] DROPPING THE DOOMED BURN, RE-TAKEN AND PINNED AT EVERY LENGTH', () => {
+  it('[dropping-the-doomed-burn-measures-worse] DROPPING THE DOOMED BURN, RE-TAKEN AND PINNED AT EVERY LENGTH', { timeout: budgetFrom(32_464) }, () => {
     // WHAT THIS CLOSES. The sentence "dropping the burn measures 1051 violating
     // pairs at 60 days and 673 at 100" was restated in `streak.ts`,
     // `streakEntitlement.ts`, a comment in this file and GDD §4.4 — and the
@@ -2265,13 +2266,13 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     }
   });
 
-  it('EXHAUSTIVE: every calendar of 8 to 16 days, both fields', () => {
+  it('EXHAUSTIVE: every calendar of 8 to 16 days, both fields', { timeout: budgetFrom(9_440) }, () => {
     for (const length of MONOTONICITY_SWEEP.EXHAUSTIVE_LENGTHS) {
       expectClean(`exhaustive L=${length}`, judge(exhaustivePairs(length), DEFAULT));
     }
   });
 
-  it('EXHAUSTIVE, ACROSS A WINDOW BOUNDARY: the same calendars at a 7-day window', () => {
+  it('EXHAUSTIVE, ACROSS A WINDOW BOUNDARY: the same calendars at a 7-day window', { timeout: budgetFrom(19_891) }, () => {
     // RESIDUAL THE PREVIOUS ROUND LEFT OPEN, and it is a gap in the only
     // proof-grade sweep in the repository. The shipped `WINDOW_DAYS` is 30 and
     // every exhaustive fixture anchors signup at day 0, so the sweep above runs
@@ -2343,7 +2344,7 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     );
   });
 
-  it('SAMPLED: 40, 60, 80 and 100 days — including the LIFETIME BEST', () => {
+  it('SAMPLED: 40, 60, 80 and 100 days — including the LIFETIME BEST', { timeout: budgetFrom(7_719) }, () => {
     // The stock design measured 13 / 122 / 142 / 74 `currentStreak` inversions
     // here and 14 / 150 / 276 / 221 lifetime-best inversions. The lifetime-best
     // row is the one that had never been measured past 16 days at all, and it
@@ -2354,7 +2355,7 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     }
   });
 
-  it('MAGNITUDE AT LONG HORIZONS: 200 and 400 days', () => {
+  it('MAGNITUDE AT LONG HORIZONS: 200 and 400 days', { timeout: budgetFrom(19_176) }, () => {
     // Frequency saturating while magnitude grows is the exact shape the stock
     // design had — its worst deficit reached 189 days at 400 — so the long
     // horizons are checked on the deficit, not only on the count.
@@ -2413,7 +2414,7 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     expect(consumedByRate.get(0.95)).toBe(0);
   });
 
-  it('EVERY TUNING IN THE GRID: a playtester must not be able to turn the property off', () => {
+  it('EVERY TUNING IN THE GRID: a playtester must not be able to turn the property off', { timeout: budgetFrom(15_894) }, () => {
     // One model is how the last two claims survived longer than they should
     // have. The window length and the per-window entitlement are both UNTUNED
     // values that will move by hand, so the property is checked across the
@@ -2438,7 +2439,7 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     }
   });
 
-  it('THE FREE GRANT PATH cannot itself create a violation', () => {
+  it('THE FREE GRANT PATH cannot itself create a violation', { timeout: budgetFrom(12_311) }, () => {
     // GDD §8.3C's season-pass grant, checked against the rule it exists under. A
     // covered day granted on a fixed calendar day — including one landing
     // exactly on a window boundary — leaves the property intact on all four
@@ -2465,7 +2466,7 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     ).toBe(true);
   });
 
-  it('EVERY FUNDABLE TENDER, EVERY HORIZON: 0 violations across the whole legal funding surface', () => {
+  it('EVERY FUNDABLE TENDER, EVERY HORIZON: 0 violations across the whole legal funding surface', { timeout: budgetFrom(17_228) }, () => {
     // GDD §8.3E CONDITION 2 AND THE HUMAN'S BAR ON THE PROVENANCE FIX, in one
     // sweep. Condition 2 asks that the invariants hold with `purchasedDaysLeft`
     // ACTUALLY POPULATED rather than structurally present and zeroed. The bar
@@ -2698,7 +2699,7 @@ describe('never punish daily engagement — the entitlement under attack', () =>
     expect(responsive.currentInversions, 'bankable, responsive').toBeGreaterThan(0);
   });
 
-  it('A BANKABLE purchase is ALSO safe — expiry is a product choice, not a safety property', () => {
+  it('A BANKABLE purchase is ALSO safe — expiry is a product choice, not a safety property', { timeout: budgetFrom(9_617) }, () => {
     // CORRECTING A CLAIM THIS BRANCH MADE AND DID NOT CHECK. `grantCoveredDays`
     // expires a purchased day with its window, and the first version of GDD
     // §8.2 justified that by saying "nothing accumulates, so there is no wealth

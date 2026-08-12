@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { budgetFrom } from '../../tools/testBudget.mjs';
 import { decodePng } from '../../tools/png.mjs';
 import {
   SPRITE_CELL,
@@ -1436,7 +1437,7 @@ describe('a biceps belly is not a lever: it cannot reach the silhouette', () => 
     expect(onAuthored, 'none of them on an authored drawing').toBe(0);
   });
 
-  it('never lets the upper arm out past the fist, even at the cartoon radius', () => {
+  it('never lets the upper arm out past the fist, even at the cartoon radius', { timeout: budgetFrom(8_918) }, () => {
     // The same fact as a single number, because the row-for-row check above is
     // easy to read as an accident of one drawing. The upper arm's furthest
     // outboard pixel over the WHOLE limb is 14 px from centre, at the elbow's

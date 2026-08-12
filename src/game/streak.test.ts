@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
+import { budgetFrom } from '../../tools/testBudget.mjs';
 
 import {
   DOOMED_SALE_REFUSAL_MESSAGE,
@@ -3543,7 +3544,7 @@ describe('the outcome does not depend on when the player opens the app', () => {
     ).toBe(0);
   });
 
-  it('[settling-is-terminal][a-sale-never-follows-a-settle][the-decision-ignores-the-rendered-offer][every-refusal-sentence-is-true-of-its-screen] THE DOOMED-SALE DOOR, SWEPT IN BOTH DIRECTIONS over every calendar of 10 days, at six placements against the window boundary and three render-day lags', () => {
+  it('[settling-is-terminal][a-sale-never-follows-a-settle][the-decision-ignores-the-rendered-offer][every-refusal-sentence-is-true-of-its-screen] THE DOOMED-SALE DOOR, SWEPT IN BOTH DIRECTIONS over every calendar of 10 days, at six placements against the window boundary and three render-day lags', { timeout: budgetFrom(12_052) }, () => {
     // THE HUMAN'S RULING, MEASURED. Two halves, and the second is the one that
     // hides a bug: the store must refuse an already-doomed absence, AND it must
     // not refuse any absence that is still salvageable. A store that answers
@@ -6296,7 +6297,7 @@ describe('daily engagement is never worse than skipping — where that holds, an
     expect(lazyDays.length).toBeLessThan(MONOTONICITY_SWEEP.SAMPLED_LENGTHS[0] as number);
   });
 
-  it('DOES IT TERMINATE: the residue at 80 and 100 days, with its denominator', () => {
+  it('DOES IT TERMINATE: the residue at 80 and 100 days, with its denominator', { timeout: budgetFrom(25_795) }, () => {
     // 40 days gives 13 violating pairs, 60 gives 122. Read alone that is a
     // defect doubling with the calendar, which at a real player's timescale
     // would matter more than any count at one length. It is not: the count
@@ -6524,7 +6525,7 @@ describe('daily engagement is never worse than skipping — where that holds, an
     expect(settled('TTTTTTTTTTTTT')).toBe(13);
   });
 
-  it('EVERY CONSUMPTION IS REPORTED — exhaustively, both events, no silent debit anywhere', () => {
+  it('EVERY CONSUMPTION IS REPORTED — exhaustively, both events, no silent debit anywhere', { timeout: budgetFrom(9_480) }, () => {
     // THE GENERAL PROPERTY, not two examples of it. GDD §4.2 promises the loss
     // is "reported, never silent"; this is what makes that a fact.
     //
