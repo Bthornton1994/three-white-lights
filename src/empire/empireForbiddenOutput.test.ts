@@ -1568,6 +1568,22 @@ const CLOCKS: readonly (readonly [string, EmpireClock])[] = Object.freeze(
   ),
 );
 
+/**
+ * Collection marks that sit at or behind every state in `STATES`.
+ *
+ * `accrueProduction` refuses a mark ahead of the gym's own idle clock, so the
+ * axis measurement needs points it will actually answer at. The driver above
+ * uses the wider `CLOCK_SHAPES` on purpose and keeps the refusals.
+ */
+const COLLECTION_CLOCKS: readonly (readonly [string, EmpireClock])[] = Object.freeze([
+  ['at-zero', core.createEmpireClock(0, 0)],
+  ['half-day', core.createEmpireClock(EMPIRE_TUNING.SECONDS_PER_DAY / 2, 0)],
+  [
+    'half-day-skipped',
+    core.createEmpireClock(EMPIRE_TUNING.SECONDS_PER_DAY / 2, EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT),
+  ],
+]);
+
 /** One clock per shape, for the calls that take a clock and are otherwise cheap. */
 const CLOCK_SHAPES: readonly (readonly [string, EmpireClock])[] = Object.freeze([
   ['zero', core.createEmpireClock(0, 0)],
@@ -2118,3 +2134,582 @@ function driveEverything(): readonly DrivenRow[] {
 
   return DRIVEN_ROWS;
 }
+
+// ---------------------------------------------------------------------------
+// The tripwire — the non-zero number the zeros below are zero against
+// ---------------------------------------------------------------------------
+
+/**
+ * A synthetic value carrying one banned name per attack shape the scanner
+ * claims to reach.
+ *
+ * This is the house standard of proof, taken from `src/game/streakSweep.ts`:
+ * counts pinned at zero, with the unfixed variant's non-zero numbers kept in
+ * the file as the thing the zeros are zero against. A scan reporting zero
+ * banned names is exactly what a scan reporting nothing at all reports, and the
+ * two are indistinguishable in a green suite.
+ *
+ * Every name here is read out of `EMPIRE_FORBIDDEN_OUTPUTS` and
+ * `FORBIDDEN_UNLOCK_KEYS` rather than typed, so a name added to either is
+ * tripwired without this function being edited.
+ *
+ * `TRIPWIRE_SHAPES` names each shape and `benignTwin` builds the identical
+ * structure with a harmless string in every slot. The twin measuring zero is
+ * what says the tripwire's count is about the NAMES and not about the shape.
+ */
+const TRIPWIRE_SHAPES: readonly string[] = Object.freeze([
+  'a plain property value',
+  'nested five deep through arrays and objects',
+  'a computed property KEY',
+  'a non-enumerable accessor, invoked',
+  'a Map key',
+  'a Map value',
+  'a Set member',
+  'an own property on a thrown Error',
+  'a frozen structure',
+  'a symbol description',
+  'a Proxy whose ownKeys trap is honest',
+  'the case fold: COVERED-DAY',
+  'the separator fold: a doubled hyphen',
+  'the separator fold: a space',
+  'the separator fold: a non-breaking hyphen',
+  'the trim fold: surrounding whitespace',
+]);
+
+function tripwireSubject(name: string, other: string): unknown {
+  const target: Record<string, unknown> = {};
+  Object.defineProperty(target, 'hidden', { enumerable: false, get: () => name });
+  const thrown = new RangeError('a refusal that carries a payload');
+  Object.defineProperty(thrown, 'output', { enumerable: true, value: name });
+  return [
+    Object.freeze({ kind: name }),
+    Object.freeze({ a: Object.freeze({ b: Object.freeze([Object.freeze({ c: Object.freeze([name]) })]) }) }),
+    Object.freeze({ [name]: 1 }),
+    target,
+    new Map<unknown, unknown>([
+      [name, 1],
+      ['key', name],
+    ]),
+    new Set<unknown>([name]),
+    thrown,
+    Object.freeze(Object.freeze({ frozen: Object.freeze([Object.freeze({ deep: name })]) })),
+    Object.freeze({ [Symbol(name)]: 1 }),
+    new Proxy(Object.freeze({ proxied: other }), {}),
+    Object.freeze({ shouted: name.toUpperCase() }),
+    Object.freeze({ doubled: name.replace('-', '--') }),
+    Object.freeze({ spaced: name.replace('-', ' ') }),
+    Object.freeze({ nonBreaking: name.replace('-', '‑') }),
+    Object.freeze({ padded: `  ${name}  ` }),
+  ];
+}
+
+/** The same structure with a harmless string in every slot. */
+const BENIGN_TWIN = tripwireSubject(SENTINELS.NPC_ID, SENTINELS.OWN_GYM_ID);
+
+const TRIPWIRE_CENSUS = Object.freeze({
+  /** Distinct banned-name-equal strings the walker found in the loaded subject. */
+  HITS: 16,
+  /** The same walk over the benign twin. */
+  BENIGN_HITS: 0,
+  /** Accessors invoked. Non-zero here and zero on the real drive. */
+  GETTERS_INVOKED: 1,
+  PROXIES_SEEN: 1,
+  SHAPES: 16,
+});
+
+// ---------------------------------------------------------------------------
+// The measurement
+// ---------------------------------------------------------------------------
+
+/** Where a scanned string sat: the call's RETURN (or throw), or a re-read argument. */
+type Region = 'return' | 'argument';
+
+interface Found {
+  readonly export: string;
+  readonly region: Region;
+  readonly found: ScannedString;
+}
+
+interface DriveMeasurement {
+  readonly rows: number;
+  readonly exports: readonly string[];
+  readonly strings: readonly Found[];
+  readonly nodes: number;
+  readonly depthCuts: number;
+  readonly gettersInvoked: number;
+  readonly getterThrows: number;
+  readonly proxies: number;
+}
+
+let measurementMemo: DriveMeasurement | null = null;
+
+function measureDrive(): DriveMeasurement {
+  if (measurementMemo !== null) return measurementMemo;
+  const rows = driveEverything();
+  const strings: Found[] = [];
+  let nodes = 0;
+  let depthCuts = 0;
+  let gettersInvoked = 0;
+  let getterThrows = 0;
+  let proxies = 0;
+  for (const row of rows) {
+    // The return and the re-read arguments are scanned separately, because a
+    // string that came back OUT is a different claim from one that was handed
+    // IN and is still there. Both are checked; only the first is what a
+    // diagnostic channel's contents mean.
+    const label = `${row.export}@${row.point}`;
+    const regions: readonly (readonly [Region, unknown])[] = [
+      ['return', row.values[0]],
+      ['argument', row.values.slice(1)],
+    ];
+    for (const [region, value] of regions) {
+      const scan = deepScan(value, `${label}#${region}`);
+      nodes += scan.nodes;
+      depthCuts += scan.depthCuts;
+      gettersInvoked += scan.gettersInvoked;
+      getterThrows += scan.getterThrows;
+      proxies += scan.proxies;
+      for (const found of scan.strings) strings.push({ export: row.export, region, found });
+    }
+  }
+  measurementMemo = {
+    rows: rows.length,
+    exports: distinct(rows.map((row) => row.export)),
+    strings: Object.freeze(strings),
+    nodes,
+    depthCuts,
+    gettersInvoked,
+    getterThrows,
+    proxies,
+  };
+  return measurementMemo;
+}
+
+const DRIVE_CENSUS = Object.freeze({
+  ROWS: 7377,
+  EXPORTS_DRIVEN: 226,
+  NODES: 53688,
+  STRINGS: 206695,
+  DISTINCT_STRINGS: 637,
+  DEPTH_CUTS: 0,
+  /**
+   * Accessors invoked across the whole drive, and PROXIES seen.
+   *
+   * Both zero, and both pinned rather than omitted: this directory constructs
+   * neither, so the two branches of the walker that exist for attack shape 9
+   * are exercised by the tripwire and by nothing in the subject. A non-zero
+   * number here means one arrived, which is worth a look on its own.
+   */
+  GETTERS_INVOKED: 0,
+  PROXIES: 0,
+  /** Banned-name-equal strings, and every one of them from a ban-list export. */
+  BANNED_EQUAL: 7,
+  BANNED_EQUAL_OUTSIDE_THE_BAN_LISTS: 0,
+  BANNED_CONTAINED_OUTSIDE_THE_BAN_LISTS: 0,
+  /**
+   * How many strings the diagnostic-channel exemption actually excluded.
+   *
+   * ZERO, on this tree, and that is worth stating plainly rather than letting
+   * the exemption read as load-bearing: no fault message produced under this
+   * drive contains a banned name, because no banned name is ever passed in.
+   * The exemption is therefore declared, measured, and currently excluding
+   * nothing — and if it ever starts excluding something, this number moves.
+   */
+  EXCLUDED_BY_THE_DIAGNOSTIC_EXEMPTION: 0,
+});
+
+// ---------------------------------------------------------------------------
+// The injected axes, and the disagreement between their points
+// ---------------------------------------------------------------------------
+
+/**
+ * A stable digest of every string and number a value reaches, in visit order.
+ *
+ * Used only to answer "did varying this axis change anything at all". CLAUDE.md
+ * is explicit that richness on one axis is not evidence about an axis nobody
+ * varied: these functions take injected clocks, policies, fundings and wirings,
+ * and a sweep that holds one of those fixed has ONE POINT on it however many
+ * points it has elsewhere. So each axis is varied on its own, the number of
+ * points that disagree with the first is counted, and a control that holds the
+ * axis fixed is measured beside it at zero.
+ */
+function fingerprint(value: unknown): string {
+  const { trace } = deepScan(value, 'fp');
+  let hash = 2166136261;
+  for (const item of trace) {
+    for (let index = 0; index < item.length; index += 1) {
+      hash ^= item.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+  }
+  return `${String(trace.length)}:${(hash >>> 0).toString(16)}`;
+}
+
+interface AxisReading {
+  readonly axis: string;
+  readonly points: number;
+  /** Points whose fingerprint differs from the first point's. */
+  readonly disagreements: number;
+}
+
+function disagreementsAmong(prints: readonly string[]): number {
+  const first = prints[0];
+  return prints.filter((print) => print !== first).length;
+}
+
+function readingFor(axis: string, prints: readonly string[]): AxisReading {
+  return { axis, points: prints.length, disagreements: disagreementsAmong(prints) };
+}
+
+let axisMemo: readonly AxisReading[] | null = null;
+
+function axisReadings(): readonly AxisReading[] {
+  if (axisMemo !== null) return axisMemo;
+  const policy = policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY);
+  const social = socialInputsAt();
+  const days = RUN_DAY_DOMAIN[1] as number;
+  const slots = days * EMPIRE_SWEEP_CHECK_INS_PER_DAY;
+  const history = historyAt(slots, 1);
+  const readings: AxisReading[] = [
+    readingFor(
+      'runEmpire / funding',
+      invariant.EMPIRE_FUNDINGS.map((funding) =>
+        fingerprint(invariant.runEmpire(days, policy, planAt(null, 0), social, funding)),
+      ),
+    ),
+    readingFor(
+      'runEmpire / funding held fixed (control)',
+      invariant.EMPIRE_FUNDINGS.map(() =>
+        fingerprint(invariant.runEmpire(days, policy, planAt(null, 0), social, invariant.SHIPPED_FUNDING)),
+      ),
+    ),
+    readingFor(
+      'runEmpire / accelerant plan',
+      [null, ...core.PURCHASABLE_ACCELERANTS].map((accelerant) =>
+        fingerprint(
+          invariant.runEmpire(
+            days,
+            policy,
+            planAt(accelerant, accelerant === null ? 0 : 1),
+            social,
+          ),
+        ),
+      ),
+    ),
+    readingFor(
+      'runEngagement / spending policy',
+      invariant.EMPIRE_SPENDING_POLICIES.map((spending) =>
+        fingerprint(
+          engagementModule.runEngagement(
+            days,
+            policy,
+            history,
+            social,
+            engagementModule.shippedEngagementWiring(),
+            spending,
+          ),
+        ),
+      ),
+    ),
+    readingFor(
+      'runEngagement / spending policy held fixed (control)',
+      invariant.EMPIRE_SPENDING_POLICIES.map(() =>
+        fingerprint(
+          engagementModule.runEngagement(
+            days,
+            policy,
+            history,
+            social,
+            engagementModule.shippedEngagementWiring(),
+            invariant.SHIPPED_SPENDING_POLICY,
+          ),
+        ),
+      ),
+    ),
+    readingFor(
+      'runEngagement / wiring',
+      engagementModule.ENGAGEMENT_WIRINGS.map((key) =>
+        fingerprint(
+          engagementModule.runEngagement(
+            days,
+            policy,
+            history,
+            social,
+            engagementModule.engagementWiring(
+              key,
+              engagementModule.chargesUpkeep(key) ? EMPIRE_TUNING.ENCOURAGEMENT_REWARD_GYM_BUCKS : 0,
+            ),
+          ),
+        ),
+      ),
+    ),
+    readingFor(
+      'accrueProduction / clock shape',
+      COLLECTION_CLOCKS.map(([, clock]) =>
+        fingerprint(
+          productionModule.accrueProduction(
+            STATES[STATES.length - 1]?.[1] as EmpireState,
+            clock,
+            invariant.rosterRatesAt(clock),
+          ),
+        ),
+      ),
+    ),
+    readingFor(
+      'accrueProduction / clock held fixed (control)',
+      COLLECTION_CLOCKS.map(() =>
+        fingerprint(
+          productionModule.accrueProduction(
+            STATES[STATES.length - 1]?.[1] as EmpireState,
+            COLLECTION_CLOCKS[0]?.[1] as EmpireClock,
+            invariant.rosterRatesAt(COLLECTION_CLOCKS[0]?.[1] as EmpireClock),
+          ),
+        ),
+      ),
+    ),
+    readingFor(
+      'productionRates / gym state shape',
+      STATES.map(([, state]) =>
+        fingerprint(
+          productionModule.productionRates(
+            state,
+            COLLECTION_CLOCKS[2]?.[1] as EmpireClock,
+            invariant.rosterRatesAt(COLLECTION_CLOCKS[2]?.[1] as EmpireClock),
+          ),
+        ),
+      ),
+    ),
+  ];
+  axisMemo = Object.freeze(readings);
+  return axisMemo;
+}
+
+/**
+ * What each injected axis was measured to move.
+ *
+ * A zero on a NON-control row means the axis is inert under this driver, so
+ * every other point in the sweep is one point on it. That is the failure this
+ * table exists to make visible, and it is the reason these are counts rather
+ * than a `toBeGreaterThan(0)`.
+ */
+const AXIS_CENSUS: readonly (readonly [string, number, number])[] = Object.freeze([
+  ['runEmpire / funding', 3, 2],
+  ['runEmpire / funding held fixed (control)', 3, 0],
+  ['runEmpire / accelerant plan', 3, 2],
+  ['runEngagement / spending policy', 6, 5],
+  ['runEngagement / spending policy held fixed (control)', 6, 0],
+  ['runEngagement / wiring', 5, 4],
+  ['accrueProduction / clock shape', 3, 2],
+  ['accrueProduction / clock held fixed (control)', 3, 0],
+  // Ten rather than fourteen, and the gap is the finding rather than a
+  // shortfall: reputation is one of the two axes `STATES` crosses and
+  // production rates do not read it, so the four other reputations at an empty
+  // roster fingerprint identically to the first point. Roster size is what
+  // moves this, and it moves it ten times out of fifteen.
+  ['productionRates / gym state shape', 15, 10],
+]);
+
+/**
+ * What each of the eight fault functions actually produced under the drive.
+ *
+ * Four of them take no argument and check frozen vocabulary tables, so their
+ * string domain is EMPTY on a healthy tree and cannot be made non-empty from a
+ * test file. Those four are absent from this table, which is the honest way to
+ * say the behavioural half covers them not at all — instrument A's
+ * literal-member pass is what covers their subject.
+ */
+const DIAGNOSTIC_CHANNEL_CENSUS: readonly (readonly [string, number])[] = Object.freeze([
+  ['empireRunFaults', 3],
+  ['empireStateFaults', 2],
+  ['engagementRunFaults', 1],
+  ['socialContextFaults', 1],
+]);
+
+/**
+ * The two strings the composed loop mints for its own snapshot.
+ *
+ * Pinned by content because `gymSnapshot`'s two bare-string positions carry
+ * module-private constants rather than caller text, so no sentinel can reach
+ * them. Content is the same guarantee by a different route.
+ */
+const GYM_SNAPSHOT_STRINGS: readonly string[] = Object.freeze(['Placeholder', 'composed-gym']);
+
+describe('instrument B — nothing this directory produces is a forbidden name', () => {
+  it('drives every export the census knows about, in both directions', () => {
+    const census = distinct(stringSurface().exports.map((key) => key.split('#')[1] as string));
+    const driven = measureDrive().exports;
+    // Set equality. A new export is an undriven member and reddens here until
+    // somebody writes a row for it — which is the ONLY thing that fires on
+    // attack shape 16, and is a demand for a reviewer rather than a detection.
+    expect(driven).toEqual(census);
+    expect(driven.length).toBe(DRIVE_CENSUS.EXPORTS_DRIVEN);
+    expect(census.length).toBe(SURFACE_CENSUS.EXPORTS);
+  });
+
+  it('walked a domain that is not empty, and did not truncate', () => {
+    const measurement = measureDrive();
+    expect(measurement.rows).toBe(DRIVE_CENSUS.ROWS);
+    expect(measurement.nodes).toBe(DRIVE_CENSUS.NODES);
+    expect(measurement.strings.length).toBe(DRIVE_CENSUS.STRINGS);
+    expect(distinct(measurement.strings.map((entry) => entry.found.value)).length).toBe(
+      DRIVE_CENSUS.DISTINCT_STRINGS,
+    );
+    // A truncated walk reports a clean scan, which is the reassuring direction.
+    expect(measurement.depthCuts).toBe(DRIVE_CENSUS.DEPTH_CUTS);
+    expect(measurement.gettersInvoked).toBe(DRIVE_CENSUS.GETTERS_INVOKED);
+    expect(measurement.proxies).toBe(DRIVE_CENSUS.PROXIES);
+    expect(measurement.getterThrows).toBe(0);
+  });
+
+  it('reached every caller-supplied string position, by sentinel', () => {
+    const values = new Set(measureDrive().strings.map((entry) => entry.found.value));
+    const reached = Object.entries(SENTINELS)
+      .filter(([, sentinel]) => [...values].some((value) => value.includes(sentinel)))
+      .map(([name]) => name)
+      .sort();
+    // Set equality both ways. Every one of instrument A's six bare-string
+    // fields is EMPTY on the obvious fixture, so this is the assertion that
+    // says the domain is non-empty where it matters rather than merely large.
+    expect(reached).toEqual([...Object.keys(SENTINELS)].sort());
+  });
+
+  it('produces no banned name from any export but the two that ARE the ban lists', () => {
+    const measurement = measureDrive();
+    const banned = measurement.strings.filter((entry) => BANNED_NORMALISED.has(normalise(entry.found.value)));
+    expect(banned.length).toBe(DRIVE_CENSUS.BANNED_EQUAL);
+
+    const offenders = banned
+      .filter((entry) => !BAN_LIST_EXPORTS.includes(entry.export))
+      .map((entry) => `${entry.export}${entry.found.path}=${entry.found.value}`);
+    // THE ZERO THIS WHOLE FILE IS ABOUT. The tripwire below is the non-zero
+    // number it is zero against.
+    expect(distinct(offenders)).toEqual([]);
+    expect(offenders.length).toBe(DRIVE_CENSUS.BANNED_EQUAL_OUTSIDE_THE_BAN_LISTS);
+
+    // The exempted pair is pinned by content and by count, not skipped.
+    expect(
+      distinct(banned.map((entry) => `${entry.export}=${entry.found.value}`)),
+    ).toEqual([
+      'EMPIRE_FORBIDDEN_OUTPUTS=chalk',
+      'EMPIRE_FORBIDDEN_OUTPUTS=competition-total',
+      'EMPIRE_FORBIDDEN_OUTPUTS=covered-day',
+      'EMPIRE_FORBIDDEN_OUTPUTS=e1rm',
+      'FORBIDDEN_UNLOCK_KEYS=chance-draw',
+      'FORBIDDEN_UNLOCK_KEYS=currency-purchase',
+      'FORBIDDEN_UNLOCK_KEYS=paid-pull',
+    ]);
+  });
+
+  it('CONTAINS no banned name either, outside the diagnostic channel, and the exemption is measured', () => {
+    const measurement = measureDrive();
+    const contained = measurement.strings.filter((entry) =>
+      BANNED_VOCABULARY.some((name) => normalise(entry.found.value).includes(normalise(name))),
+    );
+    const exempted = contained.filter((entry) => DIAGNOSTIC_CHANNEL_EXPORTS.includes(entry.export));
+    const offenders = contained
+      .filter((entry) => !BAN_LIST_EXPORTS.includes(entry.export))
+      .filter((entry) => !DIAGNOSTIC_CHANNEL_EXPORTS.includes(entry.export))
+      .map((entry) => `${entry.export}${entry.found.path}=${entry.found.value}`);
+    expect(distinct(offenders)).toEqual([]);
+    expect(offenders.length).toBe(DRIVE_CENSUS.BANNED_CONTAINED_OUTSIDE_THE_BAN_LISTS);
+    // The exemption's own size. Attack shape 19 hides in whatever the exemption
+    // turns out to be, so the exemption is a number rather than a silence.
+    expect(exempted.length).toBe(DRIVE_CENSUS.EXCLUDED_BY_THE_DIAGNOSTIC_EXEMPTION);
+  });
+
+  it('pins what the diagnostic channel actually said, rather than passing over it', () => {
+    const measurement = measureDrive();
+    const byExport = new Map<string, number>();
+    for (const entry of measureDrive().strings) {
+      if (entry.region !== 'return') continue;
+      if (!DIAGNOSTIC_CHANNEL_EXPORTS.includes(entry.export)) continue;
+      if (entry.found.viaKey) continue;
+      byExport.set(entry.export, (byExport.get(entry.export) ?? 0) + 1);
+    }
+    void measurement;
+    // Four of the eight are zero-argument vocabulary checks over frozen tables,
+    // so their string domain is EMPTY on a healthy tree and cannot be made
+    // non-empty without editing a shipped module. That is stated as a number,
+    // not hidden: those four are checked by instrument A's literal-member pass
+    // and by nothing here.
+    expect([...byExport.entries()].sort()).toEqual(DIAGNOSTIC_CHANNEL_CENSUS);
+  });
+
+  it('pins the two strings the composed loop mints for itself', () => {
+    // `gymSnapshot` returns module-private constants rather than caller text,
+    // so its two bare-string positions carry no sentinel. They are pinned by
+    // content instead, which is the same guarantee by a different route.
+    const measurement = measureDrive();
+    const fromSnapshot = distinct(
+      measurement.strings
+        .filter((entry) => entry.export === 'gymSnapshot' && entry.region === 'return')
+        .filter((entry) => !entry.found.viaKey)
+        .map((entry) => entry.found.value),
+    );
+    expect(fromSnapshot).toEqual(GYM_SNAPSHOT_STRINGS);
+  });
+});
+
+describe('instrument B bites — the tripwire the zeros are zero against', () => {
+  it('finds a banned name in every shape the scanner claims to reach', () => {
+    const loaded = deepScan(
+      tripwireSubject(core.EMPIRE_FORBIDDEN_OUTPUTS[0], reputationModule.FORBIDDEN_UNLOCK_KEYS[0]),
+      'tripwire',
+    );
+    const hits = loaded.strings.filter((found) => BANNED_NORMALISED.has(normalise(found.value)));
+    expect(hits.length).toBe(TRIPWIRE_CENSUS.HITS);
+    expect(loaded.gettersInvoked).toBe(TRIPWIRE_CENSUS.GETTERS_INVOKED);
+    expect(loaded.proxies).toBe(TRIPWIRE_CENSUS.PROXIES_SEEN);
+    expect(TRIPWIRE_SHAPES.length).toBe(TRIPWIRE_CENSUS.SHAPES);
+  });
+
+  it('finds nothing in the identically shaped benign twin', () => {
+    // Without this the count above would be a count about the SHAPE rather than
+    // about the names, and would stay green if `normalise` matched everything.
+    const twin = deepScan(BENIGN_TWIN, 'benign');
+    const hits = twin.strings.filter((found) => BANNED_NORMALISED.has(normalise(found.value)));
+    expect(hits.length).toBe(TRIPWIRE_CENSUS.BENIGN_HITS);
+    // …and the twin is the same walk, not a smaller one.
+    expect(twin.gettersInvoked).toBe(TRIPWIRE_CENSUS.GETTERS_INVOKED);
+    expect(twin.proxies).toBe(TRIPWIRE_CENSUS.PROXIES_SEEN);
+  });
+
+  it('gives every declared fold its own tripwire, in both directions', () => {
+    expect(FOLD_NAMES).toEqual(['case', 'separators', 'trim']);
+    let checked = 0;
+    for (const [fold, variant, name] of FOLD_TRIPWIRES) {
+      expect(FOLD_NAMES, fold).toContain(fold);
+      expect(normalise(variant), `${fold}: ${variant}`).toBe(name);
+      expect(BANNED_NORMALISED.has(normalise(variant)), `${fold}: ${variant}`).toBe(true);
+      checked += 1;
+    }
+    expect(checked).toBe(FOLD_TRIPWIRES.length);
+    // The other direction. A fold that matched everything would pass every line
+    // above and be worthless.
+    let refused = 0;
+    for (const value of FOLD_NON_MATCHES) {
+      expect(BANNED_NORMALISED.has(normalise(value)), value).toBe(false);
+      refused += 1;
+    }
+    expect(refused).toBe(FOLD_NON_MATCHES.length);
+  });
+});
+
+describe('the injected axes were varied, and the variation was measured', () => {
+  it('pins the disagreement on every axis, with a held-fixed control beside it', () => {
+    const readings = axisReadings().map(
+      (reading) => [reading.axis, reading.points, reading.disagreements] as const,
+    );
+    // Counts rather than bounds. A zero on a non-control row says the axis is
+    // inert under this driver, which makes every other point in the sweep one
+    // point on that axis — CLAUDE.md's "richness on one axis is not evidence
+    // about an axis nobody varied".
+    expect(readings).toEqual(AXIS_CENSUS);
+    const controls = readings.filter(([axis]) => axis.includes('(control)'));
+    expect(controls.length).toBe(3);
+    for (const [axis, , disagreements] of controls) expect(disagreements, axis).toBe(0);
+    for (const [axis, , disagreements] of readings.filter(([name]) => !name.includes('(control)'))) {
+      expect(disagreements, axis).toBeGreaterThan(0);
+    }
+  });
+});
