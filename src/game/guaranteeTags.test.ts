@@ -2838,6 +2838,14 @@ describe('the guarantee-tag convention', () => {
     // worth having. Either anchor being edited away expires the witness.
     for (const witness of MUTATION_WITNESSES) {
       const where = `witness for ${witness.guarantee}`;
+      // WHERE THIS FLOOR STILL DOES WORK, since the transcript rule arrived
+      // after it and the two read the same field. On a GRADED row it is
+      // subsumed — that row's `observed` has to contain the declaring test's
+      // title, and no title in the tree is shorter than this. On a row carrying
+      // `transcriptPredatesTheRule` nothing else reads `observed` at all, and
+      // there are more of those than of the graded ones, so the floor is live
+      // rather than dominated. It stops being live when the debt list empties,
+      // and that is the moment to delete it.
       expect(witness.observed.length, `${where}: records no failure message`).toBeGreaterThan(
         MIN_ANCHOR_LENGTH,
       );
