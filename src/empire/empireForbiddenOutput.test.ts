@@ -1217,6 +1217,19 @@ const BRANCH_POINT_CENSUS = Object.freeze({
  * NO BANNED NAME IS EVER PASSED IN AS AN ARGUMENT, anywhere in this file. A
  * driver that feeds poison and then finds poison has measured its own fixture.
  * Every banned name the check reports was therefore produced by the subject.
+ * The check that goes red if this stops holding is 'produces no banned name
+ * from any export but the two that ARE the ban lists' — a re-read argument is
+ * inside its domain, so poison handed in comes back out at it.
+ *
+ * That sentence is a guarantee and the tree-wide census in
+ * `src/game/guaranteeTags.test.ts` does not count it, which is disclosed here
+ * rather than acted on. Its trigger list is NEVER / CANNOT / ALWAYS / ONLY, and
+ * this says "NO … EVER". Measured: this file contributes ZERO triggering runs
+ * and twenty-seven capitalised runs of three words or more, so the pin at 225
+ * is correct for what that scan measures and wrong about this paragraph.
+ * Nothing here was rephrased in either direction to reach that number —
+ * `guaranteeTags.test.ts` is outside this piece's scope and a synonym swap in
+ * either direction is the evasion CLAUDE.md records twice already.
  */
 const SENTINELS = Object.freeze({
   NPC_ID: 'sentinel-npc-id',
@@ -1718,8 +1731,7 @@ function driveEverything(): readonly DrivenRow[] {
   drivenMemo = true;
 
   // --- every exported CONSTANT, read directly. Attack shape 12 lives here.
-  for (const [moduleName, namespace] of Object.entries(MODULE_NAMESPACES)) {
-    void moduleName;
+  for (const namespace of Object.values(MODULE_NAMESPACES)) {
     for (const [name, value] of Object.entries(namespace)) {
       if (typeof value === 'function') continue;
       read(name, value);
@@ -2682,7 +2694,6 @@ describe('instrument B — nothing this directory produces is a forbidden name',
   });
 
   it('pins what the diagnostic channel actually said, rather than passing over it', () => {
-    const measurement = measureDrive();
     const byExport = new Map<string, number>();
     for (const entry of measureDrive().strings) {
       if (entry.region !== 'return') continue;
@@ -2690,7 +2701,6 @@ describe('instrument B — nothing this directory produces is a forbidden name',
       if (entry.found.viaKey) continue;
       byExport.set(entry.export, (byExport.get(entry.export) ?? 0) + 1);
     }
-    void measurement;
     // Four of the eight are zero-argument vocabulary checks over frozen tables,
     // so their string domain is EMPTY on a healthy tree and cannot be made
     // non-empty without editing a shipped module. That is stated as a number,
