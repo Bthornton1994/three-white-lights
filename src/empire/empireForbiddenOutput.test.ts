@@ -1040,6 +1040,15 @@ interface ScannedString {
   readonly viaKey: boolean;
 }
 
+/**
+ * One frame of an engine-produced stack.
+ *
+ * Everything matching this is removed before a stack is compared, because a
+ * real frame carries this checkout's absolute path and a line number, and a
+ * census over those is a census over the machine.
+ */
+const STACK_FRAME_LINE = /^[ \t]*at\s.*$/gm;
+
 interface ScanResult {
   readonly strings: readonly ScannedString[];
   readonly nodes: number;
@@ -1049,6 +1058,10 @@ interface ScanResult {
   readonly revisits: number;
   /** Objects the runtime reports as a `Proxy`. A trap can lie about its keys. */
   readonly proxies: number;
+  /** Error `stack` own-properties encountered. The branch below is skipped, so this is what says it is live. */
+  readonly stacks: number;
+  /** Banned names found in a stack once its engine frames are stripped. The zero the skip is allowed to be. */
+  readonly stackFindings: readonly string[];
   /** Strings and finite numbers in visit order, for the axis fingerprint. */
   readonly trace: readonly string[];
 }
@@ -1090,6 +1103,8 @@ function deepScan(root: unknown, label: string): ScanResult {
   let getterThrows = 0;
   let revisits = 0;
   let proxies = 0;
+  let stacks = 0;
+  const stackFindings: string[] = [];
 
   const isIndexKey = (key: string): boolean => /^(?:0|[1-9][0-9]*)$/.test(key);
 
@@ -1148,7 +1163,36 @@ function deepScan(root: unknown, label: string): ScanResult {
           strings.push({ path: `${at}[@@key]`, value: description, viaKey: true });
         }
       } else {
-        if (isError && key === 'stack') continue;
+        if (isError && key === 'stack') {
+          // THE SKIP, AND ITS CATCHER. The key and the value are both left out
+          // of `strings`, because an engine stack carries absolute paths and
+          // line numbers and pinning a count over them would pin a fact about
+          // the machine. That was a declared limit with NOTHING behind it: an
+          // `Object.defineProperty(err, 'stack', { value: <a forbidden name> })`
+          // in a shipped refusal path moved no count at all.
+          //
+          // So the value is read here, its `at` frames are stripped, and what
+          // is left is checked by equality AND containment. An engine stack
+          // strips to its `Error: message` header, which is already scanned as
+          // the `message` property; a planted one has no frames and survives
+          // whole. `reads a redefined Error.stack` plants exactly that and pins
+          // the finding count at one against a clean twin at zero.
+          //
+          // What this still does not catch, named rather than implied: a
+          // planted stack that DISGUISES itself as a frame — a value whose
+          // every line matches /^\s*at\s/ — is stripped to nothing and is
+          // invisible. Nothing in this file covers that.
+          stacks += 1;
+          const stackDescriptor = Object.getOwnPropertyDescriptor(node, key);
+          const raw = stackDescriptor?.get === undefined ? stackDescriptor?.value : undefined;
+          if (typeof raw === 'string') {
+            const stripped = normalise(raw.replace(STACK_FRAME_LINE, ' '));
+            for (const name of BANNED_VOCABULARY) {
+              if (stripped.includes(normalise(name))) stackFindings.push(`${at}.stack=${name}`);
+            }
+          }
+          continue;
+        }
         if (!(isArray && (isIndexKey(key) || key === 'length'))) {
           // The KEY itself is a reachable string. Attack shape 8 puts the name
           // here rather than in a value.
@@ -1180,6 +1224,8 @@ function deepScan(root: unknown, label: string): ScanResult {
     getterThrows,
     revisits,
     proxies,
+    stacks,
+    stackFindings: Object.freeze(stackFindings),
     trace: Object.freeze(trace),
   };
 }
@@ -2684,6 +2730,8 @@ interface DriveMeasurement {
   readonly gettersInvoked: number;
   readonly getterThrows: number;
   readonly proxies: number;
+  readonly stacks: number;
+  readonly stackFindings: readonly string[];
 }
 
 let measurementMemo: DriveMeasurement | null = null;
@@ -2697,6 +2745,8 @@ function measureDrive(): DriveMeasurement {
   let gettersInvoked = 0;
   let getterThrows = 0;
   let proxies = 0;
+  let stacks = 0;
+  const stackFindings: string[] = [];
   for (const row of rows) {
     // The return and the re-read arguments are scanned separately, because a
     // string that came back OUT is a different claim from one that was handed
@@ -2714,6 +2764,8 @@ function measureDrive(): DriveMeasurement {
       gettersInvoked += scan.gettersInvoked;
       getterThrows += scan.getterThrows;
       proxies += scan.proxies;
+      stacks += scan.stacks;
+      for (const finding of scan.stackFindings) stackFindings.push(`${row.export}${finding}`);
       for (const found of scan.strings) strings.push({ export: row.export, region, found });
     }
   }
@@ -2726,6 +2778,8 @@ function measureDrive(): DriveMeasurement {
     gettersInvoked,
     getterThrows,
     proxies,
+    stacks,
+    stackFindings: Object.freeze(stackFindings),
   };
   return measurementMemo;
 }
@@ -2747,6 +2801,16 @@ const DRIVE_CENSUS = Object.freeze({
    */
   GETTERS_INVOKED: 0,
   PROXIES: 0,
+  /**
+   * Error `stack` own-properties the walk met, and banned names found in them.
+   *
+   * The first is NOT zero and must not be: the walk deliberately skips the
+   * `stack` key, and a skip whose branch is never taken is a limit nobody can
+   * tell from an absence. This is the number that says the branch is live, in
+   * the same role `TRIPWIRE_CENSUS.GETTERS_INVOKED` plays for the getter arm.
+   */
+  STACKS: 1501,
+  STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
   BANNED_EQUAL_OUTSIDE_THE_BAN_LISTS: 0,
@@ -3035,6 +3099,13 @@ describe('instrument B — nothing this directory produces is a forbidden name',
     expect(measurement.gettersInvoked).toBe(DRIVE_CENSUS.GETTERS_INVOKED);
     expect(measurement.proxies).toBe(DRIVE_CENSUS.PROXIES);
     expect(measurement.getterThrows).toBe(0);
+    // The `stack` skip: how many were met, and how many carried a banned name
+    // once their engine frames were stripped. The first is non-zero, which is
+    // what says the skipped branch is real rather than a limit on a branch
+    // nothing reaches.
+    expect(measurement.stacks).toBe(DRIVE_CENSUS.STACKS);
+    expect(measurement.stackFindings).toEqual([]);
+    expect(measurement.stackFindings.length).toBe(DRIVE_CENSUS.STACK_FINDINGS);
   });
 
   it('reached every caller-supplied string position, by sentinel', () => {
@@ -3162,6 +3233,43 @@ describe('instrument B bites — the tripwire the zeros are zero against', () =>
     expect(loaded.gettersInvoked).toBe(TRIPWIRE_CENSUS.GETTERS_INVOKED);
     expect(loaded.proxies).toBe(TRIPWIRE_CENSUS.PROXIES_SEEN);
     expect(TRIPWIRE_SHAPES.length).toBe(TRIPWIRE_CENSUS.SHAPES);
+  });
+
+  it('reads a redefined Error.stack, which the walker skips as a key and a value', () => {
+    // The catcher for a limit that had none, and it is the Proxy shape: a
+    // count on the subject pinned at zero, with a planted twin measured
+    // non-zero beside it so the zero is zero against something.
+    const clean = new Error(SENTINELS.NPC_ID);
+    const cleanScan = deepScan(clean, 'clean-error');
+    expect(cleanScan.stacks).toBe(1);
+    expect(cleanScan.stackFindings).toEqual([]);
+
+    // Exactly the shipped-refusal-path exploit: the name is read out of the ban
+    // list, no forbidden word is spelled here, and `defineProperty` writes past
+    // the enumerable/own-key distinction the walker was relying on.
+    const planted = new Error(SENTINELS.NPC_ID);
+    Object.defineProperty(planted, 'stack', {
+      value: core.EMPIRE_FORBIDDEN_OUTPUTS[0],
+      configurable: true,
+    });
+    const plantedScan = deepScan(planted, 'planted-error');
+    expect(plantedScan.stacks).toBe(1);
+    expect(plantedScan.stackFindings.length).toBe(1);
+    expect(plantedScan.stackFindings[0]).toContain(core.EMPIRE_FORBIDDEN_OUTPUTS[0]);
+    // And the value is still absent from `strings`, so the census stays a
+    // census of the machine-independent surface.
+    expect(
+      plantedScan.strings.some((found) => found.value === core.EMPIRE_FORBIDDEN_OUTPUTS[0]),
+    ).toBe(false);
+
+    // The declared blind spot, planted so it is a measurement rather than a
+    // worry: a stack whose every line looks like a frame strips to nothing.
+    const disguised = new Error(SENTINELS.NPC_ID);
+    Object.defineProperty(disguised, 'stack', {
+      value: `    at ${core.EMPIRE_FORBIDDEN_OUTPUTS[0]} (x)`,
+      configurable: true,
+    });
+    expect(deepScan(disguised, 'disguised-error').stackFindings).toEqual([]);
   });
 
   it('finds nothing in the identically shaped benign twin', () => {
