@@ -49,6 +49,15 @@
  *       from two directions: the loud one kills a hang, the quiet one makes an
  *       interrupted run visible after everything that could report it is dead.
  *
+ *       AND IT PUSHES THAT MARKER TO ORIGIN EVERY `VERIFY_SYNC.INTERVAL_SECONDS`
+ *       WHILE THE COMMAND IS STILL RUNNING. The local marker does not survive a
+ *       tree death — `.gauntlet/verify/` reverts with everything else — and tree
+ *       death is this environment's dominant failure. Origin is the only thing
+ *       that has ever survived one. A completion-time push would repeat the
+ *       original defect one level out, because a run that dies mid-flight never
+ *       reaches its completion step. A push failure is REPORTED and never
+ *       changes the verification's exit code.
+ *
  *   --branches [--stale-minutes N]
  *       Lists every `claude/*` branch not merged into HEAD, with the age of its
  *       last commit, and exits 1 if any exceeds the threshold. THIS is the mode
@@ -58,10 +67,20 @@
  *       survives the agent, the container and the notification. It ALSO reports
  *       the marker scan below, because that is the command a wave already runs.
  *
- *   --markers [--clear-stale]
+ *   --markers [--clear-stale] [--no-remote]
  *       Reports every verification marker and exits 1 if any is a finding — an
  *       interrupted run, or one this machine cannot resolve. Same scan as the
  *       section inside `--branches`, from the same function, not a second copy.
+ *
+ *       IT READS ORIGIN AS WELL AS THIS TREE, and that is the case it exists
+ *       for: after a rewind the local directory is EMPTY and the only surviving
+ *       record is the one that was pushed mid-run. A record on origin nobody
+ *       reads is worth nothing, so this is the default rather than a flag
+ *       somebody has to remember at exactly the moment nobody remembers
+ *       anything. `--no-remote` is for working offline on purpose; an origin
+ *       that cannot be reached is reported as a NAMED SKIPPED CHECK and does
+ *       not change the exit code, which is stated as a limit in
+ *       `scanRemoteMarkers`'s header rather than left for a reader to discover.
  *
  * ===========================================================================
  * WHAT THIS CANNOT DO — stated, because a partial mechanism that declares its
@@ -85,11 +104,18 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   VERIFY_MARKER,
+  VERIFY_SYNC,
   beginMarker,
+  clearRemoteStale,
   clearStale,
+  findingCount,
   finishMarker,
   formatMarkerReport,
+  heartbeatMarker,
   scanMarkers,
+  syncEnabled,
+  syncIntervalSecondsFor,
+  syncRemoteFor,
 } from './verifyMarker.mjs';
 
 /** This tool is run from anywhere; the marker directory is the repo's. */
@@ -398,7 +424,7 @@ function branches() {
   // that stopped existing is the same class of failure as an agent that stopped
   // existing, one layer down, and this is the command the lead already runs at
   // the end of a wave.
-  const markerFindings = markerSection().findings.length;
+  const markerFindings = findingCount(markerSection());
 
   // NON-VACUITY. An empty branch list satisfies "nothing is stale" and would
   // report success on a repository where every branch had been pruned — the
@@ -448,23 +474,67 @@ function branches() {
  * and not applied to the sibling immediately below it — and the distance keeps
  * shrinking, so the two callers here read this rather than resembling it.
  */
-function markerSection({ clear = false, nowMs = Date.now() } = {}) {
-  const scan = scanMarkers({ root: ROOT, nowMs });
+function markerSection({ nowMs = Date.now() } = {}) {
+  const scan = scanMarkers({ root: ROOT, nowMs, remote: !has('--no-remote') });
   console.log(formatMarkerReport(scan));
-  if (clear) {
-    const removed = clearStale(scan);
-    for (const p of removed) console.log(`     cleared ${p}`);
-    // CLEARING IS NOT RESOLVING, and the exit code says so: the findings were
-    // real, they were read, and the record of them is now gone. The next run
-    // starts clean; this one still reports what it found.
-    console.log(`     ${removed.length} record(s) removed. A LIVE marker is never among them.`);
-  }
   return scan;
 }
 
 async function markers() {
-  const scan = markerSection({ clear: has('--clear-stale') });
-  return scan.findings.length > 0 ? 1 : 0;
+  const scan = markerSection();
+  if (has('--clear-stale')) {
+    // Taken BEFORE the delete: after it, the evidence that these were findings
+    // is gone from disk, and the remote twins are identified by id.
+    const clearedIds = new Set(scan.findings.map((r) => r.marker?.id).filter((id) => typeof id === 'string'));
+    const removed = clearStale(scan);
+    for (const p of removed) console.log(`     cleared ${p}`);
+    // THE SIBLING ARM, WRITTEN AT THE SAME TIME AS THE ONE ABOVE IT. A local
+    // clear that leaves the origin copy standing turns the next scan back into
+    // the same finding, which is how a permanent false alarm is born and how
+    // `--clear-stale` becomes a ritual. The remote ref cannot be deleted here
+    // (403, every namespace), so the ENTRY is removed from the host's tree.
+    const remote = await clearRemoteStale({ root: ROOT, scan, alsoIds: clearedIds });
+    for (const p of remote.removed) console.log(`     cleared ${p}  (on ${syncRemoteFor()})`);
+    if (!remote.ok) {
+      console.log(`     !! could not clear the origin copy: ${String(remote.error)}`);
+      console.log('        The record is still on origin and will be reported again.');
+    }
+    if (has('--no-remote') && removed.length > 0) {
+      console.log('     !! --no-remote: the ORIGIN copy of each record above was left standing,');
+      console.log('        so the next scan without --no-remote will report it again.');
+    }
+    // CLEARING IS NOT RESOLVING, and the exit code says so: the findings were
+    // real, they were read, and the record of them is now gone. The next run
+    // starts clean; this one still reports what it found.
+    console.log(
+      `     ${removed.length + remote.removed.length} record(s) removed. A LIVE marker is never among them.`,
+    );
+  }
+  return findingCount(scan) > 0 ? 1 : 0;
+}
+
+/**
+ * WHAT THE SYNC DID, ON EVERY RUN, WHETHER OR NOT IT WORKED.
+ *
+ * A network call can fail, and this one is allowed to: it must never fail the
+ * verification it is recording. What it may not do is fail quietly, because a
+ * run whose record never left this machine is a run whose record dies with the
+ * tree — and that is indistinguishable, afterwards, from a run nobody started.
+ */
+function reportSyncOutcome(syncStatus, markerPath) {
+  if (syncStatus.ok > 0) {
+    console.error(
+      `watchdog: verify record synced ${syncStatus.ok}/${syncStatus.attempts} time(s) to ${syncRemoteFor()}`
+        + ` (${VERIFY_SYNC.REF_PREFIX}/<host>) — it survives this tree`,
+    );
+    return;
+  }
+  console.error(`\n!! WATCHDOG: this run's verify record NEVER reached ${syncRemoteFor()}.`);
+  console.error(`   ${syncStatus.attempts} heartbeat(s) tried; last error: ${String(syncStatus.lastError)}`);
+  console.error(`   ${markerPath} is the ONLY copy. A rewind takes .gauntlet/verify/ with it,`);
+  console.error('   so if this tree goes back, this verification leaves no trace at all — which');
+  console.error('   is the silent absence the marker exists to remove. The verification itself');
+  console.error('   is unaffected; its exit code below is the command\'s own.');
 }
 
 async function budget() {
@@ -497,6 +567,64 @@ async function budget() {
   // which is the silent version of the failure this file is about.
   const child = spawn(command[0], command.slice(1), { stdio: 'inherit', detached: true });
 
+  // ---------------------------------------------------------------------
+  // DURING THE RUN, NOT AT THE END OF IT.
+  //
+  // The local marker survives a container restart and does NOT survive a tree
+  // death, which is this environment's dominant failure — seventeen against
+  // zero. Origin is the only thing that has ever survived one. So the record is
+  // pushed on a heartbeat while the command is still running.
+  //
+  // A COMPLETION-TIME PUSH WOULD BE THE ORIGINAL DEFECT ONE LEVEL OUT: a run
+  // that dies mid-flight is exactly the run that never reaches its completion
+  // step. That is the same argument that puts `beginMarker` above the spawn
+  // rather than below the await, and it is why the first push is fired HERE,
+  // one statement after the spawn, instead of being awaited before it — the
+  // command must not wait on a network round trip, and the push must not wait
+  // on the command.
+  // ---------------------------------------------------------------------
+  const syncStatus = { attempts: 0, ok: 0, pending: 0, lastError: null, wasOk: null };
+  const intervalSeconds = syncIntervalSecondsFor();
+  let syncChain = Promise.resolve();
+  const queueSync = (reason) => {
+    syncStatus.pending += 1;
+    syncChain = syncChain.then(async () => {
+      const outcome = await heartbeatMarker(markerPath, { root: ROOT, reason });
+      syncStatus.attempts += 1;
+      if (outcome.ok) syncStatus.ok += 1;
+      else syncStatus.lastError = outcome.result?.error ?? outcome.error ?? 'unknown';
+      // NOT SILENT, AND NOT SPAM. The first failure is announced when it
+      // happens, and so is a recovery, so a reader watching the log learns that
+      // this run's durable record stopped arriving at the moment it stopped.
+      if (syncStatus.wasOk !== outcome.ok) {
+        if (!outcome.ok) {
+          console.error(`watchdog: verify record did NOT reach ${syncRemoteFor()} — ${String(syncStatus.lastError)}`);
+        } else if (syncStatus.wasOk === false) {
+          console.error(`watchdog: verify record reached ${syncRemoteFor()} again`);
+        }
+        syncStatus.wasOk = outcome.ok;
+      }
+    }).catch((error) => {
+      // A SYNC FAILURE MUST NOT FAIL THE VERIFICATION IT IS RECORDING. Anything
+      // that escapes `heartbeatMarker` is a programming error in this file, so
+      // it is printed rather than swallowed — but it never reaches the exit code.
+      syncStatus.lastError = String(error).slice(0, 200);
+      console.error(`watchdog: verify sync threw and was contained — ${syncStatus.lastError}`);
+    }).finally(() => {
+      syncStatus.pending -= 1;
+    });
+    return syncChain;
+  };
+  let syncTimer = null;
+  if (syncEnabled()) {
+    void queueSync('start');
+    syncTimer = setInterval(() => {
+      // A heartbeat that queues behind a slow one would stack round trips on a
+      // struggling network. It skips instead; the next tick tries again.
+      if (syncStatus.pending === 0) void queueSync('heartbeat');
+    }, intervalSeconds * 1000);
+  }
+
   let timedOut = false;
   const timer = setTimeout(() => {
     timedOut = true;
@@ -512,6 +640,7 @@ async function budget() {
     child.on('error', (error) => resolve({ code: null, signal: null, spawnError: error }));
   });
   clearTimeout(timer);
+  if (syncTimer !== null) clearInterval(syncTimer);
 
   const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
 
@@ -538,7 +667,36 @@ async function budget() {
       : outcome.signal !== null
         ? { status: VERIFY_MARKER.STATUS.INCOMPLETE, interruption: VERIFY_MARKER.INTERRUPTION.SIGNAL, detail: `killed by ${outcome.signal}` }
         : { status: outcome.code === 0 ? VERIFY_MARKER.STATUS.PASS : VERIFY_MARKER.STATUS.FAIL, exitCode: outcome.code };
+  /**
+   * A DRAIN OF IN-FLIGHT HEARTBEATS USED TO SIT HERE AND WAS DELETED, RECORDED
+   * RATHER THAN QUIETLY REMOVED (CLAUDE.md, "a new rule can make an old one
+   * vacuous").
+   *
+   * It was written to stop a heartbeat that began before the verdict from
+   * writing its stale INCOMPLETE snapshot over a real PASS. `heartbeatMarker`
+   * now re-reads the record after its push and writes only its own `sync`
+   * field, which makes that impossible whatever the call ordering — so the
+   * drain could not be reddened by any edit: remove it and the re-read still
+   * saves the verdict; remove the re-read and the drain does not, because the
+   * heartbeat's own push of the pre-verdict state happens at the same instant
+   * either way. It was strictly dominated AND it cost up to
+   * `TOTAL_TIMEOUT_SECONDS` of delay before the verdict was written down.
+   * Two checks where one can never speak is the shape the standing rule bans.
+   */
   finishMarker(markerPath, patch);
+
+  // THE FINAL SYNC IS THE LEAST IMPORTANT ONE, and saying so is the point. It
+  // carries the verdict to origin so the record stops being a finding there —
+  // but every argument for this mechanism is about the runs that never get
+  // here. The heartbeats above are the load-bearing half.
+  if (syncEnabled()) {
+    await queueSync('final');
+    reportSyncOutcome(syncStatus, markerPath);
+  } else {
+    console.error(
+      `watchdog: verify sync OFF (${VERIFY_SYNC.ENV_REMOTE}=${VERIFY_SYNC.DISABLED}) — this record is LOCAL ONLY`,
+    );
+  }
 
   if (outcome.spawnError !== null) {
     console.error(`watchdog: could not start ${command[0]} — ${String(outcome.spawnError)}`);
@@ -568,7 +726,7 @@ const mode = has('--branches') ? branches : has('--markers') ? markers : has('--
 if (mode === null) {
   console.error('usage:');
   console.error('  node tools/watchdog.mjs --branches [--stale-minutes N]');
-  console.error('  node tools/watchdog.mjs --markers [--clear-stale]');
+  console.error('  node tools/watchdog.mjs --markers [--clear-stale] [--no-remote]');
   console.error('  node tools/watchdog.mjs --budget <seconds> [--label <name>] -- <command...>');
   process.exit(2);
 }
