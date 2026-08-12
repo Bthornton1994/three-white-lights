@@ -177,6 +177,29 @@ describe('the shell is the join, and it is the only one', () => {
     // `tools/verify-shell-route.mjs`. Rendering does not verify itself; the
     // timing has to be right, and it has to be derived from the constant the
     // screen animates on rather than from one global settle.
+    // ------------------------------------------------------------------
+    // THESE TWO ARE NOT THE CLASS GUARD, AND THEY ARE NOT DEAD EITHER
+    // ------------------------------------------------------------------
+    // The class guard is `every screen the shell mounts reports its beat`
+    // below, which discovers its subjects from `AppShell.tsx`'s JSX and covers
+    // the screen these two lines forgot for a wave. The obvious next move is to
+    // delete them as superseded, and CLAUDE.md's standing check says to compare
+    // the thresholds symbolically before doing that rather than by feel.
+    //
+    // Compared: the derived guard asks whether the module CALLS `onPhase` at
+    // all. These ask whether it calls it with `state.phase`. A subject that
+    // reports a hardcoded beat — `onPhase?.('check-in')` on `SessionScreen`,
+    // which would pin the shell's pill to one phase for ever while the screen
+    // moved underneath it — satisfies the derived guard and reddens these. So
+    // these two imply the derived one on their two screens and are strictly
+    // stronger there; neither is dominated, and both were mutated to confirm it
+    // rather than argued about.
+    //
+    // They stay screen-named on purpose: `EmpireScreen` legitimately reports
+    // `onPhase?.('floor')` from a literal, because the Empire surface has one
+    // beat, so a tree-wide version of THIS check would be false of a correct
+    // screen. The argument-shape claim is per-screen; the reporting claim is
+    // the class.
     expect(SESSION_SCREEN).toMatch(/onPhase\?\.\(state\.phase\)/);
     expect(MEET_SCREEN).toMatch(/onPhase\?\.\(state\.phase\)/);
   });
@@ -728,6 +751,445 @@ describe('the browser’s URL actually reaches the route graph', () => {
 });
 
 // ---------------------------------------------------------------------------
+// THE SCREENS THE SHELL MOUNTS, AND THE FILES THE SHELL IS MADE OF —
+// BOTH DISCOVERED FROM THE TREE RATHER THAN LISTED HERE
+// ---------------------------------------------------------------------------
+
+/**
+ * ===========================================================================
+ * THE DEFECT THIS BLOCK EXISTS TO CLOSE, AND WHY A THIRD REGEX WOULD NOT
+ * ===========================================================================
+ * `EmpireScreen` reports its beat in a three-line effect, and that effect is
+ * the entire reason GDD §5's floor has anything on it a thumb can press:
+ * `AppShell`'s `empirePhase` has one writer, `shellEmpireAffordanceFor` has one
+ * input, and the screen renders no `Pressable` of its own. Delete the effect
+ * and a player who presses GYM EMPIRE lands on a surface with no interactive
+ * element at all — the route was entered through React state, so
+ * `location.search` never moved and browser-back does not undo it, and on a
+ * phone there is no URL to fall back to in the first place.
+ *
+ * That deletion was measured on this tree, not reasoned about: 78 files, 3214
+ * tests, all green, `npx tsc --noEmit` exit 0. `onPhase?:` is optional, so
+ * dropping the attribute at the mount site typechecks as well.
+ *
+ * WHY IT SURVIVED. The scan that covers the other two screens is six lines
+ * above the scan that covers Empire's pill, in a test whose own comment records
+ * that it was added after this exact mutation stayed green across 2183 tests.
+ * It names its two subjects as literals. The third screen arrived a wave later
+ * and nobody edited the list — which is the failure mode of any guard that has
+ * to be remembered, at the shortest distance this repository has recorded yet.
+ *
+ * SO THE SET IS DISCOVERED, from `AppShell.tsx`'s own JSX, and the requirement
+ * is applied to whatever is in it. A fifth screen inherits the check by being
+ * mounted rather than by somebody thinking of it. The two censuses are what
+ * keep that from being silent: they pin how many screens were found and how
+ * many of them declare a phase callback, so a screen arriving — or one quietly
+ * dropping the declaration, which would otherwise leave the set smaller and the
+ * loop still green — is a red test with a number in it.
+ */
+const SCREEN_REPORTING = Object.freeze({
+  /** The prop a surface reports its beat to the shell through. */
+  PHASE_PROP: 'onPhase',
+  /** The file whose JSX decides which screens the app has. */
+  SHELL_FILE: 'src/shell/AppShell.tsx',
+  /**
+   * How many distinct screen modules `AppShell.tsx` mounts today.
+   *
+   * `SessionScreen`, `MeetScreen`, `EmpireScreen`, `LiftScreen`. Pinned so the
+   * fifth is announced rather than absorbed.
+   */
+  SCREENS: 4,
+  /**
+   * ...and how many of those declare a phase callback in their props.
+   *
+   * Three: the replay harness's `LiftScreen` has no beats and is not
+   * player-reachable (`shellRoute.ts` keeps `replay` out of
+   * `playerReachableFrom`), so the shell draws no chrome over it and asks it
+   * nothing. Pinned separately from the count above because the two move for
+   * different reasons: deleting `EmpireScreenProps.onPhase` outright leaves
+   * four screens and three becomes two.
+   */
+  DECLARING_A_PHASE: 3,
+});
+
+/** One `<Screen …>` element in `AppShell.tsx`, and what it was given. */
+interface ScreenMount {
+  readonly component: string;
+  /** The module the tag name resolves to, repository-relative. */
+  readonly file: string;
+  /** Does that module's props type declare the phase callback? */
+  readonly declaresPhase: boolean;
+  /** Does that module CALL it, rather than accepting it and dropping it? */
+  readonly reportsPhase: boolean;
+  /** Was this mount site handed one? */
+  readonly handedPhase: boolean;
+}
+
+/** Does this module's props type declare a `PHASE_PROP` member? */
+function declaresPhaseProp(module: Module): boolean {
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (found) return;
+    if (
+      (ts.isPropertySignature(node) || ts.isPropertyDeclaration(node)) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === SCREEN_REPORTING.PHASE_PROP
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  ts.forEachChild(module.ast, visit);
+  return found;
+}
+
+/**
+ * Does this module CALL the phase callback?
+ *
+ * AN AST AND NOT A REGEX, for the reason the hand-off analyser above gives at
+ * length: `expect(SCREEN).toMatch(/onPhase\?\.\(state\.phase\)/)` pins the
+ * SPELLING and the ARGUMENT, so `onPhase?.(beat)`, `props.onPhase?.(p)` and a
+ * report hoisted into a callback all turn it red while the app is correct. It
+ * accepts `onPhase(x)`, `onPhase?.(x)` and `<anything>.onPhase(x)`; a mention
+ * inside a comment or a string is not a call node and does not count, which the
+ * fixtures below drive both ways.
+ */
+function callsPhaseProp(module: Module): boolean {
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (found) return;
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      const name = ts.isIdentifier(callee)
+        ? callee.text
+        : ts.isPropertyAccessExpression(callee)
+          ? callee.name.text
+          : null;
+      if (name === SCREEN_REPORTING.PHASE_PROP) {
+        found = true;
+        return;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  ts.forEachChild(module.ast, visit);
+  return found;
+}
+
+/**
+ * Every screen element in a shell module, with the module each tag resolves to.
+ *
+ * A tag counts as a screen when it is capitalised AND it resolves through this
+ * file's own import follower to a relative module on disk. That is what keeps
+ * `<View>`, `<Text>`, `<Pressable>` and `<Animated.View>` out — they come from
+ * packages — and `<ShellNav>` out, which is declared in `AppShell.tsx` itself
+ * and is chrome rather than a surface.
+ */
+function screenMountsIn(shellFile: string, text: string, loader: Loader): readonly ScreenMount[] {
+  const shell = parseModule(shellFile, text);
+  const imported = importsIn(shell.ast);
+  const mounts: ScreenMount[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) {
+      const tag = node.tagName.getText(shell.ast);
+      const via = imported.get(tag);
+      const target = via === undefined ? null : loader(shell.file, via.from);
+      if (/^[A-Z]/.test(tag) && target !== null) {
+        mounts.push({
+          component: tag,
+          file: target.file,
+          declaresPhase: declaresPhaseProp(target),
+          reportsPhase: callsPhaseProp(target),
+          handedPhase: node.attributes.properties.some(
+            (attribute) =>
+              ts.isJsxAttribute(attribute) &&
+              attribute.name.getText(shell.ast) === SCREEN_REPORTING.PHASE_PROP &&
+              attribute.initializer !== undefined,
+          ),
+        });
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(shell.ast);
+  return mounts;
+}
+
+/** The screens the real shell mounts, read off the real file. */
+function shellScreens(): readonly ScreenMount[] {
+  return screenMountsIn(
+    SCREEN_REPORTING.SHELL_FILE,
+    source(SCREEN_REPORTING.SHELL_FILE),
+    loadFromDisk,
+  );
+}
+
+describe('every screen the shell mounts reports its beat', () => {
+  /**
+   * A loader with one fake screen module on it, so the discovery and both
+   * detectors can be driven without inventing files in the tree. The fixture's
+   * body is varied per case; `withScreen` builds a loader that serves it.
+   */
+  const withScreen = (screenSource: string): Loader => (_from, specifier) =>
+    specifier.endsWith('FixtureScreen')
+      ? parseModule('src/fixture/FixtureScreen.tsx', screenSource)
+      : null;
+
+  const REPORTS = `
+    export interface FixtureScreenProps { readonly onPhase?: (p: string) => void; }
+    export function FixtureScreen({ onPhase }: FixtureScreenProps) {
+      useEffect(() => { onPhase?.('floor'); }, [onPhase]);
+      return null;
+    }
+  `;
+  const SILENT = `
+    export interface FixtureScreenProps { readonly onPhase?: (p: string) => void; }
+    export function FixtureScreen({ onPhase }: FixtureScreenProps) {
+      // onPhase?.('floor');  <- the mutation: accepted, never called
+      return null;
+    }
+  `;
+  const NO_PROP = `
+    export interface FixtureScreenProps { readonly serverPort: Port; }
+    export function FixtureScreen(_props: FixtureScreenProps) { return null; }
+  `;
+  const MOUNT_FED = `import { FixtureScreen } from './FixtureScreen';
+    const a = <FixtureScreen onPhase={setPhase} />;`;
+  const MOUNT_STARVED = `import { FixtureScreen } from './FixtureScreen';
+    const a = <FixtureScreen />;`;
+
+  const verdictFor = (shellText: string, screenText: string): ScreenMount | undefined =>
+    screenMountsIn('src/shell/Fixture.tsx', shellText, withScreen(screenText))[0];
+
+  it('CONTROL: the discovery sees a screen, and both detectors see their subject go missing', () => {
+    // The scan finds the mount at all, and reads the good case as good.
+    const good = verdictFor(MOUNT_FED, REPORTS);
+    expect(good?.file).toBe('src/fixture/FixtureScreen.tsx');
+    expect([good?.declaresPhase, good?.reportsPhase, good?.handedPhase]).toEqual([
+      true,
+      true,
+      true,
+    ]);
+
+    // THE MUTATION, in the shape it took on the real screen: the prop is still
+    // declared and still handed over, and the call is gone.
+    const silent = verdictFor(MOUNT_FED, SILENT);
+    expect([silent?.declaresPhase, silent?.reportsPhase, silent?.handedPhase]).toEqual([
+      true,
+      false,
+      true,
+    ]);
+
+    // ...and the other two ways the same dead end arrives.
+    const starved = verdictFor(MOUNT_STARVED, REPORTS);
+    expect([starved?.declaresPhase, starved?.reportsPhase, starved?.handedPhase]).toEqual([
+      true,
+      true,
+      false,
+    ]);
+    const gone = verdictFor(MOUNT_FED, NO_PROP);
+    expect([gone?.declaresPhase, gone?.reportsPhase]).toEqual([false, false]);
+
+    // Elements that are not screens are not counted: a package component, a
+    // namespaced tag, and a component declared in the shell file itself.
+    expect(
+      screenMountsIn(
+        'src/shell/Fixture.tsx',
+        `import { View } from 'react-native';
+         function ShellNav() { return null; }
+         const a = <View><Animated.View /><ShellNav /></View>;`,
+        withScreen(REPORTS),
+      ),
+    ).toEqual([]);
+
+    // And the call detector accepts the shapes a legitimate restructure would
+    // produce, while a regex on today's spelling would not.
+    for (const body of [
+      `function S(props) { props.onPhase('x'); return null; }`,
+      `function S({ onPhase }) { const go = () => onPhase(beat); go(); return null; }`,
+    ]) {
+      expect(callsPhaseProp(parseModule('f.tsx', body)), body).toBe(true);
+    }
+    // A mention in prose or in a string is not a call.
+    for (const body of [
+      `function S({ onPhase }) { /* onPhase?.(state.phase) */ return null; }`,
+      `function S({ onPhase }) { log('onPhase?.(state.phase)'); return null; }`,
+    ]) {
+      expect(callsPhaseProp(parseModule('f.tsx', body)), body).toBe(false);
+    }
+  });
+
+  it('EVERY screen the shell mounts is DISCOVERED, and the census pins how many', () => {
+    const mounts = shellScreens();
+    const files = [...new Set(mounts.map((mount) => mount.file))].sort();
+    expect(
+      files.length,
+      `${SCREEN_REPORTING.SHELL_FILE} mounts ${files.length} screen module(s): ${files.join(', ')}.` +
+        ' A new one is not a defect — but it has to be looked at, and this number is where it gets looked at.',
+    ).toBe(SCREEN_REPORTING.SCREENS);
+    // ...and the walk really reached the file the finding was about, inside the
+    // shell's own directory as well as outside it.
+    expect(files).toContain('src/shell/EmpireScreen.tsx');
+    expect(files).toContain('src/session/SessionScreen.tsx');
+
+    const declaring = files.filter((file) =>
+      mounts.some((mount) => mount.file === file && mount.declaresPhase),
+    );
+    expect(
+      declaring.length,
+      `${declaring.length} of ${files.length} mounted screens declare '${SCREEN_REPORTING.PHASE_PROP}': ${declaring.join(', ')}`,
+    ).toBe(SCREEN_REPORTING.DECLARING_A_PHASE);
+  });
+
+  it('AND EVERY ONE OF THEM CALLS IT — a screen that accepts the beat and drops it is a dead end', () => {
+    // THE ASSERTION THE `useEffect` DELETION REDDENS. Nothing here names a
+    // screen: the list comes off the shell's JSX, so the next screen mounted is
+    // covered by having been mounted.
+    const mounts = shellScreens();
+    const silent = mounts
+      .filter((mount) => mount.declaresPhase && !mount.reportsPhase)
+      .map(
+        (mount) =>
+          `${mount.file} accepts '${SCREEN_REPORTING.PHASE_PROP}' and never calls it, so ` +
+          `AppShell's phase for that surface stays null, shellAffordanceFor/shellEmpireAffordanceFor draw nothing, ` +
+          'and a player who routes there has no control to press — no URL changed, so there is no way back',
+      );
+    expect(silent, silent.join('\n')).toEqual([]);
+
+    // THE SIBLING ARM, and it is the one the `useEffect` fix would leave open:
+    // the screen reports faithfully and the shell forgot to ask. Same dead end,
+    // and it typechecks because the prop is optional.
+    const starved = mounts
+      .filter((mount) => mount.declaresPhase && !mount.handedPhase)
+      .map(
+        (mount) =>
+          `${SCREEN_REPORTING.SHELL_FILE} mounts <${mount.component}> without '${SCREEN_REPORTING.PHASE_PROP}', ` +
+          `so ${mount.file} reports its beat to nobody and the shell draws no chrome over that surface`,
+      );
+    expect(starved, starved.join('\n')).toEqual([]);
+
+    // NON-VACUITY, AS A COUNT RATHER THAN A BOUND. Both filters above are empty
+    // when the domain is empty, which is precisely how a discovery that stopped
+    // working would look.
+    expect(
+      mounts.filter((mount) => mount.declaresPhase).length,
+      'no mounted screen declares a phase callback at all, so the two checks above walked an empty list',
+    ).toBe(SCREEN_REPORTING.DECLARING_A_PHASE);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE FILES THE SHELL'S §12.3 SCANS RUN OVER — DISCOVERED, FOR THE SAME REASON
+// ---------------------------------------------------------------------------
+
+/**
+ * ===========================================================================
+ * A REFUSAL CONDITION ENFORCED OVER A HAND-WRITTEN FILE LIST NARROWS IN SILENCE
+ * ===========================================================================
+ * Three scans below carry GDD §12.3 refusal conditions — no fatigue readout, no
+ * Total in persistent chrome, no progression fact read by the router — and all
+ * three used to name their files as literals. `EmpireScreen.tsx` was merged into
+ * `src/shell/` and joined none of them. The file is clean today; what had
+ * broken is the SCOPE, and a scope that shrank when a file arrived will shrink
+ * again the next time one does.
+ *
+ * So the set is walked. `repositorySources()` already exists two blocks up and
+ * already excludes tests and the directories a worktree makes dangerous, so the
+ * shell's file set is that walk filtered two ways: everything under
+ * `src/shell/`, plus every file anywhere in the repository that mounts
+ * `<AppShell>` — which is how `App.tsx`, the platform edge at the repository
+ * root, stays in scope without being typed here.
+ *
+ * REACH AND PREDICATE ARE TWO AXES. Widening the reach says nothing about what
+ * is being looked for, and the fatigue scan's predicate had a hole of its own:
+ * `FatigueState` and `.fatigue` do not match `import { fatigueDebtDays } from
+ * '../game/fatigue'`, which is a shell file reaching the hidden ledger by the
+ * most obvious route there is. The module import is now banned too, and both
+ * halves are driven against tripwires below.
+ */
+const SHELL_SCANS = Object.freeze({
+  /** Everything under here is the shell's, tests excluded by the walk. */
+  DIRECTORY: 'src/shell',
+  /**
+   * How many files that comes to today.
+   *
+   * `AppShell.tsx`, `EmpireScreen.tsx`, `appServer.ts`, `shellRoute.ts`,
+   * `shellTuning.ts`, and `App.tsx` from the mount walk. Pinned so a walk that
+   * stopped working reports an empty domain instead of agreeing with it.
+   */
+  FILES: 6,
+  /**
+   * Names the router may not reach for: a state machine step, a progression
+   * read, or a progression write. GDD §12.3 and CLAUDE.md's "client is a
+   * renderer".
+   */
+  NOT_THE_SHELLS_JOB: Object.freeze([
+    'stepSession',
+    'stepMeetDay',
+    'createSession',
+    'createMeetDay',
+    'readTotalKg',
+    'readBestE1rmKg',
+    'readStreakDays',
+    'snapshotFacts',
+    'applyTrainingSession',
+    'applyMeetResult',
+    'proposeChange',
+  ]),
+  /** The module that holds GDD §3.4's hidden ledger. */
+  FATIGUE_MODULE: 'game/fatigue',
+});
+
+/** Comments gone, string literals KEPT — an import specifier is a string. */
+function withoutComments(text: string): string {
+  return text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1 ');
+}
+
+/** Which banned names a file's real code contains, in list order. */
+function shellBannedNamesIn(text: string): readonly string[] {
+  const code = codeOnly(text);
+  return SHELL_SCANS.NOT_THE_SHELLS_JOB.filter((banned) =>
+    new RegExp(`\\b${banned}\\b`).test(code),
+  );
+}
+
+/** Which of the three ways into the fatigue ledger a file's code takes. */
+function fatigueReachesIn(text: string): readonly string[] {
+  const code = codeOnly(text);
+  const withStrings = withoutComments(text);
+  const found: string[] = [];
+  if (/\bFatigueState\b/.test(code)) found.push('FatigueState');
+  if (/\.fatigue\b/.test(code)) found.push('.fatigue');
+  if (new RegExp(`from\\s+'[^']*${SHELL_SCANS.FATIGUE_MODULE}'`).test(withStrings)) {
+    found.push(`imports ${SHELL_SCANS.FATIGUE_MODULE}`);
+  }
+  return found;
+}
+
+/**
+ * How many times a file's real text says "total".
+ *
+ * A COUNT AND NOT A BOOLEAN, because CLAUDE.md's own record of this class is
+ * that a presence pin whose pattern has more than one witness survives the
+ * mutation that breaks the thing. Comments are stripped and STRINGS ARE NOT: a
+ * rendered Total is a string literal, which is the whole point.
+ */
+function totalMentionsIn(text: string): number {
+  return (withoutComments(text).match(/\btotal\b/gi) ?? []).length;
+}
+
+/** Every file the shell is made of, walked rather than listed. */
+function shellSurfaceFiles(): readonly string[] {
+  const all = repositorySources();
+  const inDirectory = all.filter((file) => file.startsWith(`${SHELL_SCANS.DIRECTORY}/`));
+  const mounting = all.filter(
+    (file) => shellMountsIn(parseModule(file, source(file)), loadFromDisk).length > 0,
+  );
+  return [...new Set([...inDirectory, ...mounting])].sort();
+}
+
+// ---------------------------------------------------------------------------
 // THE ALREADY-TRAINED-TODAY CASE SURVIVES NAVIGATION
 // ---------------------------------------------------------------------------
 
@@ -999,50 +1461,73 @@ describe('navigating away and back cannot buy a second session of the day', () =
 // ---------------------------------------------------------------------------
 
 describe('the shell is a router, not a screen', () => {
-  it('steps no state machine and reads no progression fact', () => {
-    for (const banned of [
-      'stepSession',
+  /**
+   * Walked once for the whole block. Every scan below runs over this and over
+   * nothing it was told about by hand.
+   */
+  const SURFACE = shellSurfaceFiles();
+
+  it('CONTROL: the shell’s file set is WALKED, and the three scans below can see what they forbid', () => {
+    // THE CENSUS. A derived set that quietly went empty would satisfy every
+    // "no file contains X" check in this block, which is the shape CLAUDE.md
+    // calls an empty domain. So the count is pinned and the members printed.
+    expect(
+      SURFACE.length,
+      `the shell is ${SURFACE.length} file(s): ${SURFACE.join(', ')}. A new one is not a defect —` +
+        ' but it joins three §12.3 scans by arriving, and this number is where that is noticed.',
+    ).toBe(SHELL_SCANS.FILES);
+    // Inside the directory, including the file that arrived without joining any
+    // of the three lists this block used to keep by hand...
+    expect(SURFACE).toContain('src/shell/EmpireScreen.tsx');
+    // ...and outside it, reached through the mount walk rather than typed.
+    expect(SURFACE).toContain('App.tsx');
+    for (const file of SURFACE) {
+      expect(source(file).length, file).toBeGreaterThan(150);
+    }
+
+    // AND EACH PREDICATE AGAINST A TRIPWIRE, because a scan that has stopped
+    // matching agrees with every file it is pointed at. Counts, not presence:
+    // the banned-name reader returns which names it saw, in list order.
+    expect(shellBannedNamesIn('const s = stepMeetDay(a, b); proposeChange(x);')).toEqual([
       'stepMeetDay',
-      'createSession',
-      'createMeetDay',
-      'readTotalKg',
-      'readBestE1rmKg',
-      'readStreakDays',
-      'snapshotFacts',
-      'applyTrainingSession',
-      'applyMeetResult',
       'proposeChange',
-    ]) {
-      expect(SHELL, banned).not.toMatch(new RegExp(`\\b${banned}\\b`));
-    }
-    // The scan can see one.
-    expect(codeOnly('const s = stepMeetDay(a, b);')).toMatch(/\bstepMeetDay\b/);
+    ]);
+    expect(shellBannedNamesIn('// stepMeetDay(a, b)\nconst s = 1;')).toEqual([]);
+    expect(fatigueReachesIn('const n = state.context.fatigue.sessions;')).toEqual(['.fatigue']);
+    expect(fatigueReachesIn('let f: FatigueState = seed;')).toEqual(['FatigueState']);
+    // THE PREDICATE HOLE, DRIVEN: neither of the two above matches this line,
+    // and it is a shell file reading the hidden ledger by the plainest route.
+    expect(fatigueReachesIn("import { fatigueDebtDays } from '../game/fatigue';")).toEqual([
+      `imports ${SHELL_SCANS.FATIGUE_MODULE}`,
+    ]);
+    expect(fatigueReachesIn("const readiness = 'ready';")).toEqual([]);
+    expect(totalMentionsIn('const a = <Text>{`TOTAL ${kg}`}</Text>;')).toBe(1);
+    expect(totalMentionsIn('/* Total moves on meet day and no other day. */')).toBe(0);
   });
 
-  it('cannot reach the hidden fatigue ledger — GDD §3.4, §12.3', () => {
-    for (const [name, text] of [
-      ['AppShell.tsx', SHELL],
-      ['shellRoute.ts', codeOnly(source('src/shell/shellRoute.ts'))],
-      ['shellTuning.ts', codeOnly(source('src/shell/shellTuning.ts'))],
-      ['appServer.ts', APP_SERVER],
-      ['App.tsx', APP],
-    ] as const) {
-      expect(text, name).not.toMatch(/\bFatigueState\b/);
-      expect(text, name).not.toMatch(/\.fatigue\b/);
-    }
-    expect(codeOnly('const n = state.context.fatigue.sessions;')).toMatch(/\.fatigue\b/);
+  it('steps no state machine and reads no progression fact, in EVERY file of the shell', () => {
+    const reaching = SURFACE.flatMap((file) =>
+      shellBannedNamesIn(source(file)).map((banned) => `${file} reaches for ${banned}`),
+    );
+    expect(reaching, reaching.join('\n')).toEqual([]);
   });
 
-  it('shows no Total anywhere in its chrome — GDD §3.2, §6.4', () => {
+  it('cannot reach the hidden fatigue ledger, in EVERY file of the shell — GDD §3.4, §12.3', () => {
+    const reaching = SURFACE.flatMap((file) =>
+      fatigueReachesIn(source(file)).map((how) => `${file}: ${how}`),
+    );
+    expect(reaching, reaching.join('\n')).toEqual([]);
+  });
+
+  it('shows no Total anywhere in its chrome, in EVERY file of the shell — GDD §3.2, §6.4', () => {
     // Total moves on meet day and no other day. Persistent chrome is on screen
     // during a training session, so a Total there is the exact thing §3.2 says
     // spends meet day's payoff.
-    for (const relPath of ['src/shell/AppShell.tsx', 'src/shell/shellTuning.ts', 'App.tsx']) {
-      // The RAW source, not the stripped one: a rendered Total would be a
-      // string literal, which `codeOnly` blanks.
-      const raw = source(relPath).replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1 ');
-      expect(raw, relPath).not.toMatch(/\btotal\b/i);
-    }
+    const saying = SURFACE.flatMap((file) => {
+      const count = totalMentionsIn(source(file));
+      return count === 0 ? [] : [`${file} says "total" ${count} time(s) outside its comments`];
+    });
+    expect(saying, saying.join('\n')).toEqual([]);
   });
 
   it('holds no bare feel value — every one is in the registered tuning module', () => {
