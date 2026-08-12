@@ -129,6 +129,15 @@ public/canvaskit.wasm
 # unreachable if the rule names the directory. Nothing needs re-including today;
 # writing it this way now costs one character and stops the next person
 # discovering the rule the way the shots one was discovered.
+#
+# AND THIS DIRECTORY IS NOT THE DURABLE COPY, WHICH IS THE HALF THE PARAGRAPH
+# BELOW GOT WRONG ABOUT ITS OWN SUBJECT. "Writing here means it survives the
+# container" is true; "and therefore survives a rewind" is false, because a
+# rewind reverts the whole filesystem and takes gitignored files with it. The
+# durable copy is on origin under `refs/heads/verify-markers/<host>`, pushed
+# DURING the run by `--budget` and read by `--markers`. What this rule buys is
+# only that an in-flight record never dirties a tree an evidence stamp is about
+# to describe.
 .gauntlet/verify/*
 
 # Verification logs written INSIDE the repo, on purpose.
