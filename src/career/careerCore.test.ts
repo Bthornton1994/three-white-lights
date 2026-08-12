@@ -141,6 +141,7 @@ describe('the directory is pure, closed and numerically clean', () => {
       'careerEngagement.ts',
       'careerRecord.ts',
       'careerTuning.ts',
+      'flight.ts',
     ]);
     expect(SOURCE_OF.size).toBe(SHIPPED.length);
   });
@@ -210,6 +211,10 @@ describe('the directory is pure, closed and numerically clean', () => {
       'careerCore.ts': ['./careerTuning'],
       'careerRecord.ts': ['./careerCore', './careerTuning'],
       'careerEngagement.ts': ['./careerCore', './careerRecord'],
+      // GDD §6.6's flights. A leaf beside `careerCore.ts` rather than under it:
+      // a flight needs the tuning block's published rules and needs nothing the
+      // calendar knows, so the edge would only be there to look tidy.
+      'flight.ts': ['./careerTuning'],
     };
     let fenced = 0;
     for (const name of SHIPPED) {
@@ -232,7 +237,7 @@ describe('the directory is pure, closed and numerically clean', () => {
         specifiers += 1;
       }
     }
-    expect(specifiers).toBe(5);
+    expect(specifiers).toBe(6);
 
     // Non-vacuity, over BOTH axes rather than one. The finder works on a file
     // that does have edges, and it catches every (form x quote) pair on a
@@ -357,7 +362,7 @@ describe('the directory is pure, closed and numerically clean', () => {
       expect(SOURCE_RULES[REGISTERED_PATH]?.role).toBe('constants');
       expect(findings.get('careerTuning.ts')?.length, report('careerTuning.ts')).toBe(0);
     } else {
-      expect(findings.get('careerTuning.ts')?.length, report('careerTuning.ts')).toBe(17);
+      expect(findings.get('careerTuning.ts')?.length, report('careerTuning.ts')).toBe(21);
       // And the row would fix it rather than hide it: audited under a path
       // that already carries the rule it is asking for, the same bytes report
       // nothing, because every literal sits inside one frozen, named,
@@ -371,7 +376,9 @@ describe('the directory is pure, closed and numerically clean', () => {
     // instrument still sees the tuning block at all.
     //
     // Reddens on: adding or removing a tuned value. That is a decision, not a
-    // tuning pass — changing 120 to 90 leaves this at 17.
+    // tuning pass — changing 120 to 90 leaves this at 21. It went 17 -> 21 when
+    // GDD §6.6's flight block landed, which is four numbers: the flight cap,
+    // the two ends of the size band, and the field-size guard.
     const asRenderer = auditSource('src/career/__unregistered.ts', source('careerTuning.ts'));
     expect(
       asRenderer.length,
@@ -379,7 +386,7 @@ describe('the directory is pure, closed and numerically clean', () => {
         `removed, or the instrument stopped reporting. First finding: ${formatFindings(
           asRenderer.slice(0, 1),
         ).trim()}`,
-    ).toBe(17);
+    ).toBe(21);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/career/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });
@@ -404,8 +411,8 @@ describe('the directory is pure, closed and numerically clean', () => {
     const unread = Object.keys(CAREER_TUNING).filter((key) => !isRead(key)).sort();
     expect(unread).toEqual([...AWAITING_CONSUMER].sort());
     // Counts, not bounds: every key was examined and every one is read.
-    expect(Object.keys(CAREER_TUNING).length).toBe(12);
-    expect(Object.keys(CAREER_TUNING).filter(isRead).length).toBe(12);
+    expect(Object.keys(CAREER_TUNING).length).toBe(18);
+    expect(Object.keys(CAREER_TUNING).filter(isRead).length).toBe(18);
     // The detector can report a negative, so the empty list above is an
     // answer rather than a broken `includes`.
     expect(isRead('NOT_A_TUNING_KEY')).toBe(false);
@@ -445,7 +452,9 @@ describe('nothing this directory ships names anybody real', () => {
       }
     }
     // Counts, not bounds: the collectors really found the directory's strings.
-    expect(strings).toBe(185);
+    // 185 -> 241 when `flight.ts` landed; the 56 are its fault sentences, its
+    // tie-break labels and its `RangeError` messages.
+    expect(strings).toBe(241);
 
     // Non-vacuity, and the probe is DERIVED from the watchlist rather than
     // transcribed, so this file adds no citation of its own and the probe
@@ -457,8 +466,29 @@ describe('nothing this directory ships names anybody real', () => {
   it('has no watchlist name in its prose either', () => {
     // Wider than the check above and deliberately so: a citation in a comment
     // is how a real name most often arrives, per `realIp.ts`'s own account of
-    // how its list was extended. This piece implements no published rule, so
-    // it has no structural citation to make and the honest setting is zero.
+    // how its list was extended.
+    //
+    // THE SENTENCE THAT USED TO SIT HERE IS NO LONGER TRUE, and it is worth
+    // reading before the one that replaces it. It said: "This piece implements
+    // no published rule, so it has no structural citation to make and the
+    // honest setting is zero." `flight.ts` implements published rules — the
+    // flight cap, the bar-loading order, the placing tie-breaks — so the first
+    // clause is false, and `realIp.ts`'s own ruling is that a body whose
+    // published rule is being implemented is a structural citation that belongs
+    // on `REVIEWABLE_CITATIONS` rather than being deleted.
+    //
+    // The setting is still zero, for a different and weaker reason: adding that
+    // row means editing `src/licensing/`, which is outside this piece. So
+    // `flight.ts` describes the publisher instead of naming it and says so at
+    // length in its own header. That is the shape `realIp.ts` uses on itself
+    // ("a three-letter brand acronym") when it cannot afford a mention, and it
+    // is a deferral rather than a resolution — the citation is owed.
+    //
+    // THIS TEST IS LIVE AND CAUGHT SOMETHING WHILE `flight.ts` WAS BEING
+    // WRITTEN: its header named the realtime service GDD §6.6 names, which is
+    // on the same watchlist, and this assertion is what reported it. Kept as a
+    // note because it is the cheapest possible evidence that the zero above is
+    // a measurement rather than a formality.
     //
     // Reddens on: naming a real federation in a docstring — including as a
     // "for comparison, the such-and-such federation does X" aside, which is

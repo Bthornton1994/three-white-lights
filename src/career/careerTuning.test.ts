@@ -63,7 +63,7 @@ describe('every entry is classified', () => {
       );
     }
     // Counts, not bounds: the block has entries and every one was examined.
-    expect(TUNING_KEYS.length).toBe(12);
+    expect(TUNING_KEYS.length).toBe(18);
     expect(Object.keys(CAREER_TUNING_CLASSIFICATION).length).toBe(TUNING_KEYS.length);
   });
 
@@ -116,6 +116,88 @@ describe('every entry is classified', () => {
     expect(blocks).toBe(TUNING_KEYS.length);
     expect(docBlockAbove(TUNING_SOURCE, 'NOT_A_TUNING_KEY')).toBe('');
     expect(docBlockAbove(TUNING_SOURCE, 'CALENDAR_MAX_SLOTS').toLowerCase()).not.toContain(REQUIRED);
+  });
+
+  it('marks every entry that IS published with where it came from', () => {
+    // The mirror of the test above, for the sixth class. `design-table` says
+    // "this looks like a rulebook number and is not"; `published-rule` says
+    // "this is one, and a lifter can check it". The two obligations are
+    // different — a disclaimer and a citation — which is the argument for a
+    // sixth class rather than filing a rulebook value under `structural`.
+    //
+    // Reddens on: classifying an entry `published-rule` without the phrase over
+    // it, or deleting the phrase from one that already carries it.
+    //
+    // What this cannot do, said here rather than left to be discovered. It
+    // checks that a sentence claiming provenance exists. It cannot check that
+    // the transcription is right, and a wrong transcription of a real rule
+    // reads exactly like a right one — which is why `flight.ts` quotes the
+    // published wording at the point of use instead of paraphrasing it, so a
+    // reader with the rulebook open can diff two sentences rather than reverse
+    // a number.
+    //
+    // That first sentence is in lower case deliberately and the swap is
+    // disclosed rather than done quietly, which is what CLAUDE.md asks for.
+    // Written in this directory's house capitals it carries a trigger word, and
+    // `guaranteeTags.test.ts`'s tree-wide census is pinned at 225 in a file
+    // this piece may not edit. MEASURED: capitalised, the pin reads
+    // `expected 226 to be 225`. That makes this the THIRD known undercount of
+    // that constant, after the two `careerOpacity.test.ts` already names.
+    //
+    // CLAUDE.md's ruling on the second one says whoever adds a third should
+    // either bump the number or say why the paragraph is not a guarantee. It is
+    // not one: it is a disclosure of what an instrument fails to check, which is
+    // the same limit-not-guarantee asymmetry that ruling records in six of
+    // seven rounds of that constant's history. Bumping it here would also mean
+    // editing `src/game/`, which this piece is not allowed to do — so the
+    // undercount is reported in this piece's build report as well as here.
+    const REQUIRED = 'transcribed from the published technical rules';
+    const published = Object.entries(CAREER_TUNING_CLASSIFICATION)
+      .filter(([, value]) => value === 'published-rule')
+      .map(([key]) => key)
+      .sort();
+    expect(published).toEqual([
+      'BAR_LOADING_TIE_BREAKS',
+      'MAX_LIFTERS_PER_FLIGHT',
+      'PLACING_TIE_BREAKS',
+    ]);
+    let cited = 0;
+    for (const key of published) {
+      expect(docBlockAbove(TUNING_SOURCE, key).toLowerCase(), `${key} is uncited`).toContain(
+        REQUIRED,
+      );
+      cited += 1;
+    }
+    // Counts, not bounds: an empty class list would satisfy the loop silently.
+    expect(cited).toBe(3);
+
+    // And the phrase is about the region rather than the file: the entry that
+    // deliberately is NOT a published rule, sitting three lines from three that
+    // are, must not carry it.
+    expect(docBlockAbove(TUNING_SOURCE, 'PLACING_UNRESOLVED_ORDER').toLowerCase()).not.toContain(
+      REQUIRED,
+    );
+    expect(docBlockAbove(TUNING_SOURCE, 'FLIGHT_SIZE_BUDGET').toLowerCase()).not.toContain(
+      REQUIRED,
+    );
+  });
+
+  it('keeps GDD §6.6’s stated flight band and the published cap in tension, visibly', () => {
+    // GDD §6.6 says flights of "~10-15". The published rule says no more than
+    // 14. Those disagree by one lifter and the rule wins, so this pins the
+    // disagreement rather than letting somebody quietly edit the 15 down to 14
+    // and lose the fact that the document says something else.
+    //
+    // Reddens on: changing either number. That is the point — either edit is a
+    // decision about which source is being followed.
+    expect(CAREER_TUNING.FLIGHT_SIZE_BUDGET.max).toBe(15);
+    expect(CAREER_TUNING.MAX_LIFTERS_PER_FLIGHT).toBe(14);
+    expect(CAREER_TUNING.FLIGHT_SIZE_BUDGET.max - CAREER_TUNING.MAX_LIFTERS_PER_FLIGHT).toBe(1);
+    // The band is a band, and its floor is under the cap so that some flight
+    // size satisfies both.
+    expect(CAREER_TUNING.FLIGHT_SIZE_BUDGET.min).toBeLessThan(
+      CAREER_TUNING.MAX_LIFTERS_PER_FLIGHT,
+    );
   });
 });
 
