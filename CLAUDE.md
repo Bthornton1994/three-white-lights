@@ -1680,13 +1680,33 @@ physiology.
     safe throughout; reading it is the second step of a recovery, not the first.
   - **A verification nobody wrapped still writes nothing.** Unchanged.
 
-  **AND ONE COST THAT LANDS ON THE OTHER SESSIONS, WHICH THEY DID NOT AGREE TO.**
-  The suite-level check now reads origin as well as this tree, so an interrupted
-  wrapped run pushed from **this host** reddens the full suite for *every* session
-  on it until somebody clears it. That is the bite the ruling below asks for and
-  it is also friction on people who did not choose it. Another host's run is
-  reported and never counted, so the blast radius is one host rather than the
-  repository. Flag this to a human rather than narrowing it unilaterally.
+  **AND ONE COST THAT LANDS ON THE OTHER SESSIONS. RULED HOST-WIDE BY A HUMAN,
+  2026-08-12.** The suite-level check reads origin as well as this tree, so an
+  interrupted wrapped run pushed from **this host** reddens the full suite for
+  *every* session on it until somebody clears it. Session A flagged this rather
+  than narrowing it, because Sessions B and C did not choose that friction.
+
+  **Ruled: it stays host-wide, on the same reasoning as the marker ruling
+  itself** — a scan that only bites where someone already suspects trouble would
+  have caught **neither** motivating incident, since both were cases where nobody
+  was specifically looking. Narrowing it to "the session that started the run"
+  would rebuild exactly the blind spot the rule exists to remove: the session
+  that started an interrupted run is the one least likely to still be around to
+  read it. Another host's run is reported and never counted, so the blast radius
+  is one host rather than the repository, and that is the boundary — not a
+  smaller one.
+
+  **AND ONE PIECE OF PERMANENT LITTER ON ORIGIN, ACCEPTED RATHER THAN CHASED.**
+  `refs/heads/verify/vm/probe-1` exists on origin because namespace reachability
+  had to be probed by pushing — `refs/verify/*`, `refs/notes/*` and `refs/tags/*`
+  all answer **HTTP 403** from this token, and **every delete is 403 in every
+  namespace**, so the probe that established the design cannot be undone by the
+  thing that made it necessary. **Ruled by a human: accept it, document it, stop
+  pursuing removal.** It carries a self-describing file saying what it is and why
+  it is there, so the next person to read the ref list is not left guessing.
+  Do not spend further effort on it and do not let it become a reason to avoid
+  probing a remote before designing against it — the probe is why the design is
+  measured rather than chosen, and one dead ref is a cheap price for that.
 
   **THE SUITE-LEVEL CHECK STAYS, BITING ON EVERY RUN UNTIL CLEARED. Ruled by a
   human**, on the explicit question of whether that much friction is
