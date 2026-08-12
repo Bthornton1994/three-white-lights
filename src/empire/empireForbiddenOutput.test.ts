@@ -128,6 +128,7 @@
  */
 
 import { readdirSync } from 'node:fs';
+import { types as nodeTypes } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -860,6 +861,8 @@ interface ScanResult {
   readonly gettersInvoked: number;
   readonly getterThrows: number;
   readonly revisits: number;
+  /** Objects the runtime reports as a `Proxy`. A trap can lie about its keys. */
+  readonly proxies: number;
   /** Strings and finite numbers in visit order, for the axis fingerprint. */
   readonly trace: readonly string[];
 }
@@ -899,6 +902,7 @@ function deepScan(root: unknown, label: string): ScanResult {
   let gettersInvoked = 0;
   let getterThrows = 0;
   let revisits = 0;
+  let proxies = 0;
 
   const isIndexKey = (key: string): boolean => /^(?:0|[1-9][0-9]*)$/.test(key);
 
@@ -930,6 +934,7 @@ function deepScan(root: unknown, label: string): ScanResult {
     }
     visited.add(node);
     nodes += 1;
+    if (nodeTypes.isProxy(node)) proxies += 1;
 
     if (node instanceof Map) {
       let index = 0;
@@ -987,6 +992,7 @@ function deepScan(root: unknown, label: string): ScanResult {
     gettersInvoked,
     getterThrows,
     revisits,
+    proxies,
     trace: Object.freeze(trace),
   };
 }
@@ -1440,4 +1446,675 @@ function historyAt(slots: number, everyNth: number): EngagementHistory {
 
 function entryAt(day: number, output: EmpireOutput, amount: number): EmpireDayEntry {
   return Object.freeze({ day, at: core.asUnacceleratedSeconds(day * EMPIRE_TUNING.SECONDS_PER_DAY), output, amount });
+}
+
+// ---------------------------------------------------------------------------
+// The drive
+// ---------------------------------------------------------------------------
+
+interface DrivenRow {
+  readonly export: string;
+  readonly point: string;
+  /** The return (or the thrown payload), then every argument, re-read AFTER the call. */
+  readonly values: readonly unknown[];
+}
+
+const DRIVEN_ROWS: DrivenRow[] = [];
+
+/**
+ * Call one export at one domain point and keep everything it could have
+ * written to.
+ *
+ * The arguments are pushed AFTER the call rather than copied before it, so a
+ * value delivered by mutating a caller-supplied sink — attack shape 13's second
+ * half — is inside the scan. Nothing passed in ever contains a banned name, so
+ * a banned name found in an argument was written there by the subject.
+ */
+function drive(exportName: string, point: string, thunk: () => unknown, args: readonly unknown[] = []): void {
+  const values: unknown[] = [];
+  try {
+    values.push(thunk());
+  } catch (error) {
+    values.push(error);
+  }
+  values.push(...args);
+  DRIVEN_ROWS.push({ export: exportName, point, values });
+}
+
+/** Read an exported constant and keep it, so exported DATA is a subject too. */
+function read(exportName: string, value: unknown): void {
+  DRIVEN_ROWS.push({ export: exportName, point: 'read', values: [value] });
+}
+
+/**
+ * The values fed to the `unknown`-taking decoders.
+ *
+ * Deliberately WITHOUT any banned name. Feeding a decoder its own poison and
+ * then finding the poison in the re-read argument measures the fixture, not the
+ * subject.
+ */
+const DECODER_PROBES: readonly unknown[] = Object.freeze([
+  ...core.EMPIRE_OUTPUTS,
+  ...core.EMPIRE_ACCELERANTS,
+  ...socialModule.SOCIAL_SURFACES,
+  ...expansionModule.EXPANSION_AXES,
+  ...socialModule.LEADERBOARD_METRICS,
+  SENTINELS.FAULT_EQUIPMENT,
+  '',
+  0,
+  1,
+  true,
+  null,
+  undefined,
+  Object.freeze({ kind: SENTINELS.NPC_ID }),
+  Object.freeze([SENTINELS.NPC_ID]),
+]);
+
+/** A ledger with one entry per payable output, so the splitters see both reaches. */
+const LEDGER: readonly core.EmpireLedgerEntry[] = Object.freeze(
+  core.EMPIRE_OUTPUTS.map((output, index) =>
+    Object.freeze({ at: core.asUnacceleratedSeconds(index), output, amount: index }),
+  ),
+);
+
+const DAY_LEDGER: readonly EmpireDayEntry[] = Object.freeze(
+  core.EMPIRE_OUTPUTS.map((output, index) => entryAt(index, output, index)),
+);
+
+/** The states the sweep drives, shaped on the roster axis and the reputation axis. */
+const ROSTER_SHAPES: readonly number[] = Object.freeze([0, 1, EMPIRE_TUNING.ROSTER_SLOTS_MAX]);
+
+const STATES: readonly (readonly [string, EmpireState])[] = Object.freeze(
+  ROSTER_SHAPES.flatMap((rosterSize) =>
+    EMPIRE_TUNING.REPUTATION_TIER_THRESHOLDS.map(
+      (reputation) =>
+        [
+          `roster=${String(rosterSize)}/rep=${String(reputation)}`,
+          stateAt({
+            rosterSize,
+            reputation,
+            gymBucks: EMPIRE_TUNING.RIVAL_REWARD_GYM_BUCKS,
+            wide: true,
+            elapsed: EMPIRE_TUNING.SECONDS_PER_DAY,
+            skipped: EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT,
+          }),
+        ] as const,
+    ),
+  ),
+);
+
+/**
+ * A state that is deliberately faulted, so the diagnostic channel is not empty.
+ *
+ * `empireStateFaults` is pinned at `[]` on every legal state, so a driver that
+ * only ever handed it legal states would sample an empty string domain. The
+ * equipment tier carries a sentinel, which lands in a fault message verbatim —
+ * that is how `SENTINELS_OBSERVED` measures the channel as REACHED rather than
+ * assuming it.
+ */
+const FAULTED_STATE: EmpireState = Object.freeze({
+  ...stateAt({ rosterSize: 1, wide: true }),
+  axes: Object.freeze({
+    equipment: SENTINELS.FAULT_EQUIPMENT as unknown as EquipmentTier,
+    spaceLevel: WIDE_AXES.spaceLevel,
+    staffLevel: WIDE_AXES.staffLevel,
+  }),
+});
+
+const CLOCKS: readonly (readonly [string, EmpireClock])[] = Object.freeze(
+  SECONDS_DOMAIN.map(
+    (elapsed) =>
+      [`elapsed=${String(elapsed)}`, core.createEmpireClock(elapsed, EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT)] as const,
+  ),
+);
+
+/** One clock per shape, for the calls that take a clock and are otherwise cheap. */
+const CLOCK_SHAPES: readonly (readonly [string, EmpireClock])[] = Object.freeze([
+  ['zero', core.createEmpireClock(0, 0)],
+  ['no-skip', core.createEmpireClock(EMPIRE_TUNING.SECONDS_PER_DAY, 0)],
+  ['skewed', core.createEmpireClock(EMPIRE_TUNING.SECONDS_PER_DAY, EMPIRE_TUNING.BUILD_SECONDS_MAX)],
+]);
+
+const BUILDS: readonly ExpansionBuild[] = Object.freeze(
+  expansionModule.EXPANSION_AXES.map((axis) => completedBuild(axis, 1)),
+);
+
+const CONTEXTS: readonly (readonly [string, ExpansionContext])[] = Object.freeze([
+  ['broke', contextAt(0, 0, [])],
+  ['rich', contextAt(EMPIRE_TUNING.SPACE_LEVEL_COST_GYM_BUCKS[EMPIRE_TUNING.SPACE_LEVEL_COST_GYM_BUCKS.length - 1] as number, EMPIRE_TUNING.REPUTATION_MAX, [])],
+  ['building', contextAt(EMPIRE_TUNING.RIVAL_REWARD_GYM_BUCKS, EMPIRE_TUNING.REPUTATION_MAX, BUILDS)],
+]);
+
+/**
+ * Check-ins per calendar day the composed drivers run at.
+ *
+ * Six is a four-hour gap, which is inside GDD §5.1's offline horizon and is the
+ * cadence `empireSweep.test.ts` already parameterises its own runs at. Named
+ * here rather than shared because that file's constant is a sweep parameter for
+ * a different measurement and this one should be tunable on its own.
+ */
+const EMPIRE_SWEEP_CHECK_INS_PER_DAY = 6;
+
+/** How many check-ins `stepGym` is walked for, so a recruit can start and land. */
+const STEP_COUNT = EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS * EMPIRE_SWEEP_CHECK_INS_PER_DAY;
+
+/**
+ * Runs and a context that are deliberately faulted, so the diagnostic channel
+ * has a non-empty domain.
+ *
+ * Every fault function is pinned at `[]` on healthy input by the tests that
+ * already exist, so without these three the whole diagnostic channel would be
+ * swept at zero strings and its exemption from the containment check would be
+ * an exemption from nothing.
+ */
+const FAULTED_RUN: invariant.EmpireRun = Object.freeze({
+  ...invariant.runEmpire(1, policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY), planAt(null, 0), socialInputsAt()),
+  ledger: Object.freeze([]),
+});
+
+const FAULTED_ENGAGEMENT_RUN: engagementModule.EngagementRun = Object.freeze({
+  ...engagementModule.runEngagement(
+    1,
+    policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY),
+    historyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY, 1),
+    socialInputsAt(),
+  ),
+  ledger: Object.freeze([]),
+});
+
+const FAULTED_SOCIAL_CONTEXT: SocialContext = Object.freeze({
+  ...socialContextAt([]),
+  visits: Object.freeze([
+    Object.freeze({
+      day: socialModule.asCalendarDay(CALENDAR_ANCHOR),
+      gymId: SENTINELS.FAULT_VISIT_GYM_ID,
+      encouraged: false,
+    }),
+  ]),
+});
+
+let drivenMemo = false;
+
+function driveEverything(): readonly DrivenRow[] {
+  if (drivenMemo) return DRIVEN_ROWS;
+  drivenMemo = true;
+
+  // --- every exported CONSTANT, read directly. Attack shape 12 lives here.
+  for (const [moduleName, namespace] of Object.entries(MODULE_NAMESPACES)) {
+    void moduleName;
+    for (const [name, value] of Object.entries(namespace)) {
+      if (typeof value === 'function') continue;
+      read(name, value);
+    }
+  }
+
+  // --- empireCore.ts
+  for (const output of core.EMPIRE_OUTPUTS) drive('outputReach', output, () => core.outputReach(output));
+  for (const accelerant of core.EMPIRE_ACCELERANTS) {
+    drive('accelerantLicence', accelerant, () => core.accelerantLicence(accelerant));
+    for (const output of core.EMPIRE_OUTPUTS) {
+      drive('mayAccelerate', `${accelerant}/${output}`, () => core.mayAccelerate(accelerant, output));
+      drive('acceleratedOutput', `${accelerant}/${output}`, () => acceleratedFor(accelerant, output));
+      for (const seconds of SMALL_NUMBER_DOMAIN) {
+        drive('applyAccelerant', `${accelerant}/${output}/${String(seconds)}`, () =>
+          appliedFor(accelerant, output, ZERO_SECONDS, seconds),
+        );
+      }
+    }
+  }
+  for (const probe of DECODER_PROBES) {
+    const label = String(typeof probe === 'object' ? JSON.stringify(probe) : probe);
+    drive('isEmpireOutput', label, () => core.isEmpireOutput(probe), [probe]);
+    drive('isEmpireAccelerant', label, () => core.isEmpireAccelerant(probe), [probe]);
+    drive('isPurchasableAccelerant', label, () => core.isPurchasableAccelerant(probe), [probe]);
+    drive('isProgressionReachingOutput', label, () => core.isProgressionReachingOutput(probe), [probe]);
+    drive('isExpansionAxis', label, () => expansionModule.isExpansionAxis(probe), [probe]);
+    drive('isSocialSurface', label, () => socialModule.isSocialSurface(probe), [probe]);
+    drive('isLeaderboardMetric', label, () => socialModule.isLeaderboardMetric(probe), [probe]);
+  }
+  drive('empireVocabularyFaults', 'zero-arg', () => core.empireVocabularyFaults());
+  drive('expansionVocabularyFaults', 'zero-arg', () => expansionModule.expansionVocabularyFaults());
+  drive('reputationVocabularyFaults', 'zero-arg', () => reputationModule.reputationVocabularyFaults());
+  drive('socialVocabularyFaults', 'zero-arg', () => socialModule.socialVocabularyFaults());
+  for (const point of NUMBER_DOMAIN) {
+    const label = String(point);
+    drive('asGymBucks', label, () => core.asGymBucks(point));
+    drive('asReputation', label, () => core.asReputation(point));
+    drive('asTrainingIq', label, () => core.asTrainingIq(point));
+    drive('asInjuryDaysSaved', label, () => core.asInjuryDaysSaved(point));
+    drive('asUnacceleratedSeconds', label, () => core.asUnacceleratedSeconds(point));
+    drive('asAcceleratedSeconds', label, () => core.asAcceleratedSeconds(point));
+    drive('asIdleTenureDays', label, () => core.asIdleTenureDays(point));
+    drive('asCalendarDay', label, () => socialModule.asCalendarDay(point));
+    drive('reputationTierFloor', label, () => reputationModule.reputationTierFloor(point));
+    drive('spaceLevelCost', label, () => core.spaceLevelCost(point));
+    drive('buildSeconds', label, () => core.buildSeconds(point));
+    drive('scrubPrecision', label, () => productionModule.scrubPrecision(point));
+    drive('quantiseElapsedSeconds', label, () => productionModule.quantiseElapsedSeconds(point));
+    drive('bankableOfflineSeconds', label, () => productionModule.bankableOfflineSeconds(point));
+    for (const role of EMPIRE_TUNING.STAFF_ROLES) {
+      drive('staffLevelCost', `${role}/${label}`, () => core.staffLevelCost(role, point));
+    }
+  }
+  for (const identifier of [SENTINELS.NPC_ID, SENTINELS.RECRUIT_ID, SENTINELS.OWN_GYM_ID]) {
+    drive('asNpcId', identifier, () => core.asNpcId(identifier), [identifier]);
+  }
+  for (const now of SECONDS_DOMAIN) {
+    const times = SECONDS_DOMAIN.slice(0, 4).map((seconds) => core.asUnacceleratedSeconds(seconds));
+    drive('settledLevel', String(now), () => core.settledLevel(times, core.asUnacceleratedSeconds(now)), [times]);
+    drive('physioDaysSavedFor', String(now), () =>
+      core.physioDaysSavedFor(core.settledLevel(times, core.asUnacceleratedSeconds(now))),
+    );
+  }
+  for (const elapsed of SECONDS_DOMAIN) {
+    drive('createEmpireClock', String(elapsed), () => core.createEmpireClock(elapsed, elapsed));
+  }
+  for (const [label, clock] of CLOCK_SHAPES) {
+    for (const output of core.EMPIRE_OUTPUTS) {
+      drive('elapsedFor', `${label}/${output}`, () => core.elapsedFor(clock, output));
+    }
+    for (const output of core.GATING_OUTPUTS) {
+      drive('gateTarget', output, () => core.gateTarget(output));
+      drive('gateElapsedFor', `${label}/${output}`, () => core.gateElapsedFor(clock, output));
+    }
+    drive('rosterRatesAt', label, () => invariant.rosterRatesAt(clock));
+  }
+  for (const tier of EMPIRE_TUNING.NPC_TIERS) {
+    for (const seconds of SECONDS_DOMAIN.slice(0, 6)) {
+      drive('createNpcLifter', `${tier}/${String(seconds)}`, () => lifterAt(tier, 0, seconds, seconds));
+    }
+    drive('recruitCost', tier, () => core.recruitCost(tier));
+    drive('recruitReputationThreshold', tier, () => core.recruitReputationThreshold(tier));
+    drive('recruitSeconds', tier, () => core.recruitSeconds(tier));
+    drive('npcTierOutputMultiplier', tier, () => npcModule.npcTierOutputMultiplier(tier));
+    drive('recruitmentQuote', tier, () => recruitmentModule.recruitmentQuote(tier));
+    drive('npcTierUnlockKey', tier, () => reputationModule.npcTierUnlockKey(tier));
+    for (const [label, clock] of CLOCK_SHAPES) {
+      drive('recruitmentSchedule', `${tier}/${label}`, () => recruitmentModule.recruitmentSchedule(tier, clock));
+    }
+  }
+  {
+    const lifter = lifterAt('legendary', 0, 0, 0);
+    for (const [label, clock] of CLOCKS) {
+      drive('idleTenureDays', label, () => core.idleTenureDays(lifter, clock.accelerated));
+      drive('settledTenureDays', label, () => core.settledTenureDays(lifter, clock.unaccelerated));
+      drive('npcGymBucksPerHour', label, () => npcModule.npcGymBucksPerHour(lifter, clock));
+      drive('npcTrainingIqPerDay', label, () => npcModule.npcTrainingIqPerDay(lifter, clock));
+      drive('npcOutputRates', label, () => npcModule.npcOutputRates(lifter, clock));
+      for (const size of ROSTER_SHAPES) {
+        const roster = rosterOf(size, 0, 0);
+        drive('rosterGymBucksPerHour', `${label}/${String(size)}`, () => npcModule.rosterGymBucksPerHour(roster, clock), [roster]);
+        drive('rosterTrainingIqPerDay', `${label}/${String(size)}`, () => npcModule.rosterTrainingIqPerDay(roster, clock), [roster]);
+        drive('rosterOutputRates', `${label}/${String(size)}`, () => npcModule.rosterOutputRates(roster, clock), [roster]);
+      }
+      drive('settledLoyaltyMultiplier', label, () =>
+        npcModule.settledLoyaltyMultiplier(core.settledTenureDays(lifter, clock.unaccelerated)),
+      );
+    }
+    for (const days of NUMBER_DOMAIN) {
+      drive('idleLoyaltyMultiplier', String(days), () => npcModule.idleLoyaltyMultiplier(core.asIdleTenureDays(days)));
+    }
+  }
+  for (const equipment of EMPIRE_TUNING.EQUIPMENT_TIERS) {
+    drive('equipmentTierCost', equipment, () => core.equipmentTierCost(equipment));
+    for (const spaceLevel of [0, EMPIRE_TUNING.SPACE_LEVEL_MAX]) {
+      const axes = axesAt(equipment, spaceLevel, { coach: 0, spotter: 1, physio: 1 });
+      drive('rosterCapacity', `${equipment}/${String(spaceLevel)}`, () => core.rosterCapacity(axes), [axes]);
+      for (const axis of expansionModule.EXPANSION_AXES) {
+        drive('axisLevel', `${equipment}/${axis}`, () => expansionModule.axisLevel(axes, axis), [axes]);
+        drive('quoteExpansion', `${equipment}/${axis}`, () => expansionModule.quoteExpansion(axes, axis), [axes]);
+      }
+    }
+  }
+  for (const reputation of NUMBER_DOMAIN) {
+    let points: core.ReputationPoints;
+    try {
+      points = core.asReputation(reputation);
+    } catch {
+      continue;
+    }
+    drive('reputationTierIndex', String(reputation), () => core.reputationTierIndex(points));
+    drive('milestonesReached', String(reputation), () => reputationModule.milestonesReached(points));
+    drive('nextMilestone', String(reputation), () => reputationModule.nextMilestone(points));
+    drive('sponsorGymBucksPerDay', String(reputation), () => reputationModule.sponsorGymBucksPerDay(points));
+  }
+  drive('progressionLedger', 'full', () => core.progressionLedger(LEDGER), [LEDGER]);
+  drive('idleLedger', 'full', () => core.idleLedger(LEDGER), [LEDGER]);
+  drive('createEmpireState', 'zero-arg', () => core.createEmpireState());
+  for (const [label, state] of STATES) {
+    drive('empireStateFaults', label, () => core.empireStateFaults(state), [state]);
+    drive('assertEmpireState', label, () => core.assertEmpireState(state), [state]);
+    drive('composeTrainingIqRate', label, () => invariant.composeTrainingIqRate(state, state.clock), [state]);
+    drive('expansionContext', label, () => expansionModule.expansionContext(state, BUILDS), [state]);
+    drive('recruitmentBoard', label, () => recruitmentModule.recruitmentBoard(state), [state]);
+    drive('npcTierUnlocks', label, () => reputationModule.npcTierUnlocks(state), [state]);
+    drive('unlockedNpcTiers', label, () => reputationModule.unlockedNpcTiers(state), [state]);
+    drive('topNpcTierUnlocked', label, () => reputationModule.topNpcTierUnlocked(state), [state]);
+    drive('reputationRates', label, () => reputationModule.reputationRates(state, state.clock), [state]);
+    for (const tier of EMPIRE_TUNING.NPC_TIERS) {
+      drive('recruitmentRefusals', `${label}/${tier}`, () => recruitmentModule.recruitmentRefusals(state, tier), [state]);
+      drive('mayRecruit', `${label}/${tier}`, () => recruitmentModule.mayRecruit(state, tier), [state]);
+      drive('recruitmentOffer', `${label}/${tier}`, () => recruitmentModule.recruitmentOffer(state, tier), [state]);
+      drive('beginRecruitment', `${label}/${tier}`, () => recruitmentModule.beginRecruitment(state, tier), [state]);
+      const schedule = recruitmentModule.recruitmentSchedule(tier, state.clock);
+      drive('completeRecruitment', `${label}/${tier}`, () =>
+        recruitmentModule.completeRecruitment(state, schedule, SENTINELS.RECRUIT_ID, SENTINELS.RECRUIT_DISPLAY_NAME),
+        [state, schedule, SENTINELS.RECRUIT_ID, SENTINELS.RECRUIT_DISPLAY_NAME],
+      );
+    }
+    for (const [clockLabel, clock] of CLOCK_SHAPES) {
+      const rates = invariant.rosterRatesAt(clock);
+      drive('gymBucksRatePerHour', `${label}/${clockLabel}`, () => productionModule.gymBucksRatePerHour(state, clock, rates), [state, rates]);
+      drive('trainingIqRatePerDay', `${label}/${clockLabel}`, () => productionModule.trainingIqRatePerDay(state, clock, rates), [state, rates]);
+      drive('productionRates', `${label}/${clockLabel}`, () => productionModule.productionRates(state, clock, rates), [state, rates]);
+      drive('accrueProduction', `${label}/${clockLabel}`, () => productionModule.accrueProduction(state, clock, rates), [state, rates]);
+      drive('accrueSponsorship', `${label}/${clockLabel}`, () => reputationModule.accrueSponsorship(state, clock), [state]);
+      for (const checkIns of SMALL_NUMBER_DOMAIN) {
+        drive('accrueReputation', `${label}/${clockLabel}/${String(checkIns)}`, () =>
+          reputationModule.accrueReputation(state, clock, checkIns), [state],
+        );
+      }
+    }
+  }
+  drive('empireStateFaults', 'faulted', () => core.empireStateFaults(FAULTED_STATE), [FAULTED_STATE]);
+  drive('assertEmpireState', 'faulted', () => core.assertEmpireState(FAULTED_STATE), [FAULTED_STATE]);
+  drive('offlineBankingHorizonSeconds', 'zero-arg', () => productionModule.offlineBankingHorizonSeconds());
+  drive('settledGymBucksRatePerHour', 'zero-arg', () => productionModule.settledGymBucksRatePerHour());
+  drive('reputationTierCount', 'zero-arg', () => reputationModule.reputationTierCount());
+  drive('highestReputationTierIndex', 'zero-arg', () => reputationModule.highestReputationTierIndex());
+  drive('reputationMilestones', 'zero-arg', () => reputationModule.reputationMilestones());
+  drive('topNpcTier', 'zero-arg', () => reputationModule.topNpcTier());
+  drive('reputationCensus', 'zero-arg', () => reputationModule.reputationCensus());
+  drive('emptyEngagementTally', 'zero-arg', () => engagementModule.emptyEngagementTally());
+  drive('shippedEngagementWiring', 'zero-arg', () => engagementModule.shippedEngagementWiring());
+  drive('createEmpireGym', 'zero-arg', () => invariant.createEmpireGym());
+
+  // --- expansion.ts
+  for (const axis of expansionModule.EXPANSION_AXES) {
+    drive('isStaffAxis', axis, () => expansionModule.isStaffAxis(axis));
+    drive('axisOutput', axis, () => expansionModule.axisOutput(axis));
+    drive('axisBook', axis, () => expansionModule.axisBook(axis));
+    drive('axisClockFamily', axis, () => expansionModule.axisClockFamily(axis));
+    drive('axisCeiling', axis, () => expansionModule.axisCeiling(axis));
+    for (const level of SMALL_NUMBER_DOMAIN) {
+      const label = `${axis}/${String(level)}`;
+      drive('axisLevelCost', label, () => expansionModule.axisLevelCost(axis, level));
+      drive('axisReputationRule', label, () => expansionModule.axisReputationRule(axis, level));
+      drive('axisReputationRequirement', label, () => expansionModule.axisReputationRequirement(axis, level));
+      drive('axisBuildSeconds', label, () => expansionModule.axisBuildSeconds(axis, level));
+    }
+    for (const [label, context] of CONTEXTS) {
+      drive('expansionVerdict', `${label}/${axis}`, () => expansionModule.expansionVerdict(context, axis), [context]);
+      drive('startExpansion', `${label}/${axis}`, () => expansionModule.startExpansion(context, axis), [context]);
+      drive('savingForPhysio', `${label}/${axis}`, () =>
+        invariant.savingForPhysio(expansionModule.EXPANSION_AXES, context), [context],
+      );
+    }
+    for (const seconds of SECONDS_DOMAIN) {
+      drive('buildInFlight', `${axis}/${String(seconds)}`, () =>
+        expansionModule.buildInFlight(BUILDS, axis, core.asAcceleratedSeconds(seconds)), [BUILDS],
+      );
+      drive('settledBuildInFlight', `${axis}/${String(seconds)}`, () =>
+        expansionModule.settledBuildInFlight(BUILDS, axis, core.asUnacceleratedSeconds(seconds)), [BUILDS],
+      );
+      drive('settledAxisLevel', `${axis}/${String(seconds)}`, () =>
+        expansionModule.settledAxisLevel(BUILDS, axis, core.asUnacceleratedSeconds(seconds)), [BUILDS],
+      );
+    }
+  }
+  for (const seconds of SECONDS_DOMAIN) {
+    drive('idleAxesAt', String(seconds), () => expansionModule.idleAxesAt(BUILDS, core.asAcceleratedSeconds(seconds)), [BUILDS]);
+    drive('settledAxesAt', String(seconds), () => expansionModule.settledAxesAt(BUILDS, core.asUnacceleratedSeconds(seconds)), [BUILDS]);
+    drive('physioDaysSavedAt', String(seconds), () => expansionModule.physioDaysSavedAt(BUILDS, core.asUnacceleratedSeconds(seconds)), [BUILDS]);
+  }
+  for (const [label, context] of CONTEXTS) {
+    for (const book of expansionModule.EMPIRE_BOOKS) {
+      drive('bookBalance', `${label}/${book}`, () => expansionModule.bookBalance(context, book), [context]);
+    }
+  }
+  for (const build of BUILDS) {
+    for (const accelerant of core.PURCHASABLE_ACCELERANTS) {
+      const applied = invariant.applyPurchasableGrant(
+        accelerant,
+        core.IDLE_ONLY_OUTPUTS[0] as core.IdleOnlyOutput,
+        ZERO_SECONDS,
+        EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT,
+      );
+      drive('skipExpansion', `${build.axis}/${accelerant}`, () => expansionModule.skipExpansion(build, applied), [build, applied]);
+    }
+  }
+  for (const accelerant of core.PURCHASABLE_ACCELERANTS) {
+    for (const output of core.IDLE_ONLY_OUTPUTS) {
+      for (const seconds of SMALL_NUMBER_DOMAIN) {
+        drive('applyPurchasableGrant', `${accelerant}/${output}/${String(seconds)}`, () =>
+          invariant.applyPurchasableGrant(accelerant, output, ZERO_SECONDS, seconds),
+        );
+      }
+    }
+  }
+
+  // --- empireInvariant.ts, the loop
+  for (const funding of invariant.EMPIRE_FUNDINGS) {
+    drive('poolsWallClockBooks', funding, () => invariant.poolsWallClockBooks(funding));
+  }
+  for (const policy of invariant.EMPIRE_SPENDING_POLICIES) {
+    for (const last of [false, true]) {
+      const moment = invariant.spendingMoment(policy, last);
+      drive('spendingMoment', `${policy}/${String(last)}`, () => invariant.spendingMoment(policy, last));
+      drive('spendsAtMoment', `${policy}/${String(last)}`, () => invariant.spendsAtMoment(moment), [moment]);
+      drive('rotatesAtMoment', `${policy}/${String(last)}`, () => invariant.rotatesAtMoment(moment), [moment]);
+      for (const [label, context] of CONTEXTS) {
+        for (const funding of invariant.EMPIRE_FUNDINGS) {
+          drive('maySpendOnRoster', `${policy}/${label}/${funding}`, () =>
+            invariant.maySpendOnRoster(moment, expansionModule.EXPANSION_AXES, context, funding), [context],
+          );
+          for (const book of expansionModule.EMPIRE_BOOKS) {
+            drive('axisSpendingOrder', `${policy}/${label}/${funding}/${book}`, () =>
+              invariant.axisSpendingOrder(moment, expansionModule.EXPANSION_AXES, 0, book, context, funding), [context],
+            );
+          }
+        }
+      }
+    }
+  }
+  for (const accelerant of core.PURCHASABLE_ACCELERANTS) {
+    for (const grants of SMALL_NUMBER_DOMAIN) {
+      const plan = planAt(accelerant, grants);
+      for (const checkIn of SMALL_NUMBER_DOMAIN) {
+        drive('grantSecondsAt', `${accelerant}/${String(grants)}/${String(checkIn)}`, () =>
+          invariant.grantSecondsAt(plan, checkIn), [plan],
+        );
+      }
+    }
+  }
+  {
+    // The gym, stepped rather than only constructed: `pending[].id` and the
+    // roster's display names are minted INSIDE the loop, so a driver that only
+    // read `createEmpireGym()` would sample two frozen empty arrays.
+    let gym: EmpireGym = invariant.createEmpireGym();
+    drive('gymSnapshot', 'opening', () => invariant.gymSnapshot(gym), [gym]);
+    const stepSeconds = EMPIRE_TUNING.SECONDS_PER_DAY / EMPIRE_SWEEP_CHECK_INS_PER_DAY;
+    for (let step = 0; step < STEP_COUNT; step += 1) {
+      const accelerant = step % 3 === 0 ? (core.PURCHASABLE_ACCELERANTS[0] as core.PurchasableAccelerant) : null;
+      const grantSeconds = accelerant === null ? 0 : EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT;
+      const before = gym;
+      drive('stepGym', `step=${String(step)}`, () => {
+        gym = invariant.stepGym(before, policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY), stepSeconds, accelerant, grantSeconds);
+        return gym;
+      }, [before]);
+      drive('gymSnapshot', `step=${String(step)}`, () => invariant.gymSnapshot(gym), [gym]);
+      drive('gymProgressionEntries', `step=${String(step)}`, () =>
+        invariant.gymProgressionEntries(gym, step, core.asUnacceleratedSeconds(step * stepSeconds)), [gym],
+      );
+    }
+  }
+  for (const days of RUN_DAY_DOMAIN) {
+    for (const funding of invariant.EMPIRE_FUNDINGS) {
+      for (const accelerant of [null, core.PURCHASABLE_ACCELERANTS[0] as core.PurchasableAccelerant]) {
+        const plan = planAt(accelerant, accelerant === null ? 0 : 1);
+        const social = socialInputsAt();
+        const policy = policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY);
+        const label = `${String(days)}/${funding}/${String(accelerant)}`;
+        let run: invariant.EmpireRun | null = null;
+        drive('runEmpire', label, () => {
+          run = invariant.runEmpire(days, policy, plan, social, funding);
+          return run;
+        }, [policy, plan, social]);
+        if (run !== null) {
+          const settled: invariant.EmpireRun = run;
+          drive('empireRunFaults', label, () => invariant.empireRunFaults(settled), [settled]);
+          drive('progressionDayLedger', label, () => invariant.progressionDayLedger(settled.ledger));
+          drive('idleDayLedger', label, () => invariant.idleDayLedger(settled.ledger));
+          for (const output of core.EMPIRE_OUTPUTS) {
+            drive('outputSeries', `${label}/${output}`, () => invariant.outputSeries(settled.ledger, output));
+            drive('arrivalDays', `${label}/${output}`, () => invariant.arrivalDays(settled.ledger, output));
+            drive('amountSeries', `${label}/${output}`, () => engagementModule.amountSeries(settled.ledger, output));
+          }
+          drive('compareLedgers', label, () => invariant.compareLedgers(DAY_LEDGER, settled.ledger), [DAY_LEDGER]);
+          drive('compareDayLists', label, () =>
+            invariant.compareDayLists(
+              invariant.arrivalDays(DAY_LEDGER, core.EMPIRE_OUTPUTS[0]),
+              invariant.arrivalDays(settled.ledger, core.EMPIRE_OUTPUTS[0]),
+            ),
+          );
+        }
+      }
+    }
+  }
+  drive('empireRunFaults', 'faulted', () => invariant.empireRunFaults(FAULTED_RUN), [FAULTED_RUN]);
+
+  // --- engagement.ts
+  for (const key of engagementModule.ENGAGEMENT_WIRINGS) {
+    drive('chargesUpkeep', key, () => engagementModule.chargesUpkeep(key));
+    drive('wiringFunding', key, () => engagementModule.wiringFunding(key));
+    for (const upkeep of SMALL_NUMBER_DOMAIN) {
+      drive('engagementWiring', `${key}/${String(upkeep)}`, () => engagementModule.engagementWiring(key, upkeep));
+    }
+  }
+  for (const slots of SMALL_NUMBER_DOMAIN) {
+    for (const everyNth of [1, 2]) {
+      const label = `${String(slots)}/${String(everyNth)}`;
+      // Driven at every point including the ones that refuse, so the RangeError
+      // payload is scanned like any other value. The rows below need a real
+      // history, so a refused point stops after the throw has been kept.
+      drive('historyFrom', label, () => historyAt(slots, everyNth));
+      if (slots < 1) continue;
+      const history = historyAt(slots, everyNth);
+      drive('checkInCount', label, () => engagementModule.checkInCount(history), [history]);
+      drive('moreEngagedBy', label, () => engagementModule.moreEngagedBy(history, 0), [history]);
+      drive('moreEngagedByTrainedDay', label, () => engagementModule.moreEngagedByTrainedDay(history, 0), [history]);
+      drive('slotWallSeconds', label, () => engagementModule.slotWallSeconds(slots, EMPIRE_SWEEP_CHECK_INS_PER_DAY));
+    }
+  }
+  {
+    let tally = engagementModule.emptyEngagementTally();
+    for (const spending of invariant.EMPIRE_SPENDING_POLICIES) {
+      for (const key of engagementModule.ENGAGEMENT_WIRINGS) {
+        const days = RUN_DAY_DOMAIN[1] as number;
+        const slots = days * EMPIRE_SWEEP_CHECK_INS_PER_DAY;
+        const history = historyAt(slots, 1);
+        // The upkeep argument is what the wiring itself admits: a wiring that
+        // charges none refuses a non-zero one, and vice versa.
+        const wiring = engagementModule.engagementWiring(
+          key,
+          engagementModule.chargesUpkeep(key) ? EMPIRE_TUNING.ENCOURAGEMENT_REWARD_GYM_BUCKS : 0,
+        );
+        const policy = policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY);
+        const social = socialInputsAt();
+        const label = `${spending}/${key}`;
+        let run: engagementModule.EngagementRun | null = null;
+        drive('runEngagement', label, () => {
+          run = engagementModule.runEngagement(days, policy, history, social, wiring, spending);
+          return run;
+        }, [policy, history, social, wiring]);
+        if (run !== null) {
+          const settled: engagementModule.EngagementRun = run;
+          drive('engagementRunFaults', label, () => engagementModule.engagementRunFaults(settled), [settled]);
+          const other = engagementModule.runEngagement(
+            days,
+            policy,
+            engagementModule.moreEngagedByTrainedDay(history, 0),
+            social,
+            wiring,
+            spending,
+          );
+          const divergence = engagementModule.compareEngagement(settled, other);
+          drive('compareEngagement', label, () => engagementModule.compareEngagement(settled, other), [settled, other]);
+          const carried = tally;
+          drive('addEngagement', label, () => {
+            tally = engagementModule.addEngagement(carried, divergence);
+            return tally;
+          }, [carried, divergence]);
+        }
+      }
+    }
+  }
+  drive('engagementRunFaults', 'faulted', () => engagementModule.engagementRunFaults(FAULTED_ENGAGEMENT_RUN), [FAULTED_ENGAGEMENT_RUN]);
+
+  // --- social.ts
+  for (const payout of reputationModule.REPUTATION_PAYOUTS) {
+    drive('reputationPayoutOutput', payout, () => reputationModule.reputationPayoutOutput(payout));
+    drive('reputationPayoutReach', payout, () => reputationModule.reputationPayoutReach(payout));
+  }
+  for (const surface of socialModule.SOCIAL_SURFACES) {
+    drive('socialOutput', surface, () => socialModule.socialOutput(surface));
+    drive('socialReach', surface, () => socialModule.socialReach(surface));
+  }
+  for (const scope of EMPIRE_TUNING.LEADERBOARD_SCOPES) {
+    drive('leaderboardBracketSize', scope, () => socialModule.leaderboardBracketSize(scope));
+    for (const metric of socialModule.LEADERBOARD_METRICS) {
+      const entries = Object.freeze([OWN_GYM, ...FRIENDS, RIVAL_GYM]);
+      drive('rankLeaderboard', `${scope}/${metric}`, () => socialModule.rankLeaderboard(entries, metric, scope), [entries]);
+      const rows = socialModule.rankLeaderboard(entries, metric, scope);
+      drive('leaderboardRankOf', `${scope}/${metric}`, () => socialModule.leaderboardRankOf(rows, SENTINELS.OWN_GYM_ID), [rows]);
+      for (const entry of entries) {
+        drive('leaderboardScore', `${metric}/${entry.gymId}`, () => socialModule.leaderboardScore(entry, metric), [entry]);
+      }
+      drive('compareWithRival', `${scope}/${metric}`, () =>
+        socialModule.compareWithRival(
+          OWN_GYM,
+          RIVAL_GYM,
+          metric,
+          socialModule.asCalendarDay(CALENDAR_ANCHOR),
+          socialModule.asCalendarDay(EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS),
+        ),
+      );
+    }
+  }
+  for (const day of SMALL_NUMBER_DOMAIN) {
+    const calendarDay = socialModule.asCalendarDay(day);
+    const context = socialContextAt([0, 1, day]);
+    const label = String(day);
+    drive('visitsUsedOn', label, () => socialModule.visitsUsedOn(context.visits, calendarDay), [context]);
+    drive('visitsLeftOn', label, () => socialModule.visitsLeftOn(context.visits, calendarDay), [context]);
+    drive('socialContextFaults', label, () => socialModule.socialContextFaults(context), [context]);
+    drive('encouragementGymBucksOn', label, () =>
+      socialModule.encouragementGymBucksOn(context.encouragementsReceived, calendarDay), [context],
+    );
+    for (const gymId of [`${SENTINELS.FRIEND_GYM_ID}-0`, SENTINELS.OWN_GYM_ID, SENTINELS.FAULT_VISIT_GYM_ID]) {
+      drive('visitRefusals', `${label}/${gymId}`, () => socialModule.visitRefusals(context, gymId, calendarDay), [context, gymId]);
+      drive('mayVisitFriendGym', `${label}/${gymId}`, () => socialModule.mayVisitFriendGym(context, gymId, calendarDay), [context, gymId]);
+      for (const encourage of [false, true]) {
+        drive('recordFriendVisit', `${label}/${gymId}/${String(encourage)}`, () =>
+          socialModule.recordFriendVisit(context, gymId, calendarDay, encourage), [context, gymId],
+        );
+      }
+    }
+    drive('rivalPeriodIndex', label, () =>
+      socialModule.rivalPeriodIndex(socialModule.asCalendarDay(CALENDAR_ANCHOR), calendarDay),
+    );
+    drive('rivalPeriodStartDay', label, () =>
+      socialModule.rivalPeriodStartDay(socialModule.asCalendarDay(CALENDAR_ANCHOR), day),
+    );
+    drive('rivalPeriodCloseDay', label, () =>
+      socialModule.rivalPeriodCloseDay(socialModule.asCalendarDay(CALENDAR_ANCHOR), day),
+    );
+    drive('rivalPeriodCloseDays', label, () =>
+      socialModule.rivalPeriodCloseDays(socialModule.asCalendarDay(CALENDAR_ANCHOR), day),
+    );
+    drive('socialRewardSchedule', label, () => socialModule.socialRewardSchedule(calendarAt(CALENDAR_ANCHOR), day));
+  }
+  drive('socialContextFaults', 'faulted', () => socialModule.socialContextFaults(FAULTED_SOCIAL_CONTEXT), [FAULTED_SOCIAL_CONTEXT]);
+
+  return DRIVEN_ROWS;
 }
