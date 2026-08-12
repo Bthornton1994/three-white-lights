@@ -831,3 +831,162 @@ describe('instrument A bites — the census is re-run over a probe carrying four
     expect(probeSurface().exports).toContain(`${PROBE_MODULE}#probeProtectionDays`);
   });
 });
+
+// ===========================================================================
+// INSTRUMENT B — the behavioural drive and the deep scan
+// ===========================================================================
+
+/**
+ * How deep the VALUE walk goes, and how many nodes it will visit per driven
+ * call before it gives up.
+ *
+ * Both are pinned as zero-cut counts below rather than trusted. A walker that
+ * truncates reports a clean scan, which is the reassuring direction.
+ */
+const VALUE_WALK_MAX_DEPTH = 16;
+
+interface ScannedString {
+  /** Where the string sat, e.g. `[0].visits[0].gymId` or `[0].{key}kind`. */
+  readonly path: string;
+  readonly value: string;
+  /** True when the string was a property KEY rather than a property value. */
+  readonly viaKey: boolean;
+}
+
+interface ScanResult {
+  readonly strings: readonly ScannedString[];
+  readonly nodes: number;
+  readonly depthCuts: number;
+  readonly gettersInvoked: number;
+  readonly getterThrows: number;
+  readonly revisits: number;
+  /** Strings and finite numbers in visit order, for the axis fingerprint. */
+  readonly trace: readonly string[];
+}
+
+/**
+ * Walk a value and report every string reachable from it.
+ *
+ * WHAT IT REACHES, in its own terms: own enumerable AND non-enumerable
+ * properties via `Reflect.ownKeys`; property KEYS as well as property values,
+ * because attack shape 8 carries the name as a computed key; accessors, which
+ * are INVOKED, because `Object.freeze` does not neutralise a getter and
+ * `Object.keys` / `Object.entries` / spread / `JSON.stringify` all skip a
+ * non-enumerable one; symbol keys, by their description; array elements; `Map`
+ * keys and values; `Set` members; and a thrown payload, which is scanned like
+ * any other object.
+ *
+ * WHAT IT DOES NOT REACH, stated because a walker's gaps are its verdict:
+ *
+ *  - A returned FUNCTION is walked for its own properties and is not called.
+ *    Calling an arbitrary returned closure with invented arguments is not
+ *    something this can do safely, so a name produced only by invoking one is
+ *    outside it. A getter is called; a method is not.
+ *  - `Error.stack` is skipped deliberately. It is the runtime's text about file
+ *    paths rather than a value the module produced, and scanning it would make
+ *    the verdict depend on where the repository is checked out.
+ *  - A `Proxy` whose `ownKeys` trap lies is walked as the trap describes it.
+ *    `Reflect.ownKeys` is the widest enumeration available and a trap can still
+ *    return nothing while `get` answers; nothing in this directory constructs a
+ *    Proxy, and `NO_PROXY_CONSTRUCTED` pins that by driving every export.
+ */
+function deepScan(root: unknown, label: string): ScanResult {
+  const strings: ScannedString[] = [];
+  const trace: string[] = [];
+  const visited = new Set<object>();
+  let nodes = 0;
+  let depthCuts = 0;
+  let gettersInvoked = 0;
+  let getterThrows = 0;
+  let revisits = 0;
+
+  const isIndexKey = (key: string): boolean => /^(?:0|[1-9][0-9]*)$/.test(key);
+
+  const scan = (value: unknown, at: string, depth: number): void => {
+    if (depth > VALUE_WALK_MAX_DEPTH) {
+      depthCuts += 1;
+      return;
+    }
+    if (typeof value === 'string') {
+      strings.push({ path: at, value, viaKey: false });
+      trace.push(`${at}=${value}`);
+      return;
+    }
+    if (typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') {
+      trace.push(`${at}=${String(value)}`);
+      return;
+    }
+    if (typeof value === 'symbol') {
+      const description = value.description;
+      if (description !== undefined) strings.push({ path: `${at}@@`, value: description, viaKey: false });
+      return;
+    }
+    if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return;
+
+    const node = value as object;
+    if (visited.has(node)) {
+      revisits += 1;
+      return;
+    }
+    visited.add(node);
+    nodes += 1;
+
+    if (node instanceof Map) {
+      let index = 0;
+      for (const [key, entry] of node) {
+        scan(key, `${at}{mapKey${String(index)}}`, depth + 1);
+        scan(entry, `${at}{mapVal${String(index)}}`, depth + 1);
+        index += 1;
+      }
+    }
+    if (node instanceof Set) {
+      let index = 0;
+      for (const member of node) {
+        scan(member, `${at}{setMember${String(index)}}`, depth + 1);
+        index += 1;
+      }
+    }
+
+    const isArray = Array.isArray(node);
+    const isError = node instanceof Error;
+    for (const key of Reflect.ownKeys(node)) {
+      if (typeof key === 'symbol') {
+        const description = key.description;
+        if (description !== undefined) {
+          strings.push({ path: `${at}[@@key]`, value: description, viaKey: true });
+        }
+      } else {
+        if (isError && key === 'stack') continue;
+        if (!(isArray && (isIndexKey(key) || key === 'length'))) {
+          // The KEY itself is a reachable string. Attack shape 8 puts the name
+          // here rather than in a value.
+          strings.push({ path: `${at}[key]`, value: key, viaKey: true });
+        }
+      }
+      const descriptor = Object.getOwnPropertyDescriptor(node, key);
+      if (descriptor === undefined) continue;
+      const path = `${at}.${String(key)}`;
+      if (descriptor.get !== undefined) {
+        gettersInvoked += 1;
+        try {
+          scan(descriptor.get.call(node), path, depth + 1);
+        } catch {
+          getterThrows += 1;
+        }
+      } else {
+        scan(descriptor.value, path, depth + 1);
+      }
+    }
+  };
+
+  scan(root, label, 0);
+  return {
+    strings: Object.freeze(strings),
+    nodes,
+    depthCuts,
+    gettersInvoked,
+    getterThrows,
+    revisits,
+    trace: Object.freeze(trace),
+  };
+}
