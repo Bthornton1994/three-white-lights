@@ -749,9 +749,27 @@ does not.
 four rounds learning that a source scan loses to the next unenumerated spelling
 and that the fix is behavioural — drive the subjects and read the outcome. The
 analogue here is to call every exported function in the directories under scan
-and assert none of them ever produces a value equal to a forbidden name. Session
-B can build that half for `src/empire/` without a crossing, and will if this is
-still open next round; the half that lives in `src/game/` is Session A's call.
+and assert none of them ever produces a value equal to a forbidden name.
+
+**FOR SESSION A — THIS IS A REPORTED DEFECT, NOT A NOTE, AND IT NEEDS A RULING
+FROM WHOEVER OWNS `src/game/`.** Routed here because that is the channel both
+sessions share, and flagged as an action rather than an observation:
+
+- **The reproduction is above and it runs.** Paste the function into
+  `src/empire/production.ts`, add `EMPIRE_FORBIDDEN_OUTPUTS` to that file's
+  existing `./empireCore` import, and the whole suite stays green.
+- **The decision is which instrument, not which regex.** Widening
+  `NAMES_A_COVERED_DAY_OR_A_PURCHASE` a third time buys one more spelling. The
+  words are chosen by the author, so a scan for words is a scan for authors who
+  cooperate — that is the axis, and it is the one both previous fixes missed.
+- **Session B has built the `src/empire/` half** (see the piece that follows this
+  section in the log), so there is a worked shape to copy or to reject. It is
+  behavioural and type-level rather than textual, and its own limits are stated
+  in the file.
+- **Session B has not touched `streakEntitlement.ts` or its test and will not.**
+  A predicate or instrument change there is a real crossing, not an allowlist
+  row, and this section's rule is that a crossing is written here before the
+  work rather than discovered in a merge.
 
 ### THE SUITE HAS A FLAKY WALL, IT IS IN SESSION A'S TERRITORY, AND SESSION B IS
 ### NOT TOUCHING IT
