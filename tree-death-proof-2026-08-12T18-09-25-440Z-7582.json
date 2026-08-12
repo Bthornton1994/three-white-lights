@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "tree-death-proof-2026-08-12T18-09-25-440Z-7582",
+  "label": "tree-death-proof",
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/game/streak.test.ts"
+  ],
+  "budgetSeconds": 600,
+  "startedAtIso": "2026-08-12T18:09:25.440Z",
+  "startedAtMs": 1786558165440,
+  "cwd": "/home/user/wt-marker-sync",
+  "commit": "6d468c1734e323eea3106b8f77170b29eee21fdf",
+  "branch": "claude/marker-survives-tree-death",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 7582,
+    "startTick": "284188",
+    "cmdline": "node tools/watchdog.mjs --budget 600 --label tree-death-proof -- npx vitest run src/game/streak.test.ts",
+    "bootId": "af4e9eff-33fd-4a0f-9985-4643c4f0258b",
+    "bootEpochSeconds": 1786555323,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-12T18:09:25.600Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
