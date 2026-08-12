@@ -1,19 +1,25 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-11T09:00:59.315Z",
+    "capturedAt": "2026-08-12T21:05:27.456Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/home/user/three-white-lights",
-    "commit": "4fdd8e1",
+    "commit": "d2b4241",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [
       "M .gauntlet/shots/cutin-cap/cap.json",
+      " M .gauntlet/shots/cutin-cap/cut-in-leg-1.png",
       " M .gauntlet/shots/cutin-cap/leg-1-recap.png",
-      " M .gauntlet/shots/meet/sound.json",
-      " M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
-      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
-      " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
-      " M .gauntlet/shots/shell/route.json"
+      " M .gauntlet/shots/cutin/baseline-no-cutin.png",
+      " D .gauntlet/shots/cutin/bomb-out.png",
+      " D .gauntlet/shots/cutin/coach-heavy-set.png",
+      " D .gauntlet/shots/cutin/debug-meet-bombed.png",
+      " D .gauntlet/shots/cutin/debug-meet-walkout-third.png",
+      " D .gauntlet/shots/cutin/frames.json",
+      " D .gauntlet/shots/cutin/live-after-auto-dismiss.png",
+      " D .gauntlet/shots/cutin/live-after-tap.png",
+      " D .gauntlet/shots/cutin/live-mid-hold.png",
+      " M .gauntlet/shots/meet/sound.json"
     ],
     "instrument": {
       "capture-cutin.mjs": "6ebe3eaed8447c87",
@@ -64,8 +70,8 @@
       },
       "scrim": {
         "blended": 58892,
-        "opaqueBackdrop": 16254,
-        "untouched": 862834
+        "opaqueBackdrop": 35182,
+        "untouched": 843906
       },
       "pixelHash": 3627325843
     },
@@ -112,8 +118,8 @@
       },
       "scrim": {
         "blended": 13095,
-        "opaqueBackdrop": 16314,
-        "untouched": 850695
+        "opaqueBackdrop": 35242,
+        "untouched": 831767
       },
       "pixelHash": 3462249653
     },
@@ -160,8 +166,8 @@
       },
       "scrim": {
         "blended": 47920,
-        "opaqueBackdrop": 16254,
-        "untouched": 862782
+        "opaqueBackdrop": 35182,
+        "untouched": 843854
       },
       "pixelHash": 345416966
     },
@@ -208,8 +214,8 @@
       },
       "scrim": {
         "blended": 55148,
-        "opaqueBackdrop": 16254,
-        "untouched": 862782
+        "opaqueBackdrop": 35182,
+        "untouched": 843854
       },
       "pixelHash": 509932265
     }
@@ -238,15 +244,15 @@
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 701,
+    "stillUpAt": 700,
     "stillUp": true,
-    "goneAt": 1553,
+    "goneAt": 1581,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 12,
-    "goneAt": 19,
-    "dismissTookMs": 7,
+    "tappedAt": 17,
+    "goneAt": 29,
+    "dismissTookMs": 12,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
