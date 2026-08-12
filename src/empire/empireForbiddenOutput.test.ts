@@ -1543,6 +1543,20 @@ const ROSTER_SHAPES: readonly number[] = NUMERIC_DOMAINS.ROSTER_SHAPE.points;
 const RUN_HORIZON_DAYS = EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS;
 
 /**
+ * The horizon the injected-axis census runs to, and it is longer on purpose.
+ *
+ * MEASURED: at `RUN_HORIZON_DAYS`, `policy.axisOrder` moved 0 of 6 points and
+ * `policy.leaderboardMetric` moved 0 of 2 — both structurally, not by accident.
+ * The metric is read only when a rival period CLOSES, and no period closes
+ * inside its own length; the order is read only when a spending moment can
+ * afford a rung, and seven days of a fresh gym cannot afford one. Both are
+ * CLAUDE.md's "a variation that leaves the subject's own domain is the same
+ * defect wearing the costume of the fix" — the axis existed, the points
+ * existed, and the subject never engaged. Four periods plus a day is past both.
+ */
+const AXIS_PROBE_DAYS = EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS * 4 + 1;
+
+/**
  * The loop axes in this file that are written as an array literal at their
  * call site rather than as a domain, each with the reason it is not a domain.
  *
@@ -2870,6 +2884,56 @@ function readingFor(axis: string, prints: readonly string[]): AxisReading {
   return { axis, points: prints.length, disagreements: disagreementsAmong(prints) };
 }
 
+/**
+ * The injected orders, social inputs and histories the census varies.
+ *
+ * Written as named lists rather than inline so the variations are readable and
+ * so a variation that does NOT disagree shows up as a zero next to a control
+ * that is also zero — which is the only way to tell "the axis is inert" from
+ * "the axis was never varied".
+ */
+const AXIS_ORDERS: readonly (readonly ExpansionAxis[])[] = Object.freeze([
+  ...expansionModule.EXPANSION_AXES.map((_unused, index) =>
+    Object.freeze([
+      ...expansionModule.EXPANSION_AXES.slice(index),
+      ...expansionModule.EXPANSION_AXES.slice(0, index),
+    ]),
+  ),
+  Object.freeze([...expansionModule.EXPANSION_AXES].reverse()),
+]);
+
+/**
+ * A rival the two leaderboard metrics DISAGREE about.
+ *
+ * The shipped `RIVAL_GYM` has a combined total of zero and so does the gym the
+ * loop grows, so both sides are level on that metric and the payout is the same
+ * number whichever metric is chosen — the axis had two points and the subject
+ * could not tell them apart. This rival is behind on reputation and ahead on
+ * total, so the metric decides the outcome and therefore the income.
+ */
+const METRIC_PROBE_SOCIAL: SocialInputs = Object.freeze({
+  ...socialInputsAt(),
+  rival: snapshotAt(
+    SENTINELS.RIVAL_GYM_ID,
+    `${SENTINELS.FRIEND_GYM_DISPLAY_NAME}-rival`,
+    0,
+    EMPIRE_TUNING.RIVAL_REWARD_GYM_BUCKS,
+  ),
+});
+
+const SOCIAL_SHAPES: readonly (readonly [string, SocialInputs])[] = Object.freeze([
+  ['shipped', socialInputsAt()],
+  ['no rival', Object.freeze({ ...socialInputsAt(), rival: null })],
+  ['no encouragements', Object.freeze({ ...socialInputsAt(), encouragementsReceived: Object.freeze([]) })],
+  [
+    'a later anchor day',
+    Object.freeze({
+      ...socialInputsAt(),
+      calendar: calendarAt(CALENDAR_ANCHOR + EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS),
+    }),
+  ],
+]);
+
 let axisMemo: readonly AxisReading[] | null = null;
 
 function axisReadings(): readonly AxisReading[] {
@@ -2879,6 +2943,14 @@ function axisReadings(): readonly AxisReading[] {
   const days = RUN_HORIZON_DAYS;
   const slots = days * EMPIRE_SWEEP_CHECK_INS_PER_DAY;
   const history = historyAt(slots, 1);
+  const HISTORY_SHAPES: readonly (readonly [string, EngagementHistory])[] = Object.freeze([
+    ['every slot', history],
+    ['every other slot', historyAt(slots, 2)],
+    ['every third slot', historyAt(slots, 3)],
+    // Same length — runEngagement refuses a history that does not fit the
+    // horizon — but a different attendance pattern and no trained days at all.
+    ['one check-in, no trained day', engagementModule.historyFrom(slots, (slot) => slot === 0, [])],
+  ]);
   const readings: AxisReading[] = [
     readingFor(
       'runEmpire / funding',
@@ -2903,6 +2975,12 @@ function axisReadings(): readonly AxisReading[] {
             social,
           ),
         ),
+      ),
+    ),
+    readingFor(
+      'runEmpire / accelerant plan held fixed (control)',
+      [null, ...core.PURCHASABLE_ACCELERANTS].map(() =>
+        fingerprint(invariant.runEmpire(days, policy, planAt(null, 0), social)),
       ),
     ),
     readingFor(
@@ -2953,6 +3031,20 @@ function axisReadings(): readonly AxisReading[] {
       ),
     ),
     readingFor(
+      'runEngagement / wiring held fixed (control)',
+      engagementModule.ENGAGEMENT_WIRINGS.map(() =>
+        fingerprint(
+          engagementModule.runEngagement(
+            days,
+            policy,
+            history,
+            social,
+            engagementModule.shippedEngagementWiring(),
+          ),
+        ),
+      ),
+    ),
+    readingFor(
       'accrueProduction / clock shape',
       COLLECTION_CLOCKS.map(([, clock]) =>
         fingerprint(
@@ -2976,12 +3068,102 @@ function axisReadings(): readonly AxisReading[] {
         ),
       ),
     ),
+    // --- The three injected dependencies the census used to omit entirely.
+    // `EmpirePolicy` was constructed exactly once in this whole file, so all
+    // three of its fields were one-point axes; `SocialInputs` and
+    // `EngagementHistory` were each a single fixture handed to every run. An
+    // injected dependency that appears once is an axis with one point however
+    // many points the other axes have.
+    readingFor(
+      'runEmpire / policy check-ins per day',
+      [1, 2, EMPIRE_SWEEP_CHECK_INS_PER_DAY].map((checkIns) =>
+        fingerprint(invariant.runEmpire(AXIS_PROBE_DAYS, policyAt(checkIns), planAt(null, 0), social)),
+      ),
+    ),
+    readingFor(
+      'runEmpire / policy check-ins held fixed (control)',
+      [1, 2, EMPIRE_SWEEP_CHECK_INS_PER_DAY].map(() =>
+        fingerprint(invariant.runEmpire(AXIS_PROBE_DAYS, policy, planAt(null, 0), social)),
+      ),
+    ),
+    readingFor(
+      // The axis this is really about: `axisOrder` is an injected SPENDING
+      // ORDER, which is structurally the same object that gave `src/career/` a
+      // one-point comparator axis. Every rotation, so the variations disagree
+      // with each other rather than merely existing.
+      'runEmpire / policy axis order',
+      AXIS_ORDERS.map((axisOrder) =>
+        fingerprint(
+          invariant.runEmpire(
+            AXIS_PROBE_DAYS,
+            Object.freeze({ ...policy, axisOrder }),
+            planAt(null, 0),
+            social,
+          ),
+        ),
+      ),
+    ),
+    readingFor(
+      'runEmpire / policy axis order held fixed (control)',
+      AXIS_ORDERS.map(() => fingerprint(invariant.runEmpire(AXIS_PROBE_DAYS, policy, planAt(null, 0), social))),
+    ),
+    readingFor(
+      'runEmpire / policy leaderboard metric',
+      socialModule.LEADERBOARD_METRICS.map((leaderboardMetric) =>
+        fingerprint(
+          invariant.runEmpire(
+            AXIS_PROBE_DAYS,
+            Object.freeze({ ...policy, leaderboardMetric }),
+            planAt(null, 0),
+            METRIC_PROBE_SOCIAL,
+          ),
+        ),
+      ),
+    ),
+    readingFor(
+      'runEmpire / policy leaderboard metric held fixed (control)',
+      socialModule.LEADERBOARD_METRICS.map(() =>
+        fingerprint(invariant.runEmpire(AXIS_PROBE_DAYS, policy, planAt(null, 0), METRIC_PROBE_SOCIAL)),
+      ),
+    ),
+    readingFor(
+      'runEmpire / social inputs',
+      SOCIAL_SHAPES.map(([, inputs]) =>
+        fingerprint(invariant.runEmpire(AXIS_PROBE_DAYS, policy, planAt(null, 0), inputs)),
+      ),
+    ),
+    readingFor(
+      'runEmpire / social inputs held fixed (control)',
+      SOCIAL_SHAPES.map(() => fingerprint(invariant.runEmpire(AXIS_PROBE_DAYS, policy, planAt(null, 0), social))),
+    ),
+    readingFor(
+      'runEngagement / engagement history',
+      HISTORY_SHAPES.map(([, shaped]) =>
+        fingerprint(engagementModule.runEngagement(days, policy, shaped, social)),
+      ),
+    ),
+    readingFor(
+      'runEngagement / engagement history held fixed (control)',
+      HISTORY_SHAPES.map(() => fingerprint(engagementModule.runEngagement(days, policy, history, social))),
+    ),
     readingFor(
       'productionRates / gym state shape',
       STATES.map(([, state]) =>
         fingerprint(
           productionModule.productionRates(
             state,
+            COLLECTION_CLOCKS[2]?.[1] as EmpireClock,
+            invariant.rosterRatesAt(COLLECTION_CLOCKS[2]?.[1] as EmpireClock),
+          ),
+        ),
+      ),
+    ),
+    readingFor(
+      'productionRates / gym state held fixed (control)',
+      STATES.map(() =>
+        fingerprint(
+          productionModule.productionRates(
+            STATES[0]?.[1] as EmpireState,
             COLLECTION_CLOCKS[2]?.[1] as EmpireClock,
             invariant.rosterRatesAt(COLLECTION_CLOCKS[2]?.[1] as EmpireClock),
           ),
@@ -3001,21 +3183,59 @@ function axisReadings(): readonly AxisReading[] {
  * table exists to make visible, and it is the reason these are counts rather
  * than a `toBeGreaterThan(0)`.
  */
+/**
+ * How many rows are controls, which is also how many are varied axes.
+ *
+ * Pinned as an equality in both directions rather than as a count of controls
+ * alone: a varied axis with no control beside it is an axis whose zero nobody
+ * could interpret, and a control with no axis is a row measuring nothing.
+ */
+const AXIS_CENSUS_CONTROLS = 11;
+
 const AXIS_CENSUS: readonly (readonly [string, number, number])[] = Object.freeze([
   ['runEmpire / funding', 3, 2],
   ['runEmpire / funding held fixed (control)', 3, 0],
   ['runEmpire / accelerant plan', 3, 2],
+  ['runEmpire / accelerant plan held fixed (control)', 3, 0],
   ['runEngagement / spending policy', 6, 5],
   ['runEngagement / spending policy held fixed (control)', 6, 0],
   ['runEngagement / wiring', 5, 4],
+  ['runEngagement / wiring held fixed (control)', 5, 0],
   ['accrueProduction / clock shape', 3, 2],
   ['accrueProduction / clock held fixed (control)', 3, 0],
+  // --- The three injected dependencies this table used to omit. `EmpirePolicy`
+  // was constructed once in the whole file, so all three of its fields were
+  // one-point axes; `SocialInputs` and `EngagementHistory` were one fixture
+  // each. `axisOrder` is the one that matters most — it is an injected
+  // SPENDING ORDER, structurally the same object that gave `src/career/` a
+  // one-point comparator axis.
+  ['runEmpire / policy check-ins per day', 3, 2],
+  ['runEmpire / policy check-ins held fixed (control)', 3, 0],
+  // Four of six rather than five: the rotations are of a four-axis list plus
+  // its reverse, and two of the six coincide as spending orders once the gym
+  // can only afford the same rung under both.
+  ['runEmpire / policy axis order', 6, 4],
+  ['runEmpire / policy axis order held fixed (control)', 6, 0],
+  // One of two, which is the ceiling: the metric has exactly two values, so a
+  // varying axis can disagree with the first point at most once.
+  ['runEmpire / policy leaderboard metric', 2, 1],
+  ['runEmpire / policy leaderboard metric held fixed (control)', 2, 0],
+  // Three of four. The fourth is 'no encouragements', and it agrees with the
+  // shipped inputs because the encouragement fixture pays on days the horizon
+  // does reach but the payout lands in the same book at the same moment as
+  // nothing — recorded rather than tuned away, because a variation that does
+  // not move the subject is the finding this table exists for.
+  ['runEmpire / social inputs', 4, 3],
+  ['runEmpire / social inputs held fixed (control)', 4, 0],
+  ['runEngagement / engagement history', 4, 3],
+  ['runEngagement / engagement history held fixed (control)', 4, 0],
   // Twenty rather than twenty-four, and the gap is the finding rather than a
   // shortfall: reputation is one of the two axes `STATES` crosses and
   // production rates do not read it, so the four other reputations at an empty
   // roster fingerprint identically to the first point. Roster size is what
   // moves this, and it moves it twenty times out of twenty-five.
   ['productionRates / gym state shape', 25, 20],
+  ['productionRates / gym state held fixed (control)', 25, 0],
 ]);
 
 /**
@@ -3315,7 +3535,10 @@ describe('the injected axes were varied, and the variation was measured', () => 
     // about an axis nobody varied".
     expect(readings).toEqual(AXIS_CENSUS);
     const controls = readings.filter(([axis]) => axis.includes('(control)'));
-    expect(controls.length).toBe(3);
+    // One control per varied axis, and the equality below is what says the
+    // pairing is complete rather than that some axes happen to have one.
+    expect(controls.length).toBe(AXIS_CENSUS_CONTROLS);
+    expect(readings.length - controls.length).toBe(AXIS_CENSUS_CONTROLS);
     for (const [axis, , disagreements] of controls) expect(disagreements, axis).toBe(0);
     for (const [axis, , disagreements] of readings.filter(([name]) => !name.includes('(control)'))) {
       expect(disagreements, axis).toBeGreaterThan(0);
