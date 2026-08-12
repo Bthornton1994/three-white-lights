@@ -3905,6 +3905,25 @@ describe('placing reads a total only through the injected order', () => {
     //
     // Reddens on: the fourth arm becoming reachable on clean data (half one), or
     // on the arm being deleted so nothing reaches it at all (half two).
+    //
+    // MUTATION WITNESS, run rather than asserted, because a named catcher
+    // nobody drove is a pointer and this file already records what one of those
+    // is worth. Mutant, replacing step 3 in `separate` — the moment comparison,
+    // which is the only thing standing between the two entrants that share a
+    // bodyweight and the fallback:
+    //
+    //     void leftAt;
+    //     void rightAt;
+    //
+    // `npx tsc --noEmit` stays exit 0 under it. Reddened here:
+    // `expect(unresolvedOnClean).toBe(0)`, at `expected 80030 to be +0`.
+    //
+    // WHAT THE WITNESS DOES NOT SHOW: this mutant is not isolated to this test.
+    // Five others go red with it, including two in `flight.test.ts` that are
+    // about the chain rather than about the arm. That is stated rather than
+    // implied — an isolated mutant for half one would have to leave step 3
+    // working and make a CLEAN flight tie past it, and no such input exists,
+    // which is the bounded claim `separate`'s docstring makes.
     let cleanRows = 0;
     let unresolvedOnClean = 0;
     let sharedOnClean = 0;
@@ -3916,8 +3935,18 @@ describe('placing reads a total only through the injected order', () => {
         const entries = flightAt(kg, shape, null);
         for (const placing of PLACING_ORDERS) {
           const sheet = placeFlight(entries, placing.order);
-          const places = sheet.map((row) => row.place).filter((p) => p !== null);
-          if (new Set(places).size !== places.length) sharedOnClean += 1;
+          // Per CATEGORY, not per sheet. This fixture is single-category, so the
+          // two readings agree here — and a sheet-wide `new Set(places)` would
+          // be a trap the moment anything gave this probe a second category,
+          // since every category legitimately has a place 1. Scoped now rather
+          // than left for whoever widens the fixture to discover.
+          for (const categoryId of new Set(sheet.map((row) => row.categoryId))) {
+            const places = sheet
+              .filter((row) => row.categoryId === categoryId)
+              .map((row) => row.place)
+              .filter((p) => p !== null);
+            if (new Set(places).size !== places.length) sharedOnClean += 1;
+          }
           for (const row of sheet) {
             if (row.decidedBy === CAREER_TUNING.PLACING_UNRESOLVED_ORDER) unresolvedOnClean += 1;
             cleanRows += 1;
@@ -3945,13 +3974,20 @@ describe('placing reads a total only through the injected order', () => {
     // Counts, not bounds, on the domain the zeros were taken over.
     expect(cleanRows).toBe(120045 * FLIGHT_PROBE.LOTS.length);
     expect(cleanRows).toBe(480180);
-    // And the non-zero the zeros are zero against: `all-tied` with no moments
-    // recorded is four entrants the chain cannot separate past bodyweight, so
-    // three of the four rows fall to the fallback (the top row's `decidedBy` is
-    // always null). Two of the four share a bodyweight, so one of those three is
-    // separated by it — measured at 5 rather than predicted.
+    // And the non-zero the zeros are zero against. Derived, and the draft's
+    // sentence here was wrong in a way the number hid: it said "three of the
+    // four rows fall to the fallback", which does not fit one-per-flight.
+    //
+    // What actually happens on `all-tied` with the moments removed: every total
+    // is equal, so step 1 decides nothing and the four rows sort by bodyweight —
+    // 83.25, 92.5, 92.5, 105.75. Three of the four adjacent pairs differ in
+    // bodyweight and are decided by step 2; the fourth pair is the two 92.5s,
+    // which are equal on total and bodyweight with no moment to compare, and it
+    // is the ONE pair per flight that reaches the fallback. So one row per
+    // flight, five flights, five.
     expect(faultedFlights).toBe(5);
-    expect(unresolvedOnFaulted).toBe(5 * 1);
+    expect(unresolvedOnFaulted).toBe(faultedFlights * 1);
+    expect(unresolvedOnFaulted).toBe(5);
   });
 
   it('places a bombed-out lifter last and out of the placings, at every point', () => {
