@@ -1,5 +1,28 @@
 # CLAUDE.md — Powerlifting Game
 
+## Index
+
+Standing `##` sections only. Dated claims, crossings, and rulings live under
+Session Coordination as `###` headings and are deliberately not listed here —
+they change every wave, and listing them would make this table a merge-conflict
+magnet.
+
+| Section | Open this when |
+|---|---|
+| [Source of Truth](#source-of-truth) | A request might disagree with the GDD |
+| [Run Mode](#run-mode) | Choosing gauntlet vs phased building |
+| [Session Coordination — THREE SESSIONS ARE RUNNING ON THIS REPO](#session-coordination--three-sessions-are-running-on-this-repo) | You just landed. Claims, crossings, who owns what |
+| [Subagent Roles](#subagent-roles) | Dispatching a builder or a critic |
+| [Game Feel Values Must Be Tunable](#game-feel-values-must-be-tunable) | A timing, curve, or threshold is about to be written |
+| [A Comment That Asserts a Guarantee Must Have a Test That Fails Without It](#a-comment-that-asserts-a-guarantee-must-have-a-test-that-fails-without-it) | Prose is about to promise something |
+| [An Assertion Is Vacuous If It Cannot Fail](#an-assertion-is-vacuous-if-it-cannot-fail) | A test exists and might not be able to go red |
+| [Architecture Rules](#architecture-rules) | Where math vs UI vs server vs screens live |
+| [Domain Correctness](#domain-correctness) | RPE, e1RM, DOTS, meet structure |
+| [Hard Design Constraints](#hard-design-constraints) | Pay-to-win, gacha, fatigue bar, ads, daily engagement, real identity |
+| [Code Conventions](#code-conventions) | TypeScript, Reanimated, Skia, colocation |
+| [Working Style](#working-style) | Wave start, push discipline, evidence, watchdogs |
+| [What You Cannot Do](#what-you-cannot-do) | Feel, playtesting, unverifiable critic bars |
+
 ## Source of Truth
 
 `docs/GDD.md` is the authoritative design document. Read it before proposing any
@@ -944,6 +967,50 @@ import `progression` (any quote style, side-effect, re-export, or dynamic
 import) without a red test; `Math.random` in any of them is red; planting
 `export let careerDebugWallet` and reading it from `qualifiesFor` is red;
 Session C does not call the bar met.
+
+### SESSION D — CLAUDE.md INDEX (ONE-SHOT, NOT A LANE)
+
+Written here **before** the work starts, as this section requires. Human-approved
+2026-08-13 via the plan on `grok-d-claudemd-index`. Session D is Grok, this
+checkout, that branch. It is a one-shot visitor for this piece. It is **not** a
+standing lane and it does not take a half of `src/`. The heading above this
+block still reads three sessions, and The split table is unchanged: A, B and C
+still own the repo.
+
+**Active claim (unambiguous): an index of the standing `##` sections of this
+file, plus the test that keeps the list honest.** A new session is told to read
+this section before claiming anything, but the standing rules start at
+`Source of Truth` and the dated crossings bury them. The index sits at the top
+of this file and lists every `##` heading except itself. Dated claims,
+crossings and rulings stay under this section as `###` headings and are
+deliberately not listed — they change every wave, and listing them would make
+the table a merge-conflict magnet.
+
+**This claim is the index. It is not a rewrite of the rules, not a split of
+this file, and not a GDD change.**
+
+**Explicitly OUT of this claim:**
+
+- every `src/**` game module
+- `src/tuning/audit.ts`, `src/tuning/audit.test.ts`, `src/tuning/index.ts`
+- `src/game/guaranteeTags.test.ts`
+- Empire, Career, the shell
+- `docs/GDD.md`
+
+#### CROSSING FILED BY SESSION D, BEFORE THE WORK, 2026-08-13
+
+Session D owns none of `tools/`; it is Session A's. Filed here first:
+
+1. **`tools/claudeIndex.test.ts` — new file.** Reads this document, collects
+   every `##` heading except `Index`, parses the index table, and asserts set
+   equality both ways. A heading added, removed or renamed without the matching
+   row is red. It does not edit any existing `tools/` module.
+
+**Done when the slice is ready for review:** the index and the live `##`
+headings match in both directions; `tools/claudeIndex.test.ts` and
+`src/licensing/realIp.test.ts` are green; Session D does not call a §12.2 bar
+met. Push only to `grok-d-claudemd-index`, and only after an explicit go-ahead.
+Never to `main` or to `claude/agent-config-setup-m2r6ny`.
 
 
 ## Subagent Roles
