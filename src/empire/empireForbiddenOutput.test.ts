@@ -1094,6 +1094,54 @@ describe('the domains are derived from the subject and are not empty', () => {
     for (const [name, why] of LITERAL_AXES) expect(why.length, name).toBeGreaterThan(60);
   });
 
+  it('declares every labelled fixture list, and pins the size of each one it drives', () => {
+    // The branch immediately below the two scans above. Those cover an axis
+    // written as a `readonly number[]` and an axis written as a `for (const x
+    // of [ … ])`. A `[label, value]` list is neither, and there are six of them
+    // driving this file.
+    const source = sourceWithoutComments();
+    const declared = distinct(
+      [...source.matchAll(/^const (\w+): readonly \(readonly \[string, /gm)].map(
+        (hit) => hit[1] ?? '',
+      ),
+    );
+    const registered = [...FIXTURE_LISTS.map((list) => list.name), ...CENSUS_LISTS];
+    // A PARTITION, not a union: a fixture filed as a census would escape the
+    // size pin below, so being in both is as much a defect as being in neither.
+    expect([...registered].sort()).toEqual(declared);
+    expect(distinct(registered).length).toBe(registered.length);
+    expect(declared.length).toBe(DOMAIN_CENSUS.LABELLED_LISTS);
+
+    const actual: Readonly<Record<string, readonly unknown[]>> = {
+      STATES,
+      CLOCKS,
+      COLLECTION_CLOCKS,
+      CLOCK_SHAPES,
+      CONTEXTS,
+      SOCIAL_SHAPES,
+    };
+    for (const list of FIXTURE_LISTS) {
+      // The size pin. A truncated fixture is the shape of an empty domain that
+      // still reports honest counts everywhere downstream.
+      expect(actual[list.name]?.length, list.name).toBe(list.size);
+      expect(list.why.length, list.name).toBeGreaterThan(150);
+      if (list.derivedFrom !== null) {
+        expect(Object.keys(NUMERIC_DOMAINS), list.name).toContain(list.derivedFrom);
+      } else {
+        // A hand-picked list has to say what it is a list OF and what it
+        // therefore misses, in those words, because "hand-picked" with no
+        // residual beside it is the concession-without-a-price shape.
+        expect(list.why, list.name).toContain('HAND-PICKED');
+        expect(list.why.toLowerCase(), list.name).toMatch(/residual|not reached|not affordable/);
+      }
+    }
+    // Two derived and four hand-picked, pinned so a list quietly changing
+    // class moves a number.
+    expect(FIXTURE_LISTS.filter((list) => list.derivedFrom === null).length).toBe(
+      DOMAIN_CENSUS.HAND_PICKED_LISTS,
+    );
+  });
+
   it('joins a measured price to every domain that carries a ceiling, in both directions', () => {
     // A cost concession with no measurement beside it is how a ten-point
     // hour-derived domain stayed on six axes that never needed to be cheap.
@@ -2292,6 +2340,95 @@ const LITERAL_AXES: readonly (readonly [string, string])[] = Object.freeze([
 ]);
 
 /**
+ * Every LABELLED FIXTURE LIST this file drives, and where its points come from.
+ *
+ * WHY THIS EXISTS. `NUMERIC_DOMAINS` governs the axes that are numbers, and two
+ * scans stop an axis being written outside it — one for a module-level `readonly
+ * number[]`, one for `for (const x of [ … ])`. Neither sees a list of `[label,
+ * value]` pairs, and this file drives six of those. They were governed by
+ * nothing: a fixture list could be truncated to one member, or hand-picked at
+ * three points on an axis with sixty-six branch points, and no count would move.
+ *
+ * WHAT THIS BUYS AND WHAT IT DOES NOT, because the gap is the honest part.
+ * It makes every such list declared, classified as derived-from-a-domain or
+ * hand-picked, and PINNED BY SIZE — so a truncation reports itself and a new
+ * list has to be classified by a person. It does NOT make a hand-picked list
+ * derived. FOUR of the six are hand-picked and their residual is written into
+ * their own rows in the terms that matter: `CONTEXTS` samples a Gym Bucks
+ * balance at three points while `gymBucks` files eighteen prices that balance
+ * is compared against, so a mutant keyed on the fifteen it misses is invisible
+ * and nothing in this file catches it.
+ *
+ * The census tables are listed separately because they are EXPECTATIONS rather
+ * than inputs — pinning the size of a table of expected values would be pinning
+ * the same thing twice — and the scan requires every declaration to be in
+ * exactly one of the two lists, so a fixture cannot be filed as a census to
+ * escape the size pin.
+ */
+interface FixtureList {
+  readonly name: string;
+  /** The `NUMERIC_DOMAINS` key its points come from, or null if hand-picked. */
+  readonly derivedFrom: string | null;
+  readonly size: number;
+  readonly why: string;
+}
+
+const FIXTURE_LISTS: readonly FixtureList[] = Object.freeze([
+  Object.freeze({
+    name: 'STATES',
+    derivedFrom: 'ROSTER_SHAPE',
+    size: 85,
+    why: 'One state per roster size in ROSTER_SHAPE crossed with every reputation tier boundary. Both axes are read out of the registry, so widening either widens this by construction rather than by an edit here.',
+  }),
+  Object.freeze({
+    name: 'CLOCKS',
+    derivedFrom: 'SECONDS',
+    size: 166,
+    why: 'One clock per point of the seconds domain, at a fixed skip. Derived, so the seconds domain losing its ceiling this round widened this list without anybody touching it.',
+  }),
+  Object.freeze({
+    name: 'COLLECTION_CLOCKS',
+    derivedFrom: null,
+    size: 3,
+    why: 'HAND-PICKED, three marks: at zero, half a day, and half a day with a purchased skip. It is a SHAPE list rather than a magnitude list — accrueProduction refuses a mark ahead of the gym clock, so what is being varied is which side of that refusal the mark falls on, and the magnitude axis beside it is CLOCKS, which is derived. The residual: a subject keyed on a specific collection mark is only reached if that mark is one of these three.',
+  }),
+  Object.freeze({
+    name: 'CLOCK_SHAPES',
+    derivedFrom: null,
+    size: 3,
+    why: 'HAND-PICKED, three clocks: zero, a day with no skip, and a day skewed by a build-timer ceiling of skip. Shapes rather than magnitudes, for the calls that take a clock and are otherwise cheap. The residual is the same as COLLECTION_CLOCKS and the magnitude cover is again CLOCKS.',
+  }),
+  Object.freeze({
+    name: 'CONTEXTS',
+    derivedFrom: null,
+    size: 3,
+    why: 'HAND-PICKED, AND THE WEAKEST LIST IN THE FILE. Three expansion contexts: broke, rich at the top space price, and mid-balance with builds running. Its Gym Bucks balance is 3 points against the 18 prices `gymBucks` files, every one of which is a `balance < price` branch, so a refusal keyed on the other fifteen is not reached and nothing here catches it. Making it a domain axis would multiply the drive by the Bucks domain and was not affordable this round; it is stated rather than fixed.',
+  }),
+  Object.freeze({
+    name: 'SOCIAL_SHAPES',
+    derivedFrom: null,
+    size: 4,
+    why: 'HAND-PICKED, four SHAPES of social input: shipped, no rival, no encouragements, and a later anchor day. Every one of them changes the STRUCTURE handed in — a null, an empty list, a moved anchor — rather than a magnitude, and the day magnitude axis it is crossed with is DAY_DOMAIN, which is derived. The residual: a fifth structural shape nobody thought of is not reached, and no scan can enumerate the shapes of an input the way a domain enumerates its magnitudes.',
+  }),
+]);
+
+/**
+ * The labelled lists that are expectations rather than inputs.
+ *
+ * Listed so the scan can require every declaration to be in exactly one of the
+ * two registries. A fixture filed here would escape its size pin, which is why
+ * the scan checks the partition rather than only the union.
+ */
+const CENSUS_LISTS: readonly string[] = Object.freeze([
+  'AXIS_CENSUS',
+  'DERIVED_THRESHOLDS',
+  'DIAGNOSTIC_CHANNEL_CENSUS',
+  'FOLD_TRIPWIRES',
+  'KINDED_RETURN_CENSUS',
+  'LITERAL_AXES',
+]);
+
+/**
  * Every (domain, exempt leaf) pair the ceilings drop, by name.
  *
  * Four pairs, all in ROSTER_SHAPE, all of them a value larger than any roster
@@ -2346,6 +2483,8 @@ const DOMAIN_CENSUS = Object.freeze({
   }),
   ALIASES: 6,
   LITERAL_AXES: 7,
+  LABELLED_LISTS: 12,
+  HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
   /** (domain, point) pairs the NUMBER-containment loop actually compares. */
@@ -4667,6 +4806,18 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
       're-runs the unconsumed scan: CHECK_IN_TARGET_SECONDS_MAX is exempted as unread and is read. So the one exemption class whose reason is a claim about the shipped code expires by itself rather than on somebody remembering.',
   }),
   Object.freeze({
+    id: 'G6',
+    what: 'the `building` row deleted from `CONTEXTS`, leaving a two-member fixture list where the registry says three',
+    reddened:
+      'declares every labelled fixture list: CONTEXTS: expected 2 to be 3. The size pin is what stops a fixture being quietly narrowed, which is the same defect as a domain being truncated and moves no other count in the file.',
+  }),
+  Object.freeze({
+    id: 'G7',
+    what: 'a new labelled fixture list `SPARE_CONTEXTS` declared at module level and registered in neither FIXTURE_LISTS nor CENSUS_LISTS',
+    reddened:
+      'declares every labelled fixture list: - "SPARE_CONTEXTS" against the declared set. So a seventh driver axis of this shape cannot arrive without somebody classifying it, which is the guarantee LITERAL_AXES already gives for the for-of shape.',
+  }),
+  Object.freeze({
     id: 'G5',
     what: '`NPC_RECRUIT_COST_GYM_BUCKS` renamed to `NPC_RECRUIT_PRICE_GYM_BUCKS` in `empireTuning.ts`, leaving the registry naming a path that no longer exists',
     reddened:
@@ -4691,8 +4842,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(5);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(5);
+    expect(REGISTRY_MUTANTS.length).toBe(7);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(7);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
