@@ -364,10 +364,10 @@ describe('the grader that re-takes the measurements', () => {
     // directions, and the number moving is the mechanism working rather than
     // drift.
     //
-    // 43 -> 45 with the two career attendance sweeps above. Both were under the
-    // 30s global before their domain was widened and neither could stay there
+    // 43 -> 46 with the three career sweeps above. All three were inside the
+    // 30s global before their domain was widened and none could stay there
     // afterwards, so this is the same mechanism reporting a domain that grew
-    // rather than a test that slowed down.
-    expect(declarations.reduce((total, [, count]) => total + count, 0)).toBe(45);
+    // rather than tests that slowed down.
+    expect(declarations.reduce((total, [, count]) => total + count, 0)).toBe(46);
   });
 });

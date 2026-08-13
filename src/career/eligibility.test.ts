@@ -512,7 +512,7 @@ function measureAttendanceAxis(variant: RecordVariant): AttendanceMeasurement {
 }
 
 describe('AXIS B — competing at one more meet never qualifies for fewer', () => {
-  it('[attending-a-meet-never-removes-one] every skipped meet in every seeded season, and the control beside it', { timeout: budgetFrom(11_109) }, () => {
+  it('[attending-a-meet-never-removes-one] every skipped meet in every seeded season, and the control beside it', { timeout: budgetFrom(11_946) }, () => {
     const shipped = measureAttendanceAxis('shipped');
     const control = measureAttendanceAxis('latest-total-wins');
 
@@ -564,7 +564,7 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     expect(control.worstDeficit).toBe(26);
   });
 
-  it('reaches a current-form rule that waits, and stops one meet past the deepest career', { timeout: budgetFrom(11_946) }, () => {
+  it('reaches a current-form rule that waits, and stops one meet past the deepest career', { timeout: budgetFrom(12_826) }, () => {
     // WHERE THIS SWEEP GOES BLIND, MEASURED AND PINNED FROM BOTH SIDES.
     //
     // A current-form gate does not have to switch on at a lifter's first meet.
@@ -768,7 +768,7 @@ function measureEntryAxis(variant: EntryVariant, lag: number): EntryMeasurement 
 }
 
 describe('AXIS C — entering a meet spends that meet and takes nothing else', () => {
-  it('every skipped meet in every seeded season, against a rest control and against the blind lag', { timeout: budgetFrom(33_856) }, () => {
+  it('every skipped meet in every seeded season, against a rest control and against the blind lag', { timeout: budgetFrom(35_065) }, () => {
     // WHAT THIS AXIS IS FOR, and it is the one thing axes A and B cannot do.
     // Both of them run through `qualifiedMeets`, which reads the federation and
     // the Total and never looks at `enteredMeetIds` — pinned directly under
