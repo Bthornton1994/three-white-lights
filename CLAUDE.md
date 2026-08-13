@@ -1,5 +1,28 @@
 # CLAUDE.md — Powerlifting Game
 
+## Index
+
+Standing `##` sections only. Dated claims, crossings, and rulings live under
+Session Coordination as `###` headings and are deliberately not listed here —
+they change every wave, and listing them would make this table a merge-conflict
+magnet.
+
+| Section | Open this when |
+|---|---|
+| [Source of Truth](#source-of-truth) | A request might disagree with the GDD |
+| [Run Mode](#run-mode) | Choosing gauntlet vs phased building |
+| [Session Coordination — THREE SESSIONS ARE RUNNING ON THIS REPO](#session-coordination--three-sessions-are-running-on-this-repo) | You just landed. Claims, crossings, who owns what |
+| [Subagent Roles](#subagent-roles) | Dispatching a builder or a critic |
+| [Game Feel Values Must Be Tunable](#game-feel-values-must-be-tunable) | A timing, curve, or threshold is about to be written |
+| [A Comment That Asserts a Guarantee Must Have a Test That Fails Without It](#a-comment-that-asserts-a-guarantee-must-have-a-test-that-fails-without-it) | Prose is about to promise something |
+| [An Assertion Is Vacuous If It Cannot Fail](#an-assertion-is-vacuous-if-it-cannot-fail) | A test exists and might not be able to go red |
+| [Architecture Rules](#architecture-rules) | Where math vs UI vs server vs screens live |
+| [Domain Correctness](#domain-correctness) | RPE, e1RM, DOTS, meet structure |
+| [Hard Design Constraints](#hard-design-constraints) | Pay-to-win, gacha, fatigue bar, ads, daily engagement, real identity |
+| [Code Conventions](#code-conventions) | TypeScript, Reanimated, Skia, colocation |
+| [Working Style](#working-style) | Wave start, push discipline, evidence, watchdogs |
+| [What You Cannot Do](#what-you-cannot-do) | Feel, playtesting, unverifiable critic bars |
+
 ## Source of Truth
 
 `docs/GDD.md` is the authoritative design document. Read it before proposing any
