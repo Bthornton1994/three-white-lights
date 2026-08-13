@@ -1,17 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
+import { budgetFrom } from '../../tools/testBudget.mjs';
 import { addDays, asStreakDay, type StreakDay } from '../game/streak';
-import { CAREER_COPY } from './careerTuning';
+import { CAREER_TUNING, CAREER_COPY, MEET_TIER_ORDER } from './careerTuning';
 import { careerMeetFor, scheduledMeets, seasonAnchorDay, upcomingMeets, type CareerMeet } from './calendar';
 import {
   ATTENDANCE_SWEEP,
+  ENTRY_VARIANTS,
   QUALIFICATION_VARIANTS,
   STRENGTH_SWEEP,
   badDayCount,
   careerAfter,
+  lastEnteredDayOf,
   seededCareerTotals,
   simulateSeason,
   strengthGrid,
+  type EntryVariant,
   type QualificationVariant,
   type RecordVariant,
 } from './careerSweep';
@@ -135,22 +139,43 @@ describe('entry verdicts', () => {
     );
   });
 
-  it('the refusal order is the one the header states, on a meet that fails all four', () => {
+  it('the refusal order is the one the header states, walked to the bottom of the chain', () => {
     // Another federation's meet, already entered, long past, and above the
-    // lifter's total. Each check moving up or down the chain changes this
-    // answer, which is what makes the order a fact rather than a comment.
+    // lifter's total. Lifting one failing condition at a time walks the whole
+    // chain, and the walk is what makes the order a fact rather than a comment.
+    //
+    // IT USED TO STOP AT THE THIRD RUNG. Three of the four positions were
+    // exercised and `BELOW_QUALIFYING_TOTAL` — the last check, the one every
+    // reordering of the other three still leaves at the bottom — was reached by
+    // no case here, so the claim above it covered a position nothing drove.
     const foreignWorlds = careerMeetFor('ironline', 'worlds', ANCHOR);
-    const lifter = lifterWith(null, [foreignWorlds.id]);
-    expect(entryVerdict(lifter, foreignWorlds, addDays(ANCHOR, 400))).toMatchObject({
-      reason: 'WRONG_FEDERATION',
-    });
     const ownWorlds = careerMeetFor('meridian', 'worlds', ANCHOR);
-    expect(
-      entryVerdict(lifterWith(null, [ownWorlds.id]), ownWorlds, addDays(ANCHOR, 400)),
-    ).toMatchObject({ reason: 'ALREADY_ENTERED' });
-    expect(entryVerdict(lifterWith(null), ownWorlds, addDays(ANCHOR, 400))).toMatchObject({
-      reason: 'MEET_HAS_PASSED',
-    });
+    const longAfter = addDays(ANCHOR, 400);
+    const chain: readonly [string, ReturnType<typeof entryVerdict>][] = [
+      // All four fail.
+      ['all four', entryVerdict(lifterWith(null, [foreignWorlds.id]), foreignWorlds, longAfter)],
+      // The federation is right; the other three still fail.
+      ['three', entryVerdict(lifterWith(null, [ownWorlds.id]), ownWorlds, longAfter)],
+      // ...and they have not been to it. Two left.
+      ['two', entryVerdict(lifterWith(null), ownWorlds, longAfter)],
+      // ...and the day has not gone. One left, which is the rung the old
+      // version of this test never reached.
+      ['one', entryVerdict(lifterWith(null), ownWorlds, ANCHOR)],
+      // ...and they are strong enough for it. Nothing left to refuse.
+      ['none', entryVerdict(lifterWith(650), ownWorlds, ANCHOR)],
+    ];
+    expect(chain.map(([, verdict]) => (verdict.kind === 'refused' ? verdict.reason : 'open'))).toEqual([
+      'WRONG_FEDERATION',
+      'ALREADY_ENTERED',
+      'MEET_HAS_PASSED',
+      'BELOW_QUALIFYING_TOTAL',
+      'open',
+    ]);
+    // The chain is the whole list, in the order the module declares it, so a
+    // fifth reason cannot be added without a rung here to reach it.
+    expect(chain.filter(([, verdict]) => verdict.kind === 'refused')).toHaveLength(
+      ENTRY_REFUSAL_REASONS.length,
+    );
   });
 });
 
@@ -370,6 +395,40 @@ describe('AXIS A — a higher best Total never qualifies for fewer meets', () =>
     expect(control.worstDeficit).toBe(53);
   });
 
+  it('qualification does not read the meets a lifter has already competed at', () => {
+    // WHY THIS SITS UNDER AXIS A. The sweep above builds all 402 grid lifters
+    // with an empty `enteredMeetIds`, and a reader is entitled to ask whether
+    // that hides something. It does not, and this is the check that says so
+    // rather than the comment: the same grid, asked the same question, with
+    // every meet in the window on the lifter's record instead of none.
+    //
+    // It is the reason axis B is blind to entry as well — `qualifiedMeets` is
+    // `qualifiesFor` over a window — and therefore the reason axis C exists.
+    // Deleting `qualifiesFor`'s federation check leaves this green and reddens
+    // axis A; adding an `enteredMeetIds` term to it reddens this and leaves
+    // axis A green, which is what makes the two different questions.
+    const from = addDays(seasonAnchorDay(), STRENGTH_SWEEP.WINDOW_START_OFFSET_DAYS);
+    const to = addDays(from, STRENGTH_SWEEP.WINDOW_DAYS);
+    const window = scheduledMeets(STRENGTH_SWEEP.FEDERATION, from, to);
+    const everyMeet = window.map((meet) => meet.id);
+    let compared = 0;
+    for (const bestTotalKg of strengthGrid()) {
+      const blank: CareerLifter = {
+        federationId: STRENGTH_SWEEP.FEDERATION,
+        bestTotalKg,
+        enteredMeetIds: [],
+      };
+      const veteran: CareerLifter = { ...blank, enteredMeetIds: everyMeet };
+      expect(qualifiedMeets(veteran, from, to).map((meet) => meet.id)).toEqual(
+        qualifiedMeets(blank, from, to).map((meet) => meet.id),
+      );
+      compared += 1;
+    }
+    // Counts, not bounds: an empty grid would satisfy the loop above silently.
+    expect(compared).toBe(402);
+    expect(everyMeet).toHaveLength(84);
+  });
+
   it('the grid is ordered, so pair order is total order', () => {
     // The sweep above reads index order as strength order. If the grid stopped
     // being sorted, every pair would be compared in an arbitrary direction and
@@ -442,7 +501,7 @@ function measureAttendanceAxis(variant: RecordVariant): AttendanceMeasurement {
 }
 
 describe('AXIS B — competing at one more meet never qualifies for fewer', () => {
-  it('[attending-a-meet-never-removes-one] every skipped meet in every seeded season, and the control beside it', () => {
+  it('[attending-a-meet-never-removes-one] every skipped meet in every seeded season, and the control beside it', { timeout: budgetFrom(11_109) }, () => {
     const shipped = measureAttendanceAxis('shipped');
     const control = measureAttendanceAxis('latest-total-wins');
 
@@ -456,20 +515,32 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     // The domain. `badDays` is the count that matters most: a sweep whose
     // totals only ever rose could not tell the two rules apart, because the
     // last total and the best total would be the same number every time.
+    //
+    // `seasonLengths` is the count that matters second, and it is the one this
+    // sweep got wrong first time out. It used to read fourteen for every seed,
+    // because the fixture gave each lifter a 28-day rest nothing in the game
+    // asks of them; a current-form rule that switched on at a lifter's 16th
+    // meet was then invisible, since no lifter in the sweep had one. These are
+    // the depths the shipped calendar offers a lifter who enters everything
+    // they are eligible for, and the three parameters that produce them are
+    // asserted against `CAREER_TUNING` two tests below rather than chosen here.
     expect(shipped.seasons).toBe(24);
-    expect(shipped.seasonLengths).toEqual(Array.from({ length: 24 }, () => 14));
-    expect(shipped.badDays).toBe(126);
-    expect(shipped.pairs).toBe(2520);
-    expect(shipped.movedPairs).toBe(78);
+    expect(shipped.seasonLengths).toEqual([
+      82, 82, 81, 82, 82, 81, 77, 81, 82, 80, 77, 82, 82, 78, 77, 80, 82, 80, 82, 81, 81, 79, 82,
+      81,
+    ]);
+    expect(shipped.badDays).toBe(708);
+    expect(shipped.pairs).toBe(78926);
+    expect(shipped.movedPairs).toBe(193);
 
     // The control: qualification reading the latest total instead of the best,
-    // on the same seasons, the same totals and the same comparison. 24 of the
-    // 2520 pairs violate and a lifter loses as many as 26 meets for having
+    // on the same seasons, the same totals and the same comparison. 74 of the
+    // 78926 pairs violate and a lifter loses as many as 26 meets for having
     // competed one more time.
     //
     // Its domain is asserted equal to the shipped arm's for the reason the
-    // strength axis gives, with one deliberate exception: `movedPairs` is 79
-    // rather than 78, because the control's own rule changes which comparisons
+    // strength axis gives, with one deliberate exception: `movedPairs` is 218
+    // rather than 193, because the control's own rule changes which comparisons
     // move. That one is pinned at its own value instead of being tied to the
     // shipped arm, since forcing them equal would be asserting that a broken
     // rule moves exactly as often as a working one.
@@ -477,22 +548,245 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     expect(control.seasonLengths).toEqual(shipped.seasonLengths);
     expect(control.badDays).toBe(shipped.badDays);
     expect(control.pairs).toBe(shipped.pairs);
-    expect(control.movedPairs).toBe(79);
-    expect(control.violatingPairs).toBe(24);
+    expect(control.movedPairs).toBe(218);
+    expect(control.violatingPairs).toBe(74);
     expect(control.worstDeficit).toBe(26);
   });
 
-  it('a season is a real season: fourteen meets, none of them entered twice', () => {
+  it('a season is a real season: every meet distinct, and none of them entered twice', () => {
     // The fixture the axis rests on. A simulation that entered nothing, or
-    // entered one meet fourteen times, would leave every comparison above
+    // entered one meet eighty times, would leave every comparison above
     // trivially equal.
     const season = simulateSeason(ATTENDANCE_SWEEP.SEEDS[0] as number);
-    expect(season).toHaveLength(14);
-    expect(new Set(season.map((meet) => meet.meetId)).size).toBe(14);
+    expect(season).toHaveLength(82);
+    expect(new Set(season.map((meet) => meet.meetId)).size).toBe(82);
     for (let index = 1; index < season.length; index += 1) {
       const gap = (season[index] as { day: StreakDay }).day - (season[index - 1] as { day: StreakDay }).day;
-      expect(gap).toBeGreaterThanOrEqual(ATTENDANCE_SWEEP.DAYS_BETWEEN_MEETS);
+      expect(gap).toBeGreaterThanOrEqual(ATTENDANCE_SWEEP.MIN_DAYS_BETWEEN_MEETS);
     }
+    // Four tiers, not one. At a 28-day rest the simulated career was every
+    // fourth local meet and nothing else; at the calendar's own resolution it
+    // picks up the fortnightly, quarterly and annual series as the lifter
+    // qualifies for them, which is what makes the entered list worth reading.
+    expect([...new Set(season.map((meet) => meet.tier))].sort()).toEqual([
+      'local',
+      'nationals',
+      'regional',
+      'worlds',
+    ]);
+  });
+
+  it('the sweep’s depth is read off the shipped calendar, not chosen in the sweep', () => {
+    // THE PARAMETER THAT WAS HOLDING THE MEASUREMENT SHALLOW. Three numbers in
+    // `careerSweep.ts` decide how deep a career the attendance axes see, and
+    // each of the three is derived from `careerTuning.ts` rather than picked.
+    // Asserted here so that a tuner who speeds the calendar up gets a red in
+    // the sweep instead of a sweep that quietly stops covering the game.
+    //
+    // 1. The rest between meets is the calendar's own resolution: one day, so
+    //    the harness imposes none of its own.
+    expect(ATTENDANCE_SWEEP.MIN_DAYS_BETWEEN_MEETS).toBe(1);
+    expect(ATTENDANCE_SWEEP.MIN_DAYS_BETWEEN_MEETS).toBeLessThanOrEqual(
+      Math.min(...MEET_TIER_ORDER.map((tier) => CAREER_TUNING.CADENCE_DAYS[tier])),
+    );
+    // 2. The simulation runs one period of the calendar. Every cadence divides
+    //    it, so the pattern of meet days repeats from there, and it is also the
+    //    span a calendar screen draws.
+    expect(ATTENDANCE_SWEEP.SIMULATION_DAYS).toBe(CAREER_TUNING.HORIZON_DAYS);
+    for (const tier of MEET_TIER_ORDER) {
+      expect(ATTENDANCE_SWEEP.SIMULATION_DAYS % CAREER_TUNING.CADENCE_DAYS[tier]).toBe(0);
+    }
+    // 3. The draw per career is the number of meets that period holds, which is
+    //    the ceiling on a career: one meet a day at most, each one different.
+    const period = scheduledMeets(
+      ATTENDANCE_SWEEP.FEDERATION,
+      seasonAnchorDay(),
+      addDays(seasonAnchorDay(), ATTENDANCE_SWEEP.SIMULATION_DAYS),
+    );
+    expect(ATTENDANCE_SWEEP.MEETS_PER_CAREER).toBe(period.length);
+    expect(period).toHaveLength(84);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AXIS C — entry
+// ---------------------------------------------------------------------------
+
+interface EntryMeasurement {
+  readonly pairs: number;
+  /** Meets across every simulated season. The size of the case axis C is about. */
+  readonly seasonMeets: number;
+  /** Pairs whose two enterable lists are not the same size. */
+  readonly movedPairs: number;
+  /** Pairs where the lifter who competed more may enter something the other cannot. */
+  readonly growingPairs: number;
+  /** Pairs where they may not enter something on their own record. Spending it. */
+  readonly spentPairs: number;
+  /** Pairs where they may not enter something that is NOT on their record. */
+  readonly unexplainedPairs: number;
+  readonly worstUnexplained: number;
+}
+
+/**
+ * One implementation, two arms, for the same reason the two axes above give.
+ *
+ * `lag` is a parameter rather than a constant read inside, because the third
+ * arm this function is called for is the shipped rule at the shipped axis B
+ * lag — the arm that measures what this axis was blind to before it existed.
+ */
+function measureEntryAxis(variant: EntryVariant, lag: number): EntryMeasurement {
+  const rule = ENTRY_VARIANTS[variant];
+  let pairs = 0;
+  let seasonMeets = 0;
+  let movedPairs = 0;
+  let growingPairs = 0;
+  let spentPairs = 0;
+  let unexplainedPairs = 0;
+  let worstUnexplained = 0;
+  for (const seed of ATTENDANCE_SWEEP.SEEDS) {
+    const season = simulateSeason(seed);
+    seasonMeets += season.length;
+    for (let through = 0; through < season.length; through += 1) {
+      const meet = season[through];
+      if (meet === undefined) continue;
+      const today = addDays(meet.day, lag);
+      const diligent = careerAfter(season, through, null, 'shipped');
+      const diligentList = new Set(
+        rule(diligent, { today, lastEnteredDay: lastEnteredDayOf(season, through, null) }).map(
+          (candidate) => candidate.id,
+        ),
+      );
+      for (let skip = 0; skip <= through; skip += 1) {
+        const idle = careerAfter(season, through, skip, 'shipped');
+        const idleList = new Set(
+          rule(idle, { today, lastEnteredDay: lastEnteredDayOf(season, through, skip) }).map(
+            (candidate) => candidate.id,
+          ),
+        );
+        pairs += 1;
+        let spent = 0;
+        let unexplained = 0;
+        for (const id of idleList) {
+          if (diligentList.has(id)) continue;
+          if (diligent.enteredMeetIds.includes(id)) spent += 1;
+          else unexplained += 1;
+        }
+        let gained = 0;
+        for (const id of diligentList) if (!idleList.has(id)) gained += 1;
+        if (spent > 0) spentPairs += 1;
+        if (gained > 0) growingPairs += 1;
+        if (unexplained > 0) unexplainedPairs += 1;
+        if (unexplained > worstUnexplained) worstUnexplained = unexplained;
+        if (diligentList.size !== idleList.size) movedPairs += 1;
+      }
+    }
+  }
+  return {
+    pairs,
+    seasonMeets,
+    movedPairs,
+    growingPairs,
+    spentPairs,
+    unexplainedPairs,
+    worstUnexplained,
+  };
+}
+
+describe('AXIS C — entering a meet spends that meet and takes nothing else', () => {
+  it('every skipped meet in every seeded season, against a rest control and against the blind lag', { timeout: budgetFrom(33_856) }, () => {
+    // WHAT THIS AXIS IS FOR, and it is the one thing axes A and B cannot do.
+    // Both of them run through `qualifiedMeets`, which reads the federation and
+    // the Total and never looks at `enteredMeetIds` — pinned directly under
+    // axis A. So across all 80601 + 78926 of their compared pairs the entered
+    // list decides nothing, and the module's claim that spending an entry is
+    // not a punishment had no subject.
+    //
+    // The claim, in the form measured here: for two careers identical except
+    // that one lifter competed at one more meet, every meet the lifter who
+    // stayed home may enter and the lifter who competed may not is a meet on
+    // that lifter's own record.
+    const shipped = measureEntryAxis('shipped', ATTENDANCE_SWEEP.ENTRY_EVALUATION_LAG_DAYS);
+    const rest = measureEntryAxis('entry-cooldown', ATTENDANCE_SWEEP.ENTRY_EVALUATION_LAG_DAYS);
+    const blindLag = measureEntryAxis('shipped', ATTENDANCE_SWEEP.EVALUATION_LAG_DAYS);
+
+    // The property first, for the reason axes A and B give at length.
+    expect(shipped.unexplainedPairs).toBe(0);
+    expect(shipped.worstUnexplained).toBe(0);
+
+    // THE DOMAIN, AND THE HALF OF IT THAT WAS EMPTY. `spentPairs` is the count
+    // that matters most here: it is how many of the compared pairs actually
+    // reach an entry being spent, and a zero above means nothing without it.
+    // It is asserted equal to the total number of meets across the seasons as
+    // well as pinned, because the two are the same quantity counted from
+    // different ends — the pair loop reaches the case exactly once per meet —
+    // and a rule that stopped spending entries would break the equality rather
+    // than only moving a literal.
+    expect(shipped.pairs).toBe(78926);
+    expect(shipped.spentPairs).toBe(1934);
+    expect(shipped.spentPairs).toBe(shipped.seasonMeets);
+    expect(shipped.movedPairs).toBe(2033);
+    expect(shipped.growingPairs).toBe(193);
+
+    // The rest control: a mandatory 28 days off after a meet, which is the most
+    // plausible design of the three controls this module measures against and
+    // is exactly what GDD §12.3 refuses. The lifter who competed at one more
+    // meet starts their lockout later, so 1874 pairs hand them a shorter
+    // calendar than the lifter who stayed home, and as many as 4 of the meets
+    // they lose are meets they never went to.
+    //
+    // Its domain is asserted against the shipped arm's where the two are the
+    // same question, and pinned at its own value where the control's rule
+    // changes the answer — `spentPairs` drops to 1874 because a lifter inside
+    // their own lockout could not have entered the meet they skipped either.
+    expect(rest.pairs).toBe(shipped.pairs);
+    expect(rest.seasonMeets).toBe(shipped.seasonMeets);
+    expect(rest.growingPairs).toBe(shipped.growingPairs);
+    expect(rest.movedPairs).toBe(1973);
+    expect(rest.spentPairs).toBe(1874);
+    expect(rest.unexplainedPairs).toBe(1874);
+    expect(rest.worstUnexplained).toBe(4);
+
+    // The blind lag, kept runnable rather than described. This is the shipped
+    // engine measured at axis B's evaluation lag of a week, and it is what this
+    // axis looked like before it had its own: `spentPairs` is 0, because the
+    // one meet the two lifters differ on is a week behind the window and
+    // `entryVerdict` refuses it to both of them. Every count that survives is a
+    // count axis B already holds, which is the definition of a second harness
+    // that is blind for the same reason as the first.
+    expect(blindLag.spentPairs).toBe(0);
+    expect(blindLag.unexplainedPairs).toBe(0);
+    expect(blindLag.movedPairs).toBe(193);
+    expect(blindLag.growingPairs).toBe(193);
+    expect(blindLag.pairs).toBe(shipped.pairs);
+  });
+
+  it('the two axes read two different functions, so neither can stand in for the other', () => {
+    // THE DOMINATION QUESTION, ASKED IN CODE. A new sweep beside an old one is
+    // worth nothing if one of them can no longer speak. These two cannot cover
+    // for each other, and the reason is structural rather than statistical:
+    // `qualifiedMeets` is `qualifiesFor` over a window and drops nothing else,
+    // while `enterableMeets` runs `entryVerdict`, which also refuses a meet
+    // already competed at and a meet whose day has gone.
+    const lifter = newCareerLifter('meridian');
+    const window = qualifiedMeets(lifter, ANCHOR, addDays(ANCHOR, 364));
+    const first = window[0] as CareerMeet;
+    const veteran = careerRecordAfterMeet(lifter, first.id, 300);
+
+    // Axis B's function cannot see the entry: the meet is still qualified for.
+    expect(qualifiedMeets(veteran, ANCHOR, addDays(ANCHOR, 364)).some((m) => m.id === first.id)).toBe(
+      true,
+    );
+    // Axis C's function can, and drops exactly that one.
+    const enterable = enterableMeets(veteran, ANCHOR, 364);
+    expect(enterable.some((m) => m.id === first.id)).toBe(false);
+    expect(enterable).toHaveLength(window.length - 1);
+    // And the other direction: a day that has gone is refused by entry and not
+    // by qualification, which is the second thing axis B is structurally unable
+    // to report on. Qualification is day-blind; entry is not.
+    expect(qualifiesFor(lifter, first)).toBe(true);
+    expect(canEnter(lifter, first, ANCHOR)).toBe(true);
+    expect(canEnter(lifter, first, addDays(ANCHOR, 1))).toBe(false);
+    expect(window).toHaveLength(53);
   });
 });
 
