@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-tsc-2026-08-13T02-52-03-004Z-12588",
+  "label": null,
+  "command": [
+    "npx",
+    "tsc",
+    "--noEmit"
+  ],
+  "budgetSeconds": 200,
+  "startedAtIso": "2026-08-13T02:52:03.004Z",
+  "startedAtMs": 1786589523004,
+  "cwd": "/home/user/wt-c1-career",
+  "commit": "345400f0d05c47963b6855aa99f50c0f1eabf5e7",
+  "branch": "claude/c1-career-spine",
+  "dirty": 5,
+  "dirtyPaths": [
+    "src/game/streakEntitlement.test.ts",
+    "src/tuning/audit.test.ts",
+    "src/tuning/audit.ts",
+    "src/tuning/index.ts",
+    "src/career/"
+  ],
+  "runner": {
+    "pid": 12588,
+    "startTick": "318659",
+    "cmdline": "node tools/watchdog.mjs --budget 200 -- npx tsc --noEmit",
+    "bootId": "6ab18ec1-9cd9-48f3-ba2f-b5df944ad6e5",
+    "bootEpochSeconds": 1786586336,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-13T02:52:03.028Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
