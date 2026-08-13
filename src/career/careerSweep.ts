@@ -52,8 +52,8 @@
  *
  * A ZERO WITH NO CONTROL BESIDE IT IS A ZERO ABOUT NOTHING, so each axis ships
  * with a rule that breaks it, and the test pins the control's non-zero count
- * next to the shipped zero. All three controls are designs somebody could
- * plausibly have written, which is what makes them worth keeping:
+ * next to the shipped zero. Every control is a design somebody could plausibly
+ * have written, which is what makes them worth keeping:
  *
  *   - `highest-tier-band` — a lifter may only enter the top tier they qualify
  *     for, which is a real anti-sandbagging idea and which makes getting
@@ -62,16 +62,32 @@
  *     best, which is how a "current form" system would naturally be written and
  *     which makes a bad meet day cost a lifter meets they had already earned.
  *   - `entry-cooldown` — a mandatory rest after a meet, which is the most
- *     plausible of the three because real federations do impose one, and which
+ *     plausible of them because real federations do impose one, and which
  *     charges the lifter who competed more with a lockout the lifter who stayed
  *     home does not pay.
+ *   - `worlds-cooldown-*` — that same rest charged after the annual
+ *     championship and after nothing else. Three of them, pointed at the
+ *     calendar's first, second and third worlds meets, because which of those
+ *     three a simulated career can be standing on is the whole question this
+ *     round was about.
+ *   - `worlds-reset-*` — the annual result taken as the lifter's ranking total
+ *     instead of their best. Three again, and all three measure zero on this
+ *     population by 7.5 kg: see the block above `ENTRY_VARIANTS`. That margin
+ *     is arithmetic about these 24 seeded careers rather than a property of the
+ *     calendar, so it is measured and pinned rather than argued for.
  */
 
 import { nextRandom, seedState } from '../game/prng';
 import { addDays, type StreakDay } from '../game/streak';
-import { type CareerFederationId, type CareerMeetTier } from './careerTuning';
+import { CAREER_TUNING, type CareerFederationId, type CareerMeetTier } from './careerTuning';
 import { entryTier, tiersLowestFirst } from './federation';
-import { qualifyingTotalKgFor, scheduledMeets, seasonAnchorDay, type CareerMeet } from './calendar';
+import {
+  qualifyingTotalKgFor,
+  scheduledMeets,
+  seasonAnchorDay,
+  tierSeriesStartDay,
+  type CareerMeet,
+} from './calendar';
 import {
   canEnter,
   careerRecordAfterMeet,
@@ -161,7 +177,17 @@ export function strengthGrid(): readonly (number | null)[] {
  * `delayed-form-past-the-edge` below — and `eligibility.test.ts` runs it on
  * both sides of the depth this file reaches.
  *
- * So the three numbers that decide the depth are read off the shipped calendar
+ * The second version fixed that and left the same hole one axis over. It ran
+ * for one calendar period, and the single worlds meet a period holds falls six
+ * days after the anchor with three meet days in front of it — so the most a
+ * lifter could be holding when it came round was 380 + 3 x 70 = 590 kg against
+ * a 650 kg bar. Every career in the sweep was 77 to 82 meets deep and none of
+ * them entered a worlds meet, so a rule keyed to the top tier was as invisible
+ * as the 16th-meet rule had been. That hole is now three controls —
+ * `worlds-reset-first`, `worlds-reset-second` and `worlds-reset-third` — and
+ * closing it cost a longer simulation rather than a denser one.
+ *
+ * So the four numbers that decide the depth are read off the shipped calendar
  * instead of chosen here, and `eligibility.test.ts` asserts each of them
  * against `CAREER_TUNING` and `scheduledMeets` rather than against this
  * comment:
@@ -169,21 +195,58 @@ export function strengthGrid(): readonly (number | null)[] {
  *   - `MIN_DAYS_BETWEEN_MEETS` is 1, the calendar's own resolution, which is to
  *     say this file imposes no rest at all. What limits attendance is then the
  *     schedule and the qualifying totals, both of which are the game's.
- *   - `SIMULATION_DAYS` is 364, which for the shipped cadences — 7, 14, 91 and
- *     364 days — is the exact period of the calendar: every cadence divides it,
- *     so the pattern of meet days repeats from there. It is also
+ *   - `CALENDAR_PERIOD_DAYS` is 364. For the shipped cadences — 7, 14, 91 and
+ *     364 days — that is the exact period of the calendar: every cadence
+ *     divides it, so the pattern of meet days repeats from there. It is also
  *     `CAREER_TUNING.HORIZON_DAYS`, the span a calendar screen draws.
- *   - `MEETS_PER_CAREER` is 84, the number of meets that period holds, which is
+ *   - `CALENDAR_PERIODS` is 2, and it is the number this round moved. One
+ *     period is the shortest simulation that shows a whole calendar; two is the
+ *     shortest that shows a REACHABLE worlds meet, because the first occurrence
+ *     of an annual series is six days after the anchor and the second is 370.
+ *     `SIMULATION_DAYS` is their product, 728 days.
+ *   - `MEETS_PER_CAREER` is 167, the number of meets two periods hold, which is
  *     the ceiling on a career the simulation can produce: one meet a day at
  *     most, and every meet distinct.
  *
  * WHAT DEPTH STILL DOES NOT REACH, stated because a widened domain invites the
- * assumption that it is now complete. A lifter who takes every meet on offer
- * gets to somewhere between 77 and 82 of the 84, gated by the qualifying
- * totals, so a rule keyed to a lifter's 83rd meet is outside this sweep and
- * would be invisible to it exactly the way the 16th used to be. A finite domain
- * has an edge wherever it is drawn; what changed is where, and that the edge is
- * now the calendar's rather than this file's.
+ * assumption that it is now complete, and pinned as controls rather than as
+ * this sentence. There are four edges and they are not all at the far end:
+ *
+ *   - A rule keyed to a lifter's 166th meet. The deepest career here is 165.
+ *     `delayed-form-past-the-edge` is that edge as a measured zero, and the
+ *     count of careers deep enough to reach it is pinned at 0 beside it.
+ *   - A rule keyed to a lifter's 102nd meet. Careers do reach it — all 24 of
+ *     them — and the qualification axis reports nothing anyway.
+ *     `delayed-form-past-visible` is that, with the count of careers that DO
+ *     reach it pinned at 24, so "invisible" and "unreachable" are told apart.
+ *   - A rule keyed to the THIRD occurrence of the annual series, on day 734.
+ *     Two periods hold two of them, at days 6 and 370.
+ *     `worlds-cooldown-third` is that edge as a measured zero.
+ *   - A rule keyed to the FIRST occurrence, on day 6. That one is inside the
+ *     calendar and outside every career, because no lifter can hold 650 kg six
+ *     days in. `worlds-cooldown-first` is that as a measured zero too, and it
+ *     is the sharper half of the pair: an edge can sit in the middle of a
+ *     domain as well as at its end, and a reader counting worlds meets on the
+ *     calendar would have assumed both were reachable.
+ *
+ * AND ONE BLIND SPOT THAT IS NOT AN EDGE AT ALL, which is what this round
+ * turned up rather than what it went looking for. The qualification axis does
+ * not see the worlds-keyed record rule anywhere in this fixture, and the reason
+ * is a margin of 7.5 kg: the lowest total anybody here puts up at a worlds meet
+ * is 657.5, against a top qualifying total of 650, so a rule that rewrites
+ * their record with it leaves them clearing every bar on the ladder. That is
+ * why the tier-keyed controls that report a non-zero are on the entry axis, and
+ * why the three `worlds-reset-*` record controls ship reporting zero with their
+ * reason measured beside them.
+ *
+ * A reader should hold that at the size it is. It is a fact about these 24
+ * seeded careers and the shipped qualifying totals, not a theorem: a seed whose
+ * worlds day fell 8 kg lower would move it, and nothing here would have to
+ * change for that to happen. What the pin buys is that the margin is a number
+ * in a test rather than an assumption nobody wrote down.
+ *
+ * A finite domain has an edge wherever it is drawn; what changed is where, and
+ * that every edge is now a number a test pins rather than a sentence.
  */
 export const ATTENDANCE_SWEEP = Object.freeze({
   SEEDS: Object.freeze([
@@ -192,10 +255,10 @@ export const ATTENDANCE_SWEEP = Object.freeze({
   ]),
   /**
    * How many totals are drawn per career, and the deepest career the simulation
-   * can produce. Read off the calendar: 53 local, 26 regional, 4 nationals and
-   * 1 worlds in one season window.
+   * can produce. Read off the calendar: 105 local, 52 regional, 8 nationals and
+   * 2 worlds across the two periods the simulation runs for.
    */
-  MEETS_PER_CAREER: 84,
+  MEETS_PER_CAREER: 167,
   /** The first meet's total, in kg. Below the regional bar, so it can climb through it. */
   FIRST_TOTAL_KG: 380,
   /** A good day adds up to this much. */
@@ -206,8 +269,38 @@ export const ATTENDANCE_SWEEP = Object.freeze({
   BAD_DAY_SHARE: 0.35,
   /** Totals land on the competition grid. */
   ROUNDING_KG: 2.5,
-  /** How long the simulated career runs, from the season anchor: one calendar period. */
-  SIMULATION_DAYS: 364,
+  /**
+   * The period of the shipped calendar, in days.
+   *
+   * Every cadence divides it — 364 = 52 x 7 = 26 x 14 = 4 x 91 = 1 x 364 — so
+   * the pattern of meet days repeats from here, and it is the span
+   * `CAREER_TUNING.HORIZON_DAYS` draws. `eligibility.test.ts` asserts both
+   * rather than trusting this sentence.
+   */
+  CALENDAR_PERIOD_DAYS: 364,
+  /**
+   * How many of those periods a simulated career runs for.
+   *
+   * Two, and the reason is the annual tier. A worlds meet asks for 650 kg; the
+   * first one a period holds falls on day 6 with three meet days in front of
+   * it, so the most a lifter can be holding is
+   * `FIRST_TOTAL_KG + 3 x MAX_GAIN_KG` = 590. The second falls on day 370, by
+   * which point a lifter who has entered everything they qualify for is well
+   * past the bar. One period is a simulation with an empty worlds column; two
+   * is the shortest one without.
+   *
+   * Nothing about the calendar resets at the boundary and this is worth being
+   * explicit about, because a day anchor has cost this repository two waves.
+   * There is one anchor, `CAREER_TUNING.SEASON_ANCHOR`, and each tier's series
+   * is an arithmetic progression running forward from it. A "period" is a
+   * description of how that progression repeats, not a thing the calendar is
+   * re-anchored to, so day 364 is an ordinary day that happens to be a local
+   * meet day and day 370 is an ordinary day that happens to be a worlds one.
+   * `calendar.test.ts` holds the ten-year weekday check that says so.
+   */
+  CALENDAR_PERIODS: 2,
+  /** How long the simulated career runs, from the season anchor. Their product. */
+  SIMULATION_DAYS: 728,
   /**
    * The fewest days the simulated lifter leaves between two meets.
    *
@@ -253,15 +346,73 @@ export const ATTENDANCE_SWEEP = Object.freeze({
    * counts once you are established" — and that delay is what made the old
    * 14-meet fixture useless: the same rule, delayed past 15, was invisible.
    *
-   * So both sides of the edge ship. At `DELAYED_FORM_INSIDE` the rule is inside
-   * the deepest career the sweep produces and the axis reports it; at
-   * `DELAYED_FORM_PAST_THE_EDGE` it is one meet beyond, no lifter here ever
-   * reaches it, and the axis reports nothing. The second number is the honest
-   * half — it is this measurement's blind spot, pinned, so that deepening or
-   * shallowing the domain moves it instead of leaving it to be rediscovered.
+   * So three points ship rather than two, because deepening the domain proved
+   * the old pair had been measuring one edge while a nearer one did the real
+   * binding. At one calendar period they were 81 and 82 — the deepest career
+   * and one past it — and the first of them measured 81 violating pairs. Moved
+   * to 164 and 165 at two periods, THE SAME PAIR MEASURES ZERO AND ZERO: the
+   * check went quiet without anybody editing it, which is what a widened domain
+   * doing the work of a new rule looks like.
+   *
+   * Where the rule can bite at all is arithmetic about this population rather
+   * than a property of the calendar, so it is measured rather than reasoned
+   * about. `latestTotalAfter(n)` differs from the shipped fold at exactly one
+   * moment — the lifter's (n+1)-th meet, where the diligent lifter has switched
+   * to current form and the one who skipped a meet has not — so it can only
+   * show up when the total put up AT that meet sits below a qualifying bar the
+   * lifter's own best has already cleared. Deep into a career the totals here
+   * have outgrown the top bar of 650 kg and stopped interleaving with any of
+   * them. Scanned meet by meet from 95 to 108, the last n that bites is 100.
+   *
+   * The three points are therefore:
+   *
+   *   - `DELAYED_FORM_INSIDE` at 100, the deepest meet count at which this axis
+   *     can still see the rule. Non-zero.
+   *   - `DELAYED_FORM_PAST_VISIBLE` at 101, one meet further. The rule FIRES —
+   *     every one of the 24 careers is deeper than 101 meets — and the axis
+   *     still reports nothing.
+   *   - `DELAYED_FORM_PAST_THE_EDGE` at 165, the deepest career. The rule never
+   *     fires at all, because firing needs a 166th meet and nothing here has
+   *     one.
+   *
+   * Two zeros for two different reasons, and the difference is what each one is
+   * worth. `eligibility.test.ts` pins how many careers reach each rule's
+   * switch-on point, so "invisible" and "unreachable" are told apart by a count
+   * rather than by this paragraph.
    */
-  DELAYED_FORM_INSIDE: 81,
-  DELAYED_FORM_PAST_THE_EDGE: 82,
+  DELAYED_FORM_INSIDE: 100,
+  DELAYED_FORM_PAST_VISIBLE: 101,
+  DELAYED_FORM_PAST_THE_EDGE: 165,
+  /**
+   * Which occurrence of the annual series each tier-keyed control fires at,
+   * counted from the first one the calendar holds.
+   *
+   * These three are the tier axis of the same edge `DELAYED_FORM_*` draws on
+   * the meet-count axis, and they are numbered from zero because that is how
+   * `tierOccurrenceOf` counts: occurrence 0 is the worlds meet on day 6,
+   * occurrence 1 is the one on day 370, occurrence 2 would be day 734.
+   *
+   * The middle one is inside the domain. The outer two are its edges, and they
+   * are edges for different reasons — the first is inside the calendar and
+   * outside every career, the third is outside the simulation altogether.
+   * `RECORD_VARIANTS` and `ENTRY_VARIANTS` each carry all three, and the two
+   * tables disagree about the middle one: the entry axis reports it and the
+   * qualification axis cannot. That disagreement is the measurement worth
+   * having, and `eligibility.test.ts` pins both halves of it.
+   */
+  WORLDS_OCCURRENCE_FIRST: 0,
+  WORLDS_OCCURRENCE_SECOND: 1,
+  WORLDS_OCCURRENCE_THIRD: 2,
+  /**
+   * The top qualifying total any tier asks for, mirrored from `careerTuning.ts`
+   * as the number the worlds measurements are taken against.
+   *
+   * Mirrored rather than imported so that a tuner who moves the worlds bar gets
+   * a red here — `eligibility.test.ts` asserts the two agree — instead of a
+   * measurement that silently follows the bar under a comment that no longer
+   * describes it.
+   */
+  TOP_QUALIFYING_TOTAL_KG: 650,
   /** The window the comparison is made over, from the evaluation day. */
   WINDOW_DAYS: 364,
   FEDERATION: 'meridian' as CareerFederationId,
@@ -350,7 +501,43 @@ export type RecordVariant =
   | 'shipped'
   | 'latest-total-wins'
   | 'delayed-form-inside'
-  | 'delayed-form-past-the-edge';
+  | 'delayed-form-past-visible'
+  | 'delayed-form-past-the-edge'
+  | 'worlds-reset-first'
+  | 'worlds-reset-second'
+  | 'worlds-reset-third';
+
+/**
+ * What a record rule is handed about the meet it is folding in.
+ *
+ * The first three arguments are `careerRecordAfterMeet`'s own, in its own
+ * order, so `shipped` below stays that function itself rather than a wrapper
+ * around it — a control measured against a copy of the engine is measured
+ * against something that can drift from the engine. The two after them are what
+ * a tier-keyed or date-keyed control needs and the shipped rule ignores;
+ * TypeScript lets a three-parameter function stand in for a five-parameter type,
+ * so adding them costs the `shipped` entry nothing.
+ */
+export type RecordFold = (
+  lifter: CareerLifter,
+  meetId: string,
+  totalKg: number,
+  tier: CareerMeetTier,
+  day: StreakDay,
+) => CareerLifter;
+
+/**
+ * Which occurrence of a tier's series a meet day is, counted from zero at the
+ * first one the calendar holds.
+ *
+ * Derived from `CAREER_TUNING` through `calendar.ts` rather than from a table
+ * here, so a tuner who moves a phase or a cadence moves this with it. A day
+ * that is not one of the tier's meet days gives a non-integer, which is what
+ * the `worlds-reset-*` controls test for.
+ */
+export function tierOccurrenceOf(tier: CareerMeetTier, day: StreakDay): number {
+  return (day - tierSeriesStartDay(tier)) / CAREER_TUNING.CADENCE_DAYS[tier];
+}
 
 /**
  * A career that remembers the last total instead of the best, once the lifter
@@ -360,9 +547,7 @@ export type RecordVariant =
  * same rule with a grace period, which is the shape that walked past this sweep
  * while its careers were 14 meets long.
  */
-function latestTotalAfter(
-  afterMeets: number,
-): (lifter: CareerLifter, meetId: string, totalKg: number) => CareerLifter {
+function latestTotalAfter(afterMeets: number): RecordFold {
   return (lifter, meetId, totalKg) => {
     const entered = lifter.enteredMeetIds.includes(meetId)
       ? lifter.enteredMeetIds
@@ -373,24 +558,60 @@ function latestTotalAfter(
 }
 
 /**
- * The second control and its two delayed forms. Under `latest-total-wins` the
- * career remembers the last total instead of the best, which is how a "current
- * form" gate reads, and a bad meet day then costs a lifter meets they had
- * already qualified for.
+ * A career whose record is overwritten by whatever was put up at one nominated
+ * occurrence of the worlds series, instead of taking the better of the two.
+ *
+ * The design somebody would write for this is "your world result is your
+ * ranking total", and it is a plausible one: an annual championship is the meet
+ * a federation would rank you off. It is also exactly the shape GDD §12.3
+ * refuses, and it needs no memory beyond the meet being folded — a lifter who
+ * turns up at worlds and has a bad day forgets every total above it, while the
+ * lifter who stayed home keeps theirs.
+ *
+ * `occurrence` counts from zero at the first worlds meet the calendar holds, so
+ * the three entries below are the same rule pointed at three different days.
+ * The one thing they hold apart is which of those days a simulated lifter can
+ * actually be standing on.
+ */
+function worldsResetAt(occurrence: number): RecordFold {
+  return (lifter, meetId, totalKg, tier, day) => {
+    if (tier !== 'worlds' || tierOccurrenceOf('worlds', day) !== occurrence) {
+      return careerRecordAfterMeet(lifter, meetId, totalKg);
+    }
+    const entered = lifter.enteredMeetIds.includes(meetId)
+      ? lifter.enteredMeetIds
+      : [...lifter.enteredMeetIds, meetId];
+    return { federationId: lifter.federationId, bestTotalKg: totalKg, enteredMeetIds: entered };
+  };
+}
+
+/**
+ * The second control, its two delayed forms, and the three tier-keyed ones.
+ * Under `latest-total-wins` the career remembers the last total instead of the
+ * best, which is how a "current form" gate reads, and a bad meet day then costs
+ * a lifter meets they had already qualified for.
  *
  * The two delayed entries are the same rule switched on part way through a
  * career, at the meet counts `ATTENDANCE_SWEEP` names. They are what turns the
  * edge of this domain into a pinned number rather than a sentence somebody
  * measured once: one is inside the deepest career the sweep produces and the
  * other is one meet past it.
+ *
+ * The three `worlds-reset-*` entries do the same job on the tier axis, which is
+ * the axis the one-period version of this sweep was blind on. Their zeros and
+ * their non-zero sit in `eligibility.test.ts` beside each other, so a reader
+ * can see which of the calendar's worlds meets a career here reaches and which
+ * two it does not.
  */
-export const RECORD_VARIANTS: Readonly<
-  Record<RecordVariant, (lifter: CareerLifter, meetId: string, totalKg: number) => CareerLifter>
-> = Object.freeze({
+export const RECORD_VARIANTS: Readonly<Record<RecordVariant, RecordFold>> = Object.freeze({
   shipped: careerRecordAfterMeet,
   'latest-total-wins': latestTotalAfter(0),
   'delayed-form-inside': latestTotalAfter(ATTENDANCE_SWEEP.DELAYED_FORM_INSIDE),
+  'delayed-form-past-visible': latestTotalAfter(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_VISIBLE),
   'delayed-form-past-the-edge': latestTotalAfter(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_THE_EDGE),
+  'worlds-reset-first': worldsResetAt(ATTENDANCE_SWEEP.WORLDS_OCCURRENCE_FIRST),
+  'worlds-reset-second': worldsResetAt(ATTENDANCE_SWEEP.WORLDS_OCCURRENCE_SECOND),
+  'worlds-reset-third': worldsResetAt(ATTENDANCE_SWEEP.WORLDS_OCCURRENCE_THIRD),
 });
 
 // ---------------------------------------------------------------------------
@@ -475,45 +696,144 @@ export function lastEnteredDayOf(
 }
 
 /**
- * What a lifter's entry list is asked from: the day, and how long ago they last
- * competed.
+ * Every day of one tier the lifter has on their record, in calendar order.
  *
- * The second field is what the shipped rule does not read and a rest-based
- * design would have to. Handing it to every variant keeps the two arms taking
- * one input each rather than two different ones.
+ * The tier-keyed entry controls need "when did you last go to a worlds meet",
+ * which no `CareerLifter` carries and none may start carrying: widening
+ * `CAREER_LIFTER_KEYS` to suit a control would be the sweep deciding what
+ * eligibility may read. It is derived from the season beside the fold, the way
+ * `lastEnteredDayOf` already is.
+ */
+export function enteredDaysOfTier(
+  season: readonly SeasonMeet[],
+  throughIndex: number,
+  skipIndex: number | null,
+  tier: CareerMeetTier,
+): readonly StreakDay[] {
+  const days: StreakDay[] = [];
+  for (let index = 0; index <= Math.min(throughIndex, season.length - 1); index += 1) {
+    if (index === skipIndex) continue;
+    const meet = season[index];
+    if (meet !== undefined && meet.tier === tier) days.push(meet.day);
+  }
+  return days;
+}
+
+/**
+ * What a lifter's entry list is asked from: the day, how long ago they last
+ * competed, and which worlds meets are on their record.
+ *
+ * The last two are what the shipped rule does not read and a rest-based design
+ * would have to. Handing them to every variant keeps the arms taking one input
+ * each rather than several different ones.
  */
 export interface EntryContext {
   readonly today: StreakDay;
   readonly lastEnteredDay: StreakDay | null;
+  readonly worldsDaysEntered: readonly StreakDay[];
 }
 
 /** Which entry rule a sweep runs under. */
-export type EntryVariant = 'shipped' | 'entry-cooldown';
+export type EntryVariant =
+  | 'shipped'
+  | 'entry-cooldown'
+  | 'worlds-cooldown-first'
+  | 'worlds-cooldown-second'
+  | 'worlds-cooldown-third';
 
 /**
- * The third control, and the one the entry axis is measured against.
+ * An entry rule, as a filter of the list the engine itself produced.
+ *
+ * EVERY CONTROL HERE IS A LOCKOUT, so every one of them is expressible as a
+ * filter and `shipped` is the identity. That shape is deliberate and it is what
+ * makes the arms comparable: they run on one `enterableMeets` call per lifter
+ * per moment rather than one each, which is what lets five arms cost roughly
+ * what one used to. A control that ADDED a meet would need a different shape,
+ * and there is not one — a design that hands a lifter a meet they are not
+ * eligible for is not a §12.3 hazard.
+ */
+export type EntryFilter = (
+  base: readonly CareerMeet[],
+  context: EntryContext,
+) => readonly CareerMeet[];
+
+/** A lockout of `days` running from `from`, applied to the engine's own list. */
+function lockedOutUntil(
+  base: readonly CareerMeet[],
+  from: StreakDay | null,
+  days: number,
+): readonly CareerMeet[] {
+  if (from === null) return base;
+  const clearOn = addDays(from, days);
+  return base.filter((meet) => meet.day > clearOn);
+}
+
+/**
+ * The entry-side controls.
  *
  * Under `entry-cooldown` a lifter may not enter anything for
- * `ENTRY_COOLDOWN_DAYS` after a meet. It is the most plausible of the three
- * controls — real federations impose rest, and a game would call it recovery —
- * and it is exactly the shape GDD §12.3 refuses: the lifter who competed at one
- * more meet starts their lockout later, so the calendar in front of them is
- * shorter than the calendar in front of the lifter who stayed home.
+ * `ENTRY_COOLDOWN_DAYS` after any meet. It is the most plausible of the
+ * controls this module measures against — real federations impose rest, and a
+ * game would call it recovery — and it is exactly the shape GDD §12.3 refuses:
+ * the lifter who competed at one more meet starts their lockout later, so the
+ * calendar in front of them is shorter than the calendar in front of the lifter
+ * who stayed home.
  *
- * `shipped` is `enterableMeets` itself, imported rather than restated, for the
- * reason `QUALIFICATION_VARIANTS` gives.
+ * The three `worlds-cooldown-*` entries are the same rest charged after one
+ * nominated occurrence of the annual series and after nothing else, which is
+ * the more likely design of the two: a fortnight off after a world championship
+ * reads as respect for the athlete rather than as a tax. It is the same tax.
+ *
+ * WHY THE TIER-KEYED CONTROLS LIVE ON THIS AXIS AND NOT ON THE RECORD AXIS.
+ * Measured, not chosen. A worlds-keyed RECORD rule is invisible to the
+ * qualification axis at any depth this fixture reaches: `bestTotalKg` is
+ * non-decreasing under the shipped fold, the top qualifying total is 650 kg,
+ * and the lowest total anybody in this sweep puts up AT a worlds meet is
+ * 657.5 kg — so a rule that rewrites their record with it still leaves them
+ * clearing every bar on the ladder. `worlds-reset-second` is that fact as a
+ * measured zero, with the 657.5 and the 650 pinned beside it and the count of
+ * careers whose record the rule really does rewrite pinned at 18. The
+ * enterable list has no such ceiling, which is why the tier-keyed lockouts are
+ * here.
  */
-export const ENTRY_VARIANTS: Readonly<
-  Record<EntryVariant, (lifter: CareerLifter, context: EntryContext) => readonly CareerMeet[]>
-> = Object.freeze({
-  shipped: (lifter, context) => enterableMeets(lifter, context.today, ATTENDANCE_SWEEP.WINDOW_DAYS),
-  'entry-cooldown': (lifter, context) => {
-    const list = enterableMeets(lifter, context.today, ATTENDANCE_SWEEP.WINDOW_DAYS);
-    if (context.lastEnteredDay === null) return list;
-    const clearOn = addDays(context.lastEnteredDay, ATTENDANCE_SWEEP.ENTRY_COOLDOWN_DAYS);
-    return list.filter((meet) => meet.day > clearOn);
-  },
+export const ENTRY_VARIANTS: Readonly<Record<EntryVariant, EntryFilter>> = Object.freeze({
+  shipped: (base) => base,
+  'entry-cooldown': (base, context) =>
+    lockedOutUntil(base, context.lastEnteredDay, ATTENDANCE_SWEEP.ENTRY_COOLDOWN_DAYS),
+  'worlds-cooldown-first': (base, context) =>
+    lockedOutUntil(
+      base,
+      worldsDayAtOccurrence(context, ATTENDANCE_SWEEP.WORLDS_OCCURRENCE_FIRST),
+      ATTENDANCE_SWEEP.ENTRY_COOLDOWN_DAYS,
+    ),
+  'worlds-cooldown-second': (base, context) =>
+    lockedOutUntil(
+      base,
+      worldsDayAtOccurrence(context, ATTENDANCE_SWEEP.WORLDS_OCCURRENCE_SECOND),
+      ATTENDANCE_SWEEP.ENTRY_COOLDOWN_DAYS,
+    ),
+  'worlds-cooldown-third': (base, context) =>
+    lockedOutUntil(
+      base,
+      worldsDayAtOccurrence(context, ATTENDANCE_SWEEP.WORLDS_OCCURRENCE_THIRD),
+      ATTENDANCE_SWEEP.ENTRY_COOLDOWN_DAYS,
+    ),
 });
+
+/** The day of the nominated worlds occurrence on this lifter's record, if they went. */
+function worldsDayAtOccurrence(context: EntryContext, occurrence: number): StreakDay | null {
+  return (
+    context.worldsDaysEntered.find((day) => tierOccurrenceOf('worlds', day) === occurrence) ?? null
+  );
+}
+
+/** The list the engine gives, which every entry arm filters. */
+export function shippedEntryList(
+  lifter: CareerLifter,
+  context: EntryContext,
+): readonly CareerMeet[] {
+  return enterableMeets(lifter, context.today, ATTENDANCE_SWEEP.WINDOW_DAYS);
+}
 
 /**
  * The career record of a lifter who competed at the season's meets up to and
@@ -538,7 +858,87 @@ export function careerAfter(
     if (index === skipIndex) continue;
     const meet = season[index];
     if (meet === undefined) break;
-    lifter = fold(lifter, meet.meetId, meet.totalKg);
+    lifter = fold(lifter, meet.meetId, meet.totalKg, meet.tier, meet.day);
   }
   return lifter;
+}
+
+/** One evaluation moment: the meet that just happened and every career at it. */
+export interface SeasonMoment {
+  readonly throughIndex: number;
+  readonly meet: SeasonMeet;
+  /** The lifter who went to every meet up to and including `throughIndex`. */
+  readonly diligent: CareerLifter;
+  /** `idle[i]` is that same lifter with the meet at index `i` skipped. */
+  readonly idle: readonly CareerLifter[];
+}
+
+/**
+ * Every moment of a season, with the careers the pair loop compares at each,
+ * built by advancing the previous moment's careers instead of re-folding each
+ * one from the start of the season.
+ *
+ * SAME VALUES, LESS ARITHMETIC, and the recurrence is exact rather than
+ * approximate:
+ *
+ *   careerAfter(s, t, i)     = fold(careerAfter(s, t - 1, i), s[t])  for i < t
+ *   careerAfter(s, t, t)     = careerAfter(s, t - 1, null)
+ *   careerAfter(s, t, null)  = fold(careerAfter(s, t - 1, null), s[t])
+ *
+ * The middle line is the one worth reading twice: a lifter who skipped the meet
+ * that has just happened is the same lifter as the one who had been to
+ * everything a moment ago.
+ *
+ * WHY IT EXISTS. `careerAfter` re-folds the whole prefix per pair, so the pair
+ * loop costs a cube of the season length; two calendar periods make a season
+ * twice as deep as one, which is eight times the arithmetic for four times the
+ * pairs. This is the same measurement over the same pairs. `eligibility.test.ts`
+ * drives the two against each other over a whole triangle of moments and pins
+ * how many it compared, so a divergence is a red rather than a silently faster
+ * answer.
+ */
+export function* seasonMoments(
+  season: readonly SeasonMeet[],
+  variant: RecordVariant,
+): Generator<SeasonMoment> {
+  const fold = RECORD_VARIANTS[variant];
+  let diligent: CareerLifter = newCareerLifter(ATTENDANCE_SWEEP.FEDERATION);
+  const idle: CareerLifter[] = [];
+  for (let throughIndex = 0; throughIndex < season.length; throughIndex += 1) {
+    const meet = season[throughIndex];
+    if (meet === undefined) break;
+    for (let skip = 0; skip < throughIndex; skip += 1) {
+      idle[skip] = fold(idle[skip] as CareerLifter, meet.meetId, meet.totalKg, meet.tier, meet.day);
+    }
+    idle[throughIndex] = diligent;
+    diligent = fold(diligent, meet.meetId, meet.totalKg, meet.tier, meet.day);
+    yield { throughIndex, meet, diligent, idle };
+  }
+}
+
+/**
+ * Everything `qualifiedMeets` is allowed to read about a lifter, as one string.
+ *
+ * The attendance axis asks the same qualification question of up to 165 lifters
+ * at one moment, and most of them differ in a field qualification does not
+ * read. Two lifters with the same key here are two lifters that question
+ * answers identically, so a memo on this key is the same measurement with the
+ * duplicates removed.
+ *
+ * THE KEY'S COMPLETENESS IS A CHECK, not an assumption: `eligibility.test.ts`
+ * drives the whole strength grid with an empty record and with every meet in
+ * the window on it, asserts the two agree, and asserts these keys agree too. An
+ * `enteredMeetIds` term added to `qualifiesFor` reddens that pair before it can
+ * reach this memo.
+ */
+export function qualificationKey(lifter: CareerLifter): string {
+  return `${lifter.federationId}|${lifter.bestTotalKg}`;
+}
+
+/** How many meets of one tier a simulated season holds. */
+export function seasonMeetsOfTier(
+  season: readonly SeasonMeet[],
+  tier: CareerMeetTier,
+): readonly SeasonMeet[] {
+  return season.filter((meet) => meet.tier === tier);
 }

@@ -368,6 +368,16 @@ describe('the grader that re-takes the measurements', () => {
     // 30s global before their domain was widened and none could stay there
     // afterwards, so this is the same mechanism reporting a domain that grew
     // rather than tests that slowed down.
-    expect(declarations.reduce((total, [, count]) => total + count, 0)).toBe(46);
+    //
+    // 46 -> 45 when that same domain widened AGAIN, from one calendar period to
+    // two, which is the opposite of the direction a reader would guess and is
+    // the interesting part. The career file went from three declarations to
+    // two: its entry axis split in two and both halves are far over the
+    // threshold, while its two qualification sweeps dropped from 12 s and 13 s
+    // to 3 s and 5 s on four times the pairs. The careers the pair loop
+    // compares are now built by advancing the previous moment's instead of
+    // re-folding each from the top, so a measurement that grew got cheaper. A
+    // count that moves DOWN when a domain grows is this pin doing its job.
+    expect(declarations.reduce((total, [, count]) => total + count, 0)).toBe(45);
   });
 });

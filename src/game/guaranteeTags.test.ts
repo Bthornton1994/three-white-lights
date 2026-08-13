@@ -557,8 +557,28 @@ const GUARANTEE_COVERAGE = {
    *
    * That is not the scan getting better. It is the same coin-flip the notes
    * above describe, landing the other way twice, and it is recorded as one.
+   *
+   * 236 -> 237 WITH A CHANGE THIS ROUND DID NOT MAKE, and the attribution is
+   * the reason this paragraph exists rather than a bare number. Session C's
+   * career integrity fences added a paragraph to `eligibility.ts` §2 — the one
+   * saying that `CAREER_ELIGIBILITY_READS_NO_WALLET` does not see a
+   * module-level `let` a graded function closes over, which
+   * `careerPurity.test.ts` now grades. Its heading uses the second trigger
+   * word, so the scan counts it, and this constant was not moved with it. It
+   * is not quoted here, for the reason four of the notes above give: quoting a
+   * capitalised run makes this paragraph trigger too, and the count would go
+   * to 238. MEASURED RATHER THAN INFERRED: `4be76f9`, the integration tip,
+   * fails this assertion on its own with `expected 237 to be 236` before any
+   * other branch is merged into it, and `eligibility.ts` goes from 4
+   * triggering paragraphs to 5.
+   *
+   * The C1 worlds-reach round that carried this edit contributes ZERO of its
+   * own, checked the same way: every paragraph it added to `careerSweep.ts`,
+   * `eligibility.test.ts` and `eligibility.ts` was written to state its limits
+   * without a capitalised run of an absolute, and the census over those three
+   * files reads 0, 0 and 5 after the merge.
    */
-  TREE_WIDE: 236,
+  TREE_WIDE: 237,
 } as const;
 
 // ---------------------------------------------------------------------------
