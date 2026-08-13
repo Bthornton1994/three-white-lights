@@ -71,9 +71,10 @@
  *     three a simulated career can be standing on is the whole question this
  *     round was about.
  *   - `worlds-reset-*` — the annual result taken as the lifter's ranking total
- *     instead of their best. Three again, and all three measure zero: see the
- *     block above `ENTRY_VARIANTS` for why the qualification axis is
- *     structurally unable to see a rule keyed to the top tier.
+ *     instead of their best. Three again, and all three measure zero on this
+ *     population by 7.5 kg: see the block above `ENTRY_VARIANTS`. That margin
+ *     is arithmetic about these 24 seeded careers rather than a property of the
+ *     calendar, so it is measured and pinned rather than argued for.
  */
 
 import { nextRandom, seedState } from '../game/prng';
@@ -229,14 +230,20 @@ export function strengthGrid(): readonly (number | null)[] {
  *     calendar would have assumed both were reachable.
  *
  * AND ONE BLIND SPOT THAT IS NOT AN EDGE AT ALL, which is what this round
- * turned up rather than what it went looking for. The qualification axis is
- * unable to see ANY rule keyed to the annual tier, at any depth this fixture
- * reaches, because the lowest total anybody here puts up at a worlds meet is
- * 657.5 kg against a top qualifying total of 650. A rule that rewrites their
- * record with it leaves them clearing every bar on the ladder. That is why the
- * tier-keyed controls that report a non-zero are on the entry axis, and why the
- * three `worlds-reset-*` record controls ship reporting zero with their reason
- * measured beside them.
+ * turned up rather than what it went looking for. The qualification axis does
+ * not see the worlds-keyed record rule anywhere in this fixture, and the reason
+ * is a margin of 7.5 kg: the lowest total anybody here puts up at a worlds meet
+ * is 657.5, against a top qualifying total of 650, so a rule that rewrites
+ * their record with it leaves them clearing every bar on the ladder. That is
+ * why the tier-keyed controls that report a non-zero are on the entry axis, and
+ * why the three `worlds-reset-*` record controls ship reporting zero with their
+ * reason measured beside them.
+ *
+ * A reader should hold that at the size it is. It is a fact about these 24
+ * seeded careers and the shipped qualifying totals, not a theorem: a seed whose
+ * worlds day fell 8 kg lower would move it, and nothing here would have to
+ * change for that to happen. What the pin buys is that the margin is a number
+ * in a test rather than an assumption nobody wrote down.
  *
  * A finite domain has an edge wherever it is drawn; what changed is where, and
  * that every edge is now a number a test pins rather than a sentence.
