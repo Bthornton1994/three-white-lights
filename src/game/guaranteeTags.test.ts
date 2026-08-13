@@ -1372,11 +1372,13 @@ function domainAnchorFaults(
  * deletion for that reason: it is the case an `if (!mutatedTo)` implementation
  * gets wrong, and it would get it wrong silently.
  *
- * AN INSERTION IS THE SAME OPERATION FROM THE OTHER SIDE. Three rows here APPEND
- * a declaration and had nothing to anchor on but the declaration above the
- * insertion point; they record the anchor followed by what was appended. Insert,
- * delete and substitute are one replacement against one anchor, which is the
- * argument for this shape over the two that were rejected:
+ * AN INSERTION IS THE SAME OPERATION FROM THE OTHER SIDE. The rows here whose
+ * mutant APPENDS a declaration had nothing to anchor on but the declaration
+ * above the insertion point, and they say so in their own comments; with this
+ * field they record that anchor followed by what was appended, and an append
+ * becomes an edit a reader can make rather than one they have to compose.
+ * Insert, delete and substitute are one replacement against one anchor, which is
+ * the argument for this shape over the two that were rejected:
  *
  *   - A UNIFIED DIFF carries line numbers and context lines. Both go stale on an
  *     unrelated edit above the hunk — the transcript rule refuses to pin a
@@ -1400,6 +1402,45 @@ function domainAnchorFaults(
  * moves a row from unfalsifiable to falsifiable and leaves the falsifying to
  * whoever cares. That is a smaller claim than it sounds, and it is the whole of
  * it.
+ *
+ * WHY THIS RULE CARRIES NO `@guarantee` TAG WHERE THE TWO ABOVE DO, which is a
+ * decision and not an oversight. A tag has to carry a witness, and a witness has
+ * to anchor its mutant in a file that is not the one holding the anchor — so the
+ * mutant would have to live outside this file. Every external edit that reddens
+ * this rule reddens it by making a recorded anchor stop occurring, and the
+ * freshness loop is red on that first: the witness would resolve, pass, and be
+ * evidence about a check other than this one. That is the "pin on a fact
+ * adjacent to the claim" shape, and it reads exactly like a pin on the claim.
+ * The edits that DO separate this rule from everything else in the file — a
+ * replacement equal to what it replaced, a mutant deleting its own red
+ * assertion, presence read by truthiness — are all edits to this file, which the
+ * schema cannot anchor for the reason the numeric rule's own row records. So the
+ * mutation evidence for this rule is in the paragraph below and in the commit
+ * that added it, in the shape CLAUDE.md prescribes for a witness that cannot
+ * bind to the schema: the verbatim mutant and the verbatim assertion that
+ * reddened, just not machine-resolvable.
+ *
+ * THE MUTANTS, EACH RUN AT DECLARATION AND EACH RESTORED, on
+ * `src/game/guaranteeTags.test.ts` itself:
+ *
+ *   - A row appended to the table carrying every other field and no
+ *     `mutatedTo`. Red: `the claims whose witness rows still record no
+ *     replacement`, naming the claim it planted. The transcript rule's own
+ *     graded count moves with it, which is why the finding names the claim
+ *     rather than a total.
+ *   - `mutatedTo: 'expect(shipped.pairs).toBe(80602);'` rewritten to `…80601);`,
+ *     which is the text that row replaced. Red, and alone: `witness rows whose
+ *     recorded replacement is not an edit to this tree`, naming the row and the
+ *     arm.
+ *   - `if (applied === source) faults.push(…)` disabled. Red on the planted row
+ *     `a replacement identical to the text it replaced`.
+ *   - The `witness.mutatedFile === witness.testFile` guard forced false. Red on
+ *     the planted row `a mutant that deletes its own red assertion`.
+ *   - A deletion planted on a live row — `mutatedTo: ''` — with the loop's
+ *     `=== undefined` reading rewritten to `!witness.mutatedTo`. Red: `witness
+ *     rows a third party can apply and re-run: expected 4 to be 5`. With the
+ *     `=== undefined` reading in place the same deletion is green, which is the
+ *     pair that says an empty replacement is a value and not an absence.
  */
 const REPLACEMENT_FAULTS = [
   'replacement-does-not-change-the-file',
