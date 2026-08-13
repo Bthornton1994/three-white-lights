@@ -1417,6 +1417,25 @@ function domainAnchorFaults(
  * whoever cares. That is a smaller claim than it sounds, and it is the whole of
  * it.
  *
+ * AND THE SHARPEST HOLE, WHICH IS IN THE SHAPE AND NOT IN THE CHECKING. One
+ * anchor and one replacement is ONE SITE. A mutant made of two edits in two
+ * places — and this table holds rows describing exactly that, §4a's recruit row
+ * says so in its own comment and names the second edit in prose — cannot be
+ * written down here. A row could record one of the two edits, satisfy both arms,
+ * and hand a reader a patch that does not reproduce the transcript beside it.
+ * Nothing detects that, because nothing here knows how many edits a mutant was
+ * made of. Those rows are on the debt list below rather than closed, so no such
+ * claim is shipped today; what is shipped is a schema that would accept one. The
+ * honest treatment when a two-site mutant is next witnessed is to say in that
+ * row's own comment that the recorded patch is one half and to name the other,
+ * which is what the recruit row already does in prose — the field does not make
+ * that unnecessary, it makes the half it holds mechanical. Recording the two
+ * halves as two rows would be worse than the prose: each row would look like a
+ * whole patch and neither would reproduce anything on its own. A field taking a
+ * LIST of patches was considered and left unbuilt, because every row in this
+ * table today is one site and the cost of the general case is paid at
+ * declaration time by everybody who is not in it.
+ *
  * WHY THIS RULE CARRIES NO `@guarantee` TAG WHERE THE TWO ABOVE DO, which is a
  * decision and not an oversight. A tag has to carry a witness, and a witness has
  * to anchor its mutant in a file that is not the one holding the anchor — so the
