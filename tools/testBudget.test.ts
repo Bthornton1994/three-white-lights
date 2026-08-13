@@ -340,6 +340,12 @@ describe('the grader that re-takes the measurements', () => {
     // that too.
     expect(filesDeclaringBudgets()).toEqual([
       'src/art/lifterSprite.test.ts',
+      // GDD §2.1's career spine. Its two attendance sweeps used to run in under
+      // a second between them, on a fixture that held every career to 14 meets;
+      // taken to the depth the shipped calendar offers they are 78926 compared
+      // pairs each and run for tens of seconds, which is over DECLARE_ABOVE_MS
+      // and therefore has to be declared rather than left on the global.
+      'src/career/eligibility.test.ts',
       'src/cutin/cutInWiring.test.ts',
       'src/empire/engagement.test.ts',
       'src/game/progression.test.ts',
@@ -357,6 +363,11 @@ describe('the grader that re-takes the measurements', () => {
     // named them. That is the tool and this pin doing the same job from two
     // directions, and the number moving is the mechanism working rather than
     // drift.
-    expect(declarations.reduce((total, [, count]) => total + count, 0)).toBe(43);
+    //
+    // 43 -> 45 with the two career attendance sweeps above. Both were under the
+    // 30s global before their domain was widened and neither could stay there
+    // afterwards, so this is the same mechanism reporting a domain that grew
+    // rather than a test that slowed down.
+    expect(declarations.reduce((total, [, count]) => total + count, 0)).toBe(45);
   });
 });
