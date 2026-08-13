@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-13T03-29-47-042Z-7060",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/licensing/realIp.test.ts",
+    "src/tuning/audit.test.ts"
+  ],
+  "budgetSeconds": 300,
+  "startedAtIso": "2026-08-13T03:29:47.042Z",
+  "startedAtMs": 1786591787042,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "6a60ff0e436c28a88e0f62bddee5070ef4133189",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 15,
+  "dirtyPaths": [
+    "CLAUDE.md",
+    "src/career/calendar.test.ts",
+    "src/career/calendar.ts",
+    "src/career/careerSweep.ts",
+    "src/career/careerTuning.test.ts",
+    "src/career/careerTuning.ts",
+    "src/career/eligibility.test.ts",
+    "src/career/eligibility.ts",
+    "src/career/federation.test.ts",
+    "src/career/federation.ts",
+    "src/game/guaranteeTags.test.ts",
+    "src/game/streakEntitlement.test.ts",
+    "src/tuning/audit.test.ts",
+    "src/tuning/audit.ts",
+    "src/tuning/index.ts"
+  ],
+  "runner": {
+    "pid": 7060,
+    "startTick": "545062",
+    "cmdline": "node tools/watchdog.mjs --budget 300 -- npx vitest run src/licensing/realIp.test.ts src/tuning/audit.test.ts",
+    "bootId": "6ab18ec1-9cd9-48f3-ba2f-b5df944ad6e5",
+    "bootEpochSeconds": 1786586336,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-13T03:29:47.073Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
