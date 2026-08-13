@@ -46,7 +46,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { PURCHASABLE_ACCELERANTS } from './empireCore';
+import { PURCHASABLE_ACCELERANTS, asDisplayName, asGymId } from './empireCore';
 import {
   grantSecondsAt,
   type AccelerantPlan,
@@ -209,7 +209,7 @@ export function socialInputs(): SocialInputs {
       day: asCalendarDay(EMPIRE_SWEEP.ANCHOR_DAY + day),
       // Two of the six share a sender, so the one-payout-per-sender rule is in
       // the domain. The index is halved to produce the repeat.
-      fromGymId: `friend-gym-${Math.floor(at / 2)}`,
+      fromGymId: asGymId(`friend-gym-${Math.floor(at / 2)}`),
     }),
   );
   return Object.freeze({
@@ -223,8 +223,8 @@ export function socialInputs(): SocialInputs {
       passTiersUnlocked: EMPIRE_SWEEP.PASS_TIERS_UNLOCKED,
     }),
     rival: Object.freeze({
-      gymId: 'rival-gym',
-      displayName: 'Placeholder',
+      gymId: asGymId('rival-gym'),
+      displayName: asDisplayName('Placeholder'),
       reputation: EMPIRE_SWEEP.RIVAL_REPUTATION,
       combinedTotalKg: 0,
     }),

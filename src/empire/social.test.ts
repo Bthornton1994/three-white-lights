@@ -71,7 +71,11 @@ import {
   IDLE_ONLY_OUTPUTS,
   PROGRESSION_REACHING_OUTPUTS,
   asAcceleratedSeconds,
+  asDisplayName,
+  asGymId,
   outputReach,
+  type DisplayName,
+  type GymId,
   type LeaderboardScope,
 } from './empireCore';
 import { EMPIRE_TUNING } from './empireTuning';
@@ -194,8 +198,26 @@ function bodyOf(source: string, name: string): string {
   throw new Error(`${name} has no closing brace`);
 }
 
+/**
+ * A gym id or display name that did NOT come through its constructor.
+ *
+ * `socialContextFaults` judges a context that arrived on the wire, and the wire
+ * has no constructors — an empty id is precisely what it is written to report,
+ * and `asGymId` refuses one. The cast is deliberate and is the same shape as
+ * this file's `-1 as CalendarDay`: it builds the malformed value the decoder is
+ * about. A fixture that could only build well-formed values could not reach the
+ * fault path at all, which is CLAUDE.md's empty domain.
+ */
+const wireGymId = (value: string): GymId => value as GymId;
+const wireDisplayName = (value: string): DisplayName => value as DisplayName;
+
 function gym(gymId: string, reputation: number, combinedTotalKg: number): GymSnapshot {
-  return Object.freeze({ gymId, displayName: 'Placeholder', reputation, combinedTotalKg });
+  return Object.freeze({
+    gymId: asGymId(gymId),
+    displayName: asDisplayName('Placeholder'),
+    reputation,
+    combinedTotalKg,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -733,10 +755,10 @@ describe('gym leaderboards', () => {
 
   it('reports where a gym sits, and null for one that is off the bracket', () => {
     const rows = rankLeaderboard(board, 'reputation', 'global');
-    expect(leaderboardRankOf(rows, 'gym-a')).toBe(1);
-    expect(leaderboardRankOf(rows, 'gym-d')).toBe(4);
-    expect(leaderboardRankOf(rows, 'gym-absent')).toBeNull();
-    expect(leaderboardRankOf([], 'gym-a')).toBeNull();
+    expect(leaderboardRankOf(rows, asGymId('gym-a'))).toBe(1);
+    expect(leaderboardRankOf(rows, asGymId('gym-d'))).toBe(4);
+    expect(leaderboardRankOf(rows, asGymId('gym-absent'))).toBeNull();
+    expect(leaderboardRankOf([], asGymId('gym-a'))).toBeNull();
   });
 
   it('ranks an empty board as an empty board', () => {
@@ -774,7 +796,7 @@ describe("visiting friends' gyms", () => {
 
   function visitsOn(onDay: CalendarDay, howMany: number): readonly FriendVisit[] {
     return Array.from({ length: howMany }, (_, at) =>
-      Object.freeze({ day: onDay, gymId: `gym-v${at}`, encouraged: true }),
+      Object.freeze({ day: onDay, gymId: asGymId(`gym-v${at}`), encouraged: true }),
     );
   }
 
@@ -814,32 +836,32 @@ describe("visiting friends' gyms", () => {
   });
 
   it('refuses one reason at a time when only one applies', () => {
-    expect(visitRefusals(contextWith([]), 'gym-stranger', day)).toEqual(['not-a-friend-gym']);
+    expect(visitRefusals(contextWith([]), asGymId('gym-stranger'), day)).toEqual(['not-a-friend-gym']);
     expect(
       visitRefusals(
-        contextWith([Object.freeze({ day, gymId: 'gym-f1', encouraged: true })]),
-        'gym-f1',
+        contextWith([Object.freeze({ day, gymId: asGymId('gym-f1'), encouraged: true })]),
+        asGymId('gym-f1'),
         day,
       ),
     ).toEqual(['already-visited-today']);
     expect(
-      visitRefusals(contextWith(visitsOn(day, EMPIRE_TUNING.FRIEND_VISITS_PER_DAY)), 'gym-f1', day),
+      visitRefusals(contextWith(visitsOn(day, EMPIRE_TUNING.FRIEND_VISITS_PER_DAY)), asGymId('gym-f1'), day),
     ).toEqual(['daily-allowance-spent']);
-    expect(visitRefusals(contextWith([]), 'gym-f1', day)).toEqual([]);
-    expect(mayVisitFriendGym(contextWith([]), 'gym-f1', day)).toBe(true);
-    expect(mayVisitFriendGym(contextWith([]), 'gym-stranger', day)).toBe(false);
+    expect(visitRefusals(contextWith([]), asGymId('gym-f1'), day)).toEqual([]);
+    expect(mayVisitFriendGym(contextWith([]), asGymId('gym-f1'), day)).toBe(true);
+    expect(mayVisitFriendGym(contextWith([]), asGymId('gym-stranger'), day)).toBe(false);
   });
 
   it('records a visit, pays the visited gym for an encouragement, and pays nothing without one', () => {
     const context = contextWith([]);
-    const encouraged = recordFriendVisit(context, 'gym-f1', day, true);
+    const encouraged = recordFriendVisit(context, asGymId('gym-f1'), day, true);
     expect(encouraged.kind).toBe('visited');
     if (encouraged.kind !== 'visited') throw new Error('expected a recorded visit');
     expect(encouraged.gymBucksOwedToVisitedGym).toBe(EMPIRE_TUNING.ENCOURAGEMENT_REWARD_GYM_BUCKS);
     expect(encouraged.visits.length).toBe(1);
-    expect(encouraged.visits[0]).toEqual({ day, gymId: 'gym-f1', encouraged: true });
+    expect(encouraged.visits[0]).toEqual({ day, gymId: asGymId('gym-f1'), encouraged: true });
 
-    const browsed = recordFriendVisit(context, 'gym-f2', day, false);
+    const browsed = recordFriendVisit(context, asGymId('gym-f2'), day, false);
     if (browsed.kind !== 'visited') throw new Error('expected a recorded visit');
     expect(browsed.gymBucksOwedToVisitedGym).toBe(0);
     // The two payouts differ, so a constructor wired to one branch is red.
@@ -850,7 +872,7 @@ describe("visiting friends' gyms", () => {
 
   it('refuses to record a visit it would refuse to allow', () => {
     const context = contextWith(visitsOn(day, EMPIRE_TUNING.FRIEND_VISITS_PER_DAY));
-    const decision = recordFriendVisit(context, 'gym-f1', day, true);
+    const decision = recordFriendVisit(context, asGymId('gym-f1'), day, true);
     expect(decision.kind).toBe('refused');
     if (decision.kind !== 'refused') throw new Error('expected a refusal');
     expect(decision.refusals).toEqual(['daily-allowance-spent']);
@@ -858,10 +880,10 @@ describe("visiting friends' gyms", () => {
 
   it('pays once per distinct sender per day', () => {
     const received: readonly Encouragement[] = Object.freeze([
-      Object.freeze({ day, fromGymId: 'gym-f1' }),
-      Object.freeze({ day, fromGymId: 'gym-f1' }),
-      Object.freeze({ day, fromGymId: 'gym-f2' }),
-      Object.freeze({ day: asCalendarDay(13), fromGymId: 'gym-f1' }),
+      Object.freeze({ day, fromGymId: asGymId('gym-f1') }),
+      Object.freeze({ day, fromGymId: asGymId('gym-f1') }),
+      Object.freeze({ day, fromGymId: asGymId('gym-f2') }),
+      Object.freeze({ day: asCalendarDay(13), fromGymId: asGymId('gym-f1') }),
     ]);
     expect(encouragementGymBucksOn(received, day)).toBe(
       EMPIRE_TUNING.ENCOURAGEMENT_REWARD_GYM_BUCKS * 2,
@@ -1037,8 +1059,8 @@ describe('a supplied context is validated rather than trusted', () => {
     ownGym: own,
     calendar: contextFor(0, [true, false, true]),
     friends: Object.freeze([gym('gym-f1', 100, 200)]),
-    visits: Object.freeze([Object.freeze({ day: asCalendarDay(1), gymId: 'gym-f1', encouraged: true })]),
-    encouragementsReceived: Object.freeze([Object.freeze({ day: asCalendarDay(1), fromGymId: 'gym-f1' })]),
+    visits: Object.freeze([Object.freeze({ day: asCalendarDay(1), gymId: asGymId('gym-f1'), encouraged: true })]),
+    encouragementsReceived: Object.freeze([Object.freeze({ day: asCalendarDay(1), fromGymId: asGymId('gym-f1') })]),
     rival: gym('gym-rival', 700, 1200),
   });
 
@@ -1065,7 +1087,7 @@ describe('a supplied context is validated rather than trusted', () => {
       Object.freeze({
         ...clean,
         visits: Object.freeze([
-          Object.freeze({ day: asCalendarDay(1), gymId: 'gym-stranger', encouraged: false }),
+          Object.freeze({ day: asCalendarDay(1), gymId: asGymId('gym-stranger'), encouraged: false }),
         ]),
       }),
     );
@@ -1073,7 +1095,12 @@ describe('a supplied context is validated rather than trusted', () => {
   });
 
   it('reports a malformed snapshot field by field', () => {
-    const broken: GymSnapshot = { gymId: '', displayName: '', reputation: -1, combinedTotalKg: Number.NaN };
+    const broken: GymSnapshot = {
+      gymId: wireGymId(''),
+      displayName: wireDisplayName(''),
+      reputation: -1,
+      combinedTotalKg: Number.NaN,
+    };
     const faults = socialContextFaults(Object.freeze({ ...clean, ownGym: broken }));
     // Four separate faults from one snapshot, so the check is field by field
     // rather than one verdict about the object.
@@ -1091,10 +1118,10 @@ describe('a supplied context is validated rather than trusted', () => {
           trainedDays: Object.freeze([1.5 as CalendarDay]),
         }),
         visits: Object.freeze([
-          Object.freeze({ day: -2 as CalendarDay, gymId: 'gym-f1', encouraged: false }),
+          Object.freeze({ day: -2 as CalendarDay, gymId: asGymId('gym-f1'), encouraged: false }),
         ]),
         encouragementsReceived: Object.freeze([
-          Object.freeze({ day: -3 as CalendarDay, fromGymId: 'gym-f1' }),
+          Object.freeze({ day: -3 as CalendarDay, fromGymId: asGymId('gym-f1') }),
         ]),
       }),
     );
@@ -1111,7 +1138,7 @@ describe('a supplied context is validated rather than trusted', () => {
       Object.freeze({
         ...clean,
         encouragementsReceived: Object.freeze([
-          Object.freeze({ day: asCalendarDay(1), fromGymId: '' }),
+          Object.freeze({ day: asCalendarDay(1), fromGymId: wireGymId('') }),
         ]),
       }),
     );

@@ -243,6 +243,7 @@ import type {
   EmpireState,
   EquipmentTier,
   GymAxes,
+  GymId,
   NpcLifter,
   NpcTier,
   StaffRole,
@@ -2698,7 +2699,12 @@ function stateAt(options: StateOptions): EmpireState {
 }
 
 function snapshotAt(gymId: string, displayName: string, reputation: number, totalKg: number): GymSnapshot {
-  return Object.freeze({ gymId, displayName, reputation, combinedTotalKg: totalKg });
+  return Object.freeze({
+    gymId: core.asGymId(gymId),
+    displayName: core.asDisplayName(displayName),
+    reputation,
+    combinedTotalKg: totalKg,
+  });
 }
 
 function completedBuild(axis: ExpansionAxis, toLevel: number): ExpansionBuild {
@@ -2784,7 +2790,7 @@ function encouragementsAt(anchorDay: number): readonly Encouragement[] {
     [2, 5, 5, 11].map((day, at) =>
       Object.freeze({
         day: socialModule.asCalendarDay(anchorDay + day),
-        fromGymId: `${SENTINELS.ENCOURAGEMENT_FROM}-${String(Math.floor(at / 2))}`,
+        fromGymId: core.asGymId(`${SENTINELS.ENCOURAGEMENT_FROM}-${String(Math.floor(at / 2))}`),
       }),
     ),
   );
@@ -2823,7 +2829,7 @@ function socialContextAt(visitDays: readonly number[]): SocialContext {
       visitDays.map((day, index) =>
         Object.freeze({
           day: socialModule.asCalendarDay(day),
-          gymId: `${SENTINELS.FRIEND_GYM_ID}-${String(index % FRIENDS.length)}`,
+          gymId: core.asGymId(`${SENTINELS.FRIEND_GYM_ID}-${String(index % FRIENDS.length)}`),
           encouraged: index % 2 === 0,
         }),
       ),
@@ -3110,7 +3116,7 @@ const FAULTED_SOCIAL_CONTEXT: SocialContext = Object.freeze({
   visits: Object.freeze([
     Object.freeze({
       day: socialModule.asCalendarDay(CALENDAR_ANCHOR),
-      gymId: SENTINELS.FAULT_VISIT_GYM_ID,
+      gymId: core.asGymId(SENTINELS.FAULT_VISIT_GYM_ID),
       encouraged: false,
     }),
   ]),
@@ -3558,7 +3564,7 @@ function driveEverything(): readonly DrivenRow[] {
       const entries = Object.freeze([OWN_GYM, ...FRIENDS, RIVAL_GYM]);
       drive('rankLeaderboard', `${scope}/${metric}`, () => socialModule.rankLeaderboard(entries, metric, scope), [entries]);
       const rows = socialModule.rankLeaderboard(entries, metric, scope);
-      drive('leaderboardRankOf', `${scope}/${metric}`, () => socialModule.leaderboardRankOf(rows, SENTINELS.OWN_GYM_ID), [rows]);
+      drive('leaderboardRankOf', `${scope}/${metric}`, () => socialModule.leaderboardRankOf(rows, core.asGymId(SENTINELS.OWN_GYM_ID)), [rows]);
       for (const entry of entries) {
         drive('leaderboardScore', `${metric}/${entry.gymId}`, () => socialModule.leaderboardScore(entry, metric), [entry]);
       }
@@ -3595,10 +3601,10 @@ function driveEverything(): readonly DrivenRow[] {
     // had nothing to do with numbers. 'produced every arm of every
     // discriminated return' is the check that says so.
     for (const gymId of [
-      `${SENTINELS.FRIEND_GYM_ID}-0`,
-      `${SENTINELS.FRIEND_GYM_ID}-1`,
-      SENTINELS.OWN_GYM_ID,
-      SENTINELS.FAULT_VISIT_GYM_ID,
+      core.asGymId(`${SENTINELS.FRIEND_GYM_ID}-0`),
+      core.asGymId(`${SENTINELS.FRIEND_GYM_ID}-1`),
+      core.asGymId(SENTINELS.OWN_GYM_ID),
+      core.asGymId(SENTINELS.FAULT_VISIT_GYM_ID),
     ]) {
       drive('visitRefusals', `${label}/${gymId}`, () => socialModule.visitRefusals(context, gymId, calendarDay), [context, gymId]);
       drive('mayVisitFriendGym', `${label}/${gymId}`, () => socialModule.mayVisitFriendGym(context, gymId, calendarDay), [context, gymId]);
@@ -3792,11 +3798,11 @@ const OVERFLOW_ALLOCATION_CEILINGS: Readonly<Record<string, number>> = Object.fr
 const OVERFLOW_FLAT_NODE_CEILING = 400;
 
 /** The gyms every overflow visit driver asks about, in the main drive's order. */
-const OVERFLOW_VISIT_GYM_IDS: readonly string[] = Object.freeze([
-  `${SENTINELS.FRIEND_GYM_ID}-0`,
-  `${SENTINELS.FRIEND_GYM_ID}-1`,
-  SENTINELS.OWN_GYM_ID,
-  SENTINELS.FAULT_VISIT_GYM_ID,
+const OVERFLOW_VISIT_GYM_IDS: readonly GymId[] = Object.freeze([
+  core.asGymId(`${SENTINELS.FRIEND_GYM_ID}-0`),
+  core.asGymId(`${SENTINELS.FRIEND_GYM_ID}-1`),
+  core.asGymId(SENTINELS.OWN_GYM_ID),
+  core.asGymId(SENTINELS.FAULT_VISIT_GYM_ID),
 ]);
 
 /**
