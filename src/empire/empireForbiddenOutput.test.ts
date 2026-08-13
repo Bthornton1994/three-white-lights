@@ -4407,7 +4407,12 @@ function measureOverflow(): OverflowMeasurement {
           for (const found of scan.strings) {
             distinct1.add(found.value);
             const folded = normalise(found.value);
-            const site = `${subject.export}@${at}#${region}${found.path}=${found.value}`;
+            // `found.path` already opens with `${export}@${point}#${region}`,
+            // because that is the root label `scanRow` hands the walker. The
+            // main drive's own message prefixes it a second time and reads
+            // `recordFriendVisitrecordFriendVisit@7/…`; this does not, because
+            // a check that bites and fails unreadably is half a check.
+            const site = `${found.path}=${found.value}${found.viaKey ? ' (as a KEY)' : ''}`;
             if (BANNED_NORMALISED.has(folded)) bannedEqual.push(site);
             else if (
               !DIAGNOSTIC_CHANNEL_EXPORTS.includes(subject.export) &&
