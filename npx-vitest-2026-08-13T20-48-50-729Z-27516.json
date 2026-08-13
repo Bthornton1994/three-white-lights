@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-13T20-48-50-729Z-27516",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/career/eligibility.test.ts",
+    "-t",
+    "every skipped meet in every seeded season"
+  ],
+  "budgetSeconds": 400,
+  "startedAtIso": "2026-08-13T20:48:50.729Z",
+  "startedAtMs": 1786654130729,
+  "cwd": "/home/user/wt-witness-number",
+  "commit": "99e45afd681560c30a19ed9f40b50700ca2cc5fc",
+  "branch": "claude/witness-number-bites",
+  "dirty": 1,
+  "dirtyPaths": [
+    "src/career/eligibility.ts"
+  ],
+  "runner": {
+    "pid": 27516,
+    "startTick": "590471",
+    "cmdline": "node tools/watchdog.mjs --budget 400 -- npx vitest run src/career/eligibility.test.ts -t every skipped meet in every seeded season",
+    "bootId": "6c90d898-2088-4065-9587-1ba07c1beb33",
+    "bootEpochSeconds": 1786648226,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-13T20:48:50.749Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
