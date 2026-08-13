@@ -18,9 +18,27 @@
  * The split is the load-bearing part of this module rather than tidiness. GDD
  * §12.3 refuses a setback that punishes a player for showing up, and the
  * property that discharges it is about QUALIFICATION: getting stronger, or
- * competing more, must not shrink the set of meets you qualify for. Entering a
- * dated event does consume it, which is not a punishment and would look like
- * one if the two questions were one function.
+ * competing more, must not shrink the set of meets you qualify for.
+ *
+ * Entering a dated event does spend it, so the list `enterableMeets` hands back
+ * is one shorter afterwards. That is not a punishment, and the sentence has an
+ * enforced form rather than a reassuring one: for two careers identical except
+ * that one lifter competed at one more meet, every meet the lifter who stayed
+ * home may enter and the lifter who competed may not is a meet on that lifter's
+ * own record. Nothing else leaves their list. `eligibility.test.ts`'s axis C
+ * measures it over the same seasons axis B runs on — 1934 of 78926 pairs reach
+ * an entry being spent, 0 of them violate — beside a rest-after-a-meet control
+ * that violates on 1874 and costs a lifter as many as 4 meets they never went
+ * to. Before that axis existed this paragraph had no test at all: axes A and B
+ * both run through `qualifiedMeets`, which does not read `enteredMeetIds`, and
+ * a check for that is pinned directly under axis A.
+ *
+ * That claim carries no guarantee tag, and the omission is deliberate rather
+ * than an oversight. The tag registry, its witness table and its four censuses
+ * all live in `src/game/guaranteeTags.test.ts`, so a third career tag is an
+ * edit to that file rather than to this one, and this piece was scoped to
+ * `src/career/`. The test exists and is named above; the registration is
+ * tracked debt and is the one thing a reader should not assume is in place.
  *
  * A HIGHER BEST TOTAL NEVER QUALIFIES FOR FEWER MEETS. Measured rather than
  * argued: every ordered pair on a grid of 402 best totals, compared over the 84
@@ -33,14 +51,14 @@
  * meets. `@guarantee strength-never-removes-a-meet`
  *
  * COMPETING AT ONE MORE MEET NEVER QUALIFIES FOR FEWER EITHER, and it is the
- * same measurement on the other axis: 24 seeded seasons of 14 meets, every
- * skipped meet against every later moment, 2520 pairs, 0 violating, 78 of them
- * pairs where the lifter who competed more qualified for strictly more. The
- * control is qualification reading the latest total instead of the best, which
- * is how a current-form gate reads: 24 violating pairs, and a lifter who
- * competed one extra time loses as many as 26 meets. The sweep's own totals go
- * down 126 times, which is what keeps that control's domain from being empty.
- * `@guarantee attending-a-meet-never-removes-one`
+ * same measurement on the other axis: 24 seeded seasons, 82 meets deep at the
+ * deepest, every skipped meet against every later moment, 78926 pairs, 0
+ * violating, 193 of them pairs where the lifter who competed more qualified for
+ * strictly more. The control is qualification reading the latest total instead
+ * of the best, which is how a current-form gate reads: 74 violating pairs, and
+ * a lifter who competed one extra time loses as many as 26 meets. The sweep's
+ * own totals go down 708 times, which is what keeps that control's domain from
+ * being empty. `@guarantee attending-a-meet-never-removes-one`
  *
  * ---------------------------------------------------------------------------
  * 2. THE PAY-TO-WIN BOUNDARY, AS A TYPE
@@ -61,6 +79,14 @@
  * still compute `bestTotalKg` from something bought, and no type in this file
  * would see it. What makes that unreachable today is that a Total is written by
  * meet results only (GDD §2, §6.4) and nothing in the game sells one.
+ *
+ * WHAT THE TYPE ALSO CANNOT DO: it does not see a module-level `let`, or an
+ * imported mutable binding, that `qualifiesFor` (and its siblings) close over.
+ * A `CareerLifter` with exactly three keys can still consult a hidden wallet.
+ * `src/career/careerPurity.test.ts` grades that half: those functions may read
+ * their declared parameters, other functions, and module `const`s — not
+ * module-level or imported `let`/`var`. The type constant below is unchanged;
+ * the two halves are not substitutes.
  *
  * ---------------------------------------------------------------------------
  * 3. WHAT A CAREER RECORD IS NOT
