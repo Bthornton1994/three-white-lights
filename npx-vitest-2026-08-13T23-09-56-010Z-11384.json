@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-13T23-09-56-010Z-11384",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "--reporter=basic"
+  ],
+  "budgetSeconds": 600,
+  "startedAtIso": "2026-08-13T23:09:56.010Z",
+  "startedAtMs": 1786662596010,
+  "cwd": "/home/user/wt-witness",
+  "commit": "ff2da2b42ecbb6b3a5c87822ef7e7434db397d47",
+  "branch": "claude/witness-reproducible",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 11384,
+    "startTick": "206656",
+    "cmdline": "node tools/watchdog.mjs --budget 600 -- npx vitest run --reporter=basic",
+    "bootId": "e6207469-1fe3-432f-bf75-b034c3920b21",
+    "bootEpochSeconds": 1786660529,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-13T23:09:56.037Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
