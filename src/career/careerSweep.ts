@@ -208,22 +208,38 @@ export function strengthGrid(): readonly (number | null)[] {
  *     most, and every meet distinct.
  *
  * WHAT DEPTH STILL DOES NOT REACH, stated because a widened domain invites the
- * assumption that it is now complete, and pinned as three controls rather than
- * as this sentence:
+ * assumption that it is now complete, and pinned as controls rather than as
+ * this sentence. There are four edges and they are not all at the far end:
  *
  *   - A rule keyed to a lifter's 166th meet. The deepest career here is 165.
- *     `delayed-form-past-the-edge` is that edge as a measured zero.
+ *     `delayed-form-past-the-edge` is that edge as a measured zero, and the
+ *     count of careers deep enough to reach it is pinned at 0 beside it.
+ *   - A rule keyed to a lifter's 102nd meet. Careers do reach it — all 24 of
+ *     them — and the qualification axis reports nothing anyway.
+ *     `delayed-form-past-visible` is that, with the count of careers that DO
+ *     reach it pinned at 24, so "invisible" and "unreachable" are told apart.
  *   - A rule keyed to the THIRD occurrence of the annual series, on day 734.
- *     Two periods hold two of them, at days 6 and 370. `worlds-reset-third` is
- *     that edge as a measured zero.
+ *     Two periods hold two of them, at days 6 and 370.
+ *     `worlds-cooldown-third` is that edge as a measured zero.
  *   - A rule keyed to the FIRST occurrence, on day 6. That one is inside the
  *     calendar and outside every career, because no lifter can hold 650 kg six
- *     days in. `worlds-reset-first` is that as a measured zero too, and it is
- *     the older half of the same fact: an edge can sit in the middle of a
- *     domain as well as at its end.
+ *     days in. `worlds-cooldown-first` is that as a measured zero too, and it
+ *     is the sharper half of the pair: an edge can sit in the middle of a
+ *     domain as well as at its end, and a reader counting worlds meets on the
+ *     calendar would have assumed both were reachable.
+ *
+ * AND ONE BLIND SPOT THAT IS NOT AN EDGE AT ALL, which is what this round
+ * turned up rather than what it went looking for. The qualification axis is
+ * unable to see ANY rule keyed to the annual tier, at any depth this fixture
+ * reaches, because the lowest total anybody here puts up at a worlds meet is
+ * 657.5 kg against a top qualifying total of 650. A rule that rewrites their
+ * record with it leaves them clearing every bar on the ladder. That is why the
+ * tier-keyed controls that report a non-zero are on the entry axis, and why the
+ * three `worlds-reset-*` record controls ship reporting zero with their reason
+ * measured beside them.
  *
  * A finite domain has an edge wherever it is drawn; what changed is where, and
- * that all three edges are now numbers a test pins rather than sentences.
+ * that every edge is now a number a test pins rather than a sentence.
  */
 export const ATTENDANCE_SWEEP = Object.freeze({
   SEEDS: Object.freeze([

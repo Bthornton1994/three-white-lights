@@ -64,12 +64,18 @@
  * same measurement on the other axis: 24 seeded seasons, 165 meets deep at the
  * deepest, every skipped meet against every later moment, 322947 pairs, 0
  * violating, 209 of them pairs where the lifter who competed more qualified for
- * strictly more, and 23 of the careers reaching a worlds meet. The control is
- * qualification reading the latest total instead of the best, which is how a
- * current-form gate reads: 86 violating pairs, and a lifter who competed one
- * extra time loses as many as 26 meets. The sweep's own totals go down 1385
- * times, which is what keeps that control's domain from being empty.
- * `@guarantee attending-a-meet-never-removes-one`
+ * strictly more. The control is qualification reading the latest total instead
+ * of the best, which is how a current-form gate reads: 86 violating pairs, and
+ * a lifter who competed one extra time loses as many as 26 meets. The sweep's
+ * own totals go down 1385 times, which is what keeps that control's domain from
+ * being empty. `@guarantee attending-a-meet-never-removes-one`
+ *
+ * Those careers run for two calendar periods rather than one, and the count
+ * that says why is in the same test: twenty-three of the twenty-four reach a
+ * worlds meet, where a one-period sweep reached none at all. What that does
+ * and does not buy is the block above `ENTRY_VARIANTS` in `careerSweep.ts` —
+ * the entry axis can see a rule keyed to the annual tier and this one cannot,
+ * and both halves are measured rather than assumed.
  *
  * ---------------------------------------------------------------------------
  * 2. THE PAY-TO-WIN BOUNDARY, AS A TYPE

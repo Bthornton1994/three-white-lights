@@ -574,7 +574,7 @@ function saturationIndices(): readonly number[] {
 }
 
 describe('AXIS B — competing at one more meet never qualifies for fewer', () => {
-  it('[attending-a-meet-never-removes-one] every skipped meet in every seeded season, and the control beside it', { timeout: budgetFrom(11_946) }, () => {
+  it('[attending-a-meet-never-removes-one] every skipped meet in every seeded season, and the control beside it', () => {
     const shipped = measureAttendanceAxis('shipped');
     const control = measureAttendanceAxis('latest-total-wins');
 
@@ -638,7 +638,7 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     expect(control.worstDeficit).toBe(26);
   });
 
-  it('reaches a current-form rule that waits, and reports two different kinds of zero past it', { timeout: budgetFrom(6_500) }, () => {
+  it('reaches a current-form rule that waits, and reports two different kinds of zero past it', () => {
     // WHERE THIS SWEEP GOES BLIND, MEASURED AND PINNED FROM THREE SIDES.
     //
     // A current-form gate does not have to switch on at a lifter's first meet.
@@ -707,7 +707,7 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     expect(pastTheEdge.pairs).toBe(322947);
   });
 
-  it('cannot see a rule keyed to the annual tier at all, and the margin is 7.5 kg', { timeout: budgetFrom(6_500) }, () => {
+  it('cannot see a rule keyed to the annual tier at all, and the margin is 7.5 kg', () => {
     // THE FINDING THIS ROUND TURNED UP, AND IT IS NOT THE ONE IT WENT LOOKING
     // FOR. Deepening the simulation was meant to make a worlds-keyed rule
     // visible to this axis. It puts 23 worlds entries in the fixture and the
@@ -873,7 +873,7 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     expect(bestByThen).toBeGreaterThanOrEqual(CAREER_TUNING.QUALIFYING_TOTAL_KG.nationals ?? 0);
   });
 
-  it('builds the same careers incrementally as `careerAfter` builds from the top', { timeout: budgetFrom(9_000) }, () => {
+  it('builds the same careers incrementally as `careerAfter` builds from the top', () => {
     // THE CHECK THAT MAKES THE FAST PATH A FAST PATH RATHER THAN A DIFFERENT
     // MEASUREMENT. `seasonMoments` advances the previous moment's lifters by
     // one meet; `careerAfter` re-folds the whole prefix. They are two ways of
@@ -1112,7 +1112,7 @@ function measureOneEntryArm(variant: EntryVariant, lag: number): EntryMeasuremen
 }
 
 describe('AXIS C — entering a meet spends that meet and takes nothing else', () => {
-  it('every skipped meet in every seeded season, against a rest control and three tier-keyed ones', { timeout: budgetFrom(92_000) }, () => {
+  it('every skipped meet in every seeded season, against a rest control and three tier-keyed ones', { timeout: budgetFrom(82_895) }, () => {
     // WHAT THIS AXIS IS FOR, and it is the one thing axes A and B cannot do.
     // Both of them run through `qualifiedMeets`, which reads the federation and
     // the Total and never looks at `enteredMeetIds` — pinned directly under
@@ -1235,7 +1235,7 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
 
   });
 
-  it('is blind at axis B’s evaluation lag, which is why it has its own', { timeout: budgetFrom(78_000) }, () => {
+  it('is blind at axis B’s evaluation lag, which is why it has its own', { timeout: budgetFrom(71_005) }, () => {
     // The blind lag, kept runnable rather than described. This is the shipped
     // engine measured at axis B's evaluation lag of a week, and it is what this
     // axis looked like before it had its own: `spentPairs` is 0, because the
