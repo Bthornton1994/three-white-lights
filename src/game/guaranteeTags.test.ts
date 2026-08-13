@@ -1285,7 +1285,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'FAIL src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies '
       + 'for fewer > [attending-a-meet-never-removes-one] every skipped meet in every seeded '
       + 'season, and the control beside it\n'
-      + 'AssertionError: expected 24 to be +0 // Object.is equality',
+      + 'AssertionError: expected 86 to be +0 // Object.is equality',
   },
   // -------------------------------------------------------------------------
   // The numeric half of the tag, witnessed from BOTH sides of its set equality,
