@@ -3491,11 +3491,11 @@ function measureDrive(): DriveMeasurement {
 }
 
 const DRIVE_CENSUS = Object.freeze({
-  ROWS: 53162,
+  ROWS: 194760,
   EXPORTS_DRIVEN: 226,
-  NODES: 338409,
-  STRINGS: 1404775,
-  DISTINCT_STRINGS: 1034,
+  NODES: 2316401,
+  STRINGS: 10803491,
+  DISTINCT_STRINGS: 1611,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -3515,7 +3515,7 @@ const DRIVE_CENSUS = Object.freeze({
    * tell from an absence. This is the number that says the branch is live, in
    * the same role `TRIPWIRE_CENSUS.GETTERS_INVOKED` plays for the getter arm.
    */
-  STACKS: 1501,
+  STACKS: 2873,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -3921,13 +3921,16 @@ const AXIS_CENSUS: readonly (readonly [string, number, number])[] = Object.freez
   ['runEmpire / social inputs held fixed (control)', 4, 0],
   ['runEngagement / engagement history', 4, 3],
   ['runEngagement / engagement history held fixed (control)', 4, 0],
-  // Twenty rather than twenty-four, and the gap is the finding rather than a
+  // Eighty rather than eighty-four, and the gap is the finding rather than a
   // shortfall: reputation is one of the two axes `STATES` crosses and
   // production rates do not read it, so the four other reputations at an empty
   // roster fingerprint identically to the first point. Roster size is what
-  // moves this, and it moves it twenty times out of twenty-five.
-  ['productionRates / gym state shape', 25, 20],
-  ['productionRates / gym state held fixed (control)', 25, 0],
+  // moves this, and it moves it eighty times out of eighty-five. The point
+  // count went from 25 to 85 this round because ROSTER_SHAPE stopped being a
+  // five-point axis derived from two named thresholds and became a domain of
+  // every branch point up to `ROSTER_SLOTS_MAX + 1`.
+  ['productionRates / gym state shape', 85, 80],
+  ['productionRates / gym state held fixed (control)', 85, 0],
 ]);
 
 /**
@@ -3971,10 +3974,10 @@ const DIAGNOSTIC_CHANNEL_CENSUS: readonly (readonly [string, number])[] = Object
  * state of it; the four arms below are the whole population this instrument has.
  */
 const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.freeze([
-  ['beginRecruitment#accepted', 27],
-  ['beginRecruitment#refused', 98],
-  ['recordFriendVisit#refused', 80],
-  ['recordFriendVisit#visited', 24],
+  ['beginRecruitment#accepted', 135],
+  ['beginRecruitment#refused', 290],
+  ['recordFriendVisit#refused', 308],
+  ['recordFriendVisit#visited', 100],
 ]);
 
 /**
@@ -4061,9 +4064,16 @@ describe('instrument B — nothing this directory produces is a forbidden name',
 
   it('CONTAINS no banned name either, outside the diagnostic channel, and the exemption is measured', () => {
     const measurement = measureDrive();
-    const contained = measurement.strings.filter((entry) =>
-      BANNED_VOCABULARY.some((name) => normalise(entry.found.value).includes(normalise(name))),
-    );
+    // `normalise` is hoisted out of the inner loop rather than recomputed once
+    // per banned name. Same predicate, seven times less of it: this file's
+    // string population went from 53 162 to 194 760 when the registry started
+    // filing the whole tuning block, and this one line was 62 s of the 103 s
+    // the file takes.
+    const bannedNormalised = BANNED_VOCABULARY.map(normalise);
+    const contained = measurement.strings.filter((entry) => {
+      const value = normalise(entry.found.value);
+      return bannedNormalised.some((name) => value.includes(name));
+    });
     const exempted = contained.filter((entry) => DIAGNOSTIC_CHANNEL_EXPORTS.includes(entry.export));
     const offenders = contained
       .filter((entry) => !BAN_LIST_EXPORTS.includes(entry.export))
