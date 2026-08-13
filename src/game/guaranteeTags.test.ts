@@ -488,8 +488,32 @@ const GUARANTEE_COVERAGE = {
    * purpose is to stop a reader over-reading the test above it. Six of seven
    * rounds now: the scan demands nothing of the sentence that claims something
    * and flags the sentence that admits something.
+   *
+   * EIGHTH ROUND, 225 -> 227, AND THE RULING SEPARATES TWO NUMBERS THAT HAD
+   * BEEN RUNNING TOGETHER. This pin is a census of paragraphs that TRIGGER the
+   * scan. The "declared undercount of two" recorded in CLAUDE.md is a different
+   * quantity: two load-bearing paragraphs that were REWORDED OUT of triggering,
+   * so the scan under-counts load-bearing sentences by two. Bumping this pin
+   * does not touch that tally, and the tally stays at two.
+   *
+   * Read that way the two precedents stop conflicting. The round that bumped
+   * 224 -> 225 added prose that triggered. The round that declined to bump
+   * reworded instead, so nothing new triggered and no bump was owed. The choice
+   * was never "accurate pin versus honest undercount" — it was reword or bump,
+   * and CLAUDE.md names rewording as the evasion it warns about hardest.
+   *
+   * Attributed by measurement, per this comment's own convention. One file
+   * moved: `src/empire/empireForbiddenOutput.test.ts`, which contributed ZERO
+   * at 02a773f. The whole +2 is two paragraphs in it, both opening `AND THE
+   * FIRST VERSION OF THIS CHECK...` and `AND THE OLD VERSION OF THIS CHECK...`.
+   *
+   * SO IT IS SEVEN OF EIGHT, AND THE ASYMMETRY HELD AGAIN. Both new paragraphs
+   * are method notes about how a check USED to be wrong. Neither claims a
+   * guarantee. The round's actual guarantee — that a domain carries every
+   * branch point under its ceiling regardless of unit — moved this number by
+   * nothing.
    */
-  TREE_WIDE: 225,
+  TREE_WIDE: 227,
 } as const;
 
 // ---------------------------------------------------------------------------
