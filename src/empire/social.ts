@@ -126,11 +126,17 @@
 import {
   IDLE_ONLY_OUTPUTS,
   PROGRESSION_REACHING_OUTPUTS,
+  asDisplayName,
+  asFaultMessage,
   asGymBucks,
+  asGymId,
   isEmpireOutput,
   outputReach,
+  type DisplayName,
   type EmpireOutput,
+  type FaultMessage,
   type GymBucks,
+  type GymId,
   type LeaderboardScope,
   type OutputReach,
   type ReachOfOutput,
@@ -266,10 +272,16 @@ export function isSocialSurface(value: unknown): value is SocialSurface {
  *
  * No name table ships here. `gymId` and `displayName` are the caller's — see §3
  * of the header.
+ *
+ * Both are branded, and the brand narrows nothing about WHICH gyms exist. What
+ * it does is make `gymId: EMPIRE_FORBIDDEN_OUTPUTS[0]` a compile error at every
+ * branch point at once, rather than at the branch points a sampling domain
+ * happened to reach. `asGymId` and `asDisplayName` in `empireCore.ts` carry the
+ * argument and the two limits.
  */
 export interface GymSnapshot {
-  readonly gymId: string;
-  readonly displayName: string;
+  readonly gymId: GymId;
+  readonly displayName: DisplayName;
   readonly reputation: number;
   readonly combinedTotalKg: number;
 }
@@ -351,7 +363,7 @@ export function rankLeaderboard(
 /** Where a gym sits on a ranked bracket, or `null` if it is not on it. */
 export function leaderboardRankOf(
   rows: readonly LeaderboardRow[],
-  gymId: string,
+  gymId: GymId,
 ): number | null {
   for (const row of rows) {
     if (row.entry.gymId === gymId) return row.rank;
@@ -366,14 +378,25 @@ export function leaderboardRankOf(
 /** One recorded visit. `encouraged` is §5.5's "leave encouragement". */
 export interface FriendVisit {
   readonly day: CalendarDay;
-  readonly gymId: string;
+  readonly gymId: GymId;
   readonly encouraged: boolean;
 }
 
-/** One encouragement this gym received. */
+/**
+ * One encouragement this gym received.
+ *
+ * `fromGymId` is branded for the same reason `FriendVisit.gymId` is, and it is
+ * branded IN THE SAME COMMIT for a different one: CLAUDE.md's rule that when
+ * you fix a check the next thing to look at is the branch immediately below it.
+ * This interface is the one directly below `FriendVisit`, it holds the same
+ * kind of value, and it was NOT in `DECLARED_BARE_STRING_FIELDS` — no export
+ * returns an `Encouragement`, so the census never saw the field and a bypass
+ * planted here would have been invisible to instrument A the moment a wiring
+ * piece returned one.
+ */
 export interface Encouragement {
   readonly day: CalendarDay;
-  readonly fromGymId: string;
+  readonly fromGymId: GymId;
 }
 
 /**
@@ -457,7 +480,7 @@ export function visitsLeftOn(visits: readonly FriendVisit[], day: CalendarDay): 
 /** Every reason this gym may not be visited today, in `VISIT_REFUSALS` order. */
 export function visitRefusals(
   context: SocialContext,
-  gymId: string,
+  gymId: GymId,
   day: CalendarDay,
 ): readonly VisitRefusal[] {
   const refusals: VisitRefusal[] = [];
@@ -474,7 +497,7 @@ export function visitRefusals(
 /** Whether this gym may be visited today. */
 export function mayVisitFriendGym(
   context: SocialContext,
-  gymId: string,
+  gymId: GymId,
   day: CalendarDay,
 ): boolean {
   return visitRefusals(context, gymId, day).length === 0;
@@ -499,7 +522,7 @@ export type FriendVisitDecision =
  */
 export function recordFriendVisit(
   context: SocialContext,
-  gymId: string,
+  gymId: GymId,
   day: CalendarDay,
   encourage: boolean,
 ): FriendVisitDecision {
@@ -721,7 +744,7 @@ export function socialRewardSchedule(
  * It does not re-derive `outputReach`. An oracle that recomputes its subject's
  * own lookup cannot disagree with it.
  */
-export function socialVocabularyFaults(): readonly string[] {
+export function socialVocabularyFaults(): readonly FaultMessage[] {
   const faults: string[] = [];
 
   // Read through a widened alias rather than off the frozen tuple directly:
@@ -783,7 +806,7 @@ export function socialVocabularyFaults(): readonly string[] {
     }
   }
 
-  return faults;
+  return faults.map((message) => asFaultMessage(message));
 }
 
 /**
@@ -792,7 +815,7 @@ export function socialVocabularyFaults(): readonly string[] {
  * A list rather than a throw, for the reason `empireStateFaults` gives: a
  * caller validating a decoded wire payload wants all of them at once.
  */
-export function socialContextFaults(context: SocialContext): readonly string[] {
+export function socialContextFaults(context: SocialContext): readonly FaultMessage[] {
   const faults: string[] = [];
 
   faults.push(...gymSnapshotFaults(context.ownGym, 'own gym'));
@@ -843,7 +866,7 @@ export function socialContextFaults(context: SocialContext): readonly string[] {
     }
   }
 
-  return faults;
+  return faults.map((message) => asFaultMessage(message));
 }
 
 /** The per-snapshot half of the check above, so the three callers share it. */

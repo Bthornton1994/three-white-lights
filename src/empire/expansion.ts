@@ -134,6 +134,7 @@ import {
   PURCHASABLE_ACCELERANTS,
   WALL_CLOCK_FUNDED_OUTPUTS,
   asAcceleratedSeconds,
+  asFaultMessage,
   asGymBucks,
   asReputation,
   asUnacceleratedSeconds,
@@ -152,6 +153,7 @@ import {
   type EmpireOutput,
   type EmpireState,
   type EquipmentTier,
+  type FaultMessage,
   type GymAxes,
   type GymBucks,
   type InjuryDaysSaved,
@@ -849,7 +851,7 @@ export function skipExpansion(build: ExpansionBuild, applied: AppliedAccelerant)
  * It does not re-derive `axisLevelCost` or `mayAccelerate`. An oracle that
  * recomputes its subject's own lookup cannot disagree with it.
  */
-export function expansionVocabularyFaults(): readonly string[] {
+export function expansionVocabularyFaults(): readonly FaultMessage[] {
   const faults: string[] = [];
 
   if (new Set(EXPANSION_AXES).size !== EXPANSION_AXES.length) {
@@ -948,5 +950,5 @@ export function expansionVocabularyFaults(): readonly string[] {
     }
   }
 
-  return faults;
+  return faults.map((message) => asFaultMessage(message));
 }

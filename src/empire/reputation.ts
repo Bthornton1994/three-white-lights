@@ -184,6 +184,7 @@
  */
 
 import {
+  asFaultMessage,
   asGymBucks,
   asReputation,
   elapsedFor,
@@ -195,6 +196,7 @@ import {
   type EmpireLedgerEntry,
   type EmpireOutput,
   type EmpireState,
+  type FaultMessage,
   type GymBucks,
   type NpcTier,
   type OutputReach,
@@ -754,7 +756,7 @@ function gateProbeCeiling(): number {
  * `recruitReputationThreshold`. An oracle that recomputes its subject's own
  * lookup cannot disagree with it.
  */
-export function reputationVocabularyFaults(): readonly string[] {
+export function reputationVocabularyFaults(): readonly FaultMessage[] {
   const faults: string[] = [];
 
   // §2 of the header: a payout inherits its verdict, and the verdict has to come
@@ -849,7 +851,7 @@ export function reputationVocabularyFaults(): readonly string[] {
     faults.push('the gate ban probed no level at all');
   }
 
-  return faults;
+  return faults.map((message) => asFaultMessage(message));
 }
 
 /** What `reputationVocabularyFaults` walked. The non-vacuity guard beside it. */

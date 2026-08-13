@@ -257,7 +257,11 @@
 import {
   IDLE_ONLY_OUTPUTS,
   WALL_CLOCK_FUNDED_OUTPUTS,
+  asDisplayName,
+  asFaultMessage,
   asGymBucks,
+  asGymId,
+  asNpcId,
   asUnacceleratedSeconds,
   elapsedFor,
   isProgressionReachingOutput,
@@ -270,8 +274,10 @@ import {
   type EmpireClock,
   type EmpireOutput,
   type EmpireState,
+  type FaultMessage,
   type GymBucks,
   type IdleOnlyOutput,
+  type NpcId,
   type NpcLifter,
   type NpcTier,
   type PurchasableAccelerant,
@@ -331,11 +337,17 @@ import {
 // Vocabulary
 // ---------------------------------------------------------------------------
 
-/** The placeholder every recruited lifter is named with. See §7 of the header. */
-const RECRUIT_DISPLAY_NAME = 'Placeholder';
+/**
+ * The placeholder every recruited lifter is named with. See §7 of the header.
+ *
+ * Minted here rather than at the two use sites so the composed run has exactly
+ * one place a display name enters it, which is what makes the call-site census
+ * in `empireForbiddenOutput.test.ts` a short list instead of a long one.
+ */
+const RECRUIT_DISPLAY_NAME = asDisplayName('Placeholder');
 
 /** The gym id the composed run reports itself under, for the §5.5 comparison. */
-const OWN_GYM_ID = 'composed-gym';
+const OWN_GYM_ID = asGymId('composed-gym');
 
 /** A plan may carry no accelerant at all. This is that plan's accelerant. */
 export const NO_ACCELERANT: null = null;
@@ -691,10 +703,24 @@ export interface SocialInputs {
   readonly encouragementsReceived: readonly Encouragement[];
 }
 
-/** A recruitment that has been paid for and has not landed yet. */
+/**
+ * A recruitment that has been paid for and has not landed yet.
+ *
+ * `id` IS THE ID THE LIFTER WILL CARRY, so it is the `NpcId` brand and not a
+ * bare `string`. `DECLARED_BARE_STRING_FIELDS` used to record the mismatch with
+ * `NpcLifter.id` as "an inconsistency in the shipped types… recorded here rather
+ * than fixed", and gave as the reason that narrowing "buys nothing this census
+ * does not already give, because a new position reddens whatever its type is".
+ *
+ * The first clause of that reason is true and the second is false, which is why
+ * this is now branded. The census reddens on a new POSITION; every bypass this
+ * directory has been shown used an EXISTING one. Under the brand, the
+ * assignment into this field is refused by the compiler rather than by a domain
+ * that happened to contain the branch point.
+ */
 export interface PendingRecruit {
   readonly schedule: RecruitmentSchedule;
-  readonly id: string;
+  readonly id: NpcId;
 }
 
 /** The gym the player has: its state, its builds, and what it is waiting on. */
@@ -1204,7 +1230,10 @@ export function stepGym(
       const decision = beginRecruitment(offered, tier);
       if (decision.kind === 'accepted') {
         state = withBooks(state, decision.state, funding);
-        stillPending.push({ schedule: decision.schedule, id: `recruit-${recruits + stillPending.length}` });
+        stillPending.push({
+          schedule: decision.schedule,
+          id: asNpcId(`recruit-${recruits + stillPending.length}`),
+        });
       }
     }
   }
@@ -1580,7 +1609,7 @@ export function compareDayLists(
  * It does not re-derive `compareLedgers`. An oracle that recomputes its
  * subject's own comparison cannot disagree with it.
  */
-export function empireRunFaults(run: EmpireRun): readonly string[] {
+export function empireRunFaults(run: EmpireRun): readonly FaultMessage[] {
   const faults: string[] = [];
 
   // Every grant landed on exactly one mechanism. Two mechanisms exist and §6 of
@@ -1656,5 +1685,5 @@ export function empireRunFaults(run: EmpireRun): readonly string[] {
     );
   }
 
-  return faults;
+  return faults.map((message) => asFaultMessage(message));
 }
