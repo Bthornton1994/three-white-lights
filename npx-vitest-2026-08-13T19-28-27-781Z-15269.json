@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-13T19-28-27-781Z-15269",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "--reporter=json",
+    "--outputFile.json=/tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/merged.json"
+  ],
+  "budgetSeconds": 1500,
+  "startedAtIso": "2026-08-13T19:28:27.781Z",
+  "startedAtMs": 1786649307781,
+  "cwd": "/home/user/wt-c1-worlds",
+  "commit": "beeeb074c9d04f58b9c2d4d708741ea6e1b98b5a",
+  "branch": "claude/c1-worlds-reach",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 15269,
+    "startTick": "108176",
+    "cmdline": "node tools/watchdog.mjs --budget 1500 -- npx vitest run --reporter=json --outputFile.json=/tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/merged.json",
+    "bootId": "6c90d898-2088-4065-9587-1ba07c1beb33",
+    "bootEpochSeconds": 1786648226,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-13T19:28:27.802Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
