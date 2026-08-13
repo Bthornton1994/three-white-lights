@@ -1479,6 +1479,381 @@ describe('instrument A bites — the census is re-run over a probe carrying four
 });
 
 // ===========================================================================
+// INSTRUMENT C — the brand-constructor call sites, and the runtime refusal
+// ===========================================================================
+
+/**
+ * WHY A THIRD INSTRUMENT EXISTS, AND WHAT IT IS FOR.
+ *
+ * Instrument A reads DECLARED TYPES and instrument B DRIVES INPUTS. Branding
+ * the directory's string fields closed the assignment route — a forbidden name
+ * read out of the ban list can no longer be assigned into any of them, at every
+ * branch point at once, because a `string` is not a `GymId`. That is measured
+ * at `CLOSED_BARE_STRING_FIELDS` and it is exactly half the story.
+ *
+ * The other half is the constructor route: `asGymId(EMPIRE_FORBIDDEN_OUTPUTS[0])`
+ * compiles and always will, because a brand is a constructor discipline rather
+ * than an enumeration. Instrument B can only catch that where its domain
+ * reaches the branch, and eight rounds have each closed one branch point and
+ * declared the next — a ninth is declared open above
+ * `OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE`. A sampling instrument does not
+ * close a route the author picks a number for.
+ *
+ * WHAT MAKES THE PROBLEM ENUMERABLE IS THE CHANGE OF SUBJECT. An unbounded
+ * numeric input is not a finite set. A list of call sites is. So this instrument
+ * asks a question neither of the other two can: WHERE, in the shipped
+ * directory's source, does a raw string acquire one of these brands?
+ *
+ * TWO HALVES, AND THEY COVER DIFFERENT THINGS. Do not read either as the other.
+ *
+ *   - `the brand constructor call sites are exactly the declared ones` is
+ *     DETECTION. It resolves every call through the checker and set-equals the
+ *     sites against `DECLARED_BRAND_CONSTRUCTOR_CALLS` in both directions, with
+ *     a per-site count, so a NEW mint is red whether or not anything ever drives
+ *     it. Its limit: it detects a SITE and says nothing about what the site
+ *     does. `asGymId(context.friends[0].displayName)` would be an existing site
+ *     doing something new, and nothing here would move.
+ *   - `refuses every banned name at every string brand constructor` is
+ *     CONTAINMENT. `refuseForbiddenName` in `empireCore.ts` throws on a value
+ *     equal to a member of `EMPIRE_FORBIDDEN_OUTPUTS`, so such a value cannot be
+ *     handed to a caller. Its limit: it fires only when the path RUNS. A
+ *     constructor call behind a branch nothing reaches throws nothing, which is
+ *     the sampling limit this instrument exists not to depend on.
+ *
+ * The constructor set is DERIVED, not listed: it is every exported function of
+ * `empireCore.ts` whose return type is a branded string. So a fifth string brand
+ * cannot arrive without both halves picking it up — the site census starts
+ * counting its calls, and the refusal test starts requiring it to throw.
+ *
+ * WHAT IT DOES NOT COVER, said as a scope rather than a hedge. It reads the
+ * SHIPPED modules only. A test file may mint whatever it likes, and this file
+ * does; that is a fixture, not a shipped route. And it cannot see a cast:
+ * `'covered-day' as GymId` needs no constructor and is invisible here. The
+ * catcher for a cast is instrument B, which reads the VALUE that comes back and
+ * has no opinion about how it was typed.
+ */
+
+interface ConstructorCallSite {
+  /** `module.ts#enclosingDeclaration#constructorName`, or `#module` at top level. */
+  readonly site: string;
+  readonly calls: number;
+}
+
+interface ConstructorCensus {
+  /** Exported functions of `empireCore.ts` returning a branded string. */
+  readonly constructors: readonly string[];
+  readonly sites: readonly ConstructorCallSite[];
+  /** Call expressions examined, so an empty walk reports itself. */
+  readonly callsExamined: number;
+  readonly modules: number;
+}
+
+/**
+ * Find every call to a string brand constructor, resolving the CALLEE through
+ * the checker rather than matching its name.
+ *
+ * The resolution is the load-bearing part and it is not a style choice.
+ * CLAUDE.md records `progression.test.ts`'s seal check matching a callee by
+ * identifier TEXT while the check twelve lines below resolved symbols through
+ * the checker — a local shim spelled `sealServerValue` type-checked clean past
+ * 202 green guard tests. A local `const asGymId = (v: string) => v as GymId` in
+ * one of these modules would be invisible to a text match and is not a call to
+ * the exported symbol here.
+ */
+function constructorCensusOf(roots: readonly string[], probeText: string | null): ConstructorCensus {
+  const options = compilerOptions();
+  const program = programWith(options, roots, probeText);
+  const checker = program.getTypeChecker();
+
+  const corePath = path.join(HERE, 'empireCore.ts');
+  const coreSource = program.getSourceFile(corePath);
+  if (coreSource === undefined) throw new Error(`${corePath} is not in the program`);
+
+  let brandSymbol: ts.Symbol | undefined;
+  coreSource.forEachChild((node) => {
+    if (!ts.isVariableStatement(node)) return;
+    for (const declaration of node.declarationList.declarations) {
+      if (ts.isIdentifier(declaration.name) && declaration.name.text === 'EMPIRE_BRAND') {
+        brandSymbol = checker.getSymbolAtLocation(declaration.name);
+      }
+    }
+  });
+  if (brandSymbol === undefined) throw new Error('no EMPIRE_BRAND declaration in empireCore.ts');
+
+  const resolved = (symbol: ts.Symbol | undefined): ts.Symbol | undefined =>
+    symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+      ? checker.getAliasedSymbol(symbol)
+      : symbol;
+
+  const carriesBrand = (type: ts.Type): boolean =>
+    type.getProperties().some((property) => {
+      const declaration = property.valueDeclaration ?? property.declarations?.[0];
+      const name = declaration === undefined ? undefined : (declaration as ts.NamedDeclaration).name;
+      if (name === undefined || !ts.isComputedPropertyName(name)) return false;
+      return resolved(checker.getSymbolAtLocation(name.expression)) === brandSymbol;
+    });
+
+  /** A branded STRING, and not a branded number and not an array of either. */
+  const isBrandedString = (type: ts.Type): boolean =>
+    type.isIntersection() &&
+    type.types.some((part) => (part.flags & (ts.TypeFlags.String | ts.TypeFlags.StringLiteral)) !== 0) &&
+    carriesBrand(type);
+
+  const moduleSymbol = checker.getSymbolAtLocation(coreSource);
+  if (moduleSymbol === undefined) throw new Error('empireCore.ts resolved to no module symbol');
+
+  const constructorSymbols = new Set<ts.Symbol>();
+  const constructors: string[] = [];
+  for (const symbol of checker.getExportsOfModule(moduleSymbol)) {
+    const declaration = symbol.declarations?.[0];
+    if (declaration === undefined || !ts.isFunctionDeclaration(declaration)) continue;
+    const signature = checker.getSignatureFromDeclaration(declaration);
+    if (signature === undefined) continue;
+    if (!isBrandedString(checker.getReturnTypeOfSignature(signature))) continue;
+    constructorSymbols.add(symbol);
+    constructors.push(symbol.getName());
+  }
+  constructors.sort();
+
+  /** The nearest named thing a call sits inside, for a site a reader can find. */
+  const enclosing = (node: ts.Node): string => {
+    for (let at: ts.Node | undefined = node.parent; at !== undefined; at = at.parent) {
+      if (ts.isFunctionDeclaration(at) && at.name !== undefined) return at.name.text;
+      if (ts.isMethodDeclaration(at) && ts.isIdentifier(at.name)) return at.name.text;
+      if (ts.isVariableDeclaration(at) && ts.isIdentifier(at.name)) return at.name.text;
+    }
+    return '#module';
+  };
+
+  const counts = new Map<string, number>();
+  let callsExamined = 0;
+  let modules = 0;
+  for (const root of roots) {
+    const source = program.getSourceFile(root);
+    if (source === undefined) throw new Error(`${root} is not in the program`);
+    modules += 1;
+    const visit = (node: ts.Node): void => {
+      if (ts.isCallExpression(node)) {
+        callsExamined += 1;
+        const callee = resolved(checker.getSymbolAtLocation(node.expression));
+        if (callee !== undefined && constructorSymbols.has(callee)) {
+          const key = `${path.basename(root)}#${enclosing(node)}#${callee.getName()}`;
+          counts.set(key, (counts.get(key) ?? 0) + 1);
+        }
+      }
+      node.forEachChild(visit);
+    };
+    source.forEachChild(visit);
+  }
+
+  return {
+    constructors: Object.freeze(constructors),
+    sites: Object.freeze(
+      [...counts.entries()]
+        .map(([site, calls]) => Object.freeze({ site, calls }))
+        .sort((left, right) => (left.site < right.site ? -1 : 1)),
+    ),
+    callsExamined,
+    modules,
+  };
+}
+
+let constructorCensusMemo: ConstructorCensus | null = null;
+
+function constructorCensus(): ConstructorCensus {
+  if (constructorCensusMemo !== null) return constructorCensusMemo;
+  constructorCensusMemo = constructorCensusOf(shippedModulePaths(), null);
+  return constructorCensusMemo;
+}
+
+/**
+ * Every place in the SHIPPED directory where a raw string becomes a brand.
+ *
+ * Thirteen sites across six modules, with the call count per site, so a second
+ * mint added inside a function that already has one is red as well as a mint in
+ * a function that has none. `x1` is not decoration: the eight fault-list rows
+ * each mint exactly once, at the return, and a second call appearing inside one
+ * of those bodies is exactly the shape `asFaultMessage`'s own note says is not
+ * fenced at compile time.
+ */
+const DECLARED_BRAND_CONSTRUCTOR_CALLS: readonly string[] = Object.freeze([
+  'empireCore.ts#createNpcLifter#asDisplayName x1',
+  'empireCore.ts#createNpcLifter#asNpcId x1',
+  'empireCore.ts#empireStateFaults#asFaultMessage x1',
+  'empireCore.ts#empireVocabularyFaults#asFaultMessage x1',
+  'empireInvariant.ts#OWN_GYM_ID#asGymId x1',
+  'empireInvariant.ts#RECRUIT_DISPLAY_NAME#asDisplayName x1',
+  'empireInvariant.ts#empireRunFaults#asFaultMessage x1',
+  'empireInvariant.ts#stepGym#asNpcId x1',
+  'engagement.ts#engagementRunFaults#asFaultMessage x1',
+  'expansion.ts#expansionVocabularyFaults#asFaultMessage x1',
+  'reputation.ts#reputationVocabularyFaults#asFaultMessage x1',
+  'social.ts#socialContextFaults#asFaultMessage x1',
+  'social.ts#socialVocabularyFaults#asFaultMessage x1',
+]);
+
+/** What instrument C measured on the shipped tree. Counts, not bounds. */
+const CONSTRUCTOR_CENSUS = Object.freeze({
+  CONSTRUCTORS: 4,
+  SITES: 13,
+  MINTS: 13,
+  MODULES: 10,
+  /**
+   * Call expressions the walk examined across the directory.
+   *
+   * Pinned because a walker that stopped descending would find no sites and
+   * report a clean census, which is the reassuring direction. A four-figure
+   * number here says the walk really covered the directory's code.
+   */
+  CALLS_EXAMINED: 964,
+});
+
+const siteKey = (site: ConstructorCallSite): string => `${site.site} x${String(site.calls)}`;
+
+describe('instrument C — a raw string becomes a brand in a countable number of places', () => {
+  it('the brand constructor set is derived from the module, not listed here', () => {
+    const census = constructorCensus();
+    expect(census.modules).toBe(CONSTRUCTOR_CENSUS.MODULES);
+    expect(census.callsExamined).toBe(CONSTRUCTOR_CENSUS.CALLS_EXAMINED);
+    // The set itself, by name. It is what the checker says returns a branded
+    // string, so a fifth constructor joins both halves of this instrument
+    // without either being edited — and a constructor that stopped returning a
+    // brand drops out of it, which is red here first.
+    expect([...census.constructors]).toEqual([
+      'asDisplayName',
+      'asFaultMessage',
+      'asGymId',
+      'asNpcId',
+    ]);
+    expect(census.constructors.length).toBe(CONSTRUCTOR_CENSUS.CONSTRUCTORS);
+  });
+
+  it('the brand constructor call sites are exactly the declared ones', () => {
+    const census = constructorCensus();
+    // Set equality, both directions. A new mint is an unexpected member; a mint
+    // that moved or vanished is a stale row.
+    expect(census.sites.map(siteKey)).toEqual([...DECLARED_BRAND_CONSTRUCTOR_CALLS].sort());
+    expect(census.sites.length).toBe(CONSTRUCTOR_CENSUS.SITES);
+    expect(census.sites.reduce((total, site) => total + site.calls, 0)).toBe(
+      CONSTRUCTOR_CENSUS.MINTS,
+    );
+    // Every declared row names a constructor the checker actually found, so a
+    // row cannot survive its constructor being renamed away.
+    for (const row of DECLARED_BRAND_CONSTRUCTOR_CALLS) {
+      const name = row.split('#')[2]?.split(' ')[0] as string;
+      expect(census.constructors, row).toContain(name);
+    }
+  });
+
+  it('sees a call site that is not on the list — the walker is not asleep', () => {
+    // THE NON-VACUITY GUARD, and it is a probe rather than an argument. The
+    // census above is a set equality, and a set equality passes just as happily
+    // when the walker finds nothing at all. `probeMilestoneId` in the probe
+    // module calls `asNpcId`, so the same walk over an eleventh module must
+    // report exactly one site the shipped census does not have.
+    const probed = constructorCensusOf([...shippedModulePaths(), PROBE_PATH], PROBE_SOURCE);
+    const extra = probed.sites
+      .map(siteKey)
+      .filter((site) => !DECLARED_BRAND_CONSTRUCTOR_CALLS.includes(site));
+    expect(extra).toEqual([`${PROBE_MODULE}#probeMilestoneId#asNpcId x1`]);
+    expect(probed.modules).toBe(CONSTRUCTOR_CENSUS.MODULES + 1);
+    // And the shipped list is unchanged by the probe being in the program, so
+    // the extra row is the probe's and not a shift in what the walk sees.
+    expect(
+      probed.sites.map(siteKey).filter((site) => DECLARED_BRAND_CONSTRUCTOR_CALLS.includes(site)),
+    ).toEqual([...DECLARED_BRAND_CONSTRUCTOR_CALLS].sort());
+  });
+
+  it('refuses every banned name at every string brand constructor', () => {
+    // THE CONTAINMENT HALF, driven over the DERIVED constructor set rather than
+    // a list written here — so a fifth string brand that forgot
+    // `refuseForbiddenName` is red on this line.
+    const census = constructorCensus();
+    const module = core as unknown as Record<string, (value: string) => string>;
+    let refusals = 0;
+    for (const name of census.constructors) {
+      const constructor = module[name];
+      expect(typeof constructor, `${name} is not callable off the module`).toBe('function');
+      for (const forbidden of core.EMPIRE_FORBIDDEN_OUTPUTS) {
+        expect(() => (constructor as (value: string) => string)(forbidden), `${name}(${forbidden})`).toThrow(
+          new RegExp(`must not be a forbidden empire output.*${forbidden}`),
+        );
+        refusals += 1;
+      }
+    }
+    // Counts, not bounds: four constructors times four forbidden outputs. A
+    // constructor dropping out of the derived set, or a name dropping out of
+    // the ban list, moves this rather than leaving a shorter loop green.
+    expect(refusals).toBe(
+      CONSTRUCTOR_CENSUS.CONSTRUCTORS * core.EMPIRE_FORBIDDEN_OUTPUTS.length,
+    );
+    expect(refusals).toBe(16);
+
+    // The complement, so the refusal is not refusing everything. A benign
+    // identifier is accepted by all four, which is what makes the sixteen
+    // throws above a discrimination rather than a constructor that never works.
+    let accepted = 0;
+    for (const name of census.constructors) {
+      const constructor = module[name] as (value: string) => string;
+      expect(constructor(SENTINELS.NPC_ID)).toBe(SENTINELS.NPC_ID);
+      accepted += 1;
+    }
+    expect(accepted).toBe(CONSTRUCTOR_CENSUS.CONSTRUCTORS);
+  });
+
+  it('does NOT refuse the second ban list, and that limit is a number rather than a sentence', () => {
+    // `BANNED_VOCABULARY` is the union of two lists. `refuseForbiddenName` reads
+    // one of them: `FORBIDDEN_UNLOCK_KEYS` lives in `reputation.ts`, which
+    // imports `empireCore.ts`, so reading it there would be an import cycle —
+    // and the directory's own import fence in `empireCore.test.ts` is what makes
+    // that a real constraint rather than a preference.
+    //
+    // So this is the declared limit, taken as a measurement. It is not a pass.
+    // The catcher is instrument B, which compares every value it reaches against
+    // `BANNED_VOCABULARY` — both lists — by equality AND by containment.
+    const unlockKeys = reputationModule.FORBIDDEN_UNLOCK_KEYS;
+    let accepted = 0;
+    for (const key of unlockKeys) {
+      expect(core.asGymId(key)).toBe(key);
+      accepted += 1;
+    }
+    expect(accepted).toBe(unlockKeys.length);
+    expect(accepted).toBe(BANNED_VOCABULARY.length - core.EMPIRE_FORBIDDEN_OUTPUTS.length);
+    // And the two lists are disjoint, so `accepted` is really the whole of the
+    // second one rather than an overlap the first list happened to cover.
+    for (const key of unlockKeys) {
+      expect(core.EMPIRE_FORBIDDEN_OUTPUTS as readonly string[], key).not.toContain(key);
+    }
+  });
+
+  it('every field that used to be a bare string is branded now', () => {
+    // The join that makes `DECLARED_BARE_STRING_FIELDS` going empty and
+    // `DECLARED_BRANDED_STRING_POSITIONS` growing one fact rather than two
+    // edits that agree. Reverting any one field to `string` is red here AND on
+    // the bare equality, in the same run.
+    const branded = new Set(brandedKeys(stringSurface()));
+    let checked = 0;
+    for (const group of CLOSED_BARE_STRING_FIELDS) {
+      expect(group.positions.length, group.field).toBeGreaterThan(0);
+      expect(group.why.length, group.field).toBeGreaterThan(80);
+      expect(group.closedBy.length, group.field).toBeGreaterThan(0);
+      for (const position of group.positions) {
+        expect(branded.has(position), `${position} is no longer a branded position`).toBe(true);
+        checked += 1;
+      }
+    }
+    // The count the old census pinned, moved from one list to the other and
+    // pinned in its new home rather than dropped.
+    expect(checked).toBe(23);
+    expect(CLOSED_BARE_STRING_FIELDS.length).toBe(5);
+    // And the live bare list really is empty, said here as well as in its own
+    // test so the two halves of the move are asserted together.
+    expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
+    expect(SURFACE_CENSUS.BARE_POSITIONS).toBe(0);
+  });
+});
+
+// ===========================================================================
 // INSTRUMENT B — the behavioural drive and the deep scan
 // ===========================================================================
 
