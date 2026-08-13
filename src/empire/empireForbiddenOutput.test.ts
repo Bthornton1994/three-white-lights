@@ -4291,6 +4291,33 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
 ]);
 
 /**
+ * How many of the main drive's rows each ceilinged axis produced.
+ *
+ * DERIVED BY HAND FROM THE DOMAIN SIZES RATHER THAN READ OFF A FAILURE, which
+ * is the point of it. `DRIVE_CENSUS.ROWS` is 206 718 and there is no second way
+ * to get that number except to run the drive again — the same expression, which
+ * is the oracle-mirrors-its-subject shape. The stamp makes a third of it
+ * arithmetic instead:
+ *
+ *   DAY   = 51 day points × 3 fundings × 2 accelerants, one runEmpire row each
+ *           and twenty-three more wherever the run came back, plus 51 × 25 for
+ *           the social loop.
+ *   COUNT = 55 slot points × 2 everyNth, one historyFrom row each and four
+ *           more wherever the grid was legal.
+ *   ROSTER_SHAPE = 166 clocks × 17 roster sizes × 3, plus 85 states × (9 + 5
+ *           tiers × 5 + 3 clock shapes × (5 + 221 NUMBER points)).
+ *
+ * A domain that quietly loses points moves a number here that a reader can
+ * check against the multiplication, which `DRIVE_CENSUS.ROWS` on its own cannot
+ * be.
+ */
+const MAIN_DRIVE_ROWS_BY_AXIS: Readonly<Record<string, number>> = Object.freeze({
+  COUNT: 542,
+  DAY: 8481,
+  ROSTER_SHAPE: 68986,
+});
+
+/**
  * A (subject, point) pair the allocation budget declined to drive.
  *
  * Declared as data rather than as a sentence, and joined to what the run
@@ -5539,6 +5566,15 @@ describe('the overflow pass — the catcher for what the ceilings drop', () => {
     // A domain that gains a ceiling and no stamp reddens here, and so does a
     // stamp on a domain that has no ceiling.
     expect(stamped).toEqual(ceilinged);
+
+    // The row count per axis, which is the one part of `DRIVE_CENSUS.ROWS` a
+    // reader can re-derive from the domain sizes by multiplication.
+    const rowsByAxis: Record<string, number> = {};
+    for (const row of driveEverything()) {
+      if (row.axis === null) continue;
+      rowsByAxis[row.axis] = (rowsByAxis[row.axis] ?? 0) + 1;
+    }
+    expect(rowsByAxis).toEqual({ ...MAIN_DRIVE_ROWS_BY_AXIS });
 
     for (const domain of ceilinged) {
       const drivenByTheMainPass = distinct(
