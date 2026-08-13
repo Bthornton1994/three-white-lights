@@ -1163,9 +1163,11 @@ const TRANSCRIPT_BAR = {
  *     transcript is a measurement of the MUTATED tree, which by construction is
  *     a number the shipped code does not produce. Transplanting this file's own
  *     numeric-prose rule — every numeral must occur in the named test's body —
- *     flags 35 of the 46 rows that state one, 62 of 121 numerals, and it is
- *     inverted rather than merely strict: a mutant's count belongs in no
- *     assertion here.
+ *     flags most of the rows that state one, and it is inverted rather than
+ *     merely strict: a mutant's count belongs in no assertion here. The
+ *     transplant is kept RUNNABLE beside the rule that replaced it, and its
+ *     four counts are `TRANSPLANTED_NUMERIC_RULE`, re-derived on every run
+ *     rather than written into this sentence.
  *   - AND IT WOULD HAVE WALKED PAST THE DEFECT THAT PROMPTED IT. `24` still
  *     occurs in AXIS B's body today, as `expect(shipped.seasons).toBe(24)`. A
  *     body-scoped resolution check was green through both deepenings, on a
@@ -1255,6 +1257,22 @@ type DomainFault = (typeof DOMAIN_FAULTS)[number];
  * measured quantity to be stale.
  */
 const MEASURED_SCALAR = /expected\s[+-]?\d+(?:\.\d+)?\sto\s/;
+
+/**
+ * What the obvious rule measures on this table, pinned so the argument against
+ * it is a fact in the repository rather than a sentence in a report.
+ *
+ * `rows` is the transcripts that state a numeral at all, `flagged` the ones
+ * holding at least one the named test's body does not carry, and the two
+ * numeral counts the same population one grain down. It is re-derived in the
+ * test rather than transcribed here, so it moves when the table does.
+ */
+const TRANSPLANTED_NUMERIC_RULE = {
+  rows: 48,
+  flagged: 36,
+  numerals: 124,
+  unresolved: 64,
+} as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
 function statesAPopulation(anchor: string): boolean {
@@ -3452,6 +3470,52 @@ describe('the guarantee-tag convention', () => {
     // `COLLECTION_KILL_MUTANTS.length` was deleted for.
     expect(needing, 'graded rows whose transcript quotes a measured number').toBe(
       TRANSCRIPT_BAR.WITH_A_MEASURED_NUMBER,
+    );
+
+    // THE REJECTED ALTERNATIVE, KEPT RUNNABLE AND MEASURED HERE RATHER THAN
+    // ASSERTED IN THE COMMENT ABOVE. The obvious rule is this file's own
+    // numeric-prose rule pointed at the transcript: every numeral it states
+    // must occur in the named test's body. Driven through the same
+    // `claimedNumbersIn` and `numeralOccursIn` the real rule uses, so this is
+    // that rule rather than a re-description of it.
+    const transplanted = { rows: 0, flagged: 0, numerals: 0, unresolved: 0 };
+    for (const witness of MUTATION_WITNESSES) {
+      const body =
+        bodyOfTestDeclaring(
+          readFileSync(path.join(REPO_ROOT, witness.testFile), 'utf8'),
+          witness.guarantee,
+        ) ?? '';
+      const cited = claimedNumbersIn(witness.observed).claimed;
+      if (cited.length === 0) continue;
+      const missing = cited.filter((one) => !numeralOccursIn(body, one.numeral));
+      transplanted.rows += 1;
+      transplanted.numerals += cited.length;
+      transplanted.unresolved += missing.length;
+      if (missing.length > 0) transplanted.flagged += 1;
+    }
+    // Counts on both sides, so it cannot drain quietly. What they say is that
+    // the transplant is not merely strict but INVERTED: a mutant's count is by
+    // construction a number no assertion in the shipped body pins.
+    expect(transplanted, 'the numeric-prose rule transplanted onto transcripts').toEqual(
+      TRANSPLANTED_NUMERIC_RULE,
+    );
+
+    // AND IT WOULD HAVE BEEN GREEN ON THE ROW THAT PROMPTED THIS RULE, which is
+    // the sharper half. `attending-a-meet-never-removes-one` recorded 24 while
+    // its own mutant gave 74 and then 86 — and 24 occurs in that body, as the
+    // SEASON COUNT. The transplant resolves on a coincidence with an unrelated
+    // pin, one level in from the `144` its own grant records.
+    const axisB =
+      bodyOfTestDeclaring(
+        readFileSync(path.join(REPO_ROOT, 'src/career/eligibility.test.ts'), 'utf8'),
+        'attending-a-meet-never-removes-one',
+      ) ?? '';
+    expect(
+      numeralOccursIn(axisB, '24'),
+      'the stale figure the transplant would have resolved rather than caught',
+    ).toBe(true);
+    expect(axisB, 'the unrelated pin that coincidence runs through').toContain(
+      'expect(shipped.seasons).toBe(24);',
     );
 
     // EACH FAULT ON ITS OWN, on planted rows against a real body — the same
