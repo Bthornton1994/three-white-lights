@@ -1112,7 +1112,7 @@ function measureOneEntryArm(variant: EntryVariant, lag: number): EntryMeasuremen
 }
 
 describe('AXIS C — entering a meet spends that meet and takes nothing else', () => {
-  it('every skipped meet in every seeded season, against a rest control and against the blind lag', { timeout: budgetFrom(35_065) }, () => {
+  it('every skipped meet in every seeded season, against a rest control and three tier-keyed ones', { timeout: budgetFrom(92_000) }, () => {
     // WHAT THIS AXIS IS FOR, and it is the one thing axes A and B cannot do.
     // Both of them run through `qualifiedMeets`, which reads the federation and
     // the Total and never looks at `enteredMeetIds` — pinned directly under
@@ -1139,7 +1139,6 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
     const worldsFirst = arms['worlds-cooldown-first'] as EntryMeasurement;
     const worldsSecond = arms['worlds-cooldown-second'] as EntryMeasurement;
     const worldsThird = arms['worlds-cooldown-third'] as EntryMeasurement;
-    const blindLag = measureOneEntryArm('shipped', ATTENDANCE_SWEEP.EVALUATION_LAG_DAYS);
 
     // The property first, for the reason axes A and B give at length.
     expect(shipped.unexplainedPairs).toBe(0);
@@ -1234,6 +1233,9 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
       expect(arm.growingPairs).toBe(shipped.growingPairs);
     }
 
+  });
+
+  it('is blind at axis B’s evaluation lag, which is why it has its own', { timeout: budgetFrom(78_000) }, () => {
     // The blind lag, kept runnable rather than described. This is the shipped
     // engine measured at axis B's evaluation lag of a week, and it is what this
     // axis looked like before it had its own: `spentPairs` is 0, because the
@@ -1241,11 +1243,25 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
     // `entryVerdict` refuses it to both of them. Every count that survives is a
     // count axis B already holds, which is the definition of a second harness
     // that is blind for the same reason as the first.
+    //
+    // In its own test rather than beside the arms above, because it needs its
+    // own pass over every lifter at a different day and the two together run
+    // long enough that one hang guard covering both would have to be twice as
+    // patient as either needs. The domain literals are the same ones the test
+    // above pins on the shipped arm.
+    const blindLag = measureOneEntryArm('shipped', ATTENDANCE_SWEEP.EVALUATION_LAG_DAYS);
     expect(blindLag.spentPairs).toBe(0);
     expect(blindLag.unexplainedPairs).toBe(0);
     expect(blindLag.movedPairs).toBe(209);
     expect(blindLag.growingPairs).toBe(209);
-    expect(blindLag.pairs).toBe(shipped.pairs);
+    expect(blindLag.pairs).toBe(322947);
+    expect(blindLag.seasonMeets).toBe(3925);
+    // And the lag it is blind at is axis B's own, not a number picked to make
+    // the zero above happen.
+    expect(ATTENDANCE_SWEEP.EVALUATION_LAG_DAYS).toBeGreaterThan(
+      ATTENDANCE_SWEEP.ENTRY_EVALUATION_LAG_DAYS,
+    );
+    expect(ATTENDANCE_SWEEP.ENTRY_EVALUATION_LAG_DAYS).toBe(0);
   });
 
   it('the two axes read two different functions, so neither can stand in for the other', () => {
