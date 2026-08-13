@@ -8346,7 +8346,7 @@ describe('the channel census — the routes a string can leave this directory by
 // ---------------------------------------------------------------------------
 
 /**
- * Twenty-seven routes, planted into shipped modules one at a time, each run
+ * Twenty-eight routes, planted into shipped modules one at a time, each run
  * against `tsc --noEmit`, against this file, and against the three accidental
  * catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
@@ -8839,6 +8839,30 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'ISOLATION, and it turned on a detail worth writing down: the mutant needs `EMPIRE_FORBIDDEN_OUTPUTS` in `engagement.ts`, which has no such import. Adding a NAMED specifier to the existing `./empireCore` import adds no MODULE specifier, and the import fence counts modules — 27 — so it stayed green. A second import statement would have reddened it, which is the fence working and would not have been this guard.',
     ]),
   }),
+  Object.freeze({
+    id: 'M28',
+    shape:
+      "31-adjacent — NOT AN ATTACK: the grading of the proposed `refuseWith(message: FaultMessage): never` wrap for the throw channel, in five configurations, of which two are compile measurements and two are runtime ones",
+    where:
+      "empireCore.ts, a new `refuseWith` beside `asFaultMessage`, plus `recruitment.ts`'s over-capacity throw — the M25 site — converted to call it",
+    attempts: 5,
+    tscExit: 2,
+    caughtBy: Object.freeze([
+      'THE COST FIRST, DERIVED RATHER THAN COUNTED BY HAND: the channel census puts the throw channel at 54 sites in 8 of the 10 shipped modules. Every one is `new RangeError`; 41 carry a template literal, 6 a string literal and 4 a concatenation. There is not one bare identifier among them.',
+      '(a) `refuseWith(message: string)`, the M25 site converted with its template literal unchanged — `tsc --noEmit` exit 0. The bare ban-list read `refuseWith(EMPIRE_FORBIDDEN_OUTPUTS[0])` compiles too.',
+      "tsc --noEmit exit 2 in configuration (b) — `refuseWith(message: FaultMessage)` with nothing minted, and the pair of errors IS the measurement: `src/empire/empireCore.ts(1346,14): error TS2345: Argument of type 'string' is not assignable to parameter of type 'FaultMessage'.` on the BARE BAN-LIST READ, and the byte-identical error at `src/empire/recruitment.ts(376,7)` on the LEGITIMATE TEMPLATE LITERAL.",
+      '(c) the same brand with both sites minted — exit 0. `refuseWith(asFaultMessage(EMPIRE_FORBIDDEN_OUTPUTS[0]))` compiles, which is route 2 exactly as at the fault channel.',
+      "(d) containment under (c), driven rather than reasoned: `recruitment.test.ts > refuses a roster that outgrew its slots between the two calls` reports `expected [Function] to throw error matching /roster holds 2 of 2 slots/ but got 'faultMessage must not be a forbidden empire output; the idle layer may not produce covered-day.'` The caller receives the refusal and never the name.",
+      "(e) the same drive under (a) — no brand, no mint: `'thrownMessage must not be a forbidden empire output; the idle layer may not produce covered-day.'` IDENTICAL CONTAINMENT, ZERO MINTS.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      "THE VERDICT ON THE BRAND: REFUSED, and the measurement is (b) against (c). The brand's compile-time bite on the bypass shape exists only in configuration (b), and (b) is not a configuration this directory can ship — it refuses 41 legitimate template-literal sites with the same error it gives the bare read. The shippable branded configuration is (c), and in (c) the bypass compiles. So the brand buys NOTHING at compile time in any configuration that ships. That is the difference from E16's field brands, which refused the bare read while every legitimate assignment was already a branded value; here the legitimate traffic is plain strings, so a brand cannot separate them.",
+      'THE VERDICT ON THE WRAP ITSELF: worth having, not taken this round, and the reason is a priority rather than a doubt. (e) is real containment for 54 sites at the cost of 54 mechanical edits and no mints, and it would make the M25 shape unshippable rather than merely detectable. It is not taken because the throw channel already HAS a catcher — the drive, since E17 split the argument region, plus this round the site census — while the callback channel had none at all, and closing a live bypass outranks adding a second catcher to a channel that has one.',
+      'THE PRICE OF TAKING IT, so the next round can budget rather than discover: one new export moves `SURFACE_CENSUS.EXPORTS` (229), the drive\'s export set and four of `DRIVE_CENSUS`\'s count pins, instrument C\'s `CALLS_EXAMINED`, and `empireCore.test.ts`\'s producer and string censuses — every one of which has to be RE-DERIVED by a run rather than guessed, at roughly five minutes a run.',
+      'AND THE ENFORCEMENT IT WOULD NEED IS ALREADY BUILT. A wrap nothing forces callers through is a convention. Once the 54 sites are converted, the throw channel\'s site count in `CHANNEL_SITE_COUNTS` falls to the one inside `refuseWith`, and a 55th direct `throw` moves that number — which is the enumerable-list reformulation this file uses for brand constructors, applied to the one channel that has no constructor.',
+    ]),
+  }),
 ]);
 
 /**
@@ -9021,7 +9045,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(27);
+    expect(PLANTED_ROUTES.length).toBe(28);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -9073,7 +9097,7 @@ describe('the routes that were planted, and what each of them cost', () => {
     // could not reach with any domain.
     expect(
       PLANTED_ROUTES.filter((route) => route.tscExit === 2).map((route) => route.id),
-    ).toEqual(['M15', 'M16', 'M17', 'M18', 'M26']);
+    ).toEqual(['M15', 'M16', 'M17', 'M18', 'M26', 'M28']);
     // Twenty-two attempts for fourteen routes: the fifteen the first nine took,
     // one for M10, two for M11, one for M12, two for M13 and one for M14 —
     // which needed no extra attempt because the lead agent had already stripped
@@ -9093,8 +9117,11 @@ describe('the routes that were planted, and what each of them cost', () => {
     // the round that planted it had already measured what the import fence
     // counts — a named specifier added to an import statement that exists is
     // not a module specifier, and 27 is the number that would have moved.
-    expect(attempts).toBe(38);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(17);
+    // Five for M28, which is the throw-wrap grading in five configurations —
+    // two compile measurements, two runtime ones, and the site count the
+    // channel census derived — rather than an attack.
+    expect(attempts).toBe(43);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(18);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {

@@ -1336,6 +1336,19 @@ export function asDisplayName<S extends string>(value: S & Unbranded<S>): Displa
  * all, so it is neither typed nor contained. `completeRecruitment` is where
  * that was planted and the overflow pass is what catches it; see the brand
  * note at the top of this file.
+ *
+ * THE OBVIOUS REPAIR FOR THAT — a `refuseWith(message: FaultMessage): never`
+ * every throw goes through — WAS MEASURED AND ITS BRAND WAS REFUSED. Recorded
+ * as M28 in `empireForbiddenOutput.test.ts`, five configurations. The brand
+ * refuses the bare ban-list read and the legitimate template literal with the
+ * SAME `TS2345`, and there are 54 throw sites of which 41 are template
+ * literals, so the configuration where the brand bites is one this directory
+ * cannot ship; the one it can ship mints, and a mint compiles the bypass. What
+ * the wrap does buy is runtime containment, and that half needs no brand at
+ * all: unbranded, with no mint anywhere, the M25 shape comes back to the caller
+ * as `thrownMessage must not be a forbidden empire output` rather than as the
+ * name. The trade, the price and the enforcement it would need are in M28's own
+ * row rather than summarised here.
  */
 export function asFaultMessage<S extends string>(value: S & Unbranded<S>): FaultMessage {
   refuseForbiddenName(value, 'faultMessage');
