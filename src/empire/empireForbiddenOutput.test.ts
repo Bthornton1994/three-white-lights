@@ -113,12 +113,26 @@
  *   domain has it. Filing is what makes a threshold unconditional above a
  *   ceiling; it is no longer what makes it present.
  *
- *   The route that is still open, named because a ceiling is a real concession:
- *   a subject that keys a ceilinged axis on a branch point ABOVE that ceiling.
- *   `DOMAIN_CENSUS.OMITTED_ABOVE_CEILING` is that route counted per domain —
- *   39, 39 and 56 against 0, 0 and 0 — and `DOMAIN_COST_SECONDS` is what was
- *   paid for it, measured rather than assumed. There is no catcher for it in
- *   this file, and that is stated at the registry rather than implied here.
+ *   THAT ROUTE WAS OPEN AND IS NOW MOSTLY CLOSED, and this paragraph is the
+ *   before and the after rather than only the after. A ceiling is a real
+ *   concession: a subject that keys a ceilinged axis on a branch point ABOVE
+ *   that ceiling was invisible, `DOMAIN_CENSUS.OMITTED_ABOVE_CEILING` counted
+ *   the route per domain — 39, 39 and 56 against 0, 0 and 0 — and the file said
+ *   plainly that nothing here caught it. The eighth bypass was exactly that:
+ *   `recordFriendVisit` returning the ban list's first member on day 2 000,
+ *   which is `NPC_RECRUIT_COST_GYM_BUCKS.club` and is above the DAY ceiling of
+ *   600. `tsc` exit 0, 13 files and 495 tests green.
+ *
+ *   THE OVERFLOW PASS is the catcher. The ceilings buy back a CROSS-PRODUCT and
+ *   a dropped point does not need one, so each of the 134 dropped points gets
+ *   its axis's subjects called once at that single value against a minimal
+ *   fixture, scanned by the same `deepScan` through the same `scanRow`. The
+ *   ceilings did not move. What it does NOT cover is written as two numbers
+ *   rather than a sentence: `OVERFLOW_CENSUS.POINTS_DRIVEN` is 104 of 134, and
+ *   `OVERFLOW_RESIDUAL` names the 1 020 (subject, point) pairs an allocation
+ *   budget declined, per subject, with the reason. The 30 points with no drive
+ *   at all are ROSTER_SHAPE above 2 000, because that axis has no subject whose
+ *   cost is flat in the roster size.
  *
  *   Its second limit, and the one the domain fix alone did not close: a domain
  *   decides which NUMBERS an axis is driven at and says nothing about whether
@@ -2069,17 +2083,27 @@ function domainOf(
  * concession without a stated price is how the ten-point domain survived six
  * rounds.
  *
- * THE ROUTE THAT STILL GETS PAST THIS, named concretely so it can be planted: a
- * subject that compares a narrow-domain axis against a branch point ABOVE that
- * domain's ceiling. `omits` on the census below is that route counted rather
- * than described — per domain, exactly how many of the 66 branch points it does
- * not carry — and `OMITTED_ABOVE_CEILING` pins those counts. The catcher inside
- * this file is nothing: a domain that omits a point cannot drive it. What
- * covers it instead is that the omitted points are the LARGE ones, and the
- * axes with a ceiling are the two whose subjects allocate per unit of the axis,
- * so a `day === 45000` mutant is a subject that would have had to allocate
- * 45 000 objects to be caught. That is a cost the file declines to pay and says
- * so, rather than a hazard it claims not to have.
+ * THE ROUTE THAT USED TO GET PAST THIS, named concretely because it was
+ * planted: a subject that compares a narrow-domain axis against a branch point
+ * ABOVE that domain's ceiling. `omits` on the census below is that route
+ * counted rather than described — per domain, exactly how many of the 66 branch
+ * points it does not carry — and `OMITTED_ABOVE_CEILING` pins those counts.
+ *
+ * THE PARAGRAPH THAT USED TO SIT HERE SAID THE CATCHER WAS NOTHING, and argued
+ * that the dropped points were the large ones and a `day === 45000` mutant
+ * would have had to allocate 45 000 objects to be caught. The argument was
+ * sound and the conclusion was wrong, because it was an argument about the
+ * ALLOCATING subjects and the DAY axis has ten that allocate nothing.
+ * `recordFriendVisit` is one of them, and returning the ban list's first member
+ * on day 2 000 cost it a comparison and no allocation at all. It is kept here
+ * rather than deleted because it is a worked example of a limit whose stated
+ * reason covers less than the limit does.
+ *
+ * The catcher is the overflow pass, below `driveEverything`. It leaves every
+ * ceiling exactly where it is and drives each dropped point once, on its own,
+ * without the cross-product the ceiling was bought to avoid. What it still does
+ * not reach is `OVERFLOW_RESIDUAL`, which is per subject and per point rather
+ * than three numbers.
  */
 interface NumericDomain {
   readonly units: readonly AxisUnit[];
@@ -2429,6 +2453,11 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
   'FOLD_TRIPWIRES',
   'KINDED_RETURN_CENSUS',
   'LITERAL_AXES',
+  // The overflow pass's arm census. Registered here rather than in
+  // FIXTURE_LISTS because it is what the pass PRODUCED and not what it was fed
+  // — the same distinction KINDED_RETURN_CENSUS is on the strength of, one
+  // pass over.
+  'OVERFLOW_ARM_CENSUS',
 ]);
 
 /**
@@ -2486,7 +2515,7 @@ const DOMAIN_CENSUS = Object.freeze({
   }),
   ALIASES: 6,
   LITERAL_AXES: 7,
-  LABELLED_LISTS: 12,
+  LABELLED_LISTS: 13,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
@@ -2818,9 +2847,34 @@ interface DrivenRow {
   readonly point: string;
   /** The return (or the thrown payload), then every argument, re-read AFTER the call. */
   readonly values: readonly unknown[];
+  /**
+   * The `NUMERIC_DOMAINS` key whose points this row was driven at, for the
+   * domains that carry a ceiling — or null.
+   *
+   * This is the field the overflow pass joins on, and it exists because the
+   * alternative was a hand-written list. A subject added to a ceilinged
+   * domain's loop below stamps itself here, and the overflow pass's subject
+   * list is asserted set-equal to what is stamped, in both directions. A
+   * source scan for the loop's text would have been the other option and is
+   * the instrument this file already records losing on the axis it was not
+   * written about.
+   */
+  readonly axis: string | null;
 }
 
 const DRIVEN_ROWS: DrivenRow[] = [];
+
+/**
+ * The ceilinged domain whose points the drive is currently walking.
+ *
+ * Written by `driveEverything` immediately around the loops that read a
+ * ceilinged domain, and read by `drive` and `read`. Only the domains that
+ * carry a ceiling are stamped: the other three omit nothing, so an overflow
+ * subject list for them would be a list with no points to drive. 'stamps
+ * exactly the domains that carry a ceiling' pins that correspondence in both
+ * directions, so a domain gaining a ceiling reddens until its loop is stamped.
+ */
+let drivingAxis: string | null = null;
 
 /**
  * Call one export at one domain point and keep everything it could have
@@ -2839,12 +2893,12 @@ function drive(exportName: string, point: string, thunk: () => unknown, args: re
     values.push(error);
   }
   values.push(...args);
-  DRIVEN_ROWS.push({ export: exportName, point, values });
+  DRIVEN_ROWS.push({ export: exportName, point, values, axis: drivingAxis });
 }
 
 /** Read an exported constant and keep it, so exported DATA is a subject too. */
 function read(exportName: string, value: unknown): void {
-  DRIVEN_ROWS.push({ export: exportName, point: 'read', values: [value] });
+  DRIVEN_ROWS.push({ export: exportName, point: 'read', values: [value], axis: drivingAxis });
 }
 
 /**
@@ -3142,12 +3196,14 @@ function driveEverything(): readonly DrivenRow[] {
       drive('npcGymBucksPerHour', label, () => npcModule.npcGymBucksPerHour(lifter, clock));
       drive('npcTrainingIqPerDay', label, () => npcModule.npcTrainingIqPerDay(lifter, clock));
       drive('npcOutputRates', label, () => npcModule.npcOutputRates(lifter, clock));
+      drivingAxis = 'ROSTER_SHAPE';
       for (const size of ROSTER_SHAPES) {
         const roster = rosterOf(size, 0, 0);
         drive('rosterGymBucksPerHour', `${label}/${String(size)}`, () => npcModule.rosterGymBucksPerHour(roster, clock), [roster]);
         drive('rosterTrainingIqPerDay', `${label}/${String(size)}`, () => npcModule.rosterTrainingIqPerDay(roster, clock), [roster]);
         drive('rosterOutputRates', `${label}/${String(size)}`, () => npcModule.rosterOutputRates(roster, clock), [roster]);
       }
+      drivingAxis = null;
       drive('settledLoyaltyMultiplier', label, () =>
         npcModule.settledLoyaltyMultiplier(core.settledTenureDays(lifter, clock.unaccelerated)),
       );
@@ -3182,6 +3238,7 @@ function driveEverything(): readonly DrivenRow[] {
   drive('progressionLedger', 'full', () => core.progressionLedger(LEDGER), [LEDGER]);
   drive('idleLedger', 'full', () => core.idleLedger(LEDGER), [LEDGER]);
   drive('createEmpireState', 'zero-arg', () => core.createEmpireState());
+  drivingAxis = 'ROSTER_SHAPE';
   for (const [label, state] of STATES) {
     drive('empireStateFaults', label, () => core.empireStateFaults(state), [state]);
     drive('assertEmpireState', label, () => core.assertEmpireState(state), [state]);
@@ -3217,6 +3274,7 @@ function driveEverything(): readonly DrivenRow[] {
       }
     }
   }
+  drivingAxis = null;
   drive('empireStateFaults', 'faulted', () => core.empireStateFaults(FAULTED_STATE), [FAULTED_STATE]);
   drive('assertEmpireState', 'faulted', () => core.assertEmpireState(FAULTED_STATE), [FAULTED_STATE]);
   drive('offlineBankingHorizonSeconds', 'zero-arg', () => productionModule.offlineBankingHorizonSeconds());
@@ -3349,6 +3407,7 @@ function driveEverything(): readonly DrivenRow[] {
       );
     }
   }
+  drivingAxis = 'DAY';
   for (const days of DAY_DOMAIN) {
     for (const funding of invariant.EMPIRE_FUNDINGS) {
       for (const accelerant of [null, core.PURCHASABLE_ACCELERANTS[0] as core.PurchasableAccelerant]) {
@@ -3382,6 +3441,7 @@ function driveEverything(): readonly DrivenRow[] {
       }
     }
   }
+  drivingAxis = null;
   drive('empireRunFaults', 'faulted', () => invariant.empireRunFaults(faultedRun()), [faultedRun()]);
 
   // --- engagement.ts
@@ -3392,6 +3452,7 @@ function driveEverything(): readonly DrivenRow[] {
       drive('engagementWiring', `${key}/${String(upkeep)}`, () => engagementModule.engagementWiring(key, upkeep));
     }
   }
+  drivingAxis = 'COUNT';
   for (const slots of COUNT_DOMAIN) {
     for (const everyNth of [1, 2]) {
       const label = `${String(slots)}/${String(everyNth)}`;
@@ -3407,6 +3468,7 @@ function driveEverything(): readonly DrivenRow[] {
       drive('slotWallSeconds', label, () => engagementModule.slotWallSeconds(slots, EMPIRE_SWEEP_CHECK_INS_PER_DAY));
     }
   }
+  drivingAxis = null;
   {
     let tally = engagementModule.emptyEngagementTally();
     for (const spending of invariant.EMPIRE_SPENDING_POLICIES) {
@@ -3484,6 +3546,7 @@ function driveEverything(): readonly DrivenRow[] {
       );
     }
   }
+  drivingAxis = 'DAY';
   for (const day of DAY_DOMAIN) {
     const calendarDay = socialModule.asCalendarDay(day);
     const context = socialContextAt([0, 1, day]);
@@ -3532,10 +3595,1020 @@ function driveEverything(): readonly DrivenRow[] {
     );
     drive('socialRewardSchedule', label, () => socialModule.socialRewardSchedule(calendarAt(CALENDAR_ANCHOR), day));
   }
+  drivingAxis = null;
   drive('socialContextFaults', 'faulted', () => socialModule.socialContextFaults(FAULTED_SOCIAL_CONTEXT), [FAULTED_SOCIAL_CONTEXT]);
 
   return DRIVEN_ROWS;
 }
+
+// ---------------------------------------------------------------------------
+// The overflow pass — the catcher for the ceilings' declared limit
+// ---------------------------------------------------------------------------
+
+/**
+ * WHAT THIS IS FOR, in one sentence: `DOMAIN_CENSUS.OMITTED_ABOVE_CEILING` was
+ * a declared limit with no catcher, and this is the catcher.
+ *
+ * The registry above gives three domains a `foreignCeiling` because the drive
+ * cannot afford to cross their points with tiers, clocks, ladders and states —
+ * DAY unbounded did not finish inside a 700 s watchdog budget, and those
+ * measurements are in `DOMAIN_COST_SECONDS`. The price was 39, 39 and 56 branch
+ * points dropped from those three domains, and the eighth bypass was a subject
+ * keyed on one of them: `recordFriendVisit` returning the ban list's first
+ * member on day `NPC_RECRUIT_COST_GYM_BUCKS.club`, which is 2000 and is above
+ * the DAY ceiling of 600. `tsc` exit 0 and 13 files / 495 tests green.
+ *
+ * THE OBSERVATION THIS PASS IS BUILT ON: the ceilings buy back a CROSS-PRODUCT,
+ * and an omitted point does not need one. Each dropped point needs the axis's
+ * own subjects called ONCE at that single value, against a minimal fixture,
+ * scanned by the same `deepScan` the main drive uses. So the ceilings stay
+ * exactly where they are and the coverage they were paying for comes back at a
+ * fraction of the price.
+ *
+ * HOW IT KNOWS WHAT TO DRIVE, which is the part that had to be structural. The
+ * subject list below is not read from the loops above by eye. `DrivenRow.axis`
+ * stamps every row the main drive produces under a ceilinged domain, and
+ * 'drives every export the main drive drives on a ceilinged axis' is a set
+ * equality between that stamp and `OVERFLOW_SUBJECTS`, in both directions. An
+ * export added to the DAY loop reddens this file until it has an overflow row,
+ * and an overflow row for an export the DAY loop does not drive reddens it the
+ * other way.
+ *
+ * WHAT IT DOES NOT CLOSE, named here and counted in `OVERFLOW_RESIDUAL` rather
+ * than described. A subject whose cost grows with the axis value cannot be
+ * driven at 120 000 for free: `historyFrom` allocates one entry per slot, and a
+ * 120 000-slot grid crossed with the four exports that then walk it is not a
+ * test, it is the measurement that produced the ceilings in the first place.
+ * `OVERFLOW_ALLOCATION_CEILING` is where that stops, every (subject, point)
+ * pair above it is named in `OVERFLOW_RESIDUAL` with its reason, and the
+ * residual is a set equality in both directions so a pair cannot be dropped
+ * from the list without being dropped from the skip. The flat subjects — which
+ * is where the eighth bypass lived — are driven at every dropped point with no
+ * budget at all.
+ */
+
+/** One branch point a ceiling drops, as the pair the census counts. */
+interface OverflowPoint {
+  /** The `NUMERIC_DOMAINS` key whose ceiling dropped it. */
+  readonly domain: string;
+  /** The `EVERY_BRANCH_POINT` label, so a reader can disagree with the point. */
+  readonly label: string;
+  readonly value: number;
+}
+
+/**
+ * The points one domain's ceiling drops.
+ *
+ * The same arithmetic 'straddles every branch point it is obliged to' does when
+ * it counts `omitted`, and deliberately so: the two are joined by a set
+ * equality below, and a join between two DIFFERENT arithmetics would be a join
+ * that can disagree for a reason that is nobody's defect. What the join buys is
+ * that the pinned numbers in `OMITTED_ABOVE_CEILING` describe a set that was
+ * actually driven, rather than a set that was counted.
+ */
+function overflowPointsFor(name: string, domain: NumericDomain): readonly OverflowPoint[] {
+  const required = new Set<string>(Object.keys(domain.alsoContains));
+  for (const unit of domain.units) {
+    for (const label of Object.keys(UNIT_THRESHOLDS[unit])) required.add(label);
+  }
+  const points: OverflowPoint[] = [];
+  for (const [label, value] of Object.entries(EVERY_BRANCH_POINT)) {
+    if (required.has(label)) continue;
+    if (value <= domain.foreignCeiling) continue;
+    points.push(Object.freeze({ domain: name, label, value }));
+  }
+  return Object.freeze(points);
+}
+
+function overflowPoints(): readonly OverflowPoint[] {
+  return Object.freeze(
+    Object.entries(NUMERIC_DOMAINS).flatMap(([name, domain]) => overflowPointsFor(name, domain)),
+  );
+}
+
+/**
+ * How a subject's cost scales with the value of the axis it is driven on.
+ *
+ * `flat` means the call and the scan of what comes back are the same size at
+ * every point of the axis. `allocating` means they are not — one object per
+ * day, per slot or per roster member — and it is the class the budget applies
+ * to.
+ *
+ * The classification is a judgement, so it is MEASURED rather than trusted:
+ * 'measures the cost class of every subject rather than asserting it' scans
+ * each flat subject at the largest point it is driven at and requires the node
+ * count to stay under `OVERFLOW_FLAT_NODE_CEILING`. A subject misfiled as flat
+ * produces tens of thousands of nodes there and reddens.
+ */
+type OverflowCost = 'flat' | 'allocating';
+
+interface OverflowSubject {
+  /** The `NUMERIC_DOMAINS` key this subject is an axis of. */
+  readonly domain: string;
+  readonly export: string;
+  readonly cost: OverflowCost;
+  /**
+   * What the call allocates per unit of the axis, for an `allocating` row.
+   * Required and required to be specific, because `OVERFLOW_RESIDUAL` is only
+   * as honest as the reason beside each skipped pair.
+   */
+  readonly why: string;
+  /**
+   * One call group per row: the return (or the thrown payload) first, then
+   * every argument re-read AFTER the call, exactly as `drive` keeps them.
+   */
+  readonly at: (value: number) => readonly (readonly unknown[])[];
+}
+
+/**
+ * The largest axis value an `allocating` subject of each domain is driven at.
+ *
+ * PER DOMAIN AND NOT ONE NUMBER, because the three axes are not the same price
+ * and a single number would be set by the worst of them. One roster point costs
+ * twenty-three subjects each scanning one `NpcLifter` per member, twice; one
+ * day point costs eleven subjects, most of them reading a ledger. The
+ * measurements are in `OVERFLOW_COST_SECONDS`, taken the way
+ * `DOMAIN_COST_SECONDS` was — one configuration at a time, reading vitest's own
+ * `Duration` for the overflow block.
+ *
+ * These are the only free parameters this pass adds. They are cost knobs and
+ * NOT a correctness boundary for the flat subjects, which are driven at every
+ * dropped point with no budget at all — and the flat set is where the eighth
+ * bypass lived. Every pair a budget skips is named in `OVERFLOW_RESIDUAL`.
+ */
+const OVERFLOW_ALLOCATION_CEILINGS: Readonly<Record<string, number>> = Object.freeze({
+  DAY: 2000,
+  /**
+   * NO CEILING, AND THE MEASUREMENT IS WHY. COUNT started this round with one,
+   * on the assumption that a slot grid is the expensive thing —
+   * `historyFrom` allocating one entry per slot is the example CLAUDE.md gives
+   * for an axis that cannot be driven large. Measured at the other two axes'
+   * shipped ceilings: 11.81 s with no COUNT ceiling against 9.59 s with one, a
+   * ratio of 1.23 against a bar of 1.5. So the check below deleted it — a
+   * concession has to show a real saving or it is buying nothing and charging
+   * the coverage for it, which is the rule that deleted two of E14's five
+   * domain ceilings. One hundred and twenty (subject, point) pairs — the four
+   * allocating COUNT subjects at the thirty points above 2 000 — came back for
+   * 2.2 s.
+   */
+  COUNT: Number.POSITIVE_INFINITY,
+  ROSTER_SHAPE: 2000,
+});
+
+/**
+ * The most nodes a `flat` subject may produce at any point it is driven at.
+ *
+ * The catcher for the cost classification above. `visitRefusals` at day 120 000
+ * scans the same handful of nodes it scans at day 800; `socialRewardSchedule`
+ * scans 120 000. Anything between the two is a subject whose row is wrong.
+ */
+const OVERFLOW_FLAT_NODE_CEILING = 400;
+
+/** The gyms every overflow visit driver asks about, in the main drive's order. */
+const OVERFLOW_VISIT_GYM_IDS: readonly string[] = Object.freeze([
+  `${SENTINELS.FRIEND_GYM_ID}-0`,
+  `${SENTINELS.FRIEND_GYM_ID}-1`,
+  SENTINELS.OWN_GYM_ID,
+  SENTINELS.FAULT_VISIT_GYM_ID,
+]);
+
+/**
+ * The per-value fixtures, built once and handed to every subject of their axis.
+ *
+ * Memoised on the LAST value only rather than on all of them. A roster of
+ * 2 000 lifters is cheap to build and expensive to keep, and the pass walks one
+ * value at a time, so a one-entry memo shares the fixture across a domain's
+ * twenty-three subjects without holding forty-four rosters alive at once.
+ */
+let overflowContextAt = -1;
+let overflowContextMemo: SocialContext | null = null;
+
+function overflowSocialContext(day: number): SocialContext {
+  if (overflowContextAt !== day || overflowContextMemo === null) {
+    overflowContextAt = day;
+    // The same shape the main drive's day loop uses: a visit to `friend-0` on
+    // the day being driven, so `friend-1` is what reaches the VISITED arm.
+    overflowContextMemo = socialContextAt([0, 1, day]);
+  }
+  return overflowContextMemo;
+}
+
+let overflowRunAt = -1;
+let overflowRunMemo: invariant.EmpireRun | null = null;
+
+function overflowRun(days: number): invariant.EmpireRun {
+  if (overflowRunAt !== days || overflowRunMemo === null) {
+    overflowRunAt = days;
+    overflowRunMemo = invariant.runEmpire(
+      days,
+      policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY),
+      planAt(null, 0),
+      socialInputsAt(),
+    );
+  }
+  return overflowRunMemo;
+}
+
+let overflowHistoryAt = -1;
+let overflowHistoryMemo: EngagementHistory | null = null;
+
+function overflowHistory(slots: number): EngagementHistory {
+  if (overflowHistoryAt !== slots || overflowHistoryMemo === null) {
+    overflowHistoryAt = slots;
+    overflowHistoryMemo = historyAt(slots, 1);
+  }
+  return overflowHistoryMemo;
+}
+
+let overflowStateAt = -1;
+let overflowStateMemo: EmpireState | null = null;
+
+function overflowState(rosterSize: number): EmpireState {
+  if (overflowStateAt !== rosterSize || overflowStateMemo === null) {
+    overflowStateAt = rosterSize;
+    overflowStateMemo = stateAt({
+      rosterSize,
+      reputation: EMPIRE_TUNING.REPUTATION_TIER_THRESHOLDS[0],
+      gymBucks: EMPIRE_TUNING.RIVAL_REWARD_GYM_BUCKS,
+      wide: true,
+      elapsed: EMPIRE_TUNING.SECONDS_PER_DAY,
+      skipped: EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT,
+    });
+  }
+  return overflowStateMemo;
+}
+
+let overflowRosterAt = -1;
+let overflowRosterMemo: readonly NpcLifter[] | null = null;
+
+function overflowRoster(size: number): readonly NpcLifter[] {
+  if (overflowRosterAt !== size || overflowRosterMemo === null) {
+    overflowRosterAt = size;
+    overflowRosterMemo = rosterOf(size, 0, 0);
+  }
+  return overflowRosterMemo;
+}
+
+/** The one clock, tier and output the overflow fixtures use. Named, not indexed inline. */
+const OVERFLOW_CLOCK: EmpireClock = core.createEmpireClock(
+  EMPIRE_TUNING.SECONDS_PER_DAY,
+  EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT,
+);
+const OVERFLOW_TIER: NpcTier = EMPIRE_TUNING.NPC_TIERS[0] as NpcTier;
+const OVERFLOW_OUTPUT: EmpireOutput = core.EMPIRE_OUTPUTS[0];
+const OVERFLOW_ANCHOR: CalendarDay = socialModule.asCalendarDay(CALENDAR_ANCHOR);
+
+/**
+ * One call, kept the way `drive` keeps one: the return or the thrown payload
+ * first, then every argument re-read AFTER the call.
+ *
+ * The re-read is not decoration here either. Attack shape 13's second half is a
+ * value delivered by mutating a caller-supplied sink, and nothing this pass
+ * hands in ever carries a banned name, so a banned name found in an argument
+ * was written there by the subject.
+ */
+function attempt(thunk: () => unknown, ...args: readonly unknown[]): readonly unknown[] {
+  try {
+    return [thunk(), ...args];
+  } catch (error) {
+    return [error, ...args];
+  }
+}
+
+/**
+ * The twenty subjects the main drive reaches through `STATES`, which is the
+ * fixture list `ROSTER_SHAPE` is the axis of.
+ *
+ * All twenty share one `why`, and that is a statement about the mechanism
+ * rather than a shortcut: every one of them takes an `EmpireState` holding the
+ * roster, so every one of them allocates and scans one `NpcLifter` per member
+ * for the same reason. A row here whose cost came from somewhere else would
+ * need its own sentence.
+ */
+const ROSTER_STATE_WHY =
+  'takes an EmpireState whose roster holds one NpcLifter per member, and is handed that state as a re-read argument, so both the call and the scan are linear in the roster size.';
+
+function rosterStateSubject(
+  exportName: string,
+  call: (state: EmpireState) => unknown,
+): OverflowSubject {
+  return Object.freeze({
+    domain: 'ROSTER_SHAPE',
+    export: exportName,
+    cost: 'allocating',
+    why: ROSTER_STATE_WHY,
+    at: (size: number) => [attempt(() => call(overflowState(size)), overflowState(size))],
+  });
+}
+
+const OVERFLOW_RATES: RosterRateSource = invariant.rosterRatesAt(OVERFLOW_CLOCK);
+
+const ROSTER_STATE_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
+  rosterStateSubject('empireStateFaults', (state) => core.empireStateFaults(state)),
+  rosterStateSubject('assertEmpireState', (state) => core.assertEmpireState(state)),
+  rosterStateSubject('composeTrainingIqRate', (state) =>
+    invariant.composeTrainingIqRate(state, state.clock),
+  ),
+  rosterStateSubject('expansionContext', (state) => expansionModule.expansionContext(state, BUILDS)),
+  rosterStateSubject('recruitmentBoard', (state) => recruitmentModule.recruitmentBoard(state)),
+  rosterStateSubject('npcTierUnlocks', (state) => reputationModule.npcTierUnlocks(state)),
+  rosterStateSubject('unlockedNpcTiers', (state) => reputationModule.unlockedNpcTiers(state)),
+  rosterStateSubject('topNpcTierUnlocked', (state) => reputationModule.topNpcTierUnlocked(state)),
+  rosterStateSubject('reputationRates', (state) =>
+    reputationModule.reputationRates(state, state.clock),
+  ),
+  rosterStateSubject('recruitmentRefusals', (state) =>
+    recruitmentModule.recruitmentRefusals(state, OVERFLOW_TIER),
+  ),
+  rosterStateSubject('mayRecruit', (state) => recruitmentModule.mayRecruit(state, OVERFLOW_TIER)),
+  rosterStateSubject('recruitmentOffer', (state) =>
+    recruitmentModule.recruitmentOffer(state, OVERFLOW_TIER),
+  ),
+  rosterStateSubject('beginRecruitment', (state) =>
+    recruitmentModule.beginRecruitment(state, OVERFLOW_TIER),
+  ),
+  rosterStateSubject('completeRecruitment', (state) =>
+    recruitmentModule.completeRecruitment(
+      state,
+      recruitmentModule.recruitmentSchedule(OVERFLOW_TIER, state.clock),
+      SENTINELS.RECRUIT_ID,
+      SENTINELS.RECRUIT_DISPLAY_NAME,
+    ),
+  ),
+  rosterStateSubject('gymBucksRatePerHour', (state) =>
+    productionModule.gymBucksRatePerHour(state, OVERFLOW_CLOCK, OVERFLOW_RATES),
+  ),
+  rosterStateSubject('trainingIqRatePerDay', (state) =>
+    productionModule.trainingIqRatePerDay(state, OVERFLOW_CLOCK, OVERFLOW_RATES),
+  ),
+  rosterStateSubject('productionRates', (state) =>
+    productionModule.productionRates(state, OVERFLOW_CLOCK, OVERFLOW_RATES),
+  ),
+  rosterStateSubject('accrueProduction', (state) =>
+    productionModule.accrueProduction(state, OVERFLOW_CLOCK, OVERFLOW_RATES),
+  ),
+  rosterStateSubject('accrueSponsorship', (state) =>
+    reputationModule.accrueSponsorship(state, OVERFLOW_CLOCK),
+  ),
+  rosterStateSubject('accrueReputation', (state) =>
+    reputationModule.accrueReputation(state, OVERFLOW_CLOCK, EMPIRE_SWEEP_CHECK_INS_PER_DAY),
+  ),
+]);
+
+const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
+  // --- DAY: the calendar axis, and the one the eighth bypass was keyed on.
+  Object.freeze({
+    domain: 'DAY',
+    export: 'visitsUsedOn',
+    cost: 'flat',
+    why: '',
+    at: (day: number) => [
+      attempt(
+        () => socialModule.visitsUsedOn(overflowSocialContext(day).visits, socialModule.asCalendarDay(day)),
+        overflowSocialContext(day).visits,
+      ),
+    ],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'visitsLeftOn',
+    cost: 'flat',
+    why: '',
+    at: (day: number) => [
+      attempt(
+        () => socialModule.visitsLeftOn(overflowSocialContext(day).visits, socialModule.asCalendarDay(day)),
+        overflowSocialContext(day).visits,
+      ),
+    ],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'socialContextFaults',
+    cost: 'flat',
+    why: '',
+    at: (day: number) => [
+      attempt(() => socialModule.socialContextFaults(overflowSocialContext(day)), overflowSocialContext(day)),
+    ],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'encouragementGymBucksOn',
+    cost: 'flat',
+    why: '',
+    at: (day: number) => [
+      attempt(
+        () =>
+          socialModule.encouragementGymBucksOn(
+            overflowSocialContext(day).encouragementsReceived,
+            socialModule.asCalendarDay(day),
+          ),
+        overflowSocialContext(day).encouragementsReceived,
+      ),
+    ],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'visitRefusals',
+    cost: 'flat',
+    why: '',
+    at: (day: number) =>
+      OVERFLOW_VISIT_GYM_IDS.map((gymId) =>
+        attempt(
+          () =>
+            socialModule.visitRefusals(
+              overflowSocialContext(day),
+              gymId,
+              socialModule.asCalendarDay(day),
+            ),
+          overflowSocialContext(day),
+          gymId,
+        ),
+      ),
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'mayVisitFriendGym',
+    cost: 'flat',
+    why: '',
+    at: (day: number) =>
+      OVERFLOW_VISIT_GYM_IDS.map((gymId) =>
+        attempt(
+          () =>
+            socialModule.mayVisitFriendGym(
+              overflowSocialContext(day),
+              gymId,
+              socialModule.asCalendarDay(day),
+            ),
+          overflowSocialContext(day),
+          gymId,
+        ),
+      ),
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'recordFriendVisit',
+    cost: 'flat',
+    why: '',
+    // THE SUBJECT THE EIGHTH BYPASS WAS PLANTED IN, driven at both values of
+    // the encourage flag and at all four gyms, because the VISITED arm is
+    // reachable for exactly one of them and the arm is where the name went.
+    at: (day: number) =>
+      OVERFLOW_VISIT_GYM_IDS.flatMap((gymId) =>
+        [false, true].map((encourage) =>
+          attempt(
+            () =>
+              socialModule.recordFriendVisit(
+                overflowSocialContext(day),
+                gymId,
+                socialModule.asCalendarDay(day),
+                encourage,
+              ),
+            overflowSocialContext(day),
+            gymId,
+          ),
+        ),
+      ),
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'rivalPeriodIndex',
+    cost: 'flat',
+    why: '',
+    at: (day: number) => [
+      attempt(() => socialModule.rivalPeriodIndex(OVERFLOW_ANCHOR, socialModule.asCalendarDay(day))),
+    ],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'rivalPeriodStartDay',
+    cost: 'flat',
+    why: '',
+    at: (day: number) => [attempt(() => socialModule.rivalPeriodStartDay(OVERFLOW_ANCHOR, day))],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'rivalPeriodCloseDay',
+    cost: 'flat',
+    why: '',
+    at: (day: number) => [attempt(() => socialModule.rivalPeriodCloseDay(OVERFLOW_ANCHOR, day))],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'rivalPeriodCloseDays',
+    cost: 'allocating',
+    why: 'one frozen CalendarDay per rival period inside the horizon, so a horizon of 120 000 days is 17 142 objects and the scan walks every one of them.',
+    at: (day: number) => [attempt(() => socialModule.rivalPeriodCloseDays(OVERFLOW_ANCHOR, day))],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'socialRewardSchedule',
+    cost: 'allocating',
+    why: 'one frozen SocialRewardDay per calendar day inside the horizon, plus one more per period close, so a horizon of 120 000 days is over 137 000 objects.',
+    at: (day: number) => [
+      attempt(() => socialModule.socialRewardSchedule(calendarAt(CALENDAR_ANCHOR), day)),
+    ],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'runEmpire',
+    cost: 'allocating',
+    why: 'the whole loop, stepped six times a calendar day, with one ledger entry per payout, so a 120 000-day run is 720 000 steps before the ledger it returns is scanned.',
+    at: (day: number) => [
+      attempt(
+        () => overflowRun(day),
+        policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY),
+        planAt(null, 0),
+        socialInputsAt(),
+      ),
+    ],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'empireRunFaults',
+    cost: 'allocating',
+    why: 'reads the run above, whose ledger is linear in the number of days, and is handed that run as a re-read argument.',
+    at: (day: number) => [
+      attempt(() => invariant.empireRunFaults(overflowRun(day)), overflowRun(day)),
+    ],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'progressionDayLedger',
+    cost: 'allocating',
+    why: 'splits the run ledger, which holds one entry per payout per day, so its own return is linear in the day count.',
+    at: (day: number) => [attempt(() => invariant.progressionDayLedger(overflowRun(day).ledger))],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'idleDayLedger',
+    cost: 'allocating',
+    why: 'the other half of the same split, and linear in the day count for the same reason.',
+    at: (day: number) => [attempt(() => invariant.idleDayLedger(overflowRun(day).ledger))],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'outputSeries',
+    cost: 'allocating',
+    why: 'one entry per day the named output was paid on, read out of a ledger that is linear in the day count.',
+    at: (day: number) => [
+      attempt(() => invariant.outputSeries(overflowRun(day).ledger, OVERFLOW_OUTPUT)),
+    ],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'arrivalDays',
+    cost: 'allocating',
+    why: 'one day number per arrival of the named output, read out of the same linear ledger.',
+    at: (day: number) => [
+      attempt(() => invariant.arrivalDays(overflowRun(day).ledger, OVERFLOW_OUTPUT)),
+    ],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'amountSeries',
+    cost: 'allocating',
+    why: 'one amount per arrival of the named output, read out of the same linear ledger.',
+    at: (day: number) => [
+      attempt(() => engagementModule.amountSeries(overflowRun(day).ledger, OVERFLOW_OUTPUT)),
+    ],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'compareLedgers',
+    cost: 'allocating',
+    why: 'walks the run ledger element-wise against a reference, so both the walk and the divergence list it returns are linear in the day count.',
+    at: (day: number) => [
+      attempt(() => invariant.compareLedgers(DAY_LEDGER, overflowRun(day).ledger), DAY_LEDGER),
+    ],
+  }),
+  Object.freeze({
+    domain: 'DAY',
+    export: 'compareDayLists',
+    cost: 'allocating',
+    why: 'compares two arrival-day lists element-wise, and the second of them is read out of the linear run ledger.',
+    at: (day: number) => [
+      attempt(() =>
+        invariant.compareDayLists(
+          invariant.arrivalDays(DAY_LEDGER, OVERFLOW_OUTPUT),
+          invariant.arrivalDays(overflowRun(day).ledger, OVERFLOW_OUTPUT),
+        ),
+      ),
+    ],
+  }),
+
+  // --- COUNT: history slots.
+  Object.freeze({
+    domain: 'COUNT',
+    export: 'historyFrom',
+    cost: 'allocating',
+    why: 'one attendance entry per slot, which is the example CLAUDE.md itself gives: a 90 000-slot roster is not a test.',
+    at: (slots: number) => [attempt(() => overflowHistory(slots))],
+  }),
+  Object.freeze({
+    domain: 'COUNT',
+    export: 'checkInCount',
+    cost: 'allocating',
+    why: 'walks the whole slot grid, and is handed it as a re-read argument, so the scan is linear in the slot count.',
+    at: (slots: number) => [
+      attempt(() => engagementModule.checkInCount(overflowHistory(slots)), overflowHistory(slots)),
+    ],
+  }),
+  Object.freeze({
+    domain: 'COUNT',
+    export: 'moreEngagedBy',
+    cost: 'allocating',
+    why: 'returns a whole second slot grid with one slot flipped, so it allocates the grid a second time.',
+    at: (slots: number) => [
+      attempt(
+        () => engagementModule.moreEngagedBy(overflowHistory(slots), 0),
+        overflowHistory(slots),
+      ),
+    ],
+  }),
+  Object.freeze({
+    domain: 'COUNT',
+    export: 'moreEngagedByTrainedDay',
+    cost: 'allocating',
+    why: 'returns a whole second slot grid with one trained day added, so it allocates the grid a second time.',
+    at: (slots: number) => [
+      attempt(
+        () => engagementModule.moreEngagedByTrainedDay(overflowHistory(slots), 0),
+        overflowHistory(slots),
+      ),
+    ],
+  }),
+  Object.freeze({
+    domain: 'COUNT',
+    export: 'slotWallSeconds',
+    cost: 'flat',
+    why: '',
+    at: (slots: number) => [
+      attempt(() => engagementModule.slotWallSeconds(slots, EMPIRE_SWEEP_CHECK_INS_PER_DAY)),
+    ],
+  }),
+
+  // --- ROSTER_SHAPE: the roster size the STATES fixture is built at. Every
+  // subject here takes a roster or a state holding one, so the axis has no flat
+  // member at all — which is stated as a number in `OVERFLOW_CENSUS` rather
+  // than left for a reader to notice.
+  Object.freeze({
+    domain: 'ROSTER_SHAPE',
+    export: 'rosterGymBucksPerHour',
+    cost: 'allocating',
+    why: 'takes the roster itself, which is one NpcLifter per member, and is handed it as a re-read argument.',
+    at: (size: number) => [
+      attempt(
+        () => npcModule.rosterGymBucksPerHour(overflowRoster(size), OVERFLOW_CLOCK),
+        overflowRoster(size),
+      ),
+    ],
+  }),
+  Object.freeze({
+    domain: 'ROSTER_SHAPE',
+    export: 'rosterTrainingIqPerDay',
+    cost: 'allocating',
+    why: 'takes the roster itself, which is one NpcLifter per member, and is handed it as a re-read argument.',
+    at: (size: number) => [
+      attempt(
+        () => npcModule.rosterTrainingIqPerDay(overflowRoster(size), OVERFLOW_CLOCK),
+        overflowRoster(size),
+      ),
+    ],
+  }),
+  Object.freeze({
+    domain: 'ROSTER_SHAPE',
+    export: 'rosterOutputRates',
+    cost: 'allocating',
+    why: 'takes the roster itself, which is one NpcLifter per member, and is handed it as a re-read argument.',
+    at: (size: number) => [
+      attempt(
+        () => npcModule.rosterOutputRates(overflowRoster(size), OVERFLOW_CLOCK),
+        overflowRoster(size),
+      ),
+    ],
+  }),
+  ...ROSTER_STATE_SUBJECTS,
+]);
+
+/**
+ * A (subject, point) pair the allocation budget declined to drive.
+ *
+ * Declared as data rather than as a sentence, and joined to what the run
+ * actually skipped by a set equality in both directions, so a pair cannot
+ * disappear from the list without disappearing from the skip and a pair cannot
+ * be listed that nothing skipped.
+ */
+interface OverflowResidualRow {
+  readonly domain: string;
+  readonly export: string;
+  /** Points of this domain above `OVERFLOW_ALLOCATION_CEILING`. */
+  readonly skipped: number;
+  readonly largestSkipped: number;
+}
+
+/** One scanned row of the overflow pass, before it is thrown away. */
+interface OverflowMeasurement {
+  readonly rows: number;
+  readonly nodes: number;
+  readonly strings: number;
+  readonly distinctStrings: number;
+  readonly depthCuts: number;
+  readonly getterThrows: number;
+  /** `${domain}/${label}=${value}` for every point at least one subject was driven at. */
+  readonly points: readonly string[];
+  /** `${domain}/${export}@${label}` for every pair actually driven. */
+  readonly pairs: readonly string[];
+  /** The same key, for every pair the budget skipped. */
+  readonly skipped: readonly string[];
+  /** The most nodes any single scan produced, per `${domain}/${export}`. */
+  readonly worstNodes: ReadonlyMap<string, number>;
+  /**
+   * Every arm of every discriminated return this pass PRODUCED, by count.
+   *
+   * Here for the reason CLAUDE.md gives one level out: a domain decides which
+   * numbers an axis is offered and says nothing about whether the subject's own
+   * guards let the interesting branch run. `recordFriendVisit` refuses three of
+   * its four gyms on every day, and the eighth bypass plants its name in the
+   * arm the fourth reaches — so an overflow pass that drove every dropped point
+   * and produced only the REFUSED arm would report 39 honest points and see
+   * nothing.
+   */
+  readonly arms: ReadonlyMap<string, number>;
+  /** Banned by EQUALITY, anywhere, with no exemption. */
+  readonly bannedEqual: readonly string[];
+  /** Banned by CONTAINMENT, outside the diagnostic channel. */
+  readonly bannedContained: readonly string[];
+}
+
+let overflowMemo: OverflowMeasurement | null = null;
+
+/**
+ * Drive every dropped point and scan what comes back.
+ *
+ * SCANNED AS IT GOES RATHER THAN COLLECTED FIRST, which is a memory decision
+ * with a coverage consequence worth stating: the main drive keeps all 206 718
+ * rows and pins a string census over them, and doing that here would hold a
+ * 2 000-day run ledger alive once per label. So this keeps counts, the distinct
+ * string set, and the findings — and does NOT keep the strings themselves, so
+ * there is no per-path census of the overflow pass to pin. The counts below are
+ * what stands in for it.
+ */
+function measureOverflow(): OverflowMeasurement {
+  if (overflowMemo !== null) return overflowMemo;
+  const bannedNormalised = BANNED_VOCABULARY.map(normalise);
+  const distinct1 = new Set<string>();
+  const points = new Set<string>();
+  const pairs: string[] = [];
+  const skipped: string[] = [];
+  const worstNodes = new Map<string, number>();
+  const arms = new Map<string, number>();
+  const bannedEqual: string[] = [];
+  const bannedContained: string[] = [];
+  let rows = 0;
+  let nodes = 0;
+  let strings = 0;
+  let depthCuts = 0;
+  let getterThrows = 0;
+
+  for (const point of overflowPoints()) {
+    const at = `${point.domain}/${point.label}=${String(point.value)}`;
+    for (const subject of OVERFLOW_SUBJECTS) {
+      if (subject.domain !== point.domain) continue;
+      const key = `${point.domain}/${subject.export}`;
+      const ceiling = OVERFLOW_ALLOCATION_CEILINGS[point.domain] ?? 0;
+      if (subject.cost === 'allocating' && point.value > ceiling) {
+        skipped.push(`${key}@${point.label}`);
+        continue;
+      }
+      pairs.push(`${key}@${point.label}`);
+      points.add(at);
+      for (const values of subject.at(point.value)) {
+        const row: DrivenRow = {
+          export: subject.export,
+          point: at,
+          values,
+          axis: point.domain,
+        };
+        rows += 1;
+        const returned = values[0];
+        if (typeof returned === 'object' && returned !== null) {
+          const kind = (returned as { readonly kind?: unknown }).kind;
+          if (typeof kind === 'string') {
+            const arm = `${subject.export}#${kind}`;
+            arms.set(arm, (arms.get(arm) ?? 0) + 1);
+          }
+        }
+        for (const [region, scan] of scanRow(row)) {
+          nodes += scan.nodes;
+          depthCuts += scan.depthCuts;
+          getterThrows += scan.getterThrows;
+          strings += scan.strings.length;
+          worstNodes.set(key, Math.max(worstNodes.get(key) ?? 0, scan.nodes));
+          for (const found of scan.strings) {
+            distinct1.add(found.value);
+            const folded = normalise(found.value);
+            const site = `${subject.export}@${at}#${region}${found.path}=${found.value}`;
+            if (BANNED_NORMALISED.has(folded)) bannedEqual.push(site);
+            else if (
+              !DIAGNOSTIC_CHANNEL_EXPORTS.includes(subject.export) &&
+              bannedNormalised.some((name) => folded.includes(name))
+            ) {
+              bannedContained.push(site);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  overflowMemo = {
+    rows,
+    nodes,
+    strings,
+    distinctStrings: distinct1.size,
+    depthCuts,
+    getterThrows,
+    points: Object.freeze([...points].sort()),
+    pairs: Object.freeze([...pairs].sort()),
+    skipped: Object.freeze([...skipped].sort()),
+    worstNodes,
+    arms,
+    bannedEqual: Object.freeze(bannedEqual),
+    bannedContained: Object.freeze(bannedContained),
+  };
+  return overflowMemo;
+}
+
+/**
+ * What each domain's allocation ceiling was MEASURED to cost.
+ *
+ * Taken one domain at a time from the shipped configuration, that domain's
+ * ceiling raised and the other two left alone, reading vitest's own `Duration`
+ * for `-t 'the overflow pass'`. The shipped figure is the same block at the
+ * three ceilings below, in the same session on the same machine.
+ *
+ * A row is required for every domain that has an `allocating` subject, in both
+ * directions, and a raise has to show a real cost or the ceiling is buying
+ * nothing — the same rule `DOMAIN_COST_SECONDS` applies, and the same rule that
+ * deleted two of E14's five ceilings.
+ */
+interface OverflowCostRow {
+  readonly domain: string;
+  readonly raisedTo: number;
+  readonly raisedSeconds: number;
+  readonly completed: boolean;
+  readonly shippedSeconds: number;
+  readonly why: string;
+}
+
+const OVERFLOW_COST_SECONDS: readonly OverflowCostRow[] = Object.freeze([
+  Object.freeze({
+    domain: 'DAY',
+    raisedTo: Number.POSITIVE_INFINITY,
+    raisedSeconds: 342.4,
+    completed: true,
+    shippedSeconds: 11.8,
+    why: 'runEmpire steps the whole loop six times a calendar day and eight more exports then read the ledger it returns, so the thirty dropped points above 2 000 are 700 000 simulated days. socialRewardSchedule allocates one frozen day beside it.',
+  }),
+  Object.freeze({
+    domain: 'ROSTER_SHAPE',
+    raisedTo: Number.POSITIVE_INFINITY,
+    raisedSeconds: 301.7,
+    completed: true,
+    shippedSeconds: 11.8,
+    why: 'twenty-three subjects each take a state holding one NpcLifter per member and each is scanned in two regions, so the thirty dropped points above 2 000 are 700 000 lifters walked forty-six times over.',
+  }),
+]);
+
+/**
+ * Every (subject, point) pair a ceiling above declined to drive.
+ *
+ * THE HONEST HALF OF THIS PASS. E14's residual was three numbers — 39, 39 and
+ * 56 — with no catcher; this one is a per-subject count with a reason, and it
+ * is smaller, but it is still a residual and it is written down as one rather
+ * than folded into the pass. What changed is that the DROPPED POINTS are now
+ * driven by every subject whose cost does not grow with the axis, and that a
+ * pair which stops being skipped, or starts being skipped, moves a number here.
+ */
+function residual(
+  domain: string,
+  exportName: string,
+  skipped: number,
+  largestSkipped: number,
+): OverflowResidualRow {
+  return Object.freeze({ domain, export: exportName, skipped, largestSkipped });
+}
+
+/**
+ * Thirty-four rows, written out rather than counted, for the reason
+ * `EXEMPT_LEAVES_ABOVE_A_CEILING` gives one section above: a count lets one
+ * member be swapped for another silently, and the names are what a reader can
+ * disagree with.
+ *
+ * Thirty skipped points per row, both times, and the thirty is a different
+ * thirty on each axis: DAY drops thirty-nine points and nine of them are at or
+ * under 2 000; ROSTER_SHAPE drops fifty-six and twenty-six are.
+ */
+const OVERFLOW_RESIDUAL: readonly OverflowResidualRow[] = Object.freeze([
+  // COUNT has no rows. Its ceiling was deleted by the measurement, so all four
+  // of its allocating subjects are driven at all thirty-nine dropped points.
+  residual('DAY', 'amountSeries', 30, 120000),
+  residual('DAY', 'arrivalDays', 30, 120000),
+  residual('DAY', 'compareDayLists', 30, 120000),
+  residual('DAY', 'compareLedgers', 30, 120000),
+  residual('DAY', 'empireRunFaults', 30, 120000),
+  residual('DAY', 'idleDayLedger', 30, 120000),
+  residual('DAY', 'outputSeries', 30, 120000),
+  residual('DAY', 'progressionDayLedger', 30, 120000),
+  residual('DAY', 'rivalPeriodCloseDays', 30, 120000),
+  residual('DAY', 'runEmpire', 30, 120000),
+  residual('DAY', 'socialRewardSchedule', 30, 120000),
+  residual('ROSTER_SHAPE', 'accrueProduction', 30, 120000),
+  residual('ROSTER_SHAPE', 'accrueReputation', 30, 120000),
+  residual('ROSTER_SHAPE', 'accrueSponsorship', 30, 120000),
+  residual('ROSTER_SHAPE', 'assertEmpireState', 30, 120000),
+  residual('ROSTER_SHAPE', 'beginRecruitment', 30, 120000),
+  residual('ROSTER_SHAPE', 'completeRecruitment', 30, 120000),
+  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 30, 120000),
+  residual('ROSTER_SHAPE', 'empireStateFaults', 30, 120000),
+  residual('ROSTER_SHAPE', 'expansionContext', 30, 120000),
+  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 30, 120000),
+  residual('ROSTER_SHAPE', 'mayRecruit', 30, 120000),
+  residual('ROSTER_SHAPE', 'npcTierUnlocks', 30, 120000),
+  residual('ROSTER_SHAPE', 'productionRates', 30, 120000),
+  residual('ROSTER_SHAPE', 'recruitmentBoard', 30, 120000),
+  residual('ROSTER_SHAPE', 'recruitmentOffer', 30, 120000),
+  residual('ROSTER_SHAPE', 'recruitmentRefusals', 30, 120000),
+  residual('ROSTER_SHAPE', 'reputationRates', 30, 120000),
+  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 30, 120000),
+  residual('ROSTER_SHAPE', 'rosterOutputRates', 30, 120000),
+  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 30, 120000),
+  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 30, 120000),
+  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 30, 120000),
+  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 30, 120000),
+]);
+
+/**
+ * What the overflow pass measured on this tree. Counts, not bounds.
+ *
+ * `POINTS` and `POINTS_DRIVEN` are the pair that says how much of the declared
+ * limit this closes and how much it does not: 134 points are dropped by the
+ * three ceilings, and 104 of them have at least one subject driven at them.
+ * The 30 that have none are the ROSTER_SHAPE points above 2 000, and they have
+ * none because that axis has NO flat subject — every one of its twenty-three
+ * exports takes a roster or a state holding one, so there is nothing on it
+ * that can be called at 120 000 without allocating 120 000 lifters. That is
+ * stated as two numbers rather than as a claim about coverage.
+ *
+ * `PAIRS_DRIVEN` and `PAIRS_SKIPPED` are the same question one level finer:
+ * 2 302 (subject, point) pairs exist across the three axes, 1 282 are driven,
+ * and the 1 020 that are not are exactly the rows of `OVERFLOW_RESIDUAL`.
+ */
+const OVERFLOW_CENSUS = Object.freeze({
+  /** (domain, label) pairs the ceilings drop. Equals the sum of OMITTED_ABOVE_CEILING. */
+  POINTS: 134,
+  /** Of those, how many at least one subject was driven at. */
+  POINTS_DRIVEN: 104,
+  SUBJECTS: 49,
+  FLAT_SUBJECTS: 11,
+  ALLOCATING_SUBJECTS: 38,
+  /** (subject, point) pairs driven, and pairs the budgets skipped. */
+  PAIRS_DRIVEN: 1282,
+  PAIRS_SKIPPED: 1020,
+  ROWS: 1789,
+  NODES: 521418,
+  STRINGS: 3538100,
+  DISTINCT_STRINGS: 4229,
+  DEPTH_CUTS: 0,
+  GETTER_THROWS: 0,
+  /** The zero this pass exists for, and the tripwire below is what it is zero against. */
+  BANNED_EQUAL: 0,
+  BANNED_CONTAINED: 0,
+  /** Dropped points whose value is not a whole number. The drivers are integral. */
+  FRACTIONAL_POINTS: 0,
+});
+
+/**
+ * Every arm the overflow pass PRODUCED, by count.
+ *
+ * `recordFriendVisit#visited` is the row that matters and is why this table
+ * exists: it is the arm the eighth bypass planted its name in, and an overflow
+ * pass that reached the dropped points without reaching that arm would be the
+ * defect one level out — the shape CLAUDE.md records as "a domain says which
+ * inputs you offered, not which branches ran".
+ */
+const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freeze([
+  // Every roster this pass builds is over `rosterCapacity` — the smallest
+  // dropped ROSTER_SHAPE point is 30 against a ceiling of sixteen slots — so
+  // the ACCEPTED arm is not reachable here and is absent rather than pinned at
+  // zero. The main drive is what produces it, 135 times.
+  ['beginRecruitment#refused', 26],
+  // Six of the eight visit rows per day are refused by construction: the
+  // player's own gym, a gym that is not a friend, and a friend already visited
+  // on the day being driven. The other two are the arm that matters.
+  ['recordFriendVisit#refused', 234],
+  ['recordFriendVisit#visited', 78],
+]);
 
 // ---------------------------------------------------------------------------
 // The tripwire — the non-zero number the zeros below are zero against
@@ -3645,6 +4718,28 @@ interface DriveMeasurement {
   readonly stackFindings: readonly string[];
 }
 
+/**
+ * Scan one driven row, in both regions.
+ *
+ * The return and the re-read arguments are scanned separately, because a string
+ * that came back OUT is a different claim from one that was handed IN and is
+ * still there. Both are checked; only the first is what a diagnostic channel's
+ * contents mean.
+ *
+ * FACTORED OUT RATHER THAN COPIED, and the reason is CLAUDE.md's sharpest
+ * recorded defect: a guard written for one loop and re-typed for its sibling
+ * differs in exactly the way nobody looks at. The overflow pass calls this, so
+ * its reach IS the main drive's reach — the same walker, the same two regions,
+ * the same paths — rather than a second implementation that agrees today.
+ */
+function scanRow(row: DrivenRow): readonly (readonly [Region, ScanResult])[] {
+  const label = `${row.export}@${row.point}`;
+  return [
+    ['return', deepScan(row.values[0], `${label}#return`)],
+    ['argument', deepScan(row.values.slice(1), `${label}#argument`)],
+  ];
+}
+
 let measurementMemo: DriveMeasurement | null = null;
 
 function measureDrive(): DriveMeasurement {
@@ -3659,17 +4754,7 @@ function measureDrive(): DriveMeasurement {
   let stacks = 0;
   const stackFindings: string[] = [];
   for (const row of rows) {
-    // The return and the re-read arguments are scanned separately, because a
-    // string that came back OUT is a different claim from one that was handed
-    // IN and is still there. Both are checked; only the first is what a
-    // diagnostic channel's contents mean.
-    const label = `${row.export}@${row.point}`;
-    const regions: readonly (readonly [Region, unknown])[] = [
-      ['return', row.values[0]],
-      ['argument', row.values.slice(1)],
-    ];
-    for (const [region, value] of regions) {
-      const scan = deepScan(value, `${label}#${region}`);
+    for (const [region, scan] of scanRow(row)) {
       nodes += scan.nodes;
       depthCuts += scan.depthCuts;
       gettersInvoked += scan.gettersInvoked;
@@ -4393,6 +5478,234 @@ describe('instrument B — nothing this directory produces is a forbidden name',
         .map((entry) => entry.found.value),
     );
     expect(fromSnapshot).toEqual(GYM_SNAPSHOT_STRINGS);
+  });
+}, DRIVE_BLOCK_TIMEOUT_MS);
+
+describe('the overflow pass — the catcher for what the ceilings drop', () => {
+  it('covers exactly the branch points the ceilings drop, in both directions', () => {
+    // THE JOIN. `OMITTED_ABOVE_CEILING` was three numbers with no catcher; this
+    // is the set those numbers count, driven. Both directions: a point the
+    // census says is dropped and the pass does not know about is as much a
+    // defect as a point the pass drives that no ceiling dropped.
+    const points = overflowPoints();
+    const byDomain: Record<string, number> = {};
+    for (const name of Object.keys(NUMERIC_DOMAINS)) byDomain[name] = 0;
+    for (const point of points) byDomain[point.domain] = (byDomain[point.domain] ?? 0) + 1;
+    expect(byDomain).toEqual({ ...DOMAIN_CENSUS.OMITTED_ABOVE_CEILING });
+    expect(points.length).toBe(OVERFLOW_CENSUS.POINTS);
+
+    // Every dropped point is a real branch point, at its real value, and above
+    // the ceiling of the domain that dropped it. Without this the pass could
+    // drive 134 invented numbers and count them honestly.
+    for (const point of points) {
+      const domain = Object.entries(NUMERIC_DOMAINS).find(([name]) => name === point.domain)?.[1];
+      expect(domain, point.domain).toBeDefined();
+      expect(EVERY_BRANCH_POINT[point.label], point.label).toBe(point.value);
+      expect(point.value, `${point.domain}/${point.label}`).toBeGreaterThan(
+        domain?.foreignCeiling ?? Number.POSITIVE_INFINITY,
+      );
+      // …and it really is absent from the domain, which is the whole reason it
+      // needs a drive of its own.
+      expect(domain?.points, `${point.domain}/${point.label}`).not.toContain(point.value);
+    }
+
+    // The drivers are integral, so a fractional dropped point would be handed
+    // to an axis that refuses it. There are none; the count is pinned rather
+    // than the property assumed, so one arriving is a red line rather than a
+    // silent `RangeError` inside a try.
+    expect(points.filter((point) => !Number.isInteger(point.value)).length).toBe(
+      OVERFLOW_CENSUS.FRACTIONAL_POINTS,
+    );
+  });
+
+  it('stamps exactly the domains that carry a ceiling, and drives every export stamped under one', () => {
+    // The structural half, and the reason the subject list is not a hand-copied
+    // reading of the loops above. `DrivenRow.axis` is stamped by the main drive
+    // itself; this reads it back.
+    const stamped = distinct(
+      driveEverything()
+        .map((row) => row.axis)
+        .filter((axis): axis is string => axis !== null),
+    );
+    const ceilinged = Object.entries(NUMERIC_DOMAINS)
+      .filter(([, domain]) => Number.isFinite(domain.foreignCeiling))
+      .map(([name]) => name)
+      .sort();
+    // A domain that gains a ceiling and no stamp reddens here, and so does a
+    // stamp on a domain that has no ceiling.
+    expect(stamped).toEqual(ceilinged);
+
+    for (const domain of ceilinged) {
+      const drivenByTheMainPass = distinct(
+        driveEverything()
+          .filter((row) => row.axis === domain)
+          .map((row) => row.export),
+      );
+      const drivenHere = distinct(
+        OVERFLOW_SUBJECTS.filter((subject) => subject.domain === domain).map(
+          (subject) => subject.export,
+        ),
+      );
+      // SET EQUALITY IN BOTH DIRECTIONS. An export added to the DAY loop above
+      // is an undriven member here; a subject row for an export that loop does
+      // not drive is a row measuring an axis it is not on.
+      expect(drivenHere, domain).toEqual(drivenByTheMainPass);
+    }
+    expect(OVERFLOW_SUBJECTS.length).toBe(OVERFLOW_CENSUS.SUBJECTS);
+    expect(OVERFLOW_SUBJECTS.filter((subject) => subject.cost === 'flat').length).toBe(
+      OVERFLOW_CENSUS.FLAT_SUBJECTS,
+    );
+    expect(OVERFLOW_SUBJECTS.filter((subject) => subject.cost === 'allocating').length).toBe(
+      OVERFLOW_CENSUS.ALLOCATING_SUBJECTS,
+    );
+    // Every subject names a domain that carries a ceiling. A row for NUMBER
+    // would drive nothing, because NUMBER drops nothing.
+    for (const subject of OVERFLOW_SUBJECTS) {
+      expect(ceilinged, subject.export).toContain(subject.domain);
+      if (subject.cost === 'allocating') {
+        expect(subject.why.length, `${subject.domain}/${subject.export}`).toBeGreaterThan(60);
+      } else {
+        expect(subject.why, `${subject.domain}/${subject.export}`).toBe('');
+      }
+    }
+  });
+
+  it('walked a domain that is not empty at the dropped points, and did not truncate', () => {
+    const measurement = measureOverflow();
+    expect(measurement.rows).toBe(OVERFLOW_CENSUS.ROWS);
+    expect(measurement.pairs.length).toBe(OVERFLOW_CENSUS.PAIRS_DRIVEN);
+    expect(measurement.skipped.length).toBe(OVERFLOW_CENSUS.PAIRS_SKIPPED);
+    expect(measurement.points.length).toBe(OVERFLOW_CENSUS.POINTS_DRIVEN);
+    expect(measurement.nodes).toBe(OVERFLOW_CENSUS.NODES);
+    expect(measurement.strings).toBe(OVERFLOW_CENSUS.STRINGS);
+    expect(measurement.distinctStrings).toBe(OVERFLOW_CENSUS.DISTINCT_STRINGS);
+    // A truncated walk reports a clean scan, which is the reassuring direction.
+    expect(measurement.depthCuts).toBe(OVERFLOW_CENSUS.DEPTH_CUTS);
+    expect(measurement.getterThrows).toBe(OVERFLOW_CENSUS.GETTER_THROWS);
+    // Every driven pair belongs to a dropped point, and no pair is both driven
+    // and skipped.
+    const dropped = new Set(
+      overflowPoints().map((point) => `${point.domain}/${point.label}=${String(point.value)}`),
+    );
+    for (const at of measurement.points) expect(dropped, at).toContain(at);
+    for (const pair of measurement.pairs) {
+      expect(measurement.skipped, pair).not.toContain(pair);
+    }
+  });
+
+  it('produced the arm the eighth bypass was planted in, and not merely the points', () => {
+    // A domain says which inputs you offered, not which branches ran. The
+    // eighth bypass sat inside `recordFriendVisit`'s VISITED arm, which three
+    // of the four gyms this pass asks about are refused on; a pass that drove
+    // every dropped day and produced only REFUSED would report thirty-nine
+    // honest points and see nothing at all.
+    const arms = [...measureOverflow().arms.entries()].sort();
+    expect(arms).toEqual(OVERFLOW_ARM_CENSUS);
+    const visited = measureOverflow().arms.get('recordFriendVisit#visited') ?? 0;
+    expect(visited).toBeGreaterThan(0);
+  });
+
+  it('produces no banned name at any point a ceiling drops', () => {
+    // THE ZERO THIS PASS IS ABOUT. It is zero against the same tripwire the
+    // main drive's zero is zero against, because it is the same scanner and the
+    // same fold list — `scanRow` is shared rather than re-implemented.
+    const measurement = measureOverflow();
+    expect(measurement.bannedEqual).toEqual([]);
+    expect(measurement.bannedEqual.length).toBe(OVERFLOW_CENSUS.BANNED_EQUAL);
+    expect(measurement.bannedContained).toEqual([]);
+    expect(measurement.bannedContained.length).toBe(OVERFLOW_CENSUS.BANNED_CONTAINED);
+    // …and the pass looked at something. A zero over an empty scan is what the
+    // ceilings already gave for free.
+    expect(measurement.strings).toBeGreaterThan(0);
+  });
+
+  it('measures the cost class of every subject rather than asserting it', () => {
+    // The catcher for the one judgement in the table: `flat` versus
+    // `allocating`. A subject misfiled as flat is driven at 120 000 with no
+    // budget, so its worst scan is tens of thousands of nodes rather than a
+    // handful, and this is where that shows up.
+    const worst = measureOverflow().worstNodes;
+    let flat = 0;
+    for (const subject of OVERFLOW_SUBJECTS) {
+      const key = `${subject.domain}/${subject.export}`;
+      const seen = worst.get(key);
+      // Every subject was driven at least once, or its row is decoration.
+      expect(seen, key).toBeDefined();
+      if (subject.cost === 'flat') {
+        expect(seen ?? 0, key).toBeLessThanOrEqual(OVERFLOW_FLAT_NODE_CEILING);
+        flat += 1;
+      }
+    }
+    expect(flat).toBe(OVERFLOW_CENSUS.FLAT_SUBJECTS);
+  });
+
+  it('declares every pair the allocation budgets skipped, in both directions', () => {
+    // The residual, as data rather than as a sentence. A pair that stops being
+    // skipped moves a number here before it moves anything downstream, and a
+    // row for a pair nothing skips is a row that reads as a concession the pass
+    // is not actually making.
+    const skippedByPair = new Map<string, number>();
+    const largest = new Map<string, number>();
+    for (const key of measureOverflow().skipped) {
+      const subject = key.split('@')[0] ?? '';
+      skippedByPair.set(subject, (skippedByPair.get(subject) ?? 0) + 1);
+    }
+    for (const point of overflowPoints()) {
+      const ceiling = OVERFLOW_ALLOCATION_CEILINGS[point.domain] ?? 0;
+      if (point.value <= ceiling) continue;
+      for (const subject of OVERFLOW_SUBJECTS) {
+        if (subject.domain !== point.domain || subject.cost !== 'allocating') continue;
+        const key = `${point.domain}/${subject.export}`;
+        largest.set(key, Math.max(largest.get(key) ?? 0, point.value));
+      }
+    }
+    const measured = [...skippedByPair.entries()]
+      .map(([key, skipped]) => {
+        const [domain, exportName] = key.split('/');
+        return {
+          domain: domain ?? '',
+          export: exportName ?? '',
+          skipped,
+          largestSkipped: largest.get(key) ?? 0,
+        };
+      })
+      .sort((left, right) =>
+        `${left.domain}/${left.export}`.localeCompare(`${right.domain}/${right.export}`),
+      );
+    expect(measured).toEqual([...OVERFLOW_RESIDUAL]);
+    expect(
+      OVERFLOW_RESIDUAL.reduce((total, row) => total + row.skipped, 0),
+    ).toBe(OVERFLOW_CENSUS.PAIRS_SKIPPED);
+    // Every residual row is an allocating subject. A flat subject on this list
+    // would mean a budget was applied where the file says none is.
+    for (const row of OVERFLOW_RESIDUAL) {
+      const subject = OVERFLOW_SUBJECTS.find(
+        (candidate) => candidate.domain === row.domain && candidate.export === row.export,
+      );
+      expect(subject?.cost, `${row.domain}/${row.export}`).toBe('allocating');
+      expect(row.largestSkipped, `${row.domain}/${row.export}`).toBeGreaterThan(
+        OVERFLOW_ALLOCATION_CEILINGS[row.domain] ?? 0,
+      );
+    }
+  });
+
+  it('joins a measured price to every domain whose budget skips a pair, in both directions', () => {
+    // The same rule `DOMAIN_COST_SECONDS` is held to, and the same rule that
+    // deleted two of E14's five ceilings: a concession has to show a real
+    // saving, or it is buying nothing and charging the coverage for it.
+    const budgeted = distinct(
+      OVERFLOW_RESIDUAL.map((row) => row.domain),
+    );
+    const priced = distinct(OVERFLOW_COST_SECONDS.map((row) => row.domain));
+    expect(priced).toEqual(budgeted);
+    for (const row of OVERFLOW_COST_SECONDS) {
+      expect(row.raisedTo, row.domain).toBeGreaterThan(
+        OVERFLOW_ALLOCATION_CEILINGS[row.domain] ?? 0,
+      );
+      expect(row.raisedSeconds, row.domain).toBeGreaterThan(row.shippedSeconds * 1.5);
+      expect(row.why.length, row.domain).toBeGreaterThan(60);
+      if (!row.completed) expect(row.raisedTo, row.domain).toBe(Number.POSITIVE_INFINITY);
+    }
   });
 }, DRIVE_BLOCK_TIMEOUT_MS);
 
