@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece c1-worlds-reach
-generated 2026-08-13T16:23:57.595Z
+generated 2026-08-13T19:39:33.251Z
 repo /home/user/wt-c1-worlds
-commit efa6ac3fe86fa7d306e9713e86e236c8e32f36cf
+commit beeeb074c9d04f58b9c2d4d708741ea6e1b98b5a
 working tree clean (ignoring only this script's own output and .gauntlet/state.json)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -41,21 +41,21 @@ $ npx vitest run src/career --reporter=verbose
 
  RUN  v4.1.10 /home/user/wt-c1-worlds
 
- ✓ src/career/calendar.test.ts > the season anchor > is the civil date the tuning names, and 2026-01-03 is a Saturday 2ms
+ ✓ src/career/calendar.test.ts > the season anchor > is the civil date the tuning names, and 2026-01-03 is a Saturday 7ms
  ✓ src/career/calendar.test.ts > the season anchor > each tier starts at the anchor plus its own phase 0ms
  ✓ src/career/calendar.test.ts > the season anchor > nothing is scheduled before the anchor 0ms
  ✓ src/career/calendar.test.ts > window boundaries > includes both ends 0ms
  ✓ src/career/calendar.test.ts > window boundaries > an inverted window is empty rather than an error 0ms
  ✓ src/career/calendar.test.ts > window boundaries > a window that closes before a series opens is empty 0ms
- ✓ src/career/calendar.test.ts > window boundaries > a meet is on the calendar on the day it is held 0ms
+ ✓ src/career/calendar.test.ts > window boundaries > a meet is on the calendar on the day it is held 4ms
  ✓ src/career/calendar.test.ts > the shape of a year > holds each tier at its stated cadence 1ms
- ✓ src/career/calendar.test.ts > the shape of a year > is sorted by day 4ms
- ✓ src/career/calendar.test.ts > the shape of a year > gives every meet a unique, derived id 1ms
+ ✓ src/career/calendar.test.ts > the shape of a year > is sorted by day 3ms
+ ✓ src/career/calendar.test.ts > the shape of a year > gives every meet a unique, derived id 0ms
  ✓ src/career/calendar.test.ts > the shape of a year > is the same list every time it is asked for 1ms
- ✓ src/career/calendar.test.ts > the shape of a year > carries the federation’s own ruleset onto every meet 5ms
- ✓ src/career/calendar.test.ts > a decade > never puts two of one federation’s tiers on the same day 2ms
+ ✓ src/career/calendar.test.ts > the shape of a year > carries the federation’s own ruleset onto every meet 6ms
+ ✓ src/career/calendar.test.ts > a decade > never puts two of one federation’s tiers on the same day 3ms
  ✓ src/career/calendar.test.ts > a decade > keeps each tier on one weekday for ten years, leap years included 1ms
- ✓ src/career/calendar.test.ts > upcoming meets > starts at today and runs to the horizon 0ms
+ ✓ src/career/calendar.test.ts > upcoming meets > starts at today and runs to the horizon 1ms
  ✓ src/career/calendar.test.ts > upcoming meets > refuses a horizon that is not a whole number of days at or above zero 0ms
  ✓ src/career/calendar.test.ts > upcoming meets > shows every tier inside the default horizon 0ms
  ✓ src/career/calendar.test.ts > the next meet of a tier > is the first on or after the day given 0ms
@@ -63,13 +63,39 @@ $ npx vitest run src/career --reporter=verbose
  ✓ src/career/calendar.test.ts > ISO dates > pads month and day 0ms
  ✓ src/career/calendar.test.ts > ISO dates > handles a leap day 0ms
  ✓ src/career/calendar.test.ts > one meet > is built from the federation, the tier and the day, and nothing else 0ms
+ ✓ src/career/careerPurity.test.ts > the career directory is fenced as a whole, not file by file > has shipped modules to scan, so the scans below are not empty 5ms
+ ✓ src/career/careerPurity.test.ts > the career directory is fenced as a whole, not file by file > ships no sibling extension the .ts filter would not open 1ms
+ ✓ src/career/careerPurity.test.ts > the career directory is fenced as a whole, not file by file > pins allowed specifiers for every shipped module, not a subset 1ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > reads every shipped file and matches the pin exactly 143ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > ships no namespace import, so a sibling let cannot hide behind import * 74ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > names progression in no specifier, even if a pin were widened 37ms
+ ✓ src/career/eligibility.test.ts > qualifying totals > an open tier is cleared by a lifter who has never competed 6ms
+ ✓ src/career/eligibility.test.ts > qualifying totals > a gated tier is not cleared without a total 0ms
+ ✓ src/career/eligibility.test.ts > qualifying totals > the bar is made, not beaten: exactly the qualifying total qualifies 0ms
+ ✓ src/career/eligibility.test.ts > qualifying totals > tiers open as the total rises, and never close 1ms
+ ✓ src/career/eligibility.test.ts > qualifying totals > refuses a total that is not a finite number 0ms
+ ✓ src/career/eligibility.test.ts > qualifying totals > another federation’s meet is not qualified for at any total 0ms
+ ✓ src/career/eligibility.test.ts > entry verdicts > opens for a lifter of the right federation on or before the day 0ms
+ ✓ src/career/eligibility.test.ts > entry verdicts > refuses the day after, and that is the boundary 1ms
+ ✓ src/career/eligibility.test.ts > entry verdicts > refuses a meet already competed at 9ms
+ ✓ src/career/eligibility.test.ts > entry verdicts > refuses a tier the total does not reach 0ms
+ ✓ src/career/eligibility.test.ts > entry verdicts > every refusal carries the sentence its own reason is keyed to 1ms
+ ✓ src/career/eligibility.test.ts > entry verdicts > the refusal order is the one the header states, walked to the bottom of the chain 0ms
+ ✓ src/career/eligibility.test.ts > the enterable list > a new lifter sees every local meet in the horizon and nothing else 2ms
+ ✓ src/career/eligibility.test.ts > the enterable list > entering a meet removes that meet and leaves the rest of the list alone 1ms
+ ✓ src/career/eligibility.test.ts > the enterable list > a held meet drops out of the list and the horizon rolls a new one in 1ms
+ ✓ src/career/eligibility.test.ts > the career record after a meet > takes the best total, not the latest 0ms
+ ✓ src/career/eligibility.test.ts > the career record after a meet > recording the same meet twice is the same as recording it once 0ms
+ ✓ src/career/eligibility.test.ts > the career record after a meet > refuses a total that is not a finite number 0ms
+ ✓ src/career/eligibility.test.ts > the career record after a meet > eligibility reads exactly three facts about a lifter, and none is a balance 0ms
+ ✓ src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for fewer meets > [strength-never-removes-a-meet] every ordered pair on the grid, and the control beside it 340ms
  ✓ src/career/careerTuning.test.ts > the tier ladder > is GDD §6.1’s, in its order 2ms
  ✓ src/career/careerTuning.test.ts > the tier ladder > splits async and sync where GDD §6.6 splits it 0ms
  ✓ src/career/careerTuning.test.ts > the tier ladder > opens on a tier that asks for nothing 0ms
- ✓ src/career/careerTuning.test.ts > the tier ladder > asks for strictly more the higher up it goes 1ms
- ✓ src/career/careerTuning.test.ts > the schedule constants > are whole weeks, so nothing drifts across a leap year 1ms
+ ✓ src/career/careerTuning.test.ts > the tier ladder > asks for strictly more the higher up it goes 0ms
+ ✓ src/career/careerTuning.test.ts > the schedule constants > are whole weeks, so nothing drifts across a leap year 0ms
  ✓ src/career/careerTuning.test.ts > the schedule constants > put the four tiers on four different weekdays, which is the no-collision argument 0ms
- ✓ src/career/careerTuning.test.ts > the schedule constants > keep every phase inside its own cadence 0ms
+ ✓ src/career/careerTuning.test.ts > the schedule constants > keep every phase inside its own cadence 14ms
  ✓ src/career/careerTuning.test.ts > the schedule constants > leave a horizon long enough to show every tier once 0ms
  ✓ src/career/careerTuning.test.ts > the schedule constants > anchor a real calendar date 1ms
  ✓ src/career/careerTuning.test.ts > the schedule constants > are frozen 0ms
@@ -78,6 +104,7 @@ $ npx vitest run src/career --reporter=verbose
  ✓ src/career/careerTuning.test.ts > the federations > carry no real federation, brand or athlete name 1ms
  ✓ src/career/careerTuning.test.ts > the copy > has a label and a meet name for every tier 0ms
  ✓ src/career/careerTuning.test.ts > the copy > has a distinct sentence for every refusal 0ms
+ ✓ src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for fewer meets > qualification does not read the meets a lifter has already competed at 142ms
  ✓ src/career/federation.test.ts > looking a federation up > lists every id in the order the picker shows them 3ms
  ✓ src/career/federation.test.ts > looking a federation up > finds each one by id 1ms
  ✓ src/career/federation.test.ts > looking a federation up > throws rather than defaulting on an id that does not exist 0ms
@@ -87,45 +114,32 @@ $ npx vitest run src/career --reporter=verbose
  ✓ src/career/federation.test.ts > the tier ladder > indexes lowest first 0ms
  ✓ src/career/federation.test.ts > the tier ladder > throws on a tier that is not on it 0ms
  ✓ src/career/federation.test.ts > the tier ladder > starts at local 1ms
- ✓ src/career/eligibility.test.ts > qualifying totals > an open tier is cleared by a lifter who has never competed 2ms
- ✓ src/career/eligibility.test.ts > qualifying totals > a gated tier is not cleared without a total 0ms
- ✓ src/career/eligibility.test.ts > qualifying totals > the bar is made, not beaten: exactly the qualifying total qualifies 0ms
- ✓ src/career/eligibility.test.ts > qualifying totals > tiers open as the total rises, and never close 1ms
- ✓ src/career/eligibility.test.ts > qualifying totals > refuses a total that is not a finite number 3ms
- ✓ src/career/eligibility.test.ts > qualifying totals > another federation’s meet is not qualified for at any total 0ms
- ✓ src/career/eligibility.test.ts > entry verdicts > opens for a lifter of the right federation on or before the day 1ms
- ✓ src/career/eligibility.test.ts > entry verdicts > refuses the day after, and that is the boundary 1ms
- ✓ src/career/eligibility.test.ts > entry verdicts > refuses a meet already competed at 1ms
- ✓ src/career/eligibility.test.ts > entry verdicts > refuses a tier the total does not reach 1ms
- ✓ src/career/eligibility.test.ts > entry verdicts > every refusal carries the sentence its own reason is keyed to 1ms
- ✓ src/career/eligibility.test.ts > entry verdicts > the refusal order is the one the header states, walked to the bottom of the chain 1ms
- ✓ src/career/eligibility.test.ts > the enterable list > a new lifter sees every local meet in the horizon and nothing else 3ms
- ✓ src/career/eligibility.test.ts > the enterable list > entering a meet removes that meet and leaves the rest of the list alone 2ms
- ✓ src/career/eligibility.test.ts > the enterable list > a held meet drops out of the list and the horizon rolls a new one in 1ms
- ✓ src/career/eligibility.test.ts > the career record after a meet > takes the best total, not the latest 0ms
- ✓ src/career/eligibility.test.ts > the career record after a meet > recording the same meet twice is the same as recording it once 0ms
- ✓ src/career/eligibility.test.ts > the career record after a meet > refuses a total that is not a finite number 0ms
- ✓ src/career/eligibility.test.ts > the career record after a meet > eligibility reads exactly three facts about a lifter, and none is a balance 0ms
- ✓ src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for fewer meets > [strength-never-removes-a-meet] every ordered pair on the grid, and the control beside it 213ms
- ✓ src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for fewer meets > qualification does not read the meets a lifter has already competed at 81ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > only the sweep may reach the generator, and it reaches it by the pinned specifier 40ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > the parser sees every spelling the empire regex missed, by planting them 3ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules roll no dice and touch no host API > bans Math.random and the host list on every shipped file 5ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules roll no dice and touch no host API > each pattern is live against a tripwire, so a dead regex cannot pass 3ms
+ ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > the shipped eligibility.ts has no module-level let or var 3ms
+ ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > qualifiesFor and its siblings close over no mutable binding 922ms
+ ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > reddens on the M12 plant: a module-level let that qualifiesFor reads 511ms
+ ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > reddens on a sibling let read through import * as, which is the same wallet with a property access 425ms
  ✓ src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for fewer meets > the grid is ordered, so pair order is total order 6ms
- ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > [attending-a-meet-never-removes-one] every skipped meet in every seeded season, and the control beside it 2699ms
- ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > reaches a current-form rule that waits, and reports two different kinds of zero past it 4416ms
- ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > cannot see a rule keyed to the annual tier at all, and the margin is 7.5 kg 4124ms
- ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > a season is a real season: every meet distinct, and none of them entered twice 4ms
- ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > reaches the second worlds meet and not the first, and the first is unreachable by arithmetic 70ms
- ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > builds the same careers incrementally as `careerAfter` builds from the top 270ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > [attending-a-meet-never-removes-one] every skipped meet in every seeded season, and the control beside it 2892ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > reaches a current-form rule that waits, and reports two different kinds of zero past it 4507ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > cannot see a rule keyed to the annual tier at all, and the margin is 7.5 kg 4346ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > a season is a real season: every meet distinct, and none of them entered twice 5ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > reaches the second worlds meet and not the first, and the first is unreachable by arithmetic 72ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > builds the same careers incrementally as `careerAfter` builds from the top 305ms
  ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > the sweep’s depth is read off the shipped calendar, not chosen in the sweep 1ms
- ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > every skipped meet in every seeded season, against a rest control and three tier-keyed ones 82299ms
- ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > is blind at axis B’s evaluation lag, which is why it has its own 69387ms
+ ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > every skipped meet in every seeded season, against a rest control and three tier-keyed ones 82204ms
+ ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > is blind at axis B’s evaluation lag, which is why it has its own 70556ms
  ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > runs its shipped arm on the engine’s own list, and every control as a filter of it 5ms
  ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > the two axes read two different functions, so neither can stand in for the other 1ms
  ✓ src/career/eligibility.test.ts > days > a verdict reads the day it is given and nothing else 1ms
 
- Test Files  4 passed (4)
-      Tests  80 passed (80)
-   Start at  16:23:58
-   Duration  164.58s (transform 1.63s, setup 0ms, import 2.02s, tests 163.64s, environment 0ms)
+ Test Files  5 passed (5)
+      Tests  94 passed (94)
+   Start at  19:39:34
+   Duration  166.44s (transform 1.70s, setup 0ms, import 2.65s, tests 167.66s, environment 0ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -139,10 +153,10 @@ $ npx vitest run
  RUN  v4.1.10 /home/user/wt-c1-worlds
 
 
- Test Files  83 passed (83)
-      Tests  3317 passed (3317)
-   Start at  16:26:44
-   Duration  344.57s (transform 6.16s, setup 0ms, import 27.06s, tests 759.35s, environment 9ms)
+ Test Files  84 passed (84)
+      Tests  3331 passed (3331)
+   Start at  19:42:21
+   Duration  347.65s (transform 6.42s, setup 0ms, import 28.86s, tests 777.87s, environment 10ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
