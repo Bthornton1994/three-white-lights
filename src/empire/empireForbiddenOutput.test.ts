@@ -8136,9 +8136,15 @@ describe('the channel census — the routes a string can leave this directory by
     () => {
       const census = channelCensus();
       expect(census.modules.length).toBe(CHANNEL_CENSUS_TOTALS.MODULES);
-      expect(census.nodesExamined).toBe(CHANNEL_CENSUS_TOTALS.NODES_EXAMINED);
       // The table itself, deep equal. A site arriving in any channel in any
       // module moves a number; a site leaving moves one the other way.
+      //
+      // BEFORE THE NODE COUNT, AND THAT ORDER WAS EARNED. The node pin below is
+      // a guard against a TRUNCATED WALK and it moves on any edit at all, so
+      // running it first meant a planted getter reported itself as
+      // `expected 21769 to be 21758` — a different check noticing, which this
+      // codebase has recorded four times as not the check working. The table is
+      // what says WHICH channel arrived, so it goes first.
       expect(census.byModule).toEqual(CHANNEL_SITE_COUNTS);
       let sites = 0;
       let inUse = 0;
@@ -8154,6 +8160,10 @@ describe('the channel census — the routes a string can leave this directory by
       }
       expect(sites).toBe(CHANNEL_CENSUS_TOTALS.SITES);
       expect(inUse).toBe(CHANNEL_CENSUS_TOTALS.CHANNELS_IN_USE);
+      // The truncation guard, last. A walk that gave up early would report a
+      // directory with fewer escape routes than it has, which is the reassuring
+      // direction and the one a census must not fail in quietly.
+      expect(census.nodesExamined).toBe(CHANNEL_CENSUS_TOTALS.NODES_EXAMINED);
       expect(CHANNEL_IDS.length).toBe(CHANNEL_CENSUS_TOTALS.CHANNELS);
       // Every declared channel is scanned for, and nothing is scanned for that
       // is not declared. The set equality is over the table's OWN keys, so a
@@ -8336,7 +8346,7 @@ describe('the channel census — the routes a string can leave this directory by
 // ---------------------------------------------------------------------------
 
 /**
- * Twenty-three routes, planted into shipped modules one at a time, each run
+ * Twenty-seven routes, planted into shipped modules one at a time, each run
  * against `tsc --noEmit`, against this file, and against the three accidental
  * catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
@@ -8807,6 +8817,28 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'The cost is real and is stated with the count: 125 `faults.push` sites across six modules would each need a mint, and the shipped fault channel is contained rather than open — `asFaultMessage` throws on the way out at every one of the eight `*Faults` returns. So this is a detection-versus-containment trade, not an open hole, and it is reported rather than taken.',
     ]),
   }),
+  Object.freeze({
+    id: 'M27',
+    shape:
+      '31 — THE ELEVENTH BYPASS: the CALLBACK channel. The name is handed to a predicate the CALLER supplied, so it leaves the directory without ever being in a return, a throw, a declared position or a constructor call',
+    where:
+      "engagement.ts, `historyFrom`: the parameter `attended: (slot: number) => boolean` widened to `(slot: number, label?: string) => boolean`, called as `attended(slot, EMPIRE_FORBIDDEN_OUTPUTS[0])`. Existing callers pass a one-argument predicate and are unaffected, so the returned history is byte-identical",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'AGAINST THE SHIPPED FILE AT 3db6493, NOTHING — `tsc --noEmit` exit 0 and `vitest run src/empire src/game/streakEntitlement.test.ts` 13 files / 512 tests / exit 0.',
+      'AND THE BRANCH RUNS, PRINTED RATHER THAN INFERRED, which is what M24 exists to make mandatory: `historyFrom(3, recording, [1, 2])` gives RECEIVED BY THE CALLER-SUPPLIED CALLBACK: [[0,"covered-day"],[1,"covered-day"],[2,"covered-day"]], with RETURNED HISTORY: {"attended":[true,false,true],"trainedDays":[1,2]} — the payload arrives on every call and the shipped result does not move.',
+      'AFTER the channel census: the callback pass / drives every caller-supplied callback and scans what it was handed: + "engagement.ts#historyFrom#attended#callback.0.1=covered-day", and the same at .1.1 and .2.1',
+      'AFTER the channel census: the channel census / pins the two callback sites with their ARGUMENT COUNT: - "engagement.ts#historyFrom#attended x1", + "engagement.ts#historyFrom#attended x2"',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'WHY ALL THREE INSTRUMENTS ARE BLIND, stated so this is not read as an indictment of them. Instrument A walks the RETURN type of every export and never a parameter, so a value handed to a callback has no declared position anywhere in its census. Instrument C counts brand-constructor call sites and this route mints nothing. The drive keeps the callback it passed IN — a function, whose own properties carry nothing — and never what the callback was handed. This is the same finding as M25 one channel over: the escape route was outside every enumeration anybody had made.',
+      'the channel census / derives every escape site: expected 21767 to be 21758. That is the node count, which is a walk-truncation guard and moves on any edit at all; it is an accidental catcher inside the new section, not the census working. The assertion order in that test was changed BECAUSE of this run, so the site table reports before the node count does.',
+      'NOTHING ELSE IN THE REPOSITORY NOTICED: with the mutant in and the census in place, 3 failed of 518 and all three are in the channel census section. Instrument A green, instrument B green, the overflow pass green, instrument C green, `tsc` exit 0.',
+      'ISOLATION, and it turned on a detail worth writing down: the mutant needs `EMPIRE_FORBIDDEN_OUTPUTS` in `engagement.ts`, which has no such import. Adding a NAMED specifier to the existing `./empireCore` import adds no MODULE specifier, and the import fence counts modules — 27 — so it stayed green. A second import statement would have reddened it, which is the fence working and would not have been this guard.',
+    ]),
+  }),
 ]);
 
 /**
@@ -8919,6 +8951,38 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
     reddened:
       'covers exactly the branch points the ceilings drop: expected { COUNT: 40, DAY: 40, … } to deeply equal { COUNT: 39, DAY: 39, … }. This is the join itself: the pass drives what OMITTED_ABOVE_CEILING counts, and a one-point drift in either direction is a red line rather than a coverage claim nobody can check.',
   }),
+  // --- The five planted against the channel census, which is this round's
+  // addition. Each was run, and each names the message it produced.
+  Object.freeze({
+    id: 'G15',
+    what: 'a `get summary(): string` accessor added to the frozen object `npc.ts` returns from its rate reader — the `lazy-member` channel arriving in a directory that has none',
+    reddened:
+      'derives every escape site: + "lazy-member": { "npc.ts": 1 }, and "return" npc.ts 12 -> 13 beside it. The empty channels are what this table is most for, and this is the measurement that they are not decorative. IT ALSO EXPOSED AN ORDERING DEFECT IN THE TEST: the node-count pin ran first and reported `expected 21769 to be 21758`, so the planted getter announced itself as a truncation-guard drift. The node count now runs last and the site table reports first.',
+  }),
+  Object.freeze({
+    id: 'G16',
+    what: "the `'engagement.ts': 1` entry deleted from `CHANNEL_SITE_COUNTS['callback-invocation']`, which is how a real site would be made to read as an empty channel",
+    reddened:
+      'derives every escape site: - "callback-invocation": {}, + "callback-invocation": { "engagement.ts": 1 }. The other direction of the same deep equality, run separately from G15 because a table that reddens on arrival and not on deletion is half a join.',
+  }),
+  Object.freeze({
+    id: 'G17',
+    what: "the throw row's `movesB` flipped from true to false in `CHANNEL_COVERAGE` — a declared cell made to disagree with what the instrument does",
+    reddened:
+      'measures every cell of the coverage matrix: throw/a bare read of the ban list as the `RangeError` message movesB: expected true to be false. This is the check that the matrix is MEASURED rather than typed: one side is the declaration and the other is `scanRow` run over a real probe row, and they can part.',
+  }),
+  Object.freeze({
+    id: 'G18',
+    what: "the one `CALLBACK_SUBJECTS` key changed from `engagement.ts#historyFrom#attended` to `engagement.ts#historyOf#attended`, so the pass drives a subject the census does not derive",
+    reddened:
+      'drives every caller-supplied callback: expected [ "engagement.ts#historyOf#attended" ] to deeply equal [ "engagement.ts#historyFrom#attended" ]. The pass\'s subject list is read out of the census\'s own site keys, so a driver for something the directory does not call, or a call with no driver, is red either way.',
+  }),
+  Object.freeze({
+    id: 'G19',
+    what: "the deferred-completion twin's observer emptied, so the probe stops proving it emitted anything at all",
+    reddened:
+      'measures every cell of the coverage matrix: deferred-completion/a thenable that hands the name to a resolver emitted nothing — every false in its row is meaningless: expected false to be true. Nine of the thirteen matrix rows are mostly false, and a false cell is a claim about an instrument only if the probe really emitted; this is the guard that says so, and it bites.',
+  }),
 ]);
 
 /**
@@ -8938,8 +9002,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(14);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(14);
+    expect(REGISTRY_MUTANTS.length).toBe(19);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(19);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
@@ -8957,7 +9021,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(26);
+    expect(PLANTED_ROUTES.length).toBe(27);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -9025,9 +9089,12 @@ describe('the routes that were planted, and what each of them cost', () => {
     // two for M25 — its first form keyed on a bare array index and was caught
     // by the magic-number audit rather than by anything about names — and
     // three for M26, which is a measurement in three configurations rather
-    // than an attack.
-    expect(attempts).toBe(37);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(16);
+    // than an attack. One for M27, which reached isolation first time because
+    // the round that planted it had already measured what the import fence
+    // counts — a named specifier added to an import statement that exists is
+    // not a module specifier, and 27 is the number that would have moved.
+    expect(attempts).toBe(38);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(17);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
