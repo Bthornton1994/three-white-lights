@@ -33,7 +33,11 @@
  * eight rounds closed one branch point and declared the next; the ninth was
  * declared open above `OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE` and no domain
  * could have reached it, because the author picks the number after seeing the
- * domain. The five bare-string fields are branded now, so that assignment does
+ * domain. THE TENTH CAME OUT OF THAT SAME REGION AND HAD A DIFFERENT SHAPE:
+ * `completeRecruitment` throwing the ban list's first member on a roster of
+ * `REPUTATION_MAX`, which no brand can see because a thrown Error's message is
+ * not a declared position anywhere. It is M25, and what closed it was driving
+ * the region rather than typing it — the two are not alternatives. The five bare-string fields are branded now, so that assignment does
  * not compile — at every branch point at once. `DECLARED_BARE_STRING_FIELDS` is
  * empty, `CLOSED_BARE_STRING_FIELDS` records what it held and what closed each
  * row, and M15-M18 in `PLANTED_ROUTES` are the measurement.
@@ -149,12 +153,20 @@
  *   a dropped point does not need one, so each of the 134 dropped points gets
  *   its axis's subjects called once at that single value against a minimal
  *   fixture, scanned by the same `deepScan` through the same `scanRow`. The
- *   ceilings did not move. What it does NOT cover is written as two numbers
- *   rather than a sentence: `OVERFLOW_CENSUS.POINTS_DRIVEN` is 104 of 134, and
- *   `OVERFLOW_RESIDUAL` names the 1 020 (subject, point) pairs an allocation
- *   budget declined, per subject, with the reason. The 30 points with no drive
- *   at all are ROSTER_SHAPE above 2 000, because that axis has no subject whose
- *   cost is flat in the roster size.
+ *   ceilings did not move. What it does NOT cover is written as numbers rather
+ *   than a sentence: `OVERFLOW_CENSUS.POINTS_DRIVEN` is 134 of 134, and
+ *   `OVERFLOW_RESIDUAL` names the 330 (subject, point) pairs an allocation
+ *   budget declines outright and the 690 more it drives with the re-read
+ *   ARGUMENT left unscanned, per subject, with the reason.
+ *
+ *   THOSE NUMBERS WERE 104 AND 1 020, AND THE THIRTY POINTS THE FIRST ONE WAS
+ *   SHORT ARE WHERE THE TENTH BYPASS LIVED. This paragraph used to say the
+ *   ROSTER_SHAPE points above 2 000 had no drive at all "because that axis has
+ *   no subject whose cost is flat in the roster size". True, and it was
+ *   answering the wrong question: `scanRow` has two regions, and on that axis
+ *   the linear one is the argument handed IN, not what comes back. All 690 of
+ *   those pairs drive in 7.9 s with the return region scanned. `OverflowCost`
+ *   has three classes now and `residual`'s rows say which region they decline.
  *
  *   Its second limit, and the one the domain fix alone did not close: a domain
  *   decides which NUMBERS an axis is driven at and says nothing about whether
@@ -1521,9 +1533,16 @@ describe('instrument A bites — the census is re-run over a probe carrying four
  * compiles and always will, because a brand is a constructor discipline rather
  * than an enumeration. Instrument B can only catch that where its domain
  * reaches the branch, and eight rounds have each closed one branch point and
- * declared the next — a ninth is declared open above
+ * declared the next — a ninth was declared open above
  * `OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE`. A sampling instrument does not
  * close a route the author picks a number for.
+ *
+ * AND THIS INSTRUMENT DOES NOT CLOSE EVERY ROUTE THE BRANDS LEFT, WHICH M25
+ * MEASURED. It counts brand-constructor CALL SITES, so it sees a route that
+ * mints. `throw new RangeError(EMPIRE_FORBIDDEN_OUTPUTS[0])` mints nothing,
+ * declares nothing, and is invisible to A and C alike; only the drive can see
+ * it, and only where the drive reaches. That is why the overflow pass's
+ * argument-region split is part of the same answer rather than a tidy-up.
  *
  * WHAT MAKES THE PROBLEM ENUMERABLE IS THE CHANGE OF SUBJECT. An unbounded
  * numeric input is not a finite set. A list of call sites is. So this instrument
@@ -1572,6 +1591,20 @@ interface ConstructorCensus {
   /** Call expressions examined, so an empty walk reports itself. */
   readonly callsExamined: number;
   readonly modules: number;
+  /**
+   * `module.ts#name` for every exported function of the shipped directory whose
+   * return type is a read-only array of branded strings — the fault-list
+   * producers, derived from the checker rather than from their names.
+   *
+   * Here because `asFaultMessage`'s note leans on a claim this file could not
+   * previously redden: that the fault channel is CONTAINED, because every
+   * message goes through the constructor on the way out. The `x1` rows in
+   * `DECLARED_BRAND_CONSTRUCTOR_CALLS` say that of the eight producers that
+   * exist; nothing said those were all of them. A ninth arriving with a cast
+   * instead of a mint added no site, so the set equality below it would have
+   * stayed green.
+   */
+  readonly faultListExports: readonly string[];
 }
 
 /**
@@ -1662,6 +1695,15 @@ function constructorCensusOf(roots: readonly string[], probeText: string | null)
     return variable ?? '#module';
   };
 
+  /** A read-only array (or array) whose element type is a branded string. */
+  const isBrandedStringList = (type: ts.Type): boolean => {
+    const args = checker.getTypeArguments(type as ts.TypeReference);
+    return (
+      args.length === 1 && args[0] !== undefined && isBrandedString(args[0] as ts.Type)
+    );
+  };
+
+  const faultListExports: string[] = [];
   const counts = new Map<string, number>();
   let callsExamined = 0;
   let modules = 0;
@@ -1669,6 +1711,17 @@ function constructorCensusOf(roots: readonly string[], probeText: string | null)
     const source = program.getSourceFile(root);
     if (source === undefined) throw new Error(`${root} is not in the program`);
     modules += 1;
+    const rootModule = checker.getSymbolAtLocation(source);
+    if (rootModule !== undefined) {
+      for (const symbol of checker.getExportsOfModule(rootModule)) {
+        const declaration = symbol.declarations?.[0];
+        if (declaration === undefined || !ts.isFunctionDeclaration(declaration)) continue;
+        const signature = checker.getSignatureFromDeclaration(declaration);
+        if (signature === undefined) continue;
+        if (!isBrandedStringList(checker.getReturnTypeOfSignature(signature))) continue;
+        faultListExports.push(`${path.basename(root)}#${symbol.getName()}`);
+      }
+    }
     const visit = (node: ts.Node): void => {
       if (ts.isCallExpression(node)) {
         callsExamined += 1;
@@ -1692,6 +1745,7 @@ function constructorCensusOf(roots: readonly string[], probeText: string | null)
     ),
     callsExamined,
     modules,
+    faultListExports: Object.freeze(faultListExports.sort()),
   };
 }
 
@@ -1743,6 +1797,14 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
    * number here says the walk really covered the directory's code.
    */
   CALLS_EXAMINED: 964,
+  /**
+   * Exported functions returning a read-only array of branded strings.
+   *
+   * Eight, and the number is here rather than only in the set equality so that
+   * a producer disappearing from BOTH sides at once — which the equality alone
+   * would call a pass — moves something.
+   */
+  FAULT_LIST_PRODUCERS: 8,
 });
 
 const siteKey = (site: ConstructorCallSite): string => `${site.site} x${String(site.calls)}`;
@@ -1763,6 +1825,36 @@ describe('instrument C — a raw string becomes a brand in a countable number of
       'asNpcId',
     ]);
     expect(census.constructors.length).toBe(CONSTRUCTOR_CENSUS.CONSTRUCTORS);
+  });
+
+  it('every fault-list producer mints on the way out, joined in both directions', () => {
+    // THE CHECK BEHIND THE CONTAINMENT HALF OF `asFaultMessage`'s NOTE. That
+    // note now says the fault channel is contained rather than open, because
+    // every message reaches the constructor at the return of every `*Faults`
+    // function. It is a guarantee, so it needs something that goes red when it
+    // stops holding, and the `x1` rows above are not it: they say the eight
+    // producers that exist each mint once, and say nothing about a ninth.
+    //
+    // Both sides are DERIVED. The left is every exported function in the
+    // shipped directory whose return type the checker says is a read-only array
+    // of branded strings; the right is every site instrument C saw call
+    // `asFaultMessage`. A producer that returned a cast instead of a mint is on
+    // the left and not on the right, which is the shape that used to be
+    // invisible.
+    //
+    // Its limit, and it is the same one the whole instrument has: this says a
+    // constructor RUNS on the way out, which makes a forbidden message
+    // unshippable. It says nothing about the message being forbidden in the
+    // first place — `faults.push(EMPIRE_FORBIDDEN_OUTPUTS[0])` still compiles,
+    // which is M26, and what catches it is the drive, not this.
+    const census = constructorCensus();
+    const minting = distinct(
+      census.sites
+        .filter((site) => site.site.endsWith('#asFaultMessage'))
+        .map((site) => site.site.split('#').slice(0, 2).join('#')),
+    );
+    expect([...census.faultListExports]).toEqual(minting);
+    expect(census.faultListExports.length).toBe(CONSTRUCTOR_CENSUS.FAULT_LIST_PRODUCERS);
   });
 
   it('the brand constructor call sites are exactly the declared ones', () => {
@@ -2677,10 +2769,21 @@ function domainSpec(spec: NumericDomain): NumericDomain {
  * `OMITTED_ABOVE_CEILING` and `OVERFLOW_RESIDUAL` moving to say so.
  *
  * THE PART WHERE IT IS STILL NOT PURELY A COST KNOB, stated because the
- * sentence above is bounded and not absolute: for the 30 ROSTER_SHAPE points
- * above `OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE`, nothing drives them at
- * all. Raising the ceiling is priced: `DOMAIN_COST_SECONDS` measured that axis
- * at 138.1 s against 38.8 s for a ceiling of 120.
+ * sentence above is bounded and not absolute — AND CORRECTED, because the
+ * paragraph it replaces was true when written and stopped being true one round
+ * later. It read: "for the 30 ROSTER_SHAPE points above
+ * `OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE`, nothing drives them at all."
+ * Something does now. All 690 of that axis's (subject, point) pairs above the
+ * ceiling are called and their returns scanned; what the ceiling still buys is
+ * that the state handed in is not walked a second time. Raising the ceiling to
+ * get that back is still priced: `DOMAIN_COST_SECONDS` measured this axis at
+ * 138.1 s against 38.8 s for a ceiling of 120, and `OVERFLOW_COST_SECONDS` at
+ * 301.7 s against 11.8 s.
+ *
+ * The DAY ceiling has no such correction and was re-measured rather than
+ * assumed to share one: `runEmpire` at the smallest dropped DAY point, 2 500
+ * days, is 908 ms and returns 10 051 nodes, so there is no cheap region to take
+ * on that axis and its rows stay undriven.
  *
  * THE SENTENCE THAT USED TO END THAT PARAGRAPH IS NOW FALSE AND IS CORRECTED
  * RATHER THAN DELETED, because it was a correct prediction and the round it
@@ -4278,18 +4381,42 @@ function overflowPoints(): readonly OverflowPoint[] {
 /**
  * How a subject's cost scales with the value of the axis it is driven on.
  *
- * `flat` means the call and the scan of what comes back are the same size at
- * every point of the axis. `allocating` means they are not — one object per
- * day, per slot or per roster member — and it is the class the budget applies
- * to.
+ * THREE CLASSES AND NOT TWO, AND THE THIRD IS WHAT E17 ADDED. The pair that was
+ * here — `flat` and `allocating` — asked one question, "does this subject cost
+ * more at a larger point", and answered it for the whole call. That is one
+ * question too few, because `scanRow` has TWO regions and the budget was being
+ * set by whichever of them is expensive:
  *
- * The classification is a judgement, so it is MEASURED rather than trusted:
- * 'measures the cost class of every subject rather than asserting it' scans
- * each flat subject at the largest point it is driven at and requires the node
- * count to stay under `OVERFLOW_FLAT_NODE_CEILING`. A subject misfiled as flat
- * produces tens of thousands of nodes there and reddens.
+ *   - `flat` — the call, the return and the re-read argument are all the same
+ *     size at every point. Driven at every dropped point with no budget.
+ *   - `argument-heavy` — the RETURN stays small at every point and only the
+ *     re-read ARGUMENT is linear in the axis. The call is driven at every
+ *     dropped point and its return is scanned; above the ceiling the argument
+ *     region is not re-scanned, and that omission is what
+ *     `OVERFLOW_RESIDUAL` counts for these rows.
+ *   - `return-heavy` — the call itself, or what it returns, grows with the
+ *     axis. Nothing cheap is available, so above the ceiling the pair is not
+ *     driven at all.
+ *
+ * WHY THE SPLIT EXISTS, MEASURED RATHER THAN ARGUED. All twenty-three
+ * ROSTER_SHAPE subjects were `allocating`, so all 690 of their pairs above the
+ * ceiling were undriven — and driving every one of them with the ARGUMENT
+ * region skipped costs **7.9 s and 1 710 return nodes**, against the 301.7 s in
+ * `OVERFLOW_COST_SECONDS` for raising the ceiling outright. The ceiling on that
+ * axis was buying back the argument re-scan and being charged for the call. The
+ * DAY rows are not the same shape and were re-measured rather than assumed:
+ * `runEmpire` at the SMALLEST dropped point, 2 500 days, is 908 ms and returns
+ * 10 051 nodes, and every other DAY row reads the run it memoises, so that axis
+ * is genuinely `return-heavy` and keeps its budget.
+ *
+ * The classification is a judgement, so both halves are MEASURED rather than
+ * trusted: 'measures the cost class of every subject rather than asserting it'
+ * requires a `flat` subject's WHOLE scan to stay under
+ * `OVERFLOW_FLAT_NODE_CEILING` and an `argument-heavy` subject's RETURN scan to
+ * stay under `OVERFLOW_RETURN_NODE_CEILING`. `socialRewardSchedule` refiled as
+ * `argument-heavy` produces 2 858 return nodes at 2 500 days and reddens there.
  */
-type OverflowCost = 'flat' | 'allocating';
+type OverflowCost = 'flat' | 'argument-heavy' | 'return-heavy';
 
 interface OverflowSubject {
   /** The `NUMERIC_DOMAINS` key this subject is an axis of. */
@@ -4297,7 +4424,7 @@ interface OverflowSubject {
   readonly export: string;
   readonly cost: OverflowCost;
   /**
-   * What the call allocates per unit of the axis, for an `allocating` row.
+   * What the call allocates per unit of the axis, for a row that is not `flat`.
    * Required and required to be specific, because `OVERFLOW_RESIDUAL` is only
    * as honest as the reason beside each skipped pair.
    */
@@ -4352,6 +4479,45 @@ const OVERFLOW_ALLOCATION_CEILINGS: Readonly<Record<string, number>> = Object.fr
  * scans 120 000. Anything between the two is a subject whose row is wrong.
  */
 const OVERFLOW_FLAT_NODE_CEILING = 400;
+
+/**
+ * The most nodes an `argument-heavy` subject's RETURN may produce at any point
+ * it is driven at.
+ *
+ * The catcher for the third cost class, and the reason that class is not a free
+ * assertion. `argument-heavy` claims exactly one thing — that what comes BACK
+ * stays small however large the axis gets — so a subject filed there whose
+ * return grows is a row that is wrong, and this is where it shows.
+ *
+ * MEASURED rather than picked: over all 690 ROSTER_SHAPE pairs above the
+ * ceiling the whole return region is 1 710 nodes, and the largest single return
+ * is `recruitmentBoard`'s five-row catalogue. Sixty is comfortably above that
+ * and two orders below `socialRewardSchedule` at the SMALLEST dropped DAY
+ * point, which is 2 858 — so the misfiling this is written about reddens by a
+ * factor of forty-seven rather than by one node.
+ */
+const OVERFLOW_RETURN_NODE_CEILING = 60;
+
+/**
+ * The horizon the roster-ceiling pin runs the composed loop to.
+ *
+ * Long enough that the loop fills every slot it can — the pin asserts the
+ * smallest stamp is 0 and the largest is `ROSTER_SLOTS_MAX`, so a horizon that
+ * never got there would redden rather than read as a ceiling.
+ */
+const ROSTER_CEILING_RUN_DAYS = 400;
+
+/**
+ * How many distinct roster sizes that run passes through, MEASURED on this tree.
+ *
+ * The non-vacuity number beside the ceiling: a loop that never recruits, and a
+ * loop that begins full, both read 1 here. Eight and not seventeen because the
+ * ledger is stamped once a day and the loop recruits faster than that early on,
+ * so the sizes it is READ at are a subset of the sizes it passes through — which
+ * is a fact about the stamp rather than about the ceiling, and is written here
+ * rather than left to look like a shortfall.
+ */
+const ROSTER_CEILING_SIZES_SEEN = 8;
 
 /** The gyms every overflow visit driver asks about, in the main drive's order. */
 const OVERFLOW_VISIT_GYM_IDS: readonly GymId[] = Object.freeze([
@@ -4475,7 +4641,7 @@ function attempt(thunk: () => unknown, ...args: readonly unknown[]): readonly un
  * need its own sentence.
  */
 const ROSTER_STATE_WHY =
-  'takes an EmpireState whose roster holds one NpcLifter per member, and is handed that state as a re-read argument, so both the call and the scan are linear in the roster size.';
+  'takes an EmpireState whose roster holds one NpcLifter per member and is handed that state as a re-read argument, so the ARGUMENT region is linear in the roster size. What comes back is not: measured over all 690 pairs above the ceiling, the whole return region is 1 710 nodes.';
 
 function rosterStateSubject(
   exportName: string,
@@ -4484,7 +4650,7 @@ function rosterStateSubject(
   return Object.freeze({
     domain: 'ROSTER_SHAPE',
     export: exportName,
-    cost: 'allocating',
+    cost: 'argument-heavy',
     why: ROSTER_STATE_WHY,
     at: (size: number) => [attempt(() => call(overflowState(size)), overflowState(size))],
   });
@@ -4684,14 +4850,14 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
   Object.freeze({
     domain: 'DAY',
     export: 'rivalPeriodCloseDays',
-    cost: 'allocating',
+    cost: 'return-heavy',
     why: 'one frozen CalendarDay per rival period inside the horizon, so a horizon of 120 000 days is 17 142 objects and the scan walks every one of them.',
     at: (day: number) => [attempt(() => socialModule.rivalPeriodCloseDays(OVERFLOW_ANCHOR, day))],
   }),
   Object.freeze({
     domain: 'DAY',
     export: 'socialRewardSchedule',
-    cost: 'allocating',
+    cost: 'return-heavy',
     why: 'one frozen SocialRewardDay per calendar day inside the horizon, plus one more per period close, so a horizon of 120 000 days is over 137 000 objects.',
     at: (day: number) => [
       attempt(() => socialModule.socialRewardSchedule(calendarAt(CALENDAR_ANCHOR), day)),
@@ -4700,7 +4866,7 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
   Object.freeze({
     domain: 'DAY',
     export: 'runEmpire',
-    cost: 'allocating',
+    cost: 'return-heavy',
     why: 'the whole loop, stepped six times a calendar day, with one ledger entry per payout, so a 120 000-day run is 720 000 steps before the ledger it returns is scanned.',
     at: (day: number) => [
       attempt(
@@ -4714,7 +4880,7 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
   Object.freeze({
     domain: 'DAY',
     export: 'empireRunFaults',
-    cost: 'allocating',
+    cost: 'return-heavy',
     why: 'reads the run above, whose ledger is linear in the number of days, and is handed that run as a re-read argument.',
     at: (day: number) => [
       attempt(() => invariant.empireRunFaults(overflowRun(day)), overflowRun(day)),
@@ -4723,21 +4889,21 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
   Object.freeze({
     domain: 'DAY',
     export: 'progressionDayLedger',
-    cost: 'allocating',
+    cost: 'return-heavy',
     why: 'splits the run ledger, which holds one entry per payout per day, so its own return is linear in the day count.',
     at: (day: number) => [attempt(() => invariant.progressionDayLedger(overflowRun(day).ledger))],
   }),
   Object.freeze({
     domain: 'DAY',
     export: 'idleDayLedger',
-    cost: 'allocating',
+    cost: 'return-heavy',
     why: 'the other half of the same split, and linear in the day count for the same reason.',
     at: (day: number) => [attempt(() => invariant.idleDayLedger(overflowRun(day).ledger))],
   }),
   Object.freeze({
     domain: 'DAY',
     export: 'outputSeries',
-    cost: 'allocating',
+    cost: 'return-heavy',
     why: 'one entry per day the named output was paid on, read out of a ledger that is linear in the day count.',
     at: (day: number) => [
       attempt(() => invariant.outputSeries(overflowRun(day).ledger, OVERFLOW_OUTPUT)),
@@ -4746,7 +4912,7 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
   Object.freeze({
     domain: 'DAY',
     export: 'arrivalDays',
-    cost: 'allocating',
+    cost: 'return-heavy',
     why: 'one day number per arrival of the named output, read out of the same linear ledger.',
     at: (day: number) => [
       attempt(() => invariant.arrivalDays(overflowRun(day).ledger, OVERFLOW_OUTPUT)),
@@ -4755,7 +4921,7 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
   Object.freeze({
     domain: 'DAY',
     export: 'amountSeries',
-    cost: 'allocating',
+    cost: 'return-heavy',
     why: 'one amount per arrival of the named output, read out of the same linear ledger.',
     at: (day: number) => [
       attempt(() => engagementModule.amountSeries(overflowRun(day).ledger, OVERFLOW_OUTPUT)),
@@ -4764,7 +4930,7 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
   Object.freeze({
     domain: 'DAY',
     export: 'compareLedgers',
-    cost: 'allocating',
+    cost: 'return-heavy',
     why: 'walks the run ledger element-wise against a reference, so both the walk and the divergence list it returns are linear in the day count.',
     at: (day: number) => [
       attempt(() => invariant.compareLedgers(DAY_LEDGER, overflowRun(day).ledger), DAY_LEDGER),
@@ -4773,7 +4939,7 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
   Object.freeze({
     domain: 'DAY',
     export: 'compareDayLists',
-    cost: 'allocating',
+    cost: 'return-heavy',
     why: 'compares two arrival-day lists element-wise, and the second of them is read out of the linear run ledger.',
     at: (day: number) => [
       attempt(() =>
@@ -4789,14 +4955,14 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
   Object.freeze({
     domain: 'COUNT',
     export: 'historyFrom',
-    cost: 'allocating',
+    cost: 'return-heavy',
     why: 'one attendance entry per slot, which is the example CLAUDE.md itself gives: a 90 000-slot roster is not a test.',
     at: (slots: number) => [attempt(() => overflowHistory(slots))],
   }),
   Object.freeze({
     domain: 'COUNT',
     export: 'checkInCount',
-    cost: 'allocating',
+    cost: 'return-heavy',
     why: 'walks the whole slot grid, and is handed it as a re-read argument, so the scan is linear in the slot count.',
     at: (slots: number) => [
       attempt(() => engagementModule.checkInCount(overflowHistory(slots)), overflowHistory(slots)),
@@ -4805,7 +4971,7 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
   Object.freeze({
     domain: 'COUNT',
     export: 'moreEngagedBy',
-    cost: 'allocating',
+    cost: 'return-heavy',
     why: 'returns a whole second slot grid with one slot flipped, so it allocates the grid a second time.',
     at: (slots: number) => [
       attempt(
@@ -4817,7 +4983,7 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
   Object.freeze({
     domain: 'COUNT',
     export: 'moreEngagedByTrainedDay',
-    cost: 'allocating',
+    cost: 'return-heavy',
     why: 'returns a whole second slot grid with one trained day added, so it allocates the grid a second time.',
     at: (slots: number) => [
       attempt(
@@ -4843,8 +5009,8 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
   Object.freeze({
     domain: 'ROSTER_SHAPE',
     export: 'rosterGymBucksPerHour',
-    cost: 'allocating',
-    why: 'takes the roster itself, which is one NpcLifter per member, and is handed it as a re-read argument.',
+    cost: 'argument-heavy',
+    why: 'takes the roster itself, which is one NpcLifter per member, and is handed it as a re-read argument. It returns a number, so only the argument region is linear in the axis.',
     at: (size: number) => [
       attempt(
         () => npcModule.rosterGymBucksPerHour(overflowRoster(size), OVERFLOW_CLOCK),
@@ -4855,8 +5021,8 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
   Object.freeze({
     domain: 'ROSTER_SHAPE',
     export: 'rosterTrainingIqPerDay',
-    cost: 'allocating',
-    why: 'takes the roster itself, which is one NpcLifter per member, and is handed it as a re-read argument.',
+    cost: 'argument-heavy',
+    why: 'takes the roster itself, which is one NpcLifter per member, and is handed it as a re-read argument. It returns a number, so only the argument region is linear in the axis.',
     at: (size: number) => [
       attempt(
         () => npcModule.rosterTrainingIqPerDay(overflowRoster(size), OVERFLOW_CLOCK),
@@ -4867,8 +5033,8 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
   Object.freeze({
     domain: 'ROSTER_SHAPE',
     export: 'rosterOutputRates',
-    cost: 'allocating',
-    why: 'takes the roster itself, which is one NpcLifter per member, and is handed it as a re-read argument.',
+    cost: 'argument-heavy',
+    why: 'takes the roster itself, which is one NpcLifter per member, and is handed it as a re-read argument. It returns a number, so only the argument region is linear in the axis.',
     at: (size: number) => [
       attempt(
         () => npcModule.rosterOutputRates(overflowRoster(size), OVERFLOW_CLOCK),
@@ -4917,6 +5083,23 @@ const MAIN_DRIVE_ROWS_BY_AXIS: Readonly<Record<string, number>> = Object.freeze(
 interface OverflowResidualRow {
   readonly domain: string;
   readonly export: string;
+  /**
+   * WHICH OF THE TWO THINGS A BUDGET CAN DECLINE, and the reason this field
+   * exists is that E17 found the file had been counting them as one.
+   *
+   *   - `'the pair'` — the subject was not called at these points at all, so
+   *     nothing was produced and nothing was scanned. This is a coverage hole.
+   *   - `'the argument re-read'` — the subject WAS called at these points and
+   *     what it returned or threw was scanned in full; only the arguments
+   *     handed in were not walked a second time afterwards.
+   *
+   * A row of the second kind is a far weaker concession than one of the first,
+   * and the file used to have no way to say so — thirty-four rows all reading
+   * `skipped: 30`, of which twenty-three were the undriven kind and eleven the
+   * unre-read kind, or so a reader would have had to guess. They were in fact
+   * all of the first kind, and twenty-three of them did not need to be.
+   */
+  readonly region: 'the pair' | 'the argument re-read';
   /** Points of this domain above `OVERFLOW_ALLOCATION_CEILING`. */
   readonly skipped: number;
   readonly largestSkipped: number;
@@ -4934,10 +5117,22 @@ interface OverflowMeasurement {
   readonly points: readonly string[];
   /** `${domain}/${export}@${label}` for every pair actually driven. */
   readonly pairs: readonly string[];
-  /** The same key, for every pair the budget skipped. */
+  /** The same key, for every `return-heavy` pair the budget did not drive at all. */
   readonly skipped: readonly string[];
+  /**
+   * The same key, for every `argument-heavy` pair that WAS driven above the
+   * ceiling with its re-read argument left unscanned.
+   *
+   * A different quantity from `skipped` and kept apart from it deliberately. A
+   * pair on this list produced a value and that value was scanned; a pair on
+   * `skipped` produced nothing. Folding the two together is what would let the
+   * residual read smaller than it is.
+   */
+  readonly argumentSkipped: readonly string[];
   /** The most nodes any single scan produced, per `${domain}/${export}`. */
   readonly worstNodes: ReadonlyMap<string, number>;
+  /** The most nodes any single RETURN scan produced, per `${domain}/${export}`. */
+  readonly worstReturnNodes: ReadonlyMap<string, number>;
   /**
    * Every arm of every discriminated return this pass PRODUCED, by count.
    *
@@ -4976,7 +5171,9 @@ function measureOverflow(): OverflowMeasurement {
   const points = new Set<string>();
   const pairs: string[] = [];
   const skipped: string[] = [];
+  const argumentSkipped: string[] = [];
   const worstNodes = new Map<string, number>();
+  const worstReturnNodes = new Map<string, number>();
   const arms = new Map<string, number>();
   const bannedEqual: string[] = [];
   const bannedContained: string[] = [];
@@ -4992,10 +5189,15 @@ function measureOverflow(): OverflowMeasurement {
       if (subject.domain !== point.domain) continue;
       const key = `${point.domain}/${subject.export}`;
       const ceiling = OVERFLOW_ALLOCATION_CEILINGS[point.domain] ?? 0;
-      if (subject.cost === 'allocating' && point.value > ceiling) {
+      const budgeted = subject.cost !== 'flat' && point.value > ceiling;
+      // A `return-heavy` subject has nothing cheap to offer above the ceiling,
+      // so the whole pair is skipped and counted. An `argument-heavy` one is
+      // driven and its return is scanned; only the re-read argument is skipped.
+      if (budgeted && subject.cost === 'return-heavy') {
         skipped.push(`${key}@${point.label}`);
         continue;
       }
+      if (budgeted) argumentSkipped.push(`${key}@${point.label}`);
       pairs.push(`${key}@${point.label}`);
       points.add(at);
       for (const values of subject.at(point.value)) {
@@ -5014,7 +5216,10 @@ function measureOverflow(): OverflowMeasurement {
             arms.set(arm, (arms.get(arm) ?? 0) + 1);
           }
         }
-        for (const [region, scan] of scanRow(row)) {
+        for (const [region, scan] of scanRow(row, budgeted ? ['return'] : undefined)) {
+          if (region === 'return') {
+            worstReturnNodes.set(key, Math.max(worstReturnNodes.get(key) ?? 0, scan.nodes));
+          }
           nodes += scan.nodes;
           depthCuts += scan.depthCuts;
           getterThrows += scan.getterThrows;
@@ -5052,7 +5257,9 @@ function measureOverflow(): OverflowMeasurement {
     points: Object.freeze([...points].sort()),
     pairs: Object.freeze([...pairs].sort()),
     skipped: Object.freeze([...skipped].sort()),
+    argumentSkipped: Object.freeze([...argumentSkipped].sort()),
     worstNodes,
+    worstReturnNodes,
     arms,
     bannedEqual: Object.freeze(bannedEqual),
     bannedContained: Object.freeze(bannedContained),
@@ -5114,10 +5321,11 @@ const OVERFLOW_COST_SECONDS: readonly OverflowCostRow[] = Object.freeze([
 function residual(
   domain: string,
   exportName: string,
+  region: OverflowResidualRow['region'],
   skipped: number,
   largestSkipped: number,
 ): OverflowResidualRow {
-  return Object.freeze({ domain, export: exportName, skipped, largestSkipped });
+  return Object.freeze({ domain, export: exportName, region, skipped, largestSkipped });
 }
 
 /**
@@ -5129,44 +5337,72 @@ function residual(
  * Thirty skipped points per row, both times, and the thirty is a different
  * thirty on each axis: DAY drops thirty-nine points and nine of them are at or
  * under 2 000; ROSTER_SHAPE drops fifty-six and twenty-six are.
+ *
+ * E17 SPLIT THIS LIST IN TWO AND THE SPLIT IS THE FINDING. Every row used to
+ * mean the same thing — the pair was not driven — and the two halves are not
+ * the same concession:
+ *
+ *   - The eleven DAY rows still mean it. `runEmpire` at the SMALLEST dropped
+ *     point, 2 500 days, measures 908 ms and returns 10 051 nodes, and the
+ *     other ten read the run it memoises, so there is no cheap region to take.
+ *   - The twenty-three ROSTER_SHAPE rows do not. Those subjects return a
+ *     number, a boolean, a five-row board or a one-line fault list at every
+ *     roster size; only the state handed IN is linear. Driving all 690 of
+ *     their pairs with the return region scanned and the argument region
+ *     skipped measures **7.9 s and 1 710 return nodes total**, against the
+ *     301.7 s `OVERFLOW_COST_SECONDS` prices raising that ceiling at. So they
+ *     are driven now, and what they still decline is one region rather than
+ *     the call.
+ *
+ * WHY IT MATTERED RATHER THAN BEING TIDIER. The tenth bypass —
+ * `completeRecruitment` throwing `EMPIRE_FORBIDDEN_OUTPUTS[0]` on a roster of
+ * `REPUTATION_MAX` — is `tsc` exit 0 and 13 files / 509 tests green against the
+ * old shape, because the pair it lives on was one of the twenty-three. It is
+ * M25 in `PLANTED_ROUTES`. The pair being undriven was the whole of its cover.
  */
 const OVERFLOW_RESIDUAL: readonly OverflowResidualRow[] = Object.freeze([
   // COUNT has no rows. Its ceiling was deleted by the measurement, so all four
-  // of its allocating subjects are driven at all thirty-nine dropped points.
-  residual('DAY', 'amountSeries', 30, 120000),
-  residual('DAY', 'arrivalDays', 30, 120000),
-  residual('DAY', 'compareDayLists', 30, 120000),
-  residual('DAY', 'compareLedgers', 30, 120000),
-  residual('DAY', 'empireRunFaults', 30, 120000),
-  residual('DAY', 'idleDayLedger', 30, 120000),
-  residual('DAY', 'outputSeries', 30, 120000),
-  residual('DAY', 'progressionDayLedger', 30, 120000),
-  residual('DAY', 'rivalPeriodCloseDays', 30, 120000),
-  residual('DAY', 'runEmpire', 30, 120000),
-  residual('DAY', 'socialRewardSchedule', 30, 120000),
-  residual('ROSTER_SHAPE', 'accrueProduction', 30, 120000),
-  residual('ROSTER_SHAPE', 'accrueReputation', 30, 120000),
-  residual('ROSTER_SHAPE', 'accrueSponsorship', 30, 120000),
-  residual('ROSTER_SHAPE', 'assertEmpireState', 30, 120000),
-  residual('ROSTER_SHAPE', 'beginRecruitment', 30, 120000),
-  residual('ROSTER_SHAPE', 'completeRecruitment', 30, 120000),
-  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 30, 120000),
-  residual('ROSTER_SHAPE', 'empireStateFaults', 30, 120000),
-  residual('ROSTER_SHAPE', 'expansionContext', 30, 120000),
-  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 30, 120000),
-  residual('ROSTER_SHAPE', 'mayRecruit', 30, 120000),
-  residual('ROSTER_SHAPE', 'npcTierUnlocks', 30, 120000),
-  residual('ROSTER_SHAPE', 'productionRates', 30, 120000),
-  residual('ROSTER_SHAPE', 'recruitmentBoard', 30, 120000),
-  residual('ROSTER_SHAPE', 'recruitmentOffer', 30, 120000),
-  residual('ROSTER_SHAPE', 'recruitmentRefusals', 30, 120000),
-  residual('ROSTER_SHAPE', 'reputationRates', 30, 120000),
-  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 30, 120000),
-  residual('ROSTER_SHAPE', 'rosterOutputRates', 30, 120000),
-  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 30, 120000),
-  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 30, 120000),
-  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 30, 120000),
-  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 30, 120000),
+  // of its return-heavy subjects are driven at all thirty-nine dropped points.
+  //
+  // The eleven DAY rows: the pair is not driven at all, and the price of
+  // driving it is in `OVERFLOW_COST_SECONDS`.
+  residual('DAY', 'amountSeries', 'the pair', 30, 120000),
+  residual('DAY', 'arrivalDays', 'the pair', 30, 120000),
+  residual('DAY', 'compareDayLists', 'the pair', 30, 120000),
+  residual('DAY', 'compareLedgers', 'the pair', 30, 120000),
+  residual('DAY', 'empireRunFaults', 'the pair', 30, 120000),
+  residual('DAY', 'idleDayLedger', 'the pair', 30, 120000),
+  residual('DAY', 'outputSeries', 'the pair', 30, 120000),
+  residual('DAY', 'progressionDayLedger', 'the pair', 30, 120000),
+  residual('DAY', 'rivalPeriodCloseDays', 'the pair', 30, 120000),
+  residual('DAY', 'runEmpire', 'the pair', 30, 120000),
+  residual('DAY', 'socialRewardSchedule', 'the pair', 30, 120000),
+  // The twenty-three ROSTER_SHAPE rows: the pair IS driven at all thirty of
+  // these points and its return is scanned; the state handed in is not walked a
+  // second time afterwards. See `FROZEN_ARGUMENT_WITNESS` for what covers that.
+  residual('ROSTER_SHAPE', 'accrueProduction', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'accrueReputation', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'accrueSponsorship', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'assertEmpireState', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'beginRecruitment', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'completeRecruitment', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'empireStateFaults', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'expansionContext', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'mayRecruit', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'npcTierUnlocks', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'productionRates', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'recruitmentBoard', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'recruitmentOffer', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'recruitmentRefusals', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'reputationRates', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'rosterOutputRates', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 'the argument re-read', 30, 120000),
 ]);
 
 /**
@@ -5174,32 +5410,63 @@ const OVERFLOW_RESIDUAL: readonly OverflowResidualRow[] = Object.freeze([
  *
  * `POINTS` and `POINTS_DRIVEN` are the pair that says how much of the declared
  * limit this closes and how much it does not: 134 points are dropped by the
- * three ceilings, and 104 of them have at least one subject driven at them.
- * The 30 that have none are the ROSTER_SHAPE points above 2 000, and they have
- * none because that axis has NO flat subject — every one of its twenty-three
- * exports takes a roster or a state holding one, so there is nothing on it
- * that can be called at 120 000 without allocating 120 000 lifters. That is
- * stated as two numbers rather than as a claim about coverage.
+ * three ceilings, and every one of them now has at least one subject driven at
+ * it.
  *
- * `PAIRS_DRIVEN` and `PAIRS_SKIPPED` are the same question one level finer:
- * 2 302 (subject, point) pairs exist across the three axes, 1 282 are driven,
- * and the 1 020 that are not are exactly the rows of `OVERFLOW_RESIDUAL`.
+ * THAT SECOND NUMBER WAS 104 AND THE 30 IT WAS MISSING WERE THE HOLE THE TENTH
+ * BYPASS LIVED IN. The paragraph here used to say the ROSTER_SHAPE points above
+ * 2 000 had no subject driven at them "because that axis has NO flat subject —
+ * every one of its twenty-three exports takes a roster or a state holding one,
+ * so there is nothing on it that can be called at 120 000 without allocating
+ * 120 000 lifters." Every clause of that is true and the conclusion does not
+ * follow: allocating 120 000 lifters is what the FIXTURE costs, and the fixture
+ * is built once per point and memoised. What those exports return is a number,
+ * a boolean, a five-row board or a one-line fault list. Measured, all 690 of
+ * those pairs drive in 7.9 s.
+ *
+ * `PAIRS_DRIVEN` and `PAIRS_SKIPPED` are the same question one level finer, and
+ * `PAIRS_ARGUMENT_SKIPPED` is the third number the split made necessary: 2 302
+ * (subject, point) pairs exist across the three axes, 1 972 are driven, and the
+ * 330 that are not are the eleven DAY rows of `OVERFLOW_RESIDUAL`. Of the
+ * driven, 690 were driven with the re-read argument left unscanned, and those
+ * are its twenty-three ROSTER_SHAPE rows.
  */
 const OVERFLOW_CENSUS = Object.freeze({
   /** (domain, label) pairs the ceilings drop. Equals the sum of OMITTED_ABOVE_CEILING. */
   POINTS: 134,
   /** Of those, how many at least one subject was driven at. */
-  POINTS_DRIVEN: 104,
+  POINTS_DRIVEN: 134,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
-  ALLOCATING_SUBJECTS: 38,
-  /** (subject, point) pairs driven, and pairs the budgets skipped. */
-  PAIRS_DRIVEN: 1282,
-  PAIRS_SKIPPED: 1020,
-  ROWS: 1789,
-  NODES: 521418,
-  STRINGS: 3538100,
-  DISTINCT_STRINGS: 4229,
+  ARGUMENT_HEAVY_SUBJECTS: 23,
+  RETURN_HEAVY_SUBJECTS: 15,
+  /** (subject, point) pairs driven, and pairs the budgets did not drive at all. */
+  PAIRS_DRIVEN: 1972,
+  PAIRS_SKIPPED: 330,
+  /** Of the driven, how many had the re-read argument region left unscanned. */
+  PAIRS_ARGUMENT_SKIPPED: 690,
+  /**
+   * ROSTER_SHAPE points above its allocation ceiling.
+   *
+   * The number the tenth bypass hid in, kept as its own row because the pin
+   * below drives all thirty of them one at a time and a shrunken list would
+   * otherwise pass quietly.
+   */
+  ROSTER_POINTS_ABOVE_THE_CEILING: 30,
+  /**
+   * DERIVED INDEPENDENTLY RATHER THAN READ OFF A FAILURE, for the four that
+   * can be. The old values were 1 789 rows, 521 418 nodes and 3 538 100
+   * strings; the return-only drive of the 690 newly reached pairs was measured
+   * on its own, before this change was made, at 690 calls, 1 710 nodes and
+   * 6 330 strings. So 1 789 + 690, 521 418 + 1 710 and 3 538 100 + 6 330 are
+   * the three numbers below, and all three agreed with the run. The fourth,
+   * `DISTINCT_STRINGS`, moved 4 229 -> 4 307 and is transcribed: a distinct-set
+   * size is not additive and there is no second way to get it.
+   */
+  ROWS: 2479,
+  NODES: 523128,
+  STRINGS: 3544430,
+  DISTINCT_STRINGS: 4307,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
@@ -5223,7 +5490,9 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // dropped ROSTER_SHAPE point is 30 against a ceiling of sixteen slots — so
   // the ACCEPTED arm is not reachable here and is absent rather than pinned at
   // zero. The main drive is what produces it, 135 times.
-  ['beginRecruitment#refused', 26],
+  // 26 before E17 and 56 after: one more refusal per ROSTER_SHAPE point the
+  // budget used to decline, which is thirty. The arm is the same arm.
+  ['beginRecruitment#refused', 56],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -5353,12 +5622,23 @@ interface DriveMeasurement {
  * its reach IS the main drive's reach — the same walker, the same two regions,
  * the same paths — rather than a second implementation that agrees today.
  */
-function scanRow(row: DrivenRow): readonly (readonly [Region, ScanResult])[] {
+function scanRow(
+  row: DrivenRow,
+  only?: readonly Region[],
+): readonly (readonly [Region, ScanResult])[] {
   const label = `${row.export}@${row.point}`;
-  return [
-    ['return', deepScan(row.values[0], `${label}#return`)],
-    ['argument', deepScan(row.values.slice(1), `${label}#argument`)],
-  ];
+  const wanted = (region: Region): boolean => only === undefined || only.includes(region);
+  const scans: (readonly [Region, ScanResult])[] = [];
+  // Built by filtering rather than by a second expression per caller: the whole
+  // reason this function exists is that the overflow pass and the main drive
+  // must not be two walkers, and a caller that composed its own subset would be
+  // exactly that again. `only` says WHICH of these two regions to walk and can
+  // never say how.
+  if (wanted('return')) scans.push(['return', deepScan(row.values[0], `${label}#return`)]);
+  if (wanted('argument')) {
+    scans.push(['argument', deepScan(row.values.slice(1), `${label}#argument`)]);
+  }
+  return scans;
 }
 
 let measurementMemo: DriveMeasurement | null = null;
@@ -6194,14 +6474,17 @@ describe('the overflow pass — the catcher for what the ceilings drop', () => {
     expect(OVERFLOW_SUBJECTS.filter((subject) => subject.cost === 'flat').length).toBe(
       OVERFLOW_CENSUS.FLAT_SUBJECTS,
     );
-    expect(OVERFLOW_SUBJECTS.filter((subject) => subject.cost === 'allocating').length).toBe(
-      OVERFLOW_CENSUS.ALLOCATING_SUBJECTS,
+    expect(OVERFLOW_SUBJECTS.filter((subject) => subject.cost === 'argument-heavy').length).toBe(
+      OVERFLOW_CENSUS.ARGUMENT_HEAVY_SUBJECTS,
+    );
+    expect(OVERFLOW_SUBJECTS.filter((subject) => subject.cost === 'return-heavy').length).toBe(
+      OVERFLOW_CENSUS.RETURN_HEAVY_SUBJECTS,
     );
     // Every subject names a domain that carries a ceiling. A row for NUMBER
     // would drive nothing, because NUMBER drops nothing.
     for (const subject of OVERFLOW_SUBJECTS) {
       expect(ceilinged, subject.export).toContain(subject.domain);
-      if (subject.cost === 'allocating') {
+      if (subject.cost !== 'flat') {
         expect(subject.why.length, `${subject.domain}/${subject.export}`).toBeGreaterThan(60);
       } else {
         expect(subject.why, `${subject.domain}/${subject.export}`).toBe('');
@@ -6214,6 +6497,7 @@ describe('the overflow pass — the catcher for what the ceilings drop', () => {
     expect(measurement.rows).toBe(OVERFLOW_CENSUS.ROWS);
     expect(measurement.pairs.length).toBe(OVERFLOW_CENSUS.PAIRS_DRIVEN);
     expect(measurement.skipped.length).toBe(OVERFLOW_CENSUS.PAIRS_SKIPPED);
+    expect(measurement.argumentSkipped.length).toBe(OVERFLOW_CENSUS.PAIRS_ARGUMENT_SKIPPED);
     expect(measurement.points.length).toBe(OVERFLOW_CENSUS.POINTS_DRIVEN);
     expect(measurement.nodes).toBe(OVERFLOW_CENSUS.NODES);
     expect(measurement.strings).toBe(OVERFLOW_CENSUS.STRINGS);
@@ -6259,12 +6543,21 @@ describe('the overflow pass — the catcher for what the ceilings drop', () => {
   });
 
   it('measures the cost class of every subject rather than asserting it', () => {
-    // The catcher for the one judgement in the table: `flat` versus
-    // `allocating`. A subject misfiled as flat is driven at 120 000 with no
-    // budget, so its worst scan is tens of thousands of nodes rather than a
-    // handful, and this is where that shows up.
+    // The catcher for the two judgements in the table. A subject misfiled as
+    // `flat` is driven at 120 000 with no budget at all, so its worst WHOLE
+    // scan is tens of thousands of nodes rather than a handful. A subject
+    // misfiled as `argument-heavy` is driven there too — the claim that class
+    // makes is only that what comes BACK stays small, so its worst RETURN scan
+    // is what says whether the claim is true.
+    //
+    // The second half is what E17 added, and it is the check that keeps the
+    // new class from being a free assertion: without it, filing every
+    // `return-heavy` row as `argument-heavy` would drive `runEmpire` at 120 000
+    // days and report a green pass some minutes later.
     const worst = measureOverflow().worstNodes;
+    const worstReturn = measureOverflow().worstReturnNodes;
     let flat = 0;
+    let argumentHeavy = 0;
     for (const subject of OVERFLOW_SUBJECTS) {
       const key = `${subject.domain}/${subject.export}`;
       const seen = worst.get(key);
@@ -6274,8 +6567,14 @@ describe('the overflow pass — the catcher for what the ceilings drop', () => {
         expect(seen ?? 0, key).toBeLessThanOrEqual(OVERFLOW_FLAT_NODE_CEILING);
         flat += 1;
       }
+      if (subject.cost === 'argument-heavy') {
+        expect(worstReturn.get(key), key).toBeDefined();
+        expect(worstReturn.get(key) ?? 0, key).toBeLessThanOrEqual(OVERFLOW_RETURN_NODE_CEILING);
+        argumentHeavy += 1;
+      }
     }
     expect(flat).toBe(OVERFLOW_CENSUS.FLAT_SUBJECTS);
+    expect(argumentHeavy).toBe(OVERFLOW_CENSUS.ARGUMENT_HEAVY_SUBJECTS);
   });
 
   it('declares every pair the allocation budgets skipped, in both directions', () => {
@@ -6283,49 +6582,223 @@ describe('the overflow pass — the catcher for what the ceilings drop', () => {
     // skipped moves a number here before it moves anything downstream, and a
     // row for a pair nothing skips is a row that reads as a concession the pass
     // is not actually making.
-    const skippedByPair = new Map<string, number>();
+    //
+    // TWO LISTS AND NOT ONE, WHICH IS THE JOIN E17 ADDED. `skipped` holds the
+    // pairs nothing called; `argumentSkipped` holds the pairs that were called
+    // and whose arguments were not walked again afterwards. Each row declares
+    // which of the two it is, and the row is compared against the matching
+    // list — so re-labelling a `'the pair'` row as `'the argument re-read'` to
+    // make it read weaker does not pass, because the counts come from
+    // different measurements.
+    const countBy = (keys: readonly string[]): Map<string, number> => {
+      const counted = new Map<string, number>();
+      for (const key of keys) {
+        const subject = key.split('@')[0] ?? '';
+        counted.set(subject, (counted.get(subject) ?? 0) + 1);
+      }
+      return counted;
+    };
+    const byRegion: Readonly<Record<OverflowResidualRow['region'], Map<string, number>>> =
+      Object.freeze({
+        'the pair': countBy(measureOverflow().skipped),
+        'the argument re-read': countBy(measureOverflow().argumentSkipped),
+      });
     const largest = new Map<string, number>();
-    for (const key of measureOverflow().skipped) {
-      const subject = key.split('@')[0] ?? '';
-      skippedByPair.set(subject, (skippedByPair.get(subject) ?? 0) + 1);
-    }
     for (const point of overflowPoints()) {
       const ceiling = OVERFLOW_ALLOCATION_CEILINGS[point.domain] ?? 0;
       if (point.value <= ceiling) continue;
       for (const subject of OVERFLOW_SUBJECTS) {
-        if (subject.domain !== point.domain || subject.cost !== 'allocating') continue;
+        if (subject.domain !== point.domain || subject.cost === 'flat') continue;
         const key = `${point.domain}/${subject.export}`;
         largest.set(key, Math.max(largest.get(key) ?? 0, point.value));
       }
     }
-    const measured = [...skippedByPair.entries()]
-      .map(([key, skipped]) => {
-        const [domain, exportName] = key.split('/');
-        return {
-          domain: domain ?? '',
-          export: exportName ?? '',
-          skipped,
-          largestSkipped: largest.get(key) ?? 0,
-        };
-      })
+    const measured = Object.entries(byRegion)
+      .flatMap(([region, counted]) =>
+        [...counted.entries()].map(([key, skipped]) => {
+          const [domain, exportName] = key.split('/');
+          return {
+            domain: domain ?? '',
+            export: exportName ?? '',
+            region: region as OverflowResidualRow['region'],
+            skipped,
+            largestSkipped: largest.get(key) ?? 0,
+          };
+        }),
+      )
       .sort((left, right) =>
         `${left.domain}/${left.export}`.localeCompare(`${right.domain}/${right.export}`),
       );
     expect(measured).toEqual([...OVERFLOW_RESIDUAL]);
     expect(
-      OVERFLOW_RESIDUAL.reduce((total, row) => total + row.skipped, 0),
+      OVERFLOW_RESIDUAL.filter((row) => row.region === 'the pair').reduce(
+        (total, row) => total + row.skipped,
+        0,
+      ),
     ).toBe(OVERFLOW_CENSUS.PAIRS_SKIPPED);
-    // Every residual row is an allocating subject. A flat subject on this list
-    // would mean a budget was applied where the file says none is.
+    expect(
+      OVERFLOW_RESIDUAL.filter((row) => row.region === 'the argument re-read').reduce(
+        (total, row) => total + row.skipped,
+        0,
+      ),
+    ).toBe(OVERFLOW_CENSUS.PAIRS_ARGUMENT_SKIPPED);
+    // Every residual row is a budgeted subject, and its cost class decides
+    // which region it may be declining. A `flat` subject on this list would
+    // mean a budget was applied where the file says none is; an
+    // `argument-heavy` row declaring `'the pair'` would claim a hole the pass
+    // does not have, and a `return-heavy` row declaring `'the argument
+    // re-read'` would claim it has one it does.
+    const REGION_OF: Readonly<Record<string, OverflowResidualRow['region']>> = Object.freeze({
+      'argument-heavy': 'the argument re-read',
+      'return-heavy': 'the pair',
+    });
     for (const row of OVERFLOW_RESIDUAL) {
       const subject = OVERFLOW_SUBJECTS.find(
         (candidate) => candidate.domain === row.domain && candidate.export === row.export,
       );
-      expect(subject?.cost, `${row.domain}/${row.export}`).toBe('allocating');
+      expect(subject?.cost, `${row.domain}/${row.export}`).not.toBe('flat');
+      expect(REGION_OF[subject?.cost ?? ''], `${row.domain}/${row.export}`).toBe(row.region);
       expect(row.largestSkipped, `${row.domain}/${row.export}`).toBeGreaterThan(
         OVERFLOW_ALLOCATION_CEILINGS[row.domain] ?? 0,
       );
     }
+  });
+
+  it('leaves nothing writable in the argument it stops re-reading, and counts what it walked', () => {
+    // THE NAMED CATCHER FOR THE ARGUMENT-REGION SKIP, and the shape is
+    // CLAUDE.md's "a bounded claim, a declared limit, and a named catcher"
+    // rather than an absolute.
+    //
+    //   WHAT THE SKIP GUARANTEES, in the mechanism's own terms: for the 690
+    //   ROSTER_SHAPE pairs above the ceiling, the call runs and everything it
+    //   RETURNS or THROWS is scanned in full, by the same walker and the same
+    //   fold list the main drive uses.
+    //
+    //   THE ROUTE THAT GETS PAST IT, named concretely enough to plant: attack
+    //   shape 13's second half — a value delivered not by returning it but by
+    //   WRITING it into a caller-supplied sink. The `argument` region is what
+    //   reads that back, and above the ceiling it is not read.
+    //
+    //   THE CHECK THAT COVERS THAT ROUTE: this one. Every object reachable
+    //   from the fixture those calls are handed is frozen, so the write throws
+    //   a TypeError — and a throw lands in the RETURN position, which is
+    //   scanned at every point. The route does not become invisible; it
+    //   becomes loud somewhere else.
+    //
+    // Its own residual, stated rather than implied: freezing stops a write to
+    // an own property. It does not stop a subject handing back a value it
+    // derived from the argument, which is the return region's job and is
+    // scanned.
+    const smallest = overflowPoints()
+      .filter(
+        (point) =>
+          point.domain === 'ROSTER_SHAPE' &&
+          point.value > (OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE ?? 0),
+      )
+      .reduce(
+        (best, point) => (best === null || point.value < best.value ? point : best),
+        null as OverflowPoint | null,
+      );
+    expect(smallest?.value, 'the axis has a point above its ceiling').toBeGreaterThan(0);
+    const fixture = overflowState(smallest?.value ?? 0);
+
+    // Walked rather than spot-checked at three properties, because a fixture
+    // that grows an unfrozen field is exactly the thing this would stop
+    // noticing. Counts, not bounds.
+    let objects = 0;
+    let unfrozen: string[] = [];
+    const walk = (value: unknown, path: string, depth: number): void => {
+      if (typeof value !== 'object' || value === null || depth > 6) return;
+      objects += 1;
+      if (!Object.isFrozen(value)) unfrozen.push(path);
+      for (const [key, child] of Object.entries(value)) walk(child, `${path}.${key}`, depth + 1);
+    };
+    walk(fixture, 'state', 0);
+    expect(unfrozen).toEqual([]);
+    unfrozen = [];
+    expect(objects).toBeGreaterThan(smallest?.value ?? 0);
+
+    // …and the freeze is what makes the write loud, measured rather than
+    // asserted. A frozen own property assigned to in a module — every file
+    // here is one — throws rather than failing silently.
+    const sink = fixture as unknown as Record<string, unknown>;
+    expect(() => {
+      sink[SENTINELS.OWN_GYM_ID] = core.EMPIRE_FORBIDDEN_OUTPUTS[0];
+    }).toThrow(TypeError);
+    expect(Object.hasOwn(fixture, SENTINELS.OWN_GYM_ID)).toBe(false);
+  });
+
+  it('pins what bounds a roster, because the two arms of that comparison are different questions', () => {
+    // WHY THIS SITS HERE AT ALL. The residual above used to be argued away
+    // rather than driven: nothing in this directory can BUILD a roster over
+    // `ROSTER_SLOTS_MAX`, so a roster-size branch point above the ceiling was
+    // taken to be unreachable. Half of that is true and it is the half that
+    // does not matter.
+    //
+    // The composed loop cannot reach one. Measured, not read: a 400-day run
+    // stamps `state.roster.length` into its own ledger on every day, and the
+    // largest it ever reads is `ROSTER_SLOTS_MAX`. So a branch point above the
+    // ceiling planted INSIDE `stepGym`'s capacity-gated block is dead code,
+    // which is why that mutant is recorded as inert.
+    //
+    // The exports are not the loop. `rosterCapacity` capping at
+    // `ROSTER_SLOTS_MAX` is what CREATES the over-capacity arm, and that arm is
+    // where five exports do their work: a decoded payload holding more lifters
+    // than slots is the case `empireStateFaults` exists for. Every one of them
+    // runs at every one of the thirty points the ceiling used to drop, which is
+    // what the tenth bypass rode and what the pass above now covers.
+    //
+    // Raising `ROSTER_SLOTS_MAX` past a dropped point reddens the first half
+    // here, which is the whole reason it is a pin and not a paragraph.
+    const run = invariant.runEmpire(
+      ROSTER_CEILING_RUN_DAYS,
+      policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY),
+      planAt(null, 0),
+      socialInputsAt(),
+    );
+    const rosterStamps = run.ledger.filter((entry) => entry.output === 'roster-slot');
+    expect(rosterStamps.length).toBe(ROSTER_CEILING_RUN_DAYS);
+    const worstInTheLoop = Math.max(...rosterStamps.map((entry) => entry.amount));
+    expect(worstInTheLoop).toBe(EMPIRE_TUNING.ROSTER_SLOTS_MAX);
+    // The loop GREW to it rather than starting there, which is what would make
+    // the number above a ceiling nothing ever pushed against. A run that never
+    // recruited reads one distinct size and fails both of these; a run that
+    // began full reads one distinct size and fails the second.
+    const sizesSeen = distinct(rosterStamps.map((entry) => String(entry.amount)));
+    expect(sizesSeen.length).toBe(ROSTER_CEILING_SIZES_SEEN);
+    expect(Math.min(...rosterStamps.map((entry) => entry.amount))).toBeLessThan(worstInTheLoop);
+
+    // And the second half: at every dropped point, the over-capacity arm of
+    // both comparisons produced a value. Per point, not in aggregate.
+    let refused = 0;
+    let threw = 0;
+    let faulted = 0;
+    const dropped = overflowPoints().filter(
+      (point) =>
+        point.domain === 'ROSTER_SHAPE' &&
+        point.value > (OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE ?? 0),
+    );
+    for (const point of dropped) {
+      const state = overflowState(point.value);
+      if (recruitmentModule.recruitmentRefusals(state, OVERFLOW_TIER).includes('roster-at-capacity')) {
+        refused += 1;
+      }
+      if (core.empireStateFaults(state).length > 0) faulted += 1;
+      try {
+        recruitmentModule.completeRecruitment(
+          state,
+          recruitmentModule.recruitmentSchedule(OVERFLOW_TIER, state.clock),
+          SENTINELS.RECRUIT_ID,
+          SENTINELS.RECRUIT_DISPLAY_NAME,
+        );
+      } catch {
+        threw += 1;
+      }
+    }
+    expect(dropped.length).toBe(OVERFLOW_CENSUS.ROSTER_POINTS_ABOVE_THE_CEILING);
+    expect(refused).toBe(dropped.length);
+    expect(faulted).toBe(dropped.length);
+    expect(threw).toBe(dropped.length);
   });
 
   it('joins a measured price to every domain whose budget skips a pair, in both directions', () => {
@@ -6761,6 +7234,7 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
     alsoRed: Object.freeze([
       'instrument A bites / compiles the probe cleanly — the same diagnostic read through the probe program. Named rather than omitted: it is one fact reported twice, not two catchers.',
       'THE MEASUREMENT THAT MAKES THIS THE HEADLINE: with the mutant in place, `npx vitest run src/empire` is 2 failed of 463 and BOTH are the diagnostic above. Instrument B is green, the overflow pass is green, and instrument C is green — nothing drives a roster of 2 001, exactly as FOREIGN_CEILINGS said. The type is the only catcher, and it did not need to be pointed at the number.',
+      'THE LAST CLAUSE OF THAT IS NOW STALE AND IS ANNOTATED RATHER THAN REWRITTEN, because it is a record of what was measured on the day. Something does drive a roster of 2 001 now: the argument-region split reaches all thirty of the dropped ROSTER_SHAPE points. What the row is evidence for is unchanged — the compiler caught this route with no drive at all — and M25 is the row that shows why the drive still had to come back.',
     ]),
   }),
   Object.freeze({
@@ -6889,6 +7363,56 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       "accidentalCatchersGreen is FALSE, and unavoidably: a new export cannot be added without the export censuses seeing it. What this row is evidence FOR is narrower and is the reason it was run — the refusal test found the new constructor WITHOUT BEING EDITED, so the derivation is real rather than a comment.",
     ]),
   }),
+  Object.freeze({
+    id: 'M24',
+    shape: '25 again, AND IT IS INERT — the same roster-size route as M15, planted at a site the capacity gate makes unreachable',
+    where:
+      "empireInvariant.ts, inside `stepGym`'s `if (rosterAllowed && state.roster.length + stillPending.length < capacity)` block: `state.roster.length > NPC_RECRUIT_COST_GYM_BUCKS.club ? (EMPIRE_FORBIDDEN_OUTPUTS[0] as unknown as NpcId) : asNpcId(...)`",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'NOTHING WENT RED, AND THAT IS WORTH EXACTLY NOTHING. tsc exit 0 and `vitest run src/empire src/game/streakEntitlement.test.ts` 13 files / 510 tests / exit 0 — the same green M25 gets, from a mutant that CANNOT RUN. `rosterCapacity` is `Math.min(ROSTER_SLOTS_MAX, …)` and the enclosing block requires the roster to be strictly under it, so `roster.length > 2000` is false at every reachable state. The green suite was reporting on dead code.',
+      'This row is kept because it is the control for M25 and because the mistake it records is the round\'s own subject: a mutant that survives is evidence about the guard only if the branch it sits in executes. `pins what bounds a roster` is the check that now states which sites are which — the loop tops out at ROSTER_SLOTS_MAX, measured off its own ledger.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M25',
+    shape: '25 — THE TENTH BYPASS: a roster-size branch point above the allocation ceiling, emitting through the ONE string channel no brand and no position census reaches — a thrown Error message',
+    where:
+      "recruitment.ts, `completeRecruitment`'s over-capacity refusal: `throw new RangeError(state.roster.length === EMPIRE_TUNING.REPUTATION_MAX ? EMPIRE_FORBIDDEN_OUTPUTS[0] : \`roster holds …\`)`",
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'AGAINST THE SHIPPED FILE AT 33898fc, NOTHING — tsc exit 0 and 13 files / 509 tests / exit 0.',
+      'AFTER the argument-region split: instrument B / produces no banned name at any point a ceiling drops: + "completeRecruitment@ROSTER_SHAPE/REPUTATION_MAX=5000#return.message=covered-day" and + "…/REPUTATION_TIER_THRESHOLDS[4]=5000#return.message=covered-day"',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'AND IT IS NOT INERT, which is the whole difference from M24 and was proven by driving rather than by reading: `completeRecruitment` called on a state whose roster holds REPUTATION_MAX lifters returns `RangeError: covered-day`. Printed, not inferred. The over-capacity arm is LIVE at every one of the thirty dropped points — `pins what bounds a roster` drives all thirty and counts three arms produced at each.',
+      "WHY EVERY OTHER INSTRUMENT IS BLIND HERE, stated so the row is not read as an indictment of them. Instrument A reads DECLARED types and a thrown payload has no declared position, so it has nothing to classify. Instrument C counts brand-constructor call sites and this route calls no constructor. `refuseForbiddenName` is containment and never runs, because nothing constructs anything. The only instrument that could ever have seen it is the drive, and the pair it lives on was one of the 690 the budget declined.",
+      'The first attempt keyed on `SPACE_LEVEL_COST_GYM_BUCKS[4]` and was caught — by the magic-number audit, on the bare `4` in the index, and by nothing about forbidden names. A different check noticing by accident is not that check working, so it was re-keyed onto a scalar knob and run again.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M26',
+    shape: "16-adjacent — NOT AN ATTACK: the measurement that settles `asFaultMessage`'s own claim about where the mint belongs",
+    where:
+      "social.ts, `socialContextFaults`, in three configurations: (a) shipped `const faults: string[]` with `faults.push(EMPIRE_FORBIDDEN_OUTPUTS[0])`; (b) the same push against `const faults: FaultMessage[]`; (c) FaultMessage[] with every push minted",
+    attempts: 3,
+    tscExit: 2,
+    caughtBy: Object.freeze([
+      "tsc --noEmit is the whole instrument here, and it answers differently in each configuration. (b) is exit 2: `src/empire/social.ts(837,19): error TS2345: Argument of type 'string' is not assignable to parameter of type 'FaultMessage'.` — the same error on all twelve template-literal pushes beside it, plus TS2345 on the return-side mint, which `Unbranded` refuses once the elements are already branded.",
+      "(a) tsc exit 0 — no compile signal at all, which is the shipped state and is what `asFaultMessage`'s note already says.",
+      '(c) tsc exit 0 — `faults.push(asFaultMessage(EMPIRE_FORBIDDEN_OUTPUTS[0]))` compiles and is contained at runtime, which is route 2 exactly as predicted.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      "WHAT IT SETTLES. `asFaultMessage`'s note argued the wrap 'would buy NOTHING at compile time over minting once at the return: either way the literal reaches a constructor, which is route 2 and not route 1'. That is true of a TEMPLATE LITERAL and false of the shape every bypass in this file has actually used — a bare `string` read out of the ban list. Under the shipped `string[]` that push is route 2; under `FaultMessage[]` it is a compile error. The note is corrected at the constructor rather than here.",
+      'The cost is real and is stated with the count: 125 `faults.push` sites across six modules would each need a mint, and the shipped fault channel is contained rather than open — `asFaultMessage` throws on the way out at every one of the eight `*Faults` returns. So this is a detection-versus-containment trade, not an open hole, and it is reported rather than taken.',
+    ]),
+  }),
 ]);
 
 /**
@@ -6915,6 +7439,18 @@ interface RegistryMutant {
 }
 
 const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
+  Object.freeze({
+    id: 'G13',
+    what: 'a NINTH fault-list producer added to `expansion.ts` — `axisVocabularyFaults`, returning `Object.freeze(faults) as readonly FaultMessage[]`, so it casts where the other eight mint',
+    reddened:
+      'every fault-list producer mints on the way out: expected [ …(9) ] to deeply equal [ …(8) ], + "expansion.ts#axisVocabularyFaults". tsc exit 0 beside it, which is the point — a cast is what the type cannot refuse, and the eight `x1` rows in DECLARED_BRAND_CONSTRUCTOR_CALLS stay exactly as they were, because a producer that never calls the constructor adds no site. That is the hole this join closes and it was measured rather than argued.',
+  }),
+  Object.freeze({
+    id: 'G14',
+    what: 'the roster-ceiling pin taken against a raised `ROSTER_SLOTS_MAX` — 16 changed to 32 in `empireTuning.ts`',
+    reddened:
+      'pins what bounds a roster, because the two arms of that comparison are different questions: expected 16 to be 32. The loop cannot grow to a ceiling the funding does not reach, so raising the cap makes the pin state a fact that stopped being true rather than quietly widening the region a roster-size branch point can hide in. That is what makes the reachability bound a check rather than an observation.',
+  }),
   Object.freeze({
     id: 'G1',
     what: 'a new knob `RIVAL_STREAK_BONUS_GYM_BUCKS: 1750` added to `empireTuning.ts`, filed under no unit and on no exemption list',
@@ -7008,8 +7544,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(12);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(12);
+    expect(REGISTRY_MUTANTS.length).toBe(14);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(14);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
@@ -7026,11 +7562,22 @@ describe('the routes that were planted, and what each of them cost', () => {
     ).toBe(2);
   });
 
-  it('records twenty-three routes, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(23);
+  it('records every route it planted, and names the two that could not be isolated', () => {
+    expect(PLANTED_ROUTES.length).toBe(26);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
-      expect(route.caughtBy.length, route.id).toBeGreaterThan(0);
+      // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
+      // Every other row records a mutant that something caught; M24 records one
+      // that NOTHING caught and that was worth nothing anyway, because the
+      // branch it sits in cannot execute. A row like that is the control the
+      // rest of the table needs, so the schema admits it by name — and requires
+      // it to say in `alsoRed` why its own green is not evidence.
+      if (route.id === 'M24') {
+        expect(route.caughtBy).toEqual([]);
+        expect(route.alsoRed.length, route.id).toBeGreaterThan(1);
+      } else {
+        expect(route.caughtBy.length, route.id).toBeGreaterThan(0);
+      }
       expect(route.shape.length, route.id).toBeGreaterThan(20);
       // A ROW MAY NOW EXIT 2, AND THAT IS A WIDENING OF THE SCHEMA RATHER THAN
       // A RELAXATION OF THE STANDARD. Every row before M15 had `tscExit: 0`
@@ -7068,7 +7615,7 @@ describe('the routes that were planted, and what each of them cost', () => {
     // could not reach with any domain.
     expect(
       PLANTED_ROUTES.filter((route) => route.tscExit === 2).map((route) => route.id),
-    ).toEqual(['M15', 'M16', 'M17', 'M18']);
+    ).toEqual(['M15', 'M16', 'M17', 'M18', 'M26']);
     // Twenty-two attempts for fourteen routes: the fifteen the first nine took,
     // one for M10, two for M11, one for M12, two for M13 and one for M14 —
     // which needed no extra attempt because the lead agent had already stripped
@@ -7080,9 +7627,13 @@ describe('the routes that were planted, and what each of them cost', () => {
     // new `'stack'` literal, 160 against 159, and M13's first form, which keyed
     // on a threshold that `empireTuning.test.ts` lists as having no consumer,
     // so the mutant BECAME the consumer and that census reddened instead.
-    // Twenty-two for the first fourteen, one each for M15-M23.
-    expect(attempts).toBe(31);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(13);
+    // Twenty-two for the first fourteen, one each for M15-M23, one for M24,
+    // two for M25 — its first form keyed on a bare array index and was caught
+    // by the magic-number audit rather than by anything about names — and
+    // three for M26, which is a measurement in three configurations rather
+    // than an attack.
+    expect(attempts).toBe(37);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(16);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {

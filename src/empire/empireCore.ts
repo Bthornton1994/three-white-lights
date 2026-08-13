@@ -472,6 +472,16 @@ export type NpcId = Branded<string, 'npc-id'>;
  * above `OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE`, because a domain is a
  * sample and the author picks the branch point after seeing the sample.
  *
+ * A TENTH CAME OUT OF THAT SAME REGION AND DID NOT HAVE THAT SHAPE, WHICH IS
+ * THE BOUND ON EVERYTHING BELOW. `completeRecruitment` throwing
+ * `EMPIRE_FORBIDDEN_OUTPUTS[0]` on an over-capacity roster is `tsc` exit 0 and
+ * always will be: a thrown `Error`'s message is not a field, so there is no
+ * position for a brand to sit on. The brands close ASSIGNMENT INTO A DECLARED
+ * POSITION. They do not close the throw channel, and nothing here should be
+ * read as claiming they do — what covers that is the drive, and specifically
+ * `empireForbiddenOutput.test.ts`'s overflow pass reaching the region the
+ * roster-size ceiling used to drop. It is M25 in `PLANTED_ROUTES`.
+ *
  * The probe that made this file's answer possible, run at `dcc65bb` and again
  * before this change:
  *
@@ -1281,19 +1291,51 @@ export function asDisplayName<S extends string>(value: S & Unbranded<S>): Displa
  * One sentence of diagnostic prose.
  *
  * WHERE THE MINT SITS, AND WHY IT IS AT THE BOUNDARY RATHER THAN AT EVERY PUSH.
- * The eight `*Faults` functions build their lists with 123 `faults.push(...)`
- * calls, every one of them a template literal. A template literal is a plain
- * `string`, so wrapping each push would put a constructor call at each of the
- * 123 sites and buy NOTHING at compile time over minting once at the return:
+ * The eight `*Faults` functions build their lists with 125 `faults.push(...)`
+ * calls, and wrapping each of them would put a constructor call at every one of
+ * those sites.
+ *
+ * THE ARGUMENT THIS NOTE USED TO MAKE FOR THAT CHOICE WAS HALF RIGHT, AND THE
+ * HALF IT GOT WRONG IS THE ONE THAT MATTERS. It read: "every one of them a
+ * template literal. A template literal is a plain `string`, so wrapping each
+ * push would … buy NOTHING at compile time over minting once at the return:
  * either way the literal reaches a constructor, which is route 2 and not route
- * 1. What it would buy is 123 more rows in the call-site census, which is noise
- * around the eight rows that matter.
+ * 1." That is exactly true OF A TEMPLATE LITERAL, and it is false of the shape
+ * every bypass this directory has been shown actually used — a bare `string`
+ * read out of the ban list, which is not a template literal and does not need a
+ * constructor to get into a `string[]`.
+ *
+ * MEASURED, in `socialContextFaults`, three configurations, recorded as M26 in
+ * `PLANTED_ROUTES`:
+ *
+ *   - shipped `const faults: string[]`, `faults.push(EMPIRE_FORBIDDEN_OUTPUTS[0])`
+ *     — `tsc --noEmit` exit 0.
+ *   - `const faults: FaultMessage[]`, same push — exit 2, `TS2345: Argument of
+ *     type 'string' is not assignable to parameter of type 'FaultMessage'`, and
+ *     the same error on every template push beside it.
+ *   - `FaultMessage[]` with every push minted — exit 0, and contained at
+ *     runtime by the refusal below. Route 2, as predicted.
+ *
+ * So the wrap converts the bypass shape from CONTAINMENT to DETECTION. It is
+ * not taken here, and the reason is stated as a trade rather than as a proof:
+ * the shipped channel is contained, not open — this constructor runs on every
+ * message at all eight `*Faults` returns, so such a value can never be handed
+ * to a caller — and the price of the wrap is 125 sites and the census rows that
+ * come with them. A reader who would rather have detection than containment
+ * should read M26 and take it; the measurement is there so that is a decision
+ * rather than an inheritance.
  *
  * SO STATE THE COST PLAINLY RATHER THAN IMPLYING THE FENCE IS UNIFORM: inside a
  * `*Faults` body, `faults.push(EMPIRE_FORBIDDEN_OUTPUTS[0])` still type-checks.
  * It is caught by this constructor throwing when the function is driven —
  * containment, and measured rather than asserted: that mutant was planted and
  * is recorded as M15 in `PLANTED_ROUTES`.
+ *
+ * AND THE SAME LIMIT ONE STEP OUT, NAMED BECAUSE IT IS WHERE THE TENTH BYPASS
+ * WENT: a `throw new RangeError(<a bare string>)` reaches no constructor at
+ * all, so it is neither typed nor contained. `completeRecruitment` is where
+ * that was planted and the overflow pass is what catches it; see the brand
+ * note at the top of this file.
  */
 export function asFaultMessage<S extends string>(value: S & Unbranded<S>): FaultMessage {
   refuseForbiddenName(value, 'faultMessage');
