@@ -37,7 +37,11 @@
  * `completeRecruitment` throwing the ban list's first member on a roster of
  * `REPUTATION_MAX`, which no brand can see because a thrown Error's message is
  * not a declared position anywhere. It is M25, and what closed it was driving
- * the region rather than typing it — the two are not alternatives. The five bare-string fields are branded now, so that assignment does
+ * the region rather than typing it — the two are not alternatives. AND THE
+ * ELEVENTH CAME OUT OF ASKING WHY THE TENTH HAD BEEN INVISIBLE, WHICH IS THE
+ * CHANNEL CENSUS BELOW: `historyFrom` hands its caller's own predicate the ban
+ * list's first member as a second argument, and no instrument here moved at
+ * all. It is M27. The five bare-string fields are branded now, so that assignment does
  * not compile — at every branch point at once. `DECLARED_BARE_STRING_FIELDS` is
  * empty, `CLOSED_BARE_STRING_FIELDS` records what it held and what closed each
  * row, and M15-M18 in `PLANTED_ROUTES` are the measurement.
@@ -183,6 +187,36 @@
  *   Instrument A is the catcher for the branded-string half of that shape
  *   (`asNpcId(...)` widens a new branded position and reddens the census); the
  *   plain-number half has no catcher in this file and is declared below.
+ *
+ * ===========================================================================
+ * THE CHANNEL CENSUS AND THE CALLBACK PASS — NOT A FOURTH INSTRUMENT, AND THE
+ * DIFFERENCE IS THE POINT
+ * ===========================================================================
+ *
+ * The three instruments above ask WHERE a name sits and WHICH NUMBER a branch
+ * is keyed on. Ten bypasses were found by enumerating those two things. The
+ * eleventh was found by asking a question none of them asks: WHAT ARE THE
+ * ROUTES A STRING CAN LEAVE BY?
+ *
+ * `channelCensus` enumerates them — eleven, from the language rather than from
+ * this directory, and the SITES per channel per module scanned off the shipped
+ * source with the checker. It is a census of routes and not a detector of
+ * payloads: what it guarantees is that a new escape site, or a channel this
+ * directory does not currently use, moves a pinned number. Six of the eleven
+ * channels have zero sites and those are the rows it is most for.
+ *
+ * Its reading, which is what the section is worth: `throw` is covered BY THE
+ * DRIVE ALONE, at 54 sites — a sampling instrument, on the one channel that has
+ * no type and no constructor. And `callback-invocation` was covered by NOTHING,
+ * in any of the three, which is M27 and is the eleventh bypass. THE CALLBACK
+ * PASS is the catcher written for it: every exported function that calls a
+ * parameter is driven with a callback that records what it is handed, and the
+ * scan is `deepScan`, the same walker instrument B uses.
+ *
+ * A NOTE ON THE WORD, because this file already uses it: the DIAGNOSTIC channel
+ * is an exemption class over eight `*Faults` exports, and a CHANNEL in this
+ * section is an escape route. They are unrelated and the collision is the
+ * English rather than the design.
  *
  * ===========================================================================
  * WHAT NEITHER INSTRUMENT CATCHES — NAMED CONCRETELY, BECAUSE AN UNDECLARED
@@ -3049,6 +3083,7 @@ const LITERAL_AXES: readonly (readonly [string, string])[] = Object.freeze([
   ['everyNth', 'a divisor selecting which slots are check-ins. A shape parameter — every slot, or every other — and not a magnitude with thresholds.'],
   ['gymId', 'four caller-supplied identifiers: two friends, the player, and one that is not on the friend list. The second friend is what makes the VISITED arm reachable. Strings, not numbers.'],
   ['identifier', 'the three sentinels fed to the four string brand constructors, one per caller-supplied identifier position. Strings, not numbers.'],
+  ['kind', 'NOT A DRIVER AXIS, and registered rather than rephrased. It is the channel census walking the distinct syntax kinds found at one internal callback position, so it drives nothing and has no domain. The scan cannot tell that apart from an axis and it should not try — this row is the visible edit it exists to force, which is the same answer M8 gets from the export census.'],
   ['last', 'the boolean telling spendingMoment whether this is the final moment. Two points is the whole domain.'],
 ]);
 
@@ -3200,7 +3235,7 @@ const DOMAIN_CENSUS = Object.freeze({
     ROSTER_SHAPE: 56,
   }),
   ALIASES: 6,
-  LITERAL_AXES: 7,
+  LITERAL_AXES: 8,
   LABELLED_LISTS: 13,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
@@ -7062,6 +7097,16 @@ interface EscapeChannel {
   readonly what: string;
   /** The syntactic shape `channelCensus` counts for it. Stated so the scan's reach is readable. */
   readonly scannedFor: string;
+  /**
+   * Whether anything outside this directory can put a value into this route.
+   *
+   * True for ten of the eleven. The one `false` is the internal callback, and
+   * it is not taken on the `export` modifier alone —
+   * `DECLARED_INTERNAL_CALLBACK_ARGUMENTS` is the measurement that backs it,
+   * because an exported function forwarding its own callback parameter would
+   * make the answer true with no modifier moving.
+   */
+  readonly reachableFromOutside: boolean;
 }
 
 /**
@@ -7080,56 +7125,67 @@ const ESCAPE_CHANNELS: readonly EscapeChannel[] = Object.freeze([
     id: 'return',
     what: 'normal completion — the value a call evaluates to, at every nested position inside it',
     scannedFor: 'every `return` statement in a shipped module',
+    reachableFromOutside: true,
   }),
   Object.freeze({
     id: 'throw',
     what: 'abrupt completion — the payload a `throw` hands the caller, including `message`, `name` and anything hung on the error',
     scannedFor: 'every `throw` statement in a shipped module',
+    reachableFromOutside: true,
   }),
   Object.freeze({
     id: 'exported-binding',
     what: 'exported DATA, which a caller reads with no call at all and which is built at import time',
     scannedFor: 'every exported `const` declaration',
+    reachableFromOutside: true,
   }),
   Object.freeze({
     id: 'argument-mutation',
     what: "a write into memory the caller already holds — a parameter's property, element, or a mutating method on it",
     scannedFor: 'a member assignment or a mutating call whose receiver resolves, through the checker, to a PARAMETER',
+    reachableFromOutside: true,
   }),
   Object.freeze({
     id: 'callback-invocation',
     what: 'a call into a function the caller supplied, which carries its arguments out of the directory',
     scannedFor: 'a call of an identifier that resolves to a parameter of an EXPORTED function, keyed by its argument count',
+    reachableFromOutside: true,
   }),
   Object.freeze({
     id: 'internal-callback-invocation',
     what: 'the same shape inside a module-private function, where every caller is in this directory',
     scannedFor: 'the same, in a function without the `export` modifier',
+    reachableFromOutside: false,
   }),
   Object.freeze({
     id: 'module-mutable-state',
     what: 'a write into a module-level binding a later read can see',
     scannedFor: 'a member assignment or a mutating call whose receiver resolves to a MODULE-SCOPE variable',
+    reachableFromOutside: true,
   }),
   Object.freeze({
     id: 'ambient-global',
     what: 'a write into something neither party owns — `globalThis`, a console, a prototype, a defined property',
     scannedFor: '`globalThis` / `console` / `process`, and `Object.defineProperty|defineProperties|assign|setPrototypeOf`',
+    reachableFromOutside: true,
   }),
   Object.freeze({
     id: 'lazy-member',
     what: 'a value computed when the CALLER reads it — an accessor, `toString`, `toJSON`, `valueOf`, `Symbol.toPrimitive`',
     scannedFor: 'a get/set accessor declaration, or a member named for one of the coercion protocols',
+    reachableFromOutside: true,
   }),
   Object.freeze({
     id: 'returned-closure',
     what: 'a function handed back, whose RESULT is the payload and which only the caller can invoke',
     scannedFor: 'a `return` of a function expression or arrow, or a declared function-typed return',
+    reachableFromOutside: true,
   }),
   Object.freeze({
     id: 'deferred-completion',
     what: 'a value delivered after the call returns — `async`, a generator, a thenable',
     scannedFor: 'an `async` modifier, a generator asterisk, or `new Promise`',
+    reachableFromOutside: true,
   }),
 ]);
 
@@ -7149,6 +7205,24 @@ interface ChannelCensus {
    * unclassified escape-shaped node is exactly where the next channel arrives.
    */
   readonly freshReceivers: readonly string[];
+  /**
+   * What is actually passed at every internal callback parameter, by syntax.
+   *
+   * THE CHECK BEHIND THE ONE JUDGEMENT IN THIS SECTION, and it was very nearly
+   * left as a sentence. `internal-callback-invocation` is classified as not
+   * reachable from outside because the function whose parameter is called is
+   * not exported — but a non-exported function can still receive a
+   * CALLER-SUPPLIED function, if an exported one passes its own parameter
+   * through. `export function f(cb) { return axesWhere(builds, cb); }` is that
+   * shape exactly, and it would make the internal channel an escape route while
+   * every `export` modifier stayed where it is.
+   *
+   * So the classification is checked rather than asserted: every argument at an
+   * internal callback's parameter position is resolved and its SYNTAX recorded.
+   * A function literal is written here and cannot have come from a caller; an
+   * identifier might have, and reddens the pin below until somebody looks.
+   */
+  readonly internalCallbackArguments: readonly string[];
   readonly nodesExamined: number;
   readonly modules: readonly string[];
 }
@@ -7210,6 +7284,7 @@ function channelCensusOf(
   const sites = emptyChannelTable<string[]>(() => []);
   const byModule = emptyChannelTable<Record<string, number>>(() => ({}));
   const freshReceivers: string[] = [];
+  const internalCallbackArguments: string[] = [];
   const modules: string[] = [];
   let nodesExamined = 0;
 
@@ -7279,6 +7354,16 @@ function channelCensusOf(
     const key = (node: ts.Node, detail: string): string =>
       `${moduleName}#${enclosing(node)}#${detail}`;
 
+    /**
+     * The internal callback parameters this module calls: owner declaration,
+     * parameter name and index. Filled by the walk, read by the pass below it.
+     *
+     * A non-exported function can only be called from its own module, which is
+     * what makes a single-module join sound here rather than a shortcut.
+     */
+    const internalOwners = new Map<ts.FunctionDeclaration, Map<number, string>>();
+    const callsInModule: ts.CallExpression[] = [];
+
     const visit = (node: ts.Node): void => {
       nodesExamined += 1;
 
@@ -7321,13 +7406,15 @@ function channelCensusOf(
       // machinery the caller supplied. The argument count is part of the key,
       // because that is what moves when a site starts carrying a payload it did
       // not carry before — which is exactly M27.
+      if (ts.isCallExpression(node)) callsInModule.push(node);
       if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
         const declaration = resolvedDeclaration(node.expression);
         if (declaration !== null && ts.isParameter(declaration)) {
           const owner = declaration.parent;
           const ownerName =
             ts.isFunctionDeclaration(owner) && owner.name !== undefined ? owner.name.text : '#anonymous';
-          const channel: ChannelId = isExported(owner)
+          const exported = isExported(owner);
+          const channel: ChannelId = exported
             ? 'callback-invocation'
             : 'internal-callback-invocation';
           record(
@@ -7335,6 +7422,12 @@ function channelCensusOf(
             moduleName,
             `${moduleName}#${ownerName}#${node.expression.text} x${String(node.arguments.length)}`,
           );
+          if (!exported && ts.isFunctionDeclaration(owner)) {
+            const index = owner.parameters.indexOf(declaration);
+            const seen = internalOwners.get(owner) ?? new Map<number, string>();
+            seen.set(index, node.expression.text);
+            internalOwners.set(owner, seen);
+          }
         }
       }
 
@@ -7399,6 +7492,30 @@ function channelCensusOf(
       node.forEachChild(visit);
     };
     source.forEachChild(visit);
+
+    // The join that checks the one judgement: for every internal callback
+    // parameter, what does each caller actually pass at that position? A
+    // literal was written here; an identifier could have come from anywhere,
+    // including from an exported function's own parameter.
+    for (const [owner, parameters] of internalOwners) {
+      const ownerName = owner.name === undefined ? '#anonymous' : owner.name.text;
+      for (const [index, parameterName] of parameters) {
+        const kinds: string[] = [];
+        for (const call of callsInModule) {
+          if (!ts.isIdentifier(call.expression)) continue;
+          if (resolvedDeclaration(call.expression) !== owner) continue;
+          const argument = call.arguments[index];
+          kinds.push(argument === undefined ? 'missing' : ts.SyntaxKind[argument.kind]);
+        }
+        for (const kind of [...new Set(kinds)].sort()) {
+          internalCallbackArguments.push(
+            `${moduleName}#${ownerName}#${parameterName}@${String(index)} <- ${kind} x${String(
+              kinds.filter((seen) => seen === kind).length,
+            )}`,
+          );
+        }
+      }
+    }
   }
 
   const frozenSites = emptyChannelTable<readonly string[]>(() => Object.freeze([]));
@@ -7412,6 +7529,7 @@ function channelCensusOf(
     sites: Object.freeze(frozenSites),
     byModule: Object.freeze(frozenByModule),
     freshReceivers: Object.freeze([...freshReceivers].sort()),
+    internalCallbackArguments: Object.freeze([...internalCallbackArguments].sort()),
     nodesExamined,
     modules: Object.freeze(modules),
   };
@@ -7500,6 +7618,27 @@ const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
 
 const DECLARED_INTERNAL_CALLBACK_SITES: readonly string[] = Object.freeze([
   'expansion.ts#axesWhere#finished x1',
+]);
+
+/**
+ * What every caller passes at an internal callback's parameter position.
+ *
+ * TWO ARROWS AND NOTHING ELSE, which is what makes `axesWhere`'s parameter
+ * unreachable from outside this directory. Both callers write the predicate at
+ * the call site, so no caller-supplied function can arrive there.
+ *
+ * THIS PIN EXISTS BECAUSE THE MATRIX NEARLY SHIPPED AN OVER-CLAIM. The
+ * `internal-callback-invocation` row reads `movesPass: true` — measured against
+ * the same runtime twin as its exported sibling — and the callback pass does
+ * NOT drive `axesWhere`, because nothing outside can hand it anything. That
+ * reasoning is only as good as the `export` modifier being the whole story, and
+ * it is not: an exported function that forwards its own callback parameter
+ * would make this channel an escape route with every modifier where it is. So
+ * the argument syntax is pinned rather than the conclusion asserted, and an
+ * identifier appearing here reddens.
+ */
+const DECLARED_INTERNAL_CALLBACK_ARGUMENTS: readonly string[] = Object.freeze([
+  'expansion.ts#axesWhere#finished@1 <- ArrowFunction x2',
 ]);
 
 /**
@@ -7950,7 +8089,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: false,
     movesC: false,
     movesPass: true,
-    why: 'Measured against the same twin, because who supplies the function is a fact about the SOURCE and not about the value. The census separates the two; the runtime cannot.',
+    why: 'Measured against the same twin, because who supplies the function is a fact about the SOURCE and not about the value — the census separates the two and the runtime cannot. `movesPass` is TRUE OF THE SHAPE AND NOT OF THIS SITE: the pass does not drive `axesWhere` and never will, because both of its callers write the predicate at the call site. What accounts for this row is that nothing outside can put a value into it, pinned at DECLARED_INTERNAL_CALLBACK_ARGUMENTS rather than read off the `export` modifier.',
   }),
   Object.freeze({
     channel: 'module-mutable-state',
@@ -8198,6 +8337,15 @@ describe('the channel census — the routes a string can leave this directory by
       ]);
       // And the scan's one unclassified outcome, named rather than dropped.
       expect(census.freshReceivers).toEqual(DECLARED_FRESH_RECEIVERS);
+      // The check behind the one judgement: nothing caller-supplied can reach
+      // the internal callback, and that is measured off the argument syntax
+      // rather than inferred from the `export` modifier.
+      expect(census.internalCallbackArguments).toEqual(DECLARED_INTERNAL_CALLBACK_ARGUMENTS);
+      for (const argument of census.internalCallbackArguments) {
+        expect(argument, 'an internal callback is handed something written elsewhere').toMatch(
+          /<- (?:ArrowFunction|FunctionExpression) x\d+$/,
+        );
+      }
     },
     CHANNEL_BLOCK_TIMEOUT_MS,
   );
@@ -8286,10 +8434,27 @@ describe('the channel census — the routes a string can leave this directory by
       'ambient-global',
       'deferred-completion',
     ]);
+    // THREE WAYS A ROW HERE CAN BE ACCOUNTED FOR, AND THEY ARE NOT THE SAME
+    // THING. The pass DRIVES a channel only if the pass's subjects come from
+    // it, which is the exported callback channel and nothing else; a channel
+    // with no sites is covered by the census saying so; and a channel nothing
+    // outside can put a value into is not an escape route at all.
+    //
+    // The middle and the last are weaker than a catcher and are named as such.
+    // An earlier draft of this test let `movesPass` alone account for the
+    // INTERNAL callback row, which was an over-claim: the pass does not drive
+    // `axesWhere` and never will, because nothing can hand it anything.
+    const passSubjectChannels: readonly ChannelId[] = Object.freeze(['callback-invocation']);
+    const reachable = (id: ChannelId): boolean =>
+      ESCAPE_CHANNELS.find((channel) => channel.id === id)?.reachableFromOutside === true;
     for (const row of nothing) {
-      const covered = row.movesPass || census.sites[row.channel].length === 0;
+      const driven = row.movesPass && passSubjectChannels.includes(row.channel);
+      const covered = driven || census.sites[row.channel].length === 0 || !reachable(row.channel);
       expect(covered, `${row.channel}/${row.form} is in use and no instrument covers it`).toBe(true);
     }
+    // Exactly one channel is declared unreachable from outside, by name, and
+    // the pin on its argument syntax above is what stands behind that word.
+    expect(CHANNEL_IDS.filter((id) => !reachable(id))).toEqual(['internal-callback-invocation']);
     // The pass covers exactly the callback channels and nothing else, in both
     // directions, so a row cannot claim it without being one.
     expect(CHANNEL_COVERAGE.filter((row) => row.movesPass).map((row) => row.channel)).toEqual([
@@ -9002,6 +9167,12 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
       'drives every caller-supplied callback: expected [ "engagement.ts#historyOf#attended" ] to deeply equal [ "engagement.ts#historyFrom#attended" ]. The pass\'s subject list is read out of the census\'s own site keys, so a driver for something the directory does not call, or a call with no driver, is red either way.',
   }),
   Object.freeze({
+    id: 'G20',
+    what: "one `axesWhere` caller in `expansion.ts` changed from an inline arrow to a named local — `axesWhere(builds, idleFinished)` — which is how a caller-supplied function would first appear at an internal callback position",
+    reddened:
+      'pins the two callback sites: - "expansion.ts#axesWhere#finished@1 <- ArrowFunction x2", + "…<- ArrowFunction x1" and + "…<- Identifier x1". ITS LIMIT IS THAT IT IS CONSERVATIVE AND SAYS SO: a local const is not a caller-supplied function, so this reddens on a refactor that is perfectly safe. That is the trade taken deliberately — the check cannot tell a local identifier from a forwarded parameter, and a check that forces somebody to look at the one place where the internal/exported split could stop being true is worth a false alarm on a rename.',
+  }),
+  Object.freeze({
     id: 'G19',
     what: "the deferred-completion twin's observer emptied, so the probe stops proving it emitted anything at all",
     reddened:
@@ -9026,8 +9197,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(19);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(19);
+    expect(REGISTRY_MUTANTS.length).toBe(20);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(20);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
