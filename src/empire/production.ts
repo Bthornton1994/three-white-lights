@@ -161,6 +161,7 @@ import {
   asTrainingIq,
   elapsedFor,
   idleTenureDays,
+  refuseWith,
   settledTenureDays,
 } from './empireCore';
 import { EMPIRE_TUNING } from './empireTuning';
@@ -180,7 +181,7 @@ const PRECISION_SCALE = 10 ** EMPIRE_TUNING.PRECISION_DECIMALS;
  */
 export function scrubPrecision(value: number): number {
   if (!Number.isFinite(value)) {
-    throw new RangeError(`a production quantity must be finite, received ${value}.`);
+    refuseWith(`a production quantity must be finite, received ${value}.`);
   }
   return Math.round(value * PRECISION_SCALE) / PRECISION_SCALE;
 }
@@ -198,10 +199,10 @@ export function quantiseElapsedSeconds(
   tickSeconds: number = EMPIRE_TUNING.TICK_SECONDS,
 ): number {
   if (!Number.isFinite(seconds) || seconds < 0) {
-    throw new RangeError(`elapsed seconds must be finite and at or above zero, received ${seconds}.`);
+    refuseWith(`elapsed seconds must be finite and at or above zero, received ${seconds}.`);
   }
   if (!Number.isFinite(tickSeconds) || tickSeconds <= 0) {
-    throw new RangeError(`tick seconds must be finite and above zero, received ${tickSeconds}.`);
+    refuseWith(`tick seconds must be finite and above zero, received ${tickSeconds}.`);
   }
   return Math.floor(seconds / tickSeconds) * tickSeconds;
 }
@@ -240,10 +241,10 @@ export function offlineBankingHorizonSeconds(
 ): number {
   const { capHours, noPunishHours } = policy;
   if (!Number.isFinite(capHours) || capHours < 0) {
-    throw new RangeError(`the offline cap must be a finite hour count, received ${capHours}.`);
+    refuseWith(`the offline cap must be a finite hour count, received ${capHours}.`);
   }
   if (!Number.isFinite(noPunishHours) || noPunishHours < 0) {
-    throw new RangeError(
+    refuseWith(
       `the no-punish floor must be a finite hour count, received ${noPunishHours}.`,
     );
   }
@@ -295,7 +296,7 @@ export interface ProductionRates {
 /** A rate arriving from piece E2 is validated at the seam, where the message can name it. */
 function requireRate(value: number, lifter: NpcLifter, what: string): number {
   if (!Number.isFinite(value) || value < 0) {
-    throw new RangeError(
+    refuseWith(
       `roster rate source returned ${value} ${what} for lifter id ${String(lifter.id)}, ` +
         `which is not a rate`,
     );
@@ -307,7 +308,7 @@ function requireRate(value: number, lifter: NpcLifter, what: string): number {
 function spacePassiveMultiplier(spaceLevel: number): number {
   const multiplier = EMPIRE_TUNING.SPACE_PASSIVE_CEILING_MULTIPLIER[spaceLevel];
   if (multiplier === undefined) {
-    throw new RangeError(`space level ${spaceLevel} is off the passive-ceiling ladder`);
+    refuseWith(`space level ${spaceLevel} is off the passive-ceiling ladder`);
   }
   return multiplier;
 }
@@ -466,14 +467,14 @@ export function accrueProduction(
 ): ProductionAccrual {
   const idleGap = elapsedFor(state.clock, 'gym-bucks') - elapsedFor(collectedAt, 'gym-bucks');
   if (!Number.isFinite(idleGap) || idleGap < 0) {
-    throw new RangeError(
+    refuseWith(
       `the collection mark is ${-idleGap} seconds ahead of the gym's own idle clock`,
     );
   }
   const wallGap =
     elapsedFor(state.clock, 'training-iq') - elapsedFor(collectedAt, 'training-iq');
   if (!Number.isFinite(wallGap) || wallGap < 0) {
-    throw new RangeError(
+    refuseWith(
       `the collection mark is ${-wallGap} seconds ahead of the gym's own wall clock`,
     );
   }

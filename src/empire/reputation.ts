@@ -191,6 +191,7 @@ import {
   gateElapsedFor,
   outputReach,
   recruitReputationThreshold,
+  refuseWith,
   reputationTierIndex,
   type EmpireClock,
   type EmpireLedgerEntry,
@@ -360,7 +361,7 @@ export function reputationTierCount(): number {
 export function reputationTierFloor(index: number): ReputationPoints {
   const threshold = EMPIRE_TUNING.REPUTATION_TIER_THRESHOLDS[index];
   if (threshold === undefined) {
-    throw new RangeError(`reputation tier ${index} is off the tier ladder`);
+    refuseWith(`reputation tier ${index} is off the tier ladder`);
   }
   return asReputation(threshold);
 }
@@ -426,7 +427,7 @@ export function topNpcTier(): NpcTier {
   const tiers = EMPIRE_TUNING.NPC_TIERS;
   const top = tiers[tiers.length - 1];
   if (top === undefined) {
-    throw new RangeError('the recruitment ladder is empty, so no tier can unlock');
+    refuseWith('the recruitment ladder is empty, so no tier can unlock');
   }
   return top;
 }
@@ -559,7 +560,7 @@ export interface ReputationAccrual {
 /** A check-in count arriving from a caller is validated where the message can name it. */
 function requireCheckIns(checkIns: number): void {
   if (!Number.isInteger(checkIns) || checkIns < 0) {
-    throw new RangeError(`check-ins must be a whole count at or above zero, received ${checkIns}.`);
+    refuseWith(`check-ins must be a whole count at or above zero, received ${checkIns}.`);
   }
 }
 
@@ -595,7 +596,7 @@ export function accrueReputation(
   const gap =
     gateElapsedFor(state.clock, 'reputation') - gateElapsedFor(collectedAt, 'reputation');
   if (!Number.isFinite(gap) || gap < 0) {
-    throw new RangeError(
+    refuseWith(
       `the collection mark is ${-gap} seconds ahead of the gym's own wall clock`,
     );
   }
@@ -656,7 +657,7 @@ export function sponsorGymBucksPerDay(reputation: ReputationPoints): number {
   const index = reputationTierIndex(reputation);
   const perDay = EMPIRE_TUNING.SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER[index];
   if (perDay === undefined) {
-    throw new RangeError(`reputation tier ${index} is off the sponsor ladder`);
+    refuseWith(`reputation tier ${index} is off the sponsor ladder`);
   }
   return perDay;
 }
@@ -693,7 +694,7 @@ export function accrueSponsorship(
   const output = reputationPayoutOutput('sponsorship');
   const gap = elapsedFor(state.clock, output) - elapsedFor(collectedAt, output);
   if (!Number.isFinite(gap) || gap < 0) {
-    throw new RangeError(
+    refuseWith(
       `the collection mark is ${-gap} seconds ahead of the gym's own idle clock`,
     );
   }

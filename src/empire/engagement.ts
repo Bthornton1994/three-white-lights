@@ -171,6 +171,7 @@
  */
 
 import {
+  refuseWith,
   WALL_CLOCK_FUNDED_OUTPUTS,
   asFaultMessage,
   asGymBucks,
@@ -260,15 +261,15 @@ export function engagementWiring(
   upkeepGymBucks: number,
 ): EngagementWiring {
   if (!Number.isFinite(upkeepGymBucks) || upkeepGymBucks < 0) {
-    throw new RangeError(
+    refuseWith(
       `an upkeep charge must be finite and at or above zero, received ${upkeepGymBucks}.`,
     );
   }
   if (!chargesUpkeep(key) && upkeepGymBucks !== 0) {
-    throw new RangeError(`the ${key} wiring charges no upkeep, so ${upkeepGymBucks} has no meaning`);
+    refuseWith(`the ${key} wiring charges no upkeep, so ${upkeepGymBucks} has no meaning`);
   }
   if (chargesUpkeep(key) && upkeepGymBucks === 0) {
-    throw new RangeError(`the ${key} wiring charges nothing at zero, so it controls for nothing`);
+    refuseWith(`the ${key} wiring charges nothing at zero, so it controls for nothing`);
   }
   return Object.freeze({ key, upkeepGymBucks });
 }
@@ -311,7 +312,7 @@ export function historyFrom(
   trainedDays: readonly number[],
 ): EngagementHistory {
   if (!Number.isInteger(slots) || slots < 1) {
-    throw new RangeError(`a slot grid must hold at least one slot, received ${slots}.`);
+    refuseWith(`a slot grid must hold at least one slot, received ${slots}.`);
   }
   const grid: boolean[] = [];
   for (let slot = 0; slot < slots; slot += 1) grid.push(attended(slot) === true);
@@ -330,10 +331,10 @@ export function historyFrom(
 export function moreEngagedBy(history: EngagementHistory, slot: number): EngagementHistory {
   const current = history.attended[slot];
   if (current === undefined) {
-    throw new RangeError(`slot ${slot} is off a grid of ${history.attended.length} slots`);
+    refuseWith(`slot ${slot} is off a grid of ${history.attended.length} slots`);
   }
   if (current) {
-    throw new RangeError(`slot ${slot} is already attended, so this pair differs in nothing`);
+    refuseWith(`slot ${slot} is already attended, so this pair differs in nothing`);
   }
   const grid = [...history.attended];
   grid[slot] = true;
@@ -346,10 +347,10 @@ export function moreEngagedByTrainedDay(
   day: number,
 ): EngagementHistory {
   if (!Number.isInteger(day) || day < 0) {
-    throw new RangeError(`a trained day must be a whole number at or above zero, received ${day}.`);
+    refuseWith(`a trained day must be a whole number at or above zero, received ${day}.`);
   }
   if (history.trainedDays.includes(day)) {
-    throw new RangeError(`day ${day} is already trained, so this pair differs in nothing`);
+    refuseWith(`day ${day} is already trained, so this pair differs in nothing`);
   }
   const days = [...history.trainedDays, day].sort((left, right) => left - right);
   return Object.freeze({ attended: history.attended, trainedDays: Object.freeze(days) });
@@ -402,10 +403,10 @@ export interface EngagementRun {
 /** The wall seconds a slot's check-in lands on. */
 export function slotWallSeconds(slot: number, checkInsPerDay: number): number {
   if (!Number.isInteger(slot) || slot < 0) {
-    throw new RangeError(`a slot is counted from zero, received ${slot}.`);
+    refuseWith(`a slot is counted from zero, received ${slot}.`);
   }
   if (!Number.isInteger(checkInsPerDay) || checkInsPerDay < 1) {
-    throw new RangeError(
+    refuseWith(
       `a check-in cadence must be a whole number at or above one, received ${checkInsPerDay}.`,
     );
   }
@@ -478,16 +479,16 @@ export function runEngagement(
   spending: EmpireSpendingPolicy = SHIPPED_SPENDING_POLICY,
 ): EngagementRun {
   if (!Number.isInteger(days) || days < 1) {
-    throw new RangeError(`a horizon must be a whole number of days at or above one, received ${days}.`);
+    refuseWith(`a horizon must be a whole number of days at or above one, received ${days}.`);
   }
   if (!Number.isInteger(policy.checkInsPerDay) || policy.checkInsPerDay < 1) {
-    throw new RangeError(
+    refuseWith(
       `a check-in cadence must be a whole number at or above one, received ${policy.checkInsPerDay}.`,
     );
   }
   const slots = days * policy.checkInsPerDay;
   if (history.attended.length !== slots) {
-    throw new RangeError(
+    refuseWith(
       `a history of ${history.attended.length} slots does not fit ${days} days at ${policy.checkInsPerDay} check-ins`,
     );
   }

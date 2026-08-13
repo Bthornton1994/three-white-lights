@@ -132,6 +132,7 @@ import {
   EARNED_ACCELERANTS,
   GATING_OUTPUTS,
   PURCHASABLE_ACCELERANTS,
+  refuseWith,
   WALL_CLOCK_FUNDED_OUTPUTS,
   asAcceleratedSeconds,
   asFaultMessage,
@@ -286,7 +287,7 @@ export const POOLED_WALL_CLOCK_BOOK: WallClockFundedOutput = firstWallClockBook(
 /** The first wall-clock book, refusing an empty table rather than casting past it. */
 function firstWallClockBook(): WallClockFundedOutput {
   for (const book of WALL_CLOCK_FUNDED_OUTPUTS) return book;
-  throw new RangeError('no empire output is wall-clock funded, so no purse can be pooled');
+  refuseWith('no empire output is wall-clock funded, so no purse can be pooled');
 }
 
 /**
@@ -817,13 +818,13 @@ export function startExpansion(context: ExpansionContext, axis: ExpansionAxis): 
 export function skipExpansion(build: ExpansionBuild, applied: AppliedAccelerant): ExpansionBuild {
   const wanted = axisOutput(build.axis);
   if (applied.output !== wanted) {
-    throw new RangeError(
+    refuseWith(
       `an accelerant aimed at ${String(applied.output)} may not be applied to the ` +
         `${build.axis} axis, which feeds ${wanted}`,
     );
   }
   if (!mayAccelerate(applied.accelerant, applied.output)) {
-    throw new RangeError(
+    refuseWith(
       `${String(applied.accelerant)} may not accelerate ${String(applied.output)}, ` +
         `which the ${build.axis} axis feeds`,
     );

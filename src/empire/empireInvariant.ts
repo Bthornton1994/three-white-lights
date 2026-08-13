@@ -256,6 +256,7 @@
 
 import {
   IDLE_ONLY_OUTPUTS,
+  refuseWith,
   WALL_CLOCK_FUNDED_OUTPUTS,
   asDisplayName,
   asFaultMessage,
@@ -907,7 +908,7 @@ export function applyPurchasableGrant(
       return applyAccelerant('rewarded-ad-timer-skip', output, at, seconds);
     default: {
       const unreached: never = accelerant;
-      throw new RangeError(`${String(unreached)} is not a purchasable accelerant`);
+      refuseWith(`${String(unreached)} is not a purchasable accelerant`);
     }
   }
 }
@@ -916,10 +917,10 @@ export function applyPurchasableGrant(
 export function grantSecondsAt(plan: AccelerantPlan, checkIn: number): number {
   if (plan.accelerant === NO_ACCELERANT) return 0;
   if (!Number.isInteger(checkIn) || checkIn < 1) {
-    throw new RangeError(`a check-in is counted from one, received ${checkIn}.`);
+    refuseWith(`a check-in is counted from one, received ${checkIn}.`);
   }
   if (!Number.isInteger(plan.everyNthCheckIn) || plan.everyNthCheckIn < 1) {
-    throw new RangeError(
+    refuseWith(
       `a grant cadence must be a whole number of check-ins at or above one, received ${plan.everyNthCheckIn}.`,
     );
   }
@@ -1066,10 +1067,10 @@ export function stepGym(
   moment: SpendingMoment = SHIPPED_SPENDING_MOMENT,
 ): EmpireGym {
   if (!Number.isFinite(wallSeconds) || wallSeconds < 0) {
-    throw new RangeError(`a wall-clock reading must be finite and at or above zero, received ${wallSeconds}.`);
+    refuseWith(`a wall-clock reading must be finite and at or above zero, received ${wallSeconds}.`);
   }
   if (!Number.isFinite(grantSeconds) || grantSeconds < 0) {
-    throw new RangeError(`a grant must be finite and at or above zero, received ${grantSeconds}.`);
+    refuseWith(`a grant must be finite and at or above zero, received ${grantSeconds}.`);
   }
 
   // 1. The grant is spent on exactly one mechanism. See §6 of the header.
@@ -1304,7 +1305,7 @@ export function gymProgressionEntries(
 
 function requireWholeAtLeastOne(value: number, what: string): void {
   if (!Number.isInteger(value) || value < 1) {
-    throw new RangeError(`${what} must be a whole number at or above one, received ${value}.`);
+    refuseWith(`${what} must be a whole number at or above one, received ${value}.`);
   }
 }
 
