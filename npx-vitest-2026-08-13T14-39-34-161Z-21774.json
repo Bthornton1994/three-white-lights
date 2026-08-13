@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-13T14-39-34-161Z-21774",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/career/"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-13T14:39:34.161Z",
+  "startedAtMs": 1786631974161,
+  "cwd": "/home/user/wt-c1-worlds",
+  "commit": "e9040d5d7e3a65b9f695cb62cc6e1ca94ba24c8d",
+  "branch": "claude/c1-worlds-reach",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 21774,
+    "startTick": "302143",
+    "cmdline": "node tools/watchdog.mjs --budget 900 -- npx vitest run src/career/",
+    "bootId": "d50b2ce6-32b8-4d75-8b98-edbe978df6a8",
+    "bootEpochSeconds": 1786628953,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 2,
+    "okCount": 0,
+    "errors": [
+      {
+        "at": "2026-08-13T14:39:36.723Z",
+        "why": "Command failed: git -C /home/user/wt-c1-worlds push origin e466120db14c555edd0123ffdc1a0a1955318df0:refs/heads/verify-markers/vm remote: Internal Server Error remote: Request ID 8C03:3EB5D8:802654:B1B223:6A7DD728 remote: Time 2026-08-13T14:39:36Z To https://github.com/Bthornton1994/three-white-light"
+      }
+    ],
+    "lastAttemptIso": "2026-08-13T14:40:34.204Z",
+    "lastReason": "heartbeat",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": false,
+    "lastOkIso": null
+  }
+}
