@@ -2129,6 +2129,33 @@ function domainSpec(spec: NumericDomain): NumericDomain {
  *
  * `NO_CEILING` is `Infinity` and is what a domain that pays for everything
  * declares. The others are the value that showed up in the measurement below.
+ *
+ * ARE THESE THE RIGHT NUMBERS? GRADED RATHER THAN ASSUMED, and the answer
+ * changed this round.
+ *
+ * When they were chosen the honest statement was that 600 clears the two known
+ * bypass values with headroom — the measurement supported "unbounded is much
+ * worse" and never "600 is where the curve bends". That mattered, because
+ * anything above the ceiling was invisible to the whole file, so an
+ * unprincipled number was deciding correctness. The eighth bypass then keyed
+ * on 2 000 and proved the point.
+ *
+ * IT IS A COST KNOB NOW, and that is what the overflow pass changed. A branch
+ * point above a ceiling is dropped from the CROSS-PRODUCT and picked up
+ * one-at-a-time by the overflow pass, so moving 600 up or down changes what the
+ * drive costs and — for the 104 of 134 points the overflow pass reaches —
+ * changes nothing about what is caught. `covers exactly the branch points the
+ * ceilings drop, in both directions` is what keeps that true: lower a ceiling
+ * and the points it sheds arrive in `overflowPoints` by construction, with
+ * `OMITTED_ABOVE_CEILING` and `OVERFLOW_RESIDUAL` moving to say so.
+ *
+ * THE PART WHERE IT IS STILL NOT PURELY A COST KNOB, stated because the
+ * sentence above is bounded and not absolute: for the 30 ROSTER_SHAPE points
+ * above `OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE`, nothing drives them at
+ * all, so `FOREIGN_CEILINGS.ROSTER_SHAPE` is still the only thing standing
+ * between a roster-size branch point and no coverage. Raising it is the fix and
+ * it is priced: `DOMAIN_COST_SECONDS` measured that axis at 138.1 s against
+ * 38.8 s for a ceiling of 120.
  */
 const FOREIGN_CEILINGS = Object.freeze({
   NO_CEILING: Number.POSITIVE_INFINITY,
@@ -5871,10 +5898,21 @@ describe('the injected axes were varied, and the variation was measured', () => 
 // ---------------------------------------------------------------------------
 
 /**
- * Eleven routes, planted into shipped modules one at a time, each run against
+ * Fourteen routes, planted into shipped modules one at a time, each run against
  * `tsc --noEmit`, against this file, and against the three accidental catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
  * audit, its tree-wide string census, and its import fence.
+ *
+ * THE COUNT IN THIS SENTENCE SAID ELEVEN WHILE THE TEST BELOW ASSERTED
+ * THIRTEEN, for a round, which is this codebase's most-recorded defect wearing
+ * its smallest clothes: a number written while it was true. It is fourteen in
+ * both places now and the test is what keeps them together.
+ *
+ * M12 AND M13 WERE RE-PLANTED AND RE-RUN THIS ROUND rather than taken on
+ * trust, because a fix for M14 could have reopened either — they are the two
+ * routes about the same subject one axis over. Both still redden with the
+ * messages recorded in their rows: `expected 9 to be 7` and the two `@10/` and
+ * `@500/` offenders.
  *
  * THE ISOLATION RULE, AND IT COST FIVE EXTRA ATTEMPTS. A mutant that only trips
  * an accidental catcher has not been caught by this guard. The first attempt at
@@ -6112,6 +6150,23 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       "attempt 1 keyed on CHECK_IN_TARGET_SECONDS_MAX and was caught by empireTuning.test.ts > pins the not-yet-consumed list exactly — a census of UNCONSUMED tuning entries noticing a new consumer, which has nothing to do with forbidden outputs. A FOURTH accidental catcher, and the reason attempt 2 moved to an already-consumed threshold.",
     ]),
   }),
+  Object.freeze({
+    id: 'M14',
+    shape: "24 — THE EIGHTH BYPASS: a filed branch point ABOVE a domain's foreignCeiling, which the previous round declared as a limit with no catcher",
+    where: "social.ts, `recordFriendVisit`, gymId replaced by the ban list's first member on day NPC_RECRUIT_COST_GYM_BUCKS.club — 2000, against a DAY ceiling of 600",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the overflow pass / produces no banned name at any point a ceiling drops: + "recordFriendVisit@DAY/NPC_RECRUIT_COST_GYM_BUCKS.club=2000#return.visits.3.gymId=covered-day", twice',
+      'the overflow pass / walked a domain that is not empty at the dropped points: expected 4230 to be 4229 distinct strings',
+    ]),
+    accidentalCatchersGreen: true,
+    // Measured on the whole of `src/empire` plus `streakEntitlement.test.ts`,
+    // with the mutant in place: 2 failed of 503, and both are the two lines
+    // above. Nothing else in the suite noticed, which is the whole reason this
+    // pass exists — before it, nothing noticed at all.
+    alsoRed: Object.freeze([]),
+  }),
 ]);
 
 /**
@@ -6180,6 +6235,38 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
     reddened:
       'the file fails to load: Error: no numeric leaf of EMPIRE_TUNING is at or under NPC_RECRUIT_COST_GYM_BUCKS, and vitest reports "no tests". Loud rather than a quietly shorter threshold list, which is the failure mode `rungs()` had.',
   }),
+  // --- The five planted against the overflow pass, which is this round's
+  // addition. Each was run, and each names the message it produced.
+  Object.freeze({
+    id: 'G8',
+    what: "the DAY/recordFriendVisit row deleted from OVERFLOW_SUBJECTS, so the subject the eighth bypass lived in is no longer driven at any dropped point",
+    reddened:
+      'stamps exactly the domains that carry a ceiling: DAY: expected [ Array(20) ] to deeply equal [ Array(21) ], - "recordFriendVisit". So the subject list cannot quietly lose a member — it is joined to what the main drive stamps, in both directions, rather than being a list somebody maintains.',
+  }),
+  Object.freeze({
+    id: 'G9',
+    what: "both `drivingAxis = 'DAY'` stamps removed from driveEverything, which is how the subject list would be joined to nothing",
+    reddened:
+      'stamps exactly the domains that carry a ceiling: expected [ \'COUNT\', \'ROSTER_SHAPE\' ] to deeply equal [ \'COUNT\', \'DAY\', \'ROSTER_SHAPE\' ]. A domain that carries a ceiling and stamps no rows is the shape a new ceiling would arrive in, and it is a red line rather than an unnoticed gap.',
+  }),
+  Object.freeze({
+    id: 'G10',
+    what: "socialRewardSchedule refiled from `allocating` to `flat`, which is the one judgement in OVERFLOW_SUBJECTS and would silently drive it at 120 000 forever",
+    reddened:
+      'measures the cost class of every subject rather than asserting it: DAY/socialRewardSchedule: expected 137143 to be less than or equal to 400. The classification is the kind of thing a reader nods at, so it is measured against OVERFLOW_FLAT_NODE_CEILING rather than trusted.',
+  }),
+  Object.freeze({
+    id: 'G11',
+    what: 'the ROSTER_SHAPE/topNpcTierUnlocked row deleted from OVERFLOW_RESIDUAL, which is how a declared residual would shrink without the skip shrinking',
+    reddened:
+      'declares every pair the allocation budgets skipped: expected [ …(33) ] to deeply equal [ …(32) ], + { domain: ROSTER_SHAPE, export: topNpcTierUnlocked, skipped: 30, largestSkipped: 120000 }. The residual is a set equality in both directions, so it cannot be made to read smaller than it is.',
+  }),
+  Object.freeze({
+    id: 'G12',
+    what: "`overflowPointsFor`'s ceiling test changed from `value <= domain.foreignCeiling` to `value <`, so the overflow point set disagrees with the census by one boundary",
+    reddened:
+      'covers exactly the branch points the ceilings drop: expected { COUNT: 40, DAY: 40, … } to deeply equal { COUNT: 39, DAY: 39, … }. This is the join itself: the pass drives what OMITTED_ABOVE_CEILING counts, and a one-point drift in either direction is a red line rather than a coverage claim nobody can check.',
+  }),
 ]);
 
 /**
@@ -6199,8 +6286,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(7);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(7);
+    expect(REGISTRY_MUTANTS.length).toBe(12);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(12);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
@@ -6217,8 +6304,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     ).toBe(2);
   });
 
-  it('records thirteen routes, every one isolated from the three accidental catchers', () => {
-    expect(PLANTED_ROUTES.length).toBe(13);
+  it('records fourteen routes, every one isolated from the three accidental catchers', () => {
+    expect(PLANTED_ROUTES.length).toBe(14);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // A mutant that only trips the magic-number audit, the string census or
@@ -6230,8 +6317,10 @@ describe('the routes that were planted, and what each of them cost', () => {
       expect(route.shape.length, route.id).toBeGreaterThan(20);
       attempts += route.attempts;
     }
-    // Twenty-one attempts for thirteen routes: the fifteen the first nine took,
-    // one for M10, two for M11, one for M12 and two for M13. The extras are
+    // Twenty-two attempts for fourteen routes: the fifteen the first nine took,
+    // one for M10, two for M11, one for M12, two for M13 and one for M14 —
+    // which needed no extra attempt because the lead agent had already stripped
+    // its accidental catchers when it planted it. The extras are
     // accidents that had to be stripped — an empty-string fallback, a new
     // property name, two mutants that REPLACED a shipped literal instead of
     // keeping it, M11's first form, which used `Object.defineProperty(err,
@@ -6239,7 +6328,7 @@ describe('the routes that were planted, and what each of them cost', () => {
     // new `'stack'` literal, 160 against 159, and M13's first form, which keyed
     // on a threshold that `empireTuning.test.ts` lists as having no consumer,
     // so the mutant BECAME the consumer and that census reddened instead.
-    expect(attempts).toBe(21);
+    expect(attempts).toBe(22);
     expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(5);
   });
 
