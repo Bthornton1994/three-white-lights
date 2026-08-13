@@ -515,20 +515,21 @@ function programWith(
   options: ts.CompilerOptions,
   roots: readonly string[],
   probeText: string | null,
+  probePath: string = PROBE_PATH,
 ): ts.Program {
   const host = ts.createCompilerHost(options, true);
   if (probeText !== null) {
     const readSource = host.getSourceFile.bind(host);
     host.getSourceFile = (fileName, languageVersion, onError, shouldCreate) =>
-      path.normalize(fileName) === PROBE_PATH
+      path.normalize(fileName) === probePath
         ? ts.createSourceFile(fileName, probeText, languageVersion, true, ts.ScriptKind.TS)
         : readSource(fileName, languageVersion, onError, shouldCreate);
     const exists = host.fileExists.bind(host);
     host.fileExists = (fileName) =>
-      path.normalize(fileName) === PROBE_PATH ? true : exists(fileName);
+      path.normalize(fileName) === probePath ? true : exists(fileName);
     const read = host.readFile.bind(host);
     host.readFile = (fileName) =>
-      path.normalize(fileName) === PROBE_PATH ? probeText : read(fileName);
+      path.normalize(fileName) === probePath ? probeText : read(fileName);
   }
   return ts.createProgram([...roots], options, host);
 }
@@ -543,9 +544,13 @@ function programWith(
  * the load-bearing choice — `EMPIRE_FORBIDDEN_OUTPUTS[0] as string` is a bare
  * string to the checker whatever the source looks like.
  */
-function surfaceOf(roots: readonly string[], probeText: string | null): StringSurface {
+function surfaceOf(
+  roots: readonly string[],
+  probeText: string | null,
+  probePath: string = PROBE_PATH,
+): StringSurface {
   const options = compilerOptions();
-  const program = programWith(options, roots, probeText);
+  const program = programWith(options, roots, probeText, probePath);
   const checker = program.getTypeChecker();
 
   const corePath = path.join(HERE, 'empireCore.ts');
@@ -1619,9 +1624,13 @@ interface ConstructorCensus {
  * one of these modules would be invisible to a text match and is not a call to
  * the exported symbol here.
  */
-function constructorCensusOf(roots: readonly string[], probeText: string | null): ConstructorCensus {
+function constructorCensusOf(
+  roots: readonly string[],
+  probeText: string | null,
+  probePath: string = PROBE_PATH,
+): ConstructorCensus {
   const options = compilerOptions();
-  const program = programWith(options, roots, probeText);
+  const program = programWith(options, roots, probeText, probePath);
   const checker = program.getTypeChecker();
 
   const corePath = path.join(HERE, 'empireCore.ts');
@@ -3566,8 +3575,24 @@ let drivingAxis: string | null = null;
  * value delivered by mutating a caller-supplied sink — attack shape 13's second
  * half — is inside the scan. Nothing passed in ever contains a banned name, so
  * a banned name found in an argument was written there by the subject.
+ *
+ * A THROWN PAYLOAD LANDS IN `values[0]`, WHICH IS WHY THE CHANNEL CENSUS BELOW
+ * CAN CALL THE DRIVE THE THROW CHANNEL'S ONE CATCHER. Normal completion and
+ * abrupt completion arrive at the same slot and are scanned by the same walker,
+ * so the region label says `return` for both. `THROWN_ROWS` in
+ * `CHANNEL_REACH_CENSUS` is what says the abrupt half is not empty.
+ *
+ * SPLIT OUT OF `drive` SO THE PROBE ROWS ARE NOT A SECOND PRODUCER. The channel
+ * coverage matrix builds rows for probes that must never enter `DRIVEN_ROWS`,
+ * and a hand-rolled row beside this one is CLAUDE.md's sibling defect exactly:
+ * two arms of one decision written twice, differing in the way nobody looks at.
  */
-function drive(exportName: string, point: string, thunk: () => unknown, args: readonly unknown[] = []): void {
+function rowFor(
+  exportName: string,
+  point: string,
+  thunk: () => unknown,
+  args: readonly unknown[] = [],
+): DrivenRow {
   const values: unknown[] = [];
   try {
     values.push(thunk());
@@ -3575,7 +3600,12 @@ function drive(exportName: string, point: string, thunk: () => unknown, args: re
     values.push(error);
   }
   values.push(...args);
-  DRIVEN_ROWS.push({ export: exportName, point, values, axis: drivingAxis });
+  return { export: exportName, point, values, axis: drivingAxis };
+}
+
+/** The same row, kept for the census. The only writer of `DRIVEN_ROWS` but one. */
+function drive(exportName: string, point: string, thunk: () => unknown, args: readonly unknown[] = []): void {
+  DRIVEN_ROWS.push(rowFor(exportName, point, thunk, args));
 }
 
 /** Read an exported constant and keep it, so exported DATA is a subject too. */
@@ -6934,6 +6964,1370 @@ describe('the injected axes were varied, and the variation was measured', () => 
     for (const [axis, , disagreements] of readings.filter(([name]) => !name.includes('(control)'))) {
       expect(disagreements, axis).toBeGreaterThan(0);
     }
+  });
+});
+
+// ===========================================================================
+// THE CHANNEL CENSUS — the routes a string can LEAVE this directory BY, and
+// which instrument covers each of them
+// ===========================================================================
+
+/**
+ * WHY THIS EXISTS, AND WHAT IT IS NOT.
+ *
+ * Eleven bypasses have been found here. Ten of them were found by enumerating
+ * one of two things: WHERE the name sits (a declared position, a brand, a
+ * constructor call site) or WHICH NUMBER the branch is keyed on (a unit, a
+ * domain, a ceiling, an allocation budget). The eleventh — M25 — sat in a
+ * thrown `Error` message, and what made it survive nine rounds was neither its
+ * position nor its number. It was that **nobody had enumerated the ways a
+ * string can get out**. A thrown payload is not a declared position, so
+ * instrument A had nothing to classify; it calls no constructor, so instrument C
+ * had no site; only the drive could ever have seen it, and the pair it lived on
+ * was one of the 690 an allocation budget declined.
+ *
+ * So this section asks a question the other three do not: WHAT ARE THE ROUTES?
+ * It is a census of CHANNELS, and it is deliberately not a fourth detector.
+ *
+ * TWO HALVES, AND THE FIRST IS WHERE THE LIST COMES FROM.
+ *
+ *   1. THE LANGUAGE'S LIST, WHICH IS CLOSED AND SHORT. A value computed inside a
+ *      module reaches a caller by exactly one of: normal completion (a return),
+ *      abrupt completion (a throw), a write into memory the caller already holds
+ *      (an argument, a module-level binding, or an ambient object), a call into
+ *      something the caller supplied (a callback), or a value the caller reads
+ *      LATER through machinery the module handed it (a getter, a coercion
+ *      method, a returned closure, a thenable). That enumeration is a property
+ *      of JavaScript, not of this directory, which is why it can be closed at
+ *      all — and it is the reformulation CLAUDE.md's newest rule asks for: an
+ *      unbounded space (which numbers can a branch be keyed on) traded for a
+ *      finite one (which syntactic shapes hand a value out).
+ *
+ *   2. WHICH OF THEM THIS DIRECTORY USES, WHICH IS SCANNED AND NOT REMEMBERED.
+ *      `channelCensus` walks the shipped modules with the checker and counts
+ *      SITES per channel per module. `CHANNEL_SITE_COUNTS` pins that table, deep
+ *      equal, in both directions. Nothing here is a list somebody typed from
+ *      memory: the numbers came off the tree and a new site of any channel moves
+ *      one of them.
+ *
+ * WHAT IT CATCHES AND WHAT IT DOES NOT, in the shape CLAUDE.md's "form that
+ * survived" asks for — a bounded claim, a named limit, and a named catcher for
+ * the limit:
+ *
+ *   - THE CLAIM: a new escape SITE, of any of the eleven channels, in any
+ *     shipped module of this directory, moves a pinned number here. That covers
+ *     the arrival of a channel this directory does not currently use — the four
+ *     zero rows are the ones that matter, and a getter, a `toJSON`, an `async`,
+ *     a write into a caller's object or a write to `globalThis` all redden on
+ *     arrival.
+ *
+ *   - THE LIMIT: it counts SITES, not payloads. An EXISTING site emitting
+ *     something new is invisible to it — the same limit instrument C states for
+ *     `asGymId(context.friends[0].displayName)`. And it is a source scan, so it
+ *     sees the shapes it was told to look for; a channel spelled some way this
+ *     scan does not classify is outside it, exactly as CLAUDE.md says of every
+ *     scan for words.
+ *
+ *   - THE CATCHERS FOR THE LIMIT, per channel and by name, are the point of the
+ *     matrix below. Each cell was MEASURED by emitting `EMPIRE_FORBIDDEN_OUTPUTS[0]`
+ *     down that channel and running the real instrument at it, rather than
+ *     reasoned about. `CHANNEL_COVERAGE` is the result and `channels the drive
+ *     alone covers` is the reading of it that matters.
+ *
+ * THE READING, STATED HERE SO IT IS NOT BURIED IN A TABLE: of the channels this
+ * directory actually uses, `throw` is covered by the DRIVE AND NOTHING ELSE —
+ * a sampling instrument, which is the thing CLAUDE.md's newest rule says cannot
+ * close an unbounded input space. And `callback-invocation` was covered by
+ * NOTHING AT ALL, in any of the three instruments, until the callback pass below
+ * was written this round. M27 in `PLANTED_ROUTES` is that route, planted, run,
+ * and printed.
+ */
+
+type ChannelId =
+  | 'return'
+  | 'throw'
+  | 'exported-binding'
+  | 'argument-mutation'
+  | 'callback-invocation'
+  | 'internal-callback-invocation'
+  | 'module-mutable-state'
+  | 'ambient-global'
+  | 'lazy-member'
+  | 'returned-closure'
+  | 'deferred-completion';
+
+interface EscapeChannel {
+  readonly id: ChannelId;
+  /** How a value leaves by this route, in the language's terms. */
+  readonly what: string;
+  /** The syntactic shape `channelCensus` counts for it. Stated so the scan's reach is readable. */
+  readonly scannedFor: string;
+}
+
+/**
+ * The eleven channels, each with the shape the scan counts for it.
+ *
+ * `internal-callback-invocation` is separated from `callback-invocation` on ONE
+ * axis and it is the axis that decides whether the channel is reachable from
+ * outside: whether the function whose parameter is being called is EXPORTED. A
+ * caller can hand `historyFrom` any predicate it likes; nothing outside this
+ * directory can hand `axesWhere` anything, because both of its callers pass a
+ * closure written here. That is a syntactic fact the scan reads off the
+ * `export` modifier rather than a judgement.
+ */
+const ESCAPE_CHANNELS: readonly EscapeChannel[] = Object.freeze([
+  Object.freeze({
+    id: 'return',
+    what: 'normal completion — the value a call evaluates to, at every nested position inside it',
+    scannedFor: 'every `return` statement in a shipped module',
+  }),
+  Object.freeze({
+    id: 'throw',
+    what: 'abrupt completion — the payload a `throw` hands the caller, including `message`, `name` and anything hung on the error',
+    scannedFor: 'every `throw` statement in a shipped module',
+  }),
+  Object.freeze({
+    id: 'exported-binding',
+    what: 'exported DATA, which a caller reads with no call at all and which is built at import time',
+    scannedFor: 'every exported `const` declaration',
+  }),
+  Object.freeze({
+    id: 'argument-mutation',
+    what: "a write into memory the caller already holds — a parameter's property, element, or a mutating method on it",
+    scannedFor: 'a member assignment or a mutating call whose receiver resolves, through the checker, to a PARAMETER',
+  }),
+  Object.freeze({
+    id: 'callback-invocation',
+    what: 'a call into a function the caller supplied, which carries its arguments out of the directory',
+    scannedFor: 'a call of an identifier that resolves to a parameter of an EXPORTED function, keyed by its argument count',
+  }),
+  Object.freeze({
+    id: 'internal-callback-invocation',
+    what: 'the same shape inside a module-private function, where every caller is in this directory',
+    scannedFor: 'the same, in a function without the `export` modifier',
+  }),
+  Object.freeze({
+    id: 'module-mutable-state',
+    what: 'a write into a module-level binding a later read can see',
+    scannedFor: 'a member assignment or a mutating call whose receiver resolves to a MODULE-SCOPE variable',
+  }),
+  Object.freeze({
+    id: 'ambient-global',
+    what: 'a write into something neither party owns — `globalThis`, a console, a prototype, a defined property',
+    scannedFor: '`globalThis` / `console` / `process`, and `Object.defineProperty|defineProperties|assign|setPrototypeOf`',
+  }),
+  Object.freeze({
+    id: 'lazy-member',
+    what: 'a value computed when the CALLER reads it — an accessor, `toString`, `toJSON`, `valueOf`, `Symbol.toPrimitive`',
+    scannedFor: 'a get/set accessor declaration, or a member named for one of the coercion protocols',
+  }),
+  Object.freeze({
+    id: 'returned-closure',
+    what: 'a function handed back, whose RESULT is the payload and which only the caller can invoke',
+    scannedFor: 'a `return` of a function expression or arrow, or a declared function-typed return',
+  }),
+  Object.freeze({
+    id: 'deferred-completion',
+    what: 'a value delivered after the call returns — `async`, a generator, a thenable',
+    scannedFor: 'an `async` modifier, a generator asterisk, or `new Promise`',
+  }),
+]);
+
+const CHANNEL_IDS: readonly ChannelId[] = Object.freeze(ESCAPE_CHANNELS.map((channel) => channel.id));
+
+interface ChannelCensus {
+  /** Site keys per channel, `module.ts#enclosing#detail`. */
+  readonly sites: Readonly<Record<ChannelId, readonly string[]>>;
+  /** The same, counted per module, which is what the pin below is over. */
+  readonly byModule: Readonly<Record<ChannelId, Readonly<Record<string, number>>>>;
+  /**
+   * Mutating calls whose receiver is a fresh expression rather than a binding.
+   *
+   * `[...list].sort()` sorts a copy and hands nothing to anybody. They are
+   * counted and NAMED rather than dropped, because "the scan found something it
+   * could not classify" is the one outcome a census must not swallow: an
+   * unclassified escape-shaped node is exactly where the next channel arrives.
+   */
+  readonly freshReceivers: readonly string[];
+  readonly nodesExamined: number;
+  readonly modules: readonly string[];
+}
+
+const emptyChannelTable = <T>(make: () => T): Record<ChannelId, T> => {
+  const table = {} as Record<ChannelId, T>;
+  for (const id of CHANNEL_IDS) table[id] = make();
+  return table;
+};
+
+/** The mutating methods whose receiver is written through. */
+const MUTATING_METHODS: readonly string[] = Object.freeze([
+  'push',
+  'pop',
+  'shift',
+  'unshift',
+  'splice',
+  'sort',
+  'reverse',
+  'fill',
+  'copyWithin',
+  'set',
+  'add',
+  'delete',
+  'clear',
+]);
+
+/** The `Object` statics that write into, or hang machinery off, something else. */
+const AMBIENT_STATICS: readonly string[] = Object.freeze([
+  'defineProperty',
+  'defineProperties',
+  'setPrototypeOf',
+  'assign',
+]);
+
+/** The identifiers that are somebody else's memory by definition. */
+const AMBIENT_OBJECTS: readonly string[] = Object.freeze(['globalThis', 'console', 'process']);
+
+/** The member names a caller's coercion reaches without ever writing a call. */
+const COERCION_MEMBERS: readonly string[] = Object.freeze(['toString', 'toJSON', 'valueOf']);
+
+/**
+ * Walk the shipped modules and count every escape site, by channel.
+ *
+ * The receiver of a write is resolved THROUGH THE CHECKER, not by its text, for
+ * the reason instrument C states at `constructorCensusOf`: a name match cannot
+ * tell a parameter from a local that shadows one, and this scan's whole verdict
+ * is "whose memory is this".
+ */
+function channelCensusOf(
+  roots: readonly string[],
+  probeText: string | null,
+  probePath: string = PROBE_PATH,
+): ChannelCensus {
+  const options = compilerOptions();
+  const program = programWith(options, roots, probeText, probePath);
+  const checker = program.getTypeChecker();
+
+  const sites = emptyChannelTable<string[]>(() => []);
+  const byModule = emptyChannelTable<Record<string, number>>(() => ({}));
+  const freshReceivers: string[] = [];
+  const modules: string[] = [];
+  let nodesExamined = 0;
+
+  const record = (id: ChannelId, moduleName: string, key: string): void => {
+    sites[id].push(key);
+    byModule[id][moduleName] = (byModule[id][moduleName] ?? 0) + 1;
+  };
+
+  const resolvedDeclaration = (node: ts.Node): ts.Declaration | null => {
+    if (!ts.isIdentifier(node)) return null;
+    let symbol = checker.getSymbolAtLocation(node);
+    if (symbol === undefined) return null;
+    if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) symbol = checker.getAliasedSymbol(symbol);
+    return symbol.declarations?.[0] ?? null;
+  };
+
+  /** The root of a member chain: `a.b[c].d` is `a`, past any cast or parenthesis. */
+  const receiverRoot = (expression: ts.Expression): ts.Expression => {
+    let at: ts.Expression = expression;
+    for (;;) {
+      if (
+        ts.isPropertyAccessExpression(at) ||
+        ts.isElementAccessExpression(at) ||
+        ts.isNonNullExpression(at) ||
+        ts.isParenthesizedExpression(at) ||
+        ts.isAsExpression(at)
+      ) {
+        at = at.expression;
+        continue;
+      }
+      return at;
+    }
+  };
+
+  const atModuleScope = (declaration: ts.Declaration): boolean => {
+    for (let at: ts.Node | undefined = declaration.parent; at !== undefined; at = at.parent) {
+      if (ts.isSourceFile(at)) return true;
+      if (ts.isFunctionLike(at)) return false;
+    }
+    return false;
+  };
+
+  /** The named thing a node sits inside. Same rule instrument C uses. */
+  const enclosing = (node: ts.Node): string => {
+    let variable: string | null = null;
+    for (let at: ts.Node | undefined = node.parent; at !== undefined; at = at.parent) {
+      if (ts.isFunctionDeclaration(at) && at.name !== undefined) return at.name.text;
+      if (ts.isMethodDeclaration(at) && ts.isIdentifier(at.name)) return at.name.text;
+      if (variable === null && ts.isVariableDeclaration(at) && ts.isIdentifier(at.name)) {
+        variable = at.name.text;
+      }
+    }
+    return variable ?? '#module';
+  };
+
+  const isExported = (declaration: ts.Node): boolean =>
+    ts.canHaveModifiers(declaration) &&
+    (ts.getModifiers(declaration) ?? []).some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
+
+  for (const root of roots) {
+    const source = program.getSourceFile(root);
+    if (source === undefined) throw new Error(`${root} is not in the program`);
+    const moduleName = path.basename(root);
+    modules.push(moduleName);
+    const lineOf = (node: ts.Node): number =>
+      source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
+    const key = (node: ts.Node, detail: string): string =>
+      `${moduleName}#${enclosing(node)}#${detail}`;
+
+    const visit = (node: ts.Node): void => {
+      nodesExamined += 1;
+
+      if (ts.isReturnStatement(node)) record('return', moduleName, key(node, 'return'));
+      if (ts.isThrowStatement(node)) record('throw', moduleName, key(node, 'throw'));
+
+      if (ts.isVariableStatement(node) && isExported(node)) {
+        for (const declaration of node.declarationList.declarations) {
+          record('exported-binding', moduleName, `${moduleName}#${declaration.name.getText(source)}`);
+        }
+      }
+
+      // A write into memory somebody else may hold: an assignment to a member,
+      // or a mutating method call. Both are classified by WHOSE binding the
+      // receiver resolves to, which is the only question that matters here.
+      const written: ts.Expression | null = ts.isBinaryExpression(node) &&
+        node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+        (ts.isPropertyAccessExpression(node.left) || ts.isElementAccessExpression(node.left))
+        ? node.left
+        : ts.isCallExpression(node) &&
+            ts.isPropertyAccessExpression(node.expression) &&
+            MUTATING_METHODS.includes(node.expression.name.text)
+          ? node.expression.expression
+          : null;
+      if (written !== null) {
+        const root_ = receiverRoot(written);
+        const declaration = resolvedDeclaration(root_);
+        if (declaration === null) {
+          freshReceivers.push(
+            `${moduleName}:${String(lineOf(node))} receiver=${ts.SyntaxKind[root_.kind]}`,
+          );
+        } else if (ts.isParameter(declaration)) {
+          record('argument-mutation', moduleName, key(node, 'write'));
+        } else if (ts.isVariableDeclaration(declaration) && atModuleScope(declaration)) {
+          record('module-mutable-state', moduleName, key(node, 'write'));
+        }
+      }
+
+      // A call of a parameter is the module handing a value OUT through
+      // machinery the caller supplied. The argument count is part of the key,
+      // because that is what moves when a site starts carrying a payload it did
+      // not carry before — which is exactly M27.
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+        const declaration = resolvedDeclaration(node.expression);
+        if (declaration !== null && ts.isParameter(declaration)) {
+          const owner = declaration.parent;
+          const ownerName =
+            ts.isFunctionDeclaration(owner) && owner.name !== undefined ? owner.name.text : '#anonymous';
+          const channel: ChannelId = isExported(owner)
+            ? 'callback-invocation'
+            : 'internal-callback-invocation';
+          record(
+            channel,
+            moduleName,
+            `${moduleName}#${ownerName}#${node.expression.text} x${String(node.arguments.length)}`,
+          );
+        }
+      }
+
+      if (ts.isIdentifier(node) && AMBIENT_OBJECTS.includes(node.text)) {
+        record('ambient-global', moduleName, key(node, node.text));
+      }
+      if (
+        ts.isCallExpression(node) &&
+        ts.isPropertyAccessExpression(node.expression) &&
+        node.expression.expression.getText(source) === 'Object' &&
+        AMBIENT_STATICS.includes(node.expression.name.text)
+      ) {
+        record('ambient-global', moduleName, key(node, `Object.${node.expression.name.text}`));
+      }
+
+      if (ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node)) {
+        record('lazy-member', moduleName, key(node, 'accessor'));
+      }
+      if (
+        (ts.isMethodDeclaration(node) ||
+          ts.isMethodSignature(node) ||
+          ts.isPropertyAssignment(node) ||
+          ts.isPropertySignature(node)) &&
+        node.name !== undefined
+      ) {
+        const name = node.name.getText(source);
+        if (COERCION_MEMBERS.includes(name) || /Symbol\.(toPrimitive|iterator|asyncIterator)/.test(name)) {
+          record('lazy-member', moduleName, key(node, name));
+        }
+      }
+
+      if (
+        ts.isReturnStatement(node) &&
+        node.expression !== undefined &&
+        (ts.isArrowFunction(node.expression) || ts.isFunctionExpression(node.expression))
+      ) {
+        record('returned-closure', moduleName, key(node, 'closure'));
+      }
+      if (ts.isFunctionDeclaration(node) && node.type !== undefined && ts.isFunctionTypeNode(node.type)) {
+        record('returned-closure', moduleName, key(node, 'closure-type'));
+      }
+
+      if (
+        ts.isFunctionLike(node) &&
+        ts.canHaveModifiers(node) &&
+        (ts.getModifiers(node) ?? []).some((modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword)
+      ) {
+        record('deferred-completion', moduleName, key(node, 'async'));
+      }
+      if (
+        (ts.isFunctionDeclaration(node) ||
+          ts.isFunctionExpression(node) ||
+          ts.isMethodDeclaration(node)) &&
+        node.asteriskToken !== undefined
+      ) {
+        record('deferred-completion', moduleName, key(node, 'generator'));
+      }
+      if (ts.isNewExpression(node) && node.expression.getText(source) === 'Promise') {
+        record('deferred-completion', moduleName, key(node, 'promise'));
+      }
+
+      node.forEachChild(visit);
+    };
+    source.forEachChild(visit);
+  }
+
+  const frozenSites = emptyChannelTable<readonly string[]>(() => Object.freeze([]));
+  const frozenByModule = emptyChannelTable<Readonly<Record<string, number>>>(() => Object.freeze({}));
+  for (const id of CHANNEL_IDS) {
+    frozenSites[id] = Object.freeze([...sites[id]].sort());
+    frozenByModule[id] = Object.freeze({ ...byModule[id] });
+  }
+
+  return {
+    sites: Object.freeze(frozenSites),
+    byModule: Object.freeze(frozenByModule),
+    freshReceivers: Object.freeze([...freshReceivers].sort()),
+    nodesExamined,
+    modules: Object.freeze(modules),
+  };
+}
+
+let channelCensusMemo: ChannelCensus | null = null;
+
+function channelCensus(): ChannelCensus {
+  if (channelCensusMemo !== null) return channelCensusMemo;
+  channelCensusMemo = channelCensusOf(shippedModulePaths(), null);
+  return channelCensusMemo;
+}
+
+/**
+ * Every escape site in the shipped directory, per channel per module.
+ *
+ * Deep-equal in both directions, so a site arriving and a site leaving are both
+ * red. FOUR CHANNELS ARE EMPTY AND THEY ARE THE ONES THIS TABLE IS MOST FOR:
+ * this directory writes into nobody's memory, hangs nothing off `globalThis`,
+ * computes nothing lazily and defers nothing. Each of those is a channel a
+ * later edit could open, and the empty object is what makes opening it red.
+ *
+ * The four zeros were measured, not assumed. `argument-mutation` is zero
+ * because every write in the directory lands in a local: the nearest thing to a
+ * counterexample is `engagement.ts`'s `grid`, whose initialiser mentions a
+ * parameter and is a spread COPY of it, and the scan resolves the receiver to
+ * the local rather than to the parameter, which is the right answer for the
+ * question "whose memory is this".
+ */
+const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, number>>>> =
+  Object.freeze({
+    return: Object.freeze({
+      'empireCore.ts': 49,
+      'empireInvariant.ts': 59,
+      'engagement.ts': 23,
+      'expansion.ts': 47,
+      'npc.ts': 12,
+      'production.ts': 11,
+      'recruitment.ts': 9,
+      'reputation.ts': 24,
+      'social.ts': 31,
+    }),
+    throw: Object.freeze({
+      'empireCore.ts': 10,
+      'empireInvariant.ts': 6,
+      'engagement.ts': 13,
+      'expansion.ts': 3,
+      'production.ts': 9,
+      'recruitment.ts': 1,
+      'reputation.ts': 6,
+      'social.ts': 6,
+    }),
+    'exported-binding': Object.freeze({
+      'empireCore.ts': 20,
+      'empireInvariant.ts': 6,
+      'empireTuning.ts': 3,
+      'engagement.ts': 2,
+      'expansion.ts': 7,
+      'production.ts': 1,
+      'recruitment.ts': 2,
+      'reputation.ts': 7,
+      'social.ts': 7,
+    }),
+    'argument-mutation': Object.freeze({}),
+    'callback-invocation': Object.freeze({ 'engagement.ts': 1 }),
+    'internal-callback-invocation': Object.freeze({ 'expansion.ts': 1 }),
+    'module-mutable-state': Object.freeze({}),
+    'ambient-global': Object.freeze({}),
+    'lazy-member': Object.freeze({}),
+    'returned-closure': Object.freeze({}),
+    'deferred-completion': Object.freeze({}),
+  });
+
+/**
+ * The two callback sites, by name and with their ARGUMENT COUNT in the key.
+ *
+ * The count is the load-bearing part and it is there for the same reason
+ * instrument C puts `x1` in a site key: the site already exists, so a set
+ * equality over site NAMES would be green while the site starts carrying a
+ * payload. M27 is `attended(slot, EMPIRE_FORBIDDEN_OUTPUTS[0])` — the same
+ * site, one argument wider — and `x1` going to `x2` is what reddens here.
+ */
+const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
+  'engagement.ts#historyFrom#attended x1',
+]);
+
+const DECLARED_INTERNAL_CALLBACK_SITES: readonly string[] = Object.freeze([
+  'expansion.ts#axesWhere#finished x1',
+]);
+
+/**
+ * The mutating calls whose receiver is a fresh expression, named individually.
+ *
+ * All three are `[...list].sort()`, which sorts a copy nobody else holds. They
+ * are the scan's one unclassified outcome and they are pinned by name so a
+ * fourth — which might not be a copy — is a decision somebody signs rather than
+ * a number that moves.
+ */
+const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
+  'empireInvariant.ts:636 receiver=ArrayLiteralExpression',
+  'engagement.ts:354 receiver=ArrayLiteralExpression',
+  'social.ts:344 receiver=ArrayLiteralExpression',
+]);
+
+/** What the census measured on the shipped tree. Counts, not bounds. */
+const CHANNEL_CENSUS_TOTALS = Object.freeze({
+  MODULES: 10,
+  SITES: 376,
+  /** Nodes the walk examined. A truncated walk would report a clean directory. */
+  NODES_EXAMINED: 21_758,
+  CHANNELS: 11,
+  /** Channels with at least one site. The other four are open routes nobody uses. */
+  CHANNELS_IN_USE: 5,
+});
+
+// ---------------------------------------------------------------------------
+// The coverage matrix — measured per channel, not declared
+// ---------------------------------------------------------------------------
+
+/**
+ * The probe module, served from memory and never written to disk.
+ *
+ * One export per channel, each emitting `EMPIRE_FORBIDDEN_OUTPUTS[0]` down that
+ * channel in the plainest way available — a bare read of the ban list, which is
+ * the shape all eleven bypasses actually used. Instruments A and C are measured
+ * against THIS SOURCE, compiled beside the real directory; instrument B is
+ * measured against the runtime twins below, because B reads values and a value
+ * needs code that runs.
+ *
+ * `probeReturnMinted` is the one row that is not a channel of its own: it is the
+ * return channel emitted THROUGH a brand constructor, and it is here because it
+ * is the only form any probe has that instrument C can see. Without it the C
+ * column would be false everywhere and would read as an instrument that does
+ * nothing, when what is true is narrower and more useful — C sees mints, and no
+ * channel but a branded return needs one.
+ */
+const CHANNEL_PROBE_SOURCE = `import { EMPIRE_FORBIDDEN_OUTPUTS, asNpcId, type NpcId } from './empireCore';
+
+export function probeReturn(): { readonly kind: string } {
+  return Object.freeze({ kind: EMPIRE_FORBIDDEN_OUTPUTS[0] as string });
+}
+
+export function probeReturnMinted(): NpcId {
+  return asNpcId(EMPIRE_FORBIDDEN_OUTPUTS[0]);
+}
+
+export function probeThrow(): number {
+  throw new RangeError(EMPIRE_FORBIDDEN_OUTPUTS[0]);
+}
+
+export const PROBE_BINDING: { readonly kind: string } = Object.freeze({
+  kind: EMPIRE_FORBIDDEN_OUTPUTS[0] as string,
+});
+
+export function probeArgumentMutation(sink: { kind: string }): void {
+  sink.kind = EMPIRE_FORBIDDEN_OUTPUTS[0];
+}
+
+export function probeCallback(report: (slot: number, label?: string) => boolean): boolean {
+  return report(0, EMPIRE_FORBIDDEN_OUTPUTS[0]);
+}
+
+export const PROBE_MUTABLE: string[] = [];
+
+export function probeModuleMutableState(): void {
+  PROBE_MUTABLE.push(EMPIRE_FORBIDDEN_OUTPUTS[0]);
+}
+
+export function probeAmbientGlobal(): void {
+  (globalThis as unknown as Record<string, unknown>).probeAmbientSink = EMPIRE_FORBIDDEN_OUTPUTS[0];
+}
+
+export function probeLazyMember(): { readonly slots: number; readonly toString: () => string } {
+  return Object.freeze({ slots: 1, toString: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] });
+}
+
+export function probeReturnedClosure(): () => string {
+  return (): string => EMPIRE_FORBIDDEN_OUTPUTS[0];
+}
+
+export interface ProbeThenable {
+  readonly then: (resolve: (value: string) => void) => void;
+}
+
+export function probeDeferredCompletion(): ProbeThenable {
+  return Object.freeze({ then: (resolve: (value: string) => void): void => { resolve(EMPIRE_FORBIDDEN_OUTPUTS[0]); } });
+}
+`;
+
+const CHANNEL_PROBE_PATH = path.join(HERE, '__channelProbe.ts');
+const CHANNEL_PROBE_MODULE = path.basename(CHANNEL_PROBE_PATH);
+
+let channelProbeSurfaceMemo: StringSurface | null = null;
+
+function channelProbeSurface(): StringSurface {
+  if (channelProbeSurfaceMemo !== null) return channelProbeSurfaceMemo;
+  channelProbeSurfaceMemo = surfaceOf(
+    [...shippedModulePaths(), CHANNEL_PROBE_PATH],
+    CHANNEL_PROBE_SOURCE,
+    CHANNEL_PROBE_PATH,
+  );
+  return channelProbeSurfaceMemo;
+}
+
+let channelProbeConstructorsMemo: ConstructorCensus | null = null;
+
+function channelProbeConstructors(): ConstructorCensus {
+  if (channelProbeConstructorsMemo !== null) return channelProbeConstructorsMemo;
+  channelProbeConstructorsMemo = constructorCensusOf(
+    [...shippedModulePaths(), CHANNEL_PROBE_PATH],
+    CHANNEL_PROBE_SOURCE,
+    CHANNEL_PROBE_PATH,
+  );
+  return channelProbeConstructorsMemo;
+}
+
+// ---------------------------------------------------------------------------
+// The runtime twins — the same eleven emissions, as code that runs
+// ---------------------------------------------------------------------------
+
+/** The name every twin emits. Read out of the ban list, never spelled. */
+const PROBE_NAME: string = BANNED_VOCABULARY[0] ?? '';
+
+/** The module-level sink the `module-mutable-state` twin writes into. */
+const PROBE_MUTABLE_SINK: string[] = [];
+
+/** The key the ambient twin writes on `globalThis`, and then removes. */
+const PROBE_AMBIENT_KEY = 'empireChannelProbeSink';
+
+interface TwinResult {
+  /** The row the drive would have built for this call. Never entered in `DRIVEN_ROWS`. */
+  readonly row: DrivenRow;
+  /** What a caller who reads the channel the way it is MEANT to be read sees. */
+  readonly observed: readonly string[];
+}
+
+/**
+ * Build a probe row and read the channel as a cooperating caller would.
+ *
+ * THE SECOND HALF IS THE NON-VACUITY GUARD AND IT IS NOT DECORATION. Every
+ * `false` in the matrix below is a claim about an instrument, and it is only
+ * that if the probe really emitted. A twin that quietly stopped emitting would
+ * turn every cell in its row false and the matrix would still pass. So each twin
+ * also reports what a caller who USES the channel gets — the value handed to the
+ * callback, the result of calling the closure, the string a coercion produces —
+ * and every row is asserted to have seen the name that way.
+ */
+function twinFor(
+  build: () => DrivenRow,
+  observe: () => readonly string[],
+): TwinResult {
+  const row = build();
+  return { row, observed: observe() };
+}
+
+/**
+ * The callback twin, written once and used by both callback rows.
+ *
+ * The row is built with the INDIFFERENT predicate — the shape the drive really
+ * hands `historyFrom`, which reads the argument it expects and ignores anything
+ * else. Using a recording predicate here would measure the fix rather than the
+ * instrument, and the `false` in that row is the whole finding. The recording
+ * one appears only in `observed`, which is the non-vacuity half.
+ */
+function callbackTwin(): TwinResult {
+  const indifferent = (slot: number): boolean => slot === 0;
+  const widened = indifferent as (slot: number, label?: string) => boolean;
+  return twinFor(
+    () => rowFor('probeCallback', 'probe', () => widened(0, PROBE_NAME), [indifferent]),
+    () => {
+      const handed: unknown[][] = [];
+      const recording = (...args: readonly unknown[]): boolean => {
+        handed.push([...args]);
+        return true;
+      };
+      recording(0, PROBE_NAME);
+      return handed.flat().filter((value): value is string => typeof value === 'string');
+    },
+  );
+}
+
+const CHANNEL_TWINS: Readonly<Record<string, () => TwinResult>> = Object.freeze({
+  return: () =>
+    twinFor(
+      () => rowFor('probeReturn', 'probe', () => Object.freeze({ kind: PROBE_NAME })),
+      () => [Object.freeze({ kind: PROBE_NAME }).kind],
+    ),
+  'return-minted': () =>
+    twinFor(
+      () => rowFor('probeReturnMinted', 'probe', () => PROBE_NAME),
+      () => [PROBE_NAME],
+    ),
+  throw: () =>
+    twinFor(
+      () =>
+        rowFor('probeThrow', 'probe', () => {
+          throw new RangeError(PROBE_NAME);
+        }),
+      () => {
+        try {
+          throw new RangeError(PROBE_NAME);
+        } catch (error) {
+          return [error instanceof Error ? error.message : ''];
+        }
+      },
+    ),
+  'exported-binding': () => {
+    const binding = Object.freeze({ kind: PROBE_NAME });
+    return twinFor(
+      () => rowFor('PROBE_BINDING', 'probe', () => binding),
+      () => [binding.kind],
+    );
+  },
+  'argument-mutation': () => {
+    const sink: { kind: string } = { kind: '' };
+    return twinFor(
+      () =>
+        rowFor(
+          'probeArgumentMutation',
+          'probe',
+          () => {
+            sink.kind = PROBE_NAME;
+            return undefined;
+          },
+          [sink],
+        ),
+      () => [sink.kind],
+    );
+  },
+  'callback-invocation': () => callbackTwin(),
+  'internal-callback-invocation': () => callbackTwin(),
+  'module-mutable-state': () => {
+    PROBE_MUTABLE_SINK.length = 0;
+    return twinFor(
+      () =>
+        rowFor('probeModuleMutableState', 'probe', () => {
+          PROBE_MUTABLE_SINK.push(PROBE_NAME);
+          return undefined;
+        }),
+      () => [...PROBE_MUTABLE_SINK],
+    );
+  },
+  'module-mutable-state-read-after': () => {
+    PROBE_MUTABLE_SINK.length = 0;
+    return twinFor(
+      () => {
+        PROBE_MUTABLE_SINK.push(PROBE_NAME);
+        return rowFor('PROBE_MUTABLE', 'read', () => PROBE_MUTABLE_SINK);
+      },
+      () => [...PROBE_MUTABLE_SINK],
+    );
+  },
+  'ambient-global': () => {
+    const ambient = globalThis as unknown as Record<string, unknown>;
+    return twinFor(
+      () =>
+        rowFor('probeAmbientGlobal', 'probe', () => {
+          ambient[PROBE_AMBIENT_KEY] = PROBE_NAME;
+          return undefined;
+        }),
+      () => {
+        const seen = ambient[PROBE_AMBIENT_KEY];
+        delete ambient[PROBE_AMBIENT_KEY];
+        return typeof seen === 'string' ? [seen] : [];
+      },
+    );
+  },
+  'lazy-member': () => {
+    const lazy = Object.freeze({ slots: 1, toString: (): string => PROBE_NAME });
+    return twinFor(
+      () => rowFor('probeLazyMember', 'probe', () => lazy),
+      () => [String(lazy)],
+    );
+  },
+  'returned-closure': () => {
+    const closure = (): string => PROBE_NAME;
+    return twinFor(
+      () => rowFor('probeReturnedClosure', 'probe', () => closure),
+      () => [closure()],
+    );
+  },
+  'deferred-completion': () => {
+    const thenable = Object.freeze({
+      then: (resolve: (value: string) => void): void => {
+        resolve(PROBE_NAME);
+      },
+    });
+    return twinFor(
+      () => rowFor('probeDeferredCompletion', 'probe', () => thenable),
+      () => {
+        const captured: string[] = [];
+        thenable.then((value) => captured.push(value));
+        return captured;
+      },
+    );
+  },
+});
+
+/** Banned names a deep scan of one probe row finds, by equality under the folds. */
+function bannedInRow(row: DrivenRow): readonly string[] {
+  const found: string[] = [];
+  for (const [, scan] of scanRow(row)) {
+    for (const string of scan.strings) {
+      if (BANNED_NORMALISED.has(normalise(string.value))) found.push(`${string.path}=${string.value}`);
+    }
+    for (const finding of scan.stackFindings) found.push(finding);
+  }
+  return Object.freeze(found);
+}
+
+/**
+ * Which probe export, and which runtime twin, each matrix row is measured
+ * against.
+ *
+ * Keyed by `channel|form` rather than by channel, because three channels have
+ * two rows — a channel measured in two emission forms is two measurements, and
+ * collapsing them onto one key is how the second form would quietly become the
+ * first. A row whose key is missing from either map fails the matrix test by
+ * name rather than being skipped.
+ */
+const PROBE_EXPORTS: Readonly<Record<string, string>> = Object.freeze({
+  'return|a bare read of the ban list, returned in an object field': 'probeReturn',
+  'return|the same name, minted through `asNpcId` on the way out': 'probeReturnMinted',
+  'throw|a bare read of the ban list as the `RangeError` message': 'probeThrow',
+  'exported-binding|a frozen exported const carrying the name': 'PROBE_BINDING',
+  "argument-mutation|the name written into a caller-supplied sink's field": 'probeArgumentMutation',
+  'callback-invocation|the name passed as an extra argument to a caller-supplied predicate':
+    'probeCallback',
+  'internal-callback-invocation|the same, in a module-private function whose callers are all in this directory':
+    'probeCallback',
+  'module-mutable-state|a module-level array pushed to during a call, read as the call returns':
+    'probeModuleMutableState',
+  'module-mutable-state|the same binding, read AFTER the write, the way `read` takes an exported const':
+    'PROBE_MUTABLE',
+  'ambient-global|the name written onto a `globalThis` key': 'probeAmbientGlobal',
+  'lazy-member|a returned object whose `toString` yields the name': 'probeLazyMember',
+  'returned-closure|a returned arrow that yields the name when called': 'probeReturnedClosure',
+  'deferred-completion|a thenable that hands the name to a resolver': 'probeDeferredCompletion',
+});
+
+const TWIN_KEYS: Readonly<Record<string, string>> = Object.freeze({
+  'return|the same name, minted through `asNpcId` on the way out': 'return-minted',
+  'module-mutable-state|the same binding, read AFTER the write, the way `read` takes an exported const':
+    'module-mutable-state-read-after',
+});
+
+interface CoverageRow {
+  readonly channel: ChannelId;
+  /** Which emission form of that channel this row measures. */
+  readonly form: string;
+  readonly movesA: boolean;
+  readonly movesB: boolean;
+  readonly movesC: boolean;
+  /** The callback pass below. `null` where the channel has no callback to record. */
+  readonly movesPass: boolean;
+  readonly why: string;
+}
+
+/**
+ * WHAT EACH COLUMN MEANS, because three of them mean different things and a
+ * table that blurs them is worse than no table.
+ *
+ *   `movesA` — the probe's export contributes at least one STRING POSITION to
+ *     instrument A's census. It deliberately does NOT count the export list
+ *     moving: every probe export moves that, and M8 is the row that says an
+ *     export count is a demand that a reviewer look, not a detection.
+ *   `movesB` — a deep scan of the row the drive would have built finds the name.
+ *   `movesC` — the probe's export adds a brand-constructor call site.
+ *   `movesPass` — the callback pass below records the name.
+ *
+ * A `true` in A is not the same guarantee as a `true` in B: A sees that a
+ * position of that shape EXISTS and, for a literal type, what is in it; it
+ * cannot see the value in a bare or branded one. Both are worth having and
+ * neither substitutes for the other, which is what the two `return` rows show —
+ * the same channel, one form seen by A and B, the other seen by A, B and C.
+ */
+const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
+  Object.freeze({
+    channel: 'return',
+    form: 'a bare read of the ban list, returned in an object field',
+    movesA: true,
+    movesB: true,
+    movesC: false,
+    movesPass: false,
+    why: 'The best-covered channel in the directory, and the one every instrument was built around.',
+  }),
+  Object.freeze({
+    channel: 'return',
+    form: 'the same name, minted through `asNpcId` on the way out',
+    movesA: true,
+    movesB: true,
+    movesC: true,
+    movesPass: false,
+    why: 'The only emission any probe here has that instrument C can see. C is a census of mints and nothing but a branded return needs one.',
+  }),
+  Object.freeze({
+    channel: 'throw',
+    form: 'a bare read of the ban list as the `RangeError` message',
+    movesA: false,
+    movesB: true,
+    movesC: false,
+    movesPass: false,
+    why: 'M25, the tenth bypass. A thrown payload has no declared position and calls no constructor, so A and C have nothing to look at. THE DRIVE IS ITS ONLY CATCHER.',
+  }),
+  Object.freeze({
+    channel: 'exported-binding',
+    form: 'a frozen exported const carrying the name',
+    movesA: true,
+    movesB: true,
+    movesC: false,
+    movesPass: false,
+    why: 'M7. Exported data is read rather than called, and both A and B reach it.',
+  }),
+  Object.freeze({
+    channel: 'argument-mutation',
+    form: "the name written into a caller-supplied sink's field",
+    movesA: false,
+    movesB: true,
+    movesC: false,
+    movesPass: false,
+    why: "A walks RETURN types only — a parameter's positions are outside its census entirely. The drive re-reads every argument after the call, which is why B sees it.",
+  }),
+  Object.freeze({
+    channel: 'callback-invocation',
+    form: 'the name passed as an extra argument to a caller-supplied predicate',
+    movesA: false,
+    movesB: false,
+    movesC: false,
+    movesPass: true,
+    why: 'M27, THE ELEVENTH BYPASS. Nothing in the three instruments sees it: no declared position, no constructor, and the drive keeps the callback it passed IN rather than what the callback was handed. The callback pass is the catcher and it was written this round.',
+  }),
+  Object.freeze({
+    channel: 'internal-callback-invocation',
+    form: 'the same, in a module-private function whose callers are all in this directory',
+    movesA: false,
+    movesB: false,
+    movesC: false,
+    movesPass: true,
+    why: 'Measured against the same twin, because who supplies the function is a fact about the SOURCE and not about the value. The census separates the two; the runtime cannot.',
+  }),
+  Object.freeze({
+    channel: 'module-mutable-state',
+    form: 'a module-level array pushed to during a call, read as the call returns',
+    movesA: false,
+    movesB: false,
+    movesC: false,
+    movesPass: false,
+    why: "The write happens during a call whose own return carries nothing, so the row the drive builds is empty. Order-dependent, and the row below is the other order.",
+  }),
+  Object.freeze({
+    channel: 'module-mutable-state',
+    form: 'the same binding, read AFTER the write, the way `read` takes an exported const',
+    movesA: true,
+    movesB: true,
+    movesC: false,
+    movesPass: false,
+    why: 'THE SAME CHANNEL ANSWERS DIFFERENTLY IN THE TWO ORDERS, which is why both rows are here. B covers it only when something reads the binding after the write, and nothing orders those two events. A moves on this row and not on the one above because the two rows are measured against different probe exports — the BINDING has a declared string position and the writer returns `void`, which is the same split as `lazy-member`: the arrival is seen and the write is not.',
+  }),
+  Object.freeze({
+    channel: 'ambient-global',
+    form: 'the name written onto a `globalThis` key',
+    movesA: false,
+    movesB: false,
+    movesC: false,
+    movesPass: false,
+    why: 'Covered by no instrument here. The census is the whole catcher: this directory has zero ambient sites and one arriving is red.',
+  }),
+  Object.freeze({
+    channel: 'lazy-member',
+    form: 'a returned object whose `toString` yields the name',
+    movesA: true,
+    movesB: false,
+    movesC: false,
+    movesPass: false,
+    why: "A sees the POSITION — `return.toString()` is a string position in the declared type. B does not: the walker invokes getters and never methods, which its own header states. So the arrival is caught and the payload is not.",
+  }),
+  Object.freeze({
+    channel: 'returned-closure',
+    form: 'a returned arrow that yields the name when called',
+    movesA: true,
+    movesB: false,
+    movesC: false,
+    movesPass: false,
+    why: "Same split as the row above, and the walker's header names it: a returned function is walked for its own properties and is never called.",
+  }),
+  Object.freeze({
+    channel: 'deferred-completion',
+    form: 'a thenable that hands the name to a resolver',
+    movesA: false,
+    movesB: false,
+    movesC: false,
+    movesPass: false,
+    why: 'The payload is an ARGUMENT to a function the caller supplies, one `then` away from the callback channel, and it is invisible for the same reason. The census is the catcher: zero deferred sites, and an `async` or a `new Promise` arriving is red.',
+  }),
+]);
+
+// ---------------------------------------------------------------------------
+// The callback pass — the catcher for the channel that had none
+// ---------------------------------------------------------------------------
+
+/**
+ * Drive every exported function that takes a callback, with a callback that
+ * RECORDS what it is handed.
+ *
+ * WHY IT IS A SEPARATE PASS AND NOT A WIDENING OF THE DRIVE. The main drive
+ * keeps `values[0]` and the arguments it passed IN. A callback is one of those
+ * arguments, and what the drive keeps is the FUNCTION, whose own properties
+ * carry nothing. Making the drive's fixtures record would move every count in
+ * `DRIVE_CENSUS` — 206 727 rows and 11 205 001 strings — for a channel with one
+ * site, so the pass is a few extra calls beside the drive rather than a change
+ * to it. Its subject list is DERIVED from the same checker walk the census uses,
+ * and joined to it in both directions, so a second callback-taking export
+ * reddens here until somebody drives it.
+ *
+ * ITS LIMIT: it drives the subject at one small fixture, so it is a sampling
+ * instrument like the drive, and a callback payload behind a numeric branch
+ * point is outside it exactly as M10 through M14 were outside the drive's
+ * domains. What it does close is the shape M27 used — an argument handed to
+ * every call — and the census's arity key is the other half, because that one
+ * needs no drive at all.
+ */
+interface CallbackSubject {
+  /** `module.ts#export#parameter`, derived from the checker and joined below. */
+  readonly key: string;
+  /** Calls the subject with a recording callback and returns nothing. */
+  readonly drive: (record: (args: readonly unknown[]) => void) => void;
+}
+
+const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
+  Object.freeze({
+    key: 'engagement.ts#historyFrom#attended',
+    drive: (record: (args: readonly unknown[]) => void): void => {
+      engagementModule.historyFrom(
+        CALLBACK_PASS_SLOTS,
+        (...args: readonly unknown[]): boolean => {
+          record(args);
+          return args[0] === 0;
+        },
+        [CALLBACK_PASS_SLOTS],
+      );
+    },
+  }),
+]);
+
+/**
+ * How many slots the pass drives `historyFrom` at.
+ *
+ * Three rather than one so a payload keyed on the first call is not the only
+ * one visible, and small because the pass is about WHAT arrives rather than how
+ * often. `CALLBACK_PASS_CENSUS.CALLS` pins the product, so a subject that stops
+ * calling its callback reports itself instead of passing with nothing recorded.
+ */
+const CALLBACK_PASS_SLOTS = 3;
+
+/**
+ * The tripwire subject: a function that hands its callback a banned name.
+ *
+ * Not shipped and never exported — it is the pass's non-vacuity guard, in the
+ * same role `instrument B bites` plays for the drive. Without it a zero here
+ * would be a zero about a pass that records nothing.
+ */
+function callbackTripwire(record: (args: readonly unknown[]) => void): void {
+  const hand = (report: (slot: number, label: string) => boolean): void => {
+    for (let slot = 0; slot < CALLBACK_PASS_SLOTS; slot += 1) report(slot, PROBE_NAME);
+  };
+  hand((slot, label) => {
+    record([slot, label]);
+    return true;
+  });
+}
+
+interface CallbackPassResult {
+  readonly calls: number;
+  readonly recorded: number;
+  readonly findings: readonly string[];
+}
+
+/** Run one callback-taking subject and scan everything its callback was handed. */
+function callbackPass(drive: (record: (args: readonly unknown[]) => void) => void, label: string): CallbackPassResult {
+  const handed: unknown[][] = [];
+  drive((args) => handed.push([...args]));
+  const scan = deepScan(handed, `${label}#callback`);
+  const findings: string[] = [];
+  for (const string of scan.strings) {
+    if (BANNED_NORMALISED.has(normalise(string.value))) findings.push(`${string.path}=${string.value}`);
+  }
+  return {
+    calls: handed.length,
+    recorded: handed.reduce((total, args) => total + args.length, 0),
+    findings: Object.freeze(findings),
+  };
+}
+
+/**
+ * Every exported function parameter this directory ever CALLS, derived.
+ *
+ * Read off the census's own site keys rather than listed, so the pass's subject
+ * list and the census's site list cannot drift apart: the join below is what
+ * says every caller-supplied callback the directory invokes has a driver.
+ */
+const callbackSubjectKeys = (census: ChannelCensus): readonly string[] =>
+  distinct(census.sites['callback-invocation'].map((site) => site.replace(/ x\d+$/, '')));
+
+const CALLBACK_PASS_CENSUS = Object.freeze({
+  SUBJECTS: 1,
+  /** `CALLBACK_PASS_SLOTS` calls for the one subject. A zero here is a dead pass. */
+  CALLS: 3,
+  /** Values handed to the callback across those calls: one slot argument each. */
+  RECORDED: 3,
+  FINDINGS: 0,
+  /** The tripwire's own numbers, which are what the zero above is a zero against. */
+  TRIPWIRE_CALLS: 3,
+  TRIPWIRE_RECORDED: 6,
+  TRIPWIRE_FINDINGS: 3,
+});
+
+const CHANNEL_BLOCK_TIMEOUT_MS = 90_000;
+
+describe('the channel census — the routes a string can leave this directory by', () => {
+  it(
+    'derives every escape site from the shipped source, per channel per module, in both directions',
+    () => {
+      const census = channelCensus();
+      expect(census.modules.length).toBe(CHANNEL_CENSUS_TOTALS.MODULES);
+      expect(census.nodesExamined).toBe(CHANNEL_CENSUS_TOTALS.NODES_EXAMINED);
+      // The table itself, deep equal. A site arriving in any channel in any
+      // module moves a number; a site leaving moves one the other way.
+      expect(census.byModule).toEqual(CHANNEL_SITE_COUNTS);
+      let sites = 0;
+      let inUse = 0;
+      for (const id of CHANNEL_IDS) {
+        const perModule = Object.values(CHANNEL_SITE_COUNTS[id]);
+        const total = perModule.reduce((sum, count) => sum + count, 0);
+        // The two halves of the census agree: the site LIST and the per-module
+        // COUNTS are produced by the same walk and are checked against each
+        // other, so a walk that recorded a key without counting it is red.
+        expect(census.sites[id].length, id).toBe(total);
+        sites += total;
+        if (total > 0) inUse += 1;
+      }
+      expect(sites).toBe(CHANNEL_CENSUS_TOTALS.SITES);
+      expect(inUse).toBe(CHANNEL_CENSUS_TOTALS.CHANNELS_IN_USE);
+      expect(CHANNEL_IDS.length).toBe(CHANNEL_CENSUS_TOTALS.CHANNELS);
+      // Every declared channel is scanned for, and nothing is scanned for that
+      // is not declared. The set equality is over the table's OWN keys, so a
+      // twelfth channel cannot be counted without a row describing it.
+      expect(distinct([...Object.keys(CHANNEL_SITE_COUNTS)])).toEqual(distinct([...CHANNEL_IDS]));
+      expect(distinct(ESCAPE_CHANNELS.map((channel) => channel.id))).toEqual(distinct([...CHANNEL_IDS]));
+      for (const channel of ESCAPE_CHANNELS) {
+        expect(channel.what.length, channel.id).toBeGreaterThan(40);
+        expect(channel.scannedFor.length, channel.id).toBeGreaterThan(30);
+      }
+    },
+    CHANNEL_BLOCK_TIMEOUT_MS,
+  );
+
+  it(
+    'pins the two callback sites with their ARGUMENT COUNT, which is what M27 moves',
+    () => {
+      const census = channelCensus();
+      expect(census.sites['callback-invocation']).toEqual(DECLARED_CALLBACK_SITES);
+      expect(census.sites['internal-callback-invocation']).toEqual(DECLARED_INTERNAL_CALLBACK_SITES);
+      // The four empty channels, by name and in both directions. These are the
+      // routes this directory does not use, and the emptiness is the check.
+      expect(
+        CHANNEL_IDS.filter((id) => census.sites[id].length === 0),
+      ).toEqual([
+        'argument-mutation',
+        'module-mutable-state',
+        'ambient-global',
+        'lazy-member',
+        'returned-closure',
+        'deferred-completion',
+      ]);
+      // And the scan's one unclassified outcome, named rather than dropped.
+      expect(census.freshReceivers).toEqual(DECLARED_FRESH_RECEIVERS);
+    },
+    CHANNEL_BLOCK_TIMEOUT_MS,
+  );
+
+  it(
+    'measures every cell of the coverage matrix rather than declaring it',
+    () => {
+      const surface = channelProbeSurface();
+      // A refusal below has to be a classification and not a compile error.
+      expect(surface.sourceDiagnostics, surface.sourceDiagnostics.join(' | ')).toEqual([]);
+      expect(surface.depthCuts).toBe(SURFACE_CENSUS.DEPTH_CUTS);
+      const constructors = channelProbeConstructors();
+
+      const probeExportFor = (row: CoverageRow): string => PROBE_EXPORTS[`${row.channel}|${row.form}`] ?? '';
+      const twinFor_ = (row: CoverageRow): TwinResult => {
+        const twin = CHANNEL_TWINS[TWIN_KEYS[`${row.channel}|${row.form}`] ?? row.channel];
+        if (twin === undefined) throw new Error(`no runtime twin for ${row.channel}/${row.form}`);
+        return twin();
+      };
+
+      for (const row of CHANNEL_COVERAGE) {
+        const probeExport = probeExportFor(row);
+        expect(probeExport, `${row.channel}/${row.form} has no probe export`).not.toBe('');
+
+        // A: string POSITIONS contributed by the probe's export. The export
+        // list moving is not counted, on purpose — see the column note above.
+        const positions = surface.positions.filter(
+          (position) => position.module === CHANNEL_PROBE_MODULE && position.export === probeExport,
+        );
+        expect(positions.length > 0, `${row.channel}/${row.form} movesA`).toBe(row.movesA);
+
+        // C: a brand-constructor call site inside the probe's export.
+        const sites = constructors.sites.filter((site) =>
+          site.site.startsWith(`${CHANNEL_PROBE_MODULE}#${probeExport}#`),
+        );
+        expect(sites.length > 0, `${row.channel}/${row.form} movesC`).toBe(row.movesC);
+
+        // B: the row the drive would have built, through the drive's own walker.
+        const twin = twinFor_(row);
+        expect(bannedInRow(twin.row).length > 0, `${row.channel}/${row.form} movesB`).toBe(row.movesB);
+
+        // The non-vacuity guard: a caller who uses the channel as intended sees
+        // the name. Without this every `false` above could be a dud probe.
+        expect(
+          twin.observed.some((value) => BANNED_NORMALISED.has(normalise(value))),
+          `${row.channel}/${row.form} emitted nothing — every false in its row is meaningless`,
+        ).toBe(true);
+      }
+
+      // Every channel has at least one measured row, and no row names a channel
+      // the census does not scan for. Both directions.
+      expect(distinct(CHANNEL_COVERAGE.map((row) => row.channel))).toEqual(distinct([...CHANNEL_IDS]));
+      expect(CHANNEL_COVERAGE.length).toBe(13);
+      for (const row of CHANNEL_COVERAGE) expect(row.why.length, row.channel).toBeGreaterThan(60);
+    },
+    CHANNEL_BLOCK_TIMEOUT_MS,
+  );
+
+  it('names the channels the drive alone covers, and the ones nothing covered', () => {
+    const only = (row: CoverageRow, a: boolean, b: boolean, c: boolean): boolean =>
+      row.movesA === a && row.movesB === b && row.movesC === c;
+    // THE READING THIS WHOLE SECTION EXISTS FOR. A channel here has exactly as
+    // much guarantee behind it as a sampling budget, which is what CLAUDE.md's
+    // newest rule says is not enough on an unbounded input space.
+    const driveAlone = CHANNEL_COVERAGE.filter((row) => only(row, false, true, false));
+    expect(driveAlone.map((row) => `${row.channel}: ${row.form}`)).toEqual([
+      'throw: a bare read of the ban list as the `RangeError` message',
+      "argument-mutation: the name written into a caller-supplied sink's field",
+    ]);
+    // Of those three, ONE is a channel this directory actually uses: `throw`,
+    // at 54 sites. The other two have zero sites, so what covers them today is
+    // the census saying they are empty.
+    const census = channelCensus();
+    expect(
+      driveAlone.filter((row) => census.sites[row.channel].length > 0).map((row) => row.channel),
+    ).toEqual(['throw']);
+
+    // And the rows no instrument moved on. Every one of them is either covered
+    // by the callback pass or has zero sites and is covered by the census —
+    // there is no row here that is both in use and uncovered.
+    const nothing = CHANNEL_COVERAGE.filter((row) => only(row, false, false, false));
+    expect(nothing.map((row) => row.channel)).toEqual([
+      'callback-invocation',
+      'internal-callback-invocation',
+      'module-mutable-state',
+      'ambient-global',
+      'deferred-completion',
+    ]);
+    for (const row of nothing) {
+      const covered = row.movesPass || census.sites[row.channel].length === 0;
+      expect(covered, `${row.channel}/${row.form} is in use and no instrument covers it`).toBe(true);
+    }
+    // The pass covers exactly the callback channels and nothing else, in both
+    // directions, so a row cannot claim it without being one.
+    expect(CHANNEL_COVERAGE.filter((row) => row.movesPass).map((row) => row.channel)).toEqual([
+      'callback-invocation',
+      'internal-callback-invocation',
+    ]);
+  });
+
+  it(
+    'drives every caller-supplied callback and scans what it was handed',
+    () => {
+      const census = channelCensus();
+      // The subject list is DERIVED from the census and joined both ways. A
+      // second callback-taking export reddens here until it has a driver.
+      expect(CALLBACK_SUBJECTS.map((subject) => subject.key)).toEqual(callbackSubjectKeys(census));
+      expect(CALLBACK_SUBJECTS.length).toBe(CALLBACK_PASS_CENSUS.SUBJECTS);
+
+      let calls = 0;
+      let recorded = 0;
+      const findings: string[] = [];
+      for (const subject of CALLBACK_SUBJECTS) {
+        const result = callbackPass(subject.drive, subject.key);
+        calls += result.calls;
+        recorded += result.recorded;
+        findings.push(...result.findings);
+      }
+      // THE FINDINGS FIRST, AND THE ORDER IS DELIBERATE. Both this and the
+      // counts below redden under M27, and the one a reader should meet first
+      // is the one that names the value: `+ "…[0].1=covered-day"` says what
+      // arrived, where `expected 6 to be 3` says only that something did.
+      // CLAUDE.md's "a check that bites but fails uselessly is half a check".
+      expect(findings).toEqual([]);
+      expect(findings.length).toBe(CALLBACK_PASS_CENSUS.FINDINGS);
+      // Counts, not bounds. A pass whose subject stopped calling its callback
+      // would report zero findings and pass, so the calls are pinned too.
+      expect(calls).toBe(CALLBACK_PASS_CENSUS.CALLS);
+      expect(recorded).toBe(CALLBACK_PASS_CENSUS.RECORDED);
+    },
+    CHANNEL_BLOCK_TIMEOUT_MS,
+  );
+
+  it('the callback pass bites — the tripwire the zero is zero against', () => {
+    const result = callbackPass(callbackTripwire, 'tripwire');
+    expect(result.calls).toBe(CALLBACK_PASS_CENSUS.TRIPWIRE_CALLS);
+    expect(result.recorded).toBe(CALLBACK_PASS_CENSUS.TRIPWIRE_RECORDED);
+    expect(result.findings.length).toBe(CALLBACK_PASS_CENSUS.TRIPWIRE_FINDINGS);
+    // Named, not counted only: the failure message has to say what arrived.
+    for (const finding of result.findings) expect(finding).toContain(PROBE_NAME);
   });
 });
 
