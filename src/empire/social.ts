@@ -132,6 +132,7 @@ import {
   asGymId,
   isEmpireOutput,
   outputReach,
+  refuseWith,
   type DisplayName,
   type EmpireOutput,
   type FaultMessage,
@@ -174,7 +175,7 @@ export type CalendarDay = number & { readonly [SOCIAL_BRAND]: 'calendar-day' };
 export function asCalendarDay<N extends number>(value: N & Unbranded<N>): CalendarDay {
   const raw: number = value;
   if (!Number.isInteger(raw) || raw < 0) {
-    throw new RangeError(`a calendar day must be a whole number at or above zero, received ${raw}.`);
+    refuseWith(`a calendar day must be a whole number at or above zero, received ${raw}.`);
   }
   return raw as CalendarDay;
 }
@@ -565,7 +566,7 @@ export function encouragementGymBucksOn(
 function periodDays(): number {
   const days = EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS;
   if (!Number.isInteger(days) || days < 1) {
-    throw new RangeError(
+    refuseWith(
       `the rival comparison period must be a whole number of calendar days at or above one, received ${days}.`,
     );
   }
@@ -583,7 +584,7 @@ function periodDays(): number {
  */
 export function rivalPeriodIndex(anchorDay: CalendarDay, day: CalendarDay): number {
   if (day < anchorDay) {
-    throw new RangeError(
+    refuseWith(
       `day ${day} is before the anchor day ${anchorDay}, so it is in no comparison period.`,
     );
   }
@@ -593,7 +594,7 @@ export function rivalPeriodIndex(anchorDay: CalendarDay, day: CalendarDay): numb
 /** The first day of a period. */
 export function rivalPeriodStartDay(anchorDay: CalendarDay, periodIndex: number): CalendarDay {
   if (!Number.isInteger(periodIndex) || periodIndex < 0) {
-    throw new RangeError(`a period index must be a whole number at or above zero, received ${periodIndex}.`);
+    refuseWith(`a period index must be a whole number at or above zero, received ${periodIndex}.`);
   }
   const raw: number = anchorDay + periodIndex * periodDays();
   return asCalendarDay(raw);
@@ -620,7 +621,7 @@ export function rivalPeriodCloseDays(
   horizonDays: number,
 ): readonly CalendarDay[] {
   if (!Number.isInteger(horizonDays) || horizonDays < 0) {
-    throw new RangeError(`a horizon must be a whole number of days at or above zero, received ${horizonDays}.`);
+    refuseWith(`a horizon must be a whole number of days at or above zero, received ${horizonDays}.`);
   }
   const days: CalendarDay[] = [];
   const period = periodDays();
@@ -716,7 +717,7 @@ export function socialRewardSchedule(
   horizonDays: number,
 ): readonly SocialRewardDay[] {
   if (!Number.isInteger(horizonDays) || horizonDays < 0) {
-    throw new RangeError(`a horizon must be a whole number of days at or above zero, received ${horizonDays}.`);
+    refuseWith(`a horizon must be a whole number of days at or above zero, received ${horizonDays}.`);
   }
   const anchor = calendar.anchorDay;
   const closes = new Set<number>(rivalPeriodCloseDays(anchor, horizonDays));

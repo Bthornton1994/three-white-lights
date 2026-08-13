@@ -139,6 +139,7 @@ import {
   recruitCost,
   recruitReputationThreshold,
   recruitSeconds,
+  refuseWith,
   reputationTierIndex,
   rosterCapacity,
   settledLevel,
@@ -1039,12 +1040,19 @@ describe('the producer census, scoped by return type and resolved through the ch
     // wrong rather than the subject.
     expect(census.controlFailures).toEqual([]);
     expect(census.coreDiagnostics).toEqual([]);
-    expect(census.probes).toBe(914);
+    // 930 rather than 914 since `refuseWith` arrived, and the sixteen are
+    // derived rather than read off a diff: one control plus one slot times two
+    // raw candidates and thirteen brands.
+    expect(census.probes).toBe(930);
     // Counts, not bounds, on both verdicts. All-accepted and all-refused are
     // the two degenerate states, and each is a number away rather than a bound
     // away.
-    expect(census.refusedProbes).toBe(783);
-    expect(census.probes - census.refusedProbes).toBe(131);
+    //
+    // The wrap's ten refusals are derived the same way: `message: string`
+    // refuses `RAW_NUMBER` and the nine brands over `number`, and accepts the
+    // control, `RAW_STRING` and the four brands over `string`.
+    expect(census.refusedProbes).toBe(793);
+    expect(census.probes - census.refusedProbes).toBe(137);
 
     // The brands, from the declarations rather than from a list written here.
     expect(census.brands).toEqual([
@@ -1063,8 +1071,8 @@ describe('the producer census, scoped by return type and resolved through the ch
       'UnacceleratedSeconds',
     ]);
 
-    expect(census.functions.length).toBe(44);
-    expect(census.slots.length).toBe(58);
+    expect(census.functions.length).toBe(45);
+    expect(census.slots.length).toBe(59);
 
     // The producers, by name. `createEmpireClock` and `createNpcLifter` are on
     // this list and are not spelled `as*`, which is the whole difference
@@ -1135,7 +1143,7 @@ describe('the producer census, scoped by return type and resolved through the ch
     expect(tally.get('raw-only')).toBe(21);
     expect(tally.get('brand-only')).toBe(6);
     expect(tally.get('neither')).toBe(27);
-    expect(tally.get('both')).toBe(4);
+    expect(tally.get('both')).toBe(5);
     expect([...tally.values()].reduce((total, n) => total + n, 0)).toBe(census.slots.length);
   });
 
@@ -1153,11 +1161,20 @@ describe('the producer census, scoped by return type and resolved through the ch
       .map((slot) => `${slot.fn}(${slot.parameter}) admits ${slot.acceptsBrands.join(', ')}`);
     expect(faults).toEqual([]);
 
-    // The complement, pinned so the zero above is zero against something. Four
-    // slots in the module do admit both, and every one of them is a decode
-    // predicate that takes `unknown` on purpose — the wire has no types, and a
-    // narrowing function that refused a branded value would refuse the values
-    // this module's own constructors hand back.
+    // The complement, pinned so the zero above is zero against something. Five
+    // slots in the module do admit both, and the sentence that used to sit here
+    // said all of them were decode predicates taking `unknown` on purpose — the
+    // wire has no types, and a narrowing function that refused a branded value
+    // would refuse the values this module's own constructors hand back. That is
+    // still true of the first four and is now false of the list, so it is
+    // corrected rather than left reading as a description of all of them.
+    //
+    // The fifth is `refuseWith`, the throw wrap. Its parameter is a message
+    // rather than a quantity, and `Unbranded<S>` was considered there and left
+    // off deliberately: `assertEmpireState` throws prose built out of
+    // `FaultMessage`s, so refusing an already-branded string would refuse a
+    // legitimate site to buy nothing — the rule this test enforces is about a
+    // PRODUCER's parameter, and the line below is what says the wrap is not one.
     expect(
       census.slots
         .filter((slot) => slot.kind === 'both')
@@ -1167,9 +1184,12 @@ describe('the producer census, scoped by return type and resolved through the ch
       'isEmpireOutput(value)',
       'isProgressionReachingOutput(value)',
       'isPurchasableAccelerant(value)',
+      'refuseWith(message)',
     ]);
-    // And none of those four is a producer, so the exemption is a fact about
-    // the census rather than a hole punched in it.
+    // And none of those five is a producer, so the exemption is a fact about
+    // the census rather than a hole punched in it. `refuseWith` returns `never`
+    // and therefore produces nothing at all, which is why it does not appear in
+    // `producers(census)` — checked by the emptiness above rather than asserted.
     expect(
       producers(census).filter((fn) => /^is[A-Z]/.test(fn.name)).length,
     ).toBe(0);
@@ -1745,6 +1765,31 @@ describe('the branded constructors', () => {
     expect(() => asReputation(EMPIRE_TUNING.REPUTATION_MAX + 1)).toThrow(/REPUTATION_MAX/);
     expect(() => asNpcId('')).toThrow(RangeError);
     expect(() => createNpcLifter('a', 'novice', '', 0, 0)).toThrow(RangeError);
+  });
+
+  it('hands a caller the refusal rather than the name, when a throw carries one', () => {
+    // The containment half of the throw wrap, driven rather than reasoned. A
+    // legitimate message passes through untouched, which is the traffic the
+    // whole directory sends: 53 of the 54 throw sites now call the wrap and
+    // every one of them carries a sentence.
+    expect(() => refuseWith('roster holds 2 of 2 slots')).toThrow(RangeError);
+    expect(() => refuseWith('roster holds 2 of 2 slots')).toThrow(/roster holds 2 of 2 slots/);
+    // And the tenth bypass's shape, driven at every member of the ban list
+    // rather than at the first: the caller receives the refusal, and the value
+    // it refused is quoted INSIDE that refusal rather than handed over as the
+    // whole message. That distinction is the reason this asserts on the prefix
+    // as well — a wrap that merely re-threw would match the second line.
+    let refused = 0;
+    for (const forbidden of EMPIRE_FORBIDDEN_OUTPUTS) {
+      expect(() => refuseWith(forbidden), forbidden).toThrow(
+        /^thrownMessage must not be a forbidden empire output;/,
+      );
+      expect(() => refuseWith(forbidden), forbidden).toThrow(RangeError);
+      refused += 1;
+    }
+    // Counts, not bounds: an emptied ban list would make the loop above vacuous.
+    expect(refused).toBe(EMPIRE_FORBIDDEN_OUTPUTS.length);
+    expect(refused).toBe(4);
   });
 
   it('bounds the physio hook at the seam rather than at the far end of it', () => {
@@ -2776,7 +2821,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     expect(filesRead).toBe(shipped.length);
     // Counts before contents, so an empty domain reports itself rather than
     // making the pin below a comparison of two empty lists.
-    expect(singleQuoted.size).toBe(167);
+    expect(singleQuoted.size).toBe(168);
     expect(doubleQuoted.size).toBe(0);
     expect(templateChunks.size).toBe(138);
     // And the template collector really reaches the messages, named from the
@@ -2907,6 +2952,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'store-purchase',
       'string',
       'structural',
+      'thrownMessage',
       'trained-day-upkeep',
       'training-iq',
       'training-pace',
@@ -2928,7 +2974,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(305);
+    expect(stringsChecked).toBe(306);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -2957,7 +3003,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(126);
+    expect(probes).toBe(127);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);

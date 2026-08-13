@@ -124,6 +124,7 @@ import {
   recruitCost,
   recruitReputationThreshold,
   recruitSeconds,
+  refuseWith,
   rosterCapacity,
   type AcceleratedSeconds,
   type EmpireClock,
@@ -371,7 +372,7 @@ export function completeRecruitment(
   // which is the shape of a guard applied to one arm and not to its sibling.
   const capacity = rosterCapacity(state.settledAxes);
   if (state.roster.length >= capacity) {
-    throw new RangeError(
+    refuseWith(
       `roster holds ${state.roster.length} of ${capacity} slots, so a ${schedule.tier} recruit cannot join`,
     );
   }

@@ -478,9 +478,17 @@ export type NpcId = Branded<string, 'npc-id'>;
  * always will be: a thrown `Error`'s message is not a field, so there is no
  * position for a brand to sit on. The brands close ASSIGNMENT INTO A DECLARED
  * POSITION. They do not close the throw channel, and nothing here should be
- * read as claiming they do — what covers that is the drive, and specifically
- * `empireForbiddenOutput.test.ts`'s overflow pass reaching the region the
- * roster-size ceiling used to drop. It is M25 in `PLANTED_ROUTES`.
+ * read as claiming they do — what covered that at E18 was the drive, and
+ * specifically `empireForbiddenOutput.test.ts`'s overflow pass reaching the
+ * region the roster-size ceiling used to drop. It is M25 in `PLANTED_ROUTES`.
+ *
+ * THE THROW CHANNEL HAS ITS OWN PAIR SINCE E19, and the sentence above is left
+ * exactly as it was because it is still true of the BRANDS. What closes the
+ * channel is not a brand: it is `refuseWith`, the wrap every throw in this
+ * directory is written as a call to, plus `THROW_GATE_SITES` — the same
+ * containment-and-enumeration pair this note describes for the constructors,
+ * one channel over. See `refuseWith` below for what each half does and does not
+ * cover.
  *
  * The probe that made this file's answer possible, run at `dcc65bb` and again
  * before this change:
@@ -1095,7 +1103,7 @@ export function empireVocabularyFaults(): readonly FaultMessage[] {
 
 function requireFiniteAtLeastZero(value: number, what: string): void {
   if (!Number.isFinite(value) || value < 0) {
-    throw new RangeError(`${what} must be a finite number at or above zero, received ${value}.`);
+    refuseWith(`${what} must be a finite number at or above zero, received ${value}.`);
   }
 }
 
@@ -1116,7 +1124,7 @@ export function asGymBucks<N extends number>(value: N & Unbranded<N>): GymBucks 
 export function asReputation<N extends number>(value: N & Unbranded<N>): ReputationPoints {
   requireFiniteAtLeastZero(value, 'reputation');
   if (value > EMPIRE_TUNING.REPUTATION_MAX) {
-    throw new RangeError(
+    refuseWith(
       `reputation must be at or below REPUTATION_MAX (${EMPIRE_TUNING.REPUTATION_MAX}), received ${value}.`,
     );
   }
@@ -1142,10 +1150,10 @@ export function asTrainingIq<N extends number>(value: N & Unbranded<N>): Trainin
 export function asInjuryDaysSaved<N extends number>(value: N & Unbranded<N>): InjuryDaysSaved {
   requireFiniteAtLeastZero(value, 'injuryDaysSaved');
   if (!Number.isInteger(value)) {
-    throw new RangeError(`injuryDaysSaved must be a whole number, received ${value}.`);
+    refuseWith(`injuryDaysSaved must be a whole number, received ${value}.`);
   }
   if (value > EMPIRE_TUNING.PHYSIO_MAX_DAYS_SAVED) {
-    throw new RangeError(
+    refuseWith(
       `injuryDaysSaved must be at or below PHYSIO_MAX_DAYS_SAVED (${EMPIRE_TUNING.PHYSIO_MAX_DAYS_SAVED}), received ${value}.`,
     );
   }
@@ -1233,10 +1241,73 @@ function refuseForbiddenName(value: string, brand: string): void {
   }
 }
 
+/**
+ * The one way a value leaves this directory by ABRUPT completion.
+ *
+ * Every `throw` in every shipped module of `src/empire/` is written as a call to
+ * this. It refuses a message that IS a member of `EMPIRE_FORBIDDEN_OUTPUTS` and
+ * throws a `RangeError` carrying the caller's message otherwise, so the tenth
+ * bypass's shape — `throw new RangeError(EMPIRE_FORBIDDEN_OUTPUTS[0])` — hands
+ * its caller the refusal rather than the name.
+ *
+ * WHAT IT GUARANTEES, IN THE MECHANISM'S OWN TERMS: of the values that leave by
+ * a `throw` routed through here, none equals a forbidden output. That is a
+ * property of the calls that RUN, in the same containment-not-detection sense
+ * `refuseForbiddenName` states above it: a `refuseWith` sitting on a branch
+ * nothing executes refuses nothing. So this makes a forbidden thrown message
+ * UNSHIPPABLE — it cannot reach a caller — and it does not make the guard
+ * complete. Those are two properties and this note does not run them together.
+ *
+ * THE ROUTE PAST IT, NAMED CONCRETELY ENOUGH TO PLANT: a raw
+ * `throw new RangeError(EMPIRE_FORBIDDEN_OUTPUTS[0])` written anywhere in this
+ * directory reaches this function not at all. A wrap contains what goes through
+ * it and nothing else, which is why the wrap alone would be a convention.
+ *
+ * THE CHECK THAT COVERS THAT ROUTE, NAMED SPECIFICALLY ENOUGH TO RUN: `every
+ * throw in this directory is written as a call to the wrap` in
+ * `empireForbiddenOutput.test.ts`. It walks the shipped modules with the
+ * checker, and set-equals the `throw` channel's site list against
+ * `THROW_GATE_SITES` — the two gates named below — so a raw `throw` anywhere
+ * else is red by file and by enclosing function, whether or not anything drives
+ * it. That is the detection half, and its own limit is that it counts a SITE and
+ * says nothing about the payload an existing site carries.
+ *
+ * THE SECOND LIMIT, WHICH IS THE ONE A READER WILL ASSUME WRONG: this compares
+ * by EQUALITY, exactly as `refuseForbiddenName` does, so
+ * `refuseWith(`covered-day is not payable`)` is allowed and is meant to be —
+ * every legitimate message in this directory is a sentence and 41 of the 54
+ * sites are template literals. A message that CONTAINS a banned name is covered
+ * behaviourally instead, by `CONTAINS no banned name either, outside the
+ * diagnostic channel, and the exemption is measured` in the same file, which
+ * scans every thrown payload the drive produces by containment.
+ *
+ * THE TWO GATES, AND WHY THERE ARE TWO RATHER THAN ONE. `refuseForbiddenName`
+ * keeps a raw `throw` and so does this function's own last line. Routing either
+ * of them through this wrap was considered and refused: `refuseForbiddenName`'s
+ * message quotes the offending value, so sending it back in would make the two
+ * refusals mutually recursive for the sake of a message that is a sentence
+ * rather than a name. It would terminate — the refusal text is not EQUAL to a
+ * ban-list member, so the second pass would fall through and throw — and
+ * "terminates" is a poor reason to build a cycle. Both gates are therefore
+ * named data in `THROW_GATE_SITES`, and a third one arriving is red there.
+ *
+ * NO BRAND ON `message`, AND THAT WAS MEASURED RATHER THAN OMITTED. E18 graded
+ * `refuseWith(message: FaultMessage)` in five configurations and recorded it as
+ * M28: unminted, `tsc` gives the identical `TS2345` on the bare ban-list read
+ * and on a legitimate template literal, so the configuration where the brand
+ * bites refuses 41 real sites; minted, the bypass compiles. The brand buys
+ * nothing in any configuration this directory can ship, and the containment
+ * above needs none.
+ */
+export function refuseWith(message: string): never {
+  refuseForbiddenName(message, 'thrownMessage');
+  throw new RangeError(message);
+}
+
 /** A roster lifter's id. Refuses the empty string so a missing id is loud. */
 export function asNpcId<S extends string>(value: S & Unbranded<S>): NpcId {
   if (value.length === 0) {
-    throw new RangeError('npcId must not be empty.');
+    refuseWith('npcId must not be empty.');
   }
   refuseForbiddenName(value, 'npcId');
   return mintString(value);
@@ -1264,7 +1335,7 @@ export function asNpcId<S extends string>(value: S & Unbranded<S>): NpcId {
  */
 export function asGymId<S extends string>(value: S & Unbranded<S>): GymId {
   if (value.length === 0) {
-    throw new RangeError('gymId must not be empty.');
+    refuseWith('gymId must not be empty.');
   }
   refuseForbiddenName(value, 'gymId');
   return mintString(value);
@@ -1281,7 +1352,7 @@ export function asGymId<S extends string>(value: S & Unbranded<S>): GymId {
  */
 export function asDisplayName<S extends string>(value: S & Unbranded<S>): DisplayName {
   if (value.length === 0) {
-    throw new RangeError('displayName must not be empty.');
+    refuseWith('displayName must not be empty.');
   }
   refuseForbiddenName(value, 'displayName');
   return mintString(value);
@@ -1333,22 +1404,25 @@ export function asDisplayName<S extends string>(value: S & Unbranded<S>): Displa
  *
  * AND THE SAME LIMIT ONE STEP OUT, NAMED BECAUSE IT IS WHERE THE TENTH BYPASS
  * WENT: a `throw new RangeError(<a bare string>)` reaches no constructor at
- * all, so it is neither typed nor contained. `completeRecruitment` is where
- * that was planted and the overflow pass is what catches it; see the brand
+ * all, so it was neither typed nor contained. `completeRecruitment` is where
+ * that was planted and the overflow pass is what caught it; see the brand
  * note at the top of this file.
  *
- * THE OBVIOUS REPAIR FOR THAT — a `refuseWith(message: FaultMessage): never`
- * every throw goes through — WAS MEASURED AND ITS BRAND WAS REFUSED. Recorded
- * as M28 in `empireForbiddenOutput.test.ts`, five configurations. The brand
- * refuses the bare ban-list read and the legitimate template literal with the
- * SAME `TS2345`, and there are 54 throw sites of which 41 are template
- * literals, so the configuration where the brand bites is one this directory
- * cannot ship; the one it can ship mints, and a mint compiles the bypass. What
- * the wrap does buy is runtime containment, and that half needs no brand at
- * all: unbranded, with no mint anywhere, the M25 shape comes back to the caller
- * as `thrownMessage must not be a forbidden empire output` rather than as the
- * name. The trade, the price and the enforcement it would need are in M28's own
- * row rather than summarised here.
+ * THAT PARAGRAPH IS WRITTEN IN THE PAST TENSE SINCE E19, AND THE REPAIR IT
+ * PREDICTED IS THE ONE THAT WAS TAKEN. `refuseWith` is that wrap and it sits
+ * fifty lines above this comment; every `throw` in every shipped module of this
+ * directory is a call to it, and `THROW_GATE_SITES` in
+ * `empireForbiddenOutput.test.ts` is the enumeration that keeps it that way.
+ *
+ * ITS BRAND IS STILL REFUSED, and that is the half of M28 that stands. Recorded
+ * in `empireForbiddenOutput.test.ts`, five configurations: a
+ * `refuseWith(message: FaultMessage)` refuses the bare ban-list read and the
+ * legitimate template literal with the SAME `TS2345`, and there were 54 throw
+ * sites of which 41 are template literals, so the configuration where the brand
+ * bites is one this directory cannot ship; the one it can ship mints, and a
+ * mint compiles the bypass. What the wrap buys is runtime containment, and that
+ * half needs no brand at all — which is why the shipped `refuseWith` takes a
+ * plain `string`.
  */
 export function asFaultMessage<S extends string>(value: S & Unbranded<S>): FaultMessage {
   refuseForbiddenName(value, 'faultMessage');
@@ -1939,7 +2013,7 @@ export type AppliedAccelerant = AcceleratedOutput & {
  */
 function checkedPairing(accelerant: EmpireAccelerant, output: EmpireOutput): AcceleratedOutput {
   if (!mayAccelerate(accelerant, output)) {
-    throw new RangeError(
+    refuseWith(
       `${accelerant} arrives by ${ACCELERANT_ARRIVAL[accelerant]} and may not accelerate ` +
         `${output}, which reaches ${outputReach(output)}`,
     );
@@ -2282,6 +2356,6 @@ export function empireStateFaults(state: EmpireState): readonly FaultMessage[] {
 export function assertEmpireState(state: EmpireState): void {
   const faults = empireStateFaults(state);
   if (faults.length > 0) {
-    throw new RangeError(`invalid EmpireState:\n  ${faults.join('\n  ')}`);
+    refuseWith(`invalid EmpireState:\n  ${faults.join('\n  ')}`);
   }
 }
