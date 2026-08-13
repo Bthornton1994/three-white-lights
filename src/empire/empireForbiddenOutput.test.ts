@@ -796,24 +796,99 @@ const SURFACE_CENSUS = Object.freeze({
 });
 
 describe('the domains are derived from the subject and are not empty', () => {
-  it('pins how many thresholds were filed, how many domains exist, and how many points each came out at', () => {
-    // The census that says a truncated or reshaped domain reports itself. A
-    // threshold dropped from `UNIT_THRESHOLDS` shrinks a point count here
-    // before it shrinks anything downstream, where it would look like a clean
-    // sweep.
-    expect(AXIS_UNITS.length).toBe(DOMAIN_CENSUS.UNITS);
-    expect(Object.keys(UNIT_THRESHOLDS).sort()).toEqual([...AXIS_UNITS].sort());
-    const filed = AXIS_UNITS.flatMap((unit) => Object.keys(UNIT_THRESHOLDS[unit]));
-    expect(filed.length).toBe(DOMAIN_CENSUS.THRESHOLDS);
+  it('files or exempts every numeric leaf of EMPIRE_TUNING, in both directions', () => {
+    // THE JOIN THE SEVENTH BYPASS EXISTED IN THE ABSENCE OF. The old registry
+    // was checked against itself — forty labels asserted to be forty distinct
+    // labels — and against no population, so sixty-two knobs were in no unit,
+    // in no domain, and in nothing that could notice. This walks
+    // `EMPIRE_TUNING` and requires every numeric leaf to be either filed under
+    // a unit or carrying a reason on `NOT_A_BRANCH_POINT`.
+    const leaves = TUNING_LEAVES.numbers.map((leaf) => leaf.path);
+    expect(leaves.length).toBe(DOMAIN_CENSUS.TUNING_NUMERIC_LEAVES);
+    expect(distinct(leaves).length).toBe(DOMAIN_CENSUS.TUNING_NUMERIC_LEAVES);
+    // A string leaf is counted rather than dropped, so a vocabulary token
+    // becoming a number moves a number here.
+    expect(TUNING_LEAVES.strings.length).toBe(DOMAIN_CENSUS.TUNING_STRING_LEAVES);
+
+    const labels = AXIS_UNITS.flatMap((unit) => Object.keys(UNIT_THRESHOLDS[unit]));
+    expect(labels.length).toBe(DOMAIN_CENSUS.THRESHOLDS);
     // Filed exactly once, so a threshold cannot be counted twice into the
     // census while being missing from the unit that needed it.
-    expect(distinct(filed).length).toBe(DOMAIN_CENSUS.THRESHOLDS);
+    expect(distinct(labels).length).toBe(DOMAIN_CENSUS.THRESHOLDS);
+
+    // Every label is a real leaf path, or one of exactly two derived entries.
+    const derived = DERIVED_THRESHOLDS.map(([label]) => label);
+    const filed = labels.filter((label) => !derived.includes(label));
+    expect(labels.filter((label) => derived.includes(label)).sort()).toEqual([...derived].sort());
+    for (const label of filed) {
+      expect(leaves, `${label} is filed but is not a leaf of EMPIRE_TUNING`).toContain(label);
+    }
+    for (const [label, why] of DERIVED_THRESHOLDS) {
+      expect(leaves, `${label} is listed as derived but IS a leaf`).not.toContain(label);
+      expect(why.length, label).toBeGreaterThan(80);
+    }
+
+    const exempt = NOT_A_BRANCH_POINT.map((row) => row.path);
+    expect(exempt.length).toBe(DOMAIN_CENSUS.EXEMPT);
+    expect(distinct(exempt).length).toBe(DOMAIN_CENSUS.EXEMPT);
+    expect(distinct(filed).length).toBe(DOMAIN_CENSUS.FILED);
+    // Disjoint. A leaf that is both filed and exempt would make the set
+    // equality below pass while the two lists disagreed about it.
+    for (const path of exempt) {
+      expect(filed, `${path} is both filed and exempt`).not.toContain(path);
+    }
+    // The equality itself, both directions.
+    expect([...distinct(filed), ...exempt].sort()).toEqual([...leaves].sort());
+
+    // Every exemption carries a reason, and the reason is not the claim
+    // restated: the ban below is on a row whose whole content is that it is not
+    // a branch point.
+    for (const row of NOT_A_BRANCH_POINT) {
+      expect(row.why.length, row.path).toBeGreaterThan(120);
+      expect(row.why.toLowerCase(), row.path).not.toContain('not a branch point');
+    }
+
+    expect(Object.keys(EVERY_BRANCH_POINT).length).toBe(DOMAIN_CENSUS.BRANCH_POINTS);
     // And no unit is empty, which is what stops a domain declaring a unit and
     // thereby declaring no obligation at all.
     for (const unit of AXIS_UNITS) {
       expect(Object.keys(UNIT_THRESHOLDS[unit]).length, unit).toBeGreaterThan(0);
     }
+    expect(AXIS_UNITS.length).toBe(DOMAIN_CENSUS.UNITS);
+    expect(Object.keys(UNIT_THRESHOLDS).sort()).toEqual([...AXIS_UNITS].sort());
+  });
 
+  it('re-runs the unconsumed scan, so an exemption that says NO CONSUMER expires by itself', () => {
+    // The one exemption class whose reason is a claim about the shipped code
+    // rather than about the number. `empireTuning.test.ts` owns the pin; this
+    // re-derives it here, because a row in THIS file that says "nothing reads
+    // it" has to fail in THIS file when something starts reading it.
+    const shipped = readdirSync(HERE)
+      .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
+      .filter((name) => name !== 'empireTuning.ts')
+      .map((name) => readFileSync(path.join(HERE, name), 'utf8'))
+      .join('\n')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+    // The empty-domain guard: if the read found no source, every key would look
+    // unconsumed and the loop below would be a sweep over nothing.
+    expect(shipped.length).toBeGreaterThan(0);
+    expect(shipped).toContain(`EMPIRE_TUNING.${'RIVAL_COMPARISON_PERIOD_DAYS'}`);
+
+    const unconsumed = NOT_A_BRANCH_POINT.filter((row) => row.why.startsWith('NO CONSUMER'));
+    expect(unconsumed.length).toBeGreaterThan(0);
+    for (const row of unconsumed) {
+      expect(shipped, `${row.path} is exempted as unread and is read`).not.toContain(
+        `EMPIRE_TUNING.${row.path}`,
+      );
+    }
+  });
+
+  it('pins how many domains exist and how many points each came out at', () => {
+    // The census that says a truncated or reshaped domain reports itself. A
+    // threshold dropped from `UNIT_THRESHOLDS` shrinks a point count here
+    // before it shrinks anything downstream, where it would look like a clean
+    // sweep.
     expect(Object.keys(NUMERIC_DOMAINS).length).toBe(DOMAIN_CENSUS.DOMAINS);
     expect(NUMBER_DOMAIN.length).toBe(DOMAIN_CENSUS.NUMBER_POINTS);
     expect(SECONDS_DOMAIN.length).toBe(DOMAIN_CENSUS.SECONDS_POINTS);
@@ -823,7 +898,7 @@ describe('the domains are derived from the subject and are not empty', () => {
     expect(ROSTER_SHAPES.length).toBe(DOMAIN_CENSUS.ROSTER_SHAPE_POINTS);
   });
 
-  it('straddles every threshold of its own units, IN EVERY DOMAIN AND NOT ONLY THE FIRST', () => {
+  it('straddles every branch point it is obliged to, IN EVERY DOMAIN AND NOT ONLY THE FIRST', () => {
     // This is the assertion the sixth bypass got past, and the way it got past
     // was not that it was wrong — it was that it looped `NUMBER_DOMAIN` and
     // left the domain declared one line below it pinned by LENGTH alone. So it
@@ -831,11 +906,26 @@ describe('the domains are derived from the subject and are not empty', () => {
     // added to the registry is checked without this assertion being edited, and
     // `DOMAINS` below reddens if one is added and `CONTAINMENT_CHECKS` reddens
     // if a domain is added that obliges itself to nothing.
+    //
+    // WHAT THE SEVENTH BYPASS CHANGED HERE. The obligation used to be the
+    // thresholds of the domain's own units and nothing else, so a domain's
+    // coverage was only ever as good as somebody's judgement about which unit a
+    // number was measured in. The obligation now includes every branch point at
+    // or below `foreignCeiling` regardless of unit, and `omitted` counts the
+    // rest per domain instead of leaving them unnamed.
     let domainsChecked = 0;
     let checks = 0;
+    const omitted: Record<string, number> = {};
     for (const [name, domain] of Object.entries(NUMERIC_DOMAINS)) {
       const required: Record<string, number> = { ...domain.alsoContains };
       for (const unit of domain.units) Object.assign(required, UNIT_THRESHOLDS[unit]);
+      let skipped = 0;
+      for (const [label, value] of Object.entries(EVERY_BRANCH_POINT)) {
+        if (label in required) continue;
+        if (value <= domain.foreignCeiling) required[label] = value;
+        else skipped += 1;
+      }
+      omitted[name] = skipped;
       // A domain that obliges itself to nothing would pass every check below
       // vacuously, which is the shape of the defect one level out.
       expect(Object.keys(required).length, name).toBeGreaterThan(0);
@@ -843,7 +933,16 @@ describe('the domains are derived from the subject and are not empty', () => {
 
       for (const [label, threshold] of Object.entries(required)) {
         const at = `${name}/${label}=${String(threshold)}`;
-        expect(domain.points, at).toContain(threshold);
+        if (Number.isInteger(threshold)) {
+          expect(domain.points, at).toContain(threshold);
+        } else {
+          // The obligation for a fractional branch point, stated rather than
+          // dropped: every axis in this file is integral, so the domain carries
+          // the whole numbers on both sides instead of a value no integral axis
+          // can take. See `integralPoints`.
+          expect(domain.points, `${at} floor`).toContain(Math.floor(threshold));
+          expect(domain.points, `${at} ceil`).toContain(Math.ceil(threshold));
+        }
         expect(domain.points.some((point) => point > threshold), at).toBe(true);
         // Zero has nothing below it. Every other threshold is straddled on
         // both sides; a one-sided sample cannot see a `< threshold` branch.
@@ -860,13 +959,59 @@ describe('the domains are derived from the subject and are not empty', () => {
     }
     expect(domainsChecked).toBe(DOMAIN_CENSUS.DOMAINS);
     expect(checks).toBe(DOMAIN_CENSUS.CONTAINMENT_CHECKS);
+    // The declared limit as a number rather than a sentence: exactly which
+    // domains give up how many branch points to their ceiling.
+    expect(omitted).toEqual({ ...DOMAIN_CENSUS.OMITTED_ABOVE_CEILING });
+  });
 
-    // And the structural fact the units buy: the full domain contains every
-    // narrow one, so moving an axis onto NUMBER never loses a point.
+  it('contains every exempt leaf in every domain, so an exemption is not a hole', () => {
+    // The named catcher for `NOT_A_BRANCH_POINT`'s declared limit. An exemption
+    // decides only whether a leaf is carried ABOVE a ceiling; it does not
+    // remove the leaf from any domain, because `EVERY_BRANCH_POINT` includes
+    // the exempt ones and every ceiling in this file is above all of them.
+    //
+    // This is the assertion that reddens the day somebody exempts a large
+    // value — which is the day the sentence above stops being true. Planting
+    // `SPACE_LEVEL_COST_GYM_BUCKS` onto the exempt list is not the mutation to
+    // use, because that leaf is also filed and the disjointness check catches
+    // it first; move `RIVAL_REWARD_GYM_BUCKS` (2500) from `gymBucks` to the
+    // exempt list and ROSTER_SHAPE, whose ceiling is 120, goes red here.
+    let pairs = 0;
     for (const [name, domain] of Object.entries(NUMERIC_DOMAINS)) {
-      if (domain.units.length === 0) continue;
-      for (const point of domain.points) expect(NUMBER_DOMAIN, name).toContain(point);
+      for (const row of NOT_A_BRANCH_POINT) {
+        for (const [path, value] of Object.entries(tuningTable(row.path))) {
+          const at = `${name}/${path}=${String(value)}`;
+          expect(domain.points, `${at} floor`).toContain(Math.floor(value));
+          expect(domain.points, `${at} ceil`).toContain(Math.ceil(value));
+          pairs += 1;
+        }
+      }
     }
+    expect(pairs).toBe(DOMAIN_CENSUS.DOMAINS * DOMAIN_CENSUS.EXEMPT);
+  });
+
+  it('keeps every domain inside NUMBER, INCLUDING the points no unit derived', () => {
+    // THIS LOOP USED TO BE VACUOUS ON EVERY ITERATION AND IS RECORDED AS SUCH.
+    // It read `if (domain.units.length === 0) continue;` — which skipped
+    // ROSTER_SHAPE, the only domain whose points are not `domainOf(subset of
+    // AXIS_UNITS)`. For every domain it did visit, the points were a straddle
+    // of a subset of what NUMBER straddles, so containment was arithmetic and
+    // no state of the registry could have reddened it.
+    //
+    // What makes it bite now is the `extra` argument. `domainOf` takes points
+    // that are derived from no threshold at all, ROSTER_SHAPE passes
+    // `ROSTER_SLOTS_MAX + 1` through it, and nothing structural says a value
+    // invented at a call site is a point NUMBER has. Planting
+    // `EMPIRE_TUNING.ROSTER_SLOTS_MAX * 3` in that argument reddens this and
+    // nothing else in the file.
+    let pairs = 0;
+    for (const [name, domain] of Object.entries(NUMERIC_DOMAINS)) {
+      for (const point of domain.points) {
+        expect(NUMBER_DOMAIN, `${name}/${String(point)}`).toContain(point);
+        pairs += 1;
+      }
+    }
+    expect(pairs).toBe(DOMAIN_CENSUS.NUMBER_CONTAINMENT_CHECKS);
   });
 
   it('defines every numeric domain inside the registry, and nowhere else', () => {
@@ -901,20 +1046,30 @@ describe('the domains are derived from the subject and are not empty', () => {
     for (const [name, why] of LITERAL_AXES) expect(why.length, name).toBeGreaterThan(60);
   });
 
-  it('states a measured price for every domain that is not the full one', () => {
+  it('joins a measured price to every domain that carries a ceiling, in both directions', () => {
     // A cost concession with no measurement beside it is how a ten-point
     // hour-derived domain stayed on six axes that never needed to be cheap.
+    //
+    // AND THE OLD VERSION OF THIS CHECK NEVER JOINED A ROW TO A DOMAIN. Its
+    // rows were axis names, its assertion was that exactly two of them cost
+    // more than twice a baseline, and a domain could have carried any ceiling
+    // at all without a row existing — which is the shape of a check that reads
+    // as coverage. The set equality below is what it should have been.
     expect(DOMAIN_COST_SECONDS.length).toBe(DOMAIN_CENSUS.COST_ROWS);
-    const baseline = DOMAIN_COST_SECONDS[0]?.[1] ?? 0;
-    expect(baseline).toBeGreaterThan(0);
-    // Two axes and only two measured a real price. The other six are within
-    // noise of the baseline, and four of them measured FASTER than it — which
-    // is what says the cheap domain was not bought for them.
-    const expensive = DOMAIN_COST_SECONDS.slice(1).filter(([, cost]) => cost > baseline * 2);
-    expect(expensive.map(([axis]) => axis)).toEqual([
-      'historyFrom and four siblings / history slots',
-      'fifteen social exports / calendar day',
-    ]);
+    const priced = DOMAIN_COST_SECONDS.map((row) => row.domain);
+    const bounded = Object.entries(NUMERIC_DOMAINS)
+      .filter(([, domain]) => Number.isFinite(domain.foreignCeiling))
+      .map(([name]) => name);
+    // Both directions: a ceiling with no measurement is as much a defect as a
+    // measurement for a domain that does not exist or does not have a ceiling.
+    expect([...priced].sort()).toEqual([...bounded].sort());
+    for (const row of DOMAIN_COST_SECONDS) {
+      expect(Object.keys(NUMERIC_DOMAINS), row.domain).toContain(row.domain);
+      // The concession has to be a real saving, or the ceiling is buying
+      // nothing and the honest edit is to delete it.
+      expect(row.unboundedSeconds, row.domain).toBeGreaterThan(row.shippedSeconds * 2);
+      expect(row.axes.length, row.domain).toBeGreaterThan(60);
+    }
   });
 });
 
@@ -1365,93 +1520,343 @@ const AXIS_UNITS = [
 
 type AxisUnit = (typeof AXIS_UNITS)[number];
 
-/** One named threshold per rung, so a ladder is filed like a scalar. */
-function rungs(name: string, ladder: readonly number[]): Readonly<Record<string, number>> {
-  const table: Record<string, number> = {};
-  ladder.forEach((value, index) => {
-    table[`${name}[${String(index)}]`] = value;
-  });
-  return Object.freeze(table);
+/**
+ * Every numeric leaf of `EMPIRE_TUNING`, discovered by walking the frozen block
+ * rather than by listing what somebody remembered to list.
+ *
+ * WHY A WALK AND NOT A LIST, MEASURED. The registry below used to be a hand-
+ * written table checked against nothing but itself: `no unit is empty and every
+ * threshold is filed exactly once` asserted that the forty labels somebody typed
+ * were forty distinct labels. It said nothing about the sixty-two knobs nobody
+ * typed. `NPC_RECRUIT_COST_GYM_BUCKS.novice` is 500, it was in no unit, it was
+ * therefore in no domain — not even `NUMBER`, which is the union of the FILED
+ * thresholds and not of the tuning block — and a `recordFriendVisit` returning a
+ * forbidden name on exactly day 500 was invisible: `tsc --noEmit` exit 0, 13
+ * files and 489 tests green. Filing that one number by hand would have closed
+ * that one number.
+ *
+ * So the population is read off `EMPIRE_TUNING` itself. Adding a knob to that
+ * file now reddens this one until the knob is filed under a unit or exempted
+ * with a reason, and renaming a knob reddens it as a stale row.
+ *
+ * A string leaf is counted rather than dropped, so a vocabulary token turning
+ * into a number is a moved count rather than a silent new branch point.
+ */
+interface TuningLeaf {
+  readonly path: string;
+  readonly value: number;
+}
+
+function tuningLeaves(): {
+  readonly numbers: readonly TuningLeaf[];
+  readonly strings: readonly string[];
+} {
+  const numbers: TuningLeaf[] = [];
+  const strings: string[] = [];
+  const walk = (node: unknown, at: string): void => {
+    if (typeof node === 'number') {
+      numbers.push(Object.freeze({ path: at, value: node }));
+      return;
+    }
+    if (typeof node === 'string') {
+      strings.push(at);
+      return;
+    }
+    if (Array.isArray(node)) {
+      node.forEach((child, index) => {
+        walk(child, `${at}[${String(index)}]`);
+      });
+      return;
+    }
+    if (typeof node === 'object' && node !== null) {
+      for (const [key, child] of Object.entries(node)) walk(child, at === '' ? key : `${at}.${key}`);
+      return;
+    }
+    // Not a silent skip. A boolean, a null or a function inside the tuning block
+    // is a shape this walk has never seen, and a walk that shrugs at one would
+    // under-report the population it exists to enumerate.
+    throw new Error(`EMPIRE_TUNING carries a leaf this walk has no case for, at ${at}`);
+  };
+  walk(EMPIRE_TUNING, '');
+  return { numbers: Object.freeze(numbers), strings: Object.freeze(strings) };
+}
+
+const TUNING_LEAVES = tuningLeaves();
+
+/**
+ * Every numeric leaf at or under one `EMPIRE_TUNING` path, keyed by its full
+ * path, so a scalar, an object table and a ladder are all filed the same way.
+ *
+ * It throws on a path with no leaf under it, which is what makes a renamed knob
+ * a loud failure here rather than a quietly shorter threshold list — the failure
+ * mode `rungs()` had, since it took the ladder's NAME as a string and its VALUES
+ * as a separate argument and never checked that the two were about each other.
+ */
+function tuningTable(prefix: string): Readonly<Record<string, number>> {
+  const found = TUNING_LEAVES.numbers.filter(
+    (leaf) =>
+      leaf.path === prefix || leaf.path.startsWith(`${prefix}.`) || leaf.path.startsWith(`${prefix}[`),
+  );
+  if (found.length === 0) {
+    throw new Error(`no numeric leaf of EMPIRE_TUNING is at or under ${prefix}`);
+  }
+  return Object.freeze(Object.fromEntries(found.map((leaf) => [leaf.path, leaf.value])));
 }
 
 /**
- * Every number this directory branches on, read out of `EMPIRE_TUNING` and
+ * Every number this directory branches on, keyed by its `EMPIRE_TUNING` PATH and
  * filed under the unit it is measured in.
  *
- * Two entries are derived rather than read — the offline-earnings caps in
+ * The keys are paths and not labels on purpose. They used to be labels —
+ * `COACH_LEVEL_MAX`, `REGIONAL_BRACKET` — which read fine and joined to nothing,
+ * so no check could ask whether the tuning block had knobs this table had never
+ * heard of. `tuningTable` generates the key from the walk, so the join in
+ * 'files or exempts every numeric leaf of EMPIRE_TUNING' is a set equality
+ * against the real population.
+ *
+ * Two entries are DERIVED rather than read — the offline-earnings caps in
  * SECONDS — because the code divides seconds by `SECONDS_PER_HOUR` and compares
  * the result against the hour caps, so both the hour and the second are real
- * branch points and they are different numbers.
+ * branch points and they are different numbers. A derived entry has no leaf
+ * path, so it is listed in `DERIVED_THRESHOLDS` with the reason, and the join
+ * subtracts exactly those two labels rather than accepting any unrecognised key.
  *
- * Its limit, stated because the classification is a judgement and nothing here
- * checks it against the code: a threshold filed under the wrong unit is still
- * in `NUMBER_DOMAIN` (which is every unit) but is missing from the narrow
- * domain that needed it, which is exactly the bypass above one level in. What
- * covers that is 'no unit is empty and every threshold is filed exactly once'
- * plus the rule that a narrow domain may only be used where the full domain was
- * MEASURED to be too expensive — the measurements are in `DOMAIN_COST_SECONDS`,
- * and six of the eight axes that used to share the ten-point domain are on the
- * full domain now because the measurement said they were free.
+ * WHAT FILING A THRESHOLD UNDER A UNIT NOW BUYS, in the mechanism's own terms,
+ * because the answer changed this round and is smaller than it sounds: it makes
+ * the threshold **unconditionally** present in the domain of every axis of that
+ * unit, however large the value is. It is no longer what decides whether the
+ * threshold is present at all — `foreignCeiling` decides that, for every domain,
+ * out of the whole branch-point population regardless of unit. That is what
+ * makes a misfiling survivable: `FRIEND_VISITS_PER_DAY` is 10 and is filed under
+ * `count` because its name says visits, and the value it gates in the bypass is
+ * a DAY. Under the old rule `DAY_DOMAIN` never saw 10. Under this one it does,
+ * because 10 is under every ceiling in the file.
  */
 const UNIT_THRESHOLDS: Readonly<Record<AxisUnit, Readonly<Record<string, number>>>> = Object.freeze({
   second: Object.freeze({
-    SECONDS_PER_HOUR: EMPIRE_TUNING.SECONDS_PER_HOUR,
-    SECONDS_PER_DAY: EMPIRE_TUNING.SECONDS_PER_DAY,
-    BUILD_SECONDS_BASE: EMPIRE_TUNING.BUILD_SECONDS_BASE,
-    BUILD_SECONDS_MAX: EMPIRE_TUNING.BUILD_SECONDS_MAX,
-    TIMER_SKIP_SECONDS_PER_GRANT: EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT,
+    ...tuningTable('SECONDS_PER_HOUR'),
+    ...tuningTable('SECONDS_PER_DAY'),
+    ...tuningTable('BUILD_SECONDS_BASE'),
+    ...tuningTable('BUILD_SECONDS_MAX'),
+    ...tuningTable('TIMER_SKIP_SECONDS_PER_GRANT'),
+    // The five recruit timers. `completeRecruitment` compares elapsed seconds
+    // against the rung for the tier being recruited, so each is a real branch
+    // point on a seconds axis; none of them was filed anywhere before this
+    // round.
+    ...tuningTable('NPC_RECRUIT_SECONDS'),
     OFFLINE_EARNINGS_NO_PUNISH_SECONDS:
       EMPIRE_TUNING.OFFLINE_EARNINGS_NO_PUNISH_HOURS * EMPIRE_TUNING.SECONDS_PER_HOUR,
     OFFLINE_EARNINGS_CAP_SECONDS:
       EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS * EMPIRE_TUNING.SECONDS_PER_HOUR,
   }),
   hour: Object.freeze({
-    OFFLINE_EARNINGS_NO_PUNISH_HOURS: EMPIRE_TUNING.OFFLINE_EARNINGS_NO_PUNISH_HOURS,
-    OFFLINE_EARNINGS_CAP_HOURS: EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS,
+    ...tuningTable('OFFLINE_EARNINGS_NO_PUNISH_HOURS'),
+    ...tuningTable('OFFLINE_EARNINGS_CAP_HOURS'),
   }),
   day: Object.freeze({
-    NPC_TENURE_DAYS_TO_FULL_LOYALTY: EMPIRE_TUNING.NPC_TENURE_DAYS_TO_FULL_LOYALTY,
-    PHYSIO_MAX_DAYS_SAVED: EMPIRE_TUNING.PHYSIO_MAX_DAYS_SAVED,
-    RIVAL_COMPARISON_PERIOD_DAYS: EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS,
+    ...tuningTable('NPC_TENURE_DAYS_TO_FULL_LOYALTY'),
+    ...tuningTable('PHYSIO_MAX_DAYS_SAVED'),
+    ...tuningTable('RIVAL_COMPARISON_PERIOD_DAYS'),
   }),
   level: Object.freeze({
-    SPACE_LEVEL_MAX: EMPIRE_TUNING.SPACE_LEVEL_MAX,
-    COACH_LEVEL_MAX: EMPIRE_TUNING.STAFF_LEVEL_MAX.coach,
-    // The sibling of the line above, listed because CLAUDE.md's rule is that a
-    // guard written for one arm must be applied to the arm below it. It carries
-    // the same value as the coach ceiling today and dedupes to nothing; that is
-    // a fact about this tuning and not a reason to leave it unlisted.
-    SPOTTER_LEVEL_MAX: EMPIRE_TUNING.STAFF_LEVEL_MAX.spotter,
-    PHYSIO_LEVEL_MAX: EMPIRE_TUNING.STAFF_LEVEL_MAX.physio,
+    ...tuningTable('SPACE_LEVEL_MAX'),
+    // All three staff ceilings, which is CLAUDE.md's rule that a guard written
+    // for one arm is applied to its siblings mechanically. `tuningTable` reaches
+    // them by walking the table rather than by three hand-written lines, so a
+    // fourth role cannot be added without appearing here.
+    ...tuningTable('STAFF_LEVEL_MAX'),
   }),
   count: Object.freeze({
-    ROSTER_SLOTS_BASE: EMPIRE_TUNING.ROSTER_SLOTS_BASE,
-    ROSTER_SLOTS_MAX: EMPIRE_TUNING.ROSTER_SLOTS_MAX,
-    FRIEND_VISITS_PER_DAY: EMPIRE_TUNING.FRIEND_VISITS_PER_DAY,
-    REGIONAL_BRACKET: EMPIRE_TUNING.LEADERBOARD_BRACKET_SIZE.regional,
-    // The sibling again: the regional bracket was in the old table and the
-    // global one was not.
-    GLOBAL_BRACKET: EMPIRE_TUNING.LEADERBOARD_BRACKET_SIZE.global,
+    ...tuningTable('ROSTER_SLOTS_BASE'),
+    ...tuningTable('ROSTER_SLOTS_MAX'),
+    ...tuningTable('FRIEND_VISITS_PER_DAY'),
+    ...tuningTable('LEADERBOARD_BRACKET_SIZE'),
   }),
   reputation: Object.freeze({
-    REPUTATION_MAX: EMPIRE_TUNING.REPUTATION_MAX,
-    ...rungs('REPUTATION_TIER_THRESHOLDS', EMPIRE_TUNING.REPUTATION_TIER_THRESHOLDS),
+    ...tuningTable('REPUTATION_MAX'),
+    ...tuningTable('REPUTATION_TIER_THRESHOLDS'),
+    // The five recruitment gates. `recruitmentRefusals` compares a gym's
+    // reputation against the rung for the tier, which is the same shape as the
+    // tier ladder above and was filed nowhere.
+    ...tuningTable('NPC_RECRUIT_REPUTATION_THRESHOLD'),
   }),
   gymBucks: Object.freeze({
-    ...rungs('SPACE_LEVEL_COST_GYM_BUCKS', EMPIRE_TUNING.SPACE_LEVEL_COST_GYM_BUCKS),
-    ...rungs(
-      'SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER',
-      EMPIRE_TUNING.SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER,
-    ),
-    // The two payouts the upkeep axis is denominated in. That axis was on the
-    // hour-derived domain and so was never driven at either of them.
-    RIVAL_REWARD_GYM_BUCKS: EMPIRE_TUNING.RIVAL_REWARD_GYM_BUCKS,
-    ENCOURAGEMENT_REWARD_GYM_BUCKS: EMPIRE_TUNING.ENCOURAGEMENT_REWARD_GYM_BUCKS,
+    ...tuningTable('SPACE_LEVEL_COST_GYM_BUCKS'),
+    ...tuningTable('SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER'),
+    // The two payouts the upkeep axis is denominated in.
+    ...tuningTable('RIVAL_REWARD_GYM_BUCKS'),
+    ...tuningTable('ENCOURAGEMENT_REWARD_GYM_BUCKS'),
+    // Eighteen prices, every one of them a `balance < price` branch and none of
+    // them filed before this round. `NPC_RECRUIT_COST_GYM_BUCKS.novice` is the
+    // 500 the seventh bypass keyed on.
+    ...tuningTable('NPC_RECRUIT_COST_GYM_BUCKS'),
+    ...tuningTable('EQUIPMENT_TIER_COST_GYM_BUCKS'),
+    ...tuningTable('STAFF_LEVEL_COST_GYM_BUCKS'),
   }),
   trainingIq: Object.freeze({
-    TRAINING_IQ_DAILY_CEILING: EMPIRE_TUNING.TRAINING_IQ_DAILY_CEILING,
+    ...tuningTable('TRAINING_IQ_DAILY_CEILING'),
   }),
 });
+
+/**
+ * The threshold labels in the table above that are NOT `EMPIRE_TUNING` paths,
+ * with the reason each is a branch point the tuning block does not spell.
+ *
+ * The join treats this list as the whole of the exception. An unrecognised key
+ * that is neither a leaf path nor on this list fails, so a future hand-written
+ * label cannot re-open the hole this round closed.
+ */
+const DERIVED_THRESHOLDS: readonly (readonly [string, string])[] = Object.freeze([
+  [
+    'OFFLINE_EARNINGS_NO_PUNISH_SECONDS',
+    'the no-punish gap expressed in seconds. `OFFLINE_EARNINGS_NO_PUNISH_HOURS` times `SECONDS_PER_HOUR`: the accrual takes seconds and compares hours, so both numbers are branch points and they are 10 and 36000.',
+  ],
+  [
+    'OFFLINE_EARNINGS_CAP_SECONDS',
+    'the banking horizon expressed in seconds, for the same reason as the row above. 12 hours and 43200 seconds are two different comparands on two different axes.',
+  ],
+]);
+
+/**
+ * The numeric leaves of `EMPIRE_TUNING` that are filed under no unit, each with
+ * what the number IS instead of a restatement that it is not a branch point.
+ *
+ * WHAT AN EXEMPTION DECIDES, AND — SAID FIRST, BECAUSE IT IS THE HALF A READER
+ * WILL ASSUME WRONG — WHAT IT DOES NOT. It decides only whether the leaf is
+ * guaranteed present in a domain whose `foreignCeiling` does not reach it. It
+ * does not remove the leaf from any domain: `EVERY_BRANCH_POINT` is the union of
+ * the filed thresholds and this list, and every domain contains a straddle of
+ * every member of that union at or below its ceiling. The largest value on this
+ * list is `GYM_BUCKS_BASE_PER_HOUR` at 120 and the lowest ceiling in the file is
+ * above it, so on this tree an exempt leaf is in EVERY domain — which is
+ * asserted by 'contains every exempt leaf in every domain, so an exemption is
+ * not a hole', not assumed. Exempting a large value is what would make this list
+ * load-bearing, and that assertion is what reddens when somebody does.
+ *
+ * So the reasons below are the second line, not the first. They exist so that a
+ * knob is classified by a person rather than pasted in, and the classes are
+ * three: a RATE (a quantity per unit of something else, multiplied by a span), a
+ * MULTIPLIER or exponent (dimensionless, applied to an output), and an entry
+ * with no consumer at all.
+ */
+interface ExemptLeaf {
+  readonly path: string;
+  readonly why: string;
+}
+
+/** One exemption row per numeric leaf under a path, sharing the table's reason. */
+function exemptTable(prefix: string, why: string): readonly ExemptLeaf[] {
+  return Object.keys(tuningTable(prefix)).map((path) => Object.freeze({ path, why }));
+}
+
+const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
+  ...exemptTable(
+    'PRECISION_DECIMALS',
+    'A DIGIT COUNT. It is handed to the rounding helper that scrubs IEEE-754 noise out of an accrual, so it sizes the arithmetic rather than naming a place on any axis. No quantity in this directory is denominated in decimal places.',
+  ),
+  ...exemptTable(
+    'TICK_SECONDS',
+    'A DIVISOR. Elapsed seconds are floored to this quantum before anything else happens, so it appears as `seconds / TICK_SECONDS` and never as `seconds === TICK_SECONDS`. Its value is 1, which is a shape point every domain in the file carries anyway.',
+  ),
+  ...exemptTable(
+    'CHECK_IN_TARGET_SECONDS_MIN',
+    'NO CONSUMER. `empireTuning.test.ts`\'s `AWAITING_CONSUMER` pins, in both directions, that no shipped module in this directory reads it — nothing in `src/empire/` models how long a check-in takes. A value nothing reads is a value nothing can branch on. This exemption expires by itself: the check below re-runs that scan and fails if a shipped module starts reading the name.',
+  ),
+  ...exemptTable(
+    'CHECK_IN_TARGET_SECONDS_MAX',
+    'NO CONSUMER, the sibling of the row above and the one the lead agent\'s first attempt at the seventh bypass keyed on. That attempt went red — not on this guard, but on `AWAITING_CONSUMER`, because the mutant BECAME the consumer. A different check noticing is not this check working, and it is the reason this row carries a scan rather than a sentence.',
+  ),
+  ...exemptTable(
+    'OFFLINE_EARNINGS_FRACTION',
+    'A MULTIPLIER. The share of the online rate that accrues while away, multiplied into an amount. Dimensionless, and between 0 and 1 by design.',
+  ),
+  ...exemptTable(
+    'GYM_BUCKS_BASE_PER_HOUR',
+    'A RATE, in Gym Bucks per hour. It is multiplied by an elapsed span; the axis it would have to be a threshold ON is denominated in Bucks-per-hour, and no driver in this file is.',
+  ),
+  ...exemptTable(
+    'NPC_GYM_BUCKS_PER_HOUR_BASE',
+    'A RATE, in Gym Bucks per hour per roster lifter. Same class as the row above, one factor further in: it is multiplied by a tier multiplier, a loyalty multiplier and an elapsed span before anything looks at the result.',
+  ),
+  ...exemptTable(
+    'TRAINING_IQ_BASE_PER_DAY',
+    'A RATE, in Training IQ per calendar day. The CEILING that rate accumulates against is `TRAINING_IQ_DAILY_CEILING`, and that one is filed, under `trainingIq`.',
+  ),
+  ...exemptTable(
+    'NPC_TRAINING_IQ_PER_DAY_BASE',
+    'A RATE, in Training IQ per day per roster lifter. Same class and same filed ceiling as the row above; the roster size it is multiplied by is the ROSTER_SHAPE axis, whose two ends are filed under `count`.',
+  ),
+  ...exemptTable(
+    'REPUTATION_PER_CHECK_IN',
+    'A RATE, in reputation per check-in. The reputation THRESHOLDS it accumulates towards are filed under `reputation`; the rate is not one of them.',
+  ),
+  ...exemptTable(
+    'REPUTATION_PER_NPC_TENURE_DAY',
+    'A RATE, in reputation per lifter per day of tenure. Same class as the row above, and the second of the two terms `accrueReputation` sums before comparing the result against a filed tier threshold.',
+  ),
+  ...exemptTable(
+    'ROSTER_SLOTS_PER_SPACE_LEVEL',
+    'A RATE, in roster slots per level of the space axis. What is compared is the capacity it produces, and both ends of that — `ROSTER_SLOTS_BASE` and `ROSTER_SLOTS_MAX` — are filed under `count`.',
+  ),
+  ...exemptTable(
+    'ROSTER_SLOTS_PER_SPOTTER_LEVEL',
+    'A RATE, in roster slots per spotter level. The sibling of the row above, listed because this file\'s own rule is that a decision taken for one arm is taken for the arm beside it.',
+  ),
+  ...exemptTable(
+    'PHYSIO_DAYS_SAVED_PER_STAFF_LEVEL',
+    'A RATE, in days of setback removed per physio level. The ceiling it accumulates to is `PHYSIO_MAX_DAYS_SAVED`, which is filed under `day` because the fatigue seam compares against it.',
+  ),
+  ...exemptTable(
+    'NPC_LOYALTY_MIN_MULTIPLIER',
+    'A MULTIPLIER ENDPOINT. The loyalty curve\'s value on day zero of tenure, in multiplier space. The tenure axis it is a function OF has its threshold filed: `NPC_TENURE_DAYS_TO_FULL_LOYALTY`, under `day`.',
+  ),
+  ...exemptTable(
+    'NPC_LOYALTY_MAX_MULTIPLIER',
+    'A MULTIPLIER ENDPOINT, the other end of the curve named in the row above. It bounds an output in multiplier space rather than gating an input.',
+  ),
+  ...exemptTable(
+    'NPC_LOYALTY_CURVE_EXPONENT',
+    'AN EXPONENT, applied to normalised tenure to shape the curve between the two endpoints above. Dimensionless and never compared.',
+  ),
+  ...exemptTable(
+    'NPC_TIER_OUTPUT_MULTIPLIER',
+    'FIVE MULTIPLIERS, one per recruitment tier, applied to the Bucks and IQ bases. The tier is selected by name from `NPC_TIERS`, so nothing compares a number against a rung of this table. Decided as a table rather than per rung, because every rung is the same kind of number and a per-rung reason would be the same sentence five times.',
+  ),
+  ...exemptTable(
+    'EQUIPMENT_TIER_BUCKS_MULTIPLIER',
+    'FOUR MULTIPLIERS, one per equipment tier, selected by tier name. The PRICES of the same four tiers are filed under `gymBucks`, which is the split this list is about: what you pay is compared, what it multiplies is not.',
+  ),
+  ...exemptTable(
+    'SPACE_PASSIVE_CEILING_MULTIPLIER',
+    'SIX MULTIPLIERS, indexed by space level. The index is the branch point and `SPACE_LEVEL_MAX` is filed under `level`; the multiplier read out at that index is not.',
+  ),
+  ...exemptTable(
+    'STAFF_COACH_BUCKS_MULTIPLIER_PER_LEVEL',
+    'A MULTIPLIER per coach level, added into a Bucks multiplier. The level ceiling it is applied up to, `STAFF_LEVEL_MAX.coach`, is filed under `level`, and the level index is the thing anything compares.',
+  ),
+  ...exemptTable(
+    'BUILD_SECONDS_GROWTH_PER_LEVEL',
+    'A MULTIPLIER on the previous level\'s build time. The two seconds values it moves between — `BUILD_SECONDS_BASE` and `BUILD_SECONDS_MAX` — are both filed under `second`, and they are the numbers a timer is compared against.',
+  ),
+]);
+
+/**
+ * Every branch point this file knows about, filed or exempt, label to value.
+ *
+ * This is the population a domain's ceiling is applied to. The distinction the
+ * old registry drew — a threshold is in the domain if and only if it is filed
+ * under one of the domain's units — is what the seventh bypass rode, from both
+ * directions at once: `FRIEND_VISITS_PER_DAY` filed under the wrong unit, and
+ * `NPC_RECRUIT_COST_GYM_BUCKS.novice` filed under none.
+ */
+const EVERY_BRANCH_POINT: Readonly<Record<string, number>> = Object.freeze(
+  ((): Record<string, number> => {
+    const all: Record<string, number> = {};
+    for (const unit of AXIS_UNITS) Object.assign(all, UNIT_THRESHOLDS[unit]);
+    for (const row of NOT_A_BRANCH_POINT) Object.assign(all, tuningTable(row.path));
+    return all;
+  })(),
+);
 
 /** Below, just below, at, just above, far above. Negatives dropped, not clamped. */
 function straddle(threshold: number): readonly number[] {
@@ -1460,31 +1865,111 @@ function straddle(threshold: number): readonly number[] {
   );
 }
 
-const numeric = (values: readonly number[]): readonly number[] =>
-  [...new Set(values)].sort((left, right) => left - right);
-
-/** Every threshold of the named units, straddled, plus the two shape points. */
-function domainOf(units: readonly AxisUnit[], extra: readonly number[] = []): readonly number[] {
-  return numeric([
-    0,
-    1,
-    ...units.flatMap((unit) => Object.values(UNIT_THRESHOLDS[unit]).flatMap(straddle)),
-    ...extra,
-  ]);
+/**
+ * Just below, at, just above. What a domain gets for a branch point that belongs
+ * to a unit it is not a domain of.
+ *
+ * Three points and not five, and the difference is a measured cost rather than a
+ * shrug. The `threshold - 2` point is redundant with `threshold - 1` for every
+ * comparison a single number can be on the left of, and the `threshold * 4`
+ * point is the expensive one: the day axis is linear in its own value, so the
+ * ×4 of `SPACE_LEVEL_COST_GYM_BUCKS[4]` is 480 000 iterations of a subject that
+ * allocates per day. Dropping it costs the "an order of magnitude above" probe,
+ * which every domain still has from the ×4 of its OWN largest threshold.
+ *
+ * What this does not weaken: the containment assertion requires a point strictly
+ * below and a point strictly above every obligation, and `threshold ± 1`
+ * supplies both.
+ */
+function nearStraddle(threshold: number): readonly number[] {
+  return [threshold - 1, threshold, threshold + 1].filter(
+    (point) => Number.isFinite(point) && point >= 0,
+  );
 }
 
 /**
- * A numeric driver axis's domain, and the units it is a domain OF.
+ * EVERY DRIVER AXIS IN THIS FILE IS INTEGRAL, AND SEVENTEEN BRANCH POINTS ARE
+ * NOT — so this is where the two meet, stated rather than dropped silently.
  *
- * `units` is what the containment assertion reads. `alsoContains` is for a
- * domain whose axis is narrower than any whole unit — it names individual
- * thresholds, checked exactly the same way, so a domain can never declare zero
- * obligations and pass. `why` is required and is required to be long, because
- * every one of these that is not `NUMBER` is a cost concession and a concession
- * without a stated price is how the ten-point domain survived six rounds.
+ * Until this round every filed threshold happened to be a whole number, so the
+ * question never came up. Filing the whole tuning block brings in seventeen
+ * fractional leaves — `STAFF_COACH_BUCKS_MULTIPLIER_PER_LEVEL` is 0.12,
+ * `NPC_TRAINING_IQ_PER_DAY_BASE` is 0.25 — and handing 1.12 to an axis that
+ * counts history slots is not a weaker probe, it is a `RangeError`:
+ * `historyFrom` refuses a non-integer outright, which is a REFUSAL rather than a
+ * branch and produces nothing to scan.
+ *
+ * So a fractional branch point contributes the integers on both sides of it, and
+ * the claim that this loses nothing is bounded to integral axes, where it is
+ * exact rather than approximate: an integral `x` can never satisfy
+ * `x === 0.12`, and `x < 0.12` against `x >= 0.12` is discriminated by 0 and 1,
+ * both of which every domain in this file carries as shape points anyway.
+ *
+ * The route that gets past it: an axis that is NOT integral. There is none in
+ * this file, and the named catcher for one arriving is that `AXIS_CENSUS` pins
+ * each axis's point count — a new fractional axis reading a domain would be
+ * driven at whole numbers only, which is a coverage gap this paragraph would
+ * then be wrong about. The containment assertion states the obligation in these
+ * terms, so a reader sees `floor` and `ceil` rather than an exact hit that is
+ * not happening.
+ */
+function integralPoints(points: readonly number[]): readonly number[] {
+  return points.flatMap((point) =>
+    Number.isInteger(point) ? [point] : [Math.floor(point), Math.ceil(point)],
+  );
+}
+
+const numeric = (values: readonly number[]): readonly number[] =>
+  [...new Set(values)].sort((left, right) => left - right);
+
+/**
+ * A domain: every threshold of its own units straddled in full, every OTHER
+ * branch point at or below `foreignCeiling` straddled near, and the two shape
+ * points.
+ */
+function domainOf(
+  units: readonly AxisUnit[],
+  foreignCeiling: number,
+  extra: readonly number[] = [],
+): readonly number[] {
+  const own = units.flatMap((unit) => Object.values(UNIT_THRESHOLDS[unit]));
+  const foreign = Object.values(EVERY_BRANCH_POINT).filter(
+    (value) => !own.includes(value) && value <= foreignCeiling,
+  );
+  return numeric(
+    integralPoints([0, 1, ...own.flatMap(straddle), ...foreign.flatMap(nearStraddle), ...extra]),
+  );
+}
+
+/**
+ * A numeric driver axis's domain: the units it is a domain OF, and how far it
+ * reaches into the branch points of every other unit.
+ *
+ * `units` names the thresholds it carries unconditionally. `foreignCeiling` is
+ * the new field and is the one that does the work — every branch point in
+ * `EVERY_BRANCH_POINT` at or below it is in the domain whatever unit it was
+ * filed under, or whether it was filed at all. `alsoContains` names individual
+ * thresholds for a domain narrower than any whole unit, so a domain can never
+ * declare zero obligations and pass. `why` is required and required to be long,
+ * because every one of these that is not `NUMBER` is a cost concession and a
+ * concession without a stated price is how the ten-point domain survived six
+ * rounds.
+ *
+ * THE ROUTE THAT STILL GETS PAST THIS, named concretely so it can be planted: a
+ * subject that compares a narrow-domain axis against a branch point ABOVE that
+ * domain's ceiling. `omits` on the census below is that route counted rather
+ * than described — per domain, exactly how many of the 66 branch points it does
+ * not carry — and `OMITTED_ABOVE_CEILING` pins those counts. The catcher inside
+ * this file is nothing: a domain that omits a point cannot drive it. What
+ * covers it instead is that the omitted points are the LARGE ones, and the
+ * axes with a ceiling are the two whose subjects allocate per unit of the axis,
+ * so a `day === 45000` mutant is a subject that would have had to allocate
+ * 45 000 objects to be caught. That is a cost the file declines to pay and says
+ * so, rather than a hazard it claims not to have.
  */
 interface NumericDomain {
   readonly units: readonly AxisUnit[];
+  readonly foreignCeiling: number;
   readonly alsoContains: Readonly<Record<string, number>>;
   readonly points: readonly number[];
   readonly why: string;
@@ -1496,113 +1981,165 @@ function domainSpec(spec: NumericDomain): NumericDomain {
 }
 
 /**
- * MEASURED, not estimated: what the whole file costs with each axis moved from
- * the ten-point hour-derived domain to the full domain, one axis at a time,
- * against a 6.4 s baseline on the same machine in the same session.
+ * How far each domain reaches into the branch points of units it is not a domain
+ * of, and what that reach was MEASURED to cost.
  *
- * This is the answer to "cost is the reason the small domain exists". Six of
- * the eight axes were free — four of them measured FASTER than the baseline,
- * which is noise and is the point: the difference is below the measurement's
- * own resolution. Only two axes cost anything, and both cost it because the
- * subject is linear in the axis and the full domain's top point is 480 000.
- * Those two got a domain of their own quantity; the other six are on the full
- * domain now.
+ * These are the only free parameters this round adds, so they are named
+ * constants in one place rather than magnitudes inside the registry — which is
+ * CLAUDE.md's rule for a tunable value, applied to a harness knob because the
+ * knob is a cost/coverage trade a later reader will want to move.
+ *
+ * `NO_CEILING` is `Infinity` and is what a domain that pays for everything
+ * declares. The others are the value that showed up in the measurement below.
  */
-const DOMAIN_COST_SECONDS: readonly (readonly [string, number])[] = Object.freeze([
-  ['baseline, whole file, ten-point domain at all eight axes', 6.4],
-  ['applyAccelerant / grant seconds', 6.0],
-  ['accrueReputation / check-ins', 7.8],
-  ['axisLevelCost and three siblings / expansion level', 6.1],
-  ['applyPurchasableGrant / grant seconds', 5.9],
-  ['grantSecondsAt / grants x check-in', 6.6],
-  ['engagementWiring / upkeep', 5.8],
-  ['historyFrom and four siblings / history slots', 18.3],
-  ['fifteen social exports / calendar day', 67.3],
+const FOREIGN_CEILINGS = Object.freeze({
+  NO_CEILING: Number.POSITIVE_INFINITY,
+  DAY: 2600,
+  COUNT: 2600,
+  ROSTER_SHAPE: 120,
+});
+
+/**
+ * MEASURED on this tree, in this session, by running this file alone with one
+ * domain's ceiling raised to `NO_CEILING` and everything else left at the
+ * shipped value. `npx vitest run src/empire/empireForbiddenOutput.test.ts`,
+ * whole-file `Duration`.
+ *
+ * WHY THE ROWS ARE KEYED BY DOMAIN AND NOT BY AXIS, which is a defect this round
+ * closes rather than a preference: the old rows were axis names —
+ * `historyFrom and four siblings / history slots` — and the check beside them
+ * asserted only that exactly two rows cost more than twice the baseline. Nothing
+ * joined a row to a domain, so a domain could carry a ceiling with no
+ * measurement behind it and a row could price a domain that does not exist. The
+ * join is a set equality now, in both directions.
+ *
+ * The shape of the result, since two of the three numbers are the argument for
+ * the whole design: raising the DAY ceiling from 2600 to `NO_CEILING` takes the
+ * file from 31 s to 189 s, because `socialRewardSchedule` allocates per day and
+ * the largest branch point is 480 000. Raising ROSTER_SHAPE's from 120 costs
+ * more per point than any other axis, because each point builds a whole state.
+ * Everything else is on `NO_CEILING` and pays for it.
+ */
+interface DomainCostRow {
+  /** The key in `NUMERIC_DOMAINS` this row prices. */
+  readonly domain: string;
+  /** Whole-file seconds with this domain's ceiling raised to NO_CEILING. */
+  readonly unboundedSeconds: number;
+  /** Whole-file seconds at the shipped ceilings. */
+  readonly shippedSeconds: number;
+  readonly axes: string;
+}
+
+const DOMAIN_COST_SECONDS: readonly DomainCostRow[] = Object.freeze([
+  Object.freeze({
+    domain: 'DAY',
+    unboundedSeconds: 189.0,
+    shippedSeconds: 31.0,
+    axes: 'fifteen social exports, calendar day. socialRewardSchedule and rivalPeriodCloseDays allocate one frozen object per day.',
+  }),
+  Object.freeze({
+    domain: 'COUNT',
+    unboundedSeconds: 96.0,
+    shippedSeconds: 31.0,
+    axes: 'historyFrom and four siblings, history slots. One entry per slot, then four exports walk the result.',
+  }),
+  Object.freeze({
+    domain: 'ROSTER_SHAPE',
+    unboundedSeconds: 306.0,
+    shippedSeconds: 31.0,
+    axes: 'the STATES fixture, roster size. Every point multiplies the reputation ladder and the product is crossed with tiers, clocks and the whole NUMBER domain.',
+  }),
 ]);
 
 const NUMERIC_DOMAINS = Object.freeze({
   NUMBER: domainSpec({
     units: [...AXIS_UNITS],
+    foreignCeiling: FOREIGN_CEILINGS.NO_CEILING,
     alsoContains: Object.freeze({}),
-    points: domainOf([...AXIS_UNITS]),
+    points: domainOf([...AXIS_UNITS], FOREIGN_CEILINGS.NO_CEILING),
     why:
       'The default, and the one every axis uses unless a measurement in ' +
-      'DOMAIN_COST_SECONDS says it cannot afford to. It is the union of every ' +
-      'unit domain, so it contains every branch point this directory has, and ' +
-      'the containment assertion below is therefore trivially satisfiable for ' +
-      'it — which is fine, because for this domain the interesting property is ' +
-      'that nothing was left out rather than that anything was put in.',
+      'DOMAIN_COST_SECONDS says it cannot afford to. It is every unit plus no ' +
+      'ceiling, so it contains every branch point this directory has, and the ' +
+      'containment assertion below is therefore trivially satisfiable for it — ' +
+      'which is fine, because for this domain the interesting property is that ' +
+      'nothing was left out rather than that anything was put in.',
   }),
   SECONDS: domainSpec({
     units: ['second'],
+    foreignCeiling: FOREIGN_CEILINGS.NO_CEILING,
     alsoContains: Object.freeze({}),
-    points: domainOf(['second']),
+    points: domainOf(['second'], FOREIGN_CEILINGS.NO_CEILING),
     why:
       'Elapsed-seconds axes: build timers, clocks, recruitment schedules and ' +
-      'the offline banking horizon. Separate from NUMBER because a seconds ' +
-      'axis is driven at four or five call sites per point and the seconds ' +
-      'thresholds are the large ones, but the saving is small and this domain ' +
-      'could be folded into NUMBER if a future site needs it; it is kept ' +
-      'because a seconds axis handed a level-sized number tests nothing.',
+      'the offline banking horizon. It carries no ceiling, so it differs from ' +
+      'NUMBER only in that the seconds thresholds get the five-point straddle ' +
+      'and everything else gets the three-point one. It is kept as its own ' +
+      'entry because the seconds thresholds are the large ones and a seconds ' +
+      'axis that never reaches SECONDS_PER_DAY tests nothing about a timer.',
   }),
   DAY: domainSpec({
     units: ['day'],
+    foreignCeiling: FOREIGN_CEILINGS.DAY,
     alsoContains: Object.freeze({}),
-    points: domainOf(['day']),
+    points: domainOf(['day'], FOREIGN_CEILINGS.DAY),
     why:
-      'Calendar days, and the axis the bypass rode in on. socialRewardSchedule ' +
-      'and rivalPeriodCloseDays are linear in the day, and every value they ' +
-      'return is deep-scanned, so the full domain costs 67.3 s against a 6.4 s ' +
-      'baseline — its top point is 480 000 and each of those is 480 000 frozen ' +
-      'objects. The day thresholds top out at 120, which is a horizon a real ' +
-      'calendar reaches, and RIVAL_COMPARISON_PERIOD_DAYS is in it by ' +
-      'construction rather than by anybody remembering.',
+      'Calendar days, and the axis both halves of the seventh bypass rode in ' +
+      'on. socialRewardSchedule and rivalPeriodCloseDays are linear in the day ' +
+      'and every value they return is deep-scanned, so no ceiling costs 189 s ' +
+      'against 31 s — the largest branch point is 480 000 and each of those is ' +
+      '480 000 frozen objects. The ceiling is what makes 10 and 500 reachable ' +
+      'on a DAY axis at all: both are filed under a unit that is not day, one ' +
+      'by a misfiling and one by not being filed, and neither is now something ' +
+      'this domain depends on getting right.',
   }),
   COUNT: domainSpec({
     units: ['count'],
+    foreignCeiling: FOREIGN_CEILINGS.COUNT,
     alsoContains: Object.freeze({}),
-    points: domainOf(['count']),
+    points: domainOf(['count'], FOREIGN_CEILINGS.COUNT),
     why:
       'Slot counts and roster-sized quantities. historyFrom allocates one ' +
-      'entry per slot and four more exports then walk the result, so the full ' +
-      'domain costs 18.3 s against a 6.4 s baseline for the same reason the ' +
-      'day axis does. The count thresholds top out at 400, which is well ' +
-      'past ROSTER_SLOTS_MAX and past both leaderboard brackets.',
+      'entry per slot and four more exports then walk the result, so no ' +
+      'ceiling costs 96 s against 31 s for the same reason the day axis does. ' +
+      'It carries the count thresholds unconditionally, which reach 400, and ' +
+      'every other branch point up to 2600 — which is well past every slot ' +
+      'count and both leaderboard brackets.',
   }),
   LEVEL: domainSpec({
     units: ['level'],
+    foreignCeiling: FOREIGN_CEILINGS.NO_CEILING,
     alsoContains: Object.freeze({}),
-    points: domainOf(['level']),
+    points: domainOf(['level'], FOREIGN_CEILINGS.NO_CEILING),
     why:
       'Expansion and staff levels, for the axes that build a GymAxes per point ' +
       'and cross it with every equipment tier and every expansion axis. This ' +
       'one replaces an inline [0, SPACE_LEVEL_MAX] literal, which is CLAUDE.md ' +
       'sampling only the extremes exactly: the space ceiling was sampled at ' +
       'its two ends and never at a level in between, and the staff ceilings ' +
-      'were never sampled at all.',
+      'were never sampled at all. It carries no ceiling, so it is a superset ' +
+      'of what it was.',
   }),
   ROSTER_SHAPE: domainSpec({
     units: [],
+    foreignCeiling: FOREIGN_CEILINGS.ROSTER_SHAPE,
     alsoContains: Object.freeze({
-      ROSTER_SLOTS_BASE: EMPIRE_TUNING.ROSTER_SLOTS_BASE,
-      ROSTER_SLOTS_MAX: EMPIRE_TUNING.ROSTER_SLOTS_MAX,
+      ...tuningTable('ROSTER_SLOTS_BASE'),
+      ...tuningTable('ROSTER_SLOTS_MAX'),
     }),
-    points: numeric([
-      0,
-      1,
-      EMPIRE_TUNING.ROSTER_SLOTS_BASE,
-      EMPIRE_TUNING.ROSTER_SLOTS_MAX,
-      EMPIRE_TUNING.ROSTER_SLOTS_MAX + 1,
-    ]),
+    points: domainOf([], FOREIGN_CEILINGS.ROSTER_SHAPE, [EMPIRE_TUNING.ROSTER_SLOTS_MAX + 1]),
     why:
       'The roster sizes STATES is built at, which is the most expensive axis ' +
       'in the file: every point here multiplies the reputation ladder and the ' +
       'product is then crossed with tiers, clocks and the whole NUMBER domain. ' +
-      'It is declared with named thresholds rather than a unit because the ' +
-      'count unit tops out at 400 and 400 lifters per state is not affordable ' +
-      'here. It was [0, 1, ROSTER_SLOTS_MAX] and so never sampled base ' +
+      'No ceiling costs 306 s against 31 s, the worst ratio of the three, so ' +
+      'its ceiling is the lowest — 120, which is above every exempt leaf and ' +
+      'so leaves this domain carrying every rate and multiplier in the tuning ' +
+      'block. It was [0, 1, ROSTER_SLOTS_MAX] and so never sampled base ' +
       'capacity or a roster over capacity, which are both real branches in ' +
-      'rosterCapacity and in the recruitment refusals that read it.',
+      'rosterCapacity and in the recruitment refusals that read it; the ' +
+      'over-capacity point is the one `extra` argument in the file, and it is ' +
+      'what the NUMBER-containment loop below is a check ON.',
   }),
 });
 
@@ -1671,22 +2208,50 @@ const LITERAL_AXES: readonly (readonly [string, string])[] = Object.freeze([
  * `CONTAINMENT_CHECKS` is the one that says the assertion below is not looping
  * over an empty registry or an empty obligation list — it is the number of
  * (domain, threshold) pairs actually checked, and a domain that declares no
- * units and no `alsoContains` would leave it short rather than pass.
+ * units, no ceiling reach and no `alsoContains` would leave it short rather than
+ * pass.
+ *
+ * `TUNING_NUMERIC_LEAVES` and `TUNING_STRING_LEAVES` are the population the
+ * registry is joined against, so a knob added to `empireTuning.ts` moves a
+ * number here before it moves anything downstream. `FILED` plus `EXEMPT` is
+ * asserted to equal `TUNING_NUMERIC_LEAVES` in both directions; the three are
+ * pinned separately so a leaf moving from one side to the other is visible
+ * rather than netting out.
  */
 const DOMAIN_CENSUS = Object.freeze({
   UNITS: 8,
-  THRESHOLDS: 40,
+  /** Labels in `UNIT_THRESHOLDS`, including the two derived seconds entries. */
+  THRESHOLDS: 68,
+  /** Numeric leaves of EMPIRE_TUNING filed under a unit. */
+  FILED: 66,
+  /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
+  EXEMPT: 34,
+  TUNING_NUMERIC_LEAVES: 100,
+  TUNING_STRING_LEAVES: 14,
+  /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
+  BRANCH_POINTS: 102,
   DOMAINS: 6,
-  CONTAINMENT_CHECKS: 61,
+  CONTAINMENT_CHECKS: 513,
+  /** Per domain, branch points above its ceiling and outside its units. */
+  OMITTED_ABOVE_CEILING: Object.freeze({
+    NUMBER: 0,
+    SECONDS: 0,
+    DAY: 27,
+    COUNT: 27,
+    LEVEL: 0,
+    ROSTER_SHAPE: 45,
+  }),
   ALIASES: 6,
   LITERAL_AXES: 7,
-  COST_ROWS: 9,
-  NUMBER_POINTS: 118,
-  SECONDS_POINTS: 27,
-  DAY_POINTS: 13,
-  COUNT_POINTS: 24,
-  LEVEL_POINTS: 9,
-  ROSTER_SHAPE_POINTS: 5,
+  COST_ROWS: 3,
+  /** (domain, point) pairs the NUMBER-containment loop actually compares. */
+  NUMBER_CONTAINMENT_CHECKS: 732,
+  NUMBER_POINTS: 221,
+  SECONDS_POINTS: 166,
+  DAY_POINTS: 78,
+  COUNT_POINTS: 82,
+  LEVEL_POINTS: 150,
+  ROSTER_SHAPE_POINTS: 35,
 });
 
 // ---------------------------------------------------------------------------
