@@ -1392,9 +1392,11 @@ function domainAnchorFaults(
  *     not of a callback.
  *   - ONE ARROW-JOINED STRING, which is what the browser witness table in
  *     `tools/verify-cutin-cap.mjs` already uses — `BROWSER_MUTATION_WITNESSES`
- *     writes its mutant as `before -> after`, so the class of witness this
- *     schema famously cannot hold has been the reproducible one all along, and
- *     the sibling asymmetry is worth reading twice. It is not copied here for
+ *     writes its one row's mutant as `before -> after`, so the class of witness
+ *     this schema is documented as unable to hold is the class that recorded
+ *     both sides, and the sibling asymmetry is worth reading twice: the table
+ *     with the machine checks around it is the one that was missing the field.
+ *     The arrow form is not copied here for
  *     two reasons: the separator has to be a sequence neither side contains and
  *     no such sequence can be guaranteed of arbitrary source, and a deletion
  *     comes out as a string ending in the separator, which is exactly the
@@ -1418,10 +1420,10 @@ function domainAnchorFaults(
  * WHY THIS RULE CARRIES NO `@guarantee` TAG WHERE THE TWO ABOVE DO, which is a
  * decision and not an oversight. A tag has to carry a witness, and a witness has
  * to anchor its mutant in a file that is not the one holding the anchor — so the
- * mutant would have to live outside this file. Every external edit that reddens
- * this rule reddens it by making a recorded anchor stop occurring, and the
- * freshness loop is red on that first: the witness would resolve, pass, and be
- * evidence about a check other than this one. That is the "pin on a fact
+ * mutant would have to live outside this file. The external edits that redden
+ * this rule redden it by making a recorded anchor stop occurring or its file
+ * vanish, and the freshness loop is red on both of those first: the witness
+ * would resolve, pass, and be evidence about a check other than this one. That is the "pin on a fact
  * adjacent to the claim" shape, and it reads exactly like a pin on the claim.
  * The edits that DO separate this rule from everything else in the file — a
  * replacement equal to what it replaced, a mutant deleting its own red
