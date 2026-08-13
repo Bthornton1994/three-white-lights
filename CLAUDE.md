@@ -1021,10 +1021,13 @@ lane and it does not take a half of `src/`. The heading above this block still
 reads three sessions, and The split table is unchanged.
 
 **Active claim (unambiguous): the first merge gate, under `.github/`.** A
-pull-request workflow that runs `tsc --noEmit`, the full node `vitest` suite,
-and a supply-chain check. This is the "add `npm audit` to CI" item Session C
-filed as tracked debt when there was no `.github/`. D is taking that item, not
-C's Career files.
+workflow that runs `tsc --noEmit`, the full node `vitest` suite, and a
+supply-chain check. It fires on pull_request (GitHub's preview merge of head
+into base) AND on push to `claude/agent-config-setup-m2r6ny` (the SHA that
+actually reached origin). A PR-only gate would miss the merge-commit-pushed-
+clean-in-isolation shape this run has already shipped. This is the "add
+`npm audit` to CI" item Session C filed as tracked debt when there was no
+`.github/`. D is taking that item, not C's Career files.
 
 **A green run is not a graded piece.** It does not grade Empire, Career, art,
 or any GDD §12.2 bar. It answers three mechanical questions: does it compile,
