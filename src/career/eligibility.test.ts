@@ -32,6 +32,7 @@ import {
   qualifiedTiers,
   qualifiesFor,
   type CareerLifter,
+  type EntryVerdict,
 } from './eligibility';
 
 const ANCHOR = seasonAnchorDay();
@@ -151,31 +152,41 @@ describe('entry verdicts', () => {
     const foreignWorlds = careerMeetFor('ironline', 'worlds', ANCHOR);
     const ownWorlds = careerMeetFor('meridian', 'worlds', ANCHOR);
     const longAfter = addDays(ANCHOR, 400);
-    const chain: readonly [string, ReturnType<typeof entryVerdict>][] = [
+    const chain: readonly [string, EntryVerdict, string][] = [
       // All four fail.
-      ['all four', entryVerdict(lifterWith(null, [foreignWorlds.id]), foreignWorlds, longAfter)],
+      [
+        'four conditions failing',
+        entryVerdict(lifterWith(null, [foreignWorlds.id]), foreignWorlds, longAfter),
+        'WRONG_FEDERATION',
+      ],
       // The federation is right; the other three still fail.
-      ['three', entryVerdict(lifterWith(null, [ownWorlds.id]), ownWorlds, longAfter)],
+      [
+        'three, the federation lifted',
+        entryVerdict(lifterWith(null, [ownWorlds.id]), ownWorlds, longAfter),
+        'ALREADY_ENTERED',
+      ],
       // ...and they have not been to it. Two left.
-      ['two', entryVerdict(lifterWith(null), ownWorlds, longAfter)],
+      ['two, never been to it', entryVerdict(lifterWith(null), ownWorlds, longAfter), 'MEET_HAS_PASSED'],
       // ...and the day has not gone. One left, which is the rung the old
       // version of this test never reached.
-      ['one', entryVerdict(lifterWith(null), ownWorlds, ANCHOR)],
+      ['one, the day still open', entryVerdict(lifterWith(null), ownWorlds, ANCHOR), 'BELOW_QUALIFYING_TOTAL'],
       // ...and they are strong enough for it. Nothing left to refuse.
-      ['none', entryVerdict(lifterWith(650), ownWorlds, ANCHOR)],
+      ['none, strong enough', entryVerdict(lifterWith(650), ownWorlds, ANCHOR), 'open'],
     ];
-    expect(chain.map(([, verdict]) => (verdict.kind === 'refused' ? verdict.reason : 'open'))).toEqual([
-      'WRONG_FEDERATION',
-      'ALREADY_ENTERED',
-      'MEET_HAS_PASSED',
-      'BELOW_QUALIFYING_TOTAL',
-      'open',
-    ]);
+    // Rung by rung rather than as one array comparison, so a swapped pair of
+    // checks fails with the rung's name and both reasons in the message. The
+    // array form reddened with `expected [ 'WRONG_FEDERATION', …(4) ] to deeply
+    // equal [ 'WRONG_FEDERATION', …(4) ]`, which is a red that tells a reader
+    // nothing.
+    for (const [label, verdict, reason] of chain) {
+      expect(verdict.kind === 'refused' ? verdict.reason : 'open', label).toBe(reason);
+    }
     // The chain is the whole list, in the order the module declares it, so a
     // fifth reason cannot be added without a rung here to reach it.
-    expect(chain.filter(([, verdict]) => verdict.kind === 'refused')).toHaveLength(
-      ENTRY_REFUSAL_REASONS.length,
-    );
+    expect(
+      chain.filter(([, verdict]) => verdict.kind === 'refused').map(([, , reason]) => reason).sort(),
+      'every declared refusal is reached by a rung',
+    ).toEqual([...ENTRY_REFUSAL_REASONS].sort());
   });
 });
 
@@ -810,8 +821,13 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
     );
     // Axis C's function can, and drops exactly that one.
     const enterable = enterableMeets(veteran, ANCHOR, 364);
-    expect(enterable.some((m) => m.id === first.id)).toBe(false);
-    expect(enterable).toHaveLength(window.length - 1);
+    expect(
+      enterable.map((meet) => meet.id).filter((id) => id === first.id),
+      'the meet just competed at is still on the enterable list',
+    ).toEqual([]);
+    expect(enterable, 'the enterable list lost more than the one meet').toHaveLength(
+      window.length - 1,
+    );
     // And the other direction: a day that has gone is refused by entry and not
     // by qualification, which is the second thing axis B is structurally unable
     // to report on. Qualification is day-blind; entry is not.
