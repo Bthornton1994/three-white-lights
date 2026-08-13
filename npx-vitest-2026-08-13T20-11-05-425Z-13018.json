@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-13T20-11-05-425Z-13018",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run"
+  ],
+  "budgetSeconds": 1800,
+  "startedAtIso": "2026-08-13T20:11:05.425Z",
+  "startedAtMs": 1786651865425,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "4be76f9ff3ac4af0254c9677d29baddcf27a4cb6",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 7,
+  "dirtyPaths": [
+    ".gauntlet/evidence/c1-worlds-reach.txt",
+    ".gauntlet/evidence/suite.txt",
+    "src/career/careerSweep.ts",
+    "src/career/eligibility.test.ts",
+    "src/career/eligibility.ts",
+    "src/game/guaranteeTags.test.ts",
+    "tools/testBudget.test.ts"
+  ],
+  "runner": {
+    "pid": 13018,
+    "startTick": "363940",
+    "cmdline": "node tools/watchdog.mjs --budget 1800 -- npx vitest run",
+    "bootId": "6c90d898-2088-4065-9587-1ba07c1beb33",
+    "bootEpochSeconds": 1786648226,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-13T20:11:05.450Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
