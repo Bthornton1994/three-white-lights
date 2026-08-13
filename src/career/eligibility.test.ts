@@ -553,26 +553,6 @@ function measureAttendanceAxis(variant: RecordVariant): AttendanceMeasurement {
   };
 }
 
-/**
- * The meet index at which each seeded career's running best first reaches the
- * top qualifying total, or `-1` for a career that never does.
- *
- * From that index onward the lifter qualifies for every meet in the window, so
- * the comparison above has nothing left to separate — which is why one of the
- * delayed-form controls measures zero for a reason that is not depth.
- */
-function saturationIndices(): readonly number[] {
-  return ATTENDANCE_SWEEP.SEEDS.map((seed) => {
-    const season = simulateSeason(seed);
-    let best = 0;
-    for (let index = 0; index < season.length; index += 1) {
-      best = Math.max(best, (season[index] as SeasonMeet).totalKg);
-      if (best >= ATTENDANCE_SWEEP.TOP_QUALIFYING_TOTAL_KG) return index;
-    }
-    return -1;
-  });
-}
-
 describe('AXIS B — competing at one more meet never qualifies for fewer', () => {
   it('[attending-a-meet-never-removes-one] every skipped meet in every seeded season, and the control beside it', () => {
     const shipped = measureAttendanceAxis('shipped');
@@ -1262,6 +1242,37 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
       ATTENDANCE_SWEEP.ENTRY_EVALUATION_LAG_DAYS,
     );
     expect(ATTENDANCE_SWEEP.ENTRY_EVALUATION_LAG_DAYS).toBe(0);
+  });
+
+  it('runs its shipped arm on the engine’s own list, and every control as a filter of it', () => {
+    // THE CLAIM THE ARMS ABOVE REST ON, and it moved this round so it is worth
+    // a check rather than a sentence. The controls used to call
+    // `enterableMeets` each for themselves; they now filter one list the
+    // measurement computes, because five arms each paying for their own pass
+    // over 165-id entered lists is most of this file's wall clock.
+    //
+    // Two things have to hold for that to be the same measurement. The list
+    // handed to the filters has to be the engine's own — not a restatement of
+    // it — and the shipped arm has to be the identity on it, so "shipped" in
+    // the tables above means `enterableMeets` and nothing else.
+    const lifter = careerRecordAfterMeet(newCareerLifter('meridian'), 'meridian-local-2026-01-03', 700);
+    const context = {
+      today: ANCHOR,
+      lastEnteredDay: ANCHOR,
+      worldsDaysEntered: [],
+    };
+    const engineList = enterableMeets(lifter, ANCHOR, ATTENDANCE_SWEEP.WINDOW_DAYS);
+    expect(shippedEntryList(lifter, context)).toEqual(engineList);
+    expect(ENTRY_VARIANTS.shipped(engineList, context)).toBe(engineList);
+    // And a control is a filter of it: never longer, and every member of the
+    // result a member of the input. Checked on the arm that really does remove
+    // something here, so this is not asserted on an empty difference.
+    const cooled = ENTRY_VARIANTS['entry-cooldown'](engineList, context);
+    expect(cooled.length).toBeLessThan(engineList.length);
+    for (const meet of cooled) expect(engineList).toContain(meet);
+    // Counts, not bounds: a zero-length engine list would satisfy the loop.
+    expect(engineList.length).toBe(83);
+    expect(cooled.length).toBe(75);
   });
 
   it('the two axes read two different functions, so neither can stand in for the other', () => {

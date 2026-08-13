@@ -781,12 +781,13 @@ function lockedOutUntil(
  * Measured, not chosen. A worlds-keyed RECORD rule is invisible to the
  * qualification axis at any depth this fixture reaches: `bestTotalKg` is
  * non-decreasing under the shipped fold, the top qualifying total is 650 kg,
- * and every lifter here who gets as far as a worlds meet cleared 650 dozens of
- * meets earlier — so their qualified set is already the whole window and a rule
- * that rewrites their total cannot shrink it. `worlds-reset-second` is that
- * fact as a measured zero, with the per-seed saturation indices pinned beside
- * it. The enterable list has no such ceiling, which is why the tier-keyed
- * lockouts are here.
+ * and the lowest total anybody in this sweep puts up AT a worlds meet is
+ * 657.5 kg — so a rule that rewrites their record with it still leaves them
+ * clearing every bar on the ladder. `worlds-reset-second` is that fact as a
+ * measured zero, with the 657.5 and the 650 pinned beside it and the count of
+ * careers whose record the rule really does rewrite pinned at 18. The
+ * enterable list has no such ceiling, which is why the tier-keyed lockouts are
+ * here.
  */
 export const ENTRY_VARIANTS: Readonly<Record<EntryVariant, EntryFilter>> = Object.freeze({
   shipped: (base) => base,
