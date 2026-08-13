@@ -564,16 +564,41 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
       const gap = (season[index] as { day: StreakDay }).day - (season[index - 1] as { day: StreakDay }).day;
       expect(gap).toBeGreaterThanOrEqual(ATTENDANCE_SWEEP.MIN_DAYS_BETWEEN_MEETS);
     }
-    // Four tiers, not one. At a 28-day rest the simulated career was every
-    // fourth local meet and nothing else; at the calendar's own resolution it
-    // picks up the fortnightly, quarterly and annual series as the lifter
+    // Three rungs of the ladder, not one. At a 28-day rest the simulated career
+    // was every fourth local meet and nothing else; at the calendar's own
+    // resolution it picks up the fortnightly and quarterly series as the lifter
     // qualifies for them, which is what makes the entered list worth reading.
     expect([...new Set(season.map((meet) => meet.tier))].sort()).toEqual([
       'local',
       'nationals',
       'regional',
-      'worlds',
     ]);
+    // AND THE FOURTH RUNG IS OUT OF REACH, which is a limit of this domain and
+    // is pinned rather than left for a reader to notice. One period holds
+    // exactly one worlds meet, six days in, and a lifter cannot hold a 650 kg
+    // total six days into their first season — they start below the regional
+    // bar. So a rule that only ever bites at a worlds meet is invisible to
+    // every sweep in this file, and lengthening the simulation rather than
+    // deepening it is what would close that.
+    const worlds = scheduledMeets(
+      ATTENDANCE_SWEEP.FEDERATION,
+      seasonAnchorDay(),
+      addDays(seasonAnchorDay(), ATTENDANCE_SWEEP.SIMULATION_DAYS),
+    ).filter((meet) => meet.tier === 'worlds');
+    expect(worlds).toHaveLength(1);
+    expect((worlds[0] as CareerMeet).day - seasonAnchorDay()).toBe(6);
+    expect((worlds[0] as CareerMeet).qualifyingTotalKg).toBe(650);
+    // Three meet days fall before it, so the most a lifter can be holding when
+    // it comes round is the first total plus three perfect days.
+    const beforeWorlds = scheduledMeets(
+      ATTENDANCE_SWEEP.FEDERATION,
+      seasonAnchorDay(),
+      addDays(seasonAnchorDay(), 5),
+    );
+    expect(beforeWorlds).toHaveLength(3);
+    expect(
+      ATTENDANCE_SWEEP.FIRST_TOTAL_KG + beforeWorlds.length * ATTENDANCE_SWEEP.MAX_GAIN_KG,
+    ).toBeLessThan(650);
   });
 
   it('the sweep’s depth is read off the shipped calendar, not chosen in the sweep', () => {
@@ -736,13 +761,20 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
     //
     // Its domain is asserted against the shipped arm's where the two are the
     // same question, and pinned at its own value where the control's rule
-    // changes the answer — `spentPairs` drops to 1874 because a lifter inside
-    // their own lockout could not have entered the meet they skipped either.
+    // changes the answer. `spentPairs` collapses from 1934 to 24 under it, and
+    // the collapse is the control describing itself: at the calendar's own
+    // resolution the lifter who stayed home is nearly always inside a lockout
+    // of their own, so the meet the other one spent was unavailable to both.
+    // The 24 that survive are one per season — the pair at a lifter's very
+    // first meet, where the one who stayed home has no previous meet and so no
+    // lockout — which is why the count is asserted against the seed list as
+    // well as pinned.
     expect(rest.pairs).toBe(shipped.pairs);
     expect(rest.seasonMeets).toBe(shipped.seasonMeets);
     expect(rest.growingPairs).toBe(shipped.growingPairs);
     expect(rest.movedPairs).toBe(1973);
-    expect(rest.spentPairs).toBe(1874);
+    expect(rest.spentPairs).toBe(24);
+    expect(rest.spentPairs).toBe(ATTENDANCE_SWEEP.SEEDS.length);
     expect(rest.unexplainedPairs).toBe(1874);
     expect(rest.worstUnexplained).toBe(4);
 
