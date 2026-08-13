@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "killed-2026-08-13T22-29-26-178Z-55076",
+  "label": "killed",
+  "command": [
+    "node",
+    "-e",
+    "setTimeout(() => {}, 4000)"
+  ],
+  "budgetSeconds": 120,
+  "startedAtIso": "2026-08-13T22:29:26.178Z",
+  "startedAtMs": 1786660166178,
+  "cwd": "C:\\Users\\Bthor\\.grok\\downloads\\three-white-lights",
+  "commit": "25cf0cb9589abe4d2a4bde98c2c7cd62531a3d8e",
+  "branch": "grok-d-ci-merge-gate",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 55076,
+    "startTick": null,
+    "cmdline": null,
+    "bootId": null,
+    "bootEpochSeconds": null,
+    "host": "Bryant",
+    "platform": "win32",
+    "procAvailable": false
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-13T22:29:30.330Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/bryant"
+  }
+}
