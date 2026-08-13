@@ -8414,6 +8414,18 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
 const CALLBACK_SCAN_BATCH = 4096;
 
 /**
+ * How many findings the pass keeps by name, per subject.
+ *
+ * EVERY finding is COUNTED — `CallbackPassResult.findingCount` is exact and is
+ * what the zero is pinned on. This caps only the NAMED list, because a payload
+ * handed to every call at a 5 000-slot point produces 5 000 identical-shaped
+ * findings and a failure message with 5 000 lines in it is the "fails uselessly"
+ * half of CLAUDE.md's rule wearing the costume of thoroughness. Eight is enough
+ * to show the point, the argument index and the value.
+ */
+const CALLBACK_FINDING_SAMPLE = 8;
+
+/**
  * The tripwire subject: a function that hands its callback a banned name.
  *
  * Not shipped and never exported — it is the pass's non-vacuity guard, in the
@@ -8436,7 +8448,10 @@ interface CallbackPassResult {
   /** Domain points the subject accepted, and points its own guard refused. */
   readonly points: number;
   readonly refusedPoints: number;
+  /** Up to `CALLBACK_FINDING_SAMPLE` findings by name, for the failure message. */
   readonly findings: readonly string[];
+  /** Every finding, counted. This is the number the zero is pinned on. */
+  readonly findingCount: number;
 }
 
 /**
@@ -8468,6 +8483,7 @@ function callbackPass(
   points: readonly number[],
 ): CallbackPassResult {
   const findings: string[] = [];
+  let findingCount = 0;
   let calls = 0;
   let recorded = 0;
   let refusedPoints = 0;
@@ -8482,7 +8498,10 @@ function callbackPass(
       // the whole subject of this widening; `[7].1=covered-day` would say only
       // that something arrived.
       if (BANNED_NORMALISED.has(normalise(string.value))) {
-        findings.push(`${label}${at}${string.path}=${string.value}`);
+        findingCount += 1;
+        if (findings.length < CALLBACK_FINDING_SAMPLE) {
+          findings.push(`${at}${string.path}=${string.value}`);
+        }
       }
     }
     buffer = [];
@@ -8509,6 +8528,7 @@ function callbackPass(
     points: points.length,
     refusedPoints,
     findings: Object.freeze(findings),
+    findingCount,
   };
 }
 
@@ -8822,6 +8842,7 @@ describe('the channel census — the routes a string can leave this directory by
       let recorded = 0;
       let points = 0;
       let refusedPoints = 0;
+      let findingCount = 0;
       const findings: string[] = [];
       for (const subject of CALLBACK_SUBJECTS) {
         // The domain is the registry's, not this pass's: a subject names a
@@ -8833,6 +8854,7 @@ describe('the channel census — the routes a string can leave this directory by
         recorded += result.recorded;
         points += result.points;
         refusedPoints += result.refusedPoints;
+        findingCount += result.findingCount;
         findings.push(...result.findings);
       }
       // THE FINDINGS FIRST, AND THE ORDER IS DELIBERATE. Both this and the
@@ -8841,7 +8863,10 @@ describe('the channel census — the routes a string can leave this directory by
       // arrived, where `expected 6 to be 3` says only that something did.
       // CLAUDE.md's "a check that bites but fails uselessly is half a check".
       expect(findings).toEqual([]);
-      expect(findings.length).toBe(CALLBACK_PASS_CENSUS.FINDINGS);
+      // The NAMED list above is capped; this is the exact count, which is what
+      // the zero is pinned on. A cap on the message must not become a cap on
+      // the measurement, and these two lines are what keeps them apart.
+      expect(findingCount).toBe(CALLBACK_PASS_CENSUS.FINDINGS);
       // Counts, not bounds. A pass whose subject stopped calling its callback
       // would report zero findings and pass, so the calls are pinned too.
       expect(calls).toBe(CALLBACK_PASS_CENSUS.CALLS);
@@ -8913,7 +8938,11 @@ describe('the channel census — the routes a string can leave this directory by
     const result = callbackPass(callbackTripwire, 'tripwire', CALLBACK_TRIPWIRE_POINTS);
     expect(result.calls).toBe(CALLBACK_PASS_CENSUS.TRIPWIRE_CALLS);
     expect(result.recorded).toBe(CALLBACK_PASS_CENSUS.TRIPWIRE_RECORDED);
+    expect(result.findingCount).toBe(CALLBACK_PASS_CENSUS.TRIPWIRE_FINDINGS);
+    // Six findings and six of them named, which is under the sample cap — so
+    // the tripwire also shows that the cap is not what is producing the zero.
     expect(result.findings.length).toBe(CALLBACK_PASS_CENSUS.TRIPWIRE_FINDINGS);
+    expect(CALLBACK_PASS_CENSUS.TRIPWIRE_FINDINGS).toBeLessThanOrEqual(CALLBACK_FINDING_SAMPLE);
     expect(result.refusedPoints).toBe(0);
     // Named, not counted only: the failure message has to say what arrived, and
     // at which point — the two things a domain widening is about.
@@ -8927,7 +8956,7 @@ describe('the channel census — the routes a string can leave this directory by
 // ---------------------------------------------------------------------------
 
 /**
- * Twenty-eight routes, planted into shipped modules one at a time, each run
+ * Thirty routes, planted into shipped modules one at a time, each run
  * against `tsc --noEmit`, against this file, and against the three accidental
  * catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
@@ -9442,6 +9471,50 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'THE VERDICT ON THE WRAP ITSELF: worth having, not taken this round, and the reason is a priority rather than a doubt. (e) is real containment for 54 sites at the cost of 54 mechanical edits and no mints, and it would make the M25 shape unshippable rather than merely detectable. It is not taken because the throw channel already HAS a catcher — the drive, since E17 split the argument region, plus this round the site census — while the callback channel had none at all, and closing a live bypass outranks adding a second catcher to a channel that has one.',
       'THE PRICE OF TAKING IT, so the next round can budget rather than discover: one new export moves `SURFACE_CENSUS.EXPORTS` (229), the drive\'s export set and four of `DRIVE_CENSUS`\'s count pins, instrument C\'s `CALLS_EXAMINED`, and `empireCore.test.ts`\'s producer and string censuses — every one of which has to be RE-DERIVED by a run rather than guessed, at roughly five minutes a run.',
       'AND THE ENFORCEMENT IT WOULD NEED IS ALREADY BUILT. A wrap nothing forces callers through is a convention. Once the 54 sites are converted, the throw channel\'s site count in `CHANNEL_SITE_COUNTS` falls to the one inside `refuseWith`, and a 55th direct `throw` moves that number — which is the enumerable-list reformulation this file uses for brand constructors, applied to the one channel that has no constructor.',
+      "E19 TOOK IT, so the two verdict lines above are annotated rather than rewritten. 'Not taken this round' was true of E18 and the priority argument behind it was correct; a human ruled the other way for E19 and the wrap is shipped. Its price came in at the estimate: SURFACE_CENSUS.EXPORTS 229 -> 230, CALLS_EXAMINED 964 -> 1018, four DRIVE_CENSUS pins, and empireCore.test.ts's producer and string censuses — of which every one except NODES, NODES_EXAMINED and CALLS was derived by hand rather than read off a diff. The enforcement the last line predicted is THROW_GATE_SITES and it is exactly the shape predicted, and M29 is it planted twice.",
+    ]),
+  }),
+  Object.freeze({
+    id: 'M29',
+    shape:
+      '25-repeated, AGAINST THE FENCE RATHER THAN AGAINST THE DRIVE: a raw `throw new RangeError(<the ban list>)` written beside the wrap, in two forms — one at a site E19 converted, one at a site that never had a throw',
+    where:
+      "(a) recruitment.ts, `completeRecruitment`'s over-capacity refusal converted back to a raw `throw` with M25's own ternary; (b) production.ts, `bankableOfflineSeconds`, a NEW `if (gapSeconds === SECONDS_PER_DAY * OFFLINE_EARNINGS_CAP_HOURS) throw new RangeError(EMPIRE_FORBIDDEN_OUTPUTS[0])`",
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the channel census / every throw in this directory is written as a call to the wrap, form (a): + "recruitment.ts#completeRecruitment#throw". By file and by enclosing function, which is the whole point of keying the site rather than counting it.',
+      'the channel census / every throw in this directory is written as a call to the wrap, form (b): + "production.ts#bankableOfflineSeconds#throw".',
+      'the channel census / derives every escape site: the throw row moves from { empireCore.ts: 2 } in both forms, and instrument C\'s CALLS_EXAMINED moves 1018 -> 1017 in form (a) because a wrap call was removed.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'FORM (b) IS THE ONE THAT MATTERS AND IT IS INVISIBLE TO EVERY SAMPLING INSTRUMENT. Its branch point is 1 036 800, which is in no domain this file has: with it planted, `vitest run src/empire` is 3 failed of 475 and all three are the channel census. Instrument A green, instrument B green, the overflow pass green, instrument C green, `tsc` exit 0. The fence catches it with no drive at all, which is the property a site census has and a domain cannot.',
+      'AND THE BRANCH RUNS, PRINTED RATHER THAN INFERRED, per M24: `bankableOfflineSeconds(1036800) -> RangeError: covered-day`, driven in a throwaway test and read off stdout. Form (a) needs no separate proof — the overflow pass reports `completeRecruitment@ROSTER_SHAPE/REPUTATION_MAX=5000#return.message=covered-day`, which IS the value coming back out of the drive.',
+      'WHAT THE TWO FORMS SEPARATE, and it is why there are two: (a) is a CONVERSION — a wrap call removed — so `WRAP_CALL_COUNTS` moves too and either half alone would have caught it. (b) is an ARRIVAL with every wrap call left where it was, so `WRAP_CALL_COUNTS` is untouched and the site list is the only thing that moves. A fence tested only on (a) would not have been shown to catch a new throw at all.',
+      'Both shipped files were restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M30',
+    shape:
+      "27-repeated, BEHIND A NUMERIC BRANCH POINT: the callback payload again, this time keyed on a slot count outside the three the E18 pass drove — which is the limit that pass's own header declared",
+    where:
+      "engagement.ts, `historyFrom`: `attended` widened to `(slot: number, label?: string) => boolean` and called as `attended(slot, EMPIRE_FORBIDDEN_OUTPUTS[0])` only when `slots === EMPIRE_TUNING.REPUTATION_MAX`",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'GREEN BEFORE, MEASURED ON THE SAME ASSERTION RATHER THAN ARGUED: with `callbackPointsFor` temporarily returning E18\'s `[3]`, the pass\'s `expect(findings).toEqual([])` and its finding count both PASS with the mutant in — the run fails one line lower, at `expected 3 to be 726813`, which is the count pin noticing the domain was shrunk and not the payload.',
+      'RED AFTER, on the shipped domain: the callback pass / drives every caller-supplied callback: + "@5000engagement.ts#historyFrom#attended#callback.0.1=covered-day" and the same at .1.1 through .7.1, the sample cap. `findingCount` is 5 000.',
+      'the channel census / pins the two callback sites with their ARGUMENT COUNT: + "engagement.ts#historyFrom#attended x2". This is E18\'s OTHER half and it fires with no drive at all — recorded here rather than left out, because a row that only listed the pass would imply the domain widening was the sole catcher when it is not.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'AND THE BRANCH RUNS, PRINTED RATHER THAN INFERRED, at both points so the before/after is about the payload and not about reachability: `slots=3 FIRST THREE CALLS: [[0],[1],[2]]` and `slots=5000 FIRST THREE CALLS: [[0,"covered-day"],[1,"covered-day"],[2,"covered-day"]]`, with `RETURNED attended[0..2]: [true,false,false]` and `trainedDays: [1]` identical at both. The shipped result does not move, which is what made this shape survive.',
+      'WHICH OF THE TWO HALVES THE DOMAIN WORK COVERS, stated exactly because E18 recorded the asymmetry and it is unchanged: the census\'s arity key catches a payload delivered as an EXTRA ARGUMENT, at every branch point at once, with no drive. The pass catches a payload smuggled into an argument the site ALREADY passes, and only at points it drives. M30 is the first kind, so both fire; a mutant of the second kind would fire only the pass, and there is no way to write one here without changing `attended`\'s declared parameter type, which `tsc` refuses under strictFunctionTypes.',
+      'NOTHING ELSE IN THE DIRECTORY NOTICED: with the mutant in, `vitest run src/empire` is 4 failed of 475 — the three above plus the escape-site table. Instrument A green, instrument B green, the overflow pass green, `tsc` exit 0.',
+      'ISOLATION, same detail M27 recorded: the mutant needs `EMPIRE_FORBIDDEN_OUTPUTS` in `engagement.ts`, and it was added as a NAMED specifier on the existing `./empireCore` import so no module edge arrives and the import fence stays green — which is the fence working rather than this guard.',
+      'engagement.ts was restored and verified byte-identical with `git hash-object` before this row was written.',
     ]),
   }),
 ]);
@@ -9632,7 +9705,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(28);
+    expect(PLANTED_ROUTES.length).toBe(30);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -9706,9 +9779,13 @@ describe('the routes that were planted, and what each of them cost', () => {
     // not a module specifier, and 27 is the number that would have moved.
     // Five for M28, which is the throw-wrap grading in five configurations —
     // two compile measurements, two runtime ones, and the site count the
-    // channel census derived — rather than an attack.
-    expect(attempts).toBe(43);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(18);
+    // channel census derived — rather than an attack. Two for M29, and the two
+    // are the point rather than a retry: one raw throw at a site the wrap
+    // converted and one at a site that never had a throw, because a fence
+    // tested only on the first has not been shown to catch an arrival. One for
+    // M30, which reached isolation first time for the reason M27 did.
+    expect(attempts).toBe(46);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(20);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
