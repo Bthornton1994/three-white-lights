@@ -1390,6 +1390,16 @@ function domainAnchorFaults(
  *     condition. A reader would have to run code to learn what the mutation was,
  *     and the expiry this table is built on is a property of a STRING anchor,
  *     not of a callback.
+ *   - ONE ARROW-JOINED STRING, which is what the browser witness table in
+ *     `tools/verify-cutin-cap.mjs` already uses — `BROWSER_MUTATION_WITNESSES`
+ *     writes its mutant as `before -> after`, so the class of witness this
+ *     schema famously cannot hold has been the reproducible one all along, and
+ *     the sibling asymmetry is worth reading twice. It is not copied here for
+ *     two reasons: the separator has to be a sequence neither side contains and
+ *     no such sequence can be guaranteed of arbitrary source, and a deletion
+ *     comes out as a string ending in the separator, which is exactly the
+ *     "empty is a value, not an absence" distinction this field is careful
+ *     about. Two fields need no separator and no parse.
  *
  * WHAT IS CHECKED WITHOUT RUNNING ANYTHING, and it is much less than a re-run:
  * that applying the patch to the tree as it stands changes it, and that a mutant
