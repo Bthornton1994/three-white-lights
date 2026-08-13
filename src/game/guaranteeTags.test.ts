@@ -1450,7 +1450,7 @@ function domainAnchorFaults(
  *     the planted row `a mutant that deletes its own red assertion`.
  *   - A deletion planted on a live row — `mutatedTo: ''` — with the loop's
  *     `=== undefined` reading rewritten to `!witness.mutatedTo`. Red: `witness
- *     rows a third party can apply and re-run: expected 4 to be 5`. With the
+ *     rows a third party can apply and re-run: expected 5 to be 6`. With the
  *     `=== undefined` reading in place the same deletion is green, which is the
  *     pair that says an empty replacement is a value and not an absence.
  */
@@ -1548,8 +1548,9 @@ function replacementDebt(
  * of a sentence beside the row — and a guessed patch reads as evidence while
  * being invention, which is worse than an absent one. So the rows that were here
  * keep their debt, the rows that arrive from now on carry the field, and the
- * five below were closed by applying the patch and watching the named assertion
- * redden rather than by reading the comment above the row.
+ * ones already closed were closed by applying the patch and watching the named
+ * assertion redden rather than by reading the comment above the row. Each one
+ * carries a note saying so, and `REPLACEMENT_BAR.REPRODUCIBLE` counts them.
  *
  * PER CLAIM AND NOT A TOTAL, because a total lets a new row slip in under a
  * bumped number without naming what was excused — the argument
@@ -1591,7 +1592,6 @@ const REPLACEMENTS_PREDATING_THE_RULE: readonly (readonly [string, number])[] = 
   ['no-rattle-is-cut-by-another-rattle', 1],
   ['one-row-behind-one-port', 1],
   ['one-streak-mapping', 1],
-  ['placeholder-cannot-grow-calendar-authority', 1],
   ['pr-sentence-and-pr-border-are-one-decision', 1],
   ['section-4a-denominator-is-measured', 1],
   ['settling-is-terminal', 1],
@@ -1614,7 +1614,7 @@ const REPLACEMENTS_PREDATING_THE_RULE: readonly (readonly [string, number])[] = 
  */
 const REPLACEMENT_BAR = {
   /** Rows carrying a replacement, so a third party can apply the patch. */
-  REPRODUCIBLE: 5,
+  REPRODUCIBLE: 6,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2536,9 +2536,17 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     // reddens the export-surface equality, giving the placeholder a prop reddens
     // the empty-parameter-list check, and broadening the gate to any refusal
     // reddens the per-error-code loop in the sibling test.
+    //
+    // REPLACEMENT TAKEN BY RE-RUNNING IT, and this is the row where the
+    // transcript had already given it away: `observed` quotes the mutated import
+    // line in full, so recording the field cost a copy from one part of the row
+    // into another. Re-applied at this tree it reproduces that message verbatim.
+    // The other three mutants named above are NOT recorded — they were run
+    // together and only this one has a row here, so only this one has a patch.
     guarantee: 'placeholder-cannot-grow-calendar-authority',
     mutatedFile: 'src/meet/careerCalendarPlaceholder.ts',
     mutated: "import type { MeetDayPhaseId } from '../game/meetDay';",
+    mutatedTo: "import { type MeetDayPhaseId, meetIdFor } from '../game/meetDay';",
     testFile: 'src/meet/careerCalendarPlaceholder.test.ts',
     redAssertion: 'imports a value, which is how a placeholder acquires a clock, a row or a meet history',
     observed:
