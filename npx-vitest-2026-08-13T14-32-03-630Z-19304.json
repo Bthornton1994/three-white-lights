@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-13T14-32-03-630Z-19304",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/career/zedge.test.ts"
+  ],
+  "budgetSeconds": 600,
+  "startedAtIso": "2026-08-13T14:32:03.630Z",
+  "startedAtMs": 1786631523630,
+  "cwd": "/home/user/wt-c1-worlds",
+  "commit": "eca47a38527f61f0cc9f0b15f53f2cfa8369e50b",
+  "branch": "claude/c1-worlds-reach",
+  "dirty": 6,
+  "dirtyPaths": [
+    "src/career/careerSweep.ts",
+    "src/career/eligibility.test.ts",
+    "src/career/zedge.test.ts",
+    "src/career/zmeasure.test.ts",
+    "src/career/zprofile.test.ts",
+    "src/career/ztotals.test.ts"
+  ],
+  "runner": {
+    "pid": 19304,
+    "startTick": "257090",
+    "cmdline": "node tools/watchdog.mjs --budget 600 -- npx vitest run src/career/zedge.test.ts",
+    "bootId": "d50b2ce6-32b8-4d75-8b98-edbe978df6a8",
+    "bootEpochSeconds": 1786628953,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-13T14:32:03.650Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
