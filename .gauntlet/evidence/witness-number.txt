@@ -1,0 +1,88 @@
+EVIDENCE BUNDLE — piece witness-number
+generated 2026-08-13T21:19:37.736Z
+repo /home/user/wt-witness-number
+commit 3457d8a18ee174d1900b4d4dd4459f120366581f
+working tree clean (ignoring only this script's own output and .gauntlet/state.json)
+
+This file is raw, unedited output of the commands shown. It is produced by
+the run harness, not by the agent that wrote the code under test.
+
+CHECK THE COMMIT ABOVE against the code you were asked to grade. If it does
+not match, this bundle describes different code and its results do not apply
+— report the evidence as stale rather than grading against it.
+
+WHY THE STAMP WILL NOT EQUAL HEAD, AND WHY THAT IS NOT A PROBLEM.
+
+Three critics in a row have spent a paragraph working this out from
+.git/logs/HEAD, correctly, and then had to record that they could not run
+git diff to finish the argument. So it is stated here instead.
+
+A bundle produced at commit X is itself committed BY a later commit, so it
+can never stamp the commit it lives in. The stamp will normally be one or
+two commits behind HEAD, and those commits will be the bundle itself and a
+progress-page update.
+
+What makes that safe is not the ordering — it is that
+`node tools/evidence.mjs <piece> --verify` is run immediately before a critic
+is dispatched, and it FAILS unless: no file outside the run-artefact and
+docs paths changed between the stamp and HEAD (default-deny — everything is
+code unless named otherwise, including App.tsx at the repo root and all of
+tools/); the working tree carries no uncommitted code; and every committed
+browser-shot record is present, dated, captured clean, current, and green.
+
+If any of that were false the dispatch would not have happened. You are not
+being asked to take that on trust: the check is in tools/evidence.mjs and you
+can read it. But you do not need to reconstruct it from the reflog.
+
+======================================================================
+$ npx vitest run src/game/guaranteeTags.test.ts --reporter=verbose
+[tests] exit code: 0
+======================================================================
+
+ RUN  v4.1.10 /home/user/wt-witness-number
+
+ ✓ src/game/guaranteeTags.test.ts > the guarantee-tag convention > resolves every tag in the tree to exactly one live test 123ms
+ ✓ src/game/guaranteeTags.test.ts > the guarantee-tag convention > makes every tag declared from here carry mutation evidence that is still fresh 277ms
+ ✓ src/game/guaranteeTags.test.ts > the guarantee-tag convention > requires a witness transcript to name the test it says reddened [a-witness-transcript-names-its-test] 43ms
+ ✓ src/game/guaranteeTags.test.ts > the guarantee-tag convention > refuses the two measured collection kills, and each arm of the rule fires alone 31ms
+ ✓ src/game/guaranteeTags.test.ts > the guarantee-tag convention > requires a transcript that quotes a measured number to anchor its domain [a-measured-transcript-anchors-its-domain] 81ms
+ ✓ src/game/guaranteeTags.test.ts > the guarantee-tag convention > counts §4a's kill-list bullets against the mutants witnessed for it 3ms
+ ✓ src/game/guaranteeTags.test.ts > the guarantee-tag convention > expires a witness whose anchor has moved, on a planted one 3ms
+ ✓ src/game/guaranteeTags.test.ts > the guarantee-tag convention > reads comments and not code, on a sample written to break it 1ms
+ ✓ src/game/guaranteeTags.test.ts > the guarantee-tag convention > bans an untagged guarantee inside the scoped files, and FIRES on a planted one 14ms
+ ✓ src/game/guaranteeTags.test.ts > the guarantee-tag convention > states what fraction of the tree it actually covers, and the number is real 105ms
+ ✓ src/game/guaranteeTags.test.ts > the guarantee-tag convention > [a-cited-number-resolves-in-the-named-test] resolves the NUMBERS in a tagged claim against the body of the test it names, with the excuse list exact in both directions 292ms
+ ✓ src/game/guaranteeTags.test.ts > the guarantee-tag convention > fires when a cited number is only elsewhere in the named test FILE, and stays silent when it is in the body 1ms
+ ✓ src/game/guaranteeTags.test.ts > the guarantee-tag convention > counts a number stated as prose, and not one in a section coordinate, an identifier, quoted code or a list ordinal 1ms
+
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+   Start at  21:19:38
+   Duration  1.53s (transform 343ms, setup 0ms, import 372ms, tests 978ms, environment 0ms)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+======================================================================
+$ npx vitest run
+[whole suite] exit code: 0
+======================================================================
+
+ RUN  v4.1.10 /home/user/wt-witness-number
+
+
+ Test Files  84 passed (84)
+      Tests  3332 passed (3332)
+   Start at  21:19:41
+   Duration  343.85s (transform 6.46s, setup 0ms, import 27.78s, tests 763.87s, environment 9ms)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+======================================================================
+$ npx tsc --noEmit
+[typecheck] exit code: 0
+======================================================================
+(no output)
