@@ -9485,7 +9485,7 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
     caughtBy: Object.freeze([
       'the channel census / every throw in this directory is written as a call to the wrap, form (a): + "recruitment.ts#completeRecruitment#throw". By file and by enclosing function, which is the whole point of keying the site rather than counting it.',
       'the channel census / every throw in this directory is written as a call to the wrap, form (b): + "production.ts#bankableOfflineSeconds#throw".',
-      'the channel census / derives every escape site: the throw row moves from { empireCore.ts: 2 } in both forms, and instrument C\'s CALLS_EXAMINED moves 1018 -> 1017 in form (a) because a wrap call was removed.',
+      'the channel census / derives every escape site: the throw row moves from { empireCore.ts: 2 } in both forms, and instrument C\'s CALLS_EXAMINED moves 1018 -> 1017 in form (a) because a wrap call was removed. `WRAP_CALL_COUNTS` also moves in form (a), but the site list is asserted first and short-circuits the test, so that side is NOT measured here — G21 in `REGISTRY_MUTANTS` is what measures it, and it says why no shipped mutant can.',
     ]),
     accidentalCatchersGreen: true,
     alsoRed: Object.freeze([
@@ -9667,6 +9667,12 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
     reddened:
       'measures every cell of the coverage matrix: deferred-completion/a thenable that hands the name to a resolver emitted nothing — every false in its row is meaningless: expected false to be true. Nine of the thirteen matrix rows are mostly false, and a false cell is a claim about an instrument only if the probe really emitted; this is the guard that says so, and it bites.',
   }),
+  Object.freeze({
+    id: 'G21',
+    what: "`WRAP_CALL_COUNTS`'s `empireInvariant.ts` row bumped from 6 to 7 — the wrap-call side of the throw fence, which M29 could not isolate",
+    reddened:
+      'every throw in this directory is written as a call to the wrap: `expected { \'empireCore.ts\': 9, …(7) } to deeply equal { … }` with `- "empireInvariant.ts": 7` against `+ "empireInvariant.ts": 6`. IT IS HERE RATHER THAN IN `PLANTED_ROUTES` BECAUSE NO SHIPPED MUTANT CAN ISOLATE IT: losing a wrap call without gaining a raw throw means deleting a refusal, which reddens `recruitment.test.ts` and its siblings on behaviour rather than on the fence. M29 form (a) does move this number and the site list at the same time, and the site list is asserted first, so this is the only measurement that shows the per-module counts are compared against the census rather than against themselves.',
+  }),
 ]);
 
 /**
@@ -9686,8 +9692,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(20);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(20);
+    expect(REGISTRY_MUTANTS.length).toBe(21);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(21);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
