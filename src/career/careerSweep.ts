@@ -156,9 +156,10 @@ export function strengthGrid(): readonly (number | null)[] {
  * the lifter a self-imposed 28-day rest between meets. That rest was invented
  * here and it was the load-bearing parameter in the whole measurement: a
  * current-form rule that switched on after a lifter's 16th meet was invisible,
- * because no lifter in the sweep ever had a 16th meet. The same mutant at the
- * same seeds, once the sweep reached the depth the calendar offers, moves 143
- * pairs at a fortnightly rest and more at a weekly one.
+ * because no lifter in the sweep ever had a 16th meet. That rule is now a
+ * control rather than a sentence — `delayed-form-inside` and
+ * `delayed-form-past-the-edge` below — and `eligibility.test.ts` runs it on
+ * both sides of the depth this file reaches.
  *
  * So the three numbers that decide the depth are read off the shipped calendar
  * instead of chosen here, and `eligibility.test.ts` asserts each of them
@@ -243,6 +244,24 @@ export const ATTENDANCE_SWEEP = Object.freeze({
    * be zero against.
    */
   ENTRY_COOLDOWN_DAYS: 28,
+  /**
+   * The two meet counts the delayed current-form control is measured at, and
+   * they are the edge of this domain written down as a number.
+   *
+   * A current-form rule does not have to switch on at a lifter's first meet. A
+   * designer who wanted new lifters protected would delay it — "your last total
+   * counts once you are established" — and that delay is what made the old
+   * 14-meet fixture useless: the same rule, delayed past 15, was invisible.
+   *
+   * So both sides of the edge ship. At `DELAYED_FORM_INSIDE` the rule is inside
+   * the deepest career the sweep produces and the axis reports it; at
+   * `DELAYED_FORM_PAST_THE_EDGE` it is one meet beyond, no lifter here ever
+   * reaches it, and the axis reports nothing. The second number is the honest
+   * half — it is this measurement's blind spot, pinned, so that deepening or
+   * shallowing the domain moves it instead of leaving it to be rediscovered.
+   */
+  DELAYED_FORM_INSIDE: 81,
+  DELAYED_FORM_PAST_THE_EDGE: 82,
   /** The window the comparison is made over, from the evaluation day. */
   WINDOW_DAYS: 364,
   FEDERATION: 'meridian' as CareerFederationId,
@@ -327,24 +346,51 @@ export function highestQualifiedTier(bestTotalKg: number | null): CareerMeetTier
 }
 
 /** Which rule turns a meet result into a career record. */
-export type RecordVariant = 'shipped' | 'latest-total-wins';
+export type RecordVariant =
+  | 'shipped'
+  | 'latest-total-wins'
+  | 'delayed-form-inside'
+  | 'delayed-form-past-the-edge';
 
 /**
- * The second control. Under `latest-total-wins` the career remembers the last
- * total instead of the best, which is how a "current form" gate reads, and a
- * bad meet day then costs a lifter meets they had already qualified for.
+ * A career that remembers the last total instead of the best, once the lifter
+ * has `afterMeets` of them on record.
+ *
+ * `afterMeets` of zero is the plain current-form rule. Anything higher is the
+ * same rule with a grace period, which is the shape that walked past this sweep
+ * while its careers were 14 meets long.
+ */
+function latestTotalAfter(
+  afterMeets: number,
+): (lifter: CareerLifter, meetId: string, totalKg: number) => CareerLifter {
+  return (lifter, meetId, totalKg) => {
+    const entered = lifter.enteredMeetIds.includes(meetId)
+      ? lifter.enteredMeetIds
+      : [...lifter.enteredMeetIds, meetId];
+    if (lifter.enteredMeetIds.length < afterMeets) return careerRecordAfterMeet(lifter, meetId, totalKg);
+    return { federationId: lifter.federationId, bestTotalKg: totalKg, enteredMeetIds: entered };
+  };
+}
+
+/**
+ * The second control and its two delayed forms. Under `latest-total-wins` the
+ * career remembers the last total instead of the best, which is how a "current
+ * form" gate reads, and a bad meet day then costs a lifter meets they had
+ * already qualified for.
+ *
+ * The two delayed entries are the same rule switched on part way through a
+ * career, at the meet counts `ATTENDANCE_SWEEP` names. They are what turns the
+ * edge of this domain into a pinned number rather than a sentence somebody
+ * measured once: one is inside the deepest career the sweep produces and the
+ * other is one meet past it.
  */
 export const RECORD_VARIANTS: Readonly<
   Record<RecordVariant, (lifter: CareerLifter, meetId: string, totalKg: number) => CareerLifter>
 > = Object.freeze({
   shipped: careerRecordAfterMeet,
-  'latest-total-wins': (lifter, meetId, totalKg) => ({
-    federationId: lifter.federationId,
-    bestTotalKg: totalKg,
-    enteredMeetIds: lifter.enteredMeetIds.includes(meetId)
-      ? lifter.enteredMeetIds
-      : [...lifter.enteredMeetIds, meetId],
-  }),
+  'latest-total-wins': latestTotalAfter(0),
+  'delayed-form-inside': latestTotalAfter(ATTENDANCE_SWEEP.DELAYED_FORM_INSIDE),
+  'delayed-form-past-the-edge': latestTotalAfter(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_THE_EDGE),
 });
 
 // ---------------------------------------------------------------------------

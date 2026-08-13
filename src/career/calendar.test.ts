@@ -89,8 +89,9 @@ describe('the shape of a year', () => {
 
   it('holds each tier at its stated cadence', () => {
     const counts = MEET_TIER_ORDER.map((tier) => year.filter((meet) => meet.tier === tier).length);
-    // 53 weekly and 27 fortnightly rather than 52 and 26: the window is
-    // inclusive at both ends and opens on a local meet day. Nationals are
+    // 53 weekly rather than 52: the window is inclusive at both ends and opens
+    // on a local meet day. The fortnightly series opens three days in and so
+    // gets 26 of its own occurrences rather than a 27th. Nationals are
     // quarterly and worlds annual, so one each per 13 and 52 weeks.
     expect(counts).toEqual([53, 26, 4, 1]);
     expect(year).toHaveLength(84);

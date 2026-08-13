@@ -564,6 +564,45 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     expect(control.worstDeficit).toBe(26);
   });
 
+  it('reaches a current-form rule that waits, and stops one meet past the deepest career', { timeout: budgetFrom(11_946) }, () => {
+    // WHERE THIS SWEEP GOES BLIND, MEASURED AND PINNED FROM BOTH SIDES.
+    //
+    // A current-form gate does not have to switch on at a lifter's first meet.
+    // Delay it — "your last total counts once you are established" — and it is
+    // the same broken rule, invisible to a sweep whose careers end before the
+    // delay does. That is not a hypothetical: the version of this file that
+    // held every career to 14 meets reported zero for the same rule delayed to
+    // a lifter's 16th, and reported it in exactly the confident shape a passing
+    // sweep has.
+    //
+    // So both sides of the edge run. Inside the domain the axis reports the
+    // rule; one meet past the deepest career it reports nothing, because no
+    // lifter here ever gets that far. The second number is this measurement's
+    // blind spot as a pin: deepen the domain and it stops being zero, shallow
+    // it and the first arm stops being non-zero.
+    const inside = measureAttendanceAxis('delayed-form-inside');
+    const pastTheEdge = measureAttendanceAxis('delayed-form-past-the-edge');
+
+    expect(inside.violatingPairs, 'a delayed current-form rule inside the domain').toBe(81);
+    expect(inside.worstDeficit).toBe(4);
+    expect(pastTheEdge.violatingPairs, 'the same rule one meet past the deepest career').toBe(0);
+    expect(pastTheEdge.worstDeficit).toBe(0);
+
+    // The edge is the deepest career, not a number chosen to make the arms
+    // work. Both are asserted against the season lengths the axis above pins.
+    expect(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_THE_EDGE).toBe(
+      Math.max(...inside.seasonLengths),
+    );
+    expect(ATTENDANCE_SWEEP.DELAYED_FORM_INSIDE).toBe(
+      ATTENDANCE_SWEEP.DELAYED_FORM_PAST_THE_EDGE - 1,
+    );
+    // And the two arms ran on the same seasons as each other and as the shipped
+    // one, so the zero above is about the rule and not about a smaller domain.
+    expect(pastTheEdge.seasonLengths).toEqual(inside.seasonLengths);
+    expect(inside.pairs).toBe(78926);
+    expect(pastTheEdge.pairs).toBe(78926);
+  });
+
   it('a season is a real season: every meet distinct, and none of them entered twice', () => {
     // The fixture the axis rests on. A simulation that entered nothing, or
     // entered one meet eighty times, would leave every comparison above
