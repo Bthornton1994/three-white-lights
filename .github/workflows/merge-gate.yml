@@ -1,0 +1,45 @@
+# merge-gate.yml — mechanical gate. Not a GDD §12.2 bar.
+# A green run does not grade Empire, Career, art, or any critic piece.
+# It answers: does it compile, do the node tests pass, did a new advisory appear.
+#
+# TWO TRIGGERS, because they test different trees:
+#   pull_request — actions/checkout's default is refs/pull/N/merge, GitHub's
+#     preview merge of the PR head into the current base. That is stronger
+#     than the PR head alone, and it is still not the commit that lands.
+#   push to the integration branch — the SHA that actually reached origin.
+#     This run has already shipped a red tip from a merge that looked clean
+#     in isolation; a PR-only gate would not have seen that commit.
+
+name: merge-gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - claude/agent-config-setup-m2r6ny
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Node test suite
+        run: npm test
+
+      - name: Supply-chain remainder
+        run: |
+          node .github/scripts/audit-gate.mjs --self-test
+          node .github/scripts/audit-gate.mjs

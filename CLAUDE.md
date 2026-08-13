@@ -1012,6 +1012,49 @@ headings match in both directions; `tools/claudeIndex.test.ts` and
 met. Push only to `grok-d-claudemd-index`, and only after an explicit go-ahead.
 Never to `main` or to `claude/agent-config-setup-m2r6ny`.
 
+### SESSION D — MERGE GATE (ONE-SHOT, `.github/`, NOT A LANE)
+
+Written here **before** the work starts, as this section requires. Human-approved
+2026-08-13 via the plan on this checkout. Session D is Grok, branch
+`grok-d-ci-merge-gate`. It is still a one-shot visitor. It is **not** a standing
+lane and it does not take a half of `src/`. The heading above this block still
+reads three sessions, and The split table is unchanged.
+
+**Active claim (unambiguous): the first merge gate, under `.github/`.** A
+workflow that runs `tsc --noEmit`, the full node `vitest` suite, and a
+supply-chain check. It fires on pull_request (GitHub's preview merge of head
+into base) AND on push to `claude/agent-config-setup-m2r6ny` (the SHA that
+actually reached origin). A PR-only gate would miss the merge-commit-pushed-
+clean-in-isolation shape this run has already shipped. This is the "add
+`npm audit` to CI" item Session C filed as tracked debt when there was no
+`.github/`. D is taking that item, not C's Career files.
+
+**A green run is not a graded piece.** It does not grade Empire, Career, art,
+or any GDD §12.2 bar. It answers three mechanical questions: does it compile,
+do the node tests pass, did a new advisory appear beyond the remainder Session
+C already named (image-size and uuid, force-fixes that would downgrade Expo).
+Do not treat a green gate as a critic pass.
+
+**Explicitly OUT of this claim:**
+
+- every `src/**` file
+- `tools/**`
+- `docs/GDD.md`
+- `package.json` overrides — do not add, remove, or "fix" them
+- Expo / metro / image-size / uuid upgrades
+- Playwright, screenshot harnesses, `verify-shell-route` and every other
+  browser grader
+
+**No source crossing.** `.github/` does not exist today. The only shared
+surface is this paragraph.
+
+**Done when the slice is ready for review:** a PR against
+`claude/agent-config-setup-m2r6ny` shows the three steps; the audit step is
+green on the known remainder and red if a fourth leaf advisory appears;
+Session D does not call a bar met. Push only to `grok-d-ci-merge-gate`, and
+only after an explicit go-ahead. Never to `main` or to
+`claude/agent-config-setup-m2r6ny`.
+
 
 ## Subagent Roles
 
