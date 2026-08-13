@@ -979,6 +979,15 @@ describe('the registered allowlist', () => {
         'src/audio/synth.ts',
         'src/card/cardTuning.ts',
         'src/card/pixelFont.ts',
+        // GDD §2.1's Career spine and §6.1's meet calendar. A `feel` home: the
+        // qualifying totals are the least evidenced numbers in the game — the
+        // document says meets are gated by them and names no figure — so where
+        // the four tiers sit is settled by playing a career.
+        'src/career/careerTuning.ts',
+        // ...and the parameters of the measurement that keeps that tuning
+        // honest. `data`, like streakSweep.ts and for the same reason: a seed
+        // is not a knob, so it is registered here and absent from the index.
+        'src/career/careerSweep.ts',
         // The cut-in gate (GDD §7.2). A `feel` home: §7.2 says scarcity "is
         // the entire mechanic" and then says only "ideally not every session",
         // which is a rate somebody has to settle by playing. The one-per-

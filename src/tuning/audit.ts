@@ -238,6 +238,11 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     kind: 'feel',
     why: 'CUT_IN_TUNING / CUT_IN_ART / CUT_IN_LAYOUT / CUT_IN_COPY — the GDD §7.2 cut-in gate: how often a firing moment is allowed to interrupt, what counts as a heavy set, how long the interrupt holds, and how soon a tap dismisses it. §7.2 calls scarcity "the entire mechanic", and how scarce is scarce enough is exactly the judgement that needs a thumb on a phone. MAX_PER_SESSION lives here too and is flagged in place as NOT a knob: it is §12.3’s refusal condition, not a value to turn.',
   }),
+  'src/career/careerTuning.ts': Object.freeze({
+    role: 'constants',
+    kind: 'feel',
+    why: 'CAREER_TUNING / CAREER_FEDERATIONS / CAREER_COPY — GDD §2.1’s Career spine and §6.1’s meet calendar: the qualifying total each of the four tiers asks for, how often each tier comes round, and the season anchor every series is measured from. `feel` because the qualifying totals are the least evidenced numbers in the game — §6.1 says meets are "gated by qualifying totals" and names no figure, so what a regional or a national total should be is settled by playing a career, not by deriving one. The block says so in place.',
+  }),
   'src/licensing/licensingTuning.ts': Object.freeze({
     role: 'constants',
     kind: 'feel',
@@ -432,6 +437,11 @@ export const SOURCE_RULES: Readonly<Record<string, SourceRule>> = Object.freeze(
     role: 'constants',
     kind: 'data',
     why: 'MONOTONICITY_SWEEP, RESIDUE_SWEEP, ENTITLEMENT_VERIFICATION and COVERED_DAY_PURCHASE_SWEEP — the seeds, calendar lengths, attendance distribution, counterfactual parameters and purchase purse GDD §4.4’s "training one more day never lowers your streak" counts were measured on: the first block for what the no-free-absence rules closed, the second for what they left, the third for the battery the replacement mechanic is verified against, and the fourth for GDD §8.3E’s Extra Covered Day — its price, its two Chalk trickles and the schedule count the three matched purchase arms run at. Data about a measurement, not a knob: turning a seed does not change the game, only which calendars the property is checked over, and the purse exists to ask WHEN a purchase can be afforded rather than to price anything shipped. It is `data` rather than `feel` for exactly that reason, and is deliberately not re-exported from the tuning index — a playtester has no business turning it. It exists at all because the first version of that measurement was published with its seeds unstated and could not be reproduced by anyone afterwards.',
+  }),
+  'src/career/careerSweep.ts': Object.freeze({
+    role: 'constants',
+    kind: 'data',
+    why: 'STRENGTH_SWEEP and ATTENDANCE_SWEEP — the grid, seeds, distribution and windows GDD §12.3’s "a lifter who competed more never qualifies for fewer meets" was measured on, plus the two control rules the zeros are zero against. Data about a measurement rather than a knob, exactly like streakSweep.ts: turning a seed changes which careers the property is checked over and changes nothing a player can feel, so it is deliberately not re-exported from the tuning index.',
   }),
   'src/card/sampleCards.ts': Object.freeze({
     role: 'constants',

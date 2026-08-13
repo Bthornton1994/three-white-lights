@@ -130,6 +130,7 @@ import { LIFT_PALETTE } from '../lift/liftPalette';
 import { SESSION_PALETTE } from '../session/sessionPalette';
 import { MEET_PALETTE } from '../meet/meetPalette';
 import { EMPIRE_TUNING, EMPIRE_TUNING_CLASSIFICATION } from '../empire/empireTuning';
+import { CAREER_COPY, CAREER_FEDERATIONS, CAREER_TUNING } from '../career/careerTuning';
 
 /**
  * Every hand-tuned block in the game, grouped by the thing it tunes.
@@ -373,6 +374,31 @@ export const TUNING = Object.freeze({
    * a knob.
    */
   empire: Object.freeze({ EMPIRE_TUNING, EMPIRE_TUNING_CLASSIFICATION }),
+
+  /**
+   * THE CAREER SPINE (GDD §2.1) AND ITS MEET CALENDAR (§6.1).
+   *
+   * `QUALIFYING_TOTAL_KG` is the block to look at first and the one most likely
+   * to be wrong. §6.1 says a meet is "gated by qualifying totals" and names no
+   * number anywhere, so the four tiers' bars are a guess at a shape: a regional
+   * total a competent novice reaches, a national total a serious lifter works
+   * years for, a world total that reads as elite. They are also a
+   * simplification a real lifter will spot — one number per tier where the
+   * sport publishes a table with a row per weight class — and the block says so
+   * in place rather than in a report.
+   *
+   * `CADENCE_DAYS` and `PHASE_DAYS` are one decision in two blocks: every
+   * cadence is a whole number of weeks, so each tier sits on one weekday, and
+   * the phases are what keep two tiers off the same day. Moving a phase onto
+   * another tier's weekday is legitimate and the suite reports the collisions
+   * rather than forbidding them.
+   *
+   * `CAREER_FEDERATIONS` is here because it is drawn on a screen, which is what
+   * puts it inside the real-IP sweep that reads this registry. All four names
+   * are invented; GDD §11 has not ruled on whether a real federation is ever
+   * licensed, and §12.3 refuses one until it is.
+   */
+  career: Object.freeze({ CAREER_TUNING, CAREER_FEDERATIONS, CAREER_COPY }),
 });
 
 /**
@@ -413,6 +439,7 @@ export const TUNING_MODULES: Readonly<Record<keyof typeof TUNING, string>> = Obj
   cutIn: 'src/cutin/cutInTuning.ts',
   shell: 'src/shell/shellTuning.ts',
   empire: 'src/empire/empireTuning.ts',
+  career: 'src/career/careerTuning.ts',
 });
 
 /** Where each palette physically lives. Same cross-check as above. */

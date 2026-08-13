@@ -1104,7 +1104,13 @@ const PURCHASED_DAY_SCAN = {
    * `readdirSync` that returned nothing would leave that test comparing two
    * empty sets — CLAUDE.md's "an empty domain" shape, exactly.
    */
-  SOURCE_DIRECTORIES: 12,
+  /*
+   * 12 -> 13 when GDD §2.1's Career spine arrived as `src/career/`. The walk
+   * reaches it and it contributes no match: nothing in the career calendar or
+   * its eligibility rules mentions a purchase or a covered day, which is the
+   * answer this pin exists to make somebody produce rather than assume.
+   */
+  SOURCE_DIRECTORIES: 13,
 
   /**
    * The files that currently contain at least one matching declaration, as
