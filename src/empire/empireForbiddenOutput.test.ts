@@ -719,29 +719,89 @@ const brandedKeys = (surface: StringSurface): readonly string[] =>
   distinct(surface.positions.filter((p) => p.kind === 'branded').map(positionKey));
 
 /**
- * Every bare-`string` position in the directory, grouped by the FIELD it is,
- * with the reason that field is legitimately a bare string.
+ * Every bare-`string` position in the directory, grouped by the FIELD it is.
  *
- * Five fields, twenty-three positions. The grouping is not decoration: the same
- * field is reached through several exports, so a per-export list would suggest
- * eighteen independent holes where there are five, and would make the count move
- * for a reason that is not a new hole.
+ * IT IS EMPTY, AND THE EMPTINESS IS THE ROUND'S RESULT RATHER THAN A DELETION.
+ * There were five fields and twenty-three positions. All twenty-three are
+ * branded now and sit in `DECLARED_BRANDED_STRING_POSITIONS`; the join in
+ * 'every field that used to be a bare string is branded now' asserts that,
+ * position by position, so this list going empty and that list growing are one
+ * fact checked from both ends rather than two edits that happen to agree.
  *
- * NOTHING HERE WAS TIGHTENED, AND THAT IS A DELIBERATE CHOICE RATHER THAN AN
- * OMISSION. Every one of the five is a string a caller or a server supplies, so
- * a brand on it would be a brand on free text and would say nothing about what
- * the text is. The instrument's bite is the SET EQUALITY below, not the absence
- * of bare strings: a sixth field cannot arrive without this list being
- * edited, and that is what the reproduced defect runs into.
+ * WHAT THE EQUALITY IS WORTH NOW, STATED EXACTLY, BECAUSE AN EMPTY LIST IS THE
+ * SHAPE CLAUDE.MD NAMES AS VACUOUS. Two of the three assertions in
+ * 'pins every bare-string position' change character:
+ *
+ *   - `expect(bareKeys(surface)).toEqual(declared)` is STRONGER empty than it
+ *     was full. It now reddens on the arrival of ANY bare-string position
+ *     anywhere in the directory, which is the strictest state it can be in.
+ *   - the per-group loop that requires a reason over 80 characters now walks
+ *     nothing. It is vacuous, in the strict sense: no state of the shipped
+ *     directory makes it red. It is kept because it becomes non-vacuous again
+ *     the moment a row is added, and it is named here so nobody reads it as
+ *     coverage.
+ *
+ * THE NON-VACUITY GUARD FOR THE WALKER ITSELF IS THE PROBE MODULE, and it is
+ * what stops the zero being a zero about a broken walker: 'sees the reproduced
+ * defect' drives the same census over an eleventh module whose
+ * `{ readonly kind: string }` return must be reported as exactly one bare
+ * position. If the walker stopped classifying bare strings, that test is red
+ * and this equality would still be green.
  */
-const DECLARED_BARE_STRING_FIELDS = Object.freeze([
+const DECLARED_BARE_STRING_FIELDS: readonly {
+  readonly field: string;
+  readonly why: string;
+  readonly positions: readonly string[];
+}[] = Object.freeze([]);
+
+/**
+ * The five fields that WERE bare strings, why each was, and what closed it.
+ *
+ * Kept as a live check rather than as history. Every position here is asserted
+ * to be a branded position now, so reverting any one field to `string` is red
+ * twice — here, and on the bare equality above.
+ *
+ * ONE ROW CARRIED A CLAIM THE PROBE FALSIFIES, AND IT IS CORRECTED RATHER THAN
+ * DELETED. `PendingRecruit.id` said narrowing it "buys nothing this census does
+ * not already give, because a new position reddens whatever its type is". The
+ * first clause is true. The second is FALSE, and every bypass this directory
+ * has been shown is the counter-example: the census reddens on a new POSITION,
+ * and all nine used an EXISTING one. What narrowing buys is measured, not
+ * argued — this probe, run at `dcc65bb` and replicated before the change:
+ *
+ *     export const direct: NpcId = EMPIRE_FORBIDDEN_OUTPUTS[0];         // 3
+ *     export const laundered: NpcId = asNpcId(EMPIRE_FORBIDDEN_OUTPUTS[0]); // 5
+ *
+ *     src/empire/__probe.ts(3,14): error TS2322: Type 'string' is not
+ *       assignable to type 'NpcId'.
+ *       Type 'string' is not assignable to type
+ *       '{ readonly [EMPIRE_BRAND]: "npc-id"; }'.
+ *
+ * `tsc --noEmit` exit 2, exactly one error, on line 3 and not on line 5. So a
+ * brand refuses the assignment route at every branch point at once and does not
+ * refuse the constructor route — which is why the constructor-call-site census
+ * below exists and why `refuseForbiddenName` exists beside it.
+ *
+ * THE OBJECTION THE `GymSnapshot` ROW RAISED IS ANSWERED RATHER THAN IGNORED.
+ * It said another gym's identity "arrives from outside this directory entirely.
+ * There is no closed set of them to narrow to." That is true and it is not an
+ * argument against a brand, because a brand is not an enumeration — it is a
+ * constructor discipline. `asGymId` narrows nothing about which gyms exist; it
+ * makes the assignment a compile error and makes the one remaining route a
+ * named function whose call sites are counted. What `asGymId` accepts, and why
+ * it accepts that much, is written at the function.
+ */
+const CLOSED_BARE_STRING_FIELDS = Object.freeze([
   Object.freeze({
     field: 'the eight `readonly string[]` fault lists',
+    closedBy: 'FaultMessage',
     why:
       'Diagnostic prose. Every element is a sentence, and a sentence naming a ' +
       'forbidden output is the module REPORTING a fault rather than paying ' +
       'one. Instrument B checks these by equality and not by containment, and ' +
-      'pins what they produced in DIAGNOSTIC_CHANNEL_CENSUS.',
+      'pins what they produced in DIAGNOSTIC_CHANNEL_CENSUS. The brand is ' +
+      'minted at the return rather than at each of the 123 push sites, and ' +
+      '`asFaultMessage` says why that is the same fence and what it costs.',
     positions: Object.freeze([
       'empireCore.ts#empireStateFaults#return[]',
       'empireCore.ts#empireVocabularyFaults#return[]',
@@ -755,11 +815,13 @@ const DECLARED_BARE_STRING_FIELDS = Object.freeze([
   }),
   Object.freeze({
     field: 'NpcLifter.displayName',
+    closedBy: 'DisplayName',
     why:
       "An NPC's shown name. Caller-chosen free text, checked only for " +
-      'non-emptiness by `createNpcLifter`. Covered by instrument B, which ' +
-      'drives it with a sentinel so the position is measured as REACHED ' +
-      'rather than assumed non-empty.',
+      'non-emptiness by `createNpcLifter` — which is now the check inside ' +
+      '`asDisplayName`, so both display-name fields get it instead of one. ' +
+      'Still covered by instrument B, which drives it with a sentinel so the ' +
+      'position is measured as REACHED rather than assumed non-empty.',
     positions: Object.freeze([
       'empireCore.ts#createEmpireState#return.roster[].displayName',
       'empireCore.ts#createNpcLifter#return.displayName',
@@ -772,9 +834,13 @@ const DECLARED_BARE_STRING_FIELDS = Object.freeze([
   }),
   Object.freeze({
     field: 'GymSnapshot.gymId and GymSnapshot.displayName',
+    closedBy: 'GymId and DisplayName',
     why:
       "Another gym's identity, which arrives from outside this directory " +
-      'entirely. There is no closed set of them to narrow to.',
+      'entirely. There is no closed set of them to narrow to — and that was ' +
+      'given as the reason no brand was possible, which confuses an ' +
+      'enumeration with a constructor discipline. The constructor accepts any ' +
+      'non-empty non-forbidden string on purpose; see `asGymId`.',
     positions: Object.freeze([
       'empireInvariant.ts#gymSnapshot#return.displayName',
       'empireInvariant.ts#gymSnapshot#return.gymId',
@@ -784,12 +850,14 @@ const DECLARED_BARE_STRING_FIELDS = Object.freeze([
   }),
   Object.freeze({
     field: 'PendingRecruit.id',
+    closedBy: 'NpcId',
     why:
-      'The id a recruitment will mint. It is a bare `string` where ' +
-      '`NpcLifter.id` is the `NpcId` brand, which is an inconsistency in the ' +
-      'shipped types and is recorded here rather than fixed — narrowing it is ' +
-      'an edit to a shipped module and buys nothing this census does not ' +
-      'already give, because a new position reddens whatever its type is.',
+      'The id a recruitment will mint, and it is the SAME id the lifter ends ' +
+      'up carrying, so it is now the same brand `NpcLifter.id` is. Its old ' +
+      'row called that an inconsistency and declined to fix it on the ground ' +
+      'that narrowing buys nothing the census does not already give. The ' +
+      'probe above is what falsified that: the census reddens on a new ' +
+      'position and every bypass used an existing one.',
     positions: Object.freeze([
       'empireInvariant.ts#createEmpireGym#return.pending[].id',
       'empireInvariant.ts#runEmpire#return.gym.pending[].id',
@@ -798,38 +866,84 @@ const DECLARED_BARE_STRING_FIELDS = Object.freeze([
   }),
   Object.freeze({
     field: 'FriendVisit.gymId',
+    closedBy: 'GymId',
     why:
-      "The visited gym's id, which the caller passes in and `recordFriendVisit` " +
-      'logs verbatim. Same class as GymSnapshot.gymId.',
+      "The visited gym's id, which the caller passes in and " +
+      '`recordFriendVisit` logs verbatim. Same class as GymSnapshot.gymId, ' +
+      'and closed harder than it: the PARAMETER is branded too, so the ' +
+      'function mints nothing and a forbidden name cannot be introduced ' +
+      'inside it without a constructor call the site census would report.',
     positions: Object.freeze(['social.ts#recordFriendVisit#return.visits[].gymId']),
   }),
 ]);
 
 /**
- * Every branded-string position: `NpcId`, which is `string & brand`.
+ * Every branded-string position in the directory.
  *
  * Listed separately from the bare ones because a brand is erased at runtime, so
  * `asNpcId('covered-day')` returns the forbidden name. A scan for the `string`
  * keyword misses this whole class; the checker does not.
+ *
+ * It was eight — `NpcId` alone. It is thirty-four, because the twenty-three
+ * positions that used to be bare are here now, plus the three new constructors'
+ * own returns. THAT IS A MOVE OF A POSITION FROM ONE LIST TO THE OTHER AND NOT
+ * A LOSS OF COVERAGE: both lists are set equalities in both directions, so a
+ * position that vanished from the surface entirely would redden the branded
+ * equality just as a new one would.
+ *
+ * WHAT BRANDING THESE BUYS, AND WHAT IT DOES NOT. It buys the assignment route:
+ * `gymId: EMPIRE_FORBIDDEN_OUTPUTS[0]` is a compile error at every branch point
+ * at once, with no domain and no drive. It does NOT buy the constructor route —
+ * `asGymId(EMPIRE_FORBIDDEN_OUTPUTS[0])` compiles, and that is measured in the
+ * probe quoted at `CLOSED_BARE_STRING_FIELDS`. The constructor route's catchers
+ * are `DECLARED_BRAND_CONSTRUCTOR_CALLS` below and `refuseForbiddenName` in
+ * `empireCore.ts`, and they cover different halves of it: one detects a new
+ * site whether or not it runs, the other refuses a value only when it does.
  */
 const DECLARED_BRANDED_STRING_POSITIONS: readonly string[] = Object.freeze([
+  'empireCore.ts#asDisplayName#return',
+  'empireCore.ts#asFaultMessage#return',
+  'empireCore.ts#asGymId#return',
   'empireCore.ts#asNpcId#return',
+  'empireCore.ts#createEmpireState#return.roster[].displayName',
   'empireCore.ts#createEmpireState#return.roster[].id',
+  'empireCore.ts#createNpcLifter#return.displayName',
   'empireCore.ts#createNpcLifter#return.id',
+  'empireCore.ts#empireStateFaults#return[]',
+  'empireCore.ts#empireVocabularyFaults#return[]',
+  'empireInvariant.ts#createEmpireGym#return.pending[].id',
+  'empireInvariant.ts#createEmpireGym#return.state.roster[].displayName',
   'empireInvariant.ts#createEmpireGym#return.state.roster[].id',
+  'empireInvariant.ts#empireRunFaults#return[]',
+  'empireInvariant.ts#gymSnapshot#return.displayName',
+  'empireInvariant.ts#gymSnapshot#return.gymId',
+  'empireInvariant.ts#runEmpire#return.gym.pending[].id',
+  'empireInvariant.ts#runEmpire#return.gym.state.roster[].displayName',
   'empireInvariant.ts#runEmpire#return.gym.state.roster[].id',
+  'empireInvariant.ts#stepGym#return.pending[].id',
+  'empireInvariant.ts#stepGym#return.state.roster[].displayName',
   'empireInvariant.ts#stepGym#return.state.roster[].id',
+  'engagement.ts#engagementRunFaults#return[]',
+  'expansion.ts#expansionVocabularyFaults#return[]',
+  'recruitment.ts#beginRecruitment#return.state.roster[].displayName',
   'recruitment.ts#beginRecruitment#return.state.roster[].id',
+  'recruitment.ts#completeRecruitment#return.roster[].displayName',
   'recruitment.ts#completeRecruitment#return.roster[].id',
+  'reputation.ts#reputationVocabularyFaults#return[]',
+  'social.ts#rankLeaderboard#return[].entry.displayName',
+  'social.ts#rankLeaderboard#return[].entry.gymId',
+  'social.ts#recordFriendVisit#return.visits[].gymId',
+  'social.ts#socialContextFaults#return[]',
+  'social.ts#socialVocabularyFaults#return[]',
 ]);
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const SURFACE_CENSUS = Object.freeze({
   MODULES: 10,
-  EXPORTS: 226,
-  BARE_POSITIONS: 23,
-  BARE_FIELDS: 5,
-  BRANDED_POSITIONS: 8,
+  EXPORTS: 229,
+  BARE_POSITIONS: 0,
+  BARE_FIELDS: 0,
+  BRANDED_POSITIONS: 34,
   /** The banned vocabulary's own length, so an emptied ban list is not a clean sweep. */
   BANNED: 7,
   LITERAL_POSITIONS: 1175,
@@ -2390,7 +2504,7 @@ const LITERAL_AXES: readonly (readonly [string, string])[] = Object.freeze([
   ['encourage', 'the boolean argument to recordFriendVisit. Two points is the whole domain.'],
   ['everyNth', 'a divisor selecting which slots are check-ins. A shape parameter — every slot, or every other — and not a magnitude with thresholds.'],
   ['gymId', 'four caller-supplied identifiers: two friends, the player, and one that is not on the friend list. The second friend is what makes the VISITED arm reachable. Strings, not numbers.'],
-  ['identifier', 'the three sentinels fed to asNpcId, one per caller-supplied identifier position. Strings, not numbers.'],
+  ['identifier', 'the three sentinels fed to the four string brand constructors, one per caller-supplied identifier position. Strings, not numbers.'],
   ['last', 'the boolean telling spendingMoment whether this is the final moment. Two points is the whole domain.'],
 ]);
 
@@ -3186,6 +3300,16 @@ function driveEverything(): readonly DrivenRow[] {
   }
   for (const identifier of [SENTINELS.NPC_ID, SENTINELS.RECRUIT_ID, SENTINELS.OWN_GYM_ID]) {
     drive('asNpcId', identifier, () => core.asNpcId(identifier), [identifier]);
+    // The three string brands added this round, driven on the same axis as
+    // their sibling rather than on one of their own. They are the constructor
+    // route the brands cannot type away, so instrument B is what reads what
+    // they hand back — and `refuseForbiddenName` is what makes them throw
+    // instead of handing anything back at all when the argument is a banned
+    // name. `refuses every banned name at every string brand constructor` is
+    // where that is driven; this is the benign half.
+    drive('asGymId', identifier, () => core.asGymId(identifier), [identifier]);
+    drive('asDisplayName', identifier, () => core.asDisplayName(identifier), [identifier]);
+    drive('asFaultMessage', identifier, () => core.asFaultMessage(identifier), [identifier]);
   }
   for (const now of SECONDS_DOMAIN) {
     const times = SECONDS_DOMAIN.slice(0, 4).map((seconds) => core.asUnacceleratedSeconds(seconds));
@@ -4846,10 +4970,10 @@ function measureDrive(): DriveMeasurement {
 }
 
 const DRIVE_CENSUS = Object.freeze({
-  ROWS: 206718,
-  EXPORTS_DRIVEN: 226,
-  NODES: 2393045,
-  STRINGS: 11204983,
+  ROWS: 206727,
+  EXPORTS_DRIVEN: 229,
+  NODES: 2393054,
+  STRINGS: 11205001,
   DISTINCT_STRINGS: 1611,
   DEPTH_CUTS: 0,
   /**
