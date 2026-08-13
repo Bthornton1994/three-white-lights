@@ -33,7 +33,11 @@
  * eight rounds closed one branch point and declared the next; the ninth was
  * declared open above `OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE` and no domain
  * could have reached it, because the author picks the number after seeing the
- * domain. The five bare-string fields are branded now, so that assignment does
+ * domain. THE TENTH CAME OUT OF THAT SAME REGION AND HAD A DIFFERENT SHAPE:
+ * `completeRecruitment` throwing the ban list's first member on a roster of
+ * `REPUTATION_MAX`, which no brand can see because a thrown Error's message is
+ * not a declared position anywhere. It is M25, and what closed it was driving
+ * the region rather than typing it — the two are not alternatives. The five bare-string fields are branded now, so that assignment does
  * not compile — at every branch point at once. `DECLARED_BARE_STRING_FIELDS` is
  * empty, `CLOSED_BARE_STRING_FIELDS` records what it held and what closed each
  * row, and M15-M18 in `PLANTED_ROUTES` are the measurement.
@@ -149,12 +153,20 @@
  *   a dropped point does not need one, so each of the 134 dropped points gets
  *   its axis's subjects called once at that single value against a minimal
  *   fixture, scanned by the same `deepScan` through the same `scanRow`. The
- *   ceilings did not move. What it does NOT cover is written as two numbers
- *   rather than a sentence: `OVERFLOW_CENSUS.POINTS_DRIVEN` is 104 of 134, and
- *   `OVERFLOW_RESIDUAL` names the 1 020 (subject, point) pairs an allocation
- *   budget declined, per subject, with the reason. The 30 points with no drive
- *   at all are ROSTER_SHAPE above 2 000, because that axis has no subject whose
- *   cost is flat in the roster size.
+ *   ceilings did not move. What it does NOT cover is written as numbers rather
+ *   than a sentence: `OVERFLOW_CENSUS.POINTS_DRIVEN` is 134 of 134, and
+ *   `OVERFLOW_RESIDUAL` names the 330 (subject, point) pairs an allocation
+ *   budget declines outright and the 690 more it drives with the re-read
+ *   ARGUMENT left unscanned, per subject, with the reason.
+ *
+ *   THOSE NUMBERS WERE 104 AND 1 020, AND THE THIRTY POINTS THE FIRST ONE WAS
+ *   SHORT ARE WHERE THE TENTH BYPASS LIVED. This paragraph used to say the
+ *   ROSTER_SHAPE points above 2 000 had no drive at all "because that axis has
+ *   no subject whose cost is flat in the roster size". True, and it was
+ *   answering the wrong question: `scanRow` has two regions, and on that axis
+ *   the linear one is the argument handed IN, not what comes back. All 690 of
+ *   those pairs drive in 7.9 s with the return region scanned. `OverflowCost`
+ *   has three classes now and `residual`'s rows say which region they decline.
  *
  *   Its second limit, and the one the domain fix alone did not close: a domain
  *   decides which NUMBERS an axis is driven at and says nothing about whether
@@ -1521,9 +1533,16 @@ describe('instrument A bites — the census is re-run over a probe carrying four
  * compiles and always will, because a brand is a constructor discipline rather
  * than an enumeration. Instrument B can only catch that where its domain
  * reaches the branch, and eight rounds have each closed one branch point and
- * declared the next — a ninth is declared open above
+ * declared the next — a ninth was declared open above
  * `OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE`. A sampling instrument does not
  * close a route the author picks a number for.
+ *
+ * AND THIS INSTRUMENT DOES NOT CLOSE EVERY ROUTE THE BRANDS LEFT, WHICH M25
+ * MEASURED. It counts brand-constructor CALL SITES, so it sees a route that
+ * mints. `throw new RangeError(EMPIRE_FORBIDDEN_OUTPUTS[0])` mints nothing,
+ * declares nothing, and is invisible to A and C alike; only the drive can see
+ * it, and only where the drive reaches. That is why the overflow pass's
+ * argument-region split is part of the same answer rather than a tidy-up.
  *
  * WHAT MAKES THE PROBLEM ENUMERABLE IS THE CHANGE OF SUBJECT. An unbounded
  * numeric input is not a finite set. A list of call sites is. So this instrument
@@ -2677,10 +2696,21 @@ function domainSpec(spec: NumericDomain): NumericDomain {
  * `OMITTED_ABOVE_CEILING` and `OVERFLOW_RESIDUAL` moving to say so.
  *
  * THE PART WHERE IT IS STILL NOT PURELY A COST KNOB, stated because the
- * sentence above is bounded and not absolute: for the 30 ROSTER_SHAPE points
- * above `OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE`, nothing drives them at
- * all. Raising the ceiling is priced: `DOMAIN_COST_SECONDS` measured that axis
- * at 138.1 s against 38.8 s for a ceiling of 120.
+ * sentence above is bounded and not absolute — AND CORRECTED, because the
+ * paragraph it replaces was true when written and stopped being true one round
+ * later. It read: "for the 30 ROSTER_SHAPE points above
+ * `OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE`, nothing drives them at all."
+ * Something does now. All 690 of that axis's (subject, point) pairs above the
+ * ceiling are called and their returns scanned; what the ceiling still buys is
+ * that the state handed in is not walked a second time. Raising the ceiling to
+ * get that back is still priced: `DOMAIN_COST_SECONDS` measured this axis at
+ * 138.1 s against 38.8 s for a ceiling of 120, and `OVERFLOW_COST_SECONDS` at
+ * 301.7 s against 11.8 s.
+ *
+ * The DAY ceiling has no such correction and was re-measured rather than
+ * assumed to share one: `runEmpire` at the smallest dropped DAY point, 2 500
+ * days, is 908 ms and returns 10 051 nodes, so there is no cheap region to take
+ * on that axis and its rows stay undriven.
  *
  * THE SENTENCE THAT USED TO END THAT PARAGRAPH IS NOW FALSE AND IS CORRECTED
  * RATHER THAN DELETED, because it was a correct prediction and the round it
@@ -4395,6 +4425,27 @@ const OVERFLOW_FLAT_NODE_CEILING = 400;
  */
 const OVERFLOW_RETURN_NODE_CEILING = 60;
 
+/**
+ * The horizon the roster-ceiling pin runs the composed loop to.
+ *
+ * Long enough that the loop fills every slot it can — the pin asserts the
+ * smallest stamp is 0 and the largest is `ROSTER_SLOTS_MAX`, so a horizon that
+ * never got there would redden rather than read as a ceiling.
+ */
+const ROSTER_CEILING_RUN_DAYS = 400;
+
+/**
+ * How many distinct roster sizes that run passes through, MEASURED on this tree.
+ *
+ * The non-vacuity number beside the ceiling: a loop that never recruits, and a
+ * loop that begins full, both read 1 here. Eight and not seventeen because the
+ * ledger is stamped once a day and the loop recruits faster than that early on,
+ * so the sizes it is READ at are a subset of the sizes it passes through — which
+ * is a fact about the stamp rather than about the ceiling, and is written here
+ * rather than left to look like a shortfall.
+ */
+const ROSTER_CEILING_SIZES_SEEN = 8;
+
 /** The gyms every overflow visit driver asks about, in the main drive's order. */
 const OVERFLOW_VISIT_GYM_IDS: readonly GymId[] = Object.freeze([
   core.asGymId(`${SENTINELS.FRIEND_GYM_ID}-0`),
@@ -5321,6 +5372,14 @@ const OVERFLOW_CENSUS = Object.freeze({
   PAIRS_SKIPPED: 330,
   /** Of the driven, how many had the re-read argument region left unscanned. */
   PAIRS_ARGUMENT_SKIPPED: 690,
+  /**
+   * ROSTER_SHAPE points above its allocation ceiling.
+   *
+   * The number the tenth bypass hid in, kept as its own row because the pin
+   * below drives all thirty of them one at a time and a shrunken list would
+   * otherwise pass quietly.
+   */
+  ROSTER_POINTS_ABOVE_THE_CEILING: 30,
   /**
    * DERIVED INDEPENDENTLY RATHER THAN READ OFF A FAILURE, for the four that
    * can be. The old values were 1 789 rows, 521 418 nodes and 3 538 100
@@ -6532,6 +6591,143 @@ describe('the overflow pass — the catcher for what the ceilings drop', () => {
     }
   });
 
+  it('leaves nothing writable in the argument it stops re-reading, and counts what it walked', () => {
+    // THE NAMED CATCHER FOR THE ARGUMENT-REGION SKIP, and the shape is
+    // CLAUDE.md's "a bounded claim, a declared limit, and a named catcher"
+    // rather than an absolute.
+    //
+    //   WHAT THE SKIP GUARANTEES, in the mechanism's own terms: for the 690
+    //   ROSTER_SHAPE pairs above the ceiling, the call runs and everything it
+    //   RETURNS or THROWS is scanned in full, by the same walker and the same
+    //   fold list the main drive uses.
+    //
+    //   THE ROUTE THAT GETS PAST IT, named concretely enough to plant: attack
+    //   shape 13's second half — a value delivered not by returning it but by
+    //   WRITING it into a caller-supplied sink. The `argument` region is what
+    //   reads that back, and above the ceiling it is not read.
+    //
+    //   THE CHECK THAT COVERS THAT ROUTE: this one. Every object reachable
+    //   from the fixture those calls are handed is frozen, so the write throws
+    //   a TypeError — and a throw lands in the RETURN position, which is
+    //   scanned at every point. The route does not become invisible; it
+    //   becomes loud somewhere else.
+    //
+    // Its own residual, stated rather than implied: freezing stops a write to
+    // an own property. It does not stop a subject handing back a value it
+    // derived from the argument, which is the return region's job and is
+    // scanned.
+    const smallest = overflowPoints()
+      .filter(
+        (point) =>
+          point.domain === 'ROSTER_SHAPE' &&
+          point.value > (OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE ?? 0),
+      )
+      .reduce(
+        (best, point) => (best === null || point.value < best.value ? point : best),
+        null as OverflowPoint | null,
+      );
+    expect(smallest?.value, 'the axis has a point above its ceiling').toBeGreaterThan(0);
+    const fixture = overflowState(smallest?.value ?? 0);
+
+    // Walked rather than spot-checked at three properties, because a fixture
+    // that grows an unfrozen field is exactly the thing this would stop
+    // noticing. Counts, not bounds.
+    let objects = 0;
+    let unfrozen: string[] = [];
+    const walk = (value: unknown, path: string, depth: number): void => {
+      if (typeof value !== 'object' || value === null || depth > 6) return;
+      objects += 1;
+      if (!Object.isFrozen(value)) unfrozen.push(path);
+      for (const [key, child] of Object.entries(value)) walk(child, `${path}.${key}`, depth + 1);
+    };
+    walk(fixture, 'state', 0);
+    expect(unfrozen).toEqual([]);
+    unfrozen = [];
+    expect(objects).toBeGreaterThan(smallest?.value ?? 0);
+
+    // …and the freeze is what makes the write loud, measured rather than
+    // asserted. A frozen own property assigned to in a module — every file
+    // here is one — throws rather than failing silently.
+    const sink = fixture as unknown as Record<string, unknown>;
+    expect(() => {
+      sink[SENTINELS.OWN_GYM_ID] = core.EMPIRE_FORBIDDEN_OUTPUTS[0];
+    }).toThrow(TypeError);
+    expect(Object.hasOwn(fixture, SENTINELS.OWN_GYM_ID)).toBe(false);
+  });
+
+  it('pins what bounds a roster, because the two arms of that comparison are different questions', () => {
+    // WHY THIS SITS HERE AT ALL. The residual above used to be argued away
+    // rather than driven: nothing in this directory can BUILD a roster over
+    // `ROSTER_SLOTS_MAX`, so a roster-size branch point above the ceiling was
+    // taken to be unreachable. Half of that is true and it is the half that
+    // does not matter.
+    //
+    // The composed loop cannot reach one. Measured, not read: a 400-day run
+    // stamps `state.roster.length` into its own ledger on every day, and the
+    // largest it ever reads is `ROSTER_SLOTS_MAX`. So a branch point above the
+    // ceiling planted INSIDE `stepGym`'s capacity-gated block is dead code,
+    // which is why that mutant is recorded as inert.
+    //
+    // The exports are not the loop. `rosterCapacity` capping at
+    // `ROSTER_SLOTS_MAX` is what CREATES the over-capacity arm, and that arm is
+    // where five exports do their work: a decoded payload holding more lifters
+    // than slots is the case `empireStateFaults` exists for. Every one of them
+    // runs at every one of the thirty points the ceiling used to drop, which is
+    // what the tenth bypass rode and what the pass above now covers.
+    //
+    // Raising `ROSTER_SLOTS_MAX` past a dropped point reddens the first half
+    // here, which is the whole reason it is a pin and not a paragraph.
+    const run = invariant.runEmpire(
+      ROSTER_CEILING_RUN_DAYS,
+      policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY),
+      planAt(null, 0),
+      socialInputsAt(),
+    );
+    const rosterStamps = run.ledger.filter((entry) => entry.output === 'roster-slot');
+    expect(rosterStamps.length).toBe(ROSTER_CEILING_RUN_DAYS);
+    const worstInTheLoop = Math.max(...rosterStamps.map((entry) => entry.amount));
+    expect(worstInTheLoop).toBe(EMPIRE_TUNING.ROSTER_SLOTS_MAX);
+    // The loop GREW to it rather than starting there, which is what would make
+    // the number above a ceiling nothing ever pushed against. A run that never
+    // recruited reads one distinct size and fails both of these; a run that
+    // began full reads one distinct size and fails the second.
+    const sizesSeen = distinct(rosterStamps.map((entry) => String(entry.amount)));
+    expect(sizesSeen.length).toBe(ROSTER_CEILING_SIZES_SEEN);
+    expect(Math.min(...rosterStamps.map((entry) => entry.amount))).toBeLessThan(worstInTheLoop);
+
+    // And the second half: at every dropped point, the over-capacity arm of
+    // both comparisons produced a value. Per point, not in aggregate.
+    let refused = 0;
+    let threw = 0;
+    let faulted = 0;
+    const dropped = overflowPoints().filter(
+      (point) =>
+        point.domain === 'ROSTER_SHAPE' &&
+        point.value > (OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE ?? 0),
+    );
+    for (const point of dropped) {
+      const state = overflowState(point.value);
+      if (recruitmentModule.recruitmentRefusals(state, OVERFLOW_TIER).includes('roster-at-capacity')) {
+        refused += 1;
+      }
+      if (core.empireStateFaults(state).length > 0) faulted += 1;
+      try {
+        recruitmentModule.completeRecruitment(
+          state,
+          recruitmentModule.recruitmentSchedule(OVERFLOW_TIER, state.clock),
+          SENTINELS.RECRUIT_ID,
+          SENTINELS.RECRUIT_DISPLAY_NAME,
+        );
+      } catch {
+        threw += 1;
+      }
+    }
+    expect(dropped.length).toBe(OVERFLOW_CENSUS.ROSTER_POINTS_ABOVE_THE_CEILING);
+    expect(refused).toBe(dropped.length);
+    expect(faulted).toBe(dropped.length);
+    expect(threw).toBe(dropped.length);
+  });
+
   it('joins a measured price to every domain whose budget skips a pair, in both directions', () => {
     // The same rule `DOMAIN_COST_SECONDS` is held to, and the same rule that
     // deleted two of E14's five ceilings: a concession has to show a real
@@ -6965,6 +7161,7 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
     alsoRed: Object.freeze([
       'instrument A bites / compiles the probe cleanly — the same diagnostic read through the probe program. Named rather than omitted: it is one fact reported twice, not two catchers.',
       'THE MEASUREMENT THAT MAKES THIS THE HEADLINE: with the mutant in place, `npx vitest run src/empire` is 2 failed of 463 and BOTH are the diagnostic above. Instrument B is green, the overflow pass is green, and instrument C is green — nothing drives a roster of 2 001, exactly as FOREIGN_CEILINGS said. The type is the only catcher, and it did not need to be pointed at the number.',
+      'THE LAST CLAUSE OF THAT IS NOW STALE AND IS ANNOTATED RATHER THAN REWRITTEN, because it is a record of what was measured on the day. Something does drive a roster of 2 001 now: the argument-region split reaches all thirty of the dropped ROSTER_SHAPE points. What the row is evidence for is unchanged — the compiler caught this route with no drive at all — and M25 is the row that shows why the drive still had to come back.',
     ]),
   }),
   Object.freeze({
@@ -7091,6 +7288,56 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'instrument B / drives every export the census knows about: - "asBadgeId"',
       'empireCore.test.ts / the producer census: expected 989 to be 914; / fences every branded quantity: expected 21 to be 20; / ships no string: expected 168 to be 167',
       "accidentalCatchersGreen is FALSE, and unavoidably: a new export cannot be added without the export censuses seeing it. What this row is evidence FOR is narrower and is the reason it was run — the refusal test found the new constructor WITHOUT BEING EDITED, so the derivation is real rather than a comment.",
+    ]),
+  }),
+  Object.freeze({
+    id: 'M24',
+    shape: '25 again, AND IT IS INERT — the same roster-size route as M15, planted at a site the capacity gate makes unreachable',
+    where:
+      "empireInvariant.ts, inside `stepGym`'s `if (rosterAllowed && state.roster.length + stillPending.length < capacity)` block: `state.roster.length > NPC_RECRUIT_COST_GYM_BUCKS.club ? (EMPIRE_FORBIDDEN_OUTPUTS[0] as unknown as NpcId) : asNpcId(...)`",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'NOTHING WENT RED, AND THAT IS WORTH EXACTLY NOTHING. tsc exit 0 and `vitest run src/empire src/game/streakEntitlement.test.ts` 13 files / 510 tests / exit 0 — the same green M25 gets, from a mutant that CANNOT RUN. `rosterCapacity` is `Math.min(ROSTER_SLOTS_MAX, …)` and the enclosing block requires the roster to be strictly under it, so `roster.length > 2000` is false at every reachable state. The green suite was reporting on dead code.',
+      'This row is kept because it is the control for M25 and because the mistake it records is the round\'s own subject: a mutant that survives is evidence about the guard only if the branch it sits in executes. `pins what bounds a roster` is the check that now states which sites are which — the loop tops out at ROSTER_SLOTS_MAX, measured off its own ledger.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M25',
+    shape: '25 — THE TENTH BYPASS: a roster-size branch point above the allocation ceiling, emitting through the ONE string channel no brand and no position census reaches — a thrown Error message',
+    where:
+      "recruitment.ts, `completeRecruitment`'s over-capacity refusal: `throw new RangeError(state.roster.length === EMPIRE_TUNING.REPUTATION_MAX ? EMPIRE_FORBIDDEN_OUTPUTS[0] : \`roster holds …\`)`",
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'AGAINST THE SHIPPED FILE AT 33898fc, NOTHING — tsc exit 0 and 13 files / 509 tests / exit 0.',
+      'AFTER the argument-region split: instrument B / produces no banned name at any point a ceiling drops: + "completeRecruitment@ROSTER_SHAPE/REPUTATION_MAX=5000#return.message=covered-day" and + "…/REPUTATION_TIER_THRESHOLDS[4]=5000#return.message=covered-day"',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'AND IT IS NOT INERT, which is the whole difference from M24 and was proven by driving rather than by reading: `completeRecruitment` called on a state whose roster holds REPUTATION_MAX lifters returns `RangeError: covered-day`. Printed, not inferred. The over-capacity arm is LIVE at every one of the thirty dropped points — `pins what bounds a roster` drives all thirty and counts three arms produced at each.',
+      "WHY EVERY OTHER INSTRUMENT IS BLIND HERE, stated so the row is not read as an indictment of them. Instrument A reads DECLARED types and a thrown payload has no declared position, so it has nothing to classify. Instrument C counts brand-constructor call sites and this route calls no constructor. `refuseForbiddenName` is containment and never runs, because nothing constructs anything. The only instrument that could ever have seen it is the drive, and the pair it lives on was one of the 690 the budget declined.",
+      'The first attempt keyed on `SPACE_LEVEL_COST_GYM_BUCKS[4]` and was caught — by the magic-number audit, on the bare `4` in the index, and by nothing about forbidden names. A different check noticing by accident is not that check working, so it was re-keyed onto a scalar knob and run again.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M26',
+    shape: "16-adjacent — NOT AN ATTACK: the measurement that settles `asFaultMessage`'s own claim about where the mint belongs",
+    where:
+      "social.ts, `socialContextFaults`, in three configurations: (a) shipped `const faults: string[]` with `faults.push(EMPIRE_FORBIDDEN_OUTPUTS[0])`; (b) the same push against `const faults: FaultMessage[]`; (c) FaultMessage[] with every push minted",
+    attempts: 3,
+    tscExit: 2,
+    caughtBy: Object.freeze([
+      "tsc --noEmit is the whole instrument here, and it answers differently in each configuration. (b) is exit 2: `src/empire/social.ts(837,19): error TS2345: Argument of type 'string' is not assignable to parameter of type 'FaultMessage'.` — the same error on all twelve template-literal pushes beside it, plus TS2345 on the return-side mint, which `Unbranded` refuses once the elements are already branded.",
+      "(a) tsc exit 0 — no compile signal at all, which is the shipped state and is what `asFaultMessage`'s note already says.",
+      '(c) tsc exit 0 — `faults.push(asFaultMessage(EMPIRE_FORBIDDEN_OUTPUTS[0]))` compiles and is contained at runtime, which is route 2 exactly as predicted.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      "WHAT IT SETTLES. `asFaultMessage`'s note argued the wrap 'would buy NOTHING at compile time over minting once at the return: either way the literal reaches a constructor, which is route 2 and not route 1'. That is true of a TEMPLATE LITERAL and false of the shape every bypass in this file has actually used — a bare `string` read out of the ban list. Under the shipped `string[]` that push is route 2; under `FaultMessage[]` it is a compile error. The note is corrected at the constructor rather than here.",
+      'The cost is real and is stated with the count: 125 `faults.push` sites across six modules would each need a mint, and the shipped fault channel is contained rather than open — `asFaultMessage` throws on the way out at every one of the eight `*Faults` returns. So this is a detection-versus-containment trade, not an open hole, and it is reported rather than taken.',
     ]),
   }),
 ]);
@@ -7230,11 +7477,22 @@ describe('the routes that were planted, and what each of them cost', () => {
     ).toBe(2);
   });
 
-  it('records twenty-three routes, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(23);
+  it('records every route it planted, and names the two that could not be isolated', () => {
+    expect(PLANTED_ROUTES.length).toBe(26);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
-      expect(route.caughtBy.length, route.id).toBeGreaterThan(0);
+      // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
+      // Every other row records a mutant that something caught; M24 records one
+      // that NOTHING caught and that was worth nothing anyway, because the
+      // branch it sits in cannot execute. A row like that is the control the
+      // rest of the table needs, so the schema admits it by name — and requires
+      // it to say in `alsoRed` why its own green is not evidence.
+      if (route.id === 'M24') {
+        expect(route.caughtBy).toEqual([]);
+        expect(route.alsoRed.length, route.id).toBeGreaterThan(1);
+      } else {
+        expect(route.caughtBy.length, route.id).toBeGreaterThan(0);
+      }
       expect(route.shape.length, route.id).toBeGreaterThan(20);
       // A ROW MAY NOW EXIT 2, AND THAT IS A WIDENING OF THE SCHEMA RATHER THAN
       // A RELAXATION OF THE STANDARD. Every row before M15 had `tscExit: 0`
@@ -7272,7 +7530,7 @@ describe('the routes that were planted, and what each of them cost', () => {
     // could not reach with any domain.
     expect(
       PLANTED_ROUTES.filter((route) => route.tscExit === 2).map((route) => route.id),
-    ).toEqual(['M15', 'M16', 'M17', 'M18']);
+    ).toEqual(['M15', 'M16', 'M17', 'M18', 'M26']);
     // Twenty-two attempts for fourteen routes: the fifteen the first nine took,
     // one for M10, two for M11, one for M12, two for M13 and one for M14 —
     // which needed no extra attempt because the lead agent had already stripped
@@ -7284,9 +7542,13 @@ describe('the routes that were planted, and what each of them cost', () => {
     // new `'stack'` literal, 160 against 159, and M13's first form, which keyed
     // on a threshold that `empireTuning.test.ts` lists as having no consumer,
     // so the mutant BECAME the consumer and that census reddened instead.
-    // Twenty-two for the first fourteen, one each for M15-M23.
-    expect(attempts).toBe(31);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(13);
+    // Twenty-two for the first fourteen, one each for M15-M23, one for M24,
+    // two for M25 — its first form keyed on a bare array index and was caught
+    // by the magic-number audit rather than by anything about names — and
+    // three for M26, which is a measurement in three configurations rather
+    // than an attack.
+    expect(attempts).toBe(37);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(16);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
