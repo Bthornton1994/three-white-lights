@@ -4017,6 +4017,56 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
  */
 const GYM_SNAPSHOT_STRINGS: readonly string[] = Object.freeze(['Placeholder', 'composed-gym']);
 
+/**
+ * A wall-clock budget for the one block in this file that outgrew the global
+ * one, applied per BLOCK and not per test, in the shape `engagement.test.ts`
+ * already uses in this directory.
+ *
+ * WHY IT IS NEEDED NOW AND WAS NOT BEFORE. The registry used to file 40 of
+ * `EMPIRE_TUNING`'s 100 numeric leaves; it files 66 and exempts 34, and every
+ * domain carries every branch point under its ceiling. That took the drive from
+ * 53 162 rows to 206 718, and this file from 17.4 s to 43.7 s.
+ *
+ * MEASURED solo, in the shipped configuration, every test in this file over 1 s,
+ * slowest first:
+ *
+ *   34223 ms  [instrument B]  drives every export the census knows about
+ *    5416 ms  [instrument B]  CONTAINS no banned name either, outside the…
+ *    4547 ms  [instrument B]  produces no banned name from any export…
+ *    1978 ms  [instrument A]  walks the whole directory without truncating
+ *    1386 ms  [A bites]       compiles the probe cleanly
+ *    1160 ms  [instrument B]  walked a domain that is not empty
+ *
+ * IT WAS FOUND BY A RED RUN, NOT BY THIS TABLE. Solo, the 34 s test passes
+ * against the 30 s global budget — it does not, because 34 > 30, and yet the
+ * solo run is green. Under a whole-suite run it went red once and passed twice
+ * on the same tree, which is `vitest.config.ts`'s recorded flakiness exactly:
+ * a margin that is thin solo is gone under parallel load. So the number that
+ * decided this is 34 223 against 30 000, and the direction of the flake was the
+ * reassuring one — the run that reported it also reported the two genuine
+ * catches, so a reader could have filed the timeout as part of the finding.
+ *
+ * THE BLOCK AND NOT THE ONE TEST, for the reason `engagement.test.ts` gives:
+ * the 5.4 s and 4.5 s tests beside it are the same drive read twice more, so
+ * under load they are the same risk as the 34 s one. `engagement.test.ts`'s
+ * stated threshold is a third of the global budget, which all three clear.
+ * Every other block in this file tops out at 1978 ms and keeps the global 30 s.
+ *
+ * VERIFIED TO PROPAGATE, BOTH DIRECTIONS, rather than assumed, because a budget
+ * vitest quietly ignored would be a decoration reading as a fix:
+ *
+ *   - Set to `1_000`, FOUR tests in this block fail with the BLOCK's number —
+ *     `Error: Test timed out in 1000ms.`, four times — so the third argument
+ *     reaches the tests inside it. Four and not three: `walked a domain that is
+ *     not empty` is 1160 ms and crosses a 1 s line that 90 s is nowhere near,
+ *     which is what a scoped budget looks like when it is really scoped.
+ *   - Under the same `1_000`, `walks the whole directory without truncating`
+ *     (1978 ms, a different block) still passes, which it can only do on the
+ *     global 30 s budget. So the value is scoped to its own block rather than
+ *     leaking file-wide.
+ */
+const DRIVE_BLOCK_TIMEOUT_MS = 90_000;
+
 describe('instrument B — nothing this directory produces is a forbidden name', () => {
   it('drives every export the census knows about, in both directions', () => {
     const census = distinct(stringSurface().exports.map((key) => key.split('#')[1] as string));
@@ -4167,7 +4217,7 @@ describe('instrument B — nothing this directory produces is a forbidden name',
     );
     expect(fromSnapshot).toEqual(GYM_SNAPSHOT_STRINGS);
   });
-});
+}, DRIVE_BLOCK_TIMEOUT_MS);
 
 describe('instrument B bites — the tripwire the zeros are zero against', () => {
   it('finds a banned name in every shape the scanner claims to reach', () => {
