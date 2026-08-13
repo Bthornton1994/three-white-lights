@@ -578,7 +578,7 @@ const GUARANTEE_COVERAGE = {
    * without a capitalised run of an absolute, and the census over those three
    * files reads 0, 0 and 5 after the merge.
    */
-  TREE_WIDE: 237,
+  TREE_WIDE: 238,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -854,7 +854,7 @@ const UNPINNED_PROSE_NUMBERS: readonly UnpinnedProseNumber[] = [
  */
 const NUMBER_COVERAGE = {
   /** Comment paragraphs under `src` carrying at least one tag. */
-  TAGGED_PARAGRAPHS: 62,
+  TAGGED_PARAGRAPHS: 63,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
@@ -875,9 +875,9 @@ const NUMBER_COVERAGE = {
    * for reasons of their own. THIS IS THE WEAKNESS MEASUREMENT, not a coverage
    * one: it says how little a small number resolving is worth.
    */
-  NAMED_BODIES: 53,
-  NAMED_BODIES_HOLDING_ZERO: 43,
-  NAMED_BODIES_HOLDING_ONE: 43,
+  NAMED_BODIES: 54,
+  NAMED_BODIES_HOLDING_ZERO: 44,
+  NAMED_BODIES_HOLDING_ONE: 44,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -945,6 +945,15 @@ interface MutationWitness {
    */
   readonly observed: string;
   /**
+   * The domain the transcript's number was measured over, quoted verbatim from
+   * the body of the same test `redAssertion` is quoted from.
+   *
+   * Required on a row the transcript rule grades whose `observed` states a bare
+   * measured scalar; see the block above `DOMAIN_FAULTS` for why the number
+   * itself cannot be compared and what this anchor buys instead.
+   */
+  readonly measuredOver?: string;
+  /**
    * Set on a row whose `observed` was transcribed before the transcript rule
    * existed and does not satisfy it. Tracked debt in the shape this file
    * already uses: closed by re-running the mutant and pasting a whole
@@ -959,6 +968,15 @@ interface MutationWitness {
  * would resolve against half the file and expire against nothing.
  */
 const MIN_ANCHOR_LENGTH = 24;
+
+/**
+ * The smallest numeral a domain anchor may state and still be a population.
+ *
+ * A pin holding 0 or 1 is a property, a flag or an emptiness check; none of
+ * them moves when a sweep deepens, which is the only movement the anchor below
+ * exists to notice.
+ */
+const SMALLEST_POPULATION = 2;
 
 // ---------------------------------------------------------------------------
 // A red file is not a caught mutant, and the colour does not tell them apart
@@ -1105,10 +1123,190 @@ function anchorOccurrences(file: string, anchor: string): number {
  */
 const TRANSCRIPT_BAR = {
   /** Witness rows whose transcript is held to the rule. */
-  GRADED: 18,
+  GRADED: 19,
   /** ...and rows excused because their transcript predates it. */
   PREDATING: 37,
+  /**
+   * ...of the graded rows, how many quote a bare measured scalar and therefore
+   * owe a `measuredOver` anchor. A count rather than a bound, for the reason
+   * the two above are counts: a required set that drained to nothing would
+   * leave the domain rule below green and checking nobody.
+   */
+  WITH_A_MEASURED_NUMBER: 16,
 } as const;
+
+// ---------------------------------------------------------------------------
+// A number in a transcript cannot be compared, so anchor what it was measured
+// over instead
+// ---------------------------------------------------------------------------
+
+/**
+ * THE GAP THIS CLOSES, MEASURED ON THIS TABLE RATHER THAN SUSPECTED.
+ *
+ * `attending-a-meet-never-removes-one` recorded `expected 24 to be +0`. Its own
+ * anchor mutation gives `expected 86 to be +0` at this tree. The row still
+ * bites — same named assertion, still red, and the assertion genuinely ran — so
+ * both arms of the transcript rule pass it. Neither reads the number. That is
+ * this codebase's most-recorded shape, a quantity carried and displayed and
+ * never compared, sitting inside the mechanism written to close a neighbouring
+ * instance of it.
+ *
+ * It went stale TWICE. AXIS B's own domain pin reads 2520 at 06fa4ec, 78926 at
+ * ba37cd5 and 322947 at e9040d5; the control the mutant collapses onto reads
+ * 24, then 74, then 86. The row was written against the first and survived both
+ * deepenings green.
+ *
+ * WHY THE NUMBER ITSELF IS NOT COMPARED, and this was measured before it was
+ * decided rather than after:
+ *
+ *   - IT CANNOT BE RE-DERIVED FROM THIS TREE. The actual side of a witness
+ *     transcript is a measurement of the MUTATED tree, which by construction is
+ *     a number the shipped code does not produce. Transplanting this file's own
+ *     numeric-prose rule — every numeral must occur in the named test's body —
+ *     flags most of the rows that state one, and it is inverted rather than
+ *     merely strict: a mutant's count belongs in no assertion here. The
+ *     transplant is kept RUNNABLE beside the rule that replaced it, and its
+ *     four counts are `TRANSPLANTED_NUMERIC_RULE`, re-derived on every run
+ *     rather than written into this sentence.
+ *   - AND IT WOULD HAVE WALKED PAST THE DEFECT THAT PROMPTED IT. `24` still
+ *     occurs in AXIS B's body today, as `expect(shipped.seasons).toBe(24)`. A
+ *     body-scoped resolution check was green through both deepenings, on a
+ *     coincidence with an unrelated pin — the same one-level-in failure the
+ *     numeric rule's own grant records about `144`.
+ *   - THE ONLY ORACLE IS A RE-RUN, AND IT DOES NOT FIT IN A SUITE.
+ *     `src/career/eligibility.test.ts` takes 170s whole and 83s narrowed to one
+ *     test, measured on this tree; a table of this size is half an hour of
+ *     runtime per pass. `MutationWitness` also records the text a mutant
+ *     REPLACED and not what it replaced it with, so a third party cannot even
+ *     reproduce the run — the number is unfalsifiable by anything but its
+ *     author. That is a real gap and it is stated here rather than closed here.
+ *
+ * WHAT IS ENFORCED INSTEAD. A number is a measurement OVER a population, and
+ * the population is a thing this codebase pins in the test body as a literal.
+ * So the row quotes that pin, and the pin is held exactly as the other two
+ * anchors are: it must still occur, once, inside the body of the test the tag
+ * names. A sweep that deepens moves its own domain pin, the anchor stops
+ * resolving, and the row goes red at the moment its number stopped being true —
+ * which is what would have happened at `2520` becoming `78926`, one deepening
+ * before anyone noticed.
+ *
+ * The four faults are separate because each excludes a different way of writing
+ * an anchor that cannot expire:
+ *
+ *   - `no-domain-anchor` — a graded row whose transcript quotes a bare scalar
+ *     and anchors no domain at all.
+ *   - `domain-anchor-not-in-the-body` — the anchor does not occur exactly once
+ *     inside the named test's body. This is the arm that fires on a deepening,
+ *     and it is scoped to the body for the reason `redAssertion` is: the same
+ *     pin exists in the sibling series test one screen down, and a file-scoped
+ *     version would keep resolving against that one.
+ *   - `domain-anchor-is-the-property` — the anchor overlaps `redAssertion` in
+ *     either direction. WITHOUT THIS ARM THE WHOLE RULE IS A SECOND COPY OF THE
+ *     FRESHNESS CHECK: a row could anchor the property assertion it already
+ *     anchors, and the two would be red in exactly the same states.
+ *   - `domain-anchor-states-no-population` — the anchor states no numeral of
+ *     two or more, so it pins a flag or a property's zero rather than a
+ *     population, and a deepening would not move it.
+ *
+ * WHAT IT DOES NOT REACH, said as plainly as the transcript rule says its own
+ * limits:
+ *
+ *   - A number that moved because the MODULE UNDER TEST changed while the
+ *     domain held. The anchor still resolves and the row stays green. No static
+ *     oracle exists for that; only the re-run priced above does.
+ *   - A number that was wrong when it was written. Nothing here runs anything.
+ *   - The rows the transcript rule excuses. This does not open a second debt
+ *     list — it holds the set that rule already grades, and nothing else.
+ *   - A domain change that leaves the mutant's count where it was. The row
+ *     expires anyway and costs one re-run to re-anchor. That is churn without
+ *     information, and it is the price of the arm above it.
+ *
+ * NEITHER ARM OF THE TRANSCRIPT RULE SUBSUMES THIS AND IT SUBSUMES NEITHER,
+ * compared on inputs rather than on intuition: `transcriptFaults` reads
+ * `observed` and the live title and nothing else; this reads `measuredOver`,
+ * `redAssertion` and the body and never the transcript's words. Disjoint
+ * inputs, so no state of one decides the other. It is kept out of
+ * `TRANSCRIPT_FAULTS` for a second reason as well, and that one is the standing
+ * rule about a new check killing an old one: the excused rows are held by
+ * `expect(faults.length).toBeGreaterThan(0)`, so folding a fault kind those
+ * rows can trip into that list would let a stale excuse pass on the new arm's
+ * finding.
+ *
+ * The rule as one sentence, carrying its tag in the same paragraph for the
+ * reason the transcript rule's does — a blank comment line between a claim and
+ * its tag has taken a claim out of a scan's reach in this repository already: a
+ * witness that quotes a measured number must also quote, verbatim from the body
+ * of the test its tag names, the population pin that number was measured over,
+ * so a sweep that deepens expires the row instead of leaving a stale figure
+ * standing as evidence. `@guarantee a-measured-transcript-anchors-its-domain`
+ */
+const DOMAIN_FAULTS = [
+  'no-domain-anchor',
+  'domain-anchor-not-in-the-body',
+  'domain-anchor-is-the-property',
+  'domain-anchor-states-no-population',
+] as const;
+
+/** Derived from the list, for the reason `TranscriptFault` is derived from its own. */
+type DomainFault = (typeof DOMAIN_FAULTS)[number];
+
+/**
+ * Vitest prints the actual side bare when it is a number — `expected 86 to be
+ * +0`, `expected 43 to be 50`. An array or a string on that side prints its own
+ * shape instead, and a row quoting one owes no domain because there is no
+ * measured quantity to be stale.
+ */
+const MEASURED_SCALAR = /expected\s[+-]?\d+(?:\.\d+)?\sto\s/;
+
+/**
+ * What the obvious rule measures on this table, pinned so the argument against
+ * it is a fact in the repository rather than a sentence in a report.
+ *
+ * `rows` is the transcripts that state a numeral at all, `flagged` the ones
+ * holding at least one the named test's body does not carry, and the two
+ * numeral counts the same population one grain down. It is re-derived in the
+ * test rather than transcribed here, so it moves when the table does.
+ */
+const TRANSPLANTED_NUMERIC_RULE = {
+  rows: 48,
+  flagged: 36,
+  numerals: 124,
+  unresolved: 64,
+} as const;
+
+/** Whether an anchor states a population rather than a property's 0 or 1. */
+function statesAPopulation(anchor: string): boolean {
+  for (const match of anchor.matchAll(/\d+(?:\.\d+)?/g)) {
+    if (Number(match[0]) >= SMALLEST_POPULATION) return true;
+  }
+  return false;
+}
+
+/**
+ * What is wrong with one row's domain anchor, or an empty list.
+ *
+ * `body` is the body of the test the tag declares — `null` when no test
+ * declares it, which the freshness check reports on its own and this one then
+ * reads as "not in the body" rather than crashing.
+ */
+function domainAnchorFaults(
+  witness: MutationWitness,
+  body: string | null,
+  graded: boolean,
+): DomainFault[] {
+  const anchor = witness.measuredOver;
+  if (anchor === undefined) {
+    return graded && MEASURED_SCALAR.test(flatten(witness.observed)) ? ['no-domain-anchor'] : [];
+  }
+  const faults: DomainFault[] = [];
+  const occurrences = anchor.length > MIN_ANCHOR_LENGTH ? (body ?? '').split(anchor).length - 1 : 0;
+  if (occurrences !== 1) faults.push('domain-anchor-not-in-the-body');
+  if (anchor.includes(witness.redAssertion) || witness.redAssertion.includes(anchor)) {
+    faults.push('domain-anchor-is-the-property');
+  }
+  if (!statesAPopulation(anchor)) faults.push('domain-anchor-states-no-population');
+  return faults;
+}
 
 /**
  * Mutants that turn a test file red WITHOUT running a test — the shape the rule
@@ -1264,6 +1462,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + '    expect(shipped.worstDeficit).toBe(0);\n'
       + '\n'
       + '    // The domain, pinned as counts rather than as bounds.',
+    measuredOver: 'expect(shipped.pairs).toBe(80601);',
     observed:
       'FAIL src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for '
       + 'fewer meets > [strength-never-removes-a-meet] every ordered pair on the grid, and the '
@@ -1281,11 +1480,12 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + '    expect(shipped.worstDeficit).toBe(0);\n'
       + '\n'
       + '    // The domain. `badDays` is the count that matters most',
+    measuredOver: 'expect(shipped.pairs).toBe(322947);',
     observed:
       'FAIL src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies '
       + 'for fewer > [attending-a-meet-never-removes-one] every skipped meet in every seeded '
       + 'season, and the control beside it\n'
-      + 'AssertionError: expected 24 to be +0 // Object.is equality',
+      + 'AssertionError: expected 86 to be +0 // Object.is equality',
   },
   // -------------------------------------------------------------------------
   // The numeric half of the tag, witnessed from BOTH sides of its set equality,
@@ -1407,6 +1607,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       '      if (spendsOn.attended[day * policy.checkInsPerDay + tick] !== true) continue;',
     testFile: 'src/empire/engagement.test.ts',
     redAssertion: 'expect(heldAnchorViolating).toBe(0);',
+    measuredOver: 'expect(movesMoment).toBe(8064);',
     observed:
       'holds the decision moment and the other arm goes to zero too\n' +
       'AssertionError: expected 6459 to be +0 // Object.is equality',
@@ -1429,6 +1630,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     testFile: 'src/empire/engagement.test.ts',
     redAssertion:
       'expect(tally.violatingPairs, anchor).toBe(MEASURED_ANCHOR.WINDOWED[anchor].violatingPairs);',
+    measuredOver: 'expect(tally.pairs, anchor).toBe(24576);',
     observed:
       'pins every day anchor on the shipped wiring, and only one of the four is zero\n' +
       'AssertionError: first-affordable-check-in-per-purse: expected 31 to be +0' +
@@ -1462,6 +1664,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     mutated: "leaves this file's 50 checks green",
     testFile: 'src/empire/empireInvariant.test.ts',
     redAssertion: 'expect(declared).toBe(declarations.length);',
+    measuredOver: 'expect(declared).toBe(50);',
     observed:
       "§4a's denominator is this file's own check count" +
       ' [section-4a-denominator-is-measured]\n' +
@@ -1505,6 +1708,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     mutated: '  return elapsedFor(clock, gateTarget(output));',
     testFile: 'src/empire/empireInvariant.test.ts',
     redAssertion: 'expect(totals.moved).toBe(0);',
+    measuredOver: 'expect(totals.elements).toBe(2616);',
     observed:
       'compares the TRAINING IQ series by wall-clock day, and finds nothing moved\n' +
       'AssertionError: expected 282 to be +0 // Object.is equality',
@@ -1521,6 +1725,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       "    outputReach(output) === 'progression-reaching' ? clock.unaccelerated : clock.accelerated;",
     testFile: 'src/empire/empireInvariant.test.ts',
     redAssertion: 'expect(totals.moved).toBe(0);',
+    measuredOver: 'expect(totals.elements).toBe(2616);',
     observed:
       'compares the TRAINING IQ series by wall-clock day, and finds nothing moved\n' +
       'AssertionError: expected 2592 to be +0 // Object.is equality',
@@ -1535,6 +1740,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       "    outputReach(output) === 'progression-reaching' ? clock.unaccelerated : clock.accelerated;",
     testFile: 'src/empire/empireInvariant.test.ts',
     redAssertion: 'expect(totals.moved).toBe(0);',
+    measuredOver: 'expect(totals.elements).toBe(2616);',
     observed:
       'compares the PHYSIO series by wall-clock day, and finds nothing moved\n' +
       'AssertionError: expected 2592 to be +0 // Object.is equality',
@@ -1547,6 +1753,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     mutated: '  const settlesAt: number = clock.unaccelerated + duration;',
     testFile: 'src/empire/empireInvariant.test.ts',
     redAssertion: 'expect(totals.moved).toBe(0);',
+    measuredOver: 'expect(totals.elements).toBe(2616);',
     observed:
       'compares the TRAINING IQ series by wall-clock day, and finds nothing moved\n' +
       'AssertionError: expected 1272 to be +0 // Object.is equality',
@@ -1576,6 +1783,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       '  const remaining: number = state.settledBooks[RECRUIT_BOOK] - recruitmentQuote(tier).costGymBucks;',
     testFile: 'src/empire/empireInvariant.test.ts',
     redAssertion: 'expect(totals.moved).toBe(0);',
+    measuredOver: 'expect(totals.elements).toBe(2616);',
     observed:
       'compares the TRAINING IQ series by wall-clock day, and finds nothing moved\n' +
       'AssertionError: expected 732 to be +0 // Object.is equality',
@@ -1588,6 +1796,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     mutated: '  return wallClockBookFor(axisOutput(axis)) ?? ACCELERATED_BOOK;',
     testFile: 'src/empire/empireInvariant.test.ts',
     redAssertion: 'expect(totals.moved).toBe(0);',
+    measuredOver: 'expect(totals.elements).toBe(2616);',
     observed:
       'compares the TRAINING IQ series by wall-clock day, and finds nothing moved\n' +
       'AssertionError: expected 180 to be +0 // Object.is equality',
@@ -1599,6 +1808,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     mutated: '  return wallClockBookFor(axisOutput(axis)) ?? ACCELERATED_BOOK;',
     testFile: 'src/empire/empireInvariant.test.ts',
     redAssertion: 'expect(totals.moved).toBe(0);',
+    measuredOver: 'expect(totals.elements).toBe(2616);',
     observed:
       'compares the PHYSIO series by wall-clock day, and finds nothing moved\n' +
       'AssertionError: expected 68 to be +0 // Object.is equality',
@@ -1612,6 +1822,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     mutated: '    if (build.axis === axis) completions.push(build.settledCompletion);',
     testFile: 'src/empire/empireInvariant.test.ts',
     redAssertion: 'expect(totals.moved).toBe(0);',
+    measuredOver: 'expect(totals.elements).toBe(2616);',
     observed:
       'compares the PHYSIO series by wall-clock day, and finds nothing moved\n' +
       'AssertionError: expected 188 to be +0 // Object.is equality',
@@ -1623,6 +1834,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     mutated: '  const settledSecondsBanked = bankableOfflineSeconds(wallGap, policy);',
     testFile: 'src/empire/empireInvariant.test.ts',
     redAssertion: 'expect(totals.moved).toBe(0);',
+    measuredOver: 'expect(totals.elements).toBe(2616);',
     observed:
       'compares the TRAINING IQ series by wall-clock day, and finds nothing moved\n' +
       'AssertionError: expected 1020 to be +0 // Object.is equality',
@@ -1634,6 +1846,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     mutated: '  const settledSecondsBanked = bankableOfflineSeconds(wallGap, policy);',
     testFile: 'src/empire/empireInvariant.test.ts',
     redAssertion: 'expect(totals.moved).toBe(0);',
+    measuredOver: 'expect(totals.elements).toBe(2616);',
     observed:
       'compares the PHYSIO series by wall-clock day, and finds nothing moved\n' +
       'AssertionError: expected 136 to be +0 // Object.is equality',
@@ -1652,6 +1865,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       '] as const satisfies readonly EmpireOutput[];',
     testFile: 'src/empire/empireInvariant.test.ts',
     redAssertion: 'expect(totals.moved).toBe(0);',
+    measuredOver: 'expect(totals.elements).toBe(2616);',
     observed:
       'compares the TRAINING IQ series by wall-clock day, and finds nothing moved\n' +
       'AssertionError: expected 180 to be +0 // Object.is equality',
@@ -2392,6 +2606,39 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'expected [ …(4) ] to deeply equal [] — received all four physio rows, each ending ' +
       "'— names-no-test', naming the mutants on `elapsedFor`, `axisBook`, `settledAxisLevel` " +
       'and `accrueProduction`',
+  },
+  // -------------------------------------------------------------------------
+  // ...and the domain half of the same field, witnessed on the movement it
+  // exists to notice rather than on a synthetic edit.
+  //
+  // THE MUTANT IS A SWEEP DEEPENING, which is what a domain pin is for: one
+  // digit of AXIS A's population moved, the way `2520` became `78926` became
+  // `322947` on the axis below it, and the `strength-never-removes-a-meet`
+  // row's anchor stopped resolving against that body while its property
+  // assertion still did. The mutant sits in a TEST file rather than in shipped
+  // source for the same reason the mutant above does: the subject of this rule
+  // is a pin in a test body, and there is nowhere else for it to be.
+  //
+  // BOTH DIRECTIONS WERE DRIVEN, because a check that is red whatever you do is
+  // not a check. With the pin at 80602 and this row's anchor left at 80601 the
+  // named assertion reddens as recorded; with the anchor moved to 80602 beside
+  // it, the same run is `Test Files 1 passed`, one test, no findings.
+  // -------------------------------------------------------------------------
+  {
+    guarantee: 'a-measured-transcript-anchors-its-domain',
+    mutatedFile: 'src/career/eligibility.test.ts',
+    mutated: 'expect(shipped.pairs).toBe(80601);',
+    testFile: 'src/game/guaranteeTags.test.ts',
+    redAssertion:
+      "expect(faulty, 'witness rows whose domain anchor does not hold').toEqual([]);",
+    observed:
+      'requires a transcript that quotes a measured number to anchor its domain ' +
+      '[a-measured-transcript-anchors-its-domain]\n' +
+      'AssertionError: witness rows whose domain anchor does not hold: ' +
+      'expected [ Array(1) ] to deeply equal []\n' +
+      '- Expected\n+ Received\n- []\n+ [\n+   "strength-never-removes-a-meet :: return ' +
+      'meetsQualifyingTotal(lifter.bestTotalKg, meet.qualifyingTotalKg); — ' +
+      'domain-anchor-not-in-the-body",\n+ ]',
   },
 ];
 
@@ -3189,6 +3436,178 @@ describe('the guarantee-tag convention', () => {
     );
     expect([...produced].sort(), 'declared faults this drive never reached').toEqual(
       [...TRANSCRIPT_FAULTS].sort(),
+    );
+  });
+
+  it('requires a transcript that quotes a measured number to anchor its domain [a-measured-transcript-anchors-its-domain]', () => {
+    // The block above `DOMAIN_FAULTS` says why the number itself is not
+    // compared and what this buys instead; this is the loop and its drive.
+    const faulty: string[] = [];
+    let needing = 0;
+
+    for (const witness of MUTATION_WITNESSES) {
+      const graded = witness.transcriptPredatesTheRule !== true;
+      const testText = readFileSync(path.join(REPO_ROOT, witness.testFile), 'utf8');
+      const body = bodyOfTestDeclaring(testText, witness.guarantee);
+      if (graded && MEASURED_SCALAR.test(flatten(witness.observed))) needing += 1;
+      const faults = domainAnchorFaults(witness, body, graded);
+      if (faults.length > 0) {
+        faulty.push(
+          `${witness.guarantee} :: ${(witness.mutated.split('\n')[0] ?? '').trim()} — ${faults.join(', ')}`,
+        );
+      }
+    }
+
+    expect(faulty, 'witness rows whose domain anchor does not hold').toEqual([]);
+    // A COUNT, NOT A BOUND, and not the same fact as the loop above it: the
+    // loop is a set of `expect`s over rows that satisfy it and stays green on
+    // an emptied table or on every scalar transcript being reworded into an
+    // array one. This is the population the rule is about.
+    //
+    // A second pin counting the rows that CARRY an anchor was written here and
+    // deleted: the loop already refuses a required row without one, so no state
+    // of the table moves that count while this one holds. Same domination
+    // `COLLECTION_KILL_MUTANTS.length` was deleted for.
+    expect(needing, 'graded rows whose transcript quotes a measured number').toBe(
+      TRANSCRIPT_BAR.WITH_A_MEASURED_NUMBER,
+    );
+
+    // THE REJECTED ALTERNATIVE, KEPT RUNNABLE AND MEASURED HERE RATHER THAN
+    // ASSERTED IN THE COMMENT ABOVE. The obvious rule is this file's own
+    // numeric-prose rule pointed at the transcript: every numeral it states
+    // must occur in the named test's body. Driven through the same
+    // `claimedNumbersIn` and `numeralOccursIn` the real rule uses, so this is
+    // that rule rather than a re-description of it.
+    const transplanted = { rows: 0, flagged: 0, numerals: 0, unresolved: 0 };
+    for (const witness of MUTATION_WITNESSES) {
+      const body =
+        bodyOfTestDeclaring(
+          readFileSync(path.join(REPO_ROOT, witness.testFile), 'utf8'),
+          witness.guarantee,
+        ) ?? '';
+      const cited = claimedNumbersIn(witness.observed).claimed;
+      if (cited.length === 0) continue;
+      const missing = cited.filter((one) => !numeralOccursIn(body, one.numeral));
+      transplanted.rows += 1;
+      transplanted.numerals += cited.length;
+      transplanted.unresolved += missing.length;
+      if (missing.length > 0) transplanted.flagged += 1;
+    }
+    // Counts on both sides, so it cannot drain quietly. What they say is that
+    // the transplant is not merely strict but INVERTED: a mutant's count is by
+    // construction a number no assertion in the shipped body pins.
+    expect(transplanted, 'the numeric-prose rule transplanted onto transcripts').toEqual(
+      TRANSPLANTED_NUMERIC_RULE,
+    );
+
+    // AND IT WOULD HAVE BEEN GREEN ON THE ROW THAT PROMPTED THIS RULE, which is
+    // the sharper half. `attending-a-meet-never-removes-one` recorded 24 while
+    // its own mutant gave 74 and then 86 — and 24 occurs in that body, as the
+    // SEASON COUNT. The transplant resolves on a coincidence with an unrelated
+    // pin, one level in from the `144` its own grant records.
+    const axisB =
+      bodyOfTestDeclaring(
+        readFileSync(path.join(REPO_ROOT, 'src/career/eligibility.test.ts'), 'utf8'),
+        'attending-a-meet-never-removes-one',
+      ) ?? '';
+    expect(
+      numeralOccursIn(axisB, '24'),
+      'the stale figure the transplant would have resolved rather than caught',
+    ).toBe(true);
+    expect(axisB, 'the unrelated pin that coincidence runs through').toContain(
+      'expect(shipped.seasons).toBe(24);',
+    );
+
+    // EACH FAULT ON ITS OWN, on planted rows against a real body — the same
+    // shape the transcript rule's arms are driven in, and for the same reason:
+    // a real row tripping exactly one of these is not something the table
+    // happens to contain, and a loop over rows that all pass cannot show which
+    // arm is doing the work.
+    const axisA = bodyOfTestDeclaring(
+      readFileSync(path.join(REPO_ROOT, 'src/career/eligibility.test.ts'), 'utf8'),
+      'strength-never-removes-a-meet',
+    );
+    expect(axisA, 'the body the planted rows are driven against').not.toBe(null);
+    const scalar = 'AssertionError: expected 55301 to be +0 // Object.is equality';
+    const row = (over: string | undefined, red: string, observed = scalar): MutationWitness => ({
+      guarantee: 'planted',
+      mutatedFile: 'src/career/eligibility.ts',
+      mutated: 'planted',
+      testFile: 'src/career/eligibility.test.ts',
+      redAssertion: red,
+      observed,
+      ...(over === undefined ? {} : { measuredOver: over }),
+    });
+    const property = 'expect(shipped.violatingPairs).toBe(0);';
+    const domain = 'expect(shipped.pairs).toBe(80601);';
+    const planted: Array<{ what: string; witness: MutationWitness; graded: boolean; faults: DomainFault[] }> = [
+      { what: 'the shape a live row has', witness: row(domain, property), graded: true, faults: [] },
+      {
+        what: 'quotes a number, anchors nothing',
+        witness: row(undefined, property),
+        graded: true,
+        faults: ['no-domain-anchor'],
+      },
+      {
+        // THE DEEPENING, WHICH IS THE WHOLE POINT. One digit of the pin moved,
+        // exactly as `2520` became `78926` became `322947`, and the anchor
+        // stops resolving against the body while the property assertion it
+        // sits beside still does.
+        what: 'a pin the body no longer holds',
+        witness: row('expect(shipped.pairs).toBe(80602);', property),
+        graded: true,
+        faults: ['domain-anchor-not-in-the-body'],
+      },
+      {
+        // Anchoring the assertion the row already anchors. Without this arm
+        // the rule is a second copy of the freshness check.
+        what: 'the property assertion, anchored twice',
+        witness: row(domain, domain),
+        graded: true,
+        faults: ['domain-anchor-is-the-property'],
+      },
+      {
+        what: "a pin holding a property's zero",
+        witness: row(property, 'expect(shipped.worstDeficit).toBe(0);'),
+        graded: true,
+        faults: ['domain-anchor-states-no-population'],
+      },
+      {
+        // A row whose transcript has no scalar on the actual side owes nothing,
+        // because there is no measured quantity in it to go stale.
+        what: 'an array-shaped transcript',
+        witness: row(undefined, property, 'AssertionError: expected [ Array(1) ] to deeply equal []'),
+        graded: true,
+        faults: [],
+      },
+      {
+        // THE BOUNDARY. A row the transcript rule excuses is excused here too,
+        // and that is what says this opens no second debt list.
+        what: 'a row the transcript rule excuses',
+        witness: row(undefined, property),
+        graded: false,
+        faults: [],
+      },
+    ];
+    // One assertion per case, naming the case — a single array comparison
+    // reddens with `expected [ …(7) ] to deeply equal [ …(7) ]` and names
+    // neither the case nor the arm.
+    for (const one of planted) {
+      expect(
+        domainAnchorFaults(one.witness, axisA, one.graded),
+        `planted row "${one.what}" — the faults the rule finds in it`,
+      ).toEqual(one.faults);
+    }
+    expect(planted.length, 'planted rows driven').toBe(7);
+    // AND EVERY DECLARED FAULT WAS REACHED, read from the runtime list the type
+    // is derived from rather than from the seven lines above — so a fifth arm
+    // added to the rule with no planted row reaching it moves this and leaves
+    // the seven alone.
+    const produced = new Set(
+      planted.flatMap((one) => domainAnchorFaults(one.witness, axisA, one.graded)),
+    );
+    expect([...produced].sort(), 'declared domain faults this drive never reached').toEqual(
+      [...DOMAIN_FAULTS].sort(),
     );
   });
 
