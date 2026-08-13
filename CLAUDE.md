@@ -724,6 +724,78 @@ fix had walked straight past. **"Fix the reach and the predicate" is not a
 checklist you complete once** — every widening of one invites a new gap in the
 other, and the tell each time was that a *different* check went red.
 
+### THE WALLET WIRING IS RULED OUT UNTIL THE TUNING REGISTRY IS VERIFIED COMPLETE
+
+Ruled by a human, and the reason is a measurement rather than a preference. The
+open fork was: another hardening round, or the piece that pays empire income into
+`progression.ts`'s pooled wallet and inherits GDD §8.3E's concession. **Hardening
+wins, and the wiring waits.**
+
+What decided it: `EMPIRE_TUNING`'s threshold registry was shown to have
+structural coverage gaps large enough to hide real bypasses — 100 numeric leaves,
+40 filed under any unit at the time, and a forbidden name emitted from a shipped
+function keyed on an unfiled one with `tsc` exit 0 and 489 of 489 tests green.
+Connecting a wallet to a subsystem whose own guard is still discovering gaps at
+that rate would inherit the concession *and* the gaps at the same moment.
+
+So the order is: the registry proves itself complete, and only then does the
+wiring piece get written into this section as a crossing.
+
+### `watchdog.mjs`'s TWO SCANS HAVE A HOLE EXACTLY BETWEEN THEM, AND THE MESSAGE ASSERTS IT SHUT — REPORTED, NOT FIXED
+
+`tools/` is Session A's, so this is routed rather than fixed. Verified by
+execution, not read from source.
+
+This file calls commit age *"the one signal that outlives the agent, the
+container and the notification"*, and `--branches` is how it is read. That scan
+is keyed on the ref prefix `refs/heads/claude/` (`watchdog.mjs:255`), so **a
+worktree branch named anything else is invisible to it.**
+
+The worktree half does not cover the gap, because its scope is the complement:
+`reportSilentWorktrees` only receives worktrees whose branch **adds nothing to
+HEAD**. A builder that is committing adds something, so it is filtered out of the
+worktree scan *and* out of the branch scan — and the fact that makes it invisible
+to both is the same one: that it is doing work.
+
+**And the empty-case message is printed unconditionally.** On `rows.length === 0`
+it prints *"none — every attached worktree carries unmerged commits, so the
+branch scan above already covers all of them"* and **returns before reading
+`unmergedCount`**, which is passed in and never used on that path. So the
+sentence does not read the branch scan's result.
+
+*Measured, same commit, same age, one live builder holding three unmerged commits
+in an attached worktree:*
+
+| branch name | `--branches` reports |
+|---|---|
+| `wt-e14-local` | `0 unmerged claude/* branch(es)` + the vacuous-pass note |
+| `claude/watchdog-probe` | `1 unmerged` — `ok 16 min fad95f3` |
+
+Both runs printed the same `[worktrees]` "already covers all of them" line. In
+the second it was true. In the first it was false and the builder was covered by
+nothing. **The message is a constant; its truth is a coincidence.**
+
+The tell is three lines above it, in the tool's own honest disclosure: *"this run
+checked NOTHING against COMMIT AGE. That is a vacuous pass, not a clean one — see
+[worktrees] for the part that is not vacuous."* It points the reader at a section
+that had also checked nothing. A tool that discloses its own vacuity and then
+delegates to a section vacuous in the same run is harder to catch than one that
+says nothing, because the disclosure reads as diligence.
+
+**This is the reach axis again**, a fourth time in this file, and the sibling rule
+again: two arms of one decision — which agents am I watching — written separately.
+
+**What would close it, offered rather than done.** Age *every* unmerged branch
+with a worktree attached, whatever its name, and make the empty-case message a
+function of what was checked rather than a literal; the parameter it needs is
+already passed in.
+
+**The zero-cost mitigation, adopted by Session B: name every worktree branch
+`claude/*`.** That is a naming convention, not a tool change. Confirmed working:
+pre-commit the worktree scan covers it, post-commit the branch scan ages it, and
+the two halves hand off correctly — which is exactly what `wt-e14-local` fell
+through.
+
 ### THE COVERED-DAY GUARD IS BYPASSED BY NOT SPELLING THE WORDS — REPORTED, NOT FIXED
 
 `src/game/streakEntitlement.ts` and its test are Session A's, so this is a
@@ -1290,6 +1362,73 @@ its *arms* the sweep produced, not how many inputs it was given. If nothing in
 the file counts arms, the sweep's size is evidence about the fixture and not
 about the subject. And when a domain fix does not close a bypass, that is the
 signal — the input was never the thing standing in the way.
+
+## When Every Repair Declares Its Own Successor, Change The Instrument
+
+**The three rules above make a sampling instrument better. This one says when to
+stop improving it.** It is the only rule here derived from a run of rounds rather
+than from a single defect, and the signal is a pattern in the *rounds*, not in any
+one of them.
+
+**The measured history.** One guarantee in `src/empire/` was bypassed nine times.
+Every bypass had the same shape — a forbidden name assigned into a bare-`string`
+field, conditioned on a numeric input — and every repair was correct:
+
+| # | the evasion | the repair |
+|---|---|---|
+| 6 | branch point outside a narrow domain | widen the domain |
+| 7a | branch point filed under the wrong unit | file by use, not by name |
+| 7b | branch point filed under no unit | join the registry to `EMPIRE_TUNING` |
+| 8 | branch point above a cost ceiling | an overflow pass for the dropped points |
+| 9 | roster-size branch point above the allocation ceiling | *declared open by round 8* |
+
+Five consecutive rounds where the fix landed **and the next route was named in the
+same report.** That is the tell. A guard whose repairs keep declaring their own
+successors is not converging — it is enumerating a space its instrument cannot
+close.
+
+**Why it could not close.** Instrument B drove exports over a domain and scanned
+the outputs. That is *sampling*, and sampling is evaded by conditioning on a value
+outside the sample. `CalendarDay` admits any non-negative integer, so the
+containment answer that worked for `src/career/` — a lattice provably containing
+every real total — has no analogue. **There is no finite domain that contains
+every value the axis can take.** This file already records the same shape one
+instrument over: *"the words are chosen by the author, so a scan for words is a
+scan for authors who cooperate."* The branch point is chosen by the author too.
+
+**What changed it, measured before it was built.** The bare-`string` fields were
+given brands. Probed, `tsc --noEmit`, exit 2, exactly one error:
+
+- `const direct: NpcId = EMPIRE_FORBIDDEN_OUTPUTS[0]` — **compile error**.
+- `const laundered: NpcId = asNpcId(EMPIRE_FORBIDDEN_OUTPUTS[0])` — compiles.
+
+All nine bypasses were the first shape. Under the brands, rounds 7a, 7b and 8
+produce a **byte-identical** error at three different branch points — the compiler
+is not looking at the number — and round 9, the route no sampling budget could
+reach, is a type error closed without a drive.
+
+**The rule, stated so it can be applied and not just admired.** The point is not
+"prefer types". It is:
+
+1. **Count the rounds, not the bugs.** Two repairs that each declare a successor
+   is a coincidence; five is a property of the instrument.
+2. **Ask what the instrument's domain is, and whether the subject's is bigger.**
+   If the subject's input space is unbounded and the instrument samples, no amount
+   of sampling closes it, and every round will feel like progress.
+3. **Look for a reformulation that makes the space enumerable.** Branding did not
+   make the guarantee true; it converted an unwinnable sampling problem into a
+   finite one — constructor call sites are a list, an unbounded integer is not.
+4. **Do not delete the sampler.** It still catches what the types cannot, and a
+   fix that shrinks coverage elsewhere is not a fix. Here the drive's export count
+   went *up*, and the previous round's overflow pass still reddens independently.
+
+**And the limit, because this rule is not an exemption from the others.** The
+laundering route stays open and a brand erases at runtime, so it needs its own
+named catcher — a census of constructor call sites, joined both ways, plus a
+runtime refusal stated as **containment, not detection**: it fires only when the
+path runs, so it makes the value unshippable rather than the guard complete. A
+reformulation that ships without a catcher for its own limit is the same
+admission as the sampler that preceded it, wearing better clothes.
 
 ### Pure logic is separate from UI
 
@@ -1901,6 +2040,37 @@ physiology.
   worth being clear that it would **not** have caught any of the five — there
   was no process to time out. Guard both; do not let the loud one make you think
   the quiet one is covered.
+
+  **AND THE LIVENESS CHECK'S OWN PRIMARY SIGNAL WAS VACUOUS FOR TWO ROUNDS.**
+  `scratchpad/liveness.sh` reads an agent's transcript mtime. The path
+  `tasks/<id>.output` is a **symlink** into `subagents/agent-<id>.jsonl`, and bare
+  `stat` reports the link — whose mtime is fixed when the link is created at
+  dispatch and never moves again. So past the 45-minute threshold it printed
+  *"treat as dead until proven otherwise"* for every agent forever, whatever that
+  agent was doing. **No state of the subject made it read alive**, which is the
+  strict definition, in the instrument written to enforce this rule.
+
+  Measured against a live builder: link mtime **98 min** and 129 bytes, target
+  mtime **0 min** and 823 116 bytes. The `-L` is the whole fix; the guard beside
+  it now fails loudly if the resolved path is still a link, and flags a transcript
+  under 1 KiB, because the defect was invisible exactly when the numbers looked
+  plausible.
+
+  **Two things worth keeping.** First the direction: every dead-agent lesson here
+  is about a check that says *alive* when the agent is dead, and this one said
+  *dead* about an agent that was working. That is the more expensive failure,
+  because the documented response to "dead" is to preserve the worktree and move
+  on — a false positive is how a live builder's branch gets pruned or merged
+  early.
+
+  Second, and it is the rare positive instance of a rule this file usually states
+  as a warning: the header called signal [1] *"the only one that moves while an
+  agent thinks"* and signal [3] *"the weakest of the three and never used alone"*.
+  **[1] was the one that never moved, and [3] carried the correct verdict.** The
+  question this file asks is whether harnesses are *independent or merely
+  numerous*; three readings of the transcript would all have said dead, and three
+  genuinely different readings did not. Redundancy paid because the signals were
+  independent, not because there were three.
 - For human-paced follow-up sessions after the run: one vertical slice at a time,
   working state at the end of each.
 
