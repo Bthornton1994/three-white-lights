@@ -73,14 +73,13 @@
  *   containment for every value outside the declared diagnostic channel.
  *
  *   Its limit: it samples inputs. A branch no point of the domain reaches
- *   produces nothing to scan. So every threshold is filed under its UNIT in
- *   `UNIT_THRESHOLDS`, read out of `EMPIRE_TUNING`, and every domain in
- *   `NUMERIC_DOMAINS` declares the units it is a domain OF and is asserted to
- *   straddle every threshold of them — CLAUDE.md's "a domain that samples only
- *   extremes is empty where it matters", which was earned on a probe that
- *   sampled `0` and `1_000_000` while every threshold sat between 260 and 680.
- *   The reproduced defect has this property exactly: `Math.floor(checkIns / 12)`
- *   is `0` for every `checkIns` below twelve.
+ *   produces nothing to scan. So every domain in `NUMERIC_DOMAINS` is derived
+ *   from `EMPIRE_TUNING`'s own numbers and is asserted to straddle them —
+ *   CLAUDE.md's "a domain that samples only extremes is empty where it
+ *   matters", which was earned on a probe that sampled `0` and `1_000_000`
+ *   while every threshold sat between 260 and 680. The reproduced defect has
+ *   this property exactly: `Math.floor(checkIns / 12)` is `0` for every
+ *   `checkIns` below twelve.
  *
  *   THAT SENTENCE USED TO BE TRUE OF ONE DOMAIN AND FALSE OF ITS NEIGHBOUR, AND
  *   THE SIXTH BYPASS RODE THE DIFFERENCE. There was a ten-point
@@ -92,6 +91,34 @@
  *   The assertion loops the registry now, and `DOMAIN_CENSUS.DOMAINS` and
  *   `CONTAINMENT_CHECKS` are both pinned, so a seventh domain cannot be
  *   unasserted and a domain that obliges itself to nothing cannot pass.
+ *
+ *   AND THAT FIX MADE EVERY DOMAIN PROVE IT CONTAINED THE THRESHOLDS OF ITS OWN
+ *   UNITS, WHILE NOTHING MADE THE UNIT REGISTRY PROVE IT CONTAINED ANYTHING.
+ *   That is the seventh bypass, and it arrived twice. `FRIEND_VISITS_PER_DAY`
+ *   is 10 and was filed under `count` because its name says visits; the value
+ *   it gates in a mutant is a DAY, and `day` filed three thresholds, so
+ *   `DAY_DOMAIN` was thirteen points and 10 was not one of them. Worse:
+ *   `EMPIRE_TUNING` has 100 numeric leaves and the registry filed 40, so
+ *   `NPC_RECRUIT_COST_GYM_BUCKS.novice` — 500 — was in no unit, in no narrow
+ *   domain, and NOT IN `NUMBER_DOMAIN` EITHER, because that domain was the
+ *   union of the filed thresholds rather than of the tuning block. Both mutants:
+ *   `tsc` exit 0, 13 files and 489 tests green.
+ *
+ *   Two things close it, and the second is the one that matters. The registry
+ *   is now JOINED to `EMPIRE_TUNING` by a walk — every numeric leaf is filed
+ *   under a unit or carries a reason on `NOT_A_BRANCH_POINT`, set-equal both
+ *   ways — so a knob cannot be absent from the population. And a domain now
+ *   carries every branch point at or below its `foreignCeiling` REGARDLESS OF
+ *   UNIT, so which unit a number was filed under stops deciding whether any
+ *   domain has it. Filing is what makes a threshold unconditional above a
+ *   ceiling; it is no longer what makes it present.
+ *
+ *   The route that is still open, named because a ceiling is a real concession:
+ *   a subject that keys a ceilinged axis on a branch point ABOVE that ceiling.
+ *   `DOMAIN_CENSUS.OMITTED_ABOVE_CEILING` is that route counted per domain —
+ *   39, 39 and 56 against 0, 0 and 0 — and `DOMAIN_COST_SECONDS` is what was
+ *   paid for it, measured rather than assumed. There is no catcher for it in
+ *   this file, and that is stated at the registry rather than implied here.
  *
  *   Its second limit, and the one the domain fix alone did not close: a domain
  *   decides which NUMBERS an axis is driven at and says nothing about whether
@@ -1015,8 +1042,16 @@ describe('the domains are derived from the subject and are not empty', () => {
     // that are derived from no threshold at all, ROSTER_SHAPE passes
     // `ROSTER_SLOTS_MAX + 1` through it, and nothing structural says a value
     // invented at a call site is a point NUMBER has. Planting
-    // `EMPIRE_TUNING.ROSTER_SLOTS_MAX * 3` in that argument reddens this and
-    // nothing else in the file.
+    // `EMPIRE_TUNING.ROSTER_SLOTS_MAX * 2` in that argument reddens this with
+    // `ROSTER_SHAPE/32: expected [...] to include 32`.
+    //
+    // AND THE FIRST MUTANT WRITTEN FOR THIS COMMENT DID NOT REDDEN IT. It was
+    // `* 3`, chosen for looking obviously outside a roster's range, and 48 is
+    // in NUMBER by accident: `OFFLINE_EARNINGS_CAP_HOURS` is 12 and its
+    // straddle carries `12 * 4`. What went red was the POINT COUNT one test
+    // above — a different check noticing, which this codebase has now recorded
+    // five times as not being this check working. `* 2` is 32, which nothing
+    // in the tuning block reaches, and it fails on the containment itself.
     let pairs = 0;
     for (const [name, domain] of Object.entries(NUMERIC_DOMAINS)) {
       for (const point of domain.points) {
@@ -4551,6 +4586,92 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
     accidentalCatchersGreen: true,
     alsoRed: Object.freeze([]),
   }),
+  Object.freeze({
+    id: 'M12',
+    shape: '22 — a threshold filed under the WRONG unit: a count used as a day, so the day domain never carried it',
+    where: "social.ts, `recordFriendVisit`, gymId replaced by the ban list's first member on day FRIEND_VISITS_PER_DAY",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument B / produces no banned name: expected 9 to be 7',
+      'instrument B / CONTAINS no banned name: + "recordFriendVisitrecordFriendVisit@10/sentinel-friend-gym-id-1/false#return.visits.3.gymId=covered-day"',
+      'instrument B / CONTAINS no banned name: + "recordFriendVisitrecordFriendVisit@10/sentinel-friend-gym-id-1/true#return.visits.3.gymId=covered-day"',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: 'M13',
+    shape: '23 — a threshold filed under NO unit, which survived the FULL domain too, because NUMBER was the union of the filed thresholds rather than of the tuning block',
+    where: "social.ts, `recordFriendVisit`, gymId replaced by the ban list's first member on day NPC_RECRUIT_COST_GYM_BUCKS.novice",
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument B / produces no banned name: expected 9 to be 7',
+      'instrument B / CONTAINS no banned name: + "recordFriendVisitrecordFriendVisit@500/sentinel-friend-gym-id-1/false#return.visits.3.gymId=covered-day"',
+      'instrument B / CONTAINS no banned name: + "recordFriendVisitrecordFriendVisit@500/sentinel-friend-gym-id-1/true#return.visits.3.gymId=covered-day"',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      "attempt 1 keyed on CHECK_IN_TARGET_SECONDS_MAX and was caught by empireTuning.test.ts > pins the not-yet-consumed list exactly — a census of UNCONSUMED tuning entries noticing a new consumer, which has nothing to do with forbidden outputs. A FOURTH accidental catcher, and the reason attempt 2 moved to an already-consumed threshold.",
+    ]),
+  }),
+]);
+
+/**
+ * The mutants planted into THIS file's own registry, to check that the checks
+ * added this round bite.
+ *
+ * A SEPARATE TABLE FROM `PLANTED_ROUTES`, AND THE SEPARATION IS THE POINT.
+ * Every row above is a forbidden name planted into a SHIPPED module and asks
+ * "does this directory hand one out". Every row below is a lie planted into the
+ * registry and asks "would this file notice". They are different subjects and
+ * `accidentalCatchersGreen` — which is about `empireCore.ts`'s three scans of
+ * shipped source — is not a meaningful field for the second kind, so it is
+ * absent rather than filled in with a value nobody measured.
+ *
+ * G3 is the one worth reading. Its first form was chosen for looking obviously
+ * wrong and reddened a COUNT one test away instead of the containment it was
+ * aimed at, because the number it planted happened to be in `NUMBER_DOMAIN`
+ * already. The row records both forms.
+ */
+interface RegistryMutant {
+  readonly id: string;
+  readonly what: string;
+  readonly reddened: string;
+}
+
+const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
+  Object.freeze({
+    id: 'G1',
+    what: 'a new knob `RIVAL_STREAK_BONUS_GYM_BUCKS: 1750` added to `empireTuning.ts`, filed under no unit and on no exemption list',
+    reddened:
+      "files or exempts every numeric leaf: expected 101 to be 100. Then, with the count bumped to 101 — the repair a reader would reach for first — the SET EQUALITY reddened on its own: - \"RIVAL_STREAK_BONUS_GYM_BUCKS\". Both halves were run, because a count that moves is not the same check as a membership that fails.",
+  }),
+  Object.freeze({
+    id: 'G2',
+    what: '`RIVAL_REWARD_GYM_BUCKS` (2500) moved off the `gymBucks` filing and onto `NOT_A_BRANCH_POINT` with a plausible reason',
+    reddened:
+      'carries every exempt leaf in every domain but one: expected 7 dropped pairs to equal the 4 named, + "ROSTER_SHAPE/RIVAL_REWARD_GYM_BUCKS=2500" and the DAY and COUNT pairs beside it. Also files or exempts…: expected 67 to be 68. So exempting a LARGE value is not free, which is the claim `NOT_A_BRANCH_POINT`\'s docstring makes.',
+  }),
+  Object.freeze({
+    id: 'G3',
+    what: 'an `extra` point handed to `domainOf` for ROSTER_SHAPE that no threshold derives — `ROSTER_SLOTS_MAX * 2`, which is 32',
+    reddened:
+      'keeps every domain inside NUMBER: ROSTER_SHAPE/32: expected [...] to include 32. ITS FIRST FORM WAS `* 3`, which is 48, and 48 is in NUMBER already because OFFLINE_EARNINGS_CAP_HOURS is 12 and straddling carries 12 * 4 — so that form reddened only the point-count pin one test above, which is a different check noticing and not this one working.',
+  }),
+  Object.freeze({
+    id: 'G4',
+    what: 'a shipped export in `production.ts` reading `EMPIRE_TUNING.CHECK_IN_TARGET_SECONDS_MAX`, the knob two exemption rows call unconsumed',
+    reddened:
+      're-runs the unconsumed scan: CHECK_IN_TARGET_SECONDS_MAX is exempted as unread and is read. So the one exemption class whose reason is a claim about the shipped code expires by itself rather than on somebody remembering.',
+  }),
+  Object.freeze({
+    id: 'G5',
+    what: '`NPC_RECRUIT_COST_GYM_BUCKS` renamed to `NPC_RECRUIT_PRICE_GYM_BUCKS` in `empireTuning.ts`, leaving the registry naming a path that no longer exists',
+    reddened:
+      'the file fails to load: Error: no numeric leaf of EMPIRE_TUNING is at or under NPC_RECRUIT_COST_GYM_BUCKS, and vitest reports "no tests". Loud rather than a quietly shorter threshold list, which is the failure mode `rungs()` had.',
+  }),
 ]);
 
 /**
@@ -4565,8 +4686,31 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
 const M8_WAS_SEMANTICALLY_CAUGHT = false;
 
 describe('the routes that were planted, and what each of them cost', () => {
-  it('records eleven routes, every one isolated from the three accidental catchers', () => {
-    expect(PLANTED_ROUTES.length).toBe(11);
+  it('records every registry mutant, and what each of them reddened', () => {
+    // The companion to the table below. These are lies planted into this
+    // file's own registry rather than forbidden names planted into a shipped
+    // module, and they are what says the checks added for the seventh bypass
+    // are checks rather than decoration.
+    expect(REGISTRY_MUTANTS.length).toBe(5);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(5);
+    for (const mutant of REGISTRY_MUTANTS) {
+      expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
+      // A row that does not name a failure message is a claim that something
+      // went red, which is what this whole file exists to stop being enough.
+      expect(mutant.reddened.length, mutant.id).toBeGreaterThan(100);
+    }
+    // Two of the five record a first form that reddened something OTHER than
+    // the check it was aimed at. Pinned as a count so a later edit that quietly
+    // drops one of those admissions moves a number.
+    expect(
+      REGISTRY_MUTANTS.filter((mutant) => mutant.reddened.includes('ITS FIRST FORM')).length +
+        REGISTRY_MUTANTS.filter((mutant) => mutant.reddened.includes('Then, with the count bumped'))
+          .length,
+    ).toBe(2);
+  });
+
+  it('records thirteen routes, every one isolated from the three accidental catchers', () => {
+    expect(PLANTED_ROUTES.length).toBe(13);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // A mutant that only trips the magic-number audit, the string census or
@@ -4578,15 +4722,17 @@ describe('the routes that were planted, and what each of them cost', () => {
       expect(route.shape.length, route.id).toBeGreaterThan(20);
       attempts += route.attempts;
     }
-    // Eighteen attempts for eleven routes: the fifteen the first nine took,
-    // plus one for M10 and two for M11. The extras are accidents that had to be
-    // stripped — an empty-string fallback, a new property name, two mutants
-    // that REPLACED a shipped literal instead of keeping it, and M11's first
-    // form, which used `Object.defineProperty(err, 'stack', …)` and moved
-    // `empireCore.test.ts`'s string census by one on the new `'stack'` literal,
-    // 160 against 159. Assigning through `err.stack` spells no new literal.
-    expect(attempts).toBe(18);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(4);
+    // Twenty-one attempts for thirteen routes: the fifteen the first nine took,
+    // one for M10, two for M11, one for M12 and two for M13. The extras are
+    // accidents that had to be stripped — an empty-string fallback, a new
+    // property name, two mutants that REPLACED a shipped literal instead of
+    // keeping it, M11's first form, which used `Object.defineProperty(err,
+    // 'stack', …)` and moved `empireCore.test.ts`'s string census by one on the
+    // new `'stack'` literal, 160 against 159, and M13's first form, which keyed
+    // on a threshold that `empireTuning.test.ts` lists as having no consumer,
+    // so the mutant BECAME the consumer and that census reddened instead.
+    expect(attempts).toBe(21);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(5);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
