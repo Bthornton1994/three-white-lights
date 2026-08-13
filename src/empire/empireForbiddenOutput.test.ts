@@ -2223,9 +2223,10 @@ const NUMERIC_DOMAINS = Object.freeze({
     why:
       'Calendar days, and the axis both halves of the seventh bypass rode in ' +
       'on. socialRewardSchedule and rivalPeriodCloseDays are linear in the day ' +
-      'and every value they return is deep-scanned, so no ceiling costs 189 s ' +
-      'against 31 s — the largest branch point is 480 000 and each of those is ' +
-      '480 000 frozen objects. The ceiling is what makes 10 and 500 reachable ' +
+      'and every value they return is deep-scanned, so no ceiling did not ' +
+      'finish inside a 700 s watchdog budget against 38.8 s shipped — the ' +
+      'largest branch point is 480 000 and each of those is 480 000 frozen ' +
+      'objects. The ceiling is what makes 10 and 500 reachable ' +
       'on a DAY axis at all: both are filed under a unit that is not day, one ' +
       'by a misfiling and one by not being filed, and neither is now something ' +
       'this domain depends on getting right.',
@@ -2238,10 +2239,11 @@ const NUMERIC_DOMAINS = Object.freeze({
     why:
       'Slot counts and roster-sized quantities. historyFrom allocates one ' +
       'entry per slot and four more exports then walk the result, so no ' +
-      'ceiling costs 96 s against 31 s for the same reason the day axis does. ' +
-      'It carries the count thresholds unconditionally, which reach 400, and ' +
-      'every other branch point up to 2600 — which is well past every slot ' +
-      'count and both leaderboard brackets.',
+      'ceiling measured 61.4 s against 38.8 s on the drive, for the same ' +
+      'reason the day axis is expensive. It carries the count thresholds ' +
+      'unconditionally, which reach 400, and every other branch point up to ' +
+      '600 — which is past every slot count, past both leaderboard brackets, ' +
+      'and past the two values the seventh bypass keyed on.',
   }),
   LEVEL: domainSpec({
     units: ['level'],
@@ -2269,10 +2271,11 @@ const NUMERIC_DOMAINS = Object.freeze({
       'The roster sizes STATES is built at, which is the most expensive axis ' +
       'in the file: every point here multiplies the reputation ladder and the ' +
       'product is then crossed with tiers, clocks and the whole NUMBER domain. ' +
-      'No ceiling costs 306 s against 31 s, the worst ratio of the three, so ' +
-      'its ceiling is the lowest — 120, which is above every exempt leaf and ' +
-      'so leaves this domain carrying every rate and multiplier in the tuning ' +
-      'block. It was [0, 1, ROSTER_SLOTS_MAX] and so never sampled base ' +
+      'A ceiling of 120 measured 138.1 s against 38.8 s on the drive, the ' +
+      'worst ratio of the three, so its ceiling is the lowest — one past the ' +
+      'largest roster rosterCapacity will admit — and the four exempt leaves ' +
+      'that leaves outside it are named in EXEMPT_LEAVES_ABOVE_A_CEILING ' +
+      'rather than counted. It was [0, 1, ROSTER_SLOTS_MAX] and so never sampled base ' +
       'capacity or a roster over capacity, which are both real branches in ' +
       'rosterCapacity and in the recruitment refusals that read it; the ' +
       'over-capacity point is the one `extra` argument in the file, and it is ' +
