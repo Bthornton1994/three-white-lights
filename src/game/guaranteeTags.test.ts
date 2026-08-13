@@ -924,8 +924,10 @@ const NUMBER_COVERAGE = {
  * the one that fails.
  *
  * WHAT IT COSTS AT DECLARATION TIME. You broke the code and watched the test go
- * red, because that is the method. Copy the line you broke, copy the assertion
- * vitest named, paste the message. Under a minute on top of work already done.
+ * red, because that is the method. Copy the line you broke, copy what you put in
+ * its place, copy the assertion vitest named, paste the message. Under a minute
+ * on top of work already done. The second of those four is the newest and the
+ * one that makes the other three checkable by somebody who is not you.
  * A bar that cost an hour per tag would stop being met, which is the failure
  * mode of most bars.
  */
@@ -1473,6 +1475,16 @@ type ReplacementFault = (typeof REPLACEMENT_FAULTS)[number];
  * with the replacement equal to what it replaced, the arm is red and the
  * freshness loop is green. Neither implies the other, so both stay and neither
  * is restated here.
+ *
+ * AND NEITHER OF THE OTHER TWO RULES REACHES THIS ONE, compared on inputs the
+ * way the domain rule compares itself with the transcript rule. `transcriptFaults`
+ * reads `observed` and the live title; `domainAnchorFaults` reads `measuredOver`,
+ * `redAssertion` and the body of the test as the tree holds it. Neither reads
+ * `mutatedTo`, and this reads neither `observed` nor `measuredOver`. The one
+ * field two of them share is `redAssertion`, and they ask different questions of
+ * it: the domain rule asks what the anchor overlaps in the tree as it stands,
+ * this one asks whether the assertion survives the patch. Disjoint inputs, so no
+ * state of one decides another.
  *
  * WHY A WHITESPACE-ONLY REPLACEMENT IS ACCEPTED, which was the obvious third arm
  * and was refused on this repository's own history. Flattening both sides and
