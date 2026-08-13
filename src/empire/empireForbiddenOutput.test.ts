@@ -5339,9 +5339,18 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
 const GYM_SNAPSHOT_STRINGS: readonly string[] = Object.freeze(['Placeholder', 'composed-gym']);
 
 /**
- * A wall-clock budget for the one block in this file that outgrew the global
+ * A wall-clock budget for the two blocks in this file that outgrew the global
  * one, applied per BLOCK and not per test, in the shape `engagement.test.ts`
  * already uses in this directory.
+ *
+ * TWO BLOCKS AND NOT ONE, WHICH IS THIS ROUND'S EDIT TO THIS SENTENCE. The
+ * overflow pass shares the budget: its own measurement is 11.0 s on a quiet
+ * machine and 20.2 s on a loaded one, against a shipped-configuration cost of
+ * 11.8 s measured on its own, so it is nowhere near 90 s — but it is a second
+ * scan of a second drive and it sits in the same risk class as the block below.
+ * The two together took this file from ~46 s to between 40 s and 78 s
+ * depending on the run, which is a spread wide enough to be worth writing down
+ * rather than averaging: the same commit measured both.
  *
  * WHY IT IS NEEDED NOW AND WAS NOT BEFORE. The registry used to file 40 of
  * `EMPIRE_TUNING`'s 100 numeric leaves; it files 66 and exempts 34, and every
