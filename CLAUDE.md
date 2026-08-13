@@ -163,6 +163,38 @@ into a conversation the other session cannot read.
 
 ### SESSION A CLAIMS C1 — CAREER, GDD §2.1 AND §6.1. Filed before the work, 2026-08-12
 
+**AND A CROSSING THAT WAS NOT FILED BEFORE THE WORK — THE BREACH IS SESSION A'S,
+NOT THE BUILDER'S.** C1 registers two new tuning homes, so it had to append rows
+to `src/tuning/audit.ts`, `audit.test.ts` and `index.ts` — the three files this
+document names as **the** shared surface, requiring a crossing written here
+first. None was.
+
+**Whose fault, precisely.** The section above predicts this exact need in its own
+words: *"a new `src/empire/empireTuning.ts` cannot pass the magic-number audit
+without appending a row to all three."* Session A wrote the C1 claim, knew that
+sentence, and still briefed the piece without pre-filing the crossing or telling
+the builder it would need one. The builder hit the wall mid-work, could not
+resolve it — no agent message may authorise a `CLAUDE.md` edit — and **reported
+it rather than editing quietly or abandoning the rows**, which is the behaviour
+the rule wants from the position it was in. The sequencing failure happened
+before the builder was ever dispatched.
+
+**Recorded as a breach, not a notification**, on the precedent already set here:
+a small, honest, permanent breach of an absolute rule is still a breach. It is
+the second time Session A has crossed this surface out of order.
+
+**The rows, so Session B knows exactly what to expect:**
+`src/career/careerTuning.ts` classified `feel` (hence the third row, in
+`index.ts`), and `src/career/careerSweep.ts` classified `data`. Without them the
+audit reports ~40 bare literals and the suite cannot go green. Conflict is
+expected in `SOURCE_RULES` and its two pinned mirrors and nowhere else.
+
+**The lesson worth more than the apology: a claim that adds a tuning module has
+a shared-surface crossing inside it by construction.** Check for one when the
+claim is written, not when the builder trips over it — the crossing is a property
+of the piece, knowable in advance, and the whole point of filing first is that it
+is knowable in advance.
+
 **Claimed because it is unowned and blocking, not because it is next.** `src/career/`
 does not exist. Session B's stated scope is GDD §5 in full and names no Career
 file. Session C explicitly scoped itself **out** — *"This claim is Empire. It is

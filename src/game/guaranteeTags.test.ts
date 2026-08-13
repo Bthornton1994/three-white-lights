@@ -535,7 +535,30 @@ const GUARANTEE_COVERAGE = {
    * carries a tag and two witnesses, and its own paragraph does not trip the
    * trigger — `WORSE THAN THE DESIGN IT REPLACES` carries no trigger word.
    */
-  TREE_WIDE: 231,
+  /**
+   * 230 -> 235 with GDD §2.1's career spine, then 236 on the merge: L1's
+   * `liftInput.test.ts` landed in parallel and contributes exactly 1. The two
+   * rounds compose ADDITIVELY, which is what says each measured its own tree
+   * correctly rather than one of them being a guess that happened to fit. MEASURED PER FILE the usual way,
+   * by emptying each of the round's nine new files in turn and re-reading this
+   * count, and by restoring each of its five edited ones to its text at HEAD:
+   * `eligibility.ts` 4, `federation.ts` 1, and `careerTuning.ts`,
+   * `calendar.ts`, `careerSweep.ts`, all four new test files, this file,
+   * `streakEntitlement.test.ts`, `audit.ts`, `audit.test.ts` and
+   * `tuning/index.ts` contribute ZERO between them.
+   *
+   * AND THE NINE-ROUND PATTERN ABOVE BREAKS HERE, which is worth more than the
+   * number. Nine rounds running, the round's real guarantee moved this count by
+   * nothing and the paragraphs the scan noticed stated limits. This time two of
+   * the five ARE the round's guarantees — both tagged, both witnessed below —
+   * because their claims happen to be phrased with the first trigger word. The
+   * other three are the usual kind: a quotation of the GDD's own currency table,
+   * and two paragraphs saying what a type and a design choice do not reach.
+   *
+   * That is not the scan getting better. It is the same coin-flip the notes
+   * above describe, landing the other way twice, and it is recorded as one.
+   */
+  TREE_WIDE: 236,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -811,18 +834,18 @@ const UNPINNED_PROSE_NUMBERS: readonly UnpinnedProseNumber[] = [
  */
 const NUMBER_COVERAGE = {
   /** Comment paragraphs under `src` carrying at least one tag. */
-  TAGGED_PARAGRAPHS: 60,
+  TAGGED_PARAGRAPHS: 62,
   /** ...of which this many state a number as prose. */
-  PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 9,
+  PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
-  CLAIMED: 31,
+  CLAIMED: 46,
   /** ...of which this many are found in the named test's body. */
-  RESOLVING: 22,
+  RESOLVING: 37,
   /**
    * ...and this many survive blanking the body's COMMENTS, which is the
    * stronger reading. The gap is the weakness declared above, as a number.
    */
-  RESOLVING_IN_CODE: 18,
+  RESOLVING_IN_CODE: 33,
   /** ...and this many are excused by name, in `UNPINNED_PROSE_NUMBERS`. */
   EXCUSED: 9,
   /** The entries doing that excusing. Fewer than the occurrences: a phrase may span two. */
@@ -832,14 +855,14 @@ const NUMBER_COVERAGE = {
    * for reasons of their own. THIS IS THE WEAKNESS MEASUREMENT, not a coverage
    * one: it says how little a small number resolving is worth.
    */
-  NAMED_BODIES: 51,
-  NAMED_BODIES_HOLDING_ZERO: 41,
+  NAMED_BODIES: 53,
+  NAMED_BODIES_HOLDING_ZERO: 43,
   NAMED_BODIES_HOLDING_ONE: 43,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
    */
-  TAGGED_AND_TRIGGERING: 25,
+  TAGGED_AND_TRIGGERING: 27,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1062,7 +1085,7 @@ function anchorOccurrences(file: string, anchor: string): number {
  */
 const TRANSCRIPT_BAR = {
   /** Witness rows whose transcript is held to the rule. */
-  GRADED: 16,
+  GRADED: 18,
   /** ...and rows excused because their transcript predates it. */
   PREDATING: 37,
 } as const;
@@ -1199,6 +1222,51 @@ const SECTION_4A_KILL_LIST = {
 } as const;
 
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
+  // -------------------------------------------------------------------------
+  // GDD §2.1's career spine — which meets a lifter may enter, and the two ways
+  // "a player who did more must not end up worse off" can be asked of it.
+  //
+  // TWO TAGS AND TWO MUTANTS, because the axes are two claims: one is about a
+  // bigger Total, the other about one more meet on the record, and a mutant on
+  // either leaves the other's test green. Both mutants were chosen so that the
+  // assertion that reddens is the PROPERTY rather than one of the sweep's
+  // domain pins — the first attempt at the strength mutant reported "expected
+  // 1200 to be 55301", which is true, is about the population, and would have
+  // recorded a pin on a fact adjacent to the claim as evidence for the claim.
+  // The test now asserts the property first for exactly that reason.
+  {
+    guarantee: 'strength-never-removes-a-meet',
+    mutatedFile: 'src/career/eligibility.ts',
+    mutated: '  return meetsQualifyingTotal(lifter.bestTotalKg, meet.qualifyingTotalKg);',
+    testFile: 'src/career/eligibility.test.ts',
+    redAssertion:
+      'expect(shipped.violatingPairs).toBe(0);\n'
+      + '    expect(shipped.worstDeficit).toBe(0);\n'
+      + '\n'
+      + '    // The domain, pinned as counts rather than as bounds.',
+    observed:
+      'FAIL src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for '
+      + 'fewer meets > [strength-never-removes-a-meet] every ordered pair on the grid, and the '
+      + 'control beside it\n'
+      + 'AssertionError: expected 55301 to be +0 // Object.is equality',
+  },
+  {
+    guarantee: 'attending-a-meet-never-removes-one',
+    mutatedFile: 'src/career/eligibility.ts',
+    mutated:
+      '    bestTotalKg: lifter.bestTotalKg === null ? totalKg : Math.max(lifter.bestTotalKg, totalKg),',
+    testFile: 'src/career/eligibility.test.ts',
+    redAssertion:
+      'expect(shipped.violatingPairs).toBe(0);\n'
+      + '    expect(shipped.worstDeficit).toBe(0);\n'
+      + '\n'
+      + '    // The domain. `badDays` is the count that matters most',
+    observed:
+      'FAIL src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies '
+      + 'for fewer > [attending-a-meet-never-removes-one] every skipped meet in every seeded '
+      + 'season, and the control beside it\n'
+      + 'AssertionError: expected 24 to be +0 // Object.is equality',
+  },
   // -------------------------------------------------------------------------
   // The numeric half of the tag, witnessed from BOTH sides of its set equality,
   // because the two halves fail on opposite edits and one says nothing about
@@ -2924,6 +2992,8 @@ describe('the guarantee-tag convention', () => {
     // itself is written down. Adding a witness in a new file is a one-line
     // diff here, on purpose.
     expect(censused, 'the files the witness table scopes into').toEqual([
+      // GDD §2.1's career spine, and the first row in this table from it.
+      'src/career/eligibility.test.ts',
       'src/cutin/cutInWiring.test.ts',
       // The first `src/empire/**` rows. GDD §5's directory carried 23 declared
       // guarantees and no witnesses at all until these.
@@ -3382,6 +3452,9 @@ describe('the guarantee-tag convention', () => {
     // walked. Writing a number into a tagged paragraph in a new file is a
     // one-line diff here, on purpose.
     expect([...sliced].sort(), 'the test files the number ledger slices').toEqual([
+      // GDD §2.1's career spine: two tagged paragraphs, both citing the counts
+      // its two monotonicity sweeps produce.
+      'src/career/eligibility.test.ts',
       'src/empire/empireInvariant.test.ts',
       'src/empire/engagement.test.ts',
       'src/game/streak.test.ts',
