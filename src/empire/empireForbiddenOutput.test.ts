@@ -1591,6 +1591,20 @@ interface ConstructorCensus {
   /** Call expressions examined, so an empty walk reports itself. */
   readonly callsExamined: number;
   readonly modules: number;
+  /**
+   * `module.ts#name` for every exported function of the shipped directory whose
+   * return type is a read-only array of branded strings — the fault-list
+   * producers, derived from the checker rather than from their names.
+   *
+   * Here because `asFaultMessage`'s note leans on a claim this file could not
+   * previously redden: that the fault channel is CONTAINED, because every
+   * message goes through the constructor on the way out. The `x1` rows in
+   * `DECLARED_BRAND_CONSTRUCTOR_CALLS` say that of the eight producers that
+   * exist; nothing said those were all of them. A ninth arriving with a cast
+   * instead of a mint added no site, so the set equality below it would have
+   * stayed green.
+   */
+  readonly faultListExports: readonly string[];
 }
 
 /**
@@ -1681,6 +1695,15 @@ function constructorCensusOf(roots: readonly string[], probeText: string | null)
     return variable ?? '#module';
   };
 
+  /** A read-only array (or array) whose element type is a branded string. */
+  const isBrandedStringList = (type: ts.Type): boolean => {
+    const args = checker.getTypeArguments(type as ts.TypeReference);
+    return (
+      args.length === 1 && args[0] !== undefined && isBrandedString(args[0] as ts.Type)
+    );
+  };
+
+  const faultListExports: string[] = [];
   const counts = new Map<string, number>();
   let callsExamined = 0;
   let modules = 0;
@@ -1688,6 +1711,17 @@ function constructorCensusOf(roots: readonly string[], probeText: string | null)
     const source = program.getSourceFile(root);
     if (source === undefined) throw new Error(`${root} is not in the program`);
     modules += 1;
+    const rootModule = checker.getSymbolAtLocation(source);
+    if (rootModule !== undefined) {
+      for (const symbol of checker.getExportsOfModule(rootModule)) {
+        const declaration = symbol.declarations?.[0];
+        if (declaration === undefined || !ts.isFunctionDeclaration(declaration)) continue;
+        const signature = checker.getSignatureFromDeclaration(declaration);
+        if (signature === undefined) continue;
+        if (!isBrandedStringList(checker.getReturnTypeOfSignature(signature))) continue;
+        faultListExports.push(`${path.basename(root)}#${symbol.getName()}`);
+      }
+    }
     const visit = (node: ts.Node): void => {
       if (ts.isCallExpression(node)) {
         callsExamined += 1;
@@ -1711,6 +1745,7 @@ function constructorCensusOf(roots: readonly string[], probeText: string | null)
     ),
     callsExamined,
     modules,
+    faultListExports: Object.freeze(faultListExports.sort()),
   };
 }
 
@@ -1762,6 +1797,14 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
    * number here says the walk really covered the directory's code.
    */
   CALLS_EXAMINED: 964,
+  /**
+   * Exported functions returning a read-only array of branded strings.
+   *
+   * Eight, and the number is here rather than only in the set equality so that
+   * a producer disappearing from BOTH sides at once — which the equality alone
+   * would call a pass — moves something.
+   */
+  FAULT_LIST_PRODUCERS: 8,
 });
 
 const siteKey = (site: ConstructorCallSite): string => `${site.site} x${String(site.calls)}`;
@@ -1782,6 +1825,36 @@ describe('instrument C — a raw string becomes a brand in a countable number of
       'asNpcId',
     ]);
     expect(census.constructors.length).toBe(CONSTRUCTOR_CENSUS.CONSTRUCTORS);
+  });
+
+  it('every fault-list producer mints on the way out, joined in both directions', () => {
+    // THE CHECK BEHIND THE CONTAINMENT HALF OF `asFaultMessage`'s NOTE. That
+    // note now says the fault channel is contained rather than open, because
+    // every message reaches the constructor at the return of every `*Faults`
+    // function. It is a guarantee, so it needs something that goes red when it
+    // stops holding, and the `x1` rows above are not it: they say the eight
+    // producers that exist each mint once, and say nothing about a ninth.
+    //
+    // Both sides are DERIVED. The left is every exported function in the
+    // shipped directory whose return type the checker says is a read-only array
+    // of branded strings; the right is every site instrument C saw call
+    // `asFaultMessage`. A producer that returned a cast instead of a mint is on
+    // the left and not on the right, which is the shape that used to be
+    // invisible.
+    //
+    // Its limit, and it is the same one the whole instrument has: this says a
+    // constructor RUNS on the way out, which makes a forbidden message
+    // unshippable. It says nothing about the message being forbidden in the
+    // first place — `faults.push(EMPIRE_FORBIDDEN_OUTPUTS[0])` still compiles,
+    // which is M26, and what catches it is the drive, not this.
+    const census = constructorCensus();
+    const minting = distinct(
+      census.sites
+        .filter((site) => site.site.endsWith('#asFaultMessage'))
+        .map((site) => site.site.split('#').slice(0, 2).join('#')),
+    );
+    expect([...census.faultListExports]).toEqual(minting);
+    expect(census.faultListExports.length).toBe(CONSTRUCTOR_CENSUS.FAULT_LIST_PRODUCERS);
   });
 
   it('the brand constructor call sites are exactly the declared ones', () => {
@@ -7367,6 +7440,18 @@ interface RegistryMutant {
 
 const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
   Object.freeze({
+    id: 'G13',
+    what: 'a NINTH fault-list producer added to `expansion.ts` — `axisVocabularyFaults`, returning `Object.freeze(faults) as readonly FaultMessage[]`, so it casts where the other eight mint',
+    reddened:
+      'every fault-list producer mints on the way out: expected [ …(9) ] to deeply equal [ …(8) ], + "expansion.ts#axisVocabularyFaults". tsc exit 0 beside it, which is the point — a cast is what the type cannot refuse, and the eight `x1` rows in DECLARED_BRAND_CONSTRUCTOR_CALLS stay exactly as they were, because a producer that never calls the constructor adds no site. That is the hole this join closes and it was measured rather than argued.',
+  }),
+  Object.freeze({
+    id: 'G14',
+    what: 'the roster-ceiling pin taken against a raised `ROSTER_SLOTS_MAX` — 16 changed to 32 in `empireTuning.ts`',
+    reddened:
+      'pins what bounds a roster, because the two arms of that comparison are different questions: expected 16 to be 32. The loop cannot grow to a ceiling the funding does not reach, so raising the cap makes the pin state a fact that stopped being true rather than quietly widening the region a roster-size branch point can hide in. That is what makes the reachability bound a check rather than an observation.',
+  }),
+  Object.freeze({
     id: 'G1',
     what: 'a new knob `RIVAL_STREAK_BONUS_GYM_BUCKS: 1750` added to `empireTuning.ts`, filed under no unit and on no exemption list',
     reddened:
@@ -7459,8 +7544,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(12);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(12);
+    expect(REGISTRY_MUTANTS.length).toBe(14);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(14);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
