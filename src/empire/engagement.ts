@@ -172,11 +172,13 @@
 
 import {
   WALL_CLOCK_FUNDED_OUTPUTS,
+  asFaultMessage,
   asGymBucks,
   createEmpireClock,
   elapsedFor,
   type EmpireClock,
   type EmpireOutput,
+  type FaultMessage,
   type GymBucks,
   type UnacceleratedSeconds,
   type WallClockFundedOutput,
@@ -857,7 +859,7 @@ export function addEngagement(
  * It does not re-derive `compareEngagement`. An oracle that recomputes its
  * subject's own comparison cannot disagree with it.
  */
-export function engagementRunFaults(run: EngagementRun): readonly string[] {
+export function engagementRunFaults(run: EngagementRun): readonly FaultMessage[] {
   const faults: string[] = [];
   if (run.ledger.length === 0) {
     faults.push('the run produced no ledger at all');
@@ -903,5 +905,5 @@ export function engagementRunFaults(run: EngagementRun): readonly string[] {
       faults.push(`a day paid ${amount} Training IQ, which is above the daily budget`);
     }
   }
-  return faults;
+  return faults.map((message) => asFaultMessage(message));
 }

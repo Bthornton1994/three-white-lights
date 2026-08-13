@@ -1652,7 +1652,10 @@ describe('this module is pure, numerically clean and names nobody', () => {
     ).toBe(0);
 
     for (const doctored of [
-      code.replace("const RECRUIT_DISPLAY_NAME = 'Placeholder';", "const RECRUIT_DISPLAY_NAME = 'Fictional Placeholder';"),
+      code.replace(
+        "const RECRUIT_DISPLAY_NAME = asDisplayName('Placeholder');",
+        "const RECRUIT_DISPLAY_NAME = asDisplayName('Fictional Placeholder');",
+      ),
       code.replace('`recruit-${recruits + stillPending.length}`', '`Fictional Placeholder ${recruits}`'),
     ]) {
       // The doctoring landed, or the probe is about a string that is not there.

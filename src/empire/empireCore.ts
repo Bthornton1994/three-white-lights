@@ -460,6 +460,92 @@ export type SettledTenureDays = Branded<number, 'settled-tenure-days'>;
 export type NpcId = Branded<string, 'npc-id'>;
 
 /**
+ * ===========================================================================
+ * THE THREE STRING BRANDS BELOW EXIST FOR ONE REASON, AND IT IS A MEASUREMENT
+ * ===========================================================================
+ *
+ * Every bypass this directory's forbidden-output guard has been shown had the
+ * same shape: a forbidden name read out of `EMPIRE_FORBIDDEN_OUTPUTS` and
+ * assigned into a field declared as a bare `string`, behind a numeric branch
+ * point the sampling instrument's domain did not reach. Eight rounds each
+ * closed one branch point and declared the next; a ninth was declared open,
+ * above `OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE`, because a domain is a
+ * sample and the author picks the branch point after seeing the sample.
+ *
+ * The probe that made this file's answer possible, run at `dcc65bb` and again
+ * before this change:
+ *
+ *     export const direct: NpcId = EMPIRE_FORBIDDEN_OUTPUTS[0];
+ *     export const laundered: NpcId = asNpcId(EMPIRE_FORBIDDEN_OUTPUTS[0]);
+ *
+ *     src/empire/__probe.ts(3,14): error TS2322: Type 'string' is not
+ *       assignable to type 'NpcId'.
+ *       Type 'string' is not assignable to type
+ *       '{ readonly [EMPIRE_BRAND]: "npc-id"; }'.
+ *
+ * Exit 2, one error, on line 3 and not on line 5. So the assignment route into
+ * a BRANDED field is refused by the compiler at every branch point at once —
+ * no domain, no drive, no budget — and the constructor route is not.
+ *
+ * WHAT THESE BRANDS GUARANTEE, IN THE MECHANISM'S OWN TERMS: a value of type
+ * `string` cannot be assigned into a field of one of these types. That is the
+ * whole claim, and it is the compiler's claim rather than a sentence here.
+ *
+ * THE ROUTE THAT GETS PAST IT, NAMED CONCRETELY ENOUGH TO PLANT: line 5 of the
+ * probe. A brand is a constructor discipline, not an enumeration, so
+ * `asGymId(EMPIRE_FORBIDDEN_OUTPUTS[0])` compiles and always will.
+ *
+ * THE CHECKS THAT COVER THAT ROUTE, NAMED SPECIFICALLY ENOUGH TO RUN: two, and
+ * neither is complete alone.
+ *   - `refuseForbiddenName`, called by all four string constructors below. It
+ *     is CONTAINMENT, NOT DETECTION: it fires when the path runs, so it makes
+ *     the value unshippable rather than the guard complete. A constructor call
+ *     on a branch nothing ever executes throws nothing.
+ *   - `the brand constructor call sites are exactly the declared ones` in
+ *     `empireForbiddenOutput.test.ts`, which resolves every call to these four
+ *     functions through the checker and set-equals the sites against
+ *     `DECLARED_BRAND_CONSTRUCTOR_CALLS` in both directions. A new call site is
+ *     red whether or not anything drives it. That is detection, and its own
+ *     limit is that it detects a SITE and not what the site does.
+ * ===========================================================================
+ */
+
+/**
+ * Another gym's identity — a board row, a friend, or the rival.
+ *
+ * It arrives from outside this directory entirely and there is no closed set of
+ * them to narrow to. `DECLARED_BARE_STRING_FIELDS` used to give that as the
+ * reason the field stayed a bare `string`, and it is a true sentence about an
+ * ENUMERATION and a false one about a BRAND: `asGymId` narrows nothing about
+ * which gyms exist, and that is not what it is for. What it does is make the
+ * assignment route above a compile error and route every value that reaches the
+ * field through one named function, so the call sites are enumerable even
+ * though the values are not.
+ */
+export type GymId = Branded<string, 'gym-id'>;
+
+/**
+ * A shown name — a roster lifter's (§5.3's customisation hook) or a gym's.
+ *
+ * Free text the player or the server chose, and deliberately still free text:
+ * one brand for both because they are the same kind of thing and two would
+ * drift. `NpcLifter.displayName` and `GymSnapshot.displayName` are the two
+ * fields.
+ */
+export type DisplayName = Branded<string, 'display-name'>;
+
+/**
+ * One sentence of diagnostic prose from a `*Faults` function.
+ *
+ * The diagnostic channel is the one place a forbidden name is legitimately
+ * SPOKEN — `covered-day is named as forbidden and is also payable` is the
+ * module reporting a fault rather than paying one — so this brand's refusal is
+ * by equality and never by containment, and `empireForbiddenOutput.test.ts`
+ * treats these positions the same way for the same reason.
+ */
+export type FaultMessage = Branded<string, 'fault-message'>;
+
+/**
  * A level counted on the un-accelerated clock.
  *
  * The physio hook takes one of these rather than a bare number, so a caller
@@ -905,7 +991,7 @@ export const PROGRESSION_REACHING_OUTPUTS: readonly ProgressionReachingOutput[] 
  * its subject's own lookup cannot disagree with it, which is how the cross
  * product in `empireCore.test.ts` was passing without checking anything.
  */
-export function empireVocabularyFaults(): readonly string[] {
+export function empireVocabularyFaults(): readonly FaultMessage[] {
   const faults: string[] = [];
 
   for (const output of EMPIRE_OUTPUTS) {
@@ -990,7 +1076,7 @@ export function empireVocabularyFaults(): readonly string[] {
     }
   }
 
-  return faults;
+  return faults.map((message) => asFaultMessage(message));
 }
 
 // ---------------------------------------------------------------------------
@@ -1098,11 +1184,119 @@ function mintSettledTenureDays(value: number): SettledTenureDays {
   return mintNumber(value);
 }
 
+/**
+ * The runtime half of the string brands, and the half that is CONTAINMENT
+ * RATHER THAN DETECTION.
+ *
+ * Every string brand constructor in this directory calls this. It refuses a
+ * value that IS a member of `EMPIRE_FORBIDDEN_OUTPUTS`, so the constructor
+ * route the brands cannot type away — `asGymId(EMPIRE_FORBIDDEN_OUTPUTS[0])` —
+ * throws instead of returning a branded forbidden name.
+ *
+ * WHAT THAT IS AND IS NOT. It fires only when the call runs. A constructor call
+ * sitting behind a branch no domain reaches produces no value and therefore
+ * throws nothing, which is exactly the sampling limit this round exists to stop
+ * relying on. So this makes such a value UNSHIPPABLE — it cannot be handed to a
+ * caller — and it does not make the guard complete. The detection half is the
+ * call-site census named in the brands' own note above, which is red on a new
+ * site whether or not anything drives it. Those are two different properties
+ * and this comment does not blur them.
+ *
+ * ITS TWO LIMITS, EACH WITH THE CHECK THAT COVERS IT.
+ *   - EQUALITY, NOT CONTAINMENT. `asDisplayName('Chalk Dust Barbell')` is
+ *     allowed, deliberately: a display name is text a player chose, and a
+ *     containment refusal here would reject a legitimate name to catch a
+ *     laundering that instrument B already reads. `observeEverything` in
+ *     `empireForbiddenOutput.test.ts` compares every value it reaches against
+ *     `BANNED_VOCABULARY` by CONTAINMENT as well as by equality, for every
+ *     position outside the diagnostic channel.
+ *   - ONE BAN LIST, NOT BOTH. `FORBIDDEN_UNLOCK_KEYS` lives in `reputation.ts`,
+ *     which imports this module, so reading it here would be an import cycle.
+ *     `BANNED_VOCABULARY` is the union of the two lists and instrument B sweeps
+ *     it, so the second list is covered behaviourally and not here.
+ */
+function refuseForbiddenName(value: string, brand: string): void {
+  if ((EMPIRE_FORBIDDEN_OUTPUTS as readonly string[]).includes(value)) {
+    throw new RangeError(
+      `${brand} must not be a forbidden empire output; the idle layer may not produce ${value}.`,
+    );
+  }
+}
+
 /** A roster lifter's id. Refuses the empty string so a missing id is loud. */
 export function asNpcId<S extends string>(value: S & Unbranded<S>): NpcId {
   if (value.length === 0) {
     throw new RangeError('npcId must not be empty.');
   }
+  refuseForbiddenName(value, 'npcId');
+  return mintString(value);
+}
+
+/**
+ * Another gym's id.
+ *
+ * WHAT IT ACCEPTS, AND WHY, since a brand's constructor is the whole design
+ * once the type has been chosen: any non-empty string that is not a forbidden
+ * output. Not a narrower rule, and the narrower rules were considered rather
+ * than skipped.
+ *
+ * A character-set or length rule would be this directory inventing a wire
+ * format for a value that arrives from a server nobody has written yet, and the
+ * first real id that failed it would be a shipped defect caused by a guard
+ * guessing. A closed set is impossible for the same reason
+ * `DECLARED_BARE_STRING_FIELDS` gave — there is no closed set of other people's
+ * gyms.
+ *
+ * So the constructor is deliberately permissive about SHAPE and the brand does
+ * its work on ROUTE: the value has exactly one way in, and that way is counted.
+ * `socialContextFaults` is where a malformed id is reported, and it stays the
+ * place that judges content.
+ */
+export function asGymId<S extends string>(value: S & Unbranded<S>): GymId {
+  if (value.length === 0) {
+    throw new RangeError('gymId must not be empty.');
+  }
+  refuseForbiddenName(value, 'gymId');
+  return mintString(value);
+}
+
+/**
+ * A shown name, for a lifter or a gym.
+ *
+ * Accepts any non-empty string that is not a forbidden output, for the reason
+ * `asGymId` gives at length: this is player- or server-authored free text and a
+ * shape rule here would be a guess about somebody else's data. The non-emptiness
+ * check is the one `createNpcLifter` already made inline, moved here so both
+ * fields get it.
+ */
+export function asDisplayName<S extends string>(value: S & Unbranded<S>): DisplayName {
+  if (value.length === 0) {
+    throw new RangeError('displayName must not be empty.');
+  }
+  refuseForbiddenName(value, 'displayName');
+  return mintString(value);
+}
+
+/**
+ * One sentence of diagnostic prose.
+ *
+ * WHERE THE MINT SITS, AND WHY IT IS AT THE BOUNDARY RATHER THAN AT EVERY PUSH.
+ * The eight `*Faults` functions build their lists with 123 `faults.push(...)`
+ * calls, every one of them a template literal. A template literal is a plain
+ * `string`, so wrapping each push would put a constructor call at each of the
+ * 123 sites and buy NOTHING at compile time over minting once at the return:
+ * either way the literal reaches a constructor, which is route 2 and not route
+ * 1. What it would buy is 123 more rows in the call-site census, which is noise
+ * around the eight rows that matter.
+ *
+ * SO STATE THE COST PLAINLY RATHER THAN IMPLYING THE FENCE IS UNIFORM: inside a
+ * `*Faults` body, `faults.push(EMPIRE_FORBIDDEN_OUTPUTS[0])` still type-checks.
+ * It is caught by this constructor throwing when the function is driven —
+ * containment, and measured rather than asserted: that mutant was planted and
+ * is recorded as M15 in `PLANTED_ROUTES`.
+ */
+export function asFaultMessage<S extends string>(value: S & Unbranded<S>): FaultMessage {
+  refuseForbiddenName(value, 'faultMessage');
   return mintString(value);
 }
 
@@ -1460,7 +1654,7 @@ function wallClockBooksAt(balance: number): WallClockBooks {
 export interface NpcLifter {
   readonly id: NpcId;
   readonly tier: NpcTier;
-  readonly displayName: string;
+  readonly displayName: DisplayName;
   readonly joinedAt: AcceleratedSeconds;
   readonly settledAt: UnacceleratedSeconds;
 }
@@ -1494,13 +1688,10 @@ export function createNpcLifter<
   const rawDisplayName: string = displayName;
   const rawJoinedAt: number = joinedAt;
   const rawSettledAt: number = settledAt;
-  if (rawDisplayName.length === 0) {
-    throw new RangeError('displayName must not be empty.');
-  }
   return Object.freeze({
     id: asNpcId(rawId),
     tier,
-    displayName: rawDisplayName,
+    displayName: asDisplayName(rawDisplayName),
     joinedAt: asAcceleratedSeconds(rawJoinedAt),
     settledAt: asUnacceleratedSeconds(rawSettledAt),
   });
@@ -1831,7 +2022,7 @@ export function createEmpireState(): EmpireState {
  * payload wants all of them and a caller asserting in a test wants one message
  * with all of them in it. `assertEmpireState` is that second caller.
  */
-export function empireStateFaults(state: EmpireState): readonly string[] {
+export function empireStateFaults(state: EmpireState): readonly FaultMessage[] {
   const faults: string[] = [];
 
   // Each reading is validated before the two are compared, which is the order
@@ -2029,7 +2220,7 @@ export function empireStateFaults(state: EmpireState): readonly string[] {
     }
   }
 
-  return faults;
+  return faults.map((message) => asFaultMessage(message));
 }
 
 /** `empireStateFaults`, as a throw. Useful at a decode boundary and in a test. */

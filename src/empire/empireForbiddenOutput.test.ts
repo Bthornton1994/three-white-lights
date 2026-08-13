@@ -22,9 +22,31 @@
  * claim about any directory but this one.
  *
  * ===========================================================================
- * THE TWO INSTRUMENTS, EACH WITH ITS PROPERTY, ITS LIMIT, AND THE OTHER NAMED
+ * THE THREE INSTRUMENTS, EACH WITH ITS PROPERTY, ITS LIMIT, AND ANOTHER NAMED
  * AS THE CATCHER FOR THAT LIMIT
  * ===========================================================================
+ *
+ * IT WAS TWO FOR EIGHT ROUNDS, AND THE THIRD ARRIVED WITH A CHANGE TO THE
+ * SHIPPED TYPES RATHER THAN TO THIS FILE. Every bypass this file has been shown
+ * had one shape: a forbidden name read out of the ban list and ASSIGNED into a
+ * field declared as a bare `string`, behind a numeric branch point. Each of the
+ * eight rounds closed one branch point and declared the next; the ninth was
+ * declared open above `OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE` and no domain
+ * could have reached it, because the author picks the number after seeing the
+ * domain. The five bare-string fields are branded now, so that assignment does
+ * not compile — at every branch point at once. `DECLARED_BARE_STRING_FIELDS` is
+ * empty, `CLOSED_BARE_STRING_FIELDS` records what it held and what closed each
+ * row, and M15-M18 in `PLANTED_ROUTES` are the measurement.
+ *
+ * WHAT THAT DID NOT CLOSE, AND WHAT INSTRUMENT C IS FOR. A brand is a
+ * constructor discipline, not an enumeration, so `asGymId(<the name>)` compiles
+ * and always will. Instrument C is the named catcher for exactly that: a census
+ * of every brand-constructor call site in the shipped directory, resolved
+ * through the checker, set-equal in both directions with a per-site count; plus
+ * a runtime refusal inside every string brand constructor. The first is
+ * detection and does not need a drive; the second is containment and needs the
+ * path to run. Its own section below says which is which and does not blur
+ * them.
  *
  * The shape is CLAUDE.md's "The Form That Survived": a bounded claim, a
  * declared limit, and a named catcher — with the route run against the check
@@ -243,6 +265,7 @@ import type {
   EmpireState,
   EquipmentTier,
   GymAxes,
+  GymId,
   NpcLifter,
   NpcTier,
   StaffRole,
@@ -718,29 +741,89 @@ const brandedKeys = (surface: StringSurface): readonly string[] =>
   distinct(surface.positions.filter((p) => p.kind === 'branded').map(positionKey));
 
 /**
- * Every bare-`string` position in the directory, grouped by the FIELD it is,
- * with the reason that field is legitimately a bare string.
+ * Every bare-`string` position in the directory, grouped by the FIELD it is.
  *
- * Five fields, twenty-three positions. The grouping is not decoration: the same
- * field is reached through several exports, so a per-export list would suggest
- * eighteen independent holes where there are five, and would make the count move
- * for a reason that is not a new hole.
+ * IT IS EMPTY, AND THE EMPTINESS IS THE ROUND'S RESULT RATHER THAN A DELETION.
+ * There were five fields and twenty-three positions. All twenty-three are
+ * branded now and sit in `DECLARED_BRANDED_STRING_POSITIONS`; the join in
+ * 'every field that used to be a bare string is branded now' asserts that,
+ * position by position, so this list going empty and that list growing are one
+ * fact checked from both ends rather than two edits that happen to agree.
  *
- * NOTHING HERE WAS TIGHTENED, AND THAT IS A DELIBERATE CHOICE RATHER THAN AN
- * OMISSION. Every one of the five is a string a caller or a server supplies, so
- * a brand on it would be a brand on free text and would say nothing about what
- * the text is. The instrument's bite is the SET EQUALITY below, not the absence
- * of bare strings: a sixth field cannot arrive without this list being
- * edited, and that is what the reproduced defect runs into.
+ * WHAT THE EQUALITY IS WORTH NOW, STATED EXACTLY, BECAUSE AN EMPTY LIST IS THE
+ * SHAPE CLAUDE.MD NAMES AS VACUOUS. Two of the three assertions in
+ * 'pins every bare-string position' change character:
+ *
+ *   - `expect(bareKeys(surface)).toEqual(declared)` is STRONGER empty than it
+ *     was full. It now reddens on the arrival of ANY bare-string position
+ *     anywhere in the directory, which is the strictest state it can be in.
+ *   - the per-group loop that requires a reason over 80 characters now walks
+ *     nothing. It is vacuous, in the strict sense: no state of the shipped
+ *     directory makes it red. It is kept because it becomes non-vacuous again
+ *     the moment a row is added, and it is named here so nobody reads it as
+ *     coverage.
+ *
+ * THE NON-VACUITY GUARD FOR THE WALKER ITSELF IS THE PROBE MODULE, and it is
+ * what stops the zero being a zero about a broken walker: 'sees the reproduced
+ * defect' drives the same census over an eleventh module whose
+ * `{ readonly kind: string }` return must be reported as exactly one bare
+ * position. If the walker stopped classifying bare strings, that test is red
+ * and this equality would still be green.
  */
-const DECLARED_BARE_STRING_FIELDS = Object.freeze([
+const DECLARED_BARE_STRING_FIELDS: readonly {
+  readonly field: string;
+  readonly why: string;
+  readonly positions: readonly string[];
+}[] = Object.freeze([]);
+
+/**
+ * The five fields that WERE bare strings, why each was, and what closed it.
+ *
+ * Kept as a live check rather than as history. Every position here is asserted
+ * to be a branded position now, so reverting any one field to `string` is red
+ * twice — here, and on the bare equality above.
+ *
+ * ONE ROW CARRIED A CLAIM THE PROBE FALSIFIES, AND IT IS CORRECTED RATHER THAN
+ * DELETED. `PendingRecruit.id` said narrowing it "buys nothing this census does
+ * not already give, because a new position reddens whatever its type is". The
+ * first clause is true. The second is FALSE, and every bypass this directory
+ * has been shown is the counter-example: the census reddens on a new POSITION,
+ * and all nine used an EXISTING one. What narrowing buys is measured, not
+ * argued — this probe, run at `dcc65bb` and replicated before the change:
+ *
+ *     export const direct: NpcId = EMPIRE_FORBIDDEN_OUTPUTS[0];         // 3
+ *     export const laundered: NpcId = asNpcId(EMPIRE_FORBIDDEN_OUTPUTS[0]); // 5
+ *
+ *     src/empire/__probe.ts(3,14): error TS2322: Type 'string' is not
+ *       assignable to type 'NpcId'.
+ *       Type 'string' is not assignable to type
+ *       '{ readonly [EMPIRE_BRAND]: "npc-id"; }'.
+ *
+ * `tsc --noEmit` exit 2, exactly one error, on line 3 and not on line 5. So a
+ * brand refuses the assignment route at every branch point at once and does not
+ * refuse the constructor route — which is why the constructor-call-site census
+ * below exists and why `refuseForbiddenName` exists beside it.
+ *
+ * THE OBJECTION THE `GymSnapshot` ROW RAISED IS ANSWERED RATHER THAN IGNORED.
+ * It said another gym's identity "arrives from outside this directory entirely.
+ * There is no closed set of them to narrow to." That is true and it is not an
+ * argument against a brand, because a brand is not an enumeration — it is a
+ * constructor discipline. `asGymId` narrows nothing about which gyms exist; it
+ * makes the assignment a compile error and makes the one remaining route a
+ * named function whose call sites are counted. What `asGymId` accepts, and why
+ * it accepts that much, is written at the function.
+ */
+const CLOSED_BARE_STRING_FIELDS = Object.freeze([
   Object.freeze({
     field: 'the eight `readonly string[]` fault lists',
+    closedBy: 'FaultMessage',
     why:
       'Diagnostic prose. Every element is a sentence, and a sentence naming a ' +
       'forbidden output is the module REPORTING a fault rather than paying ' +
       'one. Instrument B checks these by equality and not by containment, and ' +
-      'pins what they produced in DIAGNOSTIC_CHANNEL_CENSUS.',
+      'pins what they produced in DIAGNOSTIC_CHANNEL_CENSUS. The brand is ' +
+      'minted at the return rather than at each of the 123 push sites, and ' +
+      '`asFaultMessage` says why that is the same fence and what it costs.',
     positions: Object.freeze([
       'empireCore.ts#empireStateFaults#return[]',
       'empireCore.ts#empireVocabularyFaults#return[]',
@@ -754,11 +837,13 @@ const DECLARED_BARE_STRING_FIELDS = Object.freeze([
   }),
   Object.freeze({
     field: 'NpcLifter.displayName',
+    closedBy: 'DisplayName',
     why:
       "An NPC's shown name. Caller-chosen free text, checked only for " +
-      'non-emptiness by `createNpcLifter`. Covered by instrument B, which ' +
-      'drives it with a sentinel so the position is measured as REACHED ' +
-      'rather than assumed non-empty.',
+      'non-emptiness by `createNpcLifter` — which is now the check inside ' +
+      '`asDisplayName`, so both display-name fields get it instead of one. ' +
+      'Still covered by instrument B, which drives it with a sentinel so the ' +
+      'position is measured as REACHED rather than assumed non-empty.',
     positions: Object.freeze([
       'empireCore.ts#createEmpireState#return.roster[].displayName',
       'empireCore.ts#createNpcLifter#return.displayName',
@@ -771,9 +856,13 @@ const DECLARED_BARE_STRING_FIELDS = Object.freeze([
   }),
   Object.freeze({
     field: 'GymSnapshot.gymId and GymSnapshot.displayName',
+    closedBy: 'GymId and DisplayName',
     why:
       "Another gym's identity, which arrives from outside this directory " +
-      'entirely. There is no closed set of them to narrow to.',
+      'entirely. There is no closed set of them to narrow to — and that was ' +
+      'given as the reason no brand was possible, which confuses an ' +
+      'enumeration with a constructor discipline. The constructor accepts any ' +
+      'non-empty non-forbidden string on purpose; see `asGymId`.',
     positions: Object.freeze([
       'empireInvariant.ts#gymSnapshot#return.displayName',
       'empireInvariant.ts#gymSnapshot#return.gymId',
@@ -783,12 +872,14 @@ const DECLARED_BARE_STRING_FIELDS = Object.freeze([
   }),
   Object.freeze({
     field: 'PendingRecruit.id',
+    closedBy: 'NpcId',
     why:
-      'The id a recruitment will mint. It is a bare `string` where ' +
-      '`NpcLifter.id` is the `NpcId` brand, which is an inconsistency in the ' +
-      'shipped types and is recorded here rather than fixed — narrowing it is ' +
-      'an edit to a shipped module and buys nothing this census does not ' +
-      'already give, because a new position reddens whatever its type is.',
+      'The id a recruitment will mint, and it is the SAME id the lifter ends ' +
+      'up carrying, so it is now the same brand `NpcLifter.id` is. Its old ' +
+      'row called that an inconsistency and declined to fix it on the ground ' +
+      'that narrowing buys nothing the census does not already give. The ' +
+      'probe above is what falsified that: the census reddens on a new ' +
+      'position and every bypass used an existing one.',
     positions: Object.freeze([
       'empireInvariant.ts#createEmpireGym#return.pending[].id',
       'empireInvariant.ts#runEmpire#return.gym.pending[].id',
@@ -797,38 +888,84 @@ const DECLARED_BARE_STRING_FIELDS = Object.freeze([
   }),
   Object.freeze({
     field: 'FriendVisit.gymId',
+    closedBy: 'GymId',
     why:
-      "The visited gym's id, which the caller passes in and `recordFriendVisit` " +
-      'logs verbatim. Same class as GymSnapshot.gymId.',
+      "The visited gym's id, which the caller passes in and " +
+      '`recordFriendVisit` logs verbatim. Same class as GymSnapshot.gymId, ' +
+      'and closed harder than it: the PARAMETER is branded too, so the ' +
+      'function mints nothing and a forbidden name cannot be introduced ' +
+      'inside it without a constructor call the site census would report.',
     positions: Object.freeze(['social.ts#recordFriendVisit#return.visits[].gymId']),
   }),
 ]);
 
 /**
- * Every branded-string position: `NpcId`, which is `string & brand`.
+ * Every branded-string position in the directory.
  *
  * Listed separately from the bare ones because a brand is erased at runtime, so
  * `asNpcId('covered-day')` returns the forbidden name. A scan for the `string`
  * keyword misses this whole class; the checker does not.
+ *
+ * It was eight — `NpcId` alone. It is thirty-four, because the twenty-three
+ * positions that used to be bare are here now, plus the three new constructors'
+ * own returns. THAT IS A MOVE OF A POSITION FROM ONE LIST TO THE OTHER AND NOT
+ * A LOSS OF COVERAGE: both lists are set equalities in both directions, so a
+ * position that vanished from the surface entirely would redden the branded
+ * equality just as a new one would.
+ *
+ * WHAT BRANDING THESE BUYS, AND WHAT IT DOES NOT. It buys the assignment route:
+ * `gymId: EMPIRE_FORBIDDEN_OUTPUTS[0]` is a compile error at every branch point
+ * at once, with no domain and no drive. It does NOT buy the constructor route —
+ * `asGymId(EMPIRE_FORBIDDEN_OUTPUTS[0])` compiles, and that is measured in the
+ * probe quoted at `CLOSED_BARE_STRING_FIELDS`. The constructor route's catchers
+ * are `DECLARED_BRAND_CONSTRUCTOR_CALLS` below and `refuseForbiddenName` in
+ * `empireCore.ts`, and they cover different halves of it: one detects a new
+ * site whether or not it runs, the other refuses a value only when it does.
  */
 const DECLARED_BRANDED_STRING_POSITIONS: readonly string[] = Object.freeze([
+  'empireCore.ts#asDisplayName#return',
+  'empireCore.ts#asFaultMessage#return',
+  'empireCore.ts#asGymId#return',
   'empireCore.ts#asNpcId#return',
+  'empireCore.ts#createEmpireState#return.roster[].displayName',
   'empireCore.ts#createEmpireState#return.roster[].id',
+  'empireCore.ts#createNpcLifter#return.displayName',
   'empireCore.ts#createNpcLifter#return.id',
+  'empireCore.ts#empireStateFaults#return[]',
+  'empireCore.ts#empireVocabularyFaults#return[]',
+  'empireInvariant.ts#createEmpireGym#return.pending[].id',
+  'empireInvariant.ts#createEmpireGym#return.state.roster[].displayName',
   'empireInvariant.ts#createEmpireGym#return.state.roster[].id',
+  'empireInvariant.ts#empireRunFaults#return[]',
+  'empireInvariant.ts#gymSnapshot#return.displayName',
+  'empireInvariant.ts#gymSnapshot#return.gymId',
+  'empireInvariant.ts#runEmpire#return.gym.pending[].id',
+  'empireInvariant.ts#runEmpire#return.gym.state.roster[].displayName',
   'empireInvariant.ts#runEmpire#return.gym.state.roster[].id',
+  'empireInvariant.ts#stepGym#return.pending[].id',
+  'empireInvariant.ts#stepGym#return.state.roster[].displayName',
   'empireInvariant.ts#stepGym#return.state.roster[].id',
+  'engagement.ts#engagementRunFaults#return[]',
+  'expansion.ts#expansionVocabularyFaults#return[]',
+  'recruitment.ts#beginRecruitment#return.state.roster[].displayName',
   'recruitment.ts#beginRecruitment#return.state.roster[].id',
+  'recruitment.ts#completeRecruitment#return.roster[].displayName',
   'recruitment.ts#completeRecruitment#return.roster[].id',
+  'reputation.ts#reputationVocabularyFaults#return[]',
+  'social.ts#rankLeaderboard#return[].entry.displayName',
+  'social.ts#rankLeaderboard#return[].entry.gymId',
+  'social.ts#recordFriendVisit#return.visits[].gymId',
+  'social.ts#socialContextFaults#return[]',
+  'social.ts#socialVocabularyFaults#return[]',
 ]);
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const SURFACE_CENSUS = Object.freeze({
   MODULES: 10,
-  EXPORTS: 226,
-  BARE_POSITIONS: 23,
-  BARE_FIELDS: 5,
-  BRANDED_POSITIONS: 8,
+  EXPORTS: 229,
+  BARE_POSITIONS: 0,
+  BARE_FIELDS: 0,
+  BRANDED_POSITIONS: 34,
   /** The banned vocabulary's own length, so an emptied ban list is not a clean sweep. */
   BANNED: 7,
   LITERAL_POSITIONS: 1175,
@@ -1212,7 +1349,11 @@ describe('instrument A — no export type admits a forbidden literal, and no new
     // A depth cut means the census below is a prefix of the surface rather than
     // the surface. Pinned at zero so a deeper type reports itself.
     expect(surface.depthCuts).toBe(SURFACE_CENSUS.DEPTH_CUTS);
-    expect(surface.sourceDiagnostics).toEqual([]);
+    // Named in the message rather than left as `[ Array(1) ]`. CLAUDE.md's
+    // "a check that bites but fails uselessly is half a check": this is the
+    // line that reddens in VITEST when a brand refuses an assignment, so the
+    // compiler's sentence has to reach the reader of the vitest output.
+    expect(surface.sourceDiagnostics, surface.sourceDiagnostics.join(' | ')).toEqual([]);
     expect(surface.modules.length).toBe(SURFACE_CENSUS.MODULES);
     expect(surface.exports.length).toBe(SURFACE_CENSUS.EXPORTS);
   });
@@ -1321,7 +1462,7 @@ function probeSurface(): StringSurface {
 describe('instrument A bites — the census is re-run over a probe carrying four routes', () => {
   it('compiles the probe cleanly, so a refusal below is a classification and not an error', () => {
     const surface = probeSurface();
-    expect(surface.sourceDiagnostics).toEqual([]);
+    expect(surface.sourceDiagnostics, surface.sourceDiagnostics.join(' | ')).toEqual([]);
     expect(surface.depthCuts).toBe(SURFACE_CENSUS.DEPTH_CUTS);
     expect(surface.modules.length).toBe(SURFACE_CENSUS.MODULES + 1);
   });
@@ -1360,6 +1501,392 @@ describe('instrument A bites — the census is re-run over a probe carrying four
     expect(fromShape16).toEqual([]);
     // What DOES move is the export list, and only that.
     expect(probeSurface().exports).toContain(`${PROBE_MODULE}#probeProtectionDays`);
+  });
+});
+
+// ===========================================================================
+// INSTRUMENT C — the brand-constructor call sites, and the runtime refusal
+// ===========================================================================
+
+/**
+ * WHY A THIRD INSTRUMENT EXISTS, AND WHAT IT IS FOR.
+ *
+ * Instrument A reads DECLARED TYPES and instrument B DRIVES INPUTS. Branding
+ * the directory's string fields closed the assignment route — a forbidden name
+ * read out of the ban list can no longer be assigned into any of them, at every
+ * branch point at once, because a `string` is not a `GymId`. That is measured
+ * at `CLOSED_BARE_STRING_FIELDS` and it is exactly half the story.
+ *
+ * The other half is the constructor route: `asGymId(EMPIRE_FORBIDDEN_OUTPUTS[0])`
+ * compiles and always will, because a brand is a constructor discipline rather
+ * than an enumeration. Instrument B can only catch that where its domain
+ * reaches the branch, and eight rounds have each closed one branch point and
+ * declared the next — a ninth is declared open above
+ * `OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE`. A sampling instrument does not
+ * close a route the author picks a number for.
+ *
+ * WHAT MAKES THE PROBLEM ENUMERABLE IS THE CHANGE OF SUBJECT. An unbounded
+ * numeric input is not a finite set. A list of call sites is. So this instrument
+ * asks a question neither of the other two can: WHERE, in the shipped
+ * directory's source, does a raw string acquire one of these brands?
+ *
+ * TWO HALVES, AND THEY COVER DIFFERENT THINGS. Do not read either as the other.
+ *
+ *   - `the brand constructor call sites are exactly the declared ones` is
+ *     DETECTION. It resolves every call through the checker and set-equals the
+ *     sites against `DECLARED_BRAND_CONSTRUCTOR_CALLS` in both directions, with
+ *     a per-site count, so a NEW mint is red whether or not anything ever drives
+ *     it. Its limit: it detects a SITE and says nothing about what the site
+ *     does. `asGymId(context.friends[0].displayName)` would be an existing site
+ *     doing something new, and nothing here would move.
+ *   - `refuses every banned name at every string brand constructor` is
+ *     CONTAINMENT. `refuseForbiddenName` in `empireCore.ts` throws on a value
+ *     equal to a member of `EMPIRE_FORBIDDEN_OUTPUTS`, so such a value cannot be
+ *     handed to a caller. Its limit: it fires only when the path RUNS. A
+ *     constructor call behind a branch nothing reaches throws nothing, which is
+ *     the sampling limit this instrument exists not to depend on.
+ *
+ * The constructor set is DERIVED, not listed: it is every exported function of
+ * `empireCore.ts` whose return type is a branded string. So a fifth string brand
+ * cannot arrive without both halves picking it up — the site census starts
+ * counting its calls, and the refusal test starts requiring it to throw.
+ *
+ * WHAT IT DOES NOT COVER, said as a scope rather than a hedge. It reads the
+ * SHIPPED modules only. A test file may mint whatever it likes, and this file
+ * does; that is a fixture, not a shipped route. And it cannot see a cast:
+ * `'covered-day' as GymId` needs no constructor and is invisible here. The
+ * catcher for a cast is instrument B, which reads the VALUE that comes back and
+ * has no opinion about how it was typed.
+ */
+
+interface ConstructorCallSite {
+  /** `module.ts#enclosingDeclaration#constructorName`, or `#module` at top level. */
+  readonly site: string;
+  readonly calls: number;
+}
+
+interface ConstructorCensus {
+  /** Exported functions of `empireCore.ts` returning a branded string. */
+  readonly constructors: readonly string[];
+  readonly sites: readonly ConstructorCallSite[];
+  /** Call expressions examined, so an empty walk reports itself. */
+  readonly callsExamined: number;
+  readonly modules: number;
+}
+
+/**
+ * Find every call to a string brand constructor, resolving the CALLEE through
+ * the checker rather than matching its name.
+ *
+ * The resolution is the load-bearing part and it is not a style choice.
+ * CLAUDE.md records `progression.test.ts`'s seal check matching a callee by
+ * identifier TEXT while the check twelve lines below resolved symbols through
+ * the checker — a local shim spelled `sealServerValue` type-checked clean past
+ * 202 green guard tests. A local `const asGymId = (v: string) => v as GymId` in
+ * one of these modules would be invisible to a text match and is not a call to
+ * the exported symbol here.
+ */
+function constructorCensusOf(roots: readonly string[], probeText: string | null): ConstructorCensus {
+  const options = compilerOptions();
+  const program = programWith(options, roots, probeText);
+  const checker = program.getTypeChecker();
+
+  const corePath = path.join(HERE, 'empireCore.ts');
+  const coreSource = program.getSourceFile(corePath);
+  if (coreSource === undefined) throw new Error(`${corePath} is not in the program`);
+
+  let brandSymbol: ts.Symbol | undefined;
+  coreSource.forEachChild((node) => {
+    if (!ts.isVariableStatement(node)) return;
+    for (const declaration of node.declarationList.declarations) {
+      if (ts.isIdentifier(declaration.name) && declaration.name.text === 'EMPIRE_BRAND') {
+        brandSymbol = checker.getSymbolAtLocation(declaration.name);
+      }
+    }
+  });
+  if (brandSymbol === undefined) throw new Error('no EMPIRE_BRAND declaration in empireCore.ts');
+
+  const resolved = (symbol: ts.Symbol | undefined): ts.Symbol | undefined =>
+    symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+      ? checker.getAliasedSymbol(symbol)
+      : symbol;
+
+  const carriesBrand = (type: ts.Type): boolean =>
+    type.getProperties().some((property) => {
+      const declaration = property.valueDeclaration ?? property.declarations?.[0];
+      const name = declaration === undefined ? undefined : (declaration as ts.NamedDeclaration).name;
+      if (name === undefined || !ts.isComputedPropertyName(name)) return false;
+      return resolved(checker.getSymbolAtLocation(name.expression)) === brandSymbol;
+    });
+
+  /** A branded STRING, and not a branded number and not an array of either. */
+  const isBrandedString = (type: ts.Type): boolean =>
+    type.isIntersection() &&
+    type.types.some((part) => (part.flags & (ts.TypeFlags.String | ts.TypeFlags.StringLiteral)) !== 0) &&
+    carriesBrand(type);
+
+  const moduleSymbol = checker.getSymbolAtLocation(coreSource);
+  if (moduleSymbol === undefined) throw new Error('empireCore.ts resolved to no module symbol');
+
+  const constructorSymbols = new Set<ts.Symbol>();
+  const constructors: string[] = [];
+  for (const symbol of checker.getExportsOfModule(moduleSymbol)) {
+    const declaration = symbol.declarations?.[0];
+    if (declaration === undefined || !ts.isFunctionDeclaration(declaration)) continue;
+    const signature = checker.getSignatureFromDeclaration(declaration);
+    if (signature === undefined) continue;
+    if (!isBrandedString(checker.getReturnTypeOfSignature(signature))) continue;
+    constructorSymbols.add(symbol);
+    constructors.push(symbol.getName());
+  }
+  constructors.sort();
+
+  /**
+   * The named thing a call sits inside, for a site a reader can find.
+   *
+   * The enclosing FUNCTION wins over a nearer variable, which is a correction
+   * rather than a preference: a mint inside `const visit = { gymId: asGymId(x) }`
+   * within `recordFriendVisit` first reported itself as `social.ts#visit`, and
+   * a site named after a local is a site a reader has to go looking for. A
+   * top-level constant has no enclosing function and keeps its own name.
+   */
+  const enclosing = (node: ts.Node): string => {
+    let variable: string | null = null;
+    for (let at: ts.Node | undefined = node.parent; at !== undefined; at = at.parent) {
+      if (ts.isFunctionDeclaration(at) && at.name !== undefined) return at.name.text;
+      if (ts.isMethodDeclaration(at) && ts.isIdentifier(at.name)) return at.name.text;
+      if (variable === null && ts.isVariableDeclaration(at) && ts.isIdentifier(at.name)) {
+        variable = at.name.text;
+      }
+    }
+    return variable ?? '#module';
+  };
+
+  const counts = new Map<string, number>();
+  let callsExamined = 0;
+  let modules = 0;
+  for (const root of roots) {
+    const source = program.getSourceFile(root);
+    if (source === undefined) throw new Error(`${root} is not in the program`);
+    modules += 1;
+    const visit = (node: ts.Node): void => {
+      if (ts.isCallExpression(node)) {
+        callsExamined += 1;
+        const callee = resolved(checker.getSymbolAtLocation(node.expression));
+        if (callee !== undefined && constructorSymbols.has(callee)) {
+          const key = `${path.basename(root)}#${enclosing(node)}#${callee.getName()}`;
+          counts.set(key, (counts.get(key) ?? 0) + 1);
+        }
+      }
+      node.forEachChild(visit);
+    };
+    source.forEachChild(visit);
+  }
+
+  return {
+    constructors: Object.freeze(constructors),
+    sites: Object.freeze(
+      [...counts.entries()]
+        .map(([site, calls]) => Object.freeze({ site, calls }))
+        .sort((left, right) => (left.site < right.site ? -1 : 1)),
+    ),
+    callsExamined,
+    modules,
+  };
+}
+
+let constructorCensusMemo: ConstructorCensus | null = null;
+
+function constructorCensus(): ConstructorCensus {
+  if (constructorCensusMemo !== null) return constructorCensusMemo;
+  constructorCensusMemo = constructorCensusOf(shippedModulePaths(), null);
+  return constructorCensusMemo;
+}
+
+/**
+ * Every place in the SHIPPED directory where a raw string becomes a brand.
+ *
+ * Thirteen sites across six modules, with the call count per site, so a second
+ * mint added inside a function that already has one is red as well as a mint in
+ * a function that has none. `x1` is not decoration: the eight fault-list rows
+ * each mint exactly once, at the return, and a second call appearing inside one
+ * of those bodies is exactly the shape `asFaultMessage`'s own note says is not
+ * fenced at compile time.
+ */
+const DECLARED_BRAND_CONSTRUCTOR_CALLS: readonly string[] = Object.freeze([
+  'empireCore.ts#createNpcLifter#asDisplayName x1',
+  'empireCore.ts#createNpcLifter#asNpcId x1',
+  'empireCore.ts#empireStateFaults#asFaultMessage x1',
+  'empireCore.ts#empireVocabularyFaults#asFaultMessage x1',
+  'empireInvariant.ts#OWN_GYM_ID#asGymId x1',
+  'empireInvariant.ts#RECRUIT_DISPLAY_NAME#asDisplayName x1',
+  'empireInvariant.ts#empireRunFaults#asFaultMessage x1',
+  'empireInvariant.ts#stepGym#asNpcId x1',
+  'engagement.ts#engagementRunFaults#asFaultMessage x1',
+  'expansion.ts#expansionVocabularyFaults#asFaultMessage x1',
+  'reputation.ts#reputationVocabularyFaults#asFaultMessage x1',
+  'social.ts#socialContextFaults#asFaultMessage x1',
+  'social.ts#socialVocabularyFaults#asFaultMessage x1',
+]);
+
+/** What instrument C measured on the shipped tree. Counts, not bounds. */
+const CONSTRUCTOR_CENSUS = Object.freeze({
+  CONSTRUCTORS: 4,
+  SITES: 13,
+  MINTS: 13,
+  MODULES: 10,
+  /**
+   * Call expressions the walk examined across the directory.
+   *
+   * Pinned because a walker that stopped descending would find no sites and
+   * report a clean census, which is the reassuring direction. A four-figure
+   * number here says the walk really covered the directory's code.
+   */
+  CALLS_EXAMINED: 964,
+});
+
+const siteKey = (site: ConstructorCallSite): string => `${site.site} x${String(site.calls)}`;
+
+describe('instrument C — a raw string becomes a brand in a countable number of places', () => {
+  it('the brand constructor set is derived from the module, not listed here', () => {
+    const census = constructorCensus();
+    expect(census.modules).toBe(CONSTRUCTOR_CENSUS.MODULES);
+    expect(census.callsExamined).toBe(CONSTRUCTOR_CENSUS.CALLS_EXAMINED);
+    // The set itself, by name. It is what the checker says returns a branded
+    // string, so a fifth constructor joins both halves of this instrument
+    // without either being edited — and a constructor that stopped returning a
+    // brand drops out of it, which is red here first.
+    expect([...census.constructors]).toEqual([
+      'asDisplayName',
+      'asFaultMessage',
+      'asGymId',
+      'asNpcId',
+    ]);
+    expect(census.constructors.length).toBe(CONSTRUCTOR_CENSUS.CONSTRUCTORS);
+  });
+
+  it('the brand constructor call sites are exactly the declared ones', () => {
+    const census = constructorCensus();
+    // Set equality, both directions. A new mint is an unexpected member; a mint
+    // that moved or vanished is a stale row.
+    expect(census.sites.map(siteKey)).toEqual([...DECLARED_BRAND_CONSTRUCTOR_CALLS].sort());
+    expect(census.sites.length).toBe(CONSTRUCTOR_CENSUS.SITES);
+    expect(census.sites.reduce((total, site) => total + site.calls, 0)).toBe(
+      CONSTRUCTOR_CENSUS.MINTS,
+    );
+    // Every declared row names a constructor the checker actually found, so a
+    // row cannot survive its constructor being renamed away.
+    for (const row of DECLARED_BRAND_CONSTRUCTOR_CALLS) {
+      const name = row.split('#')[2]?.split(' ')[0] as string;
+      expect(census.constructors, row).toContain(name);
+    }
+  });
+
+  it('sees a call site that is not on the list — the walker is not asleep', () => {
+    // THE NON-VACUITY GUARD, and it is a probe rather than an argument. The
+    // census above is a set equality, and a set equality passes just as happily
+    // when the walker finds nothing at all. `probeMilestoneId` in the probe
+    // module calls `asNpcId`, so the same walk over an eleventh module must
+    // report exactly one site the shipped census does not have.
+    const probed = constructorCensusOf([...shippedModulePaths(), PROBE_PATH], PROBE_SOURCE);
+    const extra = probed.sites
+      .map(siteKey)
+      .filter((site) => !DECLARED_BRAND_CONSTRUCTOR_CALLS.includes(site));
+    expect(extra).toEqual([`${PROBE_MODULE}#probeMilestoneId#asNpcId x1`]);
+    expect(probed.modules).toBe(CONSTRUCTOR_CENSUS.MODULES + 1);
+    // And the shipped list is unchanged by the probe being in the program, so
+    // the extra row is the probe's and not a shift in what the walk sees.
+    expect(
+      probed.sites.map(siteKey).filter((site) => DECLARED_BRAND_CONSTRUCTOR_CALLS.includes(site)),
+    ).toEqual([...DECLARED_BRAND_CONSTRUCTOR_CALLS].sort());
+  });
+
+  it('refuses every banned name at every string brand constructor', () => {
+    // THE CONTAINMENT HALF, driven over the DERIVED constructor set rather than
+    // a list written here — so a fifth string brand that forgot
+    // `refuseForbiddenName` is red on this line.
+    const census = constructorCensus();
+    const module = core as unknown as Record<string, (value: string) => string>;
+    let refusals = 0;
+    for (const name of census.constructors) {
+      const constructor = module[name];
+      expect(typeof constructor, `${name} is not callable off the module`).toBe('function');
+      for (const forbidden of core.EMPIRE_FORBIDDEN_OUTPUTS) {
+        expect(() => (constructor as (value: string) => string)(forbidden), `${name}(${forbidden})`).toThrow(
+          new RegExp(`must not be a forbidden empire output.*${forbidden}`),
+        );
+        refusals += 1;
+      }
+    }
+    // Counts, not bounds: four constructors times four forbidden outputs. A
+    // constructor dropping out of the derived set, or a name dropping out of
+    // the ban list, moves this rather than leaving a shorter loop green.
+    expect(refusals).toBe(
+      CONSTRUCTOR_CENSUS.CONSTRUCTORS * core.EMPIRE_FORBIDDEN_OUTPUTS.length,
+    );
+    expect(refusals).toBe(16);
+
+    // The complement, so the refusal is not refusing everything. A benign
+    // identifier is accepted by all four, which is what makes the sixteen
+    // throws above a discrimination rather than a constructor that never works.
+    let accepted = 0;
+    for (const name of census.constructors) {
+      const constructor = module[name] as (value: string) => string;
+      expect(constructor(SENTINELS.NPC_ID)).toBe(SENTINELS.NPC_ID);
+      accepted += 1;
+    }
+    expect(accepted).toBe(CONSTRUCTOR_CENSUS.CONSTRUCTORS);
+  });
+
+  it('does NOT refuse the second ban list, and that limit is a number rather than a sentence', () => {
+    // `BANNED_VOCABULARY` is the union of two lists. `refuseForbiddenName` reads
+    // one of them: `FORBIDDEN_UNLOCK_KEYS` lives in `reputation.ts`, which
+    // imports `empireCore.ts`, so reading it there would be an import cycle —
+    // and the directory's own import fence in `empireCore.test.ts` is what makes
+    // that a real constraint rather than a preference.
+    //
+    // So this is the declared limit, taken as a measurement. It is not a pass.
+    // The catcher is instrument B, which compares every value it reaches against
+    // `BANNED_VOCABULARY` — both lists — by equality AND by containment.
+    const unlockKeys = reputationModule.FORBIDDEN_UNLOCK_KEYS;
+    let accepted = 0;
+    for (const key of unlockKeys) {
+      expect(core.asGymId(key)).toBe(key);
+      accepted += 1;
+    }
+    expect(accepted).toBe(unlockKeys.length);
+    expect(accepted).toBe(BANNED_VOCABULARY.length - core.EMPIRE_FORBIDDEN_OUTPUTS.length);
+    // And the two lists are disjoint, so `accepted` is really the whole of the
+    // second one rather than an overlap the first list happened to cover.
+    for (const key of unlockKeys) {
+      expect(core.EMPIRE_FORBIDDEN_OUTPUTS as readonly string[], key).not.toContain(key);
+    }
+  });
+
+  it('every field that used to be a bare string is branded now', () => {
+    // The join that makes `DECLARED_BARE_STRING_FIELDS` going empty and
+    // `DECLARED_BRANDED_STRING_POSITIONS` growing one fact rather than two
+    // edits that agree. Reverting any one field to `string` is red here AND on
+    // the bare equality, in the same run.
+    const branded = new Set(brandedKeys(stringSurface()));
+    let checked = 0;
+    for (const group of CLOSED_BARE_STRING_FIELDS) {
+      expect(group.positions.length, group.field).toBeGreaterThan(0);
+      expect(group.why.length, group.field).toBeGreaterThan(80);
+      expect(group.closedBy.length, group.field).toBeGreaterThan(0);
+      for (const position of group.positions) {
+        expect(branded.has(position), `${position} is no longer a branded position`).toBe(true);
+        checked += 1;
+      }
+    }
+    // The count the old census pinned, moved from one list to the other and
+    // pinned in its new home rather than dropped.
+    expect(checked).toBe(23);
+    expect(CLOSED_BARE_STRING_FIELDS.length).toBe(5);
+    // And the live bare list really is empty, said here as well as in its own
+    // test so the two halves of the move are asserted together.
+    expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
+    expect(SURFACE_CENSUS.BARE_POSITIONS).toBe(0);
   });
 });
 
@@ -2152,10 +2679,30 @@ function domainSpec(spec: NumericDomain): NumericDomain {
  * THE PART WHERE IT IS STILL NOT PURELY A COST KNOB, stated because the
  * sentence above is bounded and not absolute: for the 30 ROSTER_SHAPE points
  * above `OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE`, nothing drives them at
- * all, so `FOREIGN_CEILINGS.ROSTER_SHAPE` is still the only thing standing
- * between a roster-size branch point and no coverage. Raising it is the fix and
- * it is priced: `DOMAIN_COST_SECONDS` measured that axis at 138.1 s against
- * 38.8 s for a ceiling of 120.
+ * all. Raising the ceiling is priced: `DOMAIN_COST_SECONDS` measured that axis
+ * at 138.1 s against 38.8 s for a ceiling of 120.
+ *
+ * THE SENTENCE THAT USED TO END THAT PARAGRAPH IS NOW FALSE AND IS CORRECTED
+ * RATHER THAN DELETED, because it was a correct prediction and the round it
+ * predicted is the one that answered it. It read: `FOREIGN_CEILINGS.ROSTER_SHAPE`
+ * "is still the only thing standing between a roster-size branch point and no
+ * coverage". Two things stand there now, and neither is a domain:
+ *
+ *   - a roster-size branch point that ASSIGNS a forbidden name into one of this
+ *     directory's string fields does not compile, at any roster size. That is
+ *     M15 in `PLANTED_ROUTES`, planted above this very ceiling: `tsc --noEmit`
+ *     exit 2, and `vitest run src/empire` 2 failed of 463 with both failures
+ *     being that same diagnostic read through instrument A.
+ *   - one that MINTS one through a brand constructor still compiles, and is
+ *     caught by instrument C's call-site census — which counts calls in source
+ *     and never drives anything, so the ceiling does not reach it either. That
+ *     is M21: 3 failed of 463, all three in instrument C, with instrument B and
+ *     the overflow pass green.
+ *
+ * WHAT IS STILL UNCOVERED ABOVE THIS CEILING, so this is not read as closure:
+ * anything that is not a forbidden NAME in a branded field. Attack shape 16 —
+ * a quantity with no name anywhere — is untouched by all of it, above the
+ * ceiling and below it alike.
  */
 const FOREIGN_CEILINGS = Object.freeze({
   NO_CEILING: Number.POSITIVE_INFINITY,
@@ -2389,7 +2936,7 @@ const LITERAL_AXES: readonly (readonly [string, string])[] = Object.freeze([
   ['encourage', 'the boolean argument to recordFriendVisit. Two points is the whole domain.'],
   ['everyNth', 'a divisor selecting which slots are check-ins. A shape parameter — every slot, or every other — and not a magnitude with thresholds.'],
   ['gymId', 'four caller-supplied identifiers: two friends, the player, and one that is not on the friend list. The second friend is what makes the VISITED arm reachable. Strings, not numbers.'],
-  ['identifier', 'the three sentinels fed to asNpcId, one per caller-supplied identifier position. Strings, not numbers.'],
+  ['identifier', 'the three sentinels fed to the four string brand constructors, one per caller-supplied identifier position. Strings, not numbers.'],
   ['last', 'the boolean telling spendingMoment whether this is the final moment. Two points is the whole domain.'],
 ]);
 
@@ -2698,7 +3245,12 @@ function stateAt(options: StateOptions): EmpireState {
 }
 
 function snapshotAt(gymId: string, displayName: string, reputation: number, totalKg: number): GymSnapshot {
-  return Object.freeze({ gymId, displayName, reputation, combinedTotalKg: totalKg });
+  return Object.freeze({
+    gymId: core.asGymId(gymId),
+    displayName: core.asDisplayName(displayName),
+    reputation,
+    combinedTotalKg: totalKg,
+  });
 }
 
 function completedBuild(axis: ExpansionAxis, toLevel: number): ExpansionBuild {
@@ -2784,7 +3336,7 @@ function encouragementsAt(anchorDay: number): readonly Encouragement[] {
     [2, 5, 5, 11].map((day, at) =>
       Object.freeze({
         day: socialModule.asCalendarDay(anchorDay + day),
-        fromGymId: `${SENTINELS.ENCOURAGEMENT_FROM}-${String(Math.floor(at / 2))}`,
+        fromGymId: core.asGymId(`${SENTINELS.ENCOURAGEMENT_FROM}-${String(Math.floor(at / 2))}`),
       }),
     ),
   );
@@ -2823,7 +3375,7 @@ function socialContextAt(visitDays: readonly number[]): SocialContext {
       visitDays.map((day, index) =>
         Object.freeze({
           day: socialModule.asCalendarDay(day),
-          gymId: `${SENTINELS.FRIEND_GYM_ID}-${String(index % FRIENDS.length)}`,
+          gymId: core.asGymId(`${SENTINELS.FRIEND_GYM_ID}-${String(index % FRIENDS.length)}`),
           encouraged: index % 2 === 0,
         }),
       ),
@@ -3110,7 +3662,7 @@ const FAULTED_SOCIAL_CONTEXT: SocialContext = Object.freeze({
   visits: Object.freeze([
     Object.freeze({
       day: socialModule.asCalendarDay(CALENDAR_ANCHOR),
-      gymId: SENTINELS.FAULT_VISIT_GYM_ID,
+      gymId: core.asGymId(SENTINELS.FAULT_VISIT_GYM_ID),
       encouraged: false,
     }),
   ]),
@@ -3180,6 +3732,16 @@ function driveEverything(): readonly DrivenRow[] {
   }
   for (const identifier of [SENTINELS.NPC_ID, SENTINELS.RECRUIT_ID, SENTINELS.OWN_GYM_ID]) {
     drive('asNpcId', identifier, () => core.asNpcId(identifier), [identifier]);
+    // The three string brands added this round, driven on the same axis as
+    // their sibling rather than on one of their own. They are the constructor
+    // route the brands cannot type away, so instrument B is what reads what
+    // they hand back — and `refuseForbiddenName` is what makes them throw
+    // instead of handing anything back at all when the argument is a banned
+    // name. `refuses every banned name at every string brand constructor` is
+    // where that is driven; this is the benign half.
+    drive('asGymId', identifier, () => core.asGymId(identifier), [identifier]);
+    drive('asDisplayName', identifier, () => core.asDisplayName(identifier), [identifier]);
+    drive('asFaultMessage', identifier, () => core.asFaultMessage(identifier), [identifier]);
   }
   for (const now of SECONDS_DOMAIN) {
     const times = SECONDS_DOMAIN.slice(0, 4).map((seconds) => core.asUnacceleratedSeconds(seconds));
@@ -3558,7 +4120,7 @@ function driveEverything(): readonly DrivenRow[] {
       const entries = Object.freeze([OWN_GYM, ...FRIENDS, RIVAL_GYM]);
       drive('rankLeaderboard', `${scope}/${metric}`, () => socialModule.rankLeaderboard(entries, metric, scope), [entries]);
       const rows = socialModule.rankLeaderboard(entries, metric, scope);
-      drive('leaderboardRankOf', `${scope}/${metric}`, () => socialModule.leaderboardRankOf(rows, SENTINELS.OWN_GYM_ID), [rows]);
+      drive('leaderboardRankOf', `${scope}/${metric}`, () => socialModule.leaderboardRankOf(rows, core.asGymId(SENTINELS.OWN_GYM_ID)), [rows]);
       for (const entry of entries) {
         drive('leaderboardScore', `${metric}/${entry.gymId}`, () => socialModule.leaderboardScore(entry, metric), [entry]);
       }
@@ -3595,10 +4157,10 @@ function driveEverything(): readonly DrivenRow[] {
     // had nothing to do with numbers. 'produced every arm of every
     // discriminated return' is the check that says so.
     for (const gymId of [
-      `${SENTINELS.FRIEND_GYM_ID}-0`,
-      `${SENTINELS.FRIEND_GYM_ID}-1`,
-      SENTINELS.OWN_GYM_ID,
-      SENTINELS.FAULT_VISIT_GYM_ID,
+      core.asGymId(`${SENTINELS.FRIEND_GYM_ID}-0`),
+      core.asGymId(`${SENTINELS.FRIEND_GYM_ID}-1`),
+      core.asGymId(SENTINELS.OWN_GYM_ID),
+      core.asGymId(SENTINELS.FAULT_VISIT_GYM_ID),
     ]) {
       drive('visitRefusals', `${label}/${gymId}`, () => socialModule.visitRefusals(context, gymId, calendarDay), [context, gymId]);
       drive('mayVisitFriendGym', `${label}/${gymId}`, () => socialModule.mayVisitFriendGym(context, gymId, calendarDay), [context, gymId]);
@@ -3792,11 +4354,11 @@ const OVERFLOW_ALLOCATION_CEILINGS: Readonly<Record<string, number>> = Object.fr
 const OVERFLOW_FLAT_NODE_CEILING = 400;
 
 /** The gyms every overflow visit driver asks about, in the main drive's order. */
-const OVERFLOW_VISIT_GYM_IDS: readonly string[] = Object.freeze([
-  `${SENTINELS.FRIEND_GYM_ID}-0`,
-  `${SENTINELS.FRIEND_GYM_ID}-1`,
-  SENTINELS.OWN_GYM_ID,
-  SENTINELS.FAULT_VISIT_GYM_ID,
+const OVERFLOW_VISIT_GYM_IDS: readonly GymId[] = Object.freeze([
+  core.asGymId(`${SENTINELS.FRIEND_GYM_ID}-0`),
+  core.asGymId(`${SENTINELS.FRIEND_GYM_ID}-1`),
+  core.asGymId(SENTINELS.OWN_GYM_ID),
+  core.asGymId(SENTINELS.FAULT_VISIT_GYM_ID),
 ]);
 
 /**
@@ -4840,10 +5402,10 @@ function measureDrive(): DriveMeasurement {
 }
 
 const DRIVE_CENSUS = Object.freeze({
-  ROWS: 206718,
-  EXPORTS_DRIVEN: 226,
-  NODES: 2393045,
-  STRINGS: 11204983,
+  ROWS: 206727,
+  EXPORTS_DRIVEN: 229,
+  NODES: 2393054,
+  STRINGS: 11205001,
   DISTINCT_STRINGS: 1611,
   DEPTH_CUTS: 0,
   /**
@@ -5907,8 +6469,9 @@ describe('the injected axes were varied, and the variation was measured', () => 
 // ---------------------------------------------------------------------------
 
 /**
- * Fourteen routes, planted into shipped modules one at a time, each run against
- * `tsc --noEmit`, against this file, and against the three accidental catchers
+ * Twenty-three routes, planted into shipped modules one at a time, each run
+ * against `tsc --noEmit`, against this file, and against the three accidental
+ * catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
  * audit, its tree-wide string census, and its import fence.
  *
@@ -6176,6 +6739,156 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
     // pass exists — before it, nothing noticed at all.
     alsoRed: Object.freeze([]),
   }),
+  // -------------------------------------------------------------------------
+  // M15-M23 — THIS ROUND. The first four have `tscExit: 2`, which no earlier
+  // row does, and that is the round's result rather than a change of standard.
+  // A route the compiler refuses needs no domain, no drive and no allocation
+  // budget, so the branch point it is keyed on stops mattering — which is
+  // exactly what M15-M18 show by being keyed on four different ones and
+  // producing the same refusal.
+  // -------------------------------------------------------------------------
+  Object.freeze({
+    id: 'M15',
+    shape: '25 — THE NINTH BYPASS, declared open by the previous round: a ROSTER-SIZE branch point above OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE, where FOREIGN_CEILINGS said nothing is driven at all',
+    where: "empireInvariant.ts, `stepGym`, PendingRecruit.id set to the ban list's first member when state.roster.length > NPC_RECRUIT_COST_GYM_BUCKS.club — 2000, the ROSTER_SHAPE ceiling",
+    attempts: 1,
+    tscExit: 2,
+    caughtBy: Object.freeze([
+      "tsc --noEmit: src/empire/empireInvariant.ts(1236,11): error TS2322: Type 'NpcId | \"covered-day\"' is not assignable to type 'NpcId'.",
+      "instrument A / walks the whole directory: Type 'NpcId | \"covered-day\"' is not assignable to type 'NpcId'. … Type 'string' is not assignable to type '{ readonly [EMPIRE_BRAND]: \"npc-id\"; }'.: expected [ Array(1) ] to deeply equal []",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'instrument A bites / compiles the probe cleanly — the same diagnostic read through the probe program. Named rather than omitted: it is one fact reported twice, not two catchers.',
+      'THE MEASUREMENT THAT MAKES THIS THE HEADLINE: with the mutant in place, `npx vitest run src/empire` is 2 failed of 463 and BOTH are the diagnostic above. Instrument B is green, the overflow pass is green, and instrument C is green — nothing drives a roster of 2 001, exactly as FOREIGN_CEILINGS said. The type is the only catcher, and it did not need to be pointed at the number.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M16',
+    shape: '22 replanted — the seventh bypass, first form: a threshold filed under the WRONG unit',
+    where: "social.ts, `recordFriendVisit`, FriendVisit.gymId set to the ban list's first member on day FRIEND_VISITS_PER_DAY",
+    attempts: 1,
+    tscExit: 2,
+    caughtBy: Object.freeze([
+      "tsc --noEmit: src/empire/social.ts(532,9): error TS2322: Type 'GymId | \"covered-day\"' is not assignable to type 'GymId'.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: 'M17',
+    shape: '23 replanted — the seventh bypass, second form: a threshold filed under NO unit',
+    where: "social.ts, `recordFriendVisit`, FriendVisit.gymId set to the ban list's first member on day NPC_RECRUIT_COST_GYM_BUCKS.novice",
+    attempts: 1,
+    tscExit: 2,
+    caughtBy: Object.freeze([
+      "tsc --noEmit: src/empire/social.ts(532,9): error TS2322: Type 'GymId | \"covered-day\"' is not assignable to type 'GymId'.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'BYTE-IDENTICAL DIAGNOSTIC TO M16 AND M18, AND THAT IS THE RESULT. Three different branch points — 10, 500 and 2 000 — one refusal, because the compiler is not looking at the number.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M18',
+    shape: "24 replanted — the eighth bypass: a filed branch point ABOVE a domain's foreignCeiling",
+    where: "social.ts, `recordFriendVisit`, FriendVisit.gymId set to the ban list's first member on day NPC_RECRUIT_COST_GYM_BUCKS.club — 2000, against a DAY ceiling of 600",
+    attempts: 1,
+    tscExit: 2,
+    caughtBy: Object.freeze([
+      "tsc --noEmit: src/empire/social.ts(532,9): error TS2322: Type 'GymId | \"covered-day\"' is not assignable to type 'GymId'.",
+      "instrument A / walks the whole directory: the same diagnostic, as a vitest line",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'the overflow pass / produces no banned name at any point a ceiling drops: + two rows, and / walked a domain that is not empty: expected 4230 to be 4229. E15 STILL CATCHES IT, which is the check that coverage did not shrink: 4 failed of 463 with the mutant in, two from the type and two from the drive.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M19',
+    shape: '26 — the fault channel, where the mint is at the boundary rather than at the push, so route 1 is NOT fenced inside a `*Faults` body',
+    where: "social.ts, `socialVocabularyFaults`, `faults.push(EMPIRE_FORBIDDEN_OUTPUTS[0])` as the first statement",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument C / refuseForbiddenName, reached through asFaultMessage: RangeError: faultMessage must not be a forbidden empire output; the idle layer may not produce covered-day.',
+      'instrument B / CONTAINS no banned name either, outside the diagnostic channel: expected 1 to be +0',
+      'instrument B / pins what the diagnostic channel actually said: an extra row',
+      'instrument B / walked a domain that is not empty: expected 11205003 to be 11205001',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'social.test.ts / reports no fault against the shipped tuning — the RangeError propagating out of a shipped-behaviour test, which is what CONTAINMENT looks like from the outside: the value never reaches a caller.',
+      "instrument C / the brand constructor set is derived: expected 965 to be 964. That is CALLS_EXAMINED counting the added call expression, not the site census. Recorded as an accidental catcher inside the new instrument rather than as the new instrument working.",
+      "THIS ROW IS THE PRICE OF THE BOUNDARY MINT, stated at `asFaultMessage` and measured here. `tscExit: 0` — the compiler does not refuse this, and no arrangement of 123 push-site wrappers would change that, because a template literal is a plain string either way.",
+    ]),
+  }),
+  Object.freeze({
+    id: 'M20',
+    shape: '27 — ROUTE 2, the constructor route the brands cannot type away, at a branch point a domain DOES reach',
+    where: "social.ts, `recordFriendVisit`, `asGymId(EMPIRE_FORBIDDEN_OUTPUTS[0])` on day NPC_RECRUIT_COST_GYM_BUCKS.club",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument C / the brand constructor call sites are exactly the declared ones: + "social.ts#recordFriendVisit#asGymId x1"',
+      'instrument C / sees a call site that is not on the list: the same row',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'the overflow pass / produces no banned name at any point a ceiling drops: + two rows carrying the refusal message. E15 catches this one too, because 2 000 is a point its allocation budget reaches.',
+      "THE INSTRUMENT WAS CORRECTED BY THIS MUTANT RATHER THAN THE MUTANT BY THE INSTRUMENT. Its first run reported the site as `social.ts#visit#asGymId` — the nearest enclosing VariableDeclaration, which is a local. A site named after a local is a site a reader has to go looking for, so `enclosing` now prefers the enclosing function and a top-level constant keeps its own name.",
+    ]),
+  }),
+  Object.freeze({
+    id: 'M21',
+    shape: '28 — ROUTE 2 IN THE REGION NOTHING DRIVES: the constructor route at a roster size above OVERFLOW_ALLOCATION_CEILINGS.ROSTER_SHAPE',
+    where: "empireInvariant.ts, `stepGym`, `asNpcId(EMPIRE_FORBIDDEN_OUTPUTS[0])` when state.roster.length > NPC_RECRUIT_COST_GYM_BUCKS.club",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument C / the brand constructor call sites are exactly the declared ones: - "empireInvariant.ts#stepGym#asNpcId x1", + "empireInvariant.ts#stepGym#asNpcId x2"',
+      'instrument C / sees a call site that is not on the list: + "empireInvariant.ts#stepGym#asNpcId x2"',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      "instrument C / the brand constructor set is derived: expected 965 to be 964, which is CALLS_EXAMINED and not the census.",
+      'THE PER-SITE COUNT IS WHAT CAUGHT IT, and that is why the count is in the key rather than beside it. The site already existed — `stepGym` already mints an `NpcId` — so a set equality over site NAMES would have been green. x1 -> x2 is the whole bite.',
+      "AND NOTHING ELSE IN THE DIRECTORY NOTICED: 3 failed of 463, all three in instrument C. Instrument B green, the overflow pass green, tsc exit 0. This is the pair to M15 — same undriven region, the other route — and it is the argument for detection that does not depend on a drive.",
+    ]),
+  }),
+  Object.freeze({
+    id: 'M22',
+    shape: '29 — the containment half removed: a string brand constructor that stops refusing',
+    where: "empireCore.ts, `asGymId`, the `refuseForbiddenName(value, 'gymId')` line deleted",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument C / refuses every banned name at every string brand constructor: asGymId(covered-day): expected [Function] to throw an error',
+    ]),
+    accidentalCatchersGreen: false,
+    alsoRed: Object.freeze([
+      "empireCore.test.ts / ships no string a real name could be hiding in: expected 166 to be 167 — the string census, an accidental catcher, moving on the deleted 'gymId' literal.",
+      "instrument C / the brand constructor set is derived: expected 963 to be 964 — CALLS_EXAMINED again.",
+      "accidentalCatchersGreen is FALSE on this row and that is not a defect in the mutant. Deleting a line necessarily deletes its literals, so this route cannot be isolated from a census of literals; the row says so rather than claiming an isolation it does not have.",
+    ]),
+  }),
+  Object.freeze({
+    id: 'M23',
+    shape: '30 — a FIFTH string brand constructor arriving with no refusal, to test that the constructor set is really derived',
+    where: "empireCore.ts, a new `BadgeId` brand and an `asBadgeId` that mints without calling `refuseForbiddenName`",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'instrument C / refuses every banned name at every string brand constructor: asBadgeId(covered-day): expected [Function] to throw an error',
+    ]),
+    accidentalCatchersGreen: false,
+    alsoRed: Object.freeze([
+      'instrument A / walks the whole directory: expected 230 to be 229; / pins every branded-string position: + "empireCore.ts#asBadgeId#return"',
+      'instrument B / drives every export the census knows about: - "asBadgeId"',
+      'empireCore.test.ts / the producer census: expected 989 to be 914; / fences every branded quantity: expected 21 to be 20; / ships no string: expected 168 to be 167',
+      "accidentalCatchersGreen is FALSE, and unavoidably: a new export cannot be added without the export censuses seeing it. What this row is evidence FOR is narrower and is the reason it was run — the refusal test found the new constructor WITHOUT BEING EDITED, so the derivation is real rather than a comment.",
+    ]),
+  }),
 ]);
 
 /**
@@ -6313,19 +7026,49 @@ describe('the routes that were planted, and what each of them cost', () => {
     ).toBe(2);
   });
 
-  it('records fourteen routes, every one isolated from the three accidental catchers', () => {
-    expect(PLANTED_ROUTES.length).toBe(14);
+  it('records twenty-three routes, and names the two that could not be isolated', () => {
+    expect(PLANTED_ROUTES.length).toBe(23);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
-      // A mutant that only trips the magic-number audit, the string census or
-      // the import fence has not been caught by this guard. Every row reached a
-      // form where all three stayed green.
-      expect(route.accidentalCatchersGreen, route.id).toBe(true);
-      expect(route.tscExit, route.id).toBe(0);
       expect(route.caughtBy.length, route.id).toBeGreaterThan(0);
       expect(route.shape.length, route.id).toBeGreaterThan(20);
+      // A ROW MAY NOW EXIT 2, AND THAT IS A WIDENING OF THE SCHEMA RATHER THAN
+      // A RELAXATION OF THE STANDARD. Every row before M15 had `tscExit: 0`
+      // because a type error meant the mutant was not isolated — it was being
+      // caught by the compiler noticing something unrelated. Four rows are
+      // `tscExit: 2` on purpose: the compiler refusing the assignment IS the
+      // catch, so those rows must NAME the compiler in `caughtBy` rather than
+      // claim a runtime check they never reached.
+      expect([0, 2], route.id).toContain(route.tscExit);
+      if (route.tscExit === 2) {
+        expect(
+          route.caughtBy.some((line) => line.startsWith('tsc --noEmit')),
+          `${route.id} exits 2 and does not name the compiler as its catcher`,
+        ).toBe(true);
+      }
+      // A mutant that only trips the magic-number audit, the string census or
+      // the import fence has not been caught by this guard. Every row reached a
+      // form where all three stayed green — EXCEPT the two that cannot, and
+      // both say why in their own `alsoRed`: deleting a line deletes its
+      // literals, and adding an export is visible to every export census.
+      // Those two are pinned by name below rather than left as a soft `false`.
+      if (!route.accidentalCatchersGreen) {
+        expect(['M22', 'M23'], route.id).toContain(route.id);
+        expect(route.alsoRed.length, route.id).toBeGreaterThan(0);
+      }
       attempts += route.attempts;
     }
+    // The two rows that could not be isolated, by name and in both directions,
+    // so a third arriving is a decision somebody signs.
+    expect(
+      PLANTED_ROUTES.filter((route) => !route.accidentalCatchersGreen).map((route) => route.id),
+    ).toEqual(['M22', 'M23']);
+    // The four routes the compiler refuses, by name and in both directions.
+    // M15 is the ninth bypass — the one the previous round declared open and
+    // could not reach with any domain.
+    expect(
+      PLANTED_ROUTES.filter((route) => route.tscExit === 2).map((route) => route.id),
+    ).toEqual(['M15', 'M16', 'M17', 'M18']);
     // Twenty-two attempts for fourteen routes: the fifteen the first nine took,
     // one for M10, two for M11, one for M12, two for M13 and one for M14 —
     // which needed no extra attempt because the lead agent had already stripped
@@ -6337,8 +7080,9 @@ describe('the routes that were planted, and what each of them cost', () => {
     // new `'stack'` literal, 160 against 159, and M13's first form, which keyed
     // on a threshold that `empireTuning.test.ts` lists as having no consumer,
     // so the mutant BECAME the consumer and that census reddened instead.
-    expect(attempts).toBe(22);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(5);
+    // Twenty-two for the first fourteen, one each for M15-M23.
+    expect(attempts).toBe(31);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(13);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
