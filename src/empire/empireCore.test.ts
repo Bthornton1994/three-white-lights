@@ -1770,8 +1770,8 @@ describe('the branded constructors', () => {
   it('hands a caller the refusal rather than the name, when a throw carries one', () => {
     // The containment half of the throw wrap, driven rather than reasoned. A
     // legitimate message passes through untouched, which is the traffic the
-    // whole directory sends: 52 of the 54 sites are here and every one of them
-    // is a sentence.
+    // whole directory sends: 53 of the 54 throw sites now call the wrap and
+    // every one of them carries a sentence.
     expect(() => refuseWith('roster holds 2 of 2 slots')).toThrow(RangeError);
     expect(() => refuseWith('roster holds 2 of 2 slots')).toThrow(/roster holds 2 of 2 slots/);
     // And the tenth bypass's shape, driven at every member of the ban list

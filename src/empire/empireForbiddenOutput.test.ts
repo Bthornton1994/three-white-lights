@@ -205,13 +205,25 @@
  * directory does not currently use, moves a pinned number. Six of the eleven
  * channels have zero sites and those are the rows it is most for.
  *
- * Its reading, which is what the section is worth: `throw` is covered BY THE
- * DRIVE ALONE, at 54 sites — a sampling instrument, on the one channel that has
- * no type and no constructor. And `callback-invocation` was covered by NOTHING,
- * in any of the three, which is M27 and is the eleventh bypass. THE CALLBACK
- * PASS is the catcher written for it: every exported function that calls a
- * parameter is driven with a callback that records what it is handed, and the
- * scan is `deepScan`, the same walker instrument B uses.
+ * Its reading, which is what the section is worth — AND THE FIRST HALF OF IT IS
+ * NOW STALE, so it is corrected here rather than left standing. It read:
+ * "`throw` is covered BY THE DRIVE ALONE, at 54 sites — a sampling instrument,
+ * on the one channel that has no type and no constructor." That was true at
+ * E18 and is the measurement that got the wrap built. E19 routed 53 of those 54
+ * sites through `refuseWith`, so the throw channel now has the two-part shape
+ * the brand constructors have: CONTAINMENT at runtime, from the wrap refusing a
+ * message that equals a forbidden output, and DETECTION with no drive at all,
+ * from `THROW_GATE_SITES` set-equalling the channel's whole site list at two.
+ * Neither is the other and neither makes the drive redundant — the drive is
+ * still what reads a message that merely CONTAINS a banned name.
+ *
+ * And `callback-invocation` was covered by NOTHING, in any of the three, which
+ * is M27 and is the eleventh bypass. THE CALLBACK PASS is the catcher written
+ * for it: every exported function that calls a parameter is driven with a
+ * callback that records what it is handed, and the scan is `deepScan`, the same
+ * walker instrument B uses. E19 widened that pass from one fixture to the same
+ * COUNT branch-point domain the main drive walks, which is what closes the
+ * limit its own header declared.
  *
  * A NOTE ON THE WORD, because this file already uses it: the DIAGNOSTIC channel
  * is an exemption class over eight `*Faults` exports, and a CHANNEL in this
@@ -1013,7 +1025,7 @@ const DECLARED_BRANDED_STRING_POSITIONS: readonly string[] = Object.freeze([
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const SURFACE_CENSUS = Object.freeze({
   MODULES: 10,
-  EXPORTS: 229,
+  EXPORTS: 230,
   BARE_POSITIONS: 0,
   BARE_FIELDS: 0,
   BRANDED_POSITIONS: 34,
@@ -1269,19 +1281,36 @@ describe('the domains are derived from the subject and are not empty', () => {
     // see a domain that was never put in the registry, so this reads the file's
     // own source and asserts that every module-level `readonly number[]` is an
     // alias of a registry entry — no literal, no ad-hoc `numeric([...])`.
+    //
+    // ONE EXCEPTION EXISTS AND IT IS A LIST RATHER THAN A LOOSENING, which is
+    // the difference between this and rewriting the declaration until the scan
+    // walked past it. E19's tripwire needs a point list that is deliberately
+    // NOT a subject's domain, and spelling it inline at the call site is
+    // exactly the evasion the sibling scan below was written to catch.
     const source = sourceWithoutComments();
     const declarations = [...source.matchAll(/^const (\w+): readonly number\[\] = (.+)$/gm)];
     expect(declarations.length).toBe(DOMAIN_CENSUS.ALIASES);
     const aliased: string[] = [];
+    const exempt: string[] = [];
     for (const declaration of declarations) {
+      const name = declaration[1] ?? '';
       const initialiser = declaration[2] ?? '';
+      if (NON_DOMAIN_NUMBER_LISTS.some(([exemptName]) => exemptName === name)) {
+        exempt.push(name);
+        continue;
+      }
       const key = /^NUMERIC_DOMAINS\.(\w+)\.points;$/.exec(initialiser);
-      expect(key, `${declaration[1] ?? ''} = ${initialiser}`).not.toBeNull();
+      expect(key, `${name} = ${initialiser}`).not.toBeNull();
       if (key !== null) aliased.push(key[1] ?? '');
     }
     // Set equality both ways: an unaliased registry entry is as much a defect
     // as an alias of something that is not in the registry.
     expect(aliased.sort()).toEqual(Object.keys(NUMERIC_DOMAINS).sort());
+    // And the exception list is a partition rather than an allowance: a name on
+    // it that no longer exists is red, and every row has to say why.
+    expect(exempt.sort()).toEqual([...NON_DOMAIN_NUMBER_LISTS.map(([name]) => name)].sort());
+    expect(NON_DOMAIN_NUMBER_LISTS.length).toBe(DOMAIN_CENSUS.NON_DOMAIN_LISTS);
+    for (const [name, why] of NON_DOMAIN_NUMBER_LISTS) expect(why.length, name).toBeGreaterThan(60);
   });
 
   it('declares every literal for-of axis, so an axis outside the registry is not silently an axis', () => {
@@ -1839,7 +1868,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
    * report a clean census, which is the reassuring direction. A four-figure
    * number here says the walk really covered the directory's code.
    */
-  CALLS_EXAMINED: 964,
+  CALLS_EXAMINED: 1018,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3027,6 +3056,25 @@ const NUMERIC_DOMAINS = Object.freeze({
   }),
 });
 
+/**
+ * The module-level number lists in this file that are NOT a subject's domain.
+ *
+ * The exception list for `defines every numeric domain inside the registry`.
+ * One row, and it exists so that the one legitimate non-domain list is a name a
+ * reviewer signs rather than a declaration spelled to slip past a regex — which
+ * is the evasion the sibling scan one test below was written for.
+ *
+ * A row here is a claim that nothing is DRIVEN over this list, so adding one
+ * for a real driver axis would put that axis outside the registry entirely.
+ * That is the cost of the mechanism and it is why the list is short.
+ */
+const NON_DOMAIN_NUMBER_LISTS: readonly (readonly [string, string])[] = Object.freeze([
+  Object.freeze([
+    'CALLBACK_TRIPWIRE_POINTS',
+    'The callback tripwire drives a function that is not shipped and never exported, so it has no axis in the registry to be a domain of. Three points, chosen small so its own pinned counts are hand-checkable and do not move when the tuning block does.',
+  ] as const),
+]);
+
 const NUMBER_DOMAIN: readonly number[] = NUMERIC_DOMAINS.NUMBER.points;
 const SECONDS_DOMAIN: readonly number[] = NUMERIC_DOMAINS.SECONDS.points;
 const DAY_DOMAIN: readonly number[] = NUMERIC_DOMAINS.DAY.points;
@@ -3174,6 +3222,9 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
   'FOLD_TRIPWIRES',
   'KINDED_RETURN_CENSUS',
   'LITERAL_AXES',
+  // The exception list for the numeric-domain scan. A declaration and not an
+  // input: nothing is driven over it, which is what a row on it asserts.
+  'NON_DOMAIN_NUMBER_LISTS',
   // The overflow pass's arm census. Registered here rather than in
   // FIXTURE_LISTS because it is what the pass PRODUCED and not what it was fed
   // — the same distinction KINDED_RETURN_CENSUS is on the strength of, one
@@ -3234,9 +3285,17 @@ const DOMAIN_CENSUS = Object.freeze({
     LEVEL: 0,
     ROSTER_SHAPE: 56,
   }),
-  ALIASES: 6,
+  /**
+   * Module-level `readonly number[]` declarations in this file.
+   *
+   * Six registry aliases and one named exception — the tripwire's own point
+   * list, which is not a subject's domain. `NON_DOMAIN_LISTS` is the second
+   * number so the two cannot be traded off against each other silently.
+   */
+  ALIASES: 7,
+  NON_DOMAIN_LISTS: 1,
   LITERAL_AXES: 8,
-  LABELLED_LISTS: 13,
+  LABELLED_LISTS: 14,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
@@ -3910,6 +3969,11 @@ function driveEverything(): readonly DrivenRow[] {
     drive('asGymId', identifier, () => core.asGymId(identifier), [identifier]);
     drive('asDisplayName', identifier, () => core.asDisplayName(identifier), [identifier]);
     drive('asFaultMessage', identifier, () => core.asFaultMessage(identifier), [identifier]);
+    // The throw wrap, driven on the same axis. It always completes abruptly, so
+    // every row it produces is a thrown payload — which `drive` keeps in
+    // `values[0]` exactly as it keeps a return, and which is why the sentinel
+    // has to come back out through the scan for the row to be worth anything.
+    drive('refuseWith', identifier, () => core.refuseWith(identifier), [identifier]);
   }
   for (const now of SECONDS_DOMAIN) {
     const times = SECONDS_DOMAIN.slice(0, 4).map((seconds) => core.asUnacceleratedSeconds(seconds));
@@ -5747,10 +5811,10 @@ function measureDrive(): DriveMeasurement {
 }
 
 const DRIVE_CENSUS = Object.freeze({
-  ROWS: 206727,
-  EXPORTS_DRIVEN: 229,
-  NODES: 2393054,
-  STRINGS: 11205001,
+  ROWS: 206730,
+  EXPORTS_DRIVEN: 230,
+  NODES: 2393060,
+  STRINGS: 11205010,
   DISTINCT_STRINGS: 1611,
   DEPTH_CUTS: 0,
   /**
@@ -5771,7 +5835,7 @@ const DRIVE_CENSUS = Object.freeze({
    * tell from an absence. This is the number that says the branch is live, in
    * the same role `TRIPWIRE_CENSUS.GETTERS_INVOKED` plays for the getter arm.
    */
-  STACKS: 2873,
+  STACKS: 2876,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -7069,13 +7133,22 @@ describe('the injected axes were varied, and the variation was measured', () => 
  *     reasoned about. `CHANNEL_COVERAGE` is the result and `channels the drive
  *     alone covers` is the reading of it that matters.
  *
- * THE READING, STATED HERE SO IT IS NOT BURIED IN A TABLE: of the channels this
- * directory actually uses, `throw` is covered by the DRIVE AND NOTHING ELSE —
- * a sampling instrument, which is the thing CLAUDE.md's newest rule says cannot
- * close an unbounded input space. And `callback-invocation` was covered by
- * NOTHING AT ALL, in any of the three instruments, until the callback pass below
- * was written this round. M27 in `PLANTED_ROUTES` is that route, planted, run,
- * and printed.
+ * THE READING, STATED HERE SO IT IS NOT BURIED IN A TABLE, AND CORRECTED WHERE
+ * E19 MOVED IT: of the channels this directory actually uses, `throw` used to
+ * be covered by the drive and nothing else — a sampling instrument, which is
+ * the thing CLAUDE.md's newest rule says cannot close an unbounded input space.
+ * That reading is what got the wrap built, and the wrap is what changed it:
+ * every throw is a `refuseWith` call now, so the channel carries a runtime
+ * refusal AND a two-site enumeration, and `every throw in this directory is
+ * written as a call to the wrap` is the check that holds the second. The
+ * coverage matrix below still reports `movesA/B/C` for the throw row exactly as
+ * it did, because the wrap is neither a declared position, nor a brand
+ * constructor, nor the drive — that row is a measurement of those three
+ * instruments and is not a scoreboard for the channel.
+ *
+ * And `callback-invocation` was covered by NOTHING AT ALL, in any of the three
+ * instruments, until the callback pass below was written. M27 in
+ * `PLANTED_ROUTES` is that route, planted, run, and printed.
  */
 
 type ChannelId =
@@ -7223,6 +7296,21 @@ interface ChannelCensus {
    * identifier might have, and reddens the pin below until somebody looks.
    */
   readonly internalCallbackArguments: readonly string[];
+  /**
+   * Every call to the throw wrap, resolved through the checker.
+   *
+   * The other side of the raw-throw pin, and it is here rather than in a
+   * separate walk for the reason instrument C gives about matching a callee by
+   * TEXT: a local shim spelled `refuseWith` is a different symbol, and this
+   * follows the symbol rather than the spelling. So a module that stopped
+   * importing the wrap and grew its own does not keep its rows here — it loses
+   * them, and gains a raw `throw` in the channel above at the same time.
+   *
+   * Counted per module, because the zero this pin is about is per module: a
+   * module with no wrap calls and no throws hands nothing out abruptly, and a
+   * module with throws and no wrap calls is the thing being ruled out.
+   */
+  readonly wrapCalls: Readonly<Record<string, number>>;
   readonly nodesExamined: number;
   readonly modules: readonly string[];
 }
@@ -7232,6 +7320,17 @@ const emptyChannelTable = <T>(make: () => T): Record<ChannelId, T> => {
   for (const id of CHANNEL_IDS) table[id] = make();
   return table;
 };
+
+/**
+ * The wrap every abrupt completion in this directory is written as a call to.
+ *
+ * Named here rather than spelled at the three sites that use it, and split into
+ * a function name and a module so the census can require BOTH — a shim spelled
+ * `refuseWith` in another module resolves to a declaration in that module and
+ * is not this one.
+ */
+const THROW_WRAP_NAME = 'refuseWith';
+const THROW_WRAP_MODULE = 'empireCore.ts';
 
 /** The mutating methods whose receiver is written through. */
 const MUTATING_METHODS: readonly string[] = Object.freeze([
@@ -7285,6 +7384,7 @@ function channelCensusOf(
   const byModule = emptyChannelTable<Record<string, number>>(() => ({}));
   const freshReceivers: string[] = [];
   const internalCallbackArguments: string[] = [];
+  const wrapCalls: Record<string, number> = {};
   const modules: string[] = [];
   let nodesExamined = 0;
 
@@ -7407,6 +7507,20 @@ function channelCensusOf(
       // because that is what moves when a site starts carrying a payload it did
       // not carry before — which is exactly M27.
       if (ts.isCallExpression(node)) callsInModule.push(node);
+      // The wrap, by SYMBOL. `resolvedDeclaration` follows the import alias, so
+      // this is the declaration in `empireCore.ts` and not every identifier
+      // that happens to be spelled the same.
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+        const callee = resolvedDeclaration(node.expression);
+        if (
+          callee !== null &&
+          ts.isFunctionDeclaration(callee) &&
+          callee.name?.text === THROW_WRAP_NAME &&
+          path.basename(callee.getSourceFile().fileName) === THROW_WRAP_MODULE
+        ) {
+          wrapCalls[moduleName] = (wrapCalls[moduleName] ?? 0) + 1;
+        }
+      }
       if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
         const declaration = resolvedDeclaration(node.expression);
         if (declaration !== null && ts.isParameter(declaration)) {
@@ -7530,6 +7644,7 @@ function channelCensusOf(
     byModule: Object.freeze(frozenByModule),
     freshReceivers: Object.freeze([...freshReceivers].sort()),
     internalCallbackArguments: Object.freeze([...internalCallbackArguments].sort()),
+    wrapCalls: Object.freeze({ ...wrapCalls }),
     nodesExamined,
     modules: Object.freeze(modules),
   };
@@ -7572,15 +7687,16 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'reputation.ts': 24,
       'social.ts': 31,
     }),
+    /**
+     * TWO, AND THE TWO ARE THE WRAP'S OWN GATES.
+     *
+     * It was 54 across eight modules until E19 routed every one of them through
+     * `refuseWith`. What is left is `refuseForbiddenName`'s refusal and the
+     * wrap's own last line, both in `empireCore.ts`, and both named in
+     * `THROW_GATE_SITES` so a third is a decision somebody signs.
+     */
     throw: Object.freeze({
-      'empireCore.ts': 10,
-      'empireInvariant.ts': 6,
-      'engagement.ts': 13,
-      'expansion.ts': 3,
-      'production.ts': 9,
-      'recruitment.ts': 1,
-      'reputation.ts': 6,
-      'social.ts': 6,
+      'empireCore.ts': 2,
     }),
     'exported-binding': Object.freeze({
       'empireCore.ts': 20,
@@ -7602,6 +7718,54 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
     'returned-closure': Object.freeze({}),
     'deferred-completion': Object.freeze({}),
   });
+
+/**
+ * The two `throw` statements this directory is allowed to contain, by name.
+ *
+ * THE ENUMERATION THAT TURNS A WRAP INTO A FENCE. `refuseWith` contains what
+ * goes through it and nothing else, so a raw `throw new RangeError(<a banned
+ * name>)` written beside it would walk straight past — which is the tenth
+ * bypass's shape, and it is the reason this list exists rather than the wrap
+ * alone. The `throw` channel's site list is set-equal to this in both
+ * directions, so a 55th raw throw is red by file and by enclosing function
+ * whether or not any domain drives it, and deleting a gate is red the other way.
+ *
+ * WHY TWO, and both in `empireCore.ts`: `refuseForbiddenName` quotes the value
+ * it refuses, so routing its own refusal through the wrap would make the two
+ * mutually recursive, and the wrap's last line is the `throw` the whole
+ * directory now shares. The reasoning is at `refuseWith` in `empireCore.ts`.
+ *
+ * ITS LIMIT, in the mechanism's own terms: this counts SITES. An existing site
+ * emitting a new payload is invisible to it — the same limit instrument C
+ * states for a brand constructor call — and what covers THAT for this channel is
+ * `refuseWith` refusing at runtime, which is containment rather than detection
+ * and fires only when the path runs. The two halves are named separately here
+ * because neither is the other.
+ */
+const THROW_GATE_SITES: readonly string[] = Object.freeze([
+  'empireCore.ts#refuseForbiddenName#throw',
+  'empireCore.ts#refuseWith#throw',
+]);
+
+/**
+ * Where the wrap is actually called, per module.
+ *
+ * The other direction of the same fence, and it is not decoration: a module
+ * could satisfy `THROW_GATE_SITES` by having no `throw` at all, which is what a
+ * module whose refusals were quietly deleted looks like. These counts sum to
+ * the 53 sites E19 converted, and they are pinned per module so a refusal
+ * leaving one module cannot be hidden by one arriving in another.
+ */
+const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
+  'empireCore.ts': 9,
+  'empireInvariant.ts': 6,
+  'engagement.ts': 13,
+  'expansion.ts': 3,
+  'production.ts': 9,
+  'recruitment.ts': 1,
+  'reputation.ts': 6,
+  'social.ts': 6,
+});
 
 /**
  * The two callback sites, by name and with their ARGUMENT COUNT in the key.
@@ -7650,17 +7814,20 @@ const DECLARED_INTERNAL_CALLBACK_ARGUMENTS: readonly string[] = Object.freeze([
  * a number that moves.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'empireInvariant.ts:636 receiver=ArrayLiteralExpression',
-  'engagement.ts:354 receiver=ArrayLiteralExpression',
-  'social.ts:344 receiver=ArrayLiteralExpression',
+  'empireInvariant.ts:637 receiver=ArrayLiteralExpression',
+  'engagement.ts:355 receiver=ArrayLiteralExpression',
+  'social.ts:345 receiver=ArrayLiteralExpression',
 ]);
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
   MODULES: 10,
-  SITES: 376,
+  /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
+  SITES: 324,
   /** Nodes the walk examined. A truncated walk would report a clean directory. */
-  NODES_EXAMINED: 21_758,
+  NODES_EXAMINED: 21_789,
+  /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
+  WRAP_CALLS: 53,
   CHANNELS: 11,
   /** Channels with at least one site. The other four are open routes nobody uses. */
   CHANNELS_IN_USE: 5,
@@ -8165,45 +8332,86 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
  * and joined to it in both directions, so a second callback-taking export
  * reddens here until somebody drives it.
  *
- * ITS LIMIT: it drives the subject at one small fixture, so it is a sampling
- * instrument like the drive, and a callback payload behind a numeric branch
- * point is outside it exactly as M10 through M14 were outside the drive's
- * domains. What it does close is the shape M27 used — an argument handed to
- * every call — and the census's arity key is the other half, because that one
- * needs no drive at all.
+ * ITS LIMIT AT E18, DECLARED BY ITS OWN BUILDER AND CLOSED BY E19: "it drives
+ * the subject at one small fixture, so it is a sampling instrument like the
+ * drive, and a callback payload behind a numeric branch point is outside it
+ * exactly as M10 through M14 were outside the drive's domains." That is the
+ * defect this codebase has recorded most often, declared in advance, and the
+ * sentence is kept because the repair is only legible beside it.
+ *
+ * WHAT E19 CHANGED: the pass drives each subject over the same branch-point
+ * domain the main drive walks its axis on — `NUMERIC_DOMAINS[subject.domain]`,
+ * plus the points that domain's foreign ceiling drops, taken from the same
+ * `overflowPointsFor` the overflow pass uses. It is not a second dialect: the
+ * points are the registry's, the arithmetic is the registry's, and a knob added
+ * to `EMPIRE_TUNING` widens this pass by construction. M29 in `PLANTED_ROUTES`
+ * is the payload keyed on a branch point outside E18's three slots, measured
+ * green before and red after.
+ *
+ * WHAT IT STILL DOES NOT CLOSE, counted rather than described:
+ *
+ *   - ONE AXIS PER SUBJECT. `historyFrom` takes `slots` and `trainedDays`, and
+ *     the pass varies `slots`. A payload keyed on the CONTENT of `trainedDays`
+ *     — its length, or a particular day in it — is outside this domain, and the
+ *     honest reading of CLAUDE.md's "richness on one axis" rule is that the
+ *     second axis has one point. `CALLBACK_PASS_CENSUS.AXES_VARIED` is that
+ *     number rather than a silence.
+ *   - THE ARITY KEY IS A DIFFERENT HALF, and E18's asymmetry is unchanged: the
+ *     census's `x1` in `DECLARED_CALLBACK_SITES` catches a payload delivered as
+ *     an EXTRA argument with no drive at all, at every branch point at once.
+ *     This pass catches a payload smuggled into an argument the site already
+ *     passes — which no site census can see — and only at points it drives.
  */
 interface CallbackSubject {
   /** `module.ts#export#parameter`, derived from the checker and joined below. */
   readonly key: string;
-  /** Calls the subject with a recording callback and returns nothing. */
-  readonly drive: (record: (args: readonly unknown[]) => void) => void;
+  /**
+   * The `NUMERIC_DOMAINS` key whose points this subject's axis is driven over.
+   *
+   * A key rather than a point list, so the domain cannot be forked here: the
+   * pass reads the registry, and `NUMERIC_DOMAINS` is what the main drive and
+   * the overflow pass read too.
+   */
+  readonly domain: keyof typeof NUMERIC_DOMAINS;
+  /** What one point MEANS for this subject, so a reader can disagree with the axis. */
+  readonly axis: string;
+  /** Calls the subject at one domain point with a recording callback. */
+  readonly drive: (record: (args: readonly unknown[]) => void, point: number) => void;
 }
 
 const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
   Object.freeze({
     key: 'engagement.ts#historyFrom#attended',
-    drive: (record: (args: readonly unknown[]) => void): void => {
+    domain: 'COUNT',
+    axis: 'the slot count, which is what `historyFrom` allocates one attendance entry per and calls its predicate once per',
+    drive: (record: (args: readonly unknown[]) => void, point: number): void => {
       engagementModule.historyFrom(
-        CALLBACK_PASS_SLOTS,
+        point,
         (...args: readonly unknown[]): boolean => {
           record(args);
           return args[0] === 0;
         },
-        [CALLBACK_PASS_SLOTS],
+        [point],
       );
     },
   }),
 ]);
 
 /**
- * How many slots the pass drives `historyFrom` at.
+ * How many recorded calls the pass buffers before it scans them.
  *
- * Three rather than one so a payload keyed on the first call is not the only
- * one visible, and small because the pass is about WHAT arrives rather than how
- * often. `CALLBACK_PASS_CENSUS.CALLS` pins the product, so a subject that stops
- * calling its callback reports itself instead of passing with nothing recorded.
+ * A COST KNOB AND NOT A COVERAGE ONE, which is the only reason it is allowed to
+ * exist: every recorded call is scanned, and this decides how many are scanned
+ * at once. A buffer of one would run `deepScan`'s setup 1.9 million times; no
+ * buffer at all would hold every argument of every point in memory, which is
+ * what the E18 shape did at three calls and does not survive a domain whose
+ * largest point is six figures.
+ *
+ * `CALLBACK_PASS_CENSUS.RECORDED` is the count that keeps it honest: it is the
+ * number of values that went THROUGH the buffer, so a buffer that dropped a
+ * batch reports a smaller number rather than a clean scan.
  */
-const CALLBACK_PASS_SLOTS = 3;
+const CALLBACK_SCAN_BATCH = 4096;
 
 /**
  * The tripwire subject: a function that hands its callback a banned name.
@@ -8212,9 +8420,9 @@ const CALLBACK_PASS_SLOTS = 3;
  * same role `instrument B bites` plays for the drive. Without it a zero here
  * would be a zero about a pass that records nothing.
  */
-function callbackTripwire(record: (args: readonly unknown[]) => void): void {
+function callbackTripwire(record: (args: readonly unknown[]) => void, point: number): void {
   const hand = (report: (slot: number, label: string) => boolean): void => {
-    for (let slot = 0; slot < CALLBACK_PASS_SLOTS; slot += 1) report(slot, PROBE_NAME);
+    for (let slot = 0; slot < point; slot += 1) report(slot, PROBE_NAME);
   };
   hand((slot, label) => {
     record([slot, label]);
@@ -8225,21 +8433,81 @@ function callbackTripwire(record: (args: readonly unknown[]) => void): void {
 interface CallbackPassResult {
   readonly calls: number;
   readonly recorded: number;
+  /** Domain points the subject accepted, and points its own guard refused. */
+  readonly points: number;
+  readonly refusedPoints: number;
   readonly findings: readonly string[];
 }
 
-/** Run one callback-taking subject and scan everything its callback was handed. */
-function callbackPass(drive: (record: (args: readonly unknown[]) => void) => void, label: string): CallbackPassResult {
-  const handed: unknown[][] = [];
-  drive((args) => handed.push([...args]));
-  const scan = deepScan(handed, `${label}#callback`);
+/**
+ * The points one callback subject is driven at.
+ *
+ * The domain's own points plus the ones its foreign ceiling drops, deduplicated
+ * and ascending. Read off `NUMERIC_DOMAINS` and `overflowPointsFor` rather than
+ * listed, which is what makes a knob added to `EMPIRE_TUNING` widen this pass
+ * with nobody remembering to.
+ */
+function callbackPointsFor(name: keyof typeof NUMERIC_DOMAINS): readonly number[] {
+  const domain = NUMERIC_DOMAINS[name];
+  return numeric([...domain.points, ...overflowPointsFor(name, domain).map((point) => point.value)]);
+}
+
+/**
+ * Run one callback-taking subject over a domain and scan everything its
+ * callback was handed.
+ *
+ * A REFUSED POINT IS COUNTED RATHER THAN SKIPPED, for the reason CLAUDE.md's
+ * "a domain says which inputs you offered, not which branches ran" gives:
+ * `historyFrom` refuses a slot count under one, so a domain containing 0 offers
+ * a point the subject never calls its callback at. That is a fact about the
+ * subject's guard and it belongs in the census beside the calls.
+ */
+function callbackPass(
+  drive: (record: (args: readonly unknown[]) => void, point: number) => void,
+  label: string,
+  points: readonly number[],
+): CallbackPassResult {
   const findings: string[] = [];
-  for (const string of scan.strings) {
-    if (BANNED_NORMALISED.has(normalise(string.value))) findings.push(`${string.path}=${string.value}`);
+  let calls = 0;
+  let recorded = 0;
+  let refusedPoints = 0;
+  let buffer: unknown[][] = [];
+  let at = '';
+  const flush = (): void => {
+    if (buffer.length === 0) return;
+    const scan = deepScan(buffer, `${label}#callback`);
+    for (const string of scan.strings) {
+      // The POINT is in the finding, not only the batch offset. A failure that
+      // says `@45000` names the branch point the payload was keyed on, which is
+      // the whole subject of this widening; `[7].1=covered-day` would say only
+      // that something arrived.
+      if (BANNED_NORMALISED.has(normalise(string.value))) {
+        findings.push(`${label}${at}${string.path}=${string.value}`);
+      }
+    }
+    buffer = [];
+  };
+  for (const point of points) {
+    at = `@${String(point)}`;
+    try {
+      drive((args) => {
+        calls += 1;
+        recorded += args.length;
+        buffer.push([...args]);
+        if (buffer.length >= CALLBACK_SCAN_BATCH) flush();
+      }, point);
+    } catch {
+      // The subject's own refusal. Counted, never swallowed silently: a domain
+      // every point of which is refused would otherwise read as a clean pass.
+      refusedPoints += 1;
+    }
+    flush();
   }
   return {
-    calls: handed.length,
-    recorded: handed.reduce((total, args) => total + args.length, 0),
+    calls,
+    recorded,
+    points: points.length,
+    refusedPoints,
     findings: Object.freeze(findings),
   };
 }
@@ -8254,17 +8522,58 @@ function callbackPass(drive: (record: (args: readonly unknown[]) => void) => voi
 const callbackSubjectKeys = (census: ChannelCensus): readonly string[] =>
   distinct(census.sites['callback-invocation'].map((site) => site.replace(/ x\d+$/, '')));
 
+/**
+ * The tripwire's own domain: three points, so its numbers stay small and are
+ * hand-checkable — 1 + 2 + 3 calls, two values each.
+ *
+ * DELIBERATELY NOT THE SUBJECT'S DOMAIN. The tripwire answers "does the pass see
+ * a name handed to a callback at all", which one point would settle; running it
+ * over a six-figure domain would make its own pins move whenever the registry
+ * moves, for no extra evidence about the pass.
+ */
+const CALLBACK_TRIPWIRE_POINTS: readonly number[] = Object.freeze([1, 2, 3]);
+
 const CALLBACK_PASS_CENSUS = Object.freeze({
   SUBJECTS: 1,
-  /** `CALLBACK_PASS_SLOTS` calls for the one subject. A zero here is a dead pass. */
-  CALLS: 3,
-  /** Values handed to the callback across those calls: one slot argument each. */
-  RECORDED: 3,
+  /**
+   * Points the one subject is driven at, and how many its own guard refused.
+   *
+   * It was three CALLS at one fixture until E19. It is now the COUNT domain
+   * plus the points that domain's foreign ceiling drops — the same set the main
+   * drive and the overflow pass between them cover on this axis.
+   *
+   * DERIVED RATHER THAN READ OFF A FAILURE: `DOMAIN_CENSUS.COUNT_POINTS` is 55
+   * and the 39 overflow rows collapse to 33 distinct values, which is 88. Both
+   * halves are asserted separately in `drives the callback subjects over the
+   * registry domain`, so this number moving without one of them moving would
+   * itself be a defect.
+   */
+  POINTS: 88,
+  REFUSED_POINTS: 1,
+  /**
+   * Calls the subject made into the recording callback, summed over the domain.
+   *
+   * `historyFrom` calls its predicate once per slot, so this is the sum of the
+   * admissible points. A zero here is a dead pass; a number that drops is a
+   * domain that quietly lost points or a subject that stopped calling out.
+   */
+  CALLS: 726813,
+  /** Values handed across those calls: one slot argument each, so it equals CALLS. */
+  RECORDED: 726813,
   FINDINGS: 0,
-  /** The tripwire's own numbers, which are what the zero above is a zero against. */
-  TRIPWIRE_CALLS: 3,
-  TRIPWIRE_RECORDED: 6,
-  TRIPWIRE_FINDINGS: 3,
+  /**
+   * How many INJECTED axes the pass varies, per subject.
+   *
+   * One, and it is a number rather than a silence for the reason CLAUDE.md's
+   * "richness on one axis" rule gives: `historyFrom`'s `trainedDays` is not
+   * varied, so a payload keyed on its contents is outside this pass however
+   * many slot points it walks.
+   */
+  AXES_VARIED: 1,
+  /** The tripwire's own numbers, which are what the zeros above are zero against. */
+  TRIPWIRE_CALLS: 6,
+  TRIPWIRE_RECORDED: 12,
+  TRIPWIRE_FINDINGS: 6,
 });
 
 const CHANNEL_BLOCK_TIMEOUT_MS = 90_000;
@@ -8313,6 +8622,34 @@ describe('the channel census — the routes a string can leave this directory by
         expect(channel.what.length, channel.id).toBeGreaterThan(40);
         expect(channel.scannedFor.length, channel.id).toBeGreaterThan(30);
       }
+    },
+    CHANNEL_BLOCK_TIMEOUT_MS,
+  );
+
+  it(
+    'every throw in this directory is written as a call to the wrap',
+    () => {
+      const census = channelCensus();
+      // THE SITES FIRST, because this is the assertion that names the file and
+      // the enclosing function when a raw throw arrives. `expected 3 to be 2`
+      // says a throw appeared; `+ "production.ts#offlineSeconds#throw"` says
+      // where. Same ordering argument the site table above records.
+      const raw = census.sites.throw.filter((site) => !THROW_GATE_SITES.includes(site));
+      expect(raw).toEqual([]);
+      // Set equality in both directions, so deleting a gate is red as well.
+      expect(census.sites.throw).toEqual(THROW_GATE_SITES);
+      // And the other direction of the fence: the wrap is really called, per
+      // module, so the zero above cannot be satisfied by a directory that
+      // stopped refusing anything at all.
+      expect(census.wrapCalls).toEqual(WRAP_CALL_COUNTS);
+      const wrapCalls = Object.values(census.wrapCalls).reduce((sum, count) => sum + count, 0);
+      expect(wrapCalls).toBe(CHANNEL_CENSUS_TOTALS.WRAP_CALLS);
+      // Every module that hands anything out abruptly does it through the wrap:
+      // the modules with wrap calls are exactly the modules that had throws
+      // before E19, and `empireCore.ts` is on both lists because it holds the
+      // gates. Stated as a set rather than a count so a module going silent is
+      // red rather than compensated for by another getting louder.
+      expect(Object.keys(census.wrapCalls).sort()).toEqual([...Object.keys(WRAP_CALL_COUNTS)].sort());
     },
     CHANNEL_BLOCK_TIMEOUT_MS,
   );
@@ -8407,21 +8744,30 @@ describe('the channel census — the routes a string can leave this directory by
   it('names the channels the drive alone covers, and the ones nothing covered', () => {
     const only = (row: CoverageRow, a: boolean, b: boolean, c: boolean): boolean =>
       row.movesA === a && row.movesB === b && row.movesC === c;
-    // THE READING THIS WHOLE SECTION EXISTS FOR. A channel here has exactly as
-    // much guarantee behind it as a sampling budget, which is what CLAUDE.md's
-    // newest rule says is not enough on an unbounded input space.
+    // THE READING THIS WHOLE SECTION EXISTS FOR, and it is a reading of the
+    // three INSTRUMENTS rather than of everything standing on a channel. A row
+    // here has exactly as much guarantee behind it from A, B and C as a
+    // sampling budget, which is what CLAUDE.md's newest rule says is not enough
+    // on an unbounded input space.
     const driveAlone = CHANNEL_COVERAGE.filter((row) => only(row, false, true, false));
     expect(driveAlone.map((row) => `${row.channel}: ${row.form}`)).toEqual([
       'throw: a bare read of the ban list as the `RangeError` message',
       "argument-mutation: the name written into a caller-supplied sink's field",
     ]);
-    // Of those three, ONE is a channel this directory actually uses: `throw`,
-    // at 54 sites. The other two have zero sites, so what covers them today is
-    // the census saying they are empty.
+    // Of those two, ONE is a channel this directory actually uses: `throw`. The
+    // other has zero sites, so what covers it today is the census saying so.
     const census = channelCensus();
     expect(
       driveAlone.filter((row) => census.sites[row.channel].length > 0).map((row) => row.channel),
     ).toEqual(['throw']);
+    // AND THE SENTENCE THAT USED TO END HERE — "a sampling instrument is the
+    // whole of what stands on the one channel in use" — IS THE ONE E19 MADE
+    // FALSE, so it is replaced by the check that says what stands there now.
+    // Every remaining `throw` site is a gate of the wrap, which is a fact about
+    // the tree and not about a budget: it holds at branch points no domain
+    // samples, because it is not a drive.
+    expect(census.sites.throw).toEqual(THROW_GATE_SITES);
+    expect(census.sites.throw.length).toBe(THROW_GATE_SITES.length);
 
     // And the rows no instrument moved on. Every one of them is either covered
     // by the callback pass or has zero sites and is covered by the census —
@@ -8474,11 +8820,19 @@ describe('the channel census — the routes a string can leave this directory by
 
       let calls = 0;
       let recorded = 0;
+      let points = 0;
+      let refusedPoints = 0;
       const findings: string[] = [];
       for (const subject of CALLBACK_SUBJECTS) {
-        const result = callbackPass(subject.drive, subject.key);
+        // The domain is the registry's, not this pass's: a subject names a
+        // `NUMERIC_DOMAINS` key and the points come from there and from the
+        // same overflow arithmetic the overflow pass uses.
+        expect(subject.axis.length, subject.key).toBeGreaterThan(30);
+        const result = callbackPass(subject.drive, subject.key, callbackPointsFor(subject.domain));
         calls += result.calls;
         recorded += result.recorded;
+        points += result.points;
+        refusedPoints += result.refusedPoints;
         findings.push(...result.findings);
       }
       // THE FINDINGS FIRST, AND THE ORDER IS DELIBERATE. Both this and the
@@ -8492,17 +8846,79 @@ describe('the channel census — the routes a string can leave this directory by
       // would report zero findings and pass, so the calls are pinned too.
       expect(calls).toBe(CALLBACK_PASS_CENSUS.CALLS);
       expect(recorded).toBe(CALLBACK_PASS_CENSUS.RECORDED);
+      // The domain's own size, and the points the subject's guard refused. The
+      // second is what says the first is a domain the subject actually ran on:
+      // `historyFrom` refuses a slot count under one, so a domain of nothing
+      // but zeroes would show 87 points and no calls at all.
+      expect(points).toBe(CALLBACK_PASS_CENSUS.POINTS);
+      expect(refusedPoints).toBe(CALLBACK_PASS_CENSUS.REFUSED_POINTS);
+      expect(points - refusedPoints).toBe(87);
+      // AND AN ORACLE OVER THE SUBJECT RATHER THAN OVER THE DOMAIN, which is
+      // the half a literal cannot give. `historyFrom` calls its predicate once
+      // per slot, so the calls must equal the sum of the admissible points —
+      // the domain appears on both sides, and what is being graded is the
+      // SUBJECT: a `historyFrom` that skipped slot 0, stopped early, or called
+      // its predicate twice is red here while the literal above stays green.
+      const expected = CALLBACK_SUBJECTS.map((subject) => callbackPointsFor(subject.domain))
+        .flat()
+        .filter((point) => point >= 1)
+        .reduce((sum, point) => sum + point, 0);
+      expect(calls).toBe(expected);
     },
     CHANNEL_BLOCK_TIMEOUT_MS,
   );
 
+  it('drives the callback subjects over the registry domain, not a fixture of its own', () => {
+    // THE JOIN THAT MAKES THE WIDENING STRUCTURAL RATHER THAN REMEMBERED. Every
+    // subject's points are the ones `NUMERIC_DOMAINS` gives its axis plus the
+    // ones that domain's ceiling drops — the same two halves the main drive and
+    // the overflow pass split between them. A knob added to `EMPIRE_TUNING`
+    // widens this pass with nobody editing it, and a domain that shrank is red
+    // here on POINTS above.
+    for (const subject of CALLBACK_SUBJECTS) {
+      const registry = NUMERIC_DOMAINS[subject.domain];
+      const points = callbackPointsFor(subject.domain);
+      // Containment in both halves, so a point list that quietly dropped the
+      // ceiling's overflow — which is where the eighth and tenth bypasses lived
+      // on the drive's side — reports itself.
+      for (const point of registry.points) expect(points, subject.key).toContain(point);
+      const dropped = overflowPointsFor(subject.domain, registry);
+      expect(dropped.length, `${subject.key} has no points above its ceiling`).toBeGreaterThan(0);
+      for (const point of dropped) expect(points, `${subject.key} ${point.label}`).toContain(point.value);
+      // And it is not merely the two lists concatenated: it straddles branch
+      // points the E18 fixture could not express. Three named ones, each a
+      // real branch point of this directory rather than a round number.
+      expect(points).toContain(EMPIRE_TUNING.ROSTER_SLOTS_MAX);
+      expect(points).toContain(EMPIRE_TUNING.REPUTATION_MAX);
+      // THIRTY-FOUR AND NOT THIRTY-THREE, and the gap is the honest part. The
+      // 39 rows `overflowPointsFor` yields collapse to 33 distinct VALUES —
+      // two labels can hold the same number — and a domain also carries its own
+      // unit's thresholds unconditionally, straddled, wherever they sit, so one
+      // more point above the ceiling arrives from there rather than from the
+      // overflow. Pinned as the count it is; the containment above is what says
+      // no dropped point is missing.
+      expect(distinct(dropped.map((point) => String(point.value))).length).toBe(33);
+      expect(points.filter((point) => point > FOREIGN_CEILINGS.COUNT).length).toBe(34);
+      // And the arithmetic `CALLBACK_PASS_CENSUS.POINTS` claims, joined to the
+      // registry's own count rather than to a second measurement of the same
+      // thing: 55 domain points and 33 distinct dropped values.
+      expect(registry.points.length).toBe(DOMAIN_CENSUS.COUNT_POINTS);
+      expect(points.length).toBe(DOMAIN_CENSUS.COUNT_POINTS + 33);
+    }
+    // One injected axis per subject, stated as the number it is.
+    expect(CALLBACK_PASS_CENSUS.AXES_VARIED).toBe(1);
+  });
+
   it('the callback pass bites — the tripwire the zero is zero against', () => {
-    const result = callbackPass(callbackTripwire, 'tripwire');
+    const result = callbackPass(callbackTripwire, 'tripwire', CALLBACK_TRIPWIRE_POINTS);
     expect(result.calls).toBe(CALLBACK_PASS_CENSUS.TRIPWIRE_CALLS);
     expect(result.recorded).toBe(CALLBACK_PASS_CENSUS.TRIPWIRE_RECORDED);
     expect(result.findings.length).toBe(CALLBACK_PASS_CENSUS.TRIPWIRE_FINDINGS);
-    // Named, not counted only: the failure message has to say what arrived.
+    expect(result.refusedPoints).toBe(0);
+    // Named, not counted only: the failure message has to say what arrived, and
+    // at which point — the two things a domain widening is about.
     for (const finding of result.findings) expect(finding).toContain(PROBE_NAME);
+    expect(result.findings.some((finding) => finding.includes('@3'))).toBe(true);
   });
 });
 

@@ -478,9 +478,17 @@ export type NpcId = Branded<string, 'npc-id'>;
  * always will be: a thrown `Error`'s message is not a field, so there is no
  * position for a brand to sit on. The brands close ASSIGNMENT INTO A DECLARED
  * POSITION. They do not close the throw channel, and nothing here should be
- * read as claiming they do — what covers that is the drive, and specifically
- * `empireForbiddenOutput.test.ts`'s overflow pass reaching the region the
- * roster-size ceiling used to drop. It is M25 in `PLANTED_ROUTES`.
+ * read as claiming they do — what covered that at E18 was the drive, and
+ * specifically `empireForbiddenOutput.test.ts`'s overflow pass reaching the
+ * region the roster-size ceiling used to drop. It is M25 in `PLANTED_ROUTES`.
+ *
+ * THE THROW CHANNEL HAS ITS OWN PAIR SINCE E19, and the sentence above is left
+ * exactly as it was because it is still true of the BRANDS. What closes the
+ * channel is not a brand: it is `refuseWith`, the wrap every throw in this
+ * directory is written as a call to, plus `THROW_GATE_SITES` — the same
+ * containment-and-enumeration pair this note describes for the constructors,
+ * one channel over. See `refuseWith` below for what each half does and does not
+ * cover.
  *
  * The probe that made this file's answer possible, run at `dcc65bb` and again
  * before this change:
@@ -1396,22 +1404,25 @@ export function asDisplayName<S extends string>(value: S & Unbranded<S>): Displa
  *
  * AND THE SAME LIMIT ONE STEP OUT, NAMED BECAUSE IT IS WHERE THE TENTH BYPASS
  * WENT: a `throw new RangeError(<a bare string>)` reaches no constructor at
- * all, so it is neither typed nor contained. `completeRecruitment` is where
- * that was planted and the overflow pass is what catches it; see the brand
+ * all, so it was neither typed nor contained. `completeRecruitment` is where
+ * that was planted and the overflow pass is what caught it; see the brand
  * note at the top of this file.
  *
- * THE OBVIOUS REPAIR FOR THAT — a `refuseWith(message: FaultMessage): never`
- * every throw goes through — WAS MEASURED AND ITS BRAND WAS REFUSED. Recorded
- * as M28 in `empireForbiddenOutput.test.ts`, five configurations. The brand
- * refuses the bare ban-list read and the legitimate template literal with the
- * SAME `TS2345`, and there are 54 throw sites of which 41 are template
- * literals, so the configuration where the brand bites is one this directory
- * cannot ship; the one it can ship mints, and a mint compiles the bypass. What
- * the wrap does buy is runtime containment, and that half needs no brand at
- * all: unbranded, with no mint anywhere, the M25 shape comes back to the caller
- * as `thrownMessage must not be a forbidden empire output` rather than as the
- * name. The trade, the price and the enforcement it would need are in M28's own
- * row rather than summarised here.
+ * THAT PARAGRAPH IS WRITTEN IN THE PAST TENSE SINCE E19, AND THE REPAIR IT
+ * PREDICTED IS THE ONE THAT WAS TAKEN. `refuseWith` is that wrap and it sits
+ * fifty lines above this comment; every `throw` in every shipped module of this
+ * directory is a call to it, and `THROW_GATE_SITES` in
+ * `empireForbiddenOutput.test.ts` is the enumeration that keeps it that way.
+ *
+ * ITS BRAND IS STILL REFUSED, and that is the half of M28 that stands. Recorded
+ * in `empireForbiddenOutput.test.ts`, five configurations: a
+ * `refuseWith(message: FaultMessage)` refuses the bare ban-list read and the
+ * legitimate template literal with the SAME `TS2345`, and there were 54 throw
+ * sites of which 41 are template literals, so the configuration where the brand
+ * bites is one this directory cannot ship; the one it can ship mints, and a
+ * mint compiles the bypass. What the wrap buys is runtime containment, and that
+ * half needs no brand at all — which is why the shipped `refuseWith` takes a
+ * plain `string`.
  */
 export function asFaultMessage<S extends string>(value: S & Unbranded<S>): FaultMessage {
   refuseForbiddenName(value, 'faultMessage');
