@@ -924,9 +924,13 @@ Two pieces, both tests-and-structure, both in `src/career/`:
 
 #### TRACKED DEBT FILED WITH THIS CLAIM (NOT THIS PR)
 
-- **Empire M2–M5 hardening.** Port Career's AST import walker onto
-  `src/empire/` so double quotes, side-effect imports, and sibling coverage
-  fail there the same way. Lower priority than the two rulings above.
+- **Empire M2–M5 hardening.** Replace Empire's regex import scanner with
+  Career's TypeScript AST walker (`src/career/careerPurity.test.ts`). Do not
+  port Empire's `from\s+'([^']+)'` regex forward, and do not leave two
+  directories with two scanners — that is the sibling-drift this piece exists
+  to stop. The AST walk is strictly better: it sees import forms structurally
+  rather than matching spellings someone thought to enumerate. Lower priority
+  than the two rulings that already landed (PR #6).
 - **image-size (high) and uuid (moderate).** Transitive through metro / xcode /
   Expo config-plugins. `npm audit fix --force` wants expo@53 and
   react-native@0.72, which this tree is not. Leave until the next Expo 57
