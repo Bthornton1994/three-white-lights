@@ -293,6 +293,51 @@ export function LiftScreen({ replay }: LiftScreenProps = {}): React.ReactElement
   );
 }
 
+/**
+ * A PRESS ON THE STAGE IS A LIFT INPUT, NOT A TEXT SELECTION.
+ *
+ * FROM PLAYTESTING, NOT FROM REASONING — the first human verdict this build has
+ * had (GDD §12.1). On a mobile browser, pressing and holding the stage
+ * triggered the browser's own selection gesture: the surface highlighted, a
+ * selection handle appeared, and the press was being fought over between the
+ * page and the game. The squat asks for a press-and-hold *by design* — that is
+ * the descent — so the one input this mechanic is built on is exactly the one a
+ * browser reads as "the user wants to select something".
+ *
+ * WHAT EACH PROPERTY IS FOR, because they are not interchangeable and dropping
+ * one leaves a different half of the bug:
+ *
+ *   - `userSelect: none` stops the text/area highlight and the selection
+ *     handles. This is the visible half.
+ *   - `touchAction: none` stops the browser claiming the gesture for scrolling
+ *     or double-tap zoom before the handler sees it. This is the half that
+ *     eats input rather than merely looking wrong, and it is the one a
+ *     screenshot cannot show.
+ *   - `WebkitTouchCallout: none` stops iOS Safari's press-and-hold callout,
+ *     which is a separate gesture from selection and survives the other two.
+ *
+ * NATIVE IS UNAFFECTED. These are web CSS properties; React Native Web passes
+ * them through and the native renderers ignore them. They are deliberately NOT
+ * behind a `Platform.OS === 'web'` branch — a conditional style object makes the
+ * key set depend on where the file is read from, which would make the guard in
+ * `liftInput.test.ts` a claim about the test environment rather than about the
+ * shipped screen.
+ *
+ * NOT GAME FEEL, so not in the tuning module: there is no value here to tune.
+ * It is the difference between the input arriving and not arriving.
+ *
+ * WHAT THIS DOES NOT FIX, stated because the playtest raised both together: the
+ * separate finding that players were unclear HOW to perform the down-and-back-up
+ * motion is a design question, not this. Fixing the input capture may change how
+ * bad that reads — some of "confusing" may have been people fighting the
+ * browser — and that is a question for a re-test, not an assumption to build on.
+ */
+const PRESS_NOT_SELECT = {
+  userSelect: 'none',
+  touchAction: 'none',
+  WebkitTouchCallout: 'none',
+} as const;
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -356,6 +401,9 @@ const styles = StyleSheet.create({
   stage: {
     width: L.STAGE_W,
     height: L.STAGE_H,
+    // See `PRESS_NOT_SELECT` below. Spread rather than conditionally applied so
+    // the key set does not depend on where this file is read from.
+    ...PRESS_NOT_SELECT,
   },
   timings: {
     flexDirection: 'row',

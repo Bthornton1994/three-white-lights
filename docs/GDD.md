@@ -3077,6 +3077,50 @@ work.
       critic on it was explicit that feel itself stayed unverified. So the gate
       is still shut, by the letter of the document that states it, regardless
       of how much else has been built.
+
+      **THE GATE IS NOW OPEN. HUMAN PLAYTEST VERDICT, 2026-08-12: THE SQUAT IS
+      FUN.** Multiple people played the MVP on a mobile browser and enjoyed it.
+      This is the first verdict in this build on the one bar no critic here
+      could ever grade, and it is recorded as a finding rather than a chat note
+      because everything above turns on it. L1's status moves from "craft bar
+      passed, feel unverified, reference unreachable" to **PLAYTESTED
+      POSITIVE**.
+
+      **WHAT IT VALIDATES, EXACTLY.** The core lift mechanic — the squat's
+      press-and-hold input, its timing windows, its feel. Nothing else. The
+      still-open feel questions are NOT covered by it and remain their own
+      separate playtest items: the crowd-reaction beat, and the PR-attempt
+      wording where §6.3 currently ships one of two recorded options with a
+      playtester's ruling named as the way it gets settled. A positive verdict
+      on the mechanic is not a verdict on the copy around it.
+
+      **TWO FINDINGS CAME BACK WITH IT, and they are different in kind.**
+
+      1. *An environment defect, fixed.* Pressing on a mobile browser triggered
+         the browser's own text-selection gesture — the surface highlighted and
+         selection handles appeared. The squat's input IS a press-and-hold, so
+         the one gesture the mechanic is built on is exactly the one a browser
+         reads as "select this". Fixed in `src/lift/LiftScreen.tsx` with
+         `userSelect`, `touchAction` and `WebkitTouchCallout`, each guarding a
+         different half; `src/lift/liftInput.test.ts` pins all three and each
+         was mutation-checked separately.
+      2. *A design question, OPEN.* Players were unclear how to perform the
+         down-and-back-up motion. That is the mechanic not communicating itself
+         on first contact, and it needs design — an onboarding beat, a visual
+         cue, an input affordance — not a tuning number. **It is deliberately
+         not being answered from inside this build**, because it is game feel
+         and §12.1 puts that with a human.
+
+      **AND THE TWO ARE ENTANGLED, WHICH IS WHY THE ORDER MATTERS.** Some of the
+      "confusing" feedback may have been people fighting the browser rather than
+      the mechanic. So (1) is fixed first and (2) is re-tested with the same
+      players before anything is designed for it: the honest next measurement is
+      whether the clarity complaint shrinks, holds, or is confirmed.
+
+      **WHAT THIS DOES NOT YET CLEAR.** Extending the mechanic to bench and
+      deadlift is now *justified rather than premature* — but it is held until
+      the re-test, so the signal on whether L1 is solid is clean before the
+      mechanic is copied into two more lifts.
       This sits next to a real tension the run does not resolve for itself:
       §12.1 says a Gauntlet Loop run collapses phase gates into critic bars,
       and this run has already built Prototype-3-tier content — meet day,

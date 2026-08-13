@@ -535,7 +535,7 @@ const GUARANTEE_COVERAGE = {
    * carries a tag and two witnesses, and its own paragraph does not trip the
    * trigger — `WORSE THAN THE DESIGN IT REPLACES` carries no trigger word.
    */
-  TREE_WIDE: 230,
+  TREE_WIDE: 231,
 } as const;
 
 // ---------------------------------------------------------------------------
