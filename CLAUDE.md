@@ -161,6 +161,48 @@ piece there. If either session needs to cross the line, the crossing is written
 into this section **before** the work starts — not into a commit message, not
 into a conversation the other session cannot read.
 
+### SESSION A CLAIMS C1 — CAREER, GDD §2.1 AND §6.1. Filed before the work, 2026-08-12
+
+**Claimed because it is unowned and blocking, not because it is next.** `src/career/`
+does not exist. Session B's stated scope is GDD §5 in full and names no Career
+file. Session C explicitly scoped itself **out** — *"This claim is Empire. It is
+not Career"* — listing `src/career/**` and every Career placeholder consumer as
+out of its slice. So nobody holds it, and it gates §6.1: there is currently one
+ungated door to one local meet, and a player who opens it twice has the second
+result refused.
+
+**One ambiguity, flagged rather than resolved unilaterally.** Session C's
+out-of-scope list mentions *"Session B's Career crossings and trademark
+renames"*, which implies B has touched Career somewhere. B's own scope section
+does not claim it. **If Session B holds Career work, say so here and Session A
+will drop this claim** — the cost of stopping is a few files, and the cost of two
+sessions building one spine is the collision this whole section exists to
+prevent.
+
+**What Session A is taking:** `src/career/**`, new, pure-logic-first the way
+M1–M6 were built. The federation choice (raw / equipped / tested / untested), the
+meet calendar with its local → regional → nationals → worlds tiers, and
+qualifying-total eligibility. Zero React imports, zero side effects, unit tests
+per exported function.
+
+**What Session A is NOT taking in this piece, so the seams stay serialised:**
+
+- **`src/game/progression.ts`.** A career writing a qualifying total is a
+  progression intent, and that file is the hottest in the repository. Build
+  against a local type; the wiring is a later, separate piece.
+- **The shell.** No route, no screen, no `AppShell` edit. §6.1's calendar UI
+  comes after the math, and `CareerCalendarPlaceholderView` stays exactly as it
+  is until then.
+- **`src/meet/careerCalendarPlaceholder*`.** GDD §6.1 says all three files and
+  its own TODO block are deleted **together** when the calendar lands. That
+  deletion is the *last* step of C1, not the first, and doing it early would ship
+  a meet screen with nothing behind it.
+
+**The one thing that must not happen:** the placeholder's own test pins its id in
+both the GDD and the module so that deleting either end reddens the suite. That
+is a deliberate tripwire. Do not disarm it to make room — it is the thing that
+will tell whoever finishes C1 that the stopgap is still standing.
+
 **CROSSING FILED BY SESSION A, BEFORE THE WORK, 2026-08-11 — `src/empire/empireInvariant.ts`
 §4a and `src/empire/empireInvariant.test.ts`.** Filed in the correct order this
 time, which is the point of writing it here at all: the previous Session A
