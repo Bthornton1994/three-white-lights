@@ -890,6 +890,61 @@ at the moment the screen is read. A smoke capture down a path someone drove by
 hand is not that, and Session C says so itself. Until that check exists, the
 Empire shell is **wired but ungraded**, and no §12.2 claim may be made for it.
 
+### SESSION C — CAREER IMPORT FENCE + ELIGIBILITY OPACITY (NOT CAREER UI)
+
+Written here **before** the work starts, as this section requires. Human-ruled
+2026-08-13 after an independent outside audit of already-merged `src/career/`
+and `src/empire/`. Branch: `cursor/career-integrity-fences-8f47`, based on
+Session A's integration tip. Session C never pushes to `main`, to Session A's
+branch, or to Session B's branch. Standing order on merges unchanged.
+
+**Active claim (unambiguous): structural fences on already-merged Career
+logic — GDD §12.3 pay-to-win / no-gacha, as import and opacity properties.**
+Not a Career calendar screen. Not a replacement of `CareerCalendarPlaceholderView`.
+Not a player-reachable wiring of `src/career/` into the shell.
+
+Two pieces, both tests-and-structure, both in `src/career/`:
+
+1. **Directory import fence + dice ban**, modelled on Empire's pattern but
+   closing the four gaps that audit mutants M1–M5 walked through: double-quoted
+   specifiers, side-effect `import '…'`, sibling files the "directory" scan did
+   not open, and `export … from` / `import()` / `require()` as further spellings
+   of the same hop. Parser is the TypeScript AST, not a single-quote regex.
+2. **M12 opacity.** `CAREER_ELIGIBILITY_READS_NO_WALLET` fences the input
+   shape. Extend it so `qualifiesFor` and its siblings cannot close over
+   module-level or imported `let`/`var`. Verify by replanting the mutant.
+
+**Explicitly OUT of this claim:**
+
+- Career UI / placeholder replacement / shell wiring of the calendar
+- Fixing Empire's own M2–M5 holes in `src/empire/**` (queued below; same
+  walker, later)
+- `src/game/progression.ts`
+- image-size / uuid upgrades (Expo 57 / metro; queued below)
+
+#### TRACKED DEBT FILED WITH THIS CLAIM (NOT THIS PR)
+
+- **Empire M2–M5 hardening.** Replace Empire's regex import scanner with
+  Career's TypeScript AST walker (`src/career/careerPurity.test.ts`). Do not
+  port Empire's `from\s+'([^']+)'` regex forward, and do not leave two
+  directories with two scanners — that is the sibling-drift this piece exists
+  to stop. The AST walk is strictly better: it sees import forms structurally
+  rather than matching spellings someone thought to enumerate. Lower priority
+  than the two rulings that already landed (PR #6).
+- **image-size (high) and uuid (moderate).** Transitive through metro / xcode /
+  Expo config-plugins. `npm audit fix --force` wants expo@53 and
+  react-native@0.72, which this tree is not. Leave until the next Expo 57
+  line that actually carries the patched transitives.
+- **Add `npm audit` to CI** whenever a real merge gate exists. There is no
+  `.github/` workflow today. js-yaml@4.3.1 and nanoid@3.3.18 are overridden
+  in `package.json` as the non-breaking pair from the same audit.
+
+**Done when the slice is ready for review:** Career shipped modules cannot
+import `progression` (any quote style, side-effect, re-export, or dynamic
+import) without a red test; `Math.random` in any of them is red; planting
+`export let careerDebugWallet` and reading it from `qualifiesFor` is red;
+Session C does not call the bar met.
+
 
 ## Subagent Roles
 

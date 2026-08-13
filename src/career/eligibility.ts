@@ -97,6 +97,14 @@
  * would see it. What makes that unreachable today is that a Total is written by
  * meet results only (GDD §2, §6.4) and nothing in the game sells one.
  *
+ * WHAT THE TYPE ALSO CANNOT DO: it does not see a module-level `let`, or an
+ * imported mutable binding, that `qualifiesFor` (and its siblings) close over.
+ * A `CareerLifter` with exactly three keys can still consult a hidden wallet.
+ * `src/career/careerPurity.test.ts` grades that half: those functions may read
+ * their declared parameters, other functions, and module `const`s — not
+ * module-level or imported `let`/`var`. The type constant below is unchanged;
+ * the two halves are not substitutes.
+ *
  * ---------------------------------------------------------------------------
  * 3. WHAT A CAREER RECORD IS NOT
  * ---------------------------------------------------------------------------
