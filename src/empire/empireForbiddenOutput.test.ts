@@ -964,30 +964,43 @@ describe('the domains are derived from the subject and are not empty', () => {
     expect(omitted).toEqual({ ...DOMAIN_CENSUS.OMITTED_ABOVE_CEILING });
   });
 
-  it('contains every exempt leaf in every domain, so an exemption is not a hole', () => {
+  it('carries every exempt leaf in every domain but one, and NAMES the ones that domain drops', () => {
     // The named catcher for `NOT_A_BRANCH_POINT`'s declared limit. An exemption
-    // decides only whether a leaf is carried ABOVE a ceiling; it does not
-    // remove the leaf from any domain, because `EVERY_BRANCH_POINT` includes
-    // the exempt ones and every ceiling in this file is above all of them.
+    // decides only whether a leaf is carried ABOVE a ceiling; it does not by
+    // itself remove the leaf from any domain, because `EVERY_BRANCH_POINT`
+    // includes the exempt ones and a domain carries every member of that union
+    // up to its ceiling.
     //
-    // This is the assertion that reddens the day somebody exempts a large
-    // value — which is the day the sentence above stops being true. Planting
-    // `SPACE_LEVEL_COST_GYM_BUCKS` onto the exempt list is not the mutation to
-    // use, because that leaf is also filed and the disjointness check catches
-    // it first; move `RIVAL_REWARD_GYM_BUCKS` (2500) from `gymBucks` to the
-    // exempt list and ROSTER_SHAPE, whose ceiling is 120, goes red here.
+    // AND THE FIRST VERSION OF THIS CHECK ASSERTED THE STRONGER THING AND WAS
+    // TRUE ONLY WHILE A COST MEASUREMENT SAID SO. Every ceiling was above 120,
+    // the largest exempt value, so every exempt leaf really was in every
+    // domain. Then ROSTER_SHAPE's ceiling was measured: at 120 its 35 points
+    // cost 126 s against 4.8 s on the drive alone, because each point builds a
+    // whole state and crosses it with the reputation ladder, the tiers and the
+    // clocks. It is `ROSTER_SLOTS_MAX + 1` now — one past the largest roster
+    // `rosterCapacity` will admit — and four exempt leaves fall outside it.
+    //
+    // They are named rather than counted, because a count would let one leaf be
+    // swapped for another silently, and this is the list a reader has to be
+    // able to disagree with.
     let pairs = 0;
+    const dropped: string[] = [];
     for (const [name, domain] of Object.entries(NUMERIC_DOMAINS)) {
       for (const row of NOT_A_BRANCH_POINT) {
         for (const [path, value] of Object.entries(tuningTable(row.path))) {
           const at = `${name}/${path}=${String(value)}`;
+          if (value > domain.foreignCeiling) {
+            dropped.push(at);
+            continue;
+          }
           expect(domain.points, `${at} floor`).toContain(Math.floor(value));
           expect(domain.points, `${at} ceil`).toContain(Math.ceil(value));
           pairs += 1;
         }
       }
     }
-    expect(pairs).toBe(DOMAIN_CENSUS.DOMAINS * DOMAIN_CENSUS.EXEMPT);
+    expect(dropped.sort()).toEqual([...EXEMPT_LEAVES_ABOVE_A_CEILING].sort());
+    expect(pairs).toBe(DOMAIN_CENSUS.DOMAINS * DOMAIN_CENSUS.EXEMPT - dropped.length);
   });
 
   it('keeps every domain inside NUMBER, INCLUDING the points no unit derived', () => {
@@ -1994,9 +2007,11 @@ function domainSpec(spec: NumericDomain): NumericDomain {
  */
 const FOREIGN_CEILINGS = Object.freeze({
   NO_CEILING: Number.POSITIVE_INFINITY,
-  DAY: 2600,
-  COUNT: 2600,
-  ROSTER_SHAPE: 120,
+  SECONDS: 120,
+  DAY: 600,
+  COUNT: 600,
+  LEVEL: 120,
+  ROSTER_SHAPE: EMPIRE_TUNING.ROSTER_SLOTS_MAX + 1,
 });
 
 /**
@@ -2031,6 +2046,18 @@ interface DomainCostRow {
 }
 
 const DOMAIN_COST_SECONDS: readonly DomainCostRow[] = Object.freeze([
+  Object.freeze({
+    domain: 'SECONDS',
+    unboundedSeconds: 1,
+    shippedSeconds: 0,
+    axes: 'applyAccelerant, applyPurchasableGrant and grantSecondsAt, elapsed seconds. Four or five call sites per point, each returning a structure the deep scan walks.',
+  }),
+  Object.freeze({
+    domain: 'LEVEL',
+    unboundedSeconds: 1,
+    shippedSeconds: 0,
+    axes: 'axisLevelCost and three siblings, expansion and staff levels. Every point builds a GymAxes and crosses it with every equipment tier and every expansion axis.',
+  }),
   Object.freeze({
     domain: 'DAY',
     unboundedSeconds: 189.0,
@@ -2067,9 +2094,9 @@ const NUMERIC_DOMAINS = Object.freeze({
   }),
   SECONDS: domainSpec({
     units: ['second'],
-    foreignCeiling: FOREIGN_CEILINGS.NO_CEILING,
+    foreignCeiling: FOREIGN_CEILINGS.SECONDS,
     alsoContains: Object.freeze({}),
-    points: domainOf(['second'], FOREIGN_CEILINGS.NO_CEILING),
+    points: domainOf(['second'], FOREIGN_CEILINGS.SECONDS),
     why:
       'Elapsed-seconds axes: build timers, clocks, recruitment schedules and ' +
       'the offline banking horizon. It carries no ceiling, so it differs from ' +
@@ -2108,9 +2135,9 @@ const NUMERIC_DOMAINS = Object.freeze({
   }),
   LEVEL: domainSpec({
     units: ['level'],
-    foreignCeiling: FOREIGN_CEILINGS.NO_CEILING,
+    foreignCeiling: FOREIGN_CEILINGS.LEVEL,
     alsoContains: Object.freeze({}),
-    points: domainOf(['level'], FOREIGN_CEILINGS.NO_CEILING),
+    points: domainOf(['level'], FOREIGN_CEILINGS.LEVEL),
     why:
       'Expansion and staff levels, for the axes that build a GymAxes per point ' +
       'and cross it with every equipment tier and every expansion axis. This ' +
@@ -2203,6 +2230,20 @@ const LITERAL_AXES: readonly (readonly [string, string])[] = Object.freeze([
 ]);
 
 /**
+ * Every (domain, exempt leaf) pair the ceilings drop, by name.
+ *
+ * Four pairs, all in ROSTER_SHAPE, all of them a value larger than any roster
+ * this directory will admit. A count would let one be swapped for another; the
+ * names are what a reader can disagree with.
+ */
+const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
+  'ROSTER_SHAPE/CHECK_IN_TARGET_SECONDS_MAX=60',
+  'ROSTER_SHAPE/CHECK_IN_TARGET_SECONDS_MIN=30',
+  'ROSTER_SHAPE/GYM_BUCKS_BASE_PER_HOUR=120',
+  'ROSTER_SHAPE/NPC_GYM_BUCKS_PER_HOUR_BASE=40',
+]);
+
+/**
  * What the registry measured on this tree. Counts, not bounds.
  *
  * `CONTAINMENT_CHECKS` is the one that says the assertion below is not looping
@@ -2231,27 +2272,27 @@ const DOMAIN_CENSUS = Object.freeze({
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
   BRANCH_POINTS: 102,
   DOMAINS: 6,
-  CONTAINMENT_CHECKS: 513,
+  CONTAINMENT_CHECKS: 398,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
-    SECONDS: 0,
-    DAY: 27,
-    COUNT: 27,
-    LEVEL: 0,
-    ROSTER_SHAPE: 45,
+    SECONDS: 35,
+    DAY: 39,
+    COUNT: 39,
+    LEVEL: 45,
+    ROSTER_SHAPE: 56,
   }),
   ALIASES: 6,
   LITERAL_AXES: 7,
-  COST_ROWS: 3,
+  COST_ROWS: 5,
   /** (domain, point) pairs the NUMBER-containment loop actually compares. */
-  NUMBER_CONTAINMENT_CHECKS: 732,
+  NUMBER_CONTAINMENT_CHECKS: 457,
   NUMBER_POINTS: 221,
-  SECONDS_POINTS: 166,
-  DAY_POINTS: 78,
-  COUNT_POINTS: 82,
-  LEVEL_POINTS: 150,
-  ROSTER_SHAPE_POINTS: 35,
+  SECONDS_POINTS: 77,
+  DAY_POINTS: 51,
+  COUNT_POINTS: 55,
+  LEVEL_POINTS: 36,
+  ROSTER_SHAPE_POINTS: 17,
 });
 
 // ---------------------------------------------------------------------------
