@@ -899,9 +899,13 @@ const NUMBER_COVERAGE = {
  * pass is not evidence either — the human's words, and the reason this table
  * exists.
  *
- * WHAT IT RECORDS. Two verbatim anchors and one quoted line:
+ * WHAT IT RECORDS. Three verbatim anchors and one quoted line:
  *
  *   - `mutated` — the exact text the mutant replaced, in `mutatedFile`.
+ *   - `mutatedTo` — the exact text it put there, so the pair is a whole patch
+ *     and a reader can apply it without guessing. See the block above
+ *     `REPLACEMENT_FAULTS` for what is checked about it and for the rows that
+ *     predate it.
  *   - `redAssertion` — the exact text of the assertion that went red, in the
  *     body of the test the tag names.
  *   - `observed` — what the red run actually printed.
@@ -932,6 +936,16 @@ interface MutationWitness {
   readonly mutatedFile: string;
   /** Verbatim text the mutant replaced. Must still occur, exactly once. */
   readonly mutated: string;
+  /**
+   * Verbatim text the mutant put in its place, which is what makes the row a
+   * patch a third party can apply rather than a description of one.
+   *
+   * An empty string is a DELETION and is a legitimate value; absence is a row
+   * that predates the field, and `REPLACEMENTS_PREDATING_THE_RULE` counts those
+   * per claim. The two are told apart with `=== undefined` and never by
+   * truthiness — see the block above `REPLACEMENT_FAULTS`.
+   */
+  readonly mutatedTo?: string;
   /** Repo-relative path of the test file holding the assertion that reddened. */
   readonly testFile: string;
   /** Verbatim text of that assertion. Must still occur inside the named test. */
@@ -1094,6 +1108,19 @@ function anchorOccurrences(file: string, anchor: string): number {
 }
 
 /**
+ * How a row is named in a finding.
+ *
+ * One function with three callers, for the reason `anchorOccurrences` has two:
+ * the transcript rule, the domain rule and the replacement rule all name a row
+ * the same way, and three copies of one expression is how the three would drift
+ * into three spellings of the same fact. The format is quoted verbatim inside a
+ * recorded transcript below, so changing it expires that row.
+ */
+function witnessKey(witness: MutationWitness): string {
+  return `${witness.guarantee} :: ${(witness.mutated.split('\n')[0] ?? '').trim()}`;
+}
+
+/**
  * The transcript rule's own census, pinned as counts rather than bounds.
  *
  * `GRADED` and `PREDATING` move by one when a witness row is added or when a
@@ -1176,10 +1203,13 @@ const TRANSCRIPT_BAR = {
  *   - THE ONLY ORACLE IS A RE-RUN, AND IT DOES NOT FIT IN A SUITE.
  *     `src/career/eligibility.test.ts` takes 170s whole and 83s narrowed to one
  *     test, measured on this tree; a table of this size is half an hour of
- *     runtime per pass. `MutationWitness` also records the text a mutant
- *     REPLACED and not what it replaced it with, so a third party cannot even
- *     reproduce the run — the number is unfalsifiable by anything but its
- *     author. That is a real gap and it is stated here rather than closed here.
+ *     runtime per pass. The re-run a reader has to do by hand is at least
+ *     POSSIBLE now: `mutatedTo` records what the mutant put in place of what it
+ *     removed, so a row is a patch rather than a description of one. It used to
+ *     record neither, and this bullet used to end by saying the number was
+ *     unfalsifiable by anybody but its author. It is falsifiable now and it is
+ *     still not falsified here — a suite that re-runs a mutant is the thing
+ *     priced above, and this rule anchors the domain instead.
  *
  * WHAT IS ENFORCED INSTEAD. A number is a measurement OVER a population, and
  * the population is a thing this codebase pins in the test body as a literal.
@@ -1308,9 +1338,234 @@ function domainAnchorFaults(
   return faults;
 }
 
+// ---------------------------------------------------------------------------
+// A row records what its mutant replaced; without what it replaced it WITH,
+// nobody but its author can apply it
+// ---------------------------------------------------------------------------
+
 /**
- * Mutants that turn a test file red WITHOUT running a test — the shape the rule
- * above exists to refuse, kept as real records rather than as a description.
+ * THE GAP THIS CLOSES, FOUND BY A ROUND THAT TRIPPED OVER IT DOING SOMETHING
+ * ELSE.
+ *
+ * `mutated` is the verbatim text a mutant replaced. A row said nothing about
+ * what it put there, so a reader who wanted to check one had to GUESS the edit
+ * — and a round did exactly that, inferring a mutant from the name of a control
+ * in a neighbouring comment, and recording that it had guessed. Every row in
+ * this table was an unfalsifiable claim by anybody except its author, which is
+ * the property this whole file spends its length arguing against. "Apply it and
+ * re-run" is not something a reader can do with a patch they do not have.
+ *
+ * `mutatedTo` is the other half of the patch, and with it a row IS the edit:
+ *
+ *   readFileSync(mutatedFile).split(mutated).join(mutatedTo)
+ *
+ * `mutated` has to resolve exactly once in that file — the freshness loop holds
+ * it to that — so the split is unambiguous, and the pair is a whole edit with no
+ * line numbers in it. Apply it, run the named test, and the recorded assertion
+ * is either red or the row is wrong. That is the whole of what the field buys.
+ *
+ * AN EMPTY STRING IS A DELETION AND IS A LEGITIMATE VALUE. Several mutants in
+ * this table delete a line or drop a branch, and `mutatedTo: ''` records that
+ * exactly. The rule reads the field with `=== undefined` and never for
+ * truthiness, so a deletion is graded like any other replacement rather than
+ * read as a row that forgot to carry one. The planted drive below contains a
+ * deletion for that reason: it is the case an `if (!mutatedTo)` implementation
+ * gets wrong, and it would get it wrong silently.
+ *
+ * AN INSERTION IS THE SAME OPERATION FROM THE OTHER SIDE. Three rows here APPEND
+ * a declaration and had nothing to anchor on but the declaration above the
+ * insertion point; they record the anchor followed by what was appended. Insert,
+ * delete and substitute are one replacement against one anchor, which is the
+ * argument for this shape over the two that were rejected:
+ *
+ *   - A UNIFIED DIFF carries line numbers and context lines. Both go stale on an
+ *     unrelated edit above the hunk — the transcript rule refuses to pin a
+ *     source position for exactly that reason — and applying one by hand needs a
+ *     parser rather than a text editor.
+ *   - A SELF-APPLYING FUNCTION can do anything: a regex, several sites, a
+ *     condition. A reader would have to run code to learn what the mutation was,
+ *     and the expiry this table is built on is a property of a STRING anchor,
+ *     not of a callback.
+ *
+ * WHAT IS CHECKED WITHOUT RUNNING ANYTHING, and it is much less than a re-run:
+ * that applying the patch to the tree as it stands changes it, and that a mutant
+ * living in the same file as its own red assertion does not delete that
+ * assertion. Those are the two arms below.
+ *
+ * WHAT IS NOT CHECKED, said as plainly as the two rules above say their own
+ * limits. Nothing re-runs the mutant, so a row still does not prove its test
+ * went red — it proves a reader can find out in one command. A replacement that
+ * does not compile, or that is simply not the edit whose transcript sits beside
+ * it, is accepted here and refused by the first person who applies it. The rule
+ * moves a row from unfalsifiable to falsifiable and leaves the falsifying to
+ * whoever cares. That is a smaller claim than it sounds, and it is the whole of
+ * it.
+ */
+const REPLACEMENT_FAULTS = [
+  'replacement-does-not-change-the-file',
+  'replacement-removes-the-red-assertion',
+] as const;
+
+/** Derived from the list, for the reason `TranscriptFault` is derived from its own. */
+type ReplacementFault = (typeof REPLACEMENT_FAULTS)[number];
+
+/**
+ * The two arms, separate because each excludes a different way a recorded
+ * replacement is not a patch:
+ *
+ *   - `replacement-does-not-change-the-file` — applying it to `mutatedFile` as
+ *     it stands leaves the file byte-identical. One arm covering the two ways
+ *     that happens: the replacement is the text it replaced, and the anchor does
+ *     not occur so there is nothing to replace.
+ *   - `replacement-removes-the-red-assertion` — the mutant edits the same file
+ *     the row's red assertion lives in, and applying it takes that assertion out
+ *     of the body of the test the tag names. A row claiming an assertion
+ *     reddened under a mutant that deletes the assertion is incoherent, and this
+ *     is the only thing in the file that reads the MUTATED text at all.
+ *
+ * WHY THE OCCURRENCE CHECK IS NOT REPEATED HERE, compared symbolically rather
+ * than by intuition, because a new rule killing an old one is a standing check
+ * and two have died that way in this file's neighbourhood. The freshness loop
+ * asserts `anchorOccurrences(mutatedFile, mutated) === 1`. At zero occurrences
+ * both it and the first arm are red; at two the freshness loop is red and the
+ * arm is green, since a replacement still changes the file; at one occurrence
+ * with the replacement equal to what it replaced, the arm is red and the
+ * freshness loop is green. Neither implies the other, so both stay and neither
+ * is restated here.
+ *
+ * WHY A WHITESPACE-ONLY REPLACEMENT IS ACCEPTED, which was the obvious third arm
+ * and was refused on this repository's own history. Flattening both sides and
+ * calling them equal would ban the mutant that inserts a blank comment line
+ * between a claim and its tag — an edit that has silently removed a check here
+ * once already, and therefore precisely the mutant somebody ought to be
+ * recording a witness for. It would also strictly contain the first arm, which
+ * is the domination shape the standing check exists to catch.
+ *
+ * `source` is the current text of `mutatedFile`, or an empty string when that
+ * file is gone — which the freshness loop reports on its own and this one then
+ * reads as "applying it changes nothing", because a patch to a file that is not
+ * there is not a patch.
+ *
+ * A row carrying no replacement at all is not this function's business. The
+ * census below holds presence, in both directions, and an arm here would be
+ * dominated by it: no state of the table reddens one while the other passes.
+ */
+function replacementFaults(witness: MutationWitness, source: string): ReplacementFault[] {
+  const replacement = witness.mutatedTo;
+  if (replacement === undefined) return [];
+  const faults: ReplacementFault[] = [];
+  const applied = source.split(witness.mutated).join(replacement);
+  if (applied === source) faults.push('replacement-does-not-change-the-file');
+  if (
+    witness.mutatedFile === witness.testFile &&
+    !(bodyOfTestDeclaring(applied, witness.guarantee) ?? '').includes(witness.redAssertion)
+  ) {
+    faults.push('replacement-removes-the-red-assertion');
+  }
+  return faults;
+}
+
+/** The rows carrying no replacement, counted per claim. */
+function replacementDebt(
+  rows: readonly MutationWitness[],
+): Array<readonly [string, number]> {
+  const counts = new Map<string, number>();
+  for (const witness of rows) {
+    if (witness.mutatedTo !== undefined) continue;
+    counts.set(witness.guarantee, (counts.get(witness.guarantee) ?? 0) + 1);
+  }
+  return [...counts].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
+/**
+ * THE ROWS THAT PREDATE THE FIELD, COUNTED PER CLAIM RATHER THAN IN TOTAL.
+ *
+ * RETROFITTING THE WHOLE TABLE WAS REFUSED, and the refusal is the interesting
+ * part. Fifty-odd replacements, most of which this round would be GUESSING out
+ * of a sentence beside the row — and a guessed patch reads as evidence while
+ * being invention, which is worse than an absent one. So the rows that were here
+ * keep their debt, the rows that arrive from now on carry the field, and the
+ * five below were closed by applying the patch and watching the named assertion
+ * redden rather than by reading the comment above the row.
+ *
+ * PER CLAIM AND NOT A TOTAL, because a total lets a new row slip in under a
+ * bumped number without naming what was excused — the argument
+ * `UNWITNESSED_LEGACY_TAGS` already makes against a count, one grain finer. A
+ * bare total is also strictly dominated by this one, being its sum, and a
+ * dominated check is a check that can never speak.
+ *
+ * THE KEY IS THE CLAIM AND NOT THE ROW, and that is forced rather than chosen:
+ * two rows in this table share `guarantee`, `mutatedFile` and `mutated`
+ * verbatim, because both APPEND at the same anchor. No key built out of a row's
+ * own fields identifies a row uniquely, so a per-row list would be a multiset
+ * whose failure message could not say which of the two moved.
+ *
+ * IT IS VISIBLY MONOTONE AND NOT ENFORCEABLY SO, written down because the
+ * difference is the whole honesty of the mechanism. Nothing in this repository
+ * stops a future author editing a number upward. What the pin buys is that they
+ * have to, in a diff that names the claim being excused, with this paragraph
+ * next to it. The direction is a convention with friction behind it rather than
+ * an invariant, and a report that called it enforced would be wrong.
+ */
+const REPLACEMENTS_PREDATING_THE_RULE: readonly (readonly [string, number])[] = [
+  ['a-filled-slot-is-not-a-one-way-door', 1],
+  ['a-meet-total-reaches-the-session-half', 1],
+  ['a-preview-server-cannot-reach-a-played-meet', 1],
+  ['a-purse-shops-once-a-calendar-day', 1],
+  ['a-remount-resumes-rather-than-opens', 1],
+  ['a-sale-never-follows-a-settle', 1],
+  ['a-slot-costs-the-same-by-every-route', 2],
+  ['a-wire-in-flight-refuses-a-write', 1],
+  ['attending-a-meet-never-removes-one', 1],
+  ['bar-stays-on-his-back-for-the-call', 1],
+  ['completion-revalidates-against-settled-state', 1],
+  ['dropping-the-doomed-burn-measures-worse', 2],
+  ['every-refusal-sentence-is-true-of-its-screen', 1],
+  ['every-shipped-route-is-sealed', 2],
+  ['every-shipped-route-observes-its-seal', 1],
+  ['no-accelerant-moves-a-physio-element', 4],
+  ['no-accelerant-moves-a-training-iq-element', 7],
+  ['no-rattle-is-cut-by-another-rattle', 1],
+  ['one-row-behind-one-port', 1],
+  ['one-streak-mapping', 1],
+  ['placeholder-cannot-grow-calendar-authority', 1],
+  ['pr-sentence-and-pr-border-are-one-decision', 1],
+  ['section-4a-denominator-is-measured', 1],
+  ['settling-is-terminal', 1],
+  ['strength-never-removes-a-meet', 1],
+  ['the-copy-reads-the-clients-screen', 1],
+  ['the-covered-day-scan-follows-aliases', 1],
+  ['the-covered-day-scan-reads-the-whole-tree', 3],
+  ['the-day-granularity-residue-is-the-decision-moment', 1],
+  ['the-day-shops-purse-by-purse', 1],
+  ['the-decision-ignores-the-rendered-offer', 1],
+  ['the-opener-follows-the-lifter', 1],
+  ['the-pr-word-needs-a-record-to-beat', 4],
+  ['tier-pr-is-reached-by-no-screen', 1],
+];
+
+/**
+ * The rule's own census, pinned as counts rather than bounds for the reason
+ * `TRANSCRIPT_BAR`'s are: an emptied set satisfies a loop of `expect`s over the
+ * rows in it, and the loop would report itself green while grading nobody.
+ */
+const REPLACEMENT_BAR = {
+  /** Rows carrying a replacement, so a third party can apply the patch. */
+  REPRODUCIBLE: 5,
+  /**
+   * ...of those, the ones whose mutant edits the very file their red assertion
+   * lives in, which is the second arm's live domain. At zero that arm would be
+   * driven by planted rows alone, and this number is here to say so out loud
+   * rather than leave it to be discovered.
+   */
+  IN_THEIR_OWN_TEST_FILE: 1,
+} as const;
+
+/**
+ * Mutants that turn a test file red WITHOUT running a test — the shape the
+ * TRANSCRIPT rule exists to refuse, kept as real records rather than as a
+ * description. It is two sections up rather than immediately above, since the
+ * replacement rule was written in between.
  *
  * Each was applied to the source named, the file was run alone with
  * `--reporter=json`, and the report came back with `numTotalTests` at zero and
@@ -1505,9 +1760,18 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     // quoting the anchor puts a second copy of it in the same file. Same shape
     // as CLAUDE.md's note that the schema cannot hold a browser check. The
     // scoper is the honest subject anyway; this file only chooses the marker.
+    //
+    // REPLACEMENT TAKEN BY RE-RUNNING IT, not by reading the paragraph above.
+    // Applying it reddens the named assertion exactly as recorded, with one
+    // difference the field is worth having for: `observed` says `…(6)` stale
+    // excuses and this tree gives five. The transcript predates the transcript
+    // rule and is excused by it; what the replacement adds is that a reader can
+    // discover that for themselves in one command instead of taking the row's
+    // word for it.
     guarantee: 'a-cited-number-resolves-in-the-named-test',
     mutatedFile: 'src/tuning/audit.ts',
     mutated: '    if (body.includes(marker)) return body;',
+    mutatedTo: '    if (body.includes(marker)) return text;',
     testFile: 'src/game/guaranteeTags.test.ts',
     redAssertion:
       "      audit.staleExcuses,\n      'an entry on UNPINNED_PROSE_NUMBERS anchors nowhere or excuses nothing',\n    ).toEqual([]);",
@@ -1526,9 +1790,14 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     // and the number stopped being the one the check pins. The anchor is the
     // prose line, so this witness expires when that sentence is rewritten,
     // which is the correct coupling for a claim about a sentence.
+    //
+    // REPLACEMENT TAKEN BY RE-RUNNING IT. The finding reproduces word for word
+    // except for the source line the scan reports the sentence on, which has
+    // moved down the file since the transcript was pasted.
     guarantee: 'a-cited-number-resolves-in-the-named-test',
     mutatedFile: 'src/game/streak.ts',
     mutated: " * lifter's training moved — measured at 105 / 305 / 733 / 785 violating pairs",
+    mutatedTo: " * lifter's training moved — measured at 105 / 305 / 733 / 786 violating pairs",
     testFile: 'src/game/guaranteeTags.test.ts',
     redAssertion:
       "      audit.unpinned,\n      'a tagged claim states a number that the test it names does not carry — pin it in that '",
@@ -2479,10 +2748,22 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     // `AbsenceOutcome, CoveredDayCreditOutcome, …, tenderGating`. Recorded
     // because a witness for "somebody added a granter" says nothing about
     // "somebody deleted the reason the granter is visible".
+    //
+    // REPLACEMENT TAKEN BY RE-RUNNING IT, and it is the one row in this table
+    // whose mutant edits the file its own red assertion lives in — the second
+    // arm of the replacement rule has this row and nothing else as its live
+    // domain. The named assertion reddens through the staleness half as
+    // recorded; the counts in `observed` do not reproduce, because the
+    // allowlist has grown since — twenty stale entries against the thirty-one
+    // written below, and 107 declarations against 87. The transcript predates
+    // the transcript rule and is excused by it. What the replacement adds is
+    // that the drift is one command away from anybody rather than a thing only
+    // its author could have found.
     guarantee: 'the-covered-day-scan-reads-the-whole-tree',
     mutatedFile: 'src/game/streakEntitlement.test.ts',
     mutated:
       '  NAMES_A_COVERED_DAY_OR_A_PURCHASE: /purchas|covered.?day|window-entitlement/i,',
+    mutatedTo: '  NAMES_A_COVERED_DAY_OR_A_PURCHASE: /purchas/i,',
     testFile: 'src/game/streakEntitlement.test.ts',
     redAssertion:
       'expect(found.names, drift).toEqual([...COVERED_DAY_TOUCHING_FUNCTIONS].sort());',
@@ -2592,10 +2873,17 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
   // transcripts name expires all four of its rows at once.
   // -------------------------------------------------------------------------
   {
+    // THE REPLACEMENT IS ONE OF MANY AND THE ROW STATES WHICH ONE. Any rename
+    // that keeps the marker reddens this, so the recorded edit is the rename
+    // that was actually run rather than the class it belongs to — a reader
+    // applying this one gets the four rows below, in this order.
     guarantee: 'a-witness-transcript-names-its-test',
     mutatedFile: 'src/empire/empireInvariant.test.ts',
     mutated:
       'compares the PHYSIO series by wall-clock day, and finds nothing moved ' +
+      '[no-accelerant-moves-a-physio-element]',
+    mutatedTo:
+      'compares the PHYSIO series by wall-clock day, and finds nothing shifted ' +
       '[no-accelerant-moves-a-physio-element]',
     testFile: 'src/game/guaranteeTags.test.ts',
     redAssertion:
@@ -2625,9 +2913,13 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
   // it, the same run is `Test Files 1 passed`, one test, no findings.
   // -------------------------------------------------------------------------
   {
+    // The replacement is the deepening the paragraph above describes, recorded
+    // rather than left to be inferred from the sentence: re-applied at this
+    // tree it reproduces the message below verbatim, received array included.
     guarantee: 'a-measured-transcript-anchors-its-domain',
     mutatedFile: 'src/career/eligibility.test.ts',
     mutated: 'expect(shipped.pairs).toBe(80601);',
+    mutatedTo: 'expect(shipped.pairs).toBe(80602);',
     testFile: 'src/game/guaranteeTags.test.ts',
     redAssertion:
       "expect(faulty, 'witness rows whose domain anchor does not hold').toEqual([]);",
@@ -3309,7 +3601,7 @@ describe('the guarantee-tag convention', () => {
       const title = titleDeclaring(witness.guarantee, titles);
       expect(title, `witness for ${witness.guarantee}: no test declares it`).not.toBe(null);
       const faults = transcriptFaults(witness.observed, title ?? '', witness.guarantee);
-      const key = `${witness.guarantee} :: ${(witness.mutated.split('\n')[0] ?? '').trim()}`;
+      const key = witnessKey(witness);
 
       if (witness.transcriptPredatesTheRule === true) {
         // BOTH DIRECTIONS, the way `UNPINNED_PROSE_NUMBERS` is checked: an
@@ -3452,9 +3744,7 @@ describe('the guarantee-tag convention', () => {
       if (graded && MEASURED_SCALAR.test(flatten(witness.observed))) needing += 1;
       const faults = domainAnchorFaults(witness, body, graded);
       if (faults.length > 0) {
-        faulty.push(
-          `${witness.guarantee} :: ${(witness.mutated.split('\n')[0] ?? '').trim()} — ${faults.join(', ')}`,
-        );
+        faulty.push(`${witnessKey(witness)} — ${faults.join(', ')}`);
       }
     }
 
@@ -3608,6 +3898,149 @@ describe('the guarantee-tag convention', () => {
     );
     expect([...produced].sort(), 'declared domain faults this drive never reached').toEqual(
       [...DOMAIN_FAULTS].sort(),
+    );
+  });
+
+  it('makes a witness reproducible by recording what its mutant put in place of what it removed', () => {
+    // The block above `REPLACEMENT_FAULTS` says why a verbatim replacement was
+    // chosen over a diff and over a callback, and what a static rule can and
+    // cannot say about one. This is the live table; the drive is below.
+    const faulty: string[] = [];
+    let reproducible = 0;
+    let inTheirOwnTestFile = 0;
+
+    for (const witness of MUTATION_WITNESSES) {
+      if (witness.mutatedTo === undefined) continue;
+      reproducible += 1;
+      if (witness.mutatedFile === witness.testFile) inTheirOwnTestFile += 1;
+      const full = path.join(REPO_ROOT, witness.mutatedFile);
+      const faults = replacementFaults(
+        witness,
+        existsSync(full) ? readFileSync(full, 'utf8') : '',
+      );
+      if (faults.length > 0) faulty.push(`${witnessKey(witness)} — ${faults.join(', ')}`);
+    }
+
+    expect(faulty, 'witness rows whose recorded replacement is not an edit to this tree').toEqual(
+      [],
+    );
+    // COUNTS, NOT BOUNDS, and neither of these is the loop restated: the loop is
+    // a set of `expect`s over the rows that carry a replacement and stays green
+    // when every one of them stops carrying it.
+    expect(reproducible, 'witness rows a third party can apply and re-run').toBe(
+      REPLACEMENT_BAR.REPRODUCIBLE,
+    );
+    expect(
+      inTheirOwnTestFile,
+      'of those, the rows whose mutant edits the file their red assertion lives in',
+    ).toBe(REPLACEMENT_BAR.IN_THEIR_OWN_TEST_FILE);
+
+    // THE DEBT, IN BOTH DIRECTIONS. This is where presence is enforced: a new
+    // row carrying no replacement puts its claim into the left-hand side and
+    // reddens, and a row whose debt is closed without the pin being edited
+    // reddens the other way as an excuse that excuses nothing. The same shape
+    // `UNPINNED_PROSE_NUMBERS` is held to, one table over.
+    expect(
+      replacementDebt(MUTATION_WITNESSES),
+      'the claims whose witness rows still record no replacement',
+    ).toEqual(REPLACEMENTS_PREDATING_THE_RULE);
+  });
+
+  it('drives each arm of the replacement rule alone, on planted rows including a deletion', () => {
+    // ANTI-VACUITY FOR THE RULE ABOVE, in the shape the transcript and domain
+    // rules are driven in: a loop over rows that all satisfy a rule cannot show
+    // which arm is doing the work, and a real row tripping exactly one arm is
+    // not something the table happens to contain.
+    //
+    // The source is synthetic rather than a file from the tree, because these
+    // rows have to be applied to something and applying a planted patch to a
+    // real module would either do nothing or describe an edit nobody made. The
+    // declaration is assembled rather than written out so that no line of this
+    // file begins with a test declaration inside a string — the scoper's census
+    // counts those, and it is the premise the witness loop pins.
+    const declaration = `${'it'}('a planted claim [a-planted-claim]', () => {`;
+    const subject = '  const shipped = measure(subject);';
+    const property = '  expect(shipped.violatingPairs).toBe(0);';
+    const source = [declaration, subject, property, '});'].join('\n');
+
+    const row = (mutated: string, mutatedTo: string | undefined, sameFile = true): MutationWitness => ({
+      guarantee: 'a-planted-claim',
+      mutatedFile: 'src/planted/subject.test.ts',
+      mutated,
+      ...(mutatedTo === undefined ? {} : { mutatedTo }),
+      testFile: sameFile ? 'src/planted/subject.test.ts' : 'src/planted/other.test.ts',
+      redAssertion: property.trim(),
+      observed: 'AssertionError: expected 55301 to be +0 // Object.is equality',
+    });
+
+    const planted: Array<{ what: string; witness: MutationWitness; faults: ReplacementFault[] }> = [
+      {
+        what: 'the shape a reproducible row has',
+        witness: row(subject, '  const shipped = measure(broken);'),
+        faults: [],
+      },
+      {
+        // THE DELETION, WHICH IS THE CASE A TRUTHINESS TEST GETS WRONG. Several
+        // mutants in the real table delete a line, and an empty replacement is
+        // how that is written down.
+        what: 'a deletion, recorded as an empty replacement',
+        witness: row(subject, ''),
+        faults: [],
+      },
+      {
+        what: 'a replacement identical to the text it replaced',
+        witness: row(subject, subject),
+        faults: ['replacement-does-not-change-the-file'],
+      },
+      {
+        // The other half of the same arm: the patch is a real edit and there is
+        // nowhere in the file to apply it.
+        what: 'an anchor that is not in the file',
+        witness: row('  const shipped = measure(somethingElse);', '  const shipped = null;'),
+        faults: ['replacement-does-not-change-the-file'],
+      },
+      {
+        // A mutant that deletes the assertion the row says caught it. The patch
+        // applies cleanly, so the first arm says nothing.
+        what: 'a mutant that deletes its own red assertion',
+        witness: row(property, ''),
+        faults: ['replacement-removes-the-red-assertion'],
+      },
+      {
+        // THE BOUNDARY. The same deletion in a file that is not the one holding
+        // the assertion is silent, which is what scopes the second arm: for a
+        // cross-file row the assertion sits in an unmutated file and the
+        // freshness loop already reads it there.
+        what: 'the same deletion, in a file that is not the test file',
+        witness: row(property, '', false),
+        faults: [],
+      },
+      {
+        // A row from before the field. Presence is the census's business and
+        // an arm here would be dominated by it, so this produces nothing.
+        what: 'a row that predates the field',
+        witness: row(subject, undefined),
+        faults: [],
+      },
+    ];
+
+    // One assertion per planted row, naming the row — a single array comparison
+    // reddens with `expected [ …(7) ] to deeply equal [ …(7) ]` and names
+    // neither the case that moved nor the arm that moved it.
+    for (const one of planted) {
+      expect(
+        replacementFaults(one.witness, source),
+        `planted row "${one.what}" — the faults the rule finds in it`,
+      ).toEqual(one.faults);
+    }
+    expect(planted.length, 'planted rows driven').toBe(7);
+    // AND EVERY DECLARED FAULT WAS REACHED, read from the runtime list the type
+    // is derived from rather than from the seven cases above, so a third arm
+    // added to the rule with no planted row reaching it moves this and leaves
+    // the seven alone.
+    const produced = new Set(planted.flatMap((one) => replacementFaults(one.witness, source)));
+    expect([...produced].sort(), 'declared replacement faults this drive never reached').toEqual(
+      [...REPLACEMENT_FAULTS].sort(),
     );
   });
 
