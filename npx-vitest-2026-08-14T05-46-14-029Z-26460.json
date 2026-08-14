@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-14T05-46-14-029Z-26460",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run"
+  ],
+  "budgetSeconds": 600,
+  "startedAtIso": "2026-08-14T05:46:14.029Z",
+  "startedAtMs": 1786686374029,
+  "cwd": "/home/user/wt-press-fix",
+  "commit": "dc53380fc75ed2cf855bf0e63fcc5f803f87c282",
+  "branch": "claude/press-fix-played-surfaces",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 26460,
+    "startTick": "1222711",
+    "cmdline": "node tools/watchdog.mjs --budget 600 --id press-suite -- npx vitest run",
+    "bootId": "70e4dcd9-91f6-43ee-a53c-88125d271f98",
+    "bootEpochSeconds": 1786674147,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T05:46:14.054Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
