@@ -529,7 +529,7 @@ whole repository, so **adding this document necessarily moves those counts.**
 That is the guard working, not the guard breaking; its own header says so —
 *"A count that is off by one on merge is this list WORKING."*
 
-**24 new rows, across 6 files:**
+**30 new rows, across 7 files:**
 
 | file | name | where | count |
 |---|---|---|---:|
@@ -552,14 +552,16 @@ That is the guard working, not the guard breaking; its own header says so —
 | `qualifyingTotalsDerive.mjs` | SBD | code | 1 |
 | `qualifyingTotalsDerive.mjs` | USAPL | code | 3 |
 | `qualifyingTotalsDerive.mjs` | USAPL | comment | 1 |
+| `qualifying-totals-NOTES.md` | 4 rows | prose | 5 mentions |
 | `qualifying-totals.md` | 7 rows | prose | **self-referential — see below** |
 
-**26 rows across 6 files** at the run captured in the bundle. Nineteen of them
-are listed above exactly and are stable, because none of those files mentions
-itself. The seven rows for **this document** are not listed, and that is the
-honest choice rather than a lazy one: **this section is inside the file being
-scanned**, so writing its own counts into it changes them. Regenerate the block
-from what the test prints, never from this table.
+**30 rows across 7 files** at the run captured in the bundle. The nineteen listed
+above with exact counts are stable, because none of those files mentions itself.
+The seven rows for **this document** are not listed, and that is the honest
+choice rather than a lazy one: **this section is inside the file being scanned**,
+so writing its own counts into it changes them, and a table that is wrong the
+moment it is written is worse than an absent one. Regenerate the block from what
+the test prints, never from this table.
 
 ### 8.3 Failure 2 — and this one CANNOT be closed within my brief
 
