@@ -1829,16 +1829,38 @@ physiology.
 
   | command | typical |
   |---|---|
-  | `npx vitest run` (whole suite) | ~130s |
-  | `npx tsc --noEmit` | ~30s |
+  | `npx vitest run` (whole suite) | **~350–470s** at 85 files / 3357 tests |
+  | `npx tsc --noEmit` | ~15s |
+  | `tools/evidence.mjs suite` | **~710s** — it runs the whole suite TWICE, then a typecheck |
   | `tools/verify-shell-route.mjs` | **~560s** — three whole meets and a played session |
   | `tools/verify-cutin-cap.mjs` | ~250s |
+  | `tools/verify-lift-press.mjs` | ~155s — three press surfaces, one of them a whole meet |
   | `tools/verify-meet-sound.mjs` | ~90s |
   | `tools/capture-cutin.mjs` | ~25s |
 
   These move as the tools grow — `verify-shell-route.mjs` was ~430s before the
   return leg was added. Re-measure rather than trusting this table if a run comes
   in near its budget.
+
+  **THIS TABLE WENT STALE BY A FACTOR OF THREE AND CAUSED THE FAILURE ITS OWN
+  HEADER DESCRIBES.** The suite row read `~130s` while the suite measured 350s
+  idle. Nobody edited it wrong; the suite grew from roughly 2400 tests to 3357
+  underneath it and a number in a table has no way to notice. **A stale budget
+  table is worse than an absent one**, because it is consulted precisely when
+  somebody is trying not to guess — which is how a `--budget 1200` got written
+  for `evidence.mjs suite`, a command that needs ~710s idle and considerably
+  more than 1200s under any contention at all.
+
+  **AND THE CONTENTION IS NOT A MULTIPLIER YOU CAN BUDGET AROUND — IT IS A
+  COORDINATION PROBLEM.** This box has 4 cores. Two sessions each running a full
+  suite is the ~2.2x inflation already recorded here, which takes a 470s run past
+  a 1200s budget and SIGKILLs it. That happened four times in one wave across two
+  sessions, and every one of the four looked like a hang and was not: three
+  `INTERRUPTED_PROCESS_GONE` markers on one branch, one `BUDGET_EXCEEDED` on the
+  other. **Check `pgrep -f vitest` before starting a full suite and wait rather
+  than starting a second one.** Raising the budget makes the kill stop happening;
+  it does not make the run finish any sooner, and both runs still take twice as
+  long as either would alone.
 
 - Prefer editing existing files over creating new ones.
 - Do not create documentation files unless asked.
@@ -1896,6 +1918,37 @@ physiology.
   worth being clear that it would **not** have caught any of the five — there
   was no process to time out. Guard both; do not let the loud one make you think
   the quiet one is covered.
+
+- **`pkill -f` IS A CROSS-SESSION WEAPON, BECAUSE EVERY SESSION ON THIS HOST
+  RUNS THE SAME COMMAND LINES.** Kill by pid. A pattern precise enough to name
+  your own run is, by construction, precise enough to name somebody else's —
+  that is what "precise" means when the string you are matching is a command
+  line and four sessions share a box.
+
+  Measured, not hypothesised. A builder ran `pkill -f "evidence.mjs suite"` to
+  clear its own stalled run. Session A had an `evidence.mjs suite` in flight at
+  the time; both stopped heartbeating within forty seconds of each other, and
+  twelve minutes of Session A's run died with it. **The builder reported it
+  unprompted** — *"I cannot rule out that it killed theirs"* — which is the only
+  reason the cause is known at all, and its later kills were by pid.
+
+  **The reason this needs its own entry is the misattribution, not the kill.**
+  Session A blamed its own tool timeout, then implicitly blamed the budget, and
+  both were wrong: the tool cap would have fired two minutes *later* than the
+  death, and the budget had a thousand seconds left. **A process killed from
+  outside and a process that timed out leave the same silence**, and the marker
+  records `INTERRUPTED_PROCESS_GONE` for both — correctly, because from the
+  wrapper's side they are the same event. So the marker tells you a run died and
+  cannot tell you who killed it, and the natural guess is always the local one.
+
+  The same wave produced the sibling hazard, so treat them as one rule:
+  `watchdog.mjs --markers --clear-stale` is **host-wide** and clears other
+  sessions' records off origin along with yours. That follows from the host-wide
+  ruling and is not a bug, but it means the read-before-clear discipline is
+  discharged on behalf of sessions that will never see the output. Read every
+  record it prints, not only the ones you recognise, and tell the owner which of
+  theirs you removed — an unacknowledged dead run is exactly the silent absence
+  the marker exists to prevent, handed to somebody else.
 
 - **RUN VERIFICATIONS UNDER `--budget`, BECAUSE THAT IS WHAT WRITES THE
   INCOMPLETE MARKER.** Ruled by a human: *"An interrupted verification must
