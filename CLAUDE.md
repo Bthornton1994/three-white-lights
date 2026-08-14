@@ -1474,6 +1474,26 @@ parameter"* is true and checkable; *"there is no way to write one here"* is a
 claim about every edit anyone might make, and nothing in a type system supports
 it.
 
+**AND A COST ESTIMATE THAT JUSTIFIES DEFERRING WORK SUPPRESSES THE SEARCH THE
+SAME WAY, so it gets the same bar.** *"That would need a whole fixture built"* is
+the same sentence as *"that cannot be written"* wearing a budget: both tell the
+next round not to look, both are filed under diligence rather than debt, and both
+are believed because they sound like the careful answer.
+
+Measured, one round after the impossibility rule was written. A builder drove 3
+of 13 sites and deferred the other ten, disclosing honestly that its three were
+*"the three with trivial fixtures, which is a selection criterion with nothing to
+do with risk"* — and estimating that each of the ten needed a whole `EmpireGym`,
+`ExpansionContext` or `SocialContext`. **Seven of the ten needed a fixture
+already present in that same file**, and only two needed anything built, at nine
+lines. The residual that read as expensive was mostly unexamined.
+
+So when a report defers on cost, the cheap check is the same one: **try the first
+item and see what it actually costs.** One attempt converts an estimate into a
+measurement. And state the cost in the mechanism's own terms — *"this site needs
+a two-build gym, nine lines"* is checkable; *"these need whole fixtures"* is a
+claim about ten things measured on none of them.
+
 ### Pure logic is separate from UI
 
 All game math lives in dedicated pure TypeScript modules:
