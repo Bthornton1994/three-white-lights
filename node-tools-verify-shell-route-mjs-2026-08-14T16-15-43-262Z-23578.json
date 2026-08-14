@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-shell-route-mjs-2026-08-14T16-15-43-262Z-23578",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-shell-route.mjs",
+    "--url",
+    "http://localhost:8099"
+  ],
+  "budgetSeconds": 1100,
+  "startedAtIso": "2026-08-14T16:15:43.262Z",
+  "startedAtMs": 1786724143262,
+  "cwd": "/home/user/wt-empire-honesty",
+  "commit": "7d2b15b70dd5ea4430bffe202761b1bd43fdf5ef",
+  "branch": "claude/empire-shell-honesty",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 23578,
+    "startTick": "709229",
+    "cmdline": "node tools/watchdog.mjs --budget 1100 --id shell-route-final2 -- node tools/verify-shell-route.mjs --url http://localhost:8099",
+    "bootId": "9a2cb2d2-fb56-4022-8ed1-6d554d4fac5c",
+    "bootEpochSeconds": 1786717051,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T16:15:43.281Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
