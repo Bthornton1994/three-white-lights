@@ -10947,7 +10947,7 @@ describe('the member-call pass — what a caller-supplied method is actually han
 // ---------------------------------------------------------------------------
 
 /**
- * Fifty-two routes, planted into shipped modules one at a time, each run
+ * Fifty-four routes, planted into shipped modules one at a time, each run
  * against `tsc --noEmit`, against this file, and against the three accidental
  * catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
@@ -11888,6 +11888,48 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
     ]),
   }),
   Object.freeze({
+    id: 'M53',
+    shape:
+      "36 — THE FIFTEENTH BYPASS: a returned closure reached through a PROPERTY ACCESS. Not a binding this walk cannot follow — a NODE KIND it does not have an arm for, and drops without recording",
+    where:
+      "production.ts, `accrueProduction`: a module-level `const PRODUCTION_PEEK: { readonly peek: () => string } = { peek: () => EMPIRE_FORBIDDEN_OUTPUTS[0] }`, handed back as `peek: PRODUCTION_PEEK.peek` on the returned object, with the return cast `as ProductionAccrual`",
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING CAUGHT IT. Whole guard file: `Tests 3 failed | 67 passed (70)`, and all three failures are counters this file has recorded four times as not the check working — instrument B / walked a domain that is not empty `expected 2393230 to be 2393060`, the overflow pass / same `expected 523184 to be 523128`, and the channel census / derives every escape site `expected 21818 to be 21789`, which is the `nodesExamined` line asserted AFTER `census.sites`, `callTargets`, `writeOwners` and `freshReceivers` had all passed.',
+      'AND THE BRANCH RUNS, PRINTED: `accrueProduction` driven on a gym one hour along returns an object whose keys are `[…, "ledger", "peek"]`, `typeof peek === "function"`, and `peek()` is `covered-day`. `gymBucks` is 60 on the same call, so the accrual itself is unchanged.',
+      "WHY IT IS A DIFFERENT AXIS FROM M38 AND M39, which is the point of the row. Both of those were BINDINGS whose value the walk could not follow — an initializer it did not have, then an assignment it did not read — and both repairs widened what a binding could be. This is not a binding at all: `returnedFunctions`'s `walk` is a chain of `if (ts.isX(node))` arms with NO final `else`, so any node kind outside the eight it enumerates is dropped without a `found` and without an `unfollowed`. A property access is the commonest expression in TypeScript.",
+      "THE `else` THIS FILE SAYS IT HAS ADDED THREE TIMES WAS ADDED ON THE WRONG AXIS. `unfollowed` exists and is real, and it is reached only from INSIDE the identifier arm — so it covers identifiers the walk cannot resolve and says nothing about expressions the walk never classified. Reach and predicate, one dimension out, in the walk this file's own history says was fixed for reach and then for predicate.",
+      'AFTER: see the repair commit. The walk asks the CHECKER whether the value at an unhandled node is callable rather than enumerating a ninth node kind, and the four shapes below are in the assembly probe so the repair is re-measured on every run instead of in a row.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      "THE FIRST FORM WAS NOT ISOLATED AND THE DIFFERENCE IS ONE CALL. Writing the holder as `Object.freeze({ peek: … })` added a CallExpression, which moved instrument C's `CALLS_EXAMINED` 1018 -> 1019 and `callTargets.member` 474 -> 475 — neither of which is about forbidden names, and the second of which reads like a catch because it sits in the census table. Re-planted with a plain object literal and a type annotation, both go green and only the three counters move.",
+      'empireCore.test.ts is not separately named here because the whole guard file was run; the plant adds no string literal, no bare number and one specifier to an import production.ts already has.',
+      'production.ts was restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M54',
+    shape:
+      "36-adjacent, THREE MORE SHAPES MEASURED IN THE PROBE RATHER THAN IN A SHIPPED MODULE: an element access, a for-of write to an existing binding, and the destructuring assignment whose declared catcher stops working the moment the binding has an initializer",
+    where:
+      "__assemblyProbe.ts, four exports added at once: `{ peek: EXP_HOLDER.peek }`, `{ peek: ASSEMBLY_FOR_OF[0]!.peek }`, `let shape = {} as AssemblyShape; for (shape of ASSEMBLY_FOR_OF) break;`, and `let shape = {} as AssemblyShape; ({ shape } = source);`",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING CAUGHT ANY OF THE FOUR: `the assembly walk bites` came back 6 passed of 6 with all four in, INCLUDING `names what it still cannot follow`, so none of them added a `freshReceivers` entry either.',
+      'THE POSITIVE CONTROL IS WHAT MAKES THAT A MEASUREMENT RATHER THAN A NULL RESULT. A fifth export added beside them — `expControlDirectClosure`, a bare arrow in the returned literal — reddens immediately with `+ "__assemblyProbe.ts#expControlDirectClosure#closure:.peek"`. So the probe compiled, the walk ran over that region of the file, and the four silences are silences about those shapes rather than about a file nobody read.',
+      'THE DESTRUCTURING ONE IS THE WORST OF THE FOUR, because it is a DECLARED limit with a NAMED catcher and the catcher does not hold. `assignedValuesTo`\'s docstring says the route lands in `freshReceivers`; `names what it still cannot follow` runs that claim against `probeDestructuredAssembly` and it passes. Both depend on `values.length === 0`, so giving the binding any initializer at all — `{} as AssemblyShape`, which carries no function and is not itself a route — makes the catcher silent while the destructured value still arrives.',
+      'AFTER: see the repair commit. All four are permanent probe exports now, with their keys pinned.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The probe is a string constant in this file rather than a shipped module, so nothing was restored — the experiment was reverted with `git checkout HEAD --` and the file verified byte-identical before this row was written.',
+      "WHAT THIS ROW IS NOT EVIDENCE FOR, stated because a probe is weaker than a plant: it says the WALK does not see these shapes. M53 is the row that says a shipped module can carry one past the whole guard file, and it is only one of the four. The other three are argued from the same walk rather than driven through `production.ts`, and that is a real gap in this row rather than a formality.",
+    ]),
+  }),
+  Object.freeze({
     id: 'M52',
     shape:
       "35-repeated at the SECOND `context.some`, and it is the row that measures what a one-armed fixture costs",
@@ -12118,7 +12160,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(52);
+    expect(PLANTED_ROUTES.length).toBe(54);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -12211,8 +12253,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // adds no string literal — and the first of them was run against
     // `empireCore.test.ts` (57 passed) to check that the added specifier is
     // invisible to the import fence, rather than assuming it from M39.
-    expect(attempts).toBe(71);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(42);
+    expect(attempts).toBe(74);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(44);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
