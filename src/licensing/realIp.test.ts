@@ -32,6 +32,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,14 +41,17 @@ import {
   DELIBERATELY_NOT_WATCHED,
   EXTENSIONS_READ_AS_TEXT,
   NOT_WALKED,
+  NOT_WALKED_HIDES_TRACKED,
   REAL_IP_WATCHLIST,
   REVIEWABLE_CITATIONS,
   UNREADABLE_BY_THIS_AUDIT,
   WATCHLIST_FILE,
   WATCHLIST_REGIONS,
+  censusScope,
   citationInventory,
   classifyBytes,
   extensionOf,
+  reachReport,
   unreadableCensus,
   findWatchedNames,
   formatCitations,
@@ -87,10 +91,80 @@ function walk(dir: string): string[] {
   return out;
 }
 
-/** Every file in the repository, repository-relative POSIX, sorted. */
-const ALL_FILES: readonly string[] = walk(ROOT)
+/**
+ * The repository's own view of its files. Throws rather than degrading.
+ *
+ * A fallback would be the worst failure available here: the whole point of the
+ * comparison below is that the two views agree, and a silent fallback to "no
+ * tracked files" makes every agreement assertion pass on an empty set.
+ */
+function git(args: readonly string[]): string[] {
+  return execFileSync('git', [...args], { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 28 })
+    .split('\0')
+    .filter((line) => line !== '');
+}
+
+const TRACKED_FILES: readonly string[] = git(['ls-files', '-z']).sort();
+
+/** Every file the walk reached, repository-relative POSIX, sorted. */
+const WALKED_FILES: readonly string[] = walk(ROOT)
   .map((f) => path.relative(ROOT, f).split(path.sep).join('/'))
   .sort();
+
+/**
+ * The walked files git IGNORES, dropped before anything else runs.
+ *
+ * WHY THIS EXISTS. `public/canvaskit.wasm` is 8 MB, gitignored, and copied out of
+ * `node_modules` by a dev script — present in any checkout where a browser tool
+ * has run, absent from every fresh worktree. It put a `.wasm` row into the
+ * unreadable census in one checkout of a commit and not in another: same pin,
+ * same commit, two answers. Verification logs written to the repository root did
+ * the same to the READ set within the hour.
+ *
+ * `check-ignore` is asked ONLY about walked files git does not track, which is a
+ * handful at most, so this is one cheap subprocess rather than a walk of
+ * `node_modules`. It exits 1 when nothing matches, which is not an error.
+ */
+const IGNORED_WALKED: ReadonlySet<string> = (() => {
+  const tracked = new Set(TRACKED_FILES);
+  const candidates = WALKED_FILES.filter((f) => !tracked.has(f));
+  if (candidates.length === 0) return new Set<string>();
+  try {
+    return new Set(
+      execFileSync('git', ['check-ignore', '--stdin', '-z'], {
+        cwd: ROOT,
+        encoding: 'utf8',
+        input: `${candidates.join('\0')}\0`,
+        maxBuffer: 1 << 28,
+      })
+        .split('\0')
+        .filter((line) => line !== ''),
+    );
+  } catch {
+    // Exit 1 is "none of them is ignored". Anything worse would already have
+    // thrown out of `git ls-files` above.
+    return new Set<string>();
+  }
+})();
+
+/**
+ * Every file this audit treats as part of the repository.
+ *
+ * The walk MINUS what git ignores, so the set is a property of the repository
+ * rather than of whoever's disk it is read from. An untracked file git does NOT
+ * ignore stays in: that is new uncommitted work, and §12.3's accident is a real
+ * name being typed before it is committed.
+ */
+const ALL_FILES: readonly string[] = WALKED_FILES.filter((f) => !IGNORED_WALKED.has(f));
+
+/**
+ * The subset the two PINNED CENSUSES are taken over.
+ *
+ * Narrower than `ALL_FILES` on purpose, and only for the counts: a builder's
+ * uncommitted scratch file must not move a number that is supposed to describe
+ * this repository. Nothing stops being SCANNED in order to make that true.
+ */
+const CENSUS_FILES: readonly string[] = censusScope(ALL_FILES, TRACKED_FILES);
 
 /**
  * Read one repository file's BYTES, memoised.
@@ -270,7 +344,16 @@ describe('the real-IP audit has something to audit', () => {
     //
     // Counts and not bounds, deliberately: a bound lets the readable set shrink
     // quietly, which is the failure this whole rewrite is about.
-    const liveExtensions = [...new Set(TEXT_FILES.map(extensionOf))].sort();
+    //
+    // OVER TRACKED FILES, NOT OVER THE WALK, AND THAT IS THE SECOND DEFECT THIS
+    // CHECK CARRIED. Taken over the walk, both pins were a fact about somebody's
+    // disk: an 8 MB gitignored `canvaskit.wasm` that only exists where a browser
+    // tool has run put a `.wasm` row in the census in one checkout of a commit
+    // and not in another. Same pin, same commit, two answers, and neither number
+    // was correct to write down. The scan still covers the whole walk; only these
+    // two numbers are narrowed to what the repository actually contains.
+    const censusText = CENSUS_FILES.filter((f) => isTextFile(bytesOf(f)));
+    const liveExtensions = [...new Set(censusText.map(extensionOf))].sort();
     expect(
       liveExtensions,
       [
@@ -289,8 +372,8 @@ describe('the real-IP audit has something to audit', () => {
       ].join('\n'),
     ).toEqual([...EXTENSIONS_READ_AS_TEXT]);
 
-    const unreadable = ALL_FILES.filter((f) => !isTextFile(bytesOf(f)));
-    const census = unreadableCensus(ALL_FILES.map((file) => ({ file, bytes: bytesOf(file) })));
+    const unreadable = CENSUS_FILES.filter((f) => !isTextFile(bytesOf(f)));
+    const census = unreadableCensus(CENSUS_FILES.map((file) => ({ file, bytes: bytesOf(file) })));
     expect(
       census,
       [
@@ -323,13 +406,113 @@ describe('the real-IP audit has something to audit', () => {
     // predicate whatsoever, because the two lists are that predicate and its
     // negation over one array — no state of `classifyBytes` makes it red. What
     // bites is comparing the `isTextFile` path against the `classifyBytes` path:
-    // the census is folded by the second, `TEXT_FILES` is filtered by the first,
+    // the census is folded by the second, `censusText` is filtered by the first,
     // and a wrapper that stopped agreeing with what it wraps shows up here.
     const counted = census.reduce((sum, r) => sum + r.count, 0);
-    expect(ALL_FILES.length).toBe(TEXT_FILES.length + counted);
+    expect(CENSUS_FILES.length).toBe(censusText.length + counted);
     // The pin above fixes `counted` at 10 + 7 + 2, so a separate `toBe(19)` here
     // would be strictly dominated by it — deleted rather than left standing, per
     // the standing domination rule. 19 is the number; the pin is where it lives.
+  });
+
+  it('agrees with the repository about which files exist', () => {
+    // THE REACH, WHICH FIXING THE FILE-TYPE PREDICATE SAID NOTHING ABOUT. Two
+    // views of one tree — a filesystem walk and `git ls-files` — and until this
+    // check existed, every difference between them was silent.
+    const report = reachReport(ALL_FILES, TRACKED_FILES);
+
+    // (1) NO TRACKED FILE IS DROPPED FOR A REASON NOBODY WROTE DOWN. Pinned
+    //     empty. A stray here means the walk is losing committed files, which is
+    //     the silent-reach failure in its purest form.
+    expect(report.strays, `tracked but unreachable and unexplained:\n${report.strays.join('\n')}`)
+      .toEqual([]);
+
+    // (2) WHICH EXCLUSIONS ACTUALLY COST COVERAGE, pinned as a set. Five of the
+    //     seven `NOT_WALKED` entries hide nothing at all; if `dist/` or
+    //     `node_modules/` starts hiding a committed file, this reddens instead of
+    //     passing as a silence. The two that do hide tracked files are the
+    //     declared hole, and `NOT_WALKED_HIDES_TRACKED` carries the measurement
+    //     and the argument.
+    expect(report.hidingDirectories).toEqual([...NOT_WALKED_HIDES_TRACKED]);
+    // ...and it really is hiding something, so the set above is not pinned
+    // against an empty domain. The exact number is deliberately NOT pinned: it
+    // moves whenever an evidence bundle is re-taken, which is the same
+    // "verdict moves with when somebody last ran the suite" failure the
+    // `.gauntlet` exclusion exists to avoid.
+    expect(report.hiddenByNotWalked.length).toBeGreaterThan(0);
+
+    // (3) NOTHING GIT IGNORES IS IN THE SCANNED SET. Pinned empty, and this is
+    //     the assertion `public/canvaskit.wasm` would have tripped: 8 MB,
+    //     gitignored, present only where a browser tool has run, and it moved a
+    //     pinned census between two checkouts of the same commit.
+    const ignoredButScanned = ALL_FILES.filter((f) => IGNORED_WALKED.has(f));
+    expect(ignoredButScanned).toEqual([]);
+    // ...and the drop really happens rather than the set being empty because
+    // `check-ignore` was never asked: every walked file is tracked, or ignored
+    // and dropped, or untracked-and-not-ignored and reported below.
+    expect(WALKED_FILES.length).toBe(ALL_FILES.length + IGNORED_WALKED.size);
+
+    // (4) UNTRACKED-AND-NOT-IGNORED FILES ARE SCANNED BUT NEVER COUNTED. That is
+    //     new uncommitted work, where §12.3 says a real name actually arrives —
+    //     typed before it is committed — so it must reach the scan; and a builder
+    //     mid-edit is not a defect, so it must not reach a pin.
+    //
+    //     ON A CLEAN CHECKOUT THIS LOOP IS AN EMPTY DOMAIN, which is why the
+    //     claim is not left to it. `censusScope` is driven with a synthetic
+    //     untracked file in the test below, where the case actually exists.
+    for (const f of report.walkedButUntracked) {
+      expect(ALL_FILES, `${f} must still be scanned`).toContain(f);
+      expect(CENSUS_FILES, `${f} is untracked and must not move a pinned census`).not.toContain(f);
+    }
+  });
+
+  it('reports a reach difference rather than swallowing it', () => {
+    // THE SYNTHETIC HALF, AND IT IS NOT OPTIONAL. On the real tree `strays` and
+    // `walkedButUntracked` are both EMPTY, so every assertion about them above
+    // passes on an empty domain and would pass just as well if `reachReport`
+    // returned empty arrays unconditionally. These drive the cases the
+    // repository cannot.
+    const notWalked = ['.git', '.gauntlet'];
+
+    const stray = reachReport(['src/a.ts'], ['src/a.ts', 'src/b.ts'], notWalked);
+    expect(stray.strays).toEqual(['src/b.ts']);
+    expect(stray.hiddenByNotWalked).toEqual([]);
+    expect(stray.hidingDirectories).toEqual([]);
+
+    const hidden = reachReport(['src/a.ts'], ['src/a.ts', '.gauntlet/evidence/x.txt'], notWalked);
+    expect(hidden.strays).toEqual([]);
+    expect(hidden.hiddenByNotWalked).toEqual(['.gauntlet/evidence/x.txt']);
+    expect(hidden.hidingDirectories).toEqual(['.gauntlet']);
+
+    const untracked = reachReport(['src/a.ts', 'public/big.wasm'], ['src/a.ts'], notWalked);
+    expect(untracked.walkedButUntracked).toEqual(['public/big.wasm']);
+    expect(untracked.strays).toEqual([]);
+
+    // A nested exclusion is matched on any path SEGMENT, the way the walk itself
+    // matches it — otherwise the report would explain fewer files than the walk
+    // actually dropped and the difference would come back as a phantom stray.
+    const nested = reachReport([], ['a/.git/config'], notWalked);
+    expect(nested.hidingDirectories).toEqual(['.git']);
+    expect(nested.strays).toEqual([]);
+  });
+
+  it('keeps an untracked file out of the counts and inside the scan', () => {
+    // THE OTHER HALF OF THE SAME EMPTY DOMAIN. On a clean checkout every walked
+    // file is tracked, so `censusScope` returns its input unchanged and an
+    // assertion taken only against the real tree could not tell it apart from a
+    // function that returns everything. This is the case the repository cannot
+    // produce: a scratch file that is walked, is not tracked, and is not ignored.
+    const walked = ['src/a.ts', 'notes.md', 'src/b.ts'];
+    const tracked = ['src/a.ts', 'src/b.ts'];
+    expect(censusScope(walked, tracked)).toEqual(['src/a.ts', 'src/b.ts']);
+    // ...and the paired direction, which is the half that matters for a legal
+    // guard: narrowing the COUNTS must not narrow the SCAN. The scanned set is
+    // the walk, and it still has the scratch file in it.
+    expect(walked).toContain('notes.md');
+    expect(censusScope(walked, tracked)).not.toContain('notes.md');
+    // A tracked file the walk never reached is not conjured into the counts
+    // either — the scope is an intersection, not a union.
+    expect(censusScope(['src/a.ts'], ['src/a.ts', '.gauntlet/state.json'])).toEqual(['src/a.ts']);
   });
 
   it('reads test files, .mts, .toml and an extensionless file', () => {

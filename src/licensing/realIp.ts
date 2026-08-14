@@ -995,6 +995,63 @@ export function unreadableCensus(
   );
 }
 
+// ---------------------------------------------------------------------------
+// WHAT GETS REACHED — the second dimension, and the one the first fix said
+// nothing about
+// ---------------------------------------------------------------------------
+
+/**
+ * THE REACH WAS A PROPERTY OF SOMEBODY'S CHECKOUT AND IS NOW A PROPERTY OF THE
+ * REPOSITORY.
+ *
+ * Fixing the file-type predicate said nothing about which FILES the walk hands
+ * it, and that is a separate axis with its own failure — the "reach and
+ * predicate are two axes" lesson, arriving from the other side.
+ *
+ * THE INSTANCE, MEASURED IN TWO CHECKOUTS OF THE SAME COMMIT. The census of
+ * unreadable files read `.png 10 | .wav 7 | .webp 2` where it was written and
+ * `.png 10 | .wasm 1 | .wav 7 | .webp 2` where it was merged. The extra entry is
+ * `public/canvaskit.wasm` — 8 MB, gitignored, untracked, copied out of
+ * `node_modules` by a dev script, so it exists in any checkout where somebody has
+ * run a browser tool and in no fresh worktree. A second builder had already hit
+ * the same asymmetry from the other direction. Neither number was right: pinning
+ * the larger one reddens every clean worktree and pinning the smaller one reddens
+ * every checkout anybody has worked in.
+ *
+ * A pinned census over a filesystem walk is a pin on WHAT SOMEBODY HAPPENS TO
+ * HAVE ON DISK. That is not a fact about this repository, and the same shape hit
+ * a second time in the same hour: verification logs written to the repository
+ * root by a watchdog put `.log` into the READ set in one checkout and not in
+ * another, and one of them was not valid UTF-8, so it landed in the UNREADABLE
+ * census too. Any gitignored artifact anybody generates can move a pinned count.
+ *
+ * SO THE WALK SKIPS WHAT GIT IGNORES, and the two views are asserted to agree
+ * rather than assumed to. `realIp.test.ts` runs `git ls-files` and compares:
+ *
+ *   - A WALKED FILE GIT IGNORES is dropped and pinned at zero. That is the check
+ *     `canvaskit.wasm` would have tripped.
+ *   - A TRACKED FILE THE WALK CANNOT SEE is a finding unless a named `NOT_WALKED`
+ *     entry explains it, and WHICH entries do the explaining is pinned below.
+ *   - A WALKED FILE THAT IS NOT TRACKED and not ignored is still SCANNED, on
+ *     purpose. That is new uncommitted work, which is where §12.3 says a real
+ *     name actually arrives — "the first thing that came to mind" gets typed
+ *     before it gets committed. It is reported rather than pinned, because a
+ *     builder mid-edit is not a defect.
+ *
+ * THE TWO PINNED CENSUSES ARE TAKEN OVER TRACKED FILES ONLY, which is what makes
+ * them reproducible in any checkout. The SCAN is still the whole walk; only the
+ * counts are narrowed, so nothing stops being read in order to make a number
+ * stable.
+ *
+ * AND ONE THING THIS DOES NOT DO. `public/canvaskit.wasm` is untracked and it
+ * genuinely ships — the deploy config copies it into the bundle. Excluding it is
+ * still right, for the reason `NOT_WALKED` already gives for `node_modules`: it
+ * is vendored bytes nobody here authored. Its own filename carries no watched
+ * name, and its contents are a binary this audit could not read in any case. If a
+ * future untracked-yet-shipped file is AUTHORED here, that reasoning stops
+ * applying and this is the paragraph that has to change.
+ */
+
 /**
  * Directories the tree walk does not descend into.
  *
@@ -1063,6 +1120,118 @@ export const NOT_WALKED_REASONS: Readonly<Record<string, string>> = Object.freez
   '.claude': 'holds worktrees/, each a complete second checkout of this repository',
   '.gauntlet': 'captured run transcripts; copies of strings scanned at their source',
 });
+
+/**
+ * THE `NOT_WALKED` ENTRIES THAT ACTUALLY HIDE TRACKED FILES — pinned, because an
+ * exclusion that hides nothing and one that hides committed prose are not the
+ * same risk and the list above does not distinguish them.
+ *
+ * Five of the seven hide NOTHING: `node_modules`, `.git`, `.expo`, `dist` and
+ * `coverage` are vendored or generated and nothing under them is committed. If
+ * one of them starts hiding a tracked file — somebody commits a build output, or
+ * checks in a dependency — that is a real change in this audit's reach and it
+ * reddens here rather than passing as a silence.
+ *
+ * TWO OF THEM DO, AND THAT IS THE HOLE, STATED AS A NUMBER INSTEAD OF A SENTENCE.
+ * At the time of writing, 73 tracked files are invisible to this scan: 71 under
+ * `.gauntlet` and 2 under `.claude`. Nine of them carry 65 watchlist mentions
+ * between them. Read that before treating either exclusion as free:
+ *
+ *   - `.gauntlet` — 71 files. 64 of the 65 mentions are in captured `vitest`
+ *     transcripts and are copies of strings this audit reads at their source,
+ *     which is the argument the section above makes and it holds. The exception
+ *     is `.gauntlet/state.json`: HAND-TYPED run bookkeeping, 11 mentions, and the
+ *     header already names it as the part of this exclusion that is not derived.
+ *     It is left out of the scan anyway, because it is rewritten every wave and
+ *     pinning its citations would move `REVIEWABLE_CITATIONS` on a schedule that
+ *     has nothing to do with the code. That is a JUDGEMENT and not a category,
+ *     which is precisely what `DELIBERATELY_NOT_WATCHED` warns about — so it is
+ *     written here for a human to overrule rather than left to be inferred.
+ *   - `.claude` — 2 files, `agents/builder.md` and `agents/critic.md`, both
+ *     hand-written and both carrying ZERO watchlist mentions. THE EXCLUSION IS
+ *     WIDER THAN ITS OWN STATED REASON: that reason is `worktrees/`, which is a
+ *     complete second checkout, and it does not reach two agent definitions
+ *     sitting beside it. Narrowing it means matching a PATH rather than a
+ *     basename, which is a change to the walk rather than to this list, so it is
+ *     reported here rather than done from this piece.
+ *
+ * The 73 and the 65 are MEASUREMENTS AND NOT PINS, and the difference is
+ * deliberate: both move whenever anybody re-takes an evidence bundle, so pinning
+ * them would rebuild the exact "verdict moves with when somebody last ran the
+ * suite" failure the `.gauntlet` exclusion exists to avoid. What is pinned is the
+ * SET of entries doing the hiding, which does not move on a capture.
+ */
+export const NOT_WALKED_HIDES_TRACKED: readonly string[] = Object.freeze(['.claude', '.gauntlet']);
+
+/** What the filesystem walk and the repository's own file list disagree about. */
+export interface ReachReport {
+  /** Tracked files the walk never reached, explained by a `NOT_WALKED` entry. */
+  readonly hiddenByNotWalked: readonly string[];
+  /** Which `NOT_WALKED` entries did that hiding, sorted. */
+  readonly hidingDirectories: readonly string[];
+  /** Walked files git does not track. Scanned anyway; reported, never pinned. */
+  readonly walkedButUntracked: readonly string[];
+  /**
+   * Tracked files the walk missed that NO `NOT_WALKED` entry explains.
+   *
+   * ALWAYS A FINDING. There is no benign reason for one: it means the walk is
+   * dropping committed files for a reason nobody wrote down, which is the
+   * silent-reach failure in its purest form.
+   */
+  readonly strays: readonly string[];
+}
+
+/**
+ * The files a PINNED CENSUS may be counted over: walked and tracked, in walk
+ * order.
+ *
+ * Separate from the scan on purpose, and it is one line so that the narrowing is
+ * a thing a test can drive rather than a filter buried at a call site. On a clean
+ * checkout this returns its input unchanged, so an assertion about it taken only
+ * against the real tree is an empty domain — `realIp.test.ts` drives it with a
+ * synthetic untracked file for exactly that reason.
+ */
+export function censusScope(
+  walked: readonly string[],
+  tracked: readonly string[],
+): readonly string[] {
+  const trackedSet = new Set(tracked);
+  return walked.filter((file) => trackedSet.has(file));
+}
+
+/**
+ * Compare the two views of the tree. Pure: the caller does the git and the fs.
+ *
+ * `notWalked` is matched on any PATH SEGMENT, which is how the walk itself
+ * matches it — so this reports the same exclusions the walk actually applied
+ * rather than a second interpretation of the same list.
+ */
+export function reachReport(
+  walked: readonly string[],
+  tracked: readonly string[],
+  notWalked: readonly string[] = NOT_WALKED,
+): ReachReport {
+  const walkedSet = new Set(walked);
+  const trackedSet = new Set(tracked);
+  const hiddenByNotWalked: string[] = [];
+  const strays: string[] = [];
+  const hiding = new Set<string>();
+  for (const file of tracked) {
+    if (walkedSet.has(file)) continue;
+    const excluder = file.split('/').find((segment) => notWalked.includes(segment));
+    if (excluder === undefined) strays.push(file);
+    else {
+      hiddenByNotWalked.push(file);
+      hiding.add(excluder);
+    }
+  }
+  return {
+    hiddenByNotWalked: hiddenByNotWalked.sort(),
+    hidingDirectories: [...hiding].sort(),
+    walkedButUntracked: walked.filter((f) => !trackedSet.has(f)).sort(),
+    strays: strays.sort(),
+  };
+}
 
 /**
  * Where a file NAME reaching a real brand is category (A) rather than (B).
