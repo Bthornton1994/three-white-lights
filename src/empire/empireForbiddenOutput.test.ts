@@ -7437,6 +7437,17 @@ const THENABLE_MEMBER = 'then';
 const ALIAS_HOPS_MAX = 64;
 
 /**
+ * How deep `typeCouldHoldAFunction` looks before it answers `false`.
+ *
+ * A cost knob and a termination guard on a recursive type, the same class as
+ * `ALIAS_HOPS_MAX` above. It is a SCREEN's depth, not a scan's: past it the
+ * member-following arm declines to follow, and what that costs is stated at the
+ * arm rather than here — a closure nested deeper than this inside a returned
+ * member is not recorded and not reported.
+ */
+const MEMBER_TYPE_WALK_MAX_DEPTH = 8;
+
+/**
  * The arms a receiver or a callee can resolve to, enumerated.
  *
  * Every write and every call in the directory lands in exactly one of these,
@@ -7635,18 +7646,56 @@ function channelCensusOf(
    * ITS LIMITS, in the mechanism's own terms, with the catcher for each named:
    *
    *   - A DESTRUCTURING assignment — `({ shape } = source)` — has an
-   *     `ObjectLiteralExpression` on the left, not an identifier, so it is not
-   *     found. What covers it is the `unfollowable` record below: a binding
-   *     with no initializer and no assignment found lands in `freshReceivers`,
-   *     which is a set equality in both directions, so the route arrives as a
-   *     red line naming the identifier rather than as silence.
+   *     `ObjectLiteralExpression` on the left, not an identifier, so no VALUE
+   *     is found for it. It is REPORTED now rather than only unfound: the
+   *     result carries `destructured`, and every caller turns that into an
+   *     `unfollowable` record whatever else it found.
+   *
+   *     THE CATCHER THIS COMMENT NAMED BEFORE WAS SILENCED BY AN INITIALIZER,
+   *     AND THAT WAS MEASURED RATHER THAN NOTICED. It said the route "lands in
+   *     `freshReceivers`", and `names what it still cannot follow` ran that
+   *     claim against `probeDestructuredAssembly` and passed. Both depended on
+   *     `values.length === 0`. `let shape = {} as AssemblyShape; ({ shape } =
+   *     source);` carries no function in its initializer and is not itself a
+   *     route, and it took the catcher to zero while the destructured value
+   *     still arrived: M54, run against the probe with a positive control
+   *     beside it. A declared limit whose named catcher can be switched off by
+   *     an unrelated line is the defect this file exists to stop.
+   *   - A `for (shape of xs)` write, where `shape` is an EXISTING binding
+   *     rather than a fresh `const`, is an assignment with no
+   *     `BinaryExpression` anywhere in it. `xs` is pushed as the value, which
+   *     is one indirection off — the binding takes an ELEMENT of `xs`, not
+   *     `xs` — and is deliberately the same treatment the for-of arm in
+   *     `returnedFunctions` already gives a for-of DECLARATION, so the two
+   *     spellings of the same loop are read the same way.
+   *   - A `for (shape in xs)` write assigns a KEY, which is a `string`. A
+   *     string carries no function and no property holding one, so nothing is
+   *     pushed and nothing is lost. That is a fact about the language rather
+   *     than a hope about the corpus, and it is the one limit here that needs
+   *     no catcher.
    *   - A write from OUTSIDE the declaration's scope cannot exist for a local,
    *     because a `let` inside a function is not addressable from anywhere else
    *     — that is a language property rather than a claim about this walk. A
    *     module-level `let` is scoped to the source file and this walks the
    *     whole file, so the same holds there.
+   *
+   *     THAT SENTENCE WAS THE ONE CLAIM E22 ARGUED AND DID NOT PLANT AGAINST,
+   *     AND E23 PLANTED AGAINST IT. It survives: TypeScript refuses assignment
+   *     to an imported binding, so a module-level `let` has no writer outside
+   *     its own file, and a function-scoped `let` has no name outside its
+   *     function. What did NOT survive is the assumption underneath it — that
+   *     the walk's problem is which BINDINGS it can follow. M53 hands the
+   *     caller a closure through a property access, which is not a binding at
+   *     all, and `returnedFunctions` had no arm for it.
    */
-  const assignedValuesTo = (declaration: ts.VariableDeclaration): readonly ts.Expression[] => {
+  interface AssignedValues {
+    /** Expressions written to the binding, in source order. */
+    readonly values: readonly ts.Expression[];
+    /** `true` when a destructuring assignment writes it, whose value this cannot name. */
+    readonly destructured: boolean;
+  }
+
+  const assignedValuesTo = (declaration: ts.VariableDeclaration): AssignedValues => {
     let scope: ts.Node = declaration.getSourceFile();
     for (let at: ts.Node | undefined = declaration.parent; at !== undefined; at = at.parent) {
       if (ts.isFunctionLike(at) || ts.isSourceFile(at)) {
@@ -7655,6 +7704,34 @@ function channelCensusOf(
       }
     }
     const found: ts.Expression[] = [];
+    let destructured = false;
+    /** Whether an assignment target, at any depth of a pattern, is this binding. */
+    const targets = (expression: ts.Expression): boolean => {
+      const target = past(expression);
+      if (!ts.isIdentifier(target)) return false;
+      const resolved = resolvedDeclaration(target);
+      return resolved !== null && bindingHost(resolved) === declaration;
+    };
+    const patternTargets = (pattern: ts.Expression): boolean => {
+      if (ts.isObjectLiteralExpression(pattern)) {
+        return pattern.properties.some((property) => {
+          if (ts.isPropertyAssignment(property)) return patternTargets(property.initializer);
+          if (ts.isShorthandPropertyAssignment(property)) {
+            const value = checker.getShorthandAssignmentValueSymbol(property);
+            const resolved = value?.valueDeclaration ?? value?.declarations?.[0];
+            return resolved !== undefined && bindingHost(resolved) === declaration;
+          }
+          if (ts.isSpreadAssignment(property)) return patternTargets(property.expression);
+          return false;
+        });
+      }
+      if (ts.isArrayLiteralExpression(pattern)) {
+        return pattern.elements.some((element) =>
+          ts.isSpreadElement(element) ? patternTargets(element.expression) : patternTargets(element),
+        );
+      }
+      return targets(pattern);
+    };
     const walkScope = (node: ts.Node): void => {
       if (
         ts.isBinaryExpression(node) &&
@@ -7663,14 +7740,26 @@ function channelCensusOf(
       ) {
         const target = past(node.left);
         if (ts.isIdentifier(target)) {
-          const resolved = resolvedDeclaration(target);
-          if (resolved !== null && bindingHost(resolved) === declaration) found.push(node.right);
+          if (targets(target)) found.push(node.right);
+        } else if (
+          (ts.isObjectLiteralExpression(target) || ts.isArrayLiteralExpression(target)) &&
+          patternTargets(target)
+        ) {
+          destructured = true;
         }
+      }
+      // A LOOP HEAD IS AN ASSIGNMENT WITH NO `=` IN IT. `for (shape of xs)`
+      // where `shape` already exists writes the binding once per iteration and
+      // contains no `BinaryExpression`, so the predicate above never looked at
+      // it. `initializer` is a `VariableDeclarationList` for the `const` form
+      // and an `Expression` for this one, which is the whole discriminator.
+      if (ts.isForOfStatement(node) && !ts.isVariableDeclarationList(node.initializer)) {
+        if (targets(node.initializer)) found.push(node.expression);
       }
       node.forEachChild(walkScope);
     };
     walkScope(scope);
-    return found;
+    return { values: found, destructured };
   };
 
   /**
@@ -7686,6 +7775,71 @@ function channelCensusOf(
    */
   const ambientlyDeclared = (declaration: ts.Node): boolean =>
     declaration.getSourceFile().isDeclarationFile;
+
+  /**
+   * Whether a value of this type can be CALLED.
+   *
+   * Unions are walked because `(() => string) | undefined` has no call
+   * signature of its own — `getCallSignatures()` on a union answers about the
+   * union — and a value that is sometimes a function is a function for this
+   * walk's purposes. Intersections likewise.
+   */
+  const carriesCallSignature = (type: ts.Type): boolean => {
+    if (type.getCallSignatures().length > 0) return true;
+    if (type.isUnionOrIntersection()) return type.types.some(carriesCallSignature);
+    return false;
+  };
+
+  /**
+   * Whether a function could be ANYWHERE inside a value of this type.
+   *
+   * The screen on the member-following arm, and it is a screen rather than a
+   * detector: it decides whether following is worth doing, and a `false` here
+   * means the value provably cannot hand anybody a closure — a string, a
+   * number, an object of those.
+   *
+   * IT SKIPS AMBIENTLY DECLARED MEMBERS, and that is the whole reason it is
+   * usable. Every array type carries `map`, `filter` and `forEach`, all of them
+   * callable and all of them declared in `lib.es5.d.ts`, so a version without
+   * that filter answers `true` for `readonly NpcLifter[]` and for almost every
+   * other shipped type. What is left is the properties this directory declared.
+   */
+  const typeCouldHoldAFunction = (type: ts.Type, depth = 0): boolean => {
+    if (depth > MEMBER_TYPE_WALK_MAX_DEPTH) return false;
+    if (type.getCallSignatures().length > 0) return true;
+    if (type.isUnionOrIntersection()) {
+      return type.types.some((member) => typeCouldHoldAFunction(member, depth + 1));
+    }
+    return type.getProperties().some((symbol) => {
+      const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
+      if (declaration === undefined || ambientlyDeclared(declaration)) return false;
+      return typeCouldHoldAFunction(
+        checker.getTypeOfSymbolAtLocation(symbol, declaration),
+        depth + 1,
+      );
+    });
+  };
+
+  /**
+   * Every expression a plain identifier holds, or `null` when this cannot say.
+   *
+   * `null` is not "nothing" — it is the answer that sends the caller to
+   * `unfollowed`, so a holder this walk cannot resolve arrives as a red line
+   * rather than as a quiet zero.
+   */
+  const literalValuesOf = (holder: ts.Expression): readonly ts.Expression[] | null => {
+    if (!ts.isIdentifier(holder)) return null;
+    const resolved = resolvedDeclaration(holder);
+    if (resolved === null) return null;
+    const host = bindingHost(resolved);
+    if (ambientlyDeclared(host) || !ts.isVariableDeclaration(host)) return null;
+    const written = assignedValuesTo(host);
+    if (written.destructured) return null;
+    return [
+      ...(host.initializer === undefined ? [] : [host.initializer]),
+      ...written.values,
+    ];
+  };
 
   const hoppableInitializer = (root: ts.Expression): boolean => {
     if (!ts.isIdentifier(root)) return false;
@@ -7753,7 +7907,15 @@ function channelCensusOf(
         // inner; if (x) inner = sink; inner.kind = <a banned name>` resolves to
         // the PARAMETER now instead of to a local, which is the difference
         // between `argument-mutation` and a number nobody reads.
-        const assigned = assignedValuesTo(host).map(receiverRoot);
+        const written = assignedValuesTo(host);
+        // A DESTRUCTURE-ASSIGNED BINDING HOLDS A VALUE THIS WALK CANNOT NAME,
+        // and saying `local` about it would be a classification rather than an
+        // admission. `unclassified` is pinned at zero on the shipped tree and
+        // is the arm that means "somebody look at this line".
+        if (written.destructured && written.values.length === 0) {
+          return { kind: 'unclassified', declaration: host, detail: `destructure-assigned:${nameOf(host)}` };
+        }
+        const assigned = written.values.map(receiverRoot);
         const hop = assigned.find((root) => hoppableInitializer(root) && !seen.has(root));
         if (hop !== undefined) {
           seen.add(hop);
@@ -7909,10 +8071,23 @@ function channelCensusOf(
         }
         if (seenAliases.has(host)) return;
         seenAliases.add(host);
+        const written = assignedValuesTo(host);
         const values: ts.Expression[] = [
           ...(host.initializer === undefined ? [] : [host.initializer]),
-          ...assignedValuesTo(host),
+          ...written.values,
         ];
+        // REPORTED WHATEVER ELSE WAS FOUND, which is the half M54 broke. This
+        // arm used to be reached only through `values.length === 0`, so any
+        // initializer at all — including one carrying nothing and being no
+        // route itself — silenced the catcher this walk's declared limit names.
+        // The values are still walked afterwards: a binding can be BOTH
+        // destructure-assigned and hold a closure it was given elsewhere, and
+        // recording one is not a reason to stop looking for the other.
+        if (written.destructured) {
+          unfollowed.push(node);
+          for (const value of values) walk(value, path_);
+          return;
+        }
         if (values.length === 0) {
           // A `for (const x of xs)` BINDING, which is the third shape with no
           // initializer and was found by widening rather than by reasoning:
@@ -8000,9 +8175,15 @@ function channelCensusOf(
               // as `return shape` where `shape` is, and the last round of this
               // walk learned the hard way that the two arms get written apart.
               seenAliases.add(declaration);
+              const written = assignedValuesTo(declaration);
+              // THE SIBLING ARM AGAIN, AND IT IS THE SAME ONE LINE. Written
+              // beside the identifier arm's `destructured` push rather than
+              // after it, because this file's own history is that the second of
+              // two arms gets written while the first still feels solved.
+              if (written.destructured) unfollowed.push(property.name);
               const values: ts.Expression[] = [
                 ...(declaration.initializer === undefined ? [] : [declaration.initializer]),
-                ...assignedValuesTo(declaration),
+                ...written.values,
               ];
               if (values.length === 0) unfollowed.push(property.name);
               for (const assigned of values) walk(assigned, `${path_}.${name}`);
@@ -8025,6 +8206,122 @@ function channelCensusOf(
         node.expression.name.text === 'freeze'
       ) {
         for (const argument of node.arguments) walk(argument, path_);
+        return;
+      }
+      // THE `else` ON THE NODE-KIND AXIS, WHICH IS WHERE THE FIFTEENTH BYPASS
+      // WENT THROUGH. Every arm above is `if (ts.isX(node))`, and there was no
+      // final branch — so an expression whose kind is not one of the eight was
+      // dropped with neither a `found` nor an `unfollowed`. `unfollowed` is
+      // real and is reached only from INSIDE the identifier arm, so it covered
+      // identifiers this walk could not resolve and said nothing about
+      // expressions it never classified. M53 is `peek: HOLDER.peek` in a
+      // returned literal: a property access, which is the commonest expression
+      // in the language, handing the caller a closure that yields the name.
+      //
+      // IT ASKS THE CHECKER RATHER THAN ENUMERATING A NINTH KIND, because a
+      // ninth kind is what the last three repairs to this walk each were. The
+      // question "is the value at this node callable" is answered by the type,
+      // so element access, `await`, a tagged template and every shape nobody
+      // has thought of are the same question — and a node whose type has no
+      // call signature cannot be a closure however it is spelled.
+      //
+      // A MEMBER WHOSE OWN TYPE IS NOT CALLABLE IS NOT THE END OF IT, and that
+      // was measured rather than reasoned. `return NESTED.inner`, where `inner`
+      // holds `{ peek: () => … }`, is a member access whose type is an object,
+      // and the caller can still call `.peek()`. The first version of this arm
+      // stopped at the call-signature question and left that route silent — the
+      // same defect one level down from the one it had just closed, which is
+      // this file's most-repeated finding.
+      //
+      // So the member is FOLLOWED when it is not callable: the accessed name is
+      // resolved through the checker, and where its declaration is a property
+      // assignment or a variable the walk continues into it by member path.
+      // Where the name resolves to a TYPE's property rather than a value's —
+      // `const NESTED: { readonly inner: T } = { … }` binds `inner` to the
+      // annotation's `PropertySignature`, which has no initializer — the walk
+      // falls back to the HOLDER and picks the matching property out of it.
+      //
+      // ITS LIMIT, in the mechanism's own terms, with the catcher named: a
+      // holder this walk cannot resolve to a literal in this program — a
+      // parameter's field, an imported const with a computed value, a member of
+      // a call's result — is not followed. It lands in `unfollowed`, so it
+      // arrives as a `freshReceivers` line naming the file, the line and the
+      // identifier rather than as silence. That list is a set equality in both
+      // directions.
+      if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
+        const name = ts.isPropertyAccessExpression(node)
+          ? node.name.text
+          : ts.isStringLiteralLike(node.argumentExpression)
+            ? node.argumentExpression.text
+            : '[]';
+        const memberPath = path_ === '' ? `.${name}` : path_;
+        if (carriesCallSignature(checker.getTypeAtLocation(node))) {
+          found.push(memberPath);
+          return;
+        }
+        // A member that cannot hold a function anywhere inside it is not a
+        // route and is not an admission either. `entry.output` is a string and
+        // `list.length` is a number; following them would report nothing and
+        // recording them would flood the census.
+        if (!typeCouldHoldAFunction(checker.getTypeAtLocation(node))) return;
+        const symbol = checker.getSymbolAtLocation(node);
+        const resolved = symbol?.valueDeclaration ?? symbol?.declarations?.[0];
+        if (resolved !== undefined && !ambientlyDeclared(resolved)) {
+          if (ts.isPropertyAssignment(resolved)) {
+            if (!seenAliases.has(resolved)) {
+              seenAliases.add(resolved);
+              walk(resolved.initializer, memberPath);
+            }
+            return;
+          }
+          if (ts.isVariableDeclaration(resolved)) {
+            if (!seenAliases.has(resolved)) {
+              seenAliases.add(resolved);
+              const written = assignedValuesTo(resolved);
+              if (written.destructured) unfollowed.push(node.expression as ts.Identifier);
+              // Not written as `for (const x of [ … ])`: `declares every literal
+              // for-of axis` scans this file's source for exactly that shape and
+              // would read a walk over expressions as an undeclared numeric domain.
+              const memberValues: ts.Expression[] = [
+                ...(resolved.initializer === undefined ? [] : [resolved.initializer]),
+                ...written.values,
+              ];
+              for (const value of memberValues) walk(value, memberPath);
+            }
+            return;
+          }
+        }
+        // THE FALLBACK, AND THE ARM `probeNestedMemberClosure` IS THE MUTANT
+        // FOR. The name resolved to a type's property, or to nothing; the
+        // holder is where the value actually is.
+        const holder = past(node.expression);
+        const holderValues = literalValuesOf(holder);
+        if (holderValues === null) {
+          if (ts.isIdentifier(holder)) unfollowed.push(holder);
+          return;
+        }
+        for (const value of holderValues) {
+          const literal = past(value);
+          if (!ts.isObjectLiteralExpression(literal)) continue;
+          for (const property of literal.properties) {
+            const propertyName =
+              property.name === undefined ? '' : property.name.getText(property.getSourceFile());
+            if (propertyName !== name) continue;
+            if (ts.isPropertyAssignment(property)) walk(property.initializer, memberPath);
+            else if (ts.isMethodDeclaration(property)) found.push(memberPath);
+            else if (ts.isShorthandPropertyAssignment(property)) walk(property.name, memberPath);
+          }
+        }
+        return;
+      }
+      // AND THE ELSE UNDER THE ELSE. A node kind neither classified above nor a
+      // member access is recorded when its TYPE says a function could be in
+      // there, and ignored when it says one could not. `return a + b` is a
+      // string, `return list.length` is a number, and neither can be a closure
+      // — so this stays quiet on the shipped tree instead of flooding
+      // `freshReceivers`, which is what a bare catch-all would have done.
+      if (carriesCallSignature(checker.getTypeAtLocation(node))) {
+        found.push(path_ === '' ? 'return' : path_);
       }
     };
     walk(expression, at);
@@ -10069,6 +10366,33 @@ describe('the channel census — the routes a string can leave this directory by
  * `freshReceivers`, and the test below RUNS the route against that catcher
  * instead of asserting it — which is the only version of a declared limit this
  * codebase has found to be worth anything.
+ *
+ * FIVE MORE ARRIVED WITH E23, AND FOUR OF THEM ARE A DIFFERENT AXIS FROM THE
+ * SEVEN ABOVE. Every one of those seven is a BINDING whose value the walk could
+ * not follow. These are expressions the walk never classified at all, because
+ * its `walk` was a chain of `if (ts.isX(node))` arms with no final branch:
+ *
+ *   8. `probeMemberAccessClosure` — `{ peek: HOLDER.peek }`. M53, the fifteenth
+ *      bypass, and it was planted into `production.ts` and driven before it was
+ *      written down here: `peek()` printed `covered-day` with the whole guard
+ *      file green but for three counters.
+ *   9. `probeElementAccessClosure` — the same through `xs[0]!.peek`, so the
+ *      repair is shown to be about the TYPE being callable rather than about
+ *      one more node kind.
+ *  10. `probeNestedMemberClosure` — `return NESTED.inner`, where the member's
+ *      own type is an object and the closure is one level further in. The first
+ *      version of the repair stopped at "is this member callable" and left this
+ *      silent, which is this file's most-repeated finding happening inside the
+ *      fix for the finding.
+ *  11. `probeForOfAssignedClosure` — `for (shape of xs)` where `shape` already
+ *      exists. An assignment with no `=` anywhere in it, which
+ *      `assignedValuesTo`'s `BinaryExpression` predicate could not see.
+ *  12. `probeDestructuredWithInertInitializer` — the DECLARED limit above, with
+ *      an initializer that carries nothing. Its named catcher fired only on
+ *      `values.length === 0`, so an inert `{} as AssemblyShape` switched the
+ *      catcher off while the destructured value still arrived. It is in
+ *      `freshReceivers` now because the destructure is REPORTED rather than
+ *      merely unfound.
  */
 const ASSEMBLY_PROBE_SOURCE = `import { EMPIRE_FORBIDDEN_OUTPUTS } from './empireCore';
 
@@ -10157,6 +10481,40 @@ export function probeAssembledCallbackThroughUndefined(
   }
   return (call as (slot: number, label?: string) => boolean)(0, EMPIRE_FORBIDDEN_OUTPUTS[0]);
 }
+
+const ASSEMBLY_HOLDER: AssemblyShape = {
+  peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0],
+};
+
+const ASSEMBLY_NESTED: { readonly inner: AssemblyShape } = {
+  inner: { peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] },
+};
+
+export function probeMemberAccessClosure(): AssemblyShape {
+  return Object.freeze({ peek: ASSEMBLY_HOLDER.peek });
+}
+
+export function probeElementAccessClosure(): AssemblyShape {
+  return Object.freeze({ peek: ASSEMBLY_FOR_OF[0]!.peek });
+}
+
+export function probeNestedMemberClosure(): AssemblyShape {
+  return ASSEMBLY_NESTED.inner;
+}
+
+export function probeForOfAssignedClosure(): AssemblyShape {
+  let shape: AssemblyShape = {} as AssemblyShape;
+  for (shape of ASSEMBLY_FOR_OF) break;
+  return Object.freeze(shape);
+}
+
+export function probeDestructuredWithInertInitializer(source: {
+  shape: AssemblyShape;
+}): AssemblyShape {
+  let shape: AssemblyShape = {} as AssemblyShape;
+  ({ shape } = source);
+  return Object.freeze(shape);
+}
 `;
 
 const ASSEMBLY_PROBE_PATH = path.join(HERE, '__assemblyProbe.ts');
@@ -10192,18 +10550,24 @@ function assemblyProbeSites(id: ChannelId): readonly string[] {
 }
 
 /**
- * The five returned-closure keys the probe is expected to produce.
+ * The nine returned-closure keys the probe is expected to produce.
  *
  * Written out rather than counted, for the reason `DECLARED_RETURNED_CLOSURE_
- * SITES` is: a count cannot tell four right answers and one wrong one from five
- * right ones, and the MEMBER PATH is the part that says the walk reached the
- * function rather than merely noticing the return.
+ * SITES` is: a count cannot tell eight right answers and one wrong one from
+ * nine right ones, and the MEMBER PATH is the part that says the walk reached
+ * the function rather than merely noticing the return. `.inner.peek` is the
+ * clearest case — the path is what says the walk went THROUGH the member rather
+ * than stopping at it.
  */
 const ASSEMBLY_PROBE_CLOSURE_SITES: readonly string[] = Object.freeze([
   `${ASSEMBLY_PROBE_MODULE}#probeAssembledClosure#closure:.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeAssembledShorthand#closure:.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeAssembledThroughUndefined#closure:.peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeElementAccessClosure#closure:.peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeForOfAssignedClosure#closure:[0].peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeForOfClosure#closure:[0].peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeMemberAccessClosure#closure:.peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeNestedMemberClosure#closure:.inner.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeReturnsNamedFunction#closure:.peek`,
 ]);
 
@@ -10218,7 +10582,7 @@ describe('the assembly walk bites — every binding whose value is not in its in
     expect(assemblyProbeCensus().modules.length).toBe(CHANNEL_CENSUS_TOTALS.MODULES + 1);
   });
 
-  it('finds the returned closure in all five shapes, by member path', () => {
+  it('finds the returned closure in all nine shapes, by member path', () => {
     expect(assemblyProbeSites('returned-closure')).toEqual(ASSEMBLY_PROBE_CLOSURE_SITES);
     // And none of them is a key the shipped directory has, which is what makes
     // `DECLARED_RETURNED_CLOSURE_SITES`'s set equality the thing that reddens
@@ -10279,7 +10643,11 @@ describe('the assembly walk bites — every binding whose value is not in its in
     const unfollowed = assemblyProbeCensus().freshReceivers.filter((entry) =>
       entry.startsWith(ASSEMBLY_PROBE_MODULE),
     );
-    expect(unfollowed).toEqual([`${ASSEMBLY_PROBE_MODULE}:68 returned=unfollowable:shape`]);
+    // Sorted by the census rather than by line, which is why 120 precedes 68.
+    expect(unfollowed).toEqual([
+      `${ASSEMBLY_PROBE_MODULE}:120 returned=unfollowable:shape`,
+      `${ASSEMBLY_PROBE_MODULE}:68 returned=unfollowable:shape`,
+    ]);
     // The probe contributes exactly that one and nothing else, so the shipped
     // list is unchanged beside it — the two are separate censuses of the same
     // walk and a probe that polluted the shipped one would be a broken probe.
@@ -10325,29 +10693,72 @@ describe('the assembly walk bites — every binding whose value is not in its in
  * receiver and looks at what arrives.
  *
  * WHAT THIS PASS COVERS, AND THE RESIDUAL IS COUNTED RATHER THAN WAVED AT.
- * Three of the thirteen are driven; ten are not, and they are enumerated by
- * name in `MEMBER_CALL_PASS_UNDRIVEN` with a set equality against
- * `DECLARED_MEMBER_CALLS_ON_PARAMETERS` in both directions. A fourteenth site
- * arriving is therefore a decision somebody signs on one list or the other,
- * rather than a silent hole — which is E15's overflow-pass shape applied to a
- * drive instead of to a domain.
+ * All thirteen are driven; `MEMBER_CALL_PASS_UNDRIVEN` is empty and is still
+ * joined set-equal against `DECLARED_MEMBER_CALLS_ON_PARAMETERS` in both
+ * directions. A fourteenth site arriving is therefore a decision somebody signs
+ * on one list or the other, rather than a silent hole — which is E15's
+ * overflow-pass shape applied to a drive instead of to a domain.
  *
- * The undriven ten are undriven for one reason and it is fixture cost, not
- * reachability: each needs a whole `EmpireGym`, `ExpansionContext` or
- * `SocialContext` built at a state where the site's branch runs. That is real
- * work and it is stated as owed rather than as impossible.
+ * IT WAS THREE OF THIRTEEN FOR A ROUND, AND THE SENTENCE THAT EXCUSED THE TEN
+ * WAS WRONG IN THE REASSURING DIRECTION. It said each of them "needs a whole
+ * `EmpireGym`, `ExpansionContext` or `SocialContext` built at a state where the
+ * site's branch runs", and that the three driven ones were chosen by fixture
+ * cost. The second half was true and is the reason this is worth writing down:
+ * the selection criterion had nothing to do with risk, and when the cost was
+ * actually paid it turned out that SEVEN of the ten needed no such fixture.
+ * Three take a plain `EmpireDayEntry[]` this file already had as `DAY_LEDGER`,
+ * one takes the shipped `EXPANSION_AXES` array, one takes a roster off
+ * `stateAt`, one takes the four `GymSnapshot`s the drive already ranks, and the
+ * two `visitRefusals` sites take `socialContextAt`, which was already in this
+ * file. Only the two `stepGym` sites needed anything built, and that is
+ * `memberCallGym` — a gym holding one build still in flight.
+ *
+ * WHAT THE WIDENING BOUGHT, AS A NUMBER RATHER THAN AS COVERAGE. The three-site
+ * pass observed `handed=0` and `returned=0`: its "no banned name at any driven
+ * site" verdict was a zero over an empty set of observed strings, which is this
+ * file's own definition of an empty domain. Thirteen sites observe 37 callback
+ * invocations and 47 strings, 46 of them on M42's return channel, out of
+ * `rankLeaderboard`'s and `stepGym`'s real payloads. The per-site numbers are
+ * pinned in `MEMBER_CALL_SITE_OBSERVATIONS`.
  */
 interface MemberCallRecord {
   /** Strings reachable from every non-function argument the method received. */
   readonly handed: string[];
   /** Strings reachable from every value a callback argument RETURNED. M42's channel. */
   readonly returned: string[];
+  /**
+   * The SHAPE of every value a callback returned, one entry per invocation.
+   *
+   * A CALL COUNT SAYS THE CALLBACK RAN AND NOT WHICH OF ITS OWN ARMS DID, which
+   * is CLAUDE.md's arms-versus-inputs rule one level in from where that rule was
+   * written. `entries.filter((e) => cond ? <payload> : false)` is M42's route
+   * and it only ever hands the payload back on the arm where `cond` holds — so a
+   * fixture that never satisfies `cond` drives the site, reports an honest
+   * `callbacks=6`, and cannot see that payload at all. Measured rather than
+   * argued: with the first version of the `visits.some` fixture, which asked
+   * about a friend the one logged visit was not against, the predicate returned
+   * `false` six times out of six and M45 — the payload on the matching arm —
+   * was invisible with the whole block green.
+   *
+   * So the shapes are counted per site and pinned. A site whose census loses
+   * `true` reddens, which is the same thing `recordFriendVisit#visited` sitting
+   * in the arm census at 24 does for the drive.
+   */
+  readonly verdicts: string[];
   calls: number;
   callbackCalls: number;
 }
 
 function emptyMemberCallRecord(): MemberCallRecord {
-  return { handed: [], returned: [], calls: 0, callbackCalls: 0 };
+  return { handed: [], returned: [], verdicts: [], calls: 0, callbackCalls: 0 };
+}
+
+/** A returned value as one word, so a per-site census of arms is a string. */
+function verdictShape(value: unknown): string {
+  if (typeof value === 'boolean') return String(value);
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
 }
 
 /**
@@ -10381,6 +10792,7 @@ function recordOn<T extends object>(holder: T, member: string, record: MemberCal
         return (...inner: readonly unknown[]): unknown => {
           record.callbackCalls += 1;
           const verdict = callback(...inner);
+          record.verdicts.push(verdictShape(verdict));
           for (const found of deepScan(verdict, 'return').strings) record.returned.push(found.value);
           return verdict;
         };
@@ -10402,6 +10814,155 @@ const memberCallLedger = (): EmpireLedgerEntry[] => [
   Object.freeze({ at: core.asUnacceleratedSeconds(1), output: 'training-iq', amount: 2 }),
 ];
 
+/**
+ * Every number the added subjects need, in one place.
+ *
+ * Fixture parameters rather than game feel, and named anyway: a step whose
+ * seconds drift past a build's idle completion stops reaching `stepGym`'s skip
+ * arm, and the pass would report that as a smaller callback count rather than
+ * as a hole. `SKIP_STEP_SECONDS < BUILD_IDLE_SECONDS` is the whole precondition
+ * of the `gym.map` site and it is asserted below rather than left implied.
+ */
+const MEMBER_CALL_FIXTURE = Object.freeze({
+  /** Lifters on the roster `composeTrainingIqRate` filters. */
+  ROSTER_SIZE: 3,
+  /**
+   * How many of them have SETTLED at the clock the subject reads.
+   *
+   * Strictly fewer than `ROSTER_SIZE`, and that is the whole point: the filter's
+   * predicate is `lifter.settledAt <= now`, so a roster where everyone has
+   * settled produces the `true` arm three times and the `false` arm never. The
+   * verdict census in `MEMBER_CALL_SITE_OBSERVATIONS` is what holds this — it
+   * reads `falsex1,truex2` and goes red if the split collapses.
+   */
+  SETTLED_LIFTERS: 2,
+  /** `stepGym`'s `wallSeconds`. Below `BUILD_IDLE_SECONDS`, which is what makes a build skippable. */
+  SKIP_STEP_SECONDS: EMPIRE_TUNING.SECONDS_PER_DAY,
+  /** The skippable build's `idleCompletion`, in accelerated seconds. Above the step. */
+  BUILD_IDLE_SECONDS: EMPIRE_TUNING.SECONDS_PER_DAY * 2,
+  /**
+   * The `idleCompletion` of the build that is NOT skippable, which is below the
+   * step and therefore already finished at the idle clock `stepGym` reads.
+   *
+   * It sits first in the array so `find`'s predicate returns `false` before it
+   * returns `true`, and so `map`'s ternary takes both arms. A one-build gym
+   * drove both sites and reached one arm of each.
+   */
+  SETTLED_BUILD_IDLE_SECONDS: 0,
+  /** The build's level, which nothing here reads for anything but a shape. */
+  BUILD_TO_LEVEL: 1,
+  /** The day the visits in the social fixture land on, and the day `visitRefusals` is asked about. */
+  VISIT_DAY: 1,
+  /**
+   * How many visits the social fixture logs, all on `VISIT_DAY`.
+   *
+   * `socialContextAt` assigns them to friends round-robin, so two visits means
+   * friend 0 then friend 1 — and asking about friend 1 makes `visits.some`
+   * return `false` then `true` instead of `false` once. Same reason as
+   * `SETTLED_LIFTERS`.
+   */
+  VISITS_LOGGED: 2,
+  /**
+   * Which friend `visitRefusals` is asked about, and it is deliberately the
+   * SECOND one.
+   *
+   * `friends.some` then returns `false` for friend 0 before returning `true`
+   * for friend 1, so both arms of that predicate run too. Asking about friend 0
+   * short-circuits on the first element and the `false` arm is never produced.
+   *
+   * The two sites share a key — `receiverRoot` walks past `.friends` and
+   * `.visits` alike — so their two observation lines come out byte-identical.
+   * That is fine and is not the thing the earlier version of this comment
+   * worried about: the pin is an ordered array compared with `toEqual`, so
+   * losing one of the two changes its length and reddens. Distinguishable lines
+   * would have been worth having only at the price of leaving one predicate
+   * one-armed, which is the more expensive hole.
+   */
+  VISITED_FRIEND: 1,
+});
+
+/**
+ * The accelerant and axis a `stepGym` skip needs, DERIVED rather than written.
+ *
+ * `stepGym`'s find arm only produces a skippable build when `mayAccelerate`
+ * says the accelerant's licence covers that axis's output, so hardcoding an
+ * axis would leave the `gym.map` subject silently undriven the day a licence
+ * moves. The pair is read out of the shipped tables and the search's success is
+ * itself asserted, so a licence that stops covering anything is a red line
+ * naming this fixture rather than a callback count that quietly went to zero.
+ */
+const MEMBER_CALL_ACCELERANT: core.PurchasableAccelerant =
+  core.PURCHASABLE_ACCELERANTS[0] as core.PurchasableAccelerant;
+
+const MEMBER_CALL_SKIPPABLE_AXIS: ExpansionAxis | undefined = expansionModule.EXPANSION_AXES.find(
+  (axis) => core.mayAccelerate(MEMBER_CALL_ACCELERANT, expansionModule.axisOutput(axis)),
+);
+
+/** A build at a given idle completion — above the step it is skippable, below it is not. */
+function memberCallBuild(axis: ExpansionAxis, idleCompletion: number): ExpansionBuild {
+  return Object.freeze({
+    axis,
+    toLevel: MEMBER_CALL_FIXTURE.BUILD_TO_LEVEL,
+    paid: core.asGymBucks(0),
+    startedAt: ZERO_SECONDS,
+    settledCompletion: core.asUnacceleratedSeconds(idleCompletion),
+    idleCompletion: core.asAcceleratedSeconds(idleCompletion),
+  });
+}
+
+/**
+ * A gym whose `builds` array watches ONE member.
+ *
+ * The array is copied before it is instrumented, because `recordOn` defines an
+ * own property and `createEmpireGym` hands back a frozen one. The gym around it
+ * is re-frozen, so the subject is handed the same shape the shipped caller is.
+ */
+function memberCallGym(member: string, record: MemberCallRecord): EmpireGym {
+  if (MEMBER_CALL_SKIPPABLE_AXIS === undefined) {
+    throw new Error('no expansion axis is accelerable, so the stepGym skip arm cannot be driven');
+  }
+  const gym = invariant.createEmpireGym();
+  const builds: ExpansionBuild[] = [
+    memberCallBuild(MEMBER_CALL_SKIPPABLE_AXIS, MEMBER_CALL_FIXTURE.SETTLED_BUILD_IDLE_SECONDS),
+    memberCallBuild(MEMBER_CALL_SKIPPABLE_AXIS, MEMBER_CALL_FIXTURE.BUILD_IDLE_SECONDS),
+  ];
+  return Object.freeze({ ...gym, builds: recordOn(builds, member, record) });
+}
+
+/** One step through `stepGym`'s build-skip arm, watching one member of `gym.builds`. */
+function memberCallStep(member: string, record: MemberCallRecord): void {
+  invariant.stepGym(
+    memberCallGym(member, record),
+    policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY),
+    MEMBER_CALL_FIXTURE.SKIP_STEP_SECONDS,
+    MEMBER_CALL_ACCELERANT,
+    EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT,
+  );
+}
+
+/**
+ * A social context whose `friends` or whose `visits` watches `some`.
+ *
+ * Two subjects and not one, because `visitRefusals` has TWO `context.some`
+ * calls and the enumeration keys them identically — `receiverRoot` walks past
+ * `.friends` and `.visits` to the parameter. Instrumenting both arrays under
+ * one record would have reported two calls at one site and left the join's
+ * duplicate entry standing for nothing.
+ */
+function memberCallSocialContext(
+  member: 'friends' | 'visits',
+  record: MemberCallRecord,
+): SocialContext {
+  const context = socialContextAt(
+    Array.from({ length: MEMBER_CALL_FIXTURE.VISITS_LOGGED }, () => MEMBER_CALL_FIXTURE.VISIT_DAY),
+  );
+  return Object.freeze(
+    member === 'friends'
+      ? { ...context, friends: recordOn([...context.friends], 'some', record) }
+      : { ...context, visits: recordOn([...context.visits], 'some', record) },
+  );
+}
+
 const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
   Object.freeze({
     site: 'empireCore.ts#idleLedger#ledger.filter x1',
@@ -10422,27 +10983,120 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
       engagementModule.moreEngagedByTrainedDay({ attended: [true, false], trainedDays }, 9);
     },
   }),
+  // --- E23: the ten that were undriven, and the reason they were undriven was
+  // fixture cost. Seven of them cost an array literal or a fixture this file
+  // already had; the two `stepGym` sites cost a gym with a build in flight.
+  Object.freeze({
+    site: 'empireInvariant.ts#progressionDayLedger#entries.filter x1',
+    run: (record: MemberCallRecord): void => {
+      invariant.progressionDayLedger(recordOn([...DAY_LEDGER], 'filter', record));
+    },
+  }),
+  Object.freeze({
+    site: 'empireInvariant.ts#idleDayLedger#entries.filter x1',
+    run: (record: MemberCallRecord): void => {
+      invariant.idleDayLedger(recordOn([...DAY_LEDGER], 'filter', record));
+    },
+  }),
+  Object.freeze({
+    site: 'empireInvariant.ts#outputSeries#entries.filter x1',
+    run: (record: MemberCallRecord): void => {
+      invariant.outputSeries(recordOn([...DAY_LEDGER], 'filter', record), core.EMPIRE_OUTPUTS[0] as EmpireOutput);
+    },
+  }),
+  Object.freeze({
+    site: 'empireInvariant.ts#composeTrainingIqRate#state.filter x1',
+    run: (record: MemberCallRecord): void => {
+      const state = stateAt({ rosterSize: MEMBER_CALL_FIXTURE.ROSTER_SIZE, wide: true });
+      // Not `state.roster` as it comes: `rosterOf` settles every lifter at zero,
+      // so the filter's predicate would have taken its `true` arm three times
+      // and its `false` arm never. The last lifter is re-minted a day out.
+      const roster = state.roster.map((lifter, index) =>
+        index < MEMBER_CALL_FIXTURE.SETTLED_LIFTERS
+          ? lifter
+          : lifterAt(lifter.tier, index, 0, EMPIRE_TUNING.SECONDS_PER_DAY),
+      );
+      invariant.composeTrainingIqRate(
+        Object.freeze({ ...state, roster: recordOn(roster, 'filter', record) }),
+        core.createEmpireClock(0, 0),
+      );
+    },
+  }),
+  Object.freeze({
+    site: 'empireInvariant.ts#savingForPhysio#order.includes x1',
+    run: (record: MemberCallRecord): void => {
+      invariant.savingForPhysio(
+        recordOn([...expansionModule.EXPANSION_AXES], 'includes', record),
+        contextAt(EMPIRE_TUNING.RIVAL_REWARD_GYM_BUCKS, EMPIRE_TUNING.REPUTATION_MAX, Object.freeze([])),
+      );
+    },
+  }),
+  Object.freeze({
+    site: 'empireInvariant.ts#stepGym#gym.find x1',
+    run: (record: MemberCallRecord): void => {
+      memberCallStep('find', record);
+    },
+  }),
+  Object.freeze({
+    site: 'empireInvariant.ts#stepGym#gym.map x1',
+    run: (record: MemberCallRecord): void => {
+      memberCallStep('map', record);
+    },
+  }),
+  Object.freeze({
+    site: 'social.ts#rankLeaderboard#entries.map x1',
+    run: (record: MemberCallRecord): void => {
+      socialModule.rankLeaderboard(
+        recordOn([OWN_GYM, ...FRIENDS, RIVAL_GYM], 'map', record),
+        socialModule.LEADERBOARD_METRICS[0],
+        EMPIRE_TUNING.LEADERBOARD_SCOPES[0],
+      );
+    },
+  }),
+  Object.freeze({
+    site: 'social.ts#visitRefusals#context.some x1',
+    run: (record: MemberCallRecord): void => {
+      socialModule.visitRefusals(
+        memberCallSocialContext('friends', record),
+        core.asGymId(`${SENTINELS.FRIEND_GYM_ID}-${String(MEMBER_CALL_FIXTURE.VISITED_FRIEND)}`),
+        socialModule.asCalendarDay(MEMBER_CALL_FIXTURE.VISIT_DAY),
+      );
+    },
+  }),
+  Object.freeze({
+    site: 'social.ts#visitRefusals#context.some x1',
+    run: (record: MemberCallRecord): void => {
+      socialModule.visitRefusals(
+        memberCallSocialContext('visits', record),
+        core.asGymId(`${SENTINELS.FRIEND_GYM_ID}-${String(MEMBER_CALL_FIXTURE.VISITED_FRIEND)}`),
+        socialModule.asCalendarDay(MEMBER_CALL_FIXTURE.VISIT_DAY),
+      );
+    },
+  }),
 ]);
 
 /**
- * The ten sites this pass does NOT drive, by name.
+ * The sites this pass does NOT drive, by name. It is empty, and that is E23.
  *
  * Not a count and not a percentage: the same key the enumeration uses, so the
  * join below is a set equality in both directions and a site cannot be quietly
- * dropped off one list without appearing on the other.
+ * dropped off one list without appearing on the other. An empty list is the one
+ * state where that join says everything, so `MEMBER_CALL_PASS_UNDRIVEN.length`
+ * is still pinned below — at zero — rather than deleted along with the members.
+ *
+ * WHAT THE TEN COST, MEASURED, BECAUSE THE SENTENCE THAT EXCUSED THEM WAS
+ * WRONG IN THE REASSURING DIRECTION. The docstring above used to say each of
+ * the ten "needs a whole `EmpireGym`, `ExpansionContext` or `SocialContext`
+ * built at a state where the site's branch runs". Seven of the ten needed no
+ * such thing: three take a plain `EmpireDayEntry[]` this file already had as
+ * `DAY_LEDGER`, one takes the shipped `EXPANSION_AXES` array, one takes a
+ * roster off the `stateAt` builder, one takes the same four `GymSnapshot`s the
+ * drive already ranks, and the two `visitRefusals` sites take
+ * `socialContextAt`, which is forty lines up. Only the two `stepGym` sites
+ * needed anything built: a gym holding one build still in flight, which is
+ * `memberCallGym` and is nine lines.
  */
-const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([
-  'empireInvariant.ts#composeTrainingIqRate#state.filter x1',
-  'empireInvariant.ts#idleDayLedger#entries.filter x1',
-  'empireInvariant.ts#outputSeries#entries.filter x1',
-  'empireInvariant.ts#progressionDayLedger#entries.filter x1',
-  'empireInvariant.ts#savingForPhysio#order.includes x1',
-  'empireInvariant.ts#stepGym#gym.find x1',
-  'empireInvariant.ts#stepGym#gym.map x1',
-  'social.ts#rankLeaderboard#entries.map x1',
-  'social.ts#visitRefusals#context.some x1',
-  'social.ts#visitRefusals#context.some x1',
-]);
+const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([]);
 
 interface MemberCallResult {
   readonly site: string;
@@ -10494,24 +11148,107 @@ const MEMBER_CALL_TRIPWIRE: readonly MemberCallSubject[] = Object.freeze([
 
 /** What the pass measured. Counts, not bounds, so an empty drive reports itself. */
 const MEMBER_CALL_PASS_CENSUS = Object.freeze({
-  SUBJECTS: 3,
+  SUBJECTS: 13,
   /** One call of the instrumented method per subject. */
-  CALLS: 3,
-  /** Two ledger entries each for the two `filter` subjects; `includes` calls no callback. */
-  CALLBACK_CALLS: 4,
-  /** Strings reachable from the non-function arguments: the one `includes` was handed is a number, so zero. */
-  HANDED: 0,
-  /** Values the predicates returned: four booleans, which carry no strings. */
-  RETURNED: 0,
+  CALLS: 13,
+  /**
+   * Callback invocations across every subject: 4 + 33, the second number being
+   * E23's ten sites. Per site — and per ARM, which is the half a total cannot
+   * carry — it is in `MEMBER_CALL_SITE_OBSERVATIONS`.
+   */
+  CALLBACK_CALLS: 37,
+  /**
+   * Strings reachable from the non-function arguments.
+   *
+   * IT WAS ZERO FOR A ROUND AND THAT WAS THE HALF NOBODY LOOKED AT. With three
+   * subjects the whole pass observed no string on either channel: the `zero
+   * findings` verdict was a zero over an empty set of observed strings, which
+   * is the shape this file calls an empty domain everywhere else. The argument
+   * channel is non-empty now because `savingForPhysio` is handed an axis name.
+   */
+  HANDED: 1,
+  /**
+   * Values the callbacks RETURNED, deep-scanned for strings. M42's channel.
+   *
+   * Non-zero for the same reason: `rankLeaderboard`'s `map` hands back a real
+   * `GymSnapshot` per entry and `stepGym`'s hands back a real `ExpansionBuild`,
+   * so the return side now carries strings the shipped modules chose rather
+   * than four booleans.
+   */
+  RETURNED: 46,
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
 });
 
+/**
+ * What each site's drive actually observed, per site, in subject order.
+ *
+ * THE TOTALS ABOVE CANNOT SAY WHICH SITE WENT QUIET. A subject whose branch
+ * stops running takes the total down by its own share and the assertion reads
+ * `expected 41 to be 47` — true, and it names nothing. These lines are the
+ * per-site version of the same measurement, and they are what makes "prove the
+ * branch runs" a pin rather than a claim: `empireInvariant.ts#stepGym#gym.map
+ * x1` is only reachable when a build is still in flight AND the accelerant's
+ * licence covers its axis, and if either stops holding, the row goes to
+ * `calls=0` and this list names it.
+ *
+ * the paragraph above is one of this round's two moves in
+ * `GUARANTEE_COVERAGE.TREE_WIDE`, 229 -> 231, and both are disclosed here
+ * rather than reworded away. measured the way that constant's own comment asks
+ * for, per paragraph rather than apportioned by eye: lower-casing this one
+ * sentence and re-running `states what fraction of the tree it actually covers`
+ * gives 230 and green. the other is the sentence opening `ownerOf`'s
+ * destructure-assigned arm, described rather than quoted here because quoting a
+ * capitalised guarantee verbatim inside another comment makes the census count
+ * the quotation — measured, at 232 against 231. the two are the whole
+ * increment: every other paragraph this round added, in this file and in the
+ * probe, contributes zero. both are guarantees with named mechanisms — a
+ * `toEqual` two lines into the test below, and the `unclassified` arm the
+ * sentence sits on — rather than method notes, so the bump is the honest
+ * reading and the pin belongs to whoever owns `src/game/`.
+ */
+const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
+  'empireCore.ts#idleLedger#ledger.filter x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
+  'empireCore.ts#progressionLedger#ledger.filter x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
+  'engagement.ts#moreEngagedByTrainedDay#history.includes x1 calls=1 callbacks=0 handed=0 returned=0 verdicts=none',
+  'empireInvariant.ts#progressionDayLedger#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0 verdicts=falsex4,truex2',
+  'empireInvariant.ts#idleDayLedger#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0 verdicts=falsex2,truex4',
+  'empireInvariant.ts#outputSeries#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0 verdicts=falsex5,truex1',
+  'empireInvariant.ts#composeTrainingIqRate#state.filter x1 calls=1 callbacks=3 handed=0 returned=0 verdicts=falsex1,truex2',
+  'empireInvariant.ts#savingForPhysio#order.includes x1 calls=1 callbacks=0 handed=1 returned=0 verdicts=none',
+  'empireInvariant.ts#stepGym#gym.find x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
+  'empireInvariant.ts#stepGym#gym.map x1 calls=1 callbacks=2 handed=0 returned=14 verdicts=objectx2',
+  'social.ts#rankLeaderboard#entries.map x1 calls=1 callbacks=4 handed=0 returned=32 verdicts=objectx4',
+  'social.ts#visitRefusals#context.some x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
+  'social.ts#visitRefusals#context.some x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
+]);
+
+/** One site's drive, as the line `MEMBER_CALL_SITE_OBSERVATIONS` pins. */
+function memberCallObservation(result: MemberCallResult): string {
+  const tally = new Map<string, number>();
+  for (const shape of result.record.verdicts) tally.set(shape, (tally.get(shape) ?? 0) + 1);
+  const verdicts = [...tally.entries()]
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+    .map(([shape, count]) => `${shape}x${String(count)}`)
+    .join(',');
+  return [
+    result.site,
+    `calls=${String(result.record.calls)}`,
+    `callbacks=${String(result.record.callbackCalls)}`,
+    `handed=${String(result.record.handed.length)}`,
+    `returned=${String(result.record.returned.length)}`,
+    `verdicts=${verdicts === '' ? 'none' : verdicts}`,
+  ].join(' ');
+}
+
 describe('the member-call pass — what a caller-supplied method is actually handed', () => {
   it('drives the subjects it declares, and the drive is not empty', () => {
     const results = memberCallPass(MEMBER_CALL_SUBJECTS);
     expect(results.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
+    // PER SITE FIRST, TOTALS SECOND, for the reason the sibling test below
+    // already records: a total that moves names no site.
+    expect(results.map(memberCallObservation)).toEqual(MEMBER_CALL_SITE_OBSERVATIONS);
     const calls = results.reduce((total, result) => total + result.record.calls, 0);
     const callbackCalls = results.reduce((total, result) => total + result.record.callbackCalls, 0);
     expect(calls).toBe(MEMBER_CALL_PASS_CENSUS.CALLS);
@@ -10563,11 +11300,18 @@ describe('the member-call pass — what a caller-supplied method is actually han
     // And the two lists do not overlap, so a site cannot be counted as covered
     // and excused at the same time.
     for (const site of driven) expect(MEMBER_CALL_PASS_UNDRIVEN).not.toContain(site);
-    // The residual as a number, beside the coverage as a number. Ten of
-    // thirteen is what this round paid for, and writing it down is what stops
-    // the next reader taking a green pass for a covered arm.
-    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(10);
+    // The residual as a number, beside the coverage as a number. It is zero of
+    // thirteen now, and the number stays pinned rather than being deleted with
+    // the members: an empty excuse list is the one state where the set equality
+    // above is a complete statement, so it is worth a line that reddens when it
+    // stops being empty.
+    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(0);
     expect(driven.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
+    // Both `visitRefusals` sites are driven, and they share a key. A `Set` of
+    // the driven sites would have quietly collapsed them, so the count of that
+    // key is pinned rather than its presence — the shape this file already
+    // demands of a source scan whose pattern has more than one witness.
+    expect(driven.filter((site) => site === 'social.ts#visitRefusals#context.some x1').length).toBe(2);
   });
 });
 
@@ -10576,7 +11320,7 @@ describe('the member-call pass — what a caller-supplied method is actually han
 // ---------------------------------------------------------------------------
 
 /**
- * Forty-two routes, planted into shipped modules one at a time, each run
+ * Fifty-five routes, planted into shipped modules one at a time, each run
  * against `tsc --noEmit`, against this file, and against the three accidental
  * catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
@@ -11370,6 +12114,231 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts was restored and verified byte-identical before this row was written.',
     ]),
   }),
+  // --- E23: one route per newly driven member-call site. Ten rows and not one,
+  // because "the pass bites" is a claim per site: each of these was planted on
+  // its own, run on its own, and restored on its own.
+  Object.freeze({
+    id: 'M43',
+    shape:
+      "35-repeated at a site E22 declared undriven — M42's predicate-return route, at `progressionDayLedger` instead of at `idleLedger`",
+    where:
+      'empireInvariant.ts, `progressionDayLedger`: `entries.filter((entry) => isProgressionReachingOutput(entry.output))` -> `… ? (EMPIRE_FORBIDDEN_OUTPUTS[0] as unknown as boolean) : false`, with the ban list added to the existing `./empireCore` import',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass / sees no banned name at any driven site: `+ "empireInvariant.ts#progressionDayLedger#entries.filter x1 <- covered-day"`, twice — one per entry the predicate admits.',
+      'AND THE DOMAIN HALF MOVED WITH IT, which is what says the finding came off the drive rather than off a count: `… calls=1 callbacks=6 handed=0 returned=2 verdicts=falsex4,stringx2`. The verdict census shows the two `true`s became two `string`s.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'empireCore.test.ts 57 passed (57) with this planted — the magic-number audit, the string census and the import fence, all three green, INCLUDING under the added import specifier. Measured rather than assumed, because every row below shares that specifier.',
+      'empireInvariant.ts was restored and verified byte-identical with `git hash-object` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M44',
+    shape: '35-repeated at `idleDayLedger` — the sibling of M43, planted rather than inferred from it',
+    where: 'empireInvariant.ts, `idleDayLedger`: the same ternary around `isIdleOnly(entry.output)`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "empireInvariant.ts#idleDayLedger#entries.filter x1 <- covered-day"` four times, and `… returned=4 verdicts=falsex2,stringx4`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Restored and verified byte-identical. The four-versus-two split against M43 is the two halves of the same six-entry ledger, which is why both rows are here rather than one standing for both.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M45',
+    shape: '35-repeated at `outputSeries`, whose predicate admits exactly one of the six entries',
+    where: 'empireInvariant.ts, `outputSeries`: the same ternary around `entry.output === output`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "empireInvariant.ts#outputSeries#entries.filter x1 <- covered-day"`, and `… returned=1 verdicts=falsex5,stringx1`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Restored and verified byte-identical. Worth its own row for the count: a payload on the arm that runs ONCE in six is still seen, so the pass does not depend on the payload being common.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M46',
+    shape: "35-repeated at `composeTrainingIqRate`, whose receiver is a field of a parameter (`state.roster`) rather than the parameter itself",
+    where:
+      'empireInvariant.ts, `composeTrainingIqRate`: `state.roster.filter((lifter) => lifter.settledAt <= now)` -> the same ternary',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "empireInvariant.ts#composeTrainingIqRate#state.filter x1 <- covered-day"` twice, and `… callbacks=3 returned=2 verdicts=falsex1,stringx2`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Restored and verified byte-identical. The site key says `state.filter` and not `roster.filter` because `receiverRoot` walks past the property access to the parameter, and this row is the measurement that the fixture built for that key really reaches that call.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M47',
+    shape:
+      "34-repeated — M40's ARGUMENT route at a site E22 could not drive, so the enumeration's stated limit is measured somewhere other than where it was written",
+    where:
+      'empireInvariant.ts, `savingForPhysio`: `order.includes(PHYSIO_AXIS)` -> `order.includes(EMPIRE_FORBIDDEN_OUTPUTS[0] as unknown as ExpansionAxis)`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass / sees no banned name at any driven site: `+ "empireInvariant.ts#savingForPhysio#order.includes x1 <- covered-day"`.',
+      'AND THE OBSERVATION LINE DID NOT MOVE, which is the useful half of this row: `handed=1` before and after, because the count of strings handed is the same and only their VALUE changed. The site-observation pin stayed green and the findings pin is what bit. That is the division of labour the two assertions are supposed to have — the observation line is the domain, the findings list is the ban — and this is the one row that demonstrates it rather than asserting it.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'NOT BEHAVIOUR-PRESERVING, and it is the only one of the ten that is not: `savingForPhysio` returns `false` for every order under this mutant. The member-call block is run with `-t`, so nothing else was executing to notice, and the row says so rather than implying an isolation it does not have. A behaviour-preserving version of the argument route needs a SECOND argument, which is M41 and is caught by the enumeration.',
+      'Restored and verified byte-identical.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M48',
+    shape: "35-repeated at `stepGym`'s `find`, which is inside the build-skip arm and needs a gym with a build still in flight",
+    where:
+      'empireInvariant.ts, `stepGym`: the skippable-build predicate returns the ban list member on its true arm instead of `true`. `find` coerces, so the same build is found',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "empireInvariant.ts#stepGym#gym.find x1 <- covered-day"`, and `… callbacks=2 returned=1 verdicts=falsex1,stringx1`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Restored and verified byte-identical. Behaviour-preserving: a non-empty string is truthy, so `find` returns the same element and the skip still happens.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M49',
+    shape:
+      "35-adjacent at `stepGym`'s `map`: the payload is a FIELD OF THE OBJECT the callback returns rather than the return value itself",
+    where:
+      'empireInvariant.ts, `stepGym`: `gym.builds.map((build) => build === skippable ? skipExpansion(build, grant) : build)` -> the skipped build spread with `axis` overwritten by the ban list member',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "empireInvariant.ts#stepGym#gym.map x1 <- covered-day"`.',
+      'THE CHANNEL IS THE SAME AND THE SHAPE IS NOT, which is why this row is not M48 twice: `map` returns an object, so the pass sees the payload only because it DEEP-SCANS what the callback hands back rather than testing it for equality with a name. `verdicts=objectx2` is unchanged by the mutant, so the verdict census is silent here and the findings list is what bites.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Restored and verified byte-identical.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M50',
+    shape:
+      "35-adjacent at `rankLeaderboard`, AND THE ONLY ONE OF THE TEN WHOSE PAYLOAD NEVER LEAVES THE FUNCTION: an extra key on the mapped value, which nothing downstream reads",
+    where:
+      'social.ts, `rankLeaderboard`: `entries.map((entry) => ({ entry, score }))` -> `({ entry, score, note: EMPIRE_FORBIDDEN_OUTPUTS[0] })`. `ordered` sorts on `score` and `ranked` is rebuilt from `entry`, `score` and `rank`, so `note` is dropped before the return',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "social.ts#rankLeaderboard#entries.map x1 <- covered-day"`, four times, and `… returned=40` against 32.',
+      "WHY IT IS THE STRONGEST OF THE TEN. Instrument A reads DECLARED types and this key is on an inferred intermediate, never on a return type. Instrument B drives exports and scans what they RETURN, and this value is discarded inside the function. The name exists only in the argument handed to a caller-supplied `map` and only for the duration of the call, which is exactly the channel this pass was built for and exactly the channel that did not reach `social.ts` before this round.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'empireCore.test.ts 57 passed (57) with this planted, so the added import specifier is green in social.ts too.',
+      'social.ts was restored and verified byte-identical.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M51',
+    shape: "35-repeated at the first of `visitRefusals`' two `context.some` calls",
+    where: 'social.ts, `visitRefusals`: `context.friends.some((friend) => friend.gymId === gymId)` -> the ternary',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "social.ts#visitRefusals#context.some x1 <- covered-day"`, and `… callbacks=2 returned=1 verdicts=falsex1,stringx1`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Restored and verified byte-identical. Two rows for two calls that share ONE site key, because a single row would leave the duplicate entry in `DECLARED_MEMBER_CALLS_ON_PARAMETERS` standing for a call nobody had planted at.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M53',
+    shape:
+      "36 — THE FIFTEENTH BYPASS: a returned closure reached through a PROPERTY ACCESS. Not a binding this walk cannot follow — a NODE KIND it does not have an arm for, and drops without recording",
+    where:
+      "production.ts, `accrueProduction`: a module-level `const PRODUCTION_PEEK: { readonly peek: () => string } = { peek: () => EMPIRE_FORBIDDEN_OUTPUTS[0] }`, handed back as `peek: PRODUCTION_PEEK.peek` on the returned object, with the return cast `as ProductionAccrual`",
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING CAUGHT IT. Whole guard file: `Tests 3 failed | 67 passed (70)`, and all three failures are counters this file has recorded four times as not the check working — instrument B / walked a domain that is not empty `expected 2393230 to be 2393060`, the overflow pass / same `expected 523184 to be 523128`, and the channel census / derives every escape site `expected 21818 to be 21789`, which is the `nodesExamined` line asserted AFTER `census.sites`, `callTargets`, `writeOwners` and `freshReceivers` had all passed.',
+      'AND THE BRANCH RUNS, PRINTED: `accrueProduction` driven on a gym one hour along returns an object whose keys are `[…, "ledger", "peek"]`, `typeof peek === "function"`, and `peek()` is `covered-day`. `gymBucks` is 60 on the same call, so the accrual itself is unchanged.',
+      "WHY IT IS A DIFFERENT AXIS FROM M38 AND M39, which is the point of the row. Both of those were BINDINGS whose value the walk could not follow — an initializer it did not have, then an assignment it did not read — and both repairs widened what a binding could be. This is not a binding at all: `returnedFunctions`'s `walk` is a chain of `if (ts.isX(node))` arms with NO final `else`, so any node kind outside the eight it enumerates is dropped without a `found` and without an `unfollowed`. A property access is the commonest expression in TypeScript.",
+      "THE `else` THIS FILE SAYS IT HAS ADDED THREE TIMES WAS ADDED ON THE WRONG AXIS. `unfollowed` exists and is real, and it is reached only from INSIDE the identifier arm — so it covers identifiers the walk cannot resolve and says nothing about expressions the walk never classified. Reach and predicate, one dimension out, in the walk this file's own history says was fixed for reach and then for predicate.",
+      'AFTER, RE-PLANTED AGAINST THE REPAIRED WALK RATHER THAN ASSUMED: the channel census / derives every escape site: `"returned-closure": + "production.ts": 1`, and / pins the two callback sites: `+ "production.ts#accrueProduction#closure:.peek"`. Named by module, by enclosing function and by member path — the same two lines M39 produces, which is the point: it is the same channel and it was reached by a different axis. Both messages are quoted from that run, and `production.ts` was restored and re-verified after it.',
+      'THE REPAIR ASKS THE CHECKER RATHER THAN ENUMERATING A NINTH NODE KIND, because a ninth kind is what the last three repairs to this walk each were. `probeMemberAccessClosure` and `probeElementAccessClosure` are the two spellings, in the probe, so the repair is re-measured on every run instead of in this row.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      "THE FIRST FORM WAS NOT ISOLATED AND THE DIFFERENCE IS ONE CALL. Writing the holder as `Object.freeze({ peek: … })` added a CallExpression, which moved instrument C's `CALLS_EXAMINED` 1018 -> 1019 and `callTargets.member` 474 -> 475 — neither of which is about forbidden names, and the second of which reads like a catch because it sits in the census table. Re-planted with a plain object literal and a type annotation, both go green and only the three counters move.",
+      'empireCore.test.ts is not separately named here because the whole guard file was run; the plant adds no string literal, no bare number and one specifier to an import production.ts already has.',
+      'production.ts was restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M54',
+    shape:
+      "36-adjacent, THREE MORE SHAPES MEASURED IN THE PROBE RATHER THAN IN A SHIPPED MODULE: an element access, a for-of write to an existing binding, and the destructuring assignment whose declared catcher stops working the moment the binding has an initializer",
+    where:
+      "__assemblyProbe.ts, four exports added at once: `{ peek: EXP_HOLDER.peek }`, `{ peek: ASSEMBLY_FOR_OF[0]!.peek }`, `let shape = {} as AssemblyShape; for (shape of ASSEMBLY_FOR_OF) break;`, and `let shape = {} as AssemblyShape; ({ shape } = source);`",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING CAUGHT ANY OF THE FOUR: `the assembly walk bites` came back 6 passed of 6 with all four in, INCLUDING `names what it still cannot follow`, so none of them added a `freshReceivers` entry either.',
+      'THE POSITIVE CONTROL IS WHAT MAKES THAT A MEASUREMENT RATHER THAN A NULL RESULT. A fifth export added beside them — `expControlDirectClosure`, a bare arrow in the returned literal — reddens immediately with `+ "__assemblyProbe.ts#expControlDirectClosure#closure:.peek"`. So the probe compiled, the walk ran over that region of the file, and the four silences are silences about those shapes rather than about a file nobody read.',
+      'THE DESTRUCTURING ONE IS THE WORST OF THE FOUR, because it is a DECLARED limit with a NAMED catcher and the catcher does not hold. `assignedValuesTo`\'s docstring says the route lands in `freshReceivers`; `names what it still cannot follow` runs that claim against `probeDestructuredAssembly` and it passes. Both depend on `values.length === 0`, so giving the binding any initializer at all — `{} as AssemblyShape`, which carries no function and is not itself a route — makes the catcher silent while the destructured value still arrives.',
+      'AFTER: all five are permanent probe exports. Three appear in `ASSEMBLY_PROBE_CLOSURE_SITES` — `#probeElementAccessClosure#closure:.peek`, `#probeForOfAssignedClosure#closure:[0].peek`, `#probeMemberAccessClosure#closure:.peek` — and the destructured one appears in `freshReceivers` as `__assemblyProbe.ts:120 returned=unfollowable:shape`, beside the line-68 entry that was already there. The probe count is five and not four because the FIRST version of the repair left a fifth shape silent; see M55.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The probe is a string constant in this file rather than a shipped module, so nothing was restored — the experiment was reverted with `git checkout HEAD --` and the file verified byte-identical before this row was written.',
+      "WHAT THIS ROW IS NOT EVIDENCE FOR, stated because a probe is weaker than a plant: it says the WALK does not see these shapes. M53 is the row that says a shipped module can carry one past the whole guard file, and it is only one of the four. The other three are argued from the same walk rather than driven through `production.ts`, and that is a real gap in this row rather than a formality.",
+    ]),
+  }),
+  Object.freeze({
+    id: 'M55',
+    shape:
+      "36 ONE LEVEL DEEPER, AND IT WAS FOUND INSIDE THE REPAIR FOR 36: `return NESTED.inner`, where the member's own type is an OBJECT holding the closure rather than the closure",
+    where: '__assemblyProbe.ts, `probeNestedMemberClosure`, against the first version of the member-access arm',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      "GREEN AGAINST THE FIRST REPAIR. That version asked one question — does the type at this node have a call signature — and `{ readonly inner: AssemblyShape }` does not, so the arm returned without a `found` and without an `unfollowed`. The other four shapes were already reddening at the time, which is what makes this a measurement rather than a guess: the same run reported `+ #probeMemberAccessClosure#closure:.peek`, `+ #probeElementAccessClosure#closure:.peek` and `+ #probeForOfAssignedClosure#closure:[0].peek` and said nothing about this one.",
+      'AFTER: `+ "__assemblyProbe.ts#probeNestedMemberClosure#closure:.inner.peek"`. The member path is the evidence that the walk went THROUGH the member rather than stopping at it.',
+      "WHY IT NEEDED A SECOND MECHANISM AND NOT A WIDER PREDICATE. The name `inner` resolves to a `PropertySignature` on the ANNOTATION — `const NESTED: { readonly inner: T } = { … }` — which has no initializer, so following the member's declaration finds nothing. The walk falls back to the HOLDER, resolves the identifier's own value, and picks the matching property out of the literal. A version that followed the declaration only would have been the same silence with more code in it.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      "THIS IS THE ROW THIS FILE'S OWN HISTORY PREDICTS AND IT STILL HAPPENED. `A guard written for one arm must be applied to its sibling` and `the next thing to look at is the branch immediately below the one you just fixed` are both in CLAUDE.md, and the branch immediately below this one was inside the fix itself — written, compiled and green, in the same edit.",
+      'It is a probe row rather than a shipped plant, and that is the same gap M54 states about itself: it says the WALK could not see the shape, not that a shipped module carried one past the whole file.',
+      "The screen in front of the following arm — `typeCouldHoldAFunction` — skips AMBIENTLY declared members, and that is load-bearing rather than tidy: every array type carries `map` and `filter` from `lib.es5.d.ts`, both callable, so without the filter the screen answers `true` for `readonly NpcLifter[]` and the arm follows every returned member in the directory. Measured: the shipped `returned-closure` census is unchanged at its two `empireInvariant.ts` sites and `freshReceivers` is unchanged, with all 70 tests green.",
+    ]),
+  }),
+  Object.freeze({
+    id: 'M52',
+    shape:
+      "35-repeated at the SECOND `context.some`, and it is the row that measures what a one-armed fixture costs",
+    where: 'social.ts, `visitRefusals`: `context.visits.some((visit) => visit.day === day && visit.gymId === gymId)` -> the ternary',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "social.ts#visitRefusals#context.some x1 <- covered-day"`, and `… callbacks=2 returned=1 verdicts=falsex1,stringx1`.',
+      'AGAINST THE PREVIOUS COMMIT IT WAS INVISIBLE, and that measurement is why the verdict census exists. E23 1/n logged ONE visit, against a friend the call did not ask about, so the predicate returned `false` on every invocation and the payload — which sits on the matching arm — was never produced. Planted against that fixture: `Tests 4 passed | 66 skipped`, the whole block green, with an honest `callbacks=1` in the pin. Run rather than reasoned: `git checkout HEAD~1 -- empireForbiddenOutput.test.ts`, plant, run, restore.',
+      'A DRIVE THAT REACHES A SITE HAS NOT REACHED ITS CALLBACK\'S ARMS. That is CLAUDE.md\'s inputs-versus-branches rule one level in from where it was written — the branch that did not run is inside the value the subject hands the recorder, not inside the subject.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'social.ts and empireForbiddenOutput.test.ts were both restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>`. The test file needed `git checkout HEAD --` rather than `git checkout --`, because the control had staged the older version in the index; the hash check is what caught that.',
+    ]),
+  }),
 ]);
 
 /**
@@ -11584,7 +12553,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(42);
+    expect(PLANTED_ROUTES.length).toBe(55);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -11669,8 +12638,16 @@ describe('the routes that were planted, and what each of them cost', () => {
     // `EMPIRE_FORBIDDEN_OUTPUTS` with a named specifier added to an import that
     // already exists, no new call expression, no new `return` statement and no
     // new string literal.
-    expect(attempts).toBe(61);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(32);
+    // ONE EACH FOR M43-M52, which is ten attempts for ten routes and is worth a
+    // sentence rather than a shrug: they reached isolation first time because
+    // the isolation was already known. Every one of them reads the payload out
+    // of `EMPIRE_FORBIDDEN_OUTPUTS` through a specifier added to an import the
+    // module already has, spells no forbidden word, adds no bare number and
+    // adds no string literal — and the first of them was run against
+    // `empireCore.test.ts` (57 passed) to check that the added specifier is
+    // invisible to the import fence, rather than assuming it from M39.
+    expect(attempts).toBe(75);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(45);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
