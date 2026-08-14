@@ -577,8 +577,25 @@ const GUARANTEE_COVERAGE = {
    * `eligibility.test.ts` and `eligibility.ts` was written to state its limits
    * without a capitalised run of an absolute, and the census over those three
    * files reads 0, 0 and 5 after the merge.
+   *
+   * 238 -> 241 when the real-IP audit's file-type predicate was inverted from an
+   * extension allowlist onto a content test. Measured per file the same way, by
+   * reading the census over each file's pre-change and post-change text:
+   * `realIp.ts` 4 -> 6, `realIp.test.ts` 2 -> 3, and nothing else in that
+   * change, which touched two files.
+   *
+   * All three new paragraphs have a check behind them, which matters more here
+   * than the ratio does. Two are in `realIp.ts`: one states which of the byte
+   * classifier's two arms this tree actually exercises, graded by the assertion
+   * that walks every unreadable file and pins its reason; the other heads the
+   * census of what that audit is blind to, graded by a set equality plus an
+   * assertion that the walked file count equals what it read plus what it
+   * counted. The third heads the plant test in `realIp.test.ts`, whose own
+   * assertions are its check. None of the three is quoted here, for the reason
+   * five of the notes above give: quoting a capitalised run makes this paragraph
+   * trigger too, and the count would go to 242.
    */
-  TREE_WIDE: 238,
+  TREE_WIDE: 241,
 } as const;
 
 // ---------------------------------------------------------------------------
