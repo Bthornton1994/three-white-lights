@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-evidence-mjs-2026-08-14T06-23-34-807Z-26622",
+  "label": null,
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "press-fix",
+    "src/lift|src/session|src/meet/AttemptView|src/game/guaranteeTags|src/tuning/audit"
+  ],
+  "budgetSeconds": 1500,
+  "startedAtIso": "2026-08-14T06:23:34.807Z",
+  "startedAtMs": 1786688614807,
+  "cwd": "/home/user/wt-press-fix",
+  "commit": "cc732e2f73605eec372b6fa937b2b07cc0158457",
+  "branch": "claude/press-fix-played-surfaces",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 26622,
+    "startTick": "1446791",
+    "cmdline": "node tools/watchdog.mjs --budget 1500 --id press-evidence -- node tools/evidence.mjs press-fix src/lift|src/session|src/meet/AttemptView|src/game/guaranteeTags|src/tuning/audit",
+    "bootId": "70e4dcd9-91f6-43ee-a53c-88125d271f98",
+    "bootEpochSeconds": 1786674147,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T06:23:34.830Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
