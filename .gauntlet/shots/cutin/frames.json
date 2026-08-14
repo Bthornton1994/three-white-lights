@@ -1,18 +1,12 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-14T14:31:33.039Z",
-    "url": "http://localhost:8081",
-    "sourceRoot": "/home/user/three-white-lights",
-    "commit": "74a0e68",
-    "branch": "claude/agent-config-setup-m2r6ny",
+    "capturedAt": "2026-08-14T16:30:48.592Z",
+    "url": "http://localhost:8099",
+    "sourceRoot": "/home/user/wt-empire-honesty",
+    "commit": "24e1305",
+    "branch": "claude/empire-shell-honesty",
     "workingTree": "clean",
-    "dirtyPaths": [
-      "M .gauntlet/shots/cutin-cap/cap.json",
-      " M .gauntlet/shots/cutin-cap/leg-1-recap.png",
-      " M .gauntlet/shots/lift-press/press.json",
-      " M .gauntlet/shots/meet/sound.json",
-      "?? .gauntlet/shots/cutin-cap/cut-in-leg-2.png"
-    ],
+    "dirtyPaths": [],
     "instrument": {
       "capture-cutin.mjs": "6ebe3eaed8447c87",
       "png.mjs": "6356a0d0b0dcb696"
@@ -21,7 +15,7 @@
   "frames": [
     {
       "moment": "third-attempt-walkout",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/third-attempt-walkout.png",
+      "file": "/home/user/wt-empire-honesty/.gauntlet/shots/cutin/third-attempt-walkout.png",
       "name": "third-attempt-walkout.png",
       "expectedLine": "LAST ONE",
       "seen": {
@@ -62,14 +56,14 @@
       },
       "scrim": {
         "blended": 58892,
-        "opaqueBackdrop": 42059,
-        "untouched": 837029
+        "opaqueBackdrop": 35182,
+        "untouched": 843906
       },
       "pixelHash": 3627325843
     },
     {
       "moment": "personal-record",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/personal-record.png",
+      "file": "/home/user/wt-empire-honesty/.gauntlet/shots/cutin/personal-record.png",
       "name": "personal-record.png",
       "expectedLine": "NOBODY HAS SEEN YOU DO THIS",
       "seen": {
@@ -110,14 +104,14 @@
       },
       "scrim": {
         "blended": 13095,
-        "opaqueBackdrop": 42119,
-        "untouched": 824890
+        "opaqueBackdrop": 35242,
+        "untouched": 831767
       },
       "pixelHash": 3462249653
     },
     {
       "moment": "bomb-out",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/bomb-out.png",
+      "file": "/home/user/wt-empire-honesty/.gauntlet/shots/cutin/bomb-out.png",
       "name": "bomb-out.png",
       "expectedLine": "THAT IS THE MEET",
       "seen": {
@@ -158,14 +152,14 @@
       },
       "scrim": {
         "blended": 47920,
-        "opaqueBackdrop": 42059,
-        "untouched": 836977
+        "opaqueBackdrop": 35182,
+        "untouched": 843854
       },
       "pixelHash": 345416966
     },
     {
       "moment": "coach-heavy-set",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/coach-heavy-set.png",
+      "file": "/home/user/wt-empire-honesty/.gauntlet/shots/cutin/coach-heavy-set.png",
       "name": "coach-heavy-set.png",
       "expectedLine": "THAT MOVED",
       "seen": {
@@ -206,8 +200,8 @@
       },
       "scrim": {
         "blended": 55148,
-        "opaqueBackdrop": 42059,
-        "untouched": 836977
+        "opaqueBackdrop": 35182,
+        "untouched": 843854
       },
       "pixelHash": 509932265
     }
@@ -238,13 +232,13 @@
   "leavesOnItsOwn": {
     "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 1555,
+    "goneAt": 1567,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 14,
-    "goneAt": 24,
-    "dismissTookMs": 10,
+    "tappedAt": 16,
+    "goneAt": 23,
+    "dismissTookMs": 7,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
@@ -254,8 +248,8 @@
     "onWalkout": null,
     "onBombOut": "THAT IS THE MEET",
     "addressBar": {
-      "walkout": "http://localhost:8081/?meet=walkout-third",
-      "bombed": "http://localhost:8081/?meet=bombed"
+      "walkout": "http://localhost:8099/?meet=walkout-third",
+      "bombed": "http://localhost:8099/?meet=bombed"
     },
     "urlFaults": []
   },

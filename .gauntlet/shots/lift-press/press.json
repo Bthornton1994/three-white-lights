@@ -1,11 +1,15 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-14T14:23:53.431Z",
-    "url": "http://localhost:8081",
-    "commit": "74a0e68",
-    "branch": "claude/agent-config-setup-m2r6ny",
+    "capturedAt": "2026-08-14T16:34:05.042Z",
+    "url": "http://localhost:8099",
+    "commit": "24e1305",
+    "branch": "claude/empire-shell-honesty",
     "workingTree": "clean",
-    "dirtyPaths": [],
+    "dirtyPaths": [
+      "M .gauntlet/shots/cutin/baseline-no-cutin.png",
+      " M .gauntlet/shots/cutin/frames.json",
+      " M .gauntlet/shots/meet/sound.json"
+    ],
     "instrument": {
       "verify-lift-press.mjs": "3ca7be3087bdffaf",
       "sessionDrive.mjs": "2a63eac7a653d32b",
