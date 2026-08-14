@@ -6,10 +6,23 @@
 - Latest meet in range: 2026-08-01
 - Date range: 2021-01-01 .. 2099-12-31
 - Equipment kept: **Raw**
-- Designated percentile: P10, floored to 2.5 kg
-- Minimum lifters for a cell to carry a number: 40
+- Designated percentile (percentile-method tiers): P10, floored to 2.5 kg
+- Quota fraction (quota-method tiers): top 25% of the tier below
+- Minimum lifters in the SOURCE population for a cell to carry a number: 40
 - Meets scanned: 5245; entry rows read: 169401
 - Distinct lifter-tier-class records kept: 49854
+
+## THIS TABLE IS MIXED-METHOD. Every cell says which method made it.
+
+| tier | entry to that field | designation method | is it a qualifying standard? |
+|---|---|---|---|
+| local | open | tier-field-percentile | **NO — describes an open field** |
+| regional | open | tier-field-percentile | **NO — describes an open field** |
+| nationals | gated | tier-field-percentile | derived, see §3.6 of the deliverable |
+| worlds | quota | tier-below-quota | derived, see §3.6 of the deliverable |
+
+- **†** DERIVED FROM AN UNGATED POPULATION. Entry to these meets is open — anybody may enter, nothing had to be cleared to be in this field. The number describes what the people who showed up totalled. IT IS NOT A QUALIFYING STANDARD and no lifter in it had to meet one. See qualifying-totals.md §4.2 (regional) and §4.7 (local).
+- **‡** MIXED METHOD: this cell is NOT the same statistic as the unmarked ones. It is the total reached by the strongest 25% of the tier BELOW, not a percentile of this tier's own field, because this tier's field is filled by national quota rather than by standard. See qualifying-totals.md §3.6.
 
 ## Rejects, by reason
 
@@ -38,117 +51,356 @@
 
 ### local — men
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 59 | 295 | 267.5 | — | 238.8 | 269.5 | 332.5 | 410 | 467.5 | 507.5 | 122.5 | 642.5 | — |
-| 66 | 913 | 350.0 | — | 309 | 350 | 402.5 | 455 | 507.5 | 557 | 125 | 732.5 | — |
-| 74 | 2956 | 390.0 | — | 356.9 | 390 | 447.5 | 500 | 550 | 602.5 | 75 | 858 | — |
-| 83 | 5443 | 435.0 | — | 400 | 435 | 485 | 542.5 | 600 | 652.5 | 115 | 904 | — |
-| 93 | 5354 | 460.0 | — | 425 | 460 | 510 | 570 | 630 | 687.5 | 75 | 915 | — |
-| 105 | 4590 | 477.5 | — | 440 | 477.5 | 537.5 | 600 | 665 | 722.5 | 75 | 960.5 | — |
-| 120 | 2750 | 495.0 | — | 450 | 495 | 558.1 | 622.5 | 692.5 | 757.7 | 115 | 1010.5 | — |
-| 120+ | 1692 | 495.0 | — | 460 | 495.3 | 567.5 | 647.5 | 727.5 | 805 | 197.5 | 1153.5 | — |
+Entry regime: **open**. Method: **tier-field-percentile**.
+
+**† DERIVED FROM AN UNGATED POPULATION. Entry to these meets is open — anybody may enter, nothing had to be cleared to be in this field. The number describes what the people who showed up totalled. IT IS NOT A QUALIFYING STANDARD and no lifter in it had to meet one. See qualifying-totals.md §4.2 (regional) and §4.7 (local).**
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 59 | 295 | 267.5† | local | 295 | — | — | 238.8 | 269.5 | 332.5 | 410 | 467.5 | 507.5 | 122.5 | 642.5 | — | 90.2% | — |
+| 66 | 913 | 350.0† | local | 913 | — | — | 309 | 350 | 402.5 | 455 | 507.5 | 557 | 125 | 732.5 | — | 90% | — |
+| 74 | 2956 | 390.0† | local | 2956 | — | — | 356.9 | 390 | 447.5 | 500 | 550 | 602.5 | 75 | 858 | — | 90.5% | — |
+| 83 | 5443 | 435.0† | local | 5443 | — | — | 400 | 435 | 485 | 542.5 | 600 | 652.5 | 115 | 904 | — | 90.4% | — |
+| 93 | 5354 | 460.0† | local | 5354 | — | — | 425 | 460 | 510 | 570 | 630 | 687.5 | 75 | 915 | — | 90.2% | — |
+| 105 | 4590 | 477.5† | local | 4590 | — | — | 440 | 477.5 | 537.5 | 600 | 665 | 722.5 | 75 | 960.5 | — | 90.2% | — |
+| 120 | 2750 | 495.0† | local | 2750 | — | — | 450 | 495 | 558.1 | 622.5 | 692.5 | 757.7 | 115 | 1010.5 | — | 90.2% | — |
+| 120+ | 1692 | 495.0† | local | 1692 | — | — | 460 | 495.3 | 567.5 | 647.5 | 727.5 | 805 | 197.5 | 1153.5 | — | 90.3% | — |
 
 ### local — women
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 47 | 152 | 175.0 | — | 154.6 | 175 | 200 | 245 | 287.5 | 327.3 | 115.67 | 422.5 | — |
-| 52 | 587 | 205.0 | — | 190.8 | 205 | 235 | 275 | 315 | 353 | 137.5 | 430 | — |
-| 57 | 1144 | 222.5 | — | 205 | 222.5 | 255 | 292.5 | 327.5 | 366.8 | 120 | 510 | — |
-| 63 | 2024 | 227.5 | — | 210 | 227.5 | 265 | 302.5 | 340 | 380 | 102 | 542.5 | — |
-| 69 | 2551 | 245.0 | — | 222.5 | 245 | 280 | 320 | 358.8 | 400 | 75 | 580 | — |
-| 76 | 2451 | 252.5 | — | 227.5 | 252.5 | 290 | 330 | 372.5 | 417.5 | 115 | 560 | — |
-| 84 | 1816 | 255.0 | — | 235 | 255 | 295 | 335 | 380 | 422.5 | 147.5 | 610.5 | — |
-| 84+ | 2820 | 257.5 | — | 235 | 257.5 | 300 | 350 | 402.5 | 450 | 75 | 667.5 | — |
+Entry regime: **open**. Method: **tier-field-percentile**.
+
+**† DERIVED FROM AN UNGATED POPULATION. Entry to these meets is open — anybody may enter, nothing had to be cleared to be in this field. The number describes what the people who showed up totalled. IT IS NOT A QUALIFYING STANDARD and no lifter in it had to meet one. See qualifying-totals.md §4.2 (regional) and §4.7 (local).**
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 47 | 152 | 175.0† | local | 152 | — | — | 154.6 | 175 | 200 | 245 | 287.5 | 327.3 | 115.67 | 422.5 | — | 90.8% | — |
+| 52 | 587 | 205.0† | local | 587 | — | — | 190.8 | 205 | 235 | 275 | 315 | 353 | 137.5 | 430 | — | 90.1% | — |
+| 57 | 1144 | 222.5† | local | 1144 | — | — | 205 | 222.5 | 255 | 292.5 | 327.5 | 366.8 | 120 | 510 | — | 90.2% | — |
+| 63 | 2024 | 227.5† | local | 2024 | — | — | 210 | 227.5 | 265 | 302.5 | 340 | 380 | 102 | 542.5 | — | 90.2% | — |
+| 69 | 2551 | 245.0† | local | 2551 | — | — | 222.5 | 245 | 280 | 320 | 358.8 | 400 | 75 | 580 | — | 90.4% | — |
+| 76 | 2451 | 252.5† | local | 2451 | — | — | 227.5 | 252.5 | 290 | 330 | 372.5 | 417.5 | 115 | 560 | — | 90.3% | — |
+| 84 | 1816 | 255.0† | local | 1816 | — | — | 235 | 255 | 295 | 335 | 380 | 422.5 | 147.5 | 610.5 | — | 90.9% | — |
+| 84+ | 2820 | 257.5† | local | 2820 | — | — | 235 | 257.5 | 300 | 350 | 402.5 | 450 | 75 | 667.5 | — | 90.3% | — |
 
 ### regional — men
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 59 | 69 | 302.5 | 467.5 | 255 | 304 | 375 | 422.5 | 477.5 | 519.5 | 195 | 568.5 | 83.1% |
-| 66 | 200 | 365.0 | 507.5 | 324.4 | 367 | 429.4 | 497.5 | 545 | 577.5 | 252.5 | 697.5 | 86.7% |
-| 74 | 678 | 425.0 | 550.0 | 399.6 | 425 | 488.1 | 537.5 | 582.5 | 627.5 | 212.5 | 782.5 | 82.2% |
-| 83 | 1216 | 477.5 | 600.0 | 442.5 | 478.8 | 525 | 580 | 635.6 | 680 | 182.5 | 800 | 78.5% |
-| 93 | 1222 | 485.0 | 630.0 | 440.1 | 485 | 537.5 | 602.5 | 662.5 | 720 | 305 | 853 | 84.3% |
-| 105 | 1114 | 515.0 | 665.0 | 480 | 515 | 572.5 | 640 | 702.5 | 754.3 | 282.5 | 877.5 | 81.8% |
-| 120 | 709 | 532.5 | 692.5 | 492.5 | 534.5 | 600 | 672.5 | 742.5 | 793 | 310 | 955 | 82.5% |
-| 120+ | 490 | 537.5 | 727.5 | 503.6 | 539.8 | 617.5 | 705 | 781.9 | 837.5 | 225 | 1000 | 82.8% |
+Entry regime: **open**. Method: **tier-field-percentile**.
+
+**† DERIVED FROM AN UNGATED POPULATION. Entry to these meets is open — anybody may enter, nothing had to be cleared to be in this field. The number describes what the people who showed up totalled. IT IS NOT A QUALIFYING STANDARD and no lifter in it had to meet one. See qualifying-totals.md §4.2 (regional) and §4.7 (local).**
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 59 | 69 | 302.5† | regional | 69 | 467.5 | 337.5 | 255 | 304 | 375 | 422.5 | 477.5 | 519.5 | 195 | 568.5 | 83.1% | 89.9% | 7.2% |
+| 66 | 200 | 365.0† | regional | 200 | 507.5 | 400 | 324.4 | 367 | 429.4 | 497.5 | 545 | 577.5 | 252.5 | 697.5 | 86.7% | 90% | 7.5% |
+| 74 | 678 | 425.0† | regional | 678 | 550 | 447.5 | 399.6 | 425 | 488.1 | 537.5 | 582.5 | 627.5 | 212.5 | 782.5 | 82.2% | 90.7% | 4.1% |
+| 83 | 1216 | 477.5† | regional | 1216 | 600 | 495 | 442.5 | 478.8 | 525 | 580 | 635.6 | 680 | 182.5 | 800 | 78.5% | 90.5% | 4.6% |
+| 93 | 1222 | 485.0† | regional | 1222 | 630 | 510 | 440.1 | 485 | 537.5 | 602.5 | 662.5 | 720 | 305 | 853 | 84.3% | 90.3% | 6.4% |
+| 105 | 1114 | 515.0† | regional | 1114 | 665 | 537.5 | 480 | 515 | 572.5 | 640 | 702.5 | 754.3 | 282.5 | 877.5 | 81.8% | 90.6% | 4.8% |
+| 120 | 709 | 532.5† | regional | 709 | 692.5 | 557.5 | 492.5 | 534.5 | 600 | 672.5 | 742.5 | 793 | 310 | 955 | 82.5% | 90.1% | 5.4% |
+| 120+ | 490 | 537.5† | regional | 490 | 727.5 | 565 | 503.6 | 539.8 | 617.5 | 705 | 781.9 | 837.5 | 225 | 1000 | 82.8% | 90.6% | 4.1% |
 
 ### regional — women
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 47 | 48 | 185.0 | 287.5 | 174.4 | 185.3 | 209.4 | 265 | 297.5 | 322.5 | 115 | 402.5 | 82.2% |
-| 52 | 151 | 212.5 | 315.0 | 190.3 | 212.5 | 251.3 | 295 | 327.5 | 350 | 127.5 | 390 | 87.1% |
-| 57 | 270 | 247.5 | 327.5 | 226.1 | 249.8 | 275.6 | 312.5 | 345 | 375 | 102.5 | 445 | 80.4% |
-| 63 | 489 | 245.0 | 340.0 | 228.5 | 247 | 285 | 330 | 370 | 403 | 150 | 482.5 | 84% |
-| 69 | 632 | 265.0 | 357.5 | 235 | 265 | 305 | 347.5 | 387.5 | 422.5 | 137.5 | 522.5 | 82.7% |
-| 76 | 572 | 282.5 | 372.5 | 252.5 | 282.5 | 320 | 368.8 | 410 | 445 | 160 | 530 | 79.6% |
-| 84 | 436 | 280.0 | 380.0 | 260 | 280 | 325 | 367.5 | 412.5 | 450 | 142.5 | 582.5 | 82.2% |
-| 84+ | 703 | 287.5 | 402.5 | 257.8 | 287.5 | 337.5 | 380 | 437.5 | 480 | 127.5 | 630 | 81.4% |
+Entry regime: **open**. Method: **tier-field-percentile**.
+
+**† DERIVED FROM AN UNGATED POPULATION. Entry to these meets is open — anybody may enter, nothing had to be cleared to be in this field. The number describes what the people who showed up totalled. IT IS NOT A QUALIFYING STANDARD and no lifter in it had to meet one. See qualifying-totals.md §4.2 (regional) and §4.7 (local).**
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 47 | 48 | 185.0† | regional | 48 | 287.5 | 190 | 174.4 | 185.3 | 209.4 | 265 | 297.5 | 322.5 | 115 | 402.5 | 82.2% | 89.6% | 6.3% |
+| 52 | 151 | 212.5† | regional | 151 | 315 | 227.5 | 190.3 | 212.5 | 251.3 | 295 | 327.5 | 350 | 127.5 | 390 | 87.1% | 90.7% | 6.6% |
+| 57 | 270 | 247.5† | regional | 270 | 327.5 | 255 | 226.1 | 249.8 | 275.6 | 312.5 | 345 | 375 | 102.5 | 445 | 80.4% | 90.4% | 4.4% |
+| 63 | 489 | 245.0† | regional | 489 | 340 | 257.5 | 228.5 | 247 | 285 | 330 | 370 | 403 | 150 | 482.5 | 84% | 90.8% | 4.3% |
+| 69 | 632 | 265.0† | regional | 632 | 357.5 | 280 | 235 | 265 | 305 | 347.5 | 387.5 | 422.5 | 137.5 | 522.5 | 82.7% | 90% | 5.9% |
+| 76 | 572 | 282.5† | regional | 572 | 372.5 | 297.5 | 252.5 | 282.5 | 320 | 368.8 | 410 | 445 | 160 | 530 | 79.6% | 90% | 4.9% |
+| 84 | 436 | 280.0† | regional | 436 | 380 | 292.5 | 260 | 280 | 325 | 367.5 | 412.5 | 450 | 142.5 | 582.5 | 82.2% | 90.6% | 3.7% |
+| 84+ | 703 | 287.5† | regional | 703 | 402.5 | 307.5 | 257.8 | 287.5 | 337.5 | 380 | 437.5 | 480 | 127.5 | 630 | 81.4% | 90.3% | 4.8% |
 
 ### nationals — men
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 59 | 47 | 417.5 | 477.5 | 409 | 417.5 | 452.5 | 482.5 | 538.8 | 578.3 | 262.5 | 651 | 52.2% |
-| 66 | 61 | 515.0 | 545.0 | 492.5 | 515 | 537.5 | 580 | 657.5 | 702.5 | 455 | 720 | 42% |
-| 74 | 146 | 557.5 | 582.5 | 491.3 | 558.8 | 592.5 | 637.5 | 672.5 | 716.3 | 287.5 | 852.5 | 38.5% |
-| 83 | 261 | 627.5 | 635.0 | 560 | 627.5 | 665 | 695 | 735 | 772.5 | 332.5 | 900 | 28.4% |
-| 93 | 169 | 630.0 | 662.5 | 588 | 630 | 702.5 | 747.5 | 802.5 | 840 | 422.5 | 930 | 37.9% |
-| 105 | 215 | 662.5 | 702.5 | 627.3 | 662.5 | 730 | 765 | 808.8 | 865 | 492.5 | 980 | 42.5% |
-| 120 | 151 | 730.0 | 742.5 | 663.8 | 730 | 756.3 | 797.5 | 845 | 886 | 415 | 983 | 29.1% |
-| 120+ | 135 | 737.5 | 780.0 | 661.3 | 738 | 800 | 840 | 903.8 | 939 | 477.5 | 1136.5 | 39.2% |
+Entry regime: **gated**. Method: **tier-field-percentile**.
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 59 | 47 | 417.5 | nationals | 47 | 477.5 | 417.5 | 409 | 417.5 | 452.5 | 482.5 | 538.8 | 578.3 | 262.5 | 651 | 52.2% | 91.5% | 2.1% |
+| 66 | 61 | 515.0 | nationals | 61 | 545 | 515 | 492.5 | 515 | 537.5 | 580 | 657.5 | 702.5 | 455 | 720 | 42% | 90.2% | 0% |
+| 74 | 146 | 557.5 | nationals | 146 | 582.5 | 562.5 | 491.3 | 558.8 | 592.5 | 637.5 | 672.5 | 716.3 | 287.5 | 852.5 | 38.5% | 91.1% | 2.1% |
+| 83 | 261 | 627.5 | nationals | 261 | 635 | 627.5 | 560 | 627.5 | 665 | 695 | 735 | 772.5 | 332.5 | 900 | 28.4% | 90% | 1.1% |
+| 93 | 169 | 630.0 | nationals | 169 | 662.5 | 635 | 588 | 630 | 702.5 | 747.5 | 802.5 | 840 | 422.5 | 930 | 37.9% | 90.5% | 0.6% |
+| 105 | 215 | 662.5 | nationals | 215 | 702.5 | 665 | 627.3 | 662.5 | 730 | 765 | 808.8 | 865 | 492.5 | 980 | 42.5% | 90.2% | 0.5% |
+| 120 | 151 | 730.0 | nationals | 151 | 742.5 | 740 | 663.8 | 730 | 756.3 | 797.5 | 845 | 886 | 415 | 983 | 29.1% | 90.1% | 2% |
+| 120+ | 135 | 737.5 | nationals | 135 | 780 | 752.5 | 661.3 | 738 | 800 | 840 | 903.8 | 939 | 477.5 | 1136.5 | 39.2% | 89.6% | 0.7% |
 
 ### nationals — women
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 47 | 35 | GAP (n=35) | 297.5 | 233 | 269.5 | 305 | 317.5 | 351.3 | 391.7 | 212.5 | 440.5 | — |
-| 52 | 82 | 310.0 | 327.5 | 297.6 | 310.3 | 330 | 361.3 | 382.5 | 404.9 | 275 | 453 | 37.7% |
-| 57 | 94 | 350.0 | 345.0 | 321.6 | 350 | 363.1 | 390 | 421.1 | 442.5 | 242.5 | 501.5 | 23.3% |
-| 63 | 127 | 360.0 | 370.0 | 352.5 | 361.5 | 382.5 | 407.5 | 445 | 475.2 | 225 | 566 | 31.9% |
-| 69 | 152 | 395.0 | 387.5 | 376.9 | 395.3 | 412.5 | 436.3 | 465 | 494.8 | 287.5 | 570 | 22.5% |
-| 76 | 159 | 392.5 | 410.0 | 381.3 | 394.5 | 420 | 450 | 476.3 | 506 | 242.5 | 629 | 37.9% |
-| 84 | 111 | 412.5 | 412.5 | 387.5 | 412.5 | 433.8 | 470 | 495 | 535 | 305 | 635 | 25.2% |
-| 84+ | 181 | 422.5 | 437.5 | 415 | 422.5 | 465 | 492.5 | 535 | 570 | 235 | 721.5 | 33.6% |
+Entry regime: **gated**. Method: **tier-field-percentile**.
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 47 | 35 | GAP (source n=35) | nationals | 35 | 297.5 | — | 233 | 269.5 | 305 | 317.5 | 351.3 | 391.7 | 212.5 | 440.5 | — | — | 0% |
+| 52 | 82 | 310.0 | nationals | 82 | 327.5 | 310 | 297.6 | 310.3 | 330 | 361.3 | 382.5 | 404.9 | 275 | 453 | 37.7% | 90.2% | 0% |
+| 57 | 94 | 350.0 | nationals | 94 | 345 | 350 | 321.6 | 350 | 363.1 | 390 | 421.1 | 442.5 | 242.5 | 501.5 | 23.3% | 91.5% | 1.1% |
+| 63 | 127 | 360.0 | nationals | 127 | 370 | 362.5 | 352.5 | 361.5 | 382.5 | 407.5 | 445 | 475.2 | 225 | 566 | 31.9% | 91.3% | 0.8% |
+| 69 | 152 | 395.0 | nationals | 152 | 387.5 | 395 | 376.9 | 395.3 | 412.5 | 436.3 | 465 | 494.8 | 287.5 | 570 | 22.5% | 90.1% | 0% |
+| 76 | 159 | 392.5 | nationals | 159 | 410 | 395 | 381.3 | 394.5 | 420 | 450 | 476.3 | 506 | 242.5 | 629 | 37.9% | 91.2% | 0.6% |
+| 84 | 111 | 412.5 | nationals | 111 | 412.5 | 412.5 | 387.5 | 412.5 | 433.8 | 470 | 495 | 535 | 305 | 635 | 25.2% | 91.9% | 0% |
+| 84+ | 181 | 422.5 | nationals | 181 | 437.5 | 422.5 | 415 | 422.5 | 465 | 492.5 | 535 | 570 | 235 | 721.5 | 33.6% | 90.6% | 0.6% |
 
 ### worlds — men
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 59 | 43 | 500.0 | 537.5 | 472 | 500 | 535 | 555 | 580 | 631.5 | 350 | 660 | 44.7% |
-| 66 | 54 | 567.5 | 657.5 | 554.1 | 567.5 | 605.6 | 633.8 | 682.5 | 706.8 | 512.5 | 755 | 60.7% |
-| 74 | 77 | 580.0 | 672.5 | 555.5 | 580.5 | 620 | 680 | 727.5 | 759.5 | 307.5 | 891.5 | 82.2% |
-| 83 | 115 | 627.5 | 735.0 | 610 | 628 | 685 | 732.5 | 770 | 794 | 515 | 890 | 90% |
-| 93 | 121 | 670.0 | 802.5 | 642.5 | 670 | 710 | 755 | 792.5 | 857.5 | 510 | 927.5 | 84.6% |
-| 105 | 104 | 680.0 | 807.5 | 656.1 | 680.5 | 746.3 | 802.5 | 840 | 896.8 | 580 | 980 | 87.9% |
-| 120 | 82 | 722.5 | 845.0 | 702.9 | 722.8 | 802.5 | 848.8 | 900 | 937.3 | 582.5 | 1000 | 91.4% |
-| 120+ | 60 | 797.5 | 902.5 | 759.5 | 797.5 | 849.4 | 905 | 952.5 | 979.5 | 427.5 | 1112.5 | 75.6% |
+Entry regime: **quota**. Method: **tier-below-quota**.
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 59 | 43 | 537.5‡ | nationals | 47 | 537.5 | 500 | 472 | 500 | 535 | 555 | 580 | 631.5 | 350 | 660 | 25.5% | 74.4% | 2.3% |
+| 66 | 54 | 657.5‡ | nationals | 61 | 657.5 | 567.5 | 554.1 | 567.5 | 605.6 | 633.8 | 682.5 | 706.8 | 512.5 | 755 | 26.2% | 38.9% | 1.9% |
+| 74 | 77 | 672.5‡ | nationals | 146 | 672.5 | 600 | 555.5 | 580.5 | 620 | 680 | 727.5 | 759.5 | 307.5 | 891.5 | 26% | 54.5% | 5.2% |
+| 83 | 115 | 735.0‡ | nationals | 261 | 735 | 672.5 | 610 | 628 | 685 | 732.5 | 770 | 794 | 515 | 890 | 25.7% | 47% | 10.4% |
+| 93 | 121 | 802.5‡ | nationals | 169 | 802.5 | 677.5 | 642.5 | 670 | 710 | 755 | 792.5 | 857.5 | 510 | 927.5 | 25.4% | 21.5% | 4.1% |
+| 105 | 104 | 807.5‡ | nationals | 215 | 807.5 | 712.5 | 656.1 | 680.5 | 746.3 | 802.5 | 840 | 896.8 | 580 | 980 | 25.6% | 44.2% | 5.8% |
+| 120 | 82 | 845.0‡ | nationals | 151 | 845 | 782.5 | 702.9 | 722.8 | 802.5 | 848.8 | 900 | 937.3 | 582.5 | 1000 | 25.8% | 53.7% | 12.2% |
+| 120+ | 60 | 902.5‡ | nationals | 135 | 902.5 | 800 | 759.5 | 797.5 | 849.4 | 905 | 952.5 | 979.5 | 427.5 | 1112.5 | 25.9% | 53.3% | 3.3% |
 
 ### worlds — women
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 47 | 39 | GAP (n=39) | — | 274.3 | 305.5 | 320 | 337.5 | 395 | 419.5 | 207.5 | 453 | — |
-| 52 | 70 | 322.5 | 382.5 | 305.9 | 322.5 | 350 | 382.5 | 420 | 437.6 | 217.5 | 486.5 | 84.1% |
-| 57 | 83 | 347.5 | 420.0 | 338 | 348 | 388.8 | 410 | 446.3 | 470.5 | 262.5 | 520 | 91.5% |
-| 63 | 81 | 367.5 | 445.0 | 347.5 | 367.5 | 397.5 | 440 | 485 | 515 | 335 | 569 | 85.8% |
-| 69 | 91 | 382.5 | 465.0 | 366.3 | 382.5 | 418.8 | 460 | 506.3 | 555 | 287.5 | 612.5 | 94.7% |
-| 76 | 79 | 425.0 | 475.0 | 402.3 | 426.5 | 455 | 492.5 | 525 | 575.1 | 335 | 625.5 | 71.7% |
-| 84 | 51 | 435.0 | 495.0 | 416.3 | 435 | 463.8 | 520 | 555 | 580 | 377.5 | 642.5 | 74.8% |
-| 84+ | 41 | 442.5 | 535.0 | 412.5 | 442.5 | 480 | 552.5 | 647.5 | 688 | 377.5 | 756.5 | 84.5% |
+Entry regime: **quota**. Method: **tier-below-quota**.
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 47 | 39 | GAP (source n=35) | nationals | 35 | — | — | 274.3 | 305.5 | 320 | 337.5 | 395 | 419.5 | 207.5 | 453 | — | — | — |
+| 52 | 70 | 382.5‡ | nationals | 82 | 382.5 | 332.5 | 305.9 | 322.5 | 350 | 382.5 | 420 | 437.6 | 217.5 | 486.5 | 29.3% | 51.4% | 5.7% |
+| 57 | 83 | 420.0‡ | nationals | 94 | 420 | 380 | 338 | 348 | 388.8 | 410 | 446.3 | 470.5 | 262.5 | 520 | 27.7% | 41% | 10.8% |
+| 63 | 81 | 445.0‡ | nationals | 127 | 445 | 380 | 347.5 | 367.5 | 397.5 | 440 | 485 | 515 | 335 | 569 | 26% | 48.1% | 8.6% |
+| 69 | 91 | 465.0‡ | nationals | 152 | 465 | 412.5 | 366.3 | 382.5 | 418.8 | 460 | 506.3 | 555 | 287.5 | 612.5 | 28.9% | 47.3% | 14.3% |
+| 76 | 79 | 475.0‡ | nationals | 159 | 475 | 432.5 | 402.3 | 426.5 | 455 | 492.5 | 525 | 575.1 | 335 | 625.5 | 27% | 62% | 3.8% |
+| 84 | 51 | 495.0‡ | nationals | 111 | 495 | 435 | 416.3 | 435 | 463.8 | 520 | 555 | 580 | 377.5 | 642.5 | 27% | 66.7% | 3.9% |
+| 84+ | 41 | 535.0‡ | nationals | 181 | 535 | — | 412.5 | 442.5 | 480 | 552.5 | 647.5 | 688 | 377.5 | 756.5 | 26.5% | 51.2% | 7.3% |
 
 ## Consistency of the designated column
 
-- Tier inversions or ties (higher tier asks no more than the one below): **4**
+- Tier inversions or ties (higher tier asks no more than the one below): **0** of 46 comparisons, 31 of which are not guaranteed by construction
+- Weight-class inversions (a heavier class asks less than the one below it): **3** of 54 comparisons
+  - regional F: 57 247.5 -> 63 245
+  - regional F: 76 282.5 -> 84 280
+  - nationals F: 69 395 -> 76 392.5
+- A monotone REPAIR pass (not applied — see the knob) would move **0** cells of the shipped table:
+
+### The counterfactual: the same cells with worlds designated `tier-field-percentile`
+
+- Tier inversions or ties: **4** of 46 comparisons, 0 guaranteed by construction. Worst deficit **12.5 kg**.
   - M 83: nationals 627.5 -> worlds 627.5
   - M 120: nationals 730 -> worlds 722.5
   - F 57: nationals 350 -> worlds 347.5
   - F 69: nationals 395 -> worlds 382.5
-- Weight-class inversions (a heavier class asks less than the one below it): **3**
-  - regional F: 57 247.5 -> 63 245
-  - regional F: 76 282.5 -> 84 280
-  - nationals F: 69 395 -> 76 392.5
+- A monotone repair would move **3** of them and leave **1** tie(s) untouched, still gating nothing:
+  - worlds M 120: 722.5 -> 730 (+7.5 kg), tying with nationals M 120
+  - worlds F 57: 347.5 -> 350 (+2.5 kg), tying with nationals F 57
+  - worlds F 69: 382.5 -> 395 (+12.5 kg), tying with nationals F 69
+
+## Worlds-tier diagnostics — why that tier is derived differently
+
+| sex | class kg | lifters | delegations | nationals gate | below it | % below | wider than P10? | own-P10 gate | inverts? |
+|---|---|---:|---:|---:|---:|---:|---|---:|---|
+| F | 47 | 39 | 26 | — | — | — | — | — | — |
+| F | 52 | 70 | 38 | 310 | 4 | 5.7% | no | 322.5 | no |
+| F | 57 | 83 | 41 | 350 | 9 | 10.8% | YES | 347.5 | YES |
+| F | 63 | 81 | 40 | 360 | 7 | 8.6% | no | 367.5 | no |
+| F | 69 | 91 | 39 | 395 | 13 | 14.3% | YES | 382.5 | YES |
+| F | 76 | 79 | 39 | 392.5 | 3 | 3.8% | no | 425 | no |
+| F | 84 | 51 | 29 | 412.5 | 2 | 3.9% | no | 435 | no |
+| F | 84+ | 41 | 28 | 422.5 | 3 | 7.3% | no | 442.5 | no |
+| M | 59 | 43 | 29 | 417.5 | 1 | 2.3% | no | 500 | no |
+| M | 66 | 54 | 30 | 515 | 1 | 1.9% | no | 567.5 | no |
+| M | 74 | 77 | 41 | 557.5 | 4 | 5.2% | no | 580 | no |
+| M | 83 | 115 | 51 | 627.5 | 12 | 10.4% | YES | 627.5 | YES |
+| M | 93 | 121 | 55 | 630 | 5 | 4.1% | no | 670 | no |
+| M | 105 | 104 | 46 | 662.5 | 6 | 5.8% | no | 680 | no |
+| M | 120 | 82 | 47 | 730 | 10 | 12.2% | YES | 722.5 | YES |
+| M | 120+ | 60 | 36 | 737.5 | 2 | 3.3% | no | 797.5 | no |
+
+- Worlds field: 1191 lifters, 82 of them below their own class's nationals gate.
+- Of those, 67.1% come from a delegation of 2 or fewer in that cell — against a base rate of 53.6% over the whole worlds field.
+- The last two columns agree in **15 of 15** cells: 4 cells are contaminated beyond the percentile being taken, 4 invert under it.
+
+## Left-tail shape — the refuted hypothesis, kept
+
+| tier | cells | median (P10 - min) kg | worst |
+|---|---:|---:|---:|
+| local | 16 | 182.5 | 402.5 |
+| regional | 16 | 147.3 | 314.8 |
+| nationals | 15 | 155 | 315 |
+| worlds | 15 | 100.5 | 370 |
+
+## Structural checks
+
+`EMPTY` is not `PASS`: it means the predicate had nothing to run on.
+
+| check | result | domain | detail |
+|---|---|---:|---|
+| the table has cells to check | PASS | 64 | 62 of 64 cells carry a number |
+| every cell declares its method and entry regime | PASS | 64 | 64/64 declared |
+| every ungated-population cell carries the marker, and only those | PASS | 32 | 32 marked, 32 open-population cells |
+| no ungated cell claims to be a qualifying standard | PASS | 64 | 32 cells carry isQualifyingStandard: false |
+| the tier ladder does not invert | PASS | 46 | 46 comparisons, 31 of them not guaranteed by construction |
+| the ladder rises strictly at every step | PASS | 46 | 46/46 strictly greater |
+| the ladder check has a domain that can fail | PASS | 46 | 31 of 46 comparisons are not construction-guaranteed |
+| own-field clearance is arithmetic, not evidence | PASS | 47 | 47 percentile cells within 5pp of 90% |
+| quota cells name the population they came from | PASS | 15 | 15 quota cells |
+
+## The tables the deliverable carries, rendered from this run
+
+`--check-doc` compares `qualifying-totals.md` against exactly these blocks.
+
+### `shipped-M`
+
+<!--TABLE raw:shipped-M-->
+| class kg | local | regional | nationals | worlds |
+|---|---:|---:|---:|---:|
+| 59 | 267.5† (295) | 302.5† (69) | 417.5 (47) | 537.5‡ (47) |
+| 66 | 350.0† (913) | 365.0† (200) | 515.0 (61) | 657.5‡ (61) |
+| 74 | 390.0† (2956) | 425.0† (678) | 557.5 (146) | 672.5‡ (146) |
+| 83 | 435.0† (5443) | 477.5† (1216) | 627.5 (261) | 735.0‡ (261) |
+| 93 | 460.0† (5354) | 485.0† (1222) | 630.0 (169) | 802.5‡ (169) |
+| 105 | 477.5† (4590) | 515.0† (1114) | 662.5 (215) | 807.5‡ (215) |
+| 120 | 495.0† (2750) | 532.5† (709) | 730.0 (151) | 845.0‡ (151) |
+| 120+ | 495.0† (1692) | 537.5† (490) | 737.5 (135) | 902.5‡ (135) |
+
+### `worlds-methods-M`
+
+<!--TABLE raw:worlds-methods-M-->
+| class kg | nationals gate | own P10 | own P25 | own P50 | trimmed P10 | quota P75 (SHIPPED) |
+|---|---:|---:|---:|---:|---:|---:|
+| 59 | 417.5 | 500.0 / 44.7% | 535.0 / 27.7% | 555.0 / 17% | 500.0 / 44.7% | 537.5 / 25.5% |
+| 66 | 515.0 | 567.5 / 60.7% | 605.0 / 34.4% | 632.5 / 29.5% | 567.5 / 60.7% | 657.5 / 26.2% |
+| 74 | 557.5 | 580.0 / 82.2% | 620.0 / 62.3% | 680.0 / 22.6% | 600.0 / 73.3% | 672.5 / 26% |
+| 83 | 627.5 | 627.5 / 90% | 685.0 / 59.4% | 732.5 / 28.7% | 672.5 / 71.3% | 735.0 / 25.7% |
+| 93 | 630.0 | 670.0 / 84.6% | 710.0 / 73.4% | 755.0 / 46.2% | 677.5 / 82.8% | 802.5 / 25.4% |
+| 105 | 662.5 | 680.0 / 87.9% | 745.0 / 67.4% | 802.5 / 29.3% | 712.5 / 81.9% | 807.5 / 25.6% |
+| 120 | 730.0 | 722.5 / 91.4% | 802.5 / 48.3% | 847.5 / 24.5% | 782.5 / 60.3% | 845.0 / 25.8% |
+| 120+ | 737.5 | 797.5 / 75.6% | 847.5 / 46.7% | 905.0 / 25.2% | 800.0 / 75.6% | 902.5 / 25.9% |
+
+### `quota-M`
+
+<!--TABLE raw:quota-M-->
+| class kg | regional | nationals | worlds |
+|---|---:|---:|---:|
+| 59 | 467.5† (295) | 477.5† (69) | 537.5 (47) |
+| 66 | 507.5† (913) | 545.0† (200) | 657.5 (61) |
+| 74 | 550.0† (2956) | 582.5† (678) | 672.5 (146) |
+| 83 | 600.0† (5443) | 635.0† (1216) | 735.0 (261) |
+| 93 | 630.0† (5354) | 662.5† (1222) | 802.5 (169) |
+| 105 | 665.0† (4590) | 702.5† (1114) | 807.5 (215) |
+| 120 | 692.5† (2750) | 742.5† (709) | 845.0 (151) |
+| 120+ | 727.5† (1692) | 780.0† (490) | 902.5 (135) |
+
+### `shipped-F`
+
+<!--TABLE raw:shipped-F-->
+| class kg | local | regional | nationals | worlds |
+|---|---:|---:|---:|---:|
+| 47 | 175.0† (152) | 185.0† (48) | GAP (35) | GAP (35) |
+| 52 | 205.0† (587) | 212.5† (151) | 310.0 (82) | 382.5‡ (82) |
+| 57 | 222.5† (1144) | 247.5† (270) | 350.0 (94) | 420.0‡ (94) |
+| 63 | 227.5† (2024) | 245.0† (489) | 360.0 (127) | 445.0‡ (127) |
+| 69 | 245.0† (2551) | 265.0† (632) | 395.0 (152) | 465.0‡ (152) |
+| 76 | 252.5† (2451) | 282.5† (572) | 392.5 (159) | 475.0‡ (159) |
+| 84 | 255.0† (1816) | 280.0† (436) | 412.5 (111) | 495.0‡ (111) |
+| 84+ | 257.5† (2820) | 287.5† (703) | 422.5 (181) | 535.0‡ (181) |
+
+### `worlds-methods-F`
+
+<!--TABLE raw:worlds-methods-F-->
+| class kg | nationals gate | own P10 | own P25 | own P50 | trimmed P10 | quota P75 (SHIPPED) |
+|---|---:|---:|---:|---:|---:|---:|
+| 47 | GAP | GAP | GAP | GAP | GAP | GAP |
+| 52 | 310.0 | 322.5 / 84.1% | 350.0 / 62.2% | 382.5 / 29.3% | 332.5 / 73.2% | 382.5 / 29.3% |
+| 57 | 350.0 | 347.5 / 91.5% | 387.5 / 53.2% | 410.0 / 35.1% | 380.0 / 59.6% | 420.0 / 27.7% |
+| 63 | 360.0 | 367.5 / 85.8% | 397.5 / 61.4% | 440.0 / 27.6% | 380.0 / 77.2% | 445.0 / 26% |
+| 69 | 395.0 | 382.5 / 94.7% | 417.5 / 71.1% | 460.0 / 31.6% | 412.5 / 77% | 465.0 / 28.9% |
+| 76 | 392.5 | 425.0 / 71.7% | 455.0 / 47.2% | 492.5 / 17.6% | 432.5 / 67.3% | 475.0 / 27% |
+| 84 | 412.5 | 435.0 / 74.8% | 462.5 / 55% | 520.0 / 14.4% | 435.0 / 74.8% | 495.0 / 27% |
+| 84+ | 422.5 | 442.5 / 84.5% | 480.0 / 60.2% | 552.5 / 18.2% | GAP | 535.0 / 26.5% |
+
+### `quota-F`
+
+<!--TABLE raw:quota-F-->
+| class kg | regional | nationals | worlds |
+|---|---:|---:|---:|
+| 47 | 287.5† (152) | 297.5† (48) | GAP (35) |
+| 52 | 315.0† (587) | 327.5† (151) | 382.5 (82) |
+| 57 | 327.5† (1144) | 345.0† (270) | 420.0 (94) |
+| 63 | 340.0† (2024) | 370.0† (489) | 445.0 (127) |
+| 69 | 357.5† (2551) | 387.5† (632) | 465.0 (152) |
+| 76 | 372.5† (2451) | 410.0† (572) | 475.0 (159) |
+| 84 | 380.0† (1816) | 412.5† (436) | 495.0 (111) |
+| 84+ | 402.5† (2820) | 437.5† (703) | 535.0 (181) |
+
+### `sufficient`
+
+<!--TABLE raw:sufficient-->
+| tier sex class | source lifters | designated kg | method |
+|---|---:|---:|---:|
+| local M 59 | 295 | 267.5† | tier-field-percentile |
+| local M 66 | 913 | 350.0† | tier-field-percentile |
+| local M 74 | 2956 | 390.0† | tier-field-percentile |
+| local M 83 | 5443 | 435.0† | tier-field-percentile |
+| local M 93 | 5354 | 460.0† | tier-field-percentile |
+| local M 105 | 4590 | 477.5† | tier-field-percentile |
+| local M 120 | 2750 | 495.0† | tier-field-percentile |
+| local M 120+ | 1692 | 495.0† | tier-field-percentile |
+| local F 47 | 152 | 175.0† | tier-field-percentile |
+| local F 52 | 587 | 205.0† | tier-field-percentile |
+| local F 57 | 1144 | 222.5† | tier-field-percentile |
+| local F 63 | 2024 | 227.5† | tier-field-percentile |
+| local F 69 | 2551 | 245.0† | tier-field-percentile |
+| local F 76 | 2451 | 252.5† | tier-field-percentile |
+| local F 84 | 1816 | 255.0† | tier-field-percentile |
+| local F 84+ | 2820 | 257.5† | tier-field-percentile |
+| regional M 59 | 69 | 302.5† | tier-field-percentile |
+| regional M 66 | 200 | 365.0† | tier-field-percentile |
+| regional M 74 | 678 | 425.0† | tier-field-percentile |
+| regional M 83 | 1216 | 477.5† | tier-field-percentile |
+| regional M 93 | 1222 | 485.0† | tier-field-percentile |
+| regional M 105 | 1114 | 515.0† | tier-field-percentile |
+| regional M 120 | 709 | 532.5† | tier-field-percentile |
+| regional M 120+ | 490 | 537.5† | tier-field-percentile |
+| regional F 47 | 48 | 185.0† | tier-field-percentile |
+| regional F 52 | 151 | 212.5† | tier-field-percentile |
+| regional F 57 | 270 | 247.5† | tier-field-percentile |
+| regional F 63 | 489 | 245.0† | tier-field-percentile |
+| regional F 69 | 632 | 265.0† | tier-field-percentile |
+| regional F 76 | 572 | 282.5† | tier-field-percentile |
+| regional F 84 | 436 | 280.0† | tier-field-percentile |
+| regional F 84+ | 703 | 287.5† | tier-field-percentile |
+| nationals M 59 | 47 | 417.5 | tier-field-percentile |
+| nationals M 66 | 61 | 515.0 | tier-field-percentile |
+| nationals M 74 | 146 | 557.5 | tier-field-percentile |
+| nationals M 83 | 261 | 627.5 | tier-field-percentile |
+| nationals M 93 | 169 | 630.0 | tier-field-percentile |
+| nationals M 105 | 215 | 662.5 | tier-field-percentile |
+| nationals M 120 | 151 | 730.0 | tier-field-percentile |
+| nationals M 120+ | 135 | 737.5 | tier-field-percentile |
+| nationals F 52 | 82 | 310.0 | tier-field-percentile |
+| nationals F 57 | 94 | 350.0 | tier-field-percentile |
+| nationals F 63 | 127 | 360.0 | tier-field-percentile |
+| nationals F 69 | 152 | 395.0 | tier-field-percentile |
+| nationals F 76 | 159 | 392.5 | tier-field-percentile |
+| nationals F 84 | 111 | 412.5 | tier-field-percentile |
+| nationals F 84+ | 181 | 422.5 | tier-field-percentile |
+| worlds M 59 | 47 | 537.5‡ | tier-below-quota |
+| worlds M 66 | 61 | 657.5‡ | tier-below-quota |
+| worlds M 74 | 146 | 672.5‡ | tier-below-quota |
+| worlds M 83 | 261 | 735.0‡ | tier-below-quota |
+| worlds M 93 | 169 | 802.5‡ | tier-below-quota |
+| worlds M 105 | 215 | 807.5‡ | tier-below-quota |
+| worlds M 120 | 151 | 845.0‡ | tier-below-quota |
+| worlds M 120+ | 135 | 902.5‡ | tier-below-quota |
+| worlds F 52 | 82 | 382.5‡ | tier-below-quota |
+| worlds F 57 | 94 | 420.0‡ | tier-below-quota |
+| worlds F 63 | 127 | 445.0‡ | tier-below-quota |
+| worlds F 69 | 152 | 465.0‡ | tier-below-quota |
+| worlds F 76 | 159 | 475.0‡ | tier-below-quota |
+| worlds F 84 | 111 | 495.0‡ | tier-below-quota |
+| worlds F 84+ | 181 | 535.0‡ | tier-below-quota |
 

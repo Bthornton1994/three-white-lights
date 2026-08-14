@@ -6,10 +6,23 @@
 - Latest meet in range: 2026-08-01
 - Date range: 2021-01-01 .. 2099-12-31
 - Equipment kept: **Single-ply**
-- Designated percentile: P10, floored to 2.5 kg
-- Minimum lifters for a cell to carry a number: 40
+- Designated percentile (percentile-method tiers): P10, floored to 2.5 kg
+- Quota fraction (quota-method tiers): top 25% of the tier below
+- Minimum lifters in the SOURCE population for a cell to carry a number: 40
 - Meets scanned: 5245; entry rows read: 169401
 - Distinct lifter-tier-class records kept: 1645
+
+## THIS TABLE IS MIXED-METHOD. Every cell says which method made it.
+
+| tier | entry to that field | designation method | is it a qualifying standard? |
+|---|---|---|---|
+| local | open | tier-field-percentile | **NO — describes an open field** |
+| regional | open | tier-field-percentile | **NO — describes an open field** |
+| nationals | gated | tier-field-percentile | derived, see §3.6 of the deliverable |
+| worlds | quota | tier-below-quota | derived, see §3.6 of the deliverable |
+
+- **†** DERIVED FROM AN UNGATED POPULATION. Entry to these meets is open — anybody may enter, nothing had to be cleared to be in this field. The number describes what the people who showed up totalled. IT IS NOT A QUALIFYING STANDARD and no lifter in it had to meet one. See qualifying-totals.md §4.2 (regional) and §4.7 (local).
+- **‡** MIXED METHOD: this cell is NOT the same statistic as the unmarked ones. It is the total reached by the strongest 25% of the tier BELOW, not a percentile of this tier's own field, because this tier's field is filled by national quota rather than by standard. See qualifying-totals.md §3.6.
 
 ## Rejects, by reason
 
@@ -38,111 +51,293 @@
 
 ### local — men
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 59 | 26 | GAP (n=26) | — | 246.3 | 266.3 | 314.3 | 386.3 | 451.3 | 605 | 240.5 | 657.5 | — |
-| 66 | 25 | GAP (n=25) | — | 348.5 | 391.5 | 430 | 462.5 | 525 | 624.5 | 290 | 690 | — |
-| 74 | 62 | 360.0 | — | 347.6 | 362.3 | 461.3 | 528.8 | 576.9 | 670 | 262.5 | 767.5 | — |
-| 83 | 71 | 452.5 | — | 402.1 | 452.5 | 515 | 575 | 660 | 745 | 192.5 | 867.5 | — |
-| 93 | 82 | 467.5 | — | 452.5 | 467.8 | 535.6 | 610 | 688.1 | 758.5 | 320 | 865 | — |
-| 105 | 84 | 455.0 | — | 431.9 | 455 | 536.9 | 628.8 | 715.6 | 810.5 | 225 | 935 | — |
-| 120 | 51 | 527.5 | — | 490 | 527.5 | 607.5 | 675 | 745 | 810 | 415 | 1030.5 | — |
-| 120+ | 43 | 575.0 | — | 461.3 | 575.5 | 656.3 | 745 | 896.3 | 974.5 | 400 | 1115 | — |
+Entry regime: **open**. Method: **tier-field-percentile**.
+
+**† DERIVED FROM AN UNGATED POPULATION. Entry to these meets is open — anybody may enter, nothing had to be cleared to be in this field. The number describes what the people who showed up totalled. IT IS NOT A QUALIFYING STANDARD and no lifter in it had to meet one. See qualifying-totals.md §4.2 (regional) and §4.7 (local).**
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 59 | 26 | GAP (source n=26) | local | 26 | — | — | 246.3 | 266.3 | 314.3 | 386.3 | 451.3 | 605 | 240.5 | 657.5 | — | — | — |
+| 66 | 25 | GAP (source n=25) | local | 25 | — | — | 348.5 | 391.5 | 430 | 462.5 | 525 | 624.5 | 290 | 690 | — | — | — |
+| 74 | 62 | 360.0† | local | 62 | — | — | 347.6 | 362.3 | 461.3 | 528.8 | 576.9 | 670 | 262.5 | 767.5 | — | 91.9% | — |
+| 83 | 71 | 452.5† | local | 71 | — | — | 402.1 | 452.5 | 515 | 575 | 660 | 745 | 192.5 | 867.5 | — | 90.1% | — |
+| 93 | 82 | 467.5† | local | 82 | — | — | 452.5 | 467.8 | 535.6 | 610 | 688.1 | 758.5 | 320 | 865 | — | 90.2% | — |
+| 105 | 84 | 455.0† | local | 84 | — | — | 431.9 | 455 | 536.9 | 628.8 | 715.6 | 810.5 | 225 | 935 | — | 91.7% | — |
+| 120 | 51 | 527.5† | local | 51 | — | — | 490 | 527.5 | 607.5 | 675 | 745 | 810 | 415 | 1030.5 | — | 90.2% | — |
+| 120+ | 43 | 575.0† | local | 43 | — | — | 461.3 | 575.5 | 656.3 | 745 | 896.3 | 974.5 | 400 | 1115 | — | 88.4% | — |
 
 ### local — women
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 47 | 11 | GAP (n=11) | — | 147.9 | 188.3 | 205 | 280 | 303.8 | 315 | 107.5 | 447.5 | — |
-| 52 | 20 | GAP (n=20) | — | 214 | 233.1 | 243.9 | 291.3 | 348.1 | 375.3 | 185 | 402.5 | — |
-| 57 | 24 | GAP (n=24) | — | 234.6 | 262.9 | 282.5 | 322.5 | 376.9 | 434.3 | 151.9 | 530 | — |
-| 63 | 51 | 255.0 | — | 239.3 | 255 | 284.3 | 325 | 385 | 422.5 | 213.5 | 530 | — |
-| 69 | 37 | GAP (n=37) | — | 265.5 | 290.1 | 315 | 355 | 410 | 434.5 | 222.5 | 555 | — |
-| 76 | 39 | GAP (n=39) | — | 267.3 | 288.7 | 323.8 | 351.5 | 386.3 | 434.5 | 197.5 | 572.5 | — |
-| 84 | 32 | GAP (n=32) | — | 226.3 | 277.8 | 315.2 | 368.8 | 411.3 | 514.8 | 167.5 | 635 | — |
-| 84+ | 67 | 252.5 | — | 245.8 | 253.7 | 313.8 | 405 | 470 | 584 | 215 | 727.5 | — |
+Entry regime: **open**. Method: **tier-field-percentile**.
+
+**† DERIVED FROM AN UNGATED POPULATION. Entry to these meets is open — anybody may enter, nothing had to be cleared to be in this field. The number describes what the people who showed up totalled. IT IS NOT A QUALIFYING STANDARD and no lifter in it had to meet one. See qualifying-totals.md §4.2 (regional) and §4.7 (local).**
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 47 | 11 | GAP (source n=11) | local | 11 | — | — | 147.9 | 188.3 | 205 | 280 | 303.8 | 315 | 107.5 | 447.5 | — | — | — |
+| 52 | 20 | GAP (source n=20) | local | 20 | — | — | 214 | 233.1 | 243.9 | 291.3 | 348.1 | 375.3 | 185 | 402.5 | — | — | — |
+| 57 | 24 | GAP (source n=24) | local | 24 | — | — | 234.6 | 262.9 | 282.5 | 322.5 | 376.9 | 434.3 | 151.9 | 530 | — | — | — |
+| 63 | 51 | 255.0† | local | 51 | — | — | 239.3 | 255 | 284.3 | 325 | 385 | 422.5 | 213.5 | 530 | — | 90.2% | — |
+| 69 | 37 | GAP (source n=37) | local | 37 | — | — | 265.5 | 290.1 | 315 | 355 | 410 | 434.5 | 222.5 | 555 | — | — | — |
+| 76 | 39 | GAP (source n=39) | local | 39 | — | — | 267.3 | 288.7 | 323.8 | 351.5 | 386.3 | 434.5 | 197.5 | 572.5 | — | — | — |
+| 84 | 32 | GAP (source n=32) | local | 32 | — | — | 226.3 | 277.8 | 315.2 | 368.8 | 411.3 | 514.8 | 167.5 | 635 | — | — | — |
+| 84+ | 67 | 252.5† | local | 67 | — | — | 245.8 | 253.7 | 313.8 | 405 | 470 | 584 | 215 | 727.5 | — | 89.6% | — |
 
 ### regional — men
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 59 | 4 | GAP (n=4) | — | 248.1 | 253.8 | 270.6 | 357.5 | 496.9 | 608.3 | 242.5 | 682.5 | — |
-| 66 | 2 | GAP (n=2) | — | 317.8 | 323.2 | 339.1 | 365.8 | 392.4 | 408.4 | 312.5 | 419 | — |
-| 74 | 5 | GAP (n=5) | 575.0 | 392 | 404 | 440 | 480 | 505 | 544 | 380 | 570 | — |
-| 83 | 5 | GAP (n=5) | 660.0 | 601 | 609.5 | 635 | 645 | 717.5 | 734 | 592.5 | 745 | — |
-| 93 | 10 | GAP (n=10) | 687.5 | 546.4 | 567.8 | 573.8 | 627.5 | 653.8 | 720.5 | 525 | 725 | — |
-| 105 | 16 | GAP (n=16) | 715.0 | 574.4 | 588.8 | 616.9 | 657.5 | 769.4 | 926.3 | 565 | 975 | — |
-| 120 | 12 | GAP (n=12) | 745.0 | 603.9 | 619.5 | 750 | 766.3 | 796.9 | 842.3 | 602.5 | 847.5 | — |
-| 120+ | 12 | GAP (n=12) | 895.0 | 607.6 | 645.3 | 679.4 | 736.3 | 795.6 | 847 | 565 | 962.5 | — |
+Entry regime: **open**. Method: **tier-field-percentile**.
+
+**† DERIVED FROM AN UNGATED POPULATION. Entry to these meets is open — anybody may enter, nothing had to be cleared to be in this field. The number describes what the people who showed up totalled. IT IS NOT A QUALIFYING STANDARD and no lifter in it had to meet one. See qualifying-totals.md §4.2 (regional) and §4.7 (local).**
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 59 | 4 | GAP (source n=4) | regional | 4 | — | — | 248.1 | 253.8 | 270.6 | 357.5 | 496.9 | 608.3 | 242.5 | 682.5 | — | — | — |
+| 66 | 2 | GAP (source n=2) | regional | 2 | — | — | 317.8 | 323.2 | 339.1 | 365.8 | 392.4 | 408.4 | 312.5 | 419 | — | — | — |
+| 74 | 5 | GAP (source n=5) | regional | 5 | 575 | — | 392 | 404 | 440 | 480 | 505 | 544 | 380 | 570 | — | — | 0% |
+| 83 | 5 | GAP (source n=5) | regional | 5 | 660 | — | 601 | 609.5 | 635 | 645 | 717.5 | 734 | 592.5 | 745 | — | — | 0% |
+| 93 | 10 | GAP (source n=10) | regional | 10 | 687.5 | — | 546.4 | 567.8 | 573.8 | 627.5 | 653.8 | 720.5 | 525 | 725 | — | — | 0% |
+| 105 | 16 | GAP (source n=16) | regional | 16 | 715 | — | 574.4 | 588.8 | 616.9 | 657.5 | 769.4 | 926.3 | 565 | 975 | — | — | 0% |
+| 120 | 12 | GAP (source n=12) | regional | 12 | 745 | — | 603.9 | 619.5 | 750 | 766.3 | 796.9 | 842.3 | 602.5 | 847.5 | — | — | 0% |
+| 120+ | 12 | GAP (source n=12) | regional | 12 | 895 | — | 607.6 | 645.3 | 679.4 | 736.3 | 795.6 | 847 | 565 | 962.5 | — | — | 8.3% |
 
 ### regional — women
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 47 | 1 | GAP (n=1) | — | 440 | 440 | 440 | 440 | 440 | 440 | 440 | 440 | — |
-| 52 | 2 | GAP (n=2) | — | 168.6 | 179.8 | 213.1 | 268.8 | 324.4 | 357.8 | 157.5 | 380 | — |
-| 57 | 2 | GAP (n=2) | — | 322.6 | 327.8 | 343.1 | 368.8 | 394.4 | 409.8 | 317.5 | 420 | — |
-| 63 | 6 | GAP (n=6) | 385.0 | 223.1 | 253.8 | 325 | 357.5 | 474.4 | 518.8 | 192.5 | 525 | — |
-| 69 | 12 | GAP (n=12) | — | 264.3 | 282 | 300 | 360 | 401.9 | 477.3 | 245 | 490 | — |
-| 76 | 5 | GAP (n=5) | — | 317 | 324 | 345 | 347.5 | 397.5 | 451.5 | 310 | 487.5 | — |
-| 84 | 3 | GAP (n=3) | — | 427.8 | 428 | 428.8 | 430 | 457.5 | 474 | 427.5 | 485 | — |
-| 84+ | 13 | GAP (n=13) | 470.0 | 261.5 | 301.5 | 365 | 460 | 500 | 527.5 | 222.5 | 588 | — |
+Entry regime: **open**. Method: **tier-field-percentile**.
+
+**† DERIVED FROM AN UNGATED POPULATION. Entry to these meets is open — anybody may enter, nothing had to be cleared to be in this field. The number describes what the people who showed up totalled. IT IS NOT A QUALIFYING STANDARD and no lifter in it had to meet one. See qualifying-totals.md §4.2 (regional) and §4.7 (local).**
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 47 | 1 | GAP (source n=1) | regional | 1 | — | — | 440 | 440 | 440 | 440 | 440 | 440 | 440 | 440 | — | — | — |
+| 52 | 2 | GAP (source n=2) | regional | 2 | — | — | 168.6 | 179.8 | 213.1 | 268.8 | 324.4 | 357.8 | 157.5 | 380 | — | — | — |
+| 57 | 2 | GAP (source n=2) | regional | 2 | — | — | 322.6 | 327.8 | 343.1 | 368.8 | 394.4 | 409.8 | 317.5 | 420 | — | — | — |
+| 63 | 6 | GAP (source n=6) | regional | 6 | 385 | — | 223.1 | 253.8 | 325 | 357.5 | 474.4 | 518.8 | 192.5 | 525 | — | — | 16.7% |
+| 69 | 12 | GAP (source n=12) | regional | 12 | — | — | 264.3 | 282 | 300 | 360 | 401.9 | 477.3 | 245 | 490 | — | — | — |
+| 76 | 5 | GAP (source n=5) | regional | 5 | — | — | 317 | 324 | 345 | 347.5 | 397.5 | 451.5 | 310 | 487.5 | — | — | — |
+| 84 | 3 | GAP (source n=3) | regional | 3 | — | — | 427.8 | 428 | 428.8 | 430 | 457.5 | 474 | 427.5 | 485 | — | — | — |
+| 84+ | 13 | GAP (source n=13) | regional | 13 | 470 | — | 261.5 | 301.5 | 365 | 460 | 500 | 527.5 | 222.5 | 588 | — | — | 7.7% |
 
 ### nationals — men
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 59 | 14 | GAP (n=14) | — | 335 | 374.5 | 420 | 527.5 | 631.9 | 652.2 | 270 | 665.5 | — |
-| 66 | 18 | GAP (n=18) | — | 430.3 | 443 | 490.6 | 596.3 | 665.6 | 691.3 | 418 | 727.5 | — |
-| 74 | 19 | GAP (n=19) | — | 486.5 | 548 | 575 | 677.5 | 741.3 | 775 | 365 | 847.5 | — |
-| 83 | 26 | GAP (n=26) | — | 534.4 | 618.8 | 640.6 | 682.5 | 740.6 | 818.8 | 240 | 918.5 | — |
-| 93 | 22 | GAP (n=22) | — | 590 | 590 | 670 | 791.3 | 858.1 | 908.3 | 505 | 965 | — |
-| 105 | 27 | GAP (n=27) | — | 618.3 | 641 | 702.5 | 800 | 866.3 | 953.5 | 460 | 1036 | — |
-| 120 | 27 | GAP (n=27) | — | 749 | 754 | 772.5 | 817.5 | 908.8 | 984 | 730 | 1044 | — |
-| 120+ | 26 | GAP (n=26) | — | 697.5 | 766.3 | 819.4 | 921.3 | 970 | 1080 | 617.5 | 1170 | — |
+Entry regime: **gated**. Method: **tier-field-percentile**.
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 59 | 14 | GAP (source n=14) | nationals | 14 | — | — | 335 | 374.5 | 420 | 527.5 | 631.9 | 652.2 | 270 | 665.5 | — | — | — |
+| 66 | 18 | GAP (source n=18) | nationals | 18 | — | — | 430.3 | 443 | 490.6 | 596.3 | 665.6 | 691.3 | 418 | 727.5 | — | — | — |
+| 74 | 19 | GAP (source n=19) | nationals | 19 | — | — | 486.5 | 548 | 575 | 677.5 | 741.3 | 775 | 365 | 847.5 | — | — | — |
+| 83 | 26 | GAP (source n=26) | nationals | 26 | — | — | 534.4 | 618.8 | 640.6 | 682.5 | 740.6 | 818.8 | 240 | 918.5 | — | — | — |
+| 93 | 22 | GAP (source n=22) | nationals | 22 | — | — | 590 | 590 | 670 | 791.3 | 858.1 | 908.3 | 505 | 965 | — | — | — |
+| 105 | 27 | GAP (source n=27) | nationals | 27 | — | — | 618.3 | 641 | 702.5 | 800 | 866.3 | 953.5 | 460 | 1036 | — | — | — |
+| 120 | 27 | GAP (source n=27) | nationals | 27 | — | — | 749 | 754 | 772.5 | 817.5 | 908.8 | 984 | 730 | 1044 | — | — | — |
+| 120+ | 26 | GAP (source n=26) | nationals | 26 | — | — | 697.5 | 766.3 | 819.4 | 921.3 | 970 | 1080 | 617.5 | 1170 | — | — | — |
 
 ### nationals — women
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 47 | 9 | GAP (n=9) | — | 232.5 | 252.5 | 272.5 | 340 | 385.5 | 415 | 212.5 | 455 | — |
-| 52 | 17 | GAP (n=17) | — | 304.5 | 310.5 | 337.5 | 372.5 | 402.5 | 437.5 | 292.5 | 457.5 | — |
-| 57 | 16 | GAP (n=16) | — | 302.5 | 310 | 343.1 | 395 | 475.6 | 504 | 287.5 | 575 | — |
-| 63 | 19 | GAP (n=19) | — | 336.8 | 343.5 | 363.8 | 405 | 506.3 | 517.5 | 330 | 632.5 | — |
-| 69 | 16 | GAP (n=16) | — | 338.1 | 355 | 403.8 | 440 | 491.3 | 551.3 | 317.5 | 639.5 | — |
-| 76 | 22 | GAP (n=22) | — | 370.8 | 387.3 | 413.8 | 436.8 | 495 | 562.8 | 360 | 615 | — |
-| 84 | 17 | GAP (n=17) | — | 394.5 | 398 | 415 | 460 | 530 | 547.5 | 392.5 | 560.5 | — |
-| 84+ | 37 | GAP (n=37) | — | 413 | 427.5 | 470 | 545 | 625 | 664 | 307.5 | 737.5 | — |
+Entry regime: **gated**. Method: **tier-field-percentile**.
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 47 | 9 | GAP (source n=9) | nationals | 9 | — | — | 232.5 | 252.5 | 272.5 | 340 | 385.5 | 415 | 212.5 | 455 | — | — | — |
+| 52 | 17 | GAP (source n=17) | nationals | 17 | — | — | 304.5 | 310.5 | 337.5 | 372.5 | 402.5 | 437.5 | 292.5 | 457.5 | — | — | — |
+| 57 | 16 | GAP (source n=16) | nationals | 16 | — | — | 302.5 | 310 | 343.1 | 395 | 475.6 | 504 | 287.5 | 575 | — | — | — |
+| 63 | 19 | GAP (source n=19) | nationals | 19 | — | — | 336.8 | 343.5 | 363.8 | 405 | 506.3 | 517.5 | 330 | 632.5 | — | — | — |
+| 69 | 16 | GAP (source n=16) | nationals | 16 | — | — | 338.1 | 355 | 403.8 | 440 | 491.3 | 551.3 | 317.5 | 639.5 | — | — | — |
+| 76 | 22 | GAP (source n=22) | nationals | 22 | — | — | 370.8 | 387.3 | 413.8 | 436.8 | 495 | 562.8 | 360 | 615 | — | — | — |
+| 84 | 17 | GAP (source n=17) | nationals | 17 | — | — | 394.5 | 398 | 415 | 460 | 530 | 547.5 | 392.5 | 560.5 | — | — | — |
+| 84+ | 37 | GAP (source n=37) | nationals | 37 | — | — | 413 | 427.5 | 470 | 545 | 625 | 664 | 307.5 | 737.5 | — | — | — |
 
 ### worlds — men
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 59 | 18 | GAP (n=18) | — | 528.4 | 544.8 | 570 | 598.8 | 658.8 | 712.5 | 505 | 747.5 | — |
-| 66 | 20 | GAP (n=20) | — | 556.9 | 610.5 | 648.1 | 693.8 | 777.1 | 800.3 | 307.5 | 805 | — |
-| 74 | 20 | GAP (n=20) | — | 636 | 642.3 | 694.4 | 775 | 829.4 | 851.8 | 560 | 870 | — |
-| 83 | 40 | 685.0 | — | 669.1 | 686.8 | 731.3 | 791.3 | 850 | 915 | 532.5 | 935 | 46.2% |
-| 93 | 39 | GAP (n=39) | — | 705 | 714.5 | 800 | 837.5 | 902 | 965.5 | 650 | 1064 | — |
-| 105 | 42 | 755.0 | — | 707.5 | 757 | 832.5 | 888.8 | 959.4 | 1037.3 | 452.5 | 1067.5 | 66.7% |
-| 120 | 33 | GAP (n=33) | — | 808.5 | 854 | 895 | 947.5 | 1045 | 1095 | 775 | 1127.5 | — |
-| 120+ | 30 | GAP (n=30) | — | 764.4 | 857.5 | 925.6 | 1041.3 | 1109.4 | 1140.3 | 530 | 1207.5 | — |
+Entry regime: **quota**. Method: **tier-below-quota**.
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 59 | 18 | GAP (source n=14) | nationals | 14 | — | — | 528.4 | 544.8 | 570 | 598.8 | 658.8 | 712.5 | 505 | 747.5 | — | — | — |
+| 66 | 20 | GAP (source n=18) | nationals | 18 | — | — | 556.9 | 610.5 | 648.1 | 693.8 | 777.1 | 800.3 | 307.5 | 805 | — | — | — |
+| 74 | 20 | GAP (source n=19) | nationals | 19 | — | — | 636 | 642.3 | 694.4 | 775 | 829.4 | 851.8 | 560 | 870 | — | — | — |
+| 83 | 40 | GAP (source n=26) | nationals | 26 | — | — | 669.1 | 686.8 | 731.3 | 791.3 | 850 | 915 | 532.5 | 935 | — | — | — |
+| 93 | 39 | GAP (source n=22) | nationals | 22 | — | — | 705 | 714.5 | 800 | 837.5 | 902 | 965.5 | 650 | 1064 | — | — | — |
+| 105 | 42 | GAP (source n=27) | nationals | 27 | — | — | 707.5 | 757 | 832.5 | 888.8 | 959.4 | 1037.3 | 452.5 | 1067.5 | — | — | — |
+| 120 | 33 | GAP (source n=27) | nationals | 27 | — | — | 808.5 | 854 | 895 | 947.5 | 1045 | 1095 | 775 | 1127.5 | — | — | — |
+| 120+ | 30 | GAP (source n=26) | nationals | 26 | — | — | 764.4 | 857.5 | 925.6 | 1041.3 | 1109.4 | 1140.3 | 530 | 1207.5 | — | — | — |
 
 ### worlds — women
 
-| class kg | lifters | DESIGNATED kg | quota-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 47 | 23 | GAP (n=23) | — | 253.3 | 311.5 | 395 | 420 | 440 | 456 | 210 | 482.5 | — |
-| 52 | 31 | GAP (n=31) | — | 365 | 402.5 | 418.8 | 450 | 487.5 | 510 | 330 | 560 | — |
-| 57 | 29 | GAP (n=29) | — | 396 | 403.5 | 425 | 480 | 530 | 550.3 | 375 | 562.5 | — |
-| 63 | 29 | GAP (n=29) | — | 415 | 431 | 465 | 505 | 560 | 589 | 375 | 645 | — |
-| 69 | 33 | GAP (n=33) | — | 459 | 463.5 | 497.5 | 537.5 | 582.5 | 627 | 422.5 | 652.5 | — |
-| 76 | 35 | GAP (n=35) | — | 433.8 | 471.5 | 511.3 | 550 | 593.8 | 637 | 360 | 663 | — |
-| 84 | 29 | GAP (n=29) | — | 421 | 453.5 | 520 | 567.5 | 610 | 645.4 | 400 | 701 | — |
-| 84+ | 27 | GAP (n=27) | — | 461.3 | 479 | 540 | 602.5 | 663.8 | 692.5 | 440 | 710 | — |
+Entry regime: **quota**. Method: **tier-below-quota**.
+
+| class kg | lifters | DESIGNATED kg | from | source n | quota-alt kg | trimmed-alt kg | P5 | P10 | P25 | P50 | P75 | P90 | min | max | % of tier below clearing | % of own field clearing | % of own field below the gate below |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 47 | 23 | GAP (source n=9) | nationals | 9 | — | — | 253.3 | 311.5 | 395 | 420 | 440 | 456 | 210 | 482.5 | — | — | — |
+| 52 | 31 | GAP (source n=17) | nationals | 17 | — | — | 365 | 402.5 | 418.8 | 450 | 487.5 | 510 | 330 | 560 | — | — | — |
+| 57 | 29 | GAP (source n=16) | nationals | 16 | — | — | 396 | 403.5 | 425 | 480 | 530 | 550.3 | 375 | 562.5 | — | — | — |
+| 63 | 29 | GAP (source n=19) | nationals | 19 | — | — | 415 | 431 | 465 | 505 | 560 | 589 | 375 | 645 | — | — | — |
+| 69 | 33 | GAP (source n=16) | nationals | 16 | — | — | 459 | 463.5 | 497.5 | 537.5 | 582.5 | 627 | 422.5 | 652.5 | — | — | — |
+| 76 | 35 | GAP (source n=22) | nationals | 22 | — | — | 433.8 | 471.5 | 511.3 | 550 | 593.8 | 637 | 360 | 663 | — | — | — |
+| 84 | 29 | GAP (source n=17) | nationals | 17 | — | — | 421 | 453.5 | 520 | 567.5 | 610 | 645.4 | 400 | 701 | — | — | — |
+| 84+ | 27 | GAP (source n=37) | nationals | 37 | — | — | 461.3 | 479 | 540 | 602.5 | 663.8 | 692.5 | 440 | 710 | — | — | — |
 
 ## Consistency of the designated column
 
-- Tier inversions or ties (higher tier asks no more than the one below): **0**
-- Weight-class inversions (a heavier class asks less than the one below it): **1**
+- Tier inversions or ties (higher tier asks no more than the one below): **0** of 0 comparisons, 0 of which are not guaranteed by construction
+- Weight-class inversions (a heavier class asks less than the one below it): **1** of 5 comparisons
   - local M: 93 467.5 -> 105 455
+- A monotone REPAIR pass (not applied — see the knob) would move **0** cells of the shipped table:
+
+### The counterfactual: the same cells with worlds designated `tier-field-percentile`
+
+- Tier inversions or ties: **0** of 0 comparisons, 0 guaranteed by construction. Worst deficit **0 kg**.
+- A monotone repair would move **0** of them and leave **0** tie(s) untouched, still gating nothing:
+
+## Worlds-tier diagnostics — why that tier is derived differently
+
+| sex | class kg | lifters | delegations | nationals gate | below it | % below | wider than P10? | own-P10 gate | inverts? |
+|---|---|---:|---:|---:|---:|---:|---|---:|---|
+| F | 47 | 23 | 16 | — | — | — | — | — | — |
+| F | 52 | 31 | 18 | — | — | — | — | — | — |
+| F | 57 | 29 | 21 | — | — | — | — | — | — |
+| F | 63 | 29 | 17 | — | — | — | — | — | — |
+| F | 69 | 33 | 16 | — | — | — | — | — | — |
+| F | 76 | 35 | 20 | — | — | — | — | — | — |
+| F | 84 | 29 | 18 | — | — | — | — | — | — |
+| F | 84+ | 27 | 17 | — | — | — | — | — | — |
+| M | 59 | 18 | 16 | — | — | — | — | — | — |
+| M | 66 | 20 | 17 | — | — | — | — | — | — |
+| M | 74 | 20 | 16 | — | — | — | — | — | — |
+| M | 83 | 40 | 23 | — | — | — | — | 685 | — |
+| M | 93 | 39 | 23 | — | — | — | — | — | — |
+| M | 105 | 42 | 27 | — | — | — | — | 755 | — |
+| M | 120 | 33 | 22 | — | — | — | — | — | — |
+| M | 120+ | 30 | 19 | — | — | — | — | — | — |
+
+- Worlds field: 478 lifters, 0 of them below their own class's nationals gate.
+- Of those, null% come from a delegation of 2 or fewer in that cell — against a base rate of 74.1% over the whole worlds field.
+- The last two columns agree in **0 of 0** cells: 0 cells are contaminated beyond the percentile being taken, 0 invert under it.
+
+## Left-tail shape — the refuted hypothesis, kept
+
+| tier | cells | median (P10 - min) kg | worst |
+|---|---:|---:|---:|
+| local | 8 | 147.8 | 260 |
+| regional | 0 | — | — |
+| nationals | 0 | — | — |
+| worlds | 2 | 304.5 | 304.5 |
+
+## Structural checks
+
+`EMPTY` is not `PASS`: it means the predicate had nothing to run on.
+
+| check | result | domain | detail |
+|---|---|---:|---|
+| the table has cells to check | PASS | 64 | 8 of 64 cells carry a number |
+| every cell declares its method and entry regime | PASS | 64 | 64/64 declared |
+| every ungated-population cell carries the marker, and only those | PASS | 32 | 32 marked, 32 open-population cells |
+| no ungated cell claims to be a qualifying standard | PASS | 64 | 32 cells carry isQualifyingStandard: false |
+| the tier ladder does not invert | EMPTY | 0 | 0 comparisons, 0 of them not guaranteed by construction |
+| the ladder rises strictly at every step | EMPTY | 0 | 0/0 strictly greater |
+| the ladder check has a domain that can fail | EMPTY | 0 | 0 of 0 comparisons are not construction-guaranteed |
+| own-field clearance is arithmetic, not evidence | PASS | 8 | 8 percentile cells within 5pp of 90% |
+| quota cells name the population they came from | EMPTY | 0 | 0 quota cells |
+
+## The tables the deliverable carries, rendered from this run
+
+`--check-doc` compares `qualifying-totals.md` against exactly these blocks.
+
+### `shipped-M`
+
+<!--TABLE single-ply:shipped-M-->
+| class kg | local | regional | nationals | worlds |
+|---|---:|---:|---:|---:|
+| 59 | GAP (26) | GAP (4) | GAP (14) | GAP (14) |
+| 66 | GAP (25) | GAP (2) | GAP (18) | GAP (18) |
+| 74 | 360.0† (62) | GAP (5) | GAP (19) | GAP (19) |
+| 83 | 452.5† (71) | GAP (5) | GAP (26) | GAP (26) |
+| 93 | 467.5† (82) | GAP (10) | GAP (22) | GAP (22) |
+| 105 | 455.0† (84) | GAP (16) | GAP (27) | GAP (27) |
+| 120 | 527.5† (51) | GAP (12) | GAP (27) | GAP (27) |
+| 120+ | 575.0† (43) | GAP (12) | GAP (26) | GAP (26) |
+
+### `worlds-methods-M`
+
+<!--TABLE single-ply:worlds-methods-M-->
+| class kg | nationals gate | own P10 | own P25 | own P50 | trimmed P10 | quota P75 (SHIPPED) |
+|---|---:|---:|---:|---:|---:|---:|
+| 59 | GAP | GAP | GAP | GAP | GAP | GAP |
+| 66 | GAP | GAP | GAP | GAP | GAP | GAP |
+| 74 | GAP | GAP | GAP | GAP | GAP | GAP |
+| 83 | GAP | 685.0 / 46.2% | 730.0 / 26.9% | 790.0 / 15.4% | GAP | GAP |
+| 93 | GAP | GAP | GAP | GAP | GAP | GAP |
+| 105 | GAP | 755.0 / 66.7% | 832.5 / 40.7% | 887.5 / 22.2% | GAP | GAP |
+| 120 | GAP | GAP | GAP | GAP | GAP | GAP |
+| 120+ | GAP | GAP | GAP | GAP | GAP | GAP |
+
+### `quota-M`
+
+<!--TABLE single-ply:quota-M-->
+| class kg | regional | nationals | worlds |
+|---|---:|---:|---:|
+| 59 | GAP (26) | GAP (4) | GAP (14) |
+| 66 | GAP (25) | GAP (2) | GAP (18) |
+| 74 | 575.0† (62) | GAP (5) | GAP (19) |
+| 83 | 660.0† (71) | GAP (5) | GAP (26) |
+| 93 | 687.5† (82) | GAP (10) | GAP (22) |
+| 105 | 715.0† (84) | GAP (16) | GAP (27) |
+| 120 | 745.0† (51) | GAP (12) | GAP (27) |
+| 120+ | 895.0† (43) | GAP (12) | GAP (26) |
+
+### `shipped-F`
+
+<!--TABLE single-ply:shipped-F-->
+| class kg | local | regional | nationals | worlds |
+|---|---:|---:|---:|---:|
+| 47 | GAP (11) | GAP (1) | GAP (9) | GAP (9) |
+| 52 | GAP (20) | GAP (2) | GAP (17) | GAP (17) |
+| 57 | GAP (24) | GAP (2) | GAP (16) | GAP (16) |
+| 63 | 255.0† (51) | GAP (6) | GAP (19) | GAP (19) |
+| 69 | GAP (37) | GAP (12) | GAP (16) | GAP (16) |
+| 76 | GAP (39) | GAP (5) | GAP (22) | GAP (22) |
+| 84 | GAP (32) | GAP (3) | GAP (17) | GAP (17) |
+| 84+ | 252.5† (67) | GAP (13) | GAP (37) | GAP (37) |
+
+### `worlds-methods-F`
+
+<!--TABLE single-ply:worlds-methods-F-->
+| class kg | nationals gate | own P10 | own P25 | own P50 | trimmed P10 | quota P75 (SHIPPED) |
+|---|---:|---:|---:|---:|---:|---:|
+| 47 | GAP | GAP | GAP | GAP | GAP | GAP |
+| 52 | GAP | GAP | GAP | GAP | GAP | GAP |
+| 57 | GAP | GAP | GAP | GAP | GAP | GAP |
+| 63 | GAP | GAP | GAP | GAP | GAP | GAP |
+| 69 | GAP | GAP | GAP | GAP | GAP | GAP |
+| 76 | GAP | GAP | GAP | GAP | GAP | GAP |
+| 84 | GAP | GAP | GAP | GAP | GAP | GAP |
+| 84+ | GAP | GAP | GAP | GAP | GAP | GAP |
+
+### `quota-F`
+
+<!--TABLE single-ply:quota-F-->
+| class kg | regional | nationals | worlds |
+|---|---:|---:|---:|
+| 47 | GAP (11) | GAP (1) | GAP (9) |
+| 52 | GAP (20) | GAP (2) | GAP (17) |
+| 57 | GAP (24) | GAP (2) | GAP (16) |
+| 63 | 385.0† (51) | GAP (6) | GAP (19) |
+| 69 | GAP (37) | GAP (12) | GAP (16) |
+| 76 | GAP (39) | GAP (5) | GAP (22) |
+| 84 | GAP (32) | GAP (3) | GAP (17) |
+| 84+ | 470.0† (67) | GAP (13) | GAP (37) |
+
+### `sufficient`
+
+<!--TABLE single-ply:sufficient-->
+| tier sex class | source lifters | designated kg | method |
+|---|---:|---:|---:|
+| local M 74 | 62 | 360.0† | tier-field-percentile |
+| local M 83 | 71 | 452.5† | tier-field-percentile |
+| local M 93 | 82 | 467.5† | tier-field-percentile |
+| local M 105 | 84 | 455.0† | tier-field-percentile |
+| local M 120 | 51 | 527.5† | tier-field-percentile |
+| local M 120+ | 43 | 575.0† | tier-field-percentile |
+| local F 63 | 51 | 255.0† | tier-field-percentile |
+| local F 84+ | 67 | 252.5† | tier-field-percentile |
 
