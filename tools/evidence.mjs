@@ -198,6 +198,18 @@ const REQUIRED_SHOT_RECORDS = [
   // which is the only way a cue firing over its own still-sounding copy is
   // visible at all. No screenshot can carry it.
   '.gauntlet/shots/meet/sound.json',
+  // The fifth, added in the same commit as its `.gitignore` negation, like the
+  // fourth. `press.json` is the only record that the press fix reached the
+  // screens a player presses: the computed `touch-action` off each live element
+  // and the `pointercancel` count under a real touch pan, on the played session
+  // (GDD §3.2), on a played meet attempt (GDD §6.2) and on the replay harness,
+  // each with the neutralised and forced controls beside it.
+  //
+  // Nothing in the suite can hold it — `vitest.config.ts` is `environment:
+  // node`, so no test renders — and the defect this piece fixed was exactly a
+  // source scan that stayed green about a screen nobody could reach. The three
+  // PNGs beside it are debugging output and stay ignored; `.gitignore` says why.
+  '.gauntlet/shots/lift-press/press.json',
 ];
 
 const checkCommittedShots = () => {
