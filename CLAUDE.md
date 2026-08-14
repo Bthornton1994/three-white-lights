@@ -168,14 +168,31 @@ The cost of the wide reading is a crossing filed for an edit that turns out to b
 harmless. The cost of the narrow one is a defect that no merge, no typecheck and
 no textual review would catch. Pay the first.
 
-Two other tree-wide registries scan `CLAUDE.md` and `docs/GDD.md` themselves and
-will see anything either session writes there: `REVIEWABLE_CITATIONS` in
+One tree-wide registry scans `CLAUDE.md` and `docs/GDD.md` themselves and will
+see anything either session writes there: `REVIEWABLE_CITATIONS` in
 `src/licensing/realIp.ts` pins **exact occurrence counts** of every real name
-appearing in prose, and `tools/evidence.mjs` lists them among the files whose
-change makes a bundle stale. Editing prose in those two documents is therefore a
-code change with a test behind it — `src/tuning/audit.test.ts` and
-`src/licensing/realIp.test.ts` (104 tests) are the pair to run after touching
-either.
+appearing in prose. Editing prose in those two documents is therefore a code
+change with a test behind it — `src/tuning/audit.test.ts` and
+`src/licensing/realIp.test.ts` are the pair to run after touching either.
+
+**THIS PARAGRAPH SAID "TWO REGISTRIES" AND NAMED `tools/evidence.mjs` AS THE
+SECOND, WHICH WAS BACKWARDS.** That file's `NOT_CODE` denylist contains
+`'CLAUDE.md'`, `'README.md'` and `'docs/'` explicitly, under a comment reading
+*"Prose. A GDD or CLAUDE.md edit does not change what the app does."* So prose
+edits are the one category of change that provably does **not** stale a bundle —
+the exact opposite of what was written here.
+
+**The cost was real and was paid twice in one wave before anybody checked.**
+Believing this sentence, Session A wrote "suite.txt goes stale on this commit"
+into two commit messages that are now permanently wrong on origin, and was one
+step from spending ~710s re-running a bundle that `--verify` reports as fresh.
+A false dependency claim does not fail loudly; it just makes people do
+unnecessary work and write inaccurate history while being careful.
+
+**Ask the tool, do not quote a description of it.** `node tools/evidence.mjs
+suite --verify` answers this in seconds and is the authority; this paragraph is
+not. That is the same rule this file already applies to measurements, applied to
+a claim about tooling.
 
 ### If scope shifts
 
