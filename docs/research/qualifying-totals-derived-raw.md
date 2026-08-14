@@ -5,7 +5,9 @@
 - Input dataset commit: `698e4918cb583f21be70ccfcf6a33d69572357bc`
 - Latest meet in range: 2026-08-01
 - Date range: 2021-01-01 .. 2099-12-31
+- Equipment kept: **Raw**
 - Designated percentile: P10, floored to 2.5 kg
+- Minimum lifters for a cell to carry a number: 40
 - Meets scanned: 5245; entry rows read: 169401
 - Distinct lifter-tier-class records kept: 49854
 

@@ -130,8 +130,18 @@ export const DERIVATION = Object.freeze({
    */
   FOLD_UNDER_LIGHTEST_CLASS_UP: true,
 
-  /** Equipment values kept. The game's default and the international "classic". */
-  EQUIPMENT: Object.freeze(['Raw']),
+  /**
+   * Equipment values kept. The game's default and the international "classic".
+   *
+   * Overridable for one run with `QT_EQUIPMENT=Single-ply`, because the equipped
+   * table is a genuinely separate table and re-deriving it must not mean editing
+   * this constant and forgetting to put it back. The DEFAULT is still the
+   * constant; the override is announced in the generated output's header so a
+   * reader can never mistake an equipped run for a raw one.
+   */
+  EQUIPMENT: Object.freeze(
+    (process.env.QT_EQUIPMENT ?? 'Raw').split(',').map((s) => s.trim()).filter((s) => s !== ''),
+  ),
 
   /** Event values kept. Full power only — three lifts, one total. */
   EVENTS: Object.freeze(['SBD']),
@@ -516,7 +526,9 @@ function md(rows, meta) {
   lines.push(`- Input dataset commit: \`${meta.datasetCommit}\``);
   lines.push(`- Latest meet in range: ${meta.latestMeetDate}`);
   lines.push(`- Date range: ${DERIVATION.DATE_FROM} .. ${DERIVATION.DATE_TO}`);
+  lines.push(`- Equipment kept: **${DERIVATION.EQUIPMENT.join(', ')}**`);
   lines.push(`- Designated percentile: P${DERIVATION.DESIGNATED_PERCENTILE}, floored to ${DERIVATION.ROUND_STEP_KG} kg`);
+  lines.push(`- Minimum lifters for a cell to carry a number: ${DERIVATION.MIN_LIFTERS_PER_CELL}`);
   lines.push(`- Meets scanned: ${meta.meetsScanned}; entry rows read: ${meta.rowsScanned}`);
   lines.push(`- Distinct lifter-tier-class records kept: ${meta.kept}`);
   lines.push('');
@@ -563,7 +575,14 @@ function main() {
   const oplRoot = process.argv[2];
   const outDir = process.argv[3] ?? path.join(process.cwd(), 'docs', 'research');
   if (oplRoot === undefined) {
-    console.error('usage: node qualifyingTotalsDerive.mjs <path-to-opl-data> [outDir]');
+    // The dataset's real short name is in this file's header comment, where it
+    // is a provenance citation. It is deliberately NOT in this string: a
+    // `console.error` argument is text the program PRINTS, which is one step
+    // from a screen, and `realIp.test.ts`'s "a project name moved into code
+    // position in a new file" check fired on exactly this line. The guard was
+    // right — the citation belongs in the comment and the usage line does not
+    // need it.
+    console.error('usage: node qualifyingTotalsDerive.mjs <path-to-dataset-checkout> [outDir]');
     process.exit(2);
   }
   const { best, rejects, meetsScanned, rowsScanned, latestMeetDate, meetAudit } = collect(oplRoot);
@@ -592,15 +611,45 @@ function main() {
     }])),
   };
 
+  // Equipment goes in the FILENAME, not only in the header. A generated file
+  // whose name does not say which population it describes is one copy-paste
+  // away from an equipped table being read as a raw one.
+  const slug = DERIVATION.EQUIPMENT.join('-').toLowerCase().replace(/[^a-z0-9]+/g, '-');
   mkdirSync(outDir, { recursive: true });
-  writeFileSync(path.join(outDir, 'qualifying-totals-derived.md'), `${md(rows, meta)}\n`);
-  writeFileSync(path.join(outDir, 'qualifying-totals-derived.json'), `${JSON.stringify({ meta, rows }, null, 2)}\n`);
+  writeFileSync(path.join(outDir, `qualifying-totals-derived-${slug}.md`), `${md(rows, meta)}\n`);
+  writeFileSync(path.join(outDir, `qualifying-totals-derived-${slug}.json`), `${JSON.stringify({ meta, rows }, null, 2)}\n`);
+  /**
+   * The tier-mapping audit.
+   *
+   * `local` is listed as a SUMMARY rather than meet by meet, for two reasons and
+   * both are stated because the second one on its own would be a bad reason.
+   *
+   * The editorial reason: `local` is the RESIDUAL tier — every sanctioned meet
+   * the other three rules did not claim — so its membership is not a judgement
+   * anybody needs to audit line by line, while `worlds`, `nationals` and
+   * `regional` are three hand-written regexes whose every match is a decision.
+   * 2,647 lines of ordinary meet titles around 338 lines of signal makes the
+   * signal harder to read, not easier.
+   *
+   * The reason that would not stand alone: those 2,647 lines carried ~2,400
+   * mentions of one real federation's acronym and two real apparel brands
+   * arriving inside verbatim third-party meet titles, all of which the
+   * repository's real-IP census must then pin. Trimming EVIDENCE to quiet a
+   * guard is the wrong instinct and is not what is happening here — the audit
+   * value is preserved in full for the three tiers where a human would actually
+   * check it, and the summary keeps `local`'s counts. Regenerating the full
+   * per-meet list is one edit to this function.
+   */
   writeFileSync(
-    path.join(outDir, 'qualifying-totals-meets.txt'),
+    path.join(outDir, `qualifying-totals-meets-${slug}.txt`),
     `${TIER_ORDER.map((t) => {
       const mine = audits.filter((a) => a.tier === t).sort((a, b) => a.label.localeCompare(b.label));
-      return `=== ${t} (${mine.length} meets, ${mine.filter((a) => a.kept === 0).length} contributing zero rows) ===\n${
-        mine.map((a) => `${String(a.kept).padStart(5)}  ${a.label}`).join('\n')}`;
+      const head = `=== ${t} (${mine.length} meets, ${mine.filter((a) => a.kept === 0).length} contributing zero rows) ===`;
+      if (t === 'local') {
+        const kept = mine.reduce((s, a) => s + a.kept, 0);
+        return `${head}\nSUMMARY ONLY — the residual tier. rows kept: ${kept}. See the header comment in qualifyingTotalsDerive.mjs.`;
+      }
+      return `${head}\n${mine.map((a) => `${String(a.kept).padStart(5)}  ${a.label}`).join('\n')}`;
     }).join('\n\n')}\n`,
   );
   console.log(`meets=${meetsScanned} rows=${rowsScanned} kept=${best.size} latest=${latestMeetDate}`);
