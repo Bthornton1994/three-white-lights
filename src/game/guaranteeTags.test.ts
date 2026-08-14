@@ -577,8 +577,36 @@ const GUARANTEE_COVERAGE = {
    * `eligibility.test.ts` and `eligibility.ts` was written to state its limits
    * without a capitalised run of an absolute, and the census over those three
    * files reads 0, 0 and 5 after the merge.
+   *
+   * 238 -> 245 when the real-IP audit was repaired on both of its axes: the
+   * file-type predicate inverted from an extension allowlist onto a content
+   * test, and the REACH taken off the bare filesystem walk and reconciled with
+   * `git ls-files`. Measured per file the same way, by reading the census over
+   * each file's pre-change and post-change text: `realIp.ts` 4 -> 9,
+   * `realIp.test.ts` 2 -> 4, and nothing else in that change, which touched two
+   * files.
+   *
+   * Seven in one piece is a lot and the ratio moved the wrong way again. What is
+   * worth recording is that all seven have a check behind them, because that
+   * piece's whole subject is a scan that declined to look at things without
+   * saying so:
+   *
+   *   - two state what the byte classifier does and which of its two arms this
+   *     tree exercises, graded by the assertion that walks every unreadable file
+   *     and pins its reason;
+   *   - one heads the census of what that audit is blind to, graded by a set
+   *     equality against the live tree;
+   *   - three state the reach rules — what happens to a tracked file the walk
+   *     misses, to a walked file git ignores, and to an untracked one — graded
+   *     by `agrees with the repository about which files exist` plus two
+   *     synthetic tests that drive the cases a clean checkout cannot produce;
+   *   - one heads the plant test whose own assertions are its check.
+   *
+   * None of the seven is quoted here, for the reason five of the notes above
+   * give: quoting a capitalised run makes this paragraph trigger too, and the
+   * count would go to 246.
    */
-  TREE_WIDE: 238,
+  TREE_WIDE: 245,
 } as const;
 
 // ---------------------------------------------------------------------------
