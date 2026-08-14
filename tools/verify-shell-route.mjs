@@ -582,6 +582,154 @@ const EMPIRE_NAV_SAYS = Object.freeze({
   LEAVE: 'BACK TO TRAINING',
 });
 
+/**
+ * ===========================================================================
+ * THE FOUR ROWS GDD §5's FLOOR DRAWS — AND EXACTLY WHAT READING THEM PROVES
+ * ===========================================================================
+ * THE CHECK THIS REPLACES CLAIMED MORE THAN IT MEASURED, which is the shape
+ * CLAUDE.md files under "measured, carried, displayed, never compared". It read
+ * `onScreen('empire-stats')` — an effective-opacity walk up a `<View>` — under
+ * the sentence "and it is drawing real `createEmpireState()` fields rather than
+ * a placeholder line". Opacity is not a value. The committed record said so out
+ * of its own mouth, in the detail column of a passing line: `ok  and it is
+ * drawing real createEmpireState() fields rather than a placeholder line —
+ * opacity 1.000`. The four testIDs holding the actual readings occurred exactly
+ * once each in the whole repository — in the screen that draws them — and
+ * nothing read them.
+ *
+ * SO THE ROWS ARE READ NOW, label and value both, off the DOM of a floor a
+ * mouse opened. That is a real strengthening and it is worth naming what it
+ * buys: an empty row, a row whose label and value collapsed into one node, a
+ * row rendering `undefined`, and a row whose reading moved are all red here and
+ * were all green before.
+ *
+ * AND WHAT IT DOES NOT BUY, BECAUSE THE GAP IS PERMANENT RATHER THAN
+ * UNFINISHED. Every field on this floor is a CONSTANT of `createEmpireState()`
+ * and nothing in the app steps the state — GDD §11 gates §5's loop on a human
+ * ruling. So a floor with these four strings typed straight into the JSX
+ * renders byte-identical pixels, and every assertion below passes on it. A
+ * VALUE READ CANNOT TELL A WIRED FLOOR FROM A MOCK-UP OF ONE at this tree,
+ * whatever it reads.
+ *
+ * That half is `shellWiring.test.ts`'s, which traces each row's value
+ * expression back to a call of the constructor resolved to `src/empire/`. This
+ * tool asserts that test still exists rather than merely mentioning it — see
+ * `PROVENANCE_IS_CHECKED_ELSEWHERE` — so the pointer expires if the thing it
+ * points at is renamed away.
+ *
+ * THE READINGS ARE RESTATED, NOT IMPORTED, on the same principle as every other
+ * expectation in this file: a check that reads its answer out of the module
+ * under test agrees with a broken module. `createEmpireState()` opens a gym at
+ * zero Gym Bucks, zero reputation, an empty roster and
+ * `EMPIRE_TUNING.EQUIPMENT_TIERS[0]`. Re-tune any of those and this goes red
+ * with both readings in it, which is the friction a human should meet. The
+ * LABELS are cross-checked against `shellTuning.ts` at the end of the run, the
+ * way the two pill labels above already are; the VALUES cannot be, because
+ * their source is the module this section is about.
+ */
+const EMPIRE_FLOOR_READS = Object.freeze([
+  Object.freeze({
+    testID: 'empire-stat-bucks',
+    label: 'GYM BUCKS',
+    value: '0',
+    copy: 'EMPIRE_STAT_BUCKS',
+  }),
+  Object.freeze({
+    testID: 'empire-stat-rep',
+    label: 'REPUTATION',
+    value: '0',
+    copy: 'EMPIRE_STAT_REP',
+  }),
+  Object.freeze({
+    testID: 'empire-stat-roster',
+    label: 'ROSTER',
+    value: '0',
+    copy: 'EMPIRE_STAT_ROSTER',
+  }),
+  Object.freeze({
+    testID: 'empire-stat-equipment',
+    label: 'EQUIPMENT',
+    value: 'bare-bar',
+    copy: 'EMPIRE_STAT_EQUIPMENT',
+  }),
+]);
+
+/**
+ * How many text nodes a row is made of: its label, then its reading.
+ *
+ * Asserted rather than assumed, because "read the last child" quietly returns
+ * the LABEL on a row that collapsed to one node — and then the value check
+ * compares a label against a label and reports whatever it finds.
+ */
+const EMPIRE_ROW_PARTS = 2;
+
+/**
+ * Where the property this tool cannot measure IS measured, named so the pointer
+ * can expire.
+ *
+ * A caveat that names a test is a pointer, and a pointer to something renamed
+ * away is worse than no caveat — it reads as coverage. So both ends are
+ * asserted below: the `@guarantee` in the screen's own header, and the test
+ * title that declares it.
+ */
+const PROVENANCE_IS_CHECKED_ELSEWHERE = Object.freeze({
+  TAG: 'every-drawn-empire-reading-comes-from-the-pure-state',
+  TAGGED_FILE: ['src', 'shell', 'EmpireScreen.tsx'],
+  DECLARING_TEST_FILE: ['src', 'shell', 'shellWiring.test.ts'],
+});
+
+/**
+ * ===========================================================================
+ * WHAT THE EMPIRE ROUND TRIP DOES TO THE BEAT UNDERNEATH IT
+ * ===========================================================================
+ * THE CLAIM THIS REPLACES COULD NOT FAIL. Section 10 closed on
+ * `'it lands on GDD §3.2's check-in, which is the beat it left from'` — and the
+ * only departure this tool ever drove was FROM the check-in, so the two sides
+ * of that relative clause were the same beat by construction. `SHELL_NAV`
+ * carries three session beats, not one. It is the vacuity shape this file
+ * already records twice: two subjects held apart that cannot differ.
+ *
+ * SO THE SECOND LEG DEPARTS FROM THE BRIEFING, PLAYED. Three check-in answers
+ * pressed with a mouse, no query string at any moment, and the beat under the
+ * pill is READ before the press rather than assumed. That gives the claim a
+ * domain in which it can be wrong.
+ *
+ * AND IN THAT DOMAIN IT IS WRONG, WHICH IS WHY THIS BLOCK IS LONG. Measured on
+ * this tree, on the played arm:
+ *
+ *     A. `/` -> check-in.
+ *     B. three answers pressed -> `session-briefing`, saying 'PICK YOUR RPE'.
+ *     C. GYM EMPIRE pressed -> the floor.
+ *     D. BACK TO TRAINING pressed -> `session-check-in`, saying
+ *        'HOW ARE YOU TODAY?', with all three answers blank again.
+ *
+ * The round trip DISCARDS the session's beat and its answers. `AppShell` picks
+ * one surface out of a ternary, so `SessionScreen` un-mounts when the floor
+ * mounts and `useSession` rebuilds from the server on the way back — and the
+ * check-in answers are client state that never reached a server. The same thing
+ * happens from `?session=briefing` and `?session=close-out-pr`, where the
+ * frozen moment is lost too even though the query string is still in the bar.
+ *
+ * THIS TOOL RECORDS THAT RATHER THAN REPAIRING IT. The repair is a change to
+ * what `AppShell` mounts, which is behaviour, and GDD §11 gates §5's surface
+ * work on a ruling that has not happened. What is NOT acceptable is a check
+ * that reads as a discriminator while measuring nothing, so the finding is
+ * written into the constant the check compares against, where somebody fixing
+ * it has to come and delete it.
+ *
+ * IF THE CHECK USING THIS GOES RED BECAUSE THE BEAT IS NOW PRESERVED, THAT IS
+ * THE FIX AND NOT A REGRESSION. Delete this block and the leg that reads it,
+ * and say so in the commit.
+ */
+const EMPIRE_RETURN = Object.freeze({
+  /** The beat the second leg departs from — deliberately NOT the one below. */
+  DEPARTS_FROM: 'session-briefing',
+  /** src/game/sessionTuning.ts — SESSION_COPY.BRIEFING_PROMPT. Pinned below. */
+  DEPARTURE_SAYS: 'PICK YOUR RPE',
+  /** The beat the daily session comes back on, whatever beat it was left from. */
+  LANDS_ON: 'session-check-in',
+});
+
 // ###########################################################################
 // ###  GDD §6.3 — "THE REAL TENSION", ON THE ARM A PLAYER REACHES          #
 // ###########################################################################
@@ -2076,6 +2224,18 @@ async function checkSessionLayoutMatchesTuning() {
     'SESSION_COPY.ALREADY_TRAINED_HEADLINE is the line section 6c identifies GDD §3.2’s one-session-a-day surface by',
     `looked for ALREADY_TRAINED_HEADLINE: '${BEAT_SAYS.ALREADY_TRAINED}' in sessionTuning.ts`,
   );
+
+  // THE BRIEFING'S PROMPT, FOR THE SAME REASON THE CHECK-IN TITLE ABOVE NEEDED
+  // A PIN. Section 10b uses it BOTH ways — present before the round trip, absent
+  // after it — and the absent half is true of every string no screen says, so a
+  // copy edit here would turn the leg's own finding into a check of nothing
+  // while leaving it green. That is the "input silently absent" shape twice
+  // over, and the negative use is the half that cannot control itself.
+  check(
+    text.includes(`BRIEFING_PROMPT: '${EMPIRE_RETURN.DEPARTURE_SAYS}'`),
+    'SESSION_COPY.BRIEFING_PROMPT is the line section 10b identifies its departure beat by, both ways',
+    `looked for BRIEFING_PROMPT: '${EMPIRE_RETURN.DEPARTURE_SAYS}' in sessionTuning.ts`,
+  );
 }
 
 /**
@@ -2295,10 +2455,16 @@ async function checkNavTableMatchesTuning() {
   // two presses in that section are looking for; a copy edit to any of them
   // with this pin absent would leave that section comparing a screen against a
   // string nothing prints, which is green and measures nothing.
+  //
+  // THE FOUR ROW LABELS JOINED THIS LOOP when section 10 started reading the
+  // rows instead of their container's opacity. Only the LABELS: a row's reading
+  // comes from `createEmpireState()`, and cross-checking that against the module
+  // the section is about would be an oracle restating its subject.
   for (const [name, mine] of [
     ['EMPIRE_LEAD', BEAT_SAYS.EMPIRE_FLOOR],
     ['EMPIRE_NAV_LABEL', EMPIRE_NAV_SAYS.OPEN],
     ['LEAVE_EMPIRE_LABEL', EMPIRE_NAV_SAYS.LEAVE],
+    ...EMPIRE_FLOOR_READS.map((row) => [row.copy, row.label]),
   ]) {
     const theirs = copyLineInSource(source, name);
     check(
@@ -5852,8 +6018,79 @@ await checkOnScreen(
     await checkOnScreen('empire-screen', 'the Gym Empire floor renders');
     await checkOnScreen(
       'empire-stats',
-      'and it is drawing real `createEmpireState()` fields rather than a placeholder line',
+      'and the stats group is DRAWN rather than merely mounted — an opacity read, which says nothing about what is in it',
     );
+
+    // -----------------------------------------------------------------------
+    // ...AND WHAT IS IN IT, READ ROW BY ROW
+    // -----------------------------------------------------------------------
+    // The line above used to carry the sentence "it is drawing real
+    // `createEmpireState()` fields rather than a placeholder line" while
+    // measuring a container's opacity. See `EMPIRE_FLOOR_READS` for what this
+    // replacement proves and — the half that matters — for what no value read
+    // on this screen can ever prove, and where that is measured instead.
+    const floorRows = await page.evaluate(
+      (ids) =>
+        ids.map((id) => {
+          const root = document.querySelector(`[data-testid="${id}"]`);
+          if (root === null) return { id, found: false, parts: -1, label: null, value: null };
+          const parts = [...root.children].map((child) => (child.textContent ?? '').trim());
+          return {
+            id,
+            found: true,
+            parts: parts.length,
+            label: parts[0] ?? null,
+            value: parts[parts.length - 1] ?? null,
+          };
+        }),
+      EMPIRE_FLOOR_READS.map((row) => row.testID),
+    );
+
+    for (const expected of EMPIRE_FLOOR_READS) {
+      const drawn = floorRows.find((row) => row.id === expected.testID);
+      check(
+        drawn?.found === true && drawn.parts === EMPIRE_ROW_PARTS,
+        `the ${expected.testID} row is on the floor as a label and a reading`,
+        drawn?.found === true
+          ? `${drawn.parts} text node(s), expected ${EMPIRE_ROW_PARTS}`
+          : 'the row is not in the DOM at all',
+      );
+      check(
+        drawn?.label === expected.label,
+        `and it is labelled ${JSON.stringify(expected.label)} — so the four rows are told apart by what they say, not by their order`,
+        `the row says ${JSON.stringify(drawn?.label ?? null)}`,
+      );
+      check(
+        drawn?.value === expected.value,
+        `and its reading is ${JSON.stringify(expected.value)}, which is what createEmpireState() opens a gym at`,
+        `the row reads ${JSON.stringify(drawn?.value ?? null)}`,
+      );
+    }
+
+    // THE POINTER, MADE TO EXPIRE. This section can measure that the readings
+    // are drawn and cannot measure where they came from, because every one is a
+    // constructor constant and a hardcoded floor draws the same characters. The
+    // sentence saying so is worth nothing if the test it names has been renamed
+    // away, so both ends of it are resolved here rather than asserted in prose.
+    const taggedSource = await readFile(
+      path.join(srcRoot, ...PROVENANCE_IS_CHECKED_ELSEWHERE.TAGGED_FILE),
+      'utf8',
+    ).catch(() => null);
+    const declaringSource = await readFile(
+      path.join(srcRoot, ...PROVENANCE_IS_CHECKED_ELSEWHERE.DECLARING_TEST_FILE),
+      'utf8',
+    ).catch(() => null);
+    const tag = PROVENANCE_IS_CHECKED_ELSEWHERE.TAG;
+    check(
+      (taggedSource ?? '').includes(`@guarantee ${tag}`) && (declaringSource ?? '').includes(`[${tag}]`),
+      `the property this section CANNOT measure — that these readings come from createEmpireState() rather than from a literal —` +
+        ` is claimed by @guarantee ${tag} and checked by a test that still declares it`,
+      `${PROVENANCE_IS_CHECKED_ELSEWHERE.TAGGED_FILE.join('/')} carries the tag: ` +
+        `${(taggedSource ?? '').includes(`@guarantee ${tag}`)}; ` +
+        `${PROVENANCE_IS_CHECKED_ELSEWHERE.DECLARING_TEST_FILE.join('/')} declares it: ` +
+        `${(declaringSource ?? '').includes(`[${tag}]`)}`,
+    );
+
     await shootBeat('15-empire-floor-from-session.png', 'floor', BEAT_SAYS.EMPIRE_FLOOR);
 
     // -----------------------------------------------------------------------
@@ -5941,9 +6178,14 @@ await checkOnScreen(
         `back on the session the page is on ${JSON.stringify(urlAtReturn)}`,
       );
       check(!(await visible('empire-screen')), 'and the floor is no longer on screen');
+      // THE RELATIVE CLAUSE THAT USED TO BE ON THIS LINE IS GONE, and section
+      // 10b is where it went. It read "which is the beat it left from", and this
+      // leg only ever departs FROM the check-in — so the two beats it held apart
+      // were the same beat by construction and no state of the app could redden
+      // it. What is asserted here is the part this leg can be wrong about.
       check(
         await visible('session-check-in'),
-        'it lands on GDD §3.2’s check-in, which is the beat it left from',
+        'it lands on GDD §3.2’s check-in (this leg left from the check-in; whether the beat is PRESERVED is section 10b’s question)',
       );
       // Bounded, and for the reason section 4 gives at length: the pill
       // remounts on the way back (its `key` is the affordance) and fades in
@@ -5958,6 +6200,151 @@ await checkOnScreen(
     }
   }
   note(`the Gym Empire round trip cost ${Date.now() - startedAt}ms of wall clock`);
+}
+
+// ###########################################################################
+// ###  10b. THE SAME ROUND TRIP, DEPARTING FROM A BEAT THAT IS NOT THE     #
+// ###       CHECK-IN — so "it lands on the beat it left from" has a domain #
+// ###########################################################################
+//
+// See `EMPIRE_RETURN` for what this leg exists to close and for what it
+// measured. In one sentence: the claim it replaces could not fail, because the
+// only departure section 10 drives is from the check-in and the beat it lands
+// on is the check-in. `SHELL_NAV.SESSION_PHASES` has three members.
+//
+// PLAYED, NOT OPENED BY URL. `?session=briefing` would reach the briefing in one
+// `goto` and would be a different subject: `frozenSessionFor` feeds that screen
+// a preview, and this leg is about what happens to a session a player is
+// actually in. Three answers pressed with a mouse, address bar empty at every
+// moment, same as section 10.
+{
+  const startedAt = Date.now();
+  await open('/', 'session-screen');
+  const urlAtStart = page.url();
+  check(
+    !urlAtStart.includes('?'),
+    'CONTROL: 10b starts on the shipped route too — the address bar carries no query string',
+    `the page is on ${JSON.stringify(urlAtStart)}`,
+  );
+
+  // Drive check-in -> briefing with the shared driver's own answers, so a copy
+  // or testID change lands here as one legible failure rather than as a wall of
+  // deadlines. `openSessionToFirstSet` goes one beat further than this leg wants
+  // (`set` is a `NEVER_A_PILL_BEAT`), so the three taps are made here and the
+  // list they come from is the driver's.
+  let reachedBriefing = true;
+  for (const id of SESSION_DRIVE.CHECK_IN_TAPS) {
+    try {
+      await page.getByTestId(id).click({ timeout: SESSION_DRIVE.BRACE_TIMEOUT_MS });
+    } catch {
+      reachedBriefing = false;
+      check(false, `SKIPPED: 10b needs the check-in answer ${id}, which could not be pressed`);
+      break;
+    }
+  }
+  if (reachedBriefing) {
+    const briefingDrawn = await waitUntilDrawn(page, EMPIRE_RETURN.DEPARTS_FROM, settleMs);
+    reachedBriefing = briefingDrawn.drawn;
+    check(
+      briefingDrawn.drawn,
+      `three check-in answers reach GDD §3.2’s briefing (${EMPIRE_RETURN.DEPARTS_FROM}) — the departure beat, played`,
+      briefingDrawn.why,
+    );
+  }
+
+  if (!reachedBriefing) {
+    check(
+      false,
+      'SKIPPED: the whole of 10b needs a played briefing to depart from, and there is no debug URL that would be the same subject',
+    );
+  } else {
+    // THE DEPARTURE BEAT IS READ, NOT ASSUMED. This is the non-vacuity control
+    // on the whole leg: if the screen underneath were the check-in after all,
+    // every assertion below would be section 10's again and would say nothing.
+    const departureSays = ((await bodyText()) ?? '').replace(/\s+/g, ' ');
+    check(
+      departureSays.includes(EMPIRE_RETURN.DEPARTURE_SAYS) &&
+        !(await visible(EMPIRE_RETURN.LANDS_ON)),
+      `CONTROL: the beat being left is the briefing and NOT ${EMPIRE_RETURN.LANDS_ON} — the two sides of the claim below are different beats`,
+      `the screen says ${JSON.stringify(EMPIRE_RETURN.DEPARTURE_SAYS)}: ` +
+        `${departureSays.includes(EMPIRE_RETURN.DEPARTURE_SAYS)}; ` +
+        `${EMPIRE_RETURN.LANDS_ON} on screen: ${await visible(EMPIRE_RETURN.LANDS_ON)}`,
+    );
+
+    // THE EMPIRE PILL ON THE BRIEFING, DRAWN AND HIT-TESTED. `SHELL_NAV` has
+    // said it belongs here since the Empire slice merged; the existing briefing
+    // probe reads the MEET pill and this is the first time anything has read
+    // this one on this beat.
+    const briefingPill = await waitUntilDrawn(page, NAV_OPEN_EMPIRE, CHROME_WINDOWS.pillArrivalMs);
+    check(
+      briefingPill.drawn,
+      `the way into GDD §5 is drawn on the briefing too (${NAV_OPEN_EMPIRE})`,
+      `${briefingPill.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms`,
+    );
+    const briefingPillHit = await hitTest(NAV_OPEN_EMPIRE);
+    check(
+      briefingPillHit.hit,
+      'and it is what a thumb would hit there',
+      `elementFromPoint -> ${briefingPillHit.why}`,
+    );
+
+    const reachedFloor = await press(
+      NAV_OPEN_EMPIRE,
+      'empire-screen',
+      'PRESSING IT MID-SESSION REACHES THE FLOOR — the second of SHELL_NAV’s three session beats, driven',
+    );
+    if (!reachedFloor) {
+      check(false, 'SKIPPED: 10b’s return leg needs the floor to have been reached from the briefing');
+    } else {
+      const cameBack = await press(
+        NAV_LEAVE_EMPIRE,
+        'session-screen',
+        'and BACK TO TRAINING returns to the daily session from there as well',
+      );
+      if (!cameBack) {
+        check(false, 'SKIPPED: 10b’s beat reading needs the return press to have landed');
+      } else {
+        // THE MEASUREMENT THIS LEG EXISTS FOR. Read, then compared against
+        // `EMPIRE_RETURN.LANDS_ON` — which is a RECORDED FINDING and not an
+        // endorsement. The beat is NOT preserved: a player who taps GYM EMPIRE
+        // from the briefing comes back to a blank check-in with their three
+        // answers gone. Read the block above `EMPIRE_RETURN` before touching
+        // this, and if it goes red because the round trip now preserves the
+        // beat, that is the fix — delete this leg's comparison and say so.
+        const landedOnDeparture = await visible(EMPIRE_RETURN.DEPARTS_FROM);
+        const landedOnCheckIn = await visible(EMPIRE_RETURN.LANDS_ON);
+        const cameBackSaying = ((await bodyText()) ?? '').replace(/\s+/g, ' ');
+        check(
+          landedOnCheckIn && !landedOnDeparture,
+          `RECORDED DEFECT, NOT A PASS: the round trip DISCARDS the session's beat — it left from` +
+            ` ${EMPIRE_RETURN.DEPARTS_FROM} and lands on ${EMPIRE_RETURN.LANDS_ON}, answers blank.` +
+            ' Red here means the beat is now preserved, which is the fix; see EMPIRE_RETURN',
+          `${EMPIRE_RETURN.LANDS_ON} on screen: ${landedOnCheckIn};` +
+            ` ${EMPIRE_RETURN.DEPARTS_FROM} on screen: ${landedOnDeparture}`,
+        );
+        // The same fact read a second way, off the copy rather than off a
+        // testID, so a testID that stopped rendering cannot make the line above
+        // report "the beat was discarded" out of two absent elements.
+        check(
+          cameBackSaying.includes(BEAT_SAYS.CHECK_IN) &&
+            !cameBackSaying.includes(EMPIRE_RETURN.DEPARTURE_SAYS),
+          `and the screen says ${JSON.stringify(BEAT_SAYS.CHECK_IN)} rather than ${JSON.stringify(EMPIRE_RETURN.DEPARTURE_SAYS)} — the same finding read off the copy`,
+          `says the check-in title: ${cameBackSaying.includes(BEAT_SAYS.CHECK_IN)};` +
+            ` says the briefing prompt: ${cameBackSaying.includes(EMPIRE_RETURN.DEPARTURE_SAYS)}`,
+        );
+        const urlAt10bReturn = page.url();
+        check(
+          !urlAt10bReturn.includes('?'),
+          'CONTROL: and none of 10b’s three moments carried a query string',
+          `back on the session the page is on ${JSON.stringify(urlAt10bReturn)}`,
+        );
+        await page.screenshot({
+          path: path.join(outDir, '17-empire-round-trip-from-briefing.png'),
+        });
+      }
+    }
+  }
+  note(`the mid-session Gym Empire round trip cost ${Date.now() - startedAt}ms of wall clock`);
 }
 
 // ###########################################################################
