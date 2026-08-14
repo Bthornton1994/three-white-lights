@@ -3187,7 +3187,40 @@ work.
       and cut-in *art* stay unbuilt; grading and closing what already exists
       continues without waiting on this answer.
 
-- [ ] **GDD §5's idle loop is BUILT, TESTED AND MEASURED, and no player can
+- [x] **RULED 2026-08-14: THE GATE IS LIFTED FOR THE IDLE LAYER SPECIFICALLY,
+      AND FOR NOTHING ELSE.** A human's ruling, recorded here in full rather
+      than silently amended, because the reasoning binds the next case.
+
+      **The reasoning.** The gate's stated condition — the lift mechanic proven
+      fun — was met by the 2026-08-12 playtest verdict recorded above. What
+      remained shut was a phase-gate *assumption* whose premise expired when
+      §5's logic landed and was verified. **A gate held shut past its own
+      justification is the stale-prose pattern this session corrected four
+      separate times**, and this instance was holding a verified subsystem inert
+      behind a screen that overclaimed what it showed.
+
+      **Authorised by that ruling, and no more than this:** wire `stepGym` and
+      `accrueProduction` so the Empire screen shows real advancing state, and
+      fix the round-trip defect that discards the player's session state.
+
+      **Still gated, unchanged:** new §5 feature work beyond that wiring,
+      monetization surfaces of any kind, Career, Arcade, and cut-in *art*. The
+      lift is for the idle layer specifically; it is not a general reopening,
+      and the paragraph at the end of the L1 entry above still governs
+      everything it names.
+
+      **Two seams this ruling does NOT open**, because it did not mention them
+      and they carry their own constraints: the empire→`progression.ts` pooled
+      wallet, which CLAUDE.md holds as a deliberately serialised piece whose
+      first mover inherits the §8.3E tender concession; and `src/empire/**`
+      itself, which is Session B's and which the wiring reads rather than edits.
+
+      The original question is kept below as it was written, because the ruling
+      is only legible against it.
+
+      ---
+
+      **GDD §5's idle loop is BUILT, TESTED AND MEASURED, and no player can
       reach any of it. That outcome was nobody's decision, and it needs a real
       ruling rather than continuing as a residue.** Flagged by a human on
       2026-08-14 after an Empire shell grading surfaced it as a side effect.
