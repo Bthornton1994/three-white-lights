@@ -913,6 +913,31 @@ at the moment the screen is read. A smoke capture down a path someone drove by
 hand is not that, and Session C says so itself. Until that check exists, the
 Empire shell is **wired but ungraded**, and no §12.2 claim may be made for it.
 
+**THAT CHECK NOW EXISTS, AND THIS PARAGRAPH WAS STALE FOR TWO DAYS BEFORE
+ANYBODY NOTICED — WHICH IS THE POINT OF RECORDING IT HERE RATHER THAN JUST
+EDITING THE SENTENCE.** The claim was committed at 15:56 on 2026-08-12; the
+commit that presses its way onto §5's floor landed at 19:05 **the same day**,
+three hours later. So a gate written in this file went on reading as shut for
+two days after the thing it demanded had been built. This document warns eight
+times about a sentence written while the code was true keeping its confident
+tone after the code moves; here it happened to a sentence about a *gate*, in
+the file that issues the warning, and it was found only because somebody
+re-took the evidence and read the tool.
+
+`tools/verify-shell-route.mjs` drives it and the fresh `route.json` carries it:
+the floor renders, `empire-stats` draws real `createEmpireState()` fields rather
+than a placeholder line, and the round trip closes and is repeatable. The
+address-bar condition is met in the strongest available form — **`resolveEntry`
+has no `?empire=` arm at all**, so unlike the meet there is no debug URL that
+could silently substitute for the press, and the tool asserts no query string on
+the floor regardless.
+
+**What is still NOT done, so this correction does not overshoot into the claim
+it is fixing:** no fresh critic has graded the Empire shell against §12.2. The
+browser check is the *evidence a critic would need*, not a substitute for one.
+"Wired but ungraded" was wrong about the check and is still right about the
+grading, and those are two different sentences that were being carried as one.
+
 ### SESSION C — CAREER IMPORT FENCE + ELIGIBILITY OPACITY (NOT CAREER UI)
 
 Written here **before** the work starts, as this section requires. Human-ruled
