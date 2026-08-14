@@ -512,8 +512,42 @@ const GUARANTEE_COVERAGE = {
    * guarantee. The round's actual guarantee — that a domain carries every
    * branch point under its ceiling regardless of unit — moved this number by
    * nothing.
+   *
+   * NINTH ROUND, 227 -> 229, AND THIS IS THE FIRST TIME THE SCAN FLAGGED THE
+   * SENTENCE IT IS FOR. Eight of nine rounds had the asymmetry: the scan
+   * demanded nothing of the sentence that claims something and flagged the
+   * sentence that admits something. This round breaks that run, which is why
+   * the bump is taken rather than argued about.
+   *
+   * Both paragraphs are in `src/empire/empireForbiddenOutput.test.ts` and both
+   * are GUARANTEES with a named mechanism, not notes about how a check used to
+   * be wrong:
+   *
+   *   - the assignment-path paragraph — a claim that widening the walk changed
+   *     no classification the old initializer path already made, pinned by
+   *     `writeOwners.local` staying at 153.
+   *   - the unfollowable-identifier paragraph — the else discipline: an
+   *     identifier this walk cannot see is pushed into `unfollowed` and
+   *     surfaces in `freshReceivers`, with `unclassified` pinned at zero.
+   *
+   * THOSE TWO ARE DESCRIBED RATHER THAN QUOTED, AND THE REASON IS A
+   * MEASUREMENT. Quoting them verbatim, in their own capitals, took this census
+   * to 230: the scan counted the quotation as a third triggering paragraph. A
+   * verbatim quote of a guarantee is not a second guarantee, so lower-casing it
+   * here keeps the count equal to the number of real claims. That is the
+   * opposite of the rewording this file warns about — nothing load-bearing was
+   * softened, and the two guarantees themselves are untouched in their own
+   * file, where they still trigger and are still counted.
+   *
+   * Attributed by measurement, per this comment's own convention: with that one
+   * file restored to its base text and nothing else changed, this test is 6
+   * passed at 227.
+   *
+   * The declared undercount stays at TWO. It counts load-bearing paragraphs
+   * REWORDED OUT of triggering, which is a different quantity from this census
+   * of paragraphs that DO trigger, and nothing was reworded this round.
    */
-  TREE_WIDE: 227,
+  TREE_WIDE: 229,
 } as const;
 
 // ---------------------------------------------------------------------------
