@@ -10947,7 +10947,7 @@ describe('the member-call pass — what a caller-supplied method is actually han
 // ---------------------------------------------------------------------------
 
 /**
- * Forty-two routes, planted into shipped modules one at a time, each run
+ * Fifty-two routes, planted into shipped modules one at a time, each run
  * against `tsc --noEmit`, against this file, and against the three accidental
  * catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
@@ -11741,6 +11741,169 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts was restored and verified byte-identical before this row was written.',
     ]),
   }),
+  // --- E23: one route per newly driven member-call site. Ten rows and not one,
+  // because "the pass bites" is a claim per site: each of these was planted on
+  // its own, run on its own, and restored on its own.
+  Object.freeze({
+    id: 'M43',
+    shape:
+      "35-repeated at a site E22 declared undriven — M42's predicate-return route, at `progressionDayLedger` instead of at `idleLedger`",
+    where:
+      'empireInvariant.ts, `progressionDayLedger`: `entries.filter((entry) => isProgressionReachingOutput(entry.output))` -> `… ? (EMPIRE_FORBIDDEN_OUTPUTS[0] as unknown as boolean) : false`, with the ban list added to the existing `./empireCore` import',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass / sees no banned name at any driven site: `+ "empireInvariant.ts#progressionDayLedger#entries.filter x1 <- covered-day"`, twice — one per entry the predicate admits.',
+      'AND THE DOMAIN HALF MOVED WITH IT, which is what says the finding came off the drive rather than off a count: `… calls=1 callbacks=6 handed=0 returned=2 verdicts=falsex4,stringx2`. The verdict census shows the two `true`s became two `string`s.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'empireCore.test.ts 57 passed (57) with this planted — the magic-number audit, the string census and the import fence, all three green, INCLUDING under the added import specifier. Measured rather than assumed, because every row below shares that specifier.',
+      'empireInvariant.ts was restored and verified byte-identical with `git hash-object` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M44',
+    shape: '35-repeated at `idleDayLedger` — the sibling of M43, planted rather than inferred from it',
+    where: 'empireInvariant.ts, `idleDayLedger`: the same ternary around `isIdleOnly(entry.output)`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "empireInvariant.ts#idleDayLedger#entries.filter x1 <- covered-day"` four times, and `… returned=4 verdicts=falsex2,stringx4`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Restored and verified byte-identical. The four-versus-two split against M43 is the two halves of the same six-entry ledger, which is why both rows are here rather than one standing for both.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M45',
+    shape: '35-repeated at `outputSeries`, whose predicate admits exactly one of the six entries',
+    where: 'empireInvariant.ts, `outputSeries`: the same ternary around `entry.output === output`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "empireInvariant.ts#outputSeries#entries.filter x1 <- covered-day"`, and `… returned=1 verdicts=falsex5,stringx1`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Restored and verified byte-identical. Worth its own row for the count: a payload on the arm that runs ONCE in six is still seen, so the pass does not depend on the payload being common.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M46',
+    shape: "35-repeated at `composeTrainingIqRate`, whose receiver is a field of a parameter (`state.roster`) rather than the parameter itself",
+    where:
+      'empireInvariant.ts, `composeTrainingIqRate`: `state.roster.filter((lifter) => lifter.settledAt <= now)` -> the same ternary',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "empireInvariant.ts#composeTrainingIqRate#state.filter x1 <- covered-day"` twice, and `… callbacks=3 returned=2 verdicts=falsex1,stringx2`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Restored and verified byte-identical. The site key says `state.filter` and not `roster.filter` because `receiverRoot` walks past the property access to the parameter, and this row is the measurement that the fixture built for that key really reaches that call.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M47',
+    shape:
+      "34-repeated — M40's ARGUMENT route at a site E22 could not drive, so the enumeration's stated limit is measured somewhere other than where it was written",
+    where:
+      'empireInvariant.ts, `savingForPhysio`: `order.includes(PHYSIO_AXIS)` -> `order.includes(EMPIRE_FORBIDDEN_OUTPUTS[0] as unknown as ExpansionAxis)`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass / sees no banned name at any driven site: `+ "empireInvariant.ts#savingForPhysio#order.includes x1 <- covered-day"`.',
+      'AND THE OBSERVATION LINE DID NOT MOVE, which is the useful half of this row: `handed=1` before and after, because the count of strings handed is the same and only their VALUE changed. The site-observation pin stayed green and the findings pin is what bit. That is the division of labour the two assertions are supposed to have — the observation line is the domain, the findings list is the ban — and this is the one row that demonstrates it rather than asserting it.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'NOT BEHAVIOUR-PRESERVING, and it is the only one of the ten that is not: `savingForPhysio` returns `false` for every order under this mutant. The member-call block is run with `-t`, so nothing else was executing to notice, and the row says so rather than implying an isolation it does not have. A behaviour-preserving version of the argument route needs a SECOND argument, which is M41 and is caught by the enumeration.',
+      'Restored and verified byte-identical.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M48',
+    shape: "35-repeated at `stepGym`'s `find`, which is inside the build-skip arm and needs a gym with a build still in flight",
+    where:
+      'empireInvariant.ts, `stepGym`: the skippable-build predicate returns the ban list member on its true arm instead of `true`. `find` coerces, so the same build is found',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "empireInvariant.ts#stepGym#gym.find x1 <- covered-day"`, and `… callbacks=2 returned=1 verdicts=falsex1,stringx1`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Restored and verified byte-identical. Behaviour-preserving: a non-empty string is truthy, so `find` returns the same element and the skip still happens.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M49',
+    shape:
+      "35-adjacent at `stepGym`'s `map`: the payload is a FIELD OF THE OBJECT the callback returns rather than the return value itself",
+    where:
+      'empireInvariant.ts, `stepGym`: `gym.builds.map((build) => build === skippable ? skipExpansion(build, grant) : build)` -> the skipped build spread with `axis` overwritten by the ban list member',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "empireInvariant.ts#stepGym#gym.map x1 <- covered-day"`.',
+      'THE CHANNEL IS THE SAME AND THE SHAPE IS NOT, which is why this row is not M48 twice: `map` returns an object, so the pass sees the payload only because it DEEP-SCANS what the callback hands back rather than testing it for equality with a name. `verdicts=objectx2` is unchanged by the mutant, so the verdict census is silent here and the findings list is what bites.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Restored and verified byte-identical.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M50',
+    shape:
+      "35-adjacent at `rankLeaderboard`, AND THE ONLY ONE OF THE TEN WHOSE PAYLOAD NEVER LEAVES THE FUNCTION: an extra key on the mapped value, which nothing downstream reads",
+    where:
+      'social.ts, `rankLeaderboard`: `entries.map((entry) => ({ entry, score }))` -> `({ entry, score, note: EMPIRE_FORBIDDEN_OUTPUTS[0] })`. `ordered` sorts on `score` and `ranked` is rebuilt from `entry`, `score` and `rank`, so `note` is dropped before the return',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "social.ts#rankLeaderboard#entries.map x1 <- covered-day"`, four times, and `… returned=40` against 32.',
+      "WHY IT IS THE STRONGEST OF THE TEN. Instrument A reads DECLARED types and this key is on an inferred intermediate, never on a return type. Instrument B drives exports and scans what they RETURN, and this value is discarded inside the function. The name exists only in the argument handed to a caller-supplied `map` and only for the duration of the call, which is exactly the channel this pass was built for and exactly the channel that did not reach `social.ts` before this round.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'empireCore.test.ts 57 passed (57) with this planted, so the added import specifier is green in social.ts too.',
+      'social.ts was restored and verified byte-identical.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M51',
+    shape: "35-repeated at the first of `visitRefusals`' two `context.some` calls",
+    where: 'social.ts, `visitRefusals`: `context.friends.some((friend) => friend.gymId === gymId)` -> the ternary',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "social.ts#visitRefusals#context.some x1 <- covered-day"`, and `… callbacks=2 returned=1 verdicts=falsex1,stringx1`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Restored and verified byte-identical. Two rows for two calls that share ONE site key, because a single row would leave the duplicate entry in `DECLARED_MEMBER_CALLS_ON_PARAMETERS` standing for a call nobody had planted at.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M52',
+    shape:
+      "35-repeated at the SECOND `context.some`, and it is the row that measures what a one-armed fixture costs",
+    where: 'social.ts, `visitRefusals`: `context.visits.some((visit) => visit.day === day && visit.gymId === gymId)` -> the ternary',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the member-call pass: `+ "social.ts#visitRefusals#context.some x1 <- covered-day"`, and `… callbacks=2 returned=1 verdicts=falsex1,stringx1`.',
+      'AGAINST THE PREVIOUS COMMIT IT WAS INVISIBLE, and that measurement is why the verdict census exists. E23 1/n logged ONE visit, against a friend the call did not ask about, so the predicate returned `false` on every invocation and the payload — which sits on the matching arm — was never produced. Planted against that fixture: `Tests 4 passed | 66 skipped`, the whole block green, with an honest `callbacks=1` in the pin. Run rather than reasoned: `git checkout HEAD~1 -- empireForbiddenOutput.test.ts`, plant, run, restore.',
+      'A DRIVE THAT REACHES A SITE HAS NOT REACHED ITS CALLBACK\'S ARMS. That is CLAUDE.md\'s inputs-versus-branches rule one level in from where it was written — the branch that did not run is inside the value the subject hands the recorder, not inside the subject.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'social.ts and empireForbiddenOutput.test.ts were both restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>`. The test file needed `git checkout HEAD --` rather than `git checkout --`, because the control had staged the older version in the index; the hash check is what caught that.',
+    ]),
+  }),
 ]);
 
 /**
@@ -11955,7 +12118,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(42);
+    expect(PLANTED_ROUTES.length).toBe(52);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -12040,8 +12203,16 @@ describe('the routes that were planted, and what each of them cost', () => {
     // `EMPIRE_FORBIDDEN_OUTPUTS` with a named specifier added to an import that
     // already exists, no new call expression, no new `return` statement and no
     // new string literal.
-    expect(attempts).toBe(61);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(32);
+    // ONE EACH FOR M43-M52, which is ten attempts for ten routes and is worth a
+    // sentence rather than a shrug: they reached isolation first time because
+    // the isolation was already known. Every one of them reads the payload out
+    // of `EMPIRE_FORBIDDEN_OUTPUTS` through a specifier added to an import the
+    // module already has, spells no forbidden word, adds no bare number and
+    // adds no string literal — and the first of them was run against
+    // `empireCore.test.ts` (57 passed) to check that the added specifier is
+    // invisible to the import fence, rather than assuming it from M39.
+    expect(attempts).toBe(71);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(42);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
