@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tmp-claude-0-home-user-three-white--2026-08-14T02-40-48-056Z-25963",
+  "label": null,
+  "command": [
+    "node",
+    "/tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/explore.mjs",
+    "http://localhost:8099"
+  ],
+  "budgetSeconds": 240,
+  "startedAtIso": "2026-08-14T02:40:48.056Z",
+  "startedAtMs": 1786675248056,
+  "cwd": "/home/user/wt-lift-press",
+  "commit": "cd1dd0551e1f145fcf122a356dd4a47e8bf80c77",
+  "branch": "claude/lift-press-browser-check",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 25963,
+    "startTick": "110115",
+    "cmdline": "node tools/watchdog.mjs --budget 240 -- node /tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/explore.mjs http://localhost:8099",
+    "bootId": "70e4dcd9-91f6-43ee-a53c-88125d271f98",
+    "bootEpochSeconds": 1786674147,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T02:40:48.157Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
