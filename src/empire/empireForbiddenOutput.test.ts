@@ -12818,6 +12818,25 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'Isolated separately from M60, for the same reason. production.ts restored and verified byte-identical.',
     ]),
   }),
+  Object.freeze({
+    id: 'M62',
+    shape:
+      "THE TWENTIETH BYPASS, and it is the eighteenth one axis over: a returned member whose type reaches its closures through an INDEX SIGNATURE rather than through a property. `typeCouldHoldAFunction` walks `getProperties()`, and `Readonly<Record<string, T>>` has none — the element sits behind a string index signature, which is a position the screen's enumeration does not model. E24 taught the screen about arrays specifically; a mapped type is the next shape along, and nothing said arrays were the last",
+    where:
+      'production.ts, `accrueProduction`: a module-level `const PRODUCTION_TABLE: { readonly table: Readonly<Record<string, ProductionPeek>> } = { table: { entry: { peek: () => EMPIRE_FORBIDDEN_OUTPUTS[0] } } }`, handed back as `shapes: PRODUCTION_TABLE.table` on the returned object',
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING CAUGHT IT, ISOLATED, in form 2: whole directory `Tests 3 failed | 489 passed (492)`, and all three are the node counters this file has recorded four times as not the check working — instrument B `expected 2393570 to be 2393060`, the overflow pass `expected 523296 to be 523128`, the channel census `nodesExamined` `expected 21836 to be 21789`. `census.sites`, `census.byModule` and `freshReceivers` are green, so no `returned-closure` row for production.ts; the other eleven files in the directory passed, which is the string census, the magic-number audit and the import fence green beside it.',
+      'AND THE BRANCH RUNS, PRINTED: `accrueProduction` on a fresh gym returns keys `[…,"ledger","shapes"]`, `typeof shapes.entry.peek === "function"`, `shapes.entry.peek()` is `covered-day`, and `gymBucks 0` is unchanged. `npx tsc --noEmit` exit 0.',
+      "WHY THE SCREEN SAID NO, in the mechanism's own terms. `PRODUCTION_TABLE.table` carries no call signature, so the arm asks `typeCouldHoldAFunction`. That predicate has four arms — call signature, union or intersection, array or tuple, and `getProperties()` — and a mapped type answers none of them: `Readonly<Record<string, ProductionPeek>>` has zero properties and is neither an array nor a tuple, so `.some()` over an empty list is `false`. The verdict handed back is 'this value provably cannot hand anybody a closure', about a table of closures.",
+      'FORM 1 WAS CAUGHT, BY A DIFFERENT INSTRUMENT, and that is why this row has two attempts rather than one. Declaring `shapes` on `ProductionAccrual` puts the closure on the exported surface, where instrument A walks index signatures and call-signature return types: `pins every bare-string position` reddened with `+ "production.ts#accrueProduction#return.shapes[key].peek()"`, 4 failed of 492. Form 2 leaves the interface alone and casts the frozen literal — `}) as ProductionAccrual` — so the field is on the value and not on the type. That is the isolation, and it also says what instrument A covers here and what it does not.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Planted alone rather than beside another silence, per the rule M60 and M61 established. production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
+    ]),
+  }),
 ]);
 
 /**
@@ -13044,7 +13063,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(61);
+    expect(PLANTED_ROUTES.length).toBe(62);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -13144,8 +13163,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // chunk text the set already held and left that census green. Only the
     // third says whether the string census covers this class, and the answer
     // is that it does not.
-    expect(attempts).toBe(83);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(51);
+    expect(attempts).toBe(85);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(52);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
