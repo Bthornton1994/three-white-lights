@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece b1-licensing-realip
-generated 2026-08-14T04:43:32.063Z
+generated 2026-08-14T05:23:44.618Z
 repo /home/user/wt-realip-widen
-commit 067d8b31730a97c0a9109fe99822818741360473
+commit 83e0d68c97db87f25f0f2492ca8283b5b6114baf
 working tree clean (ignoring only this script's own output and .gauntlet/state.json)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -41,7 +41,7 @@ $ npx vitest run src/licensing --reporter=verbose
 
  RUN  v4.1.10 /home/user/wt-realip-widen
 
- ✓ src/licensing/spriteKit.test.ts > what a Tier 1 colorway has to be > targets the ramp the renderer actually shades the singlet into 3ms
+ ✓ src/licensing/spriteKit.test.ts > what a Tier 1 colorway has to be > targets the ramp the renderer actually shades the singlet into 4ms
  ✓ src/licensing/spriteKit.test.ts > what a Tier 1 colorway has to be > accepts every colorway in the table 1ms
  ✓ src/licensing/spriteKit.test.ts > what a Tier 1 colorway has to be > accepts the colorway of every entry, by the route the entry hands it over 1ms
  ✓ src/licensing/spriteKit.test.ts > what a Tier 1 colorway has to be > REJECTS a colorway built out of the equipment bank 1ms
@@ -49,19 +49,19 @@ $ npx vitest run src/licensing --reporter=verbose
  ✓ src/licensing/spriteKit.test.ts > what a Tier 1 colorway has to be > rejects a ramp whose steps a phone cannot tell apart 0ms
  ✓ src/licensing/spriteKit.test.ts > what a Tier 1 colorway has to be > rejects the outline colour and the skin ramp, which are bank 0 and still wrong 1ms
  ✓ src/licensing/spriteKit.test.ts > what a Tier 1 colorway has to be > gives every colorway in the table a different ramp, not just a different id 0ms
- ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > finds a singlet on the frame to recolour at all 60ms
- ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > leaves every recoloured pixel a BODY pixel 73ms
- ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > does not move the silhouette, and does move the colour 20ms
+ ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > finds a singlet on the frame to recolour at all 57ms
+ ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > leaves every recoloured pixel a BODY pixel 84ms
+ ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > does not move the silhouette, and does move the colour 25ms
  ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > WOULD move the silhouette if a colorway used an equipment index 4ms
- ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > refuses to wear a colorway that is not a legal Tier 1 payload 11ms
- ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > touches nothing but the singlet 91ms
+ ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > refuses to wear a colorway that is not a legal Tier 1 payload 6ms
+ ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > touches nothing but the singlet 95ms
  ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > maps each step once, so a colorway may reuse a house index 3ms
- ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > is the identity when the house colorway is worn 12ms
- ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > wears a brand kit on an athlete build, end to end 4ms
- ✓ src/licensing/renderPanels.test.ts > the sheets are drawable > uses no unallocated palette index 33ms
- ✓ src/licensing/renderPanels.test.ts > the sheets are drawable > draws both surfaces, and they differ 34ms
- ✓ src/licensing/renderPanels.test.ts > the sheets are drawable > puts every entry on character select and every offer on the shelf 3ms
- ✓ src/licensing/renderPanels.test.ts > a panel stays inside itself > leaves the bottom margin clear of text 56ms
+ ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > is the identity when the house colorway is worn 9ms
+ ✓ src/licensing/spriteKit.test.ts > a partner colorway on a real rendered sprite > wears a brand kit on an athlete build, end to end 6ms
+ ✓ src/licensing/renderPanels.test.ts > the sheets are drawable > uses no unallocated palette index 37ms
+ ✓ src/licensing/renderPanels.test.ts > the sheets are drawable > draws both surfaces, and they differ 33ms
+ ✓ src/licensing/renderPanels.test.ts > the sheets are drawable > puts every entry on character select and every offer on the shelf 5ms
+ ✓ src/licensing/renderPanels.test.ts > a panel stays inside itself > leaves the bottom margin clear of text 55ms
  ✓ src/licensing/renderPanels.test.ts > a panel stays inside itself > keeps the art inside its well 1ms
  ✓ src/licensing/renderPanels.test.ts > a panel stays inside itself > scales a drawing up when the well has room, and never past the cap 0ms
  ✓ src/licensing/renderPanels.test.ts > a panel stays inside itself > stamps art at a whole-number scale, with no interpolation 1ms
@@ -73,9 +73,34 @@ $ npx vitest run src/licensing --reporter=verbose
  ✓ src/licensing/renderPanels.test.ts > the no-stat promise is printed > says on the sheet itself that nothing here is real 1ms
  ✓ src/licensing/renderPanels.test.ts > phone scale (GDD §7.1, §12.2) > doubles inside a 390pt viewport rather than dropping to 1x 3ms
  ✓ src/licensing/renderPanels.test.ts > phone scale (GDD §7.1, §12.2) > never picks a fractional scale 1ms
+ ✓ src/licensing/tiers.test.ts > the three tiers > is exactly three 4ms
+ ✓ src/licensing/tiers.test.ts > the three tiers > puts build, colorway and icon-mark on the sprite, and nothing else 1ms
+ ✓ src/licensing/tiers.test.ts > the three tiers > makes the name tag a string, which is why Tier 1 can stay generic 1ms
+ ✓ src/licensing/tiers.test.ts > the three tiers > carries portrait, wordmark and product at Tier 3 0ms
+ ✓ src/licensing/tiers.test.ts > the three tiers > lists exactly GDD §7.3s four Tier 3 surfaces 1ms
+ ✓ src/licensing/tiers.test.ts > the three tiers > names the sprite surfaces separately, so the prohibition has an operand 1ms
+ ✓ src/licensing/tiers.test.ts > Tier 3 never appears on the base sprite > refuses to reveal Tier 3 content to a sprite surface, at runtime 1ms
+ ✓ src/licensing/tiers.test.ts > Tier 3 never appears on the base sprite > refuses a surface nobody named at all 1ms
+ ✓ src/licensing/tiers.test.ts > Tier 3 never appears on the base sprite > will not let a Tier 3 asset be assigned into a sprite identity 3ms
+ ✓ src/licensing/tiers.test.ts > Tier 3 never appears on the base sprite > will not let Tier 3 content be read without a surface argument 1ms
+ ✓ src/licensing/tiers.test.ts > Tier 3 never appears on the base sprite > exposes no way to read an asset outside this module 1ms
+ ✓ src/licensing/tiers.test.ts > Tier 3 never appears on the base sprite > has no string-keyed field for a spread to overwrite 1ms
+ ✓ src/licensing/tiers.test.ts > the sprite pipeline never has to know a partner exists > found the art modules at all 0ms
+ ✓ src/licensing/tiers.test.ts > the sprite pipeline never has to know a partner exists > has no file under src/art/ importing src/licensing/ 6ms
+ ✓ src/licensing/tiers.test.ts > the sprite pipeline never has to know a partner exists > composes a sponsored sprite as a struct literal, and drops it the same way 1ms
+ ✓ src/licensing/tiers.test.ts > the sprite pipeline never has to know a partner exists > refuses to put kit on a brand or take a build from one 1ms
+ ✓ src/licensing/tiers.test.ts > the sprite pipeline never has to know a partner exists > projects Tier 1 field by field rather than by spreading the entry 0ms
+ ✓ src/licensing/tiers.test.ts > an identity entry > has a field for each tier and nothing outside them 0ms
+ ✓ src/licensing/tiers.test.ts > an identity entry > is either an athlete or a brand 0ms
+ ✓ src/licensing/tiers.test.ts > an identity entry > lets a brand have no body 0ms
+ ✓ src/licensing/tiers.test.ts > an identity entry > carries all three Tier 3 slots, never a partial one 2ms
+ ✓ src/licensing/tiers.test.ts > an identity entry > refuses a Tier 3 asset with nothing on it 1ms
+ ✓ src/licensing/tiers.test.ts > the human unlock gate > has two statuses and no third 0ms
+ ✓ src/licensing/tiers.test.ts > the human unlock gate > is empty, and stays empty until a human types a name into it 0ms
+ ✓ src/licensing/tiers.test.ts > the human unlock gate > marks every shipped entry a fictional placeholder 0ms
  ✓ src/licensing/partners.test.ts > the licensing catalogue > has both kinds of entry, so both paths are exercised 2ms
  ✓ src/licensing/partners.test.ts > the licensing catalogue > validates 1ms
- ✓ src/licensing/partners.test.ts > the licensing catalogue > gives every entry a unique id, colorway and mark 0ms
+ ✓ src/licensing/partners.test.ts > the licensing catalogue > gives every entry a unique id, colorway and mark 1ms
  ✓ src/licensing/partners.test.ts > the licensing catalogue > keeps a house colorway to fall back to when a deal ends 0ms
  ✓ src/licensing/partners.test.ts > the licensing catalogue > sells only reskins of items that exist on their own 1ms
  ✓ src/licensing/partners.test.ts > the licensing catalogue > reskins the functional item as well as the cosmetic ones 0ms
@@ -86,20 +111,20 @@ $ npx vitest run src/licensing --reporter=verbose
  ✓ src/licensing/partners.test.ts > Tier 1 > rejects a two-colour mark, and an empty one 0ms
  ✓ src/licensing/partners.test.ts > Tier 1 > composes a brand kit onto an athlete build 0ms
  ✓ src/licensing/partners.test.ts > Tier 1 > gives the two athletes different builds, so the field is not a constant 0ms
- ✓ src/licensing/partners.test.ts > Tier 2 > gives every entry a display name and a shorter one 0ms
+ ✓ src/licensing/partners.test.ts > Tier 2 > gives every entry a display name and a shorter one 1ms
  ✓ src/licensing/partners.test.ts > Tier 2 > uses only characters the card font can set 0ms
- ✓ src/licensing/partners.test.ts > Tier 3 > fills all three slots for every entry 1ms
+ ✓ src/licensing/partners.test.ts > Tier 3 > fills all three slots for every entry 0ms
  ✓ src/licensing/partners.test.ts > Tier 3 > draws well-formed art in every slot 1ms
  ✓ src/licensing/partners.test.ts > Tier 3 > rejects ragged art and an unlegended character, so the check can fire 0ms
  ✓ src/licensing/partners.test.ts > Tier 3 > uses only palette indices that resolve to a colour 1ms
- ✓ src/licensing/partners.test.ts > Tier 3 > draws something in every slot, not an empty rectangle 2ms
+ ✓ src/licensing/partners.test.ts > Tier 3 > draws something in every slot, not an empty rectangle 3ms
  ✓ src/licensing/partners.test.ts > Tier 3 > gives an athlete a face and a brand a shopfront 0ms
  ✓ src/licensing/partners.test.ts > Tier 3 > gives every asset alt text that describes it, not its slot name 1ms
- ✓ src/licensing/catalogue.test.ts > the item field roles > answers for every field of a base item, with no default 3ms
- ✓ src/licensing/catalogue.test.ts > the item field roles > has at least one mechanical field, or every guard below is vacuous 0ms
+ ✓ src/licensing/catalogue.test.ts > the item field roles > answers for every field of a base item, with no default 4ms
+ ✓ src/licensing/catalogue.test.ts > the item field roles > has at least one mechanical field, or every guard below is vacuous 1ms
  ✓ src/licensing/catalogue.test.ts > the item field roles > shares no field name with a reskin 0ms
  ✓ src/licensing/catalogue.test.ts > the item field roles > will not let a reskin declare an effect 0ms
- ✓ src/licensing/catalogue.test.ts > a sponsored item is mechanically its base item > hands back the SAME effect object, not an equal one 0ms
+ ✓ src/licensing/catalogue.test.ts > a sponsored item is mechanically its base item > hands back the SAME effect object, not an equal one 1ms
  ✓ src/licensing/catalogue.test.ts > a sponsored item is mechanically its base item > holds for the FUNCTIONAL item too, which is the interesting case 0ms
  ✓ src/licensing/catalogue.test.ts > a sponsored item is mechanically its base item > changes presentation and only presentation 0ms
  ✓ src/licensing/catalogue.test.ts > a sponsored item is mechanically its base item > can only carry the effect kinds progression.ts already allows 0ms
@@ -112,76 +137,54 @@ $ npx vitest run src/licensing --reporter=verbose
  ✓ src/licensing/catalogue.test.ts > validateCatalogue > accepts the same entry once a human has named it 0ms
  ✓ src/licensing/catalogue.test.ts > validateCatalogue > refuses two rows sharing a SKU, base or sponsored 0ms
  ✓ src/licensing/catalogue.test.ts > placement > orders the shelf and nothing else 1ms
- ✓ src/licensing/tiers.test.ts > the three tiers > is exactly three 3ms
- ✓ src/licensing/tiers.test.ts > the three tiers > puts build, colorway and icon-mark on the sprite, and nothing else 1ms
- ✓ src/licensing/tiers.test.ts > the three tiers > makes the name tag a string, which is why Tier 1 can stay generic 0ms
- ✓ src/licensing/tiers.test.ts > the three tiers > carries portrait, wordmark and product at Tier 3 0ms
- ✓ src/licensing/tiers.test.ts > the three tiers > lists exactly GDD §7.3s four Tier 3 surfaces 0ms
- ✓ src/licensing/tiers.test.ts > the three tiers > names the sprite surfaces separately, so the prohibition has an operand 0ms
- ✓ src/licensing/tiers.test.ts > Tier 3 never appears on the base sprite > refuses to reveal Tier 3 content to a sprite surface, at runtime 0ms
- ✓ src/licensing/tiers.test.ts > Tier 3 never appears on the base sprite > refuses a surface nobody named at all 1ms
- ✓ src/licensing/tiers.test.ts > Tier 3 never appears on the base sprite > will not let a Tier 3 asset be assigned into a sprite identity 0ms
- ✓ src/licensing/tiers.test.ts > Tier 3 never appears on the base sprite > will not let Tier 3 content be read without a surface argument 0ms
- ✓ src/licensing/tiers.test.ts > Tier 3 never appears on the base sprite > exposes no way to read an asset outside this module 0ms
- ✓ src/licensing/tiers.test.ts > Tier 3 never appears on the base sprite > has no string-keyed field for a spread to overwrite 0ms
- ✓ src/licensing/tiers.test.ts > the sprite pipeline never has to know a partner exists > found the art modules at all 0ms
- ✓ src/licensing/tiers.test.ts > the sprite pipeline never has to know a partner exists > has no file under src/art/ importing src/licensing/ 6ms
- ✓ src/licensing/tiers.test.ts > the sprite pipeline never has to know a partner exists > composes a sponsored sprite as a struct literal, and drops it the same way 1ms
- ✓ src/licensing/tiers.test.ts > the sprite pipeline never has to know a partner exists > refuses to put kit on a brand or take a build from one 0ms
- ✓ src/licensing/tiers.test.ts > the sprite pipeline never has to know a partner exists > projects Tier 1 field by field rather than by spreading the entry 0ms
- ✓ src/licensing/tiers.test.ts > an identity entry > has a field for each tier and nothing outside them 0ms
- ✓ src/licensing/tiers.test.ts > an identity entry > is either an athlete or a brand 0ms
- ✓ src/licensing/tiers.test.ts > an identity entry > lets a brand have no body 0ms
- ✓ src/licensing/tiers.test.ts > an identity entry > carries all three Tier 3 slots, never a partial one 1ms
- ✓ src/licensing/tiers.test.ts > an identity entry > refuses a Tier 3 asset with nothing on it 3ms
- ✓ src/licensing/tiers.test.ts > the human unlock gate > has two statuses and no third 0ms
- ✓ src/licensing/tiers.test.ts > the human unlock gate > is empty, and stays empty until a human types a name into it 0ms
- ✓ src/licensing/tiers.test.ts > the human unlock gate > marks every shipped entry a fictional placeholder 0ms
  ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > walks the whole repository, not just src/ 4ms
- ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > reports every file type it reads, and every file it cannot 78ms
- ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > reads test files, .mts, .toml and an extensionless file 1ms
+ ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > reports every file type it reads, and every file it cannot 129ms
+ ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > agrees with the repository about which files exist 1ms
+ ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > reports a reach difference rather than swallowing it 1ms
+ ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > keeps an untracked file out of the counts and inside the scan 1ms
+ ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > reads test files, .mts, .toml and an extensionless file 0ms
  ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > never walks into a sibling git worktree 0ms
  ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > has a renderable inventory with real strings in it 1ms
  ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > collects every Tier 3 slot of every entry 2ms
  ✓ src/licensing/realIp.test.ts > the reader decides on bytes, not on a suffix > reads a source file in a language nobody put on a list 0ms
- ✓ src/licensing/realIp.test.ts > the reader decides on bytes, not on a suffix > refuses bytes that cannot be text, by both routes 1ms
- ✓ src/licensing/realIp.test.ts > the reader decides on bytes, not on a suffix > accepts text a naive byte test would reject 1ms
+ ✓ src/licensing/realIp.test.ts > the reader decides on bytes, not on a suffix > refuses bytes that cannot be text, by both routes 0ms
+ ✓ src/licensing/realIp.test.ts > the reader decides on bytes, not on a suffix > accepts text a naive byte test would reject 0ms
  ✓ src/licensing/realIp.test.ts > the reader decides on bytes, not on a suffix > gives real files in this tree the verdicts a reader would expect 1ms
  ✓ src/licensing/realIp.test.ts > the watchlist > is non-empty and covers all six categories 0ms
  ✓ src/licensing/realIp.test.ts > the watchlist > finds a project name inside a URL — host, path segment and slug 1ms
  ✓ src/licensing/realIp.test.ts > the watchlist > watches a platform by its DOMAIN, and that entry cannot fire on our verdict term 1ms
  ✓ src/licensing/realIp.test.ts > the watchlist > has no dead entry in the two derived categories 1ms
- ✓ src/licensing/realIp.test.ts > the watchlist > gives every entry a reason and never repeats one 5ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > gives every entry a reason and never repeats one 3ms
  ✓ src/licensing/realIp.test.ts > the watchlist > does not also claim to skip a name it watches 1ms
- ✓ src/licensing/realIp.test.ts > the watchlist > lists as deliberately-unwatched only names that are really in this tree 13ms
- ✓ src/licensing/realIp.test.ts > the watchlist > matches on word boundaries, so a checksum is not a brand 20ms
- ✓ src/licensing/realIp.test.ts > the watchlist > is case-insensitive 1ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > lists as deliberately-unwatched only names that are really in this tree 8ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > matches on word boundaries, so a checksum is not a brand 18ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > is case-insensitive 0ms
  ✓ src/licensing/realIp.test.ts > the watchlist > escapes regex metacharacters in a name 0ms
- ✓ src/licensing/realIp.test.ts > the audit bites > is clean on the unmutated inventory, so a finding is the mutation 61ms
- ✓ src/licensing/realIp.test.ts > the audit bites > catches a real brand in a Tier 2 name tag 58ms
- ✓ src/licensing/realIp.test.ts > the audit bites > catches a real athlete in a Tier 3 caption, behind the symbol 56ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > is clean on the unmutated inventory, so a finding is the mutation 62ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > catches a real brand in a Tier 2 name tag 59ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > catches a real athlete in a Tier 3 caption, behind the symbol 57ms
  ✓ src/licensing/realIp.test.ts > the audit bites > catches a real athlete planted into the sample-card fixtures, as data 1ms
  ✓ src/licensing/realIp.test.ts > the audit bites > catches the same plant as RENDERABLE CONTENT, not only as source text 1ms
  ✓ src/licensing/realIp.test.ts > the audit bites > catches a real brand planted into a tuned copy string 0ms
  ✓ src/licensing/realIp.test.ts > the audit bites > catches a real brand planted into app.json, in BOTH halves 2ms
- ✓ src/licensing/realIp.test.ts > the audit bites > catches a real federation planted into the Expo web config 1ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > catches a real federation planted into the Expo web config 0ms
  ✓ src/licensing/realIp.test.ts > the audit bites > catches a real brand in an asset FILENAME 0ms
  ✓ src/licensing/realIp.test.ts > the audit bites > catches a real federation in a file type the old allowlist declined 1ms
  ✓ src/licensing/realIp.test.ts > the audit bites > classifies a .mts comment as a comment, not as code 0ms
- ✓ src/licensing/realIp.test.ts > the audit bites > does not exempt the watchlist file outside its watchlist regions 89ms
- ✓ src/licensing/realIp.test.ts > the audit bites > does not exempt the watchlist file for the NEWLY watched names either 88ms
- ✓ src/licensing/realIp.test.ts > the audit bites > exempts each region only as far as its own closing bracket 133ms
- ✓ src/licensing/realIp.test.ts > the audit bites > leaves the watchlist file with no pinned citations of its own 64ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > does not exempt the watchlist file outside its watchlist regions 96ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > does not exempt the watchlist file for the NEWLY watched names either 95ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > exempts each region only as far as its own closing bracket 143ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > leaves the watchlist file with no pinned citations of its own 73ms
  ✓ src/licensing/realIp.test.ts > the audit bites > exempts exactly one file and exactly three of its regions 1ms
  ✓ src/licensing/realIp.test.ts > the audit bites > reports the file, the line and the name, so a failure is actionable 1ms
  ✓ src/licensing/realIp.test.ts > the audit bites > tells a comment apart from a string on the same line 1ms
- ✓ src/licensing/realIp.test.ts > the audit is not a sieve > passes the fictional catalogue 1ms
+ ✓ src/licensing/realIp.test.ts > the audit is not a sieve > passes the fictional catalogue 2ms
  ✓ src/licensing/realIp.test.ts > the audit is not a sieve > does not fire on ordinary prose that contains a brandish word 1ms
  ✓ src/licensing/realIp.test.ts > the audit is not a sieve > does not fire on the fictional federations already in the tree 0ms
  ✓ src/licensing/realIp.test.ts > the audit is not a sieve > does not fire on a real town that is not a meet series 0ms
  ✓ src/licensing/realIp.test.ts > the audit is not a sieve > leaves the formula eponyms alone 1ms
- ✓ src/licensing/realIp.test.ts > no real identity reaches a surface > finds nothing in any string the game can draw 57ms
- ✓ src/licensing/realIp.test.ts > no real identity reaches a surface > finds nothing in the NAME of any file that ships 19ms
+ ✓ src/licensing/realIp.test.ts > no real identity reaches a surface > finds nothing in any string the game can draw 60ms
+ ✓ src/licensing/realIp.test.ts > no real identity reaches a surface > finds nothing in the NAME of any file that ships 20ms
  ✓ src/licensing/realIp.test.ts > no real identity reaches a surface > finds no watchlist name anywhere in the licensing catalogue 7ms
  ✓ src/licensing/realIp.test.ts > the reviewable citation list > is exactly the list in realIp.ts — a new mention is a human decision 1ms
  ✓ src/licensing/realIp.test.ts > the reviewable citation list > is not vacuous — the baseline citations are still found 0ms
@@ -193,9 +196,9 @@ $ npx vitest run src/licensing --reporter=verbose
  ✓ src/licensing/realIp.test.ts > the reviewable citation list > carries a filename row, so the binary half is not silently empty 0ms
 
  Test Files  6 passed (6)
-      Tests  150 passed (150)
-   Start at  04:43:33
-   Duration  3.84s (transform 2.61s, setup 0ms, import 4.90s, tests 1.26s, environment 1ms)
+      Tests  153 passed (153)
+   Start at  05:23:45
+   Duration  4.08s (transform 2.83s, setup 0ms, import 5.18s, tests 1.38s, environment 1ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -210,9 +213,9 @@ $ npx vitest run
 
 
  Test Files  85 passed (85)
-      Tests  3346 passed (3346)
-   Start at  04:43:37
-   Duration  369.34s (transform 7.62s, setup 0ms, import 33.50s, tests 816.28s, environment 12ms)
+      Tests  3349 passed (3349)
+   Start at  05:23:50
+   Duration  380.84s (transform 7.75s, setup 0ms, import 33.62s, tests 849.61s, environment 11ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
