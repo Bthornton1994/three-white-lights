@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-14T18-17-41-301Z-31308",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-14T18:17:41.301Z",
+  "startedAtMs": 1786731461301,
+  "cwd": "/home/user/wt-evidence-guard",
+  "commit": "1116e56f391968bdfe43f09b330a6321f7c8b793",
+  "branch": "claude/evidence-sequencing-guard",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 31308,
+    "startTick": "1441031",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --id evguard-suite -- npx vitest run",
+    "bootId": "9a2cb2d2-fb56-4022-8ed1-6d554d4fac5c",
+    "bootEpochSeconds": 1786717051,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T18:17:41.323Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
