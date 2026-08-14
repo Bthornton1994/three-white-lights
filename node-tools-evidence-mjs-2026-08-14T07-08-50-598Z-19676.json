@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-evidence-mjs-2026-08-14T07-08-50-598Z-19676",
+  "label": null,
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "qualifying-totals-research",
+    "src/licensing/realIp.test.ts"
+  ],
+  "budgetSeconds": 1200,
+  "startedAtIso": "2026-08-14T07:08:50.598Z",
+  "startedAtMs": 1786691330598,
+  "cwd": "/home/user/wt-qt-research",
+  "commit": "4482966d1b556da77f62d9ffb36eecd97a156bb6",
+  "branch": "claude/qualifying-totals-research",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 19676,
+    "startTick": "1718365",
+    "cmdline": "node tools/watchdog.mjs --budget 1200 --id qt-ev-piece2 -- node tools/evidence.mjs qualifying-totals-research src/licensing/realIp.test.ts",
+    "bootId": "70e4dcd9-91f6-43ee-a53c-88125d271f98",
+    "bootEpochSeconds": 1786674147,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T07:08:50.648Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
