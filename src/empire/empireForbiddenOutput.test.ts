@@ -331,6 +331,7 @@ import type {
   WallClockBooks,
   WallClockFundedOutput,
 } from './empireCore';
+import type { EmpireLedgerEntry } from './empireCore';
 import type { EmpirePolicy, EmpireDayEntry, EmpireGym, SocialInputs } from './empireInvariant';
 import type { ExpansionAxis, ExpansionBuild, ExpansionContext } from './expansion';
 import type { EngagementHistory } from './engagement';
@@ -7611,6 +7612,88 @@ function channelCensusOf(
   };
 
   /**
+   * Every expression ASSIGNED to a binding, found by symbol and not by spelling.
+   *
+   * THE THIRTEENTH BYPASS IS WHAT THIS IS FOR, and it is the same reformulation
+   * the twelfth forced one channel over. A `const` carries its whole value in
+   * its initializer, so following the initializer was the whole of "what is
+   * this binding". A `let` does not: it is written from anywhere in its scope,
+   * and `let shape; if (x) shape = { peek };` has NO initializer at all. Both
+   * `ownerOf` and `returnedFunctions` followed initializers only, so both
+   * walked straight past it — M39, planted and printed.
+   *
+   * Syntax cannot enumerate what a binding holds, because the writes are
+   * scattered; a SYMBOL's assignments can be, because they are a finite set of
+   * nodes in one scope. This walks the declaration's enclosing function (or the
+   * source file, for a module-level binding) and resolves every assignment
+   * TARGET through the checker, so `(shape as T) = …` and an assignment through
+   * any alias of the name are the same node to it. `FirstAssignment ..
+   * LastAssignment` is the operator range rather than `EqualsToken`, so `??=`
+   * and `||=` — which are exactly how a branch-assembled binding gets written
+   * when somebody tidies the `if` away — are inside it.
+   *
+   * ITS LIMITS, in the mechanism's own terms, with the catcher for each named:
+   *
+   *   - A DESTRUCTURING assignment — `({ shape } = source)` — has an
+   *     `ObjectLiteralExpression` on the left, not an identifier, so it is not
+   *     found. What covers it is the `unfollowable` record below: a binding
+   *     with no initializer and no assignment found lands in `freshReceivers`,
+   *     which is a set equality in both directions, so the route arrives as a
+   *     red line naming the identifier rather than as silence.
+   *   - A write from OUTSIDE the declaration's scope cannot exist for a local,
+   *     because a `let` inside a function is not addressable from anywhere else
+   *     — that is a language property rather than a claim about this walk. A
+   *     module-level `let` is scoped to the source file and this walks the
+   *     whole file, so the same holds there.
+   */
+  const assignedValuesTo = (declaration: ts.VariableDeclaration): readonly ts.Expression[] => {
+    let scope: ts.Node = declaration.getSourceFile();
+    for (let at: ts.Node | undefined = declaration.parent; at !== undefined; at = at.parent) {
+      if (ts.isFunctionLike(at) || ts.isSourceFile(at)) {
+        scope = at;
+        break;
+      }
+    }
+    const found: ts.Expression[] = [];
+    const walkScope = (node: ts.Node): void => {
+      if (
+        ts.isBinaryExpression(node) &&
+        node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+        node.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+      ) {
+        const target = past(node.left);
+        if (ts.isIdentifier(target)) {
+          const resolved = resolvedDeclaration(target);
+          if (resolved !== null && bindingHost(resolved) === declaration) found.push(node.right);
+        }
+      }
+      node.forEachChild(walkScope);
+    };
+    walkScope(scope);
+    return found;
+  };
+
+  /**
+   * Whether an initializer is a binding this walk should hop THROUGH.
+   *
+   * `let shape: T | undefined = undefined;` is the branch immediately below the
+   * one M39 was planted in, and it is why this predicate exists rather than a
+   * bare `ts.isIdentifier`. `undefined` IS an identifier, and it resolves to a
+   * `VariableDeclaration` in `lib.es5.d.ts` — so the hop succeeds, lands at
+   * module scope in a declaration file, and the assignment path below never
+   * runs. A binding declared in a `.d.ts` is not a value this directory
+   * assembled, so it is not a hop.
+   */
+  const ambientlyDeclared = (declaration: ts.Node): boolean =>
+    declaration.getSourceFile().isDeclarationFile;
+
+  const hoppableInitializer = (root: ts.Expression): boolean => {
+    if (!ts.isIdentifier(root)) return false;
+    const resolved = resolvedDeclaration(root);
+    return resolved !== null && !ambientlyDeclared(resolved);
+  };
+
+  /**
    * Whose binding an expression resolves to, FOLLOWING ALIASES.
    *
    * This is the reformulation the twelfth bypass forced, and the whole of it is
@@ -7655,12 +7738,29 @@ function channelCensusOf(
       }
       if (ts.isVariableDeclaration(host)) {
         const initial = host.initializer === undefined ? null : receiverRoot(host.initializer);
-        if (initial !== null && ts.isIdentifier(initial) && !seen.has(initial)) {
+        if (initial !== null && hoppableInitializer(initial) && !seen.has(initial)) {
           seen.add(initial);
           at = initial;
           continue;
         }
         if (initial !== null && (ts.isArrowFunction(initial) || ts.isFunctionExpression(initial))) {
+          return { kind: 'function', declaration: host, detail: nameOf(host) };
+        }
+        // THE ASSIGNMENT PATH, AND IT IS CONSULTED ONLY WHERE THE INITIALIZER
+        // GAVE NOTHING TO FOLLOW — so every classification the initializer path
+        // already produced is unchanged, and `writeOwners.local` stays at the
+        // 153 it has always been. This is the mutation arm's half of M39: `let
+        // inner; if (x) inner = sink; inner.kind = <a banned name>` resolves to
+        // the PARAMETER now instead of to a local, which is the difference
+        // between `argument-mutation` and a number nobody reads.
+        const assigned = assignedValuesTo(host).map(receiverRoot);
+        const hop = assigned.find((root) => hoppableInitializer(root) && !seen.has(root));
+        if (hop !== undefined) {
+          seen.add(hop);
+          at = hop;
+          continue;
+        }
+        if (assigned.some((root) => ts.isArrowFunction(root) || ts.isFunctionExpression(root))) {
           return { kind: 'function', declaration: host, detail: nameOf(host) };
         }
         return {
@@ -7731,28 +7831,107 @@ function channelCensusOf(
    * at a catcher that does not exist, which is the exact defect CLAUDE.md says
    * an unrun named catcher is.
    *
-   * Its limit now, stated in the mechanism's own terms and with the honest
-   * admission that this one has NOT been driven to exhaustion: alias-following
-   * is bounded by `ALIAS_HOPS_MAX` and by the initializer being visible, so a
-   * function assembled across a branch — `let shape; if (x) shape = {...}` —
-   * has no initializer to follow and is not found. That route is not planted
-   * and no catcher is claimed for it.
+   * ITS DECLARED LIMIT WAS PLANTED AND IT ESCAPED — the thirteenth bypass, M39.
+   * The sentence that used to sit here said a function assembled across a
+   * branch — `let shape; if (x) shape = {...}` — has no initializer to follow,
+   * claimed no catcher for it, and said it had not been planted. All three
+   * halves were honest and the route was real: `tsc --noEmit` exit 0, `peek():
+   * covered-day` printed off a driven call, and the whole directory came back
+   * 3 failed of 475 with all three failures node/string truncation counters.
+   *
+   * It follows assignments now, through `assignedValuesTo`, which is the same
+   * helper `ownerOf` uses — one resolution read by both arms, for the reason
+   * the callback and wrap censuses were joined a round earlier. Re-planted
+   * against the fixed walk, M39 reddens two assertions by name:
+   * `"returned-closure": + "production.ts": 1` and
+   * `+ "production.ts#accrueProduction#closure:.peek"`.
+   *
+   * WHAT IT STILL CANNOT FOLLOW IS NAMED, NOT SILENT. An identifier whose value
+   * this walk cannot see — a parameter, an import, a destructured binding, a
+   * `let` with neither initializer nor assignment — is pushed into
+   * `unfollowed`, and the caller puts it in `freshReceivers`, which is a set
+   * equality in both directions with `unclassified` pinned at zero. So the next
+   * unfollowable shape is a red line naming a file, a line and an identifier
+   * rather than a `return` with nothing behind it. That is the `else` this file
+   * has now had to add three times, in three different walks.
    */
-  const returnedFunctions = (expression: ts.Expression, at: string = ''): readonly string[] => {
+  const returnedFunctions = (
+    expression: ts.Expression,
+    at: string = '',
+  ): { readonly found: readonly string[]; readonly unfollowed: readonly ts.Identifier[] } => {
     const found: string[] = [];
+    const unfollowed: ts.Identifier[] = [];
     const seenAliases = new Set<ts.Node>();
     const walk = (node: ts.Expression, path_: string): void => {
       if (ts.isIdentifier(node)) {
-        const declaration = resolvedDeclaration(node);
-        if (
-          declaration !== null &&
-          ts.isVariableDeclaration(declaration) &&
-          declaration.initializer !== undefined &&
-          !seenAliases.has(declaration)
-        ) {
-          seenAliases.add(declaration);
-          walk(declaration.initializer, path_);
+        // THE ABSENCE OF A VALUE IS NOT AN UNFOLLOWABLE ROUTE, and this is the
+        // branch immediately below the one the probe was written for.
+        // `let shape: T | undefined = undefined` walks its initializer, and
+        // `undefined` is an identifier the checker gives NO declaration for —
+        // so it landed in `unfollowed` and read as "a shape this walk has never
+        // met". It is asked of the CHECKER rather than matched by spelling: a
+        // value whose type is `undefined`, `null` or `void` cannot be a
+        // function, so there is nothing behind it to follow.
+        const nullish = ts.TypeFlags.Undefined | ts.TypeFlags.Null | ts.TypeFlags.Void;
+        if ((checker.getTypeAtLocation(node).flags & nullish) !== 0) return;
+        const resolved = resolvedDeclaration(node);
+        const host = resolved === null ? null : bindingHost(resolved);
+        if (host === null) {
+          unfollowed.push(node);
+          return;
         }
+        // An ambient binding is not a value this directory assembled. Same
+        // predicate `hoppableInitializer` uses, shared rather than restated,
+        // because these two arms are one decision.
+        if (ambientlyDeclared(host)) return;
+        // A NAMED FUNCTION HANDED BACK BY ITS NAME, which the initializer-only
+        // walk could not see either: `function helper() {…}; return { peek:
+        // helper };` resolves to a `FunctionDeclaration` and not to a variable.
+        // `resolvedDeclaration` follows import aliases, so a function DEFINED
+        // in another module of this directory and returned from this one lands
+        // here too.
+        if (ts.isFunctionDeclaration(host) || ts.isFunctionExpression(host) || ts.isArrowFunction(host)) {
+          found.push(path_ === '' ? 'return' : path_);
+          return;
+        }
+        // A RETURNED PARAMETER IS THE CALLER'S OWN VALUE COMING BACK, and it is
+        // deliberately neither followed nor recorded. This channel is about
+        // functions THIS DIRECTORY produced; a closure that arrived through a
+        // parameter was written by the caller, which is the same reasoning
+        // `reachableFromOutside` uses one table over. Recording them measured
+        // 57 entries, every one a parameter returned directly, and a
+        // line-numbered census of those would move on any edit to any shipped
+        // module while saying nothing about this directory's own output.
+        if (ts.isParameter(host)) return;
+        if (!ts.isVariableDeclaration(host)) {
+          unfollowed.push(node);
+          return;
+        }
+        if (seenAliases.has(host)) return;
+        seenAliases.add(host);
+        const values: ts.Expression[] = [
+          ...(host.initializer === undefined ? [] : [host.initializer]),
+          ...assignedValuesTo(host),
+        ];
+        if (values.length === 0) {
+          // A `for (const x of xs)` BINDING, which is the third shape with no
+          // initializer and was found by widening rather than by reasoning:
+          // recording every unfollowable identifier reported exactly five, and
+          // all five were this — `for (const build of builds) return build;`.
+          // The value is an element of the iterable, so the iterable is what
+          // the walk follows. A `for-in` binding is a KEY and never a function,
+          // so it is deliberately not followed and lands in `unfollowed`
+          // instead; there are none in this directory, so that costs nothing
+          // and says what would happen if one arrived.
+          const statement = host.parent.parent;
+          if (ts.isForOfStatement(statement)) {
+            walk(statement.expression, path_);
+            return;
+          }
+          unfollowed.push(node);
+          return;
+        }
+        for (const value of values) walk(value, path_);
         return;
       }
       if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
@@ -7801,15 +7980,32 @@ function channelCensusOf(
             // declaration is the shorthand itself, so following it goes in a
             // circle. The plant stayed green through one whole repair on that.
             const value = checker.getShorthandAssignmentValueSymbol(property);
-            const declaration = value?.valueDeclaration ?? value?.declarations?.[0];
-            if (
-              declaration !== undefined &&
-              ts.isVariableDeclaration(declaration) &&
-              declaration.initializer !== undefined &&
-              !seenAliases.has(declaration)
+            const resolved = value?.valueDeclaration ?? value?.declarations?.[0];
+            const declaration = resolved === undefined ? undefined : bindingHost(resolved);
+            if (declaration === undefined) {
+              unfollowed.push(property.name);
+            } else if (
+              ts.isFunctionDeclaration(declaration) ||
+              ts.isFunctionExpression(declaration) ||
+              ts.isArrowFunction(declaration)
             ) {
+              found.push(`${path_}.${name}`);
+            } else if (ts.isParameter(declaration)) {
+              // The caller's own value, coming back. See the identifier arm.
+            } else if (!ts.isVariableDeclaration(declaration)) {
+              unfollowed.push(property.name);
+            } else if (!seenAliases.has(declaration)) {
+              // THE SIBLING ARM, WIDENED WITH THE ONE ABOVE AND NOT AFTER IT.
+              // `{ peek }` where `peek` is branch-assembled is the same route
+              // as `return shape` where `shape` is, and the last round of this
+              // walk learned the hard way that the two arms get written apart.
               seenAliases.add(declaration);
-              walk(declaration.initializer, `${path_}.${name}`);
+              const values: ts.Expression[] = [
+                ...(declaration.initializer === undefined ? [] : [declaration.initializer]),
+                ...assignedValuesTo(declaration),
+              ];
+              if (values.length === 0) unfollowed.push(property.name);
+              for (const assigned of values) walk(assigned, `${path_}.${name}`);
             }
           }
         }
@@ -7832,7 +8028,7 @@ function channelCensusOf(
       }
     };
     walk(expression, at);
-    return found;
+    return { found, unfollowed };
   };
 
   for (const root of roots) {
@@ -8033,8 +8229,18 @@ function channelCensusOf(
       // arguments, because `return list.map((x) => …)` hands the caller a list
       // and not the arrow.
       if (ts.isReturnStatement(node) && node.expression !== undefined) {
-        for (const found of returnedFunctions(node.expression)) {
+        const walked = returnedFunctions(node.expression);
+        for (const found of walked.found) {
           record('returned-closure', moduleName, key(node, `closure:${found}`));
+        }
+        // The `else` for this walk, in the same list the other two use. A
+        // returned identifier whose value the walk cannot see is named here
+        // rather than dropped, so a shape it has never met arrives as a red
+        // line instead of as a clean channel.
+        for (const identifier of walked.unfollowed) {
+          freshReceivers.push(
+            `${moduleName}:${String(lineOf(identifier))} returned=unfollowable:${identifier.text}`,
+          );
         }
       }
       if (ts.isFunctionDeclaration(node) && node.type !== undefined && ts.isFunctionTypeNode(node.type)) {
@@ -9816,11 +10022,561 @@ describe('the channel census — the routes a string can leave this directory by
 });
 
 // ---------------------------------------------------------------------------
+// The assembly probe — the tripwire M39's repair is measured against
+// ---------------------------------------------------------------------------
+
+/**
+ * Seven bindings whose value arrives somewhere other than an initializer.
+ *
+ * WHY A PROBE RATHER THAN SEVEN MORE `PLANTED_ROUTES` ROWS. A row is a
+ * measurement somebody took once and wrote down; it expires silently the moment
+ * the walk it describes is edited, and this file has recorded that failure four
+ * times under other names. A probe compiled beside the shipped directory is the
+ * same measurement taken on every run, so a repair that gets reverted, narrowed
+ * or refactored past reddens here instead of going quiet. That is the shape
+ * `instrument A bites` and `the callback pass bites` already have; this is the
+ * third of them and the first for the SCAN's resolution rather than for its
+ * reach.
+ *
+ * Each export is one shape the initializer-following walk could not see:
+ *
+ *   1. `probeAssembledClosure` — M39 verbatim: `let shape;` written inside an
+ *      `if`, returned through a cast and `Object.freeze`.
+ *   2. `probeAssembledThroughUndefined` — the branch immediately below it, and
+ *      it is not a variation for the sake of one. `undefined` IS an identifier
+ *      and resolves to a `VariableDeclaration` in `lib.es5.d.ts`, so a walk that
+ *      hops through any identifier initializer hops OUT of the function and
+ *      never reaches the assignment. `hoppableInitializer` is what refuses it.
+ *   3. `probeAssembledShorthand` — the same, through `{ peek }`, which is the
+ *      arm M38 needed three attempts to close on the initializer path alone.
+ *   4. `probeReturnsNamedFunction` — a function handed back by its NAME. Not a
+ *      variable at all, so an initializer-only walk had nothing to look at.
+ *   5. `probeForOfClosure` — a `for (const x of xs)` binding, which has no
+ *      initializer and no assignment. Found by measurement rather than by
+ *      thought: recording every unfollowable identifier reported exactly five
+ *      on the shipped tree and all five were this shape.
+ *   6. `probeAssembledMutation` — the same defect on the WRITE arm, which is
+ *      the sibling `ownerOf` shares the helper for. A parameter reached through
+ *      a branch-assembled alias is `argument-mutation`, not a local.
+ *   7. `probeAssembledCallback` — and again on the CALLBACK arm, which resolves
+ *      its callee through the same `ownerOf`.
+ *
+ * AND ONE THAT IS THE DECLARED LIMIT RATHER THAN A CLOSURE.
+ * `probeDestructuredAssembly` writes the binding with `({ shape } = source)`,
+ * whose left-hand side is an object literal and not an identifier, so
+ * `assignedValuesTo` does not find it. The limit is stated in
+ * `assignedValuesTo`'s own docstring, the catcher named there is
+ * `freshReceivers`, and the test below RUNS the route against that catcher
+ * instead of asserting it — which is the only version of a declared limit this
+ * codebase has found to be worth anything.
+ */
+const ASSEMBLY_PROBE_SOURCE = `import { EMPIRE_FORBIDDEN_OUTPUTS } from './empireCore';
+
+export interface AssemblyShape {
+  readonly peek: () => string;
+}
+
+const ASSEMBLY_FOR_OF: readonly AssemblyShape[] = Object.freeze([
+  Object.freeze({ peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] }),
+]);
+
+export function probeAssembledClosure(slots: number): AssemblyShape {
+  let shape: AssemblyShape | undefined;
+  if (slots >= 0) {
+    shape = { peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] };
+  }
+  return Object.freeze(shape as AssemblyShape);
+}
+
+export function probeAssembledThroughUndefined(slots: number): AssemblyShape {
+  let shape: AssemblyShape | undefined = undefined;
+  if (slots >= 0) {
+    shape = { peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] };
+  }
+  return Object.freeze(shape as AssemblyShape);
+}
+
+export function probeAssembledShorthand(slots: number): AssemblyShape {
+  let peek: (() => string) | undefined;
+  if (slots >= 0) {
+    peek = (): string => EMPIRE_FORBIDDEN_OUTPUTS[0];
+  }
+  const shape = { peek } as unknown as AssemblyShape;
+  return Object.freeze(shape);
+}
+
+function probeNamedPeek(): string {
+  return EMPIRE_FORBIDDEN_OUTPUTS[0];
+}
+
+export function probeReturnsNamedFunction(): AssemblyShape {
+  return Object.freeze({ peek: probeNamedPeek });
+}
+
+export function probeForOfClosure(): AssemblyShape | null {
+  for (const shape of ASSEMBLY_FOR_OF) return shape;
+  return null;
+}
+
+export function probeAssembledMutation(sink: { kind: string }, slots: number): void {
+  let inner: { kind: string } | undefined;
+  if (slots >= 0) {
+    inner = sink;
+  }
+  (inner as { kind: string }).kind = EMPIRE_FORBIDDEN_OUTPUTS[0];
+}
+
+export function probeAssembledCallback(report: (slot: number, label?: string) => boolean): boolean {
+  let call: ((slot: number, label?: string) => boolean) | undefined;
+  if (report.length >= 0) {
+    call = report;
+  }
+  return (call as (slot: number, label?: string) => boolean)(0, EMPIRE_FORBIDDEN_OUTPUTS[0]);
+}
+
+export function probeDestructuredAssembly(source: { shape: AssemblyShape }): AssemblyShape {
+  let shape: AssemblyShape | undefined;
+  ({ shape } = source as unknown as { shape: AssemblyShape | undefined });
+  return Object.freeze(shape as AssemblyShape);
+}
+
+export function probeAssembledMutationThroughUndefined(sink: { kind: string }, slots: number): void {
+  let inner: { kind: string } | undefined = undefined;
+  if (slots >= 0) {
+    inner = sink;
+  }
+  (inner as { kind: string }).kind = EMPIRE_FORBIDDEN_OUTPUTS[0];
+}
+
+export function probeAssembledCallbackThroughUndefined(
+  report: (slot: number, label?: string) => boolean,
+): boolean {
+  let call: ((slot: number, label?: string) => boolean) | undefined = undefined;
+  if (report.length >= 0) {
+    call = report;
+  }
+  return (call as (slot: number, label?: string) => boolean)(0, EMPIRE_FORBIDDEN_OUTPUTS[0]);
+}
+`;
+
+const ASSEMBLY_PROBE_PATH = path.join(HERE, '__assemblyProbe.ts');
+const ASSEMBLY_PROBE_MODULE = path.basename(ASSEMBLY_PROBE_PATH);
+
+let assemblyProbeCensusMemo: ChannelCensus | null = null;
+
+function assemblyProbeCensus(): ChannelCensus {
+  if (assemblyProbeCensusMemo !== null) return assemblyProbeCensusMemo;
+  assemblyProbeCensusMemo = channelCensusOf(
+    [...shippedModulePaths(), ASSEMBLY_PROBE_PATH],
+    ASSEMBLY_PROBE_SOURCE,
+    ASSEMBLY_PROBE_PATH,
+  );
+  return assemblyProbeCensusMemo;
+}
+
+let assemblyProbeSurfaceMemo: StringSurface | null = null;
+
+function assemblyProbeSurface(): StringSurface {
+  if (assemblyProbeSurfaceMemo !== null) return assemblyProbeSurfaceMemo;
+  assemblyProbeSurfaceMemo = surfaceOf(
+    [...shippedModulePaths(), ASSEMBLY_PROBE_PATH],
+    ASSEMBLY_PROBE_SOURCE,
+    ASSEMBLY_PROBE_PATH,
+  );
+  return assemblyProbeSurfaceMemo;
+}
+
+/** The probe's own rows, per channel. Everything else in the census is the shipped tree. */
+function assemblyProbeSites(id: ChannelId): readonly string[] {
+  return assemblyProbeCensus().sites[id].filter((key) => key.startsWith(ASSEMBLY_PROBE_MODULE));
+}
+
+/**
+ * The five returned-closure keys the probe is expected to produce.
+ *
+ * Written out rather than counted, for the reason `DECLARED_RETURNED_CLOSURE_
+ * SITES` is: a count cannot tell four right answers and one wrong one from five
+ * right ones, and the MEMBER PATH is the part that says the walk reached the
+ * function rather than merely noticing the return.
+ */
+const ASSEMBLY_PROBE_CLOSURE_SITES: readonly string[] = Object.freeze([
+  `${ASSEMBLY_PROBE_MODULE}#probeAssembledClosure#closure:.peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeAssembledShorthand#closure:.peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeAssembledThroughUndefined#closure:.peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeForOfClosure#closure:[0].peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeReturnsNamedFunction#closure:.peek`,
+]);
+
+describe('the assembly walk bites — every binding whose value is not in its initializer', () => {
+  it('compiles the probe cleanly, so a finding below is a classification and not an error', () => {
+    const surface = assemblyProbeSurface();
+    expect(surface.sourceDiagnostics, surface.sourceDiagnostics.join(' | ')).toEqual([]);
+    expect(surface.modules.length).toBe(SURFACE_CENSUS.MODULES + 1);
+    // The census ran over the same eleven files, so a probe that failed to load
+    // cannot read as a probe that produced nothing.
+    expect(assemblyProbeCensus().modules).toContain(ASSEMBLY_PROBE_MODULE);
+    expect(assemblyProbeCensus().modules.length).toBe(CHANNEL_CENSUS_TOTALS.MODULES + 1);
+  });
+
+  it('finds the returned closure in all five shapes, by member path', () => {
+    expect(assemblyProbeSites('returned-closure')).toEqual(ASSEMBLY_PROBE_CLOSURE_SITES);
+    // And none of them is a key the shipped directory has, which is what makes
+    // `DECLARED_RETURNED_CLOSURE_SITES`'s set equality the thing that reddens
+    // when one arrives in a shipped module.
+    for (const key of ASSEMBLY_PROBE_CLOSURE_SITES) {
+      expect(channelCensus().sites['returned-closure']).not.toContain(key);
+    }
+  });
+
+  it('resolves a branch-assembled alias of a parameter on the WRITE arm', () => {
+    // The sibling of the route that was planted, widened with it rather than
+    // after it. Without the assignment path this receiver resolves to a LOCAL,
+    // `argument-mutation` stays empty, and the only thing that moves is
+    // `writeOwners.local` — a number that moves for any added write at all.
+    expect(assemblyProbeSites('argument-mutation')).toEqual([
+      `${ASSEMBLY_PROBE_MODULE}#probeAssembledMutation#write`,
+      `${ASSEMBLY_PROBE_MODULE}#probeAssembledMutationThroughUndefined#write`,
+    ]);
+    expect(assemblyProbeCensus().writeOwners.parameter).toBe(2);
+    expect(channelCensus().writeOwners.parameter).toBe(DECLARED_WRITE_OWNERS.parameter);
+  });
+
+  it('resolves a branch-assembled alias of a callback parameter on the CALL arm', () => {
+    // Keyed by the PARAMETER, not by the spelling at the call site — `report`
+    // and not `call` — which is the property E21 added and this shows still
+    // holds one indirection further out.
+    expect(assemblyProbeSites('callback-invocation')).toEqual([
+      `${ASSEMBLY_PROBE_MODULE}#probeAssembledCallback#report x2`,
+      `${ASSEMBLY_PROBE_MODULE}#probeAssembledCallbackThroughUndefined#report x2`,
+    ]);
+  });
+
+  it('does not hop OUT of the function through an `undefined` initializer', () => {
+    // THE SECOND MUTANT THIS SECTION WAS WRITTEN AGAINST, and the first version
+    // of the probe could not see it. `hoppableInitializer` is used by `ownerOf`
+    // and NOT by `returnedFunctions`, so reverting it to a bare
+    // `ts.isIdentifier` left all five closure shapes green — the assignment
+    // path found them anyway. A widening with no mutant behind it is
+    // decoration, so the two `…ThroughUndefined` exports exist to carry one.
+    //
+    // With the predicate reverted, `undefined` is hopped through, the checker
+    // gives it no declaration, and both receivers come back `unclassified`:
+    // `argument-mutation` and `callback-invocation` both go empty and the two
+    // sites land in `freshReceivers` as `callee=unclassified` instead.
+    const probeUnclassified = assemblyProbeCensus().freshReceivers.filter(
+      (entry) => entry.startsWith(ASSEMBLY_PROBE_MODULE) && entry.includes('unclassified'),
+    );
+    expect(probeUnclassified).toEqual([]);
+    expect(assemblyProbeCensus().writeOwners.unclassified).toBe(0);
+    expect(assemblyProbeCensus().callTargets.unclassified).toBe(0);
+  });
+
+  it('names what it still cannot follow, and the limit is RUN rather than asserted', () => {
+    // `({ shape } = source)` has an object literal on the left, so
+    // `assignedValuesTo` does not find it. The claim in that docstring is that
+    // the route lands in `freshReceivers` rather than in silence; this is that
+    // claim driven against the catcher it names.
+    const unfollowed = assemblyProbeCensus().freshReceivers.filter((entry) =>
+      entry.startsWith(ASSEMBLY_PROBE_MODULE),
+    );
+    expect(unfollowed).toEqual([`${ASSEMBLY_PROBE_MODULE}:68 returned=unfollowable:shape`]);
+    // The probe contributes exactly that one and nothing else, so the shipped
+    // list is unchanged beside it — the two are separate censuses of the same
+    // walk and a probe that polluted the shipped one would be a broken probe.
+    expect(channelCensus().freshReceivers).toEqual(DECLARED_FRESH_RECEIVERS);
+    // AND THE DESTRUCTURED BINDING PRODUCES NO CLOSURE SITE, which is the half
+    // that says this is a limit and not a second catch. If a later widening
+    // starts following it, this line is what makes somebody update the
+    // docstring instead of leaving a stale limit in place.
+    expect(assemblyProbeSites('returned-closure')).not.toContain(
+      `${ASSEMBLY_PROBE_MODULE}#probeDestructuredAssembly#closure:.peek`,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The member-call pass — the half `DECLARED_MEMBER_CALLS_ON_PARAMETERS` cannot be
+// ---------------------------------------------------------------------------
+
+/**
+ * What a caller-supplied METHOD is actually handed, read at runtime.
+ *
+ * WHY A DRIVE AND NOT A WIDER KEY, decided by measurement rather than by taste.
+ * The enumeration beside this pins thirteen sites by file, enclosing function,
+ * member and ARGUMENT COUNT, and its own docstring says a site that starts
+ * carrying a payload at a position it already had moves nothing. Three routes
+ * were planted against that sentence:
+ *
+ *   - M40 put a banned name at an existing argument. The site key did not move;
+ *     the only thing red in the whole guard was the AST node count.
+ *   - M41 needed a SECOND call to do the same thing behaviour-preservingly, and
+ *     the enumeration caught it by duplicate entry and by arm census. So the
+ *     limit is a bound: arrival and arity are covered, value is not.
+ *   - M42 put the payload in what the PREDICATE RETURNS —
+ *     `ledger.filter((entry) => cond ? (name as unknown as boolean) : false)` —
+ *     which a real `filter` coerces, so the kept set is byte-identical and the
+ *     argument is an `ArrowFunction` before and after. The whole directory came
+ *     back 480 of 481 with the node count as the only red.
+ *
+ * M42 is what rules out the cheap repair. Adding each argument's syntactic kind
+ * to the site key catches M40 and cannot catch M42, and ELEVEN OF THE THIRTEEN
+ * SITES TAKE A CALLBACK — so the arrow-return route is the majority case and
+ * not a corner. The only instrument that reads it is one that supplies the
+ * receiver and looks at what arrives.
+ *
+ * WHAT THIS PASS COVERS, AND THE RESIDUAL IS COUNTED RATHER THAN WAVED AT.
+ * Three of the thirteen are driven; ten are not, and they are enumerated by
+ * name in `MEMBER_CALL_PASS_UNDRIVEN` with a set equality against
+ * `DECLARED_MEMBER_CALLS_ON_PARAMETERS` in both directions. A fourteenth site
+ * arriving is therefore a decision somebody signs on one list or the other,
+ * rather than a silent hole — which is E15's overflow-pass shape applied to a
+ * drive instead of to a domain.
+ *
+ * The undriven ten are undriven for one reason and it is fixture cost, not
+ * reachability: each needs a whole `EmpireGym`, `ExpansionContext` or
+ * `SocialContext` built at a state where the site's branch runs. That is real
+ * work and it is stated as owed rather than as impossible.
+ */
+interface MemberCallRecord {
+  /** Strings reachable from every non-function argument the method received. */
+  readonly handed: string[];
+  /** Strings reachable from every value a callback argument RETURNED. M42's channel. */
+  readonly returned: string[];
+  calls: number;
+  callbackCalls: number;
+}
+
+function emptyMemberCallRecord(): MemberCallRecord {
+  return { handed: [], returned: [], calls: 0, callbackCalls: 0 };
+}
+
+/**
+ * Replace one method on a fixture with a recorder that delegates to the real one.
+ *
+ * The fixture stays a real `Array`, so every shipped guard that depends on
+ * array semantics still holds and the subject cannot tell it is being watched.
+ * A FUNCTION argument is wrapped rather than scanned, because scanning a
+ * closure tells you nothing and calling it is what the caller's own method was
+ * going to do anyway — the wrapper reads the value it hands back, which is the
+ * channel M42 used and the one nothing here could see.
+ */
+function recordOn<T extends object>(holder: T, member: string, record: MemberCallRecord): T {
+  const original = (holder as unknown as Record<string, unknown>)[member];
+  if (typeof original !== 'function') {
+    throw new Error(`the member-call fixture has no ${member} to instrument`);
+  }
+  const real = original as (...args: readonly unknown[]) => unknown;
+  Object.defineProperty(holder, member, {
+    configurable: true,
+    value: (...args: readonly unknown[]): unknown => {
+      record.calls += 1;
+      const wrapped = args.map((argument, index) => {
+        if (typeof argument !== 'function') {
+          for (const found of deepScan(argument, `arg${String(index)}`).strings) {
+            record.handed.push(found.value);
+          }
+          return argument;
+        }
+        const callback = argument as (...inner: readonly unknown[]) => unknown;
+        return (...inner: readonly unknown[]): unknown => {
+          record.callbackCalls += 1;
+          const verdict = callback(...inner);
+          for (const found of deepScan(verdict, 'return').strings) record.returned.push(found.value);
+          return verdict;
+        };
+      });
+      return real.apply(holder, wrapped);
+    },
+  });
+  return holder;
+}
+
+interface MemberCallSubject {
+  /** The key in `DECLARED_MEMBER_CALLS_ON_PARAMETERS` this subject drives. */
+  readonly site: string;
+  readonly run: (record: MemberCallRecord) => void;
+}
+
+const memberCallLedger = (): EmpireLedgerEntry[] => [
+  Object.freeze({ at: core.asUnacceleratedSeconds(0), output: 'gym-bucks', amount: 1 }),
+  Object.freeze({ at: core.asUnacceleratedSeconds(1), output: 'training-iq', amount: 2 }),
+];
+
+const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
+  Object.freeze({
+    site: 'empireCore.ts#idleLedger#ledger.filter x1',
+    run: (record: MemberCallRecord): void => {
+      core.idleLedger(recordOn(memberCallLedger(), 'filter', record));
+    },
+  }),
+  Object.freeze({
+    site: 'empireCore.ts#progressionLedger#ledger.filter x1',
+    run: (record: MemberCallRecord): void => {
+      core.progressionLedger(recordOn(memberCallLedger(), 'filter', record));
+    },
+  }),
+  Object.freeze({
+    site: 'engagement.ts#moreEngagedByTrainedDay#history.includes x1',
+    run: (record: MemberCallRecord): void => {
+      const trainedDays = recordOn([1, 2, 3], 'includes', record);
+      engagementModule.moreEngagedByTrainedDay({ attended: [true, false], trainedDays }, 9);
+    },
+  }),
+]);
+
+/**
+ * The ten sites this pass does NOT drive, by name.
+ *
+ * Not a count and not a percentage: the same key the enumeration uses, so the
+ * join below is a set equality in both directions and a site cannot be quietly
+ * dropped off one list without appearing on the other.
+ */
+const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([
+  'empireInvariant.ts#composeTrainingIqRate#state.filter x1',
+  'empireInvariant.ts#idleDayLedger#entries.filter x1',
+  'empireInvariant.ts#outputSeries#entries.filter x1',
+  'empireInvariant.ts#progressionDayLedger#entries.filter x1',
+  'empireInvariant.ts#savingForPhysio#order.includes x1',
+  'empireInvariant.ts#stepGym#gym.find x1',
+  'empireInvariant.ts#stepGym#gym.map x1',
+  'social.ts#rankLeaderboard#entries.map x1',
+  'social.ts#visitRefusals#context.some x1',
+  'social.ts#visitRefusals#context.some x1',
+]);
+
+interface MemberCallResult {
+  readonly site: string;
+  readonly record: MemberCallRecord;
+  /** Every observed string that is a banned name, argument side and return side alike. */
+  readonly findings: readonly string[];
+}
+
+function memberCallPass(subjects: readonly MemberCallSubject[]): readonly MemberCallResult[] {
+  const results: MemberCallResult[] = [];
+  for (const subject of subjects) {
+    const record = emptyMemberCallRecord();
+    subject.run(record);
+    const findings = [...record.handed, ...record.returned]
+      .filter((value) => BANNED_NORMALISED.has(normalise(value)))
+      .map((value) => `${subject.site} <- ${value}`);
+    results.push({ site: subject.site, record, findings });
+  }
+  return results;
+}
+
+/**
+ * The leaking twin the zero is zero against.
+ *
+ * Written here rather than planted, and both channels are represented: the
+ * first leaks through an ARGUMENT (M40's route) and the second through a
+ * PREDICATE RETURN (M42's route). A tripwire that carried only one of them
+ * would leave the other's zero unevidenced, which is the shape this file calls
+ * an empty domain.
+ */
+const MEMBER_CALL_TRIPWIRE: readonly MemberCallSubject[] = Object.freeze([
+  Object.freeze({
+    site: 'tripwire#argument',
+    run: (record: MemberCallRecord): void => {
+      const days = recordOn([1, 2, 3], 'includes', record);
+      days.includes(PROBE_NAME as unknown as number);
+    },
+  }),
+  Object.freeze({
+    site: 'tripwire#predicate-return',
+    run: (record: MemberCallRecord): void => {
+      const ledger = recordOn(memberCallLedger(), 'filter', record);
+      ledger.filter((entry) =>
+        entry.output === 'gym-bucks' ? (PROBE_NAME as unknown as boolean) : false,
+      );
+    },
+  }),
+]);
+
+/** What the pass measured. Counts, not bounds, so an empty drive reports itself. */
+const MEMBER_CALL_PASS_CENSUS = Object.freeze({
+  SUBJECTS: 3,
+  /** One call of the instrumented method per subject. */
+  CALLS: 3,
+  /** Two ledger entries each for the two `filter` subjects; `includes` calls no callback. */
+  CALLBACK_CALLS: 4,
+  /** Strings reachable from the non-function arguments: the one `includes` was handed is a number, so zero. */
+  HANDED: 0,
+  /** Values the predicates returned: four booleans, which carry no strings. */
+  RETURNED: 0,
+  FINDINGS: 0,
+  TRIPWIRE_SUBJECTS: 2,
+  TRIPWIRE_FINDINGS: 2,
+});
+
+describe('the member-call pass — what a caller-supplied method is actually handed', () => {
+  it('drives the subjects it declares, and the drive is not empty', () => {
+    const results = memberCallPass(MEMBER_CALL_SUBJECTS);
+    expect(results.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
+    const calls = results.reduce((total, result) => total + result.record.calls, 0);
+    const callbackCalls = results.reduce((total, result) => total + result.record.callbackCalls, 0);
+    expect(calls).toBe(MEMBER_CALL_PASS_CENSUS.CALLS);
+    // THE NUMBER THAT SAYS THE M42 CHANNEL IS LIVE. A pass whose callbacks are
+    // never invoked reads exactly like a pass whose callbacks return nothing
+    // banned, and only this tells the two apart.
+    expect(callbackCalls).toBe(MEMBER_CALL_PASS_CENSUS.CALLBACK_CALLS);
+    for (const result of results) expect(result.record.calls, result.site).toBeGreaterThan(0);
+  });
+
+  it('sees no banned name at any driven site, on either channel', () => {
+    const results = memberCallPass(MEMBER_CALL_SUBJECTS);
+    // THE NAMED ASSERTION GOES FIRST, AND THAT ORDER WAS EARNED THIS ROUND.
+    // With the counts first, re-planting M42 reddened this test with `expected
+    // 1 to be +0` — true, and it says nothing about which site or which name.
+    // CLAUDE.md's rule is that a check that bites and fails uselessly is half a
+    // check; with this line first the same plant reads
+    // `+ "empireCore.ts#idleLedger#ledger.filter x1 <- covered-day"`.
+    const findings = results.flatMap((result) => result.findings);
+    expect(findings).toEqual([]);
+    expect(findings.length).toBe(MEMBER_CALL_PASS_CENSUS.FINDINGS);
+    // The shape of what was observed, beside the verdict. A payload that is not
+    // a banned name moves these and not the list above, which is the domain
+    // half rather than the ban half.
+    const handed = results.reduce((total, result) => total + result.record.handed.length, 0);
+    const returned = results.reduce((total, result) => total + result.record.returned.length, 0);
+    expect(handed).toBe(MEMBER_CALL_PASS_CENSUS.HANDED);
+    expect(returned).toBe(MEMBER_CALL_PASS_CENSUS.RETURNED);
+  });
+
+  it('the pass bites — the tripwire the zero is zero against, on BOTH channels', () => {
+    const results = memberCallPass(MEMBER_CALL_TRIPWIRE);
+    expect(results.length).toBe(MEMBER_CALL_PASS_CENSUS.TRIPWIRE_SUBJECTS);
+    const findings = results.flatMap((result) => result.findings);
+    expect(findings.length).toBe(MEMBER_CALL_PASS_CENSUS.TRIPWIRE_FINDINGS);
+    // Named rather than counted, and one from each route, so a tripwire that
+    // quietly lost half its coverage is red instead of merely smaller.
+    expect(findings).toEqual([
+      `tripwire#argument <- ${PROBE_NAME}`,
+      `tripwire#predicate-return <- ${PROBE_NAME}`,
+    ]);
+  });
+
+  it('accounts for every enumerated site, driven or declared undriven, in both directions', () => {
+    const driven = MEMBER_CALL_SUBJECTS.map((subject) => subject.site);
+    expect([...driven, ...MEMBER_CALL_PASS_UNDRIVEN].sort()).toEqual(
+      [...DECLARED_MEMBER_CALLS_ON_PARAMETERS].sort(),
+    );
+    // And the two lists do not overlap, so a site cannot be counted as covered
+    // and excused at the same time.
+    for (const site of driven) expect(MEMBER_CALL_PASS_UNDRIVEN).not.toContain(site);
+    // The residual as a number, beside the coverage as a number. Ten of
+    // thirteen is what this round paid for, and writing it down is what stops
+    // the next reader taking a green pass for a covered arm.
+    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(10);
+    expect(driven.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // PLANTED_ROUTES — what was actually run against this file, and what survived
 // ---------------------------------------------------------------------------
 
 /**
- * Thirty-eight routes, planted into shipped modules one at a time, each run
+ * Forty-two routes, planted into shipped modules one at a time, each run
  * against `tsc --noEmit`, against this file, and against the three accidental
  * catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
@@ -10483,6 +11239,86 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
     ]),
   }),
   Object.freeze({
+    id: 'M39',
+    shape:
+      "32-repeated a second time, ASSEMBLED ACROSS A BRANCH: the same nested closure, reached through a `let` with no initializer that an `if` writes into — the route M38's own repair declared open and DELIBERATELY CLAIMED NO CATCHER FOR",
+    where:
+      "production.ts, `accrueProduction`: `let shape: ProductionAccrual | undefined; if (offlineSecondsBanked <= offlineSecondsElapsed) { shape = { …fields, peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] } as unknown as ProductionAccrual; } return Object.freeze(shape as ProductionAccrual);`",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'GREEN BEFORE, AND IT IS THE THIRTEENTH BYPASS. Whole directory with the plant in: `Test Files 1 failed | 11 passed (12)`, `Tests 3 failed | 472 passed (475)`, and all three failures are node/string truncation counters — `expected 2393230 to be 2393060` (instrument B / walked a domain that is not empty), `expected 523184 to be 523128` (the overflow pass / walked a domain that is not empty at the dropped points) and `expected 21826 to be 21789` (the channel census / derives every escape site, the `nodesExamined` line). Instrument A green, B green, C green, the callback pass green, the site table green — `census.byModule` is asserted at line 9388, BEFORE the node count at 9416, so it ran and passed with `returned-closure` still at its two shipped sites. `census.sites[\'returned-closure\']`, `callTargets`, `writeOwners`, `freshReceivers` and `memberCallsOnParameters` are all in tests that passed outright.',
+      'AND THE BRANCH RUNS, PRINTED RATHER THAN INFERRED, per M24 and M34: driving `accrueProduction` over a one-hour gap prints `KEYS: gymBucks,settledGymBucks,trainingIq,offlineSecondsElapsed,offlineSecondsBanked,offlineSecondsDiscarded,trainingIqSecondsElapsed,rates,ledger,peek`, `typeof peek: function`, `peek(): covered-day`. The caller is handed the name by calling a member of the value it received.',
+      'AFTER, RE-PLANTED AGAINST THE FIXED WALKER RATHER THAN ASSUMED: the channel census / derives every escape site: `"returned-closure": { "empireInvariant.ts": 2, + "production.ts": 1 }`, and / pins the two callback sites: `+ "production.ts#accrueProduction#closure:.peek"`. Named by module, by enclosing function and by member path. Both messages are quoted from that run.',
+      'NOTHING WAS REPAIRED IN THE COMMIT THAT FIRST CARRIED THIS ROW, AND THAT WAS DELIBERATE. It recorded an open escape and no fix, because the previous round lost a builder at exactly this point and a measurement that is not in a commit is a measurement nobody else has. The `AFTER` line above was added by the commit that closed it.',
+      "THE FIX IS THE REFORMULATION E21 USED ONE CHANNEL OVER, ONE LEVEL FURTHER IN: syntax cannot enumerate what a binding holds, because a `let` is written from anywhere in its scope; a SYMBOL's assignments can be enumerated, because they are a finite set of nodes in one scope. `assignedValuesTo` is that, and it is used by BOTH `returnedFunctions` and `ownerOf` rather than only by the arm that was planted — the sibling rule, applied before the sibling was planted rather than after.",
+      'AND THE WIDENING FOUND THREE MORE SHAPES WITH NO INITIALIZER, none of which was reasoned about in advance. (1) `let shape: T | undefined = undefined` — `undefined` IS an identifier and resolves to a `VariableDeclaration` in `lib.es5.d.ts`, so the hop succeeded and the assignment path never ran; `hoppableInitializer` refuses a declaration-file binding. (2) A `for (const x of xs)` binding, found by recording every unfollowable identifier and reading the five that came back — all five were this. (3) A function returned by its NAME rather than by a variable, which resolves to a `FunctionDeclaration` and was invisible to an initializer-only walk in exactly the same way.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      "WHY IT WAS WORTH PLANTING RATHER THAN BELIEVING. M38's row ends `THE LIMIT THAT REMAINS, with no catcher claimed for it: a function assembled across a branch — `let shape; if (x) shape = { peek };` — has no initializer to follow. Not planted.` That is the correct form of a limit — it claims nothing it has not measured — and the measurement above is what it was worth: the route is real, it compiles, it runs, and the whole directory called it clean.",
+      'production.ts was restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` (70e0bcba2dee2dbdd00d8cd03e13f03498b4a136 both sides) before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M40',
+    shape:
+      "34 — A BANNED NAME AT AN ARGUMENT POSITION A `member-of-parameter` SITE ALREADY HAS. Not a new site, not a new argument: the same call with a different value in it, which is the limit `DECLARED_MEMBER_CALLS_ON_PARAMETERS` states about itself",
+    where:
+      "engagement.ts, `moreEngagedByTrainedDay`: `history.trainedDays.includes(day)` -> `history.trainedDays.includes(EMPIRE_FORBIDDEN_OUTPUTS[0] as unknown as number)`, with the specifier added to the existing `./empireCore` import on a line that already exists so the line count does not move",
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      "NOT CAUGHT BY THE ARM IT IS ABOUT. Against the whole guard file the ONLY failure is `derives every escape site: expected 21797 to be 21789` — the AST node count, which this file has recorded four times as not the check working. `DECLARED_MEMBER_CALLS_ON_PARAMETERS` is byte-identical with the plant in: the site key is `engagement.ts#moreEngagedByTrainedDay#history.includes x1` before and after, because the arity did not change. 65 passed of 66.",
+      'AND THE BRANCH RUNS, PRINTED RATHER THAN INFERRED: driving `moreEngagedByTrainedDay` with a history whose `trainedDays` carries an instrumented `includes` prints `handed to the caller-supplied includes: ["covered-day"]`. A caller who supplied that array has the name.',
+      "WHAT DID CATCH IT IS BEHAVIOURAL AND IN ANOTHER FILE, WHICH IS NOT THIS GUARD WORKING: `engagement.test.ts > refuses a pair that does not differ in engagement by exactly one: expected [Function] to throw an error`. `includes` of a name that is not in the array is always false, so the refusal stopped firing. That is a co-catcher of the payload's SIDE EFFECT, not of the payload — and M42 below is the same route written so that no behaviour moves at all.",
+      'AFTER: the member-call pass / sees no banned name at any driven site: `+ "engagement.ts#moreEngagedByTrainedDay#history.includes x1 <- covered-day"`. Re-planted against the pass rather than assumed. The ENUMERATION is still green under it and always will be — the pass is a second instrument beside that arm, not a repair of it.',
+      "ITS FIRST FORM WAS NOT ISOLATED AND THE SECOND ATTEMPT IS WHY THIS ROW HAS `attempts: 2`. Putting the new import specifier on its own line moved `engagement.ts:355` to `engagement.ts:356` in `DECLARED_FRESH_RECEIVERS`, which is the FOURTH accidental catcher this file names — a line-number pin on an unrelated `[...list].sort()`. Folded onto an existing line, that goes away and the isolation is real.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'engagement.ts was restored and verified byte-identical with `git hash-object` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M41',
+    shape:
+      '34-bounded — THE SAME PAYLOAD WHERE IT NEEDS A SECOND CALL. The control for M40 rather than an attack: it says what the enumeration DOES cover, so the limit above is a bound and not a shrug',
+    where:
+      "engagement.ts, `moreEngagedByTrainedDay`: `history.trainedDays.includes(history.trainedDays.includes(day) ? day : (EMPIRE_FORBIDDEN_OUTPUTS[0] as unknown as number))` — behaviour-preserving on any real array, because the inner call decides and the outer one is handed the name only when the answer is already false",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the channel census / pins the two callback sites: `expected [ …(14) ] to deeply equal [ …(13) ]` — a second `engagement.ts#moreEngagedByTrainedDay#history.includes x1` in `DECLARED_MEMBER_CALLS_ON_PARAMETERS`, and `callTargets`: `member-of-parameter` 13 -> 14 in the arm census. Instrument C / the brand constructor set is derived from the module: `expected 1019 to be 1018`, the call-expression count.',
+      'AND THE BEHAVIOUR IS UNCHANGED, PRINTED: the caller-supplied `includes` receives `[9,"covered-day"]` and the refusal on an already-trained day still fires with its real message. `engagement.test.ts` passes outright, 101 passed of 104 across the two files, with all three failures in the guard.',
+      'SO THE BOUND IS EXACT AND MEASURED IN BOTH DIRECTIONS: a payload at an existing argument of an existing call is invisible to this arm; a payload that needs a NEW call is red by count, by duplicate entry and by arm census. The enumeration covers arrival and arity. It does not cover value, and now that is a measurement rather than a sentence.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'engagement.ts was restored and verified byte-identical with `git hash-object` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M42',
+    shape:
+      "35 — THE FOURTEENTH BYPASS, AND THE SHARPEST OF THE THREE: the payload is the PREDICATE'S RETURN VALUE, handed to a caller-supplied `filter` at a site that already exists, with the argument still an `ArrowFunction` and no behaviour moving anywhere",
+    where:
+      "empireCore.ts, `idleLedger`: `ledger.filter((entry) => outputReach(entry.output) === 'idle-only')` -> `… ? (EMPIRE_FORBIDDEN_OUTPUTS[0] as unknown as boolean) : false`. A real `Array.prototype.filter` coerces, and a non-empty string is truthy, so the kept set is identical",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING CAUGHT IT. Whole directory: `Test Files 1 failed | 11 passed (12)`, `Tests 1 failed | 480 passed (481)`, and the one failure is `derives every escape site: expected 21801 to be 21789` — the AST node count again. Instrument A, B and C green, the site table green, the member-call enumeration green, the callback pass green, every behavioural test in the directory green.',
+      'AND THE BRANCH RUNS, PRINTED: with an instrumented `filter` on the ledger, `predicate returned to the caller-supplied filter: ["covered-day",false]`, `kept outputs: ["gym-bucks"]`, and `behaviour on a real array: ["gym-bucks"]`. Same answer, name delivered.',
+      "WHY IT DECIDES WHAT THE REPAIR HAS TO BE. A widening of the site KEY — adding each argument's syntactic kind, or the kind of the value an identifier argument resolves to — catches M40 and does not catch this: the argument is an `ArrowFunction` before and after, and the payload is in what the arrow RETURNS when the caller invokes it. Eleven of the thirteen sites take a callback, so the arrow-return route is the majority case and not a corner. The instrument that sees it has to be a DRIVE with a recording receiver, which reads the value the caller's own method is handed rather than the syntax that produced it. The commit that first carried this row repaired nothing and said so; `MEMBER_CALL_PASS_CENSUS` is the commit after it.",
+      'AFTER: the member-call pass / sees no banned name at any driven site: `+ "empireCore.ts#idleLedger#ledger.filter x1 <- covered-day"`. The finding comes off the RETURN side of the record, which is the channel that did not exist before this round — the pass wraps a function argument and reads what it hands back rather than scanning the closure.',
+      "AND THE FAILURE MESSAGE IS PART OF THE FIX. With the count assertions first, this same plant reddened as `expected 1 to be +0`, which is true and names neither the site nor the name. The named list is asserted first now and the counts sit under it. CLAUDE.md: a check that bites but fails uselessly is half a check.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'empireCore.ts was restored and verified byte-identical with `git hash-object` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
     id: 'M35',
     shape:
       '33 — A WRITE INTO A PARAMETER THROUGH A LOCAL ALIAS. The same spelling-versus-symbol defect as M31, on the mutation arm instead of the callback arm',
@@ -10560,6 +11396,18 @@ interface RegistryMutant {
 }
 
 const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
+  Object.freeze({
+    id: 'G23',
+    what: "`assignedValuesTo` neutered to return `[]` — M39's whole repair removed, leaving the walk following initializers only, which is the state the thirteenth bypass escaped through",
+    reddened:
+      'four of the six assembly-probe checks, each naming the route it is about rather than a count. `finds the returned closure in all five shapes`: - "__assemblyProbe.ts#probeAssembledClosure#closure:.peek", - "…#probeAssembledShorthand#closure:.peek", - "…#probeAssembledThroughUndefined#closure:.peek", with the for-of and named-function rows surviving because they do not go through an assignment. `resolves a branch-assembled alias of a parameter on the WRITE arm`: expected [] to deeply equal [ "…#probeAssembledMutation#write" ]. `resolves a branch-assembled alias of a callback parameter on the CALL arm`: expected [] to deeply equal [ "…#probeAssembledCallback#report x2" ]. So the write arm and the call arm are separately covered, which is what says the helper is shared rather than that one caller was fixed.',
+  }),
+  Object.freeze({
+    id: 'G24',
+    what: '`hoppableInitializer` reverted to a bare `ts.isIdentifier(root)`, which is what it was before this round — the form that hops through `undefined` into `lib.es5.d.ts`',
+    reddened:
+      'ITS FIRST FORM CAUGHT NOTHING, AND THAT IS WHY THIS ROW EXISTS. Run against the probe as first written, all five closure checks stayed GREEN: `returnedFunctions` does not call `hoppableInitializer`, so the assignment path found `probeAssembledThroughUndefined` anyway and the predicate had no mutant behind it at all. Two exports were added — `probeAssembledMutationThroughUndefined` and `probeAssembledCallbackThroughUndefined` — because the predicate is `ownerOf`\'s alone. With those in, the same mutant reddens four checks: - "…#probeAssembledMutationThroughUndefined#write", - "…#probeAssembledCallbackThroughUndefined#report x2", and `does not hop OUT of the function through an `undefined` initializer` goes from [] to two `callee=unclassified` entries. A widening whose mutant passes is decoration, and this one was decoration for about twenty minutes.',
+  }),
   Object.freeze({
     id: 'G13',
     what: 'a NINTH fault-list producer added to `expansion.ts` — `axisVocabularyFaults`, returning `Object.freeze(faults) as readonly FaultMessage[]`, so it casts where the other eight mint',
@@ -10715,26 +11563,28 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(22);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(22);
+    expect(REGISTRY_MUTANTS.length).toBe(24);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(24);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
       // went red, which is what this whole file exists to stop being enough.
       expect(mutant.reddened.length, mutant.id).toBeGreaterThan(100);
     }
-    // Two of the five record a first form that reddened something OTHER than
-    // the check it was aimed at. Pinned as a count so a later edit that quietly
-    // drops one of those admissions moves a number.
+    // Three rows record a first form that reddened something OTHER than the
+    // check it was aimed at — or nothing at all, which is G24: a predicate
+    // widened this round whose first mutant left every check green, because the
+    // probe written beside it exercised the wrong caller. Pinned as a count so
+    // a later edit that quietly drops one of those admissions moves a number.
     expect(
       REGISTRY_MUTANTS.filter((mutant) => mutant.reddened.includes('ITS FIRST FORM')).length +
         REGISTRY_MUTANTS.filter((mutant) => mutant.reddened.includes('Then, with the count bumped'))
           .length,
-    ).toBe(2);
+    ).toBe(3);
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(38);
+    expect(PLANTED_ROUTES.length).toBe(42);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -10813,8 +11663,14 @@ describe('the routes that were planted, and what each of them cost', () => {
     // converted and one at a site that never had a throw, because a fence
     // tested only on the first has not been shown to catch an arrival. One for
     // M30, which reached isolation first time for the reason M27 did.
-    expect(attempts).toBe(56);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(28);
+    // One for M39, which reached isolation first time because it is M38's own
+    // declared-open route written in the form M38 wrote it in, and because the
+    // round that planted it copied M38's isolation — the payload read out of
+    // `EMPIRE_FORBIDDEN_OUTPUTS` with a named specifier added to an import that
+    // already exists, no new call expression, no new `return` statement and no
+    // new string literal.
+    expect(attempts).toBe(61);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(32);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
