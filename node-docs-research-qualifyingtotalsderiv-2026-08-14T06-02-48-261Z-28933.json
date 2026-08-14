@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-docs-research-qualifyingtotalsderiv-2026-08-14T06-02-48-261Z-28933",
+  "label": null,
+  "command": [
+    "node",
+    "docs/research/qualifyingTotalsDerive.mjs",
+    "/tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/opl"
+  ],
+  "budgetSeconds": 300,
+  "startedAtIso": "2026-08-14T06:02:48.261Z",
+  "startedAtMs": 1786687368261,
+  "cwd": "/home/user/wt-qt-research",
+  "commit": "e78ef573a1d5b4407762a0606c5f883e6b5447ac",
+  "branch": "claude/qualifying-totals-research",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 28933,
+    "startTick": "1322136",
+    "cmdline": "node tools/watchdog.mjs --budget 300 --id qt-rerun-baseline -- node docs/research/qualifyingTotalsDerive.mjs /tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad",
+    "bootId": "70e4dcd9-91f6-43ee-a53c-88125d271f98",
+    "bootEpochSeconds": 1786674147,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T06:02:48.284Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
