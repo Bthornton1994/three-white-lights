@@ -7291,7 +7291,7 @@ const ESCAPE_CHANNELS: readonly EscapeChannel[] = Object.freeze([
   Object.freeze({
     id: 'deferred-completion',
     what: 'a value delivered after the call returns — `async`, a generator, a thenable',
-    scannedFor: 'an `async` modifier, a generator asterisk, or `new Promise`',
+    scannedFor: 'an `async` modifier, a generator asterisk, `new Promise`, or a `then` member',
     reachableFromOutside: true,
   }),
 ]);
@@ -7422,6 +7422,9 @@ const AMBIENT_OBJECTS: readonly string[] = Object.freeze(['globalThis', 'console
 
 /** The member names a caller's coercion reaches without ever writing a call. */
 const COERCION_MEMBERS: readonly string[] = Object.freeze(['toString', 'toJSON', 'valueOf']);
+
+/** The member `await` calls. A thenable is a deferred completion with no `Promise` in it. */
+const THENABLE_MEMBER = 'then';
 
 /**
  * How many alias hops the resolver follows before it gives up and says so.
@@ -7925,6 +7928,22 @@ function channelCensusOf(
       if (ts.isNewExpression(node) && node.expression.getText(source) === 'Promise') {
         record('deferred-completion', moduleName, key(node, 'promise'));
       }
+      // A `then` MEMBER, which is the fourth shape and the one the probe for
+      // this channel actually has. Measured rather than reasoned: the
+      // `movesCensus` column below was added to find out whether each row's
+      // probe is visible to the census, and this row's was not — the scan read
+      // `async`, `*` and `new Promise`, and a hand-written thenable is none of
+      // those while `await` reaches it exactly as it reaches a promise.
+      if (
+        (ts.isMethodDeclaration(node) ||
+          ts.isMethodSignature(node) ||
+          ts.isPropertyAssignment(node) ||
+          ts.isPropertySignature(node)) &&
+        node.name !== undefined &&
+        node.name.getText(source) === THENABLE_MEMBER
+      ) {
+        record('deferred-completion', moduleName, key(node, THENABLE_MEMBER));
+      }
 
       node.forEachChild(visit);
     };
@@ -8303,6 +8322,26 @@ function channelProbeSurface(): StringSurface {
   return channelProbeSurfaceMemo;
 }
 
+let channelProbeCensusMemo: ChannelCensus | null = null;
+
+/**
+ * The channel census run over the probe module beside the shipped directory.
+ *
+ * The fourth column's subject. Until this round the matrix measured A, B and C
+ * against the probes and never ran the CENSUS against them — so three rows
+ * whose `why` named the census as their only catcher had never been measured
+ * against it, and one of the three was wrong.
+ */
+function channelProbeCensus(): ChannelCensus {
+  if (channelProbeCensusMemo !== null) return channelProbeCensusMemo;
+  channelProbeCensusMemo = channelCensusOf(
+    [...shippedModulePaths(), CHANNEL_PROBE_PATH],
+    CHANNEL_PROBE_SOURCE,
+    CHANNEL_PROBE_PATH,
+  );
+  return channelProbeCensusMemo;
+}
+
 let channelProbeConstructorsMemo: ConstructorCensus | null = null;
 
 function channelProbeConstructors(): ConstructorCensus {
@@ -8554,6 +8593,15 @@ interface CoverageRow {
   readonly movesC: boolean;
   /** The callback pass below. `null` where the channel has no callback to record. */
   readonly movesPass: boolean;
+  /**
+   * The CENSUS sees this probe's export contribute a site in this row's own
+   * channel.
+   *
+   * A separate question from the other four, and it is the one three rows were
+   * asserting about themselves in prose: "the census is the catcher" is a claim
+   * that the probe's SHAPE is a shape the scan counts, and nothing measured it.
+   */
+  readonly movesCensus: boolean;
   readonly why: string;
 }
 
@@ -8568,6 +8616,11 @@ interface CoverageRow {
  *   `movesB` — a deep scan of the row the drive would have built finds the name.
  *   `movesC` — the probe's export adds a brand-constructor call site.
  *   `movesPass` — the callback pass below records the name.
+ *   `movesCensus` — the CHANNEL CENSUS, run over the probe module beside the
+ *     shipped directory, counts a site for that probe export IN THIS ROW'S OWN
+ *     CHANNEL. It is the column that grades the sentence "the census is the
+ *     catcher", which three rows made about themselves with nothing measuring
+ *     it; one of the three was wrong.
  *
  * A `true` in A is not the same guarantee as a `true` in B: A sees that a
  * position of that shape EXISTS and, for a literal type, what is in it; it
@@ -8583,6 +8636,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: true,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: 'The best-covered channel in the directory, and the one every instrument was built around.',
   }),
   Object.freeze({
@@ -8592,6 +8646,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: true,
     movesC: true,
     movesPass: false,
+    movesCensus: true,
     why: 'The only emission any probe here has that instrument C can see. C is a census of mints and nothing but a branded return needs one.',
   }),
   Object.freeze({
@@ -8601,6 +8656,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: true,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: 'M25, the tenth bypass. A thrown payload has no declared position and calls no constructor, so A and C have nothing to look at. THE DRIVE IS ITS ONLY CATCHER.',
   }),
   Object.freeze({
@@ -8610,6 +8666,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: true,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: 'M7. Exported data is read rather than called, and both A and B reach it.',
   }),
   Object.freeze({
@@ -8619,6 +8676,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: true,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: "A walks RETURN types only — a parameter's positions are outside its census entirely. The drive re-reads every argument after the call, which is why B sees it.",
   }),
   Object.freeze({
@@ -8628,6 +8686,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: false,
     movesC: false,
     movesPass: true,
+    movesCensus: true,
     why: 'M27, THE ELEVENTH BYPASS. Nothing in the three instruments sees it: no declared position, no constructor, and the drive keeps the callback it passed IN rather than what the callback was handed. The callback pass is the catcher and it was written this round.',
   }),
   Object.freeze({
@@ -8637,7 +8696,8 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: false,
     movesC: false,
     movesPass: true,
-    why: 'Measured against the same twin, because who supplies the function is a fact about the SOURCE and not about the value — the census separates the two and the runtime cannot. `movesPass` is TRUE OF THE SHAPE AND NOT OF THIS SITE: the pass does not drive `axesWhere` and never will, because both of its callers write the predicate at the call site. What accounts for this row is that nothing outside can put a value into it, pinned at DECLARED_INTERNAL_CALLBACK_ARGUMENTS rather than read off the `export` modifier.',
+    movesCensus: false,
+    why: 'Measured against the same twin, because who supplies the function is a fact about the SOURCE and not about the value — the census separates the two and the runtime cannot. `movesPass` is TRUE OF THE SHAPE AND NOT OF THIS SITE: the pass does not drive `axesWhere` and never will, because both of its callers write the predicate at the call site. What accounts for this row is that nothing outside can put a value into it, pinned at DECLARED_INTERNAL_CALLBACK_ARGUMENTS rather than read off the `export` modifier. `movesCensus` is FALSE and the reason is a property of the probe rather than of the scan: this row shares `probeCallback` with the row above it, `probeCallback` carries the `export` modifier, and that modifier is exactly what the census reads to decide which of the two channels a call lands in — so one probe export cannot be measured in both. Stated rather than repaired, because a second probe export would make the A and C columns of this row measure a different subject from the row above.',
   }),
   Object.freeze({
     channel: 'module-mutable-state',
@@ -8646,6 +8706,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: false,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: "The write happens during a call whose own return carries nothing, so the row the drive builds is empty. Order-dependent, and the row below is the other order.",
   }),
   Object.freeze({
@@ -8655,7 +8716,8 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: true,
     movesC: false,
     movesPass: false,
-    why: 'THE SAME CHANNEL ANSWERS DIFFERENTLY IN THE TWO ORDERS, which is why both rows are here. B covers it only when something reads the binding after the write, and nothing orders those two events. A moves on this row and not on the one above because the two rows are measured against different probe exports — the BINDING has a declared string position and the writer returns `void`, which is the same split as `lazy-member`: the arrival is seen and the write is not.',
+    movesCensus: false,
+    why: '`movesCensus` is FALSE here and TRUE on the row above, and the two rows are the same channel: the census keys a write site by the function that PERFORMS it, so the site sits under `probeModuleMutableState` and this row is measured against the BINDING. That is the same arrival-versus-write split the rest of this sentence is about, seen by a fourth instrument. THE SAME CHANNEL ANSWERS DIFFERENTLY IN THE TWO ORDERS, which is why both rows are here. B covers it only when something reads the binding after the write, and nothing orders those two events. A moves on this row and not on the one above because the two rows are measured against different probe exports — the BINDING has a declared string position and the writer returns `void`, which is the same split as `lazy-member`: the arrival is seen and the write is not.',
   }),
   Object.freeze({
     channel: 'ambient-global',
@@ -8664,6 +8726,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: false,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: 'Covered by no instrument here. The census is the whole catcher: this directory has zero ambient sites and one arriving is red.',
   }),
   Object.freeze({
@@ -8673,6 +8736,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: false,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: "A sees the POSITION — `return.toString()` is a string position in the declared type. B does not: the walker invokes getters and never methods, which its own header states. So the arrival is caught and the payload is not.",
   }),
   Object.freeze({
@@ -8682,6 +8746,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: false,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: "Same split as the row above, and the walker's header names it: a returned function is walked for its own properties and is never called.",
   }),
   Object.freeze({
@@ -8691,7 +8756,8 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: false,
     movesC: false,
     movesPass: false,
-    why: 'The payload is an ARGUMENT to a function the caller supplies, one `then` away from the callback channel, and it is invisible for the same reason. The census is the catcher: zero deferred sites, and an `async` or a `new Promise` arriving is red.',
+    movesCensus: true,
+    why: 'The payload is an ARGUMENT to a function the caller supplies, one `then` away from the callback channel, and it is invisible for the same reason. The census is the catcher — AND THAT SENTENCE WAS FALSE UNTIL THIS ROUND, which is what the `movesCensus` column was added to find out. The scan read `async`, a generator asterisk and `new Promise`; this row\'s probe is a hand-written thenable and is none of those, so the row named as its only catcher an instrument that could not see it. Measured both ways: with the `then` member out of the scan `movesCensus` is false, with it in, true. What a planted thenable used to redden was its inner `resolve(...)` landing in `internal-callback-invocation`, which is a different check noticing by accident and in the one channel this file marks unreachable from outside.',
   }),
 ]);
 
@@ -9281,6 +9347,7 @@ describe('the channel census — the routes a string can leave this directory by
       expect(surface.sourceDiagnostics, surface.sourceDiagnostics.join(' | ')).toEqual([]);
       expect(surface.depthCuts).toBe(SURFACE_CENSUS.DEPTH_CUTS);
       const constructors = channelProbeConstructors();
+      const probeCensus = channelProbeCensus();
 
       const probeExportFor = (row: CoverageRow): string => PROBE_EXPORTS[`${row.channel}|${row.form}`] ?? '';
       const twinFor_ = (row: CoverageRow): TwinResult => {
@@ -9309,6 +9376,19 @@ describe('the channel census — the routes a string can leave this directory by
         // B: the row the drive would have built, through the drive's own walker.
         const twin = twinFor_(row);
         expect(bannedInRow(twin.row).length > 0, `${row.channel}/${row.form} movesB`).toBe(row.movesB);
+
+        // THE CENSUS: does the probe's export contribute a site in this row's
+        // OWN channel? Measured rather than declared, which is the whole
+        // addition — three rows named the census as their only catcher and it
+        // had never been pointed at their probes.
+        const probeSites = probeCensus.sites[row.channel].filter(
+          (site) =>
+            site.startsWith(`${CHANNEL_PROBE_MODULE}#${probeExport}#`) ||
+            site === `${CHANNEL_PROBE_MODULE}#${probeExport}`,
+        );
+        expect(probeSites.length > 0, `${row.channel}/${row.form} movesCensus`).toBe(
+          row.movesCensus,
+        );
 
         // The non-vacuity guard: a caller who uses the channel as intended sees
         // the name. Without this every `false` above could be a dud probe.
@@ -9381,7 +9461,16 @@ describe('the channel census — the routes a string can leave this directory by
       ESCAPE_CHANNELS.find((channel) => channel.id === id)?.reachableFromOutside === true;
     for (const row of nothing) {
       const driven = row.movesPass && passSubjectChannels.includes(row.channel);
-      const covered = driven || census.sites[row.channel].length === 0 || !reachable(row.channel);
+      // AND THE MIDDLE ACCOUNT NOW HAS TO EARN ITSELF. "This channel has zero
+      // sites and one arriving is red" is a claim that the scan can SEE the
+      // shape, and until this round nothing checked that: the
+      // `deferred-completion` row made exactly this claim while its own probe —
+      // a hand-written thenable — was invisible to the scan. So the zero-sites
+      // account requires `movesCensus`, measured against that row's probe.
+      const covered =
+        driven ||
+        (census.sites[row.channel].length === 0 && row.movesCensus) ||
+        !reachable(row.channel);
       expect(covered, `${row.channel}/${row.form} is in use and no instrument covers it`).toBe(true);
     }
     // Exactly one channel is declared unreachable from outside, by name, and
