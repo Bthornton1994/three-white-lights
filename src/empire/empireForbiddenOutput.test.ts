@@ -9310,6 +9310,12 @@ const SCREEN_AGREEMENT = Object.freeze({
    * which is the stronger statement of the same fact.
    */
   PROBE_DISAGREEMENTS: 4,
+  /**
+   * Depth cuts the control took on the probe: one for each of the two shapes
+   * that reach the limit, and they reach it from opposite directions. See the
+   * test for which is which.
+   */
+  PROBE_DEPTH_CUTS: 2,
 });
 
 /**
@@ -11031,6 +11037,25 @@ describe('the channel census — the routes a string can leave this directory by
  *      catcher off while the destructured value still arrived. It is in
  *      `freshReceivers` now because the destructure is REPORTED rather than
  *      merely unfound.
+ *  13. `probeRecordOfClosures` — M62, the twentieth bypass. A returned member
+ *      typed `Readonly<Record<string, AssemblyShape>>`, whose closures are
+ *      reached through an index signature and through no property at all, so
+ *      the position-enumerating screen answered `false` about a table of them.
+ *  14. `probeIndexSignatureClosure` — the same shape spelled as a declared
+ *      index signature rather than as a `Record`, because the two are different
+ *      source text and the same question to the checker, and a repair that
+ *      knew about `Record` by name would pass one and fail the other.
+ *  15. `probeSymbolKeyedClosure` — a symbol-keyed table. It is the mutant for
+ *      the `readonly [key: symbol]` half of `FUNCTION_FREE_DATA_SOURCE`: a
+ *      symbol index signature is not checked against a string one, so a
+ *      reference type carrying only the string half certifies this as data.
+ *  16. `probeRecursiveInstantiation` — the one that is NOT found, and it is
+ *      here so the screen's declared residual is measured on every run rather
+ *      than described. Forty levels of a recursive generic instantiation, which
+ *      the checker's relation reports as function-free data. What says so is
+ *      `SCREEN_AGREEMENT.PROBE_DEPTH_CUTS`, the count of times the bounded
+ *      control reached its limit — one for this, one for the deep member the
+ *      relation catches and the control does not.
  */
 const ASSEMBLY_PROBE_SOURCE = `import { EMPIRE_FORBIDDEN_OUTPUTS } from './empireCore';
 
@@ -11214,6 +11239,22 @@ const ASSEMBLY_SYMBOL_KEYED: { readonly keyed: { readonly [slot: symbol]: Assemb
 
 export function probeSymbolKeyedClosure(): { readonly [slot: symbol]: AssemblyShape } {
   return ASSEMBLY_SYMBOL_KEYED.keyed;
+}
+
+type AssemblyDrop<D extends readonly unknown[]> = D extends readonly [unknown, ...infer R] ? R : [];
+
+type AssemblyNest<T, D extends readonly unknown[]> = D['length'] extends 0
+  ? T
+  : { readonly down: AssemblyNest<T, AssemblyDrop<D>> };
+
+type AssemblyDeepNest = AssemblyNest<AssemblyShape, [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]>;
+
+const ASSEMBLY_NEST: { readonly nest: AssemblyDeepNest } = {
+  nest: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { down: { peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] } } } } } } } } } } } } } } } } } } } } } } } } } } } } } } } } } } } } } } } } },
+};
+
+export function probeRecursiveInstantiation(): AssemblyDeepNest {
+  return ASSEMBLY_NEST.nest;
 }
 `;
 
@@ -11408,7 +11449,29 @@ describe('the assembly walk bites — every binding whose value is not in its in
     // the reformulation working rather than an accident of some other change.
     // The bounded walk is the screen's second reading and it is kept runnable
     // for exactly this: it cuts here, and the cut is counted.
-    expect(assemblyProbeCensus().memberTypeDepthCuts).toBeGreaterThan(0);
+    //
+    // A COUNT AND NOT A BOUND, because two different shapes reach it and a
+    // bound would let one of them stop reaching it quietly. One cut is
+    // `probeDeepMemberClosure`, which the relation catches and the control does
+    // not. The other is `probeRecursiveInstantiation`, which is the reverse and
+    // is this screen's declared residual, driven rather than described: a
+    // forty-deep recursive generic instantiation, which the relation reports as
+    // function-free data. It produces NO closure row — the assertion below —
+    // and the only thing that says so is this counter.
+    expect(assemblyProbeCensus().memberTypeDepthCuts).toBe(SCREEN_AGREEMENT.PROBE_DEPTH_CUTS);
+    expect(
+      assemblyProbeSites('returned-closure').filter((site) =>
+        site.includes('probeRecursiveInstantiation'),
+      ),
+    ).toEqual([]);
+    // And it is a residual of the RELATION rather than of the walk, which is
+    // what the disagreement census says: the two readings agree here, both
+    // answering `false`, so there is no row for it in the list below.
+    expect(
+      assemblyProbeCensus().screenDisagreements.filter((entry) =>
+        entry.includes('AssemblyNest'),
+      ),
+    ).toEqual([]);
     // ZERO ON THE SHIPPED TREE. What that zero says is narrower than it used to
     // claim, and the narrowing is the point: it is a statement about the
     // subjects this screen was ASKED about, not about the directory's types.
@@ -13555,6 +13618,27 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'Planted alone rather than beside another silence, per the rule M60 and M61 established. production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
     ]),
   }),
+  Object.freeze({
+    id: 'M63',
+    shape:
+      "THE SCREEN'S OWN DECLARED RESIDUAL, DRIVEN RATHER THAN DESCRIBED. The checker's assignability relation has a recursion limiter, so a deeply nested recursive generic instantiation is reported 'related' — which this screen reads as a certificate that the value is function-free data. It is planted because a residual stated in a comment and never run is this codebase's most-repeated defect, and because the sentence naming its catcher is a claim that had to be measured",
+    where:
+      "production.ts, `accrueProduction`: a `type ProductionNest<T, D>` that peels one element off a tuple per level, instantiated forty deep at `ProductionNest<ProductionPeek, [unknown x40]>`, with a value forty `{ down: … }` wrappers around `{ peek: () => EMPIRE_FORBIDDEN_OUTPUTS[0] }`, handed back as `shapes: PRODUCTION_NEST.nest` and cast",
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'THE COUNTER CAUGHT IT AND THE SCREEN DID NOT, which is exactly what the comment at `MEMBER_TYPE_DEPTH_CUTS` says would happen: `measures how deep the shipped types go` reddened with `expected 1 to be +0` on `channelCensus().memberTypeDepthCuts`, and `follows the deep member` reddened with `expected 3 to be 2` on the probe census, which walks the shipped modules too. `census.sites` is GREEN — the site equality is asserted before the node count in the same test and passed — so there is no `returned-closure` row for production.ts and the screen was silent about a returned closure.',
+      'AND THE BRANCH RUNS, PRINTED: `accrueProduction` on a fresh gym returns a `shapes` key, walking `.down` forty times reaches an object whose `peek` is a function, and `peek()` is `covered-day`. `depth walked = 40`, `gymBucks 0`, `npx tsc --noEmit` exit 0.',
+      "WHY THE RELATION SAYS DATA. `isTypeAssignableTo` bails out of a deeply nested comparison with a 'maybe', which resolves as related, so the forty-deep instantiation is certified assignable to `FunctionFreeData` and the screen stops. This is a bounded resource inside the compiler rather than a constant of this file's, and the measurement that shows it is a resource rather than a rule is that the same type answers the other way in a program that has already asked about the shallower instantiations — `nest40` alone is reported assignable, `nest1` … `nest40` asked in order is not. An order-dependent answer is a cache, not a decision.",
+      'THE ISOLATED FORM IS THE SECOND ONE. Form 1 wrote the recursion as `D[\'length\'] extends 0`, which adds the string literal `length` to a shipped module: `empireCore.test.ts` reddened `expected 169 to be 168` and `production.test.ts` `expected 24 to be 23`, both string censuses and neither about closures. Form 2 peels the tuple with `D extends readonly [unknown, ...infer R]` instead, spells no literal at all, and leaves all three accidental catchers green — 11 of 12 files pass, and the only reds are the two counters above and the three node counts.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters, as ever: instrument B `expected 2395780 to be 2393060`, the overflow pass `expected 524024 to be 523128`, `nodesExamined` `expected 22026 to be 21789`.',
+      'A permanent probe export carries the same shape now — `probeRecursiveInstantiation` — so the residual is measured on every run rather than only in this row: it produces no closure site, and `SCREEN_AGREEMENT.PROBE_DEPTH_CUTS` is the count that says the control reached it.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts`.',
+    ]),
+  }),
 ]);
 
 /**
@@ -13781,7 +13865,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(62);
+    expect(PLANTED_ROUTES.length).toBe(63);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -13881,8 +13965,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // chunk text the set already held and left that census green. Only the
     // third says whether the string census covers this class, and the answer
     // is that it does not.
-    expect(attempts).toBe(85);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(52);
+    expect(attempts).toBe(87);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(53);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
