@@ -16,6 +16,8 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { describeDelta, identityDelta, treeIdentity } from './treeIdentity.mjs';
+
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const piece = process.argv[2];
 if (!piece) {
@@ -399,9 +401,132 @@ const parts = [
   'being asked to take that on trust: the check is in tools/evidence.mjs and you',
   'can read it. But you do not need to reconstruct it from the reflog.',
   '',
+  'AND THE TREE DID NOT MOVE WHILE THIS RAN — which is a different claim from',
+  'the stamp, and one the stamp cannot make.',
+  '',
+  'This run takes about twelve minutes. If a tracked or untracked-but-not-',
+  'ignored file changes inside that window, the output below straddles the edit:',
+  'part of it describes one tree and part another, and no commit describes the',
+  'whole. The stamp above would still name a single commit, so a stale-stamp',
+  'check cannot notice.',
+  '',
+  'The identity of every relevant file is taken before the first command and',
+  'again after each one; if any of it moved, this file is NOT WRITTEN and the',
+  'run exits 3. So the existence of this bundle is itself the evidence — there',
+  'is no arm of tools/evidence.mjs that writes a straddled bundle with a warning',
+  'in it, deliberately, because a warning in prose here is a thing no check',
+  'reads. See tools/treeIdentity.mjs for what that identity covers and the four',
+  'things it explicitly cannot see.',
+  '',
 ];
 
-parts.push(run('tests', 'npx', ['vitest', 'run', ...(pattern ? [pattern] : []), '--reporter=verbose']));
+/**
+ * ===========================================================================
+ * THE TREE MUST NOT MOVE WHILE THIS RUN IS IN FLIGHT
+ * ===========================================================================
+ * This run takes ~710 s. Everything below reads the working tree at the moment
+ * it executes. If a relevant file moves in that window, the bundle written at
+ * the end describes a tree that NEVER EXISTED AS A WHOLE: the narrowed vitest
+ * output came off one tree, the whole-suite output off another, and the file
+ * says nothing about the seam.
+ *
+ * WHY THIS IS A DIFFERENT PROBLEM FROM STALENESS, AND WHY `--verify` CANNOT
+ * COVER IT. `--verify` compares the bundle's stamp against HEAD. A bundle that
+ * straddled an edit stamps the commit it STARTED at; if the edit was then
+ * committed, `--verify` compares stamp-to-HEAD, finds the code that moved, and
+ * says stale — which is right by accident. If the edit was reverted, or was
+ * itself the commit that landed the bundle, `--verify` reports it FRESH. The
+ * stamp cannot express "half of this output predates the change", because the
+ * bundle has one stamp and the run had two trees.
+ *
+ * WHAT IT REFUSES TO DO, AND WHY REFUSING BEATS MARKING. The alternative was to
+ * write the bundle with a banner saying it describes no single tree. That
+ * banner would be prose in a file whose only machine-read line is `commit
+ * <sha>` — `--verify` greps exactly that, so a marked bundle would still report
+ * fresh, and a critic would be reading a warning that nothing enforces. That is
+ * this repository's "measured, carried, displayed, never compared" failure
+ * verbatim. Refusing leaves the PREVIOUS bundle in place, and the previous
+ * bundle's stamp is honest about being old: whichever way the tree moved,
+ * `--verify` then reports it — uncommitted movement as `working tree has
+ * uncommitted code`, committed movement as `code changed since`. Refusing puts
+ * the system in a state the existing check already catches. Marking would put
+ * it in one that check reads as clean.
+ *
+ * WHY THE EXCLUSION IS `SELF_DIRTYING` AND EMPHATICALLY NOT `NOT_CODE`, WHICH
+ * IS THE OTHER LIST IN THIS FILE AND WAS THE OBVIOUS CHOICE. `NOT_CODE` answers
+ * "did the APP change", and it excludes `docs/`, `CLAUDE.md` and `README.md` on
+ * the stated ground that prose does not change what the app does. That is true
+ * of the app and false of THIS BUNDLE, whose contents are a test run — and two
+ * tests in this suite read that prose off the disk. Measured, not reasoned —
+ * two probes, each one appended line, each reverted afterwards:
+ *
+ *     append an HTML comment holding one name REVIEWABLE_CITATIONS pins
+ *     $ npx vitest run src/licensing/realIp.test.ts
+ *      Test Files  1 failed (1)
+ *           Tests  1 failed | 56 passed (57)
+ *
+ *     append a new `##` heading with no row in the index table
+ *     $ npx vitest run tools/claudeIndex.test.ts
+ *      Test Files  1 failed (1)
+ *           Tests  2 failed | 4 passed (6)
+ *
+ * (The probe text is described rather than quoted because this file is inside
+ * the census that reddened: pasting the name here would move its own count.)
+ *
+ * `REVIEWABLE_CITATIONS` pins the exact occurrence count of every watchlisted
+ * name in `CLAUDE.md` and `docs/GDD.md`, and `claudeIndex.test.ts` pins the
+ * index against the live `##` headings. So a one-word comment added to a
+ * markdown file moves the suite's result, and a guard built on `NOT_CODE` would
+ * have been silent for it. Inheriting that list here would have imported a hole
+ * into the one window nothing else can see into.
+ *
+ * `SELF_DIRTYING` is the right list because it names exactly what THIS RUN
+ * writes, which is the only category that must be ignored: without it the tool
+ * reports itself moved on every run and becomes an instrument nobody reads.
+ *
+ * CHECKED AFTER EVERY CAPTURED COMMAND, not only before the write. The brief
+ * this was built to asked for start and end; per-command checkpoints are a
+ * superset — the last one IS the check before the write — and they turn a
+ * ~710 s round trip into a ~400 s one when the edit lands early, as well as
+ * naming which command's output the seam runs through.
+ *
+ * The identity's two halves, what it can and cannot see, and why a failure to
+ * measure throws rather than returning "nothing moved", are in
+ * `tools/treeIdentity.mjs`.
+ */
+const baseline = treeIdentity(ROOT, SELF_DIRTYING);
+
+/**
+ * Distinct from 1 (a `--verify` finding) and 2 (bad usage), so a caller that
+ * wraps this can tell "the evidence is stale" from "the evidence could not be
+ * taken at all" without parsing the message.
+ */
+const TREE_MOVED_EXIT_CODE = 3;
+
+const capture = (label, cmd, args) => {
+  parts.push(run(label, cmd, args));
+  const moved = identityDelta(baseline, treeIdentity(ROOT, SELF_DIRTYING));
+  if (moved.length === 0) return;
+  console.error('');
+  console.error('='.repeat(72));
+  console.error('REFUSING TO WRITE: THE TREE MOVED WHILE THIS RUN WAS IN FLIGHT');
+  console.error('='.repeat(72));
+  console.error(`It was still the baseline tree when this run started, and it was not by`);
+  console.error(`the time [${label}] finished. Output captured so far straddles the change,`);
+  console.error(`so no single commit describes it and no bundle can honestly stamp it.`);
+  console.error('');
+  console.error('What moved:');
+  for (const line of describeDelta(moved)) console.error(line);
+  console.error('');
+  console.error(`Nothing was written. ${path.join('.gauntlet', 'evidence', `${piece}.txt`)} still holds`);
+  console.error('the previous bundle, whose stamp is honest about being older than this tree —');
+  console.error(`run \`node tools/evidence.mjs ${piece} --verify\` and it will say so.`);
+  console.error('');
+  console.error('Let the tree settle, commit what you meant to commit, then re-run this.');
+  process.exit(TREE_MOVED_EXIT_CODE);
+};
+
+capture('tests', 'npx', ['vitest', 'run', ...(pattern ? [pattern] : []), '--reporter=verbose']);
 
 // THE WHOLE SUITE, ALWAYS, EVEN WHEN A PATTERN NARROWED THE RUN ABOVE.
 //
@@ -415,11 +540,37 @@ parts.push(run('tests', 'npx', ['vitest', 'run', ...(pattern ? [pattern] : []), 
 // The narrowed run is what makes a bundle readable; it is not what makes it
 // sufficient. Both belong, at one stamp, so "the piece's tests pass" and
 // "nothing else broke" are answerable from the same file.
-parts.push(run('whole suite', 'npx', ['vitest', 'run']));
-parts.push(run('typecheck', 'npx', ['tsc', '--noEmit']));
+capture('whole suite', 'npx', ['vitest', 'run']);
+capture('typecheck', 'npx', ['tsc', '--noEmit']);
 
 const outDir = path.join(ROOT, '.gauntlet', 'evidence');
 mkdirSync(outDir, { recursive: true });
 const out = path.join(outDir, `${piece}.txt`);
 writeFileSync(out, parts.join('\n'), 'utf8');
 console.log(`wrote ${out}`);
+
+/**
+ * THE SENTENCE THAT KEEPS BEING WRITTEN IN GOOD FAITH AND BEING WRONG BY THE
+ * NEXT COMMIT, printed at the moment it is about to be written.
+ *
+ * Twice now a commit has re-taken bundles and said so — "all three stale
+ * bundles re-taken" — and the very next commit edited a source those bundles
+ * derive from. Both times the person doing it knew the rule. That is the
+ * signature of something that wants a prompt at the point of use rather than
+ * more care, and this is the point of use: the only moment at which the claim
+ * "this bundle describes this tree" is true is the moment it is printed.
+ *
+ * Short on purpose. A wall of text at the end of a 710 s command is scrolled
+ * past, and a warning nobody reads is the same as no warning.
+ */
+const rule = '─'.repeat(72);
+console.log('');
+console.log(rule);
+console.log(`This bundle describes commit ${head.slice(0, 8)} and this tree. Nothing else.`);
+console.log('ANY source edit after this line invalidates it — including the one you are');
+console.log('about to make. If the next thing you commit touches a source this bundle');
+console.log('depends on, re-take it IN THAT COMMIT or say in that message that it is now');
+console.log('stale. Do not write "re-taken" over a bundle you are about to outdate.');
+console.log('');
+console.log(`Ask, do not assume:  node tools/evidence.mjs ${piece} --verify`);
+console.log(rule);
