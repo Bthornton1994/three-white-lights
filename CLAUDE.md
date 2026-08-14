@@ -194,6 +194,38 @@ suite --verify` answers this in seconds and is the authority; this paragraph is
 not. That is the same rule this file already applies to measurements, applied to
 a claim about tooling.
 
+**AND THAT CORRECTION WAS ITSELF WRONG ONE STEP OUT, WHICH IS THE MORE USEFUL
+LESSON OF THE TWO.** It said prose is "the one category of change that provably
+does not stale a bundle". That is true about what `--verify` REPORTS and false
+about what a reader takes from it, because **a prose edit can change the suite's
+result.** Measured, both reverted:
+
+- appending one HTML comment containing a `REVIEWABLE_CITATIONS` name to
+  `CLAUDE.md` → `src/licensing/realIp.test.ts` **2 failed | 55 passed**;
+- appending a `##` heading with no matching index row → `tools/claudeIndex.test.ts`
+  **2 failed | 4 passed**.
+
+So a bundle can report `3374 passed` while the tree it describes now fails, and
+`--verify` will call that bundle **current**. The staleness check reads *"did
+code change"* and the thing a reader wants is *"is this record still true"*, and
+prose is exactly where those two questions come apart. The paragraph five lines
+above this one already says prose edits are code changes with tests behind them —
+so the correction contradicted its own section while being narrowly accurate.
+
+**The generalisable shape: a correction can be right about the MECHANISM and
+wrong about the CONSEQUENCE.** The tool's behaviour was read from its source and
+stated accurately; what was never checked is whether the behaviour amounted to
+the safety property the sentence implied. Verifying a mechanism is not verifying
+what follows from it, and the second step is the one that gets skipped precisely
+because the first was done carefully.
+
+**Left open deliberately, and it is a human's call.** Closing it means every
+coordination note written into this file forces a full ~710s re-capture, which is
+the crying-wolf trade this document refuses for three other instruments. The
+silence is labelled as chosen in `NOT_CODE`, and the critic is told about it so
+it does not over-read a `--verify` pass. Run the two named test files after
+touching prose — that is what actually catches this today.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
