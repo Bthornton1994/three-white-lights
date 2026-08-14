@@ -315,12 +315,21 @@ describe('the real-IP audit has something to audit', () => {
       ].join('\n'),
     ).toEqual([...UNREADABLE_BY_THIS_AUDIT]);
 
-    // ...and the total, so an emptied census cannot pass the equality against an
-    // emptied pin, and so a binary swapped for another of a different kind cannot
-    // net out to zero across two rows.
-    expect(census.reduce((sum, r) => sum + r.count, 0)).toBe(19);
-    expect(unreadable.length).toBe(19);
-    expect(ALL_FILES.length).toBe(TEXT_FILES.length + unreadable.length);
+    // ...and the two entry points are tied to each other, which is the only
+    // assertion here that can catch them DISAGREEING.
+    //
+    // THE OBVIOUS VERSION OF THIS LINE IS A TAUTOLOGY AND WAS WRITTEN FIRST.
+    // `ALL_FILES.length === TEXT_FILES.length + unreadable.length` holds for any
+    // predicate whatsoever, because the two lists are that predicate and its
+    // negation over one array — no state of `classifyBytes` makes it red. What
+    // bites is comparing the `isTextFile` path against the `classifyBytes` path:
+    // the census is folded by the second, `TEXT_FILES` is filtered by the first,
+    // and a wrapper that stopped agreeing with what it wraps shows up here.
+    const counted = census.reduce((sum, r) => sum + r.count, 0);
+    expect(ALL_FILES.length).toBe(TEXT_FILES.length + counted);
+    // The pin above fixes `counted` at 10 + 7 + 2, so a separate `toBe(19)` here
+    // would be strictly dominated by it — deleted rather than left standing, per
+    // the standing domination rule. 19 is the number; the pin is where it lives.
   });
 
   it('reads test files, .mts, .toml and an extensionless file', () => {
@@ -435,21 +444,32 @@ describe('the reader decides on bytes, not on a suffix', () => {
     expect(classifyBytes(new Uint8Array([]))).toBe('text');
   });
 
-  it('agrees with the whole tree, so the fixtures above are not a private world', () => {
-    // The fixtures are synthetic; this is the same predicate on the real walk.
-    // Without it, `classifyBytes` could be correct on five hand-made buffers and
-    // wrong on every file that actually exists.
-    for (const f of TEXT_FILES) expect(classifyBytes(bytesOf(f)), f).toBe('text');
-    const unreadable = ALL_FILES.filter((f) => !TEXT_FILES.includes(f));
-    expect(unreadable.length).toBe(19);
-    for (const f of unreadable) expect(classifyBytes(bytesOf(f)), f).toBe('nul-byte');
-    // ...and the census agrees with the reasons, so the printed reason column is
-    // compared to something rather than merely displayed.
-    expect(
-      unreadableCensus(ALL_FILES.map((file) => ({ file, bytes: bytesOf(file) }))).every(
-        (r) => r.reason === 'nul-byte',
-      ),
-    ).toBe(true);
+  it('gives real files in this tree the verdicts a reader would expect', () => {
+    // THE FIXTURES ABOVE ARE SYNTHETIC AND THIS IS THE SAME PREDICATE ON REAL
+    // BYTES. Named files with literal expectations, which is the only shape that
+    // bites here.
+    //
+    // THE VERSION THAT LOOPED OVER `TEXT_FILES` ASSERTING `'text'` WAS A
+    // TAUTOLOGY AND IS GONE. `TEXT_FILES` is filtered BY this predicate, so the
+    // loop restated the filter and no state of `classifyBytes` could have made it
+    // red — the oracle-mirrors-its-subject shape, in the test written to prove
+    // the subject works. What replaced it is the cross-path equality in the
+    // census check above, plus these.
+    expect(classifyBytes(bytesOf('src/licensing/realIp.ts'))).toBe('text');
+    // The lockfile: the largest text file here, and the one whose base64 blobs
+    // are the closest thing in the tree to bytes a sniff could get wrong.
+    expect(classifyBytes(bytesOf('package-lock.json'))).toBe('text');
+    // The three files the old allowlist declined are NOT re-asserted here.
+    // `reads test files, .mts, .toml and an extensionless file` already pins them
+    // through `TEXT_FILES`, which goes through `isTextFile`, which calls this —
+    // so a `classifyBytes` line for `netlify.toml` is red in a strict subset of
+    // the states that one is red in. Strictly dominated; left out rather than
+    // written and left unable to speak first.
+    //
+    // ...and the other side, one per unreadable extension.
+    expect(classifyBytes(bytesOf('assets/icon.png'))).toBe('nul-byte');
+    expect(classifyBytes(bytesOf('assets/sound/bar-rattle.wav'))).toBe('nul-byte');
+    expect(classifyBytes(bytesOf('docs/image-1785524656877.webp'))).toBe('nul-byte');
   });
 });
 
