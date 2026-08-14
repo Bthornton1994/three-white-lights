@@ -7721,16 +7721,40 @@ function channelCensusOf(
   /**
    * Every function value reachable from a returned expression, by member path.
    *
-   * Its limit, in the mechanism's own terms: it follows SYNTAX, so a function
-   * assembled elsewhere and returned through a plain identifier — `const shape
-   * = { peek }; return shape;` — is not found here. What covers that route is
-   * the `local` arm of the write census plus instrument A's declared-position
-   * walk, and the honest statement is that this closes the LITERAL nesting the
-   * plant used and not every route to a returned function.
+   * IT FOLLOWS A RETURNED IDENTIFIER BACK TO ITS LOCAL DECLARATION, and that
+   * half was added after the first version's declared limit was PLANTED rather
+   * than believed. That version said `const shape = { peek }; return shape;`
+   * was outside it and named the `local` arm of the write census and instrument
+   * A as what covered the route instead. Both were run against the plant and
+   * NEITHER FIRED: the whole directory came back 3 failed of 521 and all three
+   * were node- and string-count truncation guards. The sentence was a pointer
+   * at a catcher that does not exist, which is the exact defect CLAUDE.md says
+   * an unrun named catcher is.
+   *
+   * Its limit now, stated in the mechanism's own terms and with the honest
+   * admission that this one has NOT been driven to exhaustion: alias-following
+   * is bounded by `ALIAS_HOPS_MAX` and by the initializer being visible, so a
+   * function assembled across a branch — `let shape; if (x) shape = {...}` —
+   * has no initializer to follow and is not found. That route is not planted
+   * and no catcher is claimed for it.
    */
   const returnedFunctions = (expression: ts.Expression, at: string = ''): readonly string[] => {
     const found: string[] = [];
+    const seenAliases = new Set<ts.Node>();
     const walk = (node: ts.Expression, path_: string): void => {
+      if (ts.isIdentifier(node)) {
+        const declaration = resolvedDeclaration(node);
+        if (
+          declaration !== null &&
+          ts.isVariableDeclaration(declaration) &&
+          declaration.initializer !== undefined &&
+          !seenAliases.has(declaration)
+        ) {
+          seenAliases.add(declaration);
+          walk(declaration.initializer, path_);
+        }
+        return;
+      }
       if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
         found.push(path_ === '' ? 'return' : path_);
         return;
@@ -7766,6 +7790,28 @@ function channelCensusOf(
           if (ts.isPropertyAssignment(property)) walk(property.initializer, `${path_}.${name}`);
           else if (ts.isSpreadAssignment(property)) walk(property.expression, path_);
           else if (ts.isMethodDeclaration(property)) found.push(`${path_}.${name}`);
+          // `{ peek }` — the shorthand, which is the branch immediately below
+          // the one the alias-following fix had just repaired, and it was
+          // missed exactly once before being planted: with the identifier
+          // followed but the shorthand unhandled, the plant was still green.
+          else if (ts.isShorthandPropertyAssignment(property)) {
+            // NOT `resolvedDeclaration(property.name)`, and that is measured
+            // rather than stylistic: `getSymbolAtLocation` on a shorthand's
+            // name gives the PROPERTY symbol of the object literal, whose
+            // declaration is the shorthand itself, so following it goes in a
+            // circle. The plant stayed green through one whole repair on that.
+            const value = checker.getShorthandAssignmentValueSymbol(property);
+            const declaration = value?.valueDeclaration ?? value?.declarations?.[0];
+            if (
+              declaration !== undefined &&
+              ts.isVariableDeclaration(declaration) &&
+              declaration.initializer !== undefined &&
+              !seenAliases.has(declaration)
+            ) {
+              seenAliases.add(declaration);
+              walk(declaration.initializer, `${path_}.${name}`);
+            }
+          }
         }
         return;
       }
@@ -9774,7 +9820,7 @@ describe('the channel census — the routes a string can leave this directory by
 // ---------------------------------------------------------------------------
 
 /**
- * Thirty-seven routes, planted into shipped modules one at a time, each run
+ * Thirty-eight routes, planted into shipped modules one at a time, each run
  * against `tsc --noEmit`, against this file, and against the three accidental
  * catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
@@ -10416,6 +10462,27 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
     ]),
   }),
   Object.freeze({
+    id: 'M38',
+    shape:
+      "32-repeated, INDIRECTLY: the same nested closure, but assembled into a local and returned through a plain identifier and a shorthand property — the route M34's own repair DECLARED it could not see and named a catcher for",
+    where:
+      "production.ts, `accrueProduction`: `const peek = (): string => EMPIRE_FORBIDDEN_OUTPUTS[0]; const shape = { …fields, peek }; return Object.freeze(shape) as ProductionAccrual;`",
+    attempts: 3,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      "GREEN BEFORE, AND THE NAMED CATCHER DID NOT FIRE — which is the finding this row exists for. M34's repair said this route was covered by 'the `local` arm of the write census plus instrument A's declared-position walk'. Planted and run against the whole directory: 3 failed of 521, and all three are node/string truncation counters — `expected 2393230 to be 2393060`, `expected 523184 to be 523128`, `expected 21811 to be 21789`. The write census was green, instrument A was green. The sentence was a pointer at a catcher that does not exist.",
+      'AFTER: the channel census / pins the two callback sites: + "production.ts#accrueProduction#closure:.peek", and derives every escape site: "returned-closure": + "production.ts": 1.',
+      'THREE ATTEMPTS, AND THE TWO FAILURES ARE THE POINT rather than noise. (1) Following a returned IDENTIFIER back to its local declaration was not enough: `{ peek }` is a `ShorthandPropertyAssignment` and the walker handled `PropertyAssignment`, `SpreadAssignment` and `MethodDeclaration` only, so the plant stayed green. (2) Handling the shorthand by resolving `property.name` through the ordinary path was ALSO not enough: `getSymbolAtLocation` on a shorthand name returns the object literal\'s PROPERTY symbol, whose declaration is the shorthand itself, so the resolution goes in a circle. It needs `getShorthandAssignmentValueSymbol`. Only the third form catches it.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      "WHAT IT COSTS THE ROUND'S OWN CREDIBILITY, recorded rather than smoothed over: M34's repair shipped with a declared limit and a named catcher, and the catcher was wrong. CLAUDE.md's rule is that a named catcher nobody ran is a pointer; this is that rule biting the round that was written to apply it. The limit sentence in `returnedFunctions` is rewritten from the measurement rather than from an argument.",
+      "AND IT IS THE SIBLING RULE TWICE IN ONE FIX. Attempt (1) widened the REACH — follow the identifier — and left the PREDICATE narrow. Attempt (2) widened the predicate and got the resolution API wrong. Each time a different check went red, or nothing did, which is the tell this file has now recorded five times.",
+      "THE LIMIT THAT REMAINS, with no catcher claimed for it: a function assembled across a branch — `let shape; if (x) shape = { peek };` — has no initializer to follow. Not planted. Stated as open rather than as covered.",
+      'production.ts was restored and verified byte-identical with `git hash-object` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
     id: 'M35',
     shape:
       '33 — A WRITE INTO A PARAMETER THROUGH A LOCAL ALIAS. The same spelling-versus-symbol defect as M31, on the mutation arm instead of the callback arm',
@@ -10667,7 +10734,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(37);
+    expect(PLANTED_ROUTES.length).toBe(38);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -10746,8 +10813,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // converted and one at a site that never had a throw, because a fence
     // tested only on the first has not been shown to catch an arrival. One for
     // M30, which reached isolation first time for the reason M27 did.
-    expect(attempts).toBe(53);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(27);
+    expect(attempts).toBe(56);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(28);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
