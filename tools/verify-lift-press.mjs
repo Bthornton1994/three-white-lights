@@ -109,6 +109,27 @@
  *   into a green.
  * - It does not judge whether the lift FEELS right (GDD §12.1). It judges
  *   whether the browser lets the press through.
+ * - IT COVERS TWO OF THE THREE PRESS SURFACES IN THIS APP, and the third is
+ *   named here rather than left for the next reader to discover. `LiftStage` is
+ *   pressed from `src/lift/LiftScreen.tsx` (`lift-touch`, the debug arm),
+ *   `src/session/SetView.tsx` (`session-touch`, the played arm) and
+ *   `src/meet/AttemptView.tsx` (`attempt-touch`, meet day — GDD §6.3, and
+ *   player-reachable). `attempt-touch` is NOT driven here: reaching it means
+ *   driving a meet, which is `tools/verify-shell-route.mjs`'s ~560s job, and
+ *   this tool is the lift-surface piece. Read from source, `AttemptView`'s
+ *   `stage` style is `{ width, height }` — it carries none of the three — but
+ *   that is a source reading and this file does not turn source readings into
+ *   checks, which is the exact division of labour its own header opens with.
+ *
+ * ===========================================================================
+ * THERE IS NO SEPARATE SELF-TEST FILE, AND THAT IS DELIBERATE
+ * ===========================================================================
+ * `verify-lift-shots.mjs` has `verify-lift-shots.selftest.mjs` beside it
+ * because its checks cannot demonstrate themselves. These can: the four DOMAIN
+ * and CONTROL lines ARE the self-test, they run on every invocation against the
+ * same elements the claims are about, and a claim here is not allowed to pass
+ * unless its own control fired in the same run. A self-test that runs only when
+ * someone remembers to invoke it is the weaker arrangement of the two.
  *
  * Usage:
  *   node tools/verify-lift-press.mjs [--url URL] [--out DIR] [--arms both|played|debug]
