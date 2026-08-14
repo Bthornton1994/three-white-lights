@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-14T06-34-45-570Z-9767",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/licensing/realIp.test.ts"
+  ],
+  "budgetSeconds": 300,
+  "startedAtIso": "2026-08-14T06:34:45.570Z",
+  "startedAtMs": 1786689285570,
+  "cwd": "/home/user/wt-qt-research",
+  "commit": "cbd0bbdbdd788af1b24979bcba82ce7bde9eaad7",
+  "branch": "claude/qualifying-totals-research",
+  "dirty": 3,
+  "dirtyPaths": [
+    "docs/research/qualifying-totals.md",
+    "src/licensing/realIp.test.ts",
+    "src/licensing/realIp.ts"
+  ],
+  "runner": {
+    "pid": 9767,
+    "startTick": "1513867",
+    "cmdline": "node tools/watchdog.mjs --budget 300 --id qt-bite-m1 -- npx vitest run src/licensing/realIp.test.ts",
+    "bootId": "70e4dcd9-91f6-43ee-a53c-88125d271f98",
+    "bootEpochSeconds": 1786674147,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T06:34:45.597Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
