@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-meet-sound-mjs-2026-08-14T16-32-38-553Z-32596",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-meet-sound.mjs",
+    "--url",
+    "http://localhost:8099"
+  ],
+  "budgetSeconds": 400,
+  "startedAtIso": "2026-08-14T16:32:38.553Z",
+  "startedAtMs": 1786725158553,
+  "cwd": "/home/user/wt-empire-honesty",
+  "commit": "24e13059e2de59f3ceac594f34bf62ae92c00d02",
+  "branch": "claude/empire-shell-honesty",
+  "dirty": 3,
+  "dirtyPaths": [
+    ".gauntlet/shots/cutin/baseline-no-cutin.png",
+    ".gauntlet/shots/cutin/frames.json",
+    ".gauntlet/shots/meet/sound.json"
+  ],
+  "runner": {
+    "pid": 32596,
+    "startTick": "810758",
+    "cmdline": "node tools/watchdog.mjs --budget 400 --id meet-sound2 -- node tools/verify-meet-sound.mjs --url http://localhost:8099",
+    "bootId": "9a2cb2d2-fb56-4022-8ed1-6d554d4fac5c",
+    "bootEpochSeconds": 1786717051,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T16:32:38.572Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
