@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece qualifying-totals-research
-generated 2026-08-14T03:02:59.688Z
+generated 2026-08-14T03:12:19.215Z
 repo /home/user/wt-qt-research
-commit a43f1c53a7a967992ec57fe76988cbf7577af4f1
+commit b487bbde3ee8fc0fe44378f48ff6830e5e64b2a2
 working tree clean (ignoring only this script's own output and .gauntlet/state.json)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -41,7 +41,7 @@ $ npx vitest run src/licensing/realIp.test.ts --reporter=verbose
 
  RUN  v4.1.10 /home/user/wt-qt-research
 
- ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > walks the whole repository, not just src/ 3ms
+ ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > walks the whole repository, not just src/ 4ms
  ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > reaches configs, docs, markup and shell, not only TypeScript 0ms
  ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > reads test files too, unlike the magic-number audit 0ms
  ✓ src/licensing/realIp.test.ts > the real-IP audit has something to audit > never walks into a sibling git worktree 0ms
@@ -54,34 +54,34 @@ $ npx vitest run src/licensing/realIp.test.ts --reporter=verbose
  ✓ src/licensing/realIp.test.ts > the watchlist > gives every entry a reason and never repeats one 3ms
  ✓ src/licensing/realIp.test.ts > the watchlist > does not also claim to skip a name it watches 1ms
  ✓ src/licensing/realIp.test.ts > the watchlist > lists as deliberately-unwatched only names that are really in this tree 8ms
- ✓ src/licensing/realIp.test.ts > the watchlist > matches on word boundaries, so a checksum is not a brand 17ms
- ✓ src/licensing/realIp.test.ts > the watchlist > is case-insensitive 1ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > matches on word boundaries, so a checksum is not a brand 18ms
+ ✓ src/licensing/realIp.test.ts > the watchlist > is case-insensitive 0ms
  ✓ src/licensing/realIp.test.ts > the watchlist > escapes regex metacharacters in a name 0ms
- ✓ src/licensing/realIp.test.ts > the audit bites > is clean on the unmutated inventory, so a finding is the mutation 62ms
- ✓ src/licensing/realIp.test.ts > the audit bites > catches a real brand in a Tier 2 name tag 58ms
- ✓ src/licensing/realIp.test.ts > the audit bites > catches a real athlete in a Tier 3 caption, behind the symbol 63ms
- ✓ src/licensing/realIp.test.ts > the audit bites > catches a real athlete planted into the sample-card fixtures, as data 2ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > is clean on the unmutated inventory, so a finding is the mutation 61ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > catches a real brand in a Tier 2 name tag 60ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > catches a real athlete in a Tier 3 caption, behind the symbol 58ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > catches a real athlete planted into the sample-card fixtures, as data 3ms
  ✓ src/licensing/realIp.test.ts > the audit bites > catches the same plant as RENDERABLE CONTENT, not only as source text 1ms
  ✓ src/licensing/realIp.test.ts > the audit bites > catches a real brand planted into a tuned copy string 1ms
  ✓ src/licensing/realIp.test.ts > the audit bites > catches a real brand planted into app.json, in BOTH halves 2ms
  ✓ src/licensing/realIp.test.ts > the audit bites > catches a real federation planted into the Expo web config 0ms
  ✓ src/licensing/realIp.test.ts > the audit bites > catches a real brand in an asset FILENAME 1ms
  ✓ src/licensing/realIp.test.ts > the audit bites > does not exempt the watchlist file outside its watchlist regions 80ms
- ✓ src/licensing/realIp.test.ts > the audit bites > does not exempt the watchlist file for the NEWLY watched names either 79ms
- ✓ src/licensing/realIp.test.ts > the audit bites > exempts each region only as far as its own closing bracket 120ms
- ✓ src/licensing/realIp.test.ts > the audit bites > leaves the watchlist file with no pinned citations of its own 57ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > does not exempt the watchlist file for the NEWLY watched names either 81ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > exempts each region only as far as its own closing bracket 119ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > leaves the watchlist file with no pinned citations of its own 60ms
  ✓ src/licensing/realIp.test.ts > the audit bites > exempts exactly one file and exactly three of its regions 1ms
- ✓ src/licensing/realIp.test.ts > the audit bites > reports the file, the line and the name, so a failure is actionable 0ms
+ ✓ src/licensing/realIp.test.ts > the audit bites > reports the file, the line and the name, so a failure is actionable 1ms
  ✓ src/licensing/realIp.test.ts > the audit bites > tells a comment apart from a string on the same line 1ms
  ✓ src/licensing/realIp.test.ts > the audit is not a sieve > passes the fictional catalogue 1ms
  ✓ src/licensing/realIp.test.ts > the audit is not a sieve > does not fire on ordinary prose that contains a brandish word 1ms
  ✓ src/licensing/realIp.test.ts > the audit is not a sieve > does not fire on the fictional federations already in the tree 0ms
  ✓ src/licensing/realIp.test.ts > the audit is not a sieve > does not fire on a real town that is not a meet series 0ms
  ✓ src/licensing/realIp.test.ts > the audit is not a sieve > leaves the formula eponyms alone 1ms
- ✓ src/licensing/realIp.test.ts > no real identity reaches a surface > finds nothing in any string the game can draw 60ms
- ✓ src/licensing/realIp.test.ts > no real identity reaches a surface > finds nothing in the NAME of any file that ships 21ms
+ ✓ src/licensing/realIp.test.ts > no real identity reaches a surface > finds nothing in any string the game can draw 59ms
+ ✓ src/licensing/realIp.test.ts > no real identity reaches a surface > finds nothing in the NAME of any file that ships 20ms
  ✓ src/licensing/realIp.test.ts > no real identity reaches a surface > finds no watchlist name anywhere in the licensing catalogue 7ms
- × src/licensing/realIp.test.ts > the reviewable citation list > is exactly the list in realIp.ts — a new mention is a human decision 27ms
+ × src/licensing/realIp.test.ts > the reviewable citation list > is exactly the list in realIp.ts — a new mention is a human decision 26ms
    → 
 THE REAL-NAME INVENTORY CHANGED.
 
@@ -894,37 +894,37 @@ docs/research/qualifying-totals-meets-single-ply.txt:343  [prose] IPF  201  2024
 docs/research/qualifying-totals-meets-single-ply.txt:344  [prose] IPF  0  2025-06-08  ipf/2503  World Classic Powerlifting Championships
 docs/research/qualifying-totals-meets-single-ply.txt:345  [prose] IPF  164  2025-11-10  ipf/2508  World Open Equipped Powerlifting Championships
 docs/research/qualifying-totals-meets-single-ply.txt:346  [prose] IPF  0  2026-06-13  ipf/2603  World Classic Powerlifting Championships
-docs/research/qualifying-totals.md:56  [prose] Powerlifting America  | Powerlifting America | `https://powerlifting-america.com/` | `curl: (56) CONNECT tunnel failed, response 403` |
-docs/research/qualifying-totals.md:57  [prose] OpenPowerlifting  | OpenPowerlifting (site) | `https://www.openpowerlifting.org/` | `curl: (56) CONNECT tunnel failed, response 403` |
-docs/research/qualifying-totals.md:57  [prose] OpenPowerlifting  | OpenPowerlifting (site) | `https://www.openpowerlifting.org/` | `curl: (56) CONNECT tunnel failed, response 403` |
-docs/research/qualifying-totals.md:58  [prose] British Powerlifting  | British Powerlifting | `https://www.britishpowerlifting.org/…/2026_Open_QT.pdf` | egress blocked |
-docs/research/qualifying-totals.md:68  [prose] OpenPowerlifting  **What IS retrievable is the OpenPowerlifting project's source dataset**, whose
-docs/research/qualifying-totals.md:71  [prose] OpenPowerlifting  - `https://gitlab.com/openpowerlifting/opl-data.git`
-docs/research/qualifying-totals.md:71  [prose] OPL  - `https://gitlab.com/openpowerlifting/opl-data.git`
-docs/research/qualifying-totals.md:114  [prose] SBD  | Event | `SBD` only — full power, three lifts | 7,165 |
-docs/research/qualifying-totals.md:536  [prose] IPF  | `qualifying-totals-derived-raw.json` | IPF | code | 1 |
-docs/research/qualifying-totals.md:537  [prose] SBD  | `qualifying-totals-derived-raw.json` | SBD | code | 1 |
-docs/research/qualifying-totals.md:538  [prose] USAPL  | `qualifying-totals-derived-raw.json` | USAPL | code | 3 |
-docs/research/qualifying-totals.md:539  [prose] IPF  | `qualifying-totals-derived-single-ply.json` | IPF | code | 1 |
-docs/research/qualifying-totals.md:540  [prose] SBD  | `qualifying-totals-derived-single-ply.json` | SBD | code | 1 |
-docs/research/qualifying-totals.md:541  [prose] USAPL  | `qualifying-totals-derived-single-ply.json` | USAPL | code | 3 |
-docs/research/qualifying-totals.md:542  [prose] IPF  | `qualifying-totals-meets-raw.txt` | IPF | prose | 11 |
-docs/research/qualifying-totals.md:543  [prose] SBD  | `qualifying-totals-meets-raw.txt` | SBD | prose | 1 |
-docs/research/qualifying-totals.md:544  [prose] USAPL  | `qualifying-totals-meets-raw.txt` | USAPL | prose | 275 |
-docs/research/qualifying-totals.md:545  [prose] IPF  | `qualifying-totals-meets-single-ply.txt` | IPF | prose | 11 |
-docs/research/qualifying-totals.md:546  [prose] SBD  | `qualifying-totals-meets-single-ply.txt` | SBD | prose | 1 |
-docs/research/qualifying-totals.md:547  [prose] USAPL  | `qualifying-totals-meets-single-ply.txt` | USAPL | prose | 275 |
-docs/research/qualifying-totals.md:548  [prose] IPF  | `qualifyingTotalsDerive.mjs` | IPF | code | 1 |
-docs/research/qualifying-totals.md:549  [prose] IPF  | `qualifyingTotalsDerive.mjs` | IPF | comment | 1 |
-docs/research/qualifying-totals.md:550  [prose] OpenPowerlifting  | `qualifyingTotalsDerive.mjs` | OpenPowerlifting | comment | 2 |
-docs/research/qualifying-totals.md:551  [prose] OPL  | `qualifyingTotalsDerive.mjs` | OPL | comment | 4 |
-docs/research/qualifying-totals.md:552  [prose] SBD  | `qualifyingTotalsDerive.mjs` | SBD | code | 1 |
-docs/research/qualifying-totals.md:553  [prose] USAPL  | `qualifyingTotalsDerive.mjs` | USAPL | code | 3 |
-docs/research/qualifying-totals.md:554  [prose] USAPL  | `qualifyingTotalsDerive.mjs` | USAPL | comment | 1 |
-docs/research/qualifying-totals.md:639  [prose] SBD  ("… Presented by SBD"), one a sponsored high-school invitational. That is a data
-docs/research/qualifying-totals.md:651  [prose] SBD  **(b) A false positive worth knowing about: `SBD`.** In this sport `SBD` is the
-docs/research/qualifying-totals.md:651  [prose] SBD  **(b) A false positive worth knowing about: `SBD`.** In this sport `SBD` is the
-docs/research/qualifying-totals.md:653  [prose] SBD  full-power event. It is also a watched apparel brand. The `SBD  code` rows in the
+docs/research/qualifying-totals.md:57  [prose] Powerlifting America  | Powerlifting America | `https://powerlifting-america.com/` | `curl: (56) CONNECT tunnel failed, response 403` |
+docs/research/qualifying-totals.md:58  [prose] OpenPowerlifting  | OpenPowerlifting (site) | `https://www.openpowerlifting.org/` | `curl: (56) CONNECT tunnel failed, response 403` |
+docs/research/qualifying-totals.md:58  [prose] OpenPowerlifting  | OpenPowerlifting (site) | `https://www.openpowerlifting.org/` | `curl: (56) CONNECT tunnel failed, response 403` |
+docs/research/qualifying-totals.md:59  [prose] British Powerlifting  | British Powerlifting | `https://www.britishpowerlifting.org/…/2026_Open_QT.pdf` | egress blocked |
+docs/research/qualifying-totals.md:69  [prose] OpenPowerlifting  **What IS retrievable is the OpenPowerlifting project's source dataset**, whose
+docs/research/qualifying-totals.md:72  [prose] OpenPowerlifting  - `https://gitlab.com/openpowerlifting/opl-data.git`
+docs/research/qualifying-totals.md:72  [prose] OPL  - `https://gitlab.com/openpowerlifting/opl-data.git`
+docs/research/qualifying-totals.md:115  [prose] SBD  | Event | `SBD` only — full power, three lifts | 7,165 |
+docs/research/qualifying-totals.md:537  [prose] IPF  | `qualifying-totals-derived-raw.json` | IPF | code | 1 |
+docs/research/qualifying-totals.md:538  [prose] SBD  | `qualifying-totals-derived-raw.json` | SBD | code | 1 |
+docs/research/qualifying-totals.md:539  [prose] USAPL  | `qualifying-totals-derived-raw.json` | USAPL | code | 3 |
+docs/research/qualifying-totals.md:540  [prose] IPF  | `qualifying-totals-derived-single-ply.json` | IPF | code | 1 |
+docs/research/qualifying-totals.md:541  [prose] SBD  | `qualifying-totals-derived-single-ply.json` | SBD | code | 1 |
+docs/research/qualifying-totals.md:542  [prose] USAPL  | `qualifying-totals-derived-single-ply.json` | USAPL | code | 3 |
+docs/research/qualifying-totals.md:543  [prose] IPF  | `qualifying-totals-meets-raw.txt` | IPF | prose | 11 |
+docs/research/qualifying-totals.md:544  [prose] SBD  | `qualifying-totals-meets-raw.txt` | SBD | prose | 1 |
+docs/research/qualifying-totals.md:545  [prose] USAPL  | `qualifying-totals-meets-raw.txt` | USAPL | prose | 275 |
+docs/research/qualifying-totals.md:546  [prose] IPF  | `qualifying-totals-meets-single-ply.txt` | IPF | prose | 11 |
+docs/research/qualifying-totals.md:547  [prose] SBD  | `qualifying-totals-meets-single-ply.txt` | SBD | prose | 1 |
+docs/research/qualifying-totals.md:548  [prose] USAPL  | `qualifying-totals-meets-single-ply.txt` | USAPL | prose | 275 |
+docs/research/qualifying-totals.md:549  [prose] IPF  | `qualifyingTotalsDerive.mjs` | IPF | code | 1 |
+docs/research/qualifying-totals.md:550  [prose] IPF  | `qualifyingTotalsDerive.mjs` | IPF | comment | 1 |
+docs/research/qualifying-totals.md:551  [prose] OpenPowerlifting  | `qualifyingTotalsDerive.mjs` | OpenPowerlifting | comment | 2 |
+docs/research/qualifying-totals.md:552  [prose] OPL  | `qualifyingTotalsDerive.mjs` | OPL | comment | 4 |
+docs/research/qualifying-totals.md:553  [prose] SBD  | `qualifyingTotalsDerive.mjs` | SBD | code | 1 |
+docs/research/qualifying-totals.md:554  [prose] USAPL  | `qualifyingTotalsDerive.mjs` | USAPL | code | 3 |
+docs/research/qualifying-totals.md:555  [prose] USAPL  | `qualifyingTotalsDerive.mjs` | USAPL | comment | 1 |
+docs/research/qualifying-totals.md:642  [prose] SBD  ("… Presented by SBD"), one a sponsored high-school invitational. That is a data
+docs/research/qualifying-totals.md:654  [prose] SBD  **(b) A false positive worth knowing about: `SBD`.** In this sport `SBD` is the
+docs/research/qualifying-totals.md:654  [prose] SBD  **(b) A false positive worth knowing about: `SBD`.** In this sport `SBD` is the
+docs/research/qualifying-totals.md:656  [prose] SBD  full-power event. It is also a watched apparel brand. The `SBD  code` rows in the
 docs/research/qualifyingTotalsDerive.mjs:9  [comment] OpenPowerlifting  * OpenPowerlifting project's `opl-data` repository and emits a percentile
 docs/research/qualifyingTotalsDerive.mjs:9  [comment] OPL  * OpenPowerlifting project's `opl-data` repository and emits a percentile
 docs/research/qualifyingTotalsDerive.mjs:24  [comment] OpenPowerlifting  *     https://gitlab.com/openpowerlifting/opl-data.git
@@ -1210,7 +1210,7 @@ docs/reference/meet-photo-ref-1-ipf-squat-bottom.webp:1  [filename] IPF  docs/re
 docs/reference/sprite-ref-1-snes-wrestling.png:1  [filename] SNES  docs/reference/sprite-ref-1-snes-wrestling.png
 : expected [ Array(176) ] to deeply equal [ Array(146) ]
  ✓ src/licensing/realIp.test.ts > the reviewable citation list > is not vacuous — the baseline citations are still found 0ms
- × src/licensing/realIp.test.ts > the reviewable citation list > counts the open-source project citations, which is what it used to miss 2ms
+ × src/licensing/realIp.test.ts > the reviewable citation list > counts the open-source project citations, which is what it used to miss 1ms
    → expected [ 'docs/GDD.md', …(4) ] to deeply equal [ 'docs/GDD.md' ]
  ✓ src/licensing/realIp.test.ts > the reviewable citation list > counts the game-industry citations, the second blind spot of the same shape 1ms
  ✓ src/licensing/realIp.test.ts > the reviewable citation list > keeps the published-record provenance the tests depend on 0ms
@@ -1220,8 +1220,8 @@ docs/reference/sprite-ref-1-snes-wrestling.png:1  [filename] SNES  docs/referenc
 
  Test Files  1 failed (1)
       Tests  2 failed | 46 passed (48)
-   Start at  03:03:00
-   Duration  3.69s (transform 1.07s, setup 0ms, import 2.81s, tests 702ms, environment 0ms)
+   Start at  03:12:20
+   Duration  3.98s (transform 1.27s, setup 0ms, import 3.07s, tests 701ms, environment 0ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -2042,37 +2042,37 @@ docs/research/qualifying-totals-meets-single-ply.txt:343  [prose] IPF  201  2024
 docs/research/qualifying-totals-meets-single-ply.txt:344  [prose] IPF  0  2025-06-08  ipf/2503  World Classic Powerlifting Championships
 docs/research/qualifying-totals-meets-single-ply.txt:345  [prose] IPF  164  2025-11-10  ipf/2508  World Open Equipped Powerlifting Championships
 docs/research/qualifying-totals-meets-single-ply.txt:346  [prose] IPF  0  2026-06-13  ipf/2603  World Classic Powerlifting Championships
-docs/research/qualifying-totals.md:56  [prose] Powerlifting America  | Powerlifting America | `https://powerlifting-america.com/` | `curl: (56) CONNECT tunnel failed, response 403` |
-docs/research/qualifying-totals.md:57  [prose] OpenPowerlifting  | OpenPowerlifting (site) | `https://www.openpowerlifting.org/` | `curl: (56) CONNECT tunnel failed, response 403` |
-docs/research/qualifying-totals.md:57  [prose] OpenPowerlifting  | OpenPowerlifting (site) | `https://www.openpowerlifting.org/` | `curl: (56) CONNECT tunnel failed, response 403` |
-docs/research/qualifying-totals.md:58  [prose] British Powerlifting  | British Powerlifting | `https://www.britishpowerlifting.org/…/2026_Open_QT.pdf` | egress blocked |
-docs/research/qualifying-totals.md:68  [prose] OpenPowerlifting  **What IS retrievable is the OpenPowerlifting project's source dataset**, whose
-docs/research/qualifying-totals.md:71  [prose] OpenPowerlifting  - `https://gitlab.com/openpowerlifting/opl-data.git`
-docs/research/qualifying-totals.md:71  [prose] OPL  - `https://gitlab.com/openpowerlifting/opl-data.git`
-docs/research/qualifying-totals.md:114  [prose] SBD  | Event | `SBD` only — full power, three lifts | 7,165 |
-docs/research/qualifying-totals.md:536  [prose] IPF  | `qualifying-totals-derived-raw.json` | IPF | code | 1 |
-docs/research/qualifying-totals.md:537  [prose] SBD  | `qualifying-totals-derived-raw.json` | SBD | code | 1 |
-docs/research/qualifying-totals.md:538  [prose] USAPL  | `qualifying-totals-derived-raw.json` | USAPL | code | 3 |
-docs/research/qualifying-totals.md:539  [prose] IPF  | `qualifying-totals-derived-single-ply.json` | IPF | code | 1 |
-docs/research/qualifying-totals.md:540  [prose] SBD  | `qualifying-totals-derived-single-ply.json` | SBD | code | 1 |
-docs/research/qualifying-totals.md:541  [prose] USAPL  | `qualifying-totals-derived-single-ply.json` | USAPL | code | 3 |
-docs/research/qualifying-totals.md:542  [prose] IPF  | `qualifying-totals-meets-raw.txt` | IPF | prose | 11 |
-docs/research/qualifying-totals.md:543  [prose] SBD  | `qualifying-totals-meets-raw.txt` | SBD | prose | 1 |
-docs/research/qualifying-totals.md:544  [prose] USAPL  | `qualifying-totals-meets-raw.txt` | USAPL | prose | 275 |
-docs/research/qualifying-totals.md:545  [prose] IPF  | `qualifying-totals-meets-single-ply.txt` | IPF | prose | 11 |
-docs/research/qualifying-totals.md:546  [prose] SBD  | `qualifying-totals-meets-single-ply.txt` | SBD | prose | 1 |
-docs/research/qualifying-totals.md:547  [prose] USAPL  | `qualifying-totals-meets-single-ply.txt` | USAPL | prose | 275 |
-docs/research/qualifying-totals.md:548  [prose] IPF  | `qualifyingTotalsDerive.mjs` | IPF | code | 1 |
-docs/research/qualifying-totals.md:549  [prose] IPF  | `qualifyingTotalsDerive.mjs` | IPF | comment | 1 |
-docs/research/qualifying-totals.md:550  [prose] OpenPowerlifting  | `qualifyingTotalsDerive.mjs` | OpenPowerlifting | comment | 2 |
-docs/research/qualifying-totals.md:551  [prose] OPL  | `qualifyingTotalsDerive.mjs` | OPL | comment | 4 |
-docs/research/qualifying-totals.md:552  [prose] SBD  | `qualifyingTotalsDerive.mjs` | SBD | code | 1 |
-docs/research/qualifying-totals.md:553  [prose] USAPL  | `qualifyingTotalsDerive.mjs` | USAPL | code | 3 |
-docs/research/qualifying-totals.md:554  [prose] USAPL  | `qualifyingTotalsDerive.mjs` | USAPL | comment | 1 |
-docs/research/qualifying-totals.md:639  [prose] SBD  ("… Presented by SBD"), one a sponsored high-school invitational. That is a data
-docs/research/qualifying-totals.md:651  [prose] SBD  **(b) A false positive worth knowing about: `SBD`.** In this sport `SBD` is the
-docs/research/qualifying-totals.md:651  [prose] SBD  **(b) A false positive worth knowing about: `SBD`.** In this sport `SBD` is the
-docs/research/qualifying-totals.md:653  [prose] SBD  full-power event. It is also a watched apparel brand. The `SBD  code` rows in the
+docs/research/qualifying-totals.md:57  [prose] Powerlifting America  | Powerlifting America | `https://powerlifting-america.com/` | `curl: (56) CONNECT tunnel failed, response 403` |
+docs/research/qualifying-totals.md:58  [prose] OpenPowerlifting  | OpenPowerlifting (site) | `https://www.openpowerlifting.org/` | `curl: (56) CONNECT tunnel failed, response 403` |
+docs/research/qualifying-totals.md:58  [prose] OpenPowerlifting  | OpenPowerlifting (site) | `https://www.openpowerlifting.org/` | `curl: (56) CONNECT tunnel failed, response 403` |
+docs/research/qualifying-totals.md:59  [prose] British Powerlifting  | British Powerlifting | `https://www.britishpowerlifting.org/…/2026_Open_QT.pdf` | egress blocked |
+docs/research/qualifying-totals.md:69  [prose] OpenPowerlifting  **What IS retrievable is the OpenPowerlifting project's source dataset**, whose
+docs/research/qualifying-totals.md:72  [prose] OpenPowerlifting  - `https://gitlab.com/openpowerlifting/opl-data.git`
+docs/research/qualifying-totals.md:72  [prose] OPL  - `https://gitlab.com/openpowerlifting/opl-data.git`
+docs/research/qualifying-totals.md:115  [prose] SBD  | Event | `SBD` only — full power, three lifts | 7,165 |
+docs/research/qualifying-totals.md:537  [prose] IPF  | `qualifying-totals-derived-raw.json` | IPF | code | 1 |
+docs/research/qualifying-totals.md:538  [prose] SBD  | `qualifying-totals-derived-raw.json` | SBD | code | 1 |
+docs/research/qualifying-totals.md:539  [prose] USAPL  | `qualifying-totals-derived-raw.json` | USAPL | code | 3 |
+docs/research/qualifying-totals.md:540  [prose] IPF  | `qualifying-totals-derived-single-ply.json` | IPF | code | 1 |
+docs/research/qualifying-totals.md:541  [prose] SBD  | `qualifying-totals-derived-single-ply.json` | SBD | code | 1 |
+docs/research/qualifying-totals.md:542  [prose] USAPL  | `qualifying-totals-derived-single-ply.json` | USAPL | code | 3 |
+docs/research/qualifying-totals.md:543  [prose] IPF  | `qualifying-totals-meets-raw.txt` | IPF | prose | 11 |
+docs/research/qualifying-totals.md:544  [prose] SBD  | `qualifying-totals-meets-raw.txt` | SBD | prose | 1 |
+docs/research/qualifying-totals.md:545  [prose] USAPL  | `qualifying-totals-meets-raw.txt` | USAPL | prose | 275 |
+docs/research/qualifying-totals.md:546  [prose] IPF  | `qualifying-totals-meets-single-ply.txt` | IPF | prose | 11 |
+docs/research/qualifying-totals.md:547  [prose] SBD  | `qualifying-totals-meets-single-ply.txt` | SBD | prose | 1 |
+docs/research/qualifying-totals.md:548  [prose] USAPL  | `qualifying-totals-meets-single-ply.txt` | USAPL | prose | 275 |
+docs/research/qualifying-totals.md:549  [prose] IPF  | `qualifyingTotalsDerive.mjs` | IPF | code | 1 |
+docs/research/qualifying-totals.md:550  [prose] IPF  | `qualifyingTotalsDerive.mjs` | IPF | comment | 1 |
+docs/research/qualifying-totals.md:551  [prose] OpenPowerlifting  | `qualifyingTotalsDerive.mjs` | OpenPowerlifting | comment | 2 |
+docs/research/qualifying-totals.md:552  [prose] OPL  | `qualifyingTotalsDerive.mjs` | OPL | comment | 4 |
+docs/research/qualifying-totals.md:553  [prose] SBD  | `qualifyingTotalsDerive.mjs` | SBD | code | 1 |
+docs/research/qualifying-totals.md:554  [prose] USAPL  | `qualifyingTotalsDerive.mjs` | USAPL | code | 3 |
+docs/research/qualifying-totals.md:555  [prose] USAPL  | `qualifyingTotalsDerive.mjs` | USAPL | comment | 1 |
+docs/research/qualifying-totals.md:642  [prose] SBD  ("… Presented by SBD"), one a sponsored high-school invitational. That is a data
+docs/research/qualifying-totals.md:654  [prose] SBD  **(b) A false positive worth knowing about: `SBD`.** In this sport `SBD` is the
+docs/research/qualifying-totals.md:654  [prose] SBD  **(b) A false positive worth knowing about: `SBD`.** In this sport `SBD` is the
+docs/research/qualifying-totals.md:656  [prose] SBD  full-power event. It is also a watched apparel brand. The `SBD  code` rows in the
 docs/research/qualifyingTotalsDerive.mjs:9  [comment] OpenPowerlifting  * OpenPowerlifting project's `opl-data` repository and emits a percentile
 docs/research/qualifyingTotalsDerive.mjs:9  [comment] OPL  * OpenPowerlifting project's `opl-data` repository and emits a percentile
 docs/research/qualifyingTotalsDerive.mjs:24  [comment] OpenPowerlifting  *     https://gitlab.com/openpowerlifting/opl-data.git
@@ -2594,14 +2594,14 @@ $ npx vitest run
 
  RUN  v4.1.10 /home/user/wt-qt-research
 
- ❯ src/licensing/realIp.test.ts (48 tests | 2 failed) 915ms
-     × is exactly the list in realIp.ts — a new mention is a human decision 51ms
-     × counts the open-source project citations, which is what it used to miss 1ms
+ ❯ src/licensing/realIp.test.ts (48 tests | 2 failed) 723ms
+     × is exactly the list in realIp.ts — a new mention is a human decision 25ms
+     × counts the open-source project citations, which is what it used to miss 2ms
 
  Test Files  1 failed | 84 passed (85)
       Tests  2 failed | 3338 passed (3340)
-   Start at  03:03:05
-   Duration  479.52s (transform 11.93s, setup 0ms, import 48.64s, tests 1132.96s, environment 15ms)
+   Start at  03:12:25
+   Duration  367.56s (transform 7.62s, setup 0ms, import 33.97s, tests 823.74s, environment 12ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -3422,37 +3422,37 @@ docs/research/qualifying-totals-meets-single-ply.txt:343  [prose] IPF  201  2024
 docs/research/qualifying-totals-meets-single-ply.txt:344  [prose] IPF  0  2025-06-08  ipf/2503  World Classic Powerlifting Championships
 docs/research/qualifying-totals-meets-single-ply.txt:345  [prose] IPF  164  2025-11-10  ipf/2508  World Open Equipped Powerlifting Championships
 docs/research/qualifying-totals-meets-single-ply.txt:346  [prose] IPF  0  2026-06-13  ipf/2603  World Classic Powerlifting Championships
-docs/research/qualifying-totals.md:56  [prose] Powerlifting America  | Powerlifting America | `https://powerlifting-america.com/` | `curl: (56) CONNECT tunnel failed, response 403` |
-docs/research/qualifying-totals.md:57  [prose] OpenPowerlifting  | OpenPowerlifting (site) | `https://www.openpowerlifting.org/` | `curl: (56) CONNECT tunnel failed, response 403` |
-docs/research/qualifying-totals.md:57  [prose] OpenPowerlifting  | OpenPowerlifting (site) | `https://www.openpowerlifting.org/` | `curl: (56) CONNECT tunnel failed, response 403` |
-docs/research/qualifying-totals.md:58  [prose] British Powerlifting  | British Powerlifting | `https://www.britishpowerlifting.org/…/2026_Open_QT.pdf` | egress blocked |
-docs/research/qualifying-totals.md:68  [prose] OpenPowerlifting  **What IS retrievable is the OpenPowerlifting project's source dataset**, whose
-docs/research/qualifying-totals.md:71  [prose] OpenPowerlifting  - `https://gitlab.com/openpowerlifting/opl-data.git`
-docs/research/qualifying-totals.md:71  [prose] OPL  - `https://gitlab.com/openpowerlifting/opl-data.git`
-docs/research/qualifying-totals.md:114  [prose] SBD  | Event | `SBD` only — full power, three lifts | 7,165 |
-docs/research/qualifying-totals.md:536  [prose] IPF  | `qualifying-totals-derived-raw.json` | IPF | code | 1 |
-docs/research/qualifying-totals.md:537  [prose] SBD  | `qualifying-totals-derived-raw.json` | SBD | code | 1 |
-docs/research/qualifying-totals.md:538  [prose] USAPL  | `qualifying-totals-derived-raw.json` | USAPL | code | 3 |
-docs/research/qualifying-totals.md:539  [prose] IPF  | `qualifying-totals-derived-single-ply.json` | IPF | code | 1 |
-docs/research/qualifying-totals.md:540  [prose] SBD  | `qualifying-totals-derived-single-ply.json` | SBD | code | 1 |
-docs/research/qualifying-totals.md:541  [prose] USAPL  | `qualifying-totals-derived-single-ply.json` | USAPL | code | 3 |
-docs/research/qualifying-totals.md:542  [prose] IPF  | `qualifying-totals-meets-raw.txt` | IPF | prose | 11 |
-docs/research/qualifying-totals.md:543  [prose] SBD  | `qualifying-totals-meets-raw.txt` | SBD | prose | 1 |
-docs/research/qualifying-totals.md:544  [prose] USAPL  | `qualifying-totals-meets-raw.txt` | USAPL | prose | 275 |
-docs/research/qualifying-totals.md:545  [prose] IPF  | `qualifying-totals-meets-single-ply.txt` | IPF | prose | 11 |
-docs/research/qualifying-totals.md:546  [prose] SBD  | `qualifying-totals-meets-single-ply.txt` | SBD | prose | 1 |
-docs/research/qualifying-totals.md:547  [prose] USAPL  | `qualifying-totals-meets-single-ply.txt` | USAPL | prose | 275 |
-docs/research/qualifying-totals.md:548  [prose] IPF  | `qualifyingTotalsDerive.mjs` | IPF | code | 1 |
-docs/research/qualifying-totals.md:549  [prose] IPF  | `qualifyingTotalsDerive.mjs` | IPF | comment | 1 |
-docs/research/qualifying-totals.md:550  [prose] OpenPowerlifting  | `qualifyingTotalsDerive.mjs` | OpenPowerlifting | comment | 2 |
-docs/research/qualifying-totals.md:551  [prose] OPL  | `qualifyingTotalsDerive.mjs` | OPL | comment | 4 |
-docs/research/qualifying-totals.md:552  [prose] SBD  | `qualifyingTotalsDerive.mjs` | SBD | code | 1 |
-docs/research/qualifying-totals.md:553  [prose] USAPL  | `qualifyingTotalsDerive.mjs` | USAPL | code | 3 |
-docs/research/qualifying-totals.md:554  [prose] USAPL  | `qualifyingTotalsDerive.mjs` | USAPL | comment | 1 |
-docs/research/qualifying-totals.md:639  [prose] SBD  ("… Presented by SBD"), one a sponsored high-school invitational. That is a data
-docs/research/qualifying-totals.md:651  [prose] SBD  **(b) A false positive worth knowing about: `SBD`.** In this sport `SBD` is the
-docs/research/qualifying-totals.md:651  [prose] SBD  **(b) A false positive worth knowing about: `SBD`.** In this sport `SBD` is the
-docs/research/qualifying-totals.md:653  [prose] SBD  full-power event. It is also a watched apparel brand. The `SBD  code` rows in the
+docs/research/qualifying-totals.md:57  [prose] Powerlifting America  | Powerlifting America | `https://powerlifting-america.com/` | `curl: (56) CONNECT tunnel failed, response 403` |
+docs/research/qualifying-totals.md:58  [prose] OpenPowerlifting  | OpenPowerlifting (site) | `https://www.openpowerlifting.org/` | `curl: (56) CONNECT tunnel failed, response 403` |
+docs/research/qualifying-totals.md:58  [prose] OpenPowerlifting  | OpenPowerlifting (site) | `https://www.openpowerlifting.org/` | `curl: (56) CONNECT tunnel failed, response 403` |
+docs/research/qualifying-totals.md:59  [prose] British Powerlifting  | British Powerlifting | `https://www.britishpowerlifting.org/…/2026_Open_QT.pdf` | egress blocked |
+docs/research/qualifying-totals.md:69  [prose] OpenPowerlifting  **What IS retrievable is the OpenPowerlifting project's source dataset**, whose
+docs/research/qualifying-totals.md:72  [prose] OpenPowerlifting  - `https://gitlab.com/openpowerlifting/opl-data.git`
+docs/research/qualifying-totals.md:72  [prose] OPL  - `https://gitlab.com/openpowerlifting/opl-data.git`
+docs/research/qualifying-totals.md:115  [prose] SBD  | Event | `SBD` only — full power, three lifts | 7,165 |
+docs/research/qualifying-totals.md:537  [prose] IPF  | `qualifying-totals-derived-raw.json` | IPF | code | 1 |
+docs/research/qualifying-totals.md:538  [prose] SBD  | `qualifying-totals-derived-raw.json` | SBD | code | 1 |
+docs/research/qualifying-totals.md:539  [prose] USAPL  | `qualifying-totals-derived-raw.json` | USAPL | code | 3 |
+docs/research/qualifying-totals.md:540  [prose] IPF  | `qualifying-totals-derived-single-ply.json` | IPF | code | 1 |
+docs/research/qualifying-totals.md:541  [prose] SBD  | `qualifying-totals-derived-single-ply.json` | SBD | code | 1 |
+docs/research/qualifying-totals.md:542  [prose] USAPL  | `qualifying-totals-derived-single-ply.json` | USAPL | code | 3 |
+docs/research/qualifying-totals.md:543  [prose] IPF  | `qualifying-totals-meets-raw.txt` | IPF | prose | 11 |
+docs/research/qualifying-totals.md:544  [prose] SBD  | `qualifying-totals-meets-raw.txt` | SBD | prose | 1 |
+docs/research/qualifying-totals.md:545  [prose] USAPL  | `qualifying-totals-meets-raw.txt` | USAPL | prose | 275 |
+docs/research/qualifying-totals.md:546  [prose] IPF  | `qualifying-totals-meets-single-ply.txt` | IPF | prose | 11 |
+docs/research/qualifying-totals.md:547  [prose] SBD  | `qualifying-totals-meets-single-ply.txt` | SBD | prose | 1 |
+docs/research/qualifying-totals.md:548  [prose] USAPL  | `qualifying-totals-meets-single-ply.txt` | USAPL | prose | 275 |
+docs/research/qualifying-totals.md:549  [prose] IPF  | `qualifyingTotalsDerive.mjs` | IPF | code | 1 |
+docs/research/qualifying-totals.md:550  [prose] IPF  | `qualifyingTotalsDerive.mjs` | IPF | comment | 1 |
+docs/research/qualifying-totals.md:551  [prose] OpenPowerlifting  | `qualifyingTotalsDerive.mjs` | OpenPowerlifting | comment | 2 |
+docs/research/qualifying-totals.md:552  [prose] OPL  | `qualifyingTotalsDerive.mjs` | OPL | comment | 4 |
+docs/research/qualifying-totals.md:553  [prose] SBD  | `qualifyingTotalsDerive.mjs` | SBD | code | 1 |
+docs/research/qualifying-totals.md:554  [prose] USAPL  | `qualifyingTotalsDerive.mjs` | USAPL | code | 3 |
+docs/research/qualifying-totals.md:555  [prose] USAPL  | `qualifyingTotalsDerive.mjs` | USAPL | comment | 1 |
+docs/research/qualifying-totals.md:642  [prose] SBD  ("… Presented by SBD"), one a sponsored high-school invitational. That is a data
+docs/research/qualifying-totals.md:654  [prose] SBD  **(b) A false positive worth knowing about: `SBD`.** In this sport `SBD` is the
+docs/research/qualifying-totals.md:654  [prose] SBD  **(b) A false positive worth knowing about: `SBD`.** In this sport `SBD` is the
+docs/research/qualifying-totals.md:656  [prose] SBD  full-power event. It is also a watched apparel brand. The `SBD  code` rows in the
 docs/research/qualifyingTotalsDerive.mjs:9  [comment] OpenPowerlifting  * OpenPowerlifting project's `opl-data` repository and emits a percentile
 docs/research/qualifyingTotalsDerive.mjs:9  [comment] OPL  * OpenPowerlifting project's `opl-data` repository and emits a percentile
 docs/research/qualifyingTotalsDerive.mjs:24  [comment] OpenPowerlifting  *     https://gitlab.com/openpowerlifting/opl-data.git
