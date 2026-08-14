@@ -6287,6 +6287,13 @@ await checkOnScreen(
       'and it is what a thumb would hit there',
       `elementFromPoint -> ${briefingPillHit.why}`,
     );
+    // THE BEFORE HALF OF THE PAIR. A reader grading this leg with their eyes
+    // needs the departure and the arrival side by side, because the finding IS
+    // that they differ — and because the arrival frame on its own is
+    // indistinguishable from section 10's (it is the same screen, which is the
+    // point). Through `shootBeat`, so each file is asserted to be a photograph
+    // of the beat its name claims rather than trusted.
+    await shootBeat('17-empire-pill-on-the-played-briefing.png', 'briefing', EMPIRE_RETURN.DEPARTURE_SAYS);
 
     const reachedFloor = await press(
       NAV_OPEN_EMPIRE,
@@ -6338,9 +6345,15 @@ await checkOnScreen(
           'CONTROL: and none of 10b’s three moments carried a query string',
           `back on the session the page is on ${JSON.stringify(urlAt10bReturn)}`,
         );
-        await page.screenshot({
-          path: path.join(outDir, '17-empire-round-trip-from-briefing.png'),
-        });
+        // THE AFTER HALF. Its name says `check-in` and `shootBeat` holds it to
+        // that, so the file cannot quietly become a photograph of the briefing
+        // if the app starts preserving the beat — the shutter would go red on
+        // the same run as the comparison above.
+        await shootBeat(
+          '18-briefing-round-trip-lands-on-the-check-in.png',
+          'check-in',
+          BEAT_SAYS.CHECK_IN,
+        );
       }
     }
   }
