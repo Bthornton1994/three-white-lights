@@ -1,12 +1,18 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-14T16:30:48.592Z",
+    "capturedAt": "2026-08-14T16:59:52.893Z",
     "url": "http://localhost:8099",
     "sourceRoot": "/home/user/wt-empire-honesty",
-    "commit": "24e1305",
+    "commit": "2a5c625",
     "branch": "claude/empire-shell-honesty",
     "workingTree": "clean",
-    "dirtyPaths": [],
+    "dirtyPaths": [
+      "M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+      " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
+      " M .gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
+      " M .gauntlet/shots/shell/route.json"
+    ],
     "instrument": {
       "capture-cutin.mjs": "6ebe3eaed8447c87",
       "png.mjs": "6356a0d0b0dcb696"
@@ -232,12 +238,12 @@
   "leavesOnItsOwn": {
     "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 1567,
+    "goneAt": 1562,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 16,
-    "goneAt": 23,
+    "tappedAt": 14,
+    "goneAt": 21,
     "dismissTookMs": 7,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
