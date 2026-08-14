@@ -7683,9 +7683,14 @@ function channelCensusOf(
    * runs. A binding declared in a `.d.ts` is not a value this directory
    * assembled, so it is not a hop.
    */
-  const hoppableInitializer = (root: ts.Expression): boolean =>
-    ts.isIdentifier(root) &&
-    !(resolvedDeclaration(root)?.getSourceFile().isDeclarationFile ?? false);
+  const ambientlyDeclared = (declaration: ts.Node): boolean =>
+    declaration.getSourceFile().isDeclarationFile;
+
+  const hoppableInitializer = (root: ts.Expression): boolean => {
+    if (!ts.isIdentifier(root)) return false;
+    const resolved = resolvedDeclaration(root);
+    return resolved !== null && !ambientlyDeclared(resolved);
+  };
 
   /**
    * Whose binding an expression resolves to, FOLLOWING ALIASES.
@@ -7858,12 +7863,26 @@ function channelCensusOf(
     const seenAliases = new Set<ts.Node>();
     const walk = (node: ts.Expression, path_: string): void => {
       if (ts.isIdentifier(node)) {
+        // THE ABSENCE OF A VALUE IS NOT AN UNFOLLOWABLE ROUTE, and this is the
+        // branch immediately below the one the probe was written for.
+        // `let shape: T | undefined = undefined` walks its initializer, and
+        // `undefined` is an identifier the checker gives NO declaration for —
+        // so it landed in `unfollowed` and read as "a shape this walk has never
+        // met". It is asked of the CHECKER rather than matched by spelling: a
+        // value whose type is `undefined`, `null` or `void` cannot be a
+        // function, so there is nothing behind it to follow.
+        const nullish = ts.TypeFlags.Undefined | ts.TypeFlags.Null | ts.TypeFlags.Void;
+        if ((checker.getTypeAtLocation(node).flags & nullish) !== 0) return;
         const resolved = resolvedDeclaration(node);
         const host = resolved === null ? null : bindingHost(resolved);
         if (host === null) {
           unfollowed.push(node);
           return;
         }
+        // An ambient binding is not a value this directory assembled. Same
+        // predicate `hoppableInitializer` uses, shared rather than restated,
+        // because these two arms are one decision.
+        if (ambientlyDeclared(host)) return;
         // A NAMED FUNCTION HANDED BACK BY ITS NAME, which the initializer-only
         // walk could not see either: `function helper() {…}; return { peek:
         // helper };` resolves to a `FunctionDeclaration` and not to a variable.
@@ -10002,6 +10021,279 @@ describe('the channel census — the routes a string can leave this directory by
 });
 
 // ---------------------------------------------------------------------------
+// The assembly probe — the tripwire M39's repair is measured against
+// ---------------------------------------------------------------------------
+
+/**
+ * Seven bindings whose value arrives somewhere other than an initializer.
+ *
+ * WHY A PROBE RATHER THAN SEVEN MORE `PLANTED_ROUTES` ROWS. A row is a
+ * measurement somebody took once and wrote down; it expires silently the moment
+ * the walk it describes is edited, and this file has recorded that failure four
+ * times under other names. A probe compiled beside the shipped directory is the
+ * same measurement taken on every run, so a repair that gets reverted, narrowed
+ * or refactored past reddens here instead of going quiet. That is the shape
+ * `instrument A bites` and `the callback pass bites` already have; this is the
+ * third of them and the first for the SCAN's resolution rather than for its
+ * reach.
+ *
+ * Each export is one shape the initializer-following walk could not see:
+ *
+ *   1. `probeAssembledClosure` — M39 verbatim: `let shape;` written inside an
+ *      `if`, returned through a cast and `Object.freeze`.
+ *   2. `probeAssembledThroughUndefined` — the branch immediately below it, and
+ *      it is not a variation for the sake of one. `undefined` IS an identifier
+ *      and resolves to a `VariableDeclaration` in `lib.es5.d.ts`, so a walk that
+ *      hops through any identifier initializer hops OUT of the function and
+ *      never reaches the assignment. `hoppableInitializer` is what refuses it.
+ *   3. `probeAssembledShorthand` — the same, through `{ peek }`, which is the
+ *      arm M38 needed three attempts to close on the initializer path alone.
+ *   4. `probeReturnsNamedFunction` — a function handed back by its NAME. Not a
+ *      variable at all, so an initializer-only walk had nothing to look at.
+ *   5. `probeForOfClosure` — a `for (const x of xs)` binding, which has no
+ *      initializer and no assignment. Found by measurement rather than by
+ *      thought: recording every unfollowable identifier reported exactly five
+ *      on the shipped tree and all five were this shape.
+ *   6. `probeAssembledMutation` — the same defect on the WRITE arm, which is
+ *      the sibling `ownerOf` shares the helper for. A parameter reached through
+ *      a branch-assembled alias is `argument-mutation`, not a local.
+ *   7. `probeAssembledCallback` — and again on the CALLBACK arm, which resolves
+ *      its callee through the same `ownerOf`.
+ *
+ * AND ONE THAT IS THE DECLARED LIMIT RATHER THAN A CLOSURE.
+ * `probeDestructuredAssembly` writes the binding with `({ shape } = source)`,
+ * whose left-hand side is an object literal and not an identifier, so
+ * `assignedValuesTo` does not find it. The limit is stated in
+ * `assignedValuesTo`'s own docstring, the catcher named there is
+ * `freshReceivers`, and the test below RUNS the route against that catcher
+ * instead of asserting it — which is the only version of a declared limit this
+ * codebase has found to be worth anything.
+ */
+const ASSEMBLY_PROBE_SOURCE = `import { EMPIRE_FORBIDDEN_OUTPUTS } from './empireCore';
+
+export interface AssemblyShape {
+  readonly peek: () => string;
+}
+
+const ASSEMBLY_FOR_OF: readonly AssemblyShape[] = Object.freeze([
+  Object.freeze({ peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] }),
+]);
+
+export function probeAssembledClosure(slots: number): AssemblyShape {
+  let shape: AssemblyShape | undefined;
+  if (slots >= 0) {
+    shape = { peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] };
+  }
+  return Object.freeze(shape as AssemblyShape);
+}
+
+export function probeAssembledThroughUndefined(slots: number): AssemblyShape {
+  let shape: AssemblyShape | undefined = undefined;
+  if (slots >= 0) {
+    shape = { peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] };
+  }
+  return Object.freeze(shape as AssemblyShape);
+}
+
+export function probeAssembledShorthand(slots: number): AssemblyShape {
+  let peek: (() => string) | undefined;
+  if (slots >= 0) {
+    peek = (): string => EMPIRE_FORBIDDEN_OUTPUTS[0];
+  }
+  const shape = { peek } as unknown as AssemblyShape;
+  return Object.freeze(shape);
+}
+
+function probeNamedPeek(): string {
+  return EMPIRE_FORBIDDEN_OUTPUTS[0];
+}
+
+export function probeReturnsNamedFunction(): AssemblyShape {
+  return Object.freeze({ peek: probeNamedPeek });
+}
+
+export function probeForOfClosure(): AssemblyShape | null {
+  for (const shape of ASSEMBLY_FOR_OF) return shape;
+  return null;
+}
+
+export function probeAssembledMutation(sink: { kind: string }, slots: number): void {
+  let inner: { kind: string } | undefined;
+  if (slots >= 0) {
+    inner = sink;
+  }
+  (inner as { kind: string }).kind = EMPIRE_FORBIDDEN_OUTPUTS[0];
+}
+
+export function probeAssembledCallback(report: (slot: number, label?: string) => boolean): boolean {
+  let call: ((slot: number, label?: string) => boolean) | undefined;
+  if (report.length >= 0) {
+    call = report;
+  }
+  return (call as (slot: number, label?: string) => boolean)(0, EMPIRE_FORBIDDEN_OUTPUTS[0]);
+}
+
+export function probeDestructuredAssembly(source: { shape: AssemblyShape }): AssemblyShape {
+  let shape: AssemblyShape | undefined;
+  ({ shape } = source as unknown as { shape: AssemblyShape | undefined });
+  return Object.freeze(shape as AssemblyShape);
+}
+
+export function probeAssembledMutationThroughUndefined(sink: { kind: string }, slots: number): void {
+  let inner: { kind: string } | undefined = undefined;
+  if (slots >= 0) {
+    inner = sink;
+  }
+  (inner as { kind: string }).kind = EMPIRE_FORBIDDEN_OUTPUTS[0];
+}
+
+export function probeAssembledCallbackThroughUndefined(
+  report: (slot: number, label?: string) => boolean,
+): boolean {
+  let call: ((slot: number, label?: string) => boolean) | undefined = undefined;
+  if (report.length >= 0) {
+    call = report;
+  }
+  return (call as (slot: number, label?: string) => boolean)(0, EMPIRE_FORBIDDEN_OUTPUTS[0]);
+}
+`;
+
+const ASSEMBLY_PROBE_PATH = path.join(HERE, '__assemblyProbe.ts');
+const ASSEMBLY_PROBE_MODULE = path.basename(ASSEMBLY_PROBE_PATH);
+
+let assemblyProbeCensusMemo: ChannelCensus | null = null;
+
+function assemblyProbeCensus(): ChannelCensus {
+  if (assemblyProbeCensusMemo !== null) return assemblyProbeCensusMemo;
+  assemblyProbeCensusMemo = channelCensusOf(
+    [...shippedModulePaths(), ASSEMBLY_PROBE_PATH],
+    ASSEMBLY_PROBE_SOURCE,
+    ASSEMBLY_PROBE_PATH,
+  );
+  return assemblyProbeCensusMemo;
+}
+
+let assemblyProbeSurfaceMemo: StringSurface | null = null;
+
+function assemblyProbeSurface(): StringSurface {
+  if (assemblyProbeSurfaceMemo !== null) return assemblyProbeSurfaceMemo;
+  assemblyProbeSurfaceMemo = surfaceOf(
+    [...shippedModulePaths(), ASSEMBLY_PROBE_PATH],
+    ASSEMBLY_PROBE_SOURCE,
+    ASSEMBLY_PROBE_PATH,
+  );
+  return assemblyProbeSurfaceMemo;
+}
+
+/** The probe's own rows, per channel. Everything else in the census is the shipped tree. */
+function assemblyProbeSites(id: ChannelId): readonly string[] {
+  return assemblyProbeCensus().sites[id].filter((key) => key.startsWith(ASSEMBLY_PROBE_MODULE));
+}
+
+/**
+ * The five returned-closure keys the probe is expected to produce.
+ *
+ * Written out rather than counted, for the reason `DECLARED_RETURNED_CLOSURE_
+ * SITES` is: a count cannot tell four right answers and one wrong one from five
+ * right ones, and the MEMBER PATH is the part that says the walk reached the
+ * function rather than merely noticing the return.
+ */
+const ASSEMBLY_PROBE_CLOSURE_SITES: readonly string[] = Object.freeze([
+  `${ASSEMBLY_PROBE_MODULE}#probeAssembledClosure#closure:.peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeAssembledShorthand#closure:.peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeAssembledThroughUndefined#closure:.peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeForOfClosure#closure:[0].peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeReturnsNamedFunction#closure:.peek`,
+]);
+
+describe('the assembly walk bites — every binding whose value is not in its initializer', () => {
+  it('compiles the probe cleanly, so a finding below is a classification and not an error', () => {
+    const surface = assemblyProbeSurface();
+    expect(surface.sourceDiagnostics, surface.sourceDiagnostics.join(' | ')).toEqual([]);
+    expect(surface.modules.length).toBe(SURFACE_CENSUS.MODULES + 1);
+    // The census ran over the same eleven files, so a probe that failed to load
+    // cannot read as a probe that produced nothing.
+    expect(assemblyProbeCensus().modules).toContain(ASSEMBLY_PROBE_MODULE);
+    expect(assemblyProbeCensus().modules.length).toBe(CHANNEL_CENSUS_TOTALS.MODULES + 1);
+  });
+
+  it('finds the returned closure in all five shapes, by member path', () => {
+    expect(assemblyProbeSites('returned-closure')).toEqual(ASSEMBLY_PROBE_CLOSURE_SITES);
+    // And none of them is a key the shipped directory has, which is what makes
+    // `DECLARED_RETURNED_CLOSURE_SITES`'s set equality the thing that reddens
+    // when one arrives in a shipped module.
+    for (const key of ASSEMBLY_PROBE_CLOSURE_SITES) {
+      expect(channelCensus().sites['returned-closure']).not.toContain(key);
+    }
+  });
+
+  it('resolves a branch-assembled alias of a parameter on the WRITE arm', () => {
+    // The sibling of the route that was planted, widened with it rather than
+    // after it. Without the assignment path this receiver resolves to a LOCAL,
+    // `argument-mutation` stays empty, and the only thing that moves is
+    // `writeOwners.local` — a number that moves for any added write at all.
+    expect(assemblyProbeSites('argument-mutation')).toEqual([
+      `${ASSEMBLY_PROBE_MODULE}#probeAssembledMutation#write`,
+      `${ASSEMBLY_PROBE_MODULE}#probeAssembledMutationThroughUndefined#write`,
+    ]);
+    expect(assemblyProbeCensus().writeOwners.parameter).toBe(2);
+    expect(channelCensus().writeOwners.parameter).toBe(DECLARED_WRITE_OWNERS.parameter);
+  });
+
+  it('resolves a branch-assembled alias of a callback parameter on the CALL arm', () => {
+    // Keyed by the PARAMETER, not by the spelling at the call site — `report`
+    // and not `call` — which is the property E21 added and this shows still
+    // holds one indirection further out.
+    expect(assemblyProbeSites('callback-invocation')).toEqual([
+      `${ASSEMBLY_PROBE_MODULE}#probeAssembledCallback#report x2`,
+      `${ASSEMBLY_PROBE_MODULE}#probeAssembledCallbackThroughUndefined#report x2`,
+    ]);
+  });
+
+  it('does not hop OUT of the function through an `undefined` initializer', () => {
+    // THE SECOND MUTANT THIS SECTION WAS WRITTEN AGAINST, and the first version
+    // of the probe could not see it. `hoppableInitializer` is used by `ownerOf`
+    // and NOT by `returnedFunctions`, so reverting it to a bare
+    // `ts.isIdentifier` left all five closure shapes green — the assignment
+    // path found them anyway. A widening with no mutant behind it is
+    // decoration, so the two `…ThroughUndefined` exports exist to carry one.
+    //
+    // With the predicate reverted, `undefined` is hopped through, the checker
+    // gives it no declaration, and both receivers come back `unclassified`:
+    // `argument-mutation` and `callback-invocation` both go empty and the two
+    // sites land in `freshReceivers` as `callee=unclassified` instead.
+    const probeUnclassified = assemblyProbeCensus().freshReceivers.filter(
+      (entry) => entry.startsWith(ASSEMBLY_PROBE_MODULE) && entry.includes('unclassified'),
+    );
+    expect(probeUnclassified).toEqual([]);
+    expect(assemblyProbeCensus().writeOwners.unclassified).toBe(0);
+    expect(assemblyProbeCensus().callTargets.unclassified).toBe(0);
+  });
+
+  it('names what it still cannot follow, and the limit is RUN rather than asserted', () => {
+    // `({ shape } = source)` has an object literal on the left, so
+    // `assignedValuesTo` does not find it. The claim in that docstring is that
+    // the route lands in `freshReceivers` rather than in silence; this is that
+    // claim driven against the catcher it names.
+    const unfollowed = assemblyProbeCensus().freshReceivers.filter((entry) =>
+      entry.startsWith(ASSEMBLY_PROBE_MODULE),
+    );
+    expect(unfollowed).toEqual([`${ASSEMBLY_PROBE_MODULE}:68 returned=unfollowable:shape`]);
+    // The probe contributes exactly that one and nothing else, so the shipped
+    // list is unchanged beside it — the two are separate censuses of the same
+    // walk and a probe that polluted the shipped one would be a broken probe.
+    expect(channelCensus().freshReceivers).toEqual(DECLARED_FRESH_RECEIVERS);
+    // AND THE DESTRUCTURED BINDING PRODUCES NO CLOSURE SITE, which is the half
+    // that says this is a limit and not a second catch. If a later widening
+    // starts following it, this line is what makes somebody update the
+    // docstring instead of leaving a stale limit in place.
+    expect(assemblyProbeSites('returned-closure')).not.toContain(
+      `${ASSEMBLY_PROBE_MODULE}#probeDestructuredAssembly#closure:.peek`,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // PLANTED_ROUTES — what was actually run against this file, and what survived
 // ---------------------------------------------------------------------------
 
@@ -10769,6 +11061,18 @@ interface RegistryMutant {
 
 const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
   Object.freeze({
+    id: 'G23',
+    what: "`assignedValuesTo` neutered to return `[]` — M39's whole repair removed, leaving the walk following initializers only, which is the state the thirteenth bypass escaped through",
+    reddened:
+      'four of the six assembly-probe checks, each naming the route it is about rather than a count. `finds the returned closure in all five shapes`: - "__assemblyProbe.ts#probeAssembledClosure#closure:.peek", - "…#probeAssembledShorthand#closure:.peek", - "…#probeAssembledThroughUndefined#closure:.peek", with the for-of and named-function rows surviving because they do not go through an assignment. `resolves a branch-assembled alias of a parameter on the WRITE arm`: expected [] to deeply equal [ "…#probeAssembledMutation#write" ]. `resolves a branch-assembled alias of a callback parameter on the CALL arm`: expected [] to deeply equal [ "…#probeAssembledCallback#report x2" ]. So the write arm and the call arm are separately covered, which is what says the helper is shared rather than that one caller was fixed.',
+  }),
+  Object.freeze({
+    id: 'G24',
+    what: '`hoppableInitializer` reverted to a bare `ts.isIdentifier(root)`, which is what it was before this round — the form that hops through `undefined` into `lib.es5.d.ts`',
+    reddened:
+      'ITS FIRST FORM CAUGHT NOTHING, AND THAT IS WHY THIS ROW EXISTS. Run against the probe as first written, all five closure checks stayed GREEN: `returnedFunctions` does not call `hoppableInitializer`, so the assignment path found `probeAssembledThroughUndefined` anyway and the predicate had no mutant behind it at all. Two exports were added — `probeAssembledMutationThroughUndefined` and `probeAssembledCallbackThroughUndefined` — because the predicate is `ownerOf`\'s alone. With those in, the same mutant reddens four checks: - "…#probeAssembledMutationThroughUndefined#write", - "…#probeAssembledCallbackThroughUndefined#report x2", and `does not hop OUT of the function through an `undefined` initializer` goes from [] to two `callee=unclassified` entries. A widening whose mutant passes is decoration, and this one was decoration for about twenty minutes.',
+  }),
+  Object.freeze({
     id: 'G13',
     what: 'a NINTH fault-list producer added to `expansion.ts` — `axisVocabularyFaults`, returning `Object.freeze(faults) as readonly FaultMessage[]`, so it casts where the other eight mint',
     reddened:
@@ -10923,22 +11227,24 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(22);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(22);
+    expect(REGISTRY_MUTANTS.length).toBe(24);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(24);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
       // went red, which is what this whole file exists to stop being enough.
       expect(mutant.reddened.length, mutant.id).toBeGreaterThan(100);
     }
-    // Two of the five record a first form that reddened something OTHER than
-    // the check it was aimed at. Pinned as a count so a later edit that quietly
-    // drops one of those admissions moves a number.
+    // Three rows record a first form that reddened something OTHER than the
+    // check it was aimed at — or nothing at all, which is G24: a predicate
+    // widened this round whose first mutant left every check green, because the
+    // probe written beside it exercised the wrong caller. Pinned as a count so
+    // a later edit that quietly drops one of those admissions moves a number.
     expect(
       REGISTRY_MUTANTS.filter((mutant) => mutant.reddened.includes('ITS FIRST FORM')).length +
         REGISTRY_MUTANTS.filter((mutant) => mutant.reddened.includes('Then, with the count bumped'))
           .length,
-    ).toBe(2);
+    ).toBe(3);
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
