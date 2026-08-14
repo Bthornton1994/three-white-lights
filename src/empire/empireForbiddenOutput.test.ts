@@ -9774,7 +9774,7 @@ describe('the channel census — the routes a string can leave this directory by
 // ---------------------------------------------------------------------------
 
 /**
- * Thirty routes, planted into shipped modules one at a time, each run
+ * Thirty-seven routes, planted into shipped modules one at a time, each run
  * against `tsc --noEmit`, against this file, and against the three accidental
  * catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
@@ -10335,6 +10335,138 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'engagement.ts was restored and verified byte-identical with `git hash-object` before this row was written.',
     ]),
   }),
+  // --- E21's seven, planted against the channel census. The first three are
+  // the twelfth bypass in three forms; the last four are the routes the fix for
+  // it turned up on the way past.
+  Object.freeze({
+    id: 'M31',
+    shape:
+      '31-repeated, THROUGH AN ALIAS: THE TWELFTH BYPASS. The same callback payload as M27/M30, handed through a LOCAL CONST that aliases the parameter past a double cast, so the callee is spelled `notify` and no `Identifier` at the call site resolves to a `Parameter`',
+    where:
+      "engagement.ts, `historyFrom`: `const notify = attended as unknown as (s: number, l: string) => boolean` and `if (trainedDays.length === EMPIRE_TUNING.REPUTATION_MAX) notify(slot, EMPIRE_FORBIDDEN_OUTPUTS[0])`, written line-count-preserving with the specifier added onto an existing import line",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'GREEN BEFORE, at 46b0288: `tsc --noEmit` exit 0 and `vitest run src/empire src/game/streakEntitlement.test.ts` 2 failed of 521 — `expected 1019 to be 1018` (CONSTRUCTOR_CENSUS.CALLS_EXAMINED) and `expected 21824 to be 21789` (NODES_EXAMINED). Both are file-changed counters. Every instrument about a forbidden name was green.',
+      'AND THE BRANCH RUNS, PRINTED RATHER THAN INFERRED, per M24: `historyFrom(3, recording, [0..4999])` gives RECEIVED BY THE CALLER-SUPPLIED CALLBACK: [[0,"covered-day"],[0],[1,"covered-day"],[1],[2,"covered-day"],[2]] with RETURNED attended [true,false,false] — and at the pass\'s own fixture shape, `trainedDays` of length 2, [[0],[1],[2]] and the identical attended. The payload is real and the shipped result does not move.',
+      'AFTER the symbol resolver: the channel census / pins the two callback sites with their ARGUMENT COUNT: + "engagement.ts#historyFrom#attended x2" beside the existing x1. The site is keyed by the PARAMETER the callee resolves to, not by the spelling at the call site, so the alias does not get its own key.',
+      'AFTER the symbol resolver: the channel census / derives every escape site: "callback-invocation": { "engagement.ts": 1 } -> { "engagement.ts": 2 }.',
+      'AFTER the second axis: the callback pass / drives every caller-supplied callback: + "@5000engagement.ts#historyFrom#attended#trainedDays#callback.0.1=covered-day" and the same at .2.1 and .4.1 — the payload, the branch point AND the axis. Two independent catchers, one needing no drive at all.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'WHY IT WORKED, and it is this file\'s own sibling rule one channel over: `channelCensusOf` resolved the throw wrap by SYMBOL thirty lines above an arm that matched the callback by SPELLING. The mutation arm went through `receiverRoot`, which walks past casts; the callback arm required a bare `Identifier` whose declaration is a `Parameter`. A local alias is a `VariableDeclaration`, `ts.isParameter` was false, AND THERE WAS NO `else` — so the call was recorded under no channel and in no list, not even `freshReceivers`, whose own docstring says an unclassifiable finding is the one outcome a census must not swallow.',
+      'ISOLATION, same detail M27 and M30 recorded: the specifier was added to the existing `./empireCore` import, so no module edge arrives and the import fence stays green.',
+      'engagement.ts was restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M32',
+    shape:
+      '31-repeated, THE SAME ROUTE WRITTEN READABLY: M31 over seven extra lines instead of two, which is how anybody would actually write it',
+    where: 'engagement.ts, `historyFrom`, the same alias and guard across eight lines and a specifier on its own import line',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'GREEN BEFORE except for counters, at 46b0288: 3 failed of 521 — the same two as M31 plus `pins the two callback sites`, which reddened on `- "engagement.ts:355 receiver=ArrayLiteralExpression"` / `+ "engagement.ts:362 receiver=ArrayLiteralExpression"`.',
+      'AFTER: the same two semantic catchers as M31.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'IT IS HERE BECAUSE OF WHAT REDDENED, NOT BECAUSE OF WHAT IT DOES. `DECLARED_FRESH_RECEIVERS` pins its entries with a LINE NUMBER, so seven added lines above line 355 move it. That is a fourth accidental catcher for this area, and a mutant caught only by it has not been caught — the entry it moved is a `[...list].sort()` in a different function that the mutation did not touch. M31 exists as the line-count-preserving form precisely so the measurement is not resting on that.',
+      'engagement.ts was restored and verified byte-identical before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M33',
+    shape:
+      "31-repeated, UNCONDITIONAL: the mutant E19's own row said could not be written — one that fires the callback PASS and leaves the site-key census green",
+    where: "engagement.ts, `historyFrom`, M31's alias with the `trainedDays.length` guard removed so `notify(slot, EMPIRE_FORBIDDEN_OUTPUTS[0])` runs at every slot of every point",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'AGAINST THE BASE CENSUS AT 46b0288 — the measurement the row exists for: the callback pass / drives every caller-supplied callback: expected [ …(8) ] to deeply equal [] with + "@1engagement.ts#historyFrom#attended#callback.0.1=covered-day" and seven more at @2, @3 and @4, WHILE `pins the two callback sites with their ARGUMENT COUNT` was GREEN — "Tests 1 passed | 59 skipped (60)". The pass alone, exactly the shape M30 recorded as impossible.',
+      'AGAINST THE FIXED CENSUS: 4 failed — the site table, the arity key, the callback pass, and the per-axis contract oracle at `engagement.ts#historyFrom#attended#slots against its own contract: expected 1453626 to be 726813`, because the subject now calls its predicate twice per slot.',
+      'tsc --noEmit exit 0 in both configurations, with `attended`\'s declared parameter type untouched.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'WHAT THIS SETTLES. M30\'s `alsoRed` says: "a mutant of the second kind would fire only the pass, and there is no way to write one here without changing `attended`\'s declared parameter type, which `tsc` refuses under strictFunctionTypes." Both halves are false. A double cast to `unknown` writes the route without touching any declared type and `tsc` exits 0, and the resulting mutant fired the pass and only the pass. That sentence is left standing in M30 rather than edited, because a retracted claim is worth more than a deleted one and because it is the reason CLAUDE.md now says an impossibility claim gets the same bar as a fix.',
+      'THE GENERAL FORM, so the next round does not have to rediscover it: `strictFunctionTypes` constrains an ASSIGNMENT between declared function types. It says nothing about `as unknown as`, which is not an assignment it inspects. An impossibility stated in the mechanism\'s own terms would have said only that, and would have been checkable.',
+      'engagement.ts was restored and verified byte-identical before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M34',
+    shape:
+      '32 — A FUNCTION NESTED IN A RETURNED OBJECT LITERAL. The payload is not in the return, it is in a member of the return that only the CALLER can invoke, past a cast that erases the declared type',
+    where: "production.ts, `accrueProduction`: `peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0]` added to the returned frozen object, with `as ProductionAccrual` on the way out",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'GREEN BEFORE, against the whole directory WITH this round\'s symbol fix already in: 3 failed of 521 and all three are node/string truncation counters — `expected 2393230 to be 2393060`, `expected 523184 to be 523128`, `expected 21802 to be 21789`. Instrument A green, B green, C green, the overflow pass green, the callback pass green, the site table green. Nothing named the payload.',
+      'AND THE BRANCH RUNS, PRINTED RATHER THAN INFERRED, per M24: the returned structure carries KEYS ending `…,rates,ledger,peek`, `typeof peek: function`, and `peek(): covered-day`. The caller gets the name by calling a member of the value it was handed.',
+      'AFTER widening `returned-closure` to walk the returned expression through value-construction positions: the channel census / pins the two callback sites: + "production.ts#accrueProduction#closure:.peek", and derives every escape site: "returned-closure": + "production.ts": 1. Named by module, by enclosing function and by MEMBER PATH.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'WHAT THE PLANT ALSO EXPOSED, AND IT IS THE LARGER HALF: the `returned-closure` channel was pinned EMPTY and was not. The widened scan finds two sites on the SHIPPED tree — `empireInvariant.ts#rosterRatesAt#closure:.gymBucksPerHour` and `…closure:.trainingIqPerDay` — because `rosterRatesAt` returns a frozen object holding two arrows. Those are the producer side of the two `callback-invocation` sites this round added in `production.ts`: one module builds the closures, another calls them, and the census saw neither end. SITES 326 -> 328 and CHANNELS_IN_USE 5 -> 6.',
+      'THE WIDENING\'S OWN LIMIT, with its catcher named: it follows SYNTAX, so `const shape = { peek }; return shape;` is not found by it. What covers that route is the `local` arm of the write census and instrument A\'s declared-position walk. The claim is that this closes the literal nesting M34 used, not every route to a returned function.',
+      'production.ts was restored and verified byte-identical with `git hash-object` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M35',
+    shape:
+      '33 — A WRITE INTO A PARAMETER THROUGH A LOCAL ALIAS. The same spelling-versus-symbol defect as M31, on the mutation arm instead of the callback arm',
+    where: "production.ts, a module-private `leakInto(sink)` called from `accrueProduction`: `const inner = sink; inner.kind = EMPIRE_FORBIDDEN_OUTPUTS[0]`",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'GREEN BEFORE, against the BASE census at 46b0288: the only failure is `derives every escape site: expected 21836 to be 21789` — the node count, asserted AFTER the site table, so the table itself passed with `argument-mutation` still empty.',
+      'AFTER: the channel census / derives every escape site: "argument-mutation": {} -> { "production.ts": … }. `ownerOf` follows the local\'s initializer back to the parameter, so the write is classified by whose memory it lands in rather than by what the receiver is spelled.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'THE THREE ACCIDENTAL CATCHERS WERE RUN RATHER THAN ASSUMED: `vitest run src/empire/empireCore.test.ts` is 57 passed (57) with this planted, which is the file holding the magic-number audit, the tree-wide string census and the import fence.',
+      'production.ts was restored and verified byte-identical before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M36',
+    shape:
+      "33-repeated, THROUGH A DESTRUCTURED PARAMETER: `function f({ sink }) { sink.kind = X }`, where the receiver's declaration is a `BindingElement` and matches none of the arm's three branches",
+    where: 'production.ts, the same private `leakInto`, with its parameter destructured',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'GREEN BEFORE, against the BASE census: only `expected 21839 to be 21789`, the node count, with the site table green.',
+      'AFTER: "argument-mutation" gains the site. `bindingHost` walks a binding element out to whatever the pattern was destructured from, so a destructured parameter is a parameter.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'empireCore.test.ts 57 passed (57) with this planted.',
+      'production.ts was restored and verified byte-identical before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M37',
+    shape:
+      '33-repeated, THROUGH A COMPOUND OPERATOR: `sink.kind += X`, which the arm never looked at because its predicate was `EqualsToken` and nothing else',
+    where: 'production.ts, the same private `leakInto`, writing with `+=`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'GREEN BEFORE, against the BASE census: only `expected 21831 to be 21789`, the node count, with the site table green. This one was not a resolution failure at all — the node was never classified as a write, so no arm ran.',
+      'AFTER: "argument-mutation" gains the site. The predicate is now `FirstAssignment`..`LastAssignment`, so every one of TypeScript\'s sixteen assignment operators is inside the scan rather than one of them.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'THE BRANCH IMMEDIATELY BELOW, taken while it was open: `a.b++`, `--a.b` and `delete a.b` are writes the arm also never looked at, and they are scanned now. They are NOT separately planted, and that is stated rather than implied — what is measured here is `+=`.',
+      'empireCore.test.ts 57 passed (57) with this planted.',
+      'production.ts was restored and verified byte-identical before this row was written.',
+    ]),
+  }),
 ]);
 
 /**
@@ -10486,6 +10618,12 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
       'measures every cell of the coverage matrix: deferred-completion/a thenable that hands the name to a resolver emitted nothing — every false in its row is meaningless: expected false to be true. Nine of the thirteen matrix rows are mostly false, and a false cell is a claim about an instrument only if the probe really emitted; this is the guard that says so, and it bites.',
   }),
   Object.freeze({
+    id: 'G22',
+    what: "the `then` clause removed from the deferred-completion scan, in two steps — first alone, then with the matrix's own declared cell edited to agree with it, which is the repair a reader reaches for first",
+    reddened:
+      'STEP 1, measures every cell of the coverage matrix: `deferred-completion/a thenable that hands the name to a resolver movesCensus: expected false to be true`. STEP 2, with the row edited to `movesCensus: false` so step 1 goes green: names the channels the drive alone covers: `deferred-completion/a thenable that hands the name to a resolver is in use and no instrument covers it: expected false to be true`, because the zero-sites account now REQUIRES the census to be shown to see that shape. Both steps were run. The pair is the point: a declared matrix whose cells can be edited to agree with a weakened instrument is a table, not a check, and this is the measurement that the two halves are joined.',
+  }),
+  Object.freeze({
     id: 'G21',
     what: "`WRAP_CALL_COUNTS`'s `empireInvariant.ts` row bumped from 6 to 7 — the wrap-call side of the throw fence, which M29 could not isolate",
     reddened:
@@ -10510,8 +10648,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(21);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(21);
+    expect(REGISTRY_MUTANTS.length).toBe(22);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(22);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
@@ -10529,7 +10667,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(30);
+    expect(PLANTED_ROUTES.length).toBe(37);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -10608,8 +10746,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // converted and one at a site that never had a throw, because a fence
     // tested only on the first has not been shown to catch an arrival. One for
     // M30, which reached isolation first time for the reason M27 did.
-    expect(attempts).toBe(46);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(20);
+    expect(attempts).toBe(53);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(27);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
