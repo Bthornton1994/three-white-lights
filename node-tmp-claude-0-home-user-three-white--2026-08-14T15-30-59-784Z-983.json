@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "node-tmp-claude-0-home-user-three-white--2026-08-14T15-30-59-784Z-983",
   "label": null,
   "command": [
@@ -29,14 +29,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 4,
-    "okCount": 3,
+    "count": 5,
+    "okCount": 4,
     "errors": [],
-    "lastAttemptIso": "2026-08-14T15:33:59.911Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-14T15:34:33.261Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-14T15:33:02.846Z"
-  }
+    "lastOkIso": "2026-08-14T15:34:03.920Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-14T15:34:33.260Z",
+  "elapsedSeconds": 213.5
 }
