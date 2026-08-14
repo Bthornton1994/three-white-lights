@@ -12361,6 +12361,64 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'empireCore.ts and social.ts were both restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` before this row was written.',
     ]),
   }),
+  Object.freeze({
+    id: 'M57',
+    shape:
+      "M54's three probe-only shapes, DRIVEN THROUGH A SHIPPED EXPORT this time: an element access, a for-of write to an existing binding, and a destructuring assignment, each handing the caller a closure by MEMBER PATH the way M53 did",
+    where:
+      'production.ts, `accrueProduction`: a module-level `PRODUCTION_PEEKS: readonly ProductionPeek[]` and a `PRODUCTION_SOURCE`, with `peekE: PRODUCTION_PEEKS[0]!.peek`, `peekF: peekF.peek` after `for (peekF of PRODUCTION_PEEKS) break;`, and `peekD: peekD.peek` after `({ shape: peekD } = PRODUCTION_SOURCE)`, on the returned object',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'ALL THREE CAUGHT, NAMED BY MODULE, FUNCTION AND MEMBER PATH: the channel census / pins the two callback sites gains `+ "production.ts#accrueProduction#closure:.peekD"`, `+ "production.ts#accrueProduction#closure:.peekE"` and `+ "production.ts#accrueProduction#closure:.peekF"`, and / derives every escape site gains `"returned-closure": + "production.ts": 3`.',
+      'AND THE BRANCHES RUN, PRINTED, off a driven call rather than argued: `accrueProduction` on a fresh gym returns keys `["peekE","peekF","peekD","gymBucks",…]` with `peekE function covered-day | peekF function covered-day | peekD function covered-day` and `gymBucks 0` unchanged.',
+      "WHAT THIS ROW CLOSES IS M54'S OWN DECLARED GAP, which said the three were argued from the walk rather than driven. It is now measured, and the answer is that the repair holds outside the probe.",
+      'WHAT IT DOES NOT SHOW, and M58 is why the distinction was worth a second plant: all three are found by the MEMBER-ACCESS arm asking whether the accessed type is callable, so the binding-following arms `assignedValuesTo` repaired are not what caught them. The probe returns the whole binding; this returns a member of it, and those are different questions.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The two drive node counters — instrument B `expected 2393230 to be 2393060` and the overflow pass — plus `nodesExamined`. Three keys added to a returned object move every node count in the file and none of them is about a name.',
+      'production.ts restored and verified byte-identical.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M58',
+    shape:
+      'the same three shapes returning the WHOLE BINDING instead of a member of it, which is the form the probe uses and the form where the assignment-following arms are load-bearing',
+    where:
+      'production.ts, `accrueProduction`: `shapeE: PRODUCTION_PEEKS[0]!`, `shapeF: peekF`, `shapeD: peekD` on the returned object, same holders as M57',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'FOR-OF: caught as a closure site, with the member path proving the walk went through the iterable — `+ "production.ts#accrueProduction#closure:.shapeF[0].peek"`.',
+      "DESTRUCTURING: caught as the DECLARED ADMISSION rather than as a finding — `+ \"production.ts:540 returned=unfollowable:peekD\"` in `freshReceivers`, and no closure site. That is exactly what `assignedValuesTo`'s docstring promises, measured on a shipped module for the first time instead of on the probe.",
+      'ELEMENT ACCESS: NOT CAUGHT. `"returned-closure": "production.ts": 1` and not 2, and `freshReceivers` names only the destructured one. See M59, which is that shape planted alone.',
+      'AND THE BRANCHES RUN, PRINTED: `shapeE.peek function covered-day | shapeF.peek function covered-day | shapeD.peek function covered-day` off a driven `accrueProduction`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters again. production.ts restored and verified byte-identical.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M59',
+    shape:
+      "36 IN THE FALLBACK ARM — THE SEVENTEENTH BYPASS: a returned member access whose HOLDER's value is an ARRAY literal rather than an object literal. The fallback that E23 added for `NESTED.inner` picks a matching property out of an object literal and `continue`s past anything else, so an array-literal holder is dropped with neither a `found` nor an `unfollowed`",
+    where:
+      "production.ts, `accrueProduction`: a module-level `const PRODUCTION_PEEKS: readonly ProductionPeek[] = [{ peek: () => EMPIRE_FORBIDDEN_OUTPUTS[0] }]`, handed back as `shapeE: PRODUCTION_PEEKS[0]!` on the returned object. No cast, no new export, one specifier added to an import production.ts already has",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING CAUGHT IT. Whole directory: `Tests 3 failed | 482 passed (485)`, and all three are node counters this file has recorded as not the check working — instrument B `expected 2393400 to be 2393060`, the overflow pass `expected 523240 to be 523128`, and the channel census `nodesExamined` `expected 21822 to be 21789`. `census.byModule` is GREEN, so no `returned-closure` row for `production.ts`; `census.sites` is green; `freshReceivers` is green. `empireCore.test.ts` 57 passed, so the string census, the magic-number audit and the import fence are all green.',
+      'AND THE BRANCH RUNS, PRINTED: `accrueProduction` on a fresh gym returns keys `["shapeE","gymBucks",…]`, `typeof shapeE.peek === "function"`, and `shapeE.peek()` is `covered-day`, with `gymBucks 0` unchanged.',
+      "WHY THE WALK MISSES IT, in the mechanism's own terms. `PRODUCTION_PEEKS[0]!` is an element access whose type is `ProductionPeek`, which carries no call signature — so the arm asks `typeCouldHoldAFunction`, gets `true`, and follows. `checker.getSymbolAtLocation` on an element access with a numeric index gives no symbol, so the walk falls back to the HOLDER, and `literalValuesOf(PRODUCTION_PEEKS)` returns the array literal. The fallback loop's first line is `if (!ts.isObjectLiteralExpression(literal)) continue;`.",
+      'IT IS THE SAME DEFECT AS M53 ONE ARM DEEPER, AND IT WAS INTRODUCED BY M53\'S OWN REPAIR. `probeElementAccessClosure` in the permanent probe is `{ peek: ASSEMBLY_FOR_OF[0]!.peek }` — the member of the element — and it is caught. Nothing in the probe returns the ELEMENT, so the array-holder fallback had never been exercised by anything.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'production.ts was restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
+    ]),
+  }),
 ]);
 
 /**
@@ -12575,7 +12633,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(56);
+    expect(PLANTED_ROUTES.length).toBe(59);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -12675,8 +12733,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // chunk text the set already held and left that census green. Only the
     // third says whether the string census covers this class, and the answer
     // is that it does not.
-    expect(attempts).toBe(78);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(46);
+    expect(attempts).toBe(81);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(49);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
