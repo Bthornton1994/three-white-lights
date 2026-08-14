@@ -1022,6 +1022,42 @@ const DECLARED_BRANDED_STRING_POSITIONS: readonly string[] = Object.freeze([
   'social.ts#socialVocabularyFaults#return[]',
 ]);
 
+/**
+ * Every method this directory calls on a value its caller handed it, by name.
+ *
+ * the enumeration behind the `member-of-parameter` arm. Every one of these is a
+ * read — `includes`, `slice`, `map` — and none of them hands the callee
+ * anything this directory chose. The list is what makes that checkable instead
+ * of asserted: `sink.report(<a banned name>)` lands here too, under a name that
+ * is not on this list, so it is red by file, by enclosing function, by member
+ * and by argument count.
+ *
+ * Its limit, in the mechanism's own terms: this is a census of SITES, so an
+ * existing site starting to pass a banned name at an argument position it
+ * already had moves nothing here. The argument count in each key covers the
+ * widening case only, exactly as `DECLARED_CALLBACK_SITES`'s `x1` does; what
+ * covers the other half for the exported-callback channel is the callback pass,
+ * and this arm has no equivalent because nothing here is a caller-supplied
+ * FUNCTION as far as any type in the directory says.
+ */
+const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
+  'empireCore.ts#idleLedger#ledger.filter x1',
+  'empireCore.ts#progressionLedger#ledger.filter x1',
+  'empireInvariant.ts#composeTrainingIqRate#state.filter x1',
+  'empireInvariant.ts#idleDayLedger#entries.filter x1',
+  'empireInvariant.ts#outputSeries#entries.filter x1',
+  'empireInvariant.ts#progressionDayLedger#entries.filter x1',
+  'empireInvariant.ts#savingForPhysio#order.includes x1',
+  'empireInvariant.ts#stepGym#gym.find x1',
+  'empireInvariant.ts#stepGym#gym.map x1',
+  'engagement.ts#moreEngagedByTrainedDay#history.includes x1',
+  'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour x2',
+  'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay x2',
+  'social.ts#rankLeaderboard#entries.map x1',
+  'social.ts#visitRefusals#context.some x1',
+  'social.ts#visitRefusals#context.some x1',
+]);
+
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const SURFACE_CENSUS = Object.freeze({
   MODULES: 10,
@@ -7279,6 +7315,32 @@ interface ChannelCensus {
    */
   readonly freshReceivers: readonly string[];
   /**
+   * Every CALL in the directory, by what its callee resolves to.
+   *
+   * The arm census CLAUDE.md's "a domain says which inputs you offered, not
+   * which branches ran" asks for, applied to a scan rather than to a drive: the
+   * arms the resolver DECLARES are `OWNER_KINDS` and the arms the walk REACHED
+   * are the non-zero entries here, and both are pinned. An arm that stops being
+   * produced is red, an arm that starts being produced is red, and nothing
+   * lands outside the table.
+   */
+  readonly callTargets: Readonly<Record<OwnerKind, number>>;
+  /** The same for every write, by whose memory the receiver resolves to. */
+  readonly writeOwners: Readonly<Record<OwnerKind, number>>;
+  /**
+   * Every method called ON a caller-supplied value, named individually.
+   *
+   * The `member-of-parameter` arm is not empty and pinning it as a count alone
+   * would be the weaker half. `sink.report(<a banned name>)` is a call into a
+   * function the caller supplied, reached through a property rather than
+   * through a parameter binding, and it sits in this arm beside fifteen
+   * ordinary reads like `trainedDays.includes(day)`. This walk cannot tell
+   * those apart — the method was on the object before the call — so the arm is
+   * enumerated by name instead, the way `DECLARED_FRESH_RECEIVERS` is, and a
+   * sixteenth is a line somebody signs rather than a number that drifts.
+   */
+  readonly memberCallsOnParameters: readonly string[];
+  /**
    * What is actually passed at every internal callback parameter, by syntax.
    *
    * THE CHECK BEHIND THE ONE JUDGEMENT IN THIS SECTION, and it was very nearly
@@ -7364,6 +7426,61 @@ const AMBIENT_OBJECTS: readonly string[] = Object.freeze(['globalThis', 'console
 const COERCION_MEMBERS: readonly string[] = Object.freeze(['toString', 'toJSON', 'valueOf']);
 
 /**
+ * How many alias hops the resolver follows before it gives up and says so.
+ *
+ * A cost knob and a termination guard, not a coverage one: `const a = b; const
+ * b2 = a;` is a chain, and a cycle the checker admits would otherwise spin.
+ * Giving up is recorded as `unclassified` and named, never as "no channel".
+ */
+const ALIAS_HOPS_MAX = 64;
+
+/**
+ * The arms a receiver or a callee can resolve to, enumerated.
+ *
+ * Every write and every call in the directory lands in exactly one of these,
+ * and the census pins the count per arm. That is what replaces the silent
+ * `else`: before this round the mutation arm had three branches and the
+ * callback arm one, and anything matching none of them was recorded under no
+ * channel and in no list. Two arms are impossible for a write, because
+ * `receiverRoot` strips member access before resolving; they are pinned at zero
+ * rather than omitted, so a walk that started producing them is red.
+ */
+type OwnerKind =
+  | 'parameter'
+  | 'module-variable'
+  | 'local'
+  | 'function'
+  | 'member'
+  | 'member-of-parameter'
+  | 'fresh'
+  | 'unclassified';
+
+const OWNER_KINDS: readonly OwnerKind[] = Object.freeze([
+  'parameter',
+  'module-variable',
+  'local',
+  'function',
+  'member',
+  'member-of-parameter',
+  'fresh',
+  'unclassified',
+]);
+
+interface ResolvedOwner {
+  readonly kind: OwnerKind;
+  /** The declaration the chain ended at, for the joins that need identity. */
+  readonly declaration: ts.Node | null;
+  /** Enough to name the site in a failure message. */
+  readonly detail: string;
+}
+
+const emptyOwnerTable = (): Record<OwnerKind, number> => {
+  const table = {} as Record<OwnerKind, number>;
+  for (const kind of OWNER_KINDS) table[kind] = 0;
+  return table;
+};
+
+/**
  * Walk the shipped modules and count every escape site, by channel.
  *
  * The receiver of a write is resolved THROUGH THE CHECKER, not by its text, for
@@ -7383,6 +7500,9 @@ function channelCensusOf(
   const sites = emptyChannelTable<string[]>(() => []);
   const byModule = emptyChannelTable<Record<string, number>>(() => ({}));
   const freshReceivers: string[] = [];
+  const callTargets = emptyOwnerTable();
+  const writeOwners = emptyOwnerTable();
+  const memberCallsOnParameters: string[] = [];
   const internalCallbackArguments: string[] = [];
   const wrapCalls: Record<string, number> = {};
   const modules: string[] = [];
@@ -7398,21 +7518,45 @@ function channelCensusOf(
     let symbol = checker.getSymbolAtLocation(node);
     if (symbol === undefined) return null;
     if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) symbol = checker.getAliasedSymbol(symbol);
-    return symbol.declarations?.[0] ?? null;
+    // THE VALUE DECLARATION FIRST, and the reason is measured rather than
+    // tidy. `declarations[0]` for `String` is `interface String` — the type
+    // half of a merged declaration — so 26 calls in this directory resolved to
+    // an `InterfaceDeclaration` and would have been filed as unclassifiable.
+    // A call invokes a VALUE, so the value declaration is the one to follow.
+    return symbol.valueDeclaration ?? symbol.declarations?.[0] ?? null;
+  };
+
+  /**
+   * Past every cast, parenthesis and non-null assertion — and nothing else.
+   *
+   * Split out of `receiverRoot` because a callee is not a receiver: in `a.b()`
+   * the thing CALLED is `b` and the thing WRITTEN is `a`, and a single stripper
+   * that removed member access as well could not tell those two apart. The
+   * twelfth bypass lived in exactly that confusion, one level up.
+   */
+  const past = (expression: ts.Expression): ts.Expression => {
+    let at: ts.Expression = expression;
+    for (;;) {
+      if (
+        ts.isNonNullExpression(at) ||
+        ts.isParenthesizedExpression(at) ||
+        ts.isAsExpression(at) ||
+        ts.isSatisfiesExpression(at) ||
+        ts.isTypeAssertionExpression(at)
+      ) {
+        at = at.expression;
+        continue;
+      }
+      return at;
+    }
   };
 
   /** The root of a member chain: `a.b[c].d` is `a`, past any cast or parenthesis. */
   const receiverRoot = (expression: ts.Expression): ts.Expression => {
-    let at: ts.Expression = expression;
+    let at: ts.Expression = past(expression);
     for (;;) {
-      if (
-        ts.isPropertyAccessExpression(at) ||
-        ts.isElementAccessExpression(at) ||
-        ts.isNonNullExpression(at) ||
-        ts.isParenthesizedExpression(at) ||
-        ts.isAsExpression(at)
-      ) {
-        at = at.expression;
+      if (ts.isPropertyAccessExpression(at) || ts.isElementAccessExpression(at)) {
+        at = past(at.expression);
         continue;
       }
       return at;
@@ -7443,6 +7587,113 @@ function channelCensusOf(
   const isExported = (declaration: ts.Node): boolean =>
     ts.canHaveModifiers(declaration) &&
     (ts.getModifiers(declaration) ?? []).some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
+
+  /** A destructured binding stands for whatever the pattern was destructured FROM. */
+  const bindingHost = (declaration: ts.Declaration): ts.Node => {
+    let at: ts.Node = declaration;
+    while (ts.isBindingElement(at) || ts.isObjectBindingPattern(at) || ts.isArrayBindingPattern(at)) {
+      at = at.parent;
+    }
+    return at;
+  };
+
+  const nameOf = (node: ts.Node): string => {
+    if (
+      (ts.isParameter(node) || ts.isVariableDeclaration(node) || ts.isFunctionDeclaration(node)) &&
+      node.name !== undefined
+    ) {
+      return node.name.getText(node.getSourceFile());
+    }
+    return ts.SyntaxKind[node.kind];
+  };
+
+  /**
+   * Whose binding an expression resolves to, FOLLOWING ALIASES.
+   *
+   * This is the reformulation the twelfth bypass forced, and the whole of it is
+   * that "which spelling did the author use" becomes "which symbol is invoked".
+   * The walk already resolved symbols one channel over — the throw wrap is
+   * matched by declaration and not by text — and the callback arm matched a
+   * bare `Identifier` whose declaration happened to be a `Parameter`. A local
+   * alias of that parameter, cast or not, is a `VariableDeclaration`, so the
+   * arm missed it and there was no `else` to notice.
+   *
+   * Its limit, stated because no resolution reaches past it: a callee that is
+   * the RESULT of a call — `pick()(slot, name)` — has no declaration to
+   * resolve, and this returns `fresh` for it. That is not silence: `fresh` and
+   * `unclassified` are both named into `freshReceivers` and counted in the arm
+   * census, so the outcome is "somebody look at this line" rather than "no
+   * channel". The named catcher for that route is `DECLARED_FRESH_RECEIVERS`,
+   * which is a set equality in both directions.
+   */
+  const ownerOf = (expression: ts.Expression): ResolvedOwner => {
+    const seen = new Set<ts.Node>();
+    let at: ts.Expression = receiverRoot(expression);
+    for (let guard = 0; guard < ALIAS_HOPS_MAX; guard += 1) {
+      if (!ts.isIdentifier(at)) {
+        return { kind: 'fresh', declaration: null, detail: ts.SyntaxKind[at.kind] };
+      }
+      const resolved = resolvedDeclaration(at);
+      if (resolved === null) {
+        return { kind: 'unclassified', declaration: null, detail: `unresolved:${at.text}` };
+      }
+      const host = bindingHost(resolved);
+      if (ts.isParameter(host)) {
+        return { kind: 'parameter', declaration: host, detail: nameOf(host) };
+      }
+      if (
+        ts.isFunctionDeclaration(host) ||
+        ts.isMethodDeclaration(host) ||
+        ts.isFunctionExpression(host) ||
+        ts.isArrowFunction(host) ||
+        ts.isClassDeclaration(host)
+      ) {
+        return { kind: 'function', declaration: host, detail: nameOf(host) };
+      }
+      if (ts.isVariableDeclaration(host)) {
+        const initial = host.initializer === undefined ? null : receiverRoot(host.initializer);
+        if (initial !== null && ts.isIdentifier(initial) && !seen.has(initial)) {
+          seen.add(initial);
+          at = initial;
+          continue;
+        }
+        if (initial !== null && (ts.isArrowFunction(initial) || ts.isFunctionExpression(initial))) {
+          return { kind: 'function', declaration: host, detail: nameOf(host) };
+        }
+        return {
+          kind: atModuleScope(host) ? 'module-variable' : 'local',
+          declaration: host,
+          detail: nameOf(host),
+        };
+      }
+      return { kind: 'unclassified', declaration: host, detail: ts.SyntaxKind[host.kind] };
+    }
+    return { kind: 'unclassified', declaration: null, detail: 'alias-cycle' };
+  };
+
+  /**
+   * What a CALL invokes, which is a different question from whose memory a
+   * write lands in.
+   *
+   * `a.b()` is a `member` call and its holder is resolved separately, because
+   * calling a method on a value the caller handed in is a route this walk can
+   * SEE but cannot classify — a method that was already on the object is the
+   * caller's own code only if the caller supplied the object AND the function.
+   * It is counted as its own arm, `member-of-parameter`, and pinned at whatever
+   * the directory really has rather than folded into the callback channel.
+   */
+  const callTargetOf = (expression: ts.Expression): ResolvedOwner => {
+    const at = past(expression);
+    if (ts.isPropertyAccessExpression(at) || ts.isElementAccessExpression(at)) {
+      const holder = ownerOf(at.expression);
+      return {
+        kind: holder.kind === 'parameter' ? 'member-of-parameter' : 'member',
+        declaration: holder.declaration,
+        detail: `member-of-${holder.kind}:${holder.detail}`,
+      };
+    }
+    return ownerOf(at);
+  };
 
   for (const root of roots) {
     const source = program.getSourceFile(root);
@@ -7477,28 +7728,49 @@ function channelCensusOf(
       }
 
       // A write into memory somebody else may hold: an assignment to a member,
-      // or a mutating method call. Both are classified by WHOSE binding the
-      // receiver resolves to, which is the only question that matters here.
-      const written: ts.Expression | null = ts.isBinaryExpression(node) &&
-        node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
-        (ts.isPropertyAccessExpression(node.left) || ts.isElementAccessExpression(node.left))
-        ? node.left
-        : ts.isCallExpression(node) &&
-            ts.isPropertyAccessExpression(node.expression) &&
-            MUTATING_METHODS.includes(node.expression.name.text)
-          ? node.expression.expression
+      // a compound assignment, an increment, a `delete`, or a mutating method
+      // call. Every one is classified by WHOSE binding the receiver resolves
+      // to, which is the only question that matters here.
+      //
+      // THE OPERATOR RANGE RATHER THAN `EqualsToken`: until this round the
+      // predicate was the one token, so `sink.kind += name` was outside the
+      // scan entirely. `FirstAssignment`..`LastAssignment` is every assignment
+      // operator TypeScript has, so a seventeenth one added to the language
+      // arrives inside the range rather than outside it.
+      const writtenMember = (expression: ts.Expression): ts.Expression | null =>
+        ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)
+          ? expression
           : null;
+      const written: ts.Expression | null = ts.isBinaryExpression(node) &&
+        node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+        node.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+        ? writtenMember(node.left)
+        : ts.isPostfixUnaryExpression(node) || ts.isPrefixUnaryExpression(node)
+          ? (node.operator === ts.SyntaxKind.PlusPlusToken ||
+            node.operator === ts.SyntaxKind.MinusMinusToken
+              ? writtenMember(node.operand)
+              : null)
+          : ts.isDeleteExpression(node)
+            ? writtenMember(node.expression)
+            : ts.isCallExpression(node) &&
+                ts.isPropertyAccessExpression(node.expression) &&
+                MUTATING_METHODS.includes(node.expression.name.text)
+              ? node.expression.expression
+              : null;
       if (written !== null) {
-        const root_ = receiverRoot(written);
-        const declaration = resolvedDeclaration(root_);
-        if (declaration === null) {
-          freshReceivers.push(
-            `${moduleName}:${String(lineOf(node))} receiver=${ts.SyntaxKind[root_.kind]}`,
-          );
-        } else if (ts.isParameter(declaration)) {
+        const owner = ownerOf(written);
+        writeOwners[owner.kind] += 1;
+        if (owner.kind === 'parameter') {
           record('argument-mutation', moduleName, key(node, 'write'));
-        } else if (ts.isVariableDeclaration(declaration) && atModuleScope(declaration)) {
+        } else if (owner.kind === 'module-variable') {
           record('module-mutable-state', moduleName, key(node, 'write'));
+        } else if (owner.kind === 'fresh' || owner.kind === 'unclassified') {
+          // The one outcome a census must not swallow. `fresh` keeps the shape
+          // it has always had — `[...list].sort()` names its receiver by node
+          // kind — and `unclassified` is the arm that did not exist before.
+          freshReceivers.push(
+            `${moduleName}:${String(lineOf(node))} receiver=${owner.kind === 'fresh' ? owner.detail : owner.kind + ':' + owner.detail}`,
+          );
         }
       }
 
@@ -7506,24 +7778,28 @@ function channelCensusOf(
       // machinery the caller supplied. The argument count is part of the key,
       // because that is what moves when a site starts carrying a payload it did
       // not carry before — which is exactly M27.
-      if (ts.isCallExpression(node)) callsInModule.push(node);
-      // The wrap, by SYMBOL. `resolvedDeclaration` follows the import alias, so
-      // this is the declaration in `empireCore.ts` and not every identifier
-      // that happens to be spelled the same.
-      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
-        const callee = resolvedDeclaration(node.expression);
+      if (ts.isCallExpression(node)) {
+        callsInModule.push(node);
+        // ONE RESOLUTION, READ BY BOTH ARMS. The wrap census and the callback
+        // census used to ask the same question twice with two predicates, and
+        // only one of them followed the symbol. They now share `callTargetOf`,
+        // so a wrap reached through an alias counts and a parameter reached
+        // through an alias is a callback — which is the twelfth bypass.
+        const target = callTargetOf(node.expression);
+        callTargets[target.kind] += 1;
+
+        const declaration = target.declaration;
         if (
-          callee !== null &&
-          ts.isFunctionDeclaration(callee) &&
-          callee.name?.text === THROW_WRAP_NAME &&
-          path.basename(callee.getSourceFile().fileName) === THROW_WRAP_MODULE
+          target.kind === 'function' &&
+          declaration !== null &&
+          ts.isFunctionDeclaration(declaration) &&
+          declaration.name?.text === THROW_WRAP_NAME &&
+          path.basename(declaration.getSourceFile().fileName) === THROW_WRAP_MODULE
         ) {
           wrapCalls[moduleName] = (wrapCalls[moduleName] ?? 0) + 1;
         }
-      }
-      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
-        const declaration = resolvedDeclaration(node.expression);
-        if (declaration !== null && ts.isParameter(declaration)) {
+
+        if (target.kind === 'parameter' && declaration !== null && ts.isParameter(declaration)) {
           const owner = declaration.parent;
           const ownerName =
             ts.isFunctionDeclaration(owner) && owner.name !== undefined ? owner.name.text : '#anonymous';
@@ -7531,17 +7807,41 @@ function channelCensusOf(
           const channel: ChannelId = exported
             ? 'callback-invocation'
             : 'internal-callback-invocation';
+          // KEYED BY THE PARAMETER, NOT BY THE SPELLING AT THE CALL SITE. On
+          // the shipped tree the two are the same string; under an alias they
+          // are not, and the key that survives a rename is the symbol's.
+          const parameterName = nameOf(declaration);
           record(
             channel,
             moduleName,
-            `${moduleName}#${ownerName}#${node.expression.text} x${String(node.arguments.length)}`,
+            `${moduleName}#${ownerName}#${parameterName} x${String(node.arguments.length)}`,
           );
           if (!exported && ts.isFunctionDeclaration(owner)) {
             const index = owner.parameters.indexOf(declaration);
             const seen = internalOwners.get(owner) ?? new Map<number, string>();
-            seen.set(index, node.expression.text);
+            seen.set(index, parameterName);
             internalOwners.set(owner, seen);
           }
+        } else if (target.kind === 'member-of-parameter') {
+          // Enumerated rather than counted, for the reason the field's own
+          // docstring gives: this arm holds ordinary reads AND a call into a
+          // caller-supplied function reached through a property.
+          const callee = past(node.expression);
+          const member = ts.isPropertyAccessExpression(callee)
+            ? callee.name.text
+            : ts.SyntaxKind[callee.kind];
+          memberCallsOnParameters.push(
+            `${key(node, `${target.detail.replace(/^member-of-parameter:/, '')}.${member}`)} x${String(node.arguments.length)}`,
+          );
+        } else if (target.kind === 'fresh' || target.kind === 'unclassified') {
+          // THE `ELSE` THAT DID NOT EXIST. A call whose callee resolves to
+          // nothing this walk can name is the shape the next channel arrives
+          // in, and it is named here rather than recorded under no channel at
+          // all. `DECLARED_FRESH_RECEIVERS` is set-equal in both directions, so
+          // one arriving is a decision somebody signs.
+          freshReceivers.push(
+            `${moduleName}:${String(lineOf(node))} callee=${target.kind}:${target.detail}`,
+          );
         }
       }
 
@@ -7616,8 +7916,9 @@ function channelCensusOf(
       for (const [index, parameterName] of parameters) {
         const kinds: string[] = [];
         for (const call of callsInModule) {
-          if (!ts.isIdentifier(call.expression)) continue;
-          if (resolvedDeclaration(call.expression) !== owner) continue;
+          // Through the same resolver as everything else, so a call of the
+          // owner made through a local alias is joined rather than skipped.
+          if (callTargetOf(call.expression).declaration !== owner) continue;
           const argument = call.arguments[index];
           kinds.push(argument === undefined ? 'missing' : ts.SyntaxKind[argument.kind]);
         }
@@ -7643,6 +7944,9 @@ function channelCensusOf(
     sites: Object.freeze(frozenSites),
     byModule: Object.freeze(frozenByModule),
     freshReceivers: Object.freeze([...freshReceivers].sort()),
+    callTargets: Object.freeze({ ...callTargets }),
+    writeOwners: Object.freeze({ ...writeOwners }),
+    memberCallsOnParameters: Object.freeze([...memberCallsOnParameters].sort()),
     internalCallbackArguments: Object.freeze([...internalCallbackArguments].sort()),
     wrapCalls: Object.freeze({ ...wrapCalls }),
     nodesExamined,
@@ -7818,6 +8122,56 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'engagement.ts:355 receiver=ArrayLiteralExpression',
   'social.ts:345 receiver=ArrayLiteralExpression',
 ]);
+
+/**
+ * Every call in the directory, by what its callee resolves to.
+ *
+ * the arm census for the scan, and the reason it is here rather than in a
+ * comment is that the twelfth bypass was a call recorded under NO arm. Three
+ * arms are zero and they are the ones this table is most for:
+ *
+ *   `parameter` is the callback channel — every call of a caller-supplied
+ *     function, however it is spelled, after the resolver follows aliases.
+ *   `member-of-parameter` is a method called ON a caller-supplied value. Zero
+ *     here, and it is a route this walk can see and deliberately does not
+ *     classify as a channel: a method that was already on the object is the
+ *     caller's own code only if the caller supplied both. One arriving is a
+ *     decision somebody signs rather than a number that drifts.
+ *   `fresh` and `unclassified` are the callee this walk could not name —
+ *     `pick()(slot)`, or an identifier the checker does not resolve. Both are
+ *     named individually in `DECLARED_FRESH_RECEIVERS` as well as counted.
+ */
+const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze({
+  parameter: 2,
+  'module-variable': 26,
+  local: 0,
+  function: 501,
+  member: 474,
+  'member-of-parameter': 15,
+  fresh: 0,
+  unclassified: 0,
+});
+
+/**
+ * Every write in the directory, by whose memory the receiver resolves to.
+ *
+ * The other half of the same census, and the two zeros that matter are
+ * `parameter` and `module-variable` — those are the `argument-mutation` and
+ * `module-mutable-state` channels, which `CHANNEL_SITE_COUNTS` also pins empty.
+ * `member` and `member-of-parameter` cannot occur here by construction, because
+ * a write's receiver is resolved past its member chain; they are pinned at zero
+ * rather than left off the table, so a walk that started producing one is red.
+ */
+const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze({
+  parameter: 0,
+  'module-variable': 0,
+  local: 153,
+  function: 0,
+  member: 0,
+  'member-of-parameter': 0,
+  fresh: 3,
+  unclassified: 0,
+});
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
@@ -8628,6 +8982,16 @@ describe('the channel census — the routes a string can leave this directory by
       }
       expect(sites).toBe(CHANNEL_CENSUS_TOTALS.SITES);
       expect(inUse).toBe(CHANNEL_CENSUS_TOTALS.CHANNELS_IN_USE);
+      // The arm censuses, deep equal in both directions. A call or a write that
+      // starts resolving to a different arm moves a number here whether or not
+      // it moves a channel, which is the half the twelfth bypass walked past:
+      // it changed `attended x1` into a call recorded under nothing at all.
+      expect(census.callTargets).toEqual(DECLARED_CALL_TARGETS);
+      expect(census.writeOwners).toEqual(DECLARED_WRITE_OWNERS);
+      // Every arm the type declares is a key of both tables, both directions,
+      // so a ninth arm cannot be counted without a row describing it.
+      expect([...Object.keys(DECLARED_CALL_TARGETS)].sort()).toEqual([...OWNER_KINDS].sort());
+      expect([...Object.keys(DECLARED_WRITE_OWNERS)].sort()).toEqual([...OWNER_KINDS].sort());
       // The truncation guard, last. A walk that gave up early would report a
       // directory with fewer escape routes than it has, which is the reassuring
       // direction and the one a census must not fail in quietly.
@@ -8694,6 +9058,10 @@ describe('the channel census — the routes a string can leave this directory by
       ]);
       // And the scan's one unclassified outcome, named rather than dropped.
       expect(census.freshReceivers).toEqual(DECLARED_FRESH_RECEIVERS);
+      // The populated arm the census cannot classify, enumerated rather than
+      // counted. A call into a caller-supplied function reached through a
+      // property lands here and is red by name.
+      expect(census.memberCallsOnParameters).toEqual(DECLARED_MEMBER_CALLS_ON_PARAMETERS);
       // The check behind the one judgement: nothing caller-supplied can reach
       // the internal callback, and that is measured off the argument syntax
       // rather than inferred from the `export` modifier.
