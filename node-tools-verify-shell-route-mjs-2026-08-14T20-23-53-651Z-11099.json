@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-shell-route-mjs-2026-08-14T20-23-53-651Z-11099",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-shell-route.mjs",
+    "--out",
+    "/tmp/mut-b4"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-14T20:23:53.651Z",
+  "startedAtMs": 1786739033651,
+  "cwd": "/home/user/wt-empire-idle",
+  "commit": "4590c768c16925a3854813bf6db97d3796cf0781",
+  "branch": "claude/empire-idle-wiring",
+  "dirty": 2,
+  "dirtyPaths": [
+    "src/shell/EmpireScreen.tsx",
+    "probe-empire.mjs"
+  ],
+  "runner": {
+    "pid": 11099,
+    "startTick": "2198268",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --id empire-mutant-b4 -- node tools/verify-shell-route.mjs --out /tmp/mut-b4",
+    "bootId": "9a2cb2d2-fb56-4022-8ed1-6d554d4fac5c",
+    "bootEpochSeconds": 1786717051,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T20:23:53.673Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
