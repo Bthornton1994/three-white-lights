@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-14T04-10-21-992Z-10635",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/licensing/realIp.test.ts"
+  ],
+  "budgetSeconds": 240,
+  "startedAtIso": "2026-08-14T04:10:21.992Z",
+  "startedAtMs": 1786680621992,
+  "cwd": "/home/user/wt-realip-widen",
+  "commit": "cd1dd0551e1f145fcf122a356dd4a47e8bf80c77",
+  "branch": "claude/realip-text-file-widen",
+  "dirty": 2,
+  "dirtyPaths": [
+    "src/licensing/realIp.test.ts",
+    "src/licensing/realIp.ts"
+  ],
+  "runner": {
+    "pid": 10635,
+    "startTick": "647510",
+    "cmdline": "node tools/watchdog.mjs --budget 240 -- npx vitest run src/licensing/realIp.test.ts",
+    "bootId": "70e4dcd9-91f6-43ee-a53c-88125d271f98",
+    "bootEpochSeconds": 1786674147,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T04:10:22.017Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
