@@ -116,6 +116,32 @@ public/canvaskit.wasm
 .gauntlet/shots/meet/*
 !.gauntlet/shots/meet/sound.json
 
+# And the lift PRESS run, which is the only record that the fix a human playtest
+# asked for reached the screens a player actually presses. Its whole subject is
+# invisible to a picture: `press.json` holds the computed `touch-action` off each
+# live element and the `pointercancel` count under a real touch pan, on the
+# played session, on a played meet attempt, and on the replay harness — with the
+# neutralised and forced controls beside every reading, so the zeros are zeros
+# against something.
+#
+# It is tracked because the defect it found was a fix declared on a screen no
+# player can open, guarded by a source scan that named that screen and stayed
+# green. The scan is derived now, and this is the only artifact saying the
+# properties reached a DOM node at all: `vitest.config.ts` is `environment:
+# node`, so nothing in the suite renders.
+#
+# THE RECORD, AND NOT THE DIRECTORY, on `sound.json`'s stated reason rather than
+# on its form. The three PNGs beside it are one screenshot per arm, written for
+# somebody debugging a failing run locally. They are deliberately NOT tracked:
+# every claim this tool makes is a DOM read or an event count and none of them
+# is visual, and the meet arm's shot is taken after a meet that may legitimately
+# have bombed out — so it is not reliably a picture of the screen the readings
+# came off. Tracking a picture nothing re-reads is what the paragraphs above
+# spent two rounds learning not to do.
+!.gauntlet/shots/lift-press/
+.gauntlet/shots/lift-press/*
+!.gauntlet/shots/lift-press/press.json
+
 # Verification MARKERS, written inside the repo for the same reason and by the
 # same incident. `tools/watchdog.mjs --budget` writes one BEFORE it spawns the
 # command and replaces it with a verdict only when a verdict exists, so an

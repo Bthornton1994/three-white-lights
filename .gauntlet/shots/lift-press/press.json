@@ -1,0 +1,1814 @@
+{
+  "capturedFrom": {
+    "capturedAt": "2026-08-14T06:20:12.563Z",
+    "url": "http://localhost:8097",
+    "commit": "ac60180",
+    "branch": "claude/press-fix-played-surfaces",
+    "workingTree": "clean",
+    "dirtyPaths": [],
+    "instrument": {
+      "verify-lift-press.mjs": "3ca7be3087bdffaf",
+      "sessionDrive.mjs": "2a63eac7a653d32b",
+      "meetDrive.mjs": "ccaa6c4fcf753ecf"
+    }
+  },
+  "probe": {
+    "HOLD_MS": 900,
+    "GRIP_X_FRACTION": 0.1,
+    "GRIP_Y_FRACTION": 0.5,
+    "DRIFT_X_FRACTION": 0.6,
+    "DRIFT_STEPS": 8,
+    "READ_SETTLE_MS": 250,
+    "PAN_PX": 200,
+    "SMALL_PAN_PX": 20,
+    "PAN_STEPS": 10,
+    "PAN_STEP_MS": 30,
+    "PAN_SETTLE_MS": 300,
+    "SMALL_PAN_MOVES_SEEN_WHEN_TAKEN": 3,
+    "PAN_CANCELS_WHEN_BROWSER_MAY_PAN": 1,
+    "PAN_CANCELS_WHEN_TOUCH_ACTION_NONE": 0,
+    "DEBUG_SETTLE_MS": 1200,
+    "STAGE_RETURN_MS": 90000,
+    "POLL_MS": 250,
+    "BOOT_MS": 120000,
+    "VIEWPORT": {
+      "width": 390,
+      "height": 844
+    },
+    "DEVICE_SCALE": 2,
+    "DEBUG_REPLAY": "replay=1.0&moment=brace"
+  },
+  "meetProbe": {
+    "NAV_OPEN_MEET": "shell-open-meet",
+    "CHECK_IN": "session-check-in",
+    "PILL_MS": 40000,
+    "MEET_MS": 40000,
+    "PROBES_PER_LIFT_BEFORE_A_SECOND": 1,
+    "REACH_RETRIES": 3,
+    "LABEL_SEPARATOR": "·",
+    "RECAP_SETTLE_MS": 30000
+  },
+  "meetRun": {
+    "probedLabels": [
+      "SQUAT · ATTEMPT 1 OF 3",
+      "BENCH · ATTEMPT 1 OF 3",
+      "DEADLIFT · ATTEMPT 1 OF 3",
+      "DEADLIFT · ATTEMPT 2 OF 3",
+      "DEADLIFT · ATTEMPT 3 OF 3"
+    ],
+    "probesByLift": {
+      "SQUAT": 1,
+      "BENCH": 1,
+      "DEADLIFT": 3
+    },
+    "search": {
+      "holdMs": 1000,
+      "stepMs": 180,
+      "lastDirection": 0
+    },
+    "drives": [
+      {
+        "ended": "stopped",
+        "why": "the caller asked to leave here",
+        "attempts": 0
+      },
+      {
+        "ended": "stopped",
+        "why": "the caller asked to leave here",
+        "attempts": 2
+      },
+      {
+        "ended": "stopped",
+        "why": "the caller asked to leave here",
+        "attempts": 2
+      },
+      {
+        "ended": "stopped",
+        "why": "the caller asked to leave here",
+        "attempts": 0
+      },
+      {
+        "ended": "stopped",
+        "why": "the caller asked to leave here",
+        "attempts": 0
+      }
+    ]
+  },
+  "properties": [
+    {
+      "key": "userSelect",
+      "cssName": "user-select",
+      "expected": "none",
+      "on": "text",
+      "leaves": "the copy beside the stage highlights and selection handles appear"
+    },
+    {
+      "key": "touchAction",
+      "cssName": "touch-action",
+      "expected": "none",
+      "on": "target",
+      "leaves": "the browser claims the gesture before the handler sees it"
+    },
+    {
+      "key": "WebkitTouchCallout",
+      "cssName": "-webkit-touch-callout",
+      "expected": "none",
+      "on": "text",
+      "leaves": "iOS Safari's press-and-hold callout still fires"
+    }
+  ],
+  "calloutUnsupported": "WebkitTouchCallout",
+  "arms": [
+    {
+      "arm": "session",
+      "what": "the daily set (GDD §3.2) — reached through the app’s own controls, no query string",
+      "played": true,
+      "reached": true,
+      "queryString": "",
+      "touchTestId": "session-touch",
+      "textTestId": "session-prompt",
+      "target": {
+        "testid": "session-touch",
+        "tag": "DIV",
+        "box": {
+          "x": 0,
+          "y": 111,
+          "width": 390,
+          "height": 520
+        },
+        "self": {
+          "userSelect": "none",
+          "webkitUserSelect": "none",
+          "touchAction": "none",
+          "webkitTouchCallout": ""
+        },
+        "chain": [
+          {
+            "tag": "DIV",
+            "testid": "session-touch",
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "none",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "session-set",
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "session-screen",
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "app-shell",
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "BODY",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          }
+        ],
+        "hitTarget": {
+          "tag": "CANVAS",
+          "testid": null,
+          "userSelect": "none",
+          "webkitUserSelect": "none",
+          "touchAction": "auto",
+          "webkitTouchCallout": ""
+        },
+        "caretAtCentre": {
+          "node": "CANVAS",
+          "offset": 0,
+          "text": ""
+        },
+        "textInside": ""
+      },
+      "text": {
+        "testid": "session-prompt",
+        "tag": "DIV",
+        "box": {
+          "x": 79.40625,
+          "y": 67,
+          "width": 231.15625,
+          "height": 15
+        },
+        "self": {
+          "userSelect": "none",
+          "webkitUserSelect": "none",
+          "touchAction": "auto",
+          "webkitTouchCallout": ""
+        },
+        "chain": [
+          {
+            "tag": "DIV",
+            "testid": "session-prompt",
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "session-set",
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "session-screen",
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "app-shell",
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "BODY",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          }
+        ],
+        "hitTarget": {
+          "tag": "DIV",
+          "testid": "session-prompt",
+          "userSelect": "none",
+          "webkitUserSelect": "none",
+          "touchAction": "auto",
+          "webkitTouchCallout": ""
+        },
+        "caretAtCentre": {
+          "node": "#text",
+          "offset": 11,
+          "text": "TAP AND HOLD TO DESCEND"
+        },
+        "textInside": "TAP AND HOLD TO DESCEND"
+      },
+      "readings": {
+        "as-shipped-drift": {
+          "label": "as-shipped-drift",
+          "testId": "session-prompt",
+          "drift": true,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 79.40625,
+            "y": 67,
+            "width": 231.15625,
+            "height": 15
+          },
+          "selection": {
+            "rangeCount": 0,
+            "text": "",
+            "isCollapsed": true,
+            "anchorNode": null,
+            "anchorText": null
+          },
+          "selected": false
+        },
+        "as-shipped-still": {
+          "label": "as-shipped-still",
+          "testId": "session-prompt",
+          "drift": false,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 79.40625,
+            "y": 67,
+            "width": 231.15625,
+            "height": 15
+          },
+          "selection": {
+            "rangeCount": 0,
+            "text": "",
+            "isCollapsed": true,
+            "anchorNode": null,
+            "anchorText": null
+          },
+          "selected": false
+        },
+        "neutralised-drift": {
+          "label": "neutralised-drift",
+          "testId": "session-prompt",
+          "drift": true,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 79.40625,
+            "y": 67,
+            "width": 231.15625,
+            "height": 15
+          },
+          "selection": {
+            "rangeCount": 1,
+            "text": "P AND HOLD TO D",
+            "isCollapsed": false,
+            "anchorNode": "#text",
+            "anchorText": "TAP AND HOLD TO DESCEND"
+          },
+          "selected": true,
+          "forcedTo": {
+            "userSelect": "text",
+            "touchAction": "auto"
+          }
+        },
+        "neutralised-still": {
+          "label": "neutralised-still",
+          "testId": "session-prompt",
+          "drift": false,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 79.40625,
+            "y": 67,
+            "width": 231.15625,
+            "height": 15
+          },
+          "selection": {
+            "rangeCount": 1,
+            "text": "",
+            "isCollapsed": true,
+            "anchorNode": "#text",
+            "anchorText": "TAP AND HOLD TO DESCEND"
+          },
+          "selected": false,
+          "forcedTo": {
+            "userSelect": "text",
+            "touchAction": "auto"
+          }
+        },
+        "restored-drift": {
+          "label": "restored-drift",
+          "testId": "session-prompt",
+          "drift": true,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 79.40625,
+            "y": 67,
+            "width": 231.15625,
+            "height": 15
+          },
+          "selection": {
+            "rangeCount": 0,
+            "text": "",
+            "isCollapsed": true,
+            "anchorNode": null,
+            "anchorText": null
+          },
+          "selected": false,
+          "restoredTo": {
+            "userSelect": "none",
+            "touchAction": "auto"
+          }
+        },
+        "stage-neutralised-drift": {
+          "label": "stage-neutralised-drift",
+          "testId": "session-touch",
+          "drift": true,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 0,
+            "y": 111,
+            "width": 390,
+            "height": 520
+          },
+          "selection": {
+            "rangeCount": 0,
+            "text": "",
+            "isCollapsed": true,
+            "anchorNode": null,
+            "anchorText": null
+          },
+          "selected": false,
+          "forcedTo": {
+            "userSelect": "text",
+            "touchAction": "auto"
+          }
+        }
+      },
+      "pans": {
+        "as-shipped": {
+          "label": "as-shipped",
+          "testId": "session-touch",
+          "panPx": 200,
+          "reached": true,
+          "cancels": 0,
+          "moveCancelable": [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "moves": 10,
+          "touchAction": "none"
+        },
+        "as-shipped-small": {
+          "label": "as-shipped-small",
+          "testId": "session-touch",
+          "panPx": 20,
+          "reached": true,
+          "cancels": 0,
+          "moveCancelable": [
+            true,
+            true,
+            true
+          ],
+          "moves": 3,
+          "touchAction": "none"
+        },
+        "neutralised": {
+          "label": "neutralised",
+          "testId": "session-touch",
+          "panPx": 200,
+          "reached": true,
+          "cancels": 1,
+          "moveCancelable": [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "moves": 10,
+          "forcedTo": {
+            "userSelect": "none",
+            "touchAction": "manipulation"
+          }
+        },
+        "forced-fixed": {
+          "label": "forced-fixed",
+          "testId": "session-touch",
+          "panPx": 200,
+          "reached": true,
+          "cancels": 0,
+          "moveCancelable": [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "moves": 10,
+          "forcedTo": {
+            "userSelect": "none",
+            "touchAction": "none"
+          }
+        }
+      },
+      "panSurfaces": {},
+      "shot": "session-surface.png"
+    },
+    {
+      "arm": "meet",
+      "what": "a meet attempt (GDD §6.2) — reached by pressing the shell pill and playing in, no query string",
+      "played": true,
+      "reached": true,
+      "queryString": "",
+      "touchTestId": "attempt-touch",
+      "textTestId": "attempt-prompt",
+      "target": {
+        "testid": "attempt-touch",
+        "tag": "DIV",
+        "box": {
+          "x": 0,
+          "y": 324,
+          "width": 390,
+          "height": 520
+        },
+        "self": {
+          "userSelect": "none",
+          "webkitUserSelect": "none",
+          "touchAction": "none",
+          "webkitTouchCallout": ""
+        },
+        "chain": [
+          {
+            "tag": "DIV",
+            "testid": "attempt-touch",
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "none",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "meet-attempt",
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "meet-screen",
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "app-shell",
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "BODY",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          }
+        ],
+        "hitTarget": {
+          "tag": "CANVAS",
+          "testid": null,
+          "userSelect": "none",
+          "webkitUserSelect": "none",
+          "touchAction": "auto",
+          "webkitTouchCallout": ""
+        },
+        "caretAtCentre": {
+          "node": "CANVAS",
+          "offset": 0,
+          "text": ""
+        },
+        "textInside": ""
+      },
+      "text": {
+        "testid": "attempt-prompt",
+        "tag": "DIV",
+        "box": {
+          "x": 79.40625,
+          "y": 163.5,
+          "width": 231.15625,
+          "height": 15
+        },
+        "self": {
+          "userSelect": "none",
+          "webkitUserSelect": "none",
+          "touchAction": "auto",
+          "webkitTouchCallout": ""
+        },
+        "chain": [
+          {
+            "tag": "DIV",
+            "testid": "attempt-prompt",
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "meet-attempt",
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "meet-screen",
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "app-shell",
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "BODY",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          }
+        ],
+        "hitTarget": {
+          "tag": "DIV",
+          "testid": "attempt-prompt",
+          "userSelect": "none",
+          "webkitUserSelect": "none",
+          "touchAction": "auto",
+          "webkitTouchCallout": ""
+        },
+        "caretAtCentre": {
+          "node": "#text",
+          "offset": 11,
+          "text": "TAP AND HOLD TO DESCEND"
+        },
+        "textInside": "TAP AND HOLD TO DESCEND"
+      },
+      "readings": {
+        "as-shipped-drift": {
+          "label": "as-shipped-drift",
+          "testId": "attempt-prompt",
+          "drift": true,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 79.40625,
+            "y": 163.5,
+            "width": 231.15625,
+            "height": 15
+          },
+          "selection": {
+            "rangeCount": 0,
+            "text": "",
+            "isCollapsed": true,
+            "anchorNode": null,
+            "anchorText": null
+          },
+          "selected": false
+        },
+        "as-shipped-still": {
+          "label": "as-shipped-still",
+          "testId": "attempt-prompt",
+          "drift": false,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 79.40625,
+            "y": 163.5,
+            "width": 231.15625,
+            "height": 15
+          },
+          "selection": {
+            "rangeCount": 0,
+            "text": "",
+            "isCollapsed": true,
+            "anchorNode": null,
+            "anchorText": null
+          },
+          "selected": false
+        },
+        "neutralised-drift": {
+          "label": "neutralised-drift",
+          "testId": "attempt-prompt",
+          "drift": true,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 79.40625,
+            "y": 163.5,
+            "width": 231.15625,
+            "height": 15
+          },
+          "selection": {
+            "rangeCount": 1,
+            "text": "P AND HOLD TO D",
+            "isCollapsed": false,
+            "anchorNode": "#text",
+            "anchorText": "TAP AND HOLD TO DESCEND"
+          },
+          "selected": true,
+          "forcedTo": {
+            "userSelect": "text",
+            "touchAction": "auto"
+          }
+        },
+        "neutralised-still": {
+          "label": "neutralised-still",
+          "testId": "attempt-prompt",
+          "drift": false,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 79.40625,
+            "y": 163.5,
+            "width": 231.15625,
+            "height": 15
+          },
+          "selection": {
+            "rangeCount": 1,
+            "text": "",
+            "isCollapsed": true,
+            "anchorNode": "#text",
+            "anchorText": "TAP AND HOLD TO DESCEND"
+          },
+          "selected": false,
+          "forcedTo": {
+            "userSelect": "text",
+            "touchAction": "auto"
+          }
+        },
+        "restored-drift": {
+          "label": "restored-drift",
+          "testId": "attempt-prompt",
+          "drift": true,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 79.40625,
+            "y": 163.5,
+            "width": 231.15625,
+            "height": 15
+          },
+          "selection": {
+            "rangeCount": 0,
+            "text": "",
+            "isCollapsed": true,
+            "anchorNode": null,
+            "anchorText": null
+          },
+          "selected": false,
+          "restoredTo": {
+            "userSelect": "none",
+            "touchAction": "auto"
+          }
+        }
+      },
+      "pans": {
+        "as-shipped": {
+          "label": "as-shipped",
+          "testId": "attempt-touch",
+          "panPx": 200,
+          "reached": true,
+          "cancels": 0,
+          "moveCancelable": [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "moves": 10,
+          "touchAction": "none"
+        },
+        "as-shipped-small": {
+          "label": "as-shipped-small",
+          "testId": "attempt-touch",
+          "panPx": 20,
+          "reached": true,
+          "cancels": 0,
+          "moveCancelable": [
+            true,
+            true,
+            true
+          ],
+          "moves": 3,
+          "touchAction": "none"
+        },
+        "neutralised": {
+          "label": "neutralised",
+          "testId": "attempt-touch",
+          "panPx": 200,
+          "reached": true,
+          "cancels": 1,
+          "moveCancelable": [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "moves": 10,
+          "forcedTo": {
+            "userSelect": "none",
+            "touchAction": "manipulation"
+          }
+        },
+        "forced-fixed": {
+          "label": "forced-fixed",
+          "testId": "attempt-touch",
+          "panPx": 200,
+          "reached": true,
+          "cancels": 0,
+          "moveCancelable": [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "moves": 10,
+          "forcedTo": {
+            "userSelect": "none",
+            "touchAction": "none"
+          }
+        }
+      },
+      "panSurfaces": {
+        "as-shipped": "BENCH · ATTEMPT 1 OF 3",
+        "as-shipped-small": "DEADLIFT · ATTEMPT 1 OF 3",
+        "neutralised": "DEADLIFT · ATTEMPT 2 OF 3",
+        "forced-fixed": "DEADLIFT · ATTEMPT 3 OF 3"
+      },
+      "shot": "meet-surface.png"
+    },
+    {
+      "arm": "debug",
+      "what": "the replay harness — reached by ?replay=1.0&moment=brace, which no player can type",
+      "played": false,
+      "reached": true,
+      "queryString": "?replay=1.0&moment=brace",
+      "touchTestId": "lift-touch",
+      "textTestId": "lift-prompt",
+      "target": {
+        "testid": "lift-touch",
+        "tag": "DIV",
+        "box": {
+          "x": 0,
+          "y": 136,
+          "width": 390,
+          "height": 520
+        },
+        "self": {
+          "userSelect": "none",
+          "webkitUserSelect": "none",
+          "touchAction": "none",
+          "webkitTouchCallout": ""
+        },
+        "chain": [
+          {
+            "tag": "DIV",
+            "testid": "lift-touch",
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "none",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "lift-screen",
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "app-shell",
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "BODY",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          }
+        ],
+        "hitTarget": {
+          "tag": "CANVAS",
+          "testid": null,
+          "userSelect": "none",
+          "webkitUserSelect": "none",
+          "touchAction": "auto",
+          "webkitTouchCallout": ""
+        },
+        "caretAtCentre": {
+          "node": "CANVAS",
+          "offset": 0,
+          "text": ""
+        },
+        "textInside": ""
+      },
+      "text": {
+        "testid": "lift-prompt",
+        "tag": "DIV",
+        "box": {
+          "x": 65.171875,
+          "y": 66,
+          "width": 259.640625,
+          "height": 17
+        },
+        "self": {
+          "userSelect": "none",
+          "webkitUserSelect": "none",
+          "touchAction": "auto",
+          "webkitTouchCallout": ""
+        },
+        "chain": [
+          {
+            "tag": "DIV",
+            "testid": "lift-prompt",
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "lift-screen",
+            "userSelect": "none",
+            "webkitUserSelect": "none",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": "app-shell",
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "BODY",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          }
+        ],
+        "hitTarget": {
+          "tag": "DIV",
+          "testid": "lift-prompt",
+          "userSelect": "none",
+          "webkitUserSelect": "none",
+          "touchAction": "auto",
+          "webkitTouchCallout": ""
+        },
+        "caretAtCentre": {
+          "node": "#text",
+          "offset": 11,
+          "text": "TAP AND HOLD TO DESCEND"
+        },
+        "textInside": "TAP AND HOLD TO DESCEND"
+      },
+      "readings": {
+        "as-shipped-drift": {
+          "label": "as-shipped-drift",
+          "testId": "lift-prompt",
+          "drift": true,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 65.171875,
+            "y": 66,
+            "width": 259.640625,
+            "height": 17
+          },
+          "selection": {
+            "rangeCount": 0,
+            "text": "",
+            "isCollapsed": true,
+            "anchorNode": null,
+            "anchorText": null
+          },
+          "selected": false
+        },
+        "as-shipped-still": {
+          "label": "as-shipped-still",
+          "testId": "lift-prompt",
+          "drift": false,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 65.171875,
+            "y": 66,
+            "width": 259.640625,
+            "height": 17
+          },
+          "selection": {
+            "rangeCount": 0,
+            "text": "",
+            "isCollapsed": true,
+            "anchorNode": null,
+            "anchorText": null
+          },
+          "selected": false
+        },
+        "neutralised-drift": {
+          "label": "neutralised-drift",
+          "testId": "lift-prompt",
+          "drift": true,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 65.171875,
+            "y": 66,
+            "width": 259.640625,
+            "height": 17
+          },
+          "selection": {
+            "rangeCount": 1,
+            "text": "P AND HOLD TO D",
+            "isCollapsed": false,
+            "anchorNode": "#text",
+            "anchorText": "TAP AND HOLD TO DESCEND"
+          },
+          "selected": true,
+          "forcedTo": {
+            "userSelect": "text",
+            "touchAction": "auto"
+          }
+        },
+        "neutralised-still": {
+          "label": "neutralised-still",
+          "testId": "lift-prompt",
+          "drift": false,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 65.171875,
+            "y": 66,
+            "width": 259.640625,
+            "height": 17
+          },
+          "selection": {
+            "rangeCount": 1,
+            "text": "",
+            "isCollapsed": true,
+            "anchorNode": "#text",
+            "anchorText": "TAP AND HOLD TO DESCEND"
+          },
+          "selected": false,
+          "forcedTo": {
+            "userSelect": "text",
+            "touchAction": "auto"
+          }
+        },
+        "restored-drift": {
+          "label": "restored-drift",
+          "testId": "lift-prompt",
+          "drift": true,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 65.171875,
+            "y": 66,
+            "width": 259.640625,
+            "height": 17
+          },
+          "selection": {
+            "rangeCount": 0,
+            "text": "",
+            "isCollapsed": true,
+            "anchorNode": null,
+            "anchorText": null
+          },
+          "selected": false,
+          "restoredTo": {
+            "userSelect": "none",
+            "touchAction": "auto"
+          }
+        },
+        "stage-neutralised-drift": {
+          "label": "stage-neutralised-drift",
+          "testId": "lift-touch",
+          "drift": true,
+          "reached": true,
+          "clearedBefore": true,
+          "box": {
+            "x": 0,
+            "y": 136,
+            "width": 390,
+            "height": 520
+          },
+          "selection": {
+            "rangeCount": 0,
+            "text": "",
+            "isCollapsed": true,
+            "anchorNode": null,
+            "anchorText": null
+          },
+          "selected": false,
+          "forcedTo": {
+            "userSelect": "text",
+            "touchAction": "auto"
+          }
+        }
+      },
+      "pans": {
+        "as-shipped": {
+          "label": "as-shipped",
+          "testId": "lift-touch",
+          "panPx": 200,
+          "reached": true,
+          "cancels": 0,
+          "moveCancelable": [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "moves": 10,
+          "touchAction": "none"
+        },
+        "as-shipped-small": {
+          "label": "as-shipped-small",
+          "testId": "lift-touch",
+          "panPx": 20,
+          "reached": true,
+          "cancels": 0,
+          "moveCancelable": [
+            true,
+            true,
+            true
+          ],
+          "moves": 3,
+          "touchAction": "none"
+        },
+        "neutralised": {
+          "label": "neutralised",
+          "testId": "lift-touch",
+          "panPx": 200,
+          "reached": true,
+          "cancels": 1,
+          "moveCancelable": [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "moves": 10,
+          "forcedTo": {
+            "userSelect": "none",
+            "touchAction": "manipulation"
+          }
+        },
+        "forced-fixed": {
+          "label": "forced-fixed",
+          "testId": "lift-touch",
+          "panPx": 200,
+          "reached": true,
+          "cancels": 0,
+          "moveCancelable": [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "moves": 10,
+          "forcedTo": {
+            "userSelect": "none",
+            "touchAction": "none"
+          }
+        }
+      },
+      "panSurfaces": {},
+      "shot": "debug-surface.png"
+    }
+  ],
+  "checks": [
+    {
+      "ok": true,
+      "what": "ARM session: the lift surface was reached",
+      "detail": "session-touch is on screen"
+    },
+    {
+      "ok": true,
+      "what": "ARM session: the address bar carries NO query string",
+      "detail": "\"\""
+    },
+    {
+      "ok": true,
+      "what": "ARM session: session-touch is in the DOM",
+      "detail": "DIV"
+    },
+    {
+      "ok": true,
+      "what": "ARM session: the copy beside the stage, session-prompt, is in the DOM",
+      "detail": "DIV \"TAP AND HOLD TO DESCEND\""
+    },
+    {
+      "ok": true,
+      "what": "ARM session: session-prompt computes user-select: none — without it the copy beside the stage highlights and selection handles appear",
+      "detail": "read \"none\", wanted \"none\""
+    },
+    {
+      "ok": true,
+      "what": "ARM session: session-touch computes touch-action: none — without it the browser claims the gesture before the handler sees it",
+      "detail": "read \"none\", wanted \"none\""
+    },
+    {
+      "ok": true,
+      "what": "ARM session: the element UNDER the finger inherits user-select: none",
+      "detail": "CANVAS reads \"none\""
+    },
+    {
+      "ok": true,
+      "what": "ARM session: session-touch — the PRESSED element itself computes touch-action: none, which is the only place it counts",
+      "detail": "session-touch reads \"none\"; the canvas under it reads \"auto\", and the browser resolves the gesture up that chain"
+    },
+    {
+      "ok": true,
+      "what": "ARM session: the pressed element and the copy are 2 different drawn elements",
+      "detail": "session-touch {\"x\":0,\"y\":111,\"width\":390,\"height\":520} vs session-prompt {\"x\":79.40625,\"y\":67,\"width\":231.15625,\"height\":15}"
+    },
+    {
+      "ok": true,
+      "what": "ARM session: all 5 selection readings started from an empty selection",
+      "detail": "5 of 5"
+    },
+    {
+      "ok": true,
+      "what": "ARM session: CONTROL — with user-select forced back to text on session-prompt, the same press-hold-and-drift DOES select",
+      "detail": "rangeCount=1 collapsed=false text=\"P AND HOLD TO D\" (forced to \"text\")"
+    },
+    {
+      "ok": true,
+      "what": "ARM session: LIMIT — a STILL press-and-hold selects nothing even with the fix neutralised, so still-press readings are not evidence",
+      "detail": "rangeCount=1 collapsed=true text=\"\""
+    },
+    {
+      "ok": true,
+      "what": "ARM session: PROBE 1 — a press-and-hold-and-drift on session-prompt leaves NO selection, AND that could have gone the other way",
+      "detail": "as-shipped rangeCount=0 collapsed=true text=\"\"; DOMAIN LIVE — neutralised rangeCount=1 text=\"P AND HOLD TO D\""
+    },
+    {
+      "ok": true,
+      "what": "ARM session: restoring the fix reproduces the as-shipped reading",
+      "detail": "restored rangeCount=0 vs as-shipped 0; computed back to {\"userSelect\":\"none\",\"touchAction\":\"auto\"}"
+    },
+    {
+      "ok": true,
+      "what": "ARM session: all 5 stage gestures were taken on a live stage",
+      "detail": "5 of 5"
+    },
+    {
+      "ok": true,
+      "what": "ARM session: PROBE 2 DOMAIN — with touch-action neutralised to manipulation, the browser TAKES the gesture",
+      "detail": "pointercancel=1, wanted exactly 1 (touch-action read back as \"manipulation\")"
+    },
+    {
+      "ok": true,
+      "what": "ARM session: PROBE 2 DOMAIN — with touch-action forced to none on the SAME element, it does not",
+      "detail": "pointercancel=0, wanted exactly 0 (touch-action read back as \"none\")"
+    },
+    {
+      "ok": true,
+      "what": "ARM session: PROBE 2 — the page saw all 4 pans, so none of the cancel counts is a count of nothing",
+      "detail": "4 of 4; as-shipped=10 moves @200px, 0 cancel(s); as-shipped-small=3 moves @20px, 0 cancel(s); neutralised=10 moves @200px, 1 cancel(s); forced-fixed=10 moves @200px, 0 cancel(s)"
+    },
+    {
+      "ok": true,
+      "what": "ARM session: PROBE 2 — touchmove cancelability is [true, false…] on all 3 full-size pans whatever touch-action says, so it is not the discriminator and the cancel count is",
+      "detail": "3 of 3; as-shipped@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false] as-shipped-small@20px(ta=\"none\")=[true,true,true] neutralised@200px(ta=\"manipulation\")=[true,false,false,false,false,false,false,false,false,false] forced-fixed@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false]"
+    },
+    {
+      "ok": true,
+      "what": "ARM session: PROBE 2 — every pan ran at the touch-action its row claims, and exactly 1 of 4 was the neutralised one",
+      "detail": "1 ran at manipulation; as-shipped=\"none\", as-shipped-small=\"none\", neutralised=\"manipulation\", forced-fixed=\"none\""
+    },
+    {
+      "ok": true,
+      "what": "ARM session: PROBE 2 — as shipped, a 200px drag never has the press taken away from the app mid-gesture",
+      "detail": "pointercancel=0 with touch-action \"none\", wanted exactly 0"
+    },
+    {
+      "ok": true,
+      "what": "ARM session: PROBE 2 — nor does a 20px finger drift, which is the gesture the descent actually is",
+      "detail": "pointercancel=0 at 20px vs 0 at 200px, both with touch-action \"none\"; wanted exactly 0. The page heard 3 touchmove(s) of the 10 dispatched before that verdict"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: the lift surface was reached",
+      "detail": "attempt-touch is on screen"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: the address bar carries NO query string",
+      "detail": "\"\""
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: attempt-touch is in the DOM",
+      "detail": "DIV"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: the copy beside the stage, attempt-prompt, is in the DOM",
+      "detail": "DIV \"TAP AND HOLD TO DESCEND\""
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: attempt-prompt computes user-select: none — without it the copy beside the stage highlights and selection handles appear",
+      "detail": "read \"none\", wanted \"none\""
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: attempt-touch computes touch-action: none — without it the browser claims the gesture before the handler sees it",
+      "detail": "read \"none\", wanted \"none\""
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: the element UNDER the finger inherits user-select: none",
+      "detail": "CANVAS reads \"none\""
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: attempt-touch — the PRESSED element itself computes touch-action: none, which is the only place it counts",
+      "detail": "attempt-touch reads \"none\"; the canvas under it reads \"auto\", and the browser resolves the gesture up that chain"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: the pressed element and the copy are 2 different drawn elements",
+      "detail": "attempt-touch {\"x\":0,\"y\":324,\"width\":390,\"height\":520} vs attempt-prompt {\"x\":79.40625,\"y\":163.5,\"width\":231.15625,\"height\":15}"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: all 5 selection readings started from an empty selection",
+      "detail": "5 of 5"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: CONTROL — with user-select forced back to text on attempt-prompt, the same press-hold-and-drift DOES select",
+      "detail": "rangeCount=1 collapsed=false text=\"P AND HOLD TO D\" (forced to \"text\")"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: LIMIT — a STILL press-and-hold selects nothing even with the fix neutralised, so still-press readings are not evidence",
+      "detail": "rangeCount=1 collapsed=true text=\"\""
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: PROBE 1 — a press-and-hold-and-drift on attempt-prompt leaves NO selection, AND that could have gone the other way",
+      "detail": "as-shipped rangeCount=0 collapsed=true text=\"\"; DOMAIN LIVE — neutralised rangeCount=1 text=\"P AND HOLD TO D\""
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: restoring the fix reproduces the as-shipped reading",
+      "detail": "restored rangeCount=0 vs as-shipped 0; computed back to {\"userSelect\":\"none\",\"touchAction\":\"auto\"}"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: all 4 stage gestures were taken on a live stage",
+      "detail": "4 of 4, on attempts {\"as-shipped\":\"BENCH · ATTEMPT 1 OF 3\",\"as-shipped-small\":\"DEADLIFT · ATTEMPT 1 OF 3\",\"neutralised\":\"DEADLIFT · ATTEMPT 2 OF 3\",\"forced-fixed\":\"DEADLIFT · ATTEMPT 3 OF 3\"}"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: the 4 pans were spent on 4 DIFFERENT attempts, so no reading is a copy of another",
+      "detail": "4 distinct of 4: BENCH · ATTEMPT 1 OF 3 | DEADLIFT · ATTEMPT 1 OF 3 | DEADLIFT · ATTEMPT 2 OF 3 | DEADLIFT · ATTEMPT 3 OF 3"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: no lift took a second gesture from this instrument until all 3 lifts had taken one",
+      "detail": "held in order: SQUAT · ATTEMPT 1 OF 3 | BENCH · ATTEMPT 1 OF 3 | DEADLIFT · ATTEMPT 1 OF 3 | DEADLIFT · ATTEMPT 2 OF 3 | DEADLIFT · ATTEMPT 3 OF 3; per lift SQUATx1, BENCHx1, DEADLIFTx3"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: the shared driver played the attempts this instrument did not",
+      "detail": "4 attempt(s) played by driveMeetToItsEnd against 5 held here; drives: [{\"ended\":\"stopped\",\"why\":\"the caller asked to leave here\",\"attempts\":0},{\"ended\":\"stopped\",\"why\":\"the caller asked to leave here\",\"attempts\":2},{\"ended\":\"stopped\",\"why\":\"the caller asked to leave here\",\"attempts\":2},{\"ended\":\"stopped\",\"why\":\"the caller asked to leave here\",\"attempts\":0},{\"ended\":\"stopped\",\"why\":\"the caller asked to leave here\",\"attempts\":0}]"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: PROBE 2 DOMAIN — with touch-action neutralised to manipulation, the browser TAKES the gesture",
+      "detail": "pointercancel=1, wanted exactly 1 (touch-action read back as \"manipulation\")"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: PROBE 2 DOMAIN — with touch-action forced to none on the SAME element, it does not",
+      "detail": "pointercancel=0, wanted exactly 0 (touch-action read back as \"none\")"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: PROBE 2 — the page saw all 4 pans, so none of the cancel counts is a count of nothing",
+      "detail": "4 of 4; as-shipped=10 moves @200px, 0 cancel(s); as-shipped-small=3 moves @20px, 0 cancel(s); neutralised=10 moves @200px, 1 cancel(s); forced-fixed=10 moves @200px, 0 cancel(s)"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: PROBE 2 — touchmove cancelability is [true, false…] on all 3 full-size pans whatever touch-action says, so it is not the discriminator and the cancel count is",
+      "detail": "3 of 3; as-shipped@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false] as-shipped-small@20px(ta=\"none\")=[true,true,true] neutralised@200px(ta=\"manipulation\")=[true,false,false,false,false,false,false,false,false,false] forced-fixed@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false]"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: PROBE 2 — every pan ran at the touch-action its row claims, and exactly 1 of 4 was the neutralised one",
+      "detail": "1 ran at manipulation; as-shipped=\"none\", as-shipped-small=\"none\", neutralised=\"manipulation\", forced-fixed=\"none\""
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: PROBE 2 — as shipped, a 200px drag never has the press taken away from the app mid-gesture",
+      "detail": "pointercancel=0 with touch-action \"none\", wanted exactly 0"
+    },
+    {
+      "ok": true,
+      "what": "ARM meet: PROBE 2 — nor does a 20px finger drift, which is the gesture the descent actually is",
+      "detail": "pointercancel=0 at 20px vs 0 at 200px, both with touch-action \"none\"; wanted exactly 0. The page heard 3 touchmove(s) of the 10 dispatched before that verdict"
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: the lift surface was reached",
+      "detail": "lift-touch is on screen"
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: the address bar carries ?replay=1.0&moment=brace",
+      "detail": "\"?replay=1.0&moment=brace\""
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: lift-touch is in the DOM",
+      "detail": "DIV"
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: the copy beside the stage, lift-prompt, is in the DOM",
+      "detail": "DIV \"TAP AND HOLD TO DESCEND\""
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: lift-prompt computes user-select: none — without it the copy beside the stage highlights and selection handles appear",
+      "detail": "read \"none\", wanted \"none\""
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: lift-touch computes touch-action: none — without it the browser claims the gesture before the handler sees it",
+      "detail": "read \"none\", wanted \"none\""
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: the element UNDER the finger inherits user-select: none",
+      "detail": "CANVAS reads \"none\""
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: lift-touch — the PRESSED element itself computes touch-action: none, which is the only place it counts",
+      "detail": "lift-touch reads \"none\"; the canvas under it reads \"auto\", and the browser resolves the gesture up that chain"
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: the pressed element and the copy are 2 different drawn elements",
+      "detail": "lift-touch {\"x\":0,\"y\":136,\"width\":390,\"height\":520} vs lift-prompt {\"x\":65.171875,\"y\":66,\"width\":259.640625,\"height\":17}"
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: all 5 selection readings started from an empty selection",
+      "detail": "5 of 5"
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: CONTROL — with user-select forced back to text on lift-prompt, the same press-hold-and-drift DOES select",
+      "detail": "rangeCount=1 collapsed=false text=\"P AND HOLD TO D\" (forced to \"text\")"
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: LIMIT — a STILL press-and-hold selects nothing even with the fix neutralised, so still-press readings are not evidence",
+      "detail": "rangeCount=1 collapsed=true text=\"\""
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: PROBE 1 — a press-and-hold-and-drift on lift-prompt leaves NO selection, AND that could have gone the other way",
+      "detail": "as-shipped rangeCount=0 collapsed=true text=\"\"; DOMAIN LIVE — neutralised rangeCount=1 text=\"P AND HOLD TO D\""
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: restoring the fix reproduces the as-shipped reading",
+      "detail": "restored rangeCount=0 vs as-shipped 0; computed back to {\"userSelect\":\"none\",\"touchAction\":\"auto\"}"
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: all 5 stage gestures were taken on a live stage",
+      "detail": "5 of 5"
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: PROBE 2 DOMAIN — with touch-action neutralised to manipulation, the browser TAKES the gesture",
+      "detail": "pointercancel=1, wanted exactly 1 (touch-action read back as \"manipulation\")"
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: PROBE 2 DOMAIN — with touch-action forced to none on the SAME element, it does not",
+      "detail": "pointercancel=0, wanted exactly 0 (touch-action read back as \"none\")"
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: PROBE 2 — the page saw all 4 pans, so none of the cancel counts is a count of nothing",
+      "detail": "4 of 4; as-shipped=10 moves @200px, 0 cancel(s); as-shipped-small=3 moves @20px, 0 cancel(s); neutralised=10 moves @200px, 1 cancel(s); forced-fixed=10 moves @200px, 0 cancel(s)"
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: PROBE 2 — touchmove cancelability is [true, false…] on all 3 full-size pans whatever touch-action says, so it is not the discriminator and the cancel count is",
+      "detail": "3 of 3; as-shipped@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false] as-shipped-small@20px(ta=\"none\")=[true,true,true] neutralised@200px(ta=\"manipulation\")=[true,false,false,false,false,false,false,false,false,false] forced-fixed@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false]"
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: PROBE 2 — every pan ran at the touch-action its row claims, and exactly 1 of 4 was the neutralised one",
+      "detail": "1 ran at manipulation; as-shipped=\"none\", as-shipped-small=\"none\", neutralised=\"manipulation\", forced-fixed=\"none\""
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: PROBE 2 — as shipped, a 200px drag never has the press taken away from the app mid-gesture",
+      "detail": "pointercancel=0 with touch-action \"none\", wanted exactly 0"
+    },
+    {
+      "ok": true,
+      "what": "ARM debug: PROBE 2 — nor does a 20px finger drift, which is the gesture the descent actually is",
+      "detail": "pointercancel=0 at 20px vs 0 at 200px, both with touch-action \"none\"; wanted exactly 0. The page heard 3 touchmove(s) of the 10 dispatched before that verdict"
+    },
+    {
+      "ok": true,
+      "what": "CROSS-ARM: all 3 arms produced a reading to compare",
+      "detail": "3 of 3: debug=read, session=read, meet=read"
+    },
+    {
+      "ok": true,
+      "what": "CROSS-ARM: the 3 arms are 3 different elements",
+      "detail": "3 distinct: debug=lift-touch@\"?replay=1.0&moment=brace\", session=session-touch@\"\", meet=attempt-touch@\"\""
+    },
+    {
+      "ok": true,
+      "what": "CROSS-ARM: both played arms were read with NO query string in the address bar",
+      "detail": "2 of 2; session=\"\", meet=\"\" against debug \"?replay=1.0&moment=brace\""
+    },
+    {
+      "ok": true,
+      "what": "CROSS-ARM: the session surface and the replay harness compute the SAME press properties",
+      "detail": "every one of the 2 readable properties matches on both"
+    },
+    {
+      "ok": true,
+      "what": "CROSS-ARM: a press behaves the same on the session surface as on the replay harness",
+      "detail": "session pointercancel=0 vs debug pointercancel=0"
+    },
+    {
+      "ok": true,
+      "what": "CROSS-ARM: the meet surface and the replay harness compute the SAME press properties",
+      "detail": "every one of the 2 readable properties matches on both"
+    },
+    {
+      "ok": true,
+      "what": "CROSS-ARM: a press behaves the same on the meet surface as on the replay harness",
+      "detail": "meet pointercancel=0 vs debug pointercancel=0"
+    },
+    {
+      "ok": true,
+      "what": "no page errors while driving",
+      "detail": "none"
+    }
+  ],
+  "skipped": [
+    {
+      "what": "ARM session: -webkit-touch-callout on session-prompt — without it iOS Safari's press-and-hold callout still fires",
+      "why": "Blink does not implement -webkit-touch-callout; getComputedStyle returns \"\" on an element that declares it, so no reading here would be about the app. The declaration stays covered by the source scan in src/lift/liftInput.test.ts."
+    },
+    {
+      "what": "ARM session: PROBE 1 on session-touch itself — a press-and-hold on the STAGE leaves no selection",
+      "why": "DOMAIN DEAD, re-measured this run rather than cited: with user-select forced to \"text\" on the stage, the same gesture that selects \"P AND HOLD TO D\" on session-prompt selects \"\" here (rangeCount=0). caretRangeFromPoint at the probe point is {\"node\":\"CANVAS\",\"offset\":0,\"text\":\"\"}: the node under the finger is a Skia <canvas> with no text position in it, and Blink will not start a selection inside a replaced element. No value of the fix makes this red, so it is not counted either way."
+    },
+    {
+      "what": "ARM meet: -webkit-touch-callout on attempt-prompt — without it iOS Safari's press-and-hold callout still fires",
+      "why": "Blink does not implement -webkit-touch-callout; getComputedStyle returns \"\" on an element that declares it, so no reading here would be about the app. The declaration stays covered by the source scan in src/lift/liftInput.test.ts."
+    },
+    {
+      "what": "ARM meet: PROBE 1 on attempt-touch itself — a press-and-hold on the STAGE leaves no selection",
+      "why": "NOT TAKEN ON THIS ARM. A press-and-hold on the stage spends a meet attempt, GDD §6.2 has nine, and PROBE 1's screen plus the four pans plus the four the driver needs to keep a lift off three misses is all nine. What it measures is a fact about Blink and about `LiftStage`, which every arm mounts identically, and it is measured on the session and debug arms in this same run. caretRangeFromPoint at this arm's probe point still reads {\"node\":\"CANVAS\",\"offset\":0,\"text\":\"\"}, which is the same CANVAS node with no text position in it."
+    },
+    {
+      "what": "ARM debug: -webkit-touch-callout on lift-prompt — without it iOS Safari's press-and-hold callout still fires",
+      "why": "Blink does not implement -webkit-touch-callout; getComputedStyle returns \"\" on an element that declares it, so no reading here would be about the app. The declaration stays covered by the source scan in src/lift/liftInput.test.ts."
+    },
+    {
+      "what": "ARM debug: PROBE 1 on lift-touch itself — a press-and-hold on the STAGE leaves no selection",
+      "why": "DOMAIN DEAD, re-measured this run rather than cited: with user-select forced to \"text\" on the stage, the same gesture that selects \"P AND HOLD TO D\" on lift-prompt selects \"\" here (rangeCount=0). caretRangeFromPoint at the probe point is {\"node\":\"CANVAS\",\"offset\":0,\"text\":\"\"}: the node under the finger is a Skia <canvas> with no text position in it, and Blink will not start a selection inside a replaced element. No value of the fix makes this red, so it is not counted either way."
+    }
+  ],
+  "failures": [],
+  "pageErrors": []
+}
