@@ -76,6 +76,21 @@ same markers into the `.md` artifacts and the equivalent booleans
 check fails the run if any ungated cell is unmarked **or** any gated one is
 marked.
 
+That check was mutation-tested in both directions when it was written, because a
+marker rule that only fails one way is half a rule:
+
+```
+# marking suppressed
+  FAIL  every ungated-population cell carries the marker, and only those — 0 marked, 32 open-population cells [domain 32]
+# everything marked
+  FAIL  every ungated-population cell carries the marker, and only those — 64 marked, 32 open-population cells [domain 32]
+```
+
+and the same caveat cannot be quietly dropped from **this** document either:
+deleting the `†` from one regional cell of §3.1 gives
+`FAIL raw:shipped-M row 59 col "regional" — doc says "302.5 (69)", this run
+computes "302.5† (69)"`, exit 4.
+
 ### 1.2 What the entry regime does to the estimate — the frame the rest of this rests on
 
 A percentile of a field is only a qualifying standard if something had to be
@@ -183,7 +198,7 @@ statement is itself checked.** The raw run resolves
 **82**<!--@raw:doc.taggedClaims--> tagged claims and
 **256**<!--@raw:doc.tableCells--> table cells in
 **6**<!--@raw:doc.tables--> tables, against
-**947**<!--@raw:doc.numericLiterals--> numeric literals in this document. The
+**966**<!--@raw:doc.numericLiterals--> numeric literals in this document. The
 equipped run resolves a further **9**<!--@single-ply:doc.taggedClaims--> claims
 and **32**<!--@single-ply:doc.tableCells--> cells in its own namespace. **The
 remaining literals are prose** — section numbers, dates, URLs, kilo figures
@@ -433,14 +448,21 @@ those two knobs rather than assuming them.
 That the check bites is demonstrated rather than asserted:
 
 ```
-QT_WORLDS_METHOD=tier-field-percentile node docs/research/qualifyingTotalsDerive.mjs <path> /tmp/qt-p10
-  FAIL  the tier ladder does not invert — INVERTED: M 83: nationals 627.5 -> worlds 627.5;
-        M 120: nationals 730 -> worlds 722.5; F 57: nationals 350 -> worlds 347.5;
-        F 69: nationals 395 -> worlds 382.5
-  FAIL  the ladder rises strictly at every step — 42/46 strictly greater
-  EMPTY quota cells name the population they came from — 0 quota cells
-2 structural check(s) FAILED …   [exit 3]
+$ QT_WORLDS_METHOD=tier-field-percentile node docs/research/qualifyingTotalsDerive.mjs <path> /tmp/qt-p10
+  FAIL  the tier ladder does not invert — INVERTED: M 83: nationals 627.5 -> worlds 627.5; M 120: nationals 730 -> worlds 722.5; F 57: nationals 350 -> worlds 347.5; F 69: nationals 395 -> worlds 382.5 [domain 46]
+  FAIL  the ladder rises strictly at every step — 42/46 strictly greater [domain 46]
+  EMPTY quota cells name the population they came from — 0 quota cells [domain 0]
+checks: 6 PASS, 1 EMPTY (ran on nothing), 2 FAIL
+2 structural check(s) FAILED — the emitted table does not satisfy its own stated properties.
+$ echo $?
+3
 ```
+
+Note the third line. **`EMPTY` is not `PASS`** anywhere in this tool's output: a
+predicate that ran on nothing prints its own name for that, because "the quota
+cells are all consistent" over zero quota cells is true and says nothing. Under
+the equipped run four of the nine checks report EMPTY, which is the honest
+description of a table with only its entry tier populated.
 
 **AND WHY THE CONSTRAINT IS NOT A REPAIR PASS.** The obvious alternative is to
 raise every offending cell to the one below it. Computed on the counterfactual
