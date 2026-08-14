@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-cutin-cap-mjs-2026-08-14T17-03-53-786Z-14262",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-cutin-cap.mjs",
+    "--url",
+    "http://localhost:8099"
+  ],
+  "budgetSeconds": 600,
+  "startedAtIso": "2026-08-14T17:03:53.786Z",
+  "startedAtMs": 1786727033786,
+  "cwd": "/home/user/wt-empire-honesty",
+  "commit": "2a5c6254dfb479359cfe4d885dc3f7ff9fa3b315",
+  "branch": "claude/empire-shell-honesty",
+  "dirty": 8,
+  "dirtyPaths": [
+    ".gauntlet/shots/cutin/frames.json",
+    ".gauntlet/shots/lift-press/press.json",
+    ".gauntlet/shots/meet/sound.json",
+    ".gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+    ".gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+    ".gauntlet/shots/shell/13-recap-before-the-return-leg.png",
+    ".gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
+    ".gauntlet/shots/shell/route.json"
+  ],
+  "runner": {
+    "pid": 14262,
+    "startTick": "998282",
+    "cmdline": "node tools/watchdog.mjs --budget 600 --id cap2 -- node tools/verify-cutin-cap.mjs --url http://localhost:8099",
+    "bootId": "9a2cb2d2-fb56-4022-8ed1-6d554d4fac5c",
+    "bootEpochSeconds": 1786717051,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T17:03:53.807Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
