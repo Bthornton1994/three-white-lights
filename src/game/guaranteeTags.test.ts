@@ -546,8 +546,30 @@ const GUARANTEE_COVERAGE = {
    * The declared undercount stays at TWO. It counts load-bearing paragraphs
    * REWORDED OUT of triggering, which is a different quantity from this census
    * of paragraphs that DO trigger, and nothing was reworded this round.
+   *
+   * TENTH ROUND, 229 -> 231, AND THE ASYMMETRY IS NOW BROKEN TWICE RUNNING.
+   * Both new paragraphs are in `src/empire/empireForbiddenOutput.test.ts` and
+   * both are limits stated at the mechanism they limit — which this comment's
+   * own history says the scan flags readily. The difference from rounds two
+   * through eight is that these two are the SUBJECT of their checks rather than
+   * commentary beside them:
+   *
+   *   - the destructure-assignment paragraph, naming a binding shape the walk
+   *     cannot resolve, with the probe that keeps it measured rather than
+   *     asserted;
+   *   - the per-site totals paragraph, which is why a verdict census replaced a
+   *     call count: a total cannot say which subject went quiet.
+   *
+   * A third capitalised run was added inside a data row rather than a comment
+   * paragraph and the scan did not count it, which is worth knowing about the
+   * scoping rule and is not a defect to chase.
+   *
+   * Attributed by measurement, per this comment's own convention: with that one
+   * file restored to its base text and nothing else changed, this test is 6
+   * passed at 229. The builder reported the bump rather than taking it, which
+   * is correct — `src/game/` is excluded from its brief.
    */
-  TREE_WIDE: 229,
+  TREE_WIDE: 231,
 } as const;
 
 // ---------------------------------------------------------------------------
