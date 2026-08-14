@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-14T15-25-19-615Z-24660",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/game/guaranteeTags.test.ts"
+  ],
+  "budgetSeconds": 400,
+  "startedAtIso": "2026-08-14T15:25:19.615Z",
+  "startedAtMs": 1786721119615,
+  "cwd": "/home/user/wt-empire-honesty",
+  "commit": "b3565c87073e628041703177876772ca54666ee4",
+  "branch": "claude/empire-shell-honesty",
+  "dirty": 3,
+  "dirtyPaths": [
+    "src/game/guaranteeTags.test.ts",
+    "src/shell/EmpireScreen.tsx",
+    "src/shell/shellWiring.test.ts"
+  ],
+  "runner": {
+    "pid": 24660,
+    "startTick": "406865",
+    "cmdline": "node tools/watchdog.mjs --budget 400 --id gtags-1 -- npx vitest run src/game/guaranteeTags.test.ts",
+    "bootId": "9a2cb2d2-fb56-4022-8ed1-6d554d4fac5c",
+    "bootEpochSeconds": 1786717051,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T15:25:19.635Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
