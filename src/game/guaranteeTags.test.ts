@@ -568,8 +568,25 @@ const GUARANTEE_COVERAGE = {
    * file restored to its base text and nothing else changed, this test is 6
    * passed at 229. The builder reported the bump rather than taking it, which
    * is correct — `src/game/` is excluded from its brief.
+   *
+   * ELEVENTH ROUND, 231 -> 232, AND IT IS A SELF-DESCRIBING SCOPING LIMIT.
+   * One paragraph, in `src/empire/empireForbiddenOutput.test.ts`, stating what
+   * a new dispatch-chain census's scoping rule catches and what it therefore
+   * misses — a walker written with a handler table is outside it. Same class as
+   * the two before it: a limit stated at the mechanism it limits, and the
+   * subject of its own check rather than commentary beside it.
+   *
+   * Attributed the same way. That round changed two files;
+   * `empireCore.test.ts` contributes ZERO and the whole +1 is the one paragraph.
+   *
+   * Three rounds running now. The eight-round asymmetry this comment records
+   * above — the scan demanding nothing of the sentence that claims something —
+   * has not reappeared since round nine, and the reason looks structural rather
+   * than lucky: those rounds were writing limits at mechanisms, which is the
+   * house style this scan was built to find, while the earlier ones were
+   * writing method notes about how a check used to be wrong.
    */
-  TREE_WIDE: 231,
+  TREE_WIDE: 232,
 } as const;
 
 // ---------------------------------------------------------------------------
