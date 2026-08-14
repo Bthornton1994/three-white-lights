@@ -882,7 +882,7 @@ const UNPINNED_PROSE_NUMBERS: readonly UnpinnedProseNumber[] = [
  */
 const NUMBER_COVERAGE = {
   /** Comment paragraphs under `src` carrying at least one tag. */
-  TAGGED_PARAGRAPHS: 64,
+  TAGGED_PARAGRAPHS: 65,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
@@ -903,7 +903,7 @@ const NUMBER_COVERAGE = {
    * for reasons of their own. THIS IS THE WEAKNESS MEASUREMENT, not a coverage
    * one: it says how little a small number resolving is worth.
    */
-  NAMED_BODIES: 55,
+  NAMED_BODIES: 56,
   NAMED_BODIES_HOLDING_ZERO: 44,
   NAMED_BODIES_HOLDING_ONE: 44,
   /**
@@ -1180,7 +1180,7 @@ function witnessKey(witness: MutationWitness): string {
  */
 const TRANSCRIPT_BAR = {
   /** Witness rows whose transcript is held to the rule. */
-  GRADED: 20,
+  GRADED: 21,
   /** ...and rows excused because their transcript predates it. */
   PREDATING: 37,
   /**
@@ -1328,10 +1328,10 @@ const MEASURED_SCALAR = /expected\s[+-]?\d+(?:\.\d+)?\sto\s/;
  * test rather than transcribed here, so it moves when the table does.
  */
 const TRANSPLANTED_NUMERIC_RULE = {
-  rows: 49,
-  flagged: 37,
-  numerals: 125,
-  unresolved: 65,
+  rows: 50,
+  flagged: 38,
+  numerals: 127,
+  unresolved: 67,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -1663,7 +1663,7 @@ const REPLACEMENTS_PREDATING_THE_RULE: readonly (readonly [string, number])[] = 
  */
 const REPLACEMENT_BAR = {
   /** Rows carrying a replacement, so a third party can apply the patch. */
-  REPRODUCIBLE: 7,
+  REPRODUCIBLE: 8,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2740,6 +2740,41 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     observed:
       'AssertionError: ?meet=live: state absent, serverPort present: expected false to be true',
     transcriptPredatesTheRule: true,
+  },
+  {
+    // THE MUTANT IS ONE ROW OF GDD §5's FLOOR, HARDCODED TO THE STRING IT
+    // ALREADY DRAWS. That is the whole point of it: `createEmpireState()` sets
+    // `gymBucks: 0` and nothing in the app steps the state — §11 gates §5's loop
+    // — so the mutated screen renders the SAME CHARACTER a player sees today.
+    //
+    // WHAT THAT MAKES INVISIBLE, measured on this tree rather than reasoned
+    // about. `npx tsc --noEmit` exits 0 (`value` is `string` either way). The
+    // browser tool's 254 checks report identically, because the DOM is the same
+    // bytes. And the assertion everybody reaches for first — read the testID,
+    // compare it to `'0'` — PASSES, which is why this row is the witness and not
+    // a value pin: the number is the same and only where it came from differs.
+    //
+    // The critic's own wider variant reddens two assertions rather than one: it
+    // deleted the import outright, leaving `src/shell/` with no edge into
+    // `src/empire/` at all, and the census beside this one goes red as well
+    // (`0 of the shell's mounted screens import from src/empire/: none`). The
+    // narrower mutant is recorded here because it is the harder catch — it keeps
+    // the import, keeps the hook, and breaks one row.
+    guarantee: 'every-drawn-empire-reading-comes-from-the-pure-state',
+    mutatedFile: 'src/shell/EmpireScreen.tsx',
+    mutated:
+      '        <Stat label={C.EMPIRE_STAT_BUCKS} value={String(state.gymBucks)} testID="empire-stat-bucks" />',
+    mutatedTo: '        <Stat label={C.EMPIRE_STAT_BUCKS} value="0" testID="empire-stat-bucks" />',
+    testFile: 'src/shell/shellWiring.test.ts',
+    redAssertion: "expect(unbound, unbound.join('\\n')).toEqual([]);",
+    observed:
+      'FAIL  src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own' +
+      ' module > EVERY reading the floor draws traces to the pure constructor, not to chrome copy' +
+      ' [every-drawn-empire-reading-comes-from-the-pure-state]\n' +
+      'AssertionError: src/shell/EmpireScreen.tsx draws "empire-stat-bucks" from "0", which does' +
+      ' not trace to createEmpireState() imported from src/empire/ — so that row is a hardcoded' +
+      ' mock-up of GDD §5 and every value assertion in the tree would still pass:' +
+      ' expected [ Array(1) ] to deeply equal []',
   },
   {
     // The mutant swapped the `useRef` initialiser's resume for a fresh

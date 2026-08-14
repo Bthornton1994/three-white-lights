@@ -431,12 +431,37 @@ function isLocationSearchRead(node: ts.Node): boolean {
   return false;
 }
 
-/** Every name declared in a module, so an identifier can be followed to its value. */
+/**
+ * Every name declared in a module, so an identifier can be followed to its value.
+ *
+ * DESTRUCTURED NAMES ARE IN HERE TOO, and they are mapped to the WHOLE
+ * declaration rather than to their own slot of it. `const [state] = useState(()
+ * => createEmpireState())` is the shape React hands every screen its state in,
+ * and without this arm `state` resolves to nothing and every tracer built on
+ * this map stops at the first hook.
+ *
+ * THE IMPRECISION IS DELIBERATE AND IS STATED RATHER THAN HIDDEN: mapping a
+ * bound name to the whole declaration means `const [a, b] = [pure(), 'copy']`
+ * reads `b` as coming from `pure()` too. It is the direction that OVER-accepts,
+ * so a check built on it is weaker than it looks on a multi-element pattern and
+ * exactly as strong as it looks on the single-element ones the shell actually
+ * writes. Narrowing it would mean re-implementing destructuring assignment,
+ * which is a bigger surface to get wrong than the case it would buy.
+ */
 function declarationsIn(ast: ts.SourceFile): ReadonlyMap<string, ts.Node> {
   const out = new Map<string, ts.Node>();
+  const bindNamesOf = (name: ts.BindingName, declaration: ts.Node): void => {
+    if (ts.isIdentifier(name)) {
+      out.set(name.text, declaration);
+      return;
+    }
+    for (const element of name.elements) {
+      if (ts.isBindingElement(element)) bindNamesOf(element.name, declaration);
+    }
+  };
   const visit = (node: ts.Node): void => {
     if (ts.isFunctionDeclaration(node) && node.name !== undefined) out.set(node.name.text, node);
-    else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) out.set(node.name.text, node);
+    else if (ts.isVariableDeclaration(node)) bindNamesOf(node.name, node);
     ts.forEachChild(node, visit);
   };
   ts.forEachChild(ast, visit);
@@ -636,6 +661,10 @@ describe('the browser’s URL actually reaches the route graph', () => {
       `const a = <AppShell search={location.search}>{null}</AppShell>;`,
       // Through two names and a ternary.
       `const raw = window.location.search;\nconst s = raw ?? null;\nconst a = <AppShell search={s} />;`,
+      // THROUGH A DESTRUCTURED NAME, which is how React hands anything back and
+      // which `declarationsIn` could not follow until the arm above was added.
+      // Without it `search` resolves to no declaration and this reads as starved.
+      `const [search] = useState(window.location.search);\nconst a = <AppShell search={search} />;`,
     ];
     for (const text of passes) {
       expect(verdictFor(text)?.fedBy, text).not.toBeNull();
@@ -1076,6 +1105,362 @@ describe('every screen the shell mounts reports its beat', () => {
       mounts.filter((mount) => mount.declaresPhase).length,
       'no mounted screen declares a phase callback at all, so the two checks above walked an empty list',
     ).toBe(SCREEN_REPORTING.DECLARING_A_PHASE);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WHERE THE NUMBERS ON GDD §5's FLOOR COME FROM
+// ---------------------------------------------------------------------------
+
+/**
+ * ===========================================================================
+ * THE DEFECT THIS BLOCK EXISTS TO CLOSE: A SCREEN THAT COULD BE A MOCK-UP AND
+ * NOTHING WOULD SAY SO
+ * ===========================================================================
+ * `EmpireScreen.tsx` opens by claiming that every reading it paints is a field
+ * of the pure state object. That sentence was load-bearing — it is the whole of
+ * why the Empire surface counted as GDD §5 reaching a player at all — and
+ * NOTHING IN THE REPOSITORY COULD HAVE REDDENED IF IT STOPPED BEING TRUE.
+ *
+ * MEASURED, not suspected. Replacing `createEmpireState()` with four hardcoded
+ * strings — leaving `src/shell/` with no import edge into `src/empire/`
+ * anywhere — left `src/shell`'s node tests at 92 passed and `npx tsc --noEmit`
+ * at exit 0. The browser tool was no better and could not have been: the four
+ * testIDs holding the readings occurred exactly once each in the whole tree, in
+ * the screen itself, and the check filed under "it is drawing real
+ * `createEmpireState()` fields" resolved `onScreen('empire-stats')`, which is an
+ * opacity read on the container. The DOM is byte-identical under the mutation,
+ * so all 254 browser checks reported the same thing.
+ *
+ * ===========================================================================
+ * AND WHY THE OBVIOUS CHECK IS NOT THE CHECK
+ * ===========================================================================
+ * `expect(read('empire-stat-bucks')).toBe('0')` is the shape everybody reaches
+ * for first and it is worth nothing here. EVERY field on this floor is a
+ * constant of the constructor — `gymBucks: 0`, `reputation: 0`, `roster: []`,
+ * the opening equipment rung — and nothing in the app steps the state, because
+ * GDD §11 gates §5's loop on a human ruling that has not happened. So the
+ * rendered value and the hardcoded placeholder are THE SAME STRING, and a value
+ * assertion cannot tell a wired screen from a mock-up of one. It is the
+ * `!visible('meet-recap')` shape one level out: the two things being told apart
+ * cannot differ, whatever the code does.
+ *
+ * SO THE PROPERTY ASSERTED IS PROVENANCE, NOT VALUE. Every element the floor
+ * draws that carries both a testID and a value must have that value fed,
+ * directly or through names this file can follow, by a call to the pure
+ * constructor IMPORTED FROM `src/empire/`. Hardcode a string, read a
+ * `SHELL_COPY` constant, or declare a local function spelled
+ * `createEmpireState` and return an object literal from it, and the row is
+ * named in the failure. That last one is why the import edge is resolved rather
+ * than the callee matched by spelling: `progression.test.ts` shipped a seal
+ * check that matched its callee by identifier TEXT, and a local shim with the
+ * right name typechecked clean past it.
+ *
+ * ===========================================================================
+ * WHAT THIS DOES NOT COVER, SO NOBODY READS IT AS MORE
+ * ===========================================================================
+ *   - IT IS A SCAN, NOT A RENDER. It says the value expression traces to the
+ *     constructor; it does not say React drew it. That half is
+ *     `tools/verify-shell-route.mjs`, which reads the four rows off the DOM of a
+ *     floor a mouse opened — and which cannot see provenance, because the DOM is
+ *     identical under the mutation above. Two instruments, neither sufficient.
+ *   - ITS UNIT IS A ROW, NOT A GLYPH. A bare numeral typed straight into a
+ *     `<Text>` child is not a row and is not reached here. What keeps that
+ *     narrow is that the screen's readings are the only numbers on it, which is
+ *     a fact about today's file rather than a property this enforces.
+ *   - IT SAYS NOTHING ABOUT WHETHER THE READING IS CORRECT. `gymBucks` drawn
+ *     into the reputation row traces perfectly and is wrong.
+ */
+const DRAWN_FROM_PURE_STATE = Object.freeze({
+  /**
+   * The screen whose header claims its readings come from pure state.
+   *
+   * NAMED RATHER THAN DISCOVERED, and the census below is what stops that being
+   * a list somebody has to remember: the set of shell-mounted screens reaching
+   * into the pure directory is read off `AppShell.tsx`'s own JSX and pinned, so
+   * a SECOND screen drawing §5 state announces itself here instead of inheriting
+   * nothing.
+   */
+  SCREEN_FILE: 'src/shell/EmpireScreen.tsx',
+  /** The pure constructor a reading has to come from. */
+  CONSTRUCTOR: 'createEmpireState',
+  /** ...and the directory it has to be imported from, resolved rather than spelled. */
+  PURE_DIRECTORY: 'src/empire/',
+  /** The two attributes that, together, make an element a drawn reading. */
+  VALUE_PROP: 'value',
+  TEST_ID_PROP: 'testID',
+  /** Follow budget, same number and same reason as `HAND_OFF.MAX_DEPTH`. */
+  MAX_DEPTH: 8,
+  /**
+   * How many readings the floor draws today: Gym Bucks, reputation, roster size
+   * and the equipment rung.
+   *
+   * A COUNT AND NOT A BOUND. Both filters below are empty when the discovery
+   * finds nothing, which is exactly how a scan that stopped matching looks.
+   */
+  READINGS: 4,
+  /**
+   * How many screens the shell mounts that import from the pure directory at all.
+   *
+   * One. It moves to zero under the mutation this block was written against, and
+   * to two when a second surface starts drawing §5 state — which is the moment
+   * somebody has to decide whether `SCREEN_FILE` above is still the whole story.
+   */
+  SCREENS_READING_PURE_STATE: 1,
+});
+
+/** Is `name`, as used inside `module`, the pure constructor imported from `src/empire/`? */
+function isPureConstructorImport(module: Module, name: string, loader: Loader): boolean {
+  const via = importsIn(module.ast).get(name);
+  if (via === undefined || via.as !== DRAWN_FROM_PURE_STATE.CONSTRUCTOR) return false;
+  const target = loader(module.file, via.from);
+  return target !== null && target.file.startsWith(DRAWN_FROM_PURE_STATE.PURE_DIRECTORY);
+}
+
+/**
+ * Does the value of `node` come, however indirectly, from a call to the pure
+ * constructor?
+ *
+ * The same walk `readsPlatformSearch` does, with "a `location.search` read"
+ * swapped for "a call to a name imported from the pure directory". Written as
+ * its own function rather than as a parameterised one because the two ask
+ * different questions of the leaf — one about a property access, one about a
+ * call whose callee has to be resolved through the import map — and a shared
+ * skeleton with two predicates hanging off it reads worse than two short walks.
+ */
+function tracesToPureState(
+  node: ts.Node,
+  module: Module,
+  loader: Loader,
+  depth = 0,
+  seen: Set<string> = new Set(),
+): boolean {
+  if (depth > DRAWN_FROM_PURE_STATE.MAX_DEPTH) return false;
+  const locals = declarationsIn(module.ast);
+  const imported = importsIn(module.ast);
+  let found = false;
+  const visit = (child: ts.Node): void => {
+    if (found) return;
+    if (
+      ts.isCallExpression(child) &&
+      ts.isIdentifier(child.expression) &&
+      isPureConstructorImport(module, child.expression.text, loader)
+    ) {
+      found = true;
+      return;
+    }
+    if (ts.isIdentifier(child)) {
+      const key = `${module.file}#${child.text}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        const local = locals.get(child.text);
+        if (local !== undefined) {
+          if (tracesToPureState(local, module, loader, depth + 1, seen)) found = true;
+          return;
+        }
+        const via = imported.get(child.text);
+        if (via !== undefined) {
+          const next = loader(module.file, via.from);
+          const target = next === null ? undefined : declarationsIn(next.ast).get(via.as);
+          if (next !== null && target !== undefined) {
+            if (tracesToPureState(target, next, loader, depth + 1, seen)) found = true;
+          }
+          return;
+        }
+      }
+      return;
+    }
+    ts.forEachChild(child, visit);
+  };
+  visit(node);
+  return found;
+}
+
+/** One element the floor draws that carries a reading. */
+interface DrawnReading {
+  /** The testID as written, for the failure text. */
+  readonly testID: string;
+  /** The value expression as written, so a failure names what was drawn instead. */
+  readonly expression: string;
+  /** Does that expression trace to the pure constructor? */
+  readonly fromPureState: boolean;
+}
+
+/**
+ * Every drawn reading in a module: an element given BOTH a testID and a value.
+ *
+ * That pair is what makes an element a reading rather than chrome. The stats
+ * container carries a testID and no value; the label is a `label` attribute and
+ * not a `value`; the title and the lead are neither. So the set discovered is
+ * the rows, and a fifth row inherits the check by being a row.
+ */
+function drawnReadingsIn(module: Module, loader: Loader): readonly DrawnReading[] {
+  const readings: DrawnReading[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) {
+      let testID: string | null = null;
+      let value: ts.Node | null = null;
+      for (const attribute of node.attributes.properties) {
+        if (!ts.isJsxAttribute(attribute)) continue;
+        const name = attribute.name.getText(module.ast);
+        const initializer = attribute.initializer;
+        if (initializer === undefined) continue;
+        if (name === DRAWN_FROM_PURE_STATE.TEST_ID_PROP) testID = initializer.getText(module.ast);
+        if (name === DRAWN_FROM_PURE_STATE.VALUE_PROP) value = initializer;
+      }
+      if (testID !== null && value !== null) {
+        readings.push({
+          testID,
+          expression: value.getText(module.ast),
+          fromPureState: tracesToPureState(value, module, loader),
+        });
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(module.ast);
+  return readings;
+}
+
+/** The screens the shell mounts that reach into the pure directory at all. */
+function screensReadingPureState(): readonly string[] {
+  const files = [...new Set(shellScreens().map((mount) => mount.file))];
+  return files
+    .filter((file) =>
+      [...importsIn(parseModule(file, source(file)).ast).values()].some((via) => {
+        const target = loadFromDisk(file, via.from);
+        return target !== null && target.file.startsWith(DRAWN_FROM_PURE_STATE.PURE_DIRECTORY);
+      }),
+    )
+    .sort();
+}
+
+describe('the numbers on GDD §5’s floor come from GDD §5’s own module', () => {
+  /**
+   * A loader carrying one fake pure module and one fake chrome module, so both
+   * verdicts can be driven without inventing files in the tree. The chrome
+   * module is the one that matters: it is the shape the mutation took.
+   */
+  const fixtureLoader: Loader = (_from, specifier) => {
+    if (specifier.includes('empireCore')) {
+      return parseModule(
+        'src/empire/empireCore.ts',
+        'export function createEmpireState() { return { gymBucks: 0 }; }',
+      );
+    }
+    if (specifier.includes('shellTuning')) {
+      return parseModule(
+        'src/shell/shellTuning.ts',
+        "export const SHELL_COPY = Object.freeze({ EMPIRE_BUCKS: '0' });",
+      );
+    }
+    return null;
+  };
+
+  const verdictFor = (text: string): DrawnReading | undefined =>
+    drawnReadingsIn(parseModule('src/shell/Fixture.tsx', text), fixtureLoader)[0];
+
+  const IMPORTS_PURE = "import { createEmpireState } from '../empire/empireCore';\n";
+  const IMPORTS_CHROME = "import { SHELL_COPY } from './shellTuning';\n";
+
+  it('CONTROL: the tracer sees the provenance, and sees it go missing', () => {
+    // A scan that has stopped matching agrees with every file it is pointed at,
+    // so both halves are written out. The rejections are the half that matters:
+    // every one of them is a floor that renders identically to the real one.
+    const passes = [
+      // What the screen does today: the hook's state, destructured, stringified.
+      `${IMPORTS_PURE}const [state] = useState(() => createEmpireState());\n` +
+        `const a = <Stat testID="empire-stat-bucks" value={String(state.gymBucks)} />;`,
+      // Read straight off the call, no hook in between.
+      `${IMPORTS_PURE}const a = <Stat testID="s" value={createEmpireState().axes.equipment} />;`,
+      // Through a second name, which is the restructure a regex would break on.
+      `${IMPORTS_PURE}const gym = createEmpireState();\nconst shown = String(gym.gymBucks);\n` +
+        `const a = <Stat testID="s" value={shown} />;`,
+      // Imported under a different local name.
+      `import { createEmpireState as openingGym } from '../empire/empireCore';\n` +
+        `const a = <Stat testID="s" value={String(openingGym().gymBucks)} />;`,
+    ];
+    for (const text of passes) {
+      expect(verdictFor(text)?.fromPureState, text).toBe(true);
+    }
+
+    const failures = [
+      // THE MUTATION, in the shape a critic actually planted it: the import is
+      // gone and the row draws chrome copy. `tsc` is clean and the DOM is
+      // identical.
+      `${IMPORTS_CHROME}const a = <Stat testID="empire-stat-bucks" value={SHELL_COPY.EMPIRE_BUCKS} />;`,
+      // The bare literal, which is what a mock-up looks like.
+      `${IMPORTS_PURE}const a = <Stat testID="s" value={'0'} />;`,
+      // THE LOCAL SHIM. Right spelling, no import edge — the exact shape that
+      // walked past `progression.ts`'s seal check when it matched by text.
+      `function createEmpireState() { return { gymBucks: 0 }; }\n` +
+        `const a = <Stat testID="s" value={String(createEmpireState().gymBucks)} />;`,
+      // Imported from somewhere that is not the pure directory.
+      `import { createEmpireState } from './shellTuning';\n` +
+        `const a = <Stat testID="s" value={String(createEmpireState().gymBucks)} />;`,
+      // The constructor is imported and called, and its result goes SOMEWHERE
+      // ELSE — the shape a "does the file mention createEmpireState" scan passes.
+      `${IMPORTS_PURE}${IMPORTS_CHROME}const unused = createEmpireState();\n` +
+        `const a = <Stat testID="s" value={SHELL_COPY.EMPIRE_BUCKS} />;`,
+    ];
+    for (const text of failures) {
+      expect(verdictFor(text)?.fromPureState, text).toBe(false);
+    }
+
+    // ...and the row finder itself can come back empty, so "no readings" is
+    // distinguishable from "a reading with nothing behind it". A testID with no
+    // value is chrome (the stats container); a value with no testID is not a row
+    // this file can name in a failure.
+    for (const notARow of [
+      `${IMPORTS_PURE}const a = <View testID="empire-stats">{null}</View>;`,
+      `${IMPORTS_PURE}const a = <Stat value={String(createEmpireState().gymBucks)} />;`,
+    ]) {
+      expect(drawnReadingsIn(parseModule('src/shell/Fixture.tsx', notARow), fixtureLoader)).toEqual(
+        [],
+      );
+    }
+  });
+
+  it('EVERY reading the floor draws traces to the pure constructor, not to chrome copy [every-drawn-empire-reading-comes-from-the-pure-state]', () => {
+    const file = DRAWN_FROM_PURE_STATE.SCREEN_FILE;
+    const readings = drawnReadingsIn(parseModule(file, source(file)), loadFromDisk);
+
+    // THE ASSERTION THE HARDCODING MUTATION REDDENS. Nothing here reads a
+    // rendered NUMBER: every field on this floor is a constant of the
+    // constructor, so the number is the same either way and only where it came
+    // from can tell the two apart.
+    const unbound = readings
+      .filter((reading) => !reading.fromPureState)
+      .map(
+        (reading) =>
+          `${file} draws ${reading.testID} from ${reading.expression}, which does not trace to ` +
+          `${DRAWN_FROM_PURE_STATE.CONSTRUCTOR}() imported from ${DRAWN_FROM_PURE_STATE.PURE_DIRECTORY} — ` +
+          'so that row is a hardcoded mock-up of GDD §5 and every value assertion in the tree would still pass',
+      );
+    expect(unbound, unbound.join('\n')).toEqual([]);
+
+    // NON-VACUITY, AS A COUNT RATHER THAN A BOUND. The filter above is empty
+    // when the discovery finds nothing, which is how a scan that stopped
+    // matching looks from the outside.
+    expect(
+      readings.length,
+      `${file} draws ${readings.length} reading(s): ${readings.map((r) => r.testID).join(', ')}`,
+    ).toBe(DRAWN_FROM_PURE_STATE.READINGS);
+  });
+
+  it('and it is the ONLY screen the shell mounts that reaches into the pure module', () => {
+    // The census that keeps `SCREEN_FILE` above from being a list somebody has to
+    // remember. Read off `AppShell.tsx`'s own JSX, so a second surface drawing
+    // §5 state is announced here rather than absorbed — and so the mutation that
+    // removes the import edge altogether reddens on the way in as well as on the
+    // rows.
+    const reaching = screensReadingPureState();
+    expect(
+      reaching,
+      `${reaching.length} of the shell's mounted screens import from ${DRAWN_FROM_PURE_STATE.PURE_DIRECTORY}: ` +
+        `${reaching.join(', ') || 'none'}`,
+    ).toEqual([DRAWN_FROM_PURE_STATE.SCREEN_FILE]);
+    expect(reaching.length).toBe(DRAWN_FROM_PURE_STATE.SCREENS_READING_PURE_STATE);
   });
 });
 
