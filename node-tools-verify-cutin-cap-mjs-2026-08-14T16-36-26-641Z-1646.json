@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-cutin-cap-mjs-2026-08-14T16-36-26-641Z-1646",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-cutin-cap.mjs",
+    "--url",
+    "http://localhost:8099"
+  ],
+  "budgetSeconds": 600,
+  "startedAtIso": "2026-08-14T16:36:26.641Z",
+  "startedAtMs": 1786725386641,
+  "cwd": "/home/user/wt-empire-honesty",
+  "commit": "24e13059e2de59f3ceac594f34bf62ae92c00d02",
+  "branch": "claude/empire-shell-honesty",
+  "dirty": 4,
+  "dirtyPaths": [
+    ".gauntlet/shots/cutin/baseline-no-cutin.png",
+    ".gauntlet/shots/cutin/frames.json",
+    ".gauntlet/shots/lift-press/press.json",
+    ".gauntlet/shots/meet/sound.json"
+  ],
+  "runner": {
+    "pid": 1646,
+    "startTick": "833567",
+    "cmdline": "node tools/watchdog.mjs --budget 600 --id cutin-cap -- node tools/verify-cutin-cap.mjs --url http://localhost:8099",
+    "bootId": "9a2cb2d2-fb56-4022-8ed1-6d554d4fac5c",
+    "bootEpochSeconds": 1786717051,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T16:36:26.664Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
