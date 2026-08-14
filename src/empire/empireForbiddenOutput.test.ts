@@ -1022,6 +1022,40 @@ const DECLARED_BRANDED_STRING_POSITIONS: readonly string[] = Object.freeze([
   'social.ts#socialVocabularyFaults#return[]',
 ]);
 
+/**
+ * Every method this directory calls on a value its caller handed it, by name.
+ *
+ * the enumeration behind the `member-of-parameter` arm. Every one of these is a
+ * read — `includes`, `slice`, `map` — and none of them hands the callee
+ * anything this directory chose. The list is what makes that checkable instead
+ * of asserted: `sink.report(<a banned name>)` lands here too, under a name that
+ * is not on this list, so it is red by file, by enclosing function, by member
+ * and by argument count.
+ *
+ * Its limit, in the mechanism's own terms: this is a census of SITES, so an
+ * existing site starting to pass a banned name at an argument position it
+ * already had moves nothing here. The argument count in each key covers the
+ * widening case only, exactly as `DECLARED_CALLBACK_SITES`'s `x1` does; what
+ * covers the other half for the exported-callback channel is the callback pass,
+ * and this arm has no equivalent because nothing here is a caller-supplied
+ * FUNCTION as far as any type in the directory says.
+ */
+const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
+  'empireCore.ts#idleLedger#ledger.filter x1',
+  'empireCore.ts#progressionLedger#ledger.filter x1',
+  'empireInvariant.ts#composeTrainingIqRate#state.filter x1',
+  'empireInvariant.ts#idleDayLedger#entries.filter x1',
+  'empireInvariant.ts#outputSeries#entries.filter x1',
+  'empireInvariant.ts#progressionDayLedger#entries.filter x1',
+  'empireInvariant.ts#savingForPhysio#order.includes x1',
+  'empireInvariant.ts#stepGym#gym.find x1',
+  'empireInvariant.ts#stepGym#gym.map x1',
+  'engagement.ts#moreEngagedByTrainedDay#history.includes x1',
+  'social.ts#rankLeaderboard#entries.map x1',
+  'social.ts#visitRefusals#context.some x1',
+  'social.ts#visitRefusals#context.some x1',
+]);
+
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const SURFACE_CENSUS = Object.freeze({
   MODULES: 10,
@@ -7251,13 +7285,13 @@ const ESCAPE_CHANNELS: readonly EscapeChannel[] = Object.freeze([
   Object.freeze({
     id: 'returned-closure',
     what: 'a function handed back, whose RESULT is the payload and which only the caller can invoke',
-    scannedFor: 'a `return` of a function expression or arrow, or a declared function-typed return',
+    scannedFor: 'a function expression, arrow or method reachable from a `return` through object/array literals, spreads, casts, `?:`, `??` and `Object.freeze`, or a declared function-typed return',
     reachableFromOutside: true,
   }),
   Object.freeze({
     id: 'deferred-completion',
     what: 'a value delivered after the call returns — `async`, a generator, a thenable',
-    scannedFor: 'an `async` modifier, a generator asterisk, or `new Promise`',
+    scannedFor: 'an `async` modifier, a generator asterisk, `new Promise`, or a `then` member',
     reachableFromOutside: true,
   }),
 ]);
@@ -7278,6 +7312,32 @@ interface ChannelCensus {
    * unclassified escape-shaped node is exactly where the next channel arrives.
    */
   readonly freshReceivers: readonly string[];
+  /**
+   * Every CALL in the directory, by what its callee resolves to.
+   *
+   * The arm census CLAUDE.md's "a domain says which inputs you offered, not
+   * which branches ran" asks for, applied to a scan rather than to a drive: the
+   * arms the resolver DECLARES are `OWNER_KINDS` and the arms the walk REACHED
+   * are the non-zero entries here, and both are pinned. An arm that stops being
+   * produced is red, an arm that starts being produced is red, and nothing
+   * lands outside the table.
+   */
+  readonly callTargets: Readonly<Record<OwnerKind, number>>;
+  /** The same for every write, by whose memory the receiver resolves to. */
+  readonly writeOwners: Readonly<Record<OwnerKind, number>>;
+  /**
+   * Every method called ON a caller-supplied value, named individually.
+   *
+   * The `member-of-parameter` arm is not empty and pinning it as a count alone
+   * would be the weaker half. `sink.report(<a banned name>)` is a call into a
+   * function the caller supplied, reached through a property rather than
+   * through a parameter binding, and it sits in this arm beside fifteen
+   * ordinary reads like `trainedDays.includes(day)`. This walk cannot tell
+   * those apart — the method was on the object before the call — so the arm is
+   * enumerated by name instead, the way `DECLARED_FRESH_RECEIVERS` is, and a
+   * sixteenth is a line somebody signs rather than a number that drifts.
+   */
+  readonly memberCallsOnParameters: readonly string[];
   /**
    * What is actually passed at every internal callback parameter, by syntax.
    *
@@ -7363,6 +7423,66 @@ const AMBIENT_OBJECTS: readonly string[] = Object.freeze(['globalThis', 'console
 /** The member names a caller's coercion reaches without ever writing a call. */
 const COERCION_MEMBERS: readonly string[] = Object.freeze(['toString', 'toJSON', 'valueOf']);
 
+/** The member `await` calls. A thenable is a deferred completion with no `Promise` in it. */
+const THENABLE_MEMBER = 'then';
+
+/**
+ * How many alias hops the resolver follows before it gives up and says so.
+ *
+ * A cost knob and a termination guard, not a coverage one: `const a = b; const
+ * b2 = a;` is a chain, and a cycle the checker admits would otherwise spin.
+ * Giving up is recorded as `unclassified` and named, never as "no channel".
+ */
+const ALIAS_HOPS_MAX = 64;
+
+/**
+ * The arms a receiver or a callee can resolve to, enumerated.
+ *
+ * Every write and every call in the directory lands in exactly one of these,
+ * and the census pins the count per arm. That is what replaces the silent
+ * `else`: before this round the mutation arm had three branches and the
+ * callback arm one, and anything matching none of them was recorded under no
+ * channel and in no list. Two arms are impossible for a write, because
+ * `receiverRoot` strips member access before resolving; they are pinned at zero
+ * rather than omitted, so a walk that started producing them is red.
+ */
+type OwnerKind =
+  | 'parameter'
+  | 'module-variable'
+  | 'local'
+  | 'function'
+  | 'member'
+  | 'member-callback'
+  | 'member-of-parameter'
+  | 'fresh'
+  | 'unclassified';
+
+const OWNER_KINDS: readonly OwnerKind[] = Object.freeze([
+  'parameter',
+  'module-variable',
+  'local',
+  'function',
+  'member',
+  'member-callback',
+  'member-of-parameter',
+  'fresh',
+  'unclassified',
+]);
+
+interface ResolvedOwner {
+  readonly kind: OwnerKind;
+  /** The declaration the chain ended at, for the joins that need identity. */
+  readonly declaration: ts.Node | null;
+  /** Enough to name the site in a failure message. */
+  readonly detail: string;
+}
+
+const emptyOwnerTable = (): Record<OwnerKind, number> => {
+  const table = {} as Record<OwnerKind, number>;
+  for (const kind of OWNER_KINDS) table[kind] = 0;
+  return table;
+};
+
 /**
  * Walk the shipped modules and count every escape site, by channel.
  *
@@ -7383,6 +7503,9 @@ function channelCensusOf(
   const sites = emptyChannelTable<string[]>(() => []);
   const byModule = emptyChannelTable<Record<string, number>>(() => ({}));
   const freshReceivers: string[] = [];
+  const callTargets = emptyOwnerTable();
+  const writeOwners = emptyOwnerTable();
+  const memberCallsOnParameters: string[] = [];
   const internalCallbackArguments: string[] = [];
   const wrapCalls: Record<string, number> = {};
   const modules: string[] = [];
@@ -7398,21 +7521,45 @@ function channelCensusOf(
     let symbol = checker.getSymbolAtLocation(node);
     if (symbol === undefined) return null;
     if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) symbol = checker.getAliasedSymbol(symbol);
-    return symbol.declarations?.[0] ?? null;
+    // THE VALUE DECLARATION FIRST, and the reason is measured rather than
+    // tidy. `declarations[0]` for `String` is `interface String` — the type
+    // half of a merged declaration — so 26 calls in this directory resolved to
+    // an `InterfaceDeclaration` and would have been filed as unclassifiable.
+    // A call invokes a VALUE, so the value declaration is the one to follow.
+    return symbol.valueDeclaration ?? symbol.declarations?.[0] ?? null;
+  };
+
+  /**
+   * Past every cast, parenthesis and non-null assertion — and nothing else.
+   *
+   * Split out of `receiverRoot` because a callee is not a receiver: in `a.b()`
+   * the thing CALLED is `b` and the thing WRITTEN is `a`, and a single stripper
+   * that removed member access as well could not tell those two apart. The
+   * twelfth bypass lived in exactly that confusion, one level up.
+   */
+  const past = (expression: ts.Expression): ts.Expression => {
+    let at: ts.Expression = expression;
+    for (;;) {
+      if (
+        ts.isNonNullExpression(at) ||
+        ts.isParenthesizedExpression(at) ||
+        ts.isAsExpression(at) ||
+        ts.isSatisfiesExpression(at) ||
+        ts.isTypeAssertionExpression(at)
+      ) {
+        at = at.expression;
+        continue;
+      }
+      return at;
+    }
   };
 
   /** The root of a member chain: `a.b[c].d` is `a`, past any cast or parenthesis. */
   const receiverRoot = (expression: ts.Expression): ts.Expression => {
-    let at: ts.Expression = expression;
+    let at: ts.Expression = past(expression);
     for (;;) {
-      if (
-        ts.isPropertyAccessExpression(at) ||
-        ts.isElementAccessExpression(at) ||
-        ts.isNonNullExpression(at) ||
-        ts.isParenthesizedExpression(at) ||
-        ts.isAsExpression(at)
-      ) {
-        at = at.expression;
+      if (ts.isPropertyAccessExpression(at) || ts.isElementAccessExpression(at)) {
+        at = past(at.expression);
         continue;
       }
       return at;
@@ -7443,6 +7590,250 @@ function channelCensusOf(
   const isExported = (declaration: ts.Node): boolean =>
     ts.canHaveModifiers(declaration) &&
     (ts.getModifiers(declaration) ?? []).some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
+
+  /** A destructured binding stands for whatever the pattern was destructured FROM. */
+  const bindingHost = (declaration: ts.Declaration): ts.Node => {
+    let at: ts.Node = declaration;
+    while (ts.isBindingElement(at) || ts.isObjectBindingPattern(at) || ts.isArrayBindingPattern(at)) {
+      at = at.parent;
+    }
+    return at;
+  };
+
+  const nameOf = (node: ts.Node): string => {
+    if (
+      (ts.isParameter(node) || ts.isVariableDeclaration(node) || ts.isFunctionDeclaration(node)) &&
+      node.name !== undefined
+    ) {
+      return node.name.getText(node.getSourceFile());
+    }
+    return ts.SyntaxKind[node.kind];
+  };
+
+  /**
+   * Whose binding an expression resolves to, FOLLOWING ALIASES.
+   *
+   * This is the reformulation the twelfth bypass forced, and the whole of it is
+   * that "which spelling did the author use" becomes "which symbol is invoked".
+   * The walk already resolved symbols one channel over — the throw wrap is
+   * matched by declaration and not by text — and the callback arm matched a
+   * bare `Identifier` whose declaration happened to be a `Parameter`. A local
+   * alias of that parameter, cast or not, is a `VariableDeclaration`, so the
+   * arm missed it and there was no `else` to notice.
+   *
+   * Its limit, stated because no resolution reaches past it: a callee that is
+   * the RESULT of a call — `pick()(slot, name)` — has no declaration to
+   * resolve, and this returns `fresh` for it. That is not silence: `fresh` and
+   * `unclassified` are both named into `freshReceivers` and counted in the arm
+   * census, so the outcome is "somebody look at this line" rather than "no
+   * channel". The named catcher for that route is `DECLARED_FRESH_RECEIVERS`,
+   * which is a set equality in both directions.
+   */
+  const ownerOf = (expression: ts.Expression): ResolvedOwner => {
+    const seen = new Set<ts.Node>();
+    let at: ts.Expression = receiverRoot(expression);
+    for (let guard = 0; guard < ALIAS_HOPS_MAX; guard += 1) {
+      if (!ts.isIdentifier(at)) {
+        return { kind: 'fresh', declaration: null, detail: ts.SyntaxKind[at.kind] };
+      }
+      const resolved = resolvedDeclaration(at);
+      if (resolved === null) {
+        return { kind: 'unclassified', declaration: null, detail: `unresolved:${at.text}` };
+      }
+      const host = bindingHost(resolved);
+      if (ts.isParameter(host)) {
+        return { kind: 'parameter', declaration: host, detail: nameOf(host) };
+      }
+      if (
+        ts.isFunctionDeclaration(host) ||
+        ts.isMethodDeclaration(host) ||
+        ts.isFunctionExpression(host) ||
+        ts.isArrowFunction(host) ||
+        ts.isClassDeclaration(host)
+      ) {
+        return { kind: 'function', declaration: host, detail: nameOf(host) };
+      }
+      if (ts.isVariableDeclaration(host)) {
+        const initial = host.initializer === undefined ? null : receiverRoot(host.initializer);
+        if (initial !== null && ts.isIdentifier(initial) && !seen.has(initial)) {
+          seen.add(initial);
+          at = initial;
+          continue;
+        }
+        if (initial !== null && (ts.isArrowFunction(initial) || ts.isFunctionExpression(initial))) {
+          return { kind: 'function', declaration: host, detail: nameOf(host) };
+        }
+        return {
+          kind: atModuleScope(host) ? 'module-variable' : 'local',
+          declaration: host,
+          detail: nameOf(host),
+        };
+      }
+      return { kind: 'unclassified', declaration: host, detail: ts.SyntaxKind[host.kind] };
+    }
+    return { kind: 'unclassified', declaration: null, detail: 'alias-cycle' };
+  };
+
+  /**
+   * What a CALL invokes, which is a different question from whose memory a
+   * write lands in.
+   *
+   * `a.b()` is a `member` call and its holder is resolved separately, because
+   * calling a method on a value the caller handed in is a route this walk can
+   * SEE but cannot classify — a method that was already on the object is the
+   * caller's own code only if the caller supplied the object AND the function.
+   * It is counted as its own arm, `member-of-parameter`, and pinned at whatever
+   * the directory really has rather than folded into the callback channel.
+   */
+  const callTargetOf = (expression: ts.Expression): ResolvedOwner => {
+    const at = past(expression);
+    if (ts.isPropertyAccessExpression(at) || ts.isElementAccessExpression(at)) {
+      const holder = ownerOf(at.expression);
+      if (holder.kind !== 'parameter') {
+        return {
+          kind: 'member',
+          declaration: holder.declaration,
+          detail: `member-of-${holder.kind}:${holder.detail}`,
+        };
+      }
+      const member = ts.isPropertyAccessExpression(at) ? at.name : null;
+      const declared = member === null ? null : resolvedDeclaration(member);
+      // THE ONE THING THAT SEPARATES A CALLBACK FROM A READ, and it is a
+      // syntactic fact rather than a judgement: `filter` is a MethodSignature
+      // that lib.d.ts put on the array type, and `gymBucksPerHour` is a
+      // PROPERTY whose declared type is a function type — a slot the CALLER
+      // filled. Both are `a.b()` and only the second is a call into code the
+      // caller supplied.
+      const callerSupplied =
+        declared !== null &&
+        (ts.isPropertySignature(declared) || ts.isPropertyDeclaration(declared)) &&
+        declared.type !== undefined &&
+        ts.isFunctionTypeNode(declared.type);
+      return {
+        kind: callerSupplied ? 'member-callback' : 'member-of-parameter',
+        declaration: holder.declaration,
+        detail: `${holder.detail}.${member === null ? ts.SyntaxKind[at.kind] : member.text}`,
+      };
+    }
+    return ownerOf(at);
+  };
+
+  /**
+   * Every function value reachable from a returned expression, by member path.
+   *
+   * IT FOLLOWS A RETURNED IDENTIFIER BACK TO ITS LOCAL DECLARATION, and that
+   * half was added after the first version's declared limit was PLANTED rather
+   * than believed. That version said `const shape = { peek }; return shape;`
+   * was outside it and named the `local` arm of the write census and instrument
+   * A as what covered the route instead. Both were run against the plant and
+   * NEITHER FIRED: the whole directory came back 3 failed of 521 and all three
+   * were node- and string-count truncation guards. The sentence was a pointer
+   * at a catcher that does not exist, which is the exact defect CLAUDE.md says
+   * an unrun named catcher is.
+   *
+   * Its limit now, stated in the mechanism's own terms and with the honest
+   * admission that this one has NOT been driven to exhaustion: alias-following
+   * is bounded by `ALIAS_HOPS_MAX` and by the initializer being visible, so a
+   * function assembled across a branch — `let shape; if (x) shape = {...}` —
+   * has no initializer to follow and is not found. That route is not planted
+   * and no catcher is claimed for it.
+   */
+  const returnedFunctions = (expression: ts.Expression, at: string = ''): readonly string[] => {
+    const found: string[] = [];
+    const seenAliases = new Set<ts.Node>();
+    const walk = (node: ts.Expression, path_: string): void => {
+      if (ts.isIdentifier(node)) {
+        const declaration = resolvedDeclaration(node);
+        if (
+          declaration !== null &&
+          ts.isVariableDeclaration(declaration) &&
+          declaration.initializer !== undefined &&
+          !seenAliases.has(declaration)
+        ) {
+          seenAliases.add(declaration);
+          walk(declaration.initializer, path_);
+        }
+        return;
+      }
+      if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
+        found.push(path_ === '' ? 'return' : path_);
+        return;
+      }
+      if (
+        ts.isParenthesizedExpression(node) ||
+        ts.isAsExpression(node) ||
+        ts.isNonNullExpression(node) ||
+        ts.isSatisfiesExpression(node) ||
+        ts.isTypeAssertionExpression(node)
+      ) {
+        walk(node.expression, path_);
+        return;
+      }
+      if (ts.isConditionalExpression(node)) {
+        walk(node.whenTrue, path_);
+        walk(node.whenFalse, path_);
+        return;
+      }
+      if (
+        ts.isBinaryExpression(node) &&
+        (node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
+          node.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
+          node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken)
+      ) {
+        walk(node.left, path_);
+        walk(node.right, path_);
+        return;
+      }
+      if (ts.isObjectLiteralExpression(node)) {
+        for (const property of node.properties) {
+          const name = property.name === undefined ? '?' : property.name.getText(property.getSourceFile());
+          if (ts.isPropertyAssignment(property)) walk(property.initializer, `${path_}.${name}`);
+          else if (ts.isSpreadAssignment(property)) walk(property.expression, path_);
+          else if (ts.isMethodDeclaration(property)) found.push(`${path_}.${name}`);
+          // `{ peek }` — the shorthand, which is the branch immediately below
+          // the one the alias-following fix had just repaired, and it was
+          // missed exactly once before being planted: with the identifier
+          // followed but the shorthand unhandled, the plant was still green.
+          else if (ts.isShorthandPropertyAssignment(property)) {
+            // NOT `resolvedDeclaration(property.name)`, and that is measured
+            // rather than stylistic: `getSymbolAtLocation` on a shorthand's
+            // name gives the PROPERTY symbol of the object literal, whose
+            // declaration is the shorthand itself, so following it goes in a
+            // circle. The plant stayed green through one whole repair on that.
+            const value = checker.getShorthandAssignmentValueSymbol(property);
+            const declaration = value?.valueDeclaration ?? value?.declarations?.[0];
+            if (
+              declaration !== undefined &&
+              ts.isVariableDeclaration(declaration) &&
+              declaration.initializer !== undefined &&
+              !seenAliases.has(declaration)
+            ) {
+              seenAliases.add(declaration);
+              walk(declaration.initializer, `${path_}.${name}`);
+            }
+          }
+        }
+        return;
+      }
+      if (ts.isArrayLiteralExpression(node)) {
+        for (const [index, element] of node.elements.entries()) {
+          if (ts.isSpreadElement(element)) walk(element.expression, `${path_}[]`);
+          else walk(element, `${path_}[${String(index)}]`);
+        }
+        return;
+      }
+      if (
+        ts.isCallExpression(node) &&
+        ts.isPropertyAccessExpression(node.expression) &&
+        node.expression.expression.getText(node.getSourceFile()) === 'Object' &&
+        node.expression.name.text === 'freeze'
+      ) {
+        for (const argument of node.arguments) walk(argument, path_);
+      }
+    };
+    walk(expression, at);
+    return found;
+  };
 
   for (const root of roots) {
     const source = program.getSourceFile(root);
@@ -7477,28 +7868,49 @@ function channelCensusOf(
       }
 
       // A write into memory somebody else may hold: an assignment to a member,
-      // or a mutating method call. Both are classified by WHOSE binding the
-      // receiver resolves to, which is the only question that matters here.
-      const written: ts.Expression | null = ts.isBinaryExpression(node) &&
-        node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
-        (ts.isPropertyAccessExpression(node.left) || ts.isElementAccessExpression(node.left))
-        ? node.left
-        : ts.isCallExpression(node) &&
-            ts.isPropertyAccessExpression(node.expression) &&
-            MUTATING_METHODS.includes(node.expression.name.text)
-          ? node.expression.expression
+      // a compound assignment, an increment, a `delete`, or a mutating method
+      // call. Every one is classified by WHOSE binding the receiver resolves
+      // to, which is the only question that matters here.
+      //
+      // THE OPERATOR RANGE RATHER THAN `EqualsToken`: until this round the
+      // predicate was the one token, so `sink.kind += name` was outside the
+      // scan entirely. `FirstAssignment`..`LastAssignment` is every assignment
+      // operator TypeScript has, so a seventeenth one added to the language
+      // arrives inside the range rather than outside it.
+      const writtenMember = (expression: ts.Expression): ts.Expression | null =>
+        ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)
+          ? expression
           : null;
+      const written: ts.Expression | null = ts.isBinaryExpression(node) &&
+        node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+        node.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+        ? writtenMember(node.left)
+        : ts.isPostfixUnaryExpression(node) || ts.isPrefixUnaryExpression(node)
+          ? (node.operator === ts.SyntaxKind.PlusPlusToken ||
+            node.operator === ts.SyntaxKind.MinusMinusToken
+              ? writtenMember(node.operand)
+              : null)
+          : ts.isDeleteExpression(node)
+            ? writtenMember(node.expression)
+            : ts.isCallExpression(node) &&
+                ts.isPropertyAccessExpression(node.expression) &&
+                MUTATING_METHODS.includes(node.expression.name.text)
+              ? node.expression.expression
+              : null;
       if (written !== null) {
-        const root_ = receiverRoot(written);
-        const declaration = resolvedDeclaration(root_);
-        if (declaration === null) {
-          freshReceivers.push(
-            `${moduleName}:${String(lineOf(node))} receiver=${ts.SyntaxKind[root_.kind]}`,
-          );
-        } else if (ts.isParameter(declaration)) {
+        const owner = ownerOf(written);
+        writeOwners[owner.kind] += 1;
+        if (owner.kind === 'parameter') {
           record('argument-mutation', moduleName, key(node, 'write'));
-        } else if (ts.isVariableDeclaration(declaration) && atModuleScope(declaration)) {
+        } else if (owner.kind === 'module-variable') {
           record('module-mutable-state', moduleName, key(node, 'write'));
+        } else if (owner.kind === 'fresh' || owner.kind === 'unclassified') {
+          // The one outcome a census must not swallow. `fresh` keeps the shape
+          // it has always had — `[...list].sort()` names its receiver by node
+          // kind — and `unclassified` is the arm that did not exist before.
+          freshReceivers.push(
+            `${moduleName}:${String(lineOf(node))} receiver=${owner.kind === 'fresh' ? owner.detail : owner.kind + ':' + owner.detail}`,
+          );
         }
       }
 
@@ -7506,24 +7918,32 @@ function channelCensusOf(
       // machinery the caller supplied. The argument count is part of the key,
       // because that is what moves when a site starts carrying a payload it did
       // not carry before — which is exactly M27.
-      if (ts.isCallExpression(node)) callsInModule.push(node);
-      // The wrap, by SYMBOL. `resolvedDeclaration` follows the import alias, so
-      // this is the declaration in `empireCore.ts` and not every identifier
-      // that happens to be spelled the same.
-      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
-        const callee = resolvedDeclaration(node.expression);
+      if (ts.isCallExpression(node)) {
+        callsInModule.push(node);
+        // ONE RESOLUTION, READ BY BOTH ARMS. The wrap census and the callback
+        // census used to ask the same question twice with two predicates, and
+        // only one of them followed the symbol. They now share `callTargetOf`,
+        // so a wrap reached through an alias counts and a parameter reached
+        // through an alias is a callback — which is the twelfth bypass.
+        const target = callTargetOf(node.expression);
+        callTargets[target.kind] += 1;
+
+        const declaration = target.declaration;
         if (
-          callee !== null &&
-          ts.isFunctionDeclaration(callee) &&
-          callee.name?.text === THROW_WRAP_NAME &&
-          path.basename(callee.getSourceFile().fileName) === THROW_WRAP_MODULE
+          target.kind === 'function' &&
+          declaration !== null &&
+          ts.isFunctionDeclaration(declaration) &&
+          declaration.name?.text === THROW_WRAP_NAME &&
+          path.basename(declaration.getSourceFile().fileName) === THROW_WRAP_MODULE
         ) {
           wrapCalls[moduleName] = (wrapCalls[moduleName] ?? 0) + 1;
         }
-      }
-      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
-        const declaration = resolvedDeclaration(node.expression);
-        if (declaration !== null && ts.isParameter(declaration)) {
+
+        if (
+          (target.kind === 'parameter' || target.kind === 'member-callback') &&
+          declaration !== null &&
+          ts.isParameter(declaration)
+        ) {
           const owner = declaration.parent;
           const ownerName =
             ts.isFunctionDeclaration(owner) && owner.name !== undefined ? owner.name.text : '#anonymous';
@@ -7531,17 +7951,40 @@ function channelCensusOf(
           const channel: ChannelId = exported
             ? 'callback-invocation'
             : 'internal-callback-invocation';
+          // KEYED BY THE PARAMETER, NOT BY THE SPELLING AT THE CALL SITE. On
+          // the shipped tree the two are the same string; under an alias they
+          // are not, and the key that survives a rename is the symbol's. A
+          // `member-callback` keys as `roster.gymBucksPerHour`, which is the
+          // parameter and the slot on it the caller filled.
+          const parameterName = target.kind === 'member-callback' ? target.detail : nameOf(declaration);
           record(
             channel,
             moduleName,
-            `${moduleName}#${ownerName}#${node.expression.text} x${String(node.arguments.length)}`,
+            `${moduleName}#${ownerName}#${parameterName} x${String(node.arguments.length)}`,
           );
           if (!exported && ts.isFunctionDeclaration(owner)) {
             const index = owner.parameters.indexOf(declaration);
             const seen = internalOwners.get(owner) ?? new Map<number, string>();
-            seen.set(index, node.expression.text);
+            seen.set(index, parameterName);
             internalOwners.set(owner, seen);
           }
+        } else if (target.kind === 'member-of-parameter') {
+          // Enumerated rather than counted, for the reason the field's own
+          // docstring gives: every one of these is a READ of a caller-supplied
+          // value through a method the caller did not write, and the list is
+          // what makes that checkable rather than asserted.
+          memberCallsOnParameters.push(
+            `${key(node, target.detail)} x${String(node.arguments.length)}`,
+          );
+        } else if (target.kind === 'fresh' || target.kind === 'unclassified') {
+          // THE `ELSE` THAT DID NOT EXIST. A call whose callee resolves to
+          // nothing this walk can name is the shape the next channel arrives
+          // in, and it is named here rather than recorded under no channel at
+          // all. `DECLARED_FRESH_RECEIVERS` is set-equal in both directions, so
+          // one arriving is a decision somebody signs.
+          freshReceivers.push(
+            `${moduleName}:${String(lineOf(node))} callee=${target.kind}:${target.detail}`,
+          );
         }
       }
 
@@ -7573,12 +8016,26 @@ function channelCensusOf(
         }
       }
 
-      if (
-        ts.isReturnStatement(node) &&
-        node.expression !== undefined &&
-        (ts.isArrowFunction(node.expression) || ts.isFunctionExpression(node.expression))
-      ) {
-        record('returned-closure', moduleName, key(node, 'closure'));
+      // A FUNCTION HANDED BACK, AT ANY DEPTH OF THE RETURNED STRUCTURE.
+      //
+      // This used to require the return's expression to be LITERALLY an arrow
+      // or a function expression, so `return Object.freeze({ ...fields, peek:
+      // () => <a banned name> }) as T` was outside it. Planted into
+      // `accrueProduction` and driven: the caller gets a `peek` member and
+      // calling it yields the name, `tsc --noEmit` exit 0, and the only things
+      // that reddened in the whole directory were three node- and string-count
+      // truncation guards — which this file has recorded four times as not the
+      // check working.
+      //
+      // The descent goes through VALUE-CONSTRUCTION positions only — object and
+      // array literals, spreads, casts, `?:`, `??`/`||`/`&&`, and the arguments
+      // of `Object.freeze` — and deliberately NOT through arbitrary call
+      // arguments, because `return list.map((x) => …)` hands the caller a list
+      // and not the arrow.
+      if (ts.isReturnStatement(node) && node.expression !== undefined) {
+        for (const found of returnedFunctions(node.expression)) {
+          record('returned-closure', moduleName, key(node, `closure:${found}`));
+        }
       }
       if (ts.isFunctionDeclaration(node) && node.type !== undefined && ts.isFunctionTypeNode(node.type)) {
         record('returned-closure', moduleName, key(node, 'closure-type'));
@@ -7602,6 +8059,22 @@ function channelCensusOf(
       if (ts.isNewExpression(node) && node.expression.getText(source) === 'Promise') {
         record('deferred-completion', moduleName, key(node, 'promise'));
       }
+      // A `then` MEMBER, which is the fourth shape and the one the probe for
+      // this channel actually has. Measured rather than reasoned: the
+      // `movesCensus` column below was added to find out whether each row's
+      // probe is visible to the census, and this row's was not — the scan read
+      // `async`, `*` and `new Promise`, and a hand-written thenable is none of
+      // those while `await` reaches it exactly as it reaches a promise.
+      if (
+        (ts.isMethodDeclaration(node) ||
+          ts.isMethodSignature(node) ||
+          ts.isPropertyAssignment(node) ||
+          ts.isPropertySignature(node)) &&
+        node.name !== undefined &&
+        node.name.getText(source) === THENABLE_MEMBER
+      ) {
+        record('deferred-completion', moduleName, key(node, THENABLE_MEMBER));
+      }
 
       node.forEachChild(visit);
     };
@@ -7616,8 +8089,9 @@ function channelCensusOf(
       for (const [index, parameterName] of parameters) {
         const kinds: string[] = [];
         for (const call of callsInModule) {
-          if (!ts.isIdentifier(call.expression)) continue;
-          if (resolvedDeclaration(call.expression) !== owner) continue;
+          // Through the same resolver as everything else, so a call of the
+          // owner made through a local alias is joined rather than skipped.
+          if (callTargetOf(call.expression).declaration !== owner) continue;
           const argument = call.arguments[index];
           kinds.push(argument === undefined ? 'missing' : ts.SyntaxKind[argument.kind]);
         }
@@ -7643,6 +8117,9 @@ function channelCensusOf(
     sites: Object.freeze(frozenSites),
     byModule: Object.freeze(frozenByModule),
     freshReceivers: Object.freeze([...freshReceivers].sort()),
+    callTargets: Object.freeze({ ...callTargets }),
+    writeOwners: Object.freeze({ ...writeOwners }),
+    memberCallsOnParameters: Object.freeze([...memberCallsOnParameters].sort()),
     internalCallbackArguments: Object.freeze([...internalCallbackArguments].sort()),
     wrapCalls: Object.freeze({ ...wrapCalls }),
     nodesExamined,
@@ -7710,12 +8187,21 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'social.ts': 7,
     }),
     'argument-mutation': Object.freeze({}),
-    'callback-invocation': Object.freeze({ 'engagement.ts': 1 }),
+    'callback-invocation': Object.freeze({ 'engagement.ts': 1, 'production.ts': 2 }),
     'internal-callback-invocation': Object.freeze({ 'expansion.ts': 1 }),
     'module-mutable-state': Object.freeze({}),
     'ambient-global': Object.freeze({}),
     'lazy-member': Object.freeze({}),
-    'returned-closure': Object.freeze({}),
+    /**
+     * TWO, AND THE CHANNEL WAS DECLARED EMPTY UNTIL THIS ROUND.
+     *
+     * `rosterRatesAt` returns a frozen object holding two arrows, which is a
+     * returned closure by any reading — and the scan required the return's
+     * expression to be LITERALLY an arrow, so it counted zero. The zero was a
+     * fact about the scan. Both sites are named in
+     * `DECLARED_RETURNED_CLOSURE_SITES`.
+     */
+    'returned-closure': Object.freeze({ 'empireInvariant.ts': 2 }),
     'deferred-completion': Object.freeze({}),
   });
 
@@ -7778,6 +8264,8 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
  */
 const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
   'engagement.ts#historyFrom#attended x1',
+  'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour x2',
+  'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay x2',
 ]);
 
 const DECLARED_INTERNAL_CALLBACK_SITES: readonly string[] = Object.freeze([
@@ -7813,24 +8301,90 @@ const DECLARED_INTERNAL_CALLBACK_ARGUMENTS: readonly string[] = Object.freeze([
  * fourth — which might not be a copy — is a decision somebody signs rather than
  * a number that moves.
  */
+/**
+ * The functions this directory hands its caller back, by member path.
+ *
+ * Both are `rosterRatesAt`'s two arrows, and both are the PRODUCER side of the
+ * two `callback-invocation` sites `production.ts` has: this module builds the
+ * closures, `production.ts` calls them, and until this round the census saw
+ * neither end. The member path is in the key, so a third arrow arriving in the
+ * same returned object is red rather than absorbed into a count.
+ */
+const DECLARED_RETURNED_CLOSURE_SITES: readonly string[] = Object.freeze([
+  'empireInvariant.ts#rosterRatesAt#closure:.gymBucksPerHour',
+  'empireInvariant.ts#rosterRatesAt#closure:.trainingIqPerDay',
+]);
+
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'empireInvariant.ts:637 receiver=ArrayLiteralExpression',
   'engagement.ts:355 receiver=ArrayLiteralExpression',
   'social.ts:345 receiver=ArrayLiteralExpression',
 ]);
 
+/**
+ * Every call in the directory, by what its callee resolves to.
+ *
+ * the arm census for the scan, and the reason it is here rather than in a
+ * comment is that the twelfth bypass was a call recorded under NO arm. Three
+ * arms are zero and they are the ones this table is most for:
+ *
+ *   `parameter` is the callback channel — every call of a caller-supplied
+ *     function, however it is spelled, after the resolver follows aliases.
+ *   `member-of-parameter` is a method called ON a caller-supplied value. Zero
+ *     here, and it is a route this walk can see and deliberately does not
+ *     classify as a channel: a method that was already on the object is the
+ *     caller's own code only if the caller supplied both. One arriving is a
+ *     decision somebody signs rather than a number that drifts.
+ *   `fresh` and `unclassified` are the callee this walk could not name —
+ *     `pick()(slot)`, or an identifier the checker does not resolve. Both are
+ *     named individually in `DECLARED_FRESH_RECEIVERS` as well as counted.
+ */
+const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze({
+  parameter: 2,
+  'module-variable': 26,
+  local: 0,
+  function: 501,
+  member: 474,
+  'member-callback': 2,
+  'member-of-parameter': 13,
+  fresh: 0,
+  unclassified: 0,
+});
+
+/**
+ * Every write in the directory, by whose memory the receiver resolves to.
+ *
+ * The other half of the same census, and the two zeros that matter are
+ * `parameter` and `module-variable` — those are the `argument-mutation` and
+ * `module-mutable-state` channels, which `CHANNEL_SITE_COUNTS` also pins empty.
+ * `member` and `member-of-parameter` cannot occur here by construction, because
+ * a write's receiver is resolved past its member chain; they are pinned at zero
+ * rather than left off the table, so a walk that started producing one is red.
+ */
+const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze({
+  parameter: 0,
+  'module-variable': 0,
+  local: 153,
+  function: 0,
+  member: 0,
+  'member-callback': 0,
+  'member-of-parameter': 0,
+  fresh: 3,
+  unclassified: 0,
+});
+
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
   MODULES: 10,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
-  SITES: 324,
+  SITES: 328,
   /** Nodes the walk examined. A truncated walk would report a clean directory. */
   NODES_EXAMINED: 21_789,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
   WRAP_CALLS: 53,
   CHANNELS: 11,
-  /** Channels with at least one site. The other four are open routes nobody uses. */
-  CHANNELS_IN_USE: 5,
+  /** Channels with at least one site. The other five are open routes nobody uses. */
+  CHANNELS_IN_USE: 6,
 });
 
 // ---------------------------------------------------------------------------
@@ -7920,6 +8474,26 @@ function channelProbeSurface(): StringSurface {
     CHANNEL_PROBE_PATH,
   );
   return channelProbeSurfaceMemo;
+}
+
+let channelProbeCensusMemo: ChannelCensus | null = null;
+
+/**
+ * The channel census run over the probe module beside the shipped directory.
+ *
+ * The fourth column's subject. Until this round the matrix measured A, B and C
+ * against the probes and never ran the CENSUS against them — so three rows
+ * whose `why` named the census as their only catcher had never been measured
+ * against it, and one of the three was wrong.
+ */
+function channelProbeCensus(): ChannelCensus {
+  if (channelProbeCensusMemo !== null) return channelProbeCensusMemo;
+  channelProbeCensusMemo = channelCensusOf(
+    [...shippedModulePaths(), CHANNEL_PROBE_PATH],
+    CHANNEL_PROBE_SOURCE,
+    CHANNEL_PROBE_PATH,
+  );
+  return channelProbeCensusMemo;
 }
 
 let channelProbeConstructorsMemo: ConstructorCensus | null = null;
@@ -8173,6 +8747,15 @@ interface CoverageRow {
   readonly movesC: boolean;
   /** The callback pass below. `null` where the channel has no callback to record. */
   readonly movesPass: boolean;
+  /**
+   * The CENSUS sees this probe's export contribute a site in this row's own
+   * channel.
+   *
+   * A separate question from the other four, and it is the one three rows were
+   * asserting about themselves in prose: "the census is the catcher" is a claim
+   * that the probe's SHAPE is a shape the scan counts, and nothing measured it.
+   */
+  readonly movesCensus: boolean;
   readonly why: string;
 }
 
@@ -8187,6 +8770,11 @@ interface CoverageRow {
  *   `movesB` — a deep scan of the row the drive would have built finds the name.
  *   `movesC` — the probe's export adds a brand-constructor call site.
  *   `movesPass` — the callback pass below records the name.
+ *   `movesCensus` — the CHANNEL CENSUS, run over the probe module beside the
+ *     shipped directory, counts a site for that probe export IN THIS ROW'S OWN
+ *     CHANNEL. It is the column that grades the sentence "the census is the
+ *     catcher", which three rows made about themselves with nothing measuring
+ *     it; one of the three was wrong.
  *
  * A `true` in A is not the same guarantee as a `true` in B: A sees that a
  * position of that shape EXISTS and, for a literal type, what is in it; it
@@ -8202,6 +8790,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: true,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: 'The best-covered channel in the directory, and the one every instrument was built around.',
   }),
   Object.freeze({
@@ -8211,6 +8800,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: true,
     movesC: true,
     movesPass: false,
+    movesCensus: true,
     why: 'The only emission any probe here has that instrument C can see. C is a census of mints and nothing but a branded return needs one.',
   }),
   Object.freeze({
@@ -8220,6 +8810,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: true,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: 'M25, the tenth bypass. A thrown payload has no declared position and calls no constructor, so A and C have nothing to look at. THE DRIVE IS ITS ONLY CATCHER.',
   }),
   Object.freeze({
@@ -8229,6 +8820,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: true,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: 'M7. Exported data is read rather than called, and both A and B reach it.',
   }),
   Object.freeze({
@@ -8238,6 +8830,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: true,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: "A walks RETURN types only — a parameter's positions are outside its census entirely. The drive re-reads every argument after the call, which is why B sees it.",
   }),
   Object.freeze({
@@ -8247,6 +8840,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: false,
     movesC: false,
     movesPass: true,
+    movesCensus: true,
     why: 'M27, THE ELEVENTH BYPASS. Nothing in the three instruments sees it: no declared position, no constructor, and the drive keeps the callback it passed IN rather than what the callback was handed. The callback pass is the catcher and it was written this round.',
   }),
   Object.freeze({
@@ -8256,7 +8850,8 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: false,
     movesC: false,
     movesPass: true,
-    why: 'Measured against the same twin, because who supplies the function is a fact about the SOURCE and not about the value — the census separates the two and the runtime cannot. `movesPass` is TRUE OF THE SHAPE AND NOT OF THIS SITE: the pass does not drive `axesWhere` and never will, because both of its callers write the predicate at the call site. What accounts for this row is that nothing outside can put a value into it, pinned at DECLARED_INTERNAL_CALLBACK_ARGUMENTS rather than read off the `export` modifier.',
+    movesCensus: false,
+    why: 'Measured against the same twin, because who supplies the function is a fact about the SOURCE and not about the value — the census separates the two and the runtime cannot. `movesPass` is TRUE OF THE SHAPE AND NOT OF THIS SITE: the pass does not drive `axesWhere` and never will, because both of its callers write the predicate at the call site. What accounts for this row is that nothing outside can put a value into it, pinned at DECLARED_INTERNAL_CALLBACK_ARGUMENTS rather than read off the `export` modifier. `movesCensus` is FALSE and the reason is a property of the probe rather than of the scan: this row shares `probeCallback` with the row above it, `probeCallback` carries the `export` modifier, and that modifier is exactly what the census reads to decide which of the two channels a call lands in — so one probe export cannot be measured in both. Stated rather than repaired, because a second probe export would make the A and C columns of this row measure a different subject from the row above.',
   }),
   Object.freeze({
     channel: 'module-mutable-state',
@@ -8265,6 +8860,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: false,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: "The write happens during a call whose own return carries nothing, so the row the drive builds is empty. Order-dependent, and the row below is the other order.",
   }),
   Object.freeze({
@@ -8274,7 +8870,8 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: true,
     movesC: false,
     movesPass: false,
-    why: 'THE SAME CHANNEL ANSWERS DIFFERENTLY IN THE TWO ORDERS, which is why both rows are here. B covers it only when something reads the binding after the write, and nothing orders those two events. A moves on this row and not on the one above because the two rows are measured against different probe exports — the BINDING has a declared string position and the writer returns `void`, which is the same split as `lazy-member`: the arrival is seen and the write is not.',
+    movesCensus: false,
+    why: '`movesCensus` is FALSE here and TRUE on the row above, and the two rows are the same channel: the census keys a write site by the function that PERFORMS it, so the site sits under `probeModuleMutableState` and this row is measured against the BINDING. That is the same arrival-versus-write split the rest of this sentence is about, seen by a fourth instrument. THE SAME CHANNEL ANSWERS DIFFERENTLY IN THE TWO ORDERS, which is why both rows are here. B covers it only when something reads the binding after the write, and nothing orders those two events. A moves on this row and not on the one above because the two rows are measured against different probe exports — the BINDING has a declared string position and the writer returns `void`, which is the same split as `lazy-member`: the arrival is seen and the write is not.',
   }),
   Object.freeze({
     channel: 'ambient-global',
@@ -8283,6 +8880,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: false,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: 'Covered by no instrument here. The census is the whole catcher: this directory has zero ambient sites and one arriving is red.',
   }),
   Object.freeze({
@@ -8292,6 +8890,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: false,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: "A sees the POSITION — `return.toString()` is a string position in the declared type. B does not: the walker invokes getters and never methods, which its own header states. So the arrival is caught and the payload is not.",
   }),
   Object.freeze({
@@ -8301,6 +8900,7 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: false,
     movesC: false,
     movesPass: false,
+    movesCensus: true,
     why: "Same split as the row above, and the walker's header names it: a returned function is walked for its own properties and is never called.",
   }),
   Object.freeze({
@@ -8310,7 +8910,8 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     movesB: false,
     movesC: false,
     movesPass: false,
-    why: 'The payload is an ARGUMENT to a function the caller supplies, one `then` away from the callback channel, and it is invisible for the same reason. The census is the catcher: zero deferred sites, and an `async` or a `new Promise` arriving is red.',
+    movesCensus: true,
+    why: 'The payload is an ARGUMENT to a function the caller supplies, one `then` away from the callback channel, and it is invisible for the same reason. The census is the catcher — AND THAT SENTENCE WAS FALSE UNTIL THIS ROUND, which is what the `movesCensus` column was added to find out. The scan read `async`, a generator asterisk and `new Promise`; this row\'s probe is a hand-written thenable and is none of those, so the row named as its only catcher an instrument that could not see it. Measured both ways: with the `then` member out of the scan `movesCensus` is false, with it in, true. What a planted thenable used to redden was its inner `resolve(...)` landing in `internal-callback-invocation`, which is a different check noticing by accident and in the one channel this file marks unreachable from outside.',
   }),
 ]);
 
@@ -8362,38 +8963,163 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
  *     This pass catches a payload smuggled into an argument the site already
  *     passes — which no site census can see — and only at points it drives.
  */
-interface CallbackSubject {
-  /** `module.ts#export#parameter`, derived from the checker and joined below. */
-  readonly key: string;
+interface CallbackAxis {
+  /** `subjectKey#axisName`, which is what the per-axis census is keyed by. */
+  readonly name: string;
   /**
-   * The `NUMERIC_DOMAINS` key whose points this subject's axis is driven over.
+   * The `NUMERIC_DOMAINS` key whose points this axis is driven over.
    *
    * A key rather than a point list, so the domain cannot be forked here: the
    * pass reads the registry, and `NUMERIC_DOMAINS` is what the main drive and
    * the overflow pass read too.
    */
   readonly domain: keyof typeof NUMERIC_DOMAINS;
-  /** What one point MEANS for this subject, so a reader can disagree with the axis. */
-  readonly axis: string;
+  /** What one point MEANS on this axis, so a reader can disagree with it. */
+  readonly means: string;
   /** Calls the subject at one domain point with a recording callback. */
   readonly drive: (record: (args: readonly unknown[]) => void, point: number) => void;
+  /**
+   * How many calls the subject's own contract says it makes at one point.
+   *
+   * AN ORACLE OVER THE SUBJECT RATHER THAN OVER THE DOMAIN, per axis. The
+   * domain appears on both sides of the comparison, so what is graded is the
+   * SUBJECT: a `historyFrom` that skipped slot 0 or stopped early, or a rate
+   * reader that quietly stopped asking about half the roster, is red here while
+   * the literal counts stay green.
+   */
+  readonly callsAt: (point: number) => number;
+  /** Values handed per call, so RECORDED grades the arity and not only the count. */
+  readonly argumentsPerCall: number;
 }
+
+interface CallbackSubject {
+  /** `module.ts#export#parameter`, derived from the checker and joined below. */
+  readonly key: string;
+  readonly axes: readonly CallbackAxis[];
+}
+
+/**
+ * The slot count the `trainedDays` axis holds fixed while it varies the other
+ * argument.
+ *
+ * ONE AXIS AT A TIME, WHICH IS A CHOICE WITH A PRICE AND THE PRICE IS STATED.
+ * Crossing the two axes would multiply 726 813 calls by 88 points; driving them
+ * separately costs 88 x 3 extra calls. What that buys is that a payload keyed
+ * on `trainedDays.length` alone is inside the pass at every point of the COUNT
+ * domain. What it does NOT buy is a payload keyed on a CONJUNCTION —
+ * `slots === 7 && trainedDays.length === 5000` — which is outside this pass at
+ * every point of both axes. That residual is real and is
+ * `CALLBACK_AXIS_RESIDUAL` rather than a silence.
+ *
+ * Three rather than one so a subject that stopped calling its predicate on
+ * later slots is still visible on this axis.
+ */
+const TRAINED_DAYS_AXIS_SLOTS = 3;
+
+/** A trained-day list of a given length, ascending. The axis's own generator. */
+const trainedDaysOfLength = (length: number): readonly number[] =>
+  length <= 0 ? [] : Array.from({ length }, (_, index) => index);
+
+/**
+ * A `RosterRateSource` whose two members record what they were handed.
+ *
+ * `requireRate` refuses anything that is not a finite number at or above zero,
+ * so the recorder returns zero — the pass is about what goes OUT through the
+ * member, not about what comes back.
+ */
+const recordingRates = (record: (args: readonly unknown[]) => void): RosterRateSource =>
+  Object.freeze({
+    gymBucksPerHour: (...args: readonly unknown[]): number => {
+      record(args);
+      return 0;
+    },
+    trainingIqPerDay: (...args: readonly unknown[]): number => {
+      record(args);
+      return 0;
+    },
+  } as unknown as RosterRateSource);
 
 const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
   Object.freeze({
     key: 'engagement.ts#historyFrom#attended',
-    domain: 'COUNT',
-    axis: 'the slot count, which is what `historyFrom` allocates one attendance entry per and calls its predicate once per',
-    drive: (record: (args: readonly unknown[]) => void, point: number): void => {
-      engagementModule.historyFrom(
-        point,
-        (...args: readonly unknown[]): boolean => {
-          record(args);
-          return args[0] === 0;
+    axes: Object.freeze([
+      Object.freeze({
+        name: 'engagement.ts#historyFrom#attended#slots',
+        domain: 'COUNT',
+        means:
+          'the slot count, which is what `historyFrom` allocates one attendance entry per and calls its predicate once per',
+        drive: (record: (args: readonly unknown[]) => void, point: number): void => {
+          engagementModule.historyFrom(
+            point,
+            (...args: readonly unknown[]): boolean => {
+              record(args);
+              return args[0] === 0;
+            },
+            [point],
+          );
         },
-        [point],
-      );
-    },
+        callsAt: (point: number): number => (point >= 1 ? point : 0),
+        argumentsPerCall: 1,
+      }),
+      Object.freeze({
+        name: 'engagement.ts#historyFrom#attended#trainedDays',
+        domain: 'COUNT',
+        means:
+          'the LENGTH of the trained-day list, which is the second injected argument and the one the twelfth bypass keyed its payload on',
+        drive: (record: (args: readonly unknown[]) => void, point: number): void => {
+          engagementModule.historyFrom(
+            TRAINED_DAYS_AXIS_SLOTS,
+            (...args: readonly unknown[]): boolean => {
+              record(args);
+              return args[0] === 0;
+            },
+            trainedDaysOfLength(point),
+          );
+        },
+        callsAt: (): number => TRAINED_DAYS_AXIS_SLOTS,
+        argumentsPerCall: 1,
+      }),
+    ]),
+  }),
+  Object.freeze({
+    key: 'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour',
+    axes: Object.freeze([
+      Object.freeze({
+        name: 'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize',
+        domain: 'ROSTER_SHAPE',
+        means:
+          'the roster size, which is what `gymBucksRatePerHour` asks the caller-supplied rate source about once per lifter who has joined',
+        drive: (record: (args: readonly unknown[]) => void, point: number): void => {
+          productionModule.gymBucksRatePerHour(
+            overflowState(point),
+            OVERFLOW_CLOCK,
+            recordingRates(record),
+          );
+        },
+        callsAt: (point: number): number => (point >= 1 ? point : 0),
+        argumentsPerCall: 2,
+      }),
+    ]),
+  }),
+  Object.freeze({
+    key: 'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay',
+    axes: Object.freeze([
+      Object.freeze({
+        name: 'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize',
+        domain: 'ROSTER_SHAPE',
+        means:
+          'the roster size, which is what `trainingIqRatePerDay` asks the caller-supplied rate source about once per lifter whose recruitment has settled',
+        drive: (record: (args: readonly unknown[]) => void, point: number): void => {
+          productionModule.trainingIqRatePerDay(
+            overflowState(point),
+            OVERFLOW_CLOCK,
+            recordingRates(record),
+          );
+        },
+        callsAt: (point: number): number => (point >= 1 ? point : 0),
+        argumentsPerCall: 2,
+      }),
+    ]),
   }),
 ]);
 
@@ -8553,43 +9279,89 @@ const callbackSubjectKeys = (census: ChannelCensus): readonly string[] =>
  */
 const CALLBACK_TRIPWIRE_POINTS: readonly number[] = Object.freeze([1, 2, 3]);
 
+/**
+ * What each axis measured, per axis rather than summed.
+ *
+ * SUMS HIDE AN AXIS GOING QUIET, which is the failure this table exists to
+ * make red: a single CALLS total would stay honest-looking if one axis stopped
+ * driving and another grew. Every axis reports its own points, refusals, calls
+ * and recorded values, deep-equal in both directions.
+ *
+ * The `trainedDays` axis is the one this round added, and its numbers are
+ * hand-checkable on purpose: 88 points x 3 slots = 264 calls, none refused,
+ * because the slot count it holds fixed is admissible at every point.
+ */
+interface CallbackAxisCensus {
+  readonly points: number;
+  readonly refusedPoints: number;
+  readonly calls: number;
+  readonly recorded: number;
+}
+
+const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Object.freeze({
+  'engagement.ts#historyFrom#attended#slots': Object.freeze({
+    points: 88,
+    refusedPoints: 1,
+    calls: 726813,
+    recorded: 726813,
+  }),
+  'engagement.ts#historyFrom#attended#trainedDays': Object.freeze({
+    points: 88,
+    refusedPoints: 0,
+    calls: 264,
+    recorded: 264,
+  }),
+  'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize': Object.freeze({
+    points: 61,
+    refusedPoints: 0,
+    calls: 721689,
+    recorded: 1443378,
+  }),
+  'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize': Object.freeze({
+    points: 61,
+    refusedPoints: 0,
+    calls: 721689,
+    recorded: 1443378,
+  }),
+});
+
+/**
+ * What this pass still does not reach, counted rather than described.
+ *
+ * One entry per axis pair that is NOT crossed. The pass drives one axis at a
+ * time, so a payload keyed on a conjunction of two of them is outside it, and
+ * that is a residual of the shape E15 and E17 established rather than a
+ * sentence at the bottom of a docstring.
+ */
+const CALLBACK_AXIS_RESIDUAL: readonly string[] = Object.freeze([
+  'engagement.ts#historyFrom#attended: slots x trainedDays is not crossed — 88 x 88 = 7744 pairs offered as 176 points, so a payload keyed on BOTH is outside this pass',
+]);
+
 const CALLBACK_PASS_CENSUS = Object.freeze({
-  SUBJECTS: 1,
+  SUBJECTS: 3,
   /**
-   * Points the one subject is driven at, and how many its own guard refused.
+   * Axes driven, summed over subjects.
    *
-   * It was three CALLS at one fixture until E19. It is now the COUNT domain
-   * plus the points that domain's foreign ceiling drops — the same set the main
-   * drive and the overflow pass between them cover on this axis.
-   *
-   * DERIVED RATHER THAN READ OFF A FAILURE: `DOMAIN_CENSUS.COUNT_POINTS` is 55
-   * and the 39 overflow rows collapse to 33 distinct values, which is 88. Both
-   * halves are asserted separately in `drives the callback subjects over the
-   * registry domain`, so this number moving without one of them moving would
-   * itself be a defect.
+   * The number CLAUDE.md's "richness on one axis" rule asks for, and it was 1
+   * when the twelfth bypass was planted: `historyFrom` takes `slots` and
+   * `trainedDays`, the pass varied `slots`, and the bypass keyed its payload on
+   * `trainedDays.length`. Four now — two on `historyFrom` and one on each rate
+   * reader — with `CALLBACK_AXIS_RESIDUAL` naming what a per-axis drive still
+   * cannot express.
    */
-  POINTS: 88,
+  AXES_VARIED: 4,
+  /**
+   * Points, refusals, calls and values, summed across every axis.
+   *
+   * Kept beside the per-axis table rather than instead of it: the sum is what a
+   * reader checks at a glance and the table is what cannot be gamed by one axis
+   * growing while another dies.
+   */
+  POINTS: 298,
   REFUSED_POINTS: 1,
-  /**
-   * Calls the subject made into the recording callback, summed over the domain.
-   *
-   * `historyFrom` calls its predicate once per slot, so this is the sum of the
-   * admissible points. A zero here is a dead pass; a number that drops is a
-   * domain that quietly lost points or a subject that stopped calling out.
-   */
-  CALLS: 726813,
-  /** Values handed across those calls: one slot argument each, so it equals CALLS. */
-  RECORDED: 726813,
+  CALLS: 2170455,
+  RECORDED: 3613833,
   FINDINGS: 0,
-  /**
-   * How many INJECTED axes the pass varies, per subject.
-   *
-   * One, and it is a number rather than a silence for the reason CLAUDE.md's
-   * "richness on one axis" rule gives: `historyFrom`'s `trainedDays` is not
-   * varied, so a payload keyed on its contents is outside this pass however
-   * many slot points it walks.
-   */
-  AXES_VARIED: 1,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
   TRIPWIRE_RECORDED: 12,
@@ -8628,6 +9400,16 @@ describe('the channel census — the routes a string can leave this directory by
       }
       expect(sites).toBe(CHANNEL_CENSUS_TOTALS.SITES);
       expect(inUse).toBe(CHANNEL_CENSUS_TOTALS.CHANNELS_IN_USE);
+      // The arm censuses, deep equal in both directions. A call or a write that
+      // starts resolving to a different arm moves a number here whether or not
+      // it moves a channel, which is the half the twelfth bypass walked past:
+      // it changed `attended x1` into a call recorded under nothing at all.
+      expect(census.callTargets).toEqual(DECLARED_CALL_TARGETS);
+      expect(census.writeOwners).toEqual(DECLARED_WRITE_OWNERS);
+      // Every arm the type declares is a key of both tables, both directions,
+      // so a ninth arm cannot be counted without a row describing it.
+      expect([...Object.keys(DECLARED_CALL_TARGETS)].sort()).toEqual([...OWNER_KINDS].sort());
+      expect([...Object.keys(DECLARED_WRITE_OWNERS)].sort()).toEqual([...OWNER_KINDS].sort());
       // The truncation guard, last. A walk that gave up early would report a
       // directory with fewer escape routes than it has, which is the reassuring
       // direction and the one a census must not fail in quietly.
@@ -8689,11 +9471,16 @@ describe('the channel census — the routes a string can leave this directory by
         'module-mutable-state',
         'ambient-global',
         'lazy-member',
-        'returned-closure',
         'deferred-completion',
       ]);
+      // The returned closures, by name. A third is a decision somebody signs.
+      expect(census.sites['returned-closure']).toEqual(DECLARED_RETURNED_CLOSURE_SITES);
       // And the scan's one unclassified outcome, named rather than dropped.
       expect(census.freshReceivers).toEqual(DECLARED_FRESH_RECEIVERS);
+      // The populated arm the census cannot classify, enumerated rather than
+      // counted. A call into a caller-supplied function reached through a
+      // property lands here and is red by name.
+      expect(census.memberCallsOnParameters).toEqual(DECLARED_MEMBER_CALLS_ON_PARAMETERS);
       // The check behind the one judgement: nothing caller-supplied can reach
       // the internal callback, and that is measured off the argument syntax
       // rather than inferred from the `export` modifier.
@@ -8715,6 +9502,7 @@ describe('the channel census — the routes a string can leave this directory by
       expect(surface.sourceDiagnostics, surface.sourceDiagnostics.join(' | ')).toEqual([]);
       expect(surface.depthCuts).toBe(SURFACE_CENSUS.DEPTH_CUTS);
       const constructors = channelProbeConstructors();
+      const probeCensus = channelProbeCensus();
 
       const probeExportFor = (row: CoverageRow): string => PROBE_EXPORTS[`${row.channel}|${row.form}`] ?? '';
       const twinFor_ = (row: CoverageRow): TwinResult => {
@@ -8743,6 +9531,19 @@ describe('the channel census — the routes a string can leave this directory by
         // B: the row the drive would have built, through the drive's own walker.
         const twin = twinFor_(row);
         expect(bannedInRow(twin.row).length > 0, `${row.channel}/${row.form} movesB`).toBe(row.movesB);
+
+        // THE CENSUS: does the probe's export contribute a site in this row's
+        // OWN channel? Measured rather than declared, which is the whole
+        // addition — three rows named the census as their only catcher and it
+        // had never been pointed at their probes.
+        const probeSites = probeCensus.sites[row.channel].filter(
+          (site) =>
+            site.startsWith(`${CHANNEL_PROBE_MODULE}#${probeExport}#`) ||
+            site === `${CHANNEL_PROBE_MODULE}#${probeExport}`,
+        );
+        expect(probeSites.length > 0, `${row.channel}/${row.form} movesCensus`).toBe(
+          row.movesCensus,
+        );
 
         // The non-vacuity guard: a caller who uses the channel as intended sees
         // the name. Without this every `false` above could be a dud probe.
@@ -8815,7 +9616,16 @@ describe('the channel census — the routes a string can leave this directory by
       ESCAPE_CHANNELS.find((channel) => channel.id === id)?.reachableFromOutside === true;
     for (const row of nothing) {
       const driven = row.movesPass && passSubjectChannels.includes(row.channel);
-      const covered = driven || census.sites[row.channel].length === 0 || !reachable(row.channel);
+      // AND THE MIDDLE ACCOUNT NOW HAS TO EARN ITSELF. "This channel has zero
+      // sites and one arriving is red" is a claim that the scan can SEE the
+      // shape, and until this round nothing checked that: the
+      // `deferred-completion` row made exactly this claim while its own probe —
+      // a hand-written thenable — was invisible to the scan. So the zero-sites
+      // account requires `movesCensus`, measured against that row's probe.
+      const covered =
+        driven ||
+        (census.sites[row.channel].length === 0 && row.movesCensus) ||
+        !reachable(row.channel);
       expect(covered, `${row.channel}/${row.form} is in use and no instrument covers it`).toBe(true);
     }
     // Exactly one channel is declared unreachable from outside, by name, and
@@ -8834,7 +9644,10 @@ describe('the channel census — the routes a string can leave this directory by
     () => {
       const census = channelCensus();
       // The subject list is DERIVED from the census and joined both ways. A
-      // second callback-taking export reddens here until it has a driver.
+      // second callback-taking export reddens here until it has a driver, and
+      // that is not hypothetical: the symbol resolver found two more sites this
+      // round — `RosterRateSource`'s two function-typed properties — and this
+      // line is what forced them to be driven rather than noted.
       expect(CALLBACK_SUBJECTS.map((subject) => subject.key)).toEqual(callbackSubjectKeys(census));
       expect(CALLBACK_SUBJECTS.length).toBe(CALLBACK_PASS_CENSUS.SUBJECTS);
 
@@ -8843,19 +9656,60 @@ describe('the channel census — the routes a string can leave this directory by
       let points = 0;
       let refusedPoints = 0;
       let findingCount = 0;
+      let axes = 0;
       const findings: string[] = [];
+      const measured: Record<string, CallbackAxisCensus> = {};
+      const contracts: {
+        name: string;
+        calls: number;
+        contract: number;
+        recorded: number;
+        arity: number;
+      }[] = [];
       for (const subject of CALLBACK_SUBJECTS) {
-        // The domain is the registry's, not this pass's: a subject names a
-        // `NUMERIC_DOMAINS` key and the points come from there and from the
-        // same overflow arithmetic the overflow pass uses.
-        expect(subject.axis.length, subject.key).toBeGreaterThan(30);
-        const result = callbackPass(subject.drive, subject.key, callbackPointsFor(subject.domain));
-        calls += result.calls;
-        recorded += result.recorded;
-        points += result.points;
-        refusedPoints += result.refusedPoints;
-        findingCount += result.findingCount;
-        findings.push(...result.findings);
+        for (const axis of subject.axes) {
+          // The domain is the registry's, not this pass's: an axis names a
+          // `NUMERIC_DOMAINS` key and the points come from there and from the
+          // same overflow arithmetic the overflow pass uses.
+          expect(axis.means.length, axis.name).toBeGreaterThan(30);
+          expect(axis.name.startsWith(`${subject.key}#`), axis.name).toBe(true);
+          const domainPoints = callbackPointsFor(axis.domain);
+          const result = callbackPass(axis.drive, axis.name, domainPoints);
+          axes += 1;
+          measured[axis.name] = {
+            points: result.points,
+            refusedPoints: result.refusedPoints,
+            calls: result.calls,
+            recorded: result.recorded,
+          };
+          calls += result.calls;
+          recorded += result.recorded;
+          points += result.points;
+          refusedPoints += result.refusedPoints;
+          findingCount += result.findingCount;
+          findings.push(...result.findings);
+          // AN ORACLE OVER THE SUBJECT RATHER THAN OVER THE DOMAIN, per axis,
+          // which is the half a literal cannot give. The domain appears on both
+          // sides, so what is graded is the SUBJECT: a `historyFrom` that
+          // skipped slot 0, stopped early or called its predicate twice is red
+          // here while every literal below stays green, and so is a rate reader
+          // that quietly stopped asking about part of the roster.
+          //
+          // COLLECTED AND ASSERTED BELOW THE FINDINGS, not here. Measured: with
+          // the twelfth bypass planted, this oracle fires on the SAME axis the
+          // payload arrives on, and asserting it inside the loop made a reader
+          // meet `expected 267 to be 264` instead of the line naming
+          // `covered-day`. That is the file's own ordering rule — the check
+          // that says WHAT arrived goes before the check that says something
+          // did — and it had to be applied one more time here.
+          contracts.push({
+            name: axis.name,
+            calls: result.calls,
+            contract: domainPoints.reduce((sum, point) => sum + axis.callsAt(point), 0),
+            recorded: result.recorded,
+            arity: result.calls * axis.argumentsPerCall,
+          });
+        }
       }
       // THE FINDINGS FIRST, AND THE ORDER IS DELIBERATE. Both this and the
       // counts below redden under M27, and the one a reader should meet first
@@ -8867,71 +9721,81 @@ describe('the channel census — the routes a string can leave this directory by
       // the zero is pinned on. A cap on the message must not become a cap on
       // the measurement, and these two lines are what keeps them apart.
       expect(findingCount).toBe(CALLBACK_PASS_CENSUS.FINDINGS);
+      // The per-axis oracle, after the findings and before the literals.
+      for (const seen of contracts) {
+        expect(seen.calls, `${seen.name} against its own contract`).toBe(seen.contract);
+        expect(seen.recorded, `${seen.name} arity`).toBe(seen.arity);
+      }
+      // PER AXIS, deep equal in both directions, BEFORE the sums. An axis that
+      // stopped driving is invisible in a total and named here.
+      expect(measured).toEqual(DECLARED_CALLBACK_AXES);
+      expect(axes).toBe(CALLBACK_PASS_CENSUS.AXES_VARIED);
       // Counts, not bounds. A pass whose subject stopped calling its callback
       // would report zero findings and pass, so the calls are pinned too.
       expect(calls).toBe(CALLBACK_PASS_CENSUS.CALLS);
       expect(recorded).toBe(CALLBACK_PASS_CENSUS.RECORDED);
-      // The domain's own size, and the points the subject's guard refused. The
-      // second is what says the first is a domain the subject actually ran on:
-      // `historyFrom` refuses a slot count under one, so a domain of nothing
-      // but zeroes would show 87 points and no calls at all.
+      // The domains' own sizes, and the points the subjects' guards refused.
+      // The second is what says the first is a domain the subjects actually ran
+      // on: `historyFrom` refuses a slot count under one, so a domain of
+      // nothing but zeroes would show every point and no calls at all.
       expect(points).toBe(CALLBACK_PASS_CENSUS.POINTS);
       expect(refusedPoints).toBe(CALLBACK_PASS_CENSUS.REFUSED_POINTS);
-      expect(points - refusedPoints).toBe(87);
-      // AND AN ORACLE OVER THE SUBJECT RATHER THAN OVER THE DOMAIN, which is
-      // the half a literal cannot give. `historyFrom` calls its predicate once
-      // per slot, so the calls must equal the sum of the admissible points —
-      // the domain appears on both sides, and what is being graded is the
-      // SUBJECT: a `historyFrom` that skipped slot 0, stopped early, or called
-      // its predicate twice is red here while the literal above stays green.
-      const expected = CALLBACK_SUBJECTS.map((subject) => callbackPointsFor(subject.domain))
-        .flat()
-        .filter((point) => point >= 1)
-        .reduce((sum, point) => sum + point, 0);
-      expect(calls).toBe(expected);
+      // And the residual, as a list rather than as a sentence. One row per
+      // uncrossed axis pair.
+      expect(CALLBACK_AXIS_RESIDUAL.length).toBe(1);
+      for (const row of CALLBACK_AXIS_RESIDUAL) expect(row.length).toBeGreaterThan(60);
     },
     CHANNEL_BLOCK_TIMEOUT_MS,
   );
 
   it('drives the callback subjects over the registry domain, not a fixture of its own', () => {
     // THE JOIN THAT MAKES THE WIDENING STRUCTURAL RATHER THAN REMEMBERED. Every
-    // subject's points are the ones `NUMERIC_DOMAINS` gives its axis plus the
-    // ones that domain's ceiling drops — the same two halves the main drive and
-    // the overflow pass split between them. A knob added to `EMPIRE_TUNING`
-    // widens this pass with nobody editing it, and a domain that shrank is red
-    // here on POINTS above.
-    for (const subject of CALLBACK_SUBJECTS) {
-      const registry = NUMERIC_DOMAINS[subject.domain];
-      const points = callbackPointsFor(subject.domain);
+    // axis's points are the ones `NUMERIC_DOMAINS` gives it plus the ones that
+    // domain's ceiling drops — the same two halves the main drive and the
+    // overflow pass split between them. A knob added to `EMPIRE_TUNING` widens
+    // this pass with nobody editing it, and a domain that shrank is red here on
+    // the per-axis table above.
+    const axes = CALLBACK_SUBJECTS.flatMap((subject) => subject.axes);
+    for (const axis of axes) {
+      const registry = NUMERIC_DOMAINS[axis.domain];
+      const points = callbackPointsFor(axis.domain);
       // Containment in both halves, so a point list that quietly dropped the
       // ceiling's overflow — which is where the eighth and tenth bypasses lived
       // on the drive's side — reports itself.
-      for (const point of registry.points) expect(points, subject.key).toContain(point);
-      const dropped = overflowPointsFor(subject.domain, registry);
-      expect(dropped.length, `${subject.key} has no points above its ceiling`).toBeGreaterThan(0);
-      for (const point of dropped) expect(points, `${subject.key} ${point.label}`).toContain(point.value);
+      for (const point of registry.points) expect(points, axis.name).toContain(point);
+      const dropped = overflowPointsFor(axis.domain, registry);
+      expect(dropped.length, `${axis.name} has no points above its ceiling`).toBeGreaterThan(0);
+      for (const point of dropped) expect(points, `${axis.name} ${point.label}`).toContain(point.value);
       // And it is not merely the two lists concatenated: it straddles branch
-      // points the E18 fixture could not express. Three named ones, each a
-      // real branch point of this directory rather than a round number.
+      // points the E18 fixture could not express. Two named ones, each a real
+      // branch point of this directory rather than a round number.
       expect(points).toContain(EMPIRE_TUNING.ROSTER_SLOTS_MAX);
       expect(points).toContain(EMPIRE_TUNING.REPUTATION_MAX);
-      // THIRTY-FOUR AND NOT THIRTY-THREE, and the gap is the honest part. The
-      // 39 rows `overflowPointsFor` yields collapse to 33 distinct VALUES —
-      // two labels can hold the same number — and a domain also carries its own
-      // unit's thresholds unconditionally, straddled, wherever they sit, so one
-      // more point above the ceiling arrives from there rather than from the
-      // overflow. Pinned as the count it is; the containment above is what says
-      // no dropped point is missing.
-      expect(distinct(dropped.map((point) => String(point.value))).length).toBe(33);
-      expect(points.filter((point) => point > FOREIGN_CEILINGS.COUNT).length).toBe(34);
-      // And the arithmetic `CALLBACK_PASS_CENSUS.POINTS` claims, joined to the
-      // registry's own count rather than to a second measurement of the same
-      // thing: 55 domain points and 33 distinct dropped values.
-      expect(registry.points.length).toBe(DOMAIN_CENSUS.COUNT_POINTS);
-      expect(points.length).toBe(DOMAIN_CENSUS.COUNT_POINTS + 33);
     }
-    // One injected axis per subject, stated as the number it is.
-    expect(CALLBACK_PASS_CENSUS.AXES_VARIED).toBe(1);
+    // The COUNT axes, whose arithmetic is derived rather than read off a
+    // failure. THIRTY-FOUR AND NOT THIRTY-THREE, and the gap is the honest
+    // part: the 39 rows `overflowPointsFor` yields collapse to 33 distinct
+    // VALUES — two labels can hold the same number — and a domain also carries
+    // its own unit's thresholds unconditionally, straddled, wherever they sit,
+    // so one more point above the ceiling arrives from there rather than from
+    // the overflow.
+    const count = NUMERIC_DOMAINS.COUNT;
+    const countPoints = callbackPointsFor('COUNT');
+    const countDropped = overflowPointsFor('COUNT', count);
+    expect(distinct(countDropped.map((point) => String(point.value))).length).toBe(33);
+    expect(countPoints.filter((point) => point > FOREIGN_CEILINGS.COUNT).length).toBe(34);
+    expect(count.points.length).toBe(DOMAIN_CENSUS.COUNT_POINTS);
+    expect(countPoints.length).toBe(DOMAIN_CENSUS.COUNT_POINTS + 33);
+    // Every axis names a domain the registry has, and every axis name is
+    // distinct — a duplicate would let two axes share one census row.
+    expect(distinct(axes.map((axis) => axis.name)).length).toBe(axes.length);
+    expect([...distinct([...Object.keys(DECLARED_CALLBACK_AXES)])].sort()).toEqual(
+      [...distinct(axes.map((axis) => axis.name))].sort(),
+    );
+    // The number of injected axes, stated as the number it is rather than as a
+    // silence. It was 1 when the twelfth bypass was planted, and the bypass
+    // keyed its payload on the axis that had no points.
+    expect(CALLBACK_PASS_CENSUS.AXES_VARIED).toBe(axes.length);
   });
 
   it('the callback pass bites — the tripwire the zero is zero against', () => {
@@ -8956,7 +9820,7 @@ describe('the channel census — the routes a string can leave this directory by
 // ---------------------------------------------------------------------------
 
 /**
- * Thirty routes, planted into shipped modules one at a time, each run
+ * Thirty-eight routes, planted into shipped modules one at a time, each run
  * against `tsc --noEmit`, against this file, and against the three accidental
  * catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
@@ -9517,6 +10381,159 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'engagement.ts was restored and verified byte-identical with `git hash-object` before this row was written.',
     ]),
   }),
+  // --- E21's seven, planted against the channel census. The first three are
+  // the twelfth bypass in three forms; the last four are the routes the fix for
+  // it turned up on the way past.
+  Object.freeze({
+    id: 'M31',
+    shape:
+      '31-repeated, THROUGH AN ALIAS: THE TWELFTH BYPASS. The same callback payload as M27/M30, handed through a LOCAL CONST that aliases the parameter past a double cast, so the callee is spelled `notify` and no `Identifier` at the call site resolves to a `Parameter`',
+    where:
+      "engagement.ts, `historyFrom`: `const notify = attended as unknown as (s: number, l: string) => boolean` and `if (trainedDays.length === EMPIRE_TUNING.REPUTATION_MAX) notify(slot, EMPIRE_FORBIDDEN_OUTPUTS[0])`, written line-count-preserving with the specifier added onto an existing import line",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'GREEN BEFORE, at 46b0288: `tsc --noEmit` exit 0 and `vitest run src/empire src/game/streakEntitlement.test.ts` 2 failed of 521 — `expected 1019 to be 1018` (CONSTRUCTOR_CENSUS.CALLS_EXAMINED) and `expected 21824 to be 21789` (NODES_EXAMINED). Both are file-changed counters. Every instrument about a forbidden name was green.',
+      'AND THE BRANCH RUNS, PRINTED RATHER THAN INFERRED, per M24: `historyFrom(3, recording, [0..4999])` gives RECEIVED BY THE CALLER-SUPPLIED CALLBACK: [[0,"covered-day"],[0],[1,"covered-day"],[1],[2,"covered-day"],[2]] with RETURNED attended [true,false,false] — and at the pass\'s own fixture shape, `trainedDays` of length 2, [[0],[1],[2]] and the identical attended. The payload is real and the shipped result does not move.',
+      'AFTER the symbol resolver: the channel census / pins the two callback sites with their ARGUMENT COUNT: + "engagement.ts#historyFrom#attended x2" beside the existing x1. The site is keyed by the PARAMETER the callee resolves to, not by the spelling at the call site, so the alias does not get its own key.',
+      'AFTER the symbol resolver: the channel census / derives every escape site: "callback-invocation": { "engagement.ts": 1 } -> { "engagement.ts": 2 }.',
+      'AFTER the second axis: the callback pass / drives every caller-supplied callback: + "@5000engagement.ts#historyFrom#attended#trainedDays#callback.0.1=covered-day" and the same at .2.1 and .4.1 — the payload, the branch point AND the axis. Two independent catchers, one needing no drive at all.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'WHY IT WORKED, and it is this file\'s own sibling rule one channel over: `channelCensusOf` resolved the throw wrap by SYMBOL thirty lines above an arm that matched the callback by SPELLING. The mutation arm went through `receiverRoot`, which walks past casts; the callback arm required a bare `Identifier` whose declaration is a `Parameter`. A local alias is a `VariableDeclaration`, `ts.isParameter` was false, AND THERE WAS NO `else` — so the call was recorded under no channel and in no list, not even `freshReceivers`, whose own docstring says an unclassifiable finding is the one outcome a census must not swallow.',
+      'ISOLATION, same detail M27 and M30 recorded: the specifier was added to the existing `./empireCore` import, so no module edge arrives and the import fence stays green.',
+      'engagement.ts was restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M32',
+    shape:
+      '31-repeated, THE SAME ROUTE WRITTEN READABLY: M31 over seven extra lines instead of two, which is how anybody would actually write it',
+    where: 'engagement.ts, `historyFrom`, the same alias and guard across eight lines and a specifier on its own import line',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'GREEN BEFORE except for counters, at 46b0288: 3 failed of 521 — the same two as M31 plus `pins the two callback sites`, which reddened on `- "engagement.ts:355 receiver=ArrayLiteralExpression"` / `+ "engagement.ts:362 receiver=ArrayLiteralExpression"`.',
+      'AFTER: the same two semantic catchers as M31.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'IT IS HERE BECAUSE OF WHAT REDDENED, NOT BECAUSE OF WHAT IT DOES. `DECLARED_FRESH_RECEIVERS` pins its entries with a LINE NUMBER, so seven added lines above line 355 move it. That is a fourth accidental catcher for this area, and a mutant caught only by it has not been caught — the entry it moved is a `[...list].sort()` in a different function that the mutation did not touch. M31 exists as the line-count-preserving form precisely so the measurement is not resting on that.',
+      'engagement.ts was restored and verified byte-identical before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M33',
+    shape:
+      "31-repeated, UNCONDITIONAL: the mutant E19's own row said could not be written — one that fires the callback PASS and leaves the site-key census green",
+    where: "engagement.ts, `historyFrom`, M31's alias with the `trainedDays.length` guard removed so `notify(slot, EMPIRE_FORBIDDEN_OUTPUTS[0])` runs at every slot of every point",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'AGAINST THE BASE CENSUS AT 46b0288 — the measurement the row exists for: the callback pass / drives every caller-supplied callback: expected [ …(8) ] to deeply equal [] with + "@1engagement.ts#historyFrom#attended#callback.0.1=covered-day" and seven more at @2, @3 and @4, WHILE `pins the two callback sites with their ARGUMENT COUNT` was GREEN — "Tests 1 passed | 59 skipped (60)". The pass alone, exactly the shape M30 recorded as impossible.',
+      'AGAINST THE FIXED CENSUS: 4 failed — the site table, the arity key, the callback pass, and the per-axis contract oracle at `engagement.ts#historyFrom#attended#slots against its own contract: expected 1453626 to be 726813`, because the subject now calls its predicate twice per slot.',
+      'tsc --noEmit exit 0 in both configurations, with `attended`\'s declared parameter type untouched.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'WHAT THIS SETTLES. M30\'s `alsoRed` says: "a mutant of the second kind would fire only the pass, and there is no way to write one here without changing `attended`\'s declared parameter type, which `tsc` refuses under strictFunctionTypes." Both halves are false. A double cast to `unknown` writes the route without touching any declared type and `tsc` exits 0, and the resulting mutant fired the pass and only the pass. That sentence is left standing in M30 rather than edited, because a retracted claim is worth more than a deleted one and because it is the reason CLAUDE.md now says an impossibility claim gets the same bar as a fix.',
+      'THE GENERAL FORM, so the next round does not have to rediscover it: `strictFunctionTypes` constrains an ASSIGNMENT between declared function types. It says nothing about `as unknown as`, which is not an assignment it inspects. An impossibility stated in the mechanism\'s own terms would have said only that, and would have been checkable.',
+      'engagement.ts was restored and verified byte-identical before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M34',
+    shape:
+      '32 — A FUNCTION NESTED IN A RETURNED OBJECT LITERAL. The payload is not in the return, it is in a member of the return that only the CALLER can invoke, past a cast that erases the declared type',
+    where: "production.ts, `accrueProduction`: `peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0]` added to the returned frozen object, with `as ProductionAccrual` on the way out",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'GREEN BEFORE, against the whole directory WITH this round\'s symbol fix already in: 3 failed of 521 and all three are node/string truncation counters — `expected 2393230 to be 2393060`, `expected 523184 to be 523128`, `expected 21802 to be 21789`. Instrument A green, B green, C green, the overflow pass green, the callback pass green, the site table green. Nothing named the payload.',
+      'AND THE BRANCH RUNS, PRINTED RATHER THAN INFERRED, per M24: the returned structure carries KEYS ending `…,rates,ledger,peek`, `typeof peek: function`, and `peek(): covered-day`. The caller gets the name by calling a member of the value it was handed.',
+      'AFTER widening `returned-closure` to walk the returned expression through value-construction positions: the channel census / pins the two callback sites: + "production.ts#accrueProduction#closure:.peek", and derives every escape site: "returned-closure": + "production.ts": 1. Named by module, by enclosing function and by MEMBER PATH.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'WHAT THE PLANT ALSO EXPOSED, AND IT IS THE LARGER HALF: the `returned-closure` channel was pinned EMPTY and was not. The widened scan finds two sites on the SHIPPED tree — `empireInvariant.ts#rosterRatesAt#closure:.gymBucksPerHour` and `…closure:.trainingIqPerDay` — because `rosterRatesAt` returns a frozen object holding two arrows. Those are the producer side of the two `callback-invocation` sites this round added in `production.ts`: one module builds the closures, another calls them, and the census saw neither end. SITES 326 -> 328 and CHANNELS_IN_USE 5 -> 6.',
+      'THE WIDENING\'S OWN LIMIT, with its catcher named: it follows SYNTAX, so `const shape = { peek }; return shape;` is not found by it. What covers that route is the `local` arm of the write census and instrument A\'s declared-position walk. The claim is that this closes the literal nesting M34 used, not every route to a returned function.',
+      'production.ts was restored and verified byte-identical with `git hash-object` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M38',
+    shape:
+      "32-repeated, INDIRECTLY: the same nested closure, but assembled into a local and returned through a plain identifier and a shorthand property — the route M34's own repair DECLARED it could not see and named a catcher for",
+    where:
+      "production.ts, `accrueProduction`: `const peek = (): string => EMPIRE_FORBIDDEN_OUTPUTS[0]; const shape = { …fields, peek }; return Object.freeze(shape) as ProductionAccrual;`",
+    attempts: 3,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      "GREEN BEFORE, AND THE NAMED CATCHER DID NOT FIRE — which is the finding this row exists for. M34's repair said this route was covered by 'the `local` arm of the write census plus instrument A's declared-position walk'. Planted and run against the whole directory: 3 failed of 521, and all three are node/string truncation counters — `expected 2393230 to be 2393060`, `expected 523184 to be 523128`, `expected 21811 to be 21789`. The write census was green, instrument A was green. The sentence was a pointer at a catcher that does not exist.",
+      'AFTER: the channel census / pins the two callback sites: + "production.ts#accrueProduction#closure:.peek", and derives every escape site: "returned-closure": + "production.ts": 1.',
+      'THREE ATTEMPTS, AND THE TWO FAILURES ARE THE POINT rather than noise. (1) Following a returned IDENTIFIER back to its local declaration was not enough: `{ peek }` is a `ShorthandPropertyAssignment` and the walker handled `PropertyAssignment`, `SpreadAssignment` and `MethodDeclaration` only, so the plant stayed green. (2) Handling the shorthand by resolving `property.name` through the ordinary path was ALSO not enough: `getSymbolAtLocation` on a shorthand name returns the object literal\'s PROPERTY symbol, whose declaration is the shorthand itself, so the resolution goes in a circle. It needs `getShorthandAssignmentValueSymbol`. Only the third form catches it.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      "WHAT IT COSTS THE ROUND'S OWN CREDIBILITY, recorded rather than smoothed over: M34's repair shipped with a declared limit and a named catcher, and the catcher was wrong. CLAUDE.md's rule is that a named catcher nobody ran is a pointer; this is that rule biting the round that was written to apply it. The limit sentence in `returnedFunctions` is rewritten from the measurement rather than from an argument.",
+      "AND IT IS THE SIBLING RULE TWICE IN ONE FIX. Attempt (1) widened the REACH — follow the identifier — and left the PREDICATE narrow. Attempt (2) widened the predicate and got the resolution API wrong. Each time a different check went red, or nothing did, which is the tell this file has now recorded five times.",
+      "THE LIMIT THAT REMAINS, with no catcher claimed for it: a function assembled across a branch — `let shape; if (x) shape = { peek };` — has no initializer to follow. Not planted. Stated as open rather than as covered.",
+      'production.ts was restored and verified byte-identical with `git hash-object` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M35',
+    shape:
+      '33 — A WRITE INTO A PARAMETER THROUGH A LOCAL ALIAS. The same spelling-versus-symbol defect as M31, on the mutation arm instead of the callback arm',
+    where: "production.ts, a module-private `leakInto(sink)` called from `accrueProduction`: `const inner = sink; inner.kind = EMPIRE_FORBIDDEN_OUTPUTS[0]`",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'GREEN BEFORE, against the BASE census at 46b0288: the only failure is `derives every escape site: expected 21836 to be 21789` — the node count, asserted AFTER the site table, so the table itself passed with `argument-mutation` still empty.',
+      'AFTER: the channel census / derives every escape site: "argument-mutation": {} -> { "production.ts": … }. `ownerOf` follows the local\'s initializer back to the parameter, so the write is classified by whose memory it lands in rather than by what the receiver is spelled.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'THE THREE ACCIDENTAL CATCHERS WERE RUN RATHER THAN ASSUMED: `vitest run src/empire/empireCore.test.ts` is 57 passed (57) with this planted, which is the file holding the magic-number audit, the tree-wide string census and the import fence.',
+      'production.ts was restored and verified byte-identical before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M36',
+    shape:
+      "33-repeated, THROUGH A DESTRUCTURED PARAMETER: `function f({ sink }) { sink.kind = X }`, where the receiver's declaration is a `BindingElement` and matches none of the arm's three branches",
+    where: 'production.ts, the same private `leakInto`, with its parameter destructured',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'GREEN BEFORE, against the BASE census: only `expected 21839 to be 21789`, the node count, with the site table green.',
+      'AFTER: "argument-mutation" gains the site. `bindingHost` walks a binding element out to whatever the pattern was destructured from, so a destructured parameter is a parameter.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'empireCore.test.ts 57 passed (57) with this planted.',
+      'production.ts was restored and verified byte-identical before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M37',
+    shape:
+      '33-repeated, THROUGH A COMPOUND OPERATOR: `sink.kind += X`, which the arm never looked at because its predicate was `EqualsToken` and nothing else',
+    where: 'production.ts, the same private `leakInto`, writing with `+=`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'GREEN BEFORE, against the BASE census: only `expected 21831 to be 21789`, the node count, with the site table green. This one was not a resolution failure at all — the node was never classified as a write, so no arm ran.',
+      'AFTER: "argument-mutation" gains the site. The predicate is now `FirstAssignment`..`LastAssignment`, so every one of TypeScript\'s sixteen assignment operators is inside the scan rather than one of them.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'THE BRANCH IMMEDIATELY BELOW, taken while it was open: `a.b++`, `--a.b` and `delete a.b` are writes the arm also never looked at, and they are scanned now. They are NOT separately planted, and that is stated rather than implied — what is measured here is `+=`.',
+      'empireCore.test.ts 57 passed (57) with this planted.',
+      'production.ts was restored and verified byte-identical before this row was written.',
+    ]),
+  }),
 ]);
 
 /**
@@ -9668,6 +10685,12 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
       'measures every cell of the coverage matrix: deferred-completion/a thenable that hands the name to a resolver emitted nothing — every false in its row is meaningless: expected false to be true. Nine of the thirteen matrix rows are mostly false, and a false cell is a claim about an instrument only if the probe really emitted; this is the guard that says so, and it bites.',
   }),
   Object.freeze({
+    id: 'G22',
+    what: "the `then` clause removed from the deferred-completion scan, in two steps — first alone, then with the matrix's own declared cell edited to agree with it, which is the repair a reader reaches for first",
+    reddened:
+      'STEP 1, measures every cell of the coverage matrix: `deferred-completion/a thenable that hands the name to a resolver movesCensus: expected false to be true`. STEP 2, with the row edited to `movesCensus: false` so step 1 goes green: names the channels the drive alone covers: `deferred-completion/a thenable that hands the name to a resolver is in use and no instrument covers it: expected false to be true`, because the zero-sites account now REQUIRES the census to be shown to see that shape. Both steps were run. The pair is the point: a declared matrix whose cells can be edited to agree with a weakened instrument is a table, not a check, and this is the measurement that the two halves are joined.',
+  }),
+  Object.freeze({
     id: 'G21',
     what: "`WRAP_CALL_COUNTS`'s `empireInvariant.ts` row bumped from 6 to 7 — the wrap-call side of the throw fence, which M29 could not isolate",
     reddened:
@@ -9692,8 +10715,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(21);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(21);
+    expect(REGISTRY_MUTANTS.length).toBe(22);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(22);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
@@ -9711,7 +10734,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(30);
+    expect(PLANTED_ROUTES.length).toBe(38);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -9790,8 +10813,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // converted and one at a site that never had a throw, because a fence
     // tested only on the first has not been shown to catch an arrival. One for
     // M30, which reached isolation first time for the reason M27 did.
-    expect(attempts).toBe(46);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(20);
+    expect(attempts).toBe(56);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(28);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
