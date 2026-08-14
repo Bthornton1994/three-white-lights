@@ -10298,7 +10298,7 @@ describe('the assembly walk bites — every binding whose value is not in its in
 // ---------------------------------------------------------------------------
 
 /**
- * Thirty-nine routes, planted into shipped modules one at a time, each run
+ * Forty-two routes, planted into shipped modules one at a time, each run
  * against `tsc --noEmit`, against this file, and against the three accidental
  * catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
@@ -10983,6 +10983,61 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
     ]),
   }),
   Object.freeze({
+    id: 'M40',
+    shape:
+      "34 — A BANNED NAME AT AN ARGUMENT POSITION A `member-of-parameter` SITE ALREADY HAS. Not a new site, not a new argument: the same call with a different value in it, which is the limit `DECLARED_MEMBER_CALLS_ON_PARAMETERS` states about itself",
+    where:
+      "engagement.ts, `moreEngagedByTrainedDay`: `history.trainedDays.includes(day)` -> `history.trainedDays.includes(EMPIRE_FORBIDDEN_OUTPUTS[0] as unknown as number)`, with the specifier added to the existing `./empireCore` import on a line that already exists so the line count does not move",
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      "NOT CAUGHT BY THE ARM IT IS ABOUT. Against the whole guard file the ONLY failure is `derives every escape site: expected 21797 to be 21789` — the AST node count, which this file has recorded four times as not the check working. `DECLARED_MEMBER_CALLS_ON_PARAMETERS` is byte-identical with the plant in: the site key is `engagement.ts#moreEngagedByTrainedDay#history.includes x1` before and after, because the arity did not change. 65 passed of 66.",
+      'AND THE BRANCH RUNS, PRINTED RATHER THAN INFERRED: driving `moreEngagedByTrainedDay` with a history whose `trainedDays` carries an instrumented `includes` prints `handed to the caller-supplied includes: ["covered-day"]`. A caller who supplied that array has the name.',
+      "WHAT DID CATCH IT IS BEHAVIOURAL AND IN ANOTHER FILE, WHICH IS NOT THIS GUARD WORKING: `engagement.test.ts > refuses a pair that does not differ in engagement by exactly one: expected [Function] to throw an error`. `includes` of a name that is not in the array is always false, so the refusal stopped firing. That is a co-catcher of the payload's SIDE EFFECT, not of the payload — and M42 below is the same route written so that no behaviour moves at all.",
+      "ITS FIRST FORM WAS NOT ISOLATED AND THE SECOND ATTEMPT IS WHY THIS ROW HAS `attempts: 2`. Putting the new import specifier on its own line moved `engagement.ts:355` to `engagement.ts:356` in `DECLARED_FRESH_RECEIVERS`, which is the FOURTH accidental catcher this file names — a line-number pin on an unrelated `[...list].sort()`. Folded onto an existing line, that goes away and the isolation is real.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'engagement.ts was restored and verified byte-identical with `git hash-object` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M41',
+    shape:
+      '34-bounded — THE SAME PAYLOAD WHERE IT NEEDS A SECOND CALL. The control for M40 rather than an attack: it says what the enumeration DOES cover, so the limit above is a bound and not a shrug',
+    where:
+      "engagement.ts, `moreEngagedByTrainedDay`: `history.trainedDays.includes(history.trainedDays.includes(day) ? day : (EMPIRE_FORBIDDEN_OUTPUTS[0] as unknown as number))` — behaviour-preserving on any real array, because the inner call decides and the outer one is handed the name only when the answer is already false",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'the channel census / pins the two callback sites: `expected [ …(14) ] to deeply equal [ …(13) ]` — a second `engagement.ts#moreEngagedByTrainedDay#history.includes x1` in `DECLARED_MEMBER_CALLS_ON_PARAMETERS`, and `callTargets`: `member-of-parameter` 13 -> 14 in the arm census. Instrument C / the brand constructor set is derived from the module: `expected 1019 to be 1018`, the call-expression count.',
+      'AND THE BEHAVIOUR IS UNCHANGED, PRINTED: the caller-supplied `includes` receives `[9,"covered-day"]` and the refusal on an already-trained day still fires with its real message. `engagement.test.ts` passes outright, 101 passed of 104 across the two files, with all three failures in the guard.',
+      'SO THE BOUND IS EXACT AND MEASURED IN BOTH DIRECTIONS: a payload at an existing argument of an existing call is invisible to this arm; a payload that needs a NEW call is red by count, by duplicate entry and by arm census. The enumeration covers arrival and arity. It does not cover value, and now that is a measurement rather than a sentence.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'engagement.ts was restored and verified byte-identical with `git hash-object` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M42',
+    shape:
+      "35 — THE FOURTEENTH BYPASS, AND THE SHARPEST OF THE THREE: the payload is the PREDICATE'S RETURN VALUE, handed to a caller-supplied `filter` at a site that already exists, with the argument still an `ArrowFunction` and no behaviour moving anywhere",
+    where:
+      "empireCore.ts, `idleLedger`: `ledger.filter((entry) => outputReach(entry.output) === 'idle-only')` -> `… ? (EMPIRE_FORBIDDEN_OUTPUTS[0] as unknown as boolean) : false`. A real `Array.prototype.filter` coerces, and a non-empty string is truthy, so the kept set is identical",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING CAUGHT IT. Whole directory: `Test Files 1 failed | 11 passed (12)`, `Tests 1 failed | 480 passed (481)`, and the one failure is `derives every escape site: expected 21801 to be 21789` — the AST node count again. Instrument A, B and C green, the site table green, the member-call enumeration green, the callback pass green, every behavioural test in the directory green.',
+      'AND THE BRANCH RUNS, PRINTED: with an instrumented `filter` on the ledger, `predicate returned to the caller-supplied filter: ["covered-day",false]`, `kept outputs: ["gym-bucks"]`, and `behaviour on a real array: ["gym-bucks"]`. Same answer, name delivered.',
+      "WHY IT DECIDES WHAT THE REPAIR HAS TO BE. A widening of the site KEY — adding each argument's syntactic kind, or the kind of the value an identifier argument resolves to — catches M40 and does not catch this: the argument is an `ArrowFunction` before and after, and the payload is in what the arrow RETURNS when the caller invokes it. Eleven of the thirteen sites take a callback, so the arrow-return route is the majority case and not a corner. The instrument that sees it has to be a DRIVE with a recording receiver, which reads the value the caller's own method is handed rather than the syntax that produced it. Nothing in this file does that at the time this row was written, and the commit that first carried the row repaired nothing — it recorded an open bypass.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'empireCore.ts was restored and verified byte-identical with `git hash-object` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
     id: 'M35',
     shape:
       '33 — A WRITE INTO A PARAMETER THROUGH A LOCAL ALIAS. The same spelling-versus-symbol defect as M31, on the mutation arm instead of the callback arm',
@@ -11248,7 +11303,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(39);
+    expect(PLANTED_ROUTES.length).toBe(42);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -11333,8 +11388,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // `EMPIRE_FORBIDDEN_OUTPUTS` with a named specifier added to an import that
     // already exists, no new call expression, no new `return` statement and no
     // new string literal.
-    expect(attempts).toBe(57);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(29);
+    expect(attempts).toBe(61);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(32);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
