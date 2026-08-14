@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-tsc-2026-08-14T05-23-28-586Z-6860",
+  "label": null,
+  "command": [
+    "npx",
+    "tsc",
+    "--noEmit"
+  ],
+  "budgetSeconds": 1500,
+  "startedAtIso": "2026-08-14T05:23:28.586Z",
+  "startedAtMs": 1786685008586,
+  "cwd": "/home/user/wt-realip-widen",
+  "commit": "83e0d68c97db87f25f0f2492ca8283b5b6114baf",
+  "branch": "claude/realip-text-file-widen",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 6860,
+    "startTick": "1086168",
+    "cmdline": "node tools/watchdog.mjs --budget 1500 -- npx tsc --noEmit",
+    "bootId": "70e4dcd9-91f6-43ee-a53c-88125d271f98",
+    "bootEpochSeconds": 1786674147,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T05:23:28.613Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
