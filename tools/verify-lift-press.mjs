@@ -12,14 +12,29 @@
  * The squat's whole input is a press-and-hold, so the one gesture the mechanic
  * is built on is the one a browser reads as "select this".
  *
- * The fix is `PRESS_NOT_SELECT` in `src/lift/LiftScreen.tsx`. `src/lift/
- * liftInput.test.ts` guards it and SAYS IN ITS OWN HEADER what it cannot do:
- * `vitest.config.ts` is `environment: node`, nothing renders, so it proves the
- * three properties are DECLARED and can say nothing about whether they reached
- * a DOM node or whether a press behaves. This tool is that missing half.
+ * The fix is `PRESS_NOT_SELECT` and `PRESS_NOT_TAKEN` in
+ * `src/lift/pressGuard.ts`. `src/lift/liftInput.test.ts` guards it and SAYS IN
+ * ITS OWN HEADER what it cannot do: `vitest.config.ts` is `environment: node`,
+ * nothing renders, so it proves the properties are DECLARED on the right
+ * elements and can say nothing about whether they reached a DOM node or whether
+ * a press behaves. This tool is that missing half.
  *
  * ===========================================================================
- * WHICH ARM IS DRIVEN, AND WHY BOTH
+ * WHY THIS TOOL WAS EXTENDED, WHICH IS THE FINDING IT WAS BUILT TO REPORT
+ * ===========================================================================
+ * Its first run reported the fix ABSENT from the played session surface, and the
+ * reason it was absent is that it had been written into `LiftScreen.tsx` — the
+ * REPLAY HARNESS. `AppShell.tsx` mounts that screen behind `route.surface ===
+ * 'replay'`, `shellRoute.ts` builds that surface with `source: 'debug'`, and
+ * `playerReachableFrom` keeps it out. So the fix for a player-reported defect
+ * lived on the one lift surface no player can open, and the source scan guarding
+ * it read that file by name and stayed green.
+ *
+ * That is repaired, and this tool now drives ALL THREE press surfaces rather
+ * than two. It also moved PROBE 1's subject, for the reason below.
+ *
+ * ===========================================================================
+ * WHICH ARMS ARE DRIVEN, AND WHY ALL THREE
  * ===========================================================================
  * CLAUDE.md: "A screen a player reaches needs a check that reaches it the way a
  * player does." `tools/capture-lift.mjs` and `tools/verify-lift-shots.mjs` both
@@ -28,22 +43,30 @@
  * arm were literally different code and 103 green checks had never pressed an
  * exit on a meet a player opened.
  *
- * IT IS EARNED AGAIN HERE. The two arms are not the same component:
+ * IT IS EARNED AGAIN HERE. The three arms are three different components:
  *
- *   - the DEBUG arm renders `LiftScreen` (`AppShell.tsx`: `route.surface ===
- *     'replay'`), whose touch target is `lift-touch`;
- *   - the PLAYED arm — the daily session, GDD §3.2, no query string — renders
+ *   - the SESSION arm — GDD §3.2's daily set, no query string — renders
  *     `SessionScreen` → `SetView`, whose touch target is `session-touch`.
  *     `SetView.tsx` says in its own header that "`LiftScreen` itself is
  *     deliberately NOT reused whole".
+ *   - the MEET arm — GDD §6.2's attempt, reached by pressing the shell's
+ *     `shell-open-meet` pill and playing through weigh-in and openers, still
+ *     with no query string — renders `MeetScreen` → `AttemptView`, whose touch
+ *     target is `attempt-touch`. A THIRD component, not a variant of the second,
+ *     and the one where a press the browser eats costs an attempt that does not
+ *     come back: GDD §6.2 gives one rep per attempt and no retry.
+ *   - the DEBUG arm renders `LiftScreen` (`route.surface === 'replay'`), whose
+ *     touch target is `lift-touch`. Kept because it is genuinely pressed — by
+ *     `capture-lift.mjs` and `verify-lift-shots.mjs` — and because it is what
+ *     the two played arms are compared against.
  *
  * So a claim about `lift-touch` is not a claim about what a player presses, and
- * this tool refuses to make one. Both arms are driven, both are reported, the
- * played arm asserts the address bar carries no query string at the moment the
- * styles are read, and a cross-arm check compares the two directly.
+ * this tool refuses to make one. All three are driven, all three are reported,
+ * both played arms assert the address bar carries no query string at the moment
+ * the styles are read, and cross-arm checks compare them directly.
  *
  * ===========================================================================
- * TWO PROBES, AND ONLY ONE OF THEM HAS A LIVE DOMAIN HERE
+ * TWO PROBES, AND PROBE 1'S SUBJECT MOVED TO WHERE ITS DOMAIN IS ALIVE
  * ===========================================================================
  * CLAUDE.md: "an assertion is vacuous if no state of the code it is meant to be
  * checking would make it red", and the sharpest shape it lists is an EMPTY
@@ -54,24 +77,39 @@
  * pass if its domain is live.
  *
  *   PROBE 1 — SELECTION. Press, hold, drift; read `window.getSelection()`.
- *     DOMAIN: DEAD on both arms, MEASURED rather than assumed. The touch target
- *     is a Skia `<canvas>` filling the whole element (`STAGE_W x STAGE_H`), and
+ *
+ *     ON THE STAGE ITS DOMAIN IS DEAD, measured rather than assumed: the touch
+ *     target is a Skia `<canvas>` filling the whole element,
  *     `document.caretRangeFromPoint` at the probe point returns the CANVAS node
- *     at offset 0 — there is no text position under the finger. Forcing
- *     `user-select: text` onto the element changes nothing: Blink will not
- *     start a selection inside a replaced element, so no value of the fix makes
- *     this probe red. It is reported as unproven, not as green.
+ *     at offset 0, and forcing `user-select: text` back onto that element leaves
+ *     the same gesture selecting nothing — Blink will not start a selection
+ *     inside a replaced element. That reading is still taken, and it is reported
+ *     as a NAMED SKIPPED check carrying its own evidence. It is not a green.
+ *
+ *     ITS SUBJECT IS THEREFORE THE COPY, which is what is selectable on these
+ *     screens and what a thumb sits directly under: `session-prompt`,
+ *     `attempt-prompt`, `lift-prompt`. `user-select` INHERITS, so the fix
+ *     declared on the screen root reaches them, and the domain there is live in
+ *     both directions on every arm every run — as shipped the press-and-drift
+ *     selects nothing, and with `user-select: text` forced onto the same element
+ *     it selects "P AND HOLD TO D" out of "TAP AND HOLD TO DESCEND".
+ *
+ *     THAT IS WHY THE FIX IS TWO OBJECTS. Spreading all three properties onto
+ *     the stage — the shape that shipped — puts `user-select` on the one element
+ *     where it provably does nothing, and leaves the text it was meant to
+ *     protect reading `auto`. `src/lift/pressGuard.ts` carries the argument;
+ *     this file carries the measurement.
  *
  *   PROBE 2 — THE BROWSER TAKING THE GESTURE. Dispatch a real touch pan and
  *     count `pointercancel` events. A `pointercancel` is the browser saying it
  *     has claimed the pointer for its own gesture and the app will not hear
  *     about it again — literally `touchAction`'s half of the bug, the half
  *     `LiftScreen.tsx`'s own comment calls "the one a screenshot cannot show".
- *     DOMAIN: LIVE, demonstrated in both directions on the same element every
- *     run — `touch-action: none` gives 0 cancels and `manipulation` gives 1,
- *     and both of those are pinned checks rather than a note. (`auto` also
- *     gives 1; that one was taken at calibration and is NOT exercised here, so
- *     it is written as a measurement and not as a guarantee.) This is the
+ *     DOMAIN: LIVE, demonstrated in both directions on the same element on every
+ *     arm every run — `touch-action: none` gives 0 cancels and `manipulation`
+ *     gives 1, and both of those are pinned checks rather than a note. (`auto`
+ *     also gives 1; that one was taken at calibration and is NOT exercised here,
+ *     so it is written as a measurement and not as a guarantee.) This is the
  *     behavioural check the tool actually rests on.
  *
  * ===========================================================================
@@ -82,28 +120,37 @@
  * empty. So "a still press-and-hold produced no selection" is true of every
  * element on the page including the ones with no fix on them, and reading it as
  * evidence about the fix would be the empty-domain shape one level out. Both
- * gestures are run and both are reported; the drifting one is the only one
- * whose control selects. That limitation is ASSERTED, not just described — the
- * per-arm check headed `LIMIT — a STILL press-and-hold selects nothing even on
- * unfixed text` reads the still gesture against the control element, so if the
- * engine ever starts selecting on a motionless press this paragraph goes red
- * instead of quietly staying on the page as a stale reason.
+ * gestures are run and both are reported; the drifting one is the only one that
+ * selects even with the fix neutralised. That limitation is ASSERTED, not just
+ * described — the per-arm check headed `LIMIT — a STILL press-and-hold selects
+ * nothing even with the fix neutralised` reads the still gesture on the
+ * neutralised element, so if the engine ever starts selecting on a motionless
+ * press this paragraph goes red instead of quietly staying on the page as a
+ * stale reason.
  *
  * ===========================================================================
- * THE RECORD IS DELIBERATELY UNTRACKED WHILE THIS TOOL IS RED
+ * HOW THE MEET ARM SPENDS ATTEMPTS, WHICH IS THE ONE THING IT CANNOT AVOID
  * ===========================================================================
- * `.gauntlet/shots/lift-press/press.json` carries `capturedFrom` and a
- * per-check `failures` list, which is the shape `tools/evidence.mjs` requires
- * of a tracked record — but CLAUDE.md also says "do not commit a browser record
- * while its check is red; a red record tracked as evidence is worse than an
- * absent one", and `checkCommittedShots` reports any tracked record with a
- * non-empty `failures` as a problem for every session on this host.
+ * A pan is a real touch. On the attempt screen a touch is the rep — press-in
+ * starts the descent, the release resolves it — so every PROBE 2 pan on the meet
+ * arm costs one attempt, and a 300ms pan is nearly always a miss. Three misses
+ * on one lift is a bomb-out (GDD §6.3) and the meet ends.
  *
- * So the record is written and left untracked, and the two edits that track it
- * the day this goes green are named here rather than left to be rediscovered:
- * a `!.gauntlet/shots/lift-press/` negation in `.gitignore` (the CONTENTS rule
- * that file already explains), and a `'.gauntlet/shots/lift-press/press.json'`
- * row in `REQUIRED_SHOT_RECORDS` in `tools/evidence.mjs`.
+ * So the four pans are spread by `MEET_PROBE.PROBES_PER_LIFT_BEFORE_A_SECOND`:
+ * at most one gesture per lift until every lift has had one, then any attempt,
+ * with `driveMeetToItsEnd` playing everything in between properly. Measured on a
+ * clean run, the instrument holds squat 1, bench 1 and all three deadlifts,
+ * and the driver plays squat 2-3 and bench 2-3. The surplus lands on the LAST
+ * lift by construction, which is what keeps the readings alive: deadlift is
+ * where a bomb-out costs nothing, because by then every reading is taken.
+ *
+ * PROBE 1's SUBJECT costs no press: the prompt is not the `Pressable`, so a
+ * press-and-drift on it starts no rep. It costs an ATTEMPT anyway, because
+ * `LIFT_TUNING.BRACE_TIMEOUT_TICKS` starts the descent by itself after ten
+ * seconds of nothing and five readings take longer than that. The instrument
+ * counts that attempt against the quota at the moment it takes the screen —
+ * `reachAttempt` — rather than at the moment it gestures, because an attempt
+ * lost to the brace clock is exactly as missed as one lost to a pan.
  *
  * ===========================================================================
  * WHAT THIS TOOL CANNOT SAY
@@ -115,17 +162,16 @@
  *   into a green.
  * - It does not judge whether the lift FEELS right (GDD §12.1). It judges
  *   whether the browser lets the press through.
- * - IT COVERS TWO OF THE THREE PRESS SURFACES IN THIS APP, and the third is
- *   named here rather than left for the next reader to discover. `LiftStage` is
- *   pressed from `src/lift/LiftScreen.tsx` (`lift-touch`, the debug arm),
- *   `src/session/SetView.tsx` (`session-touch`, the played arm) and
- *   `src/meet/AttemptView.tsx` (`attempt-touch`, meet day — GDD §6.3, and
- *   player-reachable). `attempt-touch` is NOT driven here: reaching it means
- *   driving a meet, which is `tools/verify-shell-route.mjs`'s ~560s job, and
- *   this tool is the lift-surface piece. Read from source, `AttemptView`'s
- *   `stage` style is `{ width, height }` — it carries none of the three — but
- *   that is a source reading and this file does not turn source readings into
- *   checks, which is the exact division of labour its own header opens with.
+ * - It cannot say a selection is impossible on the STAGE on a phone. It says the
+ *   stage's selection domain is dead IN BLINK, with the caret probe as evidence,
+ *   and it makes no claim about WebKit's behaviour on a replaced element.
+ * - IT COVERS THREE OF THE THREE PRESS SURFACES, which is a claim
+ *   `src/lift/liftInput.test.ts` is what actually keeps true: that file
+ *   discovers every `<LiftStage>` in the repository and pins the count at three
+ *   alongside these three testIDs. If a fourth surface arrives, that test goes
+ *   red and this sentence has somewhere to be corrected from. This file names
+ *   its three by hand on purpose — a browser check that read its selectors out
+ *   of the module under test would agree with a broken module.
  *
  * ===========================================================================
  * THERE IS NO SEPARATE SELF-TEST FILE, AND THAT IS DELIBERATE
@@ -139,7 +185,8 @@
  * arrangement of the two.
  *
  * Usage:
- *   node tools/verify-lift-press.mjs [--url URL] [--out DIR] [--arms both|played|debug]
+ *   node tools/verify-lift-press.mjs [--url URL] [--out DIR]
+ *                                    [--arms all|session|meet|debug]
  */
 import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -149,7 +196,15 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-import { openSessionToFirstSet, readLoop } from './sessionDrive.mjs';
+import { SESSION_PROMPTS, freshDepthSearch, openSessionToFirstSet, readLoop } from './sessionDrive.mjs';
+import {
+  MEET_DRIVE,
+  driveMeetToItsEnd,
+  meetSaying,
+  readMeetLoop,
+  untilMeet,
+  waitUntilDrawn,
+} from './meetDrive.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.resolve(HERE, '..');
@@ -162,7 +217,7 @@ const flag = (name, dflt) => {
 
 const url = flag('url', 'http://localhost:8081');
 const outDir = path.resolve(flag('out', '.gauntlet/shots/lift-press'));
-const armsWanted = flag('arms', 'both');
+const armsWanted = flag('arms', 'all');
 
 // ---------------------------------------------------------------------------
 // EVERY NUMBER THIS ROBOT MOVES ON, IN ONE PLACE
@@ -231,6 +286,21 @@ const PRESS_PROBE = Object.freeze({
   PAN_STEP_MS: 30,
   PAN_SETTLE_MS: 300,
   /**
+   * How many touchmoves the page hears from the 20px pan when the browser takes
+   * it. Reported rather than pinned, and the distinction matters: 3 of the 10
+   * dispatched is Chromium coalescing the 2px steps and then going quiet at the
+   * cancel, which is the engine's policy and not a fact about this app.
+   *
+   * WRITTEN AS A MEASUREMENT BECAUSE IT WAS ONCE WRITTEN AS A DIFFERENT ONE. An
+   * earlier version of this comment said the page hears ZERO touchmoves before
+   * the cancel. The record beside it said 3, in the check's own detail line, and
+   * nothing compared the two — the "measured, carried, displayed, never
+   * compared" shape CLAUDE.md records, inside a paragraph explaining a
+   * measurement. The number lives here now and `panNonVacuity` below is what
+   * asserts the only thing that has to be true: the page heard SOMETHING.
+   */
+  SMALL_PAN_MOVES_SEEN_WHEN_TAKEN: 3,
+  /**
    * The two counts PROBE 2 is pinned against. Exact counts rather than bounds,
    * per CLAUDE.md — a bound lets the defect grow back quietly, and `>= 0` is
    * true of everything.
@@ -253,30 +323,84 @@ const PRESS_PROBE = Object.freeze({
 });
 
 /**
- * The three properties the fix is made of, with what each one alone leaves
- * broken and how it is read off a live element.
+ * THE MEET ARM'S OWN NUMBERS, kept apart from `PRESS_PROBE` because they are
+ * about spending a resource the session arm does not have.
  *
- * Restated here rather than imported from `LiftScreen.tsx`: CLAUDE.md's rule
- * for `capture-lift.mjs`'s moment list applies identically — a check that reads
- * its expectations out of the module under test agrees with a broken module.
+ * A robot's reaction times again, not game feel: GDD §6.2's own timings live in
+ * `src/game/meetTuning.ts`.
+ */
+const MEET_PROBE = Object.freeze({
+  /** The shell pill that opens meet day. `AppShell` builds every pill's testID
+   *  as `shell-${intent}`, and this is `shellRoute.ts`'s `open-meet` intent. */
+  NAV_OPEN_MEET: 'shell-open-meet',
+  /** The beat the pill is drawn on at boot: GDD §3.2's check-in. */
+  CHECK_IN: 'session-check-in',
+  /** How long the pill has to finish fading in before the press. */
+  PILL_MS: 40000,
+  /** ...and the meet has to appear after it. */
+  MEET_MS: 40000,
+  /**
+   * HOW MANY PROBES ONE LIFT MAY TAKE BEFORE EVERY LIFT HAS HAD ONE.
+   *
+   * A pan is a real touch and a 300ms touch on the attempt screen is a rep the
+   * lifter almost certainly missed. Three misses on one lift bombs it out (GDD
+   * §6.3) and the meet is over, so an instrument that took all four readings on
+   * squat would end the meet before it had them. One per lift until each lift
+   * has one, then anything — which puts the four on squat 1, bench 1, deadlift 1
+   * and deadlift 2, with the driver playing the rest properly.
+   */
+  PROBES_PER_LIFT_BEFORE_A_SECOND: 1,
+  /**
+   * How many times `reachAttempt` will ask again before calling it stuck.
+   *
+   * `LIFT_TUNING.BRACE_TIMEOUT_TICKS` starts the descent on its own after ten
+   * seconds of nothing, which is shorter than PROBE 1's five readings on a slow
+   * boot. So an attempt this tool was holding can begin and resolve by itself
+   * while a selection is being read — the mechanic behaving exactly as designed,
+   * and not something to report as the meet being stuck.
+   */
+  REACH_RETRIES: 3,
+  /** The separator `AttemptView` builds `attempt-label` with, between the lift's
+   *  name and which attempt it is. Split on rather than parsed. */
+  LABEL_SEPARATOR: '·',
+  /** How long a recap has to settle before `driveMeetToItsEnd` names an ending. */
+  RECAP_SETTLE_MS: 30000,
+});
+
+/**
+ * The three properties the fix is made of, WITH THE ELEMENT EACH ONE IS READ
+ * OFF, because that is the half the first version of this fix got wrong.
+ *
+ * `on: 'target'` means the element the finger lands in — `touch-action` does not
+ * inherit, so a value anywhere else is not a value here. `on: 'text'` means the
+ * prompt beside the stage — `user-select` and `-webkit-touch-callout` inherit
+ * from the screen root, and the text is the only thing on these screens a
+ * selection can start in.
+ *
+ * Restated here rather than imported from `pressGuard.ts`: CLAUDE.md's rule for
+ * `capture-lift.mjs`'s moment list applies identically — a check that reads its
+ * expectations out of the module under test agrees with a broken module.
  */
 const PRESS_PROPERTIES = Object.freeze([
   Object.freeze({
     key: 'userSelect',
     cssName: 'user-select',
     expected: 'none',
-    leaves: 'the surface highlights and selection handles appear',
+    on: 'text',
+    leaves: 'the copy beside the stage highlights and selection handles appear',
   }),
   Object.freeze({
     key: 'touchAction',
     cssName: 'touch-action',
     expected: 'none',
+    on: 'target',
     leaves: 'the browser claims the gesture before the handler sees it',
   }),
   Object.freeze({
     key: 'WebkitTouchCallout',
     cssName: '-webkit-touch-callout',
     expected: 'none',
+    on: 'text',
     leaves: "iOS Safari's press-and-hold callout still fires",
   }),
 ]);
@@ -303,29 +427,49 @@ const CALLOUT_UNSUPPORTED = 'WebkitTouchCallout';
 const READABLE_PROPERTIES = PRESS_PROPERTIES.filter((p) => p.key !== CALLOUT_UNSUPPORTED);
 
 /**
- * The arms, with the element a finger lands on and a named CONTROL element on
- * the SAME screen that carries none of the three properties.
+ * The three arms, with the element a finger lands on and the element PROBE 1
+ * reads a selection off.
  *
- * The control is what makes the selection probe an instrument. It has to be on
- * the same page, driven by the same gesture, in the same browser, or it is
- * measuring something else.
+ * `textTestId` is the prompt: the copy directly above the stage, which is what a
+ * thumb sits under and the only thing on these screens that can be selected. It
+ * used to be labelled the CONTROL, on the reasoning that it carried none of the
+ * fix and therefore selected. That is no longer true and the rename is the
+ * point: the fix now reaches it by inheritance, so it is the SUBJECT, and the
+ * control is the same element with `user-select: text` forced back onto it.
+ *
+ * A control on the same page, driven by the same gesture, in the same browser is
+ * the requirement — and the same element, neutralised, satisfies it more tightly
+ * than a second element ever did.
  */
 const ARMS = Object.freeze([
   Object.freeze({
-    id: 'played',
-    what: 'the daily session (GDD §3.2) — reached through the app’s own controls, no query string',
+    id: 'session',
+    played: true,
+    what: 'the daily set (GDD §3.2) — reached through the app’s own controls, no query string',
     touchTestId: 'session-touch',
-    controlTestId: 'session-prompt',
+    textTestId: 'session-prompt',
+    expectQueryString: '',
+  }),
+  Object.freeze({
+    id: 'meet',
+    played: true,
+    what: 'a meet attempt (GDD §6.2) — reached by pressing the shell pill and playing in, no query string',
+    touchTestId: 'attempt-touch',
+    textTestId: 'attempt-prompt',
     expectQueryString: '',
   }),
   Object.freeze({
     id: 'debug',
+    played: false,
     what: `the replay harness — reached by ?${PRESS_PROBE.DEBUG_REPLAY}, which no player can type`,
     touchTestId: 'lift-touch',
-    controlTestId: 'lift-prompt',
+    textTestId: 'lift-prompt',
     expectQueryString: `?${PRESS_PROBE.DEBUG_REPLAY}`,
   }),
 ]);
+
+/** How many arms a player can reach. Pinned so dropping one is a red line. */
+const PLAYED_ARMS = ARMS.filter((arm) => arm.played);
 
 // ---------------------------------------------------------------------------
 // The ledger
@@ -387,7 +531,7 @@ const capturedFrom = (() => {
     record.workingTree = `unknown — ${String(error).slice(0, 200)}`;
   }
   record.instrument = Object.fromEntries(
-    ['verify-lift-press.mjs', 'sessionDrive.mjs'].map((name) => {
+    ['verify-lift-press.mjs', 'sessionDrive.mjs', 'meetDrive.mjs'].map((name) => {
       const file = path.join(HERE, name);
       try {
         return [name, createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)];
@@ -655,6 +799,129 @@ async function waitForStage(page, testId) {
   }
 }
 
+/**
+ * THE MEET ARM'S RUNNING STATE.
+ *
+ * One object rather than closures, so the record can carry it: which attempts
+ * this instrument gestured at, which lift each of those was on, and the depth
+ * search `driveMeetToItsEnd` carried between the attempts it played properly.
+ * A reader checking whether the four readings came off four different attempts
+ * looks here rather than taking this file's word for it.
+ */
+const meetRun = {
+  probedLabels: [],
+  probesByLift: new Map(),
+  search: freshDepthSearch(),
+  /** How `driveMeetToItsEnd` ended, each time it was asked to advance. */
+  drives: [],
+};
+
+/** The lift an attempt label names — `SQUAT · ATTEMPT 1 OF 3` -> `SQUAT`. */
+const liftOf = (label) =>
+  label === null ? null : String(label).split(MEET_PROBE.LABEL_SEPARATOR)[0].trim();
+
+/**
+ * May this instrument spend THIS attempt on a pan?
+ *
+ * One per lift until every lift the meet has offered has had one, then
+ * anything. See `MEET_PROBE.PROBES_PER_LIFT_BEFORE_A_SECOND` for why a greedier
+ * rule bombs the meet out before the readings are taken.
+ */
+function meetProbeAllowed(label) {
+  const lift = liftOf(label);
+  if (lift === null) return false;
+  if (meetRun.probedLabels.includes(label)) return false;
+  const already = meetRun.probesByLift.get(lift) ?? 0;
+  if (already < MEET_PROBE.PROBES_PER_LIFT_BEFORE_A_SECOND) return true;
+  // Every lift probed once already? Then a second on any of them is free — by
+  // that point the readings this instrument still needs are the last ones.
+  const lifts = [...meetRun.probesByLift.keys()];
+  return lifts.length >= MEET_DRIVE.SAFEST_OPTIONS.length;
+}
+
+/** Record that an attempt was spent, so the next one is a different attempt. */
+function meetProbeTaken(label) {
+  if (label === null || meetRun.probedLabels.includes(label)) return;
+  meetRun.probedLabels.push(label);
+  const lift = liftOf(label);
+  if (lift !== null) meetRun.probesByLift.set(lift, (meetRun.probesByLift.get(lift) ?? 0) + 1);
+}
+
+/**
+ * Get to an attempt screen, braced, that this instrument has not already
+ * gestured at — playing whatever is in between properly.
+ *
+ * `driveMeetToItsEnd` is the shared driver and it is NOT reimplemented here: it
+ * presses the weigh-in, takes the suggested openers, sits through walk-outs and
+ * verdicts and answers GDD §6.3's choice cards. All this adds is a `shouldStop`
+ * that hands control back at an attempt worth spending.
+ */
+async function reachAttempt(page) {
+  const whys = [];
+  // RETRIED, BECAUSE THE APP LEGITIMATELY MOVES UNDER THE INSTRUMENT.
+  // `LIFT_TUNING.BRACE_TIMEOUT_TICKS` starts the descent by itself after ten
+  // seconds of nothing, so an attempt this tool was holding can begin and
+  // resolve on its own clock while a reading is being taken. That is the
+  // mechanic behaving as designed; asking once and giving up would report it as
+  // the meet being stuck.
+  for (let attemptNumber = 0; attemptNumber < MEET_PROBE.REACH_RETRIES; attemptNumber += 1) {
+    // AN ATTEMPT THIS TOOL HAS ALREADY SPENT MUST BE OFF THE SCREEN BEFORE THE
+    // DRIVER IS ASKED FOR ANOTHER, AND THAT IS NOT POLITENESS.
+    //
+    // `driveMeetToItsEnd` reads the beat at the top of its loop and then hands
+    // the screen to `playOneMeetAttempt`. Handed a spent attempt in its last
+    // frames, that call finds no brace, reports `played: false`, and the driver
+    // returns `'stuck'` — the app correct, the meet fine, and the instrument
+    // reporting a failure it caused by asking one frame early. Measured twice on
+    // this arm before it was written down.
+    let now = await readMeetLoop(page);
+    if (now.attempt && now.attemptLabel !== null && meetRun.probedLabels.includes(now.attemptLabel)) {
+      await settleAfterGesture(page, { id: 'meet' }, now.attemptLabel);
+      now = await readMeetLoop(page);
+    }
+    const alreadyHere =
+      now.attempt && now.attemptLabel !== null && !meetRun.probedLabels.includes(now.attemptLabel);
+    if (!alreadyHere) {
+      const drive = await driveMeetToItsEnd(page, {
+        search: meetRun.search,
+        recapSettleMs: MEET_PROBE.RECAP_SETTLE_MS,
+        shouldStop: (state) => state.attempt && meetProbeAllowed(state.attemptLabel),
+      });
+      meetRun.search = drive.search ?? meetRun.search;
+      meetRun.drives.push({ ended: drive.ended, why: drive.why, attempts: drive.attempts.length });
+      if (drive.ended !== 'stopped') {
+        return {
+          ok: false,
+          why: `the meet ended '${drive.ended}' before another attempt could be probed — ${drive.why}${whys.length === 0 ? '' : ` (after ${whys.join('; ')})`}`,
+        };
+      }
+    }
+    // The rep is pressable at the BRACE, not the instant the screen mounts.
+    const braced = await untilMeet(
+      page,
+      (state) => meetSaying(state, SESSION_PROMPTS.BRACE) || !state.attempt,
+      MEET_DRIVE.BRACE_TIMEOUT_MS,
+    );
+    if (!meetSaying(braced.state, SESSION_PROMPTS.BRACE)) {
+      whys.push(`try ${attemptNumber + 1}: the attempt never braced — prompt was ${JSON.stringify(braced.state.prompt)}`);
+      continue;
+    }
+    const box = await page.getByTestId('attempt-touch').boundingBox().catch(() => null);
+    if (box === null) {
+      whys.push(`try ${attemptNumber + 1}: the braced attempt has no touch stage`);
+      continue;
+    }
+    // COUNTED HERE AND NOT AT THE GESTURE. From the moment this returns, the
+    // instrument owns the attempt and it will be spent one way or the other —
+    // by a gesture, or by the brace timing out while a reading is taken. Both
+    // are misses on the same lift, and the quota above has to see both or it is
+    // counting half of what it is protecting against.
+    meetProbeTaken(braced.state.attemptLabel);
+    return { ok: true, label: braced.state.attemptLabel };
+  }
+  return { ok: false, why: `no attempt braced in ${MEET_PROBE.REACH_RETRIES} tries — ${whys.join('; ')}` };
+}
+
 async function openArm(page, arm) {
   if (arm.id === 'debug') {
     await page.goto(`${url}/?${PRESS_PROBE.DEBUG_REPLAY}`, { waitUntil: 'load', timeout: PRESS_PROBE.BOOT_MS });
@@ -662,15 +929,69 @@ async function openArm(page, arm) {
     await page.waitForTimeout(PRESS_PROBE.DEBUG_SETTLE_MS);
     return { reached: true };
   }
-  // THE PLAYED PATH. `openSessionToFirstSet` launches with NO query string and
-  // plays GDD §3.2's opening beats with a mouse — three readiness answers and
-  // an RPE — which is the only way to a work set. No `?session=` frame: those
-  // set `preview`, and a previewed set is not a set a player pressed.
+
+  if (arm.id === 'meet') {
+    // THE PLAYED PATH TO MEET DAY. No query string at any point: a fresh load,
+    // then the shell's own pill, then the meet's own controls. `?meet=` frames
+    // are a DIFFERENT ARM of `frozenMeetFor` — `route.source === 'debug'` — so a
+    // meet opened that way is literally not this code.
+    await page.goto(url, { waitUntil: 'load', timeout: PRESS_PROBE.BOOT_MS });
+    await page.getByTestId(MEET_PROBE.CHECK_IN).waitFor({ state: 'visible', timeout: PRESS_PROBE.BOOT_MS }).catch(() => {});
+    const pill = await waitUntilDrawn(page, MEET_PROBE.NAV_OPEN_MEET, MEET_PROBE.PILL_MS);
+    if (!pill.drawn) {
+      return { reached: false, why: `the way into meet day never finished being drawn — ${pill.why}` };
+    }
+    await page.getByTestId(MEET_PROBE.NAV_OPEN_MEET).click({ timeout: MEET_PROBE.PILL_MS }).catch(() => {});
+    const opened = await untilMeet(page, (state) => state.weighIn || state.attempt, MEET_PROBE.MEET_MS);
+    if (!opened.ok) return { reached: false, why: 'pressing the pill never produced a meet' };
+    const attempt = await reachAttempt(page);
+    if (!attempt.ok) return { reached: false, why: attempt.why };
+    return { reached: true, firstAttempt: attempt.label };
+  }
+
+  // THE PLAYED PATH TO A SET. `openSessionToFirstSet` launches with NO query
+  // string and plays GDD §3.2's opening beats with a mouse — three readiness
+  // answers and an RPE — which is the only way to a work set. No `?session=`
+  // frame: those set `preview`, and a previewed set is not a set a player
+  // pressed.
   const opened = await openSessionToFirstSet(page, url);
   if (!opened.reached) return { reached: false, why: opened.why ?? 'the session never reached a work set' };
   const back = await waitForStage(page, arm.touchTestId);
   if (!back.ok) return { reached: false, why: `no ${arm.touchTestId} on the first work set` };
   return { reached: true, firstPrompt: opened.state?.prompt ?? null };
+}
+
+/**
+ * Get the arm back to a pressable stage after a gesture consumed one.
+ *
+ * The session arm waits: three reps end a set and a rest screen replaces the
+ * stage, and the stage comes back on its own. The meet arm has to be DRIVEN —
+ * the attempt is gone for good, and the next one is on the far side of a
+ * verdict, a choice and a walk-out.
+ */
+async function regainStage(page, arm) {
+  if (arm.id !== 'meet') return waitForStage(page, arm.touchTestId);
+  const attempt = await reachAttempt(page);
+  return { ok: attempt.ok, why: attempt.why, label: attempt.label };
+}
+
+/**
+ * Wait until a gesture that spends an attempt has actually spent it.
+ *
+ * A touch on the attempt screen resolves the rep a frame or two after the
+ * release, so asking the shared driver to advance immediately hands it a screen
+ * that is about to stop existing. See the call site for the run that cost.
+ *
+ * Nothing to do on the other arms: the session stage is still there after a rep,
+ * and the debug arm's replay frame never moves at all.
+ */
+async function settleAfterGesture(page, arm, label) {
+  if (arm.id !== 'meet') return;
+  await untilMeet(
+    page,
+    (state) => !state.attempt || (label !== null && state.attemptLabel !== label),
+    MEET_DRIVE.BEAT_TIMEOUT_MS,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -695,7 +1016,7 @@ const cdp = await context.newCDPSession(page);
 const pageErrors = [];
 page.on('pageerror', (e) => pageErrors.push(String(e.message)));
 
-const armsToRun = ARMS.filter((a) => armsWanted === 'both' || armsWanted === a.id);
+const armsToRun = ARMS.filter((a) => armsWanted === 'all' || armsWanted === a.id);
 const results = [];
 
 for (const arm of armsToRun) {
@@ -719,86 +1040,100 @@ for (const arm of armsToRun) {
   );
 
   // -------------------------------------------------------------------------
-  // 1. COMPUTED STYLE, off the live element
+  // 1. COMPUTED STYLE, off the live elements — EACH PROPERTY ON THE ELEMENT IT
+  //    IS ABOUT
   // -------------------------------------------------------------------------
   const target = await readTarget(page, arm.touchTestId);
-  const control = await readTarget(page, arm.controlTestId);
+  const text = await readTarget(page, arm.textTestId);
   check(target !== null, `ARM ${arm.id}: ${arm.touchTestId} is in the DOM`, target === null ? 'absent' : target.tag);
   check(
-    control !== null,
-    `ARM ${arm.id}: the control element ${arm.controlTestId} is in the DOM`,
-    control === null ? 'absent' : `${control.tag} "${control.textInside}"`,
+    text !== null,
+    `ARM ${arm.id}: the copy beside the stage, ${arm.textTestId}, is in the DOM`,
+    text === null ? 'absent' : `${text.tag} "${text.textInside}"`,
   );
-  if (target === null || control === null) {
-    results.push({ arm: arm.id, reached: true, target, control });
+  if (target === null || text === null) {
+    results.push({ arm: arm.id, reached: true, target, text });
     continue;
   }
 
   console.log(`  computed on ${arm.touchTestId}: ${JSON.stringify(target.self)}`);
   console.log(`  under the finger (${target.hitTarget?.tag}): ${JSON.stringify(target.hitTarget)}`);
-  console.log(`  computed on ${arm.controlTestId}: ${JSON.stringify(control.self)}`);
+  console.log(`  computed on ${arm.textTestId}: ${JSON.stringify(text.self)}`);
   console.log(`  caretRangeFromPoint at the probe point: ${JSON.stringify(target.caretAtCentre)}`);
 
+  const readOf = { target, text };
   for (const prop of PRESS_PROPERTIES) {
+    const where = prop.on === 'target' ? arm.touchTestId : arm.textTestId;
     if (prop.key === CALLOUT_UNSUPPORTED) {
       skip(
-        `ARM ${arm.id}: ${prop.cssName} on ${arm.touchTestId} — without it ${prop.leaves}`,
-        `Blink does not implement ${prop.cssName}; getComputedStyle returns ${JSON.stringify(target.self.webkitTouchCallout)} on an element that declares it, so no reading here would be about the app. The declaration stays covered by the source scan in src/lift/liftInput.test.ts.`,
+        `ARM ${arm.id}: ${prop.cssName} on ${where} — without it ${prop.leaves}`,
+        `Blink does not implement ${prop.cssName}; getComputedStyle returns ${JSON.stringify(readOf[prop.on].self.webkitTouchCallout)} on an element that declares it, so no reading here would be about the app. The declaration stays covered by the source scan in src/lift/liftInput.test.ts.`,
       );
       continue;
     }
-    const seen = target.self[prop.key];
+    const seen = readOf[prop.on].self[prop.key];
     check(
       seen === prop.expected,
-      `ARM ${arm.id}: ${arm.touchTestId} computes ${prop.cssName}: ${prop.expected} — without it ${prop.leaves}`,
+      `ARM ${arm.id}: ${where} computes ${prop.cssName}: ${prop.expected} — without it ${prop.leaves}`,
       `read ${JSON.stringify(seen)}, wanted ${JSON.stringify(prop.expected)}`,
     );
   }
 
   // The element the finger actually lands on. `user-select` inherits, so the
-  // canvas inside the stage should carry the value down; `touch-action` does
-  // not, so only the inherited one is asserted here and the other is reported.
+  // canvas inside the stage carries the root's value down.
   check(
     target.hitTarget !== null && target.hitTarget.userSelect === 'none',
     `ARM ${arm.id}: the element UNDER the finger inherits user-select: none`,
     `${target.hitTarget?.tag} reads ${JSON.stringify(target.hitTarget?.userSelect)}`,
   );
 
-  // NON-VACUITY ON THE STYLE READS, AS A COUNT RATHER THAN A BOUND: the control
-  // must NOT carry the fix, or "the target has it and the control does not" is
-  // being read off two elements that are the same.
-  const controlCarrying = READABLE_PROPERTIES.filter((p) => control.self[p.key] === p.expected).length;
+  // AND THE PROPERTY THAT DOES NOT INHERIT, ASSERTED AS NOT INHERITING.
+  //
+  // This is the check that would have caught the shipped placement error from
+  // the other side: `touch-action` on the ROOT and not on the stage reads as
+  // fixed if you only look at the root. The stage's own value is what the
+  // browser resolves the gesture from, and the canvas below it is `auto` —
+  // reported rather than asserted, because it is the ancestor chain that decides
+  // and this line is here so a reader can see the chain rather than infer it.
   check(
-    controlCarrying === 0,
-    `ARM ${arm.id}: the control element carries 0 of the ${READABLE_PROPERTIES.length} readable properties`,
-    `${controlCarrying} of ${READABLE_PROPERTIES.length}; control reads ${JSON.stringify({ userSelect: control.self.userSelect, touchAction: control.self.touchAction })}`,
+    target.self.touchAction === 'none',
+    `ARM ${arm.id}: ${arm.touchTestId} — the PRESSED element itself computes touch-action: none, which is the only place it counts`,
+    `${arm.touchTestId} reads ${JSON.stringify(target.self.touchAction)}; the canvas under it reads ${JSON.stringify(target.hitTarget?.touchAction)}, and the browser resolves the gesture up that chain`,
+  );
+
+  // NON-VACUITY ON THE SELECTION READS, AS A COUNT RATHER THAN A BOUND. The
+  // stage must NOT be the element the selection probe is about, or "the text is
+  // protected" is being read off the canvas where nothing could have selected.
+  // Counted as the number of DISTINCT elements the readings come off.
+  const probeElements = new Set([arm.touchTestId, arm.textTestId]);
+  check(
+    probeElements.size === 2 && target.box.width > 0 && text.box.width > 0,
+    `ARM ${arm.id}: the pressed element and the copy are 2 different drawn elements`,
+    `${arm.touchTestId} ${JSON.stringify(target.box)} vs ${arm.textTestId} ${JSON.stringify(text.box)}`,
   );
 
   // -------------------------------------------------------------------------
   // 2. PROBE 1 — SELECTION, and its own domain
   // -------------------------------------------------------------------------
-  // ORDER MATTERS ON THE PLAYED ARM AND IT IS NOT COSMETIC. Every press on the
-  // stage plays a rep, and three reps end the set and swap the screen for a
-  // rest. The control reading is taken FIRST, while the set is still the one
-  // that was opened — an earlier version of this file took it last and read a
-  // REST screen through a `session-prompt` selector that still resolved.
+  // EVERY READING HERE IS ON THE COPY, AND THAT COSTS NOTHING. The prompt is
+  // not the `Pressable`, so a press-and-drift on it starts no rep and — on the
+  // meet arm — spends no attempt. All four come off one screen, in order, with
+  // the stage untouched.
+  //
+  // THE STAGE IS STILL READ, as the SKIPPED check below, because its dead domain
+  // is the evidence for why this probe's subject moved.
   const readings = {};
-  readings['control-drift'] = await probeSelection(page, arm.controlTestId, 'control-drift', true);
-  readings['control-still'] = await probeSelection(page, arm.controlTestId, 'control-still', false);
+  readings['as-shipped-drift'] = await probeSelection(page, arm.textTestId, 'as-shipped-drift', true);
+  readings['as-shipped-still'] = await probeSelection(page, arm.textTestId, 'as-shipped-still', false);
 
-  await waitForStage(page, arm.touchTestId);
-  readings['as-shipped-drift'] = await probeSelection(page, arm.touchTestId, 'as-shipped-drift', true);
-  await waitForStage(page, arm.touchTestId);
-  readings['as-shipped-still'] = await probeSelection(page, arm.touchTestId, 'as-shipped-still', false);
-
-  await waitForStage(page, arm.touchTestId);
-  const forcedOff = await forceProperties(page, arm.touchTestId, 'off');
-  readings['neutralised-drift'] = await probeSelection(page, arm.touchTestId, 'neutralised-drift', true);
+  const forcedOff = await forceProperties(page, arm.textTestId, 'off');
+  readings['neutralised-drift'] = await probeSelection(page, arm.textTestId, 'neutralised-drift', true);
   readings['neutralised-drift'].forcedTo = forcedOff;
+  readings['neutralised-still'] = await probeSelection(page, arm.textTestId, 'neutralised-still', false);
+  readings['neutralised-still'].forcedTo = forcedOff;
 
-  const restoredTo = await forceProperties(page, arm.touchTestId, null);
-  await waitForStage(page, arm.touchTestId);
-  readings['restored-drift'] = await probeSelection(page, arm.touchTestId, 'restored-drift', true);
+  const restoredTo = await forceProperties(page, arm.textTestId, null);
+  readings['restored-drift'] = await probeSelection(page, arm.textTestId, 'restored-drift', true);
   readings['restored-drift'].restoredTo = restoredTo;
 
   const readingNames = Object.keys(readings);
@@ -815,22 +1150,27 @@ for (const arm of armsToRun) {
   );
 
   // ---- THE POSITIVE CONTROL ON THE GESTURE -------------------------------
-  // If this is not red-capable, nothing that reads a selection is evidence.
-  const cd = readings['control-drift'];
+  // The SAME element with the fix neutralised. If this is not red-capable,
+  // nothing that reads a selection is evidence — and this is a tighter control
+  // than the second element it replaces, because it holds everything but the
+  // one property constant.
+  const neutralised = readings['neutralised-drift'];
   check(
-    cd.selected === true,
-    `ARM ${arm.id}: CONTROL — the same press-hold-and-drift on ${arm.controlTestId} DOES select`,
-    `rangeCount=${cd.selection?.rangeCount} collapsed=${cd.selection?.isCollapsed} text=${JSON.stringify(cd.selection?.text)}`,
+    neutralised.selected === true,
+    `ARM ${arm.id}: CONTROL — with user-select forced back to text on ${arm.textTestId}, the same press-hold-and-drift DOES select`,
+    `rangeCount=${neutralised.selection?.rangeCount} collapsed=${neutralised.selection?.isCollapsed} text=${JSON.stringify(neutralised.selection?.text)} (forced to ${JSON.stringify(neutralised.forcedTo?.userSelect)})`,
   );
 
   // ---- THE LIMIT THAT DECIDES WHY THERE ARE TWO GESTURES ------------------
   // Asserted rather than described, so it cannot silently stop being true and
-  // leave the header explaining a limitation that has gone away.
-  const cst = readings['control-still'];
+  // leave the header explaining a limitation that has gone away. Taken on the
+  // NEUTRALISED element: a still press selecting nothing on a protected element
+  // would say nothing, and this needs to be a statement about the gesture.
+  const still = readings['neutralised-still'];
   check(
-    cst.selected === false,
-    `ARM ${arm.id}: LIMIT — a STILL press-and-hold selects nothing even on unfixed text, so still-press readings are not evidence`,
-    `rangeCount=${cst.selection?.rangeCount} collapsed=${cst.selection?.isCollapsed} text=${JSON.stringify(cst.selection?.text)}`,
+    still.selected === false,
+    `ARM ${arm.id}: LIMIT — a STILL press-and-hold selects nothing even with the fix neutralised, so still-press readings are not evidence`,
+    `rangeCount=${still.selection?.rangeCount} collapsed=${still.selection?.isCollapsed} text=${JSON.stringify(still.selection?.text)}`,
   );
 
   // ---- THE CLAIM, WHICH MAY ONLY PASS IF IT COULD HAVE FAILED -------------
@@ -838,16 +1178,15 @@ for (const arm of armsToRun) {
   // level out." So the claim's `ok` carries its own domain: no selection AND a
   // demonstration that neutralising the fix on THIS element produces one.
   const shipped = readings['as-shipped-drift'];
-  const neutralised = readings['neutralised-drift'];
   const domainLive = neutralised.selected === true;
-  const noSelection = shipped.selected === false && shipped.selection?.rangeCount === 0;
+  const noSelection = shipped.selected === false;
   check(
     noSelection && domainLive,
-    `ARM ${arm.id}: PROBE 1 — a press-and-hold on ${arm.touchTestId} leaves NO selection, AND that could have gone the other way`,
-    `as-shipped rangeCount=${shipped.selection?.rangeCount} text=${JSON.stringify(shipped.selection?.text)}; ` +
+    `ARM ${arm.id}: PROBE 1 — a press-and-hold-and-drift on ${arm.textTestId} leaves NO selection, AND that could have gone the other way`,
+    `as-shipped rangeCount=${shipped.selection?.rangeCount} collapsed=${shipped.selection?.isCollapsed} text=${JSON.stringify(shipped.selection?.text)}; ` +
       (domainLive
         ? `DOMAIN LIVE — neutralised rangeCount=${neutralised.selection?.rangeCount} text=${JSON.stringify(neutralised.selection?.text)}`
-        : `DOMAIN DEAD — with user-select forced to ${JSON.stringify(neutralised.forcedTo?.userSelect)} the same gesture still selects nothing (rangeCount=${neutralised.selection?.rangeCount}), so no value of the fix makes this red. caretRangeFromPoint at the probe point is ${JSON.stringify(target.caretAtCentre)}: the touch target is a Skia <canvas> with no text position under the finger, and Blink will not start a selection inside a replaced element. The "no selection" half is TRUE and is NOT EVIDENCE.`),
+        : `DOMAIN DEAD — with user-select forced to ${JSON.stringify(neutralised.forcedTo?.userSelect)} the same gesture still selects nothing, so no value of the fix makes this red`),
   );
 
   // ---- THE EXPERIMENT DID NOT CONTAMINATE ITS SUBJECT ---------------------
@@ -861,32 +1200,156 @@ for (const arm of armsToRun) {
   // -------------------------------------------------------------------------
   // 3. PROBE 2 — the browser taking the gesture, which is the LIVE one
   // -------------------------------------------------------------------------
+  //
+  // EVERY GESTURE BELOW LANDS ON THE STAGE, AND ON THE MEET ARM THAT SPENDS AN
+  // ATTEMPT — a touch on the attempt screen IS the rep. So the five are declared
+  // as one table with one accounting rather than five copy-pasted blocks, and
+  // `panSurfaces` records which attempt each one was spent on.
+  //
+  // The last entry is not a pan. It is PROBE 1's reading of the STAGE, which is
+  // the evidence for why PROBE 1's subject is the prompt — and it is a mouse
+  // press-and-hold on the stage, so it costs a gesture exactly as a pan does.
+  //
+  // IT IS NOT RUN ON THE MEET ARM, AND THE ARITHMETIC IS WHY. GDD §6.2 gives a
+  // meet nine attempts. PROBE 1's screen costs one, the four pans cost four, and
+  // the driver needs the other four to keep any lift off three misses. A tenth
+  // does not exist. The reading is a SKIPPED line on every arm rather than a
+  // check, and what it measures — that Blink starts no selection inside a
+  // `<canvas>` — is a fact about the engine and the `LiftStage` component, which
+  // all three arms mount identically. So it is taken where it is free and named
+  // as not taken where it is not, rather than quietly costing the meet arm a
+  // control.
+  //
+  // `expectTouchAction` is what the pan is SUPPOSED to run at — `'shipped'`
+  // meaning whatever the app declares, which is the thing under test. It is
+  // compared against what the element read back, below.
+  const GESTURE_PLAN = [
+    { name: 'as-shipped', kind: 'pan', px: PRESS_PROBE.PAN_PX, force: null, expectTouchAction: 'shipped' },
+    { name: 'as-shipped-small', kind: 'pan', px: PRESS_PROBE.SMALL_PAN_PX, force: null, expectTouchAction: 'shipped' },
+    { name: 'neutralised', kind: 'pan', px: PRESS_PROBE.PAN_PX, force: 'pan', expectTouchAction: 'manipulation' },
+    { name: 'forced-fixed', kind: 'pan', px: PRESS_PROBE.PAN_PX, force: 'on', expectTouchAction: 'none' },
+    ...(arm.id === 'meet'
+      ? []
+      : [{ name: 'stage-neutralised-drift', kind: 'selection', px: null, force: 'off', expectTouchAction: null }]),
+  ];
+  const PAN_PLAN = GESTURE_PLAN.filter((step) => step.kind === 'pan');
   const pans = {};
-  await waitForStage(page, arm.touchTestId);
-  pans['as-shipped'] = await probePan(page, cdp, arm.touchTestId, 'as-shipped');
-  pans['as-shipped'].touchAction = target.self.touchAction;
-
-  await waitForStage(page, arm.touchTestId);
-  pans['as-shipped-small'] = await probePan(page, cdp, arm.touchTestId, 'as-shipped-small', PRESS_PROBE.SMALL_PAN_PX);
-  pans['as-shipped-small'].touchAction = target.self.touchAction;
-
-  await waitForStage(page, arm.touchTestId);
-  const panNeutralised = await forceProperties(page, arm.touchTestId, 'pan');
-  pans['neutralised'] = await probePan(page, cdp, arm.touchTestId, 'neutralised');
-  pans['neutralised'].forcedTo = panNeutralised;
-
-  await waitForStage(page, arm.touchTestId);
-  const panFixed = await forceProperties(page, arm.touchTestId, 'on');
-  pans['forced-fixed'] = await probePan(page, cdp, arm.touchTestId, 'forced-fixed');
-  pans['forced-fixed'].forcedTo = panFixed;
-  await forceProperties(page, arm.touchTestId, null);
+  /** Which stage each gesture was spent on, so five readings is five. */
+  const panSurfaces = {};
+  let panBlocked = null;
+  for (const step of GESTURE_PLAN) {
+    const back = await regainStage(page, arm);
+    if (!back.ok) {
+      panBlocked = `${step.name} was never taken — ${back.why ?? 'the stage did not come back'}`;
+      break;
+    }
+    // `reachAttempt` has already counted this attempt against the per-lift quota
+    // — see the note at that call. All this records is WHICH attempt each
+    // reading came off, which is what the distinctness check below reads.
+    if (arm.id === 'meet' && back.label !== undefined && back.label !== null) {
+      panSurfaces[step.name] = back.label;
+    }
+    const forcedTo = step.force === null ? null : await forceProperties(page, arm.touchTestId, step.force);
+    if (step.kind === 'pan') {
+      pans[step.name] = await probePan(page, cdp, arm.touchTestId, step.name, step.px);
+      if (forcedTo === null) pans[step.name].touchAction = target.self.touchAction;
+      else pans[step.name].forcedTo = forcedTo;
+    } else {
+      readings[step.name] = await probeSelection(page, arm.touchTestId, step.name, true);
+      readings[step.name].forcedTo = forcedTo;
+    }
+    if (step.force !== null) await forceProperties(page, arm.touchTestId, null).catch(() => {});
+    // AND WAIT FOR THE GESTURE TO HAVE LANDED BEFORE ASKING FOR ANOTHER STAGE.
+    //
+    // Not politeness — a race this cost a run. A touch on the attempt screen
+    // resolves the rep a frame or two later, so `driveMeetToItsEnd` could read
+    // `attempt: true` at the top of its loop and hand a screen that had already
+    // become the verdict to `playOneMeetAttempt`, which then reported "no brace
+    // to press — prompt was null" and ended the meet 'stuck'. The app was fine;
+    // the instrument was asking a question one frame too early.
+    await settleAfterGesture(page, arm, panSurfaces[step.name] ?? null);
+  }
 
   for (const name of Object.keys(pans)) {
     const p = pans[name];
     console.log(
-      `  pan ${name.padEnd(18)} ${String(p.panPx).padStart(3)}px  touch-action=${JSON.stringify(p.forcedTo?.touchAction ?? p.touchAction)} -> pointercancel=${p.cancels} over ${p.moves} touchmoves`,
+      `  pan ${name.padEnd(18)} ${String(p.panPx).padStart(3)}px  touch-action=${JSON.stringify(p.forcedTo?.touchAction ?? p.touchAction)} -> pointercancel=${p.cancels} over ${p.moves} touchmoves${panSurfaces[name] === undefined ? '' : `  on ${panSurfaces[name]}`}`,
     );
   }
+
+  // EVERY READING THE SECTION BELOW IS ABOUT WAS ACTUALLY TAKEN. Without this, a
+  // meet that bombed out halfway through would leave `pans` short and every
+  // check below would read `undefined === 0` as false — a red, but one whose
+  // message would be about a cancel count rather than about the meet ending.
+  const gesturesTaken = Object.keys(pans).length + (readings['stage-neutralised-drift'] === undefined ? 0 : 1);
+  check(
+    panBlocked === null && gesturesTaken === GESTURE_PLAN.length,
+    `ARM ${arm.id}: all ${GESTURE_PLAN.length} stage gestures were taken on a live stage`,
+    panBlocked === null
+      ? `${gesturesTaken} of ${GESTURE_PLAN.length}${arm.id === 'meet' ? `, on attempts ${JSON.stringify(panSurfaces)}` : ''}`
+      : panBlocked,
+  );
+  if (panBlocked !== null) {
+    results.push({ arm: arm.id, reached: true, queryString: search, target, text, readings, pans, panSurfaces, why: panBlocked });
+    continue;
+  }
+
+  // AND ON THE MEET ARM, THAT THE FOUR PANS WERE FOUR DIFFERENT ATTEMPTS. A pan
+  // that silently re-used a screen would report the same cancel count under two
+  // names, which is the strongest-looking and emptiest thing this arm could do.
+  if (arm.id === 'meet') {
+    const spent = PAN_PLAN.map((step) => panSurfaces[step.name]);
+    check(
+      new Set(spent).size === PAN_PLAN.length,
+      `ARM ${arm.id}: the ${PAN_PLAN.length} pans were spent on ${PAN_PLAN.length} DIFFERENT attempts, so no reading is a copy of another`,
+      `${new Set(spent).size} distinct of ${spent.length}: ${spent.join(' | ')}`,
+    );
+    // AND THE QUOTA ITSELF, ASSERTED RATHER THAN DESCRIBED.
+    //
+    // `MEET_PROBE.PROBES_PER_LIFT_BEFORE_A_SECOND` claims a rule: no lift takes
+    // a second instrument gesture until every lift has taken one. That is the
+    // whole reason the readings survive to be taken, and a rule with nothing
+    // behind it is the shape this repository keeps finding in prose. Walked in
+    // order over the attempts the instrument actually held.
+    const seenLifts = new Set();
+    const heldPerLift = new Map();
+    const tooEarly = [];
+    for (const label of meetRun.probedLabels) {
+      const lift = liftOf(label);
+      seenLifts.add(lift);
+      const held = (heldPerLift.get(lift) ?? 0) + 1;
+      heldPerLift.set(lift, held);
+      if (held > MEET_PROBE.PROBES_PER_LIFT_BEFORE_A_SECOND && seenLifts.size < MEET_DRIVE.SAFEST_OPTIONS.length) {
+        tooEarly.push(`${label} was this instrument's ${held}${'th'} on ${lift} while only ${seenLifts.size} lift(s) had been touched`);
+      }
+    }
+    check(
+      tooEarly.length === 0 && seenLifts.size === MEET_DRIVE.SAFEST_OPTIONS.length,
+      `ARM ${arm.id}: no lift took a second gesture from this instrument until all ${MEET_DRIVE.SAFEST_OPTIONS.length} lifts had taken one`,
+      `held in order: ${meetRun.probedLabels.join(' | ')}; per lift ${[...meetRun.probesByLift.entries()].map(([lift, n]) => `${lift}x${n}`).join(', ')}` +
+        (tooEarly.length === 0 ? '' : `; VIOLATIONS: ${tooEarly.join('; ')}`),
+    );
+    // ...and the driver really played the ones in between, so "the meet was
+    // driven" is not four gestures and nothing else. A count, not a bound.
+    const drivenAttempts = meetRun.drives.reduce((total, drive) => total + drive.attempts, 0);
+    check(
+      drivenAttempts > 0,
+      `ARM ${arm.id}: the shared driver played the attempts this instrument did not`,
+      `${drivenAttempts} attempt(s) played by driveMeetToItsEnd against ${meetRun.probedLabels.length} held here; drives: ${JSON.stringify(meetRun.drives)}`,
+    );
+  }
+
+  // ---- PROBE 1's OTHER READING, WHICH IS NOT A CHECK, WITH ITS EVIDENCE ---
+  // CLAUDE.md asks for a NAMED SKIPPED check rather than a quiet fallback that
+  // leaves the section looking complete. The stage's "no selection" reading is
+  // TRUE and is NOT EVIDENCE, and this is where that is said on every run.
+  const stageNeutralised = readings['stage-neutralised-drift'];
+  skip(
+    `ARM ${arm.id}: PROBE 1 on ${arm.touchTestId} itself — a press-and-hold on the STAGE leaves no selection`,
+    stageNeutralised === undefined
+      ? `NOT TAKEN ON THIS ARM. A press-and-hold on the stage spends a meet attempt, GDD §6.2 has nine, and PROBE 1's screen plus the four pans plus the four the driver needs to keep a lift off three misses is all nine. What it measures is a fact about Blink and about \`LiftStage\`, which every arm mounts identically, and it is measured on the session and debug arms in this same run. caretRangeFromPoint at this arm's probe point still reads ${JSON.stringify(target.caretAtCentre)}, which is the same CANVAS node with no text position in it.`
+      : `DOMAIN DEAD, re-measured this run rather than cited: with user-select forced to ${JSON.stringify(stageNeutralised.forcedTo?.userSelect)} on the stage, the same gesture that selects ${JSON.stringify(neutralised.selection?.text)} on ${arm.textTestId} selects ${JSON.stringify(stageNeutralised.selection?.text)} here (rangeCount=${stageNeutralised.selection?.rangeCount}). caretRangeFromPoint at the probe point is ${JSON.stringify(target.caretAtCentre)}: the node under the finger is a Skia <canvas> with no text position in it, and Blink will not start a selection inside a replaced element. No value of the fix makes this red, so it is not counted either way.`,
+  );
 
   // ---- THE PROBE'S DOMAIN, DEMONSTRATED IN BOTH DIRECTIONS ---------------
   // Same element, same pan, only `touch-action` moved. Counts pinned exactly,
@@ -909,21 +1372,20 @@ for (const arm of armsToRun) {
   // events and pinning them together would be wrong rather than strict. At
   // `PAN_PX` every one of the `PAN_STEPS` moves lands; at `SMALL_PAN_PX` each
   // step is 2px and Chromium coalesces the sub-slop ones, so the page sees
-  // fewer — measured at 3 on both arms, and not pinned at 3 because that number
-  // is the engine's coalescing policy rather than anything about this app.
+  // fewer — `PRESS_PROBE.SMALL_PAN_MOVES_SEEN_WHEN_TAKEN`, and not pinned
+  // because that number is the engine's coalescing policy rather than anything
+  // about this app.
   //
   // What IS pinned exactly is a count of PANS, in both directions: how many ran
   // at full size and landed all their moves, and how many of all the pans put
   // at least one touchmove on the page. Neither is a bound on a measurement.
   const panNames = Object.keys(pans);
   // A pan is evidence if the page received ANYTHING attributable to it — a
-  // touchmove or a cancel. Not `moves > 0`: measured on the played arm, the
-  // 20px pan delivers ZERO touchmoves and one `pointercancel`, because the
-  // browser claims the gesture before a single move reaches the page. That is
-  // the strongest reading in the file and an earlier version of this guard
-  // called it vacuous, which had the instrument reddening on its own best
-  // evidence. What must not happen is a pan the page never heard about at all,
-  // and that is what this counts.
+  // touchmove or a cancel. Not `moves > 0`: when the browser takes a gesture it
+  // can stop telling the page about it almost immediately, and a guard that
+  // required a full stream would redden on the file's own sharpest reading.
+  // What must not happen is a pan the page never heard about at all, and that is
+  // what this counts.
   const pansThePageSaw = panNames.filter((n) => pans[n].moves > 0 || pans[n].cancels > 0).length;
   check(
     pansThePageSaw === panNames.length,
@@ -969,16 +1431,56 @@ for (const arm of armsToRun) {
     `${panCancelablePattern} of ${fullPanNames.length}; ${panNames.map((n) => `${n}@${pans[n].panPx}px(ta=${JSON.stringify(pans[n].forcedTo?.touchAction ?? pans[n].touchAction)})=${JSON.stringify(pans[n].moveCancelable)}`).join(' ')}`,
   );
 
-  const quietFull = panNames.filter((n) => pans[n].panPx === PRESS_PROBE.PAN_PX && pans[n].cancels === 0);
-  const quietFullIntact = quietFull.filter((n) => pans[n].moves === PRESS_PROBE.PAN_STEPS).length;
-  const truncated = panNames.filter((n) => pans[n].cancels > 0 && pans[n].moves < PRESS_PROBE.PAN_STEPS);
+  // ---- AND WHAT EACH PAN ACTUALLY RAN AT ---------------------------------
+  //
+  // THIS REPLACES A CHECK THAT HAD BECOME FALSE, AND THE REPLACEMENT IS NOT THE
+  // SAME CLAIM MADE LOOSER. What stood here asserted that every UNCANCELLED
+  // full-size pan delivered its whole `PAN_STEPS` stream, on the reasoning that
+  // a short stream means the browser went quiet mid-gesture. Measured on the
+  // fixed session surface: the as-shipped 200px pan delivers 4 of 10 with ZERO
+  // cancels, because the pan starts a real rep and Chromium coalesces touchmoves
+  // while Skia is drawing the descent. The inference "short stream implies
+  // cancelled" is simply not true, and it was green before only because on the
+  // BROKEN surface that pan was cancelled and so fell outside the check's own
+  // filter. A check that passes on the defect and fails on the fix is measuring
+  // the wrong thing.
+  //
+  // What goes here instead is a defect class CLAUDE.md names: "measured,
+  // carried, displayed, never compared". Every pan's `touch-action` was read
+  // back off the element and printed in the check messages below, and NOTHING
+  // compared it to the value that pan was supposed to run at. A `forceProperties`
+  // that silently failed would leave the neutralised pan running at `none`,
+  // reporting 0 cancels, and the DOMAIN check would redden with a message about
+  // a cancel count rather than about the control not having been applied.
+  const panTouchActionMismatches = PAN_PLAN.filter((step) => {
+    const p = pans[step.name];
+    const seen = p.forcedTo?.touchAction ?? p.touchAction;
+    const want = step.expectTouchAction === 'shipped' ? target.self.touchAction : step.expectTouchAction;
+    return seen !== want;
+  }).map((step) => {
+    const p = pans[step.name];
+    return `${step.name} ran at ${JSON.stringify(p.forcedTo?.touchAction ?? p.touchAction)}, its row says ${JSON.stringify(step.expectTouchAction)}`;
+  });
+  // ...with the census that stops the table collapsing to one value. Exact
+  // counts in both directions: three pans on the shipped/none value and one
+  // neutralised, or the "same element, only touch-action moved" claim is being
+  // made about pans that all ran the same way.
+  const ranNeutralised = PAN_PLAN.filter(
+    (step) => (pans[step.name].forcedTo?.touchAction ?? pans[step.name].touchAction) === 'manipulation',
+  ).length;
   check(
-    quietFullIntact === quietFull.length,
-    `ARM ${arm.id}: PROBE 2 — every uncancelled full-size pan delivered its whole ${PRESS_PROBE.PAN_STEPS}-move stream`,
-    `${quietFullIntact} of ${quietFull.length} uncancelled full pans intact` +
-      (truncated.length === 0
-        ? '; no pan was cancelled here'
-        : `; and the ${truncated.length} cancelled pan(s) truncated — ${truncated.map((n) => `${n} stopped at ${pans[n].moves}/${PRESS_PROBE.PAN_STEPS}`).join(', ')}, which is the browser going quiet on the app mid-gesture`),
+    panTouchActionMismatches.length === 0 &&
+      ranNeutralised === PAN_PLAN.filter((step) => step.expectTouchAction === 'manipulation').length,
+    `ARM ${arm.id}: PROBE 2 — every pan ran at the touch-action its row claims, and exactly ${PAN_PLAN.filter((step) => step.expectTouchAction === 'manipulation').length} of ${PAN_PLAN.length} was the neutralised one`,
+    `${ranNeutralised} ran at manipulation; ${panNames.map((n) => `${n}=${JSON.stringify(pans[n].forcedTo?.touchAction ?? pans[n].touchAction)}`).join(', ')}` +
+      (panTouchActionMismatches.length === 0 ? '' : `; MISMATCHES: ${panTouchActionMismatches.join('; ')}`),
+  );
+  // The move counts are REPORTED and not pinned, and this line is where that is
+  // said rather than left as an absence. They are the engine's coalescing policy
+  // under whatever load the rep is putting on the main thread, not a fact about
+  // the app — measured at 10, 4 and 3 for the same dispatch on three arms.
+  console.log(
+    `  move stream (reported, not pinned): ${panNames.map((n) => `${n}=${pans[n].moves}/${PRESS_PROBE.PAN_STEPS}`).join(', ')}`,
   );
 
   // ---- THE CLAIM, AT TWO SCALES OF GESTURE --------------------------------
@@ -996,64 +1498,98 @@ for (const arm of armsToRun) {
     `pointercancel=${pans['as-shipped-small'].cancels} at ${PRESS_PROBE.SMALL_PAN_PX}px vs ${pans['as-shipped'].cancels} at ${PRESS_PROBE.PAN_PX}px, both with touch-action ${JSON.stringify(pans['as-shipped-small'].touchAction)}; wanted exactly ${PRESS_PROBE.PAN_CANCELS_WHEN_TOUCH_ACTION_NONE}. The page heard ${pans['as-shipped-small'].moves} touchmove(s) of the ${PRESS_PROBE.PAN_STEPS} dispatched before that verdict`,
   );
 
-  await waitForStage(page, arm.touchTestId);
   const shotPath = path.join(outDir, `${arm.id}-surface.png`);
   await page.screenshot({ path: shotPath }).catch(() => {});
 
   results.push({
     arm: arm.id,
     what: arm.what,
+    played: arm.played,
     reached: true,
     queryString: search,
     touchTestId: arm.touchTestId,
-    controlTestId: arm.controlTestId,
+    textTestId: arm.textTestId,
     target,
-    control,
+    text,
     readings,
     pans,
+    panSurfaces,
     shot: path.relative(outDir, shotPath),
   });
 }
 
+if (armsWanted === 'all') {
+  // The meet arm's whole bookkeeping, in one place a reader can check the four
+  // readings against. Reported, and then compared: the count is what says the
+  // instrument spent four attempts rather than describing four.
+  console.log(`\n  meet run: ${JSON.stringify({ probed: meetRun.probedLabels, drives: meetRun.drives, search: meetRun.search })}`);
+}
+
 // ---------------------------------------------------------------------------
-// CROSS-ARM: the two arms are different components, so one is not the other
+// CROSS-ARM: three different components, so one is not the others
 // ---------------------------------------------------------------------------
-if (armsWanted === 'both') {
-  const played = results.find((r) => r.arm === 'played');
+if (armsWanted === 'all') {
   const debug = results.find((r) => r.arm === 'debug');
-  const both = played?.reached === true && debug?.reached === true && played.target && debug.target;
-  if (!both) {
-    check(false, 'CROSS-ARM: both arms produced a reading to compare', JSON.stringify({ played: played?.reached, debug: debug?.reached }));
-  } else {
-    // Non-vacuity on the whole "drive both arms" premise, as a count: the two
-    // touch targets must be DIFFERENT elements reached by DIFFERENT URLs, or
-    // the played arm has silently fallen back to the debug one and every played
-    // reading is a debug reading wearing a played label.
+  const played = PLAYED_ARMS.map((arm) => results.find((r) => r.arm === arm.id));
+  const readable = (result) =>
+    result?.reached === true && result.target !== null && result.target !== undefined;
+  const usable = [debug, ...played].filter(readable);
+
+  check(
+    usable.length === ARMS.length,
+    `CROSS-ARM: all ${ARMS.length} arms produced a reading to compare`,
+    `${usable.length} of ${ARMS.length}: ${[debug, ...played].map((r) => `${r?.arm ?? '?'}=${readable(r) ? 'read' : 'no reading'}`).join(', ')}`,
+  );
+
+  if (usable.length === ARMS.length) {
+    // Non-vacuity on the whole "drive three arms" premise, as a count: the three
+    // touch targets must be DIFFERENT elements, and the played ones must have
+    // been reached without a query string, or a played arm has silently fallen
+    // back to the debug one and every played reading is a debug reading wearing
+    // a played label.
+    const targets = new Set(usable.map((r) => r.touchTestId));
     check(
-      played.touchTestId !== debug.touchTestId && played.queryString !== debug.queryString,
-      'CROSS-ARM: the two arms are different elements reached by different URLs',
-      `played ${played.touchTestId} at ${JSON.stringify(played.queryString)} vs debug ${debug.touchTestId} at ${JSON.stringify(debug.queryString)}`,
+      targets.size === ARMS.length,
+      `CROSS-ARM: the ${ARMS.length} arms are ${ARMS.length} different elements`,
+      `${targets.size} distinct: ${usable.map((r) => `${r.arm}=${r.touchTestId}@${JSON.stringify(r.queryString)}`).join(', ')}`,
     );
+    const playedWithNoQuery = played.filter((r) => r.queryString === '').length;
+    check(
+      playedWithNoQuery === PLAYED_ARMS.length,
+      `CROSS-ARM: both played arms were read with NO query string in the address bar`,
+      `${playedWithNoQuery} of ${PLAYED_ARMS.length}; ${played.map((r) => `${r.arm}=${JSON.stringify(r.queryString)}`).join(', ')} against debug ${JSON.stringify(debug.queryString)}`,
+    );
+
     // AND THE COMPARISON THE WHOLE TOOL EXISTS FOR. A fix that is on the debug
-    // harness and not on the played screen is a fix a player never gets, and it
-    // is invisible to every source scan that names one file.
-    const differing = READABLE_PROPERTIES.filter((p) => played.target.self[p.key] !== debug.target.self[p.key]);
-    check(
-      differing.length === 0,
-      'CROSS-ARM: the played surface and the replay harness compute the SAME press properties',
-      differing.length === 0
-        ? `every one of the ${READABLE_PROPERTIES.length} readable properties matches on both arms`
-        : `${differing.length} of ${READABLE_PROPERTIES.length} differ: ${differing
-            .map((p) => `${p.cssName} played=${JSON.stringify(played.target.self[p.key])} debug=${JSON.stringify(debug.target.self[p.key])}`)
-            .join('; ')}`,
-    );
-    // The behavioural consequence of that difference, stated as its own line so
-    // it is not read off a style table by a human doing the inference.
-    check(
-      played.pans?.['as-shipped']?.cancels === debug.pans?.['as-shipped']?.cancels,
-      'CROSS-ARM: a press behaves the same on the played surface as on the replay harness',
-      `played pointercancel=${played.pans?.['as-shipped']?.cancels} vs debug pointercancel=${debug.pans?.['as-shipped']?.cancels}`,
-    );
+    // harness and not on a played screen is a fix a player never gets, and it is
+    // invisible to every source scan that names one file. Compared per played
+    // arm rather than in aggregate, so a report names which screen is bare.
+    for (const arm of played) {
+      const differing = READABLE_PROPERTIES.filter(
+        (p) =>
+          (p.on === 'target' ? arm.target.self : arm.text.self)[p.key] !==
+          (p.on === 'target' ? debug.target.self : debug.text.self)[p.key],
+      );
+      check(
+        differing.length === 0,
+        `CROSS-ARM: the ${arm.arm} surface and the replay harness compute the SAME press properties`,
+        differing.length === 0
+          ? `every one of the ${READABLE_PROPERTIES.length} readable properties matches on both`
+          : `${differing.length} of ${READABLE_PROPERTIES.length} differ: ${differing
+              .map(
+                (p) =>
+                  `${p.cssName} on the ${p.on} — ${arm.arm}=${JSON.stringify((p.on === 'target' ? arm.target.self : arm.text.self)[p.key])} debug=${JSON.stringify((p.on === 'target' ? debug.target.self : debug.text.self)[p.key])}`,
+              )
+              .join('; ')}`,
+      );
+      // The behavioural consequence, stated as its own line so it is not read
+      // off a style table by a human doing the inference.
+      check(
+        arm.pans?.['as-shipped']?.cancels === debug.pans?.['as-shipped']?.cancels,
+        `CROSS-ARM: a press behaves the same on the ${arm.arm} surface as on the replay harness`,
+        `${arm.arm} pointercancel=${arm.pans?.['as-shipped']?.cancels} vs debug pointercancel=${debug.pans?.['as-shipped']?.cancels}`,
+      );
+    }
   }
 }
 
@@ -1067,6 +1603,8 @@ await browser.close();
 const record = {
   capturedFrom,
   probe: PRESS_PROBE,
+  meetProbe: MEET_PROBE,
+  meetRun: { ...meetRun, probesByLift: Object.fromEntries(meetRun.probesByLift) },
   properties: PRESS_PROPERTIES,
   calloutUnsupported: CALLOUT_UNSUPPORTED,
   arms: results,
