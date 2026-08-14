@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-evidence-mjs-2026-08-14T04-50-09-403Z-29394",
+  "label": null,
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "suite"
+  ],
+  "budgetSeconds": 1500,
+  "startedAtIso": "2026-08-14T04:50:09.403Z",
+  "startedAtMs": 1786683009403,
+  "cwd": "/home/user/wt-realip-widen",
+  "commit": "067d8b31730a97c0a9109fe99822818741360473",
+  "branch": "claude/realip-text-file-widen",
+  "dirty": 1,
+  "dirtyPaths": [
+    ".gauntlet/evidence/b1-licensing-realip.txt"
+  ],
+  "runner": {
+    "pid": 29394,
+    "startTick": "886251",
+    "cmdline": "node tools/watchdog.mjs --budget 1500 -- node tools/evidence.mjs suite",
+    "bootId": "70e4dcd9-91f6-43ee-a53c-88125d271f98",
+    "bootEpochSeconds": 1786674147,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T04:50:09.425Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
