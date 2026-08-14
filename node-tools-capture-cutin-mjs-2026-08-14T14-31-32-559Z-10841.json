@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-capture-cutin-mjs-2026-08-14T14-31-32-559Z-10841",
+  "label": null,
+  "command": [
+    "node",
+    "tools/capture-cutin.mjs"
+  ],
+  "budgetSeconds": 600,
+  "startedAtIso": "2026-08-14T14:31:32.559Z",
+  "startedAtMs": 1786717892559,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "74a0e68111cd23bdee389ab3f8e63124adcd28d9",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 5,
+  "dirtyPaths": [
+    ".gauntlet/shots/cutin-cap/cap.json",
+    ".gauntlet/shots/cutin-cap/leg-1-recap.png",
+    ".gauntlet/shots/lift-press/press.json",
+    ".gauntlet/shots/meet/sound.json",
+    ".gauntlet/shots/cutin-cap/cut-in-leg-2.png"
+  ],
+  "runner": {
+    "pid": 10841,
+    "startTick": "84159",
+    "cmdline": "node tools/watchdog.mjs --budget 600 --id ev-frames -- node tools/capture-cutin.mjs",
+    "bootId": "9a2cb2d2-fb56-4022-8ed1-6d554d4fac5c",
+    "bootEpochSeconds": 1786717051,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T14:31:32.578Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
