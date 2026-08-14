@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-tsc-2026-08-14T03-17-20-630Z-2710",
+  "label": null,
+  "command": [
+    "npx",
+    "tsc",
+    "--noEmit"
+  ],
+  "budgetSeconds": 300,
+  "startedAtIso": "2026-08-14T03:17:20.630Z",
+  "startedAtMs": 1786677440630,
+  "cwd": "/home/user/wt-lift-press",
+  "commit": "3437e1d0580f0c218466bf4053e70abd90c29b30",
+  "branch": "claude/lift-press-browser-check",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 2710,
+    "startTick": "329373",
+    "cmdline": "node tools/watchdog.mjs --budget 300 -- npx tsc --noEmit",
+    "bootId": "70e4dcd9-91f6-43ee-a53c-88125d271f98",
+    "bootEpochSeconds": 1786674147,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T03:17:20.653Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
