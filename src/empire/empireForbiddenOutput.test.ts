@@ -511,7 +511,14 @@ const FOLD_NON_MATCHES: readonly string[] = Object.freeze([
  */
 const TYPE_WALK_MAX_DEPTH = 12;
 
-type StringPositionKind = 'literal' | 'branded' | 'bare';
+/**
+ * `pattern` is the kind the sixteenth bypass arrived as: a template literal or
+ * string mapping type, which is a SET of strings the census cannot enumerate.
+ * It is a fourth classification rather than a `bare`, because calling it bare
+ * would say the position is unconstrained when it is constrained to a shape,
+ * and the shape is the part a reader needs.
+ */
+type StringPositionKind = 'literal' | 'branded' | 'bare' | 'pattern';
 
 interface StringPosition {
   readonly module: string;
@@ -519,7 +526,10 @@ interface StringPosition {
   /** Where in the type the string sits, e.g. `return.kind` or `value[].entry.gymId`. */
   readonly path: string;
   readonly kind: StringPositionKind;
-  /** The members, for a `literal` position. Empty otherwise. */
+  /**
+   * The members, for a `literal` position, and the literal TEXTS for a
+   * `pattern` one. Empty otherwise.
+   */
   readonly members: readonly string[];
 }
 
@@ -527,6 +537,8 @@ interface StringSurface {
   readonly modules: readonly string[];
   readonly exports: readonly string[];
   readonly positions: readonly StringPosition[];
+  /** Types the position walk reached and could not classify. Pinned empty. */
+  readonly unclassifiedTypes: readonly string[];
   /** Non-zero means the walk truncated and the census below is a prefix. */
   readonly depthCuts: number;
   /** Diagnostics from the directory's own sources. Must be empty. */
@@ -632,7 +644,29 @@ function surfaceOf(
   const positions: StringPosition[] = [];
   const modules: string[] = [];
   const exportNames: string[] = [];
+  const unclassifiedTypes: string[] = [];
   let depthCuts = 0;
+
+  /**
+   * The literal segments of a pattern type, which is what a `pattern` position
+   * carries instead of members.
+   *
+   * `` `covered-day${string}` `` has texts `['covered-day', '']` and one
+   * placeholder between them, so the texts alone say what every string in the
+   * set must start and end with. A `StringMapping` — `Uppercase<T>` — is asked
+   * of its inner type; when that is a type parameter there are no texts, and an
+   * empty texts list is read below as "admits anything", which is the safe
+   * direction.
+   */
+  const patternTextsOf = (type: ts.Type): readonly string[] => {
+    if ((type.flags & ts.TypeFlags.TemplateLiteral) !== 0) {
+      return [...(type as ts.TemplateLiteralType).texts];
+    }
+    if ((type.flags & ts.TypeFlags.StringMapping) !== 0) {
+      return patternTextsOf((type as ts.StringMappingType).type);
+    }
+    return [];
+  };
 
   const PRIMITIVE_FLAGS =
     ts.TypeFlags.Number |
@@ -755,7 +789,49 @@ function surfaceOf(
               below,
             );
           }
+          return;
         }
+        // THE `else` ON THE TYPE-FLAG AXIS, WHICH IS WHERE THE SIXTEENTH BYPASS
+        // WENT THROUGH. Every arm above is `if ((type.flags & X) !== 0)` and
+        // there was no final branch, so a type whose kind is not one of the
+        // eight was dropped with no position of any kind — not `bare`, not
+        // `branded`, not `literal`, and not an admission either. M56 is
+        // ``NpcLifter.displayName: DisplayName | `${EmpireForbiddenOutput}${string}` ``:
+        // a TEMPLATE LITERAL type, which is a string position that admits
+        // `'covered-day'` exactly, with `tsc` exit 0 and every position pin in
+        // this instrument green.
+        //
+        // IT IS THE SAME DEFECT `returnedFunctions` HAD ONE WALKER OVER, and
+        // that is the whole argument for the dispatch-chain census at the end of
+        // this file: E21 installed this discipline on two arms, E23 installed it
+        // on a third, and nobody swept for the fourth.
+        //
+        // IT ASKS THE COMPILER'S OWN COMPOSITE RATHER THAN ENUMERATING A NINTH
+        // FLAG. `ts.TypeFlags.StringLike` is `String | StringLiteral |
+        // TemplateLiteral | StringMapping` as TypeScript itself defines it, so a
+        // fifth string-shaped flag added to the language arrives INSIDE this arm
+        // rather than outside it. The first two are consumed above, so what
+        // reaches here is a pattern: a type that is a set of strings this census
+        // cannot enumerate.
+        //
+        // ITS LIMIT, in the mechanism's own terms, with the catcher named: the
+        // MEMBERS of a pattern are its literal texts, and a placeholder is
+        // whatever type sits in it. `patternAdmits` below over-approximates
+        // every placeholder as "any run of characters", so it can report a name
+        // the pattern does not really admit and can never miss one it does. The
+        // catcher for the over-approximation is that `DECLARED_PATTERN_POSITIONS`
+        // is empty on the shipped tree in both directions, so a false positive is
+        // a red line somebody reads rather than a silent exemption.
+        if ((type.flags & ts.TypeFlags.StringLike) !== 0) {
+          push('pattern', at, patternTextsOf(type));
+          return;
+        }
+        // AND THE ELSE UNDER THE ELSE. A type that is not a string and not one
+        // of the eight is recorded by name rather than dropped. Pinned empty in
+        // both directions, so the first `keyof`, indexed access or substitution
+        // type to reach an exported surface is a line naming the export and the
+        // type instead of a census that quietly got shorter.
+        unclassifiedTypes.push(`${moduleName}#${exportName}#${at}:${checker.typeToString(type)}`);
       };
 
       walk(entry, entryPath, 0, []);
@@ -778,10 +854,27 @@ function surfaceOf(
     modules: Object.freeze(modules),
     exports: Object.freeze(exportNames.sort()),
     positions: Object.freeze(positions),
+    unclassifiedTypes: Object.freeze([...new Set(unclassifiedTypes)].sort()),
     depthCuts,
     sourceDiagnostics: Object.freeze(sourceDiagnostics),
   };
 }
+
+/**
+ * Whether a pattern position's texts admit a given exact string.
+ *
+ * Over-approximates: every placeholder becomes "any run of characters",
+ * whatever type really sits in it, so this answers `true` for a name the
+ * pattern cannot really take and never `false` for one it can. That direction
+ * is chosen rather than accepted — a census that under-reports a string
+ * position reads exactly like a clean surface, which is the failure the
+ * position walk itself had.
+ */
+const patternAdmits = (texts: readonly string[], name: string): boolean => {
+  if (texts.length === 0) return true;
+  const escaped = texts.map((text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  return new RegExp(`^${escaped.join('[\\s\\S]*')}$`).test(name);
+};
 
 let surfaceMemo: StringSurface | null = null;
 
@@ -803,6 +896,14 @@ const bareKeys = (surface: StringSurface): readonly string[] =>
 
 const brandedKeys = (surface: StringSurface): readonly string[] =>
   distinct(surface.positions.filter((p) => p.kind === 'branded').map(positionKey));
+
+/** A pattern position as `key=text|text`, so the shape is in the failure message. */
+const patternKeys = (surface: StringSurface): readonly string[] =>
+  distinct(
+    surface.positions
+      .filter((p) => p.kind === 'pattern')
+      .map((p) => `${positionKey(p)}=${p.members.join('|')}`),
+  );
 
 /**
  * Every bare-`string` position in the directory, grouped by the FIELD it is.
@@ -1024,6 +1125,20 @@ const DECLARED_BRANDED_STRING_POSITIONS: readonly string[] = Object.freeze([
 ]);
 
 /**
+ * Every PATTERN position in the directory — a template literal or string
+ * mapping type on an exported surface.
+ *
+ * EMPTY, and empty is the point. This list exists because the position walk had
+ * no arm for these types at all: M56 widened one branded field to
+ * ``DisplayName | `${EmpireForbiddenOutput}${string}` ``, which admits
+ * `'covered-day'` exactly, and every position pin in this instrument stayed
+ * green because the four template constituents were dropped rather than
+ * classified. A first row here is a decision somebody signs, and the row
+ * carries the pattern's own texts so what it admits is readable.
+ */
+const DECLARED_PATTERN_POSITIONS: readonly string[] = Object.freeze([]);
+
+/**
  * Every method this directory calls on a value its caller handed it, by name.
  *
  * the enumeration behind the `member-of-parameter` arm. Every one of these is a
@@ -1064,6 +1179,15 @@ const SURFACE_CENSUS = Object.freeze({
   BARE_POSITIONS: 0,
   BARE_FIELDS: 0,
   BRANDED_POSITIONS: 34,
+  /**
+   * Zero, and the zero is the sixteenth bypass's repair rather than a fact
+   * about the language. A pattern position is what M56 arrived as and what the
+   * walk had no arm for; the shipped tree has none, so a first one is a red
+   * line in `DECLARED_PATTERN_POSITIONS` naming the export and the shape.
+   */
+  PATTERN_POSITIONS: 0,
+  /** Types the walk reached and could not classify at all. */
+  UNCLASSIFIED_TYPES: 0,
   /** The banned vocabulary's own length, so an emptied ban list is not a clean sweep. */
   BANNED: 7,
   LITERAL_POSITIONS: 1175,
@@ -1495,6 +1619,28 @@ describe('instrument A — no export type admits a forbidden literal, and no new
     expect(DECLARED_BRANDED_STRING_POSITIONS.length).toBe(SURFACE_CENSUS.BRANDED_POSITIONS);
   });
 
+  it('pins every PATTERN position, and classifies every type it reaches', () => {
+    // THE SIXTEENTH BYPASS'S OWN LINE. A template literal type is a string
+    // position that is neither `string` nor a literal, so before the terminal
+    // arm existed it contributed nothing to any of the three lists above and
+    // arrived as a clean surface. Both directions, and empty on the shipped
+    // tree — the probe below is what makes the emptiness a measurement.
+    const surface = stringSurface();
+    expect(patternKeys(surface)).toEqual([...DECLARED_PATTERN_POSITIONS].sort());
+    expect(DECLARED_PATTERN_POSITIONS.length).toBe(SURFACE_CENSUS.PATTERN_POSITIONS);
+    // And the arm under it: a type the walk reached and could not name at all.
+    expect(surface.unclassifiedTypes, surface.unclassifiedTypes.join(' | ')).toEqual([]);
+    expect(surface.unclassifiedTypes.length).toBe(SURFACE_CENSUS.UNCLASSIFIED_TYPES);
+    // No pattern anywhere admits a banned name. Vacuous on this tree by
+    // construction, which is why `sees a pattern type that admits a banned
+    // name` runs the same predicate over the probe.
+    const admitting = surface.positions
+      .filter((position) => position.kind === 'pattern')
+      .filter((position) => BANNED_VOCABULARY.some((name) => patternAdmits(position.members, name)))
+      .map(positionKey);
+    expect(distinct(admitting)).toEqual([]);
+  });
+
   it('names no forbidden output in any closed literal union, outside the two lists that ARE the ban', () => {
     const surface = stringSurface();
     const literals = surface.positions.filter((position) => position.kind === 'literal');
@@ -1540,12 +1686,18 @@ describe('instrument A — no export type admits a forbidden literal, and no new
  * that passes on a clean tree, and a set equality passes just as happily when
  * the walker is broken — the walker WAS broken once, in exactly that way, and
  * reported eighteen positions where there are twenty-three. So the census is
- * re-run over an eleventh module carrying four routes and the classification of
+ * re-run over an eleventh module carrying five routes and the classification of
  * each is asserted. Nothing shipped is edited to do it.
  *
  * `probeProtectionDays` is here for the opposite reason: it is attack shape 16
  * and it must produce NO position. That zero is the declared limit, measured
  * rather than argued.
+ *
+ * `probeTemplateFeed` IS THE FIFTH AND IT IS THE SIXTEENTH BYPASS'S OWN SHAPE.
+ * A template literal type is a string position that is neither `string` nor a
+ * literal, so before the walk had a terminal arm it produced nothing at all —
+ * and the same widening on a shipped field left every position pin in this
+ * instrument green with `tsc` exit 0.
  */
 const PROBE_SOURCE = `import { EMPIRE_FORBIDDEN_OUTPUTS, asNpcId, type NpcId } from './empireCore';
 
@@ -1562,6 +1714,14 @@ export function probeMilestoneId(checkIns: number): NpcId {
 export function probeProtectionDays(checkIns: number): number {
   return Math.floor(checkIns / EMPIRE_FORBIDDEN_OUTPUTS.length);
 }
+
+export interface ProbeFeed {
+  readonly note: \`\${(typeof EMPIRE_FORBIDDEN_OUTPUTS)[number]}\${string}\`;
+}
+
+export function probeTemplateFeed(checkIns: number): ProbeFeed {
+  return Object.freeze({ note: \`\${EMPIRE_FORBIDDEN_OUTPUTS[0]}\${String(checkIns)}\` });
+}
 `;
 
 const PROBE_MODULE = path.basename(PROBE_PATH);
@@ -1574,7 +1734,7 @@ function probeSurface(): StringSurface {
   return probeSurfaceMemo;
 }
 
-describe('instrument A bites — the census is re-run over a probe carrying four routes', () => {
+describe('instrument A bites — the census is re-run over a probe carrying five routes', () => {
   it('compiles the probe cleanly, so a refusal below is a classification and not an error', () => {
     const surface = probeSurface();
     expect(surface.sourceDiagnostics, surface.sourceDiagnostics.join(' | ')).toEqual([]);
@@ -1602,6 +1762,35 @@ describe('instrument A bites — the census is re-run over a probe carrying four
   it('sees the branded-string channel, which a scan for the `string` keyword misses', () => {
     const probeBranded = brandedKeys(probeSurface()).filter((key) => key.startsWith(PROBE_MODULE));
     expect(probeBranded).toEqual([`${PROBE_MODULE}#probeMilestoneId#return`]);
+  });
+
+  it('sees a pattern type that admits a banned name, which is the sixteenth bypass', () => {
+    // The non-vacuity guard for the pattern arm. `probeTemplateFeed` returns a
+    // field typed ``  `${(typeof EMPIRE_FORBIDDEN_OUTPUTS)[number]}${string}` ``,
+    // which TypeScript distributes into four template literal types — the exact
+    // shape M56 put on `NpcLifter.displayName`, where every position pin in this
+    // instrument stayed green.
+    const probePatterns = patternKeys(probeSurface()).filter((key) => key.startsWith(PROBE_MODULE));
+    expect(probePatterns).toEqual([
+      `${PROBE_MODULE}#probeTemplateFeed#return.note=chalk|`,
+      `${PROBE_MODULE}#probeTemplateFeed#return.note=competition-total|`,
+      `${PROBE_MODULE}#probeTemplateFeed#return.note=covered-day|`,
+      `${PROBE_MODULE}#probeTemplateFeed#return.note=e1rm|`,
+    ]);
+    // And the ban predicate over it, which is what the shipped-tree line above
+    // runs on an empty list.
+    const admitting = probeSurface()
+      .positions.filter((position) => position.kind === 'pattern')
+      .filter((position) => BANNED_VOCABULARY.some((name) => patternAdmits(position.members, name)))
+      .map(positionKey);
+    expect(distinct(admitting)).toEqual([`${PROBE_MODULE}#probeTemplateFeed#return.note`]);
+    // The shipped census does not have it, which is the mechanism: the set
+    // equality goes red on arrival.
+    expect(patternKeys(stringSurface())).toEqual([]);
+    // AND IT IS NOT A BARE POSITION EITHER, which is the half that says the
+    // fourth kind was needed. Reading a pattern as `bare` would have put it in
+    // a list whose own header says the directory has none.
+    expect(bareKeys(probeSurface()).filter((key) => key.includes('probeTemplateFeed'))).toEqual([]);
   });
 
   it('is BLIND to attack shape 16, and the blindness is the measurement', () => {
@@ -8302,7 +8491,33 @@ function channelCensusOf(
         }
         for (const value of holderValues) {
           const literal = past(value);
-          if (!ts.isObjectLiteralExpression(literal)) continue;
+          // NOT A `continue`, AND THAT `continue` WAS THE SEVENTEENTH BYPASS.
+          // This fallback was written for `NESTED.inner`, where the holder's
+          // value is an object literal and the matching property is picked out
+          // of it. Every other shape of holder was skipped — with neither a
+          // `found` nor an `unfollowed`, which is the same silent drop this
+          // walk's node-kind axis had one round earlier. M59 is
+          // `shapeE: PRODUCTION_PEEKS[0]!` in a shipped return, where the
+          // holder is an ARRAY literal: `tsc` exit 0, `shapeE.peek()` printed
+          // `covered-day` off a driven export, and the only red in the whole
+          // directory was three node counters.
+          //
+          // IT HANDS THE VALUE BACK TO THE MAIN DISPATCH rather than growing an
+          // arm for arrays. That dispatch already knows about array literals,
+          // conditionals, `Object.freeze` and identifiers, and it now ends in a
+          // terminal arm of its own, so a holder shape nobody has thought of
+          // gets whatever the top of this walk gives it instead of a `continue`.
+          //
+          // ITS LIMIT, in the mechanism's own terms: walking the holder whole
+          // is an OVER-approximation for an element access, because the walk
+          // reports every element rather than the one the index selects. That
+          // direction is deliberate — an over-reported closure site is a red
+          // line in `DECLARED_RETURNED_CLOSURE_SITES` naming the member path,
+          // and an under-reported one is silence.
+          if (!ts.isObjectLiteralExpression(literal)) {
+            walk(literal, memberPath);
+            continue;
+          }
           for (const property of literal.properties) {
             const propertyName =
               property.name === undefined ? '' : property.name.getText(property.getSourceFile());
@@ -10498,6 +10713,10 @@ export function probeElementAccessClosure(): AssemblyShape {
   return Object.freeze({ peek: ASSEMBLY_FOR_OF[0]!.peek });
 }
 
+export function probeArrayHolderClosure(): AssemblyShape {
+  return ASSEMBLY_FOR_OF[0]!;
+}
+
 export function probeNestedMemberClosure(): AssemblyShape {
   return ASSEMBLY_NESTED.inner;
 }
@@ -10560,6 +10779,13 @@ function assemblyProbeSites(id: ChannelId): readonly string[] {
  * than stopping at it.
  */
 const ASSEMBLY_PROBE_CLOSURE_SITES: readonly string[] = Object.freeze([
+  // THE SEVENTEENTH BYPASS'S OWN ROW. `probeElementAccessClosure` returns the
+  // MEMBER of an element and was always caught; this returns the ELEMENT, whose
+  // holder is an ARRAY literal, and nothing in the probe had ever done that —
+  // so the fallback's `if (!isObjectLiteralExpression) continue` was a branch no
+  // check reached. `.[][0].peek` is the evidence the walk went through the
+  // holder rather than stopping at it.
+  `${ASSEMBLY_PROBE_MODULE}#probeArrayHolderClosure#closure:.[][0].peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeAssembledClosure#closure:.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeAssembledShorthand#closure:.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeAssembledThroughUndefined#closure:.peek`,
@@ -10643,9 +10869,9 @@ describe('the assembly walk bites — every binding whose value is not in its in
     const unfollowed = assemblyProbeCensus().freshReceivers.filter((entry) =>
       entry.startsWith(ASSEMBLY_PROBE_MODULE),
     );
-    // Sorted by the census rather than by line, which is why 120 precedes 68.
+    // Sorted by the census rather than by line, which is why 124 precedes 68.
     expect(unfollowed).toEqual([
-      `${ASSEMBLY_PROBE_MODULE}:120 returned=unfollowable:shape`,
+      `${ASSEMBLY_PROBE_MODULE}:124 returned=unfollowable:shape`,
       `${ASSEMBLY_PROBE_MODULE}:68 returned=unfollowable:shape`,
     ]);
     // The probe contributes exactly that one and nothing else, so the shipped
@@ -12593,6 +12819,18 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
     reddened:
       'every throw in this directory is written as a call to the wrap: `expected { \'empireCore.ts\': 9, …(7) } to deeply equal { … }` with `- "empireInvariant.ts": 7` against `+ "empireInvariant.ts": 6`. IT IS HERE RATHER THAN IN `PLANTED_ROUTES` BECAUSE NO SHIPPED MUTANT CAN ISOLATE IT: losing a wrap call without gaining a raw throw means deleting a refusal, which reddens `recruitment.test.ts` and its siblings on behaviour rather than on the fence. M29 form (a) does move this number and the site list at the same time, and the site list is asserted first, so this is the only measurement that shows the per-module counts are compared against the census rather than against themselves.',
   }),
+  Object.freeze({
+    id: 'G25',
+    what: "the terminal arm deleted from `surfaceOf`'s type walk — both halves, the `StringLike` push and the `unclassifiedTypes` line — which puts that ladder back in the exact state the sixteenth bypass walked through",
+    reddened:
+      'finds every dispatch chain in this directory, in both directions: `- "empireForbiddenOutput.test.ts#walk<surfaceOf#type arms=9 dispatch=true terminal=next-statement"` against `+ "…#walk<surfaceOf#type arms=8 dispatch=true terminal=none"`. The row names the file, the walker, the subject, the arm count and the terminal, which is what makes it readable rather than a set diff over seventy strings — and `none` going from 0 to 1 reddens the count beside it. THE CENSUS IS THE ONLY THING THAT MOVES: no position pin, no channel, no drive. That is the whole argument for it. A missing final branch is invisible to every instrument that measures OUTPUT, because its symptom is output that never arrives.',
+  }),
+  Object.freeze({
+    id: 'G26',
+    what: "the `'space-level'` arm deleted from `appliedFor`'s switch — the exhaustiveness the switch census argues is covered by `tsc` rather than by a `default`",
+    reddened:
+      "`npx tsc --noEmit` exit 2: `src/empire/empireForbiddenOutput.test.ts(3714,4): error TS2366: Function lacks ending return statement and return type does not include 'undefined'.` RUN RATHER THAN ASSERTED, and it is the reason the switch census does not demand a `default`: adding one would make the compiler stop caring, so the two switches are exhaustive with a declared return type ON PURPOSE and the argument now has a measurement behind it instead of a sentence. A `default: return …` would turn a compile error into a silent fallback, which is the same trade the `else` discipline refuses one instrument over.",
+  }),
 ]);
 
 /**
@@ -12612,8 +12850,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(24);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(24);
+    expect(REGISTRY_MUTANTS.length).toBe(26);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(26);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
@@ -12743,5 +12981,563 @@ describe('the routes that were planted, and what each of them cost', () => {
     expect(M8_WAS_SEMANTICALLY_CAUGHT).toBe(false);
     const shape16 = PLANTED_ROUTES.find((route) => route.id === 'M8');
     expect(shape16?.caughtBy.every((line) => line.includes('export'))).toBe(true);
+  });
+});
+
+// ===========================================================================
+// THE DISPATCH-CHAIN CENSUS — every `if` ladder over a compiler node or type
+// in this directory, and which of them can drop a case
+// ===========================================================================
+
+/**
+ * What runs when no arm of a chain matches.
+ *
+ * `none` is the shape TWO bypasses have had. The fifteenth was
+ * `returnedFunctions`'s node-kind ladder; the sixteenth was `surfaceOf`'s
+ * type-flag ladder, in the same file, planted one round after the first was
+ * repaired. Both were chains of `if (ts.isX(node))` / `if ((type.flags & X))`
+ * with no final branch, so a kind outside the enumeration left the walk with
+ * neither a finding nor an admission.
+ *
+ * THIS CENSUS EXISTS BECAUSE THREE ROUNDS FIXED ONE ARM EACH AND NONE OF THEM
+ * SWEPT FOR THE REST. E21 installed the `else` discipline on the callback and
+ * mutation arms; E23 installed it on the node-kind axis; a third ladder in the
+ * same file and a FOURTH in `empireCore.test.ts` had the identical shape and
+ * were not looked at. CLAUDE.md's rule is that the next thing to look at is the
+ * branch immediately below the one you just fixed — this is that rule made
+ * mechanical, so a chain nobody looked at cannot be added silently.
+ */
+type ChainTerminal = 'else' | 'next-statement' | 'loop' | 'enclosing' | 'none';
+
+interface DispatchChain {
+  /**
+   * `file#innermost<...<outermost#subject`, with an ordinal suffix when one
+   * function holds two chains on the same subject.
+   *
+   * Deliberately NOT a line number. Every line-numbered pin in this file has
+   * moved on an unrelated edit at least once — `DECLARED_FRESH_RECEIVERS` moved
+   * on M56's first form because it added an import line — and a census whose
+   * keys churn is one nobody re-reads.
+   */
+  readonly at: string;
+  readonly arms: number;
+  /** Every arm ends in `return`, `throw`, `continue` or `break`. */
+  readonly dispatch: boolean;
+  readonly terminal: ChainTerminal;
+}
+
+interface DeclaredChain extends DispatchChain {
+  /**
+   * Required for `none` and `enclosing`, and checked for length rather than
+   * presence. What the fall-through costs and what catches it — the three-part
+   * form CLAUDE.md records as the only one that has survived a critic here.
+   */
+  readonly omission?: string;
+}
+
+/** Receivers whose `isX()` methods are JavaScript, not the compiler's. */
+const CHAIN_SCAN_GLOBALS: readonly string[] = Object.freeze([
+  'Array',
+  'Object',
+  'Number',
+  'String',
+  'JSON',
+  'Math',
+  'Reflect',
+  'Set',
+  'Map',
+  'Date',
+]);
+
+/**
+ * Find every dispatch chain in one source text.
+ *
+ * A CHAIN is a maximal run of ADJACENT sibling `if` statements in one block
+ * whose conditions all discriminate on the same subject. That is the shape
+ * every walker in this directory is written in — separate `if`s each ending in
+ * a `return`, rather than an `else if` ladder — and it is the shape whose
+ * missing final branch drops a case in silence.
+ *
+ * WHAT ITS SCOPING RULE CATCHES, AND WHAT IT THEREFORE CANNOT, stated here
+ * rather than left for a reader to infer. A condition discriminates when it
+ * calls `ts.isX(...)` or `checker.isX(...)`, calls a zero-argument `isX()` on a
+ * receiver that is not a JavaScript global, or reads `.kind` or `.flags`. So:
+ *
+ *   - it reaches every AST and type walker in this directory, in every file
+ *     that imports `typescript` — which is TWO files, and the second is the
+ *     reason the reach is a DIRECTORY rather than this file. `brandsIn`'s walk
+ *     in `empireCore.test.ts` has the identical missing branch, and a sweep of
+ *     "the file the last bypass was in" would not have looked at it. Reach has
+ *     been the wrong axis four times in this repository's own record;
+ *   - it does NOT reach a dispatch on this directory's own discriminated
+ *     unions. Those are `switch` statements over a closed union with a declared
+ *     return type, and the switch census below is where they are covered —
+ *     with `tsc` as the catcher rather than a row here;
+ *   - it does NOT reach a dispatch written as a lookup table, a `Map` of
+ *     handlers, or a chain of `else if`. A chain whose arms are separated by
+ *     other statements is SPLIT into two chains, each registered, rather than
+ *     missed;
+ *   - `terminal` is a claim about CONTROL FLOW and not about intent.
+ *     `enclosing` means code runs after the chain's enclosing statement; it
+ *     does not mean that code handles the dropped case. That is why an
+ *     `enclosing` row must carry an `omission` too.
+ */
+function dispatchChainsIn(fileName: string, text: string): readonly DispatchChain[] {
+  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+
+  const rootIdentifier = (expression: ts.Expression): string | null => {
+    let at: ts.Expression = expression;
+    for (;;) {
+      if (
+        ts.isPropertyAccessExpression(at) ||
+        ts.isElementAccessExpression(at) ||
+        ts.isNonNullExpression(at) ||
+        ts.isParenthesizedExpression(at) ||
+        ts.isAsExpression(at) ||
+        ts.isCallExpression(at)
+      ) {
+        at = at.expression;
+        continue;
+      }
+      return ts.isIdentifier(at) ? at.text : null;
+    }
+  };
+
+  /** The thing the condition discriminates on, by majority of its mentions. */
+  const subjectOf = (condition: ts.Expression): string | null => {
+    const votes = new Map<string, number>();
+    const add = (name: string | null): void => {
+      if (name !== null) votes.set(name, (votes.get(name) ?? 0) + 1);
+    };
+    const visit = (node: ts.Node): void => {
+      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+        const receiver = node.expression.expression;
+        const receiverText = receiver.getText(source);
+        const method = node.expression.name.text;
+        if (/^is[A-Z]/.test(method) || /^has[A-Z]/.test(method) || method === 'canHaveModifiers') {
+          if ((receiverText === 'ts' || receiverText === 'checker') && node.arguments.length > 0) {
+            add(rootIdentifier(node.arguments[0] as ts.Expression));
+          } else if (!CHAIN_SCAN_GLOBALS.includes(receiverText) && node.arguments.length === 0) {
+            add(rootIdentifier(receiver));
+          }
+        }
+      }
+      if (ts.isPropertyAccessExpression(node) && (node.name.text === 'flags' || node.name.text === 'kind')) {
+        add(rootIdentifier(node.expression));
+      }
+      node.forEachChild(visit);
+    };
+    visit(condition);
+    let best: string | null = null;
+    let bestCount = 0;
+    for (const [name, count] of votes) {
+      if (count > bestCount) {
+        best = name;
+        bestCount = count;
+      }
+    }
+    return best;
+  };
+
+  const enclosingNames = (node: ts.Node): string => {
+    const names: string[] = [];
+    for (let at: ts.Node | undefined = node.parent; at !== undefined; at = at.parent) {
+      if (ts.isFunctionDeclaration(at) && at.name !== undefined) names.push(at.name.text);
+      else if (ts.isVariableDeclaration(at) && ts.isIdentifier(at.name)) names.push(at.name.text);
+      else if (ts.isCallExpression(at) && ts.isIdentifier(at.expression) && at.expression.text === 'it') {
+        const first = at.arguments[0];
+        if (first !== undefined && ts.isStringLiteralLike(first)) names.push(`it:${first.text.slice(0, 30)}`);
+      }
+    }
+    return names.length === 0 ? '#module' : names.join('<');
+  };
+
+  const terminates = (statement: ts.Statement | undefined): boolean => {
+    if (statement === undefined) return false;
+    if (
+      ts.isReturnStatement(statement) ||
+      ts.isThrowStatement(statement) ||
+      ts.isContinueStatement(statement) ||
+      ts.isBreakStatement(statement)
+    ) {
+      return true;
+    }
+    if (ts.isBlock(statement)) return terminates(statement.statements[statement.statements.length - 1]);
+    return false;
+  };
+
+  const isLoop = (node: ts.Node): boolean =>
+    ts.isForStatement(node) ||
+    ts.isForOfStatement(node) ||
+    ts.isForInStatement(node) ||
+    ts.isWhileStatement(node) ||
+    ts.isDoStatement(node);
+
+  /** What runs when the chain falls through, found by walking outwards. */
+  const continuationFrom = (block: ts.Node): ChainTerminal => {
+    let at: ts.Node = block;
+    for (;;) {
+      const parent: ts.Node | undefined = at.parent;
+      if (parent === undefined) return 'none';
+      if (isLoop(parent) && (parent as ts.IterationStatement).statement === at) return 'loop';
+      if (ts.isSourceFile(parent)) return 'none';
+      if (ts.isFunctionLike(parent)) return 'none';
+      if (ts.isBlock(parent) || ts.isCaseClause(parent) || ts.isDefaultClause(parent)) {
+        const index = parent.statements.indexOf(at as ts.Statement);
+        if (index >= 0 && index < parent.statements.length - 1) return 'enclosing';
+      }
+      at = parent;
+    }
+  };
+
+  const rows: DispatchChain[] = [];
+  const seen = new Map<string, number>();
+  const scanBlock = (block: ts.Node, statements: readonly ts.Statement[]): void => {
+    let index = 0;
+    while (index < statements.length) {
+      const first = statements[index] as ts.Statement;
+      if (!ts.isIfStatement(first)) {
+        index += 1;
+        continue;
+      }
+      const subject = subjectOf(first.expression);
+      if (subject === null) {
+        index += 1;
+        continue;
+      }
+      let end = index;
+      const arms: ts.IfStatement[] = [];
+      for (;;) {
+        const statement = statements[end];
+        if (statement === undefined || !ts.isIfStatement(statement)) break;
+        if (subjectOf(statement.expression) !== subject) break;
+        arms.push(statement);
+        end += 1;
+      }
+      const last = arms[arms.length - 1] as ts.IfStatement;
+      const terminal: ChainTerminal =
+        last.elseStatement !== undefined
+          ? 'else'
+          : end < statements.length
+            ? 'next-statement'
+            : continuationFrom(block);
+      const base = `${fileName}#${enclosingNames(first)}#${subject}`;
+      const ordinal = (seen.get(base) ?? 0) + 1;
+      seen.set(base, ordinal);
+      rows.push({
+        at: ordinal === 1 ? base : `${base}#${String(ordinal)}`,
+        arms: arms.length,
+        dispatch: arms.every((arm) => terminates(arm.thenStatement)),
+        terminal,
+      });
+      index = end;
+    }
+  };
+  const visit = (node: ts.Node): void => {
+    if (ts.isBlock(node) || ts.isSourceFile(node) || ts.isCaseClause(node) || ts.isDefaultClause(node)) {
+      scanBlock(node, node.statements);
+    }
+    node.forEachChild(visit);
+  };
+  visit(source);
+  return rows;
+}
+
+interface SwitchRow {
+  readonly at: string;
+  readonly cases: number;
+  readonly hasDefault: boolean;
+}
+
+/** Every `switch` in the scanned files, with whether it has a `default`. */
+function switchesIn(fileName: string, text: string): readonly SwitchRow[] {
+  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const rows: SwitchRow[] = [];
+  const named = (node: ts.Node): string => {
+    for (let at: ts.Node | undefined = node.parent; at !== undefined; at = at.parent) {
+      if (ts.isFunctionDeclaration(at) && at.name !== undefined) return at.name.text;
+      if (ts.isVariableDeclaration(at) && ts.isIdentifier(at.name)) return at.name.text;
+    }
+    return '#module';
+  };
+  const visit = (node: ts.Node): void => {
+    if (ts.isSwitchStatement(node)) {
+      rows.push({
+        at: `${fileName}#${named(node)}`,
+        cases: node.caseBlock.clauses.filter((clause) => ts.isCaseClause(clause)).length,
+        hasDefault: node.caseBlock.clauses.some((clause) => ts.isDefaultClause(clause)),
+      });
+    }
+    node.forEachChild(visit);
+  };
+  visit(source);
+  return rows;
+}
+
+/** The files this census reads: everything here that imports the compiler. */
+function chainScanFiles(): readonly string[] {
+  return readdirSync(HERE)
+    .filter((name) => name.endsWith('.ts'))
+    .filter((name) => /from 'typescript'/.test(readFileSync(path.join(HERE, name), 'utf8')))
+    .sort();
+}
+
+let chainCensusMemo: readonly DispatchChain[] | null = null;
+
+function directoryDispatchChains(): readonly DispatchChain[] {
+  if (chainCensusMemo !== null) return chainCensusMemo;
+  const rows: DispatchChain[] = [];
+  for (const name of chainScanFiles()) {
+    rows.push(...dispatchChainsIn(name, readFileSync(path.join(HERE, name), 'utf8')));
+  }
+  chainCensusMemo = Object.freeze(rows);
+  return chainCensusMemo;
+}
+
+/** One chain as a sortable line, so a set equality names what moved. */
+const chainKey = (chain: DispatchChain): string =>
+  `${chain.at} arms=${String(chain.arms)} dispatch=${String(chain.dispatch)} terminal=${chain.terminal}`;
+
+/**
+ * A source built to carry one chain of every terminal, so the classifier's own
+ * arms are driven rather than trusted.
+ *
+ * It is not type-checked and does not need to be: the scan is syntactic. Each
+ * function's name says which arm it is for, and `withNone` is the shape both
+ * bypasses had.
+ */
+const CHAIN_SCAN_PROBE = `
+function withElse(node) {
+  if (ts.isIdentifier(node)) { return 1; }
+  if (ts.isCallExpression(node)) { return 2; } else { return 3; }
+}
+function withNextStatement(node) {
+  if (ts.isIdentifier(node)) return 1;
+  if (ts.isCallExpression(node)) return 2;
+  return 3;
+}
+function withLoop(node) {
+  for (let at = node; at; at = at.parent) {
+    if (ts.isIdentifier(at)) return 1;
+    if (ts.isCallExpression(at)) return 2;
+  }
+  return 3;
+}
+function withEnclosing(node) {
+  if (node.kind === 1) {
+    if (ts.isIdentifier(node)) return 1;
+    if (ts.isCallExpression(node)) return 2;
+  }
+  return 3;
+}
+function withNone(node) {
+  if (ts.isIdentifier(node)) return 1;
+  if (ts.isCallExpression(node)) return 2;
+}
+function withNoDiscriminator(node) {
+  if (node.length > 0) return 1;
+  if (node.length > 1) return 2;
+}
+`;
+
+/**
+ * Every dispatch chain in this directory, as the scan above found it.
+ *
+ * Generated from the subject and then confirmed BY the subject: the set
+ * equality runs both ways, so a chain added without a row is an unexpected
+ * member and a row left behind by a deleted chain is a stale one. What the rows
+ * are for is the two fields that are not the key — a chain that grows an arm
+ * moves `arms`, and a chain that LOSES its terminal arm moves `terminal` from
+ * `next-statement` to `none`, which is the exact edit both bypasses were.
+ */
+const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
+  Object.freeze({ at: 'empireCore.test.ts#brandCensus#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireCore.test.ts#brandCensus#declaration', arms: 1, dispatch: false, terminal: 'loop' }),
+  Object.freeze({ at: 'empireCore.test.ts#isBranded<brandCensus#name', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireCore.test.ts#brandCensus#declaration#2', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireCore.test.ts#walk<brandsIn<brandCensus#current', arms: 4, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireCore.test.ts#walk<brandsIn<brandCensus#current#2', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireCore.test.ts#brandCensus#declaration#3', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#surfaceOf#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#surfaceOf#declaration', arms: 1, dispatch: false, terminal: 'loop' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#carriesBrand<surfaceOf#name', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#patternTextsOf<surfaceOf#type', arms: 2, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#surfaceOf#declaration#2', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walk<surfaceOf#type', arms: 9, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#constructorCensusOf#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#constructorCensusOf#declaration', arms: 1, dispatch: false, terminal: 'loop' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#carriesBrand<constructorCensusOf#name', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#constructorCensusOf#declaration#2', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#enclosing<constructorCensusOf#at', arms: 3, dispatch: false, terminal: 'loop' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#constructorCensusOf#declaration#3', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<constructorCensusOf#node', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#resolvedDeclaration<channelCensusOf#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#resolvedDeclaration<channelCensusOf#symbol', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#past<channelCensusOf#at', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#receiverRoot<channelCensusOf#at', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#atModuleScope<channelCensusOf#at', arms: 2, dispatch: true, terminal: 'loop' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#enclosing<channelCensusOf#at', arms: 3, dispatch: false, terminal: 'loop' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#nameOf<channelCensusOf#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#assignedValuesTo<channelCensusOf#at', arms: 1, dispatch: true, terminal: 'loop' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#targets<assignedValuesTo<channelCensusOf#target', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#patternTargets<assignedValuesTo<channelCensusOf#pattern', arms: 2, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#patternTargets<assignedValuesTo<channelCensusOf#property', arms: 3, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walkScope<assignedValuesTo<channelCensusOf#node', arms: 2, dispatch: false, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walkScope<assignedValuesTo<channelCensusOf#target', arms: 1, dispatch: false, terminal: 'else' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#carriesCallSignature<channelCensusOf#type', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#typeCouldHoldAFunction<channelCensusOf#type', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#literalValuesOf<channelCensusOf#holder', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#literalValuesOf<channelCensusOf#host', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#hoppableInitializer<channelCensusOf#root', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#at', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#host', arms: 3, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#initial', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#root', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#callTargetOf<channelCensusOf#at', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#callTargetOf<channelCensusOf#holder', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walk<returnedFunctions<channelCensusOf#node', arms: 9, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walk<returnedFunctions<channelCensusOf#checker', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walk<returnedFunctions<channelCensusOf#host', arms: 3, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walk<returnedFunctions<channelCensusOf#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walk<returnedFunctions<channelCensusOf#property', arms: 1, dispatch: false, terminal: 'else' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walk<returnedFunctions<channelCensusOf#element', arms: 1, dispatch: false, terminal: 'else' }),
+  Object.freeze({
+    at: 'empireForbiddenOutput.test.ts#walk<returnedFunctions<channelCensusOf#resolved',
+    arms: 2,
+    dispatch: true,
+    terminal: 'enclosing',
+    omission:
+      "The member's declaration resolved to a property assignment or to a variable; anything else falls out of the guarded block and reaches THE FALLBACK, which resolves the HOLDER instead. That fallback is real code with its own terminal arm, not a `return`, and `probeNestedMemberClosure` is the mutant for it — the name there resolves to a `PropertySignature` on an annotation, which is exactly this chain falling through. The catcher is `ASSEMBLY_PROBE_CLOSURE_SITES`, which requires `#probeNestedMemberClosure#closure:.inner.peek`, so a fall-through that stopped working is a red line with a member path in it.",
+  }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walk<returnedFunctions<channelCensusOf#holder', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walk<returnedFunctions<channelCensusOf#literal', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walk<returnedFunctions<channelCensusOf#property#2', arms: 1, dispatch: false, terminal: 'else' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<channelCensusOf#node', arms: 3, dispatch: false, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<channelCensusOf#node#2', arms: 11, dispatch: false, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<channelCensusOf#owner', arms: 1, dispatch: false, terminal: 'else' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<channelCensusOf#target', arms: 2, dispatch: false, terminal: 'else' }),
+  Object.freeze({
+    at: 'empireForbiddenOutput.test.ts#visit<channelCensusOf#owner#2',
+    arms: 1,
+    dispatch: false,
+    terminal: 'enclosing',
+    omission:
+      'Not a dispatch: `dispatch: false` says no arm ends control flow, so this is a bookkeeping `if` inside the callback branch and falling through it is the ONLY normal path. `internalOwners` is filled for a non-exported owner and left alone for an exported one, and both continue to `node.forEachChild(visit)` at the end of the walk. The catcher that a fall-through here still records the call is `DECLARED_CALLBACK_SITES`, which pins the exported and internal callback channels separately and in both directions.',
+  }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#rootIdentifier<dispatchChainsIn#at', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<subjectOf<dispatchChainsIn#node', arms: 2, dispatch: false, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#enclosingNames<dispatchChainsIn#at', arms: 1, dispatch: false, terminal: 'else' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#enclosingNames<dispatchChainsIn#first', arms: 1, dispatch: false, terminal: 'loop' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#terminates<dispatchChainsIn#statement', arms: 2, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#continuationFrom<dispatchChainsIn#parent', arms: 3, dispatch: false, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#scanBlock<dispatchChainsIn#first', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#scanBlock<dispatchChainsIn#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<dispatchChainsIn#node', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#named<switchesIn#at', arms: 2, dispatch: true, terminal: 'loop' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<switchesIn#node', arms: 1, dispatch: false, terminal: 'next-statement' }),
+]);
+
+/** What the census measured. Counts, not bounds. */
+const CHAIN_CENSUS = Object.freeze({
+  FILES: 2,
+  CHAINS: 70,
+  DISPATCH: 46,
+  BY_TERMINAL: Object.freeze({
+    else: 7,
+    'next-statement': 52,
+    loop: 9,
+    enclosing: 2,
+    /**
+     * ZERO, AND THE ZERO IS THIS ROUND'S RESULT RATHER THAN A FACT ABOUT THE
+     * DIRECTORY. It was TWO the first time this census was run — `surfaceOf`'s
+     * type walk here and `brandsIn`'s in `empireCore.test.ts` — and a plant
+     * walked through the first of them with every position pin green. A row
+     * moving to `none` is the exact edit both bypasses were.
+     */
+    none: 0,
+  }) as Readonly<Record<ChainTerminal, number>>,
+  SWITCHES: 2,
+  SWITCHES_WITHOUT_DEFAULT: 2,
+});
+
+describe('the dispatch-chain census — a ladder nobody looked at cannot be added quietly', () => {
+  it('finds every dispatch chain in this directory, in both directions', () => {
+    const chains = directoryDispatchChains();
+    expect(chainScanFiles()).toEqual(['empireCore.test.ts', 'empireForbiddenOutput.test.ts']);
+    expect(chainScanFiles().length).toBe(CHAIN_CENSUS.FILES);
+    expect([...chains].map(chainKey).sort()).toEqual([...DECLARED_DISPATCH_CHAINS].map(chainKey).sort());
+    expect(chains.length).toBe(CHAIN_CENSUS.CHAINS);
+    expect(DECLARED_DISPATCH_CHAINS.length).toBe(CHAIN_CENSUS.CHAINS);
+    expect(chains.filter((chain) => chain.dispatch).length).toBe(CHAIN_CENSUS.DISPATCH);
+    const byTerminal: Record<string, number> = {};
+    for (const chain of chains) byTerminal[chain.terminal] = (byTerminal[chain.terminal] ?? 0) + 1;
+    for (const [terminal, count] of Object.entries(CHAIN_CENSUS.BY_TERMINAL)) {
+      expect(byTerminal[terminal] ?? 0, terminal).toBe(count);
+    }
+    // The keys are unique, so a row cannot stand for two chains.
+    expect(distinct(chains.map((chain) => chain.at)).length).toBe(CHAIN_CENSUS.CHAINS);
+  });
+
+  it('argues every chain that can drop a case, and names the argument’s catcher', () => {
+    const needsAnArgument = DECLARED_DISPATCH_CHAINS.filter(
+      (chain) => chain.terminal === 'none' || chain.terminal === 'enclosing',
+    );
+    for (const chain of needsAnArgument) {
+      // Length rather than presence, for the reason every `why` field in this
+      // file is length-checked: a row that can be added by pasting a line is a
+      // row nobody argued.
+      expect(chain.omission ?? '', chain.at).not.toBe('');
+      expect((chain.omission ?? '').length, chain.at).toBeGreaterThan(120);
+    }
+    // And nothing else carries one, so the field cannot become decoration.
+    for (const chain of DECLARED_DISPATCH_CHAINS) {
+      if (chain.terminal === 'none' || chain.terminal === 'enclosing') continue;
+      expect(chain.omission, chain.at).toBeUndefined();
+    }
+    expect(needsAnArgument.length).toBe(
+      CHAIN_CENSUS.BY_TERMINAL.none + CHAIN_CENSUS.BY_TERMINAL.enclosing,
+    );
+  });
+
+  it('sees every terminal on a source built to carry one of each', () => {
+    // THE NON-VACUITY GUARD. Every count above is a set equality over the real
+    // directory, and a set equality passes just as happily when the classifier
+    // has stopped classifying — which is exactly how a census of eight arms
+    // reported a clean surface for four template literal types.
+    const rows = dispatchChainsIn('probe.ts', CHAIN_SCAN_PROBE);
+    expect([...rows].map(chainKey).sort()).toEqual([
+      'probe.ts#withElse#node arms=2 dispatch=true terminal=else',
+      'probe.ts#withEnclosing#node arms=1 dispatch=false terminal=next-statement',
+      'probe.ts#withEnclosing#node#2 arms=2 dispatch=true terminal=enclosing',
+      'probe.ts#withLoop#at arms=2 dispatch=true terminal=loop',
+      'probe.ts#withNextStatement#node arms=2 dispatch=true terminal=next-statement',
+      'probe.ts#withNone#node arms=2 dispatch=true terminal=none',
+    ]);
+    // `withNoDiscriminator` is the scoping rule taken as a number rather than
+    // as a sentence: two `if`s on the same binding that discriminate on nothing
+    // the compiler defines are OUTSIDE this census, and that limit is measured
+    // here instead of being described in the header.
+    expect(rows.filter((row) => row.at.includes('withNoDiscriminator'))).toEqual([]);
+  });
+
+  it('pins every switch, and the two without a `default` name what refuses them', () => {
+    const rows = chainScanFiles().flatMap((name) =>
+      switchesIn(name, readFileSync(path.join(HERE, name), 'utf8')),
+    );
+    expect(rows.map((row) => `${row.at} cases=${String(row.cases)} default=${String(row.hasDefault)}`)).toEqual([
+      'empireForbiddenOutput.test.ts#appliedFor cases=5 default=false',
+      'empireForbiddenOutput.test.ts#acceleratedFor cases=5 default=false',
+    ]);
+    expect(rows.length).toBe(CHAIN_CENSUS.SWITCHES);
+    expect(rows.filter((row) => !row.hasDefault).length).toBe(CHAIN_CENSUS.SWITCHES_WITHOUT_DEFAULT);
+    // WHY A MISSING `default` IS NOT A MISSING TERMINAL HERE, in the
+    // mechanism's own terms rather than as a reassurance. Both switches are
+    // exhaustive over `EmpireAccelerant` and both declare a non-optional return
+    // type, so a sixth member — or a deleted arm — leaves a path with no
+    // `return` and `strictNullChecks` refuses it. RUN rather than asserted:
+    // deleting the `'space-level'` arm from `appliedFor` gives `tsc --noEmit`
+    // exit 2 with `error TS2366: Function lacks ending return statement and
+    // return type does not include 'undefined'`, at that function.
+    expect(rows.every((row) => row.cases === core.EMPIRE_ACCELERANTS.length)).toBe(true);
   });
 });

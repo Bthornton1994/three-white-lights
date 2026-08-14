@@ -251,6 +251,17 @@ interface BrandCensus {
   readonly refusedProbes: number;
   /** Functions whose all-`never` control call did not compile. Must be empty. */
   readonly controlFailures: readonly string[];
+  /**
+   * Types `brandsIn` reached and had no arm for. Must be empty.
+   *
+   * THIS FILE'S OWN COPY OF THE SIXTEENTH BYPASS. `brandsIn`'s walk was four
+   * `if ((current.flags & X) !== 0)` arms with no final branch, exactly like
+   * `surfaceOf`'s in `empireForbiddenOutput.test.ts`, so a type kind outside the
+   * four made a brand under it invisible and `produces` came back short. It was
+   * found by a dispatch-chain census that reads the whole directory rather than
+   * the one file the bypass was planted in.
+   */
+  readonly unwalkedTypes: readonly string[];
   /** Diagnostics from `empireCore.ts` itself. Must be empty. */
   readonly coreDiagnostics: readonly string[];
 }
@@ -329,6 +340,7 @@ function brandCensus(): BrandCensus {
   brands.sort();
 
   /** Every brand reachable from a type, through unions, arrays and properties. */
+  const unwalked = new Set<string>();
   const brandsIn = (type: ts.Type): readonly string[] => {
     const found = new Set<string>();
     const seen = new Set<ts.Type>();
@@ -358,7 +370,36 @@ function brandCensus(): BrandCensus {
         for (const property of current.getProperties()) {
           walk(checker.getTypeOfSymbolAtLocation(property, property.valueDeclaration ?? core), depth + 1);
         }
+        return;
       }
+      // THE `else` ON THE TYPE-FLAG AXIS, ADDED BECAUSE THE SIBLING WALKER IN
+      // `empireForbiddenOutput.test.ts` HAD THE IDENTICAL MISSING BRANCH AND A
+      // BYPASS WENT THROUGH IT. A type kind outside the four above — a template
+      // literal, a `keyof`, an indexed access — was dropped here with nothing
+      // recorded, so a brand sitting under one would make `produces` come back
+      // short and the fault-list join below would pass on a census that had
+      // quietly got smaller. Nothing shipped reaches it today, which is what
+      // `unwalkedTypes` being pinned empty says; a first arrival is a line
+      // naming the type instead of a shorter list.
+      //
+      // A PRIMITIVE IS NOT AN OMISSION AND IS NOT RECORDED. `number`, `string`,
+      // `boolean`, `void`, `undefined`, `null` and a string literal carry no
+      // properties this walk could find a brand under, so recording them would
+      // fill this list with every leaf in the directory and hide the arrivals it
+      // exists for.
+      const CARRIES_NO_BRAND =
+        ts.TypeFlags.StringLike |
+        ts.TypeFlags.NumberLike |
+        ts.TypeFlags.BigIntLike |
+        ts.TypeFlags.BooleanLike |
+        ts.TypeFlags.ESSymbolLike |
+        ts.TypeFlags.VoidLike |
+        ts.TypeFlags.Null |
+        ts.TypeFlags.Never |
+        ts.TypeFlags.Unknown |
+        ts.TypeFlags.Any;
+      if ((current.flags & CARRIES_NO_BRAND) !== 0) return;
+      unwalked.add(checker.typeToString(current));
     };
     walk(type, 0);
     return [...found].sort();
@@ -481,6 +522,7 @@ function brandCensus(): BrandCensus {
     probes: probes.length,
     refusedProbes: probes.filter((probe) => !accepted(probe)).length,
     controlFailures: probes.filter((probe) => probe.control && !accepted(probe)).map((p) => p.fn),
+    unwalkedTypes: Object.freeze([...unwalked].sort()),
     coreDiagnostics,
   };
   return censusMemo;
@@ -1040,6 +1082,12 @@ describe('the producer census, scoped by return type and resolved through the ch
     // wrong rather than the subject.
     expect(census.controlFailures).toEqual([]);
     expect(census.coreDiagnostics).toEqual([]);
+    // AND THE TYPE WALK'S OWN TERMINAL ARM. `brandsIn` had four flag arms and no
+    // final branch, so a type kind outside them made a brand under it invisible
+    // and `produces` came back short — which reads exactly like a function that
+    // produces nothing. Empty on this tree, in both directions, with the type
+    // named in the message when it is not.
+    expect(census.unwalkedTypes, census.unwalkedTypes.join(' | ')).toEqual([]);
     // 930 rather than 914 since `refuseWith` arrived, and the sixteen are
     // derived rather than read off a diff: one control plus one slot times two
     // raw candidates and thirteen brands.
