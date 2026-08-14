@@ -225,6 +225,23 @@
  *  - IT READS TEXT. A real logo drawn pixel by pixel into `partners.ts`, or
  *    pasted into a PNG under `assets/`, is invisible to it. Filenames are
  *    scanned; image contents are not.
+ *    WHICH FILES COUNT AS TEXT USED TO BE AN EXTENSION ALLOWLIST, AND IT FAILED
+ *    OPEN. Fifteen suffixes; anything else was skipped with no finding, no note
+ *    and no line of output, so the gap was invisible from the outside — which is
+ *    strictly worse than looking and finding nothing. `.py` was not on it, and a
+ *    builder on an unrelated piece reached for a Python script first; `.mts` and
+ *    `.toml` were not on it either and four such files were already in the tree.
+ *    It is a CONTENT test now: everything the walk reaches is read unless its
+ *    bytes are not text, and the files that fails on are enumerated by name in
+ *    `UNREADABLE_BY_THIS_AUDIT` rather than silently dropped. See the argument at
+ *    `classifyBytes` for why the replacement is not a denylist of binary
+ *    extensions — that shape fails open one level further out.
+ *  - THE DIRECTORY DIMENSION IS STILL AN ALLOWLIST. `NOT_WALKED` names seven
+ *    directories this audit never descends into, and a real mark inside one of
+ *    them is as invisible as `.py` was. Each has a written reason in
+ *    `NOT_WALKED_REASONS`, which is more than the extension rule ever had; it is
+ *    still a list somebody has to keep right, and fixing the file-type dimension
+ *    said nothing about this one.
  *    THERE IS A LIVE INSTANCE OF THIS, and it is worth naming rather than
  *    leaving as a general caveat: one of the committed reference images under
  *    `docs/reference/` carries a real league's logo and a currently-competing
@@ -765,24 +782,217 @@ export interface SourceMention {
   readonly text: string;
 }
 
-const TS_LIKE = /\.(?:tsx?|m?js|cjs)$/;
+/**
+ * Files whose comments this audit can tell apart from their code.
+ *
+ * `withoutComments` understands `//` and block comments, so this is the family
+ * of languages that spells a comment that way. `[cm]?` covers the module-suffixed
+ * spellings — `.mts` and `.cts` were missing here for the same reason `.py` was
+ * missing from the reader below, and three `tools/*.d.mts` files were sitting in
+ * the tree while this pattern declined to recognise them.
+ *
+ * A LANGUAGE THAT IS NOT ON THIS LIST IS STILL READ; its mentions are just
+ * classified `code` rather than `comment`. That is the safe direction — `code` is
+ * the higher-severity bucket, "one edit from a screen" — and it is why a Python
+ * script's `#` comments needing a different stripper is not a reason to keep
+ * Python out of the scan.
+ */
+const TS_LIKE = /\.(?:[cm]?tsx?|[cm]?jsx?)$/;
 const PROSE_LIKE = /\.(?:md|markdown|txt)$/;
 
-/**
- * Text files this audit reads in full.
- *
- * Everything textual, including tests, configs, HTML, shell and JSON —
- * §12.3 names "any asset, string, config, or code path", and it names a test
- * fixture as one of the two examples of how a real mark actually arrives.
- * `src/tuning/audit.ts` skips tests because a test is SUPPOSED to hold a
- * literal number; no test is supposed to hold a real athlete's name, so this one
- * does not skip them.
- */
-const TEXT_FILE = /\.(?:tsx?|m?js|cjs|json|md|markdown|txt|html|css|sh|ya?ml|xml|svg)$/;
+// ---------------------------------------------------------------------------
+// WHAT GETS READ — and why this is a DENYLIST on content rather than an
+// allowlist on extension
+// ---------------------------------------------------------------------------
 
-/** Binary and generated files, checked by FILENAME only. */
-export function isTextFile(relPath: string): boolean {
-  return TEXT_FILE.test(relPath);
+/**
+ * THIS PREDICATE USED TO BE AN EXTENSION ALLOWLIST AND IT FAILED OPEN.
+ *
+ * The old rule was one regex of fifteen extensions. Everything else in the tree
+ * was skipped SILENTLY — no finding, no note, no line in any output — so the gap
+ * was invisible from the outside and the suite was exactly as green as it would
+ * have been with nothing to find. Three ways that had already gone wrong:
+ *
+ *   - `.py` matched nothing. A builder working on an unrelated piece reached for
+ *     a Python script first and would have written a completely unwatched file;
+ *     that is what produced this rewrite. Nothing in this repository is written
+ *     in Python TODAY, which is the point — the hole was in the shape of the
+ *     check, not in the contents of the tree, and it would have opened on the
+ *     first `.py` anybody committed.
+ *   - `.mts` matched nothing, and `tools/png.d.mts`, `tools/test-budgets.d.mts`
+ *     and `tools/testBudget.d.mts` were already there. `tsx?` does not cover the
+ *     module-suffixed spelling and nobody noticed for as long as those files have
+ *     existed.
+ *   - `.toml` matched nothing, and `netlify.toml` was already there — a build
+ *     config, which is one of the four words §12.3 uses.
+ *
+ * SO THE SHAPE IS INVERTED: everything the tree walk reaches is READ unless its
+ * BYTES say it cannot be text. An extension nobody thought of is now watched by
+ * default instead of skipped by default, which is the only arrangement where a
+ * new file type is a safe default rather than a silent hole.
+ *
+ * WHY THE TEST IS CONTENT AND NOT A LIST OF BINARY EXTENSIONS. A denylist of
+ * extensions fails open one level further out — the first `.pdf`, `.jpg` or
+ * `.ttf` nobody enumerated gets read as mojibake and cries wolf, and a check that
+ * cries wolf is one somebody suppresses. Bytes need no enumeration and cannot go
+ * stale: a NUL byte, or a sequence that is not valid UTF-8, is not text in any
+ * language. That also reaches the case an extension rule structurally cannot —
+ * `.gitignore` has no extension at all, and it is read now.
+ *
+ * WHY BINARIES ARE EXCLUDED AT ALL, MEASURED RATHER THAN ASSUMED. Reading this
+ * tree's 19 binaries as UTF-8 with replacement produces TWO watchlist hits, both
+ * false: a three-letter federation acronym inside the deflate stream of an app
+ * icon, and a three-letter brand acronym inside a reference screenshot. That is
+ * the same cry-wolf failure `patternFor`'s word edges were added for, one level
+ * out, and it is why "read everything" is not the answer either.
+ *
+ * WHAT THIS STILL DOES NOT CLOSE, and it is two whole dimensions rather than a
+ * corner:
+ *
+ *   - THE DIRECTORY DIMENSION. `NOT_WALKED` is still an unmeasured allowlist of
+ *     seven names; a real mark inside `.gauntlet/` or a sibling worktree is as
+ *     invisible as `.py` was. Each entry has a written reason in
+ *     `NOT_WALKED_REASONS`, which is more than the extension rule ever had, and
+ *     it is still a list somebody has to keep right.
+ *   - THE PIXELS. A file that cannot be read as text is not read as anything.
+ *     Its NAME is still scanned (`scanFileName`), which is how the two reference
+ *     photographs reach the citation list — but a logo drawn INSIDE a PNG is
+ *     invisible here and always will be. `UNREADABLE_BY_THIS_AUDIT` is the census
+ *     of exactly those files, pinned by name, so the invisible half is at least
+ *     enumerated instead of merely admitted.
+ */
+export type TextVerdict = 'text' | 'nul-byte' | 'not-utf8';
+
+/**
+ * Why a file's bytes are or are not readable as text.
+ *
+ * WHOLE FILE, NOT A PREFIX. Git's own heuristic sniffs the first 8000 bytes,
+ * which is faster and lets a NUL past the window; this tree is 284 files, so the
+ * cheap thing and the correct thing are the same thing and there is no window
+ * constant to tune.
+ *
+ * ON TODAY'S TREE ONLY THE `nul-byte` ARM FIRES — all 19 binaries are PNG, WAV
+ * or WEBP and every one of them carries a NUL in its header. `not-utf8` is
+ * therefore driven by fixtures in `realIp.test.ts` rather than by the repository,
+ * and it is kept because the arms answer different questions: a UTF-16 text file
+ * is all NULs and a latin-1 one has none.
+ */
+export function classifyBytes(bytes: Uint8Array): TextVerdict {
+  if (bytes.includes(0)) return 'nul-byte';
+  try {
+    new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return 'not-utf8';
+  }
+  return 'text';
+}
+
+/** True when this audit reads the file's contents. Binaries are FILENAME only. */
+export function isTextFile(bytes: Uint8Array): boolean {
+  return classifyBytes(bytes) === 'text';
+}
+
+/**
+ * THE EXTENSIONS THIS AUDIT ACTUALLY READS IN THIS TREE, pinned.
+ *
+ * Not an input — nothing consults it to decide anything. It is the ANSWER the
+ * content predicate gives when it is pointed at the real repository, written down
+ * so the answer is reviewable. `realIp.test.ts` set-equals it against the live
+ * walk in both directions, which is what makes the widening self-announcing: the
+ * first `.py` anybody commits reddens the suite with `.py` in the message, and
+ * the fix is to read this paragraph and add the row rather than to discover six
+ * months later that the file was never scanned.
+ *
+ * `(none)` is `.gitignore`, which has no extension and which the old
+ * extension-matching rule could not have reached under any list of suffixes.
+ */
+export const EXTENSIONS_READ_AS_TEXT: readonly string[] = Object.freeze([
+  '(none)',
+  '.html',
+  '.json',
+  '.md',
+  '.mjs',
+  '.mts',
+  '.sh',
+  '.toml',
+  '.ts',
+  '.tsx',
+  '.yml',
+]);
+
+/** One kind of file this audit cannot read the contents of, and how many there are. */
+export interface UnreadableGroup {
+  readonly extension: string;
+  readonly reason: Exclude<TextVerdict, 'text'>;
+  readonly count: number;
+}
+
+/**
+ * EVERYTHING IN THIS TREE WHOSE CONTENTS THIS AUDIT CANNOT READ, COUNTED.
+ *
+ * The same instrument as `DELIBERATELY_NOT_WATCHED`, pointed at files instead of
+ * names, and for the same stated reason: an omission from a scan is invisible,
+ * and an invisible omission is how a scan quietly stops covering what everyone
+ * assumed it covered. The defect that produced this module's rewrite was exactly
+ * that — a file type silently declined, with nothing in any output to say so.
+ * The gap IS the output now.
+ *
+ * BY EXTENSION AND COUNT RATHER THAN BY FILENAME, AND THE REASON IS THIS
+ * MODULE'S OWN SELF-SCAN. The first draft of this block listed all nineteen paths
+ * — at which point the audit reported two watchlist names in `realIp.ts` outside
+ * its three exempt regions, because two of the reference photographs are named
+ * after a console and a federation. That was the check working on the hand
+ * writing it, and the choice it forced is the right one on its own merits:
+ * counting keeps the self-exemption at three regions instead of opening a fourth,
+ * and `realIp.test.ts` prints the live filenames in its failure message, where a
+ * name in output is not a name in source.
+ *
+ * THESE FILES ARE NOT UNWATCHED. Every one still goes through `scanFileName`,
+ * which is how the two reference photographs earn their `filename` rows on
+ * `REVIEWABLE_CITATIONS`. What is unreadable is the CONTENT, and for a picture
+ * that is permanent: §5 of the header names the live instance, a reference image
+ * carrying a real league's logo and a competing player's likeness in its pixels.
+ *
+ * SO A MOVED COUNT IS AN EVENT. It means a binary arrived or left, and a binary
+ * is the one place a real mark can sit with no text anywhere near it.
+ * `realIp.test.ts` set-equals this against the live walk in both directions, so
+ * adding an icon or a sound reddens the suite until somebody adjusts the number —
+ * the same cost `REVIEWABLE_CITATIONS` already charges, for a stronger reason.
+ */
+export const UNREADABLE_BY_THIS_AUDIT: readonly UnreadableGroup[] = Object.freeze([
+  { extension: '.png', reason: 'nul-byte', count: 10 },
+  { extension: '.wav', reason: 'nul-byte', count: 7 },
+  { extension: '.webp', reason: 'nul-byte', count: 2 },
+]);
+
+/** The extension of a repository-relative path, or `(none)` when it has none. */
+export function extensionOf(relPath: string): string {
+  const base = relPath.slice(relPath.lastIndexOf('/') + 1);
+  const dot = base.lastIndexOf('.');
+  return dot > 0 ? base.slice(dot) : '(none)';
+}
+
+/** Fold a walked tree into the unreadable census, grouped and sorted. */
+export function unreadableCensus(
+  files: readonly { readonly file: string; readonly bytes: Uint8Array }[],
+): readonly UnreadableGroup[] {
+  const groups = new Map<string, UnreadableGroup>();
+  for (const { file, bytes } of files) {
+    const verdict = classifyBytes(bytes);
+    if (verdict === 'text') continue;
+    const extension = extensionOf(file);
+    const key = `${extension}|${verdict}`;
+    const existing = groups.get(key);
+    groups.set(
+      key,
+      existing === undefined
+        ? { extension, reason: verdict, count: 1 }
+        : { ...existing, count: existing.count + 1 },
+    );
+  }
+  return [...groups.values()].sort(
+    (a, b) => a.extension.localeCompare(b.extension) || a.reason.localeCompare(b.reason),
+  );
 }
 
 /**

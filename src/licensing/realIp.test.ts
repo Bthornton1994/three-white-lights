@@ -38,12 +38,17 @@ import { fileURLToPath } from 'node:url';
 
 import {
   DELIBERATELY_NOT_WATCHED,
+  EXTENSIONS_READ_AS_TEXT,
   NOT_WALKED,
   REAL_IP_WATCHLIST,
   REVIEWABLE_CITATIONS,
+  UNREADABLE_BY_THIS_AUDIT,
   WATCHLIST_FILE,
   WATCHLIST_REGIONS,
   citationInventory,
+  classifyBytes,
+  extensionOf,
+  unreadableCensus,
   findWatchedNames,
   formatCitations,
   formatContentFindings,
@@ -87,21 +92,46 @@ const ALL_FILES: readonly string[] = walk(ROOT)
   .map((f) => path.relative(ROOT, f).split(path.sep).join('/'))
   .sort();
 
-const TEXT_FILES: readonly string[] = ALL_FILES.filter(isTextFile);
+/**
+ * Read one repository file's BYTES, memoised.
+ *
+ * Bytes rather than a string because the text/binary decision is now made on the
+ * bytes — `readFileSync(..., 'utf8')` has already replaced every invalid sequence
+ * with U+FFFD by the time you see it, so a string cannot answer the question.
+ *
+ * Memoised because this suite reads the whole tree several times over — the
+ * citation inventory walks it, the unreadable census walks it, and so does the
+ * check that every name on `DELIBERATELY_NOT_WATCHED` is really in here.
+ */
+const BYTE_CACHE = new Map<string, Uint8Array>();
+function bytesOf(relPath: string): Uint8Array {
+  const cached = BYTE_CACHE.get(relPath);
+  if (cached !== undefined) return cached;
+  const buf = new Uint8Array(readFileSync(path.join(ROOT, relPath)));
+  BYTE_CACHE.set(relPath, buf);
+  return buf;
+}
 
 /**
- * Read one repository file, memoised.
+ * Every file this audit reads the CONTENTS of.
  *
- * Memoised because this suite now reads the whole tree more than once — the
- * citation inventory walks it, and so does the check that every name on
- * `DELIBERATELY_NOT_WATCHED` is really in here. Strings are immutable, so the
- * mutation helpers below cannot poison the cache by editing what they are given.
+ * The filter is the content predicate, not a suffix list — see `classifyBytes`
+ * in `realIp.ts` for why that inverted, and `UNREADABLE_BY_THIS_AUDIT` for the
+ * census of what it leaves out.
+ */
+const TEXT_FILES: readonly string[] = ALL_FILES.filter((f) => isTextFile(bytesOf(f)));
+
+/**
+ * Read one repository file as text, memoised through the byte cache.
+ *
+ * Strings are immutable, so the mutation helpers below cannot poison the cache by
+ * editing what they are given.
  */
 const FILE_CACHE = new Map<string, string>();
 function read(relPath: string): string {
   const cached = FILE_CACHE.get(relPath);
   if (cached !== undefined) return cached;
-  const text = readFileSync(path.join(ROOT, relPath), 'utf8');
+  const text = new TextDecoder('utf-8').decode(bytesOf(relPath));
   FILE_CACHE.set(relPath, text);
   return text;
 }
@@ -214,21 +244,102 @@ describe('the real-IP audit has something to audit', () => {
     expect(TEXT_FILES.some((f) => !f.startsWith('src/'))).toBe(true);
   });
 
-  it('reaches configs, docs, markup and shell, not only TypeScript', () => {
-    // §12.3 names "any asset, string, config, or code path". A scan that read
-    // only `.ts` would miss a brand in app.json, in the GDD, or in an HTML
-    // harness page — and two of those ship.
-    for (const ext of ['.json', '.md', '.html', '.sh']) {
-      expect(TEXT_FILES.some((f) => f.endsWith(ext)), `no ${ext} file scanned`).toBe(true);
-    }
+  // A CHECK THAT USED TO BE HERE IS GONE, AND THE DOMINATION IS RECORDED RATHER
+  // THAN THE CHECK LEFT STANDING.
+  //
+  // `it('reaches configs, docs, markup and shell, not only TypeScript')` looped
+  // over `['.json', '.md', '.html', '.sh']` asserting each appeared somewhere in
+  // `TEXT_FILES`. `reports every file type it reads` below set-equals the LIVE
+  // extension census against `EXTENSIONS_READ_AS_TEXT`, which contains all four.
+  // Symbolically: any state of the tree or the predicate that empties one of
+  // those four extensions out of `TEXT_FILES` also drops it out of the live set,
+  // so the set equality is red in every case the loop was red in, and in more
+  // besides. Strictly dominated — deleted, per the standing rule, instead of left
+  // as a check that can no longer speak first.
+
+  it('reports every file type it reads, and every file it cannot', () => {
+    // THE ANSWER TO THE DEFECT THAT PRODUCED THIS SHAPE. The old predicate was an
+    // extension allowlist and `.py` was not on it, so a Python script would have
+    // been skipped with nothing anywhere in the output to say so. Two set
+    // equalities, in both directions, are what make the gap visible now:
+    //
+    //   - a NEW file type reddens with its extension in the message, which is the
+    //     event a `.py` would have been;
+    //   - a file that stops being readable reddens as a new census row, which is
+    //     the event a new binary is.
+    //
+    // Counts and not bounds, deliberately: a bound lets the readable set shrink
+    // quietly, which is the failure this whole rewrite is about.
+    const liveExtensions = [...new Set(TEXT_FILES.map(extensionOf))].sort();
+    expect(
+      liveExtensions,
+      [
+        '',
+        'THE SET OF FILE TYPES THIS AUDIT READS HAS CHANGED.',
+        '',
+        'If a type was ADDED: a kind of file nobody had committed before is now in',
+        'the tree, and it IS being scanned — that is the fail-closed shape working.',
+        'Read the new extension, then add it to EXTENSIONS_READ_AS_TEXT.',
+        '',
+        'If a type was REMOVED: either the last file of that kind went away, or the',
+        'content predicate stopped recognising it as text. The second is a hole.',
+        '',
+        `live: ${liveExtensions.join(' ')}`,
+        '',
+      ].join('\n'),
+    ).toEqual([...EXTENSIONS_READ_AS_TEXT]);
+
+    const unreadable = ALL_FILES.filter((f) => !isTextFile(bytesOf(f)));
+    const census = unreadableCensus(ALL_FILES.map((file) => ({ file, bytes: bytesOf(file) })));
+    expect(
+      census,
+      [
+        '',
+        'THE CENSUS OF FILES THIS AUDIT CANNOT READ HAS CHANGED.',
+        '',
+        'A file counted here has CONTENTS invisible to every string check in this',
+        'module — which is the one place a real logo can sit with no text near it.',
+        'Its NAME is still scanned. Read the list, then paste the block.',
+        '',
+        ...census.map(
+          (r) => `  { extension: '${r.extension}', reason: '${r.reason}', count: ${r.count} },`,
+        ),
+        '',
+        // The live paths go in the MESSAGE and never in either source file: two of
+        // these photographs are named after real marks, and this module's own
+        // self-scan reports a watched name written anywhere in `realIp.ts` outside
+        // its three exempt regions. That is how this block came to be counted
+        // rather than listed — see `UNREADABLE_BY_THIS_AUDIT`.
+        ...unreadable.map((f) => `  ${f}`),
+        '',
+      ].join('\n'),
+    ).toEqual([...UNREADABLE_BY_THIS_AUDIT]);
+
+    // ...and the total, so an emptied census cannot pass the equality against an
+    // emptied pin, and so a binary swapped for another of a different kind cannot
+    // net out to zero across two rows.
+    expect(census.reduce((sum, r) => sum + r.count, 0)).toBe(19);
+    expect(unreadable.length).toBe(19);
+    expect(ALL_FILES.length).toBe(TEXT_FILES.length + unreadable.length);
   });
 
-  it('reads test files too, unlike the magic-number audit', () => {
+  it('reads test files, .mts, .toml and an extensionless file', () => {
     // `src/tuning/audit.ts` skips tests because a test is SUPPOSED to contain a
     // literal number. No test is supposed to contain a real athlete's name, and
     // §12.3 names a test fixture as one of the two ways a real mark arrives.
     expect(TEXT_FILES).toContain('src/game/dots.test.ts');
-    expect(isTextFile('src/game/dots.test.ts')).toBe(true);
+    // THE THREE FILES THE OLD EXTENSION ALLOWLIST WAS SILENTLY DECLINING, named
+    // individually rather than left to the census above: `tsx?` never covered the
+    // module-suffixed spelling, `.toml` was on no list, and `.gitignore` has no
+    // extension at all so no suffix rule could have reached it under any list.
+    expect(TEXT_FILES).toContain('tools/testBudget.d.mts');
+    expect(TEXT_FILES).toContain('netlify.toml');
+    expect(TEXT_FILES).toContain('.gitignore');
+    // ...and the paired direction, without which the three above would also pass
+    // if the predicate had degenerated to "everything is text": a real binary is
+    // still refused, and it is refused on its bytes rather than on its name.
+    expect(TEXT_FILES).not.toContain('assets/icon.png');
+    expect(classifyBytes(bytesOf('assets/icon.png'))).toBe('nul-byte');
   });
 
   it('never walks into a sibling git worktree', () => {
@@ -270,6 +381,75 @@ describe('the real-IP audit has something to audit', () => {
         expect(paths, `${entry.id} ${slot} alt`).toContain(`${entry.id}.tier3.${slot}.alt`);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The text/binary decision, driven on bytes rather than on suffixes
+// ---------------------------------------------------------------------------
+
+describe('the reader decides on bytes, not on a suffix', () => {
+  const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
+
+  it('reads a source file in a language nobody put on a list', () => {
+    // THE DEFECT, AS A UNIT. There is no Python in this repository, which is why
+    // the old extension allowlist could omit `.py` for the whole run without
+    // anything going red. The predicate no longer asks what the file is called.
+    expect(classifyBytes(utf8('#!/usr/bin/env python3\nprint("hello")\n'))).toBe('text');
+    expect(classifyBytes(utf8('fn main() { println!("hi"); }\n'))).toBe('text');
+    expect(classifyBytes(utf8('#!/usr/bin/env ruby\nputs "hi"\n'))).toBe('text');
+    expect(classifyBytes(utf8('SELECT 1;\n'))).toBe('text');
+    expect(classifyBytes(utf8('FROM node:22\nRUN npm ci\n'))).toBe('text');
+  });
+
+  it('refuses bytes that cannot be text, by both routes', () => {
+    // BOTH ARMS DRIVEN, and this is where the `not-utf8` arm gets its evidence:
+    // every binary in this tree happens to carry a NUL, so the repository alone
+    // exercises one arm and would leave the other passing on nothing.
+    expect(classifyBytes(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]))).toBe(
+      'nul-byte',
+    );
+    // A lone 0xFF is not a legal UTF-8 start byte in any position.
+    expect(classifyBytes(new Uint8Array([0x48, 0x69, 0xff, 0x21]))).toBe('not-utf8');
+    // A truncated multi-byte sequence: a legal lead byte with its continuation
+    // missing. This is what a latin-1 file with an accent in it looks like.
+    expect(classifyBytes(new Uint8Array([0x41, 0xe9, 0x42]))).toBe('not-utf8');
+    // ...and the arms are distinguishable rather than one collapsed into the
+    // other, which is the only thing that makes the census reason worth printing.
+    expect(classifyBytes(new Uint8Array([0xff, 0x00]))).not.toBe('not-utf8');
+  });
+
+  it('accepts text a naive byte test would reject', () => {
+    // A high-plane character is multi-byte and perfectly valid, and a scan that
+    // called it binary would silently drop the accented athlete spellings the
+    // watchlist carries on purpose. Empty is text too — a zero-length file is not
+    // a binary, and treating it as one would put a row on the unreadable census
+    // for every placeholder anybody touches.
+    //
+    // THE FIXTURE IS INVENTED, and the first draft of it was not: it used a real
+    // accented lifter's name to make the point about accented spellings, and this
+    // module's own citation pin reported it as a new `code` row in this file
+    // within one run. Two checks catching the same slip from opposite sides is
+    // the only reason to keep writing them.
+    expect(classifyBytes(utf8('Aurélien Mourcade — 日本語 — 🏋'))).toBe('text');
+    expect(classifyBytes(new Uint8Array([]))).toBe('text');
+  });
+
+  it('agrees with the whole tree, so the fixtures above are not a private world', () => {
+    // The fixtures are synthetic; this is the same predicate on the real walk.
+    // Without it, `classifyBytes` could be correct on five hand-made buffers and
+    // wrong on every file that actually exists.
+    for (const f of TEXT_FILES) expect(classifyBytes(bytesOf(f)), f).toBe('text');
+    const unreadable = ALL_FILES.filter((f) => !TEXT_FILES.includes(f));
+    expect(unreadable.length).toBe(19);
+    for (const f of unreadable) expect(classifyBytes(bytesOf(f)), f).toBe('nul-byte');
+    // ...and the census agrees with the reasons, so the printed reason column is
+    // compared to something rather than merely displayed.
+    expect(
+      unreadableCensus(ALL_FILES.map((file) => ({ file, bytes: bytesOf(file) }))).every(
+        (r) => r.reason === 'nul-byte',
+      ),
+    ).toBe(true);
   });
 });
 
@@ -575,6 +755,49 @@ describe('the audit bites', () => {
     const found = scanFileName(planted);
     expect(found.map((m) => m.name)).toContain(A_REAL_BRAND);
     expect(scanFileName('assets/icon.png')).toEqual([]);
+  });
+
+  // --- (5) A FILE TYPE NOBODY PUT ON A LIST ---------------------------------
+
+  it('catches a real federation in a file type the old allowlist declined', () => {
+    // THE HOLE THAT PRODUCED THE REWRITE, PINNED SO IT CANNOT REOPEN.
+    //
+    // Both halves have to hold and neither implies the other:
+    //
+    //   1. the READER lets the file in — this is what `.py`, `.mts` and `.toml`
+    //      all failed, silently, under the extension allowlist;
+    //   2. the SCANNER reports the name once the file is in.
+    //
+    // (2) was never broken — `scanSourceText` has never looked at an extension to
+    // decide whether to scan, only to decide `where` — so a check that exercised
+    // only (2) would have passed against the defect. That is why the assertion
+    // pairs them on the same bytes.
+    for (const name of ['tools/sweep.py', 'tools/thing.d.mts', 'netlify.toml', '.gitignore']) {
+      const source = `# generated for the ${A_REAL_FEDERATION} export\nvalue = 1\n`;
+      const bytes = new TextEncoder().encode(source);
+      expect(isTextFile(bytes), `${name} would not be read at all`).toBe(true);
+      const found = scanSourceText(name, source);
+      expect(found.map((m) => m.name), `${name}: ${formatMentions(found)}`).toContain(
+        A_REAL_FEDERATION,
+      );
+    }
+  });
+
+  it('classifies a .mts comment as a comment, not as code', () => {
+    // A SECOND, QUIETER HALF OF THE SAME DEFECT. `TS_LIKE` had the same `tsx?`
+    // gap as the reader did, so even once a `.mts` file was read its comments
+    // would have been graded `code` — the higher-severity bucket, which sounds
+    // safe and is not: it would have put a `code` row on the citation list for
+    // provenance that is only ever a comment, and `code` rows are the ones this
+    // module asks a human to look at first.
+    const inComment = scanSourceText('tools/x.d.mts', `export const a = 1; // ${A_REAL_FEDERATION}\n`);
+    expect(inComment.map((m) => m.where)).toEqual(['comment']);
+    // ...and the paired direction: a language whose comments this module cannot
+    // strip still reports, at the SAFE severity. A `#` comment is not something
+    // `withoutComments` understands, so the mention lands in `code`. That is the
+    // deliberate outcome and it is asserted rather than left to be discovered.
+    const python = scanSourceText('tools/sweep.py', `# ${A_REAL_FEDERATION}\nx = 1\n`);
+    expect(python.map((m) => m.where)).toEqual(['code']);
   });
 
   // --- the self-exemption ---------------------------------------------------
