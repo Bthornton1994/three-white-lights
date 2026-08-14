@@ -606,7 +606,7 @@ const GUARANTEE_COVERAGE = {
    * give: quoting a capitalised run makes this paragraph trigger too, and the
    * count would go to 246.
    */
-  TREE_WIDE: 245,
+  TREE_WIDE: 248,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -882,7 +882,7 @@ const UNPINNED_PROSE_NUMBERS: readonly UnpinnedProseNumber[] = [
  */
 const NUMBER_COVERAGE = {
   /** Comment paragraphs under `src` carrying at least one tag. */
-  TAGGED_PARAGRAPHS: 65,
+  TAGGED_PARAGRAPHS: 66,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
@@ -903,9 +903,9 @@ const NUMBER_COVERAGE = {
    * for reasons of their own. THIS IS THE WEAKNESS MEASUREMENT, not a coverage
    * one: it says how little a small number resolving is worth.
    */
-  NAMED_BODIES: 56,
-  NAMED_BODIES_HOLDING_ZERO: 44,
-  NAMED_BODIES_HOLDING_ONE: 44,
+  NAMED_BODIES: 57,
+  NAMED_BODIES_HOLDING_ZERO: 45,
+  NAMED_BODIES_HOLDING_ONE: 45,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -1180,7 +1180,7 @@ function witnessKey(witness: MutationWitness): string {
  */
 const TRANSCRIPT_BAR = {
   /** Witness rows whose transcript is held to the rule. */
-  GRADED: 21,
+  GRADED: 22,
   /** ...and rows excused because their transcript predates it. */
   PREDATING: 37,
   /**
@@ -1328,10 +1328,10 @@ const MEASURED_SCALAR = /expected\s[+-]?\d+(?:\.\d+)?\sto\s/;
  * test rather than transcribed here, so it moves when the table does.
  */
 const TRANSPLANTED_NUMERIC_RULE = {
-  rows: 50,
-  flagged: 38,
-  numerals: 127,
-  unresolved: 67,
+  rows: 51,
+  flagged: 39,
+  numerals: 136,
+  unresolved: 74,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -1663,7 +1663,7 @@ const REPLACEMENTS_PREDATING_THE_RULE: readonly (readonly [string, number])[] = 
  */
 const REPLACEMENT_BAR = {
   /** Rows carrying a replacement, so a third party can apply the patch. */
-  REPRODUCIBLE: 8,
+  REPRODUCIBLE: 9,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2743,16 +2743,28 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
   },
   {
     // THE MUTANT IS ONE ROW OF GDD §5's FLOOR, HARDCODED TO THE STRING IT
-    // ALREADY DRAWS. That is the whole point of it: `createEmpireState()` sets
-    // `gymBucks: 0` and nothing in the app steps the state — §11 gates §5's loop
-    // — so the mutated screen renders the SAME CHARACTER a player sees today.
+    // DRAWS AT THE INSTANT THE SCREEN OPENS. That is the whole point of it, and
+    // it survived the floor learning to move: the row reads `0.000` on arrival
+    // either way, so the mutated screen is byte-identical for the first
+    // `EMPIRE_FLOOR.CHECK_IN_SECONDS` and a photograph taken then cannot tell
+    // them apart.
+    //
+    // RE-TAKEN, RATHER THAN DELETED, WHEN THE ROW'S EXPRESSION CHANGED. The old
+    // anchor was `value={String(state.gymBucks)}` against a floor that called
+    // `createEmpireState()` once and never stepped it; the row now reads
+    // `readings.gymBucks` off a gym `stepGym` advances. Both fields were
+    // re-measured by applying the mutant below and reading the failure, not by
+    // editing the strings to match.
     //
     // WHAT THAT MAKES INVISIBLE, measured on this tree rather than reasoned
-    // about. `npx tsc --noEmit` exits 0 (`value` is `string` either way). The
-    // browser tool's 254 checks report identically, because the DOM is the same
-    // bytes. And the assertion everybody reaches for first — read the testID,
-    // compare it to `'0'` — PASSES, which is why this row is the witness and not
-    // a value pin: the number is the same and only where it came from differs.
+    // about. `npx tsc --noEmit` exits 0 (`value` is `string` either way). And
+    // the assertion everybody reaches for first — read the testID, compare it to
+    // the opening reading — PASSES, which is why this row is the witness and not
+    // a value pin: on arrival the number is the same and only where it came from
+    // differs. The browser tool now reads the rows TWICE, seconds apart, which
+    // catches this particular mutant at the second read — and would not catch a
+    // mutant that hardcoded a rising local counter, which is the shape the
+    // provenance scan exists for.
     //
     // The critic's own wider variant reddens two assertions rather than one: it
     // deleted the import outright, leaving `src/shell/` with no edge into
@@ -2763,18 +2775,47 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     guarantee: 'every-drawn-empire-reading-comes-from-the-pure-state',
     mutatedFile: 'src/shell/EmpireScreen.tsx',
     mutated:
-      '        <Stat label={C.EMPIRE_STAT_BUCKS} value={String(state.gymBucks)} testID="empire-stat-bucks" />',
-    mutatedTo: '        <Stat label={C.EMPIRE_STAT_BUCKS} value="0" testID="empire-stat-bucks" />',
+      '        <Stat label={C.EMPIRE_STAT_BUCKS} value={readings.gymBucks} testID="empire-stat-bucks" />',
+    mutatedTo:
+      '        <Stat label={C.EMPIRE_STAT_BUCKS} value="0.000" testID="empire-stat-bucks" />',
     testFile: 'src/shell/shellWiring.test.ts',
     redAssertion: "expect(unbound, unbound.join('\\n')).toEqual([]);",
     observed:
       'FAIL  src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own' +
       ' module > EVERY reading the floor draws traces to the pure constructor, not to chrome copy' +
       ' [every-drawn-empire-reading-comes-from-the-pure-state]\n' +
-      'AssertionError: src/shell/EmpireScreen.tsx draws "empire-stat-bucks" from "0", which does' +
+      'AssertionError: src/shell/EmpireScreen.tsx draws "empire-stat-bucks" from "0.000", which does' +
       ' not trace to createEmpireState() imported from src/empire/ — so that row is a hardcoded' +
       ' mock-up of GDD §5 and every value assertion in the tree would still pass:' +
       ' expected [ Array(1) ] to deeply equal []',
+  },
+  {
+    // THE MUTANT MAKES THE FLOOR A FUNCTION OF WHEN SOMEBODY LOOKED, which is
+    // the §12.3 defect the whole module is shaped to avoid, reached by changing
+    // one argument. Every check-in still happens and the cadence is untouched;
+    // what moves is the READING each one is taken at — the caller's own instant
+    // instead of the schedule's — so the collection mark lands wherever the
+    // refresh timer happened to fire and `production.ts` quantises the fragment
+    // away.
+    //
+    // IT IS THE NAIVE WIRING, PUT BACK. `empireFloor.test.ts` keeps that wiring
+    // runnable as `naiveGymAfter` and measures it at 65 of 192 pairs losing
+    // money; this mutant is the same thing done to the shipped path, and it
+    // reddens 48 of the 64 swept schedules. `npx tsc --noEmit` is clean on it.
+    guarantee: 'the-floor-is-a-function-of-elapsed-time-and-nothing-else',
+    mutatedFile: 'src/shell/empireFloor.ts',
+    mutated:
+      '    gym = stepGym(gym, EMPIRE_FLOOR_POLICY, checkInReadingAt(checkIn), null, 0);',
+    mutatedTo: '    gym = stepGym(gym, EMPIRE_FLOOR_POLICY, openSeconds, null, 0);',
+    testFile: 'src/shell/empireFloor.test.ts',
+    redAssertion: "expect(mismatches, mismatches.join('\\n')).toEqual([]);",
+    observed:
+      'FAIL  src/shell/empireFloor.test.ts > the floor is a function of elapsed time and of nothing' +
+      ' else > any schedule of calls lands on the value one call would have produced' +
+      ' [the-floor-is-a-function-of-elapsed-time-and-nothing-else]\n' +
+      'AssertionError: schedule 0 ending at 299760ms\nschedule 1 ending at 299447ms\n' +
+      'schedule 2 ending at 293949ms\n...\n' +
+      'schedule 62 ending at 298401ms: expected [ …(48) ] to deeply equal []',
   },
   {
     // The mutant swapped the `useRef` initialiser's resume for a fresh
@@ -3770,6 +3811,9 @@ describe('the guarantee-tag convention', () => {
       'src/meet/careerCalendarPlaceholder.test.ts',
       'src/meet/meetSound.test.ts',
       'src/meet/meetStage.test.ts',
+      // GDD §5's floor learning to advance: the §12.3 property that the gym a
+      // player sees is a function of elapsed time and of nothing they did.
+      'src/shell/empireFloor.test.ts',
       'src/shell/shellRoute.test.ts',
       'src/shell/shellWiring.test.ts',
     ]);

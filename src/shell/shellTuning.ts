@@ -50,8 +50,8 @@ import type { SessionPhase } from '../game/session';
 /**
  * The one beat the Empire surface reports today.
  *
- * Empire has no choreography yet — Session C's first shell slice is a floor
- * view over `createEmpireState()`, not a multi-beat mode. The shell still asks
+ * Empire has no choreography — the floor is a window onto GDD §5's running
+ * gym, not a multi-beat mode. The shell still asks
  * for a beat so the leave control uses the same gate as meet/session rather
  * than a special case, and so a stale beat cannot flash on the way in.
  */
@@ -116,6 +116,81 @@ export const SHELL_LAYOUT = Object.freeze({
 });
 
 /**
+ * ===========================================================================
+ * HOW FAST GDD §5's FLOOR RUNS, AND WHY EVERY ONE OF THESE IS A KNOB
+ * ===========================================================================
+ * The Empire surface advances a real `EmpireGym` through `src/empire/`'s own
+ * `stepGym`. What §5 does NOT say is how often a check-in happens — §5.1
+ * describes a check-in as something a player does ("check-in is 30-60 seconds:
+ * collect, queue an upgrade") and gives no cadence for one. So the cadence is a
+ * game-feel value in the CLAUDE.md sense, it lives here, and NONE OF THESE
+ * NUMBERS HAS BEEN PLAYED. They are starting points.
+ *
+ * ===========================================================================
+ * `CHECK_IN_SECONDS` IS ALSO THE §12.3 SAFETY PROPERTY, WHICH IS WHY IT IS A
+ * DURATION OF WALL TIME AND NOT "ONE PER VISIT"
+ * ===========================================================================
+ * "Never punish daily engagement" has no tolerance band. Handing `stepGym` the
+ * raw clock every time a player arrives, or every time a timer happens to fire,
+ * makes the gym a function of the player's fidgeting: `production.ts` quantises
+ * a gap to whole `EMPIRE_TUNING.TICK_SECONDS` and `stepGym` then moves the
+ * collection mark to the exact reading, so sub-tick fragments are DISCARDED.
+ * Measured on the shipped engine in `empireFloor.test.ts`: a gym collected 1200
+ * times at half-second offsets over 600 seconds banks **0** Gym Bucks where the
+ * same 600 seconds collected on whole ticks banks 11.063625. Twice the
+ * attention, nothing to show for it.
+ *
+ * So the floor takes its check-ins at multiples of this constant OF ELAPSED
+ * WALL TIME, and at no other moment. How often the player opens the surface,
+ * how often the refresh timer fires, and whether the tab was backgrounded
+ * cannot move any reading — that equality is what `empireFloor.test.ts` sweeps
+ * and pins at zero, with the fragmenting variant kept runnable beside it as the
+ * non-zero control.
+ */
+export const EMPIRE_FLOOR = Object.freeze({
+  /**
+   * Wall-clock seconds between two of the floor's check-ins.
+   *
+   * Fast enough that a player watching the floor sees the collected readings
+   * move several times a minute; slow enough that a check-in still reads as an
+   * event rather than as a frame. A knob, not a derivation.
+   */
+  CHECK_IN_SECONDS: 10,
+
+  /**
+   * How often the surface re-reads the floor while it is the surface on screen.
+   *
+   * Purely a redraw rate. It cannot change any reading — see the section above
+   * — so this is the one knob here that is safe to turn on taste alone.
+   */
+  REFRESH_MS: 500,
+
+  /**
+   * Decimal places a Gym Bucks reading is drawn to.
+   *
+   * The idle line pays `EMPIRE_TUNING.GYM_BUCKS_BASE_PER_HOUR` an hour at
+   * `OFFLINE_EARNINGS_FRACTION`, so a second is worth about a sixtieth of a
+   * Buck; two decimals would leave the "since check-in" row apparently frozen
+   * for a second at a time.
+   */
+  READING_DECIMALS: 3,
+
+  /**
+   * NOT A KNOB. Flagged in place, the way `cutInTuning.ts` flags its own §12.3
+   * value, because it sits in a block whose whole point is that a playtester
+   * turns everything in it.
+   *
+   * A unit conversion. The platform hands the shell milliseconds and
+   * `src/empire/` counts in seconds; turning this makes the floor lie about the
+   * clock rather than tuning anything. It lives here because
+   * `src/tuning/audit.ts` allows a numeric literal only inside a registered
+   * constants home, and that rule is worth more than the awkwardness of one
+   * structural value sitting beside three real ones.
+   */
+  MILLISECONDS_PER_SECOND: 1000,
+});
+
+/**
  * What the shell says.
  *
  * NO REAL IDENTITY (GDD §7.3, §12.3): every string here is a generic English
@@ -144,12 +219,31 @@ export const SHELL_COPY = Object.freeze({
   LEAVE_EMPIRE_LABEL: 'BACK TO TRAINING',
   LEAVE_EMPIRE_HINT: 'Returns to the daily session.',
 
-  /** Empire floor copy — no federation, brand, or athlete names (§7.3 / §12.3). */
+  /**
+   * Empire floor copy — no federation, brand, or athlete names (§7.3 / §12.3).
+   *
+   * THE LEAD SAYS WHAT THE SCREEN IS AND WHAT IT IS NOT, because the sentence
+   * it replaces did not. That one read "Idle production is live in code; this
+   * screen reads it" over a floor that called `createEmpireState()` once and
+   * never stepped it — true about the repository, false about the screen, and
+   * aimed at a player rather than at a reader. This one is about what the
+   * player is looking at: the gym runs on this sitting's clock, and there is no
+   * backend and no savefile behind it, so a reload opens a new gym at zero.
+   *
+   * NO NUMBER APPEARS IN IT. The check-in cadence is a knob in `EMPIRE_FLOOR`
+   * above; naming it here would make this sentence go stale the first time a
+   * playtester turned that knob, which is the failure mode this codebase keeps
+   * recording.
+   */
   EMPIRE_TITLE: 'GYM EMPIRE',
   EMPIRE_LEAD:
-    'Your gym on opening day. Idle production is live in code; this screen reads it.',
+    'GDD §5 running on this sitting’s clock: time passes, the gym checks in, the numbers move. Nothing is saved — reload and a new gym opens at zero.',
   EMPIRE_STAT_BUCKS: 'GYM BUCKS',
+  /** What the wall clock has produced since the last check-in and not yet paid in. */
+  EMPIRE_STAT_PENDING: 'SINCE CHECK-IN',
   EMPIRE_STAT_REP: 'REPUTATION',
   EMPIRE_STAT_ROSTER: 'ROSTER',
   EMPIRE_STAT_EQUIPMENT: 'EQUIPMENT',
+  /** The gym's own `EmpireClock`, in seconds — not the app's uptime. */
+  EMPIRE_STAT_CLOCK: 'GYM CLOCK (SECONDS)',
 });

@@ -20,9 +20,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DEFAULT_ROUTE,
+  PERSISTENT_SURFACES,
   SHELL_INTENTS,
   SHELL_SURFACES,
   entryRoute,
+  forgetsBeatOnArrival,
+  isPersistentSurface,
   frozenMeetFor,
   frozenSessionFor,
   meetEntryFrom,
@@ -285,6 +288,42 @@ describe('the route graph', () => {
       if (surface === 'replay') continue;
       expect(playerReachableFrom(surface), surface).toContain('session');
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Which surfaces survive a navigation
+// ---------------------------------------------------------------------------
+
+describe('the surfaces a side trip may not spend', () => {
+  it('names both ends of the Empire round trip and nothing else', () => {
+    // Typed out rather than derived. A list of two that a loop agrees with is a
+    // list nobody has to read; the point of this one is that adding a third
+    // surface to it changes what `AppShell` mounts, and that is a decision
+    // somebody should have to write down here first.
+    expect([...PERSISTENT_SURFACES]).toEqual(['session', 'empire']);
+    expect(isPersistentSurface('session')).toBe(true);
+    expect(isPersistentSurface('empire')).toBe(true);
+    // Meet is deliberately absent — the argument is in `shellRoute.ts`, and the
+    // consequence is that a meet still discards the beat under it.
+    expect(isPersistentSurface('meet')).toBe(false);
+    expect(isPersistentSurface('replay')).toBe(false);
+  });
+
+  it('forgets the beat of every surface that re-mounts, and of the one that re-reports', () => {
+    // The daily session is the one surface whose beat must survive the arrival,
+    // because it is the one screen that both persists AND has no way to report
+    // again — see `forgetsBeatOnArrival`. Everything else is forgotten on the way
+    // in, which is what stops a stale beat flashing chrome over a weigh-in.
+    expect(forgetsBeatOnArrival('session')).toBe(false);
+    for (const surface of SHELL_SURFACES) {
+      if (surface === 'session') continue;
+      expect(forgetsBeatOnArrival(surface), surface).toBe(true);
+    }
+    // ...and the two rules are not the same rule wearing two names: Empire both
+    // persists and is forgotten, which is the pair that would be missing if
+    // "persistent" simply meant "keeps its beat".
+    expect(isPersistentSurface('empire') && forgetsBeatOnArrival('empire')).toBe(true);
   });
 });
 

@@ -37,6 +37,7 @@ import { MEET_ENTRY, MEET_LOCAL } from '../game/meetTuning';
 import { openingCache } from '../game/sessionClient';
 import { SESSION_BOUNDARY, SESSION_TUNING } from '../game/sessionTuning';
 import { asProposalId, readTotalKg, readingValue } from '../game/progression';
+import { PERSISTENT_SURFACES, forgetsBeatOnArrival, isPersistentSurface } from './shellRoute';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -222,8 +223,22 @@ describe('the shell is the join, and it is the only one', () => {
     //   the shell holds the flag and feeds it to the gate...
     expect(SHELL).toMatch(/cutInLive \? '' : ''/);
     expect(source('src/shell/AppShell.tsx')).toMatch(/cutInLive \? 'live' : 'none'/);
-    //   ...it hands `setCutInLive` to BOTH surfaces...
-    expect(source('src/shell/AppShell.tsx').match(/onCutIn=\{setCutInLive\}/g)?.length).toBe(2);
+    //   ...it hands each surface a setter OF ITS OWN, and that changed when the
+    //   daily session stopped un-mounting under GDD §5's floor. One shared flag
+    //   was correct while exactly one host was ever mounted; it is not correct
+    //   now, because a report from the hidden session would take the chrome off
+    //   the floor and strand the player on a surface whose only exit is the pill
+    //   that just vanished. Two setters, one per host, and the count is pinned so
+    //   a third surface growing a host has to arrive here.
+    expect(source('src/shell/AppShell.tsx')).toMatch(/onCutIn=\{setSessionCutIn\}/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/onCutIn=\{setMeetCutIn\}/);
+    expect(source('src/shell/AppShell.tsx').match(/onCutIn=\{set\w+\}/g)?.length).toBe(2);
+    //   ...and the gate is handed the flag belonging to the surface ON SCREEN,
+    //   rather than whichever host spoke last. Empire mounts no host, so it is
+    //   told `false` rather than being told nothing.
+    expect(source('src/shell/AppShell.tsx')).toMatch(
+      /route\.surface === 'session' \? sessionCutIn : route\.surface === 'meet' \? meetCutIn : false/,
+    );
     //   ...and each surface forwards it to the host that owns the answer.
     expect(SESSION_SCREEN).toMatch(/onLive=\{onCutIn\}/);
     expect(MEET_SCREEN).toMatch(/onLive=\{onCutIn\}/);
@@ -232,9 +247,14 @@ describe('the shell is the join, and it is the only one', () => {
     const HOST = codeOnly(source('src/cutin/CutInHost.tsx'));
     expect(HOST).toMatch(/onLive\?\.\(live !== null\)/);
     expect(HOST).toMatch(/onLive\?\.\(false\)/);
-    // And the flag is cleared on the way between surfaces, like the phases, so
-    // a host that un-mounted mid-cut-in cannot leave the next screen bare.
-    expect(source('src/shell/AppShell.tsx').match(/setCutInLive\(false\)/g)?.length).toBe(4);
+    // And the flag is cleared on the way ONTO a surface whose host re-mounts,
+    // like the phases, so a host that un-mounted mid-cut-in cannot leave the
+    // next screen bare. TWO, not four, and the two that are gone are the Empire
+    // round trip's: the floor mounts no host at all, and the session it returns
+    // to never un-mounted, so there is nothing stale on either side of it.
+    // `PERSISTENT_SURFACES` in `shellRoute.ts` is the list, and the pairing below
+    // is what keeps this number honest rather than merely current.
+    expect(source('src/shell/AppShell.tsx').match(/set\w*CutIn\(false\)/g)?.length).toBe(2);
     // The scans can see what they are looking for, and can see it change.
     expect(codeOnly("const a = x ? 'live' : 'none';")).toMatch(/x \? '' : ''/);
     expect(codeOnly('onLive?.(true);')).not.toMatch(/onLive\?\.\(live !== null\)/);
@@ -1192,13 +1212,18 @@ const DRAWN_FROM_PURE_STATE = Object.freeze({
   /** Follow budget, same number and same reason as `HAND_OFF.MAX_DEPTH`. */
   MAX_DEPTH: 8,
   /**
-   * How many readings the floor draws today: Gym Bucks, reputation, roster size
-   * and the equipment rung.
+   * How many readings the floor draws today: collected Gym Bucks, the Bucks
+   * banked since the last check-in, reputation, roster size, the equipment rung,
+   * and the gym's own clock.
    *
    * A COUNT AND NOT A BOUND. Both filters below are empty when the discovery
    * finds nothing, which is exactly how a scan that stopped matching looks.
+   *
+   * 4 -> 6 when GDD §11's ruling let the floor advance. The two new rows are the
+   * two that MOVE between one look and the next, which is why the browser check
+   * reads them twice.
    */
-  READINGS: 4,
+  READINGS: 6,
 });
 
 /** Is `name`, as used inside `module`, the pure constructor imported from `src/empire/`? */
@@ -1314,17 +1339,42 @@ function drawnReadingsIn(module: Module, loader: Loader): readonly DrawnReading[
   return readings;
 }
 
+/**
+ * Does `file` import from the pure directory, directly or through shell modules?
+ *
+ * TRANSITIVE, AND THAT IS NOT A LOOSENING. `EmpireScreen.tsx` used to import
+ * `createEmpireState` itself; it now imports `empireFloor.ts`, which is where
+ * the schedule and the `stepGym` calls live because CLAUDE.md forbids game math
+ * in a `.tsx`. A direct-import census would have gone red on a change that made
+ * the split BETTER, and the obvious repair — deleting the census — is the one
+ * this codebase keeps recording as the way a guard dies.
+ *
+ * The walk is bounded to `src/shell/` on purpose rather than by a depth
+ * counter: the question is "does this screen reach GDD §5", and the only route
+ * from a shell screen to `src/empire/` is through the shell's own modules. A
+ * whole-graph closure would parse most of the tree per screen and would answer a
+ * question nobody asked.
+ */
+function reachesPureState(module: Module, loader: Loader, seen: Set<string> = new Set()): boolean {
+  if (seen.has(module.file)) return false;
+  seen.add(module.file);
+  for (const via of importsIn(module.ast).values()) {
+    const target = loader(module.file, via.from);
+    if (target === null) continue;
+    if (target.file.startsWith(DRAWN_FROM_PURE_STATE.PURE_DIRECTORY)) return true;
+    if (!target.file.startsWith(`${SHELL_DIRECTORY}/`)) continue;
+    if (reachesPureState(target, loader, seen)) return true;
+  }
+  return false;
+}
+
+/** The one directory the census walks through on its way to `src/empire/`. */
+const SHELL_DIRECTORY = 'src/shell';
+
 /** The screens the shell mounts that reach into the pure directory at all. */
 function screensReadingPureState(): readonly string[] {
   const files = [...new Set(shellScreens().map((mount) => mount.file))];
-  return files
-    .filter((file) =>
-      [...importsIn(parseModule(file, source(file)).ast).values()].some((via) => {
-        const target = loadFromDisk(file, via.from);
-        return target !== null && target.file.startsWith(DRAWN_FROM_PURE_STATE.PURE_DIRECTORY);
-      }),
-    )
-    .sort();
+  return files.filter((file) => reachesPureState(parseModule(file, source(file)), loadFromDisk)).sort();
 }
 
 describe('the numbers on GDD §5’s floor come from GDD §5’s own module', () => {
@@ -1459,6 +1509,156 @@ describe('the numbers on GDD §5’s floor come from GDD §5’s own module', ()
     // equality passes. That is the exact shape `guaranteeTags.test.ts` already
     // had to delete once, one file over. The equality IS the census.
   });
+
+  it('CONTROL: the census walker follows a shell hop, and stops when the hop is cut', () => {
+    // The census above went from a DIRECT import test to a transitive one when
+    // the `stepGym` calls moved out of the `.tsx` and into `empireFloor.ts`. A
+    // walker that answered "yes" to everything would agree with the tree just as
+    // happily, so both verdicts are driven here on fixtures.
+    const screen = (body: string): Module => parseModule('src/shell/Fixture.tsx', body);
+    const withHop =
+      (adapterBody: string): Loader =>
+      (_from, specifier) => {
+        if (specifier.includes('adapter')) return parseModule('src/shell/adapter.ts', adapterBody);
+        if (specifier.includes('empireCore')) {
+          return parseModule('src/empire/empireCore.ts', 'export function createEmpireState() {}');
+        }
+        if (specifier.includes('shellTuning')) {
+          return parseModule('src/shell/shellTuning.ts', 'export const SHELL_COPY = {};');
+        }
+        return null;
+      };
+    const REACHES = "import { createEmpireState } from '../empire/empireCore';\nexport const a = 1;";
+    const DOES_NOT = "import { SHELL_COPY } from './shellTuning';\nexport const a = 1;";
+
+    // One hop: screen -> shell adapter -> src/empire/.
+    expect(
+      reachesPureState(screen("import { a } from './adapter';"), withHop(REACHES)),
+      'a screen reaching §5 through one shell module',
+    ).toBe(true);
+    // The same screen when the adapter stops reaching — which is the mutation
+    // that would make the floor a mock-up without touching the screen at all.
+    expect(
+      reachesPureState(screen("import { a } from './adapter';"), withHop(DOES_NOT)),
+      'the same screen when the adapter no longer reaches §5',
+    ).toBe(false);
+    // ...and it still sees a direct import, which is the shape every other
+    // screen in the shell would take.
+    expect(reachesPureState(screen(REACHES), withHop(DOES_NOT))).toBe(true);
+    // A cycle between two shell modules terminates rather than hanging.
+    const cyclic: Loader = (from) =>
+      from === 'src/shell/a.ts'
+        ? parseModule('src/shell/b.ts', "import { x } from './a';")
+        : parseModule('src/shell/a.ts', "import { x } from './b';");
+    expect(reachesPureState(parseModule('src/shell/a.ts', "import { x } from './b';"), cyclic)).toBe(
+      false,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE EMPIRE ROUND TRIP DOES NOT SPEND THE PLAYER'S SESSION
+// ---------------------------------------------------------------------------
+
+/**
+ * ===========================================================================
+ * THE DEFECT THESE PIN, WHICH WAS PHOTOGRAPHED BEFORE IT WAS FIXED
+ * ===========================================================================
+ * Played, no query string: three check-in answers reach GDD §3.2's briefing,
+ * GYM EMPIRE opens the floor, BACK TO TRAINING lands on the CHECK-IN with all
+ * three answers blank. `AppShell` picked one surface out of a ternary, so
+ * `SessionScreen` un-mounted and its client state died with it.
+ * `.gauntlet/shots/shell/17-` and `18-` are the before.
+ *
+ * WHAT A NODE TEST CAN AND CANNOT SAY ABOUT THAT. `vitest.config.ts` is
+ * `environment: node` and mounts no component, so nothing here can watch a
+ * beat survive a press — that is `tools/verify-shell-route.mjs`'s section 10b,
+ * which reads the beat on BOTH sides of the round trip in a real browser. What
+ * these pin is the STRUCTURE the fix is made of, and specifically the two
+ * places it could be undone by an edit that looks like tidying: re-mounting the
+ * session, or nulling the beat of a surface that never went away.
+ */
+describe('the Empire round trip keeps both of its surfaces', () => {
+  /** The body of a named `useCallback` in `AppShell.tsx`, comments and strings kept. */
+  const bodyOfCallback = (name: string): string => {
+    const text = source('src/shell/AppShell.tsx');
+    const start = text.indexOf(`const ${name} = useCallback(`);
+    if (start < 0) return '';
+    const end = text.indexOf('}, []);', start);
+    return end < 0 ? '' : text.slice(start, end);
+  };
+
+  it('CONTROL: the callback reader finds a body, and reports a missing one as missing', () => {
+    expect(bodyOfCallback('leaveMeet')).toMatch(/navigate\(current, 'leave-meet'\)/);
+    expect(bodyOfCallback('noSuchCallback')).toBe('');
+  });
+
+  it('mounts every persistent surface and hides the one that is not on screen', () => {
+    // `display: 'none'` and not opacity, and the difference is measured rather
+    // than stylistic: `tools/verify-shell-route.mjs` documents at length that
+    // `isVisible()` and `elementFromPoint` both HIT a fully transparent element,
+    // so a surface hidden by opacity would still read as on screen and would
+    // still take a thumb. The mounted-but-hidden wrapper is the only new thing
+    // between the player and the screen, so it is the thing pinned.
+    expect(SHELL).toMatch(/styles\.hiddenSurface/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/hiddenSurface: \{\s*display: 'none',/);
+    expect(SHELL).not.toMatch(/hiddenSurface: \{\s*opacity: 0/);
+    // Both persistent surfaces are behind a mount flag rather than an arm of the
+    // surface ternary. `sessionMounted` reads `isPersistentSurface`, so removing
+    // a surface from that list really does un-mount it.
+    expect(SHELL).toMatch(/const sessionMounted =\s*isPersistentSurface\(route\.surface\)/);
+    expect(SHELL).toMatch(/const empireMounted =\s*route\.surface === '' \|\|/);
+    expect(PERSISTENT_SURFACES).toEqual(['session', 'empire']);
+  });
+
+  it('does not forget the beat of a surface that never un-mounted', () => {
+    // THE ONE-LINE REGRESSION THIS EXISTS FOR. `leaveEmpire` used to null the
+    // session's phase, copying its sibling `leaveMeet`. With the session now
+    // persistent that is not tidying, it is a strand: the screen has no reason to
+    // re-report, `shellAffordanceFor` draws nothing for a null beat, and the
+    // player lands back on their briefing with no pill to anywhere.
+    expect(forgetsBeatOnArrival('session')).toBe(false);
+    expect(bodyOfCallback('leaveEmpire')).not.toMatch(/setSessionPhase\(null\)/);
+    // ...and the sibling that DOES re-mount still forgets, so the assertion above
+    // is about persistence rather than about `leaveEmpire` having been emptied.
+    expect(bodyOfCallback('leaveMeet')).toMatch(/setSessionPhase\(null\)/);
+  });
+
+  it('a persistent surface whose beat IS forgotten re-reports when it becomes active', () => {
+    // The pairing that keeps the rule above from being a special case somebody
+    // has to remember. Empire is forgotten on the way in — its beat list has one
+    // member, so a stale 'floor' is harmless, but the shell forgets uniformly —
+    // and that is only safe because `EmpireScreen` re-reports: `active` is in the
+    // dependency list of the effect that calls `onPhase`. Delete `active` from
+    // that list and a second visit to the floor has no way off it.
+    expect(forgetsBeatOnArrival('empire')).toBe(true);
+    expect(isPersistentSurface('empire')).toBe(true);
+    expect(bodyOfCallback('openEmpire')).toMatch(/setEmpirePhase\(null\)/);
+    const empireScreen = codeOnly(source('src/shell/EmpireScreen.tsx'));
+    expect(empireScreen).toMatch(/onPhase\?\.\(''\);\s*\}, \[onPhase, active\]\);/);
+    // ...and the shell really does tell it which surface is up.
+    expect(SHELL).toMatch(/active=\{route\.surface === ''\}/);
+    // CONTROL: the scan can see the dependency go missing.
+    expect(codeOnly('onPhase?.("floor");\n  }, [onPhase]);')).not.toMatch(
+      /onPhase\?\.\(''\);\s*\}, \[onPhase, active\]\);/,
+    );
+  });
+
+  it('the floor stops its clock while nobody is looking, and catches up when they are', () => {
+    // Not an optimisation this file cares about for its own sake: a timer left
+    // running behind a hidden surface is a re-render per tick for nothing, and a
+    // floor that did NOT catch up on the way back would draw a stale reading —
+    // which is the same class of defect as the beat this block is about.
+    const empireScreen = codeOnly(source('src/shell/EmpireScreen.tsx'));
+    expect(empireScreen).toMatch(/if \(!active\) return undefined;/);
+    expect(empireScreen).toMatch(/setInterval\(/);
+    expect(empireScreen).toMatch(/clearInterval\(timer\)/);
+    // The catch-up: the floor is advanced once on activation, before the timer.
+    expect(
+      empireScreen.match(/advanceEmpireFloor\(current, Date\.now\(\)\)/g)?.length,
+      'the floor is advanced on activation AND on every tick',
+    ).toBe(2);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1496,11 +1696,21 @@ const SHELL_SCANS = Object.freeze({
   /**
    * How many files that comes to today.
    *
-   * `AppShell.tsx`, `EmpireScreen.tsx`, `appServer.ts`, `shellRoute.ts`,
-   * `shellTuning.ts`, and `App.tsx` from the mount walk. Pinned so a walk that
-   * stopped working reports an empty domain instead of agreeing with it.
+   * `AppShell.tsx`, `EmpireScreen.tsx`, `appServer.ts`, `empireFloor.ts`,
+   * `shellRoute.ts`, `shellTuning.ts`, and `App.tsx` from the mount walk. Pinned
+   * so a walk that stopped working reports an empty domain instead of agreeing
+   * with it.
+   *
+   * 6 -> 7 when `empireFloor.ts` arrived to advance GDD §5's floor. It is the
+   * one shell file that calls a state-machine step on purpose — `stepGym` — and
+   * it is worth saying why that is not what `NOT_THE_SHELLS_JOB` forbids: that
+   * list is about the ROUTER computing the state of a screen it is drawing.
+   * Advancing the idle layer is what GDD §11's 2026-08-14 ruling authorised, it
+   * happens in a pure module rather than in a component, and every function it
+   * calls belongs to `src/empire/`. `stepSession` and `stepMeetDay` stay banned
+   * everywhere in this directory, `empireFloor.ts` included.
    */
-  FILES: 6,
+  FILES: 7,
   /**
    * Names the router may not reach for: a state machine step, a progression
    * read, or a progression write. GDD §12.3 and CLAUDE.md's "client is a
