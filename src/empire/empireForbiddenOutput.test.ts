@@ -11539,6 +11539,36 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
  * sentence sits on — rather than method notes, so the bump is the honest
  * reading and the pin belongs to whoever owns `src/game/`.
  */
+/*
+ * two rows below are byte-identical, and what that costs was deferred on cost
+ * and has now been measured twice. e23 said a lost subject would be carried by
+ * this list's length. that is true and the attribution was wrong: deleting one
+ * of the two `visitRefusals` subjects reddens `expected 12 to be 13` on the
+ * subject count — which is asserted BEFORE this pin, so this pin does not run
+ * under that mutant — and reddens the both-directions site join with
+ * `- "social.ts#visitRefusals#context.some x1"`, which names the row. the loss
+ * is caught; it is caught by two checks that are not this one.
+ *
+ * the residual e23 did not name is real and is measured here rather than
+ * argued. pointing the FIRST subject at the second's fixture — so the `friends`
+ * arm of `visitRefusals` is driven by nothing — leaves the whole block green, 4
+ * passed, because the two rows are identical strings and a positional
+ * comparison cannot say which arm produced which.
+ *
+ * THE OBVIOUS REPAIR WAS BUILT AND IT DID NOT CLOSE IT, which is the part worth
+ * keeping. a `label` on each subject, carried into this line as `as=<label>`
+ * and asserted unique, was written, compiled and run against that same mutant:
+ * 4 passed, green. the label says what a subject CLAIMS to drive, and the
+ * mutant changes what it DOES drive, so the two never disagree — and both arms
+ * happen to produce `callbacks=2 verdicts=falsex1,truex1`, so no number moves
+ * either. it was reverted rather than shipped: a row that reads as coverage and
+ * cannot fail on the route it names is worse than a disclosed gap.
+ *
+ * closing it needs the observation to carry something derived from what the
+ * drive actually TOUCHED — the receiver's own contents, not the subject's name
+ * for itself — and that is a real change to `MemberCallRecord` rather than a
+ * row here.
+ */
 const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   'empireCore.ts#idleLedger#ledger.filter x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
   'empireCore.ts#progressionLedger#ledger.filter x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
