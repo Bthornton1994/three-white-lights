@@ -67,9 +67,12 @@
  *     has claimed the pointer for its own gesture and the app will not hear
  *     about it again — literally `touchAction`'s half of the bug, the half
  *     `LiftScreen.tsx`'s own comment calls "the one a screenshot cannot show".
- *     DOMAIN: LIVE, demonstrated in both directions on the same element —
- *     `touch-action: none` gives 0 cancels, `manipulation` gives 1, `auto`
- *     gives 1. That is the behavioural check this tool actually rests on.
+ *     DOMAIN: LIVE, demonstrated in both directions on the same element every
+ *     run — `touch-action: none` gives 0 cancels and `manipulation` gives 1,
+ *     and both of those are pinned checks rather than a note. (`auto` also
+ *     gives 1; that one was taken at calibration and is NOT exercised here, so
+ *     it is written as a measurement and not as a guarantee.) This is the
+ *     behavioural check the tool actually rests on.
  *
  * ===========================================================================
  * TWO GESTURES, BECAUSE A PERFECTLY STILL PRESS SELECTS NOTHING ANYWHERE
@@ -80,8 +83,11 @@
  * element on the page including the ones with no fix on them, and reading it as
  * evidence about the fix would be the empty-domain shape one level out. Both
  * gestures are run and both are reported; the drifting one is the only one
- * whose control selects, and `stillGestureIsInert` below asserts that
- * limitation is still true so it cannot silently stop being the reason.
+ * whose control selects. That limitation is ASSERTED, not just described — the
+ * per-arm check headed `LIMIT — a STILL press-and-hold selects nothing even on
+ * unfixed text` reads the still gesture against the control element, so if the
+ * engine ever starts selecting on a motionless press this paragraph goes red
+ * instead of quietly staying on the page as a stale reason.
  *
  * ===========================================================================
  * THE RECORD IS DELIBERATELY UNTRACKED WHILE THIS TOOL IS RED
@@ -125,11 +131,12 @@
  * THERE IS NO SEPARATE SELF-TEST FILE, AND THAT IS DELIBERATE
  * ===========================================================================
  * `verify-lift-shots.mjs` has `verify-lift-shots.selftest.mjs` beside it
- * because its checks cannot demonstrate themselves. These can: the four DOMAIN
- * and CONTROL lines ARE the self-test, they run on every invocation against the
- * same elements the claims are about, and a claim here is not allowed to pass
- * unless its own control fired in the same run. A self-test that runs only when
- * someone remembers to invoke it is the weaker arrangement of the two.
+ * because its checks cannot demonstrate themselves. These can: the four CONTROL
+ * / LIMIT / DOMAIN lines emitted per arm ARE the self-test, they run on every
+ * invocation against the same elements the claims are about, and PROBE 1's
+ * claim is not allowed to pass unless its own control fired in the same run.
+ * A self-test that runs only when somebody remembers to invoke it is the weaker
+ * arrangement of the two.
  *
  * Usage:
  *   node tools/verify-lift-press.mjs [--url URL] [--out DIR] [--arms both|played|debug]
