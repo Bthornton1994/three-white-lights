@@ -430,9 +430,11 @@ Measured on the shipped table:
   carrying a gate that asks exactly what the tier below already asked.
 - Weight-class inversions: **3**<!--@raw:count.classInversions--> of
   **54**<!--@raw:count.classComparisons--> comparisons —
-  `regional F 57 → 63` (247.5 → 245.0), `regional F 76 → 84` (282.5 → 280.0),
-  `nationals F 69 → 76` (395.0 → 392.5). Every one is exactly one 2.5 kg rounding
-  step and all three are in the women's columns, where the cells are smallest.
+  `regional F: 57 247.5† -> 63 245†`, `regional F: 76 282.5† -> 84 280†`,
+  `nationals F: 69 395 -> 76 392.5`, quoted with their markers as the generated
+  artifact prints them. Every one is exactly one 2.5 kg rounding step, all three
+  are in the women's columns where the cells are smallest, and **two of the three
+  are between cells that are not qualifying standards in the first place.**
 
 **WHAT CAN ACTUALLY FAIL THAT LADDER CHECK, because a check that cannot fail is
 worse than no check.** Of the 46 comparisons,

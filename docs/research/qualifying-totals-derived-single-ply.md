@@ -181,7 +181,7 @@ Entry regime: **quota**. Method: **tier-below-quota**.
 
 - Tier inversions or ties (higher tier asks no more than the one below): **0** of 0 comparisons, 0 of which are not guaranteed by construction
 - Weight-class inversions (a heavier class asks less than the one below it): **1** of 5 comparisons
-  - local M: 93 467.5 -> 105 455
+  - local M: 93 467.5† -> 105 455†
 - A monotone REPAIR pass (not applied — see the knob) would move **0** cells of the shipped table:
 
 ### The counterfactual: the same cells with worlds designated `tier-field-percentile`

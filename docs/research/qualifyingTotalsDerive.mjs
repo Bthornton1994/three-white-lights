@@ -795,7 +795,11 @@ export function ladderReport(rows, options = {}) {
         if (hiKg > loKg) tierComparisonsStrict += 1;
         if (hiKg === loKg) ties += 1;
         if (hiKg <= loKg) {
-          acrossTiers.push(`${sex} ${cls}: ${TIER_ORDER[i - 1]} ${loKg} -> ${TIER_ORDER[i]} ${hiKg}`);
+          // The markers travel into the INVERSION LIST too, not only into the
+          // tables. A list of offending cells is data about those cells, and it
+          // is read by exactly the person who most needs to know that half of
+          // them describe an open field.
+          acrossTiers.push(`${sex} ${cls}: ${TIER_ORDER[i - 1]} ${loKg}${lo.markers} -> ${TIER_ORDER[i]} ${hiKg}${hi.markers}`);
           worstDeficitKg = Math.max(worstDeficitKg, loKg - hiKg);
         }
         // What a monotone REPAIR pass would move. Computed, never applied: see
@@ -841,7 +845,7 @@ export function consistency(rows) {
         if (!hi || !lo || hi.designatedKg === null || lo.designatedKg === null) continue;
         classComparisons += 1;
         if (hi.designatedKg < lo.designatedKg) {
-          acrossClasses.push(`${tier} ${sex}: ${names[c - 1]} ${lo.designatedKg} -> ${names[c]} ${hi.designatedKg}`);
+          acrossClasses.push(`${tier} ${sex}: ${names[c - 1]} ${lo.designatedKg}${lo.markers} -> ${names[c]} ${hi.designatedKg}${hi.markers}`);
         }
       }
     }

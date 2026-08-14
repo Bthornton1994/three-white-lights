@@ -181,18 +181,18 @@ Entry regime: **quota**. Method: **tier-below-quota**.
 
 - Tier inversions or ties (higher tier asks no more than the one below): **0** of 46 comparisons, 31 of which are not guaranteed by construction
 - Weight-class inversions (a heavier class asks less than the one below it): **3** of 54 comparisons
-  - regional F: 57 247.5 -> 63 245
-  - regional F: 76 282.5 -> 84 280
+  - regional F: 57 247.5† -> 63 245†
+  - regional F: 76 282.5† -> 84 280†
   - nationals F: 69 395 -> 76 392.5
 - A monotone REPAIR pass (not applied — see the knob) would move **0** cells of the shipped table:
 
 ### The counterfactual: the same cells with worlds designated `tier-field-percentile`
 
 - Tier inversions or ties: **4** of 46 comparisons, 0 guaranteed by construction. Worst deficit **12.5 kg**.
-  - M 83: nationals 627.5 -> worlds 627.5
-  - M 120: nationals 730 -> worlds 722.5
-  - F 57: nationals 350 -> worlds 347.5
-  - F 69: nationals 395 -> worlds 382.5
+  - M 83: nationals 627.5 -> worlds 627.5‡
+  - M 120: nationals 730 -> worlds 722.5‡
+  - F 57: nationals 350 -> worlds 347.5‡
+  - F 69: nationals 395 -> worlds 382.5‡
 - A monotone repair would move **3** of them and leave **1** tie(s) untouched, still gating nothing:
   - worlds M 120: 722.5 -> 730 (+7.5 kg), tying with nationals M 120
   - worlds F 57: 347.5 -> 350 (+2.5 kg), tying with nationals F 57

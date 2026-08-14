@@ -40,18 +40,18 @@
       "tierTies": 0,
       "worstDeficitKg": 0,
       "acrossClasses": [
-        "regional F: 57 247.5 -> 63 245",
-        "regional F: 76 282.5 -> 84 280",
+        "regional F: 57 247.5† -> 63 245†",
+        "regional F: 76 282.5† -> 84 280†",
         "nationals F: 69 395 -> 76 392.5"
       ],
       "classComparisons": 54
     },
     "counterfactualOwnP10": {
       "acrossTiers": [
-        "M 83: nationals 627.5 -> worlds 627.5",
-        "M 120: nationals 730 -> worlds 722.5",
-        "F 57: nationals 350 -> worlds 347.5",
-        "F 69: nationals 395 -> worlds 382.5"
+        "M 83: nationals 627.5 -> worlds 627.5‡",
+        "M 120: nationals 730 -> worlds 722.5‡",
+        "F 57: nationals 350 -> worlds 347.5‡",
+        "F 69: nationals 395 -> worlds 382.5‡"
       ],
       "repairMoves": [
         {
