@@ -570,27 +570,40 @@ function shippedModulePaths(): readonly string[] {
  */
 const PROBE_PATH = path.join(HERE, '__forbiddenOutputProbe.ts');
 
+/**
+ * Build the program, serving the probe and any extra files from memory.
+ *
+ * `extra` is a second in-memory channel, added for the reference type the
+ * member-type screen asks the checker about. It is a separate parameter from
+ * `probeText` because the two have different jobs: a probe is a SUBJECT and is
+ * walked, whereas an extra file is a REFERENCE and is deliberately not — it
+ * joins the program's root list so its symbols bind, and never the walked
+ * roots, so no census counts it as a module.
+ */
 function programWith(
   options: ts.CompilerOptions,
   roots: readonly string[],
   probeText: string | null,
   probePath: string = PROBE_PATH,
+  extra: readonly (readonly [string, string])[] = [],
 ): ts.Program {
   const host = ts.createCompilerHost(options, true);
-  if (probeText !== null) {
+  const served = new Map<string, string>(extra.map(([at, text]) => [path.normalize(at), text]));
+  if (probeText !== null) served.set(path.normalize(probePath), probeText);
+  if (served.size > 0) {
     const readSource = host.getSourceFile.bind(host);
-    host.getSourceFile = (fileName, languageVersion, onError, shouldCreate) =>
-      path.normalize(fileName) === probePath
-        ? ts.createSourceFile(fileName, probeText, languageVersion, true, ts.ScriptKind.TS)
-        : readSource(fileName, languageVersion, onError, shouldCreate);
+    host.getSourceFile = (fileName, languageVersion, onError, shouldCreate) => {
+      const text = served.get(path.normalize(fileName));
+      return text === undefined
+        ? readSource(fileName, languageVersion, onError, shouldCreate)
+        : ts.createSourceFile(fileName, text, languageVersion, true, ts.ScriptKind.TS);
+    };
     const exists = host.fileExists.bind(host);
-    host.fileExists = (fileName) =>
-      path.normalize(fileName) === probePath ? true : exists(fileName);
+    host.fileExists = (fileName) => served.has(path.normalize(fileName)) || exists(fileName);
     const read = host.readFile.bind(host);
-    host.readFile = (fileName) =>
-      path.normalize(fileName) === probePath ? probeText : read(fileName);
+    host.readFile = (fileName) => served.get(path.normalize(fileName)) ?? read(fileName);
   }
-  return ts.createProgram([...roots], options, host);
+  return ts.createProgram([...roots, ...extra.map(([at]) => at)], options, host);
 }
 
 /**
@@ -3442,7 +3455,19 @@ const FIXTURE_LISTS: readonly FixtureList[] = Object.freeze([
 const CENSUS_LISTS: readonly string[] = Object.freeze([
   'AXIS_CENSUS',
   'DERIVED_THRESHOLDS',
+  // The one in-memory file the census program is given beside the probe. It is
+  // neither a fixture nor an expectation — it is a reference TYPE the screen
+  // asks the checker about — so it is filed here rather than given a size pin
+  // it has no meaning for. This scan is why it is filed at all: a `readonly`
+  // array declared at module scope has to be in exactly one of the two
+  // registries, which is the guard conscripting new code rather than the
+  // builder remembering to.
+  'FUNCTION_FREE_DATA_FILE',
   'DIAGNOSTIC_CHANNEL_CENSUS',
+  // The screen's truth column. An expectation and not an input: every row is a
+  // verdict somebody wrote down for a shape, and the shapes themselves live in
+  // `SCREEN_BATTERY_SOURCE` rather than here.
+  'SCREEN_BATTERY',
   'FOLD_TRIPWIRES',
   'KINDED_RETURN_CENSUS',
   'LITERAL_AXES',
@@ -3519,7 +3544,7 @@ const DOMAIN_CENSUS = Object.freeze({
   ALIASES: 7,
   NON_DOMAIN_LISTS: 1,
   LITERAL_AXES: 8,
-  LABELLED_LISTS: 14,
+  LABELLED_LISTS: 16,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
@@ -7563,22 +7588,34 @@ interface ChannelCensus {
   readonly wrapCalls: Readonly<Record<string, number>>;
   readonly nodesExamined: number;
   /**
-   * How many times the member-type screen hit its own depth limit.
+   * How many times the screen's bounded second reading hit its depth limit.
    *
-   * `MEMBER_TYPE_WALK_MAX_DEPTH` used to be a silent `false`, which is the
-   * worst of both worlds: the screen answered "this value provably cannot hand
-   * anybody a closure" for a type it had simply stopped looking at. M61 is a
-   * closure nine levels inside a returned member — `tsc` exit 0,
-   * `deep.b.c.d.e.f.g.h.i.peek()` printed `covered-day` off a driven export,
-   * and the only reds in the whole directory were three node counters.
+   * `MEMBER_TYPE_WALK_MAX_DEPTH` used to be the screen's whole answer, so a cut
+   * was a silent `false`: "this value provably cannot hand anybody a closure",
+   * about a type the walk had simply stopped looking at. M61 was a closure nine
+   * levels inside a returned member and went through it.
    *
-   * IT IS A REPORTED CUT AND NOT A DEEPER WALK, deliberately. Raising the limit
-   * moves the boundary and the next plant sits one level past the new one,
-   * which is this codebase's "when every repair declares its own successor"
-   * pattern exactly. Pinned at zero here and asserted NON-zero on the probe, so
-   * the limit is a red line rather than a silence.
+   * IT IS NO LONGER WHAT DECIDES THE SCREEN. The checker's assignability
+   * relation is asked first and has no depth of this file's in it, so M61 is
+   * now FOUND rather than contained — `ASSEMBLY_PROBE_CLOSURE_SITES` carries
+   * `probeDeepMemberClosure`'s row with its full member path. What the cut
+   * count is for now is the residual on the other side: the relation gives up
+   * on a deeply nested recursive generic instantiation and answers "related",
+   * and a type deep enough to do that is deep enough to trip this counter.
+   * Zero on the shipped tree, non-zero on the probe.
    */
   readonly memberTypeDepthCuts: number;
+  /**
+   * Sites where the screen's two readings disagreed, named rather than counted.
+   *
+   * The relationship between them, measured instead of asserted. Empty on the
+   * shipped tree, which is what says the checker-first reading did not flood
+   * the census: at all 158 member accesses in a return, asking the relation and
+   * walking the positions give the same verdict. The probe's rows are the
+   * shapes where they differ, and every one of them is a walk that answered
+   * `false` about a closure.
+   */
+  readonly screenDisagreements: readonly string[];
   readonly modules: readonly string[];
 }
 
@@ -7643,15 +7680,192 @@ const THENABLE_MEMBER = 'then';
 const ALIAS_HOPS_MAX = 64;
 
 /**
- * How deep `typeCouldHoldAFunction` looks before it answers `false`.
+ * How deep the bounded member-type walk looks before it gives up.
  *
  * A cost knob and a termination guard on a recursive type, the same class as
- * `ALIAS_HOPS_MAX` above. It is a SCREEN's depth, not a scan's: past it the
- * member-following arm declines to follow, and what that costs is stated at the
- * arm rather than here — a closure nested deeper than this inside a returned
- * member is not recorded and not reported.
+ * `ALIAS_HOPS_MAX` above. It is no longer the screen's whole answer — the screen
+ * asks the checker first (see `memberTypeScreen`) — and what it still is, is the
+ * SECOND reading whose depth cut is counted. Deepening it is not a repair and is
+ * deliberately not the response to a plant one level past it: that is the
+ * "every repair declares its own successor" loop this file records, and the
+ * measurement in `SHIPPED_TYPE_DEPTH` is what says where the real ceiling is.
  */
 const MEMBER_TYPE_WALK_MAX_DEPTH = 8;
+
+/**
+ * The type a value has to satisfy for the screen to say there is no function
+ * inside it — written as a type, and asked of the checker rather than walked.
+ *
+ * THE REFORMULATION, in the mechanism's own terms. The old screen decided from a
+ * PROXY for what it wanted: it enumerated the positions somebody had thought of
+ * — call signature, union member, array element, declared property — and
+ * answered `false` when none of them held a function. A proxy is evaded by
+ * whatever it does not model, and it was evaded twice on that axis: an array's
+ * element (M60) and then a mapped type's index signature (M62). Enumerating a
+ * fifth position would have been the same shape of repair a third time.
+ *
+ * `isTypeAssignableTo(subject, FunctionFreeData)` is the question itself. The
+ * compiler's own structural relation decides it, so an index signature, a
+ * symbol-keyed index signature, a `ReadonlyMap`, a `Promise`, a generic
+ * instantiation and a shape nobody has written down are the same question, and
+ * no position of this file's has to know about any of them.
+ *
+ * THE DIRECTION OF ITS ERROR IS THE SAFE ONE, and that is what makes it usable
+ * as a screen. Not assignable means "follow this", which costs a census row;
+ * assignable means "stop", which costs silence. So `ReadonlyMap<string, string>`
+ * answering "could hold a function" — it carries methods — is noise, and is
+ * preferred to the reverse. The measurement that says this does not flood is
+ * `SCREEN_AGREEMENT`: on the shipped tree the two readings agree at every site.
+ *
+ * ITS TWO LIMITS ARE NAMED AT `memberTypeScreen`, with the check that covers
+ * each. `any` is assignable to everything, so it is answered before this is
+ * asked; and the compiler's relation has a recursion limiter of its own, which
+ * is the residual the bounded walk's cut counter is pointed at.
+ */
+const FUNCTION_FREE_DATA_SOURCE = `type FunctionFreeData =
+  | string
+  | number
+  | boolean
+  | bigint
+  | symbol
+  | null
+  | undefined
+  | void
+  | { readonly [key: string]: FunctionFreeData; readonly [key: symbol]: FunctionFreeData }
+  | readonly FunctionFreeData[];
+
+declare const functionFreeData: FunctionFreeData;
+
+export {};
+`;
+
+/** Served from memory beside the probe, and never written to disk. */
+const FUNCTION_FREE_DATA_PATH = path.join(HERE, '__functionFreeData.ts');
+
+const FUNCTION_FREE_DATA_FILE: readonly (readonly [string, string])[] = Object.freeze([
+  Object.freeze([FUNCTION_FREE_DATA_PATH, FUNCTION_FREE_DATA_SOURCE] as const),
+]);
+
+/**
+ * Whether a declaration came from a `.d.ts` — somebody else's library, not this
+ * directory's own assembly.
+ *
+ * At module scope because three readers need the same predicate and this file's
+ * own most-repeated finding is that a rule written for one arm gets copied to
+ * its sibling and drifts.
+ *
+ * `let shape: T | undefined = undefined;` is the branch immediately below the
+ * one M39 was planted in, and it is why `hoppableInitializer` asks this rather
+ * than a bare `ts.isIdentifier`. `undefined` IS an identifier, and it resolves
+ * to a `VariableDeclaration` in `lib.es5.d.ts` — so the hop succeeds, lands at
+ * module scope in a declaration file, and the assignment path never runs. A
+ * binding declared in a `.d.ts` is not a value this directory assembled, so it
+ * is not a hop.
+ */
+const ambientlyDeclared = (declaration: ts.Node): boolean =>
+  declaration.getSourceFile().isDeclarationFile;
+
+/** The reference type, taken out of the program the census is already using. */
+function functionFreeDataIn(program: ts.Program, checker: ts.TypeChecker): ts.Type {
+  const file = program.getSourceFile(FUNCTION_FREE_DATA_PATH);
+  if (file === undefined) throw new Error(`${FUNCTION_FREE_DATA_PATH} is not in the program`);
+  for (const statement of file.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    const declared = statement.declarationList.declarations[0];
+    if (declared !== undefined) return checker.getTypeAtLocation(declared.name);
+  }
+  throw new Error('the function-free reference declaration is not in that file');
+}
+
+/** What the screen answered, and what each of its two readings answered. */
+interface MemberTypeScreen {
+  /** The screen. `true` means "a function could be in there, go and look". */
+  readonly holdsAFunctionAnywhere: (type: ts.Type, at: string) => boolean;
+  /** Times the bounded second reading stopped at its own depth limit. */
+  readonly cuts: () => number;
+  /** Sites where the two readings disagreed, named. Pinned empty on the tree. */
+  readonly disagreements: () => readonly string[];
+}
+
+/**
+ * The member-type screen: two readings of one question, joined by `or`.
+ *
+ * Reading one is the checker's own assignability relation against
+ * `FunctionFreeData`. Reading two is a bounded structural walk over the
+ * positions this file enumerates, which is what the screen used to be by
+ * itself. They are joined rather than one replacing the other because each
+ * covers the other's stated limit:
+ *
+ *   - reading one has no enumeration to be short, so it is what closes M60's
+ *     array element and M62's index signature, and every position after them;
+ *   - reading one is answered by a relation that gives up on a deeply nested
+ *     recursive generic instantiation and reports "related", which this screen
+ *     would read as "no function". Reading two is what walks such a type, and
+ *     it stops at `MEMBER_TYPE_WALK_MAX_DEPTH` and COUNTS the cut. So a type
+ *     deep enough to defeat the relation is deep enough to trip the counter,
+ *     and the counter is pinned at zero.
+ *
+ * THE RESIDUAL, stated rather than left implied, with no catcher claimed for it:
+ * a type that defeats the relation AND sits behind a position reading two does
+ * not model — a forty-deep recursive instantiation used as a `Record`'s value —
+ * is screened out with the cut counter still at zero. Measured rather than
+ * imagined: `nest40` on its own is reported assignable, and the same type in a
+ * program that has already asked about `nest1` … `nest39` is not, so the
+ * relation's answer there is order-dependent. That is a bounded-resource limit
+ * inside the compiler, not a constant of this file's, and this file's response
+ * to it is to say so.
+ *
+ * `any` is answered before the relation is asked, because `any` is assignable to
+ * everything: the relation would report "no function" about the one type that
+ * carries no information at all. That row is in `SCREEN_BATTERY`.
+ */
+function memberTypeScreen(program: ts.Program, checker: ts.TypeChecker): MemberTypeScreen {
+  const functionFreeData = functionFreeDataIn(program, checker);
+  const disagreements: string[] = [];
+  let cuts = 0;
+
+  const boundedWalk = (type: ts.Type, depth = 0): boolean => {
+    if (depth > MEMBER_TYPE_WALK_MAX_DEPTH) {
+      cuts += 1;
+      return false;
+    }
+    if (type.getCallSignatures().length > 0) return true;
+    if (type.isUnionOrIntersection()) {
+      return type.types.some((member) => boundedWalk(member, depth + 1));
+    }
+    // An array's element type is not one of its properties, which is the
+    // eighteenth bypass. Kept in the bounded reading because that reading has
+    // to reach as deep as the relation does for its cut counter to mean
+    // anything, and an array in the chain would otherwise stop it early.
+    if (checker.isArrayType(type) || checker.isTupleType(type)) {
+      return checker
+        .getTypeArguments(type as ts.TypeReference)
+        .some((argument) => boundedWalk(argument, depth + 1));
+    }
+    return type.getProperties().some((symbol) => {
+      const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
+      if (declaration === undefined || ambientlyDeclared(declaration)) return false;
+      return boundedWalk(checker.getTypeOfSymbolAtLocation(symbol, declaration), depth + 1);
+    });
+  };
+
+  return {
+    holdsAFunctionAnywhere: (type: ts.Type, at: string): boolean => {
+      const asked =
+        (type.flags & ts.TypeFlags.Any) !== 0 ||
+        !checker.isTypeAssignableTo(type, functionFreeData);
+      const walked = boundedWalk(type);
+      if (asked !== walked) {
+        disagreements.push(
+          `${at} ${checker.typeToString(type)} asked=${String(asked)} walked=${String(walked)}`,
+        );
+      }
+      return asked || walked;
+    },
+    cuts: () => cuts,
+    disagreements: () => Object.freeze([...disagreements].sort()),
+  };
+}
 
 /**
  * The arms a receiver or a callee can resolve to, enumerated.
@@ -7715,8 +7929,9 @@ function channelCensusOf(
   probePath: string = PROBE_PATH,
 ): ChannelCensus {
   const options = compilerOptions();
-  const program = programWith(options, roots, probeText, probePath);
+  const program = programWith(options, roots, probeText, probePath, FUNCTION_FREE_DATA_FILE);
   const checker = program.getTypeChecker();
+  const screen = memberTypeScreen(program, checker);
 
   const sites = emptyChannelTable<string[]>(() => []);
   const byModule = emptyChannelTable<Record<string, number>>(() => ({}));
@@ -7728,7 +7943,6 @@ function channelCensusOf(
   const wrapCalls: Record<string, number> = {};
   const modules: string[] = [];
   let nodesExamined = 0;
-  let memberTypeDepthCuts = 0;
 
   const record = (id: ChannelId, moduleName: string, key: string): void => {
     sites[id].push(key);
@@ -7970,20 +8184,6 @@ function channelCensusOf(
   };
 
   /**
-   * Whether an initializer is a binding this walk should hop THROUGH.
-   *
-   * `let shape: T | undefined = undefined;` is the branch immediately below the
-   * one M39 was planted in, and it is why this predicate exists rather than a
-   * bare `ts.isIdentifier`. `undefined` IS an identifier, and it resolves to a
-   * `VariableDeclaration` in `lib.es5.d.ts` — so the hop succeeds, lands at
-   * module scope in a declaration file, and the assignment path below never
-   * runs. A binding declared in a `.d.ts` is not a value this directory
-   * assembled, so it is not a hop.
-   */
-  const ambientlyDeclared = (declaration: ts.Node): boolean =>
-    declaration.getSourceFile().isDeclarationFile;
-
-  /**
    * Whether a value of this type can be CALLED.
    *
    * Unions are walked because `(() => string) | undefined` has no call
@@ -7995,59 +8195,6 @@ function channelCensusOf(
     if (type.getCallSignatures().length > 0) return true;
     if (type.isUnionOrIntersection()) return type.types.some(carriesCallSignature);
     return false;
-  };
-
-  /**
-   * Whether a function could be ANYWHERE inside a value of this type.
-   *
-   * The screen on the member-following arm, and it is a screen rather than a
-   * detector: it decides whether following is worth doing, and a `false` here
-   * means the value provably cannot hand anybody a closure — a string, a
-   * number, an object of those.
-   *
-   * IT SKIPS AMBIENTLY DECLARED MEMBERS, and that is the whole reason it is
-   * usable. Every array type carries `map`, `filter` and `forEach`, all of them
-   * callable and all of them declared in `lib.es5.d.ts`, so a version without
-   * that filter answers `true` for `readonly NpcLifter[]` and for almost every
-   * other shipped type. What is left is the properties this directory declared.
-   */
-  const typeCouldHoldAFunction = (type: ts.Type, depth = 0): boolean => {
-    if (depth > MEMBER_TYPE_WALK_MAX_DEPTH) {
-      memberTypeDepthCuts += 1;
-      return false;
-    }
-    if (type.getCallSignatures().length > 0) return true;
-    if (type.isUnionOrIntersection()) {
-      return type.types.some((member) => typeCouldHoldAFunction(member, depth + 1));
-    }
-    // AN ARRAY'S ELEMENT TYPE IS NOT ONE OF ITS PROPERTIES, AND THAT IS THE
-    // EIGHTEENTH BYPASS. The ambient filter below is what makes this screen
-    // usable — every array carries `map`, `filter` and `length` from
-    // `lib.es5.d.ts` — and it also made `readonly ProductionPeek[]` answer
-    // `false`, because EVERY property of an array type is ambient and the
-    // element type is reached by none of them. M60 is
-    // `shapes: PRODUCTION_LIST.list` in a shipped return: `tsc` exit 0,
-    // `shapes[0].peek()` printed `covered-day` off a driven export, and the
-    // whole directory came back 130 of 133 with three node counters as the only
-    // reds. An array of closures is not an exotic shape; it is the shape
-    // `EMPIRE_LEDGER` and every roster in this directory has.
-    //
-    // It is asked of the CHECKER rather than of the property table, so a tuple
-    // and a readonly array are the same question, and the ambient filter keeps
-    // doing the job it was written for.
-    if (checker.isArrayType(type) || checker.isTupleType(type)) {
-      return checker
-        .getTypeArguments(type as ts.TypeReference)
-        .some((argument) => typeCouldHoldAFunction(argument, depth + 1));
-    }
-    return type.getProperties().some((symbol) => {
-      const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
-      if (declaration === undefined || ambientlyDeclared(declaration)) return false;
-      return typeCouldHoldAFunction(
-        checker.getTypeOfSymbolAtLocation(symbol, declaration),
-        depth + 1,
-      );
-    });
   };
 
   /**
@@ -8493,7 +8640,23 @@ function channelCensusOf(
         // route and is not an admission either. `entry.output` is a string and
         // `list.length` is a number; following them would report nothing and
         // recording them would flood the census.
-        if (!typeCouldHoldAFunction(checker.getTypeAtLocation(node))) return;
+        //
+        // The screen is `memberTypeScreen`, which asks the checker whether the
+        // value is assignable to a function-free data type and walks it as a
+        // second reading. Two bypasses went through the version that enumerated
+        // positions instead — an array element and then an index signature —
+        // and its limits are named where it is defined rather than here.
+        const screenedAt = node.getSourceFile();
+        if (
+          !screen.holdsAFunctionAnywhere(
+            checker.getTypeAtLocation(node),
+            `${path.basename(screenedAt.fileName)}:${String(
+              screenedAt.getLineAndCharacterOfPosition(node.getStart(screenedAt)).line + 1,
+            )}`,
+          )
+        ) {
+          return;
+        }
         const symbol = checker.getSymbolAtLocation(node);
         const resolved = symbol?.valueDeclaration ?? symbol?.declarations?.[0];
         if (resolved !== undefined && !ambientlyDeclared(resolved)) {
@@ -8882,7 +9045,8 @@ function channelCensusOf(
     internalCallbackArguments: Object.freeze([...internalCallbackArguments].sort()),
     wrapCalls: Object.freeze({ ...wrapCalls }),
     nodesExamined,
-    memberTypeDepthCuts,
+    memberTypeDepthCuts: screen.cuts(),
+    screenDisagreements: screen.disagreements(),
     modules: Object.freeze(modules),
   };
 }
@@ -9075,11 +9239,78 @@ const DECLARED_RETURNED_CLOSURE_SITES: readonly string[] = Object.freeze([
   'empireInvariant.ts#rosterRatesAt#closure:.trainingIqPerDay',
 ]);
 
+/**
+ * Every receiver and every returned value this walk could not resolve, named.
+ *
+ * IT WENT FROM THREE ROWS TO THIRTEEN THIS ROUND, and the ten are a cost of the
+ * screen rather than a change in the directory. The screen asks the checker
+ * whether a member is function-free data; an `interface` is assignable to no
+ * index-signature target in TypeScript, so ten returns of the form
+ * `return gym.state` now get followed instead of screened out, and the holder
+ * is a parameter this walk cannot see into. Each of the ten is a true statement
+ * — the walk decided to look and could not — and the direction is the one this
+ * file wants: a row somebody reads, rather than a screen that answered "no
+ * closure in there" on grounds that were about interfaces and not about
+ * closures.
+ */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
+  'empireInvariant.ts:1048 returned=unfollowable:gymState',
+  'empireInvariant.ts:1079 returned=unfollowable:gym',
+  'empireInvariant.ts:1124 returned=unfollowable:gym',
+  'empireInvariant.ts:1267 returned=unfollowable:gym',
   'empireInvariant.ts:637 receiver=ArrayLiteralExpression',
+  'empireInvariant.ts:995 returned=unfollowable:state',
   'engagement.ts:355 receiver=ArrayLiteralExpression',
+  'engagement.ts:437 returned=unfollowable:gym',
+  'engagement.ts:455 returned=unfollowable:gym',
+  'expansion.ts:549 returned=unfollowable:state',
+  'recruitment.ts:388 returned=unfollowable:state',
   'social.ts:345 receiver=ArrayLiteralExpression',
+  'social.ts:535 returned=unfollowable:context',
 ]);
+
+/**
+ * Every site where the screen's two readings disagreed, on the shipped tree.
+ *
+ * The control is the position-enumerating walk the checker question replaced,
+ * kept runnable rather than deleted — `streakSweep.ts`'s shape, where the
+ * unfixed variant's numbers stay in the file as the thing the fixed one is
+ * measured against. Every row here is `asked=true walked=false`: the relation
+ * declines to certify an interface as function-free, and the walk says there is
+ * no function in it. The walk is right about the contents and the relation is
+ * right about what it can prove, and a screen has to take the cautious one.
+ *
+ * There is no row in the other direction on the shipped tree, and that is the
+ * measurement worth having: nowhere in this directory does the relation certify
+ * a type that the control finds a function inside.
+ */
+const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
+  'empireInvariant.ts:1048 GymAxes asked=true walked=false',
+  'empireInvariant.ts:1079 readonly ExpansionBuild[] asked=true walked=false',
+  'empireInvariant.ts:1124 EmpireState asked=true walked=false',
+  'empireInvariant.ts:1197 ExpansionBuild asked=true walked=false',
+  'empireInvariant.ts:1267 EmpireState asked=true walked=false',
+  'empireInvariant.ts:995 GymAxes asked=true walked=false',
+  'engagement.ts:437 EmpireState asked=true walked=false',
+  'engagement.ts:455 EmpireState asked=true walked=false',
+  'expansion.ts:549 EmpireClock asked=true walked=false',
+  'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
+  'social.ts:535 readonly FriendVisit[] asked=true walked=false',
+]);
+
+/** What the two readings of the screen measured against each other. */
+const SCREEN_AGREEMENT = Object.freeze({
+  /** Rows in `SHIPPED_SCREEN_DISAGREEMENTS`, so a shorter list is red too. */
+  SHIPPED_DISAGREEMENTS: 11,
+  /**
+   * The probe's own disagreements, and every one is a closure the control
+   * answered `false` about: the deep member, the `Record`, the declared index
+   * signature and the symbol-keyed table. A count rather than a list because
+   * the four member paths are already pinned in `ASSEMBLY_PROBE_CLOSURE_SITES`,
+   * which is the stronger statement of the same fact.
+   */
+  PROBE_DISAGREEMENTS: 4,
+});
 
 /**
  * Every call in the directory, by what its callee resolves to.
@@ -9146,14 +9377,156 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
   /**
-   * Times the member-type screen stopped at its own depth limit.
+   * Times the screen's bounded control stopped at its own depth limit.
    *
-   * Zero, and the zero is a statement about the directory rather than about the
-   * screen: no exported surface here nests a member nine deep. It was a silent
-   * `false` until M61 was planted past it.
+   * Zero — and what that zero says is a statement about the SUBJECTS the screen
+   * was asked about, not about this directory's types. The sentence that used
+   * to sit here said "no exported surface here nests a member nine deep", and
+   * `SHIPPED_TYPE_DEPTH` measures that claim off the shipped types themselves
+   * and comes back with **9**, at `empireInvariant.ts#runEmpire()`. The zero
+   * was true and the sentence explaining it was false: the control never
+   * reaches those types because no member access in a return hands one to it.
+   *
+   * It is still worth pinning, for the narrower thing it does say: a depth cut
+   * is the one report available for the residual of the checker question, which
+   * is a relation that gives up on a deeply nested recursive generic
+   * instantiation. M63 is that plant, and this counter is what reddened.
    */
   MEMBER_TYPE_DEPTH_CUTS: 0,
 });
+
+/**
+ * How deep the shipped types go, read off the types and not off the counter.
+ *
+ * THE SECOND READING, and it exists because the first one cannot fail in the
+ * way its own prose claimed. `memberTypeDepthCuts` counts what the control
+ * walked; it is zero, and a reader takes that as "the directory stays inside
+ * the limit". This walks every exported declaration's type and every exported
+ * function's return type — the surface a caller can hold — under the control's
+ * own position set, with no depth bound at all and a per-path visited set for
+ * termination, and reports how deep the deepest one actually is.
+ *
+ * The two readings disagree, which is the finding: 0 cuts against a shipped
+ * depth of 9, one past `MEMBER_TYPE_WALK_MAX_DEPTH`. Two exported returns are
+ * already deeper than the limit, and `DEEPEST_AT` names them. A single member
+ * access returning one of them — `return holder.run` — puts a shipped type past
+ * the control's bound, and the zero above would go non-zero rather than stay
+ * quiet, which is the consequence stated as a consequence.
+ *
+ * Deepening the constant is deliberately not the response. The plant would move
+ * to `N + 1`, which is this codebase's "every repair declares its own successor"
+ * loop; what changed instead is that the control is no longer what decides the
+ * screen. This number is pinned so a type that grows past 9 is a red line, not
+ * so that 9 is safe.
+ */
+const SHIPPED_TYPE_DEPTH = Object.freeze({
+  /** Deepest chain from an exported surface, in the control's own accounting. */
+  DEEPEST: 9,
+  /** Exported positions measured. A truncated walk would report a shallow tree. */
+  POSITIONS: 517,
+  /** Positions at the maximum, named rather than counted. */
+  DEEPEST_AT: Object.freeze([
+    'empireInvariant.ts#runEmpire()',
+    'recruitment.ts#beginRecruitment()',
+  ]),
+  /** Positions strictly past the limit. The same two, and the number that matters. */
+  PAST_THE_LIMIT: 2,
+});
+
+/**
+ * The visit budget on the unbounded reading, so it terminates on a type graph
+ * with a cycle the visited set does not close.
+ *
+ * A bounded resource, like every walk here, and it is checked rather than
+ * trusted: `visits` is pinned below, so a reading that hit this budget would be
+ * reporting a truncated depth and is red instead.
+ */
+const SHIPPED_TYPE_DEPTH_VISIT_BUDGET = 500_000;
+
+interface ShippedDepthReading {
+  readonly deepest: number;
+  readonly deepestAt: readonly string[];
+  readonly pastTheLimit: readonly string[];
+  readonly positions: number;
+  readonly visits: number;
+}
+
+/**
+ * Walk every exported surface's type as deep as it goes.
+ *
+ * The position set is the control's exactly — a call signature stops the walk,
+ * unions and intersections step through their constituents, an array or tuple
+ * steps through its element, and a non-ambient property steps through its type
+ * — because the number this produces is about the control's limit and a walk
+ * with different positions would be measuring a different thing.
+ */
+function shippedTypeDepth(): ShippedDepthReading {
+  const options = compilerOptions();
+  const roots = shippedModulePaths();
+  const program = programWith(options, roots, null);
+  const checker = program.getTypeChecker();
+  let visits = 0;
+
+  const deepestFrom = (type: ts.Type, seen: readonly ts.Type[], depth: number): number => {
+    visits += 1;
+    if (visits > SHIPPED_TYPE_DEPTH_VISIT_BUDGET) return depth;
+    if (seen.includes(type)) return depth;
+    if (type.getCallSignatures().length > 0) return depth;
+    const below = [...seen, type];
+    let deepest = depth;
+    const step = (next: ts.Type): void => {
+      const reached = deepestFrom(next, below, depth + 1);
+      if (reached > deepest) deepest = reached;
+    };
+    if (type.isUnionOrIntersection()) for (const member of type.types) step(member);
+    if (checker.isArrayType(type) || checker.isTupleType(type)) {
+      for (const argument of checker.getTypeArguments(type as ts.TypeReference)) step(argument);
+    }
+    for (const symbol of type.getProperties()) {
+      const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
+      if (declaration === undefined || ambientlyDeclared(declaration)) continue;
+      step(checker.getTypeOfSymbolAtLocation(symbol, declaration));
+    }
+    return deepest;
+  };
+
+  const measured: (readonly [string, number])[] = [];
+  for (const root of roots) {
+    const source = program.getSourceFile(root);
+    if (source === undefined) throw new Error(`${root} is not in the program`);
+    const moduleSymbol = checker.getSymbolAtLocation(source);
+    if (moduleSymbol === undefined) continue;
+    const moduleName = path.basename(root);
+    for (const symbol of checker.getExportsOfModule(moduleSymbol)) {
+      const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
+      if (declaration === undefined) continue;
+      const type = checker.getTypeOfSymbolAtLocation(symbol, declaration);
+      measured.push([`${moduleName}#${symbol.getName()}`, deepestFrom(type, [], 0)]);
+      for (const signature of type.getCallSignatures()) {
+        measured.push([
+          `${moduleName}#${symbol.getName()}()`,
+          deepestFrom(checker.getReturnTypeOfSignature(signature), [], 0),
+        ]);
+      }
+    }
+  }
+
+  const deepest = measured.reduce((best, [, depth]) => (depth > best ? depth : best), 0);
+  return {
+    deepest,
+    deepestAt: Object.freeze(
+      measured.filter(([, depth]) => depth === deepest).map(([at]) => at).sort(),
+    ),
+    pastTheLimit: Object.freeze(
+      measured
+        .filter(([, depth]) => depth > MEMBER_TYPE_WALK_MAX_DEPTH)
+        .map(([at]) => at)
+        .sort(),
+    ),
+    positions: measured.length,
+    visits,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // The coverage matrix — measured per channel, not declared
@@ -10812,6 +11185,36 @@ export function probeDestructuredWithInertInitializer(source: {
   ({ shape } = source);
   return Object.freeze(shape);
 }
+
+const ASSEMBLY_RECORD: { readonly table: Readonly<Record<string, AssemblyShape>> } = {
+  table: { entry: { peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] } },
+};
+
+export function probeRecordOfClosures(): Readonly<Record<string, AssemblyShape>> {
+  return ASSEMBLY_RECORD.table;
+}
+
+interface AssemblyIndexed {
+  readonly [slot: string]: AssemblyShape;
+}
+
+const ASSEMBLY_INDEXED: { readonly indexed: AssemblyIndexed } = {
+  indexed: { entry: { peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] } },
+};
+
+export function probeIndexSignatureClosure(): AssemblyIndexed {
+  return ASSEMBLY_INDEXED.indexed;
+}
+
+const ASSEMBLY_SLOT: unique symbol = Symbol('assembly-slot');
+
+const ASSEMBLY_SYMBOL_KEYED: { readonly keyed: { readonly [slot: symbol]: AssemblyShape } } = {
+  keyed: { [ASSEMBLY_SLOT]: { peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] } },
+};
+
+export function probeSymbolKeyedClosure(): { readonly [slot: symbol]: AssemblyShape } {
+  return ASSEMBLY_SYMBOL_KEYED.keyed;
+}
 `;
 
 const ASSEMBLY_PROBE_PATH = path.join(HERE, '__assemblyProbe.ts');
@@ -10847,7 +11250,7 @@ function assemblyProbeSites(id: ChannelId): readonly string[] {
 }
 
 /**
- * The nine returned-closure keys the probe is expected to produce.
+ * The fifteen returned-closure keys the probe is expected to produce.
  *
  * Written out rather than counted, for the reason `DECLARED_RETURNED_CLOSURE_
  * SITES` is: a count cannot tell eight right answers and one wrong one from
@@ -10873,12 +11276,32 @@ const ASSEMBLY_PROBE_CLOSURE_SITES: readonly string[] = Object.freeze([
   `${ASSEMBLY_PROBE_MODULE}#probeAssembledClosure#closure:.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeAssembledShorthand#closure:.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeAssembledThroughUndefined#closure:.peek`,
+  // THE NINETEENTH BYPASS'S OWN ROW, and it is a row rather than a counter
+  // now. E24 contained this one: the closure sits nine levels inside the
+  // returned member, one past `MEMBER_TYPE_WALK_MAX_DEPTH`, and the screen
+  // answered `false` from behind its own limit with the cut counted. The
+  // checker's relation has no depth of this file's in it, so the member path
+  // below is what the screen produces instead of a number.
+  `${ASSEMBLY_PROBE_MODULE}#probeDeepMemberClosure#closure:.a.b.c.d.e.f.g.h.i.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeElementAccessClosure#closure:.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeForOfAssignedClosure#closure:[0].peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeForOfClosure#closure:[0].peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeIndexSignatureClosure#closure:.indexed.entry.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeMemberAccessClosure#closure:.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeNestedMemberClosure#closure:.inner.peek`,
+  // THE TWENTIETH BYPASS'S OWN ROW. `Readonly<Record<string, AssemblyShape>>`
+  // has no properties at all — its element sits behind a string index
+  // signature — so a screen that enumerated positions answered `false` about a
+  // table of closures. The row beside it is the same shape written as a
+  // declared index signature rather than as a `Record`, because the two are
+  // spelled differently and are the same question to the checker.
+  `${ASSEMBLY_PROBE_MODULE}#probeRecordOfClosures#closure:.table.entry.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeReturnsNamedFunction#closure:.peek`,
+  // The `readonly [key: symbol]` half of `FUNCTION_FREE_DATA_SOURCE`, which is
+  // there for this row and would be unmotivated without it: a symbol-keyed
+  // index signature is not checked against a string-keyed one, so a target
+  // carrying only the string half screens this table out.
+  `${ASSEMBLY_PROBE_MODULE}#probeSymbolKeyedClosure#closure:.keyed.[ASSEMBLY_SLOT].peek`,
 ]);
 
 describe('the assembly walk bites — every binding whose value is not in its initializer', () => {
@@ -10892,7 +11315,7 @@ describe('the assembly walk bites — every binding whose value is not in its in
     expect(assemblyProbeCensus().modules.length).toBe(CHANNEL_CENSUS_TOTALS.MODULES + 1);
   });
 
-  it('finds the returned closure in all nine shapes, by member path', () => {
+  it('finds the returned closure in all fifteen shapes, by member path', () => {
     expect(assemblyProbeSites('returned-closure')).toEqual(ASSEMBLY_PROBE_CLOSURE_SITES);
     // And none of them is a key the shipped directory has, which is what makes
     // `DECLARED_RETURNED_CLOSURE_SITES`'s set equality the thing that reddens
@@ -10971,25 +11394,320 @@ describe('the assembly walk bites — every binding whose value is not in its in
     );
   });
 
-  it('reports the member-type depth limit instead of answering `false` from behind it', () => {
-    // THE NINETEENTH BYPASS'S LINE, AND IT IS A CONTAINMENT CLAIM RATHER THAN A
-    // DETECTION ONE. `probeDeepMemberClosure` hands back a member with a closure
-    // nine levels inside it, which is one past `MEMBER_TYPE_WALK_MAX_DEPTH`. The
-    // screen still says `false` and the walk still does not follow it — what
-    // changed is that the cut is COUNTED, so the shipped zero below is a real
-    // statement about the directory instead of the absence of one.
-    expect(assemblyProbeCensus().memberTypeDepthCuts).toBeGreaterThan(0);
-    // And the shape is genuinely not followed, stated as a measurement so
-    // nobody reads the counter as a catch.
-    expect(assemblyProbeSites('returned-closure')).not.toContain(
+  it('follows the deep member instead of answering from behind a depth limit', () => {
+    // THE NINETEENTH BYPASS'S LINE, AND IT IS A DETECTION CLAIM NOW RATHER THAN
+    // A CONTAINMENT ONE. `probeDeepMemberClosure` hands back a member with a
+    // closure nine levels inside it, one past `MEMBER_TYPE_WALK_MAX_DEPTH`. E24
+    // could say no more than "the cut was counted"; the screen asks the checker
+    // whether the member is function-free data, and nine levels is not a
+    // question the relation has an opinion about.
+    expect(assemblyProbeSites('returned-closure')).toContain(
       `${ASSEMBLY_PROBE_MODULE}#probeDeepMemberClosure#closure:.a.b.c.d.e.f.g.h.i.peek`,
     );
-    expect(assemblyProbeSites('returned-closure').filter((site) => site.includes('probeDeepMemberClosure'))).toEqual([]);
-    // ZERO ON THE SHIPPED TREE, which is what makes the probe's non-zero mean
-    // something: no exported surface in this directory is deep enough to reach
-    // the limit today, so a type that starts reaching it is a red line rather
-    // than a screen quietly giving up.
+    // AND THE CONTROL IS STILL BLIND TO IT, which is what says the row above is
+    // the reformulation working rather than an accident of some other change.
+    // The bounded walk is the screen's second reading and it is kept runnable
+    // for exactly this: it cuts here, and the cut is counted.
+    expect(assemblyProbeCensus().memberTypeDepthCuts).toBeGreaterThan(0);
+    // ZERO ON THE SHIPPED TREE. What that zero says is narrower than it used to
+    // claim, and the narrowing is the point: it is a statement about the
+    // subjects this screen was ASKED about, not about the directory's types.
+    // `SHIPPED_TYPE_DEPTH` is the other reading, taken over the shipped types
+    // themselves, and it comes back deeper than the limit — so the zero here
+    // was never evidence that the directory stays inside it.
     expect(channelCensus().memberTypeDepthCuts).toBe(CHANNEL_CENSUS_TOTALS.MEMBER_TYPE_DEPTH_CUTS);
+  });
+
+  it('agrees with the control everywhere on the shipped tree, and says where it does not', () => {
+    // WHAT THE REFORMULATION COST, AS A LIST RATHER THAN AS A REASSURANCE. The
+    // screen has two readings — the checker's assignability relation, and the
+    // position-enumerating walk it replaced, kept runnable as the control the
+    // way `streakSweep.ts` keeps the unfixed variant's numbers. Every site
+    // where they disagree is named here.
+    //
+    // All eleven shipped disagreements are `asked=true walked=false`, and all
+    // eleven have one cause: TypeScript gives an `interface` no implicit index
+    // signature, so an interface is not assignable to ANY index-signature
+    // target whatever it holds. The relation is therefore exact on object
+    // literal types, aliases, arrays, tuples, mapped types and `Record`, and
+    // systematically over-approximates on the shape this directory declares
+    // most of its types in. That direction costs census rows and never
+    // silence, which is why it is the direction the screen takes.
+    expect(channelCensus().screenDisagreements).toEqual(SHIPPED_SCREEN_DISAGREEMENTS);
+    expect(SHIPPED_SCREEN_DISAGREEMENTS.length).toBe(SCREEN_AGREEMENT.SHIPPED_DISAGREEMENTS);
+    // The probe's own row is the other direction of the same measurement: a
+    // disagreement where the control is the one that is wrong.
+    expect(
+      assemblyProbeCensus().screenDisagreements.filter((entry) =>
+        entry.startsWith(ASSEMBLY_PROBE_MODULE),
+      ).length,
+    ).toBe(SCREEN_AGREEMENT.PROBE_DISAGREEMENTS);
+  });
+
+  it('measures how deep the shipped types go, off the types and not off the counter', () => {
+    const reading = shippedTypeDepth();
+    // The domain first, so a walk that measured nothing cannot report a shallow
+    // tree: 517 exported positions, and the budget was not reached.
+    expect(reading.positions).toBe(SHIPPED_TYPE_DEPTH.POSITIONS);
+    expect(reading.visits).toBeLessThan(SHIPPED_TYPE_DEPTH_VISIT_BUDGET);
+    // THE TWO READINGS DISAGREE, AND THIS LINE IS THE DISAGREEMENT. The cut
+    // counter is zero; the shipped surface is nine deep. Both are true, and the
+    // sentence that used to join them — "no exported surface here nests a
+    // member nine deep" — was not.
+    expect(reading.deepest).toBe(SHIPPED_TYPE_DEPTH.DEEPEST);
+    expect(reading.deepest).toBeGreaterThan(MEMBER_TYPE_WALK_MAX_DEPTH);
+    expect(channelCensus().memberTypeDepthCuts).toBe(0);
+    // Named rather than counted, so a different type reaching the maximum is a
+    // row somebody reads rather than a number that stayed the same.
+    expect(reading.deepestAt).toEqual(SHIPPED_TYPE_DEPTH.DEEPEST_AT);
+    expect(reading.pastTheLimit).toEqual(SHIPPED_TYPE_DEPTH.DEEPEST_AT);
+    expect(reading.pastTheLimit.length).toBe(SHIPPED_TYPE_DEPTH.PAST_THE_LIMIT);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The screen's own battery — the predicate graded directly, not through a walk
+// ---------------------------------------------------------------------------
+
+/**
+ * Twenty-seven type shapes, put to the screen one at a time.
+ *
+ * WHY A BATTERY AND NOT MORE PROBE EXPORTS. The nineteenth and twentieth
+ * bypasses were both a wrong answer from this predicate, and a probe grades the
+ * predicate only where the walk around it happens to reach — `probeRecordOfClosures`
+ * needs a holder whose value is a literal this file can resolve, so a shape the
+ * walk cannot carry cannot be asked about at all. `ReadonlyMap`, `Promise`,
+ * `any`, `object` and `Function` are all in that position. The battery asks the
+ * predicate itself, which is the subject that was wrong.
+ *
+ * The truth column is written by hand and is the thing to disagree with. Where
+ * it says `true` for a type that holds no function — `selfPlain`, `interfaceOfData`,
+ * `map` of strings — it is recording an over-approximation rather than a
+ * correct answer, and the reason is on the row.
+ */
+const SCREEN_BATTERY_PATH = path.join(HERE, '__screenBattery.ts');
+
+const SCREEN_BATTERY_SOURCE = `interface Peek {
+  readonly peek: () => string;
+}
+
+interface PlainInterface {
+  readonly name: string;
+  readonly count: number;
+}
+
+declare const plainData: { readonly a: string; readonly b: number; readonly c: readonly string[] };
+declare const fn: () => string;
+declare const holder: Peek;
+declare const list: readonly Peek[];
+declare const rec: Readonly<Record<string, Peek>>;
+declare const idx: { readonly [k: string]: Peek };
+declare const sym: { readonly [k: symbol]: Peek };
+declare const num: { readonly [k: number]: Peek };
+declare const anyish: any;
+declare const unknownish: unknown;
+declare const mapOfClosures: ReadonlyMap<string, Peek>;
+declare const mapOfStrings: ReadonlyMap<string, string>;
+declare class Cls {
+  method(): string;
+}
+declare const inst: Cls;
+declare const getter: { get thing(): () => string };
+declare const deepPlain: { a: { b: { c: { d: { e: { f: { g: { h: { i: { j: string } } } } } } } } } };
+declare const deepFn: { a: { b: { c: { d: { e: { f: { g: { h: { i: { j: Peek } } } } } } } } } };
+interface SelfRec {
+  readonly next: SelfRec | null;
+  readonly peek: () => string;
+}
+declare const selfRec: SelfRec;
+interface SelfPlain {
+  readonly next: SelfPlain | null;
+  readonly name: string;
+}
+declare const selfPlain: SelfPlain;
+declare const interfaceOfData: PlainInterface;
+declare const branded: string & { readonly __brand: unique symbol };
+declare const unionFn: string | (() => string);
+declare const promised: Promise<Peek>;
+declare const optional: { readonly maybe?: () => string };
+declare const tuple: readonly [string, () => string];
+declare const nev: never;
+declare const objectish: object;
+declare const funcish: Function;
+interface Callable {
+  (): string;
+  readonly tag: string;
+}
+declare const callable: Callable;
+
+export {};
+`;
+
+/** The hand-written truth, and the reason on every row that is not obvious. */
+const SCREEN_BATTERY: readonly (readonly [string, boolean, string])[] = Object.freeze([
+  Object.freeze(['plainData', false, 'strings and numbers in an object literal type'] as const),
+  Object.freeze(['fn', true, 'the type IS the function'] as const),
+  Object.freeze(['holder', true, 'a declared property holds it'] as const),
+  Object.freeze(['list', true, 'M60: the element, which is not a property'] as const),
+  Object.freeze(['rec', true, "M62: a mapped type's index signature"] as const),
+  Object.freeze(['idx', true, 'the same shape spelled as a declared index signature'] as const),
+  Object.freeze(['sym', true, 'a symbol-keyed index signature, which the string half misses'] as const),
+  Object.freeze(['num', true, 'a number-keyed index signature'] as const),
+  Object.freeze(['anyish', true, 'answered before the relation, which would call `any` data'] as const),
+  Object.freeze(['unknownish', true, 'no information, so no certificate'] as const),
+  Object.freeze(['mapOfClosures', true, 'reached through a type argument and nothing else'] as const),
+  Object.freeze([
+    'mapOfStrings',
+    true,
+    'OVER-APPROXIMATED: no closure in it, but a Map carries its own methods',
+  ] as const),
+  Object.freeze(['inst', true, 'a class method is a function on the instance'] as const),
+  Object.freeze(['getter', true, 'the accessor type is what the caller receives'] as const),
+  Object.freeze(['deepPlain', false, 'ten levels of data; the relation has no depth in it'] as const),
+  Object.freeze(['deepFn', true, 'M61: ten levels, and the tenth is a closure'] as const),
+  Object.freeze(['selfRec', true, 'a cycle with a function on it'] as const),
+  Object.freeze([
+    'selfPlain',
+    true,
+    'OVER-APPROXIMATED: a cycle with no function on it, which the relation declines to certify',
+  ] as const),
+  Object.freeze([
+    'interfaceOfData',
+    true,
+    'OVER-APPROXIMATED, and this is the cost of the whole reformulation: an interface gets no implicit index signature, so it is assignable to no index-signature target whatever it holds',
+  ] as const),
+  Object.freeze(['branded', false, 'an intersection is assignable to its string constituent'] as const),
+  Object.freeze(['unionFn', true, 'a union that is sometimes a function'] as const),
+  Object.freeze(['promised', true, 'reached through a type argument'] as const),
+  Object.freeze(['optional', true, 'an optional member is still a member'] as const),
+  Object.freeze(['tuple', true, 'a tuple element rather than an array element'] as const),
+  Object.freeze(['nev', false, 'no values, so no values holding a function'] as const),
+  Object.freeze(['objectish', true, 'no structure to certify'] as const),
+  Object.freeze(['funcish', true, 'the type of every function'] as const),
+  Object.freeze(['callable', true, 'a call signature beside data members'] as const),
+]);
+
+/** What the battery measured. Counts, so a truncated battery reports itself. */
+const SCREEN_BATTERY_CENSUS = Object.freeze({
+  ROWS: 28,
+  /** Rows the screen answers `true` for. Both verdicts occur, so neither is vacuous. */
+  HOLDS: 24,
+  /**
+   * Rows answered `false` — the ones the screen actually screens out, and the
+   * number is small on purpose rather than by accident. Four of twenty-eight:
+   * an object literal type of primitives, ten levels of the same, a branded
+   * string and `never`. That is what a certificate from the relation costs to
+   * earn, and it is the honest shape of a screen whose errors go one way.
+   */
+  CERTIFIED: 4,
+  /** Rows whose truth column records an over-approximation rather than a catch. */
+  OVER_APPROXIMATED: 3,
+});
+
+function screenBatteryVerdicts(): Readonly<Record<string, boolean>> {
+  const options = compilerOptions();
+  const program = programWith(
+    options,
+    [SCREEN_BATTERY_PATH],
+    SCREEN_BATTERY_SOURCE,
+    SCREEN_BATTERY_PATH,
+    FUNCTION_FREE_DATA_FILE,
+  );
+  const checker = program.getTypeChecker();
+  const screen = memberTypeScreen(program, checker);
+  const file = program.getSourceFile(SCREEN_BATTERY_PATH);
+  if (file === undefined) throw new Error('the battery is not in the program');
+  const verdicts: Record<string, boolean> = {};
+  for (const statement of file.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declared of statement.declarationList.declarations) {
+      const name = declared.name.getText(file);
+      verdicts[name] = screen.holdsAFunctionAnywhere(
+        checker.getTypeAtLocation(declared.name),
+        `battery#${name}`,
+      );
+    }
+  }
+  return Object.freeze(verdicts);
+}
+
+let screenBatteryMemo: Readonly<Record<string, boolean>> | null = null;
+
+function screenBattery(): Readonly<Record<string, boolean>> {
+  if (screenBatteryMemo !== null) return screenBatteryMemo;
+  screenBatteryMemo = screenBatteryVerdicts();
+  return screenBatteryMemo;
+}
+
+describe('the member-type screen — the predicate graded on its own, shape by shape', () => {
+  it('compiles the battery cleanly, so a verdict below is an answer and not an error', () => {
+    const options = compilerOptions();
+    const program = programWith(
+      options,
+      [SCREEN_BATTERY_PATH],
+      SCREEN_BATTERY_SOURCE,
+      SCREEN_BATTERY_PATH,
+      FUNCTION_FREE_DATA_FILE,
+    );
+    const file = program.getSourceFile(SCREEN_BATTERY_PATH);
+    const reference = program.getSourceFile(FUNCTION_FREE_DATA_PATH);
+    expect(file).toBeDefined();
+    expect(reference).toBeDefined();
+    const diagnostics = [
+      ...program.getSyntacticDiagnostics(file),
+      ...program.getSemanticDiagnostics(file),
+      ...program.getSyntacticDiagnostics(reference),
+      ...program.getSemanticDiagnostics(reference),
+    ].map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, ' '));
+    expect(diagnostics, diagnostics.join(' | ')).toEqual([]);
+  });
+
+  it('answers every shape the way the truth column says, row by row', () => {
+    const verdicts = screenBattery();
+    for (const [name, truth, why] of SCREEN_BATTERY) {
+      expect(verdicts[name], `${name}: ${why}`).toBe(truth);
+    }
+    // The battery is joined to the source in both directions, so a declaration
+    // added to it without a row — or a row for a declaration that went away —
+    // is red rather than silently unmeasured.
+    expect(Object.keys(verdicts).sort()).toEqual(SCREEN_BATTERY.map(([name]) => name).sort());
+  });
+
+  it('is not vacuous: both verdicts occur, and the over-approximations are counted', () => {
+    const verdicts = screenBattery();
+    expect(SCREEN_BATTERY.length).toBe(SCREEN_BATTERY_CENSUS.ROWS);
+    expect(Object.values(verdicts).filter((held) => held).length).toBe(SCREEN_BATTERY_CENSUS.HOLDS);
+    expect(Object.values(verdicts).filter((held) => !held).length).toBe(
+      SCREEN_BATTERY_CENSUS.CERTIFIED,
+    );
+    // The rows where the truth column records a cost rather than a catch, so
+    // the over-approximation is a number somebody can watch rather than a
+    // remark in a comment.
+    expect(
+      SCREEN_BATTERY.filter(([, , why]) => why.startsWith('OVER-APPROXIMATED')).length,
+    ).toBe(SCREEN_BATTERY_CENSUS.OVER_APPROXIMATED);
+  });
+
+  it('is answering from the reference type, and says so by losing its verdicts without it', () => {
+    // THE NON-VACUITY GUARD THAT MATTERS. If the reference file failed to load,
+    // `functionFreeDataIn` throws — but a subtler failure is a reference type
+    // that resolves to `any`, which would make every subject "not assignable"
+    // and the screen would answer `true` everywhere while looking healthy.
+    // Four rows answer `false`, and every one of them is a certificate the
+    // relation issued.
+    const options = compilerOptions();
+    const program = programWith(
+      options,
+      [SCREEN_BATTERY_PATH],
+      SCREEN_BATTERY_SOURCE,
+      SCREEN_BATTERY_PATH,
+      FUNCTION_FREE_DATA_FILE,
+    );
+    const checker = program.getTypeChecker();
+    const reference = functionFreeDataIn(program, checker);
+    expect(checker.typeToString(reference)).toBe('FunctionFreeData');
+    expect(reference.flags & ts.TypeFlags.Any).toBe(0);
+    expect(reference.isUnion()).toBe(true);
   });
 });
 
@@ -13580,7 +14298,18 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   // Two arms since the eighteenth bypass: the union walk, and the array-element
   // walk that closed it. The census reddened on that repair before this comment
   // existed, which is the first time it has caught an edit rather than a plant.
-  Object.freeze({ at: 'empireForbiddenOutput.test.ts#typeCouldHoldAFunction<channelCensusOf#type', arms: 2, dispatch: true, terminal: 'next-statement' }),
+  // It moved again this round — the screen it belonged to was lifted out of
+  // `channelCensusOf` and is `boundedWalk` inside `memberTypeScreen` now, which
+  // this census reported as one row gone and two arrived rather than as
+  // nothing. A ladder changing owner is exactly the edit it is written for.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#boundedWalk<memberTypeScreen#type', arms: 2, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#functionFreeDataIn#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  // The screen's own battery and the second reading of the depth limit, both
+  // added this round. `deepestFrom`'s ladder is `dispatch: false` because its
+  // two arms are `type.isUnionOrIntersection()` and `checker.isArrayType(...)`,
+  // which the scan does not read as a discriminator over one node.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#screenBatteryVerdicts#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#deepestFrom<shippedTypeDepth#type', arms: 2, dispatch: false, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#literalValuesOf<channelCensusOf#holder', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#literalValuesOf<channelCensusOf#host', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#hoppableInitializer<channelCensusOf#root', arms: 1, dispatch: true, terminal: 'next-statement' }),
@@ -13635,11 +14364,11 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
 /** What the census measured. Counts, not bounds. */
 const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
-  CHAINS: 70,
-  DISPATCH: 46,
+  CHAINS: 73,
+  DISPATCH: 48,
   BY_TERMINAL: Object.freeze({
     else: 7,
-    'next-statement': 52,
+    'next-statement': 55,
     loop: 9,
     enclosing: 2,
     /**
