@@ -3187,6 +3187,50 @@ work.
       and cut-in *art* stay unbuilt; grading and closing what already exists
       continues without waiting on this answer.
 
+- [ ] **GDD §5's idle loop is BUILT, TESTED AND MEASURED, and no player can
+      reach any of it. That outcome was nobody's decision, and it needs a real
+      ruling rather than continuing as a residue.** Flagged by a human on
+      2026-08-14 after an Empire shell grading surfaced it as a side effect.
+
+      **The facts, each checkable.** `src/empire/` exports `stepGym`,
+      `runEmpire`, `accrueProduction`, `beginRecruitment`, `startExpansion` and
+      `skipExpansion`, with §5's engagement property measured at 0 violating
+      pairs across 24576 and non-zero controls kept runnable beside it. A
+      player-reachable `EmpireScreen` exists and is checked by a browser
+      instrument that presses its way onto the floor. **That screen calls
+      `createEmpireState()` once, in a `useState` initialiser, and nothing ever
+      steps it** — so there is no device, no day and no length of play on which
+      it shows anything other than `0 / 0 / 0 / bare-bar`. The floor is a window
+      onto a subsystem nothing can drive.
+
+      **How it happened, which is the part worth ruling on.** Three decisions
+      that were each correct alone: the working assumption below says Gym
+      Empire stays unbuilt pending the §12.1-versus-§10 question; a human
+      separately ruled that Session B builds the §5 loop, because §5's
+      invariants had no subject until its loop existed; and Session C wired a
+      render-only shell slice to what Session B had shipped. Nobody chose the
+      result, and nobody would have chosen it if asked directly.
+
+      **Note which gate is actually shut, because it is not the obvious one.**
+      CLAUDE.md's non-negotiable — *"Do not build Gym Empire before the lift
+      mechanic is proven fun"* — is **OPEN**: the 2026-08-12 playtest verdict
+      above says so in as many words. What still blocks is the unruled §12.1
+      tension and its conservative working assumption, which was written before
+      §5's logic existed and is now preventing the *exposure* of something
+      already built rather than preventing anyone from building it.
+
+      **The shapes a ruling could take, none preferred here.** (a) Leave the
+      logic dark and unwire or relabel the screen, so the app stops advertising
+      a mode it cannot play — cheapest, and honest. (b) Keep the static floor
+      as a deliberate placeholder, with its permanence stated on the screen
+      rather than discoverable only by mutation. (c) Lift the gate for the idle
+      layer specifically, on the grounds that its own precondition has been met,
+      and let the loop reach a player. **What must not happen is (d): the
+      question staying implicit while more surface accretes around it**, which
+      is the path the run is currently on by default.
+
+      Not urgent. Ruled before it recurs on its own, rather than after.
+
 - [x] **The licensing screen is not a "mode", so the shell does not have to
       reach it — lead scoping call, overrulable.** A critic grading N1 flagged
       that `LicensingScreen` renders, has tests, and is reachable only at
