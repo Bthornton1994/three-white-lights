@@ -13,7 +13,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { describeDelta, identityDelta, treeIdentity } from './treeIdentity.mjs';
@@ -518,9 +518,22 @@ const capture = (label, cmd, args) => {
   console.error('What moved:');
   for (const line of describeDelta(moved)) console.error(line);
   console.error('');
-  console.error(`Nothing was written. ${path.join('.gauntlet', 'evidence', `${piece}.txt`)} still holds`);
-  console.error('the previous bundle, whose stamp is honest about being older than this tree —');
-  console.error(`run \`node tools/evidence.mjs ${piece} --verify\` and it will say so.`);
+  // WHICH OF THESE TWO SENTENCES IS TRUE IS READ OFF THE DISK, NOT ASSUMED.
+  // The first draft said "still holds the previous bundle" unconditionally,
+  // which is a confident sentence that is false for any piece being captured
+  // for the first time — the exact shape of prose this repository keeps
+  // catching. Either way the point holds: nothing here leaves behind a file
+  // that `--verify` would call fresh.
+  const bundle = path.join('.gauntlet', 'evidence', `${piece}.txt`);
+  if (existsSync(path.join(ROOT, bundle))) {
+    console.error(`Nothing was written. ${bundle} still holds the previous`);
+    console.error('bundle, whose stamp is honest about being older than this tree —');
+    console.error(`run \`node tools/evidence.mjs ${piece} --verify\` and it will say so.`);
+  } else {
+    console.error(`Nothing was written, and there was no ${bundle}`);
+    console.error(`to begin with — \`node tools/evidence.mjs ${piece} --verify\` reports its`);
+    console.error('absence rather than a bundle you would have had to distrust.');
+  }
   console.error('');
   console.error('Let the tree settle, commit what you meant to commit, then re-run this.');
   process.exit(TREE_MOVED_EXIT_CODE);
