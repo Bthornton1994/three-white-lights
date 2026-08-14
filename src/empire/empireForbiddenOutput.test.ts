@@ -10348,8 +10348,8 @@ describe('the assembly walk bites — every binding whose value is not in its in
  * WHAT THE WIDENING BOUGHT, AS A NUMBER RATHER THAN AS COVERAGE. The three-site
  * pass observed `handed=0` and `returned=0`: its "no banned name at any driven
  * site" verdict was a zero over an empty set of observed strings, which is this
- * file's own definition of an empty domain. Thirteen sites observe 34 callback
- * invocations and 40 strings, 39 of them on M42's return channel, out of
+ * file's own definition of an empty domain. Thirteen sites observe 37 callback
+ * invocations and 47 strings, 46 of them on M42's return channel, out of
  * `rankLeaderboard`'s and `stepGym`'s real payloads. The per-site numbers are
  * pinned in `MEMBER_CALL_SITE_OBSERVATIONS`.
  */
@@ -10358,12 +10358,39 @@ interface MemberCallRecord {
   readonly handed: string[];
   /** Strings reachable from every value a callback argument RETURNED. M42's channel. */
   readonly returned: string[];
+  /**
+   * The SHAPE of every value a callback returned, one entry per invocation.
+   *
+   * A CALL COUNT SAYS THE CALLBACK RAN AND NOT WHICH OF ITS OWN ARMS DID, which
+   * is CLAUDE.md's arms-versus-inputs rule one level in from where that rule was
+   * written. `entries.filter((e) => cond ? <payload> : false)` is M42's route
+   * and it only ever hands the payload back on the arm where `cond` holds — so a
+   * fixture that never satisfies `cond` drives the site, reports an honest
+   * `callbacks=6`, and cannot see that payload at all. Measured rather than
+   * argued: with the first version of the `visits.some` fixture, which asked
+   * about a friend the one logged visit was not against, the predicate returned
+   * `false` six times out of six and M45 — the payload on the matching arm —
+   * was invisible with the whole block green.
+   *
+   * So the shapes are counted per site and pinned. A site whose census loses
+   * `true` reddens, which is the same thing `recordFriendVisit#visited` sitting
+   * in the arm census at 24 does for the drive.
+   */
+  readonly verdicts: string[];
   calls: number;
   callbackCalls: number;
 }
 
 function emptyMemberCallRecord(): MemberCallRecord {
-  return { handed: [], returned: [], calls: 0, callbackCalls: 0 };
+  return { handed: [], returned: [], verdicts: [], calls: 0, callbackCalls: 0 };
+}
+
+/** A returned value as one word, so a per-site census of arms is a string. */
+function verdictShape(value: unknown): string {
+  if (typeof value === 'boolean') return String(value);
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
 }
 
 /**
@@ -10397,6 +10424,7 @@ function recordOn<T extends object>(holder: T, member: string, record: MemberCal
         return (...inner: readonly unknown[]): unknown => {
           record.callbackCalls += 1;
           const verdict = callback(...inner);
+          record.verdicts.push(verdictShape(verdict));
           for (const found of deepScan(verdict, 'return').strings) record.returned.push(found.value);
           return verdict;
         };
@@ -10428,26 +10456,59 @@ const memberCallLedger = (): EmpireLedgerEntry[] => [
  * of the `gym.map` site and it is asserted below rather than left implied.
  */
 const MEMBER_CALL_FIXTURE = Object.freeze({
-  /** The roster `composeTrainingIqRate` filters. Every lifter settles at 0, so all of them pass. */
+  /** Lifters on the roster `composeTrainingIqRate` filters. */
   ROSTER_SIZE: 3,
+  /**
+   * How many of them have SETTLED at the clock the subject reads.
+   *
+   * Strictly fewer than `ROSTER_SIZE`, and that is the whole point: the filter's
+   * predicate is `lifter.settledAt <= now`, so a roster where everyone has
+   * settled produces the `true` arm three times and the `false` arm never. The
+   * verdict census in `MEMBER_CALL_SITE_OBSERVATIONS` is what holds this — it
+   * reads `falsex1,truex2` and goes red if the split collapses.
+   */
+  SETTLED_LIFTERS: 2,
   /** `stepGym`'s `wallSeconds`. Below `BUILD_IDLE_SECONDS`, which is what makes a build skippable. */
   SKIP_STEP_SECONDS: EMPIRE_TUNING.SECONDS_PER_DAY,
-  /** The build's `idleCompletion`, in accelerated seconds. */
+  /** The skippable build's `idleCompletion`, in accelerated seconds. Above the step. */
   BUILD_IDLE_SECONDS: EMPIRE_TUNING.SECONDS_PER_DAY * 2,
+  /**
+   * The `idleCompletion` of the build that is NOT skippable, which is below the
+   * step and therefore already finished at the idle clock `stepGym` reads.
+   *
+   * It sits first in the array so `find`'s predicate returns `false` before it
+   * returns `true`, and so `map`'s ternary takes both arms. A one-build gym
+   * drove both sites and reached one arm of each.
+   */
+  SETTLED_BUILD_IDLE_SECONDS: 0,
   /** The build's level, which nothing here reads for anything but a shape. */
   BUILD_TO_LEVEL: 1,
-  /** The day the one visit in the social fixture lands on, and the day `visitRefusals` is asked about. */
+  /** The day the visits in the social fixture land on, and the day `visitRefusals` is asked about. */
   VISIT_DAY: 1,
   /**
-   * Which friend `visitRefusals` is asked about, and it is deliberately NOT the
-   * one the fixture's single visit is against.
+   * How many visits the social fixture logs, all on `VISIT_DAY`.
    *
-   * `friends.some` then scans both friends before matching and `visits.some`
-   * scans its one visit without matching, so the two sites — which share a key,
-   * because `receiverRoot` walks past `.friends` and `.visits` alike — produce
-   * DIFFERENT observation lines. With friend 0 both read `callbacks=1` and the
-   * pinned pair below would have been two identical strings, which cannot tell
-   * a lost subject from a duplicated one.
+   * `socialContextAt` assigns them to friends round-robin, so two visits means
+   * friend 0 then friend 1 — and asking about friend 1 makes `visits.some`
+   * return `false` then `true` instead of `false` once. Same reason as
+   * `SETTLED_LIFTERS`.
+   */
+  VISITS_LOGGED: 2,
+  /**
+   * Which friend `visitRefusals` is asked about, and it is deliberately the
+   * SECOND one.
+   *
+   * `friends.some` then returns `false` for friend 0 before returning `true`
+   * for friend 1, so both arms of that predicate run too. Asking about friend 0
+   * short-circuits on the first element and the `false` arm is never produced.
+   *
+   * The two sites share a key — `receiverRoot` walks past `.friends` and
+   * `.visits` alike — so their two observation lines come out byte-identical.
+   * That is fine and is not the thing the earlier version of this comment
+   * worried about: the pin is an ordered array compared with `toEqual`, so
+   * losing one of the two changes its length and reddens. Distinguishable lines
+   * would have been worth having only at the price of leaving one predicate
+   * one-armed, which is the more expensive hole.
    */
   VISITED_FRIEND: 1,
 });
@@ -10469,15 +10530,15 @@ const MEMBER_CALL_SKIPPABLE_AXIS: ExpansionAxis | undefined = expansionModule.EX
   (axis) => core.mayAccelerate(MEMBER_CALL_ACCELERANT, expansionModule.axisOutput(axis)),
 );
 
-/** A build still running at the idle clock the step below reads. */
-function memberCallBuild(axis: ExpansionAxis): ExpansionBuild {
+/** A build at a given idle completion — above the step it is skippable, below it is not. */
+function memberCallBuild(axis: ExpansionAxis, idleCompletion: number): ExpansionBuild {
   return Object.freeze({
     axis,
     toLevel: MEMBER_CALL_FIXTURE.BUILD_TO_LEVEL,
     paid: core.asGymBucks(0),
     startedAt: ZERO_SECONDS,
-    settledCompletion: core.asUnacceleratedSeconds(MEMBER_CALL_FIXTURE.BUILD_IDLE_SECONDS),
-    idleCompletion: core.asAcceleratedSeconds(MEMBER_CALL_FIXTURE.BUILD_IDLE_SECONDS),
+    settledCompletion: core.asUnacceleratedSeconds(idleCompletion),
+    idleCompletion: core.asAcceleratedSeconds(idleCompletion),
   });
 }
 
@@ -10493,7 +10554,10 @@ function memberCallGym(member: string, record: MemberCallRecord): EmpireGym {
     throw new Error('no expansion axis is accelerable, so the stepGym skip arm cannot be driven');
   }
   const gym = invariant.createEmpireGym();
-  const builds: ExpansionBuild[] = [memberCallBuild(MEMBER_CALL_SKIPPABLE_AXIS)];
+  const builds: ExpansionBuild[] = [
+    memberCallBuild(MEMBER_CALL_SKIPPABLE_AXIS, MEMBER_CALL_FIXTURE.SETTLED_BUILD_IDLE_SECONDS),
+    memberCallBuild(MEMBER_CALL_SKIPPABLE_AXIS, MEMBER_CALL_FIXTURE.BUILD_IDLE_SECONDS),
+  ];
   return Object.freeze({ ...gym, builds: recordOn(builds, member, record) });
 }
 
@@ -10521,7 +10585,9 @@ function memberCallSocialContext(
   member: 'friends' | 'visits',
   record: MemberCallRecord,
 ): SocialContext {
-  const context = socialContextAt([MEMBER_CALL_FIXTURE.VISIT_DAY]);
+  const context = socialContextAt(
+    Array.from({ length: MEMBER_CALL_FIXTURE.VISITS_LOGGED }, () => MEMBER_CALL_FIXTURE.VISIT_DAY),
+  );
   return Object.freeze(
     member === 'friends'
       ? { ...context, friends: recordOn([...context.friends], 'some', record) }
@@ -10574,8 +10640,16 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
     site: 'empireInvariant.ts#composeTrainingIqRate#state.filter x1',
     run: (record: MemberCallRecord): void => {
       const state = stateAt({ rosterSize: MEMBER_CALL_FIXTURE.ROSTER_SIZE, wide: true });
+      // Not `state.roster` as it comes: `rosterOf` settles every lifter at zero,
+      // so the filter's predicate would have taken its `true` arm three times
+      // and its `false` arm never. The last lifter is re-minted a day out.
+      const roster = state.roster.map((lifter, index) =>
+        index < MEMBER_CALL_FIXTURE.SETTLED_LIFTERS
+          ? lifter
+          : lifterAt(lifter.tier, index, 0, EMPIRE_TUNING.SECONDS_PER_DAY),
+      );
       invariant.composeTrainingIqRate(
-        Object.freeze({ ...state, roster: recordOn([...state.roster], 'filter', record) }),
+        Object.freeze({ ...state, roster: recordOn(roster, 'filter', record) }),
         core.createEmpireClock(0, 0),
       );
     },
@@ -10710,10 +10784,11 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   /** One call of the instrumented method per subject. */
   CALLS: 13,
   /**
-   * Callback invocations across every subject: 4 + 30, the second number being
-   * E23's ten sites. Per site it is in `MEMBER_CALL_SITE_OBSERVATIONS`.
+   * Callback invocations across every subject: 4 + 33, the second number being
+   * E23's ten sites. Per site — and per ARM, which is the half a total cannot
+   * carry — it is in `MEMBER_CALL_SITE_OBSERVATIONS`.
    */
-  CALLBACK_CALLS: 34,
+  CALLBACK_CALLS: 37,
   /**
    * Strings reachable from the non-function arguments.
    *
@@ -10732,7 +10807,7 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
    * so the return side now carries strings the shipped modules chose rather
    * than four booleans.
    */
-  RETURNED: 39,
+  RETURNED: 46,
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
@@ -10761,29 +10836,36 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
  * whoever owns `src/game/`.
  */
 const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
-  'empireCore.ts#idleLedger#ledger.filter x1 calls=1 callbacks=2 handed=0 returned=0',
-  'empireCore.ts#progressionLedger#ledger.filter x1 calls=1 callbacks=2 handed=0 returned=0',
-  'engagement.ts#moreEngagedByTrainedDay#history.includes x1 calls=1 callbacks=0 handed=0 returned=0',
-  'empireInvariant.ts#progressionDayLedger#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0',
-  'empireInvariant.ts#idleDayLedger#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0',
-  'empireInvariant.ts#outputSeries#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0',
-  'empireInvariant.ts#composeTrainingIqRate#state.filter x1 calls=1 callbacks=3 handed=0 returned=0',
-  'empireInvariant.ts#savingForPhysio#order.includes x1 calls=1 callbacks=0 handed=1 returned=0',
-  'empireInvariant.ts#stepGym#gym.find x1 calls=1 callbacks=1 handed=0 returned=0',
-  'empireInvariant.ts#stepGym#gym.map x1 calls=1 callbacks=1 handed=0 returned=7',
-  'social.ts#rankLeaderboard#entries.map x1 calls=1 callbacks=4 handed=0 returned=32',
-  'social.ts#visitRefusals#context.some x1 calls=1 callbacks=2 handed=0 returned=0',
-  'social.ts#visitRefusals#context.some x1 calls=1 callbacks=1 handed=0 returned=0',
+  'empireCore.ts#idleLedger#ledger.filter x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
+  'empireCore.ts#progressionLedger#ledger.filter x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
+  'engagement.ts#moreEngagedByTrainedDay#history.includes x1 calls=1 callbacks=0 handed=0 returned=0 verdicts=none',
+  'empireInvariant.ts#progressionDayLedger#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0 verdicts=falsex4,truex2',
+  'empireInvariant.ts#idleDayLedger#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0 verdicts=falsex2,truex4',
+  'empireInvariant.ts#outputSeries#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0 verdicts=falsex5,truex1',
+  'empireInvariant.ts#composeTrainingIqRate#state.filter x1 calls=1 callbacks=3 handed=0 returned=0 verdicts=falsex1,truex2',
+  'empireInvariant.ts#savingForPhysio#order.includes x1 calls=1 callbacks=0 handed=1 returned=0 verdicts=none',
+  'empireInvariant.ts#stepGym#gym.find x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
+  'empireInvariant.ts#stepGym#gym.map x1 calls=1 callbacks=2 handed=0 returned=14 verdicts=objectx2',
+  'social.ts#rankLeaderboard#entries.map x1 calls=1 callbacks=4 handed=0 returned=32 verdicts=objectx4',
+  'social.ts#visitRefusals#context.some x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
+  'social.ts#visitRefusals#context.some x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
 ]);
 
 /** One site's drive, as the line `MEMBER_CALL_SITE_OBSERVATIONS` pins. */
 function memberCallObservation(result: MemberCallResult): string {
+  const tally = new Map<string, number>();
+  for (const shape of result.record.verdicts) tally.set(shape, (tally.get(shape) ?? 0) + 1);
+  const verdicts = [...tally.entries()]
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+    .map(([shape, count]) => `${shape}x${String(count)}`)
+    .join(',');
   return [
     result.site,
     `calls=${String(result.record.calls)}`,
     `callbacks=${String(result.record.callbackCalls)}`,
     `handed=${String(result.record.handed.length)}`,
     `returned=${String(result.record.returned.length)}`,
+    `verdicts=${verdicts === '' ? 'none' : verdicts}`,
   ].join(' ');
 }
 
