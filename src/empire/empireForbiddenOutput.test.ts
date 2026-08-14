@@ -10325,17 +10325,33 @@ describe('the assembly walk bites — every binding whose value is not in its in
  * receiver and looks at what arrives.
  *
  * WHAT THIS PASS COVERS, AND THE RESIDUAL IS COUNTED RATHER THAN WAVED AT.
- * Three of the thirteen are driven; ten are not, and they are enumerated by
- * name in `MEMBER_CALL_PASS_UNDRIVEN` with a set equality against
- * `DECLARED_MEMBER_CALLS_ON_PARAMETERS` in both directions. A fourteenth site
- * arriving is therefore a decision somebody signs on one list or the other,
- * rather than a silent hole — which is E15's overflow-pass shape applied to a
- * drive instead of to a domain.
+ * All thirteen are driven; `MEMBER_CALL_PASS_UNDRIVEN` is empty and is still
+ * joined set-equal against `DECLARED_MEMBER_CALLS_ON_PARAMETERS` in both
+ * directions. A fourteenth site arriving is therefore a decision somebody signs
+ * on one list or the other, rather than a silent hole — which is E15's
+ * overflow-pass shape applied to a drive instead of to a domain.
  *
- * The undriven ten are undriven for one reason and it is fixture cost, not
- * reachability: each needs a whole `EmpireGym`, `ExpansionContext` or
- * `SocialContext` built at a state where the site's branch runs. That is real
- * work and it is stated as owed rather than as impossible.
+ * IT WAS THREE OF THIRTEEN FOR A ROUND, AND THE SENTENCE THAT EXCUSED THE TEN
+ * WAS WRONG IN THE REASSURING DIRECTION. It said each of them "needs a whole
+ * `EmpireGym`, `ExpansionContext` or `SocialContext` built at a state where the
+ * site's branch runs", and that the three driven ones were chosen by fixture
+ * cost. The second half was true and is the reason this is worth writing down:
+ * the selection criterion had nothing to do with risk, and when the cost was
+ * actually paid it turned out that SEVEN of the ten needed no such fixture.
+ * Three take a plain `EmpireDayEntry[]` this file already had as `DAY_LEDGER`,
+ * one takes the shipped `EXPANSION_AXES` array, one takes a roster off
+ * `stateAt`, one takes the four `GymSnapshot`s the drive already ranks, and the
+ * two `visitRefusals` sites take `socialContextAt`, which was already in this
+ * file. Only the two `stepGym` sites needed anything built, and that is
+ * `memberCallGym` — a gym holding one build still in flight.
+ *
+ * WHAT THE WIDENING BOUGHT, AS A NUMBER RATHER THAN AS COVERAGE. The three-site
+ * pass observed `handed=0` and `returned=0`: its "no banned name at any driven
+ * site" verdict was a zero over an empty set of observed strings, which is this
+ * file's own definition of an empty domain. Thirteen sites observe 34 callback
+ * invocations and 40 strings, 39 of them on M42's return channel, out of
+ * `rankLeaderboard`'s and `stepGym`'s real payloads. The per-site numbers are
+ * pinned in `MEMBER_CALL_SITE_OBSERVATIONS`.
  */
 interface MemberCallRecord {
   /** Strings reachable from every non-function argument the method received. */
@@ -10402,6 +10418,117 @@ const memberCallLedger = (): EmpireLedgerEntry[] => [
   Object.freeze({ at: core.asUnacceleratedSeconds(1), output: 'training-iq', amount: 2 }),
 ];
 
+/**
+ * Every number the added subjects need, in one place.
+ *
+ * Fixture parameters rather than game feel, and named anyway: a step whose
+ * seconds drift past a build's idle completion stops reaching `stepGym`'s skip
+ * arm, and the pass would report that as a smaller callback count rather than
+ * as a hole. `SKIP_STEP_SECONDS < BUILD_IDLE_SECONDS` is the whole precondition
+ * of the `gym.map` site and it is asserted below rather than left implied.
+ */
+const MEMBER_CALL_FIXTURE = Object.freeze({
+  /** The roster `composeTrainingIqRate` filters. Every lifter settles at 0, so all of them pass. */
+  ROSTER_SIZE: 3,
+  /** `stepGym`'s `wallSeconds`. Below `BUILD_IDLE_SECONDS`, which is what makes a build skippable. */
+  SKIP_STEP_SECONDS: EMPIRE_TUNING.SECONDS_PER_DAY,
+  /** The build's `idleCompletion`, in accelerated seconds. */
+  BUILD_IDLE_SECONDS: EMPIRE_TUNING.SECONDS_PER_DAY * 2,
+  /** The build's level, which nothing here reads for anything but a shape. */
+  BUILD_TO_LEVEL: 1,
+  /** The day the one visit in the social fixture lands on, and the day `visitRefusals` is asked about. */
+  VISIT_DAY: 1,
+  /**
+   * Which friend `visitRefusals` is asked about, and it is deliberately NOT the
+   * one the fixture's single visit is against.
+   *
+   * `friends.some` then scans both friends before matching and `visits.some`
+   * scans its one visit without matching, so the two sites — which share a key,
+   * because `receiverRoot` walks past `.friends` and `.visits` alike — produce
+   * DIFFERENT observation lines. With friend 0 both read `callbacks=1` and the
+   * pinned pair below would have been two identical strings, which cannot tell
+   * a lost subject from a duplicated one.
+   */
+  VISITED_FRIEND: 1,
+});
+
+/**
+ * The accelerant and axis a `stepGym` skip needs, DERIVED rather than written.
+ *
+ * `stepGym`'s find arm only produces a skippable build when `mayAccelerate`
+ * says the accelerant's licence covers that axis's output, so hardcoding an
+ * axis would leave the `gym.map` subject silently undriven the day a licence
+ * moves. The pair is read out of the shipped tables and the search's success is
+ * itself asserted, so a licence that stops covering anything is a red line
+ * naming this fixture rather than a callback count that quietly went to zero.
+ */
+const MEMBER_CALL_ACCELERANT: core.PurchasableAccelerant =
+  core.PURCHASABLE_ACCELERANTS[0] as core.PurchasableAccelerant;
+
+const MEMBER_CALL_SKIPPABLE_AXIS: ExpansionAxis | undefined = expansionModule.EXPANSION_AXES.find(
+  (axis) => core.mayAccelerate(MEMBER_CALL_ACCELERANT, expansionModule.axisOutput(axis)),
+);
+
+/** A build still running at the idle clock the step below reads. */
+function memberCallBuild(axis: ExpansionAxis): ExpansionBuild {
+  return Object.freeze({
+    axis,
+    toLevel: MEMBER_CALL_FIXTURE.BUILD_TO_LEVEL,
+    paid: core.asGymBucks(0),
+    startedAt: ZERO_SECONDS,
+    settledCompletion: core.asUnacceleratedSeconds(MEMBER_CALL_FIXTURE.BUILD_IDLE_SECONDS),
+    idleCompletion: core.asAcceleratedSeconds(MEMBER_CALL_FIXTURE.BUILD_IDLE_SECONDS),
+  });
+}
+
+/**
+ * A gym whose `builds` array watches ONE member.
+ *
+ * The array is copied before it is instrumented, because `recordOn` defines an
+ * own property and `createEmpireGym` hands back a frozen one. The gym around it
+ * is re-frozen, so the subject is handed the same shape the shipped caller is.
+ */
+function memberCallGym(member: string, record: MemberCallRecord): EmpireGym {
+  if (MEMBER_CALL_SKIPPABLE_AXIS === undefined) {
+    throw new Error('no expansion axis is accelerable, so the stepGym skip arm cannot be driven');
+  }
+  const gym = invariant.createEmpireGym();
+  const builds: ExpansionBuild[] = [memberCallBuild(MEMBER_CALL_SKIPPABLE_AXIS)];
+  return Object.freeze({ ...gym, builds: recordOn(builds, member, record) });
+}
+
+/** One step through `stepGym`'s build-skip arm, watching one member of `gym.builds`. */
+function memberCallStep(member: string, record: MemberCallRecord): void {
+  invariant.stepGym(
+    memberCallGym(member, record),
+    policyAt(EMPIRE_SWEEP_CHECK_INS_PER_DAY),
+    MEMBER_CALL_FIXTURE.SKIP_STEP_SECONDS,
+    MEMBER_CALL_ACCELERANT,
+    EMPIRE_TUNING.TIMER_SKIP_SECONDS_PER_GRANT,
+  );
+}
+
+/**
+ * A social context whose `friends` or whose `visits` watches `some`.
+ *
+ * Two subjects and not one, because `visitRefusals` has TWO `context.some`
+ * calls and the enumeration keys them identically — `receiverRoot` walks past
+ * `.friends` and `.visits` to the parameter. Instrumenting both arrays under
+ * one record would have reported two calls at one site and left the join's
+ * duplicate entry standing for nothing.
+ */
+function memberCallSocialContext(
+  member: 'friends' | 'visits',
+  record: MemberCallRecord,
+): SocialContext {
+  const context = socialContextAt([MEMBER_CALL_FIXTURE.VISIT_DAY]);
+  return Object.freeze(
+    member === 'friends'
+      ? { ...context, friends: recordOn([...context.friends], 'some', record) }
+      : { ...context, visits: recordOn([...context.visits], 'some', record) },
+  );
+}
+
 const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
   Object.freeze({
     site: 'empireCore.ts#idleLedger#ledger.filter x1',
@@ -10422,27 +10549,112 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
       engagementModule.moreEngagedByTrainedDay({ attended: [true, false], trainedDays }, 9);
     },
   }),
+  // --- E23: the ten that were undriven, and the reason they were undriven was
+  // fixture cost. Seven of them cost an array literal or a fixture this file
+  // already had; the two `stepGym` sites cost a gym with a build in flight.
+  Object.freeze({
+    site: 'empireInvariant.ts#progressionDayLedger#entries.filter x1',
+    run: (record: MemberCallRecord): void => {
+      invariant.progressionDayLedger(recordOn([...DAY_LEDGER], 'filter', record));
+    },
+  }),
+  Object.freeze({
+    site: 'empireInvariant.ts#idleDayLedger#entries.filter x1',
+    run: (record: MemberCallRecord): void => {
+      invariant.idleDayLedger(recordOn([...DAY_LEDGER], 'filter', record));
+    },
+  }),
+  Object.freeze({
+    site: 'empireInvariant.ts#outputSeries#entries.filter x1',
+    run: (record: MemberCallRecord): void => {
+      invariant.outputSeries(recordOn([...DAY_LEDGER], 'filter', record), core.EMPIRE_OUTPUTS[0] as EmpireOutput);
+    },
+  }),
+  Object.freeze({
+    site: 'empireInvariant.ts#composeTrainingIqRate#state.filter x1',
+    run: (record: MemberCallRecord): void => {
+      const state = stateAt({ rosterSize: MEMBER_CALL_FIXTURE.ROSTER_SIZE, wide: true });
+      invariant.composeTrainingIqRate(
+        Object.freeze({ ...state, roster: recordOn([...state.roster], 'filter', record) }),
+        core.createEmpireClock(0, 0),
+      );
+    },
+  }),
+  Object.freeze({
+    site: 'empireInvariant.ts#savingForPhysio#order.includes x1',
+    run: (record: MemberCallRecord): void => {
+      invariant.savingForPhysio(
+        recordOn([...expansionModule.EXPANSION_AXES], 'includes', record),
+        contextAt(EMPIRE_TUNING.RIVAL_REWARD_GYM_BUCKS, EMPIRE_TUNING.REPUTATION_MAX, Object.freeze([])),
+      );
+    },
+  }),
+  Object.freeze({
+    site: 'empireInvariant.ts#stepGym#gym.find x1',
+    run: (record: MemberCallRecord): void => {
+      memberCallStep('find', record);
+    },
+  }),
+  Object.freeze({
+    site: 'empireInvariant.ts#stepGym#gym.map x1',
+    run: (record: MemberCallRecord): void => {
+      memberCallStep('map', record);
+    },
+  }),
+  Object.freeze({
+    site: 'social.ts#rankLeaderboard#entries.map x1',
+    run: (record: MemberCallRecord): void => {
+      socialModule.rankLeaderboard(
+        recordOn([OWN_GYM, ...FRIENDS, RIVAL_GYM], 'map', record),
+        socialModule.LEADERBOARD_METRICS[0],
+        EMPIRE_TUNING.LEADERBOARD_SCOPES[0],
+      );
+    },
+  }),
+  Object.freeze({
+    site: 'social.ts#visitRefusals#context.some x1',
+    run: (record: MemberCallRecord): void => {
+      socialModule.visitRefusals(
+        memberCallSocialContext('friends', record),
+        core.asGymId(`${SENTINELS.FRIEND_GYM_ID}-${String(MEMBER_CALL_FIXTURE.VISITED_FRIEND)}`),
+        socialModule.asCalendarDay(MEMBER_CALL_FIXTURE.VISIT_DAY),
+      );
+    },
+  }),
+  Object.freeze({
+    site: 'social.ts#visitRefusals#context.some x1',
+    run: (record: MemberCallRecord): void => {
+      socialModule.visitRefusals(
+        memberCallSocialContext('visits', record),
+        core.asGymId(`${SENTINELS.FRIEND_GYM_ID}-${String(MEMBER_CALL_FIXTURE.VISITED_FRIEND)}`),
+        socialModule.asCalendarDay(MEMBER_CALL_FIXTURE.VISIT_DAY),
+      );
+    },
+  }),
 ]);
 
 /**
- * The ten sites this pass does NOT drive, by name.
+ * The sites this pass does NOT drive, by name. It is empty, and that is E23.
  *
  * Not a count and not a percentage: the same key the enumeration uses, so the
  * join below is a set equality in both directions and a site cannot be quietly
- * dropped off one list without appearing on the other.
+ * dropped off one list without appearing on the other. An empty list is the one
+ * state where that join says everything, so `MEMBER_CALL_PASS_UNDRIVEN.length`
+ * is still pinned below — at zero — rather than deleted along with the members.
+ *
+ * WHAT THE TEN COST, MEASURED, BECAUSE THE SENTENCE THAT EXCUSED THEM WAS
+ * WRONG IN THE REASSURING DIRECTION. The docstring above used to say each of
+ * the ten "needs a whole `EmpireGym`, `ExpansionContext` or `SocialContext`
+ * built at a state where the site's branch runs". Seven of the ten needed no
+ * such thing: three take a plain `EmpireDayEntry[]` this file already had as
+ * `DAY_LEDGER`, one takes the shipped `EXPANSION_AXES` array, one takes a
+ * roster off the `stateAt` builder, one takes the same four `GymSnapshot`s the
+ * drive already ranks, and the two `visitRefusals` sites take
+ * `socialContextAt`, which is forty lines up. Only the two `stepGym` sites
+ * needed anything built: a gym holding one build still in flight, which is
+ * `memberCallGym` and is nine lines.
  */
-const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([
-  'empireInvariant.ts#composeTrainingIqRate#state.filter x1',
-  'empireInvariant.ts#idleDayLedger#entries.filter x1',
-  'empireInvariant.ts#outputSeries#entries.filter x1',
-  'empireInvariant.ts#progressionDayLedger#entries.filter x1',
-  'empireInvariant.ts#savingForPhysio#order.includes x1',
-  'empireInvariant.ts#stepGym#gym.find x1',
-  'empireInvariant.ts#stepGym#gym.map x1',
-  'social.ts#rankLeaderboard#entries.map x1',
-  'social.ts#visitRefusals#context.some x1',
-  'social.ts#visitRefusals#context.some x1',
-]);
+const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([]);
 
 interface MemberCallResult {
   readonly site: string;
@@ -10494,24 +10706,94 @@ const MEMBER_CALL_TRIPWIRE: readonly MemberCallSubject[] = Object.freeze([
 
 /** What the pass measured. Counts, not bounds, so an empty drive reports itself. */
 const MEMBER_CALL_PASS_CENSUS = Object.freeze({
-  SUBJECTS: 3,
+  SUBJECTS: 13,
   /** One call of the instrumented method per subject. */
-  CALLS: 3,
-  /** Two ledger entries each for the two `filter` subjects; `includes` calls no callback. */
-  CALLBACK_CALLS: 4,
-  /** Strings reachable from the non-function arguments: the one `includes` was handed is a number, so zero. */
-  HANDED: 0,
-  /** Values the predicates returned: four booleans, which carry no strings. */
-  RETURNED: 0,
+  CALLS: 13,
+  /**
+   * Callback invocations across every subject: 4 + 30, the second number being
+   * E23's ten sites. Per site it is in `MEMBER_CALL_SITE_OBSERVATIONS`.
+   */
+  CALLBACK_CALLS: 34,
+  /**
+   * Strings reachable from the non-function arguments.
+   *
+   * IT WAS ZERO FOR A ROUND AND THAT WAS THE HALF NOBODY LOOKED AT. With three
+   * subjects the whole pass observed no string on either channel: the `zero
+   * findings` verdict was a zero over an empty set of observed strings, which
+   * is the shape this file calls an empty domain everywhere else. The argument
+   * channel is non-empty now because `savingForPhysio` is handed an axis name.
+   */
+  HANDED: 1,
+  /**
+   * Values the callbacks RETURNED, deep-scanned for strings. M42's channel.
+   *
+   * Non-zero for the same reason: `rankLeaderboard`'s `map` hands back a real
+   * `GymSnapshot` per entry and `stepGym`'s hands back a real `ExpansionBuild`,
+   * so the return side now carries strings the shipped modules chose rather
+   * than four booleans.
+   */
+  RETURNED: 39,
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
 });
 
+/**
+ * What each site's drive actually observed, per site, in subject order.
+ *
+ * THE TOTALS ABOVE CANNOT SAY WHICH SITE WENT QUIET. A subject whose branch
+ * stops running takes the total down by its own share and the assertion reads
+ * `expected 41 to be 47` — true, and it names nothing. These lines are the
+ * per-site version of the same measurement, and they are what makes "prove the
+ * branch runs" a pin rather than a claim: `empireInvariant.ts#stepGym#gym.map
+ * x1` is only reachable when a build is still in flight AND the accelerant's
+ * licence covers its axis, and if either stops holding, the row goes to
+ * `calls=0` and this list names it.
+ *
+ * the paragraph above is the whole of this round's move in
+ * `GUARANTEE_COVERAGE.TREE_WIDE`, 229 -> 230, and it is disclosed here rather
+ * than reworded away. measured the way that constant's own comment asks for:
+ * lower-casing that one sentence and re-running `states what fraction of the
+ * tree it actually covers` gives 229 and green, and every other paragraph this
+ * round added contributes zero. it is a guarantee with a named mechanism — the
+ * mechanism is the `toEqual` two lines into the test below — rather than a
+ * method note, so the bump is the honest reading and the pin belongs to
+ * whoever owns `src/game/`.
+ */
+const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
+  'empireCore.ts#idleLedger#ledger.filter x1 calls=1 callbacks=2 handed=0 returned=0',
+  'empireCore.ts#progressionLedger#ledger.filter x1 calls=1 callbacks=2 handed=0 returned=0',
+  'engagement.ts#moreEngagedByTrainedDay#history.includes x1 calls=1 callbacks=0 handed=0 returned=0',
+  'empireInvariant.ts#progressionDayLedger#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0',
+  'empireInvariant.ts#idleDayLedger#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0',
+  'empireInvariant.ts#outputSeries#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0',
+  'empireInvariant.ts#composeTrainingIqRate#state.filter x1 calls=1 callbacks=3 handed=0 returned=0',
+  'empireInvariant.ts#savingForPhysio#order.includes x1 calls=1 callbacks=0 handed=1 returned=0',
+  'empireInvariant.ts#stepGym#gym.find x1 calls=1 callbacks=1 handed=0 returned=0',
+  'empireInvariant.ts#stepGym#gym.map x1 calls=1 callbacks=1 handed=0 returned=7',
+  'social.ts#rankLeaderboard#entries.map x1 calls=1 callbacks=4 handed=0 returned=32',
+  'social.ts#visitRefusals#context.some x1 calls=1 callbacks=2 handed=0 returned=0',
+  'social.ts#visitRefusals#context.some x1 calls=1 callbacks=1 handed=0 returned=0',
+]);
+
+/** One site's drive, as the line `MEMBER_CALL_SITE_OBSERVATIONS` pins. */
+function memberCallObservation(result: MemberCallResult): string {
+  return [
+    result.site,
+    `calls=${String(result.record.calls)}`,
+    `callbacks=${String(result.record.callbackCalls)}`,
+    `handed=${String(result.record.handed.length)}`,
+    `returned=${String(result.record.returned.length)}`,
+  ].join(' ');
+}
+
 describe('the member-call pass — what a caller-supplied method is actually handed', () => {
   it('drives the subjects it declares, and the drive is not empty', () => {
     const results = memberCallPass(MEMBER_CALL_SUBJECTS);
     expect(results.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
+    // PER SITE FIRST, TOTALS SECOND, for the reason the sibling test below
+    // already records: a total that moves names no site.
+    expect(results.map(memberCallObservation)).toEqual(MEMBER_CALL_SITE_OBSERVATIONS);
     const calls = results.reduce((total, result) => total + result.record.calls, 0);
     const callbackCalls = results.reduce((total, result) => total + result.record.callbackCalls, 0);
     expect(calls).toBe(MEMBER_CALL_PASS_CENSUS.CALLS);
@@ -10563,11 +10845,18 @@ describe('the member-call pass — what a caller-supplied method is actually han
     // And the two lists do not overlap, so a site cannot be counted as covered
     // and excused at the same time.
     for (const site of driven) expect(MEMBER_CALL_PASS_UNDRIVEN).not.toContain(site);
-    // The residual as a number, beside the coverage as a number. Ten of
-    // thirteen is what this round paid for, and writing it down is what stops
-    // the next reader taking a green pass for a covered arm.
-    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(10);
+    // The residual as a number, beside the coverage as a number. It is zero of
+    // thirteen now, and the number stays pinned rather than being deleted with
+    // the members: an empty excuse list is the one state where the set equality
+    // above is a complete statement, so it is worth a line that reddens when it
+    // stops being empty.
+    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(0);
     expect(driven.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
+    // Both `visitRefusals` sites are driven, and they share a key. A `Set` of
+    // the driven sites would have quietly collapsed them, so the count of that
+    // key is pinned rather than its presence — the shape this file already
+    // demands of a source scan whose pattern has more than one witness.
+    expect(driven.filter((site) => site === 'social.ts#visitRefusals#context.some x1').length).toBe(2);
   });
 });
 
