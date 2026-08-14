@@ -7437,6 +7437,17 @@ const THENABLE_MEMBER = 'then';
 const ALIAS_HOPS_MAX = 64;
 
 /**
+ * How deep `typeCouldHoldAFunction` looks before it answers `false`.
+ *
+ * A cost knob and a termination guard on a recursive type, the same class as
+ * `ALIAS_HOPS_MAX` above. It is a SCREEN's depth, not a scan's: past it the
+ * member-following arm declines to follow, and what that costs is stated at the
+ * arm rather than here — a closure nested deeper than this inside a returned
+ * member is not recorded and not reported.
+ */
+const MEMBER_TYPE_WALK_MAX_DEPTH = 8;
+
+/**
  * The arms a receiver or a callee can resolve to, enumerated.
  *
  * Every write and every call in the directory lands in exactly one of these,
@@ -7635,18 +7646,56 @@ function channelCensusOf(
    * ITS LIMITS, in the mechanism's own terms, with the catcher for each named:
    *
    *   - A DESTRUCTURING assignment — `({ shape } = source)` — has an
-   *     `ObjectLiteralExpression` on the left, not an identifier, so it is not
-   *     found. What covers it is the `unfollowable` record below: a binding
-   *     with no initializer and no assignment found lands in `freshReceivers`,
-   *     which is a set equality in both directions, so the route arrives as a
-   *     red line naming the identifier rather than as silence.
+   *     `ObjectLiteralExpression` on the left, not an identifier, so no VALUE
+   *     is found for it. It is REPORTED now rather than only unfound: the
+   *     result carries `destructured`, and every caller turns that into an
+   *     `unfollowable` record whatever else it found.
+   *
+   *     THE CATCHER THIS COMMENT NAMED BEFORE WAS SILENCED BY AN INITIALIZER,
+   *     AND THAT WAS MEASURED RATHER THAN NOTICED. It said the route "lands in
+   *     `freshReceivers`", and `names what it still cannot follow` ran that
+   *     claim against `probeDestructuredAssembly` and passed. Both depended on
+   *     `values.length === 0`. `let shape = {} as AssemblyShape; ({ shape } =
+   *     source);` carries no function in its initializer and is not itself a
+   *     route, and it took the catcher to zero while the destructured value
+   *     still arrived: M54, run against the probe with a positive control
+   *     beside it. A declared limit whose named catcher can be switched off by
+   *     an unrelated line is the defect this file exists to stop.
+   *   - A `for (shape of xs)` write, where `shape` is an EXISTING binding
+   *     rather than a fresh `const`, is an assignment with no
+   *     `BinaryExpression` anywhere in it. `xs` is pushed as the value, which
+   *     is one indirection off — the binding takes an ELEMENT of `xs`, not
+   *     `xs` — and is deliberately the same treatment the for-of arm in
+   *     `returnedFunctions` already gives a for-of DECLARATION, so the two
+   *     spellings of the same loop are read the same way.
+   *   - A `for (shape in xs)` write assigns a KEY, which is a `string`. A
+   *     string carries no function and no property holding one, so nothing is
+   *     pushed and nothing is lost. That is a fact about the language rather
+   *     than a hope about the corpus, and it is the one limit here that needs
+   *     no catcher.
    *   - A write from OUTSIDE the declaration's scope cannot exist for a local,
    *     because a `let` inside a function is not addressable from anywhere else
    *     — that is a language property rather than a claim about this walk. A
    *     module-level `let` is scoped to the source file and this walks the
    *     whole file, so the same holds there.
+   *
+   *     THAT SENTENCE WAS THE ONE CLAIM E22 ARGUED AND DID NOT PLANT AGAINST,
+   *     AND E23 PLANTED AGAINST IT. It survives: TypeScript refuses assignment
+   *     to an imported binding, so a module-level `let` has no writer outside
+   *     its own file, and a function-scoped `let` has no name outside its
+   *     function. What did NOT survive is the assumption underneath it — that
+   *     the walk's problem is which BINDINGS it can follow. M53 hands the
+   *     caller a closure through a property access, which is not a binding at
+   *     all, and `returnedFunctions` had no arm for it.
    */
-  const assignedValuesTo = (declaration: ts.VariableDeclaration): readonly ts.Expression[] => {
+  interface AssignedValues {
+    /** Expressions written to the binding, in source order. */
+    readonly values: readonly ts.Expression[];
+    /** `true` when a destructuring assignment writes it, whose value this cannot name. */
+    readonly destructured: boolean;
+  }
+
+  const assignedValuesTo = (declaration: ts.VariableDeclaration): AssignedValues => {
     let scope: ts.Node = declaration.getSourceFile();
     for (let at: ts.Node | undefined = declaration.parent; at !== undefined; at = at.parent) {
       if (ts.isFunctionLike(at) || ts.isSourceFile(at)) {
@@ -7655,6 +7704,34 @@ function channelCensusOf(
       }
     }
     const found: ts.Expression[] = [];
+    let destructured = false;
+    /** Whether an assignment target, at any depth of a pattern, is this binding. */
+    const targets = (expression: ts.Expression): boolean => {
+      const target = past(expression);
+      if (!ts.isIdentifier(target)) return false;
+      const resolved = resolvedDeclaration(target);
+      return resolved !== null && bindingHost(resolved) === declaration;
+    };
+    const patternTargets = (pattern: ts.Expression): boolean => {
+      if (ts.isObjectLiteralExpression(pattern)) {
+        return pattern.properties.some((property) => {
+          if (ts.isPropertyAssignment(property)) return patternTargets(property.initializer);
+          if (ts.isShorthandPropertyAssignment(property)) {
+            const value = checker.getShorthandAssignmentValueSymbol(property);
+            const resolved = value?.valueDeclaration ?? value?.declarations?.[0];
+            return resolved !== undefined && bindingHost(resolved) === declaration;
+          }
+          if (ts.isSpreadAssignment(property)) return patternTargets(property.expression);
+          return false;
+        });
+      }
+      if (ts.isArrayLiteralExpression(pattern)) {
+        return pattern.elements.some((element) =>
+          ts.isSpreadElement(element) ? patternTargets(element.expression) : patternTargets(element),
+        );
+      }
+      return targets(pattern);
+    };
     const walkScope = (node: ts.Node): void => {
       if (
         ts.isBinaryExpression(node) &&
@@ -7663,14 +7740,26 @@ function channelCensusOf(
       ) {
         const target = past(node.left);
         if (ts.isIdentifier(target)) {
-          const resolved = resolvedDeclaration(target);
-          if (resolved !== null && bindingHost(resolved) === declaration) found.push(node.right);
+          if (targets(target)) found.push(node.right);
+        } else if (
+          (ts.isObjectLiteralExpression(target) || ts.isArrayLiteralExpression(target)) &&
+          patternTargets(target)
+        ) {
+          destructured = true;
         }
+      }
+      // A LOOP HEAD IS AN ASSIGNMENT WITH NO `=` IN IT. `for (shape of xs)`
+      // where `shape` already exists writes the binding once per iteration and
+      // contains no `BinaryExpression`, so the predicate above never looked at
+      // it. `initializer` is a `VariableDeclarationList` for the `const` form
+      // and an `Expression` for this one, which is the whole discriminator.
+      if (ts.isForOfStatement(node) && !ts.isVariableDeclarationList(node.initializer)) {
+        if (targets(node.initializer)) found.push(node.expression);
       }
       node.forEachChild(walkScope);
     };
     walkScope(scope);
-    return found;
+    return { values: found, destructured };
   };
 
   /**
@@ -7686,6 +7775,71 @@ function channelCensusOf(
    */
   const ambientlyDeclared = (declaration: ts.Node): boolean =>
     declaration.getSourceFile().isDeclarationFile;
+
+  /**
+   * Whether a value of this type can be CALLED.
+   *
+   * Unions are walked because `(() => string) | undefined` has no call
+   * signature of its own — `getCallSignatures()` on a union answers about the
+   * union — and a value that is sometimes a function is a function for this
+   * walk's purposes. Intersections likewise.
+   */
+  const carriesCallSignature = (type: ts.Type): boolean => {
+    if (type.getCallSignatures().length > 0) return true;
+    if (type.isUnionOrIntersection()) return type.types.some(carriesCallSignature);
+    return false;
+  };
+
+  /**
+   * Whether a function could be ANYWHERE inside a value of this type.
+   *
+   * The screen on the member-following arm, and it is a screen rather than a
+   * detector: it decides whether following is worth doing, and a `false` here
+   * means the value provably cannot hand anybody a closure — a string, a
+   * number, an object of those.
+   *
+   * IT SKIPS AMBIENTLY DECLARED MEMBERS, and that is the whole reason it is
+   * usable. Every array type carries `map`, `filter` and `forEach`, all of them
+   * callable and all of them declared in `lib.es5.d.ts`, so a version without
+   * that filter answers `true` for `readonly NpcLifter[]` and for almost every
+   * other shipped type. What is left is the properties this directory declared.
+   */
+  const typeCouldHoldAFunction = (type: ts.Type, depth = 0): boolean => {
+    if (depth > MEMBER_TYPE_WALK_MAX_DEPTH) return false;
+    if (type.getCallSignatures().length > 0) return true;
+    if (type.isUnionOrIntersection()) {
+      return type.types.some((member) => typeCouldHoldAFunction(member, depth + 1));
+    }
+    return type.getProperties().some((symbol) => {
+      const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
+      if (declaration === undefined || ambientlyDeclared(declaration)) return false;
+      return typeCouldHoldAFunction(
+        checker.getTypeOfSymbolAtLocation(symbol, declaration),
+        depth + 1,
+      );
+    });
+  };
+
+  /**
+   * Every expression a plain identifier holds, or `null` when this cannot say.
+   *
+   * `null` is not "nothing" — it is the answer that sends the caller to
+   * `unfollowed`, so a holder this walk cannot resolve arrives as a red line
+   * rather than as a quiet zero.
+   */
+  const literalValuesOf = (holder: ts.Expression): readonly ts.Expression[] | null => {
+    if (!ts.isIdentifier(holder)) return null;
+    const resolved = resolvedDeclaration(holder);
+    if (resolved === null) return null;
+    const host = bindingHost(resolved);
+    if (ambientlyDeclared(host) || !ts.isVariableDeclaration(host)) return null;
+    const written = assignedValuesTo(host);
+    if (written.destructured) return null;
+    return [
+      ...(host.initializer === undefined ? [] : [host.initializer]),
+      ...written.values,
+    ];
+  };
 
   const hoppableInitializer = (root: ts.Expression): boolean => {
     if (!ts.isIdentifier(root)) return false;
@@ -7753,7 +7907,15 @@ function channelCensusOf(
         // inner; if (x) inner = sink; inner.kind = <a banned name>` resolves to
         // the PARAMETER now instead of to a local, which is the difference
         // between `argument-mutation` and a number nobody reads.
-        const assigned = assignedValuesTo(host).map(receiverRoot);
+        const written = assignedValuesTo(host);
+        // A DESTRUCTURE-ASSIGNED BINDING HOLDS A VALUE THIS WALK CANNOT NAME,
+        // and saying `local` about it would be a classification rather than an
+        // admission. `unclassified` is pinned at zero on the shipped tree and
+        // is the arm that means "somebody look at this line".
+        if (written.destructured && written.values.length === 0) {
+          return { kind: 'unclassified', declaration: host, detail: `destructure-assigned:${nameOf(host)}` };
+        }
+        const assigned = written.values.map(receiverRoot);
         const hop = assigned.find((root) => hoppableInitializer(root) && !seen.has(root));
         if (hop !== undefined) {
           seen.add(hop);
@@ -7909,10 +8071,23 @@ function channelCensusOf(
         }
         if (seenAliases.has(host)) return;
         seenAliases.add(host);
+        const written = assignedValuesTo(host);
         const values: ts.Expression[] = [
           ...(host.initializer === undefined ? [] : [host.initializer]),
-          ...assignedValuesTo(host),
+          ...written.values,
         ];
+        // REPORTED WHATEVER ELSE WAS FOUND, which is the half M54 broke. This
+        // arm used to be reached only through `values.length === 0`, so any
+        // initializer at all — including one carrying nothing and being no
+        // route itself — silenced the catcher this walk's declared limit names.
+        // The values are still walked afterwards: a binding can be BOTH
+        // destructure-assigned and hold a closure it was given elsewhere, and
+        // recording one is not a reason to stop looking for the other.
+        if (written.destructured) {
+          unfollowed.push(node);
+          for (const value of values) walk(value, path_);
+          return;
+        }
         if (values.length === 0) {
           // A `for (const x of xs)` BINDING, which is the third shape with no
           // initializer and was found by widening rather than by reasoning:
@@ -8000,9 +8175,15 @@ function channelCensusOf(
               // as `return shape` where `shape` is, and the last round of this
               // walk learned the hard way that the two arms get written apart.
               seenAliases.add(declaration);
+              const written = assignedValuesTo(declaration);
+              // THE SIBLING ARM AGAIN, AND IT IS THE SAME ONE LINE. Written
+              // beside the identifier arm's `destructured` push rather than
+              // after it, because this file's own history is that the second of
+              // two arms gets written while the first still feels solved.
+              if (written.destructured) unfollowed.push(property.name);
               const values: ts.Expression[] = [
                 ...(declaration.initializer === undefined ? [] : [declaration.initializer]),
-                ...assignedValuesTo(declaration),
+                ...written.values,
               ];
               if (values.length === 0) unfollowed.push(property.name);
               for (const assigned of values) walk(assigned, `${path_}.${name}`);
@@ -8025,6 +8206,122 @@ function channelCensusOf(
         node.expression.name.text === 'freeze'
       ) {
         for (const argument of node.arguments) walk(argument, path_);
+        return;
+      }
+      // THE `else` ON THE NODE-KIND AXIS, WHICH IS WHERE THE FIFTEENTH BYPASS
+      // WENT THROUGH. Every arm above is `if (ts.isX(node))`, and there was no
+      // final branch — so an expression whose kind is not one of the eight was
+      // dropped with neither a `found` nor an `unfollowed`. `unfollowed` is
+      // real and is reached only from INSIDE the identifier arm, so it covered
+      // identifiers this walk could not resolve and said nothing about
+      // expressions it never classified. M53 is `peek: HOLDER.peek` in a
+      // returned literal: a property access, which is the commonest expression
+      // in the language, handing the caller a closure that yields the name.
+      //
+      // IT ASKS THE CHECKER RATHER THAN ENUMERATING A NINTH KIND, because a
+      // ninth kind is what the last three repairs to this walk each were. The
+      // question "is the value at this node callable" is answered by the type,
+      // so element access, `await`, a tagged template and every shape nobody
+      // has thought of are the same question — and a node whose type has no
+      // call signature cannot be a closure however it is spelled.
+      //
+      // A MEMBER WHOSE OWN TYPE IS NOT CALLABLE IS NOT THE END OF IT, and that
+      // was measured rather than reasoned. `return NESTED.inner`, where `inner`
+      // holds `{ peek: () => … }`, is a member access whose type is an object,
+      // and the caller can still call `.peek()`. The first version of this arm
+      // stopped at the call-signature question and left that route silent — the
+      // same defect one level down from the one it had just closed, which is
+      // this file's most-repeated finding.
+      //
+      // So the member is FOLLOWED when it is not callable: the accessed name is
+      // resolved through the checker, and where its declaration is a property
+      // assignment or a variable the walk continues into it by member path.
+      // Where the name resolves to a TYPE's property rather than a value's —
+      // `const NESTED: { readonly inner: T } = { … }` binds `inner` to the
+      // annotation's `PropertySignature`, which has no initializer — the walk
+      // falls back to the HOLDER and picks the matching property out of it.
+      //
+      // ITS LIMIT, in the mechanism's own terms, with the catcher named: a
+      // holder this walk cannot resolve to a literal in this program — a
+      // parameter's field, an imported const with a computed value, a member of
+      // a call's result — is not followed. It lands in `unfollowed`, so it
+      // arrives as a `freshReceivers` line naming the file, the line and the
+      // identifier rather than as silence. That list is a set equality in both
+      // directions.
+      if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
+        const name = ts.isPropertyAccessExpression(node)
+          ? node.name.text
+          : ts.isStringLiteralLike(node.argumentExpression)
+            ? node.argumentExpression.text
+            : '[]';
+        const memberPath = path_ === '' ? `.${name}` : path_;
+        if (carriesCallSignature(checker.getTypeAtLocation(node))) {
+          found.push(memberPath);
+          return;
+        }
+        // A member that cannot hold a function anywhere inside it is not a
+        // route and is not an admission either. `entry.output` is a string and
+        // `list.length` is a number; following them would report nothing and
+        // recording them would flood the census.
+        if (!typeCouldHoldAFunction(checker.getTypeAtLocation(node))) return;
+        const symbol = checker.getSymbolAtLocation(node);
+        const resolved = symbol?.valueDeclaration ?? symbol?.declarations?.[0];
+        if (resolved !== undefined && !ambientlyDeclared(resolved)) {
+          if (ts.isPropertyAssignment(resolved)) {
+            if (!seenAliases.has(resolved)) {
+              seenAliases.add(resolved);
+              walk(resolved.initializer, memberPath);
+            }
+            return;
+          }
+          if (ts.isVariableDeclaration(resolved)) {
+            if (!seenAliases.has(resolved)) {
+              seenAliases.add(resolved);
+              const written = assignedValuesTo(resolved);
+              if (written.destructured) unfollowed.push(node.expression as ts.Identifier);
+              // Not written as `for (const x of [ … ])`: `declares every literal
+              // for-of axis` scans this file's source for exactly that shape and
+              // would read a walk over expressions as an undeclared numeric domain.
+              const memberValues: ts.Expression[] = [
+                ...(resolved.initializer === undefined ? [] : [resolved.initializer]),
+                ...written.values,
+              ];
+              for (const value of memberValues) walk(value, memberPath);
+            }
+            return;
+          }
+        }
+        // THE FALLBACK, AND THE ARM `probeNestedMemberClosure` IS THE MUTANT
+        // FOR. The name resolved to a type's property, or to nothing; the
+        // holder is where the value actually is.
+        const holder = past(node.expression);
+        const holderValues = literalValuesOf(holder);
+        if (holderValues === null) {
+          if (ts.isIdentifier(holder)) unfollowed.push(holder);
+          return;
+        }
+        for (const value of holderValues) {
+          const literal = past(value);
+          if (!ts.isObjectLiteralExpression(literal)) continue;
+          for (const property of literal.properties) {
+            const propertyName =
+              property.name === undefined ? '' : property.name.getText(property.getSourceFile());
+            if (propertyName !== name) continue;
+            if (ts.isPropertyAssignment(property)) walk(property.initializer, memberPath);
+            else if (ts.isMethodDeclaration(property)) found.push(memberPath);
+            else if (ts.isShorthandPropertyAssignment(property)) walk(property.name, memberPath);
+          }
+        }
+        return;
+      }
+      // AND THE ELSE UNDER THE ELSE. A node kind neither classified above nor a
+      // member access is recorded when its TYPE says a function could be in
+      // there, and ignored when it says one could not. `return a + b` is a
+      // string, `return list.length` is a number, and neither can be a closure
+      // — so this stays quiet on the shipped tree instead of flooding
+      // `freshReceivers`, which is what a bare catch-all would have done.
+      if (carriesCallSignature(checker.getTypeAtLocation(node))) {
+        found.push(path_ === '' ? 'return' : path_);
       }
     };
     walk(expression, at);
@@ -10069,6 +10366,33 @@ describe('the channel census — the routes a string can leave this directory by
  * `freshReceivers`, and the test below RUNS the route against that catcher
  * instead of asserting it — which is the only version of a declared limit this
  * codebase has found to be worth anything.
+ *
+ * FIVE MORE ARRIVED WITH E23, AND FOUR OF THEM ARE A DIFFERENT AXIS FROM THE
+ * SEVEN ABOVE. Every one of those seven is a BINDING whose value the walk could
+ * not follow. These are expressions the walk never classified at all, because
+ * its `walk` was a chain of `if (ts.isX(node))` arms with no final branch:
+ *
+ *   8. `probeMemberAccessClosure` — `{ peek: HOLDER.peek }`. M53, the fifteenth
+ *      bypass, and it was planted into `production.ts` and driven before it was
+ *      written down here: `peek()` printed `covered-day` with the whole guard
+ *      file green but for three counters.
+ *   9. `probeElementAccessClosure` — the same through `xs[0]!.peek`, so the
+ *      repair is shown to be about the TYPE being callable rather than about
+ *      one more node kind.
+ *  10. `probeNestedMemberClosure` — `return NESTED.inner`, where the member's
+ *      own type is an object and the closure is one level further in. The first
+ *      version of the repair stopped at "is this member callable" and left this
+ *      silent, which is this file's most-repeated finding happening inside the
+ *      fix for the finding.
+ *  11. `probeForOfAssignedClosure` — `for (shape of xs)` where `shape` already
+ *      exists. An assignment with no `=` anywhere in it, which
+ *      `assignedValuesTo`'s `BinaryExpression` predicate could not see.
+ *  12. `probeDestructuredWithInertInitializer` — the DECLARED limit above, with
+ *      an initializer that carries nothing. Its named catcher fired only on
+ *      `values.length === 0`, so an inert `{} as AssemblyShape` switched the
+ *      catcher off while the destructured value still arrived. It is in
+ *      `freshReceivers` now because the destructure is REPORTED rather than
+ *      merely unfound.
  */
 const ASSEMBLY_PROBE_SOURCE = `import { EMPIRE_FORBIDDEN_OUTPUTS } from './empireCore';
 
@@ -10157,6 +10481,40 @@ export function probeAssembledCallbackThroughUndefined(
   }
   return (call as (slot: number, label?: string) => boolean)(0, EMPIRE_FORBIDDEN_OUTPUTS[0]);
 }
+
+const ASSEMBLY_HOLDER: AssemblyShape = {
+  peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0],
+};
+
+const ASSEMBLY_NESTED: { readonly inner: AssemblyShape } = {
+  inner: { peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] },
+};
+
+export function probeMemberAccessClosure(): AssemblyShape {
+  return Object.freeze({ peek: ASSEMBLY_HOLDER.peek });
+}
+
+export function probeElementAccessClosure(): AssemblyShape {
+  return Object.freeze({ peek: ASSEMBLY_FOR_OF[0]!.peek });
+}
+
+export function probeNestedMemberClosure(): AssemblyShape {
+  return ASSEMBLY_NESTED.inner;
+}
+
+export function probeForOfAssignedClosure(): AssemblyShape {
+  let shape: AssemblyShape = {} as AssemblyShape;
+  for (shape of ASSEMBLY_FOR_OF) break;
+  return Object.freeze(shape);
+}
+
+export function probeDestructuredWithInertInitializer(source: {
+  shape: AssemblyShape;
+}): AssemblyShape {
+  let shape: AssemblyShape = {} as AssemblyShape;
+  ({ shape } = source);
+  return Object.freeze(shape);
+}
 `;
 
 const ASSEMBLY_PROBE_PATH = path.join(HERE, '__assemblyProbe.ts');
@@ -10192,18 +10550,24 @@ function assemblyProbeSites(id: ChannelId): readonly string[] {
 }
 
 /**
- * The five returned-closure keys the probe is expected to produce.
+ * The nine returned-closure keys the probe is expected to produce.
  *
  * Written out rather than counted, for the reason `DECLARED_RETURNED_CLOSURE_
- * SITES` is: a count cannot tell four right answers and one wrong one from five
- * right ones, and the MEMBER PATH is the part that says the walk reached the
- * function rather than merely noticing the return.
+ * SITES` is: a count cannot tell eight right answers and one wrong one from
+ * nine right ones, and the MEMBER PATH is the part that says the walk reached
+ * the function rather than merely noticing the return. `.inner.peek` is the
+ * clearest case — the path is what says the walk went THROUGH the member rather
+ * than stopping at it.
  */
 const ASSEMBLY_PROBE_CLOSURE_SITES: readonly string[] = Object.freeze([
   `${ASSEMBLY_PROBE_MODULE}#probeAssembledClosure#closure:.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeAssembledShorthand#closure:.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeAssembledThroughUndefined#closure:.peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeElementAccessClosure#closure:.peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeForOfAssignedClosure#closure:[0].peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeForOfClosure#closure:[0].peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeMemberAccessClosure#closure:.peek`,
+  `${ASSEMBLY_PROBE_MODULE}#probeNestedMemberClosure#closure:.inner.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeReturnsNamedFunction#closure:.peek`,
 ]);
 
@@ -10218,7 +10582,7 @@ describe('the assembly walk bites — every binding whose value is not in its in
     expect(assemblyProbeCensus().modules.length).toBe(CHANNEL_CENSUS_TOTALS.MODULES + 1);
   });
 
-  it('finds the returned closure in all five shapes, by member path', () => {
+  it('finds the returned closure in all nine shapes, by member path', () => {
     expect(assemblyProbeSites('returned-closure')).toEqual(ASSEMBLY_PROBE_CLOSURE_SITES);
     // And none of them is a key the shipped directory has, which is what makes
     // `DECLARED_RETURNED_CLOSURE_SITES`'s set equality the thing that reddens
@@ -10279,7 +10643,11 @@ describe('the assembly walk bites — every binding whose value is not in its in
     const unfollowed = assemblyProbeCensus().freshReceivers.filter((entry) =>
       entry.startsWith(ASSEMBLY_PROBE_MODULE),
     );
-    expect(unfollowed).toEqual([`${ASSEMBLY_PROBE_MODULE}:68 returned=unfollowable:shape`]);
+    // Sorted by the census rather than by line, which is why 120 precedes 68.
+    expect(unfollowed).toEqual([
+      `${ASSEMBLY_PROBE_MODULE}:120 returned=unfollowable:shape`,
+      `${ASSEMBLY_PROBE_MODULE}:68 returned=unfollowable:shape`,
+    ]);
     // The probe contributes exactly that one and nothing else, so the shipped
     // list is unchanged beside it — the two are separate censuses of the same
     // walk and a probe that polluted the shipped one would be a broken probe.
@@ -10825,15 +11193,20 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
  * licence covers its axis, and if either stops holding, the row goes to
  * `calls=0` and this list names it.
  *
- * the paragraph above is the whole of this round's move in
- * `GUARANTEE_COVERAGE.TREE_WIDE`, 229 -> 230, and it is disclosed here rather
- * than reworded away. measured the way that constant's own comment asks for:
- * lower-casing that one sentence and re-running `states what fraction of the
- * tree it actually covers` gives 229 and green, and every other paragraph this
- * round added contributes zero. it is a guarantee with a named mechanism — the
- * mechanism is the `toEqual` two lines into the test below — rather than a
- * method note, so the bump is the honest reading and the pin belongs to
- * whoever owns `src/game/`.
+ * the paragraph above is one of this round's two moves in
+ * `GUARANTEE_COVERAGE.TREE_WIDE`, 229 -> 231, and both are disclosed here
+ * rather than reworded away. measured the way that constant's own comment asks
+ * for, per paragraph rather than apportioned by eye: lower-casing this one
+ * sentence and re-running `states what fraction of the tree it actually covers`
+ * gives 230 and green. the other is the sentence opening `ownerOf`'s
+ * destructure-assigned arm, described rather than quoted here because quoting a
+ * capitalised guarantee verbatim inside another comment makes the census count
+ * the quotation — measured, at 232 against 231. the two are the whole
+ * increment: every other paragraph this round added, in this file and in the
+ * probe, contributes zero. both are guarantees with named mechanisms — a
+ * `toEqual` two lines into the test below, and the `unclassified` arm the
+ * sentence sits on — rather than method notes, so the bump is the honest
+ * reading and the pin belongs to whoever owns `src/game/`.
  */
 const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   'empireCore.ts#idleLedger#ledger.filter x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
@@ -10947,7 +11320,7 @@ describe('the member-call pass — what a caller-supplied method is actually han
 // ---------------------------------------------------------------------------
 
 /**
- * Fifty-four routes, planted into shipped modules one at a time, each run
+ * Fifty-five routes, planted into shipped modules one at a time, each run
  * against `tsc --noEmit`, against this file, and against the three accidental
  * catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
@@ -11900,7 +12273,8 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'AND THE BRANCH RUNS, PRINTED: `accrueProduction` driven on a gym one hour along returns an object whose keys are `[…, "ledger", "peek"]`, `typeof peek === "function"`, and `peek()` is `covered-day`. `gymBucks` is 60 on the same call, so the accrual itself is unchanged.',
       "WHY IT IS A DIFFERENT AXIS FROM M38 AND M39, which is the point of the row. Both of those were BINDINGS whose value the walk could not follow — an initializer it did not have, then an assignment it did not read — and both repairs widened what a binding could be. This is not a binding at all: `returnedFunctions`'s `walk` is a chain of `if (ts.isX(node))` arms with NO final `else`, so any node kind outside the eight it enumerates is dropped without a `found` and without an `unfollowed`. A property access is the commonest expression in TypeScript.",
       "THE `else` THIS FILE SAYS IT HAS ADDED THREE TIMES WAS ADDED ON THE WRONG AXIS. `unfollowed` exists and is real, and it is reached only from INSIDE the identifier arm — so it covers identifiers the walk cannot resolve and says nothing about expressions the walk never classified. Reach and predicate, one dimension out, in the walk this file's own history says was fixed for reach and then for predicate.",
-      'AFTER: see the repair commit. The walk asks the CHECKER whether the value at an unhandled node is callable rather than enumerating a ninth node kind, and the four shapes below are in the assembly probe so the repair is re-measured on every run instead of in a row.',
+      'AFTER, RE-PLANTED AGAINST THE REPAIRED WALK RATHER THAN ASSUMED: the channel census / derives every escape site: `"returned-closure": + "production.ts": 1`, and / pins the two callback sites: `+ "production.ts#accrueProduction#closure:.peek"`. Named by module, by enclosing function and by member path — the same two lines M39 produces, which is the point: it is the same channel and it was reached by a different axis. Both messages are quoted from that run, and `production.ts` was restored and re-verified after it.',
+      'THE REPAIR ASKS THE CHECKER RATHER THAN ENUMERATING A NINTH NODE KIND, because a ninth kind is what the last three repairs to this walk each were. `probeMemberAccessClosure` and `probeElementAccessClosure` are the two spellings, in the probe, so the repair is re-measured on every run instead of in this row.',
     ]),
     accidentalCatchersGreen: true,
     alsoRed: Object.freeze([
@@ -11921,12 +12295,31 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'NOTHING CAUGHT ANY OF THE FOUR: `the assembly walk bites` came back 6 passed of 6 with all four in, INCLUDING `names what it still cannot follow`, so none of them added a `freshReceivers` entry either.',
       'THE POSITIVE CONTROL IS WHAT MAKES THAT A MEASUREMENT RATHER THAN A NULL RESULT. A fifth export added beside them — `expControlDirectClosure`, a bare arrow in the returned literal — reddens immediately with `+ "__assemblyProbe.ts#expControlDirectClosure#closure:.peek"`. So the probe compiled, the walk ran over that region of the file, and the four silences are silences about those shapes rather than about a file nobody read.',
       'THE DESTRUCTURING ONE IS THE WORST OF THE FOUR, because it is a DECLARED limit with a NAMED catcher and the catcher does not hold. `assignedValuesTo`\'s docstring says the route lands in `freshReceivers`; `names what it still cannot follow` runs that claim against `probeDestructuredAssembly` and it passes. Both depend on `values.length === 0`, so giving the binding any initializer at all — `{} as AssemblyShape`, which carries no function and is not itself a route — makes the catcher silent while the destructured value still arrives.',
-      'AFTER: see the repair commit. All four are permanent probe exports now, with their keys pinned.',
+      'AFTER: all five are permanent probe exports. Three appear in `ASSEMBLY_PROBE_CLOSURE_SITES` — `#probeElementAccessClosure#closure:.peek`, `#probeForOfAssignedClosure#closure:[0].peek`, `#probeMemberAccessClosure#closure:.peek` — and the destructured one appears in `freshReceivers` as `__assemblyProbe.ts:120 returned=unfollowable:shape`, beside the line-68 entry that was already there. The probe count is five and not four because the FIRST version of the repair left a fifth shape silent; see M55.',
     ]),
     accidentalCatchersGreen: true,
     alsoRed: Object.freeze([
       'The probe is a string constant in this file rather than a shipped module, so nothing was restored — the experiment was reverted with `git checkout HEAD --` and the file verified byte-identical before this row was written.',
       "WHAT THIS ROW IS NOT EVIDENCE FOR, stated because a probe is weaker than a plant: it says the WALK does not see these shapes. M53 is the row that says a shipped module can carry one past the whole guard file, and it is only one of the four. The other three are argued from the same walk rather than driven through `production.ts`, and that is a real gap in this row rather than a formality.",
+    ]),
+  }),
+  Object.freeze({
+    id: 'M55',
+    shape:
+      "36 ONE LEVEL DEEPER, AND IT WAS FOUND INSIDE THE REPAIR FOR 36: `return NESTED.inner`, where the member's own type is an OBJECT holding the closure rather than the closure",
+    where: '__assemblyProbe.ts, `probeNestedMemberClosure`, against the first version of the member-access arm',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      "GREEN AGAINST THE FIRST REPAIR. That version asked one question — does the type at this node have a call signature — and `{ readonly inner: AssemblyShape }` does not, so the arm returned without a `found` and without an `unfollowed`. The other four shapes were already reddening at the time, which is what makes this a measurement rather than a guess: the same run reported `+ #probeMemberAccessClosure#closure:.peek`, `+ #probeElementAccessClosure#closure:.peek` and `+ #probeForOfAssignedClosure#closure:[0].peek` and said nothing about this one.",
+      'AFTER: `+ "__assemblyProbe.ts#probeNestedMemberClosure#closure:.inner.peek"`. The member path is the evidence that the walk went THROUGH the member rather than stopping at it.',
+      "WHY IT NEEDED A SECOND MECHANISM AND NOT A WIDER PREDICATE. The name `inner` resolves to a `PropertySignature` on the ANNOTATION — `const NESTED: { readonly inner: T } = { … }` — which has no initializer, so following the member's declaration finds nothing. The walk falls back to the HOLDER, resolves the identifier's own value, and picks the matching property out of the literal. A version that followed the declaration only would have been the same silence with more code in it.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      "THIS IS THE ROW THIS FILE'S OWN HISTORY PREDICTS AND IT STILL HAPPENED. `A guard written for one arm must be applied to its sibling` and `the next thing to look at is the branch immediately below the one you just fixed` are both in CLAUDE.md, and the branch immediately below this one was inside the fix itself — written, compiled and green, in the same edit.",
+      'It is a probe row rather than a shipped plant, and that is the same gap M54 states about itself: it says the WALK could not see the shape, not that a shipped module carried one past the whole file.',
+      "The screen in front of the following arm — `typeCouldHoldAFunction` — skips AMBIENTLY declared members, and that is load-bearing rather than tidy: every array type carries `map` and `filter` from `lib.es5.d.ts`, both callable, so without the filter the screen answers `true` for `readonly NpcLifter[]` and the arm follows every returned member in the directory. Measured: the shipped `returned-closure` census is unchanged at its two `empireInvariant.ts` sites and `freshReceivers` is unchanged, with all 70 tests green.",
     ]),
   }),
   Object.freeze({
@@ -12160,7 +12553,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(54);
+    expect(PLANTED_ROUTES.length).toBe(55);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -12253,8 +12646,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // adds no string literal — and the first of them was run against
     // `empireCore.test.ts` (57 passed) to check that the added specifier is
     // invisible to the import fence, rather than assuming it from M39.
-    expect(attempts).toBe(74);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(44);
+    expect(attempts).toBe(75);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(45);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
