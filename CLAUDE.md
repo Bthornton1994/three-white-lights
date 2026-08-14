@@ -1430,6 +1430,50 @@ path runs, so it makes the value unshippable rather than the guard complete. A
 reformulation that ships without a catcher for its own limit is the same
 admission as the sampler that preceded it, wearing better clothes.
 
+## "This Cannot Be Written" Is A Claim, And It Gets The Same Bar As "This Is Fixed"
+
+**A builder's disclosed impossibility is not a disclosure — it is an assertion
+about the whole space of edits, which is a bigger claim than any fix it ships
+beside.** This file already insists that a claimed catcher nobody ran is a
+pointer, and that an agent's report is not evidence. The same standard applies,
+unchanged, to the sentence that says a route *could not* be built. It is easier
+to believe than a fix, which is exactly why it survives.
+
+**Measured, and it was wrong in both directions at once.** A round closed a
+callback channel, declared its own residual honestly — `AXES_VARIED: 1`, the
+payload axis unvaried — and then wrote:
+
+> *"a mutant of the second kind would fire only the pass, and there is no way to
+> write one here without changing `attended`'s declared parameter type, which
+> `tsc` refuses under `strictFunctionTypes`."*
+
+Both halves failed:
+
+- **The impossibility was one line.** `const notify = attended as unknown as (s:
+  number, l: string) => boolean` defeats `strictFunctionTypes` without touching a
+  declared type. Planted unconditionally, the pass reddens with findings naming
+  the payload — the measurement the sentence said could not exist.
+- **The compensating catcher it named did not hold.** Guard that same call on the
+  unvaried axis and *every* forbidden-name instrument goes green; the only checks
+  that move are a `CallExpression` count and an AST node count, both of which
+  move on any edit at all. The disclosed limit was worse than disclosed.
+
+**Why this class is worth its own rule.** A wrong "it is fixed" gets caught by the
+next mutation, because somebody is already pointing a check at that spot. A wrong
+"it cannot be written" **closes the search** — it tells the next round not to look
+there, and it is filed under diligence rather than under debt. Two rounds of
+briefs here quoted that sentence as settled.
+
+**What to do, and it is cheap.** When a report says a route is impossible, treat
+it as the round's highest-value mutation and spend the ten minutes: write the
+route it says cannot be written. If it truly cannot, the attempt costs one run and
+converts an argument into a measurement. If it can, you have found the bypass the
+report just told everyone not to look for. **State impossibility in the
+mechanism's own terms** — *"`strictFunctionTypes` refuses a widened declared
+parameter"* is true and checkable; *"there is no way to write one here"* is a
+claim about every edit anyone might make, and nothing in a type system supports
+it.
+
 ### Pure logic is separate from UI
 
 All game math lives in dedicated pure TypeScript modules:
