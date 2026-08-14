@@ -854,7 +854,7 @@ const UNPINNED_PROSE_NUMBERS: readonly UnpinnedProseNumber[] = [
  */
 const NUMBER_COVERAGE = {
   /** Comment paragraphs under `src` carrying at least one tag. */
-  TAGGED_PARAGRAPHS: 63,
+  TAGGED_PARAGRAPHS: 64,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
@@ -875,7 +875,7 @@ const NUMBER_COVERAGE = {
    * for reasons of their own. THIS IS THE WEAKNESS MEASUREMENT, not a coverage
    * one: it says how little a small number resolving is worth.
    */
-  NAMED_BODIES: 54,
+  NAMED_BODIES: 55,
   NAMED_BODIES_HOLDING_ZERO: 44,
   NAMED_BODIES_HOLDING_ONE: 44,
   /**
@@ -1152,7 +1152,7 @@ function witnessKey(witness: MutationWitness): string {
  */
 const TRANSCRIPT_BAR = {
   /** Witness rows whose transcript is held to the rule. */
-  GRADED: 19,
+  GRADED: 20,
   /** ...and rows excused because their transcript predates it. */
   PREDATING: 37,
   /**
@@ -1300,10 +1300,10 @@ const MEASURED_SCALAR = /expected\s[+-]?\d+(?:\.\d+)?\sto\s/;
  * test rather than transcribed here, so it moves when the table does.
  */
 const TRANSPLANTED_NUMERIC_RULE = {
-  rows: 48,
-  flagged: 36,
-  numerals: 124,
-  unresolved: 64,
+  rows: 49,
+  flagged: 37,
+  numerals: 125,
+  unresolved: 65,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -1635,7 +1635,7 @@ const REPLACEMENTS_PREDATING_THE_RULE: readonly (readonly [string, number])[] = 
  */
 const REPLACEMENT_BAR = {
   /** Rows carrying a replacement, so a third party can apply the patch. */
-  REPRODUCIBLE: 6,
+  REPRODUCIBLE: 7,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -1779,6 +1779,46 @@ const SECTION_4A_KILL_LIST = {
 } as const;
 
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
+  // -------------------------------------------------------------------------
+  // The lift press guard — the fix a human playtest asked for, on the screens a
+  // player can actually press.
+  //
+  // THE MUTANT IS THE STATE THAT SHIPPED, not an invented one. `PRESS_NOT_TAKEN`
+  // was declared inside `LiftScreen.tsx` — the replay harness, which `AppShell`
+  // mounts only behind `route.surface === 'replay'` — so `SetView` and
+  // `AttemptView` had exactly this deletion in them for a wave while the guard
+  // that named `LiftScreen.tsx` stayed green. Deleting it again from `SetView`
+  // reproduces that state, and the assertion that reddens names the screen and
+  // its testID rather than reporting a count.
+  //
+  // The browser half of the same mutant is not recordable here — this table
+  // binds to an `it(` body and `tools/verify-lift-press.mjs` has none. It was
+  // measured anyway and written into the merge commit, as the paragraph on the
+  // browser class asks: with this deletion applied that tool reports 5 red of 23
+  // on the session arm, including `pointercancel=1` at both pan scales where the
+  // fixed surface reads 0.
+  {
+    guarantee: 'press-guard-on-every-played-surface',
+    mutatedFile: 'src/session/SetView.tsx',
+    mutated:
+      '    // manipulation` and 20px of finger drift hands the descent to the browser.\n'
+      + '    ...PRESS_NOT_TAKEN,',
+    mutatedTo: '',
+    testFile: 'src/lift/liftInput.test.ts',
+    redAssertion:
+      "          'the browser will claim a drifting press and the app will not hear the rest of the gesture',\n"
+      + '      );\n'
+      + "    expect(bare, bare.join('\\n')).toEqual([]);",
+    observed:
+      'FAIL  src/lift/liftInput.test.ts > every lift press surface in the repository carries the '
+      + 'press guard > the pressed element declares the property that does NOT inherit '
+      + '[press-guard-on-every-played-surface]\n'
+      + 'AssertionError: src/session/SetView.tsx presses <LiftStage> through a <Pressable> (testID '
+      + '"session-touch") whose style does not spread PRESS_NOT_TAKEN from src/lift/pressGuard.ts. '
+      + 'touch-action does not inherit, so no ancestor can supply it: the browser will claim a '
+      + 'drifting press and the app will not hear the rest of the gesture: expected [ Array(1) ] to '
+      + 'deeply equal []',
+  },
   // -------------------------------------------------------------------------
   // GDD §2.1's career spine — which meets a lifter may enter, and the two ways
   // "a player who did more must not end up worse off" can be asked of it.
@@ -3659,6 +3699,10 @@ describe('the guarantee-tag convention', () => {
       'src/game/sessionServer.test.ts',
       'src/game/streak.test.ts',
       'src/game/streakEntitlement.test.ts',
+      // The lift press guard. Its subject list is DISCOVERED from the tree, and
+      // the mutant that witnesses it is the state that shipped: the fix present
+      // on the replay harness and absent from the two screens a player presses.
+      'src/lift/liftInput.test.ts',
       'src/meet/AttemptSelectView.test.ts',
       'src/meet/careerCalendarPlaceholder.test.ts',
       'src/meet/meetSound.test.ts',

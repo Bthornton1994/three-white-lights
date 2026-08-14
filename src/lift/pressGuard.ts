@@ -112,3 +112,21 @@ export const PRESS_NOT_SELECT = {
 export const PRESS_NOT_TAKEN = {
   touchAction: 'none',
 } as const;
+
+/**
+ * EVERY LIFT PRESS SURFACE IN THE REPOSITORY CARRIES BOTH OBJECTS, AND THE
+ * CHECK THAT SAYS SO NAMES NO SCREEN.
+ *
+ * That is the whole repair, and the reason it is stated as a guarantee rather
+ * than as a habit: the previous version of this fix was correct, guarded, and
+ * declared on one file, and the file it was declared on was the replay harness.
+ * A guard that lists its subjects stops covering the code the moment somebody
+ * adds a screen, which is exactly what happened.
+ *
+ * `liftInput.test.ts` walks the repository, finds every `<LiftStage>`, climbs to
+ * the `Pressable` around it, and requires `PRESS_NOT_TAKEN` on that element and
+ * `PRESS_NOT_SELECT` on an ancestor — with the spread resolved to an import from
+ * THIS module, so a local constant spelled the same does not satisfy it. A
+ * fourth surface inherits the requirement by mounting a stage.
+ * `@guarantee press-guard-on-every-played-surface`
+ */
