@@ -5,10 +5,11 @@
  * ===========================================================================
  * WHY THIS EXISTS, AND WHAT IT IS NOT
  * ===========================================================================
- * `tools/evidence.mjs` takes ~710 s to produce a bundle: a narrowed vitest run,
- * the whole suite, and a typecheck, captured verbatim. Every one of those reads
- * the working tree at the moment it runs. If a tracked file moves while that is
- * in flight, the bundle it writes describes a tree that NEVER EXISTED AS A
+ * `tools/evidence.mjs` takes minutes to produce a bundle: a narrowed vitest
+ * run, the whole suite, and a typecheck, captured verbatim. Every one of those
+ * reads the working tree at the moment it runs, and that window is long enough
+ * for a commit to land inside it. If a tracked file moves while that is in
+ * flight, the bundle it writes describes a tree that NEVER EXISTED AS A
  * WHOLE — the first command's output came off one tree and the last command's
  * off another, and nothing in the file says so.
  *

@@ -168,10 +168,11 @@ const NOT_CODE = [
   // against its live `##` headings — so a prose-only commit CAN redden the
   // suite while this list reports the bundle fresh. That hole is left standing
   // here rather than closed in passing: closing it makes every coordination
-  // note in `CLAUDE.md` — the busiest file in the repository — demand a ~710 s
-  // re-take, which is the crying-wolf trade this file has already lost twice,
-  // and it is a policy call rather than a defect fix. It is written down so the
-  // next reader knows the silence is chosen and measured, not assumed.
+  // note in `CLAUDE.md` — the busiest file in the repository — demand a full
+  // re-capture of the suite bundle, which is the crying-wolf trade this file
+  // has already lost twice, and it is a policy call rather than a defect fix.
+  // It is written down so the next reader knows the silence is chosen and
+  // measured, not assumed.
   'docs/',
   'CLAUDE.md',
   'README.md',
@@ -439,19 +440,19 @@ const parts = [
   'AND THE TREE DID NOT MOVE WHILE THIS RAN — which is a different claim from',
   'the stamp, and one the stamp cannot make.',
   '',
-  'This run takes about twelve minutes. If a tracked or untracked-but-not-',
-  'ignored file changes inside that window, the output below straddles the edit:',
-  'part of it describes one tree and part another, and no commit describes the',
-  'whole. The stamp above would still name a single commit, so a stale-stamp',
-  'check cannot notice.',
+  'This run takes minutes — long enough for another commit to land inside it. If',
+  'a tracked or untracked-but-not-ignored file changes in that window, the output',
+  'below straddles the edit: part of it describes one tree and part another, and',
+  'no commit describes the whole. The stamp above would still name a single',
+  'commit, so a stale-stamp check cannot notice.',
   '',
   'The identity of every relevant file is taken before the first command and',
   'again after each one; if any of it moved, this file is NOT WRITTEN and the',
   'run exits 3. So the existence of this bundle is itself the evidence — there',
   'is no arm of tools/evidence.mjs that writes a straddled bundle with a warning',
   'in it, deliberately, because a warning in prose here is a thing no check',
-  'reads. See tools/treeIdentity.mjs for what that identity covers and the four',
-  'things it explicitly cannot see.',
+  'reads. tools/treeIdentity.test.ts pins that control flow; tools/treeIdentity.mjs',
+  'states what the identity covers and what it explicitly cannot see.',
   '',
 ];
 
@@ -459,8 +460,10 @@ const parts = [
  * ===========================================================================
  * THE TREE MUST NOT MOVE WHILE THIS RUN IS IN FLIGHT
  * ===========================================================================
- * This run takes ~710 s. Everything below reads the working tree at the moment
- * it executes. If a relevant file moves in that window, the bundle written at
+ * This run takes minutes — three commands, one of them the whole suite.
+ * Everything below reads the working tree at the moment it executes, and that
+ * window is long enough for a commit to land inside it. If a relevant file
+ * moves in it, the bundle written at
  * the end describes a tree that NEVER EXISTED AS A WHOLE: the narrowed vitest
  * output came off one tree, the whole-suite output off another, and the file
  * says nothing about the seam.
@@ -519,11 +522,12 @@ const parts = [
  * writes, which is the only category that must be ignored: without it the tool
  * reports itself moved on every run and becomes an instrument nobody reads.
  *
- * CHECKED AFTER EVERY CAPTURED COMMAND, not only before the write. The brief
- * this was built to asked for start and end; per-command checkpoints are a
- * superset — the last one IS the check before the write — and they turn a
- * ~710 s round trip into a ~400 s one when the edit lands early, as well as
- * naming which command's output the seam runs through.
+ * CHECKED AFTER EVERY CAPTURED COMMAND, not only before the write. The last
+ * checkpoint IS the check before the write, so this is a superset of the
+ * obvious start-and-end version, and it buys two things: the report names which
+ * command's output the seam runs through, and the run stops early. Measured on
+ * the drive that introduced this — an edit three seconds in exited at 226 s
+ * rather than carrying on through the typecheck.
  *
  * The identity's two halves, what it can and cannot see, and why a failure to
  * measure throws rather than returning "nothing moved", are in
@@ -608,7 +612,7 @@ console.log(`wrote ${out}`);
  * more care, and this is the point of use: the only moment at which the claim
  * "this bundle describes this tree" is true is the moment it is printed.
  *
- * Short on purpose. A wall of text at the end of a 710 s command is scrolled
+ * Short on purpose. A wall of text at the end of a long command is scrolled
  * past, and a warning nobody reads is the same as no warning.
  */
 const rule = '─'.repeat(72);
