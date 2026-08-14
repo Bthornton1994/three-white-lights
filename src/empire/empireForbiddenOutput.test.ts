@@ -9437,6 +9437,15 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   ]),
   /** Positions strictly past the limit. The same two, and the number that matters. */
   PAST_THE_LIMIT: 2,
+  /**
+   * The same reading with the assembly probe in the program, which reaches 41.
+   *
+   * The positive control on the instrument, and it is not decoration: without
+   * it the shipped 9 is reported identically by a walk bounded at 8, because
+   * such a walk stops at 9 and 9 is the answer. Measured by planting exactly
+   * that bound and watching all 83 tests stay green.
+   */
+  PROBE_DEEPEST: 41,
 });
 
 /**
@@ -9466,10 +9475,13 @@ interface ShippedDepthReading {
  * — because the number this produces is about the control's limit and a walk
  * with different positions would be measuring a different thing.
  */
-function shippedTypeDepth(): ShippedDepthReading {
+function shippedTypeDepth(
+  roots: readonly string[] = shippedModulePaths(),
+  probeText: string | null = null,
+  probePath: string = PROBE_PATH,
+): ShippedDepthReading {
   const options = compilerOptions();
-  const roots = shippedModulePaths();
-  const program = programWith(options, roots, null);
+  const program = programWith(options, roots, probeText, probePath);
   const checker = program.getTypeChecker();
   let visits = 0;
 
@@ -11525,6 +11537,25 @@ describe('the assembly walk bites — every binding whose value is not in its in
     expect(reading.deepestAt).toEqual(SHIPPED_TYPE_DEPTH.DEEPEST_AT);
     expect(reading.pastTheLimit).toEqual(SHIPPED_TYPE_DEPTH.DEEPEST_AT);
     expect(reading.pastTheLimit.length).toBe(SHIPPED_TYPE_DEPTH.PAST_THE_LIMIT);
+    // THE POSITIVE CONTROL, AND IT IS HERE BECAUSE THE PIN ABOVE WAS VACUOUS
+    // WITHOUT IT. A mutant that gave this walk the control's own bound —
+    // `if (depth > MEMBER_TYPE_WALK_MAX_DEPTH) return depth;` — left all 83
+    // tests green, because the bound stops AT nine and nine is what the shipped
+    // tree reports. So the number 9 said "the walk got to nine", which is what a
+    // truncated walk says too.
+    //
+    // The same reading over the probe reaches 41, at the forty-deep recursive
+    // instantiation. A bounded walk reports 9 there, so the mutant that passed
+    // is red on this line — `expected 9 to be 41`, run — and the shipped 9 is a
+    // measurement rather than a ceiling.
+    const withProbe = shippedTypeDepth(
+      [...shippedModulePaths(), ASSEMBLY_PROBE_PATH],
+      ASSEMBLY_PROBE_SOURCE,
+      ASSEMBLY_PROBE_PATH,
+    );
+    expect(withProbe.deepest).toBe(SHIPPED_TYPE_DEPTH.PROBE_DEEPEST);
+    expect(withProbe.deepestAt).toEqual([`${ASSEMBLY_PROBE_MODULE}#probeRecursiveInstantiation()`]);
+    expect(withProbe.deepest).toBeGreaterThan(reading.deepest);
   });
 });
 
