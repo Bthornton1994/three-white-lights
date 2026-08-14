@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-14T05-48-28-608Z-29440",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-14T05:48:28.608Z",
+  "startedAtMs": 1786686508608,
+  "cwd": "/home/user/wt-verify-reach",
+  "commit": "2780082ef0b1343067ab358074531b03f2d6cbd1",
+  "branch": "tmp/verify-reach",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 29440,
+    "startTick": "1236171",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --id verify-reach-suite -- npx vitest run",
+    "bootId": "70e4dcd9-91f6-43ee-a53c-88125d271f98",
+    "bootEpochSeconds": 1786674147,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T05:48:28.647Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
