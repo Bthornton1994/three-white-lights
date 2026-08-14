@@ -48,6 +48,7 @@ import { promptFor, type LiftOutcome, type LiftState } from '../game/lift';
 import { LIFT_PALETTE } from './liftPalette';
 import { LiftStage } from './LiftStage';
 import { totalKgFor } from './liftFrame';
+import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN } from './pressGuard';
 import {
   captureFrameFor,
   replayProbeJson,
@@ -304,27 +305,25 @@ export function LiftScreen({ replay }: LiftScreenProps = {}): React.ReactElement
  * the descent — so the one input this mechanic is built on is exactly the one a
  * browser reads as "the user wants to select something".
  *
- * WHAT EACH PROPERTY IS FOR, because they are not interchangeable and dropping
- * one leaves a different half of the bug:
+ * THE CONSTANTS MOVED, AND THAT MOVE IS THE POINT OF THIS PARAGRAPH. They used
+ * to be declared here, as one object spread onto `styles.stage`. This screen is
+ * the REPLAY HARNESS: `AppShell.tsx` mounts it behind `route.surface ===
+ * 'replay'`, which `shellRoute.ts` builds with `source: 'debug'`. So the fix for
+ * a defect a player reported was declared on the one lift surface a player
+ * cannot open, and `SetView` and `AttemptView` — the daily set and the meet
+ * attempt — carried none of it while the guard here stayed green.
  *
- *   - `userSelect: none` stops the text/area highlight and the selection
- *     handles. This is the visible half.
- *   - `touchAction: none` stops the browser claiming the gesture for scrolling
- *     or double-tap zoom before the handler sees it. This is the half that
- *     eats input rather than merely looking wrong, and it is the one a
- *     screenshot cannot show.
- *   - `WebkitTouchCallout: none` stops iOS Safari's press-and-hold callout,
- *     which is a separate gesture from selection and survives the other two.
+ * They now live in `./pressGuard`, applied identically by all three screens and
+ * checked by a guard that discovers its subjects rather than naming this file.
+ * The split into two objects is a fact about which properties inherit; that
+ * module's header has it, and this one does not restate it.
  *
- * NATIVE IS UNAFFECTED. These are web CSS properties; React Native Web passes
- * them through and the native renderers ignore them. They are deliberately NOT
- * behind a `Platform.OS === 'web'` branch — a conditional style object makes the
- * key set depend on where the file is read from, which would make the guard in
- * `liftInput.test.ts` a claim about the test environment rather than about the
- * shipped screen.
- *
- * NOT GAME FEEL, so not in the tuning module: there is no value here to tune.
- * It is the difference between the input arriving and not arriving.
+ * WHY THE HARNESS KEEPS THEM AT ALL, rather than the fix being moved to the two
+ * played screens and deleted from here: this screen is pressed. `capture-lift.
+ * mjs`, `verify-lift-shots.mjs` and `verify-lift-press.mjs`'s debug arm all
+ * drive `lift-touch`, and the last of those compares the two arms directly —
+ * with the fix removed from here, that comparison would be two unfixed surfaces
+ * agreeing with each other, which is the same reading as two fixed ones.
  *
  * WHAT THIS DOES NOT FIX, stated because the playtest raised both together: the
  * separate finding that players were unclear HOW to perform the down-and-back-up
@@ -332,18 +331,16 @@ export function LiftScreen({ replay }: LiftScreenProps = {}): React.ReactElement
  * bad that reads — some of "confusing" may have been people fighting the
  * browser — and that is a question for a re-test, not an assumption to build on.
  */
-const PRESS_NOT_SELECT = {
-  userSelect: 'none',
-  touchAction: 'none',
-  WebkitTouchCallout: 'none',
-} as const;
-
 const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: LIFT_PALETTE.BACKDROP,
     alignItems: 'center',
     paddingTop: L.SCREEN_PAD,
+    // The INHERITED half, on the root so it reaches the copy — see
+    // `./pressGuard`. On the stage it would reach only the Skia canvas, where
+    // no selection is possible in the first place.
+    ...PRESS_NOT_SELECT,
   },
   /**
    * The capture probe. Absolute, zero-sized, fully transparent and clipped, so
@@ -401,9 +398,10 @@ const styles = StyleSheet.create({
   stage: {
     width: L.STAGE_W,
     height: L.STAGE_H,
-    // See `PRESS_NOT_SELECT` below. Spread rather than conditionally applied so
-    // the key set does not depend on where this file is read from.
-    ...PRESS_NOT_SELECT,
+    // The half that does NOT inherit, so it has to be here, on the element the
+    // press lands in. Spread rather than conditionally applied so the key set
+    // does not depend on where this file is read from.
+    ...PRESS_NOT_TAKEN,
   },
   timings: {
     flexDirection: 'row',

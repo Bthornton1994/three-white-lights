@@ -38,6 +38,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LiftStage } from '../lift/LiftStage';
 import { useLiftLoop } from '../lift/useLiftLoop';
 import { totalKgFor } from '../lift/liftFrame';
+import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN } from '../lift/pressGuard';
 import { promptFor, type LiftOutcome } from '../game/lift';
 import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
 import { SESSION_COPY, SESSION_LAYOUT, SESSION_TUNING } from '../game/sessionTuning';
@@ -176,6 +177,10 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     alignItems: 'center',
+    // The INHERITED half, on the root so it reaches the copy — see
+    // `src/lift/pressGuard.ts`. On the stage it would reach only the Skia
+    // canvas, where no selection is possible in the first place.
+    ...PRESS_NOT_SELECT,
   },
   header: {
     alignItems: 'center',
@@ -219,5 +224,9 @@ const styles = StyleSheet.create({
   stage: {
     width: LIFT_TUNING.LAYOUT.STAGE_W,
     height: LIFT_TUNING.LAYOUT.STAGE_H,
+    // The half that does NOT inherit, so it has to be here, on the element the
+    // press lands in. Without it this Pressable computes `touch-action:
+    // manipulation` and 20px of finger drift hands the descent to the browser.
+    ...PRESS_NOT_TAKEN,
   },
 });
