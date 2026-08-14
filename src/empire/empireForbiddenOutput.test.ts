@@ -331,6 +331,7 @@ import type {
   WallClockBooks,
   WallClockFundedOutput,
 } from './empireCore';
+import type { EmpireLedgerEntry } from './empireCore';
 import type { EmpirePolicy, EmpireDayEntry, EmpireGym, SocialInputs } from './empireInvariant';
 import type { ExpansionAxis, ExpansionBuild, ExpansionContext } from './expansion';
 import type { EngagementHistory } from './engagement';
@@ -10294,6 +10295,283 @@ describe('the assembly walk bites — every binding whose value is not in its in
 });
 
 // ---------------------------------------------------------------------------
+// The member-call pass — the half `DECLARED_MEMBER_CALLS_ON_PARAMETERS` cannot be
+// ---------------------------------------------------------------------------
+
+/**
+ * What a caller-supplied METHOD is actually handed, read at runtime.
+ *
+ * WHY A DRIVE AND NOT A WIDER KEY, decided by measurement rather than by taste.
+ * The enumeration beside this pins thirteen sites by file, enclosing function,
+ * member and ARGUMENT COUNT, and its own docstring says a site that starts
+ * carrying a payload at a position it already had moves nothing. Three routes
+ * were planted against that sentence:
+ *
+ *   - M40 put a banned name at an existing argument. The site key did not move;
+ *     the only thing red in the whole guard was the AST node count.
+ *   - M41 needed a SECOND call to do the same thing behaviour-preservingly, and
+ *     the enumeration caught it by duplicate entry and by arm census. So the
+ *     limit is a bound: arrival and arity are covered, value is not.
+ *   - M42 put the payload in what the PREDICATE RETURNS —
+ *     `ledger.filter((entry) => cond ? (name as unknown as boolean) : false)` —
+ *     which a real `filter` coerces, so the kept set is byte-identical and the
+ *     argument is an `ArrowFunction` before and after. The whole directory came
+ *     back 480 of 481 with the node count as the only red.
+ *
+ * M42 is what rules out the cheap repair. Adding each argument's syntactic kind
+ * to the site key catches M40 and cannot catch M42, and ELEVEN OF THE THIRTEEN
+ * SITES TAKE A CALLBACK — so the arrow-return route is the majority case and
+ * not a corner. The only instrument that reads it is one that supplies the
+ * receiver and looks at what arrives.
+ *
+ * WHAT THIS PASS COVERS, AND THE RESIDUAL IS COUNTED RATHER THAN WAVED AT.
+ * Three of the thirteen are driven; ten are not, and they are enumerated by
+ * name in `MEMBER_CALL_PASS_UNDRIVEN` with a set equality against
+ * `DECLARED_MEMBER_CALLS_ON_PARAMETERS` in both directions. A fourteenth site
+ * arriving is therefore a decision somebody signs on one list or the other,
+ * rather than a silent hole — which is E15's overflow-pass shape applied to a
+ * drive instead of to a domain.
+ *
+ * The undriven ten are undriven for one reason and it is fixture cost, not
+ * reachability: each needs a whole `EmpireGym`, `ExpansionContext` or
+ * `SocialContext` built at a state where the site's branch runs. That is real
+ * work and it is stated as owed rather than as impossible.
+ */
+interface MemberCallRecord {
+  /** Strings reachable from every non-function argument the method received. */
+  readonly handed: string[];
+  /** Strings reachable from every value a callback argument RETURNED. M42's channel. */
+  readonly returned: string[];
+  calls: number;
+  callbackCalls: number;
+}
+
+function emptyMemberCallRecord(): MemberCallRecord {
+  return { handed: [], returned: [], calls: 0, callbackCalls: 0 };
+}
+
+/**
+ * Replace one method on a fixture with a recorder that delegates to the real one.
+ *
+ * The fixture stays a real `Array`, so every shipped guard that depends on
+ * array semantics still holds and the subject cannot tell it is being watched.
+ * A FUNCTION argument is wrapped rather than scanned, because scanning a
+ * closure tells you nothing and calling it is what the caller's own method was
+ * going to do anyway — the wrapper reads the value it hands back, which is the
+ * channel M42 used and the one nothing here could see.
+ */
+function recordOn<T extends object>(holder: T, member: string, record: MemberCallRecord): T {
+  const original = (holder as unknown as Record<string, unknown>)[member];
+  if (typeof original !== 'function') {
+    throw new Error(`the member-call fixture has no ${member} to instrument`);
+  }
+  const real = original as (...args: readonly unknown[]) => unknown;
+  Object.defineProperty(holder, member, {
+    configurable: true,
+    value: (...args: readonly unknown[]): unknown => {
+      record.calls += 1;
+      const wrapped = args.map((argument, index) => {
+        if (typeof argument !== 'function') {
+          for (const found of deepScan(argument, `arg${String(index)}`).strings) {
+            record.handed.push(found.value);
+          }
+          return argument;
+        }
+        const callback = argument as (...inner: readonly unknown[]) => unknown;
+        return (...inner: readonly unknown[]): unknown => {
+          record.callbackCalls += 1;
+          const verdict = callback(...inner);
+          for (const found of deepScan(verdict, 'return').strings) record.returned.push(found.value);
+          return verdict;
+        };
+      });
+      return real.apply(holder, wrapped);
+    },
+  });
+  return holder;
+}
+
+interface MemberCallSubject {
+  /** The key in `DECLARED_MEMBER_CALLS_ON_PARAMETERS` this subject drives. */
+  readonly site: string;
+  readonly run: (record: MemberCallRecord) => void;
+}
+
+const memberCallLedger = (): EmpireLedgerEntry[] => [
+  Object.freeze({ at: core.asUnacceleratedSeconds(0), output: 'gym-bucks', amount: 1 }),
+  Object.freeze({ at: core.asUnacceleratedSeconds(1), output: 'training-iq', amount: 2 }),
+];
+
+const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
+  Object.freeze({
+    site: 'empireCore.ts#idleLedger#ledger.filter x1',
+    run: (record: MemberCallRecord): void => {
+      core.idleLedger(recordOn(memberCallLedger(), 'filter', record));
+    },
+  }),
+  Object.freeze({
+    site: 'empireCore.ts#progressionLedger#ledger.filter x1',
+    run: (record: MemberCallRecord): void => {
+      core.progressionLedger(recordOn(memberCallLedger(), 'filter', record));
+    },
+  }),
+  Object.freeze({
+    site: 'engagement.ts#moreEngagedByTrainedDay#history.includes x1',
+    run: (record: MemberCallRecord): void => {
+      const trainedDays = recordOn([1, 2, 3], 'includes', record);
+      engagementModule.moreEngagedByTrainedDay({ attended: [true, false], trainedDays }, 9);
+    },
+  }),
+]);
+
+/**
+ * The ten sites this pass does NOT drive, by name.
+ *
+ * Not a count and not a percentage: the same key the enumeration uses, so the
+ * join below is a set equality in both directions and a site cannot be quietly
+ * dropped off one list without appearing on the other.
+ */
+const MEMBER_CALL_PASS_UNDRIVEN: readonly string[] = Object.freeze([
+  'empireInvariant.ts#composeTrainingIqRate#state.filter x1',
+  'empireInvariant.ts#idleDayLedger#entries.filter x1',
+  'empireInvariant.ts#outputSeries#entries.filter x1',
+  'empireInvariant.ts#progressionDayLedger#entries.filter x1',
+  'empireInvariant.ts#savingForPhysio#order.includes x1',
+  'empireInvariant.ts#stepGym#gym.find x1',
+  'empireInvariant.ts#stepGym#gym.map x1',
+  'social.ts#rankLeaderboard#entries.map x1',
+  'social.ts#visitRefusals#context.some x1',
+  'social.ts#visitRefusals#context.some x1',
+]);
+
+interface MemberCallResult {
+  readonly site: string;
+  readonly record: MemberCallRecord;
+  /** Every observed string that is a banned name, argument side and return side alike. */
+  readonly findings: readonly string[];
+}
+
+function memberCallPass(subjects: readonly MemberCallSubject[]): readonly MemberCallResult[] {
+  const results: MemberCallResult[] = [];
+  for (const subject of subjects) {
+    const record = emptyMemberCallRecord();
+    subject.run(record);
+    const findings = [...record.handed, ...record.returned]
+      .filter((value) => BANNED_NORMALISED.has(normalise(value)))
+      .map((value) => `${subject.site} <- ${value}`);
+    results.push({ site: subject.site, record, findings });
+  }
+  return results;
+}
+
+/**
+ * The leaking twin the zero is zero against.
+ *
+ * Written here rather than planted, and both channels are represented: the
+ * first leaks through an ARGUMENT (M40's route) and the second through a
+ * PREDICATE RETURN (M42's route). A tripwire that carried only one of them
+ * would leave the other's zero unevidenced, which is the shape this file calls
+ * an empty domain.
+ */
+const MEMBER_CALL_TRIPWIRE: readonly MemberCallSubject[] = Object.freeze([
+  Object.freeze({
+    site: 'tripwire#argument',
+    run: (record: MemberCallRecord): void => {
+      const days = recordOn([1, 2, 3], 'includes', record);
+      days.includes(PROBE_NAME as unknown as number);
+    },
+  }),
+  Object.freeze({
+    site: 'tripwire#predicate-return',
+    run: (record: MemberCallRecord): void => {
+      const ledger = recordOn(memberCallLedger(), 'filter', record);
+      ledger.filter((entry) =>
+        entry.output === 'gym-bucks' ? (PROBE_NAME as unknown as boolean) : false,
+      );
+    },
+  }),
+]);
+
+/** What the pass measured. Counts, not bounds, so an empty drive reports itself. */
+const MEMBER_CALL_PASS_CENSUS = Object.freeze({
+  SUBJECTS: 3,
+  /** One call of the instrumented method per subject. */
+  CALLS: 3,
+  /** Two ledger entries each for the two `filter` subjects; `includes` calls no callback. */
+  CALLBACK_CALLS: 4,
+  /** Strings reachable from the non-function arguments: the one `includes` was handed is a number, so zero. */
+  HANDED: 0,
+  /** Values the predicates returned: four booleans, which carry no strings. */
+  RETURNED: 0,
+  FINDINGS: 0,
+  TRIPWIRE_SUBJECTS: 2,
+  TRIPWIRE_FINDINGS: 2,
+});
+
+describe('the member-call pass — what a caller-supplied method is actually handed', () => {
+  it('drives the subjects it declares, and the drive is not empty', () => {
+    const results = memberCallPass(MEMBER_CALL_SUBJECTS);
+    expect(results.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
+    const calls = results.reduce((total, result) => total + result.record.calls, 0);
+    const callbackCalls = results.reduce((total, result) => total + result.record.callbackCalls, 0);
+    expect(calls).toBe(MEMBER_CALL_PASS_CENSUS.CALLS);
+    // THE NUMBER THAT SAYS THE M42 CHANNEL IS LIVE. A pass whose callbacks are
+    // never invoked reads exactly like a pass whose callbacks return nothing
+    // banned, and only this tells the two apart.
+    expect(callbackCalls).toBe(MEMBER_CALL_PASS_CENSUS.CALLBACK_CALLS);
+    for (const result of results) expect(result.record.calls, result.site).toBeGreaterThan(0);
+  });
+
+  it('sees no banned name at any driven site, on either channel', () => {
+    const results = memberCallPass(MEMBER_CALL_SUBJECTS);
+    // THE NAMED ASSERTION GOES FIRST, AND THAT ORDER WAS EARNED THIS ROUND.
+    // With the counts first, re-planting M42 reddened this test with `expected
+    // 1 to be +0` — true, and it says nothing about which site or which name.
+    // CLAUDE.md's rule is that a check that bites and fails uselessly is half a
+    // check; with this line first the same plant reads
+    // `+ "empireCore.ts#idleLedger#ledger.filter x1 <- covered-day"`.
+    const findings = results.flatMap((result) => result.findings);
+    expect(findings).toEqual([]);
+    expect(findings.length).toBe(MEMBER_CALL_PASS_CENSUS.FINDINGS);
+    // The shape of what was observed, beside the verdict. A payload that is not
+    // a banned name moves these and not the list above, which is the domain
+    // half rather than the ban half.
+    const handed = results.reduce((total, result) => total + result.record.handed.length, 0);
+    const returned = results.reduce((total, result) => total + result.record.returned.length, 0);
+    expect(handed).toBe(MEMBER_CALL_PASS_CENSUS.HANDED);
+    expect(returned).toBe(MEMBER_CALL_PASS_CENSUS.RETURNED);
+  });
+
+  it('the pass bites — the tripwire the zero is zero against, on BOTH channels', () => {
+    const results = memberCallPass(MEMBER_CALL_TRIPWIRE);
+    expect(results.length).toBe(MEMBER_CALL_PASS_CENSUS.TRIPWIRE_SUBJECTS);
+    const findings = results.flatMap((result) => result.findings);
+    expect(findings.length).toBe(MEMBER_CALL_PASS_CENSUS.TRIPWIRE_FINDINGS);
+    // Named rather than counted, and one from each route, so a tripwire that
+    // quietly lost half its coverage is red instead of merely smaller.
+    expect(findings).toEqual([
+      `tripwire#argument <- ${PROBE_NAME}`,
+      `tripwire#predicate-return <- ${PROBE_NAME}`,
+    ]);
+  });
+
+  it('accounts for every enumerated site, driven or declared undriven, in both directions', () => {
+    const driven = MEMBER_CALL_SUBJECTS.map((subject) => subject.site);
+    expect([...driven, ...MEMBER_CALL_PASS_UNDRIVEN].sort()).toEqual(
+      [...DECLARED_MEMBER_CALLS_ON_PARAMETERS].sort(),
+    );
+    // And the two lists do not overlap, so a site cannot be counted as covered
+    // and excused at the same time.
+    for (const site of driven) expect(MEMBER_CALL_PASS_UNDRIVEN).not.toContain(site);
+    // The residual as a number, beside the coverage as a number. Ten of
+    // thirteen is what this round paid for, and writing it down is what stops
+    // the next reader taking a green pass for a covered arm.
+    expect(MEMBER_CALL_PASS_UNDRIVEN.length).toBe(10);
+    expect(driven.length).toBe(MEMBER_CALL_PASS_CENSUS.SUBJECTS);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // PLANTED_ROUTES — what was actually run against this file, and what survived
 // ---------------------------------------------------------------------------
 
@@ -10994,6 +11272,7 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       "NOT CAUGHT BY THE ARM IT IS ABOUT. Against the whole guard file the ONLY failure is `derives every escape site: expected 21797 to be 21789` — the AST node count, which this file has recorded four times as not the check working. `DECLARED_MEMBER_CALLS_ON_PARAMETERS` is byte-identical with the plant in: the site key is `engagement.ts#moreEngagedByTrainedDay#history.includes x1` before and after, because the arity did not change. 65 passed of 66.",
       'AND THE BRANCH RUNS, PRINTED RATHER THAN INFERRED: driving `moreEngagedByTrainedDay` with a history whose `trainedDays` carries an instrumented `includes` prints `handed to the caller-supplied includes: ["covered-day"]`. A caller who supplied that array has the name.',
       "WHAT DID CATCH IT IS BEHAVIOURAL AND IN ANOTHER FILE, WHICH IS NOT THIS GUARD WORKING: `engagement.test.ts > refuses a pair that does not differ in engagement by exactly one: expected [Function] to throw an error`. `includes` of a name that is not in the array is always false, so the refusal stopped firing. That is a co-catcher of the payload's SIDE EFFECT, not of the payload — and M42 below is the same route written so that no behaviour moves at all.",
+      'AFTER: the member-call pass / sees no banned name at any driven site: `+ "engagement.ts#moreEngagedByTrainedDay#history.includes x1 <- covered-day"`. Re-planted against the pass rather than assumed. The ENUMERATION is still green under it and always will be — the pass is a second instrument beside that arm, not a repair of it.',
       "ITS FIRST FORM WAS NOT ISOLATED AND THE SECOND ATTEMPT IS WHY THIS ROW HAS `attempts: 2`. Putting the new import specifier on its own line moved `engagement.ts:355` to `engagement.ts:356` in `DECLARED_FRESH_RECEIVERS`, which is the FOURTH accidental catcher this file names — a line-number pin on an unrelated `[...list].sort()`. Folded onto an existing line, that goes away and the isolation is real.",
     ]),
     accidentalCatchersGreen: true,
@@ -11030,7 +11309,9 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
     caughtBy: Object.freeze([
       'NOTHING CAUGHT IT. Whole directory: `Test Files 1 failed | 11 passed (12)`, `Tests 1 failed | 480 passed (481)`, and the one failure is `derives every escape site: expected 21801 to be 21789` — the AST node count again. Instrument A, B and C green, the site table green, the member-call enumeration green, the callback pass green, every behavioural test in the directory green.',
       'AND THE BRANCH RUNS, PRINTED: with an instrumented `filter` on the ledger, `predicate returned to the caller-supplied filter: ["covered-day",false]`, `kept outputs: ["gym-bucks"]`, and `behaviour on a real array: ["gym-bucks"]`. Same answer, name delivered.',
-      "WHY IT DECIDES WHAT THE REPAIR HAS TO BE. A widening of the site KEY — adding each argument's syntactic kind, or the kind of the value an identifier argument resolves to — catches M40 and does not catch this: the argument is an `ArrowFunction` before and after, and the payload is in what the arrow RETURNS when the caller invokes it. Eleven of the thirteen sites take a callback, so the arrow-return route is the majority case and not a corner. The instrument that sees it has to be a DRIVE with a recording receiver, which reads the value the caller's own method is handed rather than the syntax that produced it. Nothing in this file does that at the time this row was written, and the commit that first carried the row repaired nothing — it recorded an open bypass.",
+      "WHY IT DECIDES WHAT THE REPAIR HAS TO BE. A widening of the site KEY — adding each argument's syntactic kind, or the kind of the value an identifier argument resolves to — catches M40 and does not catch this: the argument is an `ArrowFunction` before and after, and the payload is in what the arrow RETURNS when the caller invokes it. Eleven of the thirteen sites take a callback, so the arrow-return route is the majority case and not a corner. The instrument that sees it has to be a DRIVE with a recording receiver, which reads the value the caller's own method is handed rather than the syntax that produced it. The commit that first carried this row repaired nothing and said so; `MEMBER_CALL_PASS_CENSUS` is the commit after it.",
+      'AFTER: the member-call pass / sees no banned name at any driven site: `+ "empireCore.ts#idleLedger#ledger.filter x1 <- covered-day"`. The finding comes off the RETURN side of the record, which is the channel that did not exist before this round — the pass wraps a function argument and reads what it hands back rather than scanning the closure.',
+      "AND THE FAILURE MESSAGE IS PART OF THE FIX. With the count assertions first, this same plant reddened as `expected 1 to be +0`, which is true and names neither the site nor the name. The named list is asserted first now and the counts sit under it. CLAUDE.md: a check that bites but fails uselessly is half a check.",
     ]),
     accidentalCatchersGreen: true,
     alsoRed: Object.freeze([
