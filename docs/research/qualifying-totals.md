@@ -521,9 +521,9 @@ cleared by **44.7**<!--@raw:worlds.selectivity.ownP10.min-->% to
 **94.7**<!--@raw:worlds.selectivity.ownP10.max-->% of the nationals field — in
 men's 120 kg, 91.4% of the national field already cleared the world gate.
 
-**(b) It inverted the ladder in four cells**, listed in §3.4. In a game whose
-tiers are a ladder that is not a rounding artifact; it is the ladder running
-backwards.
+**(b) It broke the ladder in four cells** — three inversions and one tie, listed
+in §3.4. In a game whose tiers are a ladder that is not a rounding artifact; it
+is the ladder running backwards in three cells and standing still in the fourth.
 
 **(c) The cause, measured.** A world championship field is not a distribution of
 the world's best. It is that distribution **plus** the entrants of every
@@ -556,7 +556,11 @@ field. That is elevated by 13.5 points, which is consistent with the quota story
 and is nowhere near proof of it. It is reported with its base rate because the
 first figure alone would read as decisive and is not.
 
-#### The three candidate fixes, and why the shipped one won
+#### Every candidate that was computed, and why the shipped one won
+
+The first row is the status quo rather than a fix; the other three are the fixes.
+All four are computed on every run, so this table is a column of the generated
+artifact rather than a paragraph somebody has to trust.
 
 | candidate | selectivity against the nationals field | verdict |
 |---|---|---|
