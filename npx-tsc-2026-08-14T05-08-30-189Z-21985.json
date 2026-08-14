@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-tsc-2026-08-14T05-08-30-189Z-21985",
+  "label": null,
+  "command": [
+    "npx",
+    "tsc",
+    "--noEmit"
+  ],
+  "budgetSeconds": 180,
+  "startedAtIso": "2026-08-14T05:08:30.189Z",
+  "startedAtMs": 1786684110189,
+  "cwd": "/home/user/wt-press-fix",
+  "commit": "a3620a3e5462b49670ffb67a05b84d55c3119ed0",
+  "branch": "claude/press-fix-played-surfaces",
+  "dirty": 4,
+  "dirtyPaths": [
+    "src/lift/LiftScreen.tsx",
+    "src/meet/AttemptView.tsx",
+    "src/session/SetView.tsx",
+    "src/lift/pressGuard.ts"
+  ],
+  "runner": {
+    "pid": 21985,
+    "startTick": "996328",
+    "cmdline": "node tools/watchdog.mjs --budget 180 --id press-tsc -- npx tsc --noEmit",
+    "bootId": "70e4dcd9-91f6-43ee-a53c-88125d271f98",
+    "bootEpochSeconds": 1786674147,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T05:08:30.219Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
