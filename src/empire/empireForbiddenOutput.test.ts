@@ -12339,6 +12339,28 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'social.ts and empireForbiddenOutput.test.ts were both restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>`. The test file needed `git checkout HEAD --` rather than `git checkout --`, because the control had staged the older version in the index; the hash check is what caught that.',
     ]),
   }),
+  Object.freeze({
+    id: 'M56',
+    shape:
+      "36 IN THE OTHER WALKER — THE SIXTEENTH BYPASS: a string position whose TYPE KIND `surfaceOf`'s walk has no arm for. Not a route through a binding and not a node kind: a TEMPLATE LITERAL TYPE, which is neither `String`, nor `StringLiteral`, nor an intersection, nor a primitive, nor a union, nor conditional, nor an array, nor an object",
+    where:
+      "empireCore.ts, `NpcLifter.displayName`: `DisplayName` -> ``DisplayName | `${EmpireForbiddenOutput}${string}` ``. One line replaced, no new line, no new import, no new export, no runtime value changed anywhere",
+    attempts: 3,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING IN INSTRUMENT A CAUGHT IT, WHICH IS THE INSTRUMENT WHOSE HEADLINE IT BREAKS. `walks the whole directory without truncating` green with `positions`, `exports` and `depthCuts` unchanged; `pins every bare-string position, in both directions` green at 0; `pins every branded-string position, in both directions` green at 34; `names no forbidden output in any closed literal union` green. Instrument B green throughout — no runtime value moves, so there is nothing for a drive to read.',
+      "AND THE BRANCH RUNS, PRINTED, from the CHECKER rather than from this file's own walker: `createNpcLifter`'s return `.displayName` is ``DisplayName | `covered-day${string}` | `chalk${string}` | `e1rm${string}` | `competition-total${string}` ``, and each of the four template parts has `flags=4194304 [TemplateLiteral]` with all eight arms false — `{\"StringLiteral\":false,\"String\":false,\"isIntersection\":false,\"PRIMITIVE\":false,\"isUnion\":false,\"ConditionalOrTypeParameter\":false,\"arrayOrTuple\":false,\"Object\":false}`. Four string positions arrive at the dispatch and four are dropped.",
+      "THE POSITION ADMITS THE BANNED NAME EXACTLY, WITH A CONTROL. `export const ADMITS: NpcLifter['displayName'] = 'covered-day';` in a scratch module is `tsc --noEmit` exit 0 under the mutant and exit 2 on the pristine tree — `error TS2322: Type 'string' is not assignable to type 'DisplayName'. Type 'string' is not assignable to type '{ readonly [EMPIRE_BRAND]: \"display-name\" }'`. So the brand that closes this field is gone and the census still reports the field as branded.",
+      "WHY IT IS THE SAME DEFECT AS M53 AND NOT A NEW ONE. `returnedFunctions`'s walk was a chain of `if (ts.isX(node))` with no final branch; `surfaceOf`'s walk is a chain of `if ((type.flags & X) !== 0)` with no final branch, in a file where the first had just been repaired. E21 installed the `else` discipline on two arms, E23 installed it on a third, and none of the three swept for the rest — which is what the dispatch-chain census below exists to make impossible.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      "THE FIRST FORM WAS NOT ISOLATED AND THE SECOND WAS NOT EITHER, and both misses are worth more than the row. Form 1 put the widening on `GymSnapshot.displayName` in `social.ts`, which needed `type EmpireForbiddenOutput` added to that module's import block — one more LINE, which moved `DECLARED_FRESH_RECEIVERS` from `social.ts:345` to `social.ts:346` and reddened two assertions that are about line numbers rather than about names. Whole directory: 4 failed of 485.",
+      'FORM 2 MOVED THE STRING CENSUS, AND FORM 3 SHOWS THAT CENSUS IS NOT A CATCHER FOR THIS CLASS. Form 2 in `empireCore.ts` left exactly two reds — `empireCore.test.ts` / `ships no string a real name could be hiding in`: `expected 139 to be 138` on `templateChunks.size`, and the channel census `nodesExamined`: `expected 21799 to be 21789`. The first looks like a catch and is a Set SIZE over template CHUNK TEXT, so it is defeated by choosing chunk text the set already holds: form 3, ``DisplayName | `recruit-${string}` ``, collides with the existing `"recruit- "` chunk and leaves `empireCore.test.ts` 57 passed with `nodesExamined` — `expected 21795 to be 21789` — as the ONLY red in `empireCore.test.ts` and `empireForbiddenOutput.test.ts`, 126 of 127 passed.',
+      'So the three accidental catchers are green on the form that matters, and the one instrument that moved on every form is the AST node count, which this file has recorded four times as not the check working.',
+      'empireCore.ts and social.ts were both restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` before this row was written.',
+    ]),
+  }),
 ]);
 
 /**
@@ -12553,7 +12575,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(55);
+    expect(PLANTED_ROUTES.length).toBe(56);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -12646,8 +12668,15 @@ describe('the routes that were planted, and what each of them cost', () => {
     // adds no string literal — and the first of them was run against
     // `empireCore.test.ts` (57 passed) to check that the added specifier is
     // invisible to the import fence, rather than assuming it from M39.
-    expect(attempts).toBe(75);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(45);
+    // THREE FOR M56, and the extra two are the row's own evidence rather than
+    // retries: the isolation known for M43-M52 is about a NAME added to a
+    // module, and M56 adds a TYPE. Form 1 added an import line and moved a
+    // line-numbered pin; form 2 moved a template-chunk Set size; form 3 chose
+    // chunk text the set already held and left that census green. Only the
+    // third says whether the string census covers this class, and the answer
+    // is that it does not.
+    expect(attempts).toBe(78);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(46);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
