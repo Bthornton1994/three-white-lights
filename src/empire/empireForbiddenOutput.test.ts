@@ -7285,7 +7285,7 @@ const ESCAPE_CHANNELS: readonly EscapeChannel[] = Object.freeze([
   Object.freeze({
     id: 'returned-closure',
     what: 'a function handed back, whose RESULT is the payload and which only the caller can invoke',
-    scannedFor: 'a `return` of a function expression or arrow, or a declared function-typed return',
+    scannedFor: 'a function expression, arrow or method reachable from a `return` through object/array literals, spreads, casts, `?:`, `??` and `Object.freeze`, or a declared function-typed return',
     reachableFromOutside: true,
   }),
   Object.freeze({
@@ -7718,6 +7718,77 @@ function channelCensusOf(
     return ownerOf(at);
   };
 
+  /**
+   * Every function value reachable from a returned expression, by member path.
+   *
+   * Its limit, in the mechanism's own terms: it follows SYNTAX, so a function
+   * assembled elsewhere and returned through a plain identifier — `const shape
+   * = { peek }; return shape;` — is not found here. What covers that route is
+   * the `local` arm of the write census plus instrument A's declared-position
+   * walk, and the honest statement is that this closes the LITERAL nesting the
+   * plant used and not every route to a returned function.
+   */
+  const returnedFunctions = (expression: ts.Expression, at: string = ''): readonly string[] => {
+    const found: string[] = [];
+    const walk = (node: ts.Expression, path_: string): void => {
+      if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
+        found.push(path_ === '' ? 'return' : path_);
+        return;
+      }
+      if (
+        ts.isParenthesizedExpression(node) ||
+        ts.isAsExpression(node) ||
+        ts.isNonNullExpression(node) ||
+        ts.isSatisfiesExpression(node) ||
+        ts.isTypeAssertionExpression(node)
+      ) {
+        walk(node.expression, path_);
+        return;
+      }
+      if (ts.isConditionalExpression(node)) {
+        walk(node.whenTrue, path_);
+        walk(node.whenFalse, path_);
+        return;
+      }
+      if (
+        ts.isBinaryExpression(node) &&
+        (node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
+          node.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
+          node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken)
+      ) {
+        walk(node.left, path_);
+        walk(node.right, path_);
+        return;
+      }
+      if (ts.isObjectLiteralExpression(node)) {
+        for (const property of node.properties) {
+          const name = property.name === undefined ? '?' : property.name.getText(property.getSourceFile());
+          if (ts.isPropertyAssignment(property)) walk(property.initializer, `${path_}.${name}`);
+          else if (ts.isSpreadAssignment(property)) walk(property.expression, path_);
+          else if (ts.isMethodDeclaration(property)) found.push(`${path_}.${name}`);
+        }
+        return;
+      }
+      if (ts.isArrayLiteralExpression(node)) {
+        for (const [index, element] of node.elements.entries()) {
+          if (ts.isSpreadElement(element)) walk(element.expression, `${path_}[]`);
+          else walk(element, `${path_}[${String(index)}]`);
+        }
+        return;
+      }
+      if (
+        ts.isCallExpression(node) &&
+        ts.isPropertyAccessExpression(node.expression) &&
+        node.expression.expression.getText(node.getSourceFile()) === 'Object' &&
+        node.expression.name.text === 'freeze'
+      ) {
+        for (const argument of node.arguments) walk(argument, path_);
+      }
+    };
+    walk(expression, at);
+    return found;
+  };
+
   for (const root of roots) {
     const source = program.getSourceFile(root);
     if (source === undefined) throw new Error(`${root} is not in the program`);
@@ -7899,12 +7970,26 @@ function channelCensusOf(
         }
       }
 
-      if (
-        ts.isReturnStatement(node) &&
-        node.expression !== undefined &&
-        (ts.isArrowFunction(node.expression) || ts.isFunctionExpression(node.expression))
-      ) {
-        record('returned-closure', moduleName, key(node, 'closure'));
+      // A FUNCTION HANDED BACK, AT ANY DEPTH OF THE RETURNED STRUCTURE.
+      //
+      // This used to require the return's expression to be LITERALLY an arrow
+      // or a function expression, so `return Object.freeze({ ...fields, peek:
+      // () => <a banned name> }) as T` was outside it. Planted into
+      // `accrueProduction` and driven: the caller gets a `peek` member and
+      // calling it yields the name, `tsc --noEmit` exit 0, and the only things
+      // that reddened in the whole directory were three node- and string-count
+      // truncation guards — which this file has recorded four times as not the
+      // check working.
+      //
+      // The descent goes through VALUE-CONSTRUCTION positions only — object and
+      // array literals, spreads, casts, `?:`, `??`/`||`/`&&`, and the arguments
+      // of `Object.freeze` — and deliberately NOT through arbitrary call
+      // arguments, because `return list.map((x) => …)` hands the caller a list
+      // and not the arrow.
+      if (ts.isReturnStatement(node) && node.expression !== undefined) {
+        for (const found of returnedFunctions(node.expression)) {
+          record('returned-closure', moduleName, key(node, `closure:${found}`));
+        }
       }
       if (ts.isFunctionDeclaration(node) && node.type !== undefined && ts.isFunctionTypeNode(node.type)) {
         record('returned-closure', moduleName, key(node, 'closure-type'));
@@ -8061,7 +8146,16 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
     'module-mutable-state': Object.freeze({}),
     'ambient-global': Object.freeze({}),
     'lazy-member': Object.freeze({}),
-    'returned-closure': Object.freeze({}),
+    /**
+     * TWO, AND THE CHANNEL WAS DECLARED EMPTY UNTIL THIS ROUND.
+     *
+     * `rosterRatesAt` returns a frozen object holding two arrows, which is a
+     * returned closure by any reading — and the scan required the return's
+     * expression to be LITERALLY an arrow, so it counted zero. The zero was a
+     * fact about the scan. Both sites are named in
+     * `DECLARED_RETURNED_CLOSURE_SITES`.
+     */
+    'returned-closure': Object.freeze({ 'empireInvariant.ts': 2 }),
     'deferred-completion': Object.freeze({}),
   });
 
@@ -8161,6 +8255,20 @@ const DECLARED_INTERNAL_CALLBACK_ARGUMENTS: readonly string[] = Object.freeze([
  * fourth — which might not be a copy — is a decision somebody signs rather than
  * a number that moves.
  */
+/**
+ * The functions this directory hands its caller back, by member path.
+ *
+ * Both are `rosterRatesAt`'s two arrows, and both are the PRODUCER side of the
+ * two `callback-invocation` sites `production.ts` has: this module builds the
+ * closures, `production.ts` calls them, and until this round the census saw
+ * neither end. The member path is in the key, so a third arrow arriving in the
+ * same returned object is red rather than absorbed into a count.
+ */
+const DECLARED_RETURNED_CLOSURE_SITES: readonly string[] = Object.freeze([
+  'empireInvariant.ts#rosterRatesAt#closure:.gymBucksPerHour',
+  'empireInvariant.ts#rosterRatesAt#closure:.trainingIqPerDay',
+]);
+
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'empireInvariant.ts:637 receiver=ArrayLiteralExpression',
   'engagement.ts:355 receiver=ArrayLiteralExpression',
@@ -8223,14 +8331,14 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
   MODULES: 10,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
-  SITES: 326,
+  SITES: 328,
   /** Nodes the walk examined. A truncated walk would report a clean directory. */
   NODES_EXAMINED: 21_789,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
   WRAP_CALLS: 53,
   CHANNELS: 11,
-  /** Channels with at least one site. The other four are open routes nobody uses. */
-  CHANNELS_IN_USE: 5,
+  /** Channels with at least one site. The other five are open routes nobody uses. */
+  CHANNELS_IN_USE: 6,
 });
 
 // ---------------------------------------------------------------------------
@@ -9317,9 +9425,10 @@ describe('the channel census — the routes a string can leave this directory by
         'module-mutable-state',
         'ambient-global',
         'lazy-member',
-        'returned-closure',
         'deferred-completion',
       ]);
+      // The returned closures, by name. A third is a decision somebody signs.
+      expect(census.sites['returned-closure']).toEqual(DECLARED_RETURNED_CLOSURE_SITES);
       // And the scan's one unclassified outcome, named rather than dropped.
       expect(census.freshReceivers).toEqual(DECLARED_FRESH_RECEIVERS);
       // The populated arm the census cannot classify, enumerated rather than
