@@ -10,9 +10,10 @@ implementation.** `src/career/**`, `src/game/**`, `CLAUDE.md`, `.github/**` and
 every existing test are untouched by this branch. The numbers below are for a
 human to review before any of them becomes a constant.
 
-**Read section 6 before using any number.** Two of the four named sources could
-not be retrieved from this environment at all, one designation in the table is
-measurably near-vacuous at the top tier, and there are seven measured
+**Read section 6 before using any number.** Three of the four named sources are
+hard-blocked from this environment and could not be read at all; the fourth was
+reachable only as raw data, not as published standards. One designation in the
+table is measurably near-vacuous at the top tier, and there are seven measured
 inversions.
 
 ---
@@ -632,7 +633,7 @@ its header says *"REGENERATE, DO NOT HAND-EDIT."*
 3. Widen `realIp.test.ts:876`'s prose pin beyond the single design-document entry.
 4. **Decide whether the generated artifacts belong in the tree at all** — see 8.6.
 
-### 8.6 Two findings about the guard, reported not exploited
+### 8.6 Four findings about the guard, reported not exploited
 
 **(a) The census is not built for bulk generated data, and I trimmed rather than
 hid.** The tier-mapping audit file originally listed all 2,647 `local` meets and
