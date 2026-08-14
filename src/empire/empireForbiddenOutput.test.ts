@@ -1051,8 +1051,6 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   'empireInvariant.ts#stepGym#gym.find x1',
   'empireInvariant.ts#stepGym#gym.map x1',
   'engagement.ts#moreEngagedByTrainedDay#history.includes x1',
-  'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour x2',
-  'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay x2',
   'social.ts#rankLeaderboard#entries.map x1',
   'social.ts#visitRefusals#context.some x1',
   'social.ts#visitRefusals#context.some x1',
@@ -7451,6 +7449,7 @@ type OwnerKind =
   | 'local'
   | 'function'
   | 'member'
+  | 'member-callback'
   | 'member-of-parameter'
   | 'fresh'
   | 'unclassified';
@@ -7461,6 +7460,7 @@ const OWNER_KINDS: readonly OwnerKind[] = Object.freeze([
   'local',
   'function',
   'member',
+  'member-callback',
   'member-of-parameter',
   'fresh',
   'unclassified',
@@ -7686,10 +7686,30 @@ function channelCensusOf(
     const at = past(expression);
     if (ts.isPropertyAccessExpression(at) || ts.isElementAccessExpression(at)) {
       const holder = ownerOf(at.expression);
+      if (holder.kind !== 'parameter') {
+        return {
+          kind: 'member',
+          declaration: holder.declaration,
+          detail: `member-of-${holder.kind}:${holder.detail}`,
+        };
+      }
+      const member = ts.isPropertyAccessExpression(at) ? at.name : null;
+      const declared = member === null ? null : resolvedDeclaration(member);
+      // THE ONE THING THAT SEPARATES A CALLBACK FROM A READ, and it is a
+      // syntactic fact rather than a judgement: `filter` is a MethodSignature
+      // that lib.d.ts put on the array type, and `gymBucksPerHour` is a
+      // PROPERTY whose declared type is a function type — a slot the CALLER
+      // filled. Both are `a.b()` and only the second is a call into code the
+      // caller supplied.
+      const callerSupplied =
+        declared !== null &&
+        (ts.isPropertySignature(declared) || ts.isPropertyDeclaration(declared)) &&
+        declared.type !== undefined &&
+        ts.isFunctionTypeNode(declared.type);
       return {
-        kind: holder.kind === 'parameter' ? 'member-of-parameter' : 'member',
+        kind: callerSupplied ? 'member-callback' : 'member-of-parameter',
         declaration: holder.declaration,
-        detail: `member-of-${holder.kind}:${holder.detail}`,
+        detail: `${holder.detail}.${member === null ? ts.SyntaxKind[at.kind] : member.text}`,
       };
     }
     return ownerOf(at);
@@ -7799,7 +7819,11 @@ function channelCensusOf(
           wrapCalls[moduleName] = (wrapCalls[moduleName] ?? 0) + 1;
         }
 
-        if (target.kind === 'parameter' && declaration !== null && ts.isParameter(declaration)) {
+        if (
+          (target.kind === 'parameter' || target.kind === 'member-callback') &&
+          declaration !== null &&
+          ts.isParameter(declaration)
+        ) {
           const owner = declaration.parent;
           const ownerName =
             ts.isFunctionDeclaration(owner) && owner.name !== undefined ? owner.name.text : '#anonymous';
@@ -7809,8 +7833,10 @@ function channelCensusOf(
             : 'internal-callback-invocation';
           // KEYED BY THE PARAMETER, NOT BY THE SPELLING AT THE CALL SITE. On
           // the shipped tree the two are the same string; under an alias they
-          // are not, and the key that survives a rename is the symbol's.
-          const parameterName = nameOf(declaration);
+          // are not, and the key that survives a rename is the symbol's. A
+          // `member-callback` keys as `roster.gymBucksPerHour`, which is the
+          // parameter and the slot on it the caller filled.
+          const parameterName = target.kind === 'member-callback' ? target.detail : nameOf(declaration);
           record(
             channel,
             moduleName,
@@ -7824,14 +7850,11 @@ function channelCensusOf(
           }
         } else if (target.kind === 'member-of-parameter') {
           // Enumerated rather than counted, for the reason the field's own
-          // docstring gives: this arm holds ordinary reads AND a call into a
-          // caller-supplied function reached through a property.
-          const callee = past(node.expression);
-          const member = ts.isPropertyAccessExpression(callee)
-            ? callee.name.text
-            : ts.SyntaxKind[callee.kind];
+          // docstring gives: every one of these is a READ of a caller-supplied
+          // value through a method the caller did not write, and the list is
+          // what makes that checkable rather than asserted.
           memberCallsOnParameters.push(
-            `${key(node, `${target.detail.replace(/^member-of-parameter:/, '')}.${member}`)} x${String(node.arguments.length)}`,
+            `${key(node, target.detail)} x${String(node.arguments.length)}`,
           );
         } else if (target.kind === 'fresh' || target.kind === 'unclassified') {
           // THE `ELSE` THAT DID NOT EXIST. A call whose callee resolves to
@@ -8014,7 +8037,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'social.ts': 7,
     }),
     'argument-mutation': Object.freeze({}),
-    'callback-invocation': Object.freeze({ 'engagement.ts': 1 }),
+    'callback-invocation': Object.freeze({ 'engagement.ts': 1, 'production.ts': 2 }),
     'internal-callback-invocation': Object.freeze({ 'expansion.ts': 1 }),
     'module-mutable-state': Object.freeze({}),
     'ambient-global': Object.freeze({}),
@@ -8082,6 +8105,8 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
  */
 const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
   'engagement.ts#historyFrom#attended x1',
+  'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour x2',
+  'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay x2',
 ]);
 
 const DECLARED_INTERNAL_CALLBACK_SITES: readonly string[] = Object.freeze([
@@ -8147,7 +8172,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   local: 0,
   function: 501,
   member: 474,
-  'member-of-parameter': 15,
+  'member-callback': 2,
+  'member-of-parameter': 13,
   fresh: 0,
   unclassified: 0,
 });
@@ -8168,6 +8194,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   local: 153,
   function: 0,
   member: 0,
+  'member-callback': 0,
   'member-of-parameter': 0,
   fresh: 3,
   unclassified: 0,
@@ -8177,7 +8204,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
   MODULES: 10,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
-  SITES: 324,
+  SITES: 326,
   /** Nodes the walk examined. A truncated walk would report a clean directory. */
   NODES_EXAMINED: 21_789,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
@@ -8716,38 +8743,163 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
  *     This pass catches a payload smuggled into an argument the site already
  *     passes — which no site census can see — and only at points it drives.
  */
-interface CallbackSubject {
-  /** `module.ts#export#parameter`, derived from the checker and joined below. */
-  readonly key: string;
+interface CallbackAxis {
+  /** `subjectKey#axisName`, which is what the per-axis census is keyed by. */
+  readonly name: string;
   /**
-   * The `NUMERIC_DOMAINS` key whose points this subject's axis is driven over.
+   * The `NUMERIC_DOMAINS` key whose points this axis is driven over.
    *
    * A key rather than a point list, so the domain cannot be forked here: the
    * pass reads the registry, and `NUMERIC_DOMAINS` is what the main drive and
    * the overflow pass read too.
    */
   readonly domain: keyof typeof NUMERIC_DOMAINS;
-  /** What one point MEANS for this subject, so a reader can disagree with the axis. */
-  readonly axis: string;
+  /** What one point MEANS on this axis, so a reader can disagree with it. */
+  readonly means: string;
   /** Calls the subject at one domain point with a recording callback. */
   readonly drive: (record: (args: readonly unknown[]) => void, point: number) => void;
+  /**
+   * How many calls the subject's own contract says it makes at one point.
+   *
+   * AN ORACLE OVER THE SUBJECT RATHER THAN OVER THE DOMAIN, per axis. The
+   * domain appears on both sides of the comparison, so what is graded is the
+   * SUBJECT: a `historyFrom` that skipped slot 0 or stopped early, or a rate
+   * reader that quietly stopped asking about half the roster, is red here while
+   * the literal counts stay green.
+   */
+  readonly callsAt: (point: number) => number;
+  /** Values handed per call, so RECORDED grades the arity and not only the count. */
+  readonly argumentsPerCall: number;
 }
+
+interface CallbackSubject {
+  /** `module.ts#export#parameter`, derived from the checker and joined below. */
+  readonly key: string;
+  readonly axes: readonly CallbackAxis[];
+}
+
+/**
+ * The slot count the `trainedDays` axis holds fixed while it varies the other
+ * argument.
+ *
+ * ONE AXIS AT A TIME, WHICH IS A CHOICE WITH A PRICE AND THE PRICE IS STATED.
+ * Crossing the two axes would multiply 726 813 calls by 88 points; driving them
+ * separately costs 88 x 3 extra calls. What that buys is that a payload keyed
+ * on `trainedDays.length` alone is inside the pass at every point of the COUNT
+ * domain. What it does NOT buy is a payload keyed on a CONJUNCTION —
+ * `slots === 7 && trainedDays.length === 5000` — which is outside this pass at
+ * every point of both axes. That residual is real and is
+ * `CALLBACK_AXIS_RESIDUAL` rather than a silence.
+ *
+ * Three rather than one so a subject that stopped calling its predicate on
+ * later slots is still visible on this axis.
+ */
+const TRAINED_DAYS_AXIS_SLOTS = 3;
+
+/** A trained-day list of a given length, ascending. The axis's own generator. */
+const trainedDaysOfLength = (length: number): readonly number[] =>
+  length <= 0 ? [] : Array.from({ length }, (_, index) => index);
+
+/**
+ * A `RosterRateSource` whose two members record what they were handed.
+ *
+ * `requireRate` refuses anything that is not a finite number at or above zero,
+ * so the recorder returns zero — the pass is about what goes OUT through the
+ * member, not about what comes back.
+ */
+const recordingRates = (record: (args: readonly unknown[]) => void): RosterRateSource =>
+  Object.freeze({
+    gymBucksPerHour: (...args: readonly unknown[]): number => {
+      record(args);
+      return 0;
+    },
+    trainingIqPerDay: (...args: readonly unknown[]): number => {
+      record(args);
+      return 0;
+    },
+  } as unknown as RosterRateSource);
 
 const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
   Object.freeze({
     key: 'engagement.ts#historyFrom#attended',
-    domain: 'COUNT',
-    axis: 'the slot count, which is what `historyFrom` allocates one attendance entry per and calls its predicate once per',
-    drive: (record: (args: readonly unknown[]) => void, point: number): void => {
-      engagementModule.historyFrom(
-        point,
-        (...args: readonly unknown[]): boolean => {
-          record(args);
-          return args[0] === 0;
+    axes: Object.freeze([
+      Object.freeze({
+        name: 'engagement.ts#historyFrom#attended#slots',
+        domain: 'COUNT',
+        means:
+          'the slot count, which is what `historyFrom` allocates one attendance entry per and calls its predicate once per',
+        drive: (record: (args: readonly unknown[]) => void, point: number): void => {
+          engagementModule.historyFrom(
+            point,
+            (...args: readonly unknown[]): boolean => {
+              record(args);
+              return args[0] === 0;
+            },
+            [point],
+          );
         },
-        [point],
-      );
-    },
+        callsAt: (point: number): number => (point >= 1 ? point : 0),
+        argumentsPerCall: 1,
+      }),
+      Object.freeze({
+        name: 'engagement.ts#historyFrom#attended#trainedDays',
+        domain: 'COUNT',
+        means:
+          'the LENGTH of the trained-day list, which is the second injected argument and the one the twelfth bypass keyed its payload on',
+        drive: (record: (args: readonly unknown[]) => void, point: number): void => {
+          engagementModule.historyFrom(
+            TRAINED_DAYS_AXIS_SLOTS,
+            (...args: readonly unknown[]): boolean => {
+              record(args);
+              return args[0] === 0;
+            },
+            trainedDaysOfLength(point),
+          );
+        },
+        callsAt: (): number => TRAINED_DAYS_AXIS_SLOTS,
+        argumentsPerCall: 1,
+      }),
+    ]),
+  }),
+  Object.freeze({
+    key: 'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour',
+    axes: Object.freeze([
+      Object.freeze({
+        name: 'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize',
+        domain: 'ROSTER_SHAPE',
+        means:
+          'the roster size, which is what `gymBucksRatePerHour` asks the caller-supplied rate source about once per lifter who has joined',
+        drive: (record: (args: readonly unknown[]) => void, point: number): void => {
+          productionModule.gymBucksRatePerHour(
+            overflowState(point),
+            OVERFLOW_CLOCK,
+            recordingRates(record),
+          );
+        },
+        callsAt: (point: number): number => (point >= 1 ? point : 0),
+        argumentsPerCall: 2,
+      }),
+    ]),
+  }),
+  Object.freeze({
+    key: 'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay',
+    axes: Object.freeze([
+      Object.freeze({
+        name: 'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize',
+        domain: 'ROSTER_SHAPE',
+        means:
+          'the roster size, which is what `trainingIqRatePerDay` asks the caller-supplied rate source about once per lifter whose recruitment has settled',
+        drive: (record: (args: readonly unknown[]) => void, point: number): void => {
+          productionModule.trainingIqRatePerDay(
+            overflowState(point),
+            OVERFLOW_CLOCK,
+            recordingRates(record),
+          );
+        },
+        callsAt: (point: number): number => (point >= 1 ? point : 0),
+        argumentsPerCall: 2,
+      }),
+    ]),
   }),
 ]);
 
@@ -8907,43 +9059,89 @@ const callbackSubjectKeys = (census: ChannelCensus): readonly string[] =>
  */
 const CALLBACK_TRIPWIRE_POINTS: readonly number[] = Object.freeze([1, 2, 3]);
 
+/**
+ * What each axis measured, per axis rather than summed.
+ *
+ * SUMS HIDE AN AXIS GOING QUIET, which is the failure this table exists to
+ * make red: a single CALLS total would stay honest-looking if one axis stopped
+ * driving and another grew. Every axis reports its own points, refusals, calls
+ * and recorded values, deep-equal in both directions.
+ *
+ * The `trainedDays` axis is the one this round added, and its numbers are
+ * hand-checkable on purpose: 88 points x 3 slots = 264 calls, none refused,
+ * because the slot count it holds fixed is admissible at every point.
+ */
+interface CallbackAxisCensus {
+  readonly points: number;
+  readonly refusedPoints: number;
+  readonly calls: number;
+  readonly recorded: number;
+}
+
+const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Object.freeze({
+  'engagement.ts#historyFrom#attended#slots': Object.freeze({
+    points: 88,
+    refusedPoints: 1,
+    calls: 726813,
+    recorded: 726813,
+  }),
+  'engagement.ts#historyFrom#attended#trainedDays': Object.freeze({
+    points: 88,
+    refusedPoints: 0,
+    calls: 264,
+    recorded: 264,
+  }),
+  'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize': Object.freeze({
+    points: 61,
+    refusedPoints: 0,
+    calls: 721689,
+    recorded: 1443378,
+  }),
+  'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize': Object.freeze({
+    points: 61,
+    refusedPoints: 0,
+    calls: 721689,
+    recorded: 1443378,
+  }),
+});
+
+/**
+ * What this pass still does not reach, counted rather than described.
+ *
+ * One entry per axis pair that is NOT crossed. The pass drives one axis at a
+ * time, so a payload keyed on a conjunction of two of them is outside it, and
+ * that is a residual of the shape E15 and E17 established rather than a
+ * sentence at the bottom of a docstring.
+ */
+const CALLBACK_AXIS_RESIDUAL: readonly string[] = Object.freeze([
+  'engagement.ts#historyFrom#attended: slots x trainedDays is not crossed — 88 x 88 = 7744 pairs offered as 176 points, so a payload keyed on BOTH is outside this pass',
+]);
+
 const CALLBACK_PASS_CENSUS = Object.freeze({
-  SUBJECTS: 1,
+  SUBJECTS: 3,
   /**
-   * Points the one subject is driven at, and how many its own guard refused.
+   * Axes driven, summed over subjects.
    *
-   * It was three CALLS at one fixture until E19. It is now the COUNT domain
-   * plus the points that domain's foreign ceiling drops — the same set the main
-   * drive and the overflow pass between them cover on this axis.
-   *
-   * DERIVED RATHER THAN READ OFF A FAILURE: `DOMAIN_CENSUS.COUNT_POINTS` is 55
-   * and the 39 overflow rows collapse to 33 distinct values, which is 88. Both
-   * halves are asserted separately in `drives the callback subjects over the
-   * registry domain`, so this number moving without one of them moving would
-   * itself be a defect.
+   * The number CLAUDE.md's "richness on one axis" rule asks for, and it was 1
+   * when the twelfth bypass was planted: `historyFrom` takes `slots` and
+   * `trainedDays`, the pass varied `slots`, and the bypass keyed its payload on
+   * `trainedDays.length`. Four now — two on `historyFrom` and one on each rate
+   * reader — with `CALLBACK_AXIS_RESIDUAL` naming what a per-axis drive still
+   * cannot express.
    */
-  POINTS: 88,
+  AXES_VARIED: 4,
+  /**
+   * Points, refusals, calls and values, summed across every axis.
+   *
+   * Kept beside the per-axis table rather than instead of it: the sum is what a
+   * reader checks at a glance and the table is what cannot be gamed by one axis
+   * growing while another dies.
+   */
+  POINTS: 298,
   REFUSED_POINTS: 1,
-  /**
-   * Calls the subject made into the recording callback, summed over the domain.
-   *
-   * `historyFrom` calls its predicate once per slot, so this is the sum of the
-   * admissible points. A zero here is a dead pass; a number that drops is a
-   * domain that quietly lost points or a subject that stopped calling out.
-   */
-  CALLS: 726813,
-  /** Values handed across those calls: one slot argument each, so it equals CALLS. */
-  RECORDED: 726813,
+  CALLS: 2170455,
+  RECORDED: 3613833,
   FINDINGS: 0,
-  /**
-   * How many INJECTED axes the pass varies, per subject.
-   *
-   * One, and it is a number rather than a silence for the reason CLAUDE.md's
-   * "richness on one axis" rule gives: `historyFrom`'s `trainedDays` is not
-   * varied, so a payload keyed on its contents is outside this pass however
-   * many slot points it walks.
-   */
-  AXES_VARIED: 1,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
   TRIPWIRE_RECORDED: 12,
@@ -9202,7 +9400,10 @@ describe('the channel census — the routes a string can leave this directory by
     () => {
       const census = channelCensus();
       // The subject list is DERIVED from the census and joined both ways. A
-      // second callback-taking export reddens here until it has a driver.
+      // second callback-taking export reddens here until it has a driver, and
+      // that is not hypothetical: the symbol resolver found two more sites this
+      // round — `RosterRateSource`'s two function-typed properties — and this
+      // line is what forced them to be driven rather than noted.
       expect(CALLBACK_SUBJECTS.map((subject) => subject.key)).toEqual(callbackSubjectKeys(census));
       expect(CALLBACK_SUBJECTS.length).toBe(CALLBACK_PASS_CENSUS.SUBJECTS);
 
@@ -9211,19 +9412,60 @@ describe('the channel census — the routes a string can leave this directory by
       let points = 0;
       let refusedPoints = 0;
       let findingCount = 0;
+      let axes = 0;
       const findings: string[] = [];
+      const measured: Record<string, CallbackAxisCensus> = {};
+      const contracts: {
+        name: string;
+        calls: number;
+        contract: number;
+        recorded: number;
+        arity: number;
+      }[] = [];
       for (const subject of CALLBACK_SUBJECTS) {
-        // The domain is the registry's, not this pass's: a subject names a
-        // `NUMERIC_DOMAINS` key and the points come from there and from the
-        // same overflow arithmetic the overflow pass uses.
-        expect(subject.axis.length, subject.key).toBeGreaterThan(30);
-        const result = callbackPass(subject.drive, subject.key, callbackPointsFor(subject.domain));
-        calls += result.calls;
-        recorded += result.recorded;
-        points += result.points;
-        refusedPoints += result.refusedPoints;
-        findingCount += result.findingCount;
-        findings.push(...result.findings);
+        for (const axis of subject.axes) {
+          // The domain is the registry's, not this pass's: an axis names a
+          // `NUMERIC_DOMAINS` key and the points come from there and from the
+          // same overflow arithmetic the overflow pass uses.
+          expect(axis.means.length, axis.name).toBeGreaterThan(30);
+          expect(axis.name.startsWith(`${subject.key}#`), axis.name).toBe(true);
+          const domainPoints = callbackPointsFor(axis.domain);
+          const result = callbackPass(axis.drive, axis.name, domainPoints);
+          axes += 1;
+          measured[axis.name] = {
+            points: result.points,
+            refusedPoints: result.refusedPoints,
+            calls: result.calls,
+            recorded: result.recorded,
+          };
+          calls += result.calls;
+          recorded += result.recorded;
+          points += result.points;
+          refusedPoints += result.refusedPoints;
+          findingCount += result.findingCount;
+          findings.push(...result.findings);
+          // AN ORACLE OVER THE SUBJECT RATHER THAN OVER THE DOMAIN, per axis,
+          // which is the half a literal cannot give. The domain appears on both
+          // sides, so what is graded is the SUBJECT: a `historyFrom` that
+          // skipped slot 0, stopped early or called its predicate twice is red
+          // here while every literal below stays green, and so is a rate reader
+          // that quietly stopped asking about part of the roster.
+          //
+          // COLLECTED AND ASSERTED BELOW THE FINDINGS, not here. Measured: with
+          // the twelfth bypass planted, this oracle fires on the SAME axis the
+          // payload arrives on, and asserting it inside the loop made a reader
+          // meet `expected 267 to be 264` instead of the line naming
+          // `covered-day`. That is the file's own ordering rule — the check
+          // that says WHAT arrived goes before the check that says something
+          // did — and it had to be applied one more time here.
+          contracts.push({
+            name: axis.name,
+            calls: result.calls,
+            contract: domainPoints.reduce((sum, point) => sum + axis.callsAt(point), 0),
+            recorded: result.recorded,
+            arity: result.calls * axis.argumentsPerCall,
+          });
+        }
       }
       // THE FINDINGS FIRST, AND THE ORDER IS DELIBERATE. Both this and the
       // counts below redden under M27, and the one a reader should meet first
@@ -9235,71 +9477,81 @@ describe('the channel census — the routes a string can leave this directory by
       // the zero is pinned on. A cap on the message must not become a cap on
       // the measurement, and these two lines are what keeps them apart.
       expect(findingCount).toBe(CALLBACK_PASS_CENSUS.FINDINGS);
+      // The per-axis oracle, after the findings and before the literals.
+      for (const seen of contracts) {
+        expect(seen.calls, `${seen.name} against its own contract`).toBe(seen.contract);
+        expect(seen.recorded, `${seen.name} arity`).toBe(seen.arity);
+      }
+      // PER AXIS, deep equal in both directions, BEFORE the sums. An axis that
+      // stopped driving is invisible in a total and named here.
+      expect(measured).toEqual(DECLARED_CALLBACK_AXES);
+      expect(axes).toBe(CALLBACK_PASS_CENSUS.AXES_VARIED);
       // Counts, not bounds. A pass whose subject stopped calling its callback
       // would report zero findings and pass, so the calls are pinned too.
       expect(calls).toBe(CALLBACK_PASS_CENSUS.CALLS);
       expect(recorded).toBe(CALLBACK_PASS_CENSUS.RECORDED);
-      // The domain's own size, and the points the subject's guard refused. The
-      // second is what says the first is a domain the subject actually ran on:
-      // `historyFrom` refuses a slot count under one, so a domain of nothing
-      // but zeroes would show 87 points and no calls at all.
+      // The domains' own sizes, and the points the subjects' guards refused.
+      // The second is what says the first is a domain the subjects actually ran
+      // on: `historyFrom` refuses a slot count under one, so a domain of
+      // nothing but zeroes would show every point and no calls at all.
       expect(points).toBe(CALLBACK_PASS_CENSUS.POINTS);
       expect(refusedPoints).toBe(CALLBACK_PASS_CENSUS.REFUSED_POINTS);
-      expect(points - refusedPoints).toBe(87);
-      // AND AN ORACLE OVER THE SUBJECT RATHER THAN OVER THE DOMAIN, which is
-      // the half a literal cannot give. `historyFrom` calls its predicate once
-      // per slot, so the calls must equal the sum of the admissible points —
-      // the domain appears on both sides, and what is being graded is the
-      // SUBJECT: a `historyFrom` that skipped slot 0, stopped early, or called
-      // its predicate twice is red here while the literal above stays green.
-      const expected = CALLBACK_SUBJECTS.map((subject) => callbackPointsFor(subject.domain))
-        .flat()
-        .filter((point) => point >= 1)
-        .reduce((sum, point) => sum + point, 0);
-      expect(calls).toBe(expected);
+      // And the residual, as a list rather than as a sentence. One row per
+      // uncrossed axis pair.
+      expect(CALLBACK_AXIS_RESIDUAL.length).toBe(1);
+      for (const row of CALLBACK_AXIS_RESIDUAL) expect(row.length).toBeGreaterThan(60);
     },
     CHANNEL_BLOCK_TIMEOUT_MS,
   );
 
   it('drives the callback subjects over the registry domain, not a fixture of its own', () => {
     // THE JOIN THAT MAKES THE WIDENING STRUCTURAL RATHER THAN REMEMBERED. Every
-    // subject's points are the ones `NUMERIC_DOMAINS` gives its axis plus the
-    // ones that domain's ceiling drops — the same two halves the main drive and
-    // the overflow pass split between them. A knob added to `EMPIRE_TUNING`
-    // widens this pass with nobody editing it, and a domain that shrank is red
-    // here on POINTS above.
-    for (const subject of CALLBACK_SUBJECTS) {
-      const registry = NUMERIC_DOMAINS[subject.domain];
-      const points = callbackPointsFor(subject.domain);
+    // axis's points are the ones `NUMERIC_DOMAINS` gives it plus the ones that
+    // domain's ceiling drops — the same two halves the main drive and the
+    // overflow pass split between them. A knob added to `EMPIRE_TUNING` widens
+    // this pass with nobody editing it, and a domain that shrank is red here on
+    // the per-axis table above.
+    const axes = CALLBACK_SUBJECTS.flatMap((subject) => subject.axes);
+    for (const axis of axes) {
+      const registry = NUMERIC_DOMAINS[axis.domain];
+      const points = callbackPointsFor(axis.domain);
       // Containment in both halves, so a point list that quietly dropped the
       // ceiling's overflow — which is where the eighth and tenth bypasses lived
       // on the drive's side — reports itself.
-      for (const point of registry.points) expect(points, subject.key).toContain(point);
-      const dropped = overflowPointsFor(subject.domain, registry);
-      expect(dropped.length, `${subject.key} has no points above its ceiling`).toBeGreaterThan(0);
-      for (const point of dropped) expect(points, `${subject.key} ${point.label}`).toContain(point.value);
+      for (const point of registry.points) expect(points, axis.name).toContain(point);
+      const dropped = overflowPointsFor(axis.domain, registry);
+      expect(dropped.length, `${axis.name} has no points above its ceiling`).toBeGreaterThan(0);
+      for (const point of dropped) expect(points, `${axis.name} ${point.label}`).toContain(point.value);
       // And it is not merely the two lists concatenated: it straddles branch
-      // points the E18 fixture could not express. Three named ones, each a
-      // real branch point of this directory rather than a round number.
+      // points the E18 fixture could not express. Two named ones, each a real
+      // branch point of this directory rather than a round number.
       expect(points).toContain(EMPIRE_TUNING.ROSTER_SLOTS_MAX);
       expect(points).toContain(EMPIRE_TUNING.REPUTATION_MAX);
-      // THIRTY-FOUR AND NOT THIRTY-THREE, and the gap is the honest part. The
-      // 39 rows `overflowPointsFor` yields collapse to 33 distinct VALUES —
-      // two labels can hold the same number — and a domain also carries its own
-      // unit's thresholds unconditionally, straddled, wherever they sit, so one
-      // more point above the ceiling arrives from there rather than from the
-      // overflow. Pinned as the count it is; the containment above is what says
-      // no dropped point is missing.
-      expect(distinct(dropped.map((point) => String(point.value))).length).toBe(33);
-      expect(points.filter((point) => point > FOREIGN_CEILINGS.COUNT).length).toBe(34);
-      // And the arithmetic `CALLBACK_PASS_CENSUS.POINTS` claims, joined to the
-      // registry's own count rather than to a second measurement of the same
-      // thing: 55 domain points and 33 distinct dropped values.
-      expect(registry.points.length).toBe(DOMAIN_CENSUS.COUNT_POINTS);
-      expect(points.length).toBe(DOMAIN_CENSUS.COUNT_POINTS + 33);
     }
-    // One injected axis per subject, stated as the number it is.
-    expect(CALLBACK_PASS_CENSUS.AXES_VARIED).toBe(1);
+    // The COUNT axes, whose arithmetic is derived rather than read off a
+    // failure. THIRTY-FOUR AND NOT THIRTY-THREE, and the gap is the honest
+    // part: the 39 rows `overflowPointsFor` yields collapse to 33 distinct
+    // VALUES — two labels can hold the same number — and a domain also carries
+    // its own unit's thresholds unconditionally, straddled, wherever they sit,
+    // so one more point above the ceiling arrives from there rather than from
+    // the overflow.
+    const count = NUMERIC_DOMAINS.COUNT;
+    const countPoints = callbackPointsFor('COUNT');
+    const countDropped = overflowPointsFor('COUNT', count);
+    expect(distinct(countDropped.map((point) => String(point.value))).length).toBe(33);
+    expect(countPoints.filter((point) => point > FOREIGN_CEILINGS.COUNT).length).toBe(34);
+    expect(count.points.length).toBe(DOMAIN_CENSUS.COUNT_POINTS);
+    expect(countPoints.length).toBe(DOMAIN_CENSUS.COUNT_POINTS + 33);
+    // Every axis names a domain the registry has, and every axis name is
+    // distinct — a duplicate would let two axes share one census row.
+    expect(distinct(axes.map((axis) => axis.name)).length).toBe(axes.length);
+    expect([...distinct([...Object.keys(DECLARED_CALLBACK_AXES)])].sort()).toEqual(
+      [...distinct(axes.map((axis) => axis.name))].sort(),
+    );
+    // The number of injected axes, stated as the number it is rather than as a
+    // silence. It was 1 when the twelfth bypass was planted, and the bypass
+    // keyed its payload on the axis that had no points.
+    expect(CALLBACK_PASS_CENSUS.AXES_VARIED).toBe(axes.length);
   });
 
   it('the callback pass bites — the tripwire the zero is zero against', () => {
