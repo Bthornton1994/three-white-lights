@@ -160,9 +160,44 @@ const NOT_CODE = [
   // themselves. A commit touching only these did not move what the browser ran.
   '.gauntlet/',
   // Prose. A GDD or CLAUDE.md edit does not change what the app does.
+  //
+  // AND IT DOES NOT FOLLOW THAT IT CANNOT MOVE A BUNDLE, WHICH THIS COMMENT
+  // USED TO BE READ AS SAYING. `src/licensing/realIp.test.ts` pins the exact
+  // occurrence count of every watchlisted name in `CLAUDE.md` and
+  // `docs/GDD.md`, and `tools/claudeIndex.test.ts` pins that file's index
+  // against its live `##` headings — so a prose-only commit CAN redden the
+  // suite while this list reports the bundle fresh. That hole is left standing
+  // here rather than closed in passing: closing it makes every coordination
+  // note in `CLAUDE.md` — the busiest file in the repository — demand a ~710 s
+  // re-take, which is the crying-wolf trade this file has already lost twice,
+  // and it is a policy call rather than a defect fix. It is written down so the
+  // next reader knows the silence is chosen and measured, not assumed.
   'docs/',
   'CLAUDE.md',
   'README.md',
+  // AGENT PROMPTS. `.claude/agents/{builder,critic}.md` are the only tracked
+  // files under here — `.claude/worktrees/` is gitignored — and they are
+  // instructions to an agent, never an input to the app or to this bundle.
+  // Every walker in the repository already excludes `.claude` by name
+  // (`audit.test.ts`, `realIp.ts`, `shellWiring.test.ts`, `liftInput.test.ts`),
+  // `tsconfig.json`'s wildcard include skips dot-directories, and
+  // `vitest.config.ts` collects only `src/` and `tools/`. So nothing compiled,
+  // scanned or executed can read them.
+  //
+  // MEASURED, AND BY THIS FILE'S OWN CHANGE. Editing the critic's prompt — one
+  // markdown file no pixel and no test reads — reported ALL FIVE committed
+  // browser records stale:
+  //
+  //   STALE: .gauntlet/shots/shell/route.json: stamps 2a5c625, and code changed
+  //   since: .claude/agents/critic.md            (and four more, identically)
+  //
+  // That is verbatim the failure the `tools/` narrowing forty lines below was
+  // written to stop: a finding that is impossible, whose remedy is ~25 minutes
+  // of re-capture that cannot come back different, on a check people then learn
+  // to skip. The narrowing there keyed on the records' own instrument digests;
+  // this one is a whole directory, because unlike `tools/` there is no member
+  // of it that could ever be an instrument.
+  '.claude/',
 ];
 const codeChangedBetween = (from, to) =>
   git(['diff', '--name-only', `${from}..${to}`])
