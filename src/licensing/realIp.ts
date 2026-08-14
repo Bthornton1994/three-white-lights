@@ -917,6 +917,14 @@ export const EXTENSIONS_READ_AS_TEXT: readonly string[] = Object.freeze([
   '.toml',
   '.ts',
   '.tsx',
+  // `.txt` ARRIVED, AND THIS ROW IS WHAT THAT IS SUPPOSED TO COST. The
+  // qualifying-totals research module commits a tier-mapping audit as plain
+  // text, which is the first `.txt` anybody has put in the walked tree. Nothing
+  // about the scan changed to accept it — the content predicate already read it
+  // the moment it appeared, which is exactly what inverting this rule onto bytes
+  // was for. This list is the pinned ANSWER, so a new kind of readable file
+  // reddens the suite once, gets read, and is written down. That happened here.
+  '.txt',
   '.yml',
 ]);
 
@@ -1738,6 +1746,77 @@ export const REVIEWABLE_CITATIONS: readonly CitationRow[] = Object.freeze([
   { file: 'docs/reference/README.md', name: 'Orioles', where: 'prose', count: 1 },
   { file: 'docs/reference/README.md', name: 'SNES', where: 'prose', count: 4 },
   { file: 'docs/reference/sprite-ref-1-snes-wrestling.png', name: 'SNES', where: 'filename', count: 1 },
+  // ---------------------------------------------------------------------------
+  // `docs/research/` — DERIVED-DATA PROVENANCE. 32 rows, 6 names, 7 files.
+  //
+  // Registered on an explicit human ruling, and the scope of that ruling is
+  // worth writing down because the cheap alternative was available and refused:
+  // `docs/research/**` is NOT on `NOT_WALKED`, no pattern was widened to stop
+  // the directory being read, and no count here is a bound. A new real name
+  // arriving in any of these files, or any of these counts moving by one, still
+  // reddens `realIp.test.ts`. The ruling was "register them like every other
+  // citation", not "exempt them".
+  //
+  // WHAT THEY ARE. `docs/research/qualifying-totals.md` derives a qualifying
+  // total per tier x sex x weight class from a public results database, because
+  // every published federation standards page is HTTP 403 from this
+  // environment. The names are the database, the two US federations and the
+  // international one whose meets the rows come from — i.e. the provenance of
+  // every number in the document. Deleting them would leave a table of numbers
+  // with no attributable source, which is the failure `dots.ts` and `meet.ts`
+  // are already allowed to avoid for the same reason.
+  //
+  // THE BULK ROWS ARE MACHINE-GENERATED AND THAT IS THE PART TO WATCH. The two
+  // `-meets-*.txt` files are the tier-mapping audit — every meet, its assigned
+  // tier and its row contribution — and their x275 is one federation acronym
+  // arriving inside 275 verbatim third-party meet titles. That is a data dump
+  // rather than 275 citations, and the file was already trimmed once (2,992
+  // lines to 346, ~2,400 mentions to 275) with both reasons stated in the
+  // script. A human may reasonably decide the generated artifacts should not be
+  // committed at all; that is a legal-exposure call and it is flagged rather
+  // than taken.
+  //
+  // SIX OF THESE ROWS ARE `SBD` AND NONE OF THEM IS THE APPAREL BRAND. In this
+  // sport `SBD` is the standard abbreviation for squat-bench-deadlift and is
+  // the dataset's own value for the full-power event; the `code` rows are that
+  // enum value and the `prose` ones are the document explaining it. The single
+  // genuine brand mention is inside a verbatim meet title in the audit `.txt`.
+  // A reader of this list cannot tell those apart from the row alone, which is
+  // why it is said here.
+  { file: 'docs/research/qualifying-totals-derived-raw.json', name: 'IPF', where: 'code', count: 1 },
+  { file: 'docs/research/qualifying-totals-derived-raw.json', name: 'SBD', where: 'code', count: 1 },
+  { file: 'docs/research/qualifying-totals-derived-raw.json', name: 'USAPL', where: 'code', count: 3 },
+  { file: 'docs/research/qualifying-totals-derived-single-ply.json', name: 'IPF', where: 'code', count: 1 },
+  { file: 'docs/research/qualifying-totals-derived-single-ply.json', name: 'SBD', where: 'code', count: 1 },
+  { file: 'docs/research/qualifying-totals-derived-single-ply.json', name: 'USAPL', where: 'code', count: 3 },
+  { file: 'docs/research/qualifying-totals-meets-raw.txt', name: 'IPF', where: 'prose', count: 11 },
+  { file: 'docs/research/qualifying-totals-meets-raw.txt', name: 'SBD', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifying-totals-meets-raw.txt', name: 'USAPL', where: 'prose', count: 275 },
+  { file: 'docs/research/qualifying-totals-meets-single-ply.txt', name: 'IPF', where: 'prose', count: 11 },
+  { file: 'docs/research/qualifying-totals-meets-single-ply.txt', name: 'SBD', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifying-totals-meets-single-ply.txt', name: 'USAPL', where: 'prose', count: 275 },
+  { file: 'docs/research/qualifying-totals-NOTES.md', name: 'IPF', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifying-totals-NOTES.md', name: 'OpenPowerlifting', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifying-totals-NOTES.md', name: 'OPL', where: 'prose', count: 2 },
+  { file: 'docs/research/qualifying-totals-NOTES.md', name: 'USAPL', where: 'prose', count: 1 },
+  // The two federation names below arrive as the HOSTS OF UNREACHABLE
+  // STANDARDS PAGES — §6.1 of that document is a list of what a human with an
+  // open browser should retrieve, and a retrieval list with the sources struck
+  // out is not a retrieval list.
+  { file: 'docs/research/qualifying-totals.md', name: 'British Powerlifting', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifying-totals.md', name: 'IPF', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifying-totals.md', name: 'OpenPowerlifting', where: 'prose', count: 5 },
+  { file: 'docs/research/qualifying-totals.md', name: 'OPL', where: 'prose', count: 3 },
+  { file: 'docs/research/qualifying-totals.md', name: 'Powerlifting America', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifying-totals.md', name: 'SBD', where: 'prose', count: 4 },
+  { file: 'docs/research/qualifying-totals.md', name: 'USAPL', where: 'prose', count: 1 },
+  { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'IPF', where: 'code', count: 1 },
+  { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'IPF', where: 'comment', count: 1 },
+  { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'OpenPowerlifting', where: 'comment', count: 2 },
+  { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'OPL', where: 'comment', count: 4 },
+  { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'SBD', where: 'code', count: 1 },
+  { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'USAPL', where: 'code', count: 3 },
+  { file: 'docs/research/qualifyingTotalsDerive.mjs', name: 'USAPL', where: 'comment', count: 1 },
   { file: 'src/art/craftMetrics.test.ts', name: 'SNES', where: 'code', count: 6 },
   { file: 'src/art/craftMetrics.ts', name: 'MLB', where: 'comment', count: 1 },
   { file: 'src/art/craftMetrics.ts', name: 'SNES', where: 'code', count: 6 },

@@ -183,7 +183,7 @@ statement is itself checked.** The raw run resolves
 **82**<!--@raw:doc.taggedClaims--> tagged claims and
 **256**<!--@raw:doc.tableCells--> table cells in
 **6**<!--@raw:doc.tables--> tables, against
-**941**<!--@raw:doc.numericLiterals--> numeric literals in this document. The
+**947**<!--@raw:doc.numericLiterals--> numeric literals in this document. The
 equipped run resolves a further **9**<!--@single-ply:doc.taggedClaims--> claims
 and **32**<!--@single-ply:doc.tableCells--> cells in its own namespace. **The
 remaining literals are prose** — section numbers, dates, URLs, kilo figures
@@ -902,6 +902,18 @@ The rows registered are listed in §8.2. They were taken **after** the prose was
 final, for the reason CLAUDE.md names in *"re-taking evidence and then editing
 its subject restales it in one step"*: a census of a document that is still being
 edited is stale before it is committed.
+
+**"The guard keeps its bite" is a claim, so it was broken twice on purpose.**
+Both mutants were applied to this document with the rows already registered, and
+both were reverted:
+
+| mutant | what `realIp.test.ts` did |
+|---|---|
+| one new sentence naming a watched equipment brand that appears nowhere in this module | inventory diff gained a row carrying that brand's name; run went to 1 failed, 56 passed |
+| one existing federation acronym repeated once more in a sentence that already had it | that row's `"count": 1` became `"count": 2`; run went to 1 failed, 56 passed |
+
+So the registration is a registration and not a hole: a name that is not on the
+list still reddens, and a count that moves by one still reddens.
 
 ### 8.2 The rows
 

@@ -1299,7 +1299,34 @@ describe('the reviewable citation list', () => {
       'src/game/rpe.test.ts',
       'src/game/rpe.ts',
     ]);
-    expect(rows.filter((r) => r.where === 'prose').map((r) => r.file)).toEqual(['docs/GDD.md']);
+    // ...and at `prose` position, pinned BY FILE for the same reason and in the
+    // same shape: an exact list in both directions, one entry per row rather
+    // than per file, so a SECOND project name appearing in an already-listed
+    // document is as visible as the first one was.
+    //
+    // The research module is here on an explicit human ruling that its source
+    // citations are REGISTERED rather than exempted. It cites the results
+    // database it derives every number from, twice over — once in the
+    // deliverable and once in the reproduction notes — because a derived table
+    // whose source is struck out is a table of unattributable numbers. Note
+    // what was NOT done: `docs/research/**` is not on `NOT_WALKED`, this
+    // assertion is not a pattern, and no count anywhere was relaxed into a
+    // bound. See the `docs/research/` group in `REVIEWABLE_CITATIONS`.
+    // Two rows per research file, not one: the database is named in both its
+    // long and its short form. The names are DESCRIBED rather than spelled here
+    // — per the module header's §1, and because writing them into this file
+    // would add two citation rows to this file, which is the check catching the
+    // hand extending it. It did exactly that on the first attempt at this
+    // comment.
+    expect(rows.filter((r) => r.where === 'prose').map((r) => r.file)).toEqual([
+      'docs/GDD.md',
+      // both forms, in the reproduction command block
+      'docs/research/qualifying-totals-NOTES.md',
+      'docs/research/qualifying-totals-NOTES.md',
+      // both forms again, in §1.3's provenance pin and §8's citation report
+      'docs/research/qualifying-totals.md',
+      'docs/research/qualifying-totals.md',
+    ]);
   });
 
   it('counts the game-industry citations, the second blind spot of the same shape', () => {
