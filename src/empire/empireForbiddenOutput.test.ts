@@ -7562,6 +7562,23 @@ interface ChannelCensus {
    */
   readonly wrapCalls: Readonly<Record<string, number>>;
   readonly nodesExamined: number;
+  /**
+   * How many times the member-type screen hit its own depth limit.
+   *
+   * `MEMBER_TYPE_WALK_MAX_DEPTH` used to be a silent `false`, which is the
+   * worst of both worlds: the screen answered "this value provably cannot hand
+   * anybody a closure" for a type it had simply stopped looking at. M61 is a
+   * closure nine levels inside a returned member — `tsc` exit 0,
+   * `deep.b.c.d.e.f.g.h.i.peek()` printed `covered-day` off a driven export,
+   * and the only reds in the whole directory were three node counters.
+   *
+   * IT IS A REPORTED CUT AND NOT A DEEPER WALK, deliberately. Raising the limit
+   * moves the boundary and the next plant sits one level past the new one,
+   * which is this codebase's "when every repair declares its own successor"
+   * pattern exactly. Pinned at zero here and asserted NON-zero on the probe, so
+   * the limit is a red line rather than a silence.
+   */
+  readonly memberTypeDepthCuts: number;
   readonly modules: readonly string[];
 }
 
@@ -7711,6 +7728,7 @@ function channelCensusOf(
   const wrapCalls: Record<string, number> = {};
   const modules: string[] = [];
   let nodesExamined = 0;
+  let memberTypeDepthCuts = 0;
 
   const record = (id: ChannelId, moduleName: string, key: string): void => {
     sites[id].push(key);
@@ -7994,10 +8012,33 @@ function channelCensusOf(
    * other shipped type. What is left is the properties this directory declared.
    */
   const typeCouldHoldAFunction = (type: ts.Type, depth = 0): boolean => {
-    if (depth > MEMBER_TYPE_WALK_MAX_DEPTH) return false;
+    if (depth > MEMBER_TYPE_WALK_MAX_DEPTH) {
+      memberTypeDepthCuts += 1;
+      return false;
+    }
     if (type.getCallSignatures().length > 0) return true;
     if (type.isUnionOrIntersection()) {
       return type.types.some((member) => typeCouldHoldAFunction(member, depth + 1));
+    }
+    // AN ARRAY'S ELEMENT TYPE IS NOT ONE OF ITS PROPERTIES, AND THAT IS THE
+    // EIGHTEENTH BYPASS. The ambient filter below is what makes this screen
+    // usable — every array carries `map`, `filter` and `length` from
+    // `lib.es5.d.ts` — and it also made `readonly ProductionPeek[]` answer
+    // `false`, because EVERY property of an array type is ambient and the
+    // element type is reached by none of them. M60 is
+    // `shapes: PRODUCTION_LIST.list` in a shipped return: `tsc` exit 0,
+    // `shapes[0].peek()` printed `covered-day` off a driven export, and the
+    // whole directory came back 130 of 133 with three node counters as the only
+    // reds. An array of closures is not an exotic shape; it is the shape
+    // `EMPIRE_LEDGER` and every roster in this directory has.
+    //
+    // It is asked of the CHECKER rather than of the property table, so a tuple
+    // and a readonly array are the same question, and the ambient filter keeps
+    // doing the job it was written for.
+    if (checker.isArrayType(type) || checker.isTupleType(type)) {
+      return checker
+        .getTypeArguments(type as ts.TypeReference)
+        .some((argument) => typeCouldHoldAFunction(argument, depth + 1));
     }
     return type.getProperties().some((symbol) => {
       const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
@@ -8841,6 +8882,7 @@ function channelCensusOf(
     internalCallbackArguments: Object.freeze([...internalCallbackArguments].sort()),
     wrapCalls: Object.freeze({ ...wrapCalls }),
     nodesExamined,
+    memberTypeDepthCuts,
     modules: Object.freeze(modules),
   };
 }
@@ -9103,6 +9145,14 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
+  /**
+   * Times the member-type screen stopped at its own depth limit.
+   *
+   * Zero, and the zero is a statement about the directory rather than about the
+   * screen: no exported surface here nests a member nine deep. It was a silent
+   * `false` until M61 was planted past it.
+   */
+  MEMBER_TYPE_DEPTH_CUTS: 0,
 });
 
 // ---------------------------------------------------------------------------
@@ -10717,6 +10767,34 @@ export function probeArrayHolderClosure(): AssemblyShape {
   return ASSEMBLY_FOR_OF[0]!;
 }
 
+const ASSEMBLY_LIST: { readonly list: readonly AssemblyShape[] } = {
+  list: [{ peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] }],
+};
+
+export function probeArrayOfClosures(): readonly AssemblyShape[] {
+  return ASSEMBLY_LIST.list;
+}
+
+interface AssemblyDeep {
+  readonly a: {
+    readonly b: {
+      readonly c: {
+        readonly d: {
+          readonly e: { readonly f: { readonly g: { readonly h: { readonly i: AssemblyShape } } } };
+        };
+      };
+    };
+  };
+}
+
+const ASSEMBLY_DEEP: AssemblyDeep = {
+  a: { b: { c: { d: { e: { f: { g: { h: { i: { peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] } } } } } } } } },
+};
+
+export function probeDeepMemberClosure(): AssemblyDeep['a'] {
+  return ASSEMBLY_DEEP.a;
+}
+
 export function probeNestedMemberClosure(): AssemblyShape {
   return ASSEMBLY_NESTED.inner;
 }
@@ -10786,6 +10864,12 @@ const ASSEMBLY_PROBE_CLOSURE_SITES: readonly string[] = Object.freeze([
   // check reached. `.[][0].peek` is the evidence the walk went through the
   // holder rather than stopping at it.
   `${ASSEMBLY_PROBE_MODULE}#probeArrayHolderClosure#closure:.[][0].peek`,
+  // THE EIGHTEENTH BYPASS'S OWN ROW. `probeArrayOfClosures` returns a member
+  // whose type is `readonly AssemblyShape[]`, and every property of an array
+  // type is declared in `lib.es5.d.ts` — so the ambient filter that makes
+  // `typeCouldHoldAFunction` usable made it answer `false` here, and the arm
+  // never ran. The element type is asked of the checker now.
+  `${ASSEMBLY_PROBE_MODULE}#probeArrayOfClosures#closure:.list[0].peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeAssembledClosure#closure:.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeAssembledShorthand#closure:.peek`,
   `${ASSEMBLY_PROBE_MODULE}#probeAssembledThroughUndefined#closure:.peek`,
@@ -10869,9 +10953,9 @@ describe('the assembly walk bites — every binding whose value is not in its in
     const unfollowed = assemblyProbeCensus().freshReceivers.filter((entry) =>
       entry.startsWith(ASSEMBLY_PROBE_MODULE),
     );
-    // Sorted by the census rather than by line, which is why 124 precedes 68.
+    // Sorted by the census rather than by line, which is why 152 precedes 68.
     expect(unfollowed).toEqual([
-      `${ASSEMBLY_PROBE_MODULE}:124 returned=unfollowable:shape`,
+      `${ASSEMBLY_PROBE_MODULE}:152 returned=unfollowable:shape`,
       `${ASSEMBLY_PROBE_MODULE}:68 returned=unfollowable:shape`,
     ]);
     // The probe contributes exactly that one and nothing else, so the shipped
@@ -10885,6 +10969,27 @@ describe('the assembly walk bites — every binding whose value is not in its in
     expect(assemblyProbeSites('returned-closure')).not.toContain(
       `${ASSEMBLY_PROBE_MODULE}#probeDestructuredAssembly#closure:.peek`,
     );
+  });
+
+  it('reports the member-type depth limit instead of answering `false` from behind it', () => {
+    // THE NINETEENTH BYPASS'S LINE, AND IT IS A CONTAINMENT CLAIM RATHER THAN A
+    // DETECTION ONE. `probeDeepMemberClosure` hands back a member with a closure
+    // nine levels inside it, which is one past `MEMBER_TYPE_WALK_MAX_DEPTH`. The
+    // screen still says `false` and the walk still does not follow it — what
+    // changed is that the cut is COUNTED, so the shipped zero below is a real
+    // statement about the directory instead of the absence of one.
+    expect(assemblyProbeCensus().memberTypeDepthCuts).toBeGreaterThan(0);
+    // And the shape is genuinely not followed, stated as a measurement so
+    // nobody reads the counter as a catch.
+    expect(assemblyProbeSites('returned-closure')).not.toContain(
+      `${ASSEMBLY_PROBE_MODULE}#probeDeepMemberClosure#closure:.a.b.c.d.e.f.g.h.i.peek`,
+    );
+    expect(assemblyProbeSites('returned-closure').filter((site) => site.includes('probeDeepMemberClosure'))).toEqual([]);
+    // ZERO ON THE SHIPPED TREE, which is what makes the probe's non-zero mean
+    // something: no exported surface in this directory is deep enough to reach
+    // the limit today, so a type that starts reaching it is a red line rather
+    // than a screen quietly giving up.
+    expect(channelCensus().memberTypeDepthCuts).toBe(CHANNEL_CENSUS_TOTALS.MEMBER_TYPE_DEPTH_CUTS);
   });
 });
 
@@ -12645,6 +12750,44 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts was restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
     ]),
   }),
+  Object.freeze({
+    id: 'M60',
+    shape:
+      "THE EIGHTEENTH BYPASS, and it is the screen E23 wrote and verified only negatively: a returned member whose type is an ARRAY of closures. `typeCouldHoldAFunction` skips ambiently declared members so that every array does not answer `true` because of `map` — and every property of an array type IS ambient, so it answered `false` for `readonly ProductionPeek[]` and the following arm never ran",
+    where:
+      'production.ts, `accrueProduction`: a module-level `const PRODUCTION_LIST: { readonly list: readonly ProductionPeek[] } = { list: [{ peek: () => EMPIRE_FORBIDDEN_OUTPUTS[0] }] }`, handed back as `shapes: PRODUCTION_LIST.list`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING CAUGHT IT, ISOLATED: `empireForbiddenOutput.test.ts` + `empireCore.test.ts` came back `Tests 3 failed | 130 passed (133)` and all three are node counters — instrument B `expected 2393570 to be 2393060`, the overflow pass `expected 523296 to be 523128`, `nodesExamined` `expected 21828 to be 21789`. `census.byModule`, `census.sites` and `freshReceivers` all green; `empireCore.test.ts` 57 passed, so the string census, the magic-number audit and the import fence are green too.',
+      'AND THE BRANCH RUNS, PRINTED: `accrueProduction` on a fresh gym returns keys `["shapes","gymBucks",…]` and `shapes[0].peek()` is `covered-day`, with `gymBucks 0` unchanged.',
+      "WHY THE SCREEN SAID NO. `PRODUCTION_LIST.list` has no call signature, so the arm asks `typeCouldHoldAFunction`, which walks `getProperties()` and skips every ambiently declared one. `ReadonlyArray`'s properties are ALL ambient and the element type is not among them, so the answer is `false` — 'this value provably cannot hand anybody a closure' — about a list of closures.",
+      'AFTER: `+ "__assemblyProbe.ts#probeArrayOfClosures#closure:.list[0].peek"`, and the repair asks the checker for the element type rather than adding a property. The ambient filter is unchanged and the shipped census is unchanged beside it.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'It was first planted together with M61 and then re-planted alone, because two silences in one run cannot be attributed to either. Both isolations were run.',
+      'production.ts restored and verified byte-identical.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M61',
+    shape:
+      'THE NINETEENTH BYPASS: a closure nested one level past `MEMBER_TYPE_WALK_MAX_DEPTH` inside a returned member. The constant had no mutant behind it at all — a depth cut was a silent `false` from the screen, which is indistinguishable from "this value cannot hold a function"',
+    where:
+      'production.ts, `accrueProduction`: a module-level `PRODUCTION_DEEP` whose closure sits at `.a.b.c.d.e.f.g.h.i.peek`, handed back as `deep: PRODUCTION_DEEP.a`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING CAUGHT IT, ISOLATED: `Tests 3 failed | 130 passed (133)` with the same three node counters — `expected 2394760 to be 2393060`, `expected 523688 to be 523128`, `expected 21884 to be 21789` — and every named list green.',
+      'AND THE BRANCH RUNS, PRINTED: `deep.b.c.d.e.f.g.h.i.peek()` is `covered-day` off a driven `accrueProduction`, with `gymBucks 0`.',
+      "AFTER, AND THE REPAIR IS CONTAINMENT RATHER THAN DETECTION, stated as such: the walk still does not follow past the limit. What changed is that the cut is COUNTED — `memberTypeDepthCuts`, pinned at 0 on the shipped tree and asserted NON-zero on the probe by `probeDeepMemberClosure`, whose absence from the closure-site list is asserted in the same test. Raising the limit instead would move the boundary and invite a plant one level past the new one, which is this file's own 'every repair declares its own successor' pattern.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Isolated separately from M60, for the same reason. production.ts restored and verified byte-identical.',
+    ]),
+  }),
 ]);
 
 /**
@@ -12871,7 +13014,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(59);
+    expect(PLANTED_ROUTES.length).toBe(61);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -12971,8 +13114,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // chunk text the set already held and left that census green. Only the
     // third says whether the string census covers this class, and the answer
     // is that it does not.
-    expect(attempts).toBe(81);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(49);
+    expect(attempts).toBe(83);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(51);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
@@ -13385,7 +13528,10 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#walkScope<assignedValuesTo<channelCensusOf#node', arms: 2, dispatch: false, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#walkScope<assignedValuesTo<channelCensusOf#target', arms: 1, dispatch: false, terminal: 'else' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#carriesCallSignature<channelCensusOf#type', arms: 1, dispatch: true, terminal: 'next-statement' }),
-  Object.freeze({ at: 'empireForbiddenOutput.test.ts#typeCouldHoldAFunction<channelCensusOf#type', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  // Two arms since the eighteenth bypass: the union walk, and the array-element
+  // walk that closed it. The census reddened on that repair before this comment
+  // existed, which is the first time it has caught an edit rather than a plant.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#typeCouldHoldAFunction<channelCensusOf#type', arms: 2, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#literalValuesOf<channelCensusOf#holder', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#literalValuesOf<channelCensusOf#host', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#hoppableInitializer<channelCensusOf#root', arms: 1, dispatch: true, terminal: 'next-statement' }),
