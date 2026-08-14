@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "node-tools-evidence-mjs-2026-08-14T07-54-45-329Z-5910",
   "label": null,
   "command": [
@@ -28,14 +28,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 12,
-    "okCount": 11,
+    "count": 13,
+    "okCount": 12,
     "errors": [],
-    "lastAttemptIso": "2026-08-14T08:05:45.731Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-14T08:06:33.705Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-14T08:04:48.686Z"
-  }
+    "lastOkIso": "2026-08-14T08:05:48.699Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-14T08:06:33.703Z",
+  "elapsedSeconds": 708.4
 }
