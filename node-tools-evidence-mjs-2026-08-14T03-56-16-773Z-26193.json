@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-evidence-mjs-2026-08-14T03-56-16-773Z-26193",
+  "label": null,
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "lift-press",
+    "src/lift"
+  ],
+  "budgetSeconds": 700,
+  "startedAtIso": "2026-08-14T03:56:16.773Z",
+  "startedAtMs": 1786679776773,
+  "cwd": "/home/user/wt-lift-press",
+  "commit": "ed4af6264c057b04d20d993708d5c77e5e444235",
+  "branch": "claude/lift-press-browser-check",
+  "dirty": 2,
+  "dirtyPaths": [
+    ".gauntlet/evidence/suite.txt",
+    ".gauntlet/evidence/lift-press.txt"
+  ],
+  "runner": {
+    "pid": 26193,
+    "startTick": "562987",
+    "cmdline": "node tools/watchdog.mjs --budget 700 -- node tools/evidence.mjs lift-press src/lift",
+    "bootId": "70e4dcd9-91f6-43ee-a53c-88125d271f98",
+    "bootEpochSeconds": 1786674147,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T03:56:16.797Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
