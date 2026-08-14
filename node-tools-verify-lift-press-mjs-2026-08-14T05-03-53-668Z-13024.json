@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-lift-press-mjs-2026-08-14T05-03-53-668Z-13024",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-lift-press.mjs",
+    "--url",
+    "http://localhost:8097",
+    "--out",
+    "/tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/before"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-14T05:03:53.668Z",
+  "startedAtMs": 1786683833668,
+  "cwd": "/home/user/wt-press-fix",
+  "commit": "a3620a3e5462b49670ffb67a05b84d55c3119ed0",
+  "branch": "claude/press-fix-played-surfaces",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 13024,
+    "startTick": "968677",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --id lift-press-before -- node tools/verify-lift-press.mjs --url http://localhost:8097 --out /tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-17",
+    "bootId": "70e4dcd9-91f6-43ee-a53c-88125d271f98",
+    "bootEpochSeconds": 1786674147,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T05:03:53.691Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
