@@ -1199,14 +1199,6 @@ const DRAWN_FROM_PURE_STATE = Object.freeze({
    * finds nothing, which is exactly how a scan that stopped matching looks.
    */
   READINGS: 4,
-  /**
-   * How many screens the shell mounts that import from the pure directory at all.
-   *
-   * One. It moves to zero under the mutation this block was written against, and
-   * to two when a second surface starts drawing §5 state — which is the moment
-   * somebody has to decide whether `SCREEN_FILE` above is still the whole story.
-   */
-  SCREENS_READING_PURE_STATE: 1,
 });
 
 /** Is `name`, as used inside `module`, the pure constructor imported from `src/empire/`? */
@@ -1460,7 +1452,12 @@ describe('the numbers on GDD §5’s floor come from GDD §5’s own module', ()
       `${reaching.length} of the shell's mounted screens import from ${DRAWN_FROM_PURE_STATE.PURE_DIRECTORY}: ` +
         `${reaching.join(', ') || 'none'}`,
     ).toEqual([DRAWN_FROM_PURE_STATE.SCREEN_FILE]);
-    expect(reaching.length).toBe(DRAWN_FROM_PURE_STATE.SCREENS_READING_PURE_STATE);
+    // A COUNT PIN WAS WRITTEN HERE AND DELETED, and the domination is recorded
+    // rather than the check quietly removed. `toEqual([SCREEN_FILE])` fixes the
+    // list exactly, so `reaching.length === 1` is implied by it in every state
+    // of the subject — no version of the tree reddens the count while the
+    // equality passes. That is the exact shape `guaranteeTags.test.ts` already
+    // had to delete once, one file over. The equality IS the census.
   });
 });
 

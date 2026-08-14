@@ -671,6 +671,15 @@ const EMPIRE_ROW_PARTS = 2;
  * away is worse than no caveat — it reads as coverage. So both ends are
  * asserted below: the `@guarantee` in the screen's own header, and the test
  * title that declares it.
+ *
+ * NOT DOMINATED BY `guaranteeTags.test.ts`, WHICH ASKS THE SAME QUESTION, and
+ * the reason is worth writing down because the standing domination check is
+ * about a check you are not looking at. That file resolves every tag in the
+ * tree to exactly one live test title and would go red first on a rename — but
+ * it is a `vitest` file, and this is a browser tool that runs on its own and
+ * whose report is read on its own. A caveat printed in THIS record has to be
+ * false-able from THIS record; a green suite somewhere else is not something a
+ * reader of `route.json` has in front of them.
  */
 const PROVENANCE_IS_CHECKED_ELSEWHERE = Object.freeze({
   TAG: 'every-drawn-empire-reading-comes-from-the-pure-state',
