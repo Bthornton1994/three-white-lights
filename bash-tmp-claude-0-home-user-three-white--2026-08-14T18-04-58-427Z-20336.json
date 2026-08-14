@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "bash-tmp-claude-0-home-user-three-white--2026-08-14T18-04-58-427Z-20336",
+  "label": null,
+  "command": [
+    "bash",
+    "/tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/fire-drive.sh"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-14T18:04:58.427Z",
+  "startedAtMs": 1786730698427,
+  "cwd": "/home/user/wt-evidence-guard",
+  "commit": "f33b8eab4e5e9a1a6435a656b5f39a74fed00791",
+  "branch": "claude/evidence-sequencing-guard",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 20336,
+    "startTick": "1364746",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --id evguard-fire2 -- bash /tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/fire-drive.sh",
+    "bootId": "9a2cb2d2-fb56-4022-8ed1-6d554d4fac5c",
+    "bootEpochSeconds": 1786717051,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T18:04:58.444Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
