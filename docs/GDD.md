@@ -3096,14 +3096,55 @@ work.
 
       **TWO FINDINGS CAME BACK WITH IT, and they are different in kind.**
 
-      1. *An environment defect, fixed.* Pressing on a mobile browser triggered
-         the browser's own text-selection gesture — the surface highlighted and
-         selection handles appeared. The squat's input IS a press-and-hold, so
-         the one gesture the mechanic is built on is exactly the one a browser
-         reads as "select this". Fixed in `src/lift/LiftScreen.tsx` with
-         `userSelect`, `touchAction` and `WebkitTouchCallout`, each guarding a
-         different half; `src/lift/liftInput.test.ts` pins all three and each
-         was mutation-checked separately.
+      1. *An environment defect, fixed — but the FIRST fix was on a screen no
+         player can open, and that is worth more than the fix.* Pressing on a
+         mobile browser triggered the browser's own text-selection gesture — the
+         surface highlighted and selection handles appeared. The squat's input
+         IS a press-and-hold, so the one gesture the mechanic is built on is
+         exactly the one a browser reads as "select this".
+
+         **What shipped first was `PRESS_NOT_SELECT` in
+         `src/lift/LiftScreen.tsx`, and `AppShell` mounts that screen only
+         behind `route.surface === 'replay'`, which `shellRoute.ts` builds with
+         `source: 'debug'`.** So a fix for a defect a human reported was declared
+         on the one lift surface a player cannot reach, while `SetView` (§3.2's
+         daily set) and `AttemptView` (§6.2's meet attempt) carried none of it.
+         The source guard was green the whole time, because it named
+         `LiftScreen.tsx` and was correct about the file it was actually reading.
+
+         **It was also in the wrong PLACE on that screen**, which the move
+         surfaced: `user-select` inherits and `touch-action` does not. A single
+         object on the pressed element put the selection half on the Skia
+         `<canvas>` — where `caretRangeFromPoint` returns CANVAS at offset 0 and
+         Blink will not start a selection at all — and never reached the prompt
+         text a thumb rests on.
+
+         The fix now lives in `src/lift/pressGuard.ts` as two objects split by
+         whether they inherit: `PRESS_NOT_SELECT` (`userSelect`,
+         `WebkitTouchCallout`) on the screen root, `PRESS_NOT_TAKEN`
+         (`touchAction`) on the pressed element. All three screens apply both.
+         `src/lift/liftInput.test.ts` no longer names files: it discovers every
+         `<LiftStage>` in the repository, climbs to the enclosing `Pressable`,
+         resolves the spread to an import from `pressGuard.ts` so a same-named
+         local shim fails, and pins the surface count at 3 with their testIDs.
+
+         **Verified in a real browser on the surfaces a player reaches**, by
+         `tools/verify-lift-press.mjs`: 77 checks, 6 named skips, both played
+         arms read with the address bar asserted empty. At React Native Web's
+         default `touch-action: manipulation` the session surface produced
+         `pointercancel=1` at both 200px and a 20px finger drift — the browser
+         taking the descent away mid-rep — and 0 with the fix, with the forced
+         `manipulation` and forced `none` controls firing in the same run so the
+         zero is a zero against something.
+
+         **What the browser check CANNOT say**, stated because the report came
+         from a phone: it is headless desktop Chromium with touch emulation.
+         `-webkit-touch-callout` is not implemented by Blink and is a named
+         SKIP on every arm, covered only by the source scan. And a selection
+         cannot begin on a canvas in this engine, so whether iOS WebKit does
+         something on a replaced element that produced the reported symptom is
+         **not settled**. The `touch-action` half is measured end to end; the
+         `user-select` half is not, on the surface the report named.
       2. *A design question, OPEN.* Players were unclear how to perform the
          down-and-back-up motion. That is the mechanic not communicating itself
          on first contact, and it needs design — an onboarding beat, a visual
@@ -3116,6 +3157,18 @@ work.
       the mechanic. So (1) is fixed first and (2) is re-tested with the same
       players before anything is designed for it: the honest next measurement is
       whether the clarity complaint shrinks, holds, or is confirmed.
+
+      **THE RE-TEST MUST BE ON A REAL PHONE, AND THAT IS A GATE THIS RUN CANNOT
+      LIFT ITSELF.** The first fix was verified green by a source scan reading a
+      screen no player can open; the second is verified by a real browser driving
+      the surfaces a player does reach. Neither is a phone. The reported symptom
+      was a selection starting under a press on the stage, and the one engine
+      available here provably cannot produce that on a canvas — so the defect as
+      described is either about the copy beside the stage, or about WebKit
+      behaviour nothing in this repository can observe. Until someone presses it
+      on the device the report came from, "fixed" means "the input is no longer
+      taken away from the app, measured", not "the thing the playtester saw is
+      gone".
 
       **WHAT THIS DOES NOT YET CLEAR.** Extending the mechanic to bench and
       deadlift is now *justified rather than premature* — but it is held until
