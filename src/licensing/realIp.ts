@@ -225,6 +225,23 @@
  *  - IT READS TEXT. A real logo drawn pixel by pixel into `partners.ts`, or
  *    pasted into a PNG under `assets/`, is invisible to it. Filenames are
  *    scanned; image contents are not.
+ *    WHICH FILES COUNT AS TEXT USED TO BE AN EXTENSION ALLOWLIST, AND IT FAILED
+ *    OPEN. Fifteen suffixes; anything else was skipped with no finding, no note
+ *    and no line of output, so the gap was invisible from the outside — which is
+ *    strictly worse than looking and finding nothing. `.py` was not on it, and a
+ *    builder on an unrelated piece reached for a Python script first; `.mts` and
+ *    `.toml` were not on it either and four such files were already in the tree.
+ *    It is a CONTENT test now: everything the walk reaches is read unless its
+ *    bytes are not text, and the files that fails on are enumerated by name in
+ *    `UNREADABLE_BY_THIS_AUDIT` rather than silently dropped. See the argument at
+ *    `classifyBytes` for why the replacement is not a denylist of binary
+ *    extensions — that shape fails open one level further out.
+ *  - THE DIRECTORY DIMENSION IS STILL AN ALLOWLIST. `NOT_WALKED` names seven
+ *    directories this audit never descends into, and a real mark inside one of
+ *    them is as invisible as `.py` was. Each has a written reason in
+ *    `NOT_WALKED_REASONS`, which is more than the extension rule ever had; it is
+ *    still a list somebody has to keep right, and fixing the file-type dimension
+ *    said nothing about this one.
  *    THERE IS A LIVE INSTANCE OF THIS, and it is worth naming rather than
  *    leaving as a general caveat: one of the committed reference images under
  *    `docs/reference/` carries a real league's logo and a currently-competing
@@ -765,25 +782,275 @@ export interface SourceMention {
   readonly text: string;
 }
 
-const TS_LIKE = /\.(?:tsx?|m?js|cjs)$/;
+/**
+ * Files whose comments this audit can tell apart from their code.
+ *
+ * `withoutComments` understands `//` and block comments, so this is the family
+ * of languages that spells a comment that way. `[cm]?` covers the module-suffixed
+ * spellings — `.mts` and `.cts` were missing here for the same reason `.py` was
+ * missing from the reader below, and three `tools/*.d.mts` files were sitting in
+ * the tree while this pattern declined to recognise them.
+ *
+ * A LANGUAGE THAT IS NOT ON THIS LIST IS STILL READ; its mentions are just
+ * classified `code` rather than `comment`. That is the safe direction — `code` is
+ * the higher-severity bucket, "one edit from a screen" — and it is why a Python
+ * script's `#` comments needing a different stripper is not a reason to keep
+ * Python out of the scan.
+ */
+const TS_LIKE = /\.(?:[cm]?tsx?|[cm]?jsx?)$/;
 const PROSE_LIKE = /\.(?:md|markdown|txt)$/;
 
-/**
- * Text files this audit reads in full.
- *
- * Everything textual, including tests, configs, HTML, shell and JSON —
- * §12.3 names "any asset, string, config, or code path", and it names a test
- * fixture as one of the two examples of how a real mark actually arrives.
- * `src/tuning/audit.ts` skips tests because a test is SUPPOSED to hold a
- * literal number; no test is supposed to hold a real athlete's name, so this one
- * does not skip them.
- */
-const TEXT_FILE = /\.(?:tsx?|m?js|cjs|json|md|markdown|txt|html|css|sh|ya?ml|xml|svg)$/;
+// ---------------------------------------------------------------------------
+// WHAT GETS READ — and why this is a DENYLIST on content rather than an
+// allowlist on extension
+// ---------------------------------------------------------------------------
 
-/** Binary and generated files, checked by FILENAME only. */
-export function isTextFile(relPath: string): boolean {
-  return TEXT_FILE.test(relPath);
+/**
+ * THIS PREDICATE USED TO BE AN EXTENSION ALLOWLIST AND IT FAILED OPEN.
+ *
+ * The old rule was one regex of fifteen extensions. Everything else in the tree
+ * was skipped SILENTLY — no finding, no note, no line in any output — so the gap
+ * was invisible from the outside and the suite was exactly as green as it would
+ * have been with nothing to find. Three ways that had already gone wrong:
+ *
+ *   - `.py` matched nothing. A builder working on an unrelated piece reached for
+ *     a Python script first and would have written a completely unwatched file;
+ *     that is what produced this rewrite. Nothing in this repository is written
+ *     in Python TODAY, which is the point — the hole was in the shape of the
+ *     check, not in the contents of the tree, and it would have opened on the
+ *     first `.py` anybody committed.
+ *   - `.mts` matched nothing, and `tools/png.d.mts`, `tools/test-budgets.d.mts`
+ *     and `tools/testBudget.d.mts` were already there. `tsx?` does not cover the
+ *     module-suffixed spelling and nobody noticed for as long as those files have
+ *     existed.
+ *   - `.toml` matched nothing, and `netlify.toml` was already there — a build
+ *     config, which is one of the four words §12.3 uses.
+ *
+ * SO THE SHAPE IS INVERTED: everything the tree walk reaches is READ unless its
+ * BYTES say it cannot be text. An extension nobody thought of is now watched by
+ * default instead of skipped by default, which is the only arrangement where a
+ * new file type is a safe default rather than a silent hole.
+ *
+ * WHY THE TEST IS CONTENT AND NOT A LIST OF BINARY EXTENSIONS. A denylist of
+ * extensions fails open one level further out — the first `.pdf`, `.jpg` or
+ * `.ttf` nobody enumerated gets read as mojibake and cries wolf, and a check that
+ * cries wolf is one somebody suppresses. Bytes need no enumeration and cannot go
+ * stale: a NUL byte, or a sequence that is not valid UTF-8, is not text in any
+ * language. That also reaches the case an extension rule structurally cannot —
+ * `.gitignore` has no extension at all, and it is read now.
+ *
+ * WHY BINARIES ARE EXCLUDED AT ALL, MEASURED RATHER THAN ASSUMED. Reading this
+ * tree's 19 binaries as UTF-8 with replacement produces TWO watchlist hits, both
+ * false: a three-letter federation acronym inside the deflate stream of an app
+ * icon, and a three-letter brand acronym inside a reference screenshot. That is
+ * the same cry-wolf failure `patternFor`'s word edges were added for, one level
+ * out, and it is why "read everything" is not the answer either.
+ *
+ * WHAT THIS STILL DOES NOT CLOSE, and it is two whole dimensions rather than a
+ * corner:
+ *
+ *   - THE DIRECTORY DIMENSION. `NOT_WALKED` is still an unmeasured allowlist of
+ *     seven names; a real mark inside `.gauntlet/` or a sibling worktree is as
+ *     invisible as `.py` was. Each entry has a written reason in
+ *     `NOT_WALKED_REASONS`, which is more than the extension rule ever had, and
+ *     it is still a list somebody has to keep right.
+ *   - THE PIXELS. A file that cannot be read as text is not read as anything.
+ *     Its NAME is still scanned (`scanFileName`), which is how the two reference
+ *     photographs reach the citation list — but a logo drawn INSIDE a PNG is
+ *     invisible here and always will be. `UNREADABLE_BY_THIS_AUDIT` is the census
+ *     of exactly those files, pinned by name, so the invisible half is at least
+ *     enumerated instead of merely admitted.
+ */
+export type TextVerdict = 'text' | 'nul-byte' | 'not-utf8';
+
+/**
+ * Why a file's bytes are or are not readable as text.
+ *
+ * WHOLE FILE, NOT A PREFIX. Git's own heuristic sniffs the first 8000 bytes,
+ * which is faster and lets a NUL past the window; this tree is 284 files, so the
+ * cheap thing and the correct thing are the same thing and there is no window
+ * constant to tune.
+ *
+ * ON TODAY'S TREE ONLY THE `nul-byte` ARM FIRES — all 19 binaries are PNG, WAV
+ * or WEBP and every one of them carries a NUL in its header. `not-utf8` is
+ * therefore driven by fixtures in `realIp.test.ts` rather than by the repository,
+ * and it is kept because the arms answer different questions: a UTF-16 text file
+ * is all NULs and a latin-1 one has none.
+ */
+export function classifyBytes(bytes: Uint8Array): TextVerdict {
+  if (bytes.includes(0)) return 'nul-byte';
+  try {
+    new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return 'not-utf8';
+  }
+  return 'text';
 }
+
+/** True when this audit reads the file's contents. Binaries are FILENAME only. */
+export function isTextFile(bytes: Uint8Array): boolean {
+  return classifyBytes(bytes) === 'text';
+}
+
+/**
+ * THE EXTENSIONS THIS AUDIT ACTUALLY READS IN THIS TREE, pinned.
+ *
+ * Not an input — nothing consults it to decide anything. It is the ANSWER the
+ * content predicate gives when it is pointed at the real repository, written down
+ * so the answer is reviewable. `realIp.test.ts` set-equals it against the live
+ * walk in both directions, which is what makes the widening self-announcing: the
+ * first `.py` anybody commits reddens the suite with `.py` in the message, and
+ * the fix is to read this paragraph and add the row rather than to discover six
+ * months later that the file was never scanned.
+ *
+ * `(none)` is `.gitignore`, which has no extension and which the old
+ * extension-matching rule could not have reached under any list of suffixes.
+ */
+export const EXTENSIONS_READ_AS_TEXT: readonly string[] = Object.freeze([
+  '(none)',
+  '.html',
+  '.json',
+  '.md',
+  '.mjs',
+  '.mts',
+  '.sh',
+  '.toml',
+  '.ts',
+  '.tsx',
+  '.yml',
+]);
+
+/** One kind of file this audit cannot read the contents of, and how many there are. */
+export interface UnreadableGroup {
+  readonly extension: string;
+  readonly reason: Exclude<TextVerdict, 'text'>;
+  readonly count: number;
+}
+
+/**
+ * EVERYTHING IN THIS TREE WHOSE CONTENTS THIS AUDIT CANNOT READ, COUNTED.
+ *
+ * The same instrument as `DELIBERATELY_NOT_WATCHED`, pointed at files instead of
+ * names, and for the same stated reason: an omission from a scan is invisible,
+ * and an invisible omission is how a scan quietly stops covering what everyone
+ * assumed it covered. The defect that produced this module's rewrite was exactly
+ * that — a file type silently declined, with nothing in any output to say so.
+ * The gap IS the output now.
+ *
+ * BY EXTENSION AND COUNT RATHER THAN BY FILENAME, AND THE REASON IS THIS
+ * MODULE'S OWN SELF-SCAN. The first draft of this block listed all nineteen paths
+ * — at which point the audit reported two watchlist names in `realIp.ts` outside
+ * its three exempt regions, because two of the reference photographs are named
+ * after a console and a federation. That was the check working on the hand
+ * writing it, and the choice it forced is the right one on its own merits:
+ * counting keeps the self-exemption at three regions instead of opening a fourth,
+ * and `realIp.test.ts` prints the live filenames in its failure message, where a
+ * name in output is not a name in source.
+ *
+ * THESE FILES ARE NOT UNWATCHED. Every one still goes through `scanFileName`,
+ * which is how the two reference photographs earn their `filename` rows on
+ * `REVIEWABLE_CITATIONS`. What is unreadable is the CONTENT, and for a picture
+ * that is permanent: §5 of the header names the live instance, a reference image
+ * carrying a real league's logo and a competing player's likeness in its pixels.
+ *
+ * SO A MOVED COUNT IS AN EVENT. It means a binary arrived or left, and a binary
+ * is the one place a real mark can sit with no text anywhere near it.
+ * `realIp.test.ts` set-equals this against the live walk in both directions, so
+ * adding an icon or a sound reddens the suite until somebody adjusts the number —
+ * the same cost `REVIEWABLE_CITATIONS` already charges, for a stronger reason.
+ */
+export const UNREADABLE_BY_THIS_AUDIT: readonly UnreadableGroup[] = Object.freeze([
+  { extension: '.png', reason: 'nul-byte', count: 10 },
+  { extension: '.wav', reason: 'nul-byte', count: 7 },
+  { extension: '.webp', reason: 'nul-byte', count: 2 },
+]);
+
+/** The extension of a repository-relative path, or `(none)` when it has none. */
+export function extensionOf(relPath: string): string {
+  const base = relPath.slice(relPath.lastIndexOf('/') + 1);
+  const dot = base.lastIndexOf('.');
+  return dot > 0 ? base.slice(dot) : '(none)';
+}
+
+/** Fold a walked tree into the unreadable census, grouped and sorted. */
+export function unreadableCensus(
+  files: readonly { readonly file: string; readonly bytes: Uint8Array }[],
+): readonly UnreadableGroup[] {
+  const groups = new Map<string, UnreadableGroup>();
+  for (const { file, bytes } of files) {
+    const verdict = classifyBytes(bytes);
+    if (verdict === 'text') continue;
+    const extension = extensionOf(file);
+    const key = `${extension}|${verdict}`;
+    const existing = groups.get(key);
+    groups.set(
+      key,
+      existing === undefined
+        ? { extension, reason: verdict, count: 1 }
+        : { ...existing, count: existing.count + 1 },
+    );
+  }
+  return [...groups.values()].sort(
+    (a, b) => a.extension.localeCompare(b.extension) || a.reason.localeCompare(b.reason),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// WHAT GETS REACHED — the second dimension, and the one the first fix said
+// nothing about
+// ---------------------------------------------------------------------------
+
+/**
+ * THE REACH WAS A PROPERTY OF SOMEBODY'S CHECKOUT AND IS NOW A PROPERTY OF THE
+ * REPOSITORY.
+ *
+ * Fixing the file-type predicate said nothing about which FILES the walk hands
+ * it, and that is a separate axis with its own failure — the "reach and
+ * predicate are two axes" lesson, arriving from the other side.
+ *
+ * THE INSTANCE, MEASURED IN TWO CHECKOUTS OF THE SAME COMMIT. The census of
+ * unreadable files read `.png 10 | .wav 7 | .webp 2` where it was written and
+ * `.png 10 | .wasm 1 | .wav 7 | .webp 2` where it was merged. The extra entry is
+ * `public/canvaskit.wasm` — 8 MB, gitignored, untracked, copied out of
+ * `node_modules` by a dev script, so it exists in any checkout where somebody has
+ * run a browser tool and in no fresh worktree. A second builder had already hit
+ * the same asymmetry from the other direction. Neither number was right: pinning
+ * the larger one reddens every clean worktree and pinning the smaller one reddens
+ * every checkout anybody has worked in.
+ *
+ * A pinned census over a filesystem walk is a pin on WHAT SOMEBODY HAPPENS TO
+ * HAVE ON DISK. That is not a fact about this repository, and the same shape hit
+ * a second time in the same hour: verification logs written to the repository
+ * root by a watchdog put `.log` into the READ set in one checkout and not in
+ * another, and one of them was not valid UTF-8, so it landed in the UNREADABLE
+ * census too. Any gitignored artifact anybody generates can move a pinned count.
+ *
+ * SO THE WALK SKIPS WHAT GIT IGNORES, and the two views are asserted to agree
+ * rather than assumed to. `realIp.test.ts` runs `git ls-files` and compares:
+ *
+ *   - A WALKED FILE GIT IGNORES is dropped and pinned at zero. That is the check
+ *     `canvaskit.wasm` would have tripped.
+ *   - A TRACKED FILE THE WALK CANNOT SEE is a finding unless a named `NOT_WALKED`
+ *     entry explains it, and WHICH entries do the explaining is pinned below.
+ *   - A WALKED FILE THAT IS NOT TRACKED and not ignored is still SCANNED, on
+ *     purpose. That is new uncommitted work, which is where §12.3 says a real
+ *     name actually arrives — "the first thing that came to mind" gets typed
+ *     before it gets committed. It is reported rather than pinned, because a
+ *     builder mid-edit is not a defect.
+ *
+ * THE TWO PINNED CENSUSES ARE TAKEN OVER TRACKED FILES ONLY, which is what makes
+ * them reproducible in any checkout. The SCAN is still the whole walk; only the
+ * counts are narrowed, so nothing stops being read in order to make a number
+ * stable.
+ *
+ * AND ONE THING THIS DOES NOT DO. `public/canvaskit.wasm` is untracked and it
+ * genuinely ships — the deploy config copies it into the bundle. Excluding it is
+ * still right, for the reason `NOT_WALKED` already gives for `node_modules`: it
+ * is vendored bytes nobody here authored. Its own filename carries no watched
+ * name, and its contents are a binary this audit could not read in any case. If a
+ * future untracked-yet-shipped file is AUTHORED here, that reasoning stops
+ * applying and this is the paragraph that has to change.
+ */
 
 /**
  * Directories the tree walk does not descend into.
@@ -853,6 +1120,118 @@ export const NOT_WALKED_REASONS: Readonly<Record<string, string>> = Object.freez
   '.claude': 'holds worktrees/, each a complete second checkout of this repository',
   '.gauntlet': 'captured run transcripts; copies of strings scanned at their source',
 });
+
+/**
+ * THE `NOT_WALKED` ENTRIES THAT ACTUALLY HIDE TRACKED FILES — pinned, because an
+ * exclusion that hides nothing and one that hides committed prose are not the
+ * same risk and the list above does not distinguish them.
+ *
+ * Five of the seven hide NOTHING: `node_modules`, `.git`, `.expo`, `dist` and
+ * `coverage` are vendored or generated and nothing under them is committed. If
+ * one of them starts hiding a tracked file — somebody commits a build output, or
+ * checks in a dependency — that is a real change in this audit's reach and it
+ * reddens here rather than passing as a silence.
+ *
+ * TWO OF THEM DO, AND THAT IS THE HOLE, STATED AS A NUMBER INSTEAD OF A SENTENCE.
+ * At the time of writing, 73 tracked files are invisible to this scan: 71 under
+ * `.gauntlet` and 2 under `.claude`. Nine of them carry 65 watchlist mentions
+ * between them. Read that before treating either exclusion as free:
+ *
+ *   - `.gauntlet` — 71 files. 64 of the 65 mentions are in captured `vitest`
+ *     transcripts and are copies of strings this audit reads at their source,
+ *     which is the argument the section above makes and it holds. The exception
+ *     is `.gauntlet/state.json`: HAND-TYPED run bookkeeping, 11 mentions, and the
+ *     header already names it as the part of this exclusion that is not derived.
+ *     It is left out of the scan anyway, because it is rewritten every wave and
+ *     pinning its citations would move `REVIEWABLE_CITATIONS` on a schedule that
+ *     has nothing to do with the code. That is a JUDGEMENT and not a category,
+ *     which is precisely what `DELIBERATELY_NOT_WATCHED` warns about — so it is
+ *     written here for a human to overrule rather than left to be inferred.
+ *   - `.claude` — 2 files, `agents/builder.md` and `agents/critic.md`, both
+ *     hand-written and both carrying ZERO watchlist mentions. THE EXCLUSION IS
+ *     WIDER THAN ITS OWN STATED REASON: that reason is `worktrees/`, which is a
+ *     complete second checkout, and it does not reach two agent definitions
+ *     sitting beside it. Narrowing it means matching a PATH rather than a
+ *     basename, which is a change to the walk rather than to this list, so it is
+ *     reported here rather than done from this piece.
+ *
+ * The 73 and the 65 are MEASUREMENTS AND NOT PINS, and the difference is
+ * deliberate: both move whenever anybody re-takes an evidence bundle, so pinning
+ * them would rebuild the exact "verdict moves with when somebody last ran the
+ * suite" failure the `.gauntlet` exclusion exists to avoid. What is pinned is the
+ * SET of entries doing the hiding, which does not move on a capture.
+ */
+export const NOT_WALKED_HIDES_TRACKED: readonly string[] = Object.freeze(['.claude', '.gauntlet']);
+
+/** What the filesystem walk and the repository's own file list disagree about. */
+export interface ReachReport {
+  /** Tracked files the walk never reached, explained by a `NOT_WALKED` entry. */
+  readonly hiddenByNotWalked: readonly string[];
+  /** Which `NOT_WALKED` entries did that hiding, sorted. */
+  readonly hidingDirectories: readonly string[];
+  /** Walked files git does not track. Scanned anyway; reported, never pinned. */
+  readonly walkedButUntracked: readonly string[];
+  /**
+   * Tracked files the walk missed that NO `NOT_WALKED` entry explains.
+   *
+   * ALWAYS A FINDING. There is no benign reason for one: it means the walk is
+   * dropping committed files for a reason nobody wrote down, which is the
+   * silent-reach failure in its purest form.
+   */
+  readonly strays: readonly string[];
+}
+
+/**
+ * The files a PINNED CENSUS may be counted over: walked and tracked, in walk
+ * order.
+ *
+ * Separate from the scan on purpose, and it is one line so that the narrowing is
+ * a thing a test can drive rather than a filter buried at a call site. On a clean
+ * checkout this returns its input unchanged, so an assertion about it taken only
+ * against the real tree is an empty domain — `realIp.test.ts` drives it with a
+ * synthetic untracked file for exactly that reason.
+ */
+export function censusScope(
+  walked: readonly string[],
+  tracked: readonly string[],
+): readonly string[] {
+  const trackedSet = new Set(tracked);
+  return walked.filter((file) => trackedSet.has(file));
+}
+
+/**
+ * Compare the two views of the tree. Pure: the caller does the git and the fs.
+ *
+ * `notWalked` is matched on any PATH SEGMENT, which is how the walk itself
+ * matches it — so this reports the same exclusions the walk actually applied
+ * rather than a second interpretation of the same list.
+ */
+export function reachReport(
+  walked: readonly string[],
+  tracked: readonly string[],
+  notWalked: readonly string[] = NOT_WALKED,
+): ReachReport {
+  const walkedSet = new Set(walked);
+  const trackedSet = new Set(tracked);
+  const hiddenByNotWalked: string[] = [];
+  const strays: string[] = [];
+  const hiding = new Set<string>();
+  for (const file of tracked) {
+    if (walkedSet.has(file)) continue;
+    const excluder = file.split('/').find((segment) => notWalked.includes(segment));
+    if (excluder === undefined) strays.push(file);
+    else {
+      hiddenByNotWalked.push(file);
+      hiding.add(excluder);
+    }
+  }
+  return {
+    hiddenByNotWalked: hiddenByNotWalked.sort(),
+    hidingDirectories: [...hiding].sort(),
+    walkedButUntracked: walked.filter((f) => !trackedSet.has(f)).sort(),
+    strays: strays.sort(),
+  };
+}
 
 /**
  * Where a file NAME reaching a real brand is category (A) rather than (B).
