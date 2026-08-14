@@ -7611,6 +7611,83 @@ function channelCensusOf(
   };
 
   /**
+   * Every expression ASSIGNED to a binding, found by symbol and not by spelling.
+   *
+   * THE THIRTEENTH BYPASS IS WHAT THIS IS FOR, and it is the same reformulation
+   * the twelfth forced one channel over. A `const` carries its whole value in
+   * its initializer, so following the initializer was the whole of "what is
+   * this binding". A `let` does not: it is written from anywhere in its scope,
+   * and `let shape; if (x) shape = { peek };` has NO initializer at all. Both
+   * `ownerOf` and `returnedFunctions` followed initializers only, so both
+   * walked straight past it — M39, planted and printed.
+   *
+   * Syntax cannot enumerate what a binding holds, because the writes are
+   * scattered; a SYMBOL's assignments can be, because they are a finite set of
+   * nodes in one scope. This walks the declaration's enclosing function (or the
+   * source file, for a module-level binding) and resolves every assignment
+   * TARGET through the checker, so `(shape as T) = …` and an assignment through
+   * any alias of the name are the same node to it. `FirstAssignment ..
+   * LastAssignment` is the operator range rather than `EqualsToken`, so `??=`
+   * and `||=` — which are exactly how a branch-assembled binding gets written
+   * when somebody tidies the `if` away — are inside it.
+   *
+   * ITS LIMITS, in the mechanism's own terms, with the catcher for each named:
+   *
+   *   - A DESTRUCTURING assignment — `({ shape } = source)` — has an
+   *     `ObjectLiteralExpression` on the left, not an identifier, so it is not
+   *     found. What covers it is the `unfollowable` record below: a binding
+   *     with no initializer and no assignment found lands in `freshReceivers`,
+   *     which is a set equality in both directions, so the route arrives as a
+   *     red line naming the identifier rather than as silence.
+   *   - A write from OUTSIDE the declaration's scope cannot exist for a local,
+   *     because a `let` inside a function is not addressable from anywhere else
+   *     — that is a language property rather than a claim about this walk. A
+   *     module-level `let` is scoped to the source file and this walks the
+   *     whole file, so the same holds there.
+   */
+  const assignedValuesTo = (declaration: ts.VariableDeclaration): readonly ts.Expression[] => {
+    let scope: ts.Node = declaration.getSourceFile();
+    for (let at: ts.Node | undefined = declaration.parent; at !== undefined; at = at.parent) {
+      if (ts.isFunctionLike(at) || ts.isSourceFile(at)) {
+        scope = at;
+        break;
+      }
+    }
+    const found: ts.Expression[] = [];
+    const walkScope = (node: ts.Node): void => {
+      if (
+        ts.isBinaryExpression(node) &&
+        node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+        node.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+      ) {
+        const target = past(node.left);
+        if (ts.isIdentifier(target)) {
+          const resolved = resolvedDeclaration(target);
+          if (resolved !== null && bindingHost(resolved) === declaration) found.push(node.right);
+        }
+      }
+      node.forEachChild(walkScope);
+    };
+    walkScope(scope);
+    return found;
+  };
+
+  /**
+   * Whether an initializer is a binding this walk should hop THROUGH.
+   *
+   * `let shape: T | undefined = undefined;` is the branch immediately below the
+   * one M39 was planted in, and it is why this predicate exists rather than a
+   * bare `ts.isIdentifier`. `undefined` IS an identifier, and it resolves to a
+   * `VariableDeclaration` in `lib.es5.d.ts` — so the hop succeeds, lands at
+   * module scope in a declaration file, and the assignment path below never
+   * runs. A binding declared in a `.d.ts` is not a value this directory
+   * assembled, so it is not a hop.
+   */
+  const hoppableInitializer = (root: ts.Expression): boolean =>
+    ts.isIdentifier(root) &&
+    !(resolvedDeclaration(root)?.getSourceFile().isDeclarationFile ?? false);
+
+  /**
    * Whose binding an expression resolves to, FOLLOWING ALIASES.
    *
    * This is the reformulation the twelfth bypass forced, and the whole of it is
@@ -7655,12 +7732,29 @@ function channelCensusOf(
       }
       if (ts.isVariableDeclaration(host)) {
         const initial = host.initializer === undefined ? null : receiverRoot(host.initializer);
-        if (initial !== null && ts.isIdentifier(initial) && !seen.has(initial)) {
+        if (initial !== null && hoppableInitializer(initial) && !seen.has(initial)) {
           seen.add(initial);
           at = initial;
           continue;
         }
         if (initial !== null && (ts.isArrowFunction(initial) || ts.isFunctionExpression(initial))) {
+          return { kind: 'function', declaration: host, detail: nameOf(host) };
+        }
+        // THE ASSIGNMENT PATH, AND IT IS CONSULTED ONLY WHERE THE INITIALIZER
+        // GAVE NOTHING TO FOLLOW — so every classification the initializer path
+        // already produced is unchanged, and `writeOwners.local` stays at the
+        // 153 it has always been. This is the mutation arm's half of M39: `let
+        // inner; if (x) inner = sink; inner.kind = <a banned name>` resolves to
+        // the PARAMETER now instead of to a local, which is the difference
+        // between `argument-mutation` and a number nobody reads.
+        const assigned = assignedValuesTo(host).map(receiverRoot);
+        const hop = assigned.find((root) => hoppableInitializer(root) && !seen.has(root));
+        if (hop !== undefined) {
+          seen.add(hop);
+          at = hop;
+          continue;
+        }
+        if (assigned.some((root) => ts.isArrowFunction(root) || ts.isFunctionExpression(root))) {
           return { kind: 'function', declaration: host, detail: nameOf(host) };
         }
         return {
@@ -7739,25 +7833,85 @@ function channelCensusOf(
    * covered-day` printed off a driven call, and the whole directory came back
    * 3 failed of 475 with all three failures node/string truncation counters.
    *
-   * NOTHING IS FIXED IN THE COMMIT THAT FIRST CARRIED THIS PARAGRAPH. The route
-   * is open, `returnedFunctions` still follows initializers only, and this says
-   * so rather than describing a repair that does not exist yet.
+   * It follows assignments now, through `assignedValuesTo`, which is the same
+   * helper `ownerOf` uses — one resolution read by both arms, for the reason
+   * the callback and wrap censuses were joined a round earlier. Re-planted
+   * against the fixed walk, M39 reddens two assertions by name:
+   * `"returned-closure": + "production.ts": 1` and
+   * `+ "production.ts#accrueProduction#closure:.peek"`.
+   *
+   * WHAT IT STILL CANNOT FOLLOW IS NAMED, NOT SILENT. An identifier whose value
+   * this walk cannot see — a parameter, an import, a destructured binding, a
+   * `let` with neither initializer nor assignment — is pushed into
+   * `unfollowed`, and the caller puts it in `freshReceivers`, which is a set
+   * equality in both directions with `unclassified` pinned at zero. So the next
+   * unfollowable shape is a red line naming a file, a line and an identifier
+   * rather than a `return` with nothing behind it. That is the `else` this file
+   * has now had to add three times, in three different walks.
    */
-  const returnedFunctions = (expression: ts.Expression, at: string = ''): readonly string[] => {
+  const returnedFunctions = (
+    expression: ts.Expression,
+    at: string = '',
+  ): { readonly found: readonly string[]; readonly unfollowed: readonly ts.Identifier[] } => {
     const found: string[] = [];
+    const unfollowed: ts.Identifier[] = [];
     const seenAliases = new Set<ts.Node>();
     const walk = (node: ts.Expression, path_: string): void => {
       if (ts.isIdentifier(node)) {
-        const declaration = resolvedDeclaration(node);
-        if (
-          declaration !== null &&
-          ts.isVariableDeclaration(declaration) &&
-          declaration.initializer !== undefined &&
-          !seenAliases.has(declaration)
-        ) {
-          seenAliases.add(declaration);
-          walk(declaration.initializer, path_);
+        const resolved = resolvedDeclaration(node);
+        const host = resolved === null ? null : bindingHost(resolved);
+        if (host === null) {
+          unfollowed.push(node);
+          return;
         }
+        // A NAMED FUNCTION HANDED BACK BY ITS NAME, which the initializer-only
+        // walk could not see either: `function helper() {…}; return { peek:
+        // helper };` resolves to a `FunctionDeclaration` and not to a variable.
+        // `resolvedDeclaration` follows import aliases, so a function DEFINED
+        // in another module of this directory and returned from this one lands
+        // here too.
+        if (ts.isFunctionDeclaration(host) || ts.isFunctionExpression(host) || ts.isArrowFunction(host)) {
+          found.push(path_ === '' ? 'return' : path_);
+          return;
+        }
+        // A RETURNED PARAMETER IS THE CALLER'S OWN VALUE COMING BACK, and it is
+        // deliberately neither followed nor recorded. This channel is about
+        // functions THIS DIRECTORY produced; a closure that arrived through a
+        // parameter was written by the caller, which is the same reasoning
+        // `reachableFromOutside` uses one table over. Recording them measured
+        // 57 entries, every one a parameter returned directly, and a
+        // line-numbered census of those would move on any edit to any shipped
+        // module while saying nothing about this directory's own output.
+        if (ts.isParameter(host)) return;
+        if (!ts.isVariableDeclaration(host)) {
+          unfollowed.push(node);
+          return;
+        }
+        if (seenAliases.has(host)) return;
+        seenAliases.add(host);
+        const values: ts.Expression[] = [
+          ...(host.initializer === undefined ? [] : [host.initializer]),
+          ...assignedValuesTo(host),
+        ];
+        if (values.length === 0) {
+          // A `for (const x of xs)` BINDING, which is the third shape with no
+          // initializer and was found by widening rather than by reasoning:
+          // recording every unfollowable identifier reported exactly five, and
+          // all five were this — `for (const build of builds) return build;`.
+          // The value is an element of the iterable, so the iterable is what
+          // the walk follows. A `for-in` binding is a KEY and never a function,
+          // so it is deliberately not followed and lands in `unfollowed`
+          // instead; there are none in this directory, so that costs nothing
+          // and says what would happen if one arrived.
+          const statement = host.parent.parent;
+          if (ts.isForOfStatement(statement)) {
+            walk(statement.expression, path_);
+            return;
+          }
+          unfollowed.push(node);
+          return;
+        }
+        for (const value of values) walk(value, path_);
         return;
       }
       if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
@@ -7806,15 +7960,32 @@ function channelCensusOf(
             // declaration is the shorthand itself, so following it goes in a
             // circle. The plant stayed green through one whole repair on that.
             const value = checker.getShorthandAssignmentValueSymbol(property);
-            const declaration = value?.valueDeclaration ?? value?.declarations?.[0];
-            if (
-              declaration !== undefined &&
-              ts.isVariableDeclaration(declaration) &&
-              declaration.initializer !== undefined &&
-              !seenAliases.has(declaration)
+            const resolved = value?.valueDeclaration ?? value?.declarations?.[0];
+            const declaration = resolved === undefined ? undefined : bindingHost(resolved);
+            if (declaration === undefined) {
+              unfollowed.push(property.name);
+            } else if (
+              ts.isFunctionDeclaration(declaration) ||
+              ts.isFunctionExpression(declaration) ||
+              ts.isArrowFunction(declaration)
             ) {
+              found.push(`${path_}.${name}`);
+            } else if (ts.isParameter(declaration)) {
+              // The caller's own value, coming back. See the identifier arm.
+            } else if (!ts.isVariableDeclaration(declaration)) {
+              unfollowed.push(property.name);
+            } else if (!seenAliases.has(declaration)) {
+              // THE SIBLING ARM, WIDENED WITH THE ONE ABOVE AND NOT AFTER IT.
+              // `{ peek }` where `peek` is branch-assembled is the same route
+              // as `return shape` where `shape` is, and the last round of this
+              // walk learned the hard way that the two arms get written apart.
               seenAliases.add(declaration);
-              walk(declaration.initializer, `${path_}.${name}`);
+              const values: ts.Expression[] = [
+                ...(declaration.initializer === undefined ? [] : [declaration.initializer]),
+                ...assignedValuesTo(declaration),
+              ];
+              if (values.length === 0) unfollowed.push(property.name);
+              for (const assigned of values) walk(assigned, `${path_}.${name}`);
             }
           }
         }
@@ -7837,7 +8008,7 @@ function channelCensusOf(
       }
     };
     walk(expression, at);
-    return found;
+    return { found, unfollowed };
   };
 
   for (const root of roots) {
@@ -8038,8 +8209,18 @@ function channelCensusOf(
       // arguments, because `return list.map((x) => …)` hands the caller a list
       // and not the arrow.
       if (ts.isReturnStatement(node) && node.expression !== undefined) {
-        for (const found of returnedFunctions(node.expression)) {
+        const walked = returnedFunctions(node.expression);
+        for (const found of walked.found) {
           record('returned-closure', moduleName, key(node, `closure:${found}`));
+        }
+        // The `else` for this walk, in the same list the other two use. A
+        // returned identifier whose value the walk cannot see is named here
+        // rather than dropped, so a shape it has never met arrives as a red
+        // line instead of as a clean channel.
+        for (const identifier of walked.unfollowed) {
+          freshReceivers.push(
+            `${moduleName}:${String(lineOf(identifier))} returned=unfollowable:${identifier.text}`,
+          );
         }
       }
       if (ts.isFunctionDeclaration(node) && node.type !== undefined && ts.isFunctionTypeNode(node.type)) {
@@ -10498,7 +10679,10 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
     caughtBy: Object.freeze([
       'GREEN BEFORE, AND IT IS THE THIRTEENTH BYPASS. Whole directory with the plant in: `Test Files 1 failed | 11 passed (12)`, `Tests 3 failed | 472 passed (475)`, and all three failures are node/string truncation counters — `expected 2393230 to be 2393060` (instrument B / walked a domain that is not empty), `expected 523184 to be 523128` (the overflow pass / walked a domain that is not empty at the dropped points) and `expected 21826 to be 21789` (the channel census / derives every escape site, the `nodesExamined` line). Instrument A green, B green, C green, the callback pass green, the site table green — `census.byModule` is asserted at line 9388, BEFORE the node count at 9416, so it ran and passed with `returned-closure` still at its two shipped sites. `census.sites[\'returned-closure\']`, `callTargets`, `writeOwners`, `freshReceivers` and `memberCallsOnParameters` are all in tests that passed outright.',
       'AND THE BRANCH RUNS, PRINTED RATHER THAN INFERRED, per M24 and M34: driving `accrueProduction` over a one-hour gap prints `KEYS: gymBucks,settledGymBucks,trainingIq,offlineSecondsElapsed,offlineSecondsBanked,offlineSecondsDiscarded,trainingIqSecondsElapsed,rates,ledger,peek`, `typeof peek: function`, `peek(): covered-day`. The caller is handed the name by calling a member of the value it received.',
-      'NOTHING IS REPAIRED IN THE COMMIT THAT FIRST CARRIED THIS ROW, AND THAT IS DELIBERATE. It records an open escape and no fix, because the previous round lost a builder at exactly this point and a measurement that is not in a commit is a measurement nobody else has. A row with no `AFTER` line is a route this file admits is open.',
+      'AFTER, RE-PLANTED AGAINST THE FIXED WALKER RATHER THAN ASSUMED: the channel census / derives every escape site: `"returned-closure": { "empireInvariant.ts": 2, + "production.ts": 1 }`, and / pins the two callback sites: `+ "production.ts#accrueProduction#closure:.peek"`. Named by module, by enclosing function and by member path. Both messages are quoted from that run.',
+      'NOTHING WAS REPAIRED IN THE COMMIT THAT FIRST CARRIED THIS ROW, AND THAT WAS DELIBERATE. It recorded an open escape and no fix, because the previous round lost a builder at exactly this point and a measurement that is not in a commit is a measurement nobody else has. The `AFTER` line above was added by the commit that closed it.',
+      "THE FIX IS THE REFORMULATION E21 USED ONE CHANNEL OVER, ONE LEVEL FURTHER IN: syntax cannot enumerate what a binding holds, because a `let` is written from anywhere in its scope; a SYMBOL's assignments can be enumerated, because they are a finite set of nodes in one scope. `assignedValuesTo` is that, and it is used by BOTH `returnedFunctions` and `ownerOf` rather than only by the arm that was planted — the sibling rule, applied before the sibling was planted rather than after.",
+      'AND THE WIDENING FOUND THREE MORE SHAPES WITH NO INITIALIZER, none of which was reasoned about in advance. (1) `let shape: T | undefined = undefined` — `undefined` IS an identifier and resolves to a `VariableDeclaration` in `lib.es5.d.ts`, so the hop succeeded and the assignment path never ran; `hoppableInitializer` refuses a declaration-file binding. (2) A `for (const x of xs)` binding, found by recording every unfollowable identifier and reading the five that came back — all five were this. (3) A function returned by its NAME rather than by a variable, which resolves to a `FunctionDeclaration` and was invisible to an initializer-only walk in exactly the same way.',
     ]),
     accidentalCatchersGreen: true,
     alsoRed: Object.freeze([
