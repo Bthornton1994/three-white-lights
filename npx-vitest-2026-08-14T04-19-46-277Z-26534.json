@@ -28,14 +28,18 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 10,
-    "okCount": 9,
+    "count": 11,
+    "okCount": 10,
     "errors": [],
-    "lastAttemptIso": "2026-08-14T04:28:46.671Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-14T04:29:46.363Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-14T04:27:50.037Z"
-  }
+    "lastOkIso": "2026-08-14T04:28:50.044Z"
+  },
+  "interruption": "BUDGET_EXCEEDED",
+  "detail": "SIGKILLed after 600.1s against a 600s budget",
+  "finishedAtIso": "2026-08-14T04:29:46.355Z",
+  "elapsedSeconds": 600.1
 }
