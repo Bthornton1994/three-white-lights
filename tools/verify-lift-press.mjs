@@ -477,10 +477,12 @@ const forceProperties = (page, testId, force) =>
         el.style.setProperty('-webkit-touch-callout', 'none', 'important');
       } else if (force === 'pan') {
         // PROBE 2's neutralisation: only `touch-action`, and only to the value
-        // the played arm was measured carrying. React Native Web's `Pressable`
-        // ships `touchAction: 'manipulation'` on its own `active` style, so
-        // this is not an invented worst case — it is the default a Pressable
-        // has when nobody adds the fix.
+        // the played arm was measured carrying. Read in this tree at
+        // `node_modules/react-native-web/dist/exports/Pressable/index.js`,
+        // `styles.active` is `{ cursor: 'pointer', touchAction: 'manipulation' }`
+        // — so this is not an invented worst case, it is the value a Pressable
+        // already has when nobody adds the fix, and the played arm's own
+        // computed reading is the check that it is still true here.
         el.style.setProperty('touch-action', 'manipulation', 'important');
       } else {
         for (const p of props) el.style.removeProperty(p);
@@ -570,11 +572,15 @@ async function probeSelection(page, testId, label, drift) {
  * `LiftScreen.tsx`'s own comment calls this "the half that eats input rather
  * than merely looking wrong, and the one a screenshot cannot show."
  *
- * `touchmove` cancelability is recorded beside it and deliberately NOT asserted
- * on: measured, it reads `[true, false, false, ...]` identically at
- * `touch-action: none`, `manipulation` and `auto`, so it does not discriminate
- * and a check on it would be decoration. The cancel count does discriminate,
- * and both numbers are in the record so the next reader can see which one was
+ * `touchmove` cancelability is recorded beside it and is NOT the signal: taken
+ * at calibration on all three values of `touch-action`, it reads
+ * `[true, false, false, …]` every time, so it does not discriminate and a check
+ * comparing it across arms would be decoration. THAT SENTENCE IS NOT LEFT AS
+ * PROSE — `panCancelablePattern` below pins the shape, so if the engine ever
+ * makes this stream depend on `touch-action` the file goes red and somebody
+ * gets to promote it to a real signal instead of finding this paragraph still
+ * confidently saying it is useless. The cancel count is what discriminates, and
+ * both numbers are in the record so the next reader can check which one was
  * load-bearing rather than take this paragraph's word for it.
  */
 async function probePan(page, cdp, testId, label, panPx = PRESS_PROBE.PAN_PX) {
@@ -882,10 +888,18 @@ for (const arm of armsToRun) {
   // at full size and landed all their moves, and how many of all the pans put
   // at least one touchmove on the page. Neither is a bound on a measurement.
   const panNames = Object.keys(pans);
-  const pansThePageSaw = panNames.filter((n) => pans[n].moves > 0).length;
+  // A pan is evidence if the page received ANYTHING attributable to it — a
+  // touchmove or a cancel. Not `moves > 0`: measured on the played arm, the
+  // 20px pan delivers ZERO touchmoves and one `pointercancel`, because the
+  // browser claims the gesture before a single move reaches the page. That is
+  // the strongest reading in the file and an earlier version of this guard
+  // called it vacuous, which had the instrument reddening on its own best
+  // evidence. What must not happen is a pan the page never heard about at all,
+  // and that is what this counts.
+  const pansThePageSaw = panNames.filter((n) => pans[n].moves > 0 || pans[n].cancels > 0).length;
   check(
     pansThePageSaw === panNames.length,
-    `ARM ${arm.id}: PROBE 2 — all ${panNames.length} pans put a touchmove on the page, so none of the cancel counts is a count of nothing`,
+    `ARM ${arm.id}: PROBE 2 — the page saw all ${panNames.length} pans, so none of the cancel counts is a count of nothing`,
     `${pansThePageSaw} of ${panNames.length}; ${panNames.map((n) => `${n}=${pans[n].moves} moves @${pans[n].panPx}px, ${pans[n].cancels} cancel(s)`).join('; ')}`,
   );
   // AND THE MOVE STREAM ITSELF, SCOPED TO THE PANS IT CAN BE A STATEMENT ABOUT.
@@ -900,6 +914,33 @@ for (const arm of armsToRun) {
   //
   // So the pin is on the pans where a full stream is what "nothing happened"
   // looks like: full size, no cancel.
+  // THE OTHER STREAM, PINNED SO THE HEADER'S REASON FOR IGNORING IT CAN EXPIRE.
+  //
+  // `probePan`'s docstring says `touchmove` cancelability does not depend on
+  // `touch-action` and is therefore not the signal. That is the justification
+  // for resting PROBE 2 on the cancel count instead, and a justification with
+  // nothing behind it is the shape this repository keeps finding in prose. The
+  // pattern is `[true, false, false, …]`: the first move of a gesture is
+  // cancelable and every one after it is not, whatever `touch-action` says.
+  //
+  // SCOPED TO FULL-SIZE PANS, and the scoping is a measurement rather than a
+  // convenience. At `SMALL_PAN_PX` the stream reads `[true, true, true]` on the
+  // fixed arm — 20px is not far enough for the engine to commit to anything, so
+  // every move stays cancelable. Pinning the two sizes together would assert
+  // something false about the short one; what the header claims, and all this
+  // needs to back, is that at a gesture the engine HAS committed to, the stream
+  // looks the same whatever `touch-action` is.
+  const fullPanNames = panNames.filter((n) => pans[n].panPx === PRESS_PROBE.PAN_PX);
+  const panCancelablePattern = fullPanNames.filter((n) => {
+    const seq = pans[n].moveCancelable ?? [];
+    return seq.length > 0 && seq[0] === true && seq.slice(1).every((c) => c === false);
+  }).length;
+  check(
+    panCancelablePattern === fullPanNames.length,
+    `ARM ${arm.id}: PROBE 2 — touchmove cancelability is [true, false…] on all ${fullPanNames.length} full-size pans whatever touch-action says, so it is not the discriminator and the cancel count is`,
+    `${panCancelablePattern} of ${fullPanNames.length}; ${panNames.map((n) => `${n}@${pans[n].panPx}px(ta=${JSON.stringify(pans[n].forcedTo?.touchAction ?? pans[n].touchAction)})=${JSON.stringify(pans[n].moveCancelable)}`).join(' ')}`,
+  );
+
   const quietFull = panNames.filter((n) => pans[n].panPx === PRESS_PROBE.PAN_PX && pans[n].cancels === 0);
   const quietFullIntact = quietFull.filter((n) => pans[n].moves === PRESS_PROBE.PAN_STEPS).length;
   const truncated = panNames.filter((n) => pans[n].cancels > 0 && pans[n].moves < PRESS_PROBE.PAN_STEPS);
@@ -924,7 +965,7 @@ for (const arm of armsToRun) {
   check(
     pans['as-shipped-small'].cancels === PRESS_PROBE.PAN_CANCELS_WHEN_TOUCH_ACTION_NONE,
     `ARM ${arm.id}: PROBE 2 — nor does a ${PRESS_PROBE.SMALL_PAN_PX}px finger drift, which is the gesture the descent actually is`,
-    `pointercancel=${pans['as-shipped-small'].cancels} at ${PRESS_PROBE.SMALL_PAN_PX}px vs ${pans['as-shipped'].cancels} at ${PRESS_PROBE.PAN_PX}px, both with touch-action ${JSON.stringify(pans['as-shipped-small'].touchAction)}; wanted exactly ${PRESS_PROBE.PAN_CANCELS_WHEN_TOUCH_ACTION_NONE}`,
+    `pointercancel=${pans['as-shipped-small'].cancels} at ${PRESS_PROBE.SMALL_PAN_PX}px vs ${pans['as-shipped'].cancels} at ${PRESS_PROBE.PAN_PX}px, both with touch-action ${JSON.stringify(pans['as-shipped-small'].touchAction)}; wanted exactly ${PRESS_PROBE.PAN_CANCELS_WHEN_TOUCH_ACTION_NONE}. The page heard ${pans['as-shipped-small'].moves} touchmove(s) of the ${PRESS_PROBE.PAN_STEPS} dispatched before that verdict`,
   );
 
   await waitForStage(page, arm.touchTestId);
