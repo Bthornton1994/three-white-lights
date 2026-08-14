@@ -99,8 +99,10 @@ export const SHELL_SURFACES = Object.freeze([
  * with all three answers blank. `AppShell` picked one surface out of a ternary,
  * so `SessionScreen` un-mounted and the answers, which are client state that
  * never reached a server, went with it. Photographed at
- * `.gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png` and
- * `18-briefing-round-trip-lands-on-the-check-in.png`.
+ * `.gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png` and the
+ * frame that used to be `18-briefing-round-trip-lands-on-the-check-in.png`. The
+ * `18-` shot is now `-lands-back-on-the-briefing.png`, and `shootBeat` holds
+ * each file to the beat its own name claims, so the rename cannot be cosmetic.
  *
  * A player's session is not a thing a side trip may spend. So the two surfaces
  * of that round trip are kept MOUNTED across it and whichever one is not being
