@@ -1,0 +1,137 @@
+EVIDENCE BUNDLE — piece lift-press
+generated 2026-08-14T04:35:09.036Z
+repo /home/user/wt-lift-press
+commit bc1220f4d1b44cb545056acdb07280252655cb85
+working tree clean (ignoring only this script's own output and .gauntlet/state.json)
+
+This file is raw, unedited output of the commands shown. It is produced by
+the run harness, not by the agent that wrote the code under test.
+
+CHECK THE COMMIT ABOVE against the code you were asked to grade. If it does
+not match, this bundle describes different code and its results do not apply
+— report the evidence as stale rather than grading against it.
+
+WHY THE STAMP WILL NOT EQUAL HEAD, AND WHY THAT IS NOT A PROBLEM.
+
+Three critics in a row have spent a paragraph working this out from
+.git/logs/HEAD, correctly, and then had to record that they could not run
+git diff to finish the argument. So it is stated here instead.
+
+A bundle produced at commit X is itself committed BY a later commit, so it
+can never stamp the commit it lives in. The stamp will normally be one or
+two commits behind HEAD, and those commits will be the bundle itself and a
+progress-page update.
+
+What makes that safe is not the ordering — it is that
+`node tools/evidence.mjs <piece> --verify` is run immediately before a critic
+is dispatched, and it FAILS unless: no file outside the run-artefact and
+docs paths changed between the stamp and HEAD (default-deny — everything is
+code unless named otherwise, including App.tsx at the repo root and all of
+tools/); the working tree carries no uncommitted code; and every committed
+browser-shot record is present, dated, captured clean, current, and green.
+
+If any of that were false the dispatch would not have happened. You are not
+being asked to take that on trust: the check is in tools/evidence.mjs and you
+can read it. But you do not need to reconstruct it from the reflog.
+
+======================================================================
+$ npx vitest run src/lift --reporter=verbose
+[tests] exit code: 0
+======================================================================
+
+ RUN  v4.1.10 /home/user/wt-lift-press
+
+ ✓ src/lift/liftInput.test.ts > a press on the lift stage is an input, not a selection > puts the touch target and the stage style on the same element 2ms
+ ✓ src/lift/liftInput.test.ts > a press on the lift stage is an input, not a selection > declares 'userSelect' on the pressed stage, without which 'the surface highlights and selection …' 5ms
+ ✓ src/lift/liftInput.test.ts > a press on the lift stage is an input, not a selection > declares 'touchAction' on the pressed stage, without which 'the browser claims the gesture before…' 0ms
+ ✓ src/lift/liftInput.test.ts > a press on the lift stage is an input, not a selection > declares 'WebkitTouchCallout' on the pressed stage, without which 'iOS Safari\'s press-and-hold callout …' 0ms
+ ✓ src/lift/liftInput.test.ts > a press on the lift stage is an input, not a selection > spreads the shared object rather than restating the values inline 0ms
+ ✓ src/lift/liftInput.test.ts > a press on the lift stage is an input, not a selection > states what this file cannot check, and the count is real 1ms
+ ✓ src/lift/liftReplay.test.ts > captureScript > makes the lift at every load the screen offers 37ms
+ ✓ src/lift/liftReplay.test.ts > captureScript > presses, releases and presses again — in that order, and never lets go 6ms
+ ✓ src/lift/liftReplay.test.ts > captureScript > releases and drives on the ticks the mechanic itself calls ideal 7ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > reaches every named moment at every load the screen offers 20ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > puts every frame in the phase its moment claims 17ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > never lands two moments on the same tick 24ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > hands each frame exactly the history that had happened by then 41ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > photographs the maximal attempt while it is losing, and the light one never losing 7ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > photographs the maximal attempt at the height the sprite draws a stall at 11ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > draws the maximal attempt more strained than the light one at the same beat 19ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > reports a moment a rep never reached as missing rather than substituting one 3ms
+ ✓ src/lift/liftReplay.test.ts > captureFrameFor > returns the frame a request names 11ms
+ ✓ src/lift/liftReplay.test.ts > captureFrameFor > is deterministic 9ms
+ ✓ src/lift/liftFrame.test.ts > liveStrain > stays in range for every state a rep can be in 75ms
+ ✓ src/lift/liftFrame.test.ts > liveStrain > draws a losing bar as more strained than a winning one 2ms
+ ✓ src/lift/liftFrame.test.ts > liveStrain > reaches a real deficit during an undriven limit attempt 8ms
+ ✓ src/lift/liftFrame.test.ts > liveStrain > rises with load at the same point in the rep 13ms
+ ✓ src/lift/liftReplay.test.ts > replayProbe > gives every frame in a sequence a distinct readout 20ms
+ ✓ src/lift/liftReplay.test.ts > replayProbe > carries the phase, the prompt and the load the shot was taken at 7ms
+ ✓ src/lift/liftReplay.test.ts > replayProbe > carries the renderer cache key, so a stale frame is detectable 10ms
+ ✓ src/lift/liftReplay.test.ts > replayProbe > never leaks a fatigue number (GDD §3.4, §12.3) 21ms
+ ✓ src/lift/liftReplay.test.ts > replayRequestFrom > parses a well-formed request 1ms
+ ✓ src/lift/liftReplay.test.ts > replayRequestFrom > refuses anything it does not recognise 0ms
+ ✓ src/lift/liftReplay.test.ts > replayRequestFrom > refuses a load the mechanic would silently clamp 0ms
+ ✓ src/lift/liftReplay.test.ts > replayRequestFrom > accepts every moment the capture list names 0ms
+ ✓ src/lift/liftFrame.test.ts > directionFor > answers for every phase, and turns around at the reversal 2ms
+ ✓ src/lift/liftFrame.test.ts > totalKgFor > never draws less than an empty bar 0ms
+ ✓ src/lift/liftFrame.test.ts > totalKgFor > rounds to a weight a platform could plausibly show 0ms
+ ✓ src/lift/liftFrame.test.ts > totalKgFor > is monotone in load 0ms
+ ✓ src/lift/liftFrame.test.ts > liftFrameSpec > lands on the authored depth steps, not on a continuum 29ms
+ ✓ src/lift/liftFrame.test.ts > liftFrameSpec > keeps every drawn field finite and inside the ranges the sprite allows 100ms
+ ✓ src/lift/liftFrame.test.ts > liftFrameSpec > draws a maximal grind uglier than a light rep 6ms
+ ✓ src/lift/liftFrame.test.ts > the braced body answers to the load, not only the bar > leaves the lifter as the ONLY thing that differs between the two braces 3ms
+ ✓ src/lift/liftFrame.test.ts > the braced body answers to the load, not only the bar > draws a light brace unstrained — the untouched authored pose 1ms
+ ✓ src/lift/liftFrame.test.ts > the braced body answers to the load, not only the bar > changes a counted number of BODY pixels between a light brace and a maximal one 78ms
+ ✓ src/lift/liftFrame.test.ts > the braced body answers to the load, not only the bar > does the same at the load the app actually opens on 10ms
+ ✓ src/lift/liftFrame.test.ts > the braced body answers to the load, not only the bar > never relaxes when the bar starts moving 17ms
+ ✓ src/lift/liftFrame.test.ts > the braced body answers to the load, not only the bar > measures the body and only the body, at the brace 12ms
+ ✓ src/lift/liftFrame.test.ts > frameKey > separates any two different drawings 3ms
+ ✓ src/lift/liftFrame.test.ts > frameKey > collapses a rep to far fewer drawings than it has ticks 3ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > maps height to the panel, top to bottom, monotonically 4ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > puts a bar with no drift on the plumb line 0ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > keeps every point of a real rep inside the panel 29ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > caps the trace and keeps the most recent points 9ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > fades from the tuned floor up to full 0ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > drifts a maximal rep further off the plumb line than a light one 7ms
+ ✓ src/lift/liftFrame.test.ts > stage layout > fits the sprite and the plot inside the stage without overlapping 0ms
+ ✓ src/lift/liftFrame.test.ts > stage layout > keeps the cue ring on screen at its widest 0ms
+ ✓ src/lift/liftFrame.test.ts > motion driven by the rep > shakes the platform only while the bar is losing, and never off screen 16ms
+ ✓ src/lift/liftFrame.test.ts > motion driven by the rep > reverses the shake direction within a cycle, so it is a shake not a lean 1ms
+ ✓ src/lift/liftFrame.test.ts > motion driven by the rep > flashes on the tick an input lands and fades over the tuned window 4ms
+ ✓ src/lift/liftFrame.test.ts > motion driven by the rep > pulses the cue ring across the full 0..1 range, on its tuned period 2ms
+ ✓ src/lift/liftFrame.test.ts > cueRing > is absent when no cue is up 0ms
+ ✓ src/lift/liftFrame.test.ts > cueRing > meets its target ring at exactly the ideal moment 0ms
+ ✓ src/lift/liftFrame.test.ts > cueRing > shrinks from the outer radius to the inner one across the window 1ms
+ ✓ src/lift/liftFrame.test.ts > cueRing > marks the perfect band, and only the perfect band 0ms
+
+ Test Files  3 passed (3)
+      Tests  62 passed (62)
+   Start at  04:35:10
+   Duration  1.85s (transform 1.81s, setup 0ms, import 2.21s, tests 747ms, environment 0ms)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+======================================================================
+$ npx vitest run
+[whole suite] exit code: 0
+======================================================================
+
+ RUN  v4.1.10 /home/user/wt-lift-press
+
+
+ Test Files  85 passed (85)
+      Tests  3340 passed (3340)
+   Start at  04:35:13
+   Duration  420.75s (transform 7.63s, setup 0ms, import 33.12s, tests 991.62s, environment 11ms)
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+======================================================================
+$ npx tsc --noEmit
+[typecheck] exit code: 0
+======================================================================
+(no output)
