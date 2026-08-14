@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-tsc-2026-08-14T15-23-21-562Z-22985",
+  "label": null,
+  "command": [
+    "npx",
+    "tsc",
+    "--noEmit"
+  ],
+  "budgetSeconds": 200,
+  "startedAtIso": "2026-08-14T15:23:21.562Z",
+  "startedAtMs": 1786721001562,
+  "cwd": "/home/user/wt-empire-honesty",
+  "commit": "b3565c87073e628041703177876772ca54666ee4",
+  "branch": "claude/empire-shell-honesty",
+  "dirty": 2,
+  "dirtyPaths": [
+    "src/shell/EmpireScreen.tsx",
+    "src/shell/shellWiring.test.ts"
+  ],
+  "runner": {
+    "pid": 22985,
+    "startTick": "395058",
+    "cmdline": "node tools/watchdog.mjs --budget 200 --id tsc-mut1 -- npx tsc --noEmit",
+    "bootId": "9a2cb2d2-fb56-4022-8ed1-6d554d4fac5c",
+    "bootEpochSeconds": 1786717051,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-14T15:23:21.585Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
