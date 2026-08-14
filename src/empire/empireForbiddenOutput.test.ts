@@ -7731,12 +7731,17 @@ function channelCensusOf(
    * at a catcher that does not exist, which is the exact defect CLAUDE.md says
    * an unrun named catcher is.
    *
-   * Its limit now, stated in the mechanism's own terms and with the honest
-   * admission that this one has NOT been driven to exhaustion: alias-following
-   * is bounded by `ALIAS_HOPS_MAX` and by the initializer being visible, so a
-   * function assembled across a branch — `let shape; if (x) shape = {...}` —
-   * has no initializer to follow and is not found. That route is not planted
-   * and no catcher is claimed for it.
+   * ITS DECLARED LIMIT WAS PLANTED AND IT ESCAPED — the thirteenth bypass, M39.
+   * The sentence that used to sit here said a function assembled across a
+   * branch — `let shape; if (x) shape = {...}` — has no initializer to follow,
+   * claimed no catcher for it, and said it had not been planted. All three
+   * halves were honest and the route was real: `tsc --noEmit` exit 0, `peek():
+   * covered-day` printed off a driven call, and the whole directory came back
+   * 3 failed of 475 with all three failures node/string truncation counters.
+   *
+   * NOTHING IS FIXED IN THE COMMIT THAT FIRST CARRIED THIS PARAGRAPH. The route
+   * is open, `returnedFunctions` still follows initializers only, and this says
+   * so rather than describing a repair that does not exist yet.
    */
   const returnedFunctions = (expression: ts.Expression, at: string = ''): readonly string[] => {
     const found: string[] = [];
@@ -9820,7 +9825,7 @@ describe('the channel census — the routes a string can leave this directory by
 // ---------------------------------------------------------------------------
 
 /**
- * Thirty-eight routes, planted into shipped modules one at a time, each run
+ * Thirty-nine routes, planted into shipped modules one at a time, each run
  * against `tsc --noEmit`, against this file, and against the three accidental
  * catchers
  * the piece was told not to build on: `empireCore.test.ts`'s magic-number
@@ -10483,6 +10488,25 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
     ]),
   }),
   Object.freeze({
+    id: 'M39',
+    shape:
+      "32-repeated a second time, ASSEMBLED ACROSS A BRANCH: the same nested closure, reached through a `let` with no initializer that an `if` writes into — the route M38's own repair declared open and DELIBERATELY CLAIMED NO CATCHER FOR",
+    where:
+      "production.ts, `accrueProduction`: `let shape: ProductionAccrual | undefined; if (offlineSecondsBanked <= offlineSecondsElapsed) { shape = { …fields, peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] } as unknown as ProductionAccrual; } return Object.freeze(shape as ProductionAccrual);`",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'GREEN BEFORE, AND IT IS THE THIRTEENTH BYPASS. Whole directory with the plant in: `Test Files 1 failed | 11 passed (12)`, `Tests 3 failed | 472 passed (475)`, and all three failures are node/string truncation counters — `expected 2393230 to be 2393060` (instrument B / walked a domain that is not empty), `expected 523184 to be 523128` (the overflow pass / walked a domain that is not empty at the dropped points) and `expected 21826 to be 21789` (the channel census / derives every escape site, the `nodesExamined` line). Instrument A green, B green, C green, the callback pass green, the site table green — `census.byModule` is asserted at line 9388, BEFORE the node count at 9416, so it ran and passed with `returned-closure` still at its two shipped sites. `census.sites[\'returned-closure\']`, `callTargets`, `writeOwners`, `freshReceivers` and `memberCallsOnParameters` are all in tests that passed outright.',
+      'AND THE BRANCH RUNS, PRINTED RATHER THAN INFERRED, per M24 and M34: driving `accrueProduction` over a one-hour gap prints `KEYS: gymBucks,settledGymBucks,trainingIq,offlineSecondsElapsed,offlineSecondsBanked,offlineSecondsDiscarded,trainingIqSecondsElapsed,rates,ledger,peek`, `typeof peek: function`, `peek(): covered-day`. The caller is handed the name by calling a member of the value it received.',
+      'NOTHING IS REPAIRED IN THE COMMIT THAT FIRST CARRIED THIS ROW, AND THAT IS DELIBERATE. It records an open escape and no fix, because the previous round lost a builder at exactly this point and a measurement that is not in a commit is a measurement nobody else has. A row with no `AFTER` line is a route this file admits is open.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      "WHY IT WAS WORTH PLANTING RATHER THAN BELIEVING. M38's row ends `THE LIMIT THAT REMAINS, with no catcher claimed for it: a function assembled across a branch — `let shape; if (x) shape = { peek };` — has no initializer to follow. Not planted.` That is the correct form of a limit — it claims nothing it has not measured — and the measurement above is what it was worth: the route is real, it compiles, it runs, and the whole directory called it clean.",
+      'production.ts was restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` (70e0bcba2dee2dbdd00d8cd03e13f03498b4a136 both sides) before this row was written.',
+    ]),
+  }),
+  Object.freeze({
     id: 'M35',
     shape:
       '33 — A WRITE INTO A PARAMETER THROUGH A LOCAL ALIAS. The same spelling-versus-symbol defect as M31, on the mutation arm instead of the callback arm',
@@ -10734,7 +10758,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(38);
+    expect(PLANTED_ROUTES.length).toBe(39);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -10813,8 +10837,14 @@ describe('the routes that were planted, and what each of them cost', () => {
     // converted and one at a site that never had a throw, because a fence
     // tested only on the first has not been shown to catch an arrival. One for
     // M30, which reached isolation first time for the reason M27 did.
-    expect(attempts).toBe(56);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(28);
+    // One for M39, which reached isolation first time because it is M38's own
+    // declared-open route written in the form M38 wrote it in, and because the
+    // round that planted it copied M38's isolation — the payload read out of
+    // `EMPIRE_FORBIDDEN_OUTPUTS` with a named specifier added to an import that
+    // already exists, no new call expression, no new `return` statement and no
+    // new string literal.
+    expect(attempts).toBe(57);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(29);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
