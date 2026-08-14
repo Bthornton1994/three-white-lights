@@ -212,12 +212,12 @@ prose is exactly where those two questions come apart. The paragraph five lines
 above this one already says prose edits are code changes with tests behind them —
 so the correction contradicted its own section while being narrowly accurate.
 
-**The generalisable shape: a correction can be right about the MECHANISM and
-wrong about the CONSEQUENCE.** The tool's behaviour was read from its source and
-stated accurately; what was never checked is whether the behaviour amounted to
-the safety property the sentence implied. Verifying a mechanism is not verifying
-what follows from it, and the second step is the one that gets skipped precisely
-because the first was done carefully.
+**The generalisable shape has its own section**, on a human's ruling: see
+"VERIFYING A MECHANISM IS NOT VERIFYING WHAT FOLLOWS FROM IT" further down. In
+short, the tool's behaviour was read from its source and stated accurately, and
+nobody asked whether that behaviour amounted to the safety property the sentence
+implied — the second step gets skipped precisely because the first was done
+carefully.
 
 **Left open deliberately, and it is a human's call.** Closing it means every
 coordination note written into this file forces a full ~710s re-capture, which is
@@ -1410,6 +1410,57 @@ mutate the subject into the region the older check claims, and confirm the older
 check is what reddens. If the new rule fires first in every reachable case, the
 old one is dead: **delete it and record the domination**, rather than leaving
 two checks where one can never speak.
+
+### VERIFYING A MECHANISM IS NOT VERIFYING WHAT FOLLOWS FROM IT
+
+**Its own section on a human's ruling, because the care taken on the first step
+is what causes the second to be skipped.** This is not a case of the correction
+rules elsewhere in this file — those are about restating an error plainly. This
+is about a claim that is *correct* and still leaves a reader worse informed,
+which no amount of re-reading the claim will surface.
+
+The shape: someone doubts a described behaviour, goes to the source, reads what
+the code actually does, and writes it down accurately. What they do not do is ask
+whether the behaviour they just confirmed *amounts to the property the sentence
+implies*. Having verified carefully, the question feels answered.
+
+**The instance that earned it, which is a correction of a correction.** This file
+claimed a prose edit stales an evidence bundle. Session A read `NOT_CODE` in
+`tools/evidence.mjs`, found `'CLAUDE.md'`, `'docs/'` and `'README.md'` listed
+there under a comment saying prose does not change what the app does, and
+corrected the file to say prose is *"the one category of change that provably
+does not stale a bundle"*. Every word of that is true about what `--verify`
+reports.
+
+It is false as the reassurance it reads as. A prose edit can change the suite's
+result — measured twice, both reverted: one HTML comment holding a
+`REVIEWABLE_CITATIONS` name gives `realIp.test.ts` 2 failed / 55 passed, and a
+`##` heading with no index row gives `claudeIndex.test.ts` 2 failed / 4 passed.
+So a bundle reporting `3374 passed` can describe a tree that now fails while
+`--verify` calls it current. The tool asks *"did code change"*; the reader wants
+*"is this record still true"*. Prose is where those two questions come apart, and
+the corrected sentence sat five lines below another saying prose edits are code
+changes with tests behind them — it contradicted its own section while being
+narrowly accurate.
+
+**What to do about it.** After confirming a mechanism, state the consequence you
+believe follows and then attack *that* separately. Two questions, asked out loud
+and answered apart:
+
+1. *What does this code do?* — answered by reading it, which is the easy half.
+2. *Does that behaviour give me the property I am about to write down?* —
+   answered by constructing the case where the property would fail and running
+   it, not by re-reading step 1.
+
+The tell that step 2 was skipped is a sentence that reports a mechanism in the
+grammar of a guarantee: "provably does not", "cannot therefore", "so it is safe
+to". A mechanism does not prove anything on its own; it does what it does, and
+what follows is a separate claim needing separate evidence.
+
+**Related to but distinct from the vacuity rules above.** Those ask whether a
+check can fail. This asks whether a *true statement about code* supports the
+*conclusion drawn from it*. A green suite and a correctly-read source look
+identical in both cases, which is why neither rule catches the other's defect.
 
 ## Architecture Rules
 
