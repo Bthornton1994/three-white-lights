@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-15T19-45-41-890Z-26020",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "tools/zzScan.test.ts"
+  ],
+  "budgetSeconds": 3000,
+  "startedAtIso": "2026-08-15T19:45:41.890Z",
+  "startedAtMs": 1786823141890,
+  "cwd": "/home/user/wt-totals",
+  "commit": "c6e2e31f9c1c984ca174a622fc474faa0391d7d0",
+  "branch": "claude/totals-generator-bound",
+  "dirty": 3,
+  "dirtyPaths": [
+    "src/career/careerSweep.ts",
+    "tools/zzScan.test.ts",
+    "tools/zzTotalsProbe.test.ts"
+  ],
+  "runner": {
+    "pid": 26020,
+    "startTick": "183232",
+    "cmdline": "node tools/watchdog.mjs --budget 3000 --id fullscan -- npx vitest run tools/zzScan.test.ts",
+    "bootId": "112d0c2a-82d0-49bf-9129-7df2660f02bc",
+    "bootEpochSeconds": 1786821310,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-15T19:45:41.908Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
