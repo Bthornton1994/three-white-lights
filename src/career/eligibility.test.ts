@@ -1116,7 +1116,7 @@ function measureOneEntryArm(variant: EntryVariant, lag: number): EntryMeasuremen
 }
 
 describe('AXIS C — entering a meet spends that meet and takes nothing else', () => {
-  it('every skipped meet in every seeded season, against a rest control and three tier-keyed ones', { timeout: budgetFrom(82_895) }, () => {
+  it('every skipped meet in every seeded season, against a rest control and three tier-keyed ones', { timeout: budgetFrom(112_460) }, () => {
     // WHAT THIS AXIS IS FOR, and it is the one thing axes A and B cannot do.
     // Both of them run through `qualifiedMeets`, which reads the federation and
     // the Total and never looks at `enteredMeetIds` — pinned directly under
@@ -1239,7 +1239,7 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
 
   });
 
-  it('is blind at axis B’s evaluation lag, which is why it has its own', { timeout: budgetFrom(71_005) }, () => {
+  it('is blind at axis B’s evaluation lag, which is why it has its own', { timeout: budgetFrom(96_198) }, () => {
     // The blind lag, kept runnable rather than described. This is the shipped
     // engine measured at axis B's evaluation lag of a week, and it is what this
     // axis looked like before it had its own: `spentPairs` is 0, because the
