@@ -14524,6 +14524,18 @@ interface RegistryMutant {
 
 const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
   Object.freeze({
+    id: 'G36',
+    what: "`cyclicDeclarations` narrowed to EXPORTED declarations only — the reasonable-looking narrowing, since the containment is about what this directory hands out",
+    reddened:
+      'the probe positive control: expected [] to deeply equal [ "__assemblyProbe.ts#AssemblyNest" ]. `AssemblyNest` is not exported — nothing in the probe exports a type alias — so an export-only census reports a clean probe, which is a census that has stopped being able to find anything. Then, with the count bumped: the shipped denominators moved first, 118 -> 112 and generic 11 -> 5, so the run was repeated twice with those pins set to the mutant\'s own numbers before the control was reached. A count that moves is not the same check as a membership that fails, and the membership is the one this row is about. The lesson is the narrowing itself: M64\'s own holder is a module-level `const` and its alias is not exported either, so an export-scoped fence would have been vacuous against the exact route it was written for.',
+  }),
+  Object.freeze({
+    id: 'G37',
+    what: "the `cyclic-alias-holding-a-function` shape rewritten so its alias does NOT reach itself — `type Nest<T, D> = { readonly down: T }` applied `depth` times instead of peeling a tuple, which is the same nesting with the cycle taken out",
+    reddened:
+      'answers every shape at the depth the table says: `cyclic-alias-holding-a-function: M63: a generic type alias that reaches itself, instantiated one level per tuple element: expected null to be 3`. THIS IS THE MUTANT THE DERIVED NUMBER NEEDED. `CERTIFIES_FROM: 3` is read off a sweep, and a number read off a sweep is worth nothing until the sweep is shown to part from it — G33 records the round where exactly that pin turned out to be re-deriving the thing it was checking. Here the nesting, the depths, the reference type and the harness are all unchanged and only the self-reference is removed, and the answer goes from 3 to never. So the 3 is a property of the CYCLE and not of the depth, of the tuple, or of the way the question is asked.',
+  }),
+  Object.freeze({
     id: 'G30',
     what: "the `readonly [key: symbol]` half deleted from `FUNCTION_FREE_DATA_SOURCE`, leaving the string half — which is what the reference type looked like when it was first drafted",
     reddened:
@@ -14738,8 +14750,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(32);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(32);
+    expect(REGISTRY_MUTANTS.length).toBe(34);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(34);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
@@ -14754,12 +14766,15 @@ describe('the routes that were planted, and what each of them cost', () => {
     // The fourth is G35, and it is the mildest of them: its first form reddened
     // a real check that happens to move for ANY new ladder, so the mutant had
     // to be re-run with the ladder fully accepted by that check before it said
-    // anything about the one it was aimed at.
+    // anything about the one it was aimed at. The fifth is G36, which is G1's
+    // shape exactly: the census denominators moved before the membership check
+    // was reached, so the run was repeated with those pins set to the mutant's
+    // own numbers.
     expect(
       REGISTRY_MUTANTS.filter((mutant) => mutant.reddened.includes('ITS FIRST FORM')).length +
         REGISTRY_MUTANTS.filter((mutant) => mutant.reddened.includes('Then, with the count bumped'))
           .length,
-    ).toBe(4);
+    ).toBe(5);
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
