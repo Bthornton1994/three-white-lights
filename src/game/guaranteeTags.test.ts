@@ -633,8 +633,32 @@ const GUARANTEE_COVERAGE = {
    * about behaviour, so none of them has a test, and saying so is the point.
    *
    * None of the six is quoted here, for the reason six of the notes above give.
+   *
+   * 254 -> 253 WHEN THE CAREER SWEEP'S GAIN RATE WENT FROM 70 kg A MEET TO 20,
+   * AND IT IS THE FIRST TIME THIS NUMBER HAS GONE DOWN. Measured per file the
+   * same way, by running this census over each file's pre-change and
+   * post-change text: `careerSweep.ts` 3 -> 2, and nothing else in that change,
+   * which also touched `eligibility.ts`, `eligibility.test.ts`,
+   * `careerTuning.ts` and this file — all four contributing zero.
+   *
+   * WHICH PARAGRAPH WENT IS THE WHOLE POINT OF RECORDING IT. It is the one this
+   * block's own list above calls "one says only the range axis was bounded and
+   * the rate axis was not" — a DECLARATION OF A LIMIT, correctly identified as
+   * carrying no test, which stopped being true the moment somebody fixed the
+   * limit it declared. The rate axis is bounded now, so the sentence went with
+   * it.
+   *
+   * That is the healthiest possible reason for this census to move, and it is
+   * the argument for keeping the "declaration of a limit" category visible
+   * rather than merging it into the guarantee count: a guarantee that stops
+   * being true is a defect, and a declared limit that stops being true is a
+   * limit somebody closed. The scan cannot tell them apart, and this paragraph
+   * is what a reader has instead.
+   *
+   * Not quoted here, for the reason seven of the notes above give: quoting a
+   * capitalised run makes this paragraph trigger too.
    */
-  TREE_WIDE: 254,
+  TREE_WIDE: 253,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1915,12 +1939,21 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + '    expect(shipped.worstDeficit).toBe(0);\n'
       + '\n'
       + '    // The domain. `badDays` is the count that matters most',
-    measuredOver: 'expect(shipped.pairs).toBe(343577);',
+    // RE-RUN AT `MAX_GAIN_KG` 20, NOT CARRIED OVER. The sweep's gain rate moved,
+    // so both this row's anchor and its transcript moved with it: the domain is
+    // 332012 pairs where it was 343577, and the mutant reports 283 where it
+    // reported 173. The mutation itself is unchanged, the named assertion is
+    // unchanged, and it still reddens — which is what a witness is for and is
+    // exactly what re-running it establishes. The sibling row above was re-run
+    // in the same pass and did NOT move: axis A sweeps a total grid rather than
+    // simulated careers, so no gain rate can reach it, and 55701 is the same
+    // number it always was.
+    measuredOver: 'expect(shipped.pairs).toBe(332012);',
     observed:
       'FAIL src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies '
       + 'for fewer > [attending-a-meet-never-removes-one] every skipped meet in every seeded '
       + 'season, and the control beside it\n'
-      + 'AssertionError: expected 173 to be +0 // Object.is equality',
+      + 'AssertionError: expected 283 to be +0 // Object.is equality',
   },
   // -------------------------------------------------------------------------
   // The numeric half of the tag, witnessed from BOTH sides of its set equality,

@@ -231,7 +231,9 @@ export const CAREER_TUNING = Object.freeze({
    * exclusive — §6.6 rules the campaign total lower than competitive worlds',
    * and `careerTuning.test.ts` pins the gates strictly increasing along the
    * ladder, so it must also sit above nationals'. Candidates across that band
-   * were measured on the campaign sweep and reachability barely moves.
+   * were measured on the campaign sweep and reachability barely moved — on the
+   * two fixtures that sentence was written against. It moves at the shipped gain
+   * rate; see the second re-take below.
    *
    * RE-TAKEN AFTER THE TOTALS GENERATOR WAS BOUNDED, because the old figures
    * were a measurement of a fixture that no longer exists and this block's
@@ -240,19 +242,43 @@ export const CAREER_TUNING = Object.freeze({
    * 192 simulated arcs, at median waits of 131, 154 and 177 days. They used to
    * be 178 / 176 / 175 at medians of 198 / 198 / 221.
    *
-   * THE GATE IS NOT WHAT MADE THE SUMMIT UNREACHABLE, on either fixture. The
-   * calendar was, and the same sweep separates the two calendar knobs that fixed
-   * it. So 600 does not move: the measurement still cannot discriminate inside
-   * the band, and the number is still set by the midpoint rule below.
+   * RE-TAKEN A SECOND TIME AT `MAX_GAIN_KG` 20, and this time the conclusion
+   * survives while half of the reasoning behind it does not. Same three
+   * candidates, same 192 arcs, same greedy rule:
    *
-   * ONE NEW INTERACTION THE RE-TAKE EXPOSED, NAMED BECAUSE IT BINDS A FUTURE
-   * TUNER. `careerSweep.ts`'s `POTENTIAL_MIN_KG` — the weakest ceiling a
-   * simulated career may be drawn — is 625, the midpoint of THIS gate and
-   * competitive worlds'. That is why the 625 candidate is the first one to slip
-   * (184 rather than 192): a lifter whose ceiling is 625 cannot reliably clear a
-   * 625 gate. Raising the campaign gate to or past `POTENTIAL_MIN_KG` would
-   * break GDD §6.6's R1 outright, and `eligibility.test.ts` asserts the ordering
-   * so that edit reddens rather than quietly emptying the requirement.
+   *   gate   arcs reaching a summit   inside the first year   median wait
+   *   ----   ----------------------   ---------------------   -----------
+   *    575                      192                     184      267 days
+   *    600                      192                     158      290 days
+   *    625                      184                     112      336 days
+   *
+   * THE GATE IS NOT WHAT MADE THE SUMMIT UNREACHABLE, on any of the three
+   * fixtures. The calendar was, and the same sweep separates the two calendar
+   * knobs that fixed it. 600 holds GDD §6.6's R1 at 192 of 192, so it does not
+   * move.
+   *
+   * WHAT DOES NOT SURVIVE IS THIS BLOCK'S CLAIM THAT THE MEASUREMENT IS UNABLE
+   * TO DISCRIMINATE INSIDE THE BAND, which was a fact about the old gain rate
+   * and not about the gate. At gain 70 the three
+   * candidates read 192 / 192 / 184 arcs inside the first year — flat enough
+   * that the choice had to be made by a stated rule. At gain 20 they read 184 /
+   * 158 / 112, which is a real spread, so a tuner picking inside the band now
+   * has a measurement to pick on. The midpoint rule below is still a stated rule
+   * and the spread is still a pacing preference nobody has playtested; which of
+   * the two should decide is a human's call, and it is flagged here rather than
+   * taken.
+   *
+   * ONE INTERACTION THE FIRST RE-TAKE EXPOSED AND THIS ONE SHARPENED, NAMED
+   * BECAUSE IT BINDS A FUTURE TUNER. `careerSweep.ts`'s `POTENTIAL_MIN_KG` — the
+   * weakest ceiling a simulated career may be drawn — is 625, the midpoint of
+   * THIS gate and competitive worlds'. That is why the 625 candidate is the
+   * first one to slip: a lifter whose ceiling is 625 cannot reliably clear a
+   * 625 gate. At gain 70 the slip showed up as 184 of 192 arcs reaching a summit
+   * INSIDE THE FIRST YEAR. At gain 20 it is 184 of 192 reaching one AT ALL, over
+   * the whole 728-day run — which is R1 failing rather than R2, and a much
+   * harder failure. Raising the campaign gate to or past `POTENTIAL_MIN_KG`
+   * breaks GDD §6.6's R1 outright, and `eligibility.test.ts` asserts the
+   * ordering so that edit reddens rather than quietly emptying the requirement.
    *
    * So the number inside the band is set by a stated rule rather than by a
    * measurement that cannot discriminate: 600 is the MIDPOINT of nationals' 550

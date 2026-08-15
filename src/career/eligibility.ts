@@ -26,9 +26,9 @@
  * that one lifter competed at one more meet, every meet the lifter who stayed
  * home may enter and the lifter who competed may not is a meet on that lifter's
  * own record. Nothing else leaves their list. `eligibility.test.ts`'s axis C
- * measures it over the same seasons axis B runs on — 4049 of 343577 pairs reach
+ * measures it over the same seasons axis B runs on — 3980 of 332012 pairs reach
  * an entry being spent, 0 of them violate — beside a rest-after-a-meet control
- * that violates on 3763 and costs a lifter as many as 4 meets they never went
+ * that violates on 3739 and costs a lifter as many as 4 meets they never went
  * to. Before that axis existed this paragraph had no test at all: axes A and B
  * both run through `qualifiedMeets`, which does not read `enteredMeetIds`, and
  * a check for that is pinned directly under axis A.
@@ -38,7 +38,7 @@
  * reason the simulation runs for two calendar periods rather than one: a career
  * that never crosses a period boundary never enters a worlds meet, because the
  * only one a period holds falls six days after the anchor and asks for 650 kg.
- * The occurrence a career can reach violates on 132 pairs and costs as many as
+ * The occurrence a career can reach violates on 96 pairs and costs as many as
  * 6 meets; the one before it and the one after it violate on none, and the
  * two zeros and one non-zero together are what says this axis can see a rule
  * keyed to the top of the ladder at all.
@@ -61,20 +61,24 @@
  * meets. `@guarantee strength-never-removes-a-meet`
  *
  * COMPETING AT ONE MORE MEET NEVER QUALIFIES FOR FEWER EITHER, and it is the
- * same measurement on the other axis: 24 seeded seasons, 169 meets deep at the
- * deepest, every skipped meet against every later moment, 343577 pairs, 0
- * violating, 107 of them pairs where the lifter who competed more qualified for
+ * same measurement on the other axis: 24 seeded seasons, 167 meets deep at the
+ * deepest, every skipped meet against every later moment, 332012 pairs, 0
+ * violating, 127 of them pairs where the lifter who competed more qualified for
  * strictly more. The control is qualification reading the latest total instead
- * of the best, which is how a current-form gate reads: 173 violating pairs, and
- * a lifter who competed one extra time loses as many as 4 meets. The sweep's
- * own totals go down 1078 times, which is what keeps that control's domain from
- * being empty. `@guarantee attending-a-meet-never-removes-one`
+ * of the best, which is how a current-form gate reads: 283 violating pairs, and
+ * a lifter who competed one extra time loses as many as 26 meets — the whole
+ * regional series in the window. The sweep's own totals go down 1077 times,
+ * which is what keeps that control's domain from being empty.
+ * `@guarantee attending-a-meet-never-removes-one`
  *
  * Those careers run for two calendar periods rather than one, and the count
- * that says why is in the same test: twenty-two of the twenty-four reach a
- * worlds meet, where a one-period sweep reached none at all. The other two are
- * refused by the gate itself — their own drawn ceilings sit under it — which is
- * the top of the ladder doing what a qualifying total is for.
+ * that says why is in the same test: sixteen of the twenty-four reach a worlds
+ * meet, where a one-period sweep reached none at all. The other eight are
+ * refused two different ways — two by their own drawn ceiling, which sits under
+ * the gate however long they run, and six by pace, arriving at the fixed day the
+ * meet falls on while still short of it. That split is a fact about the sweep's
+ * gain rate rather than about the rule, and the test measures both halves
+ * separately so neither can quietly become the other.
  *
  * BOTH AXES CAN NOW SEE A RULE KEYED TO THE ANNUAL TIER, AND ONLY ONE OF THEM
  * COULD BEFORE. That asymmetry was real and is recorded in the block above
