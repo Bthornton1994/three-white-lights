@@ -13722,6 +13722,12 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
       'NOTHING, THE FIRST TIME, AND THAT IS WHY THIS ROW EXISTS. All 83 tests stayed green: the bound stops AT nine and nine is what the shipped tree reports, so `DEEPEST: 9` was saying "the walk got to nine" — which is what a truncated walk says too. The pin written to be an independent reading of the depth claim could not tell itself from the reading it was checking. Repaired with a positive control rather than a bigger number: the same walk over a program containing the assembly probe reaches 41, at the forty-deep recursive instantiation. Re-planted, the mutant is red with `expected 9 to be 41`.',
   }),
   Object.freeze({
+    id: 'G35',
+    what: "a ladder planted in this file that drops a case under a continuation which is not about it — `if (ts.isIdentifier(node)) return 'a'; if (ts.isCallExpression(node)) return 'b'; return '';` — the shape a `next-statement` row calls handled",
+    reddened:
+      "`says which continuations never name the subject`: expected 10 to equal 9, + `mutantLadder#node`. ITS FIRST FORM REDDENED THE OLD CENSUS TOO, which measures nothing about the new check — any new ladder moves a set equality of every ladder. So it was re-run ISOLATED, with its row added to `DECLARED_DISPATCH_CHAINS` and `CHAINS` and `DISPATCH` and the `next-statement` count all bumped to accept it: fully registered, correctly classified, and the blind list is then the ONLY red, 1 failed of 86. That is what this check adds over the one beside it, measured rather than argued.",
+  }),
+  Object.freeze({
     id: 'G34',
     what: "a real handler-table walker planted in this file — `MUTANT_HANDLERS` keyed on `ts.SyntaxKind.Identifier` and `ts.SyntaxKind.CallExpression`, dispatched as `MUTANT_HANDLERS[node.kind]?.(node) ?? ''` — which is the shape the dispatch-chain census declared it could not see",
     reddened:
@@ -13906,24 +13912,28 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(31);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(31);
+    expect(REGISTRY_MUTANTS.length).toBe(32);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(32);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
       // went red, which is what this whole file exists to stop being enough.
       expect(mutant.reddened.length, mutant.id).toBeGreaterThan(100);
     }
-    // Three rows record a first form that reddened something OTHER than the
+    // Four rows record a first form that reddened something OTHER than the
     // check it was aimed at — or nothing at all, which is G24: a predicate
     // widened this round whose first mutant left every check green, because the
     // probe written beside it exercised the wrong caller. Pinned as a count so
     // a later edit that quietly drops one of those admissions moves a number.
+    // The fourth is G35, and it is the mildest of them: its first form reddened
+    // a real check that happens to move for ANY new ladder, so the mutant had
+    // to be re-run with the ladder fully accepted by that check before it said
+    // anything about the one it was aimed at.
     expect(
       REGISTRY_MUTANTS.filter((mutant) => mutant.reddened.includes('ITS FIRST FORM')).length +
         REGISTRY_MUTANTS.filter((mutant) => mutant.reddened.includes('Then, with the count bumped'))
           .length,
-    ).toBe(3);
+    ).toBe(4);
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
@@ -14080,9 +14090,40 @@ interface DispatchChain {
   /** Every arm ends in `return`, `throw`, `continue` or `break`. */
   readonly dispatch: boolean;
   readonly terminal: ChainTerminal;
+  /**
+   * Whether the statements after a `next-statement` chain MENTION the subject.
+   *
+   * THE SECOND OPEN ITEM THIS CENSUS DECLARED ABOUT ITSELF, and it is a
+   * necessary condition rather than a sufficient one. `terminal:
+   * 'next-statement'` says only that source follows the chain; it says nothing
+   * about whether that source does anything with the node no arm matched, and a
+   * reader takes the field as reassurance. Code that never NAMES the subject
+   * cannot be handling it — that direction is sound — so a `false` here is a
+   * chain whose continuation is provably not about the dropped case, which is
+   * the same position a `none` row is in with a statement underneath it.
+   *
+   * The converse is NOT claimed and cannot be: mentioning the subject is not
+   * handling it, and no scan decides which. `true` is therefore worth nothing on
+   * its own and is not asserted anywhere; the list of `false` rows is the whole
+   * output.
+   *
+   * `null` on every other terminal, because the question is about a following
+   * statement and those have none: `else` has the else-branch, `loop` has the
+   * next iteration, `none` has nothing, and `enclosing` already owes an
+   * `omission` naming its catcher — which is the same demand one level up.
+   */
+  readonly continuationReadsSubject: boolean | null;
 }
 
-interface DeclaredChain extends DispatchChain {
+/**
+ * A declared row does NOT carry `continuationReadsSubject`, deliberately.
+ *
+ * The other three fields are a reviewer's description of a ladder and belong in
+ * a table somebody wrote; blindness is a MEASUREMENT of what follows the ladder,
+ * and a measurement transcribed into 78 hand-written rows is a measurement
+ * nobody re-takes. It is pinned once, as the list of rows where it is `false`.
+ */
+interface DeclaredChain extends Omit<DispatchChain, 'continuationReadsSubject'> {
   /**
    * Required for `none` and `enclosing`, and checked for length rather than
    * presence. What the fall-through costs and what catches it — the three-part
@@ -14222,6 +14263,18 @@ function dispatchChainsIn(fileName: string, text: string): readonly DispatchChai
     return false;
   };
 
+  /** Whether a statement names one identifier, anywhere inside it. */
+  const mentions = (statement: ts.Statement, name: string): boolean => {
+    let found = false;
+    const look = (node: ts.Node): void => {
+      if (found) return;
+      if (ts.isIdentifier(node) && node.text === name) found = true;
+      node.forEachChild(look);
+    };
+    look(statement);
+    return found;
+  };
+
   const isLoop = (node: ts.Node): boolean =>
     ts.isForStatement(node) ||
     ts.isForOfStatement(node) ||
@@ -14285,6 +14338,10 @@ function dispatchChainsIn(fileName: string, text: string): readonly DispatchChai
         arms: arms.length,
         dispatch: arms.every((arm) => terminates(arm.thenStatement)),
         terminal,
+        continuationReadsSubject:
+          terminal === 'next-statement'
+            ? statements.slice(end).some((statement) => mentions(statement, subject))
+            : null,
       });
       index = end;
     }
@@ -14528,7 +14585,7 @@ function directoryDispatchChains(): readonly DispatchChain[] {
 }
 
 /** One chain as a sortable line, so a set equality names what moved. */
-const chainKey = (chain: DispatchChain): string =>
+const chainKey = (chain: Omit<DispatchChain, 'continuationReadsSubject'>): string =>
   `${chain.at} arms=${String(chain.arms)} dispatch=${String(chain.dispatch)} terminal=${chain.terminal}`;
 
 /**
@@ -14710,6 +14767,9 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#enclosingNames<dispatchChainsIn#first', arms: 1, dispatch: false, terminal: 'loop' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#terminates<dispatchChainsIn#statement', arms: 2, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#continuationFrom<dispatchChainsIn#parent', arms: 3, dispatch: false, terminal: 'next-statement' }),
+  // The blindness measure's own walk. Not on the blind list: its continuation
+  // is `node.forEachChild(look)`, which names the subject.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#look<mentions<dispatchChainsIn#node', arms: 1, dispatch: false, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#scanBlock<dispatchChainsIn#first', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#scanBlock<dispatchChainsIn#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<dispatchChainsIn#node', arms: 1, dispatch: false, terminal: 'next-statement' }),
@@ -14727,6 +14787,67 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#guardedRead<handlerTablesIn#parent', arms: 3, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#mapEntryKeys<handlerTablesIn#first', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<handlerTablesIn#node', arms: 4, dispatch: false, terminal: 'next-statement' }),
+]);
+
+/**
+ * The `next-statement` chains whose continuation never names the subject.
+ *
+ * WHAT A `next-statement` ROW WAS WORTH BEFORE THIS LIST, said plainly: that
+ * there is a statement under the ladder. Not that the statement is about the
+ * node no arm matched — the census's own header said so, and then the field was
+ * read as reassurance anyway, which is what a declared limit with no
+ * measurement beside it always becomes here.
+ *
+ * A row on this list is a chain whose following code cannot be handling the
+ * dropped case, because it does not mention it. That is the same position a
+ * `none` row is in with a statement underneath it, and it is why the list is
+ * pinned by name rather than counted: each one is a judgement somebody made
+ * once and a reviewer can re-make.
+ *
+ * The measurement is one-directional and stays that way. Absence from this list
+ * means the continuation NAMES the subject, which is a necessary condition for
+ * handling it and nothing more.
+ *
+ * NINE OF FIFTY-EIGHT, AND TWO OF THE NINE ARE ARTEFACTS OF HOW IT IS KEYED —
+ * written here because a list whose limits are only in its author's head is the
+ * thing this file keeps finding. Blindness is decided by whether the following
+ * statements mention the subject's IDENTIFIER, and `subjectOf` votes for the
+ * subject by counting mentions, so:
+ *
+ *   - `walk<returnedFunctions<channelCensusOf#checker` is keyed on `checker`,
+ *     because the condition is `(checker.getTypeAtLocation(node).flags &
+ *     nullish) !== 0` and the vote picks the receiver rather than `node`. The
+ *     continuation is the rest of the identifier branch, which is entirely
+ *     about the node. The row says nothing about that code;
+ *   - `walk<returnedFunctions<channelCensusOf#holder` falls through to a loop
+ *     over `holderValues`, which is derived FROM the holder one line above. A
+ *     name-keyed measure cannot see that as the same subject.
+ *
+ * The other seven fall through to a constant answer — `return []`, `return
+ * false` — or to a recorded admission (`unfollowed.push`, an `unclassified`
+ * arm). That first class is worth its own sentence, because a predicate whose
+ * default answer is a constant `false` is EXACTLY the shape of the eighteenth
+ * bypass: `typeCouldHoldAFunction` answering "no function in here" about an
+ * array of closures, from a fall-through that looked like the negative case.
+ *
+ * WHAT IS DELIBERATELY NOT BUILT: a required argument per row, the way an
+ * `enclosing` chain owes an `omission`. Nine rows would be nine paragraphs
+ * written in one sitting about code that is mostly correct, which is how a
+ * required field becomes decoration — and this file already carries a row
+ * (`G24`) recording a widening that was decoration for twenty minutes. The
+ * forcing function kept instead is the set equality: a TENTH blind
+ * continuation cannot arrive without somebody adding it here.
+ */
+const CONTINUATIONS_BLIND_TO_THE_SUBJECT: readonly string[] = Object.freeze([
+  'empireForbiddenOutput.test.ts#carriesCallSignature<channelCensusOf#type',
+  'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#initial',
+  'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#root',
+  'empireForbiddenOutput.test.ts#patternTargets<assignedValuesTo<channelCensusOf#property',
+  'empireForbiddenOutput.test.ts#patternTextsOf<surfaceOf#type',
+  'empireForbiddenOutput.test.ts#terminates<dispatchChainsIn#statement',
+  'empireForbiddenOutput.test.ts#walk<returnedFunctions<channelCensusOf#checker',
+  'empireForbiddenOutput.test.ts#walk<returnedFunctions<channelCensusOf#holder',
+  'empireForbiddenOutput.test.ts#walk<returnedFunctions<channelCensusOf#statement',
 ]);
 
 /**
@@ -14769,11 +14890,11 @@ const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
   /** Rows in `DECLARED_HANDLER_ROWS`. Every one a tally or an enum read. */
   DISCRIMINANT_LOOKUPS: 8,
-  CHAINS: 78,
+  CHAINS: 79,
   DISPATCH: 51,
   BY_TERMINAL: Object.freeze({
     else: 7,
-    'next-statement': 58,
+    'next-statement': 59,
     loop: 11,
     enclosing: 2,
     /**
@@ -14847,6 +14968,24 @@ describe('the dispatch-chain census — a ladder nobody looked at cannot be adde
     // the compiler defines are OUTSIDE this census, and that limit is measured
     // here instead of being described in the header.
     expect(rows.filter((row) => row.at.includes('withNoDiscriminator'))).toEqual([]);
+  });
+
+  it('says which continuations never name the subject, not just that one exists', () => {
+    const chains = directoryDispatchChains();
+    const blind = chains
+      .filter((chain) => chain.continuationReadsSubject === false)
+      .map((chain) => chain.at)
+      .sort();
+    expect(blind).toEqual(CONTINUATIONS_BLIND_TO_THE_SUBJECT);
+    // The domain, so an empty list cannot be an unmeasured one: every
+    // `next-statement` row was asked, and no other terminal was.
+    const asked = chains.filter((chain) => chain.continuationReadsSubject !== null);
+    expect(asked.length).toBe(CHAIN_CENSUS.BY_TERMINAL['next-statement']);
+    expect(asked.every((chain) => chain.terminal === 'next-statement')).toBe(true);
+    expect(
+      chains.filter((chain) => chain.terminal !== 'next-statement')
+        .every((chain) => chain.continuationReadsSubject === null),
+    ).toBe(true);
   });
 
   it('finds every table-shaped dispatch, which the ladder scan cannot see', () => {
