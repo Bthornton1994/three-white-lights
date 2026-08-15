@@ -26,7 +26,7 @@
  * that one lifter competed at one more meet, every meet the lifter who stayed
  * home may enter and the lifter who competed may not is a meet on that lifter's
  * own record. Nothing else leaves their list. `eligibility.test.ts`'s axis C
- * measures it over the same seasons axis B runs on — 3925 of 322947 pairs reach
+ * measures it over the same seasons axis B runs on — 4014 of 337719 pairs reach
  * an entry being spent, 0 of them violate — beside a rest-after-a-meet control
  * that violates on 3746 and costs a lifter as many as 4 meets they never went
  * to. Before that axis existed this paragraph had no test at all: axes A and B
@@ -51,23 +51,23 @@
  * tracked debt and is the one thing a reader should not assume is in place.
  *
  * A HIGHER BEST TOTAL NEVER QUALIFIES FOR FEWER MEETS. Measured rather than
- * argued: every ordered pair on a grid of 402 best totals, compared over the 84
- * meets a season holds. 80601 pairs, 0 of them violating, and 55301 of them
+ * argued: every ordered pair on a grid of 402 best totals, compared over the 86
+ * meets a season holds. 80601 pairs, 0 of them violating, and 55701 of them
  * pairs where the stronger lifter qualified for something the weaker did not —
  * which is what says the comparison had a domain to run on. The control beside
  * it is a rule letting a lifter enter only the highest tier they have reached,
  * which is a real anti-sandbagging idea somebody could have written: on the same
- * grid it violates on 55301 pairs and costs a stronger lifter as many as 53
+ * grid it violates on 55701 pairs and costs a stronger lifter as many as 53
  * meets. `@guarantee strength-never-removes-a-meet`
  *
  * COMPETING AT ONE MORE MEET NEVER QUALIFIES FOR FEWER EITHER, and it is the
- * same measurement on the other axis: 24 seeded seasons, 165 meets deep at the
- * deepest, every skipped meet against every later moment, 322947 pairs, 0
- * violating, 209 of them pairs where the lifter who competed more qualified for
+ * same measurement on the other axis: 24 seeded seasons, 169 meets deep at the
+ * deepest, every skipped meet against every later moment, 337719 pairs, 0
+ * violating, 273 of them pairs where the lifter who competed more qualified for
  * strictly more. The control is qualification reading the latest total instead
- * of the best, which is how a current-form gate reads: 86 violating pairs, and
+ * of the best, which is how a current-form gate reads: 109 violating pairs, and
  * a lifter who competed one extra time loses as many as 26 meets. The sweep's
- * own totals go down 1385 times, which is what keeps that control's domain from
+ * own totals go down 1422 times, which is what keeps that control's domain from
  * being empty. `@guarantee attending-a-meet-never-removes-one`
  *
  * Those careers run for two calendar periods rather than one, and the count

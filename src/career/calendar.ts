@@ -243,7 +243,7 @@ export function nextMeetOfTier(
  * How many days of `[fromDay, toDay]` hold more than one meet for this
  * federation.
  *
- * A census rather than a rule. The shipped phases put the four tiers on four
+ * A census rather than a rule. The shipped phases put the five tiers on five
  * different weekdays so this reports nothing; a tuner who moves a phase onto
  * another tier's weekday makes it report, which is the point. Two meets on one
  * day is not a defect in this module — a lifter cannot be at both, and which

@@ -72,7 +72,7 @@
  *     round was about.
  *   - `worlds-reset-*` — the annual result taken as the lifter's ranking total
  *     instead of their best. Three again, and all three measure zero on this
- *     population by 7.5 kg: see the block above `ENTRY_VARIANTS`. That margin
+ *     population by 27.5 kg: see the block above `ENTRY_VARIANTS`. That margin
  *     is arithmetic about these 24 seeded careers rather than a property of the
  *     calendar, so it is measured and pinned rather than argued for.
  */
@@ -205,7 +205,7 @@ export function strengthGrid(): readonly (number | null)[] {
  *     shortest that shows a REACHABLE worlds meet, because the first occurrence
  *     of an annual series is six days after the anchor and the second is 370.
  *     `SIMULATION_DAYS` is their product, 728 days.
- *   - `MEETS_PER_CAREER` is 167, the number of meets two periods hold, which is
+ *   - `MEETS_PER_CAREER` is 171, the number of meets two periods hold, which is
  *     the ceiling on a career the simulation can produce: one meet a day at
  *     most, and every meet distinct.
  *
@@ -213,10 +213,10 @@ export function strengthGrid(): readonly (number | null)[] {
  * assumption that it is now complete, and pinned as controls rather than as
  * this sentence. There are four edges and they are not all at the far end:
  *
- *   - A rule keyed to a lifter's 166th meet. The deepest career here is 165.
+ *   - A rule keyed to a lifter's 170th meet. The deepest career here is 169.
  *     `delayed-form-past-the-edge` is that edge as a measured zero, and the
  *     count of careers deep enough to reach it is pinned at 0 beside it.
- *   - A rule keyed to a lifter's 102nd meet. Careers do reach it — all 24 of
+ *   - A rule keyed to a lifter's 105th meet. Careers do reach it — all 24 of
  *     them — and the qualification axis reports nothing anyway.
  *     `delayed-form-past-visible` is that, with the count of careers that DO
  *     reach it pinned at 24, so "invisible" and "unreachable" are told apart.
@@ -233,8 +233,8 @@ export function strengthGrid(): readonly (number | null)[] {
  * AND ONE BLIND SPOT THAT IS NOT AN EDGE AT ALL, which is what this round
  * turned up rather than what it went looking for. The qualification axis does
  * not see the worlds-keyed record rule anywhere in this fixture, and the reason
- * is a margin of 7.5 kg: the lowest total anybody here puts up at a worlds meet
- * is 657.5, against a top qualifying total of 650, so a rule that rewrites
+ * is a margin of 27.5 kg: the lowest total anybody here puts up at a competitive
+ * worlds meet is 677.5, against a top qualifying total of 650, so a rule that rewrites
  * their record with it leaves them clearing every bar on the ladder. That is
  * why the tier-keyed controls that report a non-zero are on the entry axis, and
  * why the three `worlds-reset-*` record controls ship reporting zero with their
@@ -256,10 +256,11 @@ export const ATTENDANCE_SWEEP = Object.freeze({
   ]),
   /**
    * How many totals are drawn per career, and the deepest career the simulation
-   * can produce. Read off the calendar: 105 local, 52 regional, 8 nationals and
-   * 2 worlds across the two periods the simulation runs for.
+   * can produce. Read off the calendar: 105 local, 52 regional, 8 nationals,
+   * 4 campaign summits and 2 competitive ones across the two periods the
+   * simulation runs for.
    */
-  MEETS_PER_CAREER: 167,
+  MEETS_PER_CAREER: 171,
   /** The first meet's total, in kg. Below the regional bar, so it can climb through it. */
   FIRST_TOTAL_KG: 380,
   /** A good day adds up to this much. */
@@ -351,9 +352,20 @@ export const ATTENDANCE_SWEEP = Object.freeze({
    * the old pair had been measuring one edge while a nearer one did the real
    * binding. At one calendar period they were 81 and 82 — the deepest career
    * and one past it — and the first of them measured 81 violating pairs. Moved
-   * to 164 and 165 at two periods, THE SAME PAIR MEASURES ZERO AND ZERO: the
+   * to 164 and 165 at two periods, THE SAME PAIR MEASURED ZERO AND ZERO: the
    * check went quiet without anybody editing it, which is what a widened domain
    * doing the work of a new rule looks like.
+   *
+   * IT HAPPENED AGAIN WHEN THE SUMMIT WAS SPLIT, and this is the second
+   * instance of the same mechanism rather than a repetition of the first. GDD
+   * §6.6's campaign summit adds four meets to a two-period career, which moves
+   * every subsequent meet's INDEX by one to four — and the visibility edge is a
+   * fact about which index a total lands on. The pair pinned at 100 and 101 was
+   * still green and had stopped measuring the thing it names: at the five-tier
+   * calendar the last n that bites is 103, so 100 was two zeros' worth of
+   * daylight away from the edge it was placed on. NOTHING ABOUT THE RULE
+   * CHANGED AND NOTHING ABOUT THE CHECK CHANGED; a tier landed in a different
+   * file.
    *
    * Where the rule can bite at all is arithmetic about this population rather
    * than a property of the calendar, so it is measured rather than reasoned
@@ -363,17 +375,17 @@ export const ATTENDANCE_SWEEP = Object.freeze({
    * show up when the total put up AT that meet sits below a qualifying bar the
    * lifter's own best has already cleared. Deep into a career the totals here
    * have outgrown the top bar of 650 kg and stopped interleaving with any of
-   * them. Scanned meet by meet from 95 to 108, the last n that bites is 100.
+   * them. Scanned meet by meet from 90 to 130, the last n that bites is 103.
    *
    * The three points are therefore:
    *
-   *   - `DELAYED_FORM_INSIDE` at 100, the deepest meet count at which this axis
+   *   - `DELAYED_FORM_INSIDE` at 103, the deepest meet count at which this axis
    *     can still see the rule. Non-zero.
-   *   - `DELAYED_FORM_PAST_VISIBLE` at 101, one meet further. The rule FIRES —
-   *     every one of the 24 careers is deeper than 101 meets — and the axis
+   *   - `DELAYED_FORM_PAST_VISIBLE` at 104, one meet further. The rule FIRES —
+   *     every one of the 24 careers is deeper than 104 meets — and the axis
    *     still reports nothing.
-   *   - `DELAYED_FORM_PAST_THE_EDGE` at 165, the deepest career. The rule never
-   *     fires at all, because firing needs a 166th meet and nothing here has
+   *   - `DELAYED_FORM_PAST_THE_EDGE` at 169, the deepest career. The rule never
+   *     fires at all, because firing needs a 170th meet and nothing here has
    *     one.
    *
    * Two zeros for two different reasons, and the difference is what each one is
@@ -381,9 +393,9 @@ export const ATTENDANCE_SWEEP = Object.freeze({
    * switch-on point, so "invisible" and "unreachable" are told apart by a count
    * rather than by this paragraph.
    */
-  DELAYED_FORM_INSIDE: 100,
-  DELAYED_FORM_PAST_VISIBLE: 101,
-  DELAYED_FORM_PAST_THE_EDGE: 165,
+  DELAYED_FORM_INSIDE: 103,
+  DELAYED_FORM_PAST_VISIBLE: 104,
+  DELAYED_FORM_PAST_THE_EDGE: 169,
   /**
    * Which occurrence of the annual series each tier-keyed control fires at,
    * counted from the first one the calendar holds.
@@ -790,10 +802,10 @@ function lockedOutUntil(
  * qualification axis at any depth this fixture reaches: `bestTotalKg` is
  * non-decreasing under the shipped fold, the top qualifying total is 650 kg,
  * and the lowest total anybody in this sweep puts up AT a worlds meet is
- * 657.5 kg — so a rule that rewrites their record with it still leaves them
+ * 677.5 kg — so a rule that rewrites their record with it still leaves them
  * clearing every bar on the ladder. `worlds-reset-second` is that fact as a
- * measured zero, with the 657.5 and the 650 pinned beside it and the count of
- * careers whose record the rule really does rewrite pinned at 18. The
+ * measured zero, with the 677.5 and the 650 pinned beside it and the count of
+ * careers whose record the rule really does rewrite pinned at 16. The
  * enterable list has no such ceiling, which is why the tier-keyed lockouts are
  * here.
  */
@@ -920,7 +932,7 @@ export function* seasonMoments(
 /**
  * Everything `qualifiedMeets` is allowed to read about a lifter, as one string.
  *
- * The attendance axis asks the same qualification question of up to 165 lifters
+ * The attendance axis asks the same qualification question of up to 169 lifters
  * at one moment, and most of them differ in a field qualification does not
  * read. Two lifters with the same key here are two lifters that question
  * answers identically, so a memo on this key is the same measurement with the
