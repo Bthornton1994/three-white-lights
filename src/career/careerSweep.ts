@@ -289,15 +289,76 @@ export const ATTENDANCE_SWEEP = Object.freeze({
    * gained. So `FIRST_TOTAL_KG + n x MAX_GAIN_KG` is still a strict upper bound
    * on what a lifter can be holding after `n` meets, which is the arithmetic
    * `eligibility.test.ts` uses to prove the day-6 worlds meet unreachable, and
-   * that proof survives the bounded generator unchanged.
+   * that proof survives every value below unchanged.
    *
-   * IT IS ALSO STILL AN IMPLAUSIBLE PACE AND THIS PIECE DID NOT FIX THAT. A
-   * 70 kg jump on a 380 kg opening total is 18% in one meet, and no lifter does
-   * that. Bounding the RANGE and bounding the RATE are two axes; this block
-   * moves the first and leaves the second where it found it. See
-   * `GAIN_DECAY_EXPONENT` for the one thing the shape does buy on the rate axis.
+   * ===========================================================================
+   * 20, PROVISIONAL — PENDING PLAYTEST. RULED BY A HUMAN, 2026-08-15.
+   * ===========================================================================
+   * It was 70, and the block that shipped 70 said in its own words that 70 was
+   * wrong: "a 70 kg jump on a 380 kg opening total is 18% in one meet, and no
+   * lifter does that … bounding the RANGE and bounding the RATE are two axes;
+   * this block moves the first and leaves the second where it found it." This
+   * is that second axis, moved.
+   *
+   * PROVISIONAL in the same sense as GDD §6.3's PR-attempt wording and §6.2's
+   * crowd-reaction beat: it ships, and it is explicitly awaiting a human verdict
+   * from real play. What is settled is the DIRECTION and the shape of the trade.
+   * What is NOT settled is where inside the band a campaign should sit, because
+   * that is a felt question about pacing and nobody has played a career. Do not
+   * read the table below as saying 20 is right; it says what each candidate
+   * costs.
+   *
+   * ===========================================================================
+   * THE MEASUREMENT THE RULING WAS MADE ON
+   * ===========================================================================
+   * Greedy arcs against the real calendar — the same rule `simulateSeason` and
+   * `simulateCampaignArc` use, every meet the engine says can be entered, taken
+   * — run from the season anchor at `FIRST_TOTAL_KG` until the lifter puts up
+   * the campaign summit's 600 kg gate. All 24 seeds reach it at every rate, so
+   * no row is a median over a truncated population.
+   *
+   *   gain   meets: median (range)   days: median   years   slowest career
+   *   ----   --------------------    ------------   -----   --------------
+   *     70     12 (8-28)                       56    0.15         0.33 yr
+   *     35     25 (17-51)                     105    0.29         0.63 yr
+   *     20     41 (31-87)                     187    0.51         1.08 yr  <- shipped
+   *     12     69 (51-154)                    315    0.87         1.93 yr
+   *      8     98 (80-227)                    462    1.27         2.85 yr
+   *      5    159 (127-365)                   745    2.05         4.59 yr
+   *
+   * ===========================================================================
+   * WHY 20 AND NOT ONE OF THE OTHERS — THE REASONING, WHICH A FUTURE TUNER
+   * MOVING THIS KNOB NEEDS MORE THAN THE NUMBER
+   * ===========================================================================
+   *   - 20 puts the median campaign near six months simulated and 41 meets,
+   *     with the slowest seed at 1.08 years — a tail a player might actually
+   *     finish.
+   *   - It sits CLEARLY ABOVE THE ~12 kg POINT WHERE THE CALENDAR BECOMES THE
+   *     BINDING CONSTRAINT rather than strength. Below that a lifter is waiting
+   *     for meets to exist rather than waiting to get stronger, which is a
+   *     different problem from slow progress and a worse one: playing well does
+   *     not shorten it.
+   *   - 12 IS THE MORE REALISTIC CANDIDATE AND IS THE ONE TO TRY NEXT IF 20
+   *     PLAYS TOO FAST. Its near-two-year tail is what needs a human verdict
+   *     before it can be taken on realism grounds alone.
+   *   - The absolute tail spread is the second deciding fact. The
+   *     slowest-to-median ratio is ~2.2x at every rate, so the RATIO decides
+   *     nothing — but that same ratio is 0.33 yr at gain 70 and 4.59 yr at gain
+   *     5. A rate slow enough to feel like real training makes an unlucky seed's
+   *     campaign a multi-year affair, which is a retention question rather than
+   *     a realism one.
+   *
+   * ===========================================================================
+   * WHAT THIS DOES NOT FIX, STATED SO NOBODY READS IT AS MORE
+   * ===========================================================================
+   * 20 kg on a 380 kg opening total is still 5% in one meet, and that is the
+   * value at the very first meet only — headroom decays it from there. This is a
+   * fixture for measuring monotonicity and reachability, not a model of
+   * training. What the move buys is that every count keyed to where a total sits
+   * relative to a qualifying gate is now taken over a career whose PACE is
+   * within sight of the sport rather than five times it.
    */
-  MAX_GAIN_KG: 70,
+  MAX_GAIN_KG: 20,
   /** How often a meet is a bad day. */
   BAD_DAY_SHARE: 0.35,
   /**
