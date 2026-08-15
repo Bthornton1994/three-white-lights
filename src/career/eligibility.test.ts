@@ -22,6 +22,7 @@ import {
   badDayCount,
   campaignArcs,
   careerAfter,
+  careerPotentialKg,
   enteredDaysOfTier,
   lastEnteredDayOf,
   measureCampaignReach,
@@ -598,45 +599,80 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     // the depths the shipped calendar offers a lifter who enters everything
     // they are eligible for, and the three parameters that produce them are
     // asserted against `CAREER_TUNING` two tests below rather than chosen here.
+    //
+    // THESE NUMBERS ALL MOVED WHEN THE TOTALS GENERATOR WAS BOUNDED, and the
+    // direction is worth reading rather than just the values. Careers got
+    // DEEPER and more uniform — 168 or 169 meets each, against a spread of 164
+    // to 169 before — because a bad day is now a bad day rather than a
+    // permanent loss of strength, so a lifter no longer falls back under a gate
+    // they had already cleared and stops being offered the tier above.
     expect(shipped.seasons).toBe(24);
     expect(shipped.seasonLengths).toEqual([
-      169, 169, 168, 169, 166, 168, 164, 168, 169, 166, 164, 169, 169, 164, 164, 167, 169, 166,
-      169, 168, 167, 165, 169, 168,
+      169, 168, 169, 169, 169, 168, 169, 169, 169, 169, 169, 169, 169, 169, 169, 168, 168, 169,
+      169, 168, 169, 169, 168, 168,
     ]);
-    expect(shipped.badDays).toBe(1422);
-    expect(shipped.pairs).toBe(337719);
-    expect(shipped.movedPairs).toBe(273);
+    // `badDays` counts DESCENTS in the total sequence, and it fell from 1422 to
+    // 1078 for the same reason it has to stay non-zero: `BAD_DAY_SHARE` still
+    // makes 35% of meets bad days, but a bad day early in a career, when
+    // capability is climbing fastest, can still land above the meet before it.
+    // The count is what says the two rules below are being told apart on real
+    // data rather than on a monotone sequence.
+    expect(shipped.badDays).toBe(1078);
+    expect(shipped.pairs).toBe(343577);
+    // `movedPairs` fell from 273 to 107, and it is the count this axis has least
+    // margin on, so the fall is flagged rather than absorbed. It is how many
+    // pairs differ in the SIZE of their qualified set at all — the axis's own
+    // domain — and a bounded fixture takes careers to the top of the ladder
+    // sooner and keeps them there, so skipping one meet changes which tiers a
+    // lifter qualifies for less often. 107 is small; it is not zero, and the
+    // control below moves it to 310, which is what says the axis can still tell
+    // a working rule from a broken one on this fixture.
+    expect(shipped.movedPairs).toBe(107);
+    expect(shipped.movedPairs).toBeGreaterThan(0);
 
     // AND THE COUNT THIS ROUND EXISTS FOR. The sweep used to run for one
     // calendar period, which holds exactly one worlds meet, six days after the
     // anchor, with three meet days in front of it — so no simulated lifter
     // could hold the 650 kg it asks for and the worlds column of this fixture
-    // was empty. Two periods put a second worlds meet on day 370, and 23 of the
-    // 24 careers enter it. The 24th is a real refusal rather than a gap in the
-    // harness: that lifter was holding 552.5 kg when the day came round, and
-    // the test three below traces it.
-    expect(shipped.worldsEntries).toBe(23);
+    // was empty. Two periods put a second worlds meet on day 370, and 22 of the
+    // 24 careers enter it. The other two are real refusals rather than a gap in
+    // the harness — their own drawn ceilings sit under the 650 kg bar — and the
+    // test three below traces them.
+    //
+    // THE SECOND LINE IS NOT DECORATION AND IT CONSTRAINED THE FIX. A bounded
+    // generator whose floor cleared 650 kg would take every career to the top
+    // rung and leave this assertion unable to fail; `POTENTIAL_MIN_KG`'s block
+    // records that as the reason its band straddles the top gate rather than
+    // sitting above it.
+    expect(shipped.worldsEntries).toBe(22);
     expect(shipped.worldsEntries).toBeLessThan(ATTENDANCE_SWEEP.SEEDS.length);
 
     // The control: qualification reading the latest total instead of the best,
-    // on the same seasons, the same totals and the same comparison. 86 of the
-    // 337719 pairs violate and a lifter loses as many as 26 meets for having
+    // on the same seasons, the same totals and the same comparison. 173 of the
+    // 343577 pairs violate and a lifter loses as many as 4 meets for having
     // competed one more time.
     //
+    // THE WORST DEFICIT FELL FROM 26 TO 4 AND THAT IS THE GENERATOR, NOT THE
+    // RULE. A current-form rule costs a lifter every tier the total they just
+    // put up fails to clear. Under the unbounded walk a single bad day could
+    // drop a lifter 70 kg and take three rungs of the ladder with it; a bad day
+    // is now at most `BAD_DAY_MAX_SHARE` of capability, so it usually crosses
+    // one gate rather than several. The control still bites, and it bites less
+    // hard because the fixture stopped swinging implausibly.
+    //
     // Its domain is asserted equal to the shipped arm's for the reason the
-    // strength axis gives, with one deliberate exception: `movedPairs` is 244
-    // rather than 209, because the control's own rule changes which comparisons
-    // move. That one is pinned at its own value instead of being tied to the
-    // shipped arm, since forcing them equal would be asserting that a broken
-    // rule moves exactly as often as a working one.
+    // strength axis gives, with one deliberate exception: `movedPairs` is
+    // pinned at its own value rather than tied to the shipped arm, since
+    // forcing them equal would be asserting that a broken rule moves exactly as
+    // often as a working one.
     expect(control.seasons).toBe(shipped.seasons);
     expect(control.seasonLengths).toEqual(shipped.seasonLengths);
     expect(control.badDays).toBe(shipped.badDays);
     expect(control.pairs).toBe(shipped.pairs);
     expect(control.worldsEntries).toBe(shipped.worldsEntries);
-    expect(control.movedPairs).toBe(308);
-    expect(control.violatingPairs).toBe(109);
-    expect(control.worstDeficit).toBe(26);
+    expect(control.movedPairs).toBe(438);
+    expect(control.violatingPairs).toBe(173);
+    expect(control.worstDeficit).toBe(4);
   });
 
   it('reaches a current-form rule that waits, and reports two different kinds of zero past it', () => {
@@ -658,82 +694,117 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     // grew out from under it, and a reader of two zeros would have concluded
     // the axis was sensitive up to 164 when it stops at 100.
     //
-    // So three arms run, and the two zeros are told apart by a count rather
-    // than by this comment. `firesIn` is how many of the 24 careers are deep
-    // enough for the rule's current-form branch to be taken at all:
+    // AND THEN A THIRD ARM WENT AWAY ENTIRELY, WHICH IS THIS ROUND'S FINDING.
+    // There used to be a `delayed-form-past-visible` arm sitting one meet past
+    // the last count that bites, measuring the rule FIRING in all 24 careers and
+    // the axis reporting nothing — "invisible, not unreachable". That region
+    // existed only because the totals generator was an unbounded walk: once a
+    // career's totals had climbed clear of the 650 kg top bar they stopped
+    // interleaving with any qualifying total and the rule had nothing left to
+    // take away.
     //
-    //   - inside (100): the rule fires and the axis reports it.
-    //   - past-visible (101): the rule fires in every one of the 24 careers,
-    //     and the axis reports nothing. Invisible, not unreachable.
-    //   - past-the-edge (165): the rule fires in none of them. Unreachable.
+    // Bounding the generator closed it. Careers now plateau inside a band that
+    // straddles the top of the ladder, so totals go on crossing gates for as
+    // long as the career lasts. Scanned at EVERY n from 0 to 170 on the shipped
+    // seeds, the violating count is non-zero at all 169 values of n at which the
+    // rule fires in any career, and zero at exactly the two where it fires in
+    // none (169 and 170). There is no n left for a third arm to name, so the arm
+    // and its constant were deleted rather than re-pointed at a number that
+    // would have duplicated `past-the-edge`. That is CLAUDE.md's rule for a
+    // check whose case the domain can no longer reach.
+    //
+    // So two arms run, and the zero carries a count rather than this comment.
+    // `firesIn` is how many of the 24 careers are deep enough for the rule's
+    // current-form branch to be taken at all:
+    //
+    //   - inside (168): the deepest count at which the rule fires at all — the
+    //     17 careers that are 169 meets long — and the axis reports it.
+    //   - past-the-edge (169): the rule fires in none of them. Unreachable.
     const inside = measureAttendanceAxis('delayed-form-inside');
-    const pastVisible = measureAttendanceAxis('delayed-form-past-visible');
     const pastTheEdge = measureAttendanceAxis('delayed-form-past-the-edge');
 
-    expect(inside.violatingPairs, 'a delayed current-form rule inside the domain').toBe(104);
-    expect(inside.worstDeficit).toBe(2);
-    expect(pastVisible.violatingPairs, 'the same rule one meet past the deepest it is seen').toBe(0);
-    expect(pastVisible.worstDeficit).toBe(0);
+    expect(inside.violatingPairs, 'a delayed current-form rule inside the domain').toBe(169);
+    expect(inside.worstDeficit).toBe(1);
     expect(pastTheEdge.violatingPairs, 'the same rule past the deepest career').toBe(0);
     expect(pastTheEdge.worstDeficit).toBe(0);
 
     // Which arm's branch is reachable at all. `latestTotalAfter(n)` takes its
     // current-form branch on a career's (n+1)-th meet, so a career of length L
     // reaches it exactly when L > n. Counted from the season lengths the axis
-    // above pins, so the two zeros carry their own reason.
+    // above pins, so the zero carries its own reason.
     const firesIn = (afterMeets: number): number =>
       inside.seasonLengths.filter((length) => length > afterMeets).length;
-    expect(firesIn(ATTENDANCE_SWEEP.DELAYED_FORM_INSIDE), 'careers deep enough for the 103 arm').toBe(24);
-    expect(firesIn(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_VISIBLE), 'careers deep enough for the 104 arm').toBe(24);
+    expect(firesIn(ATTENDANCE_SWEEP.DELAYED_FORM_INSIDE), 'careers deep enough for the 168 arm').toBe(17);
     expect(firesIn(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_THE_EDGE), 'careers deep enough for the 169 arm').toBe(0);
 
-    // The depth edge is the deepest career rather than a number chosen to make
-    // an arm work, and the visibility edge is one meet past the last one that
-    // bites. The second is a fact about this population's totals and was found
-    // by scanning meet by meet, so it is pinned as adjacency and measured
-    // above, not derived.
+    // THE TWO CONSTANTS ARE NOW ADJACENT, AND THAT ADJACENCY IS THE DELETED
+    // ARM'S EPITAPH. `INSIDE` is the deepest count at which the rule fires at
+    // all and it bites there; `PAST_THE_EDGE` is one further and the rule cannot
+    // fire. With nothing between them there is no room for a "fires but
+    // invisible" point, which is exactly why the third constant went. Both are
+    // derived from the season lengths rather than typed, so a fixture change
+    // that reopens the gap reddens here instead of leaving a stale pair behind.
     expect(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_THE_EDGE).toBe(Math.max(...inside.seasonLengths));
-    expect(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_VISIBLE).toBe(
-      ATTENDANCE_SWEEP.DELAYED_FORM_INSIDE + 1,
+    expect(ATTENDANCE_SWEEP.DELAYED_FORM_INSIDE).toBe(
+      ATTENDANCE_SWEEP.DELAYED_FORM_PAST_THE_EDGE - 1,
     );
-    expect(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_VISIBLE).toBeLessThan(
-      ATTENDANCE_SWEEP.DELAYED_FORM_PAST_THE_EDGE,
+    // And the arm that fires does fire in some careers and not all of them, so
+    // `INSIDE` really is sitting on the edge rather than comfortably inside it.
+    expect(firesIn(ATTENDANCE_SWEEP.DELAYED_FORM_INSIDE)).toBeGreaterThan(0);
+    expect(firesIn(ATTENDANCE_SWEEP.DELAYED_FORM_INSIDE)).toBeLessThan(
+      ATTENDANCE_SWEEP.SEEDS.length,
     );
-    // And the three arms ran on the same seasons as each other and as the
-    // shipped one, so the zeros are about the rules and not a smaller domain.
-    expect(pastVisible.seasonLengths).toEqual(inside.seasonLengths);
+    // And both arms ran on the same seasons as each other and as the shipped
+    // one, so the zero is about the rule and not a smaller domain.
     expect(pastTheEdge.seasonLengths).toEqual(inside.seasonLengths);
-    expect(inside.pairs).toBe(337719);
-    expect(pastVisible.pairs).toBe(337719);
-    expect(pastTheEdge.pairs).toBe(337719);
+    expect(inside.pairs).toBe(343577);
+    expect(pastTheEdge.pairs).toBe(343577);
   });
 
-  it('cannot see a rule keyed to the annual tier at all, and the margin is 27.5 kg', () => {
-    // THE FINDING THIS ROUND TURNED UP, AND IT IS NOT THE ONE IT WENT LOOKING
-    // FOR. Deepening the simulation was meant to make a worlds-keyed rule
-    // visible to this axis. It puts 23 worlds entries in the fixture and the
-    // axis still sees nothing, because qualification asks one question — is the
-    // best total at or above the bar — and by the time a lifter can enter a
-    // worlds meet the answer has been yes for dozens of meets.
+  it('sees a rule keyed to the annual tier now that totals stop above it, and the margin is -17.5 kg', () => {
+    // A ZERO THAT TURNED INTO A ONE WHEN THE FIXTURE CHANGED, AND THE RULE WAS
+    // NEVER EDITED. This test used to be called "cannot see a rule keyed to the
+    // annual tier at all, and the margin is 27.5 kg", and every word of it was
+    // true of the fixture it was written against.
     //
-    // `worlds-reset` is the rule: the annual result becomes the lifter's
-    // ranking total instead of the better of the two, so a bad day at worlds
-    // forgets everything above it while the lifter who stayed home keeps
-    // theirs. A plausible design and a §12.3 violation, and this axis reports
-    // zero for it at every one of the calendar's three worlds meets — for three
-    // different reasons, which is the part worth reading.
+    // `worlds-reset` is the rule: the annual result becomes the lifter's ranking
+    // total instead of the better of the two, so a bad day at worlds forgets
+    // everything above it while the lifter who stayed home keeps theirs. A
+    // plausible design and a §12.3 violation.
+    //
+    // Under the unbounded totals generator this axis reported zero for it at all
+    // three of the calendar's worlds meets, and the middle zero had a measured
+    // reason: the lowest total anybody put up at a worlds meet was 677.5 kg
+    // against a 650 kg bar, so rewriting a record with it still left the lifter
+    // clearing every rung. That reason was written down as a fact about a
+    // population rather than a theorem, with a warning that it could move.
+    //
+    // It moved. Bounded careers plateau in a band that straddles the top of the
+    // ladder, the lowest worlds-day total is now 632.5 kg — UNDER the bar — and
+    // the middle arm reports a violation. The two outer arms still report zero,
+    // and for their own unchanged reason: nobody stands on those two days.
     const first = measureAttendanceAxis('worlds-reset-first');
     const second = measureAttendanceAxis('worlds-reset-second');
     const third = measureAttendanceAxis('worlds-reset-third');
 
     expect(first.violatingPairs, 'the worlds meet on day 6, which nobody enters').toBe(0);
-    expect(second.violatingPairs, 'the worlds meet on day 370, which 23 careers enter').toBe(0);
+    expect(second.violatingPairs, 'the worlds meet on day 370, which 22 careers enter').toBe(1);
+    expect(second.worstDeficit).toBe(1);
     expect(third.violatingPairs, 'the worlds meet on day 734, past the simulation').toBe(0);
 
-    // The middle zero is the one that needs its reason measured, because it is
-    // the one that looks like coverage. The rule FIRES: it rewrites the record
-    // in 16 of the 23 careers that reach that meet, and the other 7 are careers
-    // whose worlds day was their best day anyway.
+    // How often the rule's branch is taken at all, so the size of the non-zero
+    // is read against the size of the opportunity rather than on its own. It
+    // rewrites the record in 6 of the 22 careers that reach that meet.
+    //
+    // 6 AND NOT 16, AND THE DROP IS A PROPERTY OF THE TWO-LAYER GENERATOR
+    // RATHER THAN OF THE RULE. Capability only ever climbs, so a GOOD day puts
+    // up exactly the highest capability the lifter has ever had and is
+    // therefore always a new best — and `BAD_DAY_SHARE` makes 65% of meets good
+    // days. A worlds meet that lands on a good day leaves the record identical
+    // under both folds. So roughly a third of the careers get their record
+    // rewritten, which is about what a 35% bad-day rate predicts, and the count
+    // is here so that a future change to either share shows up as a moved number
+    // rather than as a quietly smaller opportunity.
     const seasons = ATTENDANCE_SWEEP.SEEDS.map((seed) => simulateSeason(seed));
     const worldsSeasons = seasons.filter(
       (season) => seasonMeetsOfTier(season, 'competitive-worlds').length > 0,
@@ -746,25 +817,26 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
         careerAfter(season, index, null, 'worlds-reset-second').bestTotalKg
       );
     });
-    expect(worldsSeasons).toHaveLength(23);
-    expect(rewritten).toHaveLength(16);
+    expect(worldsSeasons).toHaveLength(22);
+    expect(rewritten).toHaveLength(6);
 
-    // And here is why rewriting it changes nothing this axis can read. The
-    // lowest total anybody in this sweep put up at a competitive worlds meet is
-    // 677.5 kg, against a top qualifying total of 650. So even the worst world result
-    // here leaves the lifter clearing every bar on the ladder, and a rule that
-    // replaces their best with it cannot take a meet away.
+    // THE MARGIN, WHICH IS THE NUMBER THAT DECIDES WHETHER THIS AXIS CAN SEE THE
+    // TIER AT ALL. It is the gap between the worst world result in the fixture
+    // and the bar that result has to clear to keep the lifter's ladder intact.
+    // Positive means blind; negative means the rule can take a rung away.
     //
-    // 27.5 kg of daylight between this axis being blind to the top tier and not,
-    // on a fixture that reaches 1752.5 kg at the other end. It was 7.5 kg before
-    // the summit split moved every total's index; the margin is a fact about a
-    // population, and this is what one looks like when it drifts.
+    // 677.5 - 650 = +27.5 before. 632.5 - 650 = -17.5 now. Both are facts about
+    // a population rather than about the calendar, and the pair of them is the
+    // clearest thing in this file about how much a control's zero is worth.
     const worldsTotals = worldsSeasons.map(
       (season) => (seasonMeetsOfTier(season, 'competitive-worlds')[0] as SeasonMeet).totalKg,
     );
-    expect(Math.min(...worldsTotals)).toBe(677.5);
-    expect(Math.max(...worldsTotals)).toBe(1752.5);
-    expect(Math.min(...worldsTotals) - ATTENDANCE_SWEEP.TOP_QUALIFYING_TOTAL_KG).toBe(27.5);
+    expect(Math.min(...worldsTotals)).toBe(632.5);
+    expect(Math.max(...worldsTotals)).toBe(862.5);
+    expect(Math.min(...worldsTotals) - ATTENDANCE_SWEEP.TOP_QUALIFYING_TOTAL_KG).toBe(-17.5);
+    // And the top of that range is now inside the sport rather than three times
+    // it: the whole fixture is bounded by the band `POTENTIAL_MAX_KG` names.
+    expect(Math.max(...worldsTotals)).toBeLessThanOrEqual(ATTENDANCE_SWEEP.POTENTIAL_MAX_KG);
     expect(ATTENDANCE_SWEEP.TOP_QUALIFYING_TOTAL_KG).toBe(
       Math.max(
         ...MEET_TIER_ORDER.map((tier) => CAREER_TUNING.QUALIFYING_TOTAL_KG[tier] ?? 0),
@@ -781,10 +853,10 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     expect(occurrencesEntered.has(ATTENDANCE_SWEEP.WORLDS_OCCURRENCE_FIRST)).toBe(false);
     expect(occurrencesEntered.has(ATTENDANCE_SWEEP.WORLDS_OCCURRENCE_THIRD)).toBe(false);
     // Same domain on all three arms, so none of the zeros is about a smaller one.
-    expect(first.pairs).toBe(337719);
-    expect(second.pairs).toBe(337719);
-    expect(third.pairs).toBe(337719);
-    expect(second.worldsEntries).toBe(23);
+    expect(first.pairs).toBe(343577);
+    expect(second.pairs).toBe(343577);
+    expect(third.pairs).toBe(343577);
+    expect(second.worldsEntries).toBe(22);
   });
 
   it('a season is a real season: every meet distinct, and none of them entered twice', () => {
@@ -848,33 +920,52 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     ).toBeLessThan(ATTENDANCE_SWEEP.TOP_QUALIFYING_TOTAL_KG);
 
     // The second one is 370 days in, which is one worlds cadence past the
-    // first, and 23 of the 24 seeded careers enter it. Both halves are pinned:
+    // first, and 22 of the 24 seeded careers enter it. Both halves are pinned:
     // the count, so the domain says how often it reached the case, and the
     // refusal, so a reader knows the qualifying total is still doing work at
     // the top of the ladder rather than waved through.
     const entered = ATTENDANCE_SWEEP.SEEDS.map((seed) =>
       seasonMeetsOfTier(simulateSeason(seed), 'competitive-worlds'),
     );
-    expect(entered.filter((meets) => meets.length > 0)).toHaveLength(23);
-    expect(entered.filter((meets) => meets.length === 0)).toHaveLength(1);
+    expect(entered.filter((meets) => meets.length > 0)).toHaveLength(22);
+    expect(entered.filter((meets) => meets.length === 0)).toHaveLength(2);
     expect(
       (worlds[1] as CareerMeet).day - (worlds[0] as CareerMeet).day,
       'the second worlds is one annual cadence after the first',
     ).toBe(CAREER_TUNING.CADENCE_DAYS['competitive-worlds']);
-    // The one that misses, traced rather than described: it was holding
-    // 552.5 kg on the day, which is over the nationals bar and under the
-    // worlds one.
-    const misses = ATTENDANCE_SWEEP.SEEDS.map((seed) => simulateSeason(seed)).filter(
-      (season) => seasonMeetsOfTier(season, 'competitive-worlds').length === 0,
+
+    // WHY THEY MISS, AND THE REASON IS STRUCTURAL NOW RATHER THAN CIRCUMSTANTIAL.
+    // It used to be one career, and the trace said it was "holding 552.5 kg on
+    // the day" — a lifter who happened to be having a slow year and would have
+    // got there eventually. Under a bounded generator the two that miss miss
+    // because their own drawn ceilings sit UNDER the 650 kg bar, so no amount of
+    // further running gets them in. That is the top gate doing the job a
+    // qualifying total is for, and it is what `POTENTIAL_MIN_KG`'s band was
+    // chosen to keep possible.
+    const missedSeeds = ATTENDANCE_SWEEP.SEEDS.filter(
+      (seed) => seasonMeetsOfTier(simulateSeason(seed), 'competitive-worlds').length === 0,
     );
-    const missedSeason = misses[0] as readonly SeasonMeet[];
-    const secondWorldsDay = (worlds[1] as CareerMeet).day;
-    const bestByThen = Math.max(
-      ...missedSeason.filter((meet) => meet.day < secondWorldsDay).map((meet) => meet.totalKg),
-    );
-    expect(bestByThen).toBe(552.5);
-    expect(bestByThen).toBeLessThan(ATTENDANCE_SWEEP.TOP_QUALIFYING_TOTAL_KG);
-    expect(bestByThen).toBeGreaterThanOrEqual(CAREER_TUNING.QUALIFYING_TOTAL_KG.nationals ?? 0);
+    expect(missedSeeds).toHaveLength(2);
+    for (const seed of missedSeeds) {
+      expect(careerPotentialKg(seed), `seed ${seed} ceiling`).toBeLessThan(
+        ATTENDANCE_SWEEP.TOP_QUALIFYING_TOTAL_KG,
+      );
+    }
+    // And they are not weak lifters — both plateau above the nationals bar, so
+    // the fixture is refusing them one rung rather than shutting them out.
+    for (const seed of missedSeeds) {
+      expect(careerPotentialKg(seed), `seed ${seed} ceiling over nationals`).toBeGreaterThan(
+        CAREER_TUNING.QUALIFYING_TOTAL_KG.nationals ?? 0,
+      );
+    }
+    // Every career that DOES enter drew a ceiling over the bar, which is the
+    // same statement from the other side and is what makes the count of 22 a
+    // measurement of the gate rather than of the calendar.
+    for (const seed of ATTENDANCE_SWEEP.SEEDS.filter((s) => !missedSeeds.includes(s))) {
+      expect(careerPotentialKg(seed), `seed ${seed} ceiling clears the bar`).toBeGreaterThanOrEqual(
+        ATTENDANCE_SWEEP.TOP_QUALIFYING_TOTAL_KG,
+      );
+    }
   });
 
   it('builds the same careers incrementally as `careerAfter` builds from the top', () => {
@@ -896,7 +987,6 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
       'shipped',
       'latest-total-wins',
       'delayed-form-inside',
-      'delayed-form-past-visible',
       'delayed-form-past-the-edge',
       'worlds-reset-first',
       'worlds-reset-second',
@@ -916,11 +1006,13 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
         }
       }
     }
-    // Counts, not bounds. 40 moments is 820 pairs, eight rules is 6560, and an
-    // empty variant list or a zero-length season would walk none of them.
+    // Counts, not bounds. 40 moments is 820 pairs, seven rules is 5740, and an
+    // empty variant list or a zero-length season would walk none of them. It was
+    // eight rules and 6560 until `delayed-form-past-visible` was deleted; see
+    // that arm's epitaph in the delayed-form test above.
     expect(truncated).toHaveLength(40);
-    expect(variants).toHaveLength(8);
-    expect(compared).toBe(6560);
+    expect(variants).toHaveLength(7);
+    expect(compared).toBe(5740);
 
     // The deep end, at full season length, where the slow path is affordable
     // only at the final moment. This is the region the truncated triangle above
@@ -943,7 +1035,9 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
       }
     }
     expect(full).toHaveLength(169);
-    expect(deepCompared).toBe(40);
+    // Seven rules times five skips. It was eight rules and 40 until
+    // `delayed-form-past-visible` was deleted.
+    expect(deepCompared).toBe(35);
   });
 
   it('the sweep’s depth is read off the shipped calendar, not chosen in the sweep', () => {
@@ -1011,6 +1105,165 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
       firstHalf.map((meet) => meet.day),
     );
     expect(firstHalf).toHaveLength(85);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE TOTALS GENERATOR'S BOUND
+// ---------------------------------------------------------------------------
+
+describe('the totals generator is bounded to a plausible range for the sport', () => {
+  // WHY THIS BLOCK EXISTS. The generator used to be an unbounded two-sided
+  // random walk. Over the sweep's own 728-day window it reached a peak meet
+  // total of 3020 kg and a median of 1107.5 kg — roughly two and a half times
+  // the heaviest total any human has recorded, and a distribution whose upper
+  // half is about nothing. Every percentile taken deep into it, and every check
+  // keyed to where a total sat relative to a qualifying gate, was measuring an
+  // artifact.
+  //
+  // `seededCareerTotals`' own block carries the proof that the replacement is
+  // bounded. These are that proof's assertions: without them "bounded" is a
+  // sentence in a comment, which is the failure mode CLAUDE.md records most
+  // often.
+
+  it('never lets any career, at any depth, exceed the ceiling it drew', () => {
+    // THE PER-CAREER BOUND, WHICH IS THE STRONG ONE. A global ceiling would be
+    // satisfied by a generator that clamped every career onto the same number;
+    // this says each career respects ITS OWN drawn potential, which a clamp at
+    // the band's top would fail.
+    let checked = 0;
+    let closest = Number.POSITIVE_INFINITY;
+    for (const seed of ATTENDANCE_SWEEP.SEEDS) {
+      const potential = careerPotentialKg(seed);
+      const totals = seededCareerTotals(seed, ATTENDANCE_SWEEP.MEETS_PER_CAREER);
+      for (const total of totals) {
+        expect(total, `seed ${seed} against its own ceiling ${potential}`).toBeLessThanOrEqual(
+          potential,
+        );
+        closest = Math.min(closest, potential - total);
+        checked += 1;
+      }
+    }
+    // Counts, not bounds: an empty seed list or a zero-length draw would make
+    // every line above trivially true.
+    expect(checked).toBe(ATTENDANCE_SWEEP.SEEDS.length * ATTENDANCE_SWEEP.MEETS_PER_CAREER);
+    expect(checked).toBe(4104);
+    // And the bound is TIGHT rather than generous — some career gets within
+    // 2.5 kg of its own ceiling — so it is not passing because the ceiling is
+    // miles above anything the generator produces.
+    expect(closest).toBeLessThanOrEqual(ATTENDANCE_SWEEP.ROUNDING_KG);
+  });
+
+  it('draws different ceilings for different seeds, so nothing piles up on one number', () => {
+    // A HARD CLAMP IS THE OBVIOUS FIX AND IT IS THE WRONG ONE. Clamping every
+    // walk at one elite ceiling makes many arcs sit at exactly that ceiling,
+    // which is its own unrealism and makes a percentile near the top
+    // degenerate. This is the check that says the fix is not that.
+    const potentials = ATTENDANCE_SWEEP.SEEDS.map((seed) => careerPotentialKg(seed));
+    const peaks = ATTENDANCE_SWEEP.SEEDS.map((seed) =>
+      Math.max(...seededCareerTotals(seed, ATTENDANCE_SWEEP.MEETS_PER_CAREER)),
+    );
+    // Ceilings spread across the band rather than bunching.
+    expect(new Set(potentials).size).toBeGreaterThanOrEqual(20);
+    expect(Math.min(...potentials)).toBeGreaterThanOrEqual(ATTENDANCE_SWEEP.POTENTIAL_MIN_KG);
+    expect(Math.max(...potentials)).toBeLessThanOrEqual(ATTENDANCE_SWEEP.POTENTIAL_MAX_KG);
+    // And so do the peaks the careers actually reach, which is the thing a
+    // percentile would be taken over. No two-thirds of them share a value.
+    expect(new Set(peaks).size).toBeGreaterThanOrEqual(20);
+    expect(Math.max(...peaks)).toBe(882.5);
+    expect(Math.min(...peaks)).toBe(625);
+    // The asymptote is soft: nothing reaches `POTENTIAL_MAX_KG` itself.
+    expect(Math.max(...peaks)).toBeLessThan(ATTENDANCE_SWEEP.POTENTIAL_MAX_KG);
+  });
+
+  it('holds the constant inequality its bound is proved from', () => {
+    // THE PROOF'S PREMISE, PINNED SO A TUNER CANNOT QUIETLY REMOVE IT. One
+    // meet's gain is at most `MAX_GAIN_KG x (P - c) / (P - FIRST_TOTAL_KG)`.
+    // That is strictly less than the remaining gap `P - c` exactly when
+    // `MAX_GAIN_KG < P - FIRST_TOTAL_KG`, and the smallest `P` can be is
+    // `POTENTIAL_MIN_KG`. Raise `MAX_GAIN_KG` past that span, or lower the band
+    // onto the opening total, and the generator stops being bounded — with no
+    // other test in this file necessarily noticing.
+    expect(ATTENDANCE_SWEEP.MAX_GAIN_KG).toBeLessThan(
+      ATTENDANCE_SWEEP.POTENTIAL_MIN_KG - ATTENDANCE_SWEEP.FIRST_TOTAL_KG,
+    );
+    // Every potential lands on the competition grid, which is the second half of
+    // the rounding argument: rounding a value strictly below a grid point to
+    // that grid cannot land above it.
+    for (const seed of ATTENDANCE_SWEEP.SEEDS) {
+      expect((careerPotentialKg(seed) * 10) % (ATTENDANCE_SWEEP.ROUNDING_KG * 10)).toBe(0);
+    }
+  });
+
+  it('puts the band where the sourced research puts real elite totals', () => {
+    // THE BAND IS A RULE RATHER THAN A TASTE, AND THE RULE IS WHAT IS ASSERTED.
+    // `POTENTIAL_MIN_KG`'s block gives the argument; this is it as a check, so a
+    // tuner who moves a qualifying total past the band is told that the band has
+    // stopped being derived from anything.
+    //
+    // ABOVE the campaign summit's gate, so GDD §6.6's R1 stays a statement about
+    // the CALENDAR rather than becoming one about strength.
+    expect(ATTENDANCE_SWEEP.POTENTIAL_MIN_KG).toBeGreaterThan(
+      CAREER_TUNING.QUALIFYING_TOTAL_KG['campaign-worlds'] as number,
+    );
+    // BELOW the competitive summit's gate, so the top of the ladder goes on
+    // refusing somebody and `worldsEntries` cannot saturate at the seed count.
+    expect(ATTENDANCE_SWEEP.POTENTIAL_MIN_KG).toBeLessThan(
+      CAREER_TUNING.QUALIFYING_TOTAL_KG['competitive-worlds'] as number,
+    );
+    // Which, at the shipped gates, is the midpoint — the same stated-rule shape
+    // the campaign gate itself is set by.
+    expect(ATTENDANCE_SWEEP.POTENTIAL_MIN_KG).toBe(
+      ((CAREER_TUNING.QUALIFYING_TOTAL_KG['campaign-worlds'] as number) +
+        (CAREER_TUNING.QUALIFYING_TOTAL_KG['competitive-worlds'] as number)) /
+        2,
+    );
+    // The top of the band sits inside the range the derived table's strongest
+    // designated cells occupy — `docs/research/qualifying-totals.md` §3.1's raw
+    // men's Open `worlds` row runs 537.5 to 902.5 kg — and under the heaviest
+    // single total anywhere in that dataset, 1153.5 kg. Both are transcribed
+    // here rather than imported, because that document is research and is wired
+    // into nothing; what the assertion buys is that the band cannot drift out of
+    // the range it was justified by without this line moving too.
+    expect(ATTENDANCE_SWEEP.POTENTIAL_MAX_KG).toBeLessThan(902.5);
+    expect(ATTENDANCE_SWEEP.POTENTIAL_MAX_KG).toBeLessThan(1153.5);
+    expect(ATTENDANCE_SWEEP.POTENTIAL_MAX_KG).toBeGreaterThan(
+      ATTENDANCE_SWEEP.POTENTIAL_MIN_KG,
+    );
+  });
+
+  it('keeps the totals two-sided, which every record control depends on', () => {
+    // THE PROPERTY THE BOUND COULD HAVE DESTROYED. Capability only climbs in
+    // the new generator, and a sequence that only ever rose would make
+    // `latest-total-wins` and every delayed form of it report zero — an empty
+    // domain in the one place nobody would look for one. What keeps it
+    // non-empty is that a bad day is a haircut off capability, so the TOTALS go
+    // down even though the strength behind them does not.
+    let descents = 0;
+    let drawn = 0;
+    for (const seed of ATTENDANCE_SWEEP.SEEDS) {
+      const totals = seededCareerTotals(seed, ATTENDANCE_SWEEP.MEETS_PER_CAREER);
+      descents += badDayCount(totals);
+      drawn += totals.length;
+    }
+    expect(descents).toBe(1078);
+    expect(drawn).toBe(4104);
+    // A quarter of meets, pinned as a count with its denominator beside it.
+    expect(descents / drawn).toBeGreaterThan(0.2);
+  });
+
+  it('is a prefix extension in its depth argument, so both sweeps get the same lifters', () => {
+    // AXIS B DRAWS 171 AND AXIS D DRAWS 200 FROM THE SAME SEEDS. If the ceiling
+    // draw depended on how deep the caller asked, those would be different
+    // lifters wearing the same seed, and the two axes would silently be about
+    // different populations. The draw is the head of the stream for exactly this
+    // reason, and this is the assertion that says so.
+    for (const seed of ATTENDANCE_SWEEP.SEEDS) {
+      const shallow = seededCareerTotals(seed, ATTENDANCE_SWEEP.MEETS_PER_CAREER);
+      const deep = seededCareerTotals(seed, CAMPAIGN_SUMMIT_SWEEP.MEETS_PER_ARC);
+      expect(deep.slice(0, shallow.length), `seed ${seed} prefix`).toEqual([...shallow]);
+    }
+    expect(CAMPAIGN_SUMMIT_SWEEP.MEETS_PER_ARC).toBeGreaterThan(ATTENDANCE_SWEEP.MEETS_PER_CAREER);
   });
 });
 
@@ -1120,7 +1373,7 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
     // WHAT THIS AXIS IS FOR, and it is the one thing axes A and B cannot do.
     // Both of them run through `qualifiedMeets`, which reads the federation and
     // the Total and never looks at `enteredMeetIds` — pinned directly under
-    // axis A. So across all 80601 + 337719 of their compared pairs the entered
+    // axis A. So across all 80601 + 343577 of their compared pairs the entered
     // list decides nothing, and the module's claim that spending an entry is
     // not a punishment had no subject.
     //
@@ -1156,11 +1409,11 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
     // different ends — the pair loop reaches the case exactly once per meet —
     // and a rule that stopped spending entries would break the equality rather
     // than only moving a literal.
-    expect(shipped.pairs).toBe(337719);
-    expect(shipped.spentPairs).toBe(4014);
+    expect(shipped.pairs).toBe(343577);
+    expect(shipped.spentPairs).toBe(4049);
     expect(shipped.spentPairs).toBe(shipped.seasonMeets);
-    expect(shipped.movedPairs).toBe(4173);
-    expect(shipped.growingPairs).toBe(273);
+    expect(shipped.movedPairs).toBe(4040);
+    expect(shipped.growingPairs).toBe(107);
 
     // The rest control: a mandatory 28 days off after a meet, which is the most
     // plausible design of the controls this module measures against and is
@@ -1171,7 +1424,7 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
     //
     // Its domain is asserted against the shipped arm's where the two are the
     // same question, and pinned at its own value where the control's rule
-    // changes the answer. `spentPairs` collapses from 4014 to 24 under it, and
+    // changes the answer. `spentPairs` collapses from 4049 to 24 under it, and
     // the collapse is the control describing itself: at the calendar's own
     // resolution the lifter who stayed home is nearly always inside a lockout
     // of their own, so the meet the other one spent was unavailable to both.
@@ -1181,11 +1434,21 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
     // well as pinned.
     expect(rest.pairs).toBe(shipped.pairs);
     expect(rest.seasonMeets).toBe(shipped.seasonMeets);
-    expect(rest.growingPairs).toBe(shipped.growingPairs);
-    expect(rest.movedPairs).toBe(3904);
+    // `growingPairs` USED TO BE ASSERTED EQUAL TO THE SHIPPED ARM'S AND IS NOW
+    // PINNED AT ITS OWN VALUE, one lower. That equality was never a domain
+    // identity — it was a coincidence of the old fixture that read like one.
+    // A lockout filters BOTH lifters' lists, and the diligent lifter's lockout
+    // starts later because they competed more recently, so a meet the diligent
+    // lifter uniquely could have entered can be locked out from under them.
+    // Exactly one pair in this fixture does that. Forcing the two equal would
+    // be asserting that a rest rule cannot touch the thing it is built to
+    // touch, which is the wrong direction for a control.
+    expect(rest.growingPairs).toBe(106);
+    expect(rest.growingPairs).toBe(shipped.growingPairs - 1);
+    expect(rest.movedPairs).toBe(3753);
     expect(rest.spentPairs).toBe(24);
     expect(rest.spentPairs).toBe(ATTENDANCE_SWEEP.SEEDS.length);
-    expect(rest.unexplainedPairs).toBe(3746);
+    expect(rest.unexplainedPairs).toBe(3763);
     expect(rest.worstUnexplained).toBe(4);
 
     // THE THREE TIER-KEYED CONTROLS, AND THE REASON THIS ROUND WIDENED THE
@@ -1208,7 +1471,7 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
     // because a reader scanning the calendar would count two worlds meets in
     // range and assume both are reachable.
     expect(worldsFirst.unexplainedPairs, 'a lockout after the day-6 worlds meet').toBe(0);
-    expect(worldsSecond.unexplainedPairs, 'a lockout after the day-370 worlds meet').toBe(138);
+    expect(worldsSecond.unexplainedPairs, 'a lockout after the day-370 worlds meet').toBe(132);
     expect(worldsThird.unexplainedPairs, 'a lockout after the day-734 worlds meet').toBe(0);
     expect(worldsSecond.worstUnexplained).toBe(6);
     expect(worldsFirst.worstUnexplained).toBe(0);
@@ -1226,8 +1489,8 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
     // ...and the middle arm's counts are NOT the shipped arm's, which is the
     // same statement from the other side: its lockout removed meets the shipped
     // list held, so both counts move.
-    expect(worldsSecond.spentPairs).toBe(3876);
-    expect(worldsSecond.movedPairs).toBe(4150);
+    expect(worldsSecond.spentPairs).toBe(3917);
+    expect(worldsSecond.movedPairs).toBe(4018);
     expect(worldsSecond.spentPairs).toBeLessThan(shipped.spentPairs);
     // Every arm ran the same pairs, so none of the numbers above is about a
     // domain of its own.
@@ -1256,10 +1519,10 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
     const blindLag = measureOneEntryArm('shipped', ATTENDANCE_SWEEP.EVALUATION_LAG_DAYS);
     expect(blindLag.spentPairs).toBe(0);
     expect(blindLag.unexplainedPairs).toBe(0);
-    expect(blindLag.movedPairs).toBe(273);
-    expect(blindLag.growingPairs).toBe(273);
-    expect(blindLag.pairs).toBe(337719);
-    expect(blindLag.seasonMeets).toBe(4014);
+    expect(blindLag.movedPairs).toBe(107);
+    expect(blindLag.growingPairs).toBe(107);
+    expect(blindLag.pairs).toBe(343577);
+    expect(blindLag.seasonMeets).toBe(4049);
     // And the lag it is blind at is axis B's own, not a number picked to make
     // the zero above happen.
     expect(ATTENDANCE_SWEEP.EVALUATION_LAG_DAYS).toBeGreaterThan(
@@ -1471,44 +1734,58 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
     // R2b, WHICH IS THE CLAUSE THAT ACTUALLY BITES. "Always reachable" is a
     // claim about every player, not about an average, and cutting the
     // first-year count by signup day is what turns it into one. The shipped
-    // calendar's worst signup day gets 19 of its 24 arcs to a summit inside the
-    // first year.
+    // calendar's worst signup day gets all 24 of its arcs to a summit inside the
+    // first year. That number used to be 19; bounding the totals generator took
+    // it to the ceiling, because a bad meet no longer costs a lifter strength
+    // they had already built. The controls' zeros did not move, which is what
+    // says the gap is the calendar's rather than the fixture's.
     expect(shipped.worstOffsetFirstYearArcs).toBeGreaterThanOrEqual(
       CAMPAIGN_SUMMIT_SWEEP.MIN_FIRST_YEAR_ARCS_PER_OFFSET,
     );
-    expect(shipped.worstOffsetFirstYearArcs).toBe(19);
-    expect(shipped.firstYearArcsPerOffset).toEqual([23, 23, 23, 23, 23, 21, 21, 19]);
+    expect(shipped.worstOffsetFirstYearArcs).toBe(24);
+    expect(shipped.firstYearArcsPerOffset).toEqual([24, 24, 24, 24, 24, 24, 24, 24]);
 
     // R2, the whole-population pacing form, pinned exactly beside its bar so
     // the margin is visible rather than implied.
     expect(shipped.arcsReachingInsideAYear).toBeGreaterThanOrEqual(
       CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_ARCS_REQUIRED,
     );
-    expect(shipped.arcsReachingInsideAYear).toBe(176);
+    expect(shipped.arcsReachingInsideAYear).toBe(192);
     expect(shipped.medianDaysToFirstSummit as number).toBeLessThanOrEqual(
       CAMPAIGN_SUMMIT_SWEEP.MEDIAN_DAYS_CEILING,
     );
-    expect(shipped.medianDaysToFirstSummit).toBe(198);
-    expect(shipped.worstDaysToFirstSummit).toBe(608);
+    expect(shipped.medianDaysToFirstSummit).toBe(154);
+    expect(shipped.worstDaysToFirstSummit).toBe(290);
 
-    // R3's second half. The fastest arc had eight meets behind it, which clears
+    // R3's second half. The fastest arc had NINE meets behind it, which clears
     // the design floor and is ALSO a fact about the total generator rather than
-    // about the calendar — see the constant's block. Pinned exactly so that a
-    // generator given a plausible ceiling moves it visibly.
+    // about the calendar — see the constant's block. It was pinned exactly so
+    // that a generator given a plausible ceiling would move it visibly, and the
+    // generator was given one: it moved from 8 to 9. ONE MEET, WHICH IS THE
+    // USEFUL PART. A per-lifter ceiling bounds where a career ENDS UP and barely
+    // touches how fast it STARTS, because headroom is 1 at the opening total by
+    // construction. Range and rate are two axes and only the range has been
+    // bounded.
     expect(shipped.fewestMeetsBeforeASummit as number).toBeGreaterThanOrEqual(
       CAMPAIGN_SUMMIT_SWEEP.MIN_MEETS_BEFORE_A_SUMMIT,
     );
-    expect(shipped.fewestMeetsBeforeASummit).toBe(8);
+    expect(shipped.fewestMeetsBeforeASummit).toBe(9);
 
-    // NOW THE CONTROLS, AND THE FIRST THING THEY SAY IS THAT R1 IS NEARLY
-    // VACUOUS ON ITS OWN. Measured rather than suspected: the calendar GDD §6.6
-    // recorded as a design violation takes 191 of the same 192 arcs to a summit
-    // too. An absolute stated over the whole population separates the broken
-    // calendar from the repaired one by a single arc, because an arc running
-    // for two calendar periods will eventually meet an annual series whatever
-    // its phase. R2b separates them by nineteen.
-    expect(atTheOldPhase.arcsReachingASummit).toBe(191);
-    expect(annualLate.arcsReachingASummit).toBe(189);
+    // NOW THE CONTROLS, AND THE FIRST THING THEY SAY IS THAT R1 IS EXACTLY
+    // VACUOUS ON ITS OWN. It used to be NEARLY vacuous: the calendar GDD §6.6
+    // recorded as a design violation took 191 of the same 192 arcs to a summit,
+    // separating broken from repaired by a single arc. Under the bounded totals
+    // generator every control takes all 192, because an arc running for two
+    // calendar periods meets an annual series whatever its phase and careers now
+    // reach the gate reliably enough that the one straggler no longer straggles.
+    //
+    // R1 SEPARATES NOTHING AND IS KEPT ANYWAY, because GDD §6.6 states it as an
+    // absolute and CLAUDE.md has three times refused a documented breach of one.
+    // What it must not be read as is evidence. R2b separates them by
+    // twenty-four.
+    expect(atTheOldPhase.arcsReachingASummit).toBe(192);
+    expect(annualLate.arcsReachingASummit).toBe(192);
+    expect(shipped.arcsReachingASummit).toBe(atTheOldPhase.arcsReachingASummit);
     expect(atTheOldPhase.worstOffsetFirstYearArcs).toBe(0);
     expect(annualLate.worstOffsetFirstYearArcs).toBe(0);
 
@@ -1520,8 +1797,8 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
     // leaving the cadence annual moves the lockout to the OTHER end: the player
     // who signs up late in the season arrives just after the summit and waits a
     // whole year for the next.
-    expect(atTheOldPhase.firstYearArcsPerOffset).toEqual([0, 23, 23, 23, 23, 22, 21, 21]);
-    expect(annualLate.firstYearArcsPerOffset).toEqual([18, 16, 14, 12, 11, 8, 4, 0]);
+    expect(atTheOldPhase.firstYearArcsPerOffset).toEqual([0, 24, 24, 24, 24, 24, 24, 24]);
+    expect(annualLate.firstYearArcsPerOffset).toEqual([24, 24, 24, 23, 21, 15, 2, 0]);
     // Neither knob alone. That is the whole argument for changing both, and it
     // is these two rows rather than a paragraph.
     expect(atTheOldPhase.firstYearArcsPerOffset[0]).toBe(0);
@@ -1531,24 +1808,25 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
 
     // The controls on the pacing statistics, so the shipped numbers are numbers
     // against something.
-    expect(atTheOldPhase.arcsReachingInsideAYear).toBe(156);
-    expect(annualLate.arcsReachingInsideAYear).toBe(83);
+    expect(atTheOldPhase.arcsReachingInsideAYear).toBe(168);
+    expect(annualLate.arcsReachingInsideAYear).toBe(133);
     expect(atTheOldPhase.medianDaysToFirstSummit).toBe(301);
-    expect(annualLate.medianDaysToFirstSummit).toBe(380);
+    expect(annualLate.medianDaysToFirstSummit).toBe(154);
 
     // THE FOURTH CORNER, AND IT CORRECTS WHAT THE THREE ROWS ABOVE READ LIKE.
     // Both controls so far moved the CADENCE as well as the phase, so "neither
     // knob alone" is not something they can establish — and `PHASE_DAYS` said
     // it anyway. Holding the cadence at the shipped semi-annual and putting the
-    // phase back on day six: still 192 of 192, worst signup day 18 against 19.
+    // phase back on day six: still 192 of 192, worst signup day 24 — the SAME as
+    // the shipped calendar, where it used to be 18 against 19.
     //
     // THE CADENCE IS THE REACHABILITY FIX. The phase is very nearly free for
     // that purpose, and the reason is arithmetic rather than this population —
     // a series coming round twice a year has an occurrence within 182 days of
     // every day there is, wherever it starts.
     expect(semiAnnualAtTheOldPhase.arcsReachingASummit).toBe(192);
-    expect(semiAnnualAtTheOldPhase.worstOffsetFirstYearArcs).toBe(18);
-    expect(semiAnnualAtTheOldPhase.arcsReachingInsideAYear).toBe(174);
+    expect(semiAnnualAtTheOldPhase.worstOffsetFirstYearArcs).toBe(24);
+    expect(semiAnnualAtTheOldPhase.arcsReachingInsideAYear).toBe(192);
     // Read as a 2x2 on the one statistic R2b is about: the two semi-annual
     // corners clear the bar and the two annual corners are zero, whichever
     // phase each is at. That is the shape of "one knob decides this".
@@ -1557,15 +1835,15 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
       semiAnnualAtTheOldPhase.worstOffsetFirstYearArcs,
       annualLate.worstOffsetFirstYearArcs,
       atTheOldPhase.worstOffsetFirstYearArcs,
-    ]).toEqual([19, 18, 0, 0]);
+    ]).toEqual([24, 24, 0, 0]);
 
     // AND THE PHASE'S OWN STATISTIC, WHICH NOTHING ABOVE REACHES. R1, R2 and
     // R2b are all about whether a summit ARRIVES. This is about whether the
     // first one a new lifter is SHOWN is one they could ever enter: at the
     // day-six phase the season opens with a world championship that no seed can
     // make, under either cadence, and the calendar draws it anyway.
-    expect(shipped.anchorArcsEnteringTheirFirstOfferedSummit).toBe(18);
-    expect(annualLate.anchorArcsEnteringTheirFirstOfferedSummit).toBe(18);
+    expect(shipped.anchorArcsEnteringTheirFirstOfferedSummit).toBe(24);
+    expect(annualLate.anchorArcsEnteringTheirFirstOfferedSummit).toBe(24);
     expect(atTheOldPhase.anchorArcsEnteringTheirFirstOfferedSummit).toBe(0);
     expect(semiAnnualAtTheOldPhase.anchorArcsEnteringTheirFirstOfferedSummit).toBe(0);
     // The 2x2 the other way up, so the two knobs are visibly orthogonal: this
@@ -1575,7 +1853,7 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
       annualLate.anchorArcsEnteringTheirFirstOfferedSummit,
       semiAnnualAtTheOldPhase.anchorArcsEnteringTheirFirstOfferedSummit,
       atTheOldPhase.anchorArcsEnteringTheirFirstOfferedSummit,
-    ]).toEqual([18, 18, 0, 0]);
+    ]).toEqual([24, 24, 0, 0]);
   });
 
   it('counts what the sweep actually saw, per tier, so none of the zeros is about an empty domain', () => {
@@ -1594,10 +1872,10 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
     });
     expect(shipped.enteredPerTier).toEqual({
       local: 20016,
-      regional: 9826,
-      nationals: 1328,
-      'campaign-worlds': 640,
-      'competitive-worlds': 343,
+      regional: 9959,
+      nationals: 1447,
+      'campaign-worlds': 709,
+      'competitive-worlds': 318,
     });
     // Every tier is entered and no tier is entered more often than it is
     // offered, which is the shape a census has when it is a census of something.
@@ -1607,15 +1885,24 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
         shipped.offeredPerTier[tier],
       );
     }
-    // NATIONALS IS THIN AND IS REPORTED AS THIN. 1328 of 1536 offered is 86%,
+    // NATIONALS IS THIN AND IS REPORTED AS THIN. 1447 of 1536 offered is 94%,
     // which is the number a reader should have rather than "nationals is fine
-    // now". Under the one-year window this piece started from it was 60 of 96;
-    // what changed is the window the arcs run over, not the tier.
+    // now". It was 1328 of 1536 — 86% — under the unbounded generator, and the
+    // rise is the fixture rather than the tier: a lifter who no longer loses
+    // strength on a bad day clears the nationals bar sooner and stops missing
+    // the meets before they clear it.
     expect(shipped.enteredPerTier.nationals / shipped.offeredPerTier.nationals).toBeCloseTo(
-      0.8646,
+      0.9421,
       4,
     );
-    expect(shipped.offeredPerTier.nationals - shipped.enteredPerTier.nationals).toBe(208);
+    expect(shipped.offeredPerTier.nationals - shipped.enteredPerTier.nationals).toBe(89);
+    // AND COMPETITIVE WORLDS WENT THE OTHER WAY — 343 entries to 318 — which is
+    // the check that says the rise above is not just "everything got easier".
+    // Two of the 24 seeds now draw a ceiling under the 650 kg bar and never
+    // enter that tier at all, which is the top gate refusing somebody.
+    expect(shipped.enteredPerTier['competitive-worlds']).toBeLessThan(
+      shipped.offeredPerTier['competitive-worlds'],
+    );
     // And the summit is scarce. 768 offered against 20016 local meets is what
     // keeps it a summit rather than a rung.
     expect(shipped.offeredPerTier['campaign-worlds'] / shipped.offeredPerTier.local).toBeLessThan(0.05);
@@ -1624,7 +1911,7 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
     // measured instead of assumed. An arc that ran past it throws.
     expect(shipped.deepestArc).toBe(170);
     expect(shipped.deepestArc).toBeLessThan(CAMPAIGN_SUMMIT_SWEEP.MEETS_PER_ARC);
-    expect(shipped.summitsEntered).toBe(640);
+    expect(shipped.summitsEntered).toBe(709);
   });
 
   it('reproduces §6.6’s own finding under the unfixed calendar, and the tie-break it forces', () => {
@@ -1645,17 +1932,25 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
           arc.daysToFirstSummit <= CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_DAYS,
       ),
     ).toHaveLength(0);
-    // And it is not that they were too weak. 23 of the 24 are holding more than
-    // the gate long before their first year is out — the meet and the strength
-    // never coincide, which is the half of the finding a threshold change alone
-    // cannot fix.
+    // And it is not that they were too weak. ALL 24 are holding more than the
+    // gate long before their first year is out — the meet and the strength never
+    // coincide, which is the half of the finding a threshold change alone cannot
+    // fix.
     //
-    // 23 AND NOT 24, WHICH IS A CORRECTION THIS CHECK MADE TO ITS OWN COMMENT.
-    // It was written asserting all 24 and measured 23: one seed is genuinely
-    // slow and does not clear 600 kg until day 437. That arc is locked out of
-    // its first summit for a reason the design is entitled to — it was not
-    // strong enough — and the other 23 are locked out for a reason it is not.
-    // Keeping the two apart is the whole point of the count.
+    // 24 AND NOT 23, AND THE CORRECTION RAN THE OTHER WAY THIS TIME. This check
+    // was once written asserting all 24, measured 23, and the comment was
+    // corrected to record that one seed was genuinely slow and did not clear
+    // 600 kg until day 437 — locked out for a reason the design is entitled to
+    // rather than one it is not. Bounding the totals generator removed that
+    // seed's slow year: every arc now clears the gate inside its first year, so
+    // all 24 lockouts are the calendar's.
+    //
+    // WHICH COSTS THIS TEST THE DISCRIMINATION IT HAD, and that is said here
+    // rather than left for a reader to notice. The `toBeGreaterThan` below now
+    // compares 24 against 0 and cannot fail while any arc clears the gate; it is
+    // kept because it states the shape of the finding, not because it is
+    // evidence. The evidence is the zero above it — no arc ENTERS a summit
+    // inside its first year — measured against 24 arcs that could have.
     const gate = CAREER_TUNING.QUALIFYING_TOTAL_KG['campaign-worlds'] as number;
     const clearedInsideTheYear = anchorArcs.filter((arc) =>
       arc.meets.some(
@@ -1664,7 +1959,7 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
           meet.day - seasonAnchorDay() <= CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_DAYS,
       ),
     );
-    expect(clearedInsideTheYear).toHaveLength(23);
+    expect(clearedInsideTheYear).toHaveLength(24);
     expect(clearedInsideTheYear.length).toBeGreaterThan(
       anchorArcs.length - clearedInsideTheYear.length,
     );
@@ -1678,12 +1973,12 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
     // comment says: the lower tier on the ladder wins the day.
     const atTheOldPhase = measureCampaignReach('annual-at-the-competitive-phase');
     expect(atTheOldPhase.enteredPerTier['competitive-worlds']).toBe(0);
-    expect(measureCampaignReach('shipped').enteredPerTier['competitive-worlds']).toBe(343);
+    expect(measureCampaignReach('shipped').enteredPerTier['competitive-worlds']).toBe(318);
     expect(tierIndex('campaign-worlds')).toBeLessThan(tierIndex('competitive-worlds'));
     // The other three tiers are untouched by the control, which is what says
     // the zero above is the collision and not a thinner fixture.
     expect(atTheOldPhase.enteredPerTier.local).toBe(20016);
-    expect(atTheOldPhase.enteredPerTier.regional).toBe(9826);
-    expect(atTheOldPhase.enteredPerTier.nationals).toBe(1328);
+    expect(atTheOldPhase.enteredPerTier.regional).toBe(9959);
+    expect(atTheOldPhase.enteredPerTier.nationals).toBe(1447);
   });
 });

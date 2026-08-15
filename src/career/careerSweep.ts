@@ -71,10 +71,15 @@
  *     three a simulated career can be standing on is the whole question this
  *     round was about.
  *   - `worlds-reset-*` — the annual result taken as the lifter's ranking total
- *     instead of their best. Three again, and all three measure zero on this
- *     population by 27.5 kg: see the block above `ENTRY_VARIANTS`. That margin
- *     is arithmetic about these 24 seeded careers rather than a property of the
- *     calendar, so it is measured and pinned rather than argued for.
+ *     instead of their best. Three again, and the middle one NOW BITES: see the
+ *     block above `ENTRY_VARIANTS`. It used to measure zero with 27.5 kg of
+ *     daylight, because the unbounded totals generator had taken every career
+ *     far past the 650 kg bar by the time a worlds meet came round. Bounding the
+ *     generator closed that gap and the control started firing without a line of
+ *     it being edited — which is the same lesson as the `DELAYED_FORM_*` block's,
+ *     read from the other direction: a control's zero can be a fact about the
+ *     fixture rather than about the rule, and only a fixture change tells you
+ *     which it was.
  */
 
 import { nextRandom, seedState } from '../game/prng';
@@ -218,15 +223,11 @@ export function strengthGrid(): readonly (number | null)[] {
  *
  * WHAT DEPTH STILL DOES NOT REACH, stated because a widened domain invites the
  * assumption that it is now complete, and pinned as controls rather than as
- * this sentence. There are four edges and they are not all at the far end:
+ * this sentence. There are three edges and they are not all at the far end:
  *
  *   - A rule keyed to a lifter's 170th meet. The deepest career here is 169.
  *     `delayed-form-past-the-edge` is that edge as a measured zero, and the
  *     count of careers deep enough to reach it is pinned at 0 beside it.
- *   - A rule keyed to a lifter's 105th meet. Careers do reach it — all 24 of
- *     them — and the qualification axis reports nothing anyway.
- *     `delayed-form-past-visible` is that, with the count of careers that DO
- *     reach it pinned at 24, so "invisible" and "unreachable" are told apart.
  *   - A rule keyed to the THIRD occurrence of the annual series, on day 734.
  *     Two periods hold two of them, at days 6 and 370.
  *     `worlds-cooldown-third` is that edge as a measured zero.
@@ -237,21 +238,30 @@ export function strengthGrid(): readonly (number | null)[] {
  *     domain as well as at its end, and a reader counting worlds meets on the
  *     calendar would have assumed both were reachable.
  *
- * AND ONE BLIND SPOT THAT IS NOT AN EDGE AT ALL, which is what this round
- * turned up rather than what it went looking for. The qualification axis does
- * not see the worlds-keyed record rule anywhere in this fixture, and the reason
- * is a margin of 27.5 kg: the lowest total anybody here puts up at a competitive
- * worlds meet is 677.5, against a top qualifying total of 650, so a rule that rewrites
- * their record with it leaves them clearing every bar on the ladder. That is
- * why the tier-keyed controls that report a non-zero are on the entry axis, and
- * why the three `worlds-reset-*` record controls ship reporting zero with their
- * reason measured beside them.
+ * AND ONE BLIND SPOT THAT WAS NOT AN EDGE AT ALL, KEPT HERE BECAUSE BOUNDING
+ * THE GENERATOR CLOSED IT AND THE BEFORE-AND-AFTER IS THE POINT. The
+ * qualification axis used to see the worlds-keyed record rule nowhere in this
+ * fixture, and the reason was a margin of 27.5 kg: the lowest total anybody put
+ * up at a competitive worlds meet was 677.5 against a top qualifying total of
+ * 650, so a rule that rewrote their record with it still left them clearing
+ * every bar on the ladder. That paragraph warned it was "a fact about these 24
+ * seeded careers and the shipped qualifying totals, not a theorem", and that
+ * the margin could move with nothing here having to change.
  *
- * A reader should hold that at the size it is. It is a fact about these 24
- * seeded careers and the shipped qualifying totals, not a theorem: a seed whose
- * worlds day fell 8 kg lower would move it, and nothing here would have to
- * change for that to happen. What the pin buys is that the margin is a number
- * in a test rather than an assumption nobody wrote down.
+ * It moved. Under the bounded generator the lowest total put up at a
+ * competitive worlds meet is 632.5 kg — 17.5 kg BELOW the bar rather than 27.5
+ * above it — because a career now plateaus somewhere in
+ * `[POTENTIAL_MIN_KG, POTENTIAL_MAX_KG]` instead of climbing out of the
+ * ladder's range, and a bad day at the plateau lands under the top gate.
+ * `worlds-reset-second` reports a non-zero, and `eligibility.test.ts` pins it
+ * with the new margin beside it.
+ *
+ * The general form, which is worth more than either number: A CONTROL
+ * REPORTING ZERO IS EVIDENCE ABOUT THE RULE ONLY IF THE FIXTURE CAN REACH THE
+ * CASE, and whether it can is a property of the fixture that nothing in the
+ * control's own file tracks. Two of this module's zeros were fixture facts
+ * wearing the costume of rule facts, and both were found by changing the
+ * fixture rather than by reading the checks.
  *
  * A finite domain has an edge wherever it is drawn; what changed is where, and
  * that every edge is now a number a test pins rather than a sentence.
@@ -500,53 +510,66 @@ export const ATTENDANCE_SWEEP = Object.freeze({
    * counts once you are established" — and that delay is what made the old
    * 14-meet fixture useless: the same rule, delayed past 15, was invisible.
    *
-   * So three points ship rather than two, because deepening the domain proved
-   * the old pair had been measuring one edge while a nearer one did the real
-   * binding. At one calendar period they were 81 and 82 — the deepest career
-   * and one past it — and the first of them measured 81 violating pairs. Moved
-   * to 164 and 165 at two periods, THE SAME PAIR MEASURED ZERO AND ZERO: the
-   * check went quiet without anybody editing it, which is what a widened domain
-   * doing the work of a new rule looks like.
+   * ===========================================================================
+   * THERE USED TO BE A THIRD POINT HERE AND BOUNDING THE GENERATOR DELETED IT
+   * ===========================================================================
+   * `DELAYED_FORM_PAST_VISIBLE` is GONE, and the deletion is the finding rather
+   * than tidying. It named the meet count at which the rule FIRES in every
+   * career and the axis still reports nothing — "invisible, not unreachable" —
+   * and it was a real distinction while the totals generator was an unbounded
+   * walk, because a career whose totals had climbed past 650 kg stopped
+   * interleaving with any qualifying bar and the rule had nothing left to take.
    *
-   * IT HAPPENED AGAIN WHEN THE SUMMIT WAS SPLIT, and this is the second
-   * instance of the same mechanism rather than a repetition of the first. GDD
-   * §6.6's campaign summit adds four meets to a two-period career, which moves
-   * every subsequent meet's INDEX by one to four — and the visibility edge is a
-   * fact about which index a total lands on. The pair pinned at 100 and 101 was
-   * still green and had stopped measuring the thing it names: at the five-tier
-   * calendar the last n that bites is 103, so 100 was two zeros' worth of
-   * daylight away from the edge it was placed on. NOTHING ABOUT THE RULE
-   * CHANGED AND NOTHING ABOUT THE CHECK CHANGED; a tier landed in a different
-   * file.
+   * A bounded generator has no such region. Every career now plateaus inside
+   * `[POTENTIAL_MIN_KG, POTENTIAL_MAX_KG]`, a band that straddles the top of the
+   * ladder, and a bad day is a share of capability — so totals go on crossing
+   * qualifying bars for as long as the career lasts. Measured rather than
+   * argued: scanned at EVERY n from 0 to the deepest career, the rule's
+   * violating count is non-zero at every n at which it fires at all, and the
+   * deepest n that fires is 168. So the "one meet past the last one that bites"
+   * point IS `DELAYED_FORM_PAST_THE_EDGE`, and a constant equal to another
+   * constant, measuring the same zero for the same reason, is a check that can
+   * no longer speak. CLAUDE.md's rule for that is to delete it and record the
+   * domination, which is this paragraph.
+   *
+   * WHAT IS LOST, STATED RATHER THAN GLOSSED. The axis can no longer
+   * demonstrate the difference between "the rule fired and we could not see it"
+   * and "the rule never fired", because on this fixture the first case does not
+   * occur. If a future generator, tuning or calendar reopens it — anything that
+   * lets careers outgrow the top qualifying total again — the third point comes
+   * back, and the way to find out is the scan described above rather than an
+   * assumption that it is still closed.
+   *
+   * THIS BLOCK HAS NOW HAD ITS EDGE MOVE UNDER IT THREE TIMES WITHOUT ANYBODY
+   * EDITING THE CHECK, which is the reason it is written at this length. At one
+   * calendar period the pair was 81 and 82; two periods moved the deepest career
+   * to 165 and the same pair went to zero and zero. Splitting the summit into
+   * two tiers moved every later meet's INDEX by one to four and took the pinned
+   * pair at 100/101 two zeros' worth of daylight away from the edge it named.
+   * And bounding the generator has now removed the edge altogether. Nothing
+   * about the rule changed on any of the three occasions.
    *
    * Where the rule can bite at all is arithmetic about this population rather
    * than a property of the calendar, so it is measured rather than reasoned
    * about. `latestTotalAfter(n)` differs from the shipped fold at exactly one
    * moment — the lifter's (n+1)-th meet, where the diligent lifter has switched
-   * to current form and the one who skipped a meet has not — so it can only
-   * show up when the total put up AT that meet sits below a qualifying bar the
-   * lifter's own best has already cleared. Deep into a career the totals here
-   * have outgrown the top bar of 650 kg and stopped interleaving with any of
-   * them. Scanned meet by meet from 90 to 130, the last n that bites is 103.
+   * to current form and the one who skipped a meet has not — so it can only show
+   * up when the total put up AT that meet sits below a qualifying bar the
+   * lifter's own best has already cleared.
    *
-   * The three points are therefore:
+   * The two points are therefore:
    *
-   *   - `DELAYED_FORM_INSIDE` at 103, the deepest meet count at which this axis
-   *     can still see the rule. Non-zero.
-   *   - `DELAYED_FORM_PAST_VISIBLE` at 104, one meet further. The rule FIRES —
-   *     every one of the 24 careers is deeper than 104 meets — and the axis
-   *     still reports nothing.
+   *   - `DELAYED_FORM_INSIDE` at 168, the deepest meet count at which the rule
+   *     fires at all — 17 of the 24 careers are 169 meets long and the other
+   *     seven are 168 — and it is non-zero there.
    *   - `DELAYED_FORM_PAST_THE_EDGE` at 169, the deepest career. The rule never
-   *     fires at all, because firing needs a 170th meet and nothing here has
-   *     one.
+   *     fires, because firing needs a 170th meet and nothing here has one.
    *
-   * Two zeros for two different reasons, and the difference is what each one is
-   * worth. `eligibility.test.ts` pins how many careers reach each rule's
-   * switch-on point, so "invisible" and "unreachable" are told apart by a count
-   * rather than by this paragraph.
+   * One measured non-zero and one zero with its reason counted beside it.
+   * `eligibility.test.ts` pins how many careers reach each rule's switch-on
+   * point, so "unreachable" is a count rather than this paragraph.
    */
-  DELAYED_FORM_INSIDE: 103,
-  DELAYED_FORM_PAST_VISIBLE: 104,
+  DELAYED_FORM_INSIDE: 168,
   DELAYED_FORM_PAST_THE_EDGE: 169,
   /**
    * Which occurrence of the annual series each tier-keyed control fires at,
@@ -742,7 +765,6 @@ export type RecordVariant =
   | 'shipped'
   | 'latest-total-wins'
   | 'delayed-form-inside'
-  | 'delayed-form-past-visible'
   | 'delayed-form-past-the-edge'
   | 'worlds-reset-first'
   | 'worlds-reset-second'
@@ -848,7 +870,6 @@ export const RECORD_VARIANTS: Readonly<Record<RecordVariant, RecordFold>> = Obje
   shipped: careerRecordAfterMeet,
   'latest-total-wins': latestTotalAfter(0),
   'delayed-form-inside': latestTotalAfter(ATTENDANCE_SWEEP.DELAYED_FORM_INSIDE),
-  'delayed-form-past-visible': latestTotalAfter(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_VISIBLE),
   'delayed-form-past-the-edge': latestTotalAfter(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_THE_EDGE),
   'worlds-reset-first': worldsResetAt(ATTENDANCE_SWEEP.WORLDS_OCCURRENCE_FIRST),
   'worlds-reset-second': worldsResetAt(ATTENDANCE_SWEEP.WORLDS_OCCURRENCE_SECOND),
@@ -1025,17 +1046,27 @@ function lockedOutUntil(
  * the more likely design of the two: a fortnight off after a world championship
  * reads as respect for the athlete rather than as a tax. It is the same tax.
  *
- * WHY THE TIER-KEYED CONTROLS LIVE ON THIS AXIS AND NOT ON THE RECORD AXIS.
- * Measured, not chosen. A worlds-keyed RECORD rule is invisible to the
- * qualification axis at any depth this fixture reaches: `bestTotalKg` is
- * non-decreasing under the shipped fold, the top qualifying total is 650 kg,
- * and the lowest total anybody in this sweep puts up AT a worlds meet is
- * 677.5 kg — so a rule that rewrites their record with it still leaves them
- * clearing every bar on the ladder. `worlds-reset-second` is that fact as a
- * measured zero, with the 677.5 and the 650 pinned beside it and the count of
- * careers whose record the rule really does rewrite pinned at 16. The
- * enterable list has no such ceiling, which is why the tier-keyed lockouts are
- * here.
+ * WHY THE TIER-KEYED CONTROLS WERE PUT ON THIS AXIS AND NOT ON THE RECORD AXIS,
+ * AND WHY THAT REASON HAS SINCE EXPIRED. Measured both times, not chosen.
+ *
+ * The reason as it stood: a worlds-keyed RECORD rule was invisible to the
+ * qualification axis at any depth the fixture reached, because `bestTotalKg` is
+ * non-decreasing under the shipped fold, the top qualifying total is 650 kg, and
+ * the lowest total anybody put up AT a worlds meet was 677.5 kg — so a rule that
+ * rewrote their record with it still left them clearing every bar on the ladder.
+ *
+ * Bounding the totals generator moved that number to 632.5 kg, 17.5 kg UNDER the
+ * bar, because careers now plateau inside a band that straddles the top of the
+ * ladder rather than climbing out of it. `worlds-reset-second` reports a
+ * non-zero on the record axis today, and `eligibility.test.ts` pins the new
+ * minimum, the bar and the count of careers whose record the rule really does
+ * rewrite.
+ *
+ * The tier-keyed lockouts stay here anyway, and now for a reason that does not
+ * depend on the fixture: the enterable list has no ceiling of that kind at all.
+ * A lockout takes meets off a lifter whatever they are holding, so the entry
+ * axis can see one at any strength, which was always the durable half of the
+ * argument and is the half that survives.
  */
 export const ENTRY_VARIANTS: Readonly<Record<EntryVariant, EntryFilter>> = Object.freeze({
   shipped: (base) => base,
@@ -1248,15 +1279,24 @@ export function seasonMeetsOfTier(
  * first half are absolutes; R2, R2b and R3's second half are the numbers a
  * playtester will move.
  *
- * R1 IS NOT THE CLAUSE THAT BITES, AND SAYING SO IS THE POINT OF WRITING R2b
- * DOWN SEPARATELY. Measured: the shipped calendar takes 192 of 192 arcs to a
- * summit and the unfixed control takes 191 of 192, so R1 alone separates a
- * calendar §6.6 called a design violation from the one that repairs it by a
- * single arc. What separates them is R2b — the shipped calendar's worst signup
- * day gets 19 of its 24 arcs to a summit inside the first year, and the
- * control's worst signup day gets ZERO. An absolute stated over the whole
- * population turned out to be nearly vacuous; the same absolute stated per
- * signup day is the measurement.
+ * R1 IS NOT THE CLAUSE THAT BITES, AND IT IS NOW EXACTLY VACUOUS RATHER THAN
+ * NEARLY SO. This block used to record that the shipped calendar takes 192 of
+ * 192 arcs to a summit while the unfixed control takes 191 of 192 — R1
+ * separating a calendar §6.6 called a design violation from the one that repairs
+ * it by a single arc. Under the bounded totals generator BOTH take 192 of 192,
+ * and all three controls do: an arc running two calendar periods meets an annual
+ * series whatever its phase, and careers now reach the gate reliably enough that
+ * the one straggler which used to fall short no longer does.
+ *
+ * So R1's separating power was 1 arc and is now 0. It is kept as an absolute
+ * because GDD §6.6 states it as one and CLAUDE.md has three times refused a
+ * documented breach of an absolute — but nobody should read it as evidence that
+ * the calendar is repaired. WHAT SEPARATES THEM IS R2b: the shipped calendar's
+ * worst signup day gets all 24 of its arcs to a summit inside the first year and
+ * both annual controls' worst signup day gets ZERO. An absolute stated over a
+ * whole population hid the failure; the same absolute stated per signup day is
+ * the measurement, and bounding the fixture has made that gap wider rather than
+ * narrower.
  *
  * AND R2b DOES NOT REACH THE PHASE, which is the same lesson one level down.
  * Both clauses are about whether a summit ARRIVES, and the cadence decides
@@ -1284,11 +1324,19 @@ export function seasonMeetsOfTier(
  * one-sided controls the shipped calendar passed and both controls failed,
  * which reads as "both knobs were needed" and is what `PHASE_DAYS` claimed.
  * Both controls had moved the cadence too. Holding it: the CADENCE is the
- * reachability fix — semi-annual at the old phase still takes 192 of 192 arcs
- * to a summit, worst signup day 18 against the shipped 19 — and the PHASE is a
- * legibility fix with its own statistic,
- * `anchorArcsEnteringTheirFirstOfferedSummit`, which is 0 of 24 at the old
- * phase under EITHER cadence and 18 of 24 at the shipped one.
+ * reachability fix — semi-annual at the old phase takes 192 of 192 arcs to a
+ * summit, worst signup day 24, the same as the shipped calendar — and the PHASE
+ * is a legibility fix with its own statistic,
+ * `anchorArcsEnteringTheirFirstOfferedSummit`, which is 0 of 24 at the old phase
+ * under EITHER cadence and 24 of 24 at the shipped one.
+ *
+ * BOUNDING THE GENERATOR MADE THE CADENCE'S CREDIT COMPLETE RATHER THAN MERELY
+ * LARGE. The two numbers used to be 18 against 19, close enough that a reader
+ * could wonder whether the phase was contributing a little. They are now 24 and
+ * 24: on the reachability clause the phase contributes exactly nothing, and its
+ * entire case is the legibility statistic. That is the same conclusion the
+ * four-corner square already reached, arrived at again on a fixture that no
+ * longer flatters it.
  *
  * Two knobs need four corners, or one edge takes the other's credit.
  *
@@ -1350,9 +1398,18 @@ export const CAMPAIGN_SUMMIT_SWEEP = Object.freeze({
    * and demanding otherwise would demand a summit every week.
    *
    * DELIBERATELY BELOW THE MEASUREMENT RATHER THAN EQUAL TO IT. The shipped
-   * calendar measures 176, which `eligibility.test.ts` pins exactly beside this
-   * bar. A requirement set AT its own measurement reads as a requirement chosen
-   * to be met, and carries no margin to lose before it is broken.
+   * calendar measures 192 — every arc — which `eligibility.test.ts` pins exactly
+   * beside this bar. A requirement set AT its own measurement reads as a
+   * requirement chosen to be met, and carries no margin to lose before it is
+   * broken.
+   *
+   * THE MARGIN GOT BIGGER WHEN THE GENERATOR WAS BOUNDED, from 176 to 192, and
+   * that is not the calendar improving. A bad meet no longer costs a lifter
+   * strength they had already built, so careers climb to the gate faster and
+   * more uniformly — the median wait from signup fell from 198 days to 154. This
+   * fixture was always "the CEILING of campaign pace, not its middle", as
+   * `simulateCampaignArc` says; bounding the generator raised the ceiling it
+   * measures rather than telling anybody more about the middle.
    */
   FIRST_YEAR_ARCS_REQUIRED: 168,
   /** R2, second half: the median arc's wait, in days from signup. */
@@ -1361,9 +1418,12 @@ export const CAMPAIGN_SUMMIT_SWEEP = Object.freeze({
    * R2b: the fewest arcs any ONE signup day may get to a summit inside the
    * first year, out of the 24 seeds that share it.
    *
-   * Half. The shipped calendar's worst signup day measures 19 of 24 and both
-   * controls' worst measure 0 of 24, so this bar sits between two numbers that
-   * are not close, which is what a bar wants.
+   * Half. The shipped calendar's worst signup day measures 24 of 24 and both
+   * annual controls' worst measure 0 of 24, so this bar sits between two numbers
+   * that are not close, which is what a bar wants. The shipped side used to be
+   * 19 and saturated at 24 when the generator was bounded; the controls' 0 did
+   * not move, which is what says the gap is the calendar's and not the
+   * fixture's.
    */
   MIN_FIRST_YEAR_ARCS_PER_OFFSET: 12,
   /**
@@ -1373,14 +1433,26 @@ export const CAMPAIGN_SUMMIT_SWEEP = Object.freeze({
    * Five. A summit a lifter walks into off two meets is a formality with a big
    * name on it.
    *
-   * THE MEASURED FLOOR IS 8, AND IT IS A FACT ABOUT THE TOTAL GENERATOR AS MUCH
-   * AS ABOUT THE CALENDAR. `seededCareerTotals` is a two-sided random walk that
-   * can add up to `MAX_GAIN_KG` — 70 kg — at a single meet, with no ceiling
-   * anywhere, so a lucky arc can climb 380 kg to the 600 kg gate in eight
-   * meets and about six weeks. No real progression model would allow that, and
-   * a reader should hold the 8 as the generator's tail rather than as a
-   * statement about how fast the game lets a player climb. It is pinned exactly
-   * so that a generator with a plausible ceiling moves it visibly.
+   * THE MEASURED FLOOR IS 9, AND IT IS STILL A FACT ABOUT THE TOTAL GENERATOR
+   * AS MUCH AS ABOUT THE CALENDAR. The previous version of this block said the
+   * floor was 8, blamed it on an unbounded two-sided walk that could add
+   * `MAX_GAIN_KG` — 70 kg — at a single meet with no ceiling anywhere, and said
+   * it was "pinned exactly so that a generator with a plausible ceiling moves it
+   * visibly".
+   *
+   * THE GENERATOR WAS GIVEN A CEILING AND THE FLOOR MOVED BY ONE. That is a
+   * smaller move than the sentence invited a reader to expect, and the reason it
+   * is small is worth more than the number. A per-lifter ceiling with decaying
+   * gains bounds where a career ENDS UP; it barely touches how fast it STARTS,
+   * because headroom is 1 at the opening total by construction and stays near 1
+   * for the first several meets. The fastest arc is governed by `MAX_GAIN_KG`,
+   * which this change did not touch, so 380 kg to the 600 kg gate in nine meets
+   * is still not a pace any real lifter has.
+   *
+   * RANGE AND RATE ARE TWO AXES AND ONLY ONE OF THEM HAS BEEN FIXED. Read the 9
+   * as the generator's tail on the rate axis, still unaddressed, rather than as
+   * a statement about how fast the game lets a player climb. `MAX_GAIN_KG`'s own
+   * block says the same thing from the other end.
    */
   MIN_MEETS_BEFORE_A_SUMMIT: 5,
   FEDERATION: 'meridian' as CareerFederationId,
