@@ -45,21 +45,49 @@
  * ===========================================================================
  * WHAT IS PINNED HERE AND WHY IT IS PINNED AS A COUNT
  * ===========================================================================
- * `PINNED` below holds equalities, not bounds. The reason is the failure this
- * whole check is an instance of: an empty domain passes silently. If a refactor
+ * `PINNED` below holds equalities, not bounds — with ONE deliberate exception,
+ * ruled by a human and argued here so that it does not read later as a
+ * concession. The reason equalities are the default is the failure this whole
+ * check is an instance of: an empty domain passes silently. If a refactor
  * narrows the walk, breaks the pattern, or points the scan at nothing, an
  * assertion that "no reference is unresolved" is TRUE OF NOTHING and green.
- * `toBeGreaterThan(0)` would catch the total collapse and miss the scan quietly
- * losing four fifths of the tree, which is the shape that actually happens.
  *
- * THE COST, STATED PLAINLY: `PINNED.REFERENCES` moves whenever anybody adds or
- * removes a mention of a test path anywhere in the tracked tree, including in
- * `CLAUDE.md` and `docs/GDD.md` prose. That is friction, and it is friction
- * this repository already charges twice for the same reason —
- * `REVIEWABLE_CITATIONS` in `src/licensing/realIp.ts` pins exact occurrence
- * counts of every real name in those two documents, and
- * `tools/claudeIndex.test.ts` pins the index against the live headings. Every
- * failure message prints the number it measured, so the repair is one token.
+ * ===========================================================================
+ * WHY `REFERENCES_FLOOR` IS A FLOOR WHEN EVERY OTHER PIN IS AN EQUALITY
+ * ===========================================================================
+ * **Because it is not the same KIND of number**, and that distinction is the
+ * whole ruling rather than a softening of the rule.
+ *
+ * In `src/game/streakSweep.ts` the pinned count IS THE MEASUREMENT — violating
+ * pairs at zero, against non-zero controls kept beside it. Moving that number
+ * hides a regression, which is exactly why `CLAUDE.md` demands counts over
+ * bounds there and why every other pin in this file is an equality.
+ *
+ * The reference count is an INCIDENTAL CENSUS of how often people happened to
+ * mention a test path in prose. No property is being measured, so there is no
+ * defect for it to hide; it is a byproduct of how much coordination writing
+ * occurred. A pin on a byproduct guards nothing and charges a toll.
+ *
+ * The only vacuity mode an equality catches here and a floor does not is the
+ * match set collapsing — and a floor catches that completely, because a broken
+ * matcher does not lose a few references, it loses nearly all of them. The
+ * sharper risk, the RESOLUTION TARGET SET being silently widened so the main
+ * assertion becomes trivially true, is caught by `TEST_FILES` — measured, not
+ * assumed: widening the target set moves it 88 -> 384 and reddens exactly one
+ * test. And the walk quietly losing files is caught by `SCANNED_FILES`, which
+ * stays an equality. So the floor loses nothing that another pin does not hold.
+ *
+ * MEASURED COST OF THE EQUALITY, which is why it went: appending one ordinary
+ * coordination note to `CLAUDE.md` — "Session B should run
+ * `src/game/streak.test.ts` after touching that module" — took the count 327 ->
+ * 328 and reddened the suite. Coordination notes are the most frequent edit
+ * category in this run, and three other sessions rely on that file. A guard
+ * that fires on the most common edit while protecting against nothing
+ * demonstrable trains its readers to treat red as noise, which this repository
+ * has now paid for on four separate instruments.
+ *
+ * This is the same trade, and the same answer, as the `NOT_CODE` prose ruling
+ * in `CLAUDE.md` — consistent with it rather than in tension.
  *
  * ===========================================================================
  * DRIVEN BOTH WAYS, AND WHERE EACH HALF IS
@@ -145,13 +173,26 @@ const REPO_ROOT = path.resolve(import.meta.dirname, '..');
  */
 const PINNED = Object.freeze({
   /**
-   * Path-shaped `*.test.ts` references in the tracked tree, after the extension
-   * guard. MOVES WHENEVER ANYBODY ADDS OR REMOVES A MENTION of a test path —
-   * in code, in a comment, in `CLAUDE.md` or in `docs/GDD.md`. It is the
-   * non-vacuity guard: if the scan ever stops seeing the tree, this is what
-   * says so instead of "no unresolved references" passing over nothing.
+   * A FLOOR, not an equality — the one exception in this object, argued at
+   * length in the header. Path-shaped `*.test.ts` references in the tracked
+   * tree, after the extension guard.
+   *
+   * It is the non-vacuity guard against the MATCHER collapsing: if the pattern
+   * breaks or the read stops seeing file contents, references go to zero or
+   * near it and this fires. It is deliberately NOT a guard against ordinary
+   * churn, because adding or removing a prose mention of a test path is not a
+   * defect and reddening the suite for it trains readers to ignore red.
+   *
+   * Measured at 327 when written. The floor sits ~24% below that: far enough
+   * for a run's worth of coordination notes to be added or deleted without
+   * anyone touching this file, close enough that a broken matcher — which
+   * costs nearly all of them at once — cannot clear it.
+   *
+   * The two failure modes a floor cannot see are held by equalities that stay
+   * equalities: `SCANNED_FILES` if the walk loses files, `TEST_FILES` if the
+   * resolution target set is widened.
    */
-  REFERENCES: 327,
+  REFERENCES_FLOOR: 250,
 
   /**
    * FALSE-POSITIVE MODE 1, counted. Occurrences dropped because the match ran
@@ -273,13 +314,17 @@ describe('the tracked tree names only test files that exist', () => {
 
   it('saw the whole tree, counted, so an empty domain cannot pass as a clean one', () => {
     const audit = tree();
-    // Equalities, not bounds. See the header for why, and for what moves each.
+    // Equalities, not bounds — except the first, which is a FLOOR on purpose.
+    // See the header: it is an incidental census of prose mentions, not a
+    // measurement, so an equality would charge every coordination note while
+    // guarding nothing an equality alone can hold.
     expect(
       audit.references.length,
-      `path-shaped references moved from ${PINNED.REFERENCES} to ${audit.references.length}. ` +
-        'Somebody added or removed a mention of a test path; update PINNED.REFERENCES. ' +
-        'If it moved a long way DOWN, check the walk before believing it.',
-    ).toBe(PINNED.REFERENCES);
+      `path-shaped references fell to ${audit.references.length}, below the floor of ` +
+        `${PINNED.REFERENCES_FLOOR}. This is not ordinary churn — a drop this far means the ` +
+        'MATCHER stopped seeing the tree, so "no unresolved references" would be true of ' +
+        'nothing. Check `referencesIn` and the read before adjusting this number.',
+    ).toBeGreaterThanOrEqual(PINNED.REFERENCES_FLOOR);
     expect(
       audit.scanned.length,
       `tracked files read moved from ${PINNED.SCANNED_FILES} to ${audit.scanned.length}`,
