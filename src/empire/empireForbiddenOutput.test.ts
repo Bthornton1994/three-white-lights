@@ -13287,6 +13287,29 @@ const CANDIDATE_SHAPES: readonly CandidateShape[] = Object.freeze([
     why: 'the closure type arrives from an `infer` rather than being written, which is the row the sweep grouped under generic machinery',
   }),
 
+  Object.freeze({
+    id: 'conditional-any-over-string-called',
+    group: 'conditional',
+    build: `type Cond<T> = T extends string ? any : string;\nexport function probe<Q>(subject: Cond<Q>): unknown {\n  ${REACH_MARKER}\n  return subject;\n}`,
+    reach: 'return subject();',
+    why: "the same deferred conditional reached a SECOND way, because 'no closure is reachable through it' was one attempt and one attempt is an anecdote — the call form rather than the member form",
+  }),
+  Object.freeze({
+    id: 'conditional-instantiated-at-string',
+    group: 'conditional',
+    build: `type Cond<T> = T extends string ? any : string;\ndeclare const subject: { readonly held: Cond<string> };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.held(); }',
+    why: "the instantiation that DOES hold a closure, which is `any` — the row that says the deferred conditional's silence is not an escape, because the arm carrying a function is the arm the screen catches",
+  }),
+
+  Object.freeze({
+    id: 'any-behind-a-property',
+    group: 'conditional',
+    build: `declare const subject: { readonly held: any };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.held(); }',
+    why: "the row the conditional pair turned up and the sharpest one here: `any` ONE PROPERTY DOWN. `SCREEN_BATTERY`'s `anyish` row asks about `any` at the top level, where the flag short-circuit fires; the holder of a member is an object, so the short-circuit never fires and the walk descended into a type with no properties and no call signatures",
+  }),
+
   // ---- The shape a plant would actually take ----
   Object.freeze({
     id: 'entry-with-an-empty-object-payload',
@@ -13370,6 +13393,9 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
   Object.freeze(['hybrid-behind-a-getter', false, true, true, true] as const),
   Object.freeze(['generic-mapped-type-intersected-with-string', true, true, true, true] as const),
   Object.freeze(['infer-conditional-intersected-with-string', true, true, true, true] as const),
+  Object.freeze(['conditional-any-over-string-called', true, false, false, false] as const),
+  Object.freeze(['conditional-instantiated-at-string', true, true, true, true] as const),
+  Object.freeze(['any-behind-a-property', true, true, true, true] as const),
   Object.freeze(['entry-with-an-empty-object-payload', true, true, true, true] as const),
   ]);
 
@@ -13393,22 +13419,22 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
  * premise the census's containment argument rests on, and it is false.
  */
 const FAMILY_CENSUS = Object.freeze({
-  ROWS: 41,
+  ROWS: 44,
   /** Distinct groups, so a truncated battery cannot pass as a whole one. */
   GROUPS: 9,
   /** Rows the relation alone certified as function-free data. */
-  CERTIFYING: 24,
+  CERTIFYING: 27,
   /** Rows whose reach snippet compiles clean. */
-  REACHABLE: 36,
+  REACHABLE: 38,
   /** Rows the whole screen was silent about. */
-  SILENT: 2,
+  SILENT: 3,
   /** Silent AND reachable — the bypass count. */
   SILENT_AND_REACHABLE: 0,
   /** See the paragraph above. Twenty, and the residual said zero. */
-  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 20,
+  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 22,
   /** The same battery through `SCREEN_BEFORE_E27`. */
-  BEFORE_E27_SILENT: 13,
-  BEFORE_E27_SILENT_AND_REACHABLE: 11,
+  BEFORE_E27_SILENT: 16,
+  BEFORE_E27_SILENT_AND_REACHABLE: 13,
   /**
    * Depth cuts taken anywhere in the sweep, in either configuration.
    *
@@ -13528,11 +13554,20 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
       .sort();
     expect(silentAndReachable.length).toBe(FAMILY_CENSUS.BEFORE_E27_SILENT_AND_REACHABLE);
     // Named rather than counted, because a count cannot say which family moved.
-    // Six are `{}` at six positions, one is `unknown & {}` reducing to it, one
-    // is a deferred conditional whose branches are both `any`, two are a mapped
-    // type's synthesized property, and one is the shape M67 was planted from.
+    // Five are `{}` at five positions, one is `unknown & {}` reducing to it, one
+    // is the shape M67 was planted from, two are a mapped type's synthesized
+    // property, and THREE are `any` at a position the flag short-circuit does
+    // not reach — a deferred conditional with both branches `any`, the same
+    // conditional instantiated so that it IS `any`, and `any` written plainly one
+    // property down. That last one is the sharpest row in the table: the screen
+    // has always answered `any` before asking the relation, and `SCREEN_BATTERY`
+    // grades that with `anyish`, which is a TOP-LEVEL `any`. A member's holder is
+    // an object, so the short-circuit never fired for it and the walk descended
+    // into a type with no properties and no call signatures and came back empty.
     expect(silentAndReachable).toEqual([
+      'any-behind-a-property',
       'conditional-any-over-any',
+      'conditional-instantiated-at-string',
       'empty-object-behind-a-property',
       'empty-object-in-an-array',
       'empty-object-type',
