@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-shell-route-mjs-2026-08-15T05-02-57-862Z-18143",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-shell-route.mjs"
+  ],
+  "budgetSeconds": 1800,
+  "startedAtIso": "2026-08-15T05:02:57.862Z",
+  "startedAtMs": 1786770177862,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "1814631ab5c48c9cd85367f89bb20717c3f9001d",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 10,
+  "dirtyPaths": [
+    ".gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+    ".gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+    ".gauntlet/shots/shell/12-openers-follow-the-session.png",
+    ".gauntlet/shots/shell/12-walkout-tail-settled.png",
+    ".gauntlet/shots/shell/13-recap-before-the-return-leg.png",
+    ".gauntlet/shots/shell/15-empire-floor-from-session.png",
+    ".gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
+    ".gauntlet/shots/shell/route.json",
+    ".gauntlet/shots/shell/18-briefing-round-trip-lands-back-on-the-briefing.png",
+    ".gauntlet/shots/shell/19-empire-floor-on-the-second-visit.png"
+  ],
+  "runner": {
+    "pid": 18143,
+    "startTick": "202793",
+    "cmdline": "node tools/watchdog.mjs --budget 1800 --id idle-route-2 -- node tools/verify-shell-route.mjs",
+    "bootId": "91ecd72f-d3bd-43b7-a000-873fcebb29ab",
+    "bootEpochSeconds": 1786768150,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-15T05:02:57.880Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
