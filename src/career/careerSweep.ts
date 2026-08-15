@@ -159,12 +159,19 @@ export function strengthGrid(): readonly (number | null)[] {
  * meet removed, which is the single-superset shape `streakSweep.ts` uses for
  * training days: everything else about the two lifters is identical.
  *
- * The deltas are deliberately two-sided. A distribution that only ever went up
- * would make the latest-total control produce zero violations and the whole
- * comparison would report a clean bill for a rule that is broken — an empty
- * domain reproduced in the one place it would not be noticed. `BAD_DAY_SHARE`
- * is what keeps it non-empty, and the test pins how many bad days the sweep
- * actually produced rather than trusting this comment.
+ * The sequence of totals is deliberately two-sided. A distribution that only
+ * ever went up would make the latest-total control produce zero violations and
+ * the whole comparison would report a clean bill for a rule that is broken — an
+ * empty domain reproduced in the one place it would not be noticed.
+ * `BAD_DAY_SHARE` and `BAD_DAY_MAX_SHARE` are what keep it non-empty, and the
+ * test pins how many descents the sweep actually produced rather than trusting
+ * this comment.
+ *
+ * NOTE WHICH LAYER IS TWO-SIDED, BECAUSE THE GENERATOR HAS TWO NOW. Capability
+ * only climbs; what a lifter puts up on the day is capability less a bad-day
+ * share, so the TOTALS go down and up while the strength behind them does not.
+ * `seededCareerTotals` carries the argument for splitting them. The property
+ * the controls need is a property of the totals, and it is unchanged.
  *
  * ===========================================================================
  * HOW DEEP A CAREER THIS RUNS ON, AND WHERE THAT DEPTH CAME FROM
@@ -263,12 +270,157 @@ export const ATTENDANCE_SWEEP = Object.freeze({
   MEETS_PER_CAREER: 171,
   /** The first meet's total, in kg. Below the regional bar, so it can climb through it. */
   FIRST_TOTAL_KG: 380,
-  /** A good day adds up to this much. */
+  /**
+   * The most a single meet may add to a lifter's CAPABILITY, in kg, and it is
+   * reached only at the very first meet.
+   *
+   * The gain is `draw x MAX_GAIN_KG x headroom^GAIN_DECAY_EXPONENT`, and
+   * headroom is 1 exactly once — at the opening total, before anything has been
+   * gained. So `FIRST_TOTAL_KG + n x MAX_GAIN_KG` is still a strict upper bound
+   * on what a lifter can be holding after `n` meets, which is the arithmetic
+   * `eligibility.test.ts` uses to prove the day-6 worlds meet unreachable, and
+   * that proof survives the bounded generator unchanged.
+   *
+   * IT IS ALSO STILL AN IMPLAUSIBLE PACE AND THIS PIECE DID NOT FIX THAT. A
+   * 70 kg jump on a 380 kg opening total is 18% in one meet, and no lifter does
+   * that. Bounding the RANGE and bounding the RATE are two axes; this block
+   * moves the first and leaves the second where it found it. See
+   * `GAIN_DECAY_EXPONENT` for the one thing the shape does buy on the rate axis.
+   */
   MAX_GAIN_KG: 70,
-  /** A bad day takes off up to this much. */
-  MAX_LOSS_KG: 70,
   /** How often a meet is a bad day. */
   BAD_DAY_SHARE: 0.35,
+  /**
+   * How much of a lifter's capability a bad day can cost, as a share of it.
+   *
+   * REPLACES A FLAT `MAX_LOSS_KG` OF 70. An absolute 70 kg bad day is 18% of a
+   * 380 kg opening total and 8% of an 880 kg plateau, so one constant meant two
+   * different things at the two ends of a career. A share means one thing
+   * everywhere, and it is what keeps a plateau a band rather than a line: the
+   * noise stays proportional to the lifter it is noise about, so totals go on
+   * interleaving with the qualifying gates instead of settling above them.
+   *
+   * PROVISIONAL, AND WITH NO CITATION BEHIND IT — unlike the two potential
+   * bounds below, which have one. 8% is a game-feel value nobody has playtested
+   * and it is on the CONSERVATIVE side of what real data shows: the only
+   * measurement available here is `docs/research/qualifying-totals.md` §1.2,
+   * whose median (P10 - minimum) drop at the gated tier is 155.0 kg, roughly a
+   * quarter of a 600 kg total. That is a tail rather than a typical day, so it
+   * does not set this number — but it does say which way an error in it runs.
+   */
+  BAD_DAY_MAX_SHARE: 0.08,
+  /**
+   * The weakest ceiling a simulated career may be given, in kg.
+   *
+   * ===========================================================================
+   * WHY A CEILING AT ALL, AND WHY ONE PER LIFTER
+   * ===========================================================================
+   * The generator this replaces was an unbounded two-sided random walk of
+   * +/- 70 kg a meet. Over the sweep's real 728-day window it reached a peak
+   * total of 3020 kg — roughly two and a half times the heaviest total any
+   * human has recorded — and its median meet total was 1107.5 kg. A walk that
+   * gets there is not modelling the sport at any depth, so a percentile taken
+   * deep into that distribution was about nothing, and every check keyed to
+   * where a total sat relative to a qualifying gate had stopped meaning what it
+   * said by the time a career was forty meets old.
+   *
+   * ONE GLOBAL CEILING WAS CONSIDERED AND REJECTED. A hard clamp piles arcs up
+   * at exactly the ceiling, which is its own unrealism and makes any percentile
+   * near the top degenerate — the same failure moved to a different part of the
+   * distribution. So the ceiling is drawn per career, once, at creation, from
+   * `[POTENTIAL_MIN_KG, POTENTIAL_MAX_KG]`, and it is approached rather than
+   * reached: see `GAIN_DECAY_EXPONENT`. Different seeds plateau in different
+   * places, which is also closer to the sport than one number everybody shares.
+   *
+   * ===========================================================================
+   * WHERE 625 COMES FROM — A STRUCTURAL REQUIREMENT, CHECKED AGAINST REAL DATA
+   * ===========================================================================
+   * The floor is set by a rule rather than by taste, and `eligibility.test.ts`
+   * asserts the RULE rather than the literal: it sits strictly between the
+   * campaign summit's qualifying total and the competitive summit's. Both halves
+   * are load-bearing and they pull in opposite directions:
+   *
+   *   - ABOVE the campaign gate (600), because GDD §6.6's R1 — "every simulated
+   *     arc enters a campaign summit" — is a statement about the CALENDAR. A
+   *     fixture holding lifters who can never clear that gate would turn R1 into
+   *     a statement about strength without anybody editing it, which is the
+   *     silent change of subject this repository keeps recording.
+   *   - BELOW the competitive gate (650), because the top of the ladder has to
+   *     go on refusing somebody. `eligibility.test.ts` pins `worldsEntries`
+   *     under the seed count for exactly that reason. A band whose floor cleared
+   *     650 would take every career to the top rung and quietly empty that
+   *     check — a new rule making an old one vacuous, which CLAUDE.md requires
+   *     be looked for rather than discovered.
+   *
+   * The midpoint of the two is 625, which is the same stated-rule shape the
+   * campaign gate itself uses (`careerTuning.ts`: 600 is the midpoint of
+   * nationals' 550 and competitive worlds' 650).
+   *
+   * AND IT IS NOT ONLY A MIDPOINT. `docs/research/qualifying-totals.md` §3.1's
+   * raw men's Open table puts the `nationals` cell — P10 of the real, gated
+   * national-championship field — at 627.5 kg for the 83 kg class and 630.0 kg
+   * for the 93 kg class. So the weakest career this fixture can produce plateaus
+   * within 2.5 kg of what the weakest lifter in a real national field totals,
+   * which is a defensible floor for "a career that went as far as it was going
+   * to go".
+   */
+  POTENTIAL_MIN_KG: 625,
+  /**
+   * The strongest ceiling a simulated career may be given, in kg.
+   *
+   * Grounded on the top end of the same derived table, cited rather than
+   * invented. `docs/research/qualifying-totals.md` §3.1's raw men's Open
+   * `worlds` row — the total reached by the strongest 25% of that class's real
+   * nationals field, which is §3.6's quota method — runs from 537.5 kg at the
+   * 59 kg class to 902.5 kg at 120+. 900 sits just under the strongest
+   * designated cell in the whole table, and a long way under the single heaviest
+   * total anywhere in the underlying data, which is 1153.5 kg — the `maxKg` of
+   * raw men's 120+ at `local` in `qualifying-totals-derived-raw.json`.
+   *
+   * READ THE CAVEAT THAT COMES WITH THAT TABLE RATHER THAN JUST ITS NUMBERS.
+   * Its §1.1 and §1.2 say plainly that no percentile of a competition field
+   * recovers a published qualifying standard, and the `worlds` row carries the
+   * mixed-method marker. What is borrowed here is not a standard — it is the
+   * SCALE of real elite totals, which is what an upper bound on a simulated
+   * career wants and is the one thing those cells are unambiguously evidence of.
+   *
+   * PROVISIONAL as a game-feel value, in the sense that where inside the real
+   * elite range this fixture's strongest career should land is a judgement
+   * nobody has playtested. What is NOT provisional is that it belongs inside
+   * that range rather than at three times it.
+   */
+  POTENTIAL_MAX_KG: 900,
+  /**
+   * How sharply a lifter's gains fall off as they close on their own ceiling.
+   *
+   * The gain per meet is `draw x MAX_GAIN_KG x headroom^this`, where headroom is
+   * the fraction of the lifter's opening-to-potential span still unclaimed. At 1
+   * that is a plain exponential approach; above 1 the last stretch is slower
+   * still, which is the shape real progression has — a novice adds more in a
+   * year than an established lifter adds in five.
+   *
+   * A SOFT ASYMPTOTE RATHER THAN A CLAMP IS THE WHOLE POINT. Nothing here ever
+   * equals a potential, so no two careers pile up on one number and the
+   * per-career peaks stay spread across the band instead of stacking on its top.
+   *
+   * 1.5 WAS MEASURED AGAINST 1 AND 2 RATHER THAN CHOSEN, on the 24 shipped seeds
+   * at `MEETS_PER_CAREER` meets, and the discriminator was the FASTEST arc
+   * rather than the distribution — every candidate bounds the range about
+   * equally well:
+   *
+   *   exponent 1    peak 892.5   fewest meets to 600 kg: 6   careers never reaching 650: 2
+   *   exponent 1.5  peak 882.5   fewest meets to 600 kg: 8   careers never reaching 650: 2
+   *   exponent 2    peak 855     fewest meets to 600 kg: 9   careers never reaching 650: 4
+   *
+   * At 1 the bounded generator would let a lucky career reach the campaign gate
+   * FASTER than the unbounded one it replaces — a regression on the rate axis
+   * dressed as a fix on the range axis. At 2 the weakest careers stop reaching
+   * their own ceiling inside the run, and the observed minimum peak falls to
+   * 617.5 against a 625 floor, which makes the floor stop being something a
+   * reader can see in the output. 1.5 is the one that does neither, and it is
+   * still a game-feel value nobody has playtested.
+   */
+  GAIN_DECAY_EXPONENT: 1.5,
   /** Totals land on the competition grid. */
   ROUNDING_KG: 2.5,
   /**
@@ -432,30 +584,106 @@ export const ATTENDANCE_SWEEP = Object.freeze({
 });
 
 /**
+ * The ceiling one career is drawn, in kg. A pure function of the seed.
+ *
+ * Exported because a bound nobody can read is a bound nobody can check:
+ * `eligibility.test.ts` asserts every total this seed produces sits at or under
+ * it, at every depth, which is what makes "bounded" a measurement rather than a
+ * claim in this comment.
+ *
+ * The draw is the FIRST thing taken from the seed's stream, before any meet, so
+ * a career's ceiling is fixed at creation and does not depend on how deep the
+ * caller asks the career to run. That is what keeps `seededCareerTotals(s, 200)`
+ * a prefix-extension of `seededCareerTotals(s, 171)`, which the two sweeps rely
+ * on: axis B draws 171 and axis D draws 200 from the same seeds and they are
+ * meant to be the same lifters.
+ */
+export function careerPotentialKg(seed: number): number {
+  const draw = nextRandom(seedState(seed));
+  const span = ATTENDANCE_SWEEP.POTENTIAL_MAX_KG - ATTENDANCE_SWEEP.POTENTIAL_MIN_KG;
+  return (
+    Math.round(
+      (ATTENDANCE_SWEEP.POTENTIAL_MIN_KG + draw.value * span) / ATTENDANCE_SWEEP.ROUNDING_KG,
+    ) * ATTENDANCE_SWEEP.ROUNDING_KG
+  );
+}
+
+/**
  * One career's meet totals, in calendar order.
  *
  * Deterministic in the seed. The first total is fixed so that every career
- * starts below the regional bar and can climb through it; the walk after that
- * is what makes the sequences differ.
+ * starts below the regional bar and can climb through it; what makes the
+ * sequences differ after that is the ceiling the seed drew and the run of good
+ * and bad days it gets on the way to it.
+ *
+ * ===========================================================================
+ * TWO LAYERS, AND SEPARATING THEM IS THE FIX
+ * ===========================================================================
+ * The generator this replaces was ONE layer: a total that a bad day pushed
+ * permanently down and a good day pushed permanently up, +/- 70 kg, forever, with
+ * nothing bounding either direction. Two things were wrong with that and only
+ * one of them was the runaway peak.
+ *
+ *   CAPABILITY — what the lifter can do — climbs and only climbs, by a gain
+ *   that decays as they close on their own ceiling. Strictly increasing,
+ *   strictly below `careerPotentialKg(seed)`, and never equal to it.
+ *
+ *   THE DAY — what they actually put on the board — is capability on a good day
+ *   and capability less up to `BAD_DAY_MAX_SHARE` of it on a bad one.
+ *
+ * A bad meet is a bad DAY in this sport, not a loss of strength: a lifter who
+ * goes eight-for-nine at one meet and three-for-nine at the next has not got
+ * weaker, and `docs/research/qualifying-totals.md` §1.2 is a measurement of
+ * exactly that gap in real data. The old single layer said otherwise, and the
+ * cost of saying it was a walk with no fixed point.
+ *
+ * ===========================================================================
+ * THE BOUND IS PROVABLE, NOT SAMPLED, AND HERE IS THE PROOF
+ * ===========================================================================
+ * Write `P` for the drawn potential and `c` for capability. One meet's gain is
+ * `draw x MAX_GAIN_KG x ((P - c) / (P - FIRST_TOTAL_KG))^GAIN_DECAY_EXPONENT`
+ * with `draw` in [0, 1) and the base in [0, 1], so the gain is at most
+ * `MAX_GAIN_KG x (P - c) / (P - FIRST_TOTAL_KG)`. Since
+ * `MAX_GAIN_KG < POTENTIAL_MIN_KG - FIRST_TOTAL_KG <= P - FIRST_TOTAL_KG`
+ * (70 against 245 at the shipped values), that is strictly less than `P - c`.
+ * So `c` rises and never reaches `P`, at any depth, for any seed.
+ *
+ * Rounding cannot break it either: `P` is on the `ROUNDING_KG` grid by
+ * construction, and rounding a value strictly below a grid point to that grid
+ * cannot land above it. A bad day only subtracts. Hence EVERY total is at most
+ * that career's potential, and therefore at most `POTENTIAL_MAX_KG`.
+ *
+ * `eligibility.test.ts` asserts all three of those — the strict inequality, the
+ * per-career bound and the band-wide one — and asserts the constant inequality
+ * the proof rests on, so a tuner who raises `MAX_GAIN_KG` past the band's own
+ * span gets a red rather than a generator that has quietly stopped being bounded.
  */
 export function seededCareerTotals(seed: number, meets: number): readonly number[] {
   const totals: number[] = [];
-  let state = seedState(seed);
-  let current: number = ATTENDANCE_SWEEP.FIRST_TOTAL_KG;
+  const potentialKg = careerPotentialKg(seed);
+  const span = potentialKg - ATTENDANCE_SWEEP.FIRST_TOTAL_KG;
+  // The potential draw is the head of the stream; the meet draws follow it.
+  let state = nextRandom(seedState(seed)).state;
+  let capability: number = ATTENDANCE_SWEEP.FIRST_TOTAL_KG;
   for (let index = 0; index < meets; index += 1) {
     const badDraw = nextRandom(state);
     state = badDraw.state;
-    const sizeDraw = nextRandom(state);
-    state = sizeDraw.state;
+    const gainDraw = nextRandom(state);
+    state = gainDraw.state;
+    const dayDraw = nextRandom(state);
+    state = dayDraw.state;
+
+    const headroom = Math.max(0, (potentialKg - capability) / span);
+    capability +=
+      gainDraw.value * ATTENDANCE_SWEEP.MAX_GAIN_KG * headroom ** ATTENDANCE_SWEEP.GAIN_DECAY_EXPONENT;
+
     const isBadDay = badDraw.value < ATTENDANCE_SWEEP.BAD_DAY_SHARE;
-    const delta = isBadDay
-      ? -sizeDraw.value * ATTENDANCE_SWEEP.MAX_LOSS_KG
-      : sizeDraw.value * ATTENDANCE_SWEEP.MAX_GAIN_KG;
-    current = Math.max(
-      0,
-      Math.round((current + delta) / ATTENDANCE_SWEEP.ROUNDING_KG) * ATTENDANCE_SWEEP.ROUNDING_KG,
+    const onTheDay = isBadDay
+      ? capability * (1 - dayDraw.value * ATTENDANCE_SWEEP.BAD_DAY_MAX_SHARE)
+      : capability;
+    totals.push(
+      Math.max(0, Math.round(onTheDay / ATTENDANCE_SWEEP.ROUNDING_KG) * ATTENDANCE_SWEEP.ROUNDING_KG),
     );
-    totals.push(current);
   }
   return totals;
 }
