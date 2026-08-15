@@ -93,11 +93,14 @@ describe('the tier ladder', () => {
   });
 
   it('sets the campaign gate by the rule its block states, not by a literal', () => {
-    // WHY THIS IS A RULE AND NOT A PIN. The campaign sweep measured every
-    // 2.5 kg candidate in the admissible band and reachability barely moved —
-    // 575, 600 and 625 reach a summit inside the first year on 178, 176 and 175
-    // of 192 arcs. A measurement that cannot discriminate cannot choose, so the
-    // number is the MIDPOINT of its two neighbours and the block says so.
+    // WHY THIS IS A RULE AND NOT A PIN. The campaign sweep measured candidates
+    // across the admissible band and reachability barely moved — 575, 600 and
+    // 625 reach a summit inside the first year on 192, 192 and 184 of 192 arcs,
+    // re-taken after the totals generator was bounded and previously 178, 176
+    // and 175. A measurement that cannot discriminate cannot choose, so the
+    // number is the MIDPOINT of its two neighbours and the block says so. The
+    // gate did not move when the fixture under it did, which is the thing a
+    // stated rule buys over a measured one.
     //
     // What this reddens on is the thing that makes 600 arbitrary: a tuner
     // moving nationals' 550 or competitive's 650 and leaving this alone. A pin

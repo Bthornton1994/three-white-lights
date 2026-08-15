@@ -230,12 +230,29 @@ export const CAREER_TUNING = Object.freeze({
    * than a claim that the sweep picked it. The admissible band is (550, 650)
    * exclusive — §6.6 rules the campaign total lower than competitive worlds',
    * and `careerTuning.test.ts` pins the gates strictly increasing along the
-   * ladder, so it must also sit above nationals'. Every 2.5 kg candidate in that
-   * band was measured on the campaign sweep and reachability barely moves: 575,
-   * 600 and 625 reach a summit inside the first year on 178, 176 and 175 of 192
-   * simulated arcs, at median waits of 198, 198 and 221 days. THE GATE IS NOT
-   * WHAT MADE THE SUMMIT UNREACHABLE. The calendar was, and the same sweep
-   * separates the two calendar knobs that fixed it.
+   * ladder, so it must also sit above nationals'. Candidates across that band
+   * were measured on the campaign sweep and reachability barely moves.
+   *
+   * RE-TAKEN AFTER THE TOTALS GENERATOR WAS BOUNDED, because the old figures
+   * were a measurement of a fixture that no longer exists and this block's
+   * conclusion had to be shown to survive the change rather than assumed to.
+   * 575, 600 and 625 reach a summit inside the first year on 192, 192 and 184 of
+   * 192 simulated arcs, at median waits of 131, 154 and 177 days. They used to
+   * be 178 / 176 / 175 at medians of 198 / 198 / 221.
+   *
+   * THE GATE IS NOT WHAT MADE THE SUMMIT UNREACHABLE, on either fixture. The
+   * calendar was, and the same sweep separates the two calendar knobs that fixed
+   * it. So 600 does not move: the measurement still cannot discriminate inside
+   * the band, and the number is still set by the midpoint rule below.
+   *
+   * ONE NEW INTERACTION THE RE-TAKE EXPOSED, NAMED BECAUSE IT BINDS A FUTURE
+   * TUNER. `careerSweep.ts`'s `POTENTIAL_MIN_KG` — the weakest ceiling a
+   * simulated career may be drawn — is 625, the midpoint of THIS gate and
+   * competitive worlds'. That is why the 625 candidate is the first one to slip
+   * (184 rather than 192): a lifter whose ceiling is 625 cannot reliably clear a
+   * 625 gate. Raising the campaign gate to or past `POTENTIAL_MIN_KG` would
+   * break GDD §6.6's R1 outright, and `eligibility.test.ts` asserts the ordering
+   * so that edit reddens rather than quietly emptying the requirement.
    *
    * So the number inside the band is set by a stated rule rather than by a
    * measurement that cannot discriminate: 600 is the MIDPOINT of nationals' 550
