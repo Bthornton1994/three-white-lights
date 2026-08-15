@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-15T16-00-49-367Z-20452",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/career/zzprobe.test.ts"
+  ],
+  "budgetSeconds": 1800,
+  "startedAtIso": "2026-08-15T16:00:49.367Z",
+  "startedAtMs": 1786809649367,
+  "cwd": "/home/user/wt-campaign-summit",
+  "commit": "6d650ec6295b6858d33598c8afa69500bf317d0a",
+  "branch": "claude/campaign-summit",
+  "dirty": 3,
+  "dirtyPaths": [
+    "src/career/careerSweep.ts",
+    "src/career/eligibility.test.ts",
+    "src/career/zzprobe.test.ts"
+  ],
+  "runner": {
+    "pid": 20452,
+    "startTick": "310621",
+    "cmdline": "node tools/watchdog.mjs --budget 1800 --id probe5 -- npx vitest run src/career/zzprobe.test.ts",
+    "bootId": "4b5f42aa-e978-4679-b41f-c5caa07abf66",
+    "bootEpochSeconds": 1786806543,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-15T16:00:49.390Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
