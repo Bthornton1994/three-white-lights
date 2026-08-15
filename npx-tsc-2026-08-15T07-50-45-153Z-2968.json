@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-tsc-2026-08-15T07-50-45-153Z-2968",
+  "label": null,
+  "command": [
+    "npx",
+    "tsc",
+    "--noEmit"
+  ],
+  "budgetSeconds": 240,
+  "startedAtIso": "2026-08-15T07:50:45.153Z",
+  "startedAtMs": 1786780245153,
+  "cwd": "/home/user/wt-testpathrefs",
+  "commit": "698fa6496dff0fe0880273b535adeb4be206cc85",
+  "branch": "claude/test-path-refs",
+  "dirty": 2,
+  "dirtyPaths": [
+    "tools/testPathRefs.mjs",
+    "tools/testPathRefs.test.ts"
+  ],
+  "runner": {
+    "pid": 2968,
+    "startTick": "237477",
+    "cmdline": "node tools/watchdog.mjs --budget 240 --id tpr-tsc2 -- npx tsc --noEmit",
+    "bootId": "1305a9d2-8878-467a-bcc8-8c6b58cc63bc",
+    "bootEpochSeconds": 1786777870,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-15T07:50:45.173Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
