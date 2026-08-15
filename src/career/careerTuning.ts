@@ -326,22 +326,32 @@ export const CAREER_TUNING = Object.freeze({
    * merely tight. `careerTuning.test.ts` pins the residues as a set, so the
    * wall is a red rather than a discovery.
    *
-   * THE CAMPAIGN SUMMIT'S 177 IS THE OTHER HALF OF THE REACHABILITY FIX, and it
-   * is the number this piece measured rather than chose. The competitive
-   * summit's phase of 6 puts that tier's meet on the SIXTH DAY of the season,
-   * when a lifter has had at most one meet and is holding around 380 kg against
-   * a 650 kg gate — so its first occurrence is unreachable by arithmetic, for
-   * every seed, at every depth. Copying that phase onto the campaign summit
-   * would have reproduced exactly the defect §6.6 recorded, and
-   * `careerSweep.ts` keeps it as the runnable control that measures zero.
+   * THE CAMPAIGN SUMMIT'S 177 IS NOT THE REACHABILITY FIX, AND THIS PARAGRAPH
+   * SAID IT WAS UNTIL THE MEASUREMENT WAS DRIVEN PROPERLY. It is worth leaving
+   * the correction visible, because the mistake is the ordinary one: two knobs
+   * were turned together, the result was good, and each got the other's credit.
    *
-   * 177 is late in the season: a lifter who starts at the anchor has 177 days
-   * and roughly forty meets to climb from 380 kg to the campaign gate before
-   * the first one comes round, and a second follows 182 days later. What
-   * fraction of simulated careers that actually reaches, from every signup day
-   * in a cadence, is `CAMPAIGN_SUMMIT_SWEEP`'s measurement rather than this
-   * paragraph's claim. 177 mod 7 is 2, which is the residue the other four
-   * leave free.
+   * `CAMPAIGN_SUMMIT_SWEEP` now runs all four corners of the two-knob square.
+   * Held apart, THE CADENCE ABOVE IS THE REACHABILITY FIX and this number is
+   * very nearly free for that purpose: at the shipped semi-annual cadence, the
+   * old day-six phase still takes 192 of 192 simulated arcs to a summit, with a
+   * worst signup day of 18 against this phase's 19. The arithmetic behind that
+   * is not luck — a series coming round twice a year has an occurrence within
+   * 182 days of every day there is, wherever it starts.
+   *
+   * WHAT 177 IS ACTUALLY FOR, stated smaller and with its own number. The
+   * competitive summit's phase of 6 puts a meet on the SIXTH DAY of the season,
+   * when a lifter has had at most one meet and is holding around 380 kg. At
+   * that phase the first campaign summit the calendar ever shows a new lifter
+   * is one that NO seed can enter: `anchorArcsEnteringTheirFirstOfferedSummit`
+   * measures 0 of 24 at phase 6, under either cadence, against 18 of 24 here.
+   * A top-of-the-ladder meet that is furniture for every player who sees it is
+   * a legibility cost, and that is the cost this number buys off — not
+   * reachability, which the cadence had already bought.
+   *
+   * 177 mod 7 is 2, which is the residue the other four leave free. Within the
+   * residues that are free, where exactly it sits is a feel decision nobody has
+   * playtested.
    */
   PHASE_DAYS: Object.freeze({
     local: 0,

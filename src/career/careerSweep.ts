@@ -1030,26 +1030,43 @@ export function seasonMeetsOfTier(
  * population turned out to be nearly vacuous; the same absolute stated per
  * signup day is the measurement.
  *
+ * AND R2b DOES NOT REACH THE PHASE, which is the same lesson one level down.
+ * Both clauses are about whether a summit ARRIVES, and the cadence decides
+ * that; the phase decides whether the one a new lifter is first SHOWN is one
+ * they could ever enter. `anchorArcsEnteringTheirFirstOfferedSummit` is the
+ * clause for that, and nothing above it would have moved when it went to zero.
+ *
  * ===========================================================================
- * WHAT THE ZEROS ARE ZERO AGAINST — TWO CONTROLS, ONE PER KNOB
+ * WHAT THE NUMBERS ARE MEASURED AGAINST — THREE CONTROLS, A FULL 2x2
  * ===========================================================================
  * The fix has two knobs, the campaign summit's cadence and its phase, and a
- * measurement that moved both at once could not say which one mattered. So the
- * controls hold each knob at its unfixed value in turn, and both are runnable
- * rather than described:
+ * measurement that moved both at once could not say which one mattered. So
+ * every corner of the square is runnable rather than described:
  *
  *   - `annual-at-the-competitive-phase` is the calendar as it stood before the
  *     summit was split: annual, six days after the anchor. This is the shape
  *     GDD §6.6 recorded as a design violation, and it is kept here so the
  *     violation has a number rather than a memory.
- *   - `annual-late` is the phase fixed and the cadence left annual. It isolates
- *     how much of the repair the calendar POSITION is doing and how much the
- *     cadence is, which is the question a tuner who wants an annual summit back
- *     will ask first.
+ *   - `annual-late` is the phase moved and the cadence left annual.
+ *   - `semi-annual-at-the-competitive-phase` is the cadence moved and the phase
+ *     left where it was.
  *
- * Neither control changes the qualifying total. Threshold and calendar are the
- * two halves of the same defect and the controls hold the threshold still, so
- * what they measure is the calendar's contribution alone.
+ * THE FOURTH CORNER WAS ADDED AFTER THE FIRST THREE LET A FALSE CLAIM STAND,
+ * and the correction is the more useful half of this block. With only the two
+ * one-sided controls the shipped calendar passed and both controls failed,
+ * which reads as "both knobs were needed" and is what `PHASE_DAYS` claimed.
+ * Both controls had moved the cadence too. Holding it: the CADENCE is the
+ * reachability fix — semi-annual at the old phase still takes 192 of 192 arcs
+ * to a summit, worst signup day 18 against the shipped 19 — and the PHASE is a
+ * legibility fix with its own statistic,
+ * `anchorArcsEnteringTheirFirstOfferedSummit`, which is 0 of 24 at the old
+ * phase under EITHER cadence and 18 of 24 at the shipped one.
+ *
+ * Two knobs need four corners, or one edge takes the other's credit.
+ *
+ * No control changes the qualifying total. Threshold and calendar are the two
+ * halves of the same defect and the controls hold the threshold still, so what
+ * they measure is the calendar's contribution alone.
  *
  * ONE SIDE EFFECT OF THE FIRST CONTROL, NAMED RATHER THAN LEFT TO BE FOUND.
  * Putting the campaign summit back on the competitive summit's series puts both
@@ -1142,7 +1159,11 @@ export const CAMPAIGN_SUMMIT_SWEEP = Object.freeze({
 });
 
 /** Which campaign-summit calendar an arc runs on. */
-export type CampaignCalendarVariant = 'shipped' | 'annual-at-the-competitive-phase' | 'annual-late';
+export type CampaignCalendarVariant =
+  | 'shipped'
+  | 'annual-at-the-competitive-phase'
+  | 'annual-late'
+  | 'semi-annual-at-the-competitive-phase';
 
 /** A tier's series as the two numbers that generate it. */
 export interface SeriesShape {
@@ -1151,14 +1172,35 @@ export interface SeriesShape {
 }
 
 /**
- * The three calendars the campaign summit is measured on.
+ * The four calendars the campaign summit is measured on: the shipped one and
+ * the three corners of the two-knob square.
  *
  * `shipped` READS `CAREER_TUNING` rather than restating it, so a tuner who
  * moves the campaign cadence or phase moves this arm with it and the
- * measurement re-runs on what actually ships. The two controls read the
- * competitive tier's own numbers for the same reason: the unfixed calendar is
- * not a number typed here, it is the annual series the competitive summit still
- * runs on.
+ * measurement re-runs on what actually ships. The controls read the competitive
+ * tier's own numbers for the same reason: the unfixed calendar is not a number
+ * typed here, it is the annual series the competitive summit still runs on.
+ *
+ * THE FOURTH ARM EXISTS BECAUSE THE FIRST THREE LET A FALSE CLAIM STAND.
+ * `PHASE_DAYS`' block said 177 was "the other half of the reachability fix",
+ * and with the shipped arm and two controls that read as though the measurement
+ * supported it: the calendar with the old phase fails and the calendar with the
+ * new one passes. Both controls moved the CADENCE as well, so neither of them
+ * could tell which knob mattered.
+ *
+ * Held apart, it is the CADENCE. This arm is the shipped cadence at the old
+ * phase — a summit every 182 days starting on day six — and it takes 192 of 192
+ * arcs to a summit with a worst signup day of 18 against the shipped 19. The
+ * phase is very nearly free once the cadence is semi-annual, and the reason is
+ * arithmetic rather than luck: a series that comes round twice a year has an
+ * occurrence within 182 days of every day there is, wherever it starts.
+ *
+ * So a square of two knobs needs its fourth corner or one of the two edges gets
+ * the other's credit. The phase's own argument survives, smaller and honest,
+ * and it is in `PHASE_DAYS`' block: at the old phase the season's first summit
+ * falls on day six and NOBODY can enter it, so the calendar shows every new
+ * lifter a summit that is furniture. That is a legibility cost with a number
+ * behind it, not a reachability one.
  */
 export const CAMPAIGN_CALENDAR_VARIANTS: Readonly<Record<CampaignCalendarVariant, SeriesShape>> =
   Object.freeze({
@@ -1173,6 +1215,10 @@ export const CAMPAIGN_CALENDAR_VARIANTS: Readonly<Record<CampaignCalendarVariant
     'annual-late': Object.freeze({
       cadenceDays: CAREER_TUNING.CADENCE_DAYS['competitive-worlds'],
       phaseDays: CAREER_TUNING.PHASE_DAYS['campaign-worlds'],
+    }),
+    'semi-annual-at-the-competitive-phase': Object.freeze({
+      cadenceDays: CAREER_TUNING.CADENCE_DAYS['campaign-worlds'],
+      phaseDays: CAREER_TUNING.PHASE_DAYS['competitive-worlds'],
     }),
   });
 
@@ -1246,6 +1292,18 @@ export interface CampaignArc {
   /** How many meets were behind them when they entered it. */
   readonly meetsBeforeFirstSummit: number | null;
   readonly summitsEntered: number;
+  /**
+   * Did this lifter enter the very first campaign summit their calendar put in
+   * front of them?
+   *
+   * The phase's own measurement, and the one the cadence cannot make for it. A
+   * summit offered on the sixth day of a career is furniture: it is on the
+   * calendar, it is the top of the ladder, and nobody at any seed can be strong
+   * enough for it. `false` here is either that, or a lifter who was genuinely
+   * too slow — which is why it is counted at the anchor-signup arms, where the
+   * two are told apart by the gate-clearing count beside it.
+   */
+  readonly enteredFirstOfferedSummit: boolean;
   /** How many of each tier the calendar OFFERED inside this arc's window. */
   readonly offeredPerTier: Readonly<Record<CareerMeetTier, number>>;
   /** How many of each tier the lifter actually entered. */
@@ -1323,6 +1381,7 @@ export function simulateCampaignArc(
     enteredPerTier[meet.tier] += 1;
     lastMeetDay = day;
   }
+  const firstOfferedSummit = calendar.find((meet) => meet.tier === 'campaign-worlds');
   return {
     seed,
     signupOffsetDays,
@@ -1330,6 +1389,8 @@ export function simulateCampaignArc(
     daysToFirstSummit,
     meetsBeforeFirstSummit,
     summitsEntered,
+    enteredFirstOfferedSummit:
+      firstOfferedSummit !== undefined && meets.some((meet) => meet.meetId === firstOfferedSummit.id),
     offeredPerTier: Object.freeze(offeredPerTier),
     enteredPerTier: Object.freeze(enteredPerTier),
   };
@@ -1374,6 +1435,12 @@ export interface CampaignReach {
   readonly enteredPerTier: Readonly<Record<CareerMeetTier, number>>;
   /** The deepest arc, against which `MEETS_PER_ARC`'s slack is measured. */
   readonly deepestArc: number;
+  /**
+   * How many of the ANCHOR-SIGNUP arcs entered the first campaign summit their
+   * calendar offered them. The phase's own statistic — see the field of the
+   * same name on `CampaignArc`.
+   */
+  readonly anchorArcsEnteringTheirFirstOfferedSummit: number;
 }
 
 /** Fold one variant's arcs into the counts the requirement is read off. */
@@ -1428,5 +1495,8 @@ export function measureCampaignReach(variant: CampaignCalendarVariant): Campaign
     offeredPerTier: Object.freeze(offeredPerTier),
     enteredPerTier: Object.freeze(enteredPerTier),
     deepestArc,
+    anchorArcsEnteringTheirFirstOfferedSummit: arcs.filter(
+      (arc) => arc.signupOffsetDays === 0 && arc.enteredFirstOfferedSummit,
+    ).length,
   };
 }

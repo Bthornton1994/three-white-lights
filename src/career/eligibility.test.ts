@@ -1396,6 +1396,20 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
       cadenceDays: CAREER_TUNING.CADENCE_DAYS['competitive-worlds'],
       phaseDays: CAREER_TUNING.PHASE_DAYS['campaign-worlds'],
     });
+    expect(CAMPAIGN_CALENDAR_VARIANTS['semi-annual-at-the-competitive-phase']).toEqual({
+      cadenceDays: CAREER_TUNING.CADENCE_DAYS['campaign-worlds'],
+      phaseDays: CAREER_TUNING.PHASE_DAYS['competitive-worlds'],
+    });
+    // The four shapes are the four corners of the two-knob square, which is
+    // what makes them able to separate the knobs. Asserted as a set of pairs so
+    // a duplicated corner — two arms that are secretly the same calendar —
+    // reddens rather than quietly halving the measurement.
+    const corners = Object.values(CAMPAIGN_CALENDAR_VARIANTS).map(
+      (shape) => `${shape.cadenceDays}/${shape.phaseDays}`,
+    );
+    expect(new Set(corners).size).toBe(4);
+    expect(new Set(Object.values(CAMPAIGN_CALENDAR_VARIANTS).map((s) => s.cadenceDays)).size).toBe(2);
+    expect(new Set(Object.values(CAMPAIGN_CALENDAR_VARIANTS).map((s) => s.phaseDays)).size).toBe(2);
     // The controls differ from the shipped shape in exactly one knob each,
     // which is what makes them separate the two.
     expect(CAMPAIGN_CALENDAR_VARIANTS['annual-late'].phaseDays).toBe(
@@ -1414,7 +1428,11 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
     const shippedCalendar = variantCalendar('shipped', from, addDays(from, 728));
     const engineCalendar = scheduledMeets(CAMPAIGN_SUMMIT_SWEEP.FEDERATION, from, addDays(from, 728));
     expect(shippedCalendar).toEqual(engineCalendar);
-    for (const variant of ['annual-at-the-competitive-phase', 'annual-late'] as const) {
+    for (const variant of [
+      'annual-at-the-competitive-phase',
+      'annual-late',
+      'semi-annual-at-the-competitive-phase',
+    ] as const) {
       const moved = variantCalendar(variant, from, addDays(from, 728));
       expect(moved.filter((meet) => meet.tier !== 'campaign-worlds')).toEqual(
         engineCalendar.filter((meet) => meet.tier !== 'campaign-worlds'),
@@ -1433,34 +1451,64 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
     const shipped = measureCampaignReach('shipped');
     const atTheOldPhase = measureCampaignReach('annual-at-the-competitive-phase');
     const annualLate = measureCampaignReach('annual-late');
+    const semiAnnualAtTheOldPhase = measureCampaignReach('semi-annual-at-the-competitive-phase');
 
-    // R1 FIRST, and then immediately the sentence that says R1 is not the
-    // clause doing the work. GDD §6.6 requires the campaign summit to be
-    // "always reachable"; every one of the 192 arcs reaches one.
+    // THE SHIPPED ARM'S OWN PROPERTIES FIRST, AND THE ORDER IS DELIBERATE for
+    // the reason axis A states at length: vitest stops a test at its first
+    // failing expectation, so whichever assertion comes first is the one that
+    // speaks when the calendar breaks. An earlier draft of this test put the
+    // controls above R2b, and a mutation that made the summit unreachable
+    // reported "expected 191 to be 189" — true, and about a control.
+
+    // R1. GDD §6.6 requires the campaign summit to be "always reachable"; every
+    // one of the 192 arcs reaches one.
     expect(shipped.arcsReachingASummit).toBe(shipped.arcs);
     expect(shipped.arcs).toBe(192);
     expect(shipped.arcs).toBe(
       ATTENDANCE_SWEEP.SEEDS.length * CAMPAIGN_SUMMIT_SWEEP.SIGNUP_OFFSET_DAYS.length,
     );
 
-    // AND HERE IS WHY THAT CLAUSE IS NEARLY VACUOUS ON ITS OWN, measured rather
-    // than suspected: the calendar GDD §6.6 recorded as a design violation
-    // takes 191 of the same 192 arcs to a summit too. An absolute stated over
-    // the whole population separates the broken calendar from the repaired one
-    // by a single arc, because an arc that runs for two calendar periods will
-    // eventually meet an annual series whatever its phase.
-    expect(atTheOldPhase.arcsReachingASummit).toBe(191);
-    expect(annualLate.arcsReachingASummit).toBe(189);
-
-    // R2b IS THE CLAUSE THAT BITES. "Always reachable" is a claim about every
-    // player, not about an average, and cutting the first-year count by signup
-    // day is what turns it into one. The shipped calendar's worst signup day
-    // gets 19 of its 24 arcs to a summit inside the first year; both controls
-    // have a signup day that gets NONE of its 24 there.
-    expect(shipped.worstOffsetFirstYearArcs).toBe(19);
+    // R2b, WHICH IS THE CLAUSE THAT ACTUALLY BITES. "Always reachable" is a
+    // claim about every player, not about an average, and cutting the
+    // first-year count by signup day is what turns it into one. The shipped
+    // calendar's worst signup day gets 19 of its 24 arcs to a summit inside the
+    // first year.
     expect(shipped.worstOffsetFirstYearArcs).toBeGreaterThanOrEqual(
       CAMPAIGN_SUMMIT_SWEEP.MIN_FIRST_YEAR_ARCS_PER_OFFSET,
     );
+    expect(shipped.worstOffsetFirstYearArcs).toBe(19);
+    expect(shipped.firstYearArcsPerOffset).toEqual([23, 23, 23, 23, 23, 21, 21, 19]);
+
+    // R2, the whole-population pacing form, pinned exactly beside its bar so
+    // the margin is visible rather than implied.
+    expect(shipped.arcsReachingInsideAYear).toBeGreaterThanOrEqual(
+      CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_ARCS_REQUIRED,
+    );
+    expect(shipped.arcsReachingInsideAYear).toBe(176);
+    expect(shipped.medianDaysToFirstSummit as number).toBeLessThanOrEqual(
+      CAMPAIGN_SUMMIT_SWEEP.MEDIAN_DAYS_CEILING,
+    );
+    expect(shipped.medianDaysToFirstSummit).toBe(198);
+    expect(shipped.worstDaysToFirstSummit).toBe(608);
+
+    // R3's second half. The fastest arc had eight meets behind it, which clears
+    // the design floor and is ALSO a fact about the total generator rather than
+    // about the calendar — see the constant's block. Pinned exactly so that a
+    // generator given a plausible ceiling moves it visibly.
+    expect(shipped.fewestMeetsBeforeASummit as number).toBeGreaterThanOrEqual(
+      CAMPAIGN_SUMMIT_SWEEP.MIN_MEETS_BEFORE_A_SUMMIT,
+    );
+    expect(shipped.fewestMeetsBeforeASummit).toBe(8);
+
+    // NOW THE CONTROLS, AND THE FIRST THING THEY SAY IS THAT R1 IS NEARLY
+    // VACUOUS ON ITS OWN. Measured rather than suspected: the calendar GDD §6.6
+    // recorded as a design violation takes 191 of the same 192 arcs to a summit
+    // too. An absolute stated over the whole population separates the broken
+    // calendar from the repaired one by a single arc, because an arc running
+    // for two calendar periods will eventually meet an annual series whatever
+    // its phase. R2b separates them by nineteen.
+    expect(atTheOldPhase.arcsReachingASummit).toBe(191);
+    expect(annualLate.arcsReachingASummit).toBe(189);
     expect(atTheOldPhase.worstOffsetFirstYearArcs).toBe(0);
     expect(annualLate.worstOffsetFirstYearArcs).toBe(0);
 
@@ -1472,42 +1520,62 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
     // leaving the cadence annual moves the lockout to the OTHER end: the player
     // who signs up late in the season arrives just after the summit and waits a
     // whole year for the next.
-    expect(shipped.firstYearArcsPerOffset).toEqual([23, 23, 23, 23, 23, 21, 21, 19]);
     expect(atTheOldPhase.firstYearArcsPerOffset).toEqual([0, 23, 23, 23, 23, 22, 21, 21]);
     expect(annualLate.firstYearArcsPerOffset).toEqual([18, 16, 14, 12, 11, 8, 4, 0]);
     // Neither knob alone. That is the whole argument for changing both, and it
-    // is these three rows rather than a paragraph.
+    // is these two rows rather than a paragraph.
     expect(atTheOldPhase.firstYearArcsPerOffset[0]).toBe(0);
     expect(
       annualLate.firstYearArcsPerOffset[CAMPAIGN_SUMMIT_SWEEP.SIGNUP_OFFSET_DAYS.length - 1],
     ).toBe(0);
 
-    // R2, the whole-population form, kept because it is the pacing statement
-    // and pinned exactly beside its bar so the margin is visible.
-    expect(shipped.arcsReachingInsideAYear).toBe(176);
-    expect(shipped.arcsReachingInsideAYear).toBeGreaterThanOrEqual(
-      CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_ARCS_REQUIRED,
-    );
-    expect(shipped.medianDaysToFirstSummit).toBe(198);
-    expect(shipped.medianDaysToFirstSummit as number).toBeLessThanOrEqual(
-      CAMPAIGN_SUMMIT_SWEEP.MEDIAN_DAYS_CEILING,
-    );
-    expect(shipped.worstDaysToFirstSummit).toBe(608);
-    // The controls on the same statistic, so the shipped numbers are numbers
+    // The controls on the pacing statistics, so the shipped numbers are numbers
     // against something.
     expect(atTheOldPhase.arcsReachingInsideAYear).toBe(156);
     expect(annualLate.arcsReachingInsideAYear).toBe(83);
     expect(atTheOldPhase.medianDaysToFirstSummit).toBe(301);
     expect(annualLate.medianDaysToFirstSummit).toBe(380);
 
-    // R3's second half. The fastest arc had eight meets behind it, which clears
-    // the design floor and is ALSO a fact about the total generator rather than
-    // about the calendar — see the constant's block. Pinned exactly so that a
-    // generator given a plausible ceiling moves it visibly.
-    expect(shipped.fewestMeetsBeforeASummit).toBe(8);
-    expect(shipped.fewestMeetsBeforeASummit as number).toBeGreaterThanOrEqual(
-      CAMPAIGN_SUMMIT_SWEEP.MIN_MEETS_BEFORE_A_SUMMIT,
-    );
+    // THE FOURTH CORNER, AND IT CORRECTS WHAT THE THREE ROWS ABOVE READ LIKE.
+    // Both controls so far moved the CADENCE as well as the phase, so "neither
+    // knob alone" is not something they can establish — and `PHASE_DAYS` said
+    // it anyway. Holding the cadence at the shipped semi-annual and putting the
+    // phase back on day six: still 192 of 192, worst signup day 18 against 19.
+    //
+    // THE CADENCE IS THE REACHABILITY FIX. The phase is very nearly free for
+    // that purpose, and the reason is arithmetic rather than this population —
+    // a series coming round twice a year has an occurrence within 182 days of
+    // every day there is, wherever it starts.
+    expect(semiAnnualAtTheOldPhase.arcsReachingASummit).toBe(192);
+    expect(semiAnnualAtTheOldPhase.worstOffsetFirstYearArcs).toBe(18);
+    expect(semiAnnualAtTheOldPhase.arcsReachingInsideAYear).toBe(174);
+    // Read as a 2x2 on the one statistic R2b is about: the two semi-annual
+    // corners clear the bar and the two annual corners are zero, whichever
+    // phase each is at. That is the shape of "one knob decides this".
+    expect([
+      shipped.worstOffsetFirstYearArcs,
+      semiAnnualAtTheOldPhase.worstOffsetFirstYearArcs,
+      annualLate.worstOffsetFirstYearArcs,
+      atTheOldPhase.worstOffsetFirstYearArcs,
+    ]).toEqual([19, 18, 0, 0]);
+
+    // AND THE PHASE'S OWN STATISTIC, WHICH NOTHING ABOVE REACHES. R1, R2 and
+    // R2b are all about whether a summit ARRIVES. This is about whether the
+    // first one a new lifter is SHOWN is one they could ever enter: at the
+    // day-six phase the season opens with a world championship that no seed can
+    // make, under either cadence, and the calendar draws it anyway.
+    expect(shipped.anchorArcsEnteringTheirFirstOfferedSummit).toBe(18);
+    expect(annualLate.anchorArcsEnteringTheirFirstOfferedSummit).toBe(18);
+    expect(atTheOldPhase.anchorArcsEnteringTheirFirstOfferedSummit).toBe(0);
+    expect(semiAnnualAtTheOldPhase.anchorArcsEnteringTheirFirstOfferedSummit).toBe(0);
+    // The 2x2 the other way up, so the two knobs are visibly orthogonal: this
+    // statistic splits on the PHASE and R2b's splits on the CADENCE.
+    expect([
+      shipped.anchorArcsEnteringTheirFirstOfferedSummit,
+      annualLate.anchorArcsEnteringTheirFirstOfferedSummit,
+      semiAnnualAtTheOldPhase.anchorArcsEnteringTheirFirstOfferedSummit,
+      atTheOldPhase.anchorArcsEnteringTheirFirstOfferedSummit,
+    ]).toEqual([18, 18, 0, 0]);
   });
 
   it('counts what the sweep actually saw, per tier, so none of the zeros is about an empty domain', () => {
