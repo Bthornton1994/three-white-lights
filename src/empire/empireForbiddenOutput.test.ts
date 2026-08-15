@@ -13697,6 +13697,30 @@ interface RegistryMutant {
 
 const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
   Object.freeze({
+    id: 'G30',
+    what: "the `readonly [key: symbol]` half deleted from `FUNCTION_FREE_DATA_SOURCE`, leaving the string half — which is what the reference type looked like when it was first drafted",
+    reddened:
+      'four checks, each naming the route rather than a count. `finds the returned closure in all fifteen shapes`: - "__assemblyProbe.ts#probeSymbolKeyedClosure#closure:.keyed.[ASSEMBLY_SLOT].peek". `answers every shape the way the truth column says`: `sym: a symbol-keyed index signature, which the string half misses: expected false to be true`, which is the failure message saying what the deleted half was for. `agrees with the control everywhere`: expected 3 to be 4. And the battery `HOLDS` count, 23 against 24. A symbol index signature is not checked against a string one, so this half is load-bearing rather than thorough.',
+  }),
+  Object.freeze({
+    id: 'G31',
+    what: 'the `any` arm removed from the screen, leaving the relation to answer about `any` on its own',
+    reddened:
+      "`answers every shape the way the truth column says`: `anyish: answered before the relation, which would call `any` data: expected false to be true`. `any` is assignable to everything, so the relation certifies the one type that carries no information at all as function-free data. Two checks red, both in the battery, and nothing else in the file moves — which is the argument for the battery existing: no probe export can be typed `any` and still hand a caller a closure the walk can follow, so this arm has no mutant outside it.",
+  }),
+  Object.freeze({
+    id: 'G32',
+    what: 'the whole reformulation reverted — `return asked || walked` becomes `return walked`, which is the enumerating screen E24 shipped',
+    reddened:
+      'six checks. `finds the returned closure in all fifteen shapes` loses four rows: the deep member, the `Record`, the declared index signature and the symbol-keyed table. `names what it still cannot follow` loses the ten `returned=unfollowable` rows, so the cost of the reformulation is measured in the same mutant as its benefit. `follows the deep member`, `agrees with the control everywhere`, and both battery checks go red as well. That is the round in one mutant.',
+  }),
+  Object.freeze({
+    id: 'G33',
+    what: "`shippedTypeDepth` given the control's own bound — `if (depth > MEMBER_TYPE_WALK_MAX_DEPTH) return depth;` — which is the walk pretending to be a second reading while re-deriving the first",
+    reddened:
+      'NOTHING, THE FIRST TIME, AND THAT IS WHY THIS ROW EXISTS. All 83 tests stayed green: the bound stops AT nine and nine is what the shipped tree reports, so `DEEPEST: 9` was saying "the walk got to nine" — which is what a truncated walk says too. The pin written to be an independent reading of the depth claim could not tell itself from the reading it was checking. Repaired with a positive control rather than a bigger number: the same walk over a program containing the assembly probe reaches 41, at the forty-deep recursive instantiation. Re-planted, the mutant is red with `expected 9 to be 41`.',
+  }),
+  Object.freeze({
     id: 'G23',
     what: "`assignedValuesTo` neutered to return `[]` — M39's whole repair removed, leaving the walk following initializers only, which is the state the thirteenth bypass escaped through",
     reddened:
@@ -13875,8 +13899,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(26);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(26);
+    expect(REGISTRY_MUTANTS.length).toBe(30);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(30);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
