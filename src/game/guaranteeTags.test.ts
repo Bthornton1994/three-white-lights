@@ -594,8 +594,19 @@ const GUARANTEE_COVERAGE = {
    * that round's base and nothing else changed, this test is 6 passed at 232.
    * The builder reported it and did not reword it to dodge, which is the second
    * time that has been the reported outcome rather than a discovered one.
+   *
+   * THIRTEENTH ROUND, 233 -> 234, AND THE ATTRIBUTION WAS DOWN TO ONE WORD.
+   * The builder measured it twice and reported that lower-casing the single word
+   * `NEVER`, in a two-line comment saying a positive control is what stops two
+   * zeros from being a walk that never looked, returns the count to 233. It left
+   * the word capitalised and reported the bump rather than dropping one letter
+   * to dodge — which is the cheapest possible version of the evasion this file
+   * warns about, and the first time a round has been offered it that plainly.
+   *
+   * Fifth round running in the same class: a sentence about why a check is not
+   * vacuous, which is the subject of its own check.
    */
-  TREE_WIDE: 233,
+  TREE_WIDE: 234,
 } as const;
 
 // ---------------------------------------------------------------------------
