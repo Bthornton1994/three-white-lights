@@ -13671,6 +13671,26 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts`.',
     ]),
   }),
+  Object.freeze({
+    id: 'M64',
+    shape:
+      "THE TWENTY-FIRST BYPASS, AND IT IS THE SCREEN'S OWN DECLARED RESIDUAL STANDING UP: the two halves of the residual composed, rather than either alone. M63 defeated the RELATION with a forty-deep recursive instantiation and the bounded control caught the cut; M62 defeated the CONTROL with an index signature and the relation caught that. Put the nest BEHIND the index signature and both readings answer `false` — the relation certifies the value as function-free data, and the control's `getProperties()` is empty so it never descends far enough to cut",
+    where:
+      'production.ts, `accrueProduction`: a `ProductionNest<T, D>` peeling one element off a 40-tuple per level, held as `{ readonly keyed: { readonly [k: string]: ProductionDeep; readonly [k: symbol]: ProductionDeep } }` and handed back as `shapes: PRODUCTION_KEYED.keyed` with the frozen literal cast to `ProductionAccrual`. Both index signatures, because the string half alone is what M62 proved is refused',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING CAUGHT IT. Whole directory: `Tests 3 failed | 498 passed (501)`, and all three are the node counters this file has now recorded six times as not the check working — instrument B `expected 2395780 to be 2393060`, the overflow pass `expected 524024 to be 523128`, and `nodesExamined` `expected 22042 to be 21789`. `census.byModule` is asserted before that node count in the same test and PASSED, so there is no `returned-closure` row for production.ts.',
+      'AND THE COUNTER STAYED AT ZERO, WHICH IS THE PART THAT MATTERS. `measures how deep the shipped types go` and `follows the deep member` are both GREEN — the two checks M63 reddened — so `memberTypeDepthCuts` is 0 and the screen was silent rather than contained. `agrees with the control everywhere on the shipped tree` is green too: the two readings AGREE here, both answering `false`, so this route does not even appear as a disagreement.',
+      'AND THE BRANCH RUNS, PRINTED: `accrueProduction` on a fresh gym returns a `shapes` key, walking `.down` off `shapes.entry` reaches depth 40, `typeof peek` is `function` and `peek()` is `covered-day`, with `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      "WHY IT GETS THROUGH, in the mechanism's own terms and exactly as the residual at `memberTypeScreen` predicts. Reading one asks `isTypeAssignableTo`, whose recursion limiter resolves the forty-deep instantiation as related — so an object whose two index signatures hold that type is certified function-free. Reading two walks `getProperties()`, which is EMPTY on an index-signature type, so it returns `false` at depth 0 and never reaches `MEMBER_TYPE_WALK_MAX_DEPTH` to record a cut. Each reading is defeated by the half the other one covers.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'This row is CONFIRMATION OF A DECLARED LIMIT RATHER THAN A NEW FINDING, and it is written down because a residual stated in a comment and never run is this codebase\'s most-repeated defect. `memberTypeScreen` names this exact shape — "a type that defeats the relation AND sits behind a position reading two does not model" — and says no catcher is claimed for it. It now has a measurement instead of a prediction, and still no catcher.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
+    ]),
+  }),
 ]);
 
 /**
@@ -13937,7 +13957,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(63);
+    expect(PLANTED_ROUTES.length).toBe(64);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -14037,8 +14057,14 @@ describe('the routes that were planted, and what each of them cost', () => {
     // chunk text the set already held and left that census green. Only the
     // third says whether the string census covers this class, and the answer
     // is that it does not.
-    expect(attempts).toBe(87);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(53);
+    // ONE FOR M64, which reached isolation first time because it is M62's and
+    // M63's isolations composed — the payload read out of
+    // `EMPIRE_FORBIDDEN_OUTPUTS` through a specifier added to an import the
+    // module already has, the recursion written as a tuple peel so no string
+    // literal appears, and the field cast onto the value rather than declared
+    // on the interface.
+    expect(attempts).toBe(88);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(54);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
