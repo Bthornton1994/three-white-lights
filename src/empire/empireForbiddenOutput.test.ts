@@ -7777,20 +7777,33 @@ const FUNCTION_FREE_DATA_FILE: readonly (readonly [string, string])[] = Object.f
 ]);
 
 /**
- * Whether a declaration came from a `.d.ts` — somebody else's library, not this
- * directory's own assembly.
+ * Whether a declaration came from a `.d.ts`, which is a question about what the
+ * declaration CAN CARRY and not about whose code it is.
  *
- * At module scope because three readers need the same predicate and this file's
- * own most-repeated finding is that a rule written for one arm gets copied to
- * its sibling and drifts.
+ * WHAT IT GUARANTEES, in the mechanism's own terms: a declaration file admits no
+ * initializer and no executable statement — `declare const x = …` is
+ * `error TS1039` and there is no assignment for `assignedValuesTo` to find — so a
+ * binding declared in one has no value expression in this program at all. That is
+ * the fact the two remaining callers are about, and both of them answer it by
+ * sending the identifier to `unfollowed`, which is a named line in
+ * `freshReceivers` rather than a quiet nothing.
  *
- * `let shape: T | undefined = undefined;` is the branch immediately below the
- * one M39 was planted in, and it is why `hoppableInitializer` asks this rather
- * than a bare `ts.isIdentifier`. `undefined` IS an identifier, and it resolves
- * to a `VariableDeclaration` in `lib.es5.d.ts` — so the hop succeeds, lands at
- * module scope in a declaration file, and the assignment path never runs. A
- * binding declared in a `.d.ts` is not a value this directory assembled, so it
- * is not a hop.
+ * WHY IT IS NOT `declaredInTheDefaultLibrary` HERE, measured rather than
+ * reasoned. E29 drove `declare const holder: { readonly inner: Shape }` and
+ * `declare namespace ns { const inner: Shape }` from a project `.d.ts` through
+ * both readings. Under this one the returns come back
+ * `returned=unfollowable:holder` and `returned=unfollowable:ns`. Under the
+ * narrower one the member arm enters its `VariableDeclaration` branch, finds an
+ * initializer list of length zero because a declaration file cannot hold one,
+ * and returns having recorded NOTHING — so the narrowing that closed the screen's
+ * silence OPENS one here. The pair `finds a project .d.ts binding unfollowable
+ * rather than silent` is what holds both rows.
+ *
+ * ITS LIMIT: it says nothing about which declaration file, so a project's own
+ * `.d.ts` and `lib.es5.d.ts` are one answer. Two callers that needed the
+ * narrower question — `hoppableInitializer` and the returned-identifier arm —
+ * ask `declaredInTheDefaultLibrary` instead, and the probe rows named at each
+ * are what say the split is real.
  */
 const ambientlyDeclared = (declaration: ts.Node): boolean =>
   declaration.getSourceFile().isDeclarationFile;
@@ -8361,6 +8374,13 @@ function channelCensusOf(
     const resolved = resolvedDeclaration(holder);
     if (resolved === null) return null;
     const host = bindingHost(resolved);
+    // THE WIDE PREDICATE ON PURPOSE, and the two beside it are narrow on
+    // purpose. `null` here is not "nothing" — it is what sends the holder to
+    // `unfollowed`. A declaration file cannot carry an initializer, so asking
+    // the narrower default-library question would let a project `.d.ts` binding
+    // through to a walk that finds an empty value list and reports nothing.
+    // Measured: `unfollowable:holder` and `unfollowable:list` both disappear
+    // under the narrowing. See `ambientlyDeclared`.
     if (ambientlyDeclared(host) || !ts.isVariableDeclaration(host)) return null;
     const written = assignedValuesTo(host);
     if (written.destructured) return null;
@@ -8370,10 +8390,34 @@ function channelCensusOf(
     ];
   };
 
+  /**
+   * Whether an initializer is an identifier this walk should hop through.
+   *
+   * IT ASKS THE DEFAULT-LIBRARY QUESTION AND NOT THE DECLARATION-FILE ONE, which
+   * is E29's narrowing and is the predicate's own purpose read back. What the
+   * refusal was written for is `let shape: T | undefined = undefined`, where
+   * `undefined` resolves to a `VariableDeclaration` in `lib.es5.d.ts` — the
+   * COMPILER'S library, which is provably not this directory's assembly.
+   * `isDeclarationFile` expressed that as "any `.d.ts`", and a `.d.ts` inside
+   * this directory is provably the opposite.
+   *
+   * WHAT THE WIDTH COST, measured: `const alias = ambientMutable; alias.kind =
+   * <a banned name>` — an alias of a binding declared in a project `.d.ts` —
+   * resolved to `local` under the wide reading, and `local` is the one owner arm
+   * that records no channel and no `freshReceivers` line. The whole of the write
+   * was a `writeOwners.local` increment, which is the number this file's own
+   * assembly section calls one that moves for any added write at all. Under this
+   * reading it is `module-variable`, so the write arrives as a
+   * `module-mutable-state` site with a file, a function and a line on it.
+   *
+   * THE PURPOSE IT KEEPS IS RUN, NOT ASSERTED: `undefined` still lives in
+   * `lib.es5.d.ts`, so `does not hop OUT of the function through an `undefined`
+   * initializer` and G24's mutant are unchanged by the narrowing.
+   */
   const hoppableInitializer = (root: ts.Expression): boolean => {
     if (!ts.isIdentifier(root)) return false;
     const resolved = resolvedDeclaration(root);
-    return resolved !== null && !ambientlyDeclared(resolved);
+    return resolved !== null && !declaredInTheDefaultLibrary(program, resolved);
   };
 
   /**
@@ -8571,10 +8615,22 @@ function channelCensusOf(
           unfollowed.push(node);
           return;
         }
-        // An ambient binding is not a value this directory assembled. Same
-        // predicate `hoppableInitializer` uses, shared rather than restated,
-        // because these two arms are one decision.
-        if (ambientlyDeclared(host)) return;
+        // A BINDING THE COMPILER'S OWN LIBRARY DECLARES IS NOT A VALUE THIS
+        // DIRECTORY HANDED BACK, and that is a narrower question than the one
+        // this arm used to ask. Under `isDeclarationFile` it skipped every
+        // declaration file, so `declare function named(): string` in a project
+        // `.d.ts`, returned from a shipped module as `return named` or as
+        // `{ peek: named }`, produced no `returned-closure` row and no
+        // `unfollowed` line — measured, and it is the same file-kind silence
+        // E28 found one instrument over. Under this reading those two are
+        // `closure:return` and `closure:.peek`, which is what
+        // `AMBIENT_PROBE_CLOSURE_SITES` pins.
+        //
+        // Its limit: a closure declared in `lib.es5.d.ts` and handed back is
+        // still skipped here, which is the point — `return parseInt` is the
+        // library's function and not this directory's. Nothing covers that and
+        // nothing needs to, because the ban is about what this directory emits.
+        if (declaredInTheDefaultLibrary(program, host)) return;
         // A NAMED FUNCTION HANDED BACK BY ITS NAME, which the initializer-only
         // walk could not see either: `function helper() {…}; return { peek:
         // helper };` resolves to a `FunctionDeclaration` and not to a variable.
@@ -8811,6 +8867,16 @@ function channelCensusOf(
         }
         const symbol = checker.getSymbolAtLocation(node);
         const resolved = symbol?.valueDeclaration ?? symbol?.declarations?.[0];
+        // WIDE ON PURPOSE, like `literalValuesOf` and unlike the identifier arm
+        // twenty lines up. Skipping here does not drop the member — it hands it
+        // to the holder fallback below, which reports. The shape that
+        // discriminates is a namespace member, `declare namespace ns { const
+        // inner: Shape }`, because that is the one member access whose symbol
+        // resolves to a `VariableDeclaration` rather than to a
+        // `PropertySignature`: narrowed, it enters the branch, reads an empty
+        // value list out of a file that cannot hold one, and returns silent.
+        // Measured — `unfollowable:ns` is present under this reading and absent
+        // under the other.
         if (resolved !== undefined && !ambientlyDeclared(resolved)) {
           if (ts.isPropertyAssignment(resolved)) {
             if (!seenAliases.has(resolved)) {
@@ -9680,9 +9746,22 @@ interface ShippedDepthReading {
  *
  * The position set is the control's exactly — a call signature stops the walk,
  * unions and intersections step through their constituents, an array or tuple
- * steps through its element, and a non-ambient property steps through its type
- * — because the number this produces is about the control's limit and a walk
- * with different positions would be measuring a different thing.
+ * steps through its element, and a property whose declaration is not the
+ * compiler's own steps through its type — because the number this produces is
+ * about the control's limit and a walk with different positions would be
+ * measuring a different thing.
+ *
+ * THAT SENTENCE WAS FALSE FOR A ROUND, WHICH IS WHY THE PREDICATE IS NAMED IN
+ * IT NOW. E28 narrowed the control's property skip from `isDeclarationFile` to
+ * `declaredInTheDefaultLibrary` and left these two walks on the wide one, so the
+ * claim of equality survived the edit that broke it — a stale confident sentence,
+ * which is this codebase's most-repeated defect and not a rare one. Measured, the
+ * two readings part on a project `.d.ts` and agree on the shipped tree: a
+ * twelve-deep chain declared in one reads 9 under the wide predicate — its own
+ * position contributing zero — and 12 under this one, while `DEEPEST`,
+ * `POSITIONS`, `DEEPEST_THROUGH_INDEX` and both crossing counts are identical
+ * either way on `shippedModulePaths()` alone. `AMBIENT_DEPTH_PROBE` is the
+ * positive control that keeps the difference measured rather than described.
  */
 function shippedTypeDepth(
   roots: readonly string[] = shippedModulePaths(),
@@ -9711,7 +9790,7 @@ function shippedTypeDepth(
     }
     for (const symbol of type.getProperties()) {
       const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
-      if (declaration === undefined || ambientlyDeclared(declaration)) continue;
+      if (declaration === undefined || declaredInTheDefaultLibrary(program, declaration)) continue;
       step(checker.getTypeOfSymbolAtLocation(symbol, declaration));
     }
     return deepest;
@@ -9752,7 +9831,7 @@ function shippedTypeDepth(
     }
     for (const symbol of type.getProperties()) {
       const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
-      if (declaration === undefined || ambientlyDeclared(declaration)) continue;
+      if (declaration === undefined || declaredInTheDefaultLibrary(program, declaration)) continue;
       step(checker.getTypeOfSymbolAtLocation(symbol, declaration), 0);
     }
     return best;
