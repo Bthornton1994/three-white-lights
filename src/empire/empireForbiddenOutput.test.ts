@@ -13364,6 +13364,14 @@ const CANDIDATE_SHAPES: readonly CandidateShape[] = Object.freeze([
     why: 'the closure arrives through an accessor rather than a data property',
   }),
 
+  Object.freeze({
+    id: 'hybrid-callable-with-both-index-signatures',
+    group: 'hybrid',
+    build: `declare const subject: { (): string; readonly [k: string]: string; readonly [k: symbol]: string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject(); }',
+    why: "THE EXPLANATION THE OTHER TWO HYBRID ROWS WERE READ AS SUPPORTING IS FALSE, AND THIS ROW IS THE COUNTEREXAMPLE. Both of them come back `cert=false`, and the reason offered was that a callable type is refused whatever it holds — which would make this whole group incapable of earning a certificate. Sixteen hybrid shapes were driven through the relation to check that: thirteen are refused and three certify, and this is the sharpest of the three. A type literal carrying a call signature AND both of the index signatures the reference type asks for is certified as function-free data while being directly callable. The group is still safe, and it is safe for a different reason than the sentence gave: the bounded walk's FIRST arm is `getCallSignatures().length > 0`, which is not behind either of E27's readings and answers before any of this",
+  }),
+
   // ---- Group G: generic machinery, and the non-generic control for it ----
   Object.freeze({
     id: 'generic-mapped-type-intersected-with-string',
@@ -13511,6 +13519,7 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
   Object.freeze(['global-augmentation-holding-a-closure', false, true, true, true] as const),
   Object.freeze(['hybrid-type-literal-callable-and-indexed', false, true, true, true] as const),
   Object.freeze(['hybrid-behind-a-getter', false, true, true, true] as const),
+  Object.freeze(['hybrid-callable-with-both-index-signatures', true, true, true, true] as const),
   Object.freeze(['generic-mapped-type-intersected-with-string', true, true, true, true] as const),
   Object.freeze(['infer-conditional-intersected-with-string', true, true, true, true] as const),
   Object.freeze(['conditional-any-over-string-called', true, false, false, false] as const),
@@ -13542,19 +13551,19 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
  * premise the census's containment argument rests on, and it is false.
  */
 const FAMILY_CENSUS = Object.freeze({
-  ROWS: 47,
+  ROWS: 48,
   /** Distinct groups, so a truncated battery cannot pass as a whole one. */
   GROUPS: 10,
   /** Rows the relation alone certified as function-free data. */
-  CERTIFYING: 29,
+  CERTIFYING: 30,
   /** Rows whose reach snippet compiles clean. */
-  REACHABLE: 41,
+  REACHABLE: 42,
   /** Rows the whole screen was silent about. */
   SILENT: 3,
   /** Silent AND reachable — the bypass count. */
   SILENT_AND_REACHABLE: 0,
   /** See the paragraph above. Twenty, and the residual said zero. */
-  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 24,
+  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 25,
   /** The same battery through `SCREEN_BEFORE_E27`. */
   BEFORE_E27_SILENT: 16,
   BEFORE_E27_SILENT_AND_REACHABLE: 13,
