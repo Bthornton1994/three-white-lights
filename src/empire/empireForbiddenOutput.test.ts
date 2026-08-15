@@ -3464,6 +3464,12 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
   // builder remembering to.
   'FUNCTION_FREE_DATA_FILE',
   'DIAGNOSTIC_CHANNEL_CENSUS',
+  // The family sweep's ban on its OWN reach snippets. An expectation and not an
+  // input: it is not driven against any subject, it is applied to the rows this
+  // file writes, so a size pin would say nothing. It is filed here for the same
+  // reason `FUNCTION_FREE_DATA_FILE` is — the scan requires every labelled list
+  // at module scope to be classified, which is the guard conscripting new code.
+  'REACH_BANS',
   // The screen's truth column. An expectation and not an input: every row is a
   // verdict somebody wrote down for a shape, and the shapes themselves live in
   // `SCREEN_BATTERY_SOURCE` rather than here.
@@ -3487,6 +3493,11 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
   // shape list in both directions, which is the pin a `FIXTURE_LISTS` row would
   // have given it.
   'LIMITER_TABLE',
+  // The family sweep's truth column, on the same footing as `LIMITER_TABLE` and
+  // for the same reason: the subjects are `CANDIDATE_SHAPES` and this is what
+  // somebody wrote down about them. Its size is pinned against
+  // `FAMILY_CENSUS.ROWS` and joined to the shape list in both directions.
+  'FAMILY_TABLE',
 ]);
 
 /**
@@ -3552,7 +3563,7 @@ const DOMAIN_CENSUS = Object.freeze({
   ALIASES: 7,
   NON_DOMAIN_LISTS: 1,
   LITERAL_AXES: 8,
-  LABELLED_LISTS: 17,
+  LABELLED_LISTS: 19,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
@@ -7744,6 +7755,8 @@ const FUNCTION_FREE_DATA_SOURCE = `type FunctionFreeData =
 
 declare const functionFreeData: FunctionFreeData;
 
+declare const anyFunction: () => void;
+
 export {};
 `;
 
@@ -7773,16 +7786,46 @@ const FUNCTION_FREE_DATA_FILE: readonly (readonly [string, string])[] = Object.f
 const ambientlyDeclared = (declaration: ts.Node): boolean =>
   declaration.getSourceFile().isDeclarationFile;
 
-/** The reference type, taken out of the program the census is already using. */
-function functionFreeDataIn(program: ts.Program, checker: ts.TypeChecker): ts.Type {
+/**
+ * A reference type, taken out of the program the census is already using.
+ *
+ * Looked up BY NAME rather than by position. It read "the first variable
+ * statement" while the file held one declaration; the file now holds two, and a
+ * positional read would have silently answered the wrong question the moment a
+ * second was added above the first.
+ */
+function referenceTypeIn(program: ts.Program, checker: ts.TypeChecker, name: string): ts.Type {
   const file = program.getSourceFile(FUNCTION_FREE_DATA_PATH);
   if (file === undefined) throw new Error(`${FUNCTION_FREE_DATA_PATH} is not in the program`);
   for (const statement of file.statements) {
     if (!ts.isVariableStatement(statement)) continue;
-    const declared = statement.declarationList.declarations[0];
-    if (declared !== undefined) return checker.getTypeAtLocation(declared.name);
+    for (const declared of statement.declarationList.declarations) {
+      if (ts.isIdentifier(declared.name) && declared.name.text === name) {
+        return checker.getTypeAtLocation(declared.name);
+      }
+    }
   }
-  throw new Error('the function-free reference declaration is not in that file');
+  throw new Error(`the ${name} reference declaration is not in that file`);
+}
+
+/** The function-free data type the relation is asked about. */
+function functionFreeDataIn(program: ts.Program, checker: ts.TypeChecker): ts.Type {
+  return referenceTypeIn(program, checker, 'functionFreeData');
+}
+
+/**
+ * An arbitrary function type, for the reading that asks the relation BACKWARDS.
+ *
+ * What it is for, in the mechanism's own terms: `isTypeAssignableTo(subject,
+ * FunctionFreeData)` asks whether the subject is always data. It is answered
+ * `true` for `{}`, correctly — a type that declares nothing is assignable to a
+ * type with an index signature over data, because it has no property that could
+ * disagree. The value under it is a different question, and this is that
+ * question: `isTypeAssignableTo(anyFunction, subject)` asks whether a function
+ * may be STORED there.
+ */
+function anyFunctionIn(program: ts.Program, checker: ts.TypeChecker): ts.Type {
+  return referenceTypeIn(program, checker, 'anyFunction');
 }
 
 /** What the screen answered, and what each of its two readings answered. */
@@ -7827,8 +7870,40 @@ interface MemberTypeScreen {
  * everything: the relation would report "no function" about the one type that
  * carries no information at all. That row is in `SCREEN_BATTERY`.
  */
-function memberTypeScreen(program: ts.Program, checker: ts.TypeChecker): MemberTypeScreen {
+/**
+ * Which of the bounded walk's readings are switched on.
+ *
+ * It exists so the family battery can drive the screen AS IT WAS as well as the
+ * screen as it is, rather than describing the difference. The shipped call sites
+ * pass nothing and get every reading; `SCREEN_BEFORE_E27` is the control that
+ * keeps the non-zero numbers the zeros are zero against, which is the shape
+ * `src/game/streakSweep.ts` sets for a sweep in this codebase.
+ */
+interface ScreenReadings {
+  /** `isTypeAssignableTo(anyFunction, type)` — the relation asked backwards. */
+  readonly admitsAFunction: boolean;
+  /** Whether a property with no declaration at all is walked or skipped. */
+  readonly synthesizedProperties: boolean;
+}
+
+const SHIPPED_SCREEN_READINGS: ScreenReadings = Object.freeze({
+  admitsAFunction: true,
+  synthesizedProperties: true,
+});
+
+/** The same walker with E27's two readings off. Not used by any shipped census. */
+const SCREEN_BEFORE_E27: ScreenReadings = Object.freeze({
+  admitsAFunction: false,
+  synthesizedProperties: false,
+});
+
+function memberTypeScreen(
+  program: ts.Program,
+  checker: ts.TypeChecker,
+  readings: ScreenReadings = SHIPPED_SCREEN_READINGS,
+): MemberTypeScreen {
   const functionFreeData = functionFreeDataIn(program, checker);
+  const anyFunction = anyFunctionIn(program, checker);
   const disagreements: string[] = [];
   let cuts = 0;
 
@@ -7838,6 +7913,16 @@ function memberTypeScreen(program: ts.Program, checker: ts.TypeChecker): MemberT
       return false;
     }
     if (type.getCallSignatures().length > 0) return true;
+    // M67's catcher, and it is a different question from the one above rather
+    // than a wider version of it. A call signature says the type IS callable;
+    // this says a function may be STORED at this position whatever the type
+    // declares. `{}` declares nothing, so it has no call signature, no
+    // property, no index info and no element — every arm below returns
+    // `false` on it — and `const held: {} = () => 1` compiles. It sits here in
+    // the walk rather than beside the relation so that it is asked at every
+    // position the walk reaches: `{}` behind a property, inside an array and
+    // under an index signature are three of the rows the family battery pins.
+    if (readings.admitsAFunction && checker.isTypeAssignableTo(anyFunction, type)) return true;
     if (type.isUnionOrIntersection()) {
       return type.types.some((member) => boundedWalk(member, depth + 1));
     }
@@ -7858,7 +7943,20 @@ function memberTypeScreen(program: ts.Program, checker: ts.TypeChecker): MemberT
     }
     return type.getProperties().some((symbol) => {
       const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
-      if (declaration === undefined || ambientlyDeclared(declaration)) return false;
+      // A SYNTHESIZED property has no declaration at all, and that is a
+      // different fact from one declared in a `.d.ts`. The two were treated as
+      // one and it cost a silence: `string & { readonly [K in 'run']: () =>
+      // string }` prints identically to the plain literal beside it in the
+      // family battery, and the plain one was walked while this one was not,
+      // because a mapped type's member is synthesized and `declarations` is
+      // empty. `getTypeOfSymbol` needs no location, which is the whole of the
+      // repair.
+      if (declaration === undefined) {
+        return readings.synthesizedProperties
+          ? boundedWalk(checker.getTypeOfSymbol(symbol), depth + 1)
+          : false;
+      }
+      if (ambientlyDeclared(declaration)) return false;
       return boundedWalk(checker.getTypeOfSymbolAtLocation(symbol, declaration), depth + 1);
     });
   };
@@ -11762,6 +11860,7 @@ declare const optional: { readonly maybe?: () => string };
 declare const tuple: readonly [string, () => string];
 declare const nev: never;
 declare const objectish: object;
+declare const emptyish: {};
 declare const funcish: Function;
 interface Callable {
   (): string;
@@ -11812,15 +11911,22 @@ const SCREEN_BATTERY: readonly (readonly [string, boolean, string])[] = Object.f
   Object.freeze(['tuple', true, 'a tuple element rather than an array element'] as const),
   Object.freeze(['nev', false, 'no values, so no values holding a function'] as const),
   Object.freeze(['objectish', true, 'no structure to certify'] as const),
+  // THE BRANCH IMMEDIATELY BELOW THE ONE ABOVE, AND IT WAS MISSING FOR SIX
+  // ROUNDS. `object` and `unknown` were both in this battery and both answer
+  // `true`; `{}` is the third member of that family and it answered `false`
+  // until E27, because the relation certifies it and the walk has nothing to
+  // descend into. M67 is that row planted. The two neighbours being here is
+  // exactly why nobody looked.
+  Object.freeze(['emptyish', true, 'admits every non-nullish value, a function included, and declares nothing'] as const),
   Object.freeze(['funcish', true, 'the type of every function'] as const),
   Object.freeze(['callable', true, 'a call signature beside data members'] as const),
 ]);
 
 /** What the battery measured. Counts, so a truncated battery reports itself. */
 const SCREEN_BATTERY_CENSUS = Object.freeze({
-  ROWS: 28,
+  ROWS: 29,
   /** Rows the screen answers `true` for. Both verdicts occur, so neither is vacuous. */
-  HOLDS: 24,
+  HOLDS: 25,
   /**
    * Rows answered `false` — the ones the screen actually screens out, and the
    * number is small on purpose rather than by accident. Four of twenty-eight:
@@ -12340,15 +12446,33 @@ const LIMITER_TABLE: readonly (readonly [string, number | null, number | null, n
 /**
  * Every named type declaration in a module, and whether it reaches itself.
  *
- * WHAT THIS GUARANTEES, IN THE MECHANISM'S OWN TERMS. The relation issues a
- * false certificate only for an instantiation of a generic type alias that is in
- * a reference cycle — measured above, ten shapes, and the only three that get a
- * certificate while holding a closure are the three cyclic aliases. So the set
- * of types that can carry M64 is the set of instantiations of a cyclic alias
- * declared in this program, and DECLARATIONS ARE A LIST. That is the
- * reformulation CLAUDE.md asks for when a sampler keeps declaring its own
- * successor: an unbounded depth is not enumerable and a directory's type
- * declarations are.
+ * THE SENTENCE THIS DOCSTRING OPENED WITH IS FALSE, AND IT IS QUOTED HERE
+ * RATHER THAN DELETED BECAUSE THE CORRECTION IS THE MORE USEFUL ARTEFACT. It
+ * read: *"the relation issues a false certificate only for an instantiation of a
+ * generic type alias that is in a reference cycle — measured above, ten shapes,
+ * and the only three that get a certificate while holding a closure are the
+ * three cyclic aliases."* It was true of the eighteen shapes it had been asked
+ * about. `FAMILY_TABLE` asks forty-one, and
+ * `CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS` is **twenty**: a
+ * primitive-absorbing intersection, `{}` at six positions, a mapped type's
+ * synthesized property, a deferred conditional. None of the twenty is a cyclic
+ * alias and every one of them has a closure reachable through the type with no
+ * cast.
+ *
+ * WHAT THIS CENSUS STILL GUARANTEES, IN THE MECHANISM'S OWN TERMS AND NOTHING
+ * WIDER. The relation's RECURSION LIMITER — the resource limit measured by
+ * `LIMITER_TABLE`, where a certificate is issued while an alias instantiation is
+ * still deferred — is defeated only by an instantiation of a generic type alias
+ * in a reference cycle. That is the claim the bisection above supports and it is
+ * still standing: the twenty rows are not limiter defeats, they are the relation
+ * answering *correctly* about types that admit a function. So the set of types
+ * that can carry M64 SPECIFICALLY is the set of instantiations of a cyclic alias
+ * declared in this program, and DECLARATIONS ARE A LIST.
+ *
+ * The distinction is load-bearing rather than a save. M64 is a type the relation
+ * is WRONG about; M67 is a type the relation is right about and the walk had
+ * nothing to say about. A declaration census contains the first and has no
+ * subject for the second, which is why M67 needed a reading rather than a row.
  *
  * IT IS CONTAINMENT AND NOT DETECTION, said plainly. It does not find a closure
  * and it does not read a value. It reports that the shape which would make the
@@ -12365,8 +12489,11 @@ const LIMITER_TABLE: readonly (readonly [string, number | null, number | null, n
  *      this directory` in `empireCore.test.ts`, which is a set equality over
  *      every module's edges and scans all three import forms;
  *   3. a false certificate for a type that is NOT a cyclic alias — the six
- *      refusing rows of `LIMITER_TABLE` and the twenty-eight rows of
- *      `SCREEN_BATTERY`, which is where that claim is graded shape by shape.
+ *      refusing rows of `LIMITER_TABLE`, the rows of `SCREEN_BATTERY`, and
+ *      `FAMILY_TABLE`, which is where that claim is now graded and where it was
+ *      measured false. Route 3 is no longer covered by this census at all; what
+ *      covers it is the screen's own two new readings, and `FAMILY_CENSUS`'s
+ *      zero against eleven is the measurement.
  *
  * EACH OF THE THREE WAS RUN AGAINST THE CHECK NAMED FOR IT, rather than left as
  * a pointer, because this file already records what a named catcher nobody ran
@@ -12380,21 +12507,36 @@ const LIMITER_TABLE: readonly (readonly [string, number | null, number | null, n
  *      [ './empireCore', './empireTuning' ]`, 2 failed of 57. production.ts was
  *      restored and verified byte-identical afterwards;
  *   3. G37, which takes the self-reference out of the battery's cyclic shape and
- *      turns its certificate into a refusal.
+ *      turns its certificate into a refusal — and, for the wider claim route 3
+ *      actually makes, M67 and M68 in `PLANTED_ROUTES`: the same plant before
+ *      and after the readings, silent then named.
  *
- * THE RESIDUAL, WITH NO CATCHER CLAIMED FOR THE FIRST OF ITS TWO HALVES.
+ * THE RESIDUAL. Its first half was closed by being measured, and what closed it
+ * is worth reading before the second half.
  *
- * The first half is the battery's own reach. "Only a cyclic generic alias earns
- * a false certificate" is measured over EIGHTEEN shapes — the ten pinned here,
- * plus eight more written and run in the round and not kept because they are
- * negative: nested arrays and tuples, a generic interface, `Promise`, `Readonly`
- * and `Record` chains, a cyclic INTERFACE and a cyclic CLASS, `Awaited` nested
- * (the standard library's own recursive alias, reachable without importing
- * anything), a deep intersection, a wide union, a recursive template-literal
- * alias, and a cycle through an indexed access. A nineteenth shape, certified
- * while holding a closure and not written as a cyclic alias, would walk past
- * this list, and nothing here would report it. The catcher is somebody adding a
- * row to `LIMITER_SHAPES`, which is a person and not a check.
+ * That half used to say the eighteen-shape sample was the reach of the claim,
+ * that a nineteenth shape certified while holding a closure would walk past the
+ * list, and that the catcher was somebody adding a row to `LIMITER_SHAPES` —
+ * a person and not a check. The nineteenth shape existed. Forty-one rows were
+ * run against the harness the ten pinned rows use, in nine groups, and twenty of
+ * them are certified with a reachable closure. Eleven of the forty-one defeated
+ * the whole screen and were reachable, and all eleven are closed by the two
+ * readings `memberTypeScreen` now carries. The residual that remains is the
+ * sample's own edge and it is a smaller claim: `FAMILY_TABLE` is forty-one
+ * shapes chosen by hand, so a forty-second is not covered, and the catcher is
+ * still a person adding a row. What has changed is that the person now adds it
+ * to a table whose counts are pinned in both directions, so a row added without
+ * a verdict is red rather than unmeasured.
+ *
+ * The one row that is silent and is NOT a bypass is kept in the table as the
+ * distinction it draws: `conditional-any-over-string`, a deferred conditional
+ * whose base constraint is `string` while its flags say `Conditional`, so the
+ * `any` short-circuit never fires and the whole screen goes quiet. No closure is
+ * reachable through it — `subject.run()` does not compile — and the only
+ * instantiation that holds one is `C<string>`, which IS `any` and is caught by
+ * the short-circuit at that position. A silence over a type nothing can be
+ * reached through is a gap in a screen and not an escape, and the table says
+ * which it is by carrying both columns rather than one verdict.
  *
  * The second half is this walk's own collector, and the attempts against it are
  * recorded rather than the impossibility. References are gathered from
@@ -12644,6 +12786,838 @@ describe('the relation certifies from a cycle and not from a depth, and the cycl
     );
     expect(withProbe.cyclic).toEqual(CYCLIC_DECLARATION_CENSUS.PROBE_CYCLIC);
     expect(withProbe.declarations).toBeGreaterThan(reading.declarations);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The family sweep — widening the eighteen shapes the residual above rests on
+// ---------------------------------------------------------------------------
+
+/**
+ * A type shape asked four questions, so a claim about the family of shapes that
+ * earn a false certificate rests on a measured sample rather than on the ten
+ * rows of `LIMITER_TABLE` plus eight that were run once and not kept.
+ *
+ * The residual at `cyclicDeclarations` names its own gap: *"a nineteenth shape,
+ * certified while holding a closure and not written as a cyclic alias, would
+ * walk past this list, and nothing here would report it."* This battery is that
+ * list, made standing. Each row is asked:
+ *
+ *   1. does it compile — a shape that errors is not a shape, and a sweep that
+ *      does not check this reads a syntax error as a refusal;
+ *   2. does the RELATION certify it as function-free data;
+ *   3. is a closure genuinely reachable THROUGH THE TYPE — the reach snippet
+ *      must compile with no cast, no `any`, no non-null assertion and no
+ *      suppression comment, which `reachIsHonest` pins as a textual ban on this
+ *      file's own inputs;
+ *   4. what the shipped screen answers — `asked || walked`, the same expression
+ *      `memberTypeScreen` returns, with the bounded walk's cuts beside it.
+ *
+ * A row is a NEGATIVE unless all four line up: compiles, certifies, reach
+ * compiles, and the screen is silent. The middle two are what the fan-out that
+ * produced these candidates could not separate, and separating them is most of
+ * what this battery is for — a certificate over a type no closure can be reached
+ * through is not a false certificate, and a reachable closure the screen still
+ * finds is contained rather than silent.
+ *
+ * Two verdicts short of silence are kept as their own columns rather than
+ * flattened into "negative", because they are different facts:
+ *
+ *   - `certifies` true with the screen NOT silent is a false relation
+ *     certificate that the bounded walk catches. It does not bypass the screen
+ *     and it does falsify the sentence the census's containment argues from.
+ *   - the screen silent with no reach is a silence over a type that cannot
+ *     deliver a closure through its own surface. It is the conditional row's
+ *     verdict and it is stated as a gap in the screen rather than as a bypass.
+ */
+interface CandidateShape {
+  readonly id: string;
+  readonly group: string;
+  /**
+   * The module text, with `/*REACH*\/` where the reach snippet is spliced in.
+   * The subject is whatever declaration or parameter is named `subject`.
+   */
+  readonly build: string;
+  /** A statement that calls a function obtained from `subject`. */
+  readonly reach: string;
+  readonly why: string;
+}
+
+const CANDIDATE_SUBJECT_PATH = path.join(HERE, '__candidateSubject.ts');
+
+/** Where a row's reach snippet is spliced in, and what is there when it is not. */
+const REACH_MARKER = '/*REACH*/';
+
+/** Shared declarations every row is written against. */
+const CANDIDATE_PRELUDE = `interface Peek { readonly peek: () => string; }
+type Drop<D extends readonly unknown[]> = D extends readonly [unknown, ...infer R] ? R : [];
+type Nest<T, D extends readonly unknown[]> = D['length'] extends 0 ? T : { readonly down: Nest<T, Drop<D>> };
+type Indexed = { readonly [k: string]: string };
+`;
+
+/**
+ * The bans a reach snippet has to survive to count as reaching a closure
+ * THROUGH the type.
+ *
+ * A cast reaches a closure through nothing — it asserts one is there. So does an
+ * `any` annotation, a non-null assertion and a suppression comment. This is a
+ * ban on this file's own inputs rather than on a subject, which is the one place
+ * a textual scan is the right instrument: the rows are written here and the ban
+ * is what stops a row from being written to pass.
+ */
+const REACH_BANS: readonly (readonly [string, RegExp])[] = Object.freeze([
+  Object.freeze(['a type assertion', /\bas\b/] as const),
+  Object.freeze(['the any type', /\bany\b/] as const),
+  Object.freeze(['a non-null assertion', /[A-Za-z0-9_)\]]\s*!(?!=)/] as const),
+  Object.freeze(['a suppression comment', /@ts-(?:expect-error|ignore)/] as const),
+  Object.freeze(['an angle-bracket cast', /<[A-Za-z{[(][^>]*>\s*[A-Za-z(]/] as const),
+]);
+
+interface CandidateReading {
+  /** Diagnostics from the shape itself, with the reach snippet absent. */
+  readonly diagnostics: readonly string[];
+  /** The relation alone: `isTypeAssignableTo(subject, FunctionFreeData)`. */
+  readonly certifies: boolean;
+  /** The shipped screen's own expression. `false` is silence. */
+  readonly screenHolds: boolean;
+  /** Reading one of the screen, `any` short-circuit included. */
+  readonly asked: boolean;
+  /** Reading two: whether the bounded walk found a call signature. */
+  readonly walked: boolean;
+  /** Bounded-walk cuts taken while answering this row. */
+  readonly cuts: number;
+  /** Diagnostics with the reach snippet spliced in. Empty means reachable. */
+  readonly reachDiagnostics: readonly string[];
+  /** The subject's type, as the checker prints it. */
+  readonly printed: string;
+}
+
+/**
+ * Build one program per question and read all four.
+ *
+ * A fresh program per row for the same reason `limiterReading` takes one per
+ * depth: `sharedProgramLimiterReading` measured that a shared program refuses
+ * the known family at every depth, so a battery that reused a program would
+ * report a directory with no residual at all.
+ */
+function candidateReading(
+  shape: CandidateShape,
+  readings: ScreenReadings = SHIPPED_SCREEN_READINGS,
+): CandidateReading {
+  const options = compilerOptions();
+
+  const compileOf = (text: string): { program: ts.Program; diagnostics: string[] } => {
+    const program = programWith(
+      options,
+      [CANDIDATE_SUBJECT_PATH],
+      `${CANDIDATE_PRELUDE}${text}\nexport {};\n`,
+      CANDIDATE_SUBJECT_PATH,
+      FUNCTION_FREE_DATA_FILE,
+    );
+    const file = program.getSourceFile(CANDIDATE_SUBJECT_PATH);
+    if (file === undefined) throw new Error('the candidate subject is not in the program');
+    const diagnostics = [
+      ...program.getSyntacticDiagnostics(file),
+      ...program.getSemanticDiagnostics(file),
+    ].map((diagnostic) => `${shape.id}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')}`);
+    return { program, diagnostics };
+  };
+
+  const bare = compileOf(shape.build.split(REACH_MARKER).join(''));
+  const withReach = compileOf(shape.build.split(REACH_MARKER).join(shape.reach));
+
+  const file = bare.program.getSourceFile(CANDIDATE_SUBJECT_PATH);
+  if (file === undefined) throw new Error('the candidate subject is not in the program');
+  const checker = bare.program.getTypeChecker();
+
+  let subject: ts.Type | null = null;
+  const findSubject = (node: ts.Node): void => {
+    if (subject !== null) return;
+    if (
+      (ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isPropertySignature(node)) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === 'subject'
+    ) {
+      subject = checker.getTypeAtLocation(node.name);
+      return;
+    }
+    node.forEachChild(findSubject);
+  };
+  findSubject(file);
+  if (subject === null) throw new Error(`${shape.id} declares no subject`);
+  const subjectType: ts.Type = subject;
+
+  const certifies = checker.isTypeAssignableTo(
+    subjectType,
+    functionFreeDataIn(bare.program, checker),
+  );
+  const asked = (subjectType.flags & ts.TypeFlags.Any) !== 0 || !certifies;
+  const screen = memberTypeScreen(bare.program, checker, readings);
+  const screenHolds = screen.holdsAFunctionAnywhere(subjectType, shape.id);
+  // `memberTypeScreen` exposes the joined answer and its disagreement list, not
+  // the two readings, so reading two is recovered from the pair. Every case is
+  // covered: asked and walked agreeing produces no disagreement line, and the
+  // two ways they can differ each produce one.
+  const disagreed = screen.disagreements().length > 0;
+  const walked = screenHolds && !(asked && disagreed);
+
+  return {
+    diagnostics: Object.freeze(bare.diagnostics),
+    certifies,
+    screenHolds,
+    asked,
+    walked,
+    cuts: screen.cuts(),
+    reachDiagnostics: Object.freeze(withReach.diagnostics),
+    printed: checker.typeToString(subjectType),
+  };
+}
+
+const CANDIDATE_SHAPES: readonly CandidateShape[] = Object.freeze([
+  // ---- The fidelity control: the known family, read by THIS driver ----
+  Object.freeze({
+    id: 'control-cyclic-alias-at-2',
+    group: 'control',
+    build: `declare const subject: Nest<Peek, [1,1]>;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.down.down.peek(); }',
+    why: 'the known family one instantiation below where the relation gives up — refused',
+  }),
+  Object.freeze({
+    id: 'control-cyclic-alias-at-3',
+    group: 'control',
+    build: `declare const subject: Nest<Peek, [1,1,1]>;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.down.down.down.peek(); }',
+    why: 'the known family AT the depth `RELATION_LIMITER.CERTIFIES_FROM` names — the certificate this driver has to reproduce before any other row is believed',
+  }),
+  Object.freeze({
+    id: 'control-literal-nest-at-3',
+    group: 'control',
+    build: `declare const subject: { readonly down: { readonly down: { readonly down: Peek } } };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.down.down.down.peek(); }',
+    why: 'the same three levels written out — refused, which is what says the certificate is about the alias and not the depth',
+  }),
+  Object.freeze({
+    id: 'control-plain-closure',
+    group: 'control',
+    build: `declare const subject: Peek;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.peek(); }',
+    why: 'a closure one property down, refused by everything — the row that says a refusal is reachable in this driver',
+  }),
+  Object.freeze({
+    id: 'control-plain-data',
+    group: 'control',
+    build: `declare const subject: { readonly held: string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.held(); }',
+    why: 'data, certified, with a reach that must FAIL to compile — the row that says the reach column can answer no',
+  }),
+
+  // ---- Group A: intersections absorbing into a primitive or an index type ----
+  Object.freeze({
+    id: 'intersection-string-and-method',
+    group: 'intersection',
+    build: `declare const subject: string & { readonly run: () => string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'the largest claimed group: a primitive constituent carries the certificate while the object constituent carries the closure',
+  }),
+  Object.freeze({
+    id: 'intersection-function-and-number',
+    group: 'intersection',
+    build: `declare const subject: (() => string) & number;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject(); }',
+    why: 'the call signature is on the intersection itself rather than on a member',
+  }),
+  Object.freeze({
+    id: 'intersection-indexed-and-method',
+    group: 'intersection',
+    build: `declare const subject: Indexed & { readonly run: () => string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'the certificate would come from the index signature rather than from a primitive',
+  }),
+  Object.freeze({
+    id: 'intersection-indexed-and-callable',
+    group: 'intersection',
+    build: `declare const subject: Indexed & (() => string);\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject(); }',
+    why: 'the same, with the closure as a call signature rather than a property',
+  }),
+  Object.freeze({
+    id: 'intersection-record-and-method',
+    group: 'intersection',
+    build: `declare const subject: Readonly<Record<string, string>> & { readonly onDone: () => string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.onDone(); }',
+    why: 'the index half spelled as `Record`, which is a different type object for the same shape',
+  }),
+  Object.freeze({
+    id: 'intersection-two-index-signatures',
+    group: 'intersection',
+    build: `declare const subject: { readonly [k: string]: string } & { readonly [k: string]: () => string };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject['x']; return held === undefined ? null : held(); }",
+    why: 'both constituents are index signatures and one of them holds the closure',
+  }),
+  Object.freeze({
+    id: 'intersection-inside-an-array',
+    group: 'intersection',
+    build: `declare const subject: readonly (string & Peek)[];\n${REACH_MARKER}`,
+    reach:
+      'export function reached(): unknown { const first = subject[0]; return first === undefined ? null : first.peek(); }',
+    why: 'the certifying intersection at an array element, which is the position M60 was about',
+  }),
+  Object.freeze({
+    id: 'intersection-under-an-index-signature',
+    group: 'intersection',
+    build: `declare const subject: { readonly [k: string]: string & Peek };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject['x']; return held === undefined ? null : held.peek(); }",
+    why: 'the certifying intersection at an index signature, which is the position M62 was about',
+  }),
+  Object.freeze({
+    id: 'intersection-unknown-and-empty',
+    group: 'intersection',
+    build: `declare const subject: { readonly held: unknown & {} };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { if (typeof subject.held === 'function') { return subject.held(); } return null; }",
+    why: '`unknown & {}` reduces to `{}`, which admits a function value at runtime',
+  }),
+  Object.freeze({
+    id: 'intersection-record-pair-and-method',
+    group: 'intersection',
+    build: `declare const subject: Record<string, string> & Record<symbol, string> & { readonly run: () => string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'both index signatures the reference type asks for, plus the closure as a third constituent',
+  }),
+  Object.freeze({
+    id: 'intersection-interface-method-and-indexed',
+    group: 'intersection',
+    build: `interface Machine { run(): string }\ndeclare const subject: Machine & Indexed;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'the closure is a METHOD on an interface, which is a different symbol shape from a property holding an arrow',
+  }),
+
+  // ---- Group B: `{}` and unions whose constituent admits any value ----
+  Object.freeze({
+    id: 'empty-object-type',
+    group: 'empty-and-union',
+    build: `declare const subject: {};\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { if (typeof subject === 'function') { return subject(); } return null; }",
+    why: '`{}` admits every non-nullish value, a function included, and declares no member at all',
+  }),
+  Object.freeze({
+    id: 'union-string-or-empty-object',
+    group: 'empty-and-union',
+    build: `declare const subject: string | {};\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { if (typeof subject === 'function') { return subject(); } return null; }",
+    why: 'the claimed row: a union whose second constituent admits any value',
+  }),
+  Object.freeze({
+    id: 'empty-object-behind-a-property',
+    group: 'empty-and-union',
+    build: `declare const subject: { readonly held: string | {} };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { if (typeof subject.held === 'function') { return subject.held(); } return null; }",
+    why: 'the same union one property down, which is the position a shipped export would actually have',
+  }),
+  Object.freeze({
+    id: 'empty-object-in-an-array',
+    group: 'empty-and-union',
+    build: `declare const subject: readonly {}[];\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const first = subject[0]; if (typeof first === 'function') { return first(); } return null; }",
+    why: 'the array-literal form the sweep claimed for union subtype reduction',
+  }),
+  Object.freeze({
+    id: 'union-carrying-a-certifying-intersection',
+    group: 'empty-and-union',
+    build: `declare const subject: string | (string & Peek);\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { if (typeof subject === 'object') { return subject.peek(); } return null; }",
+    why: 'a union constituent that is itself one of group A',
+  }),
+  Object.freeze({
+    id: 'empty-object-under-an-index-signature',
+    group: 'empty-and-union',
+    build: `declare const subject: { readonly [k: string]: {} };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject['x']; if (typeof held === 'function') { return held(); } return null; }",
+    why: '`{}` as an index signature value, which is the shape a bag of unknown data takes',
+  }),
+  Object.freeze({
+    id: 'control-unknown',
+    group: 'empty-and-union',
+    build: `declare const subject: unknown;\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { if (typeof subject === 'function') { return subject(); } return null; }",
+    why: 'the neighbour of `{}` that carries the same information and is expected to be refused — the control that says the `{}` reading is about `{}`',
+  }),
+  Object.freeze({
+    id: 'control-object-keyword',
+    group: 'empty-and-union',
+    build: `declare const subject: object;\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { if (typeof subject === 'function') { return subject(); } return null; }",
+    why: 'the other neighbour: `object` admits a function and declares no member either',
+  }),
+
+  // ---- Group C: the deferred conditional the sweep singled out ----
+  Object.freeze({
+    id: 'conditional-any-over-string',
+    group: 'conditional',
+    build: `type Cond<T> = T extends string ? any : string;\nexport function probe<Q>(subject: Cond<Q>): unknown {\n  ${REACH_MARKER}\n  return subject;\n}`,
+    reach: 'return subject.run();',
+    why: "the sweep's own singled-out row: a deferred conditional whose base constraint is `string` while its flags say `Conditional`, so the `any` short-circuit never fires",
+  }),
+  Object.freeze({
+    id: 'conditional-any-over-any',
+    group: 'conditional',
+    build: `type Cond<T> = T extends string ? any : any;\nexport function probe<Q>(subject: Cond<Q>): unknown {\n  ${REACH_MARKER}\n  return subject;\n}`,
+    reach: 'return subject.run();',
+    why: 'both branches `any`, so the apparent type is `any` while the flags are still `Conditional` — the row where a silence and a reach could coincide',
+  }),
+  Object.freeze({
+    id: 'conditional-any-over-peek',
+    group: 'conditional',
+    build: `type Cond<T> = T extends string ? any : Peek;\nexport function probe<Q>(subject: Cond<Q>): unknown {\n  ${REACH_MARKER}\n  return subject;\n}`,
+    reach: 'return subject.peek();',
+    why: "the sweep's first attributing control: the false branch carries the closure",
+  }),
+  Object.freeze({
+    id: 'conditional-peek-over-string',
+    group: 'conditional',
+    build: `type Cond<T> = T extends string ? Peek : string;\nexport function probe<Q>(subject: Cond<Q>): unknown {\n  ${REACH_MARKER}\n  return subject;\n}`,
+    reach: 'return subject.peek();',
+    why: "the sweep's second attributing control: the true branch carries the closure",
+  }),
+  Object.freeze({
+    id: 'conditional-function-over-string',
+    group: 'conditional',
+    build: `type Cond<T> = T extends string ? () => string : string;\nexport function probe<Q>(subject: Cond<Q>): unknown {\n  ${REACH_MARKER}\n  return subject;\n}`,
+    reach: 'return subject();',
+    why: 'a call signature in the true branch rather than a property, which is the shape a callback type takes',
+  }),
+
+  // ---- Group D: index-signature and key-remapping splits ----
+  Object.freeze({
+    id: 'remapped-key-becomes-index-signature',
+    group: 'index-split',
+    build: `type Split<T> = { readonly [K in keyof T as K extends 'safe' ? string : K]: T[K] };\ndeclare const subject: Split<{ safe: string; run: () => string }>;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'a mapped type remapping one key to `string` so it becomes an index signature while the closure key stays a literal property',
+  }),
+  Object.freeze({
+    id: 'string-and-number-index-signatures',
+    group: 'index-split',
+    build: `declare const subject: { readonly [k: string]: {}; readonly [k: number]: {} };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject['x']; return typeof held === 'function' ? held() : null; }",
+    why: 'two index signatures over a value type that admits a function',
+  }),
+  Object.freeze({
+    id: 'pattern-index-signature-holding-a-closure',
+    group: 'index-split',
+    build:
+      'declare const subject: { readonly [k: `on${string}`]: () => string; readonly [k: string]: string | (() => string) };\n' +
+      REACH_MARKER,
+    reach:
+      "export function reached(): unknown { const held = subject['onDone']; return held === undefined ? null : held(); }",
+    why: 'a pattern index signature carrying the closure while the plain one carries data',
+  }),
+  Object.freeze({
+    id: 'symbol-index-holding-a-closure',
+    group: 'index-split',
+    build: `declare const subject: { readonly [k: symbol]: () => string; readonly [k: string]: string };\n${REACH_MARKER}`,
+    reach:
+      'export function reached(): unknown { const key = Symbol.iterator; const held = subject[key]; return held === undefined ? null : held(); }',
+    why: 'the closure behind the symbol index, which the reference type has a position for — the control that says the index positions are covered',
+  }),
+
+  // ---- Group E: declaration merging and augmentation ----
+  Object.freeze({
+    id: 'merged-interface-call-signature',
+    group: 'merging',
+    build: `interface Merged { readonly held: string }\ninterface Merged { (): string }\ndeclare const subject: Merged;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject(); }',
+    why: 'a second declaration adds a call signature to an interface that had none',
+  }),
+  Object.freeze({
+    id: 'merged-interface-construct-signature',
+    group: 'merging',
+    build: `interface Merged { readonly held: string }\ninterface Merged { new (): string }\ndeclare const subject: Merged;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return new subject(); }',
+    why: 'the same with a construct signature, which is a different signature list on the same type',
+  }),
+  Object.freeze({
+    id: 'global-augmentation-holding-a-closure',
+    group: 'merging',
+    build: `declare global { interface E27Augmented { readonly run: () => string } }\ndeclare const subject: E27Augmented;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'the closure arrives from a global augmentation rather than from a local declaration',
+  }),
+
+  // ---- Group F: hybrid callables ----
+  Object.freeze({
+    id: 'hybrid-type-literal-callable-and-indexed',
+    group: 'hybrid',
+    build: `type Hybrid = { (): string; readonly [k: string]: string };\ndeclare const subject: Hybrid;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject(); }',
+    why: 'a call signature beside an index signature, written as a type literal rather than an interface',
+  }),
+  Object.freeze({
+    id: 'hybrid-behind-a-getter',
+    group: 'hybrid',
+    build: `interface Holder { get run(): () => string }\ndeclare const subject: Holder;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'the closure arrives through an accessor rather than a data property',
+  }),
+
+  // ---- Group G: generic machinery, and the non-generic control for it ----
+  Object.freeze({
+    id: 'generic-mapped-type-intersected-with-string',
+    group: 'generic',
+    build: `declare const subject: string & { readonly [K in 'run']: () => string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'a mapped type as the closure-bearing constituent, which is the generic form of the group A row',
+  }),
+  Object.freeze({
+    id: 'infer-conditional-intersected-with-string',
+    group: 'generic',
+    build: `type Held<T> = T extends ReadonlyArray<infer U> ? U : string;\ndeclare const subject: string & { readonly run: Held<readonly (() => string)[]> };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'the closure type arrives from an `infer` rather than being written, which is the row the sweep grouped under generic machinery',
+  }),
+
+  Object.freeze({
+    id: 'conditional-any-over-string-called',
+    group: 'conditional',
+    build: `type Cond<T> = T extends string ? any : string;\nexport function probe<Q>(subject: Cond<Q>): unknown {\n  ${REACH_MARKER}\n  return subject;\n}`,
+    reach: 'return subject();',
+    why: "the same deferred conditional reached a SECOND way, because 'no closure is reachable through it' was one attempt and one attempt is an anecdote — the call form rather than the member form",
+  }),
+  Object.freeze({
+    id: 'conditional-instantiated-at-string',
+    group: 'conditional',
+    build: `type Cond<T> = T extends string ? any : string;\ndeclare const subject: { readonly held: Cond<string> };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.held(); }',
+    why: "the instantiation that DOES hold a closure, which is `any` — the row that says the deferred conditional's silence is not an escape, because the arm carrying a function is the arm the screen catches",
+  }),
+
+  Object.freeze({
+    id: 'any-behind-a-property',
+    group: 'conditional',
+    build: `declare const subject: { readonly held: any };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.held(); }',
+    why: "the row the conditional pair turned up and the sharpest one here: `any` ONE PROPERTY DOWN. `SCREEN_BATTERY`'s `anyish` row asks about `any` at the top level, where the flag short-circuit fires; the holder of a member is an object, so the short-circuit never fires and the walk descended into a type with no properties and no call signatures",
+  }),
+
+  // ---- The shape a plant would actually take ----
+  Object.freeze({
+    id: 'entry-with-an-empty-object-payload',
+    group: 'plant',
+    build: `declare const subject: { readonly kind: string; readonly payload: {} };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject.payload; return typeof held === 'function' ? held() : null; }",
+    why: 'the shape a shipped ledger entry would have if its payload were typed `{}` — the row the plant is built from',
+  }),
+]);
+
+/**
+ * Reach snippets written to ASSERT a closure rather than reach one, so the ban
+ * list above is shown firing rather than trusted.
+ *
+ * One per ban, in the same order, and the check beside them requires each to
+ * trip the ban it was written for. Without this the ban list is a scan that has
+ * never been seen to catch anything, which is the shape of a check whose domain
+ * is empty.
+ */
+const REACH_CHEATS: readonly string[] = Object.freeze([
+  'export function reached(): unknown { return (subject as () => string)(); }',
+  'export function reached(): unknown { const held: any = subject; return held(); }',
+  'export function reached(): unknown { return subject.run!(); }',
+  'export function reached(): unknown { // @ts-expect-error\n return subject.run(); }',
+  'export function reached(): unknown { return (<() => string>subject)(); }',
+]);
+
+/**
+ * The four readings per row, written out so a changed answer names its shape.
+ *
+ * `[id, certifies, walked, screenHolds, reachable]`. `certifies` is the relation
+ * alone; `walked` is the bounded second reading; `screenHolds` is the shipped
+ * screen's own `asked || walked`, so `false` there is silence; `reachable` says
+ * a closure can be called through the type with no cast, no `any`, no non-null
+ * assertion and no suppression comment.
+ *
+ * Joined to `CANDIDATE_SHAPES` in both directions, so a row added without a
+ * verdict is an unexpected member and a verdict left behind by a deleted row is
+ * a stale one.
+ */
+const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boolean])[] =
+  Object.freeze([
+  Object.freeze(['control-cyclic-alias-at-2', false, true, true, true] as const),
+  Object.freeze(['control-cyclic-alias-at-3', true, true, true, true] as const),
+  Object.freeze(['control-literal-nest-at-3', false, true, true, true] as const),
+  Object.freeze(['control-plain-closure', false, true, true, true] as const),
+  Object.freeze(['control-plain-data', true, false, false, false] as const),
+  Object.freeze(['intersection-string-and-method', true, true, true, true] as const),
+  Object.freeze(['intersection-function-and-number', true, true, true, true] as const),
+  Object.freeze(['intersection-indexed-and-method', true, true, true, true] as const),
+  Object.freeze(['intersection-indexed-and-callable', false, true, true, true] as const),
+  Object.freeze(['intersection-record-and-method', true, true, true, true] as const),
+  Object.freeze(['intersection-two-index-signatures', true, true, true, true] as const),
+  Object.freeze(['intersection-inside-an-array', true, true, true, true] as const),
+  Object.freeze(['intersection-under-an-index-signature', true, true, true, true] as const),
+  Object.freeze(['intersection-unknown-and-empty', true, true, true, true] as const),
+  Object.freeze(['intersection-record-pair-and-method', true, true, true, true] as const),
+  Object.freeze(['intersection-interface-method-and-indexed', false, true, true, true] as const),
+  Object.freeze(['empty-object-type', true, true, true, true] as const),
+  Object.freeze(['union-string-or-empty-object', true, true, true, true] as const),
+  Object.freeze(['empty-object-behind-a-property', true, true, true, true] as const),
+  Object.freeze(['empty-object-in-an-array', true, true, true, true] as const),
+  Object.freeze(['union-carrying-a-certifying-intersection', true, true, true, false] as const),
+  Object.freeze(['empty-object-under-an-index-signature', true, true, true, true] as const),
+  Object.freeze(['control-unknown', false, true, true, true] as const),
+  Object.freeze(['control-object-keyword', false, true, true, true] as const),
+  Object.freeze(['conditional-any-over-string', true, false, false, false] as const),
+  Object.freeze(['conditional-any-over-any', true, true, true, true] as const),
+  Object.freeze(['conditional-any-over-peek', false, true, true, true] as const),
+  Object.freeze(['conditional-peek-over-string', false, false, true, false] as const),
+  Object.freeze(['conditional-function-over-string', false, false, true, false] as const),
+  Object.freeze(['remapped-key-becomes-index-signature', true, true, true, true] as const),
+  Object.freeze(['string-and-number-index-signatures', true, true, true, true] as const),
+  Object.freeze(['pattern-index-signature-holding-a-closure', false, true, true, true] as const),
+  Object.freeze(['symbol-index-holding-a-closure', false, true, true, true] as const),
+  Object.freeze(['merged-interface-call-signature', false, true, true, true] as const),
+  Object.freeze(['merged-interface-construct-signature', false, false, true, true] as const),
+  Object.freeze(['global-augmentation-holding-a-closure', false, true, true, true] as const),
+  Object.freeze(['hybrid-type-literal-callable-and-indexed', false, true, true, true] as const),
+  Object.freeze(['hybrid-behind-a-getter', false, true, true, true] as const),
+  Object.freeze(['generic-mapped-type-intersected-with-string', true, true, true, true] as const),
+  Object.freeze(['infer-conditional-intersected-with-string', true, true, true, true] as const),
+  Object.freeze(['conditional-any-over-string-called', true, false, false, false] as const),
+  Object.freeze(['conditional-instantiated-at-string', true, true, true, true] as const),
+  Object.freeze(['any-behind-a-property', true, true, true, true] as const),
+  Object.freeze(['entry-with-an-empty-object-payload', true, true, true, true] as const),
+  ]);
+
+/**
+ * What the sweep measured. Counts rather than bounds, per this file's own rule
+ * that a bound lets a defect grow back quietly.
+ *
+ * `SILENT_AND_REACHABLE` is the number the round is about: rows where the whole
+ * screen says there is no function and a closure is nonetheless callable through
+ * the type. It is zero, and `BEFORE_E27_SILENT_AND_REACHABLE` is what it is zero
+ * against — the identical rows driven through the identical walker with E27's
+ * two readings switched off.
+ *
+ * `CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS` is the number that
+ * corrects the residual at `cyclicDeclarations`. That sentence said a false
+ * certificate is earned only by an instantiation of a cyclic generic alias, on a
+ * sample of eighteen shapes. On this sample it is twenty rows, none of them a
+ * cyclic alias — a primitive-absorbing intersection, `{}` at five positions, a
+ * mapped type, a deferred conditional. The relation certifying is not by itself
+ * a bypass, because the bounded walk catches all twenty; what it is, is the
+ * premise the census's containment argument rests on, and it is false.
+ */
+const FAMILY_CENSUS = Object.freeze({
+  ROWS: 44,
+  /** Distinct groups, so a truncated battery cannot pass as a whole one. */
+  GROUPS: 9,
+  /** Rows the relation alone certified as function-free data. */
+  CERTIFYING: 27,
+  /** Rows whose reach snippet compiles clean. */
+  REACHABLE: 38,
+  /** Rows the whole screen was silent about. */
+  SILENT: 3,
+  /** Silent AND reachable — the bypass count. */
+  SILENT_AND_REACHABLE: 0,
+  /** See the paragraph above. Twenty, and the residual said zero. */
+  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 22,
+  /** The same battery through `SCREEN_BEFORE_E27`. */
+  BEFORE_E27_SILENT: 16,
+  BEFORE_E27_SILENT_AND_REACHABLE: 13,
+  /**
+   * Depth cuts taken anywhere in the sweep, in either configuration.
+   *
+   * Zero, and it matters which zero this is: every verdict here is the walker
+   * answering rather than the walker running out of budget, so no row can be
+   * read as contained-by-depth the way `LIMITER_TABLE`'s cyclic rows are.
+   */
+  DEPTH_CUTS: 0,
+});
+
+let familyMemo: Readonly<Record<string, CandidateReading>> | null = null;
+let familyBeforeMemo: Readonly<Record<string, CandidateReading>> | null = null;
+
+function familyReadings(): Readonly<Record<string, CandidateReading>> {
+  if (familyMemo !== null) return familyMemo;
+  const readings: Record<string, CandidateReading> = {};
+  for (const shape of CANDIDATE_SHAPES) readings[shape.id] = candidateReading(shape);
+  familyMemo = Object.freeze(readings);
+  return familyMemo;
+}
+
+function familyReadingsBeforeE27(): Readonly<Record<string, CandidateReading>> {
+  if (familyBeforeMemo !== null) return familyBeforeMemo;
+  const readings: Record<string, CandidateReading> = {};
+  for (const shape of CANDIDATE_SHAPES) {
+    readings[shape.id] = candidateReading(shape, SCREEN_BEFORE_E27);
+  }
+  familyBeforeMemo = Object.freeze(readings);
+  return familyBeforeMemo;
+}
+
+describe('the family sweep — a cyclic generic alias is not the only shape that earns a certificate', () => {
+  it('reproduces the known family first, so no other row is believed on a broken instrument', () => {
+    const readings = familyReadings();
+    // THE FIDELITY CONTROL, AND IT IS ASSERTED BEFORE ANYTHING ELSE IN THIS
+    // SECTION ON PURPOSE. A standalone harness built for this sweep could not
+    // reproduce the certificate below at all, and every verdict it produced
+    // about every other shape was worth nothing for that reason. These three
+    // lines are what say this driver is reading the same compiler behaviour
+    // `LIMITER_TABLE` is pinned on: refused at two, certified at three, and the
+    // same three levels written out refused.
+    expect(readings['control-cyclic-alias-at-2']?.certifies, 'refused below the limit').toBe(false);
+    expect(readings['control-cyclic-alias-at-3']?.certifies, 'certified at the limit').toBe(true);
+    expect(readings['control-literal-nest-at-3']?.certifies, 'depth is not the axis').toBe(false);
+    // And the depth it is certified at is the one the limiter battery measured,
+    // read out of that battery's own constant rather than written again here.
+    expect(RELATION_LIMITER.CERTIFIES_FROM).toBe(3);
+    // The two rows that say the reach column can answer both ways, so a `true`
+    // in it is a measurement: a closure one property down is reachable, and a
+    // string is not callable however hard the snippet tries.
+    expect(readings['control-plain-closure']?.reachDiagnostics).toEqual([]);
+    expect(readings['control-plain-data']?.reachDiagnostics.length).toBeGreaterThan(0);
+  }, 600_000);
+
+  it('answers every row exactly as the table says, and every row compiles', () => {
+    const readings = familyReadings();
+    expect(FAMILY_TABLE.map(([id]) => id)).toEqual(CANDIDATE_SHAPES.map((shape) => shape.id));
+    expect(FAMILY_TABLE.length).toBe(FAMILY_CENSUS.ROWS);
+    expect(CANDIDATE_SHAPES.length).toBe(FAMILY_CENSUS.ROWS);
+    expect(distinct(CANDIDATE_SHAPES.map((shape) => shape.group)).length).toBe(
+      FAMILY_CENSUS.GROUPS,
+    );
+    for (const [id, certifies, walked, holds, reachable] of FAMILY_TABLE) {
+      const reading = readings[id];
+      const why = CANDIDATE_SHAPES.find((shape) => shape.id === id)?.why ?? id;
+      expect(reading, id).toBeDefined();
+      // A shape that fails to compile is not a shape, and a sweep that does not
+      // check this reads a syntax error as a refusal.
+      expect(reading?.diagnostics, `${id}: ${reading?.diagnostics.join(" | ") ?? ""}`).toEqual([]);
+      expect(reading?.certifies, `${id}: relation — ${why}`).toBe(certifies);
+      expect(reading?.walked, `${id}: bounded walk — ${why}`).toBe(walked);
+      expect(reading?.screenHolds, `${id}: screen — ${why}`).toBe(holds);
+      expect(
+        reading?.reachDiagnostics.length === 0,
+        `${id}: reach — ${reading?.reachDiagnostics.join(" | ") ?? ""}`,
+      ).toBe(reachable);
+      expect(reading?.cuts, `${id}: cuts`).toBe(FAMILY_CENSUS.DEPTH_CUTS);
+    }
+  }, 600_000);
+
+  it('is not vacuous: every column answers both ways, and the counts say how often', () => {
+    const rows = FAMILY_TABLE;
+    expect(rows.filter(([, certifies]) => certifies).length).toBe(FAMILY_CENSUS.CERTIFYING);
+    expect(rows.filter(([, , , , reachable]) => reachable).length).toBe(FAMILY_CENSUS.REACHABLE);
+    expect(rows.filter(([, , , holds]) => !holds).length).toBe(FAMILY_CENSUS.SILENT);
+    // THE NUMBER THE ROUND IS ABOUT. Zero rows where the screen is silent and a
+    // closure is reachable through the type.
+    const silentAndReachable = rows
+      .filter(([, , , holds, reachable]) => !holds && reachable)
+      .map(([id]) => id);
+    expect(silentAndReachable).toEqual([]);
+    expect(silentAndReachable.length).toBe(FAMILY_CENSUS.SILENT_AND_REACHABLE);
+    // Both verdicts occur on every column, so none of the four is a constant.
+    expect(rows.filter(([, certifies]) => !certifies).length).toBeGreaterThan(0);
+    expect(rows.filter(([, , , holds]) => holds).length).toBeGreaterThan(0);
+    expect(rows.filter(([, , , , reachable]) => !reachable).length).toBeGreaterThan(0);
+    // The correction to the residual, as a count over the rows rather than as a
+    // sentence: certified by the relation, with a closure reachable through the
+    // type, and not one of them a cyclic generic alias.
+    const notTheKnownFamily = rows.filter(
+      ([id, certifies, , , reachable]) =>
+        certifies && reachable && id !== 'control-cyclic-alias-at-3',
+    );
+    expect(notTheKnownFamily.length).toBe(
+      FAMILY_CENSUS.CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS,
+    );
+    expect(notTheKnownFamily.length).toBeGreaterThan(0);
+  }, 600_000);
+
+  it('keeps the numbers the zeros are zero against, by driving the walker as it was', () => {
+    const before = familyReadingsBeforeE27();
+    const silent = CANDIDATE_SHAPES.filter((shape) => before[shape.id]?.screenHolds === false);
+    expect(silent.length).toBe(FAMILY_CENSUS.BEFORE_E27_SILENT);
+    const silentAndReachable = silent
+      .filter((shape) => before[shape.id]?.reachDiagnostics.length === 0)
+      .map((shape) => shape.id)
+      .sort();
+    expect(silentAndReachable.length).toBe(FAMILY_CENSUS.BEFORE_E27_SILENT_AND_REACHABLE);
+    // Named rather than counted, because a count cannot say which family moved.
+    // Five are `{}` at five positions, one is `unknown & {}` reducing to it, one
+    // is the shape M67 was planted from, two are a mapped type's synthesized
+    // property, and THREE are `any` at a position the flag short-circuit does
+    // not reach — a deferred conditional with both branches `any`, the same
+    // conditional instantiated so that it IS `any`, and `any` written plainly one
+    // property down. That last one is the sharpest row in the table: the screen
+    // has always answered `any` before asking the relation, and `SCREEN_BATTERY`
+    // grades that with `anyish`, which is a TOP-LEVEL `any`. A member's holder is
+    // an object, so the short-circuit never fired for it and the walk descended
+    // into a type with no properties and no call signatures and came back empty.
+    expect(silentAndReachable).toEqual([
+      'any-behind-a-property',
+      'conditional-any-over-any',
+      'conditional-instantiated-at-string',
+      'empty-object-behind-a-property',
+      'empty-object-in-an-array',
+      'empty-object-type',
+      'empty-object-under-an-index-signature',
+      'entry-with-an-empty-object-payload',
+      'generic-mapped-type-intersected-with-string',
+      'intersection-unknown-and-empty',
+      'remapped-key-becomes-index-signature',
+      'string-and-number-index-signatures',
+      'union-string-or-empty-object',
+    ]);
+    // The control is a control: it disagrees with the shipped screen somewhere,
+    // so a configuration that silently stopped differing reports itself instead
+    // of making the eleven look like a fixed defect.
+    expect(SCREEN_BEFORE_E27.admitsAFunction).toBe(false);
+    expect(SCREEN_BEFORE_E27.synthesizedProperties).toBe(false);
+    expect(SHIPPED_SCREEN_READINGS.admitsAFunction).toBe(true);
+    expect(SHIPPED_SCREEN_READINGS.synthesizedProperties).toBe(true);
+    // And no row is silent-and-reachable under the shipped readings, which is
+    // the same assertion the test above makes and is repeated here so that this
+    // test's own subject — the difference — cannot be green with both sides bad.
+    const now = familyReadings();
+    expect(
+      CANDIDATE_SHAPES.filter(
+        (shape) =>
+          now[shape.id]?.screenHolds === false && now[shape.id]?.reachDiagnostics.length === 0,
+      ).map((shape) => shape.id),
+    ).toEqual([]);
+  }, 600_000);
+
+  it('bans a reach snippet that asserts its closure instead of reaching one', () => {
+    // No row may cheat.
+    for (const shape of CANDIDATE_SHAPES) {
+      for (const [what, pattern] of REACH_BANS) {
+        pattern.lastIndex = 0;
+        expect(pattern.test(shape.reach), `${shape.id} reaches through ${what}`).toBe(false);
+      }
+    }
+    // AND THE BAN LIST IS SHOWN FIRING, one cheat per ban, in the same order.
+    // Without this the loop above is a scan whose domain has never contained
+    // the thing it is looking for.
+    expect(REACH_CHEATS.length).toBe(REACH_BANS.length);
+    REACH_CHEATS.forEach((cheat, index) => {
+      const row = REACH_BANS[index];
+      expect(row, String(index)).toBeDefined();
+      if (row === undefined) return;
+      const [what, pattern] = row;
+      pattern.lastIndex = 0;
+      expect(pattern.test(cheat), `the ${what} cheat is invisible to its own ban`).toBe(true);
+    });
   });
 });
 
@@ -14573,6 +15547,47 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
     ]),
   }),
+  Object.freeze({
+    id: 'M67',
+    shape:
+      "THE TWENTY-SECOND BYPASS, AND IT IS THE SENTENCE THE CONTAINMENT ARGUES FROM BEING FALSE RATHER THAN A NEW COMPOSITION. M64 needed a cyclic alias, forty levels and two index signatures. This needs the two characters `{}`. The relation certifies `{}` as function-free data — it is a type literal, so the checker gives it an inferable index signature and both index positions of the reference type are satisfied by a type with no properties — and the bounded walk has nothing to descend into, because `{}` declares no property, no index info, no call signature and no element type. Neither reading is defeated by a limiter; both are answering correctly about a type that says nothing, and `{}` admits a function at run time",
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_OPAQUE: { readonly entry: {} }` holding `Object.freeze({ peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] })`, handed back as `shapes: PRODUCTION_OPAQUE.entry`. No cyclic declaration, no instantiation depth, no index signature, no cast anywhere in the plant, and no new export',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING CAUGHT IT. Whole tree: `Test Files 1 failed | 83 passed (84)`, `Tests 4 failed | 3425 passed (3429)`, every one of the four in this file and every one a count that moves on any edit of this size — instrument C `expected 1020 to be 1018`, instrument B `expected 2393400 to be 2393060`, the overflow pass `expected 523240 to be 523128`, and the channel census owner tally `- "member": 474 / + "member": 476`.',
+      'THE FOURTH ONE IS WORTH SEPARATING, because it is inside the test that WOULD name the route and is not the assertion that does. `derives every escape site from the shipped source, per channel per module, in both directions` fails on the owner-kind tally and NOT on `byModule` — there is no `returned-closure` row for production.ts, which is exactly the `+ "production.ts": 1` M66 reddened with. Two more member reads is what a property access and an element read cost.',
+      'AND THE CONTAINMENT WRITTEN FOR M64 IS GREEN, which is the finding rather than a side note. `finds no type declaration in this directory that reaches itself` passes, because the plant declares no type at all. `measures how deep the shipped types go` passes with `memberTypeDepthCuts` 0. `agrees with the control everywhere on the shipped tree` passes, because the two readings AGREE that there is no function in a `{}`.',
+      'AND THE BRANCH RUNS, PRINTED: `accrueProduction` on a fresh gym returns keys ending `…,"ledger","shapes"`, `typeof shapes` is `object`, `typeof shapes.peek` is `function`, `shapes.peek()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'WHY THIS IS NOT M64 AGAIN. M64 is a false certificate: the relation is wrong about a type that does hold a function, and it is wrong because of a resource limiter, which is why a declaration census could contain it. `{}` is not a false certificate in that sense — it is a TRUE certificate about a type that carries no information, and the value under it is unconstrained. There is no limiter to bisect and no declaration to enumerate, so nothing in the containment E24 chose has a subject here.',
+      'MEASURED BEFORE IT WAS PLANTED, AND THAT ORDER IS THE POINT. The family battery reads `{}` as `cert=true asked=false walked=false holds=false cuts=0 reach=true` — certified, screen silent with no depth cut, and a closure callable through the type after a `typeof` narrowing with no cast. Its two nearest neighbours are refused: `unknown` and `object` both come back `cert=false`. So the finding is about `{}` specifically rather than about wide types.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M68',
+    shape:
+      "M67 REPLANTED VERBATIM AGAINST THE READING WRITTEN FOR IT, because a catcher nobody ran against the shape it was written about is a pointer and the row above ships with no catcher claimed. Byte-identical plant; the only thing that changed is that the bounded walk now asks the relation backwards as well as forwards",
+    where:
+      'production.ts, `accrueProduction`: the M67 block verbatim — `{ readonly entry: {} }` holding a frozen `peek` and handed back as `shapes: PRODUCTION_OPAQUE.entry`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED OUTRIGHT, WITH THE MEMBER PATH, which is a stronger outcome than M65 got from the containment written for M64 — that one reddened a declaration census and never named a closure. `derives every escape site from the shipped source` reddens with `+ "production.ts": 1`, and the site list with `+ "production.ts#accrueProduction#closure:.shapes.entry.peek"`. The path is what says the walk went THROUGH the `{}`-typed member rather than stopping at the holder.',
+      'AND THE TWO READINGS NOW DISAGREE AT THE SITE, WHICH IS THE THIRD RED AND THE ONE THAT LOCATES IT BY LINE. `agrees with the control everywhere on the shipped tree, and says where it does not` reddens with `+ "production.ts:532 {} asked=false walked=true"` — the relation still certifies, correctly, and the walk now says a function may be stored there. Twelve disagreements against eleven.',
+      'The three node counters as ever, unchanged from M67 because the plant is unchanged: instrument C `expected 1020 to be 1018`, instrument B `expected 2393400 to be 2393060`, the overflow pass `expected 523240 to be 523128`. Six failed of 91 against M67\'s four, and the two new ones are the two that name the route.',
+      'tsc --noEmit exit 0, so the plant still compiles and the catch is behavioural rather than the compiler refusing it.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'WHAT THIS ROW DOES NOT SAY. It is one shape driven against the reading, not a claim that the reading closes the family. What carries that claim is the family battery beside it, where every `{}` row and the both-branches-any conditional move from `holds=false` to `holds=true` under this change and the twenty-eight rows of `SCREEN_BATTERY` do not move at all.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
+    ]),
+  }),
 ]);
 
 /**
@@ -14854,7 +15869,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(66);
+    expect(PLANTED_ROUTES.length).toBe(68);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -14963,8 +15978,16 @@ describe('the routes that were planted, and what each of them cost', () => {
     // ONE EACH FOR M65 AND M66, which inherit that isolation unchanged: they
     // are M64 replanted against the containment written for it, and the same
     // shape thirteen levels shallower.
-    expect(attempts).toBe(90);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(56);
+    // ONE FOR M68, which is M67 replanted unchanged against the reading written
+    // for it, so it inherits M67's isolation by construction.
+    // ONE FOR M67, and it needed no isolation work at all, which is the row's
+    // own point: the payload is read out of `EMPIRE_FORBIDDEN_OUTPUTS` through
+    // a specifier added to an import the module already has, and the holder's
+    // type is two characters. There is no recursion to spell, no index
+    // signature to write and no cast to place, so none of the accidents the
+    // earlier rows had to strip is available to be made.
+    expect(attempts).toBe(92);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(58);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
@@ -15642,7 +16665,22 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   // this census reported as one row gone and two arrived rather than as
   // nothing. A ladder changing owner is exactly the edit it is written for.
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#boundedWalk<memberTypeScreen#type', arms: 3, dispatch: true, terminal: 'next-statement' }),
-  Object.freeze({ at: 'empireForbiddenOutput.test.ts#functionFreeDataIn#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  // `functionFreeDataIn#statement` was this row until the reference file grew a
+  // second declaration and the positional read became `referenceTypeIn`. Two
+  // chains where there was one, because the name match is its own `if` inside
+  // the declaration loop.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#referenceTypeIn#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#referenceTypeIn#declared', arms: 1, dispatch: true, terminal: 'loop' }),
+  // M67's catcher. One arm, and its continuation is the rest of the walk, which
+  // is about `type` and never mentions `anyFunction` — so it is on the blind
+  // list, and the row below says why that is a keying artefact rather than a
+  // dropped case.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#boundedWalk<memberTypeScreen#anyFunction', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  // The family sweep's subject finder. One arm, because the three node kinds it
+  // accepts are `||`ed inside a single `if` rather than written as three, and
+  // its continuation recurses on the same binding — so it is a `next-statement`
+  // terminal that DOES read the subject, and it is not on the blind list.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#findSubject<candidateReading#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
   // The screen's own battery and the second reading of the depth limit, both
   // added this round. `deepestFrom`'s ladder is `dispatch: false` because its
   // two arms are `type.isUnionOrIntersection()` and `checker.isArrayType(...)`,
@@ -15753,7 +16791,7 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
  * means the continuation NAMES the subject, which is a necessary condition for
  * handling it and nothing more.
  *
- * NINE OF FIFTY-EIGHT, AND TWO OF THE NINE ARE ARTEFACTS OF HOW IT IS KEYED —
+ * TEN OF SIXTY-EIGHT, AND THREE OF THE TEN ARE ARTEFACTS OF HOW IT IS KEYED —
  * written here because a list whose limits are only in its author's head is the
  * thing this file keeps finding. Blindness is decided by whether the following
  * statements mention the subject's IDENTIFIER, and `subjectOf` votes for the
@@ -15767,6 +16805,14 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
  *   - `walk<returnedFunctions<channelCensusOf#holder` falls through to a loop
  *     over `holderValues`, which is derived FROM the holder one line above. A
  *     name-keyed measure cannot see that as the same subject.
+ *   - `boundedWalk<memberTypeScreen#anyFunction` is keyed on the REFERENCE type
+ *     rather than on the subject, because the condition is
+ *     `isTypeAssignableTo(anyFunction, type)` and the vote picks the first
+ *     argument. `anyFunction` is a constant for the whole walk and there is
+ *     nothing for a continuation to do with it; the continuation is the rest of
+ *     the walk over `type`, which is the binding the arm above it is keyed on.
+ *     Third of its kind, and the pattern across all three is the same: the vote
+ *     picks a name that is not the thing being decided about.
  *
  * The other seven fall through to a constant answer — `return []`, `return
  * false` — or to a recorded admission (`unfollowed.push`, an `unclassified`
@@ -15780,10 +16826,14 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
  * written in one sitting about code that is mostly correct, which is how a
  * required field becomes decoration — and this file already carries a row
  * (`G24`) recording a widening that was decoration for twenty minutes. The
- * forcing function kept instead is the set equality: a TENTH blind
- * continuation cannot arrive without somebody adding it here.
+ * forcing function kept instead is the set equality: an ELEVENTH blind
+ * continuation cannot arrive without somebody adding it here. The tenth did
+ * arrive, and the sentence naming the ninth is corrected rather than deleted —
+ * a running count in a list about stale confidence is the first thing to go
+ * stale.
  */
 const CONTINUATIONS_BLIND_TO_THE_SUBJECT: readonly string[] = Object.freeze([
+  'empireForbiddenOutput.test.ts#boundedWalk<memberTypeScreen#anyFunction',
   'empireForbiddenOutput.test.ts#carriesCallSignature<channelCensusOf#type',
   'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#initial',
   'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#root',
@@ -15835,12 +16885,12 @@ const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
   /** Rows in `DECLARED_HANDLER_ROWS`. Every one a tally or an enum read. */
   DISCRIMINANT_LOOKUPS: 8,
-  CHAINS: 88,
-  DISPATCH: 54,
+  CHAINS: 91,
+  DISPATCH: 57,
   BY_TERMINAL: Object.freeze({
     else: 8,
-    'next-statement': 66,
-    loop: 12,
+    'next-statement': 68,
+    loop: 13,
     enclosing: 2,
     /**
      * ZERO, AND THE ZERO IS THIS ROUND'S RESULT RATHER THAN A FACT ABOUT THE
