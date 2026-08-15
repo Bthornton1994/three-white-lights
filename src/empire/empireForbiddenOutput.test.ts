@@ -12451,14 +12451,21 @@ describe('the relation certifies from a cycle and not from a depth, and the cycl
 
   it('finds no type declaration in this directory that reaches itself, and can find one', () => {
     const reading = cyclicDeclarations();
-    // The denominator first, so a walk that scanned nothing cannot report a
-    // clean directory.
+    // THE CONTAINMENT, AS A SET EQUALITY IN BOTH DIRECTIONS. An added cycle is a
+    // row here naming the declaration; a removed one is red the other way.
+    //
+    // IT IS ASSERTED BEFORE THE DENOMINATORS, and the order is the difference
+    // between a check that bites and one that bites usefully. Planting M64 adds
+    // four type declarations, two of them generic, so every count below moves
+    // as well — and with the counts first the only thing a reader saw was
+    // `expected 122 to be 118`, which names no route. This line fails with
+    // `+ "production.ts#ProductionNest"`.
+    expect(reading.cyclic).toEqual(CYCLIC_DECLARATION_CENSUS.CYCLIC);
+    // The denominators after, so a walk that scanned nothing cannot report a
+    // clean directory on the strength of an empty set.
     expect(reading.declarations).toBe(CYCLIC_DECLARATION_CENSUS.DECLARATIONS);
     expect(reading.generic).toBe(CYCLIC_DECLARATION_CENSUS.GENERIC);
     expect(reading.modules.length).toBe(CHANNEL_CENSUS_TOTALS.MODULES);
-    // THE CONTAINMENT, AS A SET EQUALITY IN BOTH DIRECTIONS. An added cycle is a
-    // row here naming the declaration; a removed one is red the other way.
-    expect(reading.cyclic).toEqual(CYCLIC_DECLARATION_CENSUS.CYCLIC);
     // AND THE POSITIVE CONTROL, WHICH IS WHY THE ZERO ABOVE IS A MEASUREMENT.
     // `probeRecursiveInstantiation` has been in the probe since M63 and is built
     // on exactly the declaration this fence is written about, so the walk is
@@ -14359,6 +14366,45 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
     ]),
   }),
+  Object.freeze({
+    id: 'M65',
+    shape:
+      "M64 REPLANTED VERBATIM AGAINST THE CONTAINMENT WRITTEN FOR IT, because a catcher nobody ran against the shape it was written about is a pointer, and the row above ships with no catcher claimed. Same forty-deep instantiation, same two index signatures, same cast — the only thing that changed is what is watching",
+    where:
+      'production.ts, `accrueProduction`: the M64 block verbatim — `ProductionNest<ProductionPeek, [1 x40]>` held behind `{ readonly [k: string]: ProductionDeep; readonly [k: symbol]: ProductionDeep }` and handed back as `shapes: PRODUCTION_KEYED.keyed` with the frozen literal cast to `ProductionAccrual`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'THE CONTAINMENT CAUGHT IT AND NOTHING ELSE DID. Whole file: `Tests 4 failed | 86 passed (90)`, and three of the four are the node counters this file has now recorded seven times as not the check working — instrument B `expected 2395780 to be 2393060`, the overflow pass `expected 524024 to be 523128`, `nodesExamined` `expected 22102 to be 21789`. The fourth is `finds no type declaration in this directory that reaches itself`.',
+      'AND THE SCREEN IS STILL SILENT, WHICH IS WHY THIS IS CONTAINMENT AND NOT DETECTION. `follows the deep member` and `measures how deep the shipped types go` are both GREEN, so `memberTypeDepthCuts` is still 0; `agrees with the control everywhere on the shipped tree` is green, so the two readings still AGREE that there is no function in it. Nothing here found the closure. What reddened is a census of DECLARATIONS saying the shape that makes the screen silent is now constructible in this directory.',
+      'AND THE BRANCH RUNS, PRINTED: `accrueProduction` on a fresh gym returns keys ending `…,"ledger","shapes"`, walking `.down` off `shapes.entry` reaches depth 40, `typeof peek` is `function`, `peek()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'THE FAILURE NAMES THE ROUTE, WHICH TOOK A SECOND RUN AND IS WORTH THE ROW. As first written the test asserted its denominators first, and planting this moves them too — four added type declarations, two of them generic — so the message a reader got was `expected 122 to be 118`, a count that names nothing. The set equality is asserted first now and the message is `expected [ "production.ts#ProductionNest" ] to deeply equal []`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M66',
+    shape:
+      'THE SAME COMPOSITION THIRTEEN TIMES SHALLOWER, AND IT IS THE ROUND\'S REAL FINDING RATHER THAN A SECOND PLANT. M63 and M64 both used forty levels, and every sentence written about them since has carried the implication that forty is near where the relation gives up. The bisection in `LIMITER_TABLE` says it gives up at THREE, so this is the same bypass with a three-element tuple',
+    where:
+      'production.ts, `accrueProduction`: `ProductionNest<ProductionPeek, [1,1,1]>` behind the same two index signatures, handed back the same way',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'THE SAME FOUR, and the three node counters are smaller because the plant is smaller — instrument B `expected 2394080 to be 2393060`, the overflow pass `expected 523464 to be 523128`, `nodesExamined` `expected 21917 to be 21789`. The containment reddens identically: `expected [ "production.ts#ProductionNest" ] to deeply equal []`.',
+      'AND THE BRANCH RUNS, PRINTED: same keys, `walked=3`, `typeof peek` is `function`, `peek()` is `covered-day`, `gymBucks 0`, `tsc --noEmit` exit 0.',
+      'WHY IT MATTERS THAT THE NUMBERS ARE SMALLER. A reader of M64 could reasonably conclude that a forty-deep instantiation is exotic enough to be its own warning, and that the node counters moving by 2720 is a signal. At depth three the node counters move by 1020 / 336 / 128, the source addition is a handful of lines, and the shape reads like an ordinary nested record. The residual is not exotic; it was written exotically.',
+      'AND IT IS WHY THE CONTAINMENT IS KEYED ON THE CYCLE AND NOT ON A DEPTH. A guard that refused instantiations past some depth would have to sit below three to catch this, and `SHIPPED_TYPE_DEPTH` reports shipped surfaces at nine. There is no depth threshold that separates them. There is a declaration census that does.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Planted alone rather than beside M65, per the rule M60 and M61 established: two silences in one run cannot be attributed to either.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
+    ]),
+  }),
 ]);
 
 /**
@@ -14625,7 +14671,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(64);
+    expect(PLANTED_ROUTES.length).toBe(66);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -14731,8 +14777,11 @@ describe('the routes that were planted, and what each of them cost', () => {
     // module already has, the recursion written as a tuple peel so no string
     // literal appears, and the field cast onto the value rather than declared
     // on the interface.
-    expect(attempts).toBe(88);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(54);
+    // ONE EACH FOR M65 AND M66, which inherit that isolation unchanged: they
+    // are M64 replanted against the containment written for it, and the same
+    // shape thirteen levels shallower.
+    expect(attempts).toBe(90);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(56);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
