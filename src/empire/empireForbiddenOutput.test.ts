@@ -3469,6 +3469,9 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
   // driver served ONE subject file, which left a type declared in a `.d.ts`
   // untestable — and that was the shape a silence was hiding in.
   'E28_AMBIENT_FILE',
+  // Its sibling, and the pair is the point: one declaration file and one plain
+  // module carrying the same augmentation.
+  'E28_GLOBAL_FILE',
   'DIAGNOSTIC_CHANNEL_CENSUS',
   // The family sweep's ban on its OWN reach snippets. An expectation and not an
   // input: it is not driven against any subject, it is applied to the rows this
@@ -3569,7 +3572,7 @@ const DOMAIN_CENSUS = Object.freeze({
   ALIASES: 7,
   NON_DOMAIN_LISTS: 1,
   LITERAL_AXES: 8,
-  LABELLED_LISTS: 20,
+  LABELLED_LISTS: 21,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
@@ -11761,6 +11764,30 @@ describe('the assembly walk bites — every binding whose value is not in its in
     // silence, which is why it is the direction the screen takes.
     expect(channelCensus().screenDisagreements).toEqual(SHIPPED_SCREEN_DISAGREEMENTS);
     expect(SHIPPED_SCREEN_DISAGREEMENTS.length).toBe(SCREEN_AGREEMENT.SHIPPED_DISAGREEMENTS);
+    // THE OVER-APPROXIMATION AXIS, SPLIT OUT AS ITS OWN NUMBER, because the list
+    // above is a set equality and a set equality does not say which DIRECTION a
+    // row is. The round that added the backwards reading —
+    // `isTypeAssignableTo(anyFunction, T)` — said plainly that its residual was
+    // whether that broad question over-approximates somewhere the shipped tree
+    // will eventually reach, and that the shipped tree was the only sample. This
+    // is that residual as a count rather than a sentence: a row of the form
+    // `asked=false walked=true` is the walk claiming a function may be stored
+    // where the relation says the value is data, which is the only shape the
+    // new readings can produce. There are none, so on this tree the two readings
+    // added zero rows and the whole eleven is the interface direction.
+    //
+    // What it does NOT say, because a count cannot: that the reading is exact.
+    // A legitimate shipped type that starts admitting a function moves this
+    // number, and so does a real bypass — M69-M74 each moved it to one or two.
+    // The number is the ALARM and the site list beside it is what says which.
+    const walkOnly = SHIPPED_SCREEN_DISAGREEMENTS.filter((entry) =>
+      entry.endsWith('asked=false walked=true'),
+    );
+    expect(walkOnly).toEqual([]);
+    expect(
+      SHIPPED_SCREEN_DISAGREEMENTS.filter((entry) => entry.endsWith('asked=true walked=false'))
+        .length,
+    ).toBe(SCREEN_AGREEMENT.SHIPPED_DISAGREEMENTS);
     // The probe's own row is the other direction of the same measurement: a
     // disagreement where the control is the one that is wrong.
     expect(
@@ -12891,6 +12918,16 @@ interface CandidateShape {
 
 const CANDIDATE_SUBJECT_PATH = path.join(HERE, '__candidateSubject.ts');
 
+/** A THIRD MODULE, served from memory: a real `.ts` that augments the global scope. */
+const E28_GLOBAL_PATH = path.join(HERE, '__e28Global.ts');
+
+const E28_GLOBAL_FILE: readonly (readonly [string, string])[] = Object.freeze([
+  Object.freeze([
+    E28_GLOBAL_PATH,
+    'declare global { interface E28Global { readonly run: () => string } }\nexport {};\n',
+  ] as const),
+]);
+
 /** A declaration file, served from memory. Global, because it exports nothing. */
 const E28_AMBIENT_PATH = path.join(HERE, '__e28Ambient.d.ts');
 
@@ -13384,6 +13421,15 @@ const CANDIDATE_SHAPES: readonly CandidateShape[] = Object.freeze([
     why: 'the same declaration WITHOUT the certifying constituent — the control that says which half of the pair does the work',
   }),
 
+  Object.freeze({
+    id: 'global-from-a-third-module',
+    group: 'ambient',
+    build: `declare const subject: string & E28Global;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    extra: E28_GLOBAL_FILE,
+    why: "the augmentation arriving from a MODULE the subject never imports, which is the second half of the pair the one-subject-file driver could not express. It is the control for the row above: same shape, same certificate, and the declaration is in a `.ts` rather than a `.d.ts`, so it says the silence was about the declaration FILE and not about the type being global",
+  }),
+
   // ---- The shape a plant would actually take ----
   Object.freeze({
     id: 'entry-with-an-empty-object-payload',
@@ -13472,6 +13518,7 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
   Object.freeze(['any-behind-a-property', true, true, true, true] as const),
   Object.freeze(['ambient-certifying-intersection', true, true, true, true] as const),
   Object.freeze(['ambient-plain-closure', false, true, true, true] as const),
+  Object.freeze(['global-from-a-third-module', true, true, true, true] as const),
   Object.freeze(['entry-with-an-empty-object-payload', true, true, true, true] as const),
   ]);
 
@@ -13495,19 +13542,19 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
  * premise the census's containment argument rests on, and it is false.
  */
 const FAMILY_CENSUS = Object.freeze({
-  ROWS: 46,
+  ROWS: 47,
   /** Distinct groups, so a truncated battery cannot pass as a whole one. */
   GROUPS: 10,
   /** Rows the relation alone certified as function-free data. */
-  CERTIFYING: 28,
+  CERTIFYING: 29,
   /** Rows whose reach snippet compiles clean. */
-  REACHABLE: 40,
+  REACHABLE: 41,
   /** Rows the whole screen was silent about. */
   SILENT: 3,
   /** Silent AND reachable — the bypass count. */
   SILENT_AND_REACHABLE: 0,
   /** See the paragraph above. Twenty, and the residual said zero. */
-  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 23,
+  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 24,
   /** The same battery through `SCREEN_BEFORE_E27`. */
   BEFORE_E27_SILENT: 16,
   BEFORE_E27_SILENT_AND_REACHABLE: 13,
@@ -16021,6 +16068,12 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
     reddened:
       "`npx tsc --noEmit` exit 2: `src/empire/empireForbiddenOutput.test.ts(3714,4): error TS2366: Function lacks ending return statement and return type does not include 'undefined'.` RUN RATHER THAN ASSERTED, and it is the reason the switch census does not demand a `default`: adding one would make the compiler stop caring, so the two switches are exhaustive with a declared return type ON PURPOSE and the argument now has a measurement behind it instead of a sentence. A `default: return …` would turn a compile error into a silent fallback, which is the same trade the `else` discipline refuses one instrument over.",
   }),
+  Object.freeze({
+    id: 'G38',
+    what: "the member-type screen's declaration-file skip put back the way it was — `ambientlyDeclared(declaration)` in place of `declaredInTheDefaultLibrary(program, declaration)`, which is the predicate the `ambient-*` rows were added to measure",
+    reddened:
+      'THE SILENCE COMES BACK AND THE ROW NAMES IT: `is not vacuous: every column answers both ways` fails with `expected [ "ambient-certifying-intersection" ] to deeply equal []` on `silentAndReachable`, and `SILENT` moves 3 -> 4 one assertion above it. Run in two steps, because the first pin short-circuits the second: with the two `ambient-*` verdicts also set back to their pre-narrowing values — `[true, false, false, true]` and `[false, false, true, true]` — `answers every row exactly as the table says` PASSES, which is what says EXACTLY those two rows move and `global-from-a-third-module` does not. That third row is the control for the pair: same certificate, same shape, declaration in a `.ts` rather than a `.d.ts`, and it is walked under both predicates. So the silence was about the FILE KIND and not about the type being global, and the narrowing is what closes it.',
+  }),
 ]);
 
 /**
@@ -16040,8 +16093,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(34);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(34);
+    expect(REGISTRY_MUTANTS.length).toBe(35);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(35);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
