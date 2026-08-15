@@ -3,24 +3,38 @@ import { describe, expect, it } from 'vitest';
 import { budgetFrom } from '../../tools/testBudget.mjs';
 import { addDays, asStreakDay, type StreakDay } from '../game/streak';
 import { CAREER_TUNING, CAREER_COPY, MEET_TIER_ORDER } from './careerTuning';
-import { careerMeetFor, scheduledMeets, seasonAnchorDay, upcomingMeets, type CareerMeet } from './calendar';
+import { tierIndex } from './federation';
+import {
+  careerMeetFor,
+  meetDaysForTier,
+  scheduledMeets,
+  seasonAnchorDay,
+  upcomingMeets,
+  type CareerMeet,
+} from './calendar';
 import {
   ATTENDANCE_SWEEP,
+  CAMPAIGN_CALENDAR_VARIANTS,
+  CAMPAIGN_SUMMIT_SWEEP,
   ENTRY_VARIANTS,
   QUALIFICATION_VARIANTS,
   STRENGTH_SWEEP,
   badDayCount,
+  campaignArcs,
   careerAfter,
   enteredDaysOfTier,
   lastEnteredDayOf,
+  measureCampaignReach,
   qualificationKey,
   seasonMeetsOfTier,
   seasonMoments,
   seededCareerTotals,
+  seriesDays,
   shippedEntryList,
   simulateSeason,
   strengthGrid,
   tierOccurrenceOf,
+  variantCalendar,
   type EntryVariant,
   type QualificationVariant,
   type RecordVariant,
@@ -1334,5 +1348,274 @@ describe('days', () => {
     expect(qualifiedMeets(lifterWith(500), ANCHOR, addDays(ANCHOR, 364))).toEqual(
       qualifiedMeets(lifterWith(500), ANCHOR, addDays(ANCHOR, 364)),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AXIS D — the campaign summit is reachable
+// ---------------------------------------------------------------------------
+
+describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two calendars it is not', () => {
+  it('generates its variant calendars with the engine’s own arithmetic', () => {
+    // THE DRIFT GUARD, AND IT RUNS FIRST BECAUSE EVERY NUMBER BELOW RESTS ON
+    // IT. `seriesDays` is a second implementation of what `meetDaysForTier`
+    // already does, and it exists only because the controls need a calendar
+    // `CAREER_TUNING` does not hold and `CAREER_TUNING` is frozen. A second
+    // implementation of a thing the engine does is a drift hazard, so the
+    // shipped shape is driven against the engine over the whole simulated span
+    // rather than trusted.
+    const from = seasonAnchorDay();
+    const to = addDays(from, CAMPAIGN_SUMMIT_SWEEP.RUN_DAYS + Math.max(...CAMPAIGN_SUMMIT_SWEEP.SIGNUP_OFFSET_DAYS));
+    const mine = seriesDays(CAMPAIGN_CALENDAR_VARIANTS.shipped, from, to);
+    const engine = meetDaysForTier('campaign-worlds', from, to);
+    expect(mine).toEqual(engine);
+    // Counts, not bounds: two empty lists are equal. The span is the furthest
+    // any arc reaches — the latest signup day plus a full run — and at a
+    // 182-day cadence starting on day 177 it holds four occurrences.
+    expect(to - from).toBe(889);
+    expect(mine).toHaveLength(4);
+    expect(mine.map((day) => day - from)).toEqual([177, 359, 541, 723]);
+
+    // And the shipped shape READS the tuning rather than restating it, so a
+    // tuner who moves the campaign cadence or phase moves the sweep with it
+    // instead of leaving it measuring a calendar nobody ships. Pinned in both
+    // directions, because a shape that agreed with the tuning by coincidence
+    // would pass the equality above.
+    expect(CAMPAIGN_CALENDAR_VARIANTS.shipped).toEqual({
+      cadenceDays: CAREER_TUNING.CADENCE_DAYS['campaign-worlds'],
+      phaseDays: CAREER_TUNING.PHASE_DAYS['campaign-worlds'],
+    });
+    // The two controls hold each knob at its unfixed value in turn. Neither is
+    // a number typed here either: the unfixed calendar IS the annual series the
+    // competitive summit still runs on.
+    expect(CAMPAIGN_CALENDAR_VARIANTS['annual-at-the-competitive-phase']).toEqual({
+      cadenceDays: CAREER_TUNING.CADENCE_DAYS['competitive-worlds'],
+      phaseDays: CAREER_TUNING.PHASE_DAYS['competitive-worlds'],
+    });
+    expect(CAMPAIGN_CALENDAR_VARIANTS['annual-late']).toEqual({
+      cadenceDays: CAREER_TUNING.CADENCE_DAYS['competitive-worlds'],
+      phaseDays: CAREER_TUNING.PHASE_DAYS['campaign-worlds'],
+    });
+    // The controls differ from the shipped shape in exactly one knob each,
+    // which is what makes them separate the two.
+    expect(CAMPAIGN_CALENDAR_VARIANTS['annual-late'].phaseDays).toBe(
+      CAMPAIGN_CALENDAR_VARIANTS.shipped.phaseDays,
+    );
+    expect(CAMPAIGN_CALENDAR_VARIANTS['annual-late'].cadenceDays).not.toBe(
+      CAMPAIGN_CALENDAR_VARIANTS.shipped.cadenceDays,
+    );
+    expect(CAMPAIGN_CALENDAR_VARIANTS['annual-at-the-competitive-phase'].phaseDays).not.toBe(
+      CAMPAIGN_CALENDAR_VARIANTS.shipped.phaseDays,
+    );
+
+    // And a variant calendar is the WHOLE calendar with one series moved, not a
+    // calendar of summits. Every other tier is the engine's own list, byte for
+    // byte, so the controls cannot be measuring a thinner game.
+    const shippedCalendar = variantCalendar('shipped', from, addDays(from, 728));
+    const engineCalendar = scheduledMeets(CAMPAIGN_SUMMIT_SWEEP.FEDERATION, from, addDays(from, 728));
+    expect(shippedCalendar).toEqual(engineCalendar);
+    for (const variant of ['annual-at-the-competitive-phase', 'annual-late'] as const) {
+      const moved = variantCalendar(variant, from, addDays(from, 728));
+      expect(moved.filter((meet) => meet.tier !== 'campaign-worlds')).toEqual(
+        engineCalendar.filter((meet) => meet.tier !== 'campaign-worlds'),
+      );
+      // The relocated summits carry the engine's own gate, so a control moves
+      // the calendar and nothing else. This is the check that says the two
+      // controls measure the CALENDAR's contribution rather than a second,
+      // differently gated tier.
+      for (const summit of moved.filter((meet) => meet.tier === 'campaign-worlds')) {
+        expect(summit.qualifyingTotalKg).toBe(CAREER_TUNING.QUALIFYING_TOTAL_KG['campaign-worlds']);
+      }
+    }
+  });
+
+  it('takes every simulated arc to a campaign summit, which neither unfixed calendar does', () => {
+    const shipped = measureCampaignReach('shipped');
+    const atTheOldPhase = measureCampaignReach('annual-at-the-competitive-phase');
+    const annualLate = measureCampaignReach('annual-late');
+
+    // R1 FIRST, and then immediately the sentence that says R1 is not the
+    // clause doing the work. GDD §6.6 requires the campaign summit to be
+    // "always reachable"; every one of the 192 arcs reaches one.
+    expect(shipped.arcsReachingASummit).toBe(shipped.arcs);
+    expect(shipped.arcs).toBe(192);
+    expect(shipped.arcs).toBe(
+      ATTENDANCE_SWEEP.SEEDS.length * CAMPAIGN_SUMMIT_SWEEP.SIGNUP_OFFSET_DAYS.length,
+    );
+
+    // AND HERE IS WHY THAT CLAUSE IS NEARLY VACUOUS ON ITS OWN, measured rather
+    // than suspected: the calendar GDD §6.6 recorded as a design violation
+    // takes 191 of the same 192 arcs to a summit too. An absolute stated over
+    // the whole population separates the broken calendar from the repaired one
+    // by a single arc, because an arc that runs for two calendar periods will
+    // eventually meet an annual series whatever its phase.
+    expect(atTheOldPhase.arcsReachingASummit).toBe(191);
+    expect(annualLate.arcsReachingASummit).toBe(189);
+
+    // R2b IS THE CLAUSE THAT BITES. "Always reachable" is a claim about every
+    // player, not about an average, and cutting the first-year count by signup
+    // day is what turns it into one. The shipped calendar's worst signup day
+    // gets 19 of its 24 arcs to a summit inside the first year; both controls
+    // have a signup day that gets NONE of its 24 there.
+    expect(shipped.worstOffsetFirstYearArcs).toBe(19);
+    expect(shipped.worstOffsetFirstYearArcs).toBeGreaterThanOrEqual(
+      CAMPAIGN_SUMMIT_SWEEP.MIN_FIRST_YEAR_ARCS_PER_OFFSET,
+    );
+    expect(atTheOldPhase.worstOffsetFirstYearArcs).toBe(0);
+    expect(annualLate.worstOffsetFirstYearArcs).toBe(0);
+
+    // The whole row, per signup day, because WHICH day is locked out is the
+    // thing that says the two controls fail for opposite reasons rather than
+    // for one. The old phase locks out the player who signs up ON the season
+    // anchor — the summit is six days ahead of them and the next is a year
+    // away, which is the exact finding §6.6 recorded. Fixing the phase and
+    // leaving the cadence annual moves the lockout to the OTHER end: the player
+    // who signs up late in the season arrives just after the summit and waits a
+    // whole year for the next.
+    expect(shipped.firstYearArcsPerOffset).toEqual([23, 23, 23, 23, 23, 21, 21, 19]);
+    expect(atTheOldPhase.firstYearArcsPerOffset).toEqual([0, 23, 23, 23, 23, 22, 21, 21]);
+    expect(annualLate.firstYearArcsPerOffset).toEqual([18, 16, 14, 12, 11, 8, 4, 0]);
+    // Neither knob alone. That is the whole argument for changing both, and it
+    // is these three rows rather than a paragraph.
+    expect(atTheOldPhase.firstYearArcsPerOffset[0]).toBe(0);
+    expect(
+      annualLate.firstYearArcsPerOffset[CAMPAIGN_SUMMIT_SWEEP.SIGNUP_OFFSET_DAYS.length - 1],
+    ).toBe(0);
+
+    // R2, the whole-population form, kept because it is the pacing statement
+    // and pinned exactly beside its bar so the margin is visible.
+    expect(shipped.arcsReachingInsideAYear).toBe(176);
+    expect(shipped.arcsReachingInsideAYear).toBeGreaterThanOrEqual(
+      CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_ARCS_REQUIRED,
+    );
+    expect(shipped.medianDaysToFirstSummit).toBe(198);
+    expect(shipped.medianDaysToFirstSummit as number).toBeLessThanOrEqual(
+      CAMPAIGN_SUMMIT_SWEEP.MEDIAN_DAYS_CEILING,
+    );
+    expect(shipped.worstDaysToFirstSummit).toBe(608);
+    // The controls on the same statistic, so the shipped numbers are numbers
+    // against something.
+    expect(atTheOldPhase.arcsReachingInsideAYear).toBe(156);
+    expect(annualLate.arcsReachingInsideAYear).toBe(83);
+    expect(atTheOldPhase.medianDaysToFirstSummit).toBe(301);
+    expect(annualLate.medianDaysToFirstSummit).toBe(380);
+
+    // R3's second half. The fastest arc had eight meets behind it, which clears
+    // the design floor and is ALSO a fact about the total generator rather than
+    // about the calendar — see the constant's block. Pinned exactly so that a
+    // generator given a plausible ceiling moves it visibly.
+    expect(shipped.fewestMeetsBeforeASummit).toBe(8);
+    expect(shipped.fewestMeetsBeforeASummit as number).toBeGreaterThanOrEqual(
+      CAMPAIGN_SUMMIT_SWEEP.MIN_MEETS_BEFORE_A_SUMMIT,
+    );
+  });
+
+  it('counts what the sweep actually saw, per tier, so none of the zeros is about an empty domain', () => {
+    const shipped = measureCampaignReach('shipped');
+
+    // THE NON-VACUITY GUARD. Counts per tier, never bounds: an arc simulation
+    // that entered nothing, or a calendar that offered no summits, would leave
+    // every claim above trivially true. Offered is what the calendar put in
+    // front of 192 arcs; entered is what the greedy lifter took.
+    expect(shipped.offeredPerTier).toEqual({
+      local: 20016,
+      regional: 10008,
+      nationals: 1536,
+      'campaign-worlds': 768,
+      'competitive-worlds': 384,
+    });
+    expect(shipped.enteredPerTier).toEqual({
+      local: 20016,
+      regional: 9826,
+      nationals: 1328,
+      'campaign-worlds': 640,
+      'competitive-worlds': 343,
+    });
+    // Every tier is entered and no tier is entered more often than it is
+    // offered, which is the shape a census has when it is a census of something.
+    for (const tier of MEET_TIER_ORDER) {
+      expect(shipped.enteredPerTier[tier], `${tier} entered`).toBeGreaterThan(0);
+      expect(shipped.enteredPerTier[tier], `${tier} against offered`).toBeLessThanOrEqual(
+        shipped.offeredPerTier[tier],
+      );
+    }
+    // NATIONALS IS THIN AND IS REPORTED AS THIN. 1328 of 1536 offered is 86%,
+    // which is the number a reader should have rather than "nationals is fine
+    // now". Under the one-year window this piece started from it was 60 of 96;
+    // what changed is the window the arcs run over, not the tier.
+    expect(shipped.enteredPerTier.nationals / shipped.offeredPerTier.nationals).toBeCloseTo(
+      0.8646,
+      4,
+    );
+    expect(shipped.offeredPerTier.nationals - shipped.enteredPerTier.nationals).toBe(208);
+    // And the summit is scarce. 768 offered against 20016 local meets is what
+    // keeps it a summit rather than a rung.
+    expect(shipped.offeredPerTier['campaign-worlds'] / shipped.offeredPerTier.local).toBeLessThan(0.05);
+
+    // `MEETS_PER_ARC` is a ceiling rather than a count, so the slack is
+    // measured instead of assumed. An arc that ran past it throws.
+    expect(shipped.deepestArc).toBe(170);
+    expect(shipped.deepestArc).toBeLessThan(CAMPAIGN_SUMMIT_SWEEP.MEETS_PER_ARC);
+    expect(shipped.summitsEntered).toBe(640);
+  });
+
+  it('reproduces §6.6’s own finding under the unfixed calendar, and the tie-break it forces', () => {
+    // THE FINDING THIS PIECE WAS SENT AT, AS A RUNNABLE CONTROL RATHER THAN A
+    // MEMORY. GDD §6.6: worlds meets are "scheduled 24 times and enterable 0
+    // times" over one year from the anchor, while lifters get far past the gate.
+    // Under `annual-at-the-competitive-phase` the anchor-signup arcs still
+    // measure exactly that: 24 seeds, one summit offered inside their first
+    // year, and none of them enters it.
+    const anchorArcs = campaignArcs('annual-at-the-competitive-phase').filter(
+      (arc) => arc.signupOffsetDays === 0,
+    );
+    expect(anchorArcs).toHaveLength(24);
+    expect(
+      anchorArcs.filter(
+        (arc) =>
+          arc.daysToFirstSummit !== null &&
+          arc.daysToFirstSummit <= CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_DAYS,
+      ),
+    ).toHaveLength(0);
+    // And it is not that they were too weak. 23 of the 24 are holding more than
+    // the gate long before their first year is out — the meet and the strength
+    // never coincide, which is the half of the finding a threshold change alone
+    // cannot fix.
+    //
+    // 23 AND NOT 24, WHICH IS A CORRECTION THIS CHECK MADE TO ITS OWN COMMENT.
+    // It was written asserting all 24 and measured 23: one seed is genuinely
+    // slow and does not clear 600 kg until day 437. That arc is locked out of
+    // its first summit for a reason the design is entitled to — it was not
+    // strong enough — and the other 23 are locked out for a reason it is not.
+    // Keeping the two apart is the whole point of the count.
+    const gate = CAREER_TUNING.QUALIFYING_TOTAL_KG['campaign-worlds'] as number;
+    const clearedInsideTheYear = anchorArcs.filter((arc) =>
+      arc.meets.some(
+        (meet) =>
+          meet.totalKg >= gate &&
+          meet.day - seasonAnchorDay() <= CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_DAYS,
+      ),
+    );
+    expect(clearedInsideTheYear).toHaveLength(23);
+    expect(clearedInsideTheYear.length).toBeGreaterThan(
+      anchorArcs.length - clearedInsideTheYear.length,
+    );
+
+    // THE SIDE EFFECT OF THAT CONTROL, PINNED RATHER THAN APOLOGISED FOR.
+    // Putting the campaign summit back on the competitive summit's series puts
+    // both summits on the same days, and a lifter cannot be at two meets at
+    // once — so the competitive tier's entries fall to zero. That is
+    // `scheduledMeets`'s same-day tie-break, which `calendar.ts` calls
+    // unreachable at the shipped phases, being reached and doing what its
+    // comment says: the lower tier on the ladder wins the day.
+    const atTheOldPhase = measureCampaignReach('annual-at-the-competitive-phase');
+    expect(atTheOldPhase.enteredPerTier['competitive-worlds']).toBe(0);
+    expect(measureCampaignReach('shipped').enteredPerTier['competitive-worlds']).toBe(343);
+    expect(tierIndex('campaign-worlds')).toBeLessThan(tierIndex('competitive-worlds'));
+    // The other three tiers are untouched by the control, which is what says
+    // the zero above is the collision and not a thinner fixture.
+    expect(atTheOldPhase.enteredPerTier.local).toBe(20016);
+    expect(atTheOldPhase.enteredPerTier.regional).toBe(9826);
+    expect(atTheOldPhase.enteredPerTier.nationals).toBe(1328);
   });
 });
