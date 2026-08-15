@@ -15588,6 +15588,26 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
     ]),
   }),
+  Object.freeze({
+    id: 'M69',
+    shape:
+      "`any` ONE PROPERTY DOWN, IN A SHIPPED EXPORT. The screen answers `any` before it asks the relation, and that short-circuit reads the flags of the type AT THE SITE — so it fires for a top-level `any` and never for a member, because a member's holder is an object. `SCREEN_BATTERY`'s `anyish` row grades the short-circuit with a top-level `any`, which is the one position the arm already handled: the control written to prove that arm was not vacuous was asking the question the arm answers correctly. `FAMILY_TABLE`'s `any-behind-a-property` is that shape as a type; this row is the same shape planted in a module that ships",
+    where:
+      'production.ts, `accrueProduction`: a module-level `const PRODUCTION_ANY_MEMBER: { readonly entry: { readonly held: any } }` holding a frozen `peek`, handed back as `shapes: PRODUCTION_ANY_MEMBER.entry`. No cast, no new export, no new import line and no new string literal — the payload is read out of `EMPIRE_FORBIDDEN_OUTPUTS` through a specifier added to an import the module already has, which is M43-M52\'s isolation unchanged',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED, WITH THE MEMBER PATH. `derives every escape site from the shipped source` reddens with `+ "production.ts": 1` under `returned-closure`, and `pins the two callback sites with their ARGUMENT COUNT` with `+ "production.ts#accrueProduction#closure:.shapes.held.peek"` — the path is what says the walk went THROUGH the `any`-typed member rather than stopping at the holder.',
+      'AND THE TWO READINGS DISAGREE AT THE SITE, which is the reading that locates it by line: `agrees with the control everywhere on the shipped tree, and says where it does not` reddens with `+ "production.ts:532 { readonly held: any; } asked=false walked=true"`. The relation certifies the holder as function-free data and is right to — `any` is assignable to `FunctionFreeData` like it is to everything — and the walk says a function may be stored there. Twelve disagreements against eleven.',
+      'AND THE BRANCH RUNS, PRINTED: `accrueProduction` on a fresh gym returns keys ending `…,"ledger","shapes"`, `typeof shapes` is `object`, `typeof shapes.held` is `object`, `typeof shapes.held.peek` is `function`, `shapes.held.peek()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'AND THE PRE-FIX SCREEN WAS SILENT ABOUT THE SAME PLANT, MEASURED RATHER THAN REMEMBERED. `channelCensusOf`\'s screen switched to `SCREEN_BEFORE_E27` and nothing else changed: `derives every escape site` fails on the owner-kind tally `- "member": 474 / + "member": 475` — one added property access — with `census.byModule` asserted ten lines ABOVE it and passing, so there is no `returned-closure` row for production.ts; and `pins the two callback sites` passes outright at exactly the two shipped sites, with `production.ts#accrueProduction#closure:.shapes.held.peek` absent. That flip is a measurement and not work: the file was restored and verified byte-identical afterwards.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters, as ever, and every one of them moves on an edit of any size: instrument C `expected 1019 to be 1018`, instrument B `expected 2393570 to be 2393060`, the overflow pass `expected 523296 to be 523128`. Six failed of 95, and three of the six are the guard.',
+      'production.ts and empireForbiddenOutput.test.ts both restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` before this row was written.',
+    ]),
+  }),
 ]);
 
 /**
@@ -15869,7 +15889,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(68);
+    expect(PLANTED_ROUTES.length).toBe(69);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -15986,8 +16006,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // type is two characters. There is no recursion to spell, no index
     // signature to write and no cast to place, so none of the accidents the
     // earlier rows had to strip is available to be made.
-    expect(attempts).toBe(92);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(58);
+    expect(attempts).toBe(93);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(59);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
