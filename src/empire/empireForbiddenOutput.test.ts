@@ -3472,6 +3472,11 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
   // Its sibling, and the pair is the point: one declaration file and one plain
   // module carrying the same augmentation.
   'E28_GLOBAL_FILE',
+  // E29's declaration file, served to the CENSUS rather than to the screen —
+  // the same reference-not-a-domain class as the two above, one instrument
+  // over. It is what the six other `.d.ts` skips are driven against, and the
+  // scan requiring it here is the guard conscripting the round that added it.
+  'AMBIENT_DECLARATION_FILE',
   'DIAGNOSTIC_CHANNEL_CENSUS',
   // The family sweep's ban on its OWN reach snippets. An expectation and not an
   // input: it is not driven against any subject, it is applied to the rows this
@@ -3572,7 +3577,7 @@ const DOMAIN_CENSUS = Object.freeze({
   ALIASES: 7,
   NON_DOMAIN_LISTS: 1,
   LITERAL_AXES: 8,
-  LABELLED_LISTS: 21,
+  LABELLED_LISTS: 22,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
@@ -8092,9 +8097,18 @@ function channelCensusOf(
   roots: readonly string[],
   probeText: string | null,
   probePath: string = PROBE_PATH,
+  extra: readonly (readonly [string, string])[] = [],
 ): ChannelCensus {
   const options = compilerOptions();
-  const program = programWith(options, roots, probeText, probePath, FUNCTION_FREE_DATA_FILE);
+  // The `extra` channel is `programWith`'s, used a second time — the same
+  // reason `candidateReading` needed it. A probe is ONE served file, and the
+  // shapes E29 is about need two: a project `.d.ts` and a module that uses what
+  // it declares. An extra file joins the program's roots so its symbols bind
+  // and never the walked roots, so no census counts it as a module.
+  const program = programWith(options, roots, probeText, probePath, [
+    ...FUNCTION_FREE_DATA_FILE,
+    ...extra,
+  ]);
   const checker = program.getTypeChecker();
   const screen = memberTypeScreen(program, checker);
 
@@ -9715,6 +9729,19 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   /** The probe's, so the two zeros above are a walk that looked and found none. */
   PROBE_POSITIONS_CROSSING_AN_INDEX: 3,
   PROBE_INDEX_CROSSINGS_MAX: 1,
+  /**
+   * The same reading over a chain declared in a PROJECT declaration file.
+   *
+   * The positive control for E29's narrowing of this walk's property step, and
+   * it exists because the narrowing moves nothing on the shipped tree — which is
+   * the state a repair is decoration in. `AMBIENT_DEPTH_SOURCE` exports a
+   * twelve-deep nest, so a walk that steps into a project `.d.ts` reports 12 and
+   * one that skips every declaration file reports the shipped 9, its own
+   * position having contributed zero.
+   */
+  AMBIENT_PROBE_DEEPEST: 12,
+  /** What the wide predicate reported for the same probe. The number 12 is 12 against this. */
+  AMBIENT_PROBE_DEEPEST_WHEN_EVERY_DECLARATION_FILE_IS_SKIPPED: 9,
 });
 
 /**
@@ -11932,6 +11959,289 @@ describe('the assembly walk bites — every binding whose value is not in its in
       SHIPPED_TYPE_DEPTH.PROBE_POSITIONS_CROSSING_AN_INDEX,
     );
     expect(withProbe.indexCrossingsMax).toBe(SHIPPED_TYPE_DEPTH.PROBE_INDEX_CROSSINGS_MAX);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The ambient probe — six call sites that skip a `.d.ts`, and they do not agree
+// ---------------------------------------------------------------------------
+
+/**
+ * A project's own declaration file, served in memory beside the probe.
+ *
+ * WHAT IT IS FOR. E28 found that the member-type screen skipped every `.d.ts`
+ * and narrowed that ONE call to the default library. The same predicate was in
+ * use at six other sites, and the reason each of them skipped was different — so
+ * this file is the shape all six are driven against, per site, rather than the
+ * one being assumed to behave like the screen. Two of the six were silent and
+ * are narrowed; two are silent UNDER the narrowing and are kept wide; the last
+ * two are the depth walk, whose docstring claimed the control's position set
+ * while no longer having it.
+ *
+ * Every declaration here is global — the file exports nothing, so the probe
+ * reaches these names with no import, which is what a project `.d.ts` describing
+ * a host-provided value actually looks like.
+ */
+const AMBIENT_DECLARATION_PATH = path.join(HERE, '__ambientDeclarations.d.ts');
+
+const AMBIENT_DECLARATION_FILE: readonly (readonly [string, string])[] = Object.freeze([
+  Object.freeze([
+    AMBIENT_DECLARATION_PATH,
+    `interface AmbientShape { readonly peek: () => string }
+interface AmbientCallable { (): string }
+declare function ambientNamedFunction(): string;
+declare const ambientShape: AmbientShape;
+declare const ambientHolder: { readonly inner: AmbientShape };
+declare const ambientList: readonly AmbientShape[];
+declare const ambientMutable: { kind: string };
+declare namespace ambientNamespace {
+  const inner: AmbientShape;
+}
+`,
+  ] as const),
+]);
+
+const AMBIENT_PROBE_PATH = path.join(HERE, '__ambientProbe.ts');
+const AMBIENT_PROBE_MODULE = path.basename(AMBIENT_PROBE_PATH);
+
+/**
+ * One export per call site, each written to be the shape THAT site skips.
+ *
+ *   1. `probeAmbientNamedFunction` — a function declared in the `.d.ts`, handed
+ *      back by its name. The sibling of `probeReturnsNamedFunction`, one file
+ *      kind over, and the sharpest of the six: under the wide predicate it
+ *      produced no closure row and no `unfollowed` line at all.
+ *   2. `probeAmbientNamedInShape` — the same function one level in, inside a
+ *      returned object literal, because a route that only works at the top of a
+ *      `return` is a different claim from one that works at any depth.
+ *   3. `probeAmbientConstShape` — an ambient CONST whose type carries a closure.
+ *      There is no value expression behind it in this program, so the honest
+ *      outcome is `unfollowable` rather than a closure row, and the pin below
+ *      says which of the two it is instead of leaving it to be inferred.
+ *   4. `probeAmbientAliasWrite` — `hoppableInitializer`'s site: a write into an
+ *      ambiently declared mutable global through a local alias. Under the wide
+ *      predicate the owner resolved `local`, which records no channel at all.
+ *   5. `probeAmbientHolderMember` — `literalValuesOf`'s site, reached through the
+ *      holder fallback.
+ *   6. `probeAmbientNamespaceMember` — the returned-member arm's site, and the
+ *      one member access whose symbol resolves to a `VariableDeclaration`
+ *      instead of a `PropertySignature`. That is what makes it the shape which
+ *      discriminates the two predicates there.
+ *
+ * Rows 5 and 6 are the two the narrowing would BREAK, and they are here for
+ * that: they are pinned as `unfollowable`, so a later round that makes all six
+ * sites identical loses two named lines and is red rather than tidy.
+ */
+const AMBIENT_PROBE_SOURCE = `import { EMPIRE_FORBIDDEN_OUTPUTS } from './empireCore';
+
+export function probeAmbientNamedFunction(): AmbientCallable {
+  return ambientNamedFunction;
+}
+
+export function probeAmbientNamedInShape(): AmbientShape {
+  return { peek: ambientNamedFunction };
+}
+
+export function probeAmbientConstShape(): AmbientShape {
+  return ambientShape;
+}
+
+export function probeAmbientAliasWrite(): void {
+  const alias = ambientMutable;
+  alias.kind = EMPIRE_FORBIDDEN_OUTPUTS[0];
+}
+
+export function probeAmbientHolderMember(): AmbientShape {
+  return ambientHolder.inner;
+}
+
+export function probeAmbientNamespaceMember(): AmbientShape {
+  return ambientNamespace.inner;
+}
+
+export function probeAmbientListElement(slot: number): AmbientShape {
+  return ambientList[slot] as AmbientShape;
+}
+`;
+
+let ambientProbeCensusMemo: ChannelCensus | null = null;
+
+function ambientProbeCensus(): ChannelCensus {
+  if (ambientProbeCensusMemo !== null) return ambientProbeCensusMemo;
+  ambientProbeCensusMemo = channelCensusOf(
+    [...shippedModulePaths(), AMBIENT_PROBE_PATH],
+    AMBIENT_PROBE_SOURCE,
+    AMBIENT_PROBE_PATH,
+    AMBIENT_DECLARATION_FILE,
+  );
+  return ambientProbeCensusMemo;
+}
+
+function ambientProbeSites(id: ChannelId): readonly string[] {
+  return ambientProbeCensus().sites[id].filter((key) => key.startsWith(AMBIENT_PROBE_MODULE));
+}
+
+function ambientProbeFresh(): readonly string[] {
+  return ambientProbeCensus().freshReceivers.filter((entry) =>
+    entry.startsWith(AMBIENT_PROBE_MODULE),
+  );
+}
+
+/** The two rows the returned-identifier arm produces now and produced neither of before. */
+const AMBIENT_PROBE_CLOSURE_SITES: readonly string[] = Object.freeze([
+  `${AMBIENT_PROBE_MODULE}#probeAmbientNamedFunction#closure:return`,
+  `${AMBIENT_PROBE_MODULE}#probeAmbientNamedInShape#closure:.peek`,
+]);
+
+/**
+ * The rows that say the two kept-wide sites are LOUD, and one that the narrowed
+ * site made loud.
+ *
+ * `ambientHolder` and `ambientNamespace` are sites 5 and 6, and they are here
+ * rather than in the closure list because a binding a declaration file declares
+ * has no value in this program — "somebody look at this line" is the whole of
+ * what can honestly be said about it. `ambientShape` and `ambientList` are the
+ * same outcome reached through the returned-identifier arm and the array
+ * fallback.
+ */
+const AMBIENT_PROBE_UNFOLLOWED: readonly string[] = Object.freeze([
+  `${AMBIENT_PROBE_MODULE}:12 returned=unfollowable:ambientShape`,
+  `${AMBIENT_PROBE_MODULE}:21 returned=unfollowable:ambientHolder`,
+  `${AMBIENT_PROBE_MODULE}:25 returned=unfollowable:ambientNamespace`,
+  `${AMBIENT_PROBE_MODULE}:29 returned=unfollowable:ambientList`,
+]);
+
+const AMBIENT_DEPTH_PATH = path.join(HERE, '__ambientDepth.d.ts');
+
+/**
+ * A twelve-deep chain declared in a project `.d.ts`, exported as a module.
+ *
+ * The depth walk's positive control. Twelve rather than ten because the shipped
+ * tree reports 9 and the control has to be distinguishable from it by more than
+ * a rounding — and because `MEMBER_TYPE_WALK_MAX_DEPTH` sits at 8, so this is
+ * also past the limit the walk's `pastTheLimit` list is about.
+ */
+const AMBIENT_DEPTH_SOURCE = `export interface AmbientDeep {
+  readonly a: {
+    readonly b: {
+      readonly c: {
+        readonly d: {
+          readonly e: {
+            readonly f: {
+              readonly g: {
+                readonly h: {
+                  readonly i: { readonly j: { readonly k: { readonly l: string } } };
+                };
+              };
+            };
+          };
+        };
+      };
+    };
+  };
+}
+export declare const ambientDeep: AmbientDeep;
+`;
+
+describe('the ambient probe — one skip, six call sites, and they do not agree', () => {
+  it('compiles the probe cleanly, so a finding below is a classification and not an error', () => {
+    const program = programWith(
+      compilerOptions(),
+      [...shippedModulePaths(), AMBIENT_PROBE_PATH],
+      AMBIENT_PROBE_SOURCE,
+      AMBIENT_PROBE_PATH,
+      [...FUNCTION_FREE_DATA_FILE, ...AMBIENT_DECLARATION_FILE],
+    );
+    const file = program.getSourceFile(AMBIENT_PROBE_PATH);
+    expect(file).toBeDefined();
+    const diagnostics = [
+      ...program.getSyntacticDiagnostics(file),
+      ...program.getSemanticDiagnostics(file),
+    ].map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, ' '));
+    expect(diagnostics, diagnostics.join(' | ')).toEqual([]);
+    // The census ran over the probe and NOT over the declaration file, which is
+    // the property that makes an extra file a reference rather than a subject.
+    expect(ambientProbeCensus().modules).toContain(AMBIENT_PROBE_MODULE);
+    expect(ambientProbeCensus().modules).not.toContain(path.basename(AMBIENT_DECLARATION_PATH));
+    expect(ambientProbeCensus().modules.length).toBe(CHANNEL_CENSUS_TOTALS.MODULES + 1);
+  });
+
+  it('finds a function declared in a project `.d.ts` and handed back, at two depths', () => {
+    // Site 3 of six, and the one the round is named for. `declare function` in a
+    // project declaration file is a value this DIRECTORY publishes; `undefined`
+    // in `lib.es5.d.ts` is not, and the predicate that used to sit here could
+    // not tell those apart because it asked about the file extension.
+    expect(ambientProbeSites('returned-closure')).toEqual(AMBIENT_PROBE_CLOSURE_SITES);
+    // And no shipped module has either key, so the set equality on
+    // `DECLARED_RETURNED_CLOSURE_SITES` is what reddens if one arrives for real.
+    for (const key of AMBIENT_PROBE_CLOSURE_SITES) {
+      expect(channelCensus().sites['returned-closure']).not.toContain(key);
+    }
+  });
+
+  it('records the write into an ambient global instead of filing it as a local', () => {
+    // Site 2 of six. `local` is the one owner arm with no channel behind it, so
+    // under the wide predicate the whole of this write was an increment to
+    // `writeOwners.local` — a number that moves for any added write at all.
+    expect(ambientProbeSites('module-mutable-state')).toEqual([
+      `${AMBIENT_PROBE_MODULE}#probeAmbientAliasWrite#write`,
+    ]);
+    expect(ambientProbeCensus().writeOwners['module-variable']).toBe(
+      DECLARED_WRITE_OWNERS['module-variable'] + 1,
+    );
+    // The shipped tree is untouched by the narrowing, which is the other half of
+    // the same measurement: this probe is where it shows and nowhere else.
+    expect(channelCensus().writeOwners).toEqual(DECLARED_WRITE_OWNERS);
+    expect(channelCensus().callTargets).toEqual(DECLARED_CALL_TARGETS);
+  });
+
+  it('keeps the two kept-wide sites LOUD, which is what says they are not the same site', () => {
+    // Sites 1, 4 and the array fallback. Narrowing `literalValuesOf` or the
+    // returned-member arm to the default library sends each of these into a
+    // `VariableDeclaration` branch that reads an empty value list out of a file
+    // which cannot hold one — no closure row, no `unfollowed` line, nothing.
+    // These four rows are what goes missing, so a blanket application of E28's
+    // fix is red here rather than quietly worse.
+    expect(ambientProbeFresh()).toEqual(AMBIENT_PROBE_UNFOLLOWED);
+    // None of them is a closure row, and that is the honest verdict rather than
+    // a weaker one: a declaration file's binding has no value in this program.
+    expect(ambientProbeSites('returned-closure')).not.toContain(
+      `${AMBIENT_PROBE_MODULE}#probeAmbientConstShape#closure:.peek`,
+    );
+    // The probe pollutes no shipped list, so the two censuses stay separate.
+    expect(channelCensus().freshReceivers).toEqual(DECLARED_FRESH_RECEIVERS);
+  });
+
+  it('steps into a project `.d.ts` on the depth walk, and says what the wide read cost', () => {
+    // Sites 5 and 6 of six. The claim in `shippedTypeDepth`'s own docstring is
+    // that its position set is the control's exactly; E28 narrowed the control
+    // and left this walk behind, so the sentence outlived the fact for a round.
+    const reading = shippedTypeDepth(
+      [...shippedModulePaths(), AMBIENT_DEPTH_PATH],
+      AMBIENT_DEPTH_SOURCE,
+      AMBIENT_DEPTH_PATH,
+    );
+    expect(reading.deepest).toBe(SHIPPED_TYPE_DEPTH.AMBIENT_PROBE_DEEPEST);
+    expect(reading.deepestAt).toEqual([`${path.basename(AMBIENT_DEPTH_PATH)}#ambientDeep`]);
+    // AND THE NUMBER IT IS 12 AGAINST. A walk that skips every declaration file
+    // reports the shipped tree's own 9 here, because the probe's position
+    // contributes zero — indistinguishable from a probe that failed to load,
+    // which is why the two numbers sit beside each other rather than one alone.
+    expect(SHIPPED_TYPE_DEPTH.AMBIENT_PROBE_DEEPEST_WHEN_EVERY_DECLARATION_FILE_IS_SKIPPED).toBe(
+      SHIPPED_TYPE_DEPTH.DEEPEST,
+    );
+    expect(reading.deepest).toBeGreaterThan(
+      SHIPPED_TYPE_DEPTH.AMBIENT_PROBE_DEEPEST_WHEN_EVERY_DECLARATION_FILE_IS_SKIPPED,
+    );
+    expect(reading.deepest).toBeGreaterThan(MEMBER_TYPE_WALK_MAX_DEPTH);
+    // The shipped numbers are unchanged by the narrowing, measured rather than
+    // asserted: every pin the walk carries is re-read here.
+    const shipped = shippedTypeDepth();
+    expect(shipped.positions).toBe(SHIPPED_TYPE_DEPTH.POSITIONS);
+    expect(shipped.deepest).toBe(SHIPPED_TYPE_DEPTH.DEEPEST);
+    expect(shipped.deepestThroughIndex).toBe(SHIPPED_TYPE_DEPTH.DEEPEST_THROUGH_INDEX);
+    expect(shipped.positionsCrossingAnIndex).toBe(SHIPPED_TYPE_DEPTH.POSITIONS_CROSSING_AN_INDEX);
+    expect(shipped.indexCrossingsMax).toBe(SHIPPED_TYPE_DEPTH.INDEX_CROSSINGS_MAX);
   });
 });
 
