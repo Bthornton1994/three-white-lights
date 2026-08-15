@@ -802,13 +802,14 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     expect(firesIn(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_THE_EDGE), 'careers deep enough for the 167 arm').toBe(0);
 
     // THE TWO ZEROS ARE HELD APART BY THEIR OWN COUNTS, WHICH IS THE WHOLE
-    // REASON THE MIDDLE ARM IS WORTH HAVING. `past-visible` fires in some
-    // careers and reports nothing; `past-the-edge` fires in none. Without the
-    // middle one a reader of a single zero could not tell which it was — and for
-    // one round of this file's history, could not have known there was a
-    // difference to tell.
-    expect(firesIn(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_VISIBLE)).toBeGreaterThan(0);
-    expect(firesIn(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_THE_EDGE)).toBe(0);
+    // REASON THE MIDDLE ARM IS WORTH HAVING. `past-visible` fires in 20 careers
+    // and reports nothing; `past-the-edge` fires in none. Without the middle one
+    // a reader of a single zero could not tell which it was — and for one round
+    // of this file's history, could not have known there was a difference to
+    // tell. The two counts are the three `firesIn` pins directly above; a
+    // `toBeGreaterThan(0)` and a repeat of the zero stood here and were DELETED
+    // AS DOMINATED, since 20 and 0 are already decided by those pins and neither
+    // line could ever have been the assertion that spoke.
     // The far edge is the deepest career, derived rather than typed, so a
     // fixture change that deepens the sweep reddens here instead of leaving a
     // stale constant behind.
@@ -819,11 +820,15 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     expect(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_VISIBLE).toBe(
       ATTENDANCE_SWEEP.DELAYED_FORM_INSIDE + 1,
     );
-    // ...and the three are strictly ordered and strictly inside the domain, so
-    // none of them has quietly become another.
-    expect(ATTENDANCE_SWEEP.DELAYED_FORM_INSIDE).toBeLessThan(
-      ATTENDANCE_SWEEP.DELAYED_FORM_PAST_VISIBLE,
-    );
+    // ...and the invisible point is strictly inside the domain rather than
+    // sitting on its far edge, which is the one ordering fact the two relations
+    // above do NOT imply: they fix `PAST_VISIBLE` as `INSIDE + 1` and
+    // `PAST_THE_EDGE` as the deepest career, and nothing in either stops those
+    // two colliding. A deeper `INSIDE` is exactly how the middle arm would
+    // silently become the outer one again.
+    //
+    // An `INSIDE < PAST_VISIBLE` line stood beside this and was DELETED AS
+    // DOMINATED by the successor relation directly above it.
     expect(ATTENDANCE_SWEEP.DELAYED_FORM_PAST_VISIBLE).toBeLessThan(
       ATTENDANCE_SWEEP.DELAYED_FORM_PAST_THE_EDGE,
     );
@@ -1065,9 +1070,12 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     );
     expect(refusedByTheirCeiling, 'missed because their ceiling is under the bar').toHaveLength(2);
     expect(refusedByPace, 'missed because the day came first').toHaveLength(6);
-    // The two categories are the whole of the misses, so nothing is
-    // unaccounted for.
-    expect(refusedByTheirCeiling.length + refusedByPace.length).toBe(missedSeeds.length);
+    // A `refusedByTheirCeiling.length + refusedByPace.length === missedSeeds.length`
+    // line stood here, to say the two categories account for every miss, and was
+    // DELETED AS VACUOUS. The two filters are complementary predicates over the
+    // same list, so their lengths sum to it by construction — no state of the
+    // sweep, the generator or the calendar could have made it red. The 2 and the
+    // 6 above are the check; that line only restated how they were computed.
     // And each category is what it says. The ceiling group can never get in
     // however long they run; the pace group was genuinely short ON THE DAY,
     // which is a different fact and is measured rather than inferred from the
@@ -1338,8 +1346,14 @@ describe('the totals generator is bounded to a plausible range for the sport', (
     // output". The shipped exponent now does the same thing, harder. The
     // exponent is deliberately NOT changed here — that is a second knob and a
     // human's call — and the block says so at length.
+    //
+    // The measurement-against-a-CONSTANT form is kept deliberately: an exact pin
+    // of 615 and a comparison against `POTENTIAL_MIN_KG` fail on different
+    // edits, because the constant can move without the measurement moving. What
+    // is NOT kept is a second copy of the draws-respect-the-floor assertion,
+    // which already sits a dozen lines above this one in the same test and was
+    // DELETED AS AN EXACT DUPLICATE.
     expect(Math.min(...peaks)).toBeLessThan(ATTENDANCE_SWEEP.POTENTIAL_MIN_KG);
-    expect(Math.min(...potentials)).toBeGreaterThanOrEqual(ATTENDANCE_SWEEP.POTENTIAL_MIN_KG);
   });
 
   it('holds the constant inequality its bound is proved from', () => {
@@ -1997,9 +2011,13 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
     // SEPARATED NOTHING: GDD §6.6 states it as an absolute and CLAUDE.md has
     // three times refused a documented breach of one. R2b separates them by
     // fifteen.
+    // The separation is these two pins read against `shipped.arcsReachingASummit`
+    // being 192, pinned at the top of this test. A
+    // `shipped.arcsReachingASummit > atTheOldPhase.arcsReachingASummit` line
+    // stood here and was DELETED AS DOMINATED: with 192 and 191 both pinned
+    // exactly, 192 > 191 is decided and that line could not have spoken.
     expect(atTheOldPhase.arcsReachingASummit).toBe(191);
     expect(annualLate.arcsReachingASummit).toBe(191);
-    expect(shipped.arcsReachingASummit).toBeGreaterThan(atTheOldPhase.arcsReachingASummit);
     expect(atTheOldPhase.worstOffsetFirstYearArcs).toBe(0);
     expect(annualLate.worstOffsetFirstYearArcs).toBe(0);
 
