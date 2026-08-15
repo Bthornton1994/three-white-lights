@@ -585,8 +585,17 @@ const GUARANTEE_COVERAGE = {
    * than lucky: those rounds were writing limits at mechanisms, which is the
    * house style this scan was built to find, while the earlier ones were
    * writing method notes about how a check used to be wrong.
+   *
+   * TWELFTH ROUND, 232 -> 233. One paragraph, again a scoping limit stated at
+   * the mechanism it limits: a handler-table scan declaring what it reads and
+   * therefore what it cannot see. Fourth round running in the same class.
+   *
+   * Attributed the same way — with `empireForbiddenOutput.test.ts` restored to
+   * that round's base and nothing else changed, this test is 6 passed at 232.
+   * The builder reported it and did not reword it to dodge, which is the second
+   * time that has been the reported outcome rather than a discovered one.
    */
-  TREE_WIDE: 232,
+  TREE_WIDE: 233,
 } as const;
 
 // ---------------------------------------------------------------------------
