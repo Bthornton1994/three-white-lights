@@ -12327,12 +12327,45 @@ const LIMITER_TABLE: readonly (readonly [string, number | null, number | null, n
  *      refusing rows of `LIMITER_TABLE` and the twenty-eight rows of
  *      `SCREEN_BATTERY`, which is where that claim is graded shape by shape.
  *
- * ITS LIMIT, stated because no census reaches past it: this is a claim about
- * what the RELATION certifies falsely, and it rests on a ten-shape battery
- * rather than on a proof about the compiler. A shape nobody in that battery
- * thought of, certified while holding a closure and not written as a cyclic
- * alias, is outside it — and the catcher for that is the battery growing a row,
- * not this list. The battery is the thing to attack.
+ * EACH OF THE THREE WAS RUN AGAINST THE CHECK NAMED FOR IT, rather than left as
+ * a pointer, because this file already records what a named catcher nobody ran
+ * is worth:
+ *
+ *   1. M65 and M66 in `PLANTED_ROUTES`. Both redden this census, at forty levels
+ *      and at three, with the message naming `production.ts#ProductionNest`;
+ *   2. `import type { StreakState } from '../game/streak';` planted into
+ *      `production.ts` — `imports nothing outside this directory` reddens with
+ *      `production.ts: expected [ '../game/streak', …(2) ] to deeply equal
+ *      [ './empireCore', './empireTuning' ]`, 2 failed of 57. production.ts was
+ *      restored and verified byte-identical afterwards;
+ *   3. G37, which takes the self-reference out of the battery's cyclic shape and
+ *      turns its certificate into a refusal.
+ *
+ * THE RESIDUAL, WITH NO CATCHER CLAIMED FOR THE FIRST OF ITS TWO HALVES.
+ *
+ * The first half is the battery's own reach. "Only a cyclic generic alias earns
+ * a false certificate" is measured over EIGHTEEN shapes — the ten pinned here,
+ * plus eight more written and run in the round and not kept because they are
+ * negative: nested arrays and tuples, a generic interface, `Promise`, `Readonly`
+ * and `Record` chains, a cyclic INTERFACE and a cyclic CLASS, `Awaited` nested
+ * (the standard library's own recursive alias, reachable without importing
+ * anything), a deep intersection, a wide union, a recursive template-literal
+ * alias, and a cycle through an indexed access. A nineteenth shape, certified
+ * while holding a closure and not written as a cyclic alias, would walk past
+ * this list, and nothing here would report it. The catcher is somebody adding a
+ * row to `LIMITER_SHAPES`, which is a person and not a check.
+ *
+ * The second half is this walk's own collector, and the attempts against it are
+ * recorded rather than the impossibility. References are gathered from
+ * `TypeReferenceNode`s in an alias body or an interface's members, so a cycle
+ * expressed only through a `typeof` query, a heritage clause or a type-parameter
+ * default would not be seen. Three were built. A cycle through `typeof` DOES
+ * certify from depth 3 — and is seen anyway, because its alias still names
+ * itself through a type reference on the way to the `typeof` leaf. A cycle
+ * through an indexed access is seen and never certifies. The type-parameter
+ * default form did not compile at all, `Duplicate identifier 'Nest'`, in the
+ * shape tried. So no shape was found that is both unseen here and certified —
+ * which is three attempts and not a proof, and is written that way.
  *
  * The graph is over type aliases, interfaces and classes rather than aliases
  * alone, which is WIDER than the measured trigger: `cyclic-generic-interface`
