@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-15T16-27-46-779Z-29974",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/career/eligibility.test.ts",
+    "-t",
+    "AXIS D"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-15T16:27:46.779Z",
+  "startedAtMs": 1786811266779,
+  "cwd": "/home/user/wt-campaign-summit",
+  "commit": "18018d4356fa580929304a4575b7b8a01b9eb69b",
+  "branch": "claude/campaign-summit",
+  "dirty": 1,
+  "dirtyPaths": [
+    "src/career/eligibility.test.ts"
+  ],
+  "runner": {
+    "pid": 29974,
+    "startTick": "472363",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --id eligD -- npx vitest run src/career/eligibility.test.ts -t AXIS D",
+    "bootId": "4b5f42aa-e978-4679-b41f-c5caa07abf66",
+    "bootEpochSeconds": 1786806543,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-15T16:27:46.801Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
