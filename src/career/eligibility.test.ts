@@ -723,7 +723,7 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     );
   });
 
-  it('reaches a current-form rule that waits, and reports two different kinds of zero past it', { timeout: budgetFrom(20_000) }, () => {
+  it('reaches a current-form rule that waits, and reports two different kinds of zero past it', () => {
     // WHERE THIS SWEEP GOES BLIND, MEASURED AND PINNED FROM THREE SIDES.
     //
     // A current-form gate does not have to switch on at a lifter's first meet.
@@ -836,7 +836,7 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     expect(pastTheEdge.pairs).toBe(332012);
   });
 
-  it('sees a rule keyed to the annual tier now that totals stop above it, and the margin is -10 kg', { timeout: budgetFrom(20_000) }, () => {
+  it('sees a rule keyed to the annual tier now that totals stop above it, and the margin is -10 kg', () => {
     // A ZERO THAT TURNED INTO A ONE WHEN THE FIXTURE CHANGED, AND THE RULE WAS
     // NEVER EDITED. This test used to be called "cannot see a rule keyed to the
     // annual tier at all, and the margin is 27.5 kg", and every word of it was

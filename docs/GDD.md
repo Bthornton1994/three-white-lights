@@ -2554,10 +2554,12 @@ this tree; they are stated here so anyone who saw them can discard them by name.
 The tier ladder is five members. Campaign worlds asks **600 kg** — the midpoint
 of nationals' 550 and competitive worlds' 650, chosen by a stated rule rather
 than by a percentile, and **provisional**: it is a game-feel value nobody has
-playtested. **It did not move when the totals generator was bounded**, which was
-checked rather than assumed: a gate set by a rule about its neighbours does not
-depend on the distribution underneath it, and the re-taken band measurement
-confirms the sweep still cannot discriminate inside the band. Competitive worlds keeps 650, which the Q1 ruling assigns to it.
+playtested. **It did not move when the totals generator was bounded, and it has
+not moved at the slower gain rate either**, which was checked rather than
+assumed both times: a gate set by a rule about its neighbours does not depend on
+the distribution underneath it, and 600 keeps R1 at 192 of 192 arcs. What HAS
+changed is that the band measurement is no longer flat — see the re-take below.
+Competitive worlds keeps 650, which the Q1 ruling assigns to it.
 Campaign worlds runs **semi-annually** at a phase late in the season;
 competitive worlds keeps its annual series.
 
@@ -2569,46 +2571,81 @@ sweep is 24 seeds x 8 signup days = **192 arcs**, and the requirement is:
 - **R1, an absolute:** every arc enters a campaign summit. Measured **192 of
   192**.
 - **R2b, the clause that bites:** every signup day, taken on its own, gets most
-  of its 24 arcs to a summit inside their first year. Worst signup day **24 of
-  24**.
-- **R2, pacing:** **192 of 192** arcs reach one inside their first year, median
-  wait **154 days** from signup.
+  of its 24 arcs to a summit inside their first year. Worst signup day **15 of
+  24**, against a bar of 12.
+- **R2, pacing:** **158 of 192** arcs reach one inside their first year, median
+  wait **290 days** from signup. **THIS CLAUSE IS CURRENTLY UNMET — it asks for
+  168 of 192 and a 250-day median. See the ruling below.**
 
-**THOSE THREE WERE RE-TAKEN AFTER THE TOTALS GENERATOR WAS BOUNDED, and they
-were 19 of 24, 176 of 192 and 198 days before.** The calendar did not change.
-What changed is that a bad meet no longer costs a lifter strength they had
-already built, so simulated careers reach the gate sooner and more uniformly.
-Read the improvement as the fixture getting more plausible, not the design
-getting better — `simulateCampaignArc` measures the **ceiling** of campaign
-pace, and bounding the generator raised that ceiling without saying anything
-new about the middle.
+**THOSE THREE HAVE NOW BEEN RE-TAKEN TWICE, AND THE SECOND RE-TAKE BROKE ONE OF
+THEM.** They were 19 of 24, 176 of 192 and 198 days under the unbounded totals
+generator; 24 of 24, 192 of 192 and 154 days once it was bounded; and 15 of 24,
+158 of 192 and 290 days since a human ruled `MAX_GAIN_KG` down from 70 kg a meet
+to 20 on 2026-08-15. The calendar did not change on either occasion.
+
+**That ruling is provisional and pending playtest**, in the same manner as
+§6.3's PR-attempt wording and §6.2's crowd-reaction beat. At 20 the median
+simulated campaign reaches the 600 kg gate in 41 meets and 187 days, with the
+slowest seed at 1.08 years; at the old 70 it was 12 meets and 56 days. The full
+six-candidate table it was chosen from, and the reasoning for 20 over the more
+realistic 12, live beside the constant in `src/career/careerSweep.ts` rather
+than being copied here, so the two cannot drift.
+
+**R2 is left FAILING rather than re-pinned, and that is a decision awaiting a
+human.** A requirement adjusted to fit the measurement that just broke it is a
+pin nudged until green. The honest position is that this bar has been read off
+three different fixtures — 176, then 192, now 158 — without once being derived
+from what a campaign ought to feel like, and a gain rate now known to have been
+five times too fast is not a sound basis for a pacing requirement. What is NOT
+in doubt is that R1 and R2b both still hold, so the summit is reachable for
+every arc and no signup day is locked out; it is the pace clause alone that
+misses, at a pace that was deliberately slowed.
+
+Read all three as measurements of the **ceiling** of campaign pace, not its
+middle — `simulateCampaignArc` takes every meet the lifter is eligible for, and
+a real player misses meets.
 
 **Two findings from that measurement are worth recording in the design document,
 because both correct something this section previously implied.**
 
-First, **R1 stated over the whole population is vacuous.** It used to be
-*nearly* vacuous — the unfixed calendar took **191** of the same 192 arcs to a
-summit, separating broken from repaired by a single arc. Under the bounded
-generator **all four calendars take 192 of 192**, so R1 separates nothing at
-all. It is kept as an absolute because it is stated as one here and a documented
-breach of an absolute has been refused three times in this build; it must not be
-read as evidence that a calendar is repaired. What separates a repaired calendar
-from a broken one is the per-signup-day form — **24 of 24** against **0 of 24**.
-"Always reachable" is a claim about every player, and an average hides exactly
-the failure it was written about.
+First, **R1 stated over the whole population separates almost nothing, and how
+little depends on the fixture rather than on the design.** The unfixed calendar
+took **191** of the same 192 arcs to a summit — one arc of separation. Under the
+bounded generator **all four calendars took 192 of 192**, so R1 separated
+nothing at all. At the slower gain rate both annual controls are back at **191**,
+so the separation is back to one arc. It is kept as an absolute because it is
+stated as one here and a documented breach of an absolute has been refused three
+times in this build; one arc must not be read as evidence that a calendar is
+repaired. What separates a repaired calendar from a broken one is the
+per-signup-day form — **15 of 24** against **0 of 24**, and that gap is the one
+statistic here that has been non-zero on all three fixtures. "Always reachable"
+is a claim about every player, and an average hides exactly the failure it was
+written about.
 
 Second, **the cadence is the reachability fix and the calendar position is not**,
 which is the opposite of what "a threshold *and* a calendar position" invites a
 reader to assume. Measured on all four corners of the two-knob square: at the
 shipped semi-annual cadence the OLD day-six phase reaches 192 of 192 with a
-worst signup day of **24 — identical to the shipped calendar**, where before it
-was 18 against 19. On the reachability clause the phase now contributes exactly
-nothing. What the phase buys is legibility — at day six the first summit a new
-lifter is ever shown is one **no** seed can enter, 0 of 24 against 24 of 24.
-And the threshold was never the cause at all: re-taken on the bounded generator,
-575 / 600 / 625 reach a summit inside the first year on 192 / 192 / 184 of 192
-arcs, so the measurement still cannot discriminate inside the band and 600
-stands by the midpoint rule rather than by a percentile.
+worst signup day of **14 against the shipped calendar's 15**. That pair has read
+18/19, then 24/24, then 14/15 across the three fixtures, and on the reachability
+clause the phase contributes almost nothing on any of them. What the phase buys
+is legibility — at day six the first summit a new lifter is ever shown is one
+**no** seed can enter, 0 of 24 against 10 of 24. **That second number was 24 of
+24 before the gain rate was slowed, and the fall is a real cost:** the first
+summit an anchor-signup lifter is shown falls on day 177, and the median career
+now needs 187 days to put up the 600 kg it asks for, so over half of them watch
+it go past. The phase still buys legibility; it buys less of it.
+
+**And the threshold was never the cause — but the claim that the measurement
+CANNOT SEE the threshold has expired.** Re-taken on the bounded generator,
+575 / 600 / 625 reached a summit inside the first year on 192 / 192 / 184 of 192
+arcs, which is flat enough that only a stated rule could choose. At the slower
+gain rate the same three read **184 / 158 / 112**, which is a real spread. 600
+still stands by the midpoint rule, and a tuner picking inside the band now has a
+pacing measurement to weigh against that rule — which of the two should decide
+is open. Note also that 625 now fails **R1** rather than R2: only 184 of 192 arcs
+reach a summit at all, because `POTENTIAL_MIN_KG` is 625 and a lifter whose
+ceiling is 625 cannot reliably clear a 625 gate.
 
 Both unfixed calendars stay runnable as controls with their numbers pinned, and
 they fail at **opposite ends of the season** — the old phase locks out the player
@@ -2616,13 +2653,16 @@ who signs up on the anchor, the new phase with an annual cadence locks out the
 player who signs up late.
 
 **Nationals is thin, and is reported as thin rather than quietly folded in.**
-Over the campaign sweep's arcs it is **entered 1447 times of 1536 offered**, or
-94% — it was 1328 of 1536, or 86%, before the totals generator was bounded. On
-the one-year-from-the-anchor window the original finding was taken on it is
-**72 of 96**, previously 60 of 96. Neither number is a health claim about the
-tier, and the rise is the fixture rather than the tier: nationals is a
-synchronous PvP tier now, and what a simulated solo lifter does with it says
-nothing about what a real field will.
+Over the campaign sweep's arcs it is **entered 1243 times of 1536 offered**, or
+81% — it was 1328 of 1536 (86%) under the unbounded generator and 1447 of 1536
+(94%) once that was bounded, so the slower gain rate has taken it to the lowest
+of the three. On the one-year-from-the-anchor window the original finding was
+taken on it is **48 of 96**, previously 72 of 96 and 60 of 96 before that.
+Neither number is a health claim about the tier, and every one of those moves is
+the fixture rather than the tier: what decides the ratio is how much of the run
+a lifter spends under the 550 kg nationals bar, and a slower lifter spends more
+of it there. Nationals is a synchronous PvP tier now, and what a simulated solo
+lifter does with it says nothing about what a real field will.
 
 **Still held:** everything on the synchronous side. Regional and nationals are
 sync and region-pooled; the campaign work above builds none of that.
