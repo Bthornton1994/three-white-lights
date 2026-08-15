@@ -15108,6 +15108,27 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
     ]),
   }),
+  Object.freeze({
+    id: 'M67',
+    shape:
+      "THE TWENTY-SECOND BYPASS, AND IT IS THE SENTENCE THE CONTAINMENT ARGUES FROM BEING FALSE RATHER THAN A NEW COMPOSITION. M64 needed a cyclic alias, forty levels and two index signatures. This needs the two characters `{}`. The relation certifies `{}` as function-free data — it is a type literal, so the checker gives it an inferable index signature and both index positions of the reference type are satisfied by a type with no properties — and the bounded walk has nothing to descend into, because `{}` declares no property, no index info, no call signature and no element type. Neither reading is defeated by a limiter; both are answering correctly about a type that says nothing, and `{}` admits a function at run time",
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_OPAQUE: { readonly entry: {} }` holding `Object.freeze({ peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] })`, handed back as `shapes: PRODUCTION_OPAQUE.entry`. No cyclic declaration, no instantiation depth, no index signature, no cast anywhere in the plant, and no new export',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING CAUGHT IT. Whole tree: `Test Files 1 failed | 83 passed (84)`, `Tests 4 failed | 3425 passed (3429)`, every one of the four in this file and every one a count that moves on any edit of this size — instrument C `expected 1020 to be 1018`, instrument B `expected 2393400 to be 2393060`, the overflow pass `expected 523240 to be 523128`, and the channel census owner tally `- "member": 474 / + "member": 476`.',
+      'THE FOURTH ONE IS WORTH SEPARATING, because it is inside the test that WOULD name the route and is not the assertion that does. `derives every escape site from the shipped source, per channel per module, in both directions` fails on the owner-kind tally and NOT on `byModule` — there is no `returned-closure` row for production.ts, which is exactly the `+ "production.ts": 1` M66 reddened with. Two more member reads is what a property access and an element read cost.',
+      'AND THE CONTAINMENT WRITTEN FOR M64 IS GREEN, which is the finding rather than a side note. `finds no type declaration in this directory that reaches itself` passes, because the plant declares no type at all. `measures how deep the shipped types go` passes with `memberTypeDepthCuts` 0. `agrees with the control everywhere on the shipped tree` passes, because the two readings AGREE that there is no function in a `{}`.',
+      'AND THE BRANCH RUNS, PRINTED: `accrueProduction` on a fresh gym returns keys ending `…,"ledger","shapes"`, `typeof shapes` is `object`, `typeof shapes.peek` is `function`, `shapes.peek()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'WHY THIS IS NOT M64 AGAIN. M64 is a false certificate: the relation is wrong about a type that does hold a function, and it is wrong because of a resource limiter, which is why a declaration census could contain it. `{}` is not a false certificate in that sense — it is a TRUE certificate about a type that carries no information, and the value under it is unconstrained. There is no limiter to bisect and no declaration to enumerate, so nothing in the containment E24 chose has a subject here.',
+      'MEASURED BEFORE IT WAS PLANTED, AND THAT ORDER IS THE POINT. The family battery reads `{}` as `cert=true asked=false walked=false holds=false cuts=0 reach=true` — certified, screen silent with no depth cut, and a closure callable through the type after a `typeof` narrowing with no cast. Its two nearest neighbours are refused: `unknown` and `object` both come back `cert=false`. So the finding is about `{}` specifically rather than about wide types.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
+    ]),
+  }),
 ]);
 
 /**
@@ -15389,7 +15410,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(66);
+    expect(PLANTED_ROUTES.length).toBe(67);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -15498,8 +15519,14 @@ describe('the routes that were planted, and what each of them cost', () => {
     // ONE EACH FOR M65 AND M66, which inherit that isolation unchanged: they
     // are M64 replanted against the containment written for it, and the same
     // shape thirteen levels shallower.
-    expect(attempts).toBe(90);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(56);
+    // ONE FOR M67, and it needed no isolation work at all, which is the row's
+    // own point: the payload is read out of `EMPIRE_FORBIDDEN_OUTPUTS` through
+    // a specifier added to an import the module already has, and the holder's
+    // type is two characters. There is no recursion to spell, no index
+    // signature to write and no cast to place, so none of the accidents the
+    // earlier rows had to strip is available to be made.
+    expect(attempts).toBe(91);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(57);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
