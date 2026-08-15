@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "node-tools-verify-shell-route-mjs-2026-08-15T17-41-40-661Z-13846",
   "label": null,
   "command": [
@@ -26,13 +26,18 @@
     "procAvailable": true
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-15T17:41:42.231Z",
+  "elapsedSeconds": 1.6,
   "sync": {
-    "count": 1,
-    "okCount": 0,
+    "count": 2,
+    "okCount": 1,
     "errors": [],
-    "lastAttemptIso": "2026-08-15T17:41:40.687Z",
-    "lastReason": "start",
+    "lastAttemptIso": "2026-08-15T17:41:43.658Z",
+    "lastReason": "final",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm"
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": true,
+    "lastOkIso": "2026-08-15T17:41:43.657Z"
   }
 }
