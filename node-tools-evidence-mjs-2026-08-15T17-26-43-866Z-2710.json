@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-evidence-mjs-2026-08-15T17-26-43-866Z-2710",
+  "label": null,
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "suite"
+  ],
+  "budgetSeconds": 1400,
+  "startedAtIso": "2026-08-15T17:26:43.866Z",
+  "startedAtMs": 1786814803866,
+  "cwd": "/home/user/wt-campaign-summit",
+  "commit": "21230f14c24e8f01a106920f3c12d8dc44b04bc9",
+  "branch": "claude/campaign-summit",
+  "dirty": 1,
+  "dirtyPaths": [
+    ".gauntlet/evidence/campaign-summit.txt"
+  ],
+  "runner": {
+    "pid": 2710,
+    "startTick": "826072",
+    "cmdline": "node tools/watchdog.mjs --budget 1400 --id ev2 -- node tools/evidence.mjs suite",
+    "bootId": "4b5f42aa-e978-4679-b41f-c5caa07abf66",
+    "bootEpochSeconds": 1786806543,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-15T17:26:43.889Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
