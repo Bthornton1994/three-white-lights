@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-evidence-mjs-2026-08-15T20-56-47-143Z-8847",
+  "label": null,
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "totals-generator-bound",
+    "src/career/"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-15T20:56:47.143Z",
+  "startedAtMs": 1786827407143,
+  "cwd": "/home/user/wt-totals",
+  "commit": "1258db4bc9faf9d0c0420dd4149949c5ae842d3d",
+  "branch": "claude/totals-generator-bound",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 8847,
+    "startTick": "609757",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --id ev1 -- node tools/evidence.mjs totals-generator-bound src/career/",
+    "bootId": "112d0c2a-82d0-49bf-9129-7df2660f02bc",
+    "bootEpochSeconds": 1786821310,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-15T20:56:47.164Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
