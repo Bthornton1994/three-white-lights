@@ -13722,6 +13722,12 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
       'NOTHING, THE FIRST TIME, AND THAT IS WHY THIS ROW EXISTS. All 83 tests stayed green: the bound stops AT nine and nine is what the shipped tree reports, so `DEEPEST: 9` was saying "the walk got to nine" — which is what a truncated walk says too. The pin written to be an independent reading of the depth claim could not tell itself from the reading it was checking. Repaired with a positive control rather than a bigger number: the same walk over a program containing the assembly probe reaches 41, at the forty-deep recursive instantiation. Re-planted, the mutant is red with `expected 9 to be 41`.',
   }),
   Object.freeze({
+    id: 'G34',
+    what: "a real handler-table walker planted in this file — `MUTANT_HANDLERS` keyed on `ts.SyntaxKind.Identifier` and `ts.SyntaxKind.CallExpression`, dispatched as `MUTANT_HANDLERS[node.kind]?.(node) ?? ''` — which is the shape the dispatch-chain census declared it could not see",
+    reddened:
+      "`finds every table-shaped dispatch, which the ladder scan cannot see`: expected 10 rows to equal 8, + the table row naming its own keys and + `mutantWalk#lookup:MUTANT_HANDLERS[node.kind] … guarded=true`. THE POINT IS WHAT STAYED GREEN: `finds every dispatch chain in this directory` did not move, so the ladder census is blind to this exactly as its header says, and the new scan is what covers the limit rather than a sentence claiming the limit is small. Three forms were run, not one. The bare unguarded lookup is `error TS2722: Cannot invoke an object which is possibly 'undefined'`, tsc exit 2, because `noUncheckedIndexedAccess` is on — which is how the `guarded` field turned out to read backwards. The `!` form compiles, tsc exit 0, and is caught as a second row with `guarded=false`, which is the measurement that stopped this row claiming the unguarded shape could not be written. Note what this mutant is not: the subject of this check is source text, so the analogue of driving a branch is that the scan names the site, and `mutantWalk` is never called.",
+  }),
+  Object.freeze({
     id: 'G23',
     what: "`assignedValuesTo` neutered to return `[]` — M39's whole repair removed, leaving the walk following initializers only, which is the state the thirteenth bypass escaped through",
     reddened:
@@ -13900,8 +13906,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(30);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(30);
+    expect(REGISTRY_MUTANTS.length).toBe(31);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(31);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
@@ -14324,6 +14330,183 @@ function switchesIn(fileName: string, text: string): readonly SwitchRow[] {
   return rows;
 }
 
+/**
+ * A dispatch written as a TABLE rather than as a ladder, which the chain census
+ * above cannot see at all.
+ *
+ * THE LIMIT THIS CLOSES IS ONE THE CHAIN CENSUS DECLARED ABOUT ITSELF: its
+ * scoping rule keys on `ts.isX(...)`, `checker.isX(...)`, `.kind` and `.flags`
+ * inside an `if` CONDITION, so a walker written as `const handlers = { [ts.
+ * SyntaxKind.Identifier]: … }` and called as `handlers[node.kind](node)` has no
+ * `if` in it and produces no row. A missing entry in such a table is the same
+ * defect the fifteenth and sixteenth bypasses were — an unenumerated kind
+ * leaving the walk with neither a finding nor an admission — arriving in a
+ * shape the census was blind to.
+ *
+ * WHAT IT SCANS, AND THEREFORE WHAT IT CANNOT SEE. Two forms, both syntactic:
+ *
+ *   - `table`: an object literal, or a `new Map([...])`, carrying at least one
+ *     key that names a compiler discriminator (`SyntaxKind`, `TypeFlags`,
+ *     `ObjectFlags`, `SymbolFlags`, `NodeFlags`). That is the structure a
+ *     handler table IS, and there are none in this directory — the pin is an
+ *     empty list rather than a count, so the first one to arrive names itself;
+ *   - `lookup`: a read indexed by `.kind` or `.flags` — `x[node.kind]` or
+ *     `x.get(node.kind)` — with whether the read is guarded by `?.` or `??`
+ *     recorded, because that is a table's analogue of the ladder's `terminal`:
+ *     an unguarded read of a missing key hands `undefined` to the next line.
+ *
+ * AND `guarded` READS BACKWARDS HERE, WHICH WAS FOUND BY PLANTING ONE RATHER
+ * THAN BY THINKING ABOUT IT. Stated in the mechanism's own terms rather than as
+ * an absolute, because the first draft of this paragraph said the unguarded
+ * form "does not compile in this repository at all" and that was false one
+ * character later:
+ *
+ *   - `tsconfig.json` sets `noUncheckedIndexedAccess`, so a bare
+ *     `handlers[node.kind](node)` off a `Record` is `error TS2722: Cannot
+ *     invoke an object which is possibly 'undefined'`, `tsc` exit 2. Measured.
+ *   - `handlers[node.kind]!(node)` compiles, `tsc` exit 0, also measured — and
+ *     is a `lookup` row with `guarded=false`, which is the half of this scan
+ *     that covers the route the type system does not.
+ *
+ * So the guarded form is what the compiler pushes an author towards, and
+ * `handlers[node.kind]?.(node) ?? fallback` is precisely the silent-drop shape:
+ * the fallback is what an unenumerated kind gets. `guarded: true` is therefore
+ * not the reassuring row on this list, which is the opposite of how the field
+ * reads.
+ *
+ * A table keyed by a computed value the scan cannot read as a discriminator —
+ * `KIND_OF[whatever]` where the keys are built at run time — is outside both
+ * forms, and nothing here claims otherwise. The `lookup` half is what would
+ * still catch its USE, which is why the lookups are pinned by name even though
+ * every one of them today is a tally rather than a dispatch.
+ */
+interface HandlerTableRow {
+  readonly at: string;
+  readonly form: 'table' | 'lookup';
+  /** Keys naming a compiler discriminator. Zero on a `lookup` row. */
+  readonly entries: number;
+  /** The read is `?.`-called or sits under a `??`. Always false on a table. */
+  readonly guarded: boolean;
+}
+
+/** The enums a handler table would be keyed on. */
+const COMPILER_DISCRIMINATOR = /\b(SyntaxKind|TypeFlags|ObjectFlags|SymbolFlags|NodeFlags)\b/;
+
+/** One row as a sortable line, the same shape `chainKey` uses. */
+const handlerKey = (row: HandlerTableRow): string =>
+  `${row.at} form=${row.form} entries=${String(row.entries)} guarded=${String(row.guarded)}`;
+
+function handlerTablesIn(fileName: string, text: string): readonly HandlerTableRow[] {
+  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const rows: HandlerTableRow[] = [];
+  const named = (node: ts.Node): string => {
+    for (let at: ts.Node | undefined = node.parent; at !== undefined; at = at.parent) {
+      if (ts.isFunctionDeclaration(at) && at.name !== undefined) return at.name.text;
+      if (ts.isVariableDeclaration(at) && ts.isIdentifier(at.name)) return at.name.text;
+      if (ts.isCallExpression(at) && ts.isIdentifier(at.expression) && at.expression.text === 'it') {
+        const first = at.arguments[0];
+        if (first !== undefined && ts.isStringLiteralLike(first)) return `it:${first.text.slice(0, 30)}`;
+      }
+    }
+    return '#module';
+  };
+  /** Whether a missing key is caught where the read happens, not later. */
+  const guardedRead = (node: ts.Node): boolean => {
+    let at: ts.Node = node;
+    for (;;) {
+      const parent: ts.Node | undefined = at.parent;
+      if (parent === undefined) return false;
+      if (
+        (ts.isCallExpression(parent) || ts.isPropertyAccessExpression(parent) ||
+          ts.isElementAccessExpression(parent)) &&
+        parent.questionDotToken !== undefined
+      ) {
+        return true;
+      }
+      if (
+        ts.isBinaryExpression(parent) &&
+        parent.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
+      ) {
+        return true;
+      }
+      if (
+        !ts.isCallExpression(parent) &&
+        !ts.isPropertyAccessExpression(parent) &&
+        !ts.isElementAccessExpression(parent) &&
+        !ts.isNonNullExpression(parent) &&
+        !ts.isParenthesizedExpression(parent) &&
+        !ts.isBinaryExpression(parent)
+      ) {
+        return false;
+      }
+      at = parent;
+    }
+  };
+  const discriminatorKeys = (properties: readonly ts.ObjectLiteralElementLike[]): number =>
+    properties.filter(
+      (property) =>
+        property.name !== undefined &&
+        ts.isComputedPropertyName(property.name) &&
+        COMPILER_DISCRIMINATOR.test(property.name.expression.getText(source)),
+    ).length;
+  const mapEntryKeys = (node: ts.NewExpression): number => {
+    const first = node.arguments?.[0];
+    if (first === undefined || !ts.isArrayLiteralExpression(first)) return 0;
+    return first.elements.filter(
+      (element) =>
+        ts.isArrayLiteralExpression(element) &&
+        element.elements[0] !== undefined &&
+        COMPILER_DISCRIMINATOR.test((element.elements[0] as ts.Expression).getText(source)),
+    ).length;
+  };
+  const readsADiscriminant = (expression: ts.Expression): boolean =>
+    ts.isPropertyAccessExpression(expression) &&
+    (expression.name.text === 'kind' || expression.name.text === 'flags');
+  const seen = new Map<string, number>();
+  const push = (node: ts.Node, form: 'table' | 'lookup', entries: number, guarded: boolean): void => {
+    // The SITE TEXT is in the key, not just the enclosing name, because the
+    // whole judgement a reader makes about one of these rows is which of the
+    // two harmless classes it is — an enum reverse-read or a tally — and the
+    // name of the function it sits in does not say. An ordinal suffix follows
+    // the chain census's own rule, so a row cannot stand for two sites.
+    const text = node.getText(source).replace(/\s+/g, ' ').slice(0, 60);
+    const base = `${fileName}#${named(node)}#${form}:${text}`;
+    const ordinal = (seen.get(base) ?? 0) + 1;
+    seen.set(base, ordinal);
+    rows.push({
+      at: ordinal === 1 ? base : `${base}#${String(ordinal)}`,
+      form,
+      entries,
+      guarded,
+    });
+  };
+  const visit = (node: ts.Node): void => {
+    if (ts.isObjectLiteralExpression(node)) {
+      const entries = discriminatorKeys(node.properties);
+      if (entries > 0) push(node, 'table', entries, false);
+    }
+    if (ts.isNewExpression(node) && node.expression.getText(source) === 'Map') {
+      const entries = mapEntryKeys(node);
+      if (entries > 0) push(node, 'table', entries, false);
+    }
+    if (ts.isElementAccessExpression(node) && readsADiscriminant(node.argumentExpression)) {
+      push(node, 'lookup', 0, guardedRead(node));
+    }
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.name.text === 'get' &&
+      node.arguments.length === 1 &&
+      readsADiscriminant(node.arguments[0] as ts.Expression)
+    ) {
+      push(node, 'lookup', 0, guardedRead(node));
+    }
+    node.forEachChild(visit);
+  };
+  visit(source);
+  return rows;
+}
+
 /** The files this census reads: everything here that imports the compiler. */
 function chainScanFiles(): readonly string[] {
   return readdirSync(HERE)
@@ -14387,6 +14570,39 @@ function withNone(node) {
 function withNoDiscriminator(node) {
   if (node.length > 0) return 1;
   if (node.length > 1) return 2;
+}
+`;
+
+/**
+ * A source carrying a handler table in every form the scan claims to see, and
+ * one it says it cannot.
+ *
+ * `builtAtRunTime` is the declared limit driven rather than described: its keys
+ * are computed from an array at run time, so no key names a compiler
+ * discriminator in the source text and the `table` form does not fire. Its
+ * lookup does, which is the half that still says the shape is in use.
+ */
+const HANDLER_TABLE_PROBE = `
+const handlers = {
+  [ts.SyntaxKind.Identifier]: (node) => 1,
+  [ts.SyntaxKind.CallExpression]: (node) => 2,
+};
+const mapped = new Map([
+  [ts.SyntaxKind.Identifier, 1],
+  [ts.SyntaxKind.CallExpression, 2],
+]);
+const builtAtRunTime = Object.fromEntries(KINDS.map((kind) => [kind, (node) => 1]));
+function unguardedLookup(node) {
+  return handlers[node.kind](node);
+}
+function guardedLookup(node) {
+  return handlers[node.kind]?.(node) ?? 3;
+}
+function throughMap(node) {
+  return mapped.get(node.kind) ?? 3;
+}
+function throughRunTimeTable(node) {
+  return builtAtRunTime[node.kind](node);
 }
 `;
 
@@ -14499,17 +14715,66 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<dispatchChainsIn#node', arms: 1, dispatch: false, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#named<switchesIn#at', arms: 2, dispatch: true, terminal: 'loop' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<switchesIn#node', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  // The handler-table scan's own five, and it is worth saying that this census
+  // conscripted them rather than that they were remembered: the scan written to
+  // close the census's declared blind spot arrived with five ladders of its own
+  // and the set equality named all five before any of this was written down.
+  // `visit<handlerTablesIn#node` is `dispatch: false` on purpose — its four
+  // arms each record a row and fall through, because one node can be both a
+  // table and, one child down, a lookup.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#named<handlerTablesIn#at', arms: 3, dispatch: false, terminal: 'loop' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#named<handlerTablesIn#first', arms: 1, dispatch: true, terminal: 'loop' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#guardedRead<handlerTablesIn#parent', arms: 3, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#mapEntryKeys<handlerTablesIn#first', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<handlerTablesIn#node', arms: 4, dispatch: false, terminal: 'next-statement' }),
+]);
+
+/**
+ * Every `.kind`- or `.flags`-indexed read in the scanned files, by name.
+ *
+ * NONE OF THEM IS A DISPATCH TODAY, and the list is here so that the first one
+ * that is has to be added by somebody. Two classes, and the row text says which
+ * each is: `ts.SyntaxKind[x.kind]` is the compiler enum's own reverse map,
+ * read for a NAME to put in a census row; `writeOwners[owner.kind]` and its
+ * siblings are tallies over this file's own `OwnerKind` union, whose exhaustive
+ * membership `DECLARED_WRITE_OWNERS` and `DECLARED_CALL_TARGETS` already pin in
+ * both directions.
+ *
+ * `guarded` is the field to read on a new row. An unguarded read of a table
+ * keyed on a compiler discriminator is the table-shaped form of the missing
+ * final branch — the fifteenth and sixteenth bypasses' own shape. Seven of the
+ * eight below are unguarded and none of them is that: `ts.SyntaxKind[k]` is
+ * total over every kind the compiler produces, and the two tallies index a
+ * record built from the whole of `OWNER_KINDS`.
+ */
+const DECLARED_HANDLER_ROWS: readonly string[] = Object.freeze([
+  // A tally over `BrandSlot['kind']`, this directory's own union.
+  'empireCore.test.ts#it:finds every exported producer #lookup:tally.get(slot.kind) form=lookup entries=0 guarded=true',
+  // Five reverse reads of the compiler's own enum, each producing the NAME
+  // that goes in a census row when the walk could not classify a node.
+  'empireForbiddenOutput.test.ts#callTargetOf#lookup:ts.SyntaxKind[at.kind] form=lookup entries=0 guarded=false',
+  'empireForbiddenOutput.test.ts#channelCensusOf#lookup:ts.SyntaxKind[argument.kind] form=lookup entries=0 guarded=false',
+  'empireForbiddenOutput.test.ts#nameOf#lookup:ts.SyntaxKind[node.kind] form=lookup entries=0 guarded=false',
+  'empireForbiddenOutput.test.ts#ownerOf#lookup:ts.SyntaxKind[at.kind] form=lookup entries=0 guarded=false',
+  'empireForbiddenOutput.test.ts#ownerOf#lookup:ts.SyntaxKind[host.kind] form=lookup entries=0 guarded=false',
+  // Two tallies over `OwnerKind`, whose membership `DECLARED_CALL_TARGETS` and
+  // `DECLARED_WRITE_OWNERS` pin in both directions — so an unenumerated arm is
+  // already a red line there rather than a silent `undefined` here.
+  'empireForbiddenOutput.test.ts#visit#lookup:callTargets[target.kind] form=lookup entries=0 guarded=false',
+  'empireForbiddenOutput.test.ts#visit#lookup:writeOwners[owner.kind] form=lookup entries=0 guarded=false',
 ]);
 
 /** What the census measured. Counts, not bounds. */
 const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
-  CHAINS: 73,
-  DISPATCH: 48,
+  /** Rows in `DECLARED_HANDLER_ROWS`. Every one a tally or an enum read. */
+  DISCRIMINANT_LOOKUPS: 8,
+  CHAINS: 78,
+  DISPATCH: 51,
   BY_TERMINAL: Object.freeze({
     else: 7,
-    'next-statement': 55,
-    loop: 9,
+    'next-statement': 58,
+    loop: 11,
     enclosing: 2,
     /**
      * ZERO, AND THE ZERO IS THIS ROUND'S RESULT RATHER THAN A FACT ABOUT THE
@@ -14582,6 +14847,44 @@ describe('the dispatch-chain census — a ladder nobody looked at cannot be adde
     // the compiler defines are OUTSIDE this census, and that limit is measured
     // here instead of being described in the header.
     expect(rows.filter((row) => row.at.includes('withNoDiscriminator'))).toEqual([]);
+  });
+
+  it('finds every table-shaped dispatch, which the ladder scan cannot see', () => {
+    const rows = chainScanFiles().flatMap((name) =>
+      handlerTablesIn(name, readFileSync(path.join(HERE, name), 'utf8')),
+    );
+    expect([...rows].map(handlerKey).sort()).toEqual(DECLARED_HANDLER_ROWS);
+    // The strong half, as an empty list rather than a count: no structure in
+    // this directory is keyed on a compiler discriminator, so the first handler
+    // table to arrive names itself here instead of being a number that moved.
+    expect(rows.filter((row) => row.form === 'table')).toEqual([]);
+    expect(rows.filter((row) => row.form === 'lookup').length).toBe(
+      CHAIN_CENSUS.DISCRIMINANT_LOOKUPS,
+    );
+  });
+
+  it('sees a handler table on a source built to carry one of each form', () => {
+    // THE NON-VACUITY GUARD, and it is the reason the empty list above is worth
+    // anything: a set equality against `[]` passes just as happily when the
+    // detector has stopped detecting.
+    const rows = handlerTablesIn('probe.ts', HANDLER_TABLE_PROBE);
+    expect([...rows].map(handlerKey).sort()).toEqual([
+      'probe.ts#guardedLookup#lookup:handlers[node.kind] form=lookup entries=0 guarded=true',
+      'probe.ts#handlers#table:{ [ts.SyntaxKind.Identifier]: (node) => 1, [ts.SyntaxKind.Ca form=table entries=2 guarded=false',
+      'probe.ts#mapped#table:new Map([ [ts.SyntaxKind.Identifier, 1], [ts.SyntaxKind.Call form=table entries=2 guarded=false',
+      'probe.ts#throughMap#lookup:mapped.get(node.kind) form=lookup entries=0 guarded=true',
+      'probe.ts#throughRunTimeTable#lookup:builtAtRunTime[node.kind] form=lookup entries=0 guarded=false',
+      'probe.ts#unguardedLookup#lookup:handlers[node.kind] form=lookup entries=0 guarded=false',
+    ]);
+    // And the limit stated at the interface, taken as a number rather than as a
+    // sentence. THREE tables are declared in that source and only TWO are
+    // rows: `builtAtRunTime` names no discriminator in its text, so the `table`
+    // form does not fire for it — while its USE is the fourth lookup above,
+    // which is the half that still says the shape is there. A filter on the
+    // table's own name would have passed whatever the scan did, because a
+    // lookup row is named for the function it sits in and not for the table.
+    expect(rows.filter((row) => row.form === 'table').length).toBe(2);
+    expect(rows.filter((row) => row.form === 'lookup').length).toBe(4);
   });
 
   it('pins every switch, and the two without a `default` name what refuses them', () => {
