@@ -15183,6 +15183,26 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
     ]),
   }),
+  Object.freeze({
+    id: 'M68',
+    shape:
+      "M67 REPLANTED VERBATIM AGAINST THE READING WRITTEN FOR IT, because a catcher nobody ran against the shape it was written about is a pointer and the row above ships with no catcher claimed. Byte-identical plant; the only thing that changed is that the bounded walk now asks the relation backwards as well as forwards",
+    where:
+      'production.ts, `accrueProduction`: the M67 block verbatim — `{ readonly entry: {} }` holding a frozen `peek` and handed back as `shapes: PRODUCTION_OPAQUE.entry`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED OUTRIGHT, WITH THE MEMBER PATH, which is a stronger outcome than M65 got from the containment written for M64 — that one reddened a declaration census and never named a closure. `derives every escape site from the shipped source` reddens with `+ "production.ts": 1`, and the site list with `+ "production.ts#accrueProduction#closure:.shapes.entry.peek"`. The path is what says the walk went THROUGH the `{}`-typed member rather than stopping at the holder.',
+      'AND THE TWO READINGS NOW DISAGREE AT THE SITE, WHICH IS THE THIRD RED AND THE ONE THAT LOCATES IT BY LINE. `agrees with the control everywhere on the shipped tree, and says where it does not` reddens with `+ "production.ts:532 {} asked=false walked=true"` — the relation still certifies, correctly, and the walk now says a function may be stored there. Twelve disagreements against eleven.',
+      'The three node counters as ever, unchanged from M67 because the plant is unchanged: instrument C `expected 1020 to be 1018`, instrument B `expected 2393400 to be 2393060`, the overflow pass `expected 523240 to be 523128`. Six failed of 91 against M67\'s four, and the two new ones are the two that name the route.',
+      'tsc --noEmit exit 0, so the plant still compiles and the catch is behavioural rather than the compiler refusing it.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'WHAT THIS ROW DOES NOT SAY. It is one shape driven against the reading, not a claim that the reading closes the family. What carries that claim is the family battery beside it, where every `{}` row and the both-branches-any conditional move from `holds=false` to `holds=true` under this change and the twenty-eight rows of `SCREEN_BATTERY` do not move at all.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
+    ]),
+  }),
 ]);
 
 /**
@@ -15464,7 +15484,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(67);
+    expect(PLANTED_ROUTES.length).toBe(68);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -15573,14 +15593,16 @@ describe('the routes that were planted, and what each of them cost', () => {
     // ONE EACH FOR M65 AND M66, which inherit that isolation unchanged: they
     // are M64 replanted against the containment written for it, and the same
     // shape thirteen levels shallower.
+    // ONE FOR M68, which is M67 replanted unchanged against the reading written
+    // for it, so it inherits M67's isolation by construction.
     // ONE FOR M67, and it needed no isolation work at all, which is the row's
     // own point: the payload is read out of `EMPIRE_FORBIDDEN_OUTPUTS` through
     // a specifier added to an import the module already has, and the holder's
     // type is two characters. There is no recursion to spell, no index
     // signature to write and no cast to place, so none of the accidents the
     // earlier rows had to strip is available to be made.
-    expect(attempts).toBe(91);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(57);
+    expect(attempts).toBe(92);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(58);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
