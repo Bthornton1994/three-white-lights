@@ -605,8 +605,36 @@ const GUARANTEE_COVERAGE = {
    * None of the seven is quoted here, for the reason five of the notes above
    * give: quoting a capitalised run makes this paragraph trigger too, and the
    * count would go to 246.
+   *
+   * 248 -> 254 when the career sweep's totals generator was bounded. Measured
+   * per file the same way, by running this census over each file's pre-change
+   * and post-change text at `c6e2e31`: `careerSweep.ts` 0 -> 3,
+   * `eligibility.test.ts` 0 -> 2, `eligibility.ts` 5 -> 6, and nothing else in
+   * that change, which also touched `careerTuning.ts`, `careerTuning.test.ts`,
+   * `docs/GDD.md` and this file — all four contributing zero.
+   *
+   * Six in one piece, and the ratio moved the wrong way again. What is worth
+   * recording is that only TWO of the six are claims a check could bear, and
+   * both have one:
+   *
+   *   - the one heading `eligibility.ts`'s account of the qualification axis no
+   *     longer being blind to a rule keyed to the annual tier, graded by the
+   *     worlds-reset arm that now reports a non-zero with the margin pinned
+   *     beside it;
+   *   - the one on the constant inequality the generator's bound is proved
+   *     from, graded by the assertion sitting in the same test body.
+   *
+   * The other four are DECLARATIONS OF A LIMIT rather than guarantees, which is
+   * a category this scan cannot tell from the other and a reader should: one
+   * says a control's zero is only evidence if the fixture can reach the case,
+   * one says the band's floor is not merely a midpoint, one says only the range
+   * axis was bounded and the rate axis was not, and one records that a control
+   * started firing without its rule being edited. None of those is a promise
+   * about behaviour, so none of them has a test, and saying so is the point.
+   *
+   * None of the six is quoted here, for the reason six of the notes above give.
    */
-  TREE_WIDE: 248,
+  TREE_WIDE: 254,
 } as const;
 
 // ---------------------------------------------------------------------------
