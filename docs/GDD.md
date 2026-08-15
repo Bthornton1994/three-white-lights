@@ -2280,6 +2280,90 @@ purpose.** Every one of those answers changes what the flight, the leaderboard
 and the qualifying gate mean, so discovering it during the build means building
 it twice.
 
+#### RULED 2026-08-14, SECOND RULING: THE SUMMIT IS TWO TIERS, NOT ONE
+
+**Campaign has its own worlds-tier summit, distinct from the synchronous PvP
+worlds.** The reason is recorded because it constrains every later decision
+here: **a sync-only top tier leaves a solo player's career with no reachable
+ceiling.** The ladder would stop until enough real players are concurrently
+online in that player's region — which at launch may be never, and for a thin
+region may be never at all. A campaign needs a summit to strive toward that
+does not depend on who else is awake.
+
+The full structure after both rulings:
+
+| tier | mode | field | reachable |
+|---|---|---|---|
+| **Local** | async | NPC only | always |
+| **Regional** | sync | real players, region-pooled | when the region has a population |
+| **Nationals** | sync | real players, region-pooled | when the region has a population |
+| **Campaign worlds** | async | NPC field | **always — this is the point of it** |
+| **Competitive worlds** | sync PvP | real players | the separate, harder ceiling |
+
+"Always reachable" is a design REQUIREMENT of the campaign summit, not a
+description of what the build currently does. See the interaction note below —
+it is measurably false today.
+
+#### OPEN — do the two worlds tiers share a qualifying total?
+
+Shared makes the campaign summit a **rehearsal** for the competitive one: same
+bar, different room, and clearing it in campaign tells you precisely what you
+would need against people. Separate makes them **genuinely different
+achievements**, and lets the competitive ceiling sit higher than any solo player
+would be asked to reach.
+
+Undecided, and it is not a small knob. `src/career/careerTuning.ts` currently
+holds exactly one `QUALIFYING_TOTAL_KG.worlds` (650), and
+`careerTuning.test.ts` pins `MEET_TIER_ORDER` to a four-member list by
+`toEqual`. Either answer changes that type and that pin.
+
+It also decides which worlds the sourcing research describes. The derived table
+in `docs/research/qualifying-totals.md` sets its worlds row by **P75 of the
+nationals field**, chosen because P10 of the actual worlds field lands on quota
+entrants and inverted the ladder in four cells. That is a competitive-population
+number by construction. Whether it is also the right number for an NPC-fielded
+campaign summit is exactly this question, and nobody has answered it.
+
+#### OPEN — does a campaign lifter carry into competitive play as the same character?
+
+**This one decides what the game fundamentally is**, which is why it is recorded
+rather than inferred. One continuous career that eventually meets real
+opponents, versus two modes that share a stat screen, are different products
+with different retention shapes, different fairness problems, and different
+answers to "what am I building toward".
+
+It also reaches further into the codebase than it looks. `CareerLifter` carries
+`bestTotalKg` and `enteredMeetIds` as a single identity; a two-track answer
+means either two of those or a discriminator on one. And GDD §8's no-pay-to-win
+line becomes sharper the moment a campaign-built lifter enters a PvP field —
+anything purchasable that touched that lifter's Total is now affecting a real
+opponent's result, which is the same rule under much more load.
+
+#### HOW THESE RULINGS INTERACT WITH WORK ALREADY MEASURED
+
+**The campaign summit's "always reachable" requirement is FALSE in the shipped
+calendar today, and it was measured before this ruling existed.** Probing
+`ATTENDANCE_SWEEP` over its 364-day window: worlds meets are **scheduled 24
+times** and are **enterable 0 times**, while lifters reach a peak total of
+**870 kg** against a 650 kg gate. Neither half of the obvious explanation holds
+— the meets exist and the lifters are strong enough. Worlds falls on day 6 of
+the season, when a lifter is still around 380 kg, and by the time they clear the
+gate that year's summit is long past.
+
+Before this ruling that was a **vacuity finding**: a sweep measuring a property
+across the tier ladder with an empty domain at the top. After it, it is also a
+**design violation** — the campaign summit is required to be always reachable
+and is currently reachable never. The measurement did not change; what it means
+did.
+
+Nationals is enterable 14 times of 96 scheduled: thin rather than empty, and now
+that nationals is a sync tier, that number describes something different again.
+
+**Held rather than fixed**, because the fix depends on both open questions above.
+Extending the simulation past one year, moving the summit later in the season,
+or giving the campaign summit its own cadence are all reasonable, and which is
+right depends on whether the two worlds tiers share a threshold and a calendar.
+
 ---
 
 **SUPERSEDED — the split as it stood before 2026-08-14**, kept for legibility:
