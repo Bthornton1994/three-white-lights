@@ -11928,11 +11928,21 @@ describe('the member-type screen — the predicate graded on its own, shape by s
 /**
  * How deep each limiter shape is asked about, and why the two numbers differ.
  *
- * Every ask is a FRESH program with a fresh checker, because the relation's
- * answer is order-dependent — M63 measured that a forty-deep instantiation is
- * certified when asked alone and refused in a program that has already asked
- * about the thirty-nine shallower ones. A sweep that reused one program would
- * be measuring the cache.
+ * Every ask is a FRESH program with a fresh checker, and the reason is measured
+ * rather than inherited: `sharedProgramLimiterReading` is the control, and
+ * `RELATION_LIMITER.SHARED_PROGRAM_CERTIFIES_FROM` is `null` against this
+ * sweep's 3.
+ *
+ * M63'S STATED CAUSE IS SLIGHTLY WRONG AND THE CORRECTION IS WORTH THE LINES.
+ * That row says the forty-deep instantiation is certified when asked alone and
+ * refused "in a program that has already asked about the thirty-nine shallower
+ * ones", which reads as an ordering effect. Measured directly: `s40` declared
+ * beside `s1 … s39`, with only `s40`'s type resolved and only `s40` asked, is
+ * still certified. What flips it is RESOLVING the other instantiations before
+ * asking — resolve all forty first and `s40` is refused, and so is every other
+ * depth, in ascending or descending order alike. The certificate is issued while
+ * the alias instantiation is still deferred, which is a narrower fact than
+ * "order matters" and is the one this sweep is built around.
  *
  * `DEPTHS` is where every shape is swept to. `LITERAL_DEPTHS` is further, and
  * only for the two non-generic shapes, because those are the ones the DEPTH
@@ -12123,6 +12133,67 @@ function limiterReading(shape: LimiterShape, depths: number): LimiterReading {
   };
 }
 
+/**
+ * The same shape asked in ONE program, with every instantiation resolved first.
+ *
+ * THE CONTROL THAT SAYS `CERTIFIES_FROM` IS A MEASUREMENT AND NOT AN ARTEFACT OF
+ * THE NUMBER 3, and it is here because the header above made a claim — "a sweep
+ * that reused one program would be measuring the cache" — which was written
+ * before it was run. Run, it is true and sharper than it sounded: with `s1 … sN`
+ * declared side by side and every one of their types resolved before any
+ * relation question is asked, the relation refuses ALL of them, at every depth,
+ * including the depths a fresh program certifies. `s40` alone is certified;
+ * `s40` beside `s1 … s39` with all forty resolved first is refused.
+ *
+ * So the false certificate is issued only while the alias instantiation is still
+ * deferred, which is what M63 meant by "an order-dependent answer is a cache,
+ * not a decision" — and it is why every ask in `limiterReading` gets its own
+ * program. A battery that shared one would report `null` everywhere and read as
+ * a directory with no residual at all.
+ *
+ * WHAT IT DOES NOT SAY, because the two are different programs. This is not
+ * evidence that the real guard run escapes the certificate — it does not. M65
+ * and M66 are that evidence: planted into `production.ts` and run against the
+ * whole census, the screen was silent, `memberTypeDepthCuts` stayed 0 and no
+ * closure site appeared. The battery identifies the AXIS; the plants say the
+ * axis is live in the program this file actually walks.
+ */
+function sharedProgramLimiterReading(depths: number): number | null {
+  const options = compilerOptions();
+  const declarations = Array.from(
+    { length: depths },
+    (_, index) =>
+      `declare const subject${String(index + 1)}: Nest<Peek, [${limiterTuple(index + 1)}]>;`,
+  ).join('\n');
+  const text = `${LIMITER_PRELUDE}type Nest<T, D extends readonly unknown[]> = D['length'] extends 0 ? T : { readonly down: Nest<T, Drop<D>> };
+${declarations}
+export {};
+`;
+  const program = programWith(
+    options,
+    [LIMITER_SUBJECT_PATH],
+    text,
+    LIMITER_SUBJECT_PATH,
+    FUNCTION_FREE_DATA_FILE,
+  );
+  const checker = program.getTypeChecker();
+  const file = program.getSourceFile(LIMITER_SUBJECT_PATH);
+  if (file === undefined) throw new Error('the shared-program subject is not in the program');
+  const resolved: ts.Type[] = [];
+  for (const statement of file.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declared of statement.declarationList.declarations) {
+      resolved.push(checker.getTypeAtLocation(declared.name));
+    }
+  }
+  const reference = functionFreeDataIn(program, checker);
+  for (let index = 0; index < resolved.length; index += 1) {
+    const subject = resolved[index];
+    if (subject !== undefined && checker.isTypeAssignableTo(subject, reference)) return index + 1;
+  }
+  return null;
+}
+
 let limiterMemo: Readonly<Record<string, LimiterReading>> | null = null;
 
 function limiterReadings(): Readonly<Record<string, LimiterReading>> {
@@ -12186,6 +12257,14 @@ const RELATION_LIMITER = Object.freeze({
    */
   SILENT_SHAPES: 1,
   SILENT_AT: Object.freeze(['cyclic-alias-behind-index-signatures']),
+  /**
+   * The same cyclic alias asked in ONE shared program: certified at NO depth.
+   *
+   * `null` against the 3 above, and the pair is what makes the 3 a measurement.
+   * See `sharedProgramLimiterReading` for what the difference actually is and
+   * for what this control does not say.
+   */
+  SHARED_PROGRAM_CERTIFIES_FROM: null as number | null,
 });
 
 /** The triple per shape, written out so a changed answer names its shape. */
@@ -12414,6 +12493,19 @@ describe('the relation certifies from a cycle and not from a depth, and the cycl
       SHIPPED_TYPE_DEPTH.DEEPEST_THROUGH_INDEX,
     );
     expect(readings['cyclic-alias-holding-a-function']?.certifiesFrom).toBe(
+      RELATION_LIMITER.CERTIFIES_FROM,
+    );
+    // AND THE NUMBER 3 PARTED FROM ITS HARNESS, WHICH IS WHAT SAYS IT IS A
+    // MEASUREMENT. The identical alias asked at the identical depths in one
+    // shared program, every instantiation resolved before any relation question,
+    // is certified at NO depth — so the sweep is reading the compiler's
+    // behaviour on a deferred instantiation rather than reporting a constant it
+    // was built to report. A harness that shared its program would print `null`
+    // here and read as a directory with no residual.
+    expect(sharedProgramLimiterReading(LIMITER_SWEEP.DEPTHS)).toBe(
+      RELATION_LIMITER.SHARED_PROGRAM_CERTIFIES_FROM,
+    );
+    expect(RELATION_LIMITER.SHARED_PROGRAM_CERTIFIES_FROM).not.toBe(
       RELATION_LIMITER.CERTIFIES_FROM,
     );
   }, 120_000);
@@ -15473,6 +15565,10 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   // generated file, one narrowing a statement to a variable statement.
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#limiterReading#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#limiterReading#subject', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  // The shared-program control beside it, same two shapes: one statement
+  // narrowing and one guarded read inside the ask loop.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#sharedProgramLimiterReading#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#sharedProgramLimiterReading#subject', arms: 1, dispatch: true, terminal: 'loop' }),
   // The cyclic-declaration census: the outer visit narrowing to the three named
   // type declarations, its `else` arm separating an alias body from an
   // interface's members, and the two inside `collect` that follow a type
@@ -15648,12 +15744,12 @@ const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
   /** Rows in `DECLARED_HANDLER_ROWS`. Every one a tally or an enum read. */
   DISCRIMINANT_LOOKUPS: 8,
-  CHAINS: 86,
-  DISPATCH: 52,
+  CHAINS: 88,
+  DISPATCH: 54,
   BY_TERMINAL: Object.freeze({
     else: 8,
-    'next-statement': 65,
-    loop: 11,
+    'next-statement': 66,
+    loop: 12,
     enclosing: 2,
     /**
      * ZERO, AND THE ZERO IS THIS ROUND'S RESULT RATHER THAN A FACT ABOUT THE
