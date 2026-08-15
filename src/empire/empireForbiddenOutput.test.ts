@@ -15843,6 +15843,26 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` after each of the three attempts and each of the three reading flips.',
     ]),
   }),
+  Object.freeze({
+    id: 'M75',
+    shape:
+      "THE SIXTH `any` POSITION, AND IT IS A NEGATIVE — recorded because a position census that lists only the positions that moved is a census of what the author found rather than of what was tried. `any` as a RETURN TYPE, one property down: `{ readonly make: () => any }`",
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_ANY_RETURN: { readonly entry: { readonly make: () => any } }` whose `make` returns the forbidden name, handed back as `shapes: PRODUCTION_ANY_RETURN.entry`',
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'CAUGHT BY BOTH SCREENS, WHICH IS THE POINT OF THE ROW. Shipped readings: `+ "production.ts": 1` under `returned-closure` and `+ "production.ts#accrueProduction#closure:.shapes.make"`. `SCREEN_BEFORE_E27`, same plant, same two failures with the same site — so this position was never silent and E27 added nothing to it.',
+      "WHY, in the mechanism's own terms: the walk's arms run in order and the FIRST one is `type.getCallSignatures().length > 0`, asked of every property it descends into. `make` is callable, so the answer arrives before the backwards relation reading is consulted and before any question about `any` is asked. The `any` in the return position is never read by anything.",
+      'AND THE BRANCH RUNS, PRINTED: keys end `…,"ledger","shapes"`, `typeof shapes.make` is `function`, `shapes.make()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'SO THE FAMILY IS FIVE POSITIONS AND NOT SIX. M69-M73 are a property, an array element, an index-signature value, a property two levels down and a tuple element: silent before, caught now. This one is caught by an arm that predates the round. A reader who wanted to know whether `any` in a return type needed the new reading has the measurement rather than an inference.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Two attempts, and the first is worth a line: it made `make` return an object holding the closure, and the driver printed `CALLED [object Object]` — a value that is not the forbidden name. The second form returns the name directly so the print is the evidence rather than a step towards it. Neither form changed the verdict.',
+      'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>`.',
+    ]),
+  }),
 ]);
 
 /**
@@ -16130,7 +16150,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(74);
+    expect(PLANTED_ROUTES.length).toBe(75);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -16247,8 +16267,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // type is two characters. There is no recursion to spell, no index
     // signature to write and no cast to place, so none of the accidents the
     // earlier rows had to strip is available to be made.
-    expect(attempts).toBe(100);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(64);
+    expect(attempts).toBe(102);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(65);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
