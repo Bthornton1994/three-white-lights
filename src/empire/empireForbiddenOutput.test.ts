@@ -15689,6 +15689,28 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` after every one of the four flips this row and M69-M72 ran.',
     ]),
   }),
+  Object.freeze({
+    id: 'M74',
+    shape:
+      "THE MAPPED TYPE'S SYNTHESIZED PROPERTY, IN A SHIPPED EXPORT, and the two attempts it took are worth more than the row. A property produced by a mapped type has no declaration of its own, so `getTypeOfSymbolAtLocation` has no location to be given and the walk skipped it — while the relation certifies the value because the intersection's other constituent is `string`. That is `FAMILY_TABLE`'s `generic-mapped-type-intersected-with-string`, planted",
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_MAPPED: { readonly entry: string & { readonly [K in keyof ProductionRates as Uppercase<K & string>]: () => string } }` holding two frozen closures, handed back as `shapes: PRODUCTION_MAPPED.entry`. The mapped type is written inline in the annotation, so no type declaration is added and the cyclic-declaration census does not move; the keys are uppercase identifiers, so no string literal is added and neither string census moves',
+    attempts: 3,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED: `derives every escape site` reddens with `+ "production.ts": 2` under `returned-closure` and the site list with `+ "production.ts#accrueProduction#closure:.shapes.GYMBUCKSPERHOUR"` and `+ "production.ts#accrueProduction#closure:.shapes.TRAININGIQPERDAY"`.',
+      'AND THE READINGS DISAGREE AT THE SITE: `+ "production.ts:541 string & { readonly GYMBUCKSPERHOUR: () => string; readonly TRAININGIQPERDAY: () => string; } asked=false walked=true"`. The relation certifies an intersection carrying `string`, correctly and for the same reason it certifies `{}`: a constituent that satisfies the reference type is enough.',
+      'AND THE BRANCH RUNS, PRINTED: keys end `…,"ledger","shapes"`, `typeof shapes.GYMBUCKSPERHOUR` is `function`, `shapes.GYMBUCKSPERHOUR()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'AND THE ATTRIBUTION IS THE MIRROR OF M73\'S, run the same three ways. `SCREEN_BEFORE_E27`: SILENT — `census.byModule` and the site list both pass, owner tally `- "member": 474 / + "member": 475` the only red. `{ admitsAFunction: true, synthesizedProperties: false }`: SILENT, identically. `{ admitsAFunction: false, synthesizedProperties: true }`: CAUGHT, `+ "production.ts": 2` and both site rows. So this family is closed by the synthesized-property reading and the backwards relation reading has no part in it, which is exactly the opposite split from M69-M73.',
+      "THE TWO DISCARDED SPELLINGS ARE THE FINDING, and both would have been reported as this family driven if only the current screen had been run. Attempt 1 wrote the mapped type as `{ readonly [K in keyof ProductionRates]: () => string }` and attempt 2 as `{ readonly [K in keyof ProductionRates as K]: () => string }`. Both are caught by the shipped screen — and both are caught by `SCREEN_BEFORE_E27` too, at the same two site rows, so neither exercises the reading this row is about. A HOMOMORPHIC mapped type copies the source property's declaration across, so its members are not synthesized at all and the walk had a location for them all along. Measured rather than reasoned, by reading `valueDeclaration ?? declarations[0]` off the checker for five spellings in a fresh program each: homomorphic and identity-remapped report `undeclared=[]`; the `Uppercase` remap reports `undeclared=[\"GYMBUCKSPERHOUR\",\"TRAININGIQPERDAY\"]`; a mapped type over a union ALIAS rather than over `keyof` reports `undeclared=[\"gym-bucks\",\"training-iq\"]`. All five certify.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters: instrument C `expected 1019 to be 1018`, instrument B `expected 2393570 to be 2393060`, the overflow pass `expected 523296 to be 523128`. Six failed of 95, and three of the six are the guard.',
+      'The union-alias spelling was rejected as the shipped form even though it is equally synthesized, because its keys would be `gym-bucks` and `training-iq` written as string literals. Both are already in this directory, so a Set-valued census would not have moved — but that is a property of the census rather than of the plant, and a plant that depends on one is not isolated.',
+      'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` after each of the three attempts and each of the three reading flips.',
+    ]),
+  }),
 ]);
 
 /**
@@ -15970,7 +15992,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(73);
+    expect(PLANTED_ROUTES.length).toBe(74);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -16087,8 +16109,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // type is two characters. There is no recursion to spell, no index
     // signature to write and no cast to place, so none of the accidents the
     // earlier rows had to strip is available to be made.
-    expect(attempts).toBe(97);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(63);
+    expect(attempts).toBe(100);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(64);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
