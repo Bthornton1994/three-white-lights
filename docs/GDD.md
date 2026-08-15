@@ -2242,6 +2242,76 @@ build currently has. The two open questions below are the load-bearing ones and
 are **deliberately unresolved**; they are recorded as questions because guessing
 either would be a design decision made by an implementer.
 
+#### ANSWERED 2026-08-15 — REGION IS DERIVED FROM THE FEDERATION
+
+**Region is a structural property of the federation, not of the device or the
+player.** `CareerLifter` already carries `federationId` — verified, it is one of
+three `CAREER_LIFTER_KEYS` — so a lifter's region follows from the fed they
+compete under, fixed at career creation.
+
+**This dissolves the question rather than answering it.** The concern below was
+that region is a *new data dimension* with no field to carry it. It is not: no
+new identity dimension, no location field, no geolocation dependency, and
+nothing extra to ask a player for. `src/career/federation.ts` gains a region
+property; `CareerLifter` gains nothing.
+
+**Rejected, with reasons, because both are the obvious first guesses:**
+
+- **Device location.** Introduces a real-world dependency into a game that
+  currently has none, and breaks in ordinary cases rather than exotic ones — a
+  VPN, travel, or playing offline all move or remove it. A competitive bracket
+  that changes because someone got on a plane is not a bracket.
+- **Player-picked at signup.** Invites **region-shopping**: pick the weakest
+  pool and qualify against it. That is precisely the competitive-integrity hole
+  synchronous meets are most exposed to, and it would be introduced
+  deliberately, at the one point where the game asks a player to choose.
+
+Federation-derived is **non-gameable in the way that matters**: changing region
+means changing federation, which is a career-level decision with its own costs
+and its own ruleset, not a dropdown.
+
+**What it settles for the qualifying-total research.** The third key is
+federation-derived rather than free, so a regional standard varies with the fed
+rather than with wherever a player happens to be. The open point that remains is
+narrower than it was: whether a percentile-derived standard is still meaningful
+once cut by federation as well as sex and weight class.
+
+#### ANSWERED 2026-08-15 — SPARSE REGIONS POOL UPWARD
+
+**Below a minimum viable field size, the meet merges into the next-larger
+scope.** Sparse regional pools into multi-region; sparse multi-region pools into
+the national field. **The meet resolves at whichever scope first clears the
+minimum.**
+
+**MINIMUM FIELD SIZE IS A TUNABLE CONSTANT AND A PLAYTEST VALUE.** It is not
+derivable from anything this document knows — it is a feel question about how
+small a field can be before placing in it stops meaning anything. It goes in a
+registered tuning home with the rest, and per this project's standing rule the
+tunable version gets built and the number gets called provisional rather than
+asserted.
+
+**Rejected, with reasons:**
+
+- **Cancel the meet.** Punishes a player for a *population* problem they cannot
+  influence, and locks them out of a progression tier for reasons entirely
+  outside their control. A player who qualified and then cannot compete has
+  been failed by the game, not by their training.
+- **Pad the field with bots.** Makes placement meaningless in the one mode where
+  **placement is the whole point.** Local is already the NPC tier by design;
+  importing NPCs into the competitive tiers erases the distinction the first
+  ruling drew, and does it invisibly.
+
+**REQUIREMENT: POOLING MUST BE VISIBLE TO THE PLAYER, NEVER SILENT.** Something
+in the shape of *"Your regional field merged into the Northeast bracket — 14
+lifters."* A silently larger field reads as a bug when the entrant count does
+not match what a player expected, and a player who cannot see why they are
+facing different people has no way to tell a merge from a fault. The copy is
+tunable; the visibility is not optional.
+
+That requirement is the same principle this document already applies to streak
+coverage — every consumption is **reported, never silent** — arriving in a
+different subsystem.
+
 #### OPEN — geographic region is a NEW DATA DIMENSION and nothing carries it
 
 `CareerLifter` has no location field. Where a region comes from is undecided:
