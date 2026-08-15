@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-15T23-52-37-060Z-9331",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/career/"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-15T23:52:37.060Z",
+  "startedAtMs": 1786837957060,
+  "cwd": "/home/user/wt-gain20",
+  "commit": "2fbd84d7d68dd1ff46865185ca069f45b3c80536",
+  "branch": "claude/gain-rate-20",
+  "dirty": 1,
+  "dirtyPaths": [
+    "src/career/eligibility.test.ts"
+  ],
+  "runner": {
+    "pid": 9331,
+    "startTick": "504573",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --id gain20-career3 -- npx vitest run src/career/",
+    "bootId": "25307c73-85b7-45c2-9b0f-ba8a51085e30",
+    "bootEpochSeconds": 1786832911,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-15T23:52:37.078Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
