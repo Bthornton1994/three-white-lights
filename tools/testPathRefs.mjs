@@ -199,7 +199,7 @@ export const TEST_PATH_REFS = Object.freeze({
 /** @typedef {{ file: string, line: number, ref: string }} Occurrence */
 /**
  * @typedef {{
- *   scannedFiles: number,
+ *   scanned: readonly string[],
  *   testFiles: readonly string[],
  *   references: readonly Occurrence[],
  *   clipped: readonly Occurrence[],
@@ -355,7 +355,7 @@ export function readAsText(absolute) {
  *
  * @param {readonly { file: string, text: string }[]} sources
  * @param {readonly string[]} testFiles
- * @returns {Omit<ReferenceAudit, 'scannedFiles'>}
+ * @returns {Omit<ReferenceAudit, 'scanned'>}
  */
 export function auditSources(sources, testFiles) {
   /** @type {Occurrence[]} */ const references = [];
@@ -380,6 +380,13 @@ export function auditSources(sources, testFiles) {
 /**
  * The whole audit against a real checkout.
  *
+ * `scanned` is the LIST rather than a count, because the count alone cannot say
+ * WHICH files were reached. GDD §12.2's third correction is exactly that: a pin
+ * whose scan was rooted at `src/` left `App.tsx` — the app's entry point, at the
+ * repository root — outside the instrument, with every non-vacuity check inside
+ * it green, because they all asked about files the scan already had. The list
+ * lets `testPathRefs.test.ts` anchor on named files outside `src/`.
+ *
  * @param {string} root
  * @returns {ReferenceAudit}
  */
@@ -393,7 +400,10 @@ export function auditTestPathReferences(root) {
     if (text === null) continue;
     sources.push({ file, text });
   }
-  return { scannedFiles: sources.length, ...auditSources(sources, testFiles) };
+  return {
+    scanned: sources.map((s) => s.file),
+    ...auditSources(sources, testFiles),
+  };
 }
 
 /** One `file:line  ref` line per occurrence, for a failure message worth reading. */

@@ -94,7 +94,7 @@
  *     entirely. Driven: `mutatedFile: 'src/career/eligibility.ts'` renamed to
  *     `…/eligibilityGone.ts` gives that file `1 failed | 14 passed` with
  *     "witness for strength-never-removes-a-meet: src/career/eligibilityGone.ts"
- *     while `testPathRefs.test.ts` reports `27 passed`.
+ *     while `testPathRefs.test.ts` reports `28 passed`.
  *   - `src/game/progression.test.ts:1767` — the same shape over the route
  *     ledger, and the same argument.
  *
@@ -102,9 +102,10 @@
  * than merely not harmful. Driven: renaming the prose reference in
  * `src/art/gymTuning.ts` from `src/meet/walkout.test.ts` to a near-miss leaves
  * `guaranteeTags.test.ts` at `15 passed` and `progression.test.ts` at
- * `143 passed`, and reddens only this file, at `src/art/gymTuning.ts:477`.
+ * `143 passed`, and reddens only this file — `1 failed | 27 passed`, at
+ * `src/art/gymTuning.ts:477`.
  * Neither existing check has anything to say about a test path outside a
- * witness row, which is where 322 of this tree's 326 references live.
+ * witness row, which is where 323 of this tree's 327 references live.
  *
  * WITHIN THIS FILE, the pins were compared the same way. `TEST_FILES` looked
  * dominated by `SCANNED_FILES` — both move when a test file is added — and is
@@ -150,7 +151,7 @@ const PINNED = Object.freeze({
    * non-vacuity guard: if the scan ever stops seeing the tree, this is what
    * says so instead of "no unresolved references" passing over nothing.
    */
-  REFERENCES: 326,
+  REFERENCES: 327,
 
   /**
    * FALSE-POSITIVE MODE 1, counted. Occurrences dropped because the match ran
@@ -265,7 +266,7 @@ describe('the tracked tree names only test files that exist', () => {
       `these ${audit.unresolved.length} reference(s) name a test file that is not in the tracked tree.\n` +
         'Run alone, vitest exits 1 on each; run beside a path that exists, it reports "passed" and skips them.\n' +
         `${describeOccurrences(audit.unresolved)}\n` +
-        `(scanned ${audit.scannedFiles} files, ${audit.references.length} references, ` +
+        `(scanned ${audit.scanned.length} files, ${audit.references.length} references, ` +
         `${audit.testFiles.length} test files)`,
     ).toEqual([]);
   });
@@ -280,8 +281,8 @@ describe('the tracked tree names only test files that exist', () => {
         'If it moved a long way DOWN, check the walk before believing it.',
     ).toBe(PINNED.REFERENCES);
     expect(
-      audit.scannedFiles,
-      `tracked files read moved from ${PINNED.SCANNED_FILES} to ${audit.scannedFiles}`,
+      audit.scanned.length,
+      `tracked files read moved from ${PINNED.SCANNED_FILES} to ${audit.scanned.length}`,
     ).toBe(PINNED.SCANNED_FILES);
     expect(
       audit.testFiles.length,
@@ -364,6 +365,33 @@ describe('what the scan reaches', () => {
     expect(inScanScope('.claude/agents/critic.md')).toBe(true);
     // Segment, not prefix: a file whose name merely starts the same way is read.
     expect(inScanScope('.gauntletish/notes.md')).toBe(true);
+  });
+
+  it('reaches the whole repository and not just src/, anchored by name', () => {
+    // GDD §12.2's third correction to the unit bar, applied here: "a table a
+    // test fails on" is satisfied by a test that scans less than the codebase,
+    // and that is not hypothetical — a pin rooted at `src/` left `App.tsx`, the
+    // app's entry point at the repository root, outside the instrument while
+    // every non-vacuity check inside it stayed green, because they all asked
+    // about files the scan already had. So the anchors are named by hand and
+    // sit outside `src/`, which is the shape `src/tuning/audit.test.ts` uses.
+    const scanned = new Set(auditTestPathReferences(REPO_ROOT).scanned);
+    for (const anchor of [
+      'App.tsx',
+      'vitest.config.ts',
+      'package.json',
+      'CLAUDE.md',
+      'docs/GDD.md',
+      '.gitignore',
+      '.claude/agents/critic.md',
+      'tools/evidence.mjs',
+    ]) {
+      expect(scanned.has(anchor), `${anchor} is outside this scan`).toBe(true);
+    }
+    // And the one root deliberately outside it stays outside — the same set,
+    // read the other way, so the anchors above cannot pass by the scan simply
+    // holding everything.
+    expect([...scanned].some((f) => f.startsWith('.gauntlet/'))).toBe(false);
   });
 
   it('cannot reach a sibling worktree, structurally rather than by list', () => {
