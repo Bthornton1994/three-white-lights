@@ -294,7 +294,7 @@
  * guarantee than the two scans and it is stated rather than implied.
  */
 
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { types as nodeTypes } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -3493,6 +3493,11 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
   // shape list in both directions, which is the pin a `FIXTURE_LISTS` row would
   // have given it.
   'LIMITER_TABLE',
+  // The family sweep's truth column, on the same footing as `LIMITER_TABLE` and
+  // for the same reason: the subjects are `CANDIDATE_SHAPES` and this is what
+  // somebody wrote down about them. Its size is pinned against
+  // `FAMILY_CENSUS.ROWS` and joined to the shape list in both directions.
+  'FAMILY_TABLE',
 ]);
 
 /**
@@ -3558,7 +3563,7 @@ const DOMAIN_CENSUS = Object.freeze({
   ALIASES: 7,
   NON_DOMAIN_LISTS: 1,
   LITERAL_AXES: 8,
-  LABELLED_LISTS: 18,
+  LABELLED_LISTS: 19,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
@@ -7865,7 +7870,38 @@ interface MemberTypeScreen {
  * everything: the relation would report "no function" about the one type that
  * carries no information at all. That row is in `SCREEN_BATTERY`.
  */
-function memberTypeScreen(program: ts.Program, checker: ts.TypeChecker): MemberTypeScreen {
+/**
+ * Which of the bounded walk's readings are switched on.
+ *
+ * It exists so the family battery can drive the screen AS IT WAS as well as the
+ * screen as it is, rather than describing the difference. The shipped call sites
+ * pass nothing and get every reading; `SCREEN_BEFORE_E27` is the control that
+ * keeps the non-zero numbers the zeros are zero against, which is the shape
+ * `src/game/streakSweep.ts` sets for a sweep in this codebase.
+ */
+interface ScreenReadings {
+  /** `isTypeAssignableTo(anyFunction, type)` — the relation asked backwards. */
+  readonly admitsAFunction: boolean;
+  /** Whether a property with no declaration at all is walked or skipped. */
+  readonly synthesizedProperties: boolean;
+}
+
+const SHIPPED_SCREEN_READINGS: ScreenReadings = Object.freeze({
+  admitsAFunction: true,
+  synthesizedProperties: true,
+});
+
+/** The same walker with E27's two readings off. Not used by any shipped census. */
+const SCREEN_BEFORE_E27: ScreenReadings = Object.freeze({
+  admitsAFunction: false,
+  synthesizedProperties: false,
+});
+
+function memberTypeScreen(
+  program: ts.Program,
+  checker: ts.TypeChecker,
+  readings: ScreenReadings = SHIPPED_SCREEN_READINGS,
+): MemberTypeScreen {
   const functionFreeData = functionFreeDataIn(program, checker);
   const anyFunction = anyFunctionIn(program, checker);
   const disagreements: string[] = [];
@@ -7886,7 +7922,7 @@ function memberTypeScreen(program: ts.Program, checker: ts.TypeChecker): MemberT
     // the walk rather than beside the relation so that it is asked at every
     // position the walk reaches: `{}` behind a property, inside an array and
     // under an index signature are three of the rows the family battery pins.
-    if (checker.isTypeAssignableTo(anyFunction, type)) return true;
+    if (readings.admitsAFunction && checker.isTypeAssignableTo(anyFunction, type)) return true;
     if (type.isUnionOrIntersection()) {
       return type.types.some((member) => boundedWalk(member, depth + 1));
     }
@@ -7916,7 +7952,9 @@ function memberTypeScreen(program: ts.Program, checker: ts.TypeChecker): MemberT
       // empty. `getTypeOfSymbol` needs no location, which is the whole of the
       // repair.
       if (declaration === undefined) {
-        return boundedWalk(checker.getTypeOfSymbol(symbol), depth + 1);
+        return readings.synthesizedProperties
+          ? boundedWalk(checker.getTypeOfSymbol(symbol), depth + 1)
+          : false;
       }
       if (ambientlyDeclared(declaration)) return false;
       return boundedWalk(checker.getTypeOfSymbolAtLocation(symbol, declaration), depth + 1);
@@ -12818,7 +12856,10 @@ interface CandidateReading {
  * the known family at every depth, so a battery that reused a program would
  * report a directory with no residual at all.
  */
-function candidateReading(shape: CandidateShape): CandidateReading {
+function candidateReading(
+  shape: CandidateShape,
+  readings: ScreenReadings = SHIPPED_SCREEN_READINGS,
+): CandidateReading {
   const options = compilerOptions();
 
   const compileOf = (text: string): { program: ts.Program; diagnostics: string[] } => {
@@ -12867,7 +12908,7 @@ function candidateReading(shape: CandidateShape): CandidateReading {
     functionFreeDataIn(bare.program, checker),
   );
   const asked = (subjectType.flags & ts.TypeFlags.Any) !== 0 || !certifies;
-  const screen = memberTypeScreen(bare.program, checker);
+  const screen = memberTypeScreen(bare.program, checker, readings);
   const screenHolds = screen.holdsAFunctionAnywhere(subjectType, shape.id);
   // `memberTypeScreen` exposes the joined answer and its disagreement list, not
   // the two readings, so reading two is recovered from the pair. Every case is
@@ -13213,27 +13254,292 @@ const CANDIDATE_SHAPES: readonly CandidateShape[] = Object.freeze([
   }),
 ]);
 
-describe('E27 candidate battery, printed', () => {
-  it('prints', () => {
-    const lines = CANDIDATE_SHAPES.map((shape) => {
-      const reading = candidateReading(shape);
-      return [
-        shape.id.padEnd(44),
-        `diag=${String(reading.diagnostics.length)}`,
-        `cert=${String(reading.certifies)}`,
-        `asked=${String(reading.asked)}`,
-        `walked=${String(reading.walked)}`,
-        `holds=${String(reading.screenHolds)}`,
-        `cuts=${String(reading.cuts)}`,
-        `reach=${String(reading.reachDiagnostics.length === 0)}`,
-        `| ${reading.printed}`,
-        reading.diagnostics.length > 0 ? `| D: ${reading.diagnostics.join(' ~ ')}` : '',
-        reading.reachDiagnostics.length > 0 ? `| R: ${reading.reachDiagnostics.join(' ~ ')}` : '',
-      ].join(' ');
+/**
+ * Reach snippets written to ASSERT a closure rather than reach one, so the ban
+ * list above is shown firing rather than trusted.
+ *
+ * One per ban, in the same order, and the check beside them requires each to
+ * trip the ban it was written for. Without this the ban list is a scan that has
+ * never been seen to catch anything, which is the shape of a check whose domain
+ * is empty.
+ */
+const REACH_CHEATS: readonly string[] = Object.freeze([
+  'export function reached(): unknown { return (subject as () => string)(); }',
+  'export function reached(): unknown { const held: any = subject; return held(); }',
+  'export function reached(): unknown { return subject.run!(); }',
+  'export function reached(): unknown { // @ts-expect-error\n return subject.run(); }',
+  'export function reached(): unknown { return (<() => string>subject)(); }',
+]);
+
+/**
+ * The four readings per row, written out so a changed answer names its shape.
+ *
+ * `[id, certifies, walked, screenHolds, reachable]`. `certifies` is the relation
+ * alone; `walked` is the bounded second reading; `screenHolds` is the shipped
+ * screen's own `asked || walked`, so `false` there is silence; `reachable` says
+ * a closure can be called through the type with no cast, no `any`, no non-null
+ * assertion and no suppression comment.
+ *
+ * Joined to `CANDIDATE_SHAPES` in both directions, so a row added without a
+ * verdict is an unexpected member and a verdict left behind by a deleted row is
+ * a stale one.
+ */
+const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boolean])[] =
+  Object.freeze([
+  Object.freeze(['control-cyclic-alias-at-2', false, true, true, true] as const),
+  Object.freeze(['control-cyclic-alias-at-3', true, true, true, true] as const),
+  Object.freeze(['control-literal-nest-at-3', false, true, true, true] as const),
+  Object.freeze(['control-plain-closure', false, true, true, true] as const),
+  Object.freeze(['control-plain-data', true, false, false, false] as const),
+  Object.freeze(['intersection-string-and-method', true, true, true, true] as const),
+  Object.freeze(['intersection-function-and-number', true, true, true, true] as const),
+  Object.freeze(['intersection-indexed-and-method', true, true, true, true] as const),
+  Object.freeze(['intersection-indexed-and-callable', false, true, true, true] as const),
+  Object.freeze(['intersection-record-and-method', true, true, true, true] as const),
+  Object.freeze(['intersection-two-index-signatures', true, true, true, true] as const),
+  Object.freeze(['intersection-inside-an-array', true, true, true, true] as const),
+  Object.freeze(['intersection-under-an-index-signature', true, true, true, true] as const),
+  Object.freeze(['intersection-unknown-and-empty', true, true, true, true] as const),
+  Object.freeze(['intersection-record-pair-and-method', true, true, true, true] as const),
+  Object.freeze(['intersection-interface-method-and-indexed', false, true, true, true] as const),
+  Object.freeze(['empty-object-type', true, true, true, true] as const),
+  Object.freeze(['union-string-or-empty-object', true, true, true, true] as const),
+  Object.freeze(['empty-object-behind-a-property', true, true, true, true] as const),
+  Object.freeze(['empty-object-in-an-array', true, true, true, true] as const),
+  Object.freeze(['union-carrying-a-certifying-intersection', true, true, true, false] as const),
+  Object.freeze(['empty-object-under-an-index-signature', true, true, true, true] as const),
+  Object.freeze(['control-unknown', false, true, true, true] as const),
+  Object.freeze(['control-object-keyword', false, true, true, true] as const),
+  Object.freeze(['conditional-any-over-string', true, false, false, false] as const),
+  Object.freeze(['conditional-any-over-any', true, true, true, true] as const),
+  Object.freeze(['conditional-any-over-peek', false, true, true, true] as const),
+  Object.freeze(['conditional-peek-over-string', false, false, true, false] as const),
+  Object.freeze(['conditional-function-over-string', false, false, true, false] as const),
+  Object.freeze(['remapped-key-becomes-index-signature', true, true, true, true] as const),
+  Object.freeze(['string-and-number-index-signatures', true, true, true, true] as const),
+  Object.freeze(['pattern-index-signature-holding-a-closure', false, true, true, true] as const),
+  Object.freeze(['symbol-index-holding-a-closure', false, true, true, true] as const),
+  Object.freeze(['merged-interface-call-signature', false, true, true, true] as const),
+  Object.freeze(['merged-interface-construct-signature', false, false, true, true] as const),
+  Object.freeze(['global-augmentation-holding-a-closure', false, true, true, true] as const),
+  Object.freeze(['hybrid-type-literal-callable-and-indexed', false, true, true, true] as const),
+  Object.freeze(['hybrid-behind-a-getter', false, true, true, true] as const),
+  Object.freeze(['generic-mapped-type-intersected-with-string', true, true, true, true] as const),
+  Object.freeze(['infer-conditional-intersected-with-string', true, true, true, true] as const),
+  Object.freeze(['entry-with-an-empty-object-payload', true, true, true, true] as const),
+  ]);
+
+/**
+ * What the sweep measured. Counts rather than bounds, per this file's own rule
+ * that a bound lets a defect grow back quietly.
+ *
+ * `SILENT_AND_REACHABLE` is the number the round is about: rows where the whole
+ * screen says there is no function and a closure is nonetheless callable through
+ * the type. It is zero, and `BEFORE_E27_SILENT_AND_REACHABLE` is what it is zero
+ * against — the identical rows driven through the identical walker with E27's
+ * two readings switched off.
+ *
+ * `CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS` is the number that
+ * corrects the residual at `cyclicDeclarations`. That sentence said a false
+ * certificate is earned only by an instantiation of a cyclic generic alias, on a
+ * sample of eighteen shapes. On this sample it is twenty rows, none of them a
+ * cyclic alias — a primitive-absorbing intersection, `{}` at five positions, a
+ * mapped type, a deferred conditional. The relation certifying is not by itself
+ * a bypass, because the bounded walk catches all twenty; what it is, is the
+ * premise the census's containment argument rests on, and it is false.
+ */
+const FAMILY_CENSUS = Object.freeze({
+  ROWS: 41,
+  /** Distinct groups, so a truncated battery cannot pass as a whole one. */
+  GROUPS: 9,
+  /** Rows the relation alone certified as function-free data. */
+  CERTIFYING: 24,
+  /** Rows whose reach snippet compiles clean. */
+  REACHABLE: 36,
+  /** Rows the whole screen was silent about. */
+  SILENT: 2,
+  /** Silent AND reachable — the bypass count. */
+  SILENT_AND_REACHABLE: 0,
+  /** See the paragraph above. Twenty, and the residual said zero. */
+  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 20,
+  /** The same battery through `SCREEN_BEFORE_E27`. */
+  BEFORE_E27_SILENT: 13,
+  BEFORE_E27_SILENT_AND_REACHABLE: 11,
+  /**
+   * Depth cuts taken anywhere in the sweep, in either configuration.
+   *
+   * Zero, and it matters which zero this is: every verdict here is the walker
+   * answering rather than the walker running out of budget, so no row can be
+   * read as contained-by-depth the way `LIMITER_TABLE`'s cyclic rows are.
+   */
+  DEPTH_CUTS: 0,
+});
+
+let familyMemo: Readonly<Record<string, CandidateReading>> | null = null;
+let familyBeforeMemo: Readonly<Record<string, CandidateReading>> | null = null;
+
+function familyReadings(): Readonly<Record<string, CandidateReading>> {
+  if (familyMemo !== null) return familyMemo;
+  const readings: Record<string, CandidateReading> = {};
+  for (const shape of CANDIDATE_SHAPES) readings[shape.id] = candidateReading(shape);
+  familyMemo = Object.freeze(readings);
+  return familyMemo;
+}
+
+function familyReadingsBeforeE27(): Readonly<Record<string, CandidateReading>> {
+  if (familyBeforeMemo !== null) return familyBeforeMemo;
+  const readings: Record<string, CandidateReading> = {};
+  for (const shape of CANDIDATE_SHAPES) {
+    readings[shape.id] = candidateReading(shape, SCREEN_BEFORE_E27);
+  }
+  familyBeforeMemo = Object.freeze(readings);
+  return familyBeforeMemo;
+}
+
+describe('the family sweep — a cyclic generic alias is not the only shape that earns a certificate', () => {
+  it('reproduces the known family first, so no other row is believed on a broken instrument', () => {
+    const readings = familyReadings();
+    // THE FIDELITY CONTROL, AND IT IS ASSERTED BEFORE ANYTHING ELSE IN THIS
+    // SECTION ON PURPOSE. A standalone harness built for this sweep could not
+    // reproduce the certificate below at all, and every verdict it produced
+    // about every other shape was worth nothing for that reason. These three
+    // lines are what say this driver is reading the same compiler behaviour
+    // `LIMITER_TABLE` is pinned on: refused at two, certified at three, and the
+    // same three levels written out refused.
+    expect(readings['control-cyclic-alias-at-2']?.certifies, 'refused below the limit').toBe(false);
+    expect(readings['control-cyclic-alias-at-3']?.certifies, 'certified at the limit').toBe(true);
+    expect(readings['control-literal-nest-at-3']?.certifies, 'depth is not the axis').toBe(false);
+    // And the depth it is certified at is the one the limiter battery measured,
+    // read out of that battery's own constant rather than written again here.
+    expect(RELATION_LIMITER.CERTIFIES_FROM).toBe(3);
+    // The two rows that say the reach column can answer both ways, so a `true`
+    // in it is a measurement: a closure one property down is reachable, and a
+    // string is not callable however hard the snippet tries.
+    expect(readings['control-plain-closure']?.reachDiagnostics).toEqual([]);
+    expect(readings['control-plain-data']?.reachDiagnostics.length).toBeGreaterThan(0);
+  }, 600_000);
+
+  it('answers every row exactly as the table says, and every row compiles', () => {
+    const readings = familyReadings();
+    expect(FAMILY_TABLE.map(([id]) => id)).toEqual(CANDIDATE_SHAPES.map((shape) => shape.id));
+    expect(FAMILY_TABLE.length).toBe(FAMILY_CENSUS.ROWS);
+    expect(CANDIDATE_SHAPES.length).toBe(FAMILY_CENSUS.ROWS);
+    expect(distinct(CANDIDATE_SHAPES.map((shape) => shape.group)).length).toBe(
+      FAMILY_CENSUS.GROUPS,
+    );
+    for (const [id, certifies, walked, holds, reachable] of FAMILY_TABLE) {
+      const reading = readings[id];
+      const why = CANDIDATE_SHAPES.find((shape) => shape.id === id)?.why ?? id;
+      expect(reading, id).toBeDefined();
+      // A shape that fails to compile is not a shape, and a sweep that does not
+      // check this reads a syntax error as a refusal.
+      expect(reading?.diagnostics, `${id}: ${reading?.diagnostics.join(" | ") ?? ""}`).toEqual([]);
+      expect(reading?.certifies, `${id}: relation — ${why}`).toBe(certifies);
+      expect(reading?.walked, `${id}: bounded walk — ${why}`).toBe(walked);
+      expect(reading?.screenHolds, `${id}: screen — ${why}`).toBe(holds);
+      expect(
+        reading?.reachDiagnostics.length === 0,
+        `${id}: reach — ${reading?.reachDiagnostics.join(" | ") ?? ""}`,
+      ).toBe(reachable);
+      expect(reading?.cuts, `${id}: cuts`).toBe(FAMILY_CENSUS.DEPTH_CUTS);
+    }
+  }, 600_000);
+
+  it('is not vacuous: every column answers both ways, and the counts say how often', () => {
+    const rows = FAMILY_TABLE;
+    expect(rows.filter(([, certifies]) => certifies).length).toBe(FAMILY_CENSUS.CERTIFYING);
+    expect(rows.filter(([, , , , reachable]) => reachable).length).toBe(FAMILY_CENSUS.REACHABLE);
+    expect(rows.filter(([, , , holds]) => !holds).length).toBe(FAMILY_CENSUS.SILENT);
+    // THE NUMBER THE ROUND IS ABOUT. Zero rows where the screen is silent and a
+    // closure is reachable through the type.
+    const silentAndReachable = rows
+      .filter(([, , , holds, reachable]) => !holds && reachable)
+      .map(([id]) => id);
+    expect(silentAndReachable).toEqual([]);
+    expect(silentAndReachable.length).toBe(FAMILY_CENSUS.SILENT_AND_REACHABLE);
+    // Both verdicts occur on every column, so none of the four is a constant.
+    expect(rows.filter(([, certifies]) => !certifies).length).toBeGreaterThan(0);
+    expect(rows.filter(([, , , holds]) => holds).length).toBeGreaterThan(0);
+    expect(rows.filter(([, , , , reachable]) => !reachable).length).toBeGreaterThan(0);
+    // The correction to the residual, as a count over the rows rather than as a
+    // sentence: certified by the relation, with a closure reachable through the
+    // type, and not one of them a cyclic generic alias.
+    const notTheKnownFamily = rows.filter(
+      ([id, certifies, , , reachable]) =>
+        certifies && reachable && id !== 'control-cyclic-alias-at-3',
+    );
+    expect(notTheKnownFamily.length).toBe(
+      FAMILY_CENSUS.CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS,
+    );
+    expect(notTheKnownFamily.length).toBeGreaterThan(0);
+  }, 600_000);
+
+  it('keeps the numbers the zeros are zero against, by driving the walker as it was', () => {
+    const before = familyReadingsBeforeE27();
+    const silent = CANDIDATE_SHAPES.filter((shape) => before[shape.id]?.screenHolds === false);
+    expect(silent.length).toBe(FAMILY_CENSUS.BEFORE_E27_SILENT);
+    const silentAndReachable = silent
+      .filter((shape) => before[shape.id]?.reachDiagnostics.length === 0)
+      .map((shape) => shape.id)
+      .sort();
+    expect(silentAndReachable.length).toBe(FAMILY_CENSUS.BEFORE_E27_SILENT_AND_REACHABLE);
+    // Named rather than counted, because a count cannot say which family moved.
+    // Six are `{}` at six positions, one is `unknown & {}` reducing to it, one
+    // is a deferred conditional whose branches are both `any`, two are a mapped
+    // type's synthesized property, and one is the shape M67 was planted from.
+    expect(silentAndReachable).toEqual([
+      'conditional-any-over-any',
+      'empty-object-behind-a-property',
+      'empty-object-in-an-array',
+      'empty-object-type',
+      'empty-object-under-an-index-signature',
+      'entry-with-an-empty-object-payload',
+      'generic-mapped-type-intersected-with-string',
+      'intersection-unknown-and-empty',
+      'remapped-key-becomes-index-signature',
+      'string-and-number-index-signatures',
+      'union-string-or-empty-object',
+    ]);
+    // The control is a control: it disagrees with the shipped screen somewhere,
+    // so a configuration that silently stopped differing reports itself instead
+    // of making the eleven look like a fixed defect.
+    expect(SCREEN_BEFORE_E27.admitsAFunction).toBe(false);
+    expect(SCREEN_BEFORE_E27.synthesizedProperties).toBe(false);
+    expect(SHIPPED_SCREEN_READINGS.admitsAFunction).toBe(true);
+    expect(SHIPPED_SCREEN_READINGS.synthesizedProperties).toBe(true);
+    // And no row is silent-and-reachable under the shipped readings, which is
+    // the same assertion the test above makes and is repeated here so that this
+    // test's own subject — the difference — cannot be green with both sides bad.
+    const now = familyReadings();
+    expect(
+      CANDIDATE_SHAPES.filter(
+        (shape) =>
+          now[shape.id]?.screenHolds === false && now[shape.id]?.reachDiagnostics.length === 0,
+      ).map((shape) => shape.id),
+    ).toEqual([]);
+  }, 600_000);
+
+  it('bans a reach snippet that asserts its closure instead of reaching one', () => {
+    // No row may cheat.
+    for (const shape of CANDIDATE_SHAPES) {
+      for (const [what, pattern] of REACH_BANS) {
+        pattern.lastIndex = 0;
+        expect(pattern.test(shape.reach), `${shape.id} reaches through ${what}`).toBe(false);
+      }
+    }
+    // AND THE BAN LIST IS SHOWN FIRING, one cheat per ban, in the same order.
+    // Without this the loop above is a scan whose domain has never contained
+    // the thing it is looking for.
+    expect(REACH_CHEATS.length).toBe(REACH_BANS.length);
+    REACH_CHEATS.forEach((cheat, index) => {
+      const row = REACH_BANS[index];
+      expect(row, String(index)).toBeDefined();
+      if (row === undefined) return;
+      const [what, pattern] = row;
+      pattern.lastIndex = 0;
+      expect(pattern.test(cheat), `the ${what} cheat is invisible to its own ban`).toBe(true);
     });
-    writeFileSync('/tmp/claude-0/e27-battery.txt', lines.join('\n'));
-    expect(lines.length).toBe(CANDIDATE_SHAPES.length);
-  }, 300_000);
+  });
 });
 
 // ---------------------------------------------------------------------------
