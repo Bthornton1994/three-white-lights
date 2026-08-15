@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-15T23-03-46-553Z-14323",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/career/probeScratch3.test.ts",
+    "-t",
+    "scans downward",
+    "--reporter=verbose"
+  ],
+  "budgetSeconds": 1800,
+  "startedAtIso": "2026-08-15T23:03:46.553Z",
+  "startedAtMs": 1786835026553,
+  "cwd": "/home/user/wt-gain20",
+  "commit": "4809046809890320d2c06a230ba9a2d05c0ca1b9",
+  "branch": "claude/gain-rate-20",
+  "dirty": 4,
+  "dirtyPaths": [
+    "src/career/careerSweep.ts",
+    "src/career/probeScratch.test.ts",
+    "src/career/probeScratch2.test.ts",
+    "src/career/probeScratch3.test.ts"
+  ],
+  "runner": {
+    "pid": 14323,
+    "startTick": "211522",
+    "cmdline": "node tools/watchdog.mjs --budget 1800 --id gain20-scan -- npx vitest run src/career/probeScratch3.test.ts -t scans downward --reporter=verbose",
+    "bootId": "25307c73-85b7-45c2-9b0f-ba8a51085e30",
+    "bootEpochSeconds": 1786832911,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-15T23:03:46.573Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
