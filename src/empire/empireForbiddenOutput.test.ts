@@ -3463,6 +3463,15 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
   // registries, which is the guard conscripting new code rather than the
   // builder remembering to.
   'FUNCTION_FREE_DATA_FILE',
+  // The declaration file the two `ambient-*` rows are served, filed here for the
+  // same reason and with the same shape: a reference the checker is asked about
+  // rather than a domain anything is driven over. It exists because the family
+  // driver served ONE subject file, which left a type declared in a `.d.ts`
+  // untestable — and that was the shape a silence was hiding in.
+  'E28_AMBIENT_FILE',
+  // Its sibling, and the pair is the point: one declaration file and one plain
+  // module carrying the same augmentation.
+  'E28_GLOBAL_FILE',
   'DIAGNOSTIC_CHANNEL_CENSUS',
   // The family sweep's ban on its OWN reach snippets. An expectation and not an
   // input: it is not driven against any subject, it is applied to the rows this
@@ -3563,7 +3572,7 @@ const DOMAIN_CENSUS = Object.freeze({
   ALIASES: 7,
   NON_DOMAIN_LISTS: 1,
   LITERAL_AXES: 8,
-  LABELLED_LISTS: 19,
+  LABELLED_LISTS: 21,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
@@ -7787,6 +7796,37 @@ const ambientlyDeclared = (declaration: ts.Node): boolean =>
   declaration.getSourceFile().isDeclarationFile;
 
 /**
+ * Whether a declaration came from the COMPILER'S OWN LIBRARY, which is a
+ * narrower question than the one above and is the one the member-type screen
+ * asks.
+ *
+ * What it guarantees, in the mechanism's own terms: `program.
+ * isSourceFileDefaultLibrary` is true for `lib.es5.d.ts` and its siblings and
+ * false for every other file, so `String.prototype.match` and `Array.prototype.
+ * map` stay unwalked — which is the whole reason the screen skipped ambient
+ * declarations at all (M60) — while a `.d.ts` this project or its dependencies
+ * authored is walked like any other declaration.
+ *
+ * The route it closes, named because it was planted rather than imagined:
+ * `string & E28Ambient` where `E28Ambient` is declared in a `.d.ts` served
+ * beside the subject. The relation certifies it on the `string` constituent, and
+ * under `isDeclarationFile` the walk skipped the only property that holds the
+ * closure — `cert=true walked=false holds=false reach=true`, a silence with a
+ * closure callable through the type and no cast.
+ *
+ * Its limit, stated because the predicate is about WHERE a declaration lives and
+ * not about what it holds: a closure behind a member of a default-library type
+ * is still skipped, so `subject.match` handing back something callable is
+ * invisible to this reading. What covers it is the relation, which refuses any
+ * type whose members are not data — and the pair of `ambient-*` rows in
+ * `FAMILY_TABLE` is what says the two halves are doing different work: the one
+ * without a certifying constituent is caught by the relation with this reading
+ * switched off.
+ */
+const declaredInTheDefaultLibrary = (program: ts.Program, declaration: ts.Node): boolean =>
+  program.isSourceFileDefaultLibrary(declaration.getSourceFile());
+
+/**
  * A reference type, taken out of the program the census is already using.
  *
  * Looked up BY NAME rather than by position. It read "the first variable
@@ -7956,7 +7996,7 @@ function memberTypeScreen(
           ? boundedWalk(checker.getTypeOfSymbol(symbol), depth + 1)
           : false;
       }
-      if (ambientlyDeclared(declaration)) return false;
+      if (declaredInTheDefaultLibrary(program, declaration)) return false;
       return boundedWalk(checker.getTypeOfSymbolAtLocation(symbol, declaration), depth + 1);
     });
   };
@@ -11724,6 +11764,30 @@ describe('the assembly walk bites — every binding whose value is not in its in
     // silence, which is why it is the direction the screen takes.
     expect(channelCensus().screenDisagreements).toEqual(SHIPPED_SCREEN_DISAGREEMENTS);
     expect(SHIPPED_SCREEN_DISAGREEMENTS.length).toBe(SCREEN_AGREEMENT.SHIPPED_DISAGREEMENTS);
+    // THE OVER-APPROXIMATION AXIS, SPLIT OUT AS ITS OWN NUMBER, because the list
+    // above is a set equality and a set equality does not say which DIRECTION a
+    // row is. The round that added the backwards reading —
+    // `isTypeAssignableTo(anyFunction, T)` — said plainly that its residual was
+    // whether that broad question over-approximates somewhere the shipped tree
+    // will eventually reach, and that the shipped tree was the only sample. This
+    // is that residual as a count rather than a sentence: a row of the form
+    // `asked=false walked=true` is the walk claiming a function may be stored
+    // where the relation says the value is data, which is the only shape the
+    // new readings can produce. There are none, so on this tree the two readings
+    // added zero rows and the whole eleven is the interface direction.
+    //
+    // What it does NOT say, because a count cannot: that the reading is exact.
+    // A legitimate shipped type that starts admitting a function moves this
+    // number, and so does a real bypass — M69-M74 each moved it to one or two.
+    // The number is the ALARM and the site list beside it is what says which.
+    const walkOnly = SHIPPED_SCREEN_DISAGREEMENTS.filter((entry) =>
+      entry.endsWith('asked=false walked=true'),
+    );
+    expect(walkOnly).toEqual([]);
+    expect(
+      SHIPPED_SCREEN_DISAGREEMENTS.filter((entry) => entry.endsWith('asked=true walked=false'))
+        .length,
+    ).toBe(SCREEN_AGREEMENT.SHIPPED_DISAGREEMENTS);
     // The probe's own row is the other direction of the same measurement: a
     // disagreement where the control is the one that is wrong.
     expect(
@@ -12841,9 +12905,38 @@ interface CandidateShape {
   /** A statement that calls a function obtained from `subject`. */
   readonly reach: string;
   readonly why: string;
+  /**
+   * Extra in-memory files served beside the subject and the reference type.
+   *
+   * The driver serves ONE subject file, which left two shapes untestable: a type
+   * whose declaration lives in a `.d.ts`, and a global arriving from a third
+   * module. `programWith` already takes an `extra` channel for the reference
+   * type, so this is that channel used a second time rather than a new one.
+   */
+  readonly extra?: readonly (readonly [string, string])[];
 }
 
 const CANDIDATE_SUBJECT_PATH = path.join(HERE, '__candidateSubject.ts');
+
+/** A THIRD MODULE, served from memory: a real `.ts` that augments the global scope. */
+const E28_GLOBAL_PATH = path.join(HERE, '__e28Global.ts');
+
+const E28_GLOBAL_FILE: readonly (readonly [string, string])[] = Object.freeze([
+  Object.freeze([
+    E28_GLOBAL_PATH,
+    'declare global { interface E28Global { readonly run: () => string } }\nexport {};\n',
+  ] as const),
+]);
+
+/** A declaration file, served from memory. Global, because it exports nothing. */
+const E28_AMBIENT_PATH = path.join(HERE, '__e28Ambient.d.ts');
+
+const E28_AMBIENT_FILE: readonly (readonly [string, string])[] = Object.freeze([
+  Object.freeze([
+    E28_AMBIENT_PATH,
+    'interface E28Ambient { readonly run: () => string }\n',
+  ] as const),
+]);
 
 /** Where a row's reach snippet is spliced in, and what is there when it is not. */
 const REACH_MARKER = '/*REACH*/';
@@ -12912,7 +13005,7 @@ function candidateReading(
       [CANDIDATE_SUBJECT_PATH],
       `${CANDIDATE_PRELUDE}${text}\nexport {};\n`,
       CANDIDATE_SUBJECT_PATH,
-      FUNCTION_FREE_DATA_FILE,
+      [...FUNCTION_FREE_DATA_FILE, ...(shape.extra ?? [])],
     );
     const file = program.getSourceFile(CANDIDATE_SUBJECT_PATH);
     if (file === undefined) throw new Error('the candidate subject is not in the program');
@@ -13271,6 +13364,14 @@ const CANDIDATE_SHAPES: readonly CandidateShape[] = Object.freeze([
     why: 'the closure arrives through an accessor rather than a data property',
   }),
 
+  Object.freeze({
+    id: 'hybrid-callable-with-both-index-signatures',
+    group: 'hybrid',
+    build: `declare const subject: { (): string; readonly [k: string]: string; readonly [k: symbol]: string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject(); }',
+    why: "THE EXPLANATION THE OTHER TWO HYBRID ROWS WERE READ AS SUPPORTING IS FALSE, AND THIS ROW IS THE COUNTEREXAMPLE. Both of them come back `cert=false`, and the reason offered was that a callable type is refused whatever it holds — which would make this whole group incapable of earning a certificate. Sixteen hybrid shapes were driven through the relation to check that: thirteen are refused and three certify, and this is the sharpest of the three. A type literal carrying a call signature AND both of the index signatures the reference type asks for is certified as function-free data while being directly callable. The group is still safe, and it is safe for a different reason than the sentence gave: the bounded walk's FIRST arm is `getCallSignatures().length > 0`, which is not behind either of E27's readings and answers before any of this",
+  }),
+
   // ---- Group G: generic machinery, and the non-generic control for it ----
   Object.freeze({
     id: 'generic-mapped-type-intersected-with-string',
@@ -13308,6 +13409,33 @@ const CANDIDATE_SHAPES: readonly CandidateShape[] = Object.freeze([
     build: `declare const subject: { readonly held: any };\n${REACH_MARKER}`,
     reach: 'export function reached(): unknown { return subject.held(); }',
     why: "the row the conditional pair turned up and the sharpest one here: `any` ONE PROPERTY DOWN. `SCREEN_BATTERY`'s `anyish` row asks about `any` at the top level, where the flag short-circuit fires; the holder of a member is an object, so the short-circuit never fires and the walk descended into a type with no properties and no call signatures",
+  }),
+
+  // ---- Group H: a declaration that lives in a `.d.ts` ----
+  Object.freeze({
+    id: 'ambient-certifying-intersection',
+    group: 'ambient',
+    build: `declare const subject: string & E28Ambient;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    extra: E28_AMBIENT_FILE,
+    why: 'the same shape as `intersection-string-and-method` with the closure-bearing half declared in a DECLARATION FILE, which is the arm `ambientlyDeclared` skips',
+  }),
+  Object.freeze({
+    id: 'ambient-plain-closure',
+    group: 'ambient',
+    build: `declare const subject: E28Ambient;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    extra: E28_AMBIENT_FILE,
+    why: 'the same declaration WITHOUT the certifying constituent — the control that says which half of the pair does the work',
+  }),
+
+  Object.freeze({
+    id: 'global-from-a-third-module',
+    group: 'ambient',
+    build: `declare const subject: string & E28Global;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    extra: E28_GLOBAL_FILE,
+    why: "the augmentation arriving from a MODULE the subject never imports, which is the second half of the pair the one-subject-file driver could not express. It is the control for the row above: same shape, same certificate, and the declaration is in a `.ts` rather than a `.d.ts`, so it says the silence was about the declaration FILE and not about the type being global",
   }),
 
   // ---- The shape a plant would actually take ----
@@ -13391,11 +13519,15 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
   Object.freeze(['global-augmentation-holding-a-closure', false, true, true, true] as const),
   Object.freeze(['hybrid-type-literal-callable-and-indexed', false, true, true, true] as const),
   Object.freeze(['hybrid-behind-a-getter', false, true, true, true] as const),
+  Object.freeze(['hybrid-callable-with-both-index-signatures', true, true, true, true] as const),
   Object.freeze(['generic-mapped-type-intersected-with-string', true, true, true, true] as const),
   Object.freeze(['infer-conditional-intersected-with-string', true, true, true, true] as const),
   Object.freeze(['conditional-any-over-string-called', true, false, false, false] as const),
   Object.freeze(['conditional-instantiated-at-string', true, true, true, true] as const),
   Object.freeze(['any-behind-a-property', true, true, true, true] as const),
+  Object.freeze(['ambient-certifying-intersection', true, true, true, true] as const),
+  Object.freeze(['ambient-plain-closure', false, true, true, true] as const),
+  Object.freeze(['global-from-a-third-module', true, true, true, true] as const),
   Object.freeze(['entry-with-an-empty-object-payload', true, true, true, true] as const),
   ]);
 
@@ -13419,19 +13551,19 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
  * premise the census's containment argument rests on, and it is false.
  */
 const FAMILY_CENSUS = Object.freeze({
-  ROWS: 44,
+  ROWS: 48,
   /** Distinct groups, so a truncated battery cannot pass as a whole one. */
-  GROUPS: 9,
+  GROUPS: 10,
   /** Rows the relation alone certified as function-free data. */
-  CERTIFYING: 27,
+  CERTIFYING: 30,
   /** Rows whose reach snippet compiles clean. */
-  REACHABLE: 38,
+  REACHABLE: 42,
   /** Rows the whole screen was silent about. */
   SILENT: 3,
   /** Silent AND reachable — the bypass count. */
   SILENT_AND_REACHABLE: 0,
   /** See the paragraph above. Twenty, and the residual said zero. */
-  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 22,
+  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 25,
   /** The same battery through `SCREEN_BEFORE_E27`. */
   BEFORE_E27_SILENT: 16,
   BEFORE_E27_SILENT_AND_REACHABLE: 13,
@@ -15588,6 +15720,149 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
     ]),
   }),
+  Object.freeze({
+    id: 'M69',
+    shape:
+      "`any` ONE PROPERTY DOWN, IN A SHIPPED EXPORT. The screen answers `any` before it asks the relation, and that short-circuit reads the flags of the type AT THE SITE — so it fires for a top-level `any` and never for a member, because a member's holder is an object. `SCREEN_BATTERY`'s `anyish` row grades the short-circuit with a top-level `any`, which is the one position the arm already handled: the control written to prove that arm was not vacuous was asking the question the arm answers correctly. `FAMILY_TABLE`'s `any-behind-a-property` is that shape as a type; this row is the same shape planted in a module that ships",
+    where:
+      'production.ts, `accrueProduction`: a module-level `const PRODUCTION_ANY_MEMBER: { readonly entry: { readonly held: any } }` holding a frozen `peek`, handed back as `shapes: PRODUCTION_ANY_MEMBER.entry`. No cast, no new export, no new import line and no new string literal — the payload is read out of `EMPIRE_FORBIDDEN_OUTPUTS` through a specifier added to an import the module already has, which is M43-M52\'s isolation unchanged',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED, WITH THE MEMBER PATH. `derives every escape site from the shipped source` reddens with `+ "production.ts": 1` under `returned-closure`, and `pins the two callback sites with their ARGUMENT COUNT` with `+ "production.ts#accrueProduction#closure:.shapes.held.peek"` — the path is what says the walk went THROUGH the `any`-typed member rather than stopping at the holder.',
+      'AND THE TWO READINGS DISAGREE AT THE SITE, which is the reading that locates it by line: `agrees with the control everywhere on the shipped tree, and says where it does not` reddens with `+ "production.ts:532 { readonly held: any; } asked=false walked=true"`. The relation certifies the holder as function-free data and is right to — `any` is assignable to `FunctionFreeData` like it is to everything — and the walk says a function may be stored there. Twelve disagreements against eleven.',
+      'AND THE BRANCH RUNS, PRINTED: `accrueProduction` on a fresh gym returns keys ending `…,"ledger","shapes"`, `typeof shapes` is `object`, `typeof shapes.held` is `object`, `typeof shapes.held.peek` is `function`, `shapes.held.peek()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'AND THE PRE-FIX SCREEN WAS SILENT ABOUT THE SAME PLANT, MEASURED RATHER THAN REMEMBERED. `channelCensusOf`\'s screen switched to `SCREEN_BEFORE_E27` and nothing else changed: `derives every escape site` fails on the owner-kind tally `- "member": 474 / + "member": 475` — one added property access — with `census.byModule` asserted ten lines ABOVE it and passing, so there is no `returned-closure` row for production.ts; and `pins the two callback sites` passes outright at exactly the two shipped sites, with `production.ts#accrueProduction#closure:.shapes.held.peek` absent. That flip is a measurement and not work: the file was restored and verified byte-identical afterwards.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters, as ever, and every one of them moves on an edit of any size: instrument C `expected 1019 to be 1018`, instrument B `expected 2393570 to be 2393060`, the overflow pass `expected 523296 to be 523128`. Six failed of 95, and three of the six are the guard.',
+      'production.ts and empireForbiddenOutput.test.ts both restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M70',
+    shape:
+      'THE SAME FAMILY AT AN ARRAY ELEMENT, and the reason there are five of these rather than one is the defect the round was called for: `SCREEN_BATTERY` graded the `any` short-circuit at the one position that arm handles, so a single planted position would be that mistake one level down. This is `any` as the element type of a returned list',
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_ANY_LIST: { readonly entry: readonly any[] }` holding one frozen `peek`, handed back as `shapes: PRODUCTION_ANY_LIST.entry`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED: `derives every escape site` reddens with `+ "production.ts": 1` under `returned-closure` and the site list with `+ "production.ts#accrueProduction#closure:.shapes[0].peek"`.',
+      'AND THE READINGS DISAGREE AT THE SITE: `+ "production.ts:532 readonly any[] asked=false walked=true"`. The relation certifies a `readonly any[]` as function-free data, because `any` satisfies the element position of `readonly FunctionFreeData[]`.',
+      'AND THE BRANCH RUNS, PRINTED: keys end `…,"ledger","shapes"`, `typeof shapes[0]` is `object`, `typeof shapes[0].peek` is `function`, `shapes[0].peek()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'AND THE PRE-FIX SCREEN WAS SILENT: with `SCREEN_BEFORE_E27` and the same plant, `census.byModule` passes and the site list passes at exactly the two shipped sites; the only red is the owner tally `- "member": 474 / + "member": 475`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters: instrument C `expected 1019 to be 1018`, instrument B `expected 2393570 to be 2393060`, the overflow pass `expected 523296 to be 523128`. Six failed of 95.',
+      'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>`.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M71',
+    shape:
+      "THE SAME FAMILY AT AN INDEX-SIGNATURE VALUE, which is the position M62 was about with `any` in it rather than a declared closure type. It is the position most likely to appear by accident in real code, because `{ readonly [k: string]: any }` is what a bag of untyped data gets annotated as",
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_ANY_INDEXED: { readonly entry: { readonly [slot: string]: any } }` holding one frozen `peek`, handed back as `shapes: PRODUCTION_ANY_INDEXED.entry`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED: `+ "production.ts": 1` under `returned-closure` and `+ "production.ts#accrueProduction#closure:.shapes.held.peek"`.',
+      'AND THE READINGS DISAGREE AT THE SITE: `+ "production.ts:532 { readonly [slot: string]: any; } asked=false walked=true"`. Note the relation CERTIFIES this one, where M62\'s `Readonly<Record<string, ProductionPeek>>` was refused — the value type is what the relation reads, and `any` satisfies it while `ProductionPeek` does not. So the string-index position that reading one covered for M62 it does not cover here.',
+      'AND THE BRANCH RUNS, PRINTED: `typeof shapes.held.peek` is `function`, `shapes.held.peek()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'AND THE PRE-FIX SCREEN WAS SILENT: `census.byModule` and the site list both pass under `SCREEN_BEFORE_E27`; the only red is the owner tally `- "member": 474 / + "member": 475`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters: `expected 1019 to be 1018`, `expected 2393570 to be 2393060`, `expected 523296 to be 523128`. Six failed of 95.',
+      'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>`.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M72',
+    shape:
+      'THE SAME FAMILY TWO PROPERTIES DOWN, which is the depth axis rather than the position axis: it asks whether the reading is applied at every level of the recursion or only at the one a reviewer would look at first',
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_ANY_DEEPER: { readonly entry: { readonly outer: { readonly inner: any } } }`, handed back as `shapes: PRODUCTION_ANY_DEEPER.entry`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED: `+ "production.ts": 1` under `returned-closure` and `+ "production.ts#accrueProduction#closure:.shapes.outer.inner.peek"`.',
+      'AND THE READINGS DISAGREE AT THE SITE: `+ "production.ts:534 { readonly outer: { readonly inner: any; }; } asked=false walked=true"`.',
+      'AND THE BRANCH RUNS, PRINTED: `typeof shapes.outer.inner.peek` is `function`, `shapes.outer.inner.peek()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'AND THE PRE-FIX SCREEN WAS SILENT: `census.byModule` and the site list both pass under `SCREEN_BEFORE_E27`; the only red is the owner tally `- "member": 474 / + "member": 475`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters, and two of the three are larger than M69-M71 because the plant is one level deeper: `expected 1019 to be 1018`, `expected 2393740 to be 2393060`, `expected 523352 to be 523128`. Six failed of 95.',
+      'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>`.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M73',
+    shape:
+      'THE SAME FAMILY AT A TUPLE ELEMENT, and this is the row that carries the attribution for all five, because the flip it runs is per-reading rather than per-round',
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_ANY_TUPLE: { readonly entry: readonly [number, any] }` whose first element is `EMPIRE_TUNING.PRECISION_DECIMALS` — a named constant rather than a bare number, so the magic-number audit has nothing to see — and whose second is a frozen `peek`, handed back as `shapes: PRODUCTION_ANY_TUPLE.entry`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED: `+ "production.ts": 1` under `returned-closure` and `+ "production.ts#accrueProduction#closure:.shapes[1].peek"`.',
+      'AND THE READINGS DISAGREE AT THE SITE: `+ "production.ts:535 readonly [number, any] asked=false walked=true"`.',
+      'AND THE BRANCH RUNS, PRINTED: `typeof shapes[1].peek` is `function`, `shapes[1].peek()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'THE ATTRIBUTION, RUN IN BOTH DIRECTIONS RATHER THAN INFERRED FROM THE ROUND. E27 added two readings, and "the fix catches it" says nothing about which. Driven with `{ admitsAFunction: false, synthesizedProperties: true }` this plant is SILENT — `census.byModule` and the site list both pass, the owner tally is the only red. Driven with `{ admitsAFunction: true, synthesizedProperties: false }` it is CAUGHT — `+ "production.ts": 1` and `+ "production.ts#accrueProduction#closure:.shapes[1].peek"`. So the `any` family is closed by the backwards relation reading specifically, and the synthesized-property reading has no part in it.',
+      'AND THE PRE-FIX SCREEN WITH BOTH READINGS OFF WAS SILENT, which is the third point of the same measurement: `SCREEN_BEFORE_E27`, `census.byModule` green, site list green, owner tally `- "member": 474 / + "member": 475` the only red.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters: `expected 1019 to be 1018`, `expected 2393570 to be 2393060`, `expected 523296 to be 523128`. Six failed of 95.',
+      'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` after every one of the four flips this row and M69-M72 ran.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M74',
+    shape:
+      "THE MAPPED TYPE'S SYNTHESIZED PROPERTY, IN A SHIPPED EXPORT, and the two attempts it took are worth more than the row. A property produced by a mapped type has no declaration of its own, so `getTypeOfSymbolAtLocation` has no location to be given and the walk skipped it — while the relation certifies the value because the intersection's other constituent is `string`. That is `FAMILY_TABLE`'s `generic-mapped-type-intersected-with-string`, planted",
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_MAPPED: { readonly entry: string & { readonly [K in keyof ProductionRates as Uppercase<K & string>]: () => string } }` holding two frozen closures, handed back as `shapes: PRODUCTION_MAPPED.entry`. The mapped type is written inline in the annotation, so no type declaration is added and the cyclic-declaration census does not move; the keys are uppercase identifiers, so no string literal is added and neither string census moves',
+    attempts: 3,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED: `derives every escape site` reddens with `+ "production.ts": 2` under `returned-closure` and the site list with `+ "production.ts#accrueProduction#closure:.shapes.GYMBUCKSPERHOUR"` and `+ "production.ts#accrueProduction#closure:.shapes.TRAININGIQPERDAY"`.',
+      'AND THE READINGS DISAGREE AT THE SITE: `+ "production.ts:541 string & { readonly GYMBUCKSPERHOUR: () => string; readonly TRAININGIQPERDAY: () => string; } asked=false walked=true"`. The relation certifies an intersection carrying `string`, correctly and for the same reason it certifies `{}`: a constituent that satisfies the reference type is enough.',
+      'AND THE BRANCH RUNS, PRINTED: keys end `…,"ledger","shapes"`, `typeof shapes.GYMBUCKSPERHOUR` is `function`, `shapes.GYMBUCKSPERHOUR()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'AND THE ATTRIBUTION IS THE MIRROR OF M73\'S, run the same three ways. `SCREEN_BEFORE_E27`: SILENT — `census.byModule` and the site list both pass, owner tally `- "member": 474 / + "member": 475` the only red. `{ admitsAFunction: true, synthesizedProperties: false }`: SILENT, identically. `{ admitsAFunction: false, synthesizedProperties: true }`: CAUGHT, `+ "production.ts": 2` and both site rows. So this family is closed by the synthesized-property reading and the backwards relation reading has no part in it, which is exactly the opposite split from M69-M73.',
+      "THE TWO DISCARDED SPELLINGS ARE THE FINDING, and both would have been reported as this family driven if only the current screen had been run. Attempt 1 wrote the mapped type as `{ readonly [K in keyof ProductionRates]: () => string }` and attempt 2 as `{ readonly [K in keyof ProductionRates as K]: () => string }`. Both are caught by the shipped screen — and both are caught by `SCREEN_BEFORE_E27` too, at the same two site rows, so neither exercises the reading this row is about. A HOMOMORPHIC mapped type copies the source property's declaration across, so its members are not synthesized at all and the walk had a location for them all along. Measured rather than reasoned, by reading `valueDeclaration ?? declarations[0]` off the checker for five spellings in a fresh program each: homomorphic and identity-remapped report `undeclared=[]`; the `Uppercase` remap reports `undeclared=[\"GYMBUCKSPERHOUR\",\"TRAININGIQPERDAY\"]`; a mapped type over a union ALIAS rather than over `keyof` reports `undeclared=[\"gym-bucks\",\"training-iq\"]`. All five certify.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters: instrument C `expected 1019 to be 1018`, instrument B `expected 2393570 to be 2393060`, the overflow pass `expected 523296 to be 523128`. Six failed of 95, and three of the six are the guard.',
+      'The union-alias spelling was rejected as the shipped form even though it is equally synthesized, because its keys would be `gym-bucks` and `training-iq` written as string literals. Both are already in this directory, so a Set-valued census would not have moved — but that is a property of the census rather than of the plant, and a plant that depends on one is not isolated.',
+      'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` after each of the three attempts and each of the three reading flips.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M75',
+    shape:
+      "THE SIXTH `any` POSITION, AND IT IS A NEGATIVE — recorded because a position census that lists only the positions that moved is a census of what the author found rather than of what was tried. `any` as a RETURN TYPE, one property down: `{ readonly make: () => any }`",
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_ANY_RETURN: { readonly entry: { readonly make: () => any } }` whose `make` returns the forbidden name, handed back as `shapes: PRODUCTION_ANY_RETURN.entry`',
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'CAUGHT BY BOTH SCREENS, WHICH IS THE POINT OF THE ROW. Shipped readings: `+ "production.ts": 1` under `returned-closure` and `+ "production.ts#accrueProduction#closure:.shapes.make"`. `SCREEN_BEFORE_E27`, same plant, same two failures with the same site — so this position was never silent and E27 added nothing to it.',
+      "WHY, in the mechanism's own terms: the walk's arms run in order and the FIRST one is `type.getCallSignatures().length > 0`, asked of every property it descends into. `make` is callable, so the answer arrives before the backwards relation reading is consulted and before any question about `any` is asked. The `any` in the return position is never read by anything.",
+      'AND THE BRANCH RUNS, PRINTED: keys end `…,"ledger","shapes"`, `typeof shapes.make` is `function`, `shapes.make()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'SO THE FAMILY IS FIVE POSITIONS AND NOT SIX. M69-M73 are a property, an array element, an index-signature value, a property two levels down and a tuple element: silent before, caught now. This one is caught by an arm that predates the round. A reader who wanted to know whether `any` in a return type needed the new reading has the measurement rather than an inference.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Two attempts, and the first is worth a line: it made `make` return an object holding the closure, and the driver printed `CALLED [object Object]` — a value that is not the forbidden name. The second form returns the name directly so the print is the evidence rather than a step towards it. Neither form changed the verdict.',
+      'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>`.',
+    ]),
+  }),
 ]);
 
 /**
@@ -15822,6 +16097,12 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
     reddened:
       "`npx tsc --noEmit` exit 2: `src/empire/empireForbiddenOutput.test.ts(3714,4): error TS2366: Function lacks ending return statement and return type does not include 'undefined'.` RUN RATHER THAN ASSERTED, and it is the reason the switch census does not demand a `default`: adding one would make the compiler stop caring, so the two switches are exhaustive with a declared return type ON PURPOSE and the argument now has a measurement behind it instead of a sentence. A `default: return …` would turn a compile error into a silent fallback, which is the same trade the `else` discipline refuses one instrument over.",
   }),
+  Object.freeze({
+    id: 'G38',
+    what: "the member-type screen's declaration-file skip put back the way it was — `ambientlyDeclared(declaration)` in place of `declaredInTheDefaultLibrary(program, declaration)`, which is the predicate the `ambient-*` rows were added to measure",
+    reddened:
+      'THE SILENCE COMES BACK AND THE ROW NAMES IT: `is not vacuous: every column answers both ways` fails with `expected [ "ambient-certifying-intersection" ] to deeply equal []` on `silentAndReachable`, and `SILENT` moves 3 -> 4 one assertion above it. Run in two steps, because the first pin short-circuits the second: with the two `ambient-*` verdicts also set back to their pre-narrowing values — `[true, false, false, true]` and `[false, false, true, true]` — `answers every row exactly as the table says` PASSES, which is what says EXACTLY those two rows move and `global-from-a-third-module` does not. That third row is the control for the pair: same certificate, same shape, declaration in a `.ts` rather than a `.d.ts`, and it is walked under both predicates. So the silence was about the FILE KIND and not about the type being global, and the narrowing is what closes it.',
+  }),
 ]);
 
 /**
@@ -15841,8 +16122,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(34);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(34);
+    expect(REGISTRY_MUTANTS.length).toBe(35);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(35);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
@@ -15869,7 +16150,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(68);
+    expect(PLANTED_ROUTES.length).toBe(75);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -15986,8 +16267,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // type is two characters. There is no recursion to spell, no index
     // signature to write and no cast to place, so none of the accidents the
     // earlier rows had to strip is available to be made.
-    expect(attempts).toBe(92);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(58);
+    expect(attempts).toBe(102);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(65);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
