@@ -2205,14 +2205,25 @@ feature, not a nice-to-have.
 
 ### 6.6 Async vs. Sync
 
-**Local / regional meets — asynchronous (majority of play):**
+**RULED BY A HUMAN, 2026-08-14: THE SPLIT MOVED. REGIONAL IS NOW SYNCHRONOUS.**
+The previous split put local *and regional* on the async side; regional has
+moved across, and the boundary is now drawn between the entry tier and every
+tier above it. The superseded text is kept at the end of this section, because a
+ruling is only legible against what it replaced.
 
-- Attempts resolve against ghost data (past player results or seeded NPCs)
+**Local meets — asynchronous, and NPC fields only:**
+
+- **No other real players in the field.** Not ghost data from real lifters, not
+  past player results — NPCs. Local is where a player learns the meet, and it is
+  deliberately the one tier where nobody else's performance is in the room.
 - Runs on the player's schedule, offline-friendly, low infra cost
 - Weekly/biweekly cadence keeps Career progression steady
 
-**Nationals / Worlds — synchronous (rare, seasonal):**
+**Regional / Nationals / Worlds — synchronous, with other real players:**
 
+- **Pooled by geographic region**, mirroring how real federations structure
+  qualification: you compete against the people you would actually have to get
+  past to move up.
 - Scheduled live windows (e.g., a 48-hour "meet weekend")
 - Real **flight structure**: lifters grouped into flights of ~10–15, attempts
   resolve in turn order, live leaderboard feed
@@ -2220,8 +2231,66 @@ feature, not a nice-to-have.
   simultaneous netcode. Players submit attempt + weight within a turn window;
   server resolves order and broadcasts. Supabase realtime channels are
   sufficient. Do not build custom netcode.
-- Entry gated by qualifying total earned in async meets
+- Entry gated by qualifying total earned at the tier below
 - Quarterly Nationals, annual Worlds — scarcity keeps them special
+
+**What this ruling costs, stated rather than discovered later.** Regional was
+the async tier that carried "the majority of play" in the old split. Moving it
+to sync means the first tier above the tutorial tier now needs live
+infrastructure, a population, and a region to pool it by — none of which the
+build currently has. The two open questions below are the load-bearing ones and
+are **deliberately unresolved**; they are recorded as questions because guessing
+either would be a design decision made by an implementer.
+
+#### OPEN — geographic region is a NEW DATA DIMENSION and nothing carries it
+
+`CareerLifter` has no location field. Where a region comes from is undecided:
+device locale, explicit player selection at signup, an inferred value, or
+something else. Each has different consequences for privacy, for players who
+travel, and for a player who wants to compete somewhere they do not live.
+
+**It also collides with work already done.** The qualifying-total research in
+`docs/research/qualifying-totals.md` derives its table keyed by **sex and weight
+class**, on a human ruling. Region is a third key, and the interaction is not
+obvious: whether a regional qualifying total is the same number everywhere,
+whether it varies by the pooled population's strength, and whether a
+percentile-derived standard even survives being cut three ways are all open. The
+research already flags every regional cell as derived from an **open-entry
+population**, which is exactly the tier this ruling has now made competitive —
+so that caveat became more load-bearing, not less.
+
+Do not infer any of this from the ruling. It says regional is sync and pooled by
+region; it does not say where region comes from.
+
+#### OPEN — sparse-population regions, which must be answered BEFORE the sync work
+
+Worlds pools globally and Nationals pools a country, so both have a plausible
+population. **A regional sync meet may not have enough concurrent players to
+fill a flight** — near-certainly true at launch, and permanently true for
+regions that stay thin.
+
+The candidate answers are genuinely different games: fall back to NPCs to pad a
+flight (which reintroduces the thing local is defined by *not* having), merge
+sparse regions (which weakens the "people you'd actually have to beat" premise
+the pooling exists for), wait for a quorum before the window opens (which can
+strand a player who qualified), or something else.
+
+**This is named as a pre-condition rather than an implementation detail on
+purpose.** Every one of those answers changes what the flight, the leaderboard
+and the qualifying gate mean, so discovering it during the build means building
+it twice.
+
+---
+
+**SUPERSEDED — the split as it stood before 2026-08-14**, kept for legibility:
+
+> **Local / regional meets — asynchronous (majority of play):** attempts resolve
+> against ghost data (past player results or seeded NPCs); runs on the player's
+> schedule, offline-friendly, low infra cost; weekly/biweekly cadence keeps
+> Career progression steady.
+>
+> **Nationals / Worlds — synchronous (rare, seasonal):** … entry gated by
+> qualifying total earned in async meets.
 
 ---
 
