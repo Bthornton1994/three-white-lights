@@ -1887,12 +1887,12 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + '    expect(shipped.worstDeficit).toBe(0);\n'
       + '\n'
       + '    // The domain. `badDays` is the count that matters most',
-    measuredOver: 'expect(shipped.pairs).toBe(337719);',
+    measuredOver: 'expect(shipped.pairs).toBe(343577);',
     observed:
       'FAIL src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies '
       + 'for fewer > [attending-a-meet-never-removes-one] every skipped meet in every seeded '
       + 'season, and the control beside it\n'
-      + 'AssertionError: expected 109 to be +0 // Object.is equality',
+      + 'AssertionError: expected 173 to be +0 // Object.is equality',
   },
   // -------------------------------------------------------------------------
   // The numeric half of the tag, witnessed from BOTH sides of its set equality,

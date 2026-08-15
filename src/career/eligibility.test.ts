@@ -1438,7 +1438,7 @@ describe('AXIS C — entering a meet spends that meet and takes nothing else', (
     // The rest control: a mandatory 28 days off after a meet, which is the most
     // plausible design of the controls this module measures against and is
     // exactly what GDD §12.3 refuses. The lifter who competed at one more meet
-    // starts their lockout later, so 3746 pairs hand them a shorter calendar
+    // starts their lockout later, so 3763 pairs hand them a shorter calendar
     // than the lifter who stayed home, and as many as 4 of the meets they lose
     // are meets they never went to.
     //

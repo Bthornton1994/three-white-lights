@@ -524,13 +524,22 @@ export const ATTENDANCE_SWEEP = Object.freeze({
    * `[POTENTIAL_MIN_KG, POTENTIAL_MAX_KG]`, a band that straddles the top of the
    * ladder, and a bad day is a share of capability — so totals go on crossing
    * qualifying bars for as long as the career lasts. Measured rather than
-   * argued: scanned at EVERY n from 0 to the deepest career, the rule's
-   * violating count is non-zero at every n at which it fires at all, and the
-   * deepest n that fires is 168. So the "one meet past the last one that bites"
-   * point IS `DELAYED_FORM_PAST_THE_EDGE`, and a constant equal to another
-   * constant, measuring the same zero for the same reason, is a check that can
-   * no longer speak. CLAUDE.md's rule for that is to delete it and record the
-   * domination, which is this paragraph.
+   * argued: the whole axis was re-run at EVERY n from 0 to 170, and the rule's
+   * violating count is non-zero at all 169 values of n where it fires in any
+   * career, and zero at exactly the two where it fires in none. So the "one meet
+   * past the last one that bites" point IS `DELAYED_FORM_PAST_THE_EDGE`, and a
+   * constant equal to another constant, measuring the same zero for the same
+   * reason, is a check that can no longer speak. CLAUDE.md's rule for that is to
+   * delete it and record the domination, which is this paragraph.
+   *
+   * WHAT OF THAT SCAN IS PINNED AND WHAT IS NOT, because a 171-point scan is a
+   * measurement somebody took once and nothing here re-runs it. The two
+   * ENDPOINTS are pinned in `eligibility.test.ts` — the arm at 168 reports a
+   * non-zero and the arm at 169 reports zero with `firesIn` at 0 beside it — and
+   * their adjacency is asserted against the season lengths rather than typed.
+   * The 167 interior points are not pinned by anything. If a fixture change
+   * reopens a gap in the middle of the range, nothing in this file will notice;
+   * re-run the scan rather than assuming this paragraph still holds.
    *
    * WHAT IS LOST, STATED RATHER THAN GLOSSED. The axis can no longer
    * demonstrate the difference between "the rule fired and we could not see it"
@@ -676,10 +685,24 @@ export function careerPotentialKg(seed: number): number {
  * cannot land above it. A bad day only subtracts. Hence EVERY total is at most
  * that career's potential, and therefore at most `POTENTIAL_MAX_KG`.
  *
- * `eligibility.test.ts` asserts all three of those — the strict inequality, the
- * per-career bound and the band-wide one — and asserts the constant inequality
- * the proof rests on, so a tuner who raises `MAX_GAIN_KG` past the band's own
- * span gets a red rather than a generator that has quietly stopped being bounded.
+ * WHAT `eligibility.test.ts` ACTUALLY ASSERTS, stated precisely rather than as
+ * "it checks the proof", because the two are not the same and the difference is
+ * where a reader would otherwise be misled:
+ *
+ *   - Every total sits at or under its OWN career's drawn potential, over every
+ *     seed at `MEETS_PER_CAREER` depth, with the number of totals checked pinned
+ *     and the tightest observed gap pinned too — so the bound is not passing by
+ *     being generous.
+ *   - Every drawn potential sits inside the band and lands on the rounding grid,
+ *     which is the second half of the rounding argument above.
+ *   - `MAX_GAIN_KG < POTENTIAL_MIN_KG - FIRST_TOTAL_KG`, the constant inequality
+ *     the proof rests on, so a tuner who raises the gain past the band's own span
+ *     gets a red rather than a generator that has quietly stopped being bounded.
+ *
+ * The strict inequality on CAPABILITY is NOT asserted and cannot be, because
+ * capability never leaves this function — only the rounded total does. The tests
+ * bound the thing a caller can see; the strictness above is an argument about
+ * the thing they cannot.
  */
 export function seededCareerTotals(seed: number, meets: number): readonly number[] {
   const totals: number[] = [];

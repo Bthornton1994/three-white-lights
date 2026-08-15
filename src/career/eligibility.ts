@@ -26,9 +26,9 @@
  * that one lifter competed at one more meet, every meet the lifter who stayed
  * home may enter and the lifter who competed may not is a meet on that lifter's
  * own record. Nothing else leaves their list. `eligibility.test.ts`'s axis C
- * measures it over the same seasons axis B runs on — 4014 of 337719 pairs reach
+ * measures it over the same seasons axis B runs on — 4049 of 343577 pairs reach
  * an entry being spent, 0 of them violate — beside a rest-after-a-meet control
- * that violates on 3746 and costs a lifter as many as 4 meets they never went
+ * that violates on 3763 and costs a lifter as many as 4 meets they never went
  * to. Before that axis existed this paragraph had no test at all: axes A and B
  * both run through `qualifiedMeets`, which does not read `enteredMeetIds`, and
  * a check for that is pinned directly under axis A.
@@ -38,9 +38,9 @@
  * reason the simulation runs for two calendar periods rather than one: a career
  * that never crosses a period boundary never enters a worlds meet, because the
  * only one a period holds falls six days after the anchor and asks for 650 kg.
- * The occurrence a career can reach violates on 138 pairs and costs as many as
+ * The occurrence a career can reach violates on 132 pairs and costs as many as
  * 6 meets; the one before it and the one after it violate on none, and the
- * three zeros and one non-zero together are what says this axis can see a rule
+ * two zeros and one non-zero together are what says this axis can see a rule
  * keyed to the top of the ladder at all.
  *
  * That claim carries no guarantee tag, and the omission is deliberate rather
@@ -62,20 +62,29 @@
  *
  * COMPETING AT ONE MORE MEET NEVER QUALIFIES FOR FEWER EITHER, and it is the
  * same measurement on the other axis: 24 seeded seasons, 169 meets deep at the
- * deepest, every skipped meet against every later moment, 337719 pairs, 0
- * violating, 273 of them pairs where the lifter who competed more qualified for
+ * deepest, every skipped meet against every later moment, 343577 pairs, 0
+ * violating, 107 of them pairs where the lifter who competed more qualified for
  * strictly more. The control is qualification reading the latest total instead
- * of the best, which is how a current-form gate reads: 109 violating pairs, and
- * a lifter who competed one extra time loses as many as 26 meets. The sweep's
- * own totals go down 1422 times, which is what keeps that control's domain from
+ * of the best, which is how a current-form gate reads: 173 violating pairs, and
+ * a lifter who competed one extra time loses as many as 4 meets. The sweep's
+ * own totals go down 1078 times, which is what keeps that control's domain from
  * being empty. `@guarantee attending-a-meet-never-removes-one`
  *
  * Those careers run for two calendar periods rather than one, and the count
- * that says why is in the same test: twenty-three of the twenty-four reach a
- * worlds meet, where a one-period sweep reached none at all. What that does
- * and does not buy is the block above `ENTRY_VARIANTS` in `careerSweep.ts` —
- * the entry axis can see a rule keyed to the annual tier and this one cannot,
- * and both halves are measured rather than assumed.
+ * that says why is in the same test: twenty-two of the twenty-four reach a
+ * worlds meet, where a one-period sweep reached none at all. The other two are
+ * refused by the gate itself — their own drawn ceilings sit under it — which is
+ * the top of the ladder doing what a qualifying total is for.
+ *
+ * BOTH AXES CAN NOW SEE A RULE KEYED TO THE ANNUAL TIER, AND ONLY ONE OF THEM
+ * COULD BEFORE. That asymmetry was real and is recorded in the block above
+ * `ENTRY_VARIANTS` in `careerSweep.ts`: the qualification axis was blind to a
+ * worlds-keyed record rule because the totals generator took every career far
+ * past the top bar, leaving daylight between the worst world result and the
+ * gate. Bounding that generator closed the gap and the blindness went with it.
+ * Both halves are measured rather than assumed, and the pair of margins is the
+ * clearest thing in this module about how much a control's zero is worth when
+ * nothing has varied the fixture under it.
  *
  * ---------------------------------------------------------------------------
  * 2. THE PAY-TO-WIN BOUNDARY, AS A TYPE
