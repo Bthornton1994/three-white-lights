@@ -3463,6 +3463,12 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
   // registries, which is the guard conscripting new code rather than the
   // builder remembering to.
   'FUNCTION_FREE_DATA_FILE',
+  // The declaration file the two `ambient-*` rows are served, filed here for the
+  // same reason and with the same shape: a reference the checker is asked about
+  // rather than a domain anything is driven over. It exists because the family
+  // driver served ONE subject file, which left a type declared in a `.d.ts`
+  // untestable — and that was the shape a silence was hiding in.
+  'E28_AMBIENT_FILE',
   'DIAGNOSTIC_CHANNEL_CENSUS',
   // The family sweep's ban on its OWN reach snippets. An expectation and not an
   // input: it is not driven against any subject, it is applied to the rows this
@@ -3563,7 +3569,7 @@ const DOMAIN_CENSUS = Object.freeze({
   ALIASES: 7,
   NON_DOMAIN_LISTS: 1,
   LITERAL_AXES: 8,
-  LABELLED_LISTS: 19,
+  LABELLED_LISTS: 20,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
@@ -7787,6 +7793,37 @@ const ambientlyDeclared = (declaration: ts.Node): boolean =>
   declaration.getSourceFile().isDeclarationFile;
 
 /**
+ * Whether a declaration came from the COMPILER'S OWN LIBRARY, which is a
+ * narrower question than the one above and is the one the member-type screen
+ * asks.
+ *
+ * What it guarantees, in the mechanism's own terms: `program.
+ * isSourceFileDefaultLibrary` is true for `lib.es5.d.ts` and its siblings and
+ * false for every other file, so `String.prototype.match` and `Array.prototype.
+ * map` stay unwalked — which is the whole reason the screen skipped ambient
+ * declarations at all (M60) — while a `.d.ts` this project or its dependencies
+ * authored is walked like any other declaration.
+ *
+ * The route it closes, named because it was planted rather than imagined:
+ * `string & E28Ambient` where `E28Ambient` is declared in a `.d.ts` served
+ * beside the subject. The relation certifies it on the `string` constituent, and
+ * under `isDeclarationFile` the walk skipped the only property that holds the
+ * closure — `cert=true walked=false holds=false reach=true`, a silence with a
+ * closure callable through the type and no cast.
+ *
+ * Its limit, stated because the predicate is about WHERE a declaration lives and
+ * not about what it holds: a closure behind a member of a default-library type
+ * is still skipped, so `subject.match` handing back something callable is
+ * invisible to this reading. What covers it is the relation, which refuses any
+ * type whose members are not data — and the pair of `ambient-*` rows in
+ * `FAMILY_TABLE` is what says the two halves are doing different work: the one
+ * without a certifying constituent is caught by the relation with this reading
+ * switched off.
+ */
+const declaredInTheDefaultLibrary = (program: ts.Program, declaration: ts.Node): boolean =>
+  program.isSourceFileDefaultLibrary(declaration.getSourceFile());
+
+/**
  * A reference type, taken out of the program the census is already using.
  *
  * Looked up BY NAME rather than by position. It read "the first variable
@@ -7956,7 +7993,7 @@ function memberTypeScreen(
           ? boundedWalk(checker.getTypeOfSymbol(symbol), depth + 1)
           : false;
       }
-      if (ambientlyDeclared(declaration)) return false;
+      if (declaredInTheDefaultLibrary(program, declaration)) return false;
       return boundedWalk(checker.getTypeOfSymbolAtLocation(symbol, declaration), depth + 1);
     });
   };
@@ -12841,9 +12878,28 @@ interface CandidateShape {
   /** A statement that calls a function obtained from `subject`. */
   readonly reach: string;
   readonly why: string;
+  /**
+   * Extra in-memory files served beside the subject and the reference type.
+   *
+   * The driver serves ONE subject file, which left two shapes untestable: a type
+   * whose declaration lives in a `.d.ts`, and a global arriving from a third
+   * module. `programWith` already takes an `extra` channel for the reference
+   * type, so this is that channel used a second time rather than a new one.
+   */
+  readonly extra?: readonly (readonly [string, string])[];
 }
 
 const CANDIDATE_SUBJECT_PATH = path.join(HERE, '__candidateSubject.ts');
+
+/** A declaration file, served from memory. Global, because it exports nothing. */
+const E28_AMBIENT_PATH = path.join(HERE, '__e28Ambient.d.ts');
+
+const E28_AMBIENT_FILE: readonly (readonly [string, string])[] = Object.freeze([
+  Object.freeze([
+    E28_AMBIENT_PATH,
+    'interface E28Ambient { readonly run: () => string }\n',
+  ] as const),
+]);
 
 /** Where a row's reach snippet is spliced in, and what is there when it is not. */
 const REACH_MARKER = '/*REACH*/';
@@ -12912,7 +12968,7 @@ function candidateReading(
       [CANDIDATE_SUBJECT_PATH],
       `${CANDIDATE_PRELUDE}${text}\nexport {};\n`,
       CANDIDATE_SUBJECT_PATH,
-      FUNCTION_FREE_DATA_FILE,
+      [...FUNCTION_FREE_DATA_FILE, ...(shape.extra ?? [])],
     );
     const file = program.getSourceFile(CANDIDATE_SUBJECT_PATH);
     if (file === undefined) throw new Error('the candidate subject is not in the program');
@@ -13310,6 +13366,24 @@ const CANDIDATE_SHAPES: readonly CandidateShape[] = Object.freeze([
     why: "the row the conditional pair turned up and the sharpest one here: `any` ONE PROPERTY DOWN. `SCREEN_BATTERY`'s `anyish` row asks about `any` at the top level, where the flag short-circuit fires; the holder of a member is an object, so the short-circuit never fires and the walk descended into a type with no properties and no call signatures",
   }),
 
+  // ---- Group H: a declaration that lives in a `.d.ts` ----
+  Object.freeze({
+    id: 'ambient-certifying-intersection',
+    group: 'ambient',
+    build: `declare const subject: string & E28Ambient;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    extra: E28_AMBIENT_FILE,
+    why: 'the same shape as `intersection-string-and-method` with the closure-bearing half declared in a DECLARATION FILE, which is the arm `ambientlyDeclared` skips',
+  }),
+  Object.freeze({
+    id: 'ambient-plain-closure',
+    group: 'ambient',
+    build: `declare const subject: E28Ambient;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    extra: E28_AMBIENT_FILE,
+    why: 'the same declaration WITHOUT the certifying constituent — the control that says which half of the pair does the work',
+  }),
+
   // ---- The shape a plant would actually take ----
   Object.freeze({
     id: 'entry-with-an-empty-object-payload',
@@ -13396,6 +13470,8 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
   Object.freeze(['conditional-any-over-string-called', true, false, false, false] as const),
   Object.freeze(['conditional-instantiated-at-string', true, true, true, true] as const),
   Object.freeze(['any-behind-a-property', true, true, true, true] as const),
+  Object.freeze(['ambient-certifying-intersection', true, true, true, true] as const),
+  Object.freeze(['ambient-plain-closure', false, true, true, true] as const),
   Object.freeze(['entry-with-an-empty-object-payload', true, true, true, true] as const),
   ]);
 
@@ -13419,19 +13495,19 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
  * premise the census's containment argument rests on, and it is false.
  */
 const FAMILY_CENSUS = Object.freeze({
-  ROWS: 44,
+  ROWS: 46,
   /** Distinct groups, so a truncated battery cannot pass as a whole one. */
-  GROUPS: 9,
+  GROUPS: 10,
   /** Rows the relation alone certified as function-free data. */
-  CERTIFYING: 27,
+  CERTIFYING: 28,
   /** Rows whose reach snippet compiles clean. */
-  REACHABLE: 38,
+  REACHABLE: 40,
   /** Rows the whole screen was silent about. */
   SILENT: 3,
   /** Silent AND reachable — the bypass count. */
   SILENT_AND_REACHABLE: 0,
   /** See the paragraph above. Twenty, and the residual said zero. */
-  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 22,
+  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 23,
   /** The same battery through `SCREEN_BEFORE_E27`. */
   BEFORE_E27_SILENT: 16,
   BEFORE_E27_SILENT_AND_REACHABLE: 13,
