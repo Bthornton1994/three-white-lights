@@ -89,6 +89,78 @@ export const SHELL_SURFACES = Object.freeze([
   'empire',
 ] as const satisfies readonly ShellSurface[]);
 
+/**
+ * ===========================================================================
+ * THE SURFACES THE SHELL KEEPS MOUNTED WHILE THE PLAYER IS SOMEWHERE ELSE
+ * ===========================================================================
+ * THE DEFECT THIS CLOSES, MEASURED ON THE PLAYED ARM WITH NO QUERY STRING:
+ * open the app, answer the three readiness questions, arrive at GDD §3.2's
+ * briefing, press GYM EMPIRE, press BACK TO TRAINING — and land on the CHECK-IN
+ * with all three answers blank. `AppShell` picked one surface out of a ternary,
+ * so `SessionScreen` un-mounted and the answers, which are client state that
+ * never reached a server, went with it. Photographed at
+ * `.gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png` and the
+ * frame that used to be `18-briefing-round-trip-lands-on-the-check-in.png`. The
+ * `18-` shot is now `-lands-back-on-the-briefing.png`, and `shootBeat` holds
+ * each file to the beat its own name claims, so the rename cannot be cosmetic.
+ *
+ * A player's session is not a thing a side trip may spend. So the two surfaces
+ * of that round trip are kept MOUNTED across it and whichever one is not being
+ * looked at is hidden — `display: 'none'`, which nothing lays out and nothing
+ * paints, and which Playwright's `isVisible()` reports as not visible, so every
+ * "X is no longer on screen" check in `tools/verify-shell-route.mjs` still means
+ * what it said before.
+ *
+ * ===========================================================================
+ * WHY MEET IS NOT ON THIS LIST, WHICH IS A DECISION AND NOT AN OVERSIGHT
+ * ===========================================================================
+ * The same discard happens across the meet round trip and is deliberately NOT
+ * fixed here. Meet day is a whole mode with a server round trip inside it, and
+ * `appServer.ts` exists precisely so the daily session can re-derive "already
+ * trained today" from the server after it un-mounts. Keeping the session
+ * mounted under a meet would change what a player sees when a meet ends — the
+ * beat they left rather than the day re-read — which is a GDD §3.2 question
+ * with graded browser checks on it, and GDD §11's 2026-08-14 ruling authorised
+ * the EMPIRE round trip specifically. Written down here rather than left to be
+ * rediscovered as a hole.
+ *
+ * `replay` is a debug harness surface and is not player-reachable at all.
+ */
+export const PERSISTENT_SURFACES = Object.freeze([
+  'session',
+  'empire',
+] as const satisfies readonly ShellSurface[]);
+
+/** Does the shell keep this surface mounted while another one is on screen? */
+export function isPersistentSurface(surface: ShellSurface): boolean {
+  return (PERSISTENT_SURFACES as readonly ShellSurface[]).includes(surface);
+}
+
+/**
+ * Must the shell forget this surface's last reported beat when arriving on it?
+ *
+ * THE SHELL FORGETS THE DESTINATION'S BEAT ON EVERY NAVIGATION, because a
+ * screen reports its beat in an effect that lands a commit AFTER the route
+ * changes — so a stale beat from a previous visit is what the chrome gate would
+ * read for one frame, and a meet opened after a previous one ended gets a "BACK
+ * TO TRAINING" flash over its weigh-in.
+ *
+ * That argument is about a surface that RE-MOUNTS. It is exactly backwards for
+ * one that never went away: its beat is not stale, it is CURRENT, and
+ * forgetting it takes the chrome off a live screen which has no reason to
+ * report again. The player lands back on their briefing with no way to anywhere.
+ *
+ * So the rule is: forget the beat unless the surface both persists AND has no
+ * way to re-report. `EmpireScreen` re-reports (its `active` prop is in the
+ * effect's dependency list), so Empire is forgotten like any other surface.
+ * `SessionScreen` does not, so the daily session is not — and
+ * `shellWiring.test.ts` pins that pairing in both directions rather than
+ * leaving this paragraph to be believed.
+ */
+export function forgetsBeatOnArrival(surface: ShellSurface): boolean {
+  return surface !== 'session';
+}
+
 /** Why the shell is on this surface. */
 export type ShellSource =
   /** What the app opens on with no URL at all (GDD §3.2: the daily session). */

@@ -564,7 +564,7 @@ const BEAT_SAYS = Object.freeze({
    * apart from. The lead is drawn by `EmpireScreen` and by nothing else.
    */
   EMPIRE_FLOOR:
-    'Your gym on opening day. Idle production is live in code; this screen reads it.',
+    'GDD §5 running on this sitting’s clock: time passes, the gym checks in, the numbers move. Nothing is saved — reload and a new gym opens at zero.',
 });
 
 /**
@@ -617,42 +617,117 @@ const EMPIRE_NAV_SAYS = Object.freeze({
  * `PROVENANCE_IS_CHECKED_ELSEWHERE` — so the pointer expires if the thing it
  * points at is renamed away.
  *
- * THE READINGS ARE RESTATED, NOT IMPORTED, on the same principle as every other
+ * ===========================================================================
+ * AND THE FLOOR MOVES NOW, WHICH CHANGES WHAT A VALUE PIN CAN BE
+ * ===========================================================================
+ * GDD §11's 2026-08-14 ruling let the surface wire `stepGym` and
+ * `accrueProduction`, so four of these six rows are readings of a gym that is
+ * getting older while the tool looks at it. Pinning them at a literal would
+ * make this section a stopwatch: green if the screen were read fast enough,
+ * red on a slow box, and measuring the harness rather than the app.
+ *
+ * SO EACH ROW DECLARES WHICH KIND IT IS, and the two kinds are checked
+ * differently:
+ *
+ *   - `holds` — a reading that must NOT move over the section's window, pinned
+ *     at the literal it opens on. The roster stays empty and the equipment stays
+ *     on its opening rung because nothing on this floor is affordable inside an
+ *     app run, and a row that started moving would be a real finding.
+ *   - `advances` — a reading that must be STRICTLY GREATER on the second look
+ *     than on the first, with the two looks separated by more than the app's own
+ *     check-in cadence READ FROM `shellTuning.ts` rather than transcribed.
+ *
+ * The advancing rows are the whole point of the ruling and they are also the
+ * only thing on this screen a mock-up could not fake for free: a hardcoded floor
+ * draws the opening reading for ever, so the SECOND read is where it dies. What
+ * a moving number still cannot prove is where it came from — a local counter
+ * incremented by the same timer would rise identically — and that half is
+ * `shellWiring.test.ts`'s, named in `PROVENANCE_IS_CHECKED_ELSEWHERE` below.
+ *
+ * THE LABELS ARE RESTATED, NOT IMPORTED, on the same principle as every other
  * expectation in this file: a check that reads its answer out of the module
- * under test agrees with a broken module. `createEmpireState()` opens a gym at
- * zero Gym Bucks, zero reputation, an empty roster and
- * `EMPIRE_TUNING.EQUIPMENT_TIERS[0]`. Re-tune any of those and this goes red
- * with both readings in it, which is the friction a human should meet. The
- * LABELS are cross-checked against `shellTuning.ts` at the end of the run, the
- * way the two pill labels above already are; the VALUES cannot be, because
- * their source is the module this section is about.
+ * under test agrees with a broken module. They are cross-checked against
+ * `shellTuning.ts` at the end of the run, the way the two pill labels above
+ * already are.
  */
 const EMPIRE_FLOOR_READS = Object.freeze([
   Object.freeze({
     testID: 'empire-stat-bucks',
     label: 'GYM BUCKS',
-    value: '0',
+    reading: 'advances',
     copy: 'EMPIRE_STAT_BUCKS',
+  }),
+  Object.freeze({
+    testID: 'empire-stat-pending',
+    label: 'SINCE CHECK-IN',
+    // NOT `advances`, and the difference is the row's own arithmetic rather
+    // than a hedge: this one is what the current gap has produced and NOT yet
+    // paid in, so it climbs between check-ins and RESETS to zero at each one.
+    // Strictly-greater across a check-in boundary would be false of a correct
+    // screen. It is checked by sampling instead — see `checkPendingRowMoves`.
+    reading: 'samples',
+    copy: 'EMPIRE_STAT_PENDING',
   }),
   Object.freeze({
     testID: 'empire-stat-rep',
     label: 'REPUTATION',
-    value: '0',
+    reading: 'advances',
     copy: 'EMPIRE_STAT_REP',
   }),
   Object.freeze({
     testID: 'empire-stat-roster',
     label: 'ROSTER',
+    reading: 'holds',
     value: '0',
     copy: 'EMPIRE_STAT_ROSTER',
   }),
   Object.freeze({
     testID: 'empire-stat-equipment',
     label: 'EQUIPMENT',
+    reading: 'holds',
     value: 'bare-bar',
     copy: 'EMPIRE_STAT_EQUIPMENT',
   }),
+  Object.freeze({
+    testID: 'empire-stat-clock',
+    label: 'GYM CLOCK (SECONDS)',
+    reading: 'advances',
+    copy: 'EMPIRE_STAT_CLOCK',
+  }),
 ]);
+
+/**
+ * How the floor's own cadence is read, so this section's waits are the app's
+ * arithmetic rather than a transcription of it.
+ *
+ * CLAUDE.md's recorded lesson about the bomb-out silence, applied one screen
+ * over: a tool that waits a number somebody typed starts measuring the wrong
+ * thing the first time a playtester turns the knob. `readable: false` is
+ * reported as a CONTROL below rather than silently falling back.
+ */
+function deriveEmpireFloorWindows() {
+  const text = readFileSync(path.join(srcRoot, 'src', 'shell', 'shellTuning.ts'), 'utf8');
+  const checkInSeconds = numberInBlock(text, 'EMPIRE_FLOOR', 'CHECK_IN_SECONDS');
+  const refreshMs = numberInBlock(text, 'EMPIRE_FLOOR', 'REFRESH_MS');
+  return Object.freeze({
+    checkInSeconds,
+    refreshMs,
+    /**
+     * How long to leave between two reads of an `advances` row.
+     *
+     * One whole check-in plus one refresh plus the same fade grace every other
+     * window in this file carries, so the second read cannot land in the gap
+     * between a check-in happening and the screen redrawing.
+     */
+    advanceWindowMs: (checkInSeconds ?? 10) * 1000 + (refreshMs ?? 500) + FADE_GRACE_MS,
+    readable: typeof checkInSeconds === 'number' && typeof refreshMs === 'number',
+  });
+}
+
+const EMPIRE_FLOOR_WINDOWS = deriveEmpireFloorWindows();
+
+/** How many times the `samples` row is read, and how far apart. */
+const PENDING_SAMPLES = Object.freeze({ COUNT: 4, EVERY_MS: 1200 });
 
 /**
  * How many text nodes a row is made of: its label, then its reading.
@@ -703,8 +778,11 @@ const PROVENANCE_IS_CHECKED_ELSEWHERE = Object.freeze({
  * pill is READ before the press rather than assumed. That gives the claim a
  * domain in which it can be wrong.
  *
- * AND IN THAT DOMAIN IT IS WRONG, WHICH IS WHY THIS BLOCK IS LONG. Measured on
- * this tree, on the played arm:
+ * ===========================================================================
+ * IT WAS WRONG IN THAT DOMAIN, AND THE DEFECT IS NOW FIXED — WHICH IS WHY THIS
+ * BLOCK IS AN INVERTED PIN'S OBITUARY RATHER THAN AN INVERTED PIN
+ * ===========================================================================
+ * What this leg measured on the tree that introduced it, on the played arm:
  *
  *     A. `/` -> check-in.
  *     B. three answers pressed -> `session-briefing`, saying 'PICK YOUR RPE'.
@@ -712,30 +790,36 @@ const PROVENANCE_IS_CHECKED_ELSEWHERE = Object.freeze({
  *     D. BACK TO TRAINING pressed -> `session-check-in`, saying
  *        'HOW ARE YOU TODAY?', with all three answers blank again.
  *
- * The round trip DISCARDS the session's beat and its answers. `AppShell` picks
- * one surface out of a ternary, so `SessionScreen` un-mounts when the floor
- * mounts and `useSession` rebuilds from the server on the way back — and the
- * check-in answers are client state that never reached a server. The same thing
- * happens from `?session=briefing` and `?session=close-out-pr`, where the
- * frozen moment is lost too even though the query string is still in the bar.
+ * The round trip DISCARDED the session's beat and its answers, because
+ * `AppShell` picked one surface out of a ternary and `SessionScreen` un-mounted
+ * when the floor mounted. Rather than pass silently, the check compared against
+ * `LANDS_ON` and said in its own message that a RED was the fix.
  *
- * THIS TOOL RECORDS THAT RATHER THAN REPAIRING IT. The repair is a change to
- * what `AppShell` mounts, which is behaviour, and GDD §11 gates §5's surface
- * work on a ruling that has not happened. What is NOT acceptable is a check
- * that reads as a discriminator while measuring nothing, so the finding is
- * written into the constant the check compares against, where somebody fixing
- * it has to come and delete it.
+ * IT WENT RED, AND THE COMPARISON WAS REPLACED RATHER THAN RE-POINTED. GDD §11's
+ * 2026-08-14 ruling authorised the repair; `shellRoute.ts`'s
+ * `PERSISTENT_SURFACES` keeps both ends of the round trip mounted and hides the
+ * one off screen. The leg now asserts the POSITIVE claim in both directions —
+ * the briefing is back and the check-in is not — and 10c beside it reads the GYM
+ * on both sides of the same trip, because the floor's state was the second thing
+ * the un-mount was spending.
  *
- * IF THE CHECK USING THIS GOES RED BECAUSE THE BEAT IS NOW PRESERVED, THAT IS
- * THE FIX AND NOT A REGRESSION. Delete this block and the leg that reads it,
- * and say so in the commit.
+ * LEFT BEHIND ON PURPOSE: `LANDS_ON` is still here and is still the check-in.
+ * It is no longer what the round trip does; it is the thing the leg asserts
+ * AGAINST, and a screen that came back to a blank check-in would fail on it by
+ * name. Deleting it would leave the negative half of the claim unwritten.
+ *
+ * STILL TRUE AND STILL NOT FIXED, said here rather than left to be rediscovered:
+ * the MEET round trip discards the beat under it in exactly the way this one
+ * used to, and so does `?session=briefing`, where the frozen moment is lost even
+ * though the query string is still in the bar. `PERSISTENT_SURFACES` carries the
+ * argument for why meet was not swept up in this repair.
  */
 const EMPIRE_RETURN = Object.freeze({
-  /** The beat the second leg departs from — deliberately NOT the one below. */
+  /** The beat the second leg departs from, and — since the repair — returns to. */
   DEPARTS_FROM: 'session-briefing',
   /** src/game/sessionTuning.ts — SESSION_COPY.BRIEFING_PROMPT. Pinned below. */
   DEPARTURE_SAYS: 'PICK YOUR RPE',
-  /** The beat the daily session comes back on, whatever beat it was left from. */
+  /** The beat a discarded session came back on. Now the thing asserted against. */
   LANDS_ON: 'session-check-in',
 });
 
@@ -843,6 +927,17 @@ const SELECT_SCREENS_SEEN = [];
  * had. Incremented by `open()`; see the block there.
  */
 const APP_RUNS = { serial: 0 };
+
+/**
+ * Every reading GDD §5's floor was seen at, so `route.json` carries the raw
+ * material for section 10a's verdict rather than only the verdict.
+ *
+ * `null` for a leg that never ran, which is not the same thing as a leg that ran
+ * and found nothing — the same distinction `returnLegOnATrainedDay` already
+ * carries.
+ */
+let empireFloorReadings = null;
+let empireRoundTripReadings = null;
 
 /**
  * WHAT ONE §6.3 SCREEN LOOKS LIKE, READ OFF THE PIXELS.
@@ -1769,6 +1864,82 @@ async function hitTest(id) {
 }
 
 const bodyText = () => page.evaluate(() => (document.body.textContent ?? '').slice(0, 4000));
+
+/**
+ * Every row of GDD §5's floor as the DOM currently holds it: label, reading, and
+ * how many text nodes the row is made of.
+ *
+ * ONE READER WITH THREE CALLERS, which is why it is a function rather than the
+ * inline `page.evaluate` it used to be. Section 10 reads the rows twice to see
+ * them move and section 10b reads them on both sides of a navigation; three
+ * copies of one query is how three readers drift into asking three slightly
+ * different questions of one screen. The `parts` count comes back with them
+ * because "read the last child" quietly returns the LABEL on a row that
+ * collapsed to one node.
+ */
+async function readEmpireFloorRows() {
+  return page.evaluate(
+    (ids) =>
+      ids.map((id) => {
+        const root = document.querySelector(`[data-testid="${id}"]`);
+        if (root === null) return { id, found: false, parts: -1, label: null, value: null };
+        const parts = [...root.children].map((child) => (child.textContent ?? '').trim());
+        return {
+          id,
+          found: true,
+          parts: parts.length,
+          label: parts[0] ?? null,
+          value: parts[parts.length - 1] ?? null,
+        };
+      }),
+    EMPIRE_FLOOR_READS.map((row) => row.testID),
+  );
+}
+
+/** One row's reading right now, or `null` if it is not in the DOM. */
+async function readEmpireRow(testID) {
+  return (await readEmpireFloorRows()).find((row) => row.id === testID)?.value ?? null;
+}
+
+/**
+ * The "since check-in" row moves, sampled rather than compared end to end.
+ *
+ * WHY IT NEEDS ITS OWN CHECK AND CANNOT JOIN THE `advances` LOOP. That row is
+ * what `accrueProduction` says the CURRENT gap has produced and not yet paid in,
+ * so it climbs while a gap is open and drops back to zero the moment the gap is
+ * collected. `after > before` is false of a correct screen roughly one read in
+ * every `CHECK_IN_SECONDS`, and a check that is right most of the time is worse
+ * here than no check — it would be quietly re-run until it passed.
+ *
+ * So it is sampled `PENDING_SAMPLES.COUNT` times and the DISTINCT values are
+ * counted. A frozen row gives one; a row that is being redrawn from a live
+ * accrual gives more. The count is what is asserted, not a bound on it.
+ */
+async function checkPendingRowMoves() {
+  const row = EMPIRE_FLOOR_READS.find((entry) => entry.reading === 'samples');
+  const seen = [];
+  for (let sample = 0; sample < PENDING_SAMPLES.COUNT; sample += 1) {
+    seen.push(await readEmpireRow(row.testID));
+    if (sample < PENDING_SAMPLES.COUNT - 1) await page.waitForTimeout(PENDING_SAMPLES.EVERY_MS);
+  }
+  const distinct = new Set(seen);
+  check(
+    distinct.size > 1,
+    `${row.testID} is REDRAWN from a live accrual — ${PENDING_SAMPLES.COUNT} samples ${PENDING_SAMPLES.EVERY_MS}ms apart are not all the same number`,
+    `saw ${JSON.stringify(seen)} — ${distinct.size} distinct`,
+  );
+  // CONTROL, at the same instant and on the same probe: a row that is NOT
+  // supposed to move did not, so `distinct.size > 1` above is a fact about that
+  // row rather than about a probe that returns something different every time it
+  // is called.
+  const held = EMPIRE_FLOOR_READS.find((entry) => entry.reading === 'holds');
+  check(
+    (await readEmpireRow(held.testID)) === held.value,
+    `CONTROL: and the ${held.testID} row read by the SAME probe across those samples is still ${JSON.stringify(held.value)}`,
+    `the row reads ${JSON.stringify(await readEmpireRow(held.testID))}`,
+  );
+  return seen;
+}
 
 /**
  * Photograph a beat AND assert the file that just landed is a photograph of it.
@@ -6038,22 +6209,7 @@ await checkOnScreen(
     // measuring a container's opacity. See `EMPIRE_FLOOR_READS` for what this
     // replacement proves and — the half that matters — for what no value read
     // on this screen can ever prove, and where that is measured instead.
-    const floorRows = await page.evaluate(
-      (ids) =>
-        ids.map((id) => {
-          const root = document.querySelector(`[data-testid="${id}"]`);
-          if (root === null) return { id, found: false, parts: -1, label: null, value: null };
-          const parts = [...root.children].map((child) => (child.textContent ?? '').trim());
-          return {
-            id,
-            found: true,
-            parts: parts.length,
-            label: parts[0] ?? null,
-            value: parts[parts.length - 1] ?? null,
-          };
-        }),
-      EMPIRE_FLOOR_READS.map((row) => row.testID),
-    );
+    const floorRows = await readEmpireFloorRows();
 
     for (const expected of EMPIRE_FLOOR_READS) {
       const drawn = floorRows.find((row) => row.id === expected.testID);
@@ -6066,15 +6222,68 @@ await checkOnScreen(
       );
       check(
         drawn?.label === expected.label,
-        `and it is labelled ${JSON.stringify(expected.label)} — so the four rows are told apart by what they say, not by their order`,
+        `and it is labelled ${JSON.stringify(expected.label)} — so the six rows are told apart by what they say, not by their order`,
         `the row says ${JSON.stringify(drawn?.label ?? null)}`,
       );
-      check(
-        drawn?.value === expected.value,
-        `and its reading is ${JSON.stringify(expected.value)}, which is what createEmpireState() opens a gym at`,
-        `the row reads ${JSON.stringify(drawn?.value ?? null)}`,
-      );
+      if (expected.reading === 'holds') {
+        check(
+          drawn?.value === expected.value,
+          `and its reading is ${JSON.stringify(expected.value)}, which is where a gym opens and where nothing in an app run can move it`,
+          `the row reads ${JSON.stringify(drawn?.value ?? null)}`,
+        );
+      } else {
+        check(
+          drawn?.value !== null && drawn?.value !== '' && Number.isFinite(Number(drawn?.value)),
+          `and its reading is a number rather than an empty row or an ${'undefined'}`,
+          `the row reads ${JSON.stringify(drawn?.value ?? null)}`,
+        );
+      }
     }
+
+    // -----------------------------------------------------------------------
+    // 10a. THE READINGS ADVANCE — TWO LOOKS, COMPARED
+    // -----------------------------------------------------------------------
+    // THE CHECK GDD §11's RULING IS ABOUT. Everything above this line was true
+    // of the floor before the ruling too: a screen that called
+    // `createEmpireState()` once and drew four constructor constants passed
+    // every one of them. What it could not do is be different a moment later.
+    //
+    // So the rows are read a SECOND time, more than one whole check-in later,
+    // and the two reads are compared. The wait is `EMPIRE_FLOOR.CHECK_IN_SECONDS`
+    // read out of `shellTuning.ts`, not a number typed here.
+    check(
+      EMPIRE_FLOOR_WINDOWS.readable,
+      'CONTROL: the wait between the two looks is derived from EMPIRE_FLOOR in shellTuning.ts',
+      `CHECK_IN_SECONDS ${EMPIRE_FLOOR_WINDOWS.checkInSeconds}, REFRESH_MS ` +
+        `${EMPIRE_FLOOR_WINDOWS.refreshMs} -> waiting ${EMPIRE_FLOOR_WINDOWS.advanceWindowMs}ms`,
+    );
+    await checkPendingRowMoves();
+    await page.waitForTimeout(EMPIRE_FLOOR_WINDOWS.advanceWindowMs);
+    const secondLook = await readEmpireFloorRows();
+    for (const expected of EMPIRE_FLOOR_READS) {
+      const before = floorRows.find((row) => row.id === expected.testID)?.value ?? null;
+      const after = secondLook.find((row) => row.id === expected.testID)?.value ?? null;
+      if (expected.reading === 'advances') {
+        check(
+          before !== null && after !== null && Number(after) > Number(before),
+          `${expected.testID} ADVANCED between two looks ${EMPIRE_FLOOR_WINDOWS.advanceWindowMs}ms apart — GDD §5.1's loop, on a real clock`,
+          `${JSON.stringify(before)} -> ${JSON.stringify(after)}`,
+        );
+      }
+      if (expected.reading === 'holds') {
+        check(
+          before === expected.value && after === expected.value,
+          `${expected.testID} HELD at ${JSON.stringify(expected.value)} across the same window — nothing on this floor is affordable inside an app run`,
+          `${JSON.stringify(before)} -> ${JSON.stringify(after)}`,
+        );
+      }
+    }
+    // WHAT THIS PAIR STILL CANNOT SAY, so the section does not read as more than
+    // it is: a local counter incremented by the same refresh timer would rise
+    // exactly like this, on a screen with no `src/empire/` call behind it. That
+    // is the provenance claim, and it is checked one block below by resolving
+    // the tag and the test that declares it.
+    empireFloorReadings = Object.freeze({ first: floorRows, second: secondLook });
 
     // THE POINTER, MADE TO EXPIRE. This section can measure that the readings
     // are drawn and cannot measure where they came from, because every one is a
@@ -6213,11 +6422,11 @@ await checkOnScreen(
 
 // ###########################################################################
 // ###  10b. THE SAME ROUND TRIP, DEPARTING FROM A BEAT THAT IS NOT THE     #
-// ###       CHECK-IN — so "it lands on the beat it left from" has a domain #
+// ###       CHECK-IN — the beat is PRESERVED, and so is the gym            #
 // ###########################################################################
 //
-// See `EMPIRE_RETURN` for what this leg exists to close and for what it
-// measured. In one sentence: the claim it replaces could not fail, because the
+// See `EMPIRE_RETURN` for what this leg measures and for what it used to
+// measure. In one sentence: the claim it replaces could not fail, because the
 // only departure section 10 drives is from the check-in and the beat it lands
 // on is the check-in. `SHELL_NAV.SESSION_PHASES` has three members.
 //
@@ -6312,6 +6521,10 @@ await checkOnScreen(
     if (!reachedFloor) {
       check(false, 'SKIPPED: 10b’s return leg needs the floor to have been reached from the briefing');
     } else {
+      // THE FIRST SIDE OF THE OTHER PAIR. A claim that a value survives a
+      // navigation needs the quantity read on BOTH sides, so the gym is read
+      // here, before the press, and again after coming back to it.
+      const gymBefore = await readEmpireFloorRows();
       const cameBack = await press(
         NAV_LEAVE_EMPIRE,
         'session-screen',
@@ -6320,33 +6533,45 @@ await checkOnScreen(
       if (!cameBack) {
         check(false, 'SKIPPED: 10b’s beat reading needs the return press to have landed');
       } else {
-        // THE MEASUREMENT THIS LEG EXISTS FOR. Read, then compared against
-        // `EMPIRE_RETURN.LANDS_ON` — which is a RECORDED FINDING and not an
-        // endorsement. The beat is NOT preserved: a player who taps GYM EMPIRE
-        // from the briefing comes back to a blank check-in with their three
-        // answers gone. Read the block above `EMPIRE_RETURN` before touching
-        // this, and if it goes red because the round trip now preserves the
-        // beat, that is the fix — delete this leg's comparison and say so.
+        // THE MEASUREMENT THIS LEG EXISTS FOR, AND IT IS A PASS NOW RATHER THAN
+        // A RECORDED DEFECT. Until GDD §11's 2026-08-14 ruling this compared
+        // against `EMPIRE_RETURN.LANDS_ON` and said so in its own message: the
+        // round trip DISCARDED the beat, landing on a blank check-in with the
+        // three answers gone, and the check was written inverted so that fixing
+        // it would go red. It has. Both directions are asserted — the briefing
+        // is back AND the check-in is not — so a screen that drew neither cannot
+        // pass this out of two absences.
         const landedOnDeparture = await visible(EMPIRE_RETURN.DEPARTS_FROM);
         const landedOnCheckIn = await visible(EMPIRE_RETURN.LANDS_ON);
         const cameBackSaying = ((await bodyText()) ?? '').replace(/\s+/g, ' ');
         check(
-          landedOnCheckIn && !landedOnDeparture,
-          `RECORDED DEFECT, NOT A PASS: the round trip DISCARDS the session's beat — it left from` +
-            ` ${EMPIRE_RETURN.DEPARTS_FROM} and lands on ${EMPIRE_RETURN.LANDS_ON}, answers blank.` +
-            ' Red here means the beat is now preserved, which is the fix; see EMPIRE_RETURN',
-          `${EMPIRE_RETURN.LANDS_ON} on screen: ${landedOnCheckIn};` +
-            ` ${EMPIRE_RETURN.DEPARTS_FROM} on screen: ${landedOnDeparture}`,
+          landedOnDeparture && !landedOnCheckIn,
+          `THE ROUND TRIP PRESERVES THE SESSION'S BEAT: it left from ${EMPIRE_RETURN.DEPARTS_FROM}` +
+            ` and lands back on ${EMPIRE_RETURN.DEPARTS_FROM}, not on ${EMPIRE_RETURN.LANDS_ON}` +
+            ' — the three check-in answers are still spent; see EMPIRE_RETURN',
+          `${EMPIRE_RETURN.DEPARTS_FROM} on screen: ${landedOnDeparture};` +
+            ` ${EMPIRE_RETURN.LANDS_ON} on screen: ${landedOnCheckIn}`,
         );
         // The same fact read a second way, off the copy rather than off a
         // testID, so a testID that stopped rendering cannot make the line above
-        // report "the beat was discarded" out of two absent elements.
+        // report "the beat survived" out of two absent elements.
+        //
+        // NOTE WHAT `bodyText` NOW INCLUDES AND WHY THIS IS STILL A
+        // DISCRIMINATOR: the session is kept MOUNTED across this round trip and
+        // hidden with `display: 'none'`, and `textContent` does not care about
+        // CSS — so the briefing's words are in the body string even while the
+        // floor is up. That makes the POSITIVE half of this check weaker than it
+        // looks and the NEGATIVE half exactly as strong as it was: the check-in's
+        // title is absent because the session is on its briefing beat, which is
+        // the thing being claimed. The testID reading above is the one that
+        // separates drawn from merely mounted, and `visible()` is `isVisible()`,
+        // which reports `display: 'none'` as not visible.
         check(
-          cameBackSaying.includes(BEAT_SAYS.CHECK_IN) &&
-            !cameBackSaying.includes(EMPIRE_RETURN.DEPARTURE_SAYS),
-          `and the screen says ${JSON.stringify(BEAT_SAYS.CHECK_IN)} rather than ${JSON.stringify(EMPIRE_RETURN.DEPARTURE_SAYS)} — the same finding read off the copy`,
-          `says the check-in title: ${cameBackSaying.includes(BEAT_SAYS.CHECK_IN)};` +
-            ` says the briefing prompt: ${cameBackSaying.includes(EMPIRE_RETURN.DEPARTURE_SAYS)}`,
+          cameBackSaying.includes(EMPIRE_RETURN.DEPARTURE_SAYS) &&
+            !cameBackSaying.includes(BEAT_SAYS.CHECK_IN),
+          `and the screen says ${JSON.stringify(EMPIRE_RETURN.DEPARTURE_SAYS)} rather than ${JSON.stringify(BEAT_SAYS.CHECK_IN)} — the same finding read off the copy`,
+          `says the briefing prompt: ${cameBackSaying.includes(EMPIRE_RETURN.DEPARTURE_SAYS)};` +
+            ` says the check-in title: ${cameBackSaying.includes(BEAT_SAYS.CHECK_IN)}`,
         );
         const urlAt10bReturn = page.url();
         check(
@@ -6354,15 +6579,75 @@ await checkOnScreen(
           'CONTROL: and none of 10b’s three moments carried a query string',
           `back on the session the page is on ${JSON.stringify(urlAt10bReturn)}`,
         );
-        // THE AFTER HALF. Its name says `check-in` and `shootBeat` holds it to
-        // that, so the file cannot quietly become a photograph of the briefing
-        // if the app starts preserving the beat — the shutter would go red on
-        // the same run as the comparison above.
+        // THE AFTER HALF. Its name says `briefing` and `shootBeat` holds it to
+        // that, so the file cannot quietly become a photograph of the check-in
+        // if the app starts discarding the beat again — the shutter would go red
+        // on the same run as the comparison above.
         await shootBeat(
-          '18-briefing-round-trip-lands-on-the-check-in.png',
-          'check-in',
-          BEAT_SAYS.CHECK_IN,
+          '18-briefing-round-trip-lands-back-on-the-briefing.png',
+          'briefing',
+          EMPIRE_RETURN.DEPARTURE_SAYS,
         );
+
+        // -------------------------------------------------------------------
+        // 10c. AND THE GYM SURVIVED THE NAVIGATION TOO — READ ON BOTH SIDES
+        // -------------------------------------------------------------------
+        // The session's beat is one of two things this round trip used to spend.
+        // The other is the gym: `EmpireScreen` opens its floor at mount, so an
+        // un-mount is a gym thrown away, and a player who stepped back into their
+        // session and returned would be strictly worse off than one who stood
+        // still. That is the §12.3 line, reached through the router rather than
+        // through the economy.
+        //
+        // Read on BOTH sides at the same rows, with a wait between them longer
+        // than the app's own check-in so the second reading must have moved if
+        // the gym is the same gym — a fresh one would be back at its opening
+        // reading, which is what a re-mount would produce.
+        await page.waitForTimeout(EMPIRE_FLOOR_WINDOWS.advanceWindowMs);
+        const backOnTheFloor = await press(
+          NAV_OPEN_EMPIRE,
+          'empire-screen',
+          'AND THE FLOOR OPENS A SECOND TIME IN THE SAME APP RUN — the round trip is repeatable from the briefing',
+        );
+        if (!backOnTheFloor) {
+          check(false, 'SKIPPED: 10c needs the second visit to the floor to have landed');
+        } else {
+          const gymAfter = await readEmpireFloorRows();
+          const readingOf = (rows, id) => rows.find((row) => row.id === id)?.value ?? null;
+          for (const expected of EMPIRE_FLOOR_READS) {
+            if (expected.reading !== 'advances') continue;
+            const before = readingOf(gymBefore, expected.testID);
+            const after = readingOf(gymAfter, expected.testID);
+            check(
+              before !== null && after !== null && Number(after) > Number(before),
+              `${expected.testID} CARRIED ACROSS the round trip and kept running: it is higher on the second visit than it was on the first`,
+              `on the floor before leaving ${JSON.stringify(before)}; on the floor after coming back ${JSON.stringify(after)}`,
+            );
+          }
+          // THE CONTROL THAT SAYS THIS IS NOT MERELY A CLOCK. A re-mounted floor
+          // would ALSO read higher than zero by the time it was photographed, so
+          // "bigger than before" on its own is not the claim. What a re-mount
+          // cannot do is be older than the trip: the gym's own clock must have
+          // passed the time spent away, and the floor was left more than one
+          // whole check-in ago.
+          const clockAfter = Number(readingOf(gymAfter, 'empire-stat-clock'));
+          const awaySeconds = Math.floor(EMPIRE_FLOOR_WINDOWS.advanceWindowMs / 1000);
+          check(
+            Number.isFinite(clockAfter) && clockAfter >= awaySeconds,
+            `CONTROL: and the gym's own clock has at least the ${awaySeconds}s spent away on it — a floor re-mounted on the way back would read below that`,
+            `the gym clock reads ${clockAfter}s against ${awaySeconds}s away`,
+          );
+          empireRoundTripReadings = Object.freeze({
+            onTheFloorBeforeLeaving: gymBefore,
+            onTheFloorAfterReturning: gymAfter,
+            awayMs: EMPIRE_FLOOR_WINDOWS.advanceWindowMs,
+          });
+          await shootBeat(
+            '19-empire-floor-on-the-second-visit.png',
+            'floor',
+            BEAT_SAYS.EMPIRE_FLOOR,
+          );
+        }
       }
     }
   }
@@ -6437,6 +6722,14 @@ await writeFile(
       // `attempted: false` is a leg that never ran, and is not the same thing as
       // a leg that ran and passed.
       returnLegOnATrainedDay: returnLeg,
+      // Section 10a's raw material: GDD §5's floor as it was drawn at two
+      // instants a check-in apart, and section 10c's: the same rows read on both
+      // sides of the round trip. The checks above are assertions over these, so
+      // a reader who disagrees with one can re-derive it from the numbers rather
+      // than from the check's wording. `null` is a leg that never ran, which is
+      // not the same thing as a leg that ran and found nothing.
+      empireFloorReadings,
+      empireRoundTripReadings,
       checks,
       notes: observations,
       failures,

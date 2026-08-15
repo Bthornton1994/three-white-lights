@@ -6,9 +6,25 @@
  *     -> SESSION      GDD §3.2's daily loop, straight onto the check-in
  *          [MEET DAY]    -> MEET     GDD §6, weigh-in through recap and result card
  *                              [BACK TO TRAINING] -> SESSION
- *          [GYM EMPIRE]  -> EMPIRE   GDD §5 floor (Session C shell slice)
- *                              [BACK TO TRAINING] -> SESSION
+ *          [GYM EMPIRE]  -> EMPIRE   GDD §5's floor, running on a real clock
+ *                              [BACK TO TRAINING] -> SESSION, on the beat it left
  * ```
+ *
+ * ---------------------------------------------------------------------------
+ * THE EMPIRE ROUND TRIP NO LONGER SPENDS THE PLAYER'S SESSION
+ * ---------------------------------------------------------------------------
+ * It used to. Answer the three readiness questions, press GYM EMPIRE, press
+ * BACK TO TRAINING, and the check-in came back blank: this file picked ONE
+ * surface out of a ternary, so `SessionScreen` un-mounted and its answers —
+ * client state that never reached a server — went with it. Both surfaces of
+ * that round trip are now MOUNTED at once, and whichever one is not being
+ * looked at is hidden. `shellRoute.ts`'s `PERSISTENT_SURFACES` is the list and
+ * carries the argument, including why meet day is deliberately not on it.
+ *
+ * Hidden means `display: 'none'`: nothing lays it out, nothing paints it,
+ * nothing hit-tests it, and Playwright's `isVisible()` reports false — so "the
+ * daily session is no longer on screen" still means what it meant when the
+ * screen really was gone.
  *
  * ---------------------------------------------------------------------------
  * WHAT THIS FILE IS AND IS NOT
@@ -87,6 +103,7 @@ import { appMeetPort, appSessionPort } from './appServer';
 import {
   frozenMeetFor,
   frozenSessionFor,
+  isPersistentSurface,
   navigate,
   resolveEntry,
   shellAffordanceFor,
@@ -211,9 +228,26 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   // it, so a tap meant to dismiss the interrupt navigates to meet day instead,
   // and §7.2 makes the whole screen the dismiss target.
   //
+  // ONE FLAG PER SURFACE, AND THAT CHANGED WHEN THE SESSION STOPPED
+  // UN-MOUNTING. A single shared flag was correct while exactly one host was
+  // ever mounted. It is not correct now: the daily session's host stays mounted
+  // under GDD §5's floor, and a report from a screen nobody is looking at would
+  // take the chrome off the floor — leaving the player on a surface whose only
+  // way out is the pill that just disappeared. So each surface's host writes its
+  // own flag and the gate reads the one belonging to the surface on screen.
+  //
   // Derived from nothing here. The gate session lives in the host, and the
   // shell may not compute game state (CLAUDE.md).
-  const [cutInLive, setCutInLive] = useState(false);
+  const [sessionCutIn, setSessionCutIn] = useState(false);
+  const [meetCutIn, setMeetCutIn] = useState(false);
+
+  // HAS THE PLAYER EVER OPENED THE FLOOR? Once they have, GDD §5's surface stays
+  // mounted for the rest of the app run, hidden while they are training. Its gym
+  // is opened at mount and advanced from that instant, so an un-mount is a gym
+  // thrown away — and a player who stepped back into their session and returned
+  // would be strictly worse off than one who stood still, which is the §12.3
+  // line this whole piece is shaped around.
+  const [empireOpened, setEmpireOpened] = useState(route.surface === 'empire');
 
   // THE DESTINATION'S BEAT IS FORGOTTEN ON THE WAY IN, and that is not tidying.
   // The screen being routed to reports its beat in an effect, which lands a
@@ -224,24 +258,30 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   //
   // The cut-in flag is cleared for the same reason: the host on the surface
   // being left un-mounts and the one being entered has not reported yet.
+  //
+  // AND `leaveEmpire` CLEARS NEITHER, WHICH IS THE FIX RATHER THAN AN OMISSION.
+  // The session it returns to never un-mounted; its beat is current, not stale,
+  // and its host is the same one that has been reporting all along. Nulling the
+  // phase there would take every control off a live screen that has no reason to
+  // report again — the player lands back on their briefing with nowhere to go.
+  // `forgetsBeatOnArrival` in `shellRoute.ts` states that rule and
+  // `shellWiring.test.ts` pins it against this file in both directions.
   const openMeet = useCallback(() => {
     setMeetPhase(null);
-    setCutInLive(false);
+    setMeetCutIn(false);
     setRoute((current) => navigate(current, 'open-meet'));
   }, []);
   const leaveMeet = useCallback(() => {
     setSessionPhase(null);
-    setCutInLive(false);
+    setSessionCutIn(false);
     setRoute((current) => navigate(current, 'leave-meet'));
   }, []);
   const openEmpire = useCallback(() => {
     setEmpirePhase(null);
-    setCutInLive(false);
+    setEmpireOpened(true);
     setRoute((current) => navigate(current, 'open-empire'));
   }, []);
   const leaveEmpire = useCallback(() => {
-    setSessionPhase(null);
-    setCutInLive(false);
     setRoute((current) => navigate(current, 'leave-empire'));
   }, []);
 
@@ -253,6 +293,11 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
         : route.surface === 'empire'
           ? empirePhase
           : null;
+  // The flag belonging to the surface on screen. Empire mounts no host, so a
+  // cut-in is never live there and the gate is told so rather than being handed
+  // whatever the hidden session last said.
+  const cutInLive =
+    route.surface === 'session' ? sessionCutIn : route.surface === 'meet' ? meetCutIn : false;
   const cutIn: 'live' | 'none' = cutInLive ? 'live' : 'none';
   const affordance = shellAffordanceFor(route, surfacePhase, cutIn);
   const empireAffordance = shellEmpireAffordanceFor(route, surfacePhase, cutIn);
@@ -270,6 +315,16 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
         return leaveEmpire;
     }
   };
+
+  // WHICH SURFACES ARE IN THE TREE AT ALL, which is no longer the same question
+  // as which one is on screen. `isPersistentSurface` is the single list; the
+  // replay arm is the defensive one the ternary this replaces already had, for a
+  // `replay` route that somehow arrived without a frame.
+  const sessionMounted =
+    isPersistentSurface(route.surface) ||
+    (route.surface === 'replay' && entry.replay === undefined);
+  const empireMounted =
+    route.surface === 'empire' || (isPersistentSurface('empire') && empireOpened);
 
   return (
     <View style={styles.root} testID="app-shell">
@@ -295,21 +350,29 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           holdWalkoutAtMs={meetFrame?.holdWalkoutAtMs ?? null}
           onLeave={leaveMeet}
           onPhase={setMeetPhase}
-          onCutIn={setCutInLive}
+          onCutIn={setMeetCutIn}
           cutInSearch={search}
         />
-      ) : route.surface === 'empire' ? (
-        <EmpireScreen onPhase={setEmpirePhase} />
       ) : route.surface === 'replay' && entry.replay !== undefined ? (
         <LiftScreen replay={entry.replay} />
-      ) : (
-        <SessionScreen
-          preview={frozenSessionFor(entry, route)}
-          serverPort={appSessionPort()}
-          onPhase={setSessionPhase}
-          onCutIn={setCutInLive}
-          cutInSearch={search}
-        />
+      ) : null}
+
+      {!sessionMounted ? null : (
+        <View style={route.surface === 'session' ? styles.surface : styles.hiddenSurface}>
+          <SessionScreen
+            preview={frozenSessionFor(entry, route)}
+            serverPort={appSessionPort()}
+            onPhase={setSessionPhase}
+            onCutIn={setSessionCutIn}
+            cutInSearch={search}
+          />
+        </View>
+      )}
+
+      {!empireMounted ? null : (
+        <View style={route.surface === 'empire' ? styles.surface : styles.hiddenSurface}>
+          <EmpireScreen onPhase={setEmpirePhase} active={route.surface === 'empire'} />
+        </View>
       )}
 
       {affordance === null && empireAffordance === null ? null : (
@@ -334,6 +397,25 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: LIFT_PALETTE.BACKDROP,
+  },
+  /** A mounted surface that is the one on screen. */
+  surface: {
+    flex: 1,
+  },
+  /**
+   * A mounted surface that is NOT the one on screen.
+   *
+   * `display: 'none'` rather than zero opacity or an off-screen transform, and
+   * the difference is the whole point: a transparent surface is still laid out,
+   * still hit-tested, and still reported as visible by Playwright's
+   * `isVisible()` and by `document.elementFromPoint` — which is the exact hazard
+   * `tools/verify-shell-route.mjs` documents at length about opacity. `none`
+   * removes it from layout, from painting, from hit testing and from
+   * `isVisible()`, while React keeps the component mounted and its state alive,
+   * which is the only property this needs.
+   */
+  hiddenSurface: {
+    display: 'none',
   },
   /**
    * A full-width strip pinned to the bottom, so the pill centres itself without

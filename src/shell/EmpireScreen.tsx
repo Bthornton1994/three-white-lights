@@ -1,43 +1,55 @@
 /**
- * EmpireScreen — GDD §5 Gym Empire floor, first shell slice (Session C).
+ * EmpireScreen — GDD §5 Gym Empire floor.
  *
  * ---------------------------------------------------------------------------
  * WHAT THIS SCREEN IS, SO NOBODY HAS TO RUN A MUTATION TO FIND OUT
  * ---------------------------------------------------------------------------
- * A STATIC OPENING-DAY RENDER. It calls `createEmpireState()` once, on mount,
- * and paints four of that object's fields. Nothing steps it: there is no tick,
- * no accrual, no collect, no press of any kind on this surface, and no timer.
- * Open it on day one and on day four hundred and it draws the same four
- * readings, because they are the constructor's own constants — zero Gym Bucks,
- * zero reputation, an empty roster, the opening equipment rung.
+ * A LIVE READ OF A RUNNING GYM. It opens an `EmpireFloor` when the surface is
+ * first mounted and re-reads it on a timer while it is the surface on screen.
+ * The gym behind it is advanced by `src/empire/`'s own `stepGym`, and the
+ * "since check-in" row is `src/empire/`'s own `accrueProduction` asked one gap
+ * early. Open it now and open it a minute later and it draws different numbers,
+ * because the gym is a minute older.
  *
- * THAT IS DELIBERATE AND IT IS THE GDD's CALL, NOT AN UNFINISHED EDGE. §11
- * records the working assumption this run applies: Gym Empire, Career, Arcade
- * and cut-in art stay unbuilt while the gate waits on a human. §5's loop lives
- * in `src/empire/` as pure logic with its own suite; wiring it into a screen is
- * the thing that gate holds. So this file is the door and the nameplate, and
- * the room behind it is deliberately not furnished yet.
- *
- * It also does not write Total, e1RM, streak, or the pooled wallet in
- * `progression.ts` — that seam stays deferred per CLAUDE.md Session
- * Coordination. No game math is computed here.
+ * IT USED TO BE A STATIC OPENING-DAY RENDER — `createEmpireState()` once, four
+ * constructor constants, nothing stepping it — because GDD §11 gated §5's
+ * surface work on a human ruling. That ruling landed on 2026-08-14 and
+ * authorised exactly this: wire `stepGym` and `accrueProduction` so the floor
+ * shows real advancing state. It authorised nothing else, which is why there is
+ * still no control on this screen: no collect, no recruit, no expansion, no
+ * timer skip, no purchase of any kind.
  *
  * ---------------------------------------------------------------------------
- * THE ONE THING WORTH GUARANTEEING ABOUT A SCREEN THAT DOES NOTHING
+ * THE ARITHMETIC IS NOT HERE, AND THE CLOCK IS THE ONLY PLATFORM READ
+ * ---------------------------------------------------------------------------
+ * This file computes nothing. `empireFloor.ts` holds the schedule and calls
+ * §5's functions; the two effects below hand it `Date.now()` and it hands back
+ * an object whose fields are drawn. CLAUDE.md's "never inline game math into a
+ * component" is why, and the split is checked rather than promised —
+ * `shellWiring.test.ts` traces every drawn row back to `createEmpireState()`
+ * through the import graph.
+ *
+ * It does not write Total, e1RM, streak, or the pooled wallet in
+ * `progression.ts` — that seam stays deferred per CLAUDE.md Session
+ * Coordination, and GDD §11's ruling explicitly did not open it. Gym Bucks
+ * accrued here stay here, and nothing survives a reload.
+ *
+ * ---------------------------------------------------------------------------
+ * THE ONE THING WORTH GUARANTEEING ABOUT A SCREEN OF NUMBERS
  * ---------------------------------------------------------------------------
  * EVERY READING DRAWN BELOW — every row carrying a testID and a value — IS FED
- * BY `createEmpireState()`, and CANNOT be fed by a constant typed into this
- * file or lifted out of `shellTuning.ts`.
+ * BY `createEmpireState()`, reached through `empireFloor.ts`, and CANNOT be fed
+ * by a constant typed into this file or lifted out of `shellTuning.ts`.
  * `@guarantee every-drawn-empire-reading-comes-from-the-pure-state`
  *
- * That is the whole of what separates this from a mock-up, and it is worth
- * stating precisely because nothing else can see it: the values are constructor
- * constants, so a hardcoded floor renders the SAME PIXELS and satisfies any
- * assertion on the drawn numbers. Provenance is the only discriminator there
- * is, and it is checked by a scan rather than by a reader — the tag above names
- * it, and `MUTATION_WITNESSES` carries the mutant that reddens it.
+ * That was the whole of what separated the old floor from a mock-up, and it is
+ * still worth stating now that the numbers move: a local counter incremented by
+ * the same timer would ALSO produce a rising number, on a screen with no empire
+ * call behind it, and no assertion on a rendered value could tell the two
+ * apart. Provenance is the discriminator; the tag above names it, and
+ * `MUTATION_WITNESSES` carries the mutant that reddens it.
  *
- * Tunable chrome lives in `shellTuning.ts` (copy + layout). Colour is
+ * Tunable chrome and the check-in cadence live in `shellTuning.ts`. Colour is
  * `LIFT_PALETTE`, same room as the rest of the shell. No constants in this
  * `.tsx` — `src/tuning/audit.ts` allows none.
  */
@@ -46,8 +58,13 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { LIFT_PALETTE } from '../lift/liftPalette';
-import { SHELL_COPY, SHELL_LAYOUT, type EmpirePhase } from './shellTuning';
-import { createEmpireState, type EmpireState } from '../empire/empireCore';
+import { EMPIRE_FLOOR, SHELL_COPY, SHELL_LAYOUT, type EmpirePhase } from './shellTuning';
+import {
+  advanceEmpireFloor,
+  empireFloorReadings,
+  openEmpireFloor,
+  type EmpireFloor,
+} from './empireFloor';
 
 const L = SHELL_LAYOUT;
 const C = SHELL_COPY;
@@ -55,18 +72,51 @@ const C = SHELL_COPY;
 export interface EmpireScreenProps {
   /** Reports the Empire beat so the shell can draw leave chrome. */
   readonly onPhase?: (phase: EmpirePhase) => void;
+  /**
+   * Is this the surface the player is looking at?
+   *
+   * The shell keeps this screen MOUNTED while the player is back on the daily
+   * session, so the gym they opened is still theirs when they come back — see
+   * `AppShell.tsx`'s `PERSISTENT_SURFACES`. Two things follow, and both are the
+   * reason this prop exists rather than a nicety:
+   *
+   *   - the refresh timer is not run while nobody is looking, and the floor is
+   *     brought up to date the moment it is looked at again. Nothing is lost by
+   *     that, because `advanceEmpireFloor` is a function of elapsed time rather
+   *     than of how often it was called;
+   *   - the beat is re-reported on the way back in. The shell forgets the
+   *     destination's beat on every navigation (a stale beat flashes chrome over
+   *     the wrong screen), and a screen that never un-mounted would otherwise
+   *     never say 'floor' again — leaving the player on a floor with no way off
+   *     it.
+   */
+  readonly active?: boolean;
 }
 
-export function EmpireScreen({ onPhase }: EmpireScreenProps): React.ReactElement {
-  // Opening-day gym from pure logic. Local display cache only — not server
-  // truth, and not a progression write. Held in state rather than recomputed so
-  // a re-render cannot hand the rows a second object; nothing ever replaces it,
-  // which is why there is no setter.
-  const [state] = useState<EmpireState>(() => createEmpireState());
+export function EmpireScreen({ onPhase, active = true }: EmpireScreenProps): React.ReactElement {
+  // GDD §5's gym, opened at the instant this surface first mounted. Local
+  // display cache only — not server truth, not a progression write, and not
+  // saved anywhere. `Date.now()` is the one platform read on this screen and
+  // the only thing done with it is handing it to a pure module.
+  const [floor, setFloor] = useState<EmpireFloor>(() => openEmpireFloor(Date.now()));
 
   useEffect(() => {
+    if (!active) return;
     onPhase?.('floor');
-  }, [onPhase]);
+  }, [onPhase, active]);
+
+  useEffect(() => {
+    if (!active) return undefined;
+    // Brought up to date immediately, so a floor that was off screen while the
+    // player trained does not draw a stale reading for one refresh.
+    setFloor((current) => advanceEmpireFloor(current, Date.now()));
+    const timer = setInterval(() => {
+      setFloor((current) => advanceEmpireFloor(current, Date.now()));
+    }, EMPIRE_FLOOR.REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [active]);
+
+  const readings = empireFloorReadings(floor);
 
   return (
     <View style={styles.root} testID="empire-screen">
@@ -76,18 +126,20 @@ export function EmpireScreen({ onPhase }: EmpireScreenProps): React.ReactElement
       <Text style={styles.lead}>{C.EMPIRE_LEAD}</Text>
 
       <View style={styles.stats} testID="empire-stats">
-        <Stat label={C.EMPIRE_STAT_BUCKS} value={String(state.gymBucks)} testID="empire-stat-bucks" />
-        <Stat label={C.EMPIRE_STAT_REP} value={String(state.reputation)} testID="empire-stat-rep" />
+        <Stat label={C.EMPIRE_STAT_BUCKS} value={readings.gymBucks} testID="empire-stat-bucks" />
         <Stat
-          label={C.EMPIRE_STAT_ROSTER}
-          value={String(state.roster.length)}
-          testID="empire-stat-roster"
+          label={C.EMPIRE_STAT_PENDING}
+          value={readings.pendingGymBucks}
+          testID="empire-stat-pending"
         />
+        <Stat label={C.EMPIRE_STAT_REP} value={readings.reputation} testID="empire-stat-rep" />
+        <Stat label={C.EMPIRE_STAT_ROSTER} value={readings.roster} testID="empire-stat-roster" />
         <Stat
           label={C.EMPIRE_STAT_EQUIPMENT}
-          value={state.axes.equipment}
+          value={readings.equipment}
           testID="empire-stat-equipment"
         />
+        <Stat label={C.EMPIRE_STAT_CLOCK} value={readings.clockSeconds} testID="empire-stat-clock" />
       </View>
     </View>
   );
