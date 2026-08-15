@@ -15608,6 +15608,87 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts and empireForbiddenOutput.test.ts both restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` before this row was written.',
     ]),
   }),
+  Object.freeze({
+    id: 'M70',
+    shape:
+      'THE SAME FAMILY AT AN ARRAY ELEMENT, and the reason there are five of these rather than one is the defect the round was called for: `SCREEN_BATTERY` graded the `any` short-circuit at the one position that arm handles, so a single planted position would be that mistake one level down. This is `any` as the element type of a returned list',
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_ANY_LIST: { readonly entry: readonly any[] }` holding one frozen `peek`, handed back as `shapes: PRODUCTION_ANY_LIST.entry`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED: `derives every escape site` reddens with `+ "production.ts": 1` under `returned-closure` and the site list with `+ "production.ts#accrueProduction#closure:.shapes[0].peek"`.',
+      'AND THE READINGS DISAGREE AT THE SITE: `+ "production.ts:532 readonly any[] asked=false walked=true"`. The relation certifies a `readonly any[]` as function-free data, because `any` satisfies the element position of `readonly FunctionFreeData[]`.',
+      'AND THE BRANCH RUNS, PRINTED: keys end `…,"ledger","shapes"`, `typeof shapes[0]` is `object`, `typeof shapes[0].peek` is `function`, `shapes[0].peek()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'AND THE PRE-FIX SCREEN WAS SILENT: with `SCREEN_BEFORE_E27` and the same plant, `census.byModule` passes and the site list passes at exactly the two shipped sites; the only red is the owner tally `- "member": 474 / + "member": 475`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters: instrument C `expected 1019 to be 1018`, instrument B `expected 2393570 to be 2393060`, the overflow pass `expected 523296 to be 523128`. Six failed of 95.',
+      'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>`.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M71',
+    shape:
+      "THE SAME FAMILY AT AN INDEX-SIGNATURE VALUE, which is the position M62 was about with `any` in it rather than a declared closure type. It is the position most likely to appear by accident in real code, because `{ readonly [k: string]: any }` is what a bag of untyped data gets annotated as",
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_ANY_INDEXED: { readonly entry: { readonly [slot: string]: any } }` holding one frozen `peek`, handed back as `shapes: PRODUCTION_ANY_INDEXED.entry`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED: `+ "production.ts": 1` under `returned-closure` and `+ "production.ts#accrueProduction#closure:.shapes.held.peek"`.',
+      'AND THE READINGS DISAGREE AT THE SITE: `+ "production.ts:532 { readonly [slot: string]: any; } asked=false walked=true"`. Note the relation CERTIFIES this one, where M62\'s `Readonly<Record<string, ProductionPeek>>` was refused — the value type is what the relation reads, and `any` satisfies it while `ProductionPeek` does not. So the string-index position that reading one covered for M62 it does not cover here.',
+      'AND THE BRANCH RUNS, PRINTED: `typeof shapes.held.peek` is `function`, `shapes.held.peek()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'AND THE PRE-FIX SCREEN WAS SILENT: `census.byModule` and the site list both pass under `SCREEN_BEFORE_E27`; the only red is the owner tally `- "member": 474 / + "member": 475`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters: `expected 1019 to be 1018`, `expected 2393570 to be 2393060`, `expected 523296 to be 523128`. Six failed of 95.',
+      'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>`.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M72',
+    shape:
+      'THE SAME FAMILY TWO PROPERTIES DOWN, which is the depth axis rather than the position axis: it asks whether the reading is applied at every level of the recursion or only at the one a reviewer would look at first',
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_ANY_DEEPER: { readonly entry: { readonly outer: { readonly inner: any } } }`, handed back as `shapes: PRODUCTION_ANY_DEEPER.entry`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED: `+ "production.ts": 1` under `returned-closure` and `+ "production.ts#accrueProduction#closure:.shapes.outer.inner.peek"`.',
+      'AND THE READINGS DISAGREE AT THE SITE: `+ "production.ts:534 { readonly outer: { readonly inner: any; }; } asked=false walked=true"`.',
+      'AND THE BRANCH RUNS, PRINTED: `typeof shapes.outer.inner.peek` is `function`, `shapes.outer.inner.peek()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'AND THE PRE-FIX SCREEN WAS SILENT: `census.byModule` and the site list both pass under `SCREEN_BEFORE_E27`; the only red is the owner tally `- "member": 474 / + "member": 475`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters, and two of the three are larger than M69-M71 because the plant is one level deeper: `expected 1019 to be 1018`, `expected 2393740 to be 2393060`, `expected 523352 to be 523128`. Six failed of 95.',
+      'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>`.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M73',
+    shape:
+      'THE SAME FAMILY AT A TUPLE ELEMENT, and this is the row that carries the attribution for all five, because the flip it runs is per-reading rather than per-round',
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_ANY_TUPLE: { readonly entry: readonly [number, any] }` whose first element is `EMPIRE_TUNING.PRECISION_DECIMALS` — a named constant rather than a bare number, so the magic-number audit has nothing to see — and whose second is a frozen `peek`, handed back as `shapes: PRODUCTION_ANY_TUPLE.entry`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED: `+ "production.ts": 1` under `returned-closure` and `+ "production.ts#accrueProduction#closure:.shapes[1].peek"`.',
+      'AND THE READINGS DISAGREE AT THE SITE: `+ "production.ts:535 readonly [number, any] asked=false walked=true"`.',
+      'AND THE BRANCH RUNS, PRINTED: `typeof shapes[1].peek` is `function`, `shapes[1].peek()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'THE ATTRIBUTION, RUN IN BOTH DIRECTIONS RATHER THAN INFERRED FROM THE ROUND. E27 added two readings, and "the fix catches it" says nothing about which. Driven with `{ admitsAFunction: false, synthesizedProperties: true }` this plant is SILENT — `census.byModule` and the site list both pass, the owner tally is the only red. Driven with `{ admitsAFunction: true, synthesizedProperties: false }` it is CAUGHT — `+ "production.ts": 1` and `+ "production.ts#accrueProduction#closure:.shapes[1].peek"`. So the `any` family is closed by the backwards relation reading specifically, and the synthesized-property reading has no part in it.',
+      'AND THE PRE-FIX SCREEN WITH BOTH READINGS OFF WAS SILENT, which is the third point of the same measurement: `SCREEN_BEFORE_E27`, `census.byModule` green, site list green, owner tally `- "member": 474 / + "member": 475` the only red.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters: `expected 1019 to be 1018`, `expected 2393570 to be 2393060`, `expected 523296 to be 523128`. Six failed of 95.',
+      'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` after every one of the four flips this row and M69-M72 ran.',
+    ]),
+  }),
 ]);
 
 /**
@@ -15889,7 +15970,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(69);
+    expect(PLANTED_ROUTES.length).toBe(73);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -16006,8 +16087,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // type is two characters. There is no recursion to spell, no index
     // signature to write and no cast to place, so none of the accidents the
     // earlier rows had to strip is available to be made.
-    expect(attempts).toBe(93);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(59);
+    expect(attempts).toBe(97);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(63);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
