@@ -1629,7 +1629,6 @@ const REPLACEMENTS_PREDATING_THE_RULE: readonly (readonly [string, number])[] = 
   ['a-sale-never-follows-a-settle', 1],
   ['a-slot-costs-the-same-by-every-route', 2],
   ['a-wire-in-flight-refuses-a-write', 1],
-  ['attending-a-meet-never-removes-one', 1],
   ['bar-stays-on-his-back-for-the-call', 1],
   ['completion-revalidates-against-settled-state', 1],
   ['dropping-the-doomed-burn-measures-worse', 2],
@@ -1644,7 +1643,6 @@ const REPLACEMENTS_PREDATING_THE_RULE: readonly (readonly [string, number])[] = 
   ['pr-sentence-and-pr-border-are-one-decision', 1],
   ['section-4a-denominator-is-measured', 1],
   ['settling-is-terminal', 1],
-  ['strength-never-removes-a-meet', 1],
   ['the-copy-reads-the-clients-screen', 1],
   ['the-covered-day-scan-follows-aliases', 1],
   ['the-covered-day-scan-reads-the-whole-tree', 3],
@@ -1663,7 +1661,7 @@ const REPLACEMENTS_PREDATING_THE_RULE: readonly (readonly [string, number])[] = 
  */
 const REPLACEMENT_BAR = {
   /** Rows carrying a replacement, so a third party can apply the patch. */
-  REPRODUCIBLE: 9,
+  REPRODUCIBLE: 11,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -1863,6 +1861,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     guarantee: 'strength-never-removes-a-meet',
     mutatedFile: 'src/career/eligibility.ts',
     mutated: '  return meetsQualifyingTotal(lifter.bestTotalKg, meet.qualifyingTotalKg);',
+    mutatedTo: '  return !meetsQualifyingTotal(lifter.bestTotalKg, meet.qualifyingTotalKg);',
     testFile: 'src/career/eligibility.test.ts',
     redAssertion:
       'expect(shipped.violatingPairs).toBe(0);\n'
@@ -1874,25 +1873,26 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'FAIL src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for '
       + 'fewer meets > [strength-never-removes-a-meet] every ordered pair on the grid, and the '
       + 'control beside it\n'
-      + 'AssertionError: expected 55301 to be +0 // Object.is equality',
+      + 'AssertionError: expected 55701 to be +0 // Object.is equality',
   },
   {
     guarantee: 'attending-a-meet-never-removes-one',
     mutatedFile: 'src/career/eligibility.ts',
     mutated:
       '    bestTotalKg: lifter.bestTotalKg === null ? totalKg : Math.max(lifter.bestTotalKg, totalKg),',
+    mutatedTo: '    bestTotalKg: totalKg,',
     testFile: 'src/career/eligibility.test.ts',
     redAssertion:
       'expect(shipped.violatingPairs).toBe(0);\n'
       + '    expect(shipped.worstDeficit).toBe(0);\n'
       + '\n'
       + '    // The domain. `badDays` is the count that matters most',
-    measuredOver: 'expect(shipped.pairs).toBe(322947);',
+    measuredOver: 'expect(shipped.pairs).toBe(337719);',
     observed:
       'FAIL src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies '
       + 'for fewer > [attending-a-meet-never-removes-one] every skipped meet in every seeded '
       + 'season, and the control beside it\n'
-      + 'AssertionError: expected 86 to be +0 // Object.is equality',
+      + 'AssertionError: expected 109 to be +0 // Object.is equality',
   },
   // -------------------------------------------------------------------------
   // The numeric half of the tag, witnessed from BOTH sides of its set equality,
