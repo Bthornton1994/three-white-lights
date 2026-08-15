@@ -2371,8 +2371,10 @@ The full structure after both rulings:
 | **Competitive worlds** | sync PvP | real players | the separate, harder ceiling |
 
 "Always reachable" is a design REQUIREMENT of the campaign summit, not a
-description of what the build currently does. See the interaction note below —
-it is measurably false today.
+description of what the build currently does. It was measurably false when this
+ruling landed; **the campaign side of it is now built and measured** — see the
+interaction note at the end of this section, which carries the re-taken numbers
+and the requirement they were taken against.
 
 #### OPEN — do the two worlds tiers share a qualifying total?
 
@@ -2382,10 +2384,11 @@ would need against people. Separate makes them **genuinely different
 achievements**, and lets the competitive ceiling sit higher than any solo player
 would be asked to reach.
 
-Undecided, and it is not a small knob. `src/career/careerTuning.ts` currently
-holds exactly one `QUALIFYING_TOTAL_KG.worlds` (650), and
-`careerTuning.test.ts` pins `MEET_TIER_ORDER` to a four-member list by
-`toEqual`. Either answer changes that type and that pin.
+Answered below — separate, campaign lower — and **built**. `MEET_TIER_ORDER` is
+now a five-member list with `campaign-worlds` and `competitive-worlds` as
+distinct tiers rather than one `worlds` carrying a discriminator;
+`careerTuning.ts`'s tier block holds the argument for that encoding and for what
+the order between two summits does and does not claim.
 
 It also decides which worlds the sourcing research describes. The derived table
 in `docs/research/qualifying-totals.md` sets its worlds row by **P75 of the
@@ -2475,28 +2478,75 @@ either.
 
 #### HOW THESE RULINGS INTERACT WITH WORK ALREADY MEASURED
 
-**The campaign summit's "always reachable" requirement is FALSE in the shipped
-calendar today, and it was measured before this ruling existed.** Probing
-`ATTENDANCE_SWEEP` over its 364-day window: worlds meets are **scheduled 24
-times** and are **enterable 0 times**, while lifters reach a peak total of
-**870 kg** against a 650 kg gate. Neither half of the obvious explanation holds
-— the meets exist and the lifters are strong enough. Worlds falls on day 6 of
-the season, when a lifter is still around 380 kg, and by the time they clear the
-gate that year's summit is long past.
+**The campaign summit's "always reachable" requirement WAS FALSE in the shipped
+calendar, and it is now built and measured.** The finding as first taken: over
+one 364-day season from the anchor, worlds meets are **scheduled 24 times**
+across the sweep's 24 seeded careers and **entered 0 times**, while those
+lifters go far past the 650 kg gate. Neither half of the obvious explanation
+holds — the meets exist and the lifters are strong enough. Worlds falls on day 6
+of the season, when a lifter is still around 380 kg, and by the time they clear
+the gate that year's summit is long past.
 
-Before this ruling that was a **vacuity finding**: a sweep measuring a property
-across the tier ladder with an empty domain at the top. After it, it is also a
-**design violation** — the campaign summit is required to be always reachable
-and is currently reachable never. The measurement did not change; what it means
+Before the second ruling that was a **vacuity finding**: a sweep measuring a
+property across the tier ladder with an empty domain at the top. After it, it
+was also a **design violation**. The measurement did not change; what it meant
 did.
 
-Nationals is enterable 14 times of 96 scheduled: thin rather than empty, and now
-that nationals is a sync tier, that number describes something different again.
+#### BUILT AND MEASURED — the campaign summit's threshold, calendar and reach
 
-**Held rather than fixed**, because the fix depends on both open questions above.
-Extending the simulation past one year, moving the summit later in the season,
-or giving the campaign summit its own cadence are all reasonable, and which is
-right depends on whether the two worlds tiers share a threshold and a calendar.
+The tier ladder is five members. Campaign worlds asks **600 kg** — the midpoint
+of nationals' 550 and competitive worlds' 650, chosen by a stated rule rather
+than by a percentile, and **provisional**: it is a game-feel value nobody has
+playtested. Competitive worlds keeps 650, which the Q1 ruling assigns to it.
+Campaign worlds runs **semi-annually** at a phase late in the season;
+competitive worlds keeps its annual series.
+
+**The reachability requirement, in the numbers it was derived to.** A "campaign
+arc" is the greedy career the sweep already simulates — every meet the lifter is
+eligible for, taken — run from its own signup day for two calendar periods. The
+sweep is 24 seeds x 8 signup days = **192 arcs**, and the requirement is:
+
+- **R1, an absolute:** every arc enters a campaign summit. Measured **192 of
+  192**.
+- **R2b, the clause that bites:** every signup day, taken on its own, gets most
+  of its 24 arcs to a summit inside their first year. Worst signup day **19 of
+  24**.
+- **R2, pacing:** **176 of 192** arcs reach one inside their first year, median
+  wait **198 days** from signup.
+
+**Two findings from that measurement are worth recording in the design document,
+because both correct something this section previously implied.**
+
+First, **R1 stated over the whole population is nearly vacuous**: the unfixed
+calendar takes **191** of the same 192 arcs to a summit, because an arc running
+two calendar periods eventually meets an annual series whatever its phase. What
+separates a repaired calendar from a broken one is the per-signup-day form —
+19 of 24 against **0 of 24**. "Always reachable" is a claim about every player,
+and an average hides exactly the failure it was written about.
+
+Second, **the cadence is the reachability fix and the calendar position is not**,
+which is the opposite of what "a threshold *and* a calendar position" invites a
+reader to assume. Measured on all four corners of the two-knob square: at the
+shipped semi-annual cadence the OLD day-six phase still reaches 192 of 192, worst
+signup day 18. What the phase buys is legibility — at day six the first summit a
+new lifter is ever shown is one **no** seed can enter, 0 of 24 against 18 of 24.
+And the threshold was never the cause at all: every 2.5 kg candidate in the
+admissible band reaches within one arc of the others.
+
+Both unfixed calendars stay runnable as controls with their numbers pinned, and
+they fail at **opposite ends of the season** — the old phase locks out the player
+who signs up on the anchor, the new phase with an annual cadence locks out the
+player who signs up late.
+
+**Nationals is thin, and is reported as thin rather than quietly folded in.**
+Over the campaign sweep's arcs it is **entered 1328 times of 1536 offered**, or
+86%. On the one-year-from-the-anchor window the original finding was taken on it
+is **60 of 96**. Neither number is a health claim about the tier: nationals is a
+synchronous PvP tier now, and what a simulated solo lifter does with it says
+nothing about what a real field will.
+
+**Still held:** everything on the synchronous side. Regional and nationals are
+sync and region-pooled; the campaign work above builds none of that.
 
 ---
 
