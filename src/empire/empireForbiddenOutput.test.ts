@@ -3464,6 +3464,12 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
   // builder remembering to.
   'FUNCTION_FREE_DATA_FILE',
   'DIAGNOSTIC_CHANNEL_CENSUS',
+  // The family sweep's ban on its OWN reach snippets. An expectation and not an
+  // input: it is not driven against any subject, it is applied to the rows this
+  // file writes, so a size pin would say nothing. It is filed here for the same
+  // reason `FUNCTION_FREE_DATA_FILE` is — the scan requires every labelled list
+  // at module scope to be classified, which is the guard conscripting new code.
+  'REACH_BANS',
   // The screen's truth column. An expectation and not an input: every row is a
   // verdict somebody wrote down for a shape, and the shapes themselves live in
   // `SCREEN_BATTERY_SOURCE` rather than here.
@@ -3552,7 +3558,7 @@ const DOMAIN_CENSUS = Object.freeze({
   ALIASES: 7,
   NON_DOMAIN_LISTS: 1,
   LITERAL_AXES: 8,
-  LABELLED_LISTS: 17,
+  LABELLED_LISTS: 18,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
@@ -16172,6 +16178,11 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   // nothing. A ladder changing owner is exactly the edit it is written for.
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#boundedWalk<memberTypeScreen#type', arms: 3, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#functionFreeDataIn#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  // The family sweep's subject finder. One arm, because the three node kinds it
+  // accepts are `||`ed inside a single `if` rather than written as three, and
+  // its continuation recurses on the same binding — so it is a `next-statement`
+  // terminal that DOES read the subject, and it is not on the blind list.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#findSubject<candidateReading#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
   // The screen's own battery and the second reading of the depth limit, both
   // added this round. `deepestFrom`'s ladder is `dispatch: false` because its
   // two arms are `type.isUnionOrIntersection()` and `checker.isArrayType(...)`,
@@ -16364,11 +16375,11 @@ const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
   /** Rows in `DECLARED_HANDLER_ROWS`. Every one a tally or an enum read. */
   DISCRIMINANT_LOOKUPS: 8,
-  CHAINS: 88,
-  DISPATCH: 54,
+  CHAINS: 89,
+  DISPATCH: 55,
   BY_TERMINAL: Object.freeze({
     else: 8,
-    'next-statement': 66,
+    'next-statement': 67,
     loop: 12,
     enclosing: 2,
     /**
