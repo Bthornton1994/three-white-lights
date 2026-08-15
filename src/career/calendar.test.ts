@@ -69,13 +69,13 @@ describe('window boundaries', () => {
 
   it('an inverted window is empty rather than an error', () => {
     expect(scheduledMeets('meridian', addDays(ANCHOR, 10), ANCHOR)).toEqual([]);
-    expect(meetDaysForTier('worlds', addDays(ANCHOR, 10), ANCHOR)).toEqual([]);
+    expect(meetDaysForTier('competitive-worlds', addDays(ANCHOR, 10), ANCHOR)).toEqual([]);
   });
 
   it('a window that closes before a series opens is empty', () => {
     // The worlds series opens six days after the anchor.
-    expect(meetDaysForTier('worlds', ANCHOR, addDays(ANCHOR, 5))).toEqual([]);
-    expect(meetDaysForTier('worlds', ANCHOR, addDays(ANCHOR, 6))).toEqual([addDays(ANCHOR, 6)]);
+    expect(meetDaysForTier('competitive-worlds', ANCHOR, addDays(ANCHOR, 5))).toEqual([]);
+    expect(meetDaysForTier('competitive-worlds', ANCHOR, addDays(ANCHOR, 6))).toEqual([addDays(ANCHOR, 6)]);
   });
 
   it('a meet is on the calendar on the day it is held', () => {
@@ -92,9 +92,16 @@ describe('the shape of a year', () => {
     // 53 weekly rather than 52: the window is inclusive at both ends and opens
     // on a local meet day. The fortnightly series opens three days in and so
     // gets 26 of its own occurrences rather than a 27th. Nationals are
-    // quarterly and worlds annual, so one each per 13 and 52 weeks.
-    expect(counts).toEqual([53, 26, 4, 1]);
-    expect(year).toHaveLength(84);
+    // quarterly, the campaign summit semi-annual and the competitive one
+    // annual, so one each per 13, 26 and 52 weeks.
+    expect(counts).toEqual([53, 26, 4, 2, 1]);
+    expect(year).toHaveLength(86);
+    // A YEAR HOLDS TWO CAMPAIGN SUMMITS AND ONE COMPETITIVE ONE, which is the
+    // scarcity half of GDD §6.6's "always reachable". The summit being twice a
+    // year is what bounds the wait for a lifter who clears its gate at a bad
+    // moment; it staying at two of eighty-six is what keeps it a summit.
+    const summits = counts[3] as number;
+    expect(summits / year.length).toBeLessThan(0.05);
   });
 
   it('is sorted by day', () => {
@@ -132,15 +139,16 @@ describe('a decade', () => {
 
   it('never puts two of one federation’s tiers on the same day', () => {
     // The census, not a rule — see `collidingMeetDays`. It is zero because
-    // every cadence is a whole number of weeks and the four phases differ
+    // every cadence is a whole number of weeks and the five phases differ
     // modulo seven, which careerTuning.test.ts checks as arithmetic; this
     // checks that the generator actually produces what that argument implies.
     // Decomposed rather than taken on trust: 3640 inclusive days hold 521
-    // weekly, 260 fortnightly, 40 quarterly and 10 annual meets.
+    // weekly, 260 fortnightly, 40 quarterly, 20 semi-annual and 10 annual
+    // meets.
     expect(MEET_TIER_ORDER.map((tier) => decade.filter((meet) => meet.tier === tier).length)).toEqual(
-      [521, 260, 40, 10],
+      [521, 260, 40, 20, 10],
     );
-    expect(decade.length).toBe(831);
+    expect(decade.length).toBe(851);
     expect(collidingMeetDays('meridian', ANCHOR, addDays(ANCHOR, DECADE_DAYS))).toEqual([]);
   });
 
@@ -156,8 +164,8 @@ describe('a decade', () => {
     }
     expect([...weekdays.keys()].sort()).toEqual([...MEET_TIER_ORDER].sort());
     const perTier = MEET_TIER_ORDER.map((tier) => [...(weekdays.get(tier) ?? new Set())]);
-    expect(perTier).toEqual([[6], [2], [4], [5]]);
-    // Four tiers, four different weekdays, which is the same fact the collision
+    expect(perTier).toEqual([[6], [2], [4], [1], [5]]);
+    // Five tiers, five different weekdays, which is the same fact the collision
     // census reports from the other side.
     expect(new Set(perTier.flat()).size).toBe(MEET_TIER_ORDER.length);
     // February 29th fell inside this window twice.
@@ -168,7 +176,7 @@ describe('a decade', () => {
 describe('upcoming meets', () => {
   it('starts at today and runs to the horizon', () => {
     const meets = upcomingMeets('meridian', ANCHOR);
-    expect(meets).toHaveLength(84);
+    expect(meets).toHaveLength(86);
     expect(meets[0]?.day).toBe(ANCHOR);
     expect((meets[meets.length - 1] as { day: number }).day).toBeLessThanOrEqual(
       addDays(ANCHOR, YEAR),
@@ -199,8 +207,8 @@ describe('the next meet of a tier', () => {
   });
 
   it('is null when the horizon given holds none', () => {
-    expect(nextMeetOfTier('meridian', 'worlds', ANCHOR, 5)).toBeNull();
-    expect(nextMeetOfTier('meridian', 'worlds', ANCHOR, 6)).not.toBeNull();
+    expect(nextMeetOfTier('meridian', 'competitive-worlds', ANCHOR, 5)).toBeNull();
+    expect(nextMeetOfTier('meridian', 'competitive-worlds', ANCHOR, 6)).not.toBeNull();
   });
 });
 

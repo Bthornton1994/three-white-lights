@@ -58,8 +58,26 @@ describe('rulesets', () => {
 
 describe('the tier ladder', () => {
   it('indexes lowest first', () => {
-    expect(MEET_TIER_ORDER.map((tier) => tierIndex(tier))).toEqual([0, 1, 2, 3]);
+    expect(MEET_TIER_ORDER.map((tier) => tierIndex(tier))).toEqual([0, 1, 2, 3, 4]);
     expect(tiersLowestFirst()).toEqual([...MEET_TIER_ORDER]);
+  });
+
+  it('orders the two summits by their gate and by nothing else', () => {
+    // WHAT `tierIndex` DOES AND DOES NOT CLAIM once the summit is two tiers.
+    // GDD §6.6 makes campaign worlds and competitive worlds two separate
+    // achievements, not two rungs of one climb, so a reader is entitled to ask
+    // why one has a lower index at all. The answer, from `careerTuning.ts`'s
+    // tier block: the order is an order on the QUALIFYING GATE, and the ruling
+    // puts the campaign gate lower.
+    expect(tierIndex('campaign-worlds')).toBeLessThan(tierIndex('competitive-worlds'));
+    // And it is not a prerequisite chain. The check that says so is that
+    // eligibility never reads the order: a lifter carrying only a campaign
+    // summit's total qualifies for neither more nor less than the same total
+    // earned anywhere else, because `qualifiesFor` compares against the meet's
+    // own bar. `eligibility.test.ts`'s axis A drives that over the whole
+    // strength grid; here it is the ladder's own statement of it.
+    expect(tiersLowestFirst().indexOf('campaign-worlds')).toBe(3);
+    expect(tiersLowestFirst().indexOf('competitive-worlds')).toBe(4);
   });
 
   it('throws on a tier that is not on it', () => {

@@ -223,17 +223,35 @@ export const CAREER_TUNING = Object.freeze({
    *     career arc — reachable by a solo player who plays the campaign well, on
    *     the campaign's own timeline". `CAMPAIGN_SUMMIT_SWEEP` in
    *     `careerSweep.ts` holds the requirement it was derived to, the
-   *     distribution it was read off, and the controls the measurement is
-   *     measured against.
+   *     distribution it was read off, and the controls it is measured against.
+   *
+   * AND THE MEASUREMENT RULED THIS NUMBER OUT AS THE CAUSE RATHER THAN CHOOSING
+   * IT, which is the honest account of where 600 came from and is worth more
+   * than a claim that the sweep picked it. The admissible band is (550, 650)
+   * exclusive — §6.6 rules the campaign total lower than competitive worlds',
+   * and `careerTuning.test.ts` pins the gates strictly increasing along the
+   * ladder, so it must also sit above nationals'. Every 2.5 kg candidate in that
+   * band was measured on the campaign sweep and reachability barely moves: 575,
+   * 600 and 625 reach a summit inside the first year on 178, 176 and 175 of 192
+   * simulated arcs, at median waits of 198, 198 and 221 days. THE GATE IS NOT
+   * WHAT MADE THE SUMMIT UNREACHABLE. The calendar was, and the same sweep
+   * separates the two calendar knobs that fixed it.
+   *
+   * So the number inside the band is set by a stated rule rather than by a
+   * measurement that cannot discriminate: 600 is the MIDPOINT of nationals' 550
+   * and competitive worlds' 650, so the campaign summit sits as far above the
+   * rung below it as it sits below the ceiling. `careerTuning.test.ts` asserts
+   * the midpoint rather than the literal, so a tuner who moves either neighbour
+   * is told that this number has stopped being derived from anything.
    *
    * BOTH ARE GAME-FEEL VALUES AND 600 IS PROVISIONAL. Nobody has played a
-   * career. What the measurement establishes is that the shipped pair (this
-   * number, and the campaign summit's cadence and phase below) satisfies a
-   * stated requirement on the simulated population; it does not establish that
-   * the requirement is the one a playtester will want, and it cannot. The three
-   * knobs move together — raising the gate without moving the calendar is what
-   * produced the unreachable summit this piece exists to fix — and the sweep
-   * reddens on any of the three moving, so a tuner turning one is told.
+   * career. What the measurement establishes is that the shipped triple — this
+   * number and the campaign summit's cadence and phase below — satisfies a
+   * requirement stated in numbers before the knobs were picked; it does not
+   * establish that the requirement is the one a playtester will want, and it
+   * cannot. The three knobs move together — a gate raised without the calendar
+   * moving is exactly what produced the unreachable summit this piece exists to
+   * fix — and the sweep reddens on any of the three moving.
    */
   QUALIFYING_TOTAL_KG: Object.freeze({
     local: null,

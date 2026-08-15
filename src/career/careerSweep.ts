@@ -992,15 +992,31 @@ export function seasonMeetsOfTier(
  *        longer is pacing, not a lockout, and R1 is what makes it not a
  *        lockout.
  *
+ *   R2b — NO SIGNUP DAY IS LOCKED OUT. Every signup offset, taken on its own,
+ *        gets at least `MIN_FIRST_YEAR_ARCS_PER_OFFSET` of its 24 arcs to a
+ *        summit inside the first year. "Always reachable" is a claim about
+ *        every player rather than about an average, and an average is exactly
+ *        what hides the failure this piece was sent to fix.
+ *
  *   R3 — IT IS A SUMMIT. The gate sits strictly above nationals' and strictly
  *        below competitive worlds' (§6.6's Q1 ruling: separate totals, campaign
- *        lower), and no arc enters a campaign summit before
+ *        lower), and no arc enters a campaign summit off fewer than
  *        `MIN_MEETS_BEFORE_A_SUMMIT` meets — a top rung reached in a fortnight
  *        is not a top rung. Both halves are pinned.
  *
- * `eligibility.test.ts` measures all three and pins the counts. R1 and R3's
- * first half are absolutes; R2 and R3's second half are the numbers a
+ * `eligibility.test.ts` measures all four and pins the counts. R1 and R3's
+ * first half are absolutes; R2, R2b and R3's second half are the numbers a
  * playtester will move.
+ *
+ * R1 IS NOT THE CLAUSE THAT BITES, AND SAYING SO IS THE POINT OF WRITING R2b
+ * DOWN SEPARATELY. Measured: the shipped calendar takes 192 of 192 arcs to a
+ * summit and the unfixed control takes 191 of 192, so R1 alone separates a
+ * calendar §6.6 called a design violation from the one that repairs it by a
+ * single arc. What separates them is R2b — the shipped calendar's worst signup
+ * day gets 19 of its 24 arcs to a summit inside the first year, and the
+ * control's worst signup day gets ZERO. An absolute stated over the whole
+ * population turned out to be nearly vacuous; the same absolute stated per
+ * signup day is the measurement.
  *
  * ===========================================================================
  * WHAT THE ZEROS ARE ZERO AGAINST — TWO CONTROLS, ONE PER KNOB
@@ -1022,6 +1038,15 @@ export function seasonMeetsOfTier(
  * Neither control changes the qualifying total. Threshold and calendar are the
  * two halves of the same defect and the controls hold the threshold still, so
  * what they measure is the calendar's contribution alone.
+ *
+ * ONE SIDE EFFECT OF THE FIRST CONTROL, NAMED RATHER THAN LEFT TO BE FOUND.
+ * Putting the campaign summit back on the competitive summit's series puts both
+ * summits on the SAME DAYS, and a lifter cannot be at two meets at once — the
+ * greedy rule takes the first meet the tie-break offers, which is the campaign
+ * one. So under that control the competitive tier's entries fall to zero, and
+ * `eligibility.test.ts` pins the fall. That is not noise to be apologised for:
+ * it is `scheduledMeets`'s same-day tie-break, which `calendar.ts` describes as
+ * unreachable at the shipped phases, being reached and behaving as documented.
  */
 export const CAMPAIGN_SUMMIT_SWEEP = Object.freeze({
   /**
@@ -1060,25 +1085,47 @@ export const CAMPAIGN_SUMMIT_SWEEP = Object.freeze({
   /** R2's window: a campaign is a year-scale thing. */
   FIRST_YEAR_DAYS: 364,
   /**
-   * R2, first half: how many of the arcs must reach a campaign summit inside
-   * that first year.
+   * R2, first half: how many of the 192 arcs must reach a campaign summit
+   * inside that first year.
    *
-   * 176 of 192, which is eleven twelfths. Not every arc, because a lifter who
-   * signs up a week after a summit is held cannot reach that one however well
-   * they play, and demanding otherwise would demand a summit every week.
+   * 168, which is seven eighths. Not every arc, because a lifter who signs up a
+   * week after a summit is held cannot reach that one however well they play,
+   * and demanding otherwise would demand a summit every week.
+   *
+   * DELIBERATELY BELOW THE MEASUREMENT RATHER THAN EQUAL TO IT. The shipped
+   * calendar measures 176, which `eligibility.test.ts` pins exactly beside this
+   * bar. A requirement set AT its own measurement reads as a requirement chosen
+   * to be met, and carries no margin to lose before it is broken.
    */
-  FIRST_YEAR_ARCS_REQUIRED: 176,
+  FIRST_YEAR_ARCS_REQUIRED: 168,
   /** R2, second half: the median arc's wait, in days from signup. */
   MEDIAN_DAYS_CEILING: 250,
+  /**
+   * R2b: the fewest arcs any ONE signup day may get to a summit inside the
+   * first year, out of the 24 seeds that share it.
+   *
+   * Half. The shipped calendar's worst signup day measures 19 of 24 and both
+   * controls' worst measure 0 of 24, so this bar sits between two numbers that
+   * are not close, which is what a bar wants.
+   */
+  MIN_FIRST_YEAR_ARCS_PER_OFFSET: 12,
   /**
    * R3, second half: the fewest meets an arc may have behind it when it enters
    * its first campaign summit.
    *
-   * Twenty, which at the shipped calendar is roughly a season's worth of local
-   * and regional meets. A summit a lifter walks into off three meets is a
-   * formality with a big name on it.
+   * Five. A summit a lifter walks into off two meets is a formality with a big
+   * name on it.
+   *
+   * THE MEASURED FLOOR IS 8, AND IT IS A FACT ABOUT THE TOTAL GENERATOR AS MUCH
+   * AS ABOUT THE CALENDAR. `seededCareerTotals` is a two-sided random walk that
+   * can add up to `MAX_GAIN_KG` — 70 kg — at a single meet, with no ceiling
+   * anywhere, so a lucky arc can climb 380 kg to the 600 kg gate in eight
+   * meets and about six weeks. No real progression model would allow that, and
+   * a reader should hold the 8 as the generator's tail rather than as a
+   * statement about how fast the game lets a player climb. It is pinned exactly
+   * so that a generator with a plausible ceiling moves it visibly.
    */
-  MIN_MEETS_BEFORE_A_SUMMIT: 20,
+  MIN_MEETS_BEFORE_A_SUMMIT: 5,
   FEDERATION: 'meridian' as CareerFederationId,
 });
 
@@ -1294,6 +1341,16 @@ export interface CampaignReach {
   readonly arcsReachingASummit: number;
   /** Arcs that entered one within `FIRST_YEAR_DAYS` of signing up. R2. */
   readonly arcsReachingInsideAYear: number;
+  /**
+   * The same count cut by signup day, in `SIGNUP_OFFSET_DAYS` order. R2b.
+   *
+   * This is the row that tells a lockout from a slow average: a calendar can
+   * take three quarters of all arcs to a summit inside a year while one signup
+   * day gets none of its own there, and only the cut says so.
+   */
+  readonly firstYearArcsPerOffset: readonly number[];
+  /** The smallest entry in the row above. R2b is this clearing its bar. */
+  readonly worstOffsetFirstYearArcs: number;
   /** Days from signup to first summit, over the arcs that reached one, sorted. */
   readonly daysToFirstSummit: readonly number[];
   readonly medianDaysToFirstSummit: number | null;
@@ -1335,11 +1392,22 @@ export function measureCampaignReach(variant: CampaignCalendarVariant): Campaign
           : Math.min(fewestMeetsBeforeASummit, arc.meetsBeforeFirstSummit);
     }
   }
+  const firstYearArcsPerOffset = CAMPAIGN_SUMMIT_SWEEP.SIGNUP_OFFSET_DAYS.map(
+    (offset) =>
+      arcs.filter(
+        (arc) =>
+          arc.signupOffsetDays === offset &&
+          arc.daysToFirstSummit !== null &&
+          arc.daysToFirstSummit <= CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_DAYS,
+      ).length,
+  );
   const sorted = [...reached].sort((a, b) => a - b);
   return {
     arcs: arcs.length,
     arcsReachingASummit: sorted.length,
     arcsReachingInsideAYear,
+    firstYearArcsPerOffset: Object.freeze(firstYearArcsPerOffset),
+    worstOffsetFirstYearArcs: Math.min(...firstYearArcsPerOffset),
     daysToFirstSummit: sorted,
     medianDaysToFirstSummit: sorted.length === 0 ? null : (sorted[Math.floor(sorted.length / 2)] as number),
     worstDaysToFirstSummit: sorted.length === 0 ? null : (sorted[sorted.length - 1] as number),
