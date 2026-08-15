@@ -1,0 +1,594 @@
+/**
+ * testPathRefs.test.ts — the guard that a named test file is a real test file.
+ *
+ * ===========================================================================
+ * WHY THIS LIVES IN `tools/` AND NOT IN `src/`
+ * ===========================================================================
+ * Its subject is the COMMAND LAYER, not a game module. The defect is that
+ * `npx vitest run <a> <b>` silently ignores a filter that matches nothing when
+ * another filter matches something, so a standing verification command keeps
+ * printing `passed` while covering less than it names. The things that hold
+ * those commands are `tools/evidence.mjs`, `tools/testBudget.mjs`,
+ * `tools/watchdog.mjs`, `docs/GDD.md` and `CLAUDE.md` — no `src/` module owns
+ * the question, and putting the check under one would make it look like that
+ * module's business.
+ *
+ * `vitest.config.ts` already includes `tools/` for exactly this reason, and
+ * says so: `tools/verifyMarker.test.ts` drives a tool as a subprocess so that
+ * the interrupted-verification marker is checked by the same command that
+ * checks everything else, "instead of by a script somebody remembers to run."
+ * Same argument, one instrument over.
+ *
+ * ===========================================================================
+ * THIS FILE IS INSIDE ITS OWN SUBJECT, AND THAT SHAPED EVERY FIXTURE BELOW
+ * ===========================================================================
+ * The scan reads the tracked tree, and this file is tracked. So a fixture path
+ * written out as a literal here is a REFERENCE, and a fixture path that names
+ * nothing is a FINDING — against this file. The first draft learned that by
+ * going red 18 times against itself.
+ *
+ * The fix is not an exemption. Two rules, applied everywhere below, and both
+ * make the tests read better rather than worse:
+ *
+ *   - A fixture that must RESOLVE is a real path from this repository, so the
+ *     fixture and the tree cannot disagree.
+ *   - A fixture that must NOT resolve is DERIVED from a real one — "the same
+ *     path with its first segment shaved", "the same path in a different
+ *     directory" — which says what the case is about far better than a
+ *     hand-typed near-miss, or it is assembled from constants (`ABSENT_REF`,
+ *     `FIXTURE_REF`) so no contiguous path-shaped string appears in the source.
+ *
+ * `this file writes no reference it cannot back` pins that discipline: inline
+ * any of those derivations and it goes red one line before the whole-tree
+ * check does.
+ *
+ * ===========================================================================
+ * WHAT IS PINNED HERE AND WHY IT IS PINNED AS A COUNT
+ * ===========================================================================
+ * `PINNED` below holds equalities, not bounds. The reason is the failure this
+ * whole check is an instance of: an empty domain passes silently. If a refactor
+ * narrows the walk, breaks the pattern, or points the scan at nothing, an
+ * assertion that "no reference is unresolved" is TRUE OF NOTHING and green.
+ * `toBeGreaterThan(0)` would catch the total collapse and miss the scan quietly
+ * losing four fifths of the tree, which is the shape that actually happens.
+ *
+ * THE COST, STATED PLAINLY: `PINNED.REFERENCES` moves whenever anybody adds or
+ * removes a mention of a test path anywhere in the tracked tree, including in
+ * `CLAUDE.md` and `docs/GDD.md` prose. That is friction, and it is friction
+ * this repository already charges twice for the same reason —
+ * `REVIEWABLE_CITATIONS` in `src/licensing/realIp.ts` pins exact occurrence
+ * counts of every real name in those two documents, and
+ * `tools/claudeIndex.test.ts` pins the index against the live headings. Every
+ * failure message prints the number it measured, so the repair is one token.
+ *
+ * ===========================================================================
+ * DRIVEN BOTH WAYS, AND WHERE EACH HALF IS
+ * ===========================================================================
+ * A guard nobody has watched fail is not evidence. Every predicate below has a
+ * case that makes it fire:
+ *
+ *   - The WHOLE PIPELINE — git, read, match, resolve, report — is driven in
+ *     throwaway repositories under `driven both ways`: once with a reference
+ *     that resolves and once with one that does not, plus both false-positive
+ *     modes, the excluded root and the binary rule, each with its own control
+ *     showing the silence is the rule doing something.
+ *   - The PURE PREDICATES are driven over synthetic sources.
+ *   - The REAL TREE is measured, and its counts are pinned.
+ *
+ * `tools/` is outside the `@guarantee` scanner's reach — that scan is rooted at
+ * `src/` — so nothing here can carry a resolvable tag or a `MUTATION_WITNESSES`
+ * entry. Every claim above names the test that reddens instead, which is the
+ * honest substitute and not a claim of equivalent coverage.
+ */
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+import { afterAll, describe, expect, it } from 'vitest';
+
+import { NOT_WALKED_HIDES_TRACKED } from '../src/licensing/realIp';
+import {
+  TEST_PATH_REFS,
+  auditSources,
+  auditTestPathReferences,
+  describeOccurrences,
+  inScanScope,
+  isSyntheticFixture,
+  normalizeReference,
+  referencesIn,
+  resolvesAgainst,
+  trackedFiles,
+} from './testPathRefs.mjs';
+
+const REPO_ROOT = path.resolve(import.meta.dirname, '..');
+
+/**
+ * WHAT THE REAL TREE MEASURES TODAY.
+ *
+ * Every one of these is an equality on purpose; see the header. Each moves for
+ * a different, named reason, so a red here says which thing changed.
+ */
+const PINNED = Object.freeze({
+  /**
+   * Path-shaped `*.test.ts` references in the tracked tree, after the extension
+   * guard. MOVES WHENEVER ANYBODY ADDS OR REMOVES A MENTION of a test path —
+   * in code, in a comment, in `CLAUDE.md` or in `docs/GDD.md`. It is the
+   * non-vacuity guard: if the scan ever stops seeing the tree, this is what
+   * says so instead of "no unresolved references" passing over nothing.
+   */
+  REFERENCES: 323,
+
+  /**
+   * FALSE-POSITIVE MODE 1, counted. Occurrences dropped because the match ran
+   * on into a longer extension. Delete the guard in `referencesIn` and these
+   * stop being dropped and start being findings, so this number and the main
+   * assertion redden together.
+   */
+  CLIPPED: 8,
+
+  /**
+   * The distinct things the clipping guard dropped, WRITTEN IN THEIR REAL
+   * EXTENSION. Pinning the clipped form instead would mean writing a name
+   * nobody gave a file, which this scan would then report — see the header.
+   */
+  CLIPPED_SOURCES: Object.freeze(['src/card/seed.test.tsx', 'src/game/streak.test.tsx']),
+
+  /**
+   * FALSE-POSITIVE MODE 2, counted. References under
+   * `TEST_PATH_REFS.SYNTHETIC_PREFIX`, which are fixtures rather than files.
+   */
+  SYNTHETIC: 4,
+
+  /**
+   * AND WHERE THEY ARE ALLOWED TO BE, which is what stops the exemption
+   * widening quietly. A fixture-prefixed reference from a third file reddens
+   * this, and a reviewer decides whether it is a fixture or a mistake.
+   *
+   * `guaranteeTags.test.ts` holds three, in the fake `MutationWitness` rows it
+   * drives its own schema with. `testPathRefs.mjs` holds one, in the verbatim
+   * `npx vitest run` command its header quotes as the measurement of the defect
+   * — a command that has to name something absent to demonstrate anything.
+   */
+  SYNTHETIC_FILES: Object.freeze(['src/game/guaranteeTags.test.ts', 'tools/testPathRefs.mjs']),
+
+  /** Tracked files whose bytes were read. */
+  SCANNED_FILES: 284,
+
+  /** Tracked `*.test.ts` files — the set every reference must land in. */
+  TEST_FILES: 88,
+});
+
+/**
+ * REAL PATHS FROM THIS REPOSITORY, used wherever a fixture must resolve.
+ *
+ * Written out rather than derived, deliberately: they are references like any
+ * other, so if one of these files is renamed this file is among the things that
+ * goes red, which is the check working on its own author.
+ */
+const AUDIT = 'src/tuning/audit.test.ts';
+const WIRING = 'src/session/sessionWiring.test.ts';
+const STREAK = 'src/game/streak.test.ts';
+
+/**
+ * A path-shaped reference to a file that is NOT THERE, assembled from parts so
+ * that no contiguous match exists in this source. See the header.
+ */
+const ABSENT_REF = ['src', 'game', `noSuchModule${TEST_PATH_REFS.SUFFIX}`].join('/');
+
+/** A fixture path, exempt by prefix — the affordance false-positive mode 2 is for. */
+const FIXTURE_REF = `${TEST_PATH_REFS.SYNTHETIC_PREFIX}fixture${TEST_PATH_REFS.SUFFIX}`;
+
+const sandboxes: string[] = [];
+afterAll(() => {
+  for (const dir of sandboxes) rmSync(dir, { recursive: true, force: true });
+});
+
+function gitIn(repo: string, args: readonly string[]): string {
+  return execFileSync('git', [...args], {
+    cwd: repo,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      GIT_AUTHOR_NAME: 'test',
+      GIT_AUTHOR_EMAIL: 't@t',
+      GIT_COMMITTER_NAME: 'test',
+      GIT_COMMITTER_EMAIL: 't@t',
+    },
+  });
+}
+
+/** A throwaway repository whose contents the caller states file by file. */
+function sandbox(prefix: string, files: Readonly<Record<string, string>>): string {
+  const repo = mkdtempSync(path.join(os.tmpdir(), prefix));
+  sandboxes.push(repo);
+  gitIn(repo, ['init', '--quiet']);
+  for (const [rel, text] of Object.entries(files)) {
+    const full = path.join(repo, rel);
+    mkdirSync(path.dirname(full), { recursive: true });
+    writeFileSync(full, text);
+  }
+  gitIn(repo, ['add', '-A']);
+  gitIn(repo, ['commit', '--quiet', '-m', 'base']);
+  return repo;
+}
+
+describe('the tracked tree names only test files that exist', () => {
+  /**
+   * Taken inside the tests rather than at collection time. A throw during
+   * collection reports `Tests  no tests` while the FILE goes red, which is
+   * indistinguishable from a caught mutant to anything reading the colour —
+   * CLAUDE.md records that exact shape as a hole in the witness bar. Here it
+   * would mean every assertion below silently stopped running.
+   */
+  let cached: ReturnType<typeof auditTestPathReferences> | null = null;
+  const tree = (): ReturnType<typeof auditTestPathReferences> =>
+    (cached ??= auditTestPathReferences(REPO_ROOT));
+
+  it('reports no reference that points at nothing', () => {
+    const audit = tree();
+    expect(
+      audit.unresolved,
+      `these ${audit.unresolved.length} reference(s) name a test file that is not in the tracked tree.\n` +
+        'Run alone, vitest exits 1 on each; run beside a path that exists, it reports "passed" and skips them.\n' +
+        `${describeOccurrences(audit.unresolved)}\n` +
+        `(scanned ${audit.scannedFiles} files, ${audit.references.length} references, ` +
+        `${audit.testFiles.length} test files)`,
+    ).toEqual([]);
+  });
+
+  it('saw the whole tree, counted, so an empty domain cannot pass as a clean one', () => {
+    const audit = tree();
+    // Equalities, not bounds. See the header for why, and for what moves each.
+    expect(
+      audit.references.length,
+      `path-shaped references moved from ${PINNED.REFERENCES} to ${audit.references.length}. ` +
+        'Somebody added or removed a mention of a test path; update PINNED.REFERENCES. ' +
+        'If it moved a long way DOWN, check the walk before believing it.',
+    ).toBe(PINNED.REFERENCES);
+    expect(
+      audit.scannedFiles,
+      `tracked files read moved from ${PINNED.SCANNED_FILES} to ${audit.scannedFiles}`,
+    ).toBe(PINNED.SCANNED_FILES);
+    expect(
+      audit.testFiles.length,
+      `tracked test files moved from ${PINNED.TEST_FILES} to ${audit.testFiles.length}`,
+    ).toBe(PINNED.TEST_FILES);
+  });
+
+  it('has a live subject for the extension guard, and it is the .test.tsx mentions', () => {
+    const audit = tree();
+    // FALSE-POSITIVE MODE 1 on the real tree. `src/card/seed.test.tsx` is a
+    // plant `progression.test.ts` describes at length; a naive pattern reads a
+    // shorter name out of the middle of it and reports a file nobody wrote.
+    expect(
+      audit.clipped.length,
+      `clipped occurrences moved from ${PINNED.CLIPPED} to ${audit.clipped.length}:\n` +
+        describeOccurrences(audit.clipped),
+    ).toBe(PINNED.CLIPPED);
+    expect([...new Set(audit.clipped.map((o) => `${o.ref}x`))].sort()).toEqual([
+      ...PINNED.CLIPPED_SOURCES,
+    ]);
+    // And each drop was RIGHT rather than convenient: go back to the source and
+    // read the character the guard refused. Every one continues into a longer
+    // extension, so what a naive pattern would report is a name nobody wrote.
+    // Weaken the guard to a lookahead that accepts letters and this disagrees.
+    for (const dropped of audit.clipped) {
+      const line = readFileSync(path.join(REPO_ROOT, dropped.file), 'utf8').split('\n')[
+        dropped.line - 1
+      ];
+      expect(line, `${dropped.file}:${dropped.line} does not continue past the match`).toContain(
+        `${dropped.ref}x`,
+      );
+    }
+  });
+
+  it('exempts fixture paths only where fixture paths belong', () => {
+    const audit = tree();
+    // FALSE-POSITIVE MODE 2 on the real tree. These name no file ON PURPOSE:
+    // `guaranteeTags.test.ts` drives the MutationWitness schema against itself.
+    // Demanding they resolve would force a real file into existence to satisfy
+    // a scan, which is backwards.
+    expect(
+      audit.synthetic.length,
+      `exempted references moved from ${PINNED.SYNTHETIC} to ${audit.synthetic.length}:\n` +
+        describeOccurrences(audit.synthetic),
+    ).toBe(PINNED.SYNTHETIC);
+    expect(
+      [...new Set(audit.synthetic.map((o) => o.file))].sort(),
+      'a new file started using the fixture prefix — is it a fixture, or a mistake?',
+    ).toEqual([...PINNED.SYNTHETIC_FILES]);
+  });
+
+  it('keeps the fixture prefix pointing at nothing, so the exemption stays a rule', () => {
+    // If that directory ever becomes real, this exemption stops meaning "these
+    // are not files" and becomes a hole in the scan.
+    expect(
+      existsSync(path.join(REPO_ROOT, TEST_PATH_REFS.SYNTHETIC_PREFIX)),
+      `${TEST_PATH_REFS.SYNTHETIC_PREFIX} exists on disk; the exemption now hides real paths`,
+    ).toBe(false);
+  });
+
+  it('this file writes no reference it cannot back', () => {
+    // The derivations described in the header are what keep this true. Inline
+    // one and this goes red beside the whole-tree check.
+    const mine = tree().references.filter((o) => o.file === 'tools/testPathRefs.test.ts');
+    // Anchored on references this file really does write, so the filter having
+    // silently matched nothing is not what makes the line below pass.
+    expect(mine.map((o) => o.ref)).toEqual(expect.arrayContaining([AUDIT, WIRING, STREAK]));
+    expect(mine.map((o) => o.ref)).not.toContain(ABSENT_REF);
+  });
+});
+
+describe('what the scan reaches', () => {
+  it('reads captured output nowhere and everything else', () => {
+    // ONE exclusion, and it is a category rather than a directory somebody
+    // dislikes: `.gauntlet/` is raw stdout and scraped browser records, so a
+    // bundle captured before a rename is SUPPOSED to name the old path.
+    expect(TEST_PATH_REFS.CAPTURED_OUTPUT_ROOTS).toEqual(['.gauntlet']);
+    expect(inScanScope('.gauntlet/evidence/suite.txt')).toBe(false);
+    expect(inScanScope('src/game/streak.ts')).toBe(true);
+    expect(inScanScope('.claude/agents/critic.md')).toBe(true);
+    // Segment, not prefix: a file whose name merely starts the same way is read.
+    expect(inScanScope('.gauntletish/notes.md')).toBe(true);
+  });
+
+  it('cannot reach a sibling worktree, structurally rather than by list', () => {
+    // A worktree under `.claude/` is a COMPLETE SECOND CHECKOUT of this repo.
+    // `src/tuning/audit.test.ts` records what walking one costs: 24 findings
+    // against another agent's half-written copy, so the verdict depended on who
+    // else was building. This scan asks git, and `.gitignore` ignores
+    // `.claude/worktrees/`, so there is nothing to exclude — but "structurally"
+    // is a claim, and this is the check rather than the sentence.
+    expect(gitIn(REPO_ROOT, ['ls-files', '.claude/worktrees']).trim()).toBe('');
+  });
+
+  it('has not silently diverged from the sibling scan it deliberately differs from', () => {
+    // `NOT_WALKED_HIDES_TRACKED` is realIp's own measurement of which of its
+    // exclusions hide COMMITTED files — the only ones that could matter to a
+    // tracked-file scan. This reads that list rather than copying it, per
+    // CLAUDE.md's "a twin guard must READ the sibling's list".
+    //
+    // The divergence is deliberate and is exactly one entry: `.claude` is
+    // excluded there because a filesystem walk cannot otherwise stay out of
+    // `worktrees/`, and realIp's own header calls that exclusion "WIDER THAN
+    // ITS OWN STATED REASON". Asking git makes the narrow version free, so the
+    // two hand-written agent definitions are read here. If a THIRD directory
+    // joins that list, this reddens and somebody decides whether it applies to
+    // this scan too.
+    expect(NOT_WALKED_HIDES_TRACKED).toEqual(['.claude', '.gauntlet']);
+    expect(
+      TEST_PATH_REFS.CAPTURED_OUTPUT_ROOTS.every((r) => NOT_WALKED_HIDES_TRACKED.includes(r)),
+      'this scan excludes a root the sibling does not even list',
+    ).toBe(true);
+  });
+
+  it('throws where git cannot answer, rather than reporting a clean tree', () => {
+    // "An empty list has no problems in it" is the failure `evidence.mjs`
+    // records against its own shot check. A scan that could not look must not
+    // read like a scan that found nothing.
+    const notARepo = mkdtempSync(path.join(os.tmpdir(), 'test-path-refs-not-a-repo-'));
+    sandboxes.push(notARepo);
+    expect(() => trackedFiles(notARepo)).toThrow(/git ls-files failed/);
+  });
+});
+
+describe('what counts as a reference', () => {
+  it('takes a path and leaves a bare basename alone', () => {
+    // The scoping rule, stated in the module header: a `/` means somebody wrote
+    // a LOCATION. A bare basename in prose is a mention, and no scan can tell a
+    // mention from a metavariable — `empireCore.test.ts` says "`name.ts` or
+    // `name.test.ts`" about a naming convention, and CLAUDE.md's own
+    // description of this defect writes two placeholder basenames.
+    expect(referencesIn(`see ${STREAK}`).map((r) => r.ref)).toEqual([STREAK]);
+    expect(referencesIn(`see ${path.basename(STREAK)}`)).toEqual([]);
+  });
+
+  it('does not read a glob as a path', () => {
+    // `vitest.config.ts`'s own `include` must not become two findings. `*` is
+    // not in the character class, so neither segment can be one.
+    expect(referencesIn("include: ['src/**/*.test.ts', 'tools/**/*.test.ts']")).toEqual([]);
+  });
+
+  it('clips nothing off a longer extension, and reports that it did not take it', () => {
+    // FALSE-POSITIVE MODE 1, as a predicate rather than as a tree measurement.
+    const tsx = `${STREAK}x`;
+    expect(referencesIn(`the plant was ${tsx}, deleted since`).map((h) => [h.ref, h.clipped])).toEqual(
+      [[STREAK, true]],
+    );
+    // The same string without the trailing character IS taken.
+    expect(referencesIn(`${STREAK},`).map((h) => [h.ref, h.clipped])).toEqual([[STREAK, false]]);
+  });
+
+  it('carries the line the reference sits on', () => {
+    // "A check that bites but fails uselessly is half a check." A finding is a
+    // `file:line` a reader can open.
+    expect(referencesIn(['one', 'two', STREAK, ''].join('\n')).map((h) => h.line)).toEqual([3]);
+  });
+});
+
+describe('what counts as resolved', () => {
+  const files = [AUDIT, WIRING];
+
+  it('takes a whole path and a partial one', () => {
+    expect(resolvesAgainst(AUDIT, files)).toBe(true);
+    // Prose abbreviates paths. This exact string also works as a vitest filter.
+    expect(resolvesAgainst(AUDIT.slice('src/'.length), files)).toBe(true);
+  });
+
+  it('refuses a suffix that starts mid-segment, though vitest would take it', () => {
+    // Deliberately STRICTER than vitest's substring filter. The question here
+    // is "does this name a file", not "would vitest tolerate it". One character
+    // into the second segment is still a raw suffix of the real path and is no
+    // longer a path.
+    const midSegment = AUDIT.slice('src/t'.length);
+    expect(AUDIT.endsWith(midSegment)).toBe(true);
+    expect(resolvesAgainst(midSegment, files)).toBe(false);
+  });
+
+  it('refuses the right basename in the wrong directory', () => {
+    expect(resolvesAgainst(AUDIT.replace('tuning', 'game'), files)).toBe(false);
+  });
+
+  it('takes a relative specifier by stripping its climb', () => {
+    const relative = `../${WIRING.slice('src/'.length)}`;
+    expect(normalizeReference(relative)).toBe(WIRING.slice('src/'.length));
+    expect(resolvesAgainst(relative, files)).toBe(true);
+    expect(normalizeReference(`./${WIRING}`)).toBe(WIRING);
+  });
+
+  it('holds fixture paths apart from real ones', () => {
+    expect(isSyntheticFixture(FIXTURE_REF)).toBe(true);
+    // A directory whose name merely STARTS with the prefix is not the prefix.
+    expect(isSyntheticFixture(TEST_PATH_REFS.SYNTHETIC_PREFIX.replace('/', `ish/`) + 'x.test.ts'))
+      .toBe(false);
+    expect(isSyntheticFixture(STREAK)).toBe(false);
+  });
+});
+
+describe('driven both ways', () => {
+  it('reports a reference to a file that is not there', () => {
+    const repo = sandbox('test-path-refs-fires-', {
+      [STREAK]: 'export const ok = 1;\n',
+      'tools/run.mjs': `// npx vitest run ${STREAK} ${ABSENT_REF}\n`,
+    });
+
+    const audit = auditTestPathReferences(repo);
+
+    expect(audit.unresolved).toEqual([{ file: 'tools/run.mjs', line: 1, ref: ABSENT_REF }]);
+    // Non-vacuity beside the finding: the good reference on the same line was
+    // seen and was NOT reported, so this discriminates rather than reporting
+    // whatever it touches.
+    expect(audit.references.map((o) => o.ref)).toEqual([STREAK, ABSENT_REF]);
+  });
+
+  it('reports nothing on the same tree once the file is there', () => {
+    const repo = sandbox('test-path-refs-quiet-', {
+      [STREAK]: 'export const ok = 1;\n',
+      [ABSENT_REF]: 'export const alsoOk = 1;\n',
+      'tools/run.mjs': `// npx vitest run ${STREAK} ${ABSENT_REF}\n`,
+    });
+
+    const audit = auditTestPathReferences(repo);
+
+    expect(audit.unresolved).toEqual([]);
+    expect(audit.references.length).toBe(2);
+  });
+
+  it('does not report a reference that only captured output holds', () => {
+    const repo = sandbox('test-path-refs-captured-', {
+      [STREAK]: 'export const ok = 1;\n',
+      '.gauntlet/evidence/suite.txt': `Test Files 1 passed\n ${ABSENT_REF}\n`,
+    });
+
+    expect(auditTestPathReferences(repo).unresolved).toEqual([]);
+
+    // And the exclusion is the reason, not the text being unreachable: the same
+    // bytes in a directory that is not captured output ARE reported.
+    const control = sandbox('test-path-refs-captured-control-', {
+      [STREAK]: 'export const ok = 1;\n',
+      'evidence/suite.txt': `Test Files 1 passed\n ${ABSENT_REF}\n`,
+    });
+    expect(auditTestPathReferences(control).unresolved).toEqual([
+      { file: 'evidence/suite.txt', line: 2, ref: ABSENT_REF },
+    ]);
+  });
+
+  it('does not report a longer extension, and counts what it dropped', () => {
+    const repo = sandbox('test-path-refs-clip-', {
+      [`${ABSENT_REF}x`]: 'export const tsx = 1;\n',
+      'docs/note.md': `the plant was ${ABSENT_REF}x\n`,
+    });
+
+    const audit = auditTestPathReferences(repo);
+
+    expect(audit.unresolved).toEqual([]);
+    expect(audit.clipped).toEqual([{ file: 'docs/note.md', line: 1, ref: ABSENT_REF }]);
+    expect(audit.references).toEqual([]);
+  });
+
+  it('does not report a fixture path, and counts it as exempt', () => {
+    const repo = sandbox('test-path-refs-fixture-', {
+      [STREAK]: `const row = { testFile: '${FIXTURE_REF}' };\n`,
+    });
+
+    const audit = auditTestPathReferences(repo);
+
+    expect(audit.unresolved).toEqual([]);
+    expect(audit.synthetic).toEqual([{ file: STREAK, line: 1, ref: FIXTURE_REF }]);
+  });
+
+  it('reads a binary as nothing rather than as mojibake', () => {
+    // `realIp.ts` measured this: reading this tree's binaries as UTF-8 with
+    // replacement produces two false watchlist hits, one inside the deflate
+    // stream of an app icon. A path-shaped run of bytes can land the same way,
+    // so the BYTES decide and not the name.
+    const repo = sandbox('test-path-refs-binary-', { [STREAK]: 'ok\n' });
+    const withLead = (lead: readonly number[]): Buffer =>
+      Buffer.concat([Buffer.from(lead), Buffer.from(ABSENT_REF)]);
+    const icon = path.join(repo, 'assets', 'icon.bin');
+    mkdirSync(path.dirname(icon), { recursive: true });
+    const commitIcon = (lead: readonly number[]): void => {
+      writeFileSync(icon, withLead(lead));
+      gitIn(repo, ['add', '-A']);
+      gitIn(repo, ['commit', '--quiet', '--allow-empty', '-m', 'icon']);
+    };
+
+    // Arm one: a NUL byte ahead of the reference.
+    commitIcon([0x00, 0x20]);
+    expect(auditTestPathReferences(repo).unresolved).toEqual([]);
+
+    // Arm two: no NUL, but a lead byte that is not valid UTF-8. Both arms of
+    // the rule are live and they answer different questions — a UTF-16 file is
+    // all NULs and a latin-1 one has none. This arm was found by driving the
+    // control below and watching it stay silent for the wrong reason.
+    commitIcon([0x89, 0x20]);
+    expect(auditTestPathReferences(repo).unresolved).toEqual([]);
+
+    // THE CONTROL, and it is why this test is worth its lines: the SAME
+    // reference in the SAME file is reported once those bytes are ordinary.
+    // One byte apart from arm one. The silence above is the byte rule doing
+    // something, not the file being out of reach for some other reason.
+    commitIcon([0x20]);
+    expect(auditTestPathReferences(repo).unresolved).toEqual([
+      { file: 'assets/icon.bin', line: 1, ref: ABSENT_REF },
+    ]);
+  });
+});
+
+describe('the pure fold', () => {
+  it('splits every occurrence into exactly one bucket', () => {
+    const audit = auditSources(
+      [
+        {
+          file: 'a.md',
+          text: [
+            `good ${STREAK}`,
+            `bad ${ABSENT_REF}`,
+            `fixture ${FIXTURE_REF}`,
+            `clipped ${STREAK}x`,
+            '',
+          ].join('\n'),
+        },
+      ],
+      [STREAK],
+    );
+
+    expect(audit.references.map((o) => o.ref)).toEqual([STREAK, ABSENT_REF, FIXTURE_REF]);
+    expect(audit.clipped.map((o) => o.line)).toEqual([4]);
+    expect(audit.synthetic.map((o) => o.ref)).toEqual([FIXTURE_REF]);
+    expect(audit.unresolved.map((o) => o.ref)).toEqual([ABSENT_REF]);
+    // Clipped is NOT in references; exempt and unresolved both are. That is the
+    // arithmetic the pinned counts on the real tree rest on.
+    expect(audit.references.length).toBe(3);
+  });
+
+  it('reports nothing when there is nothing, and that is not a pass', () => {
+    // The empty case exists so the counts above are known to be doing work: an
+    // empty input gives empty buckets, which is precisely why the real-tree
+    // assertion cannot stand on `unresolved` alone.
+    const audit = auditSources([], []);
+    expect(audit.references).toEqual([]);
+    expect(audit.unresolved).toEqual([]);
+  });
+});
