@@ -7850,6 +7850,12 @@ function memberTypeScreen(program: ts.Program, checker: ts.TypeChecker): MemberT
         .getTypeArguments(type as ts.TypeReference)
         .some((argument) => boundedWalk(argument, depth + 1));
     }
+    if (
+      (type.flags & ts.TypeFlags.Object) !== 0 &&
+      checker.getIndexInfosOfType(type).some((info) => boundedWalk(info.type, depth + 1))
+    ) {
+      return true;
+    }
     return type.getProperties().some((symbol) => {
       const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
       if (declaration === undefined || ambientlyDeclared(declaration)) return false;
@@ -9312,12 +9318,25 @@ const SCREEN_AGREEMENT = Object.freeze({
   SHIPPED_DISAGREEMENTS: 11,
   /**
    * The probe's own disagreements, and every one is a closure the control
-   * answered `false` about: the deep member, the `Record`, the declared index
-   * signature and the symbol-keyed table. A count rather than a list because
-   * the four member paths are already pinned in `ASSEMBLY_PROBE_CLOSURE_SITES`,
-   * which is the stronger statement of the same fact.
+   * answered `false` about. A count rather than a list because the member paths
+   * are already pinned in `ASSEMBLY_PROBE_CLOSURE_SITES`, which is the stronger
+   * statement of the same fact.
+   *
+   * ONE, AND IT WAS FOUR. The three that went away are the `Record`, the
+   * declared index signature and the symbol-keyed table: the control used to
+   * answer `false` about all three because `getProperties()` is empty on an
+   * index-signature type, and it now crosses the index signature and finds the
+   * closure. The one that remains is `probeDeepMemberClosure`, where the control
+   * is blind for the other reason — the closure sits past the depth bound, so
+   * the walk cuts rather than descends.
+   *
+   * The direction of the change is the useful part: a disagreement here is
+   * always the control being WRONG about a closure the relation caught, so
+   * fewer of them is the control getting better and not the screen getting
+   * quieter. `SHIPPED_DISAGREEMENTS` is unchanged at 11, which is what says the
+   * added position did not move the shipped tree.
    */
-  PROBE_DISAGREEMENTS: 4,
+  PROBE_DISAGREEMENTS: 1,
   /**
    * Depth cuts the control took on the probe: one for each of the two shapes
    * that reach the limit, and they reach it from opposite directions. See the
@@ -12253,10 +12272,26 @@ const RELATION_LIMITER = Object.freeze({
   SCREEN_CERTIFYING_SHAPES: 4,
   /**
    * Shapes the screen certified with ZERO depth cuts — silent rather than
-   * contained. Exactly one, and it is M64's composition.
+   * contained.
+   *
+   * NONE, AND THIS NUMBER WAS 1 WHEN THE BATTERY WAS WRITTEN. The one entry was
+   * `cyclic-alias-behind-index-signatures`, which is M64. What closed it is not
+   * this round's answer — the answer is the cyclic-declaration census below,
+   * because the shape needs a declaration this tree does not have. It is the
+   * sampler kept working beside the containment, per the rule that a
+   * reformulation does not license letting the sampler rot: the bounded walk now
+   * crosses an index signature, so its cut counter reaches as deep through that
+   * position as the relation does, which is the same reason the array position
+   * is in it.
+   *
+   * ITS OWN SUCCESSOR, NAMED RATHER THAN LEFT FOR THE NEXT ROUND TO FIND: this
+   * is a position enumeration, and a position enumeration is closed by the next
+   * position nobody modelled. The list it is now at is call signature, union,
+   * intersection, array, tuple, index signature, property. The census below does
+   * not depend on that list.
    */
-  SILENT_SHAPES: 1,
-  SILENT_AT: Object.freeze(['cyclic-alias-behind-index-signatures']),
+  SILENT_SHAPES: 0,
+  SILENT_AT: Object.freeze([] as readonly string[]),
   /**
    * The same cyclic alias asked in ONE shared program: certified at NO depth.
    *
@@ -12277,10 +12312,16 @@ const LIMITER_TABLE: readonly (readonly [string, number | null, number | null, n
     // reports it. This is M63's row and it is the shape E24's containment holds
     // for.
     Object.freeze(['cyclic-alias-holding-a-function', 3, 8, 1] as const),
-    // SILENT: the same alias behind two index signatures. The screen certifies
-    // it at the SAME depth the relation gives up — three — with the bounded walk
-    // never having taken a step, so there is no cut to report. This row is M64.
-    Object.freeze(['cyclic-alias-behind-index-signatures', 3, 3, 0] as const),
+    // M64'S ROW, AND IT IS NO LONGER THE SILENT ONE. It read `3, 3, 0` when this
+    // battery was first written: the screen certified at the same depth the
+    // relation gave up, with the bounded walk never having taken a step, because
+    // `getProperties()` is empty on an index-signature type. Adding the index
+    // position to that walk — five lines, and the same motive the array position
+    // was added for — moves it to `3, 7, 2`. The relation still gives up at
+    // three; the walk now finds the closure through the index signature until
+    // depth seven, and past that it CUTS, which `memberTypeDepthCuts` reports.
+    // Detected below seven, contained at seven, and silent nowhere.
+    Object.freeze(['cyclic-alias-behind-index-signatures', 3, 7, 2] as const),
     // CONTAINED, and it certifies at 4 rather than 8 because each level of this
     // cycle is two objects deep, which is what says the depth a cut arrives at
     // is a property of the shape and not a constant.
@@ -12568,7 +12609,8 @@ describe('the relation certifies from a cycle and not from a depth, and the cycl
       // The data control certifies at depth 1 with no cut, and it is silent about
       // nothing — there is no function in it. It is listed here rather than
       // filtered out, because a filter chosen to make a list come out right is
-      // the oracle mirroring its subject.
+      // the oracle mirroring its subject, and with `SILENT_AT` now empty a
+      // filter like that would leave this assertion comparing [] to [].
       'literal-nest-holding-data',
     ].sort());
     expect(RELATION_LIMITER.SILENT_AT.length).toBe(RELATION_LIMITER.SILENT_SHAPES);
@@ -14501,7 +14543,7 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
     tscExit: 0,
     caughtBy: Object.freeze([
       'THE CONTAINMENT CAUGHT IT AND NOTHING ELSE DID. Whole file: `Tests 4 failed | 86 passed (90)`, and three of the four are the node counters this file has now recorded seven times as not the check working — instrument B `expected 2395780 to be 2393060`, the overflow pass `expected 524024 to be 523128`, `nodesExamined` `expected 22102 to be 21789`. The fourth is `finds no type declaration in this directory that reaches itself`.',
-      'AND THE SCREEN IS STILL SILENT, WHICH IS WHY THIS IS CONTAINMENT AND NOT DETECTION. `follows the deep member` and `measures how deep the shipped types go` are both GREEN, so `memberTypeDepthCuts` is still 0; `agrees with the control everywhere on the shipped tree` is green, so the two readings still AGREE that there is no function in it. Nothing here found the closure. What reddened is a census of DECLARATIONS saying the shape that makes the screen silent is now constructible in this directory.',
+      'THE ROW ABOVE WAS TAKEN BEFORE THE WALK WAS WIDENED AND ITS SENTENCE HAS MOVED, WHICH IS WHY BOTH READINGS ARE HERE. Against the screen as M64 found it, this plant left `follows the deep member` and `measures how deep the shipped types go` GREEN — `memberTypeDepthCuts` 0, the two readings agreeing that there is no function in it — and the census of DECLARATIONS was the only thing that reddened. With the index position added to the bounded walk it is CONTAINED instead: `measures how deep the shipped types go` reddens with `expected 2 to be +0` on `channelCensus().memberTypeDepthCuts`, and `follows the deep member` with `expected 4 to be 2` on the probe. Forty levels is past the walk\'s bound, so the cut is what reports it — detection is M66\'s row, not this one.',
       'AND THE BRANCH RUNS, PRINTED: `accrueProduction` on a fresh gym returns keys ending `…,"ledger","shapes"`, walking `.down` off `shapes.entry` reaches depth 40, `typeof peek` is `function`, `peek()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
       'THE FAILURE NAMES THE ROUTE, WHICH TOOK A SECOND RUN AND IS WORTH THE ROW. As first written the test asserted its denominators first, and planting this moves them too — four added type declarations, two of them generic — so the message a reader got was `expected 122 to be 118`, a count that names nothing. The set equality is asserted first now and the message is `expected [ "production.ts#ProductionNest" ] to deeply equal []`.',
     ]),
@@ -14519,7 +14561,8 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
     attempts: 1,
     tscExit: 0,
     caughtBy: Object.freeze([
-      'THE SAME FOUR, and the three node counters are smaller because the plant is smaller — instrument B `expected 2394080 to be 2393060`, the overflow pass `expected 523464 to be 523128`, `nodesExamined` `expected 21917 to be 21789`. The containment reddens identically: `expected [ "production.ts#ProductionNest" ] to deeply equal []`.',
+      'THE SAME FOUR AGAINST THE SCREEN AS M64 FOUND IT, and the three node counters are smaller because the plant is smaller — instrument B `expected 2394080 to be 2393060`, the overflow pass `expected 523464 to be 523128`, `nodesExamined` `expected 21917 to be 21789`. The containment reddens identically: `expected [ "production.ts#ProductionNest" ] to deeply equal []`.',
+      'AND WITH THE INDEX POSITION ADDED TO THE BOUNDED WALK IT IS DETECTED OUTRIGHT, WITH THE MEMBER PATH. Replanted after that five-line change: `derives every escape site` reddens with `+ "production.ts": 1` under `returned-closure` and `finds the returned closure in all fifteen shapes` with `+ "production.ts#accrueProduction#closure:.shapes.entry.down.down.down.peek"` — the path is what says the walk went THROUGH the index signature and the three `down`s rather than stopping at the holder. Three levels is inside the bound, so this one is found rather than cut, and M65 at forty is cut rather than found. Two plants, two arms of the same repair, both driven.',
       'AND THE BRANCH RUNS, PRINTED: same keys, `walked=3`, `typeof peek` is `function`, `peek()` is `covered-day`, `gymBucks 0`, `tsc --noEmit` exit 0.',
       'WHY IT MATTERS THAT THE NUMBERS ARE SMALLER. A reader of M64 could reasonably conclude that a forty-deep instantiation is exotic enough to be its own warning, and that the node counters moving by 2720 is a signal. At depth three the node counters move by 1020 / 336 / 128, the source addition is a handful of lines, and the shape reads like an ordinary nested record. The residual is not exotic; it was written exotically.',
       'AND IT IS WHY THE CONTAINMENT IS KEYED ON THE CYCLE AND NOT ON A DEPTH. A guard that refused instantiations past some depth would have to sit below three to catch this, and `SHIPPED_TYPE_DEPTH` reports shipped surfaces at nine. There is no depth threshold that separates them. There is a declaration census that does.',
@@ -15598,7 +15641,7 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   // `channelCensusOf` and is `boundedWalk` inside `memberTypeScreen` now, which
   // this census reported as one row gone and two arrived rather than as
   // nothing. A ladder changing owner is exactly the edit it is written for.
-  Object.freeze({ at: 'empireForbiddenOutput.test.ts#boundedWalk<memberTypeScreen#type', arms: 2, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#boundedWalk<memberTypeScreen#type', arms: 3, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#functionFreeDataIn#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
   // The screen's own battery and the second reading of the depth limit, both
   // added this round. `deepestFrom`'s ladder is `dispatch: false` because its
