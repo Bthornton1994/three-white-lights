@@ -294,7 +294,7 @@
  * guarantee than the two scans and it is stated rather than implied.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { types as nodeTypes } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12645,6 +12645,535 @@ describe('the relation certifies from a cycle and not from a depth, and the cycl
     expect(withProbe.cyclic).toEqual(CYCLIC_DECLARATION_CENSUS.PROBE_CYCLIC);
     expect(withProbe.declarations).toBeGreaterThan(reading.declarations);
   });
+});
+
+// ---------------------------------------------------------------------------
+// The family sweep — widening the eighteen shapes the residual above rests on
+// ---------------------------------------------------------------------------
+
+/**
+ * A type shape asked four questions, so a claim about the family of shapes that
+ * earn a false certificate rests on a measured sample rather than on the ten
+ * rows of `LIMITER_TABLE` plus eight that were run once and not kept.
+ *
+ * The residual at `cyclicDeclarations` names its own gap: *"a nineteenth shape,
+ * certified while holding a closure and not written as a cyclic alias, would
+ * walk past this list, and nothing here would report it."* This battery is that
+ * list, made standing. Each row is asked:
+ *
+ *   1. does it compile — a shape that errors is not a shape, and a sweep that
+ *      does not check this reads a syntax error as a refusal;
+ *   2. does the RELATION certify it as function-free data;
+ *   3. is a closure genuinely reachable THROUGH THE TYPE — the reach snippet
+ *      must compile with no cast, no `any`, no non-null assertion and no
+ *      suppression comment, which `reachIsHonest` pins as a textual ban on this
+ *      file's own inputs;
+ *   4. what the shipped screen answers — `asked || walked`, the same expression
+ *      `memberTypeScreen` returns, with the bounded walk's cuts beside it.
+ *
+ * A row is a NEGATIVE unless all four line up: compiles, certifies, reach
+ * compiles, and the screen is silent. The middle two are what the fan-out that
+ * produced these candidates could not separate, and separating them is most of
+ * what this battery is for — a certificate over a type no closure can be reached
+ * through is not a false certificate, and a reachable closure the screen still
+ * finds is contained rather than silent.
+ *
+ * Two verdicts short of silence are kept as their own columns rather than
+ * flattened into "negative", because they are different facts:
+ *
+ *   - `certifies` true with the screen NOT silent is a false relation
+ *     certificate that the bounded walk catches. It does not bypass the screen
+ *     and it does falsify the sentence the census's containment argues from.
+ *   - the screen silent with no reach is a silence over a type that cannot
+ *     deliver a closure through its own surface. It is the conditional row's
+ *     verdict and it is stated as a gap in the screen rather than as a bypass.
+ */
+interface CandidateShape {
+  readonly id: string;
+  readonly group: string;
+  /**
+   * The module text, with `/*REACH*\/` where the reach snippet is spliced in.
+   * The subject is whatever declaration or parameter is named `subject`.
+   */
+  readonly build: string;
+  /** A statement that calls a function obtained from `subject`. */
+  readonly reach: string;
+  readonly why: string;
+}
+
+const CANDIDATE_SUBJECT_PATH = path.join(HERE, '__candidateSubject.ts');
+
+/** Where a row's reach snippet is spliced in, and what is there when it is not. */
+const REACH_MARKER = '/*REACH*/';
+
+/** Shared declarations every row is written against. */
+const CANDIDATE_PRELUDE = `interface Peek { readonly peek: () => string; }
+type Drop<D extends readonly unknown[]> = D extends readonly [unknown, ...infer R] ? R : [];
+type Nest<T, D extends readonly unknown[]> = D['length'] extends 0 ? T : { readonly down: Nest<T, Drop<D>> };
+type Indexed = { readonly [k: string]: string };
+`;
+
+/**
+ * The bans a reach snippet has to survive to count as reaching a closure
+ * THROUGH the type.
+ *
+ * A cast reaches a closure through nothing — it asserts one is there. So does an
+ * `any` annotation, a non-null assertion and a suppression comment. This is a
+ * ban on this file's own inputs rather than on a subject, which is the one place
+ * a textual scan is the right instrument: the rows are written here and the ban
+ * is what stops a row from being written to pass.
+ */
+const REACH_BANS: readonly (readonly [string, RegExp])[] = Object.freeze([
+  Object.freeze(['a type assertion', /\bas\b/] as const),
+  Object.freeze(['the any type', /\bany\b/] as const),
+  Object.freeze(['a non-null assertion', /[A-Za-z0-9_)\]]\s*!(?!=)/] as const),
+  Object.freeze(['a suppression comment', /@ts-(?:expect-error|ignore)/] as const),
+  Object.freeze(['an angle-bracket cast', /<[A-Za-z{[(][^>]*>\s*[A-Za-z(]/] as const),
+]);
+
+interface CandidateReading {
+  /** Diagnostics from the shape itself, with the reach snippet absent. */
+  readonly diagnostics: readonly string[];
+  /** The relation alone: `isTypeAssignableTo(subject, FunctionFreeData)`. */
+  readonly certifies: boolean;
+  /** The shipped screen's own expression. `false` is silence. */
+  readonly screenHolds: boolean;
+  /** Reading one of the screen, `any` short-circuit included. */
+  readonly asked: boolean;
+  /** Reading two: whether the bounded walk found a call signature. */
+  readonly walked: boolean;
+  /** Bounded-walk cuts taken while answering this row. */
+  readonly cuts: number;
+  /** Diagnostics with the reach snippet spliced in. Empty means reachable. */
+  readonly reachDiagnostics: readonly string[];
+  /** The subject's type, as the checker prints it. */
+  readonly printed: string;
+}
+
+/**
+ * Build one program per question and read all four.
+ *
+ * A fresh program per row for the same reason `limiterReading` takes one per
+ * depth: `sharedProgramLimiterReading` measured that a shared program refuses
+ * the known family at every depth, so a battery that reused a program would
+ * report a directory with no residual at all.
+ */
+function candidateReading(shape: CandidateShape): CandidateReading {
+  const options = compilerOptions();
+
+  const compileOf = (text: string): { program: ts.Program; diagnostics: string[] } => {
+    const program = programWith(
+      options,
+      [CANDIDATE_SUBJECT_PATH],
+      `${CANDIDATE_PRELUDE}${text}\nexport {};\n`,
+      CANDIDATE_SUBJECT_PATH,
+      FUNCTION_FREE_DATA_FILE,
+    );
+    const file = program.getSourceFile(CANDIDATE_SUBJECT_PATH);
+    if (file === undefined) throw new Error('the candidate subject is not in the program');
+    const diagnostics = [
+      ...program.getSyntacticDiagnostics(file),
+      ...program.getSemanticDiagnostics(file),
+    ].map((diagnostic) => `${shape.id}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')}`);
+    return { program, diagnostics };
+  };
+
+  const bare = compileOf(shape.build.split(REACH_MARKER).join(''));
+  const withReach = compileOf(shape.build.split(REACH_MARKER).join(shape.reach));
+
+  const file = bare.program.getSourceFile(CANDIDATE_SUBJECT_PATH);
+  if (file === undefined) throw new Error('the candidate subject is not in the program');
+  const checker = bare.program.getTypeChecker();
+
+  let subject: ts.Type | null = null;
+  const findSubject = (node: ts.Node): void => {
+    if (subject !== null) return;
+    if (
+      (ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isPropertySignature(node)) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === 'subject'
+    ) {
+      subject = checker.getTypeAtLocation(node.name);
+      return;
+    }
+    node.forEachChild(findSubject);
+  };
+  findSubject(file);
+  if (subject === null) throw new Error(`${shape.id} declares no subject`);
+  const subjectType: ts.Type = subject;
+
+  const certifies = checker.isTypeAssignableTo(
+    subjectType,
+    functionFreeDataIn(bare.program, checker),
+  );
+  const asked = (subjectType.flags & ts.TypeFlags.Any) !== 0 || !certifies;
+  const screen = memberTypeScreen(bare.program, checker);
+  const screenHolds = screen.holdsAFunctionAnywhere(subjectType, shape.id);
+  // `memberTypeScreen` exposes the joined answer and its disagreement list, not
+  // the two readings, so reading two is recovered from the pair. Every case is
+  // covered: asked and walked agreeing produces no disagreement line, and the
+  // two ways they can differ each produce one.
+  const disagreed = screen.disagreements().length > 0;
+  const walked = screenHolds && !(asked && disagreed);
+
+  return {
+    diagnostics: Object.freeze(bare.diagnostics),
+    certifies,
+    screenHolds,
+    asked,
+    walked,
+    cuts: screen.cuts(),
+    reachDiagnostics: Object.freeze(withReach.diagnostics),
+    printed: checker.typeToString(subjectType),
+  };
+}
+
+const CANDIDATE_SHAPES: readonly CandidateShape[] = Object.freeze([
+  // ---- The fidelity control: the known family, read by THIS driver ----
+  Object.freeze({
+    id: 'control-cyclic-alias-at-2',
+    group: 'control',
+    build: `declare const subject: Nest<Peek, [1,1]>;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.down.down.peek(); }',
+    why: 'the known family one instantiation below where the relation gives up — refused',
+  }),
+  Object.freeze({
+    id: 'control-cyclic-alias-at-3',
+    group: 'control',
+    build: `declare const subject: Nest<Peek, [1,1,1]>;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.down.down.down.peek(); }',
+    why: 'the known family AT the depth `RELATION_LIMITER.CERTIFIES_FROM` names — the certificate this driver has to reproduce before any other row is believed',
+  }),
+  Object.freeze({
+    id: 'control-literal-nest-at-3',
+    group: 'control',
+    build: `declare const subject: { readonly down: { readonly down: { readonly down: Peek } } };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.down.down.down.peek(); }',
+    why: 'the same three levels written out — refused, which is what says the certificate is about the alias and not the depth',
+  }),
+  Object.freeze({
+    id: 'control-plain-closure',
+    group: 'control',
+    build: `declare const subject: Peek;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.peek(); }',
+    why: 'a closure one property down, refused by everything — the row that says a refusal is reachable in this driver',
+  }),
+  Object.freeze({
+    id: 'control-plain-data',
+    group: 'control',
+    build: `declare const subject: { readonly held: string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.held(); }',
+    why: 'data, certified, with a reach that must FAIL to compile — the row that says the reach column can answer no',
+  }),
+
+  // ---- Group A: intersections absorbing into a primitive or an index type ----
+  Object.freeze({
+    id: 'intersection-string-and-method',
+    group: 'intersection',
+    build: `declare const subject: string & { readonly run: () => string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'the largest claimed group: a primitive constituent carries the certificate while the object constituent carries the closure',
+  }),
+  Object.freeze({
+    id: 'intersection-function-and-number',
+    group: 'intersection',
+    build: `declare const subject: (() => string) & number;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject(); }',
+    why: 'the call signature is on the intersection itself rather than on a member',
+  }),
+  Object.freeze({
+    id: 'intersection-indexed-and-method',
+    group: 'intersection',
+    build: `declare const subject: Indexed & { readonly run: () => string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'the certificate would come from the index signature rather than from a primitive',
+  }),
+  Object.freeze({
+    id: 'intersection-indexed-and-callable',
+    group: 'intersection',
+    build: `declare const subject: Indexed & (() => string);\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject(); }',
+    why: 'the same, with the closure as a call signature rather than a property',
+  }),
+  Object.freeze({
+    id: 'intersection-record-and-method',
+    group: 'intersection',
+    build: `declare const subject: Readonly<Record<string, string>> & { readonly onDone: () => string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.onDone(); }',
+    why: 'the index half spelled as `Record`, which is a different type object for the same shape',
+  }),
+  Object.freeze({
+    id: 'intersection-two-index-signatures',
+    group: 'intersection',
+    build: `declare const subject: { readonly [k: string]: string } & { readonly [k: string]: () => string };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject['x']; return held === undefined ? null : held(); }",
+    why: 'both constituents are index signatures and one of them holds the closure',
+  }),
+  Object.freeze({
+    id: 'intersection-inside-an-array',
+    group: 'intersection',
+    build: `declare const subject: readonly (string & Peek)[];\n${REACH_MARKER}`,
+    reach:
+      'export function reached(): unknown { const first = subject[0]; return first === undefined ? null : first.peek(); }',
+    why: 'the certifying intersection at an array element, which is the position M60 was about',
+  }),
+  Object.freeze({
+    id: 'intersection-under-an-index-signature',
+    group: 'intersection',
+    build: `declare const subject: { readonly [k: string]: string & Peek };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject['x']; return held === undefined ? null : held.peek(); }",
+    why: 'the certifying intersection at an index signature, which is the position M62 was about',
+  }),
+  Object.freeze({
+    id: 'intersection-unknown-and-empty',
+    group: 'intersection',
+    build: `declare const subject: { readonly held: unknown & {} };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { if (typeof subject.held === 'function') { return subject.held(); } return null; }",
+    why: '`unknown & {}` reduces to `{}`, which admits a function value at runtime',
+  }),
+  Object.freeze({
+    id: 'intersection-record-pair-and-method',
+    group: 'intersection',
+    build: `declare const subject: Record<string, string> & Record<symbol, string> & { readonly run: () => string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'both index signatures the reference type asks for, plus the closure as a third constituent',
+  }),
+  Object.freeze({
+    id: 'intersection-interface-method-and-indexed',
+    group: 'intersection',
+    build: `interface Machine { run(): string }\ndeclare const subject: Machine & Indexed;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'the closure is a METHOD on an interface, which is a different symbol shape from a property holding an arrow',
+  }),
+
+  // ---- Group B: `{}` and unions whose constituent admits any value ----
+  Object.freeze({
+    id: 'empty-object-type',
+    group: 'empty-and-union',
+    build: `declare const subject: {};\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { if (typeof subject === 'function') { return subject(); } return null; }",
+    why: '`{}` admits every non-nullish value, a function included, and declares no member at all',
+  }),
+  Object.freeze({
+    id: 'union-string-or-empty-object',
+    group: 'empty-and-union',
+    build: `declare const subject: string | {};\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { if (typeof subject === 'function') { return subject(); } return null; }",
+    why: 'the claimed row: a union whose second constituent admits any value',
+  }),
+  Object.freeze({
+    id: 'empty-object-behind-a-property',
+    group: 'empty-and-union',
+    build: `declare const subject: { readonly held: string | {} };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { if (typeof subject.held === 'function') { return subject.held(); } return null; }",
+    why: 'the same union one property down, which is the position a shipped export would actually have',
+  }),
+  Object.freeze({
+    id: 'empty-object-in-an-array',
+    group: 'empty-and-union',
+    build: `declare const subject: readonly {}[];\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const first = subject[0]; if (typeof first === 'function') { return first(); } return null; }",
+    why: 'the array-literal form the sweep claimed for union subtype reduction',
+  }),
+  Object.freeze({
+    id: 'union-carrying-a-certifying-intersection',
+    group: 'empty-and-union',
+    build: `declare const subject: string | (string & Peek);\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { if (typeof subject === 'object') { return subject.peek(); } return null; }",
+    why: 'a union constituent that is itself one of group A',
+  }),
+  Object.freeze({
+    id: 'empty-object-under-an-index-signature',
+    group: 'empty-and-union',
+    build: `declare const subject: { readonly [k: string]: {} };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject['x']; if (typeof held === 'function') { return held(); } return null; }",
+    why: '`{}` as an index signature value, which is the shape a bag of unknown data takes',
+  }),
+  Object.freeze({
+    id: 'control-unknown',
+    group: 'empty-and-union',
+    build: `declare const subject: unknown;\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { if (typeof subject === 'function') { return subject(); } return null; }",
+    why: 'the neighbour of `{}` that carries the same information and is expected to be refused — the control that says the `{}` reading is about `{}`',
+  }),
+  Object.freeze({
+    id: 'control-object-keyword',
+    group: 'empty-and-union',
+    build: `declare const subject: object;\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { if (typeof subject === 'function') { return subject(); } return null; }",
+    why: 'the other neighbour: `object` admits a function and declares no member either',
+  }),
+
+  // ---- Group C: the deferred conditional the sweep singled out ----
+  Object.freeze({
+    id: 'conditional-any-over-string',
+    group: 'conditional',
+    build: `type Cond<T> = T extends string ? any : string;\nexport function probe<Q>(subject: Cond<Q>): unknown {\n  ${REACH_MARKER}\n  return subject;\n}`,
+    reach: 'return subject.run();',
+    why: "the sweep's own singled-out row: a deferred conditional whose base constraint is `string` while its flags say `Conditional`, so the `any` short-circuit never fires",
+  }),
+  Object.freeze({
+    id: 'conditional-any-over-any',
+    group: 'conditional',
+    build: `type Cond<T> = T extends string ? any : any;\nexport function probe<Q>(subject: Cond<Q>): unknown {\n  ${REACH_MARKER}\n  return subject;\n}`,
+    reach: 'return subject.run();',
+    why: 'both branches `any`, so the apparent type is `any` while the flags are still `Conditional` — the row where a silence and a reach could coincide',
+  }),
+  Object.freeze({
+    id: 'conditional-any-over-peek',
+    group: 'conditional',
+    build: `type Cond<T> = T extends string ? any : Peek;\nexport function probe<Q>(subject: Cond<Q>): unknown {\n  ${REACH_MARKER}\n  return subject;\n}`,
+    reach: 'return subject.peek();',
+    why: "the sweep's first attributing control: the false branch carries the closure",
+  }),
+  Object.freeze({
+    id: 'conditional-peek-over-string',
+    group: 'conditional',
+    build: `type Cond<T> = T extends string ? Peek : string;\nexport function probe<Q>(subject: Cond<Q>): unknown {\n  ${REACH_MARKER}\n  return subject;\n}`,
+    reach: 'return subject.peek();',
+    why: "the sweep's second attributing control: the true branch carries the closure",
+  }),
+  Object.freeze({
+    id: 'conditional-function-over-string',
+    group: 'conditional',
+    build: `type Cond<T> = T extends string ? () => string : string;\nexport function probe<Q>(subject: Cond<Q>): unknown {\n  ${REACH_MARKER}\n  return subject;\n}`,
+    reach: 'return subject();',
+    why: 'a call signature in the true branch rather than a property, which is the shape a callback type takes',
+  }),
+
+  // ---- Group D: index-signature and key-remapping splits ----
+  Object.freeze({
+    id: 'remapped-key-becomes-index-signature',
+    group: 'index-split',
+    build: `type Split<T> = { readonly [K in keyof T as K extends 'safe' ? string : K]: T[K] };\ndeclare const subject: Split<{ safe: string; run: () => string }>;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'a mapped type remapping one key to `string` so it becomes an index signature while the closure key stays a literal property',
+  }),
+  Object.freeze({
+    id: 'string-and-number-index-signatures',
+    group: 'index-split',
+    build: `declare const subject: { readonly [k: string]: {}; readonly [k: number]: {} };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject['x']; return typeof held === 'function' ? held() : null; }",
+    why: 'two index signatures over a value type that admits a function',
+  }),
+  Object.freeze({
+    id: 'pattern-index-signature-holding-a-closure',
+    group: 'index-split',
+    build:
+      'declare const subject: { readonly [k: `on${string}`]: () => string; readonly [k: string]: string | (() => string) };\n' +
+      REACH_MARKER,
+    reach:
+      "export function reached(): unknown { const held = subject['onDone']; return held === undefined ? null : held(); }",
+    why: 'a pattern index signature carrying the closure while the plain one carries data',
+  }),
+  Object.freeze({
+    id: 'symbol-index-holding-a-closure',
+    group: 'index-split',
+    build: `declare const subject: { readonly [k: symbol]: () => string; readonly [k: string]: string };\n${REACH_MARKER}`,
+    reach:
+      'export function reached(): unknown { const key = Symbol.iterator; const held = subject[key]; return held === undefined ? null : held(); }',
+    why: 'the closure behind the symbol index, which the reference type has a position for — the control that says the index positions are covered',
+  }),
+
+  // ---- Group E: declaration merging and augmentation ----
+  Object.freeze({
+    id: 'merged-interface-call-signature',
+    group: 'merging',
+    build: `interface Merged { readonly held: string }\ninterface Merged { (): string }\ndeclare const subject: Merged;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject(); }',
+    why: 'a second declaration adds a call signature to an interface that had none',
+  }),
+  Object.freeze({
+    id: 'merged-interface-construct-signature',
+    group: 'merging',
+    build: `interface Merged { readonly held: string }\ninterface Merged { new (): string }\ndeclare const subject: Merged;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return new subject(); }',
+    why: 'the same with a construct signature, which is a different signature list on the same type',
+  }),
+  Object.freeze({
+    id: 'global-augmentation-holding-a-closure',
+    group: 'merging',
+    build: `declare global { interface E27Augmented { readonly run: () => string } }\ndeclare const subject: E27Augmented;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'the closure arrives from a global augmentation rather than from a local declaration',
+  }),
+
+  // ---- Group F: hybrid callables ----
+  Object.freeze({
+    id: 'hybrid-type-literal-callable-and-indexed',
+    group: 'hybrid',
+    build: `type Hybrid = { (): string; readonly [k: string]: string };\ndeclare const subject: Hybrid;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject(); }',
+    why: 'a call signature beside an index signature, written as a type literal rather than an interface',
+  }),
+  Object.freeze({
+    id: 'hybrid-behind-a-getter',
+    group: 'hybrid',
+    build: `interface Holder { get run(): () => string }\ndeclare const subject: Holder;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'the closure arrives through an accessor rather than a data property',
+  }),
+
+  // ---- Group G: generic machinery, and the non-generic control for it ----
+  Object.freeze({
+    id: 'generic-mapped-type-intersected-with-string',
+    group: 'generic',
+    build: `declare const subject: string & { readonly [K in 'run']: () => string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'a mapped type as the closure-bearing constituent, which is the generic form of the group A row',
+  }),
+  Object.freeze({
+    id: 'infer-conditional-intersected-with-string',
+    group: 'generic',
+    build: `type Held<T> = T extends ReadonlyArray<infer U> ? U : string;\ndeclare const subject: string & { readonly run: Held<readonly (() => string)[]> };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    why: 'the closure type arrives from an `infer` rather than being written, which is the row the sweep grouped under generic machinery',
+  }),
+
+  // ---- The shape a plant would actually take ----
+  Object.freeze({
+    id: 'entry-with-an-empty-object-payload',
+    group: 'plant',
+    build: `declare const subject: { readonly kind: string; readonly payload: {} };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject.payload; return typeof held === 'function' ? held() : null; }",
+    why: 'the shape a shipped ledger entry would have if its payload were typed `{}` — the row the plant is built from',
+  }),
+]);
+
+describe('E27 candidate battery, printed', () => {
+  it('prints', () => {
+    const lines = CANDIDATE_SHAPES.map((shape) => {
+      const reading = candidateReading(shape);
+      return [
+        shape.id.padEnd(44),
+        `diag=${String(reading.diagnostics.length)}`,
+        `cert=${String(reading.certifies)}`,
+        `asked=${String(reading.asked)}`,
+        `walked=${String(reading.walked)}`,
+        `holds=${String(reading.screenHolds)}`,
+        `cuts=${String(reading.cuts)}`,
+        `reach=${String(reading.reachDiagnostics.length === 0)}`,
+        `| ${reading.printed}`,
+        reading.diagnostics.length > 0 ? `| D: ${reading.diagnostics.join(' ~ ')}` : '',
+        reading.reachDiagnostics.length > 0 ? `| R: ${reading.reachDiagnostics.join(' ~ ')}` : '',
+      ].join(' ');
+    });
+    writeFileSync('/tmp/claude-0/e27-battery.txt', lines.join('\n'));
+    expect(lines.length).toBe(CANDIDATE_SHAPES.length);
+  }, 300_000);
 });
 
 // ---------------------------------------------------------------------------
