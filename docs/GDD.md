@@ -2487,10 +2487,35 @@ holds — the meets exist and the lifters are strong enough. Worlds falls on day
 of the season, when a lifter is still around 380 kg, and by the time they clear
 the gate that year's summit is long past.
 
-Before the second ruling that was a **vacuity finding**: a sweep measuring a
-property across the tier ladder with an empty domain at the top. After it, it
-was also a **design violation**. The measurement did not change; what it meant
-did.
+Before the second ruling that was read as a **vacuity finding** — a sweep
+measuring a property across the tier ladder with an empty domain at the top.
+After it, it was also a **design violation**.
+
+**THAT VACUITY READING WAS WRONG, AND THE ERROR IS RECORDED RATHER THAN
+QUIETLY DROPPED BECAUSE IT REACHED THIS DOCUMENT.** The sweep does not run one
+year. `ATTENDANCE_SWEEP.SIMULATION_DAYS` is **728** — two calendar periods,
+widened by `eca47a3` — and over its real window worlds is **scheduled 48 times
+and enterable 23**. The domain was never empty. Re-measured independently on the
+tracked tree, both windows:
+
+| window | worlds sched / enterable | nationals | peak total |
+|---|---|---|---|
+| 364 days | 24 / **0** | 96 / 60 | 1687.5 kg |
+| **728 days (the real one)** | 48 / **23** | 192 / 156 | 2905 kg |
+
+**What survives is the part the rulings act on:** worlds is unreachable in a
+lifter's **first year**, because it falls on day 6 when nobody can hold the
+gate. That is real, it is what the campaign summit fixes, and it is a statement
+about the first season rather than about the sweep.
+
+**Why the wrong numbers were produced, since the cause matters more than the
+correction.** The probe was run on a checkout that had silently rewound to a
+commit predating `eca47a3`, where `SIMULATION_DAYS` was 364 and the totals
+generator was different. Every reading was internally consistent and correct
+about that tree — which is why nothing looked wrong. The reported peak of
+**870 kg** and nationals figure of **14 of 96** came from there and are false of
+this tree; they are stated here so anyone who saw them can discard them by name.
+`CLAUDE.md`'s "A TREE THAT REWOUND UNDER YOU" section is the general form.
 
 #### BUILT AND MEASURED — the campaign summit's threshold, calendar and reach
 
