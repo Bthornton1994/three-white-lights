@@ -1536,6 +1536,64 @@ file which has been renamed or deleted therefore keeps reporting success while
 covering less than it says. Read the `Test Files` count against the number of
 paths you passed, not just the word `passed`.
 
+### A MEASUREMENT THAT LEAVES THIS SESSION CARRIES THE COMMIT IT WAS TAKEN AT
+
+**Ruled by a human after the third stale-tree false finding in one session.**
+Any number destined for `docs/GDD.md`, `CLAUDE.md`, a builder brief, or a task
+description is stamped with the commit it was measured at. Not "recently", not
+"at the tip" — the SHA.
+
+**Why a stamp and not more care.** All three findings were *internally
+consistent*: every command answered correctly about the tree it ran on, and the
+tree was one origin had moved past. Nothing about the readings looked wrong,
+which is exactly why vigilance does not catch this class. A stamp turns it from
+something you must remember to doubt into something a reader can check in one
+command.
+
+The worst of the three reached this repository's authoritative document and a
+builder brief before anyone noticed: worlds reported as unreachable with an
+empty sweep domain, measured on a checkout that had rewound past the commit
+widening `SIMULATION_DAYS` from 364 to 728. On the real tree the tier is
+enterable 23 of 48. The reported peak total and nationals figure were wrong too,
+because the generator had changed underneath as well.
+
+**The mechanical part, which is what makes the stamp worth requiring:** a stamp
+is CHECKABLE in a way prose is not. Given `measured@<sha>`, a reader — or a
+scan — can ask whether that SHA is a valid object and an **ancestor of HEAD**. A
+stamp naming a commit that is not an ancestor is a measurement taken on a
+divergent or rewound tree, which is precisely the defect, and it is decidable
+without knowing anything about what was measured. That is a far stronger
+property than the capitalised-absolute heuristic this file uses elsewhere, and
+it is available because a SHA is self-identifying where a sentence is not.
+
+Take the measurement, print `git rev-parse HEAD` beside it in the same command,
+and carry both. A number without a stamp is an anecdote about an unknown tree.
+
+### A SHIPPED VALUE THAT CONTRADICTS A RECORDED RULING IS FIXED, NOT REPORTED
+
+**Ruled by a human.** A builder that finds a constant, a table row or a flag in
+the tree contradicting a ruling recorded in `docs/GDD.md` **fixes it**, in the
+piece it found it in, rather than reporting it and waiting for permission.
+
+**The reasoning, which is the part that generalises:** leaving a known-wrong
+value in place to respect scope is the worse outcome. Scope discipline exists to
+stop a builder inventing work and colliding with other sessions — it does not
+exist to preserve a value everyone already agrees is wrong. A stale value that
+survives a round *because a builder was being careful* is a defect the process
+created.
+
+The instance: `TIER_SCHEDULING.regional` still read `'async'` after the
+2026-08-14 ruling moved regional to synchronous, **and a test pinned the stale
+value**, so the tree was actively defending the contradiction. The builder
+corrected both inside a piece scoped to something else, and flagged it. That is
+the behaviour wanted.
+
+**Two limits, so this does not become a licence.** It applies to values that
+contradict a ruling *already written down* — not to values a builder believes
+are wrong on its own judgement, which is a finding to report. And the fix is
+still flagged in the report, loudly, so a human sees a change they did not ask
+for.
+
 ## Architecture Rules
 
 ### Pure logic is separate from UI
