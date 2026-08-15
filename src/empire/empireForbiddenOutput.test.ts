@@ -11860,6 +11860,7 @@ declare const optional: { readonly maybe?: () => string };
 declare const tuple: readonly [string, () => string];
 declare const nev: never;
 declare const objectish: object;
+declare const emptyish: {};
 declare const funcish: Function;
 interface Callable {
   (): string;
@@ -11910,15 +11911,22 @@ const SCREEN_BATTERY: readonly (readonly [string, boolean, string])[] = Object.f
   Object.freeze(['tuple', true, 'a tuple element rather than an array element'] as const),
   Object.freeze(['nev', false, 'no values, so no values holding a function'] as const),
   Object.freeze(['objectish', true, 'no structure to certify'] as const),
+  // THE BRANCH IMMEDIATELY BELOW THE ONE ABOVE, AND IT WAS MISSING FOR SIX
+  // ROUNDS. `object` and `unknown` were both in this battery and both answer
+  // `true`; `{}` is the third member of that family and it answered `false`
+  // until E27, because the relation certifies it and the walk has nothing to
+  // descend into. M67 is that row planted. The two neighbours being here is
+  // exactly why nobody looked.
+  Object.freeze(['emptyish', true, 'admits every non-nullish value, a function included, and declares nothing'] as const),
   Object.freeze(['funcish', true, 'the type of every function'] as const),
   Object.freeze(['callable', true, 'a call signature beside data members'] as const),
 ]);
 
 /** What the battery measured. Counts, so a truncated battery reports itself. */
 const SCREEN_BATTERY_CENSUS = Object.freeze({
-  ROWS: 28,
+  ROWS: 29,
   /** Rows the screen answers `true` for. Both verdicts occur, so neither is vacuous. */
-  HOLDS: 24,
+  HOLDS: 25,
   /**
    * Rows answered `false` — the ones the screen actually screens out, and the
    * number is small on purpose rather than by accident. Four of twenty-eight:
@@ -12438,15 +12446,33 @@ const LIMITER_TABLE: readonly (readonly [string, number | null, number | null, n
 /**
  * Every named type declaration in a module, and whether it reaches itself.
  *
- * WHAT THIS GUARANTEES, IN THE MECHANISM'S OWN TERMS. The relation issues a
- * false certificate only for an instantiation of a generic type alias that is in
- * a reference cycle — measured above, ten shapes, and the only three that get a
- * certificate while holding a closure are the three cyclic aliases. So the set
- * of types that can carry M64 is the set of instantiations of a cyclic alias
- * declared in this program, and DECLARATIONS ARE A LIST. That is the
- * reformulation CLAUDE.md asks for when a sampler keeps declaring its own
- * successor: an unbounded depth is not enumerable and a directory's type
- * declarations are.
+ * THE SENTENCE THIS DOCSTRING OPENED WITH IS FALSE, AND IT IS QUOTED HERE
+ * RATHER THAN DELETED BECAUSE THE CORRECTION IS THE MORE USEFUL ARTEFACT. It
+ * read: *"the relation issues a false certificate only for an instantiation of a
+ * generic type alias that is in a reference cycle — measured above, ten shapes,
+ * and the only three that get a certificate while holding a closure are the
+ * three cyclic aliases."* It was true of the eighteen shapes it had been asked
+ * about. `FAMILY_TABLE` asks forty-one, and
+ * `CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS` is **twenty**: a
+ * primitive-absorbing intersection, `{}` at six positions, a mapped type's
+ * synthesized property, a deferred conditional. None of the twenty is a cyclic
+ * alias and every one of them has a closure reachable through the type with no
+ * cast.
+ *
+ * WHAT THIS CENSUS STILL GUARANTEES, IN THE MECHANISM'S OWN TERMS AND NOTHING
+ * WIDER. The relation's RECURSION LIMITER — the resource limit measured by
+ * `LIMITER_TABLE`, where a certificate is issued while an alias instantiation is
+ * still deferred — is defeated only by an instantiation of a generic type alias
+ * in a reference cycle. That is the claim the bisection above supports and it is
+ * still standing: the twenty rows are not limiter defeats, they are the relation
+ * answering *correctly* about types that admit a function. So the set of types
+ * that can carry M64 SPECIFICALLY is the set of instantiations of a cyclic alias
+ * declared in this program, and DECLARATIONS ARE A LIST.
+ *
+ * The distinction is load-bearing rather than a save. M64 is a type the relation
+ * is WRONG about; M67 is a type the relation is right about and the walk had
+ * nothing to say about. A declaration census contains the first and has no
+ * subject for the second, which is why M67 needed a reading rather than a row.
  *
  * IT IS CONTAINMENT AND NOT DETECTION, said plainly. It does not find a closure
  * and it does not read a value. It reports that the shape which would make the
@@ -12463,8 +12489,11 @@ const LIMITER_TABLE: readonly (readonly [string, number | null, number | null, n
  *      this directory` in `empireCore.test.ts`, which is a set equality over
  *      every module's edges and scans all three import forms;
  *   3. a false certificate for a type that is NOT a cyclic alias — the six
- *      refusing rows of `LIMITER_TABLE` and the twenty-eight rows of
- *      `SCREEN_BATTERY`, which is where that claim is graded shape by shape.
+ *      refusing rows of `LIMITER_TABLE`, the rows of `SCREEN_BATTERY`, and
+ *      `FAMILY_TABLE`, which is where that claim is now graded and where it was
+ *      measured false. Route 3 is no longer covered by this census at all; what
+ *      covers it is the screen's own two new readings, and `FAMILY_CENSUS`'s
+ *      zero against eleven is the measurement.
  *
  * EACH OF THE THREE WAS RUN AGAINST THE CHECK NAMED FOR IT, rather than left as
  * a pointer, because this file already records what a named catcher nobody ran
@@ -12478,21 +12507,36 @@ const LIMITER_TABLE: readonly (readonly [string, number | null, number | null, n
  *      [ './empireCore', './empireTuning' ]`, 2 failed of 57. production.ts was
  *      restored and verified byte-identical afterwards;
  *   3. G37, which takes the self-reference out of the battery's cyclic shape and
- *      turns its certificate into a refusal.
+ *      turns its certificate into a refusal — and, for the wider claim route 3
+ *      actually makes, M67 and M68 in `PLANTED_ROUTES`: the same plant before
+ *      and after the readings, silent then named.
  *
- * THE RESIDUAL, WITH NO CATCHER CLAIMED FOR THE FIRST OF ITS TWO HALVES.
+ * THE RESIDUAL. Its first half was closed by being measured, and what closed it
+ * is worth reading before the second half.
  *
- * The first half is the battery's own reach. "Only a cyclic generic alias earns
- * a false certificate" is measured over EIGHTEEN shapes — the ten pinned here,
- * plus eight more written and run in the round and not kept because they are
- * negative: nested arrays and tuples, a generic interface, `Promise`, `Readonly`
- * and `Record` chains, a cyclic INTERFACE and a cyclic CLASS, `Awaited` nested
- * (the standard library's own recursive alias, reachable without importing
- * anything), a deep intersection, a wide union, a recursive template-literal
- * alias, and a cycle through an indexed access. A nineteenth shape, certified
- * while holding a closure and not written as a cyclic alias, would walk past
- * this list, and nothing here would report it. The catcher is somebody adding a
- * row to `LIMITER_SHAPES`, which is a person and not a check.
+ * That half used to say the eighteen-shape sample was the reach of the claim,
+ * that a nineteenth shape certified while holding a closure would walk past the
+ * list, and that the catcher was somebody adding a row to `LIMITER_SHAPES` —
+ * a person and not a check. The nineteenth shape existed. Forty-one rows were
+ * run against the harness the ten pinned rows use, in nine groups, and twenty of
+ * them are certified with a reachable closure. Eleven of the forty-one defeated
+ * the whole screen and were reachable, and all eleven are closed by the two
+ * readings `memberTypeScreen` now carries. The residual that remains is the
+ * sample's own edge and it is a smaller claim: `FAMILY_TABLE` is forty-one
+ * shapes chosen by hand, so a forty-second is not covered, and the catcher is
+ * still a person adding a row. What has changed is that the person now adds it
+ * to a table whose counts are pinned in both directions, so a row added without
+ * a verdict is red rather than unmeasured.
+ *
+ * The one row that is silent and is NOT a bypass is kept in the table as the
+ * distinction it draws: `conditional-any-over-string`, a deferred conditional
+ * whose base constraint is `string` while its flags say `Conditional`, so the
+ * `any` short-circuit never fires and the whole screen goes quiet. No closure is
+ * reachable through it — `subject.run()` does not compile — and the only
+ * instantiation that holds one is `C<string>`, which IS `any` and is caught by
+ * the short-circuit at that position. A silence over a type nothing can be
+ * reached through is a gap in a screen and not an escape, and the table says
+ * which it is by carrying both columns rather than one verdict.
  *
  * The second half is this walk's own collector, and the attempts against it are
  * recorded rather than the impossibility. References are gathered from
