@@ -628,7 +628,6 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     // control below moves it to 310, which is what says the axis can still tell
     // a working rule from a broken one on this fixture.
     expect(shipped.movedPairs).toBe(107);
-    expect(shipped.movedPairs).toBeGreaterThan(0);
 
     // AND THE COUNT THIS ROUND EXISTS FOR. The sweep used to run for one
     // calendar period, which holds exactly one worlds meet, six days after the
@@ -834,9 +833,13 @@ describe('AXIS B — competing at one more meet never qualifies for fewer', () =
     expect(Math.min(...worldsTotals)).toBe(632.5);
     expect(Math.max(...worldsTotals)).toBe(862.5);
     expect(Math.min(...worldsTotals) - ATTENDANCE_SWEEP.TOP_QUALIFYING_TOTAL_KG).toBe(-17.5);
-    // And the top of that range is now inside the sport rather than three times
-    // it: the whole fixture is bounded by the band `POTENTIAL_MAX_KG` names.
-    expect(Math.max(...worldsTotals)).toBeLessThanOrEqual(ATTENDANCE_SWEEP.POTENTIAL_MAX_KG);
+    // A `Math.max(...worldsTotals) <= POTENTIAL_MAX_KG` line stood here and was
+    // DELETED AS DOMINATED. The per-career bound test asserts every total is at
+    // or under its own career's ceiling, and the band test asserts every ceiling
+    // is at or under `POTENTIAL_MAX_KG`; together those imply it, so no state of
+    // the generator could have made this the assertion that spoke. The 862.5
+    // pin above is the check here, because it moves on any change to the
+    // distribution rather than only on an unbounded one.
     expect(ATTENDANCE_SWEEP.TOP_QUALIFYING_TOTAL_KG).toBe(
       Math.max(
         ...MEET_TIER_ORDER.map((tier) => CAREER_TUNING.QUALIFYING_TOTAL_KG[tier] ?? 0),
@@ -1172,8 +1175,11 @@ describe('the totals generator is bounded to a plausible range for the sport', (
     expect(new Set(peaks).size).toBeGreaterThanOrEqual(20);
     expect(Math.max(...peaks)).toBe(882.5);
     expect(Math.min(...peaks)).toBe(625);
-    // The asymptote is soft: nothing reaches `POTENTIAL_MAX_KG` itself.
-    expect(Math.max(...peaks)).toBeLessThan(ATTENDANCE_SWEEP.POTENTIAL_MAX_KG);
+    // A `Math.max(...peaks) < POTENTIAL_MAX_KG` line stood here, to say the
+    // asymptote is soft, and was DELETED AS DOMINATED by the exact pin directly
+    // above it: 882.5 against a 900 band top is decided, so the pin reddens
+    // first in every reachable case. The softness is instead visible in the
+    // spread assertions above, which a hard clamp fails.
   });
 
   it('holds the constant inequality its bound is proved from', () => {
@@ -1226,7 +1232,11 @@ describe('the totals generator is bounded to a plausible range for the sport', (
     // into nothing; what the assertion buys is that the band cannot drift out of
     // the range it was justified by without this line moving too.
     expect(ATTENDANCE_SWEEP.POTENTIAL_MAX_KG).toBeLessThan(902.5);
-    expect(ATTENDANCE_SWEEP.POTENTIAL_MAX_KG).toBeLessThan(1153.5);
+    // A second bound at 1153.5 — the heaviest single total anywhere in that
+    // dataset — stood here and was DELETED AS DOMINATED by the 902.5 above it.
+    // 902.5 < 1153.5, so the looser one could never be the assertion that spoke.
+    // The number is kept in the comment, where it is doing the job it was
+    // actually doing: telling a reader how far under the extreme the band sits.
     expect(ATTENDANCE_SWEEP.POTENTIAL_MAX_KG).toBeGreaterThan(
       ATTENDANCE_SWEEP.POTENTIAL_MIN_KG,
     );
@@ -1248,8 +1258,18 @@ describe('the totals generator is bounded to a plausible range for the sport', (
     }
     expect(descents).toBe(1078);
     expect(drawn).toBe(4104);
-    // A quarter of meets, pinned as a count with its denominator beside it.
-    expect(descents / drawn).toBeGreaterThan(0.2);
+    // A `descents / drawn > 0.2` line stood here and was DELETED AS DOMINATED:
+    // with both the numerator and the denominator pinned exactly on the two
+    // lines above, the ratio is arithmetic rather than a check, and it could
+    // never have been the assertion that reddened. The count and its
+    // denominator are what a reader needs — 1078 of 4104, about a quarter.
+    //
+    // DELIBERATELY THE SAME NUMBER AS AXIS B's `badDays`, which is the same
+    // quantity computed the same way. That duplication is kept rather than
+    // pruned: this is the generator's own test and the natural place to read the
+    // count off, and axis B pins it because the axis is worthless without it.
+    // Both can fail, and they fail together, which is a different thing from one
+    // of them being unable to speak.
   });
 
   it('is a prefix extension in its depth argument, so both sweeps get the same lifters', () => {
