@@ -1123,6 +1123,8 @@ Do not treat a green gate as a critic pass.
 
 **No source crossing.** `.github/` does not exist today. The only shared
 surface is this paragraph.
+**Stale as of 2026-08-13 / PR #9.** The queued wording is left intact;
+`.github/workflows/merge-gate.yml` is the gate this claim landed.
 
 **Done when the slice is ready for review:** a PR against
 `claude/agent-config-setup-m2r6ny` shows the three steps; the audit step is
@@ -1166,6 +1168,43 @@ is still there; the close cites 2026-08-13 and PR #9;
 `src/tuning/audit.test.ts` are green; Session D does not call a bar met.
 Push only to `grok-d-audit-debt-closed`, and only after an explicit
 go-ahead. Never to `main` or to `claude/agent-config-setup-m2r6ny`.
+
+### SESSION D — MERGE-GATE CLAIM: `.github/` EXISTS (ONE-SHOT, CLAUDE.md ONLY)
+
+Written here **before** the work starts, as this section requires. Human-approved
+2026-08-15 via the plan on this checkout. Session D is Grok, branch
+`grok-d-merge-gate-exists`. It is still a one-shot visitor. It is **not** a standing
+lane and it does not take a half of `src/`. The heading above this block still
+reads three sessions, and The split table is unchanged.
+
+**Active claim (unambiguous): mark Session D's own merge-gate sentence
+"`.github/` does not exist today" as stale, closed by PR #9.** The queued
+wording stays in the merge-gate claim. This is the second stale sentence
+in this file created by the same PR that closed C's debt. No other
+coordination edit.
+
+**This claim is the close-out note. It is not a rewrite of the merge-gate
+claim, not a second merge gate, and not a GDD change.**
+
+**Explicitly OUT of this claim:**
+
+- every `src/**` file
+- `tools/**`
+- `docs/GDD.md`
+- `.github/`
+- `package.json` overrides
+- rewriting the original "does not exist today" sentence
+- any other dated claim
+
+**No source crossing.** This file only, and only the merge-gate existence
+sentence plus this paragraph.
+
+**Done when the slice is ready for review:** the original sentence is still
+there; the close cites 2026-08-13 and PR #9; `tools/claudeIndex.test.ts`,
+`src/licensing/realIp.test.ts`, and `src/tuning/audit.test.ts` are green;
+Session D does not call a bar met. Push only to `grok-d-merge-gate-exists`,
+and only after an explicit go-ahead. Never to `main` or to
+`claude/agent-config-setup-m2r6ny`.
 
 
 ## Subagent Roles
