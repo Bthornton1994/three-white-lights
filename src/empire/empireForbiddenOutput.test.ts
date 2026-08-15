@@ -15417,6 +15417,21 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   // which the scan does not read as a discriminator over one node.
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#screenBatteryVerdicts#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#deepestFrom<shippedTypeDepth#type', arms: 2, dispatch: false, terminal: 'next-statement' }),
+  // The index-crossing reading's own walk, beside the row above rather than
+  // folded into it, because they are two position sets and not one.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#throughIndex<shippedTypeDepth#type', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  // The limiter battery: one ladder picking the subject declaration out of the
+  // generated file, one narrowing a statement to a variable statement.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#limiterReading#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#limiterReading#subject', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  // The cyclic-declaration census: the outer visit narrowing to the three named
+  // type declarations, its `else` arm separating an alias body from an
+  // interface's members, and the two inside `collect` that follow a type
+  // reference to the symbol it names.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<cyclicDeclarations#node', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<cyclicDeclarations#node#2', arms: 1, dispatch: false, terminal: 'else' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#collect<visit<cyclicDeclarations#inner', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#collect<visit<cyclicDeclarations#referenced', arms: 1, dispatch: false, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#literalValuesOf<channelCensusOf#holder', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#literalValuesOf<channelCensusOf#host', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#hoppableInitializer<channelCensusOf#root', arms: 1, dispatch: true, terminal: 'next-statement' }),
@@ -15584,11 +15599,11 @@ const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
   /** Rows in `DECLARED_HANDLER_ROWS`. Every one a tally or an enum read. */
   DISCRIMINANT_LOOKUPS: 8,
-  CHAINS: 79,
-  DISPATCH: 51,
+  CHAINS: 86,
+  DISPATCH: 52,
   BY_TERMINAL: Object.freeze({
-    else: 7,
-    'next-statement': 59,
+    else: 8,
+    'next-statement': 65,
     loop: 11,
     enclosing: 2,
     /**
