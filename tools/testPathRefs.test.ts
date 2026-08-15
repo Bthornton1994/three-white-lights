@@ -79,6 +79,39 @@
  * `src/` — so nothing here can carry a resolvable tag or a `MUTATION_WITNESSES`
  * entry. Every claim above names the test that reddens instead, which is the
  * honest substitute and not a claim of equivalent coverage.
+ *
+ * ===========================================================================
+ * DOMINATION CHECK — "A NEW RULE CAN MAKE AN OLD ONE VACUOUS"
+ * ===========================================================================
+ * Two checks already in this tree assert that a named test file exists, and
+ * both are heavily overlapped by the rule above. Neither is dominated, and both
+ * discriminators were EXECUTED rather than reasoned about, per CLAUDE.md's
+ * "mutate the subject into the region the older check claims".
+ *
+ *   - `src/game/guaranteeTags.test.ts:3720/3735` — `existsSync` on a witness's
+ *     `mutatedFile` and `testFile`. Its exclusive region is `mutatedFile`,
+ *     which is usually NOT a test path and is therefore outside this scan
+ *     entirely. Driven: `mutatedFile: 'src/career/eligibility.ts'` renamed to
+ *     `…/eligibilityGone.ts` gives that file `1 failed | 14 passed` with
+ *     "witness for strength-never-removes-a-meet: src/career/eligibilityGone.ts"
+ *     while `testPathRefs.test.ts` reports `27 passed`.
+ *   - `src/game/progression.test.ts:1767` — the same shape over the route
+ *     ledger, and the same argument.
+ *
+ * And the other direction, which is what says this rule is worth adding rather
+ * than merely not harmful. Driven: renaming the prose reference in
+ * `src/art/gymTuning.ts` from `src/meet/walkout.test.ts` to a near-miss leaves
+ * `guaranteeTags.test.ts` at `15 passed` and `progression.test.ts` at
+ * `143 passed`, and reddens only this file, at `src/art/gymTuning.ts:477`.
+ * Neither existing check has anything to say about a test path outside a
+ * witness row, which is where 322 of this tree's 326 references live.
+ *
+ * WITHIN THIS FILE, the pins were compared the same way. `TEST_FILES` looked
+ * dominated by `SCANNED_FILES` — both move when a test file is added — and is
+ * not: it is the ONLY assertion that catches the resolution target set being
+ * WIDENED, which would make the main check vacuous while every other number
+ * held. Driven: `testFiles = tracked` gives exactly one red,
+ * "tracked test files moved from 88 to 384".
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -117,7 +150,7 @@ const PINNED = Object.freeze({
    * non-vacuity guard: if the scan ever stops seeing the tree, this is what
    * says so instead of "no unresolved references" passing over nothing.
    */
-  REFERENCES: 323,
+  REFERENCES: 326,
 
   /**
    * FALSE-POSITIVE MODE 1, counted. Occurrences dropped because the match ran
