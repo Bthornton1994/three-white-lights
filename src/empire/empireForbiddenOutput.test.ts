@@ -16492,6 +16492,36 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
     reddened:
       'THE SILENCE COMES BACK AND THE ROW NAMES IT: `is not vacuous: every column answers both ways` fails with `expected [ "ambient-certifying-intersection" ] to deeply equal []` on `silentAndReachable`, and `SILENT` moves 3 -> 4 one assertion above it. Run in two steps, because the first pin short-circuits the second: with the two `ambient-*` verdicts also set back to their pre-narrowing values — `[true, false, false, true]` and `[false, false, true, true]` — `answers every row exactly as the table says` PASSES, which is what says EXACTLY those two rows move and `global-from-a-third-module` does not. That third row is the control for the pair: same certificate, same shape, declaration in a `.ts` rather than a `.d.ts`, and it is walked under both predicates. So the silence was about the FILE KIND and not about the type being global, and the narrowing is what closes it.',
   }),
+  Object.freeze({
+    id: 'G39',
+    what: "`hoppableInitializer` put back on `ambientlyDeclared(resolved)` — E28's predicate at the second of the seven sites that used it, which is the state this file shipped in for a round",
+    reddened:
+      '`records the write into an ambient global instead of filing it as a local`: `expected [] to deeply equal [ Array(1) ]`, `- "__ambientProbe.ts#probeAmbientAliasWrite#write"`. ONE TEST OF A HUNDRED, AND THE OTHER NINETY-NINE ARE THE MEASUREMENT TOO. `does not hop OUT of the function through an `undefined` initializer` stays green under this mutant and under the narrowing alike, because `undefined` lives in `lib.es5.d.ts` and both readings refuse it — so the narrowing keeps the purpose G24 was written for while dropping the width that purpose never asked for. What the width cost is an owner classified `local`, the one arm of nine that records no channel and no `freshReceivers` line, so the whole of a write into an ambiently declared global was an increment to a number this file elsewhere calls one that moves for any added write at all.',
+  }),
+  Object.freeze({
+    id: 'G40',
+    what: "the returned-identifier arm of `returnedFunctions` put back on `ambientlyDeclared(host)` — the site whose comment used to say it was one decision with `hoppableInitializer`, shared rather than restated",
+    reddened:
+      'two checks, and the pair is what says the arm produces a finding rather than merely a line. `finds a function declared in a project `.d.ts` and handed back, at two depths`: `expected [] to deeply equal [ …(2) ]`, losing `- "__ambientProbe.ts#probeAmbientNamedFunction#closure:return"` and `- "__ambientProbe.ts#probeAmbientNamedInShape#closure:.peek"`. `keeps the two kept-wide sites LOUD`: `expected [ …(3) ] to deeply equal [ …(4) ]`, losing `- "__ambientProbe.ts:12 returned=unfollowable:ambientShape"`. So a `declare function` in a project declaration file, handed back by name and one level in, produced NO closure row and NO unfollowed line under the old reading — the same file-kind silence E28 found at the screen, at a different instrument, and it took a probe with two served files to express.',
+  }),
+  Object.freeze({
+    id: 'G41',
+    what: "both property steps of `shippedTypeDepth` put back on `ambientlyDeclared(declaration)` — the walk whose own docstring says its position set is the control's exactly, which stopped being true when E28 narrowed the control and left these behind",
+    reddened:
+      '`steps into a project `.d.ts` on the depth walk, and says what the wide read cost`: `expected 9 to be 12`. The 9 is the shipped tree\'s own deepest surface, so the mutant reports a twelve-deep probe by reporting the number it would report with no probe at all — which is why the constant it is checked against sits beside a second constant holding that 9 rather than alone. Nothing else in the file moves: on `shippedModulePaths()` the two predicates agree at every pin, `POSITIONS` 517, `DEEPEST` 9, `DEEPEST_THROUGH_INDEX` 9 and both crossing counts 0, which is what makes this narrowing invisible without a control and decoration without one.',
+  }),
+  Object.freeze({
+    id: 'G42',
+    what: "E28's narrowing applied to `literalValuesOf` as well — the blanket application of the previous round's fix, at the site where a `null` return is what SENDS the holder to `unfollowed`",
+    reddened:
+      '`keeps the two kept-wide sites LOUD, which is what says they are not the same site`: `expected [ …(2) ] to deeply equal [ …(4) ]`, losing `- "__ambientProbe.ts:21 returned=unfollowable:ambientHolder"` and `- "__ambientProbe.ts:29 returned=unfollowable:ambientList"`. THE FIX MAKES THIS SITE WORSE, which is the whole reason the round is six measurements and not one edit. A declaration file admits no initializer and no assignment, so under the narrower predicate the holder walk enters its `VariableDeclaration` branch, reads a value list of length zero, and returns having recorded nothing at all. Two named lines become silence, and every other check in the file stays green.',
+  }),
+  Object.freeze({
+    id: 'G43',
+    what: 'the same blanket application at the returned-member arm — the fourth of the six sites, and the one whose discriminating shape is a namespace member rather than a property',
+    reddened:
+      '`keeps the two kept-wide sites LOUD`: `expected [ …(3) ] to deeply equal [ …(4) ]`, losing `- "__ambientProbe.ts:25 returned=unfollowable:ambientNamespace"` and nothing else. It took `declare namespace ns { const inner: Shape }` to see: an ordinary member access resolves to a `PropertySignature`, which neither predicate admits into the branch, so the two readings are byte-identical on every property in the probe and part only on the one member access whose symbol is a `VariableDeclaration`. A shape that discriminates nothing is not a control, and the first version of this probe had exactly that shape.',
+  }),
 ]);
 
 /**
@@ -16511,8 +16541,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(35);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(35);
+    expect(REGISTRY_MUTANTS.length).toBe(40);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(40);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
