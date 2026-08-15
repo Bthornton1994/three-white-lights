@@ -80,8 +80,9 @@
 import { nextRandom, seedState } from '../game/prng';
 import { addDays, type StreakDay } from '../game/streak';
 import { CAREER_TUNING, type CareerFederationId, type CareerMeetTier } from './careerTuning';
-import { entryTier, tiersLowestFirst } from './federation';
+import { entryTier, tierIndex, tiersLowestFirst } from './federation';
 import {
+  careerMeetFor,
   qualifyingTotalKgFor,
   scheduledMeets,
   seasonAnchorDay,
@@ -575,7 +576,7 @@ function latestTotalAfter(afterMeets: number): RecordFold {
  */
 function worldsResetAt(occurrence: number): RecordFold {
   return (lifter, meetId, totalKg, tier, day) => {
-    if (tier !== 'worlds' || tierOccurrenceOf('worlds', day) !== occurrence) {
+    if (tier !== 'competitive-worlds' || tierOccurrenceOf('competitive-worlds', day) !== occurrence) {
       return careerRecordAfterMeet(lifter, meetId, totalKg);
     }
     const entered = lifter.enteredMeetIds.includes(meetId)
@@ -823,7 +824,7 @@ export const ENTRY_VARIANTS: Readonly<Record<EntryVariant, EntryFilter>> = Objec
 /** The day of the nominated worlds occurrence on this lifter's record, if they went. */
 function worldsDayAtOccurrence(context: EntryContext, occurrence: number): StreakDay | null {
   return (
-    context.worldsDaysEntered.find((day) => tierOccurrenceOf('worlds', day) === occurrence) ?? null
+    context.worldsDaysEntered.find((day) => tierOccurrenceOf('competitive-worlds', day) === occurrence) ?? null
   );
 }
 
@@ -941,4 +942,411 @@ export function seasonMeetsOfTier(
   tier: CareerMeetTier,
 ): readonly SeasonMeet[] {
   return season.filter((meet) => meet.tier === tier);
+}
+
+// ---------------------------------------------------------------------------
+// AXIS D — the campaign summit is reachable
+// ---------------------------------------------------------------------------
+
+/**
+ * The inputs GDD §6.6's "always reachable" requirement is measured on, and the
+ * two calendars that requirement is measured AGAINST.
+ *
+ * ===========================================================================
+ * WHY THIS IS A FOURTH AXIS AND NOT A COUNT INSIDE AXIS B
+ * ===========================================================================
+ * Axes A, B and C all ask a §12.3 monotonicity question: does doing MORE ever
+ * give you LESS. This one asks a reachability question — is there a lifter who
+ * can stand on the top rung at all — and the two are different enough that
+ * running them through one fixture would make both worse.
+ *
+ * Concretely: axis B's `simulateSeason` starts every career on the season
+ * anchor. That is the right fixture for a monotonicity comparison, where what
+ * matters is that both arms share a calendar. It is the WRONG fixture for
+ * reachability, because a summit's reachability depends on where the player
+ * enters the season relative to it, and a fixture with one signup day cannot
+ * see that. A campaign summit late in the season looks perfectly reachable to
+ * every anchor-signup career and can still be a year away for somebody who
+ * installed the game in month seven.
+ *
+ * So this axis sweeps SIGNUP DAY as well as seed, and its careers run for a
+ * fixed span from their own signup rather than to a fixed absolute day.
+ *
+ * ===========================================================================
+ * THE REQUIREMENT, IN NUMBERS, STATED BEFORE THE KNOBS WERE PICKED
+ * ===========================================================================
+ * GDD §6.6 makes "always reachable" a REQUIREMENT of the campaign summit
+ * — "always — this is the point of it" — and CLAUDE.md has three times refused
+ * a small, honestly measured, permanently documented breach of an absolute. So
+ * the first clause is not a percentile:
+ *
+ *   R1 — EVERY simulated arc enters a campaign summit. All
+ *        `SEEDS.length x SIGNUP_OFFSET_DAYS.length` of them, no exceptions
+ *        carved out, pinned at the full count rather than bounded.
+ *
+ *   R2 — PACE. A campaign is a year-scale thing, so the summit has to land
+ *        inside one: at least `FIRST_YEAR_ARCS_REQUIRED` of those arcs enter
+ *        their first campaign summit within `FIRST_YEAR_DAYS` of signing up,
+ *        and the median arc does so inside `MEDIAN_DAYS_CEILING`. This clause
+ *        IS distributional and that is deliberate — a slower player taking
+ *        longer is pacing, not a lockout, and R1 is what makes it not a
+ *        lockout.
+ *
+ *   R3 — IT IS A SUMMIT. The gate sits strictly above nationals' and strictly
+ *        below competitive worlds' (§6.6's Q1 ruling: separate totals, campaign
+ *        lower), and no arc enters a campaign summit before
+ *        `MIN_MEETS_BEFORE_A_SUMMIT` meets — a top rung reached in a fortnight
+ *        is not a top rung. Both halves are pinned.
+ *
+ * `eligibility.test.ts` measures all three and pins the counts. R1 and R3's
+ * first half are absolutes; R2 and R3's second half are the numbers a
+ * playtester will move.
+ *
+ * ===========================================================================
+ * WHAT THE ZEROS ARE ZERO AGAINST — TWO CONTROLS, ONE PER KNOB
+ * ===========================================================================
+ * The fix has two knobs, the campaign summit's cadence and its phase, and a
+ * measurement that moved both at once could not say which one mattered. So the
+ * controls hold each knob at its unfixed value in turn, and both are runnable
+ * rather than described:
+ *
+ *   - `annual-at-the-competitive-phase` is the calendar as it stood before the
+ *     summit was split: annual, six days after the anchor. This is the shape
+ *     GDD §6.6 recorded as a design violation, and it is kept here so the
+ *     violation has a number rather than a memory.
+ *   - `annual-late` is the phase fixed and the cadence left annual. It isolates
+ *     how much of the repair the calendar POSITION is doing and how much the
+ *     cadence is, which is the question a tuner who wants an annual summit back
+ *     will ask first.
+ *
+ * Neither control changes the qualifying total. Threshold and calendar are the
+ * two halves of the same defect and the controls hold the threshold still, so
+ * what they measure is the calendar's contribution alone.
+ */
+export const CAMPAIGN_SUMMIT_SWEEP = Object.freeze({
+  /**
+   * How many days after the season anchor each simulated lifter signs up.
+   *
+   * Eight offsets stepping by 23 days, which covers one campaign cadence
+   * (0..161 of 182) and — because 23 and 7 are coprime — puts the eight signups
+   * on eight different weekdays, so no arm of this sweep is accidentally
+   * aligned with the weekday a tier's series falls on.
+   *
+   * WHY THE STEP IS NOT A MULTIPLE OF SEVEN, since every cadence is: a sweep
+   * whose signup days all shared a weekday would hold the phase relationship
+   * between the lifter and every series FIXED, and the whole point of this
+   * dimension is that a summit's reachability depends on that relationship.
+   */
+  SIGNUP_OFFSET_DAYS: Object.freeze([0, 23, 46, 69, 92, 115, 138, 161]),
+  /**
+   * How long an arc runs, from its own signup day.
+   *
+   * Two calendar periods, the same span axis B's careers run for, so the two
+   * axes are looking at careers of the same depth. It is four campaign
+   * cadences, which is what lets a control that only offers a summit annually
+   * still offer two.
+   */
+  RUN_DAYS: 728,
+  /**
+   * The draw per arc, and a ceiling rather than a count.
+   *
+   * An arc starting mid-season can catch one more occurrence of a series than
+   * one starting on the anchor, so the deepest arc is not a number this file
+   * can state from the calendar the way `MEETS_PER_CAREER` is. It is drawn
+   * generously and `eligibility.test.ts` pins the deepest arc actually produced
+   * against it, so the slack is a measured number instead of a hope.
+   */
+  MEETS_PER_ARC: 200,
+  /** R2's window: a campaign is a year-scale thing. */
+  FIRST_YEAR_DAYS: 364,
+  /**
+   * R2, first half: how many of the arcs must reach a campaign summit inside
+   * that first year.
+   *
+   * 176 of 192, which is eleven twelfths. Not every arc, because a lifter who
+   * signs up a week after a summit is held cannot reach that one however well
+   * they play, and demanding otherwise would demand a summit every week.
+   */
+  FIRST_YEAR_ARCS_REQUIRED: 176,
+  /** R2, second half: the median arc's wait, in days from signup. */
+  MEDIAN_DAYS_CEILING: 250,
+  /**
+   * R3, second half: the fewest meets an arc may have behind it when it enters
+   * its first campaign summit.
+   *
+   * Twenty, which at the shipped calendar is roughly a season's worth of local
+   * and regional meets. A summit a lifter walks into off three meets is a
+   * formality with a big name on it.
+   */
+  MIN_MEETS_BEFORE_A_SUMMIT: 20,
+  FEDERATION: 'meridian' as CareerFederationId,
+});
+
+/** Which campaign-summit calendar an arc runs on. */
+export type CampaignCalendarVariant = 'shipped' | 'annual-at-the-competitive-phase' | 'annual-late';
+
+/** A tier's series as the two numbers that generate it. */
+export interface SeriesShape {
+  readonly cadenceDays: number;
+  readonly phaseDays: number;
+}
+
+/**
+ * The three calendars the campaign summit is measured on.
+ *
+ * `shipped` READS `CAREER_TUNING` rather than restating it, so a tuner who
+ * moves the campaign cadence or phase moves this arm with it and the
+ * measurement re-runs on what actually ships. The two controls read the
+ * competitive tier's own numbers for the same reason: the unfixed calendar is
+ * not a number typed here, it is the annual series the competitive summit still
+ * runs on.
+ */
+export const CAMPAIGN_CALENDAR_VARIANTS: Readonly<Record<CampaignCalendarVariant, SeriesShape>> =
+  Object.freeze({
+    shipped: Object.freeze({
+      cadenceDays: CAREER_TUNING.CADENCE_DAYS['campaign-worlds'],
+      phaseDays: CAREER_TUNING.PHASE_DAYS['campaign-worlds'],
+    }),
+    'annual-at-the-competitive-phase': Object.freeze({
+      cadenceDays: CAREER_TUNING.CADENCE_DAYS['competitive-worlds'],
+      phaseDays: CAREER_TUNING.PHASE_DAYS['competitive-worlds'],
+    }),
+    'annual-late': Object.freeze({
+      cadenceDays: CAREER_TUNING.CADENCE_DAYS['competitive-worlds'],
+      phaseDays: CAREER_TUNING.PHASE_DAYS['campaign-worlds'],
+    }),
+  });
+
+/**
+ * Every day in `[fromDay, toDay]` a series of this shape holds a meet on.
+ *
+ * The same arithmetic `calendar.ts`'s `meetDaysForTier` runs, over a shape
+ * given as two numbers instead of read from a tier. It exists because the
+ * controls need a calendar the shipped tuning does not hold, and `CAREER_TUNING`
+ * is frozen and must stay that way.
+ *
+ * A SECOND IMPLEMENTATION OF A THING THE ENGINE ALREADY DOES IS A DRIFT
+ * HAZARD, so it is checked rather than trusted: `eligibility.test.ts` asserts
+ * this function's output for the `shipped` shape is identical to
+ * `meetDaysForTier('campaign-worlds', ...)` over the whole simulated span. An
+ * edit to either that makes them disagree reddens there.
+ */
+export function seriesDays(
+  shape: SeriesShape,
+  fromDay: StreakDay,
+  toDay: StreakDay,
+): readonly StreakDay[] {
+  if (toDay < fromDay) return [];
+  const start = addDays(seasonAnchorDay(), shape.phaseDays);
+  if (toDay < start) return [];
+  const firstIndex = fromDay <= start ? 0 : Math.ceil((fromDay - start) / shape.cadenceDays);
+  const days: StreakDay[] = [];
+  for (let index = firstIndex; ; index += 1) {
+    const day = addDays(start, index * shape.cadenceDays);
+    if (day > toDay) break;
+    days.push(day);
+  }
+  return days;
+}
+
+/**
+ * The federation's whole calendar in `[fromDay, toDay]`, with the campaign
+ * summit's series moved to the variant's shape.
+ *
+ * Every meet is built by `careerMeetFor`, the engine's own constructor, so a
+ * relocated summit carries the engine's qualifying total, id and name. The ONLY
+ * thing a variant changes is which days the campaign summit falls on — which is
+ * what makes these controls a measurement of the calendar position rather than
+ * of a second, differently gated tier.
+ */
+export function variantCalendar(
+  variant: CampaignCalendarVariant,
+  fromDay: StreakDay,
+  toDay: StreakDay,
+): readonly CareerMeet[] {
+  const shape = CAMPAIGN_CALENDAR_VARIANTS[variant];
+  const others = scheduledMeets(CAMPAIGN_SUMMIT_SWEEP.FEDERATION, fromDay, toDay).filter(
+    (meet) => meet.tier !== 'campaign-worlds',
+  );
+  const summits = seriesDays(shape, fromDay, toDay).map((day) =>
+    careerMeetFor(CAMPAIGN_SUMMIT_SWEEP.FEDERATION, 'campaign-worlds', day),
+  );
+  return [...others, ...summits].sort((a, b) =>
+    a.day === b.day ? tierIndex(a.tier) - tierIndex(b.tier) : a.day - b.day,
+  );
+}
+
+/** One simulated campaign arc: who, from when, and what they got to. */
+export interface CampaignArc {
+  readonly seed: number;
+  /** Days after the season anchor this lifter signed up. */
+  readonly signupOffsetDays: number;
+  readonly meets: readonly SeasonMeet[];
+  /** Days from signup to the first campaign summit entered, or `null` if none. */
+  readonly daysToFirstSummit: number | null;
+  /** How many meets were behind them when they entered it. */
+  readonly meetsBeforeFirstSummit: number | null;
+  readonly summitsEntered: number;
+  /** How many of each tier the calendar OFFERED inside this arc's window. */
+  readonly offeredPerTier: Readonly<Record<CareerMeetTier, number>>;
+  /** How many of each tier the lifter actually entered. */
+  readonly enteredPerTier: Readonly<Record<CareerMeetTier, number>>;
+}
+
+function emptyTierTally(): Record<CareerMeetTier, number> {
+  const tally = {} as Record<CareerMeetTier, number>;
+  for (const tier of tiersLowestFirst()) tally[tier] = 0;
+  return tally;
+}
+
+/**
+ * One lifter's campaign, played greedily from their own signup day.
+ *
+ * The same rule `simulateSeason` uses — walk the days, take the first meet the
+ * engine says can be entered — and for the same reason: at
+ * `MIN_DAYS_BETWEEN_MEETS` of 1 this is the most competitive career the game
+ * will sell, which is what "a solo player who plays the campaign well" means
+ * when it has to be a number. Entry is decided by `canEnter` itself, so the
+ * fixture cannot drift from the engine.
+ *
+ * WHAT IT DOES NOT MODEL, said plainly because a reader will assume otherwise:
+ * a real player misses meets, and a player who misses meets climbs slower and
+ * reaches the summit later than every arc here. This measures the CEILING of
+ * campaign pace, not its middle. R1's "every arc reaches a summit" is therefore
+ * a statement about the best case, and the honest reading of it is that a
+ * calendar failing R1 is certainly unreachable rather than that one passing it
+ * is certainly reachable for everybody.
+ */
+export function simulateCampaignArc(
+  seed: number,
+  signupOffsetDays: number,
+  variant: CampaignCalendarVariant,
+): CampaignArc {
+  const totals = seededCareerTotals(seed, CAMPAIGN_SUMMIT_SWEEP.MEETS_PER_ARC);
+  const signupDay = addDays(seasonAnchorDay(), signupOffsetDays);
+  const lastDay = addDays(signupDay, CAMPAIGN_SUMMIT_SWEEP.RUN_DAYS);
+  const calendar = variantCalendar(variant, signupDay, lastDay);
+  const byDay = new Map<number, CareerMeet[]>();
+  const offeredPerTier = emptyTierTally();
+  for (const meet of calendar) {
+    offeredPerTier[meet.tier] += 1;
+    const row = byDay.get(meet.day);
+    if (row === undefined) byDay.set(meet.day, [meet]);
+    else row.push(meet);
+  }
+
+  let lifter: CareerLifter = newCareerLifter(CAMPAIGN_SUMMIT_SWEEP.FEDERATION);
+  const meets: SeasonMeet[] = [];
+  const enteredPerTier = emptyTierTally();
+  let lastMeetDay: number | null = null;
+  let daysToFirstSummit: number | null = null;
+  let meetsBeforeFirstSummit: number | null = null;
+  let summitsEntered = 0;
+  for (let day = signupDay; day <= lastDay; day = addDays(day, 1)) {
+    if (lastMeetDay !== null && day - lastMeetDay < ATTENDANCE_SWEEP.MIN_DAYS_BETWEEN_MEETS) continue;
+    const meet = (byDay.get(day) ?? []).find((candidate) => canEnter(lifter, candidate, day));
+    if (meet === undefined) continue;
+    const totalKg = totals[meets.length];
+    if (totalKg === undefined) {
+      throw new RangeError(
+        `career: an arc ran past MEETS_PER_ARC (${CAMPAIGN_SUMMIT_SWEEP.MEETS_PER_ARC}) meets`,
+      );
+    }
+    if (meet.tier === 'campaign-worlds') {
+      if (daysToFirstSummit === null) {
+        daysToFirstSummit = day - signupDay;
+        meetsBeforeFirstSummit = meets.length;
+      }
+      summitsEntered += 1;
+    }
+    lifter = careerRecordAfterMeet(lifter, meet.id, totalKg);
+    meets.push({ day, meetId: meet.id, tier: meet.tier, totalKg });
+    enteredPerTier[meet.tier] += 1;
+    lastMeetDay = day;
+  }
+  return {
+    seed,
+    signupOffsetDays,
+    meets,
+    daysToFirstSummit,
+    meetsBeforeFirstSummit,
+    summitsEntered,
+    offeredPerTier: Object.freeze(offeredPerTier),
+    enteredPerTier: Object.freeze(enteredPerTier),
+  };
+}
+
+/** Every (seed, signup day) arc of one variant, in a fixed order. */
+export function campaignArcs(variant: CampaignCalendarVariant): readonly CampaignArc[] {
+  const arcs: CampaignArc[] = [];
+  for (const seed of ATTENDANCE_SWEEP.SEEDS) {
+    for (const offset of CAMPAIGN_SUMMIT_SWEEP.SIGNUP_OFFSET_DAYS) {
+      arcs.push(simulateCampaignArc(seed, offset, variant));
+    }
+  }
+  return arcs;
+}
+
+/** What one variant's arcs add up to. Counts, never bounds. */
+export interface CampaignReach {
+  readonly arcs: number;
+  /** Arcs that entered at least one campaign summit. R1 is this equalling `arcs`. */
+  readonly arcsReachingASummit: number;
+  /** Arcs that entered one within `FIRST_YEAR_DAYS` of signing up. R2. */
+  readonly arcsReachingInsideAYear: number;
+  /** Days from signup to first summit, over the arcs that reached one, sorted. */
+  readonly daysToFirstSummit: readonly number[];
+  readonly medianDaysToFirstSummit: number | null;
+  readonly worstDaysToFirstSummit: number | null;
+  /** The fewest meets any arc had behind it at its first summit. R3. */
+  readonly fewestMeetsBeforeASummit: number | null;
+  readonly summitsEntered: number;
+  readonly offeredPerTier: Readonly<Record<CareerMeetTier, number>>;
+  readonly enteredPerTier: Readonly<Record<CareerMeetTier, number>>;
+  /** The deepest arc, against which `MEETS_PER_ARC`'s slack is measured. */
+  readonly deepestArc: number;
+}
+
+/** Fold one variant's arcs into the counts the requirement is read off. */
+export function measureCampaignReach(variant: CampaignCalendarVariant): CampaignReach {
+  const arcs = campaignArcs(variant);
+  const offeredPerTier = emptyTierTally();
+  const enteredPerTier = emptyTierTally();
+  const reached: number[] = [];
+  let arcsReachingInsideAYear = 0;
+  let summitsEntered = 0;
+  let fewestMeetsBeforeASummit: number | null = null;
+  let deepestArc = 0;
+  for (const arc of arcs) {
+    for (const tier of tiersLowestFirst()) {
+      offeredPerTier[tier] += arc.offeredPerTier[tier];
+      enteredPerTier[tier] += arc.enteredPerTier[tier];
+    }
+    summitsEntered += arc.summitsEntered;
+    deepestArc = Math.max(deepestArc, arc.meets.length);
+    if (arc.daysToFirstSummit !== null) {
+      reached.push(arc.daysToFirstSummit);
+      if (arc.daysToFirstSummit <= CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_DAYS) arcsReachingInsideAYear += 1;
+    }
+    if (arc.meetsBeforeFirstSummit !== null) {
+      fewestMeetsBeforeASummit =
+        fewestMeetsBeforeASummit === null
+          ? arc.meetsBeforeFirstSummit
+          : Math.min(fewestMeetsBeforeASummit, arc.meetsBeforeFirstSummit);
+    }
+  }
+  const sorted = [...reached].sort((a, b) => a - b);
+  return {
+    arcs: arcs.length,
+    arcsReachingASummit: sorted.length,
+    arcsReachingInsideAYear,
+    daysToFirstSummit: sorted,
+    medianDaysToFirstSummit: sorted.length === 0 ? null : (sorted[Math.floor(sorted.length / 2)] as number),
+    worstDaysToFirstSummit: sorted.length === 0 ? null : (sorted[sorted.length - 1] as number),
+    fewestMeetsBeforeASummit,
+    summitsEntered,
+    offeredPerTier: Object.freeze(offeredPerTier),
+    enteredPerTier: Object.freeze(enteredPerTier),
+    deepestArc,
+  };
 }

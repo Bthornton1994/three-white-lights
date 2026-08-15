@@ -18,18 +18,25 @@
  *
  * From the GDD, verbatim:
  *
- *   - four tiers, in this order (§6.1);
+ *   - the ladder local -> regional -> nationals -> worlds (§6.1), with the
+ *     summit split in two by §6.6's second ruling of 2026-08-14 — see the tier
+ *     block below, which carries that argument in full;
  *   - entry gated by a qualifying total earned at earlier meets (§6.1, §6.6);
- *   - local and regional are asynchronous, on a "weekly/biweekly cadence"
- *     (§6.6);
- *   - nationals are quarterly and worlds annual, and they are SCHEDULED LIVE
- *     WINDOWS shared by every entrant (§6.6);
+ *   - local is asynchronous with an NPC field, on a "weekly/biweekly cadence";
+ *     regional, nationals and competitive worlds are SCHEDULED LIVE WINDOWS
+ *     shared by every entrant; campaign worlds is asynchronous with an NPC
+ *     field and is required to be "always reachable" (§6.6);
+ *   - nationals are quarterly and the competitive summit annual (§6.6);
+ *   - competitive worlds asks 650 kg — §6.6's Q1 ruling assigns the existing
+ *     figure to that tier by name, because `docs/research/qualifying-totals.md`
+ *     derives it as P75 of the real nationals field and that is a
+ *     competitive-population number by construction;
  *   - the ruleset words raw / equipped / tested / untested (§2.1).
  *
  * Decided here, because the document does not say:
  *
- *   1. The qualifying totals themselves. §6.1 says meets are gated by them and
- *      names no number. These four are a guess at a shape — see the block.
+ *   1. The qualifying totals themselves, except competitive worlds' 650. §6.1
+ *      says meets are gated by them and names no other number. See the block.
  *   2. A single qualifying total per tier, rather than one per weight class and
  *      sex. Real qualifying totals are a table with a row per class; see the
  *      block for why this ships as one number and what replacing it costs.
@@ -71,31 +78,106 @@ import type { CivilDate } from '../game/streak';
 // Tiers
 // ---------------------------------------------------------------------------
 
-/** GDD §6.1's ladder, verbatim and in its order. */
-export type CareerMeetTier = 'local' | 'regional' | 'nationals' | 'worlds';
+/**
+ * GDD §6.1's ladder, with §6.6's summit split into the two tiers that ruling
+ * created.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY A FIFTH MEMBER AND NOT A DISCRIMINATOR ON `worlds`
+ * ---------------------------------------------------------------------------
+ * §6.6's second ruling of 2026-08-14 says the summit is two tiers: a **campaign
+ * worlds** (async, NPC field, required to be always reachable) and a
+ * **competitive worlds** (synchronous PvP, the harder ceiling), with separate
+ * qualifying totals and the campaign one lower. The shape that ruling arrives
+ * in has two candidate encodings, and this is the argument for the one taken.
+ *
+ * The alternative was one `worlds` tier carrying a campaign/competitive
+ * discriminator. It was rejected on a count: EVERY per-tier record in this file
+ * differs between the two summits, and there are six of them —
+ * `QUALIFYING_TOTAL_KG` (the ruling: separate, campaign lower), `CADENCE_DAYS`
+ * (semi-annual against annual), `PHASE_DAYS` (late in the season against day
+ * six), `TIER_SCHEDULING` (async against sync), `TIER_LABEL` and
+ * `TIER_MEET_NAME`. A discriminator would leave every one of those six keyed by
+ * a tier that no longer determines its value, so each would need a second
+ * lookup hung off the discriminator — and TypeScript would stop checking that
+ * the second lookup is total, which is the property the `Record<CareerMeetTier,
+ * T>` shape is here for. A fifth member keeps all six exhaustive for free, and
+ * a seventh record added later is exhaustive for free as well.
+ *
+ * It also matches the document: §6.6's own table after both rulings has five
+ * rows, not four with a note.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT THE ORDER MEANS, SINCE TWO SUMMITS DO NOT OBVIOUSLY HAVE ONE
+ * ---------------------------------------------------------------------------
+ * `federation.ts` exposes `tierIndex` and `tiersLowestFirst`, which assume a
+ * total order. So the order has to be stated rather than assumed, because the
+ * natural reading of "two summits" is that they are PARALLEL.
+ *
+ * THE ORDER IS AN ORDER ON THE QUALIFYING GATE, AND ON NOTHING ELSE. Campaign
+ * worlds sits below competitive worlds because §6.6 rules its total lower, and
+ * `careerTuning.test.ts` pins the gates strictly increasing along this array.
+ * That is the whole of what the position claims.
+ *
+ * It is specifically NOT a prerequisite chain, and the code agrees: `qualifiesFor`
+ * compares a lifter's best total against the meet's own bar and reads no history
+ * of tiers cleared, so entering a campaign worlds is not required before a
+ * competitive one and vice versa. The two live readers of the order are the
+ * same-day tie-break in `scheduledMeets` — which the shipped phases make
+ * unreachable — and `entryTier()`, which takes index 0. Neither walks the array
+ * as a ladder a lifter climbs rung by rung.
+ */
+export type CareerMeetTier =
+  | 'local'
+  | 'regional'
+  | 'nationals'
+  | 'campaign-worlds'
+  | 'competitive-worlds';
 
 /**
  * The ladder as an array, lowest first.
  *
  * Order is load-bearing rather than cosmetic: `federation.ts` reads it to say
  * which tier is the entry tier, and `careerTuning.test.ts` asserts the
- * qualifying totals rise along it.
+ * qualifying totals rise along it. See the type above for what "lowest" means
+ * once the summit is two tiers.
  */
 export const MEET_TIER_ORDER = [
   'local',
   'regional',
   'nationals',
-  'worlds',
+  'campaign-worlds',
+  'competitive-worlds',
 ] as const satisfies readonly CareerMeetTier[];
 
-/** GDD §6.6 splits the ladder here: local and regional async, the top two live. */
+/**
+ * GDD §6.6 splits the ladder by mode, and after both 2026-08-14 rulings the
+ * split is not a single cut across the order.
+ *
+ * The first ruling moved REGIONAL across: "the boundary is now drawn between
+ * the entry tier and every tier above it", so local is the one async rung of
+ * the original four. The second ruling then put an async tier back at the top —
+ * campaign worlds, whose whole purpose is a summit that does not wait on other
+ * players being awake. So `async` is local and campaign worlds; `sync` is
+ * everything between them, and the modes deliberately do not partition the
+ * order into a low half and a high half.
+ *
+ * REGIONAL'S VALUE HERE WAS STALE AND IS CORRECTED IN THIS PIECE. It read
+ * `async` against a document that had ruled it synchronous, and
+ * `careerTuning.test.ts` pinned the stale reading as GDD §6.6's own. Nothing
+ * branches on this map — `calendar.ts` copies it onto `CareerMeet.scheduling`
+ * and no reader tests it — so the correction is a label catching up with a
+ * ruling, and it builds none of the synchronous machinery §6.6 still gates
+ * behind two open questions.
+ */
 export type MeetSchedulingMode = 'async' | 'sync';
 
 export const TIER_SCHEDULING: Readonly<Record<CareerMeetTier, MeetSchedulingMode>> = Object.freeze({
   local: 'async',
-  regional: 'async',
+  regional: 'sync',
   nationals: 'sync',
-  worlds: 'sync',
+  'campaign-worlds': 'async',
+  'competitive-worlds': 'sync',
 });
 
 // ---------------------------------------------------------------------------
@@ -127,12 +209,38 @@ export const CAREER_TUNING = Object.freeze({
    * it is a change to one function: `qualifyingTotalKgFor` in `calendar.ts` is
    * the only reader, and a per-class version takes the lifter's class and
    * returns the same shape.
+   *
+   * THE TWO SUMMITS ASK FOR DIFFERENT NUMBERS AND THEY ARE DIFFERENT KINDS OF
+   * NUMBER. GDD §6.6's Q1 ruling settles which is which:
+   *
+   *   - `competitive-worlds` at 650 is a POPULATION PERCENTILE. It is P75 of
+   *     the real nationals field, derived in `docs/research/qualifying-totals.md`
+   *     against real meet data, and the ruling assigns it to this tier by name.
+   *     This piece did not derive it and does not move it.
+   *   - `campaign-worlds` at 600 is a PACING DECISION, and it is not a
+   *     percentile of any real population. The ruling asks for a number
+   *     "measured against what the simulation actually produces across a full
+   *     career arc — reachable by a solo player who plays the campaign well, on
+   *     the campaign's own timeline". `CAMPAIGN_SUMMIT_SWEEP` in
+   *     `careerSweep.ts` holds the requirement it was derived to, the
+   *     distribution it was read off, and the controls the measurement is
+   *     measured against.
+   *
+   * BOTH ARE GAME-FEEL VALUES AND 600 IS PROVISIONAL. Nobody has played a
+   * career. What the measurement establishes is that the shipped pair (this
+   * number, and the campaign summit's cadence and phase below) satisfies a
+   * stated requirement on the simulated population; it does not establish that
+   * the requirement is the one a playtester will want, and it cannot. The three
+   * knobs move together — raising the gate without moving the calendar is what
+   * produced the unreachable summit this piece exists to fix — and the sweep
+   * reddens on any of the three moving, so a tuner turning one is told.
    */
   QUALIFYING_TOTAL_KG: Object.freeze({
     local: null,
     regional: 400,
     nationals: 550,
-    worlds: 650,
+    'campaign-worlds': 600,
+    'competitive-worlds': 650,
   }) satisfies Readonly<Record<CareerMeetTier, number | null>>,
 
   /**
@@ -147,36 +255,82 @@ export const CAREER_TUNING = Object.freeze({
    *
    * A tuner turning these should read `PHASE_DAYS` first. The two are one
    * decision in two blocks.
+   *
+   * THE CAMPAIGN SUMMIT'S 182 IS THE ONE CADENCE THE DOCUMENT DOES NOT STATE,
+   * and it is half of this piece's answer to "always reachable". §6.6 says
+   * "annual Worlds" inside its SYNCHRONOUS bullet list, so that word is about
+   * the competitive tier; the campaign summit is a tier the same section
+   * created and gave no cadence to.
+   *
+   * Semi-annual, for a reason that is about the worst case rather than the
+   * typical one. A tier that comes round every C days means a lifter who clears
+   * its gate the day after one is held waits up to C days for the next, and
+   * that wait is the sharpest thing "always reachable" can fail on: at C = 364
+   * a player who qualifies at the wrong moment has an entire year of campaign
+   * with nothing at the top of it. Halving the cadence halves that worst case
+   * and leaves the tier scarce — two of the roughly eighty-six meets a year
+   * holds. 182 is 26 whole weeks and divides 364, which is what keeps the
+   * period arithmetic in `careerSweep.ts` exact: every cadence still divides
+   * `HORIZON_DAYS`, so the calendar's pattern still repeats at one year.
+   *
+   * A FEEL VALUE. Two a year may well read as too many for a world
+   * championship; the honest reason it is not annual is written above rather
+   * than asserted to be right.
    */
   CADENCE_DAYS: Object.freeze({
     local: 7,
     regional: 14,
     nationals: 91,
-    worlds: 364,
+    'campaign-worlds': 182,
+    'competitive-worlds': 364,
   }) satisfies Readonly<Record<CareerMeetTier, number>>,
 
   /**
    * How far each tier's series sits after the season anchor, in days.
    *
-   * These four exist to keep two tiers off the same day. Every cadence above is
+   * These five exist to keep two tiers off the same day. Every cadence above is
    * a multiple of seven, so a tier's meets all fall on one weekday — the
-   * weekday its phase picks — and four phases that differ modulo seven put the
-   * four tiers on four different weekdays for every year the calendar runs,
+   * weekday its phase picks — and five phases that differ modulo seven put the
+   * five tiers on five different weekdays for every year the calendar runs,
    * not merely for the horizon a test happens to sweep.
    *
-   * The cost is written down rather than hidden: three of the four tiers land
+   * The cost is written down rather than hidden: four of the five tiers land
    * midweek, and real meets are held at weekends. Buying the weekend back means
    * either accepting that a worlds day is also a local day, or moving off whole
    * weeks and accepting weekday drift. That is a tuning judgement with a real
    * trade in it, and `careerTuning.test.ts` counts the collisions the shipped
    * numbers produce so a tuner who takes the other side sees the count move
    * instead of discovering it in a screenshot.
+   *
+   * THE FIFTH RESIDUE IS ALMOST OUT OF ROOM, which is worth a tuner knowing
+   * before they add a sixth tier: there are seven weekdays, five are taken, and
+   * a seventh tier makes the no-collision argument impossible rather than
+   * merely tight. `careerTuning.test.ts` pins the residues as a set, so the
+   * wall is a red rather than a discovery.
+   *
+   * THE CAMPAIGN SUMMIT'S 177 IS THE OTHER HALF OF THE REACHABILITY FIX, and it
+   * is the number this piece measured rather than chose. The competitive
+   * summit's phase of 6 puts that tier's meet on the SIXTH DAY of the season,
+   * when a lifter has had at most one meet and is holding around 380 kg against
+   * a 650 kg gate — so its first occurrence is unreachable by arithmetic, for
+   * every seed, at every depth. Copying that phase onto the campaign summit
+   * would have reproduced exactly the defect §6.6 recorded, and
+   * `careerSweep.ts` keeps it as the runnable control that measures zero.
+   *
+   * 177 is late in the season: a lifter who starts at the anchor has 177 days
+   * and roughly forty meets to climb from 380 kg to the campaign gate before
+   * the first one comes round, and a second follows 182 days later. What
+   * fraction of simulated careers that actually reaches, from every signup day
+   * in a cadence, is `CAMPAIGN_SUMMIT_SWEEP`'s measurement rather than this
+   * paragraph's claim. 177 mod 7 is 2, which is the residue the other four
+   * leave free.
    */
   PHASE_DAYS: Object.freeze({
     local: 0,
     regional: 3,
     nationals: 5,
-    worlds: 6,
+    'campaign-worlds': 177,
+    'competitive-worlds': 6,
   }) satisfies Readonly<Record<CareerMeetTier, number>>,
 
   /**
@@ -278,11 +432,25 @@ export const CAREER_FEDERATIONS = Object.freeze([
  * whatever the state has become since.
  */
 export const CAREER_COPY = Object.freeze({
+  /**
+   * THE TWO SUMMIT ROWS ARE THE MOST PROVISIONAL COPY IN THIS FILE, and they
+   * are deliberately the GDD's own vocabulary rather than fiction invented
+   * here. §6.6's table names the tiers "Campaign worlds" and "Competitive
+   * worlds"; those are DESIGN-DOCUMENT words for a distinction a player should
+   * probably never be shown in those terms, since "campaign" is a word about
+   * the product rather than about the sport.
+   *
+   * Using them anyway is the smaller of two mistakes. Inventing a fictional
+   * name for the split would be inventing content nobody asked for, in the one
+   * file GDD §12.3 makes legally load-bearing, and it would read as settled.
+   * These read as placeholders, which is what they are.
+   */
   TIER_LABEL: Object.freeze({
     local: 'LOCAL',
     regional: 'REGIONAL',
     nationals: 'NATIONALS',
-    worlds: 'WORLDS',
+    'campaign-worlds': 'CAMPAIGN WORLDS',
+    'competitive-worlds': 'COMPETITIVE WORLDS',
   }) satisfies Readonly<Record<CareerMeetTier, string>>,
 
   /** What each tier's meet is called, after the federation's own name. */
@@ -290,7 +458,8 @@ export const CAREER_COPY = Object.freeze({
     local: 'Open',
     regional: 'Regional Championships',
     nationals: 'National Championships',
-    worlds: 'World Championships',
+    'campaign-worlds': 'Campaign World Championships',
+    'competitive-worlds': 'World Championships',
   }) satisfies Readonly<Record<CareerMeetTier, string>>,
 
   EQUIPMENT_LABEL: Object.freeze({
