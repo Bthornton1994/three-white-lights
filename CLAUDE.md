@@ -1462,6 +1462,80 @@ check can fail. This asks whether a *true statement about code* supports the
 *conclusion drawn from it*. A green suite and a correctly-read source look
 identical in both cases, which is why neither rule catches the other's defect.
 
+### A FLAKE BESIDE A MERGE: RULE THE MERGE OUT STRUCTURALLY *BEFORE* RE-RUNNING
+
+**Standing response, ruled by a human after it worked.** When a check fails on a
+tree you have just merged into, the tempting first move is to re-run it. Do the
+structural elimination first, and write the answer down before you have the
+second result.
+
+**Why the order decides whether the conclusion is worth anything.** Re-run first
+and the green result arrives *with* a story already attached — "it was flaky" —
+and that story is now untestable, because you cannot un-see the pass. Rule out
+first and you commit to a falsifiable claim while the red result is still the
+only evidence you have. Same two commands, opposite epistemic value.
+
+**What structural elimination means here**, from the instance that earned it: a
+walk-out settling control read `4774 of 811200 px moved` on a tree that had just
+merged the Empire idle wiring. Before re-running, two facts were established
+from the diff and the source — the merge touches no file under `src/meet`,
+`src/art`, `src/cutin` or `meetTuning.ts`; and the control fires at
+`verify-shell-route.mjs:3201` while the first Empire press is at `:6148`, so the
+new screen is not mounted and its `setInterval` is not running when that control
+reads. Only then was it re-run: `0 of 811200`, max channel delta 0.
+
+So it is a flake, and that is a *finding* rather than a dismissal. One-in-two is
+not a rounding artefact.
+
+**AND A FLAKE IS NOT CLOSED BY WIDENING ITS TOLERANCE.** A threshold chosen to
+make a check stop failing is a threshold that will hide the next real failure at
+the same site, and the check will look healthier for it. Establish the cause
+first — in that instance, either the walk-out tail's deliberately live channel
+means "frozen" does not mean frozen, or 8000ms is not long enough on a cold
+container. Neither was established, so the number stayed strict and the flake
+was recorded with **both** measurements beside it.
+
+The reason this matters more than one red run: **a control that fails half the
+time trains its reader to re-run until green**, which is precisely how a genuine
+regression gets waved through. That is the crying-wolf shape this file has
+already paid for on three separate instruments, arriving through
+non-determinism instead of through noise.
+
+### AND THE SAME ORDERING TRAP, ONE LEVEL OUT: A TREE THAT REWOUND UNDER YOU
+
+**Committed by the session that had just written the rule above, minutes later.**
+A verification naming four test files reported `3 passed`, and one filter —
+`tools/claudeIndex.test.ts` — matched nothing. Run alone it printed *"No test
+files found, exiting with code 1"*; combined with files that do exist, vitest
+ignored the bad filter silently and reported success. The conclusion drawn was
+that the file had never existed and that every earlier verification naming it
+had been checking nothing.
+
+**That conclusion was false, and the tree was the reason.** The checkout had
+rewound to a commit predating the file. On the recovered tree all four run —
+57 / 56 / 6 / 15 = **134**, matching the earlier runs exactly. The earlier
+verifications were accurate; the *investigation* was the thing reading reverted
+code as current.
+
+**So add a tree check to the front of any surprising absence.** Before
+concluding a file, a test or a symbol does not exist, confirm the tree: `git log
+--oneline -1` against `git ls-remote`, and `git cat-file -e HEAD:<path>` against
+`origin/<branch>:<path>`. This file already says a subagent's report of the tree
+is rewind telemetry; **your own greps are too**, and they are more convincing
+because you ran them yourself.
+
+The tell is the same one recorded for agents: **local git is internally
+consistent at the old commit.** `git log` reads coherent, the file is genuinely
+absent, `git log --all` genuinely has no history for it — every answer is
+correct about a tree that is no longer the one on origin.
+
+**One genuinely useful thing did come out of it, and it stands on its own.**
+`npx vitest run a.test.ts b.test.ts` where one path does not exist **passes**,
+silently, reporting only the files it found. A verification command that names a
+file which has been renamed or deleted therefore keeps reporting success while
+covering less than it says. Read the `Test Files` count against the number of
+paths you passed, not just the word `passed`.
+
 ## Architecture Rules
 
 ### Pure logic is separate from UI
