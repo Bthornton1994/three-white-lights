@@ -7750,6 +7750,8 @@ const FUNCTION_FREE_DATA_SOURCE = `type FunctionFreeData =
 
 declare const functionFreeData: FunctionFreeData;
 
+declare const anyFunction: () => void;
+
 export {};
 `;
 
@@ -7779,16 +7781,46 @@ const FUNCTION_FREE_DATA_FILE: readonly (readonly [string, string])[] = Object.f
 const ambientlyDeclared = (declaration: ts.Node): boolean =>
   declaration.getSourceFile().isDeclarationFile;
 
-/** The reference type, taken out of the program the census is already using. */
-function functionFreeDataIn(program: ts.Program, checker: ts.TypeChecker): ts.Type {
+/**
+ * A reference type, taken out of the program the census is already using.
+ *
+ * Looked up BY NAME rather than by position. It read "the first variable
+ * statement" while the file held one declaration; the file now holds two, and a
+ * positional read would have silently answered the wrong question the moment a
+ * second was added above the first.
+ */
+function referenceTypeIn(program: ts.Program, checker: ts.TypeChecker, name: string): ts.Type {
   const file = program.getSourceFile(FUNCTION_FREE_DATA_PATH);
   if (file === undefined) throw new Error(`${FUNCTION_FREE_DATA_PATH} is not in the program`);
   for (const statement of file.statements) {
     if (!ts.isVariableStatement(statement)) continue;
-    const declared = statement.declarationList.declarations[0];
-    if (declared !== undefined) return checker.getTypeAtLocation(declared.name);
+    for (const declared of statement.declarationList.declarations) {
+      if (ts.isIdentifier(declared.name) && declared.name.text === name) {
+        return checker.getTypeAtLocation(declared.name);
+      }
+    }
   }
-  throw new Error('the function-free reference declaration is not in that file');
+  throw new Error(`the ${name} reference declaration is not in that file`);
+}
+
+/** The function-free data type the relation is asked about. */
+function functionFreeDataIn(program: ts.Program, checker: ts.TypeChecker): ts.Type {
+  return referenceTypeIn(program, checker, 'functionFreeData');
+}
+
+/**
+ * An arbitrary function type, for the reading that asks the relation BACKWARDS.
+ *
+ * What it is for, in the mechanism's own terms: `isTypeAssignableTo(subject,
+ * FunctionFreeData)` asks whether the subject is always data. It is answered
+ * `true` for `{}`, correctly — a type that declares nothing is assignable to a
+ * type with an index signature over data, because it has no property that could
+ * disagree. The value under it is a different question, and this is that
+ * question: `isTypeAssignableTo(anyFunction, subject)` asks whether a function
+ * may be STORED there.
+ */
+function anyFunctionIn(program: ts.Program, checker: ts.TypeChecker): ts.Type {
+  return referenceTypeIn(program, checker, 'anyFunction');
 }
 
 /** What the screen answered, and what each of its two readings answered. */
@@ -7835,6 +7867,7 @@ interface MemberTypeScreen {
  */
 function memberTypeScreen(program: ts.Program, checker: ts.TypeChecker): MemberTypeScreen {
   const functionFreeData = functionFreeDataIn(program, checker);
+  const anyFunction = anyFunctionIn(program, checker);
   const disagreements: string[] = [];
   let cuts = 0;
 
@@ -7844,6 +7877,16 @@ function memberTypeScreen(program: ts.Program, checker: ts.TypeChecker): MemberT
       return false;
     }
     if (type.getCallSignatures().length > 0) return true;
+    // M67's catcher, and it is a different question from the one above rather
+    // than a wider version of it. A call signature says the type IS callable;
+    // this says a function may be STORED at this position whatever the type
+    // declares. `{}` declares nothing, so it has no call signature, no
+    // property, no index info and no element — every arm below returns
+    // `false` on it — and `const held: {} = () => 1` compiles. It sits here in
+    // the walk rather than beside the relation so that it is asked at every
+    // position the walk reaches: `{}` behind a property, inside an array and
+    // under an index signature are three of the rows the family battery pins.
+    if (checker.isTypeAssignableTo(anyFunction, type)) return true;
     if (type.isUnionOrIntersection()) {
       return type.types.some((member) => boundedWalk(member, depth + 1));
     }
@@ -7864,7 +7907,18 @@ function memberTypeScreen(program: ts.Program, checker: ts.TypeChecker): MemberT
     }
     return type.getProperties().some((symbol) => {
       const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
-      if (declaration === undefined || ambientlyDeclared(declaration)) return false;
+      // A SYNTHESIZED property has no declaration at all, and that is a
+      // different fact from one declared in a `.d.ts`. The two were treated as
+      // one and it cost a silence: `string & { readonly [K in 'run']: () =>
+      // string }` prints identically to the plain literal beside it in the
+      // family battery, and the plain one was walked while this one was not,
+      // because a mapped type's member is synthesized and `declarations` is
+      // empty. `getTypeOfSymbol` needs no location, which is the whole of the
+      // repair.
+      if (declaration === undefined) {
+        return boundedWalk(checker.getTypeOfSymbol(symbol), depth + 1);
+      }
+      if (ambientlyDeclared(declaration)) return false;
       return boundedWalk(checker.getTypeOfSymbolAtLocation(symbol, declaration), depth + 1);
     });
   };
@@ -16204,7 +16258,17 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   // this census reported as one row gone and two arrived rather than as
   // nothing. A ladder changing owner is exactly the edit it is written for.
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#boundedWalk<memberTypeScreen#type', arms: 3, dispatch: true, terminal: 'next-statement' }),
-  Object.freeze({ at: 'empireForbiddenOutput.test.ts#functionFreeDataIn#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  // `functionFreeDataIn#statement` was this row until the reference file grew a
+  // second declaration and the positional read became `referenceTypeIn`. Two
+  // chains where there was one, because the name match is its own `if` inside
+  // the declaration loop.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#referenceTypeIn#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#referenceTypeIn#declared', arms: 1, dispatch: true, terminal: 'loop' }),
+  // M67's catcher. One arm, and its continuation is the rest of the walk, which
+  // is about `type` and never mentions `anyFunction` — so it is on the blind
+  // list, and the row below says why that is a keying artefact rather than a
+  // dropped case.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#boundedWalk<memberTypeScreen#anyFunction', arms: 1, dispatch: true, terminal: 'next-statement' }),
   // The family sweep's subject finder. One arm, because the three node kinds it
   // accepts are `||`ed inside a single `if` rather than written as three, and
   // its continuation recurses on the same binding — so it is a `next-statement`
@@ -16320,7 +16384,7 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
  * means the continuation NAMES the subject, which is a necessary condition for
  * handling it and nothing more.
  *
- * NINE OF FIFTY-EIGHT, AND TWO OF THE NINE ARE ARTEFACTS OF HOW IT IS KEYED —
+ * TEN OF SIXTY-EIGHT, AND THREE OF THE TEN ARE ARTEFACTS OF HOW IT IS KEYED —
  * written here because a list whose limits are only in its author's head is the
  * thing this file keeps finding. Blindness is decided by whether the following
  * statements mention the subject's IDENTIFIER, and `subjectOf` votes for the
@@ -16334,6 +16398,14 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
  *   - `walk<returnedFunctions<channelCensusOf#holder` falls through to a loop
  *     over `holderValues`, which is derived FROM the holder one line above. A
  *     name-keyed measure cannot see that as the same subject.
+ *   - `boundedWalk<memberTypeScreen#anyFunction` is keyed on the REFERENCE type
+ *     rather than on the subject, because the condition is
+ *     `isTypeAssignableTo(anyFunction, type)` and the vote picks the first
+ *     argument. `anyFunction` is a constant for the whole walk and there is
+ *     nothing for a continuation to do with it; the continuation is the rest of
+ *     the walk over `type`, which is the binding the arm above it is keyed on.
+ *     Third of its kind, and the pattern across all three is the same: the vote
+ *     picks a name that is not the thing being decided about.
  *
  * The other seven fall through to a constant answer — `return []`, `return
  * false` — or to a recorded admission (`unfollowed.push`, an `unclassified`
@@ -16347,10 +16419,14 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
  * written in one sitting about code that is mostly correct, which is how a
  * required field becomes decoration — and this file already carries a row
  * (`G24`) recording a widening that was decoration for twenty minutes. The
- * forcing function kept instead is the set equality: a TENTH blind
- * continuation cannot arrive without somebody adding it here.
+ * forcing function kept instead is the set equality: an ELEVENTH blind
+ * continuation cannot arrive without somebody adding it here. The tenth did
+ * arrive, and the sentence naming the ninth is corrected rather than deleted —
+ * a running count in a list about stale confidence is the first thing to go
+ * stale.
  */
 const CONTINUATIONS_BLIND_TO_THE_SUBJECT: readonly string[] = Object.freeze([
+  'empireForbiddenOutput.test.ts#boundedWalk<memberTypeScreen#anyFunction',
   'empireForbiddenOutput.test.ts#carriesCallSignature<channelCensusOf#type',
   'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#initial',
   'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#root',
@@ -16402,12 +16478,12 @@ const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
   /** Rows in `DECLARED_HANDLER_ROWS`. Every one a tally or an enum read. */
   DISCRIMINANT_LOOKUPS: 8,
-  CHAINS: 89,
-  DISPATCH: 55,
+  CHAINS: 91,
+  DISPATCH: 57,
   BY_TERMINAL: Object.freeze({
     else: 8,
-    'next-statement': 67,
-    loop: 12,
+    'next-statement': 68,
+    loop: 13,
     enclosing: 2,
     /**
      * ZERO, AND THE ZERO IS THIS ROUND'S RESULT RATHER THAN A FACT ABOUT THE
