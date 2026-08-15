@@ -2339,6 +2339,70 @@ line becomes sharper the moment a campaign-built lifter enters a PvP field —
 anything purchasable that touched that lifter's Total is now affecting a real
 opponent's result, which is the same rule under much more load.
 
+#### ANSWERED 2026-08-14 — Q1: SEPARATE THRESHOLDS, CAMPAIGN LOWER
+
+Shared thresholds were rejected on the ground that they make the campaign summit
+a rehearsal and leave one ceiling meaning nothing.
+
+**The 650 kg figure belongs to COMPETITIVE worlds.** It is P75 of the real
+nationals field — a competitive-population number by construction, exactly as
+`docs/research/qualifying-totals.md` says of it. That assignment is now settled
+rather than assumed, and the research's worlds row should be read as describing
+the competitive tier and no other.
+
+**Campaign worlds needs its own number, derived to a different requirement.**
+Not a percentile of any real population: **a pacing decision, measured against
+what the simulation actually produces across a full career arc** — reachable by
+a solo player who plays the campaign well, on the campaign's own timeline. The
+sweep already holds that data.
+
+**This is also the proper fix for the unreachable-worlds finding**, rather than
+a workaround for it. The campaign summit gets a threshold *and a calendar
+position* that make it genuinely reachable; competitive worlds keeps the harder
+real-derived number. The measurement below stops being a violation because the
+design moved to meet it, not because the measurement was re-scoped.
+
+#### ANSWERED 2026-08-14 — Q2: ONE CONTINUOUS CAREER. THE CAMPAIGN LIFTER *IS* THE PvP LIFTER
+
+Two tracks were acknowledged as safer and cleaner and **rejected anyway**: the
+career arc this design is built around collapses if the character a player
+invested in stops at the campaign's edge. One lifter, one career, eventually
+facing real people.
+
+**THE CONSEQUENCE, RECORDED AT THE RULING RATHER THAN DISCOVERED LATER: shared
+identity makes GDD §8's no-pay-to-win line the most consequential rule in the
+codebase.** The failure mode changes category. It was *"a player cheated
+themselves"* — bad, contained, and in principle refundable. It becomes **"a
+player's purchase changed a real opponent's result"**, which is unrecoverable
+after ship: the opponent's meet is over, their placing is wrong, and no patch
+returns it.
+
+**The rule does not change. The BAR does.** Anything touching Total's provenance
+now needs the treatment `src/empire/` received — not *"no purchasable path was
+found"*, but **a structural argument that one cannot exist**, with adversarial
+rounds behind it. That is recorded as a standing requirement in `CLAUDE.md`'s
+Hard Design Constraints, not as a note here, because it binds every future piece
+rather than this section.
+
+#### WHAT THESE ANSWERS UNBLOCK, AND WHAT THEY DO NOT
+
+**Unblocked** — campaign-side work, which no longer waits on anything:
+
+- Deriving the campaign worlds qualifying total from sweep data, as a pacing
+  measurement rather than a population percentile.
+- Giving the campaign summit a calendar position that makes it reachable.
+- The tier model itself: `MEET_TIER_ORDER` is currently four members pinned by
+  `toEqual`, and `QUALIFYING_TOTAL_KG` holds one `worlds`. Both now need to
+  distinguish the two summits.
+- `CareerLifter` stays **one identity** — Q2 removes the discriminator question
+  entirely, which simplifies rather than complicates the spine.
+
+**Still blocked**, on the first ruling's open questions, which are untouched by
+these answers: everything on the synchronous side. Regional and nationals are
+sync and region-pooled, and both *where a region comes from* and *what happens
+to a sparse region* remain open. Do not build sync PvP against a guess at
+either.
+
 #### HOW THESE RULINGS INTERACT WITH WORK ALREADY MEASURED
 
 **The campaign summit's "always reachable" requirement is FALSE in the shipped

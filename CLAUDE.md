@@ -1649,6 +1649,48 @@ physiology.
 - **No pay-to-win, ever.** Nothing purchasable may affect Total, e1RM, training
   pace, or meet performance. If a proposed feature touches this line, refuse and
   explain.
+
+  **THE RULE HAS NOT CHANGED. THE BAR HAS, AND IT IS NOW THE HIGHEST IN THIS
+  DOCUMENT.** Ruled by a human on 2026-08-14 alongside GDD §6.6's second
+  tiering ruling. Read that section for the design; this is what it costs every
+  future piece.
+
+  The ruling is **one continuous career**: the campaign lifter *is* the PvP
+  lifter, and regional, nationals and competitive worlds are synchronous against
+  real people. Two separate tracks were acknowledged as safer and cleaner and
+  rejected anyway, because a career arc that stops at the campaign's edge is not
+  the game this design is built around.
+
+  **That changes the failure mode's category, not its size.** Pay-to-win used to
+  mean *"a player cheated themselves"* — bad, contained, and in principle
+  refundable. It now means **"a player's purchase changed a real opponent's
+  result"**, and that is **unrecoverable after ship**: the opponent's meet is
+  over, their placing is wrong, and no patch gives it back. There is no version
+  of an apology that returns a placing.
+
+  **So the standard of proof for anything touching Total's provenance is now the
+  one `src/empire/` was held to, and "we looked and found no path" does not
+  meet it.** That phrasing is the thing this file already refuses everywhere
+  else — a measurement at the horizons somebody happened to sweep, presented as
+  a property. What is required instead:
+
+  - **A structural argument that a purchasable path CANNOT EXIST**, of the kind
+    `currencyProvenance.ts` makes for the §8.3E covered day: a training-gated or
+    purchased tender is a *type error*, not an unobserved case.
+  - **Adversarial rounds behind it.** `src/empire/`'s no-gacha ban is the shape
+    — 18 regexes, every one driven against a tripwire, with `scanned` and
+    `banned.length` both pinned. A ban nobody has watched fail is not evidence
+    that the thing it bans is absent.
+  - **Both readings of "structurally unable"**, as the §8.3E entry below already
+    spells out: the purchase cannot be *constructed*, AND the outcome cannot
+    *move with* the purchase. A legal tender that acquires a sensitivity without
+    a single type changing is the measured failure that rule exists for.
+
+  **The asymmetry that decides the trade.** A false positive here costs one
+  refused feature and an argument. A false negative costs a real person's meet
+  result, permanently, and the run finds out after ship or never. Nothing else
+  in this document has that shape, which is why this bar sits above the others
+  rather than beside them.
 - **No gacha.** NPC recruitment is deterministic — flat cost or reputation
   threshold. No random pulls, no rarity tiers behind currency.
 - **No fatigue bar.** Fatigue surfaces through bar-speed cues, timing window
