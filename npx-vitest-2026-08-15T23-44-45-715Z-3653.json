@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "npx-vitest-2026-08-15T23-44-45-715Z-3653",
   "label": null,
   "command": [
@@ -30,14 +30,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 6,
-    "okCount": 5,
+    "count": 7,
+    "okCount": 6,
     "errors": [],
-    "lastAttemptIso": "2026-08-15T23:49:45.933Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-15T23:50:17.843Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-15T23:48:48.512Z"
-  }
+    "lastOkIso": "2026-08-15T23:49:48.878Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-15T23:50:17.842Z",
+  "elapsedSeconds": 332.1
 }
