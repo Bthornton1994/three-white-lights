@@ -3479,6 +3479,14 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
   // — the same distinction KINDED_RETURN_CENSUS is on the strength of, one
   // pass over.
   'OVERFLOW_ARM_CENSUS',
+  // The limiter battery's truth column — where the relation certifies, where the
+  // whole screen does, and how many depth cuts it took getting there. An
+  // expectation and not an input, the same way `SCREEN_BATTERY` is: the subjects
+  // are built by `LIMITER_SHAPES` and this is what somebody wrote down about
+  // them. Its size is pinned against `RELATION_LIMITER.SHAPES` and joined to the
+  // shape list in both directions, which is the pin a `FIXTURE_LISTS` row would
+  // have given it.
+  'LIMITER_TABLE',
 ]);
 
 /**
@@ -3544,7 +3552,7 @@ const DOMAIN_CENSUS = Object.freeze({
   ALIASES: 7,
   NON_DOMAIN_LISTS: 1,
   LITERAL_AXES: 8,
-  LABELLED_LISTS: 16,
+  LABELLED_LISTS: 17,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
@@ -7842,6 +7850,12 @@ function memberTypeScreen(program: ts.Program, checker: ts.TypeChecker): MemberT
         .getTypeArguments(type as ts.TypeReference)
         .some((argument) => boundedWalk(argument, depth + 1));
     }
+    if (
+      (type.flags & ts.TypeFlags.Object) !== 0 &&
+      checker.getIndexInfosOfType(type).some((info) => boundedWalk(info.type, depth + 1))
+    ) {
+      return true;
+    }
     return type.getProperties().some((symbol) => {
       const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
       if (declaration === undefined || ambientlyDeclared(declaration)) return false;
@@ -9304,12 +9318,25 @@ const SCREEN_AGREEMENT = Object.freeze({
   SHIPPED_DISAGREEMENTS: 11,
   /**
    * The probe's own disagreements, and every one is a closure the control
-   * answered `false` about: the deep member, the `Record`, the declared index
-   * signature and the symbol-keyed table. A count rather than a list because
-   * the four member paths are already pinned in `ASSEMBLY_PROBE_CLOSURE_SITES`,
-   * which is the stronger statement of the same fact.
+   * answered `false` about. A count rather than a list because the member paths
+   * are already pinned in `ASSEMBLY_PROBE_CLOSURE_SITES`, which is the stronger
+   * statement of the same fact.
+   *
+   * ONE, AND IT WAS FOUR. The three that went away are the `Record`, the
+   * declared index signature and the symbol-keyed table: the control used to
+   * answer `false` about all three because `getProperties()` is empty on an
+   * index-signature type, and it now crosses the index signature and finds the
+   * closure. The one that remains is `probeDeepMemberClosure`, where the control
+   * is blind for the other reason — the closure sits past the depth bound, so
+   * the walk cuts rather than descends.
+   *
+   * The direction of the change is the useful part: a disagreement here is
+   * always the control being WRONG about a closure the relation caught, so
+   * fewer of them is the control getting better and not the screen getting
+   * quieter. `SHIPPED_DISAGREEMENTS` is unchanged at 11, which is what says the
+   * added position did not move the shipped tree.
    */
-  PROBE_DISAGREEMENTS: 4,
+  PROBE_DISAGREEMENTS: 1,
   /**
    * Depth cuts the control took on the probe: one for each of the two shapes
    * that reach the limit, and they reach it from opposite directions. See the
@@ -9446,6 +9473,44 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
    * that bound and watching all 83 tests stay green.
    */
   PROBE_DEEPEST: 41,
+  /**
+   * The same walk with index signatures crossed as well, which reaches 11.
+   *
+   * A SECOND POSITION SET, KEPT SEPARATE RATHER THAN FOLDED IN, because the
+   * number above is deliberately taken under the CONTROL's position set and
+   * would stop meaning that if this walk replaced it.
+   *
+   * WHAT IT WAS ASKED FOR AND WHAT IT ACTUALLY SAYS. The question was how far
+   * behind index signatures the shipped types sit. The answer is NONE OF THEM:
+   * not one of the 517 exported positions crosses a declared index signature,
+   * and the depth through them is the same 9 the control's positions report.
+   *
+   * AN EARLIER DRAFT OF THIS BLOCK SAID 11 AND 158, AND BOTH WERE AN ARTEFACT,
+   * kept here because it is the reason the predicate is written the way it is. A
+   * first version asked `getIndexInfosOfType` of every type, and `string` has a
+   * numeric index info in the standard library — `"abc"[0]` is a string — so
+   * every branded string in the directory counted as two crossings and the
+   * number described `lib.es5.d.ts` rather than this code. The predicate is
+   * restricted to object types and excludes arrays and tuples, whose numeric
+   * index info is the element the walk already steps through.
+   *
+   * WHAT IT DOES NOT BOUND, because the two censuses have different subjects.
+   * This walks the EXPORTED surface. The screen is asked about member accesses
+   * in a `return`, and M64's form casts its holder to the declared return type,
+   * so the index-signature-bearing value is on the value and never on the type —
+   * exactly M62's form 2. The zero above is therefore evidence about what this
+   * directory publishes and NOT a bound on what the screen can be handed. The
+   * census that is not limited that way is `cyclicDeclarations`, which walks
+   * every declaration in the file whether it is exported or not.
+   */
+  DEEPEST_THROUGH_INDEX: 9,
+  /** Positions whose deepest path crosses at least one declared index signature. */
+  POSITIONS_CROSSING_AN_INDEX: 0,
+  /** Index-signature crossings on the single most-crossing path. */
+  INDEX_CROSSINGS_MAX: 0,
+  /** The probe's, so the two zeros above are a walk that looked and found none. */
+  PROBE_POSITIONS_CROSSING_AN_INDEX: 3,
+  PROBE_INDEX_CROSSINGS_MAX: 1,
 });
 
 /**
@@ -9464,6 +9529,12 @@ interface ShippedDepthReading {
   readonly pastTheLimit: readonly string[];
   readonly positions: number;
   readonly visits: number;
+  /** The same walk with index signatures crossed. A separate reading, not a wider one. */
+  readonly deepestThroughIndex: number;
+  /** Positions whose deepest index-crossing path crosses at least one. */
+  readonly positionsCrossingAnIndex: number;
+  /** Crossings on the most-crossing path, which is the number the brief asked for. */
+  readonly indexCrossingsMax: number;
 }
 
 /**
@@ -9508,7 +9579,49 @@ function shippedTypeDepth(
     return deepest;
   };
 
+  /**
+   * The same walk with one position added: an index signature on an object type.
+   *
+   * Written beside `deepestFrom` rather than as a flag on it, because the two
+   * are answering different questions and this file's most-repeated finding is
+   * that two arms of one decision get written as one and drift. The array and
+   * tuple case is excluded from the crossing count on purpose — `readonly T[]`
+   * carries a numeric index info, and counting it would make every array a
+   * crossing and the number meaningless.
+   */
+  const throughIndex = (
+    type: ts.Type,
+    seen: readonly ts.Type[],
+    depth: number,
+    crossings: number,
+  ): readonly [number, number] => {
+    visits += 1;
+    if (visits > SHIPPED_TYPE_DEPTH_VISIT_BUDGET) return [depth, crossings];
+    if (seen.includes(type)) return [depth, crossings];
+    if (type.getCallSignatures().length > 0) return [depth, crossings];
+    const below = [...seen, type];
+    let best: readonly [number, number] = [depth, crossings];
+    const step = (next: ts.Type, crossed: number): void => {
+      const reached = throughIndex(next, below, depth + 1, crossings + crossed);
+      if (reached[0] > best[0] || (reached[0] === best[0] && reached[1] > best[1])) best = reached;
+    };
+    if (type.isUnionOrIntersection()) for (const member of type.types) step(member, 0);
+    const arrayLike = checker.isArrayType(type) || checker.isTupleType(type);
+    if (arrayLike) {
+      for (const argument of checker.getTypeArguments(type as ts.TypeReference)) step(argument, 0);
+    } else if ((type.flags & ts.TypeFlags.Object) !== 0) {
+      for (const info of checker.getIndexInfosOfType(type)) step(info.type, 1);
+    }
+    for (const symbol of type.getProperties()) {
+      const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
+      if (declaration === undefined || ambientlyDeclared(declaration)) continue;
+      step(checker.getTypeOfSymbolAtLocation(symbol, declaration), 0);
+    }
+    return best;
+  };
+
   const measured: (readonly [string, number])[] = [];
+  const crossed: (readonly [number, number])[] = [];
   for (const root of roots) {
     const source = program.getSourceFile(root);
     if (source === undefined) throw new Error(`${root} is not in the program`);
@@ -9520,11 +9633,11 @@ function shippedTypeDepth(
       if (declaration === undefined) continue;
       const type = checker.getTypeOfSymbolAtLocation(symbol, declaration);
       measured.push([`${moduleName}#${symbol.getName()}`, deepestFrom(type, [], 0)]);
+      crossed.push(throughIndex(type, [], 0, 0));
       for (const signature of type.getCallSignatures()) {
-        measured.push([
-          `${moduleName}#${symbol.getName()}()`,
-          deepestFrom(checker.getReturnTypeOfSignature(signature), [], 0),
-        ]);
+        const returned = checker.getReturnTypeOfSignature(signature);
+        measured.push([`${moduleName}#${symbol.getName()}()`, deepestFrom(returned, [], 0)]);
+        crossed.push(throughIndex(returned, [], 0, 0));
       }
     }
   }
@@ -9543,6 +9656,9 @@ function shippedTypeDepth(
     ),
     positions: measured.length,
     visits,
+    deepestThroughIndex: crossed.reduce((best, [depth]) => (depth > best ? depth : best), 0),
+    positionsCrossingAnIndex: crossed.filter(([, crossings]) => crossings > 0).length,
+    indexCrossingsMax: crossed.reduce((best, [, crossings]) => (crossings > best ? crossings : best), 0),
   };
 }
 
@@ -11556,6 +11672,25 @@ describe('the assembly walk bites — every binding whose value is not in its in
     expect(withProbe.deepest).toBe(SHIPPED_TYPE_DEPTH.PROBE_DEEPEST);
     expect(withProbe.deepestAt).toEqual([`${ASSEMBLY_PROBE_MODULE}#probeRecursiveInstantiation()`]);
     expect(withProbe.deepest).toBeGreaterThan(reading.deepest);
+    // AND THE INDEX-SIGNATURE CROSSINGS, WHICH ARE HERE TO BE RULED OUT RATHER
+    // THAN TO BE A SCREEN. The question this answers is "how far behind an index
+    // signature does the shipped surface sit", and the answer is that 158 of the
+    // 517 positions sit behind at least one, so a crossing count discriminates
+    // nothing. It is the same finding as the depth number one line up: neither
+    // axis separates the shipped tree from M64's shape, which is what sends the
+    // containment fence to `cyclicDeclarations` instead.
+    expect(reading.deepestThroughIndex).toBe(SHIPPED_TYPE_DEPTH.DEEPEST_THROUGH_INDEX);
+    expect(reading.deepestThroughIndex).toBe(reading.deepest);
+    expect(reading.positionsCrossingAnIndex).toBe(SHIPPED_TYPE_DEPTH.POSITIONS_CROSSING_AN_INDEX);
+    expect(reading.indexCrossingsMax).toBe(SHIPPED_TYPE_DEPTH.INDEX_CROSSINGS_MAX);
+    // AND THE POSITIVE CONTROL, WITHOUT WHICH THE TWO ZEROS ABOVE ARE A WALK
+    // THAT NEVER LOOKED. Three of the probe's exported returns sit behind a
+    // declared index signature — the `Record`, the declared one and the
+    // symbol-keyed one — and the walk crosses each of them exactly once.
+    expect(withProbe.positionsCrossingAnIndex).toBe(
+      SHIPPED_TYPE_DEPTH.PROBE_POSITIONS_CROSSING_AN_INDEX,
+    );
+    expect(withProbe.indexCrossingsMax).toBe(SHIPPED_TYPE_DEPTH.PROBE_INDEX_CROSSINGS_MAX);
   });
 });
 
@@ -11802,6 +11937,713 @@ describe('the member-type screen — the predicate graded on its own, shape by s
     expect(checker.typeToString(reference)).toBe('FunctionFreeData');
     expect(reference.flags & ts.TypeFlags.Any).toBe(0);
     expect(reference.isUnion()).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Where a certificate stops being worth anything — the limiter, bisected
+// ---------------------------------------------------------------------------
+
+/**
+ * How deep each limiter shape is asked about, and why the two numbers differ.
+ *
+ * Every ask is a FRESH program with a fresh checker, and the reason is measured
+ * rather than inherited: `sharedProgramLimiterReading` is the control, and
+ * `RELATION_LIMITER.SHARED_PROGRAM_CERTIFIES_FROM` is `null` against this
+ * sweep's 3.
+ *
+ * M63'S STATED CAUSE IS SLIGHTLY WRONG AND THE CORRECTION IS WORTH THE LINES.
+ * That row says the forty-deep instantiation is certified when asked alone and
+ * refused "in a program that has already asked about the thirty-nine shallower
+ * ones", which reads as an ordering effect. Measured directly: `s40` declared
+ * beside `s1 … s39`, with only `s40`'s type resolved and only `s40` asked, is
+ * still certified. What flips it is RESOLVING the other instantiations before
+ * asking — resolve all forty first and `s40` is refused, and so is every other
+ * depth, in ascending or descending order alike. The certificate is issued while
+ * the alias instantiation is still deferred, which is a narrower fact than
+ * "order matters" and is the one this sweep is built around.
+ *
+ * `DEPTHS` is where every shape is swept to. `LITERAL_DEPTHS` is further, and
+ * only for the two non-generic shapes, because those are the ones the DEPTH
+ * framing is about: `SHIPPED_TYPE_DEPTH` reports the deepest shipped surface at
+ * 9 by the control's positions and 11 when index signatures are crossed, so a
+ * sweep that stopped at 8 could not say anything about the region the shipped
+ * tree actually occupies.
+ */
+const LIMITER_SWEEP = Object.freeze({
+  DEPTHS: 12,
+  LITERAL_DEPTHS: 16,
+});
+
+/** The prelude every limiter shape is written against. */
+const LIMITER_PRELUDE = `interface Peek { readonly peek: () => string; }
+type Drop<D extends readonly unknown[]> = D extends readonly [unknown, ...infer R] ? R : [];
+`;
+
+/** `[1,1,…]`, the tuple a recursive alias peels one element off per level. */
+const limiterTuple = (depth: number): string =>
+  Array.from({ length: depth }, () => '1').join(',');
+
+/**
+ * The type shapes the relation is bisected over, and what each one is for.
+ *
+ * WHY A BATTERY OF SHAPES AND NOT A BISECTION OF ONE. The question this round
+ * was given is "how deep does the relation tolerate before it certifies", and
+ * the answer is that DEPTH IS NOT THE AXIS. A shape whose nesting is written out
+ * — the shape `SHIPPED_TYPE_DEPTH` measures — is never certified while it holds
+ * a function, at any depth this sweeps. A generic type alias that reaches itself
+ * is certified from three levels, holding the same function. The two are the
+ * same depth and different answers, so a single-shape bisection would have
+ * produced a number that means nothing.
+ *
+ * The `certifiesFrom` column is the relation alone. `screenCertifiesFrom` is the
+ * whole screen — relation OR bounded walk — and the gap between them is what
+ * separates a route that is CONTAINED from one that is SILENT: at the depth
+ * where the screen first certifies, `cuts` is non-zero for a route the bounded
+ * walk stopped on and ZERO for one it never descended into. That zero is M64.
+ */
+interface LimiterShape {
+  readonly id: string;
+  readonly build: (depth: number) => string;
+  readonly why: string;
+}
+
+const LIMITER_SHAPES: readonly LimiterShape[] = Object.freeze([
+  Object.freeze({
+    id: 'literal-nest-holding-a-function',
+    build: (depth: number) =>
+      `declare const subject: ${'{ readonly down: '.repeat(depth)}Peek${' }'.repeat(depth)};`,
+    why: 'nesting written out, with a closure at the bottom — the shape `SHIPPED_TYPE_DEPTH` measures',
+  }),
+  Object.freeze({
+    id: 'literal-nest-holding-data',
+    build: (depth: number) =>
+      `declare const subject: ${'{ readonly down: '.repeat(depth)}string${' }'.repeat(depth)};`,
+    why: 'the same nesting with data at the bottom — the control that says a certificate is issuable at all',
+  }),
+  Object.freeze({
+    id: 'cyclic-alias-holding-a-function',
+    build: (depth: number) =>
+      `type Nest<T, D extends readonly unknown[]> = D['length'] extends 0 ? T : { readonly down: Nest<T, Drop<D>> };
+declare const subject: Nest<Peek, [${limiterTuple(depth)}]>;`,
+    why: 'M63: a generic type alias that reaches itself, instantiated one level per tuple element',
+  }),
+  Object.freeze({
+    id: 'cyclic-alias-behind-index-signatures',
+    build: (depth: number) =>
+      `type Nest<T, D extends readonly unknown[]> = D['length'] extends 0 ? T : { readonly down: Nest<T, Drop<D>> };
+declare const subject: { readonly [k: string]: Nest<Peek, [${limiterTuple(depth)}]>; readonly [k: symbol]: Nest<Peek, [${limiterTuple(depth)}]> };`,
+    why: 'M64 ITSELF, reproduced as a standing measurement rather than as a ledger row: the same alias behind the two index signatures the bounded walk has no position for',
+  }),
+  Object.freeze({
+    id: 'mutually-cyclic-aliases',
+    build: (depth: number) =>
+      `type Over<T, D extends readonly unknown[]> = { readonly over: Under<T, D> };
+type Under<T, D extends readonly unknown[]> = D['length'] extends 0 ? T : { readonly down: Over<T, Drop<D>> };
+declare const subject: Under<Peek, [${limiterTuple(depth)}]>;`,
+    why: 'the cycle runs through a second alias, so the fence has to be a CYCLE and not a self-reference',
+  }),
+  Object.freeze({
+    id: 'nested-arrays',
+    build: (depth: number) =>
+      `declare const subject: ${'readonly ('.repeat(depth - 1)}readonly Peek[]${')[]'.repeat(depth - 1)};`,
+    why: 'the same generic symbol nested, which is the shape a reader would guess trips the limiter, and does not',
+  }),
+  Object.freeze({
+    id: 'nested-promises',
+    build: (depth: number) => `declare const subject: ${'Promise<'.repeat(depth)}Peek${'>'.repeat(depth)};`,
+    why: 'a library generic nested, for the same reason',
+  }),
+  Object.freeze({
+    id: 'chained-Record',
+    build: (depth: number) =>
+      `type C0 = Peek;
+${Array.from({ length: depth }, (_, index) => `type C${String(index + 1)} = Readonly<Record<string, C${String(index)}>>;`).join('\n')}
+declare const subject: C${String(depth)};`,
+    why: 'index signatures all the way down, spelled as `Record` — index signatures alone are not the axis either',
+  }),
+  Object.freeze({
+    id: 'non-cyclic-generic-alias-chain',
+    build: (depth: number) =>
+      `type R0 = Peek;
+${Array.from({ length: depth }, (_, index) => `type R${String(index + 1)} = Readonly<{ readonly down: R${String(index)} }>;`).join('\n')}
+declare const subject: R${String(depth)};`,
+    why: 'generic aliases, one per level, none of them reaching itself — which is what the census fence is written about',
+  }),
+  Object.freeze({
+    id: 'cyclic-generic-interface',
+    build: (depth: number) =>
+      `interface Wrap<T, D extends readonly unknown[]> { readonly down: D['length'] extends 0 ? T : Wrap<T, Drop<D>>; }
+declare const subject: Wrap<Peek, [${limiterTuple(depth)}]>;`,
+    why: 'the same cycle written as an INTERFACE rather than an alias, which is the neighbour of the fence and answers differently',
+  }),
+]);
+
+const LIMITER_SUBJECT_PATH = path.join(HERE, '__limiterSubject.ts');
+
+interface LimiterReading {
+  /** First depth the relation alone certified the subject as function-free data. */
+  readonly certifiesFrom: number | null;
+  /** First depth the whole screen said there is no function anywhere in it. */
+  readonly screenCertifiesFrom: number | null;
+  /** Bounded-walk depth cuts taken at that first screen certification. */
+  readonly cutsAtScreenCertification: number | null;
+  /** Depths swept, so a shape that failed to compile cannot read as a shape that refused. */
+  readonly depths: number;
+  readonly diagnostics: readonly string[];
+}
+
+/**
+ * Ask one shape at every depth, each in its own program.
+ *
+ * The relation is asked directly rather than through the screen, and the screen
+ * is asked beside it, because the two answers are different facts and the round
+ * is about the distance between them.
+ */
+function limiterReading(shape: LimiterShape, depths: number): LimiterReading {
+  const options = compilerOptions();
+  const diagnostics: string[] = [];
+  let certifiesFrom: number | null = null;
+  let screenCertifiesFrom: number | null = null;
+  let cutsAtScreenCertification: number | null = null;
+  for (let depth = 1; depth <= depths; depth += 1) {
+    const text = `${LIMITER_PRELUDE}${shape.build(depth)}\nexport {};\n`;
+    const program = programWith(
+      options,
+      [LIMITER_SUBJECT_PATH],
+      text,
+      LIMITER_SUBJECT_PATH,
+      FUNCTION_FREE_DATA_FILE,
+    );
+    const file = program.getSourceFile(LIMITER_SUBJECT_PATH);
+    if (file === undefined) throw new Error('the limiter subject is not in the program');
+    for (const diagnostic of [
+      ...program.getSyntacticDiagnostics(file),
+      ...program.getSemanticDiagnostics(file),
+    ]) {
+      diagnostics.push(
+        `${shape.id}@${String(depth)}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')}`,
+      );
+    }
+    const checker = program.getTypeChecker();
+    let subject: ts.Type | null = null;
+    for (const statement of file.statements) {
+      if (!ts.isVariableStatement(statement)) continue;
+      const declared = statement.declarationList.declarations[0];
+      if (declared !== undefined) subject = checker.getTypeAtLocation(declared.name);
+    }
+    if (subject === null) throw new Error(`${shape.id} declares no subject`);
+    if (certifiesFrom === null && checker.isTypeAssignableTo(subject, functionFreeDataIn(program, checker))) {
+      certifiesFrom = depth;
+    }
+    const screen = memberTypeScreen(program, checker);
+    const holds = screen.holdsAFunctionAnywhere(subject, `${shape.id}@${String(depth)}`);
+    if (screenCertifiesFrom === null && !holds) {
+      screenCertifiesFrom = depth;
+      cutsAtScreenCertification = screen.cuts();
+    }
+  }
+  return {
+    certifiesFrom,
+    screenCertifiesFrom,
+    cutsAtScreenCertification,
+    depths,
+    diagnostics: Object.freeze(diagnostics),
+  };
+}
+
+/**
+ * The same shape asked in ONE program, with every instantiation resolved first.
+ *
+ * THE CONTROL THAT SAYS `CERTIFIES_FROM` IS A MEASUREMENT AND NOT AN ARTEFACT OF
+ * THE NUMBER 3, and it is here because the header above made a claim — "a sweep
+ * that reused one program would be measuring the cache" — which was written
+ * before it was run. Run, it is true and sharper than it sounded: with `s1 … sN`
+ * declared side by side and every one of their types resolved before any
+ * relation question is asked, the relation refuses ALL of them, at every depth,
+ * including the depths a fresh program certifies. `s40` alone is certified;
+ * `s40` beside `s1 … s39` with all forty resolved first is refused.
+ *
+ * So the false certificate is issued only while the alias instantiation is still
+ * deferred, which is what M63 meant by "an order-dependent answer is a cache,
+ * not a decision" — and it is why every ask in `limiterReading` gets its own
+ * program. A battery that shared one would report `null` everywhere and read as
+ * a directory with no residual at all.
+ *
+ * WHAT IT DOES NOT SAY, because the two are different programs. This is not
+ * evidence that the real guard run escapes the certificate — it does not. M65
+ * and M66 are that evidence: planted into `production.ts` and run against the
+ * whole census, the screen was silent, `memberTypeDepthCuts` stayed 0 and no
+ * closure site appeared. The battery identifies the AXIS; the plants say the
+ * axis is live in the program this file actually walks.
+ */
+function sharedProgramLimiterReading(depths: number): number | null {
+  const options = compilerOptions();
+  const declarations = Array.from(
+    { length: depths },
+    (_, index) =>
+      `declare const subject${String(index + 1)}: Nest<Peek, [${limiterTuple(index + 1)}]>;`,
+  ).join('\n');
+  const text = `${LIMITER_PRELUDE}type Nest<T, D extends readonly unknown[]> = D['length'] extends 0 ? T : { readonly down: Nest<T, Drop<D>> };
+${declarations}
+export {};
+`;
+  const program = programWith(
+    options,
+    [LIMITER_SUBJECT_PATH],
+    text,
+    LIMITER_SUBJECT_PATH,
+    FUNCTION_FREE_DATA_FILE,
+  );
+  const checker = program.getTypeChecker();
+  const file = program.getSourceFile(LIMITER_SUBJECT_PATH);
+  if (file === undefined) throw new Error('the shared-program subject is not in the program');
+  const resolved: ts.Type[] = [];
+  for (const statement of file.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declared of statement.declarationList.declarations) {
+      resolved.push(checker.getTypeAtLocation(declared.name));
+    }
+  }
+  const reference = functionFreeDataIn(program, checker);
+  for (let index = 0; index < resolved.length; index += 1) {
+    const subject = resolved[index];
+    if (subject !== undefined && checker.isTypeAssignableTo(subject, reference)) return index + 1;
+  }
+  return null;
+}
+
+let limiterMemo: Readonly<Record<string, LimiterReading>> | null = null;
+
+function limiterReadings(): Readonly<Record<string, LimiterReading>> {
+  if (limiterMemo !== null) return limiterMemo;
+  const readings: Record<string, LimiterReading> = {};
+  for (const shape of LIMITER_SHAPES) {
+    readings[shape.id] = limiterReading(
+      shape,
+      shape.id.startsWith('literal-nest') ? LIMITER_SWEEP.LITERAL_DEPTHS : LIMITER_SWEEP.DEPTHS,
+    );
+  }
+  limiterMemo = Object.freeze(readings);
+  return limiterMemo;
+}
+
+/**
+ * WHAT THE BISECTION FOUND, AND IT IS NOT THE NUMBER THIS ROUND WENT LOOKING FOR.
+ *
+ * The question was where the relation's own recursion limiter gives up, on the
+ * assumption that the answer is a depth and that M64's forty levels are near it.
+ * Both halves are wrong, and the correction is the round:
+ *
+ *   - the limiter is not keyed on depth. Sixteen levels of written-out nesting
+ *     holding a closure are refused at every depth swept, and the shipped
+ *     surface only reaches 9 (11 across index signatures);
+ *   - it is keyed on a GENERIC TYPE ALIAS THAT REACHES ITSELF, and it gives up
+ *     at instantiation depth THREE. M64 used forty because M63 did. Three is
+ *     enough, so the residual is thirteen times nearer than the ledger row that
+ *     records it implies;
+ *   - and the same cycle written as an INTERFACE is refused at every depth, so
+ *     the trigger is narrower than "a recursive type" as well as nearer.
+ *
+ * Every entry below is a `certifiesFrom` / `screenCertifiesFrom` / `cuts` triple.
+ * `null` means the sweep never saw it. The distinction the third number carries
+ * is the whole point: a screen certification WITH a cut is contained, because
+ * `memberTypeDepthCuts` reports it; a screen certification with ZERO cuts is
+ * silent, and exactly one shape here is in that state.
+ */
+const RELATION_LIMITER = Object.freeze({
+  /** Shapes in the battery. A shorter battery reports itself. */
+  SHAPES: 10,
+  /** Instantiation depth at which a cyclic generic ALIAS is certified whatever it holds. */
+  CERTIFIES_FROM: 3,
+  /** Shapes the relation certified anywhere in the sweep. */
+  CERTIFYING_SHAPES: 4,
+  /**
+   * Shapes the screen certified anywhere in the sweep.
+   *
+   * The same four, and that equality is a fact rather than a coincidence: the
+   * screen is `relation OR walk`, so a shape the relation refuses is refused by
+   * the screen whatever the walk does. `literal-nest-holding-a-function` is the
+   * row that says so — sixteen levels of nesting with a closure at the bottom,
+   * deep enough for the bounded walk to cut, and the screen still answers `true`
+   * because the relation never certified it. A depth cut on its own has not been
+   * able to produce a silence since the reformulation.
+   */
+  SCREEN_CERTIFYING_SHAPES: 4,
+  /**
+   * Shapes the screen certified with ZERO depth cuts — silent rather than
+   * contained.
+   *
+   * NONE, AND THIS NUMBER WAS 1 WHEN THE BATTERY WAS WRITTEN. The one entry was
+   * `cyclic-alias-behind-index-signatures`, which is M64. What closed it is not
+   * this round's answer — the answer is the cyclic-declaration census below,
+   * because the shape needs a declaration this tree does not have. It is the
+   * sampler kept working beside the containment, per the rule that a
+   * reformulation does not license letting the sampler rot: the bounded walk now
+   * crosses an index signature, so its cut counter reaches as deep through that
+   * position as the relation does, which is the same reason the array position
+   * is in it.
+   *
+   * ITS OWN SUCCESSOR, NAMED RATHER THAN LEFT FOR THE NEXT ROUND TO FIND: this
+   * is a position enumeration, and a position enumeration is closed by the next
+   * position nobody modelled. The list it is now at is call signature, union,
+   * intersection, array, tuple, index signature, property. The census below does
+   * not depend on that list.
+   */
+  SILENT_SHAPES: 0,
+  SILENT_AT: Object.freeze([] as readonly string[]),
+  /**
+   * The same cyclic alias asked in ONE shared program: certified at NO depth.
+   *
+   * `null` against the 3 above, and the pair is what makes the 3 a measurement.
+   * See `sharedProgramLimiterReading` for what the difference actually is and
+   * for what this control does not say.
+   */
+  SHARED_PROGRAM_CERTIFIES_FROM: null as number | null,
+});
+
+/** The triple per shape, written out so a changed answer names its shape. */
+const LIMITER_TABLE: readonly (readonly [string, number | null, number | null, number | null])[] =
+  Object.freeze([
+    Object.freeze(['literal-nest-holding-a-function', null, null, null] as const),
+    Object.freeze(['literal-nest-holding-data', 1, 1, 0] as const),
+    // CONTAINED: the relation is defeated from depth 3, the walk finds the
+    // closure until depth 8, and past that it cuts — so `memberTypeDepthCuts`
+    // reports it. This is M63's row and it is the shape E24's containment holds
+    // for.
+    Object.freeze(['cyclic-alias-holding-a-function', 3, 8, 1] as const),
+    // M64'S ROW, AND IT IS NO LONGER THE SILENT ONE. It read `3, 3, 0` when this
+    // battery was first written: the screen certified at the same depth the
+    // relation gave up, with the bounded walk never having taken a step, because
+    // `getProperties()` is empty on an index-signature type. Adding the index
+    // position to that walk — five lines, and the same motive the array position
+    // was added for — moves it to `3, 7, 2`. The relation still gives up at
+    // three; the walk now finds the closure through the index signature until
+    // depth seven, and past that it CUTS, which `memberTypeDepthCuts` reports.
+    // Detected below seven, contained at seven, and silent nowhere.
+    Object.freeze(['cyclic-alias-behind-index-signatures', 3, 7, 2] as const),
+    // CONTAINED, and it certifies at 4 rather than 8 because each level of this
+    // cycle is two objects deep, which is what says the depth a cut arrives at
+    // is a property of the shape and not a constant.
+    Object.freeze(['mutually-cyclic-aliases', 3, 4, 1] as const),
+    Object.freeze(['nested-arrays', null, null, null] as const),
+    Object.freeze(['nested-promises', null, null, null] as const),
+    Object.freeze(['chained-Record', null, null, null] as const),
+    Object.freeze(['non-cyclic-generic-alias-chain', null, null, null] as const),
+    Object.freeze(['cyclic-generic-interface', null, null, null] as const),
+  ]);
+
+// ---------------------------------------------------------------------------
+// The containment the measurement chose — a cycle is a list, a depth is not
+// ---------------------------------------------------------------------------
+
+/**
+ * Every named type declaration in a module, and whether it reaches itself.
+ *
+ * WHAT THIS GUARANTEES, IN THE MECHANISM'S OWN TERMS. The relation issues a
+ * false certificate only for an instantiation of a generic type alias that is in
+ * a reference cycle — measured above, ten shapes, and the only three that get a
+ * certificate while holding a closure are the three cyclic aliases. So the set
+ * of types that can carry M64 is the set of instantiations of a cyclic alias
+ * declared in this program, and DECLARATIONS ARE A LIST. That is the
+ * reformulation CLAUDE.md asks for when a sampler keeps declaring its own
+ * successor: an unbounded depth is not enumerable and a directory's type
+ * declarations are.
+ *
+ * IT IS CONTAINMENT AND NOT DETECTION, said plainly. It does not find a closure
+ * and it does not read a value. It reports that the shape which would make the
+ * screen silent cannot be constructed here, and it reports it as a number that
+ * moves rather than as a sentence — which is what stops "unproducible today"
+ * from becoming GDD §8.3E's "true by the current absence of a code path".
+ *
+ * THE ROUTES PAST IT, NAMED CONCRETELY ENOUGH TO PLANT, WITH THE CHECK THAT
+ * COVERS EACH:
+ *
+ *   1. a cycle introduced by a new declaration in this directory — this census,
+ *      pinned empty in both directions, which reddens naming the declaration;
+ *   2. a cycle imported from outside the directory — `imports nothing outside
+ *      this directory` in `empireCore.test.ts`, which is a set equality over
+ *      every module's edges and scans all three import forms;
+ *   3. a false certificate for a type that is NOT a cyclic alias — the six
+ *      refusing rows of `LIMITER_TABLE` and the twenty-eight rows of
+ *      `SCREEN_BATTERY`, which is where that claim is graded shape by shape.
+ *
+ * EACH OF THE THREE WAS RUN AGAINST THE CHECK NAMED FOR IT, rather than left as
+ * a pointer, because this file already records what a named catcher nobody ran
+ * is worth:
+ *
+ *   1. M65 and M66 in `PLANTED_ROUTES`. Both redden this census, at forty levels
+ *      and at three, with the message naming `production.ts#ProductionNest`;
+ *   2. `import type { StreakState } from '../game/streak';` planted into
+ *      `production.ts` — `imports nothing outside this directory` reddens with
+ *      `production.ts: expected [ '../game/streak', …(2) ] to deeply equal
+ *      [ './empireCore', './empireTuning' ]`, 2 failed of 57. production.ts was
+ *      restored and verified byte-identical afterwards;
+ *   3. G37, which takes the self-reference out of the battery's cyclic shape and
+ *      turns its certificate into a refusal.
+ *
+ * THE RESIDUAL, WITH NO CATCHER CLAIMED FOR THE FIRST OF ITS TWO HALVES.
+ *
+ * The first half is the battery's own reach. "Only a cyclic generic alias earns
+ * a false certificate" is measured over EIGHTEEN shapes — the ten pinned here,
+ * plus eight more written and run in the round and not kept because they are
+ * negative: nested arrays and tuples, a generic interface, `Promise`, `Readonly`
+ * and `Record` chains, a cyclic INTERFACE and a cyclic CLASS, `Awaited` nested
+ * (the standard library's own recursive alias, reachable without importing
+ * anything), a deep intersection, a wide union, a recursive template-literal
+ * alias, and a cycle through an indexed access. A nineteenth shape, certified
+ * while holding a closure and not written as a cyclic alias, would walk past
+ * this list, and nothing here would report it. The catcher is somebody adding a
+ * row to `LIMITER_SHAPES`, which is a person and not a check.
+ *
+ * The second half is this walk's own collector, and the attempts against it are
+ * recorded rather than the impossibility. References are gathered from
+ * `TypeReferenceNode`s in an alias body or an interface's members, so a cycle
+ * expressed only through a `typeof` query, a heritage clause or a type-parameter
+ * default would not be seen. Three were built. A cycle through `typeof` DOES
+ * certify from depth 3 — and is seen anyway, because its alias still names
+ * itself through a type reference on the way to the `typeof` leaf. A cycle
+ * through an indexed access is seen and never certifies. The type-parameter
+ * default form did not compile at all, `Duplicate identifier 'Nest'`, in the
+ * shape tried. So no shape was found that is both unseen here and certified —
+ * which is three attempts and not a proof, and is written that way.
+ *
+ * The graph is over type aliases, interfaces and classes rather than aliases
+ * alone, which is WIDER than the measured trigger: `cyclic-generic-interface`
+ * is refused by the relation at every depth swept and would still be flagged
+ * here. That direction costs a review and never silence, which is the same
+ * direction the screen itself takes.
+ */
+interface CyclicDeclarationReading {
+  /** Named type declarations scanned. The non-vacuity denominator. */
+  readonly declarations: number;
+  /** Those carrying type parameters — the ones an instantiation depth is possible for. */
+  readonly generic: number;
+  /** `module.ts#Name`, for every declaration that reaches itself. */
+  readonly cyclic: readonly string[];
+  readonly modules: readonly string[];
+}
+
+function cyclicDeclarations(
+  roots: readonly string[] = shippedModulePaths(),
+  probeText: string | null = null,
+  probePath: string = PROBE_PATH,
+): CyclicDeclarationReading {
+  const options = compilerOptions();
+  const program = programWith(options, roots, probeText, probePath);
+  const checker = program.getTypeChecker();
+
+  interface Declared {
+    readonly key: string;
+    readonly generic: boolean;
+    readonly references: Set<ts.Symbol>;
+  }
+  const declared = new Map<ts.Symbol, Declared>();
+  const modules: string[] = [];
+
+  for (const root of roots) {
+    const source = program.getSourceFile(root);
+    if (source === undefined) throw new Error(`${root} is not in the program`);
+    const moduleName = path.basename(root);
+    modules.push(moduleName);
+    const visit = (node: ts.Node): void => {
+      if (
+        ts.isTypeAliasDeclaration(node) ||
+        ts.isInterfaceDeclaration(node) ||
+        ts.isClassDeclaration(node)
+      ) {
+        const name = node.name;
+        if (name !== undefined) {
+          const symbol = checker.getSymbolAtLocation(name);
+          if (symbol !== undefined) {
+            const references = new Set<ts.Symbol>();
+            const collect = (inner: ts.Node): void => {
+              if (ts.isTypeReferenceNode(inner)) {
+                const head = ts.isQualifiedName(inner.typeName)
+                  ? inner.typeName.right
+                  : inner.typeName;
+                let referenced = checker.getSymbolAtLocation(head);
+                if (referenced !== undefined && (referenced.flags & ts.SymbolFlags.Alias) !== 0) {
+                  referenced = checker.getAliasedSymbol(referenced);
+                }
+                if (referenced !== undefined) references.add(referenced);
+              }
+              inner.forEachChild(collect);
+            };
+            if (ts.isTypeAliasDeclaration(node)) collect(node.type);
+            else for (const member of node.members) collect(member);
+            declared.set(symbol, {
+              key: `${moduleName}#${name.text}`,
+              generic: (node.typeParameters?.length ?? 0) > 0,
+              references,
+            });
+          }
+        }
+      }
+      node.forEachChild(visit);
+    };
+    visit(source);
+  }
+
+  const cyclic: string[] = [];
+  for (const [symbol, entry] of declared) {
+    const seen = new Set<ts.Symbol>();
+    const stack = [...entry.references];
+    while (stack.length > 0) {
+      const next = stack.pop();
+      if (next === undefined) continue;
+      if (next === symbol) {
+        cyclic.push(entry.key);
+        break;
+      }
+      if (seen.has(next)) continue;
+      seen.add(next);
+      const reached = declared.get(next);
+      if (reached === undefined) continue;
+      for (const onward of reached.references) stack.push(onward);
+    }
+  }
+
+  return {
+    declarations: declared.size,
+    generic: [...declared.values()].filter((entry) => entry.generic).length,
+    cyclic: Object.freeze(cyclic.sort()),
+    modules: Object.freeze(modules.sort()),
+  };
+}
+
+/**
+ * What the census measured. The zero is the containment claim; the rest is what
+ * says the zero is a measurement rather than an empty walk.
+ */
+const CYCLIC_DECLARATION_CENSUS = Object.freeze({
+  /** Type aliases, interfaces and classes declared across the ten shipped modules. */
+  DECLARATIONS: 118,
+  /** Those carrying type parameters. An instantiation depth needs one. */
+  GENERIC: 11,
+  /** Declarations reaching themselves. Zero, and this is the pin the round is about. */
+  CYCLIC: Object.freeze([] as readonly string[]),
+  /**
+   * The probe's own, which is what says the walk can find one at all.
+   *
+   * `AssemblyNest` is the alias `probeRecursiveInstantiation` is built from, and
+   * it has been in the probe since M63. `AssemblyDrop` is generic and is NOT in
+   * a cycle, so it is the negative half of the same control, sitting one line
+   * away in the same file.
+   */
+  PROBE_CYCLIC: Object.freeze(['__assemblyProbe.ts#AssemblyNest'] as readonly string[]),
+});
+
+describe('the relation certifies from a cycle and not from a depth, and the cycle is a list', () => {
+  it('compiles every limiter shape cleanly, so a verdict is an answer and not an error', () => {
+    const readings = limiterReadings();
+    const diagnostics = LIMITER_SHAPES.flatMap((shape) => readings[shape.id]?.diagnostics ?? []);
+    expect(diagnostics, diagnostics.join(' | ')).toEqual([]);
+    expect(LIMITER_SHAPES.length).toBe(RELATION_LIMITER.SHAPES);
+    expect(LIMITER_TABLE.length).toBe(RELATION_LIMITER.SHAPES);
+    // Joined to the shapes in both directions, so a shape added without a row —
+    // or a row for a shape that went away — is red rather than unmeasured.
+    expect(LIMITER_TABLE.map(([id]) => id)).toEqual(LIMITER_SHAPES.map((shape) => shape.id));
+  }, 120_000);
+
+  it('answers every shape at the depth the table says, and the table says depth is not the axis', () => {
+    const readings = limiterReadings();
+    for (const [id, certifiesFrom, screenFrom, cuts] of LIMITER_TABLE) {
+      const reading = readings[id];
+      const why = LIMITER_SHAPES.find((shape) => shape.id === id)?.why ?? id;
+      expect(reading, id).toBeDefined();
+      expect(reading?.certifiesFrom, `${id}: ${why}`).toBe(certifiesFrom);
+      expect(reading?.screenCertifiesFrom, `${id}: screen — ${why}`).toBe(screenFrom);
+      expect(reading?.cutsAtScreenCertification, `${id}: cuts — ${why}`).toBe(cuts);
+    }
+    // THE TWO LINES THE ROUND IS ABOUT, pulled out of the table so a reader does
+    // not have to find them in it. Sixteen levels of written-out nesting holding
+    // a closure — deeper than anything the shipped tree has — buys no
+    // certificate. Three levels of a cyclic alias holding the same closure buys
+    // one.
+    expect(readings['literal-nest-holding-a-function']?.certifiesFrom).toBeNull();
+    expect(readings['literal-nest-holding-a-function']?.depths).toBe(LIMITER_SWEEP.LITERAL_DEPTHS);
+    expect(readings['literal-nest-holding-a-function']?.depths).toBeGreaterThan(
+      SHIPPED_TYPE_DEPTH.DEEPEST_THROUGH_INDEX,
+    );
+    expect(readings['cyclic-alias-holding-a-function']?.certifiesFrom).toBe(
+      RELATION_LIMITER.CERTIFIES_FROM,
+    );
+    // AND THE NUMBER 3 PARTED FROM ITS HARNESS, WHICH IS WHAT SAYS IT IS A
+    // MEASUREMENT. The identical alias asked at the identical depths in one
+    // shared program, every instantiation resolved before any relation question,
+    // is certified at NO depth — so the sweep is reading the compiler's
+    // behaviour on a deferred instantiation rather than reporting a constant it
+    // was built to report. A harness that shared its program would print `null`
+    // here and read as a directory with no residual.
+    expect(sharedProgramLimiterReading(LIMITER_SWEEP.DEPTHS)).toBe(
+      RELATION_LIMITER.SHARED_PROGRAM_CERTIFIES_FROM,
+    );
+    expect(RELATION_LIMITER.SHARED_PROGRAM_CERTIFIES_FROM).not.toBe(
+      RELATION_LIMITER.CERTIFIES_FROM,
+    );
+  }, 120_000);
+
+  it('is not vacuous: both verdicts occur, and exactly one shape is SILENT rather than contained', () => {
+    const readings = limiterReadings();
+    const rows = LIMITER_SHAPES.map((shape) => readings[shape.id]);
+    expect(rows.filter((row) => row?.certifiesFrom !== null && row?.certifiesFrom !== undefined).length).toBe(
+      RELATION_LIMITER.CERTIFYING_SHAPES,
+    );
+    expect(
+      rows.filter((row) => row?.screenCertifiesFrom !== null && row?.screenCertifiesFrom !== undefined)
+        .length,
+    ).toBe(RELATION_LIMITER.SCREEN_CERTIFYING_SHAPES);
+    // THE MEASUREMENT THAT SEPARATES CONTAINED FROM SILENT, and it is the reason
+    // this battery exists rather than a bisection. Every other shape the screen
+    // certifies, it certifies from behind a depth cut — which `memberTypeDepthCuts`
+    // reports, so E24's containment holds for it. This one is certified with the
+    // bounded walk never having descended at all, because `getProperties()` is
+    // empty on an index-signature type. Zero cuts is the silence.
+    const silent = LIMITER_SHAPES.filter((shape) => {
+      const row = readings[shape.id];
+      return row?.screenCertifiesFrom !== null && row?.cutsAtScreenCertification === 0;
+    }).map((shape) => shape.id).sort();
+    expect(silent).toEqual([
+      ...RELATION_LIMITER.SILENT_AT,
+      // The data control certifies at depth 1 with no cut, and it is silent about
+      // nothing — there is no function in it. It is listed here rather than
+      // filtered out, because a filter chosen to make a list come out right is
+      // the oracle mirroring its subject, and with `SILENT_AT` now empty a
+      // filter like that would leave this assertion comparing [] to [].
+      'literal-nest-holding-data',
+    ].sort());
+    expect(RELATION_LIMITER.SILENT_AT.length).toBe(RELATION_LIMITER.SILENT_SHAPES);
+  }, 120_000);
+
+  it('finds no type declaration in this directory that reaches itself, and can find one', () => {
+    const reading = cyclicDeclarations();
+    // THE CONTAINMENT, AS A SET EQUALITY IN BOTH DIRECTIONS. An added cycle is a
+    // row here naming the declaration; a removed one is red the other way.
+    //
+    // IT IS ASSERTED BEFORE THE DENOMINATORS, and the order is the difference
+    // between a check that bites and one that bites usefully. Planting M64 adds
+    // four type declarations, two of them generic, so every count below moves
+    // as well — and with the counts first the only thing a reader saw was
+    // `expected 122 to be 118`, which names no route. This line fails with
+    // `+ "production.ts#ProductionNest"`.
+    expect(reading.cyclic).toEqual(CYCLIC_DECLARATION_CENSUS.CYCLIC);
+    // The denominators after, so a walk that scanned nothing cannot report a
+    // clean directory on the strength of an empty set.
+    expect(reading.declarations).toBe(CYCLIC_DECLARATION_CENSUS.DECLARATIONS);
+    expect(reading.generic).toBe(CYCLIC_DECLARATION_CENSUS.GENERIC);
+    expect(reading.modules.length).toBe(CHANNEL_CENSUS_TOTALS.MODULES);
+    // AND THE POSITIVE CONTROL, WHICH IS WHY THE ZERO ABOVE IS A MEASUREMENT.
+    // `probeRecursiveInstantiation` has been in the probe since M63 and is built
+    // on exactly the declaration this fence is written about, so the walk is
+    // shown finding one on every run rather than only when somebody plants one.
+    const withProbe = cyclicDeclarations(
+      [...shippedModulePaths(), ASSEMBLY_PROBE_PATH],
+      ASSEMBLY_PROBE_SOURCE,
+      ASSEMBLY_PROBE_PATH,
+    );
+    expect(withProbe.cyclic).toEqual(CYCLIC_DECLARATION_CENSUS.PROBE_CYCLIC);
+    expect(withProbe.declarations).toBeGreaterThan(reading.declarations);
   });
 });
 
@@ -13691,6 +14533,46 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
     ]),
   }),
+  Object.freeze({
+    id: 'M65',
+    shape:
+      "M64 REPLANTED VERBATIM AGAINST THE CONTAINMENT WRITTEN FOR IT, because a catcher nobody ran against the shape it was written about is a pointer, and the row above ships with no catcher claimed. Same forty-deep instantiation, same two index signatures, same cast — the only thing that changed is what is watching",
+    where:
+      'production.ts, `accrueProduction`: the M64 block verbatim — `ProductionNest<ProductionPeek, [1 x40]>` held behind `{ readonly [k: string]: ProductionDeep; readonly [k: symbol]: ProductionDeep }` and handed back as `shapes: PRODUCTION_KEYED.keyed` with the frozen literal cast to `ProductionAccrual`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'THE CONTAINMENT CAUGHT IT AND NOTHING ELSE DID. Whole file: `Tests 4 failed | 86 passed (90)`, and three of the four are the node counters this file has now recorded seven times as not the check working — instrument B `expected 2395780 to be 2393060`, the overflow pass `expected 524024 to be 523128`, `nodesExamined` `expected 22102 to be 21789`. The fourth is `finds no type declaration in this directory that reaches itself`.',
+      'THE ROW ABOVE WAS TAKEN BEFORE THE WALK WAS WIDENED AND ITS SENTENCE HAS MOVED, WHICH IS WHY BOTH READINGS ARE HERE. Against the screen as M64 found it, this plant left `follows the deep member` and `measures how deep the shipped types go` GREEN — `memberTypeDepthCuts` 0, the two readings agreeing that there is no function in it — and the census of DECLARATIONS was the only thing that reddened. With the index position added to the bounded walk it is CONTAINED instead: `measures how deep the shipped types go` reddens with `expected 2 to be +0` on `channelCensus().memberTypeDepthCuts`, and `follows the deep member` with `expected 4 to be 2` on the probe. Forty levels is past the walk\'s bound, so the cut is what reports it — detection is M66\'s row, not this one.',
+      'AND THE BRANCH RUNS, PRINTED: `accrueProduction` on a fresh gym returns keys ending `…,"ledger","shapes"`, walking `.down` off `shapes.entry` reaches depth 40, `typeof peek` is `function`, `peek()` is `covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'THE FAILURE NAMES THE ROUTE, WHICH TOOK A SECOND RUN AND IS WORTH THE ROW. As first written the test asserted its denominators first, and planting this moves them too — four added type declarations, two of them generic — so the message a reader got was `expected 122 to be 118`, a count that names nothing. The set equality is asserted first now and the message is `expected [ "production.ts#ProductionNest" ] to deeply equal []`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M66',
+    shape:
+      'THE SAME COMPOSITION THIRTEEN TIMES SHALLOWER, AND IT IS THE ROUND\'S REAL FINDING RATHER THAN A SECOND PLANT. M63 and M64 both used forty levels, and every sentence written about them since has carried the implication that forty is near where the relation gives up. The bisection in `LIMITER_TABLE` says it gives up at THREE, so this is the same bypass with a three-element tuple',
+    where:
+      'production.ts, `accrueProduction`: `ProductionNest<ProductionPeek, [1,1,1]>` behind the same two index signatures, handed back the same way',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'THE SAME FOUR AGAINST THE SCREEN AS M64 FOUND IT, and the three node counters are smaller because the plant is smaller — instrument B `expected 2394080 to be 2393060`, the overflow pass `expected 523464 to be 523128`, `nodesExamined` `expected 21917 to be 21789`. The containment reddens identically: `expected [ "production.ts#ProductionNest" ] to deeply equal []`.',
+      'AND WITH THE INDEX POSITION ADDED TO THE BOUNDED WALK IT IS DETECTED OUTRIGHT, WITH THE MEMBER PATH. Replanted after that five-line change: `derives every escape site` reddens with `+ "production.ts": 1` under `returned-closure` and `finds the returned closure in all fifteen shapes` with `+ "production.ts#accrueProduction#closure:.shapes.entry.down.down.down.peek"` — the path is what says the walk went THROUGH the index signature and the three `down`s rather than stopping at the holder. Three levels is inside the bound, so this one is found rather than cut, and M65 at forty is cut rather than found. Two plants, two arms of the same repair, both driven.',
+      'AND THE BRANCH RUNS, PRINTED: same keys, `walked=3`, `typeof peek` is `function`, `peek()` is `covered-day`, `gymBucks 0`, `tsc --noEmit` exit 0.',
+      'WHY IT MATTERS THAT THE NUMBERS ARE SMALLER. A reader of M64 could reasonably conclude that a forty-deep instantiation is exotic enough to be its own warning, and that the node counters moving by 2720 is a signal. At depth three the node counters move by 1020 / 336 / 128, the source addition is a handful of lines, and the shape reads like an ordinary nested record. The residual is not exotic; it was written exotically.',
+      'AND IT IS WHY THE CONTAINMENT IS KEYED ON THE CYCLE AND NOT ON A DEPTH. A guard that refused instantiations past some depth would have to sit below three to catch this, and `SHIPPED_TYPE_DEPTH` reports shipped surfaces at nine. There is no depth threshold that separates them. There is a declaration census that does.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Planted alone rather than beside M65, per the rule M60 and M61 established: two silences in one run cannot be attributed to either.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written.',
+    ]),
+  }),
 ]);
 
 /**
@@ -13717,6 +14599,18 @@ interface RegistryMutant {
 }
 
 const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
+  Object.freeze({
+    id: 'G36',
+    what: "`cyclicDeclarations` narrowed to EXPORTED declarations only — the reasonable-looking narrowing, since the containment is about what this directory hands out",
+    reddened:
+      'the probe positive control: expected [] to deeply equal [ "__assemblyProbe.ts#AssemblyNest" ]. `AssemblyNest` is not exported — nothing in the probe exports a type alias — so an export-only census reports a clean probe, which is a census that has stopped being able to find anything. Then, with the count bumped: the shipped denominators moved first, 118 -> 112 and generic 11 -> 5, so the run was repeated twice with those pins set to the mutant\'s own numbers before the control was reached. A count that moves is not the same check as a membership that fails, and the membership is the one this row is about. The lesson is the narrowing itself: M64\'s own holder is a module-level `const` and its alias is not exported either, so an export-scoped fence would have been vacuous against the exact route it was written for.',
+  }),
+  Object.freeze({
+    id: 'G37',
+    what: "the `cyclic-alias-holding-a-function` shape rewritten so its alias does NOT reach itself — `type Nest<T, D> = { readonly down: T }` applied `depth` times instead of peeling a tuple, which is the same nesting with the cycle taken out",
+    reddened:
+      'answers every shape at the depth the table says: `cyclic-alias-holding-a-function: M63: a generic type alias that reaches itself, instantiated one level per tuple element: expected null to be 3`. THIS IS THE MUTANT THE DERIVED NUMBER NEEDED. `CERTIFIES_FROM: 3` is read off a sweep, and a number read off a sweep is worth nothing until the sweep is shown to part from it — G33 records the round where exactly that pin turned out to be re-deriving the thing it was checking. Here the nesting, the depths, the reference type and the harness are all unchanged and only the self-reference is removed, and the answer goes from 3 to never. So the 3 is a property of the CYCLE and not of the depth, of the tuple, or of the way the question is asked.',
+  }),
   Object.freeze({
     id: 'G30',
     what: "the `readonly [key: symbol]` half deleted from `FUNCTION_FREE_DATA_SOURCE`, leaving the string half — which is what the reference type looked like when it was first drafted",
@@ -13932,8 +14826,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(32);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(32);
+    expect(REGISTRY_MUTANTS.length).toBe(34);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(34);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
@@ -13948,16 +14842,19 @@ describe('the routes that were planted, and what each of them cost', () => {
     // The fourth is G35, and it is the mildest of them: its first form reddened
     // a real check that happens to move for ANY new ladder, so the mutant had
     // to be re-run with the ladder fully accepted by that check before it said
-    // anything about the one it was aimed at.
+    // anything about the one it was aimed at. The fifth is G36, which is G1's
+    // shape exactly: the census denominators moved before the membership check
+    // was reached, so the run was repeated with those pins set to the mutant's
+    // own numbers.
     expect(
       REGISTRY_MUTANTS.filter((mutant) => mutant.reddened.includes('ITS FIRST FORM')).length +
         REGISTRY_MUTANTS.filter((mutant) => mutant.reddened.includes('Then, with the count bumped'))
           .length,
-    ).toBe(4);
+    ).toBe(5);
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(64);
+    expect(PLANTED_ROUTES.length).toBe(66);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -14063,8 +14960,11 @@ describe('the routes that were planted, and what each of them cost', () => {
     // module already has, the recursion written as a tuple peel so no string
     // literal appears, and the field cast onto the value rather than declared
     // on the interface.
-    expect(attempts).toBe(88);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(54);
+    // ONE EACH FOR M65 AND M66, which inherit that isolation unchanged: they
+    // are M64 replanted against the containment written for it, and the same
+    // shape thirteen levels shallower.
+    expect(attempts).toBe(90);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(56);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
@@ -14741,7 +15641,7 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   // `channelCensusOf` and is `boundedWalk` inside `memberTypeScreen` now, which
   // this census reported as one row gone and two arrived rather than as
   // nothing. A ladder changing owner is exactly the edit it is written for.
-  Object.freeze({ at: 'empireForbiddenOutput.test.ts#boundedWalk<memberTypeScreen#type', arms: 2, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#boundedWalk<memberTypeScreen#type', arms: 3, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#functionFreeDataIn#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
   // The screen's own battery and the second reading of the depth limit, both
   // added this round. `deepestFrom`'s ladder is `dispatch: false` because its
@@ -14749,6 +15649,25 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   // which the scan does not read as a discriminator over one node.
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#screenBatteryVerdicts#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#deepestFrom<shippedTypeDepth#type', arms: 2, dispatch: false, terminal: 'next-statement' }),
+  // The index-crossing reading's own walk, beside the row above rather than
+  // folded into it, because they are two position sets and not one.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#throughIndex<shippedTypeDepth#type', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  // The limiter battery: one ladder picking the subject declaration out of the
+  // generated file, one narrowing a statement to a variable statement.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#limiterReading#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#limiterReading#subject', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  // The shared-program control beside it, same two shapes: one statement
+  // narrowing and one guarded read inside the ask loop.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#sharedProgramLimiterReading#statement', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#sharedProgramLimiterReading#subject', arms: 1, dispatch: true, terminal: 'loop' }),
+  // The cyclic-declaration census: the outer visit narrowing to the three named
+  // type declarations, its `else` arm separating an alias body from an
+  // interface's members, and the two inside `collect` that follow a type
+  // reference to the symbol it names.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<cyclicDeclarations#node', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<cyclicDeclarations#node#2', arms: 1, dispatch: false, terminal: 'else' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#collect<visit<cyclicDeclarations#inner', arms: 1, dispatch: false, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#collect<visit<cyclicDeclarations#referenced', arms: 1, dispatch: false, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#literalValuesOf<channelCensusOf#holder', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#literalValuesOf<channelCensusOf#host', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#hoppableInitializer<channelCensusOf#root', arms: 1, dispatch: true, terminal: 'next-statement' }),
@@ -14916,12 +15835,12 @@ const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
   /** Rows in `DECLARED_HANDLER_ROWS`. Every one a tally or an enum read. */
   DISCRIMINANT_LOOKUPS: 8,
-  CHAINS: 79,
-  DISPATCH: 51,
+  CHAINS: 88,
+  DISPATCH: 54,
   BY_TERMINAL: Object.freeze({
-    else: 7,
-    'next-statement': 59,
-    loop: 11,
+    else: 8,
+    'next-statement': 66,
+    loop: 12,
     enclosing: 2,
     /**
      * ZERO, AND THE ZERO IS THIS ROUND'S RESULT RATHER THAN A FACT ABOUT THE
