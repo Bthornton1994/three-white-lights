@@ -56,6 +56,50 @@
  * Delete the recursion and that test reddens; delete the symlink arm and
  * `counts a symlinked directory as a directory` reddens.
  *
+ * THE SECOND AXIS OF THE SAME WALK, AND IT WAS OPEN FOR A WHOLE ROUND AFTER THE
+ * FIRST WAS SHUT. Depth was fixed above; the line that decides which files the
+ * walk hands over — the extension filter in `tsFilesUnder` — sits one statement
+ * away from the recursion that fix added, and it read `.ts` while
+ * `tsconfig.json`'s `include` is `**\/*.ts` AND `**\/*.tsx` with `jsx` set. So a
+ * `.tsx` module here is compiled by the same `tsc` the evidence bundle reports
+ * at exit 0, and was invisible to every census in this directory, because
+ * `shippedModuleNames()` and `directoryFileNames()` are both `tsFilesUnder` and
+ * all five sites are rooted on one of them.
+ *
+ * MEASURED RATHER THAN ARGUED, at this file's base commit. `src/empire/
+ * rates.tsx`, nothing else edited, exporting `idleRates()` whose returned
+ * `gymBucksPerHour` closure is `EMPIRE_FORBIDDEN_OUTPUTS[0] as never`: `npx tsc
+ * --noEmit` exit 0, the closure driven at a one-argument caller returning the
+ * string `covered-day`, and the whole repository 85 files / 3478 tests at exit
+ * 0. That is the same payload as M84, which the returned-closure census catches
+ * in a `.ts` file — so the difference between red and green there is the file's
+ * extension and nothing else.
+ *
+ * WHAT THIS FILE DOES ABOUT THE EXTENSION AXIS. `compiledFilesUnder` enumerates
+ * every file at any depth and keeps the ones `tsconfig.json` itself claims,
+ * with the extensions read out of its `include` array rather than transcribed
+ * into a literal here; `unwalkedCompiledUnder` subtracts what `tsFilesUnder`
+ * hands the censuses. `names every file the compiler compiles here that no
+ * census walks` pins the difference at zero, by name and by extension, which is
+ * the same containment reading `empireSubdirectories()` gives depth — an
+ * arriving extension is read by somebody rather than absorbed. Adding `.tsx` to
+ * the filter instead would have bought exactly one extension; the next one is
+ * the same defect, and this file has now been wrong about its own file set five
+ * times by its own count.
+ *
+ * WHAT THE CONTAINMENT READING DOES NOT DO, since it is containment and not
+ * coverage. It does not make the five censuses scan a `.tsx`. A render-only
+ * view under `src/empire/` is in scope per CLAUDE.md's split, and when one
+ * lands this reading goes red and somebody has to decide what scans it — which
+ * is the visible edit, not a silent absorption. It also says nothing about a
+ * file `tsconfig.json` does not claim: a `.mts` here is out of both sets, and
+ * the catcher for that is in another session's file — `progression.test.ts`'s
+ * `leaves no TypeScript file in the repository out of the scanned set`, which
+ * walks `.mts`/`.cts` ahead of there being one. Measured here by accident and
+ * kept because it is a measurement: a `drive.config.mts` written at the
+ * repository root during this round reddened exactly that check, naming the
+ * file, while every check in this directory stayed green.
+ *
  * THIS SUITE RUNS ONCE PER IMPORTING FILE, BY DESIGN AND NOT BY ACCIDENT.
  * Measured: vitest registers an imported test file's `describe` blocks into the
  * importer, and a `.test.ts` carrying no suite fails collection with "No test
@@ -64,6 +108,19 @@
  * walks this directory — so `npx vitest run src/empire/empireCore.test.ts`
  * alone still reads it, rather than depending on a 310-second sibling file
  * being in the same run.
+ *
+ * AND THE JUSTIFICATION ABOVE USED TO CLAIM MORE THAN IT BUYS, corrected here
+ * rather than deleted. It read as though the thirty registrations — five tests
+ * across six importing files — were themselves evidence, six readings agreeing.
+ * They are not evidence of anything. Six executions of one function, in one
+ * process, against one filesystem, at one moment, are numerous rather than
+ * independent; they answer the same question the same way by construction and
+ * no state of the tree makes two of them disagree. What the repetition actually
+ * buys is availability — a run narrowed to one importing file still reads these
+ * pins instead of depending on a 310-second sibling being collected — and that
+ * is worth the duplicated wall time on its own. It is not a redundancy
+ * argument, and CLAUDE.md's question about whether harnesses are independent or
+ * merely numerous has one answer here.
  */
 
 import {
@@ -95,14 +152,44 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const DIRECTORY_WALK = Object.freeze({
   /** Shipped (non-test) modules this directory holds today. */
   SHIPPED_MODULES: 10,
+  /**
+   * Files the shared walk hands the censuses today, tests included.
+   *
+   * A COUNT AND NOT A BOUND, which is what it was until this round. The only
+   * reading `directoryFileNames()` had was
+   * `toBeGreaterThan(SHIPPED_MODULES)` — satisfied by a walk that had lost
+   * eleven of its twenty-three files, in a file that pins counts everywhere
+   * else. A truncated or reshaped file set now reports itself here.
+   */
+  DIRECTORY_FILES: 23,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
+  /**
+   * Extensions `tsconfig.json`'s `include` claims: `.ts` and `.tsx` today.
+   *
+   * Read from that file rather than written here, so this pin moves when the
+   * project's own `include` moves and not when somebody edits this literal.
+   */
+  COMPILED_EXTENSIONS: 2,
+  /**
+   * Files here the compiler compiles that no census in this directory walks.
+   *
+   * Zero today. It is one for a `src/empire/rates.tsx`, which is the bypass
+   * this reading exists for.
+   */
+  UNWALKED_COMPILED: 0,
   /** `.ts` files the probe tree holds below its root, tests included. */
   PROBE_TS_FILES: 7,
   /** Non-test modules the probe tree holds below its root. */
   PROBE_SHIPPED: 5,
   /** Directories the probe tree holds, the symlinked one included. */
   PROBE_DIRECTORIES: 5,
+  /** Files the extension probe's tree holds that a `.ts`+`.tsx` include claims. */
+  PROBE_COMPILED: 5,
+  /** Of those, the ones the shared walk does not hand over. */
+  PROBE_UNWALKED: 3,
+  /** Files that same tree holds under an include claiming `.ts` alone. */
+  PROBE_TS_ONLY_COMPILED: 2,
 });
 
 /** A path below `root`, with `/` separators, so a pin reads the same anywhere. */
@@ -172,11 +259,32 @@ function walkTree(
 }
 
 /**
- * Every `.ts` file below `root`, at any depth, relative to `root` and sorted.
+ * The extensions the shared walk hands the five censuses.
  *
- * `tests` decides whether `*.test.ts` is included, because the five call sites
- * split on exactly that: four want shipped modules and `chainScanFiles()` wants
- * every `.ts` in the directory.
+ * Declared as a value rather than left inline in `tsFilesUnder`, because
+ * `unwalkedCompiledUnder` subtracts what this keeps from what the compiler
+ * claims: the two sides of that difference read the same constant, so widening
+ * the censuses' reach empties the containment reading instead of leaving two
+ * literals to drift apart in different functions.
+ */
+export const WALKED_EXTENSIONS: readonly string[] = Object.freeze(['.ts']);
+
+/** Whether `name` is a colocated test module, at whatever extension it carries. */
+function isTestFileName(name: string): boolean {
+  return /\.test\.[A-Za-z0-9]+$/.test(name);
+}
+
+/**
+ * Every file below `root` whose extension is in `WALKED_EXTENSIONS`, at any
+ * depth, relative to `root` and sorted.
+ *
+ * `tests` decides whether a colocated test module is included, because the five
+ * call sites split on exactly that: four want shipped modules and
+ * `chainScanFiles()` wants every walked file in the directory.
+ *
+ * The name is historical — this keeps `.ts` today because `WALKED_EXTENSIONS`
+ * says so, and what `tsconfig.json` compiles is a wider set that
+ * `compiledFilesUnder` answers separately.
  */
 export function tsFilesUnder(
   root: string,
@@ -187,12 +295,146 @@ export function tsFilesUnder(
     root,
     () => undefined,
     (full, entry) => {
-      if (!entry.name.endsWith('.ts')) return;
-      if (tests === 'without-tests' && entry.name.endsWith('.test.ts')) return;
+      if (!WALKED_EXTENSIONS.some((extension) => entry.name.endsWith(extension))) return;
+      if (tests === 'without-tests' && isTestFileName(entry.name)) return;
       found.push(relative(root, full));
     },
   );
   return Object.freeze(found.sort());
+}
+
+/** Every file below `root`, at any depth, whatever its extension. */
+export function filesUnder(root: string): readonly string[] {
+  const found: string[] = [];
+  walkTree(
+    root,
+    () => undefined,
+    (full) => {
+      found.push(relative(root, full));
+    },
+  );
+  return Object.freeze(found.sort());
+}
+
+/**
+ * The extensions a `tsconfig.json`'s own `include` claims, read from its text.
+ *
+ * WHAT IT UNDERSTANDS, in the mechanism's own terms: an `include` array of
+ * patterns shaped `**\/*.<ext>`, which is what this project's `tsconfig.json`
+ * holds. Anything else — a narrower path prefix, a brace expansion, a missing
+ * `include`, a comment making the file JSONC rather than JSON — is a REFUSAL
+ * with the offending pattern named, and not a silent fallback to some default.
+ * That is deliberate: the failure mode this whole reading exists to close is a
+ * file set that quietly did not contain something, so the reader is written to
+ * fail loudly at a config shape it cannot answer for rather than to guess.
+ *
+ * `refuses a config shape it does not understand, rather than guessing` drives
+ * every one of those refusals.
+ */
+export function compiledExtensionsIn(configText: string): readonly string[] {
+  const config = JSON.parse(configText) as { readonly include?: unknown };
+  const include = config.include;
+  if (!Array.isArray(include) || include.length === 0) {
+    throw new Error(
+      "tsconfig.json has no non-empty `include` array — this reader will not guess the compiler's file set",
+    );
+  }
+  const extensions: string[] = [];
+  for (const pattern of include) {
+    if (typeof pattern !== 'string') {
+      throw new Error(`tsconfig.json's include holds a non-string entry: ${JSON.stringify(pattern)}`);
+    }
+    const shaped = /^\*\*\/\*(\.[A-Za-z0-9]+)$/.exec(pattern);
+    if (shaped === null) {
+      throw new Error(
+        `tsconfig.json's include holds ${pattern}, which this reader does not understand — widen it deliberately rather than letting a file set shrink silently`,
+      );
+    }
+    extensions.push(shaped[1] as string);
+  }
+  return Object.freeze([...new Set(extensions)].sort());
+}
+
+/**
+ * The repo-relative path prefixes a `tsconfig.json`'s `exclude` drops.
+ *
+ * Same refusal discipline as above, and the reason it is anchored rather than
+ * matched at any depth: `exclude: ['node_modules']` means the one at the
+ * config's own base, so testing every path segment against it would drop a
+ * `src/empire/node_modules.ts` that the compiler does compile — a file missing
+ * from the compiled set is a hole in exactly the direction this reading exists
+ * to close.
+ */
+export function excludedPrefixesIn(configText: string): readonly string[] {
+  const config = JSON.parse(configText) as { readonly exclude?: unknown };
+  const exclude = config.exclude ?? [];
+  if (!Array.isArray(exclude)) {
+    throw new Error("tsconfig.json's `exclude` is present and is not an array");
+  }
+  const prefixes: string[] = [];
+  for (const pattern of exclude) {
+    if (typeof pattern !== 'string' || !/^[A-Za-z0-9._-]+$/.test(pattern)) {
+      throw new Error(
+        `tsconfig.json's exclude holds ${JSON.stringify(pattern)}, which this reader does not understand — it handles plain directory names only`,
+      );
+    }
+    prefixes.push(pattern);
+  }
+  return Object.freeze([...new Set(prefixes)].sort());
+}
+
+/**
+ * The files below `walkRoot` that a `tsconfig.json` rooted at `configRoot`
+ * compiles, relative to `walkRoot` and sorted.
+ *
+ * Two roots because they differ in the shipped case: the config sits at the
+ * repository root and the walk starts at `src/empire/`, and `exclude` is
+ * resolved against the first while the answer is reported against the second.
+ */
+export function compiledFilesUnder(
+  walkRoot: string,
+  configRoot: string,
+  extensions: readonly string[],
+  excludedPrefixes: readonly string[],
+): readonly string[] {
+  const found: string[] = [];
+  walkTree(
+    walkRoot,
+    () => undefined,
+    (full) => {
+      const fromConfig = relative(configRoot, full);
+      if (excludedPrefixes.some((prefix) => fromConfig === prefix || fromConfig.startsWith(`${prefix}/`))) {
+        return;
+      }
+      const name = path.basename(full);
+      if (!extensions.some((extension) => name.endsWith(extension))) return;
+      found.push(relative(walkRoot, full));
+    },
+  );
+  return Object.freeze(found.sort());
+}
+
+/**
+ * The files below `walkRoot` the compiler compiles and the shared walk does not
+ * hand to any census here, each tagged with the extension that put it there.
+ *
+ * This is the difference the containment reading pins, and it is a real join:
+ * one side is `tsconfig.json`'s own claim and the other is `tsFilesUnder`, so a
+ * file cannot be absent from both the way it could when both sides of a set
+ * equality came off one incomplete enumeration.
+ */
+export function unwalkedCompiledUnder(
+  walkRoot: string,
+  configRoot: string,
+  extensions: readonly string[],
+  excludedPrefixes: readonly string[],
+): readonly string[] {
+  const walked = new Set(tsFilesUnder(walkRoot, 'with-tests'));
+  return Object.freeze(
+    compiledFilesUnder(walkRoot, configRoot, extensions, excludedPrefixes)
+      .filter((name) => !walked.has(name))
+      .map((name) => `${name} (${path.extname(name)})`),
+  );
 }
 
 /** Every directory below `root`, at any depth, relative to `root` and sorted. */
@@ -221,6 +463,44 @@ export function directoryFileNames(): readonly string[] {
 /** The directories under `src/empire/`. Empty today; read, not assumed. */
 export function empireSubdirectories(): readonly string[] {
   return subdirectoriesUnder(HERE);
+}
+
+/** The repository root, from this file. `tsconfig.json`'s own base. */
+const REPO_ROOT = path.resolve(HERE, '..', '..');
+
+/** The project's `tsconfig.json`, as text, read once. */
+function projectConfigText(): string {
+  return readFileSync(path.join(REPO_ROOT, 'tsconfig.json'), 'utf8');
+}
+
+/** The extensions the project compiles, out of `tsconfig.json`'s own `include`. */
+export function projectCompiledExtensions(): readonly string[] {
+  return compiledExtensionsIn(projectConfigText());
+}
+
+/** Every file under `src/empire/` the project's `tsconfig.json` compiles. */
+export function empireCompiledFiles(): readonly string[] {
+  return compiledFilesUnder(
+    HERE,
+    REPO_ROOT,
+    projectCompiledExtensions(),
+    excludedPrefixesIn(projectConfigText()),
+  );
+}
+
+/**
+ * Files under `src/empire/` the compiler compiles and no census here walks.
+ *
+ * Empty today; read, not assumed — the same containment reading
+ * `empireSubdirectories()` gives the depth axis.
+ */
+export function empireCompiledButUnwalked(): readonly string[] {
+  return unwalkedCompiledUnder(
+    HERE,
+    REPO_ROOT,
+    projectCompiledExtensions(),
+    excludedPrefixesIn(projectConfigText()),
+  );
 }
 
 /**
@@ -265,6 +545,35 @@ function probeTree(): string {
   // clause. Without it the walk below does not terminate.
   symlinkSync(root, path.join(root, 'sub', 'loop'), 'dir');
   return root;
+}
+
+/**
+ * A tree carrying the extensions the shipped directory does not have.
+ *
+ * `src/empire/` is `.ts` at every one of its twenty-three files, so a reading
+ * taken at `HERE` cannot tell a walk that splits compiled from walked apart
+ * from one that returns the same list twice — the same reason the depth axis
+ * needed `probeTree()`. This tree has a `.tsx` module, a `.tsx` test, a `.tsx`
+ * below a subdirectory, a plain `.ts` pair, a file the compiler claims under no
+ * include, and a directory an `exclude` can be pointed at.
+ */
+function extensionProbeTree(): string {
+  const root = mkdtempSync(path.join(tmpdir(), 'empire-extension-probe-'));
+  mkdirSync(path.join(root, 'sub'), { recursive: true });
+  mkdirSync(path.join(root, 'vendor'), { recursive: true });
+  writeFileSync(path.join(root, 'top.ts'), 'export {};\n');
+  writeFileSync(path.join(root, 'top.test.ts'), 'export {};\n');
+  writeFileSync(path.join(root, 'view.tsx'), 'export {};\n');
+  writeFileSync(path.join(root, 'view.test.tsx'), 'export {};\n');
+  writeFileSync(path.join(root, 'notes.md'), 'x\n');
+  writeFileSync(path.join(root, 'sub', 'deep.tsx'), 'export {};\n');
+  writeFileSync(path.join(root, 'vendor', 'skipped.tsx'), 'export {};\n');
+  return root;
+}
+
+/** An `include`/`exclude` pair as a config would carry it, as text. */
+function configText(include: readonly unknown[], exclude?: readonly unknown[]): string {
+  return JSON.stringify(exclude === undefined ? { include } : { include, exclude });
 }
 
 describe('the directory walk every census in src/empire/ shares', () => {
@@ -342,7 +651,165 @@ describe('the directory walk every census in src/empire/ shares', () => {
     expect(empireSubdirectories().length).toBe(DIRECTORY_WALK.SUBDIRECTORIES);
   });
 
-  it('is the only file here that lists a directory, so a sixth walk cannot start flat', () => {
+  it('splits a tree into what the compiler claims and what the censuses walk', () => {
+    // The extension axis, driven on a tree that has one. `src/empire/` is `.ts`
+    // at every file, so the compiled list and the walked list agree there at
+    // every point and a reading taken at `HERE` alone is satisfied by a split
+    // that does not split.
+    const root = extensionProbeTree();
+    try {
+      const both = compiledExtensionsIn(configText(['**/*.ts', '**/*.tsx']));
+      expect(both).toEqual(['.ts', '.tsx']);
+
+      // With nothing excluded, every extension the include names is claimed,
+      // at any depth.
+      expect(compiledFilesUnder(root, root, both, [])).toEqual([
+        'sub/deep.tsx',
+        'top.test.ts',
+        'top.ts',
+        'vendor/skipped.tsx',
+        'view.test.tsx',
+        'view.tsx',
+      ]);
+      // `exclude` is a parameter and not a decoration: point it at a directory
+      // and the files below that directory leave the compiled set.
+      const excluded = excludedPrefixesIn(configText(['**/*.ts', '**/*.tsx'], ['vendor']));
+      expect(excluded).toEqual(['vendor']);
+      expect(compiledFilesUnder(root, root, both, excluded)).toEqual([
+        'sub/deep.tsx',
+        'top.test.ts',
+        'top.ts',
+        'view.test.tsx',
+        'view.tsx',
+      ]);
+      expect(compiledFilesUnder(root, root, both, excluded).length).toBe(
+        DIRECTORY_WALK.PROBE_COMPILED,
+      );
+
+      // What the five censuses see of the same tree, and it is the `.ts` pair.
+      expect(tsFilesUnder(root, 'with-tests')).toEqual(['top.test.ts', 'top.ts']);
+      // So the difference is non-empty here, which is what makes the zero at
+      // `src/empire/` a reading rather than an empty domain. The extension is
+      // carried in the row because "a file arrived" and "an extension arrived"
+      // are different findings and the second is the one that needs a decision.
+      expect(unwalkedCompiledUnder(root, root, both, excluded)).toEqual([
+        'sub/deep.tsx (.tsx)',
+        'view.test.tsx (.tsx)',
+        'view.tsx (.tsx)',
+      ]);
+      expect(unwalkedCompiledUnder(root, root, both, excluded).length).toBe(
+        DIRECTORY_WALK.PROBE_UNWALKED,
+      );
+      // `notes.md` is claimed by neither side, so the compiled list is a
+      // reading of the include rather than a list of everything present.
+      expect(filesUnder(root)).toContain('notes.md');
+      expect(compiledFilesUnder(root, root, both, excluded)).not.toContain('notes.md');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('reads the split out of a config, so a transcribed extension list fails it', () => {
+    // The point of the derivation, made falsifiable. Replace
+    // `compiledExtensionsIn` with a literal `['.ts', '.tsx']` — which is the
+    // repair this round was told not to make — and the first two expectations
+    // below go red, because they hand it a config that claims `.ts` alone and
+    // read the answer back off the same tree.
+    const root = extensionProbeTree();
+    try {
+      const tsOnly = compiledExtensionsIn(configText(['**/*.ts']));
+      expect(tsOnly).toEqual(['.ts']);
+      expect(compiledFilesUnder(root, root, tsOnly, [])).toEqual(['top.test.ts', 'top.ts']);
+      expect(compiledFilesUnder(root, root, tsOnly, []).length).toBe(
+        DIRECTORY_WALK.PROBE_TS_ONLY_COMPILED,
+      );
+      // Under that config there is nothing compiled the censuses miss — the
+      // same tree, the same walk, a different answer, decided by the config.
+      expect(unwalkedCompiledUnder(root, root, tsOnly, [])).toEqual([]);
+
+      // And a config naming an extension nobody here has is followed too, so
+      // the reader is not keyed on the two spellings the project happens to
+      // use. This is the shape that matters when `tsconfig.json` next moves.
+      expect(compiledExtensionsIn(configText(['**/*.mts', '**/*.ts']))).toEqual(['.mts', '.ts']);
+      expect(
+        compiledFilesUnder(root, root, compiledExtensionsIn(configText(['**/*.md'])), []),
+      ).toEqual(['notes.md']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses a config shape it does not understand, rather than guessing', () => {
+    // A reader that fell back to a default on an unfamiliar config would answer
+    // "nothing is uncovered" for a project whose file set it had not read — the
+    // exact failure this reading exists to close, one level out. Each refusal
+    // names the pattern it choked on.
+    expect(() => compiledExtensionsIn(JSON.stringify({}))).toThrow(/no non-empty `include`/);
+    expect(() => compiledExtensionsIn(configText([]))).toThrow(/no non-empty `include`/);
+    expect(() => compiledExtensionsIn(configText(['src/**/*']))).toThrow(/src\/\*\*\/\*/);
+    expect(() => compiledExtensionsIn(configText(['**/*.{ts,tsx}']))).toThrow(/does not understand/);
+    expect(() => compiledExtensionsIn(configText([7]))).toThrow(/non-string entry/);
+    expect(() => compiledExtensionsIn('{ // a comment\n}')).toThrow();
+    expect(() => excludedPrefixesIn(configText(['**/*.ts'], ['**/generated']))).toThrow(
+      /plain directory names only/,
+    );
+    expect(() => excludedPrefixesIn(configText(['**/*.ts'], ['src/generated']))).toThrow(
+      /plain directory names only/,
+    );
+    // The discriminating half, so the refusals above are a reading rather than
+    // a function that throws at everything: the shapes the project actually
+    // carries are accepted.
+    expect(compiledExtensionsIn(configText(['**/*.ts', '**/*.tsx']))).toEqual(['.ts', '.tsx']);
+    expect(excludedPrefixesIn(configText(['**/*.ts'], ['node_modules', 'dist', '.expo']))).toEqual([
+      '.expo',
+      'dist',
+      'node_modules',
+    ]);
+    expect(excludedPrefixesIn(configText(['**/*.ts']))).toEqual([]);
+  });
+
+  it('names every file the compiler compiles here that no census walks', () => {
+    // CONTAINMENT, NOT A PROHIBITION, and the same reading `empireSubdirectories()`
+    // gives depth. Nothing makes a `.tsx` here illegitimate — CLAUDE.md's split
+    // says a render-only view under `src/empire/` is in scope, so the next
+    // legitimate piece lands as one. What this line buys is that it is read by
+    // somebody, in one place, by name and by extension, instead of being
+    // compiled by `tsc` and walked by none of the five censuses.
+    //
+    // THE ROUTE IT COVERS, named concretely enough to plant: `src/empire/
+    // rates.tsx` exporting `idleRates()`, whose returned `gymBucksPerHour`
+    // closure body is `EMPIRE_FORBIDDEN_OUTPUTS[0] as never`. At this file's
+    // base that compiled at exit 0, drove to the string `covered-day`, and left
+    // 85 files / 3478 tests green. With this reading in place it is
+    // `rates.tsx (.tsx)` here and nothing else in the repository moves.
+    expect(empireCompiledButUnwalked()).toEqual([]);
+    expect(empireCompiledButUnwalked().length).toBe(DIRECTORY_WALK.UNWALKED_COMPILED);
+    // Non-vacuity on both sides. The compiled set is the whole directory rather
+    // than an empty answer from a config that resolved to nothing, and the
+    // extensions really were read off `tsconfig.json` and really are two.
+    expect(empireCompiledFiles()).toEqual(directoryFileNames());
+    expect(empireCompiledFiles().length).toBe(DIRECTORY_WALK.DIRECTORY_FILES);
+    expect(projectCompiledExtensions()).toEqual(['.ts', '.tsx']);
+    expect(projectCompiledExtensions().length).toBe(DIRECTORY_WALK.COMPILED_EXTENSIONS);
+    // The two sides of the difference are joined to the constant that decides
+    // it, so widening the censuses' reach and emptying this reading are one
+    // edit rather than two that can drift.
+    expect(WALKED_EXTENSIONS).toEqual(['.ts']);
+    expect(projectCompiledExtensions()).toEqual(
+      expect.arrayContaining([...WALKED_EXTENSIONS]),
+    );
+  });
+
+  it('is the one file here that names a listing API, which is a scan and not a proof', () => {
+    // THE TITLE USED TO SAY A SIXTH WALK COULD NOT START FLAT, AND THE PREMISE
+    // DID NOT CARRY IT. What this does is scan six spellings of one API in the
+    // `.ts` files the shared walk hands over. That is a statement about six
+    // strings, and the conclusion it was carrying was a statement about every
+    // sixth census anybody might write — a much bigger claim, of exactly the
+    // class CLAUDE.md says gets the same bar as "this is fixed". Bounded here
+    // to what the scan does, with the routes past it named and each one's
+    // catcher named beside it or declared absent.
+    //
     // The residual the five repairs leave open, and it is the one this
     // directory has already fallen into three times: a new census writes its
     // own `readdirSync(HERE)`, which on a flat tree agrees with the shared walk
@@ -350,20 +817,39 @@ describe('the directory walk every census in src/empire/ shares', () => {
     // hand-written walkers inherited one defect here once; a fourth is
     // available to anybody who types the call.
     //
-    // WHAT THIS CATCHES, in the mechanism's own terms: a directory-listing call
-    // by NAME, in a `.ts` file under `src/empire/` other than this one. The
-    // names are the node:fs listing API and the glob helpers a scan would
-    // reasonably reach for.
+    // WHAT THIS CATCHES, in the mechanism's own terms: a directory-listing
+    // identifier by NAME, called or bound, in a file `directoryFileNames()`
+    // hands over other than this one. The names are the node:fs listing API and
+    // the glob helpers a scan would reasonably reach for.
     //
-    // WHAT IT DOES NOT CATCH, stated rather than implied. It is a source scan,
-    // and this repository's own record on source scans is that the next
-    // unenumerated spelling wins: a walk built on `fs.promises`, on a `require`d
-    // alias, on a shell out, or on a name assembled at run time is invisible to
-    // it. It is containment on the cheap route rather than a proof, and the
-    // expensive routes are covered by nothing here. The reason it is still
-    // worth having is that the cheap route is the one that actually happened,
-    // five times, and it forces the sixth to be a visible edit.
-    const LISTS_A_DIRECTORY = /\b(?:readdirSync|readdir|opendirSync|opendir|globSync|glob)\s*\(/;
+    // WHAT IT DOES NOT CATCH, enumerated rather than gestured at, because the
+    // previous version's list omitted the route that had just been used against
+    // this directory:
+    //
+    //   - A WALK IN A FILE THE SHARED WALK DOES NOT HAND OVER. Until this round
+    //     that meant any `.tsx`, and the scan's own file list was the reason —
+    //     the same one-line filter the header is about. Its catcher is now
+    //     `names every file the compiler compiles here that no census walks`,
+    //     which reddens on the file's arrival rather than on what it contains.
+    //     A `.mts` is still outside both, and `progression.test.ts`'s repo-wide
+    //     TypeScript census is what covers that one.
+    //   - A SIXTH CENSUS THAT LISTS NO DIRECTORY AT ALL. The defect this ban is
+    //     written about was a fence naming two files as literals, with no
+    //     listing call anywhere in it; a new census deriving its file list from
+    //     `Object.keys(EXPECTED)` has that defect exactly and is invisible
+    //     here, because there is no call to see. Nothing in this directory
+    //     covers it. It is the honest reason the old title was too strong.
+    //   - `fs.promises`, a `require`d handle, a shell out, or a name assembled
+    //     at run time. Unchanged from the previous disclosure, covered by
+    //     nothing here.
+    //
+    // The ESM alias — `import { readdirSync as ls } from 'node:fs'`, then
+    // `ls(HERE)` — WAS on the invisible list and is not any more: the pattern
+    // matches the bound name as well as the call, and `sees a listing API bound
+    // as well as called` below drives both forms. It is one spelling closed,
+    // not a change of instrument, and the two bullets above still stand.
+    const LISTS_A_DIRECTORY =
+      /\b(?:readdirSync|readdir|opendirSync|opendir|globSync)\b|\bglob\s*\(/;
     const mine = 'directoryWalk.test.ts';
     const offenders = directoryFileNames()
       .filter((name) => name !== mine)
@@ -376,19 +862,36 @@ describe('the directory walk every census in src/empire/ shares', () => {
       );
     expect(offenders, `these list the directory themselves: ${offenders.join(', ')}`).toEqual([]);
     // The domain is not empty: the scan really did read every other file here,
-    // and it really does fire on the shape it is written about.
-    expect(directoryFileNames().length).toBeGreaterThan(DIRECTORY_WALK.SHIPPED_MODULES);
+    // and it really does fire on the shape it is written about. A COUNT, not a
+    // bound — `> 10` is satisfied by a walk that has lost eleven of its
+    // twenty-three files, which is the shape of every reach defect in this
+    // file's own history.
+    expect(directoryFileNames().length).toBe(DIRECTORY_WALK.DIRECTORY_FILES);
     expect(directoryFileNames()).toContain(mine);
     let spellings = 0;
-    for (const spelling of ['readdirSync(', 'readdir(', 'opendirSync(', 'globSync(']) {
+    for (const spelling of ['readdirSync(', 'readdir(', 'opendirSync(', 'globSync(', 'glob(']) {
       expect(LISTS_A_DIRECTORY.test(`const x = ${spelling}here);`), spelling).toBe(true);
       spellings += 1;
     }
-    expect(spellings).toBe(4);
+    expect(spellings).toBe(5);
+    // Bound as well as called, which is the alias route: the import binding is
+    // the thing a `\s*\(` pattern walked past while the call site read `ls(`.
+    let bindings = 0;
+    for (const name of ['readdirSync', 'readdir', 'opendirSync', 'globSync']) {
+      expect(
+        LISTS_A_DIRECTORY.test(`import { ${name} as ls } from 'node:fs';`),
+        name,
+      ).toBe(true);
+      expect(LISTS_A_DIRECTORY.test(`const ls = ${name};`), name).toBe(true);
+      bindings += 1;
+    }
+    expect(bindings).toBe(4);
     // And it discriminates, so the empty list above is a reading rather than a
-    // dead pattern: a name that merely contains one of these is not a call.
+    // dead pattern: a name that merely contains one of these is not a call, and
+    // `glob` on its own is too ordinary a word to read as one.
     expect(LISTS_A_DIRECTORY.test('const readdirSyncCount = 3;')).toBe(false);
     expect(LISTS_A_DIRECTORY.test("readFileSync(path.join(HERE, 'x'));")).toBe(false);
+    expect(LISTS_A_DIRECTORY.test('const glob = 3;')).toBe(false);
   });
 
   it('finds the shipped modules the rest of the directory pins, so the walk is not empty', () => {
@@ -412,6 +915,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
     // the `tests` parameter is a parameter rather than a decoration.
     expect(directoryFileNames()).toContain('directoryWalk.test.ts');
     expect(shippedModuleNames()).not.toContain('directoryWalk.test.ts');
+    expect(directoryFileNames().length).toBe(DIRECTORY_WALK.DIRECTORY_FILES);
     expect(directoryFileNames().length).toBeGreaterThan(shippedModuleNames().length);
   });
 });
