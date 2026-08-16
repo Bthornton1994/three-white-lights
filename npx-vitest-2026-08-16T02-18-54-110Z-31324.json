@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-16T02-18-54-110Z-31324",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/career/eligibility.test.ts",
+    "src/career/careerTuning.test.ts",
+    "src/career/careerPurity.test.ts",
+    "src/career/calendar.test.ts",
+    "src/career/federation.test.ts",
+    "src/tuning/audit.test.ts",
+    "src/licensing/realIp.test.ts",
+    "tools/claudeIndex.test.ts",
+    "src/game/guaranteeTags.test.ts"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-16T02:18:54.110Z",
+  "startedAtMs": 1786846734110,
+  "cwd": "/home/user/wt-r2-intent",
+  "commit": "d43a3116efd01123860998b8a7aa6c4625b18f74",
+  "branch": "claude/r2-from-intent",
+  "dirty": 4,
+  "dirtyPaths": [
+    "docs/GDD.md",
+    "src/career/careerSweep.ts",
+    "src/career/eligibility.test.ts",
+    "src/game/guaranteeTags.test.ts"
+  ],
+  "runner": {
+    "pid": 31324,
+    "startTick": "240958",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --id r2set2 -- npx vitest run src/career/eligibility.test.ts src/career/careerTuning.test.ts src/career/careerPurity.test.ts src/career/calendar.test.ts src/career",
+    "bootId": "2c37ba43-8556-4148-a092-cae664d186e1",
+    "bootEpochSeconds": 1786844324,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-16T02:18:54.129Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
