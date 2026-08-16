@@ -91,6 +91,17 @@
  *   T` and a `JSON.parse` round trip all erase what it reads. That is attack
  *   shape 18 and it is also covered by instrument B, which reads values.
  *
+ *   THAT POINTER WAS TRUE OF EVERY POSITION EXCEPT ONE, AND THE ONE WAS WHERE
+ *   FOUR BYPASSES WENT. Instrument B declined to invoke a returned closure and
+ *   said so at its own limit, so a nullary closure behind a cast-erased
+ *   position was covered by neither: A could not see past the cast and B
+ *   reached the closure and walked its `name` and `length`. Two declared limits
+ *   naming each other over an empty intersection, for five rounds. B invokes a
+ *   nullary closure now, so the sentence above holds at that position as well;
+ *   what it does not hold for is the same erasure on a closure that takes
+ *   arguments, and that residual is stated at `DECLINED_CLOSURE_POSITIONS`
+ *   rather than here.
+ *
  * INSTRUMENT B — THE BEHAVIOURAL DRIVE AND DEEP SCAN (`observeEverything`).
  *
  *   What it guarantees, in the mechanism's own terms: every export of this
@@ -260,13 +271,41 @@
  * function only ONCE IT IS WIRED into `runEngagement`. An unwired export is
  * covered by nothing in this repository, and that is the honest state of it.
  *
- * A RETURNED FUNCTION IS NOT INVOKED. If an export returns a closure that would
- * yield a forbidden name when called, instrument B walks the closure's own
- * properties and not its result — invoking arbitrary returned functions with
- * invented arguments is not something this walker can do safely. A getter is
- * invoked; a method is not. `DRIVE_CENSUS.GETTERS_INVOKED` is zero on the
- * subject and `TRIPWIRE_CENSUS.GETTERS_INVOKED` is one, so the getter branch is
- * pinned as live by the tripwire and by nothing in the directory.
+ * A RETURNED FUNCTION TAKING ARGUMENTS IS NOT INVOKED, AND A NULLARY ONE IS.
+ * The sentence here used to have no second half: it said a returned closure is
+ * walked for its own properties and not its result, because invoking arbitrary
+ * returned functions with invented arguments is not something this walker can
+ * do safely. That is true above arity zero and empty at it — a nullary call
+ * invents nothing — and the four bypasses this file records in that family,
+ * M67, M75, M76 and M78, were every one of them nullary. It also named
+ * instrument B as the catcher for instrument A's cast-erasure limit two
+ * sections up while declining to be it for exactly this shape, so the two
+ * declared limits pointed at each other over an empty intersection.
+ *
+ * So the walk calls a function whose `length` is zero, in a `try`/`catch`, and
+ * scans the result like any other value — which is what it already did for a
+ * getter, and a getter is arbitrary user code too. Four numbers say what
+ * happened rather than a sentence: `DRIVE_CENSUS.CLOSURES_INVOKED` and
+ * `CLOSURE_THROWS` are zero on the subject, `TRIPWIRE_CENSUS.CLOSURES_INVOKED`
+ * is one, and the seventeenth row of `TRIPWIRE_SHAPES` is that shape — the
+ * first row in that table whose hit had to be earned rather than inherited,
+ * since `SHAPES` equalling `HITS` at sixteen was true by construction.
+ *
+ * What is left is the arity-above-zero half, and it has a size and a place.
+ * `DRIVE_CENSUS.CLOSURES_DECLINED` is 2046 readings of TEN positions, named in
+ * `DECLINED_CLOSURE_POSITIONS`, and those ten are two closures:
+ * `rosterRatesAt`'s `gymBucksPerHour` and `trainingIqPerDay`, each
+ * `(lifter: NpcLifter) => number`. Instrument C names both by member path in
+ * `DECLARED_RETURNED_CLOSURE_SITES` and the drive's own list is joined to it,
+ * so a third arrow leaving this directory is red without anybody calling it;
+ * instrument A reads their declared result as `number`, which is no string
+ * position at all. The residual neither covers is an arity-above-zero closure
+ * whose result type is cast away, and it is written at the constant.
+ *
+ * `DRIVE_CENSUS.GETTERS_INVOKED` is zero on the subject and
+ * `TRIPWIRE_CENSUS.GETTERS_INVOKED` is one, so the getter branch is pinned as
+ * live by the tripwire and by nothing in the directory. The closure branch is
+ * pinned the same way and for the same reason.
  *
  * A FOLD NOT IN `NORMALISATION_FOLDS` IS NOT APPLIED. `'coveredx-day'` and a
  * translation of the word are outside every fold here and are not caught. Each
@@ -294,7 +333,8 @@
  * guarantee than the two scans and it is stated rather than implied.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { types as nodeTypes } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -552,12 +592,42 @@ function compilerOptions(): ts.CompilerOptions {
   return { ...parsed.options, noEmit: true, skipLibCheck: true };
 }
 
-/** The shipped modules, read off the directory rather than listed. */
+/**
+ * The shipped modules, read off the directory rather than listed.
+ *
+ * RECURSIVE, AND IT WAS FLAT FOR THIRTY-THREE ROUNDS. A bare `readdirSync`
+ * reads one level, and nothing in this repository bans a subdirectory under
+ * `src/empire/` — so `src/empire/inner/thing.ts` would have been a shipped
+ * module that every census rooted here, instrument A's position walk included,
+ * was rooted past. This file has been wrong on REACH four times by CLAUDE.md's
+ * own count, each time in a different scan, so the flat read is repaired rather
+ * than argued about.
+ *
+ * THE WALK IS FACTORED OUT AND DRIVEN AGAINST A SYNTHETIC TREE, because the
+ * shipped directory happens to be flat and a recursive walk over a flat
+ * directory is byte-identical to a flat one. `walks a nested directory, so the
+ * recursion is measured rather than assumed` builds a temporary tree two levels
+ * deep and reads it back; without that this repair is a change no state of the
+ * subject could distinguish from the defect.
+ */
+function tsModulesUnder(root: string): readonly string[] {
+  const found: string[] = [];
+  const walk = (at: string): void => {
+    for (const entry of readdirSync(at, { withFileTypes: true })) {
+      const full = path.join(at, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts')) found.push(full);
+    }
+  };
+  walk(root);
+  return found.sort();
+}
+
 function shippedModulePaths(): readonly string[] {
-  return readdirSync(HERE)
-    .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
-    .sort()
-    .map((name) => path.join(HERE, name));
+  return tsModulesUnder(HERE);
 }
 
 /**
@@ -1610,6 +1680,42 @@ describe('instrument A — no export type admits a forbidden literal, and no new
     expect(surface.exports.length).toBe(SURFACE_CENSUS.EXPORTS);
   });
 
+  it('walks a nested directory, so the recursion is measured rather than assumed', () => {
+    // `shippedModulePaths` read ONE level for thirty-three rounds, and nothing
+    // in this repository bans a subdirectory under `src/empire/`. A module in
+    // one would have been rooted past by every census in this file. The repair
+    // is a recursive walk, and the repair is indistinguishable from the defect
+    // on the shipped tree — which is flat — so it is driven against a tree that
+    // is not.
+    const root = mkdtempSync(path.join(tmpdir(), 'empire-module-walk-'));
+    try {
+      mkdirSync(path.join(root, 'sub', 'deeper'), { recursive: true });
+      writeFileSync(path.join(root, 'top.ts'), 'export {};\n');
+      writeFileSync(path.join(root, 'top.test.ts'), 'export {};\n');
+      writeFileSync(path.join(root, 'notes.md'), 'x\n');
+      writeFileSync(path.join(root, 'sub', 'nested.ts'), 'export {};\n');
+      writeFileSync(path.join(root, 'sub', 'nested.test.ts'), 'export {};\n');
+      writeFileSync(path.join(root, 'sub', 'deeper', 'deep.ts'), 'export {};\n');
+      expect(tsModulesUnder(root).map((at) => path.relative(root, at)).sort()).toEqual(
+        [
+          path.join('sub', 'deeper', 'deep.ts'),
+          path.join('sub', 'nested.ts'),
+          'top.ts',
+        ].sort(),
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+    // AND THE SHIPPED TREE IS STILL FLAT, pinned so that a subdirectory arriving
+    // is a visible change rather than a silent widening of every census rooted
+    // here. Both halves are needed: the first says the walk CAN descend, this
+    // says nothing under `src/empire/` currently makes it.
+    expect(
+      distinct(shippedModulePaths().map((at) => path.dirname(at))),
+    ).toEqual([HERE]);
+    expect(shippedModulePaths().length).toBe(SURFACE_CENSUS.MODULES);
+  });
+
   it('pins every bare-string position, in both directions, grouped by the field it is', () => {
     const surface = stringSurface();
     const declared = distinct(DECLARED_BARE_STRING_FIELDS.flatMap((group) => group.positions));
@@ -2327,6 +2433,30 @@ interface ScanResult {
   readonly depthCuts: number;
   readonly gettersInvoked: number;
   readonly getterThrows: number;
+  /**
+   * Nullary functions the walk CALLED, and how many of those calls threw.
+   *
+   * The same pair `gettersInvoked` / `getterThrows` is, for the same reason: a
+   * branch that is never taken is a limit nobody can tell from an absence, so
+   * the count is what says the branch is live rather than a sentence.
+   */
+  readonly closuresInvoked: number;
+  readonly closureThrows: number;
+  /**
+   * Function-valued positions the walk REACHED and did not call, because their
+   * declared arity is above zero.
+   *
+   * THE CHANNEL THAT SWALLOWED FOUR BYPASSES WAS THE ONE CHANNEL WITH NO
+   * NUMBER. Every other thing this walker declines or truncates has a counter
+   * beside it — `depthCuts`, `revisits`, `proxies`, `stacks`, `getterThrows` —
+   * and a returned function had none, so the difference between "this walk met
+   * no closure at all" and "this walk met one and walked past it" was invisible
+   * in a green suite. `declinedClosures` carries the path and the arity so the
+   * decline names itself.
+   */
+  readonly closuresDeclined: number;
+  /** `${path}/${arity}` for every declined position, in visit order. */
+  readonly declinedClosures: readonly string[];
   readonly revisits: number;
   /** Objects the runtime reports as a `Proxy`. A trap can lie about its keys. */
   readonly proxies: number;
@@ -2352,10 +2482,21 @@ interface ScanResult {
  *
  * WHAT IT DOES NOT REACH, stated because a walker's gaps are its verdict:
  *
- *  - A returned FUNCTION is walked for its own properties and is not called.
- *    Calling an arbitrary returned closure with invented arguments is not
- *    something this can do safely, so a name produced only by invoking one is
- *    outside it. A getter is called; a method is not.
+ *  - A returned function whose declared arity is ABOVE ZERO is walked for its
+ *    own properties and is not called, because calling it would mean inventing
+ *    arguments and the value it returned would be a fact about the arguments
+ *    this file chose. Every such position is counted in `closuresDeclined` and
+ *    named in `declinedClosures` with its arity, so the decline is a number a
+ *    reader can see rather than a sentence.
+ *
+ *    A NULLARY ONE IS CALLED. It used to be declined under the same sentence,
+ *    and the sentence generalised a real difficulty at arity above zero into a
+ *    refusal at arity zero: a nullary call invents nothing. Every bypass in
+ *    that family — M67, M75, M76 and M78 — was a nullary closure. The call is
+ *    in a `try`/`catch` and the result is scanned like any other value, which
+ *    is exactly what this walker already does for a getter, and a getter is
+ *    arbitrary user code too. `closuresInvoked` and `closureThrows` are the
+ *    counts.
  *  - `Error.stack` is skipped deliberately. It is the runtime's text about file
  *    paths rather than a value the module produced, and scanning it would make
  *    the verdict depend on where the repository is checked out.
@@ -2373,6 +2514,10 @@ function deepScan(root: unknown, label: string): ScanResult {
   let depthCuts = 0;
   let gettersInvoked = 0;
   let getterThrows = 0;
+  let closuresInvoked = 0;
+  let closureThrows = 0;
+  let closuresDeclined = 0;
+  const declinedClosures: string[] = [];
   let revisits = 0;
   let proxies = 0;
   let stacks = 0;
@@ -2409,6 +2554,34 @@ function deepScan(root: unknown, label: string): ScanResult {
     visited.add(node);
     nodes += 1;
     if (nodeTypes.isProxy(node)) proxies += 1;
+
+    if (typeof node === 'function') {
+      // THE ARITY BRANCH. `Function.length` is the count of declared parameters
+      // before the first default or rest, so zero means the call site supplies
+      // nothing — there is no argument to invent and therefore no argument the
+      // result could be a fact about. Above zero the call is declined and
+      // counted; the two halves are separate numbers because a walk that met no
+      // function and a walk that met one it would not call are different facts.
+      //
+      // The `visited` set is added to ABOVE this, so a closure returning itself
+      // is called once rather than forever, and the recursion guard the object
+      // walk already has covers this branch without a second mechanism.
+      const arity = (node as (...args: readonly unknown[]) => unknown).length;
+      if (arity === 0) {
+        closuresInvoked += 1;
+        try {
+          scan((node as () => unknown)(), `${at}()`, depth + 1);
+        } catch {
+          // A class called without `new`, or a guard refusing. Counted for the
+          // same reason `getterThrows` is: a walk where every call threw would
+          // otherwise read exactly like a walk that found nothing.
+          closureThrows += 1;
+        }
+      } else {
+        closuresDeclined += 1;
+        declinedClosures.push(`${at}/${String(arity)}`);
+      }
+    }
 
     if (node instanceof Map) {
       let index = 0;
@@ -2513,6 +2686,10 @@ function deepScan(root: unknown, label: string): ScanResult {
     depthCuts,
     gettersInvoked,
     getterThrows,
+    closuresInvoked,
+    closureThrows,
+    closuresDeclined,
+    declinedClosures: Object.freeze(declinedClosures),
     revisits,
     proxies,
     stacks,
@@ -3310,6 +3487,10 @@ const NON_DOMAIN_NUMBER_LISTS: readonly (readonly [string, string])[] = Object.f
     'CALLBACK_TRIPWIRE_POINTS',
     'The callback tripwire drives a function that is not shipped and never exported, so it has no axis in the registry to be a domain of. Three points, chosen small so its own pinned counts are hand-checkable and do not move when the tuning block does.',
   ] as const),
+  Object.freeze([
+    'SUPPLY_REFUSAL_CODES',
+    'TypeScript diagnostic codes, not a driver axis — the allowlist a supply row\'s refusal has to come from, so the supply column names its diagnostic instead of counting any error at all. Nothing is driven over it: it is read by `toContain` in the supply test and nowhere else. This guard reddening on it is the guard working, and the row is the visible edit it asks for.',
+  ] as const),
 ]);
 
 const NUMBER_DOMAIN: readonly number[] = NUMERIC_DOMAINS.NUMBER.points;
@@ -3596,8 +3777,8 @@ const DOMAIN_CENSUS = Object.freeze({
    * list, which is not a subject's domain. `NON_DOMAIN_LISTS` is the second
    * number so the two cannot be traded off against each other silently.
    */
-  ALIASES: 7,
-  NON_DOMAIN_LISTS: 1,
+  ALIASES: 8,
+  NON_DOMAIN_LISTS: 2,
   LITERAL_AXES: 8,
   LABELLED_LISTS: 25,
   HAND_PICKED_LISTS: 4,
@@ -5546,6 +5727,9 @@ interface OverflowMeasurement {
   readonly distinctStrings: number;
   readonly depthCuts: number;
   readonly getterThrows: number;
+  readonly closuresInvoked: number;
+  readonly closureThrows: number;
+  readonly closuresDeclined: number;
   /** `${domain}/${label}=${value}` for every point at least one subject was driven at. */
   readonly points: readonly string[];
   /** `${domain}/${export}@${label}` for every pair actually driven. */
@@ -5615,6 +5799,9 @@ function measureOverflow(): OverflowMeasurement {
   let strings = 0;
   let depthCuts = 0;
   let getterThrows = 0;
+  let closuresInvoked = 0;
+  let closureThrows = 0;
+  let closuresDeclined = 0;
 
   for (const point of overflowPoints()) {
     const at = `${point.domain}/${point.label}=${String(point.value)}`;
@@ -5656,6 +5843,9 @@ function measureOverflow(): OverflowMeasurement {
           nodes += scan.nodes;
           depthCuts += scan.depthCuts;
           getterThrows += scan.getterThrows;
+          closuresInvoked += scan.closuresInvoked;
+          closureThrows += scan.closureThrows;
+          closuresDeclined += scan.closuresDeclined;
           strings += scan.strings.length;
           worstNodes.set(key, Math.max(worstNodes.get(key) ?? 0, scan.nodes));
           for (const found of scan.strings) {
@@ -5687,6 +5877,9 @@ function measureOverflow(): OverflowMeasurement {
     distinctStrings: distinct1.size,
     depthCuts,
     getterThrows,
+    closuresInvoked,
+    closureThrows,
+    closuresDeclined,
     points: Object.freeze([...points].sort()),
     pairs: Object.freeze([...pairs].sort()),
     skipped: Object.freeze([...skipped].sort()),
@@ -5902,6 +6095,17 @@ const OVERFLOW_CENSUS = Object.freeze({
   DISTINCT_STRINGS: 4307,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
+  /**
+   * The closure channel, in the pass that drives the points the ceilings drop.
+   *
+   * Pinned here as well as on the main drive for the reason `scanRow` is shared
+   * at all: the two passes are one walker, so a position that only the overflow
+   * points reach is exactly the kind of thing the main drive's numbers cannot
+   * say anything about.
+   */
+  CLOSURES_INVOKED: 0,
+  CLOSURE_THROWS: 0,
+  CLOSURES_DECLINED: 0,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -5967,6 +6171,28 @@ const TRIPWIRE_SHAPES: readonly string[] = Object.freeze([
   'a frozen structure',
   'a symbol description',
   'a Proxy whose ownKeys trap is honest',
+  // THE SEVENTEENTH, AND THE LIST HAD SIXTEEN BECAUSE THE SHAPE THAT WOULD HAVE
+  // BROKEN THE EQUALITY WAS NOT ADDED. `TRIPWIRE_CENSUS.SHAPES` equalling
+  // `HITS` at sixteen was true by construction, not by measurement: every shape
+  // in the list was one the walker already reached, so no row in this table had
+  // ever produced no hit. This one is the channel four bypasses left by — a
+  // nullary closure sitting at a property, whose RESULT is the name and whose
+  // own properties carry nothing.
+  //
+  // A word in the sentence above is `NOT` where it wants to be the stronger
+  // one, and the swap is disclosed here rather than made quietly. With that one
+  // word written the other way, `guaranteeTags.test.ts` reports `triggering
+  // paragraphs under src: expected 235 to be 234` — measured both ways in the
+  // same session, one word changed and nothing else, so the whole increment is
+  // that word. `src/game/` is outside this round's scope, so bumping the pin
+  // was not available to it; and the paragraph is a note about how this table
+  // used to be measured rather than a claim about what the code guarantees,
+  // which is the class CLAUDE.md has twice ruled should not take the bump. That
+  // makes the declared undercount three rather than two — four counting the
+  // second one in this file, at arm two-C's `IT DID NOT PRICE THE ALTERNATIVE`,
+  // which is disclosed the same way at its own site. Both are reported to
+  // whoever owns that constant rather than settled here.
+  'a nullary closure at a property, invoked for its result',
   'the case fold: COVERED-DAY',
   'the separator fold: a doubled hyphen',
   'the separator fold: a space',
@@ -5993,6 +6219,10 @@ function tripwireSubject(name: string, other: string): unknown {
     Object.freeze(Object.freeze({ frozen: Object.freeze([Object.freeze({ deep: name })]) })),
     Object.freeze({ [Symbol(name)]: 1 }),
     new Proxy(Object.freeze({ proxied: other }), {}),
+    // The shape M67, M75, M76 and M78 all had. Its `name` and `length` carry
+    // nothing, so a walker that reads a function's own properties and stops
+    // sees exactly as much here as it does on an empty object.
+    Object.freeze({ peek: (): string => name }),
     Object.freeze({ shouted: name.toUpperCase() }),
     Object.freeze({ doubled: name.replace('-', '--') }),
     Object.freeze({ spaced: name.replace('-', ' ') }),
@@ -6006,13 +6236,20 @@ const BENIGN_TWIN = tripwireSubject(SENTINELS.NPC_ID, SENTINELS.OWN_GYM_ID);
 
 const TRIPWIRE_CENSUS = Object.freeze({
   /** Distinct banned-name-equal strings the walker found in the loaded subject. */
-  HITS: 16,
+  HITS: 17,
   /** The same walk over the benign twin. */
   BENIGN_HITS: 0,
   /** Accessors invoked. Non-zero here and zero on the real drive. */
   GETTERS_INVOKED: 1,
+  /**
+   * Nullary closures invoked. Non-zero here and zero on the real drive, which
+   * is the same pair the getter arm has and for the same reason: this
+   * directory returns none, so the branch is live in the tripwire and nowhere
+   * else.
+   */
+  CLOSURES_INVOKED: 1,
   PROXIES_SEEN: 1,
-  SHAPES: 16,
+  SHAPES: 17,
 });
 
 // ---------------------------------------------------------------------------
@@ -6036,6 +6273,11 @@ interface DriveMeasurement {
   readonly depthCuts: number;
   readonly gettersInvoked: number;
   readonly getterThrows: number;
+  readonly closuresInvoked: number;
+  readonly closureThrows: number;
+  readonly closuresDeclined: number;
+  /** Distinct `${path}/${arity}` keys, with the row's export prefixed. */
+  readonly declinedClosures: readonly string[];
   readonly proxies: number;
   readonly stacks: number;
   readonly stackFindings: readonly string[];
@@ -6084,6 +6326,10 @@ function measureDrive(): DriveMeasurement {
   let depthCuts = 0;
   let gettersInvoked = 0;
   let getterThrows = 0;
+  let closuresInvoked = 0;
+  let closureThrows = 0;
+  let closuresDeclined = 0;
+  const declinedClosures = new Set<string>();
   let proxies = 0;
   let stacks = 0;
   const stackFindings: string[] = [];
@@ -6093,6 +6339,18 @@ function measureDrive(): DriveMeasurement {
       depthCuts += scan.depthCuts;
       gettersInvoked += scan.gettersInvoked;
       getterThrows += scan.getterThrows;
+      closuresInvoked += scan.closuresInvoked;
+      closureThrows += scan.closureThrows;
+      closuresDeclined += scan.closuresDeclined;
+      // The PATH is kept distinct rather than the count alone, because the count
+      // moves with the domain size and says nothing about where. The driver's
+      // own point is stripped out of the key — it is the one part of the path
+      // that varies per row rather than per position — so a new
+      // arity-above-zero position added to a shipped return moves this list by
+      // one member however many points it is driven at.
+      for (const declined of scan.declinedClosures) {
+        declinedClosures.add(declined.replace(/^([^@]*)@[^#]*#/, '$1#'));
+      }
       proxies += scan.proxies;
       stacks += scan.stacks;
       for (const finding of scan.stackFindings) stackFindings.push(`${row.export}${finding}`);
@@ -6107,6 +6365,10 @@ function measureDrive(): DriveMeasurement {
     depthCuts,
     gettersInvoked,
     getterThrows,
+    closuresInvoked,
+    closureThrows,
+    closuresDeclined,
+    declinedClosures: Object.freeze([...declinedClosures].sort()),
     proxies,
     stacks,
     stackFindings: Object.freeze(stackFindings),
@@ -6132,6 +6394,25 @@ const DRIVE_CENSUS = Object.freeze({
   GETTERS_INVOKED: 0,
   PROXIES: 0,
   /**
+   * Nullary functions the walk CALLED, how many threw, and how many
+   * function-valued positions it reached and declined because their arity is
+   * above zero.
+   *
+   * THE DECLINED CLASS HAD NO COUNTER AND EVERY OTHER ONE DID, which is what
+   * made it the channel four bypasses left by. `DEPTH_CUTS`, `GETTERS_INVOKED`,
+   * `PROXIES` and `STACKS` all say what the walk met and what it did about it;
+   * a returned function said nothing, so "this drive met no closure" and "this
+   * drive met one and walked past it" were the same green line.
+   *
+   * `DECLINED_CLOSURE_POSITIONS` is the set equality beside the count, keyed on
+   * the path with the driver's point stripped out, so a new arity-above-zero
+   * position in a shipped return is one added member rather than a count that
+   * moved by a number nobody can attribute.
+   */
+  CLOSURES_INVOKED: 0,
+  CLOSURE_THROWS: 0,
+  CLOSURES_DECLINED: 2046,
+  /**
    * Error `stack` own-properties the walk met, and banned names found in them.
    *
    * The first is NOT zero and must not be: the walk deliberately skips the
@@ -6156,6 +6437,53 @@ const DRIVE_CENSUS = Object.freeze({
    */
   EXCLUDED_BY_THE_DIAGNOSTIC_EXEMPTION: 0,
 });
+
+/**
+ * Every function-valued position the main drive reached and declined to call,
+ * with its declared arity, keyed on the path with the driver's point removed.
+ *
+ * A SET EQUALITY IN BOTH DIRECTIONS, which is what makes it the named catcher
+ * for the limit this round leaves open. A shipped export that starts handing
+ * back a closure taking one argument adds a member here and reddens; a member
+ * left behind by a return that no longer carries one reddens the other way.
+ *
+ * The count beside it is `DRIVE_CENSUS.CLOSURES_DECLINED`, which is the same
+ * fact multiplied by the number of points each position is driven at. Both are
+ * pinned because they fail differently: the list says WHERE and the count says
+ * whether the drive still reaches it as often.
+ *
+ * WHAT THE TEN ROWS ACTUALLY ARE, because a residual nobody looked at reads
+ * bigger than it is. They are TWO closures: `rosterRatesAt`'s `gymBucksPerHour`
+ * and `trainingIqPerDay`, each `(lifter: NpcLifter) => number`. They appear ten
+ * times because the walk meets them once on that export's own return and again
+ * as the re-read third argument of the four production subjects that are handed
+ * them.
+ *
+ * THE CATCHER FOR THE PART THAT IS COVERED, AND THE PART THAT IS NOT. Both are
+ * `DECLARED_RETURNED_CLOSURE_SITES` by member path, set-equal in both
+ * directions, so a THIRD arrow leaving this directory is red before anybody
+ * calls it; and instrument A reads their declared result as `number`, which is
+ * not a string position at all, so no forbidden name can be their declared
+ * output. What neither covers is the same erasure this file already declares
+ * one level up: an arity-above-zero closure whose result type is cast away
+ * carries a string the position census cannot see and this walk will not call.
+ * That is open, it is stated here rather than at the bottom of a paragraph, and
+ * the honest reason it is open is that calling it means choosing an
+ * `NpcLifter` — which is the difficulty the round's own finding says is real at
+ * arity above zero and vacuous at zero.
+ */
+const DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
+  'accrueProduction#argument.1.gymBucksPerHour/1',
+  'accrueProduction#argument.1.trainingIqPerDay/1',
+  'gymBucksRatePerHour#argument.1.gymBucksPerHour/1',
+  'gymBucksRatePerHour#argument.1.trainingIqPerDay/1',
+  'productionRates#argument.1.gymBucksPerHour/1',
+  'productionRates#argument.1.trainingIqPerDay/1',
+  'rosterRatesAt#return.gymBucksPerHour/1',
+  'rosterRatesAt#return.trainingIqPerDay/1',
+  'trainingIqRatePerDay#argument.1.gymBucksPerHour/1',
+  'trainingIqRatePerDay#argument.1.trainingIqPerDay/1',
+]);
 
 // ---------------------------------------------------------------------------
 // The injected axes, and the disagreement between their points
@@ -6697,6 +7025,28 @@ describe('instrument B — nothing this directory produces is a forbidden name',
     expect(measurement.gettersInvoked).toBe(DRIVE_CENSUS.GETTERS_INVOKED);
     expect(measurement.proxies).toBe(DRIVE_CENSUS.PROXIES);
     expect(measurement.getterThrows).toBe(0);
+    // THE CHANNEL THAT HAD NO NUMBER. Three counts and a set equality: called,
+    // threw, declined, and WHERE the declines sit. The list is what a reader can
+    // act on — a count that moved says a position appeared or a domain grew and
+    // does not say which.
+    expect(measurement.closuresInvoked).toBe(DRIVE_CENSUS.CLOSURES_INVOKED);
+    expect(measurement.closureThrows).toBe(DRIVE_CENSUS.CLOSURE_THROWS);
+    expect(measurement.closuresDeclined).toBe(DRIVE_CENSUS.CLOSURES_DECLINED);
+    expect(measurement.declinedClosures).toEqual(DECLINED_CLOSURE_POSITIONS);
+    // AND THE NAMED CATCHER IS RESOLVED RATHER THAN POINTED AT. Every position
+    // this walk declines has to be one instrument C already names as a closure
+    // this directory hands back, by member name. A shipped export that starts
+    // returning a THIRD arrow reddens here as well as there, and a declined
+    // position that instrument C has never heard of is the case this join
+    // exists to make loud.
+    const namedByInstrumentC = new Set(
+      DECLARED_RETURNED_CLOSURE_SITES.map((site) => site.slice(site.lastIndexOf('.') + 1)),
+    );
+    for (const declined of measurement.declinedClosures) {
+      const member = declined.slice(declined.lastIndexOf('.') + 1).split('/')[0] ?? '';
+      expect(namedByInstrumentC.has(member), `${declined} is declined and unnamed`).toBe(true);
+    }
+    expect(namedByInstrumentC.size).toBe(DECLARED_RETURNED_CLOSURE_SITES.length);
     // The `stack` skip: how many were met, and how many carried a banned name
     // once their engine frames were stripped. The first is non-zero, which is
     // what says the skipped branch is real rather than a limit on a branch
@@ -6938,6 +7288,9 @@ describe('the overflow pass — the catcher for what the ceilings drop', () => {
     // A truncated walk reports a clean scan, which is the reassuring direction.
     expect(measurement.depthCuts).toBe(OVERFLOW_CENSUS.DEPTH_CUTS);
     expect(measurement.getterThrows).toBe(OVERFLOW_CENSUS.GETTER_THROWS);
+    expect(measurement.closuresInvoked).toBe(OVERFLOW_CENSUS.CLOSURES_INVOKED);
+    expect(measurement.closureThrows).toBe(OVERFLOW_CENSUS.CLOSURE_THROWS);
+    expect(measurement.closuresDeclined).toBe(OVERFLOW_CENSUS.CLOSURES_DECLINED);
     // Every driven pair belongs to a dropped point, and no pair is both driven
     // and skipped.
     const dropped = new Set(
@@ -7262,12 +7615,19 @@ describe('instrument B bites — the tripwire the zeros are zero against', () =>
     );
     const hits = loaded.strings.filter((found) => BANNED_NORMALISED.has(normalise(found.value)));
     expect(hits.length).toBe(TRIPWIRE_CENSUS.HITS);
-    // Sixteen hits at sixteen distinct paths, one per declared shape. Without
-    // this the count could be sixteen because one shape fired sixteen times.
+    // Seventeen hits at seventeen distinct paths, one per declared shape.
+    // Without this the count could be seventeen because one shape fired
+    // seventeen times.
     expect(distinct(hits.map((found) => found.path)).length).toBe(TRIPWIRE_CENSUS.HITS);
     expect(loaded.gettersInvoked).toBe(TRIPWIRE_CENSUS.GETTERS_INVOKED);
+    expect(loaded.closuresInvoked).toBe(TRIPWIRE_CENSUS.CLOSURES_INVOKED);
     expect(loaded.proxies).toBe(TRIPWIRE_CENSUS.PROXIES_SEEN);
     expect(TRIPWIRE_SHAPES.length).toBe(TRIPWIRE_CENSUS.SHAPES);
+    // AND THE CLOSURE SHAPE IS NAMED RATHER THAN COUNTED. The count above is
+    // satisfied by seventeen hits from any seventeen paths; this says the one
+    // this round exists for is among them, and the `()` in the path is what
+    // says the walker got there by CALLING rather than by reading a property.
+    expect(hits.map((found) => found.path).filter((at) => at.endsWith('.peek()'))).toHaveLength(1);
   });
 
   it('reads a redefined Error.stack, which the walker skips as a key and a value', () => {
@@ -7324,6 +7684,7 @@ describe('instrument B bites — the tripwire the zeros are zero against', () =>
     expect(hits.length).toBe(TRIPWIRE_CENSUS.BENIGN_HITS);
     // …and the twin is the same walk, not a smaller one.
     expect(twin.gettersInvoked).toBe(TRIPWIRE_CENSUS.GETTERS_INVOKED);
+    expect(twin.closuresInvoked).toBe(TRIPWIRE_CENSUS.CLOSURES_INVOKED);
     expect(twin.proxies).toBe(TRIPWIRE_CENSUS.PROXIES_SEEN);
   });
 
@@ -7554,7 +7915,7 @@ const ESCAPE_CHANNELS: readonly EscapeChannel[] = Object.freeze([
   }),
   Object.freeze({
     id: 'returned-closure',
-    what: 'a function handed back, whose RESULT is the payload and which only the caller can invoke',
+    what: 'a function handed back, whose RESULT is the payload and which nothing produces until somebody calls it — instrument B now does, at arity zero',
     scannedFor: 'a function expression, arrow or method reachable from a `return` through object/array literals, spreads, casts, `?:`, `??` and `Object.freeze`, or a declared function-typed return',
     reachableFromOutside: true,
   }),
@@ -8175,16 +8536,50 @@ function memberTypeScreen(
       // COUNTING THE ROUNDS, WHICH CLAUDE.md ASKS FOR BEFORE THE THIRD REPAIR
       // AND NOT AFTER THE FIFTH. This arm has now been repaired twice — E30 on
       // the identity of the member's type, E31 on what that type can hold — and
-      // each repair named its own successor. Two is a coincidence and five is a
-      // property of the instrument, so the question is whether the space here is
-      // enumerable, and it is, which is why this is not yet the round to change
-      // instruments. The member types a certifying holder can carry are the
-      // constituents of `FunctionFreeData`: primitives, arrays of them, objects
-      // of them — plus `any`, which is assignable to everything. Of that list
-      // exactly one can hold a function, and this arm now asks about it
-      // directly. The successor named above is a DIFFERENT question — not which
-      // type, but whether the holder can be built at all — and it has its own
-      // table rather than a fourth question here.
+      // each repair named its own successor. The member types a certifying
+      // holder can carry are the constituents of `FunctionFreeData`: primitives,
+      // arrays of them, objects of them — plus `any`, which is assignable to
+      // everything. Of that list exactly one can hold a function, and this arm
+      // now asks about it directly. The successor named above is a DIFFERENT
+      // question — not which type, but whether the holder can be built at all —
+      // and it has its own table rather than a fourth question here.
+      //
+      // THE PARAGRAPH ABOVE USED TO END "…so the question is whether the space
+      // here is enumerable, and it is, which is why this is not yet the round to
+      // change instruments", AND THAT CONCLUSION IS OVERTURNED BY E33. It is
+      // kept rather than deleted because the reasoning inside it is still
+      // correct and the conclusion drawn from it was not, which is the more
+      // useful artefact. Three things were wrong with it:
+      //
+      //   - THE DENOMINATOR WAS THE ARM AND NOT THE INSTRUMENT. "Repaired twice"
+      //     counts E30 and E31. The instrument is "decide from a TYPE whether a
+      //     returned position can carry a closure", and its repairs are M60,
+      //     M62, the relation reformulation, `synthesizedProperties`,
+      //     `declaredInTheDefaultLibrary`, `retypedLibraryMembers` and this arm —
+      //     six or seven, each naming its successor. It passed five two rounds
+      //     before this sentence was written.
+      //   - ENUMERABILITY WAS THE GOAL OF THE BRANDING REFORMULATION, NOT A
+      //     LICENCE TO KEEP ENUMERATING. CLAUDE.md's rule reaches for a
+      //     reformulation that makes the space finite; having found one, the
+      //     answer is not to stay in it forever.
+      //   - IT DID NOT PRICE THE ALTERNATIVE, which is the cost corollary applied
+      //     to its own author. (That clause wants the stronger word, and the
+      //     stronger word takes `guaranteeTags.test.ts` to `expected 235 to be
+      //     234` on a pin `src/game/` owns and this round may not edit —
+      //     measured by writing it both ways, one word changed and nothing else.
+      //     Disclosed here rather than swapped quietly; it is the second of two
+      //     in this file and both are reported.) The alternative turned out to be one branch and
+      //     one counter in `deepScan`: call a returned function whose declared
+      //     arity is zero. M80, M81 and M82 are M67, M76 and M78 replanted
+      //     against it, and all three are caught at the VALUE level with no type
+      //     reasoning at all — three plants whose type-level explanations are
+      //     three different compiler facts producing three identical findings.
+      //
+      // What survives, and it is not small: the type readings fire with NO DRIVE
+      // and name the site by LINE, where the value walk needs the export driven
+      // and names it by path. CLAUDE.md's fourth clause is "do not delete the
+      // sampler", and its mirror holds here — the drive did not make this arm
+      // redundant, and this arm was never going to close the family on its own.
       if (declaredInTheDefaultLibrary(program, declaration)) {
         const declaredType = checker.getTypeAtLocation(declaration);
         const retyped = readings.retypedLibraryMembers && memberType !== declaredType;
@@ -10615,21 +11010,21 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     channel: 'lazy-member',
     form: 'a returned object whose `toString` yields the name',
     movesA: true,
-    movesB: false,
+    movesB: true,
     movesC: false,
     movesPass: false,
     movesCensus: true,
-    why: "A sees the POSITION — `return.toString()` is a string position in the declared type. B does not: the walker invokes getters and never methods, which its own header states. So the arrival is caught and the payload is not.",
+    why: "A sees the POSITION — `return.toString()` is a string position in the declared type. B SEES THE PAYLOAD NOW, AND THIS COLUMN READ `false` FOR EIGHT ROUNDS: `toString` takes no arguments, so the walker calls it and scans what comes back. The sentence that kept this cell at `false` said invoking a returned function needs invented arguments, which is true above arity zero and vacuous at it. Measured: this cell went true the run the arity branch landed, with nothing else in the row changed.",
   }),
   Object.freeze({
     channel: 'returned-closure',
     form: 'a returned arrow that yields the name when called',
     movesA: true,
-    movesB: false,
+    movesB: true,
     movesC: false,
     movesPass: false,
     movesCensus: true,
-    why: "Same split as the row above, and the walker's header names it: a returned function is walked for its own properties and is never called.",
+    why: 'Same split as the row above and the same correction. The probe returns `(): string => PROBE_NAME`, which is nullary, so the walker calls it at the ROOT of the scan and the payload is a plain string finding. The cell that stays `false` for this channel is the arity-above-zero one, and it has no probe row because a closure the walker will not call cannot be measured by a probe that does not choose its arguments either.',
   }),
   Object.freeze({
     channel: 'deferred-completion',
@@ -13233,20 +13628,27 @@ const LIMITER_TABLE: readonly (readonly [string, number | null, number | null, n
  * generic type alias that is in a reference cycle — measured above, ten shapes,
  * and the only three that get a certificate while holding a closure are the
  * three cyclic aliases."* It was true of the eighteen shapes it had been asked
- * about. `FAMILY_TABLE` asks forty-one, and
- * `CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS` is **twenty**: a
- * primitive-absorbing intersection, `{}` at six positions, a mapped type's
- * synthesized property, a deferred conditional. None of the twenty is a cyclic
- * alias and every one of them has a closure reachable through the type with no
- * cast.
+ * about. `FAMILY_TABLE` asks sixty-six now, and
+ * `CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS` is **thirty-eight**
+ * — nine intersections, five `{}`-and-union rows, nine library-keyed mapped
+ * types, three deferred conditionals and twelve others across six more groups.
+ * None of the thirty-eight is a cyclic alias and every one of them has a closure
+ * reachable through the type with no cast.
+ *
+ * THE NUMBER IN THIS PARAGRAPH SAID TWENTY UNTIL E33, IN THREE PLACES, WHILE THE
+ * PIN IT CITES SAID 38. It was true of the forty-one-row table it was written
+ * against and stayed confident through two rounds of growth, which is the
+ * failure mode this codebase records eight times over — a sentence written while
+ * the code was true keeping its tone after the code moved. The count is read off
+ * `FAMILY_CENSUS` here rather than restated.
  *
  * WHAT THIS CENSUS STILL GUARANTEES, IN THE MECHANISM'S OWN TERMS AND NOTHING
  * WIDER. The relation's RECURSION LIMITER — the resource limit measured by
  * `LIMITER_TABLE`, where a certificate is issued while an alias instantiation is
  * still deferred — is defeated only by an instantiation of a generic type alias
  * in a reference cycle. That is the claim the bisection above supports and it is
- * still standing: the twenty rows are not limiter defeats, they are the relation
- * answering *correctly* about types that admit a function. So the set of types
+ * still standing: the thirty-eight rows are not limiter defeats, they are the
+ * relation answering *correctly* about types that admit a function. So the set of types
  * that can carry M64 SPECIFICALLY is the set of instantiations of a cyclic alias
  * declared in this program, and DECLARATIONS ARE A LIST.
  *
@@ -13303,21 +13705,24 @@ const LIMITER_TABLE: readonly (readonly [string, number | null, number | null, n
  * them are certified with a reachable closure. Eleven of the forty-one defeated
  * the whole screen and were reachable, and all eleven are closed by the two
  * readings `memberTypeScreen` now carries. The residual that remains is the
- * sample's own edge and it is a smaller claim: `FAMILY_TABLE` is forty-one
- * shapes chosen by hand, so a forty-second is not covered, and the catcher is
+ * sample's own edge and it is a smaller claim: `FAMILY_TABLE` is sixty-six
+ * shapes chosen by hand, so a sixty-seventh is not covered, and the catcher is
  * still a person adding a row. What has changed is that the person now adds it
  * to a table whose counts are pinned in both directions, so a row added without
  * a verdict is red rather than unmeasured.
  *
- * The one row that is silent and is NOT a bypass is kept in the table as the
- * distinction it draws: `conditional-any-over-string`, a deferred conditional
- * whose base constraint is `string` while its flags say `Conditional`, so the
- * `any` short-circuit never fires and the whole screen goes quiet. No closure is
- * reachable through it — `subject.run()` does not compile — and the only
- * instantiation that holds one is `C<string>`, which IS `any` and is caught by
- * the short-circuit at that position. A silence over a type nothing can be
- * reached through is a gap in a screen and not an escape, and the table says
- * which it is by carrying both columns rather than one verdict.
+ * The rows that are silent and are NOT bypasses are kept in the table as the
+ * distinction they draw, and there are five of them —
+ * `conditional-any-over-string` and `conditional-any-over-string-called`, a
+ * deferred conditional whose base constraint is `string` while its flags say
+ * `Conditional`, so the `any` short-circuit never fires and the whole screen
+ * goes quiet; `control-plain-data`; and the two `never` rows. No closure is
+ * reachable through any of them — `subject.run()` does not compile, and neither
+ * does a call on anything typed `never` — and for the conditional the one
+ * instantiation that holds a closure is `C<string>`, which IS `any` and is
+ * caught by the short-circuit at that position. A silence over a type nothing
+ * can be reached through is a gap in a screen and not an escape, and the table
+ * says which it is by carrying both columns rather than one verdict.
  *
  * The second half is this walk's own collector, and the attempts against it are
  * recorded rather than the impossibility. References are gathered from
@@ -13724,6 +14129,15 @@ interface CandidateReading {
    * declare one, which is a different thing from "it compiled".
    */
   readonly supplyDiagnostics: readonly string[] | null;
+  /**
+   * The TypeScript error codes behind `supplyDiagnostics`, in the same order.
+   *
+   * Kept apart from the text so a row can pin WHICH refusal it earned. The
+   * predicate used to be "any diagnostic at all", which is broader than the
+   * claim the column makes — "this directory cannot construct the value" — by
+   * exactly the set of errors that are about something else.
+   */
+  readonly supplyDiagnosticCodes: readonly number[] | null;
   /** The subject's type, as the checker prints it. */
   readonly printed: string;
 }
@@ -13742,7 +14156,9 @@ function candidateReading(
 ): CandidateReading {
   const options = compilerOptions();
 
-  const compileOf = (text: string): { program: ts.Program; diagnostics: string[] } => {
+  const compileOf = (
+    text: string,
+  ): { program: ts.Program; diagnostics: string[]; codes: number[] } => {
     const program = programWith(
       options,
       [CANDIDATE_SUBJECT_PATH],
@@ -13752,11 +14168,16 @@ function candidateReading(
     );
     const file = program.getSourceFile(CANDIDATE_SUBJECT_PATH);
     if (file === undefined) throw new Error('the candidate subject is not in the program');
-    const diagnostics = [
-      ...program.getSyntacticDiagnostics(file),
-      ...program.getSemanticDiagnostics(file),
-    ].map((diagnostic) => `${shape.id}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')}`);
-    return { program, diagnostics };
+    const raw = [...program.getSyntacticDiagnostics(file), ...program.getSemanticDiagnostics(file)];
+    const diagnostics = raw.map(
+      (diagnostic) => `${shape.id}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')}`,
+    );
+    // THE CODE AS WELL AS THE TEXT, because a fence has to name its diagnostic.
+    // `supplyDiagnostics.length > 0` was the whole supply predicate, and it
+    // counts EVERY diagnostic of the spliced file — an unused local, a typo, a
+    // missing semicolon — so a row could read "this directory cannot build it"
+    // on a refusal that had nothing to do with the construction.
+    return { program, diagnostics, codes: raw.map((diagnostic) => diagnostic.code) };
   };
 
   const bare = compileOf(shape.build.split(REACH_MARKER).join(''));
@@ -13817,6 +14238,7 @@ function candidateReading(
     arms: screen.arms(),
     reachDiagnostics: Object.freeze(withReach.diagnostics),
     supplyDiagnostics: supplied === null ? null : Object.freeze(supplied.diagnostics),
+    supplyDiagnosticCodes: supplied === null ? null : Object.freeze(supplied.codes),
     printed: checker.typeToString(subjectType),
   };
 }
@@ -14355,6 +14777,41 @@ const CANDIDATE_SHAPES: readonly CandidateShape[] = Object.freeze([
     why: "THE SHARPEST OF THE TWO, because it is the plainest type in the file. `readonly string[]` is certified by the relation, walked only at its ELEMENT type by the array arm, and `subject.join()` compiles — so under the columns this battery had before this round, the most ordinary type in the directory reads as silent-and-reachable. The supply column is what says it is not: an array of closures is not an array of strings, so the construction is refused",
   }),
 
+  // ---- Group L: the certified-but-EMPTY position, and it is a negative ----
+  //
+  // OFFERED AS A CANDIDATE BYPASS AND MEASURED AS THE OPPOSITE, which is why the
+  // rows are here rather than in a report. The reasoning that produced them is
+  // sound as far as it goes: `never` is assignable to everything, so the
+  // relation certifies and `asked` is false; `isTypeAssignableTo(anyFunction,
+  // never)` is false, so the reading that catches `{}` and `any` at every other
+  // position answers no; no arm counter moves; and `never` appeared in no row of
+  // this table. Every one of those is true, and the shape is still not a bypass,
+  // because the REACH column answers no.
+  //
+  // Measured with the compiler rather than argued: `subject()`,
+  // `subject.entry()` and `subject.entry.peek()` are `TS2349: This expression is
+  // not callable. Type 'never' has no call signatures.` and `TS2339: Property
+  // 'peek' does not exist on type 'never'.`, and the `typeof held === 'function'`
+  // narrowing that reaches `{}` and `any` does not help -- the narrowed type is
+  // still `never`. So this is the same verdict as `conditional-any-over-string`:
+  // a silence over a type nothing can be reached through is a gap in the screen
+  // and not an escape, and the two rows are what make that a measurement.
+  Object.freeze({
+    id: 'never-type',
+    group: 'never',
+    build: `declare const subject: never;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject(); }',
+    why: 'the bottom type at the top level: certified because it is assignable to everything, silent because it admits no function, and NOT reachable because the compiler refuses to call it',
+  }),
+  Object.freeze({
+    id: 'never-behind-a-property',
+    group: 'never',
+    build: `declare const subject: { readonly entry: never };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject.entry; return typeof held === 'function' ? held() : null; }",
+    why: "the same type one property down, which is the position `any` and `{}` are bypasses at -- the holder certifies, the walk descends and finds nothing, and the reach snippet that works for `any-behind-a-property` and `empty-object-behind-a-property` is refused here. It is the control that says the reach column is what separates the three, and not the screen",
+  }),
+
   // ---- The shape a plant would actually take ----
   Object.freeze({
     id: 'entry-with-an-empty-object-payload',
@@ -14461,6 +14918,8 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
   Object.freeze(['library-open-interface-unmapped', false, true, true, true] as const),
   Object.freeze(['library-callable-behind-a-primitive-intersection', true, false, false, true] as const),
   Object.freeze(['library-callable-on-an-array-element-type', true, false, false, true] as const),
+  Object.freeze(['never-type', true, false, false, false] as const),
+  Object.freeze(['never-behind-a-property', true, false, false, false] as const),
   Object.freeze(['entry-with-an-empty-object-payload', true, true, true, true] as const),
   ]);
 
@@ -14490,6 +14949,20 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
  * written as a pair by whoever adds the row. What it does close is the case the
  * round actually hit, which is a row whose type refuses ANY construction
  * carrying a function at all.
+ *
+ * AND THE DISCLOSURE ABOVE NAMED THE WRONG LIMIT FIRST, WHICH IS THE MORE USEFUL
+ * FINDING. The predicate behind the column was `supplyDiagnostics.length === 0`,
+ * over every diagnostic the spliced file produces — so a typo, an undefined
+ * identifier or a stray token in the construction read as "this directory cannot
+ * build it", and the paragraph above disclosed a different limit while saying
+ * nothing about that one. `SUPPLY_TABLE`'s third column pins the refusal CODE
+ * per row and `SUPPLY_REFUSAL_CODES` is the closed allowlist it has to come from.
+ * Measured rather than argued: a construction rewritten to compile as a value
+ * and to reference an undefined name instead reads `[2304]` against a pinned
+ * `[2322]` and reddens with `Cannot find name 'nosuchThing'` in the message,
+ * while the old predicate and the other consumer of this column both stayed
+ * green on it. The limit in the paragraph above is still open and is still the
+ * pair being written by hand.
  */
 /**
  * What driving `FunctionFreeData`'s own constituents answered.
@@ -14504,12 +14977,45 @@ const REFERENCE_CONSTITUENTS = Object.freeze({
   ADMITTING_A_FUNCTION: 0,
 });
 
-const SUPPLY_TABLE: readonly (readonly [string, boolean])[] = Object.freeze([
-  Object.freeze(['library-open-any-member', true] as const),
-  Object.freeze(['library-open-any-member-through-a-Readonly', true] as const),
-  Object.freeze(['library-callable-behind-a-primitive-intersection', false] as const),
-  Object.freeze(['library-callable-on-an-array-element-type', false] as const),
+/**
+ * `[id, suppliable, the refusal codes a non-suppliable row earns]`.
+ *
+ * THE THIRD COLUMN IS THIS ROUND'S, AND IT CLOSES A PREDICATE THAT WAS BROADER
+ * THAN ITS OWN DISCLOSURE. The supply verdict was `supplyDiagnostics.length ===
+ * 0`, which counts every diagnostic the spliced file produces — an unused local,
+ * a typo, a stray semicolon — so a row could read "this directory cannot
+ * construct the value" on a refusal about something else entirely. The
+ * disclosure beside it named a different limit (that the function literal is not
+ * bound to the member the reach reads) and said nothing about this one.
+ *
+ * A code per row is the close this file asks of every other fence: name the
+ * diagnostic. `2322` is `Type 'X' is not assignable to type 'Y'` — the
+ * construction being refused AS a construction. A row that started failing on
+ * `6133` (unused local) or `1005` (syntax) reddens here instead of quietly
+ * counting as evidence.
+ */
+const SUPPLY_TABLE: readonly (readonly [string, boolean, readonly number[]])[] = Object.freeze([
+  Object.freeze(['library-open-any-member', true, Object.freeze([])] as const),
+  Object.freeze(['library-open-any-member-through-a-Readonly', true, Object.freeze([])] as const),
+  Object.freeze([
+    'library-callable-behind-a-primitive-intersection',
+    false,
+    Object.freeze([2322]),
+  ] as const),
+  Object.freeze([
+    'library-callable-on-an-array-element-type',
+    false,
+    Object.freeze([2322]),
+  ] as const),
 ]);
+
+/**
+ * The diagnostic codes a supply refusal is allowed to be made of.
+ *
+ * A closed allowlist, because the point of the third column is that the refusal
+ * has to be ABOUT the construction. Widening this is an edit somebody signs.
+ */
+const SUPPLY_REFUSAL_CODES: readonly number[] = Object.freeze([2322, 2739, 2740, 2741]);
 
 /**
  * What the sweep measured. Counts rather than bounds, per this file's own rule
@@ -14534,22 +15040,34 @@ const SUPPLY_TABLE: readonly (readonly [string, boolean])[] = Object.freeze([
  * `CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS` is the number that
  * corrects the residual at `cyclicDeclarations`. That sentence said a false
  * certificate is earned only by an instantiation of a cyclic generic alias, on a
- * sample of eighteen shapes. On this sample it is twenty rows, none of them a
- * cyclic alias — a primitive-absorbing intersection, `{}` at five positions, a
- * mapped type, a deferred conditional. The relation certifying is not by itself
- * a bypass, because the bounded walk catches all twenty; what it is, is the
- * premise the census's containment argument rests on, and it is false.
+ * sample of eighteen shapes. On this sample it is 38 rows, none of them a cyclic
+ * alias — nine intersections, five `{}`-and-union rows, nine library-keyed mapped
+ * types, three deferred conditionals and twelve more. The relation certifying is
+ * not by itself a bypass; what it is, is the premise the census's containment
+ * argument rests on, and it is false.
+ *
+ * AND THE CLAUSE THAT USED TO FOLLOW WAS FALSE ON THIS TABLE'S OWN COLUMNS. It
+ * read "the bounded walk catches all twenty", and the filter this number comes
+ * from is `certifies && reachable`, which says nothing about `walked`. Counted:
+ * 36 of the 38 are walked, and TWO are not —
+ * `library-callable-behind-a-primitive-intersection` and
+ * `library-callable-on-an-array-element-type`, both `walked=false` and both
+ * `screenHolds=false`. They are the same two rows as `SILENT_AND_REACHABLE`,
+ * two fields down, so the paragraph contradicted a pin inside the object it was
+ * the docstring for. What actually covers those two is the SUPPLY axis, not the
+ * walk: `SUPPLY_TABLE` says neither construction compiles, and
+ * `SILENT_REACHABLE_AND_SUPPLIABLE` is the zero that reads them.
  */
 const FAMILY_CENSUS = Object.freeze({
-  ROWS: 64,
+  ROWS: 66,
   /** Distinct groups, so a truncated battery cannot pass as a whole one. */
-  GROUPS: 13,
+  GROUPS: 14,
   /** Rows the relation alone certified as function-free data. */
-  CERTIFYING: 43,
+  CERTIFYING: 45,
   /** Rows whose reach snippet compiles clean. */
   REACHABLE: 58,
   /** Rows the whole screen was silent about. */
-  SILENT: 5,
+  SILENT: 7,
   /** Silent AND reachable. See the paragraph above: this is not the bypass count. */
   SILENT_AND_REACHABLE: 2,
   /** Rows that declare a construction. The supply axis's own denominator. */
@@ -14558,10 +15076,21 @@ const FAMILY_CENSUS = Object.freeze({
   SUPPLIABLE: 2,
   /** Silent, reachable AND suppliable — the bypass count. */
   SILENT_REACHABLE_AND_SUPPLIABLE: 0,
-  /** See the paragraph above. Twenty, and the residual said zero. */
+  /** See the paragraph above. Thirty-eight, and the residual said zero. */
   CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 38,
+  /**
+   * Of those, the ones the bounded walk actually finds a call signature in.
+   *
+   * ADDED BECAUSE THE PROSE ABOVE ASSERTED IT AND NOTHING MEASURED IT. The
+   * docstring said "the bounded walk catches all twenty" while the filter that
+   * produces the number reads `certifies && reachable` and never looks at
+   * `walked`. Two rows are not walked, and they are the two `SILENT_AND_REACHABLE`
+   * names. With this pinned, a row joining the silent set stops being invisible
+   * to the sentence that says it is covered.
+   */
+  CERTIFIED_REACHABLE_AND_WALKED: 36,
   /** The same battery through `SCREEN_BEFORE_E27`. */
-  BEFORE_E27_SILENT: 28,
+  BEFORE_E27_SILENT: 30,
   BEFORE_E27_SILENT_AND_REACHABLE: 25,
   /**
    * Depth cuts taken anywhere in the sweep, in either configuration.
@@ -14662,6 +15191,24 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
       'library-callable-on-an-array-element-type',
     ]);
     expect(silentAndReachable.length).toBe(FAMILY_CENSUS.SILENT_AND_REACHABLE);
+    // AND THE SILENT ROWS NOTHING CAN BE REACHED THROUGH ARE NAMED TOO, which
+    // is the other half of the same partition and is what the docstring at
+    // `cyclicDeclarations` asserts in prose. A silence over a type that cannot
+    // deliver a closure is a gap in the screen rather than an escape; a row
+    // moving from this list to the one above is the difference between the two,
+    // and a count alone cannot say which way it moved.
+    expect(
+      rows
+        .filter(([, , , holds, reachable]) => !holds && !reachable)
+        .map(([id]) => id)
+        .sort(),
+    ).toEqual([
+      'conditional-any-over-string',
+      'conditional-any-over-string-called',
+      'control-plain-data',
+      'never-behind-a-property',
+      'never-type',
+    ]);
     // AND NOT ONE OF THEM CAN BE BUILT. Every silent-and-reachable row must
     // declare a construction and that construction must be REFUSED by the
     // compiler — so a row cannot join this list by being written without one.
@@ -14694,6 +15241,24 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
       FAMILY_CENSUS.CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS,
     );
     expect(notTheKnownFamily.length).toBeGreaterThan(0);
+    // THE CLAUSE THE PARAGRAPH ABOVE USED TO ASSERT, MEASURED INSTEAD OF SAID.
+    // "the bounded walk catches all of them" was false: this filter never reads
+    // `walked`, and two rows are not walked. Both counts are pinned, and the two
+    // that are not walked are named — they are the same pair as
+    // `SILENT_AND_REACHABLE`, which is what makes the sentence's error the same
+    // error as the pin two fields below it disagreeing with it.
+    const walkedOfThose = notTheKnownFamily.filter(([, , walked]) => walked);
+    expect(walkedOfThose.length).toBe(FAMILY_CENSUS.CERTIFIED_REACHABLE_AND_WALKED);
+    expect(
+      notTheKnownFamily
+        .filter(([, , walked]) => !walked)
+        .map(([id]) => id)
+        .sort(),
+    ).toEqual(silentAndReachable);
+    expect(
+      FAMILY_CENSUS.CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS -
+        FAMILY_CENSUS.CERTIFIED_REACHABLE_AND_WALKED,
+    ).toBe(FAMILY_CENSUS.SILENT_AND_REACHABLE);
   }, 600_000);
 
   it('keeps the numbers the zeros are zero against, by driving the walker as it was', () => {
@@ -14817,13 +15382,24 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
         .sort(),
     );
     expect(SUPPLY_TABLE.length).toBe(FAMILY_CENSUS.SUPPLY_ROWS);
-    for (const [id, suppliable] of SUPPLY_TABLE) {
+    for (const [id, suppliable, codes] of SUPPLY_TABLE) {
       const diagnostics = readings[id]?.supplyDiagnostics;
       expect(diagnostics, `${id}: the driver read no construction`).not.toBeNull();
       expect(
         diagnostics?.length === 0,
         `${id}: ${diagnostics?.join(' | ') ?? ''}`,
       ).toBe(suppliable);
+      // AND THE REFUSAL IS ABOUT THE CONSTRUCTION, NAMED BY CODE. Without this
+      // the column reads `false` for any diagnostic at all — the predicate was
+      // broader than the claim, and broader than the limit disclosed beside it.
+      const actual = readings[id]?.supplyDiagnosticCodes ?? null;
+      expect(actual, `${id}: the driver read no construction`).not.toBeNull();
+      expect([...(actual ?? [])], `${id}: ${diagnostics?.join(' | ') ?? ''}`).toEqual([...codes]);
+      for (const code of codes) {
+        expect(SUPPLY_REFUSAL_CODES, `${id}: TS${String(code)} is not a construction refusal`).toContain(
+          code,
+        );
+      }
     }
     // NOT A ONE-POINT AXIS. Both answers occur, and the count of each is pinned,
     // so a change that made every construction compile — or none of them —
@@ -14849,9 +15425,18 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
     // THE SENTENCE AT ARM TWO-C, GRADED. That comment says the space this arm
     // has to be about is enumerable — the member types a certifying holder can
     // carry are `FunctionFreeData`'s own constituents plus `any`, and exactly
-    // one of them can hold a function — and it says so as the reason this is
-    // not yet the round to change instruments. An enumeration argument with no
-    // drive behind it is the thing this file keeps finding, so it is driven.
+    // one of them can hold a function. An enumeration argument with no drive
+    // behind it is the thing this file keeps finding, so it is driven.
+    //
+    // WHAT THIS TEST DOES AND DOES NOT SETTLE, corrected at E33. It grades the
+    // enumeration — that the union really has eleven constituents and that
+    // exactly one of them admits a function — and that half stands. It was also
+    // cited as the evidence for a conclusion it cannot support: that the space
+    // being enumerable was a reason to keep improving this instrument rather
+    // than adding one. That conclusion is overturned at the arm itself, by one
+    // branch in `deepScan` and three replants. A correct measurement can be
+    // filed under a verdict it does not reach, and this is the file's record of
+    // it doing so.
     const options = compilerOptions();
     const program = programWith(
       options,
@@ -17580,6 +18165,65 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` — `70e0bcba2dee2dbdd00d8cd03e13f03498b4a136` and `17d8ca32378eff107a2583d1831060bbf1c51b89`.',
     ]),
   }),
+  Object.freeze({
+    id: 'M80',
+    shape:
+      "M67 REPLANTED BYTE FOR BYTE AGAINST THE VALUE-LEVEL WALKER, AND THE POINT IS THAT NO TYPE REASONING IS INVOLVED. M67 and M68 are the same plant before and after a reading of the member walk; this is the same plant again, and what changed is that instrument B calls a function whose declared arity is zero. `peek` is `(): string`, so `Function.length` is 0, so the walk calls it and scans `'covered-day'` as a plain string finding. The whole family M67 / M75 / M76 / M78 has this property and none of the four rows records it, because the walker's own header said a returned function is not invoked",
+    where:
+      'production.ts, `accrueProduction`: the M67 block verbatim — `const PRODUCTION_OPAQUE: { readonly entry: {} }` holding `Object.freeze({ peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] })`, handed back as `shapes: PRODUCTION_OPAQUE.entry` with a matching `readonly shapes: {}` on `ProductionAccrual`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      "DETECTED BY INSTRUMENT B, WITH THE PAYLOAD AND THE CALL IN THE PATH. `CONTAINS no banned name either, outside the diagnostic channel` reddens with 170 findings, every one of the form `accrueProduction@roster=0/rep=0/no-skip#return.shapes.peek()=covered-day` — the `()` is what says the walker reached the string by CALLING rather than by reading a property. `produces no banned name from any export but the two that ARE the ban lists` reddens with `expected 177 to be 7`.",
+      'AND THE OVERFLOW PASS FINDS IT INDEPENDENTLY, at the points the ceilings drop: `produces no banned name at any point a ceiling drops` reddens with 56 findings. That is the shared `scanRow`, so the same widening reaches both passes without a second walker.',
+      'AND THE TYPE-LEVEL CATCHERS STILL FIRE, which is what says this is additive: `derives every escape site` reddens on `census.byModule`, `pins the two callback sites` gains the closure site row, and `agrees with the control everywhere on the shipped tree` goes from eleven disagreements to twelve. Ten failed of 164 across this file and `empireCore.test.ts`, and six of the ten are a guard rather than a counter.',
+      'AND THE BRANCH RUNS, PRINTED, from the shipped export: `KEYS [...,"ledger","shapes"]`, `TYPEOF shapes object`, `MEMBER peek function`, `CALLED covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters, unchanged from M67 because the plant is unchanged: instrument C `expected 1020 to be 1018`, instrument B `expected 2393400 to be 2393060`, the overflow pass `expected 523240 to be 523128`.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` — `70e0bcba2dee2dbdd00d8cd03e13f03498b4a136` on both sides.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M81',
+    shape:
+      'M76 REPLANTED BYTE FOR BYTE AGAINST THE VALUE-LEVEL WALKER. M76 was silent to every instrument in this file because arm two of the member walk skipped a library-declared mapped member one level above the reading that would have caught it — a fact about the compiler, reached by three rounds of type work. At the value level none of that is visible: the runtime object holds a nullary function and the walk calls it',
+    where:
+      'production.ts, `accrueProduction`, identical to M76: `{ readonly entry: { readonly [K in keyof ArrayBufferTypes]: {} } }` holding a frozen `ArrayBuffer` key whose value is a frozen `peek`, handed back as `shapes: PRODUCTION_LIBKEYED.entry`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED BY INSTRUMENT B, AND THE MEMBER PATH IS IN THE FINDING: `accrueProduction@roster=0/rep=0/no-skip#return.shapes.ArrayBuffer.peek()=covered-day`, 170 of them, plus 56 from the overflow pass. `produces no banned name from any export but the two that ARE the ban lists` reddens with `expected 177 to be 7`.',
+      'THE SAME TEN REDS AS M80, WHICH IS THE MEASUREMENT THE ROW EXISTS FOR: M76 and M67 differ by three rounds of compiler behaviour and are indistinguishable to a walker that calls the function. The type-level readings E30 and E31 added fire as well and are not made redundant by this — they name the site by LINE and they fire with no drive at all.',
+      'AND THE BRANCH RUNS, PRINTED: `TYPEOF shapes object`, `MEMBER ArrayBuffer object`, `MEMBER peek function`, `CALLED covered-day`, `MEMBER SharedArrayBuffer object`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters, unchanged from M76: instrument C `expected 1022 to be 1018`, instrument B `expected 2393740 to be 2393060`, the overflow pass `expected 523352 to be 523128`.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts`.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M82',
+    shape:
+      "M78 REPLANTED BYTE FOR BYTE AGAINST THE VALUE-LEVEL WALKER, AND IT IS THE ROW THAT CLOSES THE ARGUMENT. M78's own analysis says the relation cannot refuse `any` and that arm two returns before the reading that would catch it is asked — both true, both about types, and both irrelevant to a walk that calls the value. Three plants whose type-level explanations are three different compiler facts produce three identical value-level catches",
+    where:
+      'production.ts, `accrueProduction`, identical to M78: `{ readonly entry: { readonly [K in keyof NavigationOptions]: NavigationOptions[K] } }` holding a frozen `info`, handed back as `shapes: PRODUCTION_LIBANY.entry` with a matching mapped-type `readonly shapes` on `ProductionAccrual`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED BY INSTRUMENT B: `accrueProduction@roster=0/rep=0/no-skip#return.shapes.info()=covered-day`, 170 findings, plus 56 from the overflow pass, plus `expected 177 to be 7` on the equality census.',
+      'AND THE BRANCH RUNS, PRINTED: `TYPEOF shapes object`, `MEMBER info function`, `CALLED covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      "WHAT THE THREE ROWS TOGETHER SAY, stated as the measurement rather than as a claim about the future: the family this file spent five rounds enumerating by type was reachable by one branch in the value walker, and the branch was declined because a sentence generalised a real difficulty at arity above zero into a refusal at arity zero. The type work is not wasted — it is the half that fires with no drive, and it names the site by line where a drive names it by path.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters, unchanged from M78: instrument C `expected 1020 to be 1018`, instrument B `expected 2393400 to be 2393060`, the overflow pass `expected 523240 to be 523128`.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts`.',
+      'ALL THREE ROWS WERE PLANTED ONE AT A TIME, per the rule M60 and M61 set: two silences in one run cannot be attributed to either, and neither can two catches.',
+    ]),
+  }),
 ]);
 
 /**
@@ -17921,7 +18565,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(79);
+    expect(PLANTED_ROUTES.length).toBe(82);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -18053,8 +18697,11 @@ describe('the routes that were planted, and what each of them cost', () => {
     // ONE FOR M79, which is M78 replanted unchanged against the arm written for
     // it, so it inherits M78's isolation by construction — the same
     // relationship M77 has to M76 and M68 has to M67.
-    expect(attempts).toBe(106);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(69);
+    // ONE EACH FOR M80, M81 AND M82, which are M67, M76 and M78 replanted
+    // unchanged against the value-level walker. They inherit their originals'
+    // isolation by construction, and each was planted alone.
+    expect(attempts).toBe(109);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(72);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
@@ -18697,6 +19344,7 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   Object.freeze({ at: 'empireCore.test.ts#walk<brandsIn<brandCensus#current', arms: 4, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireCore.test.ts#walk<brandsIn<brandCensus#current#2', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireCore.test.ts#brandCensus#declaration#3', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walk<tsModulesUnder#entry', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#surfaceOf#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#surfaceOf#declaration', arms: 1, dispatch: false, terminal: 'loop' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#carriesBrand<surfaceOf#name', arms: 1, dispatch: true, terminal: 'next-statement' }),
@@ -18958,11 +19606,11 @@ const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
   /** Rows in `DECLARED_HANDLER_ROWS`. Every one a tally or an enum read. */
   DISCRIMINANT_LOOKUPS: 8,
-  CHAINS: 94,
-  DISPATCH: 59,
+  CHAINS: 95,
+  DISPATCH: 60,
   BY_TERMINAL: Object.freeze({
     else: 8,
-    'next-statement': 70,
+    'next-statement': 71,
     loop: 14,
     enclosing: 2,
     /**
