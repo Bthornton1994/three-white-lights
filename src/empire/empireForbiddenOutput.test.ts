@@ -8171,6 +8171,20 @@ function memberTypeScreen(
       //     this directory cannot choose it. `SUPPLY_TABLE` is where that is
       //     measured by compiling the construction rather than argued, and
       //     `library-callable-behind-a-primitive-intersection` is the row.
+      //
+      // COUNTING THE ROUNDS, WHICH CLAUDE.md ASKS FOR BEFORE THE THIRD REPAIR
+      // AND NOT AFTER THE FIFTH. This arm has now been repaired twice — E30 on
+      // the identity of the member's type, E31 on what that type can hold — and
+      // each repair named its own successor. Two is a coincidence and five is a
+      // property of the instrument, so the question is whether the space here is
+      // enumerable, and it is, which is why this is not yet the round to change
+      // instruments. The member types a certifying holder can carry are the
+      // constituents of `FunctionFreeData`: primitives, arrays of them, objects
+      // of them — plus `any`, which is assignable to everything. Of that list
+      // exactly one can hold a function, and this arm now asks about it
+      // directly. The successor named above is a DIFFERENT question — not which
+      // type, but whether the holder can be built at all — and it has its own
+      // table rather than a fourth question here.
       if (declaredInTheDefaultLibrary(program, declaration)) {
         const declaredType = checker.getTypeAtLocation(declaration);
         const retyped = readings.retypedLibraryMembers && memberType !== declaredType;
