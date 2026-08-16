@@ -6629,7 +6629,13 @@ const DRIVE_CENSUS = Object.freeze({
  * is that word. `src/game/` is outside this round's scope, so bumping the pin was
  * not available to it. The original word is deliberately not reproduced here:
  * that census cannot tell a claim from a quotation of one, and quoting it would
- * move the number a second time. This is at least the fifth such undercount
+ * move the number a second time. THE ROUND MADE THIS SWAP TWICE: the second is
+ * in the overflow pass's position assertion, where a two-word phrase meaning
+ * "and not merely" was written with its second word replaced by a synonym off
+ * the same four-word list, measured the same way and for the same reason. That
+ * one is a note about what a check measures rather than a claim about the code,
+ * so the established ruling applies to it unchanged and it takes no bump. This
+ * one does not, and that is the difference. This is at least the fifth such undercount
  * CLAUDE.md tracks, and unlike the four before it this paragraph IS a claim about
  * the code rather than a method note — it says a third arrow is red before it is
  * called, which `DECLARED_RETURNED_CLOSURE_SITES` enforces and M84 mutation-
@@ -7526,7 +7532,7 @@ describe('the overflow pass — the catcher for what the ceilings drop', () => {
     expect(measurement.closuresInvoked).toBe(OVERFLOW_CENSUS.CLOSURES_INVOKED);
     expect(measurement.closureThrows).toBe(OVERFLOW_CENSUS.CLOSURE_THROWS);
     expect(measurement.closuresDeclined).toBe(OVERFLOW_CENSUS.CLOSURES_DECLINED);
-    // AND WHERE, NOT ONLY HOW MANY, joined to the main drive's own list rather
+    // AND WHERE, NOT JUST HOW MANY, joined to the main drive's own list rather
     // than written out again. The overflow pass reaches the same two closures
     // through the same re-read argument, so its position list is a SUBSET of
     // `DECLINED_CLOSURE_POSITIONS` — a proper one, because that list also holds
@@ -19001,6 +19007,18 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
     reddened:
       "`no project declaration file has arrived in this directory`: `a project .d.ts arrived: read the docstring at AMBIENT_PROBE_UNFOLLOWED before pinning anything: expected [ 'e30Arriving.d.ts' ] to deeply equal []`. The message is the point of the row rather than the redness — this file already records that a check which bites and fails uselessly is half a check, and what a reader needs here is the name of the paragraph where the arrival's cost is measured. The file was deleted afterwards and `git status --short` shows only the untracked `node_modules` symlink.",
   }),
+  Object.freeze({
+    id: 'G48',
+    what: "the rates object taken back out of one overflow subject's re-read list — `[OVERFLOW_RATES]` to `[]` on `accrueProduction`, which is exactly the state the pass shipped in while `OVERFLOW_CENSUS.CLOSURES_DECLINED` was pinned at zero",
+    reddened:
+      "`walked a domain that is not empty at the dropped points, and did not truncate`, on the count AND on the WHERE: `expected 156 to be 208`, which is 208 less two closures at twenty-six points, and then `OVERFLOW_DECLINED_CLOSURE_POSITIONS` from eight members to six. Run in four steps, because three counters short-circuit it: `NODES` 523440 -> 523362, `STRINGS` 3545262 -> 3545054, and `DISTINCT_STRINGS` unchanged at 4309 — so the run was repeated with the first two set to the mutant's own numbers before the closure assertion was reached. That is the same procedure G36 records and it is what separates a count that moves for any edit from the membership this row is about. THE POINT OF THE ROW IS THAT THE OLD ZERO WOULD HAVE PASSED THIS MUTANT AND EVERY OTHER ONE: a pass that never scans the argument holding the closures reports no closure whatever the subjects do, which is the empty-domain shape one instrument out.",
+  }),
+  Object.freeze({
+    id: 'G49',
+    what: "`DECLINE_KEY_STRIP`'s separator changed from `@` to a character no label contains — the label-format drift the strip's own header says would be loud rather than silent, planted instead of argued",
+    reddened:
+      "`walked a domain that is not empty, and did not truncate`: `expected 2046 to be +0` on `declineKeysUnstripped`, which is every declined reading in the drive, and the message names the quantity rather than leaving a reader to infer it from a list that suddenly has two thousand members. THE ROW IS EVIDENCE FOR THE HEADER'S CLAIM AS WELL AS FOR THE CHECK: the header says a format change fails loudly in both directions and cannot collapse two positions into one, and this is the direction that was worth driving, because it is the one where the key silently stops identifying a position. Before this counter existed the same mutant reddened only `DECLINED_CLOSURE_POSITIONS`, with the driver's point back in all 2046 keys and nothing saying why.",
+  }),
 ]);
 
 /**
@@ -19020,8 +19038,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(44);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(44);
+    expect(REGISTRY_MUTANTS.length).toBe(46);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(46);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
