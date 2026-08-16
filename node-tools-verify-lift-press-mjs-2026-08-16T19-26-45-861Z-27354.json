@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "node-tools-verify-lift-press-mjs-2026-08-16T19-26-45-861Z-27354",
   "label": null,
   "command": [
@@ -27,14 +27,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 3,
-    "okCount": 2,
+    "count": 4,
+    "okCount": 3,
     "errors": [],
-    "lastAttemptIso": "2026-08-16T19:28:45.945Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-16T19:29:14.685Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-16T19:27:48.775Z"
-  }
+    "lastOkIso": "2026-08-16T19:28:48.651Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-16T19:29:14.684Z",
+  "elapsedSeconds": 148.8
 }
