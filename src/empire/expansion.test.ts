@@ -73,6 +73,7 @@ import {
   type WallClockBooks,
   type WallClockFundedOutput,
 } from './empireCore';
+import { shippedModuleNames } from './directoryWalk.test';
 import { EMPIRE_TUNING as T } from './empireTuning';
 import {
   ACCELERATED_BOOK,
@@ -1365,19 +1366,22 @@ describe('expansion.ts is pure and keeps the clock brands on its arguments', () 
     // modules nobody wrote a copy for had no fence at all.
     //
     // CLAUDE.md: "A twin guard must READ the sibling's list, not copy it."
-    // So the fence is now one walker over `readdirSync(HERE)` in
-    // `empireCore.test.ts`, and this file's job is to make that coverage a
-    // fact rather than an assumption: if the walker ever stops covering this
+    // So the fence is one walker, and this file's job is to make that coverage
+    // a fact rather than an assumption: if the walker ever stops covering this
     // module, this goes red where somebody reading expansion.ts will see it.
     //
     // Reddens on: deleting `'expansion.ts'` from that file's `EXPECTED` map
-    // (its set equality against `readdirSync` fails), or on this module
-    // acquiring an edge — both of which are the point.
+    // (its set equality against the walk fails), or on this module acquiring an
+    // edge — both of which are the point.
     const fenceSource = readFileSync(path.join(HERE, 'empireCore.test.ts'), 'utf8');
     expect(fenceSource).toContain("'expansion.ts': ['./empireCore', './empireTuning']");
-    // And the fence's own file really is the one that walks the directory, so
-    // this is not pinned against a comment that happens to quote the shape.
-    expect(fenceSource).toContain('const SHIPPED_MODULES = readdirSync(HERE)');
+    // And the coverage half is the walk's own answer now, not a string in the
+    // sibling's source. The pin that used to sit here was the text
+    // `const SHIPPED_MODULES = readdirSync(HERE)` — true of a walker that read
+    // ONE LEVEL, so it certified the shape of a scan that could not see a
+    // module in a subdirectory. Calling the walk says this module is in the
+    // list; grepping for its declaration said a declaration existed.
+    expect(shippedModuleNames()).toContain('expansion.ts');
   });
 
   it('exports exactly these functions', () => {
