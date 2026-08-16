@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-evidence-mjs-2026-08-16T02-35-33-773Z-9121",
+  "label": null,
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "r2-from-intent",
+    "src/career"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-16T02:35:33.773Z",
+  "startedAtMs": 1786847733773,
+  "cwd": "/home/user/wt-r2-intent",
+  "commit": "06653dff860d9d4013851e8a8af4dbfb8a19d92b",
+  "branch": "claude/r2-from-intent",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 9121,
+    "startTick": "340925",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --id r2ev1 -- node tools/evidence.mjs r2-from-intent src/career",
+    "bootId": "2c37ba43-8556-4148-a092-cae664d186e1",
+    "bootEpochSeconds": 1786844324,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-16T02:35:33.791Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
