@@ -1,18 +1,12 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-16T03:39:13.755Z",
+    "capturedAt": "2026-08-16T09:55:50.547Z",
     "url": "http://localhost:8081",
-    "sourceRoot": "/home/user/three-white-lights",
-    "commit": "53ccae1",
-    "branch": "claude/agent-config-setup-m2r6ny",
+    "sourceRoot": "/home/user/wt-shell-pin",
+    "commit": "515d6c6",
+    "branch": "claude/shell-pin-axis",
     "workingTree": "clean",
-    "dirtyPaths": [
-      "M .gauntlet/shots/cutin-cap/cap.json",
-      " M .gauntlet/shots/cutin-cap/cut-in-leg-1.png",
-      " M .gauntlet/shots/cutin-cap/leg-1-recap.png",
-      " M .gauntlet/shots/lift-press/press.json",
-      " M .gauntlet/shots/meet/sound.json"
-    ],
+    "dirtyPaths": [],
     "instrument": {
       "capture-cutin.mjs": "6ebe3eaed8447c87",
       "png.mjs": "6356a0d0b0dcb696"
@@ -21,7 +15,7 @@
   "frames": [
     {
       "moment": "third-attempt-walkout",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/third-attempt-walkout.png",
+      "file": "/home/user/wt-shell-pin/.gauntlet/shots/cutin/third-attempt-walkout.png",
       "name": "third-attempt-walkout.png",
       "expectedLine": "LAST ONE",
       "seen": {
@@ -69,7 +63,7 @@
     },
     {
       "moment": "personal-record",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/personal-record.png",
+      "file": "/home/user/wt-shell-pin/.gauntlet/shots/cutin/personal-record.png",
       "name": "personal-record.png",
       "expectedLine": "NOBODY HAS SEEN YOU DO THIS",
       "seen": {
@@ -117,7 +111,7 @@
     },
     {
       "moment": "bomb-out",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/bomb-out.png",
+      "file": "/home/user/wt-shell-pin/.gauntlet/shots/cutin/bomb-out.png",
       "name": "bomb-out.png",
       "expectedLine": "THAT IS THE MEET",
       "seen": {
@@ -165,7 +159,7 @@
     },
     {
       "moment": "coach-heavy-set",
-      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/coach-heavy-set.png",
+      "file": "/home/user/wt-shell-pin/.gauntlet/shots/cutin/coach-heavy-set.png",
       "name": "coach-heavy-set.png",
       "expectedLine": "THAT MOVED",
       "seen": {
@@ -238,13 +232,13 @@
   "leavesOnItsOwn": {
     "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 1553,
+    "goneAt": 1593,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 11,
-    "goneAt": 13,
-    "dismissTookMs": 2,
+    "tappedAt": 17,
+    "goneAt": 31,
+    "dismissTookMs": 14,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
