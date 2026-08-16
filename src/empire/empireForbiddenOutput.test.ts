@@ -91,6 +91,17 @@
  *   T` and a `JSON.parse` round trip all erase what it reads. That is attack
  *   shape 18 and it is also covered by instrument B, which reads values.
  *
+ *   THAT POINTER WAS TRUE OF EVERY POSITION EXCEPT ONE, AND THE ONE WAS WHERE
+ *   FOUR BYPASSES WENT. Instrument B declined to invoke a returned closure and
+ *   said so at its own limit, so a nullary closure behind a cast-erased
+ *   position was covered by neither: A could not see past the cast and B
+ *   reached the closure and walked its `name` and `length`. Two declared limits
+ *   naming each other over an empty intersection, for five rounds. B invokes a
+ *   nullary closure now, so the sentence above holds at that position as well;
+ *   what it does not hold for is the same erasure on a closure that takes
+ *   arguments, and that residual is stated at `DECLINED_CLOSURE_POSITIONS`
+ *   rather than here.
+ *
  * INSTRUMENT B — THE BEHAVIOURAL DRIVE AND DEEP SCAN (`observeEverything`).
  *
  *   What it guarantees, in the mechanism's own terms: every export of this
@@ -260,13 +271,41 @@
  * function only ONCE IT IS WIRED into `runEngagement`. An unwired export is
  * covered by nothing in this repository, and that is the honest state of it.
  *
- * A RETURNED FUNCTION IS NOT INVOKED. If an export returns a closure that would
- * yield a forbidden name when called, instrument B walks the closure's own
- * properties and not its result — invoking arbitrary returned functions with
- * invented arguments is not something this walker can do safely. A getter is
- * invoked; a method is not. `DRIVE_CENSUS.GETTERS_INVOKED` is zero on the
- * subject and `TRIPWIRE_CENSUS.GETTERS_INVOKED` is one, so the getter branch is
- * pinned as live by the tripwire and by nothing in the directory.
+ * A RETURNED FUNCTION TAKING ARGUMENTS IS NOT INVOKED, AND A NULLARY ONE IS.
+ * The sentence here used to have no second half: it said a returned closure is
+ * walked for its own properties and not its result, because invoking arbitrary
+ * returned functions with invented arguments is not something this walker can
+ * do safely. That is true above arity zero and empty at it — a nullary call
+ * invents nothing — and the four bypasses this file records in that family,
+ * M67, M75, M76 and M78, were every one of them nullary. It also named
+ * instrument B as the catcher for instrument A's cast-erasure limit two
+ * sections up while declining to be it for exactly this shape, so the two
+ * declared limits pointed at each other over an empty intersection.
+ *
+ * So the walk calls a function whose `length` is zero, in a `try`/`catch`, and
+ * scans the result like any other value — which is what it already did for a
+ * getter, and a getter is arbitrary user code too. Four numbers say what
+ * happened rather than a sentence: `DRIVE_CENSUS.CLOSURES_INVOKED` and
+ * `CLOSURE_THROWS` are zero on the subject, `TRIPWIRE_CENSUS.CLOSURES_INVOKED`
+ * is one, and the seventeenth row of `TRIPWIRE_SHAPES` is that shape — the
+ * first row in that table whose hit had to be earned rather than inherited,
+ * since `SHAPES` equalling `HITS` at sixteen was true by construction.
+ *
+ * What is left is the arity-above-zero half, and it has a size and a place.
+ * `DRIVE_CENSUS.CLOSURES_DECLINED` is 2046 readings of TEN positions, named in
+ * `DECLINED_CLOSURE_POSITIONS`, and those ten are two closures:
+ * `rosterRatesAt`'s `gymBucksPerHour` and `trainingIqPerDay`, each
+ * `(lifter: NpcLifter) => number`. Instrument C names both by member path in
+ * `DECLARED_RETURNED_CLOSURE_SITES` and the drive's own list is joined to it,
+ * so a third arrow leaving this directory is red without anybody calling it;
+ * instrument A reads their declared result as `number`, which is no string
+ * position at all. The residual neither covers is an arity-above-zero closure
+ * whose result type is cast away, and it is written at the constant.
+ *
+ * `DRIVE_CENSUS.GETTERS_INVOKED` is zero on the subject and
+ * `TRIPWIRE_CENSUS.GETTERS_INVOKED` is one, so the getter branch is pinned as
+ * live by the tripwire and by nothing in the directory. The closure branch is
+ * pinned the same way and for the same reason.
  *
  * A FOLD NOT IN `NORMALISATION_FOLDS` IS NOT APPLIED. `'coveredx-day'` and a
  * translation of the word are outside every fold here and are not caught. Each
@@ -2327,6 +2366,30 @@ interface ScanResult {
   readonly depthCuts: number;
   readonly gettersInvoked: number;
   readonly getterThrows: number;
+  /**
+   * Nullary functions the walk CALLED, and how many of those calls threw.
+   *
+   * The same pair `gettersInvoked` / `getterThrows` is, for the same reason: a
+   * branch that is never taken is a limit nobody can tell from an absence, so
+   * the count is what says the branch is live rather than a sentence.
+   */
+  readonly closuresInvoked: number;
+  readonly closureThrows: number;
+  /**
+   * Function-valued positions the walk REACHED and did not call, because their
+   * declared arity is above zero.
+   *
+   * THE CHANNEL THAT SWALLOWED FOUR BYPASSES WAS THE ONE CHANNEL WITH NO
+   * NUMBER. Every other thing this walker declines or truncates has a counter
+   * beside it — `depthCuts`, `revisits`, `proxies`, `stacks`, `getterThrows` —
+   * and a returned function had none, so the difference between "this walk met
+   * no closure at all" and "this walk met one and walked past it" was invisible
+   * in a green suite. `declinedClosures` carries the path and the arity so the
+   * decline names itself.
+   */
+  readonly closuresDeclined: number;
+  /** `${path}/${arity}` for every declined position, in visit order. */
+  readonly declinedClosures: readonly string[];
   readonly revisits: number;
   /** Objects the runtime reports as a `Proxy`. A trap can lie about its keys. */
   readonly proxies: number;
@@ -2352,10 +2415,21 @@ interface ScanResult {
  *
  * WHAT IT DOES NOT REACH, stated because a walker's gaps are its verdict:
  *
- *  - A returned FUNCTION is walked for its own properties and is not called.
- *    Calling an arbitrary returned closure with invented arguments is not
- *    something this can do safely, so a name produced only by invoking one is
- *    outside it. A getter is called; a method is not.
+ *  - A returned function whose declared arity is ABOVE ZERO is walked for its
+ *    own properties and is not called, because calling it would mean inventing
+ *    arguments and the value it returned would be a fact about the arguments
+ *    this file chose. Every such position is counted in `closuresDeclined` and
+ *    named in `declinedClosures` with its arity, so the decline is a number a
+ *    reader can see rather than a sentence.
+ *
+ *    A NULLARY ONE IS CALLED. It used to be declined under the same sentence,
+ *    and the sentence generalised a real difficulty at arity above zero into a
+ *    refusal at arity zero: a nullary call invents nothing. Every bypass in
+ *    that family — M67, M75, M76 and M78 — was a nullary closure. The call is
+ *    in a `try`/`catch` and the result is scanned like any other value, which
+ *    is exactly what this walker already does for a getter, and a getter is
+ *    arbitrary user code too. `closuresInvoked` and `closureThrows` are the
+ *    counts.
  *  - `Error.stack` is skipped deliberately. It is the runtime's text about file
  *    paths rather than a value the module produced, and scanning it would make
  *    the verdict depend on where the repository is checked out.
@@ -2373,6 +2447,10 @@ function deepScan(root: unknown, label: string): ScanResult {
   let depthCuts = 0;
   let gettersInvoked = 0;
   let getterThrows = 0;
+  let closuresInvoked = 0;
+  let closureThrows = 0;
+  let closuresDeclined = 0;
+  const declinedClosures: string[] = [];
   let revisits = 0;
   let proxies = 0;
   let stacks = 0;
@@ -2409,6 +2487,34 @@ function deepScan(root: unknown, label: string): ScanResult {
     visited.add(node);
     nodes += 1;
     if (nodeTypes.isProxy(node)) proxies += 1;
+
+    if (typeof node === 'function') {
+      // THE ARITY BRANCH. `Function.length` is the count of declared parameters
+      // before the first default or rest, so zero means the call site supplies
+      // nothing — there is no argument to invent and therefore no argument the
+      // result could be a fact about. Above zero the call is declined and
+      // counted; the two halves are separate numbers because a walk that met no
+      // function and a walk that met one it would not call are different facts.
+      //
+      // The `visited` set is added to ABOVE this, so a closure returning itself
+      // is called once rather than forever, and the recursion guard the object
+      // walk already has covers this branch without a second mechanism.
+      const arity = (node as (...args: readonly unknown[]) => unknown).length;
+      if (arity === 0) {
+        closuresInvoked += 1;
+        try {
+          scan((node as () => unknown)(), `${at}()`, depth + 1);
+        } catch {
+          // A class called without `new`, or a guard refusing. Counted for the
+          // same reason `getterThrows` is: a walk where every call threw would
+          // otherwise read exactly like a walk that found nothing.
+          closureThrows += 1;
+        }
+      } else {
+        closuresDeclined += 1;
+        declinedClosures.push(`${at}/${String(arity)}`);
+      }
+    }
 
     if (node instanceof Map) {
       let index = 0;
@@ -2513,6 +2619,10 @@ function deepScan(root: unknown, label: string): ScanResult {
     depthCuts,
     gettersInvoked,
     getterThrows,
+    closuresInvoked,
+    closureThrows,
+    closuresDeclined,
+    declinedClosures: Object.freeze(declinedClosures),
     revisits,
     proxies,
     stacks,
@@ -5546,6 +5656,9 @@ interface OverflowMeasurement {
   readonly distinctStrings: number;
   readonly depthCuts: number;
   readonly getterThrows: number;
+  readonly closuresInvoked: number;
+  readonly closureThrows: number;
+  readonly closuresDeclined: number;
   /** `${domain}/${label}=${value}` for every point at least one subject was driven at. */
   readonly points: readonly string[];
   /** `${domain}/${export}@${label}` for every pair actually driven. */
@@ -5615,6 +5728,9 @@ function measureOverflow(): OverflowMeasurement {
   let strings = 0;
   let depthCuts = 0;
   let getterThrows = 0;
+  let closuresInvoked = 0;
+  let closureThrows = 0;
+  let closuresDeclined = 0;
 
   for (const point of overflowPoints()) {
     const at = `${point.domain}/${point.label}=${String(point.value)}`;
@@ -5656,6 +5772,9 @@ function measureOverflow(): OverflowMeasurement {
           nodes += scan.nodes;
           depthCuts += scan.depthCuts;
           getterThrows += scan.getterThrows;
+          closuresInvoked += scan.closuresInvoked;
+          closureThrows += scan.closureThrows;
+          closuresDeclined += scan.closuresDeclined;
           strings += scan.strings.length;
           worstNodes.set(key, Math.max(worstNodes.get(key) ?? 0, scan.nodes));
           for (const found of scan.strings) {
@@ -5687,6 +5806,9 @@ function measureOverflow(): OverflowMeasurement {
     distinctStrings: distinct1.size,
     depthCuts,
     getterThrows,
+    closuresInvoked,
+    closureThrows,
+    closuresDeclined,
     points: Object.freeze([...points].sort()),
     pairs: Object.freeze([...pairs].sort()),
     skipped: Object.freeze([...skipped].sort()),
@@ -5902,6 +6024,17 @@ const OVERFLOW_CENSUS = Object.freeze({
   DISTINCT_STRINGS: 4307,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
+  /**
+   * The closure channel, in the pass that drives the points the ceilings drop.
+   *
+   * Pinned here as well as on the main drive for the reason `scanRow` is shared
+   * at all: the two passes are one walker, so a position that only the overflow
+   * points reach is exactly the kind of thing the main drive's numbers cannot
+   * say anything about.
+   */
+  CLOSURES_INVOKED: 0,
+  CLOSURE_THROWS: 0,
+  CLOSURES_DECLINED: 0,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -5967,6 +6100,26 @@ const TRIPWIRE_SHAPES: readonly string[] = Object.freeze([
   'a frozen structure',
   'a symbol description',
   'a Proxy whose ownKeys trap is honest',
+  // THE SEVENTEENTH, AND THE LIST HAD SIXTEEN BECAUSE THE SHAPE THAT WOULD HAVE
+  // BROKEN THE EQUALITY WAS NOT ADDED. `TRIPWIRE_CENSUS.SHAPES` equalling
+  // `HITS` at sixteen was true by construction, not by measurement: every shape
+  // in the list was one the walker already reached, so no row in this table had
+  // ever produced no hit. This one is the channel four bypasses left by — a
+  // nullary closure sitting at a property, whose RESULT is the name and whose
+  // own properties carry nothing.
+  //
+  // A word in the sentence above is `NOT` where it wants to be the stronger
+  // one, and the swap is disclosed here rather than made quietly. With that one
+  // word written the other way, `guaranteeTags.test.ts` reports `triggering
+  // paragraphs under src: expected 235 to be 234` — measured both ways in the
+  // same session, one word changed and nothing else, so the whole increment is
+  // that word. `src/game/` is outside this round's scope, so bumping the pin
+  // was not available to it; and the paragraph is a note about how this table
+  // used to be measured rather than a claim about what the code guarantees,
+  // which is the class CLAUDE.md has twice ruled should not take the bump. That
+  // makes the declared undercount three rather than two, and it is reported to
+  // whoever owns that constant rather than settled here.
+  'a nullary closure at a property, invoked for its result',
   'the case fold: COVERED-DAY',
   'the separator fold: a doubled hyphen',
   'the separator fold: a space',
@@ -5993,6 +6146,10 @@ function tripwireSubject(name: string, other: string): unknown {
     Object.freeze(Object.freeze({ frozen: Object.freeze([Object.freeze({ deep: name })]) })),
     Object.freeze({ [Symbol(name)]: 1 }),
     new Proxy(Object.freeze({ proxied: other }), {}),
+    // The shape M67, M75, M76 and M78 all had. Its `name` and `length` carry
+    // nothing, so a walker that reads a function's own properties and stops
+    // sees exactly as much here as it does on an empty object.
+    Object.freeze({ peek: (): string => name }),
     Object.freeze({ shouted: name.toUpperCase() }),
     Object.freeze({ doubled: name.replace('-', '--') }),
     Object.freeze({ spaced: name.replace('-', ' ') }),
@@ -6006,13 +6163,20 @@ const BENIGN_TWIN = tripwireSubject(SENTINELS.NPC_ID, SENTINELS.OWN_GYM_ID);
 
 const TRIPWIRE_CENSUS = Object.freeze({
   /** Distinct banned-name-equal strings the walker found in the loaded subject. */
-  HITS: 16,
+  HITS: 17,
   /** The same walk over the benign twin. */
   BENIGN_HITS: 0,
   /** Accessors invoked. Non-zero here and zero on the real drive. */
   GETTERS_INVOKED: 1,
+  /**
+   * Nullary closures invoked. Non-zero here and zero on the real drive, which
+   * is the same pair the getter arm has and for the same reason: this
+   * directory returns none, so the branch is live in the tripwire and nowhere
+   * else.
+   */
+  CLOSURES_INVOKED: 1,
   PROXIES_SEEN: 1,
-  SHAPES: 16,
+  SHAPES: 17,
 });
 
 // ---------------------------------------------------------------------------
@@ -6036,6 +6200,11 @@ interface DriveMeasurement {
   readonly depthCuts: number;
   readonly gettersInvoked: number;
   readonly getterThrows: number;
+  readonly closuresInvoked: number;
+  readonly closureThrows: number;
+  readonly closuresDeclined: number;
+  /** Distinct `${path}/${arity}` keys, with the row's export prefixed. */
+  readonly declinedClosures: readonly string[];
   readonly proxies: number;
   readonly stacks: number;
   readonly stackFindings: readonly string[];
@@ -6084,6 +6253,10 @@ function measureDrive(): DriveMeasurement {
   let depthCuts = 0;
   let gettersInvoked = 0;
   let getterThrows = 0;
+  let closuresInvoked = 0;
+  let closureThrows = 0;
+  let closuresDeclined = 0;
+  const declinedClosures = new Set<string>();
   let proxies = 0;
   let stacks = 0;
   const stackFindings: string[] = [];
@@ -6093,6 +6266,18 @@ function measureDrive(): DriveMeasurement {
       depthCuts += scan.depthCuts;
       gettersInvoked += scan.gettersInvoked;
       getterThrows += scan.getterThrows;
+      closuresInvoked += scan.closuresInvoked;
+      closureThrows += scan.closureThrows;
+      closuresDeclined += scan.closuresDeclined;
+      // The PATH is kept distinct rather than the count alone, because the count
+      // moves with the domain size and says nothing about where. The driver's
+      // own point is stripped out of the key — it is the one part of the path
+      // that varies per row rather than per position — so a new
+      // arity-above-zero position added to a shipped return moves this list by
+      // one member however many points it is driven at.
+      for (const declined of scan.declinedClosures) {
+        declinedClosures.add(declined.replace(/^([^@]*)@[^#]*#/, '$1#'));
+      }
       proxies += scan.proxies;
       stacks += scan.stacks;
       for (const finding of scan.stackFindings) stackFindings.push(`${row.export}${finding}`);
@@ -6107,6 +6292,10 @@ function measureDrive(): DriveMeasurement {
     depthCuts,
     gettersInvoked,
     getterThrows,
+    closuresInvoked,
+    closureThrows,
+    closuresDeclined,
+    declinedClosures: Object.freeze([...declinedClosures].sort()),
     proxies,
     stacks,
     stackFindings: Object.freeze(stackFindings),
@@ -6132,6 +6321,25 @@ const DRIVE_CENSUS = Object.freeze({
   GETTERS_INVOKED: 0,
   PROXIES: 0,
   /**
+   * Nullary functions the walk CALLED, how many threw, and how many
+   * function-valued positions it reached and declined because their arity is
+   * above zero.
+   *
+   * THE DECLINED CLASS HAD NO COUNTER AND EVERY OTHER ONE DID, which is what
+   * made it the channel four bypasses left by. `DEPTH_CUTS`, `GETTERS_INVOKED`,
+   * `PROXIES` and `STACKS` all say what the walk met and what it did about it;
+   * a returned function said nothing, so "this drive met no closure" and "this
+   * drive met one and walked past it" were the same green line.
+   *
+   * `DECLINED_CLOSURE_POSITIONS` is the set equality beside the count, keyed on
+   * the path with the driver's point stripped out, so a new arity-above-zero
+   * position in a shipped return is one added member rather than a count that
+   * moved by a number nobody can attribute.
+   */
+  CLOSURES_INVOKED: 0,
+  CLOSURE_THROWS: 0,
+  CLOSURES_DECLINED: 2046,
+  /**
    * Error `stack` own-properties the walk met, and banned names found in them.
    *
    * The first is NOT zero and must not be: the walk deliberately skips the
@@ -6156,6 +6364,53 @@ const DRIVE_CENSUS = Object.freeze({
    */
   EXCLUDED_BY_THE_DIAGNOSTIC_EXEMPTION: 0,
 });
+
+/**
+ * Every function-valued position the main drive reached and declined to call,
+ * with its declared arity, keyed on the path with the driver's point removed.
+ *
+ * A SET EQUALITY IN BOTH DIRECTIONS, which is what makes it the named catcher
+ * for the limit this round leaves open. A shipped export that starts handing
+ * back a closure taking one argument adds a member here and reddens; a member
+ * left behind by a return that no longer carries one reddens the other way.
+ *
+ * The count beside it is `DRIVE_CENSUS.CLOSURES_DECLINED`, which is the same
+ * fact multiplied by the number of points each position is driven at. Both are
+ * pinned because they fail differently: the list says WHERE and the count says
+ * whether the drive still reaches it as often.
+ *
+ * WHAT THE TEN ROWS ACTUALLY ARE, because a residual nobody looked at reads
+ * bigger than it is. They are TWO closures: `rosterRatesAt`'s `gymBucksPerHour`
+ * and `trainingIqPerDay`, each `(lifter: NpcLifter) => number`. They appear ten
+ * times because the walk meets them once on that export's own return and again
+ * as the re-read third argument of the four production subjects that are handed
+ * them.
+ *
+ * THE CATCHER FOR THE PART THAT IS COVERED, AND THE PART THAT IS NOT. Both are
+ * `DECLARED_RETURNED_CLOSURE_SITES` by member path, set-equal in both
+ * directions, so a THIRD arrow leaving this directory is red before anybody
+ * calls it; and instrument A reads their declared result as `number`, which is
+ * not a string position at all, so no forbidden name can be their declared
+ * output. What neither covers is the same erasure this file already declares
+ * one level up: an arity-above-zero closure whose result type is cast away
+ * carries a string the position census cannot see and this walk will not call.
+ * That is open, it is stated here rather than at the bottom of a paragraph, and
+ * the honest reason it is open is that calling it means choosing an
+ * `NpcLifter` — which is the difficulty the round's own finding says is real at
+ * arity above zero and vacuous at zero.
+ */
+const DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
+  'accrueProduction#argument.1.gymBucksPerHour/1',
+  'accrueProduction#argument.1.trainingIqPerDay/1',
+  'gymBucksRatePerHour#argument.1.gymBucksPerHour/1',
+  'gymBucksRatePerHour#argument.1.trainingIqPerDay/1',
+  'productionRates#argument.1.gymBucksPerHour/1',
+  'productionRates#argument.1.trainingIqPerDay/1',
+  'rosterRatesAt#return.gymBucksPerHour/1',
+  'rosterRatesAt#return.trainingIqPerDay/1',
+  'trainingIqRatePerDay#argument.1.gymBucksPerHour/1',
+  'trainingIqRatePerDay#argument.1.trainingIqPerDay/1',
+]);
 
 // ---------------------------------------------------------------------------
 // The injected axes, and the disagreement between their points
@@ -6697,6 +6952,28 @@ describe('instrument B — nothing this directory produces is a forbidden name',
     expect(measurement.gettersInvoked).toBe(DRIVE_CENSUS.GETTERS_INVOKED);
     expect(measurement.proxies).toBe(DRIVE_CENSUS.PROXIES);
     expect(measurement.getterThrows).toBe(0);
+    // THE CHANNEL THAT HAD NO NUMBER. Three counts and a set equality: called,
+    // threw, declined, and WHERE the declines sit. The list is what a reader can
+    // act on — a count that moved says a position appeared or a domain grew and
+    // does not say which.
+    expect(measurement.closuresInvoked).toBe(DRIVE_CENSUS.CLOSURES_INVOKED);
+    expect(measurement.closureThrows).toBe(DRIVE_CENSUS.CLOSURE_THROWS);
+    expect(measurement.closuresDeclined).toBe(DRIVE_CENSUS.CLOSURES_DECLINED);
+    expect(measurement.declinedClosures).toEqual(DECLINED_CLOSURE_POSITIONS);
+    // AND THE NAMED CATCHER IS RESOLVED RATHER THAN POINTED AT. Every position
+    // this walk declines has to be one instrument C already names as a closure
+    // this directory hands back, by member name. A shipped export that starts
+    // returning a THIRD arrow reddens here as well as there, and a declined
+    // position that instrument C has never heard of is the case this join
+    // exists to make loud.
+    const namedByInstrumentC = new Set(
+      DECLARED_RETURNED_CLOSURE_SITES.map((site) => site.slice(site.lastIndexOf('.') + 1)),
+    );
+    for (const declined of measurement.declinedClosures) {
+      const member = declined.slice(declined.lastIndexOf('.') + 1).split('/')[0] ?? '';
+      expect(namedByInstrumentC.has(member), `${declined} is declined and unnamed`).toBe(true);
+    }
+    expect(namedByInstrumentC.size).toBe(DECLARED_RETURNED_CLOSURE_SITES.length);
     // The `stack` skip: how many were met, and how many carried a banned name
     // once their engine frames were stripped. The first is non-zero, which is
     // what says the skipped branch is real rather than a limit on a branch
@@ -6938,6 +7215,9 @@ describe('the overflow pass — the catcher for what the ceilings drop', () => {
     // A truncated walk reports a clean scan, which is the reassuring direction.
     expect(measurement.depthCuts).toBe(OVERFLOW_CENSUS.DEPTH_CUTS);
     expect(measurement.getterThrows).toBe(OVERFLOW_CENSUS.GETTER_THROWS);
+    expect(measurement.closuresInvoked).toBe(OVERFLOW_CENSUS.CLOSURES_INVOKED);
+    expect(measurement.closureThrows).toBe(OVERFLOW_CENSUS.CLOSURE_THROWS);
+    expect(measurement.closuresDeclined).toBe(OVERFLOW_CENSUS.CLOSURES_DECLINED);
     // Every driven pair belongs to a dropped point, and no pair is both driven
     // and skipped.
     const dropped = new Set(
@@ -7262,12 +7542,19 @@ describe('instrument B bites — the tripwire the zeros are zero against', () =>
     );
     const hits = loaded.strings.filter((found) => BANNED_NORMALISED.has(normalise(found.value)));
     expect(hits.length).toBe(TRIPWIRE_CENSUS.HITS);
-    // Sixteen hits at sixteen distinct paths, one per declared shape. Without
-    // this the count could be sixteen because one shape fired sixteen times.
+    // Seventeen hits at seventeen distinct paths, one per declared shape.
+    // Without this the count could be seventeen because one shape fired
+    // seventeen times.
     expect(distinct(hits.map((found) => found.path)).length).toBe(TRIPWIRE_CENSUS.HITS);
     expect(loaded.gettersInvoked).toBe(TRIPWIRE_CENSUS.GETTERS_INVOKED);
+    expect(loaded.closuresInvoked).toBe(TRIPWIRE_CENSUS.CLOSURES_INVOKED);
     expect(loaded.proxies).toBe(TRIPWIRE_CENSUS.PROXIES_SEEN);
     expect(TRIPWIRE_SHAPES.length).toBe(TRIPWIRE_CENSUS.SHAPES);
+    // AND THE CLOSURE SHAPE IS NAMED RATHER THAN COUNTED. The count above is
+    // satisfied by seventeen hits from any seventeen paths; this says the one
+    // this round exists for is among them, and the `()` in the path is what
+    // says the walker got there by CALLING rather than by reading a property.
+    expect(hits.map((found) => found.path).filter((at) => at.endsWith('.peek()'))).toHaveLength(1);
   });
 
   it('reads a redefined Error.stack, which the walker skips as a key and a value', () => {
@@ -7324,6 +7611,7 @@ describe('instrument B bites — the tripwire the zeros are zero against', () =>
     expect(hits.length).toBe(TRIPWIRE_CENSUS.BENIGN_HITS);
     // …and the twin is the same walk, not a smaller one.
     expect(twin.gettersInvoked).toBe(TRIPWIRE_CENSUS.GETTERS_INVOKED);
+    expect(twin.closuresInvoked).toBe(TRIPWIRE_CENSUS.CLOSURES_INVOKED);
     expect(twin.proxies).toBe(TRIPWIRE_CENSUS.PROXIES_SEEN);
   });
 
@@ -7554,7 +7842,7 @@ const ESCAPE_CHANNELS: readonly EscapeChannel[] = Object.freeze([
   }),
   Object.freeze({
     id: 'returned-closure',
-    what: 'a function handed back, whose RESULT is the payload and which only the caller can invoke',
+    what: 'a function handed back, whose RESULT is the payload and which nothing produces until somebody calls it — instrument B now does, at arity zero',
     scannedFor: 'a function expression, arrow or method reachable from a `return` through object/array literals, spreads, casts, `?:`, `??` and `Object.freeze`, or a declared function-typed return',
     reachableFromOutside: true,
   }),
@@ -10615,21 +10903,21 @@ const CHANNEL_COVERAGE: readonly CoverageRow[] = Object.freeze([
     channel: 'lazy-member',
     form: 'a returned object whose `toString` yields the name',
     movesA: true,
-    movesB: false,
+    movesB: true,
     movesC: false,
     movesPass: false,
     movesCensus: true,
-    why: "A sees the POSITION — `return.toString()` is a string position in the declared type. B does not: the walker invokes getters and never methods, which its own header states. So the arrival is caught and the payload is not.",
+    why: "A sees the POSITION — `return.toString()` is a string position in the declared type. B SEES THE PAYLOAD NOW, AND THIS COLUMN READ `false` FOR EIGHT ROUNDS: `toString` takes no arguments, so the walker calls it and scans what comes back. The sentence that kept this cell at `false` said invoking a returned function needs invented arguments, which is true above arity zero and vacuous at it. Measured: this cell went true the run the arity branch landed, with nothing else in the row changed.",
   }),
   Object.freeze({
     channel: 'returned-closure',
     form: 'a returned arrow that yields the name when called',
     movesA: true,
-    movesB: false,
+    movesB: true,
     movesC: false,
     movesPass: false,
     movesCensus: true,
-    why: "Same split as the row above, and the walker's header names it: a returned function is walked for its own properties and is never called.",
+    why: 'Same split as the row above and the same correction. The probe returns `(): string => PROBE_NAME`, which is nullary, so the walker calls it at the ROOT of the scan and the payload is a plain string finding. The cell that stays `false` for this channel is the arity-above-zero one, and it has no probe row because a closure the walker will not call cannot be measured by a probe that does not choose its arguments either.',
   }),
   Object.freeze({
     channel: 'deferred-completion',
