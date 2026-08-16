@@ -539,30 +539,35 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
   });
 
   it('the CUMULATIVE readings never go backwards, at four minutes and at twelve and twenty-four hours', () => {
-    // `reputation`, `roster` and `clockSeconds` are counters, not balances. The
-    // zero is pinned per key and per horizon, and the increase counts beside it
-    // are what say the walk saw a moving floor rather than a stopped one.
+    // `reputation`, `roster` and `clockSeconds` are counters, not balances, so
+    // the claim is one flat list of every step that took any of them down,
+    // gathered across all three horizons and expected empty. A LIST AND NOT A
+    // COUNT, because a failure here should name the instant.
     //
     // REPUTATION STOPS RISING AND DOES NOT FALL, which is why its increase count
-    // is 2500 at BOTH long horizons: §5.4's reputation line reaches its ceiling
-    // inside twelve hours and then sits there. A plateau is non-decreasing, and
-    // pinning the count rather than a bound is what makes it visible.
+    // below is 2500 at BOTH long horizons: §5.4's reputation line reaches its
+    // ceiling inside twelve hours and then sits there. A plateau is
+    // non-decreasing, and pinning the count rather than a bound is what makes
+    // that visible instead of leaving it to look like a stopped walk.
     const counterFalls = FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.flatMap(
       (horizon) => walkTo(horizon).counterFalls,
     );
     expect(counterFalls, counterFalls.slice(0, 4).join('\n')).toEqual([]);
     // ...and the non-vacuity, which is a different fact and not implied by the
     // line above: the walk really read every step and the counters really moved.
-    // A `fell: []` COLUMN WAS WRITTEN HERE AND DELETED, and the domination is
-    // recorded rather than the check quietly dropped — it was
+    //
+    // A `fell: []` COLUMN WAS WRITTEN INTO THE ROWS BELOW AND DELETED, and the
+    // domination is recorded rather than the check quietly dropped — it was
     // `decreases[key] > 0` over the same three walks, which is the same
     // predicate as the list above, so no state of the subject could redden one
     // while the other passed. The list is what survives, because it names the
     // instant and a column could only say that a key fell.
-    // READ AS ROWS OF TEXT RATHER THAN OBJECTS, so a failure prints the numbers
+    //
+    // The rows are TEXT rather than objects, so a failure prints the numbers
     // that moved instead of `expected [ …(3) ] to deeply equal [ …(3) ]`. That
     // is CLAUDE.md's "a check that bites but fails uselessly is half a check",
-    // and it was measured here: the object form printed exactly that.
+    // and it is measured rather than assumed: the object form printed exactly
+    // that sentence when a mutant was driven against it.
     expect(
       FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.map((horizon) => {
         const walk = walkTo(horizon);
@@ -595,6 +600,7 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
     // move this row twice. §5 keeps more than one book and this row draws
     // `state.gymBucks`, so a commitment funded out of another purse leaves it
     // alone. Both are pinned, so that ratio cannot drift in silence.
+    //
     // THE SAFETY CLAIM, and it is empty at every horizon.
     const unbought = FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.flatMap(
       (horizon) => walkTo(horizon).balanceFallsWithNoPurchase,
@@ -629,6 +635,7 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
     // disappearing from the preview with nothing banking it — and the pairing
     // count says the resets really happened, one per check-in, rather than the
     // row having gone flat.
+    //
     // THE SAFETY CLAIM: money leaving the preview with nothing banking it.
     for (const horizon of FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS) {
       expect(
