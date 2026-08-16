@@ -2197,6 +2197,36 @@ physiology.
     its check is red — a red record tracked as evidence is worse than an absent
     one.
 
+- **START THE DEV SERVER WITH `tools/dev-web.sh`, NEVER WITH BARE `npx expo
+  start`.** The browser tools need a server; the script is the supported way to
+  get one and it does three things a bare invocation does not. Session A ran
+  bare `npx expo start --web --port 8081` for every evidence re-take in a long
+  session before noticing, which is why this is written down.
+
+  - **It copies `public/canvaskit.wasm` out of `node_modules`.** Skia's web
+    build fetches CanvasKit from a CDN by default and this sandbox blocks that.
+    The file is ~8MB and gitignored *on purpose* — derived, not committed — so
+    **a fresh worktree has no copy and every browser tool fails there**, as a
+    120-second wait on `session-screen` that reads exactly like a hang or a dead
+    screen and is neither. A builder lost time to that diagnosis.
+  - **It passes `--clear`, and that is the one that can corrupt evidence rather
+    than merely block it.** Metro keeps its transform cache across restarts, so
+    restarting the server is NOT enough to pick up a source change: a capture
+    taken right after a merge can silently photograph the PREVIOUS build. The
+    script's own header records the instance — a fix verified green in vitest
+    while the browser capture still showed the old frame keys, so the
+    screenshots looked like the fix had failed.
+  - **It kills the old server by listening PORT, not by process-name match**,
+    because a pattern like `expo start` also matches the restarting shell — and
+    a broad `pkill -f` is a cross-session weapon here, per the entry below.
+
+  **The failure mode this closes is asymmetric, which is why the rule is "always"
+  rather than "when it matters".** Missing the wasm makes the tool fail loudly.
+  Missing `--clear` makes it *succeed against the wrong build*, and a green
+  record from a stale bundle is indistinguishable from a green record of the
+  code you meant to test. Evidence taken from a bare server is not wrong by
+  construction — it is unverifiable, which is worse than a red run.
+
 - **MEASURED WALL-CLOCK COSTS, so a `--budget` is not guessed.** A budget set
   below a tool's real runtime SIGKILLs a passing run, and the output is
   indistinguishable from a failure — it cost a builder a round when a brief of
