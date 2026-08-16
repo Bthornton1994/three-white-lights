@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-shell-route-mjs-2026-08-16T09-26-00-845Z-1934",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-shell-route.mjs"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-16T09:26:00.845Z",
+  "startedAtMs": 1786872360845,
+  "cwd": "/home/user/wt-shell-pin",
+  "commit": "1dfdd655b11406a96a1ac56dfcdcdfd2bf76e162",
+  "branch": "claude/shell-pin-axis",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 1934,
+    "startTick": "635560",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --id vsr-retake -- node tools/verify-shell-route.mjs",
+    "bootId": "3b4e5fe2-30a5-4f9a-9aea-4cfe32e69f38",
+    "bootEpochSeconds": 1786866005,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-16T09:26:00.867Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
