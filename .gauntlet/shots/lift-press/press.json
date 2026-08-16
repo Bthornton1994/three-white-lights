@@ -1,19 +1,11 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-14T17:01:41.348Z",
-    "url": "http://localhost:8099",
-    "commit": "2a5c625",
-    "branch": "claude/empire-shell-honesty",
+    "capturedAt": "2026-08-16T03:31:41.301Z",
+    "url": "http://localhost:8081",
+    "commit": "53ccae1",
+    "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
-    "dirtyPaths": [
-      "M .gauntlet/shots/cutin/frames.json",
-      " M .gauntlet/shots/meet/sound.json",
-      " M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
-      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
-      " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
-      " M .gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
-      " M .gauntlet/shots/shell/route.json"
-    ],
+    "dirtyPaths": [],
     "instrument": {
       "verify-lift-press.mjs": "3ca7be3087bdffaf",
       "sessionDrive.mjs": "2a63eac7a653d32b",
@@ -185,6 +177,14 @@
           },
           {
             "tag": "DIV",
+            "testid": null,
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
             "testid": "app-shell",
             "userSelect": "auto",
             "webkitUserSelect": "auto",
@@ -274,6 +274,14 @@
           {
             "tag": "DIV",
             "testid": "session-screen",
+            "userSelect": "auto",
+            "webkitUserSelect": "auto",
+            "touchAction": "auto",
+            "webkitTouchCallout": ""
+          },
+          {
+            "tag": "DIV",
+            "testid": null,
             "userSelect": "auto",
             "webkitUserSelect": "auto",
             "touchAction": "auto",
