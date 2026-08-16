@@ -1579,6 +1579,64 @@ describe('the numbers on GDD §5’s floor come from GDD §5’s own module', ()
  * session, or nulling the beat of a surface that never went away.
  */
 describe('the Empire round trip keeps both of its surfaces', () => {
+  /**
+   * =========================================================================
+   * TWO PINS IN HERE WERE BLIND ON THE ONE AXIS THEIR SENTENCES ADVERTISED
+   * =========================================================================
+   * Both ran over `SHELL`, which is `codeOnly(...)`, and `codeOnly` replaces
+   * every string literal with `''`. A pin whose subject IS a surface name
+   * therefore matched any surface name, and each of these bypasses left
+   * `npx vitest run src/shell` at `Test Files 3 passed / Tests 117 passed`:
+   *
+   *   - `active={route.surface === 'empire'}` -> `'meet'`. The floor is mounted
+   *     and never told it is the surface on screen, so `EmpireScreen`'s two
+   *     effects early-return, `empirePhase` stays null, both affordance
+   *     functions return null, the nav slot draws nothing, and the player is
+   *     stranded on the floor for the rest of the app run.
+   *   - `const empireMounted = route.surface === 'empire' || false;`. The whole
+   *     persistence mechanism is gone — `PERSISTENT_SURFACES` and
+   *     `isPersistentSurface` stay defined and are read by nothing — and the
+   *     old pattern stopped at the `||`, so it never looked at what was on the
+   *     other side of it.
+   *
+   * So both read the RAW source, the way `navigate(current, 'open-empire')` is
+   * read further up this file: the surface name is a string literal, and a scan
+   * that blanks string literals cannot be the scan that checks one. The
+   * `empireMounted` pattern also reaches PAST the `||` to the rest of the
+   * condition, because the half it did not read was the mechanism.
+   *
+   * They are MATCH COUNTS rather than presence, which is this codebase's own
+   * answer to a textual pin with more than one witness: `route.surface ===
+   * 'empire'` appears five times in `AppShell.tsx` and a looser pattern would
+   * have four other places to be satisfied by.
+   *
+   * `sessionMounted`'s pin two lines down is deliberately left on `SHELL`. Its
+   * mechanism is `isPersistentSurface(route.surface)` — identifiers, not
+   * strings — so `codeOnly` leaves it intact and it reddens on the matching
+   * mutation today. It is the shape these two were repaired to match.
+   */
+  const APP_SHELL_RAW = source('src/shell/AppShell.tsx');
+
+  /**
+   * The shell's own mount flag for GDD §5's floor, whole.
+   *
+   * Written as a source string rather than a literal regex so the same pattern
+   * can be asked for a match COUNT against the real file and driven as a
+   * predicate against a fixture, without a `g` flag's `lastIndex` making the
+   * second answer depend on the first.
+   */
+  const EMPIRE_MOUNTED_PIN = String.raw`const empireMounted =\s*route\.surface === 'empire'\s*\|\|\s*\(isPersistentSurface\('empire'\)\s*&&\s*empireOpened\);`;
+
+  /** The one place the shell tells the floor which surface is on screen. */
+  const ACTIVE_SURFACE_PIN = String.raw`active=\{route\.surface === 'empire'\}`;
+
+  /** How many times a pattern occurs in a text. */
+  const occurrences = (pattern: string, text: string): number =>
+    (text.match(new RegExp(pattern, 'g')) ?? []).length;
+
+  /** Whether a pattern occurs at all, with no shared `lastIndex`. */
+  const occursIn = (pattern: string, text: string): boolean => new RegExp(pattern).test(text);
+
   /** The body of a named `useCallback` in `AppShell.tsx`, comments and strings kept. */
   const bodyOfCallback = (name: string): string => {
     const text = source('src/shell/AppShell.tsx');
@@ -1607,8 +1665,42 @@ describe('the Empire round trip keeps both of its surfaces', () => {
     // surface ternary. `sessionMounted` reads `isPersistentSurface`, so removing
     // a surface from that list really does un-mount it.
     expect(SHELL).toMatch(/const sessionMounted =\s*isPersistentSurface\(route\.surface\)/);
-    expect(SHELL).toMatch(/const empireMounted =\s*route\.surface === '' \|\|/);
+    // ...and the floor's flag is read WHOLE, off the raw file. See this block's
+    // header: the old pattern stopped at the `||` and ran over `codeOnly`, so
+    // `route.surface === 'empire' || false` — the edit that deletes persistence
+    // outright — satisfied it.
+    expect(
+      occurrences(EMPIRE_MOUNTED_PIN, APP_SHELL_RAW),
+      'AppShell.tsx no longer mounts GDD §5’s floor off `isPersistentSurface` and `empireOpened`',
+    ).toBe(1);
     expect(PERSISTENT_SURFACES).toEqual(['session', 'empire']);
+  });
+
+  it('CONTROL: the mount-flag pin reads the half of the condition that IS the mechanism', () => {
+    // BOTH WAYS, ON THE AXIS THE CLAIM ADVERTISES. The shipped text matches; the
+    // two edits that broke the old pattern do not. `|| false` is the bypass this
+    // pin was rewritten for, and the surface swap is the other half of the same
+    // blindness — a pattern over `codeOnly` could not tell 'empire' from 'meet'.
+    const shipped =
+      "  const empireMounted =\n    route.surface === 'empire' || (isPersistentSurface('empire') && empireOpened);";
+    expect(occursIn(EMPIRE_MOUNTED_PIN, shipped)).toBe(true);
+    expect(
+      occursIn(EMPIRE_MOUNTED_PIN, "  const empireMounted =\n    route.surface === 'empire' || false;"),
+    ).toBe(false);
+    expect(
+      occursIn(
+        EMPIRE_MOUNTED_PIN,
+        "  const empireMounted =\n    route.surface === 'meet' || (isPersistentSurface('empire') && empireOpened);",
+      ),
+    ).toBe(false);
+    // ...and the blindness itself, reproduced, so the reason for reading raw is
+    // a measurement in this file rather than a sentence in its header: through
+    // `codeOnly` the shipped text and the surface swap are the same string.
+    expect(codeOnly(shipped)).toBe(
+      codeOnly(
+        "  const empireMounted =\n    route.surface === 'meet' || (isPersistentSurface('empire') && empireOpened);",
+      ),
+    );
   });
 
   it('does not forget the beat of a surface that never un-mounted', () => {
@@ -1636,12 +1728,31 @@ describe('the Empire round trip keeps both of its surfaces', () => {
     expect(bodyOfCallback('openEmpire')).toMatch(/setEmpirePhase\(null\)/);
     const empireScreen = codeOnly(source('src/shell/EmpireScreen.tsx'));
     expect(empireScreen).toMatch(/onPhase\?\.\(''\);\s*\}, \[onPhase, active\]\);/);
-    // ...and the shell really does tell it which surface is up.
-    expect(SHELL).toMatch(/active=\{route\.surface === ''\}/);
-    // CONTROL: the scan can see the dependency go missing.
+    // CONTROL FOR THE LINE DIRECTLY ABOVE, and for that line only: the scan can
+    // see the dependency go missing. It used to sit at the bottom of this test,
+    // below the `active=` claim, where it read as that claim's control and
+    // probed a different axis entirely — which is exactly why the `active=`
+    // claim went four rounds unable to see a surface swap.
     expect(codeOnly('onPhase?.("floor");\n  }, [onPhase]);')).not.toMatch(
       /onPhase\?\.\(''\);\s*\}, \[onPhase, active\]\);/,
     );
+    // ...and the shell really does tell it which surface is up. RAW, and a
+    // count: `route.surface === 'empire'` occurs five times in that file, and
+    // through `codeOnly` this pattern could not tell which surface it had found.
+    expect(
+      occurrences(ACTIVE_SURFACE_PIN, APP_SHELL_RAW),
+      'AppShell.tsx no longer hands EmpireScreen `active` off the Empire surface',
+    ).toBe(1);
+    // CONTROL FOR THE LINE DIRECTLY ABOVE, ON ITS OWN AXIS: a surface-literal
+    // swap. Driven both ways, because a pattern that matches nothing and a
+    // pattern that matches everything both look green from one direction.
+    const activeShipped = "<EmpireScreen onPhase={setEmpirePhase} active={route.surface === 'empire'} />";
+    const activeSwapped = "<EmpireScreen onPhase={setEmpirePhase} active={route.surface === 'meet'} />";
+    expect(occursIn(ACTIVE_SURFACE_PIN, activeShipped)).toBe(true);
+    expect(occursIn(ACTIVE_SURFACE_PIN, activeSwapped)).toBe(false);
+    // ...and the blindness, reproduced: through `codeOnly` those two lines are
+    // the same string, which is what the old pin was reading.
+    expect(codeOnly(activeShipped)).toBe(codeOnly(activeSwapped));
   });
 
   it('the floor stops its clock while nobody is looking, and catches up when they are', () => {
