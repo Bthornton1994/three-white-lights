@@ -14491,6 +14491,19 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
  * round actually hit, which is a row whose type refuses ANY construction
  * carrying a function at all.
  */
+/**
+ * What driving `FunctionFreeData`'s own constituents answered.
+ *
+ * The numerator of arm two-C's enumeration argument. `ADMITTING_A_FUNCTION` is
+ * zero and `COUNT` is the denominator that stops the zero being a zero over an
+ * empty union — the reference type is written as ten alternatives and the
+ * checker splits `boolean` into two, which is why eleven and not ten.
+ */
+const REFERENCE_CONSTITUENTS = Object.freeze({
+  COUNT: 11,
+  ADMITTING_A_FUNCTION: 0,
+});
+
 const SUPPLY_TABLE: readonly (readonly [string, boolean])[] = Object.freeze([
   Object.freeze(['library-open-any-member', true] as const),
   Object.freeze(['library-open-any-member-through-a-Readonly', true] as const),
@@ -14818,6 +14831,60 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
         expect(pattern.test(shape.supply), `${shape.id} supplies through ${what}`).toBe(false);
       }
     }
+  }, 600_000);
+
+  it('drives every constituent of the reference type, which is why `any` is the only one', () => {
+    // THE SENTENCE AT ARM TWO-C, GRADED. That comment says the space this arm
+    // has to be about is enumerable — the member types a certifying holder can
+    // carry are `FunctionFreeData`'s own constituents plus `any`, and exactly
+    // one of them can hold a function — and it says so as the reason this is
+    // not yet the round to change instruments. An enumeration argument with no
+    // drive behind it is the thing this file keeps finding, so it is driven.
+    const options = compilerOptions();
+    const program = programWith(
+      options,
+      [CANDIDATE_SUBJECT_PATH],
+      'declare const subject: string;\ndeclare const anyish: any;\nexport {};\n',
+      CANDIDATE_SUBJECT_PATH,
+      [...FUNCTION_FREE_DATA_FILE],
+    );
+    const checker = program.getTypeChecker();
+    const reference = functionFreeDataIn(program, checker);
+    const anyFunction = anyFunctionIn(program, checker);
+    const constituents = reference.isUnion() ? reference.types : [reference];
+    // The denominator first, so a reference type that stopped being a union
+    // reports itself rather than making the loop below vacuous.
+    expect(constituents.length).toBe(REFERENCE_CONSTITUENTS.COUNT);
+    const admitting = constituents
+      .filter((part) => checker.isTypeAssignableTo(anyFunction, part))
+      .map((part) => checker.typeToString(part));
+    expect(admitting).toEqual([]);
+    expect(admitting.length).toBe(REFERENCE_CONSTITUENTS.ADMITTING_A_FUNCTION);
+    // AND THE ONE THAT IS NOT A CONSTITUENT AND GETS IN ANYWAY. `any` is not on
+    // that list, is assignable to the whole union, and admits a function. It is
+    // the entire subject of this round, stated as the two readings that make it
+    // one rather than as a sentence.
+    const file = program.getSourceFile(CANDIDATE_SUBJECT_PATH);
+    expect(file).toBeDefined();
+    let anyish: ts.Type | null = null;
+    file?.forEachChild((node) => {
+      if (!ts.isVariableStatement(node)) return;
+      for (const declared of node.declarationList.declarations) {
+        if (ts.isIdentifier(declared.name) && declared.name.text === 'anyish') {
+          anyish = checker.getTypeAtLocation(declared.name);
+        }
+      }
+    });
+    if (anyish === null) throw new Error('the probe declares no `anyish`');
+    const anyType: ts.Type = anyish;
+    expect(checker.isTypeAssignableTo(anyType, reference)).toBe(true);
+    expect(checker.isTypeAssignableTo(anyFunction, anyType)).toBe(true);
+    // BOTH HALVES ARE NEEDED AND NEITHER IS ENOUGH, which is what
+    // `library-open-unknown-member` is in the battery for: `unknown` admits a
+    // function too and is refused by the relation, so it never reaches a
+    // certifying holder. That row is the behavioural version of this line and
+    // is where it is checked, rather than being restated here as a type
+    // question this program would have to invent a subject for.
   }, 600_000);
 });
 
@@ -18669,6 +18736,11 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   // its continuation recurses on the same binding — so it is a `next-statement`
   // terminal that DOES read the subject, and it is not on the blind list.
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#find<interningReading#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  // E31's constituent drive, which reads a named declaration out of a served
+  // probe the way `referenceTypeIn` does. Two rows because the walker and the
+  // loop over its declaration list are two ladders.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#it:drives every constituent of th#declared', arms: 1, dispatch: false, terminal: 'loop' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#it:drives every constituent of th#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#findSubject<candidateReading#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
   // The screen's own battery and the second reading of the depth limit, both
   // added this round. `deepestFrom`'s ladder is `dispatch: false` because its
@@ -18874,12 +18946,12 @@ const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
   /** Rows in `DECLARED_HANDLER_ROWS`. Every one a tally or an enum read. */
   DISCRIMINANT_LOOKUPS: 8,
-  CHAINS: 92,
-  DISPATCH: 58,
+  CHAINS: 94,
+  DISPATCH: 59,
   BY_TERMINAL: Object.freeze({
     else: 8,
-    'next-statement': 69,
-    loop: 13,
+    'next-statement': 70,
+    loop: 14,
     enclosing: 2,
     /**
      * ZERO, AND THE ZERO IS THIS ROUND'S RESULT RATHER THAN A FACT ABOUT THE
