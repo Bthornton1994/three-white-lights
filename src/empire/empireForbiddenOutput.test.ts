@@ -14746,19 +14746,21 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
     // The control is a control: it disagrees with the shipped screen somewhere,
     // so a configuration that silently stopped differing reports itself instead
     // of making the eleven look like a fixed defect.
-    expect(SCREEN_BEFORE_E27.admitsAFunction).toBe(false);
-    expect(SCREEN_BEFORE_E27.synthesizedProperties).toBe(false);
-    expect(SCREEN_BEFORE_E27.retypedLibraryMembers).toBe(false);
-    expect(SCREEN_BEFORE_E27.libraryMembersThatAdmitAFunction).toBe(false);
-    expect(SHIPPED_SCREEN_READINGS.admitsAFunction).toBe(true);
-    expect(SHIPPED_SCREEN_READINGS.synthesizedProperties).toBe(true);
-    expect(SHIPPED_SCREEN_READINGS.retypedLibraryMembers).toBe(true);
-    expect(SHIPPED_SCREEN_READINGS.libraryMembersThatAdmitAFunction).toBe(true);
-    // And no row is silent, reachable AND suppliable under the shipped
-    // readings, which is the same assertion the test above makes and is
-    // repeated here so that this test's own subject — the difference — cannot
-    // be green with both sides bad. The two rows that ARE silent and reachable
-    // are named, so this line cannot go quiet by the list growing.
+    // THE BEHAVIOURAL HALF FIRST, AND THE ORDER WAS EARNED THE SAME WAY THE
+    // CHANNEL CENSUS'S WAS. Turning `libraryMembersThatAdmitAFunction` off is
+    // the mutant this whole round is about, and with the flag assertions above
+    // this line it was caught by `expect(SHIPPED_SCREEN_READINGS.
+    // libraryMembersThatAdmitAFunction).toBe(true)` — a check on a constant,
+    // which would be green for any other way of reopening the same silence.
+    // The list below is the one that reads the walker's answers, so it goes
+    // first: under that mutant it reddens with the two `library-open-*` rows
+    // added, which names the behaviour rather than the flag.
+    //
+    // No row is silent, reachable AND suppliable under the shipped readings —
+    // the same claim the test above makes, repeated here so that this test's
+    // own subject, the difference, cannot be green with both sides bad. The two
+    // rows that ARE silent and reachable are named, so this cannot go quiet by
+    // the list growing.
     const now = familyReadings();
     const stillSilent = CANDIDATE_SHAPES.filter(
       (shape) => now[shape.id]?.screenHolds === false && now[shape.id]?.reachDiagnostics.length === 0,
@@ -14770,6 +14772,16 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
     expect(
       stillSilent.filter((id) => (now[id]?.supplyDiagnostics ?? ['unbuildable']).length === 0),
     ).toEqual([]);
+    // The control is a control on its declared flags too, last, because a flag
+    // is a weaker subject than an answer.
+    expect(SCREEN_BEFORE_E27.admitsAFunction).toBe(false);
+    expect(SCREEN_BEFORE_E27.synthesizedProperties).toBe(false);
+    expect(SCREEN_BEFORE_E27.retypedLibraryMembers).toBe(false);
+    expect(SCREEN_BEFORE_E27.libraryMembersThatAdmitAFunction).toBe(false);
+    expect(SHIPPED_SCREEN_READINGS.admitsAFunction).toBe(true);
+    expect(SHIPPED_SCREEN_READINGS.synthesizedProperties).toBe(true);
+    expect(SHIPPED_SCREEN_READINGS.retypedLibraryMembers).toBe(true);
+    expect(SHIPPED_SCREEN_READINGS.libraryMembersThatAdmitAFunction).toBe(true);
   }, 600_000);
 
   it('bans a reach snippet that asserts its closure instead of reaching one', () => {
