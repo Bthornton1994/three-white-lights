@@ -1576,7 +1576,10 @@ describe('this module is pure, numerically clean and names nobody', () => {
     // one — that is the human, name-by-name pass. What this does is make a name
     // ARRIVING visible.
     const { singleQuoted, doubleQuoted, templateChunks } = stringLiteralsIn(code);
-    expect(singleQuoted.size).toBe(38);
+    // 39 rather than 38 since `sealRate` stopped interpolating its caller's
+    // label: the fixed refusal it takes on an unrecognised one is the literal
+    // that moved this.
+    expect(singleQuoted.size).toBe(39);
     expect(doubleQuoted.size).toBe(0);
     // 16 rather than the 15 this pinned before `sealRate` arrived; that
     // function's refusal message is the chunk that moved it, and it is the
@@ -1637,7 +1640,7 @@ describe('this module is pure, numerically clean and names nobody', () => {
     // and `'number'` — the last from the `typeof` narrow, which is the check
     // that makes the seal read the VALUE rather than agree with the declared
     // type it exists to distrust.
-    expect(stringsChecked).toBe(54);
+    expect(stringsChecked).toBe(55);
   });
 
   it('would catch a person-shaped name arriving in this module', () => {

@@ -95,13 +95,38 @@
  *     see: a name assembled at runtime from parts, and any string in a file
  *     outside this directory.
  *
- *     One term here is worth a human ruling and is flagged rather than
- *     defended: `'monolift'`, in `EQUIPMENT_TIERS`, is transcribed verbatim
- *     from GDD §5.4's own table and is the standard generic term for the rack
- *     type across federation rulebooks — but it originates as a specific
- *     inventor's product name and is claimed as a mark by at least one
- *     manufacturer. It is a pre-existing document decision, not an exposure
- *     this file created, and no manufacturer is attached to it here.
+ *     One term here was flagged for a human ruling, and the flag overstated its
+ *     own case in the alarming direction. The sentence is corrected rather than
+ *     deleted, because the half it got wrong is the more useful half.
+ *
+ *     `'monolift'`, in `EQUIPMENT_TIERS`, is transcribed verbatim from GDD
+ *     §5.4's own table and is the standard generic term for the rack type
+ *     across federation rulebooks. It does originate as a specific inventor's
+ *     product name. What the flag then said — that it "is claimed as a mark by
+ *     at least one manufacturer" — was written with no search behind it, and a
+ *     search points the other way. Run twice from different angles for this
+ *     note: the plain word is what a dozen unrelated strength-equipment makers
+ *     sell a product under, on their own storefronts, in the United States and
+ *     in Europe, as whole racks and as bolt-on attachments; the single
+ *     registered mark that surfaced anywhere near it is a different, two-word
+ *     string held by one maker, and a registration on a neighbouring string is
+ *     evidence the plain word was not available to register rather than
+ *     evidence somebody holds it. Wide unrelated commercial use with no
+ *     registration on the term itself is what genericisation looks like.
+ *
+ *     Under CLAUDE.md's ruled naming bar that is an accept: the bar refuses a
+ *     famous mark, a coined name from a creative work, or a hit in a confusable
+ *     sector, and a generic noun many sellers use for one kind of rack is none
+ *     of the three. It stays. No maker's name and no wordmark is written here,
+ *     which is the other half of why the term is safe in this file — what is
+ *     transcribed is the rack type, not a brand.
+ *
+ *     The limit, since this is a search and not a clearance: no search proves a
+ *     negative, and CLAUDE.md's own record is that an agent's name search has
+ *     been wrong in both directions inside one paragraph. This term belongs in
+ *     the attorney pass that section recommends over the whole set of names at
+ *     once. What changed here is that the sentence says what was measured
+ *     instead of a worry nobody had checked.
  *
  * Purity: zero React, zero side effects, zero I/O, no clock, no randomness,
  * no imports at all. It is a leaf so that every later piece can read it without

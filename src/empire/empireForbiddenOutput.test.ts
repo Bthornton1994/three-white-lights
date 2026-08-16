@@ -1733,6 +1733,31 @@ describe('instrument A — no export type admits a forbidden literal, and no new
     ).toEqual([HERE]);
     expect(empireSubdirectories()).toEqual([]);
     expect(shippedModulePaths().length).toBe(SURFACE_CENSUS.MODULES);
+
+    // AND THE NAMESPACE TABLE IS JOINED TO THE SAME WALK, which it was not.
+    // `MODULE_NAMESPACES` is what `driveEverything` reads every exported
+    // CONSTANT out of — attack shape 12's whole domain — and it was ten rows
+    // typed by hand, keyed by file name, joined to nothing. A module added to
+    // this directory without a row there contributes no constants to the drive,
+    // and every count downstream stays honest about a domain that quietly got
+    // smaller: exactly the shape of the fence that named two files while the
+    // directory shipped ten, one instrument over.
+    //
+    // Set-equal in both directions, so a missing row and a stale row each
+    // redden, and each names the file. The failure is a list difference rather
+    // than a number, which is the half that makes it readable.
+    expect(Object.keys(MODULE_NAMESPACES).sort()).toEqual([...shippedModuleNames()].sort());
+    expect(Object.keys(MODULE_NAMESPACES).length).toBe(SURFACE_CENSUS.MODULES);
+    // Non-vacuity: the rows resolve to real namespaces rather than to
+    // `undefined` behind a cast, so an equality over key names alone cannot
+    // pass on a table whose values went missing.
+    let namespaces = 0;
+    for (const [name, namespace] of Object.entries(MODULE_NAMESPACES)) {
+      expect(typeof namespace, name).toBe('object');
+      expect(Object.keys(namespace).length, name).toBeGreaterThan(0);
+      namespaces += 1;
+    }
+    expect(namespaces).toBe(SURFACE_CENSUS.MODULES);
   });
 
   it('pins every bare-string position, in both directions, grouped by the field it is', () => {
@@ -2230,7 +2255,12 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
    * report a clean census, which is the reassuring direction. A four-figure
    * number here says the walk really covered the directory's code.
    */
-  CALLS_EXAMINED: 1022,
+  // MOVED BY `sealRate`'s LABEL CLOSE, attributed rather than re-pinned blind.
+  // That function stopped interpolating its caller's label and now resolves it
+  // out of `SEALED_RATE_LABELS`, which adds three calls in `empireInvariant.ts`
+  // — an `Object.freeze`, a `.find`, and one more `refuseWith` — and one type
+  // declaration. Every number below moves by exactly that and by nothing else.
+  CALLS_EXAMINED: 1025,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -6581,10 +6611,44 @@ const DRIVE_CENSUS = Object.freeze({
  *
  * THE CATCHER FOR THE PART THAT IS COVERED, AND THE PART THAT IS NOT. Both are
  * `DECLARED_RETURNED_CLOSURE_SITES` by member path, set-equal in both
- * directions, so a THIRD arrow leaving this directory is red before anybody
- * calls it; and instrument A reads their declared result as `number`, which is
- * not a string position at all, so no forbidden name can be their declared
- * output.
+ * directions, so a THIRD arrow leaving this directory — in any file the shared
+ * walk hands this census — is red before anybody calls it; and instrument A
+ * reads their declared result as `number`, which is not a string position at
+ * all, so no forbidden name can be their declared output.
+ *
+ * THE CLAUSE IN THE MIDDLE OF THAT SENTENCE IS NEW, AND IT IS THERE BECAUSE THE
+ * SENTENCE WITHOUT IT WAS FALSE FOR A ROUND. It was an unbounded absolute over a
+ * census whose reach is `shippedModulePaths()`, which is `tsFilesUnder`, which
+ * filtered on `.ts` — while `tsconfig.json`'s `include` is `**\/*.ts` and
+ * `**\/*.tsx`. Measured rather than argued: `src/empire/rates.tsx` exporting
+ * `idleRates()`, whose returned `gymBucksPerHour` closure body is
+ * `EMPIRE_FORBIDDEN_OUTPUTS[0] as never` — the same payload as M84, which this
+ * list catches in a `.ts` file — compiled at `tsc --noEmit` exit 0, drove to the
+ * string `covered-day` at a one-argument caller, and left the whole repository
+ * at 85 files / 3478 tests exit 0. A third arrow, and this list was silent about
+ * it.
+ *
+ * WHAT THAT COSTS THE WITNESS THAT WAS TAKEN FOR IT, stated because the mistake
+ * is more instructive than the fix. M84 was run, it reddened, and the crossing
+ * below was taken on that basis. The witness was sound and insufficient at the
+ * same time: a mutant shows the check bites on the file the mutant was written
+ * in, and says nothing about the DOMAIN the check enumerates. M84 was a `.ts`
+ * file, so what it proved was that the guarantee holds over the census's reach —
+ * and nobody asked what the reach was. That is the vacuity family one level out,
+ * and it caught the agent applying the rule rather than the one writing prose.
+ *
+ * THE CATCHER FOR THE CLAUSE, named specifically enough to run: `names every
+ * file the compiler compiles here that no census walks`, in
+ * `directoryWalk.test.ts`. It joins `tsconfig.json`'s own claimed file set
+ * against what `tsFilesUnder` hands over and pins the difference at zero, so the
+ * `.tsx` above is `rates.tsx (.tsx)` there before anything in it is read. Run
+ * against this file with that plant in place: 118 of 119 green and the one red
+ * is that reading. Note what stayed green in the same run, since it is the honest
+ * shape of the repair — the `throw` gate's site equality, the import fence and
+ * every other census here saw nothing, because they still walk `.ts`. The
+ * arriving file is caught; its contents are not scanned. Containment, not
+ * coverage, and a `.tsx` landing here is a decision somebody signs rather than a
+ * scan somebody trusts.
  *
  * THE PARAGRAPH THAT USED TO FOLLOW SAID THE ERASURE ROUTE WAS OPEN AND
  * DECLINED TO TRY IT. It was open, it is the twenty-fifth bypass, and both
@@ -10256,7 +10320,7 @@ const THROW_GATE_SITES: readonly string[] = Object.freeze([
  */
 const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'empireCore.ts': 9,
-  'empireInvariant.ts': 7,
+  'empireInvariant.ts': 8,
   'engagement.ts': 13,
   'expansion.ts': 3,
   'production.ts': 9,
@@ -10469,11 +10533,11 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'empireInvariant.ts:1047 returned=unfollowable:state',
-  'empireInvariant.ts:1100 returned=unfollowable:gymState',
-  'empireInvariant.ts:1131 returned=unfollowable:gym',
-  'empireInvariant.ts:1176 returned=unfollowable:gym',
-  'empireInvariant.ts:1319 returned=unfollowable:gym',
+  'empireInvariant.ts:1084 returned=unfollowable:state',
+  'empireInvariant.ts:1137 returned=unfollowable:gymState',
+  'empireInvariant.ts:1168 returned=unfollowable:gym',
+  'empireInvariant.ts:1213 returned=unfollowable:gym',
+  'empireInvariant.ts:1356 returned=unfollowable:gym',
   'empireInvariant.ts:637 receiver=ArrayLiteralExpression',
   'engagement.ts:355 receiver=ArrayLiteralExpression',
   'engagement.ts:437 returned=unfollowable:gym',
@@ -10500,12 +10564,12 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
  * a type that the control finds a function inside.
  */
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'empireInvariant.ts:1047 GymAxes asked=true walked=false',
-  'empireInvariant.ts:1100 GymAxes asked=true walked=false',
-  'empireInvariant.ts:1131 readonly ExpansionBuild[] asked=true walked=false',
-  'empireInvariant.ts:1176 EmpireState asked=true walked=false',
-  'empireInvariant.ts:1249 ExpansionBuild asked=true walked=false',
-  'empireInvariant.ts:1319 EmpireState asked=true walked=false',
+  'empireInvariant.ts:1084 GymAxes asked=true walked=false',
+  'empireInvariant.ts:1137 GymAxes asked=true walked=false',
+  'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
+  'empireInvariant.ts:1213 EmpireState asked=true walked=false',
+  'empireInvariant.ts:1286 ExpansionBuild asked=true walked=false',
+  'empireInvariant.ts:1356 EmpireState asked=true walked=false',
   'engagement.ts:437 EmpireState asked=true walked=false',
   'engagement.ts:455 EmpireState asked=true walked=false',
   'expansion.ts:549 EmpireClock asked=true walked=false',
@@ -10568,8 +10632,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   parameter: 2,
   'module-variable': 26,
   local: 0,
-  function: 504,
-  member: 475,
+  function: 505,
+  member: 477,
   'member-callback': 2,
   'member-of-parameter': 13,
   fresh: 0,
@@ -10604,9 +10668,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
   SITES: 329,
   /** Nodes the walk examined. A truncated walk would report a clean directory. */
-  NODES_EXAMINED: 21_834,
+  NODES_EXAMINED: 21_885,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
-  WRAP_CALLS: 54,
+  WRAP_CALLS: 55,
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
@@ -14248,7 +14312,7 @@ function cyclicDeclarations(
  */
 const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   /** Type aliases, interfaces and classes declared across the ten shipped modules. */
-  DECLARATIONS: 118,
+  DECLARATIONS: 119,
   /** Those carrying type parameters. An instantiation depth needs one. */
   GENERIC: 11,
   /** Declarations reaching themselves. Zero, and this is the pin the round is about. */
