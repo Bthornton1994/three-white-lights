@@ -17868,6 +17868,65 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` — `70e0bcba2dee2dbdd00d8cd03e13f03498b4a136` and `17d8ca32378eff107a2583d1831060bbf1c51b89`.',
     ]),
   }),
+  Object.freeze({
+    id: 'M80',
+    shape:
+      "M67 REPLANTED BYTE FOR BYTE AGAINST THE VALUE-LEVEL WALKER, AND THE POINT IS THAT NO TYPE REASONING IS INVOLVED. M67 and M68 are the same plant before and after a reading of the member walk; this is the same plant again, and what changed is that instrument B calls a function whose declared arity is zero. `peek` is `(): string`, so `Function.length` is 0, so the walk calls it and scans `'covered-day'` as a plain string finding. The whole family M67 / M75 / M76 / M78 has this property and none of the four rows records it, because the walker's own header said a returned function is not invoked",
+    where:
+      'production.ts, `accrueProduction`: the M67 block verbatim — `const PRODUCTION_OPAQUE: { readonly entry: {} }` holding `Object.freeze({ peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] })`, handed back as `shapes: PRODUCTION_OPAQUE.entry` with a matching `readonly shapes: {}` on `ProductionAccrual`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      "DETECTED BY INSTRUMENT B, WITH THE PAYLOAD AND THE CALL IN THE PATH. `CONTAINS no banned name either, outside the diagnostic channel` reddens with 170 findings, every one of the form `accrueProduction@roster=0/rep=0/no-skip#return.shapes.peek()=covered-day` — the `()` is what says the walker reached the string by CALLING rather than by reading a property. `produces no banned name from any export but the two that ARE the ban lists` reddens with `expected 177 to be 7`.",
+      'AND THE OVERFLOW PASS FINDS IT INDEPENDENTLY, at the points the ceilings drop: `produces no banned name at any point a ceiling drops` reddens with 56 findings. That is the shared `scanRow`, so the same widening reaches both passes without a second walker.',
+      'AND THE TYPE-LEVEL CATCHERS STILL FIRE, which is what says this is additive: `derives every escape site` reddens on `census.byModule`, `pins the two callback sites` gains the closure site row, and `agrees with the control everywhere on the shipped tree` goes from eleven disagreements to twelve. Ten failed of 164 across this file and `empireCore.test.ts`, and six of the ten are a guard rather than a counter.',
+      'AND THE BRANCH RUNS, PRINTED, from the shipped export: `KEYS [...,"ledger","shapes"]`, `TYPEOF shapes object`, `MEMBER peek function`, `CALLED covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters, unchanged from M67 because the plant is unchanged: instrument C `expected 1020 to be 1018`, instrument B `expected 2393400 to be 2393060`, the overflow pass `expected 523240 to be 523128`.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` — `70e0bcba2dee2dbdd00d8cd03e13f03498b4a136` on both sides.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M81',
+    shape:
+      'M76 REPLANTED BYTE FOR BYTE AGAINST THE VALUE-LEVEL WALKER. M76 was silent to every instrument in this file because arm two of the member walk skipped a library-declared mapped member one level above the reading that would have caught it — a fact about the compiler, reached by three rounds of type work. At the value level none of that is visible: the runtime object holds a nullary function and the walk calls it',
+    where:
+      'production.ts, `accrueProduction`, identical to M76: `{ readonly entry: { readonly [K in keyof ArrayBufferTypes]: {} } }` holding a frozen `ArrayBuffer` key whose value is a frozen `peek`, handed back as `shapes: PRODUCTION_LIBKEYED.entry`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED BY INSTRUMENT B, AND THE MEMBER PATH IS IN THE FINDING: `accrueProduction@roster=0/rep=0/no-skip#return.shapes.ArrayBuffer.peek()=covered-day`, 170 of them, plus 56 from the overflow pass. `produces no banned name from any export but the two that ARE the ban lists` reddens with `expected 177 to be 7`.',
+      'THE SAME TEN REDS AS M80, WHICH IS THE MEASUREMENT THE ROW EXISTS FOR: M76 and M67 differ by three rounds of compiler behaviour and are indistinguishable to a walker that calls the function. The type-level readings E30 and E31 added fire as well and are not made redundant by this — they name the site by LINE and they fire with no drive at all.',
+      'AND THE BRANCH RUNS, PRINTED: `TYPEOF shapes object`, `MEMBER ArrayBuffer object`, `MEMBER peek function`, `CALLED covered-day`, `MEMBER SharedArrayBuffer object`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters, unchanged from M76: instrument C `expected 1022 to be 1018`, instrument B `expected 2393740 to be 2393060`, the overflow pass `expected 523352 to be 523128`.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts`.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M82',
+    shape:
+      "M78 REPLANTED BYTE FOR BYTE AGAINST THE VALUE-LEVEL WALKER, AND IT IS THE ROW THAT CLOSES THE ARGUMENT. M78's own analysis says the relation cannot refuse `any` and that arm two returns before the reading that would catch it is asked — both true, both about types, and both irrelevant to a walk that calls the value. Three plants whose type-level explanations are three different compiler facts produce three identical value-level catches",
+    where:
+      'production.ts, `accrueProduction`, identical to M78: `{ readonly entry: { readonly [K in keyof NavigationOptions]: NavigationOptions[K] } }` holding a frozen `info`, handed back as `shapes: PRODUCTION_LIBANY.entry` with a matching mapped-type `readonly shapes` on `ProductionAccrual`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED BY INSTRUMENT B: `accrueProduction@roster=0/rep=0/no-skip#return.shapes.info()=covered-day`, 170 findings, plus 56 from the overflow pass, plus `expected 177 to be 7` on the equality census.',
+      'AND THE BRANCH RUNS, PRINTED: `TYPEOF shapes object`, `MEMBER info function`, `CALLED covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      "WHAT THE THREE ROWS TOGETHER SAY, stated as the measurement rather than as a claim about the future: the family this file spent five rounds enumerating by type was reachable by one branch in the value walker, and the branch was declined because a sentence generalised a real difficulty at arity above zero into a refusal at arity zero. The type work is not wasted — it is the half that fires with no drive, and it names the site by line where a drive names it by path.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The three node counters, unchanged from M78: instrument C `expected 1020 to be 1018`, instrument B `expected 2393400 to be 2393060`, the overflow pass `expected 523240 to be 523128`.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts`.',
+      'ALL THREE ROWS WERE PLANTED ONE AT A TIME, per the rule M60 and M61 set: two silences in one run cannot be attributed to either, and neither can two catches.',
+    ]),
+  }),
 ]);
 
 /**
@@ -18209,7 +18268,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(79);
+    expect(PLANTED_ROUTES.length).toBe(82);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -18341,8 +18400,11 @@ describe('the routes that were planted, and what each of them cost', () => {
     // ONE FOR M79, which is M78 replanted unchanged against the arm written for
     // it, so it inherits M78's isolation by construction — the same
     // relationship M77 has to M76 and M68 has to M67.
-    expect(attempts).toBe(106);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(69);
+    // ONE EACH FOR M80, M81 AND M82, which are M67, M76 and M78 replanted
+    // unchanged against the value-level walker. They inherit their originals'
+    // isolation by construction, and each was planted alone.
+    expect(attempts).toBe(109);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(72);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
