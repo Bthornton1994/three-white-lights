@@ -1190,6 +1190,21 @@ describe('every screen the shell mounts reports its beat', () => {
  *     a fact about today's file rather than a property this enforces.
  *   - IT SAYS NOTHING ABOUT WHETHER THE READING IS CORRECT. `gymBucks` drawn
  *     into the reputation row traces perfectly and is wrong.
+ *   - AND IT IS ROOTED AT THE SCREEN, WHICH NO LONGER PRODUCES THE VALUES. This
+ *     is the sharpest of the four and it was measured rather than reasoned
+ *     about. `SCREEN_FILE` is `EmpireScreen.tsx`; the screen draws
+ *     `readings.<field>`, and `readings` comes from `empireFloorReadings` in
+ *     `empireFloor.ts`. `tracesToPureState` asks whether the EXPRESSION reaches
+ *     a call to the pure constructor, and `readings` does — through
+ *     `openEmpireFloor` -> `createEmpireGym` -> `createEmpireState` — so EVERY
+ *     FIELD OF `readings` PASSES THIS WALK WHATEVER IT HOLDS. Replacing
+ *     `equipment: floor.gym.state.axes.equipment` with the literal `'bare-bar'`
+ *     one file down left this test green, `src/shell` green and `tsc` clean.
+ *     The walk was widened from direct to transitive when the arithmetic moved
+ *     out of the `.tsx`, and its ROOT was left behind; widening a reach and
+ *     moving a root are two edits and only one of them was made. What catches a
+ *     hardcode below the screen today is `empireFloor.test.ts`, which pins how
+ *     each drawn value MOVES — six rows, six claims — and not this scan.
  */
 const DRAWN_FROM_PURE_STATE = Object.freeze({
   /**

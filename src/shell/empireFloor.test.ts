@@ -27,6 +27,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createEmpireGym,
+  purchasesMade,
   stepGym,
   type EmpireGym,
 } from '../empire/empireInvariant';
@@ -101,11 +102,34 @@ const FLOOR_SWEEP = Object.freeze({
   PAIR_LONG_HORIZON_ABOVE_SECONDS: EMPIRE_TUNING.SECONDS_PER_HOUR,
   /** How many base visit schedules each LONG pairing horizon enumerates. */
   LONG_PAIRS_PER_HORIZON: 8,
+  /**
+   * Where the AIMED extra look is placed relative to a commitment instant, in
+   * seconds.
+   *
+   * Three positions rather than a window, and they are chosen from the engine's
+   * own grain rather than for looking thorough: a commitment lands on a
+   * check-in, so `0` is an extra look taken on the very check-in that spends
+   * the money, and `-1` / `+1` are one `MONOTONE_STEP_SECONDS` either side of
+   * it, inside the gap where a fragmenting wiring would lose the remainder.
+   */
+  AIMED_OFFSETS_SECONDS: Object.freeze([-1, 0, 1]),
   /** The fragmenting control's window and its two collection cadences, in seconds. */
   FRAGMENT_SECONDS: 600,
   FRAGMENT_WHOLE_TICK: 1,
   FRAGMENT_HALF_TICK: 0.5,
 });
+
+/**
+ * The horizons the §12.3 pairing is re-enumerated at: the ones long enough for
+ * this gym to have committed money.
+ *
+ * Derived from the walk's own horizon list by the threshold rather than written
+ * out a second time, so the pairing cannot end up asking about a different set
+ * than the walk does. Pinned in the scope guard beside the list it comes from.
+ */
+const LONG_PAIR_HORIZONS = FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.filter(
+  (horizon) => horizon > FLOOR_SWEEP.PAIR_LONG_HORIZON_ABOVE_SECONDS,
+);
 
 /** mulberry32. Deterministic, seeded, and the same generator `streakSweep.ts` uses. */
 function generator(seed: number): () => number {
@@ -181,14 +205,38 @@ const shapeOf = (floor: EmpireFloor): string =>
  *   - THE SAWTOOTH BY CONSTRUCTION. `pendingGymBucks` is the preview of the
  *     current gap; the check-in that banks it resets it to zero. It falls once
  *     per check-in and nowhere else, which is pinned in both directions.
- *   - CATEGORICAL. `equipment` is a rung name. It is not ordered, so no
- *     monotonicity claim is made about it, and it is named here rather than
- *     silently dropped from the walk the way it used to be.
+ *   - A LADDER RUNG. `equipment` is a position on `EQUIPMENT_TIERS`, compared
+ *     by index the way `empireCore.ts` compares it, so the claim is that the
+ *     floor only ever climbs and never draws a name that is off the ladder.
+ *
+ * ===========================================================================
+ * THE FIFTH CLASS USED TO SAY "CATEGORICAL … IT IS NOT ORDERED", AND THAT
+ * SENTENCE WAS FALSE
+ * ===========================================================================
+ * It is deleted rather than softened, because it was not a description of the
+ * row — it was the sole reason `equipment` sat outside the only walk that could
+ * have caught a hardcode, and the exclusion it justified was measured to be
+ * exactly that hole. Replacing `floor.gym.state.axes.equipment` with the
+ * literal `'bare-bar'` in `empireFloor.ts` left this file, the whole of
+ * `src/shell` and `guaranteeTags.test.ts` at 137 passed, exit 0, with `tsc`
+ * clean. The sibling one line up — `roster` — reddens instantly, and so do the
+ * other four rows.
+ *
+ * The ladder is real and the tree already relies on it in three places:
+ * `EMPIRE_TUNING.EQUIPMENT_TIERS` documents itself as "the order is the
+ * ladder", its prices are strictly increasing, and `empireCore.ts`'s state
+ * validator compares two rungs with `tiers.indexOf(settled) >
+ * tiers.indexOf(live)`. GDD §5.4 writes the axis as a ladder in its own table.
+ * So the ordering was never in doubt; only this file's use of it was missing.
+ *
+ * `rungIndexOf` below is that same `indexOf`, and it is the whole mechanism:
+ * a claim about how the row MOVES is one no constant can satisfy, whereas a
+ * value pinned at more instants is the hardcode written twice.
  */
 const CUMULATIVE_READINGS = Object.freeze(['reputation', 'roster', 'clockSeconds'] as const);
 const BALANCE_READING = 'gymBucks' as const;
 const SAWTOOTH_READING = 'pendingGymBucks' as const;
-const CATEGORICAL_READINGS = Object.freeze(['equipment'] as const);
+const LADDER_READINGS = Object.freeze(['equipment'] as const);
 const NUMERIC_READINGS = Object.freeze([
   BALANCE_READING,
   SAWTOOTH_READING,
@@ -198,16 +246,32 @@ const NUMERIC_READINGS = Object.freeze([
 type NumericReading = (typeof NUMERIC_READINGS)[number];
 
 /**
+ * Where a rung name sits on GDD §5.4's equipment ladder, or -1 if it is not on
+ * it at all.
+ *
+ * `EMPIRE_TUNING.EQUIPMENT_TIERS`' own order, read through the same
+ * `tiers.indexOf` comparison `empireCore.ts` validates a decoded gym with. Not
+ * a second ladder written down here: this file imports §5's table and asks it
+ * where a name sits, so a rung added to §5.4 is ordered here without anything
+ * being edited.
+ */
+const rungIndexOf = (rung: string): number =>
+  (EMPIRE_TUNING.EQUIPMENT_TIERS as readonly string[]).indexOf(rung);
+
+/**
  * How many §5.3 recruitments, §5.4 rungs and roster promotions this gym has
  * committed to.
  *
- * `recruits` counts the ones that have JOINED and `pending` the ones still on
- * their timer, so the sum moves when a recruitment BEGINS — which is when the
- * money leaves — and stays put when one completes. That is the moment a fall in
- * the balance is allowed to happen at.
+ * `purchasesMade` IS `src/empire/`'s OWN, imported rather than re-implemented.
+ * A byte-identical copy of it lived here and drifting copies are invisible —
+ * CLAUDE.md's rule is that a guard written for one thing reads its sibling
+ * instead of copying it, and this file already imports from that module.
+ * `EmpireGym.recruits` counts lifters who have JOINED and `pending` those still
+ * on their timer, so the sum moves when a recruitment BEGINS — when the money
+ * leaves — and stays put when one completes. That is the moment a fall in the
+ * balance is allowed to happen at.
  */
-const purchasesMadeBy = (floor: EmpireFloor): number =>
-  floor.gym.expansions + floor.gym.promotions + floor.gym.recruits + floor.gym.pending.length;
+const purchasesMadeBy = (floor: EmpireFloor): number => purchasesMade(floor.gym);
 
 /** What one second-by-second walk of the floor saw. Counts, never bounds. */
 interface FloorWalk {
@@ -216,6 +280,15 @@ interface FloorWalk {
   readonly increases: Readonly<Record<NumericReading, number>>;
   /** Steps at which the gym committed to a recruit, a rung or a promotion. */
   readonly purchaseMoments: number;
+  /**
+   * The instants, in whole seconds, those commitments happened at.
+   *
+   * Recorded so the §12.3 pairing further down can AIM an extra look at the
+   * moment the money moves instead of hoping a random one lands there. It is
+   * not pinned anywhere: `purchaseMoments` already pins how many there are, and
+   * a second pin on the same events would be a count restating a list.
+   */
+  readonly purchaseInstants: readonly number[];
   /** Steps at which `stepGym` was asked for at least one check-in. */
   readonly checkInMoments: number;
   /** `pendingGymBucks` fell at a step that took a check-in. */
@@ -249,6 +322,33 @@ interface FloorWalk {
    * horizon; a list rather than a count for the same reason.
    */
   readonly counterFalls: readonly string[];
+  /**
+   * Every step at which the equipment row moved DOWN `EQUIPMENT_TIERS`. THE
+   * LADDER SAFETY LIST, and a list rather than a count so a failure names the
+   * instant and both rungs.
+   */
+  readonly rungsDescended: readonly string[];
+  /**
+   * Every reading whose rung name is not on `EQUIPMENT_TIERS` at all.
+   *
+   * A SEPARATE FACT FROM THE ONE ABOVE, and neither implies it: a row stuck on
+   * one off-ladder name never moves, so nothing descends while every reading is
+   * off the ladder; and a real rung sliding back down the ladder is a descent
+   * with nothing off it. Two ways for this row to be wrong, two lists.
+   */
+  readonly rungsOffTheLadder: readonly string[];
+  /**
+   * Steps at which the rung changed at all, in either direction.
+   *
+   * DELIBERATELY DIRECTIONLESS. If this record carried which way each change
+   * went, pinning it would imply `rungsDescended` outright and leave that check
+   * unable to speak — the same domination the `balanceFalls` record above is
+   * shaped to avoid. This one says the row MOVED; that one says no move was
+   * backwards.
+   */
+  readonly rungChanges: number;
+  /** How many distinct rung names the walk drew. */
+  readonly rungsSeen: number;
 }
 
 const WALKS = new Map<number, FloorWalk>();
@@ -276,6 +376,10 @@ function walkTo(horizonSeconds: number): FloorWalk {
   const balanceFalls: string[] = [];
   const balanceFallsWithNoPurchase: string[] = [];
   const counterFalls: string[] = [];
+  const purchaseInstants: number[] = [];
+  const rungsDescended: string[] = [];
+  const rungsOffTheLadder: string[] = [];
+  const rungNames = new Set<string>();
   let read = 0;
   let purchaseMoments = 0;
   let checkInMoments = 0;
@@ -283,8 +387,20 @@ function walkTo(horizonSeconds: number): FloorWalk {
   let sawtoothFallsAwayFromACheckIn = 0;
   let widestPendingGapSeconds = 0;
   let cappedReadings = 0;
+  let rungChanges = 0;
 
   let previous = empireFloorAfter(0);
+  // THE OPENING RUNG IS READ BEFORE THE WALK STARTS, so a floor that draws an
+  // off-ladder name from the first instant and never moves is caught. Reading
+  // only the `after` of each step would leave the opening reading unexamined,
+  // which is the one a hardcoded row is most likely to be.
+  {
+    const opening = empireFloorReadings(previous).equipment;
+    rungNames.add(opening);
+    if (rungIndexOf(opening) < 0) {
+      rungsOffTheLadder.push(`at 0s ${opening} is not a rung on EQUIPMENT_TIERS`);
+    }
+  }
   for (
     let at = FLOOR_SWEEP.MONOTONE_STEP_SECONDS;
     at <= horizonSeconds;
@@ -296,8 +412,27 @@ function walkTo(horizonSeconds: number): FloorWalk {
     const after = empireFloorReadings(now);
     const bought = purchasesMadeBy(now) > purchasesMadeBy(previous);
     const checkedIn = now.checkIns > previous.checkIns;
-    if (bought) purchaseMoments += 1;
+    if (bought) {
+      purchaseMoments += 1;
+      purchaseInstants.push(at);
+    }
     if (checkedIn) checkInMoments += 1;
+
+    // THE LADDER, read by index rather than by equality. `rungIndexOf` is
+    // `EQUIPMENT_TIERS`' own order, so "the row went backwards" is a question
+    // about §5's table and not about alphabetical accident.
+    for (const key of LADDER_READINGS) {
+      rungNames.add(after[key]);
+      if (rungIndexOf(after[key]) < 0) {
+        rungsOffTheLadder.push(`at ${at}s ${after[key]} is not a rung on EQUIPMENT_TIERS`);
+      }
+      if (after[key] !== before[key]) {
+        rungChanges += 1;
+        if (rungIndexOf(after[key]) < rungIndexOf(before[key])) {
+          rungsDescended.push(`at ${at}s ${key} ${before[key]} -> ${after[key]}, down the ladder`);
+        }
+      }
+    }
 
     const gap = now.openSeconds - now.gym.collectedAt.unaccelerated;
     if (gap > widestPendingGapSeconds) widestPendingGapSeconds = gap;
@@ -327,10 +462,15 @@ function walkTo(horizonSeconds: number): FloorWalk {
     decreases: Object.freeze(decreases),
     increases: Object.freeze(increases),
     purchaseMoments,
+    purchaseInstants: Object.freeze(purchaseInstants),
     checkInMoments,
     balanceFalls: Object.freeze(balanceFalls),
     balanceFallsWithNoPurchase: Object.freeze(balanceFallsWithNoPurchase),
     counterFalls: Object.freeze(counterFalls),
+    rungsDescended: Object.freeze(rungsDescended),
+    rungsOffTheLadder: Object.freeze(rungsOffTheLadder),
+    rungChanges,
+    rungsSeen: rungNames.size,
     sawtoothResetsAtACheckIn,
     sawtoothFallsAwayFromACheckIn,
     widestPendingGapSeconds,
@@ -527,7 +667,7 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
     // to `EmpireFloorReadings` that joined none of them would be checked by
     // nothing and would look exactly like coverage. Both directions, so a class
     // that stopped naming a live reading is red as well.
-    expect([...NUMERIC_READINGS, ...CATEGORICAL_READINGS].sort()).toEqual(
+    expect([...NUMERIC_READINGS, ...LADDER_READINGS].sort()).toEqual(
       Object.keys(empireFloorReadings(empireFloorAfter(0))).sort(),
     );
     expect([BALANCE_READING, SAWTOOTH_READING, ...CUMULATIVE_READINGS].sort()).toEqual(
@@ -536,6 +676,10 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
     // ...and the walk really reads all of them, at every horizon it is asked
     // about, rather than skipping one whose counter stayed at zero.
     expect(FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS).toEqual([240, 43_200, 86_400]);
+    // ...and the subset the §12.3 pairing re-enumerates at. NOT IMPLIED BY THE
+    // LINE ABOVE: it is that list filtered by `PAIR_LONG_HORIZON_ABOVE_SECONDS`,
+    // so moving the threshold reddens this and leaves the walk's list alone.
+    expect(LONG_PAIR_HORIZONS).toEqual([43_200, 86_400]);
   });
 
   it('the CUMULATIVE readings never go backwards, at four minutes and at twelve and twenty-four hours', () => {
@@ -661,6 +805,62 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
     ]);
   });
 
+  it('EQUIPMENT is a rung, and the floor only ever climbs the ladder it is on [the-equipment-row-is-a-rung-the-gym-climbs]', () => {
+    // =====================================================================
+    // THE CLAIM A CONSTANT CANNOT SATISFY, WHICH IS THE WHOLE POINT OF IT
+    // =====================================================================
+    // This row was excluded from the walk on the stated grounds that a rung
+    // name "is not ordered". It is ordered — by `EQUIPMENT_TIERS`, which
+    // `empireCore.ts` already compares two gyms with — and the exclusion was
+    // the one hole in this file: hardcoding the row to the literal it draws on
+    // arrival left every test in `src/shell` green.
+    //
+    // So what is asserted is how the row MOVES, in three facts none of which
+    // implies another:
+    //
+    //   - it never goes DOWN the ladder (the safety list, empty everywhere);
+    //   - every name it draws is ON the ladder (a stuck off-ladder row never
+    //     descends, so the list above cannot see it);
+    //   - and it MOVES, once, inside a day (the census, which is what a
+    //     hardcode reddens — a constant draws one rung and changes never).
+    //
+    // WHY THE CENSUS CARRIES NO DIRECTION. If it said which way the change
+    // went, pinning it would imply the safety list and leave that check unable
+    // to speak. Same separation as `balanceFalls` against
+    // `balanceFallsWithNoPurchase` above.
+    //
+    // WHAT THIS CANNOT SEE, measured rather than assumed. The floor spends no
+    // accelerant, so `state.axes.equipment` and `state.settledAxes.equipment`
+    // hold the same rung at every instant of this walk — drawing the settled
+    // view instead would be invisible here. That is a real limit of this
+    // surface rather than of the claim: §5 only parts the two views when a
+    // §8.3B skip is spent, and this module never spends one (pinned by "spends
+    // nothing on an accelerant" below).
+    const descended = FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.flatMap(
+      (horizon) => walkTo(horizon).rungsDescended,
+    );
+    expect(descended, descended.slice(0, 4).join('\n')).toEqual([]);
+    // ...and the other way this row can be wrong, which the list above cannot
+    // reach: a name that is on no rung at all.
+    const offTheLadder = FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.flatMap(
+      (horizon) => walkTo(horizon).rungsOffTheLadder,
+    );
+    expect(offTheLadder, offTheLadder.slice(0, 4).join('\n')).toEqual([]);
+    // THE CENSUS, AND IT IS THE ASSERTION THE HARDCODE REDDENS. Counts and not
+    // bounds: a row that stopped moving reports one rung and no change instead
+    // of quietly agreeing with the two empty lists above.
+    expect(
+      FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.map((horizon) => {
+        const walk = walkTo(horizon);
+        return `${horizon}s: ${walk.read} read, ${walk.rungsSeen} rung(s) drawn, ${walk.rungChanges} change(s)`;
+      }),
+    ).toEqual([
+      '240s: 240 read, 1 rung(s) drawn, 0 change(s)',
+      '43200s: 43200 read, 1 rung(s) drawn, 0 change(s)',
+      '86400s: 86400 read, 2 rung(s) drawn, 1 change(s)',
+    ]);
+  });
+
   it('an extra visit changes nothing at the horizons where the gym SPENDS, either', () => {
     // THE REASON THE WIDENED WALK ABOVE IS NOT A §12.3 FINDING, CHECKED RATHER
     // THAN ASSERTED. The pairing at the top of this block enumerates 30 s to
@@ -668,19 +868,31 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
     // whether the DROP is engagement-sensitive. This re-enumerates the same
     // construction at the two long horizons, where it is.
     //
-    // Both players are read at the same instant and differ only by one extra
-    // look. `withAPurchase` is the non-vacuity that matters here: it counts the
-    // pairs whose floors actually reached a commitment, so a zero `differing`
-    // over pairs that never spent would report itself instead of passing.
-    const horizons = FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.filter(
-      (horizon) => horizon > FLOOR_SWEEP.PAIR_LONG_HORIZON_ABOVE_SECONDS,
-    );
-    expect(horizons).toEqual([43_200, 86_400]);
-    const observed = horizons.map((horizon) => {
+    // =====================================================================
+    // `withAPurchase` WAS THE NAME OF THIS COUNT AND IT MISDESCRIBED IT
+    // =====================================================================
+    // It was introduced as "the non-vacuity that matters here", and the
+    // emptiness that matters is whether the EXTRA LOOK lands anywhere near the
+    // moment the money moves. It never measured that. It counted pairs whose
+    // floors reached a commitment at some point in the window, which at these
+    // horizons is nearly all of them and says nothing about where the extra
+    // look fell.
+    //
+    // BOTH READINGS ARE KEPT AND BOTH ARE NAMED FOR WHAT THEY MEASURE, because
+    // the second is the honest disclosure that the first was standing in for:
+    // `reachedACommitment` is 7 and 8 of 8, and `lookedWithinACheckIn` — the
+    // extra look landing within one `CHECK_IN_SECONDS` of a commitment instant
+    // — is 0 and 0. Deepening the random draw does not fix that; at 400 pairs
+    // per horizon it measures 0 and 1. The zeros are pinned rather than removed
+    // so the gap reports itself, and the test below is what covers it, by
+    // AIMING the extra look instead of hoping.
+    const observed = LONG_PAIR_HORIZONS.map((horizon) => {
       const random = generator(FLOOR_SWEEP.SEED);
+      const commitments = walkTo(horizon).purchaseInstants;
       let pairs = 0;
       let differing = 0;
-      let withAPurchase = 0;
+      let reachedACommitment = 0;
+      let lookedWithinACheckIn = 0;
       for (let index = 0; index < FLOOR_SWEEP.LONG_PAIRS_PER_HORIZON; index += 1) {
         const base = scheduleOf(random, FLOOR_SWEEP.VISITS_PER_SCHEDULE, horizon);
         const extra = Math.floor(random() * horizon * EMPIRE_FLOOR.MILLISECONDS_PER_SECOND);
@@ -689,13 +901,64 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
         const diligent = floorAfterSchedule([...base, extra, end].sort((a, b) => a - b));
         pairs += 1;
         if (shapeOf(idle) !== shapeOf(diligent)) differing += 1;
-        if (purchasesMadeBy(idle) > 0) withAPurchase += 1;
+        if (purchasesMadeBy(idle) > 0) reachedACommitment += 1;
+        const extraSeconds = extra / EMPIRE_FLOOR.MILLISECONDS_PER_SECOND;
+        if (
+          commitments.some(
+            (at) => Math.abs(extraSeconds - at) <= EMPIRE_FLOOR.CHECK_IN_SECONDS,
+          )
+        ) {
+          lookedWithinACheckIn += 1;
+        }
       }
-      return `${horizon}s: ${differing} of ${pairs} pairs differ, ${withAPurchase} reached a purchase`;
+      return (
+        `${horizon}s: ${differing} of ${pairs} pairs differ, ${reachedACommitment} reached a ` +
+        `commitment, ${lookedWithinACheckIn} looked within a check-in of one`
+      );
     });
     expect(observed).toEqual([
-      '43200s: 0 of 8 pairs differ, 7 reached a purchase',
-      '86400s: 0 of 8 pairs differ, 8 reached a purchase',
+      '43200s: 0 of 8 pairs differ, 7 reached a commitment, 0 looked within a check-in of one',
+      '86400s: 0 of 8 pairs differ, 8 reached a commitment, 0 looked within a check-in of one',
+    ]);
+  });
+
+  it('and an extra visit AIMED at the instant the gym commits its money changes nothing either', () => {
+    // THE DOMAIN THE RANDOM DRAW ABOVE CANNOT REACH, ENUMERATED INSTEAD OF
+    // SAMPLED. Every commitment instant the walk saw, with the extra look
+    // placed just before it, exactly on it, and just after it — the three
+    // positions from which an extra check-in could plausibly perturb a
+    // purchase. A commitment instant is a multiple of `CHECK_IN_SECONDS`, so
+    // the middle offset is an extra look landing on the very check-in that
+    // spends the money and the outer two are mid-gap on either side.
+    //
+    // The instants are read off the walk rather than transcribed, so a re-tune
+    // that moves them aims at the new ones. An engine that stopped committing
+    // anything reports `0 of 0 aimed pairs, over 0 commitment instant(s)` and
+    // reddens, which is how an empty domain is supposed to look from outside.
+    const aimed = LONG_PAIR_HORIZONS.map((horizon) => {
+      const random = generator(FLOOR_SWEEP.SEED);
+      const commitments = walkTo(horizon).purchaseInstants;
+      let pairs = 0;
+      let differing = 0;
+      for (const at of commitments) {
+        const base = scheduleOf(random, FLOOR_SWEEP.VISITS_PER_SCHEDULE, horizon);
+        for (const offset of FLOOR_SWEEP.AIMED_OFFSETS_SECONDS) {
+          const extra = (at + offset) * EMPIRE_FLOOR.MILLISECONDS_PER_SECOND;
+          const end = Math.max(base[base.length - 1] ?? 0, extra);
+          const idle = floorAfterSchedule([...base, end].sort((a, b) => a - b));
+          const diligent = floorAfterSchedule([...base, extra, end].sort((a, b) => a - b));
+          pairs += 1;
+          if (shapeOf(idle) !== shapeOf(diligent)) differing += 1;
+        }
+      }
+      return (
+        `${horizon}s: ${differing} of ${pairs} aimed pairs differ, over ` +
+        `${commitments.length} commitment instant(s)`
+      );
+    });
+    expect(aimed).toEqual([
+      '43200s: 0 of 6 aimed pairs differ, over 2 commitment instant(s)',
+      '86400s: 0 of 15 aimed pairs differ, over 5 commitment instant(s)',
     ]);
   });
 });

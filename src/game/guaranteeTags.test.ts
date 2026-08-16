@@ -709,8 +709,28 @@ const GUARANTEE_COVERAGE = {
    * comment is where both are said.
    *
    * Not quoted here, for the reason nine of the notes above now give.
+   *
+   * 255 -> 258 WHEN GDD §5's EQUIPMENT ROW STOPPED BEING CALLED UNORDERED.
+   * Measured per file by restoring each of the two touched files to its
+   * pre-change text and re-reading this count, not apportioned by eye:
+   * `src/shell/empireFloor.ts` contributes ZERO — its new paragraph is the
+   * tagged one, and none of the four trigger words appears in its capitalised
+   * run — and all three come from `src/shell/empireFloor.test.ts`, each on the
+   * same word.
+   *
+   * TWO OF THE THREE STATE A LIMIT rather than a guarantee, which is the
+   * observation several notes above keep repeating: one says what the new claim
+   * cannot see (the idle and settled views of the rung are the same value on
+   * this surface, so drawing the wrong one is invisible here), and one says
+   * which domain the random pairing cannot reach. A tag on either would have
+   * nothing to bite. The third IS the guarantee, it carries the tag
+   * `the-equipment-row-is-a-rung-the-gym-climbs`, and it sits inside the test
+   * that declares it with a witness in the table below — so the ratio moved the
+   * wrong way and the evidence moved the right way, again.
+   *
+   * Not quoted here, for the reason ten of the notes above now give.
    */
-  TREE_WIDE: 255,
+  TREE_WIDE: 258,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -986,7 +1006,7 @@ const UNPINNED_PROSE_NUMBERS: readonly UnpinnedProseNumber[] = [
  */
 const NUMBER_COVERAGE = {
   /** Comment paragraphs under `src` carrying at least one tag. */
-  TAGGED_PARAGRAPHS: 66,
+  TAGGED_PARAGRAPHS: 67,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
@@ -1007,9 +1027,9 @@ const NUMBER_COVERAGE = {
    * for reasons of their own. THIS IS THE WEAKNESS MEASUREMENT, not a coverage
    * one: it says how little a small number resolving is worth.
    */
-  NAMED_BODIES: 57,
-  NAMED_BODIES_HOLDING_ZERO: 45,
-  NAMED_BODIES_HOLDING_ONE: 45,
+  NAMED_BODIES: 58,
+  NAMED_BODIES_HOLDING_ZERO: 46,
+  NAMED_BODIES_HOLDING_ONE: 46,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -1284,7 +1304,7 @@ function witnessKey(witness: MutationWitness): string {
  */
 const TRANSCRIPT_BAR = {
   /** Witness rows whose transcript is held to the rule. */
-  GRADED: 22,
+  GRADED: 23,
   /** ...and rows excused because their transcript predates it. */
   PREDATING: 37,
   /**
@@ -1432,10 +1452,10 @@ const MEASURED_SCALAR = /expected\s[+-]?\d+(?:\.\d+)?\sto\s/;
  * test rather than transcribed here, so it moves when the table does.
  */
 const TRANSPLANTED_NUMERIC_RULE = {
-  rows: 51,
-  flagged: 39,
-  numerals: 136,
-  unresolved: 74,
+  rows: 52,
+  flagged: 40,
+  numerals: 154,
+  unresolved: 76,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -1765,7 +1785,7 @@ const REPLACEMENTS_PREDATING_THE_RULE: readonly (readonly [string, number])[] = 
  */
 const REPLACEMENT_BAR = {
   /** Rows carrying a replacement, so a third party can apply the patch. */
-  REPRODUCIBLE: 11,
+  REPRODUCIBLE: 12,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2885,6 +2905,20 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     // (`0 of the shell's mounted screens import from src/empire/: none`). The
     // narrower mutant is recorded here because it is the harder catch — it keeps
     // the import, keeps the hook, and breaks one row.
+    //
+    // AND WHAT IT DOES NOT PROVE, MEASURED AND WRITTEN DOWN RATHER THAN LEFT TO
+    // BE INFERRED FROM THE FACT THAT IT PASSES. This row proves the scan bites
+    // on a hardcode written into `EmpireScreen.tsx`. The screen no longer
+    // computes the values: `empireFloorReadings` does, one file down, and the
+    // provenance walk is rooted at the screen. The same hardcode planted one hop
+    // lower — `equipment: floor.gym.state.axes.equipment` -> `equipment:
+    // 'bare-bar'` in `empireFloor.ts` — left this assertion GREEN, because
+    // `readings.equipment` still traces through `openEmpireFloor` to
+    // `createEmpireState` whatever the field holds. Every field of `readings`
+    // passes that walk regardless of its contents. What catches the lower
+    // hardcode is the row below, which is a claim about how the value MOVES; the
+    // walk's reach was widened to follow the shell hop and its ROOT was left
+    // behind, and that is a live gap rather than a closed one.
     guarantee: 'every-drawn-empire-reading-comes-from-the-pure-state',
     mutatedFile: 'src/shell/EmpireScreen.tsx',
     mutated:
@@ -2901,6 +2935,53 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       ' not trace to createEmpireState() imported from src/empire/ — so that row is a hardcoded' +
       ' mock-up of GDD §5 and every value assertion in the tree would still pass:' +
       ' expected [ Array(1) ] to deeply equal []',
+  },
+  {
+    // THE SAME HARDCODE AS THE ROW ABOVE, PLANTED ONE FILE LOWER, WHICH IS
+    // WHERE THE VALUE IS ACTUALLY PRODUCED. `EmpireScreen.tsx` draws
+    // `readings.equipment`; `empireFloorReadings` in `empireFloor.ts` is what
+    // reads it off the gym. The provenance scan witnessed above is rooted at the
+    // screen and asks only whether the expression reaches `createEmpireState`,
+    // which `readings` does through `openEmpireFloor` however its fields are
+    // filled — so this mutant is invisible to it, and was invisible to the whole
+    // of `src/shell` plus this file: 137 passed, exit 0, `tsc` clean. Five of
+    // the six drawn rows die to a hardcode on their own value pins; `equipment`
+    // was the survivor, because it was the one row excluded from the walk.
+    //
+    // WHY THE REPLACEMENT IS THE LITERAL THE ROW ALREADY RETURNS. `'bare-bar'`
+    // is what this field holds for the first fifteen and a half hours of a
+    // floor's life, so every pin taken at an early instant agrees with the
+    // mutant exactly. Pinning the value at more instants reproduces the
+    // hardcode instead of catching it; the assertion below is a claim about the
+    // rung MOVING up `EQUIPMENT_TIERS`, which no constant satisfies.
+    //
+    // WHAT THIS ROW DOES NOT COVER. The mutant is caught by the CENSUS — one
+    // rung drawn instead of two — and not by the two ladder lists beside it,
+    // which stay green on a constant that happens to be a real rung. That is
+    // the intended division and it is why the census is pinned as counts.
+    guarantee: 'the-equipment-row-is-a-rung-the-gym-climbs',
+    mutatedFile: 'src/shell/empireFloor.ts',
+    mutated: '    equipment: floor.gym.state.axes.equipment,',
+    mutatedTo: "    equipment: 'bare-bar',",
+    testFile: 'src/shell/empireFloor.test.ts',
+    redAssertion:
+      ").toEqual([\n" +
+      "      '240s: 240 read, 1 rung(s) drawn, 0 change(s)',\n" +
+      "      '43200s: 43200 read, 1 rung(s) drawn, 0 change(s)',\n" +
+      "      '86400s: 86400 read, 2 rung(s) drawn, 1 change(s)',\n" +
+      '    ]);',
+    observed:
+      'FAIL  src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse' +
+      ' off > EQUIPMENT is a rung, and the floor only ever climbs the ladder it is on' +
+      ' [the-equipment-row-is-a-rung-the-gym-climbs]\n' +
+      'AssertionError: expected [ …(3) ] to deeply equal [ …(3) ]\n' +
+      '- Expected\n+ Received\n\n' +
+      '  [\n' +
+      '    "240s: 240 read, 1 rung(s) drawn, 0 change(s)",\n' +
+      '    "43200s: 43200 read, 1 rung(s) drawn, 0 change(s)",\n' +
+      '-   "86400s: 86400 read, 2 rung(s) drawn, 1 change(s)",\n' +
+      '+   "86400s: 86400 read, 1 rung(s) drawn, 0 change(s)",\n' +
+      '  ]',
   },
   {
     // THE MUTANT MAKES THE FLOOR A FUNCTION OF WHEN SOMEBODY LOOKED, which is

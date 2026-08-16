@@ -293,6 +293,13 @@ function drawnBucks(amount: number): string {
  * `clockSeconds` is the GYM's clock (`EmpireClock.unaccelerated`), not the app's
  * uptime: it moves at a check-in and only at a check-in, which is what makes it
  * a reading about §5 rather than about the timer that drew it.
+ *
+ * `equipment` IS A RUNG THE GYM CLIMBS, NOT A LABEL IT WEARS. It is
+ * `state.axes.equipment`, and `EMPIRE_TUNING.EQUIPMENT_TIERS` puts the rungs in
+ * order, so this row may only move UP that order and may never draw a name that
+ * is off it. A constant cannot satisfy that claim whichever rung it names,
+ * because the rung this gym opens on is not the rung it reaches inside a day.
+ * `@guarantee the-equipment-row-is-a-rung-the-gym-climbs`
  */
 export function empireFloorReadings(floor: EmpireFloor): EmpireFloorReadings {
   return Object.freeze({
