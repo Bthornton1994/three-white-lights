@@ -6613,7 +6613,7 @@ const DRIVE_CENSUS = Object.freeze({
  *     edit at all and is on this file's own list of things that are not the
  *     check working.
  *
- * SO THE RESIDUAL WAS NOT "AN ARITY-ABOVE-ZERO CLOSURE" IN GENERAL. It was
+ * SO THE RESIDUAL WAS NEVER "AN ARITY-ABOVE-ZERO CLOSURE" IN GENERAL. It was
  * exactly the two sites named above, because the list makes a third red before
  * it exists — an enumerable set of two rather than an unbounded one, which is
  * what let it be closed by containment instead of by a wider sampler.
@@ -6621,27 +6621,31 @@ const DRIVE_CENSUS = Object.freeze({
  * `seals every returned-closure result the channel census found` is the
  * enumeration that keeps it honest.
  *
- * the absolute in the sentence above is written as a plain negation rather than
- * as the stronger word it wants, and the swap is disclosed here rather than made
- * quietly. With the stronger word in place, `guaranteeTags.test.ts` reports
- * `triggering paragraphs under src: expected 235 to be 234` — measured both ways
- * in the same session, one word changed and nothing else, so the whole increment
- * is that word. `src/game/` is outside this round's scope, so bumping the pin was
- * not available to it. The original word is deliberately not reproduced here:
- * that census cannot tell a claim from a quotation of one, and quoting it would
- * move the number a second time. THE ROUND MADE THIS SWAP TWICE: the second is
- * in the overflow pass's position assertion, where a two-word phrase meaning
- * "and not merely" was written with its second word replaced by a synonym off
- * the same four-word list, measured the same way and for the same reason. That
- * one is a note about what a check measures rather than a claim about the code,
- * so the established ruling applies to it unchanged and it takes no bump. This
- * one does not, and that is the difference. This is at least the fifth such undercount
- * CLAUDE.md tracks, and unlike the four before it this paragraph IS a claim about
- * the code rather than a method note — it says a third arrow is red before it is
- * called, which `DECLARED_RETURNED_CLOSURE_SITES` enforces and M84 mutation-
- * tested. So the honest disposition is the bump and not the rewording, and the
- * rewording is what a builder barred from `src/game/` can do. Whoever owns that
- * file should take the increment and delete this paragraph.
+ * THIS PARAGRAPH TOOK THE BUMP, AND THE ROUND THAT WROTE IT COULD NOT.
+ * `GUARANTEE_COVERAGE.TREE_WIDE` went 234 -> 235 for it, which is a crossing
+ * into a file this directory's builders are barred from — so the builder wrote
+ * the absolute as a plain negation, disclosed the swap at this site, and routed
+ * the disposition rather than settling it. The lead agent verified the
+ * classification and took the increment; the word above is the original.
+ *
+ * The reason it is a bump and not the fourth undercount is the distinction
+ * CLAUDE.md's ruling turns on. The four before it are method notes — sentences
+ * about how a check was measured. This one is a claim about the code: it says a
+ * third arrow is red before it is ever called, `DECLARED_RETURNED_CLOSURE_SITES`
+ * is the set equality that enforces it, and M84 is the mutant that proved it
+ * bites, reddening with the specifier named and nothing calling it. A guarantee
+ * with a mutation-tested check behind it is exactly what that census is counting,
+ * so deflating the denominator to avoid a crossing would have been the evasion
+ * the ruling warns about rather than the ruling being applied.
+ *
+ * THE ROUND MADE THE SWAP TWICE AND THE SECOND ONE STANDS: in the overflow
+ * pass's position assertion, a two-word phrase meaning "and not merely" has its
+ * second word replaced by a synonym off the same four-word list. That one is a
+ * note about what a check measures, so the established ruling applies to it
+ * unchanged and it stays an undercount. Both were measured the same way — the
+ * word restored, the count re-read, one word changed and nothing else — and the
+ * difference in disposition is the difference in what the sentence claims, not
+ * in how loudly it claims it.
  *
  * WHAT IS STILL NOT COVERED, in the mechanism's own terms: `sealRate` refuses a
  * non-number, so a body returning a forbidden name is unshippable — it refuses

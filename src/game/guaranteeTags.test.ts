@@ -605,8 +605,33 @@ const GUARANTEE_COVERAGE = {
    *
    * Fifth round running in the same class: a sentence about why a check is not
    * vacuous, which is the subject of its own check.
+   *
+   * FOURTEENTH ROUND, 234 -> 235, AND THIS ONE REVERSED A REWORDING RATHER THAN
+   * FOLLOWING IT. The four increments this pin has declined since the ruling
+   * were all method notes, and the running undercount was written up as though
+   * rewording were simply what a builder does when a crossing is out of reach.
+   * `src/empire/`'s twenty-fifth-bypass paragraph is the first to fail that
+   * classification: it says a third arrow leaving the directory is red before it
+   * is ever called, `DECLARED_RETURNED_CLOSURE_SITES` is the set equality that
+   * enforces it, and the mutant that adds one reddens with the specifier named
+   * and nothing calling it. That is a guarantee with a mutation-tested check
+   * behind it, which is precisely what this census counts.
+   *
+   * The builder wrote it as a plain negation, disclosed the swap at the site,
+   * and routed the disposition instead of settling it — the correct move for an
+   * agent barred from this file. The lead agent verified the classification,
+   * restored the word, measured 235 both ways, and took the increment.
+   *
+   * WHAT MAKES THIS WORTH A PARAGRAPH RATHER THAN A NUMBER: the undercount had
+   * begun to look like a policy. Four consecutive declines are easy to extend to
+   * a fifth without re-asking whether the sentence is a method note, and a census
+   * whose denominator quietly shrinks whenever a crossing is inconvenient is the
+   * evasion this file's own ruling warns about, wearing the ruling as cover. The
+   * test is what the sentence CLAIMS, not how loudly it claims it or how awkward
+   * the crossing is. The same round produced a second rewording that IS a method
+   * note; it was left alone, so the undercount is five.
    */
-  TREE_WIDE: 234,
+  TREE_WIDE: 235,
 } as const;
 
 // ---------------------------------------------------------------------------

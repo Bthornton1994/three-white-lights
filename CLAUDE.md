@@ -990,6 +990,31 @@ was a plain negation of identical force. That sharpens the earlier finding: the
 scan is not measuring emphasis, volume or position, all of which were held
 constant. It is measuring one word.
 
+**THE UNDERCOUNT IS FIVE, THE PIN IS 235, AND THE ROUND THAT MOVED IT REVERSED
+A REWORDING RATHER THAN ADDING ONE.** The next round produced two more swaps and
+they were dispositioned differently, which is the first time that has happened:
+one is a method note and stays an undercount; the other says *a third arrow
+leaving the directory is red before it is ever called*, which
+`DECLARED_RETURNED_CLOSURE_SITES` enforces as a set equality and a mutant proved
+bites. That is a guarantee with a mutation-tested check behind it — what the
+census exists to count — so it took the bump, 234 → 235, as crossing 12.
+
+**The builder could not take it and did the right thing anyway:** it wrote the
+absolute as a plain negation, disclosed the swap at the site, said plainly that
+the honest disposition was the bump, and routed it. An agent barred from a file
+should route the disposition rather than settle it by rewording and moving on.
+The lead verified the classification independently, restored the word, measured
+235 both ways, and took the increment.
+
+**The reason this needed saying rather than counting: the undercount had begun
+to look like a policy.** Four consecutive declines are easy to extend to a fifth
+without re-asking whether the sentence is a method note, and a census whose
+denominator quietly shrinks whenever a crossing is inconvenient is this file's
+own warned-about evasion wearing the ruling as cover. **The test is what the
+sentence CLAIMS, not how loudly it claims it and not how awkward the crossing
+is.** A method note about how something was measured is a decline; a claim about
+what the code does, with a check behind it, is a bump.
+
 **AND THE CITATION IS THE TRAP, WHICH IS WORTH MORE THAN THE COUNT.** A
 cross-reference in that file points at the second swap by quoting it. Had it
 quoted the *original* wording — the natural thing to write, since the original
