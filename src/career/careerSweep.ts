@@ -1530,6 +1530,19 @@ export function seasonMeetsOfTier(
  *     already says elsewhere that a bar wants to sit "between two numbers that
  *     are not close"; two arcs is close.
  *
+ * R2m'S DOMAIN IS THE ARCS THAT REACHED A SUMMIT AT ALL, AND R1 IS WHAT MAKES
+ * THAT THE WHOLE POPULATION. `medianDaysToFirstSummit` is taken over `reached`,
+ * so a calendar that took two arcs to a summit quickly and stranded the other
+ * 190 would post an excellent median. On the shipped arm R1 pins 192 of 192 and
+ * the distinction is inert; on any arm where R1 fails, R2m is a CONDITIONAL
+ * statement and must be read as one. This is not hypothetical — at a 625 gate
+ * R1 fails at 184 of 192 while R2m passes at a 336-day median, and R2t is the
+ * half that catches it, at 168 against its bar of 173.
+ *
+ * THAT IS ALSO THE ONE PIECE OF EVIDENCE R2t HAS THAT IS NOT ABOUT A CALENDAR.
+ * It was derived to bound the tail against a cadence, and it bites on a
+ * THRESHOLD change too: 575 / 600 / 625 give tail counts of 192 / 191 / 168.
+ *
  * WHAT IS NOT IN DOUBT, and did not depend on any of this: R1 is 192 of 192 and
  * R2b clears its bar on every signup day, so the summit is reachable for every
  * arc and no signup day is locked out.
@@ -1666,7 +1679,8 @@ export const CAMPAIGN_SUMMIT_SWEEP = Object.freeze({
   /**
    * R2t's ceiling: the design's own worst case, in days from signup.
    *
-   * COMPOSED OUT OF TWO DESIGN CONSTANTS, NEVER MEASURED. A year to climb —
+   * COMPOSED OUT OF TWO DESIGN CONSTANTS AND NOT READ OFF ANY FIXTURE. A year
+   * to climb —
    * §6.6's scale for a campaign, the line above — plus one summit cadence to
    * wait. The cadence is the second half because `careerTuning.ts` sets it by an
    * explicit worst-case argument: "a lifter who clears its gate the day after
@@ -1688,6 +1702,15 @@ export const CAMPAIGN_SUMMIT_SWEEP = Object.freeze({
    *
    * Turn the summit quarterly and this becomes 455. Nothing here needs editing
    * for that to be true, which is the property the old bar did not have.
+   *
+   * WHAT IS CHECKED AND WHAT IS NOT, since the sentence above is a claim about
+   * provenance and provenance is the kind of thing prose gets away with.
+   * `eligibility.test.ts` asserts this equals both compositions, so a cadence
+   * change that left a stale number behind reddens. What it cannot see is
+   * somebody writing `546` here TODAY: the value is identical until the cadence
+   * moves, at which point the same assertion catches it. The claim with real
+   * content — that one cadence is the most the calendar may add after a lifter
+   * qualifies — is checked directly, by `worstWaitAfterQualifying`.
    */
   TAIL_CEILING_DAYS:
     ATTENDANCE_SWEEP.CALENDAR_PERIOD_DAYS + CAREER_TUNING.CADENCE_DAYS['campaign-worlds'],
@@ -1791,8 +1814,9 @@ export const CAMPAIGN_SUMMIT_SWEEP = Object.freeze({
    * NOT MOVED ON ANY OF THE THREE FIXTURES. That is the whole reason this clause
    * is the one that carries the calendar's case rather than R1 or R2: the thing
    * being measured is a lockout, a lockout is a property of the calendar, and it
-   * stays zero however fast or slow the lifters climb. R2 moved with the gain
-   * rate and broke; this did not.
+   * stays zero however fast or slow the lifters climb. R2's old arc-count bar
+   * moved with the gain rate and broke; this did not, and that contrast is part
+   * of why R2 was re-derived onto horizons instead of counts.
    *
    * THE MARGIN IS 3 ARCS AND THAT IS WORTH SAYING PLAINLY. It was 12 when the
    * shipped side was saturated at 24. A further slowdown — gain 12, which
@@ -1965,6 +1989,22 @@ export interface CampaignArc {
   readonly meets: readonly SeasonMeet[];
   /** Days from signup to the first campaign summit entered, or `null` if none. */
   readonly daysToFirstSummit: number | null;
+  /**
+   * Days from signup to the meet at which this lifter first held the campaign
+   * summit's qualifying total, or `null` if they never did.
+   *
+   * THE INPUT TO R2t'S DERIVATION, WHICH IS WHY IT IS MEASURED RATHER THAN
+   * ARGUED. `TAIL_CEILING_DAYS` is composed as "a year to climb plus one cadence
+   * to wait" on the strength of `CADENCE_DAYS`'s claim that one cadence is the
+   * most the calendar may add to somebody who has already qualified. That claim
+   * is a guarantee, so it gets a check: `daysToFirstSummit - this` is the wait
+   * the calendar actually imposed, and `eligibility.test.ts` bounds the worst
+   * one by the cadence.
+   *
+   * Read off the ENGINE's own `meetsQualifyingTotal` rather than a `>=` written
+   * here, so the fixture cannot drift from the rule it is measuring.
+   */
+  readonly daysToQualifyingForASummit: number | null;
   /** How many meets were behind them when they entered it. */
   readonly meetsBeforeFirstSummit: number | null;
   readonly summitsEntered: number;
@@ -2033,6 +2073,7 @@ export function simulateCampaignArc(
   const enteredPerTier = emptyTierTally();
   let lastMeetDay: number | null = null;
   let daysToFirstSummit: number | null = null;
+  let daysToQualifyingForASummit: number | null = null;
   let meetsBeforeFirstSummit: number | null = null;
   let summitsEntered = 0;
   for (let day = signupDay; day <= lastDay; day = addDays(day, 1)) {
@@ -2053,6 +2094,15 @@ export function simulateCampaignArc(
       summitsEntered += 1;
     }
     lifter = careerRecordAfterMeet(lifter, meet.id, totalKg);
+    if (
+      daysToQualifyingForASummit === null &&
+      meetsQualifyingTotal(
+        lifter.bestTotalKg,
+        CAREER_TUNING.QUALIFYING_TOTAL_KG['campaign-worlds'],
+      )
+    ) {
+      daysToQualifyingForASummit = day - signupDay;
+    }
     meets.push({ day, meetId: meet.id, tier: meet.tier, totalKg });
     enteredPerTier[meet.tier] += 1;
     lastMeetDay = day;
@@ -2063,6 +2113,7 @@ export function simulateCampaignArc(
     signupOffsetDays,
     meets,
     daysToFirstSummit,
+    daysToQualifyingForASummit,
     meetsBeforeFirstSummit,
     summitsEntered,
     enteredFirstOfferedSummit:
@@ -2119,6 +2170,22 @@ export interface CampaignReach {
   readonly daysToFirstSummit: readonly number[];
   readonly medianDaysToFirstSummit: number | null;
   readonly worstDaysToFirstSummit: number | null;
+  /**
+   * The longest any arc waited between first holding the summit's qualifying
+   * total and standing on a summit, in days.
+   *
+   * THE CHECK UNDER R2t'S CEILING. `TAIL_CEILING_DAYS` is "a year to climb plus
+   * one cadence to wait" only if one cadence really is the most the calendar
+   * can add to a lifter who has already qualified — which `careerTuning.ts`
+   * asserts as the reason the cadence is 182. That is a guarantee, and this is
+   * the number that makes it fail out loud instead of reading well.
+   *
+   * NOT STRUCTURALLY GUARANTEED, WHICH IS WHY IT IS WORTH MEASURING. The next
+   * occurrence is always within one cadence, but a lifter has to be able to
+   * ENTER it — two meets on one day, or `MIN_DAYS_BETWEEN_MEETS`, could in
+   * principle push them past it.
+   */
+  readonly worstWaitAfterQualifying: number | null;
   /** The fewest meets any arc had behind it at its first summit. R3. */
   readonly fewestMeetsBeforeASummit: number | null;
   readonly summitsEntered: number;
@@ -2163,6 +2230,7 @@ export function measureCampaignReach(variant: CampaignCalendarVariant): Campaign
   let arcsReachingInsideTheTailCeiling = 0;
   let summitsEntered = 0;
   let fewestMeetsBeforeASummit: number | null = null;
+  let worstWaitAfterQualifying: number | null = null;
   let deepestArc = 0;
   for (const arc of arcs) {
     for (const tier of tiersLowestFirst()) {
@@ -2177,6 +2245,11 @@ export function measureCampaignReach(variant: CampaignCalendarVariant): Campaign
       if (arc.daysToFirstSummit <= CAMPAIGN_SUMMIT_SWEEP.TAIL_CEILING_DAYS) {
         arcsReachingInsideTheTailCeiling += 1;
       }
+    }
+    if (arc.daysToFirstSummit !== null && arc.daysToQualifyingForASummit !== null) {
+      const wait = arc.daysToFirstSummit - arc.daysToQualifyingForASummit;
+      worstWaitAfterQualifying =
+        worstWaitAfterQualifying === null ? wait : Math.max(worstWaitAfterQualifying, wait);
     }
     if (arc.meetsBeforeFirstSummit !== null) {
       fewestMeetsBeforeASummit =
@@ -2205,6 +2278,7 @@ export function measureCampaignReach(variant: CampaignCalendarVariant): Campaign
     daysToFirstSummit: sorted,
     medianDaysToFirstSummit: sorted.length === 0 ? null : (sorted[Math.floor(sorted.length / 2)] as number),
     worstDaysToFirstSummit: sorted.length === 0 ? null : (sorted[sorted.length - 1] as number),
+    worstWaitAfterQualifying,
     fewestMeetsBeforeASummit,
     summitsEntered,
     offeredPerTier: Object.freeze(offeredPerTier),

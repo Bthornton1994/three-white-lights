@@ -1940,7 +1940,7 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
     // bounded, and 15 since `MAX_GAIN_KG` went to 20. The controls' zeros have
     // not moved on any of the three fixtures, which is what says the gap is the
     // calendar's rather than the fixture's — and is why this clause survived the
-    // rate change while R2 below did not.
+    // rate change while R2's old arc-count bar below did not.
     expect(shipped.worstOffsetFirstYearArcs).toBeGreaterThanOrEqual(
       CAMPAIGN_SUMMIT_SWEEP.MIN_FIRST_YEAR_ARCS_PER_OFFSET,
     );
@@ -2001,6 +2001,32 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
     expect(CAMPAIGN_SUMMIT_SWEEP.TAIL_CEILING_DAYS).toBe(
       CAMPAIGN_SUMMIT_SWEEP.RUN_DAYS - CAREER_TUNING.CADENCE_DAYS['campaign-worlds'],
     );
+
+    // THE CLAIM UNDER THAT CEILING, WHICH IS A GUARANTEE AND THEREFORE HAS A
+    // CHECK. R2t's horizon is "a year to climb plus one cadence to wait", and
+    // the second term is only right if one cadence really is the most the
+    // CALENDAR can add to a lifter who has already qualified — which is the
+    // argument `careerTuning.ts` sets the cadence by. Measured rather than
+    // reasoned from the schedule: the worst wait between first holding 600 kg
+    // and standing on a summit is 177 days, inside the 182-day cadence with
+    // five days to spare.
+    //
+    // IT IS NOT STRUCTURALLY GUARANTEED, which is why measuring it is worth the
+    // field. The next occurrence is always within a cadence, but a lifter has to
+    // be able to ENTER it, and two meets on one day or `MIN_DAYS_BETWEEN_MEETS`
+    // could in principle carry them past.
+    expect(shipped.worstWaitAfterQualifying as number).toBeLessThanOrEqual(
+      CAREER_TUNING.CADENCE_DAYS['campaign-worlds'],
+    );
+    expect(shipped.worstWaitAfterQualifying).toBe(177);
+    // The same number on the two annual controls, which is what says the bound
+    // is the CADENCE's doing rather than something true of any calendar: double
+    // the cadence and the worst wait roughly doubles, straight past 182. The
+    // fourth corner holds the cadence and moves the phase, and stays inside it
+    // at 181 — the same 2x2 split every other statistic here shows.
+    expect(atTheOldPhase.worstWaitAfterQualifying).toBe(363);
+    expect(annualLate.worstWaitAfterQualifying).toBe(359);
+    expect(semiAnnualAtTheOldPhase.worstWaitAfterQualifying).toBe(181);
 
     // THE FIRST-YEAR COUNT IS STILL MEASURED AND STILL PINNED — AS A CENSUS,
     // WHICH IS THE WHOLE CHANGE. 158 of 192 is worth watching move; it is no

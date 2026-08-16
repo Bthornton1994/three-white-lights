@@ -657,8 +657,39 @@ const GUARANTEE_COVERAGE = {
    *
    * Not quoted here, for the reason seven of the notes above give: quoting a
    * capitalised run makes this paragraph trigger too.
+   *
+   * 253 -> 254 WHEN GDD §6.6's R2 WAS RE-DERIVED FROM THE DESIGN INSTEAD OF
+   * PINNED AT AN ARC COUNT. Measured per file the same way, by running this
+   * census over each file's pre-change and post-change text at `d43a311`:
+   * `careerSweep.ts` 2 -> 3, and nothing else in that change, which also touched
+   * `eligibility.test.ts`, `docs/GDD.md` and this file — all three contributing
+   * zero. (`docs/GDD.md` sits outside the walked tree in any case; it is named
+   * because the change touched it.)
+   *
+   * ONE PARAGRAPH, AND IT IS A GUARANTEE RATHER THAN A DECLARATION OF A LIMIT —
+   * the first of the two categories this block keeps apart, and the first
+   * addition in a while that lands in it. It heads `TAIL_CEILING_DAYS` and says
+   * an arc outside that ceiling is slow for a reason the calendar cannot supply,
+   * which is the load-bearing half of R2t's derivation: it holds only if one
+   * summit cadence really is the most the calendar can add to a lifter who has
+   * already qualified. So it was given a check rather than left as prose —
+   * `CampaignReach.worstWaitAfterQualifying`, bounded by the cadence in
+   * `eligibility.test.ts` and pinned at 177 against a 182-day cadence, with the
+   * two annual controls at 363 and 359 saying the bound is the cadence's doing
+   * rather than something true of any calendar.
+   *
+   * A SECOND PARAGRAPH IN THE SAME BLOCK FIRED AND WAS THEN REWORDED RATHER THAN
+   * GIVEN A CHECK, which is the honest half and the reason this went up by one
+   * instead of two. It claimed the ceiling was composed out of two design
+   * constants and never measured — a claim about PROVENANCE, which no assertion
+   * can bear, because writing the literal 546 there today is invisible until the
+   * cadence moves. It now says what is checked and what is not instead of
+   * asserting the part that cannot be. Dropping an unbackable absolute is a
+   * legitimate outcome; leaving it standing would not have been.
+   *
+   * Neither is quoted here, for the reason eight of the notes above give.
    */
-  TREE_WIDE: 253,
+  TREE_WIDE: 254,
 } as const;
 
 // ---------------------------------------------------------------------------

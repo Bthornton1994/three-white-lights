@@ -2573,15 +2573,20 @@ sweep is 24 seeds x 8 signup days = **192 arcs**, and the requirement is:
 - **R2b, the clause that bites:** every signup day, taken on its own, gets most
   of its 24 arcs to a summit inside their first year. Worst signup day **15 of
   24**, against a bar of 12.
-- **R2, pacing:** **158 of 192** arcs reach one inside their first year, median
-  wait **290 days** from signup. **THIS CLAUSE IS CURRENTLY UNMET — it asks for
-  168 of 192 and a 250-day median. See the ruling below.**
+- **R2, pacing, in two halves with two horizons and two jobs.** **R2m, the
+  middle:** the **median** arc reaches a summit inside the calendar year — 364
+  days — measured **290**, with 74 days of margin. **R2t, the tail:** **nine
+  arcs in ten** reach one inside **546 days**, measured **191 of 192** against a
+  bar of 173. Both hold. **Neither pins an arc count**, which is the whole
+  change; see the re-derivation below.
 
 **THOSE THREE HAVE NOW BEEN RE-TAKEN TWICE, AND THE SECOND RE-TAKE BROKE ONE OF
 THEM.** They were 19 of 24, 176 of 192 and 198 days under the unbounded totals
 generator; 24 of 24, 192 of 192 and 154 days once it was bounded; and 15 of 24,
 158 of 192 and 290 days since a human ruled `MAX_GAIN_KG` down from 70 kg a meet
-to 20 on 2026-08-15. The calendar did not change on either occasion.
+to 20 on 2026-08-15. The calendar did not change on either occasion. **158 of 192
+is still what the first year measures — it is simply no longer what R2 asks
+for**, and it is pinned as a census beside the two clauses that are.
 
 **That ruling is provisional and pending playtest**, in the same manner as
 §6.3's PR-attempt wording and §6.2's crowd-reaction beat. At 20 the median
@@ -2591,15 +2596,63 @@ six-candidate table it was chosen from, and the reasoning for 20 over the more
 realistic 12, live beside the constant in `src/career/careerSweep.ts` rather
 than being copied here, so the two cannot drift.
 
-**R2 is left FAILING rather than re-pinned, and that is a decision awaiting a
-human.** A requirement adjusted to fit the measurement that just broke it is a
-pin nudged until green. The honest position is that this bar has been read off
-three different fixtures — 176, then 192, now 158 — without once being derived
-from what a campaign ought to feel like, and a gain rate now known to have been
-five times too fast is not a sound basis for a pacing requirement. What is NOT
-in doubt is that R1 and R2b both still hold, so the summit is reachable for
-every arc and no signup day is locked out; it is the pace clause alone that
-misses, at a pace that was deliberately slowed.
+#### RULED 2026-08-15: THE GAIN RATE STAYS AND R2 IS RE-DERIVED
+
+**158 of 192 arcs inside the first year, at a 290-day median, IS ACCEPTABLE at
+`MAX_GAIN_KG` 20.** R2 was left failing rather than re-pinned when the rate
+moved, on the grounds that a requirement adjusted to fit the measurement that
+just broke it is a pin nudged until green. The ruling agrees with the diagnosis
+and takes the other branch: **the pace is fine and the requirement was never a
+requirement.** That bar had been read off three fixtures in turn — 176, then
+192, then 158 — without once being derived from what a campaign ought to feel
+like.
+
+**Re-stating it as "82% of arcs" would have been the same defect wearing a
+percent sign**, because 158/192 is 82.3%. The test of a re-derivation is whether
+the reason for the number survives the fixture changing, so R2's two horizons are
+now composed out of design constants and its one remaining free number is
+labelled a design position rather than dressed up as a derivation.
+
+- **R2m's horizon is the calendar's own period.** §6.6 says a campaign is a
+  year-scale thing; the median is what "the typical player" means; and the year
+  a lifter actually gets is 52 whole weeks, because every cadence in this
+  calendar is a whole number of weeks so nothing drifts across a leap year. It
+  is 364 rather than 365 for that reason and not for safety — no arc arrives on
+  day 365, so the two select the same arcs on this fixture.
+- **R2t's horizon is a year to climb plus one summit cadence to wait: 546.** The
+  cadence block sets 182 by an explicit worst-case argument — a lifter who
+  clears the gate the day after a summit waits up to one cadence for the next —
+  so one cadence is, in the design's own words, the most the **calendar** may
+  add to somebody who has already qualified. An arc outside 546 is therefore
+  slow for a reason the calendar cannot supply: its lifter was still climbing.
+  A second derivation lands on the same number — the arc window less one cadence
+  — which reads R2t as R1 with a margin.
+- **R2t's floor of nine in ten is a DESIGN POSITION, not a derivation, and the
+  code says so.** The design states a year, a cadence and an absolute; it states
+  **no tolerance for how large the slow tail may be**, and none can be recovered
+  from the potential band without inventing a line. What *is* derived is the band
+  the fraction sits in: **not 100%**, because `POTENTIAL_MIN_KG` sits 25 kg above
+  the gate on purpose and the design therefore guarantees lifters who creep to it
+  — the one arc outside 546 belongs to the weakest seed the band can draw, at
+  627.5 kg; and **above 84.4%**, because the calendar this section calls a design
+  violation already gets 162 of 192 inside that ceiling, and a bar a design
+  violation clears is a bar about nothing.
+
+**Why R2 needed two horizons rather than a count and a median at one.** With
+every arc reaching a summit, "the median is inside the year" *is* "at least 97 of
+192 are inside the year". So at the year horizon a floor below half is implied by
+R2b and a floor above half implies R2m: the year is occupied in both directions
+and a second clause there could only restate the first.
+
+**Each half catches one of the two broken calendars and neither catches both**,
+which is the evidence they are two clauses rather than one written twice.
+`annual-late`'s median is 449 days and it fails R2m while clearing R2t at 191 of
+192; `annual-at-the-competitive-phase`'s median is 324 days and it clears R2m
+while failing R2t at 162. That split is the same "opposite ends of the season"
+the controls have always shown, now visible in the requirement itself.
+
+**What was never in doubt:** R1 and R2b both held throughout, so the summit is
+reachable for every arc and no signup day is locked out.
 
 Read all three as measurements of the **ceiling** of campaign pace, not its
 middle — `simulateCampaignArc` takes every meet the lifter is eligible for, and
@@ -2643,9 +2696,26 @@ arcs, which is flat enough that only a stated rule could choose. At the slower
 gain rate the same three read **184 / 158 / 112**, which is a real spread. 600
 still stands by the midpoint rule, and a tuner picking inside the band now has a
 pacing measurement to weigh against that rule — which of the two should decide
-is open. Note also that 625 now fails **R1** rather than R2: only 184 of 192 arcs
-reach a summit at all, because `POTENTIAL_MIN_KG` is 625 and a lifter whose
-ceiling is 625 cannot reliably clear a 625 gate.
+is open. Note also that 625 fails **R1**: only 184 of 192 arcs reach a summit at
+all, because `POTENTIAL_MIN_KG` is 625 and a lifter whose ceiling is 625 cannot
+reliably clear a 625 gate.
+
+**That sentence used to end "rather than R2", and the re-derivation made it
+false — re-measured rather than reasoned about.** At a 625 gate the three
+clauses now read: R1 fails at 184 of 192; **R2m passes** with a 336-day median;
+**R2t fails** at 168 of 192 against its bar of 173. So the threshold breaks two
+of the three, and R2t is the half that sees it. That is worth recording for its
+own sake: R2t was derived to bound the tail of a **calendar**, and it turns out
+to bite on a **threshold** change as well, which no other pacing clause here
+does. The same probe at 575 / 600 / 625 gives medians of 267 / 290 / 336 and
+tail counts of 192 / 191 / 168.
+
+**And it exposes R2m's domain, which is stated here rather than left to be
+found.** `medianDaysToFirstSummit` is the median over the arcs that reached a
+summit **at all**, not over all 192 — a calendar that took two arcs to a summit
+quickly and stranded the rest would post an excellent median. **R1 is what makes
+R2m a statement about the whole population**, and on any arm where R1 fails, R2m
+must be read as conditional. The 625 row above is exactly that case.
 
 Both unfixed calendars stay runnable as controls with their numbers pinned, and
 they fail at **opposite ends of the season** — the old phase locks out the player
