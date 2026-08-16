@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-16T21-27-46-472Z-23041",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run"
+  ],
+  "budgetSeconds": 1800,
+  "startedAtIso": "2026-08-16T21:27:46.472Z",
+  "startedAtMs": 1786915666472,
+  "cwd": "/home/user/wt-drawn-reading",
+  "commit": "201c2d2b15d5d45a1c4d8eda9cd039e157bf3c7d",
+  "branch": "claude/drawn-reading-pairing",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 23041,
+    "startTick": "287629",
+    "cmdline": "node tools/watchdog.mjs --budget 1800 -- npx vitest run",
+    "bootId": "1029a23e-88b9-48af-a111-f167c566033d",
+    "bootEpochSeconds": 1786912790,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-16T21:27:46.501Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
