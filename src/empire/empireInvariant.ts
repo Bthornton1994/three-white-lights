@@ -865,6 +865,47 @@ export function composeTrainingIqRate(state: EmpireState, at: EmpireClock): Comp
 // ---------------------------------------------------------------------------
 
 /**
+ * The one thing a returned closure of this directory may hand its caller.
+ *
+ * WHAT IT GUARANTEES, IN THE MECHANISM'S OWN TERMS: of the values that leave
+ * this directory through an arrow held in a returned object, none is anything
+ * but a finite number — because every such arrow's result passes through here
+ * and this refuses everything else. That is containment in the same sense
+ * `refuseWith` states for the throw channel: it is a property of the calls that
+ * RUN, so it makes a laundered value unshippable rather than making any guard
+ * complete.
+ *
+ * WHY IT TAKES `unknown` AND NOT `number`. The declared type is exactly what
+ * cannot be trusted here. `RosterRateSource` declares both arrows `=> number`,
+ * and the residual this closes is a body that writes a string into that
+ * position through a type assertion — `EMPIRE_FORBIDDEN_OUTPUTS[0] as never`
+ * compiles, `tsc --noEmit` exits 0, and the position census reads the DECLARED
+ * `number` and sees no string at all. Typing this parameter `number` would make
+ * the check agree with the lie it is written about.
+ *
+ * WHAT IT DOES NOT PUT IN THE MESSAGE, and the omission is deliberate: the
+ * offending value. A refusal that quoted it would carry the forbidden name out
+ * through the throw channel, which is the same escape one door along. The
+ * `typeof` is what a reader needs and carries no payload.
+ *
+ * THE ROUTE PAST IT, NAMED CONCRETELY ENOUGH TO PLANT: an arrow written without
+ * this call. Nothing in the language forces a body through a helper, so the
+ * containment above is worth exactly as much as the enumeration of the sites
+ * that use it. `empireForbiddenOutput.test.ts`'s
+ * `seals every returned-closure result the channel census found` is the check
+ * that covers that route — it takes the site list from the channel census
+ * rather than from a copy, resolves this function by SYMBOL rather than by
+ * name, and is set-equal to `DECLARED_RETURNED_CLOSURE_SITES` in both
+ * directions, so an unsealed arrow and a third arrow are each red with no call.
+ */
+function sealRate(value: unknown, what: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    refuseWith(`rosterRatesAt returned a ${typeof value} at ${what}, which is not a rate`);
+  }
+  return value;
+}
+
+/**
  * The per-lifter rates `production.ts` aggregates, read at one clock.
  *
  * The tenure argument is deliberately unused: `npc.ts` owns the derivation of
@@ -873,11 +914,22 @@ export function composeTrainingIqRate(state: EmpireState, at: EmpireClock): Comp
  * same clock `productionRates` reads its own tenures at, and the agreement pin
  * in `EmpireRunCensus.rateDisagreements` is what says so on every day of every
  * run rather than this sentence.
+ *
+ * BOTH ARROWS SEAL THEIR RESULT, and the reason is the twenty-fifth bypass
+ * rather than tidiness. These two are the only functions this directory hands
+ * back to a caller; the value walker in `empireForbiddenOutput.test.ts` reaches
+ * them and declines to CALL them, because an arity-above-zero call would mean
+ * choosing an argument. So a body writing a forbidden name into the declared
+ * `number` through an assertion was seen by nothing — measured at 3445 of 3446
+ * tests green with a one-argument caller receiving `'covered-day'`. `sealRate`
+ * is why that value can no longer reach the caller.
  */
 export function rosterRatesAt(clock: EmpireClock): RosterRateSource {
   return Object.freeze({
-    gymBucksPerHour: (lifter: NpcLifter) => npcGymBucksPerHour(lifter, clock),
-    trainingIqPerDay: (lifter: NpcLifter) => npcTrainingIqPerDay(lifter, clock),
+    gymBucksPerHour: (lifter: NpcLifter) =>
+      sealRate(npcGymBucksPerHour(lifter, clock), 'gymBucksPerHour'),
+    trainingIqPerDay: (lifter: NpcLifter) =>
+      sealRate(npcTrainingIqPerDay(lifter, clock), 'trainingIqPerDay'),
   });
 }
 
