@@ -333,7 +333,8 @@
  * guarantee than the two scans and it is stated rather than implied.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { types as nodeTypes } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -591,12 +592,42 @@ function compilerOptions(): ts.CompilerOptions {
   return { ...parsed.options, noEmit: true, skipLibCheck: true };
 }
 
-/** The shipped modules, read off the directory rather than listed. */
+/**
+ * The shipped modules, read off the directory rather than listed.
+ *
+ * RECURSIVE, AND IT WAS FLAT FOR THIRTY-THREE ROUNDS. A bare `readdirSync`
+ * reads one level, and nothing in this repository bans a subdirectory under
+ * `src/empire/` — so `src/empire/inner/thing.ts` would have been a shipped
+ * module that every census rooted here, instrument A's position walk included,
+ * was rooted past. This file has been wrong on REACH four times by CLAUDE.md's
+ * own count, each time in a different scan, so the flat read is repaired rather
+ * than argued about.
+ *
+ * THE WALK IS FACTORED OUT AND DRIVEN AGAINST A SYNTHETIC TREE, because the
+ * shipped directory happens to be flat and a recursive walk over a flat
+ * directory is byte-identical to a flat one. `walks a nested directory, so the
+ * recursion is measured rather than assumed` builds a temporary tree two levels
+ * deep and reads it back; without that this repair is a change no state of the
+ * subject could distinguish from the defect.
+ */
+function tsModulesUnder(root: string): readonly string[] {
+  const found: string[] = [];
+  const walk = (at: string): void => {
+    for (const entry of readdirSync(at, { withFileTypes: true })) {
+      const full = path.join(at, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts')) found.push(full);
+    }
+  };
+  walk(root);
+  return found.sort();
+}
+
 function shippedModulePaths(): readonly string[] {
-  return readdirSync(HERE)
-    .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
-    .sort()
-    .map((name) => path.join(HERE, name));
+  return tsModulesUnder(HERE);
 }
 
 /**
@@ -1647,6 +1678,42 @@ describe('instrument A — no export type admits a forbidden literal, and no new
     expect(surface.sourceDiagnostics, surface.sourceDiagnostics.join(' | ')).toEqual([]);
     expect(surface.modules.length).toBe(SURFACE_CENSUS.MODULES);
     expect(surface.exports.length).toBe(SURFACE_CENSUS.EXPORTS);
+  });
+
+  it('walks a nested directory, so the recursion is measured rather than assumed', () => {
+    // `shippedModulePaths` read ONE level for thirty-three rounds, and nothing
+    // in this repository bans a subdirectory under `src/empire/`. A module in
+    // one would have been rooted past by every census in this file. The repair
+    // is a recursive walk, and the repair is indistinguishable from the defect
+    // on the shipped tree — which is flat — so it is driven against a tree that
+    // is not.
+    const root = mkdtempSync(path.join(tmpdir(), 'empire-module-walk-'));
+    try {
+      mkdirSync(path.join(root, 'sub', 'deeper'), { recursive: true });
+      writeFileSync(path.join(root, 'top.ts'), 'export {};\n');
+      writeFileSync(path.join(root, 'top.test.ts'), 'export {};\n');
+      writeFileSync(path.join(root, 'notes.md'), 'x\n');
+      writeFileSync(path.join(root, 'sub', 'nested.ts'), 'export {};\n');
+      writeFileSync(path.join(root, 'sub', 'nested.test.ts'), 'export {};\n');
+      writeFileSync(path.join(root, 'sub', 'deeper', 'deep.ts'), 'export {};\n');
+      expect(tsModulesUnder(root).map((at) => path.relative(root, at)).sort()).toEqual(
+        [
+          path.join('sub', 'deeper', 'deep.ts'),
+          path.join('sub', 'nested.ts'),
+          'top.ts',
+        ].sort(),
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+    // AND THE SHIPPED TREE IS STILL FLAT, pinned so that a subdirectory arriving
+    // is a visible change rather than a silent widening of every census rooted
+    // here. Both halves are needed: the first says the walk CAN descend, this
+    // says nothing under `src/empire/` currently makes it.
+    expect(
+      distinct(shippedModulePaths().map((at) => path.dirname(at))),
+    ).toEqual([HERE]);
+    expect(shippedModulePaths().length).toBe(SURFACE_CENSUS.MODULES);
   });
 
   it('pins every bare-string position, in both directions, grouped by the field it is', () => {
@@ -3420,6 +3487,10 @@ const NON_DOMAIN_NUMBER_LISTS: readonly (readonly [string, string])[] = Object.f
     'CALLBACK_TRIPWIRE_POINTS',
     'The callback tripwire drives a function that is not shipped and never exported, so it has no axis in the registry to be a domain of. Three points, chosen small so its own pinned counts are hand-checkable and do not move when the tuning block does.',
   ] as const),
+  Object.freeze([
+    'SUPPLY_REFUSAL_CODES',
+    'TypeScript diagnostic codes, not a driver axis — the allowlist a supply row\'s refusal has to come from, so the supply column names its diagnostic instead of counting any error at all. Nothing is driven over it: it is read by `toContain` in the supply test and nowhere else. This guard reddening on it is the guard working, and the row is the visible edit it asks for.',
+  ] as const),
 ]);
 
 const NUMBER_DOMAIN: readonly number[] = NUMERIC_DOMAINS.NUMBER.points;
@@ -3706,8 +3777,8 @@ const DOMAIN_CENSUS = Object.freeze({
    * list, which is not a subject's domain. `NON_DOMAIN_LISTS` is the second
    * number so the two cannot be traded off against each other silently.
    */
-  ALIASES: 7,
-  NON_DOMAIN_LISTS: 1,
+  ALIASES: 8,
+  NON_DOMAIN_LISTS: 2,
   LITERAL_AXES: 8,
   LABELLED_LISTS: 25,
   HAND_PICKED_LISTS: 4,
@@ -14019,6 +14090,15 @@ interface CandidateReading {
    * declare one, which is a different thing from "it compiled".
    */
   readonly supplyDiagnostics: readonly string[] | null;
+  /**
+   * The TypeScript error codes behind `supplyDiagnostics`, in the same order.
+   *
+   * Kept apart from the text so a row can pin WHICH refusal it earned. The
+   * predicate used to be "any diagnostic at all", which is broader than the
+   * claim the column makes — "this directory cannot construct the value" — by
+   * exactly the set of errors that are about something else.
+   */
+  readonly supplyDiagnosticCodes: readonly number[] | null;
   /** The subject's type, as the checker prints it. */
   readonly printed: string;
 }
@@ -14037,7 +14117,9 @@ function candidateReading(
 ): CandidateReading {
   const options = compilerOptions();
 
-  const compileOf = (text: string): { program: ts.Program; diagnostics: string[] } => {
+  const compileOf = (
+    text: string,
+  ): { program: ts.Program; diagnostics: string[]; codes: number[] } => {
     const program = programWith(
       options,
       [CANDIDATE_SUBJECT_PATH],
@@ -14047,11 +14129,16 @@ function candidateReading(
     );
     const file = program.getSourceFile(CANDIDATE_SUBJECT_PATH);
     if (file === undefined) throw new Error('the candidate subject is not in the program');
-    const diagnostics = [
-      ...program.getSyntacticDiagnostics(file),
-      ...program.getSemanticDiagnostics(file),
-    ].map((diagnostic) => `${shape.id}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')}`);
-    return { program, diagnostics };
+    const raw = [...program.getSyntacticDiagnostics(file), ...program.getSemanticDiagnostics(file)];
+    const diagnostics = raw.map(
+      (diagnostic) => `${shape.id}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')}`,
+    );
+    // THE CODE AS WELL AS THE TEXT, because a fence has to name its diagnostic.
+    // `supplyDiagnostics.length > 0` was the whole supply predicate, and it
+    // counts EVERY diagnostic of the spliced file — an unused local, a typo, a
+    // missing semicolon — so a row could read "this directory cannot build it"
+    // on a refusal that had nothing to do with the construction.
+    return { program, diagnostics, codes: raw.map((diagnostic) => diagnostic.code) };
   };
 
   const bare = compileOf(shape.build.split(REACH_MARKER).join(''));
@@ -14112,6 +14199,7 @@ function candidateReading(
     arms: screen.arms(),
     reachDiagnostics: Object.freeze(withReach.diagnostics),
     supplyDiagnostics: supplied === null ? null : Object.freeze(supplied.diagnostics),
+    supplyDiagnosticCodes: supplied === null ? null : Object.freeze(supplied.codes),
     printed: checker.typeToString(subjectType),
   };
 }
@@ -14785,6 +14873,20 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
  * written as a pair by whoever adds the row. What it does close is the case the
  * round actually hit, which is a row whose type refuses ANY construction
  * carrying a function at all.
+ *
+ * AND THE DISCLOSURE ABOVE NAMED THE WRONG LIMIT FIRST, WHICH IS THE MORE USEFUL
+ * FINDING. The predicate behind the column was `supplyDiagnostics.length === 0`,
+ * over every diagnostic the spliced file produces — so a typo, an undefined
+ * identifier or a stray token in the construction read as "this directory cannot
+ * build it", and the paragraph above disclosed a different limit while saying
+ * nothing about that one. `SUPPLY_TABLE`'s third column pins the refusal CODE
+ * per row and `SUPPLY_REFUSAL_CODES` is the closed allowlist it has to come from.
+ * Measured rather than argued: a construction rewritten to compile as a value
+ * and to reference an undefined name instead reads `[2304]` against a pinned
+ * `[2322]` and reddens with `Cannot find name 'nosuchThing'` in the message,
+ * while the old predicate and the other consumer of this column both stayed
+ * green on it. The limit in the paragraph above is still open and is still the
+ * pair being written by hand.
  */
 /**
  * What driving `FunctionFreeData`'s own constituents answered.
@@ -14799,12 +14901,45 @@ const REFERENCE_CONSTITUENTS = Object.freeze({
   ADMITTING_A_FUNCTION: 0,
 });
 
-const SUPPLY_TABLE: readonly (readonly [string, boolean])[] = Object.freeze([
-  Object.freeze(['library-open-any-member', true] as const),
-  Object.freeze(['library-open-any-member-through-a-Readonly', true] as const),
-  Object.freeze(['library-callable-behind-a-primitive-intersection', false] as const),
-  Object.freeze(['library-callable-on-an-array-element-type', false] as const),
+/**
+ * `[id, suppliable, the refusal codes a non-suppliable row earns]`.
+ *
+ * THE THIRD COLUMN IS THIS ROUND'S, AND IT CLOSES A PREDICATE THAT WAS BROADER
+ * THAN ITS OWN DISCLOSURE. The supply verdict was `supplyDiagnostics.length ===
+ * 0`, which counts every diagnostic the spliced file produces — an unused local,
+ * a typo, a stray semicolon — so a row could read "this directory cannot
+ * construct the value" on a refusal about something else entirely. The
+ * disclosure beside it named a different limit (that the function literal is not
+ * bound to the member the reach reads) and said nothing about this one.
+ *
+ * A code per row is the close this file asks of every other fence: name the
+ * diagnostic. `2322` is `Type 'X' is not assignable to type 'Y'` — the
+ * construction being refused AS a construction. A row that started failing on
+ * `6133` (unused local) or `1005` (syntax) reddens here instead of quietly
+ * counting as evidence.
+ */
+const SUPPLY_TABLE: readonly (readonly [string, boolean, readonly number[]])[] = Object.freeze([
+  Object.freeze(['library-open-any-member', true, Object.freeze([])] as const),
+  Object.freeze(['library-open-any-member-through-a-Readonly', true, Object.freeze([])] as const),
+  Object.freeze([
+    'library-callable-behind-a-primitive-intersection',
+    false,
+    Object.freeze([2322]),
+  ] as const),
+  Object.freeze([
+    'library-callable-on-an-array-element-type',
+    false,
+    Object.freeze([2322]),
+  ] as const),
 ]);
+
+/**
+ * The diagnostic codes a supply refusal is allowed to be made of.
+ *
+ * A closed allowlist, because the point of the third column is that the refusal
+ * has to be ABOUT the construction. Widening this is an edit somebody signs.
+ */
+const SUPPLY_REFUSAL_CODES: readonly number[] = Object.freeze([2322, 2739, 2740, 2741]);
 
 /**
  * What the sweep measured. Counts rather than bounds, per this file's own rule
@@ -15153,13 +15288,24 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
         .sort(),
     );
     expect(SUPPLY_TABLE.length).toBe(FAMILY_CENSUS.SUPPLY_ROWS);
-    for (const [id, suppliable] of SUPPLY_TABLE) {
+    for (const [id, suppliable, codes] of SUPPLY_TABLE) {
       const diagnostics = readings[id]?.supplyDiagnostics;
       expect(diagnostics, `${id}: the driver read no construction`).not.toBeNull();
       expect(
         diagnostics?.length === 0,
         `${id}: ${diagnostics?.join(' | ') ?? ''}`,
       ).toBe(suppliable);
+      // AND THE REFUSAL IS ABOUT THE CONSTRUCTION, NAMED BY CODE. Without this
+      // the column reads `false` for any diagnostic at all — the predicate was
+      // broader than the claim, and broader than the limit disclosed beside it.
+      const actual = readings[id]?.supplyDiagnosticCodes ?? null;
+      expect(actual, `${id}: the driver read no construction`).not.toBeNull();
+      expect([...(actual ?? [])], `${id}: ${diagnostics?.join(' | ') ?? ''}`).toEqual([...codes]);
+      for (const code of codes) {
+        expect(SUPPLY_REFUSAL_CODES, `${id}: TS${String(code)} is not a construction refusal`).toContain(
+          code,
+        );
+      }
     }
     // NOT A ONE-POINT AXIS. Both answers occur, and the count of each is pinned,
     // so a change that made every construction compile — or none of them —
@@ -19095,6 +19241,7 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   Object.freeze({ at: 'empireCore.test.ts#walk<brandsIn<brandCensus#current', arms: 4, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireCore.test.ts#walk<brandsIn<brandCensus#current#2', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireCore.test.ts#brandCensus#declaration#3', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walk<tsModulesUnder#entry', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#surfaceOf#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#surfaceOf#declaration', arms: 1, dispatch: false, terminal: 'loop' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#carriesBrand<surfaceOf#name', arms: 1, dispatch: true, terminal: 'next-statement' }),
@@ -19356,11 +19503,11 @@ const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
   /** Rows in `DECLARED_HANDLER_ROWS`. Every one a tally or an enum read. */
   DISCRIMINANT_LOOKUPS: 8,
-  CHAINS: 94,
-  DISPATCH: 59,
+  CHAINS: 95,
+  DISPATCH: 60,
   BY_TERMINAL: Object.freeze({
     else: 8,
-    'next-statement': 70,
+    'next-statement': 71,
     loop: 14,
     enclosing: 2,
     /**
