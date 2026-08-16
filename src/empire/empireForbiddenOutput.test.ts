@@ -3472,6 +3472,11 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
   // Its sibling, and the pair is the point: one declaration file and one plain
   // module carrying the same augmentation.
   'E28_GLOBAL_FILE',
+  // E29's declaration file, served to the CENSUS rather than to the screen —
+  // the same reference-not-a-domain class as the two above, one instrument
+  // over. It is what the six other `.d.ts` skips are driven against, and the
+  // scan requiring it here is the guard conscripting the round that added it.
+  'AMBIENT_DECLARATION_FILE',
   'DIAGNOSTIC_CHANNEL_CENSUS',
   // The family sweep's ban on its OWN reach snippets. An expectation and not an
   // input: it is not driven against any subject, it is applied to the rows this
@@ -3572,7 +3577,7 @@ const DOMAIN_CENSUS = Object.freeze({
   ALIASES: 7,
   NON_DOMAIN_LISTS: 1,
   LITERAL_AXES: 8,
-  LABELLED_LISTS: 21,
+  LABELLED_LISTS: 22,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
@@ -7777,20 +7782,33 @@ const FUNCTION_FREE_DATA_FILE: readonly (readonly [string, string])[] = Object.f
 ]);
 
 /**
- * Whether a declaration came from a `.d.ts` — somebody else's library, not this
- * directory's own assembly.
+ * Whether a declaration came from a `.d.ts`, which is a question about what the
+ * declaration CAN CARRY and not about whose code it is.
  *
- * At module scope because three readers need the same predicate and this file's
- * own most-repeated finding is that a rule written for one arm gets copied to
- * its sibling and drifts.
+ * WHAT IT GUARANTEES, in the mechanism's own terms: a declaration file admits no
+ * initializer and no executable statement — `declare const x = …` is
+ * `error TS1039` and there is no assignment for `assignedValuesTo` to find — so a
+ * binding declared in one has no value expression in this program at all. That is
+ * the fact the two remaining callers are about, and both of them answer it by
+ * sending the identifier to `unfollowed`, which is a named line in
+ * `freshReceivers` rather than a quiet nothing.
  *
- * `let shape: T | undefined = undefined;` is the branch immediately below the
- * one M39 was planted in, and it is why `hoppableInitializer` asks this rather
- * than a bare `ts.isIdentifier`. `undefined` IS an identifier, and it resolves
- * to a `VariableDeclaration` in `lib.es5.d.ts` — so the hop succeeds, lands at
- * module scope in a declaration file, and the assignment path never runs. A
- * binding declared in a `.d.ts` is not a value this directory assembled, so it
- * is not a hop.
+ * WHY IT IS NOT `declaredInTheDefaultLibrary` HERE, measured rather than
+ * reasoned. E29 drove `declare const holder: { readonly inner: Shape }` and
+ * `declare namespace ns { const inner: Shape }` from a project `.d.ts` through
+ * both readings. Under this one the returns come back
+ * `returned=unfollowable:holder` and `returned=unfollowable:ns`. Under the
+ * narrower one the member arm enters its `VariableDeclaration` branch, finds an
+ * initializer list of length zero because a declaration file cannot hold one,
+ * and returns having recorded NOTHING — so the narrowing that closed the screen's
+ * silence OPENS one here. The pair `finds a project .d.ts binding unfollowable
+ * rather than silent` is what holds both rows.
+ *
+ * ITS LIMIT: it says nothing about which declaration file, so a project's own
+ * `.d.ts` and `lib.es5.d.ts` are one answer. Two callers that needed the
+ * narrower question — `hoppableInitializer` and the returned-identifier arm —
+ * ask `declaredInTheDefaultLibrary` instead, and the probe rows named at each
+ * are what say the split is real.
  */
 const ambientlyDeclared = (declaration: ts.Node): boolean =>
   declaration.getSourceFile().isDeclarationFile;
@@ -8079,9 +8097,18 @@ function channelCensusOf(
   roots: readonly string[],
   probeText: string | null,
   probePath: string = PROBE_PATH,
+  extra: readonly (readonly [string, string])[] = [],
 ): ChannelCensus {
   const options = compilerOptions();
-  const program = programWith(options, roots, probeText, probePath, FUNCTION_FREE_DATA_FILE);
+  // The `extra` channel is `programWith`'s, used a second time — the same
+  // reason `candidateReading` needed it. A probe is ONE served file, and the
+  // shapes E29 is about need two: a project `.d.ts` and a module that uses what
+  // it declares. An extra file joins the program's roots so its symbols bind
+  // and never the walked roots, so no census counts it as a module.
+  const program = programWith(options, roots, probeText, probePath, [
+    ...FUNCTION_FREE_DATA_FILE,
+    ...extra,
+  ]);
   const checker = program.getTypeChecker();
   const screen = memberTypeScreen(program, checker);
 
@@ -8361,6 +8388,13 @@ function channelCensusOf(
     const resolved = resolvedDeclaration(holder);
     if (resolved === null) return null;
     const host = bindingHost(resolved);
+    // THE WIDE PREDICATE ON PURPOSE, and the two beside it are narrow on
+    // purpose. `null` here is not "nothing" — it is what sends the holder to
+    // `unfollowed`. A declaration file cannot carry an initializer, so asking
+    // the narrower default-library question would let a project `.d.ts` binding
+    // through to a walk that finds an empty value list and reports nothing.
+    // Measured: `unfollowable:holder` and `unfollowable:list` both disappear
+    // under the narrowing. See `ambientlyDeclared`.
     if (ambientlyDeclared(host) || !ts.isVariableDeclaration(host)) return null;
     const written = assignedValuesTo(host);
     if (written.destructured) return null;
@@ -8370,10 +8404,40 @@ function channelCensusOf(
     ];
   };
 
+  /**
+   * Whether an initializer is an identifier this walk should hop through.
+   *
+   * IT ASKS THE DEFAULT-LIBRARY QUESTION AND NOT THE DECLARATION-FILE ONE, which
+   * is E29's narrowing and is the predicate's own purpose read back. What the
+   * refusal was written for is `let shape: T | undefined = undefined`, where
+   * `undefined` resolves to a `VariableDeclaration` in `lib.es5.d.ts` — the
+   * COMPILER'S library, which is provably not this directory's assembly.
+   * `isDeclarationFile` expressed that as "any `.d.ts`", and a `.d.ts` inside
+   * this directory is provably the opposite.
+   *
+   * WHAT THE WIDTH COST, measured: `const alias = ambientMutable; alias.kind =
+   * <a banned name>` — an alias of a binding declared in a project `.d.ts` —
+   * resolved to `local` under the wide reading, and `local` is the one owner arm
+   * that records no channel and no `freshReceivers` line. The whole of the write
+   * was a `writeOwners.local` increment, which is the number this file's own
+   * assembly section calls one that moves for any added write at all. Under this
+   * reading it is `module-variable`, so the write arrives as a
+   * `module-mutable-state` site with a file, a function and a line on it.
+   *
+   * THE PURPOSE IT KEEPS IS RUN, NOT ASSERTED: `undefined` still lives in
+   * `lib.es5.d.ts`, so `does not hop OUT of the function through an `undefined`
+   * initializer` and G24's mutant are unchanged by the narrowing.
+   *
+   * Its residual is the returned-identifier arm's, in the same words: this hops
+   * into a DEPENDENCY's declaration file as well as into a project one, because
+   * the question it asks is about the compiler's library and not about this
+   * directory. Measured at zero rows on the shipped tree, with both owner tables
+   * asserted equal to their pins.
+   */
   const hoppableInitializer = (root: ts.Expression): boolean => {
     if (!ts.isIdentifier(root)) return false;
     const resolved = resolvedDeclaration(root);
-    return resolved !== null && !ambientlyDeclared(resolved);
+    return resolved !== null && !declaredInTheDefaultLibrary(program, resolved);
   };
 
   /**
@@ -8571,10 +8635,30 @@ function channelCensusOf(
           unfollowed.push(node);
           return;
         }
-        // An ambient binding is not a value this directory assembled. Same
-        // predicate `hoppableInitializer` uses, shared rather than restated,
-        // because these two arms are one decision.
-        if (ambientlyDeclared(host)) return;
+        // A BINDING THE COMPILER'S OWN LIBRARY DECLARES IS NOT A VALUE THIS
+        // DIRECTORY HANDED BACK, and that is a narrower question than the one
+        // this arm used to ask. Under `isDeclarationFile` it skipped every
+        // declaration file, so `declare function named(): string` in a project
+        // `.d.ts`, returned from a shipped module as `return named` or as
+        // `{ peek: named }`, produced no `returned-closure` row and no
+        // `unfollowed` line — measured, and it is the same file-kind silence
+        // E28 found one instrument over. Under this reading those two are
+        // `closure:return` and `closure:.peek`, which is what
+        // `AMBIENT_PROBE_CLOSURE_SITES` pins.
+        //
+        // Its limit, in two halves and both measured. A closure declared in
+        // `lib.es5.d.ts` and handed back is still skipped, which is the point —
+        // `return parseInt` is the library's function and not this directory's.
+        // And this reading is WIDER than "declared in this directory": five
+        // non-default-library declaration files are in the census program, four
+        // of them a dependency's, so a global one of those declares is now
+        // reported rather than skipped. The consequence today is zero rows —
+        // `channelCensus().freshReceivers` still equals
+        // `DECLARED_FRESH_RECEIVERS` with this in — and the direction of the
+        // residual is the safe one: a named line somebody classifies, not a
+        // silence. The count and the zero are both asserted at
+        // `compiles the probe cleanly`.
+        if (declaredInTheDefaultLibrary(program, host)) return;
         // A NAMED FUNCTION HANDED BACK BY ITS NAME, which the initializer-only
         // walk could not see either: `function helper() {…}; return { peek:
         // helper };` resolves to a `FunctionDeclaration` and not to a variable.
@@ -8811,6 +8895,16 @@ function channelCensusOf(
         }
         const symbol = checker.getSymbolAtLocation(node);
         const resolved = symbol?.valueDeclaration ?? symbol?.declarations?.[0];
+        // WIDE ON PURPOSE, like `literalValuesOf` and unlike the identifier arm
+        // twenty lines up. Skipping here does not drop the member — it hands it
+        // to the holder fallback below, which reports. The shape that
+        // discriminates is a namespace member, `declare namespace ns { const
+        // inner: Shape }`, because that is the one member access whose symbol
+        // resolves to a `VariableDeclaration` rather than to a
+        // `PropertySignature`: narrowed, it enters the branch, reads an empty
+        // value list out of a file that cannot hold one, and returns silent.
+        // Measured — `unfollowable:ns` is present under this reading and absent
+        // under the other.
         if (resolved !== undefined && !ambientlyDeclared(resolved)) {
           if (ts.isPropertyAssignment(resolved)) {
             if (!seenAliases.has(resolved)) {
@@ -9649,6 +9743,19 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   /** The probe's, so the two zeros above are a walk that looked and found none. */
   PROBE_POSITIONS_CROSSING_AN_INDEX: 3,
   PROBE_INDEX_CROSSINGS_MAX: 1,
+  /**
+   * The same reading over a chain declared in a PROJECT declaration file.
+   *
+   * The positive control for E29's narrowing of this walk's property step, and
+   * it exists because the narrowing moves nothing on the shipped tree — which is
+   * the state a repair is decoration in. `AMBIENT_DEPTH_SOURCE` exports a
+   * twelve-deep nest, so a walk that steps into a project `.d.ts` reports 12 and
+   * one that skips every declaration file reports the shipped 9, its own
+   * position having contributed zero.
+   */
+  AMBIENT_PROBE_DEEPEST: 12,
+  /** What the wide predicate reported for the same probe. The number 12 is 12 against this. */
+  AMBIENT_PROBE_DEEPEST_WHEN_EVERY_DECLARATION_FILE_IS_SKIPPED: 9,
 });
 
 /**
@@ -9680,9 +9787,22 @@ interface ShippedDepthReading {
  *
  * The position set is the control's exactly — a call signature stops the walk,
  * unions and intersections step through their constituents, an array or tuple
- * steps through its element, and a non-ambient property steps through its type
- * — because the number this produces is about the control's limit and a walk
- * with different positions would be measuring a different thing.
+ * steps through its element, and a property whose declaration is not the
+ * compiler's own steps through its type — because the number this produces is
+ * about the control's limit and a walk with different positions would be
+ * measuring a different thing.
+ *
+ * THAT SENTENCE WAS FALSE FOR A ROUND, WHICH IS WHY THE PREDICATE IS NAMED IN
+ * IT NOW. E28 narrowed the control's property skip from `isDeclarationFile` to
+ * `declaredInTheDefaultLibrary` and left these two walks on the wide one, so the
+ * claim of equality survived the edit that broke it — a stale confident sentence,
+ * which is this codebase's most-repeated defect and not a rare one. Measured, the
+ * two readings part on a project `.d.ts` and agree on the shipped tree: a
+ * twelve-deep chain declared in one reads 9 under the wide predicate — its own
+ * position contributing zero — and 12 under this one, while `DEEPEST`,
+ * `POSITIONS`, `DEEPEST_THROUGH_INDEX` and both crossing counts are identical
+ * either way on `shippedModulePaths()` alone. `AMBIENT_DEPTH_PROBE` is the
+ * positive control that keeps the difference measured rather than described.
  */
 function shippedTypeDepth(
   roots: readonly string[] = shippedModulePaths(),
@@ -9711,7 +9831,7 @@ function shippedTypeDepth(
     }
     for (const symbol of type.getProperties()) {
       const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
-      if (declaration === undefined || ambientlyDeclared(declaration)) continue;
+      if (declaration === undefined || declaredInTheDefaultLibrary(program, declaration)) continue;
       step(checker.getTypeOfSymbolAtLocation(symbol, declaration));
     }
     return deepest;
@@ -9752,7 +9872,7 @@ function shippedTypeDepth(
     }
     for (const symbol of type.getProperties()) {
       const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
-      if (declaration === undefined || ambientlyDeclared(declaration)) continue;
+      if (declaration === undefined || declaredInTheDefaultLibrary(program, declaration)) continue;
       step(checker.getTypeOfSymbolAtLocation(symbol, declaration), 0);
     }
     return best;
@@ -11853,6 +11973,344 @@ describe('the assembly walk bites — every binding whose value is not in its in
       SHIPPED_TYPE_DEPTH.PROBE_POSITIONS_CROSSING_AN_INDEX,
     );
     expect(withProbe.indexCrossingsMax).toBe(SHIPPED_TYPE_DEPTH.PROBE_INDEX_CROSSINGS_MAX);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The ambient probe — six call sites that skip a `.d.ts`, and they do not agree
+// ---------------------------------------------------------------------------
+
+/**
+ * A project's own declaration file, served in memory beside the probe.
+ *
+ * WHAT IT IS FOR. E28 found that the member-type screen skipped every `.d.ts`
+ * and narrowed that ONE call to the default library. The same predicate was in
+ * use at six other sites, and the reason each of them skipped was different — so
+ * this file is the shape all six are driven against, per site, rather than the
+ * one being assumed to behave like the screen. Two of the six were silent and
+ * are narrowed; two are silent UNDER the narrowing and are kept wide; the last
+ * two are the depth walk, whose docstring claimed the control's position set
+ * while no longer having it.
+ *
+ * Every declaration here is global — the file exports nothing, so the probe
+ * reaches these names with no import, which is what a project `.d.ts` describing
+ * a host-provided value actually looks like.
+ */
+const AMBIENT_DECLARATION_PATH = path.join(HERE, '__ambientDeclarations.d.ts');
+
+const AMBIENT_DECLARATION_FILE: readonly (readonly [string, string])[] = Object.freeze([
+  Object.freeze([
+    AMBIENT_DECLARATION_PATH,
+    `interface AmbientShape { readonly peek: () => string }
+interface AmbientCallable { (): string }
+declare function ambientNamedFunction(): string;
+declare const ambientShape: AmbientShape;
+declare const ambientHolder: { readonly inner: AmbientShape };
+declare const ambientList: readonly AmbientShape[];
+declare const ambientMutable: { kind: string };
+declare namespace ambientNamespace {
+  const inner: AmbientShape;
+}
+`,
+  ] as const),
+]);
+
+const AMBIENT_PROBE_PATH = path.join(HERE, '__ambientProbe.ts');
+const AMBIENT_PROBE_MODULE = path.basename(AMBIENT_PROBE_PATH);
+
+/**
+ * One export per call site, each written to be the shape THAT site skips.
+ *
+ *   1. `probeAmbientNamedFunction` — a function declared in the `.d.ts`, handed
+ *      back by its name. The sibling of `probeReturnsNamedFunction`, one file
+ *      kind over, and the sharpest of the six: under the wide predicate it
+ *      produced no closure row and no `unfollowed` line at all.
+ *   2. `probeAmbientNamedInShape` — the same function one level in, inside a
+ *      returned object literal, because a route that only works at the top of a
+ *      `return` is a different claim from one that works at any depth.
+ *   3. `probeAmbientConstShape` — an ambient CONST whose type carries a closure.
+ *      There is no value expression behind it in this program, so the honest
+ *      outcome is `unfollowable` rather than a closure row, and the pin below
+ *      says which of the two it is instead of leaving it to be inferred.
+ *   4. `probeAmbientAliasWrite` — `hoppableInitializer`'s site: a write into an
+ *      ambiently declared mutable global through a local alias. Under the wide
+ *      predicate the owner resolved `local`, which records no channel at all.
+ *   5. `probeAmbientHolderMember` — `literalValuesOf`'s site, reached through the
+ *      holder fallback.
+ *   6. `probeAmbientNamespaceMember` — the returned-member arm's site, and the
+ *      one member access whose symbol resolves to a `VariableDeclaration`
+ *      instead of a `PropertySignature`. That is what makes it the shape which
+ *      discriminates the two predicates there.
+ *
+ * Rows 5 and 6 are the two the narrowing would BREAK, and they are here for
+ * that: they are pinned as `unfollowable`, so a later round that makes all six
+ * sites identical loses two named lines and is red rather than tidy.
+ */
+const AMBIENT_PROBE_SOURCE = `import { EMPIRE_FORBIDDEN_OUTPUTS } from './empireCore';
+
+export function probeAmbientNamedFunction(): AmbientCallable {
+  return ambientNamedFunction;
+}
+
+export function probeAmbientNamedInShape(): AmbientShape {
+  return { peek: ambientNamedFunction };
+}
+
+export function probeAmbientConstShape(): AmbientShape {
+  return ambientShape;
+}
+
+export function probeAmbientAliasWrite(): void {
+  const alias = ambientMutable;
+  alias.kind = EMPIRE_FORBIDDEN_OUTPUTS[0];
+}
+
+export function probeAmbientHolderMember(): AmbientShape {
+  return ambientHolder.inner;
+}
+
+export function probeAmbientNamespaceMember(): AmbientShape {
+  return ambientNamespace.inner;
+}
+
+export function probeAmbientListElement(slot: number): AmbientShape {
+  return ambientList[slot] as AmbientShape;
+}
+`;
+
+let ambientProbeCensusMemo: ChannelCensus | null = null;
+
+function ambientProbeCensus(): ChannelCensus {
+  if (ambientProbeCensusMemo !== null) return ambientProbeCensusMemo;
+  ambientProbeCensusMemo = channelCensusOf(
+    [...shippedModulePaths(), AMBIENT_PROBE_PATH],
+    AMBIENT_PROBE_SOURCE,
+    AMBIENT_PROBE_PATH,
+    AMBIENT_DECLARATION_FILE,
+  );
+  return ambientProbeCensusMemo;
+}
+
+function ambientProbeSites(id: ChannelId): readonly string[] {
+  return ambientProbeCensus().sites[id].filter((key) => key.startsWith(AMBIENT_PROBE_MODULE));
+}
+
+function ambientProbeFresh(): readonly string[] {
+  return ambientProbeCensus().freshReceivers.filter((entry) =>
+    entry.startsWith(AMBIENT_PROBE_MODULE),
+  );
+}
+
+/** The two rows the returned-identifier arm produces now and produced neither of before. */
+const AMBIENT_PROBE_CLOSURE_SITES: readonly string[] = Object.freeze([
+  `${AMBIENT_PROBE_MODULE}#probeAmbientNamedFunction#closure:return`,
+  `${AMBIENT_PROBE_MODULE}#probeAmbientNamedInShape#closure:.peek`,
+]);
+
+/**
+ * The rows that say the two kept-wide sites are LOUD, and one that the narrowed
+ * site made loud.
+ *
+ * `ambientHolder` and `ambientNamespace` are sites 5 and 6, and they are here
+ * rather than in the closure list because a binding a declaration file declares
+ * has no value in this program — "somebody look at this line" is the whole of
+ * what can honestly be said about it. `ambientShape` and `ambientList` are the
+ * same outcome reached through the returned-identifier arm and the array
+ * fallback.
+ */
+const AMBIENT_PROBE_UNFOLLOWED: readonly string[] = Object.freeze([
+  `${AMBIENT_PROBE_MODULE}:12 returned=unfollowable:ambientShape`,
+  `${AMBIENT_PROBE_MODULE}:21 returned=unfollowable:ambientHolder`,
+  `${AMBIENT_PROBE_MODULE}:25 returned=unfollowable:ambientNamespace`,
+  `${AMBIENT_PROBE_MODULE}:29 returned=unfollowable:ambientList`,
+]);
+
+const AMBIENT_DEPTH_PATH = path.join(HERE, '__ambientDepth.d.ts');
+
+/**
+ * A twelve-deep chain declared in a project `.d.ts`, exported as a module.
+ *
+ * The depth walk's positive control. Twelve rather than ten because the shipped
+ * tree reports 9 and the control has to be distinguishable from it by more than
+ * a rounding — and because `MEMBER_TYPE_WALK_MAX_DEPTH` sits at 8, so this is
+ * also past the limit the walk's `pastTheLimit` list is about.
+ */
+const AMBIENT_DEPTH_SOURCE = `export interface AmbientDeep {
+  readonly a: {
+    readonly b: {
+      readonly c: {
+        readonly d: {
+          readonly e: {
+            readonly f: {
+              readonly g: {
+                readonly h: {
+                  readonly i: { readonly j: { readonly k: { readonly l: string } } };
+                };
+              };
+            };
+          };
+        };
+      };
+    };
+  };
+}
+export declare const ambientDeep: AmbientDeep;
+`;
+
+describe('the ambient probe — one skip, six call sites, and they do not agree', () => {
+  it('compiles the probe cleanly, so a finding below is a classification and not an error', () => {
+    const program = programWith(
+      compilerOptions(),
+      [...shippedModulePaths(), AMBIENT_PROBE_PATH],
+      AMBIENT_PROBE_SOURCE,
+      AMBIENT_PROBE_PATH,
+      [...FUNCTION_FREE_DATA_FILE, ...AMBIENT_DECLARATION_FILE],
+    );
+    const file = program.getSourceFile(AMBIENT_PROBE_PATH);
+    expect(file).toBeDefined();
+    const diagnostics = [
+      ...program.getSyntacticDiagnostics(file),
+      ...program.getSemanticDiagnostics(file),
+    ].map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, ' '));
+    expect(diagnostics, diagnostics.join(' | ')).toEqual([]);
+    // The census ran over the probe and NOT over the declaration file, which is
+    // the property that makes an extra file a reference rather than a subject.
+    expect(ambientProbeCensus().modules).toContain(AMBIENT_PROBE_MODULE);
+    expect(ambientProbeCensus().modules).not.toContain(path.basename(AMBIENT_DECLARATION_PATH));
+    expect(ambientProbeCensus().modules.length).toBe(CHANNEL_CENSUS_TOTALS.MODULES + 1);
+    // WHERE THE TWO PREDICATES CAN DIFFER AT ALL, counted rather than argued,
+    // and the first version of this count was WRONG IN THE REASSURING
+    // DIRECTION. It asserted that the only non-default-library declaration file
+    // in this program is the one the harness serves — measured, there are five:
+    // `@types/react/global.d.ts`, `@types/react/index.d.ts`,
+    // `@types/react/jsx-runtime.d.ts`, `csstype/index.d.ts` and the served one.
+    // So the narrowing's reach is not "this directory's own `.d.ts`" but "every
+    // declaration file the compiler did not supply", and a global declared by a
+    // dependency is now reported rather than skipped.
+    //
+    // THE CONSEQUENCE IS MEASURED AND IT IS ZERO, which is a different claim
+    // from the one the wrong count made. `channelCensus().freshReceivers`
+    // equals `DECLARED_FRESH_RECEIVERS` and both owner tables equal their pins
+    // with all four edits in — the assertions two tests below — so no shipped
+    // read moved. The direction of the residual is the safe one: a dependency
+    // binding handed back arrives as a named line in a set equality rather than
+    // as silence, and somebody classifies it.
+    const declarationFilesIn = (
+      roots: readonly string[],
+      text: string | null,
+      at: string,
+      more: readonly (readonly [string, string])[],
+    ): { readonly compilerSupplied: number; readonly other: readonly string[] } => {
+      const built = programWith(compilerOptions(), roots, text, at, [
+        ...FUNCTION_FREE_DATA_FILE,
+        ...more,
+      ]);
+      const declarations = built.getSourceFiles().filter((source) => source.isDeclarationFile);
+      return {
+        compilerSupplied: declarations.filter((source) => built.isSourceFileDefaultLibrary(source))
+          .length,
+        other: declarations
+          .filter((source) => !built.isSourceFileDefaultLibrary(source))
+          .map((source) => path.basename(source.fileName))
+          .sort(),
+      };
+    };
+    const withProbeServed = declarationFilesIn(
+      [...shippedModulePaths(), AMBIENT_PROBE_PATH],
+      AMBIENT_PROBE_SOURCE,
+      AMBIENT_PROBE_PATH,
+      AMBIENT_DECLARATION_FILE,
+    );
+    const shippedOnly = declarationFilesIn(shippedModulePaths(), null, PROBE_PATH, []);
+    // The served file is in one program and not the other, which is what makes
+    // this probe the only thing the four edits can move here.
+    expect(withProbeServed.other).toContain(path.basename(AMBIENT_DECLARATION_PATH));
+    expect(shippedOnly.other).not.toContain(path.basename(AMBIENT_DECLARATION_PATH));
+    expect(withProbeServed.other.length).toBe(shippedOnly.other.length + 1);
+    // Not pinned by name: the dependency rows move when a package moves, which
+    // is a fact about `node_modules` and not about this walk. Pinned as
+    // non-empty in both directions so neither the reach nor the domain can
+    // quietly go to zero and leave the sentence above describing nothing.
+    expect(shippedOnly.other.length).toBeGreaterThan(0);
+    expect(shippedOnly.compilerSupplied).toBeGreaterThan(0);
+  });
+
+  it('finds a function declared in a project `.d.ts` and handed back, at two depths', () => {
+    // Site 3 of six, and the one the round is named for. `declare function` in a
+    // project declaration file is a value this DIRECTORY publishes; `undefined`
+    // in `lib.es5.d.ts` is not, and the predicate that used to sit here could
+    // not tell those apart because it asked about the file extension.
+    expect(ambientProbeSites('returned-closure')).toEqual(AMBIENT_PROBE_CLOSURE_SITES);
+    // And no shipped module has either key, so the set equality on
+    // `DECLARED_RETURNED_CLOSURE_SITES` is what reddens if one arrives for real.
+    for (const key of AMBIENT_PROBE_CLOSURE_SITES) {
+      expect(channelCensus().sites['returned-closure']).not.toContain(key);
+    }
+  });
+
+  it('records the write into an ambient global instead of filing it as a local', () => {
+    // Site 2 of six. `local` is the one owner arm with no channel behind it, so
+    // under the wide predicate the whole of this write was an increment to
+    // `writeOwners.local` — a number that moves for any added write at all.
+    expect(ambientProbeSites('module-mutable-state')).toEqual([
+      `${AMBIENT_PROBE_MODULE}#probeAmbientAliasWrite#write`,
+    ]);
+    expect(ambientProbeCensus().writeOwners['module-variable']).toBe(
+      DECLARED_WRITE_OWNERS['module-variable'] + 1,
+    );
+    // The shipped tree is untouched by the narrowing, which is the other half of
+    // the same measurement: this probe is where it shows and nowhere else.
+    expect(channelCensus().writeOwners).toEqual(DECLARED_WRITE_OWNERS);
+    expect(channelCensus().callTargets).toEqual(DECLARED_CALL_TARGETS);
+  });
+
+  it('keeps the two kept-wide sites LOUD, which is what says they are not the same site', () => {
+    // Sites 1, 4 and the array fallback. Narrowing `literalValuesOf` or the
+    // returned-member arm to the default library sends each of these into a
+    // `VariableDeclaration` branch that reads an empty value list out of a file
+    // which cannot hold one — no closure row, no `unfollowed` line, nothing.
+    // These four rows are what goes missing, so a blanket application of E28's
+    // fix is red here rather than quietly worse.
+    expect(ambientProbeFresh()).toEqual(AMBIENT_PROBE_UNFOLLOWED);
+    // None of them is a closure row, and that is the honest verdict rather than
+    // a weaker one: a declaration file's binding has no value in this program.
+    expect(ambientProbeSites('returned-closure')).not.toContain(
+      `${AMBIENT_PROBE_MODULE}#probeAmbientConstShape#closure:.peek`,
+    );
+    // The probe pollutes no shipped list, so the two censuses stay separate.
+    expect(channelCensus().freshReceivers).toEqual(DECLARED_FRESH_RECEIVERS);
+  });
+
+  it('steps into a project `.d.ts` on the depth walk, and says what the wide read cost', () => {
+    // Sites 5 and 6 of six. The claim in `shippedTypeDepth`'s own docstring is
+    // that its position set is the control's exactly; E28 narrowed the control
+    // and left this walk behind, so the sentence outlived the fact for a round.
+    const reading = shippedTypeDepth(
+      [...shippedModulePaths(), AMBIENT_DEPTH_PATH],
+      AMBIENT_DEPTH_SOURCE,
+      AMBIENT_DEPTH_PATH,
+    );
+    expect(reading.deepest).toBe(SHIPPED_TYPE_DEPTH.AMBIENT_PROBE_DEEPEST);
+    expect(reading.deepestAt).toEqual([`${path.basename(AMBIENT_DEPTH_PATH)}#ambientDeep`]);
+    // AND THE NUMBER IT IS 12 AGAINST. A walk that skips every declaration file
+    // reports the shipped tree's own 9 here, because the probe's position
+    // contributes zero — indistinguishable from a probe that failed to load,
+    // which is why the two numbers sit beside each other rather than one alone.
+    expect(SHIPPED_TYPE_DEPTH.AMBIENT_PROBE_DEEPEST_WHEN_EVERY_DECLARATION_FILE_IS_SKIPPED).toBe(
+      SHIPPED_TYPE_DEPTH.DEEPEST,
+    );
+    expect(reading.deepest).toBeGreaterThan(
+      SHIPPED_TYPE_DEPTH.AMBIENT_PROBE_DEEPEST_WHEN_EVERY_DECLARATION_FILE_IS_SKIPPED,
+    );
+    expect(reading.deepest).toBeGreaterThan(MEMBER_TYPE_WALK_MAX_DEPTH);
+    // The shipped numbers are unchanged by the narrowing, measured rather than
+    // asserted: every pin the walk carries is re-read here.
+    const shipped = shippedTypeDepth();
+    expect(shipped.positions).toBe(SHIPPED_TYPE_DEPTH.POSITIONS);
+    expect(shipped.deepest).toBe(SHIPPED_TYPE_DEPTH.DEEPEST);
+    expect(shipped.deepestThroughIndex).toBe(SHIPPED_TYPE_DEPTH.DEEPEST_THROUGH_INDEX);
+    expect(shipped.positionsCrossingAnIndex).toBe(SHIPPED_TYPE_DEPTH.POSITIONS_CROSSING_AN_INDEX);
+    expect(shipped.indexCrossingsMax).toBe(SHIPPED_TYPE_DEPTH.INDEX_CROSSINGS_MAX);
   });
 });
 
@@ -16103,6 +16561,36 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
     reddened:
       'THE SILENCE COMES BACK AND THE ROW NAMES IT: `is not vacuous: every column answers both ways` fails with `expected [ "ambient-certifying-intersection" ] to deeply equal []` on `silentAndReachable`, and `SILENT` moves 3 -> 4 one assertion above it. Run in two steps, because the first pin short-circuits the second: with the two `ambient-*` verdicts also set back to their pre-narrowing values — `[true, false, false, true]` and `[false, false, true, true]` — `answers every row exactly as the table says` PASSES, which is what says EXACTLY those two rows move and `global-from-a-third-module` does not. That third row is the control for the pair: same certificate, same shape, declaration in a `.ts` rather than a `.d.ts`, and it is walked under both predicates. So the silence was about the FILE KIND and not about the type being global, and the narrowing is what closes it.',
   }),
+  Object.freeze({
+    id: 'G39',
+    what: "`hoppableInitializer` put back on `ambientlyDeclared(resolved)` — E28's predicate at the second of the seven sites that used it, which is the state this file shipped in for a round",
+    reddened:
+      '`records the write into an ambient global instead of filing it as a local`: `expected [] to deeply equal [ Array(1) ]`, `- "__ambientProbe.ts#probeAmbientAliasWrite#write"`. ONE TEST OF A HUNDRED, AND THE OTHER NINETY-NINE ARE THE MEASUREMENT TOO. `does not hop OUT of the function through an `undefined` initializer` stays green under this mutant and under the narrowing alike, because `undefined` lives in `lib.es5.d.ts` and both readings refuse it — so the narrowing keeps the purpose G24 was written for while dropping the width that purpose never asked for. What the width cost is an owner classified `local`, the one arm of nine that records no channel and no `freshReceivers` line, so the whole of a write into an ambiently declared global was an increment to a number this file elsewhere calls one that moves for any added write at all.',
+  }),
+  Object.freeze({
+    id: 'G40',
+    what: "the returned-identifier arm of `returnedFunctions` put back on `ambientlyDeclared(host)` — the site whose comment used to say it was one decision with `hoppableInitializer`, shared rather than restated",
+    reddened:
+      'two checks, and the pair is what says the arm produces a finding rather than merely a line. `finds a function declared in a project `.d.ts` and handed back, at two depths`: `expected [] to deeply equal [ …(2) ]`, losing `- "__ambientProbe.ts#probeAmbientNamedFunction#closure:return"` and `- "__ambientProbe.ts#probeAmbientNamedInShape#closure:.peek"`. `keeps the two kept-wide sites LOUD`: `expected [ …(3) ] to deeply equal [ …(4) ]`, losing `- "__ambientProbe.ts:12 returned=unfollowable:ambientShape"`. So a `declare function` in a project declaration file, handed back by name and one level in, produced NO closure row and NO unfollowed line under the old reading — the same file-kind silence E28 found at the screen, at a different instrument, and it took a probe with two served files to express.',
+  }),
+  Object.freeze({
+    id: 'G41',
+    what: "both property steps of `shippedTypeDepth` put back on `ambientlyDeclared(declaration)` — the walk whose own docstring says its position set is the control's exactly, which stopped being true when E28 narrowed the control and left these behind",
+    reddened:
+      '`steps into a project `.d.ts` on the depth walk, and says what the wide read cost`: `expected 9 to be 12`. The 9 is the shipped tree\'s own deepest surface, so the mutant reports a twelve-deep probe by reporting the number it would report with no probe at all — which is why the constant it is checked against sits beside a second constant holding that 9 rather than alone. Nothing else in the file moves: on `shippedModulePaths()` the two predicates agree at every pin, `POSITIONS` 517, `DEEPEST` 9, `DEEPEST_THROUGH_INDEX` 9 and both crossing counts 0, which is what makes this narrowing invisible without a control and decoration without one.',
+  }),
+  Object.freeze({
+    id: 'G42',
+    what: "E28's narrowing applied to `literalValuesOf` as well — the blanket application of the previous round's fix, at the site where a `null` return is what SENDS the holder to `unfollowed`",
+    reddened:
+      '`keeps the two kept-wide sites LOUD, which is what says they are not the same site`: `expected [ …(2) ] to deeply equal [ …(4) ]`, losing `- "__ambientProbe.ts:21 returned=unfollowable:ambientHolder"` and `- "__ambientProbe.ts:29 returned=unfollowable:ambientList"`. THE FIX MAKES THIS SITE WORSE, which is the whole reason the round is six measurements and not one edit. A declaration file admits no initializer and no assignment, so under the narrower predicate the holder walk enters its `VariableDeclaration` branch, reads a value list of length zero, and returns having recorded nothing at all. Two named lines become silence, and every other check in the file stays green.',
+  }),
+  Object.freeze({
+    id: 'G43',
+    what: 'the same blanket application at the returned-member arm — the fourth of the six sites, and the one whose discriminating shape is a namespace member rather than a property',
+    reddened:
+      '`keeps the two kept-wide sites LOUD`: `expected [ …(3) ] to deeply equal [ …(4) ]`, losing `- "__ambientProbe.ts:25 returned=unfollowable:ambientNamespace"` and nothing else. It took `declare namespace ns { const inner: Shape }` to see: an ordinary member access resolves to a `PropertySignature`, which neither predicate admits into the branch, so the two readings are byte-identical on every property in the probe and part only on the one member access whose symbol is a `VariableDeclaration`. A shape that discriminates nothing is not a control, and the first version of this probe had exactly that shape.',
+  }),
 ]);
 
 /**
@@ -16122,8 +16610,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(35);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(35);
+    expect(REGISTRY_MUTANTS.length).toBe(40);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(40);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
