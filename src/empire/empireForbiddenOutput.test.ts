@@ -6581,10 +6581,44 @@ const DRIVE_CENSUS = Object.freeze({
  *
  * THE CATCHER FOR THE PART THAT IS COVERED, AND THE PART THAT IS NOT. Both are
  * `DECLARED_RETURNED_CLOSURE_SITES` by member path, set-equal in both
- * directions, so a THIRD arrow leaving this directory is red before anybody
- * calls it; and instrument A reads their declared result as `number`, which is
- * not a string position at all, so no forbidden name can be their declared
- * output.
+ * directions, so a THIRD arrow leaving this directory — in any file the shared
+ * walk hands this census — is red before anybody calls it; and instrument A
+ * reads their declared result as `number`, which is not a string position at
+ * all, so no forbidden name can be their declared output.
+ *
+ * THE CLAUSE IN THE MIDDLE OF THAT SENTENCE IS NEW, AND IT IS THERE BECAUSE THE
+ * SENTENCE WITHOUT IT WAS FALSE FOR A ROUND. It was an unbounded absolute over a
+ * census whose reach is `shippedModulePaths()`, which is `tsFilesUnder`, which
+ * filtered on `.ts` — while `tsconfig.json`'s `include` is `**\/*.ts` and
+ * `**\/*.tsx`. Measured rather than argued: `src/empire/rates.tsx` exporting
+ * `idleRates()`, whose returned `gymBucksPerHour` closure body is
+ * `EMPIRE_FORBIDDEN_OUTPUTS[0] as never` — the same payload as M84, which this
+ * list catches in a `.ts` file — compiled at `tsc --noEmit` exit 0, drove to the
+ * string `covered-day` at a one-argument caller, and left the whole repository
+ * at 85 files / 3478 tests exit 0. A third arrow, and this list was silent about
+ * it.
+ *
+ * WHAT THAT COSTS THE WITNESS THAT WAS TAKEN FOR IT, stated because the mistake
+ * is more instructive than the fix. M84 was run, it reddened, and the crossing
+ * below was taken on that basis. The witness was sound and insufficient at the
+ * same time: a mutant shows the check bites on the file the mutant was written
+ * in, and says nothing about the DOMAIN the check enumerates. M84 was a `.ts`
+ * file, so what it proved was that the guarantee holds over the census's reach —
+ * and nobody asked what the reach was. That is the vacuity family one level out,
+ * and it caught the agent applying the rule rather than the one writing prose.
+ *
+ * THE CATCHER FOR THE CLAUSE, named specifically enough to run: `names every
+ * file the compiler compiles here that no census walks`, in
+ * `directoryWalk.test.ts`. It joins `tsconfig.json`'s own claimed file set
+ * against what `tsFilesUnder` hands over and pins the difference at zero, so the
+ * `.tsx` above is `rates.tsx (.tsx)` there before anything in it is read. Run
+ * against this file with that plant in place: 118 of 119 green and the one red
+ * is that reading. Note what stayed green in the same run, since it is the honest
+ * shape of the repair — the `throw` gate's site equality, the import fence and
+ * every other census here saw nothing, because they still walk `.ts`. The
+ * arriving file is caught; its contents are not scanned. Containment, not
+ * coverage, and a `.tsx` landing here is a decision somebody signs rather than a
+ * scan somebody trusts.
  *
  * THE PARAGRAPH THAT USED TO FOLLOW SAID THE ERASURE ROUTE WAS OPEN AND
  * DECLINED TO TRY IT. It was open, it is the twenty-fifth bypass, and both
