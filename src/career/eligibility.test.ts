@@ -2036,14 +2036,20 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
     // only restate the line above it. That is why R2t's horizon is elsewhere.
     expect(shipped.arcsReachingInsideAYear).toBe(158);
     expect(shipped.worstDaysToFirstSummit).toBe(562);
-    // The slowest arc in the whole population, named rather than left as a
-    // number: seed 7 draws a 627.5 kg ceiling — the lowest of the 24, and 2.5 kg
-    // over `POTENTIAL_MIN_KG` — and needs 86 meets to put up 600. It is the one
-    // arc outside R2t's ceiling, and it is the potential band working rather
-    // than the calendar failing. An absolute here would redden on that.
-    expect(shipped.arcs - shipped.arcsReachingInsideTheTailCeiling).toBe(1);
+    // The one arc outside R2t's ceiling belongs to the WEAKEST LIFTER THE BAND
+    // CAN DRAW, which is the argument for why R2t's floor is not an absolute.
+    // Seed 7 takes a 627.5 kg ceiling — 2.5 kg over `POTENTIAL_MIN_KG`, which
+    // sits just above the 600 gate on purpose — and needs 86 meets to put up
+    // 600. That is the potential band working, not the calendar failing.
+    //
+    // "The lowest of the 24" is the part worth checking rather than asserting,
+    // so it is a minimum over the seed list and not a pin on one draw. A
+    // `careerPotentialKg(7) > POTENTIAL_MIN_KG` line stood here and was DELETED
+    // AS DECORATION: the draw is `MIN + d x span`, so it cannot be below MIN
+    // whatever the code does, and the comparison could only fail on a seed that
+    // drew almost exactly zero.
+    expect(Math.min(...ATTENDANCE_SWEEP.SEEDS.map(careerPotentialKg))).toBe(careerPotentialKg(7));
     expect(careerPotentialKg(7)).toBe(627.5);
-    expect(careerPotentialKg(7)).toBeGreaterThan(ATTENDANCE_SWEEP.POTENTIAL_MIN_KG);
 
     // THE `expect.soft` ON BOTH BARS IS DELIBERATE AND IS NOT A SUPPRESSION.
     // Vitest stops a test at its first failing expectation — a property the rest
@@ -2147,12 +2153,20 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
     expect(annualLate.arcsReachingInsideTheTailCeiling).toBeGreaterThanOrEqual(
       tailFloorArcs(annualLate.arcs),
     );
-    // The shipped calendar clears both, with the margins written down rather
-    // than described: 74 days under R2m's ceiling and 18 arcs over R2t's floor.
-    expect(
-      CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_DAYS - (shipped.medianDaysToFirstSummit as number),
-    ).toBe(74);
-    expect(shipped.arcsReachingInsideTheTailCeiling - tailFloorArcs(shipped.arcs)).toBe(18);
+    // The shipped calendar clears both. Read the margins off the pins rather
+    // than from an assertion: 364 - 290 = 74 days under R2m's ceiling, and
+    // 191 - 173 = 18 arcs over R2t's floor.
+    //
+    // TWO MARGIN ASSERTIONS STOOD HERE AND WERE DELETED AS DOMINATED, which is
+    // the check CLAUDE.md requires of a new rule rather than an observation
+    // about tidiness. `shipped.arcs` is pinned at 192 above and the tail count
+    // at 191, so `arcs - tail === 1` was decided before it ran; the same for
+    // `tail - tailFloorArcs(arcs) === 18` against 191 and 173. A subtraction of
+    // two pinned numbers cannot speak. What was NOT dominated is the horizon
+    // itself — `FIRST_YEAR_DAYS` is nowhere pinned to a literal in this file —
+    // so it is pinned directly below instead of implied by a margin.
+    expect(CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_DAYS).toBe(364);
+    expect(CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_DAYS).toBe(ATTENDANCE_SWEEP.CALENDAR_PERIOD_DAYS);
 
     // THE FOURTH CORNER, AND IT CORRECTS WHAT THE THREE ROWS ABOVE READ LIKE.
     // Both controls so far moved the CADENCE as well as the phase, so "neither

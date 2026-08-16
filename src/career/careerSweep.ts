@@ -1491,6 +1491,39 @@ export function seasonMeetsOfTier(
  * MAKE AN OLD ONE VACUOUS" applied before writing rather than after.
  *
  * ===========================================================================
+ * THE DOMINATION CHECK IN FULL, AND ONE RESULT WORTH READING TWICE
+ * ===========================================================================
+ * Thresholds compared symbolically rather than by intuition, which is what
+ * `CLAUDE.md` asks for. `n` is 192 and R1 pins every arc as reaching a summit,
+ * so "how many are inside H" and "is the median under H" are the same family of
+ * statement and the comparisons are exact:
+ *
+ *   - R2m vs R2t. R2m gives at least 97 arcs inside 364, hence inside 546. R2t
+ *     asks 173, and 97 < 173, so R2m does not imply R2t. R2t says nothing about
+ *     the median. Independent both ways.
+ *   - R2t vs R1. R1 speaks at `RUN_DAYS` (728) and R2t at 546, so R1 implies
+ *     nothing at R2t's horizon; and R2t permits 19 arcs never to arrive at all,
+ *     which R1 forbids. Independent both ways.
+ *   - R2t vs R2b. R2b gives 96 inside 364, hence 96 inside 546, against 173.
+ *     Not implied.
+ *   - R2b vs R2m. A global count says nothing per signup offset, so R2m does
+ *     not imply R2b.
+ *
+ * AND THE ONE THAT IS NOT COMFORTABLE: R2b ALMOST IMPLIES R2m, BY ONE ARC. R2b
+ * at its bar gives 8 x 12 = 96 arcs inside the year, and R2m needs the 97th. So
+ * there is exactly one arc of daylight between them, and a state where R2b
+ * passes while R2m fails is reachable but narrow. That is the SAME SHAPE this
+ * file already records for R1 — "one arc is not evidence and it is not read as
+ * evidence" — and it is written down rather than left to be rediscovered.
+ *
+ * IT IS NOT A REASON TO DROP R2m, for two reasons that are measurements rather
+ * than opinions. R2b's BAR is 12 while its MEASUREMENT is 15, so on this fixture
+ * the two clauses are nowhere near each other. And R2m is the half that catches
+ * `annual-late` on PACE: its median is 449 days. A calendar whose lockout was
+ * repaired but whose pace was not would clear R2b and fail R2m, and that is the
+ * case R2m exists for.
+ *
+ * ===========================================================================
  * `TAIL_FLOOR_FRACTION` IS A DESIGN POSITION AND NOT A DERIVATION. SAID PLAINLY.
  * ===========================================================================
  * The two HORIZONS above are derived. The FRACTION is not, and inventing a
