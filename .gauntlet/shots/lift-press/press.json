@@ -1,18 +1,11 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-16T09:51:29.098Z",
+    "capturedAt": "2026-08-16T19:26:46.404Z",
     "url": "http://localhost:8081",
-    "commit": "1dfdd65",
-    "branch": "claude/shell-pin-axis",
+    "commit": "37f2fcc",
+    "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
-    "dirtyPaths": [
-      "M .gauntlet/shots/cutin-cap/cap.json",
-      " M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
-      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
-      " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
-      " M .gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
-      " M .gauntlet/shots/shell/route.json"
-    ],
+    "dirtyPaths": [],
     "instrument": {
       "verify-lift-press.mjs": "3ca7be3087bdffaf",
       "sessionDrive.mjs": "2a63eac7a653d32b",
@@ -544,9 +537,11 @@
             false,
             false,
             false,
+            false,
+            false,
             false
           ],
-          "moves": 8,
+          "moves": 10,
           "forcedTo": {
             "userSelect": "none",
             "touchAction": "manipulation"
@@ -1506,12 +1501,12 @@
     {
       "ok": true,
       "what": "ARM session: PROBE 2 — the page saw all 4 pans, so none of the cancel counts is a count of nothing",
-      "detail": "4 of 4; as-shipped=10 moves @200px, 0 cancel(s); as-shipped-small=3 moves @20px, 0 cancel(s); neutralised=8 moves @200px, 1 cancel(s); forced-fixed=10 moves @200px, 0 cancel(s)"
+      "detail": "4 of 4; as-shipped=10 moves @200px, 0 cancel(s); as-shipped-small=3 moves @20px, 0 cancel(s); neutralised=10 moves @200px, 1 cancel(s); forced-fixed=10 moves @200px, 0 cancel(s)"
     },
     {
       "ok": true,
       "what": "ARM session: PROBE 2 — touchmove cancelability is [true, false…] on all 3 full-size pans whatever touch-action says, so it is not the discriminator and the cancel count is",
-      "detail": "3 of 3; as-shipped@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false] as-shipped-small@20px(ta=\"none\")=[true,true,true] neutralised@200px(ta=\"manipulation\")=[true,false,false,false,false,false,false,false] forced-fixed@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false]"
+      "detail": "3 of 3; as-shipped@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false] as-shipped-small@20px(ta=\"none\")=[true,true,true] neutralised@200px(ta=\"manipulation\")=[true,false,false,false,false,false,false,false,false,false] forced-fixed@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false]"
     },
     {
       "ok": true,
