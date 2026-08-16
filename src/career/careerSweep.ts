@@ -1416,13 +1416,19 @@ export function seasonMeetsOfTier(
  *        `SEEDS.length x SIGNUP_OFFSET_DAYS.length` of them, no exceptions
  *        carved out, pinned at the full count rather than bounded.
  *
- *   R2 — PACE. A campaign is a year-scale thing, so the summit has to land
- *        inside one: at least `FIRST_YEAR_ARCS_REQUIRED` of those arcs enter
- *        their first campaign summit within `FIRST_YEAR_DAYS` of signing up,
- *        and the median arc does so inside `MEDIAN_DAYS_CEILING`. This clause
- *        IS distributional and that is deliberate — a slower player taking
- *        longer is pacing, not a lockout, and R1 is what makes it not a
- *        lockout.
+ *   R2 — PACE, IN TWO HALVES WITH DIFFERENT HORIZONS AND DIFFERENT JOBS.
+ *        R2m, THE MIDDLE: the MEDIAN arc enters its first campaign summit
+ *        within `FIRST_YEAR_DAYS` of signing up. "A campaign is a year-scale
+ *        thing" is a claim about the typical player, and the median is what
+ *        typical means.
+ *        R2t, THE TAIL: at least `TAIL_FLOOR_FRACTION` of the arcs do so
+ *        within `TAIL_CEILING_DAYS` — the design's own worst case, a year of
+ *        climbing plus the longest wait the summit's cadence may impose on a
+ *        lifter who has already qualified.
+ *        This clause IS distributional and that is deliberate — a slower
+ *        player taking longer is pacing, not a lockout, and R1 is what makes
+ *        it not a lockout. NEITHER HALF PINS AN ARC COUNT: R2m is a day
+ *        count and R2t is a fraction of however many arcs the sweep draws.
  *
  *   R2b — NO SIGNUP DAY IS LOCKED OUT. Every signup offset, taken on its own,
  *        gets at least `MIN_FIRST_YEAR_ARCS_PER_OFFSET` of its 24 arcs to a
@@ -1441,37 +1447,92 @@ export function seasonMeetsOfTier(
  * playtester will move.
  *
  * ===========================================================================
- * R2 DOES NOT HOLD AT `MAX_GAIN_KG` 20, AND IT IS REPORTED RATHER THAN RE-PINNED
+ * R2 WAS RE-DERIVED FROM THE DESIGN AFTER BEING READ OFF THREE FIXTURES
  * ===========================================================================
- * BOTH HALVES OF R2 MISS. On the shipped calendar at the shipped gain, 158 of
- * the 192 arcs enter a campaign summit inside their first year against a
- * `FIRST_YEAR_ARCS_REQUIRED` of 168 — short by 10 — and the median arc waits 290
- * days against a `MEDIAN_DAYS_CEILING` of 250 — over by 40.
- * `eligibility.test.ts` is RED on exactly those two assertions and on nothing
- * else in R1, R2b or R3.
+ * A human ruled on 2026-08-15 that 158 of 192 arcs inside the first year, at a
+ * 290-day median, IS ACCEPTABLE at `MAX_GAIN_KG` 20. The gain rate stays. What
+ * changed is R2, because the old clause was a pin on a BYPRODUCT rather than a
+ * statement of a REQUIREMENT: `FIRST_YEAR_ARCS_REQUIRED` had been 176, then
+ * 192, then was short at 158, and each time the number came off whatever the
+ * generator was doing rather than off what a campaign should feel like.
  *
- * THE TWO CONSTANTS ARE DELIBERATELY NOT MOVED. A requirement adjusted to fit
- * the measurement that just broke it is a pin nudged until green, which
- * CLAUDE.md says is worse than no pin at all. What is genuinely open — and is a
- * human's call rather than a builder's — is whether the requirement was ever
- * about the game or was an artefact of a gain rate nobody had questioned:
+ * SETTING IT TO 82% BECAUSE 158/192 IS 82.3% WOULD HAVE BEEN THE SAME DEFECT IN
+ * A NEW COSTUME. The test of a re-derivation is whether the reason for the
+ * number survives the fixture changing. So both horizons below are composed out
+ * of design constants and neither is a measurement:
  *
- *   - 168 was set as "seven eighths" of 192 and then re-justified by the margin
- *     it happened to have. It was 176 under the unbounded generator, rose to 192
- *     when the generator was bounded — and the block for that constant says in
- *     its own words that the rise "is not the calendar improving" — and is 158
- *     now. The requirement has never once been derived from what a campaign
- *     should feel like; it has three times been read off whatever the fixture
- *     was doing.
- *   - `MEDIAN_DAYS_CEILING` of 250 days sits between the 198-day median of the
- *     unbounded fixture and the 154-day median of the bounded one, which is to
- *     say it was set to clear both. At a rate chosen so that the median campaign
- *     is about six months, a 250-day ceiling on the median wait for the summit
- *     is asking the summit to arrive well before the campaign does.
+ *   - R2m's horizon is `FIRST_YEAR_DAYS`, which is now literally
+ *     `ATTENDANCE_SWEEP.CALENDAR_PERIOD_DAYS` rather than a second 364. GDD
+ *     §6.6 says a campaign is a year-scale thing; the year is the calendar's
+ *     own period; the median is what "the typical player" means. Nothing in
+ *     that sentence can be moved by a generator.
+ *   - R2t's horizon is `FIRST_YEAR_DAYS + CADENCE_DAYS['campaign-worlds']`.
+ *     `careerTuning.ts`'s cadence block sets 182 by an explicit worst-case
+ *     argument — "a lifter who clears its gate the day after one is held waits
+ *     up to C days for the next" — so one cadence is, in the design's own
+ *     words, the most the CALENDAR may add to a lifter who has already
+ *     qualified. A year to climb plus one cadence to wait is therefore the
+ *     design's stated worst case, spelled with its own two constants. Turn the
+ *     summit quarterly and this ceiling becomes 455 without anyone editing it.
  *
- * WHAT IS NOT IN DOUBT is that the reachability property R2 was written to
- * protect still holds: R1 is 192 of 192 and R2b clears its bar on every signup
- * day. What R2 is now measuring is PACE, at a pace that was deliberately slowed.
+ * AND THE SECOND HORIZON HAS A SECOND DERIVATION THAT AGREES WITH IT, which is
+ * why it is worth trusting: `RUN_DAYS - CADENCE_DAYS['campaign-worlds']` is the
+ * same 546. Read that way R2t is R1 with a margin — not merely "every arc
+ * reaches a summit before the sweep window shuts" but "with a whole further
+ * opportunity still to come".
+ *
+ * WHY R2t CANNOT SHARE R2m'S HORIZON, WHICH IS THE ARGUMENT THAT FORCED TWO OF
+ * THEM. At the year horizon a floor percentage has nowhere to stand. All 192
+ * arcs reach a summit, so `median <= FIRST_YEAR_DAYS` is EXACTLY "at least 97 of
+ * 192 inside the year" — the median is `sorted[Math.floor(n / 2)]`. A floor at
+ * the year of 50% or less is implied by R2b (8 offsets x 12 = 96) and a floor
+ * above 50% implies R2m. The year is occupied in both directions, so a second
+ * clause there could only restate a first. That is `CLAUDE.md`'s "A NEW RULE CAN
+ * MAKE AN OLD ONE VACUOUS" applied before writing rather than after.
+ *
+ * ===========================================================================
+ * `TAIL_FLOOR_FRACTION` IS A DESIGN POSITION AND NOT A DERIVATION. SAID PLAINLY.
+ * ===========================================================================
+ * The two HORIZONS above are derived. The FRACTION is not, and inventing a
+ * rationale for it would be worse than admitting that. The design states a
+ * horizon (the year), a cadence (with its worst-case argument) and an absolute
+ * (R1). IT STATES NO TOLERANCE FOR HOW LARGE THE SLOW TAIL MAY BE, and none can
+ * be recovered from `POTENTIAL_MIN_KG`, `POTENTIAL_MAX_KG` or `MAX_GAIN_KG`
+ * without drawing a line those constants do not draw.
+ *
+ * What IS derivable is the BAND the fraction has to sit in, and both ends are
+ * design arguments rather than taste:
+ *
+ *   - NOT 100%. `POTENTIAL_MIN_KG` sits 25 kg above the campaign gate ON
+ *     PURPOSE, so that R1 stays a statement about the calendar rather than about
+ *     strength. The design therefore GUARANTEES lifters who creep to the gate:
+ *     seed 7 draws 627.5 and needs 86 meets to reach 600. A floor of 100% here
+ *     would be a bar on the potential band wearing the calendar's clothes.
+ *   - ABOVE 84.4%. The calendar §6.6 records as a design violation —
+ *     `annual-at-the-competitive-phase` — already gets 162 of 192 arcs inside
+ *     this ceiling. A bar a design violation clears is a bar about nothing.
+ *
+ * Nine in ten is the position taken inside that band, and it is a POSITION: it
+ * is what "the exception rather than the rule" is worth as a number, at the one
+ * horizon the design calls its worst case. A reader may disagree with it on
+ * design grounds, which is the whole point of writing it as a fraction with its
+ * meaning attached instead of as an arc count.
+ *
+ * TWO THINGS WERE MEASURED BEFORE SETTLING ON NINE IN TEN rather than reasoned
+ * about, and both are arguments against the neighbouring choices:
+ *
+ *   - 95% would break on a rate change the design is actively considering. At
+ *     `MAX_GAIN_KG` 16 the shipped calendar gets 182 of 192 inside this ceiling,
+ *     which clears nine in ten by 9 arcs and misses 95% by one. A pacing bar
+ *     that reddens before the pacing knob has finished moving is a pin, not a
+ *     requirement.
+ *   - 85% would sit 2 arcs above the design violation's 162. `careerSweep.ts`
+ *     already says elsewhere that a bar wants to sit "between two numbers that
+ *     are not close"; two arcs is close.
+ *
+ * WHAT IS NOT IN DOUBT, and did not depend on any of this: R1 is 192 of 192 and
+ * R2b clears its bar on every signup day, so the summit is reachable for every
+ * arc and no signup day is locked out.
  *
  * R1 IS NOT THE CLAUSE THAT BITES, AND SLOWING THE GAIN RATE GAVE IT BACK ONE
  * ARC OF SEPARATING POWER. It used to separate the shipped calendar from the one
@@ -1585,67 +1646,139 @@ export const CAMPAIGN_SUMMIT_SWEEP = Object.freeze({
    * against it, so the slack is a measured number instead of a hope.
    */
   MEETS_PER_ARC: 200,
-  /** R2's window: a campaign is a year-scale thing. */
-  FIRST_YEAR_DAYS: 364,
   /**
-   * R2, first half: how many of the 192 arcs must reach a campaign summit
-   * inside that first year.
+   * R2m's ceiling, and R2b's window: a campaign is a year-scale thing.
    *
-   * 168, which is seven eighths. Not every arc, because a lifter who signs up a
-   * week after a summit is held cannot reach that one however well they play,
-   * and demanding otherwise would demand a summit every week.
+   * NOT A SECOND 364. The year here IS the calendar's own period, so a tuner who
+   * moves the season moves this with it and cannot leave the two disagreeing.
+   * That matters more than it looks: this constant is the whole content of R2m,
+   * and a requirement whose horizon is a loose literal is a requirement that can
+   * silently stop being about the calendar it is written against.
    *
-   * DELIBERATELY BELOW THE MEASUREMENT RATHER THAN EQUAL TO IT. The shipped
-   * calendar measured 192 — every arc — which `eligibility.test.ts` pinned
-   * exactly beside this bar. A requirement set AT its own measurement reads as a
-   * requirement chosen to be met, and carries no margin to lose before it is
-   * broken.
+   * A NOTE FOR ANYONE WHO EXPECTED 365. The calendar is built in whole weeks —
+   * `CADENCE_DAYS`'s block says why, so nothing drifts across a leap year — so
+   * the year this game HAS is 52 weeks. On this fixture the distinction is
+   * inert: summit arrivals land on `PHASE_DAYS + k x CADENCE_DAYS - offset`, and
+   * no arc arrives on day 365, so 364 and 365 select the same arcs. It is 364
+   * because that is the year the design defines, not because it is safer.
+   */
+  FIRST_YEAR_DAYS: ATTENDANCE_SWEEP.CALENDAR_PERIOD_DAYS,
+  /**
+   * R2t's ceiling: the design's own worst case, in days from signup.
    *
-   * THE MARGIN GOT BIGGER WHEN THE GENERATOR WAS BOUNDED, from 176 to 192, and
-   * that is not the calendar improving. A bad meet no longer costs a lifter
-   * strength they had already built, so careers climb to the gate faster and
-   * more uniformly — the median wait from signup fell from 198 days to 154. This
-   * fixture was always "the CEILING of campaign pace, not its middle", as
-   * `simulateCampaignArc` says; bounding the generator raised the ceiling it
-   * measures rather than telling anybody more about the middle.
+   * COMPOSED OUT OF TWO DESIGN CONSTANTS, NEVER MEASURED. A year to climb —
+   * §6.6's scale for a campaign, the line above — plus one summit cadence to
+   * wait. The cadence is the second half because `careerTuning.ts` sets it by an
+   * explicit worst-case argument: "a lifter who clears its gate the day after
+   * one is held waits up to C days for the next", which is the design saying in
+   * its own words that ONE CADENCE is the most the calendar may add to a lifter
+   * who has already qualified. Halving the cadence to 182 was that worst case
+   * being bought down; this constant is that purchase written as a bar.
+   *
+   * SO AN ARC OUTSIDE THIS CEILING IS SLOW FOR A REASON THE CALENDAR CANNOT
+   * SUPPLY. Its lifter took more than a year to reach the gate. That is what
+   * makes this the right horizon for a tail clause rather than an arbitrary
+   * longer one: it is exactly the line between "the calendar made me wait" and
+   * "I was still climbing".
+   *
+   * A SECOND DERIVATION LANDS ON THE SAME NUMBER, which is the reason to trust
+   * it: `RUN_DAYS - CADENCE_DAYS['campaign-worlds']` is also 546. Read that way
+   * R2t is R1 with a margin — every arc reaching a summit not merely before the
+   * sweep window shuts but with a further whole opportunity still to come.
+   *
+   * Turn the summit quarterly and this becomes 455. Nothing here needs editing
+   * for that to be true, which is the property the old bar did not have.
+   */
+  TAIL_CEILING_DAYS:
+    ATTENDANCE_SWEEP.CALENDAR_PERIOD_DAYS + CAREER_TUNING.CADENCE_DAYS['campaign-worlds'],
+  /**
+   * R2t's floor: the share of arcs that must be inside that ceiling.
    *
    * ===========================================================================
-   * AND THE MARGIN IS GONE AT `MAX_GAIN_KG` 20. THIS BAR IS NOT MET AND IS NOT
-   * MOVED.
+   * THIS ONE IS A DESIGN POSITION, NOT A DERIVATION, AND SAYING SO IS THE POINT
    * ===========================================================================
-   * The shipped calendar now takes 158 of 192 arcs to a summit inside their
-   * first year, ten short of this number, and `eligibility.test.ts` is red on
-   * that assertion. Moving 168 down to 158 would be a pin nudged until green,
-   * which is the thing CLAUDE.md says is worse than having no pin.
+   * Both horizons above are composed out of design constants. This fraction is
+   * not, and dressing it up as one would repeat the defect this whole clause was
+   * rewritten to remove. The design states a year, a cadence and an absolute; it
+   * states NO tolerance for how large the slow tail may be, and none can be
+   * recovered from `POTENTIAL_MIN_KG`, `POTENTIAL_MAX_KG` or `MAX_GAIN_KG`
+   * without drawing a line those constants do not draw. This is the one number
+   * in R2 a playtester has to rule on.
    *
-   * THE HONEST READING, FOR WHOEVER RULES ON IT. This number has been 176, then
-   * 192, then 158 across three fixtures, and it has never been derived from what
-   * a campaign ought to feel like — each time it was read off whatever the
-   * generator was doing and then justified by the margin that left. A
-   * requirement derived from a gain rate now known to be five times too fast is
-   * not automatically still the right requirement, and it is also not
-   * automatically wrong. What decides it is a judgement about pacing that only a
-   * human playing this can make.
+   * WHAT IS DERIVABLE IS THE BAND IT SITS IN, and both ends are design
+   * arguments:
    *
-   * WHAT DOES NOT DEPEND ON THAT RULING: R1 is 192 of 192 and R2b clears its bar
-   * on every signup day, so the summit is still REACHABLE for every arc and no
-   * signup day is locked out. It is R2's PACE clause alone that misses, at a
-   * pace that was deliberately slowed.
+   *   - NOT 100%. `POTENTIAL_MIN_KG` is 25 kg above the campaign gate ON
+   *     PURPOSE, so R1 stays a statement about the calendar rather than about
+   *     strength — its own block says exactly that. The design therefore
+   *     guarantees lifters who creep to the gate: seed 7 draws 627.5 and needs
+   *     86 meets to reach 600, arriving on day 562 from a day-161 signup. An
+   *     absolute here would be a bar on the potential band wearing the
+   *     calendar's clothes, and it would redden on the fixture working.
+   *   - ABOVE 84.4%. `annual-at-the-competitive-phase` — the calendar §6.6
+   *     records as a design violation — already gets 162 of 192 arcs inside this
+   *     ceiling. A bar a design violation clears is a bar about nothing.
+   *
+   * NINE IN TEN IS THE POSITION TAKEN INSIDE THAT BAND: at the horizon the
+   * design calls its worst case, a campaign still short of its summit is meant
+   * to be the exception, and one player in ten is what "the exception" is worth
+   * as a number. Disagree with that on design grounds — it is written as a
+   * fraction with its meaning attached so that the disagreement can be about the
+   * game rather than about 192.
+   *
+   * THE TWO NEIGHBOURING CHOICES WERE MEASURED AND ARE WORSE:
+   *
+   *   - 0.95 misses by one arc at `MAX_GAIN_KG` 16, where the shipped calendar
+   *     gets 182 of 192 inside this ceiling. 16 is inside the range the gain
+   *     ruling is still moving through, and a pacing bar that reddens before the
+   *     pacing knob has stopped is a pin rather than a requirement.
+   *   - 0.85 lands 2 arcs above the design violation's 162. This file says
+   *     elsewhere that a bar wants to sit "between two numbers that are not
+   *     close". Two arcs is close.
+   *
+   * A FRACTION AND NOT A COUNT, deliberately. The ruling that produced this
+   * clause was that R2 must stop pinning an exact arc count; `tailFloorArcs`
+   * multiplies this by however many arcs the sweep actually drew, so adding
+   * seeds or signup offsets moves the bar with the population instead of
+   * breaking a pin that was never about the design.
    */
-  FIRST_YEAR_ARCS_REQUIRED: 168,
-  /**
-   * R2, second half: the median arc's wait, in days from signup.
+  TAIL_FLOOR_FRACTION: 0.9,
+  /*
+   * SUPERSEDED, KEPT AS THE HISTORY THE RE-DERIVATION IS AGAINST. R2 used to ask
+   * that at least 168 of the 192 arcs reach a summit inside the first year, and
+   * that the median do so inside 250 days. Neither constant exists now.
    *
-   * ALSO NOT MET AT `MAX_GAIN_KG` 20, AND ALSO NOT MOVED: the median arc waits
-   * 290 days against this 250. Same reasoning as the constant above, and one
-   * observation a ruling would want — 250 was set between the unbounded
-   * fixture's 198-day median and the bounded one's 154, which is to say it was
-   * chosen to clear both rather than derived. At a gain rate picked so that the
-   * median campaign reaches the gate around day 187, a 250-day ceiling on the
-   * median wait for the summit ITSELF asks the summit to arrive barely two
-   * months after a lifter first qualifies for it.
+   * The reason they went is not that they were failing — a human ruled 158 of
+   * 192 at a 290-day median ACCEPTABLE at `MAX_GAIN_KG` 20 and left the gain
+   * rate alone. It is that 168 was never derived: it was 176 under the unbounded
+   * generator, 192 once the generator was bounded, and 158 at the slower gain,
+   * and each time the requirement was read off whatever the fixture had just
+   * produced and then justified by the margin that left. 250 was set between the
+   * unbounded fixture's 198-day median and the bounded one's 154 — chosen to
+   * clear both, which is the same defect stated in days.
+   *
+   * The old justification for 168 is worth one line because it turned out to be
+   * FALSE OF THE SHIPPED CALENDAR: "a lifter who signs up a week after a summit
+   * cannot reach that one however well they play". At a semi-annual cadence the
+   * first year is exactly two cadences long, so every signup offset gets exactly
+   * TWO summit opportunities inside it, and no arc misses the year for want of
+   * an occurrence. That sentence was true of the annual calendar it was written
+   * beside and was carried across the fix.
+   *
+   * ONE MEASUREMENT FROM THAT ERA IS KEPT BECAUSE IT IS STILL THE WARNING. When
+   * the totals generator was bounded, the first-year count rose from 176 to 192
+   * and the median wait fell from 198 days to 154 — and that was NOT the
+   * calendar improving. A bad meet stopped costing a lifter strength they had
+   * already built, so careers climbed more uniformly. This fixture measures "the
+   * CEILING of campaign pace, not its middle", as `simulateCampaignArc` says;
+   * bounding the generator raised the ceiling rather than telling anyone more
+   * about the middle. A requirement read off a number that moves like that is
+   * the thing R2 stopped doing.
+   *
+   * `eligibility.test.ts` still measures and pins the first-year count, because
+   * 158 of 192 is a census worth watching move. What it no longer does is treat
+   * that census as the requirement.
    */
-  MEDIAN_DAYS_CEILING: 250,
   /**
    * R2b: the fewest arcs any ONE signup day may get to a summit inside the
    * first year, out of the 24 seeds that share it.
@@ -1955,8 +2088,23 @@ export interface CampaignReach {
   readonly arcs: number;
   /** Arcs that entered at least one campaign summit. R1 is this equalling `arcs`. */
   readonly arcsReachingASummit: number;
-  /** Arcs that entered one within `FIRST_YEAR_DAYS` of signing up. R2. */
+  /**
+   * Arcs that entered one within `FIRST_YEAR_DAYS` of signing up.
+   *
+   * A CENSUS, NOT A BAR, SINCE THE RE-DERIVATION. R2 used to require a count
+   * here and the count was read off three fixtures in turn. `medianDaysToFirst
+   * Summit` is the clause at this horizon now; this number is pinned beside it
+   * so a reader can watch it move.
+   */
   readonly arcsReachingInsideAYear: number;
+  /**
+   * Arcs that entered one within `TAIL_CEILING_DAYS` of signing up. R2t.
+   *
+   * The design's worst case — a year to climb plus one cadence to wait — so an
+   * arc outside this is one whose LIFTER took more than a year to reach the
+   * gate, not one the calendar kept waiting.
+   */
+  readonly arcsReachingInsideTheTailCeiling: number;
   /**
    * The same count cut by signup day, in `SIGNUP_OFFSET_DAYS` order. R2b.
    *
@@ -1986,6 +2134,25 @@ export interface CampaignReach {
   readonly anchorArcsEnteringTheirFirstOfferedSummit: number;
 }
 
+/**
+ * R2t's bar, as a count, for a sweep that drew `arcs` of them.
+ *
+ * THE WHOLE REASON THIS IS A FUNCTION AND NOT A CONSTANT. The ruling that
+ * re-derived R2 was that it must stop pinning an exact arc count, and a bar
+ * stored as `173` is an arc count however it was arrived at. `TAIL_FLOOR_
+ * FRACTION` times however many arcs the sweep actually drew keeps the
+ * requirement a statement about the design when somebody adds a seed or a
+ * signup offset, instead of a pin that breaks for a reason that is not about
+ * the game.
+ *
+ * `ceil` rather than `round`, because a floor that rounds DOWN is a floor
+ * quietly below the fraction it claims: at 192 arcs, nine in ten is 172.8, and
+ * 172 of 192 is 89.6%.
+ */
+export function tailFloorArcs(arcs: number): number {
+  return Math.ceil(arcs * CAMPAIGN_SUMMIT_SWEEP.TAIL_FLOOR_FRACTION);
+}
+
 /** Fold one variant's arcs into the counts the requirement is read off. */
 export function measureCampaignReach(variant: CampaignCalendarVariant): CampaignReach {
   const arcs = campaignArcs(variant);
@@ -1993,6 +2160,7 @@ export function measureCampaignReach(variant: CampaignCalendarVariant): Campaign
   const enteredPerTier = emptyTierTally();
   const reached: number[] = [];
   let arcsReachingInsideAYear = 0;
+  let arcsReachingInsideTheTailCeiling = 0;
   let summitsEntered = 0;
   let fewestMeetsBeforeASummit: number | null = null;
   let deepestArc = 0;
@@ -2006,6 +2174,9 @@ export function measureCampaignReach(variant: CampaignCalendarVariant): Campaign
     if (arc.daysToFirstSummit !== null) {
       reached.push(arc.daysToFirstSummit);
       if (arc.daysToFirstSummit <= CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_DAYS) arcsReachingInsideAYear += 1;
+      if (arc.daysToFirstSummit <= CAMPAIGN_SUMMIT_SWEEP.TAIL_CEILING_DAYS) {
+        arcsReachingInsideTheTailCeiling += 1;
+      }
     }
     if (arc.meetsBeforeFirstSummit !== null) {
       fewestMeetsBeforeASummit =
@@ -2028,6 +2199,7 @@ export function measureCampaignReach(variant: CampaignCalendarVariant): Campaign
     arcs: arcs.length,
     arcsReachingASummit: sorted.length,
     arcsReachingInsideAYear,
+    arcsReachingInsideTheTailCeiling,
     firstYearArcsPerOffset: Object.freeze(firstYearArcsPerOffset),
     worstOffsetFirstYearArcs: Math.min(...firstYearArcsPerOffset),
     daysToFirstSummit: sorted,

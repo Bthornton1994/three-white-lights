@@ -34,6 +34,7 @@ import {
   shippedEntryList,
   simulateSeason,
   strengthGrid,
+  tailFloorArcs,
   tierOccurrenceOf,
   variantCalendar,
   type EntryVariant,
@@ -1947,45 +1948,86 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
     expect(shipped.firstYearArcsPerOffset).toEqual([23, 23, 21, 20, 20, 20, 16, 15]);
 
     // =====================================================================
-    // R2 IS RED HERE, DELIBERATELY, AND THE TWO LINES BELOW ARE THE FINDING
+    // R2, RE-DERIVED FROM THE DESIGN AFTER BEING READ OFF THREE FIXTURES
     // =====================================================================
-    // At `MAX_GAIN_KG` 20 the shipped calendar takes 158 of 192 arcs to a summit
-    // inside their first year against a required 168, and the median arc waits
-    // 290 days against a ceiling of 250. Both halves of R2 miss.
+    // A human ruled on 2026-08-15 that 158 of 192 arcs inside the first year at
+    // a 290-day median IS ACCEPTABLE at `MAX_GAIN_KG` 20. The gain rate stayed
+    // and R2 changed, because the old clause pinned a BYPRODUCT: it asked for
+    // 168 of 192, and 168 had been 176 under the unbounded generator and 192
+    // under the bounded one, read off the fixture each time.
     //
-    // THE BARS ARE NOT MOVED TO MATCH. A requirement adjusted to fit the
-    // measurement that just broke it is a pin nudged until green, which CLAUDE.md
-    // calls worse than no pin at all — and this particular requirement has been
-    // read off three different fixtures already (176, then 192, now 158) without
-    // ever being derived from what a campaign should feel like. Whether it is
-    // still the right requirement at a gain rate deliberately slowed by a factor
-    // of three and a half is a human's ruling, not a builder's.
+    // SETTING THE BAR TO 82% BECAUSE 158/192 IS 82.3% WOULD HAVE BEEN THE SAME
+    // DEFECT WEARING A PERCENT SIGN. Both horizons below are composed out of
+    // design constants, and the fraction is declared a design POSITION rather
+    // than dressed up as a derivation. `CAMPAIGN_SUMMIT_SWEEP`'s blocks carry
+    // the full argument; what matters here is that neither line pins an arc
+    // count.
     //
-    // WHAT IS NOT IN DOUBT: R1 above is 192 of 192 and R2b above clears its bar
-    // on every signup day, so the summit is REACHABLE for every arc and no
-    // signup day is locked out. R2 is a PACE clause and the pace was slowed on
-    // purpose. See `FIRST_YEAR_ARCS_REQUIRED`'s block for the full account.
-    //
-    // THE TWO BARS ARE `expect.soft` AND NOTHING ELSE IN THIS REPOSITORY IS.
-    // Vitest stops a test at its first failing expectation — a property the rest
-    // of this file relies on and states at length, which is why the PROPERTY is
-    // always asserted before the domain pins. Here that property works against
-    // the reader: R2 has two halves, both miss, and a hard assertion on the
-    // first means a run only ever reports one of them. A finding that a human
-    // has to rule on should arrive whole. `soft` still fails the test — this is
-    // not a suppression — it just lets both halves and the exact measurements
-    // below them speak in the same run.
-    expect.soft(
-      shipped.arcsReachingInsideAYear,
-      'R2 first half: 158 of 192 against a required 168 at MAX_GAIN_KG 20 — reported, not re-pinned',
-    ).toBeGreaterThanOrEqual(CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_ARCS_REQUIRED);
-    expect(shipped.arcsReachingInsideAYear).toBe(158);
+    // R2m — THE MIDDLE. "A campaign is a year-scale thing" is a claim about the
+    // typical player, so the statistic is the MEDIAN and the horizon is the
+    // calendar's own period. Nothing about that sentence can be moved by a
+    // generator. Measured 290 against 364.
     expect.soft(
       shipped.medianDaysToFirstSummit as number,
-      'R2 second half: a 290-day median against a 250-day ceiling — reported, not re-pinned',
-    ).toBeLessThanOrEqual(CAMPAIGN_SUMMIT_SWEEP.MEDIAN_DAYS_CEILING);
+      'R2m: the median arc reaches a campaign summit inside the calendar year',
+    ).toBeLessThanOrEqual(CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_DAYS);
     expect(shipped.medianDaysToFirstSummit).toBe(290);
+
+    // R2t — THE TAIL. The horizon is a year to climb plus one summit cadence to
+    // wait, which `careerTuning.ts` names as the most the CALENDAR may add to a
+    // lifter who has already qualified — so an arc outside it is slow for a
+    // reason the calendar cannot supply. The floor is nine in ten, and that
+    // fraction is a stated position inside a derived band: not 100%, because
+    // `POTENTIAL_MIN_KG` deliberately admits lifters who creep to the gate, and
+    // above 84.4%, because the calendar §6.6 calls a design violation already
+    // gets 162 of 192 inside this ceiling. Measured 191 against a bar of 173.
+    expect.soft(
+      shipped.arcsReachingInsideTheTailCeiling,
+      'R2t: nine arcs in ten reach a campaign summit inside the design’s worst case',
+    ).toBeGreaterThanOrEqual(tailFloorArcs(shipped.arcs));
+    expect(shipped.arcsReachingInsideTheTailCeiling).toBe(191);
+    expect(tailFloorArcs(shipped.arcs)).toBe(173);
+    // The bar is a fraction of the population and not a literal, so this is what
+    // says the fraction is being applied rather than a number that happens to
+    // equal it. Double the sweep and the bar doubles.
+    expect(tailFloorArcs(shipped.arcs * 2)).toBe(346);
+    expect(CAMPAIGN_SUMMIT_SWEEP.TAIL_CEILING_DAYS).toBe(546);
+    // Both derivations of that ceiling, because two independent routes to one
+    // number is the reason to trust it: a year plus a cadence, and R1's own
+    // window less a cadence.
+    expect(CAMPAIGN_SUMMIT_SWEEP.TAIL_CEILING_DAYS).toBe(
+      CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_DAYS + CAREER_TUNING.CADENCE_DAYS['campaign-worlds'],
+    );
+    expect(CAMPAIGN_SUMMIT_SWEEP.TAIL_CEILING_DAYS).toBe(
+      CAMPAIGN_SUMMIT_SWEEP.RUN_DAYS - CAREER_TUNING.CADENCE_DAYS['campaign-worlds'],
+    );
+
+    // THE FIRST-YEAR COUNT IS STILL MEASURED AND STILL PINNED — AS A CENSUS,
+    // WHICH IS THE WHOLE CHANGE. 158 of 192 is worth watching move; it is no
+    // longer what R2 asks for. Note what it costs to state R2m and this as
+    // separate things: with all 192 arcs reaching a summit, `median <= 364` IS
+    // "at least 97 of 192 inside the year", so a floor at THIS horizon could
+    // only restate the line above it. That is why R2t's horizon is elsewhere.
+    expect(shipped.arcsReachingInsideAYear).toBe(158);
     expect(shipped.worstDaysToFirstSummit).toBe(562);
+    // The slowest arc in the whole population, named rather than left as a
+    // number: seed 7 draws a 627.5 kg ceiling — the lowest of the 24, and 2.5 kg
+    // over `POTENTIAL_MIN_KG` — and needs 86 meets to put up 600. It is the one
+    // arc outside R2t's ceiling, and it is the potential band working rather
+    // than the calendar failing. An absolute here would redden on that.
+    expect(shipped.arcs - shipped.arcsReachingInsideTheTailCeiling).toBe(1);
+    expect(careerPotentialKg(7)).toBe(627.5);
+    expect(careerPotentialKg(7)).toBeGreaterThan(ATTENDANCE_SWEEP.POTENTIAL_MIN_KG);
+
+    // THE `expect.soft` ON BOTH BARS IS DELIBERATE AND IS NOT A SUPPRESSION.
+    // Vitest stops a test at its first failing expectation — a property the rest
+    // of this file relies on, which is why properties are asserted before domain
+    // pins. Here it works against the reader: R2 has two halves with different
+    // horizons, and a hard assertion on the first means a run that breaks both
+    // only ever reports one. Verified at `c3809c8` rather than assumed — three
+    // soft assertions with the 1st and 3rd failing report both failures
+    // independently, the passing one stays silent, the body continues, and a
+    // hard `expect` after a failed soft still runs and still throws.
 
     // R3's second half, WHICH IS THE CLAUSE THE RATE CHANGE REPAIRED. The
     // fastest arc had EIGHT meets behind it under the unbounded walk and NINE
@@ -2047,6 +2089,44 @@ describe('AXIS D — GDD §6.6’s campaign summit is reachable, and the two cal
     expect(annualLate.arcsReachingInsideAYear).toBe(11);
     expect(atTheOldPhase.medianDaysToFirstSummit).toBe(324);
     expect(annualLate.medianDaysToFirstSummit).toBe(449);
+
+    // =====================================================================
+    // AND THE TWO HALVES OF R2 CATCH THE TWO CONTROLS, ONE EACH
+    // =====================================================================
+    // This is the evidence that R2m and R2t are two clauses rather than one
+    // written twice, and it is the reason they were given different horizons.
+    // NEITHER HALF CATCHES BOTH: the old phase's median is 324 days, which is
+    // inside the year and clears R2m outright; annual-late gets 191 of 192 arcs
+    // inside the tail ceiling, which clears R2t outright. Take either half away
+    // and one of the two calendars §6.6 calls broken walks past R2 entirely.
+    //
+    // WHICH ONE EACH HALF CATCHES IS ALSO THE POINT, because the two controls
+    // fail at opposite ends of the season and these are the ends. R2m catches
+    // annual-late: a lifter who signs up after the summit waits a whole year for
+    // the next, and the median goes to 449 days. R2t catches the old phase: its
+    // slow arcs do not merely wait, they overshoot the design's worst case, so
+    // its count at the ceiling is stuck at 162 — no better than at 455 days,
+    // because an annual series has nothing to offer in between.
+    expect(annualLate.medianDaysToFirstSummit as number).toBeGreaterThan(
+      CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_DAYS,
+    );
+    expect(atTheOldPhase.medianDaysToFirstSummit as number).toBeLessThanOrEqual(
+      CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_DAYS,
+    );
+    expect(atTheOldPhase.arcsReachingInsideTheTailCeiling).toBe(162);
+    expect(atTheOldPhase.arcsReachingInsideTheTailCeiling).toBeLessThan(
+      tailFloorArcs(atTheOldPhase.arcs),
+    );
+    expect(annualLate.arcsReachingInsideTheTailCeiling).toBe(191);
+    expect(annualLate.arcsReachingInsideTheTailCeiling).toBeGreaterThanOrEqual(
+      tailFloorArcs(annualLate.arcs),
+    );
+    // The shipped calendar clears both, with the margins written down rather
+    // than described: 74 days under R2m's ceiling and 18 arcs over R2t's floor.
+    expect(
+      CAMPAIGN_SUMMIT_SWEEP.FIRST_YEAR_DAYS - (shipped.medianDaysToFirstSummit as number),
+    ).toBe(74);
+    expect(shipped.arcsReachingInsideTheTailCeiling - tailFloorArcs(shipped.arcs)).toBe(18);
 
     // THE FOURTH CORNER, AND IT CORRECTS WHAT THE THREE ROWS ABOVE READ LIKE.
     // Both controls so far moved the CADENCE as well as the phase, so "neither
