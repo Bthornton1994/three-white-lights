@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-evidence-mjs-2026-08-16T09-05-13-866Z-24309",
+  "label": null,
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "suite"
+  ],
+  "budgetSeconds": 1600,
+  "startedAtIso": "2026-08-16T09:05:13.866Z",
+  "startedAtMs": 1786871113866,
+  "cwd": "/home/user/wt-shell-pin",
+  "commit": "c24abd2db246ce14d4309b3ce284841b56982eab",
+  "branch": "claude/shell-pin-axis",
+  "dirty": 2,
+  "dirtyPaths": [
+    ".gauntlet/evidence/empire-shell.txt",
+    ".gauntlet/evidence/suite.txt"
+  ],
+  "runner": {
+    "pid": 24309,
+    "startTick": "510862",
+    "cmdline": "node tools/watchdog.mjs --budget 1600 --id ev-suite-2 -- node tools/evidence.mjs suite",
+    "bootId": "3b4e5fe2-30a5-4f9a-9aea-4cfe32e69f38",
+    "bootEpochSeconds": 1786866005,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-16T09:05:13.887Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
