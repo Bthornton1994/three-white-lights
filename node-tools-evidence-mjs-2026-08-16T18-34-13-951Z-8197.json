@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-evidence-mjs-2026-08-16T18-34-13-951Z-8197",
+  "label": null,
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "suite"
+  ],
+  "budgetSeconds": 1500,
+  "startedAtIso": "2026-08-16T18:34:13.951Z",
+  "startedAtMs": 1786905253951,
+  "cwd": "/home/user/wt-equip-prov",
+  "commit": "0d1f856eb867697acc53ca0fdd957ec0610fe63c",
+  "branch": "claude/equipment-provenance",
+  "dirty": 1,
+  "dirtyPaths": [
+    ".gauntlet/evidence/equipment-provenance.txt"
+  ],
+  "runner": {
+    "pid": 8197,
+    "startTick": "630362",
+    "cmdline": "node tools/watchdog.mjs --budget 1500 --id equip-prov-evidence -- node tools/evidence.mjs suite",
+    "bootId": "d9b3d2e7-4acf-49d2-a666-3c403df79e55",
+    "bootEpochSeconds": 1786898950,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-16T18:34:13.970Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
