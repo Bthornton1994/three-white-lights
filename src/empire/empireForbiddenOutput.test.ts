@@ -3512,6 +3512,13 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
   // somebody wrote down about them. Its size is pinned against
   // `FAMILY_CENSUS.ROWS` and joined to the shape list in both directions.
   'FAMILY_TABLE',
+  // E30's arm census: which arm of the member walk each shape's members took.
+  // An expectation and not an input for the same reason as the two above — the
+  // subjects are `CANDIDATE_SHAPES` rows this battery already drives, and this
+  // is what was measured about them. Its size is pinned against
+  // `MEMBER_ARM_CENSUS.ROWS`, and every row is joined to `CANDIDATE_SHAPES` by
+  // name, so a renamed shape reddens rather than dropping out of the census.
+  'MEMBER_ARM_TABLE',
 ]);
 
 /**
@@ -3577,7 +3584,7 @@ const DOMAIN_CENSUS = Object.freeze({
   ALIASES: 7,
   NON_DOMAIN_LISTS: 1,
   LITERAL_AXES: 8,
-  LABELLED_LISTS: 22,
+  LABELLED_LISTS: 23,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
@@ -7886,6 +7893,33 @@ function anyFunctionIn(program: ts.Program, checker: ts.TypeChecker): ts.Type {
   return referenceTypeIn(program, checker, 'anyFunction');
 }
 
+/**
+ * The arms of the member walk's one decision — where does this symbol's type
+ * come from — enumerated rather than left implicit.
+ *
+ * WHY THEY ARE ENUMERATED AND NOT MADE TO AGREE. CLAUDE.md's proximity rule was
+ * generalised by this round's own finding: three adjacent arms of one decision
+ * were each repaired in a different round without the others being measured
+ * against the repair, and the third was the one that swallowed M76. The remedy
+ * it names is to say what each arm asks and to COUNT what each one answered, so
+ * a shape moving between arms is a number that moves rather than a sentence that
+ * quietly stops being true. `MEMBER_ARM_CENSUS` is where the counts are pinned.
+ */
+type MemberArm = 'synthesized' | 'default-library-skip' | 'library-retyped' | 'declared';
+
+const MEMBER_ARMS: readonly MemberArm[] = Object.freeze([
+  'synthesized',
+  'default-library-skip',
+  'library-retyped',
+  'declared',
+]);
+
+const emptyArmTable = (): Record<MemberArm, number> => {
+  const table = {} as Record<MemberArm, number>;
+  for (const arm of MEMBER_ARMS) table[arm] = 0;
+  return table;
+};
+
 /** What the screen answered, and what each of its two readings answered. */
 interface MemberTypeScreen {
   /** The screen. `true` means "a function could be in there, go and look". */
@@ -7894,6 +7928,8 @@ interface MemberTypeScreen {
   readonly cuts: () => number;
   /** Sites where the two readings disagreed, named. Pinned empty on the tree. */
   readonly disagreements: () => readonly string[];
+  /** How many members each arm of the member walk answered about. */
+  readonly arms: () => Readonly<Record<MemberArm, number>>;
 }
 
 /**
@@ -7942,17 +7978,37 @@ interface ScreenReadings {
   readonly admitsAFunction: boolean;
   /** Whether a property with no declaration at all is walked or skipped. */
   readonly synthesizedProperties: boolean;
+  /**
+   * Whether a member whose declaration is the compiler's own but whose TYPE is
+   * NOT the one that declaration declares is walked or skipped. E30's reading.
+   *
+   * `false` is the walker as E28 and E29 left it, where the file-kind question
+   * alone decided the skip. `FAMILY_TABLE`'s `library-keyed-*` rows are the
+   * numbers this zero is zero against.
+   */
+  readonly retypedLibraryMembers: boolean;
 }
 
 const SHIPPED_SCREEN_READINGS: ScreenReadings = Object.freeze({
   admitsAFunction: true,
   synthesizedProperties: true,
+  retypedLibraryMembers: true,
 });
 
-/** The same walker with E27's two readings off. Not used by any shipped census. */
+/**
+ * The same walker with E27's two readings and E30's third off. Not used by any
+ * shipped census.
+ *
+ * It is named for E27 and now carries three flags, which is worth a sentence
+ * rather than a rename: what it is FOR is being the walker before the readings
+ * that closed a measured silence, and each reading was added by the round whose
+ * bypass it closes. Renaming it per round would break the join between this
+ * control and the `BEFORE_E27_*` counts that are pinned against it.
+ */
 const SCREEN_BEFORE_E27: ScreenReadings = Object.freeze({
   admitsAFunction: false,
   synthesizedProperties: false,
+  retypedLibraryMembers: false,
 });
 
 function memberTypeScreen(
@@ -7963,6 +8019,7 @@ function memberTypeScreen(
   const functionFreeData = functionFreeDataIn(program, checker);
   const anyFunction = anyFunctionIn(program, checker);
   const disagreements: string[] = [];
+  const arms = emptyArmTable();
   let cuts = 0;
 
   const boundedWalk = (type: ts.Type, depth = 0): boolean => {
@@ -8001,21 +8058,62 @@ function memberTypeScreen(
     }
     return type.getProperties().some((symbol) => {
       const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
-      // A SYNTHESIZED property has no declaration at all, and that is a
-      // different fact from one declared in a `.d.ts`. The two were treated as
-      // one and it cost a silence: `string & { readonly [K in 'run']: () =>
-      // string }` prints identically to the plain literal beside it in the
-      // family battery, and the plain one was walked while this one was not,
-      // because a mapped type's member is synthesized and `declarations` is
-      // empty. `getTypeOfSymbol` needs no location, which is the whole of the
-      // repair.
+      // ARM ONE — "does this symbol have a declaration at all". A SYNTHESIZED
+      // property has none, and that is a different fact from one declared in a
+      // `.d.ts`. The two were treated as one and it cost a silence: `string & {
+      // readonly [K in 'run']: () => string }` prints identically to the plain
+      // literal beside it in the family battery, and the plain one was walked
+      // while this one was not, because a REMAPPED mapped type's member is
+      // synthesized and `declarations` is empty. `getTypeOfSymbol` needs no
+      // location, which is the whole of the repair.
       if (declaration === undefined) {
+        arms['synthesized'] += 1;
         return readings.synthesizedProperties
           ? boundedWalk(checker.getTypeOfSymbol(symbol), depth + 1)
           : false;
       }
-      if (declaredInTheDefaultLibrary(program, declaration)) return false;
-      return boundedWalk(checker.getTypeOfSymbolAtLocation(symbol, declaration), depth + 1);
+      const memberType = checker.getTypeOfSymbolAtLocation(symbol, declaration);
+      // ARM TWO — "is this member the compiler's own, TYPE AND ALL". Two
+      // questions rather than one, and E30 is the round that separated them:
+      // the file-kind half asks where the NAME was declared, and the identity
+      // half asks whether the type this member has here is the type that
+      // declaration declares at its own location.
+      //
+      // Why the second half exists, in the mechanism's own terms. A HOMOMORPHIC
+      // mapped type copies the source property's declaration across (M74
+      // measured that, on five spellings), so `{ readonly [K in keyof
+      // ArrayBufferTypes]: {} }` produces members whose declarations are in
+      // `lib.es5.d.ts` while their type is this program's `{}` — and the
+      // file-kind question alone skipped them. Same for a lib generic
+      // instantiated with one of this program's types: `PromiseFulfilledResult<
+      // () => string>`'s `value` is declared in `lib.es2020.promise.d.ts` and
+      // typed by the argument. M76 is that shape planted in a shipped export.
+      //
+      // ITS LIMIT, unchanged by this round and stated because the identity test
+      // cannot see past it: a member that IS the library's own, type and all —
+      // `String.prototype.match` — is still skipped, so a default-library method
+      // handing back something callable is invisible to this reading. What
+      // covers that is reading one, the relation, which refuses any type whose
+      // members are not data; `FAMILY_TABLE`'s `ambient-plain-closure` is the
+      // row where the relation does that work with this arm switched off.
+      if (
+        declaredInTheDefaultLibrary(program, declaration) &&
+        (!readings.retypedLibraryMembers || memberType === checker.getTypeAtLocation(declaration))
+      ) {
+        arms['default-library-skip'] += 1;
+        return false;
+      }
+      if (declaredInTheDefaultLibrary(program, declaration)) {
+        arms['library-retyped'] += 1;
+        return boundedWalk(memberType, depth + 1);
+      }
+      // ARM THREE — everything else: walk the member at its declaration. E28
+      // narrowed the question above from `ambientlyDeclared` to
+      // `declaredInTheDefaultLibrary` so that a project's own `.d.ts` lands
+      // here rather than being skipped, and `FAMILY_TABLE`'s
+      // `ambient-certifying-intersection` is the row that says so.
+      arms['declared'] += 1;
+      return boundedWalk(memberType, depth + 1);
     });
   };
 
@@ -8034,6 +8132,7 @@ function memberTypeScreen(
     },
     cuts: () => cuts,
     disagreements: () => Object.freeze([...disagreements].sort()),
+    arms: () => Object.freeze({ ...arms }),
   };
 }
 
@@ -13437,6 +13536,8 @@ interface CandidateReading {
   readonly walked: boolean;
   /** Bounded-walk cuts taken while answering this row. */
   readonly cuts: number;
+  /** Members each arm of the member walk answered about, for this row. */
+  readonly arms: Readonly<Record<MemberArm, number>>;
   /** Diagnostics with the reach snippet spliced in. Empty means reachable. */
   readonly reachDiagnostics: readonly string[];
   /** The subject's type, as the checker prints it. */
@@ -13519,6 +13620,7 @@ function candidateReading(
     asked,
     walked,
     cuts: screen.cuts(),
+    arms: screen.arms(),
     reachDiagnostics: Object.freeze(withReach.diagnostics),
     printed: checker.typeToString(subjectType),
   };
@@ -13896,6 +13998,91 @@ const CANDIDATE_SHAPES: readonly CandidateShape[] = Object.freeze([
     why: "the augmentation arriving from a MODULE the subject never imports, which is the second half of the pair the one-subject-file driver could not express. It is the control for the row above: same shape, same certificate, and the declaration is in a `.ts` rather than a `.d.ts`, so it says the silence was about the declaration FILE and not about the type being global",
   }),
 
+  // ---- Group I: a member the compiler declared and this program re-typed ----
+  //
+  // The group E30 added, and the one the round's question is about: a symbol
+  // that is BOTH synthesized AND ambient. Measured rather than inferred from the
+  // spelling, the answer is that no shape here is both — the three arms
+  // PARTITION these ten rows, and `MEMBER_ARM_TABLE` is where each row's arms
+  // are pinned. A remapped mapped type is synthesized and never reaches the
+  // file-kind question; a homomorphic one carries the source declaration and
+  // reaches it; and which side of it the row lands on is decided by whether that
+  // declaration is the compiler's own.
+  Object.freeze({
+    id: 'library-keyed-mapped-holding-a-closure',
+    group: 'library-keyed',
+    build: `declare const subject: string & { readonly [K in keyof ArrayBufferTypes]: () => string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.ArrayBuffer(); }',
+    why: "M74's DISCARDED FIRST SPELLING, keyed on a DEFAULT-LIBRARY interface instead of a shipped one. M74 recorded that a homomorphic mapped type is caught because it copies the source declaration across and the walk therefore has a location for it — true when the source is `ProductionRates`, declared in a `.ts`. Key the same mapped type on `keyof ArrayBufferTypes` and the copied declaration is `lib.es5.d.ts`, which the file-kind question skips",
+  }),
+  Object.freeze({
+    id: 'library-keyed-mapped-holding-an-empty-object',
+    group: 'library-keyed',
+    build: `declare const subject: { readonly [K in keyof ArrayBufferTypes]: {} };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject.ArrayBuffer; return typeof held === 'function' ? held() : null; }",
+    why: 'M76 AS A TYPE — the shape planted in a shipped export. It needs no certifying intersection, because every member is `{}` and an object of `{}`s is function-free data to the relation; and it needs no cast to construct, which is what made it plantable',
+  }),
+  Object.freeze({
+    id: 'library-keyed-mapped-through-a-Pick',
+    group: 'library-keyed',
+    build: `declare const subject: { readonly [K in keyof Pick<ArrayBufferTypes, 'ArrayBuffer'>]: {} };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject.ArrayBuffer; return typeof held === 'function' ? held() : null; }",
+    why: 'the same reading through a second mapped type — `Pick` is one — which is what says the finding is about the declaration a mapped member inherits and not about `ArrayBufferTypes` having two keys',
+  }),
+  Object.freeze({
+    id: 'library-keyed-mapped-typed-with-a-library-callable',
+    group: 'library-keyed',
+    build: `declare const subject: string & { readonly [K in keyof ArrayBufferTypes]: Function };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.ArrayBuffer(); }',
+    why: "THE SUCCESSOR THE FIRST DRAFT OF THIS ROUND'S FIX DECLARED, driven rather than deferred. A narrower repair was measured first — skip only when the member's TYPE is also the compiler's own — and this row defeats it, because `Function` IS the compiler's own and is callable. The shipped repair asks a different question, identity against the declaration's own type, and catches it",
+  }),
+  Object.freeze({
+    id: 'library-generic-instantiated-with-a-closure',
+    group: 'library-keyed',
+    build: `declare const subject: string & PromiseFulfilledResult<() => string>;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.value(); }',
+    why: 'the same arm reached WITHOUT a mapped type: `value` is declared in `lib.es2020.promise.d.ts` and typed by the argument this program supplied. A repair keyed on mapped-ness would have left this open, which is why the repair is keyed on the declaration instead',
+  }),
+  Object.freeze({
+    id: 'library-generic-instantiated-with-a-library-callable',
+    group: 'library-keyed',
+    build: `declare const subject: string & PromiseFulfilledResult<Function>;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.value(); }',
+    why: 'the two previous rows composed — a library declaration, instantiated by this program, at a library callable type. It is the row that fails BOTH narrower repairs and is caught by the shipped one',
+  }),
+  Object.freeze({
+    id: 'library-member-retyped-by-an-intersection',
+    group: 'library-keyed',
+    build: `declare const subject: Date & { readonly getTime: () => string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.getTime(); }',
+    why: "the other way to re-type a library member, and the control that says the arm above is not the only cover: an intersection is split by the walk's own union arm long before any member question is asked, so this one lands on arm three at the constituent this program wrote",
+  }),
+  Object.freeze({
+    id: 'project-dts-keyed-mapped-holding-a-closure',
+    group: 'library-keyed',
+    build: `declare const subject: string & { readonly [K in keyof E28Ambient]: () => string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.run(); }',
+    extra: E28_AMBIENT_FILE,
+    why: "THE CONTROL FOR THE WHOLE GROUP, and it is E28's narrowing being load-bearing rather than decorative: the identical homomorphic mapped type over a PROJECT `.d.ts` lands on arm three and is walked. Under the predicate E28 replaced — any `.d.ts` — this row would be silent exactly as the library-keyed one was",
+  }),
+  Object.freeze({
+    id: 'library-keyed-mapped-remapped-holding-a-closure',
+    group: 'library-keyed',
+    build: `declare const subject: string & { readonly [K in keyof ArrayBufferTypes as Uppercase<K & string>]: () => string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.ARRAYBUFFER(); }',
+    why: 'the first row REMAPPED, which is the pair the round was asked to measure: remapping makes the member synthesized, so it takes arm one and never reaches the file-kind question at all. Same source interface, same value type, different arm',
+  }),
+  Object.freeze({
+    id: 'project-dts-keyed-mapped-remapped-holding-a-closure',
+    group: 'library-keyed',
+    build: `declare const subject: string & { readonly [K in keyof E28Ambient as Uppercase<K & string>]: () => string };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.RUN(); }',
+    extra: E28_AMBIENT_FILE,
+    why: 'the fourth corner of the same square: remapped over a project `.d.ts`. It takes arm one for the same reason the row above does, which is what says the SOURCE FILE stops mattering the moment the member is synthesized',
+  }),
+
   // ---- The shape a plant would actually take ----
   Object.freeze({
     id: 'entry-with-an-empty-object-payload',
@@ -13966,8 +14153,8 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
   Object.freeze(['conditional-any-over-string', true, false, false, false] as const),
   Object.freeze(['conditional-any-over-any', true, true, true, true] as const),
   Object.freeze(['conditional-any-over-peek', false, true, true, true] as const),
-  Object.freeze(['conditional-peek-over-string', false, false, true, false] as const),
-  Object.freeze(['conditional-function-over-string', false, false, true, false] as const),
+  Object.freeze(['conditional-peek-over-string', false, true, true, false] as const),
+  Object.freeze(['conditional-function-over-string', false, true, true, false] as const),
   Object.freeze(['remapped-key-becomes-index-signature', true, true, true, true] as const),
   Object.freeze(['string-and-number-index-signatures', true, true, true, true] as const),
   Object.freeze(['pattern-index-signature-holding-a-closure', false, true, true, true] as const),
@@ -13986,6 +14173,16 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
   Object.freeze(['ambient-certifying-intersection', true, true, true, true] as const),
   Object.freeze(['ambient-plain-closure', false, true, true, true] as const),
   Object.freeze(['global-from-a-third-module', true, true, true, true] as const),
+  Object.freeze(['library-keyed-mapped-holding-a-closure', true, true, true, true] as const),
+  Object.freeze(['library-keyed-mapped-holding-an-empty-object', true, true, true, true] as const),
+  Object.freeze(['library-keyed-mapped-through-a-Pick', true, true, true, true] as const),
+  Object.freeze(['library-keyed-mapped-typed-with-a-library-callable', true, true, true, true] as const),
+  Object.freeze(['library-generic-instantiated-with-a-closure', true, true, true, true] as const),
+  Object.freeze(['library-generic-instantiated-with-a-library-callable', true, true, true, true] as const),
+  Object.freeze(['library-member-retyped-by-an-intersection', false, true, true, true] as const),
+  Object.freeze(['project-dts-keyed-mapped-holding-a-closure', true, true, true, true] as const),
+  Object.freeze(['library-keyed-mapped-remapped-holding-a-closure', true, true, true, true] as const),
+  Object.freeze(['project-dts-keyed-mapped-remapped-holding-a-closure', true, true, true, true] as const),
   Object.freeze(['entry-with-an-empty-object-payload', true, true, true, true] as const),
   ]);
 
@@ -14009,22 +14206,22 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
  * premise the census's containment argument rests on, and it is false.
  */
 const FAMILY_CENSUS = Object.freeze({
-  ROWS: 48,
+  ROWS: 58,
   /** Distinct groups, so a truncated battery cannot pass as a whole one. */
-  GROUPS: 10,
+  GROUPS: 11,
   /** Rows the relation alone certified as function-free data. */
-  CERTIFYING: 30,
+  CERTIFYING: 39,
   /** Rows whose reach snippet compiles clean. */
-  REACHABLE: 42,
+  REACHABLE: 52,
   /** Rows the whole screen was silent about. */
   SILENT: 3,
   /** Silent AND reachable — the bypass count. */
   SILENT_AND_REACHABLE: 0,
   /** See the paragraph above. Twenty, and the residual said zero. */
-  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 25,
+  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 34,
   /** The same battery through `SCREEN_BEFORE_E27`. */
-  BEFORE_E27_SILENT: 16,
-  BEFORE_E27_SILENT_AND_REACHABLE: 13,
+  BEFORE_E27_SILENT: 24,
+  BEFORE_E27_SILENT_AND_REACHABLE: 21,
   /**
    * Depth cuts taken anywhere in the sweep, in either configuration.
    *
@@ -14165,6 +14362,14 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
       'entry-with-an-empty-object-payload',
       'generic-mapped-type-intersected-with-string',
       'intersection-unknown-and-empty',
+      'library-generic-instantiated-with-a-closure',
+      'library-generic-instantiated-with-a-library-callable',
+      'library-keyed-mapped-holding-a-closure',
+      'library-keyed-mapped-holding-an-empty-object',
+      'library-keyed-mapped-remapped-holding-a-closure',
+      'library-keyed-mapped-through-a-Pick',
+      'library-keyed-mapped-typed-with-a-library-callable',
+      'project-dts-keyed-mapped-remapped-holding-a-closure',
       'remapped-key-becomes-index-signature',
       'string-and-number-index-signatures',
       'union-string-or-empty-object',
@@ -14209,6 +14414,161 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
       expect(pattern.test(cheat), `the ${what} cheat is invisible to its own ban`).toBe(true);
     });
   });
+});
+
+// ---------------------------------------------------------------------------
+// The arm census — three questions in a row, counted rather than described
+// ---------------------------------------------------------------------------
+
+/**
+ * Which arm of the member walk each shape's members actually took.
+ *
+ * WHY THIS EXISTS, and it is CLAUDE.md's proximity rule applied to the thing
+ * that produced it. Three adjacent arms of one decision — where does this
+ * symbol's type come from — were each repaired in a different round: E27 built
+ * the synthesized arm, E28 narrowed the file-kind arm from any `.d.ts` to the
+ * compiler's own, E29 measured that arm's six siblings elsewhere in this file.
+ * None of the three rounds measured a shape against the OTHER arms, and M76 went
+ * through the one nobody had pointed a shape at. The rule's remedy is to
+ * enumerate the arms and say what each asks; this table is that, as counts, so a
+ * shape moving between arms is a red line rather than a sentence that quietly
+ * stopped being true.
+ *
+ * WHAT A ROW MEANS, stated exactly because it is easy to over-read. The walk is
+ * `.some()`, so it stops at the first member that answers `true` — a row is
+ * therefore the arms REACHED BEFORE THE ANSWER, not every arm the type could
+ * produce. That is the honest reading of a short-circuiting walk and it is why
+ * the counts below are small: `library-keyed-mapped-holding-an-empty-object`
+ * reaches one member and stops.
+ *
+ * THE ANSWER TO THE QUESTION THE ROUND ASKED. "What happens to a symbol that is
+ * both synthesized AND ambient" has a measured answer and it is that there is no
+ * such symbol: a REMAPPED mapped type's member has no declaration at all and
+ * takes arm one, so the file-kind question is never asked about it; a
+ * HOMOMORPHIC one carries the source declaration and reaches arms two, two-B or
+ * three. The three arms PARTITION these shapes rather than composing, and the
+ * four corners of that square are the four `*-keyed-mapped-*` rows below.
+ */
+const MEMBER_ARM_TABLE: readonly (readonly [string, readonly MemberArm[]])[] = Object.freeze([
+  // The four corners: {homomorphic, remapped} x {default library, project .d.ts}.
+  Object.freeze([
+    'library-keyed-mapped-holding-a-closure',
+    Object.freeze(['default-library-skip', 'library-retyped'] as readonly MemberArm[]),
+  ] as const),
+  Object.freeze([
+    'project-dts-keyed-mapped-holding-a-closure',
+    Object.freeze(['declared', 'default-library-skip'] as readonly MemberArm[]),
+  ] as const),
+  Object.freeze([
+    'library-keyed-mapped-remapped-holding-a-closure',
+    Object.freeze(['default-library-skip', 'synthesized'] as readonly MemberArm[]),
+  ] as const),
+  Object.freeze([
+    'project-dts-keyed-mapped-remapped-holding-a-closure',
+    Object.freeze(['default-library-skip', 'synthesized'] as readonly MemberArm[]),
+  ] as const),
+  // The rest of E30's group, and the two rows E27 and E28 were about.
+  Object.freeze([
+    'library-keyed-mapped-holding-an-empty-object',
+    Object.freeze(['library-retyped'] as readonly MemberArm[]),
+  ] as const),
+  Object.freeze([
+    'library-keyed-mapped-through-a-Pick',
+    Object.freeze(['library-retyped'] as readonly MemberArm[]),
+  ] as const),
+  Object.freeze([
+    'library-keyed-mapped-typed-with-a-library-callable',
+    Object.freeze(['default-library-skip', 'library-retyped'] as readonly MemberArm[]),
+  ] as const),
+  Object.freeze([
+    'library-generic-instantiated-with-a-closure',
+    Object.freeze(['default-library-skip', 'library-retyped'] as readonly MemberArm[]),
+  ] as const),
+  Object.freeze([
+    'library-generic-instantiated-with-a-library-callable',
+    Object.freeze(['default-library-skip', 'library-retyped'] as readonly MemberArm[]),
+  ] as const),
+  Object.freeze([
+    'library-member-retyped-by-an-intersection',
+    Object.freeze(['declared', 'default-library-skip'] as readonly MemberArm[]),
+  ] as const),
+  Object.freeze([
+    'generic-mapped-type-intersected-with-string',
+    Object.freeze(['default-library-skip', 'synthesized'] as readonly MemberArm[]),
+  ] as const),
+  Object.freeze([
+    'ambient-certifying-intersection',
+    Object.freeze(['declared', 'default-library-skip'] as readonly MemberArm[]),
+  ] as const),
+  Object.freeze([
+    'control-plain-closure',
+    Object.freeze(['declared'] as readonly MemberArm[]),
+  ] as const),
+]);
+
+const MEMBER_ARM_CENSUS = Object.freeze({
+  ROWS: 13,
+  /**
+   * Arms the table reaches, against the arms the type declares. Set-equal in
+   * both directions, so an arm nothing exercises is as red as an arm nobody
+   * declared.
+   */
+  ARMS: 4,
+  /** Members answered by the arm E30 added, summed over the table. */
+  RETYPED_MEMBERS: 6,
+  /** Members answered by the arm E27 added, summed over the table. */
+  SYNTHESIZED_MEMBERS: 3,
+  /** Members skipped as the compiler's own, summed. The denominator. */
+  SKIPPED_MEMBERS: 515,
+  /** Members walked at their own declaration, summed. */
+  DECLARED_MEMBERS: 4,
+});
+
+describe('the arm census — the three questions the member walk asks, counted', () => {
+  it('answers every row with the arms the table says, and reaches every arm', () => {
+    const readings = familyReadings();
+    expect(MEMBER_ARM_TABLE.length).toBe(MEMBER_ARM_CENSUS.ROWS);
+    // Every row names a shape the battery actually drives, so a renamed shape is
+    // red here rather than silently unmeasured.
+    for (const [id] of MEMBER_ARM_TABLE) {
+      expect(CANDIDATE_SHAPES.some((shape) => shape.id === id), id).toBe(true);
+    }
+    for (const [id, arms] of MEMBER_ARM_TABLE) {
+      const reading = readings[id];
+      expect(reading, id).toBeDefined();
+      const reached = MEMBER_ARMS.filter((arm) => (reading?.arms[arm] ?? 0) > 0);
+      expect([...reached].sort(), `${id}: arms reached`).toEqual([...arms].sort());
+    }
+    // Both directions: the arms this table reaches are exactly the arms the type
+    // declares. An arm nothing exercises is a branch with no evidence behind it.
+    const reachedAnywhere = [...distinct(MEMBER_ARM_TABLE.flatMap(([, arms]) => [...arms]))].sort();
+    expect(reachedAnywhere).toEqual([...MEMBER_ARMS].sort());
+    expect(reachedAnywhere.length).toBe(MEMBER_ARM_CENSUS.ARMS);
+  }, 600_000);
+
+  it('is not vacuous: the counts say how many members each arm answered about', () => {
+    const readings = familyReadings();
+    const total = (arm: MemberArm): number =>
+      MEMBER_ARM_TABLE.reduce((sum, [id]) => sum + (readings[id]?.arms[arm] ?? 0), 0);
+    // Counts rather than bounds, per this file's own rule. The skip count is the
+    // denominator — it is `string`'s own member table, reached and correctly
+    // skipped on the rows whose certifying constituent is `string` — and the
+    // three small numbers are the arms that decide a verdict.
+    expect(total('library-retyped')).toBe(MEMBER_ARM_CENSUS.RETYPED_MEMBERS);
+    expect(total('synthesized')).toBe(MEMBER_ARM_CENSUS.SYNTHESIZED_MEMBERS);
+    expect(total('declared')).toBe(MEMBER_ARM_CENSUS.DECLARED_MEMBERS);
+    expect(total('default-library-skip')).toBe(MEMBER_ARM_CENSUS.SKIPPED_MEMBERS);
+    // AND THE ARM E30 ADDED IS SHOWN DOING THE WORK RATHER THAN EXISTING: with
+    // `retypedLibraryMembers` off, every member it answers about is skipped
+    // instead, and the six rows it decides go silent. That is the same pair the
+    // family sweep pins by outcome, read here by arm.
+    const before = familyReadingsBeforeE27();
+    const retypedBefore = MEMBER_ARM_TABLE.reduce(
+      (sum, [id]) => sum + (before[id]?.arms['library-retyped'] ?? 0),
+      0,
+    );
+    expect(retypedBefore).toBe(0);
+  }, 600_000);
 });
 
 // ---------------------------------------------------------------------------
