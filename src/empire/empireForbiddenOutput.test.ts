@@ -372,6 +372,7 @@ import {
   empireSubdirectories,
   shippedModuleNames,
   tsFilesUnder,
+  withProbeTree,
 } from './directoryWalk.test';
 import * as core from './empireCore';
 import * as invariant from './empireInvariant';
@@ -19767,10 +19768,24 @@ function handlerTablesIn(fileName: string, text: string): readonly HandlerTableR
  */
 const COMPILER_IMPORT = /from\s*(['"`])typescript\1/;
 
-function chainScanFiles(): readonly string[] {
-  return directoryFileNames().filter((name) =>
-    COMPILER_IMPORT.test(readFileSync(path.join(HERE, name), 'utf8')),
+/**
+ * The compiler-driving files under `root`, at any depth.
+ *
+ * Rooted rather than fixed at `HERE`, and that is the whole reason it is its
+ * own function: `src/empire/` is flat, so a walk over it cannot express the
+ * difference between a recursive read and a one-level one, and an assertion
+ * about reach taken at `HERE` is satisfied by both. `sees a compiler import in
+ * every quote a specifier can take, and at any depth` drives this against a
+ * tree that does have a subdirectory, so the reach axis has a subject.
+ */
+function compilerImportingFilesUnder(root: string): readonly string[] {
+  return tsFilesUnder(root, 'with-tests').filter((name) =>
+    COMPILER_IMPORT.test(readFileSync(path.join(root, ...name.split('/')), 'utf8')),
   );
+}
+
+function chainScanFiles(): readonly string[] {
+  return compilerImportingFilesUnder(HERE);
 }
 
 let chainCensusMemo: readonly DispatchChain[] | null = null;
@@ -20185,12 +20200,34 @@ describe('the dispatch-chain census — a ladder nobody looked at cannot be adde
     // Mixed quotes do not match, which is the backreference doing the work
     // rather than a character class that would accept `'typescript"`.
     expect(COMPILER_IMPORT.test('import ts from \'typescript";\n')).toBe(false);
-    // The reach axis: the file list is the shared recursive walk's answer, so a
-    // file in a subdirectory is a candidate. Asserted against the walk rather
-    // than described, because the shipped tree cannot express the difference.
+    // The reach axis, driven on a tree that can express it. An assertion taken
+    // at `HERE` cannot: this directory is flat, so a recursive read and a
+    // one-level read return the same list and any comparison between them holds
+    // whichever the scan does. So the scan takes a root and is pointed at a
+    // tree with a subdirectory in it.
+    withProbeTree(
+      {
+        'top.ts': "import ts from 'typescript';\n",
+        'sub/nested.ts': 'import ts from "typescript";\n',
+        'sub/deeper/deep.ts': 'import ts from `typescript`;\n',
+        'sub/unrelated.ts': "import { readFileSync } from 'node:fs';\n",
+        'sub/nested.test.ts': "import ts from 'typescript';\n",
+      },
+      (root) => {
+        expect(compilerImportingFilesUnder(root)).toEqual([
+          'sub/deeper/deep.ts',
+          'sub/nested.test.ts',
+          'sub/nested.ts',
+          'top.ts',
+        ]);
+      },
+    );
+    // And the same function, pointed at this directory, is what the census
+    // reads — so the drive above is about the shipped scan rather than about a
+    // copy of it.
+    expect(chainScanFiles()).toEqual(compilerImportingFilesUnder(HERE));
     expect(directoryFileNames()).toEqual(tsFilesUnder(HERE, 'with-tests'));
     expect(directoryFileNames()).toContain('directoryWalk.test.ts');
-    expect(chainScanFiles().every((name) => directoryFileNames().includes(name))).toBe(true);
   });
 
   it('finds every dispatch chain in this directory, in both directions', () => {

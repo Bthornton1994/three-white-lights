@@ -70,6 +70,7 @@ import {
   type Dirent,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   readdirSync,
   realpathSync,
   rmSync,
@@ -222,6 +223,31 @@ export function empireSubdirectories(): readonly string[] {
   return subdirectoriesUnder(HERE);
 }
 
+/**
+ * Run `body` against a temporary tree built from `files`, keyed by relative path.
+ *
+ * Exported because a call site whose walk is rooted at `src/empire/` cannot
+ * express the difference between a recursive walk and a flat one — the shipped
+ * directory is flat, so both answers agree. A site that wants its OWN reach
+ * measured takes a root parameter and drives it through here.
+ */
+export function withProbeTree(
+  files: Readonly<Record<string, string>>,
+  body: (root: string) => void,
+): void {
+  const root = mkdtempSync(path.join(tmpdir(), 'empire-probe-tree-'));
+  try {
+    for (const [name, text] of Object.entries(files)) {
+      const at = path.join(root, ...name.split('/'));
+      mkdirSync(path.dirname(at), { recursive: true });
+      writeFileSync(at, text);
+    }
+    body(root);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
 /** Build a temporary tree two levels deep, with a symlinked directory beside a real one. */
 function probeTree(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'empire-directory-walk-'));
@@ -314,6 +340,55 @@ describe('the directory walk every census in src/empire/ shares', () => {
     // of being absorbed silently by five walks that recurse into it.
     expect(empireSubdirectories()).toEqual([]);
     expect(empireSubdirectories().length).toBe(DIRECTORY_WALK.SUBDIRECTORIES);
+  });
+
+  it('is the only file here that lists a directory, so a sixth walk cannot start flat', () => {
+    // The residual the five repairs leave open, and it is the one this
+    // directory has already fallen into three times: a new census writes its
+    // own `readdirSync(HERE)`, which on a flat tree agrees with the shared walk
+    // at every point, so no assertion anywhere can tell them apart. Three
+    // hand-written walkers inherited one defect here once; a fourth is
+    // available to anybody who types the call.
+    //
+    // WHAT THIS CATCHES, in the mechanism's own terms: a directory-listing call
+    // by NAME, in a `.ts` file under `src/empire/` other than this one. The
+    // names are the node:fs listing API and the glob helpers a scan would
+    // reasonably reach for.
+    //
+    // WHAT IT DOES NOT CATCH, stated rather than implied. It is a source scan,
+    // and this repository's own record on source scans is that the next
+    // unenumerated spelling wins: a walk built on `fs.promises`, on a `require`d
+    // alias, on a shell out, or on a name assembled at run time is invisible to
+    // it. It is containment on the cheap route rather than a proof, and the
+    // expensive routes are covered by nothing here. The reason it is still
+    // worth having is that the cheap route is the one that actually happened,
+    // five times, and it forces the sixth to be a visible edit.
+    const LISTS_A_DIRECTORY = /\b(?:readdirSync|readdir|opendirSync|opendir|globSync|glob)\s*\(/;
+    const mine = 'directoryWalk.test.ts';
+    const offenders = directoryFileNames()
+      .filter((name) => name !== mine)
+      .filter((name) =>
+        LISTS_A_DIRECTORY.test(
+          readFileSync(path.join(HERE, ...name.split('/')), 'utf8')
+            .replace(/\/\*[\s\S]*?\*\//g, '')
+            .replace(/\/\/.*$/gm, ''),
+        ),
+      );
+    expect(offenders, `these list the directory themselves: ${offenders.join(', ')}`).toEqual([]);
+    // The domain is not empty: the scan really did read every other file here,
+    // and it really does fire on the shape it is written about.
+    expect(directoryFileNames().length).toBeGreaterThan(DIRECTORY_WALK.SHIPPED_MODULES);
+    expect(directoryFileNames()).toContain(mine);
+    let spellings = 0;
+    for (const spelling of ['readdirSync(', 'readdir(', 'opendirSync(', 'globSync(']) {
+      expect(LISTS_A_DIRECTORY.test(`const x = ${spelling}here);`), spelling).toBe(true);
+      spellings += 1;
+    }
+    expect(spellings).toBe(4);
+    // And it discriminates, so the empty list above is a reading rather than a
+    // dead pattern: a name that merely contains one of these is not a call.
+    expect(LISTS_A_DIRECTORY.test('const readdirSyncCount = 3;')).toBe(false);
+    expect(LISTS_A_DIRECTORY.test("readFileSync(path.join(HERE, 'x'));")).toBe(false);
   });
 
   it('finds the shipped modules the rest of the directory pins, so the walk is not empty', () => {
