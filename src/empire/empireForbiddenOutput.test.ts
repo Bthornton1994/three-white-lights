@@ -16787,6 +16787,27 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` — `70e0bcba2dee2dbdd00d8cd03e13f03498b4a136` and `da240d19898005b493b318c23597f5c54a7c61d1`.',
     ]),
   }),
+  Object.freeze({
+    id: 'M78',
+    shape:
+      "THE TWENTY-FOURTH BYPASS, AND IT IS ARM TWO'S OWN DECLARED RESIDUAL, PLANTED. E30 closed M76 by asking a second question — is the type this member has here the type its declaration declares — and stated at the arm that a member which IS the library's own TYPE AND ALL is still skipped, with the relation named as the cover. That cover has a hole exactly where `any` is: `NavigationOptions.info` is declared `info?: any` in `lib.dom.d.ts`, so BOTH halves of arm two agree to skip — the declaration is the compiler's own and `memberType === checker.getTypeAtLocation(declaration)` because both sides are the one `any` type — while the RELATION certifies the holder, because `any` is assignable to `FunctionFreeData` like everything else. So it is `FAMILY_TABLE`'s `any-behind-a-property` put behind arm two, which is the same relationship M76 has to M67",
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_LIBANY: { readonly entry: { readonly [K in keyof NavigationOptions]: NavigationOptions[K] } }` holding `Object.freeze({ entry: Object.freeze({ info: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] }) })`, handed back as `shapes: PRODUCTION_LIBANY.entry` with a matching `readonly shapes` on `ProductionAccrual`. The mapped type is written inline in both annotations, so no type declaration is added and the cyclic-declaration census does not move; the one key is the identifier `info`, so neither string census moves; the payload is read out of `EMPIRE_FORBIDDEN_OUTPUTS` through a specifier added to the `./empireCore` import the module already has, so no import edge is added; and there is no cast anywhere in the plant',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      "NOTHING CAUGHT IT. `empireForbiddenOutput.test.ts` + `empireCore.test.ts`: `Test Files 1 failed | 1 passed (2)`, `Tests 5 failed | 155 passed (160)`, and every one of the five is a count this file has already recorded as not the check working — instrument C `expected 1020 to be 1018`, instrument B `expected 2393400 to be 2393060`, the overflow pass `expected 523240 to be 523128`, and the owner tally `- \"member\": 474 / + \"member\": 476` twice, once in `derives every escape site` and once in the ambient probe that re-reads the same table. `empireCore.test.ts` passed whole, so the string census, the magic-number audit and the import fence are green.",
+      'THE ASSERTION THAT WOULD NAME THE ROUTE IS GREEN, and the ORDER inside that test is what says so rather than an inference: `expect(census.byModule).toEqual(CHANNEL_SITE_COUNTS)` and the per-channel `census.sites[id].length` checks both run BEFORE `census.callTargets` and both passed, so there is no `+ "production.ts": 1` under `returned-closure` and no site row. `freshReceivers` is green, and so is the disagreement list — the relation certifies and the walk skips, so the two readings never disagree and the one instrument that reports a split has nothing to report.',
+      'AND THE BRANCH RUNS, PRINTED, from the shipped export: `KEYS ["gymBucks","settledGymBucks","trainingIq","offlineSecondsElapsed","offlineSecondsBanked","offlineSecondsDiscarded","trainingIqSecondsElapsed","rates","ledger","shapes"]`, `TYPEOF shapes object`, `TYPEOF shapes.info function`, `CALLED covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'AND NO READING FLIP ATTRIBUTES IT, measured on the type before the plant was written rather than argued. The plant\'s holder type reads `certifies=true walked=false holds=false cuts=0` under all five configurations — `SHIPPED_SCREEN_READINGS`, `retypedLibraryMembers:false`, `synthesizedProperties:false`, `admitsAFunction:false` and `SCREEN_BEFORE_E27` — with `default-library-skip` at 1 in every one. E30\'s reading cannot attribute this row because the identity test AGREES with the file-kind test here: `memberType` and the declaration\'s type are the same `any`.',
+      "WHY THE `{}` READING DOES NOT COVER IT, in the mechanism's own terms. `admitsAFunction` is asked at each position the walk REACHES, and arm two returns `false` before descending into the member — so the reading that catches `{}` and `any` at every other position is never asked about this one. That is the same structural fact M76 exploited with `{}`; the payload type is what changed, and `any` is the payload the relation cannot refuse.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The four counters named above and nothing else. Five failed of 160, and none of the five is the guard.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written — `70e0bcba2dee2dbdd00d8cd03e13f03498b4a136` on both sides.',
+    ]),
+  }),
 ]);
 
 /**
@@ -17128,7 +17149,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(77);
+    expect(PLANTED_ROUTES.length).toBe(78);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -17253,8 +17274,12 @@ describe('the routes that were planted, and what each of them cost', () => {
     // ONE FOR M77, which is M76 replanted unchanged against the arm written for
     // it, so it inherits M76's isolation by construction — the same relationship
     // M68 has to M67.
-    expect(attempts).toBe(104);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(67);
+    // ONE FOR M78, which inherits M76's isolation for the third time in this
+    // sequence — the payload, the holder and the inline mapped-type annotation
+    // are M76's, and what is new is the member's TYPE. Nothing had to be
+    // spelled around a census, so there was nothing to strip.
+    expect(attempts).toBe(105);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(68);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
