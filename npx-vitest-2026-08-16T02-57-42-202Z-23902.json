@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-16T02-57-42-202Z-23902",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run"
+  ],
+  "budgetSeconds": 1500,
+  "startedAtIso": "2026-08-16T02:57:42.202Z",
+  "startedAtMs": 1786849062202,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "53ccae1faa785ee39e07b35bd8aa37ff3812499e",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 23902,
+    "startTick": "473768",
+    "cmdline": "node tools/watchdog.mjs --budget 1500 --id r2-suite -- npx vitest run",
+    "bootId": "2c37ba43-8556-4148-a092-cae664d186e1",
+    "bootEpochSeconds": 1786844324,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-16T02:57:42.227Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
