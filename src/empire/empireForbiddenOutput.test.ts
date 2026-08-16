@@ -8427,6 +8427,12 @@ function channelCensusOf(
    * THE PURPOSE IT KEEPS IS RUN, NOT ASSERTED: `undefined` still lives in
    * `lib.es5.d.ts`, so `does not hop OUT of the function through an `undefined`
    * initializer` and G24's mutant are unchanged by the narrowing.
+   *
+   * Its residual is the returned-identifier arm's, in the same words: this hops
+   * into a DEPENDENCY's declaration file as well as into a project one, because
+   * the question it asks is about the compiler's library and not about this
+   * directory. Measured at zero rows on the shipped tree, with both owner tables
+   * asserted equal to their pins.
    */
   const hoppableInitializer = (root: ts.Expression): boolean => {
     if (!ts.isIdentifier(root)) return false;
@@ -8640,10 +8646,18 @@ function channelCensusOf(
         // `closure:return` and `closure:.peek`, which is what
         // `AMBIENT_PROBE_CLOSURE_SITES` pins.
         //
-        // Its limit: a closure declared in `lib.es5.d.ts` and handed back is
-        // still skipped here, which is the point — `return parseInt` is the
-        // library's function and not this directory's. Nothing covers that and
-        // nothing needs to, because the ban is about what this directory emits.
+        // Its limit, in two halves and both measured. A closure declared in
+        // `lib.es5.d.ts` and handed back is still skipped, which is the point —
+        // `return parseInt` is the library's function and not this directory's.
+        // And this reading is WIDER than "declared in this directory": five
+        // non-default-library declaration files are in the census program, four
+        // of them a dependency's, so a global one of those declares is now
+        // reported rather than skipped. The consequence today is zero rows —
+        // `channelCensus().freshReceivers` still equals
+        // `DECLARED_FRESH_RECEIVERS` with this in — and the direction of the
+        // residual is the safe one: a named line somebody classifies, not a
+        // silence. The count and the zero are both asserted at
+        // `compiles the probe cleanly`.
         if (declaredInTheDefaultLibrary(program, host)) return;
         // A NAMED FUNCTION HANDED BACK BY ITS NAME, which the initializer-only
         // walk could not see either: `function helper() {…}; return { peek:
@@ -12164,6 +12178,61 @@ describe('the ambient probe — one skip, six call sites, and they do not agree'
     expect(ambientProbeCensus().modules).toContain(AMBIENT_PROBE_MODULE);
     expect(ambientProbeCensus().modules).not.toContain(path.basename(AMBIENT_DECLARATION_PATH));
     expect(ambientProbeCensus().modules.length).toBe(CHANNEL_CENSUS_TOTALS.MODULES + 1);
+    // WHERE THE TWO PREDICATES CAN DIFFER AT ALL, counted rather than argued,
+    // and the first version of this count was WRONG IN THE REASSURING
+    // DIRECTION. It asserted that the only non-default-library declaration file
+    // in this program is the one the harness serves — measured, there are five:
+    // `@types/react/global.d.ts`, `@types/react/index.d.ts`,
+    // `@types/react/jsx-runtime.d.ts`, `csstype/index.d.ts` and the served one.
+    // So the narrowing's reach is not "this directory's own `.d.ts`" but "every
+    // declaration file the compiler did not supply", and a global declared by a
+    // dependency is now reported rather than skipped.
+    //
+    // THE CONSEQUENCE IS MEASURED AND IT IS ZERO, which is a different claim
+    // from the one the wrong count made. `channelCensus().freshReceivers`
+    // equals `DECLARED_FRESH_RECEIVERS` and both owner tables equal their pins
+    // with all four edits in — the assertions two tests below — so no shipped
+    // read moved. The direction of the residual is the safe one: a dependency
+    // binding handed back arrives as a named line in a set equality rather than
+    // as silence, and somebody classifies it.
+    const declarationFilesIn = (
+      roots: readonly string[],
+      text: string | null,
+      at: string,
+      more: readonly (readonly [string, string])[],
+    ): { readonly compilerSupplied: number; readonly other: readonly string[] } => {
+      const built = programWith(compilerOptions(), roots, text, at, [
+        ...FUNCTION_FREE_DATA_FILE,
+        ...more,
+      ]);
+      const declarations = built.getSourceFiles().filter((source) => source.isDeclarationFile);
+      return {
+        compilerSupplied: declarations.filter((source) => built.isSourceFileDefaultLibrary(source))
+          .length,
+        other: declarations
+          .filter((source) => !built.isSourceFileDefaultLibrary(source))
+          .map((source) => path.basename(source.fileName))
+          .sort(),
+      };
+    };
+    const withProbeServed = declarationFilesIn(
+      [...shippedModulePaths(), AMBIENT_PROBE_PATH],
+      AMBIENT_PROBE_SOURCE,
+      AMBIENT_PROBE_PATH,
+      AMBIENT_DECLARATION_FILE,
+    );
+    const shippedOnly = declarationFilesIn(shippedModulePaths(), null, PROBE_PATH, []);
+    // The served file is in one program and not the other, which is what makes
+    // this probe the only thing the four edits can move here.
+    expect(withProbeServed.other).toContain(path.basename(AMBIENT_DECLARATION_PATH));
+    expect(shippedOnly.other).not.toContain(path.basename(AMBIENT_DECLARATION_PATH));
+    expect(withProbeServed.other.length).toBe(shippedOnly.other.length + 1);
+    // Not pinned by name: the dependency rows move when a package moves, which
+    // is a fact about `node_modules` and not about this walk. Pinned as
+    // non-empty in both directions so neither the reach nor the domain can
+    // quietly go to zero and leave the sentence above describing nothing.
+    expect(shippedOnly.other.length).toBeGreaterThan(0);
+    expect(shippedOnly.compilerSupplied).toBeGreaterThan(0);
   });
 
   it('finds a function declared in a project `.d.ts` and handed back, at two depths', () => {
