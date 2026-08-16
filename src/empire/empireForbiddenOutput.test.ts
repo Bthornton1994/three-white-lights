@@ -2255,7 +2255,12 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
    * report a clean census, which is the reassuring direction. A four-figure
    * number here says the walk really covered the directory's code.
    */
-  CALLS_EXAMINED: 1022,
+  // MOVED BY `sealRate`'s LABEL CLOSE, attributed rather than re-pinned blind.
+  // That function stopped interpolating its caller's label and now resolves it
+  // out of `SEALED_RATE_LABELS`, which adds three calls in `empireInvariant.ts`
+  // — an `Object.freeze`, a `.find`, and one more `refuseWith` — and one type
+  // declaration. Every number below moves by exactly that and by nothing else.
+  CALLS_EXAMINED: 1025,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -10315,7 +10320,7 @@ const THROW_GATE_SITES: readonly string[] = Object.freeze([
  */
 const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'empireCore.ts': 9,
-  'empireInvariant.ts': 7,
+  'empireInvariant.ts': 8,
   'engagement.ts': 13,
   'expansion.ts': 3,
   'production.ts': 9,
@@ -10528,11 +10533,11 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'empireInvariant.ts:1047 returned=unfollowable:state',
-  'empireInvariant.ts:1100 returned=unfollowable:gymState',
-  'empireInvariant.ts:1131 returned=unfollowable:gym',
-  'empireInvariant.ts:1176 returned=unfollowable:gym',
-  'empireInvariant.ts:1319 returned=unfollowable:gym',
+  'empireInvariant.ts:1084 returned=unfollowable:state',
+  'empireInvariant.ts:1137 returned=unfollowable:gymState',
+  'empireInvariant.ts:1168 returned=unfollowable:gym',
+  'empireInvariant.ts:1213 returned=unfollowable:gym',
+  'empireInvariant.ts:1356 returned=unfollowable:gym',
   'empireInvariant.ts:637 receiver=ArrayLiteralExpression',
   'engagement.ts:355 receiver=ArrayLiteralExpression',
   'engagement.ts:437 returned=unfollowable:gym',
@@ -10559,12 +10564,12 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
  * a type that the control finds a function inside.
  */
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'empireInvariant.ts:1047 GymAxes asked=true walked=false',
-  'empireInvariant.ts:1100 GymAxes asked=true walked=false',
-  'empireInvariant.ts:1131 readonly ExpansionBuild[] asked=true walked=false',
-  'empireInvariant.ts:1176 EmpireState asked=true walked=false',
-  'empireInvariant.ts:1249 ExpansionBuild asked=true walked=false',
-  'empireInvariant.ts:1319 EmpireState asked=true walked=false',
+  'empireInvariant.ts:1084 GymAxes asked=true walked=false',
+  'empireInvariant.ts:1137 GymAxes asked=true walked=false',
+  'empireInvariant.ts:1168 readonly ExpansionBuild[] asked=true walked=false',
+  'empireInvariant.ts:1213 EmpireState asked=true walked=false',
+  'empireInvariant.ts:1286 ExpansionBuild asked=true walked=false',
+  'empireInvariant.ts:1356 EmpireState asked=true walked=false',
   'engagement.ts:437 EmpireState asked=true walked=false',
   'engagement.ts:455 EmpireState asked=true walked=false',
   'expansion.ts:549 EmpireClock asked=true walked=false',
@@ -10627,8 +10632,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   parameter: 2,
   'module-variable': 26,
   local: 0,
-  function: 504,
-  member: 475,
+  function: 505,
+  member: 477,
   'member-callback': 2,
   'member-of-parameter': 13,
   fresh: 0,
@@ -10663,9 +10668,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
   SITES: 329,
   /** Nodes the walk examined. A truncated walk would report a clean directory. */
-  NODES_EXAMINED: 21_834,
+  NODES_EXAMINED: 21_885,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
-  WRAP_CALLS: 54,
+  WRAP_CALLS: 55,
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
@@ -14307,7 +14312,7 @@ function cyclicDeclarations(
  */
 const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   /** Type aliases, interfaces and classes declared across the ten shipped modules. */
-  DECLARATIONS: 118,
+  DECLARATIONS: 119,
   /** Those carrying type parameters. An instantiation depth needs one. */
   GENERIC: 11,
   /** Declarations reaching themselves. Zero, and this is the pin the round is about. */
