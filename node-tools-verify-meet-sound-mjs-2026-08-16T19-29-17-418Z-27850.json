@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-meet-sound-mjs-2026-08-16T19-29-17-418Z-27850",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-meet-sound.mjs"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-16T19:29:17.418Z",
+  "startedAtMs": 1786908557418,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "37f2fcc062d8b08dfd2b4a2576e17dad49b127da",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 1,
+  "dirtyPaths": [
+    ".gauntlet/shots/lift-press/press.json"
+  ],
+  "runner": {
+    "pid": 27850,
+    "startTick": "960708",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --id ev3-sound -- node tools/verify-meet-sound.mjs",
+    "bootId": "d9b3d2e7-4acf-49d2-a666-3c403df79e55",
+    "bootEpochSeconds": 1786898950,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-16T19:29:17.437Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
