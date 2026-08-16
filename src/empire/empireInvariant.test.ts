@@ -1576,11 +1576,13 @@ describe('this module is pure, numerically clean and names nobody', () => {
     // one — that is the human, name-by-name pass. What this does is make a name
     // ARRIVING visible.
     const { singleQuoted, doubleQuoted, templateChunks } = stringLiteralsIn(code);
-    expect(singleQuoted.size).toBe(35);
+    expect(singleQuoted.size).toBe(38);
     expect(doubleQuoted.size).toBe(0);
-    // 15 rather than the 14 this pinned before `empireRunFaults` grew the
-    // accelerant-count message; the chunk it added is asserted by count below.
-    expect(templateChunks.size).toBe(15);
+    // 16 rather than the 15 this pinned before `sealRate` arrived; that
+    // function's refusal message is the chunk that moved it, and it is the
+    // containment half of the returned-closure close rather than a message
+    // added for its own sake. The chunk is asserted by count below.
+    expect(templateChunks.size).toBe(16);
     // The template collector really reaches this module's messages, by match
     // count rather than by presence.
     const chunks = [...templateChunks];
@@ -1606,7 +1608,9 @@ describe('this module is pure, numerically clean and names nobody', () => {
       'fixed-order-no-rotation',
       'gym-bucks',
       'gym-empire-timer-skip',
+      'gymBucksPerHour',
       'not-enough-wall-clock-earnings',
+      'number',
       'physio',
       'physio-days-saved',
       'rewarded-ad-timer-skip',
@@ -1617,6 +1621,7 @@ describe('this module is pure, numerically clean and names nobody', () => {
       'single-wall-clock-purse',
       'spend-once-per-calendar-day',
       'training-iq',
+      'trainingIqPerDay',
       'wall-clock-earned',
     ]);
 
@@ -1627,9 +1632,12 @@ describe('this module is pure, numerically clean and names nobody', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    // 50 rather than 49, for the one template chunk `empireRunFaults`' new
-    // accelerant-count message added.
-    expect(stringsChecked).toBe(50);
+    // 54 rather than 50: `sealRate`'s three literals and its one template
+    // chunk. Three of the four are `'gymBucksPerHour'`, `'trainingIqPerDay'`
+    // and `'number'` — the last from the `typeof` narrow, which is the check
+    // that makes the seal read the VALUE rather than agree with the declared
+    // type it exists to distrust.
+    expect(stringsChecked).toBe(54);
   });
 
   it('would catch a person-shaped name arriving in this module', () => {

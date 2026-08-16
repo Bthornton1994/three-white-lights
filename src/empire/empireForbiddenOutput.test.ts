@@ -291,7 +291,17 @@
  * first row in that table whose hit had to be earned rather than inherited,
  * since `SHAPES` equalling `HITS` at sixteen was true by construction.
  *
- * What is left is the arity-above-zero half, and it has a size and a place.
+ * WHAT WAS LEFT WAS THE ARITY-ABOVE-ZERO HALF, AND IT WAS COUNTED AND NOT
+ * TRIED. The round that counted it wrote that invoking one had not been priced,
+ * and that the deferral should be read as unexamined rather than declined. It
+ * is priced now, and the price is the argument for having tried: FOUR LINES AND
+ * SEVEN MILLISECONDS. The fixture is `createNpcLifter`, which the drive at
+ * `lifterAt` already builds; nothing had to be written. On the shipped tree the
+ * two arrows answer 60 / 96 / 150 / 240 / 390 Gym Bucks per hour and 0.375 /
+ * 0.6 / 0.9375 / 1.5 / 2.4375 Training IQ per day, by tier. That reading is one
+ * point on an unbounded argument axis and it is not coverage; what it bought is
+ * that the cost estimate behind the deferral had nothing behind it.
+ *
  * `DRIVE_CENSUS.CLOSURES_DECLINED` is 2046 readings of TEN positions, named in
  * `DECLINED_CLOSURE_POSITIONS`, and those ten are two closures:
  * `rosterRatesAt`'s `gymBucksPerHour` and `trainingIqPerDay`, each
@@ -299,8 +309,24 @@
  * `DECLARED_RETURNED_CLOSURE_SITES` and the drive's own list is joined to it,
  * so a third arrow leaving this directory is red without anybody calling it;
  * instrument A reads their declared result as `number`, which is no string
- * position at all. The residual neither covers is an arity-above-zero closure
- * whose result type is cast away, and it is written at the constant.
+ * position at all.
+ *
+ * THE RESIDUAL NEITHER COVERED WAS AN EXISTING ARROW WHOSE BODY LAUNDERS A
+ * STRING INTO THAT DECLARED `number`, AND IT WAS MEASURED RATHER THAN LEFT AS A
+ * SENTENCE. M83 in `PLANTED_ROUTES` is that route, planted and driven: 3445 of
+ * 3446 tests green with a one-argument caller receiving `'covered-day'`. What
+ * shut it is not a wider walk — the site set is TWO, because the list above
+ * makes a third red — so it is closed by containment at those two sites,
+ * `sealRate`, with the enumeration that forces every site through it pinned in
+ * `seals every returned-closure result the channel census found`. The full
+ * before-and-after is at `DECLARED_RETURNED_CLOSURE_SITES`.
+ *
+ * AND ONE MEASUREMENT ABOUT THIS KEY'S OWN ARITY, because it decided the shape
+ * of the plant. `Function.length` counts declared parameters before the first
+ * default or rest, and TypeScript ERASES an optional marker with no default —
+ * so `(lifter: NpcLifter, tenure?: number)` emits two parameters and moves this
+ * list to `/2`, which reddens. A rest parameter does not, and that is the form
+ * M83 had to take. The arity in the key is doing work; it is not decoration.
  *
  * `DRIVE_CENSUS.GETTERS_INVOKED` is zero on the subject and
  * `TRIPWIRE_CENSUS.GETTERS_INVOKED` is one, so the getter branch is pinned as
@@ -2211,7 +2237,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
    * report a clean census, which is the reassuring direction. A four-figure
    * number here says the walk really covered the directory's code.
    */
-  CALLS_EXAMINED: 1018,
+  CALLS_EXAMINED: 1022,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -6464,13 +6490,43 @@ const DRIVE_CENSUS = Object.freeze({
  * directions, so a THIRD arrow leaving this directory is red before anybody
  * calls it; and instrument A reads their declared result as `number`, which is
  * not a string position at all, so no forbidden name can be their declared
- * output. What neither covers is the same erasure this file already declares
- * one level up: an arity-above-zero closure whose result type is cast away
- * carries a string the position census cannot see and this walk will not call.
- * That is open, it is stated here rather than at the bottom of a paragraph, and
- * the honest reason it is open is that calling it means choosing an
- * `NpcLifter` — which is the difficulty the round's own finding says is real at
- * arity above zero and vacuous at zero.
+ * output.
+ *
+ * THE PARAGRAPH THAT USED TO FOLLOW SAID THE ERASURE ROUTE WAS OPEN AND
+ * DECLINED TO TRY IT. It was open, it is the twenty-fifth bypass, and both
+ * halves of it have now been planted rather than reasoned about — M83 and M84
+ * in `PLANTED_ROUTES`, one at a time, each with the branch driven and its value
+ * printed. The two halves did not answer the same way, and the difference is
+ * what bounds the residual:
+ *
+ *   - A NEW ARROW IS SHUT, and the sentence above is what shuts it. M84 adds an
+ *     export returning `{ rate: (lifter: NpcLifter) => number }` whose body is
+ *     `EMPIRE_FORBIDDEN_OUTPUTS[0] as never`. `tsc --noEmit` exit 0 and the
+ *     value is `'covered-day'` at a one-argument caller — and the list above
+ *     reddens with `+ "production.ts#idleRateProbe#closure:.rate"` with nothing
+ *     ever calling it.
+ *   - AN EXISTING ARROW WAS WIDE OPEN. M83 rewrites `gymBucksPerHour`'s own
+ *     body, so no arrow arrives and no member path moves; the rest arity keeps
+ *     `Function.length` at one, so `DECLINED_CLOSURE_POSITIONS` does not move
+ *     either. `tsc` exit 0, the whole repository 3445 of 3446 green, and the
+ *     one red is `census.nodesExamined` — an AST node count that moves on any
+ *     edit at all and is on this file's own list of things that are not the
+ *     check working.
+ *
+ * SO THE RESIDUAL WAS NEVER "AN ARITY-ABOVE-ZERO CLOSURE" IN GENERAL. It was
+ * exactly the two sites named above, because the list makes a third red before
+ * it exists — an enumerable set of two rather than an unbounded one, which is
+ * what let it be closed by containment instead of by a wider sampler.
+ * `sealRate` in `empireInvariant.ts` is the containment and
+ * `seals every returned-closure result the channel census found` is the
+ * enumeration that keeps it honest.
+ *
+ * WHAT IS STILL NOT COVERED, in the mechanism's own terms: `sealRate` refuses a
+ * non-number, so a body returning a forbidden name is unshippable — it refuses
+ * on the calls that RUN and does not make any guard complete. A closure whose
+ * result is a plain NUMBER that a later wiring piece uses to select a forbidden
+ * name is attack shape 15, is untouched by this, and has no catcher in this
+ * file; it is declared at instrument B rather than here.
  */
 const DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
   'accrueProduction#argument.1.gymBucksPerHour/1',
@@ -9915,7 +9971,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
   Object.freeze({
     return: Object.freeze({
       'empireCore.ts': 49,
-      'empireInvariant.ts': 59,
+      'empireInvariant.ts': 60,
       'engagement.ts': 23,
       'expansion.ts': 47,
       'npc.ts': 12,
@@ -10004,7 +10060,7 @@ const THROW_GATE_SITES: readonly string[] = Object.freeze([
  */
 const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'empireCore.ts': 9,
-  'empireInvariant.ts': 6,
+  'empireInvariant.ts': 7,
   'engagement.ts': 13,
   'expansion.ts': 3,
   'production.ts': 9,
@@ -10076,6 +10132,133 @@ const DECLARED_RETURNED_CLOSURE_SITES: readonly string[] = Object.freeze([
 ]);
 
 /**
+ * Where the seal lives, what it is called, and how many arrows it has to cover.
+ *
+ * In one block rather than inline, because these are the knobs the check above
+ * reads and a value buried in a body is a value nobody tunes. `ARROWS_PER_SITE`
+ * is one and is pinned rather than assumed: a member path naming two arrows
+ * would mean the census key had stopped identifying a single position, which is
+ * a different defect from an unsealed arrow and should not be able to hide
+ * inside it.
+ */
+/** The marker the channel census puts between a site's owner and its member path. */
+const CLOSURE_KEY_MARK = '#closure:.';
+
+const RETURNED_CLOSURE_SEAL = Object.freeze({
+  HOME: 'empireInvariant.ts',
+  SEAL: 'sealRate',
+  SITES: 2,
+  ARROWS_PER_SITE: 1,
+});
+
+interface ReturnedClosureSealReading {
+  /** The site list, taken from the channel census rather than from a copy. */
+  readonly sites: readonly string[];
+  /** `[site, arrows located]`, sorted. Pinned so an unlocatable site is red. */
+  readonly matched: readonly (readonly [string, number])[];
+  readonly sealed: readonly string[];
+  /** `${site} <- ${the body text}`, so the failure says where AND what. */
+  readonly unsealed: readonly string[];
+}
+
+/**
+ * Every returned-closure site the channel census found, and whether its arrow's
+ * body is a call to the seal.
+ *
+ * THE DETECTION HALF OF THE TWENTY-FIFTH BYPASS'S CLOSE, and it is written in
+ * the shape `THROW_GATE_SITES` already uses: `sealRate` is CONTAINMENT — it
+ * refuses at runtime and so fires only when the path runs — and this is
+ * DETECTION, which fires with no drive at all. Neither is the other.
+ *
+ * WHAT IT READS RATHER THAN COPIES. The site list comes from `channelCensus()`,
+ * the same call the test above pins against `DECLARED_RETURNED_CLOSURE_SITES`.
+ * A twin guard that re-derived "which arrows does this directory hand back"
+ * would be the copied-fence shape CLAUDE.md records four times; this asks the
+ * sibling instead.
+ *
+ * AND THE CALLEE IS MATCHED BY SYMBOL, NOT BY TEXT, for the reason that file
+ * also records: a local shim spelled the same as its subject type-checked clean
+ * past an identifier-text check sitting twelve lines from a symbol-resolving
+ * one. `sealRate` is resolved once, from its declaration in the module
+ * `RETURNED_CLOSURE_SEAL.HOME` names, and every call site is compared against
+ * that symbol.
+ *
+ * ITS LIMIT, in the mechanism's own terms: it reads the arrow's body
+ * EXPRESSION. An arrow whose body is a block, or whose body is a call to a
+ * second helper that itself calls the seal, is reported as unsealed rather than
+ * followed — the direction is deliberate, because an over-report is a red line
+ * naming the body and an under-report is silence. What it does not cover at all
+ * is the seal's own body being weakened, which is `sealRate`'s runtime refusal
+ * and is a different subject.
+ */
+function returnedClosureSealReading(): ReturnedClosureSealReading {
+  const sites = channelCensus().sites['returned-closure'];
+  const program = programWith(compilerOptions(), shippedModulePaths(), null);
+  const checker = program.getTypeChecker();
+
+  const sealHome = program.getSourceFile(path.join(HERE, RETURNED_CLOSURE_SEAL.HOME));
+  if (sealHome === undefined) throw new Error(`${RETURNED_CLOSURE_SEAL.HOME} is not in the program`);
+  let sealSymbol: ts.Symbol | undefined;
+  sealHome.forEachChild((node) => {
+    const named = ts.isFunctionDeclaration(node) && node.name !== undefined ? node.name : null;
+    const wanted = named !== null && named.text === RETURNED_CLOSURE_SEAL.SEAL;
+    sealSymbol = wanted && named !== null ? checker.getSymbolAtLocation(named) : sealSymbol;
+  });
+  if (sealSymbol === undefined) {
+    throw new Error(`${RETURNED_CLOSURE_SEAL.SEAL} is not declared in ${RETURNED_CLOSURE_SEAL.HOME}`);
+  }
+
+  const matched = new Map<string, number>();
+  const sealed: string[] = [];
+  const unsealed: string[] = [];
+  for (const site of sites) {
+    const moduleName = site.slice(0, site.indexOf('#'));
+    const owner = site.slice(site.indexOf('#') + 1, site.lastIndexOf('#'));
+    const member = site.slice(site.lastIndexOf(CLOSURE_KEY_MARK) + CLOSURE_KEY_MARK.length);
+    const source = program.getSourceFile(path.join(HERE, moduleName));
+    if (source === undefined) throw new Error(`${site}: ${moduleName} is not in the program`);
+    const enclosingName = (node: ts.Node): string => {
+      const found: string[] = [];
+      for (let at: ts.Node | undefined = node; at !== undefined; at = at.parent) {
+        const named = ts.isFunctionDeclaration(at) ? (at.name?.text ?? '') : '';
+        found.push(named);
+      }
+      return found.find((name) => name !== '') ?? '';
+    };
+    const isTheArrow = (node: ts.Node): boolean =>
+      ts.isArrowFunction(node) &&
+      node.parent !== undefined &&
+      ts.isPropertyAssignment(node.parent) &&
+      node.parent.name.getText(source) === member &&
+      enclosingName(node) === owner;
+    const visit = (node: ts.Node): void => {
+      const arrow = isTheArrow(node) ? (node as ts.ArrowFunction) : null;
+      const body = arrow === null ? null : arrow.body;
+      const callee =
+        body !== null && !ts.isBlock(body) && ts.isCallExpression(body)
+          ? checker.getSymbolAtLocation(body.expression)
+          : undefined;
+      matched.set(site, (matched.get(site) ?? 0) + (arrow === null ? 0 : 1));
+      sealed.push(...(callee !== undefined && callee === sealSymbol ? [site] : []));
+      unsealed.push(
+        ...(arrow !== null && !(callee !== undefined && callee === sealSymbol)
+          ? [`${site} <- ${body === null || ts.isBlock(body) ? 'a block body' : body.getText(source)}`]
+          : []),
+      );
+      node.forEachChild(visit);
+    };
+    source.forEachChild(visit);
+  }
+
+  return {
+    sites,
+    matched: Object.freeze([...matched.entries()].sort()),
+    sealed: Object.freeze(sealed),
+    unsealed: Object.freeze(unsealed),
+  };
+}
+
+/**
  * Every receiver and every returned value this walk could not resolve, named.
  *
  * IT WENT FROM THREE ROWS TO THIRTEEN THIS ROUND, and the ten are a cost of the
@@ -10090,12 +10273,12 @@ const DECLARED_RETURNED_CLOSURE_SITES: readonly string[] = Object.freeze([
  * closures.
  */
 const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
-  'empireInvariant.ts:1048 returned=unfollowable:gymState',
-  'empireInvariant.ts:1079 returned=unfollowable:gym',
-  'empireInvariant.ts:1124 returned=unfollowable:gym',
-  'empireInvariant.ts:1267 returned=unfollowable:gym',
+  'empireInvariant.ts:1047 returned=unfollowable:state',
+  'empireInvariant.ts:1100 returned=unfollowable:gymState',
+  'empireInvariant.ts:1131 returned=unfollowable:gym',
+  'empireInvariant.ts:1176 returned=unfollowable:gym',
+  'empireInvariant.ts:1319 returned=unfollowable:gym',
   'empireInvariant.ts:637 receiver=ArrayLiteralExpression',
-  'empireInvariant.ts:995 returned=unfollowable:state',
   'engagement.ts:355 receiver=ArrayLiteralExpression',
   'engagement.ts:437 returned=unfollowable:gym',
   'engagement.ts:455 returned=unfollowable:gym',
@@ -10121,12 +10304,12 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
  * a type that the control finds a function inside.
  */
 const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
-  'empireInvariant.ts:1048 GymAxes asked=true walked=false',
-  'empireInvariant.ts:1079 readonly ExpansionBuild[] asked=true walked=false',
-  'empireInvariant.ts:1124 EmpireState asked=true walked=false',
-  'empireInvariant.ts:1197 ExpansionBuild asked=true walked=false',
-  'empireInvariant.ts:1267 EmpireState asked=true walked=false',
-  'empireInvariant.ts:995 GymAxes asked=true walked=false',
+  'empireInvariant.ts:1047 GymAxes asked=true walked=false',
+  'empireInvariant.ts:1100 GymAxes asked=true walked=false',
+  'empireInvariant.ts:1131 readonly ExpansionBuild[] asked=true walked=false',
+  'empireInvariant.ts:1176 EmpireState asked=true walked=false',
+  'empireInvariant.ts:1249 ExpansionBuild asked=true walked=false',
+  'empireInvariant.ts:1319 EmpireState asked=true walked=false',
   'engagement.ts:437 EmpireState asked=true walked=false',
   'engagement.ts:455 EmpireState asked=true walked=false',
   'expansion.ts:549 EmpireClock asked=true walked=false',
@@ -10189,8 +10372,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   parameter: 2,
   'module-variable': 26,
   local: 0,
-  function: 501,
-  member: 474,
+  function: 504,
+  member: 475,
   'member-callback': 2,
   'member-of-parameter': 13,
   fresh: 0,
@@ -10223,11 +10406,11 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
   MODULES: 10,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
-  SITES: 328,
+  SITES: 329,
   /** Nodes the walk examined. A truncated walk would report a clean directory. */
-  NODES_EXAMINED: 21_789,
+  NODES_EXAMINED: 21_834,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
-  WRAP_CALLS: 53,
+  WRAP_CALLS: 54,
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
@@ -11613,6 +11796,29 @@ describe('the channel census — the routes a string can leave this directory by
           /<- (?:ArrowFunction|FunctionExpression) x\d+$/,
         );
       }
+    },
+    CHANNEL_BLOCK_TIMEOUT_MS,
+  );
+
+  it(
+    'seals every returned-closure result the channel census found',
+    () => {
+      const reading = returnedClosureSealReading();
+      // Every site was located exactly once. A walk that found nothing would
+      // otherwise report an empty `unsealed` and read as a pass.
+      expect(reading.matched).toEqual(
+        [...reading.sites].sort().map((site) => [site, RETURNED_CLOSURE_SEAL.ARROWS_PER_SITE]),
+      );
+      expect(reading.sites.length, 'the census found no returned closure to seal').toBe(
+        RETURNED_CLOSURE_SEAL.SITES,
+      );
+      // The bite: an arrow whose body is not a call to the seal names itself,
+      // with the body text in the message, so the failure says where and what.
+      expect(reading.unsealed, reading.unsealed.join(' | ')).toEqual([]);
+      // Both directions. A seal call left behind by a deleted arrow is red the
+      // other way, and so is a third arrow arriving unsealed.
+      expect([...reading.sealed].sort()).toEqual([...DECLARED_RETURNED_CLOSURE_SITES].sort());
+      expect(reading.sealed.length).toBe(RETURNED_CLOSURE_SEAL.SITES);
     },
     CHANNEL_BLOCK_TIMEOUT_MS,
   );
@@ -18224,6 +18430,48 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'ALL THREE ROWS WERE PLANTED ONE AT A TIME, per the rule M60 and M61 set: two silences in one run cannot be attributed to either, and neither can two catches.',
     ]),
   }),
+  Object.freeze({
+    id: 'M83',
+    shape:
+      "THE TWENTY-FIFTH BYPASS, AND IT IS THE INTERSECTION OF TWO DECLARED LIMITS ONE ARITY UP. Instrument A reads the DECLARED result of a returned closure — `RosterRateSource` says `=> number`, so there is no string position for the census to classify. Instrument B reaches the closure and declines to CALL it, because its arity is above zero. So a body that writes a forbidden name into that declared `number` through a type assertion is seen by neither, and it needs no new export, no new arrow, no new import edge and no new member path. E33 found this family at arity zero and closed it by calling; the argument that closed it — a nullary call invents nothing — does not carry above zero, which is exactly why the round after it had to plant this rather than reason about it",
+    where:
+      "empireInvariant.ts, `rosterRatesAt`: the existing `gymBucksPerHour` arrow rewritten IN PLACE to `(lifter: NpcLifter, ...tenure: readonly number[]) => (tenure.length ? npcGymBucksPerHour(lifter, clock) : (EMPIRE_FORBIDDEN_OUTPUTS[0] as never))`, with `EMPIRE_FORBIDDEN_OUTPUTS` prepended to an EXISTING line of the module's own `./empireCore` import. THREE PROPERTIES MADE IT ISOLATED AND ALL THREE WERE FORCED BY A CATCHER THAT FIRED ON AN EARLIER FORM: the file's LINE COUNT is unchanged at 1690, because four checks pin declaration LINE NUMBERS in this module and a four-line plant moved all of them; the cast is `as never` and not `as unknown as`, because `progression.test.ts`'s reflective-assembly census counts `as unknown as` per file and reported `src/empire/empireInvariant.ts as unknown as x1`; and the extra parameter is a REST parameter and not an optional one, because TypeScript erases `?` with no default, so `(lifter, tenure?)` emits two parameters and moves `DECLINED_CLOSURE_POSITIONS` from `/1` to `/2`",
+    attempts: 3,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING CAUGHT IT. Whole repository under the isolated form: `Test Files 1 failed | 83 passed (84)`, `Tests 1 failed | 3445 passed (3446)`, `npx tsc --noEmit` exit 0. The single red is `derives every escape site` on `census.nodesExamined`, `expected 21810 to be 21789` — an AST node count that moves on any edit of any kind, and one of the counters this file has already recorded four times as not being the check working.',
+      'THE FOUR ASSERTIONS WRITTEN ABOUT THIS EXACT ROUTE ARE ALL GREEN, and they are named individually rather than summarised: `census.sites[\'returned-closure\']` equals `DECLARED_RETURNED_CLOSURE_SITES` (no arrow arrived, so no member path moved); `measurement.declinedClosures` equals `DECLINED_CLOSURE_POSITIONS` (the rest parameter holds `Function.length` at one, so the key is byte-identical); `DRIVE_CENSUS.CLOSURES_DECLINED` is still 2046; and instrument A\'s bare-string and branded position lists are unmoved, because the declared result is still `number`.',
+      "AND THE BRANCH RUNS, PRINTED, THROUGH THE SHIPPED EXPORT: `rosterRatesAt(clock).gymBucksPerHour(lifter)` with ONE argument returns `\"covered-day\"`, `typeof` `string`, with `Function.length` reading 1 — the same arity the pristine tree reports. The shipped consumers in `production.ts` pass two arguments and never reach the branch, which is what keeps every behavioural test green.",
+      'AND AN EARLIER, LESS ISOLATED FORM IS KEPT HERE BECAUSE THE CATCHERS IT TRIPPED ARE THE MEASUREMENT. Four lines, `as unknown as`, optional parameter: seven reds, of which four were line-number pins in this module drifting by four, one was the node count, one was `progression.test.ts` on the cast census, and one was the tuning audit — on a numeric literal in the scratch vitest config the probe ran under, not on the plant at all. Not one of the seven was a check about a returned closure.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The AST node count and nothing else, on the isolated form.',
+      'empireInvariant.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/empireInvariant.ts` before the fix was written — `91726c0587d912db2a76858ac9ec8dd6bfcc9cdc` on both sides.',
+      'CLOSED BY CONTAINMENT AND NOT BY A WIDER WALK, which is the part worth reading. The site set is TWO, because M84 below shows a third arrow is red before anything calls it — so this is an enumerable list rather than an unbounded class, and `sealRate` refuses a non-number at both members while `seals every returned-closure result the channel census found` joins the sealed set to the census list in both directions. A walker widened to call at arity above zero would have had to choose an argument and would have explored one point of an unbounded space; the enumeration needs none.',
+    ]),
+  }),
+  Object.freeze({
+    id: 'M84',
+    shape:
+      "M83'S OTHER HALF, AND IT ANSWERS DIFFERENTLY, WHICH IS WHAT BOUNDS THE RESIDUAL. The same laundering — a closure taking one argument whose declared result is a number and whose body hands back a forbidden name through an assertion — arriving as a NEW arrow on a NEW export rather than inside an existing one. The header at `DECLARED_RETURNED_CLOSURE_SITES` predicted this is red before anybody calls it, because the site list is keyed on member path and not on type. Planted rather than believed",
+    where:
+      "production.ts: `export function idleRateProbe(seed: number): { readonly rate: (lifter: NpcLifter) => number }` returning `Object.freeze({ rate: (lifter: NpcLifter) => seed ? (EMPIRE_FORBIDDEN_OUTPUTS[0] as never) : lifter.joinedAt })`, with `EMPIRE_FORBIDDEN_OUTPUTS` added to the module's existing `./empireCore` import so no import edge is added",
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED, BY THE ASSERTION THAT NAMES THE ROUTE, WITH NO CALL ANYWHERE. `pins the two callback sites` reddens with `+ "production.ts#idleRateProbe#closure:.rate"` — the member path of the new arrow — and `derives every escape site` reddens on `census.byModule`, both before any drive runs.',
+      'AND THE EXPORT CENSUS REDDENS TOO, which is the tripwire rather than the detection: `drives every export the census knows about, in both directions` is a set equality over the directory\'s export list, so a new export forces a visible edit here. This file already records what that is worth and it is not read as a semantic check.',
+      'AND THE BRANCH RUNS, PRINTED: `idleRateProbe(5).rate(lifter)` returns `"covered-day"`, `typeof` `string`, `Function.length` 1.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      "TEN OF 523 IN `src/empire/`, AND ONE OF THEM IS AN ACCIDENTAL CATCHER WORTH NAMING BECAUSE IT IS ABOUT THE PLANT'S SPELLING RATHER THAN ITS SHAPE: `reads no clock, rolls no dice and touches no host API` reddens twice with `production.ts must not reach /\\bseed\\b/i`. The parameter was named `seed`; a plant that named it anything else would leave that check green. It is recorded so the row is not read as evidence that the randomness ban covers this route, which it does not.",
+      "`accidentalCatchersGreen` IS TRUE IN THE SENSE THE SCHEMA DEFINES AND THE ROW SAYS SO EXPLICITLY, because one of the ten reds is in `empireCore.test.ts` and a reader would otherwise have to check. The field is about the three scans of shipped source — the magic-number audit, the string census and the import fence — and all three are green here: the payload is read out of `EMPIRE_FORBIDDEN_OUTPUTS` through a specifier added to an import the module already has, so no module specifier and no string literal arrives. The `empireCore.test.ts` red is the dice scan on the parameter's NAME, which is the row above.",
+      'The rest are the counters this file already lists: instrument C\'s node count, instrument B\'s, the overflow pass\'s, the depth census, the owner tally and the ambient probe that re-reads it.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` — `70e0bcba2dee2dbdd00d8cd03e13f03498b4a136` on both sides.',
+    ]),
+  }),
 ]);
 
 /**
@@ -18565,7 +18813,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(82);
+    expect(PLANTED_ROUTES.length).toBe(84);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -18700,8 +18948,22 @@ describe('the routes that were planted, and what each of them cost', () => {
     // ONE EACH FOR M80, M81 AND M82, which are M67, M76 and M78 replanted
     // unchanged against the value-level walker. They inherit their originals'
     // isolation by construction, and each was planted alone.
-    expect(attempts).toBe(109);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(72);
+    // THREE FOR M83, and the three are the round's own finding rather than
+    // retries: each extra attempt was forced by a catcher that fired on the
+    // form before it, and none of the three was a check about a returned
+    // closure. Form 1 was four lines and moved four LINE-NUMBERED pins in the
+    // same module; form 2 kept the line count and used `as unknown as`, which
+    // `progression.test.ts`'s reflective-assembly census counts per file; form
+    // 3 replaced the optional parameter with a rest parameter, because
+    // TypeScript erases `?` with no default and `Function.length` had gone to
+    // two, which moves `DECLINED_CLOSURE_POSITIONS`. Only the third says
+    // whether anything here covers the route, and the answer is that nothing
+    // does.
+    // ONE FOR M84, which is M83's payload and cast at a NEW arrow rather than
+    // an existing one, and it needed no isolation work because the isolation
+    // M83 had just been through applies unchanged.
+    expect(attempts).toBe(113);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(74);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {

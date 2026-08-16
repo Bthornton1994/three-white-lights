@@ -2869,9 +2869,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     expect(filesRead).toBe(shipped.length);
     // Counts before contents, so an empty domain reports itself rather than
     // making the pin below a comparison of two empty lists.
-    expect(singleQuoted.size).toBe(168);
+    expect(singleQuoted.size).toBe(171);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(138);
+    expect(templateChunks.size).toBe(139);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -2943,6 +2943,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gym-id',
       'gym-progress',
       'gymBucks',
+      'gymBucksPerHour',
       'gymId',
       'idle-clock',
       'idle-only',
@@ -2963,6 +2964,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'novice',
       'npc-id',
       'npcId',
+      'number',
       'own-gym',
       'paid-pull',
       'physio',
@@ -3005,6 +3007,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'training-iq',
       'training-pace',
       'trainingIq',
+      'trainingIqPerDay',
       'unaccelerated-seconds',
       'unacceleratedSeconds',
       'visited',
@@ -3022,7 +3025,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(306);
+    expect(stringsChecked).toBe(310);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3051,7 +3054,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(127);
+    expect(probes).toBe(130);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
