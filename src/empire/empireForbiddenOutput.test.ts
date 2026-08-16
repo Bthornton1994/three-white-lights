@@ -5283,16 +5283,42 @@ function attempt(thunk: () => unknown, ...args: readonly unknown[]): readonly un
 const ROSTER_STATE_WHY =
   'takes an EmpireState whose roster holds one NpcLifter per member and is handed that state as a re-read argument, so the ARGUMENT region is linear in the roster size. What comes back is not: measured over all 690 pairs above the ceiling, the whole return region is 1 710 nodes.';
 
+/**
+ * `alsoReRead` EXISTS BECAUSE THE OVERFLOW PASS'S CLOSURE COUNTERS WERE ZERO FOR
+ * A REASON NOBODY HAD ESTABLISHED, and the two candidate reasons are different
+ * facts with different consequences.
+ *
+ * `OVERFLOW_CENSUS.CLOSURES_DECLINED` was pinned at zero beside a comment saying
+ * the two passes share one walker, so a position only the overflow points reach
+ * is exactly the kind of thing the main drive's numbers cannot speak for.
+ * Settled by reading the fixture rather than by reasoning about the subjects:
+ * the zero was neither "the budget dropped the argument region" nor "these
+ * subjects carry no closure". It was that `OVERFLOW_RATES` — the
+ * `RosterRateSource` holding the directory's only two returned closures — is
+ * CAPTURED in the thunk and was never handed to `attempt`, so it never entered a
+ * scanned region at all. The main drive re-reads it, `drive(..., [state,
+ * rates])`, and reports 2046 declines; this pass re-read only the state and
+ * reported none.
+ *
+ * So the parameter is the settling and not a widening for its own sake: the four
+ * production subjects now hand the rates in the way the main drive does, and the
+ * counter is a measurement of the same positions at the points the ceilings
+ * drop. A zero here now means the walk met no closure, which is what it always
+ * read as.
+ */
 function rosterStateSubject(
   exportName: string,
   call: (state: EmpireState) => unknown,
+  alsoReRead: readonly unknown[] = [],
 ): OverflowSubject {
   return Object.freeze({
     domain: 'ROSTER_SHAPE',
     export: exportName,
     cost: 'argument-heavy',
     why: ROSTER_STATE_WHY,
-    at: (size: number) => [attempt(() => call(overflowState(size)), overflowState(size))],
+    at: (size: number) => [
+      attempt(() => call(overflowState(size)), overflowState(size), ...alsoReRead),
+    ],
   });
 }
 
@@ -5330,17 +5356,25 @@ const ROSTER_STATE_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
       SENTINELS.RECRUIT_DISPLAY_NAME,
     ),
   ),
-  rosterStateSubject('gymBucksRatePerHour', (state) =>
-    productionModule.gymBucksRatePerHour(state, OVERFLOW_CLOCK, OVERFLOW_RATES),
+  rosterStateSubject(
+    'gymBucksRatePerHour',
+    (state) => productionModule.gymBucksRatePerHour(state, OVERFLOW_CLOCK, OVERFLOW_RATES),
+    [OVERFLOW_RATES],
   ),
-  rosterStateSubject('trainingIqRatePerDay', (state) =>
-    productionModule.trainingIqRatePerDay(state, OVERFLOW_CLOCK, OVERFLOW_RATES),
+  rosterStateSubject(
+    'trainingIqRatePerDay',
+    (state) => productionModule.trainingIqRatePerDay(state, OVERFLOW_CLOCK, OVERFLOW_RATES),
+    [OVERFLOW_RATES],
   ),
-  rosterStateSubject('productionRates', (state) =>
-    productionModule.productionRates(state, OVERFLOW_CLOCK, OVERFLOW_RATES),
+  rosterStateSubject(
+    'productionRates',
+    (state) => productionModule.productionRates(state, OVERFLOW_CLOCK, OVERFLOW_RATES),
+    [OVERFLOW_RATES],
   ),
-  rosterStateSubject('accrueProduction', (state) =>
-    productionModule.accrueProduction(state, OVERFLOW_CLOCK, OVERFLOW_RATES),
+  rosterStateSubject(
+    'accrueProduction',
+    (state) => productionModule.accrueProduction(state, OVERFLOW_CLOCK, OVERFLOW_RATES),
+    [OVERFLOW_RATES],
   ),
   rosterStateSubject('accrueSponsorship', (state) =>
     reputationModule.accrueSponsorship(state, OVERFLOW_CLOCK),
@@ -5756,6 +5790,8 @@ interface OverflowMeasurement {
   readonly closuresInvoked: number;
   readonly closureThrows: number;
   readonly closuresDeclined: number;
+  /** The same keys `DRIVE_CENSUS` names, stripped by the same `declinedClosureKey`. */
+  readonly declinedClosures: readonly string[];
   /** `${domain}/${label}=${value}` for every point at least one subject was driven at. */
   readonly points: readonly string[];
   /** `${domain}/${export}@${label}` for every pair actually driven. */
@@ -5828,6 +5864,7 @@ function measureOverflow(): OverflowMeasurement {
   let closuresInvoked = 0;
   let closureThrows = 0;
   let closuresDeclined = 0;
+  const declinedClosures = new Set<string>();
 
   for (const point of overflowPoints()) {
     const at = `${point.domain}/${point.label}=${String(point.value)}`;
@@ -5872,6 +5909,9 @@ function measureOverflow(): OverflowMeasurement {
           closuresInvoked += scan.closuresInvoked;
           closureThrows += scan.closureThrows;
           closuresDeclined += scan.closuresDeclined;
+          for (const declined of scan.declinedClosures) {
+            declinedClosures.add(declinedClosureKey(declined));
+          }
           strings += scan.strings.length;
           worstNodes.set(key, Math.max(worstNodes.get(key) ?? 0, scan.nodes));
           for (const found of scan.strings) {
@@ -5906,6 +5946,7 @@ function measureOverflow(): OverflowMeasurement {
     closuresInvoked,
     closureThrows,
     closuresDeclined,
+    declinedClosures: Object.freeze([...declinedClosures].sort()),
     points: Object.freeze([...points].sort()),
     pairs: Object.freeze([...pairs].sort()),
     skipped: Object.freeze([...skipped].sort()),
@@ -6083,6 +6124,26 @@ const OVERFLOW_RESIDUAL: readonly OverflowResidualRow[] = Object.freeze([
  * driven, 690 were driven with the re-read argument left unscanned, and those
  * are its twenty-three ROSTER_SHAPE rows.
  */
+/**
+ * The closure positions the OVERFLOW pass reaches, by the same key the main
+ * drive uses.
+ *
+ * Eight and not ten: the four production subjects are each driven with the rates
+ * object as a re-read argument, and `rosterRatesAt` itself is not one of this
+ * pass's subjects, so the two `#return.` rows the main drive has are absent here
+ * and their absence is the difference between the two lists rather than a gap.
+ */
+const OVERFLOW_DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
+  'accrueProduction#argument.1.gymBucksPerHour/1',
+  'accrueProduction#argument.1.trainingIqPerDay/1',
+  'gymBucksRatePerHour#argument.1.gymBucksPerHour/1',
+  'gymBucksRatePerHour#argument.1.trainingIqPerDay/1',
+  'productionRates#argument.1.gymBucksPerHour/1',
+  'productionRates#argument.1.trainingIqPerDay/1',
+  'trainingIqRatePerDay#argument.1.gymBucksPerHour/1',
+  'trainingIqRatePerDay#argument.1.trainingIqPerDay/1',
+]);
+
 const OVERFLOW_CENSUS = Object.freeze({
   /** (domain, label) pairs the ceilings drop. Equals the sum of OMITTED_ABOVE_CEILING. */
   POINTS: 134,
@@ -6116,9 +6177,9 @@ const OVERFLOW_CENSUS = Object.freeze({
    * size is not additive and there is no second way to get it.
    */
   ROWS: 2479,
-  NODES: 523128,
-  STRINGS: 3544430,
-  DISTINCT_STRINGS: 4307,
+  NODES: 523440,
+  STRINGS: 3545262,
+  DISTINCT_STRINGS: 4309,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
   /**
@@ -6131,7 +6192,31 @@ const OVERFLOW_CENSUS = Object.freeze({
    */
   CLOSURES_INVOKED: 0,
   CLOSURE_THROWS: 0,
-  CLOSURES_DECLINED: 0,
+  /**
+   * 208, AND IT WAS ZERO FOR A REASON NOBODY HAD ESTABLISHED.
+   *
+   * The zero read as "these subjects carry no closure" and was in fact "the one
+   * closure-bearing argument in this directory was captured in the thunk and
+   * never handed to `attempt`, so it never entered a scanned region". Those are
+   * different facts and only one of them is safe; the fixture was changed rather
+   * than the number re-explained, and `rosterStateSubject`'s `alsoReRead`
+   * parameter is where that is written up.
+   *
+   * DERIVED RATHER THAN READ OFF A FAILURE: four production subjects, two
+   * closures each, at the 26 ROSTER_SHAPE points at or below the allocation
+   * ceiling — above it the argument region is skipped by the budget and counted
+   * in `PAIRS_ARGUMENT_SKIPPED`. 4 x 2 x 26 = 208. So this number moves if a
+   * subject arrives, if a third arrow arrives, or if the ceiling moves, and each
+   * of those is a different thing a reader can check. Driven: dropping the rates
+   * from one of the four subjects takes it to 156, which is 208 less 2 x 26.
+   *
+   * `CLOSURES_INVOKED` and `CLOSURE_THROWS` above stay at zero, and their zero is
+   * the one this pass cannot make non-vacuous on its own: nothing in this
+   * directory constructs a NULLARY closure, so the arity-zero branch is exercised
+   * by `TRIPWIRE_CENSUS.CLOSURES_INVOKED` and by nothing here. That is the same
+   * standing the getter branch has and it is stated rather than implied.
+   */
+  CLOSURES_DECLINED: 208,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -6304,6 +6389,8 @@ interface DriveMeasurement {
   readonly closuresDeclined: number;
   /** Distinct `${path}/${arity}` keys, with the row's export prefixed. */
   readonly declinedClosures: readonly string[];
+  /** Raw keys the strip could not apply to. Zero, and driven against a label it cannot parse. */
+  readonly declineKeysUnstripped: number;
   readonly proxies: number;
   readonly stacks: number;
   readonly stackFindings: readonly string[];
@@ -6356,6 +6443,7 @@ function measureDrive(): DriveMeasurement {
   let closureThrows = 0;
   let closuresDeclined = 0;
   const declinedClosures = new Set<string>();
+  let declineKeysUnstripped = 0;
   let proxies = 0;
   let stacks = 0;
   const stackFindings: string[] = [];
@@ -6375,7 +6463,9 @@ function measureDrive(): DriveMeasurement {
       // arity-above-zero position added to a shipped return moves this list by
       // one member however many points it is driven at.
       for (const declined of scan.declinedClosures) {
-        declinedClosures.add(declined.replace(/^([^@]*)@[^#]*#/, '$1#'));
+        const key = declinedClosureKey(declined);
+        declineKeysUnstripped += key === declined ? 1 : 0;
+        declinedClosures.add(key);
       }
       proxies += scan.proxies;
       stacks += scan.stacks;
@@ -6395,6 +6485,7 @@ function measureDrive(): DriveMeasurement {
     closureThrows,
     closuresDeclined,
     declinedClosures: Object.freeze([...declinedClosures].sort()),
+    declineKeysUnstripped,
     proxies,
     stacks,
     stackFindings: Object.freeze(stackFindings),
@@ -6438,6 +6529,15 @@ const DRIVE_CENSUS = Object.freeze({
   CLOSURES_INVOKED: 0,
   CLOSURE_THROWS: 0,
   CLOSURES_DECLINED: 2046,
+  /**
+   * Raw keys `declinedClosureKey` could not strip the driver's point out of.
+   *
+   * Zero, and its zero is shown to be a zero against something in the same test
+   * rather than trusted: the same function is driven on a label whose separator
+   * has moved and leaves it unchanged. Without that, a strip that had stopped
+   * matching every label would report the same zero as one matching all of them.
+   */
+  DECLINE_KEYS_UNSTRIPPED: 0,
   /**
    * Error `stack` own-properties the walk met, and banned names found in them.
    *
@@ -6544,6 +6644,50 @@ const DRIVE_CENSUS = Object.freeze({
  * name is attack shape 15, is untouched by this, and has no catcher in this
  * file; it is declared at instrument B rather than here.
  */
+/**
+ * The driver's own point, removed from a declined-closure path.
+ *
+ * `scanRow` labels a walk `${export}@${point}#${region}`, so a raw declined key
+ * reads `accrueProduction@roster=0/rep=0/no-skip#argument.1.gymBucksPerHour/1`.
+ * The point is the one part that varies per ROW rather than per POSITION, so it
+ * comes out and what is left identifies the position across every point it is
+ * driven at.
+ *
+ * WHAT HAPPENS IF THE LABEL FORMAT MOVES, MEASURED RATHER THAN ASSUMED. This
+ * used to be written inline with nothing pinning the grammar it assumes, and the
+ * open question was whether a format change would collapse rows silently. It
+ * would not, in either direction: drop the `@` and the pattern does not match at
+ * all, so the point stays in the key and `DECLINED_CLOSURE_POSITIONS` reddens
+ * with one member per ROW instead of ten; move the region marker off `#` and the
+ * pattern again does not match, with the same loud result. The dangerous
+ * direction — two distinct positions collapsing into one key — cannot happen,
+ * because what survives the strip is the member path, and two positions with the
+ * same member path in the same export ARE one position.
+ *
+ * So the residual is not silence, it is that a reader of a 2046-member failure
+ * would have to work out WHY. `DRIVE_CENSUS.DECLINE_KEYS_UNSTRIPPED` is the
+ * number that says it in one word, and it is driven against a label the strip
+ * cannot parse rather than left as a zero somebody trusts.
+ */
+const DECLINE_KEY_STRIP = /^([^@]*)@[^#]*#/;
+
+/**
+ * The label the strip is shown to work on, and the one it is shown to refuse.
+ *
+ * In a block rather than inline for the reason every other tuned value here is:
+ * these are the shape of a real key and they are what a reader changes if the
+ * label format ever moves on purpose.
+ */
+const DECLINE_KEY_TRIPWIRE = Object.freeze({
+  EXPORT: 'accrueProduction',
+  POINT: 'roster=0/rep=0/no-skip',
+  TAIL: 'argument.1.gymBucksPerHour/1',
+});
+
+function declinedClosureKey(raw: string): string {
+  return raw.replace(DECLINE_KEY_STRIP, '$1#');
+}
+
 const DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
   'accrueProduction#argument.1.gymBucksPerHour/1',
   'accrueProduction#argument.1.trainingIqPerDay/1',
@@ -7104,6 +7248,25 @@ describe('instrument B — nothing this directory produces is a forbidden name',
     expect(measurement.closuresInvoked).toBe(DRIVE_CENSUS.CLOSURES_INVOKED);
     expect(measurement.closureThrows).toBe(DRIVE_CENSUS.CLOSURE_THROWS);
     expect(measurement.closuresDeclined).toBe(DRIVE_CENSUS.CLOSURES_DECLINED);
+    // THE KEY'S OWN GRAMMAR, WHICH NOTHING PINNED. `declinedClosureKey` assumes
+    // `${export}@${point}#${region}`, and a label format that stopped matching
+    // would leave the driver's point in the key. That fails LOUDLY — the list
+    // above gains one member per ROW rather than per position — but a reader
+    // faced with 2046 members would have to work out why, so the reason gets a
+    // number of its own.
+    expect(measurement.declineKeysUnstripped).toBe(DRIVE_CENSUS.DECLINE_KEYS_UNSTRIPPED);
+    // And the zero is a zero against something: the same function, on a label
+    // whose separator has moved, leaves the string alone — so a format change is
+    // a non-zero here and not a silent collapse. Driven rather than described,
+    // because a strip nobody showed could fail is a strip nobody has measured.
+    const realLabel = `${DECLINE_KEY_TRIPWIRE.EXPORT}@${DECLINE_KEY_TRIPWIRE.POINT}#${DECLINE_KEY_TRIPWIRE.TAIL}`;
+    expect(declinedClosureKey(realLabel)).toBe(
+      `${DECLINE_KEY_TRIPWIRE.EXPORT}#${DECLINE_KEY_TRIPWIRE.TAIL}`,
+    );
+    const movedLabel = realLabel.replace('@', '/');
+    expect(declinedClosureKey(movedLabel), 'the strip applied to a label it cannot parse').toBe(
+      movedLabel,
+    );
     expect(measurement.declinedClosures).toEqual(DECLINED_CLOSURE_POSITIONS);
     // AND THE NAMED CATCHER IS RESOLVED RATHER THAN POINTED AT. Every position
     // this walk declines has to be one instrument C already names as a closure
@@ -7363,6 +7526,19 @@ describe('the overflow pass — the catcher for what the ceilings drop', () => {
     expect(measurement.closuresInvoked).toBe(OVERFLOW_CENSUS.CLOSURES_INVOKED);
     expect(measurement.closureThrows).toBe(OVERFLOW_CENSUS.CLOSURE_THROWS);
     expect(measurement.closuresDeclined).toBe(OVERFLOW_CENSUS.CLOSURES_DECLINED);
+    // AND WHERE, NOT ONLY HOW MANY, joined to the main drive's own list rather
+    // than written out again. The overflow pass reaches the same two closures
+    // through the same re-read argument, so its position list is a SUBSET of
+    // `DECLINED_CLOSURE_POSITIONS` — a proper one, because that list also holds
+    // the `rosterRatesAt#return` pair and this pass does not drive that export.
+    // Both directions: a position only the dropped points reach would be a
+    // member here and not there, and that is the case the shared walker's own
+    // comment says the main drive's numbers cannot speak for.
+    expect(measurement.declinedClosures).toEqual(OVERFLOW_DECLINED_CLOSURE_POSITIONS);
+    expect(
+      measurement.declinedClosures.filter((at) => !DECLINED_CLOSURE_POSITIONS.includes(at)),
+      'a position only the overflow points reach',
+    ).toEqual([]);
     // Every driven pair belongs to a dropped point, and no pair is both driven
     // and skipped.
     const dropped = new Set(
@@ -15236,8 +15412,30 @@ const SUPPLY_TABLE: readonly (readonly [string, boolean, readonly number[]])[] =
  *
  * A closed allowlist, because the point of the third column is that the refusal
  * has to be ABOUT the construction. Widening this is an edit somebody signs.
+ *
+ * ONE MEMBER, AND IT USED TO BE FOUR. The other three were 2739, 2740 and 2741
+ * — the "property missing in type" family — admitted on the judgement that a
+ * construction refused for omitting a required member is being refused AS a
+ * construction. The judgement is defensible and it was never measured: no row in
+ * `SUPPLY_TABLE` has ever produced one of the three, so the list admitted three
+ * codes nothing in this repository has emitted. That is a widened predicate with
+ * no witness, which is the shape this file spends its whole length objecting to
+ * in other people's checks, and the narrowing costs nothing because the rows
+ * that exist all pin `[2322]` or `[]`.
+ *
+ * WHAT A NEW CODE SHOULD DO WHEN IT ARRIVES, so the narrowing is a rule rather
+ * than a smaller list. A row that starts failing on an unlisted code reddens
+ * with `TS<code> is not a construction refusal` and the message quotes the
+ * diagnostic text, which is what the reader needs to decide between two cases:
+ * the construction is genuinely refused for a new reason about ITSELF, in which
+ * case the code joins this list AND the row's third column names it, so the
+ * admission is recorded at both ends; or the refusal is about something else —
+ * an unused local, a typo, a stray token — in which case the row is measuring
+ * nothing and the construction is what has to change. The three deleted members
+ * are the first case waiting to happen, and re-admitting one is a two-line edit
+ * with a measurement behind it instead of a guess in front of it.
  */
-const SUPPLY_REFUSAL_CODES: readonly number[] = Object.freeze([2322, 2739, 2740, 2741]);
+const SUPPLY_REFUSAL_CODES: readonly number[] = Object.freeze([2322]);
 
 /**
  * What the sweep measured. Counts rather than bounds, per this file's own rule
