@@ -13521,20 +13521,27 @@ const LIMITER_TABLE: readonly (readonly [string, number | null, number | null, n
  * generic type alias that is in a reference cycle — measured above, ten shapes,
  * and the only three that get a certificate while holding a closure are the
  * three cyclic aliases."* It was true of the eighteen shapes it had been asked
- * about. `FAMILY_TABLE` asks forty-one, and
- * `CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS` is **twenty**: a
- * primitive-absorbing intersection, `{}` at six positions, a mapped type's
- * synthesized property, a deferred conditional. None of the twenty is a cyclic
- * alias and every one of them has a closure reachable through the type with no
- * cast.
+ * about. `FAMILY_TABLE` asks sixty-four now, and
+ * `CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS` is **thirty-eight**
+ * — nine intersections, five `{}`-and-union rows, nine library-keyed mapped
+ * types, three deferred conditionals and twelve others across six more groups.
+ * None of the thirty-eight is a cyclic alias and every one of them has a closure
+ * reachable through the type with no cast.
+ *
+ * THE NUMBER IN THIS PARAGRAPH SAID TWENTY UNTIL E33, IN THREE PLACES, WHILE THE
+ * PIN IT CITES SAID 38. It was true of the forty-one-row table it was written
+ * against and stayed confident through two rounds of growth, which is the
+ * failure mode this codebase records eight times over — a sentence written while
+ * the code was true keeping its tone after the code moved. The count is read off
+ * `FAMILY_CENSUS` here rather than restated.
  *
  * WHAT THIS CENSUS STILL GUARANTEES, IN THE MECHANISM'S OWN TERMS AND NOTHING
  * WIDER. The relation's RECURSION LIMITER — the resource limit measured by
  * `LIMITER_TABLE`, where a certificate is issued while an alias instantiation is
  * still deferred — is defeated only by an instantiation of a generic type alias
  * in a reference cycle. That is the claim the bisection above supports and it is
- * still standing: the twenty rows are not limiter defeats, they are the relation
- * answering *correctly* about types that admit a function. So the set of types
+ * still standing: the thirty-eight rows are not limiter defeats, they are the
+ * relation answering *correctly* about types that admit a function. So the set of types
  * that can carry M64 SPECIFICALLY is the set of instantiations of a cyclic alias
  * declared in this program, and DECLARATIONS ARE A LIST.
  *
@@ -14822,11 +14829,23 @@ const SUPPLY_TABLE: readonly (readonly [string, boolean])[] = Object.freeze([
  * `CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS` is the number that
  * corrects the residual at `cyclicDeclarations`. That sentence said a false
  * certificate is earned only by an instantiation of a cyclic generic alias, on a
- * sample of eighteen shapes. On this sample it is twenty rows, none of them a
- * cyclic alias — a primitive-absorbing intersection, `{}` at five positions, a
- * mapped type, a deferred conditional. The relation certifying is not by itself
- * a bypass, because the bounded walk catches all twenty; what it is, is the
- * premise the census's containment argument rests on, and it is false.
+ * sample of eighteen shapes. On this sample it is 38 rows, none of them a cyclic
+ * alias — nine intersections, five `{}`-and-union rows, nine library-keyed mapped
+ * types, three deferred conditionals and twelve more. The relation certifying is
+ * not by itself a bypass; what it is, is the premise the census's containment
+ * argument rests on, and it is false.
+ *
+ * AND THE CLAUSE THAT USED TO FOLLOW WAS FALSE ON THIS TABLE'S OWN COLUMNS. It
+ * read "the bounded walk catches all twenty", and the filter this number comes
+ * from is `certifies && reachable`, which says nothing about `walked`. Counted:
+ * 36 of the 38 are walked, and TWO are not —
+ * `library-callable-behind-a-primitive-intersection` and
+ * `library-callable-on-an-array-element-type`, both `walked=false` and both
+ * `screenHolds=false`. They are the same two rows as `SILENT_AND_REACHABLE`,
+ * two fields down, so the paragraph contradicted a pin inside the object it was
+ * the docstring for. What actually covers those two is the SUPPLY axis, not the
+ * walk: `SUPPLY_TABLE` says neither construction compiles, and
+ * `SILENT_REACHABLE_AND_SUPPLIABLE` is the zero that reads them.
  */
 const FAMILY_CENSUS = Object.freeze({
   ROWS: 64,
@@ -14846,8 +14865,19 @@ const FAMILY_CENSUS = Object.freeze({
   SUPPLIABLE: 2,
   /** Silent, reachable AND suppliable — the bypass count. */
   SILENT_REACHABLE_AND_SUPPLIABLE: 0,
-  /** See the paragraph above. Twenty, and the residual said zero. */
+  /** See the paragraph above. Thirty-eight, and the residual said zero. */
   CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 38,
+  /**
+   * Of those, the ones the bounded walk actually finds a call signature in.
+   *
+   * ADDED BECAUSE THE PROSE ABOVE ASSERTED IT AND NOTHING MEASURED IT. The
+   * docstring said "the bounded walk catches all twenty" while the filter that
+   * produces the number reads `certifies && reachable` and never looks at
+   * `walked`. Two rows are not walked, and they are the two `SILENT_AND_REACHABLE`
+   * names. With this pinned, a row joining the silent set stops being invisible
+   * to the sentence that says it is covered.
+   */
+  CERTIFIED_REACHABLE_AND_WALKED: 36,
   /** The same battery through `SCREEN_BEFORE_E27`. */
   BEFORE_E27_SILENT: 28,
   BEFORE_E27_SILENT_AND_REACHABLE: 25,
@@ -14982,6 +15012,24 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
       FAMILY_CENSUS.CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS,
     );
     expect(notTheKnownFamily.length).toBeGreaterThan(0);
+    // THE CLAUSE THE PARAGRAPH ABOVE USED TO ASSERT, MEASURED INSTEAD OF SAID.
+    // "the bounded walk catches all of them" was false: this filter never reads
+    // `walked`, and two rows are not walked. Both counts are pinned, and the two
+    // that are not walked are named — they are the same pair as
+    // `SILENT_AND_REACHABLE`, which is what makes the sentence's error the same
+    // error as the pin two fields below it disagreeing with it.
+    const walkedOfThose = notTheKnownFamily.filter(([, , walked]) => walked);
+    expect(walkedOfThose.length).toBe(FAMILY_CENSUS.CERTIFIED_REACHABLE_AND_WALKED);
+    expect(
+      notTheKnownFamily
+        .filter(([, , walked]) => !walked)
+        .map(([id]) => id)
+        .sort(),
+    ).toEqual(silentAndReachable);
+    expect(
+      FAMILY_CENSUS.CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS -
+        FAMILY_CENSUS.CERTIFIED_REACHABLE_AND_WALKED,
+    ).toBe(FAMILY_CENSUS.SILENT_AND_REACHABLE);
   }, 600_000);
 
   it('keeps the numbers the zeros are zero against, by driving the walker as it was', () => {
