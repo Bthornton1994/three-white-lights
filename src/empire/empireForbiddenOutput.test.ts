@@ -12216,6 +12216,45 @@ const AMBIENT_PROBE_CLOSURE_SITES: readonly string[] = Object.freeze([
  * what can honestly be said about it. `ambientShape` and `ambientList` are the
  * same outcome reached through the returned-identifier arm and the array
  * fallback.
+ *
+ * E29'S RESIDUAL ABOUT THESE ROWS IS TOO PESSIMISTIC BY MOST OF ITS WEIGHT, AND
+ * IT WAS RUN RATHER THAN ARGUED. That sentence said: if a project `.d.ts` ever
+ * lands in `src/empire/`, these rows arrive in `DECLARED_FRESH_RECEIVERS` and
+ * "the only thing standing between them and a rubber-stamp is a human adding a
+ * line to an allowlist". One half holds and the rest does not. Measured by
+ * putting a real `.d.ts` in this directory — `interface E30ArrivingShape {
+ * readonly peek: () => string }` and `declare const e30ArrivingHolder: {
+ * readonly inner: E30ArrivingShape }` — and then having `accrueProduction` hand
+ * `e30ArrivingHolder.inner` back:
+ *
+ *   - the FILE alone, referenced by nothing, reddens SIX checks before any row
+ *     exists: `shippedModulePaths()` reads the directory, so `MODULES` moves
+ *     10 -> 11 in the constructor census, the channel census and both probes,
+ *     and `CYCLIC_DECLARATION_CENSUS.DECLARATIONS` moves 118 -> 119;
+ *   - the USE takes it to 25 of 102, and the row this residual is about is one
+ *     of them — `+ "production.ts:528 returned=unfollowable:e30ArrivingHolder"`
+ *     in three tests — but it arrives BESIDE instrument A naming the type
+ *     surface, `+ "production.ts#accrueProduction#return.shapes.peek()"`, which
+ *     is a bare-string position and not an allowlist row;
+ *   - and every drive throws `ReferenceError: e30ArrivingHolder is not defined`,
+ *     which is the same fact the `unfollowable` verdict is about seen from the
+ *     runtime side: a declaration file declares no value, so a shipped export
+ *     that hands one back cannot be executed at all.
+ *
+ * So the honest residual is narrower: an arriving `unfollowable:` row IS a
+ * report and a reviewer can rubber-stamp it, and what stops that from being the
+ * whole story is that the row cannot arrive alone. What is NOT covered, stated
+ * so this is not read as a clearance: a project `.d.ts` whose binding is used
+ * somewhere that never runs and whose type surface holds no string would move
+ * the counts and the row and nothing else.
+ *
+ * THE MEASUREMENT ABOVE IS POINT-IN-TIME AND NOTHING RE-RUNS IT, which is what
+ * this file says about every number whose harness was thrown away. What DOES run
+ * is one line — `no project declaration file has arrived in this directory`
+ * below — and it is worth exactly what it says: it does not grade an arriving
+ * `.d.ts`, it makes the arrival land on a named assertion whose message points
+ * here, so the first person to add one reads this paragraph rather than
+ * appending a row to `DECLARED_FRESH_RECEIVERS`.
  */
 const AMBIENT_PROBE_UNFOLLOWED: readonly string[] = Object.freeze([
   `${AMBIENT_PROBE_MODULE}:12 returned=unfollowable:ambientShape`,
@@ -12378,6 +12417,31 @@ describe('the ambient probe — one skip, six call sites, and they do not agree'
     );
     // The probe pollutes no shipped list, so the two censuses stay separate.
     expect(channelCensus().freshReceivers).toEqual(DECLARED_FRESH_RECEIVERS);
+  });
+
+  it('no project declaration file has arrived in this directory', () => {
+    // WHAT THIS IS WORTH, IN THE MECHANISM'S OWN TERMS, because it is one line
+    // and would otherwise read as more. It does not grade a `.d.ts` and it does
+    // not say one would be unsafe. It says the directory has none TODAY, so the
+    // first one to arrive lands here with a message naming it, and whoever adds
+    // it reads `AMBIENT_PROBE_UNFOLLOWED`'s docstring — where the cost of an
+    // arrival is measured — instead of appending a row to
+    // `DECLARED_FRESH_RECEIVERS` and moving on. That is a routing device, not a
+    // proof, and the difference is the whole reason this comment is here.
+    //
+    // Its limit, named: a `.d.ts` OUTSIDE this directory is invisible to it, and
+    // so is one inside it that this scan's own reader — `shippedModulePaths`,
+    // which reads the directory rather than a list — stops being pointed at.
+    // What covers the second is that the same reader feeds `MODULES`, pinned at
+    // 10 in four places, so a walk that stopped seeing a file is red there.
+    const declarationFiles = shippedModulePaths().filter((at) => at.endsWith('.d.ts'));
+    expect(
+      declarationFiles.map((at) => path.basename(at)),
+      'a project .d.ts arrived: read the docstring at AMBIENT_PROBE_UNFOLLOWED before pinning anything',
+    ).toEqual([]);
+    // The non-vacuity half: the walk it filters is not empty, and it is the same
+    // walk every census in this file is built on.
+    expect(shippedModulePaths().length).toBe(CHANNEL_CENSUS_TOTALS.MODULES);
   });
 
   it('steps into a project `.d.ts` on the depth walk, and says what the wide read cost', () => {
@@ -17011,6 +17075,12 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
     reddened:
       '`answers every row with the arms the table says, and reaches every arm`: `library-keyed-mapped-remapped-holding-a-closure: arms reached`, `- "library-retyped" / + "synthesized"`. Nothing else moves — the four family-sweep columns are unchanged, because the row is caught either way and the table records only THAT it is caught. This is the row that says the arm census is a second fact and not a restatement: the round\'s question was which arm a shape takes, and a battery that pins only the verdict cannot answer it.',
   }),
+  Object.freeze({
+    id: 'G47',
+    what: "a project declaration file created in `src/empire/` — `e30Arriving.d.ts`, the arrival E29\'s kept-wide residual is a claim about, planted against the one line written to route it",
+    reddened:
+      "`no project declaration file has arrived in this directory`: `a project .d.ts arrived: read the docstring at AMBIENT_PROBE_UNFOLLOWED before pinning anything: expected [ 'e30Arriving.d.ts' ] to deeply equal []`. The message is the point of the row rather than the redness — this file already records that a check which bites and fails uselessly is half a check, and what a reader needs here is the name of the paragraph where the arrival's cost is measured. The file was deleted afterwards and `git status --short` shows only the untracked `node_modules` symlink.",
+  }),
 ]);
 
 /**
@@ -17030,8 +17100,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(43);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(43);
+    expect(REGISTRY_MUTANTS.length).toBe(44);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(44);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
