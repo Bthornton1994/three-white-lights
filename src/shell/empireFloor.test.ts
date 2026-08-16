@@ -113,6 +113,18 @@ const FLOOR_SWEEP = Object.freeze({
    * it, inside the gap where a fragmenting wiring would lose the remainder.
    */
   AIMED_OFFSETS_SECONDS: Object.freeze([-1, 0, 1]),
+  /**
+   * How many examples the two LADDER lists keep before they stop collecting.
+   *
+   * A CAP ON THE PRINTING AND NOT ON THE CHECK. Both lists are asserted EMPTY,
+   * so a cap cannot hide a failure: one example is as red as a hundred
+   * thousand. What it stops is the failure being useless — a row drawing an
+   * off-ladder name at every step collects one entry per second of the walk,
+   * and the first drive of that mutant printed 172800 of them, which is
+   * CLAUDE.md's "a check that bites but fails uselessly is half a check" in its
+   * loudest possible form.
+   */
+  LADDER_LIST_EXAMPLES: 8,
   /** The fragmenting control's window and its two collection cadences, in seconds. */
   FRAGMENT_SECONDS: 600,
   FRAGMENT_WHOLE_TICK: 1,
@@ -323,13 +335,15 @@ interface FloorWalk {
    */
   readonly counterFalls: readonly string[];
   /**
-   * Every step at which the equipment row moved DOWN `EQUIPMENT_TIERS`. THE
-   * LADDER SAFETY LIST, and a list rather than a count so a failure names the
-   * instant and both rungs.
+   * Steps at which the equipment row moved DOWN `EQUIPMENT_TIERS`. THE LADDER
+   * SAFETY LIST, and a list rather than a count so a failure names the instant
+   * and both rungs. Capped at `LADDER_LIST_EXAMPLES`; see that constant for why
+   * a cap on an emptiness check hides nothing.
    */
   readonly rungsDescended: readonly string[];
   /**
-   * Every reading whose rung name is not on `EQUIPMENT_TIERS` at all.
+   * Readings whose rung name is not on `EQUIPMENT_TIERS` at all, capped the
+   * same way and for the same reason.
    *
    * A SEPARATE FACT FROM THE ONE ABOVE, and neither implies it: a row stuck on
    * one off-ladder name never moves, so nothing descends while every reading is
@@ -394,11 +408,14 @@ function walkTo(horizonSeconds: number): FloorWalk {
   // off-ladder name from the first instant and never moves is caught. Reading
   // only the `after` of each step would leave the opening reading unexamined,
   // which is the one a hardcoded row is most likely to be.
+  const keepExample = (list: string[], line: string): void => {
+    if (list.length < FLOOR_SWEEP.LADDER_LIST_EXAMPLES) list.push(line);
+  };
   {
     const opening = empireFloorReadings(previous).equipment;
     rungNames.add(opening);
     if (rungIndexOf(opening) < 0) {
-      rungsOffTheLadder.push(`at 0s ${opening} is not a rung on EQUIPMENT_TIERS`);
+      keepExample(rungsOffTheLadder, `at 0s ${opening} is not a rung on EQUIPMENT_TIERS`);
     }
   }
   for (
@@ -424,12 +441,15 @@ function walkTo(horizonSeconds: number): FloorWalk {
     for (const key of LADDER_READINGS) {
       rungNames.add(after[key]);
       if (rungIndexOf(after[key]) < 0) {
-        rungsOffTheLadder.push(`at ${at}s ${after[key]} is not a rung on EQUIPMENT_TIERS`);
+        keepExample(rungsOffTheLadder, `at ${at}s ${after[key]} is not a rung on EQUIPMENT_TIERS`);
       }
       if (after[key] !== before[key]) {
         rungChanges += 1;
         if (rungIndexOf(after[key]) < rungIndexOf(before[key])) {
-          rungsDescended.push(`at ${at}s ${key} ${before[key]} -> ${after[key]}, down the ladder`);
+          keepExample(
+            rungsDescended,
+            `at ${at}s ${key} ${before[key]} -> ${after[key]}, down the ladder`,
+          );
         }
       }
     }
