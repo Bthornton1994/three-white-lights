@@ -359,8 +359,7 @@
  * guarantee than the two scans and it is stated rather than implied.
  */
 
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { types as nodeTypes } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -368,6 +367,13 @@ import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
+import {
+  directoryFileNames,
+  empireSubdirectories,
+  shippedModuleNames,
+  tsFilesUnder,
+  withProbeTree,
+} from './directoryWalk.test';
 import * as core from './empireCore';
 import * as invariant from './empireInvariant';
 import * as tuningModule from './empireTuning';
@@ -629,31 +635,17 @@ function compilerOptions(): ts.CompilerOptions {
  * own count, each time in a different scan, so the flat read is repaired rather
  * than argued about.
  *
- * THE WALK IS FACTORED OUT AND DRIVEN AGAINST A SYNTHETIC TREE, because the
- * shipped directory happens to be flat and a recursive walk over a flat
- * directory is byte-identical to a flat one. `walks a nested directory, so the
- * recursion is measured rather than assumed` builds a temporary tree two levels
- * deep and reads it back; without that this repair is a change no state of the
- * subject could distinguish from the defect.
+ * THE WALK IS NOT DECLARED HERE ANY MORE, and that is E35's change rather than
+ * a tidy-up. E33 repaired this one walk and left five flat, two of them in this
+ * file — so for two rounds a recursive walk and a one-level walk sat forty
+ * lines apart, over the same directory, in the same file. One implementation
+ * lives in `directoryWalk.test.ts`, every census here calls it, and its
+ * synthetic-tree drive travels with the import: vitest registers an imported
+ * test file's suites into the importer, so `descends into a subdirectory, on a
+ * tree built to have one` runs inside this file as well as its own.
  */
-function tsModulesUnder(root: string): readonly string[] {
-  const found: string[] = [];
-  const walk = (at: string): void => {
-    for (const entry of readdirSync(at, { withFileTypes: true })) {
-      const full = path.join(at, entry.name);
-      if (entry.isDirectory()) {
-        walk(full);
-        continue;
-      }
-      if (entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts')) found.push(full);
-    }
-  };
-  walk(root);
-  return found.sort();
-}
-
 function shippedModulePaths(): readonly string[] {
-  return tsModulesUnder(HERE);
+  return shippedModuleNames().map((name) => path.join(HERE, name));
 }
 
 /**
@@ -1372,8 +1364,14 @@ describe('the domains are derived from the subject and are not empty', () => {
     // rather than about the number. `empireTuning.test.ts` owns the pin; this
     // re-derives it here, because a row in THIS file that says "nothing reads
     // it" has to fail in THIS file when something starts reading it.
-    const shipped = readdirSync(HERE)
-      .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
+    //
+    // Through the shared recursive walk, for the reason the sibling pin in
+    // `empireTuning.test.ts` gives: a consumer this scan cannot see makes a key
+    // read as unconsumed, which is the direction that keeps an exemption alive
+    // rather than the direction that reddens. This was a one-level read and
+    // `shippedModulePaths()` forty lines above it was already recursive — two
+    // walks over the same directory in the same file, with different reach.
+    const shipped = shippedModuleNames()
       .filter((name) => name !== 'empireTuning.ts')
       .map((name) => readFileSync(path.join(HERE, name), 'utf8'))
       .join('\n')
@@ -1711,27 +1709,21 @@ describe('instrument A — no export type admits a forbidden literal, and no new
     // in this repository bans a subdirectory under `src/empire/`. A module in
     // one would have been rooted past by every census in this file. The repair
     // is a recursive walk, and the repair is indistinguishable from the defect
-    // on the shipped tree — which is flat — so it is driven against a tree that
+    // on the shipped tree — which is flat, so it is driven against a tree that
     // is not.
-    const root = mkdtempSync(path.join(tmpdir(), 'empire-module-walk-'));
-    try {
-      mkdirSync(path.join(root, 'sub', 'deeper'), { recursive: true });
-      writeFileSync(path.join(root, 'top.ts'), 'export {};\n');
-      writeFileSync(path.join(root, 'top.test.ts'), 'export {};\n');
-      writeFileSync(path.join(root, 'notes.md'), 'x\n');
-      writeFileSync(path.join(root, 'sub', 'nested.ts'), 'export {};\n');
-      writeFileSync(path.join(root, 'sub', 'nested.test.ts'), 'export {};\n');
-      writeFileSync(path.join(root, 'sub', 'deeper', 'deep.ts'), 'export {};\n');
-      expect(tsModulesUnder(root).map((at) => path.relative(root, at)).sort()).toEqual(
-        [
-          path.join('sub', 'deeper', 'deep.ts'),
-          path.join('sub', 'nested.ts'),
-          'top.ts',
-        ].sort(),
-      );
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
+    //
+    // THAT DRIVE MOVED, and this line is what keeps it from moving out of
+    // reach. It lives in `directoryWalk.test.ts` as `descends into a
+    // subdirectory, on a tree built to have one`, together with the symlink and
+    // cycle arms this file's own walker never had — and it runs inside this
+    // file, because importing a test file registers its suites into the
+    // importer. Asserted rather than described: the shared walk is the one this
+    // file's census reads, so a `shippedModulePaths` that stopped calling it
+    // reddens here rather than reading as a refactor.
+    expect(shippedModulePaths()).toEqual(
+      shippedModuleNames().map((name) => path.join(HERE, name)),
+    );
+    expect(tsFilesUnder(HERE, 'without-tests')).toEqual(shippedModuleNames());
     // AND THE SHIPPED TREE IS STILL FLAT, pinned so that a subdirectory arriving
     // is a visible change rather than a silent widening of every census rooted
     // here. Both halves are needed: the first says the walk CAN descend, this
@@ -1739,6 +1731,7 @@ describe('instrument A — no export type admits a forbidden literal, and no new
     expect(
       distinct(shippedModulePaths().map((at) => path.dirname(at))),
     ).toEqual([HERE]);
+    expect(empireSubdirectories()).toEqual([]);
     expect(shippedModulePaths().length).toBe(SURFACE_CENSUS.MODULES);
   });
 
@@ -3577,6 +3570,7 @@ const LITERAL_AXES: readonly (readonly [string, string])[] = Object.freeze([
   ['identifier', 'the three sentinels fed to the four string brand constructors, one per caller-supplied identifier position. Strings, not numbers.'],
   ['kind', 'NOT A DRIVER AXIS, and registered rather than rephrased. It is the channel census walking the distinct syntax kinds found at one internal callback position, so it drives nothing and has no domain. The scan cannot tell that apart from an axis and it should not try — this row is the visible edit it exists to force, which is the same answer M8 gets from the export census.'],
   ['last', 'the boolean telling spendingMoment whether this is the final moment. Two points is the whole domain.'],
+  ['quote', 'the three quote characters a module specifier can be written in, driving COMPILER_IMPORT so the widened predicate is measured rather than read. Not a magnitude and not a sample: a specifier is single-quoted, double-quoted or a backtick and there is no fourth, so this axis is its whole domain by enumeration. It exists because chainScanFiles matched single quotes only, and Prettier writing single quotes here is what kept that invisible.'],
 ]);
 
 /**
@@ -3805,7 +3799,7 @@ const DOMAIN_CENSUS = Object.freeze({
    */
   ALIASES: 8,
   NON_DOMAIN_LISTS: 2,
-  LITERAL_AXES: 8,
+  LITERAL_AXES: 9,
   LABELLED_LISTS: 25,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
@@ -19750,12 +19744,48 @@ function handlerTablesIn(fileName: string, text: string): readonly HandlerTableR
   return rows;
 }
 
-/** The files this census reads: everything here that imports the compiler. */
+/**
+ * The files this census reads: everything here that imports the compiler.
+ *
+ * WRONG ON BOTH AXES AT ONCE UNTIL E35, which is the pair CLAUDE.md records
+ * being fixed one at a time on the import fence, arriving here together:
+ *
+ *   REACH — `readdirSync(HERE)` reads one level, so a compiler-driving file in
+ *   a subdirectory contributed no chain, no handler table and no switch, and
+ *   every set equality below stayed satisfied because both of its sides came
+ *   off the same short list.
+ *
+ *   PREDICATE — `/from 'typescript'/` matched single quotes only, so
+ *   `from "typescript"` was a file this census could not see. Prettier writes
+ *   single quotes here, which is exactly the argument for catching the other
+ *   form rather than against it: a fence that holds only while everyone follows
+ *   the style guide is a style guide.
+ *
+ * The quote class is `['"\`]` with a backreference, so the three forms a
+ * specifier can take are one pattern rather than three alternatives somebody
+ * has to remember to keep in step. `sees a compiler import in every quote a
+ * specifier can take` drives all three against a synthetic source.
+ */
+const COMPILER_IMPORT = /from\s*(['"`])typescript\1/;
+
+/**
+ * The compiler-driving files under `root`, at any depth.
+ *
+ * Rooted rather than fixed at `HERE`, and that is the whole reason it is its
+ * own function: `src/empire/` is flat, so a walk over it cannot express the
+ * difference between a recursive read and a one-level one, and an assertion
+ * about reach taken at `HERE` is satisfied by both. `sees a compiler import in
+ * every quote a specifier can take, and at any depth` drives this against a
+ * tree that does have a subdirectory, so the reach axis has a subject.
+ */
+function compilerImportingFilesUnder(root: string): readonly string[] {
+  return tsFilesUnder(root, 'with-tests').filter((name) =>
+    COMPILER_IMPORT.test(readFileSync(path.join(root, ...name.split('/')), 'utf8')),
+  );
+}
+
 function chainScanFiles(): readonly string[] {
-  return readdirSync(HERE)
-    .filter((name) => name.endsWith('.ts'))
-    .filter((name) => /from 'typescript'/.test(readFileSync(path.join(HERE, name), 'utf8')))
-    .sort();
+  return compilerImportingFilesUnder(HERE);
 }
 
 let chainCensusMemo: readonly DispatchChain[] | null = null;
@@ -19867,7 +19897,6 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   Object.freeze({ at: 'empireCore.test.ts#walk<brandsIn<brandCensus#current', arms: 4, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireCore.test.ts#walk<brandsIn<brandCensus#current#2', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireCore.test.ts#brandCensus#declaration#3', arms: 1, dispatch: true, terminal: 'next-statement' }),
-  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walk<tsModulesUnder#entry', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#surfaceOf#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#surfaceOf#declaration', arms: 1, dispatch: false, terminal: 'loop' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#carriesBrand<surfaceOf#name', arms: 1, dispatch: true, terminal: 'next-statement' }),
@@ -20129,11 +20158,11 @@ const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
   /** Rows in `DECLARED_HANDLER_ROWS`. Every one a tally or an enum read. */
   DISCRIMINANT_LOOKUPS: 8,
-  CHAINS: 95,
-  DISPATCH: 60,
+  CHAINS: 94,
+  DISPATCH: 59,
   BY_TERMINAL: Object.freeze({
     else: 8,
-    'next-statement': 71,
+    'next-statement': 70,
     loop: 14,
     enclosing: 2,
     /**
@@ -20150,6 +20179,57 @@ const CHAIN_CENSUS = Object.freeze({
 });
 
 describe('the dispatch-chain census — a ladder nobody looked at cannot be added quietly', () => {
+  it('sees a compiler import in every quote a specifier can take, and at any depth', () => {
+    // The non-vacuity guard for `chainScanFiles`, over BOTH of the axes it was
+    // wrong on. Without this the widened predicate and the recursive reach are
+    // a change no state of the shipped tree can distinguish from the old one,
+    // because every file here is top-level and single-quoted.
+    //
+    // The quote axis, driven rather than listed, with the grid size pinned so
+    // widening the pattern without widening the probes is not possible.
+    let probes = 0;
+    for (const quote of ["'", '"', '`']) {
+      const text = `import ts from ${quote}typescript${quote};\n`;
+      expect(COMPILER_IMPORT.test(text), text).toBe(true);
+      probes += 1;
+    }
+    expect(probes).toBe(3);
+    // And it discriminates: a near-miss specifier is not a compiler import.
+    expect(COMPILER_IMPORT.test("import x from 'typescript-eslint';\n")).toBe(false);
+    expect(COMPILER_IMPORT.test("import x from 'node:fs';\n")).toBe(false);
+    // Mixed quotes do not match, which is the backreference doing the work
+    // rather than a character class that would accept `'typescript"`.
+    expect(COMPILER_IMPORT.test('import ts from \'typescript";\n')).toBe(false);
+    // The reach axis, driven on a tree that can express it. An assertion taken
+    // at `HERE` cannot: this directory is flat, so a recursive read and a
+    // one-level read return the same list and any comparison between them holds
+    // whichever the scan does. So the scan takes a root and is pointed at a
+    // tree with a subdirectory in it.
+    withProbeTree(
+      {
+        'top.ts': "import ts from 'typescript';\n",
+        'sub/nested.ts': 'import ts from "typescript";\n',
+        'sub/deeper/deep.ts': 'import ts from `typescript`;\n',
+        'sub/unrelated.ts': "import { readFileSync } from 'node:fs';\n",
+        'sub/nested.test.ts': "import ts from 'typescript';\n",
+      },
+      (root) => {
+        expect(compilerImportingFilesUnder(root)).toEqual([
+          'sub/deeper/deep.ts',
+          'sub/nested.test.ts',
+          'sub/nested.ts',
+          'top.ts',
+        ]);
+      },
+    );
+    // And the same function, pointed at this directory, is what the census
+    // reads — so the drive above is about the shipped scan rather than about a
+    // copy of it.
+    expect(chainScanFiles()).toEqual(compilerImportingFilesUnder(HERE));
+    expect(directoryFileNames()).toEqual(tsFilesUnder(HERE, 'with-tests'));
+    expect(directoryFileNames()).toContain('directoryWalk.test.ts');
+  });
+
   it('finds every dispatch chain in this directory, in both directions', () => {
     const chains = directoryDispatchChains();
     expect(chainScanFiles()).toEqual(['empireCore.test.ts', 'empireForbiddenOutput.test.ts']);

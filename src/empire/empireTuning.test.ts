@@ -25,7 +25,7 @@
  * before this piece existed.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -33,6 +33,7 @@ import { describe, expect, it } from 'vitest';
 
 import { FATIGUE_TUNING } from '../game/fatigue';
 import { buildSeconds } from './empireCore';
+import { shippedModuleNames } from './directoryWalk.test';
 import {
   EMPIRE_TUNING,
   EMPIRE_TUNING_CLASSES,
@@ -615,8 +616,13 @@ function consumedKeys(source: string): readonly string[] {
 }
 
 describe('every entry is reachable from a consumer, or is listed as not yet reached', () => {
-  const shipped = readdirSync(HERE)
-    .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
+  // Read through the shared walk rather than a one-level `readdirSync(HERE)`.
+  // The direction this scan fails in when it cannot see a file is the
+  // reassuring one: an unseen consumer makes a key look UNCONSUMED, which puts
+  // it on `AWAITING_CONSUMER` where it reads as honest bookkeeping. A knob a
+  // module in a subdirectory branched on would have sat on that list saying
+  // nothing reads it while something did.
+  const shipped = shippedModuleNames()
     .filter((name) => name !== 'empireTuning.ts')
     .map((name) => readFileSync(path.join(HERE, name), 'utf8'))
     .join('\n');

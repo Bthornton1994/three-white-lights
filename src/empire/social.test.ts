@@ -78,6 +78,7 @@ import {
   type GymId,
   type LeaderboardScope,
 } from './empireCore';
+import { shippedModuleNames } from './directoryWalk.test';
 import { EMPIRE_TUNING } from './empireTuning';
 import * as socialModule from './social';
 import {
@@ -1155,15 +1156,21 @@ describe('the module is pure and imports nothing outside this directory', () => 
     // This was the third hand-written copy of a scanner that was wrong on both
     // of its axes — form-only (`from '...'` misses a side-effect import) and
     // single-quote-only (`"..."` walks past all three forms). See the fence in
-    // `empireCore.test.ts` for the full sequence. It is one walker over
-    // `readdirSync(HERE)` now, and this asserts that the walker covers this
-    // module rather than assuming it.
+    // `empireCore.test.ts` for the full sequence. It is one shared, recursive
+    // walker now, and this asserts that the walker covers this module rather
+    // than assuming it.
+    //
+    // The coverage half calls the walk instead of grepping the sibling's source
+    // for `const SHIPPED_MODULES = readdirSync(HERE)`, which is what it used to
+    // do. That text was true of a walker reading ONE LEVEL, so it certified a
+    // scan that could not see a module in a subdirectory — a pin on a
+    // declaration's existence rather than on its answer.
     //
     // Reddens on: dropping `'social.ts'` from that map, or on this module
-    // acquiring an edge.
+    // acquiring an edge, or on the walk ceasing to reach this module.
     const fenceSource = readFileSync(path.join(HERE, 'empireCore.test.ts'), 'utf8');
     expect(fenceSource).toContain("'social.ts': ['./empireCore', './empireTuning']");
-    expect(fenceSource).toContain('const SHIPPED_MODULES = readdirSync(HERE)');
+    expect(shippedModuleNames()).toContain('social.ts');
   });
 
   it('names every event and every surface exactly once in its own list', () => {

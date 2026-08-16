@@ -82,7 +82,7 @@
  * membership of the four derived lists is pinned by name below.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -90,6 +90,7 @@ import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 import { SOURCE_RULES, auditSource, formatFindings } from '../tuning/audit';
+import { shippedModuleNames } from './directoryWalk.test';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
   ACCELERANT_ARRIVAL,
@@ -2439,9 +2440,12 @@ describe('the state constructor and its invariants', () => {
 // ---------------------------------------------------------------------------
 
 describe('the directory is pure, numerically clean and free of dice', () => {
-  const shipped = readdirSync(HERE)
-    .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
-    .sort();
+  // The same walk the import fence above uses, and for the same reason: this
+  // list was a one-level `readdirSync(HERE)`, so a module in a subdirectory was
+  // outside every scan in this block — the purity scan, the dice ban and the
+  // magic-number audit alike. `shippedModuleNames()` recurses, and the pinned
+  // list below is what says the directory has not quietly grown one.
+  const shipped = shippedModuleNames();
 
   it('has shipped modules to scan, so the scans below are not empty', () => {
     // Counts, not bounds. Every check in this block walks this list, and a
@@ -3095,9 +3099,32 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     //   list, not copy it": each copy inherited the defect and none of them
     //   covered the gap between them.
     //
-    // So: one walker, over every shipped module `readdirSync` finds, with the
+    // So: one walker, over every shipped module the walk finds, with the
     // edges pinned per file rather than constrained. Deleting a module or
     // adding one is a change to this directory's shape and should be read.
+    //
+    //   REACH, THIRD MISS, and it is the one this rewrite is about: the walker
+    //   was `readdirSync(HERE)`, which reads ONE LEVEL. `src/empire/sub/leak.ts`
+    //   holding `import { WALLET_CURRENCIES } from '../../game/progression';`
+    //   compiles — `tsc --noEmit` exit 0 — and with it planted this file passed
+    //   57 tests at exit 0 while fencing a directory with an illegal edge in
+    //   it. Four sibling files passed 178 tests beside it. What went red was in
+    //   `empireForbiddenOutput.test.ts`, on a module count and a directory
+    //   shape, and no message in the whole run named `game/progression`.
+    //
+    //   WHY THIS CHECK COULD NOT NOTICE, rather than why it happened not to.
+    //   Both sides of `Object.keys(EXPECTED)` vs `SHIPPED_MODULES` derive from
+    //   the same walk, so a file the walk cannot see is missing from both and
+    //   the set equality is satisfied by construction. `expect(fenced).toBe(10)`
+    //   is satisfied the same way. A both-way join over an incomplete
+    //   enumeration is not a join, and this directory reaches for a both-way
+    //   join whenever it wants to show something is complete.
+    //
+    //   The walk is now `shippedModuleNames()` from `directoryWalk.test.ts` —
+    //   one implementation, recursive, shared by all five census sites here, so
+    //   this is READING the sibling's walk rather than holding a fourth copy of
+    //   one. Keys are paths relative to this directory, which on a flat tree are
+    //   the same bare names this table always had.
     //
     // MUTANTS RUN AGAINST THIS VERSION, all three planted in `production.ts` —
     // a module the two-file fence could not reach at all, so each covers both
@@ -3116,9 +3143,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // error rather than a bypass — a template literal is not a legal specifier
     // for a static import. The backtick axis is real only on the dynamic form,
     // and the probe grid below covers it.
-    const SHIPPED_MODULES = readdirSync(HERE)
-      .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
-      .sort();
+    const SHIPPED_MODULES = shippedModuleNames();
     const SPECIFIER = /(?:\bfrom|\bimport)\s*\(?\s*(['"`])([^'"`]+)\1/g;
     const imports = (name: string): readonly string[] => {
       const source = readFileSync(path.join(HERE, name), 'utf8');
@@ -3162,16 +3187,32 @@ describe('the directory is pure, numerically clean and free of dice', () => {
 
     // And the fence is a property, not just a list: every specifier anywhere
     // in the directory resolves to a module in this directory.
+    //
+    // Resolved against the IMPORTING module's own directory rather than by
+    // stripping a leading `./`. On the flat tree the two agree at every one of
+    // the 27 edges; they part on a module in a subdirectory, where a strip
+    // reads `../../game/progression` as a name that is merely absent and a
+    // resolve reads it as a path that leaves the directory. The strip is also
+    // wrong in the reassuring direction one level down — `sub/a.ts` importing
+    // `./b` would strip to `b.ts`, and if a top-level `b.ts` existed the edge
+    // would resolve to a module it does not import.
+    const resolved = (name: string, specifier: string): string =>
+      `${path.posix.normalize(path.posix.join(path.posix.dirname(name), specifier))}.ts`;
     let specifiers = 0;
     for (const name of SHIPPED_MODULES) {
       for (const specifier of imports(name)) {
         expect(SHIPPED_MODULES, `${name} imports ${specifier}`).toContain(
-          `${specifier.replace('./', '')}.ts`,
+          resolved(name, specifier),
         );
         specifiers += 1;
       }
     }
     expect(specifiers).toBe(27);
+    // The resolver is driven rather than trusted, on both the shape the tree
+    // has and the shape it does not, so this is a subject rather than a helper.
+    expect(resolved('empireCore.ts', './empireTuning')).toBe('empireTuning.ts');
+    expect(resolved('sub/leak.ts', '../../game/progression')).toBe('../game/progression.ts');
+    expect(resolved('sub/leak.ts', './helper')).toBe('sub/helper.ts');
 
     // Non-vacuity over BOTH axes: every (form x quote) pair is caught on a
     // synthetic source, so an empty answer above is an answer rather than a
