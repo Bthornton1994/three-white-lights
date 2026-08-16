@@ -265,7 +265,16 @@ describe('evidence.mjs cannot write a bundle that straddles an edit', () => {
   });
 
   it('appends captured output at exactly one site, inside the checkpoint helper', () => {
-    const push = onlySiteOf('parts.push(run(');
+    // TWO NEEDLES SINCE `run` STARTED RETURNING ITS RESULT RATHER THAN ITS
+    // TEXT. It used to be one — `parts.push(run(` — which said in a single
+    // string both "the runner is called here" and "its output is appended
+    // here". The filter check needs the run's BODY as well as its transcript,
+    // so the call and the append are two statements now and the guard reads
+    // both. That is a strengthening rather than a translation: a bare
+    // `run(...)` whose output was never appended used to be invisible here and
+    // is a second site now.
+    const call = onlySiteOf('run(label, cmd, args)');
+    const push = onlySiteOf('parts.push(');
     const helper = onlySiteOf('const capture = (');
     const exit = onlySiteOf('process.exit(TREE_MOVED_EXIT_CODE)');
 
@@ -273,7 +282,8 @@ describe('evidence.mjs cannot write a bundle that straddles an edit', () => {
     // and its refusal, so it is inside the body that re-measures afterwards. A
     // command pushed straight onto `parts` would be a second site and would
     // redden the count in `onlySiteOf` above.
-    expect(push).toBeGreaterThan(helper);
+    expect(call).toBeGreaterThan(helper);
+    expect(push).toBeGreaterThan(call);
     expect(push).toBeLessThan(exit);
   });
 

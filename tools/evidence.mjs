@@ -17,20 +17,29 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { describeDelta, identityDelta, treeIdentity } from './treeIdentity.mjs';
+import { filterFindings, filtersFrom } from './evidenceFilters.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const piece = process.argv[2];
 if (!piece) {
-  console.error('usage: node tools/evidence.mjs <piece-id> [testPathPattern]');
+  console.error('usage: node tools/evidence.mjs <piece-id> [testPathPattern…]');
   process.exit(2);
 }
-const pattern = process.argv[3] === '--verify' ? null : (process.argv[3] ?? null);
+/**
+ * The vitest filters, as a LIST rather than as one argv element.
+ *
+ * It was `process.argv[3]`, handed to vitest whole, while the transcript header
+ * printed the argv joined by spaces — so a two-path pattern displayed as a
+ * targeted run and executed as a single filter matching nothing. See
+ * `evidenceFilters.mjs` for the four committed bundles that carry it.
+ */
+const filters = filtersFrom(process.argv.slice(3));
 const verifyOnly = process.argv.includes('--verify');
 
 const run = (label, cmd, args) => {
   const r = spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8', timeout: 600_000 });
   const body = `${r.stdout ?? ''}${r.stderr ?? ''}`.trimEnd();
-  return [
+  const text = [
     `${'='.repeat(70)}`,
     `$ ${cmd} ${args.join(' ')}`,
     `[${label}] exit code: ${r.status}${r.error ? ` (${r.error.message})` : ''}`,
@@ -38,6 +47,7 @@ const run = (label, cmd, args) => {
     body || '(no output)',
     '',
   ].join('\n');
+  return { text, body, status: r.status };
 };
 
 /**
@@ -543,9 +553,10 @@ const baseline = treeIdentity(ROOT, SELF_DIRTYING);
 const TREE_MOVED_EXIT_CODE = 3;
 
 const capture = (label, cmd, args) => {
-  parts.push(run(label, cmd, args));
+  const result = run(label, cmd, args);
+  parts.push(result.text);
   const moved = identityDelta(baseline, treeIdentity(ROOT, SELF_DIRTYING));
-  if (moved.length === 0) return;
+  if (moved.length === 0) return result;
   console.error('');
   console.error('='.repeat(72));
   console.error('REFUSING TO WRITE: THE TREE MOVED WHILE THIS RUN WAS IN FLIGHT');
@@ -578,7 +589,63 @@ const capture = (label, cmd, args) => {
   process.exit(TREE_MOVED_EXIT_CODE);
 };
 
-capture('tests', 'npx', ['vitest', 'run', ...(pattern ? [pattern] : []), '--reporter=verbose']);
+const targeted = capture('tests', 'npx', ['vitest', 'run', ...filters, '--reporter=verbose']);
+
+/**
+ * REFUSING TO WRITE A BUNDLE WHOSE TARGETED RUN SELECTED NOTHING.
+ *
+ * A run that matched nothing is not a narrowed run, and the difference is
+ * invisible in the finished file: the whole-suite capture below is green, so
+ * the bundle reads green while its first section covered zero tests. Four
+ * committed bundles are in exactly that state and nobody noticed for waves,
+ * which is the argument for refusing rather than warning — a warning at the top
+ * of a long command is scrolled past, and this repository has recorded that
+ * about its own output twice.
+ *
+ * IT REFUSES RATHER THAN FALLING BACK to the whole suite, on this file's own
+ * standing rule about a named skipped check: quietly widening the run would
+ * leave the section looking complete while answering a different question from
+ * the one the command asked.
+ *
+ * The exit code is its own, so a wrapper can tell "the pattern was wrong" from
+ * "the tree moved" (`TREE_MOVED_EXIT_CODE`) and from "the tests failed" — a
+ * failing targeted run is a RESULT and is written out, loudly, exactly as
+ * before. This fires only when the filters selected no file at all.
+ */
+const FILTERS_MATCHED_NOTHING_EXIT_CODE = 4;
+const findings = filterFindings(filters, targeted?.body ?? '');
+if (findings.length > 0) {
+  console.error('');
+  console.error('='.repeat(72));
+  console.error('REFUSING TO WRITE: A FILTER IN THE TARGETED RUN SELECTED NOTHING');
+  console.error('='.repeat(72));
+  for (const finding of findings) {
+    console.error(
+      finding.kind === 'no-test-files'
+        ? 'The run named no filters and vitest reported no test files at all.'
+        : `The filter ${JSON.stringify(finding.filter)} appears in none of the paths that ran.`,
+    );
+  }
+  const ran = findings[0]?.ran ?? [];
+  console.error('');
+  console.error(
+    ran.length === 0
+      ? 'No test file ran.'
+      : `${ran.length} test file(s) ran: ${ran.slice(0, 8).join(', ')}${ran.length > 8 ? ' …' : ''}`,
+  );
+  console.error('');
+  console.error('vitest selects a test file whose PATH CONTAINS the filter, and it exits 0');
+  console.error('when one filter matches nothing as long as another matches something — so a');
+  console.error('bundle written now would carry a section that reads targeted and covered');
+  console.error('less than it names. Pass each path as its own argument:');
+  console.error('');
+  console.error(`  node tools/evidence.mjs ${piece} src/shell src/game/guaranteeTags.test.ts`);
+  console.error('');
+  console.error('Nothing was written. A `|`-separated pattern is reported here rather than');
+  console.error('split, because vitest does not read one as alternation and this tool does');
+  console.error('not get to invent a syntax for it.');
+  process.exit(FILTERS_MATCHED_NOTHING_EXIT_CODE);
+}
 
 // THE WHOLE SUITE, ALWAYS, EVEN WHEN A PATTERN NARROWED THE RUN ABOVE.
 //
