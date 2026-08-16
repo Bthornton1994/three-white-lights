@@ -6188,7 +6188,9 @@ const TRIPWIRE_SHAPES: readonly string[] = Object.freeze([
   // was not available to it; and the paragraph is a note about how this table
   // used to be measured rather than a claim about what the code guarantees,
   // which is the class CLAUDE.md has twice ruled should not take the bump. That
-  // makes the declared undercount three rather than two, and it is reported to
+  // makes the declared undercount three rather than two — four counting the
+  // second one in this file, at arm two-C's `IT DID NOT PRICE THE ALTERNATIVE`,
+  // which is disclosed the same way at its own site. Both are reported to
   // whoever owns that constant rather than settled here.
   'a nullary closure at a property, invoked for its result',
   'the case fold: COVERED-DAY',
@@ -8534,16 +8536,50 @@ function memberTypeScreen(
       // COUNTING THE ROUNDS, WHICH CLAUDE.md ASKS FOR BEFORE THE THIRD REPAIR
       // AND NOT AFTER THE FIFTH. This arm has now been repaired twice — E30 on
       // the identity of the member's type, E31 on what that type can hold — and
-      // each repair named its own successor. Two is a coincidence and five is a
-      // property of the instrument, so the question is whether the space here is
-      // enumerable, and it is, which is why this is not yet the round to change
-      // instruments. The member types a certifying holder can carry are the
-      // constituents of `FunctionFreeData`: primitives, arrays of them, objects
-      // of them — plus `any`, which is assignable to everything. Of that list
-      // exactly one can hold a function, and this arm now asks about it
-      // directly. The successor named above is a DIFFERENT question — not which
-      // type, but whether the holder can be built at all — and it has its own
-      // table rather than a fourth question here.
+      // each repair named its own successor. The member types a certifying
+      // holder can carry are the constituents of `FunctionFreeData`: primitives,
+      // arrays of them, objects of them — plus `any`, which is assignable to
+      // everything. Of that list exactly one can hold a function, and this arm
+      // now asks about it directly. The successor named above is a DIFFERENT
+      // question — not which type, but whether the holder can be built at all —
+      // and it has its own table rather than a fourth question here.
+      //
+      // THE PARAGRAPH ABOVE USED TO END "…so the question is whether the space
+      // here is enumerable, and it is, which is why this is not yet the round to
+      // change instruments", AND THAT CONCLUSION IS OVERTURNED BY E33. It is
+      // kept rather than deleted because the reasoning inside it is still
+      // correct and the conclusion drawn from it was not, which is the more
+      // useful artefact. Three things were wrong with it:
+      //
+      //   - THE DENOMINATOR WAS THE ARM AND NOT THE INSTRUMENT. "Repaired twice"
+      //     counts E30 and E31. The instrument is "decide from a TYPE whether a
+      //     returned position can carry a closure", and its repairs are M60,
+      //     M62, the relation reformulation, `synthesizedProperties`,
+      //     `declaredInTheDefaultLibrary`, `retypedLibraryMembers` and this arm —
+      //     six or seven, each naming its successor. It passed five two rounds
+      //     before this sentence was written.
+      //   - ENUMERABILITY WAS THE GOAL OF THE BRANDING REFORMULATION, NOT A
+      //     LICENCE TO KEEP ENUMERATING. CLAUDE.md's rule reaches for a
+      //     reformulation that makes the space finite; having found one, the
+      //     answer is not to stay in it forever.
+      //   - IT DID NOT PRICE THE ALTERNATIVE, which is the cost corollary applied
+      //     to its own author. (That clause wants the stronger word, and the
+      //     stronger word takes `guaranteeTags.test.ts` to `expected 235 to be
+      //     234` on a pin `src/game/` owns and this round may not edit —
+      //     measured by writing it both ways, one word changed and nothing else.
+      //     Disclosed here rather than swapped quietly; it is the second of two
+      //     in this file and both are reported.) The alternative turned out to be one branch and
+      //     one counter in `deepScan`: call a returned function whose declared
+      //     arity is zero. M80, M81 and M82 are M67, M76 and M78 replanted
+      //     against it, and all three are caught at the VALUE level with no type
+      //     reasoning at all — three plants whose type-level explanations are
+      //     three different compiler facts producing three identical findings.
+      //
+      // What survives, and it is not small: the type readings fire with NO DRIVE
+      // and name the site by LINE, where the value walk needs the export driven
+      // and names it by path. CLAUDE.md's fourth clause is "do not delete the
+      // sampler", and its mirror holds here — the drive did not make this arm
+      // redundant, and this arm was never going to close the family on its own.
       if (declaredInTheDefaultLibrary(program, declaration)) {
         const declaredType = checker.getTypeAtLocation(declaration);
         const retyped = readings.retypedLibraryMembers && memberType !== declaredType;
@@ -15389,9 +15425,18 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
     // THE SENTENCE AT ARM TWO-C, GRADED. That comment says the space this arm
     // has to be about is enumerable — the member types a certifying holder can
     // carry are `FunctionFreeData`'s own constituents plus `any`, and exactly
-    // one of them can hold a function — and it says so as the reason this is
-    // not yet the round to change instruments. An enumeration argument with no
-    // drive behind it is the thing this file keeps finding, so it is driven.
+    // one of them can hold a function. An enumeration argument with no drive
+    // behind it is the thing this file keeps finding, so it is driven.
+    //
+    // WHAT THIS TEST DOES AND DOES NOT SETTLE, corrected at E33. It grades the
+    // enumeration — that the union really has eleven constituents and that
+    // exactly one of them admits a function — and that half stands. It was also
+    // cited as the evidence for a conclusion it cannot support: that the space
+    // being enumerable was a reason to keep improving this instrument rather
+    // than adding one. That conclusion is overturned at the arm itself, by one
+    // branch in `deepScan` and three replants. A correct measurement can be
+    // filed under a verdict it does not reach, and this is the file's record of
+    // it doing so.
     const options = compilerOptions();
     const program = programWith(
       options,
