@@ -3519,6 +3519,13 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
   // `MEMBER_ARM_CENSUS.ROWS`, and every row is joined to `CANDIDATE_SHAPES` by
   // name, so a renamed shape reddens rather than dropping out of the census.
   'MEMBER_ARM_TABLE',
+  // E31's supply axis: which rows this directory could actually build a value
+  // for. An expectation and not an input, on exactly the same footing as
+  // `FAMILY_TABLE` — the subjects are `CANDIDATE_SHAPES` rows that carry a
+  // `supply` snippet, and this is what compiling that snippet answered. Its
+  // size is pinned against `FAMILY_CENSUS.SUPPLY_ROWS` and it is joined to the
+  // shapes that declare a snippet in both directions.
+  'SUPPLY_TABLE',
 ]);
 
 /**
@@ -3584,7 +3591,7 @@ const DOMAIN_CENSUS = Object.freeze({
   ALIASES: 7,
   NON_DOMAIN_LISTS: 1,
   LITERAL_AXES: 8,
-  LABELLED_LISTS: 23,
+  LABELLED_LISTS: 24,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
@@ -7841,12 +7848,21 @@ const ambientlyDeclared = (declaration: ts.Node): boolean =>
  *
  * Its limit, stated because the predicate is about WHERE a declaration lives and
  * not about what it holds: a closure behind a member of a default-library type
- * is still skipped, so `subject.match` handing back something callable is
- * invisible to this reading. What covers it is the relation, which refuses any
- * type whose members are not data — and the pair of `ambient-*` rows in
- * `FAMILY_TABLE` is what says the two halves are doing different work: the one
- * without a certifying constituent is caught by the relation with this reading
- * switched off.
+ * is skipped by THIS predicate, so `subject.match` handing back something
+ * callable is invisible to it. Two other readings cover that between them and
+ * the split is measured rather than asserted — the pair of `ambient-*` rows in
+ * `FAMILY_TABLE` says the relation catches the one without a certifying
+ * constituent with this reading switched off, and E31's
+ * `libraryMembersThatAdmitAFunction` catches the case the relation cannot,
+ * which is a library member whose library type is `any`.
+ *
+ * THE SENTENCE THIS PARAGRAPH USED TO END WITH WAS FALSE AND IS CORRECTED
+ * RATHER THAN DELETED. It said the relation "refuses any type whose members are
+ * not data", offered as the whole cover for this skip. It refuses every such
+ * type except one: `any` is a member type that holds anything and that the
+ * relation certifies, because `any` is assignable to everything. M78 is that
+ * hole planted in a shipped export and the four `library-open-*` rows are it
+ * measured as types.
  */
 const declaredInTheDefaultLibrary = (program: ts.Program, declaration: ts.Node): boolean =>
   program.isSourceFileDefaultLibrary(declaration.getSourceFile());
@@ -7905,12 +7921,18 @@ function anyFunctionIn(program: ts.Program, checker: ts.TypeChecker): ts.Type {
  * a shape moving between arms is a number that moves rather than a sentence that
  * quietly stops being true. `MEMBER_ARM_CENSUS` is where the counts are pinned.
  */
-type MemberArm = 'synthesized' | 'default-library-skip' | 'library-retyped' | 'declared';
+type MemberArm =
+  | 'synthesized'
+  | 'default-library-skip'
+  | 'library-retyped'
+  | 'library-open'
+  | 'declared';
 
 const MEMBER_ARMS: readonly MemberArm[] = Object.freeze([
   'synthesized',
   'default-library-skip',
   'library-retyped',
+  'library-open',
   'declared',
 ]);
 
@@ -7987,19 +8009,31 @@ interface ScreenReadings {
    * numbers this zero is zero against.
    */
   readonly retypedLibraryMembers: boolean;
+  /**
+   * Whether a member that IS the compiler's own, TYPE AND ALL, is walked when
+   * that type can nonetheless HOLD a function. E31's reading.
+   *
+   * `false` is the walker as E30 left it, where a library declaration carrying
+   * its own library type was skipped whatever that type was. That is sound for
+   * `string` and for `(pos: number) => string`; it is not sound for `any`, and
+   * `FAMILY_TABLE`'s `library-open-*` rows are the numbers this zero is zero
+   * against.
+   */
+  readonly libraryMembersThatAdmitAFunction: boolean;
 }
 
 const SHIPPED_SCREEN_READINGS: ScreenReadings = Object.freeze({
   admitsAFunction: true,
   synthesizedProperties: true,
   retypedLibraryMembers: true,
+  libraryMembersThatAdmitAFunction: true,
 });
 
 /**
- * The same walker with E27's two readings and E30's third off. Not used by any
- * shipped census.
+ * The same walker with E27's two readings, E30's third and E31's fourth off. Not
+ * used by any shipped census.
  *
- * It is named for E27 and now carries three flags, which is worth a sentence
+ * It is named for E27 and now carries four flags, which is worth a sentence
  * rather than a rename: what it is FOR is being the walker before the readings
  * that closed a measured silence, and each reading was added by the round whose
  * bypass it closes. Renaming it per round would break the join between this
@@ -8009,6 +8043,7 @@ const SCREEN_BEFORE_E27: ScreenReadings = Object.freeze({
   admitsAFunction: false,
   synthesizedProperties: false,
   retypedLibraryMembers: false,
+  libraryMembersThatAdmitAFunction: false,
 });
 
 function memberTypeScreen(
@@ -8089,22 +8124,61 @@ function memberTypeScreen(
       // () => string>`'s `value` is declared in `lib.es2020.promise.d.ts` and
       // typed by the argument. M76 is that shape planted in a shipped export.
       //
-      // ITS LIMIT, unchanged by this round and stated because the identity test
-      // cannot see past it: a member that IS the library's own, type and all —
-      // `String.prototype.match` — is still skipped, so a default-library method
-      // handing back something callable is invisible to this reading. What
-      // covers that is reading one, the relation, which refuses any type whose
-      // members are not data; `FAMILY_TABLE`'s `ambient-plain-closure` is the
-      // row where the relation does that work with this arm switched off.
-      if (
-        declaredInTheDefaultLibrary(program, declaration) &&
-        (!readings.retypedLibraryMembers || memberType === checker.getTypeAtLocation(declaration))
-      ) {
-        arms['default-library-skip'] += 1;
-        return false;
-      }
+      // ARM TWO-C — "and can that type HOLD a function anyway". E31's reading,
+      // and it is the round that measured E30's own declared residual instead
+      // of believing it.
+      //
+      // E30 wrote, at this arm, that a member which IS the library's own type
+      // and all is still skipped, named `String.prototype.match` as the example,
+      // and said the relation covers it because it "refuses any type whose
+      // members are not data". THAT COVER HAS A HOLE EXACTLY WHERE `any` IS.
+      // `NavigationOptions.info` is declared `info?: any` in `lib.dom.d.ts`, so
+      // both halves of arm two agree to skip — the declaration is the compiler's
+      // own and `memberType === getTypeAtLocation(declaration)` because both
+      // sides are the one `any` type — while the relation certifies the holder,
+      // because `any` is assignable to everything including `FunctionFreeData`.
+      // M78 is that shape planted in a shipped export: `tsc` exit 0,
+      // `shapes.info()` printed `covered-day`, and every instrument silent.
+      //
+      // So the question this arm asks is the one that makes the skip sound
+      // rather than merely cheap: `isTypeAssignableTo(anyFunction, memberType)`
+      // — may a function be STORED at this member, whatever its declaration
+      // says. `string` and `(pos: number) => string` both answer no, which is
+      // why `String`'s whole member table is still skipped and M60's motive for
+      // skipping at all survives intact; `any`, `{}`, `unknown` and `Function`
+      // answer yes and are walked.
+      //
+      // ITS LIMIT, in the mechanism's own terms, with the check that covers it
+      // named and RUN rather than pointed at. A member whose library type IS
+      // CALLABLE is still skipped, because `() => void` is not assignable to
+      // `(pos: number) => string`. Two facts cover that between them and they
+      // are disjoint:
+      //
+      //   - a holder whose member is callable is not function-free data, so
+      //     reading one refuses it — unless the holder certifies through a
+      //     PRIMITIVE constituent instead, which is `string & Pick<String,
+      //     'charAt'>`, and that row IS silent here;
+      //   - and that row cannot be SUPPLIED. A value of `string & …` is a
+      //     string, so the implementation behind `charAt` is the runtime's and
+      //     this directory cannot choose it. `SUPPLY_TABLE` is where that is
+      //     measured by compiling the construction rather than argued, and
+      //     `library-callable-behind-a-primitive-intersection` is the row.
       if (declaredInTheDefaultLibrary(program, declaration)) {
-        arms['library-retyped'] += 1;
+        const declaredType = checker.getTypeAtLocation(declaration);
+        const retyped = readings.retypedLibraryMembers && memberType !== declaredType;
+        const open =
+          readings.libraryMembersThatAdmitAFunction &&
+          checker.isTypeAssignableTo(anyFunction, memberType);
+        if (!retyped && !open) {
+          arms['default-library-skip'] += 1;
+          return false;
+        }
+        // Both can be true at once — `{ [K in keyof ArrayBufferTypes]: {} }` is
+        // retyped AND open — and the row is filed under the older arm so that
+        // E30's counts keep meaning what they meant. `library-open` is
+        // therefore the members E31 alone rescues, which is what makes its
+        // count a measurement of this reading rather than of both.
+        arms[retyped ? 'library-retyped' : 'library-open'] += 1;
         return boundedWalk(memberType, depth + 1);
       }
       // ARM THREE — everything else: walk the member at its declaration. E28
@@ -13535,6 +13609,24 @@ interface CandidateShape {
    * type, so this is that channel used a second time rather than a new one.
    */
   readonly extra?: readonly (readonly [string, string])[];
+  /**
+   * A CONSTRUCTION of the subject's type, from an expression this directory
+   * could write, with a function literal at the position `reach` reads.
+   *
+   * WHY THIS COLUMN EXISTS, and it is a correction to `reachable` rather than an
+   * addition to it. `reachable` asks whether a closure can be CALLED through the
+   * type with no cast, and E31 measured that this is satisfied by any library
+   * method: `readonly string[]` is certified, silent, and `subject.join()`
+   * compiles. Nothing about that is an escape, because the implementation behind
+   * `join` is the runtime's and this directory cannot choose it. What separates
+   * M78 from that row is whether the directory can SUPPLY the value — and that
+   * is a compile question, so it is compiled rather than argued.
+   *
+   * `undefined` means the row does not ask. `SUPPLY_TABLE` is the join, and it
+   * carries the expected answer in both directions so a row that silently
+   * started compiling is red.
+   */
+  readonly supply?: string;
 }
 
 const CANDIDATE_SUBJECT_PATH = path.join(HERE, '__candidateSubject.ts');
@@ -13604,6 +13696,12 @@ interface CandidateReading {
   readonly arms: Readonly<Record<MemberArm, number>>;
   /** Diagnostics with the reach snippet spliced in. Empty means reachable. */
   readonly reachDiagnostics: readonly string[];
+  /**
+   * Diagnostics from the construction snippet. Empty means this directory can
+   * put a function at the position `reach` reads. `null` when the row does not
+   * declare one, which is a different thing from "it compiled".
+   */
+  readonly supplyDiagnostics: readonly string[] | null;
   /** The subject's type, as the checker prints it. */
   readonly printed: string;
 }
@@ -13641,6 +13739,16 @@ function candidateReading(
 
   const bare = compileOf(shape.build.split(REACH_MARKER).join(''));
   const withReach = compileOf(shape.build.split(REACH_MARKER).join(shape.reach));
+  // A THIRD PROGRAM, and only for the rows that ask. The construction is
+  // spliced at the reach marker and annotated `typeof subject`, so the type it
+  // is checked against is DERIVED from the row's own subject rather than
+  // written a second time — a repeated annotation is a thing that drifts, and a
+  // supply row checked against a stale copy of the type would be measuring
+  // nothing.
+  const supplied =
+    shape.supply === undefined
+      ? null
+      : compileOf(shape.build.split(REACH_MARKER).join(shape.supply));
 
   const file = bare.program.getSourceFile(CANDIDATE_SUBJECT_PATH);
   if (file === undefined) throw new Error('the candidate subject is not in the program');
@@ -13686,6 +13794,7 @@ function candidateReading(
     cuts: screen.cuts(),
     arms: screen.arms(),
     reachDiagnostics: Object.freeze(withReach.diagnostics),
+    supplyDiagnostics: supplied === null ? null : Object.freeze(supplied.diagnostics),
     printed: checker.typeToString(subjectType),
   };
 }
@@ -14147,6 +14256,83 @@ const CANDIDATE_SHAPES: readonly CandidateShape[] = Object.freeze([
     why: 'the fourth corner of the same square: remapped over a project `.d.ts`. It takes arm one for the same reason the row above does, which is what says the SOURCE FILE stops mattering the moment the member is synthesized',
   }),
 
+  // ---- Group J: a member the compiler declared AND typed, that can still
+  //      hold a function ----
+  //
+  // E31's group, and it is E30's declared residual driven rather than believed.
+  // E30 said a member which is the library's own type and all is skipped and
+  // that the relation covers it. The relation covers every such member EXCEPT
+  // one, and the exception is `any`, which is assignable to `FunctionFreeData`
+  // like it is assignable to everything. The four rows are the bypass, a second
+  // independent witness for it, and the two controls that say which half of the
+  // screen does the work.
+  Object.freeze({
+    id: 'library-open-any-member',
+    group: 'library-open',
+    build: `declare const subject: { readonly [K in keyof NavigationOptions]: NavigationOptions[K] };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject.info; return typeof held === 'function' ? held() : null; }",
+    supply:
+      "const supplied: typeof subject = Object.freeze({ info: (): string => 'x' });\nexport function supplies(): unknown { return supplied; }",
+    why: "M78 AS A TYPE — the twenty-fourth bypass. `NavigationOptions.info` is declared `info?: any` in `lib.dom.d.ts`, so arm two's file-kind half and E30's identity half BOTH say skip, and the relation certifies the holder because `any` is data to it. The mapped type is load-bearing and `library-open-interface-unmapped` is the control that says so; the payload type is load-bearing and `library-open-unknown-member` is the control that says that",
+  }),
+  Object.freeze({
+    id: 'library-open-any-member-through-a-Readonly',
+    group: 'library-open',
+    build: `declare const subject: Readonly<NavigationOptions>;\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject.info; return typeof held === 'function' ? held() : null; }",
+    supply:
+      "const supplied: typeof subject = Object.freeze({ info: (): string => 'x' });\nexport function supplies(): unknown { return supplied; }",
+    why: 'A SECOND, INDEPENDENT WITNESS FOR THE SAME ARM, written the way M76 earned one: `Readonly<T>` is a homomorphic mapped type declared in `lib.es5.d.ts` rather than one written here, so the finding is about the declaration a mapped member inherits and not about the spelling of the map',
+  }),
+  Object.freeze({
+    id: 'library-open-unknown-member',
+    group: 'library-open',
+    build: `declare const subject: { readonly [K in keyof ErrorOptions]: ErrorOptions[K] };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject.cause; return typeof held === 'function' ? held() : null; }",
+    why: "THE CONTROL THAT SAYS WHICH PAYLOAD IS THE PROBLEM. `ErrorOptions.cause` is declared `cause?: unknown` in `lib.es2022.error.d.ts` — the same arm, the same shape of map, a member that also admits a function — and the relation REFUSES the holder, because `unknown` is not assignable to `FunctionFreeData`. So `any` is not one of a family the relation is blind to; it is the only member of it, which is what CLAUDE.md's `unknown` and `object` are refused beside `{}` says one level out",
+  }),
+  Object.freeze({
+    id: 'library-open-interface-unmapped',
+    group: 'library-open',
+    build: `declare const subject: NavigationOptions;\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject.info; return typeof held === 'function' ? held() : null; }",
+    why: 'THE CONTROL THAT SAYS THE MAP IS LOAD-BEARING. The identical member, read off the INTERFACE rather than off a homomorphic map of it: an interface gets no implicit index signature, so the relation refuses it and the screen is never silent. Without this row a reader could not tell whether the bypass is about `any` or about `NavigationOptions`',
+  }),
+
+  // ---- Group K: silent, reachable, and NOT suppliable ----
+  //
+  // THE ROWS THAT CORRECT `reachable`, and they are the reason `SUPPLY_TABLE`
+  // exists. Both are certified, both are silent, and both have a library method
+  // a caller can call through the type with no cast — which is every column
+  // `FAMILY_TABLE` had before this round. Neither is an escape, because the
+  // implementation behind that method is the runtime's and this directory
+  // cannot supply a value that replaces it. They are kept as rows rather than
+  // left out because a battery whose invariant has never been shown to
+  // distinguish two cases is a battery that has not been shown to be about the
+  // right thing.
+  Object.freeze({
+    id: 'library-callable-behind-a-primitive-intersection',
+    group: 'unsuppliable',
+    build: `declare const subject: string & { readonly [K in keyof Pick<String, 'charAt'>]: String[K] };\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.charAt(0); }',
+    supply:
+      "const supplied: typeof subject = Object.freeze({ charAt: (): string => 'x' });\nexport function supplies(): unknown { return supplied; }",
+    why: "E30's OWN EXAMPLE, DRIVEN. `String.prototype.charAt` is the library's own type and all, so arm two skips it, and the holder certifies through its `string` constituent rather than through its members — so reading one does not refuse it either. It is silent and `subject.charAt(0)` compiles. It is still not a bypass, and the reason is the column this round added: a value of `string & …` IS a string, so the construction does not compile and this directory cannot choose what `charAt` does",
+  }),
+  Object.freeze({
+    id: 'library-callable-on-an-array-element-type',
+    group: 'unsuppliable',
+    build: `declare const subject: readonly string[];\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject.join(); }',
+    supply:
+      "const supplied: typeof subject = Object.freeze([(): string => 'x']);\nexport function supplies(): unknown { return supplied; }",
+    why: "THE SHARPEST OF THE TWO, because it is the plainest type in the file. `readonly string[]` is certified by the relation, walked only at its ELEMENT type by the array arm, and `subject.join()` compiles — so under the columns this battery had before this round, the most ordinary type in the directory reads as silent-and-reachable. The supply column is what says it is not: an array of closures is not an array of strings, so the construction is refused",
+  }),
+
   // ---- The shape a plant would actually take ----
   Object.freeze({
     id: 'entry-with-an-empty-object-payload',
@@ -14247,18 +14433,68 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
   Object.freeze(['project-dts-keyed-mapped-holding-a-closure', true, true, true, true] as const),
   Object.freeze(['library-keyed-mapped-remapped-holding-a-closure', true, true, true, true] as const),
   Object.freeze(['project-dts-keyed-mapped-remapped-holding-a-closure', true, true, true, true] as const),
+  Object.freeze(['library-open-any-member', true, true, true, true] as const),
+  Object.freeze(['library-open-any-member-through-a-Readonly', true, true, true, true] as const),
+  Object.freeze(['library-open-unknown-member', false, true, true, true] as const),
+  Object.freeze(['library-open-interface-unmapped', false, true, true, true] as const),
+  Object.freeze(['library-callable-behind-a-primitive-intersection', true, false, false, true] as const),
+  Object.freeze(['library-callable-on-an-array-element-type', true, false, false, true] as const),
   Object.freeze(['entry-with-an-empty-object-payload', true, true, true, true] as const),
   ]);
+
+/**
+ * Which rows this directory could actually SUPPLY a value for, with a function
+ * at the position the reach snippet reads.
+ *
+ * WHY IT IS A SEPARATE TABLE AND NOT A SIXTH COLUMN. Only rows that ask carry a
+ * construction, so a sixth column would be `null` on fifty-eight of sixty-four
+ * and would read as a verdict where there is none. This table is joined to the
+ * shapes that declare a `supply` snippet in both directions, so a snippet added
+ * without an expected answer is red and an answer left behind by a deleted
+ * snippet is red the other way.
+ *
+ * WHAT IT IS FOR. `FAMILY_TABLE`'s `reachable` column asks whether a closure can
+ * be CALLED through the type with no cast, and E31 measured that this is
+ * satisfied by any library method — `readonly string[]` is certified, silent,
+ * and `subject.join()` compiles. Under the columns this battery had before this
+ * round, the plainest type in the directory reads as a bypass. It is not one,
+ * because the implementation behind `join` is the runtime's; what separates it
+ * from M78 is whether this directory can hand back a value that replaces it.
+ *
+ * ITS LIMIT, stated because the join is written by hand: this compiles a
+ * construction against `typeof subject` and checks the same bans the reach
+ * snippets are under. It does not check that the function literal in the
+ * construction sits at the member the reach snippet reads — those two are
+ * written as a pair by whoever adds the row. What it does close is the case the
+ * round actually hit, which is a row whose type refuses ANY construction
+ * carrying a function at all.
+ */
+const SUPPLY_TABLE: readonly (readonly [string, boolean])[] = Object.freeze([
+  Object.freeze(['library-open-any-member', true] as const),
+  Object.freeze(['library-open-any-member-through-a-Readonly', true] as const),
+  Object.freeze(['library-callable-behind-a-primitive-intersection', false] as const),
+  Object.freeze(['library-callable-on-an-array-element-type', false] as const),
+]);
 
 /**
  * What the sweep measured. Counts rather than bounds, per this file's own rule
  * that a bound lets a defect grow back quietly.
  *
- * `SILENT_AND_REACHABLE` is the number the round is about: rows where the whole
- * screen says there is no function and a closure is nonetheless callable through
- * the type. It is zero, and `BEFORE_E27_SILENT_AND_REACHABLE` is what it is zero
- * against — the identical rows driven through the identical walker with E27's
- * two readings switched off.
+ * `SILENT_AND_REACHABLE` USED TO BE THE HEADLINE AND IT WAS THE WRONG NUMBER,
+ * which E31 measured rather than inferred. It counts rows where the screen says
+ * there is no function and a closure is nonetheless callable through the type —
+ * and `readonly string[]` satisfies both, because it is certified, walked only
+ * at its element type, and `subject.join()` compiles. That is the most ordinary
+ * type in the directory and it is not a bypass, because the implementation
+ * behind `join` is the runtime's.
+ *
+ * So the headline is now `SILENT_REACHABLE_AND_SUPPLIABLE`, which adds the axis
+ * that separates the two: can this directory hand back a value with a function
+ * at that position, with no cast. It is zero. `SILENT_AND_REACHABLE` is kept,
+ * pinned at two, and both rows are named — it is the denominator that says the
+ * new axis is doing work rather than decorating a zero that was already there.
+ * `BEFORE_E27_SILENT_AND_REACHABLE` is the other control: the identical rows
+ * driven through the identical walker with all four readings switched off.
  *
  * `CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS` is the number that
  * corrects the residual at `cyclicDeclarations`. That sentence said a false
@@ -14270,22 +14506,28 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
  * premise the census's containment argument rests on, and it is false.
  */
 const FAMILY_CENSUS = Object.freeze({
-  ROWS: 58,
+  ROWS: 64,
   /** Distinct groups, so a truncated battery cannot pass as a whole one. */
-  GROUPS: 11,
+  GROUPS: 13,
   /** Rows the relation alone certified as function-free data. */
-  CERTIFYING: 39,
+  CERTIFYING: 43,
   /** Rows whose reach snippet compiles clean. */
-  REACHABLE: 52,
+  REACHABLE: 58,
   /** Rows the whole screen was silent about. */
-  SILENT: 3,
-  /** Silent AND reachable — the bypass count. */
-  SILENT_AND_REACHABLE: 0,
+  SILENT: 5,
+  /** Silent AND reachable. See the paragraph above: this is not the bypass count. */
+  SILENT_AND_REACHABLE: 2,
+  /** Rows that declare a construction. The supply axis's own denominator. */
+  SUPPLY_ROWS: 4,
+  /** Of those, the ones this directory can actually build. */
+  SUPPLIABLE: 2,
+  /** Silent, reachable AND suppliable — the bypass count. */
+  SILENT_REACHABLE_AND_SUPPLIABLE: 0,
   /** See the paragraph above. Twenty, and the residual said zero. */
-  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 34,
+  CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS: 38,
   /** The same battery through `SCREEN_BEFORE_E27`. */
-  BEFORE_E27_SILENT: 24,
-  BEFORE_E27_SILENT_AND_REACHABLE: 21,
+  BEFORE_E27_SILENT: 28,
+  BEFORE_E27_SILENT_AND_REACHABLE: 25,
   /**
    * Depth cuts taken anywhere in the sweep, in either configuration.
    *
@@ -14371,13 +14613,37 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
     expect(rows.filter(([, certifies]) => certifies).length).toBe(FAMILY_CENSUS.CERTIFYING);
     expect(rows.filter(([, , , , reachable]) => reachable).length).toBe(FAMILY_CENSUS.REACHABLE);
     expect(rows.filter(([, , , holds]) => !holds).length).toBe(FAMILY_CENSUS.SILENT);
-    // THE NUMBER THE ROUND IS ABOUT. Zero rows where the screen is silent and a
-    // closure is reachable through the type.
+    // THE NUMBER THE ROUND IS ABOUT, AND IT IS NOT THE ONE THIS TEST USED TO
+    // ASSERT. Silent-and-reachable is two, both named, and neither is a bypass
+    // — the reach in both is a LIBRARY method whose implementation this
+    // directory cannot choose. The bypass count is the line below it.
+    const readings = familyReadings();
     const silentAndReachable = rows
       .filter(([, , , holds, reachable]) => !holds && reachable)
-      .map(([id]) => id);
-    expect(silentAndReachable).toEqual([]);
+      .map(([id]) => id)
+      .sort();
+    expect(silentAndReachable).toEqual([
+      'library-callable-behind-a-primitive-intersection',
+      'library-callable-on-an-array-element-type',
+    ]);
     expect(silentAndReachable.length).toBe(FAMILY_CENSUS.SILENT_AND_REACHABLE);
+    // AND NOT ONE OF THEM CAN BE BUILT. Every silent-and-reachable row must
+    // declare a construction and that construction must be REFUSED by the
+    // compiler — so a row cannot join this list by being written without one.
+    for (const id of silentAndReachable) {
+      const supplyRow = SUPPLY_TABLE.find(([rowId]) => rowId === id);
+      expect(supplyRow, `${id} is silent and reachable and declares no construction`).toBeDefined();
+      expect(supplyRow?.[1], `${id}: expected not suppliable`).toBe(false);
+      expect(
+        (readings[id]?.supplyDiagnostics ?? []).length,
+        `${id}: the construction compiled, so this row IS a bypass`,
+      ).toBeGreaterThan(0);
+    }
+    const bypasses = silentAndReachable.filter(
+      (id) => (readings[id]?.supplyDiagnostics ?? ['unbuildable']).length === 0,
+    );
+    expect(bypasses).toEqual([]);
+    expect(bypasses.length).toBe(FAMILY_CENSUS.SILENT_REACHABLE_AND_SUPPLIABLE);
     // Both verdicts occur on every column, so none of the four is a constant.
     expect(rows.filter(([, certifies]) => !certifies).length).toBeGreaterThan(0);
     expect(rows.filter(([, , , holds]) => holds).length).toBeGreaterThan(0);
@@ -14426,6 +14692,8 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
       'entry-with-an-empty-object-payload',
       'generic-mapped-type-intersected-with-string',
       'intersection-unknown-and-empty',
+      'library-callable-behind-a-primitive-intersection',
+      'library-callable-on-an-array-element-type',
       'library-generic-instantiated-with-a-closure',
       'library-generic-instantiated-with-a-library-callable',
       'library-keyed-mapped-holding-a-closure',
@@ -14433,6 +14701,8 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
       'library-keyed-mapped-remapped-holding-a-closure',
       'library-keyed-mapped-through-a-Pick',
       'library-keyed-mapped-typed-with-a-library-callable',
+      'library-open-any-member',
+      'library-open-any-member-through-a-Readonly',
       'project-dts-keyed-mapped-remapped-holding-a-closure',
       'remapped-key-becomes-index-signature',
       'string-and-number-index-signatures',
@@ -14443,17 +14713,27 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
     // of making the eleven look like a fixed defect.
     expect(SCREEN_BEFORE_E27.admitsAFunction).toBe(false);
     expect(SCREEN_BEFORE_E27.synthesizedProperties).toBe(false);
+    expect(SCREEN_BEFORE_E27.retypedLibraryMembers).toBe(false);
+    expect(SCREEN_BEFORE_E27.libraryMembersThatAdmitAFunction).toBe(false);
     expect(SHIPPED_SCREEN_READINGS.admitsAFunction).toBe(true);
     expect(SHIPPED_SCREEN_READINGS.synthesizedProperties).toBe(true);
-    // And no row is silent-and-reachable under the shipped readings, which is
-    // the same assertion the test above makes and is repeated here so that this
-    // test's own subject — the difference — cannot be green with both sides bad.
+    expect(SHIPPED_SCREEN_READINGS.retypedLibraryMembers).toBe(true);
+    expect(SHIPPED_SCREEN_READINGS.libraryMembersThatAdmitAFunction).toBe(true);
+    // And no row is silent, reachable AND suppliable under the shipped
+    // readings, which is the same assertion the test above makes and is
+    // repeated here so that this test's own subject — the difference — cannot
+    // be green with both sides bad. The two rows that ARE silent and reachable
+    // are named, so this line cannot go quiet by the list growing.
     const now = familyReadings();
+    const stillSilent = CANDIDATE_SHAPES.filter(
+      (shape) => now[shape.id]?.screenHolds === false && now[shape.id]?.reachDiagnostics.length === 0,
+    ).map((shape) => shape.id);
+    expect([...stillSilent].sort()).toEqual([
+      'library-callable-behind-a-primitive-intersection',
+      'library-callable-on-an-array-element-type',
+    ]);
     expect(
-      CANDIDATE_SHAPES.filter(
-        (shape) =>
-          now[shape.id]?.screenHolds === false && now[shape.id]?.reachDiagnostics.length === 0,
-      ).map((shape) => shape.id),
+      stillSilent.filter((id) => (now[id]?.supplyDiagnostics ?? ['unbuildable']).length === 0),
     ).toEqual([]);
   }, 600_000);
 
@@ -14478,6 +14758,45 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
       expect(pattern.test(cheat), `the ${what} cheat is invisible to its own ban`).toBe(true);
     });
   });
+
+  it('answers the supply axis exactly as the table says, and the axis varies', () => {
+    const readings = familyReadings();
+    // Joined in both directions: a row that declares a construction without an
+    // expected answer is red, and an answer left behind by a deleted
+    // construction is red the other way.
+    expect([...SUPPLY_TABLE.map(([id]) => id)].sort()).toEqual(
+      CANDIDATE_SHAPES.filter((shape) => shape.supply !== undefined)
+        .map((shape) => shape.id)
+        .sort(),
+    );
+    expect(SUPPLY_TABLE.length).toBe(FAMILY_CENSUS.SUPPLY_ROWS);
+    for (const [id, suppliable] of SUPPLY_TABLE) {
+      const diagnostics = readings[id]?.supplyDiagnostics;
+      expect(diagnostics, `${id}: the driver read no construction`).not.toBeNull();
+      expect(
+        diagnostics?.length === 0,
+        `${id}: ${diagnostics?.join(' | ') ?? ''}`,
+      ).toBe(suppliable);
+    }
+    // NOT A ONE-POINT AXIS. Both answers occur, and the count of each is pinned,
+    // so a change that made every construction compile — or none of them —
+    // reports itself instead of leaving a green column that says nothing.
+    expect(SUPPLY_TABLE.filter(([, suppliable]) => suppliable).length).toBe(
+      FAMILY_CENSUS.SUPPLIABLE,
+    );
+    expect(SUPPLY_TABLE.filter(([, suppliable]) => !suppliable).length).toBe(
+      FAMILY_CENSUS.SUPPLY_ROWS - FAMILY_CENSUS.SUPPLIABLE,
+    );
+    // A construction is under the same bans a reach snippet is. A cast in one
+    // would assert that the value can be built rather than build it.
+    for (const shape of CANDIDATE_SHAPES) {
+      if (shape.supply === undefined) continue;
+      for (const [what, pattern] of REACH_BANS) {
+        pattern.lastIndex = 0;
+        expect(pattern.test(shape.supply), `${shape.id} supplies through ${what}`).toBe(false);
+      }
+    }
+  }, 600_000);
 });
 
 // ---------------------------------------------------------------------------
@@ -14568,22 +14887,76 @@ const MEMBER_ARM_TABLE: readonly (readonly [string, readonly MemberArm[]])[] = O
     'control-plain-closure',
     Object.freeze(['declared'] as readonly MemberArm[]),
   ] as const),
+  // E31's arm, with a second independent witness, for the same reason M76
+  // earned one: `Readonly<T>` is a homomorphic map declared in the compiler's
+  // own library rather than written here, so two rows reaching this arm say the
+  // finding is about the declaration a mapped member inherits and not about a
+  // spelling.
+  Object.freeze([
+    'library-open-any-member',
+    Object.freeze(['library-open'] as readonly MemberArm[]),
+  ] as const),
+  Object.freeze([
+    'library-open-any-member-through-a-Readonly',
+    Object.freeze(['library-open'] as readonly MemberArm[]),
+  ] as const),
 ]);
 
 const MEMBER_ARM_CENSUS = Object.freeze({
-  ROWS: 13,
+  ROWS: 15,
   /**
    * Arms the table reaches, against the arms the type declares. Set-equal in
    * both directions, so an arm nothing exercises is as red as an arm nobody
    * declared.
    */
-  ARMS: 4,
+  ARMS: 5,
   /** Members answered by the arm E30 added, summed over the table. */
   RETYPED_MEMBERS: 6,
   /** Members answered by the arm E27 added, summed over the table. */
   SYNTHESIZED_MEMBERS: 3,
-  /** Members skipped as the compiler's own, summed. The denominator. */
+  /** Members answered by the arm E31 added, summed over the table. */
+  LIBRARY_OPEN_MEMBERS: 2,
+  /**
+   * Members skipped as the compiler's own, summed. The denominator.
+   *
+   * THIS NUMBER IS A PROPERTY OF THE TYPESCRIPT INSTALL, NOT OF THIS
+   * DIRECTORY, and that is written here rather than left for whoever first sees
+   * it red. It is very nearly `String`'s own member table, reached and
+   * correctly skipped on the rows whose certifying constituent is `string`. A
+   * TypeScript upgrade that adds or removes one `String` method moves it, and
+   * that is NOT a defect.
+   *
+   * WHAT A RED HERE MEANS, AND WHAT TO CHECK BEFORE RE-PINNING — in this order,
+   * because the first two are cheap and decide it:
+   *
+   *   1. Did `MEASURED_UNDER_TYPESCRIPT` change? The assertion prints the
+   *      running `ts.version` beside it, so the failure answers this without a
+   *      second run. If it moved, this is a library bump.
+   *   2. Are `RETYPED_MEMBERS`, `SYNTHESIZED_MEMBERS`, `LIBRARY_OPEN_MEMBERS`
+   *      and `DECLARED_MEMBERS` unchanged? Those are the arms that decide a
+   *      verdict, they are small, and they are about members this directory's
+   *      own rows put there rather than about the library's table. If all four
+   *      hold and only this one moved, re-pin it and say which TypeScript
+   *      version in `MEASURED_UNDER_TYPESCRIPT`.
+   *   3. Is `answers every row with the arms the table says` still green? That
+   *      check is SET-valued per row — which arms were reached, not how many
+   *      members each answered about — so it is library-version-insensitive by
+   *      construction, and it is the one that would go red if a shape started
+   *      taking a different arm. If it is red too, this is not a bump.
+   *
+   * The pin is kept rather than derived because every derivation available here
+   * re-implements the walk it is meant to grade, which is the mirrored-oracle
+   * shape CLAUDE.md lists as vacuous. A count with a stated failure mode is
+   * worth more than a computation that cannot disagree with its subject.
+   */
   SKIPPED_MEMBERS: 515,
+  /**
+   * The TypeScript the count above was measured under, written out rather than
+   * read from `ts.version` — a constant initialised from the thing it is
+   * compared against cannot disagree with it, which is the self-referential
+   * shape CLAUDE.md lists first among the vacuous ones.
+   */
+  MEASURED_UNDER_TYPESCRIPT: '6.0.3',
   /** Members walked at their own declaration, summed. */
   DECLARED_MEMBERS: 4,
 });
@@ -14620,8 +14993,24 @@ describe('the arm census — the three questions the member walk asks, counted',
     // three small numbers are the arms that decide a verdict.
     expect(total('library-retyped')).toBe(MEMBER_ARM_CENSUS.RETYPED_MEMBERS);
     expect(total('synthesized')).toBe(MEMBER_ARM_CENSUS.SYNTHESIZED_MEMBERS);
+    expect(total('library-open')).toBe(MEMBER_ARM_CENSUS.LIBRARY_OPEN_MEMBERS);
     expect(total('declared')).toBe(MEMBER_ARM_CENSUS.DECLARED_MEMBERS);
-    expect(total('default-library-skip')).toBe(MEMBER_ARM_CENSUS.SKIPPED_MEMBERS);
+    // THE ONE LIB-VERSION-SENSITIVE PIN IN THIS FILE, AND IT SAYS SO IN ITS OWN
+    // FAILURE. `SKIPPED_MEMBERS`'s docstring is the procedure; this message is
+    // what a reader who has not read it sees, so a TypeScript bump cannot train
+    // anybody to re-pin without looking. The four assertions above run FIRST on
+    // purpose: they are the arms that decide a verdict, they are not the
+    // library's table, and if any of them is red too then this is not a bump.
+    expect(
+      total('default-library-skip'),
+      `running TypeScript ${ts.version}; this count was measured under ` +
+        `${MEMBER_ARM_CENSUS.MEASURED_UNDER_TYPESCRIPT}. It is very nearly \`String\`'s own ` +
+        `member table, so a library upgrade moves it and that is NOT a defect. Read ` +
+        `\`SKIPPED_MEMBERS\`'s docstring before re-pinning: if the four arm counts above are ` +
+        `green and \`answers every row with the arms the table says\` is green, this is a bump ` +
+        `and the repair is to re-pin BOTH this number and MEASURED_UNDER_TYPESCRIPT. If either ` +
+        `of those is red as well, it is not.`,
+    ).toBe(MEMBER_ARM_CENSUS.SKIPPED_MEMBERS);
     // AND THE ARM E30 ADDED IS SHOWN DOING THE WORK RATHER THAN EXISTING: with
     // `retypedLibraryMembers` off, every member it answers about is skipped
     // instead, and the six rows it decides go silent. That is the same pair the
@@ -14632,6 +15021,15 @@ describe('the arm census — the three questions the member walk asks, counted',
       0,
     );
     expect(retypedBefore).toBe(0);
+    // AND THE SAME FOR THE ARM E31 ADDED, for the same reason: with
+    // `libraryMembersThatAdmitAFunction` off, the two members it rescues are
+    // skipped instead, which is M78's silence read by arm rather than by
+    // outcome.
+    const openBefore = MEMBER_ARM_TABLE.reduce(
+      (sum, [id]) => sum + (before[id]?.arms['library-open'] ?? 0),
+      0,
+    );
+    expect(openBefore).toBe(0);
   }, 600_000);
 });
 
@@ -18083,7 +18481,7 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
  * means the continuation NAMES the subject, which is a necessary condition for
  * handling it and nothing more.
  *
- * TEN OF SIXTY-EIGHT, AND THREE OF THE TEN ARE ARTEFACTS OF HOW IT IS KEYED —
+ * NINE, AND TWO OF THE NINE ARE ARTEFACTS OF HOW IT IS KEYED —
  * written here because a list whose limits are only in its author's head is the
  * thing this file keeps finding. Blindness is decided by whether the following
  * statements mention the subject's IDENTIFIER, and `subjectOf` votes for the
@@ -18097,14 +18495,15 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
  *   - `walk<returnedFunctions<channelCensusOf#holder` falls through to a loop
  *     over `holderValues`, which is derived FROM the holder one line above. A
  *     name-keyed measure cannot see that as the same subject.
- *   - `boundedWalk<memberTypeScreen#anyFunction` is keyed on the REFERENCE type
- *     rather than on the subject, because the condition is
- *     `isTypeAssignableTo(anyFunction, type)` and the vote picks the first
- *     argument. `anyFunction` is a constant for the whole walk and there is
- *     nothing for a continuation to do with it; the continuation is the rest of
- *     the walk over `type`, which is the binding the arm above it is keyed on.
- *     Third of its kind, and the pattern across all three is the same: the vote
- *     picks a name that is not the thing being decided about.
+ *   - `boundedWalk<memberTypeScreen#anyFunction` WAS the third of that kind and
+ *     is no longer on the list, which is worth keeping rather than deleting
+ *     because it says what moved it. It was keyed on the REFERENCE type — the
+ *     condition is `isTypeAssignableTo(anyFunction, type)` and the vote picks
+ *     the first argument — and `anyFunction` was a constant nothing downstream
+ *     touched. E31's arm asks the same reference about a MEMBER's type, so the
+ *     continuation now names it and the row went stale in the correct
+ *     direction. Nothing about the blindness measure changed; the code stopped
+ *     satisfying it.
  *
  * The other seven fall through to a constant answer — `return []`, `return
  * false` — or to a recorded admission (`unfollowed.push`, an `unclassified`
@@ -18118,14 +18517,13 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
  * written in one sitting about code that is mostly correct, which is how a
  * required field becomes decoration — and this file already carries a row
  * (`G24`) recording a widening that was decoration for twenty minutes. The
- * forcing function kept instead is the set equality: an ELEVENTH blind
- * continuation cannot arrive without somebody adding it here. The tenth did
- * arrive, and the sentence naming the ninth is corrected rather than deleted —
- * a running count in a list about stale confidence is the first thing to go
- * stale.
+ * forcing function kept instead is the set equality: a TENTH blind continuation
+ * cannot arrive without somebody adding it here. The tenth did arrive once and
+ * has since left, and every sentence counting this list is corrected rather
+ * than deleted — a running count in a list about stale confidence is the first
+ * thing to go stale, and it has now gone stale in both directions.
  */
 const CONTINUATIONS_BLIND_TO_THE_SUBJECT: readonly string[] = Object.freeze([
-  'empireForbiddenOutput.test.ts#boundedWalk<memberTypeScreen#anyFunction',
   'empireForbiddenOutput.test.ts#carriesCallSignature<channelCensusOf#type',
   'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#initial',
   'empireForbiddenOutput.test.ts#ownerOf<channelCensusOf#root',
