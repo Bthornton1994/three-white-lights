@@ -218,10 +218,6 @@ interface FloorWalk {
   readonly purchaseMoments: number;
   /** Steps at which `stepGym` was asked for at least one check-in. */
   readonly checkInMoments: number;
-  /** `gymBucks` fell and the gym bought something at that step. */
-  readonly balanceFallsAtAPurchase: number;
-  /** `gymBucks` fell and the gym bought nothing. THE SAFETY COUNT. */
-  readonly balanceFallsWithNoPurchase: number;
   /** `pendingGymBucks` fell at a step that took a check-in. */
   readonly sawtoothResetsAtACheckIn: number;
   /** `pendingGymBucks` fell at a step that did not. THE SAFETY COUNT. */
@@ -231,14 +227,28 @@ interface FloorWalk {
   /** Readings at which GDD §5.1's offline cap discarded any of that gap. */
   readonly cappedReadings: number;
   /**
-   * Every fall of the BALANCE and of the three COUNTERS, as text, so a failure
-   * names the instant rather than a total.
+   * Every fall of the BALANCE, as text: the instant, the reading before and the
+   * reading after.
    *
-   * The sawtooth's resets are counted and not listed: there are one per
-   * check-in — 8640 of them in a day — and a list that long in an assertion
-   * message is noise standing where evidence should be.
+   * NO `bought` FLAG IN THIS TEXT, deliberately. The safety claim is the list
+   * below, and if these lines carried the flag then pinning this record would
+   * imply the safety claim outright and leave that check unable to speak — the
+   * domination CLAUDE.md makes a required check. This list says WHICH steps
+   * fell; the next one says whether any of them was unbought. Two facts, two
+   * assertions, neither implying the other.
    */
-  readonly namedFalls: readonly string[];
+  readonly balanceFalls: readonly string[];
+  /**
+   * The falls of the balance that happened at a step where the gym bought
+   * NOTHING. THE SAFETY LIST, and it is a list rather than a count so a failure
+   * names the instant.
+   */
+  readonly balanceFallsWithNoPurchase: readonly string[];
+  /**
+   * Every fall of one of the three COUNTERS, as text. Expected empty at every
+   * horizon; a list rather than a count for the same reason.
+   */
+  readonly counterFalls: readonly string[];
 }
 
 const WALKS = new Map<number, FloorWalk>();
@@ -263,12 +273,12 @@ function walkTo(horizonSeconds: number): FloorWalk {
     clockSeconds: 0,
   };
   const increases: Record<NumericReading, number> = { ...decreases };
-  const namedFalls: string[] = [];
+  const balanceFalls: string[] = [];
+  const balanceFallsWithNoPurchase: string[] = [];
+  const counterFalls: string[] = [];
   let read = 0;
   let purchaseMoments = 0;
   let checkInMoments = 0;
-  let balanceFallsAtAPurchase = 0;
-  let balanceFallsWithNoPurchase = 0;
   let sawtoothResetsAtACheckIn = 0;
   let sawtoothFallsAwayFromACheckIn = 0;
   let widestPendingGapSeconds = 0;
@@ -296,17 +306,16 @@ function walkTo(horizonSeconds: number): FloorWalk {
     for (const key of NUMERIC_READINGS) {
       if (Number(after[key]) < Number(before[key])) {
         decreases[key] += 1;
-        if (key !== SAWTOOTH_READING) {
-          namedFalls.push(`at ${at}s ${key} ${before[key]} -> ${after[key]} (bought: ${bought})`);
-        }
+        const where = `at ${at}s ${key} ${before[key]} -> ${after[key]}`;
         if (key === BALANCE_READING) {
-          if (bought) balanceFallsAtAPurchase += 1;
-          else balanceFallsWithNoPurchase += 1;
+          balanceFalls.push(where);
+          if (!bought) balanceFallsWithNoPurchase.push(`${where}, and the gym bought nothing`);
         }
         if (key === SAWTOOTH_READING) {
           if (checkedIn) sawtoothResetsAtACheckIn += 1;
           else sawtoothFallsAwayFromACheckIn += 1;
         }
+        if ((CUMULATIVE_READINGS as readonly string[]).includes(key)) counterFalls.push(where);
       }
       if (Number(after[key]) > Number(before[key])) increases[key] += 1;
     }
@@ -319,13 +328,13 @@ function walkTo(horizonSeconds: number): FloorWalk {
     increases: Object.freeze(increases),
     purchaseMoments,
     checkInMoments,
-    balanceFallsAtAPurchase,
-    balanceFallsWithNoPurchase,
+    balanceFalls: Object.freeze(balanceFalls),
+    balanceFallsWithNoPurchase: Object.freeze(balanceFallsWithNoPurchase),
+    counterFalls: Object.freeze(counterFalls),
     sawtoothResetsAtACheckIn,
     sawtoothFallsAwayFromACheckIn,
     widestPendingGapSeconds,
     cappedReadings,
-    namedFalls: Object.freeze(namedFalls),
   });
   WALKS.set(horizonSeconds, walk);
   return walk;
@@ -538,20 +547,32 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
     // is 2500 at BOTH long horizons: §5.4's reputation line reaches its ceiling
     // inside twelve hours and then sits there. A plateau is non-decreasing, and
     // pinning the count rather than a bound is what makes it visible.
-    const observed = FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.map((horizon) => {
-      const walk = walkTo(horizon);
-      const fell = CUMULATIVE_READINGS.filter((key) => walk.decreases[key] > 0);
-      return {
-        horizon,
-        read: walk.read,
-        fell,
-        increases: CUMULATIVE_READINGS.map((key) => walk.increases[key]),
-      };
-    });
-    expect(observed).toEqual([
-      { horizon: 240, read: 240, fell: [], increases: [24, 0, 24] },
-      { horizon: 43_200, read: 43_200, fell: [], increases: [2500, 1, 4320] },
-      { horizon: 86_400, read: 86_400, fell: [], increases: [2500, 2, 8640] },
+    const counterFalls = FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.flatMap(
+      (horizon) => walkTo(horizon).counterFalls,
+    );
+    expect(counterFalls, counterFalls.slice(0, 4).join('\n')).toEqual([]);
+    // ...and the non-vacuity, which is a different fact and not implied by the
+    // line above: the walk really read every step and the counters really moved.
+    // A `fell: []` COLUMN WAS WRITTEN HERE AND DELETED, and the domination is
+    // recorded rather than the check quietly dropped — it was
+    // `decreases[key] > 0` over the same three walks, which is the same
+    // predicate as the list above, so no state of the subject could redden one
+    // while the other passed. The list is what survives, because it names the
+    // instant and a column could only say that a key fell.
+    // READ AS ROWS OF TEXT RATHER THAN OBJECTS, so a failure prints the numbers
+    // that moved instead of `expected [ …(3) ] to deeply equal [ …(3) ]`. That
+    // is CLAUDE.md's "a check that bites but fails uselessly is half a check",
+    // and it was measured here: the object form printed exactly that.
+    expect(
+      FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.map((horizon) => {
+        const walk = walkTo(horizon);
+        const rises = CUMULATIVE_READINGS.map((key) => `${key} +${walk.increases[key]}`);
+        return `${horizon}s: ${walk.read} read, ${rises.join(', ')}`;
+      }),
+    ).toEqual([
+      '240s: 240 read, reputation +24, roster +0, clockSeconds +24',
+      '43200s: 43200 read, reputation +2500, roster +1, clockSeconds +4320',
+      '86400s: 86400 read, reputation +2500, roster +2, clockSeconds +8640',
     ]);
   });
 
@@ -573,34 +594,28 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
     // about §5 rather than a slack bound: five commitments in twenty-four hours
     // move this row twice. §5 keeps more than one book and this row draws
     // `state.gymBucks`, so a commitment funded out of another purse leaves it
-    // alone. Both counts are pinned, so that ratio cannot drift in silence.
-    const observed = FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.map((horizon) => {
-      const walk = walkTo(horizon);
-      return {
-        horizon,
-        withNoPurchase: walk.balanceFallsWithNoPurchase,
-        atAPurchase: walk.balanceFallsAtAPurchase,
-        purchaseMoments: walk.purchaseMoments,
-        rises: walk.increases[BALANCE_READING],
-      };
-    });
-    // THE SAFETY CLAIM IS THE FIRST COLUMN, AND IT IS ZERO AT EVERY HORIZON.
+    // alone. Both are pinned, so that ratio cannot drift in silence.
+    // THE SAFETY CLAIM, and it is empty at every horizon.
+    const unbought = FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.flatMap(
+      (horizon) => walkTo(horizon).balanceFallsWithNoPurchase,
+    );
+    expect(unbought, unbought.slice(0, 4).join('\n')).toEqual([]);
+    // ...and the falls themselves, which is a SEPARATE fact: these lines carry
+    // no `bought` flag, so pinning them cannot imply the assertion above. WHICH
+    // steps fell is this record; whether any of them was unbought is that one.
+    expect(FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.map((horizon) => walkTo(horizon).balanceFalls))
+      .toEqual([
+        [],
+        ['at 34300s gymBucks 1199.417 -> 0.034'],
+        ['at 34300s gymBucks 1199.417 -> 0.034', 'at 56670s gymBucks 1499.917 -> 0.633'],
+      ]);
+    // ...and the counts the falls sit among.
     expect(
-      observed.filter((row) => row.withNoPurchase > 0),
-      walkTo(86_400).namedFalls.join('\n'),
-    ).toEqual([]);
-    // ...and the rest of the table is the non-vacuity: the domain really does
-    // contain falls at the two long horizons and really does contain none at the
-    // short one, which is the whole finding.
-    expect(observed).toEqual([
-      { horizon: 240, withNoPurchase: 0, atAPurchase: 0, purchaseMoments: 0, rises: 24 },
-      { horizon: 43_200, withNoPurchase: 0, atAPurchase: 1, purchaseMoments: 2, rises: 4319 },
-      { horizon: 86_400, withNoPurchase: 0, atAPurchase: 2, purchaseMoments: 5, rises: 8638 },
-    ]);
-    expect(walkTo(86_400).namedFalls).toEqual([
-      'at 34300s gymBucks 1199.417 -> 0.034 (bought: true)',
-      'at 56670s gymBucks 1499.917 -> 0.633 (bought: true)',
-    ]);
+      FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.map((horizon) => {
+        const walk = walkTo(horizon);
+        return `${horizon}s: ${walk.purchaseMoments} bought, ${walk.increases[BALANCE_READING]} rises`;
+      }),
+    ).toEqual(['240s: 0 bought, 24 rises', '43200s: 2 bought, 4319 rises', '86400s: 5 bought, 8638 rises']);
   });
 
   it('the SINCE CHECK-IN row is the one that is sawtooth by construction, and it resets at a check-in and nowhere else', () => {
@@ -614,27 +629,28 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
     // disappearing from the preview with nothing banking it — and the pairing
     // count says the resets really happened, one per check-in, rather than the
     // row having gone flat.
-    const observed = FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.map((horizon) => {
-      const walk = walkTo(horizon);
-      return {
-        horizon,
-        awayFromACheckIn: walk.sawtoothFallsAwayFromACheckIn,
-        atACheckIn: walk.sawtoothResetsAtACheckIn,
-        checkInMoments: walk.checkInMoments,
-      };
-    });
-    expect(observed).toEqual([
-      { horizon: 240, awayFromACheckIn: 0, atACheckIn: 24, checkInMoments: 24 },
-      { horizon: 43_200, awayFromACheckIn: 0, atACheckIn: 4320, checkInMoments: 4320 },
-      { horizon: 86_400, awayFromACheckIn: 0, atACheckIn: 8640, checkInMoments: 8640 },
-    ]);
-    // ...and every check-in really does reset it, which is the other half of
-    // "at a check-in and nowhere else". A cadence that stopped resetting would
-    // leave `atACheckIn` below `checkInMoments` with both still non-zero.
-    expect(observed.map((row) => row.atACheckIn === row.checkInMoments)).toEqual([
-      true,
-      true,
-      true,
+    // THE SAFETY CLAIM: money leaving the preview with nothing banking it.
+    for (const horizon of FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS) {
+      expect(
+        walkTo(horizon).sawtoothFallsAwayFromACheckIn,
+        `steps in ${horizon}s where SINCE CHECK-IN fell with no check-in banking it`,
+      ).toBe(0);
+    }
+    // ...and the other half, which the line above does not imply: every
+    // check-in really does reset the row, so the zero is not a zero about a row
+    // that had gone flat. AN `atACheckIn === checkInMoments` MAP WAS WRITTEN
+    // BELOW THIS AND DELETED, with the domination recorded: this table pins both
+    // numbers per horizon, so the equality could not have reddened while the
+    // table passed.
+    expect(
+      FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.map((horizon) => {
+        const walk = walkTo(horizon);
+        return `${horizon}s: ${walk.sawtoothResetsAtACheckIn} resets against ${walk.checkInMoments} check-ins`;
+      }),
+    ).toEqual([
+      '240s: 24 resets against 24 check-ins',
+      '43200s: 4320 resets against 4320 check-ins',
+      '86400s: 8640 resets against 8640 check-ins',
     ]);
   });
 
@@ -668,11 +684,11 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
         if (shapeOf(idle) !== shapeOf(diligent)) differing += 1;
         if (purchasesMadeBy(idle) > 0) withAPurchase += 1;
       }
-      return { horizon, pairs, differing, withAPurchase };
+      return `${horizon}s: ${differing} of ${pairs} pairs differ, ${withAPurchase} reached a purchase`;
     });
     expect(observed).toEqual([
-      { horizon: 43_200, pairs: 8, differing: 0, withAPurchase: 7 },
-      { horizon: 86_400, pairs: 8, differing: 0, withAPurchase: 8 },
+      '43200s: 0 of 8 pairs differ, 7 reached a purchase',
+      '86400s: 0 of 8 pairs differ, 8 reached a purchase',
     ]);
   });
 });
@@ -763,11 +779,23 @@ describe('the seams this surface deliberately does not cross', () => {
     //   what is past `bankableOfflineSeconds`' horizon. So while one check-in is
     //   shorter than that horizon, no floor can be built that caps.
     //
-    // BOTH HALVES ARE ASSERTED, because the inequality is what makes this a
-    // bound and the walk is what says the bound is the real one. If a
-    // playtester ever turns `CHECK_IN_SECONDS` past the offline horizon, the
-    // first assertion goes red and this comment stops being true in the same
-    // breath — which is the property five sampled instants did not have.
+    // THREE ASSERTIONS, AND NONE OF THEM IS DOMINATED BY ANOTHER. That is
+    // CLAUDE.md's required check, discharged by measurement rather than by
+    // reading them side by side — each was shown to redden ALONE:
+    //
+    //   `CHECK_IN_SECONDS < cappedAbove`   `CHECK_IN_SECONDS` -> 86_400:
+    //                                      `expected 86400 to be less than 43200`.
+    //   `cappedReadings === 0`             the same cadence with the other two
+    //                                      assertions removed:
+    //                                      `capped readings in 86400s: expected
+    //                                      43199 to be +0`.
+    //   `widestPendingGapSeconds`          `owed` -> `checkInsBy(openSeconds) / 2`,
+    //                                      which leaves the cadence alone and the
+    //                                      cap quiet: `widest previewed gap in
+    //                                      240s: expected 129 to be 9`.
+    //
+    // They read as one fact and are three: what the tuning says, what the engine
+    // discarded, and how far behind the collection mark actually fell.
     const cappedAbove = bankableOfflineSeconds(Number.MAX_SAFE_INTEGER);
     expect(EMPIRE_FLOOR.CHECK_IN_SECONDS).toBeLessThan(cappedAbove);
     for (const horizon of FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS) {
