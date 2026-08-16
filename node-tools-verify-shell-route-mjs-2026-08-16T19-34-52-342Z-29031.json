@@ -35,14 +35,14 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 9,
-    "okCount": 8,
+    "count": 10,
+    "okCount": 9,
     "errors": [],
-    "lastAttemptIso": "2026-08-16T19:42:52.572Z",
+    "lastAttemptIso": "2026-08-16T19:43:52.612Z",
     "lastReason": "heartbeat",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-16T19:41:55.611Z"
+    "lastOkIso": "2026-08-16T19:42:55.484Z"
   }
 }
