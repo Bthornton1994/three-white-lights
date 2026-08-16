@@ -13592,7 +13592,7 @@ const LIMITER_TABLE: readonly (readonly [string, number | null, number | null, n
  * generic type alias that is in a reference cycle — measured above, ten shapes,
  * and the only three that get a certificate while holding a closure are the
  * three cyclic aliases."* It was true of the eighteen shapes it had been asked
- * about. `FAMILY_TABLE` asks sixty-four now, and
+ * about. `FAMILY_TABLE` asks sixty-six now, and
  * `CERTIFIED_WITH_A_REACHABLE_CLOSURE_AND_NOT_A_CYCLIC_ALIAS` is **thirty-eight**
  * — nine intersections, five `{}`-and-union rows, nine library-keyed mapped
  * types, three deferred conditionals and twelve others across six more groups.
@@ -13669,21 +13669,24 @@ const LIMITER_TABLE: readonly (readonly [string, number | null, number | null, n
  * them are certified with a reachable closure. Eleven of the forty-one defeated
  * the whole screen and were reachable, and all eleven are closed by the two
  * readings `memberTypeScreen` now carries. The residual that remains is the
- * sample's own edge and it is a smaller claim: `FAMILY_TABLE` is forty-one
- * shapes chosen by hand, so a forty-second is not covered, and the catcher is
+ * sample's own edge and it is a smaller claim: `FAMILY_TABLE` is sixty-six
+ * shapes chosen by hand, so a sixty-seventh is not covered, and the catcher is
  * still a person adding a row. What has changed is that the person now adds it
  * to a table whose counts are pinned in both directions, so a row added without
  * a verdict is red rather than unmeasured.
  *
- * The one row that is silent and is NOT a bypass is kept in the table as the
- * distinction it draws: `conditional-any-over-string`, a deferred conditional
- * whose base constraint is `string` while its flags say `Conditional`, so the
- * `any` short-circuit never fires and the whole screen goes quiet. No closure is
- * reachable through it — `subject.run()` does not compile — and the only
- * instantiation that holds one is `C<string>`, which IS `any` and is caught by
- * the short-circuit at that position. A silence over a type nothing can be
- * reached through is a gap in a screen and not an escape, and the table says
- * which it is by carrying both columns rather than one verdict.
+ * The rows that are silent and are NOT bypasses are kept in the table as the
+ * distinction they draw, and there are five of them —
+ * `conditional-any-over-string` and `conditional-any-over-string-called`, a
+ * deferred conditional whose base constraint is `string` while its flags say
+ * `Conditional`, so the `any` short-circuit never fires and the whole screen
+ * goes quiet; `control-plain-data`; and the two `never` rows. No closure is
+ * reachable through any of them — `subject.run()` does not compile, and neither
+ * does a call on anything typed `never` — and for the conditional the one
+ * instantiation that holds a closure is `C<string>`, which IS `any` and is
+ * caught by the short-circuit at that position. A silence over a type nothing
+ * can be reached through is a gap in a screen and not an escape, and the table
+ * says which it is by carrying both columns rather than one verdict.
  *
  * The second half is this walk's own collector, and the attempts against it are
  * recorded rather than the impossibility. References are gathered from
@@ -14738,6 +14741,41 @@ const CANDIDATE_SHAPES: readonly CandidateShape[] = Object.freeze([
     why: "THE SHARPEST OF THE TWO, because it is the plainest type in the file. `readonly string[]` is certified by the relation, walked only at its ELEMENT type by the array arm, and `subject.join()` compiles — so under the columns this battery had before this round, the most ordinary type in the directory reads as silent-and-reachable. The supply column is what says it is not: an array of closures is not an array of strings, so the construction is refused",
   }),
 
+  // ---- Group L: the certified-but-EMPTY position, and it is a negative ----
+  //
+  // OFFERED AS A CANDIDATE BYPASS AND MEASURED AS THE OPPOSITE, which is why the
+  // rows are here rather than in a report. The reasoning that produced them is
+  // sound as far as it goes: `never` is assignable to everything, so the
+  // relation certifies and `asked` is false; `isTypeAssignableTo(anyFunction,
+  // never)` is false, so the reading that catches `{}` and `any` at every other
+  // position answers no; no arm counter moves; and `never` appeared in no row of
+  // this table. Every one of those is true, and the shape is still not a bypass,
+  // because the REACH column answers no.
+  //
+  // Measured with the compiler rather than argued: `subject()`,
+  // `subject.entry()` and `subject.entry.peek()` are `TS2349: This expression is
+  // not callable. Type 'never' has no call signatures.` and `TS2339: Property
+  // 'peek' does not exist on type 'never'.`, and the `typeof held === 'function'`
+  // narrowing that reaches `{}` and `any` does not help -- the narrowed type is
+  // still `never`. So this is the same verdict as `conditional-any-over-string`:
+  // a silence over a type nothing can be reached through is a gap in the screen
+  // and not an escape, and the two rows are what make that a measurement.
+  Object.freeze({
+    id: 'never-type',
+    group: 'never',
+    build: `declare const subject: never;\n${REACH_MARKER}`,
+    reach: 'export function reached(): unknown { return subject(); }',
+    why: 'the bottom type at the top level: certified because it is assignable to everything, silent because it admits no function, and NOT reachable because the compiler refuses to call it',
+  }),
+  Object.freeze({
+    id: 'never-behind-a-property',
+    group: 'never',
+    build: `declare const subject: { readonly entry: never };\n${REACH_MARKER}`,
+    reach:
+      "export function reached(): unknown { const held = subject.entry; return typeof held === 'function' ? held() : null; }",
+    why: "the same type one property down, which is the position `any` and `{}` are bypasses at -- the holder certifies, the walk descends and finds nothing, and the reach snippet that works for `any-behind-a-property` and `empty-object-behind-a-property` is refused here. It is the control that says the reach column is what separates the three, and not the screen",
+  }),
+
   // ---- The shape a plant would actually take ----
   Object.freeze({
     id: 'entry-with-an-empty-object-payload',
@@ -14844,6 +14882,8 @@ const FAMILY_TABLE: readonly (readonly [string, boolean, boolean, boolean, boole
   Object.freeze(['library-open-interface-unmapped', false, true, true, true] as const),
   Object.freeze(['library-callable-behind-a-primitive-intersection', true, false, false, true] as const),
   Object.freeze(['library-callable-on-an-array-element-type', true, false, false, true] as const),
+  Object.freeze(['never-type', true, false, false, false] as const),
+  Object.freeze(['never-behind-a-property', true, false, false, false] as const),
   Object.freeze(['entry-with-an-empty-object-payload', true, true, true, true] as const),
   ]);
 
@@ -14983,15 +15023,15 @@ const SUPPLY_REFUSAL_CODES: readonly number[] = Object.freeze([2322, 2739, 2740,
  * `SILENT_REACHABLE_AND_SUPPLIABLE` is the zero that reads them.
  */
 const FAMILY_CENSUS = Object.freeze({
-  ROWS: 64,
+  ROWS: 66,
   /** Distinct groups, so a truncated battery cannot pass as a whole one. */
-  GROUPS: 13,
+  GROUPS: 14,
   /** Rows the relation alone certified as function-free data. */
-  CERTIFYING: 43,
+  CERTIFYING: 45,
   /** Rows whose reach snippet compiles clean. */
   REACHABLE: 58,
   /** Rows the whole screen was silent about. */
-  SILENT: 5,
+  SILENT: 7,
   /** Silent AND reachable. See the paragraph above: this is not the bypass count. */
   SILENT_AND_REACHABLE: 2,
   /** Rows that declare a construction. The supply axis's own denominator. */
@@ -15014,7 +15054,7 @@ const FAMILY_CENSUS = Object.freeze({
    */
   CERTIFIED_REACHABLE_AND_WALKED: 36,
   /** The same battery through `SCREEN_BEFORE_E27`. */
-  BEFORE_E27_SILENT: 28,
+  BEFORE_E27_SILENT: 30,
   BEFORE_E27_SILENT_AND_REACHABLE: 25,
   /**
    * Depth cuts taken anywhere in the sweep, in either configuration.
@@ -15115,6 +15155,24 @@ describe('the family sweep — a cyclic generic alias is not the only shape that
       'library-callable-on-an-array-element-type',
     ]);
     expect(silentAndReachable.length).toBe(FAMILY_CENSUS.SILENT_AND_REACHABLE);
+    // AND THE SILENT ROWS NOTHING CAN BE REACHED THROUGH ARE NAMED TOO, which
+    // is the other half of the same partition and is what the docstring at
+    // `cyclicDeclarations` asserts in prose. A silence over a type that cannot
+    // deliver a closure is a gap in the screen rather than an escape; a row
+    // moving from this list to the one above is the difference between the two,
+    // and a count alone cannot say which way it moved.
+    expect(
+      rows
+        .filter(([, , , holds, reachable]) => !holds && !reachable)
+        .map(([id]) => id)
+        .sort(),
+    ).toEqual([
+      'conditional-any-over-string',
+      'conditional-any-over-string-called',
+      'control-plain-data',
+      'never-behind-a-property',
+      'never-type',
+    ]);
     // AND NOT ONE OF THEM CAN BE BUILT. Every silent-and-reachable row must
     // declare a construction and that construction must be REFUSED by the
     // compiler — so a row cannot join this list by being written without one.
