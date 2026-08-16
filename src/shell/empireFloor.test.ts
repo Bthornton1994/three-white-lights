@@ -69,8 +69,38 @@ const FLOOR_SWEEP = Object.freeze({
   VISITS_PER_SCHEDULE: 6,
   /** The step, in seconds, the monotonicity walk reads the floor at. */
   MONOTONE_STEP_SECONDS: 1,
-  /** How far the monotonicity walk goes. */
-  MONOTONE_SECONDS: 240,
+  /**
+   * How far the monotonicity walks go, in seconds — one entry per horizon.
+   *
+   * 240 USED TO BE THE WHOLE LIST, AND THE ZERO IT PRODUCED WAS A PROPERTY OF
+   * THE WINDOW RATHER THAN OF THE FLOOR. In four minutes this gym makes no
+   * purchase at all — `purchaseMoments` is 0 there, pinned below — so a walk
+   * that stops at 240 s can only ever see the accrual half of the loop. Run the
+   * same walk to twelve hours and one reading drops (`gymBucks` 1199.417 ->
+   * 0.034 at 34300 s); to twenty-four, two (1499.917 -> 0.633 at 56670 s).
+   *
+   * Twelve and twenty-four hours are the horizons a phone reaches while
+   * backgrounded for a working day and for a night, which is why they are the
+   * two added rather than a round number picked for looking thorough. The
+   * sitting stays in the list because it is the domain the old claim was true
+   * over, and its zeros are what say the added horizons are the thing that
+   * moved.
+   */
+  MONOTONE_HORIZONS_SECONDS: Object.freeze([
+    240,
+    12 * EMPIRE_TUNING.SECONDS_PER_HOUR,
+    24 * EMPIRE_TUNING.SECONDS_PER_HOUR,
+  ]),
+  /**
+   * Above this, a horizon is long enough for the gym to have spent money, so it
+   * is one of the horizons the §12.3 pairing is re-enumerated at.
+   *
+   * A threshold rather than a second copy of the two numbers, so the pairing
+   * cannot end up asking about a different set than the walk does.
+   */
+  PAIR_LONG_HORIZON_ABOVE_SECONDS: EMPIRE_TUNING.SECONDS_PER_HOUR,
+  /** How many base visit schedules each LONG pairing horizon enumerates. */
+  LONG_PAIRS_PER_HORIZON: 8,
   /** The fragmenting control's window and its two collection cadences, in seconds. */
   FRAGMENT_SECONDS: 600,
   FRAGMENT_WHOLE_TICK: 1,
@@ -110,6 +140,196 @@ const shapeOf = (floor: EmpireFloor): string =>
     gym: floor.gym,
     readings: empireFloorReadings(floor),
   });
+
+// ---------------------------------------------------------------------------
+// WHICH READINGS ARE COUNTERS, WHICH IS A BALANCE, AND WHICH IS THE SAWTOOTH
+// ---------------------------------------------------------------------------
+
+/**
+ * ===========================================================================
+ * THE OLD CLAIM WAS "EVERY READING IS NON-DECREASING" AND IT IS NOT TRUE
+ * ===========================================================================
+ * It measured zero decreases because it walked 240 seconds, and in 240 seconds
+ * this gym buys nothing. Widen the identical walk and `gymBucks` drops — once
+ * in twelve hours, twice in twenty-four — because `stepGym` step 4 starts a
+ * §5.4 expansion and step 5 recruits a §5.3 lifter out of the money step 3 just
+ * collected. GDD §5.1 is "time passes -> resources generate -> SPEND to expand",
+ * so the drop is the loop working; a floor whose Gym Bucks only ever rose would
+ * be a floor with §5.1's second verb missing.
+ *
+ * THIS IS A DOMAIN-COVERAGE REPAIR AND NOT A §12.3 REMEDIATION, and the
+ * distinction is worth stating plainly because the widened horizon will
+ * otherwise be read as a fairness fix. §12.3 asks whether a player who looks
+ * more often ends up worse off. The drop is not that: two players who arrive at
+ * the same instant see the same drop however differently they looked, which is
+ * `advanceEmpireFloor`'s stated property and is re-enumerated at these same two
+ * long horizons by the pairing check further down (`differing` pinned at 0 with
+ * the count of pairs that actually reached a purchase pinned beside it). What
+ * was wrong here was the CLAIM, which quantified over "every reading" while its
+ * evidence covered a window with no purchase in it.
+ *
+ * So the readings are classified instead of lumped, and the classification is
+ * exhaustive over what the floor draws:
+ *
+ *   - CUMULATIVE. `reputation`, `roster` and `clockSeconds` are counters. §5
+ *     has no path that takes reputation away, removes a lifter or rewinds the
+ *     gym clock, so these are non-decreasing at every horizon and the zero is
+ *     pinned at all three.
+ *   - A BALANCE. `gymBucks` is money. It rises on collection and falls when the
+ *     gym commits it, so it is sawtooth, and what is checked is that it never
+ *     falls at a step where the gym bought NOTHING.
+ *   - THE SAWTOOTH BY CONSTRUCTION. `pendingGymBucks` is the preview of the
+ *     current gap; the check-in that banks it resets it to zero. It falls once
+ *     per check-in and nowhere else, which is pinned in both directions.
+ *   - CATEGORICAL. `equipment` is a rung name. It is not ordered, so no
+ *     monotonicity claim is made about it, and it is named here rather than
+ *     silently dropped from the walk the way it used to be.
+ */
+const CUMULATIVE_READINGS = Object.freeze(['reputation', 'roster', 'clockSeconds'] as const);
+const BALANCE_READING = 'gymBucks' as const;
+const SAWTOOTH_READING = 'pendingGymBucks' as const;
+const CATEGORICAL_READINGS = Object.freeze(['equipment'] as const);
+const NUMERIC_READINGS = Object.freeze([
+  BALANCE_READING,
+  SAWTOOTH_READING,
+  ...CUMULATIVE_READINGS,
+] as const);
+
+type NumericReading = (typeof NUMERIC_READINGS)[number];
+
+/**
+ * How many §5.3 recruitments, §5.4 rungs and roster promotions this gym has
+ * committed to.
+ *
+ * `recruits` counts the ones that have JOINED and `pending` the ones still on
+ * their timer, so the sum moves when a recruitment BEGINS — which is when the
+ * money leaves — and stays put when one completes. That is the moment a fall in
+ * the balance is allowed to happen at.
+ */
+const purchasesMadeBy = (floor: EmpireFloor): number =>
+  floor.gym.expansions + floor.gym.promotions + floor.gym.recruits + floor.gym.pending.length;
+
+/** What one second-by-second walk of the floor saw. Counts, never bounds. */
+interface FloorWalk {
+  readonly read: number;
+  readonly decreases: Readonly<Record<NumericReading, number>>;
+  readonly increases: Readonly<Record<NumericReading, number>>;
+  /** Steps at which the gym committed to a recruit, a rung or a promotion. */
+  readonly purchaseMoments: number;
+  /** Steps at which `stepGym` was asked for at least one check-in. */
+  readonly checkInMoments: number;
+  /** `gymBucks` fell and the gym bought something at that step. */
+  readonly balanceFallsAtAPurchase: number;
+  /** `gymBucks` fell and the gym bought nothing. THE SAFETY COUNT. */
+  readonly balanceFallsWithNoPurchase: number;
+  /** `pendingGymBucks` fell at a step that took a check-in. */
+  readonly sawtoothResetsAtACheckIn: number;
+  /** `pendingGymBucks` fell at a step that did not. THE SAFETY COUNT. */
+  readonly sawtoothFallsAwayFromACheckIn: number;
+  /** The widest gap `accrueProduction` was ever asked about, in whole seconds. */
+  readonly widestPendingGapSeconds: number;
+  /** Readings at which GDD §5.1's offline cap discarded any of that gap. */
+  readonly cappedReadings: number;
+  /**
+   * Every fall of the BALANCE and of the three COUNTERS, as text, so a failure
+   * names the instant rather than a total.
+   *
+   * The sawtooth's resets are counted and not listed: there are one per
+   * check-in — 8640 of them in a day — and a list that long in an assertion
+   * message is noise standing where evidence should be.
+   */
+  readonly namedFalls: readonly string[];
+}
+
+const WALKS = new Map<number, FloorWalk>();
+
+/**
+ * One walk to `horizonSeconds`, memoised.
+ *
+ * Memoised because four separate claims below are about the same walk and
+ * re-running it four times would be four times the cost for the same numbers.
+ * It is a pure function of its argument — `empireFloorAfter` opens a fresh gym
+ * — so the cache cannot leak state between tests.
+ */
+function walkTo(horizonSeconds: number): FloorWalk {
+  const cached = WALKS.get(horizonSeconds);
+  if (cached !== undefined) return cached;
+
+  const decreases: Record<NumericReading, number> = {
+    gymBucks: 0,
+    pendingGymBucks: 0,
+    reputation: 0,
+    roster: 0,
+    clockSeconds: 0,
+  };
+  const increases: Record<NumericReading, number> = { ...decreases };
+  const namedFalls: string[] = [];
+  let read = 0;
+  let purchaseMoments = 0;
+  let checkInMoments = 0;
+  let balanceFallsAtAPurchase = 0;
+  let balanceFallsWithNoPurchase = 0;
+  let sawtoothResetsAtACheckIn = 0;
+  let sawtoothFallsAwayFromACheckIn = 0;
+  let widestPendingGapSeconds = 0;
+  let cappedReadings = 0;
+
+  let previous = empireFloorAfter(0);
+  for (
+    let at = FLOOR_SWEEP.MONOTONE_STEP_SECONDS;
+    at <= horizonSeconds;
+    at += FLOOR_SWEEP.MONOTONE_STEP_SECONDS
+  ) {
+    const now = advanceEmpireFloor(previous, at * EMPIRE_FLOOR.MILLISECONDS_PER_SECOND);
+    read += 1;
+    const before = empireFloorReadings(previous);
+    const after = empireFloorReadings(now);
+    const bought = purchasesMadeBy(now) > purchasesMadeBy(previous);
+    const checkedIn = now.checkIns > previous.checkIns;
+    if (bought) purchaseMoments += 1;
+    if (checkedIn) checkInMoments += 1;
+
+    const gap = now.openSeconds - now.gym.collectedAt.unaccelerated;
+    if (gap > widestPendingGapSeconds) widestPendingGapSeconds = gap;
+    if (pendingWasCapped(now)) cappedReadings += 1;
+
+    for (const key of NUMERIC_READINGS) {
+      if (Number(after[key]) < Number(before[key])) {
+        decreases[key] += 1;
+        if (key !== SAWTOOTH_READING) {
+          namedFalls.push(`at ${at}s ${key} ${before[key]} -> ${after[key]} (bought: ${bought})`);
+        }
+        if (key === BALANCE_READING) {
+          if (bought) balanceFallsAtAPurchase += 1;
+          else balanceFallsWithNoPurchase += 1;
+        }
+        if (key === SAWTOOTH_READING) {
+          if (checkedIn) sawtoothResetsAtACheckIn += 1;
+          else sawtoothFallsAwayFromACheckIn += 1;
+        }
+      }
+      if (Number(after[key]) > Number(before[key])) increases[key] += 1;
+    }
+    previous = now;
+  }
+
+  const walk: FloorWalk = Object.freeze({
+    read,
+    decreases: Object.freeze(decreases),
+    increases: Object.freeze(increases),
+    purchaseMoments,
+    checkInMoments,
+    balanceFallsAtAPurchase,
+    balanceFallsWithNoPurchase,
+    sawtoothResetsAtACheckIn,
+    sawtoothFallsAwayFromACheckIn,
+    widestPendingGapSeconds,
+    cappedReadings,
+    namedFalls: Object.freeze(namedFalls),
+  });
+  WALKS.set(horizonSeconds, walk);
+  return walk;
+}
 
 // ---------------------------------------------------------------------------
 // THE CONTROL: what the naive wiring does, measured on the shipped engine
@@ -293,31 +513,167 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
     expect(naiveMoved).toBe(72);
   });
 
-  it('every reading is non-decreasing as wall time passes', () => {
-    let decreases = 0;
-    let increases = 0;
-    let read = 0;
-    let previous = empireFloorAfter(0);
-    for (
-      let at = FLOOR_SWEEP.MONOTONE_STEP_SECONDS;
-      at <= FLOOR_SWEEP.MONOTONE_SECONDS;
-      at += FLOOR_SWEEP.MONOTONE_STEP_SECONDS
-    ) {
-      const now = advanceEmpireFloor(previous, at * EMPIRE_FLOOR.MILLISECONDS_PER_SECOND);
-      read += 1;
-      const before = empireFloorReadings(previous);
-      const after = empireFloorReadings(now);
-      for (const key of ['gymBucks', 'reputation', 'roster', 'clockSeconds'] as const) {
-        if (Number(after[key]) < Number(before[key])) decreases += 1;
-        if (Number(after[key]) > Number(before[key])) increases += 1;
+  it('every reading the floor draws is classified, and nothing falls out of the walk', () => {
+    // THE SCOPE GUARD. The claims below are stated per class, so a reading added
+    // to `EmpireFloorReadings` that joined none of them would be checked by
+    // nothing and would look exactly like coverage. Both directions, so a class
+    // that stopped naming a live reading is red as well.
+    expect([...NUMERIC_READINGS, ...CATEGORICAL_READINGS].sort()).toEqual(
+      Object.keys(empireFloorReadings(empireFloorAfter(0))).sort(),
+    );
+    expect([BALANCE_READING, SAWTOOTH_READING, ...CUMULATIVE_READINGS].sort()).toEqual(
+      [...NUMERIC_READINGS].sort(),
+    );
+    // ...and the walk really reads all of them, at every horizon it is asked
+    // about, rather than skipping one whose counter stayed at zero.
+    expect(FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS).toEqual([240, 43_200, 86_400]);
+  });
+
+  it('the CUMULATIVE readings never go backwards, at four minutes and at twelve and twenty-four hours', () => {
+    // `reputation`, `roster` and `clockSeconds` are counters, not balances. The
+    // zero is pinned per key and per horizon, and the increase counts beside it
+    // are what say the walk saw a moving floor rather than a stopped one.
+    //
+    // REPUTATION STOPS RISING AND DOES NOT FALL, which is why its increase count
+    // is 2500 at BOTH long horizons: §5.4's reputation line reaches its ceiling
+    // inside twelve hours and then sits there. A plateau is non-decreasing, and
+    // pinning the count rather than a bound is what makes it visible.
+    const observed = FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.map((horizon) => {
+      const walk = walkTo(horizon);
+      const fell = CUMULATIVE_READINGS.filter((key) => walk.decreases[key] > 0);
+      return {
+        horizon,
+        read: walk.read,
+        fell,
+        increases: CUMULATIVE_READINGS.map((key) => walk.increases[key]),
+      };
+    });
+    expect(observed).toEqual([
+      { horizon: 240, read: 240, fell: [], increases: [24, 0, 24] },
+      { horizon: 43_200, read: 43_200, fell: [], increases: [2500, 1, 4320] },
+      { horizon: 86_400, read: 86_400, fell: [], increases: [2500, 2, 8640] },
+    ]);
+  });
+
+  it('GYM BUCKS is a balance, so it falls — and only ever at a step where the gym bought something', () => {
+    // THE RESTATED CLAIM, AND THE ONE THE OLD 240-SECOND WINDOW COULD NOT HAVE
+    // MADE. The old assertion was "every reading is non-decreasing", pinned at
+    // zero decreases; the same walk to twelve hours gives one and to
+    // twenty-four gives two, and re-pinning at two would have pinned a fact
+    // about the window rather than about the floor. What is true at every
+    // horizon is that the balance only falls when the gym has committed money,
+    // and that is the zero worth having.
+    //
+    // THE TWO FALLS, NAMED, so a re-tune that moves them is read as a change
+    // rather than as an arithmetic slip: `gymBucks` 1199.417 -> 0.034 at
+    // 34300 s, and 1499.917 -> 0.633 at 56670 s. Both are `stepGym` step 4
+    // starting a §5.4 expansion.
+    //
+    // AND THE PURCHASE COUNT IS LARGER THAN THE FALL COUNT, which is a fact
+    // about §5 rather than a slack bound: five commitments in twenty-four hours
+    // move this row twice. §5 keeps more than one book and this row draws
+    // `state.gymBucks`, so a commitment funded out of another purse leaves it
+    // alone. Both counts are pinned, so that ratio cannot drift in silence.
+    const observed = FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.map((horizon) => {
+      const walk = walkTo(horizon);
+      return {
+        horizon,
+        withNoPurchase: walk.balanceFallsWithNoPurchase,
+        atAPurchase: walk.balanceFallsAtAPurchase,
+        purchaseMoments: walk.purchaseMoments,
+        rises: walk.increases[BALANCE_READING],
+      };
+    });
+    // THE SAFETY CLAIM IS THE FIRST COLUMN, AND IT IS ZERO AT EVERY HORIZON.
+    expect(
+      observed.filter((row) => row.withNoPurchase > 0),
+      walkTo(86_400).namedFalls.join('\n'),
+    ).toEqual([]);
+    // ...and the rest of the table is the non-vacuity: the domain really does
+    // contain falls at the two long horizons and really does contain none at the
+    // short one, which is the whole finding.
+    expect(observed).toEqual([
+      { horizon: 240, withNoPurchase: 0, atAPurchase: 0, purchaseMoments: 0, rises: 24 },
+      { horizon: 43_200, withNoPurchase: 0, atAPurchase: 1, purchaseMoments: 2, rises: 4319 },
+      { horizon: 86_400, withNoPurchase: 0, atAPurchase: 2, purchaseMoments: 5, rises: 8638 },
+    ]);
+    expect(walkTo(86_400).namedFalls).toEqual([
+      'at 34300s gymBucks 1199.417 -> 0.034 (bought: true)',
+      'at 56670s gymBucks 1499.917 -> 0.633 (bought: true)',
+    ]);
+  });
+
+  it('the SINCE CHECK-IN row is the one that is sawtooth by construction, and it resets at a check-in and nowhere else', () => {
+    // `pendingGymBucks` is the preview of the gap since the last check-in, so
+    // the check-in that banks it takes it back to zero. It was never in the old
+    // walk's key list and nothing said why; it is in the walk now, with its own
+    // claim, because "which readings are monotone" is not answerable while one
+    // of them is quietly excluded.
+    //
+    // BOTH DIRECTIONS. The safety count is a fall away from a check-in — money
+    // disappearing from the preview with nothing banking it — and the pairing
+    // count says the resets really happened, one per check-in, rather than the
+    // row having gone flat.
+    const observed = FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.map((horizon) => {
+      const walk = walkTo(horizon);
+      return {
+        horizon,
+        awayFromACheckIn: walk.sawtoothFallsAwayFromACheckIn,
+        atACheckIn: walk.sawtoothResetsAtACheckIn,
+        checkInMoments: walk.checkInMoments,
+      };
+    });
+    expect(observed).toEqual([
+      { horizon: 240, awayFromACheckIn: 0, atACheckIn: 24, checkInMoments: 24 },
+      { horizon: 43_200, awayFromACheckIn: 0, atACheckIn: 4320, checkInMoments: 4320 },
+      { horizon: 86_400, awayFromACheckIn: 0, atACheckIn: 8640, checkInMoments: 8640 },
+    ]);
+    // ...and every check-in really does reset it, which is the other half of
+    // "at a check-in and nowhere else". A cadence that stopped resetting would
+    // leave `atACheckIn` below `checkInMoments` with both still non-zero.
+    expect(observed.map((row) => row.atACheckIn === row.checkInMoments)).toEqual([
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  it('an extra visit changes nothing at the horizons where the gym SPENDS, either', () => {
+    // THE REASON THE WIDENED WALK ABOVE IS NOT A §12.3 FINDING, CHECKED RATHER
+    // THAN ASSERTED. The pairing at the top of this block enumerates 30 s to
+    // 300 s, where this gym never buys anything — so it could not have said
+    // whether the DROP is engagement-sensitive. This re-enumerates the same
+    // construction at the two long horizons, where it is.
+    //
+    // Both players are read at the same instant and differ only by one extra
+    // look. `withAPurchase` is the non-vacuity that matters here: it counts the
+    // pairs whose floors actually reached a commitment, so a zero `differing`
+    // over pairs that never spent would report itself instead of passing.
+    const horizons = FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS.filter(
+      (horizon) => horizon > FLOOR_SWEEP.PAIR_LONG_HORIZON_ABOVE_SECONDS,
+    );
+    expect(horizons).toEqual([43_200, 86_400]);
+    const observed = horizons.map((horizon) => {
+      const random = generator(FLOOR_SWEEP.SEED);
+      let pairs = 0;
+      let differing = 0;
+      let withAPurchase = 0;
+      for (let index = 0; index < FLOOR_SWEEP.LONG_PAIRS_PER_HORIZON; index += 1) {
+        const base = scheduleOf(random, FLOOR_SWEEP.VISITS_PER_SCHEDULE, horizon);
+        const extra = Math.floor(random() * horizon * EMPIRE_FLOOR.MILLISECONDS_PER_SECOND);
+        const end = Math.max(base[base.length - 1] ?? 0, extra);
+        const idle = floorAfterSchedule([...base, end].sort((a, b) => a - b));
+        const diligent = floorAfterSchedule([...base, extra, end].sort((a, b) => a - b));
+        pairs += 1;
+        if (shapeOf(idle) !== shapeOf(diligent)) differing += 1;
+        if (purchasesMadeBy(idle) > 0) withAPurchase += 1;
       }
-      previous = now;
-    }
-    expect(decreases).toBe(0);
-    expect(read).toBe(240);
-    // NON-VACUITY: the readings really do move, so the zero is not a zero about
-    // a floor that never advanced.
-    expect(increases).toBe(72);
+      return { horizon, pairs, differing, withAPurchase };
+    });
+    expect(observed).toEqual([
+      { horizon: 43_200, pairs: 8, differing: 0, withAPurchase: 7 },
+      { horizon: 86_400, pairs: 8, differing: 0, withAPurchase: 8 },
+    ]);
   });
 });
 
@@ -389,11 +745,40 @@ describe('the floor advances, and these are the numbers', () => {
 });
 
 describe('the seams this surface deliberately does not cross', () => {
-  it('the offline cap never bites here, and the reading that says so can be non-zero', () => {
-    // Every gap on this surface is one check-in, orders of magnitude inside
-    // GDD §5.1's cap, so nothing is ever discarded.
-    for (const at of [0, 7, 60, 600, 3600]) {
-      expect(pendingWasCapped(empireFloorAfter(at)), `at ${at}s`).toBe(false);
+  it('the offline cap cannot bite here, and that is a bound rather than five samples', () => {
+    // ===================================================================
+    // `pendingWasCapped` IS FALSE AT EVERY FLOOR THIS MODULE CAN BUILD, AND
+    // FIVE INSTANTS WERE NEVER EVIDENCE OF THAT
+    // ===================================================================
+    // The old shape here was `toBe(false)` at 0, 7, 60, 600 and 3600 seconds.
+    // Extended, it is false at all 86400 readings of a whole day's walk too —
+    // and that is still a statement about a sampled domain, which is the exact
+    // defect the horizon widening above was for. The honest version is the
+    // reason, and the reason is an inequality between two numbers:
+    //
+    //   `advanceEmpireFloor` takes every check-in it owes before it previews, so
+    //   the gap `accrueProduction` is asked about is
+    //   `openSeconds - checkInReadingAt(checkIns)`, which is strictly less than
+    //   `EMPIRE_FLOOR.CHECK_IN_SECONDS` by construction. The cap discards only
+    //   what is past `bankableOfflineSeconds`' horizon. So while one check-in is
+    //   shorter than that horizon, no floor can be built that caps.
+    //
+    // BOTH HALVES ARE ASSERTED, because the inequality is what makes this a
+    // bound and the walk is what says the bound is the real one. If a
+    // playtester ever turns `CHECK_IN_SECONDS` past the offline horizon, the
+    // first assertion goes red and this comment stops being true in the same
+    // breath — which is the property five sampled instants did not have.
+    const cappedAbove = bankableOfflineSeconds(Number.MAX_SAFE_INTEGER);
+    expect(EMPIRE_FLOOR.CHECK_IN_SECONDS).toBeLessThan(cappedAbove);
+    for (const horizon of FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS) {
+      const walk = walkTo(horizon);
+      expect(walk.cappedReadings, `capped readings in ${horizon}s`).toBe(0);
+      // ...and the gap really is bounded by one check-in, measured rather than
+      // argued: a widest gap of zero would mean the walk never previewed a gap
+      // at all, and the zero above would be a zero about nothing.
+      expect(walk.widestPendingGapSeconds, `widest previewed gap in ${horizon}s`).toBe(
+        EMPIRE_FLOOR.CHECK_IN_SECONDS - FLOOR_SWEEP.MONOTONE_STEP_SECONDS,
+      );
     }
     // THE OTHER DIRECTION, so the false above is not a false about a field that
     // cannot be true. A gap past the horizon really does discard time — read off

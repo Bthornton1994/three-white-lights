@@ -688,8 +688,29 @@ const GUARANTEE_COVERAGE = {
    * legitimate outcome; leaving it standing would not have been.
    *
    * Neither is quoted here, for the reason eight of the notes above give.
+   *
+   * 254 -> 255 WHEN GDD §5's FLOOR STOPPED CLAIMING THE OFFLINE CAP IS QUIET AT
+   * FIVE SAMPLED INSTANTS. Measured per file the same way rather than
+   * apportioned by eye: the round touched `src/shell/empireFloor.test.ts` and
+   * `src/shell/shellWiring.test.ts`, and the second contributes ZERO — several
+   * hundred words of new prose, none of whose headings happens to hold one of
+   * the four trigger words, which is the declared lower-case-and-adjacent blind
+   * spot again. The single new paragraph is the block heading the offline-cap
+   * check in `empireFloor.test.ts`, isolated by lower-casing it and re-reading
+   * this count back to 254.
+   *
+   * IT IS A GUARANTEE RATHER THAN A DECLARATION OF A LIMIT, and it arrived with
+   * its check in the same diff: the claim is that no floor this module can build
+   * caps, and what backs it is an inequality between `EMPIRE_FLOOR
+   * .CHECK_IN_SECONDS` and `bankableOfflineSeconds`' horizon, asserted directly,
+   * plus a measured bound on the widest gap the preview is ever asked about.
+   * The prose it replaces asserted the same thing over five instants. So the
+   * ratio moved the wrong way and the evidence moved the right way, and this
+   * comment is where both are said.
+   *
+   * Not quoted here, for the reason nine of the notes above now give.
    */
-  TREE_WIDE: 254,
+  TREE_WIDE: 255,
 } as const;
 
 // ---------------------------------------------------------------------------
