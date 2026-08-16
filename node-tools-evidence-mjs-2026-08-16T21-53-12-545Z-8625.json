@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-evidence-mjs-2026-08-16T21-53-12-545Z-8625",
+  "label": null,
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "suite"
+  ],
+  "budgetSeconds": 2400,
+  "startedAtIso": "2026-08-16T21:53:12.545Z",
+  "startedAtMs": 1786917192545,
+  "cwd": "/home/user/wt-drawn-reading",
+  "commit": "201c2d2b15d5d45a1c4d8eda9cd039e157bf3c7d",
+  "branch": "claude/drawn-reading-pairing",
+  "dirty": 2,
+  "dirtyPaths": [
+    ".gauntlet/evidence/equipment-provenance.txt",
+    ".gauntlet/evidence/drawn-reading-pairing.txt"
+  ],
+  "runner": {
+    "pid": 8625,
+    "startTick": "440237",
+    "cmdline": "node tools/watchdog.mjs --budget 2400 -- node tools/evidence.mjs suite",
+    "bootId": "1029a23e-88b9-48af-a111-f167c566033d",
+    "bootEpochSeconds": 1786912790,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-16T21:53:12.568Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
