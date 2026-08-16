@@ -972,6 +972,35 @@ sentences go stale is exactly the kind of sentence that goes stale, and the
 correction is worth more than the tidiness. **Whoever adds a third should update
 this number too, or say why the paragraph is a guarantee and take the bump.**
 
+**The undercount is FOUR, and the third and fourth arrived in one round.** Both
+sit in `src/empire/empireForbiddenOutput.test.ts`, both are method notes rather
+than guarantees, and both were verified here by restoring the capitalised word
+and re-reading the count — one word changed and nothing else, `expected 235 to
+be 234` each time. One is a note about how the tripwire table used to be
+measured (`WAS NEVER ADDED` → `WAS NOT ADDED`); the other is a critique of a
+prior round's judgement (`IT NEVER PRICED THE ALTERNATIVE` → `IT DID NOT PRICE
+THE ALTERNATIVE`). The ruling above applies unchanged: neither claims what the
+code guarantees, so neither takes the bump.
+
+**What this round adds to the paragraph rather than merely incrementing it:
+`NEVER` is now three-for-four of the swapped words, and the fourth was `ONLY`.**
+So the four-word list the scan keys on is not being evaded by a thesaurus at
+random — one word is doing most of the work, and in every case the replacement
+was a plain negation of identical force. That sharpens the earlier finding: the
+scan is not measuring emphasis, volume or position, all of which were held
+constant. It is measuring one word.
+
+**AND THE CITATION IS THE TRAP, WHICH IS WORTH MORE THAN THE COUNT.** A
+cross-reference in that file points at the second swap by quoting it. Had it
+quoted the *original* wording — the natural thing to write, since the original
+is what the note is about — the quotation would itself have triggered, and the
+count would have gone to 236 rather than 235. Measured: restoring both sites
+reads `expected 236 to be 234`, and the third increment is the citation, not a
+third claim. This has now caught two agents in this session, mine included.
+**A paragraph discussing a capitalised guarantee must quote the REWORDED form,
+or describe the sentence instead of reproducing it.** The census cannot tell a
+claim from a quotation of one.
+
 ## Subagent Roles
 
 Two subagent definitions live in `.claude/agents/`. Use them; do not improvise
