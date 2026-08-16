@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-capture-cutin-mjs-2026-08-16T09-55-49-888Z-12727",
+  "label": null,
+  "command": [
+    "node",
+    "tools/capture-cutin.mjs"
+  ],
+  "budgetSeconds": 300,
+  "startedAtIso": "2026-08-16T09:55:49.888Z",
+  "startedAtMs": 1786874149888,
+  "cwd": "/home/user/wt-shell-pin",
+  "commit": "515d6c6cf0cffbc22127766f7c30af9f8bbd933c",
+  "branch": "claude/shell-pin-axis",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 12727,
+    "startTick": "814465",
+    "cmdline": "node tools/watchdog.mjs --budget 300 --id capcutin -- node tools/capture-cutin.mjs",
+    "bootId": "3b4e5fe2-30a5-4f9a-9aea-4cfe32e69f38",
+    "bootEpochSeconds": 1786866005,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-16T09:55:49.914Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
