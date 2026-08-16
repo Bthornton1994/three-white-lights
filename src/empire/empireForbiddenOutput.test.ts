@@ -16321,6 +16321,28 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>`.',
     ]),
   }),
+  Object.freeze({
+    id: 'M76',
+    shape:
+      "THE TWENTY-THIRD BYPASS, AND IT IS M67 PUT BACK BEHIND THE ARM IMMEDIATELY ABOVE THE ONE E28 NARROWED. The member walk asks three questions in a row about where a symbol's type comes from — has it no declaration at all, is its declaration the compiler's own, otherwise walk it at that declaration. A HOMOMORPHIC mapped type copies the source property's declaration across (M74 measured that), so a mapped type keyed on `keyof <a default-library interface>` produces members whose declarations are in `lib.es5.d.ts` and `lib.es2017.sharedmemory.d.ts` — and arm two skips them. The value behind each is `{}`, which is M67's type and is caught at every OTHER position by the backwards relation reading; here the walk never descends far enough to ask, because the skip happens one level above it",
+    where:
+      'production.ts, `accrueProduction`: `const PRODUCTION_LIBKEYED: { readonly entry: { readonly [K in keyof ArrayBufferTypes]: {} } }` holding `Object.freeze({ ArrayBuffer: Object.freeze({ peek: (): string => EMPIRE_FORBIDDEN_OUTPUTS[0] }), SharedArrayBuffer: Object.freeze({}) })`, handed back as `shapes: PRODUCTION_LIBKEYED.entry`. The mapped type is written inline in the annotation, so no type declaration is added and the cyclic-declaration census does not move; both keys are identifiers, so neither string census moves; the payload is read out of `EMPIRE_FORBIDDEN_OUTPUTS` through a specifier added to the `./empireCore` import the module already has, so no import edge is added; and there is no cast anywhere in the plant',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'NOTHING CAUGHT IT. Whole tree: `Test Files 1 failed | 83 passed (84)`, `Tests 5 failed | 3433 passed (3438)`, every one of the five in this file and every one a count that moves on any edit of this size — instrument C `expected 1022 to be 1018`, instrument B `expected 2393740 to be 2393060`, the overflow pass `expected 523352 to be 523128`, and the channel census owner tally `- "member": 474 / + "member": 478` twice, once in `derives every escape site` and once in the ambient probe that re-reads the same table.',
+      'THE ASSERTION THAT WOULD NAME THE ROUTE IS GREEN, and the ORDER of that test is what says so rather than an inference: `expect(census.byModule).toEqual(CHANNEL_SITE_COUNTS)` runs BEFORE `census.callTargets` and passed, so there is no `+ "production.ts": 1` under `returned-closure` and no site row. That ordering was put there on purpose by an earlier round, and it is what turns "some count moved" into "the channel table did not".',
+      'AND THE DISAGREEMENT LIST IS GREEN TOO, which is where this differs from M74. M74 read `asked=false walked=true` and produced a disagreement line naming the site. Here BOTH readings are silent — the relation certifies the mapped type because every member is `{}`, and the walk skips every member — so `screenDisagreements` stays empty and the one instrument that reports a split between the two readings has nothing to report.',
+      'AND THE BRANCH RUNS, PRINTED, from the shipped export: `KEYS ["gymBucks","settledGymBucks","trainingIq","offlineSecondsElapsed","offlineSecondsBanked","offlineSecondsDiscarded","trainingIqSecondsElapsed","rates","ledger","shapes"]`, `TYPEOF shapes.ArrayBuffer object`, `TYPEOF shapes.ArrayBuffer.peek function`, `CALLED covered-day`, `gymBucks 0`. `npx tsc --noEmit` exit 0.',
+      'AND NEITHER OF E27\'S TWO READINGS TOUCHES IT, measured on the type before the plant was written rather than argued: the same shape is silent under `SHIPPED_SCREEN_READINGS`, under `{ admitsAFunction: true, synthesizedProperties: false }` and under `SCREEN_BEFORE_E27`. All three read `certifies=true walked=false holds=false cuts=0` with the reach snippet compiling. A reading flip cannot attribute this row, because the arm that swallows it predates both readings.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'THE ARM WAS MEASURED, NOT INFERRED FROM THE SPELLING, and that is the instruction this round was given. A fresh `ts.Program` per candidate, the known family reproduced first — `control-cyclic-alias-at-2 certifies=false`, `control-cyclic-alias-at-3 certifies=true`, `control-literal-nest-at-3 certifies=false` — and then each member of each shape printed with the arm it took. Homomorphic over a default-library interface: `arm2-default-library-skip member=ArrayBuffer declFile=lib.es5.d.ts`. Homomorphic over a project `.d.ts`: `arm3-declared member=held declFile=__e30Ambient.d.ts walked=true`. Remapped with `as Uppercase<K & string>`, over either source: `arm1-synthesized member=ARRAYBUFFER declFile=null walked=true`. So the three arms partition these shapes rather than overlapping, and the silence is entirely arm two.',
+      'A SECOND, INDEPENDENT WITNESS FOR THE SAME ARM: `{ readonly [K in keyof Pick<ArrayBufferTypes, \'ArrayBuffer\'>]: {} }` reads the same four ways and takes the same arm, so the finding is about the declaration the mapped member inherits and not about `ArrayBufferTypes` having two keys.',
+      'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written — `70e0bcba2dee2dbdd00d8cd03e13f03498b4a136` on both sides.',
+    ]),
+  }),
 ]);
 
 /**
@@ -16638,7 +16660,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(75);
+    expect(PLANTED_ROUTES.length).toBe(76);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -16755,8 +16777,13 @@ describe('the routes that were planted, and what each of them cost', () => {
     // type is two characters. There is no recursion to spell, no index
     // signature to write and no cast to place, so none of the accidents the
     // earlier rows had to strip is available to be made.
-    expect(attempts).toBe(102);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(65);
+    // ONE FOR M76, which inherits M67's isolation for the same reason M68 did —
+    // the payload and the holder are M67's, and what is new is the mapped-type
+    // annotation that moves the holder's members behind arm two of the member
+    // walk. Nothing had to be spelled around a census, so there was nothing to
+    // strip.
+    expect(attempts).toBe(103);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(66);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
