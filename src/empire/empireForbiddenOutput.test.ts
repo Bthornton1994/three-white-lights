@@ -16993,6 +16993,24 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
     reddened:
       '`keeps the two kept-wide sites LOUD`: `expected [ …(3) ] to deeply equal [ …(4) ]`, losing `- "__ambientProbe.ts:25 returned=unfollowable:ambientNamespace"` and nothing else. It took `declare namespace ns { const inner: Shape }` to see: an ordinary member access resolves to a `PropertySignature`, which neither predicate admits into the branch, so the two readings are byte-identical on every property in the probe and part only on the one member access whose symbol is a `VariableDeclaration`. A shape that discriminates nothing is not a control, and the first version of this probe had exactly that shape.',
   }),
+  Object.freeze({
+    id: 'G44',
+    what: "E30's reading switched off in `SHIPPED_SCREEN_READINGS` and nothing else touched — arm two put back to deciding on the file-kind question alone, which is the walker M76 walked through",
+    reddened:
+      'four checks, and the one that matters names the rows rather than counting them. `keeps the numbers the zeros are zero against` reddens on its OWN re-check of the shipped screen — `expected [ …(6) ] to deeply equal []` — listing `library-keyed-mapped-holding-a-closure`, `library-keyed-mapped-holding-an-empty-object`, `library-keyed-mapped-through-a-Pick`, `library-keyed-mapped-typed-with-a-library-callable`, `library-generic-instantiated-with-a-closure` and `library-generic-instantiated-with-a-library-callable`: six rows where the screen is silent and a closure is callable through the type with no cast. `answers every row exactly as the table says` reddens first, on `conditional-peek-over-string`. The arm census reddens twice: `expected [ "default-library-skip" ] to deeply equal [ "default-library-skip", …(1) ]` losing `library-retyped`, and `expected +0 to be 6` on the count.',
+  }),
+  Object.freeze({
+    id: 'G45',
+    what: "the identity half of arm two compared against the WRONG SIDE — `memberType === checker.getTypeOfSymbol(symbol)` in place of `memberType === checker.getTypeAtLocation(declaration)`, which is the mis-write that reads as the same idea and is trivially true",
+    reddened:
+      'the same four checks as G44, with the same six rows named and the same `expected +0 to be 6`. That is the row\'s point rather than a repetition: the two mutants are a flag flip and a plausible typo, and they are indistinguishable in the output because the typo makes the comparison compare a value with itself, which is the `MODULE_SOURCE.includes(THE_CONSTANT)` shape this file lists first among its vacuous forms. A check whose two sides can be made identical by one hand-slip is exactly the check that needs a mutant recorded, and this is that mutant.',
+  }),
+  Object.freeze({
+    id: 'G46',
+    what: "the arm claimed for `library-keyed-mapped-remapped-holding-a-closure` changed from `synthesized` to `library-retyped` in `MEMBER_ARM_TABLE` — a lie about WHICH arm answered, with every verdict in the family table left correct",
+    reddened:
+      '`answers every row with the arms the table says, and reaches every arm`: `library-keyed-mapped-remapped-holding-a-closure: arms reached`, `- "library-retyped" / + "synthesized"`. Nothing else moves — the four family-sweep columns are unchanged, because the row is caught either way and the table records only THAT it is caught. This is the row that says the arm census is a second fact and not a restatement: the round\'s question was which arm a shape takes, and a battery that pins only the verdict cannot answer it.',
+  }),
 ]);
 
 /**
@@ -17012,8 +17030,8 @@ describe('the routes that were planted, and what each of them cost', () => {
     // file's own registry rather than forbidden names planted into a shipped
     // module, and they are what says the checks added for the seventh bypass
     // are checks rather than decoration.
-    expect(REGISTRY_MUTANTS.length).toBe(40);
-    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(40);
+    expect(REGISTRY_MUTANTS.length).toBe(43);
+    expect(distinct(REGISTRY_MUTANTS.map((mutant) => mutant.id)).length).toBe(43);
     for (const mutant of REGISTRY_MUTANTS) {
       expect(mutant.what.length, mutant.id).toBeGreaterThan(60);
       // A row that does not name a failure message is a claim that something
