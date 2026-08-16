@@ -16703,6 +16703,26 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` before this row was written — `70e0bcba2dee2dbdd00d8cd03e13f03498b4a136` on both sides.',
     ]),
   }),
+  Object.freeze({
+    id: 'M77',
+    shape:
+      'M76 REPLANTED, BYTE FOR BYTE, AGAINST THE ARM WRITTEN FOR IT. Nothing about the plant changed; what changed is that arm two now asks two questions instead of one, and this member fails the second — its declaration in `lib.es5.d.ts` says `ArrayBuffer` and the member it is standing in for is `{}`',
+    where:
+      'production.ts, `accrueProduction`, identical to M76: the same inline mapped type, the same two frozen keys, the same payload read out of `EMPIRE_FORBIDDEN_OUTPUTS`, handed back as `shapes: PRODUCTION_LIBKEYED.entry`',
+    attempts: 1,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      'DETECTED, AND BY THE ASSERTION THAT NAMES THE ROUTE. `derives every escape site` reddens on `census.byModule` — the line asserted BEFORE the counters — with `+ "production.ts": 1` under `returned-closure`, and `pins the two callback sites` reddens with `+ "production.ts#accrueProduction#closure:.shapes.entry.ArrayBuffer.peek"`, which names the member path the closure sits behind.',
+      'AND THE DISAGREEMENT LIST NAMES IT TOO, which is the instrument M76 was invisible to: `+ "production.ts:538 { readonly ArrayBuffer: {}; readonly SharedArrayBuffer: {}; } asked=false walked=true"`. Under M76 both readings were silent and this list was empty of it; the walk now disagrees with the relation at exactly the planted site, which is the shape of a contained escape rather than a missed one.',
+      'THE ATTRIBUTION, RUN RATHER THAN INFERRED. Same plant, `SHIPPED_SCREEN_READINGS.retypedLibraryMembers` flipped to `false` and nothing else changed: `census.byModule` PASSES, the site list PASSES, and the owner tally `- "member": 474 / + "member": 478` is the only red — silent, exactly as M76 was. So the catch is this reading and not the two E27 added. That flip is a measurement and not work: the file was restored and verified byte-identical afterwards.',
+      'AND THE FAMILY BATTERY HAD THE SAME ANSWER BEFORE THE REPLANT, which is why the replant is confirmation rather than discovery: `library-keyed-mapped-holding-an-empty-object` is this exact type as a row, reading `cert=true walked=true holds=true reach=true` now and `holds=false` under `SCREEN_BEFORE_E27`.',
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'The same four counters M76 moved, and they move for the same reason — they move on any edit of this size: instrument C `expected 1022 to be 1018`, instrument B `expected 2393740 to be 2393060`, the overflow pass `expected 523352 to be 523128`, and the owner tally in two tests. Seven failed of 102 in this file, and three of the seven are the guard.',
+      'production.ts and empireForbiddenOutput.test.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:<path>` — `70e0bcba2dee2dbdd00d8cd03e13f03498b4a136` and `da240d19898005b493b318c23597f5c54a7c61d1`.',
+    ]),
+  }),
 ]);
 
 /**
@@ -17020,7 +17040,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(76);
+    expect(PLANTED_ROUTES.length).toBe(77);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -17142,8 +17162,11 @@ describe('the routes that were planted, and what each of them cost', () => {
     // annotation that moves the holder's members behind arm two of the member
     // walk. Nothing had to be spelled around a census, so there was nothing to
     // strip.
-    expect(attempts).toBe(103);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(66);
+    // ONE FOR M77, which is M76 replanted unchanged against the arm written for
+    // it, so it inherits M76's isolation by construction — the same relationship
+    // M68 has to M67.
+    expect(attempts).toBe(104);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(67);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
