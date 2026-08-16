@@ -888,6 +888,34 @@ export function composeTrainingIqRate(state: EmpireState, at: EmpireClock): Comp
  * through the throw channel, which is the same escape one door along. The
  * `typeof` is what a reader needs and carries no payload.
  *
+ * THE HOLE THAT SENTENCE HAD, CLOSED HERE RATHER THAN RESTATED. It said the
+ * message carries no payload while the SECOND parameter was a bare `string`
+ * interpolated straight into it. `sealRate(value, EMPIRE_FORBIDDEN_OUTPUTS[0])`
+ * type-checked, satisfied the seal census — whose question is whether the body
+ * is a call to this function — and would have built a `RangeError` reading
+ * `... at covered-day ...`. `refuseWith` passes it, because that refusal is on a
+ * message which IS a forbidden name and this one merely contains one. Dead
+ * today, since the check fires only on a non-number; "dead today" is the class
+ * this directory has now watched come alive twice.
+ *
+ * TWO CLOSURES, ON TWO ROUTES, because neither one reaches the other:
+ *   - CONSTRUCTION, by the compiler. `what` is `SealedRateLabel`, the two
+ *     labels this module declares, so handing it a forbidden name is a type
+ *     error rather than a value somebody has to notice. That is the finite
+ *     half — the labels are a list, and a third arrow adds one visibly.
+ *   - LAUNDERING, by the table. `sealRate(v, 'covered-day' as SealedRateLabel)`
+ *     still compiles, since no type reaches past an assertion. So the message
+ *     interpolates the label THIS MODULE resolved out of `SEALED_RATE_LABELS`,
+ *     rather than the caller's string: an unrecognised label resolves to
+ *     nothing and takes the fixed refusal below, which has no substitution in
+ *     it at all. The message's whole alphabet is the two literals declared
+ *     here.
+ *
+ * The limit of that second half, since it is containment and not detection in
+ * the same sense the paragraphs above use: the label check runs when the call
+ * runs. It makes a laundered label unable to reach a reader, and it does not
+ * make a census of call sites unnecessary.
+ *
  * THE ROUTE PAST IT, NAMED CONCRETELY ENOUGH TO PLANT: an arrow written without
  * this call. Nothing in the language forces a body through a helper, so the
  * containment above is worth exactly as much as the enumeration of the sites
@@ -898,9 +926,18 @@ export function composeTrainingIqRate(state: EmpireState, at: EmpireClock): Comp
  * name, and is set-equal to `DECLARED_RETURNED_CLOSURE_SITES` in both
  * directions, so an unsealed arrow and a third arrow are each red with no call.
  */
-function sealRate(value: unknown, what: string): number {
+const SEALED_RATE_LABELS = Object.freeze(['gymBucksPerHour', 'trainingIqPerDay'] as const);
+
+/** The labels `sealRate` will name in a refusal. Nothing else may be one. */
+type SealedRateLabel = (typeof SEALED_RATE_LABELS)[number];
+
+function sealRate(value: unknown, what: SealedRateLabel): number {
+  const declared: string | undefined = SEALED_RATE_LABELS.find((label) => label === what);
+  if (declared === undefined) {
+    refuseWith('rosterRatesAt sealed a rate under a label this module does not declare');
+  }
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    refuseWith(`rosterRatesAt returned a ${typeof value} at ${what}, which is not a rate`);
+    refuseWith(`rosterRatesAt returned a ${typeof value} at ${declared}, which is not a rate`);
   }
   return value;
 }

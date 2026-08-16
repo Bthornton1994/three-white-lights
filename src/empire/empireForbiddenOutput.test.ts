@@ -1733,6 +1733,31 @@ describe('instrument A — no export type admits a forbidden literal, and no new
     ).toEqual([HERE]);
     expect(empireSubdirectories()).toEqual([]);
     expect(shippedModulePaths().length).toBe(SURFACE_CENSUS.MODULES);
+
+    // AND THE NAMESPACE TABLE IS JOINED TO THE SAME WALK, which it was not.
+    // `MODULE_NAMESPACES` is what `driveEverything` reads every exported
+    // CONSTANT out of — attack shape 12's whole domain — and it was ten rows
+    // typed by hand, keyed by file name, joined to nothing. A module added to
+    // this directory without a row there contributes no constants to the drive,
+    // and every count downstream stays honest about a domain that quietly got
+    // smaller: exactly the shape of the fence that named two files while the
+    // directory shipped ten, one instrument over.
+    //
+    // Set-equal in both directions, so a missing row and a stale row each
+    // redden, and each names the file. The failure is a list difference rather
+    // than a number, which is the half that makes it readable.
+    expect(Object.keys(MODULE_NAMESPACES).sort()).toEqual([...shippedModuleNames()].sort());
+    expect(Object.keys(MODULE_NAMESPACES).length).toBe(SURFACE_CENSUS.MODULES);
+    // Non-vacuity: the rows resolve to real namespaces rather than to
+    // `undefined` behind a cast, so an equality over key names alone cannot
+    // pass on a table whose values went missing.
+    let namespaces = 0;
+    for (const [name, namespace] of Object.entries(MODULE_NAMESPACES)) {
+      expect(typeof namespace, name).toBe('object');
+      expect(Object.keys(namespace).length, name).toBeGreaterThan(0);
+      namespaces += 1;
+    }
+    expect(namespaces).toBe(SURFACE_CENSUS.MODULES);
   });
 
   it('pins every bare-string position, in both directions, grouped by the field it is', () => {

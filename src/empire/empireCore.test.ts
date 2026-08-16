@@ -2873,7 +2873,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     expect(filesRead).toBe(shipped.length);
     // Counts before contents, so an empty domain reports itself rather than
     // making the pin below a comparison of two empty lists.
-    expect(singleQuoted.size).toBe(171);
+    // 172 rather than 171 since `sealRate`'s label refusal arrived — a fixed
+    // sentence with no substitution in it, which is what lets that refusal
+    // name an unrecognised label without interpolating one.
+    expect(singleQuoted.size).toBe(172);
     expect(doubleQuoted.size).toBe(0);
     expect(templateChunks.size).toBe(139);
     // And the template collector really reaches the messages, named from the
@@ -3029,7 +3032,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(310);
+    expect(stringsChecked).toBe(311);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
