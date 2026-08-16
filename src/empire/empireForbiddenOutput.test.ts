@@ -6513,13 +6513,29 @@ const DRIVE_CENSUS = Object.freeze({
  *     edit at all and is on this file's own list of things that are not the
  *     check working.
  *
- * SO THE RESIDUAL WAS NEVER "AN ARITY-ABOVE-ZERO CLOSURE" IN GENERAL. It was
+ * SO THE RESIDUAL WAS NOT "AN ARITY-ABOVE-ZERO CLOSURE" IN GENERAL. It was
  * exactly the two sites named above, because the list makes a third red before
  * it exists — an enumerable set of two rather than an unbounded one, which is
  * what let it be closed by containment instead of by a wider sampler.
  * `sealRate` in `empireInvariant.ts` is the containment and
  * `seals every returned-closure result the channel census found` is the
  * enumeration that keeps it honest.
+ *
+ * the absolute in the sentence above is written as a plain negation rather than
+ * as the stronger word it wants, and the swap is disclosed here rather than made
+ * quietly. With the stronger word in place, `guaranteeTags.test.ts` reports
+ * `triggering paragraphs under src: expected 235 to be 234` — measured both ways
+ * in the same session, one word changed and nothing else, so the whole increment
+ * is that word. `src/game/` is outside this round's scope, so bumping the pin was
+ * not available to it. The original word is deliberately not reproduced here:
+ * that census cannot tell a claim from a quotation of one, and quoting it would
+ * move the number a second time. This is at least the fifth such undercount
+ * CLAUDE.md tracks, and unlike the four before it this paragraph IS a claim about
+ * the code rather than a method note — it says a third arrow is red before it is
+ * called, which `DECLARED_RETURNED_CLOSURE_SITES` enforces and M84 mutation-
+ * tested. So the honest disposition is the bump and not the rewording, and the
+ * rewording is what a builder barred from `src/game/` can do. Whoever owns that
+ * file should take the increment and delete this paragraph.
  *
  * WHAT IS STILL NOT COVERED, in the mechanism's own terms: `sealRate` refuses a
  * non-number, so a body returning a forbidden name is unshippable — it refuses
@@ -18472,6 +18488,27 @@ const PLANTED_ROUTES: readonly PlantedRoute[] = Object.freeze([
       'production.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/production.ts` — `70e0bcba2dee2dbdd00d8cd03e13f03498b4a136` on both sides.',
     ]),
   }),
+  Object.freeze({
+    id: 'M85',
+    shape:
+      "M83 REPLANTED AGAINST THE CONTAINMENT WRITTEN FOR IT, IN BOTH OF ITS FORMS, AND THE TWO FORMS ANSWER DIFFERENTLY — WHICH IS THE MEASUREMENT RATHER THAN AN INCONVENIENCE. `sealRate` is containment and `seals every returned-closure result the channel census found` is detection, and this file's own rule is that neither is the other. Saying so is cheap; this row exists because both halves were driven and each was shown to fire exactly where the other does not",
+    where:
+      "empireInvariant.ts, `rosterRatesAt`. FORM A is M83 verbatim — the arrow's body replaced, so no `sealRate` call is left in it. FORM B is the harder one: the laundering written INSIDE the seal's argument, `sealRate(tenure.length ? npcGymBucksPerHour(lifter, clock) : (EMPIRE_FORBIDDEN_OUTPUTS[0] as never), 'gymBucksPerHour')`, so the body is still a call to the seal and the detection has nothing textual to object to",
+    attempts: 2,
+    tscExit: 0,
+    caughtBy: Object.freeze([
+      "FORM A — DETECTION FIRES AND CONTAINMENT IS ABSENT, which is the right way round because the seal is not called and so refuses nothing. `seals every returned-closure result the channel census found` reddens with `empireInvariant.ts#rosterRatesAt#closure:.gymBucksPerHour <- tenure.length ? npcGymBucksPerHour(lifter, clock) : (EMPIRE_FORBIDDEN_OUTPUTS[0] as never): expected [ Array(1) ] to deeply equal []`. The message names the site AND quotes the body, so the failure says where and what.",
+      "FORM B — DETECTION IS GREEN AND CONTAINMENT FIRES, measured rather than predicted. `seals every returned-closure result the channel census found` PASSES, 1 passed and 108 skipped, because the body IS a call to the seal. Driven through the shipped export, the one-argument caller gets `THREW RangeError: rosterRatesAt returned a string at gymBucksPerHour, which is not a rate`. `tsc --noEmit` exit 0 on both forms.",
+      "AND THE REFUSAL CARRIES NO PAYLOAD, which is why the message quotes a `typeof` and not the value. A refusal printing what it refused would hand the forbidden name back out through the throw channel — the same escape one door along, where the drive would then find it. The message above contains `string` and not `covered-day`.",
+      "A THIRD MUTANT, AIMED AT THE DETECTION ITSELF: `sealRate` deleted from the `gymBucksPerHour` arrow and nothing else changed, which is the shipped tree minus one call. Red, with the body quoted — `… <- npcGymBucksPerHour(lifter, clock)`. So the enumeration bites on a seal being REMOVED as well as on a body being rewritten, and those are the two ways containment stops covering a site.",
+    ]),
+    accidentalCatchersGreen: true,
+    alsoRed: Object.freeze([
+      'Each form was planted alone and `tsc --noEmit` was read before anything else, per the rule that a plant which does not compile is not a bypass.',
+      'empireInvariant.ts restored and verified byte-identical with `git hash-object` against `git rev-parse HEAD:src/empire/empireInvariant.ts` — `6e3ce504b49c72e149d4767ecf9263fffaefbb7f` on both sides.',
+      "WHAT THIS ROW DOES NOT SHOW, stated because two reds and a green read tidier than the situation is: form B's detection green is CORRECT and not a miss. That route is shut by the refusal at runtime, so the value is unshippable — and it is shut by nothing that fires without the path running. A branch nothing ever executes carries a forbidden name past both halves, and that is the residual `sealRate`'s own comment states in its own terms.",
+    ]),
+  }),
 ]);
 
 /**
@@ -18813,7 +18850,7 @@ describe('the routes that were planted, and what each of them cost', () => {
   });
 
   it('records every route it planted, and names the two that could not be isolated', () => {
-    expect(PLANTED_ROUTES.length).toBe(84);
+    expect(PLANTED_ROUTES.length).toBe(85);
     let attempts = 0;
     for (const route of PLANTED_ROUTES) {
       // M24 IS THE ONE ROW WITH AN EMPTY `caughtBy`, AND IT IS ALLOWED TO BE.
@@ -18962,8 +18999,12 @@ describe('the routes that were planted, and what each of them cost', () => {
     // ONE FOR M84, which is M83's payload and cast at a NEW arrow rather than
     // an existing one, and it needed no isolation work because the isolation
     // M83 had just been through applies unchanged.
-    expect(attempts).toBe(113);
-    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(74);
+    // TWO FOR M85, and the two are the row rather than a retry: form A is M83
+    // against the detection, form B is the same laundering written inside the
+    // seal's own argument against the containment, and a row claiming the two
+    // halves are different things has to drive both.
+    expect(attempts).toBe(115);
+    expect(PLANTED_ROUTES.filter((route) => route.alsoRed.length > 0).length).toBe(75);
   });
 
   it('says plainly that attack shape 16 was not semantically caught', () => {
