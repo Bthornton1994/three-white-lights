@@ -3526,6 +3526,14 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
   // size is pinned against `FAMILY_CENSUS.SUPPLY_ROWS` and it is joined to the
   // shapes that declare a snippet in both directions.
   'SUPPLY_TABLE',
+  // E31's interning probe. It is the one list here that carries its OWN
+  // subjects as well as their verdicts, and it is filed as a census rather than
+  // a fixture on the strength of what a `FIXTURE_LISTS` row would add: a size
+  // pin. `INTERNING_CENSUS.SHAPES` already pins its length, `MEMBERS` pins the
+  // denominator it drove, and every row's two numbers are asserted per shape —
+  // so the row would be a second copy of a pin that already exists, which is
+  // the shape of a check that goes stale in one place and not the other.
+  'INTERNING_SHAPES',
 ]);
 
 /**
@@ -3591,7 +3599,7 @@ const DOMAIN_CENSUS = Object.freeze({
   ALIASES: 7,
   NON_DOMAIN_LISTS: 1,
   LITERAL_AXES: 8,
-  LABELLED_LISTS: 24,
+  LABELLED_LISTS: 25,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
@@ -15034,6 +15042,259 @@ describe('the arm census — the three questions the member walk asks, counted',
 });
 
 // ---------------------------------------------------------------------------
+// The interning probe — what reference equality on types costs, measured
+// ---------------------------------------------------------------------------
+
+/**
+ * Arm two's identity half is `memberType === checker.getTypeAtLocation(
+ * declaration)` — REFERENCE equality on compiler-interned type objects. This is
+ * the measurement of what that costs, taken rather than reasoned about.
+ *
+ * E30 declared the residual and could not bound it: the test behaved correctly
+ * on every shape driven, and where the checker interns two structurally
+ * identical types as distinct objects was unmeasured. The domain is NOT empty,
+ * and the shape that populates it is here:
+ *
+ *     { readonly [K in keyof Pick<RegExpExecArray, 'groups'>]: RegExpExecArray[K] }
+ *
+ * `groups` is declared `groups?: { [key: string]: string }` in `lib.es5.d.ts`,
+ * the mapped member's type PRINTS identically, the two are mutually assignable,
+ * and they are different objects. So reference equality says "this member was
+ * retyped" about a member carrying exactly the type its declaration declares.
+ *
+ * THE DIRECTION OF THE ERROR, WHICH IS THE PART THAT DECIDES WHETHER IT MATTERS.
+ * A disagreement can only be `identical=false` where structural identity would
+ * say true — the other way round is not available, because two different types
+ * are two different objects and one object is one type. `false` here means the
+ * member is WALKED rather than skipped, so the error is towards looking, and
+ * looking is the direction this whole file is built to fail in.
+ *
+ * AND THE VERDICT DOES NOT MOVE, measured on that shape rather than argued:
+ * with `retypedLibraryMembers` on, `groups` takes `library-retyped` and the walk
+ * descends into `{ [key: string]: string } | undefined`; with it off, `groups`
+ * is skipped. `screenHolds` is `false` both ways and under `SCREEN_BEFORE_E27`
+ * as well. The whole cost is extra walking: the descent enumerates the index
+ * signature's value type and its member table, which under TypeScript
+ * `MEMBER_ARM_CENSUS.MEASURED_UNDER_TYPESCRIPT` is 52 members examined instead
+ * of 1 skipped, for the same answer.
+ *
+ * SO THE HONEST ANSWER IS THAT THE NOISY DIRECTION IS ACCEPTABLE, and the number
+ * is: 2 disagreements out of 118 library-declared members over the shapes below,
+ * both of them `identical=false` where structural identity says true, neither
+ * changing a verdict. What is pinned here is the disagreement COUNT per shape
+ * and the verdict-invariance — not the 52, which is a property of the
+ * TypeScript install for the same reason `SKIPPED_MEMBERS` is.
+ *
+ * WHAT IT DOES NOT COVER: the shapes below are hand-picked, so a twelfth shape
+ * is not measured, and the catcher for that is a person adding a row — the same
+ * limit `FAMILY_TABLE` states about itself. The counts being pinned in both
+ * directions is what stops a row being added without a verdict.
+ */
+const INTERNING_SHAPES: readonly (readonly [string, string, number, number])[] = Object.freeze([
+  // [id, subject declaration, library-declared members, disagreements]
+  Object.freeze([
+    'identity-map-over-a-library-interface',
+    'declare const subject: { readonly [K in keyof PerformanceMarkOptions]: PerformanceMarkOptions[K] };',
+    2,
+    0,
+  ] as const),
+  Object.freeze([
+    'Readonly-over-a-library-interface',
+    'declare const subject: Readonly<PerformanceMarkOptions>;',
+    2,
+    0,
+  ] as const),
+  Object.freeze([
+    'Partial-over-a-library-interface',
+    'declare const subject: Partial<PerformanceMarkOptions>;',
+    2,
+    0,
+  ] as const),
+  Object.freeze([
+    'Required-over-a-library-interface',
+    'declare const subject: Required<PerformanceMarkOptions>;',
+    2,
+    0,
+  ] as const),
+  Object.freeze([
+    'library-member-whose-type-is-an-anonymous-object',
+    "declare const subject: { readonly [K in keyof Pick<RegExpExecArray, 'groups'>]: RegExpExecArray[K] };",
+    1,
+    1,
+  ] as const),
+  Object.freeze([
+    'the-same-member-rebuilt-by-hand',
+    "declare const subject: { readonly [K in keyof Pick<RegExpExecArray, 'groups'>]: { readonly [P in string]: string } | undefined };",
+    1,
+    1,
+  ] as const),
+  Object.freeze([
+    'identity-map-over-String',
+    'declare const subject: { readonly [K in keyof String]: String[K] };',
+    52,
+    0,
+  ] as const),
+  Object.freeze([
+    'identity-map-over-Date',
+    'declare const subject: { readonly [K in keyof Date]: Date[K] };',
+    45,
+    0,
+  ] as const),
+  Object.freeze([
+    'identity-map-over-a-nine-member-options-bag',
+    'declare const subject: { readonly [K in keyof NotificationOptions]: NotificationOptions[K] };',
+    9,
+    0,
+  ] as const),
+  Object.freeze([
+    'identity-map-over-a-two-member-options-bag',
+    'declare const subject: { readonly [K in keyof PaymentMethodData]: PaymentMethodData[K] };',
+    2,
+    0,
+  ] as const),
+]);
+
+const INTERNING_CENSUS = Object.freeze({
+  SHAPES: 10,
+  /** Library-declared members examined, summed. The denominator. */
+  MEMBERS: 118,
+  /** Members where reference equality and mutual assignability disagree. */
+  DISAGREEMENTS: 2,
+  /** Of those, the ones in the direction that SKIPS rather than walks. Zero. */
+  DISAGREEMENTS_TOWARDS_SKIPPING: 0,
+});
+
+interface InterningReading {
+  readonly members: number;
+  readonly disagreements: readonly string[];
+  readonly towardsSkipping: readonly string[];
+}
+
+function interningReading(build: string): InterningReading {
+  const options = compilerOptions();
+  const program = programWith(
+    options,
+    [CANDIDATE_SUBJECT_PATH],
+    `${build}\nexport {};\n`,
+    CANDIDATE_SUBJECT_PATH,
+    [...FUNCTION_FREE_DATA_FILE],
+  );
+  const file = program.getSourceFile(CANDIDATE_SUBJECT_PATH);
+  if (file === undefined) throw new Error('the interning subject is not in the program');
+  const checker = program.getTypeChecker();
+  let subject: ts.Type | null = null;
+  const find = (node: ts.Node): void => {
+    if (subject !== null) return;
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === 'subject'
+    ) {
+      subject = checker.getTypeAtLocation(node.name);
+      return;
+    }
+    node.forEachChild(find);
+  };
+  find(file);
+  if (subject === null) throw new Error('the interning shape declares no subject');
+  const subjectType: ts.Type = subject;
+
+  let members = 0;
+  const disagreements: string[] = [];
+  const towardsSkipping: string[] = [];
+  for (const symbol of subjectType.getProperties()) {
+    const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0];
+    if (declaration === undefined) continue;
+    if (!declaredInTheDefaultLibrary(program, declaration)) continue;
+    members += 1;
+    const memberType = checker.getTypeOfSymbolAtLocation(symbol, declaration);
+    const declaredType = checker.getTypeAtLocation(declaration);
+    const identical = memberType === declaredType;
+    const structural =
+      checker.isTypeAssignableTo(memberType, declaredType) &&
+      checker.isTypeAssignableTo(declaredType, memberType);
+    if (identical === structural) continue;
+    const line = `${symbol.getName()} identical=${String(identical)} structural=${String(
+      structural,
+    )} member=${checker.typeToString(memberType)} declared=${checker.typeToString(declaredType)}`;
+    disagreements.push(line);
+    // The dangerous direction: reference equality says SAME about two types
+    // structural identity would separate, so a genuinely retyped member is
+    // skipped. Pinned at zero, and it is zero for a structural reason rather
+    // than by luck — one type object is one type.
+    if (identical) towardsSkipping.push(line);
+  }
+  return {
+    members,
+    disagreements: Object.freeze(disagreements),
+    towardsSkipping: Object.freeze(towardsSkipping),
+  };
+}
+
+describe('the interning probe — reference equality on types, and what it costs', () => {
+  it('answers every shape as the table says, and the domain is not empty', () => {
+    expect(INTERNING_SHAPES.length).toBe(INTERNING_CENSUS.SHAPES);
+    let members = 0;
+    let disagreements = 0;
+    let towardsSkipping = 0;
+    for (const [id, build, expectedMembers, expectedDisagreements] of INTERNING_SHAPES) {
+      const reading = interningReading(build);
+      expect(reading.members, `${id}: library-declared members`).toBe(expectedMembers);
+      expect(
+        reading.disagreements.length,
+        `${id}: ${reading.disagreements.join(' | ')}`,
+      ).toBe(expectedDisagreements);
+      members += reading.members;
+      disagreements += reading.disagreements.length;
+      towardsSkipping += reading.towardsSkipping.length;
+    }
+    expect(members).toBe(INTERNING_CENSUS.MEMBERS);
+    // NOT AN EMPTY DOMAIN. E30 could not bound this and the honest reading of
+    // that was that it might never happen; it happens, twice, and the rows are
+    // named. A zero here would mean the probe never found the case it is about.
+    expect(disagreements).toBe(INTERNING_CENSUS.DISAGREEMENTS);
+    expect(disagreements).toBeGreaterThan(0);
+    // AND EVERY ONE OF THEM IS IN THE DIRECTION THAT WALKS. This is the number
+    // that decides whether the residual matters, and it is zero.
+    expect(towardsSkipping).toBe(INTERNING_CENSUS.DISAGREEMENTS_TOWARDS_SKIPPING);
+  }, 600_000);
+
+  it('costs walking and not a verdict, on the shape that disagrees', () => {
+    const shape: CandidateShape = {
+      id: 'interning-verdict',
+      group: 'interning',
+      build: `declare const subject: { readonly [K in keyof Pick<RegExpExecArray, 'groups'>]: RegExpExecArray[K] };\n${REACH_MARKER}`,
+      reach:
+        "export function reached(): unknown { const held = subject.groups; return typeof held === 'function' ? held() : null; }",
+      why: 'the interning probe, read through the screen rather than through the member table',
+    };
+    const withIdentity = candidateReading(shape, SHIPPED_SCREEN_READINGS);
+    const withoutIdentity = candidateReading(shape, {
+      ...SHIPPED_SCREEN_READINGS,
+      retypedLibraryMembers: false,
+    });
+    expect(withIdentity.diagnostics).toEqual([]);
+    // The disagreement moves the member between arms — with the identity half
+    // on it is walked, with it off it is skipped — so the two configurations
+    // really are different here rather than agreeing for a boring reason.
+    expect(withIdentity.arms['library-retyped']).toBe(1);
+    expect(withoutIdentity.arms['library-retyped']).toBe(0);
+    expect(withoutIdentity.arms['default-library-skip']).toBe(1);
+    // AND THE ANSWER IS THE SAME. That is the whole finding: the cost of
+    // reference equality here is a descent, not a verdict.
+    expect(withIdentity.screenHolds).toBe(withoutIdentity.screenHolds);
+    expect(withIdentity.screenHolds).toBe(false);
+    // The extra walking, as a number rather than as a shrug. It is
+    // library-version-sensitive for the same reason `SKIPPED_MEMBERS` is, so it
+    // is asserted as a strict increase rather than pinned — the claim being
+    // made is "it walks more", and that is what is checked.
+    expect(withIdentity.arms['default-library-skip']).toBeGreaterThan(
+      withoutIdentity.arms['default-library-skip'],
+    );
+  }, 600_000);
+});
+
+// ---------------------------------------------------------------------------
 // The member-call pass — the half `DECLARED_MEMBER_CALLS_ON_PARAMETERS` cannot be
 // ---------------------------------------------------------------------------
 
@@ -18393,6 +18654,7 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   // accepts are `||`ed inside a single `if` rather than written as three, and
   // its continuation recurses on the same binding — so it is a `next-statement`
   // terminal that DOES read the subject, and it is not on the blind list.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#find<interningReading#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#findSubject<candidateReading#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
   // The screen's own battery and the second reading of the depth limit, both
   // added this round. `deepestFrom`'s ladder is `dispatch: false` because its
@@ -18598,11 +18860,11 @@ const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
   /** Rows in `DECLARED_HANDLER_ROWS`. Every one a tally or an enum read. */
   DISCRIMINANT_LOOKUPS: 8,
-  CHAINS: 91,
-  DISPATCH: 57,
+  CHAINS: 92,
+  DISPATCH: 58,
   BY_TERMINAL: Object.freeze({
     else: 8,
-    'next-statement': 68,
+    'next-statement': 69,
     loop: 13,
     enclosing: 2,
     /**
