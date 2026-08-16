@@ -2636,10 +2636,29 @@ async function checkNavTableMatchesTuning() {
   // with this pin absent would leave that section comparing a screen against a
   // string nothing prints, which is green and measures nothing.
   //
-  // THE FOUR ROW LABELS JOINED THIS LOOP when section 10 started reading the
-  // rows instead of their container's opacity. Only the LABELS: a row's reading
-  // comes from `createEmpireState()`, and cross-checking that against the module
-  // the section is about would be an oracle restating its subject.
+  // THE ROW LABELS JOINED THIS LOOP when section 10 started reading the rows
+  // instead of their container's opacity. Only the LABELS, and the reason used
+  // to be stated wrongly here: it said cross-checking a row's reading against
+  // the module the section is about "would be an oracle restating its subject".
+  //
+  // THAT IS TRUE OF A VALUE AND FALSE OF A WIRING FACT, and the difference is
+  // what let a real defect sit green for a round. Asserting that a row's NUMBER
+  // equals the same number computed a second time is the oracle-mirrors-subject
+  // shape and buys nothing. Asserting that the row carrying `empire-stat-rep`
+  // draws the FIELD `reputation` is not a number comparison at all — it is a
+  // claim about which quantity reaches which pixel, it has no oracle problem,
+  // and while nothing made it the screen could draw Gym Bucks under a label
+  // reading REPUTATION with every check in this tool green. Measured at
+  // 2b6612e: the swap left this tool's 306 checks and the whole node suite
+  // passing.
+  //
+  // IT IS STILL NOT THIS TOOL'S CLAIM, for the reason the labels are: this
+  // reads the DOM, and the DOM carries a rendered string with no field name on
+  // it. `shellWiring.test.ts`'s `DRAWN_FROM_PURE_STATE.ROWS` pins the pairing
+  // out of the source, in both directions, and the tag it declares
+  // (`each-empire-row-draws-the-reading-its-label-names`) carries three
+  // mutation witnesses. The old sentence refused the right work for the wrong
+  // reason; the work was done one instrument over.
   for (const [name, mine] of [
     ['EMPIRE_LEAD', BEAT_SAYS.EMPIRE_FLOOR],
     ['EMPIRE_NAV_LABEL', EMPIRE_NAV_SAYS.OPEN],

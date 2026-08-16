@@ -49,6 +49,19 @@
  * apart. Provenance is the discriminator; the tag above names it, and
  * `MUTATION_WITNESSES` carries the mutant that reddens it.
  *
+ * ---------------------------------------------------------------------------
+ * AND WHICH ROW DRAWS WHICH READING, WHICH IS A SECOND CLAIM AND NOT THAT ONE
+ * ---------------------------------------------------------------------------
+ * Provenance says a row's value came out of the gym. It says nothing about
+ * which field of the gym, so `readings.gymBucks` under the reputation label
+ * traces perfectly and is false — and the reputation reading, which is the axis
+ * gating the NPC ladder and the sponsor line, would then be recomputed on
+ * every refresh and painted nowhere. Each row below is bound to the field its
+ * label names, as a set equality in both directions over the pairs a scan reads
+ * out of this file, so a swapped row, a second row drawing a field already
+ * drawn, and a deleted row are each named in a failure.
+ * `@guarantee each-empire-row-draws-the-reading-its-label-names`
+ *
  * Tunable chrome and the check-in cadence live in `shellTuning.ts`. Colour is
  * `LIFT_PALETTE`, same room as the rest of the shell. No constants in this
  * `.tsx` — `src/tuning/audit.ts` allows none.

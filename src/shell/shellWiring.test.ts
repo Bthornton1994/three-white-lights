@@ -30,6 +30,7 @@ import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 import { appMeetPort, appSessionPort } from './appServer';
+import { empireFloorReadings, openEmpireFloor } from './empireFloor';
 import { meetDayFactsFromCache } from '../game/meetClient';
 import { meetResultProposal } from '../game/meetDay';
 import { playMeet } from '../game/meetPreview';
@@ -1189,7 +1190,12 @@ describe('every screen the shell mounts reports its beat', () => {
  *     narrow is that the screen's readings are the only numbers on it, which is
  *     a fact about today's file rather than a property this enforces.
  *   - IT SAYS NOTHING ABOUT WHETHER THE READING IS CORRECT. `gymBucks` drawn
- *     into the reputation row traces perfectly and is wrong.
+ *     into the reputation row traces perfectly and is wrong. THAT HALF IS
+ *     `DRAWN_FROM_PURE_STATE.ROWS` NOW, added a round later and after the swap
+ *     had been planted and measured green — the sentence above was accurate,
+ *     sat here for a round, and nothing in the tree could redden on it. What
+ *     the pairing pin reaches and what it still does not is written on that
+ *     constant rather than restated here.
  *   - AND IT IS ROOTED AT THE SCREEN, WHICH NO LONGER PRODUCES THE VALUES. This
  *     is the sharpest of the four and it was measured rather than reasoned
  *     about. `SCREEN_FILE` is `EmpireScreen.tsx`; the screen draws
@@ -1227,18 +1233,44 @@ const DRAWN_FROM_PURE_STATE = Object.freeze({
   /** Follow budget, same number and same reason as `HAND_OFF.MAX_DEPTH`. */
   MAX_DEPTH: 8,
   /**
-   * How many readings the floor draws today: collected Gym Bucks, the Bucks
-   * banked since the last check-in, reputation, roster size, the equipment rung,
-   * and the gym's own clock.
+   * WHICH READING EACH ROW DRAWS, WHICH IS A DIFFERENT QUESTION FROM WHERE IT
+   * CAME FROM.
    *
-   * A COUNT AND NOT A BOUND. Both filters below are empty when the discovery
-   * finds nothing, which is exactly how a scan that stopped matching looks.
+   * The provenance walk above answers "did this value come out of the gym". It
+   * does not answer "out of WHICH field of the gym", and its own header says so
+   * — `gymBucks` drawn into the reputation row traces perfectly and is false.
+   * Measured, at 2b6612e, before this list existed: swapping
+   * `value={readings.reputation}` for `value={readings.gymBucks}` on the row
+   * labelled REPUTATION left `npx vitest run src/shell
+   * src/game/guaranteeTags.test.ts` at 139 passed and `npx tsc --noEmit` at exit
+   * 0. The browser tool was no better and could not be: it asserts the label,
+   * which comes from untouched `SHELL_COPY`, and that the value advances, which
+   * Gym Bucks does. Nothing in the repository read the pairing, and the datum
+   * that decides it — `DrawnReading.expression` — was collected on every run and
+   * reached a failure-message template string and no predicate.
    *
-   * 4 -> 6 when GDD §11's ruling let the floor advance. The two new rows are the
-   * two that MOVE between one look and the next, which is why the browser check
-   * reads them twice.
+   * A LIST AND NOT A COUNT, and the difference is what makes it bite. A count
+   * pins how many rows there are; this pins which field each of them draws, so a
+   * permutation of two rows' values is red, a second row drawing a field already
+   * drawn is red, and a row deleted is red. The count is implied by it, which is
+   * why the count that used to live here is gone — see the test below.
+   *
+   * TEXT AND NOT A RESOLVED SYMBOL, said plainly because it is the limit. Each
+   * entry is the row's testID and its value expression as written, one layer of
+   * quotes or JSX braces stripped and whitespace flattened. So it is red on a
+   * rename of a field and on a reformat that changes the expression's tokens,
+   * and it is blind to `empireFloorReadings` putting the wrong quantity in a
+   * correctly-named field one file down. That half is `empireFloor.test.ts`'s
+   * per-row value pins, which is where the equivalent hardcode was caught.
    */
-  READINGS: 6,
+  ROWS: Object.freeze([
+    'empire-stat-bucks <- readings.gymBucks',
+    'empire-stat-pending <- readings.pendingGymBucks',
+    'empire-stat-rep <- readings.reputation',
+    'empire-stat-roster <- readings.roster',
+    'empire-stat-equipment <- readings.equipment',
+    'empire-stat-clock <- readings.clockSeconds',
+  ]),
 });
 
 /** Is `name`, as used inside `module`, the pure constructor imported from `src/empire/`? */
@@ -1314,8 +1346,54 @@ interface DrawnReading {
   readonly testID: string;
   /** The value expression as written, so a failure names what was drawn instead. */
   readonly expression: string;
+  /**
+   * The property names the value expression reads, in source order.
+   *
+   * `{readings.gymBucks}` gives `['gymBucks']`. Structural rather than a
+   * substring match on the expression text, so `pendingGymBucks` is its own
+   * field and not a sighting of `gymBucks`. It is what lets the check below ask
+   * the other direction — is any field of the floor computed and painted
+   * nowhere — which a pinned list of rows on its own does not answer.
+   */
+  readonly fields: readonly string[];
   /** Does that expression trace to the pure constructor? */
   readonly fromPureState: boolean;
+}
+
+/**
+ * One layer of quotes or JSX braces off, whitespace flattened.
+ *
+ * `getText` on a JSX attribute's initializer hands back `"empire-stat-rep"` for
+ * a string and `{readings.reputation}` for an expression, so a pinned row would
+ * otherwise be written with the delimiters in it and read worse for no gain.
+ * Flattening whitespace is what stops a reformat of a wrapped `<Stat …>` from
+ * reddening a pin about which field it draws — a spurious red is its own defect
+ * and this is the one place it was cheap to remove.
+ */
+function unwrapped(text: string): string {
+  const flattened = text.split(/\s+/).join(' ').trim();
+  const stripped = /^\{[\s\S]*\}$/.test(flattened)
+    ? flattened.slice(1, -1)
+    : /^"[\s\S]*"$/.test(flattened) || /^'[\s\S]*'$/.test(flattened)
+      ? flattened.slice(1, -1)
+      : flattened;
+  return stripped.trim();
+}
+
+/** A row as `<testID> <- <value expression>`, which is the unit `ROWS` pins. */
+function rowPairing(reading: DrawnReading): string {
+  return `${unwrapped(reading.testID)} <- ${unwrapped(reading.expression)}`;
+}
+
+/** Every property name read anywhere inside a value expression. */
+function fieldsRead(node: ts.Node, ast: ts.SourceFile): string[] {
+  const names: string[] = [];
+  const visit = (child: ts.Node): void => {
+    if (ts.isPropertyAccessExpression(child)) names.push(child.name.getText(ast));
+    ts.forEachChild(child, visit);
+  };
+  visit(node);
+  return names;
 }
 
 /**
@@ -1344,6 +1422,7 @@ function drawnReadingsIn(module: Module, loader: Loader): readonly DrawnReading[
         readings.push({
           testID,
           expression: value.getText(module.ast),
+          fields: fieldsRead(value, module.ast),
           fromPureState: tracesToPureState(value, module, loader),
         });
       }
@@ -1496,13 +1575,77 @@ describe('the numbers on GDD §5’s floor come from GDD §5’s own module', ()
       );
     expect(unbound, unbound.join('\n')).toEqual([]);
 
-    // NON-VACUITY, AS A COUNT RATHER THAN A BOUND. The filter above is empty
-    // when the discovery finds nothing, which is how a scan that stopped
-    // matching looks from the outside.
-    expect(
-      readings.length,
-      `${file} draws ${readings.length} reading(s): ${readings.map((r) => r.testID).join(', ')}`,
-    ).toBe(DRAWN_FROM_PURE_STATE.READINGS);
+    // A COUNT PIN LIVED HERE — `readings.length` against
+    // `DRAWN_FROM_PURE_STATE.READINGS`, 6 — AND IT IS DELETED, with the
+    // domination recorded rather than the check quietly removed. The pairing
+    // test directly below pins the multiset of rows against a six-entry list,
+    // so `readings.length === 6` is implied by it in every state of the
+    // subject: no discovery can move the count while agreeing with the list.
+    // Same shape as the two deletions already recorded in this file and in
+    // `empireFloor.test.ts`, and it was compared symbolically rather than by
+    // eye — one signature is built per element of `readings`, so the pinned
+    // list's length IS this count.
+    //
+    // WHAT THE DELETION COSTS, said plainly because it is a real cost. The
+    // filter above is empty when the discovery finds nothing, so this
+    // assertion no longer carries its own non-vacuity: a scan that stopped
+    // matching passes it. What reports an empty discovery is the pairing test
+    // below — same file, same describe block, same `drawnReadingsIn` call —
+    // which goes red with `expected [] to deeply equal [ …(6) ]`. Two adjacent
+    // tests, one guard between them, and this comment is where a reader is
+    // told which one holds it.
+  });
+
+  it('each row draws the reading its label names [each-empire-row-draws-the-reading-its-label-names]', () => {
+    // THE ASSERTION THE ROW-SWAP MUTANT REDDENS, and the one whose absence let
+    // that mutant sit green through a whole round. Provenance says a value came
+    // out of the gym; this says which field of the gym it is. Both directions
+    // in one comparison: a row drawing a different field is an entry the pin
+    // does not have AND an entry it has that the screen no longer draws, so a
+    // permutation of two rows fails twice over rather than cancelling out.
+    //
+    // SORTED, so the order the rows appear in the JSX is deliberately not
+    // pinned. Moving the REPUTATION row above the ROSTER row is a layout
+    // change with no reading behind it, and a pin that reddens on it would be
+    // friction with nothing behind it either. The cost is stated rather than
+    // implied: swapping two rows WHOLE — label, testID and value together — is
+    // invisible here, and what would see it is a screen-order check nothing in
+    // this tree makes.
+    const file = DRAWN_FROM_PURE_STATE.SCREEN_FILE;
+    const readings = drawnReadingsIn(parseModule(file, source(file)), loadFromDisk);
+    const drawn = readings.map(rowPairing).sort();
+    const pinned = [...DRAWN_FROM_PURE_STATE.ROWS].sort();
+    const report =
+      `${file} pairs its rows with its readings as:\n  ${drawn.join('\n  ')}\n` +
+      `and DRAWN_FROM_PURE_STATE.ROWS says:\n  ${pinned.join('\n  ')}`;
+
+    expect(drawn, report).toEqual(pinned);
+  });
+
+  it('and no reading the floor computes is painted nowhere', () => {
+    // THE OTHER DIRECTION, AND IT IS NOT THE PIN ABOVE RESTATED. That list is
+    // text this file holds; this compares the screen against the live shape of
+    // `EmpireFloorReadings`, so a seventh field added to the floor and drawn by
+    // no row is red here and green there. Symbolically: the pin above fixes the
+    // six rows and says nothing about how many fields the module produces, and
+    // this fixes the two sets equal and says nothing about which row holds
+    // which — a permutation passes here and fails above.
+    //
+    // NOT REACHED BY `empireFloor.test.ts`'s scope guard either, which was the
+    // other domination candidate. That one pins the readings' keys against the
+    // walk's own classification lists, so a field added to both stays green
+    // there while it is painted nowhere and red here.
+    const file = DRAWN_FROM_PURE_STATE.SCREEN_FILE;
+    const readings = drawnReadingsIn(parseModule(file, source(file)), loadFromDisk);
+    const painted = [...new Set(readings.flatMap((reading) => reading.fields))].sort();
+    const produced = Object.keys(empireFloorReadings(openEmpireFloor(0))).sort();
+    const report =
+      `${file} paints the fields ${painted.join(', ') || '(none)'} and empireFloorReadings ` +
+      `produces ${produced.join(', ') || '(none)'} — a field on one side and not the other is ` +
+      'either a reading computed on every refresh and painted nowhere, or a row reading ' +
+      'something the floor does not produce';
+
+    expect(painted, report).toEqual(produced);
   });
 
   it('and it is the ONLY screen the shell mounts that reaches into the pure module', () => {
