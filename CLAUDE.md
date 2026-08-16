@@ -1557,6 +1557,22 @@ Three things follow, each of which had already failed once:
   is written while the first is still fresh enough to feel already-solved. When
   you fix a check, the next thing to look at is the branch immediately below
   it.
+
+  **AND IT IS A PROXIMITY RULE, NOT A DIRECTIONAL ONE — measured, after this
+  sentence had said "below" for many rounds.** A round narrowed a
+  declaration-file skip in one screen and the next defect was the branch
+  immediately **above** the line it changed: a third reader of the same
+  file-kind question, asking `declaration === undefined` where its neighbours
+  asked two other things. "Below" was an artefact of the four instances that
+  produced the rule, not a property of the risk.
+
+  The generalisation that survives both: **when you change one arm of a shared
+  decision, read every arm that touches the same fact, in either direction, and
+  say what each one asks.** Three readers of "is this a declaration file" asked
+  three different questions and only one of them was wrong — which is also why
+  the answer is to enumerate them rather than to make them identical. A sweep
+  that made all six call sites of one predicate agree would have created two
+  silences; that was measured, and the two refusals are pinned as mutants.
 - **`vitest.config.ts` is `environment: node`, so no cross-screen state is
   checked by the suite.** Three defects have now lived entirely in that gap. Any
   claim that a value survives a navigation needs a browser check that reads the
