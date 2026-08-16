@@ -8,11 +8,13 @@
  * The thing being parsed is vitest's own output, and the defect this closes was
  * a tool reading its own arguments differently from the process it spawned. A
  * hand-written fixture would encode what the author BELIEVES vitest prints,
- * which is the same mistake one level out. The two fixtures below are pasted
- * from real runs at 2b6612e:
+ * which is the same mistake one level out. Both fixtures below are pasted from
+ * real runs at 3ed3956:
  *
- *   - `EMPTY_RUN` is the first captured command of the committed
- *     `.gauntlet/evidence/equipment-provenance.txt`, verbatim.
+ *   - `EMPTY_RUN` is a run whose only filter matched nothing, including the
+ *     three-line report vitest prints after it. That report is the half a
+ *     hand-written fixture would have left out, and leaving it out is exactly
+ *     the defect the header below records.
  *   - `VERBOSE_RUN` is an abridged `--reporter=verbose` run of two real files,
  *     keeping the shapes a path can appear in: a result line, a summary, and a
  *     failure's source footer.
@@ -49,7 +51,7 @@ const EMPTY_RUN = [
   'Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.',
   'No test files found, exiting with code 1',
   '',
-  'filter:  src/nope/does-not-exist.test.ts',
+  'filter:  src/planted/absent.test.ts',
   'include: src/**/*.test.ts, tools/**/*.test.ts',
   'exclude:  node_modules/**, .expo/**, dist/**',
 ].join('\n');
@@ -109,7 +111,7 @@ describe('the run reader sees which files a capture actually ran', () => {
     // as a file that ran is the defect this fixture carries, and it is the one
     // state where the whole rule silently agrees with itself.
     expect(testFilesIn(EMPTY_RUN)).toEqual([]);
-    expect(EMPTY_RUN).toContain('filter:  src/nope/does-not-exist.test.ts');
+    expect(EMPTY_RUN).toContain('filter:  src/planted/absent.test.ts');
   });
 
   it('CONTROL: the line anchor is what excludes the echo, not the path shape', () => {
@@ -117,7 +119,7 @@ describe('the run reader sees which files a capture actually ran', () => {
     // stops being line-anchored, the first of these keeps passing and the
     // second starts returning the path — so the pair is what says the anchor is
     // doing the work rather than some property of the string.
-    const path = 'src/nope/does-not-exist.test.ts';
+    const path = 'src/planted/absent.test.ts';
     expect(testFilesIn(`filter:  ${path}`)).toEqual([]);
     expect(testFilesIn(` ✓ ${path} > a suite > a test 1ms`)).toEqual([path]);
   });

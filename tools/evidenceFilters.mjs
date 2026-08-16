@@ -41,8 +41,6 @@
  *   - A filter that matched FEWER files than its author meant. `src/game` and
  *     `src/game/streak` both match something; only a human knows which was
  *     intended.
- *   - A file that ran and reported zero tests inside it. That is a vitest
- *     result, not a filter fault, and the transcript shows it.
  *   - A file that a filter matched but that reported no tests inside it. That
  *     is a vitest result, not a filter fault, and the transcript shows it.
  *
@@ -55,10 +53,10 @@
  * direction. Driven against the real tool, it reported nothing on the case it
  * was written for:
  *
- *     $ npx vitest run src/nope/does-not-exist.test.ts --reporter=verbose
+ *     $ npx vitest run src/planted/absent.test.ts --reporter=verbose
  *     No test files found, exiting with code 1
  *
- *     filter: src/nope/does-not-exist.test.ts
+ *     filter: src/planted/absent.test.ts
  *     include: src/**\/*.test.ts, tools/**\/*.test.ts
  *
  * vitest ECHOES THE FILTER in the report it prints when nothing matched, so the
@@ -72,6 +70,20 @@
  * lines begin with a word and a colon and are therefore not read. A file that
  * genuinely ran always has such a line, and one that is additionally named in a
  * stack trace or a diff loses nothing by being counted once.
+ */
+
+/**
+ * One thing wrong with a targeted run.
+ *
+ * `filter` is null on the `no-test-files` arm, which is the arm that has no
+ * filter to name — the two are one type because a caller reports them in one
+ * block, and `=== null` rather than truthiness tells them apart.
+ *
+ * @typedef {{
+ *   kind: 'no-test-files' | 'filter-matched-nothing',
+ *   filter: string | null,
+ *   ran: readonly string[],
+ * }} FilterFinding
  */
 
 /** `*.test.ts`, `.tsx`, `.mts`, `.js` … as vitest prints them. */
@@ -88,8 +100,8 @@ const RESULT_LINE = /^\s*(?:[✓×✗✔❯↓·‼]|FAIL|PASS)\s/;
 /**
  * The vitest filters a command line asked for.
  *
- * Splits on whitespace so `evidence.mjs piece "src/shell src/game/x.test.ts"`
- * and `evidence.mjs piece src/shell src/game/x.test.ts` mean the same thing —
+ * Splits on whitespace so `evidence.mjs piece "src/shell src/game/streak.test.ts"`
+ * and `evidence.mjs piece src/shell src/game/streak.test.ts` mean the same thing —
  * the first spelling is the one every committed bundle used, and the one that
  * silently ran nothing.
  *
@@ -98,6 +110,10 @@ const RESULT_LINE = /^\s*(?:[✓×✗✔❯↓·‼]|FAIL|PASS)\s/;
  * spelling would invent a syntax the tool it drives does not have, and the
  * honest treatment is to let `filterFindings` report it.
  */
+/**
+ * @param {readonly string[]} args
+ * @returns {string[]}
+ */
 export function filtersFrom(args) {
   return args
     .filter((arg) => arg !== '--verify')
@@ -105,8 +121,14 @@ export function filtersFrom(args) {
     .filter((arg) => arg.length > 0);
 }
 
-/** Every test file a captured vitest run reported a RESULT for. */
+/**
+ * Every test file a captured vitest run reported a RESULT for.
+ *
+ * @param {string} output
+ * @returns {string[]}
+ */
 export function testFilesIn(output) {
+  /** @type {Set<string>} */
   const found = new Set();
   for (const line of output.split('\n')) {
     if (!RESULT_LINE.test(line)) continue;
@@ -125,6 +147,10 @@ export function testFilesIn(output) {
  * could never speak alone. It is therefore scoped to the run that passed NO
  * filters — the whole-suite capture — where it is the only thing that can
  * report an empty run and where no per-filter finding exists.
+ *
+ * @param {readonly string[]} filters
+ * @param {string} output
+ * @returns {FilterFinding[]}
  */
 export function filterFindings(filters, output) {
   const ran = testFilesIn(output);

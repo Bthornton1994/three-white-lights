@@ -4510,6 +4510,30 @@ The code has taken the safe branch and needs a ruling to take any other.**
       `SINGLET_MID` looks like — which is what a 16-bit palette swap actually
       was, and which keeps "is this pixel the singlet?" answerable downstream.
 
+- [ ] **A forward clock jump on the Empire floor is an unbounded synchronous
+      loop, and the fix is a §5.1 design choice rather than a performance
+      patch.** `advanceEmpireFloor` in `src/shell/empireFloor.ts` clamps a
+      BACKWARDS clock — a system clock that steps back leaves the gym where it
+      was — and says so in its own docstring. It puts no bound on a forward one:
+      `owed` is a function of elapsed wall time with nothing above it, and the
+      catch-up loop runs inside a React state updater. Measured at `3ed3956`,
+      one jumped reading handed to a fresh floor: 1 hour = 360 steps / 27 ms,
+      1 day = 8,640 / 284 ms, 1 week = 60,480 / 2,196 ms, 30 days = 259,200 /
+      11,103 ms — so a device-clock jump of a year is roughly two minutes of
+      blocked main thread. Per-step cost drifts upward as the gym fills, so that
+      extrapolation is a floor rather than an estimate.
+      **Recorded rather than fixed, on a human's ruling of 2026-08-16.** The two
+      plausible bounds are not equivalent to a player: capping the STEPS and
+      paying the remainder as one long step loses the per-check-in reputation
+      §5.4 pays, while capping the ELAPSED TIME the way
+      `OFFLINE_EARNINGS_CAP_HOURS` already caps a gap decides how much an
+      absence is worth. Both change what the gym has earned, which makes it a
+      §5.1 question. Do not add a bound as a side effect of another piece.
+      Worth noting how it survived: it is the sibling branch of a guard that was
+      written, tested and documented for one direction only — the shape
+      CLAUDE.md records as "the next thing to look at is the branch immediately
+      below it". The full measurement is in `empireFloor.ts` beside the clamp.
+
 ---
 
 ## 12. Gauntlet Loop Execution

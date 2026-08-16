@@ -213,7 +213,7 @@ const PINNED = Object.freeze({
    * FALSE-POSITIVE MODE 2, counted. References under
    * `TEST_PATH_REFS.SYNTHETIC_PREFIX`, which are fixtures rather than files.
    */
-  SYNTHETIC: 4,
+  SYNTHETIC: 9,
 
   /**
    * AND WHERE THEY ARE ALLOWED TO BE, which is what stops the exemption
@@ -224,14 +224,28 @@ const PINNED = Object.freeze({
    * drives its own schema with. `testPathRefs.mjs` holds one, in the verbatim
    * `npx vitest run` command its header quotes as the measurement of the defect
    * — a command that has to name something absent to demonstrate anything.
+   *
+   * 4 -> 9, and two files -> four, when `evidenceFilters` arrived. Its subject
+   * is a vitest filter that selected nothing, so a fixture it can be pointed at
+   * has to be a path that is not there — the same reason `testPathRefs.mjs`
+   * already holds one, one instrument over. The five new occurrences are all
+   * the same planted path: twice in `evidenceFilters.mjs` (a quoted transcript
+   * in its header) and three times in its test (a captured `filter:` echo, the
+   * assertion that the echo is in the fixture, and the control that holds the
+   * same path in both line shapes).
    */
-  SYNTHETIC_FILES: Object.freeze(['src/game/guaranteeTags.test.ts', 'tools/testPathRefs.mjs']),
+  SYNTHETIC_FILES: Object.freeze([
+    'src/game/guaranteeTags.test.ts',
+    'tools/evidenceFilters.mjs',
+    'tools/evidenceFilters.test.ts',
+    'tools/testPathRefs.mjs',
+  ]),
 
   /** Tracked files whose bytes were read. */
-  SCANNED_FILES: 284,
+  SCANNED_FILES: 286,
 
   /** Tracked `*.test.ts` files — the set every reference must land in. */
-  TEST_FILES: 88,
+  TEST_FILES: 89,
 });
 
 /**

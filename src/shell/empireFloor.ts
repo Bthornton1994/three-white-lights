@@ -226,6 +226,47 @@ export function openEmpireFloor(startedAtMs: number): EmpireFloor {
  * A BACKWARDS CLOCK CANNOT TAKE ANYTHING AWAY. `openSeconds` is clamped to what
  * the floor has already reached, so a system clock that steps back leaves the
  * gym where it was rather than rewinding it — the direction §12.3 requires.
+ *
+ * ===========================================================================
+ * A FORWARD CLOCK HAS NO BOUND AT ALL — RECORDED, NOT FIXED, ON A HUMAN'S
+ * RULING OF 2026-08-16
+ * ===========================================================================
+ * `owed` is a function of elapsed wall time with nothing above it, and the loop
+ * below runs synchronously inside a React state updater. So the cost of one
+ * `advanceEmpireFloor` is linear in how far the clock jumped, and the jump is
+ * not something this module gets to choose — a device clock correction, a
+ * suspended tab, a timezone change on a laptop lid.
+ *
+ * Measured at 3ed3956, a fresh floor handed one jumped `nowMs`:
+ *
+ *     1 hour        360 steps       27 ms
+ *     1 day       8,640 steps      284 ms
+ *     1 week     60,480 steps    2,196 ms
+ *     30 days   259,200 steps   11,103 ms
+ *
+ * A year extrapolates to roughly two minutes of blocked main thread. The
+ * per-step cost drifts upwards as the gym fills — about 314 ms per simulated
+ * day at a week against about 370 at a month — so the extrapolation is a floor
+ * rather than an estimate. A second measurement taken independently a round
+ * earlier, on a quieter box, read 253 ms / 1,795 ms / about 7.7 s for the first
+ * three; same shape, and the absolute figures move with load.
+ *
+ * THIS IS THE SIBLING BRANCH OF THE CLAMP DIRECTLY ABOVE IT, which is the whole
+ * reason it is written here rather than in a tracker. One direction of a clock
+ * adjustment was thought about, guarded, and given a sentence in this docstring;
+ * the other direction was not looked at. CLAUDE.md's recorded lesson is that
+ * after fixing a check the next thing to look at is the branch immediately
+ * below it, and this is that branch, one paragraph down from where it was
+ * missed. Nothing in this module or in `empireFloor.test.ts` goes red on the
+ * forward case today, and this paragraph is the note saying so.
+ *
+ * IT IS LEFT ALONE DELIBERATELY. Putting a ceiling on `owed` changes what the
+ * gym has earned, which makes it a question about GDD §5.1's offline model
+ * rather than a performance patch — and the two plausible answers (cap the
+ * steps and pay the remainder as one long step, or cap the elapsed time the way
+ * `OFFLINE_EARNINGS_CAP_HOURS` already caps a gap) are not equivalent to a
+ * player. A human ruled that it gets its own look. Do not add a bound as a side
+ * effect of some other piece.
  */
 export function advanceEmpireFloor(floor: EmpireFloor, nowMs: number): EmpireFloor {
   const openSeconds = Math.max(
