@@ -1,14 +1,13 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-16T19:34:28.408Z",
+    "capturedAt": "2026-08-18T15:29:10.523Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/home/user/three-white-lights",
-    "commit": "37f2fcc",
+    "commit": "16dbeca",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [
       "M .gauntlet/shots/cutin-cap/cap.json",
-      " M .gauntlet/shots/cutin-cap/cut-in-leg-1.png",
       " M .gauntlet/shots/cutin-cap/leg-1-recap.png",
       " M .gauntlet/shots/lift-press/press.json",
       " M .gauntlet/shots/meet/sound.json"
@@ -238,13 +237,13 @@
   "leavesOnItsOwn": {
     "stillUpAt": 702,
     "stillUp": true,
-    "goneAt": 1575,
+    "goneAt": 1596,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 13,
-    "goneAt": 22,
-    "dismissTookMs": 9,
+    "tappedAt": 16,
+    "goneAt": 27,
+    "dismissTookMs": 11,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
