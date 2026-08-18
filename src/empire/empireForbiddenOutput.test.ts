@@ -1307,6 +1307,21 @@ describe('the domains are derived from the subject and are not empty', () => {
     const leaves = TUNING_LEAVES.numbers.map((leaf) => leaf.path);
     expect(leaves.length).toBe(DOMAIN_CENSUS.TUNING_NUMERIC_LEAVES);
     expect(distinct(leaves).length).toBe(DOMAIN_CENSUS.TUNING_NUMERIC_LEAVES);
+    // The population the count above is taken over is only as complete as the
+    // walk's enumeration. `Object.entries` sees own enumerable string keys, so a
+    // symbol knob or a non-enumerable one sits outside every number this census
+    // pins. This reads the hidden-key set at every node and requires it empty,
+    // so a knob added on either descriptor route reddens here instead of passing
+    // the census over a narrower set than the object holds.
+    expect(hiddenTuningKeys(EMPIRE_TUNING, '')).toEqual([]);
+    // Non-vacuity: the reading is not one that can only report empty. A symbol
+    // key and a non-enumerable key are both found, at depth, on a probe object.
+    const hiddenProbe: Record<string, unknown> = { visible: 1, nested: {} };
+    Object.defineProperty(hiddenProbe.nested, 'hidden', { value: 999, enumerable: false });
+    Object.defineProperty(hiddenProbe, Symbol('secretKnob'), { value: 7, enumerable: true });
+    expect([...hiddenTuningKeys(hiddenProbe, '')].sort()).toEqual(
+      ['[Symbol(secretKnob)]', 'nested.hidden (non-enumerable)'].sort(),
+    );
     // A string leaf is counted rather than dropped, so a vocabulary token
     // becoming a number moves a number here.
     expect(TUNING_LEAVES.strings.length).toBe(DOMAIN_CENSUS.TUNING_STRING_LEAVES);
@@ -2861,6 +2876,49 @@ function tuningLeaves(): {
   };
   walk(EMPIRE_TUNING, '');
   return { numbers: Object.freeze(numbers), strings: Object.freeze(strings) };
+}
+
+/**
+ * Own keys of any object node under `EMPIRE_TUNING` that the leaf walk above —
+ * which recurses through `Object.entries` — cannot see, named by path.
+ *
+ * `Object.entries` returns own ENUMERABLE STRING keys, so it drops two
+ * descriptor routes at once: a symbol key (`Object.getOwnPropertySymbols`) and a
+ * non-enumerable string key (`Object.defineProperty(..., { enumerable: false })`).
+ * Both are the same defect — a tuned leaf outside the population the census
+ * enumerates — reached two ways, so this reads `Object.getOwnPropertyNames`
+ * against `Object.keys` and adds the symbols, covering BOTH rather than pinning
+ * symbols alone and leaving the non-enumerable arm for the next round. That is a
+ * containment reading and not merely a wider one: a symbols-only pin is the
+ * reach/predicate half-fix this file records, where closing one axis says
+ * nothing about the sibling. It recurses because a hidden knob can sit at any
+ * nesting level the leaf walk descends, and it does NOT widen `tuningLeaves`
+ * itself, which stays the enumeration the population count is taken over.
+ *
+ * An array's own non-enumerable `length` is inherent rather than a hidden knob,
+ * so arrays are checked for symbols only.
+ */
+function hiddenTuningKeys(node: unknown, at: string): readonly string[] {
+  if (typeof node !== 'object' || node === null) return [];
+  const here = at === '' ? '' : `${at}.`;
+  const found: string[] = [];
+  for (const symbol of Object.getOwnPropertySymbols(node)) {
+    found.push(`${here}[${symbol.toString()}]`);
+  }
+  if (Array.isArray(node)) {
+    node.forEach((child, index) => {
+      found.push(...hiddenTuningKeys(child, `${at}[${String(index)}]`));
+    });
+    return Object.freeze(found);
+  }
+  const enumerable = new Set(Object.keys(node));
+  for (const name of Object.getOwnPropertyNames(node)) {
+    if (!enumerable.has(name)) found.push(`${here}${name} (non-enumerable)`);
+  }
+  for (const [key, child] of Object.entries(node)) {
+    found.push(...hiddenTuningKeys(child, at === '' ? key : `${at}.${key}`));
+  }
+  return Object.freeze(found);
 }
 
 const TUNING_LEAVES = tuningLeaves();
