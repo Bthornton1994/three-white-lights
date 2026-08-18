@@ -53,10 +53,19 @@ for _ in $(seq 1 90); do
     # The sentinel is written AFTER the server answers, so its existence also
     # means the server actually came up — and the process tree is stable by
     # now, so the recorded cmdline is the one a later check will re-read.
-    # Prefer the pid actually LISTENING on the port over $! (npx may sit a
-    # level above the server); fall back to $! if ss cannot say.
+    #
+    # Record the pid actually LISTENING on the port, not $!. Measured, not
+    # theoretical: $! is the npx wrapper, and killing it left the expo child
+    # alive and still serving — a sentinel naming the wrapper then refuses a
+    # working server (DEAD_PID) the moment anything reaps the wrapper. The
+    # listener is the process whose death actually means "the server is gone".
+    # fuser is preferred because this box has no ss on PATH; $! is the last
+    # resort and carries the wrapper caveat above.
     SERVER_PID=""
-    if command -v ss >/dev/null 2>&1; then
+    if command -v fuser >/dev/null 2>&1; then
+      SERVER_PID=$(fuser "${PORT}/tcp" 2>/dev/null | tr -s ' \t' '\n' | grep -m1 .)
+    fi
+    if [ -z "${SERVER_PID}" ] && command -v ss >/dev/null 2>&1; then
       SERVER_PID=$(ss -lptnH "sport = :${PORT}" 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u | head -1)
     fi
     [ -z "${SERVER_PID}" ] && SERVER_PID=$!
