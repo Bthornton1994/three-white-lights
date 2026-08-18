@@ -325,9 +325,10 @@ export function openEmpireFloor(startedAtMs: number): EmpireFloor {
  * is exactly the forfeited span the screen reports. Every reading on the screen
  * is gym-time; the away row is the difference itself.
  *
- * Re-measured at the same ladder after the clamp, same class of idle box,
- * three runs: every jump from 24 hours to 1 year costs the same 4,320 steps,
- * 70-105 ms — the freeze is bounded at the cap's own cost whatever the jump.
+ * Re-measured at the same ladder after the clamp (this module at 2d53ac2),
+ * same class of idle box, three runs: every jump from 24 hours to 1 year costs
+ * the same 4,320 steps, 70-105 ms — the freeze is bounded at the cap's own
+ * cost whatever the jump.
  * The exact step counts and forfeits per rung are pinned in
  * `empireFloor.test.ts` rather than here; the milliseconds are not, because a
  * timing assertion measures the box.
