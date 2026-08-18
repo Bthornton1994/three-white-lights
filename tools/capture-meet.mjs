@@ -30,6 +30,7 @@
  *   node tools/capture-meet.mjs [--url URL] [--out DIR] [--live]
  */
 import { chromium } from 'playwright';
+import { gateDevServer } from './devServerSentinel.mjs';
 import { mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { decodePng, diffPixels } from './png.mjs';
@@ -42,6 +43,10 @@ const flag = (name, dflt) => {
 const has = (name) => args.includes(`--${name}`);
 
 const url = flag('url', 'http://localhost:8081');
+// Refuses (with the reason and the fix named) unless tools/dev-web.sh started the
+// server this URL names and it is still that process on that port — see
+// devServerSentinel.mjs's header. UNMANAGED_DEV_SERVER=1 skips it, loudly.
+gateDevServer({ url });
 const outDir = path.resolve(flag('out', '.gauntlet/shots/meet'));
 const width = Number(flag('w', '390'));
 const height = Number(flag('h', '844'));

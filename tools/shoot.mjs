@@ -9,6 +9,7 @@
  * Usage: node tools/shoot.mjs <out.png> [--url URL] [--w 390] [--h 844] [--wait ms] [--sel testID]
  */
 import { chromium } from 'playwright';
+import { gateDevServer } from './devServerSentinel.mjs';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -24,6 +25,10 @@ const flag = (name, dflt) => {
 };
 
 const url = flag('url', 'http://localhost:8081');
+// Refuses (with the reason and the fix named) unless tools/dev-web.sh started the
+// server this URL names and it is still that process on that port — see
+// devServerSentinel.mjs's header. UNMANAGED_DEV_SERVER=1 skips it, loudly.
+gateDevServer({ url });
 // iPhone 14-ish logical viewport: the GDD judges readability at phone scale.
 const width = Number(flag('w', '390'));
 const height = Number(flag('h', '844'));

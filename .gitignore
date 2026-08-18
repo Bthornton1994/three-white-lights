@@ -166,6 +166,13 @@ public/canvaskit.wasm
 # to describe.
 .gauntlet/verify/*
 
+# The dev-server sentinel tools/dev-web.sh writes and every browser tool gates
+# on before driving (tools/devServerSentinel.mjs). It describes a live process
+# on this machine — pid, port, boot id — so it is not meant to survive a
+# restart, a rewind, or anything else; a stale one is refused, not trusted.
+# The glob also covers the atomic-write .tmp beside it.
+.gauntlet/dev-web.sentinel*
+
 # Verification logs written INSIDE the repo, on purpose.
 #
 # The scratchpad under /tmp does not survive a rewind. The thirteenth one took

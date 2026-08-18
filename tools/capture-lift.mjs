@@ -28,6 +28,7 @@
  *   node tools/capture-lift.mjs [--url URL] [--out DIR] [--loads 1.0,0.55]
  */
 import { chromium } from 'playwright';
+import { gateDevServer } from './devServerSentinel.mjs';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -38,6 +39,10 @@ const flag = (name, dflt) => {
 };
 
 const url = flag('url', 'http://localhost:8081');
+// Refuses (with the reason and the fix named) unless tools/dev-web.sh started the
+// server this URL names and it is still that process on that port — see
+// devServerSentinel.mjs's header. UNMANAGED_DEV_SERVER=1 skips it, loudly.
+gateDevServer({ url });
 const outRoot = path.resolve(flag('out', '.gauntlet/shots'));
 const loads = flag('loads', '1.0,0.55')
   .split(',')

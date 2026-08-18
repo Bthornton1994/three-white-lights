@@ -43,6 +43,7 @@
  *   node tools/verify-session-boundary.mjs [--url URL] [--settle MS]
  */
 import { chromium } from 'playwright';
+import { gateDevServer } from './devServerSentinel.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -51,6 +52,10 @@ const flag = (name, dflt) => {
 };
 
 const url = flag('url', 'http://localhost:8081');
+// Refuses (with the reason and the fix named) unless tools/dev-web.sh started the
+// server this URL names and it is still that process on that port — see
+// devServerSentinel.mjs's header. UNMANAGED_DEV_SERVER=1 skips it, loudly.
+gateDevServer({ url });
 const settleMs = Number(flag('settle', '1600'));
 
 const PROJECTED_TAG = 'SAVING';
