@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-shell-route-mjs-2026-08-18T20-46-16-053Z-17766",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-shell-route.mjs"
+  ],
+  "budgetSeconds": 1400,
+  "startedAtIso": "2026-08-18T20:46:16.053Z",
+  "startedAtMs": 1787085976053,
+  "cwd": "/home/user/wt-away-overlap",
+  "commit": "ba3c3ba088475f7fe1740dbd7dd96af1bc656f36",
+  "branch": "claude/away-card-overlap",
+  "dirty": 6,
+  "dirtyPaths": [
+    ".gauntlet/shots/shell/03-meet-played-walkout.png",
+    ".gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+    ".gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+    ".gauntlet/shots/shell/13-recap-before-the-return-leg.png",
+    ".gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
+    ".gauntlet/shots/shell/route.json"
+  ],
+  "runner": {
+    "pid": 17766,
+    "startTick": "206564",
+    "cmdline": "node tools/watchdog.mjs --budget 1400 --id away-overlap-shell-green -- node tools/verify-shell-route.mjs",
+    "bootId": "a70ad062-1866-416f-bd47-f0b6908b2f28",
+    "bootEpochSeconds": 1787083910,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-18T20:46:16.073Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
