@@ -90,7 +90,7 @@ import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 import { SOURCE_RULES, auditSource, formatFindings } from '../tuning/audit';
-import { shippedModuleNames } from './directoryWalk.test';
+import { shippedModuleNames, tsFilesUnder, withProbeTree } from './directoryWalk.test';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
   ACCELERANT_ARRIVAL,
@@ -2822,6 +2822,98 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     ]);
   });
 
+  /**
+   * The pattern a person's name takes inside prose — two adjacent Titlecase
+   * words. One source string, so the ban predicate below (`personShaped`) and
+   * the pair extractor cannot drift apart: the census asserts
+   * `personShaped.source` equals this text.
+   */
+  const TITLECASE_PAIR_SOURCE = String.raw`\b[A-Z][a-z]+ [A-Z][a-z]+\b`;
+
+  /** Every Titlecase pair in `text`, in order, non-overlapping. */
+  function titlecasePairsIn(text: string): readonly string[] {
+    return text.match(new RegExp(TITLECASE_PAIR_SOURCE, 'g')) ?? [];
+  }
+
+  /**
+   * The three quote-keyed collectors, factored so the driven fixture below
+   * exercises the same predicates the shipped census runs — the patterns are
+   * byte-identical to the ones that used to sit inline in the census loop,
+   * and the three count pins there (172 / 0 / 139) are what says the move
+   * changed no behaviour. Comments are stripped first, as before, because a
+   * quoted example inside prose is not a shipped string.
+   */
+  function quoteKeyedStringsIn(source: string): {
+    readonly singleQuoted: readonly string[];
+    readonly doubleQuoted: readonly string[];
+    readonly templateChunks: readonly string[];
+  } {
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    const singleQuoted: string[] = [];
+    const doubleQuoted: string[] = [];
+    const templateChunks: string[] = [];
+    for (const match of code.matchAll(/'([^'\\\n]*)'/g)) singleQuoted.push(match[1] as string);
+    for (const match of code.matchAll(/"([^"\\\n]*)"/g)) doubleQuoted.push(match[1] as string);
+    // The static text of a template, with each `${...}` replaced by a space
+    // so two words either side of a substitution are not run together into a
+    // false match.
+    for (const match of code.matchAll(/`((?:[^`\\]|\\[\s\S])*)`/g)) {
+      templateChunks.push((match[1] as string).replace(/\$\{[^}]*\}/g, ' '));
+    }
+    return { singleQuoted, doubleQuoted, templateChunks };
+  }
+
+  /**
+   * The fourth collector: bare JSX text. It carries no quote character, so
+   * none of the three quote-keyed predicates can see it — measured (E39):
+   * `<span>Sponsored by Placeholder Lifter</span>` in a compiled, walked
+   * `.tsx` on the real tree left this census green and put the name in no
+   * failure message anywhere in the suite. The route is a parse, not a regex,
+   * and the ScriptKind is inferred from `fileName` (no fifth argument — the
+   * E38 shape): the identical text parsed under a `.ts` name yields zero
+   * JsxText nodes, so a hardcoded kind would empty this collector without an
+   * error. Both facts are driven in the fixture test below rather than
+   * trusted, because the shipped tree has zero `.tsx` files and these pins
+   * alone could not tell a working collector from a deleted one.
+   *
+   * It parses the original source, not the comment-stripped `code` above:
+   * the line-comment strip would corrupt JSX text containing `//`, and the
+   * parser handles comments itself.
+   */
+  function jsxTextChunksIn(fileName: string, text: string): readonly string[] {
+    const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true);
+    const chunks: string[] = [];
+    const visit = (node: ts.Node): void => {
+      if (ts.isJsxText(node) && node.text.trim().length > 0) {
+        chunks.push(node.text.replace(/\s+/g, ' ').trim());
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    return chunks;
+  }
+
+  /**
+   * The fourth collector pointed at a tree: every `.tsx` the same walk the
+   * census uses hands back, gated on the extension because JsxText is a node
+   * kind only a TSX parse produces. The census below calls this at `HERE`;
+   * the fixture test calls it at a probe root — so the drive is about the
+   * shipped scan rather than about a copy of it.
+   */
+  function jsxTextCensusUnder(root: string): {
+    readonly jsxFilesRead: number;
+    readonly chunks: readonly string[];
+  } {
+    const chunks: string[] = [];
+    let jsxFilesRead = 0;
+    for (const name of tsFilesUnder(root, 'without-tests')) {
+      if (!name.endsWith('.tsx')) continue;
+      jsxFilesRead += 1;
+      chunks.push(...jsxTextChunksIn(name, readFileSync(path.join(root, name), 'utf8')));
+    }
+    return { jsxFilesRead, chunks };
+  }
+
   it('ships no string a real name could be hiding in, and pins the ones it does ship', () => {
     // GDD §12.3 refuses a real, named athlete, brand or company in any string
     // or code path, and `empireTuning.ts` claims in prose that no lifter, gym,
@@ -2859,18 +2951,24 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     let filesRead = 0;
     for (const name of shipped) {
       const source = readFileSync(path.join(HERE, name), 'utf8');
-      const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-      for (const match of code.matchAll(/'([^'\\\n]*)'/g)) singleQuoted.add(match[1] as string);
-      for (const match of code.matchAll(/"([^"\\\n]*)"/g)) doubleQuoted.add(match[1] as string);
-      // The static text of a template, with each `${...}` replaced by a space
-      // so two words either side of a substitution are not run together into a
-      // false match.
-      for (const match of code.matchAll(/`((?:[^`\\]|\\[\s\S])*)`/g)) {
-        templateChunks.add((match[1] as string).replace(/\$\{[^}]*\}/g, ' '));
-      }
+      const found = quoteKeyedStringsIn(source);
+      for (const value of found.singleQuoted) singleQuoted.add(value);
+      for (const value of found.doubleQuoted) doubleQuoted.add(value);
+      for (const value of found.templateChunks) templateChunks.add(value);
       filesRead += 1;
     }
     expect(filesRead).toBe(shipped.length);
+    // The fourth collector, run over the same walk. Its domain today: zero
+    // `.tsx` files ship under src/empire/, so both pins below are 0 and hold
+    // with the collector deleted — the non-vacuity burden is carried entirely
+    // by the driven fixture test that follows this one.
+    const jsxCensus = jsxTextCensusUnder(HERE);
+    // The chunk pin runs first and its failure message carries the chunks
+    // themselves, so the first red anyone sees on a name arriving names the
+    // string, rather than reporting that one file is not zero files.
+    expect(jsxCensus.chunks.length, jsxCensus.chunks.join(' | ')).toBe(0);
+    expect(jsxCensus.jsxFilesRead).toBe(shipped.filter((name) => name.endsWith('.tsx')).length);
+    expect(jsxCensus.jsxFilesRead).toBe(0);
     // Counts before contents, so an empty domain reports itself rather than
     // making the pin below a comparison of two empty lists.
     // 172 rather than 171 since `sealRate`'s label refusal arrived — a fixed
@@ -3065,6 +3163,106 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
+
+    // JSX text gets a SIGNED-PAIR census rather than the flat ban above, and
+    // the difference is a measurement, not a taste (E39): the ban predicate
+    // fires on 7 of 20 chunks of ordinary render copy built from the GDD's
+    // own vocabulary — "Gym Empire", "Gym Bucks" twice, "Squat Rack",
+    // "Meet Day", "Covered Day", "Chalk Cloud" — so as a ban over render copy
+    // it would refuse the product's own feature names. As a signed list, each
+    // Titlecase pair in shipped JSX text is a row somebody adds here by name,
+    // the same shape as the `spaceFree` pin above: a person-shaped name
+    // arrives as a named diff a reviewer reads, and this census does not
+    // adjudicate it any more than the first half does.
+    //
+    // The list is empty because the chunk domain is empty (pinned at 0
+    // above), so on the shipped tree this comparison holds whatever the
+    // extractor does — the fixture test below is where it is shown to bite.
+    const SIGNED_JSX_TITLECASE_PAIRS: readonly string[] = Object.freeze([]);
+    const jsxPairs = [...new Set(jsxCensus.chunks.flatMap((chunk) => titlecasePairsIn(chunk)))];
+    expect(jsxPairs.sort()).toEqual([...SIGNED_JSX_TITLECASE_PAIRS].sort());
+    // One pattern, two spellings: the extractor above is built from
+    // TITLECASE_PAIR_SOURCE, and this is what keeps `personShaped` — the ban
+    // predicate the quoted-string half runs — from drifting away from it.
+    expect(personShaped.source).toBe(TITLECASE_PAIR_SOURCE);
+  });
+
+  it('catches a person-shaped name in bare JSX text, which no quote-keyed collector can see', () => {
+    // Driven on-disk through the same walk and the same collector the census
+    // above runs, because the shipped tree has zero `.tsx` files: on that
+    // tree every jsx pin above holds with the collector deleted, so what the
+    // fourth collector claims is earned here or not at all.
+    //
+    // This exact text was planted at src/empire/sponsorBanner.tsx on the real
+    // tree first (E39): `tsc --noEmit` exit 0, so the gap is a shippable
+    // route and not a syntax accident; the census above stayed green; and the
+    // whole suite's failure output contained the name zero times — 35 tests
+    // reddened, every one an arrival-count pin that fires for any `.tsx`
+    // whatever its content, which is detection of a file, not of a string.
+    const banner = [
+      'export function SponsorBanner() {',
+      '  return <span>Sponsored by Placeholder Lifter</span>;',
+      '}',
+      '',
+    ].join('\n');
+    withProbeTree({ 'sponsorBanner.tsx': banner, 'plain.ts': 'export {};\n' }, (root) => {
+      const census = jsxTextCensusUnder(root);
+      // Reach: the walk hands the `.tsx` to the collector.
+      expect(census.jsxFilesRead).toBe(1);
+      // The catch, named: the chunk is collected, whitespace-normalised, and
+      // its Titlecase pair is exactly the name — an unsigned pair, so on the
+      // shipped census this is a red line carrying the string itself.
+      expect(census.chunks).toEqual(['Sponsored by Placeholder Lifter']);
+      expect(census.chunks.flatMap((chunk) => titlecasePairsIn(chunk))).toEqual([
+        'Placeholder Lifter',
+      ]);
+      // The gap this collector exists for, measured on the same text with the
+      // same factored predicates the census runs: the three quote-keyed
+      // collectors find no string at all in it.
+      const quoted = quoteKeyedStringsIn(banner);
+      expect(quoted.singleQuoted).toEqual([]);
+      expect(quoted.doubleQuoted).toEqual([]);
+      expect(quoted.templateChunks).toEqual([]);
+    });
+
+    // The domain axis, stated at the mechanism: the identical text parsed
+    // under a `.ts` name (ScriptKind inferred as TS) yields zero JsxText
+    // nodes — a mis-kinded parse empties this collector silently, which is
+    // why the parser entry infers kind from the file name and why the fixture
+    // above is a real `.tsx` on disk rather than served text.
+    expect(jsxTextChunksIn('sponsorBanner.ts', banner)).toEqual([]);
+
+    // The neighbouring `.tsx` shapes are covered by the existing collectors
+    // once the walk hands them the file — measured here rather than assumed,
+    // because the recon planted neither: an attribute string is
+    // double-quoted, a string in a JSX expression container is single-quoted,
+    // and a template in one is a template. All three land in the existing
+    // sets, where the flat ban above reaches them.
+    const attributeShape = [
+      "export const S = () => <Sponsor name=\"Placeholder Lifter\" note={'quoted-in-braces'} />;",
+      'export const V = () => <span>{`lifted by Placeholder Lifter`}</span>;',
+      '',
+    ].join('\n');
+    const shapes = quoteKeyedStringsIn(attributeShape);
+    expect(shapes.doubleQuoted).toEqual(['Placeholder Lifter']);
+    expect(shapes.singleQuoted).toEqual(['quoted-in-braces']);
+    expect(shapes.templateChunks).toEqual(['lifted by Placeholder Lifter']);
+
+    // And the signing path is real, not just the refusal: ordinary render
+    // copy produces pairs a signer can name. Two of the E39 measurement's
+    // twenty realistic lines, with their extracted pairs — this is the 35%
+    // false-positive measurement that decided signed-pairs over a flat ban,
+    // kept runnable.
+    const copyShapes = [
+      { chunk: 'Your gym earned 240 Gym Bucks while you were away.', pairs: ['Gym Bucks'] },
+      { chunk: 'Reputation: Regional', pairs: [] },
+    ];
+    let copyProbes = 0;
+    for (const { chunk, pairs } of copyShapes) {
+      expect([...titlecasePairsIn(chunk)]).toEqual(pairs);
+      copyProbes += 1;
+    }
+    expect(copyProbes).toBe(copyShapes.length);
   });
 
   it('imports nothing outside this directory', () => {
