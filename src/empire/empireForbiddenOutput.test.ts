@@ -20371,6 +20371,58 @@ describe('the dispatch-chain census — a ladder nobody looked at cannot be adde
     expect(forcedDiagnostics.length).toBeGreaterThan(0);
   });
 
+  it('scans a .tsx the widened walk hands it — content, not just arrival', () => {
+    // RANK 3's NON-VACUITY for the dispatch census. Widening WALKED_EXTENSIONS
+    // with no DRIVEN .tsx is vacuous by construction: reverting it to ['.ts']
+    // must redden something. This drives an ON-DISK .tsx through the SAME reach
+    // function the census uses (`compilerImportingFilesUnder`, which is
+    // `tsFilesUnder` filtered) and the SAME classifier, so the reach axis and
+    // the content axis both have a subject that is a real `.tsx` on disk.
+    const tsx = [
+      "import ts from 'typescript';",
+      'export function classify(node: ts.Node): string {',
+      "  if (ts.isCallExpression(node)) return 'call';",
+      "  if (ts.isIdentifier(node)) return 'id';",
+      "  if (ts.isStringLiteral(node)) return 'str';",
+      "  return 'other';",
+      '}',
+      'export const view = () => <section>{`idle`}</section>;',
+      '',
+    ].join('\n');
+    withProbeTree({ 'rates.tsx': tsx, 'plain.ts': 'export {};\n' }, (root) => {
+      // REACH. The widened walk hands the `.tsx` to the census. This is the
+      // assertion that reddens `expected [ 'plain.ts' ] to contain 'rates.tsx'`
+      // the moment WALKED_EXTENSIONS drops back to `['.ts']`, so the widening is
+      // not vacuous.
+      const scanned = compilerImportingFilesUnder(root);
+      expect(scanned).toContain('rates.tsx');
+      const text = readFileSync(path.join(root, 'rates.tsx'), 'utf8');
+      // CONTENT. Parsed as TSX (kind inferred from the name), the source is
+      // clean and the three-arm dispatch chain is seen. Measured: the chain
+      // survives error recovery even forced to `.TS`, so the count is not what
+      // bites — the parse diagnostics are.
+      expect(parseDiagnosticsFor('rates.tsx', text)).toEqual([]);
+      const rows = dispatchChainsIn('rates.tsx', text);
+      expect(
+        rows.some((row) => row.at.includes('classify') && row.arms === 3 && row.dispatch),
+      ).toBe(true);
+      // The identical text FORCED to `ScriptKind.TS` — the pre-Rank-1 hardcode —
+      // reports parse diagnostics that nothing in the product reads. This is the
+      // silent mis-parse Rank 1 closes, shown on this fixture rather than argued.
+      const forced = ts.createSourceFile(
+        'rates.tsx',
+        text,
+        ts.ScriptTarget.ES2022,
+        true,
+        ts.ScriptKind.TS,
+      );
+      const forcedDiagnostics =
+        (forced as unknown as { parseDiagnostics?: readonly ts.Diagnostic[] }).parseDiagnostics ??
+        [];
+      expect(forcedDiagnostics.length).toBeGreaterThan(0);
+    });
+  });
+
   it('finds every dispatch chain in this directory, in both directions', () => {
     const chains = directoryDispatchChains();
     expect(chainScanFiles()).toEqual(['empireCore.test.ts', 'empireForbiddenOutput.test.ts']);
