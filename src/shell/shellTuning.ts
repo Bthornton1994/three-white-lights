@@ -246,4 +246,13 @@ export const SHELL_COPY = Object.freeze({
   EMPIRE_STAT_EQUIPMENT: 'EQUIPMENT',
   /** The gym's own `EmpireClock`, in seconds — not the app's uptime. */
   EMPIRE_STAT_CLOCK: 'GYM CLOCK (SECONDS)',
+  /**
+   * GDD §5.1's away summary, ruled 2026-08-18: wall time past the offline cap
+   * is acknowledged on this row and not simulated. A number and a state — the
+   * value is the forfeited span, and zero is the state where the cap has never
+   * bitten. No cap figure appears in the label on purpose: the cap is
+   * `EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS`, a knob, and copy that named it
+   * would go stale the first time a playtester turned it.
+   */
+  EMPIRE_STAT_AWAY: 'AWAY PAST THE CAP (SECONDS)',
 });

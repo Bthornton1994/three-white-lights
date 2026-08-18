@@ -589,7 +589,7 @@ const EMPIRE_NAV_SAYS = Object.freeze({
 
 /**
  * ===========================================================================
- * THE FOUR ROWS GDD §5's FLOOR DRAWS — AND EXACTLY WHAT READING THEM PROVES
+ * THE ROWS GDD §5's FLOOR DRAWS — AND EXACTLY WHAT READING THEM PROVES
  * ===========================================================================
  * THE CHECK THIS REPLACES CLAIMED MORE THAN IT MEASURED, which is the shape
  * CLAUDE.md files under "measured, carried, displayed, never compared". It read
@@ -626,7 +626,7 @@ const EMPIRE_NAV_SAYS = Object.freeze({
  * AND THE FLOOR MOVES NOW, WHICH CHANGES WHAT A VALUE PIN CAN BE
  * ===========================================================================
  * GDD §11's 2026-08-14 ruling let the surface wire `stepGym` and
- * `accrueProduction`, so four of these six rows are readings of a gym that is
+ * `accrueProduction`, so four of these seven rows are readings of a gym that is
  * getting older while the tool looks at it. Pinning them at a literal would
  * make this section a stopwatch: green if the screen were read fast enough,
  * red on a slow box, and measuring the harness rather than the app.
@@ -698,6 +698,23 @@ const EMPIRE_FLOOR_READS = Object.freeze([
     label: 'GYM CLOCK (SECONDS)',
     reading: 'advances',
     copy: 'EMPIRE_STAT_CLOCK',
+  }),
+  Object.freeze({
+    // GDD §5.1's away summary, ruled 2026-08-18: wall time past the offline cap
+    // is acknowledged on this row and never simulated. `holds` at '0' is the
+    // strongest thing a browser can say about it, and it is a real claim rather
+    // than a weak one: the cap needs a gap wider than itself, and a tab this
+    // tool is actively driving can never hand it one — so a non-zero here means
+    // the clamp fired on a watched floor, which is exactly the defect
+    // `empireFloor.test.ts` pins at zero forfeit-rises across every watched
+    // walk. The capped states themselves are node-side territory: no browser
+    // run can wait twelve hours, and pretending otherwise would be the
+    // debug-URL shape this file's own header warns about.
+    testID: 'empire-stat-away',
+    label: 'AWAY PAST THE CAP (SECONDS)',
+    reading: 'holds',
+    value: '0',
+    copy: 'EMPIRE_STAT_AWAY',
   }),
 ]);
 
@@ -6246,7 +6263,7 @@ await checkOnScreen(
       );
       check(
         drawn?.label === expected.label,
-        `and it is labelled ${JSON.stringify(expected.label)} — so the six rows are told apart by what they say, not by their order`,
+        `and it is labelled ${JSON.stringify(expected.label)} — so the ${EMPIRE_FLOOR_READS.length} rows are told apart by what they say, not by their order`,
         `the row says ${JSON.stringify(drawn?.label ?? null)}`,
       );
       if (expected.reading === 'holds') {

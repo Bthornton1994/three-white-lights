@@ -1270,6 +1270,11 @@ const DRAWN_FROM_PURE_STATE = Object.freeze({
     'empire-stat-roster <- readings.roster',
     'empire-stat-equipment <- readings.equipment',
     'empire-stat-clock <- readings.clockSeconds',
+    // GDD §5.1's away summary, ruled 2026-08-18: the forfeited span past the
+    // offline cap, a number and a state. The reading is the floor adapter's own
+    // two clocks differenced — the one row that is not a gym field — and how it
+    // MOVES is classified and swept in `empireFloor.test.ts` like the other six.
+    'empire-stat-away <- readings.forfeitedSeconds',
   ]),
 });
 

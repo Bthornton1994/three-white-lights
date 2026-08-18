@@ -38,13 +38,16 @@ import { createEmpireClock, type EmpireState } from '../empire/empireCore';
 import { EMPIRE_FLOOR } from './shellTuning';
 import {
   advanceEmpireFloor,
+  catchUpWasCapped,
   checkInReadingAt,
   checkInsBy,
   elapsedSecondsBetween,
   empireFloorAfter,
   empireFloorReadings,
+  forfeitedAwaySeconds,
   openEmpireFloor,
   pendingWasCapped,
+  CATCH_UP_CAP_SECONDS,
   EMPIRE_FLOOR_POLICY,
   type EmpireFloor,
 } from './empireFloor';
@@ -129,6 +132,52 @@ const FLOOR_SWEEP = Object.freeze({
   FRAGMENT_SECONDS: 600,
   FRAGMENT_WHOLE_TICK: 1,
   FRAGMENT_HALF_TICK: 0.5,
+
+  // ---------------------------------------------------------------------------
+  // The PAST-THE-CAP domain, added with the 2026-08-18 Option B ruling. Every
+  // constant below parameterises a sweep over schedules whose gaps can exceed
+  // `CATCH_UP_CAP_SECONDS`, which no constant above can produce: the widest gap
+  // the sub-cap sweeps can draw is `HORIZON_SECONDS`, five hundred-odd times
+  // inside the cap, and that is asserted in the invariance test's own body.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * The wall window the capped pairing sweep draws schedules from: one day, so
+   * a three-visit schedule sometimes leaves a gap past the twelve-hour cap and
+   * sometimes does not — both halves of the domain in one seeded draw, with the
+   * split pinned rather than hoped for. A two-day window was tried first and
+   * measured 10 past-cap of 10: every pair capped, the sub-cap byte-identity
+   * arm covering nothing, which is the empty-domain shape this codebase keeps
+   * recording. One day is where the same seed populates both halves.
+   */
+  CAPPED_PAIR_WINDOW_SECONDS: 24 * EMPIRE_TUNING.SECONDS_PER_HOUR,
+  /** Seeded pairs the capped sweep enumerates. Few, because each simulates up to a day of gym. */
+  CAPPED_PAIRS: 16,
+  /** Visits in a capped base schedule, before the extra one is inserted. */
+  CAPPED_VISITS_PER_SCHEDULE: 3,
+  /**
+   * The capped walk: a floor read ONCE A DAY for five days, so every single
+   * advance is a capped one — the exact suspended-tab cadence the ruling is
+   * about, driven through the same walk machinery as the three 1-second walks.
+   */
+  CAPPED_WALK_STEP_SECONDS: EMPIRE_TUNING.SECONDS_PER_DAY,
+  CAPPED_WALK_HORIZON_SECONDS: 5 * EMPIRE_TUNING.SECONDS_PER_DAY,
+  /**
+   * The ruling's own freeze ladder — 24 h, 72 h, 1 week, 30 days, 1 year — the
+   * jumps the unbounded loop was measured at (160 ms / 505 ms / 1.31 s / 6.7 s /
+   * 97.2 s at ef1a3f2). The test that walks it pins the ARITHMETIC bound: every
+   * rung owes the same `CATCH_UP_CAP_SECONDS` of steps, so the freeze is the
+   * cap's own cost whatever the jump. Wall-clock milliseconds are deliberately
+   * not asserted — a timing assertion measures the box — and live in
+   * `empireFloor.ts`'s docstring as the measurement the ruling was made on.
+   */
+  JUMP_LADDER_SECONDS: Object.freeze([
+    EMPIRE_TUNING.SECONDS_PER_DAY,
+    3 * EMPIRE_TUNING.SECONDS_PER_DAY,
+    7 * EMPIRE_TUNING.SECONDS_PER_DAY,
+    30 * EMPIRE_TUNING.SECONDS_PER_DAY,
+    365 * EMPIRE_TUNING.SECONDS_PER_DAY,
+  ]),
 });
 
 /**
@@ -168,10 +217,29 @@ function floorAfterSchedule(schedule: readonly number[]): EmpireFloor {
   return floor;
 }
 
+/**
+ * The widest wall gap a call schedule holds, in whole seconds, opened at zero.
+ *
+ * The same flooring `elapsedSecondsBetween` applies, so "past the cap" here is
+ * the same question `advanceEmpireFloor` answers — a schedule whose widest gap
+ * is at most `CATCH_UP_CAP_SECONDS` never forfeits, and one past it must.
+ */
+function widestGapSecondsOf(scheduleMs: readonly number[]): number {
+  let widest = 0;
+  let previous = 0;
+  for (const at of scheduleMs) {
+    const seconds = Math.floor(at / EMPIRE_FLOOR.MILLISECONDS_PER_SECOND);
+    if (seconds - previous > widest) widest = seconds - previous;
+    if (seconds > previous) previous = seconds;
+  }
+  return widest;
+}
+
 /** Everything about a floor that a comparison should care about. */
 const shapeOf = (floor: EmpireFloor): string =>
   JSON.stringify({
     openSeconds: floor.openSeconds,
+    gymSeconds: floor.gymSeconds,
     checkIns: floor.checkIns,
     gym: floor.gym,
     readings: empireFloorReadings(floor),
@@ -220,6 +288,17 @@ const shapeOf = (floor: EmpireFloor): string =>
  *   - A LADDER RUNG. `equipment` is a position on `EQUIPMENT_TIERS`, compared
  *     by index the way `empireCore.ts` compares it, so the claim is that the
  *     floor only ever climbs and never draws a name that is off the ladder.
+ *   - THE FORFEIT. `forfeitedSeconds` is the away summary the 2026-08-18 Option
+ *     B ruling added: wall time past `CATCH_UP_CAP_SECONDS` that was
+ *     acknowledged and not simulated. Over one floor's lifetime it is a counter
+ *     — both clocks it differences only move forward — so the walk holds it
+ *     non-decreasing like the cumulative three. It gets its OWN class rather
+ *     than joining them because its direction INVERTS between the two kinds of
+ *     claim this file makes: over time more forfeit is just history, but
+ *     between two players read at the same instant, the more-engaged one must
+ *     never hold MORE of it — forfeit is the one reading where a §12.3
+ *     violation is a rise, not a fall. Lumping it with the counters would have
+ *     made the pairing sweep assert the wrong direction on it, silently.
  *
  * ===========================================================================
  * THE FIFTH CLASS USED TO SAY "CATEGORICAL … IT IS NOT ORDERED", AND THAT
@@ -248,10 +327,12 @@ const shapeOf = (floor: EmpireFloor): string =>
 const CUMULATIVE_READINGS = Object.freeze(['reputation', 'roster', 'clockSeconds'] as const);
 const BALANCE_READING = 'gymBucks' as const;
 const SAWTOOTH_READING = 'pendingGymBucks' as const;
+const FORFEIT_READING = 'forfeitedSeconds' as const;
 const LADDER_READINGS = Object.freeze(['equipment'] as const);
 const NUMERIC_READINGS = Object.freeze([
   BALANCE_READING,
   SAWTOOTH_READING,
+  FORFEIT_READING,
   ...CUMULATIVE_READINGS,
 ] as const);
 
@@ -335,6 +416,15 @@ interface FloorWalk {
    */
   readonly counterFalls: readonly string[];
   /**
+   * Every fall of the FORFEIT reading, as text. Expected empty at every horizon
+   * and at every step size: both clocks it differences only move forwards, so a
+   * fall here is the away summary handing forfeited time back. Its own list
+   * rather than a `counterFalls` member because the class is its own — see the
+   * classification header for the direction inversion that keeps it out of
+   * `CUMULATIVE_READINGS`.
+   */
+  readonly forfeitFalls: readonly string[];
+  /**
    * Steps at which the equipment row moved DOWN `EQUIPMENT_TIERS`. THE LADDER
    * SAFETY LIST, and a list rather than a count so a failure names the instant
    * and both rungs. Capped at `LADDER_LIST_EXAMPLES`; see that constant for why
@@ -365,23 +455,32 @@ interface FloorWalk {
   readonly rungsSeen: number;
 }
 
-const WALKS = new Map<number, FloorWalk>();
+const WALKS = new Map<string, FloorWalk>();
 
 /**
- * One walk to `horizonSeconds`, memoised.
+ * One walk to `horizonSeconds` at `stepSeconds` a read, memoised.
  *
  * Memoised because four separate claims below are about the same walk and
  * re-running it four times would be four times the cost for the same numbers.
- * It is a pure function of its argument — `empireFloorAfter` opens a fresh gym
+ * It is a pure function of its arguments — `empireFloorAfter` opens a fresh gym
  * — so the cache cannot leak state between tests.
+ *
+ * `stepSeconds` defaults to the 1-second grain every pre-cap claim was taken
+ * at. The capped walk hands it a whole day, which makes every advance a capped
+ * one — same machinery, same records, different domain.
  */
-function walkTo(horizonSeconds: number): FloorWalk {
-  const cached = WALKS.get(horizonSeconds);
+function walkTo(
+  horizonSeconds: number,
+  stepSeconds: number = FLOOR_SWEEP.MONOTONE_STEP_SECONDS,
+): FloorWalk {
+  const key = `${stepSeconds}x${horizonSeconds}`;
+  const cached = WALKS.get(key);
   if (cached !== undefined) return cached;
 
   const decreases: Record<NumericReading, number> = {
     gymBucks: 0,
     pendingGymBucks: 0,
+    forfeitedSeconds: 0,
     reputation: 0,
     roster: 0,
     clockSeconds: 0,
@@ -390,6 +489,7 @@ function walkTo(horizonSeconds: number): FloorWalk {
   const balanceFalls: string[] = [];
   const balanceFallsWithNoPurchase: string[] = [];
   const counterFalls: string[] = [];
+  const forfeitFalls: string[] = [];
   const purchaseInstants: number[] = [];
   const rungsDescended: string[] = [];
   const rungsOffTheLadder: string[] = [];
@@ -418,11 +518,7 @@ function walkTo(horizonSeconds: number): FloorWalk {
       keepExample(rungsOffTheLadder, `at 0s ${opening} is not a rung on EQUIPMENT_TIERS`);
     }
   }
-  for (
-    let at = FLOOR_SWEEP.MONOTONE_STEP_SECONDS;
-    at <= horizonSeconds;
-    at += FLOOR_SWEEP.MONOTONE_STEP_SECONDS
-  ) {
+  for (let at = stepSeconds; at <= horizonSeconds; at += stepSeconds) {
     const now = advanceEmpireFloor(previous, at * EMPIRE_FLOOR.MILLISECONDS_PER_SECOND);
     read += 1;
     const before = empireFloorReadings(previous);
@@ -470,6 +566,7 @@ function walkTo(horizonSeconds: number): FloorWalk {
           if (checkedIn) sawtoothResetsAtACheckIn += 1;
           else sawtoothFallsAwayFromACheckIn += 1;
         }
+        if (key === FORFEIT_READING) forfeitFalls.push(where);
         if ((CUMULATIVE_READINGS as readonly string[]).includes(key)) counterFalls.push(where);
       }
       if (Number(after[key]) > Number(before[key])) increases[key] += 1;
@@ -487,6 +584,7 @@ function walkTo(horizonSeconds: number): FloorWalk {
     balanceFalls: Object.freeze(balanceFalls),
     balanceFallsWithNoPurchase: Object.freeze(balanceFallsWithNoPurchase),
     counterFalls: Object.freeze(counterFalls),
+    forfeitFalls: Object.freeze(forfeitFalls),
     rungsDescended: Object.freeze(rungsDescended),
     rungsOffTheLadder: Object.freeze(rungsOffTheLadder),
     rungChanges,
@@ -496,8 +594,100 @@ function walkTo(horizonSeconds: number): FloorWalk {
     widestPendingGapSeconds,
     cappedReadings,
   });
-  WALKS.set(horizonSeconds, walk);
+  WALKS.set(key, walk);
   return walk;
+}
+
+// ---------------------------------------------------------------------------
+// THE CANONICAL TRAJECTORY — what "further along the same path" resolves against
+// ---------------------------------------------------------------------------
+
+/**
+ * The gym after exactly `checkIns` check-ins, taken at the readings the floor
+ * always hands out: `checkInReadingAt(1)` up to `checkInReadingAt(checkIns)`.
+ *
+ * THE ONE FOLD EVERY FLOOR IS A PREFIX-READ OF. `advanceEmpireFloor` numbers
+ * its check-ins from one at fixed readings whatever the wall clock did, so a
+ * floor's gym is decided by its `checkIns` count alone — which is what turns
+ * "the extra look never lands you behind" from a claim about forty readings
+ * into a claim about one integer plus this identity. The capped sweeps assert
+ * both halves: the count is monotone in looks, and every gym IS this fold read
+ * at its own count, byte for byte.
+ *
+ * NOT `empireFloorAfter(checkInReadingAt(k))`, deliberately: that is one
+ * advance, which the cap clamps past `CATCH_UP_CAP_SECONDS`, so it cannot reach
+ * the far end of the trajectory the capped pairs live on. This is the same
+ * fold built the way the naive control builds gyms — `stepGym` directly, §5's
+ * own function — memoised incrementally because the sweeps ask for many
+ * prefixes of one path.
+ */
+const CANONICAL_TRAJECTORY: EmpireGym[] = [createEmpireGym()];
+function canonicalGymAt(checkIns: number): EmpireGym {
+  for (let k = CANONICAL_TRAJECTORY.length; k <= checkIns; k += 1) {
+    const previous = CANONICAL_TRAJECTORY[k - 1];
+    if (previous === undefined) throw new Error(`canonical trajectory has no gym at ${k - 1}`);
+    CANONICAL_TRAJECTORY[k] = stepGym(previous, EMPIRE_FLOOR_POLICY, checkInReadingAt(k), null, 0);
+  }
+  const gym = CANONICAL_TRAJECTORY[checkIns];
+  if (gym === undefined) throw new Error(`canonical trajectory has no gym at ${checkIns}`);
+  return gym;
+}
+
+/**
+ * Every way `diligent` could read WORSE than `idle` for a player, at one shared
+ * instant, as a list of faults — empty when §12.3 holds for the pair.
+ *
+ * WHAT IS COMPARED AND WHAT DELIBERATELY IS NOT. The counters, the rung and
+ * the forfeit are compared directly: more looks may never mean less
+ * reputation, a shorter roster, an older clock, a lower rung, or MORE
+ * forfeited time (the forfeit is the one reading whose punishing direction is
+ * a rise — see the classification header). The BALANCE and the SAWTOOTH are
+ * not compared raw, and that is a §5.1 fact rather than a soft spot: spending
+ * is the loop's second verb, so a gym that is strictly further along can hold
+ * less cash because it has bought more. What protects those two rows instead
+ * is the trajectory identity below — both gyms are the SAME fold read at their
+ * own counts, so the diligent player's balance is a value the idle player's
+ * own future holds, purchases and all — plus the walks' per-class claims about
+ * how each row may move along that one path.
+ */
+function punishingFaults(idle: EmpireFloor, diligent: EmpireFloor, where: string): string[] {
+  const faults: string[] = [];
+  if (diligent.checkIns < idle.checkIns) {
+    faults.push(`${where}: the extra look LOST check-ins, ${diligent.checkIns} < ${idle.checkIns}`);
+  }
+  if (diligent.gymSeconds < idle.gymSeconds) {
+    faults.push(`${where}: the extra look SIMULATED LESS, ${diligent.gymSeconds} < ${idle.gymSeconds}`);
+  }
+  if (forfeitedAwaySeconds(diligent) > forfeitedAwaySeconds(idle)) {
+    faults.push(
+      `${where}: the extra look FORFEITED MORE, ` +
+        `${forfeitedAwaySeconds(diligent)} > ${forfeitedAwaySeconds(idle)}`,
+    );
+  }
+  const before = empireFloorReadings(idle);
+  const after = empireFloorReadings(diligent);
+  for (const key of CUMULATIVE_READINGS) {
+    if (Number(after[key]) < Number(before[key])) {
+      faults.push(`${where}: ${key} ${before[key]} -> ${after[key]} on the extra look`);
+    }
+  }
+  for (const key of LADDER_READINGS) {
+    if (rungIndexOf(after[key]) < rungIndexOf(before[key])) {
+      faults.push(`${where}: ${key} ${before[key]} -> ${after[key]}, down the ladder, on the extra look`);
+    }
+  }
+  for (const [name, floor] of [
+    ['idle', idle],
+    ['diligent', diligent],
+  ] as const) {
+    if (JSON.stringify(floor.gym) !== JSON.stringify(canonicalGymAt(floor.checkIns))) {
+      faults.push(
+        `${where}: the ${name} gym at ${floor.checkIns} check-ins is OFF the canonical trajectory, ` +
+          'so "further along the same path" no longer covers its balance',
+      );
+    }
+  }
+  return faults;
 }
 
 // ---------------------------------------------------------------------------
@@ -571,16 +761,31 @@ describe('the naive wiring really does punish a player for looking more often', 
 // THE PROPERTY
 // ---------------------------------------------------------------------------
 
-describe('the floor is a function of elapsed time and of nothing else', () => {
+describe('the floor is a function of elapsed time and of nothing else — BELOW THE CAP', () => {
   /**
-   * The test `empireFloor.ts`'s guarantee tag names.
+   * The test `empireFloor.ts`'s first guarantee tag names, and THE PROPERTY IS
+   * RESTATED SINCE THE 2026-08-18 CAP RULING rather than re-pinned. It used to
+   * quantify over every schedule; under the cap that is false by design — a
+   * gap past `CATCH_UP_CAP_SECONDS` forfeits, so where the calls fell decides
+   * what was forfeited. What survives, exactly, is the original equality on
+   * the domain where no gap exceeds the cap, and that domain is asserted in
+   * this body rather than implied: the whole window these schedules are drawn
+   * from is smaller than the cap, so every gap they can produce is sub-cap by
+   * construction. The other half of the restated property — past the cap, more
+   * looks never land behind, strictly ahead pinned live — is the capped
+   * pairing sweep further down, under its own tag.
    *
    * Random call schedules against the one-shot value. Counts, not bounds: the
    * comparisons made and the distinct floors seen are both pinned, so a sweep
    * whose generator stopped producing anything reports an empty domain instead
    * of agreeing with it.
    */
-  it('any schedule of calls lands on the value one call would have produced [the-floor-is-a-function-of-elapsed-time-and-nothing-else]', () => {
+  it('below the cap, any schedule of calls lands on the value one call would have produced [below-the-cap-the-floor-is-a-function-of-elapsed-time]', () => {
+    // THE DOMAIN, ASSERTED. Every gap a schedule in this sweep can hold is at
+    // most the whole window, and the window sits far inside the cap — so the
+    // zero mismatches below is a zero about the sub-cap domain, stated rather
+    // than discovered later to have quietly covered nothing.
+    expect(FLOOR_SWEEP.HORIZON_SECONDS).toBeLessThan(CATCH_UP_CAP_SECONDS);
     const random = generator(FLOOR_SWEEP.SEED);
     const distinct = new Set<string>();
     const mismatches: string[] = [];
@@ -690,9 +895,9 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
     expect([...NUMERIC_READINGS, ...LADDER_READINGS].sort()).toEqual(
       Object.keys(empireFloorReadings(empireFloorAfter(0))).sort(),
     );
-    expect([BALANCE_READING, SAWTOOTH_READING, ...CUMULATIVE_READINGS].sort()).toEqual(
-      [...NUMERIC_READINGS].sort(),
-    );
+    expect(
+      [BALANCE_READING, SAWTOOTH_READING, FORFEIT_READING, ...CUMULATIVE_READINGS].sort(),
+    ).toEqual([...NUMERIC_READINGS].sort());
     // ...and the walk really reads all of them, at every horizon it is asked
     // about, rather than skipping one whose counter stayed at zero.
     expect(FLOOR_SWEEP.MONOTONE_HORIZONS_SECONDS).toEqual([240, 43_200, 86_400]);
@@ -906,21 +1111,37 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
     // per horizon it measures 0 and 1. The zeros are pinned rather than removed
     // so the gap reports itself, and the test below is what covers it, by
     // AIMING the extra look instead of hoping.
+    // SINCE THE CAP, "changes nothing" IS ONLY THE SUB-CAP HALF OF THE CLAIM,
+    // so each pair also reports whether its idle schedule holds a gap past
+    // `CATCH_UP_CAP_SECONDS`. At the twelve-hour horizon no schedule can — the
+    // whole window is the cap — and at twenty-four hours this seeded draw
+    // happens to produce none either (six visits in a day rarely leave a
+    // twelve-hour hole), so the zeros here are still the old equality on its
+    // own domain, and the census is what SAYS so instead of leaving the reader
+    // to assume it. The past-cap domain these two horizons cannot reach is the
+    // aimed test's below (one past-cap base, three differing pairs) and the
+    // capped pairing sweep's. Any pair that DID differ here would have to be
+    // diligent-ahead, and that is asserted rather than assumed.
+    const punishing: string[] = [];
     const observed = LONG_PAIR_HORIZONS.map((horizon) => {
       const random = generator(FLOOR_SWEEP.SEED);
       const commitments = walkTo(horizon).purchaseInstants;
       let pairs = 0;
       let differing = 0;
+      let pastCapBases = 0;
       let reachedACommitment = 0;
       let lookedWithinACheckIn = 0;
       for (let index = 0; index < FLOOR_SWEEP.LONG_PAIRS_PER_HORIZON; index += 1) {
         const base = scheduleOf(random, FLOOR_SWEEP.VISITS_PER_SCHEDULE, horizon);
         const extra = Math.floor(random() * horizon * EMPIRE_FLOOR.MILLISECONDS_PER_SECOND);
         const end = Math.max(base[base.length - 1] ?? 0, extra);
-        const idle = floorAfterSchedule([...base, end].sort((a, b) => a - b));
+        const idleSchedule = [...base, end].sort((a, b) => a - b);
+        const idle = floorAfterSchedule(idleSchedule);
         const diligent = floorAfterSchedule([...base, extra, end].sort((a, b) => a - b));
         pairs += 1;
+        if (widestGapSecondsOf(idleSchedule) > CATCH_UP_CAP_SECONDS) pastCapBases += 1;
         if (shapeOf(idle) !== shapeOf(diligent)) differing += 1;
+        punishing.push(...punishingFaults(idle, diligent, `horizon ${horizon}s, pair ${index}`));
         if (purchasesMadeBy(idle) > 0) reachedACommitment += 1;
         const extraSeconds = extra / EMPIRE_FLOOR.MILLISECONDS_PER_SECOND;
         if (
@@ -932,13 +1153,15 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
         }
       }
       return (
-        `${horizon}s: ${differing} of ${pairs} pairs differ, ${reachedACommitment} reached a ` +
-        `commitment, ${lookedWithinACheckIn} looked within a check-in of one`
+        `${horizon}s: ${differing} of ${pairs} pairs differ (${pastCapBases} past-cap base(s)), ` +
+        `${reachedACommitment} reached a commitment, ${lookedWithinACheckIn} looked within a ` +
+        'check-in of one'
       );
     });
+    expect(punishing, punishing.slice(0, 4).join('\n')).toEqual([]);
     expect(observed).toEqual([
-      '43200s: 0 of 8 pairs differ, 7 reached a commitment, 0 looked within a check-in of one',
-      '86400s: 0 of 8 pairs differ, 8 reached a commitment, 0 looked within a check-in of one',
+      '43200s: 0 of 8 pairs differ (0 past-cap base(s)), 7 reached a commitment, 0 looked within a check-in of one',
+      '86400s: 0 of 8 pairs differ (0 past-cap base(s)), 8 reached a commitment, 0 looked within a check-in of one',
     ]);
   });
 
@@ -955,13 +1178,32 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
     // that moves them aims at the new ones. An engine that stopped committing
     // anything reports `0 of 0 aimed pairs, over 0 commitment instant(s)` and
     // reddens, which is how an empty domain is supposed to look from outside.
+    // SINCE THE CAP, AN AIMED LOOK ON A PAST-CAP BASE IS ALLOWED TO MOVE THE
+    // FLOOR — in one direction. A base schedule at the twenty-four-hour horizon
+    // can hold a gap past `CATCH_UP_CAP_SECONDS`, and an extra look inside that
+    // gap splits it, simulates more of it, and lands the diligent player
+    // strictly ahead. So "differ" is no longer the failure; a differing pair
+    // whose diligent side reads WORSE on any §12.3 axis is, and every differing
+    // pair is driven through `punishingFaults` — counters, rung, forfeit
+    // direction and the canonical-trajectory identity — with the split of the
+    // aimed domain (how many bases held a past-cap gap) pinned beside the
+    // count so the differing pairs are read against the domain that produced
+    // them.
+    const punishing: string[] = [];
     const aimed = LONG_PAIR_HORIZONS.map((horizon) => {
       const random = generator(FLOOR_SWEEP.SEED);
       const commitments = walkTo(horizon).purchaseInstants;
       let pairs = 0;
       let differing = 0;
+      let pastCapBases = 0;
       for (const at of commitments) {
         const base = scheduleOf(random, FLOOR_SWEEP.VISITS_PER_SCHEDULE, horizon);
+        if (
+          widestGapSecondsOf([...base, horizon * EMPIRE_FLOOR.MILLISECONDS_PER_SECOND]) >
+          CATCH_UP_CAP_SECONDS
+        ) {
+          pastCapBases += 1;
+        }
         for (const offset of FLOOR_SWEEP.AIMED_OFFSETS_SECONDS) {
           const extra = (at + offset) * EMPIRE_FLOOR.MILLISECONDS_PER_SECOND;
           const end = Math.max(base[base.length - 1] ?? 0, extra);
@@ -969,17 +1211,230 @@ describe('§12.3 — a player who looks more often is never worse off', () => {
           const diligent = floorAfterSchedule([...base, extra, end].sort((a, b) => a - b));
           pairs += 1;
           if (shapeOf(idle) !== shapeOf(diligent)) differing += 1;
+          punishing.push(
+            ...punishingFaults(idle, diligent, `horizon ${horizon}s, aimed at ${at}s${offset >= 0 ? '+' : ''}${offset}`),
+          );
         }
       }
       return (
         `${horizon}s: ${differing} of ${pairs} aimed pairs differ, over ` +
-        `${commitments.length} commitment instant(s)`
+        `${commitments.length} commitment instant(s), ${pastCapBases} past-cap base(s)`
       );
     });
+    expect(punishing, punishing.slice(0, 4).join('\n')).toEqual([]);
     expect(aimed).toEqual([
-      '43200s: 0 of 6 aimed pairs differ, over 2 commitment instant(s)',
-      '86400s: 0 of 15 aimed pairs differ, over 5 commitment instant(s)',
+      '43200s: 0 of 6 aimed pairs differ, over 2 commitment instant(s), 0 past-cap base(s)',
+      '86400s: 3 of 15 aimed pairs differ, over 5 commitment instant(s), 1 past-cap base(s)',
     ]);
+  });
+
+  // ===========================================================================
+  // PAST THE CAP — the domain the 2026-08-18 Option B ruling created, swept
+  // ===========================================================================
+
+  /**
+   * The test `empireFloor.ts`'s second guarantee tag names, and the restated
+   * half of the old path-independence property. Two schedules over the same
+   * wall span, identical except for one extra look, both read at the same final
+   * instant, over a window wide enough that gaps regularly exceed
+   * `CATCH_UP_CAP_SECONDS`. Four counts pinned, none a bound:
+   *
+   *   - the PUNISHING direction is a fault list, expected empty — check-ins,
+   *     simulated seconds, every counter, the rung, the forfeit's own inverted
+   *     direction, and the canonical-trajectory identity that carries the
+   *     balance claim (see `punishingFaults` for why the balance is not
+   *     compared raw);
+   *   - STRICTLY AHEAD is pinned non-zero and exact — the cap's reward
+   *     direction is alive in the sampled domain, not merely unviolated;
+   *   - the pairs whose gaps all sit under the cap are pinned BYTE-IDENTICAL —
+   *     the old equality, surviving on exactly the domain it still owns;
+   *   - and the domain split itself is pinned, so a re-seed that quietly
+   *     stopped producing past-cap gaps is a red census, not a vacuous zero.
+   */
+  it('past the cap, a schedule with more looks never lands behind — and strictly ahead is live [past-the-cap-more-looks-never-land-behind]', () => {
+    const random = generator(FLOOR_SWEEP.SEED);
+    const faults: string[] = [];
+    const subCapDiffering: string[] = [];
+    let pairs = 0;
+    let identical = 0;
+    let ahead = 0;
+    let pastCapPairs = 0;
+    let subCapPairs = 0;
+    let forfeitedStrictlyLess = 0;
+    for (let index = 0; index < FLOOR_SWEEP.CAPPED_PAIRS; index += 1) {
+      const base = scheduleOf(
+        random,
+        FLOOR_SWEEP.CAPPED_VISITS_PER_SCHEDULE,
+        FLOOR_SWEEP.CAPPED_PAIR_WINDOW_SECONDS,
+      );
+      const extra = Math.floor(
+        random() * FLOOR_SWEEP.CAPPED_PAIR_WINDOW_SECONDS * EMPIRE_FLOOR.MILLISECONDS_PER_SECOND,
+      );
+      const end = Math.max(base[base.length - 1] ?? 0, extra);
+      const idleSchedule = [...base, end].sort((a, b) => a - b);
+      const diligentSchedule = [...base, extra, end].sort((a, b) => a - b);
+      const idle = floorAfterSchedule(idleSchedule);
+      const diligent = floorAfterSchedule(diligentSchedule);
+      pairs += 1;
+
+      // The domain census: a pair is past-cap if either schedule holds a gap
+      // the clamp would forfeit on. Counted off the schedules, not the floors,
+      // so the census cannot be circular about the thing it is a census of.
+      const widest = Math.max(widestGapSecondsOf(idleSchedule), widestGapSecondsOf(diligentSchedule));
+      if (widest > CATCH_UP_CAP_SECONDS) pastCapPairs += 1;
+      else subCapPairs += 1;
+
+      faults.push(...punishingFaults(idle, diligent, `pair ${index}`));
+      if (shapeOf(idle) === shapeOf(diligent)) {
+        identical += 1;
+      } else {
+        ahead += 1;
+        if (forfeitedAwaySeconds(diligent) < forfeitedAwaySeconds(idle)) forfeitedStrictlyLess += 1;
+      }
+      // THE OLD PROPERTY, ON THE DOMAIN IT STILL OWNS: a pair whose every gap
+      // is sub-cap must be byte-identical, extra look and all.
+      if (widest <= CATCH_UP_CAP_SECONDS && shapeOf(idle) !== shapeOf(diligent)) {
+        subCapDiffering.push(`pair ${index}: no gap past the cap, and the extra look still moved the floor`);
+      }
+    }
+    expect(faults, faults.slice(0, 6).join('\n')).toEqual([]);
+    expect(subCapDiffering, subCapDiffering.join('\n')).toEqual([]);
+    expect(pairs).toBe(FLOOR_SWEEP.CAPPED_PAIRS);
+    // THE DOMAIN SPLIT, PINNED. Both halves are populated, so the empty fault
+    // list above is about a domain that actually holds capped gaps, and the
+    // byte-identity above is about one that actually holds sub-cap pairs.
+    expect(`${pastCapPairs} past-cap, ${subCapPairs} sub-cap`).toBe('4 past-cap, 12 sub-cap');
+    // THE REWARD DIRECTION, LIVE AND EXACT: three of the four past-cap pairs
+    // end with the extra look STRICTLY ahead, and in every one of them it also
+    // forfeited strictly less — the number the away row draws is itself
+    // engagement-monotone here. The fourth past-cap pair is the honest
+    // remainder: its extra look landed outside the long gap, so both floors
+    // forfeited the same span and stayed byte-identical — an extra look only
+    // helps when it actually splits an absence, and this seeded draw holds
+    // both shapes.
+    expect(`${ahead} strictly ahead, ${forfeitedStrictlyLess} forfeited strictly less`).toBe(
+      '3 strictly ahead, 3 forfeited strictly less',
+    );
+    expect(identical + ahead).toBe(pairs);
+  });
+
+  /**
+   * THE PAIR THE RULING WAS MADE ON, PINNED EXACTLY. Away a whole day: the
+   * player who never looked has half the day simulated and half forfeited; the
+   * player who looked once, at the cap boundary, has both halves run in full.
+   * The extra look EARNS — double the check-ins, zero forfeit — and both gyms
+   * are the one canonical fold read at their own counts, so everything either
+   * screen draws comes off the same path.
+   */
+  it('the ruling’s own pair: away a whole day, one look at hour twelve keeps the whole day', () => {
+    const capMs = CATCH_UP_CAP_SECONDS * EMPIRE_FLOOR.MILLISECONDS_PER_SECOND;
+    const dayMs = EMPIRE_TUNING.SECONDS_PER_DAY * EMPIRE_FLOOR.MILLISECONDS_PER_SECOND;
+    const absentee = advanceEmpireFloor(openEmpireFloor(0), dayMs);
+    const visitor = advanceEmpireFloor(advanceEmpireFloor(openEmpireFloor(0), capMs), dayMs);
+
+    // The absentee: wall clock honest, gym clock capped, the difference drawn.
+    expect(absentee.openSeconds).toBe(86_400);
+    expect(absentee.gymSeconds).toBe(43_200);
+    expect(absentee.checkIns).toBe(4_320);
+    expect(forfeitedAwaySeconds(absentee)).toBe(43_200);
+    expect(catchUpWasCapped(absentee)).toBe(true);
+    expect(empireFloorReadings(absentee).forfeitedSeconds).toBe('43200');
+
+    // The visitor: two gaps of exactly the cap, neither forfeits anything.
+    expect(visitor.openSeconds).toBe(86_400);
+    expect(visitor.gymSeconds).toBe(86_400);
+    expect(visitor.checkIns).toBe(8_640);
+    expect(forfeitedAwaySeconds(visitor)).toBe(0);
+    expect(catchUpWasCapped(visitor)).toBe(false);
+    expect(empireFloorReadings(visitor).forfeitedSeconds).toBe('0');
+
+    // The reward direction on the readings themselves, strictly — on the rows
+    // that CAN still move: §5.4's reputation line reaches its ceiling inside
+    // the cap's own span (both players read 5000 here, measured, which is why
+    // reputation is the one counter asserted >= rather than >), so the strict
+    // evidence is the roster and the gym clock, both of which the extra look
+    // doubles the trajectory for.
+    expect(visitor.gym.state.roster.length).toBeGreaterThan(absentee.gym.state.roster.length);
+    expect(Number(empireFloorReadings(visitor).clockSeconds)).toBeGreaterThan(
+      Number(empireFloorReadings(absentee).clockSeconds),
+    );
+    expect(visitor.gym.state.reputation).toBeGreaterThanOrEqual(absentee.gym.state.reputation);
+    expect(visitor.gym.state.reputation).toBe(5_000);
+    expect(punishingFaults(absentee, visitor, 'the ruling pair')).toEqual([]);
+
+    // One trajectory, two read points: the §12.3 shape of the whole cap.
+    expect(JSON.stringify(absentee.gym)).toBe(JSON.stringify(canonicalGymAt(4_320)));
+    expect(JSON.stringify(visitor.gym)).toBe(JSON.stringify(canonicalGymAt(8_640)));
+  });
+
+  /**
+   * THE FREEZE LADDER THE RULING QUOTED, RE-TAKEN AS ARITHMETIC. Under the
+   * unbounded loop these five jumps cost 8,640 / 25,920 / 60,480 / 259,200 /
+   * 3,153,600 steps (160 ms to 97.2 s at ef1a3f2, idle box); under the clamp
+   * every one of them owes the same `CATCH_UP_CAP_SECONDS` of check-ins, so
+   * the synchronous work a jump can demand is a constant of the tuning, not of
+   * the absence. Wall-clock milliseconds are deliberately not asserted — a
+   * timing pin measures the box — the step count IS the bound, and it is
+   * pinned as the cap's own number so a tuning change meets friction here.
+   */
+  it('a jump of any size owes at most the cap: one day to one year all land on the same gym', () => {
+    const capCheckIns = CATCH_UP_CAP_SECONDS / EMPIRE_FLOOR.CHECK_IN_SECONDS;
+    expect(capCheckIns).toBe(4_320);
+    const cappedGym = JSON.stringify(canonicalGymAt(capCheckIns));
+    for (const jump of FLOOR_SWEEP.JUMP_LADDER_SECONDS) {
+      const floor = empireFloorAfter(jump);
+      expect(floor.checkIns, `check-ins owed by a ${jump}s jump`).toBe(capCheckIns);
+      expect(floor.gymSeconds, `gym seconds after a ${jump}s jump`).toBe(CATCH_UP_CAP_SECONDS);
+      expect(floor.openSeconds, `wall seconds after a ${jump}s jump`).toBe(jump);
+      expect(forfeitedAwaySeconds(floor), `forfeit of a ${jump}s jump`).toBe(
+        jump - CATCH_UP_CAP_SECONDS,
+      );
+      expect(catchUpWasCapped(floor)).toBe(true);
+      // All five rungs land on the SAME gym — the fold at the cap — which is
+      // what "time beyond the cap is acknowledged, not simulated" means.
+      expect(JSON.stringify(floor.gym)).toBe(cappedGym);
+      // ...and the INNER offline discard stayed quiet on every one of them:
+      // a capped advance lands the gym clock on a check-in boundary, so the
+      // previewed gap is zero and `production.ts` was never asked to discard.
+      expect(pendingWasCapped(floor)).toBe(false);
+      expect(floor.pending.gymBucks).toBe(0);
+    }
+    // The ladder really is the ruling's: a day, three days spelt as 72 hours in
+    // the ruling, a week, thirty days, a year.
+    expect(FLOOR_SWEEP.JUMP_LADDER_SECONDS).toEqual([86_400, 259_200, 604_800, 2_592_000, 31_536_000]);
+  });
+
+  /**
+   * THE SUSPENDED-TAB CADENCE ITSELF: a floor read once a day for five days,
+   * through the same walk machinery as the three 1-second walks, so every
+   * class keeps its claim on the domain where every single advance is capped.
+   * The counters still never fall, the forfeit never falls and rises at every
+   * read, the balance falls only where the gym bought, the sawtooth resets
+   * only at check-ins, the rung never descends — and the inner discard stays
+   * at zero even here, which is the widest domain that claim now covers.
+   */
+  it('read once a day for five days, every reading still moves the right way', () => {
+    const walk = walkTo(
+      FLOOR_SWEEP.CAPPED_WALK_HORIZON_SECONDS,
+      FLOOR_SWEEP.CAPPED_WALK_STEP_SECONDS,
+    );
+    expect(walk.counterFalls, walk.counterFalls.join('\n')).toEqual([]);
+    expect(walk.forfeitFalls, walk.forfeitFalls.join('\n')).toEqual([]);
+    expect(walk.balanceFallsWithNoPurchase, walk.balanceFallsWithNoPurchase.join('\n')).toEqual([]);
+    expect(walk.rungsDescended, walk.rungsDescended.join('\n')).toEqual([]);
+    expect(walk.rungsOffTheLadder, walk.rungsOffTheLadder.join('\n')).toEqual([]);
+    expect(walk.sawtoothFallsAwayFromACheckIn).toBe(0);
+    expect(walk.cappedReadings, 'inner offline discards on the capped walk').toBe(0);
+    // COUNTS, NOT BOUNDS — the walk really happened and the cap really bit:
+    // five reads, each one a check-in moment, each one raising the forfeit.
+    expect(
+      `${walk.read} read, ${walk.checkInMoments} check-in moments, ` +
+        `forfeit +${walk.increases[FORFEIT_READING]}, ${walk.purchaseMoments} bought`,
+    ).toBe('5 read, 5 check-in moments, forfeit +5, 5 bought');
+    // ...and the walk's end state is the arithmetic the clamp promises: five
+    // days of wall, five caps of gym, the difference on the away row.
+    const last = FLOOR_SWEEP.CAPPED_WALK_HORIZON_SECONDS;
+    expect(last / FLOOR_SWEEP.CAPPED_WALK_STEP_SECONDS).toBe(5);
   });
 });
 
@@ -1002,6 +1457,7 @@ describe('the floor advances, and these are the numbers', () => {
       roster: '0',
       equipment: 'bare-bar',
       clockSeconds: '0',
+      forfeitedSeconds: '0',
     });
     expect(empireFloorReadings(empireFloorAfter(10))).toEqual({
       gymBucks: '0.167',
@@ -1010,6 +1466,7 @@ describe('the floor advances, and these are the numbers', () => {
       roster: '0',
       equipment: 'bare-bar',
       clockSeconds: '10',
+      forfeitedSeconds: '0',
     });
     expect(empireFloorReadings(empireFloorAfter(60))).toEqual({
       gymBucks: '1.000',
@@ -1018,6 +1475,7 @@ describe('the floor advances, and these are the numbers', () => {
       roster: '0',
       equipment: 'bare-bar',
       clockSeconds: '60',
+      forfeitedSeconds: '0',
     });
     expect(empireFloorReadings(empireFloorAfter(600))).toEqual({
       gymBucks: '10.000',
@@ -1026,6 +1484,7 @@ describe('the floor advances, and these are the numbers', () => {
       roster: '0',
       equipment: 'bare-bar',
       clockSeconds: '600',
+      forfeitedSeconds: '0',
     });
   });
 
@@ -1051,7 +1510,7 @@ describe('the floor advances, and these are the numbers', () => {
 });
 
 describe('the seams this surface deliberately does not cross', () => {
-  it('the offline cap cannot bite here, and that is a bound rather than five samples', () => {
+  it('the INNER offline discard cannot bite here, and that is a bound rather than five samples', () => {
     // ===================================================================
     // `pendingWasCapped` IS FALSE AT EVERY FLOOR THIS MODULE CAN BUILD, AND
     // FIVE INSTANTS WERE NEVER EVIDENCE OF THAT
@@ -1064,14 +1523,24 @@ describe('the seams this surface deliberately does not cross', () => {
     //
     //   `advanceEmpireFloor` takes every check-in it owes before it previews, so
     //   the gap `accrueProduction` is asked about is
-    //   `openSeconds - checkInReadingAt(checkIns)`, which is strictly less than
+    //   `gymSeconds - checkInReadingAt(checkIns)`, which is strictly less than
     //   `EMPIRE_FLOOR.CHECK_IN_SECONDS` by construction. The cap discards only
     //   what is past `bankableOfflineSeconds`' horizon. So while one check-in is
     //   shorter than that horizon, no floor can be built that caps.
     //
+    // RE-DERIVED FOR THE 2026-08-18 CATCH-UP CAP, because the inequality's
+    // subject moved: the previewed gap used to be `openSeconds -
+    // checkInReadingAt(checkIns)`, and a wall clock that jumps a week would
+    // have made that claim false. It is GYM time now — a capped advance
+    // forfeits the wall span instead of letting the previewed gap widen — so
+    // the bound holds on the capped domain too, and the capped-floor arm at
+    // the bottom of this test is the assertion that it does, on the very floor
+    // whose catch-up WAS capped.
+    //
     // THREE ASSERTIONS, AND NONE OF THEM IS DOMINATED BY ANOTHER. That is
     // CLAUDE.md's required check, discharged by measurement rather than by
-    // reading them side by side — each was shown to redden ALONE:
+    // reading them side by side — each was shown to redden ALONE, re-run
+    // against the clamped module rather than carried over from the old one:
     //
     //   `CHECK_IN_SECONDS < cappedAbove`   `CHECK_IN_SECONDS` -> 86_400:
     //                                      `expected 86400 to be less than 43200`.
@@ -1079,10 +1548,14 @@ describe('the seams this surface deliberately does not cross', () => {
     //                                      assertions removed:
     //                                      `capped readings in 86400s: expected
     //                                      43199 to be +0`.
-    //   `widestPendingGapSeconds`          `owed` -> `checkInsBy(openSeconds) / 2`,
+    //   `widestPendingGapSeconds`          `owed` -> `checkInsBy(gymSeconds) / 2`,
     //                                      which leaves the cadence alone and the
     //                                      cap quiet: `widest previewed gap in
-    //                                      240s: expected 129 to be 9`.
+    //                                      240s: expected 240 to be 9`. (The
+    //                                      pre-clamp module read 129 here; on
+    //                                      the clamped one the halved count
+    //                                      lets the mark fall the walk's whole
+    //                                      length.)
     //
     // They read as one fact and are three: what the tuning says, what the engine
     // discarded, and how far behind the collection mark actually fell.
@@ -1097,7 +1570,24 @@ describe('the seams this surface deliberately does not cross', () => {
       expect(walk.widestPendingGapSeconds, `widest previewed gap in ${horizon}s`).toBe(
         EMPIRE_FLOOR.CHECK_IN_SECONDS - FLOOR_SWEEP.MONOTONE_STEP_SECONDS,
       );
+      // ...and a WATCHED floor never forfeits: the outer cap needs a gap wider
+      // than itself, and a walk that reads every second cannot hand it one.
+      // This is the away row's own zero on the domain the old sweeps cover —
+      // the state where the summary reads nothing because there is nothing to
+      // summarise.
+      expect(walk.increases[FORFEIT_READING], `forfeit rises in a watched ${horizon}s`).toBe(0);
+      expect(walk.decreases[FORFEIT_READING], `forfeit falls in a watched ${horizon}s`).toBe(0);
     }
+    // THE CAPPED-FLOOR ARM, which did not exist when the outer cap could not
+    // either: the one floor state the old comment called unbuildable is now
+    // built on purpose, and the inner discard is asserted quiet ON it. An hour
+    // past the cap in one advance — the catch-up is capped, the away row is
+    // live, and `pendingWasCapped` is still false because the gym clock landed
+    // on its own boundary rather than gaping.
+    const capped = empireFloorAfter(CATCH_UP_CAP_SECONDS + EMPIRE_TUNING.SECONDS_PER_HOUR);
+    expect(catchUpWasCapped(capped)).toBe(true);
+    expect(forfeitedAwaySeconds(capped)).toBe(EMPIRE_TUNING.SECONDS_PER_HOUR);
+    expect(pendingWasCapped(capped)).toBe(false);
     // THE OTHER DIRECTION, so the false above is not a false about a field that
     // cannot be true. A gap past the horizon really does discard time — read off
     // the same `accrueProduction` the floor's preview goes through.
