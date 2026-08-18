@@ -3200,6 +3200,30 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // The list is empty because the chunk domain is empty (pinned at 0
     // above), so on the shipped tree this comparison holds whatever the
     // extractor does — the fixture test below is where it is shown to bite.
+    //
+    // The declared residual, at the width E40 measured rather than the
+    // narrower one first written (E41). Today any JSX text at all reds the
+    // count pin above with the string itself in the message, so the census is
+    // covered. The day that pin is first raised above zero — the first
+    // shipped `.tsx` with render copy — two shapes arrive with no row
+    // anywhere:
+    //   (a) a mark that is not a Titlecase pair: a single word in caps, or a
+    //       wordmark with a digit swapped into it. The pair extractor has
+    //       nothing to extract, so it surfaces solely as the chunk count
+    //       moving by one — a diff that is a number, strictly weaker than the
+    //       `spaceFree` pin above, where the diff is the name itself. Whoever
+    //       raises the pin should raise it to an exact chunk list, not a
+    //       count, so this shape stays a named diff;
+    //   (b) a pair split across an expression container — `Placeholder{' '}
+    //       Lifter` — which parses as two JsxText chunks with no extractable
+    //       pair in either, while the separator lands in the single-quoted
+    //       collector as a bare space. Neither half is person-shaped alone,
+    //       so the signed-pairs list stays empty and the arrival is again two
+    //       count moves. An exact chunk list catches this one too, as two
+    //       adjacent named rows a reviewer reads together.
+    // Neither shape needs machinery today, because the count pin at zero
+    // carries both; the note exists so the pin is not raised into the weaker
+    // form by someone who has not read this.
     const SIGNED_JSX_TITLECASE_PAIRS: readonly string[] = Object.freeze([]);
     const jsxPairs = [...new Set(jsxCensus.chunks.flatMap((chunk) => titlecasePairsIn(chunk)))];
     expect(jsxPairs.sort()).toEqual([...SIGNED_JSX_TITLECASE_PAIRS].sort());
