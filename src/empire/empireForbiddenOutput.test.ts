@@ -684,7 +684,7 @@ function programWith(
       const text = served.get(path.normalize(fileName));
       return text === undefined
         ? readSource(fileName, languageVersion, onError, shouldCreate)
-        : ts.createSourceFile(fileName, text, languageVersion, true, ts.ScriptKind.TS);
+        : ts.createSourceFile(fileName, text, languageVersion, true);
     };
     const exists = host.fileExists.bind(host);
     host.fileExists = (fileName) => served.has(path.normalize(fileName)) || exists(fileName);
@@ -1307,6 +1307,21 @@ describe('the domains are derived from the subject and are not empty', () => {
     const leaves = TUNING_LEAVES.numbers.map((leaf) => leaf.path);
     expect(leaves.length).toBe(DOMAIN_CENSUS.TUNING_NUMERIC_LEAVES);
     expect(distinct(leaves).length).toBe(DOMAIN_CENSUS.TUNING_NUMERIC_LEAVES);
+    // The population the count above is taken over is only as complete as the
+    // walk's enumeration. `Object.entries` sees own enumerable string keys, so a
+    // symbol knob or a non-enumerable one sits outside every number this census
+    // pins. This reads the hidden-key set at every node and requires it empty,
+    // so a knob added on either descriptor route reddens here instead of passing
+    // the census over a narrower set than the object holds.
+    expect(hiddenTuningKeys(EMPIRE_TUNING, '')).toEqual([]);
+    // Non-vacuity: the reading is not one that can only report empty. A symbol
+    // key and a non-enumerable key are both found, at depth, on a probe object.
+    const hiddenProbe: Record<string, unknown> = { visible: 1, nested: {} };
+    Object.defineProperty(hiddenProbe.nested, 'hidden', { value: 999, enumerable: false });
+    Object.defineProperty(hiddenProbe, Symbol('secretKnob'), { value: 7, enumerable: true });
+    expect([...hiddenTuningKeys(hiddenProbe, '')].sort()).toEqual(
+      ['[Symbol(secretKnob)]', 'nested.hidden (non-enumerable)'].sort(),
+    );
     // A string leaf is counted rather than dropped, so a vocabulary token
     // becoming a number moves a number here.
     expect(TUNING_LEAVES.strings.length).toBe(DOMAIN_CENSUS.TUNING_STRING_LEAVES);
@@ -2861,6 +2876,49 @@ function tuningLeaves(): {
   };
   walk(EMPIRE_TUNING, '');
   return { numbers: Object.freeze(numbers), strings: Object.freeze(strings) };
+}
+
+/**
+ * Own keys of any object node under `EMPIRE_TUNING` that the leaf walk above —
+ * which recurses through `Object.entries` — cannot see, named by path.
+ *
+ * `Object.entries` returns own ENUMERABLE STRING keys, so it drops two
+ * descriptor routes at once: a symbol key (`Object.getOwnPropertySymbols`) and a
+ * non-enumerable string key (`Object.defineProperty(..., { enumerable: false })`).
+ * Both are the same defect — a tuned leaf outside the population the census
+ * enumerates — reached two ways, so this reads `Object.getOwnPropertyNames`
+ * against `Object.keys` and adds the symbols, covering BOTH rather than pinning
+ * symbols alone and leaving the non-enumerable arm for the next round. That is a
+ * containment reading and not merely a wider one: a symbols-only pin is the
+ * reach/predicate half-fix this file records, where closing one axis says
+ * nothing about the sibling. It recurses because a hidden knob can sit at any
+ * nesting level the leaf walk descends, and it does NOT widen `tuningLeaves`
+ * itself, which stays the enumeration the population count is taken over.
+ *
+ * An array's own non-enumerable `length` is inherent rather than a hidden knob,
+ * so arrays are checked for symbols only.
+ */
+function hiddenTuningKeys(node: unknown, at: string): readonly string[] {
+  if (typeof node !== 'object' || node === null) return [];
+  const here = at === '' ? '' : `${at}.`;
+  const found: string[] = [];
+  for (const symbol of Object.getOwnPropertySymbols(node)) {
+    found.push(`${here}[${symbol.toString()}]`);
+  }
+  if (Array.isArray(node)) {
+    node.forEach((child, index) => {
+      found.push(...hiddenTuningKeys(child, `${at}[${String(index)}]`));
+    });
+    return Object.freeze(found);
+  }
+  const enumerable = new Set(Object.keys(node));
+  for (const name of Object.getOwnPropertyNames(node)) {
+    if (!enumerable.has(name)) found.push(`${here}${name} (non-enumerable)`);
+  }
+  for (const [key, child] of Object.entries(node)) {
+    found.push(...hiddenTuningKeys(child, at === '' ? key : `${at}.${key}`));
+  }
+  return Object.freeze(found);
 }
 
 const TUNING_LEAVES = tuningLeaves();
@@ -12064,21 +12122,82 @@ describe('the channel census — the routes a string can leave this directory by
     'seals every returned-closure result the channel census found',
     () => {
       const reading = returnedClosureSealReading();
+      // The naming assertions first, the same ordering the throw census above
+      // applies and the site table records: the checks that name the route run
+      // before the count pins, so a third arrow arriving reddens with WHERE it
+      // is rather than with a bare `expected 3 to be 2` under a message that
+      // reads as "found none". The bite: an arrow whose body is not a call to
+      // the seal names itself, with the body text in the message.
+      expect(reading.unsealed, reading.unsealed.join(' | ')).toEqual([]);
+      // Both directions, by site. A third returned closure arriving sealed is
+      // named here (`+ 'module#fn#closure:.x'`); a seal call left behind by a
+      // deleted arrow is named the other way.
+      expect([...reading.sealed].sort()).toEqual([...DECLARED_RETURNED_CLOSURE_SITES].sort());
       // Every site was located exactly once. A walk that found nothing would
-      // otherwise report an empty `unsealed` and read as a pass.
+      // otherwise report an empty `unsealed` and read as a pass, so this is the
+      // non-vacuity guard for the naming assertions above.
       expect(reading.matched).toEqual(
         [...reading.sites].sort().map((site) => [site, RETURNED_CLOSURE_SEAL.ARROWS_PER_SITE]),
       );
-      expect(reading.sites.length, 'the census found no returned closure to seal').toBe(
+      // The counts last, with a message that states the direction honestly
+      // rather than asserting "found none" when the census in fact found more.
+      expect(reading.sites.length, 'the returned-closure site count moved').toBe(
         RETURNED_CLOSURE_SEAL.SITES,
       );
-      // The bite: an arrow whose body is not a call to the seal names itself,
-      // with the body text in the message, so the failure says where and what.
-      expect(reading.unsealed, reading.unsealed.join(' | ')).toEqual([]);
-      // Both directions. A seal call left behind by a deleted arrow is red the
-      // other way, and so is a third arrow arriving unsealed.
-      expect([...reading.sealed].sort()).toEqual([...DECLARED_RETURNED_CLOSURE_SITES].sort());
       expect(reading.sealed.length).toBe(RETURNED_CLOSURE_SEAL.SITES);
+    },
+    CHANNEL_BLOCK_TIMEOUT_MS,
+  );
+
+  it(
+    'scans a .tsx the widened walk hands it — a returned closure and a raw throw',
+    () => {
+      // RANK 3's non-vacuity for the CHANNEL census, the flagship §12.3-relevant
+      // catcher. Driven against an ON-DISK view.tsx through the same
+      // WALKED_EXTENSIONS walk the shipped census uses — NOT the served-text
+      // probe, which takes its roots as an argument and so passes identically at
+      // ['.ts'], and serves at ScriptKind.TS so the JSX mis-parses silently. The
+      // site keys the census emits for a `.tsx` are exactly what reverting the
+      // walk to ['.ts'] makes vanish.
+      const viewTsx = [
+        'export function idleRates(): { readonly gymBucksPerHour: () => string } {',
+        '  return {',
+        "    gymBucksPerHour: () => 'idle',",
+        '  };',
+        '}',
+        '',
+        'export function guard(hours: number): void {',
+        '  if (hours < 0) {',
+        "    throw new Error('hours must be non-negative');",
+        '  }',
+        '}',
+        '',
+        'export const View = () => <span>{idleRates().gymBucksPerHour()}</span>;',
+        '',
+      ].join('\n');
+      withProbeTree(
+        { 'view.tsx': viewTsx, 'plain.ts': 'export const plain = (): number => 1;\n' },
+        (root) => {
+          // The roots are DERIVED from the WALKED_EXTENSIONS walk, so at ['.ts']
+          // `view.tsx` is not among them — this is the tie to the widening.
+          const roots = tsFilesUnder(root, 'without-tests').map((name) =>
+            path.join(root, ...name.split('/')),
+          );
+          const census = channelCensusOf(roots, null);
+          // CONTENT AND REACH IN ONE WITNESS: the returned closure inside
+          // `idleRates()` is a real escape site the census located, by module,
+          // enclosing function and member path — which required the walk to
+          // hand it `view.tsx` AND the census to parse the `.tsx` correctly. At
+          // ['.ts'] the walk drops `view.tsx`, this list loses the entry, and
+          // the assertion reddens `expected [...] to include
+          // 'view.tsx#idleRates#closure:.gymBucksPerHour'`.
+          expect(census.sites['returned-closure']).toContain(
+            'view.tsx#idleRates#closure:.gymBucksPerHour',
+          );
+          // And the raw throw, named by file and enclosing function.
+          expect(census.sites.throw).toContain('view.tsx#guard#throw');
+        },
+      );
     },
     CHANNEL_BLOCK_TIMEOUT_MS,
   );
@@ -19391,6 +19510,40 @@ const CHAIN_SCAN_GLOBALS: readonly string[] = Object.freeze([
 ]);
 
 /**
+ * The parse diagnostics `ts.createSourceFile` accumulates for `fileName`+`text`,
+ * on its NON-PUBLIC `parseDiagnostics` array. `createSourceFile` does not throw
+ * on a mis-kinded parse — it returns a wrong tree and lands its complaints here,
+ * and `grep -rn parseDiagnostics src/` shows nothing in the product reads this
+ * array. Measured: a `.tsx` carrying a real three-arm `if/else if/else if`,
+ * parsed with an explicit `ts.ScriptKind.TS`, gives `ifStatements=0 nodes=34
+ * parseDiagnostics=3`; parsed as its extension names it (TSX), `ifStatements=3
+ * nodes=111 parseDiagnostics=0`. So a census that hardcodes `.TS` on a walked
+ * `.tsx` sees a wrong, smaller tree and NOTHING reports it.
+ */
+function parseDiagnosticsFor(fileName: string, text: string): readonly ts.Diagnostic[] {
+  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true);
+  return (
+    (source as unknown as { parseDiagnostics?: readonly ts.Diagnostic[] }).parseDiagnostics ?? []
+  );
+}
+
+/**
+ * Build the source the three syntactic censuses below walk, with the ScriptKind
+ * INFERRED from `fileName` rather than hardcoded — so a walked `.tsx` parses as
+ * TSX rather than collapsing to the 34-node mis-parse above. This is the whole
+ * of Rank 1's fix: dropping the fifth argument makes `createSourceFile` call
+ * `getScriptKindFromFileName`, which is byte-identical to an explicit
+ * `ScriptKind.TSX` on a `.tsx` and to `ScriptKind.TS` on a `.ts`.
+ *
+ * The parse-diagnostics guard (`every walked source parses clean`) pins
+ * `parseDiagnosticsFor` at zero over exactly the files this hands back, so a
+ * silent mis-parse of any walked file reddens instead of vanishing.
+ */
+function parseWalkedSource(fileName: string, text: string): ts.SourceFile {
+  return ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true);
+}
+
+/**
  * Find every dispatch chain in one source text.
  *
  * A CHAIN is a maximal run of ADJACENT sibling `if` statements in one block
@@ -19424,7 +19577,7 @@ const CHAIN_SCAN_GLOBALS: readonly string[] = Object.freeze([
  *     `enclosing` row must carry an `omission` too.
  */
 function dispatchChainsIn(fileName: string, text: string): readonly DispatchChain[] {
-  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const source = parseWalkedSource(fileName, text);
 
   const rootIdentifier = (expression: ts.Expression): string | null => {
     let at: ts.Expression = expression;
@@ -19608,7 +19761,7 @@ interface SwitchRow {
 
 /** Every `switch` in the scanned files, with whether it has a `default`. */
 function switchesIn(fileName: string, text: string): readonly SwitchRow[] {
-  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const source = parseWalkedSource(fileName, text);
   const rows: SwitchRow[] = [];
   const named = (node: ts.Node): string => {
     for (let at: ts.Node | undefined = node.parent; at !== undefined; at = at.parent) {
@@ -19698,7 +19851,7 @@ const handlerKey = (row: HandlerTableRow): string =>
   `${row.at} form=${row.form} entries=${String(row.entries)} guarded=${String(row.guarded)}`;
 
 function handlerTablesIn(fileName: string, text: string): readonly HandlerTableRow[] {
-  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const source = parseWalkedSource(fileName, text);
   const rows: HandlerTableRow[] = [];
   const named = (node: ts.Node): string => {
     for (let at: ts.Node | undefined = node.parent; at !== undefined; at = at.parent) {
@@ -20292,6 +20445,101 @@ describe('the dispatch-chain census — a ladder nobody looked at cannot be adde
     expect(chainScanFiles()).toEqual(compilerImportingFilesUnder(HERE));
     expect(directoryFileNames()).toEqual(tsFilesUnder(HERE, 'with-tests'));
     expect(directoryFileNames()).toContain('directoryWalk.test.ts');
+  });
+
+  it('parses every walked source clean — a silent mis-parse cannot shrink a census', () => {
+    // THE DOMAIN GUARD. CLAUDE.md: "a witness proves the check bites on the
+    // mutant you wrote; it says nothing about the DOMAIN the check enumerates."
+    // The three syntactic censuses build their tree with `parseWalkedSource`,
+    // whose ScriptKind is inferred from the extension. `ts.createSourceFile`
+    // does NOT throw on a mis-kinded parse — it returns a wrong, smaller tree
+    // and lands its complaints on the non-public `parseDiagnostics` array that
+    // nothing in the product reads. This pins that array at zero over exactly
+    // the files `chainScanFiles()` hands the censuses, so a walked source that
+    // parses to a wrong tree reddens here instead of being recorded ABSENT with
+    // the suite green.
+    for (const name of chainScanFiles()) {
+      const text = readFileSync(path.join(HERE, name), 'utf8');
+      const diagnostics = parseDiagnosticsFor(name, text);
+      expect(
+        diagnostics.map((diagnostic) =>
+          ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
+        ),
+        name,
+      ).toEqual([]);
+    }
+    // Non-vacuity: `parseDiagnosticsFor` returns a NON-empty array on broken
+    // syntax, so pinning it at zero above is a real constraint and not a
+    // mechanism that can only ever report zero.
+    expect(parseDiagnosticsFor('broken.ts', 'const x: = ;').length).toBeGreaterThan(0);
+    // And ScriptKind inference is what keeps a real `.tsx` clean: the identical
+    // JSX text is clean named `.tsx` (kind inferred) and DIRTY forced to `.TS`,
+    // which is the silent mis-parse this round closes.
+    const jsx = 'const view = () => <div>{`x`}</div>;\n';
+    expect(parseDiagnosticsFor('view.tsx', jsx)).toEqual([]);
+    const forcedTs = ts.createSourceFile(
+      'view.tsx',
+      jsx,
+      ts.ScriptTarget.ES2022,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const forcedDiagnostics =
+      (forcedTs as unknown as { parseDiagnostics?: readonly ts.Diagnostic[] })
+        .parseDiagnostics ?? [];
+    expect(forcedDiagnostics.length).toBeGreaterThan(0);
+  });
+
+  it('scans a .tsx the widened walk hands it — content, not just arrival', () => {
+    // RANK 3's NON-VACUITY for the dispatch census. Widening WALKED_EXTENSIONS
+    // with no DRIVEN .tsx is vacuous by construction: reverting it to ['.ts']
+    // must redden something. This drives an ON-DISK .tsx through the SAME reach
+    // function the census uses (`compilerImportingFilesUnder`, which is
+    // `tsFilesUnder` filtered) and the SAME classifier, so the reach axis and
+    // the content axis both have a subject that is a real `.tsx` on disk.
+    const tsx = [
+      "import ts from 'typescript';",
+      'export function classify(node: ts.Node): string {',
+      "  if (ts.isCallExpression(node)) return 'call';",
+      "  if (ts.isIdentifier(node)) return 'id';",
+      "  if (ts.isStringLiteral(node)) return 'str';",
+      "  return 'other';",
+      '}',
+      'export const view = () => <section>{`idle`}</section>;',
+      '',
+    ].join('\n');
+    withProbeTree({ 'rates.tsx': tsx, 'plain.ts': 'export {};\n' }, (root) => {
+      // REACH. The widened walk hands the `.tsx` to the census. This is the
+      // assertion that reddens `expected [ 'plain.ts' ] to contain 'rates.tsx'`
+      // the moment WALKED_EXTENSIONS drops back to `['.ts']`, so the widening is
+      // not vacuous.
+      const scanned = compilerImportingFilesUnder(root);
+      expect(scanned).toContain('rates.tsx');
+      const text = readFileSync(path.join(root, 'rates.tsx'), 'utf8');
+      // CONTENT. Parsed as TSX (kind inferred from the name), the source is
+      // clean and the three-arm dispatch chain is seen. Measured: the chain
+      // survives error recovery even forced to `.TS`, so the count is not what
+      // bites — the parse diagnostics are.
+      expect(parseDiagnosticsFor('rates.tsx', text)).toEqual([]);
+      const rows = dispatchChainsIn('rates.tsx', text);
+      expect(
+        rows.some((row) => row.at.includes('classify') && row.arms === 3 && row.dispatch),
+      ).toBe(true);
+      // The identical text FORCED to `ScriptKind.TS` — the pre-Rank-1 hardcode —
+      // reports parse diagnostics that nothing in the product reads. This is the
+      // silent mis-parse Rank 1 closes, shown on this fixture rather than argued.
+      const forced = ts.createSourceFile(
+        'rates.tsx',
+        text,
+        ts.ScriptTarget.ES2022,
+        true,
+        ts.ScriptKind.TS,
+      );
+      const forcedDiagnostics =
+        (forced as unknown as { parseDiagnostics?: readonly ts.Diagnostic[] }).parseDiagnostics ??
+        [];
+      expect(forcedDiagnostics.length).toBeGreaterThan(0);
+    });
   });
 
   it('finds every dispatch chain in this directory, in both directions', () => {

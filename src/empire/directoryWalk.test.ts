@@ -186,8 +186,13 @@ export const DIRECTORY_WALK = Object.freeze({
   PROBE_DIRECTORIES: 5,
   /** Files the extension probe's tree holds that a `.ts`+`.tsx` include claims. */
   PROBE_COMPILED: 5,
-  /** Of those, the ones the shared walk does not hand over. */
-  PROBE_UNWALKED: 3,
+  /**
+   * Files the compiler claims that the shared walk does not hand over. Since
+   * the walk keeps `.ts` and `.tsx`, this is driven against a config that also
+   * claims `**\/*.md`, so `notes.md` is the one file compiled-but-unwalked —
+   * the discriminating case the widened walk would otherwise have emptied.
+   */
+  PROBE_UNWALKED: 1,
   /** Files that same tree holds under an include claiming `.ts` alone. */
   PROBE_TS_ONLY_COMPILED: 2,
 });
@@ -267,7 +272,7 @@ function walkTree(
  * the censuses' reach empties the containment reading instead of leaving two
  * literals to drift apart in different functions.
  */
-export const WALKED_EXTENSIONS: readonly string[] = Object.freeze(['.ts']);
+export const WALKED_EXTENSIONS: readonly string[] = Object.freeze(['.ts', '.tsx']);
 
 /** Whether `name` is a colocated test module, at whatever extension it carries. */
 function isTestFileName(name: string): boolean {
@@ -686,22 +691,40 @@ describe('the directory walk every census in src/empire/ shares', () => {
         DIRECTORY_WALK.PROBE_COMPILED,
       );
 
-      // What the five censuses see of the same tree, and it is the `.ts` pair.
-      expect(tsFilesUnder(root, 'with-tests')).toEqual(['top.test.ts', 'top.ts']);
-      // So the difference is non-empty here, which is what makes the zero at
-      // `src/empire/` a reading rather than an empty domain. The extension is
-      // carried in the row because "a file arrived" and "an extension arrived"
-      // are different findings and the second is the one that needs a decision.
-      expect(unwalkedCompiledUnder(root, root, both, excluded)).toEqual([
-        'sub/deep.tsx (.tsx)',
-        'view.test.tsx (.tsx)',
-        'view.tsx (.tsx)',
+      // What the five censuses see of the same tree. The walk now keeps `.ts`
+      // AND `.tsx`, so a `.ts`+`.tsx` include leaves the censuses nothing they
+      // miss — the widening RETIRED the discriminating case this test was built
+      // on, and the containment reading has to be re-armed against an extension
+      // the walk still does not keep.
+      expect(tsFilesUnder(root, 'with-tests')).toEqual([
+        'sub/deep.tsx',
+        'top.test.ts',
+        'top.ts',
+        'vendor/skipped.tsx',
+        'view.test.tsx',
+        'view.tsx',
       ]);
-      expect(unwalkedCompiledUnder(root, root, both, excluded).length).toBe(
+      expect(unwalkedCompiledUnder(root, root, both, excluded)).toEqual([]);
+      // Re-armed against a THIRD extension the walk does not keep. `notes.md` is
+      // claimed by an include that names `**\/*.md` and walked by no census, so
+      // the difference is non-empty again — a reading rather than an empty
+      // domain. The extension is carried in the row because "a file arrived" and
+      // "an extension arrived" are different findings and the second is the one
+      // that needs a decision.
+      const withMarkdown = compiledExtensionsIn(configText(['**/*.ts', '**/*.tsx', '**/*.md']));
+      expect(withMarkdown).toEqual(['.md', '.ts', '.tsx']);
+      const excludedMarkdown = excludedPrefixesIn(
+        configText(['**/*.ts', '**/*.tsx', '**/*.md'], ['vendor']),
+      );
+      expect(unwalkedCompiledUnder(root, root, withMarkdown, excludedMarkdown)).toEqual([
+        'notes.md (.md)',
+      ]);
+      expect(unwalkedCompiledUnder(root, root, withMarkdown, excludedMarkdown).length).toBe(
         DIRECTORY_WALK.PROBE_UNWALKED,
       );
-      // `notes.md` is claimed by neither side, so the compiled list is a
-      // reading of the include rather than a list of everything present.
+      // And `notes.md` is claimed by neither the `.ts`+`.tsx` include nor the
+      // walk, so the compiled list is a reading of the include rather than a
+      // list of everything present.
       expect(filesUnder(root)).toContain('notes.md');
       expect(compiledFilesUnder(root, root, both, excluded)).not.toContain('notes.md');
     } finally {
@@ -794,7 +817,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
     // The two sides of the difference are joined to the constant that decides
     // it, so widening the censuses' reach and emptying this reading are one
     // edit rather than two that can drift.
-    expect(WALKED_EXTENSIONS).toEqual(['.ts']);
+    expect(WALKED_EXTENSIONS).toEqual(['.ts', '.tsx']);
     expect(projectCompiledExtensions()).toEqual(
       expect.arrayContaining([...WALKED_EXTENSIONS]),
     );

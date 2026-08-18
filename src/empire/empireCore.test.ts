@@ -279,7 +279,7 @@ function programWithProbe(options: ts.CompilerOptions, probeText: string): ts.Pr
   const readSource = host.getSourceFile.bind(host);
   host.getSourceFile = (fileName, languageVersion, onError, shouldCreate) =>
     path.normalize(fileName) === PROBE_PATH
-      ? ts.createSourceFile(fileName, probeText, languageVersion, true, ts.ScriptKind.TS)
+      ? ts.createSourceFile(fileName, probeText, languageVersion, true)
       : readSource(fileName, languageVersion, onError, shouldCreate);
   const exists = host.fileExists.bind(host);
   host.fileExists = (fileName) =>
