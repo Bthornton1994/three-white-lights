@@ -10846,8 +10846,13 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   MODULES: 10,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
   SITES: 329,
-  /** Nodes the walk examined. A truncated walk would report a clean directory. */
-  NODES_EXAMINED: 21_885,
+  /**
+   * Nodes the walk examined. A truncated walk would report a clean directory.
+   * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
+   * grammar declarations and the `satisfies` clause are 23 AST nodes, and no
+   * site, channel or wrap count moved with them.
+   */
+  NODES_EXAMINED: 21_908,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
   WRAP_CALLS: 55,
   CHANNELS: 11,
@@ -14373,7 +14378,8 @@ const LIMITER_TABLE: readonly (readonly [string, number | null, number | null, n
  * COVERS EACH:
  *
  *   1. a cycle introduced by a new declaration in this directory — this census,
- *      pinned empty in both directions, which reddens naming the declaration;
+ *      pinned exactly in both directions (two signed non-generic rows since
+ *      E41, argued at the pin), which reddens naming the declaration;
  *   2. a cycle imported from outside the directory — `imports nothing outside
  *      this directory` in `empireCore.test.ts`, which is a set equality over
  *      every module's edges and scans all three import forms;
@@ -14552,11 +14558,31 @@ function cyclicDeclarations(
  */
 const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   /** Type aliases, interfaces and classes declared across the ten shipped modules. */
-  DECLARATIONS: 119,
+  DECLARATIONS: 121,
   /** Those carrying type parameters. An instantiation depth needs one. */
   GENERIC: 11,
-  /** Declarations reaching themselves. Zero, and this is the pin the round is about. */
-  CYCLIC: Object.freeze([] as readonly string[]),
+  /**
+   * Declarations reaching themselves. Empty until E41; the two rows are the
+   * value grammar `empireTuning.ts` constrains `EMPIRE_TUNING` with, and they
+   * are signed here rather than avoided because this census's own design is
+   * that a cycle arriving costs a review and never silence.
+   *
+   * The review, so the signature is a reading and not a rubber stamp. The
+   * limiter defeat this census contains needs an INSTANTIATION of a GENERIC
+   * cyclic alias — that is the bisected trigger the docstring above defends —
+   * and both rows are non-generic (`GENERIC` holds at 11), so neither can be
+   * instantiated at any depth. Neither admits a function: the union is
+   * number, string, arrays and records of itself, and `tsc` refuses a
+   * function member at the declaration (measured, exit 2, this round).
+   * Neither is exported, and `satisfies` does not change an inferred type, so
+   * no exported surface of the directory references either — the screen is
+   * never asked about them. A third row that is generic, exported, or admits
+   * a function does not inherit this reasoning and gets its own review.
+   */
+  CYCLIC: Object.freeze([
+    'empireTuning.ts#EmpireTuningRecord',
+    'empireTuning.ts#EmpireTuningValue',
+  ] as readonly string[]),
   /**
    * The probe's own, which is what says the walk can find one at all.
    *
@@ -14650,10 +14676,15 @@ describe('the relation certifies from a cycle and not from a depth, and the cycl
     expect(RELATION_LIMITER.SILENT_AT.length).toBe(RELATION_LIMITER.SILENT_SHAPES);
   }, 120_000);
 
-  it('finds no type declaration in this directory that reaches itself, and can find one', () => {
+  it('pins every type declaration in this directory that reaches itself, and can find a planted one', () => {
     const reading = cyclicDeclarations();
     // THE CONTAINMENT, AS A SET EQUALITY IN BOTH DIRECTIONS. An added cycle is a
-    // row here naming the declaration; a removed one is red the other way.
+    // row here naming the declaration; a removed one is red the other way. The
+    // list was empty until E41's value grammar; its two rows are signed at the
+    // census with the review that admits them (non-generic, unexported, no
+    // function member), and this title said "finds no type declaration ..."
+    // until then — renamed with the pin, because a title is prose and prose
+    // does not get to keep a claim the assertion no longer makes.
     //
     // IT IS ASSERTED BEFORE THE DENOMINATORS, and the order is the difference
     // between a check that bites and one that bites usefully. Planting M64 adds
@@ -14667,16 +14698,23 @@ describe('the relation certifies from a cycle and not from a depth, and the cycl
     expect(reading.declarations).toBe(CYCLIC_DECLARATION_CENSUS.DECLARATIONS);
     expect(reading.generic).toBe(CYCLIC_DECLARATION_CENSUS.GENERIC);
     expect(reading.modules.length).toBe(CHANNEL_CENSUS_TOTALS.MODULES);
-    // AND THE POSITIVE CONTROL, WHICH IS WHY THE ZERO ABOVE IS A MEASUREMENT.
+    // AND THE POSITIVE CONTROL, WHICH IS WHY THE LIST ABOVE IS A MEASUREMENT.
     // `probeRecursiveInstantiation` has been in the probe since M63 and is built
-    // on exactly the declaration this fence is written about, so the walk is
-    // shown finding one on every run rather than only when somebody plants one.
+    // on exactly the declaration this fence is written about — a GENERIC cyclic
+    // alias, the shape that can actually carry the limiter defeat, which
+    // neither signed row is — so the walk is shown finding the dangerous kind
+    // on every run rather than only when somebody plants one.
     const withProbe = cyclicDeclarations(
       [...shippedModulePaths(), ASSEMBLY_PROBE_PATH],
       ASSEMBLY_PROBE_SOURCE,
       ASSEMBLY_PROBE_PATH,
     );
-    expect(withProbe.cyclic).toEqual(CYCLIC_DECLARATION_CENSUS.PROBE_CYCLIC);
+    expect(withProbe.cyclic).toEqual(
+      [
+        ...CYCLIC_DECLARATION_CENSUS.PROBE_CYCLIC,
+        ...CYCLIC_DECLARATION_CENSUS.CYCLIC,
+      ].sort(),
+    );
     expect(withProbe.declarations).toBeGreaterThan(reading.declarations);
   });
 });
