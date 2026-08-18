@@ -131,9 +131,11 @@ export const SHELL_LAYOUT = Object.freeze({
    * for the sake of one card would put an interaction on a screen whose whole
    * design is "no control of its own"; and the pill band is shared chrome
    * (`NAV_BOTTOM_INSET`'s own comment: moving it means re-shooting every
-   * surface). The cost is density: 48pt less air between the lead paragraph
-   * and the column, 8pt less inside each card. Both are feel values a
-   * playtester may re-spread — but only upward into the air above the column,
+   * surface). The cost is density: the borrowed constants drew 72 above the
+   * column and 14 inside each card, and the values below are where the
+   * tightening landed at introduction (the 72 and the 14 are history and stay
+   * true; the values below are knobs and will move). A playtester may
+   * re-spread them — but only upward into the air above the column,
    * because the frame is fixed (GDD §7.1: one internal resolution, nothing
    * reflows to make room) and the floor's cards and the pill's TOUCH TARGET —
    * its drawn box grown by `NAV_HIT_SLOP` — have to stay disjoint on it. That
