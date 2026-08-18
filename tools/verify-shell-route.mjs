@@ -109,7 +109,12 @@
  *      of this tool's discipline: `resolveEntry` has no `?empire=` arm, so the
  *      played arm is the only arm. The floor is also asked whether it draws any
  *      control OF ITS OWN, because the answer is no and that is what makes the
- *      shell's pill the whole of the way back.
+ *      shell's pill the whole of the way back. And the pill SITS ON NONE OF
+ *      THE FLOOR'S SEVEN CARDS: every card's drawn box is graded disjoint from
+ *      the pill's touch target (its box grown by NAV_HIT_SLOP), because the
+ *      shipped floor once drew BACK TO TRAINING on top of the away card with
+ *      every other check in the section green — drawn, labelled and
+ *      hit-testable are all true of a pill parked on a card.
  *
  * "ON SCREEN" HERE MEANS DRAWN, NOT MOUNTED. Every positive check above goes
  * through `onScreen`, which measures the element's effective opacity, because
@@ -1458,6 +1463,23 @@ const SHELL_LAYOUT_RESTATED = Object.freeze({
 });
 
 /**
+ * src/shell/shellTuning.ts — SHELL_LAYOUT.NAV_HIT_SLOP, restated.
+ *
+ * NOT covered by the drawn-pill argument above, and it cannot be: a hit slop
+ * widens what a thumb can press past what an eye can see, so there is no pixel
+ * anywhere that could be measured against this number. Its control is therefore
+ * the other kind this file uses — `checkNavTableMatchesTuning` reads the value
+ * straight out of `shellTuning.ts` source (`numberInBlock`, the same reader the
+ * Empire cadence uses) and fails by name when the two drift.
+ *
+ * What it is FOR: section 10 grades GDD §5's floor against the pill's TOUCH
+ * TARGET — the drawn box grown by this slop on every side — because a stat card
+ * clear of the pill's paint but inside its slop still trades mis-taps with it
+ * in both directions.
+ */
+const NAV_HIT_SLOP_RESTATED = 14;
+
+/**
  * ===========================================================================
  * AND THESE THREE, WHICH WERE JUST TYPED NUMBERS UNTIL A CRITIC READ THEM
  * ===========================================================================
@@ -2702,6 +2724,17 @@ async function checkNavTableMatchesTuning() {
     `fixture -> ${JSON.stringify(copyLineInSource(COPY_FIXTURE, 'WRAPPED_LINE'))} /` +
       ` ${JSON.stringify(copyLineInSource(COPY_FIXTURE, 'INLINE_LINE'))} /` +
       ` ${JSON.stringify(copyLineInSource(COPY_FIXTURE, 'ABSENT_LINE'))}`,
+  );
+
+  // THE SLOP THE FLOOR'S GEOMETRY IS GRADED AGAINST. No pixel can control this
+  // restatement — a hit slop draws nothing — so its control is the source read,
+  // like the cadence in `deriveEmpireFloorWindows` and unlike the two numbers
+  // in `SHELL_LAYOUT_RESTATED`, whose control is the pill the browser drew.
+  const slopInTuning = numberInBlock(source, 'SHELL_LAYOUT', 'NAV_HIT_SLOP');
+  check(
+    slopInTuning === NAV_HIT_SLOP_RESTATED,
+    'SHELL_LAYOUT.NAV_HIT_SLOP is the slop section 10 grows the pill’s box by before grading the floor’s cards against it',
+    `shellTuning.ts ${JSON.stringify(slopInTuning)} vs this tool ${NAV_HIT_SLOP_RESTATED}`,
   );
 
   // -------------------------------------------------------------------------
@@ -6407,6 +6440,61 @@ await checkOnScreen(
       `and it says ${JSON.stringify(EMPIRE_NAV_SAYS.LEAVE)}`,
       `the control says ${JSON.stringify(leaveLabel)}`,
     );
+    // -----------------------------------------------------------------------
+    // AND IT SITS ON NONE OF THE SEVEN CARDS — GEOMETRY, PER CARD
+    // -----------------------------------------------------------------------
+    // The away row (GDD §5.1's offline-cap summary) made this column seven
+    // cards tall, and on the 390x844 frame the seventh ran under the pill:
+    // the shipped floor drew BACK TO TRAINING on top of `empire-stat-away`,
+    // and EVERY CHECK IN THIS SECTION STAYED GREEN while it did — a pill can
+    // be drawn, labelled, and own `elementFromPoint` at its own centre while
+    // parked on a card, because the card is the thing UNDER it. Ruled a bug
+    // 2026-08-18 and fixed in layout (`EMPIRE_STATS_TOP` / `EMPIRE_STAT_PAD_V`
+    // in `shellTuning.ts`); this loop is what keeps the fix from regressing
+    // silently the next time the column grows.
+    //
+    // THE BOX GRADED IS THE TOUCH TARGET, NOT THE PAINT: the pill's drawn box
+    // grown by `SHELL_LAYOUT.NAV_HIT_SLOP` on every side, because the slop is
+    // pressable and invisible — a card clear of the pill's pixels but inside
+    // its slop still trades mis-taps with it in both directions. The slop
+    // cannot be measured off any screenshot, so its restatement is controlled
+    // by the source read in `checkNavTableMatchesTuning` instead.
+    //
+    // A card with no box and a pill with no box are FAILURES here, not skips:
+    // seven cards were already asserted present above, so an unmeasurable one
+    // is an instrument problem this loop must not paper over.
+    const pillTouchTarget =
+      leaveHit.box === undefined || leaveHit.box === null
+        ? null
+        : Object.freeze({
+            left: leaveHit.box.x - NAV_HIT_SLOP_RESTATED,
+            top: leaveHit.box.y - NAV_HIT_SLOP_RESTATED,
+            right: leaveHit.box.x + leaveHit.box.width + NAV_HIT_SLOP_RESTATED,
+            bottom: leaveHit.box.y + leaveHit.box.height + NAV_HIT_SLOP_RESTATED,
+          });
+    for (const expected of EMPIRE_FLOOR_READS) {
+      const cardBox = await page.getByTestId(expected.testID).boundingBox().catch(() => null);
+      const disjoint =
+        pillTouchTarget !== null &&
+        cardBox !== null &&
+        (cardBox.y + cardBox.height <= pillTouchTarget.top ||
+          cardBox.y >= pillTouchTarget.bottom ||
+          cardBox.x + cardBox.width <= pillTouchTarget.left ||
+          cardBox.x >= pillTouchTarget.right);
+      check(
+        disjoint,
+        `the pill’s touch target (its box grown ${NAV_HIT_SLOP_RESTATED}px by NAV_HIT_SLOP) overlaps no part of ${expected.testID}`,
+        pillTouchTarget === null
+          ? 'the pill has no bounding box to grade against'
+          : cardBox === null
+            ? 'the card has no bounding box at all'
+            : `card x ${cardBox.x.toFixed(1)}..${(cardBox.x + cardBox.width).toFixed(1)}` +
+              ` y ${cardBox.y.toFixed(1)}..${(cardBox.y + cardBox.height).toFixed(1)}` +
+              ` vs target x ${pillTouchTarget.left.toFixed(1)}..${pillTouchTarget.right.toFixed(1)}` +
+              ` y ${pillTouchTarget.top.toFixed(1)}..${pillTouchTarget.bottom.toFixed(1)}`,
+      );
+    }
+
     // THE BEAT THE SIGHTING IS FILED UNDER. `EmpireScreen` reports `'floor'` and
     // reports nothing else, so this is the reading `SHELL_NAV.EMPIRE_PHASES` is
     // graded against at the end of the run.

@@ -113,6 +113,38 @@ export const SHELL_LAYOUT = Object.freeze({
   EMPIRE_STAT_GAP: 14,
   EMPIRE_STAT_LABEL_FONT: 11,
   EMPIRE_STAT_VALUE_FONT: 20,
+
+  /**
+   * -------------------------------------------------------------------------
+   * WHY THESE TWO EXIST SEPARATELY, AND WHAT THE TIGHTENING COSTS
+   * -------------------------------------------------------------------------
+   * The stats column's top margin used to reuse `EMPIRE_PAD_TOP` (72) and a
+   * card's vertical padding used to reuse `EMPIRE_STAT_GAP` (14) — two padding
+   * constants doing double duty as column spacing because the floor had no
+   * spacing knobs of its own. That fit six cards. It became a ruled bug at
+   * seven: the away row (GDD §5.1's offline-cap summary) pushed the column's
+   * bottom under the bottom band where the shell anchors its pill, and BACK TO
+   * TRAINING drew on top of the card.
+   *
+   * THE MECHANISM CHOSEN IS TIGHTER SPACING — not smaller type, not a scroll,
+   * not moving the pill band. Type at the sizes above stays legible; a scroll
+   * for the sake of one card would put an interaction on a screen whose whole
+   * design is "no control of its own"; and the pill band is shared chrome
+   * (`NAV_BOTTOM_INSET`'s own comment: moving it means re-shooting every
+   * surface). The cost is density: 48pt less air between the lead paragraph
+   * and the column, 8pt less inside each card. Both are feel values a
+   * playtester may re-spread — but only upward into the air above the column,
+   * because the frame is fixed (GDD §7.1: one internal resolution, nothing
+   * reflows to make room) and the floor's cards and the pill's TOUCH TARGET —
+   * its drawn box grown by `NAV_HIT_SLOP` — have to stay disjoint on it. That
+   * disjointness is measured per card on the floor a player opened, in
+   * `tools/verify-shell-route.mjs`, so re-widening past the frame is a named
+   * failure there rather than a quiet overlap.
+   */
+  /** Gap between the lead paragraph and the first stat card. */
+  EMPIRE_STATS_TOP: 24,
+  /** A stat card's own vertical padding, label above and reading below. */
+  EMPIRE_STAT_PAD_V: 10,
 });
 
 /**

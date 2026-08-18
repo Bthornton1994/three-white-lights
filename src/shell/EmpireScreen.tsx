@@ -195,8 +195,14 @@ const styles = StyleSheet.create({
     fontSize: L.EMPIRE_BODY_FONT,
     lineHeight: L.EMPIRE_BODY_LINE,
   },
+  // EMPIRE_STATS_TOP and EMPIRE_STAT_PAD_V, not EMPIRE_PAD_TOP and
+  // EMPIRE_STAT_GAP: the column borrowed those two padding constants until the
+  // seventh card (the away row) ran the column under the shell's pill and the
+  // pill drew on top of it. The why and the cost live with the constants in
+  // `shellTuning.ts`; the geometry — every card disjoint from the pill's
+  // slop-grown touch target — is measured in `tools/verify-shell-route.mjs`.
   stats: {
-    marginTop: L.EMPIRE_PAD_TOP,
+    marginTop: L.EMPIRE_STATS_TOP,
     gap: L.EMPIRE_STAT_GAP,
   },
   stat: {
@@ -205,7 +211,7 @@ const styles = StyleSheet.create({
     backgroundColor: LIFT_PALETTE.PANEL,
     borderRadius: L.NAV_RADIUS,
     paddingHorizontal: L.NAV_PAD_H,
-    paddingVertical: L.EMPIRE_STAT_GAP,
+    paddingVertical: L.EMPIRE_STAT_PAD_V,
   },
   statLabel: {
     color: LIFT_PALETTE.TEXT_DIM,
