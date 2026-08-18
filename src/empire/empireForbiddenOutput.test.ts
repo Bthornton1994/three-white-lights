@@ -1322,6 +1322,50 @@ describe('the domains are derived from the subject and are not empty', () => {
     expect([...hiddenTuningKeys(hiddenProbe, '')].sort()).toEqual(
       ['[Symbol(secretKnob)]', 'nested.hidden (non-enumerable)'].sort(),
     );
+    // The internal-slot route, closed at runtime (E41). `hiddenTuningKeys`
+    // covers the two descriptor routes; a `Map`'s payload is not a descriptor
+    // at all, so a knob parked inside one was invisible to that read, to the
+    // leaf walk (whose object arm accepts the container and walks zero
+    // entries), and to the walk's own throw. The compile-time half is
+    // `empireTuning.ts`'s value grammar, which refuses the honest author at
+    // the declaration; this read is the half for a container laundered past
+    // the type by assertion, because it reads the shipped values themselves.
+    // On this tree it holds trivially — the grammar already compiled — so its
+    // non-vacuity is carried entirely by the driven probe below.
+    expect(offGrammarNodes(EMPIRE_TUNING, '')).toEqual([]);
+    // The drive: one probe per grammar refusal the read claims, at depth and
+    // inside an array, each named by path and by what arrived. A ban list
+    // would stop at the four famous containers; the prototype read also names
+    // a class instance and a null, which is what makes the acceptance the
+    // finite set rather than the refusal.
+    class KnobBox {
+      readonly ladder = 8641;
+    }
+    const slotProbe = {
+      fine: 3,
+      table: Object.freeze({ novice: 1 }),
+      nested: { inner: new Map([['novice', 8641]]) },
+      row: [1, new Set([2]), 'token'],
+      stamp: new Date(0),
+      handler: () => 0,
+      boxed: new KnobBox(),
+      gap: null,
+    };
+    expect([...offGrammarNodes(slotProbe, '')].sort()).toEqual(
+      [
+        'nested.inner (Map)',
+        'row[1] (Set)',
+        'stamp (Date)',
+        'handler (function)',
+        'boxed (KnobBox)',
+        'gap (null)',
+      ].sort(),
+    );
+    // And the walk's throw arm is driven rather than described: a leaf outside
+    // its four arms is a loud stop naming the path, not an under-count.
+    expect(() => tuningLeaves({ shaped: { wrong: true } })).toThrow(
+      'the tuning walk has no case for the leaf at shaped.wrong',
+    );
     // A string leaf is counted rather than dropped, so a vocabulary token
     // becoming a number moves a number here.
     expect(TUNING_LEAVES.strings.length).toBe(DOMAIN_CENSUS.TUNING_STRING_LEAVES);
@@ -2844,7 +2888,7 @@ interface TuningLeaf {
   readonly value: number;
 }
 
-function tuningLeaves(): {
+function tuningLeaves(root: unknown): {
   readonly numbers: readonly TuningLeaf[];
   readonly strings: readonly string[];
 } {
@@ -2869,12 +2913,25 @@ function tuningLeaves(): {
       for (const [key, child] of Object.entries(node)) walk(child, at === '' ? key : `${at}.${key}`);
       return;
     }
-    // Not a silent skip. A boolean, a null or a function inside the tuning block
-    // is a shape this walk has never seen, and a walk that shrugs at one would
-    // under-report the population it exists to enumerate.
-    throw new Error(`EMPIRE_TUNING carries a leaf this walk has no case for, at ${at}`);
+    // What the four arms above actually partition: number, string, array, and
+    // any non-null object. This throw covers exactly the leaves outside that
+    // partition — boolean, null, undefined, symbol, bigint, function — and it
+    // is driven on a probe root in the census test, so it is a check that has
+    // been seen red rather than a sentence. This comment used to say "Not a
+    // silent skip", and that was false when written: the object arm was the
+    // silent skip, because a `Map`'s payload lives in internal slots, so
+    // `Object.entries(map)` is `[]` and the arm accepted the container and
+    // walked nothing (measured at E41's base: a Map planted in the block left
+    // `tsc` at exit 0 and this census green with its number filed nowhere).
+    // The route past these arms is therefore any internal-slot container, and
+    // its named catchers are: `empireTuning.ts`'s value grammar (`satisfies
+    // EmpireTuningRecord`), which makes such an entry a compile error for an
+    // honest author, and `offGrammarNodes` below, which reads the real values
+    // and names any node outside the grammar — the catcher for a container
+    // laundered past the type by assertion.
+    throw new Error(`the tuning walk has no case for the leaf at ${at}`);
   };
-  walk(EMPIRE_TUNING, '');
+  walk(root, '');
   return { numbers: Object.freeze(numbers), strings: Object.freeze(strings) };
 }
 
@@ -2921,7 +2978,71 @@ function hiddenTuningKeys(node: unknown, at: string): readonly string[] {
   return Object.freeze(found);
 }
 
-const TUNING_LEAVES = tuningLeaves();
+/**
+ * Every node under `root` that is outside `empireTuning.ts`'s value grammar,
+ * named by path and by what it is. The runtime mirror of that grammar: a node
+ * is in-grammar when it is a number, a string, a plain array (prototype
+ * `Array.prototype`), or a plain record (prototype `Object.prototype` or
+ * null). Everything else — a `Map`, a `Set`, a `Date`, a function, a typed
+ * array, a class instance, a boolean, a null — is reported rather than walked
+ * past.
+ *
+ * Why a grammar mirror and not a `Map`/`Set`/`Date`/function ban list: a ban
+ * list of container classes is the sampling instrument one level up — the
+ * next container (`WeakMap`, `Uint8Array`, a hand-rolled class holding a
+ * knob in a private field) is outside the list by construction, and this
+ * round exists because two consecutive enumeration repairs each declared a
+ * successor. Testing the prototype against the two shapes the grammar admits
+ * makes the acceptance finite instead of the refusal.
+ *
+ * Which catcher covers what, said at the mechanism: the `satisfies` grammar
+ * in `empireTuning.ts` refuses the honest author at compile time, before any
+ * test runs. This read covers the assertion route — `as unknown as` erases a
+ * container at type level and compiles, and a type-erased `Map` is still a
+ * `Map` when `Object.getPrototypeOf` reads it. The two common launder
+ * spellings are additionally a signed row in `src/game/progression.test.ts`'s
+ * reflective-assembly census, which pins `as unknown as` / `as any as`
+ * occurrences per non-test file in both directions; that census is a tripwire
+ * on the spelling, not a closure over the class (`as never` is not in its
+ * pattern set), which is why this read exists rather than a pointer to it.
+ *
+ * Its own limit: it recurses through `Object.entries`, so a node behind a
+ * symbol or non-enumerable key is outside its reach — that is
+ * `hiddenTuningKeys`'s half, asserted empty beside this one at the same pin.
+ */
+function offGrammarNodes(node: unknown, at: string): readonly string[] {
+  if (typeof node === 'number' || typeof node === 'string') return [];
+  if (Array.isArray(node)) {
+    if (Object.getPrototypeOf(node) !== Array.prototype) {
+      return Object.freeze([`${at} (array with prototype ${protoName(node)})`]);
+    }
+    return Object.freeze(
+      node.flatMap((child, index) => offGrammarNodes(child, `${at}[${String(index)}]`)),
+    );
+  }
+  if (typeof node === 'object' && node !== null) {
+    const proto: unknown = Object.getPrototypeOf(node);
+    if (proto !== Object.prototype && proto !== null) {
+      return Object.freeze([`${at} (${protoName(node)})`]);
+    }
+    return Object.freeze(
+      Object.entries(node).flatMap(([key, child]) =>
+        offGrammarNodes(child, at === '' ? key : `${at}.${key}`),
+      ),
+    );
+  }
+  return Object.freeze([`${at} (${node === null ? 'null' : typeof node})`]);
+}
+
+/** The constructor name a report row carries, so a red line says what arrived. */
+function protoName(node: object): string {
+  const proto: unknown = Object.getPrototypeOf(node);
+  if (proto === null) return 'null prototype';
+  const ctor = (proto as { constructor?: { name?: string } }).constructor;
+  return typeof ctor?.name === 'string' && ctor.name.length > 0 ? ctor.name : 'unnamed prototype';
+}
+
+const TUNING_LEAVES = tuningLeaves(EMPIRE_TUNING);
 
 /**
  * Every numeric leaf at or under one `EMPIRE_TUNING` path, keyed by its full
