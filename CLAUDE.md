@@ -796,6 +796,29 @@ pre-commit the worktree scan covers it, post-commit the branch scan ages it, and
 the two halves hand off correctly — which is exactly what `wt-e14-local` fell
 through.
 
+### A `.test.tsx` COMPILES AND IS COLLECTED BY NOTHING — REPORTED, NOT FIXED
+
+`vitest.config.ts` is a Session B hard exclusion, so this is a report. Measured
+by execution, not read from source.
+
+`vitest.config.ts`'s `include` is `['src/**/*.test.ts']`. `tsconfig.json`'s
+`include` is `['**/*.ts', '**/*.tsx']` with `"jsx": "react-jsx"`. The two
+disagree about what a test file is, and the gap is silent in the direction that
+matters. A `src/empire/rates.test.tsx` carrying a deliberately failing assertion
+gives `npx tsc --noEmit` exit 0 and, run directly by path, `No test files found,
+exiting with code 1`. A test file that cannot fail because it cannot run is the
+strict definition of vacuous applied to a whole file — and unlike a vacuous
+assertion, nothing in the suite can report it, because the suite never sees it.
+
+*Scope, stated so it is not read as worse than it is.* No `.test.tsx` exists in
+the tree today, so nothing is currently unrun. `src/empire/`'s own containment
+reading names any compiled-but-unwalked file, so one cannot arrive silently *in
+that directory*; every other directory under `src/` has no such reading, and
+`src/shell/`, `src/meet/`, `src/cutin/` and `src/art/` are the ones that would
+plausibly write a `.tsx` test. What would close it: assert the two configs agree
+— that no file the compiler treats as a test is outside what the runner collects
+— which fails when the configs drift rather than when somebody remembers.
+
 ### THE COVERED-DAY GUARD IS BYPASSED BY NOT SPELLING THE WORDS — REPORTED, NOT FIXED
 
 `src/game/streakEntitlement.ts` and its test are Session A's, so this is a
@@ -1106,6 +1129,34 @@ named test's body, so a witness expires the moment either is edited away. Do it
 at declaration time, when the code is already in your head and it costs two
 copy-pastes on top of a mutation you already ran; a bar that costs an hour per tag stops being
 met, which is how the backlog got here.
+
+**AND A WITNESS PROVES THE CHECK BITES ON THE MUTANT YOU WROTE. IT SAYS NOTHING
+ABOUT THE DOMAIN THE CHECK ENUMERATES.** That is a different question from
+whether the assertion can fail, and the witness bar does not ask it. Recorded as
+the canonical instance because it caught the lead agent *applying* the rule, not
+a builder writing prose.
+
+*Measured.* A round claimed a third arrow leaving `src/empire/` is red before it
+is ever called; `DECLARED_RETURNED_CLOSURE_SITES` enforces it as a set equality,
+the mutant that adds an arrow reddened with the specifier named and nothing
+calling it, the classification was verified independently, and a crossing into
+another session's census was taken to bump the guarantee count for it. **Every
+step was sound and the sentence was still false when written.** The mutant was a
+`.ts` file, the census's reach was `.ts`, and `tsconfig.json` compiles `.tsx` as
+well — so the same arrow in a `.tsx` compiled at `tsc` exit 0, drove to the
+forbidden name, and left the whole suite green. Nothing in the verification asked
+what set the check was quantified over.
+
+**So when you record a witness, record the DOMAIN too** — not "this mutant
+reddens it" but "this mutant reddens it, and the check ranges over *this* set,
+derived *this* way". The question to ask of any absolute is not only *what edit
+turns this red*; it is *what would have to be true of the enumeration for this
+sentence to be false while every witness still passes*. Here the answer was one
+file extension, and the same shape recurred one instrument over: a leaf census
+whose `Object.entries` walk enumerates fewer keys than the object holds. It is
+the vacuity family one level out, and it is why *The Form That Survived* asks for
+a bounded claim: "in any file the shared walk hands this census" is true,
+checkable, and points straight at the walk.
 
 **The existing backlog is tracked debt, not a mass audit.** Close a tag's
 evidence gap when its module is next touched. Deliberately not a sweep: the two
