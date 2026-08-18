@@ -1,11 +1,22 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-18T19:22:39.907Z",
+    "capturedAt": "2026-08-18T21:03:45.897Z",
     "url": "http://localhost:8081",
-    "commit": "31c2ddc",
-    "branch": "claude/agent-config-setup-m2r6ny",
+    "commit": "f9d763e",
+    "branch": "claude/away-card-overlap",
     "workingTree": "clean",
-    "dirtyPaths": [],
+    "dirtyPaths": [
+      "M .gauntlet/shots/cutin-cap/cap.json",
+      " M .gauntlet/shots/cutin/baseline-no-cutin.png",
+      " M .gauntlet/shots/cutin/frames.json",
+      " M .gauntlet/shots/meet/sound.json",
+      " M .gauntlet/shots/shell/03-meet-played-walkout.png",
+      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+      " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
+      " M .gauntlet/shots/shell/15-empire-floor-from-session.png",
+      " M .gauntlet/shots/shell/19-empire-floor-on-the-second-visit.png",
+      " M .gauntlet/shots/shell/route.json"
+    ],
     "instrument": {
       "verify-lift-press.mjs": "54fad6f5b8d6acd3",
       "sessionDrive.mjs": "2a63eac7a653d32b",
