@@ -241,11 +241,23 @@ const PINNED = Object.freeze({
     'tools/testPathRefs.mjs',
   ]),
 
-  /** Tracked files whose bytes were read. */
-  SCANNED_FILES: 286,
+  /**
+   * Tracked files whose bytes were read.
+   *
+   * 286 -> 292 when the dev-server sentinel arrived: `devServerSentinel.mjs`,
+   * its `.d.mts`, its test, `processHazardHook.test.ts`, and the two hook
+   * files under `.claude/` (`hooks/warn-process-hazards.mjs`,
+   * `settings.json`).
+   */
+  SCANNED_FILES: 292,
 
-  /** Tracked `*.test.ts` files — the set every reference must land in. */
-  TEST_FILES: 89,
+  /**
+   * Tracked `*.test.ts` files — the set every reference must land in.
+   *
+   * 89 -> 91 with the sentinel: `tools/devServerSentinel.test.ts` and
+   * `tools/processHazardHook.test.ts`.
+   */
+  TEST_FILES: 91,
 });
 
 /**
