@@ -1671,6 +1671,62 @@ are wrong on its own judgement, which is a finding to report. And the fix is
 still flagged in the report, loudly, so a human sees a change they did not ask
 for.
 
+### A PROGRESSION CLAIM IS THREE FACTS, AND A CONSTANT SATISFIES TWO OF THEM
+
+**Ruled by a human after the fifth Empire grade closed the round that earned
+it.** A claim that a value "progresses correctly" is not one fact — it is at
+least three, and they must be asserted separately:
+
+1. **it never regresses**;
+2. **it never produces an invalid value**;
+3. **it MOVES.**
+
+**A constant passes the first two trivially.** A frozen value never regresses
+and is always valid — it just never changes. So a guard built from facts 1 and
+2 alone is a guard a hardcoded literal walks straight through, and adding more
+samples does not help: **more samples of a constant is still a constant.**
+
+Only fact 3, checked against the mechanism a real value would use, separates
+real progression from a value that was never wired to anything. The instance:
+the Empire floor's `equipment` row was hardcodable to `'bare-bar'` — the exact
+literal it already returned — with the whole suite green, because the checks on
+it were all of kinds 1 and 2. The fix asserted all three via
+`EQUIPMENT_TIERS.indexOf` — the same index comparison the engine itself uses —
+and pinned the rung CHANGE at a horizon where the shipped floor really climbs.
+Re-pinning the value at more instants was rejected by ruling as the trap: it
+reproduces the hardcode instead of verifying against it.
+
+When you write a guard for anything that is supposed to advance — a counter, a
+ladder, a balance, a clock — name which of the three facts each assertion
+carries, and if none of them is fact 3, the guard does not cover progression
+however many assertions it holds.
+
+### AN IDENTIFIER THAT MISDESCRIBES ITS MEASUREMENT IS WORSE THAN PROSE THAT DOES
+
+**Ruled by a human, from the same round.** A check, function, or variable whose
+NAME claims to measure something other than what it actually measures is a more
+dangerous stale claim than the same error in a comment — because **nobody
+re-verifies a name the way they second-guess a docstring.** An identifier is
+trusted by default, every time it is read, at every call site, without the
+reader ever deciding to trust it.
+
+The instance: `withAPurchase` counted pairs whose *floors had reached a
+commitment at some point* — true of essentially every long schedule — while its
+name read as "the extra look landed near a purchase", which is what the
+non-vacuity claim needed and what the count did not measure (measured: 0 of 8
+and 1 of 400 actually landed near one). The comment beside it was accurate;
+the name still carried the false claim to every reader who did not open the
+loop. The fix renamed it to `reachedACommitment` — the true statement — AND
+added a deterministic arm that actually aims the extra look at each commitment
+instant, because a rename alone keeps a weak guard and a fix alone was
+unpinnable under the random draw.
+
+So when a name and its measured property diverge, fix the name or the
+mechanism immediately, whichever is wrong — and do not let a plausible name
+stand in for a correct check. This is the "sentence written while the code was
+true" hazard one level down, living in the symbol table instead of the prose,
+where no scan for capitalised absolutes will ever find it.
+
 ## Architecture Rules
 
 ### Pure logic is separate from UI
