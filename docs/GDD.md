@@ -1610,6 +1610,16 @@ empty list — so the ceiling on a backgrounded tab is exactly what an
 always-watching player earns at the full online rate, and there is no rate
 above that to exploit.
 
+**The chrome-band promise on the Empire floor stays FLAGGED, not pinned —
+ruled 2026-08-18, held until after the L1 phone re-test.** The overlap fix
+happens to restore `SHELL_LAYOUT`'s "bottom sixth is empty" band on this
+screen, and the fix's own browser check pins only pill-disjointness — one
+claim, one check. Whether the band itself deserves a hard assertion here is a
+judgement about how the screen reads on a real device, so it waits for the
+same human hands the L1 re-test needs, and is pinned then only if that person
+says it is worth enforcing. Recorded so nobody pins it early on the reasoning
+that a flagged promise is an unfinished one — this one is deliberately held.
+
 - **Gym Bucks** (soft currency) — base passive income
 - **Training IQ trickle** — keeps Idle connected to Sim progression
 - **NPC lifters** — each generates Bucks/IQ based on tier and tenure
