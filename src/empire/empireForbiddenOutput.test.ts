@@ -12064,21 +12064,82 @@ describe('the channel census — the routes a string can leave this directory by
     'seals every returned-closure result the channel census found',
     () => {
       const reading = returnedClosureSealReading();
+      // The naming assertions first, the same ordering the throw census above
+      // applies and the site table records: the checks that name the route run
+      // before the count pins, so a third arrow arriving reddens with WHERE it
+      // is rather than with a bare `expected 3 to be 2` under a message that
+      // reads as "found none". The bite: an arrow whose body is not a call to
+      // the seal names itself, with the body text in the message.
+      expect(reading.unsealed, reading.unsealed.join(' | ')).toEqual([]);
+      // Both directions, by site. A third returned closure arriving sealed is
+      // named here (`+ 'module#fn#closure:.x'`); a seal call left behind by a
+      // deleted arrow is named the other way.
+      expect([...reading.sealed].sort()).toEqual([...DECLARED_RETURNED_CLOSURE_SITES].sort());
       // Every site was located exactly once. A walk that found nothing would
-      // otherwise report an empty `unsealed` and read as a pass.
+      // otherwise report an empty `unsealed` and read as a pass, so this is the
+      // non-vacuity guard for the naming assertions above.
       expect(reading.matched).toEqual(
         [...reading.sites].sort().map((site) => [site, RETURNED_CLOSURE_SEAL.ARROWS_PER_SITE]),
       );
-      expect(reading.sites.length, 'the census found no returned closure to seal').toBe(
+      // The counts last, with a message that states the direction honestly
+      // rather than asserting "found none" when the census in fact found more.
+      expect(reading.sites.length, 'the returned-closure site count moved').toBe(
         RETURNED_CLOSURE_SEAL.SITES,
       );
-      // The bite: an arrow whose body is not a call to the seal names itself,
-      // with the body text in the message, so the failure says where and what.
-      expect(reading.unsealed, reading.unsealed.join(' | ')).toEqual([]);
-      // Both directions. A seal call left behind by a deleted arrow is red the
-      // other way, and so is a third arrow arriving unsealed.
-      expect([...reading.sealed].sort()).toEqual([...DECLARED_RETURNED_CLOSURE_SITES].sort());
       expect(reading.sealed.length).toBe(RETURNED_CLOSURE_SEAL.SITES);
+    },
+    CHANNEL_BLOCK_TIMEOUT_MS,
+  );
+
+  it(
+    'scans a .tsx the widened walk hands it — a returned closure and a raw throw',
+    () => {
+      // RANK 3's non-vacuity for the CHANNEL census, the flagship §12.3-relevant
+      // catcher. Driven against an ON-DISK view.tsx through the same
+      // WALKED_EXTENSIONS walk the shipped census uses — NOT the served-text
+      // probe, which takes its roots as an argument and so passes identically at
+      // ['.ts'], and serves at ScriptKind.TS so the JSX mis-parses silently. The
+      // site keys the census emits for a `.tsx` are exactly what reverting the
+      // walk to ['.ts'] makes vanish.
+      const viewTsx = [
+        'export function idleRates(): { readonly gymBucksPerHour: () => string } {',
+        '  return {',
+        "    gymBucksPerHour: () => 'idle',",
+        '  };',
+        '}',
+        '',
+        'export function guard(hours: number): void {',
+        '  if (hours < 0) {',
+        "    throw new Error('hours must be non-negative');",
+        '  }',
+        '}',
+        '',
+        'export const View = () => <span>{idleRates().gymBucksPerHour()}</span>;',
+        '',
+      ].join('\n');
+      withProbeTree(
+        { 'view.tsx': viewTsx, 'plain.ts': 'export const plain = (): number => 1;\n' },
+        (root) => {
+          // The roots are DERIVED from the WALKED_EXTENSIONS walk, so at ['.ts']
+          // `view.tsx` is not among them — this is the tie to the widening.
+          const roots = tsFilesUnder(root, 'without-tests').map((name) =>
+            path.join(root, ...name.split('/')),
+          );
+          const census = channelCensusOf(roots, null);
+          // CONTENT AND REACH IN ONE WITNESS: the returned closure inside
+          // `idleRates()` is a real escape site the census located, by module,
+          // enclosing function and member path — which required the walk to
+          // hand it `view.tsx` AND the census to parse the `.tsx` correctly. At
+          // ['.ts'] the walk drops `view.tsx`, this list loses the entry, and
+          // the assertion reddens `expected [...] to include
+          // 'view.tsx#idleRates#closure:.gymBucksPerHour'`.
+          expect(census.sites['returned-closure']).toContain(
+            'view.tsx#idleRates#closure:.gymBucksPerHour',
+          );
+          // And the raw throw, named by file and enclosing function.
+          expect(census.sites.throw).toContain('view.tsx#guard#throw');
+        },
+      );
     },
     CHANNEL_BLOCK_TIMEOUT_MS,
   );
