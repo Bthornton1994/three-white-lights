@@ -1,30 +1,25 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-18T18:48:46.011Z",
+    "capturedAt": "2026-08-18T19:30:24.687Z",
     "url": "http://localhost:8081",
-    "sourceRoot": "/home/user/wt-offline-cap-b",
-    "commit": "920cc07",
-    "branch": "claude/offline-cap-b",
+    "sourceRoot": "/home/user/three-white-lights",
+    "commit": "31c2ddc",
+    "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [
-      "M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
-      " M .gauntlet/shots/shell/05b-check-in-after-the-second-meet.png",
-      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
-      " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
-      " M .gauntlet/shots/shell/15-empire-floor-from-session.png",
-      " M .gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
-      " M .gauntlet/shots/shell/19-empire-floor-on-the-second-visit.png",
-      " M .gauntlet/shots/shell/route.json"
+      "M .gauntlet/shots/cutin-cap/cap.json",
+      " M .gauntlet/shots/lift-press/press.json",
+      " M .gauntlet/shots/meet/sound.json"
     ],
     "instrument": {
-      "capture-cutin.mjs": "6ebe3eaed8447c87",
+      "capture-cutin.mjs": "1221ee93213d41d1",
       "png.mjs": "6356a0d0b0dcb696"
     }
   },
   "frames": [
     {
       "moment": "third-attempt-walkout",
-      "file": "/home/user/wt-offline-cap-b/.gauntlet/shots/cutin/third-attempt-walkout.png",
+      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/third-attempt-walkout.png",
       "name": "third-attempt-walkout.png",
       "expectedLine": "LAST ONE",
       "seen": {
@@ -72,7 +67,7 @@
     },
     {
       "moment": "personal-record",
-      "file": "/home/user/wt-offline-cap-b/.gauntlet/shots/cutin/personal-record.png",
+      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/personal-record.png",
       "name": "personal-record.png",
       "expectedLine": "NOBODY HAS SEEN YOU DO THIS",
       "seen": {
@@ -120,7 +115,7 @@
     },
     {
       "moment": "bomb-out",
-      "file": "/home/user/wt-offline-cap-b/.gauntlet/shots/cutin/bomb-out.png",
+      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/bomb-out.png",
       "name": "bomb-out.png",
       "expectedLine": "THAT IS THE MEET",
       "seen": {
@@ -168,7 +163,7 @@
     },
     {
       "moment": "coach-heavy-set",
-      "file": "/home/user/wt-offline-cap-b/.gauntlet/shots/cutin/coach-heavy-set.png",
+      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/coach-heavy-set.png",
       "name": "coach-heavy-set.png",
       "expectedLine": "THAT MOVED",
       "seen": {
@@ -239,15 +234,15 @@
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 702,
+    "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 1585,
+    "goneAt": 1594,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 15,
-    "goneAt": 24,
-    "dismissTookMs": 9,
+    "tappedAt": 17,
+    "goneAt": 34,
+    "dismissTookMs": 17,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
