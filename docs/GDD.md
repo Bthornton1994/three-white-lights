@@ -1557,6 +1557,44 @@ Check-in is 30–60 seconds: collect, queue an upgrade, maybe assign an NPC.
 Standard offline-earnings cap so it rewards check-ins without punishing a
 10-hour gap.
 
+**A suspended tab is "offline" in this section's sense — ruled 2026-08-18, and
+the cap applies to it.** The question arose because the shell's floor adapter
+(`src/shell/empireFloor.ts`) simulated away-time at full online rate with no
+bound: a device whose clock jumped — a backgrounded tab, a clock correction, a
+laptop lid — owed one synchronous check-in per ten seconds of the whole gap.
+Measured at `ef1a3f2` on an idle box (a phone is roughly three times worse):
+24 h away = 160 ms of blocked main thread, 72 h = 505 ms, 1 week = 1.31 s,
+1 month = 6.7 s, 1 year = **97.2 s** — and a year paid 141.7M Gym Bucks against
+~2,700 for a day, so the unbounded loop was a violation of this section's own
+cap wearing a performance costume, and the freeze fired at the worst moment:
+the tap that opens GYM EMPIRE.
+
+**Option B is the chosen repair: the catch-up is capped at the design's own
+`OFFLINE_EARNINGS_CAP_HOURS`, and time beyond the cap is acknowledged, not
+simulated.** Each advance simulates at most the cap's worth of check-ins at the
+full online rate; the remainder of the absence earns nothing and is reported.
+The rejected alternative was paying the remainder as one long discounted step
+through `OFFLINE_EARNINGS_FRACTION` — that knob is deliberately not on this
+path. Consequences, all measured in `src/shell/empireFloor.test.ts`:
+
+- **The cap rewards the check-in, which is this section's first sentence made
+  mechanical.** Two players away 24 hours: the one who looked once at hour 12
+  has both halves run in full; the one who never looked has the second half
+  forfeited. The extra look earns MORE — strict path-independence is broken in
+  exactly and only that direction, swept with the punishing direction pinned at
+  zero and the strictly-ahead count pinned non-zero beside it. Below the cap,
+  path-independence holds unchanged.
+- **The freeze is bounded at the cap's own cost.** Re-measured at the same
+  ladder on the capped adapter: every jump from 24 hours to 1 year owes the
+  same 4,320 steps (≈70–105 ms idle), because the synchronous work a jump can
+  demand is now a constant of the tuning, not of the absence.
+- **The away summary is a number and a state, not new feature scope.** The
+  ruling that lifted the gate authorizes exposing the idle layer's cap, not
+  designing new UI: the floor exposes the forfeited span and the fact the cap
+  bit, and the Empire screen draws them as one more row (`AWAY PAST THE CAP
+  (SECONDS)`), with no new interactions, buttons, animations or dismissal
+  logic.
+
 ### 5.2 Production
 
 - **Gym Bucks** (soft currency) — base passive income
@@ -4510,29 +4548,30 @@ The code has taken the safe branch and needs a ruling to take any other.**
       `SINGLET_MID` looks like — which is what a 16-bit palette swap actually
       was, and which keeps "is this pixel the singlet?" answerable downstream.
 
-- [ ] **A forward clock jump on the Empire floor is an unbounded synchronous
+- [x] **A forward clock jump on the Empire floor is an unbounded synchronous
       loop, and the fix is a §5.1 design choice rather than a performance
       patch.** `advanceEmpireFloor` in `src/shell/empireFloor.ts` clamps a
       BACKWARDS clock — a system clock that steps back leaves the gym where it
-      was — and says so in its own docstring. It puts no bound on a forward one:
-      `owed` is a function of elapsed wall time with nothing above it, and the
+      was — and says so in its own docstring. It put no bound on a forward one:
+      `owed` was a function of elapsed wall time with nothing above it, and the
       catch-up loop runs inside a React state updater. Measured at `3ed3956`,
       one jumped reading handed to a fresh floor: 1 hour = 360 steps / 27 ms,
       1 day = 8,640 / 284 ms, 1 week = 60,480 / 2,196 ms, 30 days = 259,200 /
       11,103 ms — so a device-clock jump of a year is roughly two minutes of
-      blocked main thread. Per-step cost drifts upward as the gym fills, so that
-      extrapolation is a floor rather than an estimate.
-      **Recorded rather than fixed, on a human's ruling of 2026-08-16.** The two
-      plausible bounds are not equivalent to a player: capping the STEPS and
-      paying the remainder as one long step loses the per-check-in reputation
-      §5.4 pays, while capping the ELAPSED TIME the way
-      `OFFLINE_EARNINGS_CAP_HOURS` already caps a gap decides how much an
-      absence is worth. Both change what the gym has earned, which makes it a
-      §5.1 question. Do not add a bound as a side effect of another piece.
-      Worth noting how it survived: it is the sibling branch of a guard that was
-      written, tested and documented for one direction only — the shape
-      CLAUDE.md records as "the next thing to look at is the branch immediately
-      below it". The full measurement is in `empireFloor.ts` beside the clamp.
+      blocked main thread. A 2026-08-16 ruling held it open as a §5.1 question
+      rather than letting a bound arrive as a side effect of another piece,
+      because the two plausible bounds are not equivalent to a player.
+      **CLOSED, 2026-08-18, by the ruling §5.1 now records**: a suspended tab
+      is offline in §5.1's sense, Option B — cap the catch-up at
+      `OFFLINE_EARNINGS_CAP_HOURS`, acknowledge the rest, no
+      `OFFLINE_EARNINGS_FRACTION` on this path — and the away summary is a
+      number and a state. The restated §12.3 property, the capped sweeps, the
+      re-taken freeze ladder (4,320 steps whatever the jump) and the away row's
+      class guards are in `empireFloor.ts` / `empireFloor.test.ts`.
+      Worth keeping about how it survived as long as it did: it was the sibling
+      branch of a guard that was written, tested and documented for one
+      direction only — the shape CLAUDE.md records as "the next thing to look
+      at is the branch immediately below it".
 
 ---
 

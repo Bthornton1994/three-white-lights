@@ -39,18 +39,34 @@
  *   banks ZERO Gym Bucks; the same 600 seconds collected on whole ticks banks
  *   11.063625. Checking in twice as often costs everything.
  *
- * The repair is structural rather than a pin: **the number of check-ins, and
- * the reading each is taken at, are functions of elapsed wall time and of
- * nothing else.** `advanceEmpireFloor` may be called once, or a thousand times,
- * at any moments whatsoever, and the floor it produces for a given `nowMs` is
- * the same value — so no interaction pattern can make a player worse off,
- * because no interaction pattern can change anything at all.
- * `@guarantee the-floor-is-a-function-of-elapsed-time-and-nothing-else`
+ * The repair is structural rather than a pin, and it has two halves, one per
+ * domain of the offline cap below:
  *
- * That is a stronger statement than "more is never less" and it is what
- * `empireFloor.test.ts` sweeps: random call schedules against the one-shot
- * value, counts pinned at zero mismatches, with the fragmenting variant kept
- * runnable beside it as the non-zero control the zero is zero against.
+ * BELOW THE CAP — every gap between two `advanceEmpireFloor` calls at or under
+ * `CATCH_UP_CAP_SECONDS` — the number of check-ins, and the reading each is
+ * taken at, are functions of elapsed wall time and of nothing else.
+ * `advanceEmpireFloor` may be called once, or a thousand times, at any moments
+ * whatsoever, and the floor it produces for a given `nowMs` is the same value —
+ * so no interaction pattern can make a player worse off, because no interaction
+ * pattern can change anything at all.
+ * `@guarantee below-the-cap-the-floor-is-a-function-of-elapsed-time`
+ *
+ * PAST THE CAP that equality is broken ON PURPOSE, in the one §12.3 direction
+ * that is allowed: a gap longer than the cap simulates only the cap's worth of
+ * check-ins, so the player who came back midway through a whole day away has
+ * both halves run in full while the player who did not has the second half
+ * forfeited. The extra look earns MORE, and it can never earn less, because
+ * every floor is the same fold of `stepGym` over check-ins numbered from one —
+ * a schedule with more looks holds the gym of the schedule with fewer, further
+ * along the identical trajectory.
+ * `@guarantee past-the-cap-more-looks-never-land-behind`
+ *
+ * Both halves are swept rather than asserted in `empireFloor.test.ts`: random
+ * sub-cap call schedules against the one-shot value with mismatches pinned at
+ * zero, and seeded past-the-cap pairs with the punishing direction pinned at
+ * zero and the strictly-ahead count pinned non-zero beside it — with the
+ * fragmenting variant kept runnable as the non-zero control the zeros are zero
+ * against.
  *
  * ===========================================================================
  * WHAT IT DELIBERATELY DOES NOT DO
@@ -58,12 +74,16 @@
  *   - NO PERSISTENCE. There is no backend and no savefile in this prototype, so
  *     the floor's clock starts when the floor is opened and a reload opens a new
  *     gym at zero. Reading a stored timestamp and paying out the gap would be
- *     inventing a savefile this architecture does not have, and it is the one
- *     route by which §5.1's offline cap could reach a player from here.
- *     `accrueProduction`'s cap therefore never bites: every gap is one
- *     `CHECK_IN_SECONDS`, orders of magnitude inside
- *     `OFFLINE_EARNINGS_CAP_HOURS`. `pendingWasCapped` reports it if that ever
- *     stops being true rather than leaving it to be discovered.
+ *     inventing a savefile this architecture does not have. §5.1's offline cap
+ *     still reaches a player from here without one — a suspended tab is offline
+ *     in §5.1's sense, ruled 2026-08-18, and `advanceEmpireFloor` clamps the
+ *     catch-up at `CATCH_UP_CAP_SECONDS` — but it bites at this module's own
+ *     clamp, not inside `accrueProduction`: gaps in GYM time stay one
+ *     `CHECK_IN_SECONDS` wide, orders of magnitude inside
+ *     `OFFLINE_EARNINGS_CAP_HOURS`, whatever the wall clock did.
+ *     `pendingWasCapped` reports the inner cap if that ever stops being true;
+ *     `catchUpWasCapped` reports the outer one, and the two are different
+ *     facts.
  *   - NO WALLET. Nothing here reaches `progression.ts`, Total, e1RM or the
  *     streak. Gym Bucks accrued on this surface stay on this surface; the
  *     empire -> pooled-wallet seam is a separate, deliberately serialised piece.
@@ -82,11 +102,29 @@ import {
 } from '../empire/empireInvariant';
 import { createEmpireClock, type EmpireState } from '../empire/empireCore';
 import { EXPANSION_AXES } from '../empire/expansion';
-import { accrueProduction, type ProductionAccrual } from '../empire/production';
+import {
+  accrueProduction,
+  offlineBankingHorizonSeconds,
+  type ProductionAccrual,
+} from '../empire/production';
 import { EMPIRE_TUNING } from '../empire/empireTuning';
 import { EMPIRE_FLOOR } from './shellTuning';
 
 const MS_PER_SECOND = EMPIRE_FLOOR.MILLISECONDS_PER_SECOND;
+
+/**
+ * The most wall time one `advanceEmpireFloor` call may simulate, in seconds.
+ *
+ * NOT A KNOB OF THIS MODULE'S OWN, and not a restatement of one. It is §5.1's
+ * offline-earnings horizon read through `src/empire/`'s own arithmetic —
+ * `offlineBankingHorizonSeconds()` is `max(OFFLINE_EARNINGS_CAP_HOURS,
+ * OFFLINE_EARNINGS_NO_PUNISH_HOURS)` in seconds, and the max is what keeps a
+ * tuning pass that drops the cap under the no-punish floor from turning this
+ * clamp into a punishment for a gap §5.1 explicitly protects. Turning the cap
+ * is done in `empireTuning.ts`, where it already lives; a second number here
+ * would be the drift this codebase bans.
+ */
+export const CATCH_UP_CAP_SECONDS = offlineBankingHorizonSeconds();
 
 /**
  * The simulated player `stepGym` spends for, derived rather than restated.
@@ -115,13 +153,26 @@ export interface EmpireFloor {
    */
   readonly startedAtMs: number;
   /**
-   * Whole seconds of wall time this floor has been advanced to.
+   * Whole seconds of WALL time this floor has been advanced to.
    *
    * Never decreases: a clock that jumps backwards is clamped here rather than
-   * allowed to rewind a gym. See `advanceEmpireFloor`.
+   * allowed to rewind a gym. See `advanceEmpireFloor`. This is the honest wall
+   * clock — a capped advance moves it by the whole gap, forfeited span
+   * included.
    */
   readonly openSeconds: number;
-  /** How many check-ins `stepGym` has been asked for. A function of `openSeconds`. */
+  /**
+   * Whole seconds of wall time this floor has actually SIMULATED — the gym's
+   * own elapsed time.
+   *
+   * At most `openSeconds`, and equal to it on a floor the cap has never bitten.
+   * Each advance moves it by `min(wall gap, CATCH_UP_CAP_SECONDS)`, so the
+   * difference `openSeconds - gymSeconds` is exactly the wall time acknowledged
+   * and not simulated — `forfeitedAwaySeconds` reads it, and the screen draws
+   * it as the away summary.
+   */
+  readonly gymSeconds: number;
+  /** How many check-ins `stepGym` has been asked for. A function of `gymSeconds`. */
   readonly checkIns: number;
   /** GDD §5's own gym, advanced by GDD §5's own `stepGym`. */
   readonly gym: EmpireGym;
@@ -166,17 +217,20 @@ export function checkInReadingAt(checkIns: number): number {
 }
 
 /**
- * What the gap between the gym's collection mark and `openSeconds` has produced.
+ * What the gap between the gym's collection mark and `gymSeconds` has produced.
  *
- * The state handed to `accrueProduction` is the gym's own with its clock moved
- * to the reading being asked about — `createEmpireClock` is §5's constructor
- * and `skippedSeconds` is carried rather than assumed, so this stays correct if
- * an accelerant ever does reach this surface.
+ * GYM time, not wall time, on purpose: a capped advance forfeits the wall span
+ * past the cap, so previewing against the wall clock would draw an accrual over
+ * dead time that no check-in will ever bank. The state handed to
+ * `accrueProduction` is the gym's own with its clock moved to the reading being
+ * asked about — `createEmpireClock` is §5's constructor and `skippedSeconds` is
+ * carried rather than assumed, so this stays correct if an accelerant ever does
+ * reach this surface.
  */
-function pendingAt(gym: EmpireGym, openSeconds: number): ProductionAccrual {
+function pendingAt(gym: EmpireGym, gymSeconds: number): ProductionAccrual {
   const asOf: EmpireState = Object.freeze({
     ...gym.state,
-    clock: createEmpireClock(openSeconds, gym.skippedSeconds),
+    clock: createEmpireClock(gymSeconds, gym.skippedSeconds),
   });
   return accrueProduction(asOf, gym.collectedAt, rosterRatesAt(gym.collectedAt));
 }
@@ -190,6 +244,7 @@ export function openEmpireFloor(startedAtMs: number): EmpireFloor {
   return Object.freeze({
     startedAtMs,
     openSeconds: 0,
+    gymSeconds: 0,
     checkIns: 0,
     gym,
     pending: pendingAt(gym, 0),
@@ -200,18 +255,25 @@ export function openEmpireFloor(startedAtMs: number): EmpireFloor {
  * The floor as it reads at `nowMs`.
  *
  * ===========================================================================
- * THE PROPERTY, STATED PRECISELY
+ * THE PROPERTY, STATED PRECISELY — IN TWO HALVES SINCE THE CAP
  * ===========================================================================
- * The value returned depends on `floor.startedAtMs` and `nowMs` and on nothing
- * else — not on how many times this has been called, not on when, not on
- * whether the surface was on screen for any of it. Concretely:
+ * BELOW THE CAP the value returned depends on `floor.startedAtMs` and `nowMs`
+ * and on nothing else — not on how many times this has been called, not on
+ * when, not on whether the surface was on screen for any of it. Concretely,
+ * whenever no gap between consecutive calls exceeds `CATCH_UP_CAP_SECONDS`:
  *
  *     advanceEmpireFloor(advanceEmpireFloor(f, t1), t2)
  *       === advanceEmpireFloor(f, t2)          for every t1 <= t2
  *
- * That is the §12.3 property for this surface, and it is swept rather than
- * asserted: `empireFloor.test.ts` drives random call schedules against the
- * one-shot value and pins the mismatch count at zero.
+ * PAST THE CAP the equality is deliberately false and the inequality that
+ * replaces it points the one way §12.3 permits: each call simulates at most
+ * `CATCH_UP_CAP_SECONDS` of the gap it is owed, so splitting a long absence
+ * with an extra look simulates MORE of it, never less —
+ * `min(g1, cap) + min(g2, cap) >= min(g1 + g2, cap)` for every split. And
+ * because every simulated check-in is numbered from one at a fixed reading,
+ * every floor's gym is the same fold of `stepGym` read off at `checkIns`: the
+ * player with more looks holds the same trajectory further along, which is what
+ * `empireFloor.test.ts`'s capped pairing sweeps against the canonical fold.
  *
  * IT IS ALSO WHY CATCHING UP IS ONE LOOP AND NOT ONE STEP. A gym that has been
  * off screen for a while owes several check-ins, and taking them as a single
@@ -228,52 +290,56 @@ export function openEmpireFloor(startedAtMs: number): EmpireFloor {
  * gym where it was rather than rewinding it — the direction §12.3 requires.
  *
  * ===========================================================================
- * A FORWARD CLOCK HAS NO BOUND AT ALL — RECORDED, NOT FIXED, ON A HUMAN'S
- * RULING OF 2026-08-16
+ * A FORWARD CLOCK IS CAPPED AT §5.1's OWN OFFLINE HORIZON — RULED, OPTION B,
+ * 2026-08-18
  * ===========================================================================
- * `owed` is a function of elapsed wall time with nothing above it, and the loop
- * below runs synchronously inside a React state updater. So the cost of one
- * `advanceEmpireFloor` is linear in how far the clock jumped, and the jump is
- * not something this module gets to choose — a device clock correction, a
- * suspended tab, a timezone change on a laptop lid.
+ * This used to be the recorded sibling defect of the backwards clamp above:
+ * `owed` was a function of elapsed wall time with nothing above it, and the
+ * loop below runs synchronously inside a React state updater, so the cost of
+ * one call was linear in how far the clock jumped — a suspended tab, a device
+ * clock correction, a timezone change on a laptop lid. Measured at ef1a3f2 on
+ * an idle box (a phone is roughly three times worse), one jumped `nowMs` handed
+ * to a fresh floor:
  *
- * Measured at 3ed3956, a fresh floor handed one jumped `nowMs`:
+ *     24 hours      8,640 steps      160 ms      ~2,700 Gym Bucks
+ *     72 hours     25,920 steps      505 ms
+ *     1 week       60,480 steps    1,310 ms
+ *     30 days     259,200 steps    6,700 ms
+ *     1 year    3,153,600 steps   97,200 ms     ~141.7M Gym Bucks
  *
- *     1 hour        360 steps       27 ms
- *     1 day       8,640 steps      284 ms
- *     1 week     60,480 steps    2,196 ms
- *     30 days   259,200 steps   11,103 ms
+ * The ruling that closed it: A SUSPENDED TAB IS "OFFLINE" IN GDD §5.1's SENSE,
+ * so the design's own `OFFLINE_EARNINGS_CAP_HOURS` applies to it — the
+ * unbounded loop was a §5.1 design violation wearing a performance costume,
+ * paying a year's absence 141.7M against a day's ~2,700. Option B was chosen:
+ * the catch-up is capped at the cap's worth of check-ins per advance, and time
+ * beyond it is acknowledged, not simulated. (Paying the remainder through
+ * `OFFLINE_EARNINGS_FRACTION` as one long discounted step was the rejected
+ * alternative — that knob is deliberately not part of this path.)
  *
- * A year extrapolates to roughly two minutes of blocked main thread. The
- * per-step cost drifts upwards as the gym fills — about 314 ms per simulated
- * day at a week against about 370 at a month — so the extrapolation is a floor
- * rather than an estimate. A second measurement taken independently a round
- * earlier, on a quieter box, read 253 ms / 1,795 ms / about 7.7 s for the first
- * three; same shape, and the absolute figures move with load.
+ * HOW THE CLAMP KEEPS THE CLOCKS HONEST. The wall gap since the previous
+ * advance moves `openSeconds` in full; at most `CATCH_UP_CAP_SECONDS` of it
+ * moves `gymSeconds`, and check-ins are owed off `gymSeconds`. So gym time is
+ * contiguous — the gap `accrueProduction` previews never widens past one
+ * check-in, and `production.ts`'s inner offline discard stays unreachable from
+ * here (see `pendingWasCapped`) — while the difference between the two clocks
+ * is exactly the forfeited span the screen reports. Every reading on the screen
+ * is gym-time; the away row is the difference itself.
  *
- * THIS IS THE SIBLING BRANCH OF THE CLAMP DIRECTLY ABOVE IT, which is the whole
- * reason it is written here rather than in a tracker. One direction of a clock
- * adjustment was thought about, guarded, and given a sentence in this docstring;
- * the other direction was not looked at. CLAUDE.md's recorded lesson is that
- * after fixing a check the next thing to look at is the branch immediately
- * below it, and this is that branch, one paragraph down from where it was
- * missed. Nothing in this module or in `empireFloor.test.ts` goes red on the
- * forward case today, and this paragraph is the note saying so.
- *
- * IT IS LEFT ALONE DELIBERATELY. Putting a ceiling on `owed` changes what the
- * gym has earned, which makes it a question about GDD §5.1's offline model
- * rather than a performance patch — and the two plausible answers (cap the
- * steps and pay the remainder as one long step, or cap the elapsed time the way
- * `OFFLINE_EARNINGS_CAP_HOURS` already caps a gap) are not equivalent to a
- * player. A human ruled that it gets its own look. Do not add a bound as a side
- * effect of some other piece.
+ * Re-measured at the same ladder after the clamp, same class of idle box,
+ * three runs: every jump from 24 hours to 1 year costs the same 4,320 steps,
+ * 70-105 ms — the freeze is bounded at the cap's own cost whatever the jump.
+ * The exact step counts and forfeits per rung are pinned in
+ * `empireFloor.test.ts` rather than here; the milliseconds are not, because a
+ * timing assertion measures the box.
  */
 export function advanceEmpireFloor(floor: EmpireFloor, nowMs: number): EmpireFloor {
   const openSeconds = Math.max(
     floor.openSeconds,
     elapsedSecondsBetween(floor.startedAtMs, nowMs),
   );
-  const owed = checkInsBy(openSeconds);
+  const gymSeconds =
+    floor.gymSeconds + Math.min(openSeconds - floor.openSeconds, CATCH_UP_CAP_SECONDS);
+  const owed = checkInsBy(gymSeconds);
   let gym = floor.gym;
   for (let checkIn = floor.checkIns + 1; checkIn <= owed; checkIn += 1) {
     gym = stepGym(gym, EMPIRE_FLOOR_POLICY, checkInReadingAt(checkIn), null, 0);
@@ -281,25 +347,61 @@ export function advanceEmpireFloor(floor: EmpireFloor, nowMs: number): EmpireFlo
   return Object.freeze({
     startedAtMs: floor.startedAtMs,
     openSeconds,
-    checkIns: Math.max(floor.checkIns, owed),
+    gymSeconds,
+    checkIns: owed,
     gym,
-    pending: pendingAt(gym, openSeconds),
+    pending: pendingAt(gym, gymSeconds),
   });
 }
 
-/** The floor a fresh gym reaches after `elapsedSeconds` of wall time. */
+/**
+ * The wall time this floor has acknowledged and not simulated, in whole
+ * seconds.
+ *
+ * The away summary's number. Zero on a floor the cap has never bitten;
+ * otherwise the sum of every capped advance's forfeited span, monotone
+ * non-decreasing, because both clocks it is the difference of only move
+ * forwards and `gymSeconds` never moves further than `openSeconds` does.
+ */
+export function forfeitedAwaySeconds(floor: EmpireFloor): number {
+  return floor.openSeconds - floor.gymSeconds;
+}
+
+/**
+ * The away summary's state: has any advance of this floor ever been capped?
+ *
+ * A DIFFERENT FACT FROM `pendingWasCapped` below. That one reports
+ * `production.ts`'s inner discard on the previewed gap, which the clamp keeps
+ * structurally quiet; this one reports the clamp itself, which is the §5.1
+ * offline cap a player can actually meet on this surface.
+ */
+export function catchUpWasCapped(floor: EmpireFloor): boolean {
+  return forfeitedAwaySeconds(floor) > 0;
+}
+
+/**
+ * The floor a fresh gym reaches after `elapsedSeconds` of wall time, in ONE
+ * advance — so past `CATCH_UP_CAP_SECONDS` this is the floor of a player who
+ * was away the whole span, cap applied, not of one who watched it.
+ */
 export function empireFloorAfter(elapsedSeconds: number): EmpireFloor {
   return advanceEmpireFloor(openEmpireFloor(0), elapsedSeconds * MS_PER_SECOND);
 }
 
 /**
- * Did the offline cap discard any of the current gap?
+ * Did `production.ts`'s own offline discard remove any of the PREVIEWED gap?
  *
- * Always false on this surface — every gap is one `CHECK_IN_SECONDS` and the
- * cap is hours away — and it is REPORTED rather than assumed, because "the cap
+ * Always false on this surface, still — and since the catch-up cap the reason
+ * changed, so the sentence is re-derived rather than left standing: the gap
+ * `accrueProduction` previews is `gymSeconds - checkInReadingAt(checkIns)`,
+ * gym time, under one `CHECK_IN_SECONDS` by construction whatever the wall
+ * clock jumped, because a capped advance forfeits wall time instead of letting
+ * gym time gape. It is REPORTED rather than assumed, because "the inner cap
  * cannot bite here" is a claim about arithmetic nobody would notice going
- * false. `empireFloor.test.ts` pins it at zero and drives the other direction
- * on a floor left open past the horizon.
+ * false. `empireFloor.test.ts` pins it at zero on watched walks AND on a floor
+ * whose catch-up was capped, and drives the discard the other direction on a
+ * raw gap past the horizon. The cap a player can actually meet on this surface
+ * is `catchUpWasCapped`, one function up.
  */
 export function pendingWasCapped(floor: EmpireFloor): boolean {
   return floor.pending.offlineSecondsDiscarded > 0;
@@ -313,6 +415,13 @@ export interface EmpireFloorReadings {
   readonly roster: string;
   readonly equipment: string;
   readonly clockSeconds: string;
+  /**
+   * The away summary, GDD §5.1: wall seconds past the offline cap, acknowledged
+   * and not simulated. A number and a state in one reading — zero is the state
+   * where the cap has never bitten this floor, anything else is the forfeited
+   * span itself.
+   */
+  readonly forfeitedSeconds: string;
 }
 
 /**
@@ -328,12 +437,16 @@ function drawnBucks(amount: number): string {
 }
 
 /**
- * Every reading the floor draws, out of the gym and out of nothing else.
+ * Every reading the floor draws, out of the gym and the floor's two clocks and
+ * out of nothing else.
  *
  * The screen turns these into rows and adds no arithmetic of its own. Note that
  * `clockSeconds` is the GYM's clock (`EmpireClock.unaccelerated`), not the app's
  * uptime: it moves at a check-in and only at a check-in, which is what makes it
  * a reading about §5 rather than about the timer that drew it.
+ * `forfeitedSeconds` is the one reading that is not a gym field: it is the
+ * difference between the floor's wall clock and its gym clock, which is the
+ * away summary the 2026-08-18 ruling asked for — a number and a state, no more.
  *
  * `equipment` IS A RUNG THE GYM CLIMBS, NOT A LABEL IT WEARS. It is
  * `state.axes.equipment`, and `EMPIRE_TUNING.EQUIPMENT_TIERS` puts the rungs in
@@ -350,5 +463,6 @@ export function empireFloorReadings(floor: EmpireFloor): EmpireFloorReadings {
     roster: String(floor.gym.state.roster.length),
     equipment: floor.gym.state.axes.equipment,
     clockSeconds: String(floor.gym.state.clock.unaccelerated),
+    forfeitedSeconds: String(forfeitedAwaySeconds(floor)),
   });
 }

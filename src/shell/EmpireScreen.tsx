@@ -153,6 +153,7 @@ export function EmpireScreen({ onPhase, active = true }: EmpireScreenProps): Rea
           testID="empire-stat-equipment"
         />
         <Stat label={C.EMPIRE_STAT_CLOCK} value={readings.clockSeconds} testID="empire-stat-clock" />
+        <Stat label={C.EMPIRE_STAT_AWAY} value={readings.forfeitedSeconds} testID="empire-stat-away" />
       </View>
     </View>
   );

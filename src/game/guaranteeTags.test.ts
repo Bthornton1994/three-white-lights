@@ -729,8 +729,25 @@ const GUARANTEE_COVERAGE = {
    * wrong way and the evidence moved the right way, again.
    *
    * Not quoted here, for the reason ten of the notes above now give.
+   *
+   * 258 -> 259 WHEN GDD §5.1's OFFLINE CAP REACHED THE FLOOR'S CATCH-UP (the
+   * 2026-08-18 Option B ruling). Measured per file by running this census over
+   * each touched file's pre-change and post-change text, not apportioned by
+   * eye: `empireFloor.ts` 1 -> 1 — its two restated guarantee paragraphs are
+   * the TAGGED ones and neither's capitalised runs hold a trigger word —
+   * `shellTuning.ts` 0 -> 0, `EmpireScreen.tsx` 1 -> 1, `shellWiring.test.ts`
+   * 1 -> 1, this file 6 -> 6, and `empireFloor.test.ts` 4 -> 5, which is the
+   * whole increment. The one new paragraph heads the long-horizon pairing
+   * test's re-derivation and says "changes nothing" is now only the sub-cap
+   * half of the claim; its check is the pair of assertions directly beneath it
+   * — the punishing fault list and the pinned domain census — so it is a
+   * guarantee that arrived with its evidence, and the ratio and the evidence
+   * moved the same way for once. Isolated the usual way: the paragraph is the
+   * single delta between the file's two texts under this exact census.
+   *
+   * Not quoted here, for the reason eleven of the notes above now give.
    */
-  TREE_WIDE: 258,
+  TREE_WIDE: 259,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -836,7 +853,8 @@ type ExclusionCensus = Record<NumberExclusion, number>;
  *     GDD or CLAUDE.md, never a measurement. The largest class by far, and the
  *     one whose removal matters most: `§4.2` and `§7.5` were both RESOLVING
  *     before, against unrelated numbers in the named bodies, which is a green
- *     that means nothing.
+ *     that means nothing. 15 -> 16 on the catch-up cap's second tagged
+ *     paragraph, whose only digits are its `§12.3` pointer.
  *   - `inside-an-identifier` — a letter or underscore on either side: `e1RM`,
  *     `4a`, `§4c`. A unit suffix from `UNIT_SUFFIXES` does not count as a
  *     letter, so `180ms` is a claim and `e1RM` is not.
@@ -846,7 +864,7 @@ type ExclusionCensus = Record<NumberExclusion, number>;
  *     section style and not a quantity.
  */
 const NUMBER_EXCLUSIONS: Readonly<ExclusionCensus> = {
-  'section-coordinate': 15,
+  'section-coordinate': 16,
   'inside-an-identifier': 3,
   'quoted-code': 1,
   'list-ordinal': 1,
@@ -1014,8 +1032,16 @@ const NUMBER_COVERAGE = {
    * gym it is. The new paragraph is in `EmpireScreen.tsx`, directly above the
    * JSX it is about, and it states no number — which is why `CLAIMED` below did
    * not move with it.
+   *
+   * 68 -> 69 when the 2026-08-18 catch-up cap RESTATED the floor's
+   * path-independence guarantee as two: the old tagged paragraph in
+   * `empireFloor.ts` became `below-the-cap-the-floor-is-a-function-of-elapsed-
+   * time` and a second tagged paragraph arrived for
+   * `past-the-cap-more-looks-never-land-behind` — one out, two in, net one.
+   * Neither states a numeral as prose (the second's only digits are a §-pointer,
+   * which the exclusion census counts), so `CLAIMED` did not move with them.
    */
-  TAGGED_PARAGRAPHS: 68,
+  TAGGED_PARAGRAPHS: 69,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
@@ -1039,9 +1065,14 @@ const NUMBER_COVERAGE = {
   // 58 -> 59 on the body of `each row draws the reading its label names`. The
   // two counts below did not move with it: that body states no numeral at all,
   // so it holds neither a bare zero nor a bare one.
-  NAMED_BODIES: 59,
-  NAMED_BODIES_HOLDING_ZERO: 46,
-  NAMED_BODIES_HOLDING_ONE: 46,
+  //
+  // 59 -> 60 on the catch-up cap: one tag out, two in, net one named body — the
+  // capped pairing sweep's, which holds both a bare 0 (its `slice(0, …)` and
+  // its zero-fault pins) and a bare 1 (its `length - 1` end-instant reads), so
+  // both weakness counts moved with it.
+  NAMED_BODIES: 60,
+  NAMED_BODIES_HOLDING_ZERO: 47,
+  NAMED_BODIES_HOLDING_ONE: 47,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -1322,8 +1353,14 @@ const TRANSCRIPT_BAR = {
    * `each-empire-row-draws-the-reading-its-label-names`. All three transcripts
    * were pasted from real red runs and none of them quotes a bare scalar, so
    * `WITH_A_MEASURED_NUMBER` stays where it was.
+   *
+   * 26 -> 27 on the row added for
+   * `past-the-cap-more-looks-never-land-behind` — the 2026-08-18 catch-up cap's
+   * own witness, its clamp deleted and the strictly-ahead pin watched go red.
+   * Its transcript's actual side is a quoted string, not a bare scalar, so
+   * `WITH_A_MEASURED_NUMBER` stays where it was again.
    */
-  GRADED: 26,
+  GRADED: 27,
   /** ...and rows excused because their transcript predates it. */
   PREDATING: 37,
   /**
@@ -1476,9 +1513,16 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // argument this constant exists to keep making: the numbers in a transcript
   // are counts of the MUTATED tree and no assertion in the shipped body pins
   // them.
-  rows: 55,
+  //
+  // 55/43/165/87 -> 56/43/173/87 on the catch-up cap's witness. Its transcript
+  // states numerals and every one of them happens to resolve in the named
+  // test's body — the mutant's own count is the pin's zero-ahead reading, whose
+  // digits the body's pinned strings carry — so `flagged` and `unresolved`
+  // stand still while `rows` and `numerals` move, which is a coincidence of
+  // digits and not evidence about anything, exactly as the comment above says.
+  rows: 56,
   flagged: 43,
-  numerals: 165,
+  numerals: 173,
   unresolved: 87,
 } as const;
 
@@ -1815,8 +1859,11 @@ const REPLACEMENT_BAR = {
    * records `mutatedTo: ''`. That row is the live use of the `=== undefined`
    * reading the block above argues for: an empty replacement is a value here,
    * and a truthiness test would have counted it as debt.
+   *
+   * 15 -> 16 on the catch-up cap's witness: `mutatedTo` records the clamp line
+   * with its `Math.min` deleted, which is the whole mutant.
    */
-  REPRODUCIBLE: 15,
+  REPRODUCIBLE: 16,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -3122,7 +3169,15 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     // runnable as `naiveGymAfter` and measures it at 65 of 192 pairs losing
     // money; this mutant is the same thing done to the shipped path, and it
     // reddens 48 of the 64 swept schedules. `npx tsc --noEmit` is clean on it.
-    guarantee: 'the-floor-is-a-function-of-elapsed-time-and-nothing-else',
+    //
+    // RE-RUN, NOT TRANSCRIBED, when the 2026-08-18 catch-up cap restated the
+    // guarantee this witnesses (the sub-cap sweep's domain sits under the cap,
+    // so the mutant's 48 mismatches are byte-identical to the pre-cap run). It
+    // now reddens 10 of the file's 24 tests, including the capped sweep's
+    // canonical-trajectory fault — `the diligent gym at 3087 check-ins is OFF
+    // the canonical trajectory` — because a floor stepped at the caller's
+    // instant is no longer any prefix of the one fold.
+    guarantee: 'below-the-cap-the-floor-is-a-function-of-elapsed-time',
     mutatedFile: 'src/shell/empireFloor.ts',
     mutated:
       '    gym = stepGym(gym, EMPIRE_FLOOR_POLICY, checkInReadingAt(checkIn), null, 0);',
@@ -3131,11 +3186,47 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     redAssertion: "expect(mismatches, mismatches.join('\\n')).toEqual([]);",
     observed:
       'FAIL  src/shell/empireFloor.test.ts > the floor is a function of elapsed time and of nothing' +
-      ' else > any schedule of calls lands on the value one call would have produced' +
-      ' [the-floor-is-a-function-of-elapsed-time-and-nothing-else]\n' +
+      ' else — BELOW THE CAP > below the cap, any schedule of calls lands on the value one call' +
+      ' would have produced [below-the-cap-the-floor-is-a-function-of-elapsed-time]\n' +
       'AssertionError: schedule 0 ending at 299760ms\nschedule 1 ending at 299447ms\n' +
       'schedule 2 ending at 293949ms\n...\n' +
       'schedule 62 ending at 298401ms: expected [ …(48) ] to deeply equal []',
+  },
+  {
+    // THE MUTANT DELETES THE 2026-08-18 CATCH-UP CAP: the clamp on how much
+    // wall time one advance may simulate comes off, and a year-long absence is
+    // simulated in full again — the unbounded loop the ruling measured at 97.2
+    // seconds of blocked main thread and 141.7M Gym Bucks for a year, restored
+    // by removing one `Math.min`. `npx tsc --noEmit` is clean on it.
+    //
+    // WHY THE RED ASSERTION IS THE NON-VACUITY PIN AND NOT THE FAULT LIST. With
+    // the cap gone no pair can forfeit, so every pair collapses to the OLD
+    // byte-identity and the punishing fault list stays empty — empty about
+    // nothing, which is exactly the vacuity the strictly-ahead pin exists to
+    // catch: it reads '0 strictly ahead, 0 forfeited strictly less' and goes
+    // red. The PUNISHING direction was driven separately with its own mutant —
+    // one second of gym time lost per advance — which reddens the fault list
+    // itself ('pair 0: the extra look LOST check-ins, 7714 < 7715 … FORFEITED
+    // MORE, 4 > 3 … expected [ …(22) ] to deeply equal []'), so both directions
+    // of the new guard were watched failing, not reasoned about. That mutant is
+    // not this row because a witness records one mutant; this one is the cap
+    // itself.
+    guarantee: 'past-the-cap-more-looks-never-land-behind',
+    mutatedFile: 'src/shell/empireFloor.ts',
+    mutated:
+      '    floor.gymSeconds + Math.min(openSeconds - floor.openSeconds, CATCH_UP_CAP_SECONDS);',
+    mutatedTo: '    floor.gymSeconds + (openSeconds - floor.openSeconds);',
+    testFile: 'src/shell/empireFloor.test.ts',
+    redAssertion:
+      "expect(`${ahead} strictly ahead, ${forfeitedStrictlyLess} forfeited strictly less`).toBe(",
+    observed:
+      'FAIL  src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse' +
+      ' off > past the cap, a schedule with more looks never lands behind — and strictly ahead is' +
+      ' live [past-the-cap-more-looks-never-land-behind]\n' +
+      "AssertionError: expected '0 strictly ahead, 0 forfeited strictl…' to be" +
+      " '3 strictly ahead, 3 forfeited strictl…' // Object.is equality\n" +
+      'Expected: "3 strictly ahead, 3 forfeited strictly less"\n' +
+      'Received: "0 strictly ahead, 0 forfeited strictly less"',
   },
   {
     // The mutant swapped the `useRef` initialiser's resume for a fresh
