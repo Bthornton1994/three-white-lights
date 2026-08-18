@@ -20114,6 +20114,10 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   Object.freeze({ at: 'empireCore.test.ts#walk<brandsIn<brandCensus#current', arms: 4, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireCore.test.ts#walk<brandsIn<brandCensus#current#2', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireCore.test.ts#brandCensus#declaration#3', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  // E39's fourth string collector: the JsxText walk in the person-shaped
+  // census. One arm, no dispatch — a node either is nonempty JSX text or the
+  // walk recurses past it, and the recursion is the next statement.
+  Object.freeze({ at: 'empireCore.test.ts#visit<jsxTextChunksIn#node', arms: 1, dispatch: false, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#surfaceOf#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#surfaceOf#declaration', arms: 1, dispatch: false, terminal: 'loop' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#carriesBrand<surfaceOf#name', arms: 1, dispatch: true, terminal: 'next-statement' }),
@@ -20375,11 +20379,11 @@ const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
   /** Rows in `DECLARED_HANDLER_ROWS`. Every one a tally or an enum read. */
   DISCRIMINANT_LOOKUPS: 8,
-  CHAINS: 94,
+  CHAINS: 95,
   DISPATCH: 59,
   BY_TERMINAL: Object.freeze({
     else: 8,
-    'next-statement': 70,
+    'next-statement': 71,
     loop: 14,
     enclosing: 2,
     /**
