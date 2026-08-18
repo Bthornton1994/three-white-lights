@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-cutin-cap-mjs-2026-08-18T15-25-13-246Z-20564",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-cutin-cap.mjs"
+  ],
+  "budgetSeconds": 1200,
+  "startedAtIso": "2026-08-18T15:25:13.246Z",
+  "startedAtMs": 1787066713246,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "16dbeca4750310bac8c741623ca094265b695d9f",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 2,
+  "dirtyPaths": [
+    ".gauntlet/shots/lift-press/press.json",
+    ".gauntlet/shots/meet/sound.json"
+  ],
+  "runner": {
+    "pid": 20564,
+    "startTick": "431321",
+    "cmdline": "node tools/watchdog.mjs --budget 1200 --id ev5-verify-cutin-cap -- node tools/verify-cutin-cap.mjs",
+    "bootId": "a41ef560-43a5-4c13-994c-3d33efcd7e23",
+    "bootEpochSeconds": 1787062400,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-18T15:25:13.271Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
