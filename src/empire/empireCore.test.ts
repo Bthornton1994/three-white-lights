@@ -2963,9 +2963,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // with the collector deleted — the non-vacuity burden is carried entirely
     // by the driven fixture test that follows this one.
     const jsxCensus = jsxTextCensusUnder(HERE);
+    // The chunk pin runs first and its failure message carries the chunks
+    // themselves, so the first red anyone sees on a name arriving names the
+    // string, rather than reporting that one file is not zero files.
+    expect(jsxCensus.chunks.length, jsxCensus.chunks.join(' | ')).toBe(0);
     expect(jsxCensus.jsxFilesRead).toBe(shipped.filter((name) => name.endsWith('.tsx')).length);
     expect(jsxCensus.jsxFilesRead).toBe(0);
-    expect(jsxCensus.chunks.length).toBe(0);
     // Counts before contents, so an empty domain reports itself rather than
     // making the pin below a comparison of two empty lists.
     // 172 rather than 171 since `sealRate`'s label refusal arrived — a fixed
