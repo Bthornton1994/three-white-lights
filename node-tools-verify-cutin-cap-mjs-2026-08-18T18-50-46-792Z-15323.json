@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-cutin-cap-mjs-2026-08-18T18-50-46-792Z-15323",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-cutin-cap.mjs"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-18T18:50:46.792Z",
+  "startedAtMs": 1787079046792,
+  "cwd": "/home/user/wt-offline-cap-b",
+  "commit": "920cc07a521717c33964f91c37db2afeab6c44f1",
+  "branch": "claude/offline-cap-b",
+  "dirty": 12,
+  "dirtyPaths": [
+    ".gauntlet/shots/cutin/baseline-no-cutin.png",
+    ".gauntlet/shots/cutin/debug-meet-walkout-third.png",
+    ".gauntlet/shots/cutin/frames.json",
+    ".gauntlet/shots/meet/sound.json",
+    ".gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+    ".gauntlet/shots/shell/05b-check-in-after-the-second-meet.png",
+    ".gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+    ".gauntlet/shots/shell/13-recap-before-the-return-leg.png",
+    ".gauntlet/shots/shell/15-empire-floor-from-session.png",
+    ".gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
+    ".gauntlet/shots/shell/19-empire-floor-on-the-second-visit.png",
+    ".gauntlet/shots/shell/route.json"
+  ],
+  "runner": {
+    "pid": 15323,
+    "startTick": "706448",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --id cutin-cap-offline-cap -- node tools/verify-cutin-cap.mjs",
+    "bootId": "aa05ff9b-f553-4a44-9899-e21ad0b0ddd8",
+    "bootEpochSeconds": 1787071982,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-18T18:50:46.812Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
