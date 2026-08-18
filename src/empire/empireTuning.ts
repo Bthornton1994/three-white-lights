@@ -138,6 +138,72 @@ export const EMPIRE_TUNING_CLASSES = ['knob', 'budget', 'refusal', 'structural']
 
 export type EmpireTuningClass = (typeof EMPIRE_TUNING_CLASSES)[number];
 
+/**
+ * The closed grammar of a tuning value: a number, a string, a readonly array
+ * of these, or a readonly plain record of these. Nothing else.
+ *
+ * Why a grammar and not a wider walk. The leaf census in
+ * `empireForbiddenOutput.test.ts` enumerates this block by recursing through
+ * `Object.entries`, and a `Map`'s payload lives in internal slots rather than
+ * own properties — so `Object.entries(map)` is `[]`, and a knob parked inside
+ * one was invisible to the census, to `hiddenTuningKeys` (which reads
+ * own-property descriptors, and an internal slot is not a descriptor), and to
+ * the walk's own catch-all throw (a `Map` is an object, so the object arm
+ * accepts it and walks zero entries). Measured at the base of this round: the
+ * Map planted, `tsc` exit 0, the census green at 100 leaves, the new number
+ * filed nowhere. That was the census's second enumeration gap in three rounds
+ * — descriptors, then internal slots — and each repair had declared its
+ * successor, which is CLAUDE.md's signal to change the instrument rather than
+ * widen the scan: the space of container types is open-ended, and a walk
+ * grows one arm per round forever.
+ *
+ * The `satisfies` below makes the enumeration question a compile question.
+ * What it guarantees, in the mechanism's own terms: every entry's inferred
+ * type must be assignable to this union, and a `Map`, `Set`, `Date`, function,
+ * promise or any other class instance is not — such types carry members
+ * (`get`, `then`, `getTime`) that no arm of the union admits, and a class
+ * instance type has no implicit index signature to satisfy the record arm. So
+ * an honest author adding one gets `tsc` exit 2 at the declaration, with the
+ * entry named in the error. Booleans and nulls are refused the same way,
+ * which also closes the leaf walk's throw arm to honest authors.
+ *
+ * Its limit, stated because no type reaches past it: an assertion erases the
+ * container — `Object.freeze(new Map(...)) as unknown as Readonly<Record<
+ * string, number>>` compiles, exactly as every brand in `empireCore.ts` can be
+ * laundered. Two named catchers cover that route: the runtime internal-slot
+ * read beside the hidden-keys pin in `empireForbiddenOutput.test.ts` (`files
+ * or exempts every numeric leaf...`) reads the real values with `instanceof`
+ * and `typeof`, which no type-level assertion can dress up; and
+ * `src/game/progression.test.ts`'s reflective-assembly census pins every
+ * `as unknown as` / `as any as` in the project's non-test files both ways, so
+ * the two common launder spellings are a signed row before they are anything
+ * else. The runtime read is the catcher for the class; the cast census is a
+ * tripwire for its usual spellings, not a closure over them.
+ *
+ * What the grammar does not see, so the sentence above is not read wider than
+ * it is: a getter whose declared type fits the union looks like a plain
+ * property here. That is the descriptor route, and it stays covered where it
+ * was covered — `hiddenTuningKeys` for non-enumerable and symbol keys, and
+ * `Object.entries` itself reads through an enumerable getter, so the census
+ * sees the value it returns.
+ *
+ * The record arm is an interface rather than `Readonly<Record<...>>` because
+ * a type alias may not reference itself through an eagerly-expanded mapped
+ * type (TS2456); an interface's index signature resolves lazily and says the
+ * same thing.
+ *
+ * Deliberately not exported: instrument A in `empireForbiddenOutput.test.ts`
+ * walks this module's export surface at type level and pins what it finds, and
+ * exporting a recursive union with a bare `string` member would move those
+ * pins for no coverage gain — nothing outside this file needs the type,
+ * because the `satisfies` below is its whole job.
+ */
+interface EmpireTuningRecord {
+  readonly [key: string]: EmpireTuningValue;
+}
+
+type EmpireTuningValue = number | string | readonly EmpireTuningValue[] | EmpireTuningRecord;
+
 export const EMPIRE_TUNING = Object.freeze({
   // -------------------------------------------------------------------------
   // Units and arithmetic (structural)
@@ -645,7 +711,7 @@ export const EMPIRE_TUNING = Object.freeze({
 
   /** Gym Bucks the visited gym's owner receives per encouragement. */
   ENCOURAGEMENT_REWARD_GYM_BUCKS: 50,
-});
+} satisfies EmpireTuningRecord);
 
 /**
  * The class of every entry above, as a value a test can walk.
