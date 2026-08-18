@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-lift-press-mjs-2026-08-18T21-03-45-397Z-24415",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-lift-press.mjs"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-18T21:03:45.397Z",
+  "startedAtMs": 1787087025397,
+  "cwd": "/home/user/wt-away-overlap",
+  "commit": "f9d763e8010898f724f9f42870ed316a52bd28c4",
+  "branch": "claude/away-card-overlap",
+  "dirty": 10,
+  "dirtyPaths": [
+    ".gauntlet/shots/cutin-cap/cap.json",
+    ".gauntlet/shots/cutin/baseline-no-cutin.png",
+    ".gauntlet/shots/cutin/frames.json",
+    ".gauntlet/shots/meet/sound.json",
+    ".gauntlet/shots/shell/03-meet-played-walkout.png",
+    ".gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+    ".gauntlet/shots/shell/13-recap-before-the-return-leg.png",
+    ".gauntlet/shots/shell/15-empire-floor-from-session.png",
+    ".gauntlet/shots/shell/19-empire-floor-on-the-second-visit.png",
+    ".gauntlet/shots/shell/route.json"
+  ],
+  "runner": {
+    "pid": 24415,
+    "startTick": "311499",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --id away-overlap-lift-press -- node tools/verify-lift-press.mjs",
+    "bootId": "a70ad062-1866-416f-bd47-f0b6908b2f28",
+    "bootEpochSeconds": 1787083910,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-18T21:03:45.415Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
