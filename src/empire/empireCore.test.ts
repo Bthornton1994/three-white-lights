@@ -2879,9 +2879,31 @@ describe('the directory is pure, numerically clean and free of dice', () => {
    * It parses the original source, not the comment-stripped `code` above:
    * the line-comment strip would corrupt JSX text containing `//`, and the
    * parser handles comments itself.
+   *
+   * It refuses a dirty parse rather than walking the wrong tree (E41).
+   * `ts.createSourceFile` does not throw on broken or mis-kinded source — it
+   * returns a smaller, wrong tree and lands its complaints on the non-public
+   * `parseDiagnostics` array that nothing in the product reads, so a walked
+   * `.tsx` that mis-parses would yield fewer JsxText nodes with every pin
+   * green. `empireForbiddenOutput.test.ts`'s `parses every walked source
+   * clean` covers exactly `chainScanFiles()` — the compiler-importing files —
+   * and this collector walks a different set (`tsFilesUnder` filtered to
+   * `.tsx`), so it reads the same array itself. Written one round after that
+   * guard, this collector was the literal one-reader-fixed-sibling-not
+   * pattern until this read arrived. Non-vacuity for the throw is a driven
+   * broken `.tsx` in the fixture test below; the mis-kind drive there shows
+   * the same route that used to yield a silent `[]` is now a loud stop.
    */
   function jsxTextChunksIn(fileName: string, text: string): readonly string[] {
     const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true);
+    const diagnostics =
+      (source as unknown as { parseDiagnostics?: readonly ts.Diagnostic[] }).parseDiagnostics ?? [];
+    if (diagnostics.length > 0) {
+      const first = ts.flattenDiagnosticMessageText(diagnostics[0]?.messageText ?? '', ' ');
+      throw new Error(
+        `${fileName} parsed dirty (${String(diagnostics.length)} syntactic diagnostics; first: ${first}); a census over its tree would under-count`,
+      );
+    }
     const chunks: string[] = [];
     const visit = (node: ts.Node): void => {
       if (ts.isJsxText(node) && node.text.trim().length > 0) {
@@ -3226,11 +3248,23 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     });
 
     // The domain axis, stated at the mechanism: the identical text parsed
-    // under a `.ts` name (ScriptKind inferred as TS) yields zero JsxText
-    // nodes — a mis-kinded parse empties this collector silently, which is
-    // why the parser entry infers kind from the file name and why the fixture
-    // above is a real `.tsx` on disk rather than served text.
-    expect(jsxTextChunksIn('sponsorBanner.ts', banner)).toEqual([]);
+    // under a `.ts` name (ScriptKind inferred as TS) produces a wrong,
+    // smaller tree with zero JsxText nodes — and until E41 this line
+    // asserted exactly that silent `[]`, demonstrating the gap while leaving
+    // it open. The collector now reads the parse's own syntactic diagnostics
+    // (3 on this text under a `.ts` name, measured) and refuses, so the
+    // mis-kind route is a loud stop naming the file instead of an
+    // under-count no pin can see.
+    expect(() => jsxTextChunksIn('sponsorBanner.ts', banner)).toThrow(
+      'sponsorBanner.ts parsed dirty (3 syntactic diagnostics',
+    );
+    // Non-vacuity for the refusal on the route the walk actually takes: a
+    // genuinely broken `.tsx` (not a mis-kinded one) also throws, so the
+    // diagnostics read is a real constraint on every source this collector
+    // parses, not a check that can only report clean.
+    expect(() => jsxTextChunksIn('broken.tsx', 'export const V = () => <div>{;\n')).toThrow(
+      'broken.tsx parsed dirty',
+    );
 
     // The neighbouring `.tsx` shapes are covered by the existing collectors
     // once the walk hands them the file — measured here rather than assumed,
