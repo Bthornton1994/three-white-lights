@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece empire-shell
-generated 2026-08-16T08:58:03.141Z
-repo /home/user/wt-shell-pin
-commit c24abd2db246ce14d4309b3ce284841b56982eab
+generated 2026-08-18T14:56:27.590Z
+repo /home/user/three-white-lights
+commit 201c2d2b15d5d45a1c4d8eda9cd039e157bf3c7d
 working tree clean (ignoring only this script's own output and .gauntlet/state.json)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -56,71 +56,69 @@ $ npx vitest run src/shell --reporter=verbose
 [tests] exit code: 0
 ======================================================================
 
- RUN  v4.1.10 /home/user/wt-shell-pin
+ RUN  v4.1.10 /home/user/three-white-lights
 
- ✓ src/shell/empireFloor.test.ts > the naive wiring really does punish a player for looking more often > collecting twice as often at half-tick offsets banks NOTHING — the non-zero control 123ms
- ✓ src/shell/empireFloor.test.ts > the naive wiring really does punish a player for looking more often > collecting one long gap is not the same as collecting its check-ins 17ms
- ✓ src/shell/empireFloor.test.ts > the floor is a function of elapsed time and of nothing else > any schedule of calls lands on the value one call would have produced [the-floor-is-a-function-of-elapsed-time-and-nothing-else] 95ms
+ ✓ src/shell/empireFloor.test.ts > the naive wiring really does punish a player for looking more often > collecting twice as often at half-tick offsets banks NOTHING — the non-zero control 151ms
+ ✓ src/shell/empireFloor.test.ts > the naive wiring really does punish a player for looking more often > collecting one long gap is not the same as collecting its check-ins 20ms
+ ✓ src/shell/empireFloor.test.ts > the floor is a function of elapsed time and of nothing else > any schedule of calls lands on the value one call would have produced [the-floor-is-a-function-of-elapsed-time-and-nothing-else] 144ms
  ✓ src/shell/empireFloor.test.ts > the floor is a function of elapsed time and of nothing else > and a schedule that stops early is exactly the same floor as one that never started 0ms
  ✓ src/shell/empireFloor.test.ts > the floor is a function of elapsed time and of nothing else > a backwards clock cannot take anything away 1ms
  ✓ src/shell/empireFloor.test.ts > the floor is a function of elapsed time and of nothing else > refuses a clock reading that is not a number rather than paying out NaN 0ms
- ✓ src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse off > an extra visit changes NOTHING, and the naive wiring loses money on the same schedules 164ms
+ ✓ src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse off > an extra visit changes NOTHING, and the naive wiring loses money on the same schedules 194ms
  ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > THE SESSION -> MEET ROUTE EXISTS AND IS A PATH, NOT A COMPONENT 3ms
- ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > and the way back exists too — GDD §6.5 ends somewhere 1ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > and the way back exists too — GDD §6.5 ends somewhere 0ms
  ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > the two compose into a round trip that ends where the app opens 1ms
- ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > the app opens on the session, so the round trip starts from the default 3ms
- ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > reaching meet day never needs a debug URL 1ms
- ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > THE SESSION -> EMPIRE ROUTE EXISTS AND IS A PATH, NOT A COMPONENT 1ms
- ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > and the way back from Empire exists too 1ms
- ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > Empire round-trips to the daily session without a debug URL 1ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > the app opens on the session, so the round trip starts from the default 2ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > reaching meet day never needs a debug URL 0ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > THE SESSION -> EMPIRE ROUTE EXISTS AND IS A PATH, NOT A COMPONENT 0ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > and the way back from Empire exists too 0ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > Empire round-trips to the daily session without a debug URL 0ms
  ✓ src/shell/shellRoute.test.ts > the route graph > has exactly the edges the shell claims, and no others 1ms
  ✓ src/shell/shellRoute.test.ts > the route graph > an intent that does not apply is a no-op, identically 0ms
  ✓ src/shell/shellRoute.test.ts > the route graph > the replay harness is not a place a player can walk to 1ms
- ✓ src/shell/shellRoute.test.ts > the route graph > a player on the daily session can reach Empire without a URL 1ms
- ✓ src/shell/shellRoute.test.ts > the route graph > playerReachableFrom is the closure of navigate, not a second list 2ms
- ✓ src/shell/shellRoute.test.ts > the route graph > pathBetween of a surface to itself is the empty path, not null 1ms
+ ✓ src/shell/shellRoute.test.ts > the route graph > a player on the daily session can reach Empire without a URL 0ms
+ ✓ src/shell/shellRoute.test.ts > the route graph > playerReachableFrom is the closure of navigate, not a second list 1ms
+ ✓ src/shell/shellRoute.test.ts > the route graph > pathBetween of a surface to itself is the empty path, not null 0ms
  ✓ src/shell/shellRoute.test.ts > the route graph > every surface can reach the daily session — nothing is a dead end 1ms
- ✓ src/shell/shellRoute.test.ts > the surfaces a side trip may not spend > names both ends of the Empire round trip and nothing else 1ms
- ✓ src/shell/shellRoute.test.ts > the surfaces a side trip may not spend > forgets the beat of every surface that re-mounts, and of the one that re-reports 1ms
- ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > THE WAY TO MEET DAY IS ON THE CHECK-IN, THE BRIEFING AND THE CLOSE-OUT 1ms
+ ✓ src/shell/shellRoute.test.ts > the surfaces a side trip may not spend > names both ends of the Empire round trip and nothing else 0ms
+ ✓ src/shell/shellRoute.test.ts > the surfaces a side trip may not spend > forgets the beat of every surface that re-mounts, and of the one that re-reports 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > THE WAY TO MEET DAY IS ON THE CHECK-IN, THE BRIEFING AND THE CLOSE-OUT 0ms
  ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > AND IT IS DRAWN OVER NEITHER A LIVE SET NOR THE REST BETWEEN TWO OF THEM 0ms
  ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > THE WAY BACK IS ON GDD §6.5’s RECAP 0ms
- ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > AND ON NO OTHER BEAT OF MEET DAY — every one named 1ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > AND ON NO OTHER BEAT OF MEET DAY — every one named 0ms
  ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > the already-trained-today surface gets the pill, because it IS the check-in 0ms
- ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > the answer does not depend on HOW the player got to the surface 1ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > the answer does not depend on HOW the player got to the surface 0ms
  ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > a beat belonging to the OTHER surface draws nothing 0ms
  ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > draws nothing before a surface has reported a beat, or over the harness 0ms
- ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > THE WAY TO EMPIRE IS ON THE SAME SESSION BEATS AS MEET DAY 1ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > THE WAY TO EMPIRE IS ON THE SAME SESSION BEATS AS MEET DAY 0ms
  ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > THE WAY BACK FROM EMPIRE IS ON THE FLOOR BEAT 0ms
  ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > a live cut-in takes the Empire chrome off too 0ms
  ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > every beat of the game is in the answer sheet, and answers as written 1ms
- ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > A LIVE CUT-IN TAKES THE CHROME OFF EVERY BEAT — GDD §7.2, tap to dismiss 3ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > A LIVE CUT-IN TAKES THE CHROME OFF EVERY BEAT — GDD §7.2, tap to dismiss 1ms
  ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > and `none` is what the two-argument call means, so old call sites are safe 0ms
- ✓ src/shell/shellRoute.test.ts > the table and SHELL_NAV are two statements of one fact > SHELL_NAV.SESSION_PHASES is exactly the beats the table gives the pill to 0ms
+ ✓ src/shell/shellRoute.test.ts > the table and SHELL_NAV are two statements of one fact > SHELL_NAV.SESSION_PHASES is exactly the beats the table gives the pill to 1ms
  ✓ src/shell/shellRoute.test.ts > the table and SHELL_NAV are two statements of one fact > SHELL_NAV.MEET_PHASES is exactly the beats the table gives the way out to 0ms
  ✓ src/shell/shellRoute.test.ts > the table and SHELL_NAV are two statements of one fact > and neither list is empty, which is the mutation that used to pass 0ms
- ✓ src/shell/shellRoute.test.ts > the table and SHELL_NAV are two statements of one fact > every listed beat is a beat the game actually has 1ms
- ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?meet=<moment> opens a frozen meet, for every moment capture-meet.mjs asks for 188ms
+ ✓ src/shell/shellRoute.test.ts > the table and SHELL_NAV are two statements of one fact > every listed beat is a beat the game actually has 0ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?meet=<moment> opens a frozen meet, for every moment capture-meet.mjs asks for 195ms
  ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?meet=live opens a PLAYED meet — no frozen state, clocks running 1ms
- ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > A FRAME CARRIES A STAND-IN SERVER EXACTLY WHEN IT CARRIES A SCRIPTED STATE [a-preview-server-cannot-reach-a-played-meet] 146ms
- ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > and a scripted frame’s server is that frame’s own, never a shared one 67ms
- ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > the preview’s server describes the lifter the preview data describes 47ms
- ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?session=<moment> opens a frozen session, for every moment capture-session.mjs asks for 11ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > A FRAME CARRIES A STAND-IN SERVER EXACTLY WHEN IT CARRIES A SCRIPTED STATE [a-preview-server-cannot-reach-a-played-meet] 98ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > and a scripted frame’s server is that frame’s own, never a shared one 124ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > the preview’s server describes the lifter the preview data describes 28ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?session=<moment> opens a frozen session, for every moment capture-session.mjs asks for 20ms
  ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?replay=<load>&moment=<id> opens the lift harness, for every capture moment 1ms
- ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > holds the walk-out at an instant only for the two mid-motion beats 9ms
- ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > opens straight onto the shareable card for exactly one beat 110ms
- ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > precedence is meet, then replay, then session — the order App.tsx used 21ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > holds the walk-out at an instant only for the two mid-motion beats 16ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > opens straight onto the shareable card for exactly one beat 134ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > precedence is meet, then replay, then session — the order App.tsx used 53ms
  ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > refuses what it does not recognise and boots normally 0ms
  ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > has no URL to read on native, and every debug branch is dead there 0ms
- ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > entryRoute and resolveEntry cannot disagree about a query string 37ms
- ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > a player-opened meet gets no frozen frame, even from a debug launch URL 14ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > entryRoute and resolveEntry cannot disagree about a query string 50ms
+ ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > a player-opened meet gets no frozen frame, even from a debug launch URL 25ms
  ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > the same for the session 1ms
- ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > a frozen frame is never handed to the wrong surface 13ms
+ ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > a frozen frame is never handed to the wrong surface 16ms
  ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > the default launch has nothing frozen anywhere 0ms
  ✓ src/shell/shellRoute.test.ts > the shell routes and renders; it does not carry the numbers > nothing the shell can say mentions a Total 1ms
  ✓ src/shell/shellRoute.test.ts > the shell routes and renders; it does not carry the numbers > a route carries a surface and a reason and nothing else 14ms
- ✓ src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse off > every reading the floor draws is classified, and nothing falls out of the walk 1ms
- ✓ src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse off > the CUMULATIVE readings never go backwards, at four minutes and at twelve and twenty-four hours 1303ms
  ✓ src/shell/shellWiring.test.ts > the scans can see what they are looking for > strips comments and keeps code 3ms
  ✓ src/shell/shellWiring.test.ts > the scans can see what they are looking for > the files it reads are the real ones 1ms
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > renders the session, meet, and Empire surfaces — the join is in one file 1ms
@@ -133,19 +131,23 @@ $ npx vitest run src/shell --reporter=verbose
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > the `?cutin=` debug route is resolved from the shell, not from `window` 1ms
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > gives the meet its way out — GDD §6.5 ends somewhere 0ms
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > the way out is a route, not a page reload 1ms
- ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > App.tsx is the platform edge and nothing else 0ms
+ ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > App.tsx is the platform edge and nothing else 1ms
  ✓ src/shell/shellWiring.test.ts > the browser’s URL actually reaches the route graph > CONTROL: the analyser sees the hand-off, and sees it go missing 5ms
- ✓ src/shell/shellWiring.test.ts > the browser’s URL actually reaches the route graph > CONTROL: the walk covers the whole repository, not just src/ 6ms
- ✓ src/shell/shellWiring.test.ts > the browser’s URL actually reaches the route graph > EVERY file in the repository that mounts the shell hands it the URL 451ms
- ✓ src/shell/shellWiring.test.ts > the browser’s URL actually reaches the route graph > and the file that does is one the app actually boots into 2192ms
- ✓ src/shell/shellWiring.test.ts > every screen the shell mounts reports its beat > CONTROL: the discovery sees a screen, and both detectors see their subject go missing 3ms
- ✓ src/shell/shellWiring.test.ts > every screen the shell mounts reports its beat > EVERY screen the shell mounts is DISCOVERED, and the census pins how many 12ms
- ✓ src/shell/shellWiring.test.ts > every screen the shell mounts reports its beat > AND EVERY ONE OF THEM CALLS IT — a screen that accepts the beat and drops it is a dead end 11ms
+ ✓ src/shell/shellWiring.test.ts > the browser’s URL actually reaches the route graph > CONTROL: the walk covers the whole repository, not just src/ 7ms
+ ✓ src/shell/shellWiring.test.ts > the browser’s URL actually reaches the route graph > EVERY file in the repository that mounts the shell hands it the URL 515ms
+ ✓ src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse off > every reading the floor draws is classified, and nothing falls out of the walk 1ms
+ ✓ src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse off > the CUMULATIVE readings never go backwards, at four minutes and at twelve and twenty-four hours 1585ms
+ ✓ src/shell/shellWiring.test.ts > the browser’s URL actually reaches the route graph > and the file that does is one the app actually boots into 2490ms
+ ✓ src/shell/shellWiring.test.ts > every screen the shell mounts reports its beat > CONTROL: the discovery sees a screen, and both detectors see their subject go missing 4ms
+ ✓ src/shell/shellWiring.test.ts > every screen the shell mounts reports its beat > EVERY screen the shell mounts is DISCOVERED, and the census pins how many 20ms
+ ✓ src/shell/shellWiring.test.ts > every screen the shell mounts reports its beat > AND EVERY ONE OF THEM CALLS IT — a screen that accepts the beat and drops it is a dead end 19ms
  ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > CONTROL: the tracer sees the provenance, and sees it go missing 4ms
- ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > EVERY reading the floor draws traces to the pure constructor, not to chrome copy [every-drawn-empire-reading-comes-from-the-pure-state] 360ms
- ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > and it is the ONLY screen the shell mounts that reaches into the pure module 188ms
+ ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > EVERY reading the floor draws traces to the pure constructor, not to chrome copy [every-drawn-empire-reading-comes-from-the-pure-state] 397ms
+ ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > each row draws the reading its label names [each-empire-row-draws-the-reading-its-label-names] 403ms
+ ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > and no reading the floor computes is painted nowhere 407ms
+ ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > and it is the ONLY screen the shell mounts that reaches into the pure module 220ms
  ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > CONTROL: the census walker follows a shell hop, and stops when the hop is cut 1ms
- ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > CONTROL: the callback reader finds a body, and reports a missing one as missing 0ms
+ ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > CONTROL: the callback reader finds a body, and reports a missing one as missing 1ms
  ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > mounts every persistent surface and hides the one that is not on screen 1ms
  ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > CONTROL: the mount-flag pin reads the half of the condition that IS the mechanism 0ms
  ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > does not forget the beat of a surface that never un-mounted 0ms
@@ -155,13 +157,17 @@ $ npx vitest run src/shell --reporter=verbose
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > it really is a session-server port and not a stub 0ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > THE MEET PORT AND THE SESSION PORT ARE THE SAME OBJECT [one-row-behind-one-port] 0ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > and it really is a meet-server port, so the identity above is not two stubs 0ms
- ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > a meet recorded through it is visible to the session half, on one row [a-meet-total-reaches-the-session-half] 594ms
+ ✓ src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse off > GYM BUCKS is a balance, so it falls — and only ever at a step where the gym bought something 1ms
+ ✓ src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse off > the SINCE CHECK-IN row is the one that is sawtooth by construction, and it resets at a check-in and nowhere else 1ms
+ ✓ src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse off > EQUIPMENT is a rung, and the floor only ever climbs the ladder it is on [the-equipment-row-is-a-rung-the-gym-climbs] 0ms
+ ✓ src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse off > an extra visit changes nothing at the horizons where the gym SPENDS, either 4375ms
+ ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > a meet recorded through it is visible to the session half, on one row [a-meet-total-reaches-the-session-half] 605ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > the port is memoised at module scope, not in a component 1ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > the shell hands that port to the session, rather than letting it build one 0ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > and hands the meet one too, which it did not before 0ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > MeetScreen forwards the port to the hook instead of dropping it 0ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > SessionScreen forwards the port to the hook instead of dropping it 0ms
- ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > the already-trained surface is still there and still gated on the server’s answer 0ms
+ ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > the already-trained surface is still there and still gated on the server’s answer 1ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > AND IT RENDERS ON THE `check-in` BEAT, so the shell’s pill is on it too 0ms
  ✓ src/shell/shellWiring.test.ts > the shell is a router, not a screen > CONTROL: the shell’s file set is WALKED, and the three scans below can see what they forbid 2ms
  ✓ src/shell/shellWiring.test.ts > the shell is a router, not a screen > steps no state machine and reads no progression fact, in EVERY file of the shell 1ms
@@ -171,20 +177,18 @@ $ npx vitest run src/shell --reporter=verbose
  ✓ src/shell/shellWiring.test.ts > the capture harness still has its four query strings > the shell resolves the launch URL through the pure module 0ms
  ✓ src/shell/shellWiring.test.ts > the capture harness still has its four query strings > and hands every frozen field to the screen that draws it 0ms
  ✓ src/shell/shellWiring.test.ts > the capture harness still has its four query strings > the tools that depend on them name the strings this app parses 1ms
- ✓ src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse off > GYM BUCKS is a balance, so it falls — and only ever at a step where the gym bought something 1ms
- ✓ src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse off > the SINCE CHECK-IN row is the one that is sawtooth by construction, and it resets at a check-in and nowhere else 0ms
- ✓ src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse off > an extra visit changes nothing at the horizons where the gym SPENDS, either 3959ms
+ ✓ src/shell/empireFloor.test.ts > §12.3 — a player who looks more often is never worse off > and an extra visit AIMED at the instant the gym commits its money changes nothing either 6633ms
  ✓ src/shell/empireFloor.test.ts > the floor advances, and these are the numbers > draws the gym at 0s, 10s, 60s and 600s 2ms
  ✓ src/shell/empireFloor.test.ts > the floor advances, and these are the numbers > the SINCE CHECK-IN row moves between check-ins, which the collected rows do not 1ms
- ✓ src/shell/empireFloor.test.ts > the floor advances, and these are the numbers > the check-in schedule is the cadence and nothing else 1ms
+ ✓ src/shell/empireFloor.test.ts > the floor advances, and these are the numbers > the check-in schedule is the cadence and nothing else 2ms
  ✓ src/shell/empireFloor.test.ts > the seams this surface deliberately does not cross > the offline cap cannot bite here, and that is a bound rather than five samples 1ms
  ✓ src/shell/empireFloor.test.ts > the seams this surface deliberately does not cross > spends nothing on an accelerant, so GDD §8.3B is unreachable from this surface 1ms
  ✓ src/shell/empireFloor.test.ts > the seams this surface deliberately does not cross > the policy it steps with is derived from §5, not restated here 0ms
 
  Test Files  3 passed (3)
-      Tests  122 passed (122)
-   Start at  08:58:04
-   Duration  6.82s (transform 2.89s, setup 0ms, import 4.64s, tests 10.25s, environment 0ms)
+      Tests  126 passed (126)
+   Start at  14:56:29
+   Duration  14.84s (transform 3.88s, setup 0ms, import 6.20s, tests 19.05s, environment 0ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -195,13 +199,13 @@ $ npx vitest run
 [whole suite] exit code: 0
 ======================================================================
 
- RUN  v4.1.10 /home/user/wt-shell-pin
+ RUN  v4.1.10 /home/user/three-white-lights
 
 
- Test Files  88 passed (88)
-      Tests  3442 passed (3442)
-   Start at  08:58:12
-   Duration  397.96s (transform 7.21s, setup 0ms, import 34.18s, tests 962.88s, environment 14ms)
+ Test Files  89 passed (89)
+      Tests  3454 passed (3454)
+   Start at  14:56:46
+   Duration  446.34s (transform 9.30s, setup 0ms, import 39.76s, tests 1077.33s, environment 14ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
