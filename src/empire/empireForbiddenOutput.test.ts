@@ -684,7 +684,7 @@ function programWith(
       const text = served.get(path.normalize(fileName));
       return text === undefined
         ? readSource(fileName, languageVersion, onError, shouldCreate)
-        : ts.createSourceFile(fileName, text, languageVersion, true, ts.ScriptKind.TS);
+        : ts.createSourceFile(fileName, text, languageVersion, true);
     };
     const exists = host.fileExists.bind(host);
     host.fileExists = (fileName) => served.has(path.normalize(fileName)) || exists(fileName);
@@ -19391,6 +19391,40 @@ const CHAIN_SCAN_GLOBALS: readonly string[] = Object.freeze([
 ]);
 
 /**
+ * The parse diagnostics `ts.createSourceFile` accumulates for `fileName`+`text`,
+ * on its NON-PUBLIC `parseDiagnostics` array. `createSourceFile` does not throw
+ * on a mis-kinded parse — it returns a wrong tree and lands its complaints here,
+ * and `grep -rn parseDiagnostics src/` shows nothing in the product reads this
+ * array. Measured: a `.tsx` carrying a real three-arm `if/else if/else if`,
+ * parsed with an explicit `ts.ScriptKind.TS`, gives `ifStatements=0 nodes=34
+ * parseDiagnostics=3`; parsed as its extension names it (TSX), `ifStatements=3
+ * nodes=111 parseDiagnostics=0`. So a census that hardcodes `.TS` on a walked
+ * `.tsx` sees a wrong, smaller tree and NOTHING reports it.
+ */
+function parseDiagnosticsFor(fileName: string, text: string): readonly ts.Diagnostic[] {
+  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true);
+  return (
+    (source as unknown as { parseDiagnostics?: readonly ts.Diagnostic[] }).parseDiagnostics ?? []
+  );
+}
+
+/**
+ * Build the source the three syntactic censuses below walk, with the ScriptKind
+ * INFERRED from `fileName` rather than hardcoded — so a walked `.tsx` parses as
+ * TSX rather than collapsing to the 34-node mis-parse above. This is the whole
+ * of Rank 1's fix: dropping the fifth argument makes `createSourceFile` call
+ * `getScriptKindFromFileName`, which is byte-identical to an explicit
+ * `ScriptKind.TSX` on a `.tsx` and to `ScriptKind.TS` on a `.ts`.
+ *
+ * The parse-diagnostics guard (`every walked source parses clean`) pins
+ * `parseDiagnosticsFor` at zero over exactly the files this hands back, so a
+ * silent mis-parse of any walked file reddens instead of vanishing.
+ */
+function parseWalkedSource(fileName: string, text: string): ts.SourceFile {
+  return ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true);
+}
+
+/**
  * Find every dispatch chain in one source text.
  *
  * A CHAIN is a maximal run of ADJACENT sibling `if` statements in one block
@@ -19424,7 +19458,7 @@ const CHAIN_SCAN_GLOBALS: readonly string[] = Object.freeze([
  *     `enclosing` row must carry an `omission` too.
  */
 function dispatchChainsIn(fileName: string, text: string): readonly DispatchChain[] {
-  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const source = parseWalkedSource(fileName, text);
 
   const rootIdentifier = (expression: ts.Expression): string | null => {
     let at: ts.Expression = expression;
@@ -19608,7 +19642,7 @@ interface SwitchRow {
 
 /** Every `switch` in the scanned files, with whether it has a `default`. */
 function switchesIn(fileName: string, text: string): readonly SwitchRow[] {
-  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const source = parseWalkedSource(fileName, text);
   const rows: SwitchRow[] = [];
   const named = (node: ts.Node): string => {
     for (let at: ts.Node | undefined = node.parent; at !== undefined; at = at.parent) {
@@ -19698,7 +19732,7 @@ const handlerKey = (row: HandlerTableRow): string =>
   `${row.at} form=${row.form} entries=${String(row.entries)} guarded=${String(row.guarded)}`;
 
 function handlerTablesIn(fileName: string, text: string): readonly HandlerTableRow[] {
-  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const source = parseWalkedSource(fileName, text);
   const rows: HandlerTableRow[] = [];
   const named = (node: ts.Node): string => {
     for (let at: ts.Node | undefined = node.parent; at !== undefined; at = at.parent) {
@@ -20292,6 +20326,49 @@ describe('the dispatch-chain census — a ladder nobody looked at cannot be adde
     expect(chainScanFiles()).toEqual(compilerImportingFilesUnder(HERE));
     expect(directoryFileNames()).toEqual(tsFilesUnder(HERE, 'with-tests'));
     expect(directoryFileNames()).toContain('directoryWalk.test.ts');
+  });
+
+  it('parses every walked source clean — a silent mis-parse cannot shrink a census', () => {
+    // THE DOMAIN GUARD. CLAUDE.md: "a witness proves the check bites on the
+    // mutant you wrote; it says nothing about the DOMAIN the check enumerates."
+    // The three syntactic censuses build their tree with `parseWalkedSource`,
+    // whose ScriptKind is inferred from the extension. `ts.createSourceFile`
+    // does NOT throw on a mis-kinded parse — it returns a wrong, smaller tree
+    // and lands its complaints on the non-public `parseDiagnostics` array that
+    // nothing in the product reads. This pins that array at zero over exactly
+    // the files `chainScanFiles()` hands the censuses, so a walked source that
+    // parses to a wrong tree reddens here instead of being recorded ABSENT with
+    // the suite green.
+    for (const name of chainScanFiles()) {
+      const text = readFileSync(path.join(HERE, name), 'utf8');
+      const diagnostics = parseDiagnosticsFor(name, text);
+      expect(
+        diagnostics.map((diagnostic) =>
+          ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
+        ),
+        name,
+      ).toEqual([]);
+    }
+    // Non-vacuity: `parseDiagnosticsFor` returns a NON-empty array on broken
+    // syntax, so pinning it at zero above is a real constraint and not a
+    // mechanism that can only ever report zero.
+    expect(parseDiagnosticsFor('broken.ts', 'const x: = ;').length).toBeGreaterThan(0);
+    // And ScriptKind inference is what keeps a real `.tsx` clean: the identical
+    // JSX text is clean named `.tsx` (kind inferred) and DIRTY forced to `.TS`,
+    // which is the silent mis-parse this round closes.
+    const jsx = 'const view = () => <div>{`x`}</div>;\n';
+    expect(parseDiagnosticsFor('view.tsx', jsx)).toEqual([]);
+    const forcedTs = ts.createSourceFile(
+      'view.tsx',
+      jsx,
+      ts.ScriptTarget.ES2022,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const forcedDiagnostics =
+      (forcedTs as unknown as { parseDiagnostics?: readonly ts.Diagnostic[] })
+        .parseDiagnostics ?? [];
+    expect(forcedDiagnostics.length).toBeGreaterThan(0);
   });
 
   it('finds every dispatch chain in this directory, in both directions', () => {
