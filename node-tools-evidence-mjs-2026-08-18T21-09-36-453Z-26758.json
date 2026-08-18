@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-evidence-mjs-2026-08-18T21-09-36-453Z-26758",
+  "label": null,
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "suite"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-18T21:09:36.453Z",
+  "startedAtMs": 1787087376453,
+  "cwd": "/home/user/wt-away-overlap",
+  "commit": "165becda12a8220ae023785d1da2dc71148028aa",
+  "branch": "claude/away-card-overlap",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 26758,
+    "startTick": "346604",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --id away-overlap-suite -- node tools/evidence.mjs suite",
+    "bootId": "a70ad062-1866-416f-bd47-f0b6908b2f28",
+    "bootEpochSeconds": 1787083910,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-18T21:09:36.472Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
