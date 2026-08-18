@@ -1595,7 +1595,20 @@ path. Consequences, all measured in `src/shell/empireFloor.test.ts`:
   (SECONDS)`), with no new interactions, buttons, animations or dismissal
   logic.
 
-### 5.2 Production
+**The cap is per gap, and that is ruled as designed — 2026-08-18, no further
+work.** Option B clamps each advance at the cap's worth of the wall time since
+the *previous* advance, so a background tab whose timer happens to fire now and
+then has each gap simulated in full and earns a full-rate window per gap, where
+a tab that never fired would have everything past one cap forfeited. That
+asymmetry was previously stated as a design property and left open; the ruling
+closes it, on the bound that makes it safe: what any pattern of gaps can earn
+is bounded above by wall time itself. Simulated gym time never exceeds elapsed
+open time — each advance adds at most the wall span it covers, and
+`src/shell/empireFloor.test.ts` walks the forfeit reading (`openSeconds −
+gymSeconds`, the away row's own number) from zero with falls pinned to the
+empty list — so the ceiling on a backgrounded tab is exactly what an
+always-watching player earns at the full online rate, and there is no rate
+above that to exploit.
 
 - **Gym Bucks** (soft currency) — base passive income
 - **Training IQ trickle** — keeps Idle connected to Sim progression
