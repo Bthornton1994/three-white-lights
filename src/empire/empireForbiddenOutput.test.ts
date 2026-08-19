@@ -10675,7 +10675,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'empireInvariant.ts': 60,
       'engagement.ts': 23,
       'expansion.ts': 47,
-      'ladder.ts': 21,
+      'ladder.ts': 25,
+      'ladderView.tsx': 5,
       'npc.ts': 12,
       'production.ts': 11,
       'recruitment.ts': 9,
@@ -10706,7 +10707,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'social.ts': 7,
     }),
     'argument-mutation': Object.freeze({}),
-    'callback-invocation': Object.freeze({ 'engagement.ts': 1, 'production.ts': 2 }),
+    'callback-invocation': Object.freeze({ 'engagement.ts': 1, 'ladderView.tsx': 3, 'production.ts': 2 }),
     'internal-callback-invocation': Object.freeze({ 'expansion.ts': 1 }),
     'module-mutable-state': Object.freeze({}),
     'ambient-global': Object.freeze({}),
@@ -10766,7 +10767,7 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'empireInvariant.ts': 8,
   'engagement.ts': 13,
   'expansion.ts': 3,
-  'ladder.ts': 17,
+  'ladder.ts': 20,
   'production.ts': 9,
   'recruitment.ts': 1,
   'reputation.ts': 6,
@@ -10784,6 +10785,13 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
  */
 const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
   'engagement.ts#historyFrom#attended x1',
+  // The three onClick arrows in the stage-1 view, each handing
+  // `props.dispatch` exactly one action object. One site per control kind
+  // (advance, buy, relocate); `x1` widening to `x2` at any of them is a
+  // payload arriving one argument wider, which is what this census is for.
+  'ladderView.tsx#LadderView#props.dispatch x1',
+  'ladderView.tsx#LadderView#props.dispatch x1',
+  'ladderView.tsx#LadderView#props.dispatch x1',
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour x2',
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay x2',
 ]);
@@ -10987,7 +10995,9 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'engagement.ts:437 returned=unfollowable:gym',
   'engagement.ts:455 returned=unfollowable:gym',
   'expansion.ts:549 returned=unfollowable:state',
-  'ladder.ts:312 receiver=ArrayLiteralExpression',
+  'ladder.ts:324 receiver=ArrayLiteralExpression',
+  'ladderView.tsx:115 returned=unfollowable:state',
+  'ladderView.tsx:123 returned=unfollowable:state',
   'recruitment.ts:388 returned=unfollowable:state',
   'social.ts:345 receiver=ArrayLiteralExpression',
   'social.ts:535 returned=unfollowable:context',
@@ -11080,9 +11090,9 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   parameter: 2,
   'module-variable': 34,
   local: 0,
-  function: 556,
-  member: 531,
-  'member-callback': 2,
+  function: 573,
+  member: 548,
+  'member-callback': 5,
   'member-of-parameter': 14,
   fresh: 0,
   unclassified: 0,
@@ -11114,16 +11124,16 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
   MODULES: 12,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
-  SITES: 351,
+  SITES: 363,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
    * grammar declarations and the `satisfies` clause are 23 AST nodes, and no
    * site, channel or wrap count moved with them.
    */
-  NODES_EXAMINED: 23_965,
+  NODES_EXAMINED: 25_083,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
-  WRAP_CALLS: 72,
+  WRAP_CALLS: 75,
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
@@ -12058,6 +12068,35 @@ const recordingRates = (record: (args: readonly unknown[]) => void): RosterRateS
     },
   } as unknown as RosterRateSource);
 
+/**
+ * The stage-1 view's control count on an opening-kit screen: the dev steps,
+ * the one item the starting kit does not hold, and the relocation. Derived
+ * from the tuning vocabulary rather than written as a number, so a fourth
+ * step or a wider kit moves it without an edit here.
+ */
+const LADDER_VIEW_CONTROLS =
+  EMPIRE_TUNING.LADDER_DEV_TIME_STEPS_SECONDS.length +
+  (EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.length - EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.length) +
+  1;
+
+/** Every onClick in an element tree, pressed in tree order. */
+function pressEveryControl(node: unknown): number {
+  if (typeof node !== 'object' || node === null) return 0;
+  if (Array.isArray(node)) {
+    return node.reduce((sum: number, child) => sum + pressEveryControl(child), 0);
+  }
+  const props = (node as { readonly props?: unknown }).props;
+  if (typeof props !== 'object' || props === null) return 0;
+  const bag = props as Readonly<Record<string, unknown>>;
+  let pressed = 0;
+  const handler = bag['onClick'];
+  if (typeof handler === 'function') {
+    (handler as () => void)();
+    pressed += 1;
+  }
+  return pressed + pressEveryControl(bag['children']);
+}
+
 const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
   Object.freeze({
     key: 'engagement.ts#historyFrom#attended',
@@ -12096,6 +12135,37 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
           );
         },
         callsAt: (): number => TRAINED_DAYS_AXIS_SLOTS,
+        argumentsPerCall: 1,
+      }),
+    ]),
+  }),
+  Object.freeze({
+    key: 'ladderView.tsx#LadderView#props.dispatch',
+    axes: Object.freeze([
+      Object.freeze({
+        name: 'ladderView.tsx#LadderView#props.dispatch#gymBucks',
+        domain: 'NUMBER',
+        means:
+          'the money the rendered screen shows. The dispatch count is the CONTROL count — three dev steps, the one open buy, the relocation — and deliberately does not vary with the point: the view disables nothing, every control dispatches whatever the balance, and refusals are the reducer\u2019s to report. What the pass scans is the action objects the screen hands its caller.',
+        drive: (record: (args: readonly unknown[]) => void, point: number): void => {
+          pressEveryControl(
+            ladderViewModule.LadderView({
+              state: Object.freeze({
+                ladder: ladderStateAt(
+                  EMPIRE_TUNING.LADDER_RUNGS[0],
+                  point,
+                  ladderModule.createLadderState().equipment,
+                ),
+                lastAccrual: null,
+                lastRefusal: null,
+              }),
+              dispatch: (action: ladderViewModule.LadderViewAction): void => {
+                record([action]);
+              },
+            }),
+          );
+        },
+        callsAt: (): number => LADDER_VIEW_CONTROLS,
         argumentsPerCall: 1,
       }),
     ]),
@@ -12319,28 +12389,34 @@ interface CallbackAxisCensus {
 
 const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Object.freeze({
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
-    points: 97,
+    points: 99,
     refusedPoints: 1,
-    calls: 750283,
-    recorded: 750283,
+    calls: 1038283,
+    recorded: 1038283,
   }),
   'engagement.ts#historyFrom#attended#trainedDays': Object.freeze({
-    points: 97,
+    points: 99,
     refusedPoints: 0,
-    calls: 291,
-    recorded: 291,
+    calls: 297,
+    recorded: 297,
+  }),
+  'ladderView.tsx#LadderView#props.dispatch#gymBucks': Object.freeze({
+    points: 246,
+    refusedPoints: 0,
+    calls: 1230,
+    recorded: 1230,
   }),
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize': Object.freeze({
-    points: 66,
+    points: 68,
     refusedPoints: 0,
-    calls: 743979,
-    recorded: 1487958,
+    calls: 1031979,
+    recorded: 2063958,
   }),
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize': Object.freeze({
-    points: 66,
+    points: 68,
     refusedPoints: 0,
-    calls: 743979,
-    recorded: 1487958,
+    calls: 1031979,
+    recorded: 2063958,
   }),
 });
 
@@ -12357,7 +12433,7 @@ const CALLBACK_AXIS_RESIDUAL: readonly string[] = Object.freeze([
 ]);
 
 const CALLBACK_PASS_CENSUS = Object.freeze({
-  SUBJECTS: 3,
+  SUBJECTS: 4,
   /**
    * Axes driven, summed over subjects.
    *
@@ -12368,7 +12444,7 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    * reader — with `CALLBACK_AXIS_RESIDUAL` naming what a per-axis drive still
    * cannot express.
    */
-  AXES_VARIED: 4,
+  AXES_VARIED: 5,
   /**
    * Points, refusals, calls and values, summed across every axis.
    *
@@ -12376,10 +12452,10 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    * reader checks at a glance and the table is what cannot be gamed by one axis
    * growing while another dies.
    */
-  POINTS: 326,
+  POINTS: 580,
   REFUSED_POINTS: 1,
-  CALLS: 2238532,
-  RECORDED: 3726490,
+  CALLS: 3103768,
+  RECORDED: 5167726,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
@@ -12867,7 +12943,17 @@ describe('the channel census — the routes a string can leave this directory by
       // on the drive's side — reports itself.
       for (const point of registry.points) expect(points, axis.name).toContain(point);
       const dropped = overflowPointsFor(axis.domain, registry);
-      expect(dropped.length, `${axis.name} has no points above its ceiling`).toBeGreaterThan(0);
+      // A domain that declares NO_CEILING pays for every branch point up
+      // front, so its overflow is empty BY CONSTRUCTION and an empty list is
+      // the correct reading, not a truncation — the containment loop above
+      // already required every registry point present. This arm arrived with
+      // the view's dispatch axis, the first callback axis on the NUMBER
+      // domain; every ceilinged axis keeps the stronger demand.
+      if (registry.foreignCeiling === FOREIGN_CEILINGS.NO_CEILING) {
+        expect(dropped, `${axis.name} dropped points despite declaring no ceiling`).toEqual([]);
+      } else {
+        expect(dropped.length, `${axis.name} has no points above its ceiling`).toBeGreaterThan(0);
+      }
       for (const point of dropped) expect(points, `${axis.name} ${point.label}`).toContain(point.value);
       // And it is not merely the two lists concatenated: it straddles branch
       // points the E18 fixture could not express. Two named ones, each a real
@@ -12885,10 +12971,10 @@ describe('the channel census — the routes a string can leave this directory by
     const count = NUMERIC_DOMAINS.COUNT;
     const countPoints = callbackPointsFor('COUNT');
     const countDropped = overflowPointsFor('COUNT', count);
-    expect(distinct(countDropped.map((point) => String(point.value))).length).toBe(36);
-    expect(countPoints.filter((point) => point > FOREIGN_CEILINGS.COUNT).length).toBe(37);
+    expect(distinct(countDropped.map((point) => String(point.value))).length).toBe(38);
+    expect(countPoints.filter((point) => point > FOREIGN_CEILINGS.COUNT).length).toBe(39);
     expect(count.points.length).toBe(DOMAIN_CENSUS.COUNT_POINTS);
-    expect(countPoints.length).toBe(DOMAIN_CENSUS.COUNT_POINTS + 36);
+    expect(countPoints.length).toBe(DOMAIN_CENSUS.COUNT_POINTS + 38);
     // Every axis names a domain the registry has, and every axis name is
     // distinct — a duplicate would let two axes share one census row.
     expect(distinct(axes.map((axis) => axis.name)).length).toBe(axes.length);
