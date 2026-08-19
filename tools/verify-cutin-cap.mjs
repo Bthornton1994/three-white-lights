@@ -1209,7 +1209,7 @@ if (booted.ok) {
       );
       break;
     }
-    note(`leg ${leg.n}: entered via ${pressedRow}`);
+    console.log(`    leg ${leg.n}: entered via ${pressedRow}`);
     const onMeet = await until((s) => s.meetScreen || s.weighIn, CAP_DRIVE.BEAT_TIMEOUT_MS);
     check(onMeet.ok, `leg ${leg.n}: meet day was reached with a finger, not a URL — ${leg.why}`, `search=${JSON.stringify(onMeet.state.search)}`);
     if (!onMeet.ok) break;
