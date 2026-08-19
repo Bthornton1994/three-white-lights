@@ -3239,6 +3239,10 @@ function exemptTable(prefix: string, why: string): readonly ExemptLeaf[] {
 
 const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
   ...exemptTable(
+    'LADDER_DEV_TIME_STEPS_SECONDS',
+    'THREE SPANS, in seconds, that the stage-gate dev view feeds whole to `ladderCheckInAfter` as the gap since the mark. What a gap is compared AGAINST is the offline horizon, filed under `second` as the derived `OFFLINE_EARNINGS_CAP_SECONDS`; these are the sampling grains a human taps while judging the stage-1 pacing, and nothing in this directory compares a value against one of them. They do enter `EVERY_BRANCH_POINT` like every exempt leaf, so the domains still straddle them as foreign points within each ceiling.',
+  ),
+  ...exemptTable(
     'PRECISION_DECIMALS',
     'A DIGIT COUNT. It is handed to the rounding helper that scrubs IEEE-754 noise out of an accrual, so it sizes the arithmetic rather than naming a place on any axis. No quantity in this directory is denominated in decimal places.',
   ),
@@ -3857,7 +3861,7 @@ const FIXTURE_LISTS: readonly FixtureList[] = Object.freeze([
   Object.freeze({
     name: 'CLOCKS',
     derivedFrom: 'SECONDS',
-    size: 180,
+    size: 185,
     why: 'One clock per point of the seconds domain, at a fixed skip. Derived, so the seconds domain losing its ceiling this round widened this list without anybody touching it.',
   }),
   Object.freeze({
@@ -3991,13 +3995,22 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   // dropped branch point: the overflow pass drives every one of these values
   // one at a time, per domain, since EVERY_BRANCH_POINT carries exempt
   // leaves too and overflowPointsFor reads it whole.
+  'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
+  'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
+  'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
   'COUNT/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
   'COUNT/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
+  'DAY/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
+  'DAY/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
+  'DAY/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
   'DAY/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
   'DAY/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
   'ROSTER_SHAPE/CHECK_IN_TARGET_SECONDS_MAX=60',
   'ROSTER_SHAPE/CHECK_IN_TARGET_SECONDS_MIN=30',
   'ROSTER_SHAPE/GYM_BUCKS_BASE_PER_HOUR=120',
+  'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
+  'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
+  'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.garage=60',
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.storage-unit=240',
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
@@ -4028,21 +4041,21 @@ const DOMAIN_CENSUS = Object.freeze({
   /** Numeric leaves of EMPIRE_TUNING filed under a unit. */
   FILED: 73,
   /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
-  EXEMPT: 38,
-  TUNING_NUMERIC_LEAVES: 111,
+  EXEMPT: 41,
+  TUNING_NUMERIC_LEAVES: 114,
   TUNING_STRING_LEAVES: 40,
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
-  BRANCH_POINTS: 113,
+  BRANCH_POINTS: 116,
   DOMAINS: 6,
-  CONTAINMENT_CHECKS: 519,
+  CONTAINMENT_CHECKS: 528,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
     SECONDS: 0,
-    DAY: 46,
-    COUNT: 46,
+    DAY: 49,
+    COUNT: 49,
     LEVEL: 0,
-    ROSTER_SHAPE: 67,
+    ROSTER_SHAPE: 70,
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -4059,12 +4072,12 @@ const DOMAIN_CENSUS = Object.freeze({
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
   /** (domain, point) pairs the NUMBER-containment loop actually compares. */
-  NUMBER_CONTAINMENT_CHECKS: 721,
-  NUMBER_POINTS: 241,
-  SECONDS_POINTS: 180,
+  NUMBER_CONTAINMENT_CHECKS: 737,
+  NUMBER_POINTS: 246,
+  SECONDS_POINTS: 185,
   DAY_POINTS: 57,
   COUNT_POINTS: 61,
-  LEVEL_POINTS: 165,
+  LEVEL_POINTS: 171,
   ROSTER_SHAPE_POINTS: 17,
 });
 
