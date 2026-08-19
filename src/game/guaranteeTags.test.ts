@@ -757,8 +757,15 @@ const GUARANTEE_COVERAGE = {
    * named test. Every other touched file, `progression.ts` and both server
    * modules included, measured flat. The trigger phrases are not quoted here,
    * for the reason twelve of the notes above now give.
+   *
+   * 261 -> 262 when Sprint 1c's adapter arrived: `careerMeet.ts` 0 -> 1, a new
+   * file whose id paragraph opens on a capitalised absolute and carries
+   * `career-meet-id-crosses-verbatim` with a witness in the table below. Its
+   * rules paragraph is tagged too and does not trigger this census — the two
+   * scopers measure different things, which is this file's own point about
+   * the heuristic's reach.
    */
-  TREE_WIDE: 261,
+  TREE_WIDE: 262,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1056,8 +1063,13 @@ const NUMBER_COVERAGE = {
    * `careerServer.ts`: `the-career-record-is-the-meets-on-the-row` on the fold
    * and `a-federation-is-chosen-once` on the choice. Neither paragraph states
    * a numeral, so `CLAIMED` did not move with them either.
+   *
+   * 71 -> 73 with Sprint 1c's two adapter tags, both in `careerMeet.ts`:
+   * `career-meet-id-crosses-verbatim` on the id and
+   * `career-meet-rules-are-a-reference` on the rules. Neither paragraph states
+   * a numeral, so `CLAIMED` stood still again.
    */
-  TAGGED_PARAGRAPHS: 71,
+  TAGGED_PARAGRAPHS: 73,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
@@ -1091,14 +1103,21 @@ const NUMBER_COVERAGE = {
   // a bare 0 (its measured-count accumulators start there) and a bare 1 (its
   // loop steps and its set-size comparison), so both weakness counts moved
   // with it; the chosen-once body states no numeral at all.
-  NAMED_BODIES: 62,
+  //
+  // 62 -> 64 with Sprint 1c's two adapter tags. Neither body states a bare 0
+  // or a bare 1 — both walk a prebuilt list and compare references — so the
+  // two weakness counts below stood still.
+  NAMED_BODIES: 64,
   NAMED_BODIES_HOLDING_ZERO: 48,
   NAMED_BODIES_HOLDING_ONE: 48,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
+   *
+   * 27 -> 28 with Sprint 1c: `careerMeet.ts`'s id paragraph is in both scopes;
+   * its rules paragraph is tagged only.
    */
-  TAGGED_AND_TRIGGERING: 27,
+  TAGGED_AND_TRIGGERING: 28,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1383,8 +1402,12 @@ const TRANSCRIPT_BAR = {
    *
    * 27 -> 29 on Sprint 1a's two career-boundary witnesses, both transcripts
    * pasted from real red runs at this tree.
+   *
+   * 29 -> 31 on Sprint 1c's two adapter witnesses (`careerMeet.ts`'s verbatim
+   * id and by-reference rules), both transcripts pasted from real red runs at
+   * this tree.
    */
-  GRADED: 29,
+  GRADED: 31,
   /** ...and rows excused because their transcript predates it. */
   PREDATING: 37,
   /**
@@ -1552,10 +1575,17 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // inverted and correct again. The chosen-once witness moves nothing here —
   // its transcript states no citable numeral, and a row without one is skipped
   // before it is counted, which is why `rows` moved by one and not two.
-  rows: 57,
-  flagged: 44,
-  numerals: 179,
-  unresolved: 89,
+  // 57/44/179/89 -> 59/46/190/100 on Sprint 1c's two adapter witnesses. Both
+  // transcripts quote numerals — the id witness carries the calendar id's date
+  // digits twice (mutant and expected), the rules witness vitest's `…(3)`
+  // elision — and none of them resolves in the named test's body (the test
+  // never states the anchor day's date; the calendar computes it), so both
+  // rows are flagged and every one of their eleven numerals lands in
+  // `unresolved`.
+  rows: 59,
+  flagged: 46,
+  numerals: 190,
+  unresolved: 100,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -1898,8 +1928,11 @@ const REPLACEMENT_BAR = {
    * 16 -> 18 on Sprint 1a's two career-boundary witnesses: the fold's
    * bombed-meets-skipped patch and the chosen-once refusal's disabled
    * condition, each recorded in the exact form it was run.
+   *
+   * 18 -> 20 on Sprint 1c's two adapter witnesses: the prefixed id and the
+   * spread-copied rules, each recorded in the exact form it was run.
    */
-  REPRODUCIBLE: 18,
+  REPRODUCIBLE: 20,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -3666,6 +3699,55 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'meetsQualifyingTotal(lifter.bestTotalKg, meet.qualifyingTotalKg); — ' +
       'domain-anchor-not-in-the-body",\n+ ]',
   },
+  // -------------------------------------------------------------------------
+  // Sprint 1c's CareerMeet → MeetDefinition seam. Two tags, two mutants, both
+  // taken at declaration time on the run that added the module.
+  //
+  // The id mutant is the quiet-normalisation shape: a mapping that prefixes,
+  // rewrites or "cleans" the calendar's id still produces a perfectly runnable
+  // meet — every other test stays green — but the banked result's meetId no
+  // longer matches any calendar meet, so ALREADY_ENTERED never fires and a
+  // player can bank the same meet twice. The assertion that reddens goes
+  // through `meetIdFor` — the real consumer — so it expires if the server-side
+  // read moves off the definition's id.
+  {
+    guarantee: 'career-meet-id-crosses-verbatim',
+    mutatedFile: 'src/game/careerMeet.ts',
+    mutated: '    id: meet.id,\n    federation: meet.federationName,',
+    mutatedTo: '    id: `career-${meet.id}`,\n    federation: meet.federationName,',
+    testFile: 'src/game/careerMeet.test.ts',
+    redAssertion: 'expect(String(meetIdFor(meetDefinitionFor(meet)))).toBe(meet.id);',
+    observed:
+      'FAIL  src/game/careerMeet.test.ts > meetDefinitionFor — the CareerMeet → MeetDefinition ' +
+      'seam > carries the id VERBATIM through to what the server will store ' +
+      '[career-meet-id-crosses-verbatim]\n' +
+      "AssertionError: expected 'career-meridian-local-2026-01-03' to be " +
+      "'meridian-local-2026-01-03' // Object.is equality",
+  },
+  // The rules mutant is the drift shape `MeetDefinition.rules` documents for
+  // `MEET_LOCAL`: a spread copy is deep-equal today and free to disagree with
+  // `meet.ts`'s one rule set tomorrow, so the oracle is `toBe`, which a copy
+  // can never satisfy however faithful.
+  {
+    guarantee: 'career-meet-rules-are-a-reference',
+    mutatedFile: 'src/game/careerMeet.ts',
+    mutated: '    rules: DEFAULT_MEET_RULES,',
+    mutatedTo: '    rules: { ...DEFAULT_MEET_RULES },',
+    testFile: 'src/game/careerMeet.test.ts',
+    redAssertion:
+      'expect(\n' +
+      '        meetDefinitionFor(meet).rules,\n' +
+      "        `${meet.id} carries a COPY of the loading rules — a copy can drift from the app's " +
+      'one set`,\n' +
+      '      ).toBe(DEFAULT_MEET_RULES);',
+    observed:
+      'FAIL  src/game/careerMeet.test.ts > meetDefinitionFor — the CareerMeet → MeetDefinition ' +
+      'seam > hands every meet THE loading rules, by reference and never a copy ' +
+      '[career-meet-rules-are-a-reference]\n' +
+      'AssertionError: meridian-local-2026-01-03 carries a COPY of the loading rules — a copy ' +
+      "can drift from the app's one set: expected { unit: 'kg', …(3) } to be " +
+      "{ unit: 'kg', …(3) } // Object.is equality",
+  },
 ];
 
 /**
@@ -4292,6 +4374,9 @@ describe('the guarantee-tag convention', () => {
       // guarantees and no witnesses at all until these.
       'src/empire/empireInvariant.test.ts',
       'src/empire/engagement.test.ts',
+      // Sprint 1c: the CareerMeet → MeetDefinition seam — the verbatim id and
+      // the by-reference rules, witnessed where the adapter is driven.
+      'src/game/careerMeet.test.ts',
       // Sprint 1a: the career behind the boundary — the fold and the
       // chosen-once refusal, witnessed where they are driven.
       'src/game/careerServer.test.ts',

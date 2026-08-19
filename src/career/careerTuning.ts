@@ -180,6 +180,18 @@ export const TIER_SCHEDULING: Readonly<Record<CareerMeetTier, MeetSchedulingMode
   'competitive-worlds': 'sync',
 });
 
+/**
+ * Where a tier's meets are held — the three fields `meetTuning.ts`'s
+ * `MeetDefinition` prints on a result card, declared structurally here so this
+ * file keeps importing nothing (`careerPurity.test.ts` pins its specifiers).
+ * The adapter in `src/game/careerMeet.ts` is the one place the two shapes meet.
+ */
+export interface CareerMeetVenue {
+  readonly town: string;
+  readonly state: string;
+  readonly country: string;
+}
+
 // ---------------------------------------------------------------------------
 // CAREER_TUNING — the knobs
 // ---------------------------------------------------------------------------
@@ -423,6 +435,66 @@ export const CAREER_TUNING = Object.freeze({
    * Saturdays.
    */
   SEASON_ANCHOR: Object.freeze({ year: 2026, month: 1, day: 3 }) satisfies CivilDate,
+
+  /**
+   * The NPC field each tier's meets are lifted against, in kilograms, strongest
+   * first — GDD §10.0's "full career ladder against NPC fields" and §6.6's
+   * ruling that local (and, in the beta, every campaign tier) is NPCs, never
+   * ghost data from real lifters.
+   *
+   * FIXED LISTS, NOT ROLLS, for `meetTuning.ts`'s own reason: a placing that
+   * moved between two runs of the same meet would be unreproducible for a
+   * screenshot and unfair to the player. Every meet of a tier fields the same
+   * NPCs; the placing is one plus however many of them beat the lifter.
+   *
+   * The SHAPE is asserted rather than promised (`careerTuning.test.ts`): every
+   * entry is plate-legal at 2.5 kg, every gated tier's field has totals below
+   * AND above its qualifying total — a lifter who scrapes in on the standard
+   * beats somebody having a bad day and chases everybody else — and the median
+   * climbs strictly up the ladder, so "a stronger field" is a fact about the
+   * numbers and not a label on them.
+   *
+   * FEEL VALUES, all of them. How crowded the top of a field should be is a
+   * playtest judgement; these are first-pass fields nobody has placed in.
+   * Competitive worlds' field ships unread — the tier is `CAREER_BETA`-locked
+   * and its row is drawn, never entered — and exists so the adapter that maps a
+   * scheduled meet to a runnable one is total over tiers instead of carrying a
+   * beta clause that outlives the beta.
+   */
+  GHOST_TOTALS_KG: Object.freeze({
+    local: Object.freeze([
+      632.5, 610, 585, 560, 540, 522.5, 505, 487.5, 470, 452.5, 430, 405, 380,
+    ]),
+    regional: Object.freeze([
+      700, 672.5, 650, 627.5, 610, 592.5, 577.5, 560, 545, 530, 512.5, 495, 475, 455, 380,
+    ]),
+    nationals: Object.freeze([
+      810, 785, 762.5, 740, 720, 700, 682.5, 665, 647.5, 630, 610, 587.5, 565, 540, 517.5,
+    ]),
+    'campaign-worlds': Object.freeze([
+      872.5, 850, 830, 810, 792.5, 775, 757.5, 740, 722.5, 705, 687.5, 665, 640, 615, 590,
+    ]),
+    'competitive-worlds': Object.freeze([
+      900, 880, 860, 840, 820, 800, 782.5, 765, 747.5, 730, 712.5, 695, 677.5, 660, 632.5,
+    ]),
+  }) satisfies Readonly<Record<CareerMeetTier, readonly number[]>>,
+
+  /**
+   * Where each tier's meets are held. One venue per rung: a tier's series is a
+   * circuit stop, and which town it stops in is flavour a result card prints,
+   * not state anything reads back. Real places, invented events — the same line
+   * `meetTuning.ts`'s one local meet already walks (GDD §12.3 bans real
+   * athlete, brand and company identity, not geography). Shared by all four
+   * federations for now; a per-federation circuit is a tuning pass nobody has
+   * asked for yet.
+   */
+  VENUES: Object.freeze({
+    local: Object.freeze({ town: 'Barnsley', state: '', country: 'England' }),
+    regional: Object.freeze({ town: 'Manchester', state: '', country: 'England' }),
+    nationals: Object.freeze({ town: 'Birmingham', state: '', country: 'England' }),
+    'campaign-worlds': Object.freeze({ town: 'London', state: '', country: 'England' }),
+    'competitive-worlds': Object.freeze({ town: 'Gothenburg', state: '', country: 'Sweden' }),
+  }) satisfies Readonly<Record<CareerMeetTier, CareerMeetVenue>>,
 
   /**
    * The federation a lifter competes under BEFORE the choosing screen exists —

@@ -250,3 +250,65 @@ describe('the copy', () => {
     expect(Object.keys(CAREER_COPY.ENTRY_REFUSAL).sort()).toEqual([...ENTRY_REFUSAL_REASONS].sort());
   });
 });
+
+describe('the NPC ghost fields (GDD §10.0: the ladder is lifted against NPCs)', () => {
+  // The median of a descending list of odd length; both lengths here are odd,
+  // and the assertion below keeps them so rather than growing a second branch.
+  const median = (totals: readonly number[]): number => {
+    expect(totals.length % 2).toBe(1);
+    return totals[(totals.length - 1) / 2] as number;
+  };
+
+  it('fields every tier, strongest first, plate-legal at 2.5 kg', () => {
+    for (const tier of MEET_TIER_ORDER) {
+      const field = CAREER_TUNING.GHOST_TOTALS_KG[tier];
+      expect(field.length, `${tier} fields nobody`).toBeGreaterThanOrEqual(10);
+      for (const total of field) {
+        expect(Number.isFinite(total), `${tier}: ${total}`).toBe(true);
+        expect(total).toBeGreaterThan(0);
+        // A total is a sum of three plate-legal attempts, so it moves in 2.5s.
+        expect((total * 10) % 25, `${tier}: ${total} is not plate-legal`).toBe(0);
+      }
+      const sorted = [...field].sort((a, b) => b - a);
+      expect([...field], `${tier} is not strongest-first`).toEqual(sorted);
+      expect(new Set(field).size, `${tier} fields a duplicate total`).toBe(field.length);
+    }
+  });
+
+  it('brackets every gated tier’s qualifying total — somebody to beat, everybody to chase', () => {
+    // A lifter who scrapes in exactly on the standard must neither place last
+    // by construction (min < gate: somebody in the field had a bad day) nor
+    // find the field beneath them (max > gate). Both directions are design
+    // claims about placement MOVING with performance, not about the numbers
+    // being polite.
+    for (const tier of MEET_TIER_ORDER) {
+      const gate = CAREER_TUNING.QUALIFYING_TOTAL_KG[tier];
+      if (gate === null) continue;
+      const field = CAREER_TUNING.GHOST_TOTALS_KG[tier];
+      expect(Math.min(...field), `${tier}: nobody below the gate`).toBeLessThan(gate);
+      expect(Math.max(...field), `${tier}: nobody above the gate`).toBeGreaterThan(gate);
+    }
+  });
+
+  it('gets strictly stronger up the ladder, by median', () => {
+    // "A stronger field" is a fact about the numbers, not a label: the median
+    // must MOVE along the ladder. Swapping two tiers' fields, or copying one
+    // field to two rungs, reddens this.
+    const medians = MEET_TIER_ORDER.map((tier) => median(CAREER_TUNING.GHOST_TOTALS_KG[tier]));
+    for (let index = 1; index < medians.length; index += 1) {
+      expect(medians[index], `${MEET_TIER_ORDER[index]} is not stronger than the rung below`)
+        .toBeGreaterThan(medians[index - 1] as number);
+    }
+  });
+
+  it('holds a venue for every tier, with a town and a country', () => {
+    for (const tier of MEET_TIER_ORDER) {
+      const venue = CAREER_TUNING.VENUES[tier];
+      expect(venue.town, `${tier} has no town`).toBeTruthy();
+      expect(venue.country, `${tier} has no country`).toBeTruthy();
+      expect(Object.isFrozen(venue)).toBe(true);
+    }
+    expect(Object.isFrozen(CAREER_TUNING.GHOST_TOTALS_KG)).toBe(true);
+    expect(Object.isFrozen(CAREER_TUNING.VENUES)).toBe(true);
+  });
+});
