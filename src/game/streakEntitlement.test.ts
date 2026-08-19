@@ -1122,6 +1122,7 @@ const PURCHASED_DAY_SCAN = {
     'empire/empireInvariant.ts',
     'empire/expansion.ts',
     'empire/reputation.ts',
+    'empire/sessions.ts',
     'game/currencyProvenance.ts',
     'game/progression.ts',
     'game/streak.ts',
@@ -1140,9 +1141,9 @@ const PURCHASED_DAY_SCAN = {
    * inside modules the scan was already reading, which is why nothing about the
    * file-level pin caught it.
    */
-  COVERAGE_FOUND: [94, 10] as readonly [number, number],
-  PURCHASE_WORD_FOUND: [63, 10] as readonly [number, number],
-  CREDIT_PATH_FOUND: [64, 10] as readonly [number, number],
+  COVERAGE_FOUND: [97, 11] as readonly [number, number],
+  PURCHASE_WORD_FOUND: [66, 11] as readonly [number, number],
+  CREDIT_PATH_FOUND: [67, 11] as readonly [number, number],
   NARROW_FOUND: [18, 3] as readonly [number, number],
 } as const;
 
@@ -1264,9 +1265,9 @@ const COVERED_DAY_SYMBOL_SCAN = {
 
   /**
    * The union of both passes, which is what `COVERED_DAY_TOUCHING_FUNCTIONS` is
-   * asserted equal to. 88 textual + 9 symbol-only = 97.
+   * asserted equal to. 97 textual + 9 symbol-only = 106.
    */
-  UNION_FOUND: 103,
+  UNION_FOUND: 106,
 
   /**
    * WHAT THIS PASS STILL DOES NOT SEE, pinned as a red line rather than implied
@@ -1936,6 +1937,7 @@ describe('nothing can award a purchased covered day, and that is enforced rather
       'empire/empireInvariant.ts',
       'empire/expansion.ts',
       'empire/reputation.ts',
+      'empire/sessions.ts',
       'game/currencyProvenance.ts',
       'game/streakSweep.ts',
       'tuning/audit.ts',

@@ -856,6 +856,312 @@ export const EMPIRE_TUNING = Object.freeze({
    * the sampling grain a human judges them at is tuned with the same hand.
    */
   LADDER_DEV_TIME_STEPS_SECONDS: Object.freeze([3600, 28800, 259200] as const),
+
+  // -------------------------------------------------------------------------
+  // §5 (v2) stage 2 — sessions and equipment groups. Read by `sessions.ts`.
+  //
+  // GDD §5.11's second stage: the remaining §5.4 equipment groups
+  // (Conditioning, Recovery, Accessory, Support), §5.5's sessions model (four
+  // powerlifting sessions fixed and guaranteed, three flexible sessions
+  // allocated), and the attribute effects as pure outputs. Each item below
+  // carries COST and CAPABILITY only — §5.4's member-appeal number and the
+  // condition number are stages 3 and 4, and parking them here now would be
+  // dead knobs with no consumer, the exact thing the stage-1 scope note above
+  // refuses.
+  //
+  // THE DESIGN TARGET THESE PRICES SERVE, from the stage-1 gate record: the
+  // strip-mall -> warehouse stretch (income 900/h, relocation 120 000) was
+  // measured at ~38 pure-collection check-ins after the rack, and the human
+  // ruled the cost stays and stage 2 fills the gap. So most items here have
+  // `strip-mall-unit` as their lowest rung and prices spread from 2 400 to
+  // 28 000: at the gate's own twice-daily cadence the strip-mall rung banks
+  // 10 800 Gym Bucks a day (12 h banked per gap, halved by
+  // `OFFLINE_EARNINGS_FRACTION`), so under an eager buyer a purchase lands
+  // roughly every one to three days across the stretch instead of none, and
+  // every arrival re-opens the weekly allocation question because a new group
+  // unlocks a new activity. `sessions.test.ts` pins the resulting purchase-day
+  // list at that cadence rather than trusting this sentence. All magnitudes
+  // are untuned placeholders in the sense the header of this file states.
+  // -------------------------------------------------------------------------
+
+  /**
+   * The remaining §5.4 equipment groups, verbatim from its table. Stage 1's
+   * Barbell group lives on the ladder (`LADDER_EQUIPMENT_ITEMS`); these four
+   * are the groups the flexible sessions draw on. Structural: a group is a
+   * capability gate, and adding one is a design change.
+   */
+  SESSION_ACTIVITY_GROUPS: Object.freeze([
+    'conditioning',
+    'accessory',
+    'recovery',
+    'support',
+  ] as const),
+
+  /**
+   * Every stage-2 item, in the fixed order state lists them in. Generic
+   * equipment nouns taken from GDD §5.4's own example rows — no manufacturer,
+   * no brand, no wordmark (§12.3), same discipline as `EQUIPMENT_TIERS`.
+   *
+   * §5.4's "chalk bowl" example is deliberately NOT shipped, and the reason is
+   * structural rather than taste: `EMPIRE_FORBIDDEN_OUTPUTS` names `'chalk'`
+   * as a currency this directory must have no word for, and instrument B in
+   * `empireForbiddenOutput.test.ts` refuses any produced string CONTAINING a
+   * forbidden name — an item token carrying the currency's name inside it is
+   * exactly the laundering shape that containment scan exists to stop, and it
+   * caught this one on arrival (76 findings). Wrist wraps are the same
+   * generic support-gear class and carry no banned substring.
+   */
+  SESSION_EQUIPMENT_ITEMS: Object.freeze([
+    'bike',
+    'treadmill',
+    'rower',
+    'sled',
+    'dumbbells',
+    'cables',
+    'machines',
+    'mats',
+    'foam-rollers',
+    'sauna',
+    'wrist-wraps',
+    'belts',
+    'sleeves',
+    'specialty-bars',
+  ] as const),
+
+  /** Which §5.4 group each item belongs to. Structural: the gate reads it. */
+  SESSION_EQUIPMENT_GROUP: Object.freeze({
+    bike: 'conditioning',
+    treadmill: 'conditioning',
+    rower: 'conditioning',
+    sled: 'conditioning',
+    dumbbells: 'accessory',
+    cables: 'accessory',
+    machines: 'accessory',
+    mats: 'recovery',
+    'foam-rollers': 'recovery',
+    sauna: 'recovery',
+    'wrist-wraps': 'support',
+    belts: 'support',
+    sleeves: 'support',
+    'specialty-bars': 'support',
+  }),
+
+  /**
+   * Flat published price per item in Gym Bucks — no draw, no roll, like every
+   * price in this file. The band note at the top of this section is the
+   * pricing argument; the strip-mall rows are the stage-2 decisions the gate
+   * asked for, and the two garage rows plus four storage rows give the earlier
+   * rungs one small decision each without eating the jump-3 band.
+   */
+  SESSION_EQUIPMENT_COST_GYM_BUCKS: Object.freeze({
+    bike: 1600,
+    treadmill: 6500,
+    rower: 12000,
+    sled: 18000,
+    dumbbells: 1200,
+    cables: 9000,
+    machines: 22000,
+    mats: 200,
+    'foam-rollers': 500,
+    sauna: 28000,
+    'wrist-wraps': 400,
+    belts: 900,
+    sleeves: 2400,
+    'specialty-bars': 16000,
+  }),
+
+  /**
+   * The lowest rung whose space fits each item, same reading as
+   * `LADDER_EQUIPMENT_MIN_RUNG`: mats and a chalk bowl fit anywhere, a bike or
+   * dumbbells need the storage unit's room, the big machines need a real
+   * address, and a sled track needs the warehouse floor. Structural — this
+   * table is what makes moving up a capability decision.
+   */
+  SESSION_EQUIPMENT_MIN_RUNG: Object.freeze({
+    bike: 'storage-unit',
+    treadmill: 'strip-mall-unit',
+    rower: 'strip-mall-unit',
+    sled: 'warehouse',
+    dumbbells: 'storage-unit',
+    cables: 'strip-mall-unit',
+    machines: 'strip-mall-unit',
+    mats: 'garage',
+    'foam-rollers': 'storage-unit',
+    sauna: 'strip-mall-unit',
+    'wrist-wraps': 'garage',
+    belts: 'storage-unit',
+    sleeves: 'strip-mall-unit',
+    'specialty-bars': 'strip-mall-unit',
+  }),
+
+  /**
+   * Capability grade per activity-group item — §5.4's "what it unlocks or
+   * improves" at stage-2 resolution. The first item of a group unlocks its
+   * activity; every item's grade adds to how much a session of that activity
+   * moves the attribute outputs, so the second and third item of a group are
+   * real purchases rather than dead stock. Support items are deliberately
+   * absent: they are modifiers, and their tables are the two below.
+   */
+  SESSION_EQUIPMENT_CAPABILITY: Object.freeze({
+    bike: 1,
+    treadmill: 1,
+    rower: 1.5,
+    sled: 2,
+    dumbbells: 1,
+    cables: 1.5,
+    machines: 2,
+    mats: 1,
+    'foam-rollers': 1,
+    sauna: 2,
+  }),
+
+  /**
+   * §5.4's Support row: "Modifiers to the above". Which attribute channel each
+   * support item amplifies. A support item never generates an effect on its
+   * own — it multiplies what the sessions earned, so a belt with zero
+   * stretching sessions behind it moves nothing, which `sessions.test.ts`
+   * drives rather than trusts. Structural: the channel is the design.
+   */
+  SUPPORT_ITEM_CHANNEL: Object.freeze({
+    'wrist-wraps': 'technique-quality',
+    belts: 'injury-risk',
+    sleeves: 'injury-risk',
+    'specialty-bars': 'ceiling-growth',
+  }),
+
+  /**
+   * How much each support item amplifies its channel's earned effect, as a
+   * fraction added to the multiplier (0.12 reads: the earned reduction or
+   * bonus is 12% larger while the item is owned).
+   */
+  SUPPORT_ITEM_AMPLIFIER: Object.freeze({
+    'wrist-wraps': 0.15,
+    belts: 0.12,
+    sleeves: 0.08,
+    'specialty-bars': 0.2,
+  }),
+
+  /**
+   * §5.5's guaranteed base: "Four powerlifting sessions per week are fixed and
+   * guaranteed — they do not compete with anything else for a slot."
+   *
+   * A budget, and one with a structural echo: `sessions.ts` gives the week
+   * type NO field for these — `WeekAllocation` is a tuple of exactly the
+   * flexible slots — so reallocating a powerlifting session has no spelling in
+   * the type at all. This number exists so the guarantee is a value a screen
+   * can print and a test can sum to §5.5's "7 total", not so anything can
+   * allocate against it.
+   */
+  FIXED_POWERLIFTING_SESSIONS_PER_WEEK: 4,
+
+  /**
+   * §5.5's real choice: "the player allocates 3 additional sessions per week".
+   *
+   * A budget. The `WeekAllocation` tuple in `sessions.ts` has exactly this
+   * many slots, and `sessions.test.ts` pins that the type and this number
+   * agree — so turning it is a design change that fails loudly until the type
+   * moves with it, not a tuning pass.
+   */
+  FLEXIBLE_SESSIONS_PER_WEEK: 3,
+
+  /**
+   * Days in a training week. Structural arithmetic like `SECONDS_PER_DAY`; it
+   * is also the §5.5 sentence "7 total, matching a real training week" — the
+   * fixed four plus the flexible three fill one session per day.
+   */
+  DAYS_PER_TRAINING_WEEK: 7,
+
+  /**
+   * §5.5's flexible activities, verbatim from its table (stretching and yoga
+   * share a row there and share a slot kind here). Structural: each is an
+   * attribute channel and a capability gate.
+   */
+  FLEXIBLE_ACTIVITIES: Object.freeze([
+    'cardio',
+    'hypertrophy',
+    'stretching-yoga',
+    'other-recovery',
+  ] as const),
+
+  /**
+   * Which equipment group each activity requires — §5.4/§5.5's "capability
+   * gates activity". `other-recovery` needs the recovery group AND one of
+   * `ADVANCED_RECOVERY_ITEMS` (§5.5: "Recovery equipment, higher tiers").
+   */
+  SESSION_ACTIVITY_EQUIPMENT_GROUP: Object.freeze({
+    cardio: 'conditioning',
+    hypertrophy: 'accessory',
+    'stretching-yoga': 'recovery',
+    'other-recovery': 'recovery',
+  }),
+
+  /**
+   * The higher-tier recovery items §5.5's fourth row asks for. Structural, and
+   * required by `sessions.test.ts` to be a subset of the recovery group.
+   */
+  ADVANCED_RECOVERY_ITEMS: Object.freeze(['sauna'] as const),
+
+  /**
+   * How much one cardio session, per point of conditioning grade, shrinks the
+   * fraction of fatigue residual that survives a night. A rate in multiplier
+   * space; the floor it accumulates towards is
+   * `RESIDUAL_CARRY_MULTIPLIER_FLOOR`.
+   */
+  CARDIO_RESIDUAL_CARRY_REDUCTION_PER_GRADE_SESSION: 0.015,
+
+  /**
+   * The same channel's slower sibling for `other-recovery` — §5.5 marks that
+   * row "Compounding, slower effects — detail TBD", so stage 2 gives it a
+   * smaller contribution to the same recovery-rate channel and leaves the TBD
+   * detail to the stage that designs it.
+   */
+  OTHER_RECOVERY_RESIDUAL_CARRY_REDUCTION_PER_GRADE_SESSION: 0.008,
+
+  /**
+   * The lowest the residual-carry multiplier may go, however the sessions and
+   * grades multiply out. A budget guard in the `BUILD_SECONDS_MAX` spirit:
+   * slack at the shipped values (the best reachable build lands above it,
+   * which `sessions.test.ts` re-derives), present so a tuner turning the rate
+   * up cannot ship a build where sleep stops mattering.
+   */
+  RESIDUAL_CARRY_MULTIPLIER_FLOOR: 0.7,
+
+  /**
+   * How much one stretching/yoga session, per point of recovery grade, shrinks
+   * the per-session injury chance, as a fraction of it removed.
+   */
+  STRETCHING_INJURY_REDUCTION_PER_GRADE_SESSION: 0.025,
+
+  /**
+   * The lowest the injury-chance multiplier may go. A budget guard, slack at
+   * the shipped values and re-derived by test: allocation may shrink injury
+   * risk and may not erase it — an injury that cannot happen makes the
+   * fatigue model's whole injury arm dead content, the same one-directional
+   * rule `PHYSIO_MAX_DAYS_SAVED` states for duration.
+   */
+  INJURY_CHANCE_MULTIPLIER_FLOOR: 0.6,
+
+  /**
+   * Technique quality earned per stretching/yoga session per point of recovery
+   * grade — §5.5's "improves technique quality at depth", as an additive bonus
+   * the meet-day depth check can consume through the seam contract.
+   */
+  STRETCHING_TECHNIQUE_BONUS_PER_GRADE_SESSION: 0.012,
+
+  /** Ceiling on the technique bonus. A budget guard, slack at shipped values. */
+  TECHNIQUE_QUALITY_BONUS_MAX: 0.2,
+
+  /**
+   * e1RM-ceiling growth per hypertrophy session per point of accessory grade,
+   * as a fraction of the ceiling per week. §5.5 asks for "Slow, compounding":
+   * the weekly value compounds multiplicatively across weeks in
+   * `composedCeilingGrowth`, and the fully built, fully allocated week earns
+   * about 0.29% — noticeable over a training block, invisible in a session.
+   */
+  HYPERTROPHY_CEILING_GROWTH_PER_GRADE_SESSION: 0.00015,
+
+  /** Ceiling on one week's ceiling growth. A budget guard, slack as shipped. */
+  CEILING_GROWTH_PER_WEEK_MAX: 0.003,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -936,4 +1242,28 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   LADDER_EQUIPMENT_MIN_RUNG: 'structural',
   LADDER_LIFT_REQUIREMENTS: 'structural',
   LADDER_DEV_TIME_STEPS_SECONDS: 'knob',
+
+  SESSION_ACTIVITY_GROUPS: 'structural',
+  SESSION_EQUIPMENT_ITEMS: 'structural',
+  SESSION_EQUIPMENT_GROUP: 'structural',
+  SESSION_EQUIPMENT_COST_GYM_BUCKS: 'knob',
+  SESSION_EQUIPMENT_MIN_RUNG: 'structural',
+  SESSION_EQUIPMENT_CAPABILITY: 'knob',
+  SUPPORT_ITEM_CHANNEL: 'structural',
+  SUPPORT_ITEM_AMPLIFIER: 'knob',
+  FIXED_POWERLIFTING_SESSIONS_PER_WEEK: 'budget',
+  FLEXIBLE_SESSIONS_PER_WEEK: 'budget',
+  DAYS_PER_TRAINING_WEEK: 'structural',
+  FLEXIBLE_ACTIVITIES: 'structural',
+  SESSION_ACTIVITY_EQUIPMENT_GROUP: 'structural',
+  ADVANCED_RECOVERY_ITEMS: 'structural',
+  CARDIO_RESIDUAL_CARRY_REDUCTION_PER_GRADE_SESSION: 'knob',
+  OTHER_RECOVERY_RESIDUAL_CARRY_REDUCTION_PER_GRADE_SESSION: 'knob',
+  RESIDUAL_CARRY_MULTIPLIER_FLOOR: 'budget',
+  STRETCHING_INJURY_REDUCTION_PER_GRADE_SESSION: 'knob',
+  INJURY_CHANCE_MULTIPLIER_FLOOR: 'budget',
+  STRETCHING_TECHNIQUE_BONUS_PER_GRADE_SESSION: 'knob',
+  TECHNIQUE_QUALITY_BONUS_MAX: 'budget',
+  HYPERTROPHY_CEILING_GROWTH_PER_GRADE_SESSION: 'knob',
+  CEILING_GROWTH_PER_WEEK_MAX: 'budget',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

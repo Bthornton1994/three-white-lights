@@ -775,6 +775,17 @@ export const COVERED_DAY_TOUCHING_FUNCTIONS: readonly string[] = [
   'expansionVocabularyFaults',
   'FORBIDDEN_UNLOCK_KEYS',
 
+  // ---- empire/sessions.ts (GDD §5 v2, stage 2) -----------------------------
+  // Same ruling, same DATA-not-change basis, added by §5's owner under the
+  // standing permission in the Session Coordination section. All three match
+  // on `purchas` alone: `GymPurchase` and `runGym`'s `purchases` field record
+  // a Barbell/Conditioning/Recovery/Accessory EQUIPMENT purchase -- money
+  // spent, capability gained, nothing that resembles a streak day. No
+  // covered-day vocabulary appears anywhere in this file.
+  'GymPurchase',
+  'GymRun',
+  'runGym',
+
   // ---- tuning/audit.ts -----------------------------------------------------
   // NOT ABOUT COVERED DAYS EITHER, and the clearest illustration of what the
   // wide predicate costs: `SOURCE_RULES` is the magic-number audit's file

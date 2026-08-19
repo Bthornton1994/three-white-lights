@@ -2462,6 +2462,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'production.ts',
       'recruitment.ts',
       'reputation.ts',
+      'sessions.ts',
       'social.ts',
     ]);
   });
@@ -2509,12 +2510,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // the map really has edges in it. Pinned exactly, so a directory whose
     // cross-references thinned out is a decision somebody signs.
     expect(bodies.size).toBe(shipped.length);
-    expect(pairs).toBe(53);
+    expect(pairs).toBe(59);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
     expect(mentionersOf('empireNotAModule.ts')).toEqual([]);
-    expect(mentionersOf('empireCore.ts').length).toBe(10);
+    expect(mentionersOf('empireCore.ts').length).toBe(11);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -3034,9 +3035,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 172 rather than 171 since `sealRate`'s label refusal arrived — a fixed
     // sentence with no substitution in it, which is what lets that refusal
     // name an unrecognised label without interpolating one.
-    expect(singleQuoted.size).toBe(209);
+    expect(singleQuoted.size).toBe(246);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(164);
+    expect(templateChunks.size).toBe(177);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3064,7 +3065,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'accelerated-seconds',
       'acceleratedSeconds',
       'accepted',
+      'accessory',
       'advance-clock',
+      'advanced-recovery',
       'ahead',
       'already-building',
       'already-owned',
@@ -3074,11 +3077,19 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'axes',
       'bare-bar',
       'behind',
+      'belts',
       'bench',
+      'bike',
       'bought',
       'budget',
       'buy',
+      'buy-ladder',
+      'buy-session',
+      'cables',
       'calendar-day',
+      'cardio',
+      'ceiling-growth',
+      'ceiling-growth-per-week',
       'chalk',
       'chance-draw',
       'cheapest-affordable-first',
@@ -3090,6 +3101,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'comp-plates',
       'competition-total',
       'composed-gym',
+      'conditioning',
       'cosmetic-unlock',
       'cosmetics',
       'costliest-affordable-first',
@@ -3099,6 +3111,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'deadlift',
       'display-name',
       'displayName',
+      'dumbbells',
       'e1rm',
       'elapsedSeconds',
       'equipment',
@@ -3106,6 +3119,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'faultMessage',
       'fixed-order-no-rotation',
       'flat-bench',
+      'foam-rollers',
       'friend',
       'friend-encouragement',
       'friend-visit-allowance-reset',
@@ -3121,11 +3135,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymBucksPerHour',
       'gymId',
       'hoard',
+      'hypertrophy',
       'idle-clock',
       'idle-only',
       'idle-tenure-days',
       'idleTenureDays',
+      'injury-chance-multiplier',
       'injury-days-saved',
+      'injury-risk',
       'injuryDaysSaved',
       'knob',
       'ladder-accrual',
@@ -3142,6 +3159,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'leaderboard-placement',
       'legendary',
       'level',
+      'machines',
+      'mats',
       'monolift',
       'move',
       'move-up',
@@ -3155,6 +3174,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'npc-id',
       'npcId',
       'number',
+      'other-recovery',
       'own-gym',
       'paid-pull',
       'physio',
@@ -3162,6 +3182,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'power-bar',
       'progression-reaching',
       'reason',
+      'recovery',
       'refusal',
       'refused',
       'regional',
@@ -3169,6 +3190,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'reputation-below-threshold',
       'reputation-milestone',
       'reputation-tier',
+      'residual-carry-multiplier',
+      'rest',
+      'rested',
       'rewarded-ad-timer-skip',
       'rival',
       'rival-period-close',
@@ -3176,9 +3200,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'roster-at-capacity',
       'roster-slot',
       'rotate-greedy-per-check-in',
+      'rower',
       'rung-too-low',
+      'sauna',
       'save-for-physio-first',
       'settled-level',
+      'settled-purse-wired-control',
       'settled-tenure-days',
       'settledAxes',
       'settledTenureDays',
@@ -3186,6 +3213,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'single-purse',
       'single-wall-clock-purse',
       'skippedSeconds',
+      'sled',
+      'sleeves',
       'space',
       'space-level',
       'specialty-bars',
@@ -3196,21 +3225,29 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'squat-rack',
       'storage-unit',
       'store-purchase',
+      'stretching-yoga',
       'string',
       'strip-mall-unit',
       'structural',
+      'support',
+      'technique-quality',
+      'technique-quality-bonus',
       'thrownMessage',
+      'trained',
       'trained-day-upkeep',
       'training-iq',
       'training-pace',
       'trainingIq',
       'trainingIqPerDay',
+      'treadmill',
       'unaccelerated-seconds',
       'unacceleratedSeconds',
+      'unequipped',
       'visited',
       'wall-clock',
       'wall-clock-earned',
       'warehouse',
+      'wrist-wraps',
     ]);
 
     // The half the pin does not reach: a multi-word name inside a message. Run
@@ -3223,7 +3260,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(373);
+    expect(stringsChecked).toBe(423);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3252,7 +3289,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(163);
+    expect(probes).toBe(199);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -3493,6 +3530,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'production.ts': ['./empireCore', './empireTuning'],
       'recruitment.ts': ['./empireCore', './empireTuning'],
       'reputation.ts': ['./empireCore', './empireTuning', './expansion', './production'],
+      'sessions.ts': ['./empireCore', './empireTuning', './ladder', './production'],
       'social.ts': ['./empireCore', './empireTuning'],
     };
     let fenced = 0;
@@ -3506,7 +3544,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // sentinel rather than passing unchecked, and the set equality catches a
     // row left behind by a deleted module.
     expect(fenced).toBe(SHIPPED_MODULES.length);
-    expect(fenced).toBe(12);
+    expect(fenced).toBe(13);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every specifier anywhere
@@ -3531,7 +3569,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         specifiers += 1;
       }
     }
-    expect(specifiers).toBe(32);
+    expect(specifiers).toBe(36);
     // The resolver is driven rather than trusted, on both the shape the tree
     // has and the shape it does not, so this is a subject rather than a helper.
     expect(resolved('empireCore.ts', './empireTuning')).toBe('empireTuning.ts');
@@ -3614,7 +3652,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // module and there are exactly this many of them — the one tree-wide
       // failure this piece expects, pinned rather than bounded so a literal
       // arriving in it is a decision somebody signs.
-      expect(findings.get(REGISTERED_PATH)?.length, report(REGISTERED_PATH)).toBe(101);
+      expect(findings.get(REGISTERED_PATH)?.length, report(REGISTERED_PATH)).toBe(136);
       // And the row would fix it rather than hide it: audited under a path that
       // already carries the rule it is asking for, the same bytes report
       // nothing, because every literal sits inside a frozen, named, top-level
@@ -3640,7 +3678,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'the count of literals the audit finds in empireTuning.ts moved: an entry was added or ' +
         'removed, or the instrument stopped reporting. Both are decisions; neither is a tuning ' +
         `pass. First finding: ${formatFindings(asRenderer.slice(0, 1)).trim()}`,
-    ).toBe(101);
+    ).toBe(136);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

@@ -77,9 +77,11 @@ describe('the block is frozen and every entry is classified', () => {
     // was flattened into a scalar, or a new one that arrived unfrozen, is a
     // decision somebody signs rather than a shrinking loop nobody sees.
     expect(nested.map(([key]) => key).sort()).toEqual([
+      'ADVANCED_RECOVERY_ITEMS',
       'EQUIPMENT_TIERS',
       'EQUIPMENT_TIER_BUCKS_MULTIPLIER',
       'EQUIPMENT_TIER_COST_GYM_BUCKS',
+      'FLEXIBLE_ACTIVITIES',
       'LADDER_DEV_TIME_STEPS_SECONDS',
       'LADDER_EQUIPMENT_COST_GYM_BUCKS',
       'LADDER_EQUIPMENT_ITEMS',
@@ -98,12 +100,21 @@ describe('the block is frozen and every entry is classified', () => {
       'NPC_TIERS',
       'NPC_TIER_OUTPUT_MULTIPLIER',
       'REPUTATION_TIER_THRESHOLDS',
+      'SESSION_ACTIVITY_EQUIPMENT_GROUP',
+      'SESSION_ACTIVITY_GROUPS',
+      'SESSION_EQUIPMENT_CAPABILITY',
+      'SESSION_EQUIPMENT_COST_GYM_BUCKS',
+      'SESSION_EQUIPMENT_GROUP',
+      'SESSION_EQUIPMENT_ITEMS',
+      'SESSION_EQUIPMENT_MIN_RUNG',
       'SPACE_LEVEL_COST_GYM_BUCKS',
       'SPACE_PASSIVE_CEILING_MULTIPLIER',
       'SPONSOR_GYM_BUCKS_PER_DAY_BY_REPUTATION_TIER',
       'STAFF_LEVEL_COST_GYM_BUCKS',
       'STAFF_LEVEL_MAX',
       'STAFF_ROLES',
+      'SUPPORT_ITEM_AMPLIFIER',
+      'SUPPORT_ITEM_CHANNEL',
     ]);
     let frozen = 0;
     for (const [key, value] of nested) {
@@ -567,11 +578,11 @@ describe('§5.5 social', () => {
     // one that was missing: how many keys the loop actually looked at. An empty
     // or truncated key set would have made every assertion above pass.
     expect(examined).toBe(Object.keys(EMPIRE_TUNING).length);
-    expect(examined).toBe(64);
+    expect(examined).toBe(87);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
-    expect(probed).toBe(320);
+    expect(probed).toBe(435);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {
