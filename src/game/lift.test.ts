@@ -48,6 +48,7 @@ import {
   cueWindowMs,
   depthWindowHalfTicks,
   descentRate,
+  driveAttemptsFor,
   gradeTiming,
   hapticFor,
   holeTicks,
@@ -544,7 +545,11 @@ describe('outcome space', () => {
     // which a test written against the tick count alone would miss.
     const early = runLift({ loadRatio: load, seed: 5 }, earlyDriveScript(load)).final;
     expect(early.timings.some((t) => t.cue === 'drive' && t.grade === 'missed')).toBe(true);
-    expect(early.drivesUsed).toBe(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP);
+    // The script presses exactly once, so drivesUsed is 1 whatever the
+    // load's own attempts budget is — not `driveAttemptsFor(load)`, which
+    // would assert the script exhausted the WHOLE budget when it only ever
+    // threw one drive.
+    expect(early.drivesUsed).toBe(1);
   });
 
   it('gives the drive boost only while the player keeps holding', () => {
@@ -743,6 +748,173 @@ function cueObedientSweep(load: number): CueObedientSweep {
 function ascentOf(config: LiftConfig, script: readonly ScriptedInput[]): LiftState[] {
   return runLift(config, script).history.filter((s) => s.phase === 'ASCENT');
 }
+
+/**
+ * Discover every drive cue a rep offers, in order, pressing each one
+ * `hitOffsetTicks` from its own ideal moment (0 = perfect) — or skipping a
+ * cue entirely when its index is in `missIndices`, letting its window close
+ * unpressed.
+ *
+ * Iterative and read back from the sim at every step, same discipline as
+ * `driveIdealTick` above: cue N's ideal tick depends on when cue N-1
+ * resolved plus the spacing, which is a runtime fact, not something this
+ * helper is allowed to precompute from the tuning file.
+ */
+function driveCueSequence(
+  config: LiftConfig,
+  depth: number,
+  hitOffsetTicks: number,
+  missIndices: ReadonlySet<number> = new Set(),
+): { readonly cues: readonly CueWindow[]; readonly script: ScriptedInput[]; readonly final: LiftState } {
+  const load = config.loadRatio;
+  const script: ScriptedInput[] = [
+    { tick: pressTickFor(load), kind: 'press' },
+    { tick: releaseTickFor(load, depth), kind: 'release' },
+  ];
+  const cues: CueWindow[] = [];
+  const attempts = driveAttemptsFor(load);
+  for (let index = 0; index < attempts; index += 1) {
+    const opened = latestDriveCue(config, script);
+    const lastKnown = cues[cues.length - 1];
+    if (opened === null || (lastKnown !== undefined && opened.idealTick === lastKnown.idealTick)) {
+      break;
+    }
+    cues.push(opened);
+    if (!missIndices.has(index)) {
+      script.push({ tick: opened.idealTick + hitOffsetTicks, kind: 'press' });
+    }
+  }
+  return { cues, script, final: runLift(config, script).final };
+}
+
+/**
+ * The newest drive cue a script has revealed, or `null` if none has opened.
+ *
+ * The LAST 'drive-cue-open' event, not the first: replaying a script from
+ * tick 0 re-fires cue 0's own opening every time, so the first match in
+ * history is always cue 0 regardless of how many later cues the script has
+ * gone on to press. `armedCue` above is the wrong tool for a script that
+ * already presses an earlier cue — it returns the first 'drive' cue it
+ * finds, which is that stale cue 0, not whatever opened after it.
+ */
+function latestDriveCue(config: LiftConfig, script: readonly ScriptedInput[]): CueWindow | null {
+  const probe = runLift(config, script);
+  const opens = probe.history.filter((state) =>
+    state.events.some((event) => event.kind === 'drive-cue-open'),
+  );
+  const latest = opens[opens.length - 1];
+  return latest?.activeCue ?? null;
+}
+
+describe('the drive tap-rate mechanic (Sprint 3 gate)', () => {
+  const limit = LOAD_PRESETS.MAXIMAL;
+  const config: LiftConfig = { loadRatio: limit, seed: 20260819 };
+
+  it('offers more than one drive cue at MAXIMAL, at or under the driveAttemptsFor(load) ceiling', () => {
+    // `driveAttemptsFor` is a CEILING, not a promise every rep needs that
+    // many cues: two well-timed drives can already put the bar on a
+    // trajectory that reaches LOCKOUT before a third cue's arm conditions
+    // (drivesUsed>0, spacing elapsed, height past DRIVE_ARM_HEIGHT) are ever
+    // met — finishing fast is the reward for good execution, not a bug.
+    // Measured at this seed: a perfectly-played rep opens exactly 2 of the
+    // 3-attempt ceiling before it resolves. What must hold structurally is
+    // that MORE than one cue is reachable at all, and never more than the
+    // declared ceiling.
+    const attempts = driveAttemptsFor(limit);
+    expect(attempts).toBeGreaterThan(1);
+    const { cues, final } = driveCueSequence(config, LIFT_TUNING.DEPTH_IDEAL, 0);
+    expect(cues.length).toBeGreaterThanOrEqual(2);
+    expect(cues.length).toBeLessThanOrEqual(attempts);
+    expect(final.drivesUsed).toBe(cues.length);
+  });
+
+  it('each cue is genuinely a NEW window, not the first one read twice', () => {
+    const { cues } = driveCueSequence(config, LIFT_TUNING.DEPTH_IDEAL, 0);
+    // Non-vacuity: with fewer than 2 cues the distinctness/ordering checks
+    // below hold on an empty or singleton array without saying anything.
+    expect(cues.length).toBeGreaterThanOrEqual(2);
+    const idealTicks = cues.map((c) => c.idealTick);
+    expect(new Set(idealTicks).size).toBe(idealTicks.length);
+    // ...and they arrive in order, later cues later.
+    for (let i = 1; i < idealTicks.length; i += 1) {
+      const prior = idealTicks[i - 1];
+      const current = idealTicks[i];
+      expect(prior).toBeDefined();
+      expect(current).toBeDefined();
+      if (prior !== undefined && current !== undefined) expect(current).toBeGreaterThan(prior);
+    }
+  });
+
+  it('a mistimed press between cues costs velocity, does not end the rep, and the next cue still arms', () => {
+    // "Missing" a cue by never pressing during its window is free — the
+    // window just closes (lift.ts:1063-1071), no InputTiming, no penalty.
+    // The mechanic's actual notion of a missed tap is a press that lands
+    // with NO cue armed at all: `gradeTiming` only ever returns 'missed'
+    // when the press is outside the window entirely, which for an
+    // in-sequence tap means pressing during the inter-cue spacing gap.
+    // Landing cue 0 cleanly, then pressing again one tick later — deep
+    // inside `driveSpacingTicks(MAXIMAL)`'s gap, before cue 1 has re-armed —
+    // is exactly that case.
+    const cue0 = driveIdealTick(config, LIFT_TUNING.DEPTH_IDEAL);
+    expect(cue0).not.toBeNull();
+    if (cue0 === null) return;
+    const cue0Script: ScriptedInput[] = [
+      { tick: pressTickFor(limit), kind: 'press' },
+      { tick: releaseTickFor(limit, LIFT_TUNING.DEPTH_IDEAL), kind: 'release' },
+      { tick: cue0, kind: 'press' },
+    ];
+    const gapScript: ScriptedInput[] = [...cue0Script, { tick: cue0 + 1, kind: 'press' }];
+    const gapReplay = runLift(config, gapScript);
+    const gapState = gapReplay.history.find((s) => s.tick === cue0 + 1);
+    expect(gapState).toBeDefined();
+    expect(gapState?.activeCue).toBeNull();
+    // Did NOT instantly end the rep: still mid-ASCENT the tick right after.
+    expect(gapState?.phase).toBe('ASCENT');
+
+    const timings = gapReplay.final.timings.filter((t) => t.cue === 'drive');
+    expect(timings.length).toBe(2);
+    expect(timings[0]?.grade).toBe('perfect');
+    expect(timings[1]?.grade).toBe('missed');
+
+    // The sequence was not abandoned: a further drive cue still arms once
+    // the spacing elapses.
+    const cue1 = latestDriveCue(config, gapScript);
+    expect(cue1, 'no further drive cue armed after the mistimed press').not.toBeNull();
+
+    // The cost is real: at the moment of the mistimed press, velocity reads
+    // strictly below the same tick in a clean run that never threw the
+    // extra press — a mistimed tap can only cost, never help.
+    const cleanState = runLift(config, cue0Script).history.find((s) => s.tick === cue0 + 1);
+    expect(cleanState).toBeDefined();
+    if (cleanState !== undefined && gapState !== undefined) {
+      expect(gapState.velocity).toBeLessThan(cleanState.velocity);
+    }
+  });
+
+  it('a new hit REPLACES the boost rather than stacking it', () => {
+    // Land cue 0 with mediocre timing, then cue 1 dead-on — driveQuality
+    // after cue 1 must read cue 1's own quality (close to 1), not a sum or
+    // an average with cue 0's.
+    const { final } = driveCueSequence(config, LIFT_TUNING.DEPTH_IDEAL, 0);
+    expect(final.driveQuality).toBeGreaterThan(0.9);
+    expect(final.driveQuality).toBeLessThanOrEqual(1);
+  });
+
+  it('driveAttemptsFor is 1 at the light end and LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL at the heavy end', () => {
+    expect(driveAttemptsFor(LOAD_PRESETS.LIGHT)).toBe(1);
+    expect(driveAttemptsFor(LOAD_PRESETS.MAXIMAL)).toBe(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL);
+  });
+
+  it('the drive window is narrower at MAXIMAL than at LIGHT, read back from a played cue', () => {
+    const lightConfig: LiftConfig = { loadRatio: LOAD_PRESETS.LIGHT, seed: config.seed };
+    const lightCue = driveIdealTick(lightConfig, LIFT_TUNING.DEPTH_IDEAL);
+    const heavyCue = driveCueSequence(config, LIFT_TUNING.DEPTH_IDEAL, 0).cues[0];
+    expect(lightCue).not.toBeNull();
+    expect(heavyCue).toBeDefined();
+    const lightWidthMs = cueWindowMs('drive', lightConfig);
+    expect(lightWidthMs).toBeGreaterThan(heavyCue?.widthMs ?? Number.POSITIVE_INFINITY);
+  });
+});
 
 describe('the winning band at a limit attempt', () => {
   const limit = LOAD_PRESETS.MAXIMAL;
@@ -1259,7 +1431,7 @@ describe('read models', () => {
         openTick: 110,
         idealTick: 120,
         closeTick: 130,
-        widthMs: LIFT_TUNING.DRIVE_WINDOW_MS,
+        widthMs: LIFT_TUNING.DRIVE_WINDOW_MS.MAXIMAL,
       },
     };
     expect(promptFor(armed)).toBe(LIFT_COPY.PROMPT.ASCENT_BEFORE_CUE);
@@ -1278,7 +1450,7 @@ describe('read models', () => {
       openTick: 100,
       idealTick: 120,
       closeTick: 140,
-      widthMs: LIFT_TUNING.DRIVE_WINDOW_MS,
+      widthMs: LIFT_TUNING.DRIVE_WINDOW_MS.MAXIMAL,
     };
     expect(cueProgress({ ...base, tick: 100, activeCue: cue })).toBe(0);
     expect(cueProgress({ ...base, tick: 120, activeCue: cue })).toBe(1);

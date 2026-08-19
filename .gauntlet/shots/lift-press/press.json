@@ -1,15 +1,21 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-19T20:26:04.468Z",
+    "capturedAt": "2026-08-19T22:06:42.327Z",
     "url": "http://localhost:8081",
-    "commit": "740ff20",
+    "commit": "aa23a78",
     "branch": "claude/agent-config-setup-m2r6ny",
-    "workingTree": "clean",
+    "workingTree": "DIRTY — this run is not against a commit",
     "dirtyPaths": [
-      "M .gauntlet/shots/lift-press/press.json"
+      "M .gauntlet/shots/lift-press/press.json",
+      " M src/game/guaranteeTags.test.ts",
+      " M src/game/lift.test.ts",
+      " M src/game/lift.ts",
+      " M src/game/liftTuning.test.ts",
+      " M src/game/liftTuning.ts",
+      " M tools/verify-lift-press.mjs"
     ],
     "instrument": {
-      "verify-lift-press.mjs": "12fef90c41fa4a17",
+      "verify-lift-press.mjs": "47bdf4433ace23c8",
       "sessionDrive.mjs": "2a63eac7a653d32b",
       "meetDrive.mjs": "9ad796fe39e61305",
       "enterMeetFromCalendar.mjs": "68394ae0c9c75051"
@@ -141,7 +147,7 @@
         "drovePastLockout": true,
         "phases": [
           {
-            "phase": "0-brace-before-press",
+            "phase": "attempt1-0-brace-before-press",
             "loopPrompt": "TAP AND HOLD TO DESCEND",
             "touch": {
               "userSelect": "none",
@@ -254,6 +260,70 @@
           },
           {
             "phase": "attempt2-3-immediately-after-release",
+            "loopPrompt": "NO LIFT",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt3-0-brace-before-press",
+            "loopPrompt": "TAP AND HOLD TO DESCEND",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt3-1-descent",
+            "loopPrompt": "RELEASE AT DEPTH",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt3-2-descent-mid-hold",
+            "loopPrompt": "RELEASE AT DEPTH",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt3-3-immediately-after-release",
             "loopPrompt": "OUT OF THE HOLE",
             "touch": {
               "userSelect": "none",
@@ -269,7 +339,7 @@
             }
           },
           {
-            "phase": "attempt2-4-hole",
+            "phase": "attempt3-4-hole",
             "loopPrompt": "RIDE IT",
             "touch": {
               "userSelect": "none",
@@ -285,7 +355,7 @@
             }
           },
           {
-            "phase": "attempt2-5-ascent-before-drive(drive-cue-seen=true)",
+            "phase": "attempt3-5-ascent-before-drive(drive-cue-seen=true)",
             "loopPrompt": "DRIVE — HOLD IT",
             "touch": {
               "userSelect": "none",
@@ -301,8 +371,8 @@
             }
           },
           {
-            "phase": "attempt2-6-immediately-after-drive-press",
-            "loopPrompt": "HOLD",
+            "phase": "attempt3-6-immediately-after-drive-press",
+            "loopPrompt": "DRIVE — HOLD IT",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -317,7 +387,135 @@
             }
           },
           {
-            "phase": "attempt2-7-lockout-still-held",
+            "phase": "attempt3-8-after-release-post-lockout",
+            "loopPrompt": "TAP AND HOLD TO DESCEND",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-0-brace-before-press",
+            "loopPrompt": "TAP AND HOLD TO DESCEND",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-1-descent",
+            "loopPrompt": "RELEASE AT DEPTH",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-2-descent-mid-hold",
+            "loopPrompt": "RELEASE AT DEPTH",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-3-immediately-after-release",
+            "loopPrompt": "OUT OF THE HOLE",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-4-hole",
+            "loopPrompt": "RIDE IT",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-5-ascent-before-drive(drive-cue-seen=true)",
+            "loopPrompt": "DRIVE — HOLD IT",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-6-immediately-after-drive-press",
+            "loopPrompt": "DRIVE — HOLD IT",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-7-lockout-still-held",
             "loopPrompt": "LOCK IT",
             "touch": {
               "userSelect": "none",
@@ -333,8 +531,8 @@
             }
           },
           {
-            "phase": "attempt2-8-after-release-post-lockout",
-            "loopPrompt": "GRINDER",
+            "phase": "attempt4-8-after-release-post-lockout",
+            "loopPrompt": "GOOD LIFT",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -350,7 +548,7 @@
           },
           {
             "phase": "resolved-or-reset-for-next-rep",
-            "loopPrompt": "GRINDER",
+            "loopPrompt": "GOOD LIFT",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -365,13 +563,25 @@
             }
           }
         ],
-        "attemptsUsed": 2,
+        "attemptsUsed": 4,
         "misses": [
           {
             "attempt": 1,
             "holdMs": 1000,
             "outcome": "NO LIFT",
             "detail": "Buried it. Never got the reversal."
+          },
+          {
+            "attempt": 2,
+            "holdMs": 820,
+            "outcome": "NO LIFT",
+            "detail": "Buried it. Never got the reversal."
+          },
+          {
+            "attempt": 3,
+            "holdMs": 640,
+            "outcome": "TAP AND HOLD TO DESCEND",
+            "detail": "Two moments, not two motions: release at the bottom, one timed tap to drive. Catch the beat."
           }
         ]
       },
@@ -383,7 +593,7 @@
         "tag": "DIV",
         "box": {
           "x": 0,
-          "y": 111,
+          "y": 125,
           "width": 390,
           "height": 520
         },
@@ -486,7 +696,7 @@
         "testid": "session-prompt",
         "tag": "DIV",
         "box": {
-          "x": 79.40625,
+          "x": 79.421875,
           "y": 67,
           "width": 231.15625,
           "height": 15
@@ -589,7 +799,7 @@
         },
         "caretAtCentre": {
           "node": "#text",
-          "offset": 11,
+          "offset": 12,
           "text": "TAP AND HOLD TO DESCEND"
         },
         "textInside": "TAP AND HOLD TO DESCEND"
@@ -602,7 +812,7 @@
           "reached": true,
           "clearedBefore": true,
           "box": {
-            "x": 79.40625,
+            "x": 79.421875,
             "y": 67,
             "width": 231.15625,
             "height": 15
@@ -623,7 +833,7 @@
           "reached": true,
           "clearedBefore": true,
           "box": {
-            "x": 79.40625,
+            "x": 79.421875,
             "y": 67,
             "width": 231.15625,
             "height": 15
@@ -644,7 +854,7 @@
           "reached": true,
           "clearedBefore": true,
           "box": {
-            "x": 79.40625,
+            "x": 79.421875,
             "y": 67,
             "width": 231.15625,
             "height": 15
@@ -669,7 +879,7 @@
           "reached": true,
           "clearedBefore": true,
           "box": {
-            "x": 79.40625,
+            "x": 79.421875,
             "y": 67,
             "width": 231.15625,
             "height": 15
@@ -694,7 +904,7 @@
           "reached": true,
           "clearedBefore": true,
           "box": {
-            "x": 79.40625,
+            "x": 79.421875,
             "y": 67,
             "width": 231.15625,
             "height": 15
@@ -720,7 +930,7 @@
           "clearedBefore": true,
           "box": {
             "x": 0,
-            "y": 111,
+            "y": 125,
             "width": 390,
             "height": 520
           },
@@ -941,8 +1151,8 @@
         "testid": "attempt-prompt",
         "tag": "DIV",
         "box": {
-          "x": 79.40625,
-          "y": 163.5,
+          "x": 79.421875,
+          "y": 156.5,
           "width": 231.15625,
           "height": 15
         },
@@ -1044,7 +1254,7 @@
         },
         "caretAtCentre": {
           "node": "#text",
-          "offset": 11,
+          "offset": 12,
           "text": "TAP AND HOLD TO DESCEND"
         },
         "textInside": "TAP AND HOLD TO DESCEND"
@@ -1057,8 +1267,8 @@
           "reached": true,
           "clearedBefore": true,
           "box": {
-            "x": 79.40625,
-            "y": 163.5,
+            "x": 79.421875,
+            "y": 156.5,
             "width": 231.15625,
             "height": 15
           },
@@ -1078,8 +1288,8 @@
           "reached": true,
           "clearedBefore": true,
           "box": {
-            "x": 79.40625,
-            "y": 163.5,
+            "x": 79.421875,
+            "y": 156.5,
             "width": 231.15625,
             "height": 15
           },
@@ -1099,8 +1309,8 @@
           "reached": true,
           "clearedBefore": true,
           "box": {
-            "x": 79.40625,
-            "y": 163.5,
+            "x": 79.421875,
+            "y": 156.5,
             "width": 231.15625,
             "height": 15
           },
@@ -1124,8 +1334,8 @@
           "reached": true,
           "clearedBefore": true,
           "box": {
-            "x": 79.40625,
-            "y": 163.5,
+            "x": 79.421875,
+            "y": 156.5,
             "width": 231.15625,
             "height": 15
           },
@@ -1149,8 +1359,8 @@
           "reached": true,
           "clearedBefore": true,
           "box": {
-            "x": 79.40625,
-            "y": 163.5,
+            "x": 79.421875,
+            "y": 156.5,
             "width": 231.15625,
             "height": 15
           },
@@ -1285,7 +1495,7 @@
         "tag": "DIV",
         "box": {
           "x": 0,
-          "y": 136,
+          "y": 151,
           "width": 390,
           "height": 520
         },
@@ -1574,7 +1784,7 @@
           "clearedBefore": true,
           "box": {
             "x": 0,
-            "y": 136,
+            "y": 151,
             "width": 390,
             "height": 520
           },
@@ -1725,7 +1935,7 @@
     {
       "ok": true,
       "what": "ARM session: the pressed element and the copy are 2 different drawn elements",
-      "detail": "session-touch {\"x\":0,\"y\":111,\"width\":390,\"height\":520} vs session-prompt {\"x\":79.40625,\"y\":67,\"width\":231.15625,\"height\":15}"
+      "detail": "session-touch {\"x\":0,\"y\":125,\"width\":390,\"height\":520} vs session-prompt {\"x\":79.421875,\"y\":67,\"width\":231.15625,\"height\":15}"
     },
     {
       "ok": true,
@@ -1805,12 +2015,12 @@
     {
       "ok": true,
       "what": "ARM session: PROBE 3 DOMAIN — a real rep was driven through every phase to LOCKOUT (adaptively, up to 6 tries), so the check below has something to say",
-      "detail": "drove 14 phase reading(s) over 2 attempt(s), drovePastLockout=true; misses along the way: #1@1000ms=\"NO LIFT\""
+      "detail": "drove 26 phase reading(s) over 4 attempt(s), drovePastLockout=true; misses along the way: #1@1000ms=\"NO LIFT\", #2@820ms=\"NO LIFT\", #3@640ms=\"TAP AND HOLD TO DESCEND\""
     },
     {
       "ok": true,
       "what": "ARM session: PROBE 3 — user-select and touch-action hold at every phase of a real rep, not only at BRACE",
-      "detail": "14 phase(s) checked, none deviated"
+      "detail": "26 phase(s) checked, none deviated"
     },
     {
       "ok": true,
@@ -1855,7 +2065,7 @@
     {
       "ok": true,
       "what": "ARM meet: the pressed element and the copy are 2 different drawn elements",
-      "detail": "attempt-touch {\"x\":0,\"y\":324,\"width\":390,\"height\":520} vs attempt-prompt {\"x\":79.40625,\"y\":163.5,\"width\":231.15625,\"height\":15}"
+      "detail": "attempt-touch {\"x\":0,\"y\":324,\"width\":390,\"height\":520} vs attempt-prompt {\"x\":79.421875,\"y\":156.5,\"width\":231.15625,\"height\":15}"
     },
     {
       "ok": true,
@@ -1990,7 +2200,7 @@
     {
       "ok": true,
       "what": "ARM debug: the pressed element and the copy are 2 different drawn elements",
-      "detail": "lift-touch {\"x\":0,\"y\":136,\"width\":390,\"height\":520} vs lift-prompt {\"x\":65.171875,\"y\":66,\"width\":259.640625,\"height\":17}"
+      "detail": "lift-touch {\"x\":0,\"y\":151,\"width\":390,\"height\":520} vs lift-prompt {\"x\":65.171875,\"y\":66,\"width\":259.640625,\"height\":17}"
     },
     {
       "ok": true,

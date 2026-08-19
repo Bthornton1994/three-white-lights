@@ -220,12 +220,17 @@ describe('the force balance', () => {
 });
 
 describe('windows', () => {
-  it('are positive and at least a few ticks wide', () => {
-    for (const ms of [LIFT_TUNING.DEPTH_WINDOW_MS, LIFT_TUNING.DRIVE_WINDOW_MS]) {
-      expect(ms).toBeGreaterThan(0);
+  it('are positive and at least a few ticks wide, at both ends of the load range', () => {
+    const ms = [
+      LIFT_TUNING.DEPTH_WINDOW_MS,
+      LIFT_TUNING.DRIVE_WINDOW_MS.LIGHT,
+      LIFT_TUNING.DRIVE_WINDOW_MS.MAXIMAL,
+    ];
+    for (const width of ms) {
+      expect(width).toBeGreaterThan(0);
       // Narrower than about four ticks and the window cannot be hit reliably at
       // 60 Hz even before fatigue tightens it.
-      expect(ms / TICK_MS).toBeGreaterThan(4);
+      expect(width / TICK_MS).toBeGreaterThan(4);
     }
   });
 
@@ -234,13 +239,56 @@ describe('windows', () => {
     expect(LIFT_TUNING.PERFECT_BAND_FRACTION).toBeLessThan(1);
   });
 
-  it('open the drive cue after arming, not before it', () => {
-    expect(LIFT_TUNING.DRIVE_IDEAL_LEAD_MS).toBeGreaterThan(LIFT_TUNING.DRIVE_WINDOW_MS / 2);
+  it('open the drive cue after arming, not before it, at every load', () => {
+    // Checked at both endpoints, not the middle: DRIVE_WINDOW_MS is now
+    // load-scaled, and `byLoad`'s interpolation never overshoots its own
+    // endpoints, so an invariant true at LIGHT and at MAXIMAL is true
+    // everywhere `byLoad` can return.
+    expect(LIFT_TUNING.DRIVE_IDEAL_LEAD_MS).toBeGreaterThan(LIFT_TUNING.DRIVE_WINDOW_MS.LIGHT / 2);
+    expect(LIFT_TUNING.DRIVE_IDEAL_LEAD_MS).toBeGreaterThan(LIFT_TUNING.DRIVE_WINDOW_MS.MAXIMAL / 2);
   });
 
-  it('keeps the drive a decision rather than a rate', () => {
-    expect(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP).toBeGreaterThanOrEqual(1);
-    expect(Number.isInteger(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP)).toBe(true);
+  it('the drive window tightens toward MAXIMAL, and DEPTH stays a single number', () => {
+    // Sprint 3's gate: a heavier attempt asks for more PRECISION on the
+    // drive specifically, not on the release — see DRIVE_WINDOW_MS's own
+    // comment for why the two halves are not tightened together.
+    expect(LIFT_TUNING.DRIVE_WINDOW_MS.MAXIMAL).toBeLessThan(LIFT_TUNING.DRIVE_WINDOW_MS.LIGHT);
+    expect(typeof LIFT_TUNING.DEPTH_WINDOW_MS).toBe('number');
+  });
+
+  it('offers at least one drive cue everywhere, and more only toward MAXIMAL', () => {
+    // Sprint 3's gate, the tap-RATE half: a heavier attempt asks for MORE
+    // cues, closer together — the title this test replaces asserted the
+    // opposite design ("a decision, not a rate"), which is exactly what
+    // that playtest finding overturned.
+    expect(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.LIGHT).toBeGreaterThanOrEqual(1);
+    expect(Number.isInteger(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.LIGHT)).toBe(true);
+    expect(Number.isInteger(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL)).toBe(true);
+    expect(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL).toBeGreaterThan(
+      LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.LIGHT,
+    );
+  });
+
+  it('a maximal attempt fits its full cue sequence inside the ascent timeout, with room to spare', () => {
+    // Not a game-feel claim — a structural one, and deliberately scoped to
+    // what a tuning-only test can derive: the SPAN of the cue sequence
+    // itself, from the first cue arming to the last cue's window closing at
+    // the worst legal instant (every gap the full spacing, every window
+    // ridden to its close). It says nothing about how long the ascent takes
+    // to REACH `DRIVE_ARM_HEIGHT` in the first place — that depends on the
+    // ascent's own physics (velocity, demand), which is `lift.test.ts`'s
+    // played-rep territory, not this file's. What this checks is that the
+    // sequence this file's numbers describe does not itself exceed the
+    // timeout budget before a player has done anything wrong.
+    const attempts = LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL;
+    const windowMs = LIFT_TUNING.DRIVE_WINDOW_MS.MAXIMAL;
+    const spacingMs = LIFT_TUNING.DRIVE_ATTEMPTS_SPACING_MS.MAXIMAL;
+    const worstCaseMs =
+      LIFT_TUNING.DRIVE_IDEAL_LEAD_MS +
+      windowMs / 2 +
+      (attempts - 1) * (spacingMs + LIFT_TUNING.DRIVE_IDEAL_LEAD_MS + windowMs / 2);
+    const budgetMs = LIFT_TUNING.ASCENT_TIMEOUT_TICKS * TICK_MS;
+    expect(worstCaseMs).toBeLessThan(budgetMs);
   });
 });
 

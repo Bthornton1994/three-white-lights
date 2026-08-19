@@ -322,8 +322,25 @@ export const LIFT_TUNING = Object.freeze({
    */
   DRIVE_IDEAL_LEAD_MS: 270,
 
-  /** Full width of the drive window, ms. Scaled by fatigue (GDD §3.4). */
-  DRIVE_WINDOW_MS: 380,
+  /**
+   * Full width of the drive window, ms, at the light and maximal ends of the
+   * load range — `byLoad` interpolates between them (see `descentRate` for
+   * the identical pattern on the depth side). Fatigue (GDD §3.4) scales
+   * WHATEVER this returns, same as before; load decides the base it scales.
+   *
+   * DEPTH_WINDOW_MS deliberately stays a single number: a heavier attempt
+   * asks for more precision on the drive, not on the release, because the
+   * drive is where a heavy rep is actually lost or won (GDD §12.1's phone
+   * playtest already found the ascent the harder half). Tightening both
+   * halves at once would be two knobs turning together to look like one.
+   *
+   * MAXIMAL's value is a placeholder for real playtesting, not a derivation:
+   * 260ms keeps `DRIVE_IDEAL_LEAD_MS` (270ms) safely above half of it, so the
+   * "open after arming, not before" invariant holds at every load without
+   * being re-derived per load — `liftTuning.test.ts` checks that at both
+   * endpoints rather than assuming the middle is fine because the ends are.
+   */
+  DRIVE_WINDOW_MS: { LIGHT: 380, MAXIMAL: 260 },
 
   /**
    * Instant velocity added by a perfectly timed drive, scaled by quality.
@@ -357,10 +374,39 @@ export const LIFT_TUNING = Object.freeze({
   DRIVE_BOOST_TICKS: 45,
 
   /**
-   * How many drives the player gets per rep. One: the input is a decision, not
-   * a rate. Raise it and the mechanic becomes a masher.
+   * How many drive cues the ascent offers, light end and maximal end — the
+   * tap-RATE half of the two dimensions a heavier attempt now demands more
+   * of (the other is `DRIVE_WINDOW_MS`'s per-cue PRECISION). `byLoad`
+   * interpolates, rounded to a whole cue count by `driveAttemptsFor`, never
+   * below 1.
+   *
+   * THIS COMMENT USED TO SAY "raise it and the mechanic becomes a masher."
+   * That was the design until a phone playtest (Sprint 3's gate) asked for
+   * exactly this: heavier attempts should demand a rhythm, not only a single
+   * well-placed instant. It is still not a masher in the sense the old
+   * comment warned about — a missed cue costs velocity
+   * (`MISTIMED_DRIVE_VELOCITY_PENALTY`) rather than ending the rep, and
+   * mashing outside an armed cue's window does nothing at all, same as
+   * today's single cue. What changed is that a maximal attempt asks for up
+   * to `MAXIMAL` well-timed cues in sequence rather than one.
+   *
+   * MAXIMAL's value is a placeholder for real playtesting: 3 cues, spaced by
+   * `DRIVE_ATTEMPTS_SPACING_MS`, fits comfortably inside
+   * `ASCENT_TIMEOUT_TICKS`'s budget with room to spare — measured in
+   * `liftTuning.test.ts` rather than assumed.
    */
-  DRIVE_ATTEMPTS_PER_REP: 1,
+  DRIVE_ATTEMPTS_PER_REP: { LIGHT: 1, MAXIMAL: 3 },
+
+  /**
+   * Ms between one drive cue resolving (hit, mistimed, or left unpressed as
+   * its window closes) and the next one being allowed to arm, light end and
+   * maximal end. Irrelevant at LIGHT — `DRIVE_ATTEMPTS_PER_REP` rounds to 1
+   * there, so no second cue ever arms to be spaced from — and is the actual
+   * "rate" a maximal attempt is graded on: a player who cannot land cues
+   * roughly this close together loses the sustained boost between them
+   * (`DRIVE_BOOST_TICKS` decays independently of this).
+   */
+  DRIVE_ATTEMPTS_SPACING_MS: { LIGHT: 600, MAXIMAL: 380 },
 
   /**
    * Velocity lost by driving outside the window — too early, or after it has
@@ -815,7 +861,7 @@ export const LIFT_COPY = Object.freeze({
    * have never seen it (GDD §10: "10-20 people, roughly half real lifters"), so
    * the rules have to be on the screen rather than in a tutorial nobody built.
    */
-  SUBTITLE: 'Hold to descend  ·  release at depth  ·  drive out of the hole',
+  SUBTITLE: 'Two moments, not two motions: release at the bottom, one timed tap to drive. Catch the beat.',
 
   OUTCOME: Object.freeze({
     'good-lift': 'GOOD LIFT',

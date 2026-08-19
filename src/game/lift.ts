@@ -385,6 +385,15 @@ export interface LiftState {
   readonly driveTick: number | null;
   /** Quality of the last accepted drive, 0..1. */
   readonly driveQuality: number;
+  /**
+   * Tick the NEXT drive cue may arm, once `drivesUsed > 0`. Null before the
+   * first cue has resolved — the first arms purely on `DRIVE_ARM_HEIGHT`, no
+   * spacing gate needed. Set on every resolution (hit, mistimed, or a window
+   * left unpressed as it closes) to `tick + driveSpacingTicks(load)`, which
+   * is the tap-RATE half of the mechanic: a maximal attempt asks for cues
+   * roughly this close together, not only well-timed individually.
+   */
+  readonly driveArmReadyTick: number | null;
 
   readonly ascentTicks: number;
   readonly stallTicks: number;
@@ -483,7 +492,9 @@ export function lifterCapacity(config: LiftConfig): number {
  */
 export function cueWindowMs(cue: LiftCueId, config: LiftConfig): number {
   const base =
-    cue === 'depth' ? LIFT_TUNING.DEPTH_WINDOW_MS : LIFT_TUNING.DRIVE_WINDOW_MS;
+    cue === 'depth'
+      ? LIFT_TUNING.DEPTH_WINDOW_MS
+      : byLoad(LIFT_TUNING.DRIVE_WINDOW_MS, clampLoadRatio(config.loadRatio));
   const feel = config.feel;
   if (feel === undefined) return base;
   return adjustedTimingWindowMs(base, feel, config.moment);
@@ -549,6 +560,25 @@ export function holeTicks(loadRatio: number): number {
 /** Ticks the lockout beat lasts at this load. */
 export function lockoutTicks(loadRatio: number): number {
   return Math.max(1, Math.round(byLoad(LIFT_TUNING.LOCKOUT_TICKS, clampLoadRatio(loadRatio))));
+}
+
+/**
+ * How many drive cues the ascent offers at this load — the tap-RATE half of
+ * the ascent's difficulty, `DRIVE_WINDOW_MS` (via `cueWindowMs`) being the
+ * per-cue PRECISION half. Never below 1: every rep offers at least the one
+ * cue the mechanic has always had.
+ */
+export function driveAttemptsFor(loadRatio: number): number {
+  return Math.max(1, Math.round(byLoad(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP, clampLoadRatio(loadRatio))));
+}
+
+/**
+ * Ticks between one drive cue resolving and the next being allowed to arm, at
+ * this load. Only consulted once `drivesUsed > 0` — the first cue arms on
+ * `DRIVE_ARM_HEIGHT` alone, never on this.
+ */
+export function driveSpacingTicks(loadRatio: number): number {
+  return Math.max(1, Math.round(msToTicks(byLoad(LIFT_TUNING.DRIVE_ATTEMPTS_SPACING_MS, clampLoadRatio(loadRatio)))));
 }
 
 /** Depth gained per tick of hold at this load. */
@@ -711,6 +741,7 @@ export function createLift(config: LiftConfig): LiftState {
     drivesUsed: 0,
     driveTick: null,
     driveQuality: 0,
+    driveArmReadyTick: null,
     ascentTicks: 0,
     stallTicks: 0,
     stallCapacityLoss: 0,
@@ -781,6 +812,7 @@ interface Mutable {
   drivesUsed: number;
   driveTick: number | null;
   driveQuality: number;
+  driveArmReadyTick: number | null;
   ascentTicks: number;
   stallTicks: number;
   stallCapacityLoss: number;
@@ -830,6 +862,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     drivesUsed: state.drivesUsed,
     driveTick: state.driveTick,
     driveQuality: state.driveQuality,
+    driveArmReadyTick: state.driveArmReadyTick,
     ascentTicks: state.ascentTicks,
     stallTicks: state.stallTicks,
     stallCapacityLoss: state.stallCapacityLoss,
@@ -958,8 +991,21 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
   else if (m.phase === 'ASCENT') {
     m.ascentTicks += 1;
 
-    // Arm the drive cue the first time the bar is high enough.
-    if (m.activeCue === null && m.drivesUsed === 0 && m.height >= LIFT_TUNING.DRIVE_ARM_HEIGHT) {
+    // Arm a drive cue: the first purely on bar height, every one after it
+    // only once BOTH the previous one has resolved (drivesUsed > 0) AND its
+    // spacing has elapsed. `driveAttemptsFor`/`driveSpacingTicks` are the
+    // tap-RATE half of the ascent's difficulty — how many cues, how close
+    // together — `cueWindowMs`'s per-cue width is the PRECISION half.
+    const attempts = driveAttemptsFor(load);
+    const canArmNext =
+      m.drivesUsed === 0 ||
+      (m.driveArmReadyTick !== null && tick >= m.driveArmReadyTick);
+    if (
+      m.activeCue === null &&
+      m.drivesUsed < attempts &&
+      m.height >= LIFT_TUNING.DRIVE_ARM_HEIGHT &&
+      canArmNext
+    ) {
       const widthMs = cueWindowMs('drive', state.config);
       const idealTick = tick + Math.round(msToTicks(LIFT_TUNING.DRIVE_IDEAL_LEAD_MS));
       const halfTicks = Math.round(msToTicks(widthMs) / 2);
@@ -974,23 +1020,36 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
       m.events.push({ kind: 'drive-cue-open', tick });
     }
 
-    if (pressed && m.drivesUsed < LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP) {
+    if (pressed && m.drivesUsed < attempts) {
       const cue = m.activeCue;
       // No armed cue means the press is unambiguously early: the bar has not
-      // reached the hard part yet. Recorded as a full window early rather than
-      // as -Infinity, so an `InputTiming` always survives JSON.
+      // reached the hard part yet, or the next cue has not re-armed. Recorded
+      // as a full window early rather than as -Infinity, so an `InputTiming`
+      // always survives JSON.
       const offsetMs =
-        cue === null ? -LIFT_TUNING.DRIVE_WINDOW_MS : (tick - cue.idealTick) * TICK_MS;
+        cue === null ? -byLoad(LIFT_TUNING.DRIVE_WINDOW_MS, load) : (tick - cue.idealTick) * TICK_MS;
       const halfMs = cue === null ? 0 : cue.widthMs / 2;
       const { quality, grade } = gradeTiming(offsetMs, halfMs);
       m.drivesUsed += 1;
       m.timings.push({ cue: 'drive', tick, offsetMs: scrub(offsetMs), quality, grade });
       if (grade === 'missed') {
+        // A MISSED TAP COSTS VELOCITY. IT NEVER ENDS THE REP ON ITS OWN.
+        // Deliberately unchanged from the single-cue mechanic this replaces,
+        // for a mid-sequence miss same as a lone one: the rep still resolves
+        // through the existing height/stall/timeout logic below, so losing
+        // one cue in a rhythm of several is a setback, not a bomb-out.
         m.velocity = scrub(m.velocity - LIFT_TUNING.MISTIMED_DRIVE_VELOCITY_PENALTY);
         m.driveQuality = 0;
         m.driveTick = tick;
         m.events.push({ kind: 'drive-mistimed', tick, grade, quality });
       } else {
+        // A NEW HIT REPLACES THE BOOST, NOT ADDS TO IT. `driveTick`/
+        // `driveQuality` are single scalars — the physics below reads only
+        // the MOST RECENT accepted press — so landing the next cue in a
+        // sequence refreshes the decaying boost from THIS tick rather than
+        // stacking a second one on top. That is the rate requirement made
+        // physical: falling behind the cadence lets the previous boost decay
+        // to nothing before a new one arrives.
         m.driveQuality = quality;
         m.driveTick = tick;
         m.velocity = scrub(m.velocity + LIFT_TUNING.DRIVE_IMPULSE_MAX * quality);
@@ -998,12 +1057,18 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
         if (load >= LIFT_TUNING.CHALK_MIN_LOAD_RATIO) m.chalkPuff = 1;
       }
       m.activeCue = null;
+      m.driveArmReadyTick = tick + driveSpacingTicks(load);
     }
 
     // The window closed with nothing thrown at it. The cue goes away; the bar
-    // does not care, which is the point.
+    // does not care, which is the point. Still starts the spacing clock, so a
+    // player who lets one cue expire unpressed is not permanently locked out
+    // of the ones after it.
     const openCue = m.activeCue;
-    if (openCue !== null && tick > openCue.closeTick) m.activeCue = null;
+    if (openCue !== null && tick > openCue.closeTick) {
+      m.activeCue = null;
+      m.driveArmReadyTick = tick + driveSpacingTicks(load);
+    }
 
     // --- physics ---------------------------------------------------------
     const demand = ascentDemand(m.height, load, m.extraDepth);
@@ -1135,6 +1200,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     drivesUsed: m.drivesUsed,
     driveTick: m.driveTick,
     driveQuality: m.driveQuality,
+    driveArmReadyTick: m.driveArmReadyTick,
     ascentTicks: m.ascentTicks,
     stallTicks: m.stallTicks,
     stallCapacityLoss: m.stallCapacityLoss,

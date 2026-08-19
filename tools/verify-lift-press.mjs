@@ -880,8 +880,6 @@ async function probeFullRepCycle(page) {
     phases.push({ phase, loopPrompt: loop.prompt, touch: touch?.self ?? null, text: text?.self ?? null });
   };
 
-  await snapshot('0-brace-before-press');
-
   // ADAPTIVE, NOT A SINGLE GUESSED HOLD. `sessionDrive.mjs`'s own header
   // treats `DEPTH_HOLD_MS` as "A STARTING POINT, not a fixed value" and ships
   // `adaptDepthSearch` for exactly this reason — measured here, not merely
@@ -896,11 +894,27 @@ async function probeFullRepCycle(page) {
 
   for (let attempt = 1; attempt <= FULL_CYCLE.MAX_ATTEMPTS && !drovePastLockout; attempt += 1) {
     attemptsUsed = attempt;
-    if (attempt > 1) {
-      const rebraced = await untilLoopSaying(page, SESSION_PROMPTS.BRACE, FULL_CYCLE.NEXT_BRACE_TIMEOUT_MS);
-      if (!rebraced) return { drove: attemptsUsed > 1, drovePastLockout: false, why: 'the next rep never re-braced', phases, attemptsUsed, misses };
-      await snapshot(`attempt${attempt}-0-brace-before-press`);
+    // WAIT FOR BRACE ON ATTEMPT 1 TOO, not only on a retry. This probe runs
+    // after PROBE 2's four real pans on the same session-touch stage, each of
+    // which is a genuine press-drag-release the mechanic processes as a rep
+    // attempt — so the arm can already be mid-verdict ('NO LIFT', still
+    // holding its result-screen delay) by the time this function's first
+    // press fires. Measured: without this wait, attempt 1 pressed straight
+    // into that hold and `sessionDrive.mjs`'s own `playOneRep` — which always
+    // waits for BRACE before its first press too — was the thing that showed
+    // the asymmetry. `attempt > 1` used to be the only branch that re-braced.
+    const rebraced = await untilLoopSaying(page, SESSION_PROMPTS.BRACE, FULL_CYCLE.NEXT_BRACE_TIMEOUT_MS);
+    if (!rebraced) {
+      return {
+        drove: attemptsUsed > 1,
+        drovePastLockout: false,
+        why: attempt === 1 ? 'the arm never showed a brace to start on' : 'the next rep never re-braced',
+        phases,
+        attemptsUsed,
+        misses,
+      };
     }
+    await snapshot(`attempt${attempt}-0-brace-before-press`);
 
     const box = await page.getByTestId('session-touch').boundingBox().catch(() => null);
     if (box === null) return { drove: false, drovePastLockout: false, why: 'no session-touch box to start a rep on', phases, attemptsUsed, misses };

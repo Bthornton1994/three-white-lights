@@ -773,8 +773,18 @@ const GUARANTEE_COVERAGE = {
    * argues its one-decoder principle in this file's house style, and one of
    * its paragraphs trips the capitalised-absolute trigger. Re-measured, not
    * hand-bumped.
+   *
+   * 256 -> 257 with the tap-rate mechanic's mid-sequence-miss paragraph in
+   * `lift.ts`, added against the Sprint 3 gate's design brief — its opening
+   * sentence states the no-instant-fail rule in this file's own capitalised
+   * house style. NOT QUOTED HERE, for the reason the notes elsewhere in this
+   * file give: quoting a capitalised run makes THIS paragraph trigger too,
+   * and the count would go to 258 instead of 257. Untagged: it is tracked
+   * debt, not a claimed `@guarantee`, and the guarantee itself is covered by
+   * hand-run mutation tests instead (see `lift.test.ts`'s "the drive
+   * tap-rate mechanic" block).
    */
-  TREE_WIDE: 256,
+  TREE_WIDE: 257,
 } as const;
 
 // ---------------------------------------------------------------------------
