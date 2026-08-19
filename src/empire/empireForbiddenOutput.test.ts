@@ -11392,6 +11392,10 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'ladderView.tsx:115 LadderAccrual | null asked=true walked=false',
   'ladderView.tsx:122 LadderState asked=true walked=false',
   'ladderView.tsx:123 LadderAccrual | null asked=true walked=false',
+  'ladderView.tsx:370 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:388 GymState asked=true walked=false',
+  'ladderView.tsx:389 LadderAccrual asked=true walked=false',
+  'ladderView.tsx:421 GymState asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
   'sessions.ts:655 LadderState asked=true walked=false',
   'sessions.ts:689 LadderState asked=true walked=false',
@@ -11404,7 +11408,7 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
 /** What the two readings of the screen measured against each other. */
 const SCREEN_AGREEMENT = Object.freeze({
   /** Rows in `SHIPPED_SCREEN_DISAGREEMENTS`, so a shorter list is red too. */
-  SHIPPED_DISAGREEMENTS: 25,
+  SHIPPED_DISAGREEMENTS: 29,
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
