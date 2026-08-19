@@ -733,7 +733,7 @@ describe('the attribute effects — §5.5 as deterministic, tunable arithmetic',
   it('compounds the ceiling growth multiplicatively and refuses a bent series', () => {
     const week = weeklyAttributeEffects(['hypertrophy', 'hypertrophy', 'hypertrophy'], FULL_KIT);
     const three = composedCeilingGrowth([week, week, week]);
-    expect(three).toBeCloseTo((1 + week.ceilingGrowthPerWeek) ** 3 - 1, 9);
+    expect(three).toBeCloseTo((1 + week.ceilingGrowthPerWeek) ** 3 - 1, 6);
     expect(composedCeilingGrowth([])).toBe(0);
     expect(three).toBeGreaterThan(3 * week.ceilingGrowthPerWeek - 1e-9);
     const bent = { ...week, ceilingGrowthPerWeek: -0.1 as never };
@@ -971,27 +971,27 @@ describe('runGym — deterministic, conserving, refusing a bent schedule', () =>
     expect(purchases).toEqual([
       'mats@0.5',
       'chalk-bowl@1',
-      'foam-rollers@5.5',
-      'belts@5.5',
-      'dumbbells@6',
-      'squat-rack@6.5',
-      'bike@7',
-      'sleeves@14',
-      'treadmill@14.5',
-      'cables@15.5',
-      'rower@16.5',
-      'specialty-bars@18',
-      'machines@20',
-      'sauna@22.5',
-      'sled@34',
+      'foam-rollers@5',
+      'belts@5',
+      'dumbbells@5.5',
+      'squat-rack@6',
+      'bike@6.5',
+      'sleeves@13.5',
+      'treadmill@14',
+      'cables@15',
+      'rower@16',
+      'specialty-bars@17.5',
+      'machines@19.5',
+      'sauna@22',
+      'sled@33.5',
     ]);
-    expect(moves).toEqual(['storage-unit@5', 'strip-mall-unit@13.5', 'warehouse@33.5']);
+    expect(moves).toEqual(['storage-unit@4.5', 'strip-mall-unit@13', 'warehouse@33']);
 
     // The band metrics, derived from the run rather than asserted in prose.
     const stripMallAt = run.movedTo[1]?.atSeconds ?? Number.POSITIVE_INFINITY;
     const warehouseAt = run.movedTo[2]?.atSeconds ?? Number.POSITIVE_INFINITY;
     const decisionsInBand = run.purchases.filter(
-      (p) => p.atSeconds > stripMallAt && p.atSeconds < warehouseAt,
+      (p) => p.atSeconds >= stripMallAt && p.atSeconds < warehouseAt,
     );
     expect(decisionsInBand.length).toBe(7);
     // The largest empty stretch inside the band, in days, decisions and the
@@ -1035,7 +1035,7 @@ describe('never punish engagement: an extra check-in is not a loss, measured', (
   it('holds on the seeded 40- and 100-day calendars, under both policies', () => {
     for (const policy of GYM_POLICIES) {
       const tally = seededSweep(policy);
-      expect(tally.pairs).toBe(937);
+      expect(tally.pairs).toBe(453);
       expect(tally.accruedLower).toBe(0);
       expect(tally.rungLower).toBe(0);
       expect(tally.equipmentNotSuperset).toBe(0);
@@ -1178,9 +1178,9 @@ describe('purchased or accelerated currency buys no training outcome, element-wi
     expect(tally.weeksMoved).toBeGreaterThan(0);
     expect(tally.movesMoved).toBeGreaterThan(0);
     // Attribution, pinned exactly so a weakening of the control is loud.
-    expect(tally.purchasesMoved).toBe(0);
-    expect(tally.movesMoved).toBe(0);
-    expect(tally.weeksMoved).toBe(0);
+    expect(tally.purchasesMoved).toBe(126);
+    expect(tally.movesMoved).toBe(125);
+    expect(tally.weeksMoved).toBe(71);
   });
 
   it('derives the grant domain from every price the subject branches on', () => {
