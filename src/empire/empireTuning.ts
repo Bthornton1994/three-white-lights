@@ -901,6 +901,15 @@ export const EMPIRE_TUNING = Object.freeze({
    * Every stage-2 item, in the fixed order state lists them in. Generic
    * equipment nouns taken from GDD §5.4's own example rows — no manufacturer,
    * no brand, no wordmark (§12.3), same discipline as `EQUIPMENT_TIERS`.
+   *
+   * §5.4's "chalk bowl" example is deliberately NOT shipped, and the reason is
+   * structural rather than taste: `EMPIRE_FORBIDDEN_OUTPUTS` names `'chalk'`
+   * as a currency this directory must have no word for, and instrument B in
+   * `empireForbiddenOutput.test.ts` refuses any produced string CONTAINING a
+   * forbidden name — an item token carrying the currency's name inside it is
+   * exactly the laundering shape that containment scan exists to stop, and it
+   * caught this one on arrival (76 findings). Wrist wraps are the same
+   * generic support-gear class and carry no banned substring.
    */
   SESSION_EQUIPMENT_ITEMS: Object.freeze([
     'bike',
@@ -913,7 +922,7 @@ export const EMPIRE_TUNING = Object.freeze({
     'mats',
     'foam-rollers',
     'sauna',
-    'chalk-bowl',
+    'wrist-wraps',
     'belts',
     'sleeves',
     'specialty-bars',
@@ -931,7 +940,7 @@ export const EMPIRE_TUNING = Object.freeze({
     mats: 'recovery',
     'foam-rollers': 'recovery',
     sauna: 'recovery',
-    'chalk-bowl': 'support',
+    'wrist-wraps': 'support',
     belts: 'support',
     sleeves: 'support',
     'specialty-bars': 'support',
@@ -955,7 +964,7 @@ export const EMPIRE_TUNING = Object.freeze({
     mats: 200,
     'foam-rollers': 500,
     sauna: 28000,
-    'chalk-bowl': 400,
+    'wrist-wraps': 400,
     belts: 900,
     sleeves: 2400,
     'specialty-bars': 16000,
@@ -979,7 +988,7 @@ export const EMPIRE_TUNING = Object.freeze({
     mats: 'garage',
     'foam-rollers': 'storage-unit',
     sauna: 'strip-mall-unit',
-    'chalk-bowl': 'garage',
+    'wrist-wraps': 'garage',
     belts: 'storage-unit',
     sleeves: 'strip-mall-unit',
     'specialty-bars': 'strip-mall-unit',
@@ -1014,7 +1023,7 @@ export const EMPIRE_TUNING = Object.freeze({
    * drives rather than trusts. Structural: the channel is the design.
    */
   SUPPORT_ITEM_CHANNEL: Object.freeze({
-    'chalk-bowl': 'technique-quality',
+    'wrist-wraps': 'technique-quality',
     belts: 'injury-risk',
     sleeves: 'injury-risk',
     'specialty-bars': 'ceiling-growth',
@@ -1026,7 +1035,7 @@ export const EMPIRE_TUNING = Object.freeze({
    * bonus is 12% larger while the item is owned).
    */
   SUPPORT_ITEM_AMPLIFIER: Object.freeze({
-    'chalk-bowl': 0.15,
+    'wrist-wraps': 0.15,
     belts: 0.12,
     sleeves: 0.08,
     'specialty-bars': 0.2,

@@ -588,7 +588,7 @@ describe('capability gates activity — §5.4 read at stage-2 resolution', () =>
     expect(activityAvailable(['sauna'], 'other-recovery')).toBe(true);
     expect(availableActivities(FULL_KIT)).toEqual([...T.FLEXIBLE_ACTIVITIES]);
     // A support item gates nothing.
-    expect(availableActivities(['belts', 'chalk-bowl'])).toEqual([]);
+    expect(availableActivities(['belts', 'wrist-wraps'])).toEqual([]);
   });
 
   it('resolves a week into trained, rested and unequipped, naming what is missing', () => {
@@ -973,7 +973,7 @@ describe('runGym — deterministic, conserving, refusing a bent schedule', () =>
     const moves = run.movedTo.map((m) => `${m.to}@${day(m.atSeconds)}`);
     expect(purchases).toEqual([
       'mats@0.5',
-      'chalk-bowl@1',
+      'wrist-wraps@1',
       'foam-rollers@5',
       'belts@5',
       'dumbbells@5.5',

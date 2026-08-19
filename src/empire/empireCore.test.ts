@@ -3091,7 +3091,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'ceiling-growth',
       'ceiling-growth-per-week',
       'chalk',
-      'chalk-bowl',
       'chance-draw',
       'cheapest-affordable-first',
       'check-in-upkeep',
@@ -3248,6 +3247,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'wall-clock',
       'wall-clock-earned',
       'warehouse',
+      'wrist-wraps',
     ]);
 
     // The half the pin does not reach: a multi-word name inside a message. Run
