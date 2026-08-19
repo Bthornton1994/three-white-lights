@@ -8,6 +8,8 @@
  *                              [BACK TO TRAINING] -> SESSION
  *          [GYM EMPIRE]  -> EMPIRE   GDD §5's floor, running on a real clock
  *                              [BACK TO TRAINING] -> SESSION, on the beat it left
+ *          [CAREER]      -> CAREER   GDD §2.1's chooser, then §6.1's calendar
+ *                              [BACK TO TRAINING] -> SESSION, on the beat it left
  * ```
  *
  * ---------------------------------------------------------------------------
@@ -68,20 +70,22 @@
  * this slice; session and meet still do.
  *
  * ---------------------------------------------------------------------------
- * WHAT IS DELIBERATELY MISSING: THE CAREER CALENDAR (GDD §6.1)
+ * WHAT THE CAREER SURFACE IS, AND WHAT IS STILL DELIBERATELY MISSING (§6.1)
  * ---------------------------------------------------------------------------
- * §6.1 enters a meet by selecting one from a Career calendar — local, regional,
- * nationals, worlds — GATED BY QUALIFYING TOTALS, after a weigh-in beat. Career
- * mode is zero files on this branch, and inventing a fake calendar here would
- * be inventing the gate too. So meet day remains ONE UNGATED DOOR to the ONE
- * local meet that exists. Session C's claim is Empire shell wiring, not Career.
+ * Sprint 1b wired the Career surface: GDD §2.1's federation chooser, then
+ * §6.1's calendar, with every verdict decided by `careerServer.ts` and drawn
+ * with the server's own sentence. The qualifying-total gate is therefore read
+ * off the server, not a client `if` — the calendar screen filters on
+ * `verdict.kind` and computes nothing.
  *
- * When Career lands, three things change and all three are in this file or the
- * module beside it: `open-meet` points at the calendar instead of `MeetScreen`;
- * the calendar reads the qualifying-total gate off the server (a Total is a
- * server fact, so the gate is a server decision, not a client `if`); and the
- * meet the player picks is passed to `MeetScreen` as context instead of it
- * building `MEET_LOCAL` itself. Nothing about the route graph's Empire edges
+ * STILL MISSING, by scope (Sprint 1c): ENTERING a meet from the calendar.
+ * `open-meet` still points at `MeetScreen`'s one ungated door to the one local
+ * meet, the played meet is not marked ALREADY_ENTERED on the calendar, and
+ * §6.1's placeholder trio in `src/meet/careerCalendarPlaceholder*` stands with
+ * its tripwire armed until that seam — `CareerMeet -> MeetDefinition` — is
+ * built. When it is, `open-meet` points at the calendar and the meet the
+ * player picks is passed to `MeetScreen` as context instead of it building
+ * `MEET_LOCAL` itself. Nothing about the route graph's Empire or Career edges
  * changes for that piece.
  */
 
@@ -94,12 +98,13 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { CareerScreen } from '../meet/CareerScreen';
 import { EmpireScreen } from './EmpireScreen';
 import { LIFT_PALETTE } from '../lift/liftPalette';
 import { LiftScreen } from '../lift/LiftScreen';
 import { MeetScreen } from '../meet/MeetScreen';
 import { SessionScreen } from '../session/SessionScreen';
-import { appMeetPort, appSessionPort } from './appServer';
+import { appCareerPort, appMeetPort, appSessionPort } from './appServer';
 import {
   frozenMeetFor,
   frozenSessionFor,
@@ -107,10 +112,12 @@ import {
   navigate,
   resolveEntry,
   shellAffordanceFor,
+  shellCareerAffordanceFor,
   shellEmpireAffordanceFor,
   type ShellIntent,
 } from './shellRoute';
 import { SHELL_COPY, SHELL_LAYOUT, SHELL_NAV, type EmpirePhase } from './shellTuning';
+import type { CareerSurfacePhase } from '../meet/careerSurface';
 import type { MeetDayPhaseId } from '../game/meetDay';
 import type { SessionPhase } from '../game/session';
 
@@ -134,6 +141,14 @@ const INTENT_COPY: Readonly<Record<ShellIntent, { readonly label: string; readon
     'leave-empire': Object.freeze({
       label: SHELL_COPY.LEAVE_EMPIRE_LABEL,
       hint: SHELL_COPY.LEAVE_EMPIRE_HINT,
+    }),
+    'open-career': Object.freeze({
+      label: SHELL_COPY.CAREER_NAV_LABEL,
+      hint: SHELL_COPY.CAREER_NAV_HINT,
+    }),
+    'leave-career': Object.freeze({
+      label: SHELL_COPY.LEAVE_CAREER_LABEL,
+      hint: SHELL_COPY.LEAVE_CAREER_HINT,
     }),
   });
 
@@ -220,6 +235,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   const [sessionPhase, setSessionPhase] = useState<SessionPhase | null>(null);
   const [meetPhase, setMeetPhase] = useState<MeetDayPhaseId | null>(null);
   const [empirePhase, setEmpirePhase] = useState<EmpirePhase | null>(null);
+  const [careerPhase, setCareerPhase] = useState<CareerSurfacePhase | null>(null);
 
   // WHETHER A GDD §7.2 CUT-IN IS UP, reported by whichever `CutInHost` is
   // mounted. The shell draws NO chrome while one is — see `shellAffordanceFor`
@@ -248,6 +264,14 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   // would be strictly worse off than one who stood still, which is the §12.3
   // line this whole piece is shaped around.
   const [empireOpened, setEmpireOpened] = useState(route.surface === 'empire');
+
+  // The same flag for the Career surface, for the same §12.3-shaped reason:
+  // once opened it stays mounted for the app run, hidden while the player
+  // trains, so an in-flight federation choice settles into a live screen and a
+  // return visit is a re-read rather than a fresh mount. No debug entry
+  // resolves to 'career', so the initializer is the same expression as
+  // Empire's and today starts false on every launch.
+  const [careerOpened, setCareerOpened] = useState(route.surface === 'career');
 
   // THE DESTINATION'S BEAT IS FORGOTTEN ON THE WAY IN, and that is not tidying.
   // The screen being routed to reports its beat in an effect, which lands a
@@ -284,6 +308,18 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   const leaveEmpire = useCallback(() => {
     setRoute((current) => navigate(current, 'leave-empire'));
   }, []);
+  // The Career pair follows Empire's exactly: the destination's beat is
+  // forgotten on the way in (`CareerScreen` re-reports — `active` is in its
+  // phase effect's dependency list), and `leaveCareer` clears NOTHING, because
+  // the session it returns to never un-mounted and its beat is current.
+  const openCareer = useCallback(() => {
+    setCareerPhase(null);
+    setCareerOpened(true);
+    setRoute((current) => navigate(current, 'open-career'));
+  }, []);
+  const leaveCareer = useCallback(() => {
+    setRoute((current) => navigate(current, 'leave-career'));
+  }, []);
 
   const surfacePhase =
     route.surface === 'meet'
@@ -292,7 +328,9 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
         ? sessionPhase
         : route.surface === 'empire'
           ? empirePhase
-          : null;
+          : route.surface === 'career'
+            ? careerPhase
+            : null;
   // The flag belonging to the surface on screen. Empire mounts no host, so a
   // cut-in is never live there and the gate is told so rather than being handed
   // whatever the hidden session last said.
@@ -301,6 +339,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   const cutIn: 'live' | 'none' = cutInLive ? 'live' : 'none';
   const affordance = shellAffordanceFor(route, surfacePhase, cutIn);
   const empireAffordance = shellEmpireAffordanceFor(route, surfacePhase, cutIn);
+  const careerAffordance = shellCareerAffordanceFor(route, surfacePhase, cutIn);
   const meetFrame = frozenMeetFor(entry, route);
 
   const pressFor = (intent: ShellIntent): (() => void) => {
@@ -313,6 +352,10 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
         return openEmpire;
       case 'leave-empire':
         return leaveEmpire;
+      case 'open-career':
+        return openCareer;
+      case 'leave-career':
+        return leaveCareer;
     }
   };
 
@@ -325,6 +368,8 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
     (route.surface === 'replay' && entry.replay === undefined);
   const empireMounted =
     route.surface === 'empire' || (isPersistentSurface('empire') && empireOpened);
+  const careerMounted =
+    route.surface === 'career' || (isPersistentSurface('career') && careerOpened);
 
   return (
     <View style={styles.root} testID="app-shell">
@@ -375,7 +420,17 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
         </View>
       )}
 
-      {affordance === null && empireAffordance === null ? null : (
+      {!careerMounted ? null : (
+        <View style={route.surface === 'career' ? styles.surface : styles.hiddenSurface}>
+          <CareerScreen
+            serverPort={appCareerPort()}
+            onPhase={setCareerPhase}
+            active={route.surface === 'career'}
+          />
+        </View>
+      )}
+
+      {affordance === null && empireAffordance === null && careerAffordance === null ? null : (
         <View style={styles.navSlot} pointerEvents="box-none">
           {affordance === null ? null : (
             <ShellNav key={affordance} intent={affordance} onPress={pressFor(affordance)} />
@@ -385,6 +440,13 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
               key={empireAffordance}
               intent={empireAffordance}
               onPress={pressFor(empireAffordance)}
+            />
+          )}
+          {careerAffordance === null ? null : (
+            <ShellNav
+              key={careerAffordance}
+              intent={careerAffordance}
+              onPress={pressFor(careerAffordance)}
             />
           )}
         </View>

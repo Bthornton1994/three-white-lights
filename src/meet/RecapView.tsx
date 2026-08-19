@@ -79,8 +79,10 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 import { LIFT_ORDER } from '../game/meet';
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
 import { countedTotalText, type MeetDayAttempt, type MeetRecap } from '../game/meetDay';
+import type { CareerMeetOutcome } from '../game/careerServer';
 import { useOfferCutIn } from '../cutin/CutInHost';
 import { AttemptBoard } from './AttemptBoard';
+import { careerRecapLines } from './careerSurface';
 import { MEET_PALETTE } from './meetPalette';
 
 const L = MEET_LAYOUT;
@@ -131,10 +133,23 @@ function useCountUp(from: number, to: number, durationMs: number, delayMs: numbe
 export interface RecapViewProps {
   readonly recap: MeetRecap;
   readonly attempts: readonly MeetDayAttempt[];
+  /**
+   * What this result did to the career (GDD §6.5, Sprint 1b): the server's
+   * `CareerMeetOutcome` off `RecordedMeet.career`, computed by
+   * `careerServer.ts` inside `applyMeetResult` against the same row every
+   * other number on this screen came from. `null` draws nothing — the debug
+   * harness may render a recap with no recorded meet behind it.
+   */
+  readonly career?: CareerMeetOutcome | null;
   readonly onSeeCard: () => void;
 }
 
-export function RecapView({ recap, attempts, onSeeCard }: RecapViewProps): React.ReactElement {
+export function RecapView({
+  recap,
+  attempts,
+  career = null,
+  onSeeCard,
+}: RecapViewProps): React.ReactElement {
   const to = recap.totalKg ?? 0;
   const from = recap.previousBestTotalKg ?? to;
   const counted = useCountUp(
@@ -172,6 +187,21 @@ export function RecapView({ recap, attempts, onSeeCard }: RecapViewProps): React
             {recap.prText}
           </Text>
         )}
+        {/* GDD §6.5's career lines (Sprint 1b), on the total's own beat: the
+            standing career best and the tiers this result newly qualified —
+            `careerRecapLines` over the server's own outcome, nothing derived
+            here. Same stagger slot as the total, because they are about it. */}
+        {career === null
+          ? null
+          : careerRecapLines(career).map((line) => (
+              <Text
+                key={line.kind}
+                style={[styles.prText, line.kind === 'qualified' ? styles.prTextHot : null]}
+                testID={`recap-${line.kind}`}
+              >
+                {line.text}
+              </Text>
+            ))}
       </Block>
 
       <Block index={MEET_TUNING.RECAP_ROW_ORDER.LIFTS}>

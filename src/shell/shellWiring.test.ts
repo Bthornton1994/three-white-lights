@@ -90,14 +90,16 @@ describe('the scans can see what they are looking for', () => {
 // ---------------------------------------------------------------------------
 
 describe('the shell is the join, and it is the only one', () => {
-  it('renders the session, meet, and Empire surfaces — the join is in one file', () => {
+  it('renders the session, meet, Empire and Career surfaces — the join is in one file', () => {
     expect(SHELL).toMatch(/\bSessionScreen\b/);
     expect(SHELL).toMatch(/\bMeetScreen\b/);
     expect(SHELL).toMatch(/\bEmpireScreen\b/);
+    expect(SHELL).toMatch(/\bCareerScreen\b/);
     expect(SHELL).toMatch(/from ''/); // imports survived the stripper
     expect(source('src/shell/AppShell.tsx')).toMatch(/from '\.\.\/meet\/MeetScreen'/);
     expect(source('src/shell/AppShell.tsx')).toMatch(/from '\.\.\/session\/SessionScreen'/);
     expect(source('src/shell/AppShell.tsx')).toMatch(/from '\.\/EmpireScreen'/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/from '\.\.\/meet\/CareerScreen'/);
   });
 
   it('the two screens still know nothing about each other', () => {
@@ -121,6 +123,8 @@ describe('the shell is the join, and it is the only one', () => {
     expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'leave-meet'\)/);
     expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'open-empire'\)/);
     expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'leave-empire'\)/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'open-career'\)/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'leave-career'\)/);
     expect(SHELL).not.toMatch(/setRoute\(\{/);
   });
 
@@ -141,6 +145,9 @@ describe('the shell is the join, and it is the only one', () => {
     );
     expect(SHELL).toMatch(
       /setEmpirePhase\(null\);[\s\S]{0,80}?setRoute\(\(current\) => navigate\(current, ''\)\)/,
+    );
+    expect(SHELL).toMatch(
+      /setCareerPhase\(null\);[\s\S]{0,80}?setRoute\(\(current\) => navigate\(current, ''\)\)/,
     );
     // ...and the reset still has to be there: a `setRoute` with no phase reset
     // before it does not match, which is the failure this exists for.
@@ -210,9 +217,12 @@ describe('the shell is the join, and it is the only one', () => {
   it('asks `shellAffordanceFor` when to draw a control, and draws only that', () => {
     expect(SHELL).toMatch(/shellAffordanceFor\(/);
     expect(SHELL).toMatch(/shellEmpireAffordanceFor\(/);
+    expect(SHELL).toMatch(/shellCareerAffordanceFor\(/);
     // The gate must be the thing that decides, so the pill cannot be rendered
     // unconditionally next to it.
-    expect(SHELL).toMatch(/affordance === null && empireAffordance === null \? null :/);
+    expect(SHELL).toMatch(
+      /affordance === null && empireAffordance === null && careerAffordance === null \? null :/,
+    );
   });
 
   it('tells the gate whether a GDD §7.2 cut-in is up, and is told by the hosts', () => {
@@ -846,21 +856,23 @@ const SCREEN_REPORTING = Object.freeze({
   /**
    * How many distinct screen modules `AppShell.tsx` mounts today.
    *
-   * `SessionScreen`, `MeetScreen`, `EmpireScreen`, `LiftScreen`. Pinned so the
-   * fifth is announced rather than absorbed.
+   * `SessionScreen`, `MeetScreen`, `EmpireScreen`, `CareerScreen`,
+   * `LiftScreen`. Pinned so the sixth is announced rather than absorbed. The
+   * fifth WAS announced here — `CareerScreen` arrived with Sprint 1b and moved
+   * this from 4, which is the number doing its job.
    */
-  SCREENS: 4,
+  SCREENS: 5,
   /**
    * ...and how many of those declare a phase callback in their props.
    *
-   * Three: the replay harness's `LiftScreen` has no beats and is not
+   * Four: the replay harness's `LiftScreen` has no beats and is not
    * player-reachable (`shellRoute.ts` keeps `replay` out of
    * `playerReachableFrom`), so the shell draws no chrome over it and asks it
    * nothing. Pinned separately from the count above because the two move for
    * different reasons: deleting `EmpireScreenProps.onPhase` outright leaves
-   * four screens and three becomes two.
+   * five screens and four becomes three.
    */
-  DECLARING_A_PHASE: 3,
+  DECLARING_A_PHASE: 4,
 });
 
 /** One `<Screen …>` element in `AppShell.tsx`, and what it was given. */
@@ -1083,6 +1095,7 @@ describe('every screen the shell mounts reports its beat', () => {
     // shell's own directory as well as outside it.
     expect(files).toContain('src/shell/EmpireScreen.tsx');
     expect(files).toContain('src/session/SessionScreen.tsx');
+    expect(files).toContain('src/meet/CareerScreen.tsx');
 
     const declaring = files.filter((file) =>
       mounts.some((mount) => mount.file === file && mount.declaresPhase),
@@ -1791,8 +1804,14 @@ describe('the Empire round trip keeps both of its surfaces', () => {
    */
   const EMPIRE_MOUNTED_PIN = String.raw`const empireMounted =\s*route\.surface === 'empire'\s*\|\|\s*\(isPersistentSurface\('empire'\)\s*&&\s*empireOpened\);`;
 
+  /** The Career surface's mount flag, whole, for the same reasons. */
+  const CAREER_MOUNTED_PIN = String.raw`const careerMounted =\s*route\.surface === 'career'\s*\|\|\s*\(isPersistentSurface\('career'\)\s*&&\s*careerOpened\);`;
+
   /** The one place the shell tells the floor which surface is on screen. */
   const ACTIVE_SURFACE_PIN = String.raw`active=\{route\.surface === 'empire'\}`;
+
+  /** ...and the one place it tells the Career surface. */
+  const CAREER_ACTIVE_PIN = String.raw`active=\{route\.surface === 'career'\}`;
 
   /** How many times a pattern occurs in a text. */
   const occurrences = (pattern: string, text: string): number =>
@@ -1837,7 +1856,30 @@ describe('the Empire round trip keeps both of its surfaces', () => {
       occurrences(EMPIRE_MOUNTED_PIN, APP_SHELL_RAW),
       'AppShell.tsx no longer mounts GDD §5’s floor off `isPersistentSurface` and `empireOpened`',
     ).toBe(1);
-    expect(PERSISTENT_SURFACES).toEqual(['session', 'empire']);
+    expect(
+      occurrences(CAREER_MOUNTED_PIN, APP_SHELL_RAW),
+      'AppShell.tsx no longer mounts the Career surface off `isPersistentSurface` and `careerOpened`',
+    ).toBe(1);
+    expect(PERSISTENT_SURFACES).toEqual(['session', 'empire', 'career']);
+  });
+
+  it('CONTROL: the Career mount-flag pin bites on the same two axes as Empire’s', () => {
+    // The same two bypasses the Empire pin was rewritten for, driven against
+    // the career copy of it rather than assumed to transfer: the `|| false`
+    // edit that deletes persistence outright, and the surface-literal swap
+    // `codeOnly` cannot see.
+    const shipped =
+      "  const careerMounted =\n    route.surface === 'career' || (isPersistentSurface('career') && careerOpened);";
+    expect(occursIn(CAREER_MOUNTED_PIN, shipped)).toBe(true);
+    expect(
+      occursIn(CAREER_MOUNTED_PIN, "  const careerMounted =\n    route.surface === 'career' || false;"),
+    ).toBe(false);
+    expect(
+      occursIn(
+        CAREER_MOUNTED_PIN,
+        "  const careerMounted =\n    route.surface === 'meet' || (isPersistentSurface('career') && careerOpened);",
+      ),
+    ).toBe(false);
   });
 
   it('CONTROL: the mount-flag pin reads the half of the condition that IS the mechanism', () => {
@@ -1875,6 +1917,9 @@ describe('the Empire round trip keeps both of its surfaces', () => {
     // player lands back on their briefing with no pill to anywhere.
     expect(forgetsBeatOnArrival('session')).toBe(false);
     expect(bodyOfCallback('leaveEmpire')).not.toMatch(/setSessionPhase\(null\)/);
+    // `leaveCareer` returns to the same never-unmounted session, so the same
+    // one-line regression is banned there too.
+    expect(bodyOfCallback('leaveCareer')).not.toMatch(/setSessionPhase\(null\)/);
     // ...and the sibling that DOES re-mount still forgets, so the assertion above
     // is about persistence rather than about `leaveEmpire` having been emptied.
     expect(bodyOfCallback('leaveMeet')).toMatch(/setSessionPhase\(null\)/);
@@ -1917,6 +1962,41 @@ describe('the Empire round trip keeps both of its surfaces', () => {
     // ...and the blindness, reproduced: through `codeOnly` those two lines are
     // the same string, which is what the old pin was reading.
     expect(codeOnly(activeShipped)).toBe(codeOnly(activeSwapped));
+  });
+
+  it('the Career surface re-reports on activation, and the shell tells it which surface is up', () => {
+    // The same pairing as Empire's, on the surface that joined the persistent
+    // list with Sprint 1b: Career is forgotten on the way in, so a second
+    // visit has no beat until the screen re-reports — `active` and the phase
+    // are both in the effect's dependency list, and losing either strands the
+    // player on a surface whose only exit is the pill that never comes back.
+    expect(forgetsBeatOnArrival('career')).toBe(true);
+    expect(isPersistentSurface('career')).toBe(true);
+    expect(bodyOfCallback('openCareer')).toMatch(/setCareerPhase\(null\)/);
+    const careerScreen = codeOnly(source('src/meet/CareerScreen.tsx'));
+    expect(careerScreen).toMatch(/onPhase\?\.\(loop\.phase\);\s*\}, \[onPhase, active, loop\.phase\]\);/);
+    // CONTROL, both ways: the scan sees the dependency go missing.
+    expect(codeOnly('onPhase?.(loop.phase);\n  }, [onPhase, loop.phase]);')).not.toMatch(
+      /onPhase\?\.\(loop\.phase\);\s*\}, \[onPhase, active, loop\.phase\]\);/,
+    );
+    // ...and the shell hands it `active` off the CAREER surface, raw and
+    // counted, because through `codeOnly` a surface swap is invisible.
+    expect(
+      occurrences(CAREER_ACTIVE_PIN, APP_SHELL_RAW),
+      'AppShell.tsx no longer hands CareerScreen `active` off the Career surface',
+    ).toBe(1);
+    const activeShipped = "<CareerScreen serverPort={appCareerPort()} onPhase={setCareerPhase} active={route.surface === 'career'} />";
+    const activeSwapped = "<CareerScreen serverPort={appCareerPort()} onPhase={setCareerPhase} active={route.surface === 'empire'} />";
+    expect(occursIn(CAREER_ACTIVE_PIN, activeShipped)).toBe(true);
+    expect(occursIn(CAREER_ACTIVE_PIN, activeSwapped)).toBe(false);
+    // The hook really does re-read the row on activation — the persistence
+    // trade `PERSISTENT_SURFACES` records for this surface. `openingCache` is
+    // an identifier, so `codeOnly` keeps it.
+    const useCareerCode = codeOnly(source('src/meet/useCareer.ts'));
+    expect(useCareerCode).toMatch(/if \(!active\) return;/);
+    expect(useCareerCode).toMatch(
+      /setCache\(\(current\) => \(current\.status === '' \? current : openingCache\(port\)\)\);/,
+    );
   });
 
   it('the floor stops its clock while nobody is looking, and catches up when they are', () => {
@@ -2183,6 +2263,28 @@ describe('navigating away and back cannot buy a second session of the day', () =
       id: CAREER_TUNING.DEFAULT_FEDERATION_ID,
       chosen: true,
     });
+  });
+
+  it('the Career SCREEN is wired to that port, through the cache machinery, not around it', () => {
+    // The port identity above proves the connection is one object; this pins
+    // that the screen a player reaches actually drives it. `useCareer`
+    // sequences pure transitions from `careerSurface.ts` —
+    // `cacheWithChoicePending` (the optimistic park), the port call, and
+    // `cacheAfterChoiceResponse` (the settle) — and the screen draws the
+    // refusal the server sent, verbatim, off the loop.
+    expect(SHELL).toMatch(/serverPort=\{appCareerPort\(\)\}/);
+    const careerScreen = codeOnly(source('src/meet/CareerScreen.tsx'));
+    expect(careerScreen).toMatch(/useCareer\(serverPort, active\)/);
+    expect(careerScreen).toMatch(/\{loop\.refusal\}/);
+    expect(careerScreen).toMatch(/loop\.choose\(option\.id\)/);
+    const useCareerCode = codeOnly(source('src/meet/useCareer.ts'));
+    expect(useCareerCode).toMatch(/cacheWithChoicePending\(cacheRef\.current, proposal, proposalId\)/);
+    expect(useCareerCode).toMatch(/port\.chooseFederation\(proposal, proposalId\)/);
+    expect(useCareerCode).toMatch(/cacheAfterChoiceResponse\(current, proposalId, response, port\.openingSnapshot\(\)\)/);
+    expect(useCareerCode).toMatch(/setRefusal\(refusalSentence\(response\)\)/);
+    // The hook builds no port of its own: the one connection arrives from the
+    // shell, so the lifter who chooses is the lifter who trains and competes.
+    expect(useCareerCode).not.toMatch(/localSessionServer/);
   });
 
   it('a meet recorded through it is visible to the session half, on one row [a-meet-total-reaches-the-session-half]', async () => {

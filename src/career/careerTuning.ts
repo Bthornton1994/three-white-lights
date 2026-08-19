@@ -571,4 +571,69 @@ export const CAREER_COPY = Object.freeze({
 
   /** The open-tier line, for a lifter with no total yet. */
   NO_QUALIFYING_TOTAL_NEEDED: 'Open entry — no qualifying total.',
+
+  /**
+   * GDD §2.1's choosing screen (Sprint 1b). None of it has been read by a
+   * player. The lead names the one fact the choice actually binds — results
+   * stay on the calendar they were lifted on, which is `careerServer.ts`'s
+   * FEDERATION_LOCKED_BY_RESULTS refusal read forwards — and promises nothing
+   * about region or sync play, because neither is built.
+   */
+  CHOOSE_TITLE: 'PICK A FEDERATION',
+  CHOOSE_LEAD:
+    'One pick, at the start of a career. A federation is a ruleset and a calendar, and results stay on the calendar they were lifted on.',
+  /** Under the cards while a `choose-federation` request is in flight. */
+  CHOOSE_PENDING: 'CONFIRMING',
+
+  /**
+   * GDD §6.1's calendar screen (Sprint 1b). One row per rung of the ladder —
+   * the soonest upcoming meet of each tier, with the server's verdict on it.
+   */
+  CALENDAR_TITLE: 'CAREER CALENDAR',
+  CALENDAR_LEAD: 'The next meet at every rung of the ladder, with today’s verdict on each.',
+  /** The badge on a meet `entryVerdict` answered `open` for. */
+  OPEN_ENTRY_BADGE: 'OPEN',
+  /** Before a meet's qualifying figure, which is the meet's own datum. */
+  QUALIFYING_LABEL: 'QUALIFYING TOTAL',
+
+  /**
+   * GDD §10.0's beta scope, on the one tier it locks: competitive worlds is
+   * drawn — the visible harder ceiling — and never enterable, whatever the
+   * verdict says about the lifter's strength. See `CAREER_BETA.LOCKED_TIERS`.
+   * The line deliberately says "after the campaign" rather than naming a beta,
+   * because the campaign summit is the thing the player can actually strive
+   * toward today.
+   */
+  CEILING_LOCKED_BADGE: 'LOCKED',
+  CEILING_LOCKED_LINE: 'The competitive summit. Live fields against other lifters come after the campaign.',
+
+  /**
+   * GDD §6.5's recap career lines (Sprint 1b), drawn from
+   * `RecordedMeet.career` — the server's own `CareerMeetOutcome` — and from
+   * nothing computed on the client.
+   */
+  RECAP_CAREER_BEST_LABEL: 'CAREER BEST',
+  RECAP_QUALIFIED_PREFIX: 'QUALIFIES FOR',
+});
+
+// ---------------------------------------------------------------------------
+// GDD §10.0 — the beta scope, as data a screen reads
+// ---------------------------------------------------------------------------
+
+/**
+ * The tiers the beta draws locked: visible on the calendar, never enterable,
+ * no sync UI behind them. GDD §10.0, ruled 2026-08-19: "Synchronous PvP
+ * (regional / nationals / competitive worlds with real players) is post-beta;
+ * competitive worlds appears as the visible, locked harder ceiling."
+ *
+ * ONE MEMBER, NOT THREE, and the reading is deliberate: §10.0's beta runs "the
+ * full career ladder against NPC fields, through the campaign worlds summit",
+ * so regional and nationals are played as campaign meets against NPCs and only
+ * the competitive summit — the tier above the campaign's own — is the locked
+ * ceiling. This is presentation scope, not eligibility: `entryVerdict` still
+ * answers for the tier, and a screen draws the lock over whatever it says,
+ * so un-locking post-beta is deleting a row here and nothing else.
+ */
+export const CAREER_BETA = Object.freeze({
+  LOCKED_TIERS: Object.freeze(['competitive-worlds']) satisfies readonly CareerMeetTier[],
 });

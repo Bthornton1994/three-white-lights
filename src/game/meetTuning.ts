@@ -1635,6 +1635,21 @@ export const MEET_LAYOUT = Object.freeze({
 
   DIVIDER_HEIGHT: 1,
 
+  /**
+   * The Career surface (Sprint 1b): the GDD §2.1 chooser's cards and the §6.1
+   * calendar's rows. Feel starting points like everything here — nobody has
+   * played them. `CAREER_FOOT_CLEARANCE` keeps the calendar's last row clear
+   * of the shell's bottom pill band (`SHELL_LAYOUT.NAV_BOTTOM_INSET` plus the
+   * pill's height plus its hit slop is about 110 on the shipped chrome); the
+   * disjointness is measured on rendered pixels in
+   * `tools/verify-shell-route.mjs`, so a playtester who shrinks this finds out
+   * by name rather than by overlap.
+   */
+  CAREER_PAD_TOP: 64,
+  CAREER_ROW_PAD_V: 12,
+  CAREER_ROW_GAP: 12,
+  CAREER_FOOT_CLEARANCE: 120,
+
   // THE WALKOUT'S BAR GRAPHIC USED TO BE HERE, and it is gone rather than
   // unused. `BAR_W / BAR_H / PLATE_W / PLATE_GAP / PLATE_MAX_H / PLATE_MIN_H`
   // sized a barbell drawn out of `Animated.View`s with `backgroundColor`,
