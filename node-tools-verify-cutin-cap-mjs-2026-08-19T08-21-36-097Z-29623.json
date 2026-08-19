@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "node-tools-verify-cutin-cap-mjs-2026-08-19T08-21-36-097Z-29623",
   "label": null,
   "command": [
@@ -48,14 +48,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 4,
-    "okCount": 3,
+    "count": 5,
+    "okCount": 4,
     "errors": [],
-    "lastAttemptIso": "2026-08-19T08:24:36.225Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-19T08:25:02.809Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-19T08:23:39.067Z"
-  }
+    "lastOkIso": "2026-08-19T08:24:39.110Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-19T08:25:02.808Z",
+  "elapsedSeconds": 206.7
 }
