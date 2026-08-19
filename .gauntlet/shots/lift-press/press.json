@@ -1,17 +1,31 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-19T02:58:51.178Z",
+    "capturedAt": "2026-08-19T05:39:17.422Z",
     "url": "http://localhost:8081",
-    "commit": "d0dc774",
-    "branch": "claude/career-wiring",
+    "commit": "2cfeb2b",
+    "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [
-      "M .gauntlet/shots/cutin-cap/cap.json",
-      " M .gauntlet/shots/meet/sound.json",
+      "M .gauntlet/shots/shell/01-session-with-nav.png",
+      " M .gauntlet/shots/shell/04-recap-with-way-back.png",
       " M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+      " M .gauntlet/shots/shell/05-back-on-the-session.png",
+      " M .gauntlet/shots/shell/05a-check-in-after-a-played-meet.png",
+      " M .gauntlet/shots/shell/05b-check-in-after-the-second-meet.png",
+      " M .gauntlet/shots/shell/07-close-out-with-nav.png",
       " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+      " M .gauntlet/shots/shell/10-already-trained-keeps-the-way-out.png",
+      " M .gauntlet/shots/shell/12-openers-follow-the-session.png",
       " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
-      " M .gauntlet/shots/shell/route.json"
+      " M .gauntlet/shots/shell/14-return-leg-already-trained.png",
+      " M .gauntlet/shots/shell/16-empire-round-trip-closed.png",
+      " M .gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
+      " M .gauntlet/shots/shell/18-briefing-round-trip-lands-back-on-the-briefing.png",
+      " M .gauntlet/shots/shell/route.json",
+      "?? .gauntlet/shots/shell/20-career-chooser-from-session.png",
+      "?? .gauntlet/shots/shell/21-career-calendar-chosen.png",
+      "?? .gauntlet/shots/shell/22-career-round-trip-closed.png",
+      "?? .gauntlet/shots/shell/23-career-chooser-refusal.png"
     ],
     "instrument": {
       "verify-lift-press.mjs": "54fad6f5b8d6acd3",

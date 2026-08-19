@@ -1,15 +1,32 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-19T02:53:37.376Z",
+    "capturedAt": "2026-08-19T05:41:31.554Z",
     "url": "http://localhost:8081",
-    "commit": "d0dc774",
-    "branch": "claude/career-wiring",
+    "commit": "2cfeb2b",
+    "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [
-      "M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+      "M .gauntlet/shots/lift-press/press.json",
+      " M .gauntlet/shots/shell/01-session-with-nav.png",
+      " M .gauntlet/shots/shell/04-recap-with-way-back.png",
+      " M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+      " M .gauntlet/shots/shell/05-back-on-the-session.png",
+      " M .gauntlet/shots/shell/05a-check-in-after-a-played-meet.png",
+      " M .gauntlet/shots/shell/05b-check-in-after-the-second-meet.png",
+      " M .gauntlet/shots/shell/07-close-out-with-nav.png",
       " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+      " M .gauntlet/shots/shell/10-already-trained-keeps-the-way-out.png",
+      " M .gauntlet/shots/shell/12-openers-follow-the-session.png",
       " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
-      " M .gauntlet/shots/shell/route.json"
+      " M .gauntlet/shots/shell/14-return-leg-already-trained.png",
+      " M .gauntlet/shots/shell/16-empire-round-trip-closed.png",
+      " M .gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
+      " M .gauntlet/shots/shell/18-briefing-round-trip-lands-back-on-the-briefing.png",
+      " M .gauntlet/shots/shell/route.json",
+      "?? .gauntlet/shots/shell/20-career-chooser-from-session.png",
+      "?? .gauntlet/shots/shell/21-career-calendar-chosen.png",
+      "?? .gauntlet/shots/shell/22-career-round-trip-closed.png",
+      "?? .gauntlet/shots/shell/23-career-chooser-refusal.png"
     ],
     "instrument": {
       "verify-cutin-cap.mjs": "06ba0745a029941b",
@@ -36,28 +53,28 @@
           "played": true,
           "intent": "make",
           "holdMs": 1000,
-          "feedback": "You hit depth by a hair."
+          "feedback": "High. The hips never got under."
         },
         {
           "attempt": "SQUAT · ATTEMPT 2 OF 3",
           "played": true,
           "intent": "make",
-          "holdMs": 1000,
+          "holdMs": 1180,
           "feedback": "You hit depth by a hair."
         },
         {
           "attempt": "SQUAT · ATTEMPT 3 OF 3",
           "played": true,
           "intent": "make",
-          "holdMs": 1000,
-          "feedback": "High. The hips never got under."
+          "holdMs": 1180,
+          "feedback": "Depth was never in question."
         },
         {
           "attempt": "BENCH · ATTEMPT 1 OF 3",
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "You hit depth by a hair."
+          "feedback": "Depth was never in question."
         },
         {
           "attempt": "BENCH · ATTEMPT 2 OF 3",
@@ -71,7 +88,7 @@
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "Depth was never in question."
+          "feedback": "You hit depth by a hair."
         },
         {
           "attempt": "DEADLIFT · ATTEMPT 1 OF 3",
@@ -85,17 +102,17 @@
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "Depth was never in question."
+          "feedback": "You hit depth by a hair."
         },
         {
           "attempt": "DEADLIFT · ATTEMPT 3 OF 3",
           "played": true,
           "intent": "make",
           "holdMs": 1180,
-          "feedback": "You hit depth by a hair."
+          "feedback": "Depth was never in question."
         }
       ],
-      "ms": 98379,
+      "ms": 96367,
       "stuckBecause": null
     },
     {
@@ -126,7 +143,7 @@
           "feedback": "Too deep to recover."
         }
       ],
-      "ms": 56454,
+      "ms": 55896,
       "stuckBecause": null
     },
     {
@@ -157,29 +174,29 @@
           "feedback": "Too deep to recover."
         }
       ],
-      "ms": 56168,
+      "ms": 55945,
       "stuckBecause": null
     }
   ],
   "cutIns": [
     {
-      "leg": 2,
-      "at": 158353,
-      "line": "THAT IS THE MEET",
+      "leg": 1,
+      "at": 22881,
+      "line": "LAST ONE",
       "hint": "TAP TO SKIP",
       "over": [
-        "meet-bombed"
+        "meet-walkout"
       ],
       "search": "",
-      "goneAt": 160095
+      "goneAt": 24621
     }
   ],
   "gateDecisions": [
     {
       "seq": 0,
       "leg": 1,
-      "at": 1558,
-      "sessionId": "meet-20683",
+      "at": 1364,
+      "sessionId": "meet-20684",
       "beatKinds": [
         "meet-walkout"
       ],
@@ -193,8 +210,8 @@
     {
       "seq": 1,
       "leg": 1,
-      "at": 12185,
-      "sessionId": "meet-20683",
+      "at": 11894,
+      "sessionId": "meet-20684",
       "beatKinds": [
         "meet-walkout"
       ],
@@ -208,189 +225,189 @@
     {
       "seq": 2,
       "leg": 1,
-      "at": 22836,
-      "sessionId": "meet-20683",
+      "at": 22881,
+      "sessionId": "meet-20684",
       "beatKinds": [
         "meet-walkout"
-      ],
-      "outcome": "refused",
-      "moment": "third-attempt-walkout",
-      "refusal": "held-back-for-scarcity",
-      "firedCountBefore": 0,
-      "firedCountAfter": 0,
-      "search": ""
-    },
-    {
-      "seq": 3,
-      "leg": 1,
-      "at": 34927,
-      "sessionId": "meet-20683",
-      "beatKinds": [
-        "meet-walkout"
-      ],
-      "outcome": "refused",
-      "moment": null,
-      "refusal": "no-qualifying-moment",
-      "firedCountBefore": 0,
-      "firedCountAfter": 0,
-      "search": ""
-    },
-    {
-      "seq": 4,
-      "leg": 1,
-      "at": 46095,
-      "sessionId": "meet-20683",
-      "beatKinds": [
-        "meet-walkout"
-      ],
-      "outcome": "refused",
-      "moment": null,
-      "refusal": "no-qualifying-moment",
-      "firedCountBefore": 0,
-      "firedCountAfter": 0,
-      "search": ""
-    },
-    {
-      "seq": 5,
-      "leg": 1,
-      "at": 55439,
-      "sessionId": "meet-20683",
-      "beatKinds": [
-        "meet-walkout"
-      ],
-      "outcome": "refused",
-      "moment": "third-attempt-walkout",
-      "refusal": "held-back-for-scarcity",
-      "firedCountBefore": 0,
-      "firedCountAfter": 0,
-      "search": ""
-    },
-    {
-      "seq": 6,
-      "leg": 1,
-      "at": 66188,
-      "sessionId": "meet-20683",
-      "beatKinds": [
-        "meet-walkout"
-      ],
-      "outcome": "refused",
-      "moment": null,
-      "refusal": "no-qualifying-moment",
-      "firedCountBefore": 0,
-      "firedCountAfter": 0,
-      "search": ""
-    },
-    {
-      "seq": 7,
-      "leg": 1,
-      "at": 77238,
-      "sessionId": "meet-20683",
-      "beatKinds": [
-        "meet-walkout"
-      ],
-      "outcome": "refused",
-      "moment": null,
-      "refusal": "no-qualifying-moment",
-      "firedCountBefore": 0,
-      "firedCountAfter": 0,
-      "search": ""
-    },
-    {
-      "seq": 8,
-      "leg": 1,
-      "at": 86823,
-      "sessionId": "meet-20683",
-      "beatKinds": [
-        "meet-walkout"
-      ],
-      "outcome": "refused",
-      "moment": "third-attempt-walkout",
-      "refusal": "held-back-for-scarcity",
-      "firedCountBefore": 0,
-      "firedCountAfter": 0,
-      "search": ""
-    },
-    {
-      "seq": 9,
-      "leg": 1,
-      "at": 99546,
-      "sessionId": "meet-20683",
-      "beatKinds": [
-        "record",
-        "record"
-      ],
-      "outcome": "refused",
-      "moment": "personal-record",
-      "refusal": "held-back-for-scarcity",
-      "firedCountBefore": 0,
-      "firedCountAfter": 0,
-      "search": ""
-    },
-    {
-      "seq": 10,
-      "leg": 2,
-      "at": 102390,
-      "sessionId": "meet-20683",
-      "beatKinds": [
-        "meet-walkout"
-      ],
-      "outcome": "refused",
-      "moment": null,
-      "refusal": "no-qualifying-moment",
-      "firedCountBefore": 0,
-      "firedCountAfter": 0,
-      "search": ""
-    },
-    {
-      "seq": 11,
-      "leg": 2,
-      "at": 120232,
-      "sessionId": "meet-20683",
-      "beatKinds": [
-        "meet-walkout"
-      ],
-      "outcome": "refused",
-      "moment": null,
-      "refusal": "no-qualifying-moment",
-      "firedCountBefore": 0,
-      "firedCountAfter": 0,
-      "search": ""
-    },
-    {
-      "seq": 12,
-      "leg": 2,
-      "at": 138033,
-      "sessionId": "meet-20683",
-      "beatKinds": [
-        "meet-walkout"
-      ],
-      "outcome": "refused",
-      "moment": null,
-      "refusal": "no-qualifying-moment",
-      "firedCountBefore": 0,
-      "firedCountAfter": 0,
-      "search": ""
-    },
-    {
-      "seq": 13,
-      "leg": 2,
-      "at": 158354,
-      "sessionId": "meet-20683",
-      "beatKinds": [
-        "meet-over"
       ],
       "outcome": "fire",
-      "moment": "bomb-out",
+      "moment": "third-attempt-walkout",
       "refusal": null,
       "firedCountBefore": 0,
       "firedCountAfter": 1,
       "search": ""
     },
     {
+      "seq": 3,
+      "leg": 1,
+      "at": 33410,
+      "sessionId": "meet-20684",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 4,
+      "leg": 1,
+      "at": 42756,
+      "sessionId": "meet-20684",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 5,
+      "leg": 1,
+      "at": 52061,
+      "sessionId": "meet-20684",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": "third-attempt-walkout",
+      "refusal": "session-cap-reached",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 6,
+      "leg": 1,
+      "at": 64194,
+      "sessionId": "meet-20684",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 7,
+      "leg": 1,
+      "at": 75286,
+      "sessionId": "meet-20684",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 8,
+      "leg": 1,
+      "at": 86328,
+      "sessionId": "meet-20684",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": "third-attempt-walkout",
+      "refusal": "session-cap-reached",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 9,
+      "leg": 1,
+      "at": 97458,
+      "sessionId": "meet-20684",
+      "beatKinds": [
+        "record",
+        "record"
+      ],
+      "outcome": "refused",
+      "moment": "personal-record",
+      "refusal": "session-cap-reached",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 10,
+      "leg": 2,
+      "at": 100265,
+      "sessionId": "meet-20684",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 11,
+      "leg": 2,
+      "at": 117979,
+      "sessionId": "meet-20684",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 12,
+      "leg": 2,
+      "at": 135697,
+      "sessionId": "meet-20684",
+      "beatKinds": [
+        "meet-walkout"
+      ],
+      "outcome": "refused",
+      "moment": null,
+      "refusal": "no-qualifying-moment",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
+      "seq": 13,
+      "leg": 2,
+      "at": 155955,
+      "sessionId": "meet-20684",
+      "beatKinds": [
+        "meet-over"
+      ],
+      "outcome": "refused",
+      "moment": "bomb-out",
+      "refusal": "session-cap-reached",
+      "firedCountBefore": 1,
+      "firedCountAfter": 1,
+      "search": ""
+    },
+    {
       "seq": 14,
       "leg": 3,
-      "at": 164452,
-      "sessionId": "meet-20683",
+      "at": 161784,
+      "sessionId": "meet-20684",
       "beatKinds": [
         "meet-walkout"
       ],
@@ -404,8 +421,8 @@
     {
       "seq": 15,
       "leg": 3,
-      "at": 182268,
-      "sessionId": "meet-20683",
+      "at": 179554,
+      "sessionId": "meet-20684",
       "beatKinds": [
         "meet-walkout"
       ],
@@ -419,8 +436,8 @@
     {
       "seq": 16,
       "leg": 3,
-      "at": 200051,
-      "sessionId": "meet-20683",
+      "at": 197216,
+      "sessionId": "meet-20684",
       "beatKinds": [
         "meet-walkout"
       ],
@@ -434,8 +451,8 @@
     {
       "seq": 17,
       "leg": 3,
-      "at": 220378,
-      "sessionId": "meet-20683",
+      "at": 217504,
+      "sessionId": "meet-20684",
       "beatKinds": [
         "meet-over"
       ],
@@ -454,15 +471,15 @@
   },
   "cutInFrames": [
     {
-      "file": "cut-in-leg-2.png",
-      "leg": 2,
+      "file": "cut-in-leg-1.png",
+      "leg": 1,
       "artOpacity": 1,
       "lineOpacity": 1,
       "afterEnterMs": 120
     }
   ],
-  "recorderPolls": 11085,
-  "recorderWorstGapMs": 295,
+  "recorderPolls": 13059,
+  "recorderWorstGapMs": 302,
   "browserMutationWitnesses": [
     {
       "subject": "src/meet/BombOutView.tsx",
@@ -518,7 +535,7 @@
     {
       "ok": true,
       "what": "the app opens on GDD §3.2's daily session with no query string",
-      "detail": "search=\"\" after 834ms"
+      "detail": "search=\"\" after 801ms"
     },
     {
       "ok": true,
@@ -533,12 +550,12 @@
     {
       "ok": true,
       "what": "leg 1: the 'recap' screen is DRAWN, not merely mounted, before the shutter",
-      "detail": "probed recap-action: effective opacity 0.996 after 1240ms (4 x RECAP_ROW_STAGGER_MS + RECAP_ROW_FADE_MS, read from meetTuning.ts)"
+      "detail": "probed recap-action: effective opacity 0.995 after 1240ms (4 x RECAP_ROW_STAGGER_MS + RECAP_ROW_FADE_MS, read from meetTuning.ts)"
     },
     {
       "ok": true,
       "what": "leg 1: the meet surface really went away — CutInHost un-mounted",
-      "detail": "back on the check-in after 2ms, meet-screen present: false"
+      "detail": "back on the check-in after 1ms, meet-screen present: false"
     },
     {
       "ok": true,
@@ -553,7 +570,7 @@
     {
       "ok": true,
       "what": "leg 2: the meet surface really went away — CutInHost un-mounted",
-      "detail": "back on the check-in after 2ms, meet-screen present: false"
+      "detail": "back on the check-in after 1ms, meet-screen present: false"
     },
     {
       "ok": true,
@@ -568,7 +585,7 @@
     {
       "ok": true,
       "what": "CONTROL: the in-page recorder ran at all",
-      "detail": "11085 polls at a nominal 16ms, worst gap 295ms against a whole beat of 1720ms; without this, \"no second cut-in\" is what a dead instrument reports — and a single stall longer than one beat hides a whole cut-in while every other line stays green"
+      "detail": "13059 polls at a nominal 16ms, worst gap 302ms against a whole beat of 1720ms; without this, \"no second cut-in\" is what a dead instrument reports — and a single stall longer than one beat hides a whole cut-in while every other line stays green"
     },
     {
       "ok": true,
@@ -618,17 +635,17 @@
     {
       "ok": true,
       "what": "GDD §12.3: THE REFUSAL — every bomb-out beat that did not take the slot was refused for 'session-cap-reached'",
-      "detail": "1 refused by the CAP, 1 fired, against 2 asked. Reasons in order: [\"FIRED:bomb-out\",\"session-cap-reached\"]. Not 'held-back-for-scarcity' — that is §7.2's soft rate and SESSION_ALLOWANCE['bomb-out'] is 1 — and not 'no-qualifying-moment', which would mean the beat never qualified. Nothing asked at all gives 0 against a want of 2, which is red."
+      "detail": "2 refused by the CAP, 0 fired, against 2 asked. Reasons in order: [\"session-cap-reached\",\"session-cap-reached\"]. Not 'held-back-for-scarcity' — that is §7.2's soft rate and SESSION_ALLOWANCE['bomb-out'] is 1 — and not 'no-qualifying-moment', which would mean the beat never qualified. Nothing asked at all gives 0 against a want of 2, which is red."
     },
     {
       "ok": true,
       "what": "GDD §12.3: THE GRANT — the gate granted exactly 1 cut-in across the whole sitting",
-      "detail": "1 grant(s): [\"leg 2 bomb-out (count 0->1)\"]. Every other decision was a refusal: [\"no-qualifying-moment\",\"held-back-for-scarcity\",\"session-cap-reached\"] over 17 of them."
+      "detail": "1 grant(s): [\"leg 1 third-attempt-walkout (count 0->1)\"]. Every other decision was a refusal: [\"no-qualifying-moment\",\"session-cap-reached\"] over 17 of them."
     },
     {
       "ok": true,
       "what": "GDD §7.2 / §12.3: ONE SITTING, ONE CUT-IN — 3 legs of one meet-day sitting fired exactly 1",
-      "detail": "leg 2 @158353ms \"THAT IS THE MEET\" over meet-bombed gone at 160095ms after 1742ms"
+      "detail": "leg 1 @22881ms \"LAST ONE\" over meet-walkout gone at 24621ms after 1740ms"
     },
     {
       "ok": true,
@@ -638,12 +655,12 @@
     {
       "ok": true,
       "what": "GDD §7.2: every overlay was up for ONE whole beat — not two reconciled into one, and none left on screen",
-      "detail": "spans [1742]ms against ENTER_MS + HOLD_MS = 1720ms (+400ms slack, so the threshold is 2120ms against a merged pair's ~3440ms); 0 over the threshold, 0 still up when the run ended"
+      "detail": "spans [1740]ms against ENTER_MS + HOLD_MS = 1720ms (+400ms slack, so the threshold is 2120ms against a merged pair's ~3440ms); 0 over the threshold, 0 still up when the run ended"
     },
     {
       "ok": true,
       "what": "GDD §7.2: the cut-in was PHOTOGRAPHED — 1 frame, with its art AND its line drawn rather than merely mounted",
-      "detail": "cut-in-leg-2.png (leg 2): cut-in-art effective opacity 1.000, cut-in-line 1.000, taken 120ms after the overlay appeared (ENTER_MS, read from cutInTuning.ts) — floor 0.9"
+      "detail": "cut-in-leg-1.png (leg 1): cut-in-art effective opacity 1.000, cut-in-line 1.000, taken 120ms after the overlay appeared (ENTER_MS, read from cutInTuning.ts) — floor 0.9"
     }
   ],
   "failures": [],

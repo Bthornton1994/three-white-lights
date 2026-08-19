@@ -1,19 +1,37 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-19T03:01:10.003Z",
+    "capturedAt": "2026-08-19T05:46:42.166Z",
     "url": "http://localhost:8081",
-    "sourceRoot": "/home/user/wt-career-wiring",
-    "commit": "d0dc774",
-    "branch": "claude/career-wiring",
+    "sourceRoot": "/home/user/three-white-lights",
+    "commit": "2cfeb2b",
+    "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [
       "M .gauntlet/shots/cutin-cap/cap.json",
+      " M .gauntlet/shots/cutin-cap/cut-in-leg-1.png",
+      " M .gauntlet/shots/cutin-cap/leg-1-recap.png",
       " M .gauntlet/shots/lift-press/press.json",
       " M .gauntlet/shots/meet/sound.json",
+      " M .gauntlet/shots/shell/01-session-with-nav.png",
+      " M .gauntlet/shots/shell/04-recap-with-way-back.png",
       " M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+      " M .gauntlet/shots/shell/05-back-on-the-session.png",
+      " M .gauntlet/shots/shell/05a-check-in-after-a-played-meet.png",
+      " M .gauntlet/shots/shell/05b-check-in-after-the-second-meet.png",
+      " M .gauntlet/shots/shell/07-close-out-with-nav.png",
       " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+      " M .gauntlet/shots/shell/10-already-trained-keeps-the-way-out.png",
+      " M .gauntlet/shots/shell/12-openers-follow-the-session.png",
       " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
-      " M .gauntlet/shots/shell/route.json"
+      " M .gauntlet/shots/shell/14-return-leg-already-trained.png",
+      " M .gauntlet/shots/shell/16-empire-round-trip-closed.png",
+      " M .gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
+      " M .gauntlet/shots/shell/18-briefing-round-trip-lands-back-on-the-briefing.png",
+      " M .gauntlet/shots/shell/route.json",
+      "?? .gauntlet/shots/shell/20-career-chooser-from-session.png",
+      "?? .gauntlet/shots/shell/21-career-calendar-chosen.png",
+      "?? .gauntlet/shots/shell/22-career-round-trip-closed.png",
+      "?? .gauntlet/shots/shell/23-career-chooser-refusal.png"
     ],
     "instrument": {
       "capture-cutin.mjs": "1221ee93213d41d1",
@@ -23,7 +41,7 @@
   "frames": [
     {
       "moment": "third-attempt-walkout",
-      "file": "/home/user/wt-career-wiring/.gauntlet/shots/cutin/third-attempt-walkout.png",
+      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/third-attempt-walkout.png",
       "name": "third-attempt-walkout.png",
       "expectedLine": "LAST ONE",
       "seen": {
@@ -64,14 +82,14 @@
       },
       "scrim": {
         "blended": 58892,
-        "opaqueBackdrop": 35182,
-        "untouched": 843906
+        "opaqueBackdrop": 49239,
+        "untouched": 829849
       },
       "pixelHash": 3627325843
     },
     {
       "moment": "personal-record",
-      "file": "/home/user/wt-career-wiring/.gauntlet/shots/cutin/personal-record.png",
+      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/personal-record.png",
       "name": "personal-record.png",
       "expectedLine": "NOBODY HAS SEEN YOU DO THIS",
       "seen": {
@@ -112,14 +130,14 @@
       },
       "scrim": {
         "blended": 13095,
-        "opaqueBackdrop": 35242,
-        "untouched": 831767
+        "opaqueBackdrop": 49299,
+        "untouched": 817710
       },
       "pixelHash": 3462249653
     },
     {
       "moment": "bomb-out",
-      "file": "/home/user/wt-career-wiring/.gauntlet/shots/cutin/bomb-out.png",
+      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/bomb-out.png",
       "name": "bomb-out.png",
       "expectedLine": "THAT IS THE MEET",
       "seen": {
@@ -160,14 +178,14 @@
       },
       "scrim": {
         "blended": 47920,
-        "opaqueBackdrop": 35182,
-        "untouched": 843854
+        "opaqueBackdrop": 49239,
+        "untouched": 829797
       },
       "pixelHash": 345416966
     },
     {
       "moment": "coach-heavy-set",
-      "file": "/home/user/wt-career-wiring/.gauntlet/shots/cutin/coach-heavy-set.png",
+      "file": "/home/user/three-white-lights/.gauntlet/shots/cutin/coach-heavy-set.png",
       "name": "coach-heavy-set.png",
       "expectedLine": "THAT MOVED",
       "seen": {
@@ -208,8 +226,8 @@
       },
       "scrim": {
         "blended": 55148,
-        "opaqueBackdrop": 35182,
-        "untouched": 843854
+        "opaqueBackdrop": 49239,
+        "untouched": 829797
       },
       "pixelHash": 509932265
     }
@@ -238,15 +256,15 @@
     }
   ],
   "leavesOnItsOwn": {
-    "stillUpAt": 701,
+    "stillUpAt": 702,
     "stillUp": true,
-    "goneAt": 1561,
+    "goneAt": 1566,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 16,
-    "goneAt": 25,
-    "dismissTookMs": 9,
+    "tappedAt": 12,
+    "goneAt": 23,
+    "dismissTookMs": 11,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
