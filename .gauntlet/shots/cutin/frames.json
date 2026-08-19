@@ -1,43 +1,20 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-19T08:47:51.803Z",
+    "capturedAt": "2026-08-19T16:03:55.784Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/home/user/three-white-lights",
-    "commit": "4cf4fff",
+    "commit": "9cdbed1",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [
-      "M .gauntlet/shots/cutin-cap/cap.json",
-      " M .gauntlet/shots/cutin-cap/cut-in-leg-1.png",
-      " M .gauntlet/shots/cutin-cap/leg-1-recap.png",
-      " M .gauntlet/shots/cutin/baseline-no-cutin.png",
-      " M .gauntlet/shots/cutin/debug-meet-walkout-third.png",
-      " M .gauntlet/shots/cutin/frames.json",
-      " M .gauntlet/shots/lift-press/press.json",
-      " M .gauntlet/shots/meet/sound.json",
-      " M .gauntlet/shots/shell/01-session-with-nav.png",
-      " M .gauntlet/shots/shell/02-meet-from-session.png",
-      " M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
-      " M .gauntlet/shots/shell/05-back-on-the-session.png",
-      " M .gauntlet/shots/shell/05a-check-in-after-a-played-meet.png",
-      " M .gauntlet/shots/shell/05b-check-in-after-the-second-meet.png",
-      " M .gauntlet/shots/shell/07-close-out-with-nav.png",
-      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
-      " M .gauntlet/shots/shell/10-already-trained-keeps-the-way-out.png",
-      " M .gauntlet/shots/shell/11-already-trained-reaches-meet.png",
-      " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
-      " M .gauntlet/shots/shell/14-return-leg-already-trained.png",
-      " M .gauntlet/shots/shell/16-empire-round-trip-closed.png",
-      " M .gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
-      " M .gauntlet/shots/shell/18-briefing-round-trip-lands-back-on-the-briefing.png",
-      " M .gauntlet/shots/shell/21-career-calendar-chosen.png",
-      " M .gauntlet/shots/shell/22-career-round-trip-closed.png",
-      " M .gauntlet/shots/shell/route.json",
-      "?? .gauntlet/shots/shell/04b-second-meet-real-recap.png",
-      "?? .gauntlet/shots/shell/24-calendar-after-a-banked-meet.png"
+      "M .gauntlet/evidence/suite.txt",
+      " D .gauntlet/shots/cutin/debug-meet-bombed.png",
+      " D .gauntlet/shots/cutin/debug-meet-walkout-third.png",
+      " D .gauntlet/shots/cutin/frames.json",
+      " D .gauntlet/shots/cutin/live-after-tap.png"
     ],
     "instrument": {
-      "capture-cutin.mjs": "b4d375745aeaf8a2",
+      "capture-cutin.mjs": "367c7225d1e82841",
       "png.mjs": "6356a0d0b0dcb696"
     }
   },
@@ -261,7 +238,7 @@
   "leavesOnItsOwn": {
     "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 1567,
+    "goneAt": 1571,
     "behind": true
   },
   "tapDismissed": {
