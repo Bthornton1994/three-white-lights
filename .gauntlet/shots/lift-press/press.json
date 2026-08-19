@@ -1,13 +1,21 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-19T05:39:17.422Z",
+    "capturedAt": "2026-08-19T08:48:58.811Z",
     "url": "http://localhost:8081",
-    "commit": "2cfeb2b",
+    "commit": "4cf4fff",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [
-      "M .gauntlet/shots/shell/01-session-with-nav.png",
-      " M .gauntlet/shots/shell/04-recap-with-way-back.png",
+      "M .gauntlet/shots/cutin-cap/cap.json",
+      " M .gauntlet/shots/cutin-cap/cut-in-leg-1.png",
+      " M .gauntlet/shots/cutin-cap/leg-1-recap.png",
+      " M .gauntlet/shots/cutin/baseline-no-cutin.png",
+      " M .gauntlet/shots/cutin/debug-meet-walkout-third.png",
+      " M .gauntlet/shots/cutin/frames.json",
+      " M .gauntlet/shots/lift-press/press.json",
+      " M .gauntlet/shots/meet/sound.json",
+      " M .gauntlet/shots/shell/01-session-with-nav.png",
+      " M .gauntlet/shots/shell/02-meet-from-session.png",
       " M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
       " M .gauntlet/shots/shell/05-back-on-the-session.png",
       " M .gauntlet/shots/shell/05a-check-in-after-a-played-meet.png",
@@ -15,22 +23,23 @@
       " M .gauntlet/shots/shell/07-close-out-with-nav.png",
       " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
       " M .gauntlet/shots/shell/10-already-trained-keeps-the-way-out.png",
-      " M .gauntlet/shots/shell/12-openers-follow-the-session.png",
+      " M .gauntlet/shots/shell/11-already-trained-reaches-meet.png",
       " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
       " M .gauntlet/shots/shell/14-return-leg-already-trained.png",
       " M .gauntlet/shots/shell/16-empire-round-trip-closed.png",
       " M .gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
       " M .gauntlet/shots/shell/18-briefing-round-trip-lands-back-on-the-briefing.png",
+      " M .gauntlet/shots/shell/21-career-calendar-chosen.png",
+      " M .gauntlet/shots/shell/22-career-round-trip-closed.png",
       " M .gauntlet/shots/shell/route.json",
-      "?? .gauntlet/shots/shell/20-career-chooser-from-session.png",
-      "?? .gauntlet/shots/shell/21-career-calendar-chosen.png",
-      "?? .gauntlet/shots/shell/22-career-round-trip-closed.png",
-      "?? .gauntlet/shots/shell/23-career-chooser-refusal.png"
+      "?? .gauntlet/shots/shell/04b-second-meet-real-recap.png",
+      "?? .gauntlet/shots/shell/24-calendar-after-a-banked-meet.png"
     ],
     "instrument": {
-      "verify-lift-press.mjs": "54fad6f5b8d6acd3",
+      "verify-lift-press.mjs": "85f78bed6e856590",
       "sessionDrive.mjs": "2a63eac7a653d32b",
-      "meetDrive.mjs": "ccaa6c4fcf753ecf"
+      "meetDrive.mjs": "9ad796fe39e61305",
+      "enterMeetFromCalendar.mjs": "68394ae0c9c75051"
     }
   },
   "probe": {
@@ -60,7 +69,6 @@
     "DEBUG_REPLAY": "replay=1.0&moment=brace"
   },
   "meetProbe": {
-    "NAV_OPEN_MEET": "shell-open-meet",
     "CHECK_IN": "session-check-in",
     "PILL_MS": 40000,
     "MEET_MS": 40000,
