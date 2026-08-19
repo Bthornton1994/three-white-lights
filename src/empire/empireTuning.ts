@@ -711,6 +711,139 @@ export const EMPIRE_TUNING = Object.freeze({
 
   /** Gym Bucks the visited gym's owner receives per encouragement. */
   ENCOURAGEMENT_REWARD_GYM_BUCKS: 50,
+
+  // -------------------------------------------------------------------------
+  // §5 (v2) stage 1 — the ladder. Read by `ladder.ts` and by nothing else.
+  //
+  // GDD §5.11's first stage: four rungs, one-way relocation, money under the
+  // aggregate offline cap, and one equipment group (Barbell — §5.4's
+  // competition-lift group). The v1 entries above keep their consumers until
+  // the stage that replaces them lands; nothing below is read by a v1 module.
+  //
+  // Stage-1 scope note, so nobody adds the missing §5.4 numbers here early:
+  // member appeal and condition are stages 3-4 and have no consumer yet, so
+  // they are deliberately absent rather than parked as dead knobs.
+  // -------------------------------------------------------------------------
+
+  /**
+   * GDD §5.1's ladder, bottom rung first, verbatim from its table: Garage ->
+   * Storage Unit -> Strip-Mall Unit -> Warehouse.
+   *
+   * Structural: the order is the ladder, exactly as `NPC_TIERS` above. The
+   * ladder is linear and one-way — `ladder.ts` encodes that by holding ONE
+   * rung in state, so two phase-1 locations are unrepresentable rather than
+   * merely unvisited.
+   */
+  LADDER_RUNGS: Object.freeze([
+    'garage',
+    'storage-unit',
+    'strip-mall-unit',
+    'warehouse',
+  ] as const),
+
+  /**
+   * The shown cost of relocating TO each rung above the first, in Gym Bucks.
+   *
+   * Keyed by destination — the garage is where the game opens and is not a
+   * destination, which is why it has no row rather than a zero. Relocation is
+   * a player decision with this cost shown before it is charged (§5.7's rule
+   * applied at stage 1: nothing here moves on elapsed time).
+   */
+  LADDER_MOVE_COST_GYM_BUCKS: Object.freeze({
+    'storage-unit': 2500,
+    'strip-mall-unit': 18000,
+    warehouse: 120000,
+  }),
+
+  /**
+   * Gym Bucks per hour a location produces at each rung, before the offline
+   * model discounts a gap.
+   *
+   * A rate, in the same class as `GYM_BUCKS_BASE_PER_HOUR`. The garage row is
+   * small but positive on purpose: §5.1's table says "No members. Nobody knows
+   * you.", and a literal zero would make the first move unaffordable forever —
+   * read it as the first few informal clients, and treat the magnitude as an
+   * untuned placeholder for the stage gate to judge. `ladder.ts` accrues from
+   * a SUM of these so stage 4's portfolio changes the input, not the
+   * mechanism (GDD §5.10).
+   */
+  LADDER_INCOME_GYM_BUCKS_PER_HOUR: Object.freeze({
+    garage: 60,
+    'storage-unit': 240,
+    'strip-mall-unit': 900,
+    warehouse: 3000,
+  }),
+
+  /**
+   * The three competition lifts, in meet order (GDD §6.2: squat -> bench ->
+   * deadlift). Structural — capability reporting is stated in this order.
+   */
+  LADDER_LIFTS: Object.freeze(['squat', 'bench', 'deadlift'] as const),
+
+  /**
+   * Stage 1's one equipment group: §5.4's Barbell row, as generic nouns. No
+   * manufacturer, no brand, no wordmark — the §12.3 rule, and the same
+   * vocabulary discipline as `EQUIPMENT_TIERS` above.
+   *
+   * Four items and not the whole §5.4 example list, because stage 1 uses cost
+   * and a capability flag only: an item that gates no lift and carries no
+   * member-appeal number yet would be dead content. The monolift and the
+   * platform arrive with the stages that give improvement and appeal meaning.
+   */
+  LADDER_EQUIPMENT_ITEMS: Object.freeze([
+    'power-bar',
+    'comp-plates',
+    'flat-bench',
+    'squat-rack',
+  ] as const),
+
+  /**
+   * What the garage opens with — §5.1's "A bar, some plates, a bench."
+   * Structural; must be a subset of `LADDER_EQUIPMENT_ITEMS`.
+   */
+  LADDER_STARTING_EQUIPMENT: Object.freeze(['power-bar', 'comp-plates', 'flat-bench'] as const),
+
+  /**
+   * Flat price of each item in Gym Bucks. Flat and published, like every price
+   * in this file — no draw, no roll. The three starting items carry prices so
+   * a hand-built state without one prices the buy-back; the rack is the one
+   * stage-1 decision money and capability compete over.
+   */
+  LADDER_EQUIPMENT_COST_GYM_BUCKS: Object.freeze({
+    'power-bar': 350,
+    'comp-plates': 700,
+    'flat-bench': 250,
+    'squat-rack': 1500,
+  }),
+
+  /**
+   * The lowest rung at which each item fits in the space, keyed by item.
+   *
+   * Structural, from §5.1's own feel column: the garage holds a bar, plates
+   * and a bench; "Space for a rack" is the Storage Unit's line, so the rack
+   * needs rung 2. This is what makes moving up a capability decision and not
+   * only an income one.
+   */
+  LADDER_EQUIPMENT_MIN_RUNG: Object.freeze({
+    'power-bar': 'garage',
+    'comp-plates': 'garage',
+    'flat-bench': 'garage',
+    'squat-rack': 'storage-unit',
+  }),
+
+  /**
+   * Which items each competition lift needs before it is available — §5.4's
+   * "capability gates activity", at stage-1 resolution (a flag, not a grade).
+   *
+   * Structural. Squat needs the rack, bench needs the bench, deadlift is bar
+   * and plates off the floor; so a fresh garage benches and deadlifts, and
+   * squats only after the move and the rack — which is the stage-1 tension.
+   */
+  LADDER_LIFT_REQUIREMENTS: Object.freeze({
+    squat: Object.freeze(['power-bar', 'comp-plates', 'squat-rack'] as const),
+    bench: Object.freeze(['power-bar', 'comp-plates', 'flat-bench'] as const),
+    deadlift: Object.freeze(['power-bar', 'comp-plates'] as const),
+  }),
 } satisfies EmpireTuningRecord);
 
 /**
@@ -780,4 +913,14 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   RIVAL_REWARD_GYM_BUCKS: 'knob',
   FRIEND_VISITS_PER_DAY: 'knob',
   ENCOURAGEMENT_REWARD_GYM_BUCKS: 'knob',
+
+  LADDER_RUNGS: 'structural',
+  LADDER_MOVE_COST_GYM_BUCKS: 'knob',
+  LADDER_INCOME_GYM_BUCKS_PER_HOUR: 'knob',
+  LADDER_LIFTS: 'structural',
+  LADDER_EQUIPMENT_ITEMS: 'structural',
+  LADDER_STARTING_EQUIPMENT: 'structural',
+  LADDER_EQUIPMENT_COST_GYM_BUCKS: 'knob',
+  LADDER_EQUIPMENT_MIN_RUNG: 'structural',
+  LADDER_LIFT_REQUIREMENTS: 'structural',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);
