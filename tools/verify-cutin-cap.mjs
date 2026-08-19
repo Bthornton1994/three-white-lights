@@ -1053,14 +1053,21 @@ async function driveMeet(intent, searchIn) {
  */
 // THREE DIFFERENT MEETS, because since Sprint 1c the app itself refuses "the
 // same sitting again": a played meet is ALREADY_ENTERED on the calendar and
-// its row draws no enter control. So the legs climb the ladder instead — leg
-// 1's made total (the make-drive banks well above nationals' gate) is what
-// unlocks legs 2 and 3, and a leg whose row is not enterable reds with the
-// row named rather than entering something else quietly.
+// its row draws no enter control. The legs climb the ladder, and each miss
+// leg carries a PRIORITY LIST rather than one row, because which rungs are
+// open is a fact about leg 1's BANKED TOTAL, not about this tool: measured on
+// the first 1c run, leg 1 made 7 of 9 (two timing misses), banked below
+// nationals' 550, and a fixed leg-3 nationals red-ed as "may not be
+// enterable" — which was the gate answering truthfully about the robot's
+// lifting. On a normal day (the make-drive's usual 9-of-9 banks ~612) leg 2
+// takes nationals and leg 3 takes regional; on a low-total day leg 2 falls
+// back to regional and leg 3 finds the ladder spent and reds WITH THE ABSENT
+// CONTROLS NAMED — a red about the robot's day, stated as one, not about the
+// app.
 const LEGS = Object.freeze([
-  Object.freeze({ n: 1, intent: 'make', enter: 'career-enter-local', why: 'a played meet — nine walk-outs and the recap, GDD §7.2’s "one meet is one sitting"' }),
-  Object.freeze({ n: 2, intent: 'miss', enter: 'career-enter-regional', why: "a second sitting after the host went away — GDD §6.3's bomb-out, allowed in every sitting" }),
-  Object.freeze({ n: 3, intent: 'miss', enter: 'career-enter-nationals', why: 'and a third, so the count bites on a day when leg 1 fires nothing' }),
+  Object.freeze({ n: 1, intent: 'make', enter: Object.freeze(['career-enter-local']), why: 'a played meet — nine walk-outs and the recap, GDD §7.2’s "one meet is one sitting"' }),
+  Object.freeze({ n: 2, intent: 'miss', enter: Object.freeze(['career-enter-nationals', 'career-enter-regional']), why: "a second sitting after the host went away — GDD §6.3's bomb-out, allowed in every sitting" }),
+  Object.freeze({ n: 3, intent: 'miss', enter: Object.freeze(['career-enter-regional', 'career-enter-nationals', 'career-enter-campaign-worlds']), why: 'and a third, so the count bites on a day when leg 1 fires nothing' }),
 ]);
 
 /**
@@ -1174,14 +1181,35 @@ if (booted.ok) {
       check(false, `leg ${leg.n}: the calendar's own controls enter a meet`, `a cut-in was still up after ${clear.ms}ms`);
       break;
     }
-    const opened = await enterMeetFromCalendar(page, {
-      stepMs: CAP_DRIVE.BEAT_TIMEOUT_MS,
-      enterTestId: leg.enter,
-    });
+    // Open the career surface first with the shared drive aimed at the leg's
+    // FIRST choice; if that row is shut (the gate's answer about leg 1's
+    // total), fall down the leg's priority list by probing what the calendar
+    // actually draws before pressing.
+    let opened = { entered: false, why: 'the leg had no enter candidates' };
+    let pressedRow = null;
+    for (const candidate of leg.enter) {
+      opened = await enterMeetFromCalendar(page, {
+        stepMs: CAP_DRIVE.BEAT_TIMEOUT_MS,
+        enterTestId: candidate,
+      });
+      if (opened.entered) {
+        pressedRow = candidate;
+        break;
+      }
+      // The career surface is already up after a failed attempt; the helper
+      // recognises a drawn career beat and skips the pill press, so the next
+      // candidate goes straight to its own row's wait.
+    }
     if (!opened.entered) {
-      check(false, `leg ${leg.n}: the calendar's own controls enter a meet (${leg.enter})`, opened.why);
+      check(
+        false,
+        `leg ${leg.n}: the calendar's own controls enter a meet (tried ${leg.enter.join(', ')})`,
+        `${opened.why} — every candidate rung was shut or absent; on this app run that is a fact about ` +
+          'what leg 1 banked (the qualifying gate), and the per-attempt notes on leg 1 say how its lifting went',
+      );
       break;
     }
+    note(`leg ${leg.n}: entered via ${pressedRow}`);
     const onMeet = await until((s) => s.meetScreen || s.weighIn, CAP_DRIVE.BEAT_TIMEOUT_MS);
     check(onMeet.ok, `leg ${leg.n}: meet day was reached with a finger, not a URL — ${leg.why}`, `search=${JSON.stringify(onMeet.state.search)}`);
     if (!onMeet.ok) break;

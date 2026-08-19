@@ -59,14 +59,6 @@ export async function enterMeetFromCalendar(page, options = {}) {
   const stepMs = options.stepMs ?? 40000;
   const enterTestId = options.enterTestId ?? CALENDAR_ENTRY.ENTER_LOCAL;
 
-  const pill = page.getByTestId(CALENDAR_ENTRY.NAV_OPEN_CAREER);
-  try {
-    await pill.waitFor({ state: 'visible', timeout: stepMs });
-    await pill.click({ timeout: stepMs });
-  } catch {
-    return { entered: false, why: 'the CAREER pill never became pressable on the session' };
-  }
-
   // Whichever of the two career beats draws first decides the arm. The
   // chooser is polled alongside the calendar rather than waited on alone, so
   // an already-chosen lifter does not spend a whole timeout learning that.
@@ -81,6 +73,20 @@ export async function enterMeetFromCalendar(page, options = {}) {
       .getByTestId(CALENDAR_ENTRY.CHOOSING)
       .isVisible()
       .catch(() => false);
+
+  // ALREADY ON THE CAREER SURFACE IS A LEGAL STARTING POINT — a caller
+  // retrying a different row after a shut one (verify-cutin-cap's fallback
+  // ladder) is standing on the calendar, where the CAREER pill is not drawn
+  // and waiting for it would burn the whole step budget learning that.
+  if (!(await calendarUp()) && !(await chooserUp())) {
+    const pill = page.getByTestId(CALENDAR_ENTRY.NAV_OPEN_CAREER);
+    try {
+      await pill.waitFor({ state: 'visible', timeout: stepMs });
+      await pill.click({ timeout: stepMs });
+    } catch {
+      return { entered: false, why: 'the CAREER pill never became pressable on the session' };
+    }
+  }
   const beatDeadline = Date.now() + stepMs;
   while (!(await calendarUp())) {
     if (await chooserUp()) {
