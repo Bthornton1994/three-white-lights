@@ -385,6 +385,7 @@ import * as npcModule from './npc';
 import * as productionModule from './production';
 import * as recruitmentModule from './recruitment';
 import * as reputationModule from './reputation';
+import * as sessionsModule from './sessions';
 import * as socialModule from './social';
 
 import { EMPIRE_TUNING } from './empireTuning';
@@ -423,6 +424,12 @@ import type {
   LadderRung,
   LadderState,
 } from './ladder';
+import type {
+  GymState,
+  SessionEquipmentItem,
+  WeekAllocation,
+  WeeklyAttributeEffects,
+} from './sessions';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
@@ -2866,6 +2873,7 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'expansion.ts': expansionModule as unknown as Readonly<Record<string, unknown>>,
   'ladder.ts': ladderModule as unknown as Readonly<Record<string, unknown>>,
   'ladderView.tsx': ladderViewModule as unknown as Readonly<Record<string, unknown>>,
+  'sessions.ts': sessionsModule as unknown as Readonly<Record<string, unknown>>,
   'npc.ts': npcModule as unknown as Readonly<Record<string, unknown>>,
   'production.ts': productionModule as unknown as Readonly<Record<string, unknown>>,
   'recruitment.ts': recruitmentModule as unknown as Readonly<Record<string, unknown>>,
@@ -3185,6 +3193,9 @@ const UNIT_THRESHOLDS: Readonly<Record<AxisUnit, Readonly<Record<string, number>
     ...tuningTable('ROSTER_SLOTS_MAX'),
     ...tuningTable('FRIEND_VISITS_PER_DAY'),
     ...tuningTable('LEADERBOARD_BRACKET_SIZE'),
+    // The flexible-session count: `requireWeekAllocation` compares a tuple's
+    // length against it, which is a count-axis branch point exactly.
+    ...tuningTable('FLEXIBLE_SESSIONS_PER_WEEK'),
   }),
   reputation: Object.freeze({
     ...tuningTable('REPUTATION_MAX'),
@@ -3213,6 +3224,11 @@ const UNIT_THRESHOLDS: Readonly<Record<AxisUnit, Readonly<Record<string, number>
     // by the next bypass.
     ...tuningTable('LADDER_MOVE_COST_GYM_BUCKS'),
     ...tuningTable('LADDER_EQUIPMENT_COST_GYM_BUCKS'),
+    // The fourteen stage-2 prices. `buySessionEquipment` and the composed
+    // run's spending scan each compare a settled balance against a rung of
+    // this table, so every one is a real `balance < price` branch point on a
+    // Gym Bucks axis — filed on arrival, the same rule as the stage-1 rows.
+    ...tuningTable('SESSION_EQUIPMENT_COST_GYM_BUCKS'),
   }),
   trainingIq: Object.freeze({
     ...tuningTable('TRAINING_IQ_DAILY_CEILING'),
@@ -3362,6 +3378,58 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
   ...exemptTable(
     'LADDER_INCOME_GYM_BUCKS_PER_HOUR',
     'FOUR RATES, in Gym Bucks per hour per rung, the stage-1 siblings of GYM_BUCKS_BASE_PER_HOUR. Each is multiplied by an elapsed span inside accrueLadderGymBucks and compared against nothing; the prices the resulting money is compared against are the LADDER_* cost tables, filed under gymBucks.',
+  ),
+  ...exemptTable(
+    'SESSION_EQUIPMENT_CAPABILITY',
+    'TEN GRADES, one per stage-2 activity item, multiplied by allocated sessions and a rate into an attribute effect. The tier of the item is selected by name; nothing compares a number against a rung of this table. The PRICES of the same items are filed under gymBucks, which is the split this list is about.',
+  ),
+  ...exemptTable(
+    'SUPPORT_ITEM_AMPLIFIER',
+    'FOUR MULTIPLIERS, one per Support item, applied to a channel\'s earned effect. Selected by item name, multiplied and compared with nothing — the same class as NPC_TIER_OUTPUT_MULTIPLIER.',
+  ),
+  ...exemptTable(
+    'FIXED_POWERLIFTING_SESSIONS_PER_WEEK',
+    'AN ADDEND. Summed with the flexible count into trainingWeekShape\'s total for a screen to print, and structurally non-allocatable — the week type has no field for it, so no code path can compare anything against it. The flexible count it is summed with IS compared (a tuple-length check) and is filed under count.',
+  ),
+  ...exemptTable(
+    'DAYS_PER_TRAINING_WEEK',
+    'A DIVISOR, like TICK_SECONDS: elapsed seconds are floored by DAYS_PER_TRAINING_WEEK x SECONDS_PER_DAY to index a week, and the product multiplies a week index back to a start second. It appears in arithmetic and never on one side of a comparison of its own axis.',
+  ),
+  ...exemptTable(
+    'CARDIO_RESIDUAL_CARRY_REDUCTION_PER_GRADE_SESSION',
+    'A RATE, in carry-multiplier reduction per session per grade point. Multiplied into an effect; the endpoint it accumulates towards is RESIDUAL_CARRY_MULTIPLIER_FLOOR, an output clamp in multiplier space (see its own row).',
+  ),
+  ...exemptTable(
+    'OTHER_RECOVERY_RESIDUAL_CARRY_REDUCTION_PER_GRADE_SESSION',
+    'A RATE, the slower sibling of the row above for the other-recovery activity, listed because a decision taken for one arm is taken for the arm beside it.',
+  ),
+  ...exemptTable(
+    'STRETCHING_INJURY_REDUCTION_PER_GRADE_SESSION',
+    'A RATE, in injury-chance reduction per session per grade point. Same class as the cardio rate; its clamp is INJURY_CHANCE_MULTIPLIER_FLOOR.',
+  ),
+  ...exemptTable(
+    'STRETCHING_TECHNIQUE_BONUS_PER_GRADE_SESSION',
+    'A RATE, in technique-quality bonus per session per grade point. Its cap is TECHNIQUE_QUALITY_BONUS_MAX.',
+  ),
+  ...exemptTable(
+    'HYPERTROPHY_CEILING_GROWTH_PER_GRADE_SESSION',
+    'A RATE, in weekly ceiling-growth fraction per session per grade point. Its cap is CEILING_GROWTH_PER_WEEK_MAX.',
+  ),
+  ...exemptTable(
+    'RESIDUAL_CARRY_MULTIPLIER_FLOOR',
+    'A MULTIPLIER ENDPOINT, the same class as NPC_LOYALTY_MAX_MULTIPLIER: it bounds an OUTPUT in effect-multiplier space (the clamp reads min(raw, 1 - floor)) rather than gating any input a driver here is denominated in. No axis in this file is in multiplier space.',
+  ),
+  ...exemptTable(
+    'INJURY_CHANCE_MULTIPLIER_FLOOR',
+    'A MULTIPLIER ENDPOINT, the sibling of the row above on the injury channel, listed for the same reason and under the same rule about arms.',
+  ),
+  ...exemptTable(
+    'TECHNIQUE_QUALITY_BONUS_MAX',
+    'AN OUTPUT CAP in bonus space: min(earned, cap) bounds what a week may pay. Nothing gates an input on it, and no driver axis is denominated in technique bonus.',
+  ),
+  ...exemptTable(
+    'CEILING_GROWTH_PER_WEEK_MAX',
+    'AN OUTPUT CAP in weekly-growth-fraction space, the sibling of the row above on the ceiling channel.',
   ),
   ...exemptTable(
     'BUILD_SECONDS_GROWTH_PER_LEVEL',
@@ -5129,6 +5197,139 @@ function driveEverything(): readonly DrivenRow[] {
         dispatch: silent,
       }), [rich],
     );
+  }
+
+  // --- sessions.ts (GDD §5 v2, stage 2)
+  {
+    drive('createGymState', 'zero-arg', () => sessionsModule.createGymState());
+    drive('createRestAllocation', 'zero-arg', () => sessionsModule.createRestAllocation());
+    drive('trainingWeekShape', 'zero-arg', () => sessionsModule.trainingWeekShape());
+    for (const item of EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS) {
+      drive('sessionEquipmentGroup', item, () => sessionsModule.sessionEquipmentGroup(item));
+      drive('sessionEquipmentCost', item, () => sessionsModule.sessionEquipmentCost(item));
+      drive('sessionEquipmentMinRung', item, () => sessionsModule.sessionEquipmentMinRung(item));
+    }
+    // Kits shaped on the gate's own arms: nothing, one conditioning item, the
+    // basic recovery pair (other-recovery stays gated), the higher-tier item
+    // alone, and everything — so trained, rested and both unequipped kinds
+    // are produced, not merely possible.
+    const SESSION_KITS: readonly (readonly SessionEquipmentItem[])[] = [
+      Object.freeze([]),
+      Object.freeze(['bike'] as const),
+      Object.freeze(['mats', 'foam-rollers'] as const),
+      Object.freeze(['sauna'] as const),
+      EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS,
+    ];
+    const SESSION_ALLOCATIONS: readonly WeekAllocation[] = [
+      sessionsModule.createRestAllocation(),
+      Object.freeze(['cardio', 'hypertrophy', 'stretching-yoga']) as WeekAllocation,
+      Object.freeze(['other-recovery', 'other-recovery', 'other-recovery']) as WeekAllocation,
+      Object.freeze(['stretching-yoga', 'rest', 'cardio']) as WeekAllocation,
+    ];
+    const SUPPORT_CHANNELS = [...new Set(Object.values(EMPIRE_TUNING.SUPPORT_ITEM_CHANNEL))];
+    const effectsSeries: WeeklyAttributeEffects[] = [];
+    for (const activity of EMPIRE_TUNING.FLEXIBLE_ACTIVITIES) {
+      drive('activityEquipmentGroup', activity, () =>
+        sessionsModule.activityEquipmentGroup(activity),
+      );
+    }
+    for (const kit of SESSION_KITS) {
+      const kitLabel = kit.join('+') === '' ? 'none' : kit.join('+');
+      drive('availableActivities', kitLabel, () => sessionsModule.availableActivities(kit), [kit]);
+      for (const group of EMPIRE_TUNING.SESSION_ACTIVITY_GROUPS) {
+        drive('groupCapabilityGrade', `${kitLabel}/${group}`, () =>
+          sessionsModule.groupCapabilityGrade(kit, group), [kit],
+        );
+      }
+      for (const channel of SUPPORT_CHANNELS) {
+        drive('supportAmplifier', `${kitLabel}/${channel}`, () =>
+          sessionsModule.supportAmplifier(kit, channel), [kit],
+        );
+      }
+      for (const activity of EMPIRE_TUNING.FLEXIBLE_ACTIVITIES) {
+        drive('activityAvailable', `${kitLabel}/${activity}`, () =>
+          sessionsModule.activityAvailable(kit, activity), [kit],
+        );
+      }
+      for (const [at, allocation] of SESSION_ALLOCATIONS.entries()) {
+        drive('requireWeekAllocation', `${kitLabel}/${String(at)}`, () =>
+          sessionsModule.requireWeekAllocation(allocation), [allocation],
+        );
+        drive('resolveWeek', `${kitLabel}/${String(at)}`, () =>
+          sessionsModule.resolveWeek(allocation, kit), [allocation, kit],
+        );
+        drive('weeklyAttributeEffects', `${kitLabel}/${String(at)}`, () => {
+          const effects = sessionsModule.weeklyAttributeEffects(allocation, kit);
+          effectsSeries.push(effects);
+          return effects;
+        }, [allocation, kit]);
+      }
+    }
+    drive('composedCeilingGrowth', 'driven-series', () =>
+      sessionsModule.composedCeilingGrowth(effectsSeries), [effectsSeries],
+    );
+    // The stage-2 state, crossed on the rung axis and the money axis the way
+    // the ladder drive is, with the accelerated purse loaded so a read of it
+    // is in the scanned rows.
+    const gymStateAt = (
+      rung: LadderRung,
+      gymBucks: number,
+      kit: readonly SessionEquipmentItem[],
+    ): GymState =>
+      Object.freeze({
+        ladder: ladderStateAt(rung, gymBucks, ladderModule.createLadderState().equipment),
+        acceleratedGymBucks: EMPIRE_TUNING.RIVAL_REWARD_GYM_BUCKS,
+        sessionEquipment: kit,
+      });
+    const SESSION_MONEY = [0, EMPIRE_TUNING.SESSION_EQUIPMENT_COST_GYM_BUCKS.mats, 50000];
+    const STATE_KITS: readonly (readonly SessionEquipmentItem[])[] = [
+      Object.freeze([]),
+      Object.freeze(['sauna'] as const),
+    ];
+    for (const rung of EMPIRE_TUNING.LADDER_RUNGS) {
+      for (const gymBucks of SESSION_MONEY) {
+        for (const kit of STATE_KITS) {
+          const at = `${rung}/${String(gymBucks)}/${kit.length === 0 ? 'none' : 'sauna'}`;
+          const state = gymStateAt(rung, gymBucks, kit);
+          drive('requireGymState', at, () => sessionsModule.requireGymState(state), [state]);
+          drive('grantAcceleratedGymBucks', at, () =>
+            sessionsModule.grantAcceleratedGymBucks(state, EMPIRE_TUNING.RIVAL_REWARD_GYM_BUCKS), [state],
+          );
+          drive('gymCheckIn', at, () =>
+            sessionsModule.gymCheckIn(state, EMPIRE_TUNING.SECONDS_PER_DAY), [state],
+          );
+          for (const item of EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS) {
+            drive('buySessionEquipment', `${at}/${item}`, () =>
+              sessionsModule.buySessionEquipment(state, item), [state],
+            );
+          }
+        }
+      }
+    }
+    // The composed run: the ladder drive's schedules, both policies, both
+    // grant destinations, granted and ungranted — so the wired control's arm
+    // is produced here too and its outputs are scanned like any other value.
+    for (const [scheduleAt, schedule] of LADDER_DRIVE_SCHEDULES.entries()) {
+      const granted =
+        schedule.length === 0
+          ? []
+          : [Object.freeze({ atSeconds: 0, gymBucks: EMPIRE_TUNING.RIVAL_REWARD_GYM_BUCKS })];
+      for (const policy of sessionsModule.GYM_POLICIES) {
+        for (const destination of sessionsModule.GRANT_DESTINATIONS) {
+          for (const [grantsAt, plan] of [[], granted].entries()) {
+            const label = `${String(scheduleAt)}/${policy}/${destination}/${String(grantsAt)}`;
+            const runSchedule = Object.freeze({
+              checkInsSeconds: schedule,
+              allocationPlan: SESSION_ALLOCATIONS,
+              grants: Object.freeze(plan),
+            });
+            drive('runGym', label, () =>
+              sessionsModule.runGym(runSchedule, policy, destination), [runSchedule],
+            );
+          }
+        }
+      }
+    }
   }
 
   // --- empireInvariant.ts, the loop
