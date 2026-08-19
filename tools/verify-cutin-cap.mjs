@@ -253,8 +253,12 @@ const BROWSER_MUTATION_WITNESSES = Object.freeze([
     mutant: "useOfferCutIn([{ kind: 'meet-over', bombedOut: true }]);  ->  useOfferCutIn([]);",
     wasRedBefore: false,
     wasRed: true,
+    // RE-RUN, NOT TRANSCRIBED, when Sprint 1c shrank the run to two legs and
+    // the ASK's wording moved with the leg count: mutant re-applied at this
+    // tree, same two checks red ("0 of 1, on legs [] (expected [2])"), source
+    // restored, run green again at 31/0.
     redCheck:
-      "GDD §7.2: THE ASK — the 2 deliberately-bombed legs each OFFERED GDD §6.3's bomb-out beat TO THE GATE",
+      "GDD §7.2: THE ASK — the 1 deliberately-bombed legs each OFFERED GDD §6.3's bomb-out beat TO THE GATE",
     alsoRed:
       "GDD §12.3: THE REFUSAL — every bomb-out beat that did not take the slot was refused for 'session-cap-reached'",
     note:
@@ -1051,23 +1055,26 @@ async function driveMeet(intent, searchIn) {
  * block before changing the intents: legs 2 and 3 are the ones whose qualifying
  * beat does not depend on the day's seed, and there are two of them on purpose.
  */
-// THREE DIFFERENT MEETS, because since Sprint 1c the app itself refuses "the
-// same sitting again": a played meet is ALREADY_ENTERED on the calendar and
-// its row draws no enter control. The legs climb the ladder, and each miss
-// leg carries a PRIORITY LIST rather than one row, because which rungs are
-// open is a fact about leg 1's BANKED TOTAL, not about this tool: measured on
-// the first 1c run, leg 1 made 7 of 9 (two timing misses), banked below
-// nationals' 550, and a fixed leg-3 nationals red-ed as "may not be
-// enterable" — which was the gate answering truthfully about the robot's
-// lifting. On a normal day (the make-drive's usual 9-of-9 banks ~612) leg 2
-// takes nationals and leg 3 takes regional; on a low-total day leg 2 falls
-// back to regional and leg 3 finds the ladder spent and reds WITH THE ABSENT
-// CONTROLS NAMED — a red about the robot's day, stated as one, not about the
-// app.
+// TWO DIFFERENT MEETS, AND TWO IS THE APP'S OWN ARITHMETIC, NOT A BUDGET CUT.
+// Since Sprint 1c a played meet is ALREADY_ENTERED on the calendar (its row
+// draws no enter control), so a second sitting means the next rung — and the
+// rungs open on the banked total. Measured across two runs before this
+// shrank: a fresh lifter's e1RM seeds sum to 520 (180/120/220 in
+// sessionTuning.ts), so NO first-meet total can reach nationals' 550 — leg 1
+// made 8 of 9 and the ladder was still shut, which two readings in a row
+// called the robot's variance before anyone summed the seeds. A fresh
+// lifter's day therefore holds exactly two meets: the open local, and the
+// regional their first total unlocks. The old leg 3 existed "so the count
+// bites on a day when leg 1 fires nothing"; with one miss leg that day is
+// covered by the refusal check's own two arms (leg 2's bomb-out FIRES when
+// leg 1 granted nothing, and the grant pin still demands exactly one) — what
+// goes unwitnessed on that rare day is the 'session-cap-reached' reason
+// itself, which the check's detail names rather than hides. Each miss leg
+// still carries a priority list: on a run whose total surprises upward the
+// higher rung is taken and named.
 const LEGS = Object.freeze([
   Object.freeze({ n: 1, intent: 'make', enter: Object.freeze(['career-enter-local']), why: 'a played meet — nine walk-outs and the recap, GDD §7.2’s "one meet is one sitting"' }),
   Object.freeze({ n: 2, intent: 'miss', enter: Object.freeze(['career-enter-nationals', 'career-enter-regional']), why: "a second sitting after the host went away — GDD §6.3's bomb-out, allowed in every sitting" }),
-  Object.freeze({ n: 3, intent: 'miss', enter: Object.freeze(['career-enter-regional', 'career-enter-nationals', 'career-enter-campaign-worlds']), why: 'and a third, so the count bites on a day when leg 1 fires nothing' }),
 ]);
 
 /**
