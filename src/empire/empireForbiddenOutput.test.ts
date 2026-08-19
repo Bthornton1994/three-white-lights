@@ -5199,6 +5199,86 @@ function driveEverything(): readonly DrivenRow[] {
     );
   }
 
+  // --- ladderView.tsx: GymView, the stage-2 gate's instrument — the full
+  // stage-1+2 loop, driven the same shape the LadderView block above uses:
+  // the constructor, every reducer arm, and the component itself invoked as
+  // the pure function it is, so its element tree (copy included) passes
+  // through the same string scan as every other returned value.
+  drive('createGymViewState', 'zero-arg', () => ladderViewModule.createGymViewState());
+  {
+    const gymOpening = ladderViewModule.createGymViewState();
+    let gymPlayed = gymOpening;
+    for (const step of ladderModule.ladderDevTimeSteps()) {
+      drive('gymViewReduce', `advance/${String(step.seconds)}`, () =>
+        ladderViewModule.gymViewReduce(gymPlayed, { kind: 'advance-clock', gapSeconds: step.seconds }), [gymPlayed],
+      );
+      gymPlayed = ladderViewModule.gymViewReduce(gymPlayed, {
+        kind: 'advance-clock',
+        gapSeconds: step.seconds,
+      });
+    }
+    drive('gymViewReduce', 'advance-to-next-week', () =>
+      ladderViewModule.gymViewReduce(gymPlayed, { kind: 'advance-to-next-week' }), [gymPlayed],
+    );
+    const gymAfterWeek = ladderViewModule.gymViewReduce(gymPlayed, { kind: 'advance-to-next-week' });
+    // Buys off the played state reach bought, already-owned, rung-too-low
+    // and not-enough arms of the underlying calls, on both shops.
+    for (const item of EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS) {
+      drive('gymViewReduce', `buy-ladder/${item}`, () =>
+        ladderViewModule.gymViewReduce(gymAfterWeek, { kind: 'buy-ladder', item }), [gymAfterWeek],
+      );
+    }
+    for (const item of EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS) {
+      drive('gymViewReduce', `buy-session/${item}`, () =>
+        ladderViewModule.gymViewReduce(gymAfterWeek, { kind: 'buy-session', item }), [gymAfterWeek],
+      );
+    }
+    drive('gymViewReduce', 'move-up/refused', () =>
+      ladderViewModule.gymViewReduce(gymAfterWeek, { kind: 'move-up' }), [gymAfterWeek],
+    );
+    // Every slot, every legal value — the trained, rested and unequipped
+    // arms of `resolveWeek`/`weeklyAttributeEffects`, reached through the
+    // reducer rather than only through the direct sessions.ts drive above.
+    for (const slotIndex of [0, 1, 2] as const) {
+      for (const slot of [...EMPIRE_TUNING.FLEXIBLE_ACTIVITIES, 'rest'] as const) {
+        drive('gymViewReduce', `set-allocation-slot/${String(slotIndex)}/${slot}`, () =>
+          ladderViewModule.gymViewReduce(gymAfterWeek, {
+            kind: 'set-allocation-slot',
+            slotIndex,
+            slot,
+          }), [gymAfterWeek],
+        );
+      }
+    }
+    const gymRich = Object.freeze({
+      ...gymAfterWeek,
+      gym: Object.freeze({
+        ...gymAfterWeek.gym,
+        ladder: ladderStateAt(
+          EMPIRE_TUNING.LADDER_RUNGS[0],
+          EMPIRE_TUNING.LADDER_MOVE_COST_GYM_BUCKS['storage-unit'],
+          ladderModule.createLadderState().equipment,
+        ),
+      }),
+    });
+    drive('gymViewReduce', 'move-up/moved', () =>
+      ladderViewModule.gymViewReduce(gymRich, { kind: 'move-up' }), [gymRich],
+    );
+    const gymSilent = (): undefined => undefined;
+    drive('GymView', 'opening', () =>
+      ladderViewModule.GymView({ state: gymOpening, dispatch: gymSilent }), [gymOpening],
+    );
+    drive('GymView', 'played', () =>
+      ladderViewModule.GymView({ state: gymAfterWeek, dispatch: gymSilent }), [gymAfterWeek],
+    );
+    drive('GymView', 'moved', () =>
+      ladderViewModule.GymView({
+        state: ladderViewModule.gymViewReduce(gymRich, { kind: 'move-up' }),
+        dispatch: gymSilent,
+      }), [gymRich],
+    );
+  }
+
   // --- sessions.ts (GDD §5 v2, stage 2)
   {
     drive('createGymState', 'zero-arg', () => sessionsModule.createGymState());
@@ -5329,6 +5409,33 @@ function driveEverything(): readonly DrivenRow[] {
           }
         }
       }
+    }
+    // The four view-facing helpers — sessions.ts header's newest section,
+    // the same move `ladder.ts` §6 makes for its own three.
+    for (const rung of EMPIRE_TUNING.LADDER_RUNGS) {
+      const base = gymStateAt(rung, 0, []);
+      const swappedLadder = ladderStateAt(
+        rung,
+        EMPIRE_TUNING.RIVAL_REWARD_GYM_BUCKS,
+        ladderModule.createLadderState().equipment,
+      );
+      drive('withLadder', rung, () => sessionsModule.withLadder(base, swappedLadder), [
+        base,
+        swappedLadder,
+      ]);
+      for (const seconds of SECONDS_DOMAIN.slice(0, 6)) {
+        drive('gymCheckInAfter', `${rung}/${String(seconds)}`, () =>
+          sessionsModule.gymCheckInAfter(base, seconds), [base],
+        );
+      }
+    }
+    for (const seconds of SECONDS_DOMAIN) {
+      drive('trainingWeekIndexAt', String(seconds), () =>
+        sessionsModule.trainingWeekIndexAt(seconds),
+      );
+      drive('secondsUntilNextWeekBoundary', String(seconds), () =>
+        sessionsModule.secondsUntilNextWeekBoundary(seconds),
+      );
     }
   }
 
