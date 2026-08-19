@@ -11005,12 +11005,12 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'engagement.ts': 23,
       'expansion.ts': 47,
       'ladder.ts': 25,
-      'ladderView.tsx': 5,
+      'ladderView.tsx': 18,
       'npc.ts': 12,
       'production.ts': 11,
       'recruitment.ts': 9,
       'reputation.ts': 24,
-      'sessions.ts': 39,
+      'sessions.ts': 43,
       'social.ts': 31,
     }),
     /**
@@ -11038,7 +11038,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'social.ts': 7,
     }),
     'argument-mutation': Object.freeze({}),
-    'callback-invocation': Object.freeze({ 'engagement.ts': 1, 'ladderView.tsx': 3, 'production.ts': 2 }),
+    'callback-invocation': Object.freeze({ 'engagement.ts': 1, 'ladderView.tsx': 9, 'production.ts': 2 }),
     'internal-callback-invocation': Object.freeze({ 'expansion.ts': 1 }),
     'module-mutable-state': Object.freeze({}),
     'ambient-global': Object.freeze({}),
@@ -11437,10 +11437,10 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   parameter: 2,
   'module-variable': 43,
   local: 0,
-  function: 668,
-  member: 625,
-  'member-callback': 5,
-  'member-of-parameter': 14,
+  function: 708,
+  member: 651,
+  'member-callback': 11,
+  'member-of-parameter': 16,
   fresh: 0,
   unclassified: 0,
 });
@@ -11458,7 +11458,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
 const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze({
   parameter: 0,
   'module-variable': 0,
-  local: 161,
+  local: 163,
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -11470,15 +11470,18 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
   MODULES: 13,
-  /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
-  SITES: 404,
+  /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
+   * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
+   * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
+   * sites (39 -> 43) on `sessions.ts`. */
+  SITES: 427,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
    * grammar declarations and the `satisfies` clause are 23 AST nodes, and no
    * site, channel or wrap count moved with them.
    */
-  NODES_EXAMINED: 28_762,
+  NODES_EXAMINED: 30_722,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
   WRAP_CALLS: 96,
   CHANNELS: 11,
