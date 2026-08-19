@@ -25,6 +25,7 @@
 
 import type { MeetDayPhaseId } from '../game/meetDay';
 import type { SessionPhase } from '../game/session';
+import type { CareerSurfacePhase } from '../meet/careerSurface';
 
 /**
  * WHEN THE SHELL'S CHROME IS ALLOWED ON SCREEN.
@@ -67,6 +68,20 @@ export const SHELL_NAV = Object.freeze({
   MEET_PHASES: Object.freeze(['recap'] as const satisfies readonly MeetDayPhaseId[]),
 
   EMPIRE_PHASES: Object.freeze(['floor'] as const satisfies readonly EmpirePhase[]),
+
+  /**
+   * CAREER_PHASES — both of the Career surface's beats carry the way back.
+   *
+   * The chooser is listed alongside the calendar on purpose: GDD §2.1's pick
+   * gates the CALENDAR, not the app, so a player who opens Career before
+   * deciding must be able to walk away without choosing. Neither beat is a
+   * mechanic — nothing on this surface costs a rep — so there is no beat to
+   * keep the pill off.
+   */
+  CAREER_PHASES: Object.freeze([
+    'choosing',
+    'calendar',
+  ] as const satisfies readonly CareerSurfacePhase[]),
 
   /**
    * How long the pill takes to arrive.
@@ -252,6 +267,19 @@ export const SHELL_COPY = Object.freeze({
   /** Empire surface -> back to the daily loop. */
   LEAVE_EMPIRE_LABEL: 'BACK TO TRAINING',
   LEAVE_EMPIRE_HINT: 'Returns to the daily session.',
+
+  /**
+   * Session surface -> the Career surface (GDD §2.1's chooser, then §6.1's
+   * calendar). The label says CAREER rather than promising a calendar, for the
+   * reason MEET_NAV_LABEL's note gives about promising screens: the first
+   * visit opens the federation chooser, not a calendar.
+   */
+  CAREER_NAV_LABEL: 'CAREER',
+  CAREER_NAV_HINT: 'Opens the career surface.',
+
+  /** Career surface -> back to the daily loop. */
+  LEAVE_CAREER_LABEL: 'BACK TO TRAINING',
+  LEAVE_CAREER_HINT: 'Returns to the daily session.',
 
   /**
    * Empire floor copy — no federation, brand, or athlete names (§7.3 / §12.3).

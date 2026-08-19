@@ -65,6 +65,7 @@ import type { SessionPhase } from '../game/session';
 import type { SessionPreviewFrame } from '../session/useSession';
 import { SHELL_NAV } from './shellTuning';
 import type { EmpirePhase } from './shellTuning';
+import type { CareerSurfacePhase } from '../meet/careerSurface';
 
 // ---------------------------------------------------------------------------
 // Surfaces
@@ -79,14 +80,20 @@ import type { EmpirePhase } from './shellTuning';
  *
  * `empire` is GDD §5's Gym Empire floor. Player-reachable from the daily
  * session; it does not pay into `progression.ts`'s pooled wallet in this slice.
+ *
+ * `career` is GDD §2.1's federation chooser and GDD §6.1's calendar (Sprint
+ * 1b). Player-reachable from the daily session. The one write it can ask for
+ * is `choose-federation`, and it has no debug query string — the only way
+ * onto it is the player's own.
  */
-export type ShellSurface = 'session' | 'meet' | 'replay' | 'empire';
+export type ShellSurface = 'session' | 'meet' | 'replay' | 'empire' | 'career';
 
 export const SHELL_SURFACES = Object.freeze([
   'session',
   'meet',
   'replay',
   'empire',
+  'career',
 ] as const satisfies readonly ShellSurface[]);
 
 /**
@@ -125,10 +132,25 @@ export const SHELL_SURFACES = Object.freeze([
  * rediscovered as a hole.
  *
  * `replay` is a debug harness surface and is not player-reachable at all.
+ *
+ * ===========================================================================
+ * CAREER IS ON THE LIST, AND THAT IS A SPRINT 1b DECISION RATHER THAN A RULING
+ * ===========================================================================
+ * GDD §11's 2026-08-14 ruling authorised the EMPIRE round trip by name; no
+ * ruling names Career, so this is the builder's call and is written down as
+ * one. The argument is the measured defect at the top of this comment, applied
+ * unchanged: a glance at the calendar mid-check-in is exactly "a side trip",
+ * and a side trip may not spend the player's session. The meet exception does
+ * not transfer — a meet ENDS somewhere and the session must re-derive the day
+ * when it does; nothing on the Career surface changes what the session should
+ * show. The cost persistence usually carries (a mounted screen going stale
+ * against the row) is paid in `useCareer`, which re-reads the row every time
+ * the surface becomes active.
  */
 export const PERSISTENT_SURFACES = Object.freeze([
   'session',
   'empire',
+  'career',
 ] as const satisfies readonly ShellSurface[]);
 
 /** Does the shell keep this surface mounted while another one is on screen? */
@@ -191,18 +213,27 @@ export const DEFAULT_ROUTE: ShellRoute = Object.freeze({ surface: 'session', sou
 /**
  * Everything a player can ask the shell to do.
  *
- * Four intents: the daily session ↔ meet day round trip, and the daily session
- * ↔ Gym Empire round trip. `LicensingScreen` stays on its own entry point (see
- * the comment that used to claim only two intents — that count is stale; the
- * licensing carve-out is not).
+ * Six intents: the daily session ↔ meet day round trip, the daily session ↔
+ * Gym Empire round trip, and the daily session ↔ Career round trip.
+ * `LicensingScreen` stays on its own entry point (see the comment that used to
+ * claim only two intents — that count is stale; the licensing carve-out is
+ * not).
  */
-export type ShellIntent = 'open-meet' | 'leave-meet' | 'open-empire' | 'leave-empire';
+export type ShellIntent =
+  | 'open-meet'
+  | 'leave-meet'
+  | 'open-empire'
+  | 'leave-empire'
+  | 'open-career'
+  | 'leave-career';
 
 export const SHELL_INTENTS = Object.freeze([
   'open-meet',
   'leave-meet',
   'open-empire',
   'leave-empire',
+  'open-career',
+  'leave-career',
 ] as const satisfies readonly ShellIntent[]);
 
 /**
@@ -227,6 +258,14 @@ export function navigate(route: ShellRoute, intent: ShellIntent): ShellRoute {
     return { surface: 'empire', source: 'player' };
   }
   if (intent === 'leave-empire' && route.surface === 'empire') {
+    return { surface: 'session', source: 'player' };
+  }
+  // `session --open-career--> career` / `career --leave-career--> session` is
+  // Sprint 1b's Career round trip (GDD §2.1, §6.1): the same shape as Empire's.
+  if (intent === 'open-career' && route.surface === 'session') {
+    return { surface: 'career', source: 'player' };
+  }
+  if (intent === 'leave-career' && route.surface === 'career') {
     return { surface: 'session', source: 'player' };
   }
   return route;
@@ -327,7 +366,7 @@ export type CutInPresence = 'live' | 'none';
  */
 export function shellAffordanceFor(
   route: ShellRoute,
-  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | null,
+  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | CareerSurfacePhase | null,
   cutIn: CutInPresence = 'none',
 ): ShellIntent | null {
   if (cutIn === 'live') return null;
@@ -351,7 +390,7 @@ export function shellAffordanceFor(
  */
 export function shellEmpireAffordanceFor(
   route: ShellRoute,
-  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | null,
+  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | CareerSurfacePhase | null,
   cutIn: CutInPresence = 'none',
 ): ShellIntent | null {
   if (cutIn === 'live') return null;
@@ -361,6 +400,31 @@ export function shellEmpireAffordanceFor(
   }
   if (route.surface === 'empire') {
     return (SHELL_NAV.EMPIRE_PHASES as readonly string[]).includes(phase) ? 'leave-empire' : null;
+  }
+  return null;
+}
+
+/**
+ * The Career affordance, parallel to `shellEmpireAffordanceFor` and for the
+ * same reason it is a third function rather than a widened return: each
+ * surface's pill is an additive edge and the existing gates stay single typed
+ * answers. Same cut-in rule, same "no phase, no chrome" rule, same
+ * SESSION_PHASES list for the way in; `SHELL_NAV.CAREER_PHASES` — both of the
+ * surface's beats — for the way back, because neither Career beat is a
+ * mechanic a mis-tap could cost anything on.
+ */
+export function shellCareerAffordanceFor(
+  route: ShellRoute,
+  phase: SessionPhase | MeetDayPhaseId | EmpirePhase | CareerSurfacePhase | null,
+  cutIn: CutInPresence = 'none',
+): ShellIntent | null {
+  if (cutIn === 'live') return null;
+  if (phase === null) return null;
+  if (route.surface === 'session') {
+    return (SHELL_NAV.SESSION_PHASES as readonly string[]).includes(phase) ? 'open-career' : null;
+  }
+  if (route.surface === 'career') {
+    return (SHELL_NAV.CAREER_PHASES as readonly string[]).includes(phase) ? 'leave-career' : null;
   }
   return null;
 }

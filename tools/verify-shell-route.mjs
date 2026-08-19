@@ -116,6 +116,19 @@
  *      every other check in the section green — drawn, labelled and
  *      hit-testable are all true of a pill parked on a card.
  *
+ *  12. THE CAREER SURFACE IS OPENED AND LEFT THE WAY A PLAYER DOES IT (Sprint
+ *      1b), in section 11 and section 4d below. The fresh leg presses CAREER
+ *      on the check-in, gets GDD §2.1's chooser (the calendar is gated on
+ *      `chosen`), picks a NON-default federation, and reads the chosen
+ *      federation's calendar back off the settled snapshot — five rows in
+ *      §6.1's ladder order, the server's verdict sentences verbatim, and the
+ *      §10.0 competitive summit drawn LOCKED. The refusal leg (4d) runs on
+ *      the played-meet app run, where the row holds banked results: choosing
+ *      a DIFFERENT federation is refused with `careerServer.ts`'s own
+ *      sentence on screen, and confirming the same one succeeds. There is no
+ *      `?career=` arm in `resolveEntry`, so the played arm is the only arm,
+ *      and the address bar is asserted bare at every read.
+ *
  * "ON SCREEN" HERE MEANS DRAWN, NOT MOUNTED. Every positive check above goes
  * through `onScreen`, which measures the element's effective opacity, because
  * Playwright's `isVisible()` and `elementFromPoint` DO NOT CONSIDER OPACITY and
@@ -509,6 +522,73 @@ const NAV_LEAVE_MEET = 'shell-leave-meet';
  */
 const NAV_OPEN_EMPIRE = 'shell-open-empire';
 const NAV_LEAVE_EMPIRE = 'shell-leave-empire';
+
+/** The Career round trip's two controls (GDD §2.1, §6.1 — Sprint 1b). */
+const NAV_OPEN_CAREER = 'shell-open-career';
+const NAV_LEAVE_CAREER = 'shell-leave-career';
+
+/**
+ * What the Career pills say, restated from `shellTuning.ts` and cross-checked
+ * against it in `checkNavTableMatchesTuning` like the Empire pair.
+ */
+const CAREER_NAV_SAYS = Object.freeze({
+  /** SHELL_COPY.CAREER_NAV_LABEL */
+  OPEN: 'CAREER',
+  /** SHELL_COPY.LEAVE_CAREER_LABEL */
+  LEAVE: 'BACK TO TRAINING',
+});
+
+/**
+ * What the Career surface's two screens say and hold, restated from
+ * `src/career/careerTuning.ts` and from `careerServer.ts`, cross-checked
+ * against both in `checkCareerRestatementsMatchTuning` at the end of the run.
+ * Restated rather than imported, on the file's standing principle: a check
+ * that reads its expectations out of the module under test agrees with a
+ * broken module.
+ */
+const CAREER_SAYS = Object.freeze({
+  /** CAREER_COPY.CHOOSE_TITLE — what identifies a photograph of the chooser. */
+  CHOOSER: 'PICK A FEDERATION',
+  /** CAREER_COPY.CALENDAR_TITLE — what identifies a photograph of the calendar. */
+  CALENDAR: 'CAREER CALENDAR',
+  /** CAREER_COPY.OPEN_ENTRY_BADGE — on a row `entryVerdict` answered open for. */
+  OPEN_BADGE: 'OPEN',
+  /** CAREER_COPY.CEILING_LOCKED_BADGE — GDD §10.0's locked harder ceiling. */
+  LOCKED_BADGE: 'LOCKED',
+  /** CAREER_COPY.ENTRY_REFUSAL.BELOW_QUALIFYING_TOTAL — the server's sentence. */
+  BELOW_QUALIFYING: 'You need a qualifying total from an earlier meet to enter.',
+  /**
+   * The opening of `careerServer.ts`'s FEDERATION_LOCKED_BY_RESULTS message.
+   * The refusal leg asserts the drawn refusal BEGINS with this, because the
+   * whole sentence embeds the two federation ids and asserting a fragment of
+   * the middle would be green on a reworded refusal.
+   */
+  LOCKED_BY_RESULTS_OPENING: 'careerServer: this lifter has meet results under',
+});
+
+/**
+ * The five calendar rows, in GDD §6.1's ladder order — `MEET_TIER_ORDER`,
+ * restated. `CareerScreen` builds each row's testID as `career-row-${tier}`.
+ */
+const CAREER_TIER_ROWS = Object.freeze([
+  'local',
+  'regional',
+  'nationals',
+  'campaign-worlds',
+  'competitive-worlds',
+]);
+
+/**
+ * The chooser's four cards — `CAREER_FEDERATIONS`' ids, restated.
+ * `CareerScreen` builds each card's testID as `career-fed-${id}`. The three
+ * named ones are the ones the legs below press: `ironline` on the fresh
+ * lifter (a NON-default pick, so the choice demonstrably reached the server),
+ * `grandhall` against a row holding results (the locked-by-results refusal),
+ * and `meridian` to confirm the calendar those results were lifted on.
+ */
+const CAREER_FED_IDS = Object.freeze(['meridian', 'ironline', 'grandhall', 'anvil-coast']);
+/** CAREER_FEDERATIONS[1].name — the calendar the fresh leg lands on. */
+const CAREER_IRONLINE_NAME = 'Ironline Open Alliance';
 
 /**
  * WHAT EACH PHOTOGRAPHED BEAT SAYS ON SCREEN, so a filename can be checked
@@ -1296,6 +1376,12 @@ const SHELL_NAV_EXPECTED = Object.freeze({
    * `SHELL_NAV` lists had been seen drawn.
    */
   EMPIRE_PHASES: Object.freeze(['floor']),
+  /**
+   * The Career surface's two beats (Sprint 1b). Both carry the way back —
+   * GDD §2.1's pick gates the calendar, not the app, so the chooser must not
+   * be a trap a player can only leave by choosing.
+   */
+  CAREER_PHASES: Object.freeze(['choosing', 'calendar']),
 });
 
 /**
@@ -1374,6 +1460,11 @@ const PILL_IS_A_TUNING_CHOICE = Object.freeze([
   // out — see section 10, which measures that the screen draws no control of its
   // own, so removing the pill's beat from `SHELL_NAV` would strand a player.
   'floor',
+  // The Career surface's two beats (Sprint 1b), on this list for the same
+  // reason as the floor's: neither is a mechanic, nothing on them costs a rep,
+  // and both carry the pill today — which section 11 sees drawn and hit-tests.
+  'choosing',
+  'calendar',
 ]);
 
 /**
@@ -2381,6 +2472,13 @@ const GAME_PHASE_LISTS = Object.freeze([
    * compile error rather than a check here.
    */
   Object.freeze({ file: ['src', 'shell', 'shellTuning.ts'], name: 'EmpirePhase', shape: 'union' }),
+  /**
+   * The Career surface's beats, a type union like Empire's, declared in the
+   * surface's own pure module rather than in `shellTuning.ts` — so unlike the
+   * Empire row this one IS a directory away from the `SHELL_NAV` list it is
+   * compared against, and a rename moves only one side.
+   */
+  Object.freeze({ file: ['src', 'meet', 'careerSurface.ts'], name: 'CareerSurfacePhase', shape: 'union' }),
 ]);
 
 /**
@@ -2663,6 +2761,7 @@ async function checkNavTableMatchesTuning() {
     ['SESSION_PHASES', SHELL_NAV_EXPECTED.SESSION_PHASES],
     ['MEET_PHASES', SHELL_NAV_EXPECTED.MEET_PHASES],
     ['EMPIRE_PHASES', SHELL_NAV_EXPECTED.EMPIRE_PHASES],
+    ['CAREER_PHASES', SHELL_NAV_EXPECTED.CAREER_PHASES],
   ]) {
     const inTuning = phaseListInSource(source, name);
     const mine = [...expected].sort();
@@ -2707,6 +2806,8 @@ async function checkNavTableMatchesTuning() {
     ['EMPIRE_LEAD', BEAT_SAYS.EMPIRE_FLOOR],
     ['EMPIRE_NAV_LABEL', EMPIRE_NAV_SAYS.OPEN],
     ['LEAVE_EMPIRE_LABEL', EMPIRE_NAV_SAYS.LEAVE],
+    ['CAREER_NAV_LABEL', CAREER_NAV_SAYS.OPEN],
+    ['LEAVE_CAREER_LABEL', CAREER_NAV_SAYS.LEAVE],
     ...EMPIRE_FLOOR_READS.map((row) => [row.copy, row.label]),
   ]) {
     const theirs = copyLineInSource(source, name);
@@ -4720,6 +4821,13 @@ check(
 //      no query string at all at the moment the recap is read, so nothing that
 //      happened above can have quietly re-entered through the launch path.
 const playerOpenedMeet = { attemptedSecond: false };
+
+/**
+ * Section 11's and section 4d's raw material for `route.json`: the Career
+ * legs as they were driven. `null` is a leg that never ran, which is not the
+ * same thing as a leg that ran and found nothing.
+ */
+const careerLegs = { fresh: null, lockedByResults: null };
 await deriveRecapSettleMs();
 
 if (!reachedMeet) {
@@ -5025,6 +5133,94 @@ if (!reachedMeet) {
       );
       check(!(await visible('meet-screen')), 'and the second meet is no longer on screen either');
       await shootBeat('05b-check-in-after-the-second-meet.png', 'check-in', BEAT_SAYS.CHECK_IN);
+
+      // ---------------------------------------------------------------------
+      // 4d. THE FEDERATION IS LOCKED BY THOSE RESULTS — the one career refusal
+      //     a browser can reach, driven on the row that has them (Sprint 1b)
+      // ---------------------------------------------------------------------
+      //
+      // It sits HERE, not in section 11, because it needs what only this app
+      // run has: a `ServerRecord` holding a banked meet, with the federation
+      // still unchosen. `careerServer.ts` then refuses a choice of any OTHER
+      // federation (`FEDERATION_LOCKED_BY_RESULTS` — results belong to the
+      // calendar they were lifted on) while allowing the same-id confirm.
+      // Section 11's fresh lifter cannot reach either arm, and no debug URL
+      // opens the Career surface at all. Both arms of the round trip below run
+      // through the app's own optimistic machinery — proposal parked, request
+      // sent, refusal rendered from the server's sentence, retry accepted —
+      // which is the path Sprint 1a shipped untested end-to-end.
+      const reachedCareerWithResults = await press(
+        NAV_OPEN_CAREER,
+        'career-screen',
+        'PRESSING CAREER on the same app run opens GDD §2.1’s chooser — two banked meets have not spent the choice',
+      );
+      if (!reachedCareerWithResults) {
+        check(false, 'SKIPPED: the locked-by-results refusal needs the chooser to have opened');
+      } else {
+        check(
+          !page.url().includes('?'),
+          'CONTROL: the chooser is the one the PLAYER opened — no query string at the moment it is read',
+          `the page is on ${JSON.stringify(page.url())}`,
+        );
+        await checkOnScreen(
+          'career-choosing',
+          'the chooser gates the calendar: `chosen` is still false on this row, results and all',
+        );
+        const refused = await press(
+          'career-fed-grandhall',
+          'career-refusal',
+          'CHOOSING A DIFFERENT FEDERATION IS REFUSED BY THE SERVER — the choice went out and the refusal came back',
+        );
+        if (refused) {
+          const refusalText =
+            (await page.getByTestId('career-refusal').textContent().catch(() => null))
+              ?.replace(/\s+/g, ' ')
+              .trim() ?? null;
+          check(
+            refusalText !== null && refusalText.startsWith(CAREER_SAYS.LOCKED_BY_RESULTS_OPENING),
+            'and the sentence on screen is the server’s own, from its opening words — rendered verbatim, never re-derived',
+            `the screen says ${JSON.stringify((refusalText ?? '').slice(0, 120))}`,
+          );
+          check(
+            refusalText !== null &&
+              refusalText.includes('"meridian"') &&
+              refusalText.includes('"grandhall"'),
+            'and it names both federations — the one the results were lifted under and the one asked for',
+            `the sentence: ${JSON.stringify((refusalText ?? '').slice(0, 200))}`,
+          );
+          check(
+            await visible('career-choosing'),
+            'and the chooser is still up — a refusal is not a dead end, and the retry below is accepted',
+          );
+          await page.screenshot({ path: path.join(outDir, '23-career-chooser-refusal.png') });
+          const confirmed = await press(
+            'career-fed-meridian',
+            'career-calendar',
+            'CONFIRMING THE FEDERATION THE RESULTS WERE LIFTED UNDER SUCCEEDS — the same-id confirm, with meets banked',
+          );
+          if (confirmed) {
+            check(
+              !page.url().includes('?'),
+              'CONTROL: and the calendar it settles into is the played route — still no query string',
+              `the page is on ${JSON.stringify(page.url())}`,
+            );
+            check(
+              await visible('career-row-competitive-worlds'),
+              'and the calendar is up with GDD §10.0’s summit drawn on it — the refusal leg ends where the fresh leg does',
+            );
+            careerLegs.lockedByResults = Object.freeze({
+              refusedFederation: 'grandhall',
+              confirmedFederation: 'meridian',
+              refusalText,
+            });
+            await press(
+              NAV_LEAVE_CAREER,
+              'session-screen',
+              'and BACK TO TRAINING closes the leg, so everything downstream starts from the session',
+            );
+          }
+        }
+      }
     }
   }
 }
@@ -6784,6 +6980,252 @@ await checkOnScreen(
 }
 
 // ###########################################################################
+// ###  11. THE CAREER SURFACE, OPENED AND LEFT THE WAY A PLAYER DOES        #
+// ###      (GDD §2.1 chooser -> §6.1 calendar, Sprint 1b)                   #
+// ###########################################################################
+//
+// LIKE THE FLOOR, THIS SECTION HAS NO DEBUG ARM TO FALL BACK TO: `resolveEntry`
+// has no `?career=` string, no preview state and no stand-in server — the only
+// way onto the surface is `navigate(route, 'open-career')`, a press. The
+// address-bar assertions below are therefore a check on the tool's own honesty.
+//
+// WHAT THIS LEG DRIVES that no node test can: a fresh lifter presses CAREER on
+// the check-in, gets GDD §2.1's chooser (the calendar is gated on `chosen`),
+// picks a NON-default federation, and the optimistic round trip settles into
+// THAT federation's calendar — five rows, one per rung, verdicts the server
+// wrote, the §10.0 summit drawn locked — and BACK TO TRAINING closes the trip.
+// The refusal arm needs a row with banked results and runs as section 4d,
+// inside the played-meet app run.
+//
+// WHAT THIS LEG DECLARES RATHER THAN MEASURES: that a MID-SESSION Career round
+// trip preserves the session's beat. Career rides the same mechanism section
+// 10b measures for Empire — `PERSISTENT_SURFACES` membership, one hidden-
+// surface wrapper, `sessionMounted` off `isPersistentSurface(route.surface)` —
+// and `shellRoute.test.ts` / `shellWiring.test.ts` pin the membership and the
+// mount flag. A career-specific mid-briefing leg would re-drive 10b's claim at
+// full cost; the reliance is written here so a reader knows it is a reliance.
+{
+  const startedAt = Date.now();
+  await open('/', 'session-screen');
+  check(
+    !page.url().includes('?'),
+    'CONTROL: the Career leg starts on the shipped route — the address bar carries no query string',
+    `the page is on ${JSON.stringify(page.url())}`,
+  );
+
+  const openCareerDrawn = await checkOnScreen(
+    NAV_OPEN_CAREER,
+    `the way to the Career surface is on the check-in (${NAV_OPEN_CAREER})`,
+  );
+  const openCareerHit = await hitTest(NAV_OPEN_CAREER);
+  check(
+    openCareerHit.hit,
+    'and the point a thumb would land on belongs to it, not to a pill beside it',
+    `elementFromPoint -> ${openCareerHit.why}`,
+  );
+  const openCareerLabel = (await page.getByTestId(NAV_OPEN_CAREER).textContent().catch(() => null))
+    ?.trim();
+  check(
+    openCareerLabel === CAREER_NAV_SAYS.OPEN,
+    `and it is the Career pill rather than a neighbour — it says ${JSON.stringify(CAREER_NAV_SAYS.OPEN)}`,
+    `the control says ${JSON.stringify(openCareerLabel)}`,
+  );
+  check(
+    (await visible(NAV_OPEN_MEET)) && (await visible(NAV_OPEN_EMPIRE)),
+    'and the meet and Empire pills are still beside it — the Career edge is additive, the check-in now offers three round trips',
+  );
+
+  const reachedCareer = await press(
+    NAV_OPEN_CAREER,
+    'career-screen',
+    'PRESSING IT REACHES THE CAREER SURFACE — no URL typed, and there is no query string that would open it',
+  );
+  if (!reachedCareer) {
+    check(
+      false,
+      'SKIPPED: the Career surface checks need the pill to have landed, and there is no debug URL to open it with',
+    );
+  } else {
+    check(
+      !page.url().includes('?'),
+      'CONTROL: and the surface is the one the PLAYER opened — the address bar still carries no query string',
+      `the page is on ${JSON.stringify(page.url())}`,
+    );
+    check(!(await visible('session-screen')), 'and the daily session is no longer on screen');
+    await checkOnScreen(
+      'career-choosing',
+      'GDD §2.1’s chooser is what a fresh lifter gets — `chosen` is false, so the calendar is gated behind the pick',
+    );
+    check(
+      !(await visible('career-calendar')),
+      'and the calendar is NOT drawn beside it — the gate is a gate, not a default',
+    );
+    for (const fed of CAREER_FED_IDS) {
+      await checkOnScreen(`career-fed-${fed}`, `the ${fed} card is drawn — one per federation, §2.1’s four`);
+    }
+
+    // THE CHOOSER IS NOT A TRAP. Both of the surface's beats carry the way
+    // back; this is the 'choosing' sighting the permission-side pin grades.
+    const chooserLeave = await waitUntilDrawn(page, NAV_LEAVE_CAREER, CHROME_WINDOWS.pillArrivalMs);
+    check(
+      chooserLeave.drawn,
+      `the way back is on the chooser (${NAV_LEAVE_CAREER}) — a player may walk away without choosing`,
+      `${chooserLeave.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms`,
+    );
+    const chooserLeaveHit = await hitTest(NAV_LEAVE_CAREER);
+    check(chooserLeaveHit.hit, 'and it is what a thumb would hit there', `elementFromPoint -> ${chooserLeaveHit.why}`);
+    sawPillOn('choosing', openCareerDrawn && chooserLeave.drawn, chooserLeaveHit.hit);
+    await shootBeat('20-career-chooser-from-session.png', 'chooser', CAREER_SAYS.CHOOSER);
+
+    const chose = await press(
+      'career-fed-ironline',
+      'career-calendar',
+      'CHOOSING A FEDERATION SETTLES INTO THE CALENDAR — the optimistic round trip, driven end to end on a press',
+    );
+    if (!chose) {
+      check(false, 'SKIPPED: the calendar checks need the federation choice to have landed');
+    } else {
+      check(
+        !page.url().includes('?'),
+        'CONTROL: and the calendar is on the played route — still no query string',
+        `the page is on ${JSON.stringify(page.url())}`,
+      );
+
+      const rowsSeen = [];
+      for (const tier of CAREER_TIER_ROWS) {
+        const drawn = await checkOnScreen(
+          `career-row-${tier}`,
+          `the ${tier} row is on the calendar — one per rung of GDD §6.1’s ladder`,
+        );
+        const text = !drawn
+          ? null
+          : ((await page.getByTestId(`career-row-${tier}`).textContent().catch(() => null))
+              ?.replace(/\s+/g, ' ')
+              .trim() ?? null);
+        rowsSeen.push({ tier, drawn, text });
+      }
+      check(
+        rowsSeen.every((row) => row.text !== null && row.text.includes('Ironline')),
+        'EVERY row is the CHOSEN federation’s — the choice reached the server and came back on the snapshot, not a default render',
+        rowsSeen.map((row) => `${row.tier}: ${JSON.stringify((row.text ?? '').slice(0, 60))}`).join('; '),
+      );
+
+      const localBadge = (await page.getByTestId('career-row-local-badge').textContent().catch(() => null))?.trim() ?? null;
+      check(
+        localBadge === CAREER_SAYS.OPEN_BADGE,
+        `the local row — open entry — carries the ${JSON.stringify(CAREER_SAYS.OPEN_BADGE)} badge, the one enterable rung of a fresh career`,
+        `the badge says ${JSON.stringify(localBadge)}`,
+      );
+      const regionalDetail =
+        (await page.getByTestId('career-row-regional-detail').textContent().catch(() => null))?.trim() ?? null;
+      check(
+        regionalDetail === CAREER_SAYS.BELOW_QUALIFYING,
+        'the gated rung’s sentence is the SERVER’s, verbatim — the same sentence `entryVerdict` keyed to the refusal',
+        `the row says ${JSON.stringify(regionalDetail)}`,
+      );
+      const ceilingBadge =
+        (await page.getByTestId('career-row-competitive-worlds-badge').textContent().catch(() => null))?.trim() ?? null;
+      check(
+        ceilingBadge === CAREER_SAYS.LOCKED_BADGE,
+        `GDD §10.0: competitive worlds is DRAWN, and drawn ${JSON.stringify(CAREER_SAYS.LOCKED_BADGE)} — the visible harder ceiling`,
+        `the badge says ${JSON.stringify(ceilingBadge)}`,
+      );
+
+      // NO SYNC UI AND NO ENTRY UI — entering is Sprint 1c, and §10.0 wants no
+      // sync scaffolding at all. Counted in the DOM beside a same-moment
+      // positive control, like the floor's version of this check.
+      const buttons = await page.evaluate(
+        ([surfaceId, shellId]) => {
+          const count = (id) => {
+            const root = document.querySelector(`[data-testid="${id}"]`);
+            return root === null ? -1 : root.querySelectorAll('[role="button"]').length;
+          };
+          return { surface: count(surfaceId), shell: count(shellId) };
+        },
+        ['career-screen', 'app-shell'],
+      );
+      check(
+        buttons.shell > 0,
+        'CONTROL: the button counter can see a control on this very screen — the shell’s pill',
+        `${buttons.shell} control(s) inside app-shell`,
+      );
+      check(
+        buttons.surface === 0,
+        'the calendar draws NO control of its own — no entry button (Sprint 1c’s seam), no sync UI (GDD §10.0), so the shell’s pill is the whole way back',
+        `${buttons.surface} control(s) inside career-screen (-1 would mean the screen was not found)`,
+      );
+
+      // THE WAY BACK, AND THE ROWS STAY OUT OF ITS TOUCH TARGET — the same
+      // per-card geometry the floor is graded by, on the same grown box.
+      const calendarLeave = await waitUntilDrawn(page, NAV_LEAVE_CAREER, CHROME_WINDOWS.pillArrivalMs);
+      check(
+        calendarLeave.drawn,
+        `the way back is on the calendar (${NAV_LEAVE_CAREER})`,
+        `${calendarLeave.why} — bound ${CHROME_WINDOWS.pillArrivalMs}ms`,
+      );
+      const calendarLeaveHit = await hitTest(NAV_LEAVE_CAREER);
+      check(calendarLeaveHit.hit, 'and it is what a thumb would hit there', `elementFromPoint -> ${calendarLeaveHit.why}`);
+      sawPillOn('calendar', calendarLeave.drawn, calendarLeaveHit.hit);
+      const pillTouchTarget =
+        calendarLeaveHit.box === undefined || calendarLeaveHit.box === null
+          ? null
+          : Object.freeze({
+              left: calendarLeaveHit.box.x - NAV_HIT_SLOP_RESTATED,
+              top: calendarLeaveHit.box.y - NAV_HIT_SLOP_RESTATED,
+              right: calendarLeaveHit.box.x + calendarLeaveHit.box.width + NAV_HIT_SLOP_RESTATED,
+              bottom: calendarLeaveHit.box.y + calendarLeaveHit.box.height + NAV_HIT_SLOP_RESTATED,
+            });
+      for (const tier of CAREER_TIER_ROWS) {
+        const rowBox = await page.getByTestId(`career-row-${tier}`).boundingBox().catch(() => null);
+        const disjoint =
+          pillTouchTarget !== null &&
+          rowBox !== null &&
+          (rowBox.y + rowBox.height <= pillTouchTarget.top ||
+            rowBox.y >= pillTouchTarget.bottom ||
+            rowBox.x + rowBox.width <= pillTouchTarget.left ||
+            rowBox.x >= pillTouchTarget.right);
+        check(
+          disjoint,
+          `the pill’s touch target (its box grown ${NAV_HIT_SLOP_RESTATED}px by NAV_HIT_SLOP) overlaps no part of career-row-${tier}`,
+          pillTouchTarget === null
+            ? 'the pill has no bounding box to grade against'
+            : rowBox === null
+              ? 'the row has no bounding box at all'
+              : `row y ${rowBox.y.toFixed(1)}..${(rowBox.y + rowBox.height).toFixed(1)}` +
+                ` vs target y ${pillTouchTarget.top.toFixed(1)}..${pillTouchTarget.bottom.toFixed(1)}`,
+        );
+      }
+      await shootBeat('21-career-calendar-chosen.png', 'calendar', CAREER_SAYS.CALENDAR);
+
+      const returned = await press(
+        NAV_LEAVE_CAREER,
+        'session-screen',
+        'AND PRESSING IT RETURNS TO THE DAILY SESSION — the Career round trip closes with a mouse',
+      );
+      if (returned) {
+        check(
+          !page.url().includes('?'),
+          'CONTROL: and the session it lands on is the shipped route — no query string at any moment of the trip',
+          `the page is on ${JSON.stringify(page.url())}`,
+        );
+        check(!(await visible('career-screen')), 'and the Career surface is no longer on screen');
+        check(
+          await visible('session-check-in'),
+          'it lands on GDD §3.2’s check-in — the beat this leg departed from',
+        );
+        await page.screenshot({ path: path.join(outDir, '22-career-round-trip-closed.png') });
+      }
+      careerLegs.fresh = Object.freeze({
+        chose: 'ironline',
+        rows: rowsSeen,
+        wallClockMs: Date.now() - startedAt,
+      });
+    }
+  }
+  note(`the Career round trip cost ${Date.now() - startedAt}ms of wall clock`);
+}
+
+// ###########################################################################
 // ###  8a. GDD §6.3 — "THE REAL TENSION", ON EVERY MEET A PLAYER OPENED     #
 // ###########################################################################
 //
@@ -6809,6 +7251,78 @@ checkRecapCallOutsOnBothArms(MEETS_DRIVEN);
 // test can, and which arm it runs on.
 await probeWalkoutTail();
 
+/**
+ * The Career restatements, cross-checked against the modules that own them —
+ * `src/career/careerTuning.ts` for the copy, the tier ladder and the beta
+ * lock, and `src/game/careerServer.ts` for the refusal sentence the locked-
+ * by-results leg reads. Same arrangement as `checkMeetRestatementsMatchTuning`
+ * and for the same reason: section 11 identifies screens and rows by these
+ * strings, and a copy edit with no pin here would leave it comparing a screen
+ * against a line nothing prints.
+ */
+async function checkCareerRestatementsMatchTuning() {
+  const careerWhere = path.join(srcRoot, 'src', 'career', 'careerTuning.ts');
+  const careerText = await readFile(careerWhere, 'utf8').catch(() => null);
+  if (careerText === null) {
+    check(false, 'this tool’s career copy is cross-checked against careerTuning.ts', `could not read ${careerWhere}`);
+  } else {
+    for (const [name, mine] of [
+      ['CHOOSE_TITLE', CAREER_SAYS.CHOOSER],
+      ['CALENDAR_TITLE', CAREER_SAYS.CALENDAR],
+      ['OPEN_ENTRY_BADGE', CAREER_SAYS.OPEN_BADGE],
+      ['CEILING_LOCKED_BADGE', CAREER_SAYS.LOCKED_BADGE],
+      ['BELOW_QUALIFYING_TOTAL', CAREER_SAYS.BELOW_QUALIFYING],
+    ]) {
+      check(
+        careerText.includes(`${name}: '${mine}'`),
+        `CAREER_COPY.${name} is the line section 11 reads the Career surface by`,
+        `looked for ${name}: '${mine}' in careerTuning.ts`,
+      );
+    }
+    // The tier ladder this tool's five row testIDs are built from, read out of
+    // `MEET_TIER_ORDER`'s own declaration — order preserved, because the rows
+    // are asserted in ladder order on the screen.
+    const ladder = /MEET_TIER_ORDER = \[([\s\S]*?)\]/.exec(careerText);
+    const tiers = ladder === null ? null : [...ladder[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+    check(
+      tiers !== null && JSON.stringify(tiers) === JSON.stringify([...CAREER_TIER_ROWS]),
+      'the five calendar rows section 11 expects are MEET_TIER_ORDER’s own ladder, in its order',
+      `careerTuning.ts ${JSON.stringify(tiers)} vs this tool ${JSON.stringify([...CAREER_TIER_ROWS])}`,
+    );
+    // GDD §10.0's lock, as the app data the locked-row check rests on.
+    const lockedTiers = phaseListInSource(careerText, 'LOCKED_TIERS');
+    check(
+      lockedTiers !== null && JSON.stringify(lockedTiers) === JSON.stringify(['competitive-worlds']),
+      'CAREER_BETA.LOCKED_TIERS is competitive worlds and nothing else — the §10.0 ceiling section 11 checks drawn locked',
+      `careerTuning.ts ${JSON.stringify(lockedTiers)}`,
+    );
+    // The federation cards the legs press, by id, and the name the fresh leg
+    // proves reached the calendar.
+    for (const fed of CAREER_FED_IDS) {
+      check(
+        careerText.includes(`id: '${fed}'`),
+        `the federation card section 11 may press exists in CAREER_FEDERATIONS (${fed})`,
+        `looked for id: '${fed}' in careerTuning.ts`,
+      );
+    }
+    check(
+      careerText.includes(`name: '${CAREER_IRONLINE_NAME}'`),
+      'and the name the fresh leg reads off the chosen calendar is the federation’s own',
+      `looked for name: '${CAREER_IRONLINE_NAME}' in careerTuning.ts`,
+    );
+  }
+
+  const serverWhere = path.join(srcRoot, 'src', 'game', 'careerServer.ts');
+  const serverText = await readFile(serverWhere, 'utf8').catch(() => null);
+  check(
+    serverText !== null && serverText.includes(CAREER_SAYS.LOCKED_BY_RESULTS_OPENING),
+    'the refusal opening the locked-by-results leg asserts is careerServer.ts’s own sentence',
+    serverText === null
+      ? `could not read ${serverWhere}`
+      : `looked for ${JSON.stringify(CAREER_SAYS.LOCKED_BY_RESULTS_OPENING)} in careerServer.ts`,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // 9. This tool's own expectations still match the app's tuning module
 // ---------------------------------------------------------------------------
@@ -6818,6 +7332,7 @@ await probeWalkoutTail();
 await checkNavTableMatchesTuning();
 await checkSessionLayoutMatchesTuning();
 await checkMeetRestatementsMatchTuning();
+await checkCareerRestatementsMatchTuning();
 
 console.log(log.join('\n'));
 if (pageErrors.length > 0) {
@@ -6859,6 +7374,12 @@ await writeFile(
       // not the same thing as a leg that ran and found nothing.
       empireFloorReadings,
       empireRoundTripReadings,
+      // Sections 11 and 4d: the Career legs — the fresh lifter's chooser ->
+      // calendar drive, and the locked-by-results refusal on the row that
+      // banked two meets — as they were driven, so a reader who disagrees with
+      // a check can re-derive it from the rows and the sentence rather than
+      // from the check's wording.
+      careerLegs,
       checks,
       notes: observations,
       failures,

@@ -315,7 +315,16 @@ export function MeetScreen({
               </View>
             )
           ) : (
-            <RecapView recap={recap} attempts={state.attempts} onSeeCard={onSeeCard} />
+            <RecapView
+              recap={recap}
+              attempts={state.attempts}
+              // The server's own account of what this result did to the career
+              // (GDD §6.5, Sprint 1b). `applied` and `recap` settle together —
+              // the recap is built FROM `applied` — so a drawn recap always has
+              // the outcome beside it; `?? null` is for the type, not a path.
+              career={loop.applied?.career ?? null}
+              onSeeCard={onSeeCard}
+            />
           )
         ) : null}
       </View>

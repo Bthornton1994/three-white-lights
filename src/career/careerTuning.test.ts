@@ -203,8 +203,25 @@ describe('the federations', () => {
       ...Object.values(CAREER_COPY.TIER_LABEL),
       ...Object.values(CAREER_COPY.ENTRY_REFUSAL),
       CAREER_COPY.NO_QUALIFYING_TOTAL_NEEDED,
+      // The ruleset labels were always drawn (`rulesetLabel` composes them) and
+      // were missing from this census; added with the 1b screen copy below.
+      ...Object.values(CAREER_COPY.EQUIPMENT_LABEL),
+      ...Object.values(CAREER_COPY.TESTING_LABEL),
+      // The Sprint 1b screens: the GDD §2.1 chooser, the §6.1 calendar, the
+      // §10.0 locked ceiling, and the §6.5 recap career lines.
+      CAREER_COPY.CHOOSE_TITLE,
+      CAREER_COPY.CHOOSE_LEAD,
+      CAREER_COPY.CHOOSE_PENDING,
+      CAREER_COPY.CALENDAR_TITLE,
+      CAREER_COPY.CALENDAR_LEAD,
+      CAREER_COPY.OPEN_ENTRY_BADGE,
+      CAREER_COPY.QUALIFYING_LABEL,
+      CAREER_COPY.CEILING_LOCKED_BADGE,
+      CAREER_COPY.CEILING_LOCKED_LINE,
+      CAREER_COPY.RECAP_CAREER_BEST_LABEL,
+      CAREER_COPY.RECAP_QUALIFIED_PREFIX,
     ];
-    expect(drawn.length).toBe(19);
+    expect(drawn.length).toBe(34);
     const hits = drawn.flatMap((text) =>
       REAL_IP_WATCHLIST.filter((entry) => text.toLowerCase().includes(entry.name.toLowerCase())).map(
         (entry) => `${entry.name} in "${text}"`,
