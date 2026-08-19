@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-capture-cutin-mjs-2026-08-19T02-20-36-310Z-3924",
+  "label": null,
+  "command": [
+    "node",
+    "tools/capture-cutin.mjs"
+  ],
+  "budgetSeconds": 300,
+  "startedAtIso": "2026-08-19T02:20:36.310Z",
+  "startedAtMs": 1787106036310,
+  "cwd": "/home/user/wt-career-wiring",
+  "commit": "acca1d14ca9515ef73b095f6d81d296139195672",
+  "branch": "claude/career-wiring",
+  "dirty": 10,
+  "dirtyPaths": [
+    ".gauntlet/evidence/suite.txt",
+    ".gauntlet/shots/cutin-cap/cap.json",
+    ".gauntlet/shots/lift-press/press.json",
+    ".gauntlet/shots/meet/sound.json",
+    ".gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+    ".gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+    ".gauntlet/shots/shell/13-recap-before-the-return-leg.png",
+    ".gauntlet/shots/shell/route.json",
+    "src/game/careerServer.test.ts",
+    ".gauntlet/evidence/career-wiring.txt"
+  ],
+  "runner": {
+    "pid": 3924,
+    "startTick": "800067",
+    "cmdline": "node tools/watchdog.mjs --budget 300 --id capture-cutin-career -- node tools/capture-cutin.mjs",
+    "bootId": "d4bbdf13-8b04-460e-9128-d632843306de",
+    "bootEpochSeconds": 1787098036,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-19T02:20:36.331Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
