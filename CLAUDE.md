@@ -1092,6 +1092,87 @@ third claim. This has now caught two agents in this session, mine included.
 or describe the sentence instead of reproducing it.** The census cannot tell a
 claim from a quotation of one.
 
+### CROSSING 6, APPROVED BY THE HUMAN DIRECTLY: WIRING GYM EMPIRE INTO
+### `src/shell/**`, AND WHY THE THING BEING WIRED IS NOT `GymView`
+
+Written here before the edits, as this section requires. Unlike the earlier
+crossings, this one was not requested by Session B and then approved in this
+file — **the human instructed this session directly** to make Gym Empire
+reachable from the real app's navigation and to stand up a phone-reachable
+tunnel link from a build that includes the wiring. That instruction is itself
+the approval; it is recorded here so the crossing is visible to Session A
+before the edit lands rather than only in a commit.
+
+**The premise in the instruction does not match the tree, and that is worth
+stating plainly before anything else.** The request was to replace or extend
+"whatever currently routes to the old EmpireScreen." Grepped across `src/` for
+`EmpireScreen`, `GymEmpire` and the literal text `GYM EMPIRE`: **zero hits**.
+`AppShell.tsx` has no branch for it and never has. There is nothing to replace
+— this is a new entry point, not a redirect of an existing one.
+
+**And `GymView` itself cannot be the thing that gets mounted, which changes the
+shape of the work more than the routing question does.** `src/empire/
+ladderView.tsx`'s `GymView` renders plain DOM host tags —
+`<span data-testid={'ladder-rate'}>`, `<button data-testid={'move-up'}
+onClick={...}>` — with no `react-native` import at all. That was a deliberate
+choice for the S1b/S2b stage-gate instrument: a browser-mountable dev harness
+(`ladder-dev.tsx`/`ladder-dev.html`) that could serve a human play-through
+without widening `src/empire/`'s own import fence to include `react-native`.
+
+The real app is not DOM-rendered. `app.json` configures `ios`, `android` and
+`web` targets; `package.json` ships `expo start --ios` / `--android` / `--web`
+alongside plain `expo start`, and every real screen — `SessionScreen.tsx`,
+`AppShell.tsx` — is built on `View` / `Text` / `StyleSheet` from
+`react-native`. On native, the reconciler does not know what a `span` or a
+`button` host tag is; mounting `GymView`'s markup inside that tree is expected
+to throw at the point it is rendered, not to quietly fail to look right. No
+`.test.tsx` exists in this tree to have caught that either way — the file
+extension this codebase uses for a render test currently compiles to nothing
+the suite collects, a gap already recorded above under "A `.test.tsx` COMPILES
+AND IS COLLECTED BY NOTHING."
+
+**So "wire `GymView` in" is not buildable as literally stated. The actual gap
+is a native screen that does not exist yet**, reusing the same pure logic
+`GymView` already reuses. That screen is `src/empire/`'s to build — same
+directory, same import fence, zero crossing — and is not itself part of this
+crossing. What is being recorded here is what has to change outside
+`src/empire/` to make that screen reachable:
+
+- **`src/shell/shellRoute.ts`** — a new `ShellSurface` member (currently the
+  closed three: `'session' | 'meet' | 'replay'`) and whatever `ShellIntent`
+  values a builder finds it needs (currently the closed two:
+  `'open-meet' | 'leave-meet'`), plus the `navigate()` logic to reach and leave
+  it.
+- **`src/shell/shellTuning.ts`** — nav copy for the new affordance.
+- **`src/shell/AppShell.tsx`** — a new render branch, and a change to the
+  single-pill-at-a-time affordance model (`shellAffordanceFor`) so a session
+  screen can offer a way into Gym Empire alongside the existing meet pill,
+  without breaking the mid-meet case where only `leave-meet` should show. The
+  exact mechanism — a second simultaneous pill, a tile, a tab — is a builder
+  decision, not fixed here; whichever it is gets recorded as built, not
+  proposed, once it exists.
+- **`src/shell/shellRoute.test.ts`** and **`src/shell/shellWiring.test.ts`**
+  (32 KB and 53 KB, heavily pinned) will need corresponding updates for the new
+  surface and intent values. Flagged here so a red diff in those two files on
+  this branch is expected, not a surprise found in a merge.
+
+**What stays out of scope even under this crossing.** No change to
+`progression.ts`'s wallet — Gym Empire still pays into nothing, matching "THE
+WALLET WIRING IS RULED OUT UNTIL THE TUNING REGISTRY IS VERIFIED COMPLETE"
+above — and no change to meet or session pure logic. This crossing is
+navigation only: a path to the screen, not a currency path out of it.
+
+**The verification bar is the one this file already states for exactly this
+situation.** "A screen a player reaches needs a check that reaches it the way a
+player does" and "Presence is not visibility" both apply directly: a check that
+opens the new surface by a debug URL or a direct component mount is a different
+subject from a check that presses the real in-app control, and the difference
+belongs in the tool's own header if the played path cannot be driven. The
+human's own instruction states the same bar independently — reachable "by
+pressing normal in-app navigation, not a separate dev route the tester has to
+know to type in" — so this is not a new standard, it is the existing one
+applied to what was asked.
+
 ## Subagent Roles
 
 Two subagent definitions live in `.claude/agents/`. Use them; do not improvise
