@@ -14,6 +14,7 @@ import { estimateE1rm } from './e1rm';
 import { LIFT_ORDER, type LiftKind } from './meet';
 import * as progressionModule from './progression';
 import {
+  CHOOSE_FEDERATION_REPORT_KEYS,
   SET_RECOVERY_DAY_PROTECTION_REPORT_KEYS,
   applyServerSnapshot,
   asMeetId,
@@ -1275,6 +1276,7 @@ function wire(overrides: Partial<ProgressionSnapshotWire> = {}): ProgressionSnap
       },
     ],
     wallet: { gymBucks: 1200, chalk: 40 },
+    federation: { id: 'meridian', chosen: false },
     acknowledgedProposalId: null,
     ...overrides,
   };
@@ -1371,6 +1373,7 @@ const PROPOSAL_BY_KIND: Readonly<Record<ProgressionProposalKind, ProgressionProp
   'record-meet-result': A_MEET_PROPOSAL,
   'redeem-entitlement': { kind: 'redeem-entitlement', report: { sku: 'chalk-pack-3', receipt: 'txn-1' } },
   'spend-currency': { kind: 'spend-currency', report: { currency: 'gymBucks', amount: 500, sku: 'gym-decor-neon' } },
+  'choose-federation': { kind: 'choose-federation', report: { federationId: 'ironline' } },
 };
 
 /** A projection that claims exactly one fact, and nothing else. */
@@ -1439,6 +1442,7 @@ const PAYLOAD_KEYS_BY_PROPOSAL_KIND: Record<ProgressionProposalKind, readonly st
   'record-meet-result': [...MEET_RESULT_REPORT_KEYS, ...MEET_CARD_REPORT_KEYS, ...MEET_ATTEMPT_REPORT_KEYS],
   'redeem-entitlement': [...REDEEM_ENTITLEMENT_REPORT_KEYS],
   'spend-currency': [...SPEND_CURRENCY_REPORT_KEYS],
+  'choose-federation': [...CHOOSE_FEDERATION_REPORT_KEYS],
 };
 
 /** Every payload field name belonging to a kind with this declared origin. */

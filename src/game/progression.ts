@@ -1383,6 +1383,7 @@
  * about a third of a second per run.
  */
 
+import { CAREER_FEDERATIONS, type CareerFederationId } from '../career/careerTuning';
 import type { BodyweightReading, OfficialTotalKg } from './dots';
 import type { LiftKind } from './meet';
 import { LIFT_ORDER } from './meet';
@@ -1697,7 +1698,7 @@ export function asServerRevision(value: number): ServerRevision {
  * Exported as a runtime array so a critic can compare it against a live object's
  * keys without reading a line of logic. `progression.test.ts` does exactly that.
  */
-export const PROGRESSION_FACT_KEYS = ['totalKg', 'bestE1rmKg', 'streak', 'meets', 'wallet'] as const;
+export const PROGRESSION_FACT_KEYS = ['totalKg', 'bestE1rmKg', 'streak', 'meets', 'wallet', 'federation'] as const;
 
 export type ProgressionFactKey = (typeof PROGRESSION_FACT_KEYS)[number];
 
@@ -1825,6 +1826,16 @@ export const FACT_PROTECTION = {
   streak: 'open',
   meets: 'protected',
   wallet: 'open',
+  /**
+   * GDD §2.1's federation choice. Protected, and the reason is §6.6's region
+   * ruling: region is derived from the federation, so a paid federation switch
+   * would be paid REGION-SHOPPING — pick the weakest pool and qualify against
+   * it — which is the competitive-integrity hole §6.6 names and refuses. Which
+   * meets a lifter may enter is upstream of every meet result they will ever
+   * have (`eligibility.ts` §2), so this answer is the pay-to-win rule applied
+   * one hop out.
+   */
+  federation: 'protected',
 } as const satisfies Readonly<Record<ProgressionFactKey, FactProtection>>;
 
 /**
@@ -1974,6 +1985,27 @@ export const MEET_RESULT_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
 > = true;
 
 /**
+ * The lifter's federation, as the server holds it (GDD §2.1, §6.1).
+ *
+ * `chosen` is the fact the 1b choosing screen gates on: `false` means the id
+ * is `careerTuning.ts`'s seeded default and the choice is still the player's
+ * to make. It is server-owned like everything else here because `careerServer.
+ * ts` refuses a re-choice off it — a client that could write it could re-open
+ * a settled choice.
+ *
+ * WHAT THIS IS NOT: the whole career record. `bestTotalKg` and
+ * `enteredMeetIds` are DERIVED — from `totalKg` and `meets`, by
+ * `careerServer.ts`'s one fold — rather than stored beside them, because two
+ * stored copies of one number are two statements free to disagree, which is
+ * the defect this file's allowlists exist to prevent. The federation is the
+ * one career fact nothing else on this type carries.
+ */
+export interface ConfirmedFederation {
+  readonly id: CareerFederationId;
+  readonly chosen: boolean;
+}
+
+/**
  * Everything the server owns about one lifter's progression, as read out of a
  * snapshot. Deeply frozen; every scalar is branded `Confirmed`.
  */
@@ -1988,6 +2020,8 @@ export interface ConfirmedFacts {
   readonly meets: readonly ConfirmedMeetResult[];
   /** Currency balances. Recovery Days are in `streak`, not here. */
   readonly wallet: ConfirmedWallet;
+  /** The federation the lifter competes under. See `ConfirmedFederation`. */
+  readonly federation: ConfirmedFederation;
 }
 
 /**
@@ -2166,6 +2200,7 @@ export const PROGRESSION_PROPOSAL_KINDS = [
   'record-meet-result',
   'redeem-entitlement',
   'spend-currency',
+  'choose-federation',
 ] as const;
 
 export type ProgressionProposalKind = (typeof PROGRESSION_PROPOSAL_KINDS)[number];
@@ -2686,13 +2721,40 @@ export const SPEND_CURRENCY_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
   (typeof SPEND_CURRENCY_REPORT_KEYS)[number]
 > = true;
 
+/**
+ * The player picked a federation (GDD §2.1: "Create a lifter, pick a
+ * federation").
+ *
+ * `federationId` is a bare string because this is what an untrusted client
+ * sends: `careerServer.ts` resolves it against `CAREER_FEDERATIONS` and
+ * refuses an id it does not hold, exactly as `meetServer.ts` refuses a unit it
+ * cannot prove. Narrowing it to `CareerFederationId` here would move the
+ * refusal to `tsc` on the client, which is the half of the system this file
+ * exists because it does not trust.
+ *
+ * No `deviceWallClock`: the choice is not day-keyed — what refuses it is what
+ * is already ON THE RECORD (a prior choice, a banked meet), never the
+ * calendar.
+ */
+export interface ChooseFederationReport {
+  readonly federationId: string;
+}
+
+export const CHOOSE_FEDERATION_REPORT_KEYS = ['federationId'] as const;
+
+export const CHOOSE_FEDERATION_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
+  ChooseFederationReport,
+  (typeof CHOOSE_FEDERATION_REPORT_KEYS)[number]
+> = true;
+
 /** Everything the client may ask the server to change. */
 export type ProgressionProposal =
   | { readonly kind: 'record-training-session'; readonly report: TrainingSessionReport }
   | { readonly kind: 'set-recovery-day-protection'; readonly report: SetRecoveryDayProtectionReport }
   | { readonly kind: 'record-meet-result'; readonly report: MeetResultReport }
   | { readonly kind: 'redeem-entitlement'; readonly report: RedeemEntitlementReport }
-  | { readonly kind: 'spend-currency'; readonly report: SpendCurrencyReport };
+  | { readonly kind: 'spend-currency'; readonly report: SpendCurrencyReport }
+  | { readonly kind: 'choose-federation'; readonly report: ChooseFederationReport };
 
 export const PROPOSAL_KINDS_ARE_EXACTLY_THE_ALLOWLIST: UnionIsExactly<
   ProgressionProposal['kind'],
@@ -2746,6 +2808,7 @@ export interface ProposalReach {
   readonly 'record-meet-result': 'totalKg' | 'meets' | 'bestE1rmKg' | 'wallet';
   readonly 'redeem-entitlement': 'wallet' | 'streak';
   readonly 'spend-currency': 'wallet' | 'streak';
+  readonly 'choose-federation': 'federation';
 }
 
 export const PROPOSAL_REACH_COVERS_EVERY_KIND: KeysAreExactly<
@@ -2866,6 +2929,11 @@ export const PROPOSAL_ORIGIN_BY_KIND = {
   'record-meet-result': 'earned',
   'redeem-entitlement': 'purchase',
   'spend-currency': 'purchase',
+  // No money can be what causes a client to send a federation choice: the
+  // report carries no sku, no receipt and no currency, and `FACT_PROTECTION`
+  // answers 'protected' for the one fact it reaches — a paid federation
+  // switch would be paid region-shopping (GDD §6.6).
+  'choose-federation': 'earned',
 } as const satisfies Readonly<Record<ProgressionProposalKind, ProposalOrigin>>;
 
 export const PROPOSAL_ORIGIN_COVERS_EVERY_KIND: KeysAreExactly<
@@ -3002,6 +3070,7 @@ const PROPOSAL_REACH_TABLE: { readonly [K in ProgressionProposalKind]: readonly 
   'record-meet-result': ['totalKg', 'meets', 'bestE1rmKg', 'wallet'],
   'redeem-entitlement': ['wallet', 'streak'],
   'spend-currency': ['wallet', 'streak'],
+  'choose-federation': ['federation'],
 };
 
 /** The facts a proposal of this kind is declared to move. */
@@ -3143,6 +3212,16 @@ export interface ProgressionSnapshotWire {
   readonly streak: StreakStateWire;
   readonly meets: readonly MeetResultWire[];
   readonly wallet: Readonly<Record<WalletCurrency, number>>;
+  /**
+   * The federation, as plain JSON. `id` is a bare string here — the decoder
+   * resolves it against `CAREER_FEDERATIONS` and refuses one it does not hold,
+   * because a client that could write an unknown id could point eligibility at
+   * a calendar that does not exist.
+   */
+  readonly federation: {
+    readonly id: string;
+    readonly chosen: boolean;
+  };
   /**
    * The proposal this response settles, if any. `null` for a plain read or for
    * a change that originated elsewhere (another device, a scheduled job).
@@ -3325,6 +3404,15 @@ function isFiniteWeight(value: number): boolean {
 
 function isCount(value: number): boolean {
   return Number.isSafeInteger(value) && value >= 0;
+}
+
+/**
+ * Whether a wire string names a federation the game actually holds. Reads
+ * `careerTuning.ts`'s own table rather than a second list, so a federation
+ * added there is accepted here without anybody remembering to.
+ */
+function isCareerFederationId(value: string): value is CareerFederationId {
+  return CAREER_FEDERATIONS.some((federation) => federation.id === value);
 }
 
 function decodeStreak(wire: StreakStateWire): ProgressionResult<StreakState> {
@@ -3524,6 +3612,23 @@ export function receiveProgressionSnapshot(
     }
     wallet[currency] = confirm(balance);
   }
+  // THE FEDERATION, VALIDATED RATHER THAN TRUSTED. The id must be one the
+  // game's own federation table holds — eligibility, the calendar and §6.6's
+  // derived region all key off it, so an unknown id is a lifter competing in a
+  // federation that does not exist, permanently.
+  const federation: unknown = wire.federation;
+  if (federation === null || typeof federation !== 'object') {
+    return fail('INVALID_SNAPSHOT', 'progression: federation must be an object');
+  }
+  if (!isCareerFederationId(wire.federation.id)) {
+    return fail(
+      'INVALID_SNAPSHOT',
+      `progression: federation.id must be a known federation, received ${JSON.stringify(wire.federation.id)}`,
+    );
+  }
+  if (typeof wire.federation.chosen !== 'boolean') {
+    return fail('INVALID_SNAPSHOT', 'progression: federation.chosen must be a boolean');
+  }
   if (wire.acknowledgedProposalId !== null && wire.acknowledgedProposalId.trim().length === 0) {
     return fail('INVALID_SNAPSHOT', 'progression: acknowledgedProposalId must be a non-blank id or null');
   }
@@ -3546,6 +3651,7 @@ export function receiveProgressionSnapshot(
     streak: streak.value,
     meets,
     wallet: wallet as ConfirmedWallet,
+    federation: { id: wire.federation.id, chosen: wire.federation.chosen },
   });
   const snapshot: ProgressionSnapshot = {
     [SNAPSHOT_CONTENTS]: {
@@ -4393,6 +4499,23 @@ export function readMeets(cache: ProgressionCache): ProgressionReading<readonly 
   return read<readonly ConfirmedMeetResult[], never>(
     cache,
     (facts) => facts.meets,
+    () => null,
+  );
+}
+
+/**
+ * The lifter's federation.
+ *
+ * The projected branch is `never` for the reason `readMeets`'s is: a
+ * federation choice is server truth or it is not shown. There is no optimistic
+ * federation — a screen that showed one while the server was still free to
+ * refuse it (a prior choice, a banked meet) would be showing a calendar the
+ * lifter may never compete on.
+ */
+export function readFederation(cache: ProgressionCache): ProgressionReading<ConfirmedFederation, never> {
+  return read<ConfirmedFederation, never>(
+    cache,
+    (facts) => facts.federation,
     () => null,
   );
 }

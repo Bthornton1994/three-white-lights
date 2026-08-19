@@ -423,6 +423,24 @@ export const CAREER_TUNING = Object.freeze({
    * Saturdays.
    */
   SEASON_ANCHOR: Object.freeze({ year: 2026, month: 1, day: 3 }) satisfies CivilDate,
+
+  /**
+   * The federation a lifter competes under BEFORE the choosing screen exists —
+   * the Sprint 1a seeding of GDD §2.1's "pick a federation".
+   *
+   * This is not a quiet fallback, and the stored row says so itself: a lifter
+   * seeded with this id carries `federation.chosen: false`, which is the fact
+   * the 1b choosing screen gates on. The choice stays the player's until they
+   * either make it or bank a meet result under this default, at which point
+   * `careerServer.ts` refuses to move a career's results onto another
+   * federation's calendar.
+   *
+   * Meridian — raw and tested — because the app's one shipped meet is a raw
+   * local and the daily loop trains unequipped lifts, so the equipped feds
+   * would seed a lifter into a calendar whose ruleset the Sim never simulates.
+   * A design default nobody has playtested, like everything in this file.
+   */
+  DEFAULT_FEDERATION_ID: 'meridian' satisfies CareerFederationId,
 });
 
 // ---------------------------------------------------------------------------

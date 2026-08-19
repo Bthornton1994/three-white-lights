@@ -73,6 +73,7 @@
  * downstream of it, a way to name a `ServerRecord`.
  */
 
+import type { CareerMeetOutcome } from './careerServer';
 import type { FatigueState } from './fatigue';
 import { LIFT_ORDER, type LiftKind } from './meet';
 import type { ConfirmedMeetFacts } from './meetDay';
@@ -164,6 +165,15 @@ export interface RecordedMeet extends ConfirmedMeetFacts {
    * to this narrowing of them.
    */
   readonly bombedLift: LiftKind | null;
+  /**
+   * What this result did to the CAREER (GDD §2.1, §6.5): whether it raised the
+   * career best total and which tiers it newly qualifies. Server-computed by
+   * `careerServer.ts` inside `applyMeetResult` — the recap renders it, it does
+   * not derive it. Deliberately NOT part of `ConfirmedMeetFacts`: the recap
+   * builder in `meetDay.ts` stays untouched in this piece, and the career line
+   * is a later screen's to draw.
+   */
+  readonly career: CareerMeetOutcome;
 }
 
 /** What the `record-meet-result` endpoint answered with. */

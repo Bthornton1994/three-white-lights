@@ -176,6 +176,7 @@
  * outstanding.
  */
 
+import { CAREER_TUNING, type CareerFederationId } from '../career/careerTuning';
 import { DOTS_TOTAL_UNIT } from './dots';
 import { estimateE1rm, tryEstimateE1rm } from './e1rm';
 import {
@@ -191,6 +192,7 @@ import {
 import { LIFT_ORDER, type LiftKind } from './meet';
 import { declaredRows, sealServerValue } from './progression';
 import type {
+  ConfirmedFederation,
   KilogramTrainingCard,
   MeetResultWire,
   ProgressionSnapshotWire,
@@ -288,6 +290,14 @@ export interface ServerRecord {
   readonly meets: readonly MeetResultWire[];
   readonly wallet: Readonly<Record<WalletCurrency, number>>;
   readonly fatigue: FatigueState;
+  /**
+   * GDD §2.1's federation. MOVED BY `careerServer.ts`'s `applyFederationChoice`
+   * ONLY, and only while the row carries neither a prior choice nor a meet
+   * result. The career record itself — best total, meets entered — is DERIVED
+   * from `totalKg` and `meets` by that module's one fold rather than stored
+   * here twice.
+   */
+  readonly federation: ConfirmedFederation;
 }
 
 // ---------------------------------------------------------------------------
@@ -421,7 +431,18 @@ export const A_STARTING_E1RM_CAN_DECLARE_A_UNIT_THIS_RECORD_REFUSES: SeedCanDecl
  * reads a clock either; the caller resolves the day, exactly as it does for
  * `applyTrainingSession`.
  */
-export function newServerRecord(signupDay: number): ServerRecord {
+export function newServerRecord(
+  signupDay: number,
+  /**
+   * OPTIONAL, UNLIKE `signupDay`, AND THE ASYMMETRY IS ARGUED RATHER THAN
+   * ACCIDENTAL. A defaulted signup day would be a wrong-but-quiet Recovery Day
+   * balance — nothing on the record says the fallback fired. A defaulted
+   * federation is NOT quiet: the row carries `chosen: false`, which is the 1b
+   * choosing screen's gate and `applyFederationChoice`'s licence to move it.
+   * The default records itself as a default.
+   */
+  federationId: CareerFederationId = CAREER_TUNING.DEFAULT_FEDERATION_ID,
+): ServerRecord {
   return sealServerValue({
     revision: 0,
     totalKg: null,
@@ -434,6 +455,7 @@ export function newServerRecord(signupDay: number): ServerRecord {
     meets: [],
     wallet: { gymBucks: 0, chalk: 0 },
     fatigue: EMPTY_FATIGUE_STATE,
+    federation: { id: federationId, chosen: false },
   });
 }
 
@@ -493,6 +515,7 @@ export function snapshotWireFor(
     streak: streakWire(record.streak),
     meets: record.meets.map((meet) => ({ ...meet })),
     wallet: { gymBucks: record.wallet.gymBucks, chalk: record.wallet.chalk },
+    federation: { id: record.federation.id, chosen: record.federation.chosen },
     acknowledgedProposalId,
   });
 }
@@ -883,6 +906,8 @@ export function applyTrainingSession(
     meets: record.meets,
     wallet: record.wallet,
     fatigue,
+    // CARRIED THROUGH UNTOUCHED. Training cannot move a federation.
+    federation: record.federation,
   });
   return {
     ok: true,

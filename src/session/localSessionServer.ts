@@ -52,6 +52,8 @@ import {
   type SessionServerPort,
   type SessionServerResponse,
 } from '../game/sessionClient';
+import type { CareerServerPort, CareerServerResponse } from '../game/careerClient';
+import { applyFederationChoice } from '../game/careerServer';
 import type { MeetBrief, MeetServerPort, MeetServerResponse } from '../game/meetClient';
 import { applyMeetResult } from '../game/meetServer';
 import type { MeetDefinition } from '../game/meetTuning';
@@ -68,11 +70,11 @@ import { SESSION_BOUNDARY } from '../game/sessionTuning';
 /**
  * The app's one connection, as a type.
  *
- * An INTERSECTION rather than a third interface, so neither mode's port can grow
- * a method the other's implementation does not have to provide. `appServer.ts`
- * hands the same object out under both halves.
+ * An INTERSECTION rather than a fourth interface, so no mode's port can grow
+ * a method the others' implementation does not have to provide. `appServer.ts`
+ * hands the same object out under all three halves.
  */
-export type LocalAppServerPort = SessionServerPort & MeetServerPort;
+export type LocalAppServerPort = SessionServerPort & MeetServerPort & CareerServerPort;
 
 /**
  * How the stand-in waits.
@@ -203,8 +205,28 @@ export function localSessionServer(options: LocalSessionServerOptions = {}): Loc
           // `@guarantee the-pr-word-needs-a-record-to-beat`
           previousBestByLiftKg: applied.value.previousBestByLiftKg,
           bombedLift: applied.value.bombedLift,
+          // WHAT THE RESULT DID TO THE CAREER — computed by `careerServer.ts`
+          // inside `applyMeetResult`, against the same row, so the recap's
+          // career line and the calendar's eligibility read one fold.
+          career: applied.value.career,
         },
       };
+    },
+
+    /**
+     * `choose-federation`. THE ONLY WAY THE FEDERATION MOVES after signup, and
+     * it moves the same row everything above reads — a lifter who chooses,
+     * trains and competes is one lifter.
+     */
+    async chooseFederation(
+      proposal: ProposalOfKind<'choose-federation'>,
+      proposalId: ProposalId,
+    ): Promise<CareerServerResponse> {
+      await sleep(latencyMs);
+      const applied = applyFederationChoice(record, proposal, proposalId);
+      if (!applied.ok) return { kind: 'refused', error: applied.error };
+      record = applied.value.record;
+      return { kind: 'chosen', wire: applied.value.wire };
     },
   };
 }

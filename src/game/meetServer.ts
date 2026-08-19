@@ -335,6 +335,7 @@ import type {
   ProposalOfKind,
 } from './progression';
 import { snapshotWireFor, type ServerRecord } from './sessionServer';
+import { careerLifterFor, careerMeetOutcome, type CareerMeetOutcome } from './careerServer';
 import type { MeetDefinition } from './meetTuning';
 
 // ---------------------------------------------------------------------------
@@ -726,6 +727,14 @@ export interface AppliedMeetResult {
   readonly liftPrs: Readonly<Record<LiftKind, boolean>>;
   readonly placing: MeetPlacing;
   readonly bombedLift: LiftKind | null;
+  /**
+   * What this result did to the CAREER record (GDD §2.1, §6.5): whether it
+   * raised the career best total, and which rungs of §6.1's ladder it newly
+   * qualifies. Computed by `careerServer.ts` from the career read model before
+   * this meet against the same total the wire stores, so the recap's career
+   * line and the eligibility a calendar screen draws cannot disagree.
+   */
+  readonly career: CareerMeetOutcome;
 }
 
 /**
@@ -1001,6 +1010,12 @@ export function applyMeetResult(
     liftPrs[lift] = made !== null && (held === null || made > held);
   }
 
+  // THE CAREER RECORD BEFORE THIS MEET, derived from the row's own meets by
+  // the one fold in `careerServer.ts`. Taken BEFORE the append below, so the
+  // outcome measures what THIS meet changed.
+  const careerBefore = careerLifterFor(record);
+  const career = careerMeetOutcome(careerBefore, proposal.report.meetId, totalKg);
+
   const meetWire: MeetResultWire = {
     // Provably `meet.id` as well, since `MEET_ID_MISMATCH` ran. Taken off the
     // report because the report is what the duplicate check above read, and one
@@ -1037,6 +1052,10 @@ export function applyMeetResult(
     wallet: record.wallet,
     // CARRIED THROUGH UNTOUCHED. The hidden ledger is the daily loop's.
     fatigue: record.fatigue,
+    // CARRIED THROUGH UNTOUCHED. A meet result cannot move a federation; what
+    // it does to the career is the DERIVED fold picking up the meet appended
+    // above, which is the one path (`careerServer.ts`).
+    federation: record.federation,
   });
 
   return {
@@ -1053,6 +1072,7 @@ export function applyMeetResult(
       liftPrs,
       placing: placingFor(totalKg, meet.ghostTotalsKg),
       bombedLift,
+      career,
     },
   };
 }

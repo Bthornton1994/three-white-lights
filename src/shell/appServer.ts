@@ -41,6 +41,7 @@
  */
 
 import { localSessionServer, type LocalAppServerPort } from '../session/localSessionServer';
+import type { CareerServerPort } from '../game/careerClient';
 import type { MeetServerPort } from '../game/meetClient';
 import type { SessionServerPort } from '../game/sessionClient';
 
@@ -111,5 +112,19 @@ export function appSessionPort(): SessionServerPort {
  * real-name inventory per file, and adding a mention is a human's call.)
  */
 export function appMeetPort(): MeetServerPort {
+  return appConnection();
+}
+
+/**
+ * The app's connection, as the CAREER surface is allowed to see it.
+ *
+ * The same object as the other two accessors return, narrowed to the career
+ * half — one row behind one port, extended to the third mode that reads it.
+ * A federation chosen through this port is on the snapshot the session half
+ * opens, and a meet banked through the meet half is on the career record this
+ * half's calendar reads, because all three are one `ServerRecord` in one
+ * closure. `shellWiring.test.ts` drives both directions.
+ */
+export function appCareerPort(): CareerServerPort {
   return appConnection();
 }

@@ -316,26 +316,40 @@ export function enterableMeets(
  * qualification reads. `careerSweep.ts` keeps the latest-total reading as a
  * measured control rather than as an argument.
  *
- * Applying the same meet twice with the same total is the same as applying it
- * once: the id list stays a set and `Math.max` is idempotent. That is a
- * safeguard against a double-record, not a licence to rely on one.
+ * A `null` total is a BOMB-OUT, and it is the shape the server stores one in
+ * (`MeetResultWire.totalKg` is "null on a bomb-out — not zero"). The entry is
+ * spent — the lifter competed, so the meet id joins the list and
+ * `entryVerdict` refuses a re-entry — and the best total does not move,
+ * because a lifter who bombed has no total from that meet, not a total of
+ * zero. The same lifter-friendly asymmetry as BEST-not-LATEST above: the worst
+ * possible meet day still cannot lower the number qualification reads.
  *
- * @throws {RangeError} on a total that is not a finite number.
+ * Applying the same meet twice with the same total is the same as applying it
+ * once: the id list stays a set, `Math.max` is idempotent, and the null arm
+ * moves nothing to begin with. That is a safeguard against a double-record,
+ * not a licence to rely on one.
+ *
+ * @throws {RangeError} on a total that is neither null nor a finite number.
  */
 export function careerRecordAfterMeet(
   lifter: CareerLifter,
   meetId: string,
-  totalKg: number,
+  totalKg: number | null,
 ): CareerLifter {
-  if (!Number.isFinite(totalKg)) {
-    throw new RangeError(`career: a meet total must be a finite number of kg, received ${totalKg}`);
+  if (totalKg !== null && !Number.isFinite(totalKg)) {
+    throw new RangeError(`career: a meet total must be a finite number of kg or null, received ${totalKg}`);
   }
   const entered = lifter.enteredMeetIds.includes(meetId)
     ? lifter.enteredMeetIds
     : [...lifter.enteredMeetIds, meetId];
   return {
     federationId: lifter.federationId,
-    bestTotalKg: lifter.bestTotalKg === null ? totalKg : Math.max(lifter.bestTotalKg, totalKg),
+    bestTotalKg:
+      totalKg === null
+        ? lifter.bestTotalKg
+        : lifter.bestTotalKg === null
+          ? totalKg
+          : Math.max(lifter.bestTotalKg, totalKg),
     enteredMeetIds: entered,
   };
 }

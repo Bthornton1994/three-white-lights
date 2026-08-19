@@ -1300,6 +1300,7 @@ function unsealedLike(wire: ProgressionSnapshotWire): ProgressionSnapshotWire {
     streak: { ...wire.streak },
     meets: wire.meets.map((meet) => ({ ...meet })),
     wallet: { ...wire.wallet },
+    federation: { ...wire.federation },
     acknowledgedProposalId: wire.acknowledgedProposalId,
   };
 }
@@ -1479,6 +1480,7 @@ describe('what leaves the server is sealed in flight', () => {
       ],
       wallet: { gymBucks: 0, chalk: 0 },
       fatigue: newServerRecord(SIGNUP_DAY).fatigue,
+      federation: { id: 'meridian', chosen: false },
     };
     expect(Object.isFrozen(handBuilt.bestE1rmKg), 'before the call').toBe(false);
 
