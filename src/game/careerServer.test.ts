@@ -294,11 +294,12 @@ describe('a lifter who competed one more time, measured through the write path',
       expect(replay.ok).toBe(false);
       if (replay.ok) throw new Error('unreachable');
       expect(replay.error.code).toBe('MEET_ALREADY_RECORDED');
-      // And the career read model is exactly what it was: the refusal happened
-      // before anything moved, and the fold reads a row the refusal never
-      // touched.
-      expect(careerLifterFor(record)).toEqual(careerLifterFor(record));
+      // And the entry is on the record exactly once — the refusal happened
+      // before anything moved, so the replayed id did not double-enter. (A
+      // fold-vs-fold equality sat here for one draft and was deleted as
+      // vacuous: comparing a pure function's output to itself cannot fail.)
       expect(careerLifterFor(record).enteredMeetIds.filter((id) => id === def.id)).toHaveLength(1);
+      expect(record.meets.filter((meet) => meet.meetId === def.id)).toHaveLength(1);
     }
   });
 });

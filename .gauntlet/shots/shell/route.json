@@ -1,18 +1,14 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-18T20:48:08.272Z",
+    "capturedAt": "2026-08-19T02:02:18.797Z",
     "url": "http://localhost:8081",
-    "sourceRoot": "/home/user/wt-away-overlap",
-    "commit": "f9d763e",
-    "branch": "claude/away-card-overlap",
+    "sourceRoot": "/home/user/wt-career-wiring",
+    "commit": "acca1d1",
+    "branch": "claude/career-wiring",
     "workingTree": "clean",
     "dirtyPaths": [
-      "M .gauntlet/shots/shell/03-meet-played-walkout.png",
-      " M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
-      " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
-      " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
-      " M .gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
-      " M .gauntlet/shots/shell/route.json"
+      "M .gauntlet/evidence/suite.txt",
+      "?? .gauntlet/evidence/career-wiring.txt"
     ],
     "instrument": {
       "verify-shell-route.mjs": "4a43f0b68ec86f21",
@@ -28,7 +24,7 @@
       "width": 350,
       "height": 48
     },
-    "wallClockMs": 190113,
+    "wallClockMs": 191659,
     "landedOn": "already-trained",
     "finalDepthHoldMs": 1000,
     "reps": [
@@ -143,13 +139,13 @@
     "attemptedSecond": true,
     "first": {
       "ended": "recap",
-      "ms": 107644,
+      "ms": 105708,
       "attempts": 9,
       "holdMs": 1000
     },
     "second": {
       "ended": "placeholder",
-      "ms": 110177,
+      "ms": 112609,
       "attempts": 9,
       "holdMs": 1000
     }
@@ -244,28 +240,28 @@
     },
     {
       "meet": "meet 1",
-      "choosing": "repeat",
+      "choosing": "small",
       "undrawn": [],
       "href": "http://localhost:8081/",
       "search": "",
       "title": "BENCH · ATTEMPT 3",
-      "banked": "BANKED 107.5",
-      "floorWeight": "110",
-      "floorText": "A miss does not lower the bar. The lightest thing left is the weight that just beat you.",
+      "banked": "BANKED 110",
+      "floorWeight": "112.5",
+      "floorText": "Banked. From here the bar only goes up.",
       "cards": [
         {
-          "id": "repeat",
-          "weight": "110",
-          "delta": "same weight",
-          "why": "Same weight, second chance. Nothing gained beyond what was already on the bar.",
+          "id": "small",
+          "weight": "112.5",
+          "delta": "+2.5",
+          "why": "Lock in a bigger total. Low risk.",
           "prNote": null,
           "borderColor": "rgb(51, 70, 94)"
         },
         {
           "id": "big",
-          "weight": "112.5",
-          "delta": "+2.5",
-          "why": "Concede the miss and reach past it. Rescues the lift or spends the last attempt for nothing.",
+          "weight": "115",
+          "delta": "+5",
+          "why": "The biggest jump on offer. Higher risk.",
           "prNote": null,
           "borderColor": "rgb(122, 69, 80)"
         }
@@ -302,28 +298,28 @@
     },
     {
       "meet": "meet 1",
-      "choosing": "small",
+      "choosing": "repeat",
       "undrawn": [],
       "href": "http://localhost:8081/",
       "search": "",
       "title": "DEADLIFT · ATTEMPT 3",
-      "banked": "BANKED 202.5",
-      "floorWeight": "205",
-      "floorText": "Banked. From here the bar only goes up.",
+      "banked": "BANKED 197.5",
+      "floorWeight": "202.5",
+      "floorText": "A miss does not lower the bar. The lightest thing left is the weight that just beat you.",
       "cards": [
         {
-          "id": "small",
-          "weight": "207.5",
-          "delta": "+5",
-          "why": "Lock in a bigger total. Low risk.",
+          "id": "repeat",
+          "weight": "202.5",
+          "delta": "same weight",
+          "why": "Same weight, second chance. Nothing gained beyond what was already on the bar.",
           "prNote": null,
           "borderColor": "rgb(51, 70, 94)"
         },
         {
           "id": "big",
-          "weight": "215",
-          "delta": "+12.5",
-          "why": "The biggest jump on offer. Higher risk.",
+          "weight": "207.5",
+          "delta": "+5",
+          "why": "Concede the miss and reach past it. Rescues the lift or spends the last attempt for nothing.",
           "prNote": null,
           "borderColor": "rgb(122, 69, 80)"
         }
@@ -353,8 +349,8 @@
           "weight": "170",
           "delta": "+10",
           "why": "The biggest jump on offer. Higher risk.",
-          "prNote": null,
-          "borderColor": "rgb(122, 69, 80)"
+          "prNote": "A PR on the line.",
+          "borderColor": "rgb(255, 215, 94)"
         }
       ]
     },
@@ -389,28 +385,28 @@
     },
     {
       "meet": "meet 2",
-      "choosing": "repeat",
+      "choosing": "big",
       "undrawn": [],
       "href": "http://localhost:8081/",
       "search": "",
       "title": "BENCH · ATTEMPT 2",
-      "banked": "NOTHING BANKED",
-      "floorWeight": "107.5",
-      "floorText": "A miss does not lower the bar. The lightest thing left is the weight that just beat you.",
+      "banked": "BANKED 107.5",
+      "floorWeight": "110",
+      "floorText": "Banked. From here the bar only goes up.",
       "cards": [
         {
-          "id": "repeat",
-          "weight": "107.5",
-          "delta": "same weight",
-          "why": "Same weight, second chance. Nothing gained beyond what was already on the bar.",
+          "id": "small",
+          "weight": "110",
+          "delta": "+2.5",
+          "why": "Lock in a bigger total. Low risk.",
           "prNote": null,
           "borderColor": "rgb(51, 70, 94)"
         },
         {
           "id": "big",
-          "weight": "110",
-          "delta": "+2.5",
-          "why": "Concede the miss and reach past it. Rescues the lift or spends the last attempt for nothing.",
+          "weight": "112.5",
+          "delta": "+5",
+          "why": "The biggest jump on offer. Higher risk.",
           "prNote": null,
           "borderColor": "rgb(122, 69, 80)"
         }
@@ -418,30 +414,30 @@
     },
     {
       "meet": "meet 2",
-      "choosing": "repeat",
+      "choosing": "big",
       "undrawn": [],
       "href": "http://localhost:8081/",
       "search": "",
       "title": "BENCH · ATTEMPT 3",
-      "banked": "NOTHING BANKED",
-      "floorWeight": "107.5",
-      "floorText": "A miss does not lower the bar. The lightest thing left is the weight that just beat you.",
+      "banked": "BANKED 112.5",
+      "floorWeight": "115",
+      "floorText": "Banked. From here the bar only goes up.",
       "cards": [
         {
-          "id": "repeat",
-          "weight": "107.5",
-          "delta": "same weight",
-          "why": "Same weight, second chance. Nothing gained beyond what was already on the bar.",
-          "prNote": null,
-          "borderColor": "rgb(51, 70, 94)"
+          "id": "small",
+          "weight": "115",
+          "delta": "+2.5",
+          "why": "Lock in a bigger total. Low risk.",
+          "prNote": "A PR on the line.",
+          "borderColor": "rgb(255, 215, 94)"
         },
         {
           "id": "big",
-          "weight": "110",
-          "delta": "+2.5",
-          "why": "Concede the miss and reach past it. Rescues the lift or spends the last attempt for nothing.",
-          "prNote": null,
-          "borderColor": "rgb(122, 69, 80)"
+          "weight": "117.5",
+          "delta": "+5",
+          "why": "The biggest jump on offer. Higher risk.",
+          "prNote": "A PR on the line.",
+          "borderColor": "rgb(255, 215, 94)"
         }
       ]
     },
@@ -597,23 +593,23 @@
       "href": "http://localhost:8081/",
       "search": "",
       "title": "BENCH · ATTEMPT 3",
-      "banked": "BANKED 110",
-      "floorWeight": "115",
-      "floorText": "A miss does not lower the bar. The lightest thing left is the weight that just beat you.",
+      "banked": "BANKED 115",
+      "floorWeight": "117.5",
+      "floorText": "Banked. From here the bar only goes up.",
       "cards": [
         {
-          "id": "repeat",
-          "weight": "115",
-          "delta": "same weight",
-          "why": "Same weight, second chance. Nothing gained beyond what was already on the bar.",
+          "id": "small",
+          "weight": "117.5",
+          "delta": "+2.5",
+          "why": "Lock in a bigger total. Low risk.",
           "prNote": null,
           "borderColor": "rgb(51, 70, 94)"
         },
         {
           "id": "big",
-          "weight": "117.5",
-          "delta": "+2.5",
-          "why": "Concede the miss and reach past it. Rescues the lift or spends the last attempt for nothing.",
+          "weight": "120",
+          "delta": "+5",
+          "why": "The biggest jump on offer. Higher risk.",
           "prNote": null,
           "borderColor": "rgb(122, 69, 80)"
         }
@@ -691,7 +687,7 @@
       "href": "http://localhost:8081/",
       "search": "",
       "totalCallOut": "FIRST TOTAL",
-      "total": "487.5",
+      "total": "480",
       "boards": {
         "squat": {
           "cells": [
@@ -708,7 +704,7 @@
             {
               "attemptNumber": 3,
               "printed": "170",
-              "struck": false
+              "struck": true
             }
           ],
           "callOut": "FIRST",
@@ -724,11 +720,11 @@
             {
               "attemptNumber": 2,
               "printed": "110",
-              "struck": true
+              "struck": false
             },
             {
               "attemptNumber": 3,
-              "printed": "110",
+              "printed": "112.5",
               "struck": false
             }
           ],
@@ -745,11 +741,11 @@
             {
               "attemptNumber": 2,
               "printed": "202.5",
-              "struck": false
+              "struck": true
             },
             {
               "attemptNumber": 3,
-              "printed": "207.5",
+              "printed": "202.5",
               "struck": false
             }
           ],
@@ -842,7 +838,7 @@
     "attempted": true,
     "meetEnded": "recap",
     "meetAttempts": 9,
-    "meetMs": 107336,
+    "meetMs": 109228,
     "meetScreenReady": true,
     "pressed": true,
     "landedDrawn": true
@@ -1072,23 +1068,23 @@
     "  ok    and the walk-out ELAPSES on its own into the attempt — clocks running, not a screenshot",
     "  ok    NO CONTROL IS DRAWN OVER THE ATTEMPT ITSELF",
     "  ok    CONTROL: the deadline the recap’s round trip is given is derived from SESSION_BOUNDARY.LOCAL_SERVER_LATENCY_MS — 550ms of stand-in latency + 2600ms settle = 3150ms",
-    "  ok    THE MEET THE PLAYER OPENED IS PLAYED TO ITS END — nine attempts on the real mechanic, through to GDD §6.5’s recap — 9 attempts in 107644ms, hold settled at 1000ms; ended on 'recap'",
+    "  ok    THE MEET THE PLAYER OPENED IS PLAYED TO ITS END — nine attempts on the real mechanic, through to GDD §6.5’s recap — 9 attempts in 105708ms, hold settled at 1000ms; ended on 'recap'",
     "  ok    CONTROL: and it is the meet the PLAYER opened — the address bar carries no query string, so no debug frame is being read — at the recap the page is on \"http://localhost:8081/\"",
     "  ok    GDD §6.5’s recap renders on the app’s OWN connection, not the preview’s — opacity 1.000",
     "  ok    and GDD §6.1’s second-meet placeholder is NOT drawn over it — this player’s result is their own",
     "  ok    CONTROL: the cut-in window this section waits out is read from cutInTuning.ts, not transcribed — ENTER_MS 120, HOLD_MS 1600 — null means the constant moved or was renamed, and the wait below would silently become a guess",
     "  ok    CONTROL: any §7.2 cut-in over the recap has left before the pill is read — the app hides chrome under one BY DESIGN — no cut-in was up at the recap on this run — the gate spent its one slot earlier in the sitting. This branch is why the pill check used to pass sometimes and fail otherwise.",
     "  ok    CONTROL: the pill-arrival window this section waits out is read from shellTuning.ts, not transcribed — FADE_IN_DELAY_MS 320, FADE_IN_MS 220",
-    "  ok    the way back is on screen on a recap a player lifted for (shell-leave-meet) — opacity 1.000 after 7ms — bound 2340ms (FADE_IN_DELAY_MS 320 + FADE_IN_MS 220 + 1800ms grace), measured from after any cut-in had left",
+    "  ok    the way back is on screen on a recap a player lifted for (shell-leave-meet) — opacity 1.000 after 8ms — bound 2340ms (FADE_IN_DELAY_MS 320 + FADE_IN_MS 220 + 1800ms grace), measured from after any cut-in had left",
     "  ok    and it is what a thumb would hit there — elementFromPoint -> self",
-    "  ok    and the recap's last block arrives within 3040ms, the deadline its own stagger implies — opacity 0.995 after 1216ms",
+    "  ok    and the recap's last block arrives within 3040ms, the deadline its own stagger implies — opacity 0.995 after 1210ms",
     "  ok    and 04a-live-recap-with-way-back.png really is a photograph of the 'recap' beat, which is what its name says — the screen says \"SEE YOUR CARD\"",
     "  ok    PRESSING IT RETURNS TO THE DAILY SESSION — on a meet the player opened, played and finished",
     "  ok    and that meet is no longer on screen",
     "  ok    and 05a-check-in-after-a-played-meet.png really is a photograph of the 'check-in' beat, which is what its name says — the screen says \"HOW ARE YOU TODAY?\"",
     "  ok    PRESSING MEET DAY AGAIN OPENS A SECOND MEET in the same app run — the path §6.1’s scaffolding exists for",
     "  ok    and the second meet opens on its own weigh-in, live, rather than on the first one’s ending — opacity 1.000",
-    "  ok    THE SECOND MEET IS REFUSED AS ALREADY RECORDED, and GDD §6.1’s placeholder is what stands where §6.5’s recap was — 9 attempts in 110177ms, hold settled at 1000ms; ended on 'placeholder'",
+    "  ok    THE SECOND MEET IS REFUSED AS ALREADY RECORDED, and GDD §6.1’s placeholder is what stands where §6.5’s recap was — 9 attempts in 112609ms, hold settled at 1000ms; ended on 'placeholder'",
     "  ok    the placeholder is DRAWN — the positive half, which nothing had ever rendered — opacity 1.000",
     "  ok    and the bare in-flight eyebrow is gone too, so this is the settled screen and not a frame of the round trip",
     "  ok    and it says the sentence a human ruled for it, word for word (GDD §6.1)",
@@ -1126,10 +1122,10 @@
     "  ok    CONTROL: the block parser reads the block it was asked for, not the decoy above it, and reads the last entry of an inline one — fixture -> REAL_FRACTION.squat 0.9 (want 0.9; DECOY_FRACTION.squat is 0.11 and must not be the answer), NESTED_SEED.squat 180 (want 180, through a nested freeze), NESTED_SEED.deadlift 220 (want 220, and it has NO trailing comma — the shape STARTING_E1RM is written in, and the one this parser first got wrong), ABSENT_BLOCK null (want null)",
     "  ok    CONTROL: the binding parser reads `export const NAME = n`, typed or not, and refuses a property of the same name — fixture -> REAL_GRID 2.5 (want 2.5), TYPED_GRID 5 (want 5), DECOY_GRID null (want null — it is a property, not a binding)",
     "  ok    CONTROL: every number the opener crossing is judged against was found in the module that owns it — fraction {\"squat\":0.9,\"bench\":0.9,\"deadlift\":0.9}, seed {\"squat\":180,\"bench\":120,\"deadlift\":220}kg, grid 2.5kg, count-up 900ms after 220ms",
-    "  ok    a real session opens from `/` and reaches its first work set, played with a mouse — 1392ms from the first tap",
-    "  ok    and it plays through to GDD §3.2’s close-out — 15 reps in 66058ms, 15 of them past a DRIVE cue",
+    "  ok    a real session opens from `/` and reaches its first work set, played with a mouse — 1483ms from the first tap",
+    "  ok    and it plays through to GDD §3.2’s close-out — 15 reps in 65821ms, 15 of them past a DRIVE cue",
     "  ok    CONTROL: the close-out has a certainty tag for that wait to watch — e1rm, streak in the DOM",
-    "  ok    the close-out’s numbers settle — the server’s answer actually lands — after 556ms",
+    "  ok    the close-out’s numbers settle — the server’s answer actually lands — after 550ms",
     "  ok    CONTROL: the close-out prints an e1RM, and says which lift it is for — bench 124.6kg",
     "  ok    PRESSING DONE LANDS ON THE ALREADY-TRAINED SURFACE (GDD §3.2: one session a day)",
     "  ok    the already-trained surface renders — the last screen of the daily loop — opacity 1.000",
@@ -1151,17 +1147,17 @@
     "  ok    CONTROL: the session moved the e1RM off the signup seed, so the two answers below are different numbers — trained 124.6kg -> opener 110kg; seed 120kg -> opener 107.5kg",
     "  ok    THE OPENER FOLLOWS THE SESSION THAT WAS JUST PLAYED — meet day and training are one lifter (GDD §6.1) — bench: close-out said 124.6kg, so the opener must be 110kg; the screen drew 110kg",
     "  ok    CONTROL: the meet this return leg is driven from was opened by a PRESS — the address bar carries no query string — before the drive the page is on \"http://localhost:8081/\"",
-    "  ok    THE MEET OPENED FROM THE ALREADY-TRAINED SURFACE IS PLAYED TO ITS END, so its way back is on screen (GDD §6.5) — 9 attempts in 107336ms, hold settled at 1000ms; ended on 'recap'",
+    "  ok    THE MEET OPENED FROM THE ALREADY-TRAINED SURFACE IS PLAYED TO ITS END, so its way back is on screen (GDD §6.5) — 9 attempts in 109228ms, hold settled at 1000ms; ended on 'recap'",
     "  ok    CONTROL: and it is still the player’s own meet at its ending — no query string, so no debug frame is being read — at the ending the page is on \"http://localhost:8081/\"",
     "  ok    CONTROL: this leg’s cut-in and pill windows are the same source-read numbers the recap section waits out — cutInWindowMs 3520 (ENTER_MS 120 + HOLD_MS 1600 + 1800ms grace), pillArrivalMs 2340 (FADE_IN_DELAY_MS 320 + FADE_IN_MS 220 + 1800ms grace) — a null means a constant moved and one of these waits became a guess",
     "  ok    CONTROL: any §7.2 cut-in has left before this leg’s pill is read — the app hides chrome under one BY DESIGN — no cut-in was up at this ending — the gate spent its one slot earlier in the sitting",
-    "  ok    the way back is on screen at the end of a meet a TRAINED lifter played (shell-leave-meet) — opacity 1.000 after 9ms — bound 2340ms, measured from after any cut-in had left",
+    "  ok    the way back is on screen at the end of a meet a TRAINED lifter played (shell-leave-meet) — opacity 1.000 after 7ms — bound 2340ms, measured from after any cut-in had left",
     "  ok    and the point a thumb would land on belongs to it — elementFromPoint -> self",
-    "  ok    and this recap’s last block arrives within 3040ms too, so the frame below is of a finished screen — opacity 0.995 after 1218ms",
+    "  ok    and this recap’s last block arrives within 3040ms too, so the frame below is of a finished screen — opacity 0.944 after 1204ms",
     "  ok    and 13-recap-before-the-return-leg.png really is a photograph of the 'recap' beat, which is what its name says — the screen says \"SEE YOUR CARD\"",
     "  ok    PRESSING BACK TO TRAINING RETURNS TO THE DAILY LOOP, on a day the player has already trained",
     "  ok    CONTROL: and the landing is read with no query string in the address bar either — at the landing the page is on \"http://localhost:8081/\"",
-    "  ok    THE RETURN LEG LANDS ON THE ALREADY-TRAINED SURFACE — the app’s one connection survived the navigation (GDD §3.2) — opacity 1.000 after 12ms — bound 1800ms. Not drawn here means `alreadyTrainedToday` came back false after the round trip, which is a port built per mount",
+    "  ok    THE RETURN LEG LANDS ON THE ALREADY-TRAINED SURFACE — the app’s one connection survived the navigation (GDD §3.2) — opacity 1.000 after 9ms — bound 1800ms. Not drawn here means `alreadyTrainedToday` came back false after the round trip, which is a port built per mount",
     "  ok    CONTROL: this run has already read that exact check-in line OFF A DRAWN SCREEN, so its absence below is a fact about this screen — \"HOW ARE YOU TODAY?\" seen on 2 screen(s) by this same probe, expected 2 (05a, after the played meet; 05b, after the second one — both return legs on a day NOT trained). Zero would mean the negative below is true of a string nothing renders",
     "  ok    CONTROL: and the same call reads this screen’s own headline, so the probe is looking at the landing — the screen says \"TRAINED TODAY\"",
     "  ok    AND IT IS NOT OFFERED A SECOND SESSION OF THE SAME DAY — GDD §3.2 allows one, and the check-in is not on this screen — \"HOW ARE YOU TODAY?\" is nowhere on the screen",
@@ -1180,7 +1176,7 @@
     "  ok    NO CONTROL IS DRAWN OVER GDD §6.3’s attempt choice (beat 'attempt-select')",
     "  ok    DEBUG ARM: after a miss GDD §6.3’s floor says the miss line — \"a miss does not lower the floor, it RAISES it\" — ?meet=select-after-miss says \"A miss does not lower the bar. The lightest thing left is the weight that just b\"",
     "  ok    DEBUG ARM: and the lightest thing on offer IS that floor — the weight that just beat the lifter, offered again — floor \"207.5\", repeat card \"207.5\", cards [\"repeat@207.5\",\"big@212.5\"]",
-    "  ok    the bomb-out beat keeps its own way out, drawn within 6020ms — opacity 0.925 after 3773ms",
+    "  ok    the bomb-out beat keeps its own way out, drawn within 6020ms — opacity 0.903 after 3880ms",
     "  ok    and the shell does not add a second one to it (GDD §6.3: leave that beat somber)",
     "  ok    and pressing it returns to the daily session",
     "  ok    CONTROL: with no cut-in up, the pill is on the same screen the probe looks at — opacity 1.000",
@@ -1243,7 +1239,7 @@
     "  ok    and 15-empire-floor-from-session.png really is a photograph of the 'floor' beat, which is what its name says — the screen says \"GDD §5 running on this sitting’s clock: time passes, the gym checks in, the numbers move. Nothing is saved — reload and a new gym opens at zero.\"",
     "  ok    CONTROL: the button counter can see a control on this very screen — the shell’s pill — 10 control(s) inside app-shell",
     "  ok    the floor draws NO control of its own, so the shell’s pill is the whole of the way back — 0 control(s) inside empire-screen (-1 would mean the screen was not found)",
-    "  ok    the way back off the floor is on screen (shell-leave-empire) — opacity 1.000 after 8ms — bound 2340ms",
+    "  ok    the way back off the floor is on screen (shell-leave-empire) — opacity 1.000 after 6ms — bound 2340ms",
     "  ok    and it is what a thumb would hit there — elementFromPoint -> self",
     "  ok    and it says \"BACK TO TRAINING\" — the control says \"BACK TO TRAINING\"",
     "  ok    the pill’s touch target (its box grown 14px by NAV_HIT_SLOP) overlaps no part of empire-stat-bucks — card x 28.0..362.0 y 202.0..260.0 vs target x 90.9..299.1 y 748.0..814.0",
@@ -1260,9 +1256,9 @@
     "  ok    it lands on GDD §3.2’s check-in (this leg left from the check-in; whether the beat is PRESERVED is section 10b’s question)",
     "  ok    and the way back INTO the empire is on screen again, so the round trip is repeatable — opacity 1.000 after 9ms — bound 2340ms",
     "  ok    CONTROL: 10b starts on the shipped route too — the address bar carries no query string — the page is on \"http://localhost:8081/\"",
-    "  ok    three check-in answers reach GDD §3.2’s briefing (session-briefing) — the departure beat, played — opacity 1.000 after 25ms",
+    "  ok    three check-in answers reach GDD §3.2’s briefing (session-briefing) — the departure beat, played — opacity 1.000 after 26ms",
     "  ok    CONTROL: the beat being left is the briefing and NOT session-check-in — the two sides of the claim below are different beats — the screen says \"PICK YOUR RPE\": true; session-check-in on screen: false",
-    "  ok    the way into GDD §5 is drawn on the briefing too (shell-open-empire) — opacity 1.000 after 8ms — bound 2340ms",
+    "  ok    the way into GDD §5 is drawn on the briefing too (shell-open-empire) — opacity 1.000 after 7ms — bound 2340ms",
     "  ok    and it is what a thumb would hit there — elementFromPoint -> self",
     "  ok    and 17-empire-pill-on-the-played-briefing.png really is a photograph of the 'briefing' beat, which is what its name says — the screen says \"PICK YOUR RPE\"",
     "  ok    PRESSING IT MID-SESSION REACHES THE FLOOR — the second of SHELL_NAV’s three session beats, driven",
@@ -1282,17 +1278,17 @@
     "  ok    and every one offered exactly 2 cards — §6.3 is a choice between two things — 36 cards over 18 screens",
     "  ok    CONTROL: and both cards had finished fading in before they were read — presence is not visibility — 18 screens, every card at opacity >= the drive's own threshold",
     "  ok    THE FLOOR IS A NUMBER ON THE SCREEN — §6.3’s headline, read off every played selection — 18 floors read, first \"162.5\" on \"SQUAT · ATTEMPT 2\"",
-    "  ok    and the sentence under it is one of MEET_COPY’s two, on every one of them — 13 said the banked line, 5 said the miss line, 0 said something else",
+    "  ok    and the sentence under it is one of MEET_COPY’s two, on every one of them — 16 said the banked line, 2 said the miss line, 0 said something else",
     "  ok    NO CARD IS LIGHTER THAN THE FLOOR — the attempt cannot come back down (GDD §6.3) — 36 cards checked against their screen's floor",
     "  ok    AND A MISS RAISES IT: after a no-lift the floor IS the weight that just beat the lifter, and after a make it is above it — 9 selections had a previous declaration on the same lift to compare against (expected 9, one per lift per meet)",
     "  ok    CONTROL: the gold this check looks for is a colour, converted from the palette’s hex rather than typed — MEET_PALETTE.CARD_PR_EDGE #ffd75e -> \"rgb(255, 215, 94)\"",
-    "  ok    THE PR BORDER AND THE PR SENTENCE ARE ONE DECISION — every card wears both or neither — 36 cards: 5 gold-edged, 5 carrying the sentence",
-    "  ok    and the sentence is MEET_COPY’s, word for word — 5 card(s) said \"A PR on the line.\"",
+    "  ok    THE PR BORDER AND THE PR SENTENCE ARE ONE DECISION — every card wears both or neither — 36 cards: 8 gold-edged, 8 carrying the sentence",
+    "  ok    and the sentence is MEET_COPY’s, word for word — 8 card(s) said \"A PR on the line.\"",
     "  ok    and NO card’s reason claims a PR — the sentence that used to be printed unconditionally is gone from that line — 36 reasons read",
     "  ok    ON A MEET WITH NO COMPETITION HISTORY NOTHING CLAIMS A RECORD — no gold edge and no PR sentence, because there is no best to beat — 2 such meet(s) (meet 1, meet 3): 12 selections, 24 cards, 0 gold-edged, 0 carrying the sentence. Before the copy fix this arm drew one card per selection reading \"A PR on the line.\" with no border on any of them.",
-    "  ok    AND ON A MEET THAT READS AN EARLIER ONE’S BESTS IT IS DRAWN — the gold edge and its sentence, on the played arm — 1 such meet(s) (meet 2), 12 cards, 5 gold-edged, first SQUAT · ATTEMPT 3 small @175 saying \"A PR on the line.\"",
-    "  ok    and on a screen where the two COMPETE — one card gold, the other plain, at the same moment — 1 of 18 selections drew both, first DEADLIFT · ATTEMPT 2: small @202.5 plain vs big @210 GOLD",
-    "  ok    GDD §6.3’s BIG JUMP is PRESSED on the played arm — the bold arm of the dilemma, not just the safest card — §6.3 was answered [\"small\",\"small\",\"small\",\"repeat\",\"small\",\"small\",\"big\",\"big\",\"repeat\",\"repeat\",\"big\",\"big\",\"big\",\"big\",\"big\",\"big\",\"big\",\"big\"]; 10 of them took the big jump",
+    "  ok    AND ON A MEET THAT READS AN EARLIER ONE’S BESTS IT IS DRAWN — the gold edge and its sentence, on the played arm — 1 such meet(s) (meet 2), 12 cards, 8 gold-edged, first SQUAT · ATTEMPT 2 big @170 saying \"A PR on the line.\"",
+    "  ok    and on a screen where the two COMPETE — one card gold, the other plain, at the same moment — 2 of 18 selections drew both, first SQUAT · ATTEMPT 2: small @165 plain vs big @170 GOLD",
+    "  ok    GDD §6.3’s BIG JUMP is PRESSED on the played arm — the bold arm of the dilemma, not just the safest card — §6.3 was answered [\"small\",\"small\",\"small\",\"small\",\"small\",\"repeat\",\"big\",\"big\",\"big\",\"big\",\"big\",\"big\",\"big\",\"big\",\"big\",\"big\",\"big\",\"big\"]; 12 of them took the big jump",
     "  ok    and every card prints what it adds to the bar — 36 deltas read, e.g. \"+5\"",
     "  ok    GDD §6.5’s recap was read on BOTH arms — 3 boards each — 2 recap(s): meet 1=3 boards, scripted ?meet=recap=3 boards",
     "  ok    CONTROL: the two words this section tells apart are different words — PR \"PR\" vs FIRST \"FIRST\"",
@@ -1302,10 +1298,10 @@
     "  ok    DEBUG ARM: and on a lifter who walked in HOLDING numbers the word is PR, and no lift is called their first — 1 scripted recap(s): 2 said \"PR\", 0 said \"FIRST\". THE PLAYED ARM CANNOT REACH THIS: §6.1 has no career calendar, so a second meet in one app run is refused and draws the placeholder rather than a recap (section 4b), and a page load is a new lifter.",
     "  ok    the tail probe ran on a PLAYED third attempt, reached with a mouse and no query string — \"SQUAT · ATTEMPT 3 OF 3\" / \"LAST ONE\"",
     "  ok    the restated beat length is safe because the beat graded is a THIRD attempt — asserted, not assumed — eyebrow \"SQUAT · ATTEMPT 3 OF 3\"; beatMsForLine adds THIRD_ATTEMPT_EXTRA (900ms) unconditionally, which over-estimates a 1st- or 2nd-attempt PR and would push the boundary into the choreography",
-    "  ok    THE HALL IS STILL DRAWING AFTER THE WALK-OUT CHOREOGRAPHY ENDS — the tail is not a frozen frame — the beat is 3300ms (line \"LAST ONE\"), it was seen to end at 3121ms, so he is set at 1941ms on this clock; the last change was sample 23 at 2761ms: 990 of 202800 px moved (max channel delta 217) — 820ms of the 1180ms tail drew",
-    "  ok    the tail draws at least 3 separate times, not once — 6 change(s) in the 1180ms tail after 1941ms: sample 17 at 2041ms: 2421 of 202800 px moved (max channel delta 217); sample 18 at 2160ms: 5796 of 202800 px moved (max channel delta 217); sample 20 at 2403ms: 4455 of 202800 px moved (max channel delta 217); sample 21 at 2521ms: 2421 of 202800 px moved (max channel delta 217); sample 22 at 2640ms: 2331 of 202800 px moved (max channel delta 217); sample 23 at 2761ms: 990 of 202800 px moved (max channel delta 217)",
-    "  ok    the two frames this line NAMES are both inside the tail window, and they differ — 2041ms vs 2160ms: 5796 of 202800 px, max channel delta 217 — he is set at 1941ms, so the earlier of the two is 100ms inside it",
-    "  ok    CONTROL: and it says DIFFERS while he is still walking the bar out, so it is looking at the hall — 11 of 16 samples before he is set moved: sample 1 at 121ms: 882 of 202800 px moved (max channel delta 210); sample 6 at 721ms: 1161 of 202800 px moved (max channel delta 217); sample 7 at 841ms: 9162 of 202800 px moved (max channel delta 217); sample 8 at 963ms: 9432 of 202800 px moved (max channel delta 217); sample 9 at 1082ms: 13095 of 202800 px moved (max channel delta 217); sample 11 at 1321ms: 15489 of 202800 px moved (max channel delta 217); sample 12 at 1441ms: 10728 of 202800 px moved (max channel delta 217); sample 13 at 1561ms: 10800 of 202800 px moved (max channel delta 217); sample 14 at 1680ms: 2682 of 202800 px moved (max channel delta 22); sample 15 at 1801ms: 8118 of 202800 px moved (max channel delta 217); sample 16 at 1921ms: 351 of 202800 px moved (max channel delta 217)",
+    "  ok    THE HALL IS STILL DRAWING AFTER THE WALK-OUT CHOREOGRAPHY ENDS — the tail is not a frozen frame — the beat is 3300ms (line \"LAST ONE\"), it was seen to end at 3120ms, so he is set at 1940ms on this clock; the last change was sample 23 at 2761ms: 990 of 202800 px moved (max channel delta 217) — 821ms of the 1180ms tail drew",
+    "  ok    the tail draws at least 3 separate times, not once — 6 change(s) in the 1180ms tail after 1940ms: sample 17 at 2041ms: 2421 of 202800 px moved (max channel delta 217); sample 18 at 2161ms: 5796 of 202800 px moved (max channel delta 217); sample 20 at 2401ms: 4455 of 202800 px moved (max channel delta 217); sample 21 at 2521ms: 2421 of 202800 px moved (max channel delta 217); sample 22 at 2641ms: 2331 of 202800 px moved (max channel delta 217); sample 23 at 2761ms: 990 of 202800 px moved (max channel delta 217)",
+    "  ok    the two frames this line NAMES are both inside the tail window, and they differ — 2041ms vs 2161ms: 5796 of 202800 px, max channel delta 217 — he is set at 1940ms, so the earlier of the two is 101ms inside it",
+    "  ok    CONTROL: and it says DIFFERS while he is still walking the bar out, so it is looking at the hall — 10 of 16 samples before he is set moved: sample 1 at 120ms: 882 of 202800 px moved (max channel delta 210); sample 6 at 721ms: 1161 of 202800 px moved (max channel delta 217); sample 7 at 841ms: 9162 of 202800 px moved (max channel delta 217); sample 8 at 960ms: 10926 of 202800 px moved (max channel delta 217); sample 9 at 1117ms: 9603 of 202800 px moved (max channel delta 217); sample 11 at 1321ms: 15489 of 202800 px moved (max channel delta 217); sample 12 at 1441ms: 10728 of 202800 px moved (max channel delta 217); sample 13 at 1563ms: 10800 of 202800 px moved (max channel delta 217); sample 14 at 1681ms: 2682 of 202800 px moved (max channel delta 22); sample 15 at 1801ms: 8199 of 202800 px moved (max channel delta 217)",
     "  ok    the hall-under-the-rep probe ran on two PLAYED attempts, reached with a mouse and no query string — calm \"SQUAT · ATTEMPT 2 OF 3\" vs urgent \"SQUAT · ATTEMPT 3 OF 3\" (line \"LAST ONE\"), band 390x292 CSS px above the sprite cell",
     "  ok    THE HALL THE WALK-OUT STOOD UP IS STILL STANDING WHEN THE BAR MOVES — the rep is not drawn in a seated room — 11682 of 113880 px in the band differ between the calm rep and the urgent one (max channel delta 25); the floor is 9882",
     "  ok    CONTROL: and it says IDENTICAL for two CALM reps at two different weights — so the band holds the room and nothing else — \"SQUAT · ATTEMPT 2 OF 3\" vs \"BENCH · ATTEMPT 2 OF 3\": 0 of 113880 px moved (max channel delta 0)",
@@ -1378,20 +1374,20 @@
     "  ok    CAREER_CALENDAR_PLACEHOLDER_COPY.LINE is the sentence this tool holds the second meet’s screen to, word for word — looked for LINE: 'Meet complete — results saved to your last recorded meet. Career calendar coming soon.' in careerCalendarPlaceholder.ts"
   ],
   "notes": [
-    "  note  meet 1: SQUAT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 3 OF 3 @1000ms -> \"You hit depth by a hair.\" | BENCH · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 2 OF 3 @1000ms -> \"The bar won that one.\" | BENCH · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\"",
-    "  note  meet 1: §6.3 answered with [\"small\",\"small\",\"small\",\"repeat\",\"small\",\"small\"]",
-    "  note  meet 2: SQUAT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 3 OF 3 @1000ms -> \"The bar won that one.\" | BENCH · ATTEMPT 1 OF 3 @1000ms -> \"The bar won that one.\" | BENCH · ATTEMPT 2 OF 3 @1000ms -> \"The bar won that one.\" | BENCH · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\"",
-    "  note  meet 2: §6.3 answered with [\"big\",\"big\",\"repeat\",\"repeat\",\"big\",\"big\"]",
+    "  note  meet 1: SQUAT · ATTEMPT 1 OF 3 @1000ms -> \"You hit depth by a hair.\" | SQUAT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 3 OF 3 @1000ms -> \"The bar won that one.\" | BENCH · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 2 OF 3 @1000ms -> \"The bar won that one.\" | DEADLIFT · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\"",
+    "  note  meet 1: §6.3 answered with [\"small\",\"small\",\"small\",\"small\",\"small\",\"repeat\"]",
+    "  note  meet 2: SQUAT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 3 OF 3 @1000ms -> \"Depth was never in question.\" | BENCH · ATTEMPT 1 OF 3 @1000ms -> \"You hit depth by a hair.\" | BENCH · ATTEMPT 2 OF 3 @1000ms -> \"You hit depth by a hair.\" | BENCH · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 1 OF 3 @1000ms -> \"You hit depth by a hair.\" | DEADLIFT · ATTEMPT 2 OF 3 @1000ms -> \"You hit depth by a hair.\" | DEADLIFT · ATTEMPT 3 OF 3 @1000ms -> \"The bar won that one.\"",
+    "  note  meet 2: §6.3 answered with [\"big\",\"big\",\"big\",\"big\",\"big\",\"big\"]",
     "  note  DONE is pressable before the close-out settles; pressing inside the round trip offers a second session of the same day, which the server then refuses",
-    "  note  meet 3: SQUAT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 2 OF 3 @1000ms -> \"The bar won that one.\" | SQUAT · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 2 OF 3 @1000ms -> \"The bar won that one.\" | BENCH · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\"",
+    "  note  meet 3: SQUAT · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | SQUAT · ATTEMPT 2 OF 3 @1000ms -> \"The bar won that one.\" | SQUAT · ATTEMPT 3 OF 3 @1000ms -> \"You hit depth by a hair.\" | BENCH · ATTEMPT 1 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | BENCH · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 1 OF 3 @1000ms -> \"You hit depth by a hair.\" | DEADLIFT · ATTEMPT 2 OF 3 @1000ms -> \"It stopped, and you kept driving.\" | DEADLIFT · ATTEMPT 3 OF 3 @1000ms -> \"It stopped, and you kept driving.\"",
     "  note  meet 3: §6.3 answered with [\"big\",\"big\",\"big\",\"big\",\"big\",\"big\"]",
-    "  note  the played-session section cost 190113ms of wall clock",
-    "  note  the Gym Empire round trip cost 25067ms of wall clock",
-    "  note  the mid-session Gym Empire round trip cost 24260ms of wall clock",
+    "  note  the played-session section cost 191659ms of wall clock",
+    "  note  the Gym Empire round trip cost 25102ms of wall clock",
+    "  note  the mid-session Gym Empire round trip cost 24291ms of wall clock",
     "  note  §6.3 domain: meet 1 (app run 1, ended 'recap', history no); meet 2 (app run 1, ended 'placeholder', history yes); meet 3 (app run 5, ended 'recap', history no)",
     "  note  §6.5 domain: meet 1 (played arm, search \"\"); scripted ?meet=recap (debug arm, search \"?meet=recap\")",
-    "  note  walk-out tail: the last change was 360ms before the beat was seen to end; WALKOUT_TAIL.HUSH_MS is 360ms and the sampler's worst gap this run was 123ms",
-    "  note  walk-out tail (played, third attempt): 26 samples over 3000ms, beat 3300ms seen to end at 3121ms so he is set at 1941ms (asked for every 120ms, actual 118-123ms), 17 change(s), last at 2761ms — 0:0 121:882 241:0 361:0 480:0 601:0 721:1161 841:9162 963:9432 1082:13095 1201:0 1321:15489 1441:10728 1561:10800 1680:2682 1801:8118 1921:351 2041:2421 2160:5796 2280:0 2403:4455 2521:2421 2640:2331 2761:990 2881:0 3000:0"
+    "  note  walk-out tail: the last change was 359ms before the beat was seen to end; WALKOUT_TAIL.HUSH_MS is 360ms and the sampler's worst gap this run was 157ms",
+    "  note  walk-out tail (played, third attempt): 26 samples over 3001ms, beat 3300ms seen to end at 3120ms so he is set at 1940ms (asked for every 120ms, actual 84-157ms), 16 change(s), last at 2761ms — 0:0 120:882 241:0 360:0 481:0 601:0 721:1161 841:9162 960:10926 1117:9603 1201:0 1321:15489 1441:10728 1563:10800 1681:2682 1801:8199 1920:0 2041:2421 2161:5796 2281:0 2401:4455 2521:2421 2641:2331 2761:990 2881:0 3001:0"
   ],
   "failures": [],
   "pageErrors": []
