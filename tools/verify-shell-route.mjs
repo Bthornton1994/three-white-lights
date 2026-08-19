@@ -5192,7 +5192,7 @@ if (!reachedMeet) {
             await visible('career-choosing'),
             'and the chooser is still up — a refusal is not a dead end, and the retry below is accepted',
           );
-          await page.screenshot({ path: path.join(outDir, '22-career-chooser-refusal.png') });
+          await page.screenshot({ path: path.join(outDir, '23-career-chooser-refusal.png') });
           const confirmed = await press(
             'career-fed-meridian',
             'career-calendar',
@@ -7075,7 +7075,7 @@ await checkOnScreen(
     const chooserLeaveHit = await hitTest(NAV_LEAVE_CAREER);
     check(chooserLeaveHit.hit, 'and it is what a thumb would hit there', `elementFromPoint -> ${chooserLeaveHit.why}`);
     sawPillOn('choosing', openCareerDrawn && chooserLeave.drawn, chooserLeaveHit.hit);
-    await shootBeat('19-career-chooser-from-session.png', 'chooser', CAREER_SAYS.CHOOSER);
+    await shootBeat('20-career-chooser-from-session.png', 'chooser', CAREER_SAYS.CHOOSER);
 
     const chose = await press(
       'career-fed-ironline',
@@ -7195,7 +7195,7 @@ await checkOnScreen(
                 ` vs target y ${pillTouchTarget.top.toFixed(1)}..${pillTouchTarget.bottom.toFixed(1)}`,
         );
       }
-      await shootBeat('20-career-calendar-chosen.png', 'calendar', CAREER_SAYS.CALENDAR);
+      await shootBeat('21-career-calendar-chosen.png', 'calendar', CAREER_SAYS.CALENDAR);
 
       const returned = await press(
         NAV_LEAVE_CAREER,
@@ -7213,7 +7213,7 @@ await checkOnScreen(
           await visible('session-check-in'),
           'it lands on GDD §3.2’s check-in — the beat this leg departed from',
         );
-        await page.screenshot({ path: path.join(outDir, '21-career-round-trip-closed.png') });
+        await page.screenshot({ path: path.join(outDir, '22-career-round-trip-closed.png') });
       }
       careerLegs.fresh = Object.freeze({
         chose: 'ironline',
