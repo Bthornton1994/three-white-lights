@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-19T15-25-32-088Z-905",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run"
+  ],
+  "budgetSeconds": 1800,
+  "startedAtIso": "2026-08-19T15:25:32.088Z",
+  "startedAtMs": 1787153132088,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "f7681611dbb30a6d32c7dee67d1b0d627e50a717",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 12,
+  "dirtyPaths": [
+    "src/shell/shellWiring.test.ts",
+    "tools/capture-cutin.mjs",
+    "tools/capture-lift.mjs",
+    "tools/capture-meet.mjs",
+    "tools/capture-session.mjs",
+    "tools/shoot.mjs",
+    "tools/verify-cutin-cap.mjs",
+    "tools/verify-lift-press.mjs",
+    "tools/verify-meet-sound.mjs",
+    "tools/verify-session-boundary.mjs",
+    "tools/verify-shell-route.mjs",
+    "tools/freshLifterBoundary.mjs"
+  ],
+  "runner": {
+    "pid": 905,
+    "startTick": "585368",
+    "cmdline": "node tools/watchdog.mjs --budget 1800 -- npx vitest run",
+    "bootId": "89cdbad0-027c-4747-b183-7750d1c8ee79",
+    "bootEpochSeconds": 1787147278,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-19T15:25:32.107Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
