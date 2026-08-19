@@ -461,7 +461,7 @@ describe('applyFederationChoice', () => {
       { kind: 'choose-federation', report: { federationId: 'grandhall' } },
       'choice-5',
     );
-    expect(second.ok).toBe(false);
+    expect(second.ok, 'a second federation choice was accepted on a row that had already chosen').toBe(false);
     if (second.ok) throw new Error('unreachable');
     expect(second.error.code).toBe('FEDERATION_ALREADY_CHOSEN');
     // Even the same id again: the choice is spent, not idempotent — a second

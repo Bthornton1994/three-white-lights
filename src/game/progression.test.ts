@@ -1871,7 +1871,13 @@ describe('purity', () => {
     // count moved and the reason it is a count: the audit reads the clauses
     // COMMON to all eight rows, so a claim unique to one row lives in its title
     // and had no reader. The number is measured, not adjusted to fit.
-    expect(frozen, 'Object.isFrozen arguments read out of the witness bodies').toBe(64);
+    //
+    // 64 -> 81 when `federation` joined every boundary type: one new isFrozen
+    // argument in each of the seven existing witness bodies (the shared
+    // sessionServer test carries two and is audited once per route it
+    // witnesses), plus the seven arguments of the new `applyFederationChoice`
+    // witness.
+    expect(frozen, 'Object.isFrozen arguments read out of the witness bodies').toBe(81);
 
     // AND THE DEPTH THE LEDGER DOES NOT REACH, TABULATED RATHER THAN CLAIMED.
     // One array element down — `meets[0]`, where a stored meet's Total lives —
@@ -1982,7 +1988,10 @@ describe('purity', () => {
     // per-lift call-out needed: a lifter who walks onto the platform already
     // holding numbers, so a recap has a record to beat and not only a first one
     // to set.
-    expect(routeScan().fixtures.length, 'fixture rows the scan sees and discards').toBe(22);
+    // 22 -> 24 with `careerServer.test.ts`'s two `receive` rows: `cacheFor`,
+    // the fixture that reads a boundary-swept row back through the one door,
+    // and the choose-federation test that decodes the choice's own wire.
+    expect(routeScan().fixtures.length, 'fixture rows the scan sees and discards').toBe(24);
     expect(routeScan().fixtures.map((row) => row.file)).toContain('src/game/meetServer.test.ts');
     // ...and no fixture leaked into the pinned table.
     expect(declaredRoutes().filter((row) => IS_TEST_FILE.test(row.file))).toEqual([]);

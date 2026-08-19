@@ -1400,7 +1400,8 @@
  * about a third of a second per run.
  */
 
-import { CAREER_FEDERATIONS, type CareerFederationId } from '../career/careerTuning';
+import type { CareerFederationId } from '../career/careerTuning';
+import { CAREER_FEDERATIONS } from '../career/careerTuning';
 import type { BodyweightReading, OfficialTotalKg } from './dots';
 import type { LiftKind } from './meet';
 import { LIFT_ORDER } from './meet';

@@ -248,8 +248,12 @@ const PINNED = Object.freeze({
    * its `.d.mts`, its test, `processHazardHook.test.ts`, and the two hook
    * files under `.claude/` (`hooks/warn-process-hazards.mjs`,
    * `settings.json`).
+   *
+   * 292 -> 295 when the career reached the boundary (Sprint 1a):
+   * `careerServer.ts`, `careerClient.ts` and `careerServer.test.ts` under
+   * `src/game/`.
    */
-  SCANNED_FILES: 292,
+  SCANNED_FILES: 295,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -257,7 +261,8 @@ const PINNED = Object.freeze({
    * 89 -> 91 with the sentinel: `tools/devServerSentinel.test.ts` and
    * `tools/processHazardHook.test.ts`.
    */
-  TEST_FILES: 91,
+  /** 91 -> 92 with Sprint 1a's `src/game/careerServer.test.ts`. */
+  TEST_FILES: 92,
 });
 
 /**

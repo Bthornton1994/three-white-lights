@@ -746,8 +746,19 @@ const GUARANTEE_COVERAGE = {
    * single delta between the file's two texts under this exact census.
    *
    * Not quoted here, for the reason eleven of the notes above now give.
+   *
+   * 259 -> 261 when the career reached the boundary (Sprint 1a). Measured per
+   * file by running this census over each touched file's pre-change
+   * (`664fc30`) and post-change text: `careerServer.ts` 0 -> 1 — the
+   * `applyFederationChoice` paragraph, which carries
+   * `a-federation-is-chosen-once` with a witness in the table below — and
+   * `localSessionServer.ts` 2 -> 3, the port method's restatement of the same
+   * one-writer rule one layer out, whose check is the tagged paragraph's own
+   * named test. Every other touched file, `progression.ts` and both server
+   * modules included, measured flat. The trigger phrases are not quoted here,
+   * for the reason twelve of the notes above now give.
    */
-  TREE_WIDE: 259,
+  TREE_WIDE: 261,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1040,8 +1051,13 @@ const NUMBER_COVERAGE = {
    * `past-the-cap-more-looks-never-land-behind` — one out, two in, net one.
    * Neither states a numeral as prose (the second's only digits are a §-pointer,
    * which the exclusion census counts), so `CLAIMED` did not move with them.
+   *
+   * 69 -> 71 with Sprint 1a's two career-boundary tags, both in
+   * `careerServer.ts`: `the-career-record-is-the-meets-on-the-row` on the fold
+   * and `a-federation-is-chosen-once` on the choice. Neither paragraph states
+   * a numeral, so `CLAIMED` did not move with them either.
    */
-  TAGGED_PARAGRAPHS: 69,
+  TAGGED_PARAGRAPHS: 71,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
@@ -1070,9 +1086,14 @@ const NUMBER_COVERAGE = {
   // capped pairing sweep's, which holds both a bare 0 (its `slice(0, …)` and
   // its zero-fault pins) and a bare 1 (its `length - 1` end-instant reads), so
   // both weakness counts moved with it.
-  NAMED_BODIES: 60,
-  NAMED_BODIES_HOLDING_ZERO: 47,
-  NAMED_BODIES_HOLDING_ONE: 47,
+  //
+  // 60 -> 62 with Sprint 1a's two career-boundary tags. The fold's body holds
+  // a bare 0 (its measured-count accumulators start there) and a bare 1 (its
+  // loop steps and its set-size comparison), so both weakness counts moved
+  // with it; the chosen-once body states no numeral at all.
+  NAMED_BODIES: 62,
+  NAMED_BODIES_HOLDING_ZERO: 48,
+  NAMED_BODIES_HOLDING_ONE: 48,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -1359,8 +1380,11 @@ const TRANSCRIPT_BAR = {
    * own witness, its clamp deleted and the strictly-ahead pin watched go red.
    * Its transcript's actual side is a quoted string, not a bare scalar, so
    * `WITH_A_MEASURED_NUMBER` stays where it was again.
+   *
+   * 27 -> 29 on Sprint 1a's two career-boundary witnesses, both transcripts
+   * pasted from real red runs at this tree.
    */
-  GRADED: 27,
+  GRADED: 29,
   /** ...and rows excused because their transcript predates it. */
   PREDATING: 37,
   /**
@@ -1520,10 +1544,18 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // digits the body's pinned strings carry — so `flagged` and `unresolved`
   // stand still while `rows` and `numerals` move, which is a coincidence of
   // digits and not evidence about anything, exactly as the comment above says.
-  rows: 56,
-  flagged: 43,
-  numerals: 173,
-  unresolved: 87,
+  //
+  // 56/43/173/87 -> 57/44/179/89 on Sprint 1a's fold witness. Its transcript
+  // quotes vitest's own elided arrays — an entered-meets list four long against
+  // five — and the mutated tree's shorter list is precisely the count no
+  // shipped assertion pins, so the row is flagged: the transplant being
+  // inverted and correct again. The chosen-once witness moves nothing here —
+  // its transcript states no citable numeral, and a row without one is skipped
+  // before it is counted, which is why `rows` moved by one and not two.
+  rows: 57,
+  flagged: 44,
+  numerals: 179,
+  unresolved: 89,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -1862,8 +1894,12 @@ const REPLACEMENT_BAR = {
    *
    * 15 -> 16 on the catch-up cap's witness: `mutatedTo` records the clamp line
    * with its `Math.min` deleted, which is the whole mutant.
+   *
+   * 16 -> 18 on Sprint 1a's two career-boundary witnesses: the fold's
+   * bombed-meets-skipped patch and the chosen-once refusal's disabled
+   * condition, each recorded in the exact form it was run.
    */
-  REPRODUCIBLE: 16,
+  REPRODUCIBLE: 18,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2080,9 +2116,20 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
   {
     guarantee: 'attending-a-meet-never-removes-one',
     mutatedFile: 'src/career/eligibility.ts',
+    // RE-TAKEN WHEN THE BOMB-OUT ARM ARRIVED (Sprint 1a): `careerRecordAfterMeet`
+    // grew a null arm — a bombed meet spends the entry and moves no total — so
+    // the old anchor's single-line expression no longer exists and this row
+    // expired exactly as designed. The mutant is the same latest-not-best read
+    // with the null arm kept, re-run at this tree: same named assertion, same
+    // 283 violating pairs.
     mutated:
-      '    bestTotalKg: lifter.bestTotalKg === null ? totalKg : Math.max(lifter.bestTotalKg, totalKg),',
-    mutatedTo: '    bestTotalKg: totalKg,',
+      '    bestTotalKg:\n'
+      + '      totalKg === null\n'
+      + '        ? lifter.bestTotalKg\n'
+      + '        : lifter.bestTotalKg === null\n'
+      + '          ? totalKg\n'
+      + '          : Math.max(lifter.bestTotalKg, totalKg),',
+    mutatedTo: '    bestTotalKg: totalKg === null ? lifter.bestTotalKg : totalKg,',
     testFile: 'src/career/eligibility.test.ts',
     redAssertion:
       'expect(shipped.violatingPairs).toBe(0);\n'
@@ -2104,6 +2151,46 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + 'for fewer > [attending-a-meet-never-removes-one] every skipped meet in every seeded '
       + 'season, and the control beside it\n'
       + 'AssertionError: expected 283 to be +0 // Object.is equality',
+  },
+  {
+    guarantee: 'the-career-record-is-the-meets-on-the-row',
+    mutatedFile: 'src/game/careerServer.ts',
+    mutated:
+      '  for (const meet of history.meets) {\n'
+      + '    lifter = careerRecordAfterMeet(lifter, meet.meetId, meet.totalKg);\n'
+      + '  }',
+    mutatedTo:
+      '  for (const meet of history.meets) {\n'
+      + '    if (meet.totalKg === null) continue;\n'
+      + '    lifter = careerRecordAfterMeet(lifter, meet.meetId, meet.totalKg);\n'
+      + '  }',
+    testFile: 'src/game/careerServer.test.ts',
+    redAssertion: 'expect(lifter.enteredMeetIds).toEqual(record.meets.map((meet) => meet.meetId));',
+    measuredOver: 'expect(recordsChecked).toBe(112);',
+    observed:
+      'FAIL src/game/careerServer.test.ts > careerLifterFor derives the career record from the '
+      + 'stored row > agrees with the stored best total on every record the write path can reach '
+      + '[the-career-record-is-the-meets-on-the-row]\n'
+      + "AssertionError: expected [ 'boundary-sweep-0-0', …(4) ] to deeply equal "
+      + "[ 'boundary-sweep-0-0', …(5) ]",
+  },
+  {
+    guarantee: 'a-federation-is-chosen-once',
+    mutatedFile: 'src/game/careerServer.ts',
+    // The refusal's own condition disabled, so a second choice walks through
+    // to the lock check and — on a row with no meets — succeeds. Run in
+    // exactly this form: `tsc` stays clean (no unreachable-code diagnostic)
+    // and the named assertion below is the only red in its test.
+    mutated: '  if (record.federation.chosen) {',
+    mutatedTo: '  if (false) {',
+    testFile: 'src/game/careerServer.test.ts',
+    redAssertion:
+      "expect(second.ok, 'a second federation choice was accepted on a row that had already chosen').toBe(false);",
+    observed:
+      'FAIL src/game/careerServer.test.ts > applyFederationChoice > refuses a second choice — '
+      + 'the pick is handed out once [a-federation-is-chosen-once]\n'
+      + 'AssertionError: a second federation choice was accepted on a row that had already '
+      + 'chosen: expected true to be false // Object.is equality',
   },
   // -------------------------------------------------------------------------
   // The numeric half of the tag, witnessed from BOTH sides of its set equality,
@@ -4205,6 +4292,9 @@ describe('the guarantee-tag convention', () => {
       // guarantees and no witnesses at all until these.
       'src/empire/empireInvariant.test.ts',
       'src/empire/engagement.test.ts',
+      // Sprint 1a: the career behind the boundary — the fold and the
+      // chosen-once refusal, witnessed where they are driven.
+      'src/game/careerServer.test.ts',
       // The numeric half of the tag witnesses itself: the mutant is in this
       // file, and so is the test it reddens.
       'src/game/guaranteeTags.test.ts',
