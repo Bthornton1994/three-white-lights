@@ -1311,6 +1311,15 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   // than driven, because a smaller enumerated surface is worth more than two
   // more drivers: what is left is one site, and it is driven.
   'ladder.ts#buyLadderEquipment#state.includes x1',
+  // Two reads of GymView's own props through the week log: `weekLog` is
+  // destructured straight off `props.state`, so `weekLog.map(...)` keys back
+  // to the `props` parameter rather than the local name; and the callback's
+  // own parameter `week` gets a second entry for `week.slots.map(...)`,
+  // because its callback argument is `describeSlotOutcome` — a named
+  // function reference rather than an inline arrow, the same shape every
+  // other row on this list is about.
+  'ladderView.tsx#GymView#props.map x1',
+  'ladderView.tsx#GymView#week.map x1',
   'social.ts#rankLeaderboard#entries.map x1',
   'social.ts#visitRefusals#context.some x1',
   'social.ts#visitRefusals#context.some x1',
@@ -11102,7 +11111,7 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'production.ts': 9,
   'recruitment.ts': 1,
   'reputation.ts': 6,
-  'sessions.ts': 21,
+  'sessions.ts': 24,
   'social.ts': 6,
 });
 
@@ -11117,10 +11126,19 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
  */
 const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
   'engagement.ts#historyFrom#attended x1',
-  // The three onClick arrows in the stage-1 view, each handing
-  // `props.dispatch` exactly one action object. One site per control kind
-  // (advance, buy, relocate); `x1` widening to `x2` at any of them is a
-  // payload arriving one argument wider, which is what this census is for.
+  // Ordered by owner name within a module (`GymView` before `LadderView`),
+  // which is the walk's own order rather than source position. Six onClick
+  // arrows in `GymView` (buy-ladder, buy-session, move-up,
+  // set-allocation-slot, the dev-clock steps, the week-boundary jump) and the
+  // three in `LadderView` above it, each handing `props.dispatch` exactly one
+  // action object. `x1` widening to `x2` at any of them is a payload arriving
+  // one argument wider, which is what this census is for.
+  'ladderView.tsx#GymView#props.dispatch x1',
+  'ladderView.tsx#GymView#props.dispatch x1',
+  'ladderView.tsx#GymView#props.dispatch x1',
+  'ladderView.tsx#GymView#props.dispatch x1',
+  'ladderView.tsx#GymView#props.dispatch x1',
+  'ladderView.tsx#GymView#props.dispatch x1',
   'ladderView.tsx#LadderView#props.dispatch x1',
   'ladderView.tsx#LadderView#props.dispatch x1',
   'ladderView.tsx#LadderView#props.dispatch x1',
@@ -11330,6 +11348,7 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'ladder.ts:333 receiver=ArrayLiteralExpression',
   'ladderView.tsx:115 returned=unfollowable:state',
   'ladderView.tsx:123 returned=unfollowable:state',
+  'ladderView.tsx:370 returned=unfollowable:state',
   'recruitment.ts:388 returned=unfollowable:state',
   'sessions.ts:562 receiver=ArrayLiteralExpression',
   'sessions.ts:655 returned=unfollowable:state',
@@ -11483,7 +11502,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
    */
   NODES_EXAMINED: 30_722,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
-  WRAP_CALLS: 96,
+  WRAP_CALLS: 99,
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
