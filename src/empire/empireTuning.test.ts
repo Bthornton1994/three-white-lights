@@ -80,6 +80,7 @@ describe('the block is frozen and every entry is classified', () => {
       'EQUIPMENT_TIERS',
       'EQUIPMENT_TIER_BUCKS_MULTIPLIER',
       'EQUIPMENT_TIER_COST_GYM_BUCKS',
+      'LADDER_DEV_TIME_STEPS_SECONDS',
       'LADDER_EQUIPMENT_COST_GYM_BUCKS',
       'LADDER_EQUIPMENT_ITEMS',
       'LADDER_EQUIPMENT_MIN_RUNG',
@@ -566,11 +567,11 @@ describe('§5.5 social', () => {
     // one that was missing: how many keys the loop actually looked at. An empty
     // or truncated key set would have made every assertion above pass.
     expect(examined).toBe(Object.keys(EMPIRE_TUNING).length);
-    expect(examined).toBe(63);
+    expect(examined).toBe(64);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
-    expect(probed).toBe(315);
+    expect(probed).toBe(320);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {
