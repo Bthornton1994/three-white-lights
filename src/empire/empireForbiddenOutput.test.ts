@@ -1275,13 +1275,13 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   'empireInvariant.ts#stepGym#gym.find x1',
   'empireInvariant.ts#stepGym#gym.map x1',
   'engagement.ts#moreEngagedByTrainedDay#history.includes x1',
-  // The three ladder.ts reads of a caller-supplied state: two membership
-  // tests on the equipment list and the refusal message's join. Every one is
-  // a read that hands the callee nothing this directory chose, same as the
-  // thirteen above.
+  // ladder.ts's one read of a caller-supplied state: the ownership test on
+  // the equipment list. It began as three — a second `includes` in the
+  // spending policy's scan and a `join` in a refusal message — and the other
+  // two were restructured away (a Set membership and a local join) rather
+  // than driven, because a smaller enumerated surface is worth more than two
+  // more drivers: what is left is one site, and it is driven.
   'ladder.ts#buyLadderEquipment#state.includes x1',
-  'ladder.ts#cheapestAffordable#state.includes x1',
-  'ladder.ts#requireLadderState#state.join x1',
   'social.ts#rankLeaderboard#entries.map x1',
   'social.ts#visitRefusals#context.some x1',
   'social.ts#visitRefusals#context.some x1',
@@ -10900,9 +10900,9 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'engagement.ts:437 EmpireState asked=true walked=false',
   'engagement.ts:455 EmpireState asked=true walked=false',
   'expansion.ts:549 EmpireClock asked=true walked=false',
-  'ladder.ts:556 LadderState asked=true walked=false',
-  'ladder.ts:567 LadderState asked=true walked=false',
-  'ladder.ts:573 LadderState asked=true walked=false',
+  'ladder.ts:557 LadderState asked=true walked=false',
+  'ladder.ts:568 LadderState asked=true walked=false',
+  'ladder.ts:574 LadderState asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
   'social.ts:535 readonly FriendVisit[] asked=true walked=false',
 ]);
@@ -10963,9 +10963,9 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   'module-variable': 34,
   local: 0,
   function: 556,
-  member: 529,
+  member: 531,
   'member-callback': 2,
-  'member-of-parameter': 16,
+  'member-of-parameter': 14,
   fresh: 0,
   unclassified: 0,
 });
@@ -11003,7 +11003,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
    * grammar declarations and the `satisfies` clause are 23 AST nodes, and no
    * site, channel or wrap count moved with them.
    */
-  NODES_EXAMINED: 23_959,
+  NODES_EXAMINED: 23_965,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
   WRAP_CALLS: 72,
   CHANNELS: 11,
@@ -17210,6 +17210,26 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
       engagementModule.moreEngagedByTrainedDay({ attended: [true, false], trainedDays }, 9);
     },
   }),
+  Object.freeze({
+    site: 'ladder.ts#buyLadderEquipment#state.includes x1',
+    run: (record: MemberCallRecord): void => {
+      // Two calls on one instrumented state, so the ownership test runs both
+      // ways: the flat bench is already owned (refused) and the rack is not
+      // (bought, with the rung and balance set to clear every later gate).
+      // The verdict channel records callback verdicts and `includes` takes
+      // none, so what the row pins is the two calls and the two handed item
+      // names — `verdicts=none` is the same reading `order.includes` has.
+      const opening = ladderModule.createLadderState();
+      const state = Object.freeze({
+        ...opening,
+        rung: EMPIRE_TUNING.LADDER_RUNGS[1],
+        gymBucks: EMPIRE_TUNING.LADDER_EQUIPMENT_COST_GYM_BUCKS['squat-rack'],
+        equipment: recordOn([...opening.equipment], 'includes', record),
+      });
+      ladderModule.buyLadderEquipment(state, 'flat-bench');
+      ladderModule.buyLadderEquipment(state, 'squat-rack');
+    },
+  }),
   // --- E23: the ten that were undriven, and the reason they were undriven was
   // fixture cost. Seven of them cost an array literal or a fixture this file
   // already had; the two `stepGym` sites cost a gym with a build in flight.
@@ -17375,9 +17395,9 @@ const MEMBER_CALL_TRIPWIRE: readonly MemberCallSubject[] = Object.freeze([
 
 /** What the pass measured. Counts, not bounds, so an empty drive reports itself. */
 const MEMBER_CALL_PASS_CENSUS = Object.freeze({
-  SUBJECTS: 13,
-  /** One call of the instrumented method per subject. */
-  CALLS: 13,
+  SUBJECTS: 14,
+  /** One call of the instrumented method per subject, two at the ladder site. */
+  CALLS: 15,
   /**
    * Callback invocations across every subject: 4 + 33, the second number being
    * E23's ten sites. Per site — and per ARM, which is the half a total cannot
@@ -17393,7 +17413,7 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
    * is the shape this file calls an empty domain everywhere else. The argument
    * channel is non-empty now because `savingForPhysio` is handed an axis name.
    */
-  HANDED: 1,
+  HANDED: 3,
   /**
    * Values the callbacks RETURNED, deep-scanned for strings. M42's channel.
    *
@@ -17469,6 +17489,7 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   'empireCore.ts#idleLedger#ledger.filter x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
   'empireCore.ts#progressionLedger#ledger.filter x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
   'engagement.ts#moreEngagedByTrainedDay#history.includes x1 calls=1 callbacks=0 handed=0 returned=0 verdicts=none',
+  'ladder.ts#buyLadderEquipment#state.includes x1 calls=2 callbacks=0 handed=2 returned=0 verdicts=none',
   'empireInvariant.ts#progressionDayLedger#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0 verdicts=falsex4,truex2',
   'empireInvariant.ts#idleDayLedger#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0 verdicts=falsex2,truex4',
   'empireInvariant.ts#outputSeries#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0 verdicts=falsex5,truex1',
@@ -17558,7 +17579,7 @@ describe('the member-call pass — what a caller-supplied method is actually han
     // and excused at the same time.
     for (const site of driven) expect(MEMBER_CALL_PASS_UNDRIVEN).not.toContain(site);
     // The residual as a number, beside the coverage as a number. It is zero of
-    // thirteen now, and the number stays pinned rather than being deleted with
+    // fourteen now, and the number stays pinned rather than being deleted with
     // the members: an empty excuse list is the one state where the set equality
     // above is a complete statement, so it is worth a line that reddens when it
     // stops being empty.

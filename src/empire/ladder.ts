@@ -349,7 +349,7 @@ export function requireLadderState(state: LadderState): LadderState {
   const canonical = canonicalEquipment(state.equipment);
   for (const [at, item] of canonical.entries()) {
     if (state.equipment[at] !== item) {
-      refuseWith(`equipment must be listed in the fixed item order, received ${state.equipment.join(', ')}`);
+      refuseWith(`equipment must be listed in the fixed item order: ${canonical.join(', ')}`);
     }
   }
   return state;
@@ -502,8 +502,9 @@ function cheapestAffordable(
   state: LadderState,
 ): { readonly action: 'buy'; readonly item: LadderEquipmentItem } | { readonly action: 'move' } | null {
   let best: { cost: number; pick: { action: 'buy'; item: LadderEquipmentItem } | { action: 'move' } } | null = null;
+  const held = new Set<string>(state.equipment);
   for (const item of EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS) {
-    if (state.equipment.includes(item)) continue;
+    if (held.has(item)) continue;
     if (ladderRungIndex(state.rung) < ladderRungIndex(ladderEquipmentMinRung(item))) continue;
     const cost = ladderEquipmentCost(item);
     if (state.gymBucks < cost) continue;
