@@ -116,6 +116,7 @@ import {
   shellEmpireAffordanceFor,
   type ShellIntent,
 } from './shellRoute';
+import { MEET_LOCAL } from '../game/meetTuning';
 import { SHELL_COPY, SHELL_LAYOUT, SHELL_NAV, type EmpirePhase } from './shellTuning';
 import type { CareerSurfacePhase } from '../meet/careerSurface';
 import type { MeetDayPhaseId } from '../game/meetDay';
@@ -390,6 +391,12 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           // `tools/verify-shell-route.mjs` measures the consequence on the
           // played path rather than trusting either.
           serverPort={meetFrame?.serverPort ?? appMeetPort()}
+          // STILL THE ONE LOCAL, EXPLICITLY, FOR EXACTLY ONE MORE PIECE. The
+          // hook no longer reaches for `MEET_LOCAL` itself — the door is now
+          // visible here, at the router, which is the one place allowed to
+          // decide which meet is lifted. The next 1c piece replaces this with
+          // the calendar's choice through `careerMeet.ts`'s adapter.
+          meet={MEET_LOCAL}
           preview={meetFrame?.state}
           showCard={meetFrame?.card ?? false}
           holdWalkoutAtMs={meetFrame?.holdWalkoutAtMs ?? null}

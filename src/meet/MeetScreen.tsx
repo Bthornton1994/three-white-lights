@@ -70,7 +70,7 @@ import type { MeetServerPort } from '../game/meetClient';
 import { VerdictView } from './VerdictView';
 import { WalkoutView } from './WalkoutView';
 import { WeighInView } from './WeighInView';
-import { MEET_LAYOUT } from '../game/meetTuning';
+import { MEET_LAYOUT, type MeetDefinition } from '../game/meetTuning';
 
 const L = MEET_LAYOUT;
 
@@ -99,6 +99,14 @@ export interface MeetScreenProps {
    * `MeetEntry.serverPort`.
    */
   readonly serverPort: MeetServerPort;
+  /**
+   * WHICH MEET IS BEING LIFTED. Required on the port's own reasoning: an
+   * optional meet with a default would let this screen conjure `MEET_LOCAL`
+   * and silently reopen the one ungated door Sprint 1c deletes. The router
+   * hands the meet the player entered from the Career calendar
+   * (`careerMeet.ts`'s adapter); the capture path hands its own fixture.
+   */
+  readonly meet: MeetDefinition;
   /**
    * DEBUG ONLY. Freezes the loop on one scripted beat instead of running a
    * played meet (see `meetPreview.ts`). Nothing in the played app passes this;
@@ -160,6 +168,7 @@ export interface MeetScreenProps {
 
 export function MeetScreen({
   serverPort,
+  meet,
   preview,
   showCard = false,
   holdWalkoutAtMs = null,
@@ -168,7 +177,7 @@ export function MeetScreen({
   onCutIn,
   cutInSearch,
 }: MeetScreenProps): React.ReactElement {
-  const loop = useMeetDay(serverPort, preview, preview !== undefined);
+  const loop = useMeetDay(serverPort, meet, preview, preview !== undefined);
   const { dispatch, restart } = loop;
   const state = preview ?? loop.state;
   const [cardOpen, setCardOpen] = useState(showCard);

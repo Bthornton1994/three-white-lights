@@ -190,6 +190,20 @@ describe('useMeetDay has one source of truth, and it is not its own', () => {
     expect(CODE).not.toMatch(/serverPort: MeetServerPort =/);
   });
 
+  it('the meet is a REQUIRED parameter, so there is no default meet to fall back to', () => {
+    // The port guard applied to its sibling parameter, mechanically (the
+    // house rule: a guard written for one arm is applied to the arm beside
+    // it). A `meet` with a `MEET_LOCAL` default would typecheck at every call
+    // site and would BE Sprint 1c's deleted defect — the one ungated door,
+    // where every meet a player opened was the one local and the calendar
+    // decided nothing. The hook may not even IMPORT the local: the router
+    // decides which meet is lifted, nothing in here does.
+    expect(CODE).toMatch(/meet: MeetDefinition,/);
+    expect(CODE).not.toMatch(/meet\?: /);
+    expect(CODE).not.toMatch(/meet: MeetDefinition =/);
+    expect(CODE).not.toMatch(/\bMEET_LOCAL\b/);
+  });
+
   it('the response is applied in its own state change, so `pending` is renderable', () => {
     // The twin of the session hook's check. A synchronous propose-and-settle
     // inside one updater is what made the in-flight state — and every

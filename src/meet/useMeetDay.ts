@@ -77,7 +77,7 @@ import {
 import { openingCache, receiveSnapshot } from '../game/sessionClient';
 import { streakDayFromLocalWallClock, type LocalWallClock } from '../game/streak';
 import { SESSION_TUNING } from '../game/sessionTuning';
-import { MEET_ENTRY, MEET_LOCAL } from '../game/meetTuning';
+import { MEET_ENTRY, type MeetDefinition } from '../game/meetTuning';
 
 /**
  * The stakes of an attempt that does not exist.
@@ -137,6 +137,14 @@ export interface MeetDayLoop {
  * way for this hook to conjure a lifter if one is not handed to it. `AppShell`
  * passes `appMeetPort()`, which is the same object `SessionScreen` is given.
  *
+ * @param meet WHICH MEET IS BEING LIFTED. Required for the port's own reason:
+ * a default here would BE the ungated door — the hook reaching for
+ * `MEET_LOCAL` on its own is exactly the Sprint 1c defect this parameter
+ * deletes, where every meet a player ever opened was the one local and the
+ * calendar decided nothing. The router hands the meet the player entered
+ * (`careerMeet.ts`'s adapter over the calendar's choice); the capture path
+ * hands its own fixture with the frozen frame.
+ *
  * @param initial a scripted `MeetDayState` for the capture path, which supplies
  * its own beat rather than playing to it.
  *
@@ -150,6 +158,7 @@ export interface MeetDayLoop {
  */
 export function useMeetDay(
   serverPort: MeetServerPort,
+  meet: MeetDefinition,
   initial?: MeetDayState,
   frozen: boolean = false,
 ): MeetDayLoop {
@@ -169,7 +178,7 @@ export function useMeetDay(
     const facts = meetDayFactsFromCache(openingCache(serverPort), day, SESSION_TUNING.STARTING_E1RM);
     const context: MeetDayContext = {
       day: facts.day,
-      meet: MEET_LOCAL,
+      meet,
       entry: MEET_ENTRY,
       bestE1rmKg: facts.bestE1rmKg,
       previousBestTotalKg: facts.previousBestTotalKg,
@@ -179,7 +188,7 @@ export function useMeetDay(
       fatigue: serverPort.meetBrief(day).fatigue,
     };
     return createMeetDay(context);
-  }, [serverPort]);
+  }, [serverPort, meet]);
 
   const [state, setState] = useState<MeetDayState>(() => initial ?? buildMeet());
   const [applied, setApplied] = useState<RecordedMeet | null>(null);
