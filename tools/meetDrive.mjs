@@ -265,8 +265,11 @@ export async function readMeetLoop(page) {
       recap: has('meet-recap'),
       /** The bare eyebrow while the server's answer is in flight. */
       waiting: has('meet-recap-waiting'),
-      /** GDD §6.1's scaffolding, drawn INSTEAD of the recap on a second meet. */
-      placeholder: has('meet-recap-placeholder'),
+      /** A refused submission, DISCLOSED: the server's sentence where the
+       *  recap would be. Unreachable through the app's own controls since
+       *  Sprint 1c (the calendar refuses a re-entry before a meet opens), so a
+       *  drive that ends here has found a defect worth naming. */
+      refused: has('meet-refused'),
       bombed: has('meet-bombed'),
       prompt: text('attempt-prompt'),
       attemptLabel: text('attempt-label'),
@@ -307,7 +310,7 @@ export async function untilMeet(page, done, timeoutMs) {
 
 export const meetSaying = (state, phrase) => state.prompt !== null && state.prompt.includes(phrase);
 /** The meet is over, whichever of the four ways it ended. */
-export const meetIsOver = (state) => state.recap || state.waiting || state.placeholder || state.bombed;
+export const meetIsOver = (state) => state.recap || state.waiting || state.refused || state.bombed;
 
 /**
  * Play ONE attempt on the platform: brace, descend, release, drive.
@@ -462,15 +465,15 @@ export async function driveMeetToItsEnd(page, options = {}) {
       const settled =
         recapSettleMs === null
           ? { ok: false, state }
-          : await untilMeet(page, (s) => s.recap || s.placeholder || s.bombed, recapSettleMs);
+          : await untilMeet(page, (s) => s.recap || s.refused || s.bombed, recapSettleMs);
       const end = settled.state;
       return {
         ended: end.bombed
           ? 'bombed'
           : end.recap
             ? 'recap'
-            : end.placeholder
-              ? 'placeholder'
+            : end.refused
+              ? 'refused'
               : 'waiting',
         attempts,
         pressedOptions,

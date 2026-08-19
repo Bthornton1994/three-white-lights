@@ -380,7 +380,7 @@ const PROBE = `
   var MEET_SCREEN_IDS = [
     'meet-weigh-in', 'meet-openers', 'meet-attempt-select', 'meet-walkout',
     'meet-attempt', 'meet-deliberation', 'meet-verdict', 'meet-recap',
-    'meet-recap-waiting', 'meet-recap-placeholder', 'meet-bombed', 'session-screen',
+    'meet-recap-waiting', 'meet-refused', 'meet-bombed', 'session-screen',
   ];
   function whereTheCueSounded() {
     var one = function (id) { return document.querySelector('[data-testid="' + id + '"]'); };

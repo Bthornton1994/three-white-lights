@@ -59,8 +59,6 @@ import type { LiftResolution } from '../game/lift';
 import { AttemptSelectView } from './AttemptSelectView';
 import { AttemptView } from './AttemptView';
 import { BombOutView } from './BombOutView';
-import { CareerCalendarPlaceholderView } from './CareerCalendarPlaceholderView';
-import { showsCareerCalendarPlaceholder } from './careerCalendarPlaceholder';
 import { MEET_PALETTE } from './meetPalette';
 import { preloadMeetSound } from './meetSound';
 import { OpenersView } from './OpenersView';
@@ -220,20 +218,6 @@ export function MeetScreen({
   const judged = lastAttempt(state);
   const recap = loop.recap;
 
-  // TEMPORARY SCAFFOLDING. True only when the server refused this meet as one
-  // the row already holds — the second meet of an app run, reachable since both
-  // modes reached one `ServerRecord`. Ruled as a stopgap for the blank recap;
-  // the real fix is GDD §6.1's Career calendar, and `careerCalendarPlaceholder.
-  // ts` holds the account, the two-way pin and the bound.
-  //
-  // EVERY OTHER REFUSAL, and the in-flight request itself, keep the bare eyebrow
-  // below. Those are bugs or a round trip, and neither one is "recorded".
-  const showPlaceholder = showsCareerCalendarPlaceholder(
-    state.phase,
-    recap !== null,
-    loop.submissionError?.code ?? null,
-  );
-
   if (cardOpen && recap !== null) {
     return <ResultCardScreen card={recap.card} />;
   }
@@ -316,8 +300,18 @@ export function MeetScreen({
 
         {state.phase === 'recap' ? (
           recap === null ? (
-            showPlaceholder ? (
-              <CareerCalendarPlaceholderView />
+            loop.submissionError !== null ? (
+              // A REFUSED SUBMISSION IS DISCLOSED, NOT DRESSED UP. The server's
+              // own sentence, verbatim — the contract every career refusal
+              // already follows — with the shell's BACK TO TRAINING as the way
+              // out. GDD §6.1's placeholder stood here while the calendar did
+              // not exist; the calendar exists, its eligibility gate refuses a
+              // re-entry BEFORE a meet is wasted on it, so any refusal that
+              // still reaches this arm is a defect the player should see named
+              // rather than a screen pretending otherwise.
+              <View style={styles.waiting} testID="meet-refused">
+                <Text style={styles.waitingText}>{loop.submissionError.message}</Text>
+              </View>
             ) : (
               <View style={styles.waiting} testID="meet-recap-waiting">
                 <Text style={styles.waitingText}>{MEET_COPY.RECAP_EYEBROW}</Text>

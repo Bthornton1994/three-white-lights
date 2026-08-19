@@ -254,9 +254,13 @@ const PINNED = Object.freeze({
    * `src/game/`.
    *
    * 299 -> 301 with Sprint 1c's adapter pair: `src/game/careerMeet.ts` and
-   * `src/game/careerMeet.test.ts`.
+   * `src/game/careerMeet.test.ts`; 301 -> 299 when the placeholder trio was
+   * deleted. Three files left the tree and the census moved by two, which
+   * says one of the three was not in this walk's domain to begin with — the
+   * walk's own filters decide that, and the equality is what notices either
+   * way.
    */
-  SCANNED_FILES: 301,
+  SCANNED_FILES: 299,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -270,8 +274,9 @@ const PINNED = Object.freeze({
    * SCANNED_FILES 295 -> 299 with its three shipped siblings:
    * `careerSurface.ts`, `useCareer.ts`, `CareerScreen.tsx`).
    */
-  /** 93 -> 94 with Sprint 1c's `src/game/careerMeet.test.ts`. */
-  TEST_FILES: 94,
+  /** 93 -> 94 with Sprint 1c's `src/game/careerMeet.test.ts`; 94 -> 93 when
+   *  `careerCalendarPlaceholder.test.ts` was deleted with its trio. */
+  TEST_FILES: 93,
 });
 
 /**

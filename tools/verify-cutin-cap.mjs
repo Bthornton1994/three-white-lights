@@ -469,10 +469,6 @@ const tuningText = await readFile(path.join(srcRoot, 'src', 'cutin', 'cutInTunin
 const meetTuningText = await readFile(path.join(srcRoot, 'src', 'game', 'meetTuning.ts'), 'utf8');
 const sessionTuningText = await readFile(path.join(srcRoot, 'src', 'game', 'sessionTuning.ts'), 'utf8');
 const observerText = await readFile(path.join(srcRoot, 'src', 'cutin', 'cutInObserver.ts'), 'utf8');
-const placeholderText = await readFile(
-  path.join(srcRoot, 'src', 'meet', 'CareerCalendarPlaceholderView.tsx'),
-  'utf8',
-);
 const bombOutViewText = await readFile(path.join(srcRoot, 'src', 'meet', 'BombOutView.tsx'), 'utf8');
 
 /**
@@ -565,26 +561,21 @@ check(
 );
 
 /**
- * THE PLACEHOLDER ENDING'S PROBE IS A CONTAINER, AND THAT IS ONLY SAFE WHILE THE
- * SCREEN HAS NO STAGGERED ASSEMBLY.
- *
- * "A container is the wrong probe when the animation is on the children" is the
- * lesson a blank committed frame and a t≈50ms recap were made of.
- * `CareerCalendarPlaceholderView` is one `Text` in one `View` with nothing
- * animating either, so for THAT screen the container IS the thing drawn. That
- * sentence is a claim about a file, so it is asked of the file rather than
- * asserted in prose — and the same pattern is pointed at `BombOutView.tsx`,
- * which does animate, so a regex that had stopped matching would report the
- * placeholder as static for the wrong reason.
+ * "A container is the wrong probe when the animation is on the children" is
+ * the lesson a blank committed frame and a t≈50ms recap were made of, and the
+ * scan below is the control on every probe choice that rests on "nothing
+ * animates": it must still SEE animation where animation is, or the claim
+ * "this screen is static" is being made by a pattern that stopped matching.
  */
 const ANIMATES = /\b(?:Animated|withTiming|withDelay|useAnimatedStyle|useSharedValue)\b/;
-const placeholderAnimates = ANIMATES.test(placeholderText);
 const bombOutAnimates = ANIMATES.test(bombOutViewText);
 check(
-  !placeholderAnimates && bombOutAnimates,
-  "CONTROL: the placeholder ending really has no staggered assembly, so ITS container is the thing drawn — and the scan can see one that does",
-  `CareerCalendarPlaceholderView.tsx animates: ${placeholderAnimates} (must be false — add a fade there and this probe is a container again, which is the defect); ` +
-    `BombOutView.tsx animates: ${bombOutAnimates} (must be true, or the pattern has stopped matching and the line above means nothing)`,
+  bombOutAnimates,
+  'CONTROL: the animation scan still sees a screen that animates, so a probe choice resting on "nothing animates" is a claim the scan could refute',
+  `BombOutView.tsx animates: ${bombOutAnimates} (must be true, or the pattern has stopped matching and every` +
+    ' probe-the-container decision below rests on a scan that sees nothing). The placeholder half of this' +
+    ' control went with the placeholder (Sprint 1c): the refused ending is one static Text inside' +
+    ' MeetScreen.tsx, which animates elsewhere, so a file-level scan cannot isolate that arm and does not claim to.',
 );
 
 if (!readEverything || bombOutAllowance !== 1 || observerGlobal === null) {
@@ -735,7 +726,7 @@ await page.addInitScript(
       'meet-bombed',
       'meet-recap',
       'meet-recap-waiting',
-      'meet-recap-placeholder',
+      'meet-refused',
       'result-card-screen',
     ],
   },
@@ -759,7 +750,7 @@ async function read() {
       bombed: has('meet-bombed'),
       recap: has('meet-recap'),
       waiting: has('meet-recap-waiting'),
-      placeholder: has('meet-recap-placeholder'),
+      refused: has('meet-refused'),
       openCareer: has('shell-open-career'),
       cutIn: has('cut-in'),
       leaveMeet: has('shell-leave-meet'),
@@ -867,7 +858,7 @@ async function until(done, timeoutMs) {
   }
 }
 
-const meetIsOver = (s) => s.recap || s.waiting || s.placeholder || s.bombed;
+const meetIsOver = (s) => s.recap || s.waiting || s.refused || s.bombed;
 const saying = (s, phrase) => s.prompt !== null && s.prompt.includes(phrase);
 
 /**
@@ -882,10 +873,13 @@ const saying = (s, phrase) => s.prompt !== null && s.prompt.includes(phrase);
  * the fifth instance in this repository of a guard written for one arm of one
  * conditional and not its sibling.
  *
- * It is ONE FLAG from being reached, not a hypothetical: legs 2 and 3 are the
- * second and third meets of one app run and `MeetScreen.tsx` routes a completed
- * second meet to the placeholder. Only `intent: 'miss'` keeps this run out of
- * that arm.
+ * The `refused` ending replaced `placeholder` in Sprint 1c: the calendar
+ * refuses a re-entry before a meet opens, so `MeetScreen`'s refused arm — the
+ * server's sentence where the recap would be — is unreachable through the
+ * app's own controls, and a leg that ends there has found a defect. It stays
+ * in the closed set BECAUSE it is a screen the app can draw: an ending
+ * without a probe is the green-on-nothing failure this table was built
+ * against, however unlikely the ending.
  *
  * So the endings are a frozen object, `driveMeet` may only return one of its
  * values, and `ENDING_PROBE` is keyed by the same values with a control below
@@ -896,7 +890,7 @@ const saying = (s, phrase) => s.prompt !== null && s.prompt.includes(phrase);
 const MEET_ENDING = Object.freeze({
   BOMBED: 'bombed',
   RECAP: 'recap',
-  PLACEHOLDER: 'placeholder',
+  REFUSED: 'refused',
   WAITING: 'waiting',
   TIMEOUT: 'timeout',
   OVERRUN: 'overrun',
@@ -977,15 +971,15 @@ async function driveMeet(intent, searchIn) {
     const state = await read();
 
     if (meetIsOver(state)) {
-      const settled = await until((s) => s.recap || s.placeholder || s.bombed, RECAP_SETTLE_MS);
+      const settled = await until((s) => s.recap || s.refused || s.bombed, RECAP_SETTLE_MS);
       const end = settled.state;
       return {
         ended: end.bombed
           ? MEET_ENDING.BOMBED
           : end.recap
             ? MEET_ENDING.RECAP
-            : end.placeholder
-              ? MEET_ENDING.PLACEHOLDER
+            : end.refused
+              ? MEET_ENDING.REFUSED
               : MEET_ENDING.WAITING,
         attempts,
         search,
@@ -1109,23 +1103,25 @@ const ENDING_PROBE = Object.freeze({
     arithmetic: `${recapRowOrderCard} x RECAP_ROW_STAGGER_MS + RECAP_ROW_FADE_MS, read from meetTuning.ts`,
     exit: 'shell-leave-meet',
   }),
-  [MEET_ENDING.PLACEHOLDER]: Object.freeze({
+  [MEET_ENDING.REFUSED]: Object.freeze({
     kind: 'screen',
-    present: (s) => s.placeholder,
+    present: (s) => s.refused,
     presentTimeoutMs: CAP_DRIVE.BEAT_TIMEOUT_MS,
-    // THE ONE ROW WHOSE PROBE IS ITS OWN CONTAINER, and the only reason that is
-    // not the defect above is that this screen has no staggered assembly to be
-    // blind to — one `Text` in one `View`, nothing animated. That is a claim
-    // about a file, so the premise control asks the file. Its way out is the
-    // shell's pill, which is why it does not draw one of its own.
-    probe: 'meet-recap-placeholder',
+    // A ROW WHOSE PROBE IS ITS OWN CONTAINER, safe only because the arm is one
+    // static `Text` inside `MeetScreen` with no staggered assembly (the
+    // refused sentence renders in `styles.waiting`, which animates nothing).
+    // The ending is unreachable through the app's own controls since Sprint 1c
+    // — the calendar refuses re-entry before a meet opens — so a leg ending
+    // here is a red about the APP, and this row exists so that red names the
+    // screen instead of probing nothing. Its way out is the shell's pill.
+    probe: 'meet-refused',
     arrivalMs: CAP_DRIVE.SETTLE_MS,
-    arithmetic: 'no staggered assembly — see the CareerCalendarPlaceholderView control above',
+    arithmetic: 'no staggered assembly — a single static text row in MeetScreen’s refused arm',
     exit: 'shell-leave-meet',
   }),
   [MEET_ENDING.WAITING]: Object.freeze({
     kind: 'not-an-ending',
-    why: "the recap's round trip never completed — `driveMeet` reports this only after RECAP_SETTLE_MS of waiting for one of recap / placeholder / bombed",
+    why: "the recap's round trip never completed — `driveMeet` reports this only after RECAP_SETTLE_MS of waiting for one of recap / refused / bombed",
   }),
   [MEET_ENDING.TIMEOUT]: Object.freeze({
     kind: 'not-an-ending',

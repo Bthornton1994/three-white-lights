@@ -764,8 +764,12 @@ const GUARANTEE_COVERAGE = {
    * rules paragraph is tagged too and does not trigger this census — the two
    * scopers measure different things, which is this file's own point about
    * the heuristic's reach.
+   *
+   * 262 -> 255 when the placeholder trio was deleted (Sprint 1c's last step):
+   * seven triggering paragraphs lived in a stopgap whose whole job was to
+   * shout about its own bounds, and they left with it.
    */
-  TREE_WIDE: 262,
+  TREE_WIDE: 255,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1068,8 +1072,11 @@ const NUMBER_COVERAGE = {
    * `career-meet-id-crosses-verbatim` on the id and
    * `career-meet-rules-are-a-reference` on the rules. Neither paragraph states
    * a numeral, so `CLAIMED` stood still again.
+   *
+   * 73 -> 72 when the placeholder trio was deleted: its
+   * `placeholder-cannot-grow-calendar-authority` paragraph left with it.
    */
-  TAGGED_PARAGRAPHS: 73,
+  TAGGED_PARAGRAPHS: 72,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
@@ -1107,9 +1114,12 @@ const NUMBER_COVERAGE = {
   // 62 -> 64 with Sprint 1c's two adapter tags. Neither body states a bare 0
   // or a bare 1 — both walk a prebuilt list and compare references — so the
   // two weakness counts below stood still.
-  NAMED_BODIES: 64,
+  //
+  // 64 -> 63 when the placeholder's tag and its named body left with the trio;
+  // its body held a bare 1 (the one-import pin), so HOLDING_ONE moved with it.
+  NAMED_BODIES: 63,
   NAMED_BODIES_HOLDING_ZERO: 48,
-  NAMED_BODIES_HOLDING_ONE: 48,
+  NAMED_BODIES_HOLDING_ONE: 47,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -1409,7 +1419,10 @@ const TRANSCRIPT_BAR = {
    */
   GRADED: 31,
   /** ...and rows excused because their transcript predates it. */
-  PREDATING: 37,
+  // 37 -> 36 when the placeholder's witness retired with its subject
+  // (Sprint 1c): its transcript predated the rule, so the excused count is
+  // the one that moves.
+  PREDATING: 36,
   /**
    * ...of the graded rows, how many quote a bare measured scalar and therefore
    * owe a `measuredOver` anchor. A count rather than a bound, for the reason
@@ -1931,8 +1944,11 @@ const REPLACEMENT_BAR = {
    *
    * 18 -> 20 on Sprint 1c's two adapter witnesses: the prefixed id and the
    * spread-copied rules, each recorded in the exact form it was run.
+   *
+   * 20 -> 19 when the placeholder's witness retired with its subject: its row
+   * carried a replacement, and the row is gone.
    */
-  REPRODUCIBLE: 20,
+  REPRODUCIBLE: 19,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2948,33 +2964,12 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'AssertionError: gap-covered-by-recovery-days on day 4: expected 1 to be 2 // Object.is equality',
     transcriptPredatesTheRule: true,
   },
-  {
-    // The mutant turned the placeholder's one type-only import into a VALUE
-    // import — the exact move by which a "temporary" scaffold acquires a clock,
-    // a row or a meet history, and the thing the bound exists to make loud.
-    // Taken with three others on the same run: adding an export (`nextMeetDay`)
-    // reddens the export-surface equality, giving the placeholder a prop reddens
-    // the empty-parameter-list check, and broadening the gate to any refusal
-    // reddens the per-error-code loop in the sibling test.
-    //
-    // REPLACEMENT TAKEN BY RE-RUNNING IT, and this is the row where the
-    // transcript had already given it away: `observed` quotes the mutated import
-    // line in full, so recording the field cost a copy from one part of the row
-    // into another. Re-applied at this tree it reproduces that message verbatim.
-    // The other three mutants named above are NOT recorded — they were run
-    // together and only this one has a row here, so only this one has a patch.
-    guarantee: 'placeholder-cannot-grow-calendar-authority',
-    mutatedFile: 'src/meet/careerCalendarPlaceholder.ts',
-    mutated: "import type { MeetDayPhaseId } from '../game/meetDay';",
-    mutatedTo: "import { type MeetDayPhaseId, meetIdFor } from '../game/meetDay';",
-    testFile: 'src/meet/careerCalendarPlaceholder.test.ts',
-    redAssertion: 'imports a value, which is how a placeholder acquires a clock, a row or a meet history',
-    observed:
-      'AssertionError: careerCalendarPlaceholder.ts may only "import type" — "import { type ' +
-      "MeetDayPhaseId, meetIdFor } from '../game/meetDay'\" imports a value, which is how a " +
-      'placeholder acquires a clock, a row or a meet history: expected false to be true',
-    transcriptPredatesTheRule: true,
-  },
+  // The `placeholder-cannot-grow-calendar-authority` row was retired WITH ITS
+  // SUBJECT (Sprint 1c): the placeholder trio was deleted together with GDD
+  // §6.1's TODO block, exactly as its tripwire demanded, once the calendar it
+  // stood in for existed and entered meets for real. A witness whose mutated
+  // file and test file are both gone expires by the schema's own design — an
+  // entry that cannot resolve is worse than an honest removal.
   {
     guarantee: 'settling-is-terminal',
     mutatedFile: 'src/game/streak.ts',
@@ -4394,7 +4389,8 @@ describe('the guarantee-tag convention', () => {
       // on the replay harness and absent from the two screens a player presses.
       'src/lift/liftInput.test.ts',
       'src/meet/AttemptSelectView.test.ts',
-      'src/meet/careerCalendarPlaceholder.test.ts',
+      // `careerCalendarPlaceholder.test.ts` left this list when the placeholder
+      // trio was deleted (Sprint 1c) and its witness retired with it.
       'src/meet/meetSound.test.ts',
       'src/meet/meetStage.test.ts',
       // GDD §5's floor learning to advance: the §12.3 property that the gym a

@@ -352,15 +352,10 @@ const UNSTAGED_BEATS: readonly { readonly beat: string; readonly file: string; r
     file: 'meet/RecapView.tsx',
     why: 'GDD §6.5 is a results sheet, read after the meet, not a moment in it.',
   },
-  {
-    beat: 'recap placeholder',
-    file: 'meet/CareerCalendarPlaceholderView.tsx',
-    why:
-      'TEMPORARY SCAFFOLDING for the second meet of an app run, which the server refuses as ' +
-      'already recorded (GDD §6.1, `career-calendar-placeholder`). It is one line of text and ' +
-      'must stay one line of text — a room here would be this stopgap growing, which is the ' +
-      'thing `careerCalendarPlaceholder.test.ts` bounds. Delete this row with the placeholder.',
-  },
+  // The 'recap placeholder' row was deleted with the placeholder, as its own
+  // `why` instructed (Sprint 1c: the calendar refuses a re-entry before a meet
+  // opens, and a refusal that still lands is disclosed as one text line inside
+  // MeetScreen's refused arm — no view file, no room, no row).
 ];
 
 /**

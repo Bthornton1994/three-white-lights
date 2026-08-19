@@ -4190,7 +4190,7 @@ async function checkDrivenMeet(tag, searchIn, expected, whatEnding, chooseOption
             ' rather than the app; the per-attempt note beside this check is what says which, and a' +
             ' run where every attempt was a make and the meet still bombed is the engine'
           : drive.ended === 'waiting'
-            ? ` — the phase reached 'recap' and NEITHER §6.5's recap NOR §6.1's placeholder was drawn inside` +
+            ? ` — the phase reached 'recap' and NEITHER §6.5's recap NOR a disclosed refusal was drawn inside` +
               ` the derived deadline; the screen was still the bare in-flight eyebrow (${drive.why})`
             : ` (${drive.why ?? 'no reason given'})`),
   );
@@ -4907,13 +4907,13 @@ if (!reachedMeet) {
     'meet-recap',
     'GDD §6.5’s recap renders on the app’s OWN connection, not the preview’s',
   );
-  // THE NEGATIVE HALF, ON A MEET A PLAYER ACTUALLY LIFTED FOR. The same claim
-  // section 4c makes about the scripted frame — §6.1's scaffolding must not
-  // appear over a recap that built — except that this is the FIRST meet of a
-  // real app run, which is the case a player meets and the frozen frame is not.
+  // THE NEGATIVE HALF, ON A MEET A PLAYER ACTUALLY LIFTED FOR: a recorded
+  // recap must not carry a refusal sentence beside it. (This check's old
+  // subject was §6.1's placeholder; the placeholder is deleted, and the
+  // refused arm is its successor on the same beat.)
   check(
-    !(await visible('meet-recap-placeholder')),
-    'and GDD §6.1’s second-meet placeholder is NOT drawn over it — this player’s result is their own',
+    !(await visible('meet-refused')),
+    'and no refusal sentence is drawn over it — this player’s result is their own, recorded',
   );
   // ---------------------------------------------------------------------
   // A CUT-IN CAN STILL BE UP HERE, AND THE APP HIDES THE CHROME UNDER IT ON
@@ -5261,16 +5261,12 @@ const scriptedLeaveDrawn = await checkOnScreen(
 // their result, and the unit suite cannot see this: `vitest.config.ts` is
 // `environment: node` and has no renderer.
 //
-// THIS IS THE NEGATIVE HALF, and it used to be the ONLY half — the comment that
-// stood here said so, and said the positive case was out of reach because "the
-// rep is a timing mechanic a headless mouse does not beat reliably". Section 4b
-// above now plays two whole meets and renders the placeholder for real, so the
-// two halves are measured on the same run: it is drawn when the server refuses
-// the meet, and it is not drawn when the server records one. Delete both with
-// the placeholder.
+// THE NEGATIVE HALF on the scripted frame: a built recap carries no refusal
+// sentence. (The placeholder this check used to hold apart from the recap was
+// deleted with Sprint 1c; the refused arm is the screen on that beat now.)
 check(
-  !(await visible('meet-recap-placeholder')),
-  'the second-meet placeholder is NOT drawn over a recap that built (GDD §6.1 scaffolding)',
+  !(await visible('meet-refused')),
+  'no refusal sentence is drawn over a recap that built',
 );
 const leaveHit = await hitTest(NAV_LEAVE_MEET);
 check(leaveHit.hit, 'and it is what a thumb would hit', `elementFromPoint -> ${leaveHit.why}`);

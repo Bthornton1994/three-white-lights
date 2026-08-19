@@ -1993,24 +1993,22 @@ The emotional centerpiece. Deserves the most design care and polish budget.
 - Opening attempts pre-filled from current Sim-mode e1RM data as a suggested
   safe opener. Player can override.
 
-**TODO — `career-calendar-placeholder`. Tracked scaffolding, to be deleted when
-this section is actually built.** There is no calendar yet, so there is one
-ungated door to the one local meet that exists, and a player who opens it a
-second time in an app run has their result refused as already recorded (§11 has
-the measurement: 612.5 kg banked under `local-open-2026`, the second meet
-refused). That left a blank recap. A **minimal placeholder screen** now stands in
-its place — one line, reading "Meet complete — results saved to your last recorded meet. Career calendar coming soon.",
-with the shell's existing BACK TO TRAINING as the way out.
-
-It is a **stopgap ruled by a human, not a design**, and it deliberately does not
-schedule, date, or check eligibility for anything. It lives in
-`src/meet/careerCalendarPlaceholder.ts` and
-`src/meet/CareerCalendarPlaceholderView.tsx`.
-`src/meet/careerCalendarPlaceholder.test.ts` pins the id above in **both** this
-document and that module, so deleting either end reddens the suite, and bounds
-what the placeholder is allowed to do so a later pass cannot grow it into real
-calendar logic while leaving the "temporary" label on. **When the Career calendar
-lands, delete all three files and this block together.**
+**BUILT (Sprint 1c, 2026-08-19).** The calendar is the one door to a meet: the
+session's chrome offers CAREER, GDD §2.1's chooser gates the calendar on a
+fresh lifter, each rung's row carries the server's own verdict — open with an
+ENTER MEET control, or the refusal sentence verbatim — and pressing an
+enterable row adapts the scheduled meet into a runnable one
+(`src/game/careerMeet.ts`, id carried verbatim) and opens the weigh-in. A
+played meet marks itself ALREADY_ENTERED through the banked result's own id
+(`careerServer.ts`'s fold → `enteredMeetIds` → `eligibility.ts`), with no
+second bookkeeping path, and the next rung opens when the banked total
+qualifies for it. `open-meet` — the one ungated door this section's TODO
+tracked — is deleted from the route graph, and the
+`career-calendar-placeholder` trio was deleted together with that TODO block,
+exactly as its tripwire demanded. A server refusal that still reaches a
+finished meet (unreachable through the app's own controls now) is disclosed as
+the server's sentence on the recap beat rather than dressed as a screen —
+`MeetScreen`'s refused arm.
 
 ### 6.2 Attempt Loop
 
