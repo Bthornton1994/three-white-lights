@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-evidence-mjs-2026-08-19T06-03-46-978Z-27588",
+  "label": null,
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "career-wiring",
+    "src/career",
+    "src/game/careerServer.test.ts",
+    "src/game/progression.test.ts",
+    "src/session/localSessionServer.test.ts",
+    "src/shell/shellWiring.test.ts",
+    "src/shell/shellRoute.test.ts",
+    "src/meet/careerSurface.test.ts",
+    "src/meet/careerCalendarPlaceholder.test.ts"
+  ],
+  "budgetSeconds": 1800,
+  "startedAtIso": "2026-08-19T06:03:46.978Z",
+  "startedAtMs": 1787119426978,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "2d31de9b54d946a89ab6eb8060c7154cb43259b9",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 27588,
+    "startTick": "275030",
+    "cmdline": "node tools/watchdog.mjs --budget 1800 --id career-wiring-regen-2 -- node tools/evidence.mjs career-wiring src/career src/game/careerServer.test.ts src/game/progression.test.ts src/session/localSession",
+    "bootId": "2145eb26-c26b-43d2-ab57-036c9b7fa3f6",
+    "bootEpochSeconds": 1787116677,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-19T06:03:46.997Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
