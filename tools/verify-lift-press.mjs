@@ -191,6 +191,7 @@
  */
 import { chromium } from 'playwright';
 import { gateDevServer } from './devServerSentinel.mjs';
+import { armFreshLifterPerBoot } from './freshLifterBoundary.mjs';
 import { enterMeetFromCalendar } from './enterMeetFromCalendar.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
@@ -1016,6 +1017,9 @@ const context = await browser.newContext({
   hasTouch: true,
   isMobile: true,
 });
+// Sprint 2: the server persists a lifter across boots. Every goto in this tool
+// means a FRESH one, so the boundary is armed rather than assumed.
+await armFreshLifterPerBoot(context);
 const page = await context.newPage();
 const cdp = await context.newCDPSession(page);
 const pageErrors = [];

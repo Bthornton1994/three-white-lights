@@ -74,6 +74,15 @@
  *      would swap the app's own connection for a scripted lifter who has never
  *      trained — which is this section's failure mode, and a fallback to a debug
  *      URL would manufacture it rather than detect it.
+ *   6d. THE SAME LIFTER ON BOTH SIDES OF A PAGE RELOAD (Sprint 2, GDD §10.0).
+ *      Every other navigation in this file clears the save on purpose — a
+ *      `goto` MEANS a fresh lifter — so this is the one leg that keeps it:
+ *      `page.reload()` on the trained day, and four saved fields read on both
+ *      sides through presses. The already-trained surface (the streak), the
+ *      skipped chooser (the federation), the played meet's verbatim refusal
+ *      (the banked meets), and the next rung's unchanged state (the total).
+ *      On every tree before Sprint 2, the positive here was the app's own
+ *      documented behaviour to fail.
  *   7. NO CONTROL IS DRAWN OVER A LIVE SET, or over a walk-out, an attempt, a
  *      verdict, or a GDD §7.2 CUT-IN. A pill over the mechanic is a mis-tap
  *      that costs a rep; a pill over a cut-in eats the tap that was meant to
@@ -174,6 +183,7 @@
  */
 import { chromium } from 'playwright';
 import { gateDevServer } from './devServerSentinel.mjs';
+import { clearSavedLifter } from './freshLifterBoundary.mjs';
 import { enterMeetFromCalendar } from './enterMeetFromCalendar.mjs';
 import { decodePng, diffPixels } from './png.mjs';
 import { execFileSync } from 'node:child_process';
@@ -1900,11 +1910,21 @@ await mkdir(outDir, { recursive: true });
 async function open(search, waitFor, settle = settleMs) {
   // A `goto` IS A NEW APP RUN, AND SOMETHING HAS TO COUNT THEM.
   //
-  // `appServer.ts` holds the app's one connection in module scope and
-  // `localSessionServer.ts` persists nothing, so a page load is a brand-new
-  // lifter: no meets on record, seed e1RM, FIRST TOTAL. Every `open()` in this
-  // file is therefore a boundary, and a check that compares two driven meets
-  // has to know whether they were the same lifter.
+  // `appServer.ts` holds the app's one connection in module scope, so a page
+  // load is a brand-new lifter: no meets on record, seed e1RM, FIRST TOTAL.
+  // Every `open()` in this file is therefore a boundary, and a check that
+  // compares two driven meets has to know whether they were the same lifter.
+  //
+  // SINCE SPRINT 2 THAT BOUNDARY IS MADE HERE, NOT ASSUMED. This sentence used
+  // to lean on `localSessionServer.ts` persisting nothing; now the server
+  // writes a save into localStorage after every accepted mutation and reads it
+  // back on boot, so without the clear below every `open()` after a played
+  // section would RESUME the previous lifter — entered meets refusing
+  // re-entry, the check-in booting as the already-trained surface — and every
+  // baseline in this file would quietly change subject. The clear is
+  // imperative rather than an init script ON PURPOSE: section 9's reload
+  // check needs `page.reload()` to keep the save, because "the save survives
+  // a reload" is the one claim in this file that must NOT get a fresh lifter.
   //
   // Section 8a needed exactly that and would have got it wrong without this:
   // meet 3 is opened after four `open()` calls, so it is the FIRST meet of its
@@ -1913,6 +1933,7 @@ async function open(search, waitFor, settle = settleMs) {
   // defect. They are the harness reloading, and the number below is what says
   // so.
   APP_RUNS.serial += 1;
+  await clearSavedLifter(page);
   await page.goto(`${url}${search}`, { waitUntil: 'load' });
   if (waitFor !== undefined) {
     await page.getByTestId(waitFor).waitFor({ state: 'visible', timeout: 120000 });
@@ -5857,15 +5878,18 @@ const playedOut = { attempted: true };
       // guess was that the server would refuse it as `MEET_ALREADY_RECORDED` the
       // way it refuses 4b's. IT DOES NOT, and the reason is worth writing down
       // because it is the same fact this section is about, seen from the other
-      // side: `appServer.ts` holds the connection in MODULE SCOPE, and its own
-      // header says "NOTHING IS PERSISTED. A reload still starts a fresh lifter.
-      // What survives is navigation within one run of the app."
+      // side: `appServer.ts` holds the connection in MODULE SCOPE, and until
+      // Sprint 2 its own header said "NOTHING IS PERSISTED. A reload still
+      // starts a fresh lifter." Since Sprint 2 the server persists a save, so
+      // the fresh row this paragraph leans on is now MADE by `open()`'s own
+      // clear (see `freshLifterBoundary.mjs`) rather than by the app
+      // forgetting — same boundary, different owner.
       //
-      // Sections 4c, 5 and 5b each call `open()`, which is a `page.goto`, and
-      // section 6 opens its session with another one. Every one of those ends
-      // the app run and starts a new one on a fresh row. So the meet below is
-      // the FIRST meet of ITS run, it is recorded rather than refused, and
-      // §6.5's recap is what stands at the end of it.
+      // Sections 4c, 5 and 5b each call `open()`, which is a `page.goto` behind
+      // a cleared save, and section 6 opens its session with another one. Every
+      // one of those ends the app run and starts a new one on a fresh row. So
+      // the meet below is the FIRST meet of ITS run, it is recorded rather than
+      // refused, and §6.5's recap is what stands at the end of it.
       //
       // That makes the section's subject exactly right rather than accidentally
       // so. The property under test is "navigation within one run", and this leg
@@ -6144,6 +6168,163 @@ const playedOut = { attempted: true };
     ...(rep.played === false ? { notPlayed: rep.why } : {}),
   }));
   note(`the played-session section cost ${playedOut.wallClockMs}ms of wall clock`);
+}
+
+// ===========================================================================
+// 6d. NOTHING IS LOST — THE SAME LIFTER ON BOTH SIDES OF A PAGE RELOAD
+// ===========================================================================
+// GDD §10.0's beta ruling is local-first persistence, and this is its one
+// player-visible claim: close the tab, come back, and the lifter is yours.
+// Sprint 2 wired it (`saveGame.ts` behind `localSessionServer.ts`, the store in
+// `appServer.ts`), and the node suite proves the codec and the store contract —
+// but `vitest.config.ts` is `environment: node`, and this file's own standing
+// rule is that a claim about a value surviving a navigation needs a browser
+// check reading the quantity on both sides. A reload is the navigation
+// persistence exists for, so the quantities here are read twice, byte-equal.
+//
+// THE BOUNDARY INVERTS FOR THIS SECTION AND NOWHERE ELSE. Every `open()` in
+// this file clears the save because a goto MEANS a fresh lifter; this section
+// uses `page.reload()` precisely because it must NOT get one. On every tree
+// before Sprint 2 the positive check below was the app's documented behaviour
+// to FAIL — `appServer.ts`'s header used to promise "a reload still starts a
+// fresh lifter" — which is what makes it a check on the save rather than on
+// anything the shell already did.
+//
+// WHAT CROSSES, AND WHICH SAVED FIELD EACH READ IS ABOUT. The already-trained
+// surface is the streak's trained-today fact; the skipped chooser is
+// `federation.chosen`; the local row's verbatim refusal is the banked meet in
+// `meets` folding back into `enteredMeetIds`; the next rung's unchanged state
+// is `totalKg` read by eligibility. Four reads, four different fields of the
+// one decoded record, all through the app's own controls with the address bar
+// asserted clean at every read.
+const reloadSurvival = { attempted: false, before: null, after: null };
+{
+  if (playedOut.landedOn === 'already-trained' && returnLeg.landedDrawn) {
+    reloadSurvival.attempted = true;
+
+    // ---- side A: the pre-reload reads, through presses ---------------------
+    const urlBeforeReload = page.url();
+    check(
+      !urlBeforeReload.includes('?'),
+      'CONTROL: the day the reload will resume was played on the shipped route — no query string before the reload',
+      `before the reload the page is on ${JSON.stringify(urlBeforeReload)}`,
+    );
+    const careerOpenedBefore = await press(
+      NAV_OPEN_CAREER,
+      'career-screen',
+      'pressing CAREER on the trained day opens the career surface, for the pre-reload row read',
+    );
+    if (careerOpenedBefore) {
+      check(
+        !(await visible('career-choosing')),
+        'CONTROL: the chooser is already spent before the reload, so its absence afterwards is survival rather than a default',
+      );
+      await checkOnScreen('career-calendar', 'and the calendar is up for the pre-reload read');
+    }
+    // One reader for both sides, so the comparison cannot drift into two
+    // slightly different probes reading two slightly different things.
+    const readCalendarRows = async () => ({
+      localDetail:
+        (await page.getByTestId('career-row-local-detail').textContent().catch(() => null))
+          ?.replace(/\s+/g, ' ')
+          .trim() ?? null,
+      localEnterDrawn: await visible(ENTER_LOCAL),
+      regionalEnterDrawn: await visible(ENTER_REGIONAL),
+      regionalDetail:
+        (await page.getByTestId('career-row-regional-detail').textContent().catch(() => null))
+          ?.replace(/\s+/g, ' ')
+          .trim() ?? null,
+    });
+    const before = careerOpenedBefore ? await readCalendarRows() : null;
+    reloadSurvival.before = before;
+    check(
+      before !== null && before.localDetail !== null &&
+        before.localDetail.includes(CAREER_SAYS.ALREADY_ENTERED),
+      'CONTROL: before the reload the played meet’s row refuses re-entry — the equalities below compare a real sentence, not two absences',
+      before === null
+        ? 'the career surface never opened, so there is nothing to compare against'
+        : `the row says ${JSON.stringify(before.localDetail ?? '(no detail row)')}`,
+    );
+
+    // ---- the reload: the one navigation in this file that KEEPS the save ---
+    APP_RUNS.serial += 1;
+    await page.reload({ waitUntil: 'load' });
+    await page.getByTestId('session-screen').waitFor({ state: 'visible', timeout: 120000 });
+    await page.waitForTimeout(settleMs);
+    const urlAfterReload = page.url();
+    check(
+      !urlAfterReload.includes('?'),
+      'CONTROL: and the reload landed with no query string — the resumed lifter is the shipped route’s, not a preview’s',
+      `after the reload the page is on ${JSON.stringify(urlAfterReload)}`,
+    );
+
+    // THE POSITIVE. The reloaded process has never run today's session; the
+    // save is the only channel this fact has into it.
+    const resumed = await waitUntilDrawn(
+      page,
+      'session-already-trained',
+      RETURN_LEG_PROBE.SURFACE_DRAWN_WITHIN_MS,
+    );
+    check(
+      resumed.drawn,
+      'THE RELOADED APP KNOWS TODAY IS TRAINED — GDD §10.0’s Nothing Is Lost, read on both sides of a page reload',
+      `${resumed.why} — bound ${RETURN_LEG_PROBE.SURFACE_DRAWN_WITHIN_MS}ms.` +
+        ' Not drawn here means the save never round-tripped: the boot either found no save or refused it and started fresh',
+    );
+    // THE NEGATIVE, in the testID form a copy edit cannot move. The copy-probe
+    // sighting control for this exact string lives in 6c and has already run.
+    check(
+      !(await visible('session-check-in')),
+      'and the resumed lifter is not offered a second session of the trained day (GDD §3.2)',
+    );
+    await page.screenshot({ path: path.join(outDir, '15-reload-still-trained.png') });
+
+    // ---- side B: the same rows, read by the same probe ----------------------
+    const careerOpenedAfter = await press(
+      NAV_OPEN_CAREER,
+      'career-screen',
+      'pressing CAREER on the reloaded run opens the career surface again',
+    );
+    check(
+      !(await visible('career-choosing')),
+      'AND THE CHOOSER DOES NOT REAPPEAR — the one federation choice crossed the reload (GDD §6.6: chosen once, at career creation)',
+    );
+    await checkOnScreen('career-calendar', 'it opens straight onto the calendar, on the resumed lifter');
+    const after = careerOpenedAfter ? await readCalendarRows() : null;
+    reloadSurvival.after = after;
+    check(
+      before !== null && after !== null &&
+        after.localDetail !== null && after.localDetail === before.localDetail,
+      'THE PLAYED MEET’S REFUSAL CROSSED THE RELOAD, byte-equal — the banked meet is still on the record',
+      `before: ${JSON.stringify(before?.localDetail ?? null)}; after: ${JSON.stringify(after?.localDetail ?? null)}`,
+    );
+    check(
+      before !== null && after !== null &&
+        before.localEnterDrawn === false && after.localEnterDrawn === false,
+      'and neither side offers the played meet’s enter control',
+      `enter control drawn — before: ${before?.localEnterDrawn}; after: ${after?.localEnterDrawn}`,
+    );
+    // Compared as equalities rather than pinned open, because the driven meet's
+    // total decides the next rung and a robot can miss: what persistence owes
+    // is that the reload CHANGES NOTHING, whichever side of 400 the total fell.
+    check(
+      before !== null && after !== null &&
+        after.regionalEnterDrawn === before.regionalEnterDrawn &&
+        after.regionalDetail === before.regionalDetail,
+      'THE NEXT RUNG’S STATE CROSSED THE RELOAD UNCHANGED — eligibility reads the same banked total on both sides (GDD §6.5)',
+      `before: enter ${before?.regionalEnterDrawn}, detail ${JSON.stringify(before?.regionalDetail ?? null)};` +
+        ` after: enter ${after?.regionalEnterDrawn}, detail ${JSON.stringify(after?.regionalDetail ?? null)}`,
+    );
+    await page.screenshot({ path: path.join(outDir, '15b-reload-calendar-survives.png') });
+  } else {
+    check(
+      false,
+      'SKIPPED: the reload-survival checks need the played day to have ended on the already-trained surface',
+      playedOut.landedOn === 'already-trained'
+        ? 'the return leg never landed drawn, so the page is not on a surface a reload can be read from'
+        : `the played session landed on ${JSON.stringify(playedOut.landedOn)}`,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -7408,6 +7589,11 @@ await writeFile(
       // `attempted: false` is a leg that never ran, and is not the same thing as
       // a leg that ran and passed.
       returnLegOnATrainedDay: returnLeg,
+      // Section 6d: the reload on the same trained day, with the calendar rows
+      // as they were read on each side. `attempted: false` is a leg that never
+      // ran; `before`/`after` are the raw reads the byte-equalities above were
+      // decided on, so a reader can re-derive the verdict from the rows.
+      reloadSurvival,
       // Section 10a's raw material: GDD §5's floor as it was drawn at two
       // instants a check-in apart, and section 10c's: the same rows read on both
       // sides of the round trip. The checks above are assertions over these, so

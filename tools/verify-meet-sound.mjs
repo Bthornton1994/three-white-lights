@@ -60,6 +60,7 @@
  */
 import { chromium } from 'playwright';
 import { gateDevServer } from './devServerSentinel.mjs';
+import { armFreshLifterPerBoot } from './freshLifterBoundary.mjs';
 import { enterMeetFromCalendar } from './enterMeetFromCalendar.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
@@ -439,6 +440,9 @@ const browser = await chromium.launch({
 await mkdir(outDir, { recursive: true });
 
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+// Sprint 2: the server persists a lifter across boots. Every goto in this tool
+// means a FRESH one, so the boundary is armed rather than assumed.
+await armFreshLifterPerBoot(context);
 await context.addInitScript(PROBE);
 const page = await context.newPage();
 const errors = [];

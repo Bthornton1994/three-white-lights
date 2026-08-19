@@ -2591,3 +2591,76 @@ describe('the capture harness still has its four query strings', () => {
     expect(source('tools/verify-lift-shots.mjs')).toMatch(/manifest\.json/);
   });
 });
+
+describe('the browser tools’ fresh-lifter boundary matches the app’s save', () => {
+  // Sprint 2 made the server persist a lifter across boots, which falsified the
+  // premise every browser tool was written on ("a goto is a new lifter").
+  // `tools/freshLifterBoundary.mjs` makes the premise true again by clearing the
+  // app's storage namespace — which means it holds a COPY of a literal that
+  // lives in `appServer.ts`. Copies drift, and a drifted prefix does not fail:
+  // it clears nothing, and every tool silently goes back to measuring resumed
+  // lifters. These pins are what redden instead.
+
+  const boundary = source('tools/freshLifterBoundary.mjs');
+  const prefixMatch = boundary.match(/SAVE_NAMESPACE_PREFIX = '([^']+)'/);
+  const saveKeyMatch = source('src/shell/appServer.ts').match(/const SAVE_KEY = '([^']+)'/);
+
+  it('the tools’ fresh-lifter boundary clears the key the app saves under', () => {
+    // Non-vacuity first: both literals were actually found, so the comparison
+    // below is about two real strings rather than two nulls agreeing.
+    expect(prefixMatch?.[1], 'SAVE_NAMESPACE_PREFIX literal in freshLifterBoundary.mjs').toBeTruthy();
+    expect(saveKeyMatch?.[1], 'SAVE_KEY literal in appServer.ts').toBeTruthy();
+    const prefix = prefixMatch?.[1] ?? '';
+    const saveKey = saveKeyMatch?.[1] ?? '';
+    expect(saveKey.startsWith(prefix), `SAVE_KEY ${JSON.stringify(saveKey)} must start with the boundary prefix ${JSON.stringify(prefix)}`).toBe(true);
+    // The quarantine keys extend SAVE_KEY, so covering the prefix covers them
+    // too — asserted rather than reasoned, against the template's own head.
+    expect(source('src/shell/appServer.ts')).toMatch(/QUARANTINE_KEY = \(code: SaveRefusalCode\): string => `three-white-lights\.save\.refused\./);
+  });
+
+  it('every browser tool arms the boundary — the guard is applied to its siblings mechanically', () => {
+    // The lesson this rule is from: a guard written for one hook sat one
+    // directory from its unguarded sibling for six waves. So the sibling list
+    // is READ from the tree, not copied into it: every tool under tools/ that
+    // opens a browser context must either arm the per-boot clear or (exactly
+    // one, the tool that owns the deliberate reload check) call the imperative
+    // clear at its own boundary.
+    const toolsDir = path.join(ROOT, 'tools');
+    // Scanned RAW rather than through `codeOnly`: that helper's backtick
+    // blanking pairs template literals naively, and these tools nest backticks
+    // inside interpolations, so real code between two templates gets swallowed
+    // — measured: it dropped verify-cutin-cap.mjs and verify-lift-press.mjs
+    // from this very census. A comment that mentions the pattern would drag a
+    // tool in, but the census below is PINNED, so that arrives as a visible
+    // new row rather than a silent widening.
+    const browserTools = readdirSync(toolsDir)
+      .filter((name) => name.endsWith('.mjs'))
+      .filter((name) => /browser\.newContext\(|browser\.newPage\(/.test(source(path.join('tools', name))))
+      .sort();
+    // The census, pinned: an empty scan would pass the loop below over nothing.
+    expect(browserTools, 'tools that open a browser context').toEqual([
+      'capture-cutin.mjs',
+      'capture-lift.mjs',
+      'capture-meet.mjs',
+      'capture-session.mjs',
+      'shoot.mjs',
+      'verify-cutin-cap.mjs',
+      'verify-lift-press.mjs',
+      'verify-meet-sound.mjs',
+      'verify-session-boundary.mjs',
+      'verify-shell-route.mjs',
+    ]);
+    const imperative: string[] = [];
+    for (const name of browserTools) {
+      const text = source(path.join('tools', name));
+      const armed = /armFreshLifterPerBoot\(/.test(text);
+      const clears = /clearSavedLifter\(/.test(text);
+      expect(armed || clears, `${name} opens a browser and never establishes the fresh-lifter boundary`).toBe(true);
+      expect(armed && clears, `${name} uses BOTH arms — the init script would clear the save the reload check depends on`).toBe(false);
+      if (clears) imperative.push(name);
+    }
+    // Exactly one tool owns the imperative arm, because exactly one tool has a
+    // deliberate persistence section. A second one is a decision, not drift.
+    expect(imperative).toEqual(['verify-shell-route.mjs']);
+  });
+});

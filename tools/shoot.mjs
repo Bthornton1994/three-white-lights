@@ -10,6 +10,7 @@
  */
 import { chromium } from 'playwright';
 import { gateDevServer } from './devServerSentinel.mjs';
+import { armFreshLifterPerBoot } from './freshLifterBoundary.mjs';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -43,6 +44,9 @@ const page = await browser.newPage({
   viewport: { width, height },
   deviceScaleFactor: Number(flag('dpr', '2')),
 });
+// Sprint 2: the server persists a lifter across boots. Every goto in this tool
+// means a FRESH one, so the boundary is armed rather than assumed.
+await armFreshLifterPerBoot(page.context());
 
 const consoleLines = [];
 page.on('console', (m) => consoleLines.push(`[${m.type()}] ${m.text()}`));
