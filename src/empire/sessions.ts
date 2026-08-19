@@ -744,6 +744,27 @@ export interface GymRun {
   readonly weeks: readonly GymWeekReport[];
 }
 
+/** `state` with its ladder replaced — one writer shape for the composed fold. */
+function withLadder(state: GymState, ladder: LadderState): GymState {
+  return Object.freeze({ ...state, ladder });
+}
+
+/**
+ * The wired-accelerant control's credit: the grant paid into the settled
+ * purse instead of the accelerated one. This is the mutant the crown sweep
+ * measures against, reachable only through `runGym`'s control destination —
+ * see `GRANT_DESTINATIONS`.
+ */
+function creditSettledPurseForControl(state: GymState, gymBucks: number): GymState {
+  return withLadder(
+    state,
+    Object.freeze({
+      ...state.ladder,
+      gymBucks: scrubPrecision(state.ladder.gymBucks + gymBucks),
+    }),
+  );
+}
+
 /** The cheapest affordable action, or null — enumeration order is the tie-break. */
 function cheapestAffordable(
   state: GymState,
@@ -842,17 +863,10 @@ export function runGym(
       nextGrant += 1;
       grantsLanded += 1;
       grantedGymBucks = scrubPrecision(grantedGymBucks + grant.gymBucks);
-      if (destination === 'accelerated-purse') {
-        state = grantAcceleratedGymBucks(state, grant.gymBucks);
-      } else {
-        state = Object.freeze({
-          ...state,
-          ladder: Object.freeze({
-            ...state.ladder,
-            gymBucks: scrubPrecision(state.ladder.gymBucks + grant.gymBucks),
-          }),
-        });
-      }
+      state =
+        destination === 'accelerated-purse'
+          ? grantAcceleratedGymBucks(state, grant.gymBucks)
+          : creditSettledPurseForControl(state, grant.gymBucks);
     }
     const checkedIn = gymCheckIn(state, at);
     state = checkedIn.state;
@@ -864,7 +878,7 @@ export function runGym(
       if (pick.action === 'buy-ladder') {
         const outcome = buyLadderEquipment(state.ladder, pick.item);
         if (outcome.kind !== 'bought') refuseWith(`the affordable ${pick.item} was refused`);
-        state = Object.freeze({ ...state, ladder: outcome.state });
+        state = withLadder(state, outcome.state);
         purchases.push(Object.freeze({ item: outcome.item, atSeconds: at }));
         continue;
       }
@@ -877,7 +891,7 @@ export function runGym(
       }
       const outcome = moveUpLadder(state.ladder);
       if (outcome.kind !== 'moved') refuseWith('the affordable move up was refused');
-      state = Object.freeze({ ...state, ladder: outcome.state });
+      state = withLadder(state, outcome.state);
       movedTo.push(Object.freeze({ to: outcome.to, atSeconds: at }));
     }
   }
