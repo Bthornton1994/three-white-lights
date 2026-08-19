@@ -618,11 +618,19 @@ export function runLadder(
 // View-facing helpers — §6 of the header: the view renders, this file computes
 // ---------------------------------------------------------------------------
 
+/**
+ * A dev step's label: a sign, a magnitude, a unit. A pattern type rather than
+ * a bare string, so the position census in `empireForbiddenOutput.test.ts`
+ * can read exactly what this field admits — nothing shaped like a vocabulary
+ * word fits it.
+ */
+export type LadderDevStepLabel = `+${number}d` | `+${number}h` | `+${number}s`;
+
 /** One labelled dev-control step: how far a tap advances the clock. */
 export interface LadderDevTimeStep {
   readonly seconds: number;
   /** Derived from the seconds, in the largest whole unit they fill. */
-  readonly label: string;
+  readonly label: LadderDevStepLabel;
 }
 
 /**
@@ -642,7 +650,7 @@ export function ladderDevTimeSteps(): readonly LadderDevTimeStep[] {
       ) {
         refuseWith(`${seconds} is not a positive whole-tick dev step`);
       }
-      const label =
+      const label: LadderDevStepLabel =
         seconds % EMPIRE_TUNING.SECONDS_PER_DAY === 0
           ? `+${seconds / EMPIRE_TUNING.SECONDS_PER_DAY}d`
           : seconds % EMPIRE_TUNING.SECONDS_PER_HOUR === 0
@@ -653,12 +661,17 @@ export function ladderDevTimeSteps(): readonly LadderDevTimeStep[] {
   );
 }
 
+/** The clock readout's shape: whole days, hours, leftover seconds. */
+export type LadderClockText = `${number}d ${number}h ${number}s`;
+
 /**
  * A clock reading as days, hours and leftover seconds — display arithmetic
  * for the view, kept here so the view divides nothing. Uses the tuning
- * block's own day and hour lengths rather than restating them.
+ * block's own day and hour lengths rather than restating them. Returns the
+ * pattern type rather than a bare string, for the same census reason as
+ * `LadderDevStepLabel`.
  */
-export function describeLadderClock(atSeconds: number): string {
+export function describeLadderClock(atSeconds: number): LadderClockText {
   if (!Number.isFinite(atSeconds) || atSeconds < 0) {
     refuseWith(`a clock reading must be finite and at or above zero, received ${atSeconds}`);
   }

@@ -35,7 +35,9 @@
 import { EMPIRE_TUNING } from './empireTuning';
 import {
   type LadderAccrual,
+  type LadderBuyResult,
   type LadderEquipmentItem,
+  type LadderMoveResult,
   type LadderState,
   buyLadderEquipment,
   createLadderState,
@@ -64,8 +66,17 @@ import {
 export interface LadderViewState {
   readonly ladder: LadderState;
   readonly lastAccrual: LadderAccrual | null;
-  readonly lastRefusal: string | null;
+  readonly lastRefusal: LadderViewRefusal | null;
 }
+
+/**
+ * Every reason a spend can be refused, derived from the two result types
+ * rather than restated — a closed union, so the position census reads this
+ * field as vocabulary and not as an open string.
+ */
+export type LadderViewRefusal =
+  | Extract<LadderBuyResult, { readonly kind: 'refused' }>['reason']
+  | Extract<LadderMoveResult, { readonly kind: 'refused' }>['reason'];
 
 /** The three things a player can do on this screen. */
 export type LadderViewAction =

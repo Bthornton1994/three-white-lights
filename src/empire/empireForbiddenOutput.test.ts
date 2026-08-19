@@ -380,6 +380,7 @@ import * as tuningModule from './empireTuning';
 import * as engagementModule from './engagement';
 import * as expansionModule from './expansion';
 import * as ladderModule from './ladder';
+import * as ladderViewModule from './ladderView';
 import * as npcModule from './npc';
 import * as productionModule from './production';
 import * as recruitmentModule from './recruitment';
@@ -1047,7 +1048,14 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
   readonly field: string;
   readonly why: string;
   readonly positions: readonly string[];
-}[] = Object.freeze([]);
+}[] = Object.freeze([
+  Object.freeze({
+    field: 'ReactElement.key',
+    why:
+      'React’s own element key on the stage-1 view’s return type: the jsx transform’s ReactElement carries `key: string | null`, and that declaration is react’s, not this directory’s to narrow or brand. What the view writes into it today comes from two closed vocabularies — the equipment item union and the dev-step pattern labels — both of which are positions this census already classifies, and the colocated render test walks the produced tree. The bare position is the container, not a new producing channel.',
+    positions: Object.freeze(['ladderView.tsx#LadderView#return.key']),
+  }),
+]);
 
 /**
  * The five fields that WERE bare strings, why each was, and what closed it.
@@ -1236,15 +1244,26 @@ const DECLARED_BRANDED_STRING_POSITIONS: readonly string[] = Object.freeze([
  * Every PATTERN position in the directory — a template literal or string
  * mapping type on an exported surface.
  *
- * EMPTY, and empty is the point. This list exists because the position walk had
- * no arm for these types at all: M56 widened one branded field to
+ * This list exists because the position walk had no arm for these types at
+ * all: M56 widened one branded field to
  * ``DisplayName | `${EmpireForbiddenOutput}${string}` ``, which admits
  * `'covered-day'` exactly, and every position pin in this instrument stayed
  * green because the four template constituents were dropped rather than
- * classified. A first row here is a decision somebody signs, and the row
- * carries the pattern's own texts so what it admits is readable.
+ * classified. Each row is a decision somebody signs and carries the pattern's
+ * own texts, so what it admits is readable.
+ *
+ * The four shipped rows are the stage-1 view's two display shapes, typed as
+ * patterns PRECISELY SO they would land here rather than on the bare list:
+ * the clock readout (digits and unit letters) and the dev-step labels (a
+ * plus sign, digits, a unit letter). Neither admits any banned name — the
+ * `patternAdmits` sweep below runs over these rows now, non-vacuously.
  */
-const DECLARED_PATTERN_POSITIONS: readonly string[] = Object.freeze([]);
+const DECLARED_PATTERN_POSITIONS: readonly string[] = Object.freeze([
+  'ladder.ts#describeLadderClock#return=|d |h |s',
+  'ladder.ts#ladderDevTimeSteps#return[].label=+|d',
+  'ladder.ts#ladderDevTimeSteps#return[].label=+|h',
+  'ladder.ts#ladderDevTimeSteps#return[].label=+|s',
+]);
 
 /**
  * Every method this directory calls on a value its caller handed it, by name.
@@ -1289,10 +1308,10 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const SURFACE_CENSUS = Object.freeze({
-  MODULES: 11,
-  EXPORTS: 245,
-  BARE_POSITIONS: 0,
-  BARE_FIELDS: 0,
+  MODULES: 12,
+  EXPORTS: 251,
+  BARE_POSITIONS: 1,
+  BARE_FIELDS: 1,
   BRANDED_POSITIONS: 34,
   /**
    * Zero, and the zero is the sixteenth bypass's repair rather than a fact
@@ -1300,12 +1319,12 @@ const SURFACE_CENSUS = Object.freeze({
    * walk had no arm for; the shipped tree has none, so a first one is a red
    * line in `DECLARED_PATTERN_POSITIONS` naming the export and the shape.
    */
-  PATTERN_POSITIONS: 0,
+  PATTERN_POSITIONS: 4,
   /** Types the walk reached and could not classify at all. */
   UNCLASSIFIED_TYPES: 0,
   /** The banned vocabulary's own length, so an emptied ban list is not a clean sweep. */
   BANNED: 7,
-  LITERAL_POSITIONS: 1329,
+  LITERAL_POSITIONS: 1362,
   DISTINCT_LITERAL_MEMBERS: 109,
   DEPTH_CUTS: 0,
 });
@@ -1867,9 +1886,9 @@ describe('instrument A — no export type admits a forbidden literal, and no new
     // And the arm under it: a type the walk reached and could not name at all.
     expect(surface.unclassifiedTypes, surface.unclassifiedTypes.join(' | ')).toEqual([]);
     expect(surface.unclassifiedTypes.length).toBe(SURFACE_CENSUS.UNCLASSIFIED_TYPES);
-    // No pattern anywhere admits a banned name. Vacuous on this tree by
-    // construction, which is why `sees a pattern type that admits a banned
-    // name` runs the same predicate over the probe.
+    // No pattern anywhere admits a banned name. Non-vacuous since the four
+    // ladder display shapes landed; `sees a pattern type that admits a banned
+    // name` still runs the same predicate over the probe, where it fires.
     const admitting = surface.positions
       .filter((position) => position.kind === 'pattern')
       .filter((position) => BANNED_VOCABULARY.some((name) => patternAdmits(position.members, name)))
@@ -2021,8 +2040,12 @@ describe('instrument A bites — the census is re-run over a probe carrying five
       .map(positionKey);
     expect(distinct(admitting)).toEqual([`${PROBE_MODULE}#probeTemplateFeed#return.note`]);
     // The shipped census does not have it, which is the mechanism: the set
-    // equality goes red on arrival.
-    expect(patternKeys(stringSurface())).toEqual([]);
+    // equality goes red on arrival. The shipped rows are the four signed
+    // ladder display shapes, and the probe's key is not among them.
+    expect(patternKeys(stringSurface())).toEqual([...DECLARED_PATTERN_POSITIONS].sort());
+    expect(DECLARED_PATTERN_POSITIONS).not.toContain(
+      `${PROBE_MODULE}#probeTemplateFeed#return.note`,
+    );
     // AND IT IS NOT A BARE POSITION EITHER, which is the half that says the
     // fourth kind was needed. Reading a pattern as `bare` would have put it in
     // a list whose own header says the directory has none.
@@ -2320,7 +2343,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   CONSTRUCTORS: 4,
   SITES: 13,
   MINTS: 13,
-  MODULES: 11,
+  MODULES: 12,
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -2825,7 +2848,7 @@ function deepScan(root: unknown, label: string): ScanResult {
   };
 }
 
-/** The ten shipped namespaces, keyed by the file name the census reports. */
+/** The shipped namespaces, keyed by the file name the census reports. */
 const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown>>>> = Object.freeze({
   'empireCore.ts': core as unknown as Readonly<Record<string, unknown>>,
   'empireInvariant.ts': invariant as unknown as Readonly<Record<string, unknown>>,
@@ -2833,6 +2856,7 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'engagement.ts': engagementModule as unknown as Readonly<Record<string, unknown>>,
   'expansion.ts': expansionModule as unknown as Readonly<Record<string, unknown>>,
   'ladder.ts': ladderModule as unknown as Readonly<Record<string, unknown>>,
+  'ladderView.tsx': ladderViewModule as unknown as Readonly<Record<string, unknown>>,
   'npc.ts': npcModule as unknown as Readonly<Record<string, unknown>>,
   'production.ts': productionModule as unknown as Readonly<Record<string, unknown>>,
   'recruitment.ts': recruitmentModule as unknown as Readonly<Record<string, unknown>>,
@@ -11007,7 +11031,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
-  MODULES: 11,
+  MODULES: 12,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
   SITES: 351,
   /**
