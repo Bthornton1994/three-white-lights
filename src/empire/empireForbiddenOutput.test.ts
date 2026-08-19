@@ -1315,8 +1315,8 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const SURFACE_CENSUS = Object.freeze({
-  MODULES: 12,
-  EXPORTS: 251,
+  MODULES: 13,
+  EXPORTS: 273,
   BARE_POSITIONS: 1,
   BARE_FIELDS: 1,
   BRANDED_POSITIONS: 34,
@@ -1331,8 +1331,8 @@ const SURFACE_CENSUS = Object.freeze({
   UNCLASSIFIED_TYPES: 0,
   /** The banned vocabulary's own length, so an emptied ban list is not a clean sweep. */
   BANNED: 7,
-  LITERAL_POSITIONS: 1362,
-  DISTINCT_LITERAL_MEMBERS: 109,
+  LITERAL_POSITIONS: 1821,
+  DISTINCT_LITERAL_MEMBERS: 143,
   DEPTH_CUTS: 0,
 });
 
@@ -2350,7 +2350,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   CONSTRUCTORS: 4,
   SITES: 13,
   MINTS: 13,
-  MODULES: 12,
+  MODULES: 13,
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -2368,7 +2368,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // expressions, with zero new brand-constructor sites among them — SITES and
   // MINTS above are unchanged, which is the half of this census that is about
   // brands rather than about how much code the walk covered.
-  CALLS_EXAMINED: 1176,
+  CALLS_EXAMINED: 1357,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3405,15 +3405,15 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
   ),
   ...exemptTable(
     'STRETCHING_INJURY_REDUCTION_PER_GRADE_SESSION',
-    'A RATE, in injury-chance reduction per session per grade point. Same class as the cardio rate; its clamp is INJURY_CHANCE_MULTIPLIER_FLOOR.',
+    'A RATE, in injury-chance reduction per session per grade point, multiplied into an output and compared with nothing. The endpoint it accumulates towards is INJURY_CHANCE_MULTIPLIER_FLOOR, an output clamp in multiplier space.',
   ),
   ...exemptTable(
     'STRETCHING_TECHNIQUE_BONUS_PER_GRADE_SESSION',
-    'A RATE, in technique-quality bonus per session per grade point. Its cap is TECHNIQUE_QUALITY_BONUS_MAX.',
+    'A RATE, in technique-quality bonus per session per grade point, multiplied into an output and compared with nothing. The cap it accumulates towards is TECHNIQUE_QUALITY_BONUS_MAX, an output clamp in bonus space.',
   ),
   ...exemptTable(
     'HYPERTROPHY_CEILING_GROWTH_PER_GRADE_SESSION',
-    'A RATE, in weekly ceiling-growth fraction per session per grade point. Its cap is CEILING_GROWTH_PER_WEEK_MAX.',
+    'A RATE, in weekly ceiling-growth fraction per session per grade point, multiplied into an output and compared with nothing. The cap it accumulates towards is CEILING_GROWTH_PER_WEEK_MAX, an output clamp in growth space.',
   ),
   ...exemptTable(
     'RESIDUAL_CARRY_MULTIPLIER_FLOOR',
@@ -3429,7 +3429,7 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
   ),
   ...exemptTable(
     'CEILING_GROWTH_PER_WEEK_MAX',
-    'AN OUTPUT CAP in weekly-growth-fraction space, the sibling of the row above on the ceiling channel.',
+    'AN OUTPUT CAP in weekly-growth-fraction space, the sibling of the row above on the ceiling channel, listed under the same rule about arms of one decision.',
   ),
   ...exemptTable(
     'BUILD_SECONDS_GROWTH_PER_LEVEL',
@@ -3962,7 +3962,7 @@ const FIXTURE_LISTS: readonly FixtureList[] = Object.freeze([
   Object.freeze({
     name: 'CLOCKS',
     derivedFrom: 'SECONDS',
-    size: 185,
+    size: 203,
     why: 'One clock per point of the seconds domain, at a fixed skip. Derived, so the seconds domain losing its ceiling this round widened this list without anybody touching it.',
   }),
   Object.freeze({
@@ -4138,25 +4138,25 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
 const DOMAIN_CENSUS = Object.freeze({
   UNITS: 8,
   /** Labels in `UNIT_THRESHOLDS`, including the two derived seconds entries. */
-  THRESHOLDS: 75,
+  THRESHOLDS: 90,
   /** Numeric leaves of EMPIRE_TUNING filed under a unit. */
-  FILED: 73,
+  FILED: 88,
   /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
-  EXEMPT: 41,
-  TUNING_NUMERIC_LEAVES: 114,
-  TUNING_STRING_LEAVES: 40,
+  EXEMPT: 66,
+  TUNING_NUMERIC_LEAVES: 154,
+  TUNING_STRING_LEAVES: 99,
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
-  BRANCH_POINTS: 116,
+  BRANCH_POINTS: 156,
   DOMAINS: 6,
-  CONTAINMENT_CHECKS: 528,
+  CONTAINMENT_CHECKS: 732,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
     SECONDS: 0,
-    DAY: 49,
-    COUNT: 49,
+    DAY: 60,
+    COUNT: 60,
     LEVEL: 0,
-    ROSTER_SHAPE: 70,
+    ROSTER_SHAPE: 84,
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -4173,12 +4173,12 @@ const DOMAIN_CENSUS = Object.freeze({
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
   /** (domain, point) pairs the NUMBER-containment loop actually compares. */
-  NUMBER_CONTAINMENT_CHECKS: 737,
-  NUMBER_POINTS: 246,
-  SECONDS_POINTS: 185,
-  DAY_POINTS: 57,
-  COUNT_POINTS: 61,
-  LEVEL_POINTS: 171,
+  NUMBER_CONTAINMENT_CHECKS: 804,
+  NUMBER_POINTS: 272,
+  SECONDS_POINTS: 203,
+  DAY_POINTS: 60,
+  COUNT_POINTS: 63,
+  LEVEL_POINTS: 189,
   ROSTER_SHAPE_POINTS: 17,
 });
 
@@ -6389,9 +6389,9 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
  * be.
  */
 const MAIN_DRIVE_ROWS_BY_AXIS: Readonly<Record<string, number>> = Object.freeze({
-  COUNT: 602,
-  DAY: 9495,
-  ROSTER_SHAPE: 76330,
+  COUNT: 622,
+  DAY: 10002,
+  ROSTER_SHAPE: 83878,
 });
 
 /**
@@ -6707,43 +6707,43 @@ const OVERFLOW_RESIDUAL: readonly OverflowResidualRow[] = Object.freeze([
   //
   // The eleven DAY rows: the pair is not driven at all, and the price of
   // driving it is in `OVERFLOW_COST_SECONDS`.
-  residual('DAY', 'amountSeries', 'the pair', 37, 259200),
-  residual('DAY', 'arrivalDays', 'the pair', 37, 259200),
-  residual('DAY', 'compareDayLists', 'the pair', 37, 259200),
-  residual('DAY', 'compareLedgers', 'the pair', 37, 259200),
-  residual('DAY', 'empireRunFaults', 'the pair', 37, 259200),
-  residual('DAY', 'idleDayLedger', 'the pair', 37, 259200),
-  residual('DAY', 'outputSeries', 'the pair', 37, 259200),
-  residual('DAY', 'progressionDayLedger', 'the pair', 37, 259200),
-  residual('DAY', 'rivalPeriodCloseDays', 'the pair', 37, 259200),
-  residual('DAY', 'runEmpire', 'the pair', 37, 259200),
-  residual('DAY', 'socialRewardSchedule', 'the pair', 37, 259200),
+  residual('DAY', 'amountSeries', 'the pair', 45, 259200),
+  residual('DAY', 'arrivalDays', 'the pair', 45, 259200),
+  residual('DAY', 'compareDayLists', 'the pair', 45, 259200),
+  residual('DAY', 'compareLedgers', 'the pair', 45, 259200),
+  residual('DAY', 'empireRunFaults', 'the pair', 45, 259200),
+  residual('DAY', 'idleDayLedger', 'the pair', 45, 259200),
+  residual('DAY', 'outputSeries', 'the pair', 45, 259200),
+  residual('DAY', 'progressionDayLedger', 'the pair', 45, 259200),
+  residual('DAY', 'rivalPeriodCloseDays', 'the pair', 45, 259200),
+  residual('DAY', 'runEmpire', 'the pair', 45, 259200),
+  residual('DAY', 'socialRewardSchedule', 'the pair', 45, 259200),
   // The twenty-three ROSTER_SHAPE rows: the pair IS driven at all thirty of
   // these points and its return is scanned; the state handed in is not walked a
   // second time afterwards. See `FROZEN_ARGUMENT_WITNESS` for what covers that.
-  residual('ROSTER_SHAPE', 'accrueProduction', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'accrueReputation', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'accrueSponsorship', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'assertEmpireState', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'beginRecruitment', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'completeRecruitment', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'empireStateFaults', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'expansionContext', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'mayRecruit', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'npcTierUnlocks', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'productionRates', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'recruitmentBoard', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'recruitmentOffer', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'recruitmentRefusals', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'reputationRates', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'rosterOutputRates', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 'the argument re-read', 37, 259200),
-  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'accrueProduction', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'accrueReputation', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'accrueSponsorship', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'assertEmpireState', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'beginRecruitment', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'completeRecruitment', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'empireStateFaults', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'expansionContext', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'mayRecruit', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'npcTierUnlocks', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'productionRates', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'recruitmentBoard', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'recruitmentOffer', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'recruitmentRefusals', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'reputationRates', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'rosterOutputRates', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 'the argument re-read', 45, 259200),
+  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 'the argument re-read', 45, 259200),
 ]);
 
 /**
@@ -6794,18 +6794,18 @@ const OVERFLOW_DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
 
 const OVERFLOW_CENSUS = Object.freeze({
   /** (domain, label) pairs the ceilings drop. Equals the sum of OMITTED_ABOVE_CEILING. */
-  POINTS: 168,
+  POINTS: 204,
   /** Of those, how many at least one subject was driven at. */
-  POINTS_DRIVEN: 168,
+  POINTS_DRIVEN: 204,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
   RETURN_HEAVY_SUBJECTS: 15,
   /** (subject, point) pairs driven, and pairs the budgets did not drive at all. */
-  PAIRS_DRIVEN: 2477,
-  PAIRS_SKIPPED: 407,
+  PAIRS_DRIVEN: 2997,
+  PAIRS_SKIPPED: 495,
   /** Of the driven, how many had the re-read argument region left unscanned. */
-  PAIRS_ARGUMENT_SKIPPED: 851,
+  PAIRS_ARGUMENT_SKIPPED: 1035,
   /**
    * ROSTER_SHAPE points above its allocation ceiling.
    *
@@ -6813,7 +6813,7 @@ const OVERFLOW_CENSUS = Object.freeze({
    * below drives all thirty of them one at a time and a shrunken list would
    * otherwise pass quietly.
    */
-  ROSTER_POINTS_ABOVE_THE_CEILING: 37,
+  ROSTER_POINTS_ABOVE_THE_CEILING: 45,
   /**
    * DERIVED INDEPENDENTLY RATHER THAN READ OFF A FAILURE, for the four that
    * can be. The old values were 1 789 rows, 521 418 nodes and 3 538 100
@@ -6824,8 +6824,8 @@ const OVERFLOW_CENSUS = Object.freeze({
    * `DISTINCT_STRINGS`, moved 4 229 -> 4 307 and is transcribed: a distinct-set
    * size is not additive and there is no second way to get it.
    */
-  ROWS: 3114,
-  NODES: 665641,
+  ROWS: 3777,
+  NODES: 834905,
   STRINGS: 4513143,
   DISTINCT_STRINGS: 4330,
   DEPTH_CUTS: 0,
@@ -6892,12 +6892,12 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // zero. The main drive is what produces it, 135 times.
   // 26 before E17 and 56 after: one more refusal per ROSTER_SHAPE point the
   // budget used to decline, which is thirty. The arm is the same arm.
-  ['beginRecruitment#refused', 70],
+  ['beginRecruitment#refused', 84],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
-  ['recordFriendVisit#refused', 294],
-  ['recordFriendVisit#visited', 98],
+  ['recordFriendVisit#refused', 360],
+  ['recordFriendVisit#visited', 120],
 ]);
 
 // ---------------------------------------------------------------------------
@@ -7146,11 +7146,11 @@ function measureDrive(): DriveMeasurement {
 }
 
 const DRIVE_CENSUS = Object.freeze({
-  ROWS: 261632,
-  EXPORTS_DRIVEN: 251,
-  NODES: 2886143,
-  STRINGS: 13362627,
-  DISTINCT_STRINGS: 2036,
+  ROWS: 302731,
+  EXPORTS_DRIVEN: 273,
+  NODES: 3236537,
+  STRINGS: 14928500,
+  DISTINCT_STRINGS: 2275,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -7850,12 +7850,14 @@ const DIAGNOSTIC_CHANNEL_CENSUS: readonly (readonly [string, number])[] = Object
 const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.freeze([
   ['beginRecruitment#accepted', 135],
   ['beginRecruitment#refused', 290],
-  ['buyLadderEquipment#bought', 3096],
-  ['buyLadderEquipment#refused', 8712],
-  ['moveUpLadder#moved', 660],
-  ['moveUpLadder#refused', 2292],
-  ['recordFriendVisit#refused', 344],
-  ['recordFriendVisit#visited', 112],
+  ['buyLadderEquipment#bought', 3534],
+  ['buyLadderEquipment#refused', 9522],
+  ['buySessionEquipment#bought', 76],
+  ['buySessionEquipment#refused', 260],
+  ['moveUpLadder#moved', 738],
+  ['moveUpLadder#refused', 2526],
+  ['recordFriendVisit#refused', 362],
+  ['recordFriendVisit#visited', 118],
 ]);
 
 /**
@@ -10882,6 +10884,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'production.ts': 11,
       'recruitment.ts': 9,
       'reputation.ts': 24,
+      'sessions.ts': 39,
       'social.ts': 31,
     }),
     /**
@@ -10905,6 +10908,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'production.ts': 1,
       'recruitment.ts': 2,
       'reputation.ts': 7,
+      'sessions.ts': 2,
       'social.ts': 7,
     }),
     'argument-mutation': Object.freeze({}),
@@ -10972,6 +10976,7 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'production.ts': 9,
   'recruitment.ts': 1,
   'reputation.ts': 6,
+  'sessions.ts': 21,
   'social.ts': 6,
 });
 
@@ -11196,10 +11201,14 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'engagement.ts:437 returned=unfollowable:gym',
   'engagement.ts:455 returned=unfollowable:gym',
   'expansion.ts:549 returned=unfollowable:state',
-  'ladder.ts:324 receiver=ArrayLiteralExpression',
+  'ladder.ts:333 receiver=ArrayLiteralExpression',
   'ladderView.tsx:115 returned=unfollowable:state',
   'ladderView.tsx:123 returned=unfollowable:state',
   'recruitment.ts:388 returned=unfollowable:state',
+  'sessions.ts:562 receiver=ArrayLiteralExpression',
+  'sessions.ts:655 returned=unfollowable:state',
+  'sessions.ts:791 returned=unfollowable:item',
+  'sessions.ts:802 returned=unfollowable:item',
   'social.ts:345 receiver=ArrayLiteralExpression',
   'social.ts:535 returned=unfollowable:context',
 ]);
@@ -11229,9 +11238,9 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'engagement.ts:437 EmpireState asked=true walked=false',
   'engagement.ts:455 EmpireState asked=true walked=false',
   'expansion.ts:549 EmpireClock asked=true walked=false',
-  'ladder.ts:585 LadderState asked=true walked=false',
-  'ladder.ts:596 LadderState asked=true walked=false',
-  'ladder.ts:602 LadderState asked=true walked=false',
+  'ladder.ts:594 LadderState asked=true walked=false',
+  'ladder.ts:605 LadderState asked=true walked=false',
+  'ladder.ts:611 LadderState asked=true walked=false',
   'ladderView.tsx:106 LadderState asked=true walked=false',
   'ladderView.tsx:107 LadderAccrual asked=true walked=false',
   'ladderView.tsx:114 LadderState asked=true walked=false',
@@ -11239,13 +11248,18 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'ladderView.tsx:122 LadderState asked=true walked=false',
   'ladderView.tsx:123 LadderAccrual | null asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
+  'sessions.ts:655 LadderState asked=true walked=false',
+  'sessions.ts:689 LadderState asked=true walked=false',
+  'sessions.ts:690 LadderAccrual asked=true walked=false',
+  'sessions.ts:872 GymState asked=true walked=false',
+  'sessions.ts:888 GymState asked=true walked=false',
   'social.ts:535 readonly FriendVisit[] asked=true walked=false',
 ]);
 
 /** What the two readings of the screen measured against each other. */
 const SCREEN_AGREEMENT = Object.freeze({
   /** Rows in `SHIPPED_SCREEN_DISAGREEMENTS`, so a shorter list is red too. */
-  SHIPPED_DISAGREEMENTS: 20,
+  SHIPPED_DISAGREEMENTS: 25,
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -11295,10 +11309,10 @@ const SCREEN_AGREEMENT = Object.freeze({
  */
 const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze({
   parameter: 2,
-  'module-variable': 34,
+  'module-variable': 43,
   local: 0,
-  function: 573,
-  member: 548,
+  function: 668,
+  member: 625,
   'member-callback': 5,
   'member-of-parameter': 14,
   fresh: 0,
@@ -11318,29 +11332,29 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
 const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze({
   parameter: 0,
   'module-variable': 0,
-  local: 156,
+  local: 161,
   function: 0,
   member: 0,
   'member-callback': 0,
   'member-of-parameter': 0,
-  fresh: 4,
+  fresh: 5,
   unclassified: 0,
 });
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
-  MODULES: 12,
+  MODULES: 13,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
-  SITES: 363,
+  SITES: 404,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
    * grammar declarations and the `satisfies` clause are 23 AST nodes, and no
    * site, channel or wrap count moved with them.
    */
-  NODES_EXAMINED: 25_083,
+  NODES_EXAMINED: 28_762,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
-  WRAP_CALLS: 75,
+  WRAP_CALLS: 96,
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
@@ -11391,7 +11405,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   /** Deepest chain from an exported surface, in the control's own accounting. */
   DEEPEST: 9,
   /** Exported positions measured. A truncated walk would report a shallow tree. */
-  POSITIONS: 576,
+  POSITIONS: 643,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -12596,34 +12610,34 @@ interface CallbackAxisCensus {
 
 const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Object.freeze({
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
-    points: 99,
+    points: 106,
     refusedPoints: 1,
-    calls: 1038283,
-    recorded: 1038283,
+    calls: 1099583,
+    recorded: 1099583,
   }),
   'engagement.ts#historyFrom#attended#trainedDays': Object.freeze({
-    points: 99,
+    points: 106,
     refusedPoints: 0,
-    calls: 297,
-    recorded: 297,
+    calls: 318,
+    recorded: 318,
   }),
   'ladderView.tsx#LadderView#props.dispatch#gymBucks': Object.freeze({
-    points: 246,
+    points: 272,
     refusedPoints: 0,
-    calls: 1230,
-    recorded: 1230,
+    calls: 1360,
+    recorded: 1360,
   }),
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize': Object.freeze({
-    points: 68,
+    points: 74,
     refusedPoints: 0,
-    calls: 1031979,
-    recorded: 2063958,
+    calls: 1092879,
+    recorded: 2185758,
   }),
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize': Object.freeze({
-    points: 68,
+    points: 74,
     refusedPoints: 0,
-    calls: 1031979,
-    recorded: 2063958,
+    calls: 1092879,
+    recorded: 2185758,
   }),
 });
 
@@ -12659,10 +12673,10 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    * reader checks at a glance and the table is what cannot be gamed by one axis
    * growing while another dies.
    */
-  POINTS: 580,
+  POINTS: 632,
   REFUSED_POINTS: 1,
-  CALLS: 3103768,
-  RECORDED: 5167726,
+  CALLS: 3287019,
+  RECORDED: 5472777,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
@@ -13178,10 +13192,10 @@ describe('the channel census — the routes a string can leave this directory by
     const count = NUMERIC_DOMAINS.COUNT;
     const countPoints = callbackPointsFor('COUNT');
     const countDropped = overflowPointsFor('COUNT', count);
-    expect(distinct(countDropped.map((point) => String(point.value))).length).toBe(38);
-    expect(countPoints.filter((point) => point > FOREIGN_CEILINGS.COUNT).length).toBe(39);
+    expect(distinct(countDropped.map((point) => String(point.value))).length).toBe(43);
+    expect(countPoints.filter((point) => point > FOREIGN_CEILINGS.COUNT).length).toBe(44);
     expect(count.points.length).toBe(DOMAIN_CENSUS.COUNT_POINTS);
-    expect(countPoints.length).toBe(DOMAIN_CENSUS.COUNT_POINTS + 38);
+    expect(countPoints.length).toBe(DOMAIN_CENSUS.COUNT_POINTS + 43);
     // Every axis names a domain the registry has, and every axis name is
     // distinct — a duplicate would let two axes share one census row.
     expect(distinct(axes.map((axis) => axis.name)).length).toBe(axes.length);
@@ -15120,9 +15134,9 @@ function cyclicDeclarations(
  */
 const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   /** Type aliases, interfaces and classes declared across the ten shipped modules. */
-  DECLARATIONS: 139,
+  DECLARATIONS: 165,
   /** Those carrying type parameters. An instantiation depth needs one. */
-  GENERIC: 11,
+  GENERIC: 12,
   /**
    * Declarations reaching themselves. Empty until E41; the two rows are the
    * value grammar `empireTuning.ts` constrains `EMPIRE_TUNING` with, and they
