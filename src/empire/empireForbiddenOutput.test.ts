@@ -6190,7 +6190,7 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
 const MAIN_DRIVE_ROWS_BY_AXIS: Readonly<Record<string, number>> = Object.freeze({
   COUNT: 602,
   DAY: 9495,
-  ROSTER_SHAPE: 74800,
+  ROSTER_SHAPE: 76330,
 });
 
 /**
@@ -6506,43 +6506,43 @@ const OVERFLOW_RESIDUAL: readonly OverflowResidualRow[] = Object.freeze([
   //
   // The eleven DAY rows: the pair is not driven at all, and the price of
   // driving it is in `OVERFLOW_COST_SECONDS`.
-  residual('DAY', 'amountSeries', 'the pair', 34, 120000),
-  residual('DAY', 'arrivalDays', 'the pair', 34, 120000),
-  residual('DAY', 'compareDayLists', 'the pair', 34, 120000),
-  residual('DAY', 'compareLedgers', 'the pair', 34, 120000),
-  residual('DAY', 'empireRunFaults', 'the pair', 34, 120000),
-  residual('DAY', 'idleDayLedger', 'the pair', 34, 120000),
-  residual('DAY', 'outputSeries', 'the pair', 34, 120000),
-  residual('DAY', 'progressionDayLedger', 'the pair', 34, 120000),
-  residual('DAY', 'rivalPeriodCloseDays', 'the pair', 34, 120000),
-  residual('DAY', 'runEmpire', 'the pair', 34, 120000),
-  residual('DAY', 'socialRewardSchedule', 'the pair', 34, 120000),
+  residual('DAY', 'amountSeries', 'the pair', 37, 259200),
+  residual('DAY', 'arrivalDays', 'the pair', 37, 259200),
+  residual('DAY', 'compareDayLists', 'the pair', 37, 259200),
+  residual('DAY', 'compareLedgers', 'the pair', 37, 259200),
+  residual('DAY', 'empireRunFaults', 'the pair', 37, 259200),
+  residual('DAY', 'idleDayLedger', 'the pair', 37, 259200),
+  residual('DAY', 'outputSeries', 'the pair', 37, 259200),
+  residual('DAY', 'progressionDayLedger', 'the pair', 37, 259200),
+  residual('DAY', 'rivalPeriodCloseDays', 'the pair', 37, 259200),
+  residual('DAY', 'runEmpire', 'the pair', 37, 259200),
+  residual('DAY', 'socialRewardSchedule', 'the pair', 37, 259200),
   // The twenty-three ROSTER_SHAPE rows: the pair IS driven at all thirty of
   // these points and its return is scanned; the state handed in is not walked a
   // second time afterwards. See `FROZEN_ARGUMENT_WITNESS` for what covers that.
-  residual('ROSTER_SHAPE', 'accrueProduction', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'accrueReputation', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'accrueSponsorship', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'assertEmpireState', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'beginRecruitment', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'completeRecruitment', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'empireStateFaults', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'expansionContext', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'mayRecruit', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'npcTierUnlocks', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'productionRates', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'recruitmentBoard', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'recruitmentOffer', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'recruitmentRefusals', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'reputationRates', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'rosterOutputRates', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'accrueProduction', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'accrueReputation', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'accrueSponsorship', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'assertEmpireState', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'beginRecruitment', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'completeRecruitment', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'empireStateFaults', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'expansionContext', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'mayRecruit', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'npcTierUnlocks', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'productionRates', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'recruitmentBoard', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'recruitmentOffer', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'recruitmentRefusals', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'reputationRates', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'rosterOutputRates', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 'the argument re-read', 37, 259200),
 ]);
 
 /**
@@ -6593,7 +6593,7 @@ const OVERFLOW_DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
 
 const OVERFLOW_CENSUS = Object.freeze({
   /** (domain, label) pairs the ceilings drop. Equals the sum of OMITTED_ABOVE_CEILING. */
-  POINTS: 159,
+  POINTS: 168,
   /** Of those, how many at least one subject was driven at. */
   POINTS_DRIVEN: 168,
   SUBJECTS: 49,
@@ -6612,7 +6612,7 @@ const OVERFLOW_CENSUS = Object.freeze({
    * below drives all thirty of them one at a time and a shrunken list would
    * otherwise pass quietly.
    */
-  ROSTER_POINTS_ABOVE_THE_CEILING: 34,
+  ROSTER_POINTS_ABOVE_THE_CEILING: 37,
   /**
    * DERIVED INDEPENDENTLY RATHER THAN READ OFF A FAILURE, for the four that
    * can be. The old values were 1 789 rows, 521 418 nodes and 3 538 100
@@ -6691,12 +6691,12 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // zero. The main drive is what produces it, 135 times.
   // 26 before E17 and 56 after: one more refusal per ROSTER_SHAPE point the
   // budget used to decline, which is thirty. The arm is the same arm.
-  ['beginRecruitment#refused', 67],
+  ['beginRecruitment#refused', 70],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
-  ['recordFriendVisit#refused', 276],
-  ['recordFriendVisit#visited', 92],
+  ['recordFriendVisit#refused', 294],
+  ['recordFriendVisit#visited', 98],
 ]);
 
 // ---------------------------------------------------------------------------
