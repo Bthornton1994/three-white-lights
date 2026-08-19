@@ -442,15 +442,18 @@ describe('applyFederationChoice', () => {
   });
 
   it('refuses an id the game does not hold, before anything moves', () => {
+    // The unknown id is FICTIONAL on purpose: a real federation acronym here
+    // would be a real name in the tree, and `realIp.test.ts`'s inventory
+    // catches exactly that (it caught this test's first draft).
     const applied = applyFederationChoice(
       newServerRecord(SIGNUP_DAY),
-      { kind: 'choose-federation', report: { federationId: 'ipf' } },
+      { kind: 'choose-federation', report: { federationId: 'moonrise-barbell-league' } },
       'choice-3',
     );
     expect(applied.ok).toBe(false);
     if (applied.ok) throw new Error('unreachable');
     expect(applied.error.code).toBe('UNKNOWN_FEDERATION');
-    expect(applied.error.message).toContain('"ipf"');
+    expect(applied.error.message).toContain('"moonrise-barbell-league"');
   });
 
   it('refuses a second choice — the pick is handed out once [a-federation-is-chosen-once]', () => {
