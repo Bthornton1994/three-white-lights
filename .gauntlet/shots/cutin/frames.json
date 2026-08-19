@@ -1,22 +1,19 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-19T02:20:36.885Z",
+    "capturedAt": "2026-08-19T03:01:10.003Z",
     "url": "http://localhost:8081",
     "sourceRoot": "/home/user/wt-career-wiring",
-    "commit": "acca1d1",
+    "commit": "d0dc774",
     "branch": "claude/career-wiring",
-    "workingTree": "DIRTY — this run is not against a commit",
+    "workingTree": "clean",
     "dirtyPaths": [
-      "M .gauntlet/evidence/suite.txt",
-      " M .gauntlet/shots/cutin-cap/cap.json",
+      "M .gauntlet/shots/cutin-cap/cap.json",
       " M .gauntlet/shots/lift-press/press.json",
       " M .gauntlet/shots/meet/sound.json",
       " M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
       " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
       " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
-      " M .gauntlet/shots/shell/route.json",
-      " M src/game/careerServer.test.ts",
-      "?? .gauntlet/evidence/career-wiring.txt"
+      " M .gauntlet/shots/shell/route.json"
     ],
     "instrument": {
       "capture-cutin.mjs": "1221ee93213d41d1",
@@ -243,13 +240,13 @@
   "leavesOnItsOwn": {
     "stillUpAt": 701,
     "stillUp": true,
-    "goneAt": 1567,
+    "goneAt": 1561,
     "behind": true
   },
   "tapDismissed": {
-    "tappedAt": 15,
-    "goneAt": 27,
-    "dismissTookMs": 12,
+    "tappedAt": 16,
+    "goneAt": 25,
+    "dismissTookMs": 9,
     "exitAnimationYardstickMs": 100,
     "wellInsideTheHold": true,
     "holdReadFromSourceMs": 1720
