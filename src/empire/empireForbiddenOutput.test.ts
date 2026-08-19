@@ -6826,8 +6826,8 @@ const OVERFLOW_CENSUS = Object.freeze({
    */
   ROWS: 3777,
   NODES: 834905,
-  STRINGS: 4513143,
-  DISTINCT_STRINGS: 4330,
+  STRINGS: 5669947,
+  DISTINCT_STRINGS: 4348,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
   /**
@@ -6868,7 +6868,7 @@ const OVERFLOW_CENSUS = Object.freeze({
    * by `TRIPWIRE_CENSUS.CLOSURES_INVOKED` and by nothing here. That is the same
    * standing the getter branch has and it is stated rather than implied.
    */
-  CLOSURES_DECLINED: 264,
+  CLOSURES_DECLINED: 312,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -7208,7 +7208,7 @@ const DRIVE_CENSUS = Object.freeze({
    * tell from an absence. This is the number that says the branch is live, in
    * the same role `TRIPWIRE_CENSUS.GETTERS_INVOKED` plays for the getter arm.
    */
-  STACKS: 3244,
+  STACKS: 3550,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
