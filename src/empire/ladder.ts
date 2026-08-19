@@ -48,9 +48,16 @@
  * module takes the reading that loses less: relocation leaves `equipment`
  * untouched (the same frozen array, byte-identical), and what is lost is the
  * old rung's income context. `ladder.test.ts` pins the array through a move.
- * If the stage gate's human wants relocation to shed gear, that is a one-line
- * design change here and a tuning question about buy-back prices — flagged
- * for the gate rather than silently chosen forever.
+ * RULED AT THE STAGE GATE, confirmed as correct rather than accepted as a
+ * reasonable reading: equipment travels; the space is what is abandoned.
+ * The human's reasoning, recorded because it is the design argument and not
+ * merely a preference: shedding gear would make every relocation a partial
+ * reset — re-buying a bar and plates at each rung punishes the exact move
+ * that is supposed to feel like pure progress — and it breaks the intuition
+ * a lifter brings, since nobody sells their barbell when they move to a
+ * bigger space. The byte-identity pin in `ladder.test.ts` stays as-is, and
+ * the buy-back-pricing question is moot: no mechanic is to be designed for
+ * the branch not taken.
  *
  * ===========================================================================
  * 3. The offline cap is reused, not rebuilt
