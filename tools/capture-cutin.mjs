@@ -386,7 +386,11 @@ async function readOverlay() {
           return hit !== null && (n === hit || n.contains(hit));
         })(),
         shellNav: (() => {
-          const n = document.querySelector('[data-testid="shell-open-meet"]');
+          // The CAREER pill: the session's route toward a meet since Sprint 1c
+          // deleted `shell-open-meet`. Any session pill serves this probe — the
+          // measurement is about chrome painting above the overlay, not about
+          // where the pill goes.
+          const n = document.querySelector('[data-testid="shell-open-career"]');
           if (n === null) return null;
           const r = n.getBoundingClientRect();
           const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);

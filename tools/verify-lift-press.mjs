@@ -49,8 +49,9 @@
  *     `SessionScreen` → `SetView`, whose touch target is `session-touch`.
  *     `SetView.tsx` says in its own header that "`LiftScreen` itself is
  *     deliberately NOT reused whole".
- *   - the MEET arm — GDD §6.2's attempt, reached by pressing the shell's
- *     `shell-open-meet` pill and playing through weigh-in and openers, still
+ *   - the MEET arm — GDD §6.2's attempt, reached by entering a meet from the
+ *     Career calendar (`enterMeetFromCalendar.mjs`'s three-press drive) and
+ *     playing through weigh-in and openers, still
  *     with no query string — renders `MeetScreen` → `AttemptView`, whose touch
  *     target is `attempt-touch`. A THIRD component, not a variant of the second,
  *     and the one where a press the browser eats costs an attempt that does not
@@ -190,6 +191,7 @@
  */
 import { chromium } from 'playwright';
 import { gateDevServer } from './devServerSentinel.mjs';
+import { enterMeetFromCalendar } from './enterMeetFromCalendar.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -335,10 +337,9 @@ const PRESS_PROBE = Object.freeze({
  * `src/game/meetTuning.ts`.
  */
 const MEET_PROBE = Object.freeze({
-  /** The shell pill that opens meet day. `AppShell` builds every pill's testID
-   *  as `shell-${intent}`, and this is `shellRoute.ts`'s `open-meet` intent. */
-  NAV_OPEN_MEET: 'shell-open-meet',
-  /** The beat the pill is drawn on at boot: GDD §3.2's check-in. */
+  /** The beat the CAREER pill is drawn on at boot: GDD §3.2's check-in. The
+   *  way into a meet is `tools/enterMeetFromCalendar.mjs`'s three-press drive
+   *  (Sprint 1c deleted `shell-open-meet`). */
   CHECK_IN: 'session-check-in',
   /** How long the pill has to finish fading in before the press. */
   PILL_MS: 40000,
@@ -536,7 +537,7 @@ const capturedFrom = (() => {
     record.workingTree = `unknown — ${String(error).slice(0, 200)}`;
   }
   record.instrument = Object.fromEntries(
-    ['verify-lift-press.mjs', 'sessionDrive.mjs', 'meetDrive.mjs'].map((name) => {
+    ['verify-lift-press.mjs', 'sessionDrive.mjs', 'meetDrive.mjs', 'enterMeetFromCalendar.mjs'].map((name) => {
       const file = path.join(HERE, name);
       try {
         return [name, createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)];
@@ -942,11 +943,10 @@ async function openArm(page, arm) {
     // meet opened that way is literally not this code.
     await page.goto(url, { waitUntil: 'load', timeout: PRESS_PROBE.BOOT_MS });
     await page.getByTestId(MEET_PROBE.CHECK_IN).waitFor({ state: 'visible', timeout: PRESS_PROBE.BOOT_MS }).catch(() => {});
-    const pill = await waitUntilDrawn(page, MEET_PROBE.NAV_OPEN_MEET, MEET_PROBE.PILL_MS);
-    if (!pill.drawn) {
-      return { reached: false, why: `the way into meet day never finished being drawn — ${pill.why}` };
+    const entry = await enterMeetFromCalendar(page, { stepMs: MEET_PROBE.PILL_MS });
+    if (!entry.entered) {
+      return { reached: false, why: `the way into meet day refused — ${entry.why}` };
     }
-    await page.getByTestId(MEET_PROBE.NAV_OPEN_MEET).click({ timeout: MEET_PROBE.PILL_MS }).catch(() => {});
     const opened = await untilMeet(page, (state) => state.weighIn || state.attempt, MEET_PROBE.MEET_MS);
     if (!opened.ok) return { reached: false, why: 'pressing the pill never produced a meet' };
     const attempt = await reachAttempt(page);

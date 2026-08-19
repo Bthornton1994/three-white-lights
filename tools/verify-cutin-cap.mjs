@@ -199,6 +199,7 @@
  */
 import { chromium } from 'playwright';
 import { gateDevServer } from './devServerSentinel.mjs';
+import { enterMeetFromCalendar } from './enterMeetFromCalendar.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -445,7 +446,7 @@ const capturedFrom = (() => {
    * standing there.
    */
   record.instrument = Object.fromEntries(
-    ['verify-cutin-cap.mjs', 'sessionDrive.mjs', 'readTuning.mjs'].map((name) => {
+    ['verify-cutin-cap.mjs', 'sessionDrive.mjs', 'readTuning.mjs', 'enterMeetFromCalendar.mjs'].map((name) => {
       const file = path.join(path.dirname(fileURLToPath(import.meta.url)), name);
       try {
         return [name, createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)];
@@ -759,8 +760,8 @@ async function read() {
       recap: has('meet-recap'),
       waiting: has('meet-recap-waiting'),
       placeholder: has('meet-recap-placeholder'),
+      openCareer: has('shell-open-career'),
       cutIn: has('cut-in'),
-      openMeet: has('shell-open-meet'),
       leaveMeet: has('shell-leave-meet'),
       bombExit: has('bomb-out-action'),
       prompt: text('attempt-prompt'),
@@ -1056,10 +1057,16 @@ async function driveMeet(intent, searchIn) {
  * block before changing the intents: legs 2 and 3 are the ones whose qualifying
  * beat does not depend on the day's seed, and there are two of them on purpose.
  */
+// THREE DIFFERENT MEETS, because since Sprint 1c the app itself refuses "the
+// same sitting again": a played meet is ALREADY_ENTERED on the calendar and
+// its row draws no enter control. So the legs climb the ladder instead — leg
+// 1's made total (the make-drive banks well above nationals' gate) is what
+// unlocks legs 2 and 3, and a leg whose row is not enterable reds with the
+// row named rather than entering something else quietly.
 const LEGS = Object.freeze([
-  Object.freeze({ n: 1, intent: 'make', why: 'a played meet — nine walk-outs and the recap, GDD §7.2’s "one meet is one sitting"' }),
-  Object.freeze({ n: 2, intent: 'miss', why: "the same sitting again after the host went away — GDD §6.3's bomb-out, allowed in every sitting" }),
-  Object.freeze({ n: 3, intent: 'miss', why: 'and once more, so the count bites on a day when leg 1 fires nothing' }),
+  Object.freeze({ n: 1, intent: 'make', enter: 'career-enter-local', why: 'a played meet — nine walk-outs and the recap, GDD §7.2’s "one meet is one sitting"' }),
+  Object.freeze({ n: 2, intent: 'miss', enter: 'career-enter-regional', why: "a second sitting after the host went away — GDD §6.3's bomb-out, allowed in every sitting" }),
+  Object.freeze({ n: 3, intent: 'miss', enter: 'career-enter-nationals', why: 'and a third, so the count bites on a day when leg 1 fires nothing' }),
 ]);
 
 /**
@@ -1163,9 +1170,20 @@ if (booted.ok) {
     currentLeg = leg.n;
     await page.evaluate((n) => window.__cutInCapLeg(n), leg.n);
 
-    const opened = await pressWhenClear('shell-open-meet', CAP_DRIVE.BEAT_TIMEOUT_MS);
-    if (!opened.pressed) {
-      check(false, `leg ${leg.n}: the shell's own control opens meet day`, opened.why);
+    // The same no-press-through-an-interrupt discipline `pressWhenClear`
+    // applies, ahead of the calendar drive's own three presses: wait the
+    // cut-in out first, then let the shared drive do the pressing.
+    const clear = await until((s) => !s.cutIn, WHOLE_BEAT_MS + CAP_DRIVE.CUT_IN_CLEAR_SLACK_MS);
+    if (!clear.ok) {
+      check(false, `leg ${leg.n}: the calendar's own controls enter a meet`, `a cut-in was still up after ${clear.ms}ms`);
+      break;
+    }
+    const opened = await enterMeetFromCalendar(page, {
+      stepMs: CAP_DRIVE.BEAT_TIMEOUT_MS,
+      enterTestId: leg.enter,
+    });
+    if (!opened.entered) {
+      check(false, `leg ${leg.n}: the calendar's own controls enter a meet (${leg.enter})`, opened.why);
       break;
     }
     const onMeet = await until((s) => s.meetScreen || s.weighIn, CAP_DRIVE.BEAT_TIMEOUT_MS);

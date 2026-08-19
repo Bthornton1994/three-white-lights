@@ -60,6 +60,7 @@
  */
 import { chromium } from 'playwright';
 import { gateDevServer } from './devServerSentinel.mjs';
+import { enterMeetFromCalendar } from './enterMeetFromCalendar.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -69,12 +70,7 @@ import { fileURLToPath } from 'node:url';
 
 import { numberInBlock, parserSelfTest } from './readTuning.mjs';
 import { freshDepthSearch } from './sessionDrive.mjs';
-import {
-  MEET_DRIVE,
-  MEET_WALKOUT_SAYS,
-  driveMeetToItsEnd,
-  waitUntilDrawn,
-} from './meetDrive.mjs';
+import { MEET_DRIVE, MEET_WALKOUT_SAYS, driveMeetToItsEnd } from './meetDrive.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -154,7 +150,13 @@ const capturedFrom = (() => {
     // section is only as good as the drive that reached the beat, and a record
     // that names the tool but not the driver cannot be dated against a change to
     // the driver.
-    ['verify-meet-sound.mjs', 'readTuning.mjs', 'meetDrive.mjs', 'sessionDrive.mjs'].map((name) => {
+    [
+      'verify-meet-sound.mjs',
+      'readTuning.mjs',
+      'meetDrive.mjs',
+      'sessionDrive.mjs',
+      'enterMeetFromCalendar.mjs',
+    ].map((name) => {
       const file = path.join(path.dirname(fileURLToPath(import.meta.url)), name);
       try {
         return [name, createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)];
@@ -790,21 +792,18 @@ try {
 } catch {
   openedOnSession = false;
 }
-// The shell's pill fades in; pressing it before it is drawn presses nothing.
-// `waitUntilDrawn` is `meetDrive.mjs`'s, so this waits the way the meet driver's
-// own three presses wait rather than on a settle somebody liked.
+// The way in is Sprint 1c's calendar drive — CAREER pill, chooser if asked,
+// then a row's ENTER MEET — shared with every tool in
+// `enterMeetFromCalendar.mjs`. `MEET_DRIVE.BEAT_TIMEOUT_MS` per step, so this
+// section introduces no deadline of its own: the driver's own three presses
+// use the same one, and a second number here would be a second answer to "the
+// app has stopped advancing". It is a robot's patience, not game feel.
 const entryDrawn = openedOnSession
-  ? await waitUntilDrawn(page, 'shell-open-meet', MEET_DRIVE.BEAT_TIMEOUT_MS)
+  ? await enterMeetFromCalendar(page, { stepMs: MEET_DRIVE.BEAT_TIMEOUT_MS }).then((entry) =>
+      entry.entered ? { drawn: true, why: 'entered' } : { drawn: false, why: entry.why },
+    )
   : { drawn: false, why: 'the app never drew the daily session' };
 if (entryDrawn.drawn) {
-  // `MEET_DRIVE.BEAT_TIMEOUT_MS` for both, so this section introduces no
-  // deadline of its own: the driver's own three presses use the same one, and a
-  // second number here would be a second answer to "the app has stopped
-  // advancing". It is a robot's patience, not game feel — see `MEET_DRIVE`.
-  await page
-    .getByTestId('shell-open-meet')
-    .click({ timeout: MEET_DRIVE.BEAT_TIMEOUT_MS })
-    .catch(() => {});
   try {
     await page
       .getByTestId('meet-screen')
@@ -865,8 +864,8 @@ for (const p of playedOnWalkout) {
 if (!PLAYED.reachedMeet) {
   check(
     false,
-    'SKIPPED: the played arm needs a meet opened with a mouse, and the shell’s own way in was never pressed',
-    `session-screen drawn: ${openedOnSession}; shell-open-meet: ${entryDrawn.why}`,
+    'SKIPPED: the played arm needs a meet opened with a mouse, and the calendar’s own way in was never pressed',
+    `session-screen drawn: ${openedOnSession}; calendar entry: ${entryDrawn.why}`,
   );
 } else if (byWalkout.size === 0) {
   check(

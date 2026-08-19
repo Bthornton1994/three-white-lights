@@ -1820,7 +1820,7 @@ function provenance() {
    * import block, which is where this file keeps finding these.
    */
   record.instrument = Object.fromEntries(
-    ['verify-shell-route.mjs', 'sessionDrive.mjs', 'meetDrive.mjs'].map((name) => {
+    ['verify-shell-route.mjs', 'sessionDrive.mjs', 'meetDrive.mjs', 'enterMeetFromCalendar.mjs'].map((name) => {
       const file = path.join(path.dirname(fileURLToPath(import.meta.url)), name);
       try {
         return [name, createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)];
