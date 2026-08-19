@@ -1272,14 +1272,24 @@ function weightNumber(printed) {
  * the first meet bigger raises that bar by more than it raises the second's,
  * and measurement says it removes the PR cards entirely.
  */
+let tookTheBigJumpThisRun = false;
 function takeTheBigJumpWhenSomethingIsBanked(ids, state) {
   if (!ids.includes('big')) return null;
+  // ONCE PER RUN, AND THAT BOUND IS MEASURED RATHER THAN CAUTIOUS. The check
+  // this policy feeds (`bigPresses > 0`) needs the bold arm pressed once; the
+  // first 1c run armed it on EVERY banked select of meet 2 and the meet
+  // bombed — three misses on one lift at big-jump weights — taking the recap
+  // this sprint's whole 4b leg exists to read down with it. Nine maximal
+  // jumps buy no checked property that one does, and they trade the leg's
+  // determinism for the robot's timing at weights it converges worst at.
+  if (tookTheBigJumpThisRun) return null;
   const banked = state.banked;
   // AN UNREADABLE LINE IS A DECLINE, not a dare. If the banked line is missing
   // the policy cannot know whether this lift can still bomb, and the safe
   // answer is the one the driver had before this hook existed.
   if (typeof banked !== 'string' || banked.trim() === '') return null;
   if (banked.includes(MEET_SELECT_SAYS.NOTHING_BANKED)) return null;
+  tookTheBigJumpThisRun = true;
   return 'big';
 }
 
@@ -4630,38 +4640,49 @@ function checkRecapCallOutsOnBothArms(meetsDriven) {
   // (every played board is a first) and by one that prints PR unconditionally
   // (if the debug arm's boards all beat). So the two states are counted
   // separately, and the arm each is reachable on is named.
+  // THE PLAYED DOMAIN SPLIT BY HISTORY, because since Sprint 1c it has both
+  // states: meet 1 is a first meet, and meet 2 walks in holding meet 1's
+  // banked result. The old version of these checks demanded ZERO played
+  // recaps with history — true of the route graph that could only ever reach
+  // a first meet, and stale the moment 4b entered the next rung.
   const played = seen.filter((recap) => recap.arm === 'played');
-  const playedFirsts = played.reduce(
+  const playedFresh = played.filter((recap) => historyBehind.get(recap.tag) !== true);
+  const playedWithHistory = played.filter((recap) => historyBehind.get(recap.tag) === true);
+  const freshFirsts = playedFresh.reduce(
     (n, recap) =>
       n +
       LIFT_ORDER_RESTATED.filter((lift) => recap.boards[lift]?.callOut === RECAP_SAYS.FIRST_LIFT).length,
     0,
   );
-  const playedPrs = played.reduce(
+  const freshPrs = playedFresh.reduce(
     (n, recap) =>
       n + LIFT_ORDER_RESTATED.filter((lift) => recap.boards[lift]?.callOut === RECAP_SAYS.PR_LIFT).length,
     0,
   );
-  const playedHadHistory = played.filter((recap) => historyBehind.get(recap.tag) === true);
   check(
-    played.length > 0 &&
-      playedHadHistory.length === 0 &&
-      playedFirsts === played.length * LIFT_ORDER_RESTATED.length &&
-      playedPrs === 0,
-    'ON THE MEET A PLAYER OPENED, ALL THREE LIFTS SAY FIRST AND NONE SAYS PR — this lifter had no competition record, and §6.3 had just told them so',
-    `${played.length} played recap(s) (${played.map((r) => r.tag).join(', ') || 'none'}),` +
-      ` ${playedHadHistory.length} of them with a history behind them (derived, want 0),` +
-      ` ${playedFirsts} lifts said ${JSON.stringify(RECAP_SAYS.FIRST_LIFT)}, ${playedPrs} said ${JSON.stringify(RECAP_SAYS.PR_LIFT)}.` +
-      ' Before this piece every one of them said PR.',
+    playedFresh.length === 1 &&
+      playedWithHistory.length === 1 &&
+      freshFirsts === playedFresh.length * LIFT_ORDER_RESTATED.length &&
+      freshPrs === 0,
+    'ON A PLAYER’S FIRST MEET, ALL THREE LIFTS SAY FIRST AND NONE SAYS PR — and exactly one played recap has a history behind it (Sprint 1c’s meet 2), graded word by word by the oracle above',
+    `${played.length} played recap(s) (${played.map((r) => r.tag).join(', ') || 'none'}):` +
+      ` ${playedFresh.length} first-meet (want 1), ${playedWithHistory.length} with history (want 1);` +
+      ` on the first meet ${freshFirsts} lifts said ${JSON.stringify(RECAP_SAYS.FIRST_LIFT)}, ${freshPrs} said ${JSON.stringify(RECAP_SAYS.PR_LIFT)}.` +
+      ' Before the wiring fix every one of them said PR.',
   );
   // AND THE TOTAL AGREES WITH ITS OWN LIFTS ON THE SAME SCREEN. This is the
   // precedent the per-lift split was built from, and it is the one place the
-  // two can be compared at the same instant.
-  const totalsWrong = played.filter((recap) => recap.totalCallOut !== RECAP_SAYS.FIRST_TOTAL);
+  // two can be compared at the same instant. FIRST TOTAL on the first meet;
+  // NOT FIRST TOTAL on the meet with a banked total behind it — the same
+  // discrimination, per screen.
+  const totalsWrong = playedFresh.filter((recap) => recap.totalCallOut !== RECAP_SAYS.FIRST_TOTAL);
+  const historyTotalsWrong = playedWithHistory.filter(
+    (recap) => recap.totalCallOut === RECAP_SAYS.FIRST_TOTAL,
+  );
   check(
-    played.length > 0 && totalsWrong.length === 0,
-    'and the TOTAL on that same screen says FIRST TOTAL — one screen, one story about what this lifter had done before',
-    `${played.length} played recap(s); totals said ${JSON.stringify(played.map((r) => r.totalCallOut))}`,
+    playedFresh.length > 0 && totalsWrong.length === 0 && historyTotalsWrong.length === 0,
+    'and each TOTAL tells its own screen’s story — FIRST TOTAL on the first meet, never on the meet with a total already banked',
+    `totals said ${JSON.stringify(played.map((r) => `${r.tag}: ${r.totalCallOut}`))}`,
   );
 
   const debug = seen.filter((recap) => recap.arm === 'debug');
@@ -7142,9 +7163,10 @@ await checkOnScreen(
         `${buttons.shell} control(s) inside app-shell`,
       );
       check(
-        buttons.surface === 0,
-        'the calendar draws NO control of its own — no entry button (Sprint 1c’s seam), no sync UI (GDD §10.0), so the shell’s pill is the whole way back',
-        `${buttons.surface} control(s) inside career-screen (-1 would mean the screen was not found)`,
+        buttons.surface === 1,
+        'the calendar’s own controls are EXACTLY its enter controls — one, on a fresh lifter: the qualifying gate leaves the entry tier as the one door (Sprint 1c), and there is no sync UI (GDD §10.0)',
+        `${buttons.surface} control(s) inside career-screen (-1 would mean the screen was not found;` +
+          ' 0 would mean the ENTER MEET control is gone; more would be a second door or sync scaffolding)',
       );
 
       // THE WAY BACK, AND THE ROWS STAY OUT OF ITS TOUCH TARGET — the same
@@ -7167,6 +7189,30 @@ await checkOnScreen(
               right: calendarLeaveHit.box.x + calendarLeaveHit.box.width + NAV_HIT_SLOP_RESTATED,
               bottom: calendarLeaveHit.box.y + calendarLeaveHit.box.height + NAV_HIT_SLOP_RESTATED,
             });
+      // SCROLLED TO ITS END FIRST, because Sprint 1c's enter controls made the
+      // rows taller than one screen: at rest the summit row sits under the
+      // pill's touch target, WHICH IS WHAT A SCROLLABLE LIST LOOKS LIKE, not a
+      // stolen tap — the player scrolls, and `CAREER_FOOT_CLEARANCE` is the
+      // registered knob that guarantees the last row can be scrolled clear of
+      // the chrome band. So the property graded here is REACHABILITY: at the
+      // list's fullest scroll, every row is out of the pill's grown box (rows
+      // that scrolled above the viewport are above the band by construction).
+      // The first 1c run measured the at-rest overlap this replaces: summit
+      // row y 655..775 against a target top of 748.
+      await page.evaluate((surfaceId) => {
+        const root = document.querySelector(`[data-testid="${surfaceId}"]`);
+        const scroller = root?.querySelector('[data-testid="career-calendar"]')?.parentElement;
+        if (scroller) scroller.scrollTop = scroller.scrollHeight;
+        // React Native Web nests the scrollable node differently across
+        // versions; scroll every ancestor that can scroll, so the measurement
+        // below is of the fullest scroll whichever node owns it.
+        let node = root?.querySelector('[data-testid="career-calendar"]') ?? null;
+        while (node) {
+          if (node.scrollHeight > node.clientHeight) node.scrollTop = node.scrollHeight;
+          node = node.parentElement;
+        }
+      }, 'career-screen');
+      await page.waitForTimeout(200);
       for (const tier of CAREER_TIER_ROWS) {
         const rowBox = await page.getByTestId(`career-row-${tier}`).boundingBox().catch(() => null);
         const disjoint =
@@ -7178,7 +7224,7 @@ await checkOnScreen(
             rowBox.x >= pillTouchTarget.right);
         check(
           disjoint,
-          `the pill’s touch target (its box grown ${NAV_HIT_SLOP_RESTATED}px by NAV_HIT_SLOP) overlaps no part of career-row-${tier}`,
+          `at fullest scroll, the pill’s touch target (grown ${NAV_HIT_SLOP_RESTATED}px by NAV_HIT_SLOP) overlaps no part of career-row-${tier} — CAREER_FOOT_CLEARANCE is what buys this`,
           pillTouchTarget === null
             ? 'the pill has no bounding box to grade against'
             : rowBox === null
@@ -7187,6 +7233,17 @@ await checkOnScreen(
                 ` vs target y ${pillTouchTarget.top.toFixed(1)}..${pillTouchTarget.bottom.toFixed(1)}`,
         );
       }
+      // Back to the top, so the shot below and every later press reads the
+      // screen a player lands on rather than the scrolled state the
+      // measurement needed.
+      await page.evaluate(() => {
+        let node = document.querySelector('[data-testid="career-calendar"]');
+        while (node) {
+          if (node.scrollHeight > node.clientHeight) node.scrollTop = 0;
+          node = node.parentElement;
+        }
+      });
+      await page.waitForTimeout(200);
       await shootBeat('21-career-calendar-chosen.png', 'calendar', CAREER_SAYS.CALENDAR);
 
       const returned = await press(
