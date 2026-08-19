@@ -744,8 +744,8 @@ export interface GymRun {
   readonly weeks: readonly GymWeekReport[];
 }
 
-/** `state` with its ladder replaced — one writer shape for the composed fold. */
-function withLadder(state: GymState, ladder: LadderState): GymState {
+/** `state` with its ladder replaced — exported so a view need not re-derive it. */
+export function withLadder(state: GymState, ladder: LadderState): GymState {
   return Object.freeze({ ...state, ladder });
 }
 
