@@ -426,7 +426,9 @@ import type {
 } from './ladder';
 import type {
   GymState,
+  GymWeekReport,
   SessionEquipmentItem,
+  SlotOutcome,
   WeekAllocation,
   WeeklyAttributeEffects,
 } from './sessions';
@@ -2567,13 +2569,16 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     // pinned in its new home rather than dropped.
     expect(checked).toBe(23);
     expect(CLOSED_BARE_STRING_FIELDS.length).toBe(5);
-    // And the live bare list holds exactly the one declared arrival — React's
-    // element key on the stage-1 view — and none of the five closed fields
-    // has reopened onto it. Zero until `ladderView.tsx`; the position that
-    // moved it is a type react declares, not a reopening of anything here.
+    // And the live bare list holds exactly the declared arrivals — React's
+    // element key on the stage-1 and stage-2 views — and none of the five
+    // closed fields has reopened onto either. Zero until `ladderView.tsx`;
+    // the position that moved it is a type react declares, not a reopening
+    // of anything here. Two rather than one once `GymView` landed beside
+    // `LadderView` in the same file, still the same one field.
     expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
-    expect(SURFACE_CENSUS.BARE_POSITIONS).toBe(1);
+    expect(SURFACE_CENSUS.BARE_POSITIONS).toBe(2);
     expect(DECLARED_BARE_STRING_FIELDS.flatMap((group) => [...group.positions])).toEqual([
+      'ladderView.tsx#GymView#return.key',
       'ladderView.tsx#LadderView#return.key',
     ]);
     const reopened = CLOSED_BARE_STRING_FIELDS.flatMap((group) => [...group.positions]).filter(
@@ -17829,6 +17834,44 @@ function memberCallSocialContext(
   );
 }
 
+/**
+ * One `GymWeekReport` exercising all three `SlotOutcome` arms — trained,
+ * rested, unequipped — the same reason `MEMBER_CALL_FIXTURE`'s other rows
+ * vary their own verdict axis rather than sampling one arm three times.
+ */
+function memberCallWeekReport(): GymWeekReport {
+  const allocation = sessionsModule.createRestAllocation();
+  return Object.freeze({
+    weekIndex: 0,
+    allocation,
+    slots: Object.freeze([
+      Object.freeze({ kind: 'trained', activity: 'cardio' }),
+      Object.freeze({ kind: 'rested' }),
+      Object.freeze({ kind: 'unequipped', activity: 'hypertrophy', requires: 'accessory' }),
+    ]) as readonly [SlotOutcome, SlotOutcome, SlotOutcome],
+    effects: sessionsModule.weeklyAttributeEffects(allocation, Object.freeze([])),
+  });
+}
+
+/** A `GymViewState` around the given week log; the rest is a fresh gym. */
+function memberCallGymViewState(weekLog: readonly GymWeekReport[]): ladderViewModule.GymViewState {
+  return Object.freeze({
+    gym: Object.freeze({
+      ladder: ladderModule.createLadderState(),
+      acceleratedGymBucks: 0,
+      sessionEquipment: Object.freeze([]),
+    }),
+    lastAccrual: null,
+    lastRefusal: null,
+    weekIndex: weekLog.length,
+    allocation: sessionsModule.createRestAllocation(),
+    allocationSetThisWeek: false,
+    weekLog,
+  });
+}
+
+const MEMBER_CALL_SILENT_DISPATCH = (): void => undefined;
+
 const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
   Object.freeze({
     site: 'empireCore.ts#idleLedger#ledger.filter x1',
@@ -17959,6 +18002,36 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
       );
     },
   }),
+  Object.freeze({
+    site: 'ladderView.tsx#GymView#props.map x1',
+    run: (record: MemberCallRecord): void => {
+      // `weekLog` is destructured straight off `props.state`, so watching its
+      // OWN `.map` (and leaving each week's `.slots` untouched) isolates this
+      // site from the nested one below.
+      const weekLog = recordOn([memberCallWeekReport()], 'map', record);
+      ladderViewModule.GymView({
+        state: memberCallGymViewState(weekLog),
+        dispatch: MEMBER_CALL_SILENT_DISPATCH,
+      });
+    },
+  }),
+  Object.freeze({
+    site: 'ladderView.tsx#GymView#week.map x1',
+    run: (record: MemberCallRecord): void => {
+      // The reverse isolation: `weekLog` itself is the real array (so its own
+      // `.map` is not watched), and one week's `.slots` is instrumented so the
+      // named-function callback (`describeSlotOutcome`) is what gets caught.
+      const week = memberCallWeekReport();
+      const instrumented = Object.freeze({
+        ...week,
+        slots: recordOn([...week.slots], 'map', record) as unknown as GymWeekReport['slots'],
+      });
+      ladderViewModule.GymView({
+        state: memberCallGymViewState([instrumented]),
+        dispatch: MEMBER_CALL_SILENT_DISPATCH,
+      });
+    },
+  }),
 ]);
 
 /**
@@ -18034,15 +18107,17 @@ const MEMBER_CALL_TRIPWIRE: readonly MemberCallSubject[] = Object.freeze([
 
 /** What the pass measured. Counts, not bounds, so an empty drive reports itself. */
 const MEMBER_CALL_PASS_CENSUS = Object.freeze({
-  SUBJECTS: 14,
+  SUBJECTS: 16,
   /** One call of the instrumented method per subject, two at the ladder site. */
-  CALLS: 15,
+  CALLS: 17,
   /**
    * Callback invocations across every subject: 4 + 33, the second number being
    * E23's ten sites. Per site — and per ARM, which is the half a total cannot
    * carry — it is in `MEMBER_CALL_SITE_OBSERVATIONS`.
    */
-  CALLBACK_CALLS: 37,
+  // 37 -> 41: GymView's own two sites add 1 (the week-row callback, once)
+  // and 3 (describeSlotOutcome, once per slot).
+  CALLBACK_CALLS: 41,
   /**
    * Strings reachable from the non-function arguments.
    *
@@ -18061,7 +18136,9 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
    * so the return side now carries strings the shipped modules chose rather
    * than four booleans.
    */
-  RETURNED: 46,
+  // 46 -> 79: GymView's own two sites add 30 (a whole rendered week-row
+  // element, deep-scanned) and 3 (describeSlotOutcome's three strings).
+  RETURNED: 79,
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
@@ -18139,6 +18216,8 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   'social.ts#rankLeaderboard#entries.map x1 calls=1 callbacks=4 handed=0 returned=32 verdicts=objectx4',
   'social.ts#visitRefusals#context.some x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
   'social.ts#visitRefusals#context.some x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
+  'ladderView.tsx#GymView#props.map x1 calls=1 callbacks=1 handed=0 returned=30 verdicts=objectx1',
+  'ladderView.tsx#GymView#week.map x1 calls=1 callbacks=3 handed=0 returned=3 verdicts=stringx3',
 ]);
 
 /** One site's drive, as the line `MEMBER_CALL_SITE_OBSERVATIONS` pins. */
