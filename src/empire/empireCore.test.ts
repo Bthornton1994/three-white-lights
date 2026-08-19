@@ -2456,6 +2456,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'empireTuning.ts',
       'engagement.ts',
       'expansion.ts',
+      'ladder.ts',
       'npc.ts',
       'production.ts',
       'recruitment.ts',
@@ -2507,7 +2508,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // the map really has edges in it. Pinned exactly, so a directory whose
     // cross-references thinned out is a decision somebody signs.
     expect(bodies.size).toBe(shipped.length);
-    expect(pairs).toBe(45);
+    expect(pairs).toBe(48);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -2996,9 +2997,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 172 rather than 171 since `sealRate`'s label refusal arrived — a fixed
     // sentence with no substitution in it, which is what lets that refusal
     // name an unrecognised label without interpolating one.
-    expect(singleQuoted.size).toBe(172);
+    expect(singleQuoted.size).toBe(192);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(139);
+    expect(templateChunks.size).toBe(156);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3027,12 +3028,17 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'accepted',
       'ahead',
       'already-building',
+      'already-owned',
       'already-visited-today',
       'at-ceiling',
+      'at-the-top',
       'axes',
       'bare-bar',
       'behind',
+      'bench',
+      'bought',
       'budget',
+      'buy',
       'calendar-day',
       'chalk',
       'chance-draw',
@@ -3051,6 +3057,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'covered-day',
       'currency-purchase',
       'daily-allowance-spent',
+      'deadlift',
       'display-name',
       'displayName',
       'e1rm',
@@ -3059,9 +3066,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'fault-message',
       'faultMessage',
       'fixed-order-no-rotation',
+      'flat-bench',
       'friend',
       'friend-encouragement',
       'friend-visit-allowance-reset',
+      'garage',
       'global',
       'gym-bucks',
       'gym-bucks-below-cost',
@@ -3072,6 +3081,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymBucks',
       'gymBucksPerHour',
       'gymId',
+      'hoard',
       'idle-clock',
       'idle-only',
       'idle-tenure-days',
@@ -3083,6 +3093,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'legendary',
       'level',
       'monolift',
+      'move',
+      'moved',
       'national',
       'not-a-friend-gym',
       'not-enough-gym-bucks',
@@ -3096,6 +3108,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'paid-pull',
       'physio',
       'physio-days-saved',
+      'power-bar',
       'progression-reaching',
       'refusal',
       'refused',
@@ -3111,6 +3124,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'roster-at-capacity',
       'roster-slot',
       'rotate-greedy-per-check-in',
+      'rung-too-low',
       'save-for-physio-first',
       'settled-level',
       'settled-tenure-days',
@@ -3126,8 +3140,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'spend-once-per-calendar-day',
       'sponsorship',
       'spotter',
+      'squat',
+      'squat-rack',
+      'storage-unit',
       'store-purchase',
       'string',
+      'strip-mall-unit',
       'structural',
       'thrownMessage',
       'trained-day-upkeep',
@@ -3140,6 +3158,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'visited',
       'wall-clock',
       'wall-clock-earned',
+      'warehouse',
     ]);
 
     // The half the pin does not reach: a multi-word name inside a message. Run
@@ -3152,7 +3171,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(311);
+    expect(stringsChecked).toBe(348);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3181,7 +3200,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(130);
+    expect(probes).toBe(148);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -3424,6 +3443,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'empireTuning.ts': [],
       'engagement.ts': ['./empireCore', './empireTuning', './empireInvariant', './social'],
       'expansion.ts': ['./empireCore', './empireTuning'],
+      'ladder.ts': ['./empireTuning', './production'],
       'npc.ts': ['./empireCore', './empireTuning'],
       'production.ts': ['./empireCore', './empireTuning'],
       'recruitment.ts': ['./empireCore', './empireTuning'],
@@ -3441,7 +3461,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // sentinel rather than passing unchecked, and the set equality catches a
     // row left behind by a deleted module.
     expect(fenced).toBe(SHIPPED_MODULES.length);
-    expect(fenced).toBe(10);
+    expect(fenced).toBe(11);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every specifier anywhere
@@ -3466,7 +3486,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         specifiers += 1;
       }
     }
-    expect(specifiers).toBe(27);
+    expect(specifiers).toBe(29);
     // The resolver is driven rather than trusted, on both the shape the tree
     // has and the shape it does not, so this is a subject rather than a helper.
     expect(resolved('empireCore.ts', './empireTuning')).toBe('empireTuning.ts');
@@ -3549,7 +3569,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // module and there are exactly this many of them — the one tree-wide
       // failure this piece expects, pinned rather than bounded so a literal
       // arriving in it is a decision somebody signs.
-      expect(findings.get(REGISTERED_PATH)?.length, report(REGISTERED_PATH)).toBe(87);
+      expect(findings.get(REGISTERED_PATH)?.length, report(REGISTERED_PATH)).toBe(98);
       // And the row would fix it rather than hide it: audited under a path that
       // already carries the rule it is asking for, the same bytes report
       // nothing, because every literal sits inside a frozen, named, top-level
@@ -3575,7 +3595,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'the count of literals the audit finds in empireTuning.ts moved: an entry was added or ' +
         'removed, or the instrument stopped reporting. Both are decisions; neither is a tuning ' +
         `pass. First finding: ${formatFindings(asRenderer.slice(0, 1)).trim()}`,
-    ).toBe(87);
+    ).toBe(98);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });
