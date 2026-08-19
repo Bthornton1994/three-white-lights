@@ -259,8 +259,11 @@ const PINNED = Object.freeze({
    * says one of the three was not in this walk's domain to begin with — the
    * walk's own filters decide that, and the equality is what notices either
    * way.
+   *
+   * 299 -> 301 with Sprint 2's save codec: `src/game/saveGame.ts` and
+   * `src/game/saveGame.test.ts`.
    */
-  SCANNED_FILES: 299,
+  SCANNED_FILES: 301,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -275,8 +278,9 @@ const PINNED = Object.freeze({
    * `careerSurface.ts`, `useCareer.ts`, `CareerScreen.tsx`).
    */
   /** 93 -> 94 with Sprint 1c's `src/game/careerMeet.test.ts`; 94 -> 93 when
-   *  `careerCalendarPlaceholder.test.ts` was deleted with its trio. */
-  TEST_FILES: 93,
+   *  `careerCalendarPlaceholder.test.ts` was deleted with its trio; 93 -> 94
+   *  with Sprint 2's `src/game/saveGame.test.ts`. */
+  TEST_FILES: 94,
 });
 
 /**
