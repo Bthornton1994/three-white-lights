@@ -200,7 +200,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-import { SESSION_PROMPTS, freshDepthSearch, openSessionToFirstSet, readLoop } from './sessionDrive.mjs';
+import { SESSION_PROMPTS, adaptDepthSearch, freshDepthSearch, openSessionToFirstSet, readLoop } from './sessionDrive.mjs';
 import {
   MEET_DRIVE,
   driveMeetToItsEnd,
@@ -790,6 +790,257 @@ async function probePan(page, cdp, testId, label, panPx = PRESS_PROBE.PAN_PX) {
 }
 
 // ---------------------------------------------------------------------------
+// PROBE 3 — the JS-level second layer, added after this tool's PROBE 1/2 read
+// clean and a phone playtest found the callout coming back anyway
+// ---------------------------------------------------------------------------
+/**
+ * `src/lift/pressGuard.ts`'s `SUPPRESS_CONTEXT_MENU`. Unlike
+ * `-webkit-touch-callout`, whether a dispatched `contextmenu` event ends up
+ * `defaultPrevented` is standard DOM Events, not a CSS property table — so
+ * this IS observable in this engine, even though the native iOS callout the
+ * handler stands in for is not. What this probe answers and what it does not
+ * answer are different questions, and only the first is claimed:
+ *
+ *   answers: does `onContextMenu` reach the DOM and call `preventDefault`.
+ *   does NOT answer: whether iOS actually suppresses its native callout as a
+ *   result — that is the half named unverifiable in pressGuard.ts's header.
+ *
+ * Costs nothing to run: a synthetic `contextmenu` `MouseEvent` does not touch
+ * `onPressIn`/`onPressOut`, starts no rep and spends no meet attempt, so it
+ * runs on all three arms rather than being rationed like PROBE 2's pans.
+ */
+async function probeContextMenu(page, testId) {
+  return page.evaluate((id) => {
+    const el = document.querySelector(`[data-testid="${id}"]`);
+    if (el === null) return { reached: false };
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    el.dispatchEvent(event);
+    return { reached: true, defaultPrevented: event.defaultPrevented };
+  }, testId);
+}
+
+// ---------------------------------------------------------------------------
+// THE FULL REP CYCLE — the coverage gap a phone playtest found
+// ---------------------------------------------------------------------------
+/**
+ * Every reading above this point in the file is taken once, right after the
+ * arm opens — which is BRACE, before any press. `PROBE 1`'s gesture presses
+ * the COPY, not the stage, so it never advances the mechanic's phase either.
+ * So nothing in this file had ever re-read computed style after a real press
+ * had moved the rep past DESCENT — and a phone playtest found the callout
+ * suppressed correctly during the held-down depth press and NOT suppressed on
+ * the far side of it: the drive press, and the hold through lockout.
+ *
+ * This drives ONE real rep with a real mouse, through every phase —
+ * BRACE, DESCENT, HOLE, ASCENT (before and after the drive press), LOCKOUT,
+ * RESOLVED — and re-reads `user-select` / `touch-action` off
+ * `session-touch` and `session-prompt` at each boundary. `PRESS_NOT_SELECT`
+ * and `PRESS_NOT_TAKEN` are static objects on a `StyleSheet.create` module
+ * export, spread once at the screen root and the stage; nothing in `SetView`
+ * conditionally removes them on a phase change. So the honest prediction is
+ * NO deviation — and asserting that is still worth doing, deliberately,
+ * because "the mechanism has no reason to vary" is exactly the kind of claim
+ * CLAUDE.md's "verifying a mechanism is not verifying what follows from it"
+ * warns is not the same as measuring it. This measures it.
+ *
+ * SESSION ARM ONLY, and that scope is a decision rather than an oversight.
+ * The meet arm's nine attempts are already fully accounted for by PROBE 1's
+ * screen and PROBE 2's four pans plus what `driveMeetToItsEnd` needs to keep
+ * every lift off three misses (see the file header's arithmetic); a full rep
+ * cycle here would need at least one more attempt this arm's budget does not
+ * have. The debug arm is a frozen replay frame — `?replay=1.0&moment=brace` —
+ * and never advances past BRACE at all, so there is no cycle to drive. What
+ * this covers is a fact about `LiftStage`'s CSS placement, which every arm
+ * mounts identically (the CROSS-ARM section below already asserts the three
+ * arms compute the SAME press properties), so a defect here would not be
+ * session-specific even though the drive is.
+ *
+ * ADAPTIVE, NOT A SINGLE GUESSED HOLD — measured, not assumed. The first
+ * version of this probe held for a single fixed 1000ms (`sessionDrive.mjs`'s
+ * own `DEPTH_HOLD_MS` default) and it BURIED the rep outright on this run: a
+ * fresh lifter's very first prescribed set is not the RPE-8 triple that
+ * constant's derivation assumes, so the legal band sits somewhere else. That
+ * file's own header calls 1000ms "A STARTING POINT, not a fixed value" and
+ * ships `freshDepthSearch`/`adaptDepthSearch` for precisely this reason. This
+ * probe reuses both: on a miss it reads the miss's `detail`, adapts the hold
+ * exactly the way the shared driver does, waits for the app's own automatic
+ * next-rep reset, and retries — up to `FULL_CYCLE.MAX_ATTEMPTS` times. A miss
+ * along the way is not a defect in the app; it is the mechanic behaving
+ * correctly under a hold this probe guessed wrong, and every phase reading
+ * from every attempt — including the missed ones, which still visit BRACE,
+ * DESCENT and RESOLVED — is kept and checked, not just the ones from the
+ * attempt that finally reached LOCKOUT.
+ */
+async function probeFullRepCycle(page) {
+  const phases = [];
+  const snapshot = async (phase) => {
+    const touch = await readTarget(page, 'session-touch');
+    const text = await readTarget(page, 'session-prompt');
+    const loop = await readLoop(page);
+    phases.push({ phase, loopPrompt: loop.prompt, touch: touch?.self ?? null, text: text?.self ?? null });
+  };
+
+  await snapshot('0-brace-before-press');
+
+  // ADAPTIVE, NOT A SINGLE GUESSED HOLD. `sessionDrive.mjs`'s own header
+  // treats `DEPTH_HOLD_MS` as "A STARTING POINT, not a fixed value" and ships
+  // `adaptDepthSearch` for exactly this reason — measured here, not merely
+  // read: a single 1000ms hold buried the first rep of a fresh lifter's
+  // session outright (DEPTH_COLLAPSE before the release ever fired), which is
+  // the miss this codebase's own driver already expects and adapts away from
+  // rather than treating as a harness failure.
+  let search = freshDepthSearch();
+  let drovePastLockout = false;
+  let attemptsUsed = 0;
+  const misses = [];
+
+  for (let attempt = 1; attempt <= FULL_CYCLE.MAX_ATTEMPTS && !drovePastLockout; attempt += 1) {
+    attemptsUsed = attempt;
+    if (attempt > 1) {
+      const rebraced = await untilLoopSaying(page, SESSION_PROMPTS.BRACE, FULL_CYCLE.NEXT_BRACE_TIMEOUT_MS);
+      if (!rebraced) return { drove: attemptsUsed > 1, drovePastLockout: false, why: 'the next rep never re-braced', phases, attemptsUsed, misses };
+      await snapshot(`attempt${attempt}-0-brace-before-press`);
+    }
+
+    const box = await page.getByTestId('session-touch').boundingBox().catch(() => null);
+    if (box === null) return { drove: false, drovePastLockout: false, why: 'no session-touch box to start a rep on', phases, attemptsUsed, misses };
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+
+    const descending = await untilLoopSaying(page, SESSION_PROMPTS.DESCENT, FULL_CYCLE.PHASE_TIMEOUT_MS);
+    if (!descending) {
+      await page.mouse.up();
+      return { drove: false, drovePastLockout: false, why: 'holding never started a descent', phases, attemptsUsed, misses };
+    }
+    await snapshot(`attempt${attempt}-1-descent`);
+    await page.waitForTimeout(search.holdMs);
+    await snapshot(`attempt${attempt}-2-descent-mid-hold`);
+    await page.mouse.up();
+    await snapshot(`attempt${attempt}-3-immediately-after-release`);
+
+    // Did that release already end the rep (buried, or short of depth with
+    // nothing left to ascend)? The outcome and its detail are what
+    // `adaptDepthSearch` moves the NEXT attempt's hold on.
+    const afterRelease = await readLoop(page);
+    if (SESSION_PROMPTS.OUTCOMES.includes(afterRelease.prompt)) {
+      misses.push({ attempt, holdMs: search.holdMs, outcome: afterRelease.prompt, detail: afterRelease.detail });
+      search = adaptDepthSearch(search, { detail: afterRelease.detail });
+      continue;
+    }
+
+    const inHole = await untilLoopSaying(page, 'OUT OF THE HOLE', FULL_CYCLE.PHASE_TIMEOUT_MS);
+    if (inHole) await snapshot(`attempt${attempt}-4-hole`);
+
+    // WAIT FOR THE DRIVE CUE **OR RESOLUTION**, TOGETHER — exactly
+    // `sessionDrive.mjs`'s own `playOneRep`: `saying(DRIVE) || resolved(s)`.
+    // The ascent can end on its own (a stall collapse, or the ascent timing
+    // out) with no drive cue ever opening. Waiting on the cue ALONE and then
+    // separately reading `readLoop()` after giving up raced the app's own
+    // automatic next-rep reset: by the time the wait gave up, the miss had
+    // already resolved AND the next rep had already re-braced, so the
+    // "outcome" read back was the NEXT rep's BRACE prompt — not a miss reason
+    // at all, and `adaptDepthSearch` silently no-opped on it. Measured on this
+    // engine: attempt 2 recorded outcome `"TAP AND HOLD TO DESCEND"` and
+    // attempt 3 held the exact same `holdMs` as attempt 2 as a result.
+    const ascentEnded = await untilLoop(
+      page,
+      (loop) => (loop.prompt !== null && loop.prompt.includes(SESSION_PROMPTS.DRIVE)) || SESSION_PROMPTS.OUTCOMES.includes(loop.prompt),
+      FULL_CYCLE.DRIVE_TIMEOUT_MS,
+    );
+    const driveOpen = ascentEnded !== null && ascentEnded.prompt !== null && ascentEnded.prompt.includes(SESSION_PROMPTS.DRIVE);
+    await snapshot(`attempt${attempt}-5-ascent-before-drive(drive-cue-seen=${driveOpen})`);
+    if (!driveOpen) {
+      const outcome = ascentEnded ?? (await readLoop(page));
+      misses.push({ attempt, holdMs: search.holdMs, outcome: outcome.prompt, detail: outcome.detail });
+      search = adaptDepthSearch(search, { detail: outcome.detail });
+      continue;
+    }
+
+    await page.mouse.down();
+    await snapshot(`attempt${attempt}-6-immediately-after-drive-press`);
+    const lockedOut = await untilLoopSaying(page, 'LOCK IT', FULL_CYCLE.DRIVE_TIMEOUT_MS);
+    if (lockedOut) {
+      await snapshot(`attempt${attempt}-7-lockout-still-held`);
+      drovePastLockout = true;
+    }
+    await page.waitForTimeout(150);
+    await page.mouse.up();
+    await snapshot(`attempt${attempt}-8-after-release-post-lockout`);
+
+    if (!lockedOut) {
+      const afterDrive = await readLoop(page);
+      misses.push({ attempt, holdMs: search.holdMs, outcome: afterDrive.prompt, detail: afterDrive.detail });
+      search = adaptDepthSearch(search, { detail: afterDrive.detail });
+    }
+  }
+
+  await page.waitForTimeout(PRESS_PROBE.READ_SETTLE_MS);
+  await snapshot('resolved-or-reset-for-next-rep');
+
+  return { drove: true, drovePastLockout, phases, attemptsUsed, misses };
+}
+
+/**
+ * Every number this probe's retry loop moves on. Not game feel — `holdMs`
+ * itself comes from `sessionDrive.mjs`'s adaptive search, which already owns
+ * the mechanic's real timing band; these are just how long the robot waits
+ * for a prompt and how many misses it tolerates before giving up.
+ */
+const FULL_CYCLE = Object.freeze({
+  /**
+   * `sessionDrive.mjs`'s own adaptive search is written to converge, not to
+   * guarantee a make on the first try — a fresh lifter's first rep measured
+   * buried outright at the 1000ms starting point. Bounded rather than
+   * unbounded so a genuinely broken mechanic fails this probe instead of
+   * hanging it.
+   */
+  MAX_ATTEMPTS: 6,
+  PHASE_TIMEOUT_MS: PRESS_PROBE.HOLD_MS * 4,
+  DRIVE_TIMEOUT_MS: PRESS_PROBE.HOLD_MS * 6,
+  /** REP_RESULT_HOLD_MS plus the reset, generously. */
+  NEXT_BRACE_TIMEOUT_MS: 8000,
+});
+
+/**
+ * Poll `readLoop`'s prompt text until it CONTAINS `wanted`, or the deadline
+ * passes. Substring rather than equality, matching `sessionDrive.mjs`'s own
+ * `saying()` — `LIFT_COPY.PROMPT.ASCENT_CUE_OPEN` is `'DRIVE — HOLD IT'`, not
+ * the bare `SESSION_PROMPTS.DRIVE` this checks against, and an equality check
+ * here silently never matches it. Measured, not theorised: the first version
+ * of this probe used `===` and reported `drovePastLockout: false` on every
+ * run, because it could never see the drive cue open at all.
+ */
+async function untilLoopSaying(page, wanted, timeoutMs) {
+  const started = Date.now();
+  for (;;) {
+    const loop = await readLoop(page);
+    if (loop.prompt !== null && loop.prompt.includes(wanted)) return true;
+    if (Date.now() - started >= timeoutMs) return false;
+    await page.waitForTimeout(30);
+  }
+}
+
+/**
+ * Poll `readLoop` until `predicate(loop)` is true, returning the loop state
+ * that satisfied it (or `null` on timeout) — unlike `untilLoopSaying`, which
+ * only reports whether ONE substring showed up and discards the reading that
+ * proved it. Needed wherever more than one ending is legitimate at once, the
+ * way `sessionDrive.mjs`'s own `playOneRep` waits on
+ * `saying(DRIVE) || resolved(s)`: waiting on the cue alone and then reading
+ * state separately after giving up races the app's own automatic next-rep
+ * reset, and the second read can already belong to a different rep.
+ */
+async function untilLoop(page, predicate, timeoutMs) {
+  const started = Date.now();
+  for (;;) {
+    const loop = await readLoop(page);
+    if (predicate(loop)) return loop;
+    if (Date.now() - started >= timeoutMs) return null;
+    await page.waitForTimeout(30);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Arm drivers
 // ---------------------------------------------------------------------------
 
@@ -1119,6 +1370,36 @@ for (const arm of armsToRun) {
     probeElements.size === 2 && target.box.width > 0 && text.box.width > 0,
     `ARM ${arm.id}: the pressed element and the copy are 2 different drawn elements`,
     `${arm.touchTestId} ${JSON.stringify(target.box)} vs ${arm.textTestId} ${JSON.stringify(text.box)}`,
+  );
+
+  // -------------------------------------------------------------------------
+  // PROBE 3 — the context-menu guard, on both elements the CSS guard covers
+  // -------------------------------------------------------------------------
+  // Taken HERE, before PROBE 1/2 spend any gesture, because a synthetic
+  // `contextmenu` event costs nothing (it never touches
+  // `onPressIn`/`onPressOut`) but the ELEMENT it is dispatched on has to still
+  // be on screen — and on the meet arm, PROBE 2's last pan spends the meet's
+  // final attempt and ends it. Measured: taken after PROBE 2 instead, this
+  // read `attempt-touch` and `attempt-prompt` as gone (`{"reached":false}`)
+  // because the meet had already moved to its recap. That is an ordering bug
+  // in this instrument, not a finding about the app, and the fix is ordering,
+  // not a workaround.
+  const contextMenu = {
+    touch: await probeContextMenu(page, arm.touchTestId),
+    text: await probeContextMenu(page, arm.textTestId),
+  };
+  console.log(
+    `  contextmenu ${arm.touchTestId}=${JSON.stringify(contextMenu.touch)}  ${arm.textTestId}=${JSON.stringify(contextMenu.text)}`,
+  );
+  check(
+    contextMenu.touch.reached && contextMenu.touch.defaultPrevented === true,
+    `ARM ${arm.id}: PROBE 3 — a dispatched contextmenu event on ${arm.touchTestId} is defaultPrevented`,
+    JSON.stringify(contextMenu.touch),
+  );
+  check(
+    contextMenu.text.reached && contextMenu.text.defaultPrevented === true,
+    `ARM ${arm.id}: PROBE 3 — a dispatched contextmenu event on ${arm.textTestId} is defaultPrevented (via bubbling to the screen root)`,
+    JSON.stringify(contextMenu.text),
   );
 
   // -------------------------------------------------------------------------
@@ -1507,6 +1788,44 @@ for (const arm of armsToRun) {
     `pointercancel=${pans['as-shipped-small'].cancels} at ${PRESS_PROBE.SMALL_PAN_PX}px vs ${pans['as-shipped'].cancels} at ${PRESS_PROBE.PAN_PX}px, both with touch-action ${JSON.stringify(pans['as-shipped-small'].touchAction)}; wanted exactly ${PRESS_PROBE.PAN_CANCELS_WHEN_TOUCH_ACTION_NONE}. The page heard ${pans['as-shipped-small'].moves} touchmove(s) of the ${PRESS_PROBE.PAN_STEPS} dispatched before that verdict`,
   );
 
+  // ---------------------------------------------------------------------------
+  // THE FULL REP CYCLE — session arm only, see probeFullRepCycle's header
+  // ---------------------------------------------------------------------------
+  let fullCycle = null;
+  if (arm.id === 'session') {
+    fullCycle = await probeFullRepCycle(page);
+    for (const step of fullCycle.phases) {
+      console.log(
+        `  cycle ${step.phase.padEnd(38)} loop-prompt=${JSON.stringify(step.loopPrompt).padEnd(28)} ` +
+          `touch=${JSON.stringify(step.touch)}  text=${JSON.stringify(step.text)}`,
+      );
+    }
+    check(
+      fullCycle.drove && fullCycle.drovePastLockout,
+      `ARM ${arm.id}: PROBE 3 DOMAIN — a real rep was driven through every phase to LOCKOUT (adaptively, up to ${FULL_CYCLE.MAX_ATTEMPTS} tries), so the check below has something to say`,
+      fullCycle.drove
+        ? `drove ${fullCycle.phases.length} phase reading(s) over ${fullCycle.attemptsUsed} attempt(s), drovePastLockout=${fullCycle.drovePastLockout}` +
+          (fullCycle.misses.length === 0 ? '' : `; misses along the way: ${fullCycle.misses.map((m) => `#${m.attempt}@${m.holdMs}ms=${JSON.stringify(m.outcome)}`).join(', ')}`)
+        : fullCycle.why,
+    );
+    if (fullCycle.drove) {
+      const deviations = fullCycle.phases.filter((step) => {
+        const touchOk = step.touch === null || (step.touch.userSelect === 'none' && step.touch.touchAction === 'none');
+        const textOk = step.text === null || step.text.userSelect === 'none';
+        return !touchOk || !textOk;
+      });
+      check(
+        deviations.length === 0,
+        `ARM ${arm.id}: PROBE 3 — user-select and touch-action hold at every phase of a real rep, not only at BRACE`,
+        deviations.length === 0
+          ? `${fullCycle.phases.length} phase(s) checked, none deviated`
+          : deviations
+              .map((step) => `${step.phase}: touch=${JSON.stringify(step.touch)} text=${JSON.stringify(step.text)}`)
+              .join('; '),
+      );
+    }
+  }
+
   const shotPath = path.join(outDir, `${arm.id}-surface.png`);
   await page.screenshot({ path: shotPath }).catch(() => {});
 
@@ -1515,6 +1834,8 @@ for (const arm of armsToRun) {
     what: arm.what,
     played: arm.played,
     reached: true,
+    contextMenu,
+    fullCycle,
     queryString: search,
     touchTestId: arm.touchTestId,
     textTestId: arm.textTestId,

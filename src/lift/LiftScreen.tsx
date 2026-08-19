@@ -48,7 +48,7 @@ import { promptFor, type LiftOutcome, type LiftState } from '../game/lift';
 import { LIFT_PALETTE } from './liftPalette';
 import { LiftStage } from './LiftStage';
 import { totalKgFor } from './liftFrame';
-import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN } from './pressGuard';
+import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN, SUPPRESS_CONTEXT_MENU } from './pressGuard';
 import {
   captureFrameFor,
   replayProbeJson,
@@ -231,7 +231,7 @@ export function LiftScreen({ replay }: LiftScreenProps = {}): React.ReactElement
   }, [resolved, restart, loadRatio, onPressIn]);
 
   return (
-    <View style={styles.root} testID="lift-screen">
+    <View style={styles.root} testID="lift-screen" {...SUPPRESS_CONTEXT_MENU}>
       {frame === null ? null : <ReplayProbe frame={frame} />}
       <Lights outcome={resolution === null ? null : resolution.outcome} />
 

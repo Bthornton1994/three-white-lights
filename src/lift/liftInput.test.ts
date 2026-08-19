@@ -60,6 +60,16 @@
  * property Blink does not implement, so its computed value is unreadable in the
  * browser check (a NAMED SKIPPED check there) and its presence in the source is
  * all that is covered — here.
+ *
+ * `SUPPRESS_CONTEXT_MENU` (pressGuard.ts) exists because that gap stopped being
+ * theoretical: a phone playtest found the callout returning on the far side of
+ * the descent, which no property this environment can read back could confirm
+ * or deny. This file covers the same half as before — that the guard is
+ * declared, on the right ancestor, from the shared module — and
+ * `tools/verify-lift-press.mjs` covers a half it could not before: a
+ * dispatched `contextmenu` event is standard DOM, not a CSS property, so
+ * whether `preventDefault` actually fires IS observable in this browser, even
+ * though the native iOS callout it stands in for is not.
  */
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -68,7 +78,7 @@ import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN } from './pressGuard';
+import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN, SUPPRESS_CONTEXT_MENU } from './pressGuard';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -88,9 +98,17 @@ const PRESS_SURFACES = Object.freeze({
   PRESSABLE_TAGS: Object.freeze(['Pressable']),
   /** The module both style objects have to come from, repository-relative. */
   GUARD_MODULE: 'src/lift/pressGuard.ts',
-  /** The two exports, by the name the JSX spread has to bind to. */
+  /** The two style-object exports, by the name the JSX spread has to bind to. */
   INHERITED: 'PRESS_NOT_SELECT',
   ON_THE_TARGET: 'PRESS_NOT_TAKEN',
+  /**
+   * The third export, a PROP rather than a style — spread directly onto the
+   * JSX element (`{...SUPPRESS_CONTEXT_MENU}`), not into a `style={...}`
+   * attribute. Placed like `PRESS_NOT_SELECT`: on an ancestor, because
+   * `contextmenu` bubbles the same way `user-select` inherits, and the callout
+   * it stands in for can originate from the stage or from the copy beside it.
+   */
+  CONTEXT_MENU: 'SUPPRESS_CONTEXT_MENU',
 
   /**
    * How many `<LiftStage>` press surfaces the repository has today.
@@ -367,6 +385,32 @@ function attributesOf(
   return { style, testID };
 }
 
+/**
+ * Does this JSX element spread `SUPPRESS_CONTEXT_MENU` among its attributes,
+ * bound to the guard module rather than to a same-named local?
+ *
+ * A separate walk from `spreadsIn` because the two live in different JSX
+ * positions: `style={...}` spreads a STYLE OBJECT, this looks at the
+ * element's own attribute list for a `{...identifier}` spread — the shape
+ * `{...SUPPRESS_CONTEXT_MENU}` actually takes on the element, not inside a
+ * style. `bindsToGuardModule` is reused unchanged: the identifier-vs-import
+ * hole it closes for the two style objects is the same hole a same-spelled
+ * local `SUPPRESS_CONTEXT_MENU` would open here.
+ */
+function hasContextMenuGuard(
+  element: ts.JsxOpeningLikeElement,
+  module: Module,
+  loader: Loader,
+): boolean {
+  for (const attribute of element.attributes.properties) {
+    if (!ts.isJsxSpreadAttribute(attribute)) continue;
+    const expr = attribute.expression;
+    if (!ts.isIdentifier(expr) || expr.text !== PRESS_SURFACES.CONTEXT_MENU) continue;
+    if (bindsToGuardModule(expr.text, module, loader)) return true;
+  }
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // The discovery
 // ---------------------------------------------------------------------------
@@ -382,6 +426,8 @@ interface PressSurface {
   readonly ancestorHasNotSelect: boolean;
   /** Which ancestor did, for the failure text. */
   readonly notSelectOn: string | null;
+  /** Does ANY ancestor of the stage spread the context-menu guard? */
+  readonly ancestorHasContextMenuGuard: boolean;
 }
 
 /**
@@ -419,6 +465,9 @@ function pressSurfacesIn(module: Module, loader: Loader): readonly PressSurface[
             PRESS_SURFACES.INHERITED,
           ),
         );
+        const withContextMenuGuard = enclosing.find((element) =>
+          hasContextMenuGuard(element, module, loader),
+        );
         out.push({
           file: module.file,
           pressTag: target === undefined ? null : target.tagName.getText(module.ast),
@@ -431,6 +480,7 @@ function pressSurfacesIn(module: Module, loader: Loader): readonly PressSurface[
           ancestorHasNotSelect: withNotSelect !== undefined,
           notSelectOn:
             withNotSelect === undefined ? null : withNotSelect.tagName.getText(module.ast),
+          ancestorHasContextMenuGuard: withContextMenuGuard !== undefined,
         });
       }
       chain.push(opening);
@@ -467,10 +517,10 @@ const surfacesFor = (text: string): readonly PressSurface[] =>
   pressSurfacesIn(parseModule('src/fixture/Fixture.tsx', text), fixtureLoader);
 
 const GOOD = `
-  import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN } from '../lift/pressGuard';
+  import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN, SUPPRESS_CONTEXT_MENU } from '../lift/pressGuard';
   export function Fixture() {
     return (
-      <View style={styles.root} testID="fixture">
+      <View style={styles.root} testID="fixture" {...SUPPRESS_CONTEXT_MENU}>
         <Text style={styles.prompt}>x</Text>
         <Pressable style={styles.stage} testID="fixture-touch">
           <LiftStage state={s} />
@@ -493,6 +543,28 @@ describe('the discovery sees a press surface, and sees each half go missing', ()
     expect(surface?.testID).toBe('fixture-touch');
     expect([surface?.targetHasNotTaken, surface?.ancestorHasNotSelect]).toEqual([true, true]);
     expect(surface?.notSelectOn).toBe('View');
+    expect(surface?.ancestorHasContextMenuGuard).toBe(true);
+  });
+
+  it('CONTROL: the context-menu guard going missing, and a same-spelled local shadowing it', () => {
+    // Gone entirely — the shape the shipped fix was in before this playtest.
+    const noContextMenuGuard = surfacesFor(GOOD.replace(' {...SUPPRESS_CONTEXT_MENU}', ''));
+    expect(noContextMenuGuard[0]?.ancestorHasContextMenuGuard).toBe(false);
+    // Present as a spread, but a local constant spelled the same rather than an
+    // import from the guard module — the same identifier-text hole the other
+    // two objects are guarded against.
+    const shadowedContextMenuGuard = surfacesFor(
+      GOOD.replace(
+        "import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN, SUPPRESS_CONTEXT_MENU } from '../lift/pressGuard';",
+        "import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN } from '../lift/pressGuard';\n  const SUPPRESS_CONTEXT_MENU = { onContextMenu: () => {} };",
+      ),
+    );
+    expect(shadowedContextMenuGuard[0]?.ancestorHasContextMenuGuard).toBe(false);
+    // Imported, but from somewhere that is not the guard module.
+    const wrongModuleContextMenuGuard = surfacesFor(
+      GOOD.replace('../lift/pressGuard', '../lift/otherGuard'),
+    );
+    expect(wrongModuleContextMenuGuard[0]?.ancestorHasContextMenuGuard).toBe(false);
   });
 
   it('CONTROL: the four ways the fix goes missing are each seen', () => {
@@ -534,8 +606,9 @@ describe('the discovery sees a press surface, and sees each half go missing', ()
     //    identifier-text hole CLAUDE.md records from `progression.test.ts`.
     const shadowed = surfacesFor(
       GOOD.replace(
-        "import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN } from '../lift/pressGuard';",
-        'const PRESS_NOT_SELECT = { userSelect: "none" };\n  const PRESS_NOT_TAKEN = { touchAction: "manipulation" };',
+        "import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN, SUPPRESS_CONTEXT_MENU } from '../lift/pressGuard';",
+        'import { SUPPRESS_CONTEXT_MENU } from \'../lift/pressGuard\';\n' +
+          '  const PRESS_NOT_SELECT = { userSelect: "none" };\n  const PRESS_NOT_TAKEN = { touchAction: "manipulation" };',
       ),
     );
     expect([shadowed[0]?.targetHasNotTaken, shadowed[0]?.ancestorHasNotSelect]).toEqual([
@@ -706,8 +779,28 @@ describe('every lift press surface in the repository carries the press guard', (
     expect(bare, bare.join('\n')).toEqual([]);
   });
 
-  it('NON-VACUITY: the two checks above walked a real list, and the count is exact', () => {
-    // Both filters above are empty when the domain is empty, which is precisely
+  it(
+    'an ancestor of every stage spreads the context-menu guard [context-menu-guard-on-every-played-surface]',
+    () => {
+      // THE PLAYTEST FINDING THIS ROW EXISTS FOR. The callout came back on the
+      // far side of the descent, on a property Blink cannot even store in a
+      // parsed rule — see pressGuard.ts's header. This is the JS-level second
+      // layer, and its placement follows PRESS_NOT_SELECT exactly: an ancestor,
+      // because `contextmenu` bubbles the way `user-select` inherits.
+      const bare = repositoryPressSurfaces()
+        .filter((surface) => !surface.ancestorHasContextMenuGuard)
+        .map(
+          (surface) =>
+            `${surface.file} mounts <${PRESS_SURFACES.STAGE}> with no ancestor spreading ` +
+            `${PRESS_SURFACES.CONTEXT_MENU} from ${PRESS_SURFACES.GUARD_MODULE}, so a sustained touch on ` +
+            'the stage or the copy beside it has no JS-level fallback if the CSS property does not apply',
+        );
+      expect(bare, bare.join('\n')).toEqual([]);
+    },
+  );
+
+  it('NON-VACUITY: the three checks above walked a real list, and the count is exact', () => {
+    // All three filters are empty when the domain is empty, which is precisely
     // how a discovery that stopped working would look. Counts, not bounds.
     const surfaces = repositoryPressSurfaces();
     expect(
@@ -717,6 +810,10 @@ describe('every lift press surface in the repository carries the press guard', (
     expect(
       surfaces.filter((surface) => surface.ancestorHasNotSelect).length,
       'no press surface has an ancestor carrying the inheriting pair, so the check above walked an empty list',
+    ).toBe(PRESS_SURFACES.COUNT);
+    expect(
+      surfaces.filter((surface) => surface.ancestorHasContextMenuGuard).length,
+      'no press surface has an ancestor spreading the context-menu guard, so the check above walked an empty list',
     ).toBe(PRESS_SURFACES.COUNT);
   });
 });
@@ -761,5 +858,27 @@ describe('the guard module holds exactly the three properties, split by inherita
     expect(guard).toContain('rgba(0, 0, 0, 0)');
     // And the limit this file cannot cover, for the same reason.
     expect(guard).toContain('NAMED SKIPPED check');
+  });
+});
+
+describe('the context-menu guard is exactly a preventDefault handler', () => {
+  it('holds exactly one key, and it is the DOM prop name', () => {
+    expect(Object.keys(SUPPRESS_CONTEXT_MENU)).toEqual(['onContextMenu']);
+  });
+
+  it('calling it calls preventDefault on what it is given, once', () => {
+    let calls = 0;
+    SUPPRESS_CONTEXT_MENU.onContextMenu({
+      preventDefault: () => {
+        calls += 1;
+      },
+    });
+    expect(calls).toBe(1);
+  });
+
+  it('the module says why this is a prop and not a style, so the JSX shape is a decision', () => {
+    const guard = source(PRESS_SURFACES.GUARD_MODULE);
+    expect(guard).toContain('excess-property check');
+    expect(guard).toContain('forwardedProps');
   });
 });

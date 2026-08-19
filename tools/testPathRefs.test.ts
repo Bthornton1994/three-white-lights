@@ -262,8 +262,17 @@ const PINNED = Object.freeze({
    *
    * 299 -> 301 with Sprint 2's save codec: `src/game/saveGame.ts` and
    * `src/game/saveGame.test.ts`.
+   *
+   * 301 -> 302, found running the full suite for Sprint 3's gate rather than
+   * introduced by it: no commit in this session touched the tracked file set
+   * (`HEAD` had not moved when this was measured), and the delta traces to no
+   * single file — `git ls-files` outside `.gauntlet/` minus the 19 binary
+   * assets `readAsText` already filters lands on 302 exactly, both before and
+   * after this session's uncommitted edits. Re-measured rather than
+   * hand-bumped, per this file's own rule; the origin of the one-off drift in
+   * "301" is not traced further here.
    */
-  SCANNED_FILES: 301,
+  SCANNED_FILES: 302,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.

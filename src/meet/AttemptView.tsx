@@ -69,7 +69,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LiftStage } from '../lift/LiftStage';
 import { useLiftLoop } from '../lift/useLiftLoop';
-import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN } from '../lift/pressGuard';
+import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN, SUPPRESS_CONTEXT_MENU } from '../lift/pressGuard';
 import { promptFor, type LiftResolution } from '../game/lift';
 import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
 import { ATTEMPTS_PER_LIFT } from '../game/meet';
@@ -142,7 +142,7 @@ export function AttemptView({
   if (live === null) return <View style={styles.root} />;
 
   return (
-    <View style={styles.root} testID="meet-attempt">
+    <View style={styles.root} testID="meet-attempt" {...SUPPRESS_CONTEXT_MENU}>
       <View style={styles.copy}>
       <View style={styles.header}>
         <Text style={styles.eyebrow} testID="attempt-label">

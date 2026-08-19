@@ -38,7 +38,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LiftStage } from '../lift/LiftStage';
 import { useLiftLoop } from '../lift/useLiftLoop';
 import { totalKgFor } from '../lift/liftFrame';
-import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN } from '../lift/pressGuard';
+import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN, SUPPRESS_CONTEXT_MENU } from '../lift/pressGuard';
 import { promptFor, type LiftOutcome } from '../game/lift';
 import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
 import { SESSION_COPY, SESSION_LAYOUT, SESSION_TUNING } from '../game/sessionTuning';
@@ -136,7 +136,7 @@ export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElem
   const setNumber = currentSetNumber(state);
 
   return (
-    <View style={styles.root} testID="session-set">
+    <View style={styles.root} testID="session-set" {...SUPPRESS_CONTEXT_MENU}>
       <View style={styles.header}>
         <Text style={styles.setLabel} testID="session-set-label">
           {`${SESSION_COPY.SET_LABEL} ${setNumber} ${SESSION_COPY.SET_OF} ${plan.workSets}`}

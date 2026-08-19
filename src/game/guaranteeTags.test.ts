@@ -1080,8 +1080,13 @@ const NUMBER_COVERAGE = {
    *
    * 73 -> 72 when the placeholder trio was deleted: its
    * `placeholder-cannot-grow-calendar-authority` paragraph left with it.
+   *
+   * 72 -> 73 with the context-menu guard's tag in `pressGuard.ts`
+   * (`context-menu-guard-on-every-played-surface`), added against the Sprint 3
+   * gate's phone-playtest finding. No numeral in the paragraph, so `CLAIMED`
+   * stood still.
    */
-  TAGGED_PARAGRAPHS: 72,
+  TAGGED_PARAGRAPHS: 73,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
@@ -1122,7 +1127,11 @@ const NUMBER_COVERAGE = {
   //
   // 64 -> 63 when the placeholder's tag and its named body left with the trio;
   // its body held a bare 1 (the one-import pin), so HOLDING_ONE moved with it.
-  NAMED_BODIES: 63,
+  //
+  // 63 -> 64 with the context-menu guard's tag. Its named body states no
+  // numeral at all — it walks a discovered list and compares it to an empty
+  // array — so neither weakness count below moved with it.
+  NAMED_BODIES: 64,
   NAMED_BODIES_HOLDING_ZERO: 48,
   NAMED_BODIES_HOLDING_ONE: 47,
   /**
@@ -1421,8 +1430,14 @@ const TRANSCRIPT_BAR = {
    * 29 -> 31 on Sprint 1c's two adapter witnesses (`careerMeet.ts`'s verbatim
    * id and by-reference rules), both transcripts pasted from real red runs at
    * this tree.
+   *
+   * 31 -> 32 on the context-menu guard witness
+   * (`context-menu-guard-on-every-played-surface`), transcript pasted from a
+   * real red run. It quotes no bare scalar — the reddened assertion's message
+   * is a structural sentence, not a count — so `WITH_A_MEASURED_NUMBER` stays
+   * where it was.
    */
-  GRADED: 31,
+  GRADED: 32,
   /** ...and rows excused because their transcript predates it. */
   // 37 -> 36 when the placeholder's witness retired with its subject
   // (Sprint 1c): its transcript predated the rule, so the excused count is
@@ -1600,10 +1615,16 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // never states the anchor day's date; the calendar computes it), so both
   // rows are flagged and every one of their eleven numerals lands in
   // `unresolved`.
-  rows: 59,
-  flagged: 46,
-  numerals: 190,
-  unresolved: 100,
+  //
+  // 59/46/190/100 -> 60/47/191/101 on the context-menu guard witness. Its
+  // transcript quotes vitest's own `Array(1)` elision — one numeral — which
+  // does not resolve in the named test's body (the test's own source contains
+  // no digit at all), so the row is flagged and its one numeral lands in
+  // `unresolved`.
+  rows: 60,
+  flagged: 47,
+  numerals: 191,
+  unresolved: 101,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -1952,8 +1973,12 @@ const REPLACEMENT_BAR = {
    *
    * 20 -> 19 when the placeholder's witness retired with its subject: its row
    * carried a replacement, and the row is gone.
+   *
+   * 19 -> 20 on the context-menu guard's witness: `mutatedTo` records the
+   * screen root's opening tag with the spread deleted, the exact line the
+   * mutant ran as.
    */
-  REPRODUCIBLE: 19,
+  REPRODUCIBLE: 20,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2136,6 +2161,34 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + 'touch-action does not inherit, so no ancestor can supply it: the browser will claim a '
       + 'drifting press and the app will not hear the rest of the gesture: expected [ Array(1) ] to '
       + 'deeply equal []',
+  },
+  // -------------------------------------------------------------------------
+  // The context-menu guard — the JS-level second layer added after a phone
+  // playtest found the callout coming back on the far side of the descent
+  // (Sprint 3's gate). `SUPPRESS_CONTEXT_MENU`'s `onContextMenu` is spread onto
+  // the same screen root `PRESS_NOT_SELECT` is, and the mutant removes exactly
+  // that spread from `SetView.tsx` — the same file and the same shape the
+  // sibling `press-guard-on-every-played-surface` witness above uses, on the
+  // sibling requirement `liftInput.test.ts` grew for this export.
+  {
+    guarantee: 'context-menu-guard-on-every-played-surface',
+    mutatedFile: 'src/session/SetView.tsx',
+    mutated: '    <View style={styles.root} testID="session-set" {...SUPPRESS_CONTEXT_MENU}>',
+    mutatedTo: '    <View style={styles.root} testID="session-set">',
+    testFile: 'src/lift/liftInput.test.ts',
+    redAssertion:
+      "            `${PRESS_SURFACES.CONTEXT_MENU} from ${PRESS_SURFACES.GUARD_MODULE}, so a sustained touch on ` +\n"
+      + "            'the stage or the copy beside it has no JS-level fallback if the CSS property does not apply',\n"
+      + '        );\n'
+      + '      expect(bare, bare.join(\'\\n\')).toEqual([]);',
+    observed:
+      'FAIL  src/lift/liftInput.test.ts > every lift press surface in the repository carries the '
+      + 'press guard > an ancestor of every stage spreads the context-menu guard '
+      + '[context-menu-guard-on-every-played-surface]\n'
+      + 'AssertionError: src/session/SetView.tsx mounts <LiftStage> with no ancestor spreading '
+      + 'SUPPRESS_CONTEXT_MENU from src/lift/pressGuard.ts, so a sustained touch on the stage or the '
+      + 'copy beside it has no JS-level fallback if the CSS property does not apply: expected '
+      + '[ Array(1) ] to deeply equal []',
   },
   // -------------------------------------------------------------------------
   // GDD §2.1's career spine — which meets a lifter may enter, and the two ways

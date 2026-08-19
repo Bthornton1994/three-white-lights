@@ -105,10 +105,86 @@
  * `tools/verify-lift-press.mjs`, and the declaration's presence is what
  * `liftInput.test.ts` covers instead. Neither file pretends to cover the other's
  * half.
+ *
+ * THAT GAP STOPPED BEING THEORETICAL. A phone playtest (past GDD §12.1's first
+ * one) found the callout coming back — not everywhere, but on the far side of
+ * the descent: correctly suppressed for the held-down depth press, un-suppressed
+ * for the drive press and the hold through lockout. Investigated rather than
+ * patched blind:
+ *
+ *   - `tools/verify-lift-press.mjs`'s computed-style reads were taken ONCE, at
+ *     BRACE, before any press. A new probe drives a real rep through every phase
+ *     — DESCENT, HOLE, ASCENT, LOCKOUT, RESOLVED — and re-reads `user-select`
+ *     and `touch-action` at each boundary. They never move: same values from
+ *     BRACE through the next rep's BRACE. So the phase-dependent symptom is real
+ *     on a phone and absent from every property this engine can read back,
+ *     which narrows it to the one property that ISN'T readable here.
+ *   - Measured directly, not inferred: `React.createElement`'s compiled output
+ *     for `WebkitTouchCallout: 'none'` reaches the browser as the correct CSS
+ *     text — `.r-WebkitTouchCallout-xxxxxxx{-webkit-touch-callout:none;}`,
+ *     confirmed by calling the compiler in isolation. But
+ *     `document.styleSheets[…].cssRules[…].cssText` on the LIVE page reports
+ *     that same rule with an EMPTY body. Blink's `CSSStyleSheet.insertRule`
+ *     parses the declaration and discards it, because Blink has never
+ *     implemented the property under any name — not merely "can't read the
+ *     computed value back" (the old framing) but "never stores the declaration
+ *     in the first place." That is sharper evidence for the same disclosed gap,
+ *     not a new one: it says nothing about WebKit, which originated the
+ *     property and — unlike Blink — has a reason to keep it.
+ *
+ * So this remains something no engine available in this repository's tooling
+ * can confirm or refute on the one property that matters. `SUPPRESS_CONTEXT_MENU`
+ * below is the response: a second, CSS-independent layer that does not ask
+ * Blink to store a declaration it has no record for.
  */
 export const PRESS_NOT_SELECT = {
   userSelect: 'none',
   WebkitTouchCallout: 'none',
+} as const;
+
+/**
+ * A JS-level second layer for the same gesture `-webkit-touch-callout` is
+ * supposed to suppress: the native "Copy / Select / Look Up" callout a
+ * sustained touch produces. Spread onto the SAME element as `PRESS_NOT_SELECT`
+ * — `onContextMenu` bubbles, so one declaration on the screen root catches an
+ * event that originated on the stage or on the copy beside it, exactly the two
+ * places `PRESS_NOT_SELECT` already covers by inheritance.
+ *
+ * WHY A SEPARATE MECHANISM RATHER THAN A HARDER PUSH ON THE CSS PROPERTY. The
+ * callout is not only a CSS-suppressible highlight; on iOS it is frequently
+ * surfaced as a native `contextmenu`-equivalent gesture, and preventing that
+ * DOM event is a standard, engine-independent mitigation for exactly this
+ * failure mode — it does not depend on a browser's CSS property table, only on
+ * the DOM Events spec every engine here implements identically. Verified
+ * directly against a real dispatched `contextmenu` event in this repository's
+ * one available engine (`tools/verify-lift-press.mjs`'s PROBE 3): the event
+ * reaches this handler and `defaultPrevented` reads `true`, on both the stage
+ * and the copy, via bubbling. That is real, engine-observable evidence for the
+ * DOM half of the fix — it is not evidence about iOS's native callout, which
+ * remains unverifiable here.
+ *
+ * EVERY LIFT PRESS SURFACE CARRIES THIS TOO, DISCOVERED THE SAME WAY THE OTHER
+ * TWO OBJECTS ARE: `liftInput.test.ts` climbs from every `<LiftStage>` to its
+ * ancestors and requires a spread bound to THIS export, so a fourth surface
+ * inherits the requirement by mounting a stage rather than by somebody
+ * remembering this file. `@guarantee context-menu-guard-on-every-played-surface`
+ *
+ * NOT A JSX PROP TYPE THIS PROJECT'S `react-native` TYPES DECLARE.
+ * `onContextMenu` is a React Native Web extension; `@types/react-native`'s
+ * `ViewProps` does not know about it, and writing it as a literal JSX
+ * attribute is a `tsc` error (`Property 'onContextMenu' does not exist`).
+ * Spread a typed object instead — `{...SUPPRESS_CONTEXT_MENU}` — because
+ * TypeScript's excess-property check applies to object LITERALS in an
+ * attribute list and not to a spread of a separately-typed value, which is
+ * true today and is what lets this reach the DOM without an `any`. React
+ * Native Web's own prop-forwarding list (`modules/forwardedProps`) already
+ * recognises `onContextMenu` at runtime; the gap is only in this project's
+ * borrowed React Native types, not in what ships.
+ */
+export const SUPPRESS_CONTEXT_MENU = {
+  onContextMenu: (event: { readonly preventDefault: () => void }): void => {
+    event.preventDefault();
+  },
 } as const;
 
 /**
