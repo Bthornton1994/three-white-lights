@@ -2322,3 +2322,113 @@ export function measureCampaignReach(variant: CampaignCalendarVariant): Campaign
     ).length,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Axis E — the server boundary. Parameters and plans only: the driver lives in
+// `src/game/careerServer.test.ts`, because driving `applyMeetResult` needs the
+// meet engine and this module's import fence deliberately stops at the day
+// scale and the seeded generator.
+// ---------------------------------------------------------------------------
+
+/**
+ * The seeded careers the BOUNDARY sweep replays through the real
+ * `record-meet-result` path — `applyMeetResult`, card by card — rather than
+ * through this module's abstract totals.
+ *
+ * WHY A FIFTH AXIS EXISTS. Axes A–D grade the career MATH on synthetic
+ * records. The wiring is a different subject: `careerServer.ts` derives the
+ * career read model from what `applyMeetResult` actually stored, so the
+ * property GDD §12.3 cares about — a lifter who competed one more time never
+ * ends weaker or eligible for less — has to be measured over records the
+ * shipped write path produced, misses, bomb-outs and all. This block is that
+ * sweep's whole parameterisation, written down for the reason `streakSweep.ts`
+ * exists: a measurement whose inputs are not written down is an anecdote.
+ *
+ * The openers land on the bar's own increment and the jumps keep every card
+ * legal under `DEFAULT_MEET_RULES` (attempts never go down). The opener range
+ * puts the sum of three third attempts between roughly 300 and 700 kg, so the
+ * generated careers genuinely cross the regional, nationals and campaign
+ * summit gates — a range that cleared every gate from meet one would measure
+ * eligibility movement on an empty domain, and the sweep pins the crossing
+ * counts it saw rather than assuming them.
+ */
+export const CAREER_BOUNDARY_SWEEP = Object.freeze({
+  /** How many seeded careers. */
+  SEEDS: 16,
+  /** Offset into the generator's stream, so this axis shares no draws with A-D. */
+  SEED_OFFSET: 9100,
+  /** Meets per full career. Every proper prefix variant is also driven. */
+  MEETS_PER_CAREER: 6,
+  /** Per-lift opener range, kg, on the bar's smallest increment. */
+  OPENER_MIN_KG: 90,
+  OPENER_MAX_KG: 220,
+  OPENER_STEP_KG: 2.5,
+  /** The jump between attempts, kg. Ascending, so every card is legal. */
+  JUMP_KG: 5,
+  /** Chance a meet is a bomb-out: all three attempts on one lift missed. */
+  BOMB_OUT_RATE: 0.2,
+  /**
+   * Days AFTER THE SEASON ANCHOR the first meet falls, and the spacing after
+   * it. Offsets rather than absolute days, because the career calendar's day
+   * scale is the streak's civil-day index and only `SEASON_ANCHOR` knows where
+   * on it the season sits — an absolute literal here was measured landing
+   * decades before the series starts, and every eligibility comparison ran on
+   * an empty calendar.
+   */
+  FIRST_MEET_DAY_OFFSET: 10,
+  DAYS_BETWEEN_MEETS: 14,
+  /** Days after the anchor every post-career eligibility comparison is taken. */
+  COMPARISON_DAY_OFFSET: 90,
+  /** And how far ahead it looks. A year, so every tier occurs in it. */
+  COMPARISON_HORIZON_DAYS: 364,
+});
+
+/** One meet of a boundary-sweep career, as pure data the driver turns into a card. */
+export interface BoundaryMeetPlan {
+  /** Position in the career, oldest first. */
+  readonly meetIndex: number;
+  /** The server-resolved civil-day index the meet is recorded on. */
+  readonly day: number;
+  /** Opening attempt per lift, kg. Attempts ascend by `JUMP_KG` from here. */
+  readonly openersKg: Readonly<Record<'squat' | 'bench' | 'deadlift', number>>;
+  /** When true, every squat attempt is missed and the meet records no total. */
+  readonly bombed: boolean;
+}
+
+/**
+ * The meets of one seeded boundary career, oldest first. Deterministic: the
+ * same seed always yields the same plans, so a count pinned in the driver is
+ * reproducible by anyone.
+ */
+export function boundaryMeetPlans(seed: number): readonly BoundaryMeetPlan[] {
+  const anchor = seasonAnchorDay();
+  let state = seedState(CAREER_BOUNDARY_SWEEP.SEED_OFFSET + seed);
+  const draw = (): number => {
+    const next = nextRandom(state);
+    state = next.state;
+    return next.value;
+  };
+  const opener = (): number => {
+    const steps = Math.round(
+      (CAREER_BOUNDARY_SWEEP.OPENER_MAX_KG - CAREER_BOUNDARY_SWEEP.OPENER_MIN_KG) /
+        CAREER_BOUNDARY_SWEEP.OPENER_STEP_KG,
+    );
+    return (
+      CAREER_BOUNDARY_SWEEP.OPENER_MIN_KG +
+      Math.floor(draw() * (steps + 1)) * CAREER_BOUNDARY_SWEEP.OPENER_STEP_KG
+    );
+  };
+  const plans: BoundaryMeetPlan[] = [];
+  for (let meetIndex = 0; meetIndex < CAREER_BOUNDARY_SWEEP.MEETS_PER_CAREER; meetIndex += 1) {
+    plans.push({
+      meetIndex,
+      day:
+        anchor +
+        CAREER_BOUNDARY_SWEEP.FIRST_MEET_DAY_OFFSET +
+        meetIndex * CAREER_BOUNDARY_SWEEP.DAYS_BETWEEN_MEETS,
+      openersKg: Object.freeze({ squat: opener(), bench: opener(), deadlift: opener() }),
+      bombed: draw() < CAREER_BOUNDARY_SWEEP.BOMB_OUT_RATE,
+    });
+  }
+  return plans;
+}

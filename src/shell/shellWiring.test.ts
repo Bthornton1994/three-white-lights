@@ -29,7 +29,8 @@ import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-import { appMeetPort, appSessionPort } from './appServer';
+import { CAREER_TUNING } from '../career/careerTuning';
+import { appCareerPort, appMeetPort, appSessionPort } from './appServer';
 import { empireFloorReadings, openEmpireFloor } from './empireFloor';
 import { meetDayFactsFromCache } from '../game/meetClient';
 import { meetResultProposal } from '../game/meetDay';
@@ -37,7 +38,7 @@ import { playMeet } from '../game/meetPreview';
 import { MEET_ENTRY, MEET_LOCAL } from '../game/meetTuning';
 import { openingCache } from '../game/sessionClient';
 import { SESSION_BOUNDARY, SESSION_TUNING } from '../game/sessionTuning';
-import { asProposalId, readTotalKg, readingValue } from '../game/progression';
+import { asProposalId, readFederation, readTotalKg, readingValue } from '../game/progression';
 import { PERSISTENT_SURFACES, forgetsBeatOnArrival, isPersistentSurface } from './shellRoute';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -2137,6 +2138,51 @@ describe('navigating away and back cannot buy a second session of the day', () =
     expect(typeof port.openingSnapshot).toBe('function');
     expect(typeof port.meetBrief).toBe('function');
     expect(typeof port.recordMeetResult).toBe('function');
+  });
+
+  it('THE CAREER PORT IS THE SAME OBJECT AS BOTH, so the third mode reads the same lifter', () => {
+    // `one-row-behind-one-port`, extended to the career half the moment it
+    // exists — because the career is precisely the surface the original defect
+    // starved: a calendar reading its own row would gate eligibility on a
+    // lifter who never competed. Same `unknown` widening as above, for the
+    // same reason: the narrowing refusing `===` is the fences working.
+    const career: unknown = appCareerPort();
+    expect(
+      career === appMeetPort(),
+      'the career surface is holding a different server from meet day, so they are two different lifters',
+    ).toBe(true);
+    expect(
+      career === appSessionPort(),
+      'the career surface is holding a different server from the daily session',
+    ).toBe(true);
+    const port = appCareerPort();
+    expect(typeof port.openingSnapshot).toBe('function');
+    expect(typeof port.chooseFederation).toBe('function');
+  });
+
+  it('a federation confirmed through the career half is on the snapshot the session half opens', async () => {
+    // The driven consequence, like the meet total's test below: the choice
+    // goes in through the CAREER endpoint and comes back out of the snapshot
+    // the SESSION half opens on. The id confirmed is the seeded default,
+    // because this file's tests share the app's one connection and a meet may
+    // already be banked on it — moving those results to another federation is
+    // exactly what `careerServer.ts` refuses, and confirming the calendar they
+    // were lifted on is what it allows.
+    const before = readingValue(readFederation(openingCache(appSessionPort())));
+    expect(before, 'the app opens on the seeded default').toEqual({
+      id: CAREER_TUNING.DEFAULT_FEDERATION_ID,
+      chosen: false,
+    });
+    const response = await appCareerPort().chooseFederation(
+      { kind: 'choose-federation', report: { federationId: CAREER_TUNING.DEFAULT_FEDERATION_ID } },
+      asProposalId('shell-career-choice'),
+    );
+    expect(response.kind, 'the confirmation was recorded').toBe('chosen');
+    const after = readingValue(readFederation(openingCache(appSessionPort())));
+    expect(after, 'the session half reads the choice off the one row').toEqual({
+      id: CAREER_TUNING.DEFAULT_FEDERATION_ID,
+      chosen: true,
+    });
   });
 
   it('a meet recorded through it is visible to the session half, on one row [a-meet-total-reaches-the-session-half]', async () => {

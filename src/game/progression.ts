@@ -684,6 +684,22 @@
  *   `meets[n].meetId`, `revision`, `acknowledgedProposalId`
  *       IDENTIFIERS AND A COUNTER. Not quantities.
  *
+ *   `federation.id`, `federation.chosen`
+ *       AN IDENTIFIER AND A BOOLEAN. Not quantities, and stated rather than
+ *       skipped for the reason this section states everything: "it is not a
+ *       weight" is the reasoning that left `weightKg` alone for three rounds.
+ *       The id's "unit" is membership: `receiveProgressionSnapshot` refuses an
+ *       id that `CAREER_FEDERATIONS` does not hold, because eligibility, the
+ *       calendar and §6.6's derived region all key off it. `chosen` is a
+ *       boolean the decoder type-checks, and it is the fact
+ *       `applyFederationChoice` refuses a second choice off. TWO ROUTES IN:
+ *       the account is created (`newServerRecord`, seeded from
+ *       `CAREER_TUNING.DEFAULT_FEDERATION_ID`, an in-tree literal whose id the
+ *       `satisfies CareerFederationId` clause proves at compile time) and the
+ *       choice is recorded (`careerServer.ts`'s `applyFederationChoice`, which
+ *       resolves the reported id against `CAREER_FEDERATION_IDS` at runtime
+ *       because a report is untrusted JSON).
+ *
  * ---------------------------------------------------------------------------
  * 7.3 WHAT IS STILL UNPROVEN, AND HOW REACHABLE IT IS
  * ---------------------------------------------------------------------------
@@ -939,6 +955,7 @@
  *   | record  | src/game/sessionServer.ts     | newServerRecord               | 1 |
  *   | record  | src/game/sessionServer.ts     | applyTrainingSession          | 1 |
  *   | record  | src/game/meetServer.ts        | applyMeetResult               | 1 |
+ *   | record  | src/game/careerServer.ts      | applyFederationChoice         | 1 |
  *   | record  | src/game/meetPreview.ts       | previewServerRecord           | 1 |
  *   | record  | src/session/sessionPreview.ts | recordBeforeSession           | 1 |
  *   | record  | src/session/sessionPreview.ts | recordAfterServer             | 1 |

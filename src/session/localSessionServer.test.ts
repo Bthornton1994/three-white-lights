@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import { CAREER_TUNING } from '../career/careerTuning';
 import { localSessionServer } from './localSessionServer';
 import { meetDayFactsFromCache } from '../game/meetClient';
 import { meetResultProposal } from '../game/meetDay';
 import { playMeet } from '../game/meetPreview';
 import { MEET_ENTRY, MEET_LOCAL } from '../game/meetTuning';
-import { readTotalKg, readingValue } from '../game/progression';
+import { readFederation, readTotalKg, readingValue } from '../game/progression';
 import {
   closeOutReadings,
   openingCache,
@@ -59,6 +60,27 @@ function storedRecord(): ServerRecord {
 /** No waiting in a unit test: the latency is the browser's problem. */
 const instantly = (): Promise<void> => Promise.resolve();
 
+/** Play a whole meet on the real engine against whatever this port holds. */
+function playAWholeMeet(port: ReturnType<typeof localSessionServer>, day: number) {
+  const facts = meetDayFactsFromCache(openingCache(port), day, SESSION_TUNING.STARTING_E1RM);
+  const state = playMeet(
+    () => 'perfect',
+    () => 'small',
+    {
+      day,
+      meet: MEET_LOCAL,
+      entry: MEET_ENTRY,
+      bestE1rmKg: facts.bestE1rmKg,
+      previousBestTotalKg: facts.previousBestTotalKg,
+      previousBestByLiftKg: facts.previousBestByLiftKg,
+      fatigue: port.meetBrief(day).fatigue,
+    },
+  );
+  const proposal = meetResultProposal(state);
+  if (proposal === null) throw new Error('the played meet produced no proposal');
+  return proposal;
+}
+
 function playSession(state: SessionState): SessionState {
   let next = state;
   for (const tap of [
@@ -91,13 +113,15 @@ describe('the stand-in server port', () => {
     // The whole reason the row moved behind a port. A getter here would put the
     // bypass back within reach of the hook.
     //
-    // FIVE, NOT THREE, SINCE MEET DAY WAS WIRED TO THE SAME ROW. `meetBrief` and
-    // `recordMeetResult` are the meet half; the count is pinned rather than
-    // bounded so that a sixth — in particular a `record` getter, which is the
-    // only method that could put the bypass back — is a failure and not a
+    // SIX, SINCE MEET DAY AND THE CAREER WERE WIRED TO THE SAME ROW.
+    // `meetBrief` and `recordMeetResult` are the meet half and
+    // `chooseFederation` is the career's; the count is pinned rather than
+    // bounded so that a seventh — in particular a `record` getter, which is
+    // the only method that could put the bypass back — is a failure and not a
     // silent widening.
     const port = localSessionServer({ record: storedRecord(), sleep: instantly });
     expect(Object.keys(port).sort()).toEqual([
+      'chooseFederation',
       'meetBrief',
       'openingSnapshot',
       'recordMeetResult',
@@ -266,6 +290,10 @@ describe('the meet half writes the row the session half reads', () => {
     expect(Object.keys(body).sort()).toEqual([
       'bestByLiftKg',
       'bombedLift',
+      // What the result did to the CAREER — best-total movement and newly
+      // qualified tiers, computed by careerServer.ts inside applyMeetResult.
+      // Derived readings about the lifter's own record, not a stored row.
+      'career',
       'isTotalPr',
       'liftPrs',
       'placing',
@@ -350,5 +378,66 @@ describe('the meet half writes the row the session half reads', () => {
   it('the meet brief carries the ledger and nothing else (GDD §3.4, §12.3)', () => {
     const port = localSessionServer({ record: storedRecord(), sleep: instantly });
     expect(Object.keys(port.meetBrief(DAY))).toEqual(['fatigue']);
+  });
+});
+
+describe('the career half chooses on the row the other halves read', () => {
+  it('a chosen federation is on the snapshot every surface opens', async () => {
+    const port = localSessionServer({ record: storedRecord(), sleep: instantly });
+    expect(readingValue(readFederation(openingCache(port)))).toEqual({
+      id: CAREER_TUNING.DEFAULT_FEDERATION_ID,
+      chosen: false,
+    });
+    const response = await port.chooseFederation(
+      { kind: 'choose-federation', report: { federationId: 'grandhall' } },
+      asProposalId('fed-1'),
+    );
+    expect(response.kind).toBe('chosen');
+    if (response.kind !== 'chosen') throw new Error('unreachable');
+    expect(response.wire.federation).toEqual({ id: 'grandhall', chosen: true });
+    // The same row, read back through the session half's opening snapshot.
+    expect(readingValue(readFederation(openingCache(port)))).toEqual({
+      id: 'grandhall',
+      chosen: true,
+    });
+  });
+
+  it('a banked meet locks the row against moving to another federation', async () => {
+    const port = localSessionServer({ record: storedRecord(), sleep: instantly });
+    const recorded = await port.recordMeetResult(
+      DAY,
+      MEET_LOCAL,
+      playAWholeMeet(port, DAY),
+      asProposalId('meet-lock'),
+    );
+    expect(recorded.kind).toBe('recorded');
+    const refused = await port.chooseFederation(
+      { kind: 'choose-federation', report: { federationId: 'grandhall' } },
+      asProposalId('fed-2'),
+    );
+    expect(refused.kind).toBe('refused');
+    if (refused.kind !== 'refused') throw new Error('unreachable');
+    expect(refused.error.code).toBe('FEDERATION_LOCKED_BY_RESULTS');
+    // And nothing moved: the row still answers with the seeded default.
+    expect(readingValue(readFederation(openingCache(port)))).toEqual({
+      id: CAREER_TUNING.DEFAULT_FEDERATION_ID,
+      chosen: false,
+    });
+  });
+
+  it('a refused choice is dead: the second attempt after a real one is refused too', async () => {
+    const port = localSessionServer({ record: storedRecord(), sleep: instantly });
+    const first = await port.chooseFederation(
+      { kind: 'choose-federation', report: { federationId: 'ironline' } },
+      asProposalId('fed-3'),
+    );
+    expect(first.kind).toBe('chosen');
+    const second = await port.chooseFederation(
+      { kind: 'choose-federation', report: { federationId: 'meridian' } },
+      asProposalId('fed-4'),
+    );
+    expect(second.kind).toBe('refused');
+    if (second.kind !== 'refused') throw new Error('unreachable');
+    expect(second.error.code).toBe('FEDERATION_ALREADY_CHOSEN');
   });
 });

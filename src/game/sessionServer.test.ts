@@ -1369,6 +1369,7 @@ describe('what leaves the server is sealed in flight', () => {
     expect(Object.isFrozen(wire.streak), 'streak').toBe(true);
     expect(Object.isFrozen(wire.meets), 'the meets array').toBe(true);
     expect(Object.isFrozen(wire.wallet), 'wallet').toBe(true);
+    expect(Object.isFrozen(wire.federation), 'federation').toBe(true);
 
     const streak: { currentStreak: number } = wire.streak;
     expect(() => {
@@ -1429,6 +1430,7 @@ describe('what leaves the server is sealed in flight', () => {
     expect(Object.isFrozen(fresh.wallet), 'and its wallet').toBe(true);
     expect(Object.isFrozen(fresh.meets), 'and its meets array').toBe(true);
     expect(Object.isFrozen(fresh.fatigue), 'and its fatigue').toBe(true);
+    expect(Object.isFrozen(fresh.federation), 'and its federation').toBe(true);
     const freshBests: Record<LiftKind, number | null> = fresh.bestE1rmKg;
     expect(() => {
       freshBests.squat = (fresh.bestE1rmKg.squat ?? 0) / KILOGRAMS_PER_POUND;
@@ -1451,6 +1453,7 @@ describe('what leaves the server is sealed in flight', () => {
     expect(Object.isFrozen(applied.value.record.wallet), 'and its wallet').toBe(true);
     expect(Object.isFrozen(applied.value.record.meets), 'and its meets array').toBe(true);
     expect(Object.isFrozen(applied.value.record.fatigue), 'and its fatigue').toBe(true);
+    expect(Object.isFrozen(applied.value.record.federation), 'and its federation').toBe(true);
     const settledBests: Record<LiftKind, number | null> = applied.value.record.bestE1rmKg;
     expect(() => {
       settledBests[played.lift] = 0;

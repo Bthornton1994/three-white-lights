@@ -982,6 +982,11 @@ const SEAL_RUNTIME_WITNESSES: readonly {
     title: 'freezes the record, its meets array, and the meet row that carries totalKg',
   },
   {
+    route: 'record src/game/careerServer.ts applyFederationChoice',
+    testFile: 'src/game/careerServer.test.ts',
+    title: 'seals the record a federation choice produces, every nested object included',
+  },
+  {
     route: 'record src/game/meetPreview.ts previewServerRecord',
     testFile: 'src/game/meetServer.test.ts',
     title: 'freezes the debug preview record too, one meet deep',
@@ -1662,7 +1667,7 @@ describe('purity', () => {
     // test down, which had the same bound. Nine is §7.5's eight producer rows
     // plus its one `receive` row. It moves when a route is added or deleted,
     // which is a diff somebody writes on purpose.
-    expect(routeScan().shipped.length, 'shipped rows the scan resolves').toBe(9);
+    expect(routeScan().shipped.length, 'shipped rows the scan resolves').toBe(10);
     expect(sortedKeys(routeScan().shipped)).toContain('record src/game/sessionServer.ts newServerRecord x1');
     expect(sortedKeys(routeScan().shipped)).toContain('record src/game/meetServer.ts applyMeetResult x1');
     // The anchor that would have caught round seven's defect. A route pin whose
@@ -1691,7 +1696,7 @@ describe('purity', () => {
     // walks the table, so a deleted row is simply not walked. This is the pin
     // that catches the table shrinking, and it was the one number in the pair
     // that could be stated exactly.
-    expect(declaredRoutes().length, '§7.5 rows parsed out of the header').toBe(9);
+    expect(declaredRoutes().length, '§7.5 rows parsed out of the header').toBe(10);
     const found = new Set(sortedKeys(routeScan().shipped));
     for (const row of declaredRoutes()) {
       expect(
@@ -1736,8 +1741,8 @@ describe('purity', () => {
     const rows = scan.shipped.filter((row) => row.kind !== 'receive');
 
     // NON-VACUITY AS A COUNT, so an empty scan cannot satisfy the loop below.
-    expect(rows.length, 'shipped record/wire/facts rows to find witnesses for').toBe(8);
-    expect(SEAL_RUNTIME_WITNESSES.length, 'ledger rows').toBe(8);
+    expect(rows.length, 'shipped record/wire/facts rows to find witnesses for').toBe(9);
+    expect(SEAL_RUNTIME_WITNESSES.length, 'ledger rows').toBe(9);
 
     // BOTH DIRECTIONS. An unwitnessed row is the defect this closes; a witness
     // for a row that no longer exists is bookkeeping about deleted code, and
@@ -1811,9 +1816,9 @@ describe('purity', () => {
       targets.map((target) => [target.kind, objectValuedProperties(target, checker)]),
     );
     expect(requiredByKind, 'the nested objects each boundary type carries').toEqual({
-      record: ['bestE1rmKg', 'fatigue', 'meets', 'streak', 'wallet'],
-      wire: ['bestE1rmKg', 'meets', 'streak', 'wallet'],
-      facts: ['bestE1rmKg', 'meets', 'streak', 'wallet'],
+      record: ['bestE1rmKg', 'fatigue', 'federation', 'meets', 'streak', 'wallet'],
+      wire: ['bestE1rmKg', 'federation', 'meets', 'streak', 'wallet'],
+      facts: ['bestE1rmKg', 'federation', 'meets', 'streak', 'wallet'],
     });
 
     for (const audit of audits) {
@@ -1905,7 +1910,7 @@ describe('purity', () => {
     // Eight is §7.5's six `record` rows, its one `wire` row, and the `facts`
     // row — the snapshot mint, which reached this count by having its
     // `deepFreeze` call respelled as the seal it already was.
-    expect(scan.sealedLiterals, 'shipped record/wire/facts literals seen sealed').toBe(8);
+    expect(scan.sealedLiterals, 'shipped record/wire/facts literals seen sealed').toBe(9);
 
     // AND THE CALLEE IS THE SEAL, NOT A FUNCTION SPELLED LIKE IT.
     //
@@ -1945,7 +1950,7 @@ describe('purity', () => {
     // file. The `facts` witness now does the same thing to the snapshot, so
     // "sealed by name and counted here" is no longer the whole of the evidence:
     // a string-only walk in `deepFreeze` reddens it.
-    expect(scan.sealCallSites.length, 'shipped sealServerValue call sites').toBe(9);
+    expect(scan.sealCallSites.length, 'shipped sealServerValue call sites').toBe(10);
 
     // AND THE NAME THE SCAN MATCHES ON IS A REAL EXPORT. Without this, renaming
     // the seal turns the whole check into "no literal is sealed, and none is
@@ -3261,6 +3266,7 @@ describe('receiveProgressionSnapshot', () => {
     expect(Object.isFrozen(facts.streak)).toBe(true);
     expect(Object.isFrozen(facts.wallet)).toBe(true);
     expect(Object.isFrozen(facts.meets)).toBe(true);
+    expect(Object.isFrozen(facts.federation)).toBe(true);
     expect(() => {
       (facts as { totalKg: number | null }).totalKg = 900;
     }).toThrow(TypeError);
@@ -4163,6 +4169,8 @@ describe('the module exports no writer', () => {
       'A_STARTING_E1RM_SEED_CANNOT_BE_READ_WITHOUT_ITS_UNIT',
       'A_TRAINING_CARD_CANNOT_BE_READ_WITHOUT_ITS_UNIT',
       'A_TRAINING_SESSION_PROJECTION_CANNOT_CLAIM_A_TOTAL',
+      'CHOOSE_FEDERATION_REPORT_IS_EXACTLY_ITS_ALLOWLIST',
+      'CHOOSE_FEDERATION_REPORT_KEYS',
       'CONFIRMED_MEET_RESULT_KEYS',
       'CONVENIENCE_GRANTS',
       'COSMETIC_SLOTS',
@@ -4243,6 +4251,7 @@ describe('the module exports no writer', () => {
       'proposeChange',
       'readBalance',
       'readBestE1rmKg',
+      'readFederation',
       'readMeets',
       'readStreakDays',
       'readStreakState',
@@ -4388,6 +4397,7 @@ describe('the boundary lets legitimate work through', () => {
       },
       { kind: 'redeem-entitlement', report: { sku: 'chalk-pack-3', receipt: 'txn-1' } },
       { kind: 'spend-currency', report: { currency: 'gymBucks', amount: 500, sku: 'gym-decor-neon' } },
+      { kind: 'choose-federation', report: { federationId: 'ironline' } },
     ];
     expect(proposals.map((p) => p.kind).sort()).toEqual([...PROGRESSION_PROPOSAL_KINDS].sort());
     for (const proposal of proposals) {

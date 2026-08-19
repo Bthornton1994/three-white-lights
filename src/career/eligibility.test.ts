@@ -300,6 +300,23 @@ describe('the career record after a meet', () => {
     expect(() => careerRecordAfterMeet(lifterWith(400), 'x', Number.NaN)).toThrow(RangeError);
   });
 
+  it('a bomb-out spends the entry and moves no total', () => {
+    // `null` is the shape the server stores a bomb-out in (`MeetResultWire.
+    // totalKg`: "null on a bomb-out — not zero"). The entry is on the record —
+    // the lifter competed — and the best total is untouched, which is the same
+    // GDD §12.3 floor as BEST-not-LATEST: the worst meet day cannot lower the
+    // number qualification reads.
+    const after = careerRecordAfterMeet(lifterWith(600), 'meridian-local-2026-01-10', null);
+    expect(after.bestTotalKg).toBe(600);
+    expect(after.enteredMeetIds).toContain('meridian-local-2026-01-10');
+    // A first-ever meet bombed: still no total, and the entry still spent.
+    const first = careerRecordAfterMeet(newCareerLifter('meridian'), 'x', null);
+    expect(first.bestTotalKg).toBeNull();
+    expect(first.enteredMeetIds).toEqual(['x']);
+    // And the null arm is idempotent like the numeric one.
+    expect(careerRecordAfterMeet(first, 'x', null)).toEqual(first);
+  });
+
   it('eligibility reads exactly three facts about a lifter, and none is a balance', () => {
     // GDD §12.3: nothing purchasable may affect meet performance, and which
     // meets you may enter is upstream of every meet result. The compile-time
