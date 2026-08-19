@@ -1275,6 +1275,13 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   'empireInvariant.ts#stepGym#gym.find x1',
   'empireInvariant.ts#stepGym#gym.map x1',
   'engagement.ts#moreEngagedByTrainedDay#history.includes x1',
+  // The three ladder.ts reads of a caller-supplied state: two membership
+  // tests on the equipment list and the refusal message's join. Every one is
+  // a read that hands the callee nothing this directory chose, same as the
+  // thirteen above.
+  'ladder.ts#buyLadderEquipment#state.includes x1',
+  'ladder.ts#cheapestAffordable#state.includes x1',
+  'ladder.ts#requireLadderState#state.join x1',
   'social.ts#rankLeaderboard#entries.map x1',
   'social.ts#visitRefusals#context.some x1',
   'social.ts#visitRefusals#context.some x1',
@@ -2313,7 +2320,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   CONSTRUCTORS: 4,
   SITES: 13,
   MINTS: 13,
-  MODULES: 10,
+  MODULES: 11,
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -2326,7 +2333,12 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // out of `SEALED_RATE_LABELS`, which adds three calls in `empireInvariant.ts`
   // — an `Object.freeze`, a `.find`, and one more `refuseWith` — and one type
   // declaration. Every number below moves by exactly that and by nothing else.
-  CALLS_EXAMINED: 1025,
+  //
+  // 1025 -> 1139 when `ladder.ts` arrived: the stage-1 module's own 114 call
+  // expressions, with zero new brand-constructor sites among them — SITES and
+  // MINTS above are unchanged, which is the half of this census that is about
+  // brands rather than about how much code the walk covered.
+  CALLS_EXAMINED: 1139,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -10545,6 +10557,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'empireInvariant.ts': 60,
       'engagement.ts': 23,
       'expansion.ts': 47,
+      'ladder.ts': 21,
       'npc.ts': 12,
       'production.ts': 11,
       'recruitment.ts': 9,
@@ -10568,6 +10581,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'empireTuning.ts': 3,
       'engagement.ts': 2,
       'expansion.ts': 7,
+      'ladder.ts': 1,
       'production.ts': 1,
       'recruitment.ts': 2,
       'reputation.ts': 7,
@@ -10946,12 +10960,12 @@ const SCREEN_AGREEMENT = Object.freeze({
  */
 const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze({
   parameter: 2,
-  'module-variable': 26,
+  'module-variable': 34,
   local: 0,
-  function: 505,
-  member: 477,
+  function: 556,
+  member: 529,
   'member-callback': 2,
-  'member-of-parameter': 13,
+  'member-of-parameter': 16,
   fresh: 0,
   unclassified: 0,
 });
@@ -10982,14 +10996,14 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
   MODULES: 11,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
-  SITES: 329,
+  SITES: 351,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
    * grammar declarations and the `satisfies` clause are 23 AST nodes, and no
    * site, channel or wrap count moved with them.
    */
-  NODES_EXAMINED: 21_908,
+  NODES_EXAMINED: 23_959,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
   WRAP_CALLS: 72,
   CHANNELS: 11,
@@ -12246,8 +12260,8 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    */
   POINTS: 326,
   REFUSED_POINTS: 1,
-  CALLS: 2170455,
-  RECORDED: 3613833,
+  CALLS: 2238532,
+  RECORDED: 3726490,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
