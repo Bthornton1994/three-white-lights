@@ -379,6 +379,7 @@ import * as invariant from './empireInvariant';
 import * as tuningModule from './empireTuning';
 import * as engagementModule from './engagement';
 import * as expansionModule from './expansion';
+import * as ladderModule from './ladder';
 import * as npcModule from './npc';
 import * as productionModule from './production';
 import * as recruitmentModule from './recruitment';
@@ -415,6 +416,12 @@ import type {
   SocialContext,
 } from './social';
 import type { RosterRateSource } from './production';
+import type {
+  LadderDestination,
+  LadderEquipmentItem,
+  LadderRung,
+  LadderState,
+} from './ladder';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
@@ -2813,6 +2820,7 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'empireTuning.ts': tuningModule as unknown as Readonly<Record<string, unknown>>,
   'engagement.ts': engagementModule as unknown as Readonly<Record<string, unknown>>,
   'expansion.ts': expansionModule as unknown as Readonly<Record<string, unknown>>,
+  'ladder.ts': ladderModule as unknown as Readonly<Record<string, unknown>>,
   'npc.ts': npcModule as unknown as Readonly<Record<string, unknown>>,
   'production.ts': productionModule as unknown as Readonly<Record<string, unknown>>,
   'recruitment.ts': recruitmentModule as unknown as Readonly<Record<string, unknown>>,
@@ -3153,6 +3161,13 @@ const UNIT_THRESHOLDS: Readonly<Record<AxisUnit, Readonly<Record<string, number>
     ...tuningTable('NPC_RECRUIT_COST_GYM_BUCKS'),
     ...tuningTable('EQUIPMENT_TIER_COST_GYM_BUCKS'),
     ...tuningTable('STAFF_LEVEL_COST_GYM_BUCKS'),
+    // The seven stage-1 prices. `moveUpLadder` and `buyLadderEquipment` each
+    // compare a balance against a rung of these tables, so every one is a
+    // real `balance < price` branch point on a Gym Bucks axis — the same
+    // class as the eighteen above, filed on arrival rather than discovered
+    // by the next bypass.
+    ...tuningTable('LADDER_MOVE_COST_GYM_BUCKS'),
+    ...tuningTable('LADDER_EQUIPMENT_COST_GYM_BUCKS'),
   }),
   trainingIq: Object.freeze({
     ...tuningTable('TRAINING_IQ_DAILY_CEILING'),
@@ -3294,6 +3309,10 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
   ...exemptTable(
     'STAFF_COACH_BUCKS_MULTIPLIER_PER_LEVEL',
     'A MULTIPLIER per coach level, added into a Bucks multiplier. The level ceiling it is applied up to, `STAFF_LEVEL_MAX.coach`, is filed under `level`, and the level index is the thing anything compares.',
+  ),
+  ...exemptTable(
+    'LADDER_INCOME_GYM_BUCKS_PER_HOUR',
+    'FOUR RATES, in Gym Bucks per hour per rung, the stage-1 siblings of GYM_BUCKS_BASE_PER_HOUR. Each is multiplied by an elapsed span inside accrueLadderGymBucks and compared against nothing; the prices the resulting money is compared against are the LADDER_* cost tables, filed under gymBucks.',
   ),
   ...exemptTable(
     'BUILD_SECONDS_GROWTH_PER_LEVEL',
@@ -4609,6 +4628,47 @@ const FAULTED_SOCIAL_CONTEXT: SocialContext = Object.freeze({
   ]),
 });
 
+
+/**
+ * The three equipment holdings the ladder drive crosses with rungs and money:
+ * empty (so buying a starting item's arm is reachable), the opening kit, and
+ * the whole Barbell group. Derived from the constructor and the tuning block
+ * rather than listed, and each is in the canonical item order
+ * `requireLadderState` demands, so a refusal here would be about the drive
+ * and not about the subject.
+ */
+const LADDER_KIT_VARIANTS: readonly (readonly LadderEquipmentItem[])[] = Object.freeze([
+  Object.freeze([]),
+  ladderModule.createLadderState().equipment,
+  EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS,
+]);
+
+/** A ladder state at `rung` holding `gymBucks`, the mark at zero. */
+function ladderStateAt(
+  rung: LadderRung,
+  gymBucks: number,
+  equipment: readonly LadderEquipmentItem[],
+): LadderState {
+  return Object.freeze({ rung, gymBucks, equipment, collectedAt: 0 });
+}
+
+/**
+ * Composed-run schedules: twelve-hour slots, with slot counts derived from
+ * the rival week so a run long enough to relocate and buy the rack is in the
+ * domain — the arms `runLadder` composes are produced, not merely possible.
+ */
+const LADDER_DRIVE_SCHEDULES: readonly (readonly number[])[] = Object.freeze(
+  [0, 1, EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS * 2, EMPIRE_TUNING.RIVAL_COMPARISON_PERIOD_DAYS * 4].map(
+    (slots) =>
+      Object.freeze(
+        Array.from(
+          { length: slots },
+          (_unused, at) => (at + 1) * (EMPIRE_TUNING.SECONDS_PER_DAY / 2),
+        ),
+      ),
+  ),
+);
+
 let drivenMemo = false;
 
 function driveEverything(): readonly DrivenRow[] {
@@ -4884,6 +4944,56 @@ function driveEverything(): readonly DrivenRow[] {
           invariant.applyPurchasableGrant(accelerant, output, ZERO_SECONDS, seconds),
         );
       }
+    }
+  }
+
+
+  // --- ladder.ts (GDD §5 v2, stage 1)
+  drive('createLadderState', 'zero-arg', () => ladderModule.createLadderState());
+  for (const rung of EMPIRE_TUNING.LADDER_RUNGS) {
+    drive('ladderRungIndex', rung, () => ladderModule.ladderRungIndex(rung));
+    drive('nextLadderRung', rung, () => ladderModule.nextLadderRung(rung));
+    drive('ladderIncomeRatePerHour', rung, () => ladderModule.ladderIncomeRatePerHour(rung));
+    const above: LadderDestination | null = ladderModule.nextLadderRung(rung);
+    if (above !== null) {
+      drive('ladderMoveCost', above, () => ladderModule.ladderMoveCost(above));
+    }
+    const checking = ladderStateAt(rung, 0, ladderModule.createLadderState().equipment);
+    for (const seconds of SECONDS_DOMAIN) {
+      drive('accrueLadderGymBucks', `${rung}/${String(seconds)}`, () =>
+        ladderModule.accrueLadderGymBucks(ladderModule.ladderIncomeRatePerHour(rung), seconds),
+      );
+      drive('ladderCheckIn', `${rung}/${String(seconds)}`, () =>
+        ladderModule.ladderCheckIn(checking, seconds), [checking],
+      );
+    }
+  }
+  for (const item of EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS) {
+    drive('ladderEquipmentCost', item, () => ladderModule.ladderEquipmentCost(item));
+    drive('ladderEquipmentMinRung', item, () => ladderModule.ladderEquipmentMinRung(item));
+  }
+  for (const kit of LADDER_KIT_VARIANTS) {
+    const kitLabel = `kit=${String(kit.length)}`;
+    drive('unlockedLifts', kitLabel, () => ladderModule.unlockedLifts(kit), [kit]);
+    for (const rung of EMPIRE_TUNING.LADDER_RUNGS) {
+      for (const gymBucks of NUMBER_DOMAIN) {
+        const state = ladderStateAt(rung, gymBucks, kit);
+        const at = `${kitLabel}/${rung}/${String(gymBucks)}`;
+        drive('requireLadderState', at, () => ladderModule.requireLadderState(state), [state]);
+        drive('moveUpLadder', at, () => ladderModule.moveUpLadder(state), [state]);
+        for (const item of EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS) {
+          drive('buyLadderEquipment', `${at}/${item}`, () =>
+            ladderModule.buyLadderEquipment(state, item), [state],
+          );
+        }
+      }
+    }
+  }
+  for (const schedule of LADDER_DRIVE_SCHEDULES) {
+    for (const policy of ladderModule.LADDER_POLICIES) {
+      drive('runLadder', `slots=${String(schedule.length)}/${policy}`, () =>
+        ladderModule.runLadder(schedule, policy), [schedule],
+      );
     }
   }
 
