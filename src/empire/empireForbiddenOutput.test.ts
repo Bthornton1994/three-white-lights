@@ -2361,7 +2361,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // expressions, with zero new brand-constructor sites among them — SITES and
   // MINTS above are unchanged, which is the half of this census that is about
   // brands rather than about how much code the walk covered.
-  CALLS_EXAMINED: 1139,
+  CALLS_EXAMINED: 1176,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -2540,10 +2540,19 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     // pinned in its new home rather than dropped.
     expect(checked).toBe(23);
     expect(CLOSED_BARE_STRING_FIELDS.length).toBe(5);
-    // And the live bare list really is empty, said here as well as in its own
-    // test so the two halves of the move are asserted together.
+    // And the live bare list holds exactly the one declared arrival — React's
+    // element key on the stage-1 view — and none of the five closed fields
+    // has reopened onto it. Zero until `ladderView.tsx`; the position that
+    // moved it is a type react declares, not a reopening of anything here.
     expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
-    expect(SURFACE_CENSUS.BARE_POSITIONS).toBe(0);
+    expect(SURFACE_CENSUS.BARE_POSITIONS).toBe(1);
+    expect(DECLARED_BARE_STRING_FIELDS.flatMap((group) => [...group.positions])).toEqual([
+      'ladderView.tsx#LadderView#return.key',
+    ]);
+    const reopened = CLOSED_BARE_STRING_FIELDS.flatMap((group) => [...group.positions]).filter(
+      (position) => DECLARED_BARE_STRING_FIELDS.some((group) => group.positions.includes(position)),
+    );
+    expect(reopened).toEqual([]);
   });
 });
 
@@ -5060,6 +5069,68 @@ function driveEverything(): readonly DrivenRow[] {
     }
   }
 
+  // --- ladderView.tsx — the stage-gate view: the helpers, the reducer's
+  // three arms, and the component itself invoked as the pure function it is,
+  // so its element tree (copy included) passes through the same string scan
+  // as every other returned value.
+  drive('ladderDevTimeSteps', 'zero-arg', () => ladderModule.ladderDevTimeSteps());
+  for (const seconds of SECONDS_DOMAIN) {
+    drive('describeLadderClock', String(seconds), () => ladderModule.describeLadderClock(seconds));
+    drive('ladderCheckInAfter', String(seconds), () =>
+      ladderModule.ladderCheckInAfter(ladderModule.createLadderState(), seconds),
+    );
+  }
+  drive('createLadderViewState', 'zero-arg', () => ladderViewModule.createLadderViewState());
+  {
+    const opening = ladderViewModule.createLadderViewState();
+    let played = opening;
+    for (const step of ladderModule.ladderDevTimeSteps()) {
+      drive('ladderViewReduce', `advance/${String(step.seconds)}`, () =>
+        ladderViewModule.ladderViewReduce(played, { kind: 'advance-clock', gapSeconds: step.seconds }), [played],
+      );
+      played = ladderViewModule.ladderViewReduce(played, {
+        kind: 'advance-clock',
+        gapSeconds: step.seconds,
+      });
+    }
+    // Buys off the played garage state reach bought, already-owned,
+    // rung-too-low and not-enough arms of the underlying call; the move off
+    // the same state is refused on money, and off a rich state it lands.
+    for (const item of EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS) {
+      drive('ladderViewReduce', `buy/${item}`, () =>
+        ladderViewModule.ladderViewReduce(played, { kind: 'buy', item }), [played],
+      );
+    }
+    drive('ladderViewReduce', 'move-up/refused', () =>
+      ladderViewModule.ladderViewReduce(played, { kind: 'move-up' }), [played],
+    );
+    const rich = Object.freeze({
+      ladder: ladderStateAt(
+        EMPIRE_TUNING.LADDER_RUNGS[0],
+        EMPIRE_TUNING.LADDER_MOVE_COST_GYM_BUCKS['storage-unit'],
+        ladderModule.createLadderState().equipment,
+      ),
+      lastAccrual: played.lastAccrual,
+      lastRefusal: played.lastRefusal,
+    });
+    drive('ladderViewReduce', 'move-up/moved', () =>
+      ladderViewModule.ladderViewReduce(rich, { kind: 'move-up' }), [rich],
+    );
+    const silent = (): undefined => undefined;
+    drive('LadderView', 'opening', () =>
+      ladderViewModule.LadderView({ state: opening, dispatch: silent }), [opening],
+    );
+    drive('LadderView', 'played', () =>
+      ladderViewModule.LadderView({ state: played, dispatch: silent }), [played],
+    );
+    drive('LadderView', 'moved', () =>
+      ladderViewModule.LadderView({
+        state: ladderViewModule.ladderViewReduce(rich, { kind: 'move-up' }),
+        dispatch: silent,
+      }), [rich],
+    );
+  }
+
   // --- empireInvariant.ts, the loop
   for (const funding of invariant.EMPIRE_FUNDINGS) {
     drive('poolsWallClockBooks', funding, () => invariant.poolsWallClockBooks(funding));
@@ -6524,16 +6595,16 @@ const OVERFLOW_CENSUS = Object.freeze({
   /** (domain, label) pairs the ceilings drop. Equals the sum of OMITTED_ABOVE_CEILING. */
   POINTS: 159,
   /** Of those, how many at least one subject was driven at. */
-  POINTS_DRIVEN: 159,
+  POINTS_DRIVEN: 168,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
   RETURN_HEAVY_SUBJECTS: 15,
   /** (subject, point) pairs driven, and pairs the budgets did not drive at all. */
-  PAIRS_DRIVEN: 2363,
-  PAIRS_SKIPPED: 374,
+  PAIRS_DRIVEN: 2477,
+  PAIRS_SKIPPED: 407,
   /** Of the driven, how many had the re-read argument region left unscanned. */
-  PAIRS_ARGUMENT_SKIPPED: 782,
+  PAIRS_ARGUMENT_SKIPPED: 851,
   /**
    * ROSTER_SHAPE points above its allocation ceiling.
    *
@@ -6552,10 +6623,10 @@ const OVERFLOW_CENSUS = Object.freeze({
    * `DISTINCT_STRINGS`, moved 4 229 -> 4 307 and is transcribed: a distinct-set
    * size is not additive and there is no second way to get it.
    */
-  ROWS: 2961,
-  NODES: 664345,
-  STRINGS: 4509099,
-  DISTINCT_STRINGS: 4324,
+  ROWS: 3114,
+  NODES: 665641,
+  STRINGS: 4513143,
+  DISTINCT_STRINGS: 4330,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
   /**
@@ -6874,21 +6945,25 @@ function measureDrive(): DriveMeasurement {
 }
 
 const DRIVE_CENSUS = Object.freeze({
-  ROWS: 253644,
-  EXPORTS_DRIVEN: 245,
-  NODES: 2840679,
-  STRINGS: 13168928,
-  DISTINCT_STRINGS: 1748,
+  ROWS: 261632,
+  EXPORTS_DRIVEN: 251,
+  NODES: 2886143,
+  STRINGS: 13362627,
+  DISTINCT_STRINGS: 2036,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
    *
-   * Both zero, and both pinned rather than omitted: this directory constructs
-   * neither, so the two branches of the walker that exist for attack shape 9
-   * are exercised by the tripwire and by nothing in the subject. A non-zero
-   * number here means one arrived, which is worth a look on its own.
+   * Both were zero until `ladderView.tsx`: nothing in this directory
+   * constructs either, and the 21 getters are react's own dev-mode `key`
+   * warning accessors on the element trees the three LadderView drives
+   * return — seven keyed children per screen (four shop rows, three dev-step
+   * buttons), each carrying a react-defined getter the walk invokes and
+   * scans through. They are react's, not this directory's; a getter arriving
+   * from any OTHER module is still worth a look on its own, which is why the
+   * number is pinned rather than bounded.
    */
-  GETTERS_INVOKED: 0,
+  GETTERS_INVOKED: 21,
   PROXIES: 0,
   /**
    * Nullary functions the walk CALLED, how many threw, and how many
@@ -6906,7 +6981,13 @@ const DRIVE_CENSUS = Object.freeze({
    * position in a shipped return is one added member rather than a count that
    * moved by a number nobody can attribute.
    */
-  CLOSURES_INVOKED: 0,
+  /**
+   * Fifteen, all from `ladderView.tsx`'s element trees: every onClick the
+   * three driven screens carry is a nullary arrow (five per screen — three
+   * dev steps, a buy, the relocation), so the walk calls each one against
+   * the silent dispatch fixture and scans onward. Zero before the view.
+   */
+  CLOSURES_INVOKED: 15,
   CLOSURE_THROWS: 0,
   CLOSURES_DECLINED: 2046,
   /**
@@ -6926,7 +7007,7 @@ const DRIVE_CENSUS = Object.freeze({
    * tell from an absence. This is the number that says the branch is live, in
    * the same role `TRIPWIRE_CENSUS.GETTERS_INVOKED` plays for the getter arm.
    */
-  STACKS: 3113,
+  STACKS: 3244,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -7568,10 +7649,10 @@ const DIAGNOSTIC_CHANNEL_CENSUS: readonly (readonly [string, number])[] = Object
 const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.freeze([
   ['beginRecruitment#accepted', 135],
   ['beginRecruitment#refused', 290],
-  ['buyLadderEquipment#bought', 3006],
-  ['buyLadderEquipment#refused', 8562],
-  ['moveUpLadder#moved', 621],
-  ['moveUpLadder#refused', 2271],
+  ['buyLadderEquipment#bought', 3096],
+  ['buyLadderEquipment#refused', 8712],
+  ['moveUpLadder#moved', 660],
+  ['moveUpLadder#refused', 2292],
   ['recordFriendVisit#refused', 344],
   ['recordFriendVisit#visited', 112],
 ]);
