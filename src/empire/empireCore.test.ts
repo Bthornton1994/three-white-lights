@@ -2510,7 +2510,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // the map really has edges in it. Pinned exactly, so a directory whose
     // cross-references thinned out is a decision somebody signs.
     expect(bodies.size).toBe(shipped.length);
-    expect(pairs).toBe(59);
+    // 59 -> 60: `ladderView.tsx` now imports `./sessions` too (`GymView`, the
+    // stage-2 gate's instrument), one new mention and nothing else moved.
+    expect(pairs).toBe(60);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3026,6 +3028,58 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'relocate',
       'dev control',
       'not part of the game: each button feeds that many elapsed seconds to the shipped accrual, so a human can judge the pacing without waiting it out.',
+      // GymView, in tree order, appended below `LadderView` rather than
+      // interleaved — the file is grown by addition (this component's own
+      // header explains why), and the walk reads the file top to bottom.
+      'the gym',
+      'week',
+      '(',
+      'fixed +',
+      'flexible =',
+      'sessions) —',
+      'rung',
+      'earning',
+      'gym bucks per hour',
+      'gym bucks:',
+      'accelerated:',
+      'clock:',
+      'lifts unlocked:',
+      'last advance banked',
+      's of',
+      's, paid',
+      'gym bucks, cap discarded',
+      's',
+      'refused:',
+      'costs',
+      'gym bucks, fits from',
+      'buy',
+      '(',
+      ') costs',
+      'gym bucks, fits from',
+      'buy',
+      'top of the ladder - the portfolio arrives with stage four',
+      'next:',
+      'for',
+      'gym bucks',
+      'relocate',
+      "this week's allocation",
+      'available now:',
+      'slot',
+      ':',
+      '—',
+      'if this week ended now: residual carry',
+      ', injury chance',
+      ', technique bonus',
+      ', ceiling growth',
+      'week',
+      ':',
+      '— residual carry',
+      ', injury chance',
+      ', technique bonus',
+      ', ceiling growth',
+      'dev control',
+      'not part of the game: each button feeds that many elapsed seconds to the shipped accrual, so a human can judge the pacing without waiting it out. The last one jumps straight to the next weekly-allocation boundary, computed from the shipped week length, so a human can feel the allocation decision without grinding every check-in between.',
+      '+1 week boundary',
     ]);
     expect(jsxCensus.chunks, jsxCensus.chunks.join(' | ')).toEqual(SIGNED_JSX_TEXT_CHUNKS);
     expect(jsxCensus.jsxFilesRead).toBe(shipped.filter((name) => name.endsWith('.tsx')).length);
@@ -3035,9 +3089,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 172 rather than 171 since `sealRate`'s label refusal arrived — a fixed
     // sentence with no substitution in it, which is what lets that refusal
     // name an unrecognised label without interpolating one.
-    expect(singleQuoted.size).toBe(246);
+    // 246 -> 274: GymView's new testids/action vocabulary and sessions.ts's
+    // new refuseWith messages, all single-quoted like everything else here.
+    expect(singleQuoted.size).toBe(274);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(177);
+    // 177 -> 188: sessions.ts's new refuseWith template messages and
+    // ladderView.tsx's new testid template literals.
+    expect(templateChunks.size).toBe(188);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3058,6 +3116,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './production',
       './recruitment',
       './reputation',
+      './sessions',
       './social',
       'Placeholder',
       'accelerated',
@@ -3067,6 +3126,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'accepted',
       'accessory',
       'advance-clock',
+      'advance-to-next-week',
       'advanced-recovery',
       'ahead',
       'already-building',
@@ -3125,12 +3185,32 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'friend-visit-allowance-reset',
       'garage',
       'global',
+      'gym-accelerated-bucks',
+      'gym-accrual',
+      'gym-advance-next-week',
+      'gym-allocation',
+      'gym-available-now',
       'gym-bucks',
       'gym-bucks-below-cost',
+      'gym-clock',
+      'gym-dev-controls',
       'gym-economy',
       'gym-empire-timer-skip',
+      'gym-gym-bucks',
       'gym-id',
+      'gym-ladder-shop',
+      'gym-lifts',
+      'gym-move',
+      'gym-move-up',
       'gym-progress',
+      'gym-rate',
+      'gym-refusal',
+      'gym-rung',
+      'gym-session-shop',
+      'gym-view',
+      'gym-week',
+      'gym-week-log',
+      'gym-week-preview',
       'gymBucks',
       'gymBucksPerHour',
       'gymId',
@@ -3166,6 +3246,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'move-up',
       'moved',
       'national',
+      'none',
       'not-a-friend-gym',
       'not-enough-gym-bucks',
       'not-enough-reputation',
@@ -3204,6 +3285,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'rung-too-low',
       'sauna',
       'save-for-physio-first',
+      'set-allocation-slot',
       'settled-level',
       'settled-purse-wired-control',
       'settled-tenure-days',
@@ -3215,6 +3297,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'skippedSeconds',
       'sled',
       'sleeves',
+      'slots',
       'space',
       'space-level',
       'specialty-bars',
@@ -3260,7 +3343,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(423);
+    // 423 -> 462: singleQuoted (246 -> 274) and templateChunks (177 -> 188).
+    expect(stringsChecked).toBe(462);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3289,7 +3373,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(199);
+    // 199 -> 224: spaceFree grew by the same 25 entries added above.
+    expect(probes).toBe(224);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -3525,7 +3610,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'engagement.ts': ['./empireCore', './empireTuning', './empireInvariant', './social'],
       'expansion.ts': ['./empireCore', './empireTuning'],
       'ladder.ts': ['./empireCore', './empireTuning', './production'],
-      'ladderView.tsx': ['./empireTuning', './ladder'],
+      'ladderView.tsx': ['./empireTuning', './ladder', './sessions'],
       'npc.ts': ['./empireCore', './empireTuning'],
       'production.ts': ['./empireCore', './empireTuning'],
       'recruitment.ts': ['./empireCore', './empireTuning'],
@@ -3569,7 +3654,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         specifiers += 1;
       }
     }
-    expect(specifiers).toBe(36);
+    // 36 -> 37: `ladderView.tsx` now imports `./sessions` too.
+    expect(specifiers).toBe(37);
     // The resolver is driven rather than trusted, on both the shape the tree
     // has and the shape it does not, so this is a subject rather than a helper.
     expect(resolved('empireCore.ts', './empireTuning')).toBe('empireTuning.ts');
