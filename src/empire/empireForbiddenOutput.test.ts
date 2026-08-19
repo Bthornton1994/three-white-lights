@@ -15346,7 +15346,9 @@ function cyclicDeclarations(
  */
 const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   /** Type aliases, interfaces and classes declared across the ten shipped modules. */
-  DECLARATIONS: 165,
+  // 165 -> 169: GymView's four new type declarations (GymViewState,
+  // GymViewRefusal, GymViewAction, GymViewProps).
+  DECLARATIONS: 169,
   /** Those carrying type parameters. An instantiation depth needs one. */
   GENERIC: 12,
   /**
