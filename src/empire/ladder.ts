@@ -5,7 +5,9 @@
  * Strip-Mall Unit -> Warehouse), one-way relocation, money accruing under the
  * aggregate offline cap, and one equipment group — §5.4's Barbell row, the
  * competition-lift group. No members (stage 3), no portfolio (stage 4), no
- * sessions model (stage 2), no sponsors (stage 5), nothing social (§5.9).
+ * sponsors (stage 5), nothing social (§5.9). The sessions model is stage 2's
+ * `sessions.ts`, which composes this module whole — the rung, the settled
+ * purse and the Barbell group stay here and are not re-implemented there.
  *
  * Pure module (CLAUDE.md, "Pure logic is separate from UI"): zero React, zero
  * side effects, zero I/O, no clock reading, no randomness. Its three imports
