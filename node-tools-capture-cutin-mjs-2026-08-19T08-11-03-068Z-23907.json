@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-capture-cutin-mjs-2026-08-19T08-11-03-068Z-23907",
+  "label": null,
+  "command": [
+    "node",
+    "tools/capture-cutin.mjs"
+  ],
+  "budgetSeconds": 400,
+  "startedAtIso": "2026-08-19T08:11:03.068Z",
+  "startedAtMs": 1787127063068,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "4de028fc143c0608858b982b0c323a24976b5ebe",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 28,
+  "dirtyPaths": [
+    ".gauntlet/shots/cutin-cap/cap.json",
+    ".gauntlet/shots/cutin-cap/cut-in-leg-1.png",
+    ".gauntlet/shots/cutin-cap/leg-1-recap.png",
+    ".gauntlet/shots/cutin/baseline-no-cutin.png",
+    ".gauntlet/shots/cutin/debug-meet-walkout-third.png",
+    ".gauntlet/shots/cutin/frames.json",
+    ".gauntlet/shots/lift-press/press.json",
+    ".gauntlet/shots/meet/sound.json",
+    ".gauntlet/shots/shell/01-session-with-nav.png",
+    ".gauntlet/shots/shell/02-meet-from-session.png",
+    ".gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+    ".gauntlet/shots/shell/05-back-on-the-session.png",
+    ".gauntlet/shots/shell/05a-check-in-after-a-played-meet.png",
+    ".gauntlet/shots/shell/05b-check-in-after-the-second-meet.png",
+    ".gauntlet/shots/shell/07-close-out-with-nav.png",
+    ".gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+    ".gauntlet/shots/shell/10-already-trained-keeps-the-way-out.png",
+    ".gauntlet/shots/shell/11-already-trained-reaches-meet.png",
+    ".gauntlet/shots/shell/13-recap-before-the-return-leg.png",
+    ".gauntlet/shots/shell/14-return-leg-already-trained.png"
+  ],
+  "runner": {
+    "pid": 23907,
+    "startTick": "1038639",
+    "cmdline": "node tools/watchdog.mjs --budget 400 --id cutin-final -- node tools/capture-cutin.mjs",
+    "bootId": "2145eb26-c26b-43d2-ab57-036c9b7fa3f6",
+    "bootEpochSeconds": 1787116677,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-19T08:11:03.086Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
