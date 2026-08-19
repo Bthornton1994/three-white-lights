@@ -2457,6 +2457,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'engagement.ts',
       'expansion.ts',
       'ladder.ts',
+      'ladderView.tsx',
       'npc.ts',
       'production.ts',
       'recruitment.ts',
@@ -2488,7 +2489,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       shipped.map((name) => [name, readFileSync(path.join(HERE, name), 'utf8')]),
     );
     const mentionersOf = (name: string): readonly string[] => {
-      const base = name.replace(/\.ts$/, '');
+      const base = name.replace(/\.tsx?$/, '');
       const keys = [`./${base}`, `${base}.ts`, `${base}.test.ts`];
       return shipped.filter(
         (other) => other !== name && keys.some((key) => (bodies.get(other) as string).includes(key)),
@@ -2508,7 +2509,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // the map really has edges in it. Pinned exactly, so a directory whose
     // cross-references thinned out is a decision somebody signs.
     expect(bodies.size).toBe(shipped.length);
-    expect(pairs).toBe(49);
+    expect(pairs).toBe(53);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -2874,8 +2875,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
    * E38 shape): the identical text parsed under a `.ts` name yields zero
    * JsxText nodes, so a hardcoded kind would empty this collector without an
    * error. Both facts are driven in the fixture test below rather than
-   * trusted, because the shipped tree has zero `.tsx` files and these pins
-   * alone could not tell a working collector from a deleted one.
+   * trusted. (When this collector was written the shipped tree had zero
+   * `.tsx` files, so the shipped pins alone could not tell a working
+   * collector from a deleted one; `ladderView.tsx` has since given the
+   * shipped census a real domain, and the fixture drive is kept because it
+   * covers the catching case — a person-shaped chunk — which the shipped
+   * copy deliberately never contains.)
    *
    * It parses the original source, not the comment-stripped `code` above:
    * the line-comment strip would corrupt JSX text containing `//`, and the
@@ -2981,25 +2986,57 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       filesRead += 1;
     }
     expect(filesRead).toBe(shipped.length);
-    // The fourth collector, run over the same walk. Its domain today: zero
-    // `.tsx` files ship under src/empire/, so both pins below are 0 and hold
-    // with the collector deleted — the non-vacuity burden is carried entirely
-    // by the driven fixture test that follows this one.
+    // The fourth collector, run over the same walk. Its domain since
+    // `ladderView.tsx` landed: one shipped `.tsx`, and every bare-JSX-text
+    // chunk in it is SIGNED below as an exact list — the form the note that
+    // used to sit here asked the first raiser of the old zero pin to choose
+    // ("an exact chunk list, not a count", E40/E41), because a count's diff
+    // is a number while a list's diff is the string itself. A new or edited
+    // visible sentence in the view is a row somebody signs here by name, the
+    // same shape as the `spaceFree` pin below; this census adjudicates
+    // nothing, it makes the adjudication happen. The driven fixture test
+    // that follows still carries the collector's non-vacuity on a probe
+    // tree, and the list here is its non-vacuity on the shipped one.
     const jsxCensus = jsxTextCensusUnder(HERE);
-    // The chunk pin runs first and its failure message carries the chunks
-    // themselves, so the first red anyone sees on a name arriving names the
-    // string, rather than reporting that one file is not zero files.
-    expect(jsxCensus.chunks.length, jsxCensus.chunks.join(' | ')).toBe(0);
+    const SIGNED_JSX_TEXT_CHUNKS: readonly string[] = Object.freeze([
+      // ladderView.tsx, in tree order: the header line, the money line, the
+      // capability line, the accrual report, the refusal line, the shop, the
+      // relocation line, and the visibly-labelled dev control.
+      'the ladder',
+      'rung',
+      'earning',
+      'gym bucks per hour',
+      'gym bucks:',
+      'clock:',
+      'lifts unlocked:',
+      'last advance banked',
+      's of',
+      's, paid',
+      'gym bucks, cap discarded',
+      's',
+      'refused:',
+      'costs',
+      'gym bucks, fits from',
+      'buy',
+      'top of the ladder - the portfolio arrives with stage four',
+      'next:',
+      'for',
+      'gym bucks',
+      'relocate',
+      'dev control',
+      'not part of the game: each button feeds that many elapsed seconds to the shipped accrual, so a human can judge the pacing without waiting it out.',
+    ]);
+    expect(jsxCensus.chunks, jsxCensus.chunks.join(' | ')).toEqual(SIGNED_JSX_TEXT_CHUNKS);
     expect(jsxCensus.jsxFilesRead).toBe(shipped.filter((name) => name.endsWith('.tsx')).length);
-    expect(jsxCensus.jsxFilesRead).toBe(0);
+    expect(jsxCensus.jsxFilesRead).toBe(1);
     // Counts before contents, so an empty domain reports itself rather than
     // making the pin below a comparison of two empty lists.
     // 172 rather than 171 since `sealRate`'s label refusal arrived — a fixed
     // sentence with no substitution in it, which is what lets that refusal
     // name an unrecognised label without interpolating one.
-    expect(singleQuoted.size).toBe(192);
+    expect(singleQuoted.size).toBe(208);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(155);
+    expect(templateChunks.size).toBe(164);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3015,6 +3052,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './empireInvariant',
       './empireTuning',
       './expansion',
+      './ladder',
       './npc',
       './production',
       './recruitment',
@@ -3026,6 +3064,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'accelerated-seconds',
       'acceleratedSeconds',
       'accepted',
+      'advance-clock',
       'ahead',
       'already-building',
       'already-owned',
@@ -3089,11 +3128,23 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'injury-days-saved',
       'injuryDaysSaved',
       'knob',
+      'ladder-accrual',
+      'ladder-clock',
+      'ladder-dev-controls',
+      'ladder-gym-bucks',
+      'ladder-lifts',
+      'ladder-move',
+      'ladder-rate',
+      'ladder-refusal',
+      'ladder-rung',
+      'ladder-shop',
+      'ladder-view',
       'leaderboard-placement',
       'legendary',
       'level',
       'monolift',
       'move',
+      'move-up',
       'moved',
       'national',
       'not-a-friend-gym',
@@ -3171,7 +3222,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(347);
+    expect(stringsChecked).toBe(372);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3200,7 +3251,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(148);
+    expect(probes).toBe(162);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -3216,33 +3267,22 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // arrives as a named diff a reviewer reads, and this census does not
     // adjudicate it any more than the first half does.
     //
-    // The list is empty because the chunk domain is empty (pinned at 0
-    // above), so on the shipped tree this comparison holds whatever the
-    // extractor does — the fixture test below is where it is shown to bite.
+    // The list is empty because `ladderView.tsx`'s copy is deliberately
+    // lower-case throughout — a Titlecase pair arriving in render copy is a
+    // row somebody signs here, and the view's first version chose to need
+    // none. The fixture test below is where the extractor is shown to bite.
     //
-    // The declared residual, at the width E40 measured rather than the
-    // narrower one first written (E41). Today any JSX text at all reds the
-    // count pin above with the string itself in the message, so the census is
-    // covered. The day that pin is first raised above zero — the first
-    // shipped `.tsx` with render copy — two shapes arrive with no row
-    // anywhere:
-    //   (a) a mark that is not a Titlecase pair: a single word in caps, or a
-    //       wordmark with a digit swapped into it. The pair extractor has
-    //       nothing to extract, so it surfaces solely as the chunk count
-    //       moving by one — a diff that is a number, strictly weaker than the
-    //       `spaceFree` pin above, where the diff is the name itself. Whoever
-    //       raises the pin should raise it to an exact chunk list, not a
-    //       count, so this shape stays a named diff;
-    //   (b) a pair split across an expression container — `Placeholder{' '}
-    //       Lifter` — which parses as two JsxText chunks with no extractable
-    //       pair in either, while the separator lands in the single-quoted
-    //       collector as a bare space. Neither half is person-shaped alone,
-    //       so the signed-pairs list stays empty and the arrival is again two
-    //       count moves. An exact chunk list catches this one too, as two
-    //       adjacent named rows a reviewer reads together.
-    // Neither shape needs machinery today, because the count pin at zero
-    // carries both; the note exists so the pin is not raised into the weaker
-    // form by someone who has not read this.
+    // The residual E40/E41 declared here is now CLOSED the way its own note
+    // asked: the zero chunk-count pin was raised to `SIGNED_JSX_TEXT_CHUNKS`,
+    // an exact chunk list, when the first shipped `.tsx` landed. Both shapes
+    // the note named — (a) a mark that is not a Titlecase pair, and (b) a
+    // pair split across an expression container like `Placeholder{' '}
+    // Lifter` — now surface as named string diffs against that list rather
+    // than as count moves: (a) is a new or edited row, and (b) is two
+    // adjacent rows a reviewer reads together, plus the separator landing in
+    // the single-quoted collector. This pairs list stays the catcher for the
+    // shape the chunk list cannot make a reviewer see at a glance — a
+    // person-shaped pair inside one long signed sentence.
     const SIGNED_JSX_TITLECASE_PAIRS: readonly string[] = Object.freeze([]);
     const jsxPairs = [...new Set(jsxCensus.chunks.flatMap((chunk) => titlecasePairsIn(chunk)))];
     expect(jsxPairs.sort()).toEqual([...SIGNED_JSX_TITLECASE_PAIRS].sort());
@@ -3254,9 +3294,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
 
   it('catches a person-shaped name in bare JSX text, which no quote-keyed collector can see', () => {
     // Driven on-disk through the same walk and the same collector the census
-    // above runs, because the shipped tree has zero `.tsx` files: on that
-    // tree every jsx pin above holds with the collector deleted, so what the
-    // fourth collector claims is earned here or not at all.
+    // above runs. When this was written the shipped tree had zero `.tsx`
+    // files and every jsx pin above held with the collector deleted, so the
+    // fourth collector's claim was earned here or not at all; the shipped
+    // census now has `ladderView.tsx` as a real domain, and this drive stays
+    // because the shipped copy is deliberately lower-case — the CATCHING
+    // case, a person-shaped chunk, still exists only here.
     //
     // This exact text was planted at src/empire/sponsorBanner.tsx on the real
     // tree first (E39): `tsc --noEmit` exit 0, so the gap is a shippable
@@ -3444,6 +3487,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'engagement.ts': ['./empireCore', './empireTuning', './empireInvariant', './social'],
       'expansion.ts': ['./empireCore', './empireTuning'],
       'ladder.ts': ['./empireCore', './empireTuning', './production'],
+      'ladderView.tsx': ['./empireTuning', './ladder'],
       'npc.ts': ['./empireCore', './empireTuning'],
       'production.ts': ['./empireCore', './empireTuning'],
       'recruitment.ts': ['./empireCore', './empireTuning'],
@@ -3461,7 +3505,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // sentinel rather than passing unchecked, and the set equality catches a
     // row left behind by a deleted module.
     expect(fenced).toBe(SHIPPED_MODULES.length);
-    expect(fenced).toBe(11);
+    expect(fenced).toBe(12);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every specifier anywhere
@@ -3469,7 +3513,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     //
     // Resolved against the IMPORTING module's own directory rather than by
     // stripping a leading `./`. On the flat tree the two agree at every one of
-    // the 27 edges; they part on a module in a subdirectory, where a strip
+    // the 32 edges; they part on a module in a subdirectory, where a strip
     // reads `../../game/progression` as a name that is merely absent and a
     // resolve reads it as a path that leaves the directory. The strip is also
     // wrong in the reassuring direction one level down — `sub/a.ts` importing
@@ -3486,7 +3530,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         specifiers += 1;
       }
     }
-    expect(specifiers).toBe(30);
+    expect(specifiers).toBe(32);
     // The resolver is driven rather than trusted, on both the shape the tree
     // has and the shape it does not, so this is a subject rather than a helper.
     expect(resolved('empireCore.ts', './empireTuning')).toBe('empireTuning.ts');
@@ -3569,7 +3613,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // module and there are exactly this many of them — the one tree-wide
       // failure this piece expects, pinned rather than bounded so a literal
       // arriving in it is a decision somebody signs.
-      expect(findings.get(REGISTERED_PATH)?.length, report(REGISTERED_PATH)).toBe(98);
+      expect(findings.get(REGISTERED_PATH)?.length, report(REGISTERED_PATH)).toBe(101);
       // And the row would fix it rather than hide it: audited under a path that
       // already carries the rule it is asking for, the same bytes report
       // nothing, because every literal sits inside a frozen, named, top-level
@@ -3595,7 +3639,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'the count of literals the audit finds in empireTuning.ts moved: an entry was added or ' +
         'removed, or the instrument stopped reporting. Both are decisions; neither is a tuning ' +
         `pass. First finding: ${formatFindings(asRenderer.slice(0, 1)).trim()}`,
-    ).toBe(98);
+    ).toBe(101);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });
