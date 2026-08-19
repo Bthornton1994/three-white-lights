@@ -35,14 +35,13 @@
  *      §6.5's recap — where the way back is on screen, hit-testable, and lands
  *      on the daily session. Fails if the meet is a dead end, which it was: the
  *      recap's only action was "see your card", and the card had none at all.
- *   4b. AND THEN A SECOND MEET, IN THE SAME PAGE SESSION. `meetIdFor` reads the
- *      DEFINITION's id and `MEET_LOCAL` is one dated event, so the second meet
- *      of an app run reports an id the row already carries and the server
- *      refuses it — and `MeetScreen` swaps §6.5's recap for GDD §6.1's
- *      `career-calendar-placeholder` WHOLESALE. That substitute screen is read
- *      with the same three instruments and its exit is pressed too. Until this
- *      existed only the NEGATIVE half ("the placeholder is not drawn over a
- *      recap that built") had ever been measured.
+ *   4b. AND THEN A SECOND MEET, IN THE SAME PAGE SESSION — THE NEXT RUNG
+ *      (Sprint 1c). The calendar marks the played meet ALREADY_ENTERED off the
+ *      banked result's own id and draws the server's sentence on its row; meet
+ *      1's total opens regional's enter control; the second meet is entered
+ *      there, played whole, and ends in a REAL recap banked under its own id —
+ *      the first browser recap with a competition history behind it, so §6.5's
+ *      PR-where-beaten call-out is live on a played arm.
  *   4c. The scripted `?meet=recap` and `?meet=recap-card` frames are read as
  *      well. THEY ARE A DIFFERENT MEET ON A DIFFERENT SERVER OBJECT from 3, 4
  *      and 4b — `frozenMeetFor` returns a frame only when `source === 'debug'`,
@@ -509,8 +508,16 @@ const WALKOUT_TAIL_PROBE = Object.freeze({
 // them. The driver's three presses wait on that threshold too, and two
 // thresholds would be two answers to "is it drawn".
 
-const NAV_OPEN_MEET = 'shell-open-meet';
+// `shell-open-meet` IS GONE, AND ITS ABSENCE IS SPRINT 1c'S SUBJECT. The
+// session's one ungated door to the one local meet was deleted with the
+// `open-meet` intent; a meet is entered from the Career calendar — the CAREER
+// pill, GDD §2.1's chooser when it gates, then a row's ENTER MEET control
+// (`career-enter-${tier}`). Section 2 drives that path press by press;
+// section 7's negative sweep asserts the old pill stays gone.
 const NAV_LEAVE_MEET = 'shell-leave-meet';
+/** The calendar rows' enter controls this run presses, written out by hand. */
+const ENTER_LOCAL = 'career-enter-local';
+const ENTER_REGIONAL = 'career-enter-regional';
 /**
  * The Gym Empire round trip's two controls (GDD §5).
  *
@@ -557,14 +564,18 @@ const CAREER_SAYS = Object.freeze({
   LOCKED_BADGE: 'LOCKED',
   /** CAREER_COPY.ENTRY_REFUSAL.BELOW_QUALIFYING_TOTAL — the server's sentence. */
   BELOW_QUALIFYING: 'You need a qualifying total from an earlier meet to enter.',
-  /**
-   * The opening of `careerServer.ts`'s FEDERATION_LOCKED_BY_RESULTS message.
-   * The refusal leg asserts the drawn refusal BEGINS with this, because the
-   * whole sentence embeds the two federation ids and asserting a fragment of
-   * the middle would be green on a reworded refusal.
-   */
-  LOCKED_BY_RESULTS_OPENING: 'careerServer: this lifter has meet results under',
+  /** CAREER_COPY.ENTRY_REFUSAL.ALREADY_ENTERED — what the played meet's row
+   *  says when the calendar is reopened (Sprint 1c: the banked result's own id
+   *  is what marks it, no second bookkeeping path). */
+  ALREADY_ENTERED: 'You have already competed at this meet.',
+  /** CAREER_COPY.ENTER_MEET_LABEL — the control on an enterable row. */
+  ENTER: 'ENTER MEET',
 });
+// `LOCKED_BY_RESULTS_OPENING` was retired with section 4d: its premise —
+// results banked before a federation choice — cannot be constructed once the
+// calendar is the only door to a meet, so no browser leg shows that sentence
+// and this tool restates nothing it does not read off a screen. The guard and
+// its sentence live on in `careerServer.ts`, held by `careerServer.test.ts`.
 
 /**
  * The five calendar rows, in GDD §6.1's ladder order — `MEET_TIER_ORDER`,
@@ -634,15 +645,9 @@ const BEAT_SAYS = Object.freeze({
    * finding something.
    */
   ALREADY_TRAINED: 'TRAINED TODAY',
-  /**
-   * src/meet/careerCalendarPlaceholder.ts — CAREER_CALENDAR_PLACEHOLDER_COPY.LINE.
-   *
-   * The WHOLE ruled sentence, not a fragment of it. A human ruled this copy
-   * word for word (GDD §6.1) after a builder shipped a version that said the
-   * meet had been recorded when it had been refused, so a check that matched
-   * "Meet complete" would be green on the sentence that was withdrawn.
-   */
-  SECOND_MEET: 'Meet complete — results saved to your last recorded meet. Career calendar coming soon.',
+  // `SECOND_MEET` — the placeholder's ruled sentence — was retired with the
+  // placeholder leg (Sprint 1c): the second meet ends in a real recap, no leg
+  // shows that screen, and the trio's deletion is the sprint's last step.
   /**
    * src/shell/shellTuning.ts — SHELL_COPY.EMPIRE_LEAD.
    *
@@ -1106,22 +1111,21 @@ async function readAttemptSelect(page) {
 // TWO ARMS, AND THEY ARE DIFFERENT SUBJECTS. THE SPLIT IS THE APP'S, NOT A
 // CONVENIENCE
 // ===========================================================================
-// §6.1's Career calendar does not exist, so the SECOND meet of an app run is
-// refused as already recorded and `MeetScreen` draws the placeholder instead of
-// a recap (section 4b measures exactly that). A page load is a new lifter. So:
+// Since Sprint 1c the SECOND meet of an app run is the NEXT RUNG, entered from
+// the calendar and ending in a recap of its own (section 4b measures exactly
+// that). A page load is a new lifter. So:
 //
-//   - THE PLAYED ARM can only ever reach a FIRST meet's recap — no meets on
-//     record, `previousBestByLift` all-null, every lift a first. That is the
-//     screen the defect lived on, and it is read here with no query string in
-//     the address bar.
-//   - THE PR STATE IS NOT REACHABLE BY PLAY AT ALL. It needs a lifter with a
-//     competition history and a recap in the same app run, which the shipped
-//     route graph cannot produce. It is read on `?meet=recap`'s scripted lifter
-//     and labelled `DEBUG ARM`, the same way §6.3's miss branch already is.
+//   - THE PLAYED ARM reaches a FIRST meet's recap — no meets on record,
+//     `previousBestByLift` all-null, every lift a first (that is the screen
+//     the defect lived on) — AND a SECOND meet's recap, which walks in holding
+//     meet 1's bests, so PR-where-beaten is live by play.
+//   - THE DEBUG ARM (`?meet=recap`'s scripted lifter) is KEPT even so: it
+//     GUARANTEES a drawn PR word on every run, where the played second meet
+//     only produces one on a sitting whose boards actually beat something.
 //
-// Both are needed and neither substitutes for the other: the played arm alone
-// would pass a build that prints FIRST unconditionally, and the debug arm alone
-// would pass one that prints PR unconditionally.
+// All arms are needed: the played first-meet arm alone would pass a build that
+// prints FIRST unconditionally, and the debug arm alone would pass one that
+// prints PR unconditionally.
 //
 // ===========================================================================
 // THE ORACLE IS THE SAME ON BOTH ARMS
@@ -1664,9 +1668,10 @@ const NAV_TOP_TOLERANCE_PX = 2;
  * the thing that actually moves when the copy changes.
  *
  * IT IS A PROPERTY OF `SHELL_LAYOUT`'S BAND, NOT OF THE ALREADY-TRAINED SCREEN,
- * which is why it is no longer named after that screen. It has two readers now:
- * the already-trained surface (section 6) and GDD §6.1's second-meet
- * placeholder (section 4b), and both are screens whose ONLY exit is the pill.
+ * which is why it is no longer named after that screen. Its reader today is
+ * the already-trained surface (section 6), whose only exit is the pill; the
+ * second-meet placeholder was its other reader until Sprint 1c retired that
+ * screen's leg.
  */
 const CHROME_BAND_FRACTION = 6;
 const CHROME_BAND_TOP_Y = VIEWPORT.HEIGHT - VIEWPORT.HEIGHT / CHROME_BAND_FRACTION;
@@ -2987,10 +2992,9 @@ async function checkNavTableMatchesTuning() {
  * happened, and it is the same argument `BEAT_SAYS.REST` already carries.
  *
  * `BEAT_SAYS.RECAP` decides which photograph counts as a photograph of §6.5's
- * recap, and `BEAT_SAYS.SECOND_MEET` is the sentence a human ruled word for
- * word after a builder shipped one that said the meet had been recorded when it
- * had been refused. A check matching a fragment of it would be green on the
- * withdrawn wording.
+ * recap — on every meet now, because since Sprint 1c a second meet is a
+ * different meet with a recap of its own rather than the placeholder screen
+ * this paragraph used to cover.
  *
  * The three NUMBERS `RECAP_SETTLE_MS` is built out of are checked here too,
  * which `BOMB_OUT_EXIT_DRAWN_AT_MS`'s three are not — a re-tune of the recap's
@@ -3665,15 +3669,12 @@ async function checkMeetRestatementsMatchTuning() {
     }
   }
 
-  const placeholderWhere = path.join(srcRoot, 'src', 'meet', 'careerCalendarPlaceholder.ts');
-  const placeholderText = await readFile(placeholderWhere, 'utf8').catch(() => null);
-  check(
-    placeholderText !== null && placeholderText.includes(`LINE: '${BEAT_SAYS.SECOND_MEET}'`),
-    'CAREER_CALENDAR_PLACEHOLDER_COPY.LINE is the sentence this tool holds the second meet’s screen to, word for word',
-    placeholderText === null
-      ? `could not read ${placeholderWhere}`
-      : `looked for LINE: '${BEAT_SAYS.SECOND_MEET}' in careerCalendarPlaceholder.ts`,
-  );
+  // The pin on `careerCalendarPlaceholder.ts`'s LINE was retired with the
+  // placeholder leg (Sprint 1c): no screen this tool reaches shows that
+  // sentence any more — the second meet ends in a real recap — and a
+  // restatement of copy no leg reads is decoration. The placeholder trio's
+  // own deletion, together with GDD §6.1's TODO block, is the sprint's last
+  // step and has its own tripwire test until then.
 }
 
 /**
@@ -4558,10 +4559,10 @@ function checkRecapCallOutsOnBothArms(meetsDriven) {
   // ---- the domain, before anything is said about it -----------------------
   const boardsRead = seen.reduce((n, r) => n + Object.keys(r.boards).length, 0);
   check(
-    seen.length === 2 && boardsRead === seen.length * LIFT_ORDER_RESTATED.length,
-    `GDD §6.5’s recap was read on BOTH arms — ${LIFT_ORDER_RESTATED.length} boards each`,
+    seen.length === 3 && boardsRead === seen.length * LIFT_ORDER_RESTATED.length,
+    `GDD §6.5’s recap was read on BOTH arms and both played meets — ${LIFT_ORDER_RESTATED.length} boards each, three recaps (Sprint 1c: the second meet ends in one)`,
     `${seen.length} recap(s): ${seen.map((r) => `${r.tag}=${Object.keys(r.boards).length} boards`).join(', ')}` +
-      (seen.length === 2 ? '' : ' — one arm did not run, and every count below is over a smaller domain than it claims'),
+      (seen.length === 3 ? '' : ' — a recap did not run, and every count below is over a smaller domain than it claims'),
   );
   // WORD FOR WORD FROM THE APP, AND DIFFERENT FROM EACH OTHER. If the two
   // strings were ever the same, every discriminator below would be comparing a
@@ -4682,8 +4683,9 @@ function checkRecapCallOutsOnBothArms(meetsDriven) {
       (debugPrs === 0
         ? ' — the PR state was never drawn, so the check above was measured on an all-FIRST screen'
         : '') +
-      '. THE PLAYED ARM CANNOT REACH THIS: §6.1 has no career calendar, so a second meet in one app run is' +
-      ' refused and draws the placeholder rather than a recap (section 4b), and a page load is a new lifter.',
+      '. SINCE SPRINT 1c THE PLAYED ARM REACHES THIS STATE TOO: meet 2 walks in holding meet 1’s' +
+      ' bests (section 4b), so a played recap can say PR where a board beat one — this debug arm stays' +
+      ' because it guarantees the PR word is drawn even on a run where meet 2 beats nothing.',
   );
 }
 
@@ -4699,11 +4701,14 @@ await open('/', 'session-screen');
 await page.screenshot({ path: path.join(outDir, '01-session-with-nav.png') });
 
 await checkOnScreen('session-screen', 'the app opens on the daily session with no query string');
+// THE WAY TOWARD A MEET IS THE CAREER PILL (Sprint 1c): GDD §6.1 enters a meet
+// from the calendar, so the session's chrome offers CAREER, and the direct
+// meet pill is gone — section 7's sweep holds it gone on every beat.
 const openDrawn = await checkOnScreen(
-  NAV_OPEN_MEET,
-  `the way to meet day is on screen (${NAV_OPEN_MEET})`,
+  NAV_OPEN_CAREER,
+  `the way toward a meet is on screen (${NAV_OPEN_CAREER})`,
 );
-const openHit = await hitTest(NAV_OPEN_MEET);
+const openHit = await hitTest(NAV_OPEN_CAREER);
 check(openHit.hit, 'and the point a thumb would land on belongs to it', `elementFromPoint -> ${openHit.why}`);
 // WHICH BEAT THAT WAS MEASURED ON. Named rather than assumed, because the
 // pill-drawn table at the end of the run is filled from here and a reading
@@ -4724,10 +4729,49 @@ check(
   'and no fatigue readout (GDD §3.4, §12.3)',
 );
 
+// PRESS BY PRESS RATHER THAN THROUGH THE SHARED HELPER, because this is the
+// section that GRADES the entry path itself: every other tool rides
+// `enterMeetFromCalendar.mjs` and this is where each of its beats is asserted
+// against the app. A fresh lifter has no federation, so the calendar's gate —
+// GDD §2.1's one pick — is part of the path to a first meet, and it is driven
+// here rather than skipped around.
+await press(
+  NAV_OPEN_CAREER,
+  'career-screen',
+  'PRESSING IT OPENS THE CAREER SURFACE — no URL typed, no query string',
+);
+await checkOnScreen(
+  'career-choosing',
+  'a fresh lifter meets GDD §2.1’s chooser first: the pick gates the calendar, and no meet exists behind an unchosen federation',
+);
+await press(
+  'career-fed-meridian',
+  'career-calendar',
+  'CHOOSING A FEDERATION SETTLES INTO §6.1’s CALENDAR — the choose round trip ran through the app’s own machinery',
+);
+check(
+  !page.url().includes('?'),
+  'CONTROL: the calendar is the one the PLAYER reached — no query string at the moment it is read',
+  `the page is on ${JSON.stringify(page.url())}`,
+);
+const localEnterDrawn = await checkOnScreen(
+  ENTER_LOCAL,
+  `the entry tier’s row carries its ENTER MEET control (${ENTER_LOCAL}) — open entry, nothing to qualify for`,
+);
+const localEnterHit = await hitTest(ENTER_LOCAL);
+check(
+  localEnterHit.hit,
+  'and the point a thumb would land on belongs to it',
+  `elementFromPoint -> ${localEnterHit.why}`,
+);
+check(
+  localEnterDrawn && !(await visible(ENTER_REGIONAL)),
+  'and the rungs above are gated: a lifter with no total gets no ENTER MEET control on regional (GDD §6.1’s qualifying gate, drawn)',
+);
 const reachedMeet = await press(
-  NAV_OPEN_MEET,
+  ENTER_LOCAL,
   'meet-screen',
-  'PRESSING IT REACHES MEET DAY — no URL typed, no query string',
+  'PRESSING ENTER MEET REACHES MEET DAY — the calendar is the door, and this row is the meet it opens',
 );
 await page.screenshot({ path: path.join(outDir, '02-meet-from-session.png') });
 
@@ -4827,7 +4871,9 @@ const playerOpenedMeet = { attemptedSecond: false };
  * legs as they were driven. `null` is a leg that never ran, which is not the
  * same thing as a leg that ran and found nothing.
  */
-const careerLegs = { fresh: null, lockedByResults: null };
+// `lockedByResults` was retired with section 4d — see the note there; its
+// successor is the calendar's own refusal, read on the played run.
+const careerLegs = { fresh: null, alreadyEntered: null };
 await deriveRecapSettleMs();
 
 if (!reachedMeet) {
@@ -4978,13 +5024,14 @@ if (!reachedMeet) {
   // section 8c's to derive from `MEETS_DRIVEN`; all-null is passed because this
   // meet is the first of its app run, and 8c re-derives that and reddens if it
   // is not so — a read site that decided its own oracle would be grading itself.
-  RECAP_CALL_OUTS_SEEN.push({
+  const meet1CallOuts = {
     tag: 'meet 1',
     arm: 'played',
     appRun: APP_RUNS.serial,
     heldByLift: { squat: null, bench: null, deadlift: null },
     ...(await readRecapCallOuts(page, LIFT_ORDER_RESTATED)),
-  });
+  };
+  RECAP_CALL_OUTS_SEEN.push(meet1CallOuts);
 
   const leftLiveMeet = await press(
     NAV_LEAVE_MEET,
@@ -4996,39 +5043,79 @@ if (!reachedMeet) {
 
   // ---- 4b. and now the second meet of the same app run --------------------
   //
-  // GDD §6.1's `career-calendar-placeholder`: `meetIdFor` reads the DEFINITION's
-  // id, `MEET_LOCAL` is one dated event, and the row now carries a result for
-  // it — so this meet is refused with `MEET_ALREADY_RECORDED` and `MeetScreen`
-  // renders `CareerCalendarPlaceholderView` INSTEAD OF `RecapView`, wholesale.
-  //
-  // THE NEGATIVE HALF WAS ALREADY CHECKED (the placeholder does not leak onto a
-  // recap that built) AND THE POSITIVE HALF WAS NOT, which meant the screen that
-  // stands in for §6.5 on a path this piece's own route graph created had never
-  // been rendered in a browser at all.
+  // SINCE SPRINT 1c THE SECOND MEET IS THE NEXT RUNG, NOT A REFUSAL SCREEN.
+  // The banked result's own id marks the local ALREADY_ENTERED on the
+  // calendar (`careerMeet.ts` carries the id verbatim, `careerServer.ts`'s
+  // fold turns stored meets into `enteredMeetIds`), and meet 1's total —
+  // comfortably past regional's 400 — is what GDD §6.5's QUALIFIES FOR line
+  // was about: the next rung's row now carries the enter control. So this leg
+  // asserts three things the old placeholder leg never could: the refusal is
+  // ON THE CALENDAR (the server's sentence, before a meet is wasted), the
+  // ladder OPENS with performance, and the second meet ends in a REAL recap
+  // banked under its own id.
   if (!leftLiveMeet) {
     check(false, 'SKIPPED: the second meet needs the first one to have been left by its control');
   } else {
     playerOpenedMeet.attemptedSecond = true;
-    const reachedSecond = await press(
-      NAV_OPEN_MEET,
-      'meet-screen',
-      'PRESSING MEET DAY AGAIN OPENS A SECOND MEET in the same app run — the path §6.1’s scaffolding exists for',
+    await press(
+      NAV_OPEN_CAREER,
+      'career-screen',
+      'PRESSING CAREER AGAIN, after a banked meet, opens the career surface',
     );
+    check(
+      !(await visible('career-choosing')),
+      'and the chooser does NOT reappear — the one pick was spent entering meet 1, and a banked meet has not un-chosen it',
+    );
+    await checkOnScreen('career-calendar', 'it opens straight onto the calendar');
+    check(
+      !(await visible(ENTER_LOCAL)),
+      'THE PLAYED MEET’S ROW HAS NO ENTER CONTROL — the calendar refuses re-entry before a sitting is wasted on it',
+    );
+    const localDetail =
+      (await page.getByTestId('career-row-local-detail').textContent().catch(() => null))
+        ?.replace(/\s+/g, ' ')
+        .trim() ?? null;
+    check(
+      localDetail !== null && localDetail.includes(CAREER_SAYS.ALREADY_ENTERED),
+      'and the row says the server’s own ALREADY_ENTERED sentence, verbatim — never re-derived on the client',
+      `the row says ${JSON.stringify((localDetail ?? '(no detail row)').slice(0, 120))}`,
+    );
+    const regionalOpened = await checkOnScreen(
+      ENTER_REGIONAL,
+      'THE NEXT RUNG OPENED WITH THE RESULT — regional’s row carries the enter control meet 1’s total qualified for (GDD §6.5)',
+    );
+    check(
+      await visible('career-row-competitive-worlds-badge'),
+      'and GDD §10.0’s summit is still drawn locked above it, on a lifter with results',
+    );
+    careerLegs.alreadyEntered = Object.freeze({
+      localDetail,
+      regionalOpened,
+    });
+    await page.screenshot({ path: path.join(outDir, '24-calendar-after-a-banked-meet.png') });
+
+    const reachedSecond =
+      regionalOpened &&
+      (await press(
+        ENTER_REGIONAL,
+        'meet-screen',
+        'PRESSING THE REGIONAL ROW OPENS A SECOND MEET in the same app run — a different meet, because the calendar decides',
+      ));
     await checkOnScreen(
       'meet-weigh-in',
       'and the second meet opens on its own weigh-in, live, rather than on the first one’s ending',
     );
 
     if (!reachedSecond) {
-      check(false, 'SKIPPED: the second-meet placeholder checks need a second meet to have opened');
+      check(false, 'SKIPPED: the second-meet checks need a second meet to have opened');
     } else {
       // The hold the first meet converged on is carried in, so the second meet
       // starts from a mechanic this machine has already been measured against.
       const second = await checkDrivenMeet(
         'meet 2',
         first.search,
-        'placeholder',
-        'THE SECOND MEET IS REFUSED AS ALREADY RECORDED, and GDD §6.1’s placeholder is what stands where §6.5’s recap was',
+        'recap',
+        'THE SECOND MEET ENDS IN A REAL RECAP OF ITS OWN — banked under its own id, because the calendar handed it one (Sprint 1c)',
         // FROM HERE THE ROBOT PLAYS §6.3'S DILEMMA. See the block above
         // `takeTheBigJumpWhenSomethingIsBanked` for why it is armed on the
         // second meet and not the first.
@@ -5041,90 +5128,41 @@ if (!reachedMeet) {
         holdMs: second.search.holdMs,
       };
 
-      const placeholderDrawn = await checkOnScreen(
-        'meet-recap-placeholder',
-        'the placeholder is DRAWN — the positive half, which nothing had ever rendered',
-      );
-      // A CHECK THAT WAS HERE AND IS NOT, WITH ITS REASON, because deleting one
-      // quietly is how the next reader comes to believe it was never needed.
-      //
-      // It read `!(await visible('meet-recap'))` under the name "and §6.5's
-      // recap is NOT drawn behind it — the placeholder REPLACES the recap
-      // rather than joining it". IT COULD NOT FAIL. `MeetScreen` reaches the
-      // placeholder only down the `recap === null` arm of a ternary, and
-      // `RecapView` takes a `MeetRecap` and cannot be rendered without one, so
-      // on this screen there is no version of the subject that draws both. It
-      // survived a mutant that deleted the placeholder outright and a mutant
-      // that rendered the placeholder over a built recap — the second of which
-      // is precisely the failure it claimed to guard, and which reddened the
-      // check on the FIRST meet's recap above instead. That is where the claim
-      // is actually testable, and that is where it now lives.
-      //
-      // The exclusivity itself is structural rather than measured, and saying
-      // so is the point of this paragraph: if `MeetScreen`'s recap branch ever
-      // stops being one ternary, this stops being true for free and something
-      // here has to start asserting it.
+      const secondRecapArrived = await waitUntilDrawn(page, 'recap-action', RECAP_SETTLE_MS);
       check(
-        !(await visible('meet-recap-waiting')),
-        'and the bare in-flight eyebrow is gone too, so this is the settled screen and not a frame of the round trip',
+        secondRecapArrived.drawn,
+        'and the second recap’s last block arrives inside the same derived deadline as the first',
+        secondRecapArrived.why,
       );
-      const placeholderSays = (await bodyText()).replace(/\s+/g, ' ').trim();
-      check(
-        placeholderSays.includes(BEAT_SAYS.SECOND_MEET),
-        'and it says the sentence a human ruled for it, word for word (GDD §6.1)',
-        placeholderSays.includes(BEAT_SAYS.SECOND_MEET)
-          ? undefined
-          : `expected ${JSON.stringify(BEAT_SAYS.SECOND_MEET)}; the screen says ${JSON.stringify(placeholderSays.slice(0, 140))}`,
-      );
+      // GDD §6.5's PER-LIFT CALL-OUT, ON THE ONE RECAP IN THE RUN WITH A REAL
+      // HISTORY BEHIND IT. Meet 1's recap could only say FIRST; this one walks
+      // in holding meet 1's per-lift bests, so PR-where-beaten and
+      // silent-where-not are live for the first time on a played arm. The held
+      // records are read off MEET 1'S OWN DRAWN BOARDS — the best unstruck
+      // cell per lift is exactly the per-lift best the server folded from that
+      // banked result — never typed here.
+      RECAP_CALL_OUTS_SEEN.push({
+        tag: 'meet 2',
+        arm: 'played',
+        appRun: APP_RUNS.serial,
+        heldByLift: Object.fromEntries(
+          LIFT_ORDER_RESTATED.map((lift) => [lift, bestOnBoard(meet1CallOuts.boards[lift])]),
+        ),
+        ...(await readRecapCallOuts(page, LIFT_ORDER_RESTATED)),
+      });
 
-      const placeholderLeaveDrawn = await checkOnScreen(
+      const secondLeaveDrawn = await checkOnScreen(
         NAV_LEAVE_MEET,
-        'THE WAY BACK IS ON THE PLACEHOLDER, whose only exit it is — it draws no control of its own',
+        'THE WAY BACK IS ON THE SECOND RECAP, exactly as it is on the first',
       );
-      const placeholderHit = await hitTest(NAV_LEAVE_MEET);
+      const secondLeaveHit = await hitTest(NAV_LEAVE_MEET);
       check(
-        placeholderHit.hit,
+        secondLeaveHit.hit,
         'and the point a thumb would land on belongs to it',
-        `elementFromPoint -> ${placeholderHit.why}`,
+        `elementFromPoint -> ${secondLeaveHit.why}`,
       );
-      sawPillOn('recap', placeholderDrawn && placeholderLeaveDrawn, placeholderHit.hit);
-
-      // THE LAYOUT HAZARD, MEASURED RATHER THAN ARGUED. The failure this whole
-      // section is written against is not "the placeholder is wrong" — it is a
-      // future edit that makes it full-bleed, or centres it lower, so the copy
-      // grows into the band `SHELL_LAYOUT` reserves for the pill and a player
-      // who competes twice lands somewhere with no way back. Same instrument
-      // and same derived floor as the already-trained surface in section 6.
-      const placeholderCopy = await drawnTextBox('meet-recap-placeholder');
-      const placeholderNav = placeholderHit.box ?? null;
-      check(
-        placeholderNav !== null && Math.abs(placeholderNav.y - NAV_TOP_Y) <= NAV_TOP_TOLERANCE_PX,
-        `the pill’s top on the placeholder is where SHELL_LAYOUT puts it (y=${NAV_TOP_Y}), so the floor below is derived from this drawn screen`,
-        placeholderNav === null
-          ? 'no pill to measure'
-          : `drawn at y=${placeholderNav.y.toFixed(1)} against a derived ${NAV_TOP_Y}`,
-      );
-      check(
-        placeholderCopy !== null &&
-          placeholderNav !== null &&
-          placeholderNav.y - placeholderCopy.bottom >= CHROME_BAND_CLEARANCE_PX,
-        `and the placeholder’s copy stays out of the band SHELL_LAYOUT reserves for chrome — >= ${CHROME_BAND_CLEARANCE_PX.toFixed(2)}px clear above the pill`,
-        placeholderCopy === null
-          ? 'no drawn copy to measure on the placeholder'
-          : placeholderNav === null
-            ? `copy measured (bottom y=${placeholderCopy.bottom.toFixed(1)}) but there is no pill to measure it against`
-            : `copy bottom y=${placeholderCopy.bottom.toFixed(1)}; pill top y=${placeholderNav.y.toFixed(1)}; gap ${(placeholderNav.y - placeholderCopy.bottom).toFixed(1)}px`,
-      );
-      check(
-        !/\btotal\b/i.test(placeholderSays),
-        'and the placeholder shows no Total — the row’s total belongs to the EARLIER meet and this screen is not meet day’s payoff (GDD §3.2, §6.4)',
-      );
-      // THE BEAT IS `recap`, and the filename says so rather than saying
-      // "placeholder": GDD §6.1's screen is what `MeetScreen` draws ON the
-      // recap beat when the server refuses the meet, which is why the shell's
-      // pill is over it at all (`SHELL_NAV.MEET_PHASES` is `['recap']`). What
-      // tells this photograph apart from `04a`'s is the SENTENCE, not the beat.
-      await shootBeat('04b-recap-beat-second-meet-placeholder.png', 'recap', BEAT_SAYS.SECOND_MEET);
+      sawPillOn('recap', secondRecapArrived.drawn && secondLeaveDrawn, secondLeaveHit.hit);
+      await shootBeat('04b-second-meet-real-recap.png', 'recap', BEAT_SAYS.RECAP);
 
       await press(
         NAV_LEAVE_MEET,
@@ -5135,92 +5173,30 @@ if (!reachedMeet) {
       await shootBeat('05b-check-in-after-the-second-meet.png', 'check-in', BEAT_SAYS.CHECK_IN);
 
       // ---------------------------------------------------------------------
-      // 4d. THE FEDERATION IS LOCKED BY THOSE RESULTS — the one career refusal
-      //     a browser can reach, driven on the row that has them (Sprint 1b)
+      // 4d. RETIRED WITH ITS REASON, NOT DELETED QUIETLY (Sprint 1c)
       // ---------------------------------------------------------------------
       //
-      // It sits HERE, not in section 11, because it needs what only this app
-      // run has: a `ServerRecord` holding a banked meet, with the federation
-      // still unchosen. `careerServer.ts` then refuses a choice of any OTHER
-      // federation (`FEDERATION_LOCKED_BY_RESULTS` — results belong to the
-      // calendar they were lifted on) while allowing the same-id confirm.
-      // Section 11's fresh lifter cannot reach either arm, and no debug URL
-      // opens the Career surface at all. Both arms of the round trip below run
-      // through the app's own optimistic machinery — proposal parked, request
-      // sent, refusal rendered from the server's sentence, retry accepted —
-      // which is the path Sprint 1a shipped untested end-to-end.
-      const reachedCareerWithResults = await press(
-        NAV_OPEN_CAREER,
-        'career-screen',
-        'PRESSING CAREER on the same app run opens GDD §2.1’s chooser — two banked meets have not spent the choice',
-      );
-      if (!reachedCareerWithResults) {
-        check(false, 'SKIPPED: the locked-by-results refusal needs the chooser to have opened');
-      } else {
-        check(
-          !page.url().includes('?'),
-          'CONTROL: the chooser is the one the PLAYER opened — no query string at the moment it is read',
-          `the page is on ${JSON.stringify(page.url())}`,
-        );
-        await checkOnScreen(
-          'career-choosing',
-          'the chooser gates the calendar: `chosen` is still false on this row, results and all',
-        );
-        const refused = await press(
-          'career-fed-grandhall',
-          'career-refusal',
-          'CHOOSING A DIFFERENT FEDERATION IS REFUSED BY THE SERVER — the choice went out and the refusal came back',
-        );
-        if (refused) {
-          const refusalText =
-            (await page.getByTestId('career-refusal').textContent().catch(() => null))
-              ?.replace(/\s+/g, ' ')
-              .trim() ?? null;
-          check(
-            refusalText !== null && refusalText.startsWith(CAREER_SAYS.LOCKED_BY_RESULTS_OPENING),
-            'and the sentence on screen is the server’s own, from its opening words — rendered verbatim, never re-derived',
-            `the screen says ${JSON.stringify((refusalText ?? '').slice(0, 120))}`,
-          );
-          check(
-            refusalText !== null &&
-              refusalText.includes('"meridian"') &&
-              refusalText.includes('"grandhall"'),
-            'and it names both federations — the one the results were lifted under and the one asked for',
-            `the sentence: ${JSON.stringify((refusalText ?? '').slice(0, 200))}`,
-          );
-          check(
-            await visible('career-choosing'),
-            'and the chooser is still up — a refusal is not a dead end, and the retry below is accepted',
-          );
-          await page.screenshot({ path: path.join(outDir, '23-career-chooser-refusal.png') });
-          const confirmed = await press(
-            'career-fed-meridian',
-            'career-calendar',
-            'CONFIRMING THE FEDERATION THE RESULTS WERE LIFTED UNDER SUCCEEDS — the same-id confirm, with meets banked',
-          );
-          if (confirmed) {
-            check(
-              !page.url().includes('?'),
-              'CONTROL: and the calendar it settles into is the played route — still no query string',
-              `the page is on ${JSON.stringify(page.url())}`,
-            );
-            check(
-              await visible('career-row-competitive-worlds'),
-              'and the calendar is up with GDD §10.0’s summit drawn on it — the refusal leg ends where the fresh leg does',
-            );
-            careerLegs.lockedByResults = Object.freeze({
-              refusedFederation: 'grandhall',
-              confirmedFederation: 'meridian',
-              refusalText,
-            });
-            await press(
-              NAV_LEAVE_CAREER,
-              'session-screen',
-              'and BACK TO TRAINING closes the leg, so everything downstream starts from the session',
-            );
-          }
-        }
-      }
+      // This leg drove `FEDERATION_LOCKED_BY_RESULTS`: a lifter with banked
+      // meets and the federation still unchosen chose a DIFFERENT federation,
+      // read the server's refusal verbatim, and retried with the same-id
+      // confirm. Its premise — results banked before a choice — CANNOT BE
+      // CONSTRUCTED any more: the only door to a meet is the calendar, the
+      // chooser gates the calendar, so a choice precedes every result by
+      // construction. That is the structural reading of "results belong to the
+      // calendar they were lifted on", and it is stronger than the refusal it
+      // replaces — the guard stays in `careerServer.ts` as defense in depth,
+      // covered by `careerServer.test.ts`, and what a browser can no longer
+      // reach a browser no longer claims. The verbatim-server-sentence claim
+      // this leg carried lives on above, on the ALREADY_ENTERED row detail.
+      //
+      // What was lost and is NOT replaced: no browser leg now drives a REFUSED
+      // choose-federation round trip (proposal parked, refusal rendered,
+      // retry accepted). Every reachable chooser press is a fresh lifter's,
+      // and a fresh choice is always accepted. Named here so nobody reads the
+      // green career sections as covering the optimistic machinery's refusal
+      // arm — `careerServer.test.ts` and `careerSurface.test.ts` hold that arm
+      // in node. (The run is already back on the session here: meet 2's own
+      // BACK TO TRAINING closed the leg above.)
     }
   }
 }
@@ -5338,10 +5314,10 @@ await open('/?session=close-out-pr', 'session-close-out');
 await page.screenshot({ path: path.join(outDir, '07-close-out-with-nav.png') });
 const closeOutDrawn = await checkOnScreen('session-close-out', 'the close-out renders');
 const closeOutPillDrawn = await checkOnScreen(
-  NAV_OPEN_MEET,
-  'the way to meet day is on the close-out — the end of a session',
+  NAV_OPEN_CAREER,
+  'the way toward a meet is on the close-out — the end of a session',
 );
-const closeOutHit = await hitTest(NAV_OPEN_MEET);
+const closeOutHit = await hitTest(NAV_OPEN_CAREER);
 check(closeOutHit.hit, 'and it is pressable there', `elementFromPoint -> ${closeOutHit.why}`);
 sawPillOn('close-out', closeOutDrawn && closeOutPillDrawn, closeOutHit.hit);
 
@@ -5357,7 +5333,23 @@ check(
   'the close-out still shows no Total with the shell over it (GDD §3.2)',
 );
 
-await press(NAV_OPEN_MEET, 'meet-screen', 'FINISH A SESSION -> REACH A MEET, in one press');
+// FINISH A SESSION -> REACH A MEET, through the calendar. The shared helper
+// drives the same three presses every other tool rides (this run's section 2
+// already graded each beat of it individually); this context is a fresh
+// lifter, so the chooser arm runs.
+{
+  const entry = await enterMeetFromCalendar(page, { stepMs: 40000 });
+  check(
+    entry.entered,
+    'FINISH A SESSION -> REACH A MEET, through the calendar’s own controls',
+    entry.entered ? `chooser arm ${entry.chose ? 'ran' : 'was already settled'}` : entry.why,
+  );
+  await page
+    .getByTestId('meet-screen')
+    .waitFor({ state: 'visible', timeout: 40000 })
+    .catch(() => {});
+  check(await visible('meet-screen'), 'and a meet is what it reaches');
+}
 await checkOnScreen(
   'meet-weigh-in',
   'and it is a fresh meet, not the frozen beat the launch URL named',
@@ -5381,10 +5373,10 @@ const briefingDrawn = await checkOnScreen(
   'GDD §3.2’s briefing renders — the beat where the player picks an RPE',
 );
 const briefingPillDrawn = await checkOnScreen(
-  NAV_OPEN_MEET,
-  'the way to meet day is drawn on the briefing, which SHELL_NAV says it should be',
+  NAV_OPEN_CAREER,
+  'the way toward a meet is drawn on the briefing, which SHELL_NAV says it should be',
 );
-const briefingHit = await hitTest(NAV_OPEN_MEET);
+const briefingHit = await hitTest(NAV_OPEN_CAREER);
 check(
   briefingHit.hit,
   'and the point a thumb would land on belongs to it there too',
@@ -5598,10 +5590,10 @@ const playedOut = { attempted: true };
       'the already-trained surface renders — the last screen of the daily loop',
     );
     const drawn = await checkOnScreen(
-      NAV_OPEN_MEET,
-      'THE WAY TO MEET DAY IS ON IT, and it is the only thing on it to press',
+      NAV_OPEN_CAREER,
+      'THE WAY TOWARD A MEET IS ON IT — the shell’s pills are the only things on it to press',
     );
-    const alreadyHit = await hitTest(NAV_OPEN_MEET);
+    const alreadyHit = await hitTest(NAV_OPEN_CAREER);
     check(
       alreadyHit.hit,
       'and the point a thumb would land on belongs to it',
@@ -5705,11 +5697,19 @@ const playedOut = { attempted: true };
     );
 
     if (drawn) {
-      await press(
-        NAV_OPEN_MEET,
-        'meet-screen',
-        'AND PRESSING IT REACHES MEET DAY — the daily loop does not end on a dead end',
+      // The daily loop does not end on a dead end: through the calendar (this
+      // context is a fresh lifter who has TRAINED — the chooser arm runs, and
+      // the meet its calendar opens reads the session just played).
+      const alreadyEntry = await enterMeetFromCalendar(page, { stepMs: 40000 });
+      check(
+        alreadyEntry.entered,
+        'AND ITS PILL REACHES A MEET — the daily loop ends at the calendar, and the calendar opens a meet',
+        alreadyEntry.entered ? undefined : alreadyEntry.why,
       );
+      await page
+        .getByTestId('meet-screen')
+        .waitFor({ state: 'visible', timeout: 40000 })
+        .catch(() => {});
       await page.screenshot({ path: path.join(outDir, '11-already-trained-reaches-meet.png') });
       await checkOnScreen(
         'meet-weigh-in',
@@ -5887,15 +5887,14 @@ const playedOut = { attempted: true };
       returnLeg.meetMs = third.ms;
 
       // WHICH ENDINGS CARRY A PILL, AND THEREFORE WHICH ONES THIS LEG CAN BE
-      // MEASURED FROM. `MeetScreen` draws §6.5's recap and §6.1's placeholder on
-      // the SAME beat — `recap` — and `SHELL_NAV.MEET_PHASES` is that beat and
-      // nothing else, so both of them carry the way back and a bomb-out or a
-      // stalled round trip does not. Stated as a list of endings rather than as
-      // `=== 'recap'` because the claim here is "there is a control to press",
-      // which is the property the leg needs; WHICH of the two screens this route
-      // produces is the check above, and it is separate on purpose so a change
-      // there reddens one line instead of silently skipping a dozen.
-      const ENDINGS_ON_THE_PILL_BEAT = ['recap', 'placeholder'];
+      // MEASURED FROM. `SHELL_NAV.MEET_PHASES` is the `recap` beat and nothing
+      // else, so a finished meet carries the way back and a bomb-out or a
+      // stalled round trip does not. The list used to hold `'placeholder'`
+      // beside `'recap'`: since Sprint 1c a second sitting of one meet cannot
+      // be constructed (the calendar refuses it before a meet opens), so the
+      // placeholder ending has no path here and listing it would be an arm
+      // pretending to cover a screen this route cannot produce.
+      const ENDINGS_ON_THE_PILL_BEAT = ['recap'];
       if (!ENDINGS_ON_THE_PILL_BEAT.includes(third.ended)) {
         // NAMED, not silent. There is no control to press and the return leg
         // cannot be measured — which is a different statement from "it was
@@ -5969,23 +5968,16 @@ const playedOut = { attempted: true };
         // stand for the other is this file's own recorded failure — the arm
         // immediately below the one you just wrote is where it lands — so each
         // names its own wait and its own line.
-        let legScreenReady;
-        if (third.ended === 'recap') {
-          const arrived = await waitUntilDrawn(page, 'recap-action', RECAP_SETTLE_MS);
-          legScreenReady = arrived.drawn;
-          check(
-            arrived.drawn,
-            `and this recap’s last block arrives within ${RECAP_SETTLE_MS}ms too, so the frame below is of a finished screen`,
-            arrived.why,
-          );
-          await shootBeat('13-recap-before-the-return-leg.png', 'recap', BEAT_SAYS.RECAP);
-        } else {
-          legScreenReady = await checkOnScreen(
-            'meet-recap-placeholder',
-            'and §6.1’s placeholder — which animates nothing, so it has no stagger to wait out — is drawn before the frame below',
-          );
-          await shootBeat('13-recap-before-the-return-leg.png', 'recap', BEAT_SAYS.SECOND_MEET);
-        }
+        // One arm now, because one ending reaches this line — the guard above
+        // filtered on ENDINGS_ON_THE_PILL_BEAT, and that list is `['recap']`.
+        const arrived = await waitUntilDrawn(page, 'recap-action', RECAP_SETTLE_MS);
+        const legScreenReady = arrived.drawn;
+        check(
+          arrived.drawn,
+          `and this recap’s last block arrives within ${RECAP_SETTLE_MS}ms too, so the frame below is of a finished screen`,
+          arrived.why,
+        );
+        await shootBeat('13-recap-before-the-return-leg.png', 'recap', BEAT_SAYS.RECAP);
         returnLeg.meetScreenReady = legScreenReady;
 
         if (!legPill.drawn) {
@@ -6182,8 +6174,11 @@ for (const [search, waitFor, phase, what, shot, says] of [
   // carries its own verification — see `shootBeat`.
   await shootBeat(shot, phase, says);
   check(
-    !SHELL_NAV_EXPECTED.SESSION_PHASES.includes(phase) && !(await visible(NAV_OPEN_MEET)),
-    `NO CONTROL IS DRAWN OVER ${what} (beat '${phase}') — photographed in ${shot}`,
+    !SHELL_NAV_EXPECTED.SESSION_PHASES.includes(phase) &&
+      !(await visible(NAV_OPEN_CAREER)) &&
+      !(await visible('shell-open-meet')),
+    `NO CONTROL IS DRAWN OVER ${what} (beat '${phase}') — photographed in ${shot}` +
+      ' (and the deleted shell-open-meet stays deleted, probed by its literal id)',
   );
 }
 
@@ -6297,10 +6292,10 @@ await press(
   // blind and its "the pill is gone" reading would mean nothing.
   await open('/?cutin=nonsense', 'session-screen');
   const control = await checkOnScreen(
-    NAV_OPEN_MEET,
+    NAV_OPEN_CAREER,
     'CONTROL: with no cut-in up, the pill is on the same screen the probe looks at',
   );
-  const controlHit = await hitTest(NAV_OPEN_MEET);
+  const controlHit = await hitTest(NAV_OPEN_CAREER);
   check(
     control && controlHit.hit,
     'CONTROL: and it is hit-testable there, so the probe below can see a pill',
@@ -6315,13 +6310,13 @@ await press(
   // start the auto-dismiss timer — so there is no race with the shutter.
   await open('/?cutin=personal-record', 'cut-in');
   await page.screenshot({ path: path.join(outDir, '12-cutin-has-no-shell-chrome.png') });
-  const { on: pillDrawn, why: pillWhy } = await onScreen(NAV_OPEN_MEET);
+  const { on: pillDrawn, why: pillWhy } = await onScreen(NAV_OPEN_CAREER);
   check(
     !pillDrawn,
     'NO SHELL CHROME IS DRAWN OVER A CUT-IN (GDD §7.2: the whole screen dismisses it)',
     pillWhy,
   );
-  const pillHit = await hitTest(NAV_OPEN_MEET);
+  const pillHit = await hitTest(NAV_OPEN_CAREER);
   check(
     !pillHit.hit,
     'and nothing of the shell’s takes the tap that was meant to skip it',
@@ -6436,8 +6431,8 @@ await checkOnScreen(
     `the control says ${JSON.stringify(openEmpireLabel)}`,
   );
   check(
-    await visible(NAV_OPEN_MEET),
-    'and the meet pill is still beside it — the Empire edge is additive, not a replacement',
+    await visible(NAV_OPEN_CAREER),
+    'and the Career pill is still beside it — the Empire edge is additive, not a replacement',
   );
 
   const reachedEmpire = await press(
@@ -6699,8 +6694,8 @@ await checkOnScreen(
     // the empire surface, so a MEET DAY control on the floor would be the gate
     // having stopped discriminating between surfaces.
     check(
-      !(await visible(NAV_OPEN_MEET)),
-      'and the meet pill is NOT drawn on the floor — the gate answers per surface',
+      !(await visible(NAV_OPEN_CAREER)),
+      'and the Career pill is NOT drawn on the floor — the gate answers per surface',
     );
 
     const returned = await press(
@@ -7031,8 +7026,8 @@ await checkOnScreen(
     `the control says ${JSON.stringify(openCareerLabel)}`,
   );
   check(
-    (await visible(NAV_OPEN_MEET)) && (await visible(NAV_OPEN_EMPIRE)),
-    'and the meet and Empire pills are still beside it — the Career edge is additive, the check-in now offers three round trips',
+    await visible(NAV_OPEN_EMPIRE),
+    'and the Empire pill is still beside it — the session offers its two round trips, and meets live behind this one (Sprint 1c)',
   );
 
   const reachedCareer = await press(
@@ -7272,6 +7267,8 @@ async function checkCareerRestatementsMatchTuning() {
       ['OPEN_ENTRY_BADGE', CAREER_SAYS.OPEN_BADGE],
       ['CEILING_LOCKED_BADGE', CAREER_SAYS.LOCKED_BADGE],
       ['BELOW_QUALIFYING_TOTAL', CAREER_SAYS.BELOW_QUALIFYING],
+      ['ALREADY_ENTERED', CAREER_SAYS.ALREADY_ENTERED],
+      ['ENTER_MEET_LABEL', CAREER_SAYS.ENTER],
     ]) {
       check(
         careerText.includes(`${name}: '${mine}'`),
@@ -7312,15 +7309,6 @@ async function checkCareerRestatementsMatchTuning() {
     );
   }
 
-  const serverWhere = path.join(srcRoot, 'src', 'game', 'careerServer.ts');
-  const serverText = await readFile(serverWhere, 'utf8').catch(() => null);
-  check(
-    serverText !== null && serverText.includes(CAREER_SAYS.LOCKED_BY_RESULTS_OPENING),
-    'the refusal opening the locked-by-results leg asserts is careerServer.ts’s own sentence',
-    serverText === null
-      ? `could not read ${serverWhere}`
-      : `looked for ${JSON.stringify(CAREER_SAYS.LOCKED_BY_RESULTS_OPENING)} in careerServer.ts`,
-  );
 }
 
 // ---------------------------------------------------------------------------
