@@ -11028,9 +11028,15 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'engagement.ts:437 EmpireState asked=true walked=false',
   'engagement.ts:455 EmpireState asked=true walked=false',
   'expansion.ts:549 EmpireClock asked=true walked=false',
-  'ladder.ts:557 LadderState asked=true walked=false',
-  'ladder.ts:568 LadderState asked=true walked=false',
-  'ladder.ts:574 LadderState asked=true walked=false',
+  'ladder.ts:585 LadderState asked=true walked=false',
+  'ladder.ts:596 LadderState asked=true walked=false',
+  'ladder.ts:602 LadderState asked=true walked=false',
+  'ladderView.tsx:106 LadderState asked=true walked=false',
+  'ladderView.tsx:107 LadderAccrual asked=true walked=false',
+  'ladderView.tsx:114 LadderState asked=true walked=false',
+  'ladderView.tsx:115 LadderAccrual | null asked=true walked=false',
+  'ladderView.tsx:122 LadderState asked=true walked=false',
+  'ladderView.tsx:123 LadderAccrual | null asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
   'social.ts:535 readonly FriendVisit[] asked=true walked=false',
 ]);
@@ -11038,7 +11044,7 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
 /** What the two readings of the screen measured against each other. */
 const SCREEN_AGREEMENT = Object.freeze({
   /** Rows in `SHIPPED_SCREEN_DISAGREEMENTS`, so a shorter list is red too. */
-  SHIPPED_DISAGREEMENTS: 14,
+  SHIPPED_DISAGREEMENTS: 20,
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -11184,7 +11190,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   /** Deepest chain from an exported surface, in the control's own accounting. */
   DEEPEST: 9,
   /** Exported positions measured. A truncated walk would report a shallow tree. */
-  POSITIONS: 557,
+  POSITIONS: 576,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -14913,7 +14919,7 @@ function cyclicDeclarations(
  */
 const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   /** Type aliases, interfaces and classes declared across the ten shipped modules. */
-  DECLARATIONS: 132,
+  DECLARATIONS: 139,
   /** Those carrying type parameters. An instantiation depth needs one. */
   GENERIC: 11,
   /**
