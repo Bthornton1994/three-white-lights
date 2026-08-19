@@ -52,18 +52,22 @@ import {
   grantAcceleratedGymBucks,
   groupCapabilityGrade,
   gymCheckIn,
+  gymCheckInAfter,
   requireGymState,
   requireWeekAllocation,
   resolveWeek,
   runGym,
+  secondsUntilNextWeekBoundary,
   sessionEquipmentCost,
   sessionEquipmentGroup,
   sessionEquipmentMinRung,
   supportAmplifier,
+  trainingWeekIndexAt,
   trainingWeekShape,
   weeklyAttributeEffects,
+  withLadder,
 } from './sessions';
-import { ladderEquipmentCost, ladderMoveCost, ladderRungIndex } from './ladder';
+import { createLadderState, ladderEquipmentCost, ladderMoveCost, ladderRungIndex } from './ladder';
 import { EMPIRE_TUNING } from './empireTuning';
 
 const T = EMPIRE_TUNING;
@@ -1199,5 +1203,92 @@ describe('purchased or accelerated currency buys no training outcome, element-wi
     for (const rung of ['storage-unit', 'strip-mall-unit', 'warehouse'] as const) {
       expect(sizes.has(ladderMoveCost(rung)), rung).toBe(true);
     }
+  });
+});
+
+describe('the stage-2 view-facing helpers — the same move ladder.ts §6 makes', () => {
+  it('withLadder replaces exactly the ladder field and nothing else', () => {
+    const opening = createGymState();
+    const distinctLadder = gymCheckIn(opening, T.SECONDS_PER_DAY).state.ladder;
+    expect(distinctLadder).not.toEqual(opening.ladder);
+    const swapped = withLadder(opening, distinctLadder);
+    expect(swapped.ladder).toEqual(distinctLadder);
+    expect(swapped.acceleratedGymBucks).toBe(opening.acceleratedGymBucks);
+    expect(swapped.sessionEquipment).toEqual(opening.sessionEquipment);
+    // And it is a pure re-wrap: the untouched fields are the SAME reference,
+    // not merely equal, so a caller composing several writers never pays for
+    // a needless clone.
+    expect(swapped.sessionEquipment).toBe(opening.sessionEquipment);
+  });
+
+  it('gymCheckInAfter advances by a gap exactly as gymCheckIn at the folded absolute time would', () => {
+    // The helper is delegation, not a second implementation: byte-identical
+    // outcome to gymCheckIn at the folded absolute time, across a domain that
+    // includes zero, one tick and a multi-day gap.
+    const gaps = [0, T.TICK_SECONDS, T.SECONDS_PER_DAY, T.SECONDS_PER_DAY * 3 + T.TICK_SECONDS];
+    let state = createGymState();
+    let compared = 0;
+    for (const gap of gaps) {
+      const viaGap = gymCheckInAfter(state, gap);
+      const viaAbsolute = gymCheckIn(state, state.ladder.collectedAt + gap);
+      expect(viaGap).toEqual(viaAbsolute);
+      state = viaGap.state;
+      compared += 1;
+    }
+    expect(compared).toBe(gaps.length);
+    expect(compared).toBe(4);
+    expect(() => gymCheckInAfter(createGymState(), -1)).toThrowError(
+      /check-in gap must be finite and at or above zero/,
+    );
+    expect(() => gymCheckInAfter(createGymState(), Number.NaN)).toThrowError(
+      /check-in gap must be finite and at or above zero/,
+    );
+  });
+
+  it('trainingWeekIndexAt indexes which training week a second falls in, week 0 first', () => {
+    const weekSeconds = T.DAYS_PER_TRAINING_WEEK * T.SECONDS_PER_DAY;
+    expect(trainingWeekIndexAt(0)).toBe(0);
+    expect(trainingWeekIndexAt(weekSeconds - T.TICK_SECONDS)).toBe(0);
+    expect(trainingWeekIndexAt(weekSeconds)).toBe(1);
+    expect(trainingWeekIndexAt(weekSeconds + T.TICK_SECONDS)).toBe(1);
+    expect(trainingWeekIndexAt(weekSeconds * 3)).toBe(3);
+    expect(() => trainingWeekIndexAt(-1)).toThrowError(
+      /week-index reading must be finite and at or above zero/,
+    );
+    expect(() => trainingWeekIndexAt(Number.NaN)).toThrowError(
+      /week-index reading must be finite and at or above zero/,
+    );
+  });
+
+  it('secondsUntilNextWeekBoundary is never zero and always lands one week index ahead', () => {
+    const weekSeconds = T.DAYS_PER_TRAINING_WEEK * T.SECONDS_PER_DAY;
+    // Sitting exactly on a boundary returns a FULL week rather than stalling —
+    // named because it is the branch a naive `% weekSeconds` would miss.
+    expect(secondsUntilNextWeekBoundary(0)).toBe(weekSeconds);
+    expect(secondsUntilNextWeekBoundary(weekSeconds)).toBe(weekSeconds);
+    expect(secondsUntilNextWeekBoundary(weekSeconds * 5)).toBe(weekSeconds);
+    // Mid-week, it is the remainder to the boundary.
+    expect(secondsUntilNextWeekBoundary(weekSeconds + T.TICK_SECONDS)).toBe(
+      weekSeconds - T.TICK_SECONDS,
+    );
+    expect(secondsUntilNextWeekBoundary(weekSeconds * 2 - T.TICK_SECONDS)).toBe(T.TICK_SECONDS);
+    // The defining property, swept: advancing by the result always lands
+    // exactly one week index ahead of where you started, at every point of a
+    // calendar that straddles several boundaries.
+    let checked = 0;
+    for (let atSeconds = 0; atSeconds <= weekSeconds * 3; atSeconds += T.SECONDS_PER_DAY) {
+      const gap = secondsUntilNextWeekBoundary(atSeconds);
+      expect(gap).toBeGreaterThan(0);
+      expect(gap).toBeLessThanOrEqual(weekSeconds);
+      expect(trainingWeekIndexAt(atSeconds + gap)).toBe(trainingWeekIndexAt(atSeconds) + 1);
+      checked += 1;
+    }
+    expect(checked).toBe(22);
+    expect(() => secondsUntilNextWeekBoundary(-1)).toThrowError(
+      /week-boundary reading must be finite and at or above zero/,
+    );
+    expect(() => secondsUntilNextWeekBoundary(Number.NaN)).toThrowError(
+      /week-boundary reading must be finite and at or above zero/,
+    );
   });
 });

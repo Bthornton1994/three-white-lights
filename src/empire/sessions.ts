@@ -744,8 +744,8 @@ export interface GymRun {
   readonly weeks: readonly GymWeekReport[];
 }
 
-/** `state` with its ladder replaced — one writer shape for the composed fold. */
-function withLadder(state: GymState, ladder: LadderState): GymState {
+/** `state` with its ladder replaced — exported so a view need not re-derive it. */
+export function withLadder(state: GymState, ladder: LadderState): GymState {
   return Object.freeze({ ...state, ladder });
 }
 
@@ -934,4 +934,63 @@ export function runGym(
     movedTo: Object.freeze(movedTo),
     weeks: Object.freeze(weeks),
   });
+}
+
+// ---------------------------------------------------------------------------
+// View-facing helpers — the §5.11 stage-2 gate's instrument reads this
+// section and adds nothing to it, the same move `ladder.ts` §6 makes for
+// `ladderCheckInAfter` / `ladderDevTimeSteps`. Three functions, each named
+// after the one arithmetic step it does; `gymView.tsx`'s reducer composes
+// them and computes nothing itself.
+// ---------------------------------------------------------------------------
+
+/** Seconds in one training week — the same divisor `runGym`'s own week loop
+ * uses internally, named here so a caller does not repeat the multiplication. */
+function trainingWeekLengthSeconds(): number {
+  return EMPIRE_TUNING.DAYS_PER_TRAINING_WEEK * EMPIRE_TUNING.SECONDS_PER_DAY;
+}
+
+/**
+ * `gymCheckIn` from `gapSeconds` after the current mark — the view-facing
+ * convenience `ladder.ts` ships as `ladderCheckInAfter`, composed onto the
+ * whole stage-2 state so a view carries no arithmetic of its own.
+ */
+export function gymCheckInAfter(
+  state: GymState,
+  gapSeconds: number,
+): { readonly state: GymState; readonly accrual: LadderAccrual } {
+  requireGymState(state);
+  if (!Number.isFinite(gapSeconds) || gapSeconds < 0) {
+    refuseWith(`a check-in gap must be finite and at or above zero, received ${gapSeconds}`);
+  }
+  return gymCheckIn(state, state.ladder.collectedAt + gapSeconds);
+}
+
+/**
+ * Which training week `atSeconds` falls in, week 0 first — the same division
+ * `runGym` performs internally (header §5) to bound its own week loop, named
+ * here so a view can ask "which week is this" without repeating it.
+ */
+export function trainingWeekIndexAt(atSeconds: number): number {
+  if (!Number.isFinite(atSeconds) || atSeconds < 0) {
+    refuseWith(`a week-index reading must be finite and at or above zero, received ${atSeconds}`);
+  }
+  return Math.floor(atSeconds / trainingWeekLengthSeconds());
+}
+
+/**
+ * Seconds from `atSeconds` to the next training-week boundary strictly ahead
+ * of it. Never zero — sitting exactly on a boundary returns a full week
+ * rather than stalling — so the dev control this exists for always moves the
+ * clock forward and always completes exactly the week now in progress. Feed
+ * the result straight to `gymCheckInAfter`, the same move `ladderDevTimeSteps`
+ * makes for stage 1's fixed dev steps.
+ */
+export function secondsUntilNextWeekBoundary(atSeconds: number): number {
+  if (!Number.isFinite(atSeconds) || atSeconds < 0) {
+    refuseWith(`a week-boundary reading must be finite and at or above zero, received ${atSeconds}`);
+  }
+  const weekSeconds = trainingWeekLengthSeconds();
+  const intoWeek = atSeconds % weekSeconds;
+  return intoWeek === 0 ? weekSeconds : weekSeconds - intoWeek;
 }

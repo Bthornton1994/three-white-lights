@@ -426,7 +426,9 @@ import type {
 } from './ladder';
 import type {
   GymState,
+  GymWeekReport,
   SessionEquipmentItem,
+  SlotOutcome,
   WeekAllocation,
   WeeklyAttributeEffects,
 } from './sessions';
@@ -1059,8 +1061,11 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
   Object.freeze({
     field: 'ReactElement.key',
     why:
-      'React’s own element key on the stage-1 view’s return type: the jsx transform’s ReactElement carries `key: string | null`, and that declaration is react’s, not this directory’s to narrow or brand. What the view writes into it today comes from two closed vocabularies — the equipment item union and the dev-step pattern labels — both of which are positions this census already classifies, and the colocated render test walks the produced tree. The bare position is the container, not a new producing channel.',
-    positions: Object.freeze(['ladderView.tsx#LadderView#return.key']),
+      'React’s own element key on the stage-1/stage-2 views’ return types: the jsx transform’s ReactElement carries `key: string | null`, and that declaration is react’s, not this directory’s to narrow or brand. What the two views write into it comes from closed vocabularies this census already classifies elsewhere — the equipment item unions, the dev-step pattern labels, the flexible-slot vocabulary, and (for `GymView`) plain numbers stringified by React itself (`weekIndex`, `slotIndex`) — and the colocated render tests walk the produced trees. The bare position is the container, not a new producing channel.',
+    positions: Object.freeze([
+      'ladderView.tsx#GymView#return.key',
+      'ladderView.tsx#LadderView#return.key',
+    ]),
   }),
 ]);
 
@@ -1308,6 +1313,15 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   // than driven, because a smaller enumerated surface is worth more than two
   // more drivers: what is left is one site, and it is driven.
   'ladder.ts#buyLadderEquipment#state.includes x1',
+  // Two reads of GymView's own props through the week log: `weekLog` is
+  // destructured straight off `props.state`, so `weekLog.map(...)` keys back
+  // to the `props` parameter rather than the local name; and the callback's
+  // own parameter `week` gets a second entry for `week.slots.map(...)`,
+  // because its callback argument is `describeSlotOutcome` — a named
+  // function reference rather than an inline arrow, the same shape every
+  // other row on this list is about.
+  'ladderView.tsx#GymView#props.map x1',
+  'ladderView.tsx#GymView#week.map x1',
   'social.ts#rankLeaderboard#entries.map x1',
   'social.ts#visitRefusals#context.some x1',
   'social.ts#visitRefusals#context.some x1',
@@ -1316,8 +1330,13 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const SURFACE_CENSUS = Object.freeze({
   MODULES: 13,
-  EXPORTS: 273,
-  BARE_POSITIONS: 1,
+  // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
+  // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
+  // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
+  // and withLadder, gymCheckInAfter, trainingWeekIndexAt,
+  // secondsUntilNextWeekBoundary from sessions.ts.
+  EXPORTS: 280,
+  BARE_POSITIONS: 2,
   BARE_FIELDS: 1,
   BRANDED_POSITIONS: 34,
   /**
@@ -1331,7 +1350,9 @@ const SURFACE_CENSUS = Object.freeze({
   UNCLASSIFIED_TYPES: 0,
   /** The banned vocabulary's own length, so an emptied ban list is not a clean sweep. */
   BANNED: 7,
-  LITERAL_POSITIONS: 1821,
+  // 1821 -> 2081: GymViewAction's discriminated union (six arms) and
+  // GymViewRefusal's closed union arrive with GymView's own return type.
+  LITERAL_POSITIONS: 2081,
   DISTINCT_LITERAL_MEMBERS: 143,
   DEPTH_CUTS: 0,
 });
@@ -2368,7 +2389,8 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // expressions, with zero new brand-constructor sites among them — SITES and
   // MINTS above are unchanged, which is the half of this census that is about
   // brands rather than about how much code the walk covered.
-  CALLS_EXAMINED: 1357,
+  // 1357 -> 1431: GymView's and the new sessions.ts helpers' own call sites.
+  CALLS_EXAMINED: 1431,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -2547,13 +2569,16 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     // pinned in its new home rather than dropped.
     expect(checked).toBe(23);
     expect(CLOSED_BARE_STRING_FIELDS.length).toBe(5);
-    // And the live bare list holds exactly the one declared arrival — React's
-    // element key on the stage-1 view — and none of the five closed fields
-    // has reopened onto it. Zero until `ladderView.tsx`; the position that
-    // moved it is a type react declares, not a reopening of anything here.
+    // And the live bare list holds exactly the declared arrivals — React's
+    // element key on the stage-1 and stage-2 views — and none of the five
+    // closed fields has reopened onto either. Zero until `ladderView.tsx`;
+    // the position that moved it is a type react declares, not a reopening
+    // of anything here. Two rather than one once `GymView` landed beside
+    // `LadderView` in the same file, still the same one field.
     expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
-    expect(SURFACE_CENSUS.BARE_POSITIONS).toBe(1);
+    expect(SURFACE_CENSUS.BARE_POSITIONS).toBe(2);
     expect(DECLARED_BARE_STRING_FIELDS.flatMap((group) => [...group.positions])).toEqual([
+      'ladderView.tsx#GymView#return.key',
       'ladderView.tsx#LadderView#return.key',
     ]);
     const reopened = CLOSED_BARE_STRING_FIELDS.flatMap((group) => [...group.positions]).filter(
@@ -3916,6 +3941,8 @@ const LITERAL_AXES: readonly (readonly [string, string])[] = Object.freeze([
   ['kind', 'NOT A DRIVER AXIS, and registered rather than rephrased. It is the channel census walking the distinct syntax kinds found at one internal callback position, so it drives nothing and has no domain. The scan cannot tell that apart from an axis and it should not try — this row is the visible edit it exists to force, which is the same answer M8 gets from the export census.'],
   ['last', 'the boolean telling spendingMoment whether this is the final moment. Two points is the whole domain.'],
   ['quote', 'the three quote characters a module specifier can be written in, driving COMPILER_IMPORT so the widened predicate is measured rather than read. Not a magnitude and not a sample: a specifier is single-quoted, double-quoted or a backtick and there is no fourth, so this axis is its whole domain by enumeration. It exists because chainScanFiles matched single quotes only, and Prettier writing single quotes here is what kept that invisible.'],
+  ['slot', 'every legal WeekAllocation slot value driving gymViewReduce set-allocation-slot: the four flexible activities plus rest. A closed vocabulary by construction (sessions.ts FlexibleSlot), not a magnitude with thresholds.'],
+  ['slotIndex', 'the three WeekAllocation tuple positions, 0 through 2. A shape parameter fixed by FLEXIBLE_SESSIONS_PER_WEEK, not a magnitude — there is no fourth slot to sample toward.'],
 ]);
 
 /**
@@ -4167,7 +4194,7 @@ const DOMAIN_CENSUS = Object.freeze({
    */
   ALIASES: 8,
   NON_DOMAIN_LISTS: 2,
-  LITERAL_AXES: 9,
+  LITERAL_AXES: 11,
   LABELLED_LISTS: 25,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
@@ -5199,6 +5226,86 @@ function driveEverything(): readonly DrivenRow[] {
     );
   }
 
+  // --- ladderView.tsx: GymView, the stage-2 gate's instrument — the full
+  // stage-1+2 loop, driven the same shape the LadderView block above uses:
+  // the constructor, every reducer arm, and the component itself invoked as
+  // the pure function it is, so its element tree (copy included) passes
+  // through the same string scan as every other returned value.
+  drive('createGymViewState', 'zero-arg', () => ladderViewModule.createGymViewState());
+  {
+    const gymOpening = ladderViewModule.createGymViewState();
+    let gymPlayed = gymOpening;
+    for (const step of ladderModule.ladderDevTimeSteps()) {
+      drive('gymViewReduce', `advance/${String(step.seconds)}`, () =>
+        ladderViewModule.gymViewReduce(gymPlayed, { kind: 'advance-clock', gapSeconds: step.seconds }), [gymPlayed],
+      );
+      gymPlayed = ladderViewModule.gymViewReduce(gymPlayed, {
+        kind: 'advance-clock',
+        gapSeconds: step.seconds,
+      });
+    }
+    drive('gymViewReduce', 'advance-to-next-week', () =>
+      ladderViewModule.gymViewReduce(gymPlayed, { kind: 'advance-to-next-week' }), [gymPlayed],
+    );
+    const gymAfterWeek = ladderViewModule.gymViewReduce(gymPlayed, { kind: 'advance-to-next-week' });
+    // Buys off the played state reach bought, already-owned, rung-too-low
+    // and not-enough arms of the underlying calls, on both shops.
+    for (const item of EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS) {
+      drive('gymViewReduce', `buy-ladder/${item}`, () =>
+        ladderViewModule.gymViewReduce(gymAfterWeek, { kind: 'buy-ladder', item }), [gymAfterWeek],
+      );
+    }
+    for (const item of EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS) {
+      drive('gymViewReduce', `buy-session/${item}`, () =>
+        ladderViewModule.gymViewReduce(gymAfterWeek, { kind: 'buy-session', item }), [gymAfterWeek],
+      );
+    }
+    drive('gymViewReduce', 'move-up/refused', () =>
+      ladderViewModule.gymViewReduce(gymAfterWeek, { kind: 'move-up' }), [gymAfterWeek],
+    );
+    // Every slot, every legal value — the trained, rested and unequipped
+    // arms of `resolveWeek`/`weeklyAttributeEffects`, reached through the
+    // reducer rather than only through the direct sessions.ts drive above.
+    for (const slotIndex of [0, 1, 2] as const) {
+      for (const slot of [...EMPIRE_TUNING.FLEXIBLE_ACTIVITIES, 'rest'] as const) {
+        drive('gymViewReduce', `set-allocation-slot/${String(slotIndex)}/${slot}`, () =>
+          ladderViewModule.gymViewReduce(gymAfterWeek, {
+            kind: 'set-allocation-slot',
+            slotIndex,
+            slot,
+          }), [gymAfterWeek],
+        );
+      }
+    }
+    const gymRich = Object.freeze({
+      ...gymAfterWeek,
+      gym: Object.freeze({
+        ...gymAfterWeek.gym,
+        ladder: ladderStateAt(
+          EMPIRE_TUNING.LADDER_RUNGS[0],
+          EMPIRE_TUNING.LADDER_MOVE_COST_GYM_BUCKS['storage-unit'],
+          ladderModule.createLadderState().equipment,
+        ),
+      }),
+    });
+    drive('gymViewReduce', 'move-up/moved', () =>
+      ladderViewModule.gymViewReduce(gymRich, { kind: 'move-up' }), [gymRich],
+    );
+    const gymSilent = (): undefined => undefined;
+    drive('GymView', 'opening', () =>
+      ladderViewModule.GymView({ state: gymOpening, dispatch: gymSilent }), [gymOpening],
+    );
+    drive('GymView', 'played', () =>
+      ladderViewModule.GymView({ state: gymAfterWeek, dispatch: gymSilent }), [gymAfterWeek],
+    );
+    drive('GymView', 'moved', () =>
+      ladderViewModule.GymView({
+        state: ladderViewModule.gymViewReduce(gymRich, { kind: 'move-up' }),
+        dispatch: gymSilent,
+      }), [gymRich],
+    );
+  }
+
   // --- sessions.ts (GDD §5 v2, stage 2)
   {
     drive('createGymState', 'zero-arg', () => sessionsModule.createGymState());
@@ -5329,6 +5436,33 @@ function driveEverything(): readonly DrivenRow[] {
           }
         }
       }
+    }
+    // The four view-facing helpers — sessions.ts header's newest section,
+    // the same move `ladder.ts` §6 makes for its own three.
+    for (const rung of EMPIRE_TUNING.LADDER_RUNGS) {
+      const base = gymStateAt(rung, 0, []);
+      const swappedLadder = ladderStateAt(
+        rung,
+        EMPIRE_TUNING.RIVAL_REWARD_GYM_BUCKS,
+        ladderModule.createLadderState().equipment,
+      );
+      drive('withLadder', rung, () => sessionsModule.withLadder(base, swappedLadder), [
+        base,
+        swappedLadder,
+      ]);
+      for (const seconds of SECONDS_DOMAIN.slice(0, 6)) {
+        drive('gymCheckInAfter', `${rung}/${String(seconds)}`, () =>
+          sessionsModule.gymCheckInAfter(base, seconds), [base],
+        );
+      }
+    }
+    for (const seconds of SECONDS_DOMAIN) {
+      drive('trainingWeekIndexAt', String(seconds), () =>
+        sessionsModule.trainingWeekIndexAt(seconds),
+      );
+      drive('secondsUntilNextWeekBoundary', String(seconds), () =>
+        sessionsModule.secondsUntilNextWeekBoundary(seconds),
+      );
     }
   }
 
@@ -7146,25 +7280,28 @@ function measureDrive(): DriveMeasurement {
 }
 
 const DRIVE_CENSUS = Object.freeze({
-  ROWS: 302731,
-  EXPORTS_DRIVEN: 273,
-  NODES: 3236537,
-  STRINGS: 14928500,
-  DISTINCT_STRINGS: 2275,
+  ROWS: 303208,
+  EXPORTS_DRIVEN: 280,
+  NODES: 3239590,
+  STRINGS: 14937885,
+  DISTINCT_STRINGS: 2362,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
    *
    * Both were zero until `ladderView.tsx`: nothing in this directory
-   * constructs either, and the 21 getters are react's own dev-mode `key`
-   * warning accessors on the element trees the three LadderView drives
-   * return — seven keyed children per screen (four shop rows, three dev-step
-   * buttons), each carrying a react-defined getter the walk invokes and
-   * scans through. They are react's, not this directory's; a getter arriving
-   * from any OTHER module is still worth a look on its own, which is why the
-   * number is pinned rather than bounded.
+   * constructs either, and every getter is react's own dev-mode `key`
+   * warning accessor on the element trees the `LadderView`/`GymView` drives
+   * return — one per keyed child (shop rows, dev-step and option buttons,
+   * week-log entries), each carrying a react-defined getter the walk invokes
+   * and scans through. They are react's, not this directory's; a getter
+   * arriving from any OTHER module is still worth a look on its own, which is
+   * why the number is pinned rather than bounded. `GymView` landing grew this
+   * from 21 (`LadderView` alone) to 140, because its element trees carry far
+   * more keyed lists (fourteen stage-2 shop rows, five slot-option buttons on
+   * three slots, per-week log entries) than the seven `LadderView` had.
    */
-  GETTERS_INVOKED: 21,
+  GETTERS_INVOKED: 140,
   PROXIES: 0,
   /**
    * Nullary functions the walk CALLED, how many threw, and how many
@@ -7183,12 +7320,15 @@ const DRIVE_CENSUS = Object.freeze({
    * moved by a number nobody can attribute.
    */
   /**
-   * Fifteen, all from `ladderView.tsx`'s element trees: every onClick the
-   * three driven screens carry is a nullary arrow (five per screen — three
-   * dev steps, a buy, the relocation), so the walk calls each one against
-   * the silent dispatch fixture and scans onward. Zero before the view.
+   * All from `ladderView.tsx`'s element trees: every onClick either driven
+   * component's screens carry is a nullary arrow, so the walk calls each one
+   * against the silent dispatch fixture and scans onward. Zero before the
+   * view. Fifteen with `LadderView` alone (five per screen across three
+   * screens — three dev steps, a buy, the relocation); 120 once `GymView`'s
+   * own driven screens — with their larger shops, the allocation controls
+   * and the week-boundary jump — are added.
    */
-  CLOSURES_INVOKED: 15,
+  CLOSURES_INVOKED: 120,
   CLOSURE_THROWS: 0,
   CLOSURES_DECLINED: 2046,
   /**
@@ -7208,7 +7348,7 @@ const DRIVE_CENSUS = Object.freeze({
    * tell from an absence. This is the number that says the branch is live, in
    * the same role `TRIPWIRE_CENSUS.GETTERS_INVOKED` plays for the getter arm.
    */
-  STACKS: 3550,
+  STACKS: 3791,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -10879,12 +11019,12 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'engagement.ts': 23,
       'expansion.ts': 47,
       'ladder.ts': 25,
-      'ladderView.tsx': 5,
+      'ladderView.tsx': 18,
       'npc.ts': 12,
       'production.ts': 11,
       'recruitment.ts': 9,
       'reputation.ts': 24,
-      'sessions.ts': 39,
+      'sessions.ts': 43,
       'social.ts': 31,
     }),
     /**
@@ -10912,7 +11052,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'social.ts': 7,
     }),
     'argument-mutation': Object.freeze({}),
-    'callback-invocation': Object.freeze({ 'engagement.ts': 1, 'ladderView.tsx': 3, 'production.ts': 2 }),
+    'callback-invocation': Object.freeze({ 'engagement.ts': 1, 'ladderView.tsx': 9, 'production.ts': 2 }),
     'internal-callback-invocation': Object.freeze({ 'expansion.ts': 1 }),
     'module-mutable-state': Object.freeze({}),
     'ambient-global': Object.freeze({}),
@@ -10976,7 +11116,7 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'production.ts': 9,
   'recruitment.ts': 1,
   'reputation.ts': 6,
-  'sessions.ts': 21,
+  'sessions.ts': 24,
   'social.ts': 6,
 });
 
@@ -10991,10 +11131,19 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
  */
 const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
   'engagement.ts#historyFrom#attended x1',
-  // The three onClick arrows in the stage-1 view, each handing
-  // `props.dispatch` exactly one action object. One site per control kind
-  // (advance, buy, relocate); `x1` widening to `x2` at any of them is a
-  // payload arriving one argument wider, which is what this census is for.
+  // Ordered by owner name within a module (`GymView` before `LadderView`),
+  // which is the walk's own order rather than source position. Six onClick
+  // arrows in `GymView` (buy-ladder, buy-session, move-up,
+  // set-allocation-slot, the dev-clock steps, the week-boundary jump) and the
+  // three in `LadderView` above it, each handing `props.dispatch` exactly one
+  // action object. `x1` widening to `x2` at any of them is a payload arriving
+  // one argument wider, which is what this census is for.
+  'ladderView.tsx#GymView#props.dispatch x1',
+  'ladderView.tsx#GymView#props.dispatch x1',
+  'ladderView.tsx#GymView#props.dispatch x1',
+  'ladderView.tsx#GymView#props.dispatch x1',
+  'ladderView.tsx#GymView#props.dispatch x1',
+  'ladderView.tsx#GymView#props.dispatch x1',
   'ladderView.tsx#LadderView#props.dispatch x1',
   'ladderView.tsx#LadderView#props.dispatch x1',
   'ladderView.tsx#LadderView#props.dispatch x1',
@@ -11204,6 +11353,7 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'ladder.ts:333 receiver=ArrayLiteralExpression',
   'ladderView.tsx:115 returned=unfollowable:state',
   'ladderView.tsx:123 returned=unfollowable:state',
+  'ladderView.tsx:370 returned=unfollowable:state',
   'recruitment.ts:388 returned=unfollowable:state',
   'sessions.ts:562 receiver=ArrayLiteralExpression',
   'sessions.ts:655 returned=unfollowable:state',
@@ -11247,6 +11397,10 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'ladderView.tsx:115 LadderAccrual | null asked=true walked=false',
   'ladderView.tsx:122 LadderState asked=true walked=false',
   'ladderView.tsx:123 LadderAccrual | null asked=true walked=false',
+  'ladderView.tsx:370 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:388 GymState asked=true walked=false',
+  'ladderView.tsx:389 LadderAccrual asked=true walked=false',
+  'ladderView.tsx:421 GymState asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
   'sessions.ts:655 LadderState asked=true walked=false',
   'sessions.ts:689 LadderState asked=true walked=false',
@@ -11259,7 +11413,7 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
 /** What the two readings of the screen measured against each other. */
 const SCREEN_AGREEMENT = Object.freeze({
   /** Rows in `SHIPPED_SCREEN_DISAGREEMENTS`, so a shorter list is red too. */
-  SHIPPED_DISAGREEMENTS: 25,
+  SHIPPED_DISAGREEMENTS: 29,
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -11311,10 +11465,10 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   parameter: 2,
   'module-variable': 43,
   local: 0,
-  function: 668,
-  member: 625,
-  'member-callback': 5,
-  'member-of-parameter': 14,
+  function: 708,
+  member: 651,
+  'member-callback': 11,
+  'member-of-parameter': 16,
   fresh: 0,
   unclassified: 0,
 });
@@ -11332,7 +11486,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
 const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze({
   parameter: 0,
   'module-variable': 0,
-  local: 161,
+  local: 163,
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -11344,17 +11498,20 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
   MODULES: 13,
-  /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
-  SITES: 404,
+  /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
+   * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
+   * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
+   * sites (39 -> 43) on `sessions.ts`. */
+  SITES: 427,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
    * grammar declarations and the `satisfies` clause are 23 AST nodes, and no
    * site, channel or wrap count moved with them.
    */
-  NODES_EXAMINED: 28_762,
+  NODES_EXAMINED: 30_722,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
-  WRAP_CALLS: 96,
+  WRAP_CALLS: 99,
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
@@ -11405,7 +11562,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   /** Deepest chain from an exported surface, in the control's own accounting. */
   DEEPEST: 9,
   /** Exported positions measured. A truncated walk would report a shallow tree. */
-  POSITIONS: 643,
+  POSITIONS: 661,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -12300,6 +12457,21 @@ const LADDER_VIEW_CONTROLS =
   (EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.length - EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.length) +
   1;
 
+/**
+ * The stage-2 view's control count on an opening screen (empty session
+ * equipment, all-rest allocation): the dev steps, the week-boundary jump,
+ * every unheld item on both shops, the relocation, and every slot-option
+ * button on all three flexible slots. Derived from the tuning vocabulary the
+ * same way `LADDER_VIEW_CONTROLS` is, above.
+ */
+const GYM_VIEW_CONTROLS =
+  EMPIRE_TUNING.LADDER_DEV_TIME_STEPS_SECONDS.length +
+  1 + // the week-boundary jump
+  (EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.length - EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.length) +
+  EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS.length +
+  1 + // relocate
+  EMPIRE_TUNING.FLEXIBLE_SESSIONS_PER_WEEK * (EMPIRE_TUNING.FLEXIBLE_ACTIVITIES.length + 1);
+
 /** Every onClick in an element tree, pressed in tree order. */
 function pressEveryControl(node: unknown): number {
   if (typeof node !== 'object' || node === null) return 0;
@@ -12356,6 +12528,45 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
           );
         },
         callsAt: (): number => TRAINED_DAYS_AXIS_SLOTS,
+        argumentsPerCall: 1,
+      }),
+    ]),
+  }),
+  Object.freeze({
+    key: 'ladderView.tsx#GymView#props.dispatch',
+    axes: Object.freeze([
+      Object.freeze({
+        name: 'ladderView.tsx#GymView#props.dispatch#gymBucks',
+        domain: 'NUMBER',
+        means:
+          'the settled purse the rendered screen shows. The dispatch count is the CONTROL count — the dev steps, the week-boundary jump, every unheld item on both shops, the relocation, and every slot-option button on all three flexible slots — and deliberately does not vary with the point: the view disables nothing, every control dispatches whatever the balance, and refusals are the reducer’s to report. What the pass scans is the action objects the screen hands its caller.',
+        drive: (record: (args: readonly unknown[]) => void, point: number): void => {
+          pressEveryControl(
+            ladderViewModule.GymView({
+              state: Object.freeze({
+                gym: Object.freeze({
+                  ladder: ladderStateAt(
+                    EMPIRE_TUNING.LADDER_RUNGS[0],
+                    point,
+                    ladderModule.createLadderState().equipment,
+                  ),
+                  acceleratedGymBucks: 0,
+                  sessionEquipment: Object.freeze([]),
+                }),
+                lastAccrual: null,
+                lastRefusal: null,
+                weekIndex: 0,
+                allocation: sessionsModule.createRestAllocation(),
+                allocationSetThisWeek: false,
+                weekLog: Object.freeze([]),
+              }),
+              dispatch: (action: ladderViewModule.GymViewAction): void => {
+                record([action]);
+              },
+            }),
+          );
+        },
+        callsAt: (): number => GYM_VIEW_CONTROLS,
         argumentsPerCall: 1,
       }),
     ]),
@@ -12621,6 +12832,12 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
     calls: 318,
     recorded: 318,
   }),
+  'ladderView.tsx#GymView#props.dispatch#gymBucks': Object.freeze({
+    points: 272,
+    refusedPoints: 0,
+    calls: 9520,
+    recorded: 9520,
+  }),
   'ladderView.tsx#LadderView#props.dispatch#gymBucks': Object.freeze({
     points: 272,
     refusedPoints: 0,
@@ -12654,7 +12871,7 @@ const CALLBACK_AXIS_RESIDUAL: readonly string[] = Object.freeze([
 ]);
 
 const CALLBACK_PASS_CENSUS = Object.freeze({
-  SUBJECTS: 4,
+  SUBJECTS: 5,
   /**
    * Axes driven, summed over subjects.
    *
@@ -12665,7 +12882,7 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    * reader — with `CALLBACK_AXIS_RESIDUAL` naming what a per-axis drive still
    * cannot express.
    */
-  AXES_VARIED: 5,
+  AXES_VARIED: 6,
   /**
    * Points, refusals, calls and values, summed across every axis.
    *
@@ -12673,10 +12890,10 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    * reader checks at a glance and the table is what cannot be gamed by one axis
    * growing while another dies.
    */
-  POINTS: 632,
+  POINTS: 904,
   REFUSED_POINTS: 1,
-  CALLS: 3287019,
-  RECORDED: 5472777,
+  CALLS: 3296539,
+  RECORDED: 5482297,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
@@ -15134,7 +15351,9 @@ function cyclicDeclarations(
  */
 const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   /** Type aliases, interfaces and classes declared across the ten shipped modules. */
-  DECLARATIONS: 165,
+  // 165 -> 169: GymView's four new type declarations (GymViewState,
+  // GymViewRefusal, GymViewAction, GymViewProps).
+  DECLARATIONS: 169,
   /** Those carrying type parameters. An instantiation depth needs one. */
   GENERIC: 12,
   /**
@@ -17615,6 +17834,44 @@ function memberCallSocialContext(
   );
 }
 
+/**
+ * One `GymWeekReport` exercising all three `SlotOutcome` arms — trained,
+ * rested, unequipped — the same reason `MEMBER_CALL_FIXTURE`'s other rows
+ * vary their own verdict axis rather than sampling one arm three times.
+ */
+function memberCallWeekReport(): GymWeekReport {
+  const allocation = sessionsModule.createRestAllocation();
+  return Object.freeze({
+    weekIndex: 0,
+    allocation,
+    slots: Object.freeze([
+      Object.freeze({ kind: 'trained', activity: 'cardio' }),
+      Object.freeze({ kind: 'rested' }),
+      Object.freeze({ kind: 'unequipped', activity: 'hypertrophy', requires: 'accessory' }),
+    ]) as readonly [SlotOutcome, SlotOutcome, SlotOutcome],
+    effects: sessionsModule.weeklyAttributeEffects(allocation, Object.freeze([])),
+  });
+}
+
+/** A `GymViewState` around the given week log; the rest is a fresh gym. */
+function memberCallGymViewState(weekLog: readonly GymWeekReport[]): ladderViewModule.GymViewState {
+  return Object.freeze({
+    gym: Object.freeze({
+      ladder: ladderModule.createLadderState(),
+      acceleratedGymBucks: 0,
+      sessionEquipment: Object.freeze([]),
+    }),
+    lastAccrual: null,
+    lastRefusal: null,
+    weekIndex: weekLog.length,
+    allocation: sessionsModule.createRestAllocation(),
+    allocationSetThisWeek: false,
+    weekLog,
+  });
+}
+
+const MEMBER_CALL_SILENT_DISPATCH = (): void => undefined;
+
 const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
   Object.freeze({
     site: 'empireCore.ts#idleLedger#ledger.filter x1',
@@ -17745,6 +18002,36 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
       );
     },
   }),
+  Object.freeze({
+    site: 'ladderView.tsx#GymView#props.map x1',
+    run: (record: MemberCallRecord): void => {
+      // `weekLog` is destructured straight off `props.state`, so watching its
+      // OWN `.map` (and leaving each week's `.slots` untouched) isolates this
+      // site from the nested one below.
+      const weekLog = recordOn([memberCallWeekReport()], 'map', record);
+      ladderViewModule.GymView({
+        state: memberCallGymViewState(weekLog),
+        dispatch: MEMBER_CALL_SILENT_DISPATCH,
+      });
+    },
+  }),
+  Object.freeze({
+    site: 'ladderView.tsx#GymView#week.map x1',
+    run: (record: MemberCallRecord): void => {
+      // The reverse isolation: `weekLog` itself is the real array (so its own
+      // `.map` is not watched), and one week's `.slots` is instrumented so the
+      // named-function callback (`describeSlotOutcome`) is what gets caught.
+      const week = memberCallWeekReport();
+      const instrumented = Object.freeze({
+        ...week,
+        slots: recordOn([...week.slots], 'map', record) as unknown as GymWeekReport['slots'],
+      });
+      ladderViewModule.GymView({
+        state: memberCallGymViewState([instrumented]),
+        dispatch: MEMBER_CALL_SILENT_DISPATCH,
+      });
+    },
+  }),
 ]);
 
 /**
@@ -17820,15 +18107,17 @@ const MEMBER_CALL_TRIPWIRE: readonly MemberCallSubject[] = Object.freeze([
 
 /** What the pass measured. Counts, not bounds, so an empty drive reports itself. */
 const MEMBER_CALL_PASS_CENSUS = Object.freeze({
-  SUBJECTS: 14,
+  SUBJECTS: 16,
   /** One call of the instrumented method per subject, two at the ladder site. */
-  CALLS: 15,
+  CALLS: 17,
   /**
    * Callback invocations across every subject: 4 + 33, the second number being
    * E23's ten sites. Per site — and per ARM, which is the half a total cannot
    * carry — it is in `MEMBER_CALL_SITE_OBSERVATIONS`.
    */
-  CALLBACK_CALLS: 37,
+  // 37 -> 41: GymView's own two sites add 1 (the week-row callback, once)
+  // and 3 (describeSlotOutcome, once per slot).
+  CALLBACK_CALLS: 41,
   /**
    * Strings reachable from the non-function arguments.
    *
@@ -17847,7 +18136,9 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
    * so the return side now carries strings the shipped modules chose rather
    * than four booleans.
    */
-  RETURNED: 46,
+  // 46 -> 79: GymView's own two sites add 30 (a whole rendered week-row
+  // element, deep-scanned) and 3 (describeSlotOutcome's three strings).
+  RETURNED: 79,
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
@@ -17925,6 +18216,8 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   'social.ts#rankLeaderboard#entries.map x1 calls=1 callbacks=4 handed=0 returned=32 verdicts=objectx4',
   'social.ts#visitRefusals#context.some x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
   'social.ts#visitRefusals#context.some x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
+  'ladderView.tsx#GymView#props.map x1 calls=1 callbacks=1 handed=0 returned=30 verdicts=objectx1',
+  'ladderView.tsx#GymView#week.map x1 calls=1 callbacks=3 handed=0 returned=3 verdicts=stringx3',
 ]);
 
 /** One site's drive, as the line `MEMBER_CALL_SITE_OBSERVATIONS` pins. */
