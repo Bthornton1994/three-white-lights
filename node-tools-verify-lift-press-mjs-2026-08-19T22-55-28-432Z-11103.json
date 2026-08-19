@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-lift-press-mjs-2026-08-19T22-55-28-432Z-11103",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-lift-press.mjs"
+  ],
+  "budgetSeconds": 300,
+  "startedAtIso": "2026-08-19T22:55:28.432Z",
+  "startedAtMs": 1787180128432,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "4340e79f58ff02ad0c110431032b58c133bd33ca",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 13,
+  "dirtyPaths": [
+    "src/game/progression.test.ts",
+    "src/game/progression.ts",
+    "src/game/saveGame.test.ts",
+    "src/game/session.test.ts",
+    "src/game/session.ts",
+    "src/game/sessionClient.test.ts",
+    "src/game/sessionServer.test.ts",
+    "src/game/sessionServer.ts",
+    "src/game/sessionTuning.ts",
+    "src/session/SessionScreen.tsx",
+    "src/session/SetView.tsx",
+    "src/session/localSessionServer.test.ts",
+    "src/session/sessionPreview.ts"
+  ],
+  "runner": {
+    "pid": 11103,
+    "startTick": "1488589",
+    "cmdline": "node tools/watchdog.mjs --budget 300 -- node tools/verify-lift-press.mjs",
+    "bootId": "c38f4018-ce2b-424f-b775-e8166b2973a3",
+    "bootEpochSeconds": 1787165242,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-19T22:55:28.458Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
