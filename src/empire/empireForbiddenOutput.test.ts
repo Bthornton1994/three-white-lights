@@ -1299,7 +1299,7 @@ const SURFACE_CENSUS = Object.freeze({
   /** The banned vocabulary's own length, so an emptied ban list is not a clean sweep. */
   BANNED: 7,
   LITERAL_POSITIONS: 1329,
-  DISTINCT_LITERAL_MEMBERS: 93,
+  DISTINCT_LITERAL_MEMBERS: 109,
   DEPTH_CUTS: 0,
 });
 
@@ -6386,43 +6386,43 @@ const OVERFLOW_RESIDUAL: readonly OverflowResidualRow[] = Object.freeze([
   //
   // The eleven DAY rows: the pair is not driven at all, and the price of
   // driving it is in `OVERFLOW_COST_SECONDS`.
-  residual('DAY', 'amountSeries', 'the pair', 30, 120000),
-  residual('DAY', 'arrivalDays', 'the pair', 30, 120000),
-  residual('DAY', 'compareDayLists', 'the pair', 30, 120000),
-  residual('DAY', 'compareLedgers', 'the pair', 30, 120000),
-  residual('DAY', 'empireRunFaults', 'the pair', 30, 120000),
-  residual('DAY', 'idleDayLedger', 'the pair', 30, 120000),
-  residual('DAY', 'outputSeries', 'the pair', 30, 120000),
-  residual('DAY', 'progressionDayLedger', 'the pair', 30, 120000),
-  residual('DAY', 'rivalPeriodCloseDays', 'the pair', 30, 120000),
-  residual('DAY', 'runEmpire', 'the pair', 30, 120000),
-  residual('DAY', 'socialRewardSchedule', 'the pair', 30, 120000),
+  residual('DAY', 'amountSeries', 'the pair', 34, 120000),
+  residual('DAY', 'arrivalDays', 'the pair', 34, 120000),
+  residual('DAY', 'compareDayLists', 'the pair', 34, 120000),
+  residual('DAY', 'compareLedgers', 'the pair', 34, 120000),
+  residual('DAY', 'empireRunFaults', 'the pair', 34, 120000),
+  residual('DAY', 'idleDayLedger', 'the pair', 34, 120000),
+  residual('DAY', 'outputSeries', 'the pair', 34, 120000),
+  residual('DAY', 'progressionDayLedger', 'the pair', 34, 120000),
+  residual('DAY', 'rivalPeriodCloseDays', 'the pair', 34, 120000),
+  residual('DAY', 'runEmpire', 'the pair', 34, 120000),
+  residual('DAY', 'socialRewardSchedule', 'the pair', 34, 120000),
   // The twenty-three ROSTER_SHAPE rows: the pair IS driven at all thirty of
   // these points and its return is scanned; the state handed in is not walked a
   // second time afterwards. See `FROZEN_ARGUMENT_WITNESS` for what covers that.
-  residual('ROSTER_SHAPE', 'accrueProduction', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'accrueReputation', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'accrueSponsorship', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'assertEmpireState', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'beginRecruitment', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'completeRecruitment', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'empireStateFaults', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'expansionContext', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'mayRecruit', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'npcTierUnlocks', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'productionRates', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'recruitmentBoard', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'recruitmentOffer', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'recruitmentRefusals', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'reputationRates', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'rosterOutputRates', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 'the argument re-read', 30, 120000),
-  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 'the argument re-read', 30, 120000),
+  residual('ROSTER_SHAPE', 'accrueProduction', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'accrueReputation', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'accrueSponsorship', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'assertEmpireState', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'beginRecruitment', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'completeRecruitment', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'empireStateFaults', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'expansionContext', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'mayRecruit', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'npcTierUnlocks', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'productionRates', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'recruitmentBoard', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'recruitmentOffer', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'recruitmentRefusals', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'reputationRates', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'rosterOutputRates', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 'the argument re-read', 34, 120000),
 ]);
 
 /**
@@ -6473,18 +6473,18 @@ const OVERFLOW_DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
 
 const OVERFLOW_CENSUS = Object.freeze({
   /** (domain, label) pairs the ceilings drop. Equals the sum of OMITTED_ABOVE_CEILING. */
-  POINTS: 134,
+  POINTS: 159,
   /** Of those, how many at least one subject was driven at. */
-  POINTS_DRIVEN: 134,
+  POINTS_DRIVEN: 159,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
   RETURN_HEAVY_SUBJECTS: 15,
   /** (subject, point) pairs driven, and pairs the budgets did not drive at all. */
-  PAIRS_DRIVEN: 1972,
-  PAIRS_SKIPPED: 330,
+  PAIRS_DRIVEN: 2363,
+  PAIRS_SKIPPED: 374,
   /** Of the driven, how many had the re-read argument region left unscanned. */
-  PAIRS_ARGUMENT_SKIPPED: 690,
+  PAIRS_ARGUMENT_SKIPPED: 782,
   /**
    * ROSTER_SHAPE points above its allocation ceiling.
    *
@@ -6504,9 +6504,9 @@ const OVERFLOW_CENSUS = Object.freeze({
    * size is not additive and there is no second way to get it.
    */
   ROWS: 2961,
-  NODES: 523440,
-  STRINGS: 3545262,
-  DISTINCT_STRINGS: 4309,
+  NODES: 664345,
+  STRINGS: 4509099,
+  DISTINCT_STRINGS: 4324,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
   /**
@@ -6532,10 +6532,14 @@ const OVERFLOW_CENSUS = Object.freeze({
    * DERIVED RATHER THAN READ OFF A FAILURE: four production subjects, two
    * closures each, at the 26 ROSTER_SHAPE points at or below the allocation
    * ceiling — above it the argument region is skipped by the budget and counted
-   * in `PAIRS_ARGUMENT_SKIPPED`. 4 x 2 x 26 = 208. So this number moves if a
+   * in `PAIRS_ARGUMENT_SKIPPED`. 4 x 2 x 33 = 264. So this number moves if a
    * subject arrives, if a third arrow arrives, or if the ceiling moves, and each
-   * of those is a different thing a reader can check. Driven: dropping the rates
-   * from one of the four subjects takes it to 156, which is 208 less 2 x 26.
+   * of those is a different thing a reader can check. Driven at the pre-stage-1 registry: dropping the rates
+   * from one of the four subjects took it to 156, which was 208 less 2 x 26.
+   * The 264 here is the same arithmetic at the stage-1 registry (33
+   * argument-driven dropped points, not 26); the drop-the-rates mutant was
+   * not re-run against it, so the derivation is stated rather than a fresh
+   * measurement claimed.
    *
    * `CLOSURES_INVOKED` and `CLOSURE_THROWS` above stay at zero, and their zero is
    * the one this pass cannot make non-vacuous on its own: nothing in this
@@ -6543,7 +6547,7 @@ const OVERFLOW_CENSUS = Object.freeze({
    * by `TRIPWIRE_CENSUS.CLOSURES_INVOKED` and by nothing here. That is the same
    * standing the getter branch has and it is stated rather than implied.
    */
-  CLOSURES_DECLINED: 208,
+  CLOSURES_DECLINED: 264,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -6823,9 +6827,9 @@ function measureDrive(): DriveMeasurement {
 const DRIVE_CENSUS = Object.freeze({
   ROWS: 253644,
   EXPORTS_DRIVEN: 245,
-  NODES: 2393060,
-  STRINGS: 11205010,
-  DISTINCT_STRINGS: 1611,
+  NODES: 2840679,
+  STRINGS: 13168928,
+  DISTINCT_STRINGS: 1748,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -6873,7 +6877,7 @@ const DRIVE_CENSUS = Object.freeze({
    * tell from an absence. This is the number that says the branch is live, in
    * the same role `TRIPWIRE_CENSUS.GETTERS_INVOKED` plays for the getter arm.
    */
-  STACKS: 2876,
+  STACKS: 3113,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -10630,6 +10634,7 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'empireInvariant.ts': 8,
   'engagement.ts': 13,
   'expansion.ts': 3,
+  'ladder.ts': 17,
   'production.ts': 9,
   'recruitment.ts': 1,
   'reputation.ts': 6,
@@ -10850,6 +10855,7 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'engagement.ts:437 returned=unfollowable:gym',
   'engagement.ts:455 returned=unfollowable:gym',
   'expansion.ts:549 returned=unfollowable:state',
+  'ladder.ts:312 receiver=ArrayLiteralExpression',
   'recruitment.ts:388 returned=unfollowable:state',
   'social.ts:345 receiver=ArrayLiteralExpression',
   'social.ts:535 returned=unfollowable:context',
@@ -10880,6 +10886,9 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'engagement.ts:437 EmpireState asked=true walked=false',
   'engagement.ts:455 EmpireState asked=true walked=false',
   'expansion.ts:549 EmpireClock asked=true walked=false',
+  'ladder.ts:556 LadderState asked=true walked=false',
+  'ladder.ts:567 LadderState asked=true walked=false',
+  'ladder.ts:573 LadderState asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
   'social.ts:535 readonly FriendVisit[] asked=true walked=false',
 ]);
@@ -10887,7 +10896,7 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
 /** What the two readings of the screen measured against each other. */
 const SCREEN_AGREEMENT = Object.freeze({
   /** Rows in `SHIPPED_SCREEN_DISAGREEMENTS`, so a shorter list is red too. */
-  SHIPPED_DISAGREEMENTS: 11,
+  SHIPPED_DISAGREEMENTS: 14,
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -10960,18 +10969,18 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
 const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze({
   parameter: 0,
   'module-variable': 0,
-  local: 153,
+  local: 156,
   function: 0,
   member: 0,
   'member-callback': 0,
   'member-of-parameter': 0,
-  fresh: 3,
+  fresh: 4,
   unclassified: 0,
 });
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
-  MODULES: 10,
+  MODULES: 11,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
   SITES: 329,
   /**
@@ -10982,7 +10991,7 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
    */
   NODES_EXAMINED: 21_908,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
-  WRAP_CALLS: 55,
+  WRAP_CALLS: 72,
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
@@ -12178,28 +12187,28 @@ interface CallbackAxisCensus {
 
 const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Object.freeze({
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
-    points: 88,
+    points: 97,
     refusedPoints: 1,
-    calls: 726813,
-    recorded: 726813,
+    calls: 750283,
+    recorded: 750283,
   }),
   'engagement.ts#historyFrom#attended#trainedDays': Object.freeze({
-    points: 88,
+    points: 97,
     refusedPoints: 0,
-    calls: 264,
-    recorded: 264,
+    calls: 291,
+    recorded: 291,
   }),
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize': Object.freeze({
-    points: 61,
+    points: 66,
     refusedPoints: 0,
-    calls: 721689,
-    recorded: 1443378,
+    calls: 743979,
+    recorded: 1487958,
   }),
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize': Object.freeze({
-    points: 61,
+    points: 66,
     refusedPoints: 0,
-    calls: 721689,
-    recorded: 1443378,
+    calls: 743979,
+    recorded: 1487958,
   }),
 });
 
@@ -12235,7 +12244,7 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    * reader checks at a glance and the table is what cannot be gamed by one axis
    * growing while another dies.
    */
-  POINTS: 298,
+  POINTS: 326,
   REFUSED_POINTS: 1,
   CALLS: 2170455,
   RECORDED: 3613833,
@@ -12744,10 +12753,10 @@ describe('the channel census — the routes a string can leave this directory by
     const count = NUMERIC_DOMAINS.COUNT;
     const countPoints = callbackPointsFor('COUNT');
     const countDropped = overflowPointsFor('COUNT', count);
-    expect(distinct(countDropped.map((point) => String(point.value))).length).toBe(33);
-    expect(countPoints.filter((point) => point > FOREIGN_CEILINGS.COUNT).length).toBe(34);
+    expect(distinct(countDropped.map((point) => String(point.value))).length).toBe(36);
+    expect(countPoints.filter((point) => point > FOREIGN_CEILINGS.COUNT).length).toBe(37);
     expect(count.points.length).toBe(DOMAIN_CENSUS.COUNT_POINTS);
-    expect(countPoints.length).toBe(DOMAIN_CENSUS.COUNT_POINTS + 33);
+    expect(countPoints.length).toBe(DOMAIN_CENSUS.COUNT_POINTS + 36);
     // Every axis names a domain the registry has, and every axis name is
     // distinct — a duplicate would let two axes share one census row.
     expect(distinct(axes.map((axis) => axis.name)).length).toBe(axes.length);
