@@ -1059,8 +1059,11 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
   Object.freeze({
     field: 'ReactElement.key',
     why:
-      'React’s own element key on the stage-1 view’s return type: the jsx transform’s ReactElement carries `key: string | null`, and that declaration is react’s, not this directory’s to narrow or brand. What the view writes into it today comes from two closed vocabularies — the equipment item union and the dev-step pattern labels — both of which are positions this census already classifies, and the colocated render test walks the produced tree. The bare position is the container, not a new producing channel.',
-    positions: Object.freeze(['ladderView.tsx#LadderView#return.key']),
+      'React’s own element key on the stage-1/stage-2 views’ return types: the jsx transform’s ReactElement carries `key: string | null`, and that declaration is react’s, not this directory’s to narrow or brand. What the two views write into it comes from closed vocabularies this census already classifies elsewhere — the equipment item unions, the dev-step pattern labels, the flexible-slot vocabulary, and (for `GymView`) plain numbers stringified by React itself (`weekIndex`, `slotIndex`) — and the colocated render tests walk the produced trees. The bare position is the container, not a new producing channel.',
+    positions: Object.freeze([
+      'ladderView.tsx#GymView#return.key',
+      'ladderView.tsx#LadderView#return.key',
+    ]),
   }),
 ]);
 
@@ -1316,8 +1319,13 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const SURFACE_CENSUS = Object.freeze({
   MODULES: 13,
-  EXPORTS: 273,
-  BARE_POSITIONS: 1,
+  // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
+  // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
+  // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
+  // and withLadder, gymCheckInAfter, trainingWeekIndexAt,
+  // secondsUntilNextWeekBoundary from sessions.ts.
+  EXPORTS: 280,
+  BARE_POSITIONS: 2,
   BARE_FIELDS: 1,
   BRANDED_POSITIONS: 34,
   /**
@@ -1331,7 +1339,9 @@ const SURFACE_CENSUS = Object.freeze({
   UNCLASSIFIED_TYPES: 0,
   /** The banned vocabulary's own length, so an emptied ban list is not a clean sweep. */
   BANNED: 7,
-  LITERAL_POSITIONS: 1821,
+  // 1821 -> 2081: GymViewAction's discriminated union (six arms) and
+  // GymViewRefusal's closed union arrive with GymView's own return type.
+  LITERAL_POSITIONS: 2081,
   DISTINCT_LITERAL_MEMBERS: 143,
   DEPTH_CUTS: 0,
 });
@@ -2368,7 +2378,8 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // expressions, with zero new brand-constructor sites among them — SITES and
   // MINTS above are unchanged, which is the half of this census that is about
   // brands rather than about how much code the walk covered.
-  CALLS_EXAMINED: 1357,
+  // 1357 -> 1431: GymView's and the new sessions.ts helpers' own call sites.
+  CALLS_EXAMINED: 1431,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3916,6 +3927,8 @@ const LITERAL_AXES: readonly (readonly [string, string])[] = Object.freeze([
   ['kind', 'NOT A DRIVER AXIS, and registered rather than rephrased. It is the channel census walking the distinct syntax kinds found at one internal callback position, so it drives nothing and has no domain. The scan cannot tell that apart from an axis and it should not try — this row is the visible edit it exists to force, which is the same answer M8 gets from the export census.'],
   ['last', 'the boolean telling spendingMoment whether this is the final moment. Two points is the whole domain.'],
   ['quote', 'the three quote characters a module specifier can be written in, driving COMPILER_IMPORT so the widened predicate is measured rather than read. Not a magnitude and not a sample: a specifier is single-quoted, double-quoted or a backtick and there is no fourth, so this axis is its whole domain by enumeration. It exists because chainScanFiles matched single quotes only, and Prettier writing single quotes here is what kept that invisible.'],
+  ['slot', 'every legal WeekAllocation slot value driving gymViewReduce set-allocation-slot: the four flexible activities plus rest. A closed vocabulary by construction (sessions.ts FlexibleSlot), not a magnitude with thresholds.'],
+  ['slotIndex', 'the three WeekAllocation tuple positions, 0 through 2. A shape parameter fixed by FLEXIBLE_SESSIONS_PER_WEEK, not a magnitude — there is no fourth slot to sample toward.'],
 ]);
 
 /**
@@ -4167,7 +4180,7 @@ const DOMAIN_CENSUS = Object.freeze({
    */
   ALIASES: 8,
   NON_DOMAIN_LISTS: 2,
-  LITERAL_AXES: 9,
+  LITERAL_AXES: 11,
   LABELLED_LISTS: 25,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
@@ -7253,25 +7266,28 @@ function measureDrive(): DriveMeasurement {
 }
 
 const DRIVE_CENSUS = Object.freeze({
-  ROWS: 302731,
-  EXPORTS_DRIVEN: 273,
-  NODES: 3236537,
-  STRINGS: 14928500,
-  DISTINCT_STRINGS: 2275,
+  ROWS: 303208,
+  EXPORTS_DRIVEN: 280,
+  NODES: 3239590,
+  STRINGS: 14937885,
+  DISTINCT_STRINGS: 2362,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
    *
    * Both were zero until `ladderView.tsx`: nothing in this directory
-   * constructs either, and the 21 getters are react's own dev-mode `key`
-   * warning accessors on the element trees the three LadderView drives
-   * return — seven keyed children per screen (four shop rows, three dev-step
-   * buttons), each carrying a react-defined getter the walk invokes and
-   * scans through. They are react's, not this directory's; a getter arriving
-   * from any OTHER module is still worth a look on its own, which is why the
-   * number is pinned rather than bounded.
+   * constructs either, and every getter is react's own dev-mode `key`
+   * warning accessor on the element trees the `LadderView`/`GymView` drives
+   * return — one per keyed child (shop rows, dev-step and option buttons,
+   * week-log entries), each carrying a react-defined getter the walk invokes
+   * and scans through. They are react's, not this directory's; a getter
+   * arriving from any OTHER module is still worth a look on its own, which is
+   * why the number is pinned rather than bounded. `GymView` landing grew this
+   * from 21 (`LadderView` alone) to 140, because its element trees carry far
+   * more keyed lists (fourteen stage-2 shop rows, five slot-option buttons on
+   * three slots, per-week log entries) than the seven `LadderView` had.
    */
-  GETTERS_INVOKED: 21,
+  GETTERS_INVOKED: 140,
   PROXIES: 0,
   /**
    * Nullary functions the walk CALLED, how many threw, and how many
@@ -7290,12 +7306,15 @@ const DRIVE_CENSUS = Object.freeze({
    * moved by a number nobody can attribute.
    */
   /**
-   * Fifteen, all from `ladderView.tsx`'s element trees: every onClick the
-   * three driven screens carry is a nullary arrow (five per screen — three
-   * dev steps, a buy, the relocation), so the walk calls each one against
-   * the silent dispatch fixture and scans onward. Zero before the view.
+   * All from `ladderView.tsx`'s element trees: every onClick either driven
+   * component's screens carry is a nullary arrow, so the walk calls each one
+   * against the silent dispatch fixture and scans onward. Zero before the
+   * view. Fifteen with `LadderView` alone (five per screen across three
+   * screens — three dev steps, a buy, the relocation); 120 once `GymView`'s
+   * own driven screens — with their larger shops, the allocation controls
+   * and the week-boundary jump — are added.
    */
-  CLOSURES_INVOKED: 15,
+  CLOSURES_INVOKED: 120,
   CLOSURE_THROWS: 0,
   CLOSURES_DECLINED: 2046,
   /**
@@ -7315,7 +7334,7 @@ const DRIVE_CENSUS = Object.freeze({
    * tell from an absence. This is the number that says the branch is live, in
    * the same role `TRIPWIRE_CENSUS.GETTERS_INVOKED` plays for the getter arm.
    */
-  STACKS: 3550,
+  STACKS: 3791,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
