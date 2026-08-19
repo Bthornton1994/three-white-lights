@@ -667,6 +667,13 @@ export const CAREER_COPY = Object.freeze({
   OPEN_ENTRY_BADGE: 'OPEN',
   /** Before a meet's qualifying figure, which is the meet's own datum. */
   QUALIFYING_LABEL: 'QUALIFYING TOTAL',
+  /**
+   * The control on an enterable row (Sprint 1c). Pressing it IS entering the
+   * meet — GDD §6.1's "select a meet from the Career calendar" — so the label
+   * says what happens, not where it goes.
+   */
+  ENTER_MEET_LABEL: 'ENTER MEET',
+  ENTER_MEET_HINT: 'Enters this meet and walks into the weigh-in.',
 
   /**
    * GDD §10.0's beta scope, on the one tier it locks: competitive worlds is

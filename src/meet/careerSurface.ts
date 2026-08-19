@@ -52,6 +52,7 @@ import {
   type CareerFederationId,
   type CareerMeetTier,
 } from '../career/careerTuning';
+import type { CareerMeet } from '../career/calendar';
 import { rulesetLabel } from '../career/federation';
 import {
   careerCalendarFromCache,
@@ -137,6 +138,13 @@ export interface CareerCalendarRow {
   readonly enterable: boolean;
   /** GDD §10.0: drawn, and drawn locked. */
   readonly locked: boolean;
+  /**
+   * The scheduled meet itself, VERBATIM from the calendar entry — what an
+   * enterable row hands the router, which hands it to `careerMeet.ts`'s
+   * adapter. Carried whole rather than as an id so the router never has to
+   * re-derive a meet the verdict was not taken about.
+   */
+  readonly meet: CareerMeet;
 }
 
 function rowFor(tier: CareerMeetTier, entry: CareerCalendarEntry): CareerCalendarRow {
@@ -159,6 +167,7 @@ function rowFor(tier: CareerMeetTier, entry: CareerCalendarEntry): CareerCalenda
         : null,
     enterable: open && !locked,
     locked,
+    meet: entry.meet,
   };
 }
 

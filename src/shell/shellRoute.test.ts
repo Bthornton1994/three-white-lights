@@ -104,17 +104,24 @@ const AS_PLAYER = (surface: ShellSurface): ShellRoute => ({ surface, source: 'pl
  * the table EXHAUSTIVE at compile time: a phase added to either union is a type
  * error here until somebody decides what the shell does on it.
  */
+/**
+ * SINCE SPRINT 1c THE SESSION'S PILL TOWARD A MEET IS THE CAREER PILL. The
+ * `open-meet` door is deleted — a meet is entered from the calendar's own
+ * rows — so this table now states what `shellCareerAffordanceFor` draws on
+ * each session beat, and a separate sweep below pins that the deleted meet
+ * affordance stays null on every one of them.
+ */
 const ON_A_SESSION_BEAT: Readonly<Record<SessionPhase, ShellIntent | null>> = Object.freeze({
   /** GDD §3.2's first beat — and the "already trained today" surface too. */
-  'check-in': 'open-meet',
+  'check-in': 'open-career',
   /** Choosing an RPE. Deciding, not lifting. */
-  briefing: 'open-meet',
+  briefing: 'open-career',
   /** THE MECHANIC. A pill here is a mis-tap that costs a rep. */
   set: null,
   /** The gap between two sets. Still the mechanic's screen. */
   rest: null,
   /** The end of a session — the "finish training, reach a meet" path. */
-  'close-out': 'open-meet',
+  'close-out': 'open-career',
 });
 
 const ON_A_MEET_BEAT: Readonly<Record<MeetDayPhaseId, ShellIntent | null>> = Object.freeze({
@@ -151,9 +158,12 @@ describe('a player can get from the daily session to a meet, and back', () => {
   it('THE SESSION -> MEET ROUTE EXISTS AND IS A PATH, NOT A COMPONENT', () => {
     // Read this as: holding a phone, on the screen the app opens on, with no
     // URL bar, how many presses to meet day? The answer must be a number.
+    // Since Sprint 1c the answer is two: open the Career surface, then enter
+    // a meet from the calendar — GDD §6.1's "select a meet from the Career
+    // calendar" as a path rather than a promise.
     const path = pathBetween('session', 'meet');
     expect(path, 'a player cannot reach meet day at all').not.toBeNull();
-    expect(path).toEqual(['open-meet']);
+    expect(path).toEqual(['open-career', 'enter-meet']);
   });
 
   it('and the way back exists too — GDD §6.5 ends somewhere', () => {
@@ -182,11 +192,11 @@ describe('a player can get from the daily session to a meet, and back', () => {
     // to is `player`, and nothing a player does can produce `debug`.
     let route: ShellRoute = DEFAULT_ROUTE;
     const sources: string[] = [];
-    for (const intent of ['open-meet', 'leave-meet', 'open-meet'] as const) {
+    for (const intent of ['open-career', 'enter-meet', 'leave-meet', 'open-career'] as const) {
       route = navigate(route, intent);
       sources.push(route.source);
     }
-    expect(sources).toEqual(['player', 'player', 'player']);
+    expect(sources).toEqual(['player', 'player', 'player', 'player']);
   });
 
   it('THE SESSION -> EMPIRE ROUTE EXISTS AND IS A PATH, NOT A COMPONENT', () => {
@@ -241,31 +251,34 @@ describe('the route graph', () => {
       }
     }
     expect(edges).toEqual({
-      'session --open-meet-->': 'meet',
+      // `session --enter-meet-->` is a NO-OP, and that row is Sprint 1c's
+      // whole change seen from the graph: the session has no door to a meet.
+      // The one live `enter-meet` edge is career's, five rows down.
+      'session --enter-meet-->': 'session',
       'session --leave-meet-->': 'session',
       'session --open-empire-->': 'empire',
       'session --leave-empire-->': 'session',
       'session --open-career-->': 'career',
       'session --leave-career-->': 'session',
-      'meet --open-meet-->': 'meet',
+      'meet --enter-meet-->': 'meet',
       'meet --leave-meet-->': 'session',
       'meet --open-empire-->': 'meet',
       'meet --leave-empire-->': 'meet',
       'meet --open-career-->': 'meet',
       'meet --leave-career-->': 'meet',
-      'replay --open-meet-->': 'replay',
+      'replay --enter-meet-->': 'replay',
       'replay --leave-meet-->': 'replay',
       'replay --open-empire-->': 'replay',
       'replay --leave-empire-->': 'replay',
       'replay --open-career-->': 'replay',
       'replay --leave-career-->': 'replay',
-      'empire --open-meet-->': 'empire',
+      'empire --enter-meet-->': 'empire',
       'empire --leave-meet-->': 'empire',
       'empire --open-empire-->': 'empire',
       'empire --leave-empire-->': 'session',
       'empire --open-career-->': 'empire',
       'empire --leave-career-->': 'empire',
-      'career --open-meet-->': 'career',
+      'career --enter-meet-->': 'meet',
       'career --leave-meet-->': 'career',
       'career --open-empire-->': 'career',
       'career --leave-empire-->': 'career',
@@ -387,16 +400,13 @@ describe('when the shell may draw a control — pinned, one beat at a time', () 
   const SESSION = DEFAULT_ROUTE;
   const MEET = AS_PLAYER('meet');
 
-  it('THE WAY TO MEET DAY IS ON THE CHECK-IN, THE BRIEFING AND THE CLOSE-OUT', () => {
-    expect(shellAffordanceFor(SESSION, 'check-in')).toBe('open-meet');
-    expect(shellAffordanceFor(SESSION, 'briefing')).toBe('open-meet');
-    expect(shellAffordanceFor(SESSION, 'close-out')).toBe('open-meet');
-  });
-
-  it('AND IT IS DRAWN OVER NEITHER A LIVE SET NOR THE REST BETWEEN TWO OF THEM', () => {
-    // The one assertion here that is about feel rather than routing, and the
-    // reason the gate exists at all: a pill over the mechanic is a mis-tap that
-    // costs a rep.
+  it('THE SESSION OFFERS NO MEET PILL ON ANY BEAT — the ungated door stays deleted', () => {
+    // Sprint 1c: the way toward a meet is the CAREER pill (asserted below with
+    // the other career-affordance checks), and `shellAffordanceFor`'s session
+    // arm is gone. Every beat named, so a re-added arm reddens by name.
+    expect(shellAffordanceFor(SESSION, 'check-in')).toBe(null);
+    expect(shellAffordanceFor(SESSION, 'briefing')).toBe(null);
+    expect(shellAffordanceFor(SESSION, 'close-out')).toBe(null);
     expect(shellAffordanceFor(SESSION, 'set')).toBe(null);
     expect(shellAffordanceFor(SESSION, 'rest')).toBe(null);
   });
@@ -426,9 +436,10 @@ describe('when the shell may draw a control — pinned, one beat at a time', () 
     // real source; this is the other half of the join. Together they say: a
     // player who opens the app for the second time today gets somewhere to go
     // rather than a dead end, which is GDD §12.3's "never punish daily
-    // engagement" line applied to navigation.
-    expect(shellAffordanceFor(SESSION, 'check-in')).toBe('open-meet');
-    expect(shellAffordanceFor(AS_PLAYER('session'), 'check-in')).toBe('open-meet');
+    // engagement" line applied to navigation. Since Sprint 1c the somewhere is
+    // the Career surface, whose calendar holds the doors to the meets.
+    expect(shellCareerAffordanceFor(SESSION, 'check-in')).toBe('open-career');
+    expect(shellCareerAffordanceFor(AS_PLAYER('session'), 'check-in')).toBe('open-career');
   });
 
   it('the answer does not depend on HOW the player got to the surface', () => {
@@ -436,8 +447,8 @@ describe('when the shell may draw a control — pinned, one beat at a time', () 
     // a debug URL. The gate is about the BEAT, so all three agree.
     for (const source of ['default', 'player', 'debug'] as const) {
       const route: ShellRoute = { surface: 'session', source };
-      expect(shellAffordanceFor(route, 'check-in'), source).toBe('open-meet');
-      expect(shellAffordanceFor(route, 'set'), source).toBe(null);
+      expect(shellCareerAffordanceFor(route, 'check-in'), source).toBe('open-career');
+      expect(shellCareerAffordanceFor(route, 'set'), source).toBe(null);
       expect(shellAffordanceFor({ surface: 'meet', source }, 'recap'), source).toBe('leave-meet');
       expect(shellAffordanceFor({ surface: 'meet', source }, 'lift'), source).toBe(null);
     }
@@ -510,7 +521,10 @@ describe('when the shell may draw a control — pinned, one beat at a time', () 
     // `Record<SessionPhase, …>`, so emptying it is a type error and not a green
     // run.
     for (const [phase, drawn] of Object.entries(ON_A_SESSION_BEAT)) {
-      expect(shellAffordanceFor(DEFAULT_ROUTE, phase as SessionPhase), phase).toBe(drawn);
+      expect(shellCareerAffordanceFor(DEFAULT_ROUTE, phase as SessionPhase), phase).toBe(drawn);
+      // The deleted door, swept beside the live one: no session beat draws a
+      // meet affordance, whatever the table says the career pill does.
+      expect(shellAffordanceFor(DEFAULT_ROUTE, phase as SessionPhase), phase).toBe(null);
     }
     for (const [phase, drawn] of Object.entries(ON_A_MEET_BEAT)) {
       expect(shellAffordanceFor(MEET, phase as MeetDayPhaseId), phase).toBe(drawn);
@@ -536,10 +550,14 @@ describe('when the shell may draw a control — pinned, one beat at a time', () 
     for (const [phase, drawn] of Object.entries(ON_A_SESSION_BEAT)) {
       if (drawn === null) continue;
       covered += 1;
-      expect(shellAffordanceFor(DEFAULT_ROUTE, phase as SessionPhase, 'live'), phase).toBe(null);
+      expect(shellCareerAffordanceFor(DEFAULT_ROUTE, phase as SessionPhase, 'live'), phase).toBe(
+        null,
+      );
       // ...and the same call with no cut-in still draws it, so this is not
       // passing because the gate stopped working altogether.
-      expect(shellAffordanceFor(DEFAULT_ROUTE, phase as SessionPhase, 'none'), phase).toBe(drawn);
+      expect(shellCareerAffordanceFor(DEFAULT_ROUTE, phase as SessionPhase, 'none'), phase).toBe(
+        drawn,
+      );
     }
     for (const [phase, drawn] of Object.entries(ON_A_MEET_BEAT)) {
       if (drawn === null) continue;
@@ -556,10 +574,10 @@ describe('when the shell may draw a control — pinned, one beat at a time', () 
     // The third argument is optional, which is the only reason the dozens of
     // two-argument assertions above still compile. Pinned so that default can
     // never quietly become `'live'` — which would hide the chrome everywhere.
-    expect(shellAffordanceFor(DEFAULT_ROUTE, 'check-in')).toBe(
-      shellAffordanceFor(DEFAULT_ROUTE, 'check-in', 'none'),
+    expect(shellAffordanceFor(AS_PLAYER('meet'), 'recap')).toBe(
+      shellAffordanceFor(AS_PLAYER('meet'), 'recap', 'none'),
     );
-    expect(shellAffordanceFor(DEFAULT_ROUTE, 'check-in')).toBe('open-meet');
+    expect(shellAffordanceFor(AS_PLAYER('meet'), 'recap')).toBe('leave-meet');
   });
 });
 
@@ -581,10 +599,10 @@ describe('the table and SHELL_NAV are two statements of one fact', () => {
 
   it('SHELL_NAV.SESSION_PHASES is exactly the beats the table gives the pill to', () => {
     expect([...SHELL_NAV.SESSION_PHASES].sort()).toEqual(
-      tableBeatsFor(ON_A_SESSION_BEAT, 'open-meet'),
+      tableBeatsFor(ON_A_SESSION_BEAT, 'open-career'),
     );
     // Spelled out, so a failure names the beats rather than only a diff.
-    expect(tableBeatsFor(ON_A_SESSION_BEAT, 'open-meet')).toEqual([
+    expect(tableBeatsFor(ON_A_SESSION_BEAT, 'open-career')).toEqual([
       'briefing',
       'check-in',
       'close-out',
@@ -769,12 +787,15 @@ describe('the four debug query strings the evidence harness drives', () => {
 
 describe('a meet the player opened is played, not frozen', () => {
   it('a player-opened meet gets no frozen frame, even from a debug launch URL', () => {
-    // The bug this prevents: launch on `?meet=recap`, press the way out, press
-    // MEET DAY again — and get the recap screenshot back, with its timers
-    // stopped, instead of a meet.
+    // The bug this prevents: launch on `?meet=recap`, press the way out, walk
+    // back in through the calendar — and get the recap screenshot back, with
+    // its timers stopped, instead of a meet.
     const entry = resolveEntry('?meet=recap');
     expect(frozenMeetFor(entry, entry.route)).toBeDefined();
-    const afterRoundTrip = navigate(navigate(entry.route, 'leave-meet'), 'open-meet');
+    const afterRoundTrip = navigate(
+      navigate(navigate(entry.route, 'leave-meet'), 'open-career'),
+      'enter-meet',
+    );
     expect(afterRoundTrip).toEqual({ surface: 'meet', source: 'player' });
     expect(frozenMeetFor(entry, afterRoundTrip)).toBeUndefined();
   });
@@ -782,7 +803,10 @@ describe('a meet the player opened is played, not frozen', () => {
   it('the same for the session', () => {
     const entry = resolveEntry('?session=close-out-pr');
     expect(frozenSessionFor(entry, entry.route)).toBeDefined();
-    const afterRoundTrip = navigate(navigate(entry.route, 'open-meet'), 'leave-meet');
+    const afterRoundTrip = navigate(
+      navigate(navigate(entry.route, 'open-career'), 'enter-meet'),
+      'leave-meet',
+    );
     expect(afterRoundTrip).toEqual({ surface: 'session', source: 'player' });
     expect(frozenSessionFor(entry, afterRoundTrip)).toBeUndefined();
   });

@@ -35,6 +35,7 @@ import React, { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MEET_LAYOUT } from '../game/meetTuning';
+import type { CareerMeet } from '../career/calendar';
 import { CAREER_COPY } from '../career/careerTuning';
 import type { CareerServerPort } from '../game/careerClient';
 import { MEET_PALETTE } from './meetPalette';
@@ -60,12 +61,23 @@ export interface CareerScreenProps {
    * — the same pair of reasons `EmpireScreen` carries this prop.
    */
   readonly active?: boolean;
+  /**
+   * Where an enterable row's press goes (Sprint 1c). SUPPLIED BY THE ROUTER,
+   * on `MeetScreen.onLeave`'s reasoning: entering a meet is a route change and
+   * all routing lives in `src/shell/`. This screen hands over the row's own
+   * `CareerMeet`, verbatim, and decides nothing else — which meet becomes a
+   * runnable `MeetDefinition` is `careerMeet.ts`'s job, on the shell's side of
+   * the call. Omitted (a harness), enterable rows draw no control at all
+   * rather than a dead one.
+   */
+  readonly onEnterMeet?: (meet: CareerMeet) => void;
 }
 
 export function CareerScreen({
   serverPort,
   onPhase,
   active = true,
+  onEnterMeet,
 }: CareerScreenProps): React.ReactElement {
   const loop = useCareer(serverPort, active);
 
@@ -121,14 +133,20 @@ export function CareerScreen({
         </Text>
         <Text style={styles.lead}>{CAREER_COPY.CALENDAR_LEAD}</Text>
         {(loop.rows ?? []).map((row) => (
-          <CalendarRow key={row.tier} row={row} />
+          <CalendarRow key={row.tier} row={row} onEnterMeet={onEnterMeet} />
         ))}
       </ScrollView>
     </View>
   );
 }
 
-function CalendarRow({ row }: { readonly row: CareerCalendarRow }): React.ReactElement {
+function CalendarRow({
+  row,
+  onEnterMeet,
+}: {
+  readonly row: CareerCalendarRow;
+  readonly onEnterMeet?: ((meet: CareerMeet) => void) | undefined;
+}): React.ReactElement {
   return (
     <View
       style={[styles.row, row.locked ? styles.rowLocked : null]}
@@ -157,6 +175,18 @@ function CalendarRow({ row }: { readonly row: CareerCalendarRow }): React.ReactE
           {row.detail}
         </Text>
       )}
+      {row.enterable && onEnterMeet !== undefined ? (
+        <Pressable
+          style={styles.enter}
+          accessibilityRole="button"
+          accessibilityLabel={CAREER_COPY.ENTER_MEET_LABEL}
+          accessibilityHint={CAREER_COPY.ENTER_MEET_HINT}
+          onPress={() => onEnterMeet(row.meet)}
+          testID={`career-enter-${row.tier}`}
+        >
+          <Text style={styles.enterLabel}>{CAREER_COPY.ENTER_MEET_LABEL}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -278,5 +308,24 @@ const styles = StyleSheet.create({
     marginTop: L.ROW_GAP,
     color: MEET_PALETTE.TEXT_DIM,
     fontSize: L.HINT_FONT,
+  },
+  // The enter control reuses the chooser card's confirm-shaped tokens: it is
+  // the row's one press target, drawn inside the row so a thumb reads row and
+  // control as one meet.
+  enter: {
+    marginTop: L.ROW_GAP,
+    alignSelf: 'flex-start',
+    borderWidth: L.CARD_BORDER,
+    borderColor: MEET_PALETTE.CARD_SAFE_EDGE,
+    backgroundColor: MEET_PALETTE.CARD_SAFE,
+    borderRadius: L.CARD_RADIUS,
+    paddingHorizontal: L.CARD_PAD,
+    paddingVertical: L.DIVIDER_HEIGHT,
+  },
+  enterLabel: {
+    color: MEET_PALETTE.TEXT,
+    fontSize: L.LABEL_FONT,
+    fontWeight: '700',
+    letterSpacing: L.WIDE_LETTER_SPACING,
   },
 });

@@ -31,12 +31,13 @@
  * ===========================================================================
  * It is not the Career calendar. GDD §6.1 enters a meet by selecting one from a
  * calendar of local -> regional -> nationals -> worlds meets, gated by
- * qualifying totals, and Career mode is zero files. What is here is ONE ungated
- * door to the ONE local meet the game has. When Career exists, `open-meet`
- * stops going straight to `MeetScreen` and goes to the calendar instead, the
- * calendar applies the qualifying-total gate, and this module's job is
- * unchanged: it still only says which surface is up. See `SHELL_COPY` in
- * `shellTuning.ts` for why the label does not promise a calendar.
+ * qualifying totals — and as of Sprint 1c that is how the graph reads: the
+ * paragraph that stood here described "ONE ungated door to the ONE local meet"
+ * and predicted its own deletion, and `enter-meet` from the calendar is that
+ * prediction landing. The calendar applies the qualifying-total gate through
+ * the server's verdicts, and this module's job is unchanged: it still only
+ * says which surface is up, and which MEET was entered travels beside the
+ * route in `AppShell`'s state, not in here.
  *
  * It is also not progression. The shell routes and renders; every mutation to
  * Total, e1RM, streak state or a meet result goes through the server bodies in
@@ -213,14 +214,21 @@ export const DEFAULT_ROUTE: ShellRoute = Object.freeze({ surface: 'session', sou
 /**
  * Everything a player can ask the shell to do.
  *
- * Six intents: the daily session ↔ meet day round trip, the daily session ↔
- * Gym Empire round trip, and the daily session ↔ Career round trip.
- * `LicensingScreen` stays on its own entry point (see the comment that used to
- * claim only two intents — that count is stale; the licensing carve-out is
- * not).
+ * Six intents: the daily session ↔ Gym Empire round trip, the daily session ↔
+ * Career round trip, and meet day entered FROM the Career calendar and left
+ * back to the session. `LicensingScreen` stays on its own entry point (see the
+ * comment that used to claim only two intents — that count is stale; the
+ * licensing carve-out is not).
+ *
+ * `open-meet` IS GONE, AND ITS ABSENCE IS SPRINT 1c'S POINT. That intent was
+ * the session's one ungated door to the one local meet — GDD §6.1's TODO in a
+ * route edge. A meet is now entered from the calendar (`enter-meet`, fired by
+ * an enterable row's own control), so which meet a player lifts is decided
+ * where the verdicts are drawn, and the session's chrome offers Career and
+ * Empire, not a meet with no calendar behind it.
  */
 export type ShellIntent =
-  | 'open-meet'
+  | 'enter-meet'
   | 'leave-meet'
   | 'open-empire'
   | 'leave-empire'
@@ -228,7 +236,7 @@ export type ShellIntent =
   | 'leave-career';
 
 export const SHELL_INTENTS = Object.freeze([
-  'open-meet',
+  'enter-meet',
   'leave-meet',
   'open-empire',
   'leave-empire',
@@ -239,8 +247,13 @@ export const SHELL_INTENTS = Object.freeze([
 /**
  * THE ROUTE GRAPH. One edge per intent, per surface it applies from.
  *
- * `session --open-meet--> meet` is the edge that did not exist and that made
- * the whole of GDD §6 unreachable on a device.
+ * `career --enter-meet--> meet` is Sprint 1c's edge: GDD §6.1's "select a meet
+ * from the Career calendar", replacing `session --open-meet--> meet` — which
+ * was the edge that first made GDD §6 reachable on a device at all, and then
+ * became the ungated door once the calendar existed to gate it. Meet day is
+ * now two intents from the session (`open-career`, then a row's `enter-meet`),
+ * and `pathBetween('session', 'meet')` still answers, which is the reachability
+ * this graph exists to keep honest.
  * `meet --leave-meet--> session` is the way back, which GDD §6.5's recap and
  * §6.3's bomb-out both need and which used to be `window.location.search = ''`
  * — a full page reload, on web only, doing nothing at all on a phone.
@@ -248,7 +261,7 @@ export const SHELL_INTENTS = Object.freeze([
  * Session C's first Gym Empire shell slice (GDD §5).
  */
 export function navigate(route: ShellRoute, intent: ShellIntent): ShellRoute {
-  if (intent === 'open-meet' && route.surface === 'session') {
+  if (intent === 'enter-meet' && route.surface === 'career') {
     return { surface: 'meet', source: 'player' };
   }
   if (intent === 'leave-meet' && route.surface === 'meet') {
@@ -371,9 +384,10 @@ export function shellAffordanceFor(
 ): ShellIntent | null {
   if (cutIn === 'live') return null;
   if (phase === null) return null;
-  if (route.surface === 'session') {
-    return (SHELL_NAV.SESSION_PHASES as readonly string[]).includes(phase) ? 'open-meet' : null;
-  }
+  // The session arm is GONE with `open-meet` (Sprint 1c): the session's chrome
+  // no longer offers a meet, because the Career calendar is the one door and
+  // the Career pill is how a player reaches it. What this function still owns
+  // is the way BACK — the recap's return to training.
   if (route.surface === 'meet') {
     return (SHELL_NAV.MEET_PHASES as readonly string[]).includes(phase) ? 'leave-meet' : null;
   }

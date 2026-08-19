@@ -245,17 +245,13 @@ export const EMPIRE_FLOOR = Object.freeze({
  * NO REAL IDENTITY (GDD §7.3, §12.3): every string here is a generic English
  * noun phrase. No federation, no meet series, no brand, no athlete.
  *
- * MEET_NAV_LABEL IS NOT A CALENDAR. GDD §6.1 enters a meet by selecting one
- * from the Career calendar, gated by qualifying totals, after a weigh-in beat.
- * Career mode does not exist yet, so this is one ungated door to the one local
- * meet the game has — and the label says "meet day", not "enter nationals",
- * precisely so it does not promise a selection screen that is not there.
+ * MEET_NAV_LABEL IS GONE WITH `open-meet` (Sprint 1c). Its note said the
+ * label deliberately did not promise a selection screen that was not there;
+ * the selection screen is there now, a meet is entered from the Career
+ * calendar's own rows (`CAREER_COPY.ENTER_MEET_LABEL`), and the session's
+ * chrome offers CAREER and GYM EMPIRE, not a meet with no calendar behind it.
  */
 export const SHELL_COPY = Object.freeze({
-  /** Session surface -> meet day. */
-  MEET_NAV_LABEL: 'MEET DAY',
-  MEET_NAV_HINT: 'Opens meet day.',
-
   /** Meet surface -> back to the daily loop. */
   LEAVE_MEET_LABEL: 'BACK TO TRAINING',
   LEAVE_MEET_HINT: 'Returns to the daily session.',
@@ -271,8 +267,11 @@ export const SHELL_COPY = Object.freeze({
   /**
    * Session surface -> the Career surface (GDD §2.1's chooser, then §6.1's
    * calendar). The label says CAREER rather than promising a calendar, for the
-   * reason MEET_NAV_LABEL's note gives about promising screens: the first
-   * visit opens the federation chooser, not a calendar.
+   * reason the header's note on the deleted MEET_NAV_LABEL gives about
+   * promising screens: the first visit opens the federation chooser, not a
+   * calendar. Since Sprint 1c this pill is also the way to a meet — the
+   * calendar's rows are the doors — which is exactly why it stays honest
+   * about opening a surface rather than a specific screen.
    */
   CAREER_NAV_LABEL: 'CAREER',
   CAREER_NAV_HINT: 'Opens the career surface.',

@@ -118,8 +118,8 @@ describe('the shell is the join, and it is the only one', () => {
     // A `setRoute({ surface: 'meet' })` here would work and would make
     // `shellRoute.test.ts`'s whole graph decorative.
     expect(SHELL).toMatch(/navigate\(current, ''\)/);
-    expect(SHELL).toMatch(/\bopen-meet\b|''/);
-    expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'open-meet'\)/);
+    expect(SHELL).toMatch(/\benter-meet\b|''/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'enter-meet'\)/);
     expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'leave-meet'\)/);
     expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'open-empire'\)/);
     expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'leave-empire'\)/);
@@ -151,7 +151,7 @@ describe('the shell is the join, and it is the only one', () => {
     );
     // ...and the reset still has to be there: a `setRoute` with no phase reset
     // before it does not match, which is the failure this exists for.
-    expect(codeOnly('setRoute((current) => navigate(current, "open-meet"));')).not.toMatch(
+    expect(codeOnly('setRoute((current) => navigate(current, "enter-meet"));')).not.toMatch(
       /setMeetPhase\(null\);[\s\S]{0,80}?setRoute\(\(current\) => navigate\(current, ''\)\)/,
     );
   });
@@ -2426,8 +2426,9 @@ describe('navigating away and back cannot buy a second session of the day', () =
     // shell (pinned above, `onPhase?.(state.phase)`). So the beat the shell's
     // gate sees on the already-trained screen IS `'check-in'`.
     //
-    // Half two, in `shellRoute.test.ts`: `shellAffordanceFor(session,
-    // 'check-in')` is pinned by a HAND-WRITTEN literal to `'open-meet'`.
+    // Half two, in `shellRoute.test.ts`: `shellCareerAffordanceFor(session,
+    // 'check-in')` is pinned by a HAND-WRITTEN literal to `'open-career'` —
+    // the way toward a meet since Sprint 1c deleted the direct door.
     //
     // Compose them and a player who opens the app for the second time today
     // gets somewhere to go rather than a screen with nothing on it — GDD §12.3's

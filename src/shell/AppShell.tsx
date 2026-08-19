@@ -78,15 +78,17 @@
  * off the server, not a client `if` — the calendar screen filters on
  * `verdict.kind` and computes nothing.
  *
- * STILL MISSING, by scope (Sprint 1c): ENTERING a meet from the calendar.
- * `open-meet` still points at `MeetScreen`'s one ungated door to the one local
- * meet, the played meet is not marked ALREADY_ENTERED on the calendar, and
- * §6.1's placeholder trio in `src/meet/careerCalendarPlaceholder*` stands with
- * its tripwire armed until that seam — `CareerMeet -> MeetDefinition` — is
- * built. When it is, `open-meet` points at the calendar and the meet the
- * player picks is passed to `MeetScreen` as context instead of it building
- * `MEET_LOCAL` itself. Nothing about the route graph's Empire or Career edges
- * changes for that piece.
+ * BUILT IN SPRINT 1c: ENTERING a meet from the calendar. The seam the 1b
+ * version of this header predicted — `CareerMeet -> MeetDefinition` — is
+ * `careerMeet.ts`, and it is crossed exactly once, in `enterMeet` below, at
+ * the instant an enterable row is pressed. `open-meet` is deleted rather than
+ * repointed: the session's chrome offers CAREER, the calendar's rows offer
+ * the meets, and the played meet marks itself ALREADY_ENTERED through the
+ * banked result's own id (see `careerMeet.ts`'s header for the identity
+ * argument). What the prediction got wrong is recorded rather than smoothed
+ * over: it said `open-meet` would point at the calendar, and the built shape
+ * deletes it instead, because two session pills both opening Career is a
+ * worse screen than one.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -116,7 +118,10 @@ import {
   shellEmpireAffordanceFor,
   type ShellIntent,
 } from './shellRoute';
-import { MEET_LOCAL } from '../game/meetTuning';
+import { MEET_LOCAL, type MeetDefinition } from '../game/meetTuning';
+import type { CareerMeet } from '../career/calendar';
+import { CAREER_COPY } from '../career/careerTuning';
+import { meetDefinitionFor } from '../game/careerMeet';
 import { SHELL_COPY, SHELL_LAYOUT, SHELL_NAV, type EmpirePhase } from './shellTuning';
 import type { CareerSurfacePhase } from '../meet/careerSurface';
 import type { MeetDayPhaseId } from '../game/meetDay';
@@ -127,9 +132,14 @@ const L = SHELL_LAYOUT;
 /** What each intent's button says and does for a screen reader. */
 const INTENT_COPY: Readonly<Record<ShellIntent, { readonly label: string; readonly hint: string }>> =
   Object.freeze({
-    'open-meet': Object.freeze({
-      label: SHELL_COPY.MEET_NAV_LABEL,
-      hint: SHELL_COPY.MEET_NAV_HINT,
+    // NO PILL EVER DRAWS THIS ONE. `enter-meet` is fired by an enterable
+    // calendar row's own control (`CareerScreen`), which carries this same
+    // copy from `CAREER_COPY` — the entry here keeps the record exhaustive
+    // over `ShellIntent` and the copy single-sourced, and `shellWiring.test.ts`
+    // pins that no affordance function can return it.
+    'enter-meet': Object.freeze({
+      label: CAREER_COPY.ENTER_MEET_LABEL,
+      hint: CAREER_COPY.ENTER_MEET_HINT,
     }),
     'leave-meet': Object.freeze({
       label: SHELL_COPY.LEAVE_MEET_LABEL,
@@ -274,6 +284,15 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   // Empire's and today starts false on every launch.
   const [careerOpened, setCareerOpened] = useState(route.surface === 'career');
 
+  // WHICH MEET THE PLAYER ENTERED, adapted the moment the row was pressed
+  // (Sprint 1c). Route state carries WHERE, this carries WHAT: `navigate` is a
+  // pure walk over string intents and stays that way, so the entered meet
+  // travels beside the route rather than inside it. Null whenever the player
+  // is not mid-meet — set by `enterMeet` (the only player edge into the meet
+  // surface), cleared by `leaveMeet`, so a finished meet's definition can
+  // never leak into a later entry.
+  const [enteredMeet, setEnteredMeet] = useState<MeetDefinition | null>(null);
+
   // THE DESTINATION'S BEAT IS FORGOTTEN ON THE WAY IN, and that is not tidying.
   // The screen being routed to reports its beat in an effect, which lands a
   // commit AFTER the route changes — so a stale phase from a previous visit
@@ -291,12 +310,14 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
   // report again — the player lands back on their briefing with nowhere to go.
   // `forgetsBeatOnArrival` in `shellRoute.ts` states that rule and
   // `shellWiring.test.ts` pins it against this file in both directions.
-  const openMeet = useCallback(() => {
+  const enterMeet = useCallback((meet: CareerMeet) => {
+    setEnteredMeet(meetDefinitionFor(meet));
     setMeetPhase(null);
     setMeetCutIn(false);
-    setRoute((current) => navigate(current, 'open-meet'));
+    setRoute((current) => navigate(current, 'enter-meet'));
   }, []);
   const leaveMeet = useCallback(() => {
+    setEnteredMeet(null);
     setSessionPhase(null);
     setSessionCutIn(false);
     setRoute((current) => navigate(current, 'leave-meet'));
@@ -345,8 +366,13 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
 
   const pressFor = (intent: ShellIntent): (() => void) => {
     switch (intent) {
-      case 'open-meet':
-        return openMeet;
+      case 'enter-meet':
+        // UNREACHABLE FROM A PILL, deliberately: no affordance function
+        // returns `enter-meet` (the calendar row is the only presser, and it
+        // calls `enterMeet` with its own meet — a pill has no meet to enter).
+        // The case exists because this switch is exhaustive over ShellIntent,
+        // and it must stay inert rather than guess a meet.
+        return () => undefined;
       case 'leave-meet':
         return leaveMeet;
       case 'open-empire':
@@ -374,7 +400,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
 
   return (
     <View style={styles.root} testID="app-shell">
-      {route.surface === 'meet' ? (
+      {route.surface === 'meet' && (meetFrame !== undefined || enteredMeet !== null) ? (
         <MeetScreen
           // THE APP'S CONNECTION, or the frozen frame's own stand-in server.
           //
@@ -391,12 +417,14 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           // `tools/verify-shell-route.mjs` measures the consequence on the
           // played path rather than trusting either.
           serverPort={meetFrame?.serverPort ?? appMeetPort()}
-          // STILL THE ONE LOCAL, EXPLICITLY, FOR EXACTLY ONE MORE PIECE. The
-          // hook no longer reaches for `MEET_LOCAL` itself — the door is now
-          // visible here, at the router, which is the one place allowed to
-          // decide which meet is lifted. The next 1c piece replaces this with
-          // the calendar's choice through `careerMeet.ts`'s adapter.
-          meet={MEET_LOCAL}
+          // THE MEET THE PLAYER ENTERED, adapted at the row press. On every
+          // player-reachable path `enteredMeet` is non-null — the only edge
+          // into this surface is `enter-meet`, and `enterMeet` sets it before
+          // navigating; the surrounding condition makes that structural
+          // rather than assumed. `MEET_LOCAL` survives ONLY as the debug
+          // frame's fixture (`meetFrame` implies `source === 'debug'`), the
+          // same scripted world its preview state already lives in.
+          meet={enteredMeet ?? MEET_LOCAL}
           preview={meetFrame?.state}
           showCard={meetFrame?.card ?? false}
           holdWalkoutAtMs={meetFrame?.holdWalkoutAtMs ?? null}
@@ -433,6 +461,7 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
             serverPort={appCareerPort()}
             onPhase={setCareerPhase}
             active={route.surface === 'career'}
+            onEnterMeet={enterMeet}
           />
         </View>
       )}

@@ -252,8 +252,11 @@ const PINNED = Object.freeze({
    * 292 -> 295 when the career reached the boundary (Sprint 1a):
    * `careerServer.ts`, `careerClient.ts` and `careerServer.test.ts` under
    * `src/game/`.
+   *
+   * 299 -> 301 with Sprint 1c's adapter pair: `src/game/careerMeet.ts` and
+   * `src/game/careerMeet.test.ts`.
    */
-  SCANNED_FILES: 299,
+  SCANNED_FILES: 301,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -267,7 +270,8 @@ const PINNED = Object.freeze({
    * SCANNED_FILES 295 -> 299 with its three shipped siblings:
    * `careerSurface.ts`, `useCareer.ts`, `CareerScreen.tsx`).
    */
-  TEST_FILES: 93,
+  /** 93 -> 94 with Sprint 1c's `src/game/careerMeet.test.ts`. */
+  TEST_FILES: 94,
 });
 
 /**
