@@ -12448,6 +12448,21 @@ const LADDER_VIEW_CONTROLS =
   (EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.length - EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.length) +
   1;
 
+/**
+ * The stage-2 view's control count on an opening screen (empty session
+ * equipment, all-rest allocation): the dev steps, the week-boundary jump,
+ * every unheld item on both shops, the relocation, and every slot-option
+ * button on all three flexible slots. Derived from the tuning vocabulary the
+ * same way `LADDER_VIEW_CONTROLS` is, above.
+ */
+const GYM_VIEW_CONTROLS =
+  EMPIRE_TUNING.LADDER_DEV_TIME_STEPS_SECONDS.length +
+  1 + // the week-boundary jump
+  (EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.length - EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.length) +
+  EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS.length +
+  1 + // relocate
+  EMPIRE_TUNING.FLEXIBLE_SESSIONS_PER_WEEK * (EMPIRE_TUNING.FLEXIBLE_ACTIVITIES.length + 1);
+
 /** Every onClick in an element tree, pressed in tree order. */
 function pressEveryControl(node: unknown): number {
   if (typeof node !== 'object' || node === null) return 0;
@@ -12504,6 +12519,45 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
           );
         },
         callsAt: (): number => TRAINED_DAYS_AXIS_SLOTS,
+        argumentsPerCall: 1,
+      }),
+    ]),
+  }),
+  Object.freeze({
+    key: 'ladderView.tsx#GymView#props.dispatch',
+    axes: Object.freeze([
+      Object.freeze({
+        name: 'ladderView.tsx#GymView#props.dispatch#gymBucks',
+        domain: 'NUMBER',
+        means:
+          'the settled purse the rendered screen shows. The dispatch count is the CONTROL count — the dev steps, the week-boundary jump, every unheld item on both shops, the relocation, and every slot-option button on all three flexible slots — and deliberately does not vary with the point: the view disables nothing, every control dispatches whatever the balance, and refusals are the reducer’s to report. What the pass scans is the action objects the screen hands its caller.',
+        drive: (record: (args: readonly unknown[]) => void, point: number): void => {
+          pressEveryControl(
+            ladderViewModule.GymView({
+              state: Object.freeze({
+                gym: Object.freeze({
+                  ladder: ladderStateAt(
+                    EMPIRE_TUNING.LADDER_RUNGS[0],
+                    point,
+                    ladderModule.createLadderState().equipment,
+                  ),
+                  acceleratedGymBucks: 0,
+                  sessionEquipment: Object.freeze([]),
+                }),
+                lastAccrual: null,
+                lastRefusal: null,
+                weekIndex: 0,
+                allocation: sessionsModule.createRestAllocation(),
+                allocationSetThisWeek: false,
+                weekLog: Object.freeze([]),
+              }),
+              dispatch: (action: ladderViewModule.GymViewAction): void => {
+                record([action]);
+              },
+            }),
+          );
+        },
+        callsAt: (): number => GYM_VIEW_CONTROLS,
         argumentsPerCall: 1,
       }),
     ]),
@@ -12769,6 +12823,12 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
     calls: 318,
     recorded: 318,
   }),
+  'ladderView.tsx#GymView#props.dispatch#gymBucks': Object.freeze({
+    points: 272,
+    refusedPoints: 0,
+    calls: 9520,
+    recorded: 9520,
+  }),
   'ladderView.tsx#LadderView#props.dispatch#gymBucks': Object.freeze({
     points: 272,
     refusedPoints: 0,
@@ -12802,7 +12862,7 @@ const CALLBACK_AXIS_RESIDUAL: readonly string[] = Object.freeze([
 ]);
 
 const CALLBACK_PASS_CENSUS = Object.freeze({
-  SUBJECTS: 4,
+  SUBJECTS: 5,
   /**
    * Axes driven, summed over subjects.
    *
@@ -12813,7 +12873,7 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    * reader — with `CALLBACK_AXIS_RESIDUAL` naming what a per-axis drive still
    * cannot express.
    */
-  AXES_VARIED: 5,
+  AXES_VARIED: 6,
   /**
    * Points, refusals, calls and values, summed across every axis.
    *
@@ -12821,10 +12881,10 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    * reader checks at a glance and the table is what cannot be gamed by one axis
    * growing while another dies.
    */
-  POINTS: 632,
+  POINTS: 904,
   REFUSED_POINTS: 1,
-  CALLS: 3287019,
-  RECORDED: 5472777,
+  CALLS: 3296539,
+  RECORDED: 5482297,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
