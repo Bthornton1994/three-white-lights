@@ -68,6 +68,7 @@ import {
   readStreakDays,
   readTotalKg,
   receiveProgressionSnapshot,
+  type TrainingSetReport,
 } from './progression';
 import type { LiftKind } from './meet';
 import { newServerRecord, snapshotWireFor } from './sessionServer';
@@ -729,6 +730,92 @@ describe('executionQualityFrom', () => {
     // nothing was botched.
     expect(executionQualityFrom(resolutionWith([timing('depth', 1)]))).toBe(1);
     expect(executionQualityFrom(resolutionWith([]))).toBe(1);
+  });
+});
+
+describe('a worse-executed rep banks a smaller gain — driven end to end from a REAL simulated rep, not a hand-built quality literal', () => {
+  // Measured, not assumed: at loadRatio 0.75, pressing the drive 6 ticks off
+  // its ideal tick still makes the rep (outcome stays 'good-lift') but reads
+  // quality 0.4006 rather than 1 — the exact "imperfect but still a make"
+  // case this claim needs. Found by sweeping offsets at three loads before
+  // writing this test; 0/2/4 ticks off were all too close to 1 to be a
+  // useful control, and 8+ ticks missed outright at this load.
+  const IMPERFECT_OFFSET_TICKS = 6;
+  const LOAD_RATIO = 0.75;
+  const SEED = 20260820;
+
+  function playedReport(offsetTicks: number): { readonly quality: number; readonly report: TrainingSetReport } {
+    const config: LiftConfig = { loadRatio: LOAD_RATIO, seed: SEED };
+    let state: LiftState = createLift(config);
+    let ticks = 0;
+    while (state.phase !== 'RESOLVED' && ticks < 1000) {
+      let input: LiftInput | null = null;
+      const cue = state.activeCue;
+      const nextTick = state.tick + 1;
+      if (state.phase === 'BRACE' && !state.held) {
+        input = { kind: 'press' };
+      } else if (cue !== null && nextTick === cue.idealTick + offsetTicks) {
+        input = { kind: cue.wants };
+      }
+      state = stepLift(state, input);
+      ticks += 1;
+    }
+    const resolution = state.resolution;
+    if (resolution === null) throw new Error('fixture rep never resolved');
+    expect(resolution.outcome, 'fixture must be a MADE rep, not a miss').not.toBe('miss');
+    const quality = executionQualityFrom(resolution);
+    const plan = prescribeSession(200, 'squat', 8, readinessCheckIn(NEUTRAL), 1);
+    const played = playedSetFrom(plan, 1, [{ outcome: resolution.outcome, executionQuality: quality }]);
+    if (played.report === null) throw new Error('fixture rep produced no report');
+    return { quality, report: played.report };
+  }
+
+  it('the imperfect rep really is imperfect, measured off the real sim, not asserted', () => {
+    const perfect = playedReport(0);
+    const imperfect = playedReport(IMPERFECT_OFFSET_TICKS);
+    expect(perfect.quality).toBe(1);
+    expect(imperfect.quality).toBeCloseTo(0.4006, 3);
+    expect(imperfect.quality).toBeLessThan(perfect.quality);
+  });
+
+  it('carries a smaller e1RM gain all the way to nextBestE1rm, both estimates run through sessionE1rmFrom for real', () => {
+    const perfect = playedReport(0);
+    const imperfect = playedReport(IMPERFECT_OFFSET_TICKS);
+    // Both reports imply the SAME raw e1RM (same weight/reps/rpe — only
+    // executionQuality differs), and it is set up to exceed the cap, so any
+    // difference in the banked number is entirely the quality scaling, not a
+    // difference in what was lifted.
+    expect(perfect.report.weight).toBe(imperfect.report.weight);
+    expect(perfect.report.reps).toBe(imperfect.report.reps);
+    expect(perfect.report.rpe).toBe(imperfect.report.rpe);
+
+    const held = 100; // low enough that the implied estimate is well past the cap
+    const perfectEstimate = sessionE1rmFrom([perfect.report]);
+    const imperfectEstimate = sessionE1rmFrom([imperfect.report]);
+    expect(perfectEstimate).not.toBeNull();
+    expect(imperfectEstimate).not.toBeNull();
+    expect(perfectEstimate?.e1rmKg).toBeCloseTo(imperfectEstimate?.e1rmKg ?? Number.NaN, 6);
+    expect(perfectEstimate?.executionQuality).toBe(1);
+    expect(imperfectEstimate?.executionQuality).toBeCloseTo(0.4006, 3);
+
+    const perfectBanked = nextBestE1rm(held, perfectEstimate);
+    const imperfectBanked = nextBestE1rm(held, imperfectEstimate);
+    expect(perfectBanked).not.toBeNull();
+    expect(imperfectBanked).not.toBeNull();
+    expect(imperfectBanked ?? Number.NaN).toBeLessThan(perfectBanked ?? Number.NaN);
+    expect(perfectBanked).toBeCloseTo(
+      held * (1 + SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION),
+      9,
+    );
+    const { MIN_E1RM_GAIN_FRACTION_PER_SESSION, MAX_E1RM_GAIN_FRACTION_PER_SESSION } =
+      SESSION_PROGRESSION_GUARD;
+    expect(imperfectBanked).toBeCloseTo(
+      held *
+        (1 +
+          MIN_E1RM_GAIN_FRACTION_PER_SESSION +
+          (MAX_E1RM_GAIN_FRACTION_PER_SESSION - MIN_E1RM_GAIN_FRACTION_PER_SESSION) * 0.4006),
+      3,
+    );
   });
 });
 
