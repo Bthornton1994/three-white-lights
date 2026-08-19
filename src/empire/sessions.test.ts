@@ -60,6 +60,7 @@ import {
   sessionEquipmentGroup,
   sessionEquipmentMinRung,
   supportAmplifier,
+  trainingWeekShape,
   weeklyAttributeEffects,
 } from './sessions';
 import { ladderEquipmentCost, ladderMoveCost, ladderRungIndex } from './ladder';
@@ -489,6 +490,8 @@ describe('the stage-2 tuning shape, re-derived from the values', () => {
     // The tuple type and the tuning value agree — turning the value without
     // moving the type is red here, which is what makes the budget honest.
     expect(createRestAllocation().length).toBe(T.FLEXIBLE_SESSIONS_PER_WEEK);
+    // The §5.5 sentence as the value a screen prints, summed from the block.
+    expect(trainingWeekShape()).toEqual({ fixed: 4, flexible: 3, total: 7 });
   });
 
   it('keeps every budget guard slack: the best reachable build lands inside it', () => {

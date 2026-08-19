@@ -387,6 +387,25 @@ export function createRestAllocation(): WeekAllocation {
 }
 
 /**
+ * §5.5's sentence as a value a screen can print: the guaranteed four, the
+ * flexible three, and their sum — "7 total, matching a real training week".
+ * The fixed count is read here and allocated nowhere, which is header §1.
+ */
+export function trainingWeekShape(): {
+  readonly fixed: number;
+  readonly flexible: number;
+  readonly total: number;
+} {
+  return Object.freeze({
+    fixed: EMPIRE_TUNING.FIXED_POWERLIFTING_SESSIONS_PER_WEEK,
+    flexible: EMPIRE_TUNING.FLEXIBLE_SESSIONS_PER_WEEK,
+    total:
+      EMPIRE_TUNING.FIXED_POWERLIFTING_SESSIONS_PER_WEEK +
+      EMPIRE_TUNING.FLEXIBLE_SESSIONS_PER_WEEK,
+  });
+}
+
+/**
  * Refuse a bent allocation and hand a well-formed one back unchanged — the
  * runtime half of header §1's unrepresentability claim, for the cast route
  * the type cannot see.
