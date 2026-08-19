@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece empire
-generated 2026-08-18T23:05:16.507Z
+generated 2026-08-19T02:31:39.635Z
 repo /home/user/three-white-lights
-commit 63cf427a8b75cea4f138b31deb3518211686a06b
+commit 5b5431d1d79392eea0bec95fe822590161768632
 working tree clean (ignoring only this script's own output and .gauntlet/state.json)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -41,61 +41,99 @@ $ npx vitest run src/empire --reporter=verbose
 
  RUN  v4.1.10 /home/user/three-white-lights
 
- ✓ src/empire/engagement.test.ts > the sweep parameters describe a domain that is not empty > generates the plan list it says it does, counts and all 2ms
+ ✓ src/empire/engagement.test.ts > the sweep parameters describe a domain that is not empty > generates the plan list it says it does, counts and all 3ms
  ✓ src/empire/engagement.test.ts > the sweep parameters describe a domain that is not empty > grants something inside the shortest horizon on every non-baseline plan 1ms
  ✓ src/empire/engagement.test.ts > the sweep parameters describe a domain that is not empty > describes horizons and cadences that ascend and are whole 1ms
- ✓ src/empire/engagement.test.ts > the sweep parameters describe a domain that is not empty > supplies social inputs that pay on more than one day and share a sender 1ms
+ ✓ src/empire/engagement.test.ts > the sweep parameters describe a domain that is not empty > supplies social inputs that pay on more than one day and share a sender 3ms
  ✓ src/empire/engagement.test.ts > the sweep parameters describe a domain that is not empty > names no real gym, lifter, brand or federation 1ms
- ✓ src/empire/engagement.test.ts > the engagement driver is the shipped composition, driven by a schedule > reproduces runEmpire entry for entry under full attendance 43ms
+ ✓ src/empire/engagement.test.ts > the engagement driver is the shipped composition, driven by a schedule > reproduces runEmpire entry for entry under full attendance 48ms
  ✓ src/empire/engagement.test.ts > the engagement driver is the shipped composition, driven by a schedule > refuses a pair that does not differ in engagement by exactly one 2ms
- ✓ src/empire/engagement.test.ts > the engagement driver is the shipped composition, driven by a schedule > refuses a control dial on a wiring that has nothing to turn 1ms
+ ✓ src/empire/engagement.test.ts > the engagement driver is the shipped composition, driven by a schedule > refuses a control dial on a wiring that has nothing to turn 2ms
  ✓ src/empire/engagement.test.ts > the engagement driver is the shipped composition, driven by a schedule > places a check-in on the wall clock the way runEmpire does 1ms
- ✓ src/empire/engagement.test.ts > the engagement driver is the shipped composition, driven by a schedule > reports a run that satisfies its own census, under every wiring 55ms
- ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > descends into a subdirectory, on a tree built to have one 7ms
- ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > counts a symlinked directory as a directory 4ms
- ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > reads src/empire/ as flat today, and names anything that arrives 0ms
- ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > splits a tree into what the compiler claims and what the censuses walk 6ms
- ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > reads the split out of a config, so a transcribed extension list fails it 3ms
- ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > refuses a config shape it does not understand, rather than guessing 2ms
- ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > names every file the compiler compiles here that no census walks 4ms
- ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > is the one file here that names a listing API, which is a scan and not a proof 81ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > descends into a subdirectory, on a tree built to have one 12ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > counts a symlinked directory as a directory 5ms
+ ✓ src/empire/engagement.test.ts > the engagement driver is the shipped composition, driven by a schedule > reports a run that satisfies its own census, under every wiring 67ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > descends into a subdirectory, on a tree built to have one 10ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > counts a symlinked directory as a directory 3ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > reads src/empire/ as flat today, and names anything that arrives 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > splits a tree into what the compiler claims and what the censuses walk 12ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > splits a tree into what the compiler claims and what the censuses walk 8ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > reads the split out of a config, so a transcribed extension list fails it 4ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > refuses a config shape it does not understand, rather than guessing 4ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > names every file the compiler compiles here that no census walks 12ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > is the one file here that names a listing API, which is a scan and not a proof 91ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > finds the shipped modules the rest of the directory pins, so the walk is not empty 7ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > files or exempts every numeric leaf of EMPIRE_TUNING, in both directions 22ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > re-runs the unconsumed scan, so an exemption that says NO CONSUMER expires by itself 22ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > refuses a config shape it does not understand, rather than guessing 3ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > names every file the compiler compiles here that no census walks 7ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > is the one file here that names a listing API, which is a scan and not a proof 37ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the directory walk every census in src/empire/ shares > finds the shipped modules the rest of the directory pins, so the walk is not empty 5ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > files or exempts every numeric leaf of EMPIRE_TUNING, in both directions 21ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > re-runs the unconsumed scan, so an exemption that says NO CONSUMER expires by itself 5ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > pins how many domains exist and how many points each came out at 0ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > straddles every branch point it is obliged to, IN EVERY DOMAIN AND NOT ONLY THE FIRST 31ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > carries every exempt leaf in every domain but one, and NAMES the ones that domain drops 49ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > keeps every domain inside NUMBER, INCLUDING the points no unit derived 17ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > defines every numeric domain inside the registry, and nowhere else 39ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > declares every literal for-of axis, so an axis outside the registry is not silently an axis 43ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > declares every labelled fixture list, and pins the size of each one it drives 45ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > straddles every branch point it is obliged to, IN EVERY DOMAIN AND NOT ONLY THE FIRST 57ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > carries every exempt leaf in every domain but one, and NAMES the ones that domain drops 39ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > keeps every domain inside NUMBER, INCLUDING the points no unit derived 28ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > defines every numeric domain inside the registry, and nowhere else 20ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > declares every literal for-of axis, so an axis outside the registry is not silently an axis 25ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > declares every labelled fixture list, and pins the size of each one it drives 26ms
+ ✓ src/empire/ladder.test.ts > the ladder vocabulary, derived from the tuning block > indexes the four rungs bottom-up and knows the rung above each 5ms
+ ✓ src/empire/ladder.test.ts > the ladder vocabulary, derived from the tuning block > prices every relocation and every item off the tuning tables, loudly 3ms
+ ✓ src/empire/ladder.test.ts > the ladder vocabulary, derived from the tuning block > reads every income rate and refuses a rung with none 1ms
+ ✓ src/empire/ladder.test.ts > the ladder vocabulary, derived from the tuning block > holds the stage-1 tuning shape the values promise 4ms
+ ✓ src/empire/ladder.test.ts > the ladder vocabulary, derived from the tuning block > gates capability exactly as the requirement lists say, in meet order 1ms
+ ✓ src/empire/ladder.test.ts > the state constructor and the cast-route refusals > opens in the garage with the §5.1 kit, no money, the mark at zero 1ms
+ ✓ src/empire/ladder.test.ts > the state constructor and the cast-route refusals > refuses every malformed state a cast can build, naming the fault 8ms
+ ✓ src/empire/ladder.test.ts > the offline cap on the summed rate — reused, and swept where it is used > is non-decreasing in the gap and flat past the horizon, at tick resolution 1828ms
+ ✓ src/empire/ladder.test.ts > the offline cap on the summed rate — reused, and swept where it is used > reads the rate as a sum input: stage 4 changes the argument, not the mechanism 2ms
+ ✓ src/empire/ladder.test.ts > check-ins accrue the gap, decide nothing, and refuse a bent clock > pays the gap at the rung rate and advances the mark, touching nothing else 1ms
+ ✓ src/empire/ladder.test.ts > check-ins accrue the gap, decide nothing, and refuse a bent clock > refuses a backwards mark and an off-tick time 1ms
+ ✓ src/empire/ladder.test.ts > the two spends: shown costs, loud refusals, every arm reachable > buys an item exactly when the space fits it and the money covers it 1ms
+ ✓ src/empire/ladder.test.ts > the two spends: shown costs, loud refusals, every arm reachable > moves up one rung, charges the shown cost, and keeps the equipment — §5.1 as read 1ms
+ ✓ src/empire/ladder.test.ts > the two spends: shown costs, loud refusals, every arm reachable > walks the whole ladder one rung at a time, one way, cast route refused 0ms
+ ✓ src/empire/ladder.test.ts > runLadder — deterministic, conserving, and refusing a bent schedule > refuses a non-ascending schedule and an unknown policy 1ms
+ ✓ src/empire/ladder.test.ts > runLadder — deterministic, conserving, and refusing a bent schedule > is byte-identical on identical inputs, across the seeded domain, twice 36ms
+ ✓ src/empire/ladder.test.ts > runLadder — deterministic, conserving, and refusing a bent schedule > conserves money exactly on every run of both domains 5ms
+ ✓ src/empire/ladder.test.ts > runLadder — deterministic, conserving, and refusing a bent schedule > never revisits a rung and never re-buys an item within a run 10ms
+ ✓ src/empire/ladder.test.ts > never punish engagement: an extra check-in is not a loss, measured > holds exhaustively, on every subset of the slot grid, under both policies 275ms
+ ✓ src/empire/ladder.test.ts > never punish engagement: an extra check-in is not a loss, measured > holds on the seeded 40- and 100-day calendars, under both policies 254ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the domains are derived from the subject and are not empty > joins a measured price to every domain that carries a ceiling, in both directions 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument A — no export type admits a forbidden literal, and no new string position arrives unseen > walks the whole directory without truncating, and the compiler is happy with it 3311ms
- ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > finds the shipped modules the rest of the directory pins, so the walk is not empty 6ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument A — no export type admits a forbidden literal, and no new string position arrives unseen > walks the whole directory without truncating, and the compiler is happy with it 2495ms
+ ✓ src/empire/ladder.test.ts > never punish engagement: an extra check-in is not a loss, measured > keeps the punishing shape countable: the fee control is not zero 59ms
+ ✓ src/empire/ladder.test.ts > never punish absence: the gap costs capped income and nothing else > under hoard, the absent twin differs in cash alone, by at most the derived bound 1469ms
+ ✓ src/empire/ladder.test.ts > never punish absence: the gap costs capped income and nothing else > nothing is ever taken: rung and equipment are monotone over every prefix 126ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument A — no export type admits a forbidden literal, and no new string position arrives unseen > walks a nested directory, so the recursion is measured rather than assumed 4ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument A — no export type admits a forbidden literal, and no new string position arrives unseen > pins every bare-string position, in both directions, grouped by the field it is 0ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument A — no export type admits a forbidden literal, and no new string position arrives unseen > pins every branded-string position, in both directions 1ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument A — no export type admits a forbidden literal, and no new string position arrives unseen > pins every PATTERN position, and classifies every type it reaches 0ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument A — no export type admits a forbidden literal, and no new string position arrives unseen > names no forbidden output in any closed literal union, outside the two lists that ARE the ban 3ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument A bites — the census is re-run over a probe carrying five routes > compiles the probe cleanly, so a refusal below is a classification and not an error 1776ms
+ ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > descends into a subdirectory, on a tree built to have one 9ms
+ ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > counts a symlinked directory as a directory 5ms
+ ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > reads src/empire/ as flat today, and names anything that arrives 2ms
+ ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > splits a tree into what the compiler claims and what the censuses walk 8ms
+ ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > reads the split out of a config, so a transcribed extension list fails it 4ms
+ ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > refuses a config shape it does not understand, rather than guessing 4ms
+ ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > names every file the compiler compiles here that no census walks 6ms
+ ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > is the one file here that names a listing API, which is a scan and not a proof 63ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument A bites — the census is re-run over a probe carrying five routes > sees the reproduced defect: `{ kind: string }` is a new bare position 1ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument A bites — the census is re-run over a probe carrying five routes > sees a banned name that survives as a literal type in exported DATA 2ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument A bites — the census is re-run over a probe carrying five routes > sees the branded-string channel, which a scan for the `string` keyword misses 0ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument A bites — the census is re-run over a probe carrying five routes > sees a pattern type that admits a banned name, which is the sixteenth bypass 1ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument A bites — the census is re-run over a probe carrying five routes > is BLIND to attack shape 16, and the blindness is the measurement 0ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument C — a raw string becomes a brand in a countable number of places > the brand constructor set is derived from the module, not listed here 991ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument C — a raw string becomes a brand in a countable number of places > every fault-list producer mints on the way out, joined in both directions 0ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument C — a raw string becomes a brand in a countable number of places > the brand constructor call sites are exactly the declared ones 1ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument C — a raw string becomes a brand in a countable number of places > sees a call site that is not on the list — the walker is not asleep 1003ms
+ ✓ src/empire/empireCore.test.ts > the directory walk every census in src/empire/ shares > finds the shipped modules the rest of the directory pins, so the walk is not empty 3ms
  ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > accepts every legal pairing for a purchased skip, spelled out 1ms
  ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses the Training IQ path, in both graders — GDD §8.3B into §5.2, hazard 1 1ms
- ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses the physio path, in both graders — GDD §5.4 into §3.5, hazard 2 1ms
- ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses the same two on `applyAccelerant`, which is the branch below 1ms
- ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses an accelerant whose type has widened to the union, in all three spellings 2ms
+ ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses the physio path, in both graders — GDD §5.4 into §3.5, hazard 2 0ms
+ ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses the same two on `applyAccelerant`, which is the branch below 0ms
+ ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses an accelerant whose type has widened to the union, in all three spellings 1ms
  ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses the illegal pairing as an object literal — the fence inference cannot move 1ms
- ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > lets an earned accelerant reach the trickle, because §5.2 asks for that 1ms
+ ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > lets an earned accelerant reach the trickle, because §5.2 asks for that 0ms
  ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses an accelerated clock where a wall clock is required, on every arm 1ms
- ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses one tenure brand where the other is required — hazard 1’s derived quantity 1ms
- ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses a re-brand, which is how the argument list above was walked around 1ms
- ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses every route the exploit reproduction took — the laundering regression 1ms
- ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses a bare number where a settled level is required 1ms
- ✓ src/empire/empireCore.test.ts > the producer census, scoped by return type and resolved through the checker > finds every exported producer of a brand, and says how much it looked at 4785ms
- ✓ src/empire/empireCore.test.ts > the producer census, scoped by return type and resolved through the checker > lets no producer take a parameter that also admits an already-branded value 0ms
+ ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses one tenure brand where the other is required — hazard 1’s derived quantity 0ms
+ ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses a re-brand, which is how the argument list above was walked around 0ms
+ ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses every route the exploit reproduction took — the laundering regression 0ms
+ ✓ src/empire/empireCore.test.ts > a purchased accelerant does not typecheck onto a progression-reaching output > refuses a bare number where a settled level is required 0ms
+ ✓ src/empire/empireCore.test.ts > the producer census, scoped by return type and resolved through the checker > finds every exported producer of a brand, and says how much it looked at 3618ms
+ ✓ src/empire/empireCore.test.ts > the producer census, scoped by return type and resolved through the checker > lets no producer take a parameter that also admits an already-branded value 1ms
  ✓ src/empire/empireCore.test.ts > the producer census, scoped by return type and resolved through the checker > closes the laundering SOURCE: no wall-clock producer accepts an accelerated reading 1ms
- ✓ src/empire/empireCore.test.ts > the reach and licence tables are exhaustive and cannot disagree > gives every output a sink and every sink a reach 5ms
+ ✓ src/empire/empireCore.test.ts > the reach and licence tables are exhaustive and cannot disagree > gives every output a sink and every sink a reach 1ms
  ✓ src/empire/empireCore.test.ts > the reach and licence tables are exhaustive and cannot disagree > gives every accelerant an arrival and every arrival a licence 1ms
  ✓ src/empire/empireCore.test.ts > the reach and licence tables are exhaustive and cannot disagree > publishes what each arrival is licensed to touch, by name 0ms
  ✓ src/empire/empireCore.test.ts > the reach and licence tables are exhaustive and cannot disagree > makes hazard 1 and hazard 2 one row, not two 0ms
@@ -103,75 +141,60 @@ $ npx vitest run src/empire --reporter=verbose
  ✓ src/empire/empireCore.test.ts > the reach and licence tables are exhaustive and cannot disagree > walks the whole cross product rather than the pairs somebody thought of 1ms
  ✓ src/empire/empireCore.test.ts > the reach and licence tables are exhaustive and cannot disagree > refuses every purchased accelerant on every progression-reaching output 0ms
  ✓ src/empire/empireCore.test.ts > the reach and licence tables are exhaustive and cannot disagree > names no forbidden output among the payable ones 1ms
- ✓ src/empire/empireCore.test.ts > the reach and licence tables are exhaustive and cannot disagree > lets a name mislead nobody — the sink is what decides it 5ms
+ ✓ src/empire/empireCore.test.ts > the reach and licence tables are exhaustive and cannot disagree > lets a name mislead nobody — the sink is what decides it 1ms
  ✓ src/empire/empireCore.test.ts > the runtime predicates refuse what the types refuse > agrees with the tables on every member 1ms
  ✓ src/empire/empireCore.test.ts > the runtime predicates refuse what the types refuse > refuses wire garbage, including the words the empire may not pay in 2ms
  ✓ src/empire/empireCore.test.ts > the runtime predicates refuse what the types refuse > derives its published lists rather than re-listing them 0ms
- ✓ src/empire/empireCore.test.ts > the clock split > leaves the wall clock a function of wall time alone 5ms
+ ✓ src/empire/empireCore.test.ts > the clock split > leaves the wall clock a function of wall time alone 1ms
  ✓ src/empire/empireCore.test.ts > the clock split > hands each output the clock its reach entitles it to, on both arms 0ms
  ✓ src/empire/empireCore.test.ts > the clock split > counts settled levels on the wall clock and nothing else 0ms
  ✓ src/empire/empireCore.test.ts > the clock split > measures a lifter’s two tenures from its two arrival times 0ms
  ✓ src/empire/empireCore.test.ts > the branded constructors > accepts ordinary values 0ms
  ✓ src/empire/empireCore.test.ts > the branded constructors > refuses what is not a quantity 1ms
- ✓ src/empire/empireCore.test.ts > the branded constructors > hands a caller the refusal rather than the name, when a throw carries one 5ms
+ ✓ src/empire/empireCore.test.ts > the branded constructors > hands a caller the refusal rather than the name, when a throw carries one 1ms
  ✓ src/empire/empireCore.test.ts > the branded constructors > bounds the physio hook at the seam rather than at the far end of it 0ms
  ✓ src/empire/empireCore.test.ts > the branded constructors > turns a settled level into days saved, and clamps rather than throwing 0ms
  ✓ src/empire/empireCore.test.ts > the ladder lookups > prices every recruit tier deterministically, with no seed anywhere 1ms
  ✓ src/empire/empireCore.test.ts > the ladder lookups > prices the axes and returns null off the ladder 1ms
  ✓ src/empire/empireCore.test.ts > the ladder lookups > grows a build timer with the level and caps it 1ms
- ✓ src/empire/empireCore.test.ts > the ladder lookups > places a gym in a reputation tier, monotonically 6ms
+ ✓ src/empire/empireCore.test.ts > the ladder lookups > places a gym in a reputation tier, monotonically 2ms
  ✓ src/empire/empireCore.test.ts > the ladder lookups > grows roster capacity with the two axes that pay it, and caps it 0ms
  ✓ src/empire/empireCore.test.ts > the ledger halves > splits a ledger into two halves that cover it exactly once 1ms
  ✓ src/empire/empireCore.test.ts > the ledger halves > puts both hazards in the half piece E6 compares 0ms
  ✓ src/empire/empireCore.test.ts > the ledger halves > returns empty halves for an empty ledger without claiming anything 0ms
- ✓ src/empire/empireCore.test.ts > the pairing constructors > builds a frozen pairing that the runtime guard agrees with 0ms
- ✓ src/empire/empireCore.test.ts > the pairing constructors > stamps and sizes an applied accelerant, and refuses a negative size 5ms
- ✓ src/empire/empireCore.test.ts > the state constructor and its invariants > opens a gym that satisfies every invariant 0ms
- ✓ src/empire/empireCore.test.ts > the state constructor and its invariants > catches every invariant it claims to catch 19ms
+ ✓ src/empire/empireCore.test.ts > the pairing constructors > builds a frozen pairing that the runtime guard agrees with 1ms
+ ✓ src/empire/empireCore.test.ts > the pairing constructors > stamps and sizes an applied accelerant, and refuses a negative size 1ms
+ ✓ src/empire/empireCore.test.ts > the state constructor and its invariants > opens a gym that satisfies every invariant 1ms
+ ✓ src/empire/empireCore.test.ts > the state constructor and its invariants > catches every invariant it claims to catch 6ms
  ✓ src/empire/empireCore.test.ts > the state constructor and its invariants > refuses a purchased accelerant that arrived past the compiler 0ms
  ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > has shipped modules to scan, so the scans below are not empty 0ms
- ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > leaves no shipped module invisible to the rest of the directory 14ms
- ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > reads no clock, rolls no dice and touches no host API 21ms
- ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > fences every branded quantity in its own declaration 7ms
- ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > gives every type-only directive in this file a covering test, by census 5ms
- ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > ships no string a real name could be hiding in, and pins the ones it does ship 24ms
- ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > catches a person-shaped name in bare JSX text, which no quote-keyed collector can see 22ms
- ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > imports nothing outside this directory 24ms
- ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > holds every number in the tuning module and none anywhere else 313ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument A — no export type admits a forbidden literal, and no new string position arrives unseen > walks a nested directory, so the recursion is measured rather than assumed 5ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument A — no export type admits a forbidden literal, and no new string position arrives unseen > pins every bare-string position, in both directions, grouped by the field it is 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument A — no export type admits a forbidden literal, and no new string position arrives unseen > pins every branded-string position, in both directions 0ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument A — no export type admits a forbidden literal, and no new string position arrives unseen > pins every PATTERN position, and classifies every type it reaches 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument A — no export type admits a forbidden literal, and no new string position arrives unseen > names no forbidden output in any closed literal union, outside the two lists that ARE the ban 7ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument A bites — the census is re-run over a probe carrying five routes > compiles the probe cleanly, so a refusal below is a classification and not an error 1568ms
- ✓ src/empire/social.test.ts > the directory walk every census in src/empire/ shares > descends into a subdirectory, on a tree built to have one 7ms
+ ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > leaves no shipped module invisible to the rest of the directory 8ms
+ ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > reads no clock, rolls no dice and touches no host API 12ms
+ ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > fences every branded quantity in its own declaration 5ms
+ ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > gives every type-only directive in this file a covering test, by census 3ms
+ ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > ships no string a real name could be hiding in, and pins the ones it does ship 17ms
+ ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > catches a person-shaped name in bare JSX text, which no quote-keyed collector can see 7ms
+ ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > imports nothing outside this directory 14ms
+ ✓ src/empire/empireCore.test.ts > the directory is pure, numerically clean and free of dice > holds every number in the tuning module and none anywhere else 161ms
+ ✓ src/empire/social.test.ts > the directory walk every census in src/empire/ shares > descends into a subdirectory, on a tree built to have one 8ms
  ✓ src/empire/social.test.ts > the directory walk every census in src/empire/ shares > counts a symlinked directory as a directory 3ms
- ✓ src/empire/social.test.ts > the directory walk every census in src/empire/ shares > reads src/empire/ as flat today, and names anything that arrives 3ms
- ✓ src/empire/social.test.ts > the directory walk every census in src/empire/ shares > splits a tree into what the compiler claims and what the censuses walk 6ms
+ ✓ src/empire/social.test.ts > the directory walk every census in src/empire/ shares > reads src/empire/ as flat today, and names anything that arrives 1ms
+ ✓ src/empire/social.test.ts > the directory walk every census in src/empire/ shares > splits a tree into what the compiler claims and what the censuses walk 9ms
  ✓ src/empire/social.test.ts > the directory walk every census in src/empire/ shares > reads the split out of a config, so a transcribed extension list fails it 2ms
  ✓ src/empire/social.test.ts > the directory walk every census in src/empire/ shares > refuses a config shape it does not understand, rather than guessing 2ms
- ✓ src/empire/social.test.ts > the directory walk every census in src/empire/ shares > names every file the compiler compiles here that no census walks 3ms
- ✓ src/empire/social.test.ts > the directory walk every census in src/empire/ shares > is the one file here that names a listing API, which is a scan and not a proof 41ms
- ✓ src/empire/social.test.ts > the directory walk every census in src/empire/ shares > finds the shipped modules the rest of the directory pins, so the walk is not empty 4ms
- ✓ src/empire/social.test.ts > every reward day is keyed to the calendar and to nothing the player did > leaves the reward-day list byte-identical when a trained day is added, exhaustively 237ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument A bites — the census is re-run over a probe carrying five routes > sees the reproduced defect: `{ kind: string }` is a new bare position 0ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument A bites — the census is re-run over a probe carrying five routes > sees a banned name that survives as a literal type in exported DATA 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument A bites — the census is re-run over a probe carrying five routes > sees the branded-string channel, which a scan for the `string` keyword misses 0ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument A bites — the census is re-run over a probe carrying five routes > sees a pattern type that admits a banned name, which is the sixteenth bypass 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument A bites — the census is re-run over a probe carrying five routes > is BLIND to attack shape 16, and the blindness is the measurement 0ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument C — a raw string becomes a brand in a countable number of places > the brand constructor set is derived from the module, not listed here 594ms
- ✓ src/empire/social.test.ts > every reward day is keyed to the calendar and to nothing the player did > leaves it byte-identical on the sampled long calendars too 48ms
- ✓ src/empire/social.test.ts > every reward day is keyed to the calendar and to nothing the player did > moves the session-keyed control, so the zeroes above are zero against something 399ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument C — a raw string becomes a brand in a countable number of places > every fault-list producer mints on the way out, joined in both directions 0ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument C — a raw string becomes a brand in a countable number of places > the brand constructor call sites are exactly the declared ones 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument C — a raw string becomes a brand in a countable number of places > sees a call site that is not on the list — the walker is not asleep 565ms
- ✓ src/empire/social.test.ts > every reward day is keyed to the calendar and to nothing the player did > moves the streak-keyed control on the exhaustive population 223ms
- ✓ src/empire/social.test.ts > every reward day is keyed to the calendar and to nothing the player did > measures the streak-keyed control at zero on the sampled population, and says why 59ms
- ✓ src/empire/social.test.ts > every reward day is keyed to the calendar and to nothing the player did > reads the anchor day and none of the four history fields 2ms
+ ✓ src/empire/social.test.ts > the directory walk every census in src/empire/ shares > names every file the compiler compiles here that no census walks 5ms
+ ✓ src/empire/social.test.ts > the directory walk every census in src/empire/ shares > is the one file here that names a listing API, which is a scan and not a proof 37ms
+ ✓ src/empire/social.test.ts > the directory walk every census in src/empire/ shares > finds the shipped modules the rest of the directory pins, so the walk is not empty 3ms
+ ✓ src/empire/social.test.ts > every reward day is keyed to the calendar and to nothing the player did > leaves the reward-day list byte-identical when a trained day is added, exhaustively 287ms
+ ✓ src/empire/social.test.ts > every reward day is keyed to the calendar and to nothing the player did > leaves it byte-identical on the sampled long calendars too 44ms
+ ✓ src/empire/social.test.ts > every reward day is keyed to the calendar and to nothing the player did > moves the session-keyed control, so the zeroes above are zero against something 506ms
+ ✓ src/empire/social.test.ts > every reward day is keyed to the calendar and to nothing the player did > moves the streak-keyed control on the exhaustive population 274ms
+ ✓ src/empire/social.test.ts > every reward day is keyed to the calendar and to nothing the player did > measures the streak-keyed control at zero on the sampled population, and says why 86ms
+ ✓ src/empire/social.test.ts > every reward day is keyed to the calendar and to nothing the player did > reads the anchor day and none of the four history fields 1ms
  ✓ src/empire/social.test.ts > every reward day is keyed to the calendar and to nothing the player did > carries the four history fields through the API, so the sweep has a domain 1ms
  ✓ src/empire/social.test.ts > every reward day is keyed to the calendar and to nothing the player did > puts a rival close on a fixed calendar day and on every period boundary 0ms
  ✓ src/empire/social.test.ts > every reward day is keyed to the calendar and to nothing the player did > refuses a horizon that is not a whole number of days at or above zero 0ms
- ✓ src/empire/social.test.ts > no social surface pays a stat, and the verdict is inherited rather than asserted > sends every surface to an idle-only output 2ms
+ ✓ src/empire/social.test.ts > no social surface pays a stat, and the verdict is inherited rather than asserted > sends every surface to an idle-only output 1ms
  ✓ src/empire/social.test.ts > no social surface pays a stat, and the verdict is inherited rather than asserted > is grading against tables that really discriminate 0ms
  ✓ src/empire/social.test.ts > no social surface pays a stat, and the verdict is inherited rather than asserted > declares one row per surface and nothing else 0ms
  ✓ src/empire/social.test.ts > no social surface pays a stat, and the verdict is inherited rather than asserted > narrows an unknown wire value to a surface and to a metric 0ms
@@ -179,7 +202,7 @@ $ npx vitest run src/empire --reporter=verbose
  ✓ src/empire/social.test.ts > no social surface pays a stat, and the verdict is inherited rather than asserted > pins the exported surface, so a new producer is a diff somebody signs 0ms
  ✓ src/empire/social.test.ts > gym leaderboards > publishes a bracket size per scope, and both are boards rather than mirrors 0ms
  ✓ src/empire/social.test.ts > gym leaderboards > scores by the metric the caller named 0ms
- ✓ src/empire/social.test.ts > gym leaderboards > ranks highest first, shares a rank on a tie and skips the one after 1ms
+ ✓ src/empire/social.test.ts > gym leaderboards > ranks highest first, shares a rank on a tie and skips the one after 0ms
  ✓ src/empire/social.test.ts > gym leaderboards > breaks a tie by gym id, so two clients on one snapshot agree 0ms
  ✓ src/empire/social.test.ts > gym leaderboards > ranks by combined totals too, which is the other metric §5.5 names 0ms
  ✓ src/empire/social.test.ts > gym leaderboards > truncates to the bracket size of the scope it was asked for 0ms
@@ -189,7 +212,7 @@ $ npx vitest run src/empire --reporter=verbose
  ✓ src/empire/social.test.ts > visiting friends' gyms > counts the visits recorded on a day and no others 0ms
  ✓ src/empire/social.test.ts > visiting friends' gyms > gives every calendar day the same allowance, carrying nothing over 0ms
  ✓ src/empire/social.test.ts > visiting friends' gyms > reports every refusal in the published order 0ms
- ✓ src/empire/social.test.ts > visiting friends' gyms > refuses one reason at a time when only one applies 0ms
+ ✓ src/empire/social.test.ts > visiting friends' gyms > refuses one reason at a time when only one applies 1ms
  ✓ src/empire/social.test.ts > visiting friends' gyms > records a visit, pays the visited gym for an encouragement, and pays nothing without one 1ms
  ✓ src/empire/social.test.ts > visiting friends' gyms > refuses to record a visit it would refuse to allow 0ms
  ✓ src/empire/social.test.ts > visiting friends' gyms > pays once per distinct sender per day 0ms
@@ -211,18 +234,20 @@ $ npx vitest run src/empire --reporter=verbose
  ✓ src/empire/social.test.ts > a supplied context is validated rather than trusted > reports an encouragement from a gym with no id 0ms
  ✓ src/empire/social.test.ts > the module is pure and imports nothing outside this directory > is covered by the directory-wide import fence rather than a copy of it 1ms
  ✓ src/empire/social.test.ts > the module is pure and imports nothing outside this directory > names every event and every surface exactly once in its own list 0ms
- ✓ src/empire/social.test.ts > the module is pure and imports nothing outside this directory > reads the tuning entries GDD §5.5 gave it 1ms
+ ✓ src/empire/social.test.ts > the module is pure and imports nothing outside this directory > reads the tuning entries GDD §5.5 gave it 0ms
  ✓ src/empire/social.test.ts > the metric type > is one of the two the module publishes 0ms
- ✓ src/empire/recruitment.test.ts > the quote takes a tier and returns that tier > publishes the flat cost, the threshold and the timer for every tier 9ms
+ ✓ src/empire/recruitment.test.ts > the quote takes a tier and returns that tier > publishes the flat cost, the threshold and the timer for every tier 3ms
  ✓ src/empire/recruitment.test.ts > the quote takes a tier and returns that tier > prices every tier differently, so no quote is a constant lookup 0ms
  ✓ src/empire/recruitment.test.ts > the quote takes a tier and returns that tier > gates the top tier behind a reputation milestone rather than a price 0ms
- ✓ src/empire/recruitment.test.ts > no rarity tier is reachable by spending currency > holds the quote byte-identical across the whole state grid 51ms
- ✓ src/empire/recruitment.test.ts > no rarity tier is reachable by spending currency > refuses a gated tier at every purse, however large 24ms
+ ✓ src/empire/recruitment.test.ts > no rarity tier is reachable by spending currency > holds the quote byte-identical across the whole state grid 24ms
+ ✓ src/empire/recruitment.test.ts > no rarity tier is reachable by spending currency > refuses a gated tier at every purse, however large 20ms
  ✓ src/empire/recruitment.test.ts > no rarity tier is reachable by spending currency > publishes the whole ladder, in ladder order, for every state 81ms
+ ✓ src/empire/engagement.test.ts > the sponsor line does not reach the purse a physio level is bought from > moves the sponsor payout with reputation and leaves the wall-clock book still 1ms
+ ✓ src/empire/engagement.test.ts > EXHAUSTIVE: every calendar of a window of check-in slots > measures the shipped engine, and BOTH halves are zero 11250ms
  ✓ src/empire/recruitment.test.ts > no rarity tier is reachable by spending currency > reads the ladder in exactly one place, and that place is the board 1ms
  ✓ src/empire/recruitment.test.ts > eligibility > refuses on reputation, purse and slots, in the published order 1ms
- ✓ src/empire/recruitment.test.ts > eligibility > turns on exactly at the published threshold and the published price 2ms
- ✓ src/empire/recruitment.test.ts > eligibility > refuses at capacity and allows one slot below it, on both axes 2ms
+ ✓ src/empire/recruitment.test.ts > eligibility > turns on exactly at the published threshold and the published price 1ms
+ ✓ src/empire/recruitment.test.ts > eligibility > refuses at capacity and allows one slot below it, on both axes 1ms
  ✓ src/empire/recruitment.test.ts > a purchasable skip moves when a recruit joins and not when they settled > leaves the settled-at list byte-identical under every skip 1ms
  ✓ src/empire/recruitment.test.ts > a purchasable skip moves when a recruit joins and not when they settled > moves the negative control, so the zero above is zero against something 0ms
  ✓ src/empire/recruitment.test.ts > a purchasable skip moves when a recruit joins and not when they settled > does move the join time, because that is what GDD §8.3B sells 0ms
@@ -232,126 +257,79 @@ $ npx vitest run src/empire --reporter=verbose
  ✓ src/empire/recruitment.test.ts > starting a recruitment > charges the published price and nothing else 1ms
  ✓ src/empire/recruitment.test.ts > starting a recruitment > leaves the state alone when it refuses 0ms
  ✓ src/empire/recruitment.test.ts > starting a recruitment > schedules from the state clock on both readings 0ms
- ✓ src/empire/recruitment.test.ts > starting a recruitment > refuses every tier the board refuses, and accepts every tier it offers 120ms
+ ✓ src/empire/recruitment.test.ts > starting a recruitment > refuses every tier the board refuses, and accepts every tier it offers 116ms
  ✓ src/empire/recruitment.test.ts > completing a recruitment > puts the scheduled tier on the roster with both of its arrival times 2ms
  ✓ src/empire/recruitment.test.ts > completing a recruitment > refuses a roster that outgrew its slots between the two calls 1ms
  ✓ src/empire/recruitment.test.ts > completing a recruitment > refuses a duplicate id through the whole state battery 0ms
- ✓ src/empire/recruitment.test.ts > completing a recruitment > refuses an empty display name and an empty id 1ms
- ✓ src/empire/recruitment.test.ts > nothing here carries state between calls > gives the same answer under interleaving and repetition 53ms
- ✓ src/empire/recruitment.test.ts > no source of entropy is reachable from these two modules > applies the sibling ban list, read from the sibling rather than copied 4ms
+ ✓ src/empire/recruitment.test.ts > completing a recruitment > refuses an empty display name and an empty id 0ms
+ ✓ src/empire/recruitment.test.ts > nothing here carries state between calls > gives the same answer under interleaving and repetition 85ms
+ ✓ src/empire/recruitment.test.ts > no source of entropy is reachable from these two modules > applies the sibling ban list, read from the sibling rather than copied 5ms
  ✓ src/empire/recruitment.test.ts > no source of entropy is reachable from these two modules > bans the vocabulary a pull would be written in, with its own tripwires 2ms
- ✓ src/empire/recruitment.test.ts > no source of entropy is reachable from these two modules > keeps a real generator out of the import closure, by walking it 82ms
+ ✓ src/empire/recruitment.test.ts > no source of entropy is reachable from these two modules > keeps a real generator out of the import closure, by walking it 3ms
  ✓ src/empire/recruitment.test.ts > no source of entropy is reachable from these two modules > names nothing a real athlete, brand or federation could be hiding in 1ms
- ✓ src/empire/recruitment.test.ts > no source of entropy is reachable from these two modules > holds no bare number, by the repository audit run from inside this piece 12ms
+ ✓ src/empire/recruitment.test.ts > no source of entropy is reachable from these two modules > holds no bare number, by the repository audit run from inside this piece 42ms
  ✓ src/empire/recruitment.test.ts > the exported surface is pinned, so a new producer of a tier is a signed diff > lists exactly what these two modules export 1ms
- ✓ src/empire/reputation.test.ts > a payout inherits its reach verdict and does not carry one > routes every payout through an output the empire is allowed to pay 3ms
+ ✓ src/empire/reputation.test.ts > a payout inherits its reach verdict and does not carry one > routes every payout through an output the empire is allowed to pay 4ms
  ✓ src/empire/reputation.test.ts > a payout inherits its reach verdict and does not carry one > reads the verdict out of the empire tables rather than writing one down 1ms
  ✓ src/empire/reputation.test.ts > a payout inherits its reach verdict and does not carry one > declares the payout table against the empire output union 1ms
- ✓ src/empire/reputation.test.ts > a payout inherits its reach verdict and does not carry one > takes the offline fraction on the currency line and not on the reputation line 2ms
+ ✓ src/empire/reputation.test.ts > a payout inherits its reach verdict and does not carry one > takes the offline fraction on the currency line and not on the reputation line 0ms
  ✓ src/empire/reputation.test.ts > the module states its own invariants at runtime > reports no fault against the shipped tables 1ms
- ✓ src/empire/reputation.test.ts > the module states its own invariants at runtime > pins what the fault list actually walked, so an empty domain reports itself 0ms
- ✓ src/empire/reputation.test.ts > the module states its own invariants at runtime > agrees with the expansion piece about which axis the gate may not touch 0ms
+ ✓ src/empire/reputation.test.ts > the module states its own invariants at runtime > pins what the fault list actually walked, so an empty domain reports itself 1ms
+ ✓ src/empire/reputation.test.ts > the module states its own invariants at runtime > agrees with the expansion piece about which axis the gate may not touch 1ms
  ✓ src/empire/reputation.test.ts > reputation accrues from check-ins and from roster tenure > reads the per-check-in and per-lifter-day entries out of the tuning block 1ms
  ✓ src/empire/reputation.test.ts > reputation accrues from check-ins and from roster tenure > counts only lifters who are on the roster at the reading 1ms
  ✓ src/empire/reputation.test.ts > reputation accrues from check-ins and from roster tenure > counts a lifter from when they SETTLED, not from when they joined 1ms
- ✓ src/empire/reputation.test.ts > reputation accrues from check-ins and from roster tenure > conserves what it earned against what it paid and what it refused 96ms
+ ✓ src/empire/reputation.test.ts > reputation accrues from check-ins and from roster tenure > conserves what it earned against what it paid and what it refused 112ms
  ✓ src/empire/reputation.test.ts > reputation accrues from check-ins and from roster tenure > conserves the seconds it was given, and reports what the cap took 1ms
  ✓ src/empire/reputation.test.ts > reputation accrues from check-ins and from roster tenure > never pays less for a longer absence, and stops paying past the horizon 1ms
- ✓ src/empire/reputation.test.ts > reputation accrues from check-ins and from roster tenure > never pays a player less for checking in more 11ms
+ ✓ src/empire/reputation.test.ts > reputation accrues from check-ins and from roster tenure > never pays a player less for checking in more 14ms
  ✓ src/empire/reputation.test.ts > reputation accrues from check-ins and from roster tenure > refuses a mark ahead of the gym clock and a check-in count that is not one 1ms
  ✓ src/empire/reputation.test.ts > reputation accrues from check-ins and from roster tenure > stamps its ledger entry on the wall clock and pays the reputation output 0ms
  ✓ src/empire/reputation.test.ts > reputation accrues from check-ins and from roster tenure > does not discount the reputation line by the Gym Bucks offline fraction 0ms
  ✓ src/empire/reputation.test.ts > the reputation scale and its milestones > cuts the scale into the tiers the tuning block declares 1ms
- ✓ src/empire/reputation.test.ts > the reputation scale and its milestones > derives the milestone ladder from the recruitment gate rather than restating it 0ms
+ ✓ src/empire/reputation.test.ts > the reputation scale and its milestones > derives the milestone ladder from the recruitment gate rather than restating it 1ms
  ✓ src/empire/reputation.test.ts > the reputation scale and its milestones > marks and pays nothing 0ms
  ✓ src/empire/reputation.test.ts > the reputation scale and its milestones > reports which milestones are behind and which is next 0ms
  ✓ src/empire/reputation.test.ts > the reputation scale and its milestones > opens the top rung by reputation and by nothing else in the vocabulary 1ms
- ✓ src/empire/reputation.test.ts > no amount of currency opens a tier > returns a byte-identical unlock list at every purse, roster and clock 14ms
- ✓ src/empire/reputation.test.ts > no amount of currency opens a tier > leaves the recruitment gate refusing a rich gym below the milestone 1ms
+ ✓ src/empire/reputation.test.ts > no amount of currency opens a tier > returns a byte-identical unlock list at every purse, roster and clock 18ms
+ ✓ src/empire/reputation.test.ts > no amount of currency opens a tier > leaves the recruitment gate refusing a rich gym below the milestone 2ms
  ✓ src/empire/reputation.test.ts > no amount of currency opens a tier > lists the tiers a gym may recruit, in ladder order 1ms
  ✓ src/empire/reputation.test.ts > sponsor money follows the reputation tier and nothing else > pays each tier the rung the tuning block publishes 0ms
  ✓ src/empire/reputation.test.ts > sponsor money follows the reputation tier and nothing else > never pays less for more reputation, and steps exactly at the tier floors 0ms
- ✓ src/empire/reputation.test.ts > sponsor money follows the reputation tier and nothing else > accrues on the idle clock, capped and discounted like the rest of the economy 0ms
+ ✓ src/empire/reputation.test.ts > sponsor money follows the reputation tier and nothing else > accrues on the idle clock, capped and discounted like the rest of the economy 1ms
  ✓ src/empire/reputation.test.ts > sponsor money follows the reputation tier and nothing else > stamps its ledger entry on the wall clock and pays the Gym Bucks output 0ms
  ✓ src/empire/reputation.test.ts > sponsor money follows the reputation tier and nothing else > never pays less for a longer absence and stops paying past the horizon 1ms
- ✓ src/empire/reputation.test.ts > the chain a purchased skip opened into the tier gate > is closed: the unlock-day list is byte-identical under every skip size 39ms
- ✓ src/empire/reputation.test.ts > the chain a purchased skip opened into the tier gate > is open on the reading it used to take, which is the control the zero is against 27ms
+ ✓ src/empire/reputation.test.ts > the chain a purchased skip opened into the tier gate > is closed: the unlock-day list is byte-identical under every skip size 46ms
+ ✓ src/empire/reputation.test.ts > the chain a purchased skip opened into the tier gate > is open on the reading it used to take, which is the control the zero is against 30ms
  ✓ src/empire/reputation.test.ts > the chain a purchased skip opened into the tier gate > accrues on the wall clock at every gap, and on the idle clock in the control 1ms
  ✓ src/empire/reputation.test.ts > this module is pure, numerically clean and names nobody > was read at all, so the scans below are not scanning an empty string 0ms
  ✓ src/empire/reputation.test.ts > this module is pure, numerically clean and names nobody > reads no clock, rolls no dice and touches no host API 2ms
  ✓ src/empire/reputation.test.ts > this module is pure, numerically clean and names nobody > imports only its own directory 0ms
- ✓ src/empire/reputation.test.ts > this module is pure, numerically clean and names nobody > ships no string a real name could be hiding in, and pins the ones it does ship 1ms
- ✓ src/empire/reputation.test.ts > this module is pure, numerically clean and names nobody > holds no number of its own 17ms
- ✓ src/empire/production.test.ts > scrubPrecision > rounds to the tuned number of decimals 6ms
- ✓ src/empire/production.test.ts > scrubPrecision > is non-decreasing, which is what the sweep below rests on 76ms
- ✓ src/empire/production.test.ts > scrubPrecision > refuses a non-finite quantity rather than passing it on 1ms
- ✓ src/empire/production.test.ts > quantiseElapsedSeconds > drops the part of a span that does not fill a whole tick 0ms
- ✓ src/empire/production.test.ts > quantiseElapsedSeconds > really divides by the tick, at a tick the shipped tuning does not use 0ms
- ✓ src/empire/production.test.ts > quantiseElapsedSeconds > refuses a backwards span and a tick that cannot divide 0ms
- ✓ src/empire/production.test.ts > the offline-earnings horizon > is the shipped cap, in seconds 0ms
- ✓ src/empire/production.test.ts > the offline-earnings horizon > takes the larger of the cap and the no-punish floor, in both directions 0ms
- ✓ src/empire/production.test.ts > the offline-earnings horizon > refuses a policy that is not made of hours, on each field separately 1ms
- ✓ src/empire/production.test.ts > bankableOfflineSeconds > banks a gap whole while it is inside the no-punish floor 7ms
- ✓ src/empire/production.test.ts > bankableOfflineSeconds > flattens at the horizon and stays there 2ms
- ✓ src/empire/production.test.ts > bankableOfflineSeconds > keeps the ten-hour gap whole even under a cap set below it 0ms
- ✓ src/empire/production.test.ts > a longer absence is never worth less than a shorter one > has a domain that reaches both sides of the horizon 0ms
- ✓ src/empire/production.test.ts > a longer absence is never worth less than a shorter one > holds on Gym Bucks across the horizon and well past it, with zero violations 16ms
- ✓ src/empire/production.test.ts > a longer absence is never worth less than a shorter one > holds on Training IQ too, which the cap does not touch 12ms
- ✓ src/empire/production.test.ts > a longer absence is never worth less than a shorter one > NEGATIVE CONTROL: the same sweep sees a punishing cap 23ms
- ✓ src/empire/production.test.ts > a longer absence is never worth less than a shorter one > past the horizon two different absences pay exactly the same 0ms
- ✓ src/empire/production.test.ts > a longer absence is never worth less than a shorter one > reports what the cap discarded rather than dropping it silently 6ms
- ✓ src/empire/production.test.ts > a purchased timer skip moves Gym Bucks and does not move Training IQ > has two states that differ only in what was skipped 1ms
- ✓ src/empire/production.test.ts > a purchased timer skip moves Gym Bucks and does not move Training IQ > pays more Gym Bucks under the skip, which is what GDD §8.3B sells 0ms
- ✓ src/empire/production.test.ts > a purchased timer skip moves Gym Bucks and does not move Training IQ > leaves the rate at a shared mark alone, and moves it at the gym own clock 0ms
- ✓ src/empire/production.test.ts > a purchased timer skip moves Gym Bucks and does not move Training IQ > pays byte-identical Training IQ, element-wise on the progression ledger 0ms
- ✓ src/empire/production.test.ts > a purchased timer skip moves Gym Bucks and does not move Training IQ > holds across a range of skip sizes, with the counts pinned 1ms
- ✓ src/empire/production.test.ts > a purchased timer skip moves Gym Bucks and does not move Training IQ > pays byte-identical money into the WALL-CLOCK book, at the baseline line 0ms
- ✓ src/empire/production.test.ts > a purchased timer skip moves Gym Bucks and does not move Training IQ > holds that equality across every skip size, with the counts pinned 0ms
- ✓ src/empire/production.test.ts > a lifter a skip landed early pays Gym Bucks and no trickle until they settle > leaves the trickle at the base rate while the recruit is unsettled 0ms
- ✓ src/empire/production.test.ts > a lifter a skip landed early pays Gym Bucks and no trickle until they settle > starts paying the trickle on the wall-clock second the recruit would have settled 0ms
- ✓ src/empire/production.test.ts > a lifter a skip landed early pays Gym Bucks and no trickle until they settle > leaves a lifter who has not joined yet out of the Gym Bucks line 0ms
- ✓ src/empire/production.test.ts > aggregation over the gym and its roster > is the base line alone when the roster is empty 0ms
- ✓ src/empire/production.test.ts > aggregation over the gym and its roster > adds each lifter through the rate source it was given 0ms
- ✓ src/empire/production.test.ts > aggregation over the gym and its roster > multiplies the Gym Bucks line by the three axes that raise it 0ms
- ✓ src/empire/production.test.ts > aggregation over the gym and its roster > multiplies the trickle by none of them 0ms
- ✓ src/empire/production.test.ts > aggregation over the gym and its roster > holds the trickle at the daily ceiling however large the gym gets 0ms
- ✓ src/empire/production.test.ts > aggregation over the gym and its roster > refuses a rate source that hands back something that is not a rate 1ms
- ✓ src/empire/production.test.ts > aggregation over the gym and its roster > refuses a space level that is off the passive-ceiling ladder 0ms
- ✓ src/empire/production.test.ts > aggregation over the gym and its roster > reports both rates together 0ms
- ✓ src/empire/production.test.ts > accrueProduction > pays the offline share of the rate over the banked seconds 1ms
- ✓ src/empire/production.test.ts > accrueProduction > pays the trickle per calendar day of wall time, undiscounted and uncapped 0ms
- ✓ src/empire/production.test.ts > accrueProduction > stamps the ledger on the wall clock and pays one entry per output 0ms
- ✓ src/empire/production.test.ts > accrueProduction > pays nothing for a gap of nothing 0ms
- ✓ src/empire/production.test.ts > accrueProduction > refuses a mark that is ahead of the gym, on each clock separately 0ms
- ✓ src/empire/production.test.ts > accrueProduction > takes the banking policy as an argument 0ms
- ✓ src/empire/production.test.ts > production.ts is pure and numerically clean > has a source to scan 0ms
- ✓ src/empire/production.test.ts > production.ts is pure and numerically clean > reads no clock, rolls no dice and touches no host API 1ms
- ✓ src/empire/production.test.ts > production.ts is pure and numerically clean > imports only this directory 0ms
- ✓ src/empire/production.test.ts > production.ts is pure and numerically clean > holds every number in the tuning module 10ms
- ✓ src/empire/production.test.ts > production.ts is pure and numerically clean > ships no string a real name could be hiding in 1ms
- ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > descends into a subdirectory, on a tree built to have one 11ms
- ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > counts a symlinked directory as a directory 5ms
+ ✓ src/empire/reputation.test.ts > this module is pure, numerically clean and names nobody > ships no string a real name could be hiding in, and pins the ones it does ship 2ms
+ ✓ src/empire/reputation.test.ts > this module is pure, numerically clean and names nobody > holds no number of its own 23ms
+ ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > descends into a subdirectory, on a tree built to have one 13ms
+ ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > counts a symlinked directory as a directory 3ms
  ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > reads src/empire/ as flat today, and names anything that arrives 1ms
- ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > splits a tree into what the compiler claims and what the censuses walk 11ms
- ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > reads the split out of a config, so a transcribed extension list fails it 2ms
+ ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > splits a tree into what the compiler claims and what the censuses walk 7ms
+ ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > reads the split out of a config, so a transcribed extension list fails it 3ms
  ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > refuses a config shape it does not understand, rather than guessing 2ms
- ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > names every file the compiler compiles here that no census walks 8ms
- ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > is the one file here that names a listing API, which is a scan and not a proof 83ms
- ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > finds the shipped modules the rest of the directory pins, so the walk is not empty 7ms
+ ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > names every file the compiler compiles here that no census walks 5ms
+ ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > is the one file here that names a listing API, which is a scan and not a proof 34ms
+ ✓ src/empire/expansion.test.ts > the directory walk every census in src/empire/ shares > finds the shipped modules the rest of the directory pins, so the walk is not empty 4ms
  ✓ src/empire/expansion.test.ts > §5.4 the axis vocabulary > names five axes, derived from the staff roles rather than restated 1ms
- ✓ src/empire/expansion.test.ts > §5.4 the axis vocabulary > narrows a wire value to an axis and refuses everything else 2ms
- ✓ src/empire/expansion.test.ts > §5.4 the axis vocabulary > gives the physio axis the only progression-reaching output 1ms
+ ✓ src/empire/expansion.test.ts > §5.4 the axis vocabulary > narrows a wire value to an axis and refuses everything else 1ms
+ ✓ src/empire/expansion.test.ts > §5.4 the axis vocabulary > gives the physio axis the only progression-reaching output 0ms
  ✓ src/empire/expansion.test.ts > §5.4 the axis vocabulary > reports no vocabulary fault, and the walker has a domain 1ms
- ✓ src/empire/expansion.test.ts > §5.4 the cost ladders > prices every level of every axis, strictly increasing to the ceiling 4ms
- ✓ src/empire/expansion.test.ts > §5.4 the cost ladders > returns null off the ladder in both directions, and never a wrong number 8ms
+ ✓ src/empire/expansion.test.ts > §5.4 the cost ladders > prices every level of every axis, strictly increasing to the ceiling 2ms
+ ✓ src/empire/expansion.test.ts > §5.4 the cost ladders > returns null off the ladder in both directions, and never a wrong number 6ms
  ✓ src/empire/expansion.test.ts > §5.4 the cost ladders > leans on empireCore for the two ladders that already refuse off-ladder levels 1ms
- ✓ src/empire/expansion.test.ts > §5.4 the cost ladders > grows every build timer with the level and never lets the cap truncate one 3ms
+ ✓ src/empire/expansion.test.ts > §5.4 the cost ladders > grows every build timer with the level and never lets the cap truncate one 2ms
  ✓ src/empire/expansion.test.ts > §5.4 the reputation gate > rises with the level, stays reachable, and never gates the first step 3ms
  ✓ src/empire/expansion.test.ts > §5.4 the reputation gate > gates the non-physio axes at more than zero somewhere, so zero means something 1ms
  ✓ src/empire/expansion.test.ts > §5.4 the reputation gate > never gates the physio ladder, at any level, including above its ceiling 1ms
- ✓ src/empire/expansion.test.ts > §5.4 starting a build > quotes the next level and stops quoting at the ceiling 3ms
+ ✓ src/empire/expansion.test.ts > §5.4 starting a build > quotes the next level and stops quoting at the ceiling 2ms
  ✓ src/empire/expansion.test.ts > §5.4 starting a build > reaches every declared refusal, in a fixed order 2ms
- ✓ src/empire/expansion.test.ts > §5.4 starting a build > takes exactly the quoted price out of the balance and stamps both clocks 8ms
+ ✓ src/empire/expansion.test.ts > §5.4 starting a build > takes exactly the quoted price out of the balance and stamps both clocks 7ms
  ✓ src/empire/expansion.test.ts > §5.4 starting a build > refuses to start when the balance is one buck short, and starts when it is exact 1ms
  ✓ src/empire/expansion.test.ts > §5.4 starting a build > climbs every axis from zero to its ceiling and then refuses 6ms
  ✓ src/empire/expansion.test.ts > §5.4 starting a build > funds each axis from the book the tables put it on, and reads it there 1ms
@@ -359,27 +337,72 @@ $ npx vitest run src/empire --reporter=verbose
  ✓ src/empire/expansion.test.ts > §5.4 starting a build > holds a wall-clock-funded ladder to the wall clock while it is building 1ms
  ✓ src/empire/expansion.test.ts > §5.4 starting a build > reads a level off the highest completed build, not off a count of them 1ms
  ✓ src/empire/expansion.test.ts > §5.4 starting a build > builds a context from an EmpireState without inventing one 1ms
- ✓ src/empire/expansion.test.ts > §5.4 space and spotters raise the roster ceiling > never lowers capacity when any axis level rises, and reaches the cap 17ms
+ ✓ src/empire/expansion.test.ts > §5.4 space and spotters raise the roster ceiling > never lowers capacity when any axis level rises, and reaches the cap 34ms
  ✓ src/empire/expansion.test.ts > §5.4 space and spotters raise the roster ceiling > reaches the roster cap only with both axes built out 0ms
  ✓ src/empire/expansion.test.ts > §8.1 no accelerant moves a build on the wall clock > refuses a purchasable accelerant against the physio axis, by construction 1ms
  ✓ src/empire/expansion.test.ts > §8.1 no accelerant moves a build on the wall clock > refuses an accelerant aimed at an output the axis does not feed 1ms
- ✓ src/empire/expansion.test.ts > §8.1 no accelerant moves a build on the wall clock > moves the idle completion and leaves the settled one byte-identical 14ms
+ ✓ src/empire/expansion.test.ts > §8.1 no accelerant moves a build on the wall clock > moves the idle completion and leaves the settled one byte-identical 18ms
  ✓ src/empire/expansion.test.ts > §8.1 no accelerant moves a build on the wall clock > leaves the physio series byte-identical under every accelerant that can reach it 24ms
- ✓ src/empire/expansion.test.ts > §8.1 no accelerant moves a build on the wall clock > reads the physio level off the wall clock and the gym off the idle one 0ms
- ✓ src/empire/expansion.test.ts > §5.4 physio shortens a setback and never erases it > produces whole days at or above zero, and a saving the ladder can reach 0ms
- ✓ src/empire/expansion.test.ts > §5.4 physio shortens a setback and never erases it > leaves the shortest setback the real model can roll above the real floor 0ms
+ ✓ src/empire/expansion.test.ts > §8.1 no accelerant moves a build on the wall clock > reads the physio level off the wall clock and the gym off the idle one 1ms
+ ✓ src/empire/expansion.test.ts > §5.4 physio shortens a setback and never erases it > produces whole days at or above zero, and a saving the ladder can reach 1ms
+ ✓ src/empire/expansion.test.ts > §5.4 physio shortens a setback and never erases it > leaves the shortest setback the real model can roll above the real floor 1ms
  ✓ src/empire/expansion.test.ts > §5.4 physio shortens a setback and never erases it > drives the real recordSession and shortens a real setback 1ms
  ✓ src/empire/expansion.test.ts > expansion.ts is pure and keeps the clock brands on its arguments > strips to something, so the scans below are not over an empty string 0ms
- ✓ src/empire/expansion.test.ts > expansion.ts is pure and keeps the clock brands on its arguments > is covered by the directory-wide import fence rather than a copy of it 4ms
+ ✓ src/empire/expansion.test.ts > expansion.ts is pure and keeps the clock brands on its arguments > is covered by the directory-wide import fence rather than a copy of it 2ms
  ✓ src/empire/expansion.test.ts > expansion.ts is pure and keeps the clock brands on its arguments > exports exactly these functions 0ms
  ✓ src/empire/expansion.test.ts > expansion.ts is pure and keeps the clock brands on its arguments > takes no bare number anywhere, and carries the house guard on all four level-takers 1ms
- ✓ src/empire/engagement.test.ts > the sponsor line does not reach the purse a physio level is bought from > moves the sponsor payout with reputation and leaves the wall-clock book still 1ms
- ✓ src/empire/engagement.test.ts > EXHAUSTIVE: every calendar of a window of check-in slots > measures the shipped engine, and BOTH halves are zero 9447ms
- ✓ src/empire/empireInvariant.test.ts > the sweep parameters describe a domain that is not empty > generates the plan list it says it does, counts and all 2ms
+ ✓ src/empire/production.test.ts > scrubPrecision > rounds to the tuned number of decimals 3ms
+ ✓ src/empire/production.test.ts > scrubPrecision > is non-decreasing, which is what the sweep below rests on 94ms
+ ✓ src/empire/production.test.ts > scrubPrecision > refuses a non-finite quantity rather than passing it on 2ms
+ ✓ src/empire/production.test.ts > quantiseElapsedSeconds > drops the part of a span that does not fill a whole tick 0ms
+ ✓ src/empire/production.test.ts > quantiseElapsedSeconds > really divides by the tick, at a tick the shipped tuning does not use 0ms
+ ✓ src/empire/production.test.ts > quantiseElapsedSeconds > refuses a backwards span and a tick that cannot divide 1ms
+ ✓ src/empire/production.test.ts > the offline-earnings horizon > is the shipped cap, in seconds 0ms
+ ✓ src/empire/production.test.ts > the offline-earnings horizon > takes the larger of the cap and the no-punish floor, in both directions 0ms
+ ✓ src/empire/production.test.ts > the offline-earnings horizon > refuses a policy that is not made of hours, on each field separately 1ms
+ ✓ src/empire/production.test.ts > bankableOfflineSeconds > banks a gap whole while it is inside the no-punish floor 9ms
+ ✓ src/empire/production.test.ts > bankableOfflineSeconds > flattens at the horizon and stays there 2ms
+ ✓ src/empire/production.test.ts > bankableOfflineSeconds > keeps the ten-hour gap whole even under a cap set below it 0ms
+ ✓ src/empire/production.test.ts > a longer absence is never worth less than a shorter one > has a domain that reaches both sides of the horizon 0ms
+ ✓ src/empire/production.test.ts > a longer absence is never worth less than a shorter one > holds on Gym Bucks across the horizon and well past it, with zero violations 21ms
+ ✓ src/empire/production.test.ts > a longer absence is never worth less than a shorter one > holds on Training IQ too, which the cap does not touch 12ms
+ ✓ src/empire/production.test.ts > a longer absence is never worth less than a shorter one > NEGATIVE CONTROL: the same sweep sees a punishing cap 22ms
+ ✓ src/empire/production.test.ts > a longer absence is never worth less than a shorter one > past the horizon two different absences pay exactly the same 3ms
+ ✓ src/empire/production.test.ts > a longer absence is never worth less than a shorter one > reports what the cap discarded rather than dropping it silently 6ms
+ ✓ src/empire/production.test.ts > a purchased timer skip moves Gym Bucks and does not move Training IQ > has two states that differ only in what was skipped 1ms
+ ✓ src/empire/production.test.ts > a purchased timer skip moves Gym Bucks and does not move Training IQ > pays more Gym Bucks under the skip, which is what GDD §8.3B sells 0ms
+ ✓ src/empire/production.test.ts > a purchased timer skip moves Gym Bucks and does not move Training IQ > leaves the rate at a shared mark alone, and moves it at the gym own clock 0ms
+ ✓ src/empire/production.test.ts > a purchased timer skip moves Gym Bucks and does not move Training IQ > pays byte-identical Training IQ, element-wise on the progression ledger 0ms
+ ✓ src/empire/production.test.ts > a purchased timer skip moves Gym Bucks and does not move Training IQ > holds across a range of skip sizes, with the counts pinned 2ms
+ ✓ src/empire/production.test.ts > a purchased timer skip moves Gym Bucks and does not move Training IQ > pays byte-identical money into the WALL-CLOCK book, at the baseline line 0ms
+ ✓ src/empire/production.test.ts > a purchased timer skip moves Gym Bucks and does not move Training IQ > holds that equality across every skip size, with the counts pinned 1ms
+ ✓ src/empire/production.test.ts > a lifter a skip landed early pays Gym Bucks and no trickle until they settle > leaves the trickle at the base rate while the recruit is unsettled 0ms
+ ✓ src/empire/production.test.ts > a lifter a skip landed early pays Gym Bucks and no trickle until they settle > starts paying the trickle on the wall-clock second the recruit would have settled 0ms
+ ✓ src/empire/production.test.ts > a lifter a skip landed early pays Gym Bucks and no trickle until they settle > leaves a lifter who has not joined yet out of the Gym Bucks line 0ms
+ ✓ src/empire/production.test.ts > aggregation over the gym and its roster > is the base line alone when the roster is empty 1ms
+ ✓ src/empire/production.test.ts > aggregation over the gym and its roster > adds each lifter through the rate source it was given 0ms
+ ✓ src/empire/production.test.ts > aggregation over the gym and its roster > multiplies the Gym Bucks line by the three axes that raise it 0ms
+ ✓ src/empire/production.test.ts > aggregation over the gym and its roster > multiplies the trickle by none of them 0ms
+ ✓ src/empire/production.test.ts > aggregation over the gym and its roster > holds the trickle at the daily ceiling however large the gym gets 0ms
+ ✓ src/empire/production.test.ts > aggregation over the gym and its roster > refuses a rate source that hands back something that is not a rate 1ms
+ ✓ src/empire/production.test.ts > aggregation over the gym and its roster > refuses a space level that is off the passive-ceiling ladder 0ms
+ ✓ src/empire/production.test.ts > aggregation over the gym and its roster > reports both rates together 0ms
+ ✓ src/empire/production.test.ts > accrueProduction > pays the offline share of the rate over the banked seconds 0ms
+ ✓ src/empire/production.test.ts > accrueProduction > pays the trickle per calendar day of wall time, undiscounted and uncapped 0ms
+ ✓ src/empire/production.test.ts > accrueProduction > stamps the ledger on the wall clock and pays one entry per output 0ms
+ ✓ src/empire/production.test.ts > accrueProduction > pays nothing for a gap of nothing 0ms
+ ✓ src/empire/production.test.ts > accrueProduction > refuses a mark that is ahead of the gym, on each clock separately 0ms
+ ✓ src/empire/production.test.ts > accrueProduction > takes the banking policy as an argument 0ms
+ ✓ src/empire/production.test.ts > production.ts is pure and numerically clean > has a source to scan 0ms
+ ✓ src/empire/production.test.ts > production.ts is pure and numerically clean > reads no clock, rolls no dice and touches no host API 2ms
+ ✓ src/empire/production.test.ts > production.ts is pure and numerically clean > imports only this directory 0ms
+ ✓ src/empire/production.test.ts > production.ts is pure and numerically clean > holds every number in the tuning module 12ms
+ ✓ src/empire/production.test.ts > production.ts is pure and numerically clean > ships no string a real name could be hiding in 1ms
+ ✓ src/empire/empireInvariant.test.ts > the sweep parameters describe a domain that is not empty > generates the plan list it says it does, counts and all 3ms
  ✓ src/empire/empireInvariant.test.ts > the sweep parameters describe a domain that is not empty > grants something inside the shortest horizon on every non-baseline plan 1ms
  ✓ src/empire/empireInvariant.test.ts > the sweep parameters describe a domain that is not empty > describes horizons and cadences that ascend and are whole 1ms
  ✓ src/empire/empireInvariant.test.ts > the sweep parameters describe a domain that is not empty > supplies social inputs that pay on more than one day and share a sender 1ms
- ✓ src/empire/empireInvariant.test.ts > the sweep parameters describe a domain that is not empty > names no real gym, lifter, brand or federation 0ms
+ ✓ src/empire/empireInvariant.test.ts > the sweep parameters describe a domain that is not empty > names no real gym, lifter, brand or federation 1ms
  ✓ src/empire/empireInvariant.test.ts > the comparator can report every kind of divergence there is > reports zero on two identical lists, and says how many it looked at 0ms
  ✓ src/empire/empireInvariant.test.ts > the comparator can report every kind of divergence there is > reports an amount that moved while the day did not 0ms
  ✓ src/empire/empireInvariant.test.ts > the comparator can report every kind of divergence there is > reports a DAY that moved while the amount did not 0ms
@@ -387,57 +410,57 @@ $ npx vitest run src/empire --reporter=verbose
  ✓ src/empire/empireInvariant.test.ts > the comparator can report every kind of divergence there is > reports two lists of different lengths rather than comparing the overlap quietly 0ms
  ✓ src/empire/empireInvariant.test.ts > the comparator can report every kind of divergence there is > compares arrival-day lists element-wise and says which way they moved 1ms
  ✓ src/empire/empireInvariant.test.ts > the comparator can report every kind of divergence there is > derives an arrival-day list that changes when a series changes 0ms
- ✓ src/empire/empireInvariant.test.ts > the Training IQ daily budget is applied where the two terms are added > caps a full legendary roster, and the uncapped subtotal really is above the cap 0ms
+ ✓ src/empire/empireInvariant.test.ts > the Training IQ daily budget is applied where the two terms are added > caps a full legendary roster, and the uncapped subtotal really is above the cap 1ms
  ✓ src/empire/empireInvariant.test.ts > the Training IQ daily budget is applied where the two terms are added > does not cap a gym under the budget, so the cap is a cap and not a floor 0ms
  ✓ src/empire/empireInvariant.test.ts > the Training IQ daily budget is applied where the two terms are added > counts a lifter only once their recruitment has settled on the wall clock 0ms
  ✓ src/empire/empireInvariant.test.ts > the Training IQ daily budget is applied where the two terms are added > agrees with production.ts on every day of every run in the sweep 0ms
  ✓ src/empire/empireInvariant.test.ts > the Training IQ daily budget is applied where the two terms are added > reaches the budget inside the sweep, so the agreement above is not about a slack cap 0ms
- ✓ src/empire/empireInvariant.test.ts > the composed run is a run at all > spends every wall-clock purse that has a spender, and never the one that has none 5ms
- ✓ src/empire/empireInvariant.test.ts > the composed run is a run at all > drove the grid it says it drove, and every run is fault-free 5ms
- ✓ src/empire/empireInvariant.test.ts > the composed run is a run at all > really recruits, expands, pays a physio and closes a rival period 1ms
+ ✓ src/empire/empireInvariant.test.ts > the composed run is a run at all > spends every wall-clock purse that has a spender, and never the one that has none 6ms
+ ✓ src/empire/empireInvariant.test.ts > the composed run is a run at all > drove the grid it says it drove, and every run is fault-free 8ms
+ ✓ src/empire/empireInvariant.test.ts > the composed run is a run at all > really recruits, expands, pays a physio and closes a rival period 2ms
  ✓ src/empire/empireInvariant.test.ts > the composed run is a run at all > spends every grant on exactly one of the two §8.3B mechanisms 0ms
  ✓ src/empire/empireInvariant.test.ts > the composed run is a run at all > holds both halves of the ledger, partitioned by empireCore.ts own predicates 2ms
- ✓ src/empire/empireInvariant.test.ts > no purchasable accelerant moves the progression ledger, element by element > compares the progression ledger position by position and finds nothing moved 3ms
+ ✓ src/empire/empireInvariant.test.ts > no purchasable accelerant moves the progression ledger, element by element > compares the progression ledger position by position and finds nothing moved 4ms
  ✓ src/empire/empireInvariant.test.ts > no purchasable accelerant moves the progression ledger, element by element > drove every purchasable accelerant, so the zeros are not about one of them 0ms
- ✓ src/empire/empireInvariant.test.ts > no purchasable accelerant moves the progression ledger, element by element > compares the PHYSIO series by wall-clock day, and finds nothing moved 3ms
- ✓ src/empire/empireInvariant.test.ts > no purchasable accelerant moves the progression ledger, element by element > compares the TRAINING IQ series by wall-clock day, and finds nothing moved 3ms
- ✓ src/empire/empireInvariant.test.ts > the zeros are zeros against measured numbers > POSITIVE control: the purchase does move the idle half of the same ledger 2ms
- ✓ src/empire/empireInvariant.test.ts > the zeros are zeros against measured numbers > the purchase moves the ledger the player reads and no census COUNT, both pinned 0ms
- ✓ src/empire/empireInvariant.test.ts > the zeros are zeros against measured numbers > NEGATIVE control: the same engine funded from the accelerated book DOES move 8ms
- ✓ src/empire/empireInvariant.test.ts > the zeros are zeros against measured numbers > NEGATIVE control: both series move, and the physio days arrive EARLIER 5ms
- ✓ src/empire/empireInvariant.test.ts > the zeros are zeros against measured numbers > the control differs from the subject only in the funding rule 3ms
+ ✓ src/empire/empireInvariant.test.ts > no purchasable accelerant moves the progression ledger, element by element > compares the PHYSIO series by wall-clock day, and finds nothing moved 4ms
+ ✓ src/empire/empireInvariant.test.ts > no purchasable accelerant moves the progression ledger, element by element > compares the TRAINING IQ series by wall-clock day, and finds nothing moved 5ms
+ ✓ src/empire/empireInvariant.test.ts > the zeros are zeros against measured numbers > POSITIVE control: the purchase does move the idle half of the same ledger 4ms
+ ✓ src/empire/empireInvariant.test.ts > the zeros are zeros against measured numbers > the purchase moves the ledger the player reads and no census COUNT, both pinned 1ms
+ ✓ src/empire/empireInvariant.test.ts > the zeros are zeros against measured numbers > NEGATIVE control: the same engine funded from the accelerated book DOES move 3ms
+ ✓ src/empire/empireInvariant.test.ts > the zeros are zeros against measured numbers > NEGATIVE control: both series move, and the physio days arrive EARLIER 7ms
+ ✓ src/empire/empireInvariant.test.ts > the zeros are zeros against measured numbers > the control differs from the subject only in the funding rule 4ms
  ✓ src/empire/empireInvariant.test.ts > a run refuses what it should refuse > reports a grant that was spent twice or spent nowhere 0ms
  ✓ src/empire/empireInvariant.test.ts > a run refuses what it should refuse > re-asks the licence about accelerants the gym actually recorded 1ms
  ✓ src/empire/empireInvariant.test.ts > a run refuses what it should refuse > reports a wall-clock ladder that has run ahead of the player own gym 0ms
  ✓ src/empire/empireInvariant.test.ts > a run refuses what it should refuse > reports a disagreement with production.ts and an empty comparison 0ms
  ✓ src/empire/empireInvariant.test.ts > a run refuses what it should refuse > reports a Training IQ day above the budget and a physio day above its own 0ms
  ✓ src/empire/empireInvariant.test.ts > a run refuses what it should refuse > reports a ledger with no progression half and one with no idle half 0ms
- ✓ src/empire/empireInvariant.test.ts > a run refuses what it should refuse > refuses a horizon or a cadence that is not a whole number at or above one 0ms
+ ✓ src/empire/empireInvariant.test.ts > a run refuses what it should refuse > refuses a horizon or a cadence that is not a whole number at or above one 1ms
  ✓ src/empire/empireInvariant.test.ts > a run refuses what it should refuse > grants on the schedule it was given and nowhere else 0ms
- ✓ src/empire/empireInvariant.test.ts > the spending policy is a parameter, and the shipped one is the loop that was there > leaves the shipped policy blind to which check-in of the day it is 3ms
+ ✓ src/empire/empireInvariant.test.ts > the spending policy is a parameter, and the shipped one is the loop that was there > leaves the shipped policy blind to which check-in of the day it is 4ms
  ✓ src/empire/empireInvariant.test.ts > the spending policy is a parameter, and the shipped one is the loop that was there > answers both moment questions for every policy, with no policy unlisted 0ms
  ✓ src/empire/empireInvariant.test.ts > the spending policy is a parameter, and the shipped one is the loop that was there > rotates the offer under the shipped policy and holds it still under the fixed one 1ms
- ✓ src/empire/empireInvariant.test.ts > the spending policy is a parameter, and the shipped one is the loop that was there > advances the gym rotation counter exactly when the offer reads it 2ms
+ ✓ src/empire/empireInvariant.test.ts > the spending policy is a parameter, and the shipped one is the loop that was there > advances the gym rotation counter exactly when the offer reads it 5ms
  ✓ src/empire/empireInvariant.test.ts > the spending policy is a parameter, and the shipped one is the loop that was there > sorts by price in both directions, on prices read from the tuning block 1ms
- ✓ src/empire/empireInvariant.test.ts > the spending policy is a parameter, and the shipped one is the loop that was there > holds only the purse the physio rung is bought from, and the whole wall-clock side under a pooled control 0ms
+ ✓ src/empire/empireInvariant.test.ts > the spending policy is a parameter, and the shipped one is the loop that was there > holds only the purse the physio rung is bought from, and the whole wall-clock side under a pooled control 1ms
  ✓ src/empire/empireInvariant.test.ts > the spending policy is a parameter, and the shipped one is the loop that was there > lets the roster spend while the physio purse is held, and holds it under a pooled control 0ms
  ✓ src/empire/empireInvariant.test.ts > the spending policy is a parameter, and the shipped one is the loop that was there > offers nothing at all from an empty axis order, under every policy 1ms
  ✓ src/empire/empireInvariant.test.ts > this module is pure, numerically clean and names nobody > was read at all, so the scans below are not scanning an empty string 0ms
  ✓ src/empire/empireInvariant.test.ts > this module is pure, numerically clean and names nobody > imports only from this directory 0ms
- ✓ src/empire/empireInvariant.test.ts > this module is pure, numerically clean and names nobody > holds no number of its own 26ms
+ ✓ src/empire/empireInvariant.test.ts > this module is pure, numerically clean and names nobody > holds no number of its own 31ms
  ✓ src/empire/empireInvariant.test.ts > this module is pure, numerically clean and names nobody > ships no string a real name could be hiding in, and pins the ones it does ship 2ms
  ✓ src/empire/empireInvariant.test.ts > this module is pure, numerically clean and names nobody > would catch a person-shaped name arriving in this module 1ms
  ✓ src/empire/empireInvariant.test.ts > this module is pure, numerically clean and names nobody > names every lifter it creates from a placeholder and a kebab id 1ms
- ✓ src/empire/empireTuning.test.ts > the directory walk every census in src/empire/ shares > descends into a subdirectory, on a tree built to have one 9ms
+ ✓ src/empire/empireTuning.test.ts > the directory walk every census in src/empire/ shares > descends into a subdirectory, on a tree built to have one 7ms
  ✓ src/empire/empireTuning.test.ts > the directory walk every census in src/empire/ shares > counts a symlinked directory as a directory 3ms
  ✓ src/empire/empireTuning.test.ts > the directory walk every census in src/empire/ shares > reads src/empire/ as flat today, and names anything that arrives 1ms
  ✓ src/empire/empireTuning.test.ts > the directory walk every census in src/empire/ shares > splits a tree into what the compiler claims and what the censuses walk 6ms
- ✓ src/empire/empireTuning.test.ts > the directory walk every census in src/empire/ shares > reads the split out of a config, so a transcribed extension list fails it 3ms
+ ✓ src/empire/empireTuning.test.ts > the directory walk every census in src/empire/ shares > reads the split out of a config, so a transcribed extension list fails it 2ms
  ✓ src/empire/empireTuning.test.ts > the directory walk every census in src/empire/ shares > refuses a config shape it does not understand, rather than guessing 2ms
- ✓ src/empire/empireTuning.test.ts > the directory walk every census in src/empire/ shares > names every file the compiler compiles here that no census walks 4ms
- ✓ src/empire/empireTuning.test.ts > the directory walk every census in src/empire/ shares > is the one file here that names a listing API, which is a scan and not a proof 37ms
+ ✓ src/empire/empireTuning.test.ts > the directory walk every census in src/empire/ shares > names every file the compiler compiles here that no census walks 8ms
+ ✓ src/empire/empireTuning.test.ts > the directory walk every census in src/empire/ shares > is the one file here that names a listing API, which is a scan and not a proof 24ms
  ✓ src/empire/empireTuning.test.ts > the directory walk every census in src/empire/ shares > finds the shipped modules the rest of the directory pins, so the walk is not empty 3ms
- ✓ src/empire/empireTuning.test.ts > the block is frozen and every entry is classified > freezes the block and its nested tables 1ms
+ ✓ src/empire/empireTuning.test.ts > the block is frozen and every entry is classified > freezes the block and its nested tables 2ms
  ✓ src/empire/empireTuning.test.ts > the block is frozen and every entry is classified > classifies every entry, and classifies nothing that is not an entry 3ms
  ✓ src/empire/empireTuning.test.ts > the block is frozen and every entry is classified > uses every class it declares, so the vocabulary is not aspirational 0ms
  ✓ src/empire/empireTuning.test.ts > units > agrees with itself about how long a day is 0ms
@@ -471,31 +494,31 @@ $ npx vitest run src/empire --reporter=verbose
  ✓ src/empire/empireTuning.test.ts > §5.4 build timers > grows the timer with the level 0ms
  ✓ src/empire/empireTuning.test.ts > §5.5 social > keys bracket sizes by exactly the scopes, and none of them is a mirror 0ms
  ✓ src/empire/empireTuning.test.ts > §5.5 social > counts the rival comparison period in calendar days 0ms
- ✓ src/empire/empireTuning.test.ts > §5.5 social > names no cadence in a unit the player’s training can move 9ms
+ ✓ src/empire/empireTuning.test.ts > §5.5 social > names no cadence in a unit the player’s training can move 13ms
  ✓ src/empire/empireTuning.test.ts > §5.5 social > pays the §5.5 rewards in Gym Bucks and pays something 0ms
  ✓ src/empire/empireTuning.test.ts > every entry is reachable from a consumer, or is listed as not yet reached > has consumers at all, so the scan is measuring something 0ms
- ✓ src/empire/empireTuning.test.ts > every entry is reachable from a consumer, or is listed as not yet reached > does not count a mention inside a comment as a consumer 0ms
+ ✓ src/empire/empireTuning.test.ts > every entry is reachable from a consumer, or is listed as not yet reached > does not count a mention inside a comment as a consumer 1ms
  ✓ src/empire/empireTuning.test.ts > every entry is reachable from a consumer, or is listed as not yet reached > pins the not-yet-consumed list exactly, in both directions 0ms
- ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > descends into a subdirectory, on a tree built to have one 7ms
- ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > counts a symlinked directory as a directory 3ms
- ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > reads src/empire/ as flat today, and names anything that arrives 0ms
- ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > splits a tree into what the compiler claims and what the censuses walk 5ms
- ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > reads the split out of a config, so a transcribed extension list fails it 2ms
- ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > refuses a config shape it does not understand, rather than guessing 4ms
- ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > names every file the compiler compiles here that no census walks 3ms
- ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > is the one file here that names a listing API, which is a scan and not a proof 25ms
+ ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > descends into a subdirectory, on a tree built to have one 9ms
+ ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > counts a symlinked directory as a directory 4ms
+ ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > reads src/empire/ as flat today, and names anything that arrives 1ms
+ ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > splits a tree into what the compiler claims and what the censuses walk 7ms
+ ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > reads the split out of a config, so a transcribed extension list fails it 5ms
+ ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > refuses a config shape it does not understand, rather than guessing 2ms
+ ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > names every file the compiler compiles here that no census walks 4ms
+ ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > is the one file here that names a listing API, which is a scan and not a proof 26ms
  ✓ src/empire/directoryWalk.test.ts > the directory walk every census in src/empire/ shares > finds the shipped modules the rest of the directory pins, so the walk is not empty 6ms
  ✓ src/empire/npc.test.ts > the tier multiplier is a table read by the tier the caller named > returns the published multiplier for every tier 2ms
- ✓ src/empire/npc.test.ts > the tier multiplier is a table read by the tier the caller named > gives a different multiplier to every tier, so no lookup is a constant 0ms
+ ✓ src/empire/npc.test.ts > the tier multiplier is a table read by the tier the caller named > gives a different multiplier to every tier, so no lookup is a constant 1ms
  ✓ src/empire/npc.test.ts > the tier multiplier is a table read by the tier the caller named > rises along the ladder, so no tier is dominated by the one below it 0ms
- ✓ src/empire/npc.test.ts > the tenure/loyalty curve > starts at the floor and reaches the ceiling exactly at the full-loyalty day 0ms
- ✓ src/empire/npc.test.ts > the tenure/loyalty curve > is monotone non-decreasing and stays inside its two multipliers 11ms
+ ✓ src/empire/npc.test.ts > the tenure/loyalty curve > starts at the floor and reaches the ceiling exactly at the full-loyalty day 1ms
+ ✓ src/empire/npc.test.ts > the tenure/loyalty curve > is monotone non-decreasing and stays inside its two multipliers 12ms
  ✓ src/empire/npc.test.ts > the tenure/loyalty curve > front-loads the payoff, which is what the sub-1 exponent is for 0ms
  ✓ src/empire/npc.test.ts > the tenure/loyalty curve > gives the two clock brands the same curve on the same day count 1ms
  ✓ src/empire/npc.test.ts > the tenure/loyalty curve > declares each wrapper against its own tenure brand 1ms
- ✓ src/empire/npc.test.ts > the tenure/loyalty curve > refuses each tenure brand where the other is required 0ms
+ ✓ src/empire/npc.test.ts > the tenure/loyalty curve > refuses each tenure brand where the other is required 1ms
  ✓ src/empire/npc.test.ts > per-lifter output > pays the published product at the two ends of the curve 1ms
- ✓ src/empire/npc.test.ts > per-lifter output > rises with tenure on both halves, and stops rising at the ceiling 1ms
+ ✓ src/empire/npc.test.ts > per-lifter output > rises with tenure on both halves, and stops rising at the ceiling 2ms
  ✓ src/empire/npc.test.ts > per-lifter output > reads the two rates off one lifter without disagreeing with itself 1ms
  ✓ src/empire/npc.test.ts > per-lifter output > gives a lifter with no tenure the floor rather than nothing 0ms
  ✓ src/empire/npc.test.ts > per-lifter output > treats a clock behind the lifter as zero tenure rather than negative pay 0ms
@@ -503,66 +526,66 @@ $ npx vitest run src/empire --reporter=verbose
  ✓ src/empire/npc.test.ts > roster subtotals > pays nothing for an empty roster and says that is what it measured 0ms
  ✓ src/empire/npc.test.ts > roster subtotals > never decreases when a lifter joins 0ms
  ✓ src/empire/npc.test.ts > roster subtotals > leaves the daily ceiling to the piece that adds the base trickle 0ms
- ✓ src/empire/npc.test.ts > a purchasable accelerant moves the Gym Bucks half and not the Training IQ half > leaves the Training IQ series byte-identical under every skip 5ms
- ✓ src/empire/npc.test.ts > a purchasable accelerant moves the Gym Bucks half and not the Training IQ half > moves the negative control, so the zero above is zero against something 5ms
- ✓ src/empire/npc.test.ts > a purchasable accelerant moves the Gym Bucks half and not the Training IQ half > does move the Gym Bucks series, because that is what GDD §8.3B sells 1ms
- ✓ src/empire/empireSweep.test.ts > the sweep parameters describe a domain that is not empty > generates the plan list it says it does, counts and all 2ms
+ ✓ src/empire/npc.test.ts > a purchasable accelerant moves the Gym Bucks half and not the Training IQ half > leaves the Training IQ series byte-identical under every skip 7ms
+ ✓ src/empire/npc.test.ts > a purchasable accelerant moves the Gym Bucks half and not the Training IQ half > moves the negative control, so the zero above is zero against something 7ms
+ ✓ src/empire/npc.test.ts > a purchasable accelerant moves the Gym Bucks half and not the Training IQ half > does move the Gym Bucks series, because that is what GDD §8.3B sells 2ms
+ ✓ src/empire/empireSweep.test.ts > the sweep parameters describe a domain that is not empty > generates the plan list it says it does, counts and all 3ms
  ✓ src/empire/empireSweep.test.ts > the sweep parameters describe a domain that is not empty > grants something inside the shortest horizon on every non-baseline plan 1ms
  ✓ src/empire/empireSweep.test.ts > the sweep parameters describe a domain that is not empty > describes horizons and cadences that ascend and are whole 1ms
  ✓ src/empire/empireSweep.test.ts > the sweep parameters describe a domain that is not empty > supplies social inputs that pay on more than one day and share a sender 1ms
  ✓ src/empire/empireSweep.test.ts > the sweep parameters describe a domain that is not empty > names no real gym, lifter, brand or federation 1ms
- ✓ src/empire/engagement.test.ts > EXHAUSTIVE: every calendar of a window of check-in slots > measures the SINGLE-PURSE engine on the same domain, and it is not zero 7760ms
- ✓ src/empire/engagement.test.ts > EXHAUSTIVE: every calendar of a window of check-in slots > measures chain A re-connected, as the control the physio zero is zero against 10092ms
- ✓ src/empire/engagement.test.ts > EXHAUSTIVE: every calendar of a window of check-in slots > finds no violation when the same window sits at day 4 1016ms
- ✓ src/empire/engagement.test.ts > EXHAUSTIVE: every calendar of a grid coarse enough to enumerate whole > finds no violation, on a physio domain that is no longer empty 4800ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument C — a raw string becomes a brand in a countable number of places > refuses every banned name at every string brand constructor 2ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument C — a raw string becomes a brand in a countable number of places > does NOT refuse the second ban list, and that limit is a number rather than a sentence 0ms
+ ✓ src/empire/engagement.test.ts > EXHAUSTIVE: every calendar of a window of check-in slots > measures the SINGLE-PURSE engine on the same domain, and it is not zero 9596ms
+ ✓ src/empire/engagement.test.ts > EXHAUSTIVE: every calendar of a window of check-in slots > measures chain A re-connected, as the control the physio zero is zero against 12021ms
+ ✓ src/empire/engagement.test.ts > EXHAUSTIVE: every calendar of a window of check-in slots > finds no violation when the same window sits at day 4 1206ms
+ ✓ src/empire/engagement.test.ts > EXHAUSTIVE: every calendar of a grid coarse enough to enumerate whole > finds no violation, on a physio domain that is no longer empty 5647ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument C — a raw string becomes a brand in a countable number of places > refuses every banned name at every string brand constructor 3ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument C — a raw string becomes a brand in a countable number of places > does NOT refuse the second ban list, and that limit is a number rather than a sentence 1ms
  ✓ src/empire/empireForbiddenOutput.test.ts > instrument C — a raw string becomes a brand in a countable number of places > every field that used to be a bare string is branded now 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > drives every export the census knows about, in both directions 28811ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > walked a domain that is not empty, and did not truncate 989ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > reached every caller-supplied string position, by sentinel 318ms
- ✓ src/empire/engagement.test.ts > EXHAUSTIVE: every calendar of attended DAYS > finds no violation when the extra engagement is a whole day 4878ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > produces no banned name from any export but the two that ARE the ban lists 3743ms
- ✓ src/empire/engagement.test.ts > SAMPLED: seeded histories at 20 and 40 days > reproduces the finding at 20 and 40 days 4123ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > CONTAINS no banned name either, outside the diagnostic channel, and the exemption is measured 4217ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > pins what the diagnostic channel actually said, rather than passing over it 305ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > produced every arm of every discriminated return, and not merely some of them 19ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > pins the two strings the composed loop mints for itself 452ms
- ✓ src/empire/engagement.test.ts > SAMPLED: seeded histories at 60 and 100 days > reproduces the finding at 60 and 100 days 10290ms
- ✓ src/empire/engagement.test.ts > NEGATIVE CONTROLS on the sampled grid > pins all three controls above the shipped engine on the grid it is measured on 4571ms
- ✓ src/empire/engagement.test.ts > the term the third-book ruling removed, decomposed on one domain > is zero on every arm of the shipped engine and 566 on the same arm pre-ruling 6393ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > covers exactly the branch points the ceilings drop, in both directions 9ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > stamps exactly the domains that carry a ceiling, and drives every export stamped under one 45ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > walked a domain that is not empty at the dropped points, and did not truncate 25361ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > produced the arm the eighth bypass was planted in, and not merely the points 0ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > drives every export the census knows about, in both directions 36362ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > walked a domain that is not empty, and did not truncate 706ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > reached every caller-supplied string position, by sentinel 576ms
+ ✓ src/empire/engagement.test.ts > EXHAUSTIVE: every calendar of attended DAYS > finds no violation when the extra engagement is a whole day 5586ms
+ ✓ src/empire/engagement.test.ts > SAMPLED: seeded histories at 20 and 40 days > reproduces the finding at 20 and 40 days 4862ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > produces no banned name from any export but the two that ARE the ban lists 5499ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > CONTAINS no banned name either, outside the diagnostic channel, and the exemption is measured 6495ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > pins what the diagnostic channel actually said, rather than passing over it 568ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > produced every arm of every discriminated return, and not merely some of them 50ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument B — nothing this directory produces is a forbidden name > pins the two strings the composed loop mints for itself 707ms
+ ✓ src/empire/engagement.test.ts > SAMPLED: seeded histories at 60 and 100 days > reproduces the finding at 60 and 100 days 12332ms
+ ✓ src/empire/engagement.test.ts > NEGATIVE CONTROLS on the sampled grid > pins all three controls above the shipped engine on the grid it is measured on 5083ms
+ ✓ src/empire/engagement.test.ts > the term the third-book ruling removed, decomposed on one domain > is zero on every arm of the shipped engine and 566 on the same arm pre-ruling 7729ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > covers exactly the branch points the ceilings drop, in both directions 12ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > stamps exactly the domains that carry a ceiling, and drives every export stamped under one 75ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > walked a domain that is not empty at the dropped points, and did not truncate 35658ms
+ ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > drives the shipped policy through the same code path as the default 4ms
+ ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > separates every spending policy on the ledger runEmpire itself produces 49ms
+ ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > still cannot separate cheapest-first from fixed order on the SHIPPED axis order 7ms
+ ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > reports what each policy actually bought, so no tally is a zero about nothing 19ms
+ ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > reproduces the headline exactly under the shipped policy 18839ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > produced the arm the eighth bypass was planted in, and not merely the points 1ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > produces no banned name at any point a ceiling drops 0ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > measures the cost class of every subject rather than asserting it 1ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > measures the cost class of every subject rather than asserting it 2ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > declares every pair the allocation budgets skipped, in both directions 15ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > leaves nothing writable in the argument it stops re-reading, and counts what it walked 46ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > pins what bounds a roster, because the two arms of that comparison are different questions 1854ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > joins a measured price to every domain whose budget skips a pair, in both directions 0ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument B bites — the tripwire the zeros are zero against > finds a banned name in every shape the scanner claims to reach 1ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > leaves nothing writable in the argument it stops re-reading, and counts what it walked 10ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > pins what bounds a roster, because the two arms of that comparison are different questions 2438ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the overflow pass — the catcher for what the ceilings drop > joins a measured price to every domain whose budget skips a pair, in both directions 1ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument B bites — the tripwire the zeros are zero against > finds a banned name in every shape the scanner claims to reach 2ms
  ✓ src/empire/empireForbiddenOutput.test.ts > instrument B bites — the tripwire the zeros are zero against > reads a redefined Error.stack, which the walker skips as a key and a value 1ms
  ✓ src/empire/empireForbiddenOutput.test.ts > instrument B bites — the tripwire the zeros are zero against > finds nothing in the identically shaped benign twin 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > instrument B bites — the tripwire the zeros are zero against > gives every declared fold its own tripwire, in both directions 2ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the injected axes were varied, and the variation was measured > pins the disagreement on every axis, with a held-fixed control beside it 466ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > derives every escape site from the shipped source, per channel per module, in both directions 2771ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > every throw in this directory is written as a call to the wrap 0ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > pins the two callback sites with their ARGUMENT COUNT, which is what M27 moves 0ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > seals every returned-closure result the channel census found 816ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > scans a .tsx the widened walk hands it — a returned closure and a raw throw 811ms
- ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > drives the shipped policy through the same code path as the default 3ms
- ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > separates every spending policy on the ledger runEmpire itself produces 40ms
- ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > still cannot separate cheapest-first from fixed order on the SHIPPED axis order 6ms
- ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > reports what each policy actually bought, so no tally is a zero about nothing 16ms
- ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > reproduces the headline exactly under the shipped policy 16066ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > measures every cell of the coverage matrix rather than declaring it 4951ms
- ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > measures the rotation phase removed: fixed order, and cheapest-first with it 26573ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > instrument B bites — the tripwire the zeros are zero against > gives every declared fold its own tripwire, in both directions 1ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the injected axes were varied, and the variation was measured > pins the disagreement on every axis, with a held-fixed control beside it 822ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > derives every escape site from the shipped source, per channel per module, in both directions 3685ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > every throw in this directory is written as a call to the wrap 1ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > pins the two callback sites with their ARGUMENT COUNT, which is what M27 moves 1ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > seals every returned-closure result the channel census found 1095ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > scans a .tsx the widened walk hands it — a returned closure and a raw throw 986ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > measures every cell of the coverage matrix rather than declaring it 6836ms
+ ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > measures the rotation phase removed: fixed order, and cheapest-first with it 31747ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > names the channels the drive alone covers, and the ones nothing covered 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > drives every caller-supplied callback and scans what it was handed 32084ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > drives the callback subjects over the registry domain, not a fixture of its own 9ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > drives every caller-supplied callback and scans what it was handed 26997ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > drives the callback subjects over the registry domain, not a fixture of its own 11ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the channel census — the routes a string can leave this directory by > the callback pass bites — the tripwire the zero is zero against 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the assembly walk bites — every binding whose value is not in its initializer > compiles the probe cleanly, so a finding below is a classification and not an error 3388ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the assembly walk bites — every binding whose value is not in its initializer > compiles the probe cleanly, so a finding below is a classification and not an error 4972ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the assembly walk bites — every binding whose value is not in its initializer > finds the returned closure in all fifteen shapes, by member path 1ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the assembly walk bites — every binding whose value is not in its initializer > resolves a branch-assembled alias of a parameter on the WRITE arm 0ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the assembly walk bites — every binding whose value is not in its initializer > resolves a branch-assembled alias of a callback parameter on the CALL arm 0ms
@@ -570,65 +593,65 @@ $ npx vitest run src/empire --reporter=verbose
  ✓ src/empire/empireForbiddenOutput.test.ts > the assembly walk bites — every binding whose value is not in its initializer > names what it still cannot follow, and the limit is RUN rather than asserted 0ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the assembly walk bites — every binding whose value is not in its initializer > follows the deep member instead of answering from behind a depth limit 0ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the assembly walk bites — every binding whose value is not in its initializer > agrees with the control everywhere on the shipped tree, and says where it does not 0ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the assembly walk bites — every binding whose value is not in its initializer > measures how deep the shipped types go, off the types and not off the counter 1216ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the ambient probe — one skip, six call sites, and they do not agree > compiles the probe cleanly, so a finding below is a classification and not an error 3555ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the ambient probe — one skip, six call sites, and they do not agree > finds a function declared in a project `.d.ts` and handed back, at two depths 0ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the assembly walk bites — every binding whose value is not in its initializer > measures how deep the shipped types go, off the types and not off the counter 1928ms
+ ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > measures the ordering reversed: costliest affordable first 23770ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the ambient probe — one skip, six call sites, and they do not agree > compiles the probe cleanly, so a finding below is a classification and not an error 6543ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the ambient probe — one skip, six call sites, and they do not agree > finds a function declared in a project `.d.ts` and handed back, at two depths 1ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the ambient probe — one skip, six call sites, and they do not agree > records the write into an ambient global instead of filing it as a local 0ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the ambient probe — one skip, six call sites, and they do not agree > keeps the two kept-wide sites LOUD, which is what says they are not the same site 0ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the ambient probe — one skip, six call sites, and they do not agree > no project declaration file has arrived in this directory 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the ambient probe — one skip, six call sites, and they do not agree > steps into a project `.d.ts` on the depth walk, and says what the wide read cost 1214ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the member-type screen — the predicate graded on its own, shape by shape > compiles the battery cleanly, so a verdict below is an answer and not an error 486ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the member-type screen — the predicate graded on its own, shape by shape > answers every shape the way the truth column says, row by row 494ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the ambient probe — one skip, six call sites, and they do not agree > steps into a project `.d.ts` on the depth walk, and says what the wide read cost 2411ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the member-type screen — the predicate graded on its own, shape by shape > compiles the battery cleanly, so a verdict below is an answer and not an error 4398ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the member-type screen — the predicate graded on its own, shape by shape > answers every shape the way the truth column says, row by row 605ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the member-type screen — the predicate graded on its own, shape by shape > is not vacuous: both verdicts occur, and the over-approximations are counted 0ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the member-type screen — the predicate graded on its own, shape by shape > is answering from the reference type, and says so by losing its verdicts without it 492ms
- ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > measures the ordering reversed: costliest affordable first 20894ms
- ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > explains the save-for-physio zero instead of repeating it 18278ms
- ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > measures the per-check-in granularity removed, and splits the arm that is not zero 9584ms
- ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > splits that arm by whether the extra check-in moved the day it spends at 33724ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the relation certifies from a cycle and not from a depth, and the cycle is a list > compiles every limiter shape cleanly, so a verdict is an answer and not an error 63577ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the relation certifies from a cycle and not from a depth, and the cycle is a list > answers every shape at the depth the table says, and the table says depth is not the axis 409ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the relation certifies from a cycle and not from a depth, and the cycle is a list > is not vacuous: both verdicts occur, and exactly one shape is SILENT rather than contained 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the relation certifies from a cycle and not from a depth, and the cycle is a list > pins every type declaration in this directory that reaches itself, and can find a planted one 945ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the member-type screen — the predicate graded on its own, shape by shape > is answering from the reference type, and says so by losing its verdicts without it 545ms
+ ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > explains the save-for-physio zero instead of repeating it 24624ms
+ ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > measures the per-check-in granularity removed, and splits the arm that is not zero 12428ms
+ ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > splits that arm by whether the extra check-in moved the day it spends at 42413ms
  ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > names the second mechanism behind the five that remain: the recruit price curve 1ms
  ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > splits the two long readings without dropping a policy between the halves 0ms
- ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > finds five of the six policies zero at 20 seeded days 8112ms
- ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > finds five of the six policies zero at 40 seeded days 17423ms
- ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > takes the whole-day reading under the first three policies 14257ms
- ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > takes the whole-day reading under the last three, and all six are zero 13459ms
- ✓ src/empire/engagement.test.ts > an extra trained day moves nothing the empire pays > leaves both progression series byte-identical, with a control that does not 186ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the family sweep — a cyclic generic alias is not the only shape that earns a certificate > reproduces the known family first, so no other row is believed on a broken instrument 65694ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the family sweep — a cyclic generic alias is not the only shape that earns a certificate > answers every row exactly as the table says, and every row compiles 11ms
+ ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > finds five of the six policies zero at 20 seeded days 10097ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the relation certifies from a cycle and not from a depth, and the cycle is a list > compiles every limiter shape cleanly, so a verdict is an answer and not an error 83086ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the relation certifies from a cycle and not from a depth, and the cycle is a list > answers every shape at the depth the table says, and the table says depth is not the axis 623ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the relation certifies from a cycle and not from a depth, and the cycle is a list > is not vacuous: both verdicts occur, and exactly one shape is SILENT rather than contained 1ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the relation certifies from a cycle and not from a depth, and the cycle is a list > pins every type declaration in this directory that reaches itself, and can find a planted one 1402ms
+ ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > finds five of the six policies zero at 40 seeded days 21645ms
+ ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > takes the whole-day reading under the first three policies 18682ms
+ ✓ src/empire/engagement.test.ts > the spending policy is the second independent variable, and it is swept > takes the whole-day reading under the last three, and all six are zero 16122ms
+ ✓ src/empire/engagement.test.ts > an extra trained day moves nothing the empire pays > leaves both progression series byte-identical, with a control that does not 221ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the family sweep — a cyclic generic alias is not the only shape that earns a certificate > reproduces the known family first, so no other row is believed on a broken instrument 88014ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the family sweep — a cyclic generic alias is not the only shape that earns a certificate > answers every row exactly as the table says, and every row compiles 7ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the family sweep — a cyclic generic alias is not the only shape that earns a certificate > is not vacuous: every column answers both ways, and the counts say how often 2ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the family sweep — a cyclic generic alias is not the only shape that earns a certificate > keeps the numbers the zeros are zero against, by driving the walker as it was 69222ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the family sweep — a cyclic generic alias is not the only shape that earns a certificate > bans a reach snippet that asserts its closure instead of reaching one 17ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the family sweep — a cyclic generic alias is not the only shape that earns a certificate > answers the supply axis exactly as the table says, and the axis varies 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the family sweep — a cyclic generic alias is not the only shape that earns a certificate > drives every constituent of the reference type, which is why `any` is the only one 442ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the family sweep — a cyclic generic alias is not the only shape that earns a certificate > keeps the numbers the zeros are zero against, by driving the walker as it was 84797ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the family sweep — a cyclic generic alias is not the only shape that earns a certificate > bans a reach snippet that asserts its closure instead of reaching one 22ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the family sweep — a cyclic generic alias is not the only shape that earns a certificate > answers the supply axis exactly as the table says, and the axis varies 2ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the family sweep — a cyclic generic alias is not the only shape that earns a certificate > drives every constituent of the reference type, which is why `any` is the only one 546ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the arm census — the three questions the member walk asks, counted > answers every row with the arms the table says, and reaches every arm 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the arm census — the three questions the member walk asks, counted > is not vacuous: the counts say how many members each arm answered about 0ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the interning probe — reference equality on types, and what it costs > answers every shape as the table says, and the domain is not empty 4621ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the interning probe — reference equality on types, and what it costs > costs walking and not a verdict, on the shape that disagrees 1985ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the member-call pass — what a caller-supplied method is actually handed > drives the subjects it declares, and the drive is not empty 3ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the arm census — the three questions the member walk asks, counted > is not vacuous: the counts say how many members each arm answered about 1ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the interning probe — reference equality on types, and what it costs > answers every shape as the table says, and the domain is not empty 6025ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the interning probe — reference equality on types, and what it costs > costs walking and not a verdict, on the shape that disagrees 2443ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the member-call pass — what a caller-supplied method is actually handed > drives the subjects it declares, and the drive is not empty 4ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the member-call pass — what a caller-supplied method is actually handed > sees no banned name at any driven site, on either channel 1ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the member-call pass — what a caller-supplied method is actually handed > the pass bites — the tripwire the zero is zero against, on BOTH channels 0ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the member-call pass — what a caller-supplied method is actually handed > accounts for every enumerated site, driven or declared undriven, in both directions 1ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the routes that were planted, and what each of them cost > records every registry mutant, and what each of them reddened 2ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the routes that were planted, and what each of them cost > records every route it planted, and names the two that could not be isolated 5ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the routes that were planted, and what each of them cost > says plainly that attack shape 16 was not semantically caught 0ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > sees a compiler import in every quote a specifier can take, and at any depth 44ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > parses every walked source clean — a silent mis-parse cannot shrink a census 197ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > scans a .tsx the widened walk hands it — content, not just arrival 3ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > finds every dispatch chain in this directory, in both directions 268ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > argues every chain that can drop a case, and names the argument’s catcher 1ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > sees a compiler import in every quote a specifier can take, and at any depth 45ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > parses every walked source clean — a silent mis-parse cannot shrink a census 215ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > scans a .tsx the widened walk hands it — content, not just arrival 4ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > finds every dispatch chain in this directory, in both directions 320ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > argues every chain that can drop a case, and names the argument’s catcher 2ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > sees every terminal on a source built to carry one of each 1ms
  ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > says which continuations never name the subject, not just that one exists 0ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > finds every table-shaped dispatch, which the ladder scan cannot see 226ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > sees a handler table on a source built to carry one of each form 1ms
- ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > pins every switch, and the two without a `default` name what refuses them 225ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > finds every table-shaped dispatch, which the ladder scan cannot see 270ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > sees a handler table on a source built to carry one of each form 2ms
+ ✓ src/empire/empireForbiddenOutput.test.ts > the dispatch-chain census — a ladder nobody looked at cannot be added quietly > pins every switch, and the two without a `default` name what refuses them 209ms
 
- Test Files  13 passed (13)
-      Tests  583 passed (583)
-   Start at  23:05:29
-   Duration  338.68s (transform 8.01s, setup 0ms, import 14.07s, tests 583.34s, environment 2ms)
+ Test Files  14 passed (14)
+      Tests  606 passed (606)
+   Start at  02:31:40
+   Duration  428.31s (transform 5.20s, setup 0ms, import 11.65s, tests 732.60s, environment 2ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -642,10 +665,10 @@ $ npx vitest run
  RUN  v4.1.10 /home/user/three-white-lights
 
 
- Test Files  85 passed (85)
-      Tests  3506 passed (3506)
-   Start at  23:11:09
-   Duration  365.14s (transform 7.11s, setup 0ms, import 28.83s, tests 887.72s, environment 10ms)
+ Test Files  86 passed (86)
+      Tests  3529 passed (3529)
+   Start at  02:38:50
+   Duration  461.27s (transform 10.30s, setup 0ms, import 36.51s, tests 1114.17s, environment 16ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
