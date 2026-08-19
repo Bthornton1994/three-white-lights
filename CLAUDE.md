@@ -226,6 +226,37 @@ silence is labelled as chosen in `NOT_CODE`, and the critic is told about it so
 it does not over-read a `--verify` pass. Run the two named test files after
 touching prose — that is what actually catches this today.
 
+### BETA PUSH — SPRINT PLAN AND SESSION STATUS, FILED 2026-08-19
+
+**Ruled by a human: the run is driving to a beta.** Scope is recorded in GDD
+§10.0 (web/PWA, campaign-only, local-first save, no monetization). Session
+status, from the same ruling: **Session B is ACTIVE and keeps `src/empire/**`.
+Sessions C and D are IDLE** — their standing orders and territory notes below
+remain historical record; their surfaces (shell slices, `.github/`) revert to
+Session A stewardship while they are idle, and this line is the notice.
+
+**Session A owns five sprints, in order:**
+
+1. **The Spine** — Career UI + the `progression.ts` wiring. The serialized seam
+   this file has protected all run finally gets crossed, by Session A, in its
+   own territory. §6.1's placeholder and its GDD TODO are deleted **together,
+   last**, per the placeholder's own tripwire. Done when a player reaches the
+   campaign worlds summit end-to-end through the app's own controls, with
+   competitive worlds drawn as the locked ceiling.
+2. **Nothing Is Lost** — local-first persistence behind the existing server
+   boundary, schema-versioned, Supabase-liftable by design.
+3. **Three Lifts** — bench/deadlift training feel + onboarding. **Sequenced
+   after the human L1 phone re-test**, which stays the gate.
+4. **One Game** — the Empire→pooled-wallet seam. **PRE-FILED CROSSING NOTICE TO
+   SESSION B**: this sprint pays empire income into `progression.ts`'s wallet,
+   which touches the seam both sides have deliberately serialized. Before that
+   sprint starts, the concrete crossing (which files, which direction, who
+   builds the empire-side half) gets written here; B may claim the empire half
+   by writing so beneath this entry. The §8.3E tender concession and the
+   pay-to-win bar (structural argument + adversarial rounds) apply in full.
+5. **Beta Hardening** — device passes, remaining playtest copy, PWA packaging,
+   D's CI gate as the release gate.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a

@@ -3597,6 +3597,28 @@ Keep this document at `docs/GDD.md`.
 
 ## 10. Build Sequence
 
+### 10.0 BETA SCOPE — RULED 2026-08-19
+
+A human defined the beta target, answering the four scope questions directly:
+
+- **Platform: web/PWA first.** A URL opened on a phone — the same surface every
+  playtest and every browser check in this run has used. Native builds come
+  after beta, not before.
+- **Campaign-only.** The full career ladder against NPC fields, through the
+  campaign worlds summit. Synchronous PvP (regional / nationals / competitive
+  worlds with real players) is **post-beta**; competitive worlds appears as the
+  visible, locked harder ceiling. Every sync ruling in §6.6 stands and waits.
+- **Local-first persistence.** Device-local, schema-versioned, behind the
+  existing server boundary, shaped so Supabase later is a transport swap and
+  not an unwinding — §8's server-authoritative rule deferred, not repealed.
+- **Monetization is out of beta entirely**, per this document's own "no
+  monetization before retention" rule.
+
+The sprint plan that executes this lives in CLAUDE.md's coordination section,
+because it allocates work across sessions. The working assumption that gated
+Career, Arcade and cut-in art is superseded for **Career** by this scope (the
+campaign ladder IS the beta); Arcade and cut-in art remain out unless ruled in.
+
 > **Two execution modes.** This section describes the *human-paced* build, where
 > each phase gates spend on the next. If running a Gauntlet Loop one-shot (§12),
 > the phases collapse — the agent builds broadly and the gates become critic bars
