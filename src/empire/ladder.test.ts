@@ -603,6 +603,10 @@ describe('the two spends: shown costs, loud refusals, every arm reachable', () =
     expect(bought.state.gymBucks).toBe(0);
     expect(bought.state.equipment).toContain('squat-rack');
     expect(unlockedLifts(bought.state.equipment)).toEqual(['squat', 'bench', 'deadlift']);
+    // A buy is not a relocation: the rung and the mark are untouched, so
+    // moveUpLadder stays the one writer of rung on this arm too.
+    expect(bought.state.rung).toBe('storage-unit');
+    expect(bought.state.collectedAt).toBe(0);
     // A refusal hands back the argument itself, unchanged.
     const refusal = outcomes[2]?.[1] as LadderBuyResult & { readonly kind: 'refused' };
     expect(refusal.state.equipment).not.toContain('squat-rack');
