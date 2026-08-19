@@ -174,6 +174,7 @@
  */
 import { chromium } from 'playwright';
 import { gateDevServer } from './devServerSentinel.mjs';
+import { enterMeetFromCalendar } from './enterMeetFromCalendar.mjs';
 import { decodePng, diffPixels } from './png.mjs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
