@@ -1,18 +1,24 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-19T22:06:42.327Z",
+    "capturedAt": "2026-08-19T22:55:29.117Z",
     "url": "http://localhost:8081",
-    "commit": "aa23a78",
+    "commit": "4340e79",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "DIRTY — this run is not against a commit",
     "dirtyPaths": [
-      "M .gauntlet/shots/lift-press/press.json",
-      " M src/game/guaranteeTags.test.ts",
-      " M src/game/lift.test.ts",
-      " M src/game/lift.ts",
-      " M src/game/liftTuning.test.ts",
-      " M src/game/liftTuning.ts",
-      " M tools/verify-lift-press.mjs"
+      "M src/game/progression.test.ts",
+      " M src/game/progression.ts",
+      " M src/game/saveGame.test.ts",
+      " M src/game/session.test.ts",
+      " M src/game/session.ts",
+      " M src/game/sessionClient.test.ts",
+      " M src/game/sessionServer.test.ts",
+      " M src/game/sessionServer.ts",
+      " M src/game/sessionTuning.ts",
+      " M src/session/SessionScreen.tsx",
+      " M src/session/SetView.tsx",
+      " M src/session/localSessionServer.test.ts",
+      " M src/session/sessionPreview.ts"
     ],
     "instrument": {
       "verify-lift-press.mjs": "47bdf4433ace23c8",
@@ -260,70 +266,6 @@
           },
           {
             "phase": "attempt2-3-immediately-after-release",
-            "loopPrompt": "NO LIFT",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt3-0-brace-before-press",
-            "loopPrompt": "TAP AND HOLD TO DESCEND",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt3-1-descent",
-            "loopPrompt": "RELEASE AT DEPTH",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt3-2-descent-mid-hold",
-            "loopPrompt": "RELEASE AT DEPTH",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt3-3-immediately-after-release",
             "loopPrompt": "OUT OF THE HOLE",
             "touch": {
               "userSelect": "none",
@@ -339,119 +281,7 @@
             }
           },
           {
-            "phase": "attempt3-4-hole",
-            "loopPrompt": "RIDE IT",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt3-5-ascent-before-drive(drive-cue-seen=true)",
-            "loopPrompt": "DRIVE — HOLD IT",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt3-6-immediately-after-drive-press",
-            "loopPrompt": "DRIVE — HOLD IT",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt3-8-after-release-post-lockout",
-            "loopPrompt": "TAP AND HOLD TO DESCEND",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt4-0-brace-before-press",
-            "loopPrompt": "TAP AND HOLD TO DESCEND",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt4-1-descent",
-            "loopPrompt": "RELEASE AT DEPTH",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt4-2-descent-mid-hold",
-            "loopPrompt": "RELEASE AT DEPTH",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt4-3-immediately-after-release",
+            "phase": "attempt2-4-hole",
             "loopPrompt": "OUT OF THE HOLE",
             "touch": {
               "userSelect": "none",
@@ -467,23 +297,7 @@
             }
           },
           {
-            "phase": "attempt4-4-hole",
-            "loopPrompt": "RIDE IT",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt4-5-ascent-before-drive(drive-cue-seen=true)",
+            "phase": "attempt2-5-ascent-before-drive(drive-cue-seen=true)",
             "loopPrompt": "DRIVE — HOLD IT",
             "touch": {
               "userSelect": "none",
@@ -499,8 +313,8 @@
             }
           },
           {
-            "phase": "attempt4-6-immediately-after-drive-press",
-            "loopPrompt": "DRIVE — HOLD IT",
+            "phase": "attempt2-6-immediately-after-drive-press",
+            "loopPrompt": "HOLD",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -515,7 +329,7 @@
             }
           },
           {
-            "phase": "attempt4-7-lockout-still-held",
+            "phase": "attempt2-7-lockout-still-held",
             "loopPrompt": "LOCK IT",
             "touch": {
               "userSelect": "none",
@@ -531,8 +345,8 @@
             }
           },
           {
-            "phase": "attempt4-8-after-release-post-lockout",
-            "loopPrompt": "GOOD LIFT",
+            "phase": "attempt2-8-after-release-post-lockout",
+            "loopPrompt": "GRINDER",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -548,7 +362,7 @@
           },
           {
             "phase": "resolved-or-reset-for-next-rep",
-            "loopPrompt": "GOOD LIFT",
+            "loopPrompt": "GRINDER",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -563,25 +377,13 @@
             }
           }
         ],
-        "attemptsUsed": 4,
+        "attemptsUsed": 2,
         "misses": [
           {
             "attempt": 1,
             "holdMs": 1000,
             "outcome": "NO LIFT",
             "detail": "Buried it. Never got the reversal."
-          },
-          {
-            "attempt": 2,
-            "holdMs": 820,
-            "outcome": "NO LIFT",
-            "detail": "Buried it. Never got the reversal."
-          },
-          {
-            "attempt": 3,
-            "holdMs": 640,
-            "outcome": "TAP AND HOLD TO DESCEND",
-            "detail": "Two moments, not two motions: release at the bottom, one timed tap to drive. Catch the beat."
           }
         ]
       },
@@ -976,8 +778,12 @@
           "panPx": 20,
           "reached": true,
           "cancels": 0,
-          "moveCancelable": [],
-          "moves": 0,
+          "moveCancelable": [
+            true,
+            true,
+            true
+          ],
+          "moves": 3,
           "touchAction": "none"
         },
         "neutralised": {
@@ -1988,14 +1794,14 @@
       "detail": "pointercancel=0, wanted exactly 0 (touch-action read back as \"none\")"
     },
     {
-      "ok": false,
+      "ok": true,
       "what": "ARM session: PROBE 2 — the page saw all 4 pans, so none of the cancel counts is a count of nothing",
-      "detail": "3 of 4; as-shipped=10 moves @200px, 0 cancel(s); as-shipped-small=0 moves @20px, 0 cancel(s); neutralised=10 moves @200px, 1 cancel(s); forced-fixed=10 moves @200px, 0 cancel(s)"
+      "detail": "4 of 4; as-shipped=10 moves @200px, 0 cancel(s); as-shipped-small=3 moves @20px, 0 cancel(s); neutralised=10 moves @200px, 1 cancel(s); forced-fixed=10 moves @200px, 0 cancel(s)"
     },
     {
       "ok": true,
       "what": "ARM session: PROBE 2 — touchmove cancelability is [true, false…] on all 3 full-size pans whatever touch-action says, so it is not the discriminator and the cancel count is",
-      "detail": "3 of 3; as-shipped@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false] as-shipped-small@20px(ta=\"none\")=[] neutralised@200px(ta=\"manipulation\")=[true,false,false,false,false,false,false,false,false,false] forced-fixed@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false]"
+      "detail": "3 of 3; as-shipped@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false] as-shipped-small@20px(ta=\"none\")=[true,true,true] neutralised@200px(ta=\"manipulation\")=[true,false,false,false,false,false,false,false,false,false] forced-fixed@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false]"
     },
     {
       "ok": true,
@@ -2010,17 +1816,17 @@
     {
       "ok": true,
       "what": "ARM session: PROBE 2 — nor does a 20px finger drift, which is the gesture the descent actually is",
-      "detail": "pointercancel=0 at 20px vs 0 at 200px, both with touch-action \"none\"; wanted exactly 0. The page heard 0 touchmove(s) of the 10 dispatched before that verdict"
+      "detail": "pointercancel=0 at 20px vs 0 at 200px, both with touch-action \"none\"; wanted exactly 0. The page heard 3 touchmove(s) of the 10 dispatched before that verdict"
     },
     {
       "ok": true,
       "what": "ARM session: PROBE 3 DOMAIN — a real rep was driven through every phase to LOCKOUT (adaptively, up to 6 tries), so the check below has something to say",
-      "detail": "drove 26 phase reading(s) over 4 attempt(s), drovePastLockout=true; misses along the way: #1@1000ms=\"NO LIFT\", #2@820ms=\"NO LIFT\", #3@640ms=\"TAP AND HOLD TO DESCEND\""
+      "detail": "drove 14 phase reading(s) over 2 attempt(s), drovePastLockout=true; misses along the way: #1@1000ms=\"NO LIFT\""
     },
     {
       "ok": true,
       "what": "ARM session: PROBE 3 — user-select and touch-action hold at every phase of a real rep, not only at BRACE",
-      "detail": "26 phase(s) checked, none deviated"
+      "detail": "14 phase(s) checked, none deviated"
     },
     {
       "ok": true,
@@ -2344,11 +2150,6 @@
       "why": "DOMAIN DEAD, re-measured this run rather than cited: with user-select forced to \"text\" on the stage, the same gesture that selects \"P AND HOLD TO D\" on lift-prompt selects \"\" here (rangeCount=0). caretRangeFromPoint at the probe point is {\"node\":\"CANVAS\",\"offset\":0,\"text\":\"\"}: the node under the finger is a Skia <canvas> with no text position in it, and Blink will not start a selection inside a replaced element. No value of the fix makes this red, so it is not counted either way."
     }
   ],
-  "failures": [
-    {
-      "what": "ARM session: PROBE 2 — the page saw all 4 pans, so none of the cancel counts is a count of nothing",
-      "detail": "3 of 4; as-shipped=10 moves @200px, 0 cancel(s); as-shipped-small=0 moves @20px, 0 cancel(s); neutralised=10 moves @200px, 1 cancel(s); forced-fixed=10 moves @200px, 0 cancel(s)"
-    }
-  ],
+  "failures": [],
   "pageErrors": []
 }

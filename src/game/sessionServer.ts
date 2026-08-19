@@ -210,7 +210,7 @@ import {
   streakIfTrainedToday,
   type StreakState,
 } from './streak';
-import { nextBestE1rm } from './session';
+import { nextBestE1rm, type SessionE1rmEstimate } from './session';
 import { SESSION_TUNING } from './sessionTuning';
 
 // ---------------------------------------------------------------------------
@@ -640,12 +640,15 @@ function readKilogramSets(
 // ---------------------------------------------------------------------------
 
 /**
- * The best e1RM the reported sets imply, per lift, kg.
+ * The best e1RM the reported sets imply, per lift, kg — plus the execution
+ * quality of the specific set behind each one, for `nextBestE1rm` to read.
  *
  * `tryEstimateE1rm` rather than `estimateE1rm` so a set the published chart
  * cannot answer for is SKIPPED rather than throwing the whole session away.
  * `e1rm.ts` refuses past an effective rep max of 16 and this respects the
  * refusal: no number is produced for such a set, and none is invented.
+ * `set.executionQuality` never reaches that call — it rides alongside the
+ * winning estimate only, the same seam `sessionE1rmFrom` (`session.ts`) uses.
  *
  * @throws {RangeError} on a set naming anything but a competition lift. Accessory
  * work has no e1RM by ruling (see the header), and `TrainingSetReport.lift` is
@@ -655,8 +658,12 @@ function readKilogramSets(
  */
 export function bestE1rmFromSets(
   sets: readonly TrainingSetReport[],
-): Readonly<Record<LiftKind, number | null>> {
-  const out: Record<LiftKind, number | null> = { squat: null, bench: null, deadlift: null };
+): Readonly<Record<LiftKind, SessionE1rmEstimate | null>> {
+  const out: Record<LiftKind, SessionE1rmEstimate | null> = {
+    squat: null,
+    bench: null,
+    deadlift: null,
+  };
   for (const set of sets) {
     // UNTRUSTED KEY: this is a wire value, and an unknown one would otherwise
     // become a fourth key on an object typed as having exactly three.
@@ -669,7 +676,9 @@ export function bestE1rmFromSets(
     const estimate = tryEstimateE1rm({ weight: set.weight, reps: set.reps, rpe: set.rpe });
     if (estimate === null) continue;
     const held = out[set.lift];
-    if (held === null || estimate > held) out[set.lift] = estimate;
+    if (held === null || estimate > held.e1rmKg) {
+      out[set.lift] = { e1rmKg: estimate, executionQuality: set.executionQuality };
+    }
   }
   return out;
 }

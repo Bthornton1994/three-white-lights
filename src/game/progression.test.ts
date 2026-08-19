@@ -1330,7 +1330,10 @@ const A_PROPOSAL: ProposalOfKind<'record-training-session'> = {
     deviceWallClock: { year: 2026, month: 8, day: 3, hour: 19 },
     // THE SETS RIDE ON A CARD AND THE CARD CARRIES THE UNIT. There is no `sets`
     // field to write here any more, and no arm reachable without naming a unit.
-    card: { unit: 'kg', kilogramSets: [{ lift: 'squat', weight: 200, reps: 3, rpe: 8 }] },
+    card: {
+      unit: 'kg',
+      kilogramSets: [{ lift: 'squat', weight: 200, reps: 3, rpe: 8, executionQuality: 1 }],
+    },
   },
 };
 
@@ -2661,7 +2664,13 @@ describe('the fact allowlist', () => {
     // above the comment explaining why `weightKg` is wrong. Two doctrines in one
     // test, and the one being pinned was the discarded one — which is how the
     // fourth unproven field survived a round that closed the other three.
-    expect([...TRAINING_SET_REPORT_KEYS].sort()).toEqual(['lift', 'reps', 'rpe', 'weight']);
+    expect([...TRAINING_SET_REPORT_KEYS].sort()).toEqual([
+      'executionQuality',
+      'lift',
+      'reps',
+      'rpe',
+      'weight',
+    ]);
     expect([...TRAINING_CARD_REPORT_KEYS].sort()).toEqual(['kilogramSets', 'poundSets', 'unit']);
     expect([...TRAINING_SESSION_REPORT_KEYS].sort()).toEqual(['card', 'deviceWallClock']);
     expect([...SET_RECOVERY_DAY_PROTECTION_REPORT_KEYS].sort()).toEqual([
@@ -4380,7 +4389,13 @@ describe('the boundary lets legitimate work through', () => {
             card: {
               unit: 'kg',
               kilogramSets: [
-                { lift: set.weight > 0 ? 'squat' : 'bench', weight: set.weight, reps: set.reps, rpe: set.rpe },
+                {
+                  lift: set.weight > 0 ? 'squat' : 'bench',
+                  weight: set.weight,
+                  reps: set.reps,
+                  rpe: set.rpe,
+                  executionQuality: 1,
+                },
               ],
             },
           },

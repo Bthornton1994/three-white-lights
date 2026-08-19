@@ -42,7 +42,12 @@ import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN, SUPPRESS_CONTEXT_MENU } from '../lif
 import { promptFor, type LiftOutcome } from '../game/lift';
 import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
 import { SESSION_COPY, SESSION_LAYOUT, SESSION_TUNING } from '../game/sessionTuning';
-import { currentSetNumber, repConfigFor, type SessionState } from '../game/session';
+import {
+  currentSetNumber,
+  executionQualityFrom,
+  repConfigFor,
+  type SessionState,
+} from '../game/session';
 import { SESSION_PALETTE } from './sessionPalette';
 
 const L = SESSION_LAYOUT;
@@ -89,7 +94,7 @@ function RepPips({
 
 export interface SetViewProps {
   readonly state: SessionState;
-  readonly onRepResolved: (outcome: LiftOutcome) => void;
+  readonly onRepResolved: (outcome: LiftOutcome, executionQuality: number) => void;
 }
 
 export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElement {
@@ -121,9 +126,13 @@ export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElem
   const resolution = loop.state.resolution;
   const resolved = loop.state.phase === 'RESOLVED';
   const outcome = resolution === null ? null : resolution.outcome;
+  // `executionQualityFrom` is `session.ts`'s pure read of `resolution` — no
+  // mechanic logic lives in this file, only the call.
   const handOff = useCallback(() => {
-    if (outcome !== null) onRepResolved(outcome);
-  }, [outcome, onRepResolved]);
+    if (outcome !== null && resolution !== null) {
+      onRepResolved(outcome, executionQualityFrom(resolution));
+    }
+  }, [outcome, resolution, onRepResolved]);
   useEffect(() => {
     if (!resolved || outcome === null) return undefined;
     const timer = setTimeout(handOff, SESSION_TUNING.REP_RESULT_HOLD_MS);

@@ -209,7 +209,7 @@ import {
 } from './fatigue';
 import { TO_FAILURE_RPE, tryEstimateE1rm } from './e1rm';
 import { percentOf1RM, rawLoadForRpeTarget, roundLoad, type WeightUnit } from './rpe';
-import type { LiftConfig, LiftOutcome } from './lift';
+import type { LiftConfig, LiftOutcome, LiftResolution } from './lift';
 import type { LiftKind } from './meet';
 import {
   emptyProjection,
@@ -261,8 +261,13 @@ export type CheckInTap =
 export type SessionEvent =
   | { readonly kind: 'check-in-tap'; readonly tap: CheckInTap }
   | { readonly kind: 'choose-rpe'; readonly rpe: number }
-  /** A rep of the lift mechanic resolved. `lift.ts` decided the outcome. */
-  | { readonly kind: 'rep-resolved'; readonly outcome: LiftOutcome }
+  /**
+   * A rep of the lift mechanic resolved. `lift.ts` decided the outcome;
+   * `executionQuality` is `executionQualityFrom` read off that same rep's
+   * `LiftResolution`, not re-derived here — this module never re-grades a
+   * rep, only carries the grade forward.
+   */
+  | { readonly kind: 'rep-resolved'; readonly outcome: LiftOutcome; readonly executionQuality: number }
   /** The rest beat elapsed (or was tapped through). */
   | { readonly kind: 'begin-set' }
   /** A session that banked nothing, taken again on the same day. */
@@ -318,6 +323,13 @@ export interface SessionPlan {
   readonly loadAdjustmentPercent: number;
   /** `weightKg / e1rmKg` — what the lift mechanic means by `loadRatio`. */
   readonly loadRatio: number;
+}
+
+/** One rep, as `lift.ts` resolved it and as this module read its execution. */
+export interface RepResult {
+  readonly outcome: LiftOutcome;
+  /** 0..1. `executionQualityFrom`'s output — see there for how it is read. */
+  readonly executionQuality: number;
 }
 
 /** One work set, as it was played. */
@@ -421,7 +433,7 @@ export interface SessionState {
   /** 0-based index of the rep about to be played inside the current set. */
   readonly repIndex: number;
   readonly completedSets: readonly PlayedSet[];
-  readonly repsThisSet: readonly LiftOutcome[];
+  readonly repsThisSet: readonly RepResult[];
   readonly closeOut: SessionCloseOut | null;
 }
 
@@ -432,6 +444,11 @@ export interface SessionState {
 function scrub(value: number): number {
   if (!Number.isFinite(value)) return value;
   return Number(value.toFixed(SESSION_TUNING.PRECISION_DECIMALS));
+}
+
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(1, Math.max(0, value));
 }
 
 /** A rep the bar actually went up for. A high squat is a red light, not a rep. */
@@ -638,22 +655,59 @@ export function repConfigFor(state: SessionState): LiftConfig {
 // ---------------------------------------------------------------------------
 
 /**
+ * How well a rep was executed, 0..1, read off the `LiftResolution` `lift.ts`
+ * already produced — this does not re-grade the rep, only reads its own
+ * recorded grades back.
+ *
+ * Averaged over the rep's DRIVE-cue timings only, not the depth-release cue
+ * too: depth-release precision and drive tap-rate are the two SEPARATE
+ * dimensions Sprint 3's window/tap-rate pieces built (see `liftTuning.ts`'s
+ * `DRIVE_WINDOW_MS` header), and depth is already covered by whether the rep
+ * was made at all — a buried or shallow release fails the rep outright rather
+ * than merely costing quality. The drive is what still has something to say
+ * once a rep is already known to have succeeded.
+ *
+ * A rep with NO drive timings — reachable at light loads, where
+ * `ascentDemand` never goes negative and the bar rises without a boost, see
+ * `driveAttemptsFor`'s header — reads as full quality: nothing was asked of
+ * the lifter, so nothing was botched.
+ */
+export function executionQualityFrom(resolution: LiftResolution): number {
+  const driveTimings = resolution.timings.filter((timing) => timing.cue === 'drive');
+  if (driveTimings.length === 0) return 1;
+  const sum = driveTimings.reduce((total, timing) => total + timing.quality, 0);
+  return scrub(clamp01(sum / driveTimings.length));
+}
+
+/**
  * One played set, as the server will be told about it.
  *
  * See the module header for why a failed rep reports RPE 10: on a
  * reps-in-reserve chart that is the definition of failure, not an estimate of
  * it. The reps reported are the ones the lifter actually completed.
+ *
+ * `TrainingSetReport.executionQuality` is the GOOD reps' `executionQuality`
+ * averaged — a missed rep already routes the whole set to `TO_FAILURE_RPE`
+ * and has no execution quality of its own to contribute (there was no
+ * successful drive to grade). A set with no good reps reports `null`
+ * regardless, same as before this field existed, so the average is never
+ * computed over an empty list.
  */
 export function playedSetFrom(
   plan: SessionPlan,
   setNumber: number,
-  outcomes: readonly LiftOutcome[],
+  results: readonly RepResult[],
 ): PlayedSet {
   let goodReps = 0;
   let wentToFailure = false;
-  for (const outcome of outcomes) {
-    if (isMadeRep(outcome)) goodReps += 1;
-    else wentToFailure = true;
+  let qualitySum = 0;
+  for (const { outcome, executionQuality } of results) {
+    if (isMadeRep(outcome)) {
+      goodReps += 1;
+      qualitySum += executionQuality;
+    } else {
+      wentToFailure = true;
+    }
   }
   const report: TrainingSetReport | null =
     goodReps < 1
@@ -667,26 +721,46 @@ export function playedSetFrom(
           weight: plan.weightKg,
           reps: goodReps,
           rpe: wentToFailure ? TO_FAILURE_RPE : plan.targetRpe,
+          executionQuality: scrub(clamp01(qualitySum / goodReps)),
         };
-  return { setNumber, outcomes: [...outcomes], goodReps, wentToFailure, report };
+  return {
+    setNumber,
+    outcomes: results.map((result) => result.outcome),
+    goodReps,
+    wentToFailure,
+    report,
+  };
+}
+
+/** The session's best e1RM estimate, and the execution quality behind it. */
+export interface SessionE1rmEstimate {
+  readonly e1rmKg: number;
+  /** `TrainingSetReport.executionQuality` of the SET that produced `e1rmKg` — not a session-wide average, so the number `nextBestE1rm` reads is evidence about the specific rep the estimate came from. */
+  readonly executionQuality: number;
 }
 
 /**
- * The best e1RM the session's sets imply, kg, or `null`.
+ * The best e1RM the session's sets imply, kg, plus the execution quality
+ * behind that specific estimate — or `null`.
  *
  * `null` covers both "no set was completed" and "`e1rm.ts` refused" — the
  * second happens past the published chart's coverage, and this module shows no
  * number rather than papering over the refusal with a second formula (which
- * CLAUDE.md bans outright).
+ * CLAUDE.md bans outright). `tryEstimateE1rm` reads only `{weight, reps, rpe}`
+ * — the domain-pure inputs — so a set's `executionQuality` never touches the
+ * estimate itself; it only rides alongside the winning set's number for
+ * `nextBestE1rm` to read once the pure estimate already exists.
  */
-export function sessionE1rmFrom(sets: readonly TrainingSetReport[]): number | null {
-  let best: number | null = null;
+export function sessionE1rmFrom(sets: readonly TrainingSetReport[]): SessionE1rmEstimate | null {
+  let best: SessionE1rmEstimate | null = null;
   for (const set of sets) {
     const estimate = tryEstimateE1rm({ weight: set.weight, reps: set.reps, rpe: set.rpe });
     if (estimate === null) continue;
-    if (best === null || estimate > best) best = estimate;
+    if (best === null || estimate > best.e1rmKg) {
+      best = { e1rmKg: scrub(estimate), executionQuality: set.executionQuality };
+    }
   }
-  return best === null ? null : scrub(best);
+  return best;
 }
 
 /**
@@ -703,28 +777,57 @@ export function sessionE1rmFrom(sets: readonly TrainingSetReport[]): number | nu
  *   1. MONOTONE. A training session never lowers the best on record. A lifter
  *      who had a bad day keeps their number (GDD §12.3: never punish showing
  *      up).
- *   2. CAPPED. One session may not raise it by more than
- *      `MAX_E1RM_GAIN_FRACTION_PER_SESSION`. At the shipped value this does not
- *      bind on any session this loop can produce — the largest jump the loop
- *      offers is the readiness nudge's +5%, against a 6% cap — and
- *      `sessionServer.test.ts` checks that rather than assuming it. It is a
- *      bound on a lying client, not a pacing lever, and it is NOT a solution to
- *      long-run progression pacing.
+ *   2. CAPPED, AND NOW BY A RANGE RATHER THAN A POINT. One session may not
+ *      raise it by more than `MAX_E1RM_GAIN_FRACTION_PER_SESSION`, same bound
+ *      as before — but which fraction of that ceiling actually applies now
+ *      scales with the winning set's `executionQuality`, linearly between
+ *      `MIN_E1RM_GAIN_FRACTION_PER_SESSION` (worst) and `MAX_...` (best),
+ *      via `qualityScaledGainFraction`. At `executionQuality === 1` this is
+ *      byte-identical to the old flat-6% rule — every existing pinned number
+ *      in `session.test.ts`'s and `sessionServer.test.ts`'s canned-outcome
+ *      fixtures uses quality 1 and is unaffected by this change. It is still
+ *      a bound on a lying client, not a pacing lever, and it is NOT a
+ *      solution to long-run progression pacing — see the next paragraph,
+ *      which this change does not touch.
  *
- * SO NOTHING HERE PACES ANYTHING, and the header's measured table is what that
- * costs: on a positive check-in this returns a higher number every session,
- * forever, and tomorrow's bar is prescribed from it. The coupling that fixes it
- * is a recorded dependency on the fatigue/progression module (GDD §3.4) — the
- * nudge has to scale with RPE/effort history instead of being a flat constant.
- * Do not paper over it with a cap here: a pacing constant in this file would be
- * a knob invented before the thing it is pacing exists.
+ * SO NOTHING HERE PACES SESSION-OVER-SESSION GROWTH, and the header's measured
+ * table is what that still costs: on a positive check-in this returns a higher
+ * number every session, forever, and tomorrow's bar is prescribed from it.
+ * That is a DIFFERENT axis from the one this function now covers — quality
+ * scales how much of ONE session's already-earned gain is trusted, not how
+ * many sessions in a row may earn one. The coupling that fixes THAT is still a
+ * recorded dependency on the fatigue/progression module (GDD §3.4): the
+ * readiness nudge has to scale with RPE/effort history instead of being a flat
+ * constant. Do not read the quality scaling above as having closed that gap.
  */
-export function nextBestE1rm(held: number | null, sessionEstimate: number | null): number | null {
-  if (sessionEstimate === null) return held;
-  if (held === null) return sessionEstimate;
-  if (sessionEstimate <= held) return held;
-  const ceiling = held * (1 + SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION);
-  return Math.min(sessionEstimate, ceiling);
+export function nextBestE1rm(
+  held: number | null,
+  session: SessionE1rmEstimate | null,
+): number | null {
+  if (session === null) return held;
+  if (held === null) return session.e1rmKg;
+  if (session.e1rmKg <= held) return held;
+  const fraction = qualityScaledGainFraction(session.executionQuality);
+  const ceiling = held * (1 + fraction);
+  return Math.min(session.e1rmKg, ceiling);
+}
+
+/**
+ * The fraction of `held` a session may add, scaled linearly by execution
+ * quality between `MIN_E1RM_GAIN_FRACTION_PER_SESSION` (a botched-but-still-PR
+ * set) and `MAX_E1RM_GAIN_FRACTION_PER_SESSION` (a clean one). Both ends are
+ * playtesting placeholders (`sessionTuning.ts`), not derivations — the shape
+ * (linear, not stepped) is the only thing asserted as a property rather than
+ * a value, in `session.test.ts`.
+ */
+function qualityScaledGainFraction(executionQuality: number): number {
+  const quality = clamp01(executionQuality);
+  const { MIN_E1RM_GAIN_FRACTION_PER_SESSION, MAX_E1RM_GAIN_FRACTION_PER_SESSION } =
+    SESSION_PROGRESSION_GUARD;
+  return (
+    MIN_E1RM_GAIN_FRACTION_PER_SESSION +
+    (MAX_E1RM_GAIN_FRACTION_PER_SESSION - MIN_E1RM_GAIN_FRACTION_PER_SESSION) * quality
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -869,9 +972,10 @@ function closeOutFrom(state: SessionState): SessionCloseOut {
     goodReps += set.goodReps;
     if (set.report !== null) reports.push(set.report);
   }
-  const sessionE1rmKg = sessionE1rmFrom(reports);
+  const sessionEstimate = sessionE1rmFrom(reports);
+  const sessionE1rmKg = sessionEstimate === null ? null : sessionEstimate.e1rmKg;
   const previousBestE1rmKg = state.context.bestE1rmKg;
-  const newBestE1rmKg = nextBestE1rm(previousBestE1rmKg, sessionE1rmKg);
+  const newBestE1rmKg = nextBestE1rm(previousBestE1rmKg, sessionEstimate);
   const isPr =
     newBestE1rmKg !== null &&
     (previousBestE1rmKg === null || newBestE1rmKg > previousBestE1rmKg);
@@ -1108,7 +1212,10 @@ export function stepSession(state: SessionState, event: SessionEvent): SessionSt
       if (state.phase !== 'set') return state;
       const plan = state.plan;
       if (plan === null) return state;
-      const repsThisSet = [...state.repsThisSet, event.outcome];
+      const repsThisSet = [
+        ...state.repsThisSet,
+        { outcome: event.outcome, executionQuality: event.executionQuality },
+      ];
       const setOver = !isMadeRep(event.outcome) || repsThisSet.length >= plan.repsPerSet;
       if (!setOver) {
         return { ...state, repIndex: repsThisSet.length, repsThisSet };

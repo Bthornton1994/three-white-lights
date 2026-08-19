@@ -98,7 +98,7 @@ function playSession(state: SessionState): SessionState {
     next =
       next.phase === 'rest'
         ? stepSession(next, { kind: 'begin-set' })
-        : stepSession(next, { kind: 'rep-resolved', outcome: 'good-lift' });
+        : stepSession(next, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 });
   }
   return next;
 }

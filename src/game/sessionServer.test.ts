@@ -50,6 +50,7 @@ import {
   sessionProjection,
   sessionProposal,
   stepSession,
+  type SessionE1rmEstimate,
   type SessionState,
 } from './session';
 import type { ReadinessCheckIn } from './fatigue';
@@ -95,8 +96,9 @@ function set(
   weight: number,
   reps: number,
   rpe: number,
+  executionQuality = 1,
 ): TrainingSetReport {
-  return { lift, weight, reps, rpe };
+  return { lift, weight, reps, rpe, executionQuality };
 }
 
 /** A session played end to end against a stored record, all reps made. */
@@ -133,7 +135,7 @@ function playAgainst(
     state =
       state.phase === 'rest'
         ? stepSession(state, { kind: 'begin-set' })
-        : stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift' });
+        : stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 });
   }
   return { state, lift };
 }
@@ -185,10 +187,10 @@ describe('deriving e1RM from what was reported', () => {
     // The HEAVIER squat set is the WORSE estimate — 190/0.922 = 206.07 against
     // 180/0.863 = 208.57 — so this also shows the best set is chosen by what it
     // implies rather than by what was on the bar.
-    expect(best.squat).toBeCloseTo(208.5747, 4);
-    expect(best.squat).toBeCloseTo(180 / 0.863, 8);
+    expect(best.squat?.e1rmKg).toBeCloseTo(208.5747, 4);
+    expect(best.squat?.e1rmKg).toBeCloseTo(180 / 0.863, 8);
     expect(190 / 0.922).toBeLessThan(180 / 0.863);
-    expect(best.bench).toBeCloseTo(100 / 0.837, 8);
+    expect(best.bench?.e1rmKg).toBeCloseTo(100 / 0.837, 8);
     expect(best.deadlift).toBeNull();
   });
 
@@ -218,7 +220,8 @@ describe('deriving e1RM from what was reported', () => {
     const server = bestE1rmFromSets(sets).squat;
     expect(client).not.toBeNull();
     expect(server).not.toBeNull();
-    expect(client).toBeCloseTo(server ?? Number.NaN, 6);
+    expect(client?.e1rmKg).toBeCloseTo(server?.e1rmKg ?? Number.NaN, 6);
+    expect(client?.executionQuality).toBe(server?.executionQuality);
     expect(serverE1rmForSet(sets[0]!)).toBeCloseTo(172.5 / 0.863, 8);
   });
 });
@@ -342,29 +345,32 @@ describe('a session whose unit this record cannot store is refused, not recorded
     // 405 lb for 3 at RPE 8 is 469.29 on the chart read backwards. Read as
     // kilograms that is a 469 kg squat e1RM; the truth is 405 lb = 183.70 kg, so
     // 212.87 kg. 2.2046x — the same factor the meet path banked on the total.
-    const asIfKilograms = bestE1rmFromSets(ROWS).squat;
-    expect(asIfKilograms).not.toBeNull();
-    const truth = (asIfKilograms ?? Number.NaN) * KILOGRAMS_PER_POUND;
+    const asIfKilogramsEstimate = bestE1rmFromSets(ROWS).squat;
+    expect(asIfKilogramsEstimate).not.toBeNull();
+    const asIfKilograms = asIfKilogramsEstimate?.e1rmKg ?? Number.NaN;
+    const truth = asIfKilograms * KILOGRAMS_PER_POUND;
     expect(asIfKilograms).toBeCloseTo(469.2932, 4);
     expect(truth).toBeCloseTo(212.8678, 4);
-    expect((asIfKilograms ?? Number.NaN) / truth).toBeCloseTo(1 / KILOGRAMS_PER_POUND, 9);
+    expect(asIfKilograms / truth).toBeCloseTo(1 / KILOGRAMS_PER_POUND, 9);
 
     // WHAT THE PER-SESSION CAP DOES AND DOES NOT BUY, measured rather than
     // assumed, because it is the one thing that could be mistaken for a defence.
     // `MAX_E1RM_GAIN_FRACTION_PER_SESSION` bounds ONE session's jump — so the
     // first pound session banks +6%, not 2.2x. It bounds the RATE, not the
     // destination: the same submission repeated ratchets to the full pound number
-    // and stops there, because `nextBestE1rm` never goes down.
+    // and stops there, because `nextBestE1rm` never goes down. `ROWS` is built
+    // from `set()`'s default `executionQuality` of 1, so the fraction actually
+    // applied here is the full MAX, unchanged from before this field existed.
     let record = newServerRecord(SIGNUP_DAY);
     let sessions = 0;
-    while ((record.bestE1rmKg.squat ?? 0) < (asIfKilograms ?? 0) - 1e-9 && sessions < 100) {
+    while ((record.bestE1rmKg.squat ?? 0) < asIfKilograms - 1e-9 && sessions < 100) {
       const step = applyTrainingSession(record, sessions, kgProposalOf(ROWS), `p-${sessions}`);
       if (!step.ok) throw new Error(step.error.message);
       record = step.value.record;
       sessions += 1;
     }
     expect(sessions).toBe(17);
-    expect(record.bestE1rmKg.squat).toBeCloseTo(asIfKilograms ?? Number.NaN, 9);
+    expect(record.bestE1rmKg.squat).toBeCloseTo(asIfKilograms, 9);
 
     // ...and once there it cannot be walked back. A later, honest 180 kg session
     // leaves it exactly where it is.
@@ -748,7 +754,7 @@ describe('accessory work never touches e1RM — the ruling, enforced', () => {
     expect(() => bestE1rmFromSets([accessorySet])).toThrow(/Training IQ/);
     expect(() => bestE1rmFromSets([nonsenseSet])).toThrow(RangeError);
     // The positive control: the same call on a real lift still answers.
-    expect(bestE1rmFromSets([set('squat', 172.5, 3, 8)]).squat).toBeCloseTo(199.8841, 4);
+    expect(bestE1rmFromSets([set('squat', 172.5, 3, 8)]).squat?.e1rmKg).toBeCloseTo(199.8841, 4);
   });
 
   it('applyTrainingSession refuses the whole session, and moves nothing', () => {
@@ -808,36 +814,65 @@ describe('accessory work never touches e1RM — the ruling, enforced', () => {
   });
 });
 
+/** `nextBestE1rm`'s second argument, at full — pre-Sprint-3 — execution quality. */
+function estimate(e1rmKg: number): SessionE1rmEstimate {
+  return { e1rmKg, executionQuality: 1 };
+}
+
 describe('nextBestE1rm', () => {
   it('never falls, so a bad day cannot cost a lifter their number', () => {
-    expect(nextBestE1rm(200, 150)).toBe(200);
+    expect(nextBestE1rm(200, estimate(150))).toBe(200);
     expect(nextBestE1rm(200, null)).toBe(200);
-    expect(nextBestE1rm(200, 200)).toBe(200);
+    expect(nextBestE1rm(200, estimate(200))).toBe(200);
   });
 
   it('takes the first estimate when there is nothing on record', () => {
-    expect(nextBestE1rm(null, 150)).toBe(150);
+    expect(nextBestE1rm(null, estimate(150))).toBe(150);
     expect(nextBestE1rm(null, null)).toBeNull();
   });
 
-  it('caps one session’s gain', () => {
-    // Hand-written: 6% of 200 is 12, so 212 is the ceiling.
+  it('caps one session’s gain, at full execution quality', () => {
+    // Hand-written: 6% of 200 is 12, so 212 is the ceiling — `estimate`'s
+    // quality of 1 is `qualityScaledGainFraction`'s top end, so this is
+    // byte-identical to the pre-Sprint-3 flat-6% rule.
     expect(SESSION_PROGRESSION_GUARD.MAX_E1RM_GAIN_FRACTION_PER_SESSION).toBe(0.06);
-    expect(nextBestE1rm(200, 500)).toBe(212);
-    expect(nextBestE1rm(200, 205)).toBe(205);
+    expect(nextBestE1rm(200, estimate(500))).toBe(212);
+    expect(nextBestE1rm(200, estimate(205))).toBe(205);
   });
 
-  it('the cap does not bind on anything this loop can produce', () => {
+  it('scales the gain down toward MIN as execution quality falls, never below it', () => {
+    const { MIN_E1RM_GAIN_FRACTION_PER_SESSION, MAX_E1RM_GAIN_FRACTION_PER_SESSION } =
+      SESSION_PROGRESSION_GUARD;
+    expect(MIN_E1RM_GAIN_FRACTION_PER_SESSION).toBeLessThan(MAX_E1RM_GAIN_FRACTION_PER_SESSION);
+    // A huge raw estimate, so every case below is ceiling-bound rather than
+    // estimate-bound — the only way to isolate the fraction itself.
+    const huge = { e1rmKg: 100000, executionQuality: 0 };
+    expect(nextBestE1rm(200, huge)).toBeCloseTo(200 * (1 + MIN_E1RM_GAIN_FRACTION_PER_SESSION), 9);
+    expect(nextBestE1rm(200, { ...huge, executionQuality: 1 })).toBeCloseTo(
+      200 * (1 + MAX_E1RM_GAIN_FRACTION_PER_SESSION),
+      9,
+    );
+    expect(nextBestE1rm(200, { ...huge, executionQuality: 0.5 })).toBeCloseTo(
+      200 *
+        (1 +
+          (MIN_E1RM_GAIN_FRACTION_PER_SESSION + MAX_E1RM_GAIN_FRACTION_PER_SESSION) / 2),
+      9,
+    );
+  });
+
+  it('the cap does not bind on anything this loop can produce, at full execution quality', () => {
     // The largest honest jump is the readiness nudge at `primed`, +5%. If the
     // cap ever starts biting on a real session the close-out would show a
     // number the maths does not support, so this is a real check and not a
-    // restatement of the constant.
+    // restatement of the constant. `playAgainst` plays every rep at
+    // `executionQuality: 1`, so MAX is the fraction in play here, same as
+    // before this field existed.
     const record = newServerRecord(SIGNUP_DAY);
     const played = playAgainst(record, 0, PRIMED, 10);
     const closeOut = played.state.closeOut!;
     const held = record.bestE1rmKg[played.lift]!;
     expect(closeOut.sessionE1rmKg).not.toBeNull();
-    expect(nextBestE1rm(held, closeOut.sessionE1rmKg)).toBe(closeOut.sessionE1rmKg);
+    expect(nextBestE1rm(held, estimate(closeOut.sessionE1rmKg!))).toBe(closeOut.sessionE1rmKg);
   });
 });
 
@@ -864,7 +899,8 @@ describe('applying a training session', () => {
 
   it('holds the gain at the guard when a session claims an absurd jump', () => {
     // 200 x 3 @ RPE 8 implies 231.75, a 28.7% gain on the starting 180. The
-    // guard holds it at 180 x 1.06.
+    // guard holds it at 180 x 1.06 — `set`'s default `executionQuality` of 1
+    // is `qualityScaledGainFraction`'s top end, the full MAX.
     const applied = applyTrainingSession(
       newServerRecord(SIGNUP_DAY),
       10,
@@ -874,6 +910,33 @@ describe('applying a training session', () => {
     expect(applied.ok).toBe(true);
     if (!applied.ok) return;
     expect(applied.value.record.bestE1rmKg.squat).toBeCloseTo(190.8, 6);
+  });
+
+  it('holds the SAME absurd jump to a smaller gain at a worse execution quality — the server, not just the pure function', () => {
+    // The same raw claim as the test above (200 x 3 @ RPE 8, 28.7% implied
+    // gain), differing only in the reported executionQuality. This drives
+    // `applyTrainingSession` end to end — the real server boundary, not
+    // `nextBestE1rm` called directly — so a wiring mistake between
+    // `bestE1rmFromSets` and the `nextBestE1rm` loop would show up here even
+    // if the pure function's own unit tests were all still green.
+    const { MIN_E1RM_GAIN_FRACTION_PER_SESSION } = SESSION_PROGRESSION_GUARD;
+    const applied = applyTrainingSession(
+      newServerRecord(SIGNUP_DAY),
+      10,
+      proposalOf([set('squat', 200, 3, 8, 0)]),
+      'p-1',
+    );
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    expect(applied.value.record.bestE1rmKg.squat).toBeCloseTo(
+      180 * (1 + MIN_E1RM_GAIN_FRACTION_PER_SESSION),
+      6,
+    );
+    expect(applied.value.record.bestE1rmKg.squat).toBeLessThan(190.8);
+    // Still a PR, and the streak still moves — a worse-executed rep is a
+    // smaller reward, never a punishment (GDD §12.3).
+    expect(applied.value.isPr).toBe(true);
+    expect(applied.value.streakAfter).toBe(1);
   });
 
   it('NEVER MOVES THE TOTAL — GDD §2, §3.2, §6.4', () => {

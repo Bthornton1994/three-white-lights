@@ -145,7 +145,8 @@ export function SessionScreen({
   }, [onPhase, state.phase]);
 
   const onRepResolved = useCallback(
-    (outcome: LiftOutcome) => dispatch({ kind: 'rep-resolved', outcome }),
+    (outcome: LiftOutcome, executionQuality: number) =>
+      dispatch({ kind: 'rep-resolved', outcome, executionQuality }),
     [dispatch],
   );
   const onBeginSet = useCallback(() => dispatch({ kind: 'begin-set' }), [dispatch]);

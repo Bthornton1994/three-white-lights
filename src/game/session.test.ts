@@ -15,6 +15,7 @@ import {
   createSession,
   currentSetNumber,
   defaultRpeChoice,
+  executionQualityFrom,
   isMadeRep,
   liftForDay,
   liftMomentFor,
@@ -49,9 +50,11 @@ import {
 import {
   createLift,
   stepLift,
+  type InputTiming,
   type LiftConfig,
   type LiftInput,
   type LiftOutcome,
+  type LiftResolution,
   type LiftState,
 } from './lift';
 import { TICK_MS } from './liftTuning';
@@ -132,6 +135,10 @@ function runSession(
     const event: SessionEvent = {
       kind: 'rep-resolved',
       outcome: outcomeFor(state.setIndex, state.repIndex),
+      // Canned outcome, not a played rep — full credit, so a session driven
+      // this way is unaffected by Sprint 3's quality-scaled gain and every
+      // number pinned against it stays exactly what it was.
+      executionQuality: 1,
     };
     state = stepSession(state, event);
   }
@@ -148,6 +155,8 @@ const ALL_GOOD = (): LiftOutcome => 'good-lift';
 interface PlayedRep {
   readonly outcome: LiftOutcome;
   readonly ticks: number;
+  /** `executionQualityFrom` read off this same rep's own resolution. */
+  readonly executionQuality: number;
 }
 
 /**
@@ -155,6 +164,11 @@ interface PlayedRep {
  * the depth window's ideal tick arrives, press again at the drive's ideal tick
  * and keep holding. `offsetTicks` shifts both inputs, so an imperfect player is
  * the same function with a number.
+ *
+ * Re-reads `state.activeCue` every tick rather than pressing once, so a
+ * MAXIMAL-load rep's later drive cues (Sprint 3's tap-rate mechanic) are
+ * pressed too, each at ITS OWN ideal tick plus the same offset — this
+ * function did not need to change for that to be true.
  */
 function playRep(config: LiftConfig, offsetTicks = 0): PlayedRep {
   let state: LiftState = createLift(config);
@@ -172,7 +186,12 @@ function playRep(config: LiftConfig, offsetTicks = 0): PlayedRep {
     state = stepLift(state, input);
     ticks += 1;
   }
-  return { outcome: state.resolution?.outcome ?? 'miss', ticks };
+  const resolution = state.resolution;
+  return {
+    outcome: resolution?.outcome ?? 'miss',
+    ticks,
+    executionQuality: resolution === null ? 1 : executionQualityFrom(resolution),
+  };
 }
 
 /** Plays every rep of a session with the real mechanic and returns the totals. */
@@ -195,7 +214,11 @@ function playWholeSession(
     const played = playRep(repConfigFor(state), offsetTicks);
     ticks += played.ticks;
     reps += 1;
-    state = stepSession(state, { kind: 'rep-resolved', outcome: played.outcome });
+    state = stepSession(state, {
+      kind: 'rep-resolved',
+      outcome: played.outcome,
+      executionQuality: played.executionQuality,
+    });
   }
   return { state, repMs: ticks * TICK_MS, reps };
 }
@@ -456,13 +479,20 @@ describe('prescription — GDD §3.3, RPE target in, weight out', () => {
     readiness: ReturnType<typeof readinessCheckIn>,
   ): number {
     const plan = prescribeSession(e1rm, 'squat', rpe, readiness, 1);
-    const played = playedSetFrom(plan, 1, Array<LiftOutcome>(plan.repsPerSet).fill('good-lift'));
+    const played = playedSetFrom(
+      plan,
+      1,
+      Array.from({ length: plan.repsPerSet }, () => ({
+        outcome: 'good-lift' as LiftOutcome,
+        executionQuality: 1,
+      })),
+    );
     const report = played.report;
     expect(report, `${e1rm} kg @ RPE ${rpe}`).not.toBeNull();
     if (report === null) return Number.NaN;
     const implied = sessionE1rmFrom([report]);
     expect(implied, `${e1rm} kg @ RPE ${rpe}`).not.toBeNull();
-    return implied ?? Number.NaN;
+    return implied?.e1rmKg ?? Number.NaN;
   }
 
   it('a target hit exactly reports below the base on a flat or negative check-in, and ABOVE it on a positive one', () => {
@@ -569,7 +599,10 @@ describe('prescription — GDD §3.3, RPE target in, weight out', () => {
           const played = playedSetFrom(
             plan,
             s + 1,
-            Array<LiftOutcome>(plan.repsPerSet).fill('good-lift'),
+            Array.from({ length: plan.repsPerSet }, () => ({
+              outcome: 'good-lift' as LiftOutcome,
+              executionQuality: 1,
+            })),
           );
           if (played.report !== null) reports.push(played.report);
         }
@@ -653,28 +686,108 @@ describe('an injury shortens a session and can never cost a day — GDD §3.5', 
   });
 });
 
+/** A minimal `LiftResolution`, for testing `executionQualityFrom` in isolation. */
+function resolutionWith(timings: readonly InputTiming[]): LiftResolution {
+  return {
+    outcome: 'good-lift',
+    missReason: null,
+    peakHeight: 1,
+    depthAchieved: true,
+    ascentTicks: 40,
+    stallTicks: 0,
+    timings,
+    headline: 'GOOD LIFT',
+    detail: '',
+  };
+}
+
+/** One `InputTiming`, filling in the fields this file's tests never vary. */
+function timing(cue: 'depth' | 'drive', quality: number): InputTiming {
+  return { cue, tick: 0, offsetMs: 0, quality, grade: 'perfect' };
+}
+
+describe('executionQualityFrom', () => {
+  it('averages the DRIVE cues only — a depth-cue timing never moves it', () => {
+    // Depth quality 0.1, drive quality 0.9: if depth leaked into the
+    // average this would read well below 0.9, not equal to it.
+    const quality = executionQualityFrom(
+      resolutionWith([timing('depth', 0.1), timing('drive', 0.9)]),
+    );
+    expect(quality).toBeCloseTo(0.9, 10);
+  });
+
+  it('averages every drive cue in a multi-cue rep, not just the first or the last', () => {
+    const quality = executionQualityFrom(
+      resolutionWith([timing('drive', 1), timing('drive', 0.5), timing('drive', 0)]),
+    );
+    expect(quality).toBeCloseTo(0.5, 10);
+  });
+
+  it('reads as full quality when the rep never needed a drive cue at all', () => {
+    // Reachable at light loads, where `ascentDemand` never goes negative and
+    // the bar rises without a boost — nothing was asked of the lifter, so
+    // nothing was botched.
+    expect(executionQualityFrom(resolutionWith([timing('depth', 1)]))).toBe(1);
+    expect(executionQualityFrom(resolutionWith([]))).toBe(1);
+  });
+});
+
 describe('playing a set', () => {
   const steady = readinessCheckIn(NEUTRAL);
   const plan = prescribeSession(200, 'squat', 8, steady, 4);
 
   it('reports every completed rep at the target RPE when the set is finished', () => {
-    const played = playedSetFrom(plan, 1, ['good-lift', 'grind', 'good-lift']);
+    const played = playedSetFrom(plan, 1, [
+      { outcome: 'good-lift', executionQuality: 1 },
+      { outcome: 'grind', executionQuality: 1 },
+      { outcome: 'good-lift', executionQuality: 1 },
+    ]);
     expect(played.goodReps).toBe(3);
     expect(played.wentToFailure).toBe(false);
-    expect(played.report).toEqual({ lift: 'squat', weight: 172.5, reps: 3, rpe: 8 });
+    expect(played.report).toEqual({
+      lift: 'squat',
+      weight: 172.5,
+      reps: 3,
+      rpe: 8,
+      executionQuality: 1,
+    });
+  });
+
+  it('averages execution quality over the GOOD reps only, and rounds to the module precision', () => {
+    // A missed rep contributes nothing to the average — there was no
+    // successful drive to grade — so this is (0.9 + 0.6) / 2, not / 3. The
+    // missed rep's OWN quality is a non-zero 0.8 deliberately: a miss can
+    // still carry a decent raw reading (a well-timed drive on a rep that
+    // failed for depth, say), so a nonzero value here is what actually tells
+    // a mutant that folds it into the sum apart from one that doesn't.
+    const played = playedSetFrom(plan, 1, [
+      { outcome: 'good-lift', executionQuality: 0.9 },
+      { outcome: 'miss', executionQuality: 0.8 },
+      { outcome: 'good-lift', executionQuality: 0.6 },
+    ]);
+    expect(played.report?.executionQuality).toBeCloseTo(0.75, 10);
   });
 
   it('reports a set that met failure at RPE 10 for the reps that were made', () => {
-    const played = playedSetFrom(plan, 2, ['good-lift', 'miss']);
+    const played = playedSetFrom(plan, 2, [
+      { outcome: 'good-lift', executionQuality: 1 },
+      { outcome: 'miss', executionQuality: 0 },
+    ]);
     expect(played.goodReps).toBe(1);
     expect(played.wentToFailure).toBe(true);
     // RPE 10 is not an estimate of how hard it was — on a reps-in-reserve chart
     // it is what "the next rep failed" MEANS.
-    expect(played.report).toEqual({ lift: 'squat', weight: 172.5, reps: 1, rpe: 10 });
+    expect(played.report).toEqual({
+      lift: 'squat',
+      weight: 172.5,
+      reps: 1,
+      rpe: 10,
+      executionQuality: 1,
+    });
   });
 
   it('reports nothing at all for a set with no completed rep', () => {
-    const played = playedSetFrom(plan, 3, ['miss']);
+    const played = playedSetFrom(plan, 3, [{ outcome: 'miss', executionQuality: 0 }]);
     expect(played.goodReps).toBe(0);
     expect(played.report).toBeNull();
   });
@@ -691,10 +804,10 @@ describe('playing a set', () => {
       rpe: 8,
     });
     expect(state.phase).toBe('set');
-    state = stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift' });
+    state = stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 });
     expect(state.phase).toBe('set');
     expect(state.repIndex).toBe(1);
-    state = stepSession(state, { kind: 'rep-resolved', outcome: 'miss' });
+    state = stepSession(state, { kind: 'rep-resolved', outcome: 'miss', executionQuality: 0 });
     expect(state.phase).toBe('rest');
     expect(state.setIndex).toBe(1);
     expect(state.completedSets).toHaveLength(1);
@@ -708,7 +821,7 @@ describe('playing a set', () => {
     });
     expect(currentSetNumber(state)).toBe(1);
     for (let i = 0; i < SESSION_TUNING.REPS_PER_SET; i += 1) {
-      state = stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift' });
+      state = stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 });
     }
     expect(currentSetNumber(state)).toBe(2);
   });
@@ -725,10 +838,10 @@ describe('the rep the mechanic is handed', () => {
     expect(first.feel).toBe(state.feel);
     expect(first.moment).toEqual({ workSetsCompleted: 0, repsCompletedInSet: 0 });
 
-    state = stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift' });
+    state = stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 });
     expect(liftMomentFor(state)).toEqual({ workSetsCompleted: 0, repsCompletedInSet: 1 });
     for (let i = 1; i < SESSION_TUNING.REPS_PER_SET; i += 1) {
-      state = stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift' });
+      state = stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 });
     }
     state = stepSession(state, { kind: 'begin-set' });
     expect(liftMomentFor(state)).toEqual({ workSetsCompleted: 1, repsCompletedInSet: 0 });
@@ -762,7 +875,7 @@ describe('the rep the mechanic is handed', () => {
         state = stepSession(state, { kind: 'begin-set' });
         continue;
       }
-      state = stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift' });
+      state = stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 });
     }
     const lastSet = cueWindowMs('drive', repConfigFor(state));
     expect(lastSet).toBeLessThan(firstRep);
@@ -1042,12 +1155,12 @@ describe('the machine ignores what does not apply', () => {
   it('does not advance on an event for another phase', () => {
     const fresh = createSession(context());
     expect(stepSession(fresh, { kind: 'choose-rpe', rpe: 8 })).toBe(fresh);
-    expect(stepSession(fresh, { kind: 'rep-resolved', outcome: 'good-lift' })).toBe(fresh);
+    expect(stepSession(fresh, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 })).toBe(fresh);
     expect(stepSession(fresh, { kind: 'begin-set' })).toBe(fresh);
     expect(stepSession(fresh, { kind: 'retry' })).toBe(fresh);
 
     const briefing = tapThrough(fresh, NEUTRAL);
-    expect(stepSession(briefing, { kind: 'rep-resolved', outcome: 'good-lift' })).toBe(briefing);
+    expect(stepSession(briefing, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 })).toBe(briefing);
     expect(
       stepSession(briefing, { kind: 'check-in-tap', tap: { question: 'sleep', answer: 'poor' } }),
     ).toBe(briefing);
@@ -1089,6 +1202,7 @@ describe('the proposal and the projection — the client proposes, the server pu
       weight: 172.5,
       reps: 3,
       rpe: 8,
+      executionQuality: 1,
     });
     // No derived answer on the wire, in any set.
     expect(JSON.stringify(proposal)).not.toMatch(/e1rm|total/i);

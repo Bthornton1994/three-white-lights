@@ -141,7 +141,7 @@ function playSessionFrom(context: SessionContext): SessionState {
     state =
       state.phase === 'rest'
         ? stepSession(state, { kind: 'begin-set' })
-        : stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift' });
+        : stepSession(state, { kind: 'rep-resolved', outcome: 'good-lift', executionQuality: 1 });
   }
   return state;
 }
@@ -544,7 +544,7 @@ describe('the whole round trip, against a server that disagrees', () => {
       state =
         state.phase === 'rest'
           ? stepSession(state, { kind: 'begin-set' })
-          : stepSession(state, { kind: 'rep-resolved', outcome: 'miss' });
+          : stepSession(state, { kind: 'rep-resolved', outcome: 'miss', executionQuality: 0 });
     }
     const closeOut = closeOutOf(state);
     expect(closeOut.canPropose).toBe(false);

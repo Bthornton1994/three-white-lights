@@ -246,6 +246,9 @@ function playScripted(
     state = stepSession(state, {
       kind: 'rep-resolved',
       outcome: outcome(state.setIndex, state.repIndex),
+      // Scripted, not played — full credit, same standing as `ALL_GOOD` in
+      // session.test.ts's own canned-outcome driver.
+      executionQuality: 1,
     });
   }
   return state;

@@ -2266,15 +2266,25 @@ export type ProgressionProposalKind = (typeof PROGRESSION_PROPOSAL_KINDS)[number
  * (`TrainingCardReport` below), once. Five per-row units would be five facts
  * where there is one, four of them redundant and every one of them free to
  * disagree with the others.
+ *
+ * `executionQuality` IS AN INPUT TOO, same standing as the four above it —
+ * Sprint 3's addition, `session.ts`'s `executionQualityFrom` read off the set's
+ * good reps and averaged, 0..1. It never reaches `tryEstimateE1rm` (that call
+ * still destructures only `{weight, reps, rpe}` in both `sessionE1rmFrom` and
+ * `bestE1rmFromSets`) — CLAUDE.md bans a second e1RM formula, and this is not
+ * one. What it feeds is `nextBestE1rm`'s gain fraction, strictly after the
+ * pure estimate already exists, the same "layer outside the domain math" seam
+ * the readiness nudge already uses one level up.
  */
 export interface TrainingSetReport {
   readonly lift: LiftKind;
   readonly weight: number;
   readonly reps: number;
   readonly rpe: number;
+  readonly executionQuality: number;
 }
 
-export const TRAINING_SET_REPORT_KEYS = ['lift', 'weight', 'reps', 'rpe'] as const;
+export const TRAINING_SET_REPORT_KEYS = ['lift', 'weight', 'reps', 'rpe', 'executionQuality'] as const;
 
 export const TRAINING_SET_REPORT_IS_EXACTLY_ITS_ALLOWLIST: KeysAreExactly<
   TrainingSetReport,

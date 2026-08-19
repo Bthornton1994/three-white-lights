@@ -40,6 +40,7 @@ const set = (lift: LiftKind, weight: number, reps: number, rpe: number): Trainin
   weight,
   reps,
   rpe,
+  executionQuality: 1,
 });
 
 /**
