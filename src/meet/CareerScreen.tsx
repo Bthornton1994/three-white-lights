@@ -3,14 +3,21 @@
  * §6.1's calendar. Sprint 1b.
  *
  * ---------------------------------------------------------------------------
- * A RENDERER, LIKE ITS SIBLINGS
+ * A RENDERER, LIKE ITS SIBLINGS — AND WHAT ACTUALLY CHECKS THAT
  * ---------------------------------------------------------------------------
- * Every value drawn here is a field of `useCareer`'s loop, which reads the
- * app's one connection through `progression.ts`'s accessors and the pure
- * builders in `careerSurface.ts`. This file computes no verdict, no
- * eligibility, no day, and re-derives no refusal copy: a refusal is the
- * server's own sentence, drawn verbatim (`careerServer.ts` wrote it about the
- * exact row that refused).
+ * Every value drawn here is meant to be a field of `useCareer`'s loop, which
+ * reads the app's one connection through `progression.ts`'s accessors and the
+ * pure builders in `careerSurface.ts`. What holds that in place, named rather
+ * than asserted: `shellWiring.test.ts`'s career block pins the hook call, the
+ * refusal draw and the choose wiring against this file's source, and
+ * `tools/verify-shell-route.mjs` section 11 reads the CHOSEN federation's
+ * name off every calendar row after choosing a non-default federation — a row
+ * hardcoded in this file cannot change federation with the choice. That is
+ * weaker than the per-row `(testID <- expression)` pairing `EmpireScreen`
+ * carries, and the gap is stated rather than papered: a row drawing a
+ * DIFFERENT field of the same loop would pass both. The refusal copy is the
+ * server's own sentence, drawn verbatim, and the browser's refusal leg (4d)
+ * asserts the drawn sentence begins with `careerServer.ts`'s own words.
  *
  * WHAT IS DELIBERATELY NOT ON THIS SCREEN: the lifter's own Total, e1RM,
  * streak or any progression number. GDD §3.2 and §6.4 put Total on meet day
