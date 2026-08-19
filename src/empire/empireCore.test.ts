@@ -3034,7 +3034,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 172 rather than 171 since `sealRate`'s label refusal arrived — a fixed
     // sentence with no substitution in it, which is what lets that refusal
     // name an unrecognised label without interpolating one.
-    expect(singleQuoted.size).toBe(208);
+    expect(singleQuoted.size).toBe(209);
     expect(doubleQuoted.size).toBe(0);
     expect(templateChunks.size).toBe(164);
     // And the template collector really reaches the messages, named from the
@@ -3161,6 +3161,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'physio-days-saved',
       'power-bar',
       'progression-reaching',
+      'reason',
       'refusal',
       'refused',
       'regional',
@@ -3222,7 +3223,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(372);
+    expect(stringsChecked).toBe(373);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3251,7 +3252,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(personShaped.test(`${titled} ${titled}`), `${titled} is not person-shaped`).toBe(true);
       probes += 1;
     }
-    expect(probes).toBe(162);
+    expect(probes).toBe(163);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
