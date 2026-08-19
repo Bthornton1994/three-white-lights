@@ -11557,7 +11557,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   /** Deepest chain from an exported surface, in the control's own accounting. */
   DEEPEST: 9,
   /** Exported positions measured. A truncated walk would report a shallow tree. */
-  POSITIONS: 643,
+  POSITIONS: 661,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
