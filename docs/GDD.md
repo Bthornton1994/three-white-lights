@@ -1538,6 +1538,17 @@ spec. Stages land per §5.11; each stage replaces the v1 modules it supersedes,
 and the v1 invariant sweeps stay green until the module they measure is
 replaced.
 
+**Stage 1 PASSED its gate** (played 2026-08-19, via the dev view at
+`ladder-dev.html`). Rulings from the play-through: equipment travels with a
+relocation and the space is what is abandoned (recorded at the flag in
+`ladder.ts`); the warehouse jump's measured emptiness — decision density
+falling to zero after the last purchase, ~38 pure-collection check-ins — is
+ACCEPTED rather than tuned away, because it is the exact gap stages 2–3 are
+designed to fill and a cost trim now would be thrown away when they land. The
+skeleton was confirmed as the intended game: the relocation press and the
+rack purchase are the two moments where design intent became legible
+consequence.
+
 ### 5.0 Why this replaces rather than extends
 
 The shipped §5 models **one gym that levels up**: one equipment ladder, one
