@@ -2158,6 +2158,23 @@ physiology.
   exists. This is a legal exposure, not a style preference: shipping an
   unlicensed real mark is a different category of mistake from shipping an ugly
   one, and it cannot be walked back by a patch.
+- **No federation transfer, paid or free, ever. RULED 2026-08-19, and the door
+  is closed rather than merely unbuilt.** A lifter's federation is chosen once
+  at career creation and is a `protected` progression fact. The reasoning,
+  recorded so a future session evaluating "add paid transfers" as a feature
+  finds the settled fight instead of reopening it: under GDD §6.6, region is
+  derived from the federation *specifically because* player-picked regions
+  invite region-shopping — qualifying against the weakest pool. **A federation
+  transfer is functionally an escape from an unfavorable regional pool, which
+  is region-shopping by another name**, and a *paid* one is that plus
+  pay-to-win: money changing which real opponents a lifter's results are
+  measured against. This build has had this fight three times — grants keyed
+  to training, the laundered-Chalk path, sponsor stat effects — and settled it
+  the same way each time: if a proposed feature touches the line, refuse and
+  explain. The chosen-once corner semantics (same-id confirm allowed, re-choice
+  refused, cross-id locked once results exist) were confirmed by the same
+  ruling and live in `src/game/careerServer.ts`'s guards.
+
 - **A sponsor does not buy a stat.** This is the pay-to-win rule applied to
   licensing, and it does not bend for a paying partner. Any branded or sponsored
   consumable is **cosmetic and flavor-only, mechanically identical to the
