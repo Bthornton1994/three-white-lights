@@ -253,7 +253,7 @@ const PINNED = Object.freeze({
    * `careerServer.ts`, `careerClient.ts` and `careerServer.test.ts` under
    * `src/game/`.
    */
-  SCANNED_FILES: 295,
+  SCANNED_FILES: 299,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -262,7 +262,12 @@ const PINNED = Object.freeze({
    * `tools/processHazardHook.test.ts`.
    */
   /** 91 -> 92 with Sprint 1a's `src/game/careerServer.test.ts`. */
-  TEST_FILES: 92,
+  /**
+   * 92 -> 93 with Sprint 1b's `src/meet/careerSurface.test.ts` (and
+   * SCANNED_FILES 295 -> 299 with its three shipped siblings:
+   * `careerSurface.ts`, `useCareer.ts`, `CareerScreen.tsx`).
+   */
+  TEST_FILES: 93,
 });
 
 /**
