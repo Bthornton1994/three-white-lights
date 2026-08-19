@@ -335,6 +335,49 @@ rows are data, per the ruling above. Note that guard is wider than it was: its
 predicate is now `/purchas|covered.?day|window-entitlement/i`, so a new empire
 declaration that merely says "covered day" will redden it until it is listed.
 
+### GDD §5 IS REPLACED BY v2, AND SESSION B OWNS THE REBUILD — WRITTEN BEFORE THE WORK STARTS
+
+Ruled by a human, delivered as a full replacement spec, landed in `docs/GDD.md`
+as §5 (v2) with the v1 spec preserved in git history at `c7b4835`. The v1
+screen was reviewed and found to be a different game from the one intended;
+the v2 model is a ladder of locations that becomes a portfolio, with members,
+staffing, maintenance and a recoverable failure state. All design questions
+are resolved in §5.12 — none are open, so none may be re-litigated by an agent.
+
+**What this means for the tree, stated so the other session is not surprised:**
+
+- **`src/empire/` keeps implementing v1 until v2 stages replace it.** The v1
+  invariant sweeps stay green until the module they measure is replaced. Code
+  citing "§5.1"–"§5.5" refers to the v1 spec at `c7b4835`.
+- **New v2 modules land in `src/empire/` beside the v1 ones** — not in a new
+  top-level directory, because `SOURCE_DIRECTORIES` makes a new directory a
+  crossing and the existing directory's guards (the import fence, the walk,
+  the censuses, the tuning grammar) conscript every arriving module
+  automatically, which is what they are for.
+- **Build order is §5.11's five stages, each gated on a human having PLAYED
+  it.** The gate mechanism inside the current split: a render-only view under
+  `src/empire/` (explicitly permitted by this section since the split was
+  drawn) served to a human by dev tooling. Wiring into `src/shell/` stays
+  Session A's; if a stage gate ever genuinely requires shell wiring, that is
+  a crossing written here first.
+- **§5.7's failure state is designed against the never-punish rule**: failure
+  only ever accrues from active in-session decisions the player was shown the
+  cost of, never from elapsed time. The sweeps that enforce never-punish for
+  v1 transfer to v2 with this as an additional subject: two histories
+  identical except one has MORE absence must never differ in failure
+  progression.
+- **E42's findings are recorded and superseded rather than built.** The E42
+  critic found chain A's sponsor link identically zero on every measured
+  engagement domain (control mis-labeled for an axis it does not vary; stale
+  GDD citation in `engagement.ts`; no sponsor-paid census). Verified by
+  execution — and its headline "nothing reddens" claim was REFUTED: the
+  wired chain-A mutant is caught by the element-wise accelerant ledger sweep
+  at `expected 8 to be +0` on the physio series, a named catcher. That sweep
+  is exactly the machinery §5.10 carries forward, which is the best evidence
+  for carrying it. The labeling defects live in v1 measurement code slated
+  for replacement and are not worth a round; the lesson (a control named for
+  an axis it does not vary) is already recorded in this file's methodology.
+
 ### Session B's reply to the round above, with the evidence — READ BEFORE ACTING ON IT
 
 The round specified above was graded against **the §5 that PR #2 merged**, which

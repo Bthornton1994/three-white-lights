@@ -1523,182 +1523,339 @@ What holds, and is what the design leans on:
 
 ---
 
-## 5. Gym Empire Specification
+## 5. Gym Empire Specification (v2)
 
-### 5.1 Loop
+**Status:** Design, ready for implementation scoping. Replaces the shipped §5
+entirely at the data-model level. **Written** after the v1 screen was reviewed
+and found to be a different game from the one intended. All design questions
+from the prior draft are resolved (§5.12).
 
-Time passes → resources generate → spend to expand → expand generates more.
-Check-in is 30–60 seconds: collect, queue an upgrade, maybe assign an NPC.
+**Implementation status.** `src/empire/` currently implements the PRIOR §5 —
+v1: one gym that levels up, subsections 5.1 Loop / 5.2 Production / 5.3 NPC
+Lifters / 5.4 Expansion Axes / 5.5 Social Layer — preserved verbatim in git
+history at `c7b4835`. Code and comments citing "§5.1"–"§5.5" refer to that
+spec. Stages land per §5.11; each stage replaces the v1 modules it supersedes,
+and the v1 invariant sweeps stay green until the module they measure is
+replaced.
 
-Standard offline-earnings cap so it rewards check-ins without punishing a
-10-hour gap.
+### 5.0 Why this replaces rather than extends
 
-### 5.2 Production
+The shipped §5 models **one gym that levels up**: one equipment ladder, one
+roster, one reputation number, one income stream. Every invariant, sweep and
+census in `src/empire/` is written against that shape.
 
-- **Gym Bucks** (soft currency) — base passive income
-- **Training IQ trickle** — keeps Idle connected to Sim progression
-- **NPC lifters** — each generates Bucks/IQ based on tier and tenure
+This spec models **a business you grow**: you start with almost nothing, you
+acquire and outgrow locations, you eventually hold several at once, and the
+place you train is a place you own and built.
 
-### 5.3 NPC Lifters — Flavor Only
+`EmpireState`'s shape does not survive that change. What survives is listed in
+§5.10 — and it is a lot, including every safety guarantee and the entire
+verification methodology.
 
-**Explicit design decision: no gacha.** No random pulls, no rarity chasing.
+**Non-goal for v1 of this spec:** anything social. Friends training with you is
+explicitly deferred (see §5.9). Nothing in the core loop may depend on it.
 
-- Recruited via flat Gym Bucks cost or reputation threshold. What you see is what
-  you get.
-- Output scales deterministically with gym tier + tenure/loyalty, not luck
-- Customization (name, appearance, singlet) is the collection hook
-- "Legendary lifter" tier exists but unlocks via reputation milestones, never
-  paid pulls
+### 5.1 The shape: a ladder that becomes a portfolio
 
-Rationale: gacha mechanics would draw predatory-monetization criticism from
-exactly the community whose word-of-mouth the game depends on.
+Both, in sequence. This is the answer to "progression or portfolio" — it is a
+ladder first, and the ladder's top rung lets you keep the lower ones by
+switching what "moving up" means.
 
-### 5.4 Expansion Axes
+**Phase 1 — The Ladder (early game).** You **outgrow** locations. Each move is
+a full relocation: you leave the old place behind.
 
-| Axis | Detail | Cross-mode hook |
+| Rung | Location | Feel |
 |---|---|---|
-| Equipment tiers | Bare bar → comp plates → specialty bars → monolift | Unlocks Sim-mode accessory options |
-| Space | More racks, platforms, NPC slots | Raises passive ceiling |
-| Staff | Coaches, spotters, physio | Physio reduces Sim injury duration |
-| Reputation | Attracts higher-tier NPCs, sponsorships | Sponsor money feeds Career economy |
+| 1 | **Garage** | A bar, some plates, a bench. No members. Nobody knows you. |
+| 2 | **Storage Unit** | Space for a rack. Two or three people pay you to train here. |
+| 3 | **Strip-Mall Unit** | A real address. Real members. Real rent. |
+| 4 | **Warehouse** | Room to specialise. This is where the game opens up. |
 
-**"Monolift" stays, and this is the ruling rather than an oversight.** A critic
-raised it as a possible §12.3 real-mark exposure and correctly declined to decide
-it, because §12.3's bar there is a legal judgement and not a measurable pattern —
-which is exactly the class of question this document sends to a human. Ruled by a
-human, on this reasoning:
+The ladder is **linear and one-way**. You do not run a garage and a warehouse
+simultaneously in phase 1 — you move, and the old space is gone.
 
-- It is **generic across federation rulebooks**, where it names a piece of
-  equipment rather than a maker, in the same way "power rack" or "deadlift bar"
-  does.
-- The word originated as a product name and is still claimed as a mark by at
-  least one manufacturer. That is the genuine ambiguity, and it is why the term
-  is **recorded here rather than left to be re-litigated** the next time somebody
-  greps for brand risk.
-- **No manufacturer is attached to it anywhere in the code.** The shipped value is
-  a bare equipment noun in a tier ladder — no logo, no wordmark, no maker, no
-  licensing slot. The §12.3 hazard the document is actually built around is
-  shipping a real *identity*: a name, logo, likeness or wordmark presented as a
-  real party's. Nothing here does that.
+**Phase 2 — The Portfolio (mid/late game).** At the Warehouse rung, the rule
+changes: **you stop moving and start acquiring.** The Warehouse becomes your
+**Home Gym** — permanently — and further locations are bought *in addition*.
 
-So this is not the licensing system's business and it does not go through §7.3's
-partner unlock. If a lawyer later disagrees, the fix is a rename of one string in
-one tier table and this table's cell — cheap, and much cheaper than the
-alternative of the term drifting into copy where it would read as an endorsement.
-**Do not "fix" it back to a generic on the initiative of a scan; the scan cannot
-see what was weighed here.**
+Acquired locations are managed, not inhabited: they generate income, hold
+members, and carry their own equipment, but **your lifter does not train
+there** (see §5.3). They also require real decisions (see §5.7) — they are not
+set-and-collect.
 
-**The gym keeps two books, and which one a rung is bought from is decided by what
-that rung reaches — RULED.** A rung whose output reaches Sim progression, or gates
-something that does — physio, space, spotter — and NPC recruitment are bought out
-of **wall-clock-earned** Gym Bucks. Equipment, coaches and cosmetics are bought
-out of the balance §8.3B's timer skips accelerate. This is §8.2's "Extra Covered
-Days from non-training-gated Chalk only" applied to this section: §5.4 says staff
-levels cost Gym Bucks and does not say *which* Gym Bucks, and the difference is
-the whole of §8.1 here.
+This split is the point. It keeps early game intimate and legible — one place,
+your place — and lets the late game be an empire without ever making the
+player choose which of eight gyms to walk into.
 
-*It is a measurement, not a preference.* Composed over a calendar and compared
-element-wise by wall-clock day — an aggregate will not do, per §4.4 — a single
-book gives **84 of 2616** physio readings moved and **32 of 128** physio arrival
-days moved, every one of them EARLIER, plus **1488 of 2616** Training IQ readings
-moved. Two books give **0** on all three, with the single-book engine kept
-runnable beside them as the control so the zeros are zeros against something.
-Earlier physio is a shorter setback is restored training pace, which is exactly
-what §8.3B calls the credibility line.
+### 5.2 The two things a gym produces
 
-*What a skip still buys, so the ruling is not read as wider than it is:* the build
-finishes now, the lifter is on the floor now, and the accelerated economy pays
-now. What it cannot buy is the next rung of a ladder that reaches Sim
-progression sooner.
+Every location produces two distinct outputs, and the tension between them is
+the core decision.
 
-**And the wall-clock book is itself a purse per capability, because two books
-were not enough — RULED.** Every empire output that reaches Sim progression or
-gates something that does — the Training IQ trickle, the physio hook, roster
-slots, reputation — has a fund of its own, and a purchase may only be made from
-the fund its own output names: §5.4's space and spotter rungs from the
-roster-slot fund, §5.4's physio rung from the physio fund, §5.3's recruits from
-the Training IQ fund. Each fund fills at the gym's baseline wall-clock line, so
-nothing fills more slowly than it did. What a player gives up is the ability to
-**concentrate**: you cannot save your recruiting money and pour it into physio,
-and you cannot skip a physio level to buy a lifter sooner. Each ladder advances
-on its own takings, on the wall clock, at the price the table publishes.
+**Money** — from members paying dues. Scales with member count, which scales
+with space and equipment quality. This is the business layer.
 
-*Why a third book, since two had just been ruled in.* While those four purchases
-shared one balance, the order they were offered in decided which of them got the
-money — and that order moved with how often the player opened the app. A player
-who checked in **more** could end with a **lower** Training IQ trickle than one
-who checked in less: **2954 of 24576** exhaustively enumerated pairs, 25772 days
-paid less, worst deficit 0.451 IQ/day. That is §12.3's "punishes a player for
-showing up", reached through the economy rather than through the streak.
+**Capability** — what your lifter can *do* there. Determined entirely by what
+equipment is present. This only applies to your Home Gym.
 
-*It is a property of the composition, not of one imagined player, and that was
-the measurement that forced this ruling rather than a smaller one.* §5 specifies
-costs, ceilings and outputs and never says when a player spends, so the count was
-re-taken under five distinct spending models. Every one was non-zero on at least
-one domain — 2954 / 2751 / 3427 rotating, fixed-order and costliest-first;
-10122 spending once a day. With a fund each, all of those are **0**, on every
-domain measured: the 24576-pair window, a 114688-pair enumerated grid, seeded
-20/40/60/100-day sweeps, and the extra-trained-day comparison. The single-purse
-engine is kept runnable beside them and pinned at its 2954, so the zeros are
-zeros against something.
+A commercial-grade cardio bank is excellent for money (members love it) and
+irrelevant to a powerlifter's total. A monolift is the reverse. **Every
+purchase is simultaneously a business decision and a training decision, and
+the optimal answer to each is usually a different piece of equipment.**
 
-*Two things this does NOT fix, recorded rather than rounded off.* Spending once
-per calendar day still measures **7245**, and the split cannot reach it: 7240 of
-those are an evening check-in moving the day's *decision moment* rather than its
-money, so a build started later finishes later whatever purse paid for it. The
-remaining **5** are the recruit price ladder — cost per unit of output rises
-strictly across the tiers (500 / 1250 / 3200 / 7500 / 13846), so a gym holding
-more money at one decision buys strictly *less* Training IQ per Buck. That is a
-pricing question for a tuning pass, not a funding one.
+That's the game.
 
-*And a tuning consequence a human should rule on separately:* because each fund
-fills at the full baseline line, total wall-clock income is roughly **three times**
-what it was, and physio now arrives on day 4 rather than day 7 at full
-attendance. Splitting the line into shares instead was tried and pushed physio
-past the measured window entirely. The safety property holds either way; which
-one *plays* better is a playtest question this document cannot settle.
+### 5.3 Where your lifter trains
 
-**The physio gate is exempt from the reputation gate, and that is the same rule
-rather than an exception to it.** No expansion axis whose output reaches Sim
-progression may be gated on reputation, because `REPUTATION_PER_CHECK_IN` makes
-reputation player-keyed — so a reputation gate on physio would put the wall-clock
-day a Sim setback shortens under the player's own schedule, which is §4.4's shape
-with a gate where the currency usually is. The ban is enforced **by reach, naming
-no axis**, so an axis that later acquires a progression-reaching output is caught
-by the same rule rather than needing a new one.
+**Always the Home Gym.** Never an acquired location.
 
-**The earned path is measured too, and this paragraph said the opposite for
-several waves after it stopped being true.** The chain is check-ins → reputation
-→ sponsor Gym Bucks → the wall-clock day a physio level arrives. It is not
-purchasable, so it is not §8.1, but "more engagement only ever helps" is the
-argument §4.4 records as a reason to measure rather than a substitute for
-measuring — so it was measured, by varying the **training schedule** and holding
-the purchase fixed, which is the opposite independent variable to every sweep
-above.
+This is a deliberate simplification with real payoff:
 
-Result, on the gym the player actually has: the physio half is **0 later
-arrivals of 24576** exhaustively enumerated pairs, worst deficit 0 days, and the
-extra-trained-day comparison is byte-identical at **0 of 1800** elements. The
-Training IQ half was **not** zero — 2954 of 24576, worst deficit 0.451 IQ/day —
-and that measurement is what forced the third-book ruling above; it is 0 now.
-Beside them, non-zero on purpose: re-connecting the chain by funding the ladder
-from the accelerated purse gives **263 later physio arrivals**, so the zeros are
-zeros against something.
+- It avoids a "which gym today?" menu that would be tedious daily friction.
+- It makes the Home Gym's equipment loadout personal and load-bearing — you
+  built this room, and it's the room you lift in.
+- It cleanly separates the two layers: **Home Gym = capability + income.
+  Acquired locations = income only, managed remotely.**
 
-*Kept as a correction rather than a silent edit, because the failure is the
-interesting part.* This paragraph read "still unmeasured … no evidence either
-way" while the sweep that closed it was already in the tree and pinned, and the
-same §5.4 section contradicted itself thirty lines apart. CLAUDE.md's opening
-rule is that a sentence written while the code was true keeps its confident tone
-after the code moves; the sentence here was written one wave before the
-measurement existed and was not revisited when it arrived.
+Acquired locations still matter enormously — they fund the Home Gym, and
+neglecting them has real consequences (see §5.7).
 
-### 5.5 Social Layer
+### 5.4 Equipment: capability gates activity
 
-- Gym leaderboards (regional / global) by reputation or combined lifter totals
-- Visit friends' gyms — browse, leave encouragement. No real-time infra needed.
-- Weekly rival gym comparison (AI or real player), small reward for beating them
+Equipment is grouped by what it unlocks, not by a single quality ladder.
 
+| Group | Example items | Unlocks |
+|---|---|---|
+| **Barbell** | bar, plates, rack, platform, monolift | Squat / Bench / Deadlift — the competition lifts |
+| **Accessory** | dumbbells, cables, machines | Hypertrophy work (folded into the flexible pool — §5.5) |
+| **Conditioning** | bike, rower, sled, treadmill | Cardio |
+| **Recovery** | mats, bands, foam rollers, sauna | Mobility / stretching / yoga |
+| **Support** | chalk bowl, belts, sleeves, specialty bars | Modifiers to the above |
+
+Each item carries three numbers: **cost**, **member appeal** (money), and
+**capability** (what it unlocks or improves). A fourth applies to every item
+regardless of type: **condition**, which decays over time (see §5.7).
+
+**Design rule:** no single item should be best at both money and capability.
+If an item is the top money choice *and* the top training choice, its numbers
+are wrong.
+
+### 5.5 Sessions: a guaranteed base plus a real choice
+
+**Four powerlifting sessions per week are fixed and guaranteed** — they do not
+compete with anything else for a slot. This means total growth never stalls
+because a player forgot to program strength work; the core loop of "get
+stronger" always has a home.
+
+**Beyond those four, the player allocates 3 additional sessions per week** —
+7 total, matching a real training week — across cardio, hypertrophy,
+stretching, yoga, and other recovery modalities. These affect:
+
+| Activity | Requires | Primary effect |
+|---|---|---|
+| **Cardio** | Conditioning equipment | Raises recovery rate — fatigue clears faster between sessions |
+| **Hypertrophy** | Accessory equipment | Raises the *ceiling* e1RM can grow toward. Slow, compounding — folded into the flexible pool rather than kept as a separate fixed track. |
+| **Stretching / Yoga** | Recovery equipment | Reduces injury risk; improves technique quality at depth |
+| **Other recovery modalities** | Recovery equipment, higher tiers | Compounding, slower effects — detail TBD |
+
+Three sessions across four-plus competing uses is the actual allocation
+puzzle: a player chasing a faster total-growth ceiling trades off against
+recovery capacity and injury risk, and there's rarely room to do all of it in
+one week.
+
+**Constraint carried forward from the current build, non-negotiable:** none of
+this may be purchasable. Accelerated or purchased currency must never buy a
+training outcome — the wall-clock/accelerated funding split applies unchanged
+(see §5.10).
+
+### 5.6 Members: not a number
+
+Members are the business layer's life, and they push back.
+
+**They generate income.** Dues scale with count and satisfaction.
+
+**They have satisfaction**, driven by: equipment-to-member ratio (crowding),
+equipment **condition** (see §5.7 — a decayed gym repels members before it
+fails outright), and whether the gym has what they came for. Unhappy members
+leave, and leaving is visible — the count drops and you have to find out why.
+This relationship is identical at the Home Gym — the player's constant
+presence does not soften it. A neglected Home Gym loses members exactly as an
+acquired location would.
+
+**They have types**, and the mix is a consequence of what you built:
+
+| Type | Attracted by | Pays | Quirk |
+|---|---|---|---|
+| **Casual** | Cardio, machines, clean space | Low, reliable | Leaves fastest when crowded |
+| **Bodybuilder** | Dumbbells, cables, mirrors | Medium | Occupies equipment for a long time |
+| **Powerlifter** | Racks, platforms, specialty bars | Medium | Raises gym **reputation** fastest |
+| **Athlete** | Conditioning, open space, sleds | High | Seasonal — leaves and returns |
+| **Serious Lifter** | A bit of everything, good condition | High | Slow to arrive, very slow to leave |
+
+**Reputation** is earned mostly by powerlifter and serious-lifter members, and
+by your own competition results. It gates: what sponsorship deals you're
+offered, which locations you can acquire, and the arrival rate of the
+high-paying member types.
+
+**Design intent:** the member mix should be a *readable consequence* of your
+equipment choices, so a player looking at their roster can tell what kind of
+gym they've accidentally built.
+
+### 5.7 Active management: staffing, maintenance, and failure
+
+This is the section that makes acquired locations a real system rather than a
+number that goes up. It is also the section with a hard constraint that
+overrides convenience: **nothing here may punish the player for being away.**
+That rule is absolute elsewhere in this build (CLAUDE.md, Hard Design
+Constraints) and applies here with full force.
+
+**Staffing.** Acquired locations need a manager — you are not there. Managers
+are hired, not generated:
+
+- **Cost** to hire, and an ongoing wage.
+- **Quality**, which affects how well the location runs unattended: a bad
+  manager lets condition decay faster and mishandles member complaints; a good
+  manager actively maintains satisfaction and flags problems.
+- The Home Gym **never needs a manager** — you run it yourself, in person.
+
+Staffing is a genuine tradeoff: the cheap manager is cheap, and it costs you
+later.
+
+**Maintenance and condition decay.** Every piece of equipment, everywhere
+including the Home Gym, has a **condition** that decays continuously and
+**auto-deducts from income** as it falls — no player action is required for
+decay to happen or to matter.
+
+Reversing it requires an explicit **repair decision**: spend money to restore
+condition. At acquired locations, a good manager can handle routine repairs
+autonomously (see Staffing); a bad one won't, and it piles up.
+
+**Failure — and the rule that shapes it.** A location can fail. This is real,
+and it's the stakes this whole system exists to create. But it must fail for
+the right reason.
+
+**Failure is driven by accumulated bad *decisions* made while the player was
+actively engaged with that location — never by elapsed time or by the player
+simply not opening the app.** Concretely: repeatedly hiring the cheapest
+available manager despite visible warning signs, ignoring an in-session
+maintenance prompt more than once, or actively declining a repair you were
+shown and told the cost of. A location does not decay toward failure on a
+background clock while you're gone; it decays toward failure because of
+choices you made and were told the consequences of.
+
+**Confirmed.** Active decisions only, never elapsed time — this is settled
+design, not a proposal.
+
+**Failure is recoverable.** A failed location goes dormant — income stops,
+condition keeps degrading, members leave — but the asset itself isn't gone. A
+sufficient recovery effort (staffing turnaround, a real repair investment)
+brings it back online. This keeps the stakes real without creating a
+permanent, un-appealable loss from what could still be a single bad stretch of
+decisions.
+
+### 5.8 Sponsorships
+
+Reputation unlocks equipment-manufacturer sponsorships. A sponsor provides
+discounted or free equipment of their type, in exchange for their branding
+appearing in your gym.
+
+**All manufacturers are fictional.** This is not a stylistic choice — the
+project has a hard rule against real brand names in shipped source
+(`realIp.ts`, and the naming work that produced Cragmoor and Orrenford). Real
+manufacturer names require actual licensing agreements and are a business
+conversation, not a design one.
+
+**Architecture requirement:** the sponsor system must be data-driven such that
+a fictional manufacturer could be swapped for a licensed real one by changing
+data, never code. That keeps the door open without betting on it.
+
+Sponsors should have personality — a boutique Scandinavian-feeling brand whose
+bars are excellent and expensive, a bulk commercial supplier whose machines
+members love and lifters don't, a scrappy domestic brand with great value and
+inconsistent quality. Choosing a sponsor should feel like choosing an identity
+for your gym.
+
+### 5.9 Deferred: social
+
+Friends training in your gym is **explicitly out of scope** for this spec.
+
+It requires real accounts, shared state, and a backend that does not exist
+(V1 is still "shaped for Edge Functions," unbuilt).
+
+**Design constraint so it can arrive later without a rewrite:** the Home Gym
+must be able to hold a list of *present lifters* that is not the member roster
+— NPCs today, real friends later. Nothing in the core loop may read that list
+as required input.
+
+### 5.10 What survives from the shipped §5
+
+This is a data-model replacement, not a bonfire. Carried forward intact:
+
+**All safety guarantees.** The wall-clock/accelerated funding split, the
+"never sell power" constraint, currency provenance, the rule that purchased
+currency cannot buy training progression. These are properties of *how value
+flows*, not of how many gyms exist, and they apply with more force here — a
+portfolio generating income is a bigger attack surface than a single gym.
+
+**The offline-earnings cap, now aggregate.** The cap and fraction apply once,
+across the whole portfolio, via a single wall-clock timer rather than one per
+location — fed by *summed* production across everything owned. This is a
+genuine simplification with a real bonus: the existing capped-catch-up
+implementation, already adversarially hardened across many rounds, is reused
+almost unchanged. It only needs to read a portfolio-wide production sum
+instead of one gym's rate — the mechanism itself doesn't need to be rebuilt or
+re-proven from scratch.
+
+**The economic primitives.** Production accrual, tier-based output scaling,
+deterministic recruitment cost.
+
+**The entire verification methodology.** The domain-family rules, the
+witness/domain principle, Form That Survived, the isolation discipline, the
+grammar-over-reflection reformulation. None of it is tied to one gym. All of
+it applies to the new model, and it is the reason a rebuild is cheaper than
+the original build was.
+
+**What does not survive:** `EmpireState`'s shape. It models one gym's stats.
+This needs a portfolio of locations each with their own state, a Home Gym
+concept, and a member/staffing/maintenance simulation that doesn't currently
+exist.
+
+### 5.11 Build order
+
+Deliberately sequenced so each stage is playable before the next begins — the
+failure this spec exists to correct was building a large system that was never
+playable at any point.
+
+1. **The ladder, minimal.** Four rungs, relocation, money accumulating, one
+   equipment group. Playable: you can move up.
+2. **Sessions and equipment groups.** Capability gating, the fixed four plus
+   the flexible pool, attribute effects wired into the existing fatigue model.
+   Playable: the training/business tension exists.
+3. **Members with types and satisfaction.** The business layer becomes a
+   simulation rather than a rate. Playable: your gym has a character.
+4. **The portfolio, with staffing and maintenance.** Acquisition, per-location
+   management, condition decay, the failure state. Playable: it's an empire,
+   and it has real stakes.
+5. **Sponsorships.** Fictional manufacturers, reputation gating, identity.
+
+**Gate between each stage: it must be playable, and a human must have played
+it.** That is the specific thing that went wrong the first time — five rounds
+of grading a screen nobody could play.
+
+### 5.12 Design questions — all resolved
+
+All open items from the prior draft are settled:
+
+- **Hypertrophy:** folded into the 3-session flexible pool (§5.5).
+- **Flexible sessions:** 3, beyond the fixed 4 — 7 total (§5.5).
+- **Failure-state trigger:** confirmed as active decisions only, never
+  elapsed time (§5.7).
+- **Failure severity:** recoverable, not permanent (§5.7).
+- **Home Gym decay/satisfaction:** identical relationship to an acquired
+  location; player presence does not soften it (§5.6).
+
+No open design questions remain. This spec is ready to move to implementation
+scoping.
 ---
 
 ## 6. Meet Day
