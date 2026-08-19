@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece career-wiring
-generated 2026-08-19T02:21:31.123Z
-repo /home/user/wt-career-wiring
-commit c48f8aa645bba79db1ee6ffe5ba05373635cbcfd
+generated 2026-08-19T06:03:47.063Z
+repo /home/user/three-white-lights
+commit 2d31de9b54d946a89ab6eb8060c7154cb43259b9
 working tree clean (ignoring only this script's own output and .gauntlet/state.json)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -52,22 +52,22 @@ reads. tools/treeIdentity.test.ts pins that control flow; tools/treeIdentity.mjs
 states what the identity covers and what it explicitly cannot see.
 
 ======================================================================
-$ npx vitest run src/career src/game/careerServer.test.ts src/game/progression.test.ts src/session/localSessionServer.test.ts src/shell/shellWiring.test.ts --reporter=verbose
+$ npx vitest run src/career src/game/careerServer.test.ts src/game/progression.test.ts src/session/localSessionServer.test.ts src/shell/shellWiring.test.ts src/shell/shellRoute.test.ts src/meet/careerSurface.test.ts src/meet/careerCalendarPlaceholder.test.ts --reporter=verbose
 [tests] exit code: 0
 ======================================================================
 
- RUN  v4.1.10 /home/user/wt-career-wiring
+ RUN  v4.1.10 /home/user/three-white-lights
 
- ✓ src/career/eligibility.test.ts > qualifying totals > an open tier is cleared by a lifter who has never competed 3ms
- ✓ src/career/eligibility.test.ts > qualifying totals > a gated tier is not cleared without a total 0ms
+ ✓ src/career/eligibility.test.ts > qualifying totals > an open tier is cleared by a lifter who has never competed 2ms
+ ✓ src/career/eligibility.test.ts > qualifying totals > a gated tier is not cleared without a total 4ms
  ✓ src/career/eligibility.test.ts > qualifying totals > the bar is made, not beaten: exactly the qualifying total qualifies 0ms
  ✓ src/career/eligibility.test.ts > qualifying totals > tiers open as the total rises, and never close 1ms
  ✓ src/career/eligibility.test.ts > qualifying totals > refuses a total that is not a finite number 0ms
  ✓ src/career/eligibility.test.ts > qualifying totals > another federation’s meet is not qualified for at any total 0ms
  ✓ src/career/eligibility.test.ts > entry verdicts > opens for a lifter of the right federation on or before the day 0ms
  ✓ src/career/eligibility.test.ts > entry verdicts > refuses the day after, and that is the boundary 1ms
- ✓ src/career/eligibility.test.ts > entry verdicts > refuses a meet already competed at 1ms
- ✓ src/career/eligibility.test.ts > entry verdicts > refuses a tier the total does not reach 0ms
+ ✓ src/career/eligibility.test.ts > entry verdicts > refuses a meet already competed at 5ms
+ ✓ src/career/eligibility.test.ts > entry verdicts > refuses a tier the total does not reach 1ms
  ✓ src/career/eligibility.test.ts > entry verdicts > every refusal carries the sentence its own reason is keyed to 1ms
  ✓ src/career/eligibility.test.ts > entry verdicts > the refusal order is the one the header states, walked to the bottom of the chain 1ms
  ✓ src/career/eligibility.test.ts > the enterable list > a new lifter sees every local meet in the horizon and nothing else 2ms
@@ -78,49 +78,53 @@ $ npx vitest run src/career src/game/careerServer.test.ts src/game/progression.t
  ✓ src/career/eligibility.test.ts > the career record after a meet > refuses a total that is not a finite number 0ms
  ✓ src/career/eligibility.test.ts > the career record after a meet > a bomb-out spends the entry and moves no total 1ms
  ✓ src/career/eligibility.test.ts > the career record after a meet > eligibility reads exactly three facts about a lifter, and none is a balance 0ms
- ✓ src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for fewer meets > [strength-never-removes-a-meet] every ordered pair on the grid, and the control beside it 260ms
- ✓ src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for fewer meets > qualification does not read the meets a lifter has already competed at 103ms
+ ✓ src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for fewer meets > [strength-never-removes-a-meet] every ordered pair on the grid, and the control beside it 233ms
+ ✓ src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for fewer meets > qualification does not read the meets a lifter has already competed at 104ms
  ✓ src/shell/shellWiring.test.ts > the scans can see what they are looking for > strips comments and keeps code 2ms
  ✓ src/shell/shellWiring.test.ts > the scans can see what they are looking for > the files it reads are the real ones 1ms
- ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > renders the session, meet, and Empire surfaces — the join is in one file 1ms
+ ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > renders the session, meet, Empire and Career surfaces — the join is in one file 17ms
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > the two screens still know nothing about each other 1ms
- ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > drives the route through `navigate`, rather than setting a surface by hand 2ms
+ ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > drives the route through `navigate`, rather than setting a surface by hand 1ms
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > forgets the destination’s beat on the way in, so no stale control flashes 0ms
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > the screens actually REPORT their beat, rather than only accepting the prop 0ms
- ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > asks `shellAffordanceFor` when to draw a control, and draws only that 3ms
- ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > tells the gate whether a GDD §7.2 cut-in is up, and is told by the hosts 2ms
+ ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > asks `shellAffordanceFor` when to draw a control, and draws only that 0ms
+ ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > tells the gate whether a GDD §7.2 cut-in is up, and is told by the hosts 3ms
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > the `?cutin=` debug route is resolved from the shell, not from `window` 1ms
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > gives the meet its way out — GDD §6.5 ends somewhere 0ms
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > the way out is a route, not a page reload 1ms
  ✓ src/shell/shellWiring.test.ts > the shell is the join, and it is the only one > App.tsx is the platform edge and nothing else 0ms
- ✓ src/shell/shellWiring.test.ts > the browser’s URL actually reaches the route graph > CONTROL: the analyser sees the hand-off, and sees it go missing 4ms
- ✓ src/shell/shellWiring.test.ts > the browser’s URL actually reaches the route graph > CONTROL: the walk covers the whole repository, not just src/ 4ms
- ✓ src/shell/shellWiring.test.ts > the browser’s URL actually reaches the route graph > EVERY file in the repository that mounts the shell hands it the URL 481ms
+ ✓ src/shell/shellWiring.test.ts > the browser’s URL actually reaches the route graph > CONTROL: the analyser sees the hand-off, and sees it go missing 3ms
+ ✓ src/shell/shellWiring.test.ts > the browser’s URL actually reaches the route graph > CONTROL: the walk covers the whole repository, not just src/ 5ms
+ ✓ src/shell/shellWiring.test.ts > the browser’s URL actually reaches the route graph > EVERY file in the repository that mounts the shell hands it the URL 442ms
  ✓ src/career/eligibility.test.ts > AXIS A — a higher best Total never qualifies for fewer meets > the grid is ordered, so pair order is total order 6ms
- ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > [attending-a-meet-never-removes-one] every skipped meet in every seeded season, and the control beside it 3336ms
- ✓ src/shell/shellWiring.test.ts > the browser’s URL actually reaches the route graph > and the file that does is one the app actually boots into 2573ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > [attending-a-meet-never-removes-one] every skipped meet in every seeded season, and the control beside it 2709ms
+ ✓ src/shell/shellWiring.test.ts > the browser’s URL actually reaches the route graph > and the file that does is one the app actually boots into 2188ms
  ✓ src/shell/shellWiring.test.ts > every screen the shell mounts reports its beat > CONTROL: the discovery sees a screen, and both detectors see their subject go missing 2ms
  ✓ src/shell/shellWiring.test.ts > every screen the shell mounts reports its beat > EVERY screen the shell mounts is DISCOVERED, and the census pins how many 13ms
- ✓ src/shell/shellWiring.test.ts > every screen the shell mounts reports its beat > AND EVERY ONE OF THEM CALLS IT — a screen that accepts the beat and drops it is a dead end 16ms
+ ✓ src/shell/shellWiring.test.ts > every screen the shell mounts reports its beat > AND EVERY ONE OF THEM CALLS IT — a screen that accepts the beat and drops it is a dead end 11ms
  ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > CONTROL: the tracer sees the provenance, and sees it go missing 3ms
- ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > EVERY reading the floor draws traces to the pure constructor, not to chrome copy [every-drawn-empire-reading-comes-from-the-pure-state] 550ms
- ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > each row draws the reading its label names [each-empire-row-draws-the-reading-its-label-names] 616ms
- ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > and no reading the floor computes is painted nowhere 494ms
- ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > and it is the ONLY screen the shell mounts that reaches into the pure module 257ms
+ ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > EVERY reading the floor draws traces to the pure constructor, not to chrome copy [every-drawn-empire-reading-comes-from-the-pure-state] 494ms
+ ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > each row draws the reading its label names [each-empire-row-draws-the-reading-its-label-names] 448ms
+ ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > and no reading the floor computes is painted nowhere 417ms
+ ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > and it is the ONLY screen the shell mounts that reaches into the pure module 224ms
  ✓ src/shell/shellWiring.test.ts > the numbers on GDD §5’s floor come from GDD §5’s own module > CONTROL: the census walker follows a shell hop, and stops when the hop is cut 1ms
- ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > CONTROL: the callback reader finds a body, and reports a missing one as missing 1ms
- ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > mounts every persistent surface and hides the one that is not on screen 8ms
+ ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > CONTROL: the callback reader finds a body, and reports a missing one as missing 0ms
+ ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > mounts every persistent surface and hides the one that is not on screen 1ms
+ ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > CONTROL: the Career mount-flag pin bites on the same two axes as Empire’s 0ms
  ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > CONTROL: the mount-flag pin reads the half of the condition that IS the mechanism 0ms
- ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > does not forget the beat of a surface that never un-mounted 0ms
+ ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > does not forget the beat of a surface that never un-mounted 1ms
  ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > a persistent surface whose beat IS forgotten re-reports when it becomes active 1ms
+ ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > the Career surface re-reports on activation, and the shell tells it which surface is up 1ms
  ✓ src/shell/shellWiring.test.ts > the Empire round trip keeps both of its surfaces > the floor stops its clock while nobody is looking, and catches up when they are 0ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > the app has ONE session-server connection, and asking twice returns it 1ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > it really is a session-server port and not a stub 0ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > THE MEET PORT AND THE SESSION PORT ARE THE SAME OBJECT [one-row-behind-one-port] 0ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > and it really is a meet-server port, so the identity above is not two stubs 0ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > THE CAREER PORT IS THE SAME OBJECT AS BOTH, so the third mode reads the same lifter 0ms
- ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > a federation confirmed through the career half is on the snapshot the session half opens 554ms
- ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > a meet recorded through it is visible to the session half, on one row [a-meet-total-reaches-the-session-half] 611ms
+ ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > a federation confirmed through the career half is on the snapshot the session half opens 553ms
+ ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > the Career SCREEN is wired to that port, through the cache machinery, not around it 1ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > reaches a current-form rule that waits, and reports two different kinds of zero past it 4576ms
+ ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > a meet recorded through it is visible to the session half, on one row [a-meet-total-reaches-the-session-half] 612ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > the port is memoised at module scope, not in a component 1ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > the shell hands that port to the session, rather than letting it build one 0ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > and hands the meet one too, which it did not before 0ms
@@ -128,35 +132,34 @@ $ npx vitest run src/career src/game/careerServer.test.ts src/game/progression.t
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > SessionScreen forwards the port to the hook instead of dropping it 0ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > the already-trained surface is still there and still gated on the server’s answer 0ms
  ✓ src/shell/shellWiring.test.ts > navigating away and back cannot buy a second session of the day > AND IT RENDERS ON THE `check-in` BEAT, so the shell’s pill is on it too 0ms
- ✓ src/shell/shellWiring.test.ts > the shell is a router, not a screen > CONTROL: the shell’s file set is WALKED, and the three scans below can see what they forbid 3ms
+ ✓ src/shell/shellWiring.test.ts > the shell is a router, not a screen > CONTROL: the shell’s file set is WALKED, and the three scans below can see what they forbid 2ms
  ✓ src/shell/shellWiring.test.ts > the shell is a router, not a screen > steps no state machine and reads no progression fact, in EVERY file of the shell 1ms
- ✓ src/shell/shellWiring.test.ts > the shell is a router, not a screen > cannot reach the hidden fatigue ledger, in EVERY file of the shell — GDD §3.4, §12.3 1ms
+ ✓ src/shell/shellWiring.test.ts > the shell is a router, not a screen > cannot reach the hidden fatigue ledger, in EVERY file of the shell — GDD §3.4, §12.3 2ms
  ✓ src/shell/shellWiring.test.ts > the shell is a router, not a screen > shows no Total anywhere in its chrome, in EVERY file of the shell — GDD §3.2, §6.4 1ms
  ✓ src/shell/shellWiring.test.ts > the shell is a router, not a screen > holds no bare feel value — every one is in the registered tuning module 0ms
  ✓ src/shell/shellWiring.test.ts > the capture harness still has its four query strings > the shell resolves the launch URL through the pure module 0ms
  ✓ src/shell/shellWiring.test.ts > the capture harness still has its four query strings > and hands every frozen field to the screen that draws it 0ms
- ✓ src/shell/shellWiring.test.ts > the capture harness still has its four query strings > the tools that depend on them name the strings this app parses 1ms
- ✓ src/career/careerPurity.test.ts > the career directory is fenced as a whole, not file by file > has shipped modules to scan, so the scans below are not empty 3ms
+ ✓ src/shell/shellWiring.test.ts > the capture harness still has its four query strings > the tools that depend on them name the strings this app parses 0ms
+ ✓ src/career/careerPurity.test.ts > the career directory is fenced as a whole, not file by file > has shipped modules to scan, so the scans below are not empty 2ms
  ✓ src/career/careerPurity.test.ts > the career directory is fenced as a whole, not file by file > ships no sibling extension the .ts filter would not open 1ms
  ✓ src/career/careerPurity.test.ts > the career directory is fenced as a whole, not file by file > pins allowed specifiers for every shipped module, not a subset 1ms
- ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > reads every shipped file and matches the pin exactly 221ms
- ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > reaches a current-form rule that waits, and reports two different kinds of zero past it 5706ms
- ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > ships no namespace import, so a sibling let cannot hide behind import * 121ms
- ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > names progression in no specifier, even if a pin were widened 88ms
- ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > only the sweep may reach the generator, and it reaches it by the pinned specifier 49ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > reads every shipped file and matches the pin exactly 161ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > ships no namespace import, so a sibling let cannot hide behind import * 43ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > names progression in no specifier, even if a pin were widened 40ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > only the sweep may reach the generator, and it reaches it by the pinned specifier 48ms
  ✓ src/game/progression.test.ts > purity > reads no clock, no randomness and no network 3ms
  ✓ src/game/progression.test.ts > purity > names every permanent fact in the unit sweep, so the sweep cannot be scoped 1ms
- ✓ src/game/progression.test.ts > purity > scans the whole project, not just src/ 9420ms
- ✓ src/game/progression.test.ts > purity > leaves no TypeScript file in the repository out of the scanned set 6ms
- ✓ src/game/progression.test.ts > purity > names every route into permanent progression in §7.5, derived from the type checker 1ms
+ ✓ src/game/progression.test.ts > purity > scans the whole project, not just src/ 8171ms
+ ✓ src/game/progression.test.ts > purity > leaves no TypeScript file in the repository out of the scanned set 5ms
+ ✓ src/game/progression.test.ts > purity > names every route into permanent progression in §7.5, derived from the type checker 7ms
  ✓ src/game/progression.test.ts > purity > names no route in §7.5 that no longer exists 1ms
- ✓ src/game/progression.test.ts > purity > names a runtime freeze witness for every §7.5 route [every-shipped-route-observes-its-seal] 228ms
- ✓ src/game/progression.test.ts > purity > seals every record and wire §7.5 finds in shipped code [every-shipped-route-is-sealed] 0ms
- ✓ src/game/progression.test.ts > purity > rules test fixtures out of §7.5 rather than matching none of them 428ms
+ ✓ src/game/progression.test.ts > purity > names a runtime freeze witness for every §7.5 route [every-shipped-route-observes-its-seal] 246ms
+ ✓ src/game/progression.test.ts > purity > seals every record and wire §7.5 finds in shipped code [every-shipped-route-is-sealed] 1ms
+ ✓ src/game/progression.test.ts > purity > rules test fixtures out of §7.5 rather than matching none of them 314ms
  ✓ src/game/progression.test.ts > purity > drops from the sweep exactly the files vitest runs 1ms
  ✓ src/game/progression.test.ts > purity > lets no file the sweep covers import one it drops 1ms
  ✓ src/game/progression.test.ts > purity > counts routes from parsed code, so a sentence about one is not one 1ms
- ✓ src/game/progression.test.ts > purity > lets no file the project compiles assemble an object reflectively, except by name 53ms
+ ✓ src/game/progression.test.ts > purity > lets no file the project compiles assemble an object reflectively, except by name 66ms
  ✓ src/game/progression.test.ts > purity > sweeps every non-test file the project compiles, with no import check in the way 1ms
  ✓ src/game/progression.test.ts > purity > mints server truth in exactly one place 1ms
  ✓ src/game/progression.test.ts > purity > mints the in-flight pairing in exactly one place 1ms
@@ -183,13 +186,13 @@ $ npx vitest run src/career src/game/careerServer.test.ts src/game/progression.t
  ✓ src/game/progression.test.ts > nothing purchasable reaches performance > gives every proposal kind an origin, from one map 0ms
  ✓ src/game/progression.test.ts > nothing purchasable reaches performance > derives the purchasable set from that map rather than restating it 0ms
  ✓ src/game/progression.test.ts > nothing purchasable reaches performance > keeps every purchase-originated proposal off the protected facts 0ms
- ✓ src/game/progression.test.ts > nothing purchasable reaches performance > names purchase evidence that real reports carry and earned reports do not 0ms
- ✓ src/game/progression.test.ts > nothing purchasable reaches performance > walks every exported report allowlist, nested ones included 0ms
+ ✓ src/game/progression.test.ts > nothing purchasable reaches performance > names purchase evidence that real reports carry and earned reports do not 1ms
+ ✓ src/game/progression.test.ts > nothing purchasable reaches performance > walks every exported report allowlist, nested ones included 1ms
  ✓ src/game/progression.test.ts > nothing purchasable reaches performance > lets no proposal at all move a fact that means training pace 0ms
  ✓ src/game/progression.test.ts > nothing purchasable reaches performance > lets earned proposals move the facts a purchase may not 0ms
  ✓ src/game/progression.test.ts > nothing purchasable reaches performance > offers no entitlement effect that touches a lift 0ms
- ✓ src/game/progression.test.ts > nothing purchasable reaches performance > sells no convenience that speeds up training 0ms
- ✓ src/game/progression.test.ts > nothing purchasable reaches performance > keeps every cosmetic slot cosmetic 0ms
+ ✓ src/game/progression.test.ts > nothing purchasable reaches performance > sells no convenience that speeds up training 3ms
+ ✓ src/game/progression.test.ts > nothing purchasable reaches performance > keeps every cosmetic slot cosmetic 1ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > lets only a proposal that carries a meet move the Total 0ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > does not let a training session move the Total 0ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > still lets a meet result move the Total 0ms
@@ -197,11 +200,11 @@ $ npx vitest run src/career src/game/careerServer.test.ts src/game/progression.t
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > refuses a training session whose projection claims a Total 0ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > accepts the same projected Total from a meet result 0ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > lets a training session project the number a session actually moves 0ms
- ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > checks every kind against every projectable fact, in both directions 3ms
- ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > lets every kind claim nothing 1ms
+ ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > checks every kind against every projectable fact, in both directions 2ms
+ ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > lets every kind claim nothing 0ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > keeps the compile-time half of the claim in the source 1ms
  ✓ src/game/progression.test.ts > a Total is set at a meet and nowhere else > keeps the compile-time half of the PROJECTION claim in the source too 1ms
- ✓ src/game/progression.test.ts > receiveProgressionSnapshot > turns a wire payload into server truth 1ms
+ ✓ src/game/progression.test.ts > receiveProgressionSnapshot > turns a wire payload into server truth 0ms
  ✓ src/game/progression.test.ts > receiveProgressionSnapshot > carries a bomb-out as null, not as a total of zero 0ms
  ✓ src/game/progression.test.ts > receiveProgressionSnapshot > brands a stored bodyweight like every other number on server truth 0ms
  ✓ src/game/progression.test.ts > receiveProgressionSnapshot > refuses a zero or negative total rather than storing it 0ms
@@ -232,12 +235,12 @@ $ npx vitest run src/career src/game/careerServer.test.ts src/game/progression.t
  ✓ src/game/progression.test.ts > the cache as a cache of server truth > has nothing to make stale before the first read 0ms
  ✓ src/game/progression.test.ts > the cache as a cache of server truth > refuses a malformed proposal and a malformed projection 0ms
  ✓ src/game/progression.test.ts > readings > reports every fact through the same four-state shape 0ms
- ✓ src/game/progression.test.ts > readings > projects per-lift and per-currency independently 1ms
+ ✓ src/game/progression.test.ts > readings > projects per-lift and per-currency independently 0ms
  ✓ src/game/progression.test.ts > readings > never projects a meet result 0ms
  ✓ src/game/progression.test.ts > readings > lets a renderer tell truth from a guess 0ms
  ✓ src/game/progression.test.ts > readings > returns null for a value nobody has yet 0ms
  ✓ src/game/progression.test.ts > a client cannot mint server truth > will not accept a bare number as a confirmed total 0ms
- ✓ src/game/progression.test.ts > a client cannot mint server truth > will not accept a locally estimated e1RM as a confirmed one 0ms
+ ✓ src/game/progression.test.ts > a client cannot mint server truth > will not accept a locally estimated e1RM as a confirmed one 1ms
  ✓ src/game/progression.test.ts > a client cannot mint server truth > will not accept an officially-minted total as a confirmed one either 0ms
  ✓ src/game/progression.test.ts > a client cannot mint server truth > will not accept a hand-built object as a snapshot 0ms
  ✓ src/game/progression.test.ts > a client cannot mint server truth > will not let a wire payload into the cache without the mint 0ms
@@ -254,7 +257,7 @@ $ npx vitest run src/career src/game/careerServer.test.ts src/game/progression.t
  ✓ src/game/progression.test.ts > a projection cannot claim what its proposal cannot move > will not let a training session project a Total 0ms
  ✓ src/game/progression.test.ts > a projection cannot claim what its proposal cannot move > will not let a meet result project a streak 0ms
  ✓ src/game/progression.test.ts > a projection cannot claim what its proposal cannot move > will not let a Recovery Day project an e1RM 0ms
- ✓ src/game/progression.test.ts > a projection cannot claim what its proposal cannot move > will not let an unnarrowed proposal claim anything at all 0ms
+ ✓ src/game/progression.test.ts > a projection cannot claim what its proposal cannot move > will not let an unnarrowed proposal claim anything at all 3ms
  ✓ src/game/progression.test.ts > a projection cannot claim what its proposal cannot move > will not take a projection that merely might claim a Total 0ms
  ✓ src/game/progression.test.ts > a projection cannot claim what its proposal cannot move > takes the pairings the design calls for, with no directive 0ms
  ✓ src/game/progression.test.ts > a purchase cannot reach performance > offers no entitlement effect that moves e1RM 0ms
@@ -268,8 +271,8 @@ $ npx vitest run src/career src/game/careerServer.test.ts src/game/progression.t
  ✓ src/game/progression.test.ts > a purchase cannot reach performance > has no Recovery Day balance in the wallet to buy against 0ms
  ✓ src/game/progression.test.ts > a purchase cannot reach performance > will not let a pending cache be assembled from a literal 0ms
  ✓ src/game/progression.test.ts > a purchase cannot reach performance > will not let a REAL in-flight proposal be spread and overridden 0ms
- ✓ src/game/progression.test.ts > a purchase cannot reach performance > makes the spread that DOES still compile inert, and this one runs 3ms
- ✓ src/game/progression.test.ts > a purchase cannot reach performance > does not let the read model be handed back in 0ms
+ ✓ src/game/progression.test.ts > a purchase cannot reach performance > makes the spread that DOES still compile inert, and this one runs 0ms
+ ✓ src/game/progression.test.ts > a purchase cannot reach performance > does not let the read model be handed back in 1ms
  ✓ src/game/progression.test.ts > a purchase cannot reach performance > carries the reuse residual explicitly, so it cannot be silently widened 0ms
  ✓ src/game/progression.test.ts > a purchase cannot reach performance > still lets proposeChange build one, which is the positive control 0ms
  ✓ src/game/progression.test.ts > a purchase cannot reach performance > runs the whole legitimate flow end to end 0ms
@@ -280,58 +283,125 @@ $ npx vitest run src/career src/game/careerServer.test.ts src/game/progression.t
  ✓ src/game/progression.test.ts > the module exports no writer > accepts a ConfirmedFacts nowhere 1ms
  ✓ src/game/progression.test.ts > the boundary lets legitimate work through > scores a confirmed total with dots.ts, with no cast 0ms
  ✓ src/game/progression.test.ts > the boundary lets legitimate work through > gates meet entry on a confirmed total, with no cast 0ms
- ✓ src/game/progression.test.ts > the boundary lets legitimate work through > does arithmetic and formatting on confirmed numbers 0ms
+ ✓ src/game/progression.test.ts > the boundary lets legitimate work through > does arithmetic and formatting on confirmed numbers 2ms
  ✓ src/game/progression.test.ts > the boundary lets legitimate work through > projects an optimistic e1RM from the same pure math the server would use 0ms
  ✓ src/game/progression.test.ts > the boundary lets legitimate work through > mints ids and revisions the client is allowed to mint 0ms
  ✓ src/game/progression.test.ts > the boundary lets legitimate work through > refuses a nonsense projection at the mint 0ms
- ✓ src/game/progression.test.ts > the boundary lets legitimate work through > answers the acknowledgement question directly 5ms
- ✓ src/game/progression.test.ts > the boundary lets legitimate work through > builds every proposal kind the design calls for 1ms
+ ✓ src/game/progression.test.ts > the boundary lets legitimate work through > answers the acknowledgement question directly 0ms
+ ✓ src/game/progression.test.ts > the boundary lets legitimate work through > builds every proposal kind the design calls for 0ms
  ✓ src/game/progression.test.ts > the boundary lets legitimate work through > builds every entitlement effect the catalogue allows 0ms
  ✓ src/career/careerPurity.test.ts > shipped career modules import only the pinned specifiers > the parser sees every spelling the empire regex missed, by planting them 4ms
- ✓ src/career/careerPurity.test.ts > shipped career modules roll no dice and touch no host API > bans Math.random and the host list on every shipped file 13ms
- ✓ src/career/careerPurity.test.ts > shipped career modules roll no dice and touch no host API > each pattern is live against a tripwire, so a dead regex cannot pass 2ms
- ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > the shipped eligibility.ts has no module-level let or var 4ms
- ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > qualifiesFor and its siblings close over no mutable binding 1173ms
- ✓ src/session/localSessionServer.test.ts > the stand-in server port > exposes five methods and no way at the row 3ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules roll no dice and touch no host API > bans Math.random and the host list on every shipped file 5ms
+ ✓ src/career/careerPurity.test.ts > shipped career modules roll no dice and touch no host API > each pattern is live against a tripwire, so a dead regex cannot pass 1ms
+ ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > the shipped eligibility.ts has no module-level let or var 3ms
+ ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > qualifiesFor and its siblings close over no mutable binding 1026ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > THE SESSION -> MEET ROUTE EXISTS AND IS A PATH, NOT A COMPONENT 2ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > and the way back exists too — GDD §6.5 ends somewhere 0ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > the two compose into a round trip that ends where the app opens 0ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > the app opens on the session, so the round trip starts from the default 4ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > reaching meet day never needs a debug URL 0ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > THE SESSION -> EMPIRE ROUTE EXISTS AND IS A PATH, NOT A COMPONENT 0ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > and the way back from Empire exists too 0ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > Empire round-trips to the daily session without a debug URL 0ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > THE SESSION -> CAREER ROUTE EXISTS AND IS A PATH, NOT A COMPONENT 1ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > and the way back from Career exists too 0ms
+ ✓ src/shell/shellRoute.test.ts > a player can get from the daily session to a meet, and back > Career round-trips to the daily session without a debug URL 0ms
+ ✓ src/shell/shellRoute.test.ts > the route graph > has exactly the edges the shell claims, and no others 1ms
+ ✓ src/shell/shellRoute.test.ts > the route graph > an intent that does not apply is a no-op, identically 0ms
+ ✓ src/shell/shellRoute.test.ts > the route graph > the replay harness is not a place a player can walk to 1ms
+ ✓ src/shell/shellRoute.test.ts > the route graph > a player on the daily session can reach Empire without a URL 0ms
+ ✓ src/shell/shellRoute.test.ts > the route graph > a player on the daily session can reach Career without a URL 0ms
+ ✓ src/shell/shellRoute.test.ts > the route graph > playerReachableFrom is the closure of navigate, not a second list 1ms
+ ✓ src/shell/shellRoute.test.ts > the route graph > pathBetween of a surface to itself is the empty path, not null 0ms
+ ✓ src/shell/shellRoute.test.ts > the route graph > every surface can reach the daily session — nothing is a dead end 1ms
+ ✓ src/shell/shellRoute.test.ts > the surfaces a side trip may not spend > names both ends of the Empire and Career round trips and nothing else 0ms
+ ✓ src/shell/shellRoute.test.ts > the surfaces a side trip may not spend > forgets the beat of every surface that re-mounts, and of the one that re-reports 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > THE WAY TO MEET DAY IS ON THE CHECK-IN, THE BRIEFING AND THE CLOSE-OUT 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > AND IT IS DRAWN OVER NEITHER A LIVE SET NOR THE REST BETWEEN TWO OF THEM 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > THE WAY BACK IS ON GDD §6.5’s RECAP 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > AND ON NO OTHER BEAT OF MEET DAY — every one named 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > the already-trained-today surface gets the pill, because it IS the check-in 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > the answer does not depend on HOW the player got to the surface 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > a beat belonging to the OTHER surface draws nothing 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > draws nothing before a surface has reported a beat, or over the harness 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > THE WAY TO EMPIRE IS ON THE SAME SESSION BEATS AS MEET DAY 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > THE WAY BACK FROM EMPIRE IS ON THE FLOOR BEAT 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > a live cut-in takes the Empire chrome off too 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > THE WAY TO CAREER IS ON THE SAME SESSION BEATS AS MEET DAY 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > THE WAY BACK FROM CAREER IS ON BOTH OF ITS BEATS — the chooser is not a trap 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > a live cut-in takes the Career chrome off too 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > every beat of the game is in the answer sheet, and answers as written 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > A LIVE CUT-IN TAKES THE CHROME OFF EVERY BEAT — GDD §7.2, tap to dismiss 0ms
+ ✓ src/shell/shellRoute.test.ts > when the shell may draw a control — pinned, one beat at a time > and `none` is what the two-argument call means, so old call sites are safe 0ms
+ ✓ src/shell/shellRoute.test.ts > the table and SHELL_NAV are two statements of one fact > SHELL_NAV.SESSION_PHASES is exactly the beats the table gives the pill to 0ms
+ ✓ src/shell/shellRoute.test.ts > the table and SHELL_NAV are two statements of one fact > SHELL_NAV.MEET_PHASES is exactly the beats the table gives the way out to 0ms
+ ✓ src/shell/shellRoute.test.ts > the table and SHELL_NAV are two statements of one fact > and neither list is empty, which is the mutation that used to pass 0ms
+ ✓ src/shell/shellRoute.test.ts > the table and SHELL_NAV are two statements of one fact > every listed beat is a beat the game actually has 0ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?meet=<moment> opens a frozen meet, for every moment capture-meet.mjs asks for 112ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?meet=live opens a PLAYED meet — no frozen state, clocks running 0ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > A FRAME CARRIES A STAND-IN SERVER EXACTLY WHEN IT CARRIES A SCRIPTED STATE [a-preview-server-cannot-reach-a-played-meet] 88ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > and a scripted frame’s server is that frame’s own, never a shared one 38ms
+ ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > reddens on the M12 plant: a module-level let that qualifiesFor reads 525ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > the preview’s server describes the lifter the preview data describes 28ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?session=<moment> opens a frozen session, for every moment capture-session.mjs asks for 9ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > ?replay=<load>&moment=<id> opens the lift harness, for every capture moment 2ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > holds the walk-out at an instant only for the two mid-motion beats 6ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > opens straight onto the shareable card for exactly one beat 70ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > precedence is meet, then replay, then session — the order App.tsx used 10ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > refuses what it does not recognise and boots normally 0ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > has no URL to read on native, and every debug branch is dead there 0ms
+ ✓ src/shell/shellRoute.test.ts > the four debug query strings the evidence harness drives > entryRoute and resolveEntry cannot disagree about a query string 26ms
+ ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > a player-opened meet gets no frozen frame, even from a debug launch URL 17ms
+ ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > the same for the session 1ms
+ ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > a frozen frame is never handed to the wrong surface 14ms
+ ✓ src/shell/shellRoute.test.ts > a meet the player opened is played, not frozen > the default launch has nothing frozen anywhere 0ms
+ ✓ src/shell/shellRoute.test.ts > the shell routes and renders; it does not carry the numbers > nothing the shell can say mentions a Total 1ms
+ ✓ src/shell/shellRoute.test.ts > the shell routes and renders; it does not carry the numbers > a route carries a surface and a reason and nothing else 14ms
+ ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > reddens on a sibling let read through import * as, which is the same wallet with a property access 417ms
+ ✓ src/session/localSessionServer.test.ts > the stand-in server port > exposes five methods and no way at the row 2ms
  ✓ src/session/localSessionServer.test.ts > the stand-in server port > opens on the stored row, read through the boundary 2ms
  ✓ src/session/localSessionServer.test.ts > the stand-in server port > the brief carries the ledger and nothing else (GDD §3.4, §12.3) 0ms
  ✓ src/session/localSessionServer.test.ts > the stand-in server port > the brief is narrowed to the horizon that can affect today 0ms
  ✓ src/session/localSessionServer.test.ts > the stand-in server port > waits before answering, for the latency it was given 4ms
  ✓ src/session/localSessionServer.test.ts > the stand-in server port > runs the real Edge Function body and advances the stored row 2ms
  ✓ src/session/localSessionServer.test.ts > the stand-in server port > refuses a second session on the same day (GDD §3.2) 1ms
- ✓ src/session/localSessionServer.test.ts > the meet half writes the row the session half reads > A MEET BANKS A TOTAL THAT THE SESSION SIDE CAN THEN READ 73ms
- ✓ src/session/localSessionServer.test.ts > the meet half writes the row the session half reads > and the response hands back no stored row 38ms
+ ✓ src/session/localSessionServer.test.ts > the meet half writes the row the session half reads > A MEET BANKS A TOTAL THAT THE SESSION SIDE CAN THEN READ 50ms
+ ✓ src/session/localSessionServer.test.ts > the meet half writes the row the session half reads > and the response hands back no stored row 29ms
  ✓ src/session/localSessionServer.test.ts > the meet half writes the row the session half reads > MEET_ALREADY_RECORDED FIRES ON THE SECOND MEET — reachable for the first time 56ms
- ✓ src/session/localSessionServer.test.ts > the meet half writes the row the session half reads > a refused second meet leaves the banked total exactly where it was 45ms
- ✓ src/session/localSessionServer.test.ts > the meet half writes the row the session half reads > a meet does not touch the streak, so competing is not a training day 24ms
- ✓ src/session/localSessionServer.test.ts > the meet half writes the row the session half reads > and does not touch the e1RM either — a meet is not a training session 22ms
+ ✓ src/session/localSessionServer.test.ts > the meet half writes the row the session half reads > a refused second meet leaves the banked total exactly where it was 56ms
+ ✓ src/session/localSessionServer.test.ts > the meet half writes the row the session half reads > a meet does not touch the streak, so competing is not a training day 23ms
+ ✓ src/session/localSessionServer.test.ts > the meet half writes the row the session half reads > and does not touch the e1RM either — a meet is not a training session 23ms
  ✓ src/session/localSessionServer.test.ts > the meet half writes the row the session half reads > the meet brief carries the ledger and nothing else (GDD §3.4, §12.3) 0ms
- ✓ src/session/localSessionServer.test.ts > the career half chooses on the row the other halves read > a chosen federation is on the snapshot every surface opens 1ms
- ✓ src/session/localSessionServer.test.ts > the career half chooses on the row the other halves read > a banked meet locks the row against moving to another federation 38ms
- ✓ src/session/localSessionServer.test.ts > the career half chooses on the row the other halves read > a refused choice is dead: the second attempt after a real one is refused too 5ms
- ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > reddens on the M12 plant: a module-level let that qualifiesFor reads 643ms
- ✓ src/game/careerServer.test.ts > careerLifterFor derives the career record from the stored row > starts where newCareerLifter starts, for a lifter with no meets 3ms
- ✓ src/game/careerServer.test.ts > careerLifterFor derives the career record from the stored row > agrees with the stored best total on every record the write path can reach [the-career-record-is-the-meets-on-the-row] 92ms
- ✓ src/game/careerServer.test.ts > careerLifterFor derives the career record from the stored row > spends the entry on a bomb-out and banks no total from it 1ms
- ✓ src/game/careerServer.test.ts > a lifter who competed one more time, measured through the write path > never ends with a lower best total, and the sweep saw the total actually move 40ms
- ✓ src/game/careerServer.test.ts > a lifter who competed one more time, measured through the write path > never turns an open calendar entry into a refusal, on the read model a screen draws 50ms
- ✓ src/game/careerServer.test.ts > a lifter who competed one more time, measured through the write path > refuses a replayed completion and moves nothing — the duplicate is pinned, not papered over 8ms
- ✓ src/game/careerServer.test.ts > careerMeetOutcome > agrees with the write path about what a best total is, on every applied meet 10ms
+ ✓ src/session/localSessionServer.test.ts > the career half chooses on the row the other halves read > a chosen federation is on the snapshot every surface opens 2ms
+ ✓ src/session/localSessionServer.test.ts > the career half chooses on the row the other halves read > a banked meet locks the row against moving to another federation 19ms
+ ✓ src/session/localSessionServer.test.ts > the career half chooses on the row the other halves read > a refused choice is dead: the second attempt after a real one is refused too 0ms
+ ✓ src/game/careerServer.test.ts > careerLifterFor derives the career record from the stored row > starts where newCareerLifter starts, for a lifter with no meets 2ms
+ ✓ src/game/careerServer.test.ts > careerLifterFor derives the career record from the stored row > agrees with the stored best total on every record the write path can reach [the-career-record-is-the-meets-on-the-row] 76ms
+ ✓ src/game/careerServer.test.ts > careerLifterFor derives the career record from the stored row > spends the entry on a bomb-out and banks no total from it 0ms
+ ✓ src/game/careerServer.test.ts > a lifter who competed one more time, measured through the write path > never ends with a lower best total, and the sweep saw the total actually move 24ms
+ ✓ src/game/careerServer.test.ts > a lifter who competed one more time, measured through the write path > never turns an open calendar entry into a refusal, on the read model a screen draws 46ms
+ ✓ src/game/careerServer.test.ts > a lifter who competed one more time, measured through the write path > refuses a replayed completion and moves nothing — the duplicate is pinned, not papered over 7ms
+ ✓ src/game/careerServer.test.ts > careerMeetOutcome > agrees with the write path about what a best total is, on every applied meet 7ms
  ✓ src/game/careerServer.test.ts > careerMeetOutcome > reports a first total as a career best and a bomb-out as nothing 0ms
  ✓ src/game/careerServer.test.ts > careerMeetOutcome > unlocks the whole ladder at the top gate, and nothing twice 1ms
- ✓ src/game/careerServer.test.ts > careerCalendarFor > carries one verdict per upcoming meet, and it is eligibility.ts own answer 4ms
- ✓ src/game/careerServer.test.ts > careerCalendarFor > refuses a day that is not a day index 1ms
+ ✓ src/game/careerServer.test.ts > careerCalendarFor > carries one verdict per upcoming meet, and it is eligibility.ts own answer 3ms
+ ✓ src/game/careerServer.test.ts > careerCalendarFor > refuses a day that is not a day index 0ms
  ✓ src/game/careerServer.test.ts > applyFederationChoice > records the choice once: id set, chosen set, revision moved, wire decodable 1ms
  ✓ src/game/careerServer.test.ts > applyFederationChoice > touches nothing else on the row — every other fact is the same object 0ms
  ✓ src/game/careerServer.test.ts > applyFederationChoice > refuses an id the game does not hold, before anything moves 0ms
  ✓ src/game/careerServer.test.ts > applyFederationChoice > refuses a second choice — the pick is handed out once [a-federation-is-chosen-once] 0ms
  ✓ src/game/careerServer.test.ts > applyFederationChoice > refuses moving banked results to another federation, and allows confirming the one they were lifted under 1ms
  ✓ src/game/careerServer.test.ts > applyFederationChoice > seals the record a federation choice produces, every nested object included 0ms
- ✓ src/game/careerServer.test.ts > careerClient reads the career out of the cache > hands back the same lifter the server would derive from the same row 3ms
+ ✓ src/game/careerServer.test.ts > careerClient reads the career out of the cache > hands back the same lifter the server would derive from the same row 2ms
  ✓ src/game/careerServer.test.ts > careerClient reads the career out of the cache > answers null before the first snapshot, rather than inventing a career 0ms
- ✓ src/game/careerServer.test.ts > the career record has one writer, scanned rather than promised > only careerServer.ts reaches the career transitions from outside src/career 31ms
+ ✓ src/game/careerServer.test.ts > the career record has one writer, scanned rather than promised > only careerServer.ts reaches the career transitions from outside src/career 25ms
  ✓ src/game/careerServer.test.ts > the career record has one writer, scanned rather than promised > the scan sees every spelling it must, driven against plants 0ms
- ✓ src/career/careerPurity.test.ts > eligibility functions close over no module-level or imported let > reddens on a sibling let read through import * as, which is the same wallet with a property access 533ms
+ ✓ src/meet/careerCalendarPlaceholder.test.ts > the placeholder recap stands in for a calendar that does not exist > reproduces the refusal it exists for: the second meet of an app run 78ms
+ ✓ src/meet/careerCalendarPlaceholder.test.ts > the placeholder recap stands in for a calendar that does not exist > shows on that refusal and on nothing else 1ms
+ ✓ src/meet/careerCalendarPlaceholder.test.ts > the placeholder recap stands in for a calendar that does not exist > says the one line it was ruled to say, and is reachable from the screen 0ms
+ ✓ src/meet/careerCalendarPlaceholder.test.ts > the placeholder is pinned to the document that owes it > names the same gate id in the module and in GDD §6.1, in both directions 1ms
+ ✓ src/meet/careerCalendarPlaceholder.test.ts > the placeholder cannot quietly grow into calendar logic > bounds the placeholder to a line and a predicate [placeholder-cannot-grow-calendar-authority] 2ms
+ ✓ src/meet/careerCalendarPlaceholder.test.ts > the placeholder cannot quietly grow into calendar logic > has parsers that reject a planted violation rather than matching nothing 0ms
  ✓ src/career/calendar.test.ts > the season anchor > is the civil date the tuning names, and 2026-01-03 is a Saturday 3ms
  ✓ src/career/calendar.test.ts > the season anchor > each tier starts at the anchor plus its own phase 1ms
  ✓ src/career/calendar.test.ts > the season anchor > nothing is scheduled before the anchor 1ms
@@ -339,21 +409,36 @@ $ npx vitest run src/career src/game/careerServer.test.ts src/game/progression.t
  ✓ src/career/calendar.test.ts > window boundaries > an inverted window is empty rather than an error 0ms
  ✓ src/career/calendar.test.ts > window boundaries > a window that closes before a series opens is empty 0ms
  ✓ src/career/calendar.test.ts > window boundaries > a meet is on the calendar on the day it is held 0ms
- ✓ src/career/calendar.test.ts > the shape of a year > holds each tier at its stated cadence 1ms
+ ✓ src/career/calendar.test.ts > the shape of a year > holds each tier at its stated cadence 2ms
  ✓ src/career/calendar.test.ts > the shape of a year > is sorted by day 3ms
- ✓ src/career/calendar.test.ts > the shape of a year > gives every meet a unique, derived id 1ms
+ ✓ src/career/calendar.test.ts > the shape of a year > gives every meet a unique, derived id 0ms
  ✓ src/career/calendar.test.ts > the shape of a year > is the same list every time it is asked for 2ms
- ✓ src/career/calendar.test.ts > the shape of a year > carries the federation’s own ruleset onto every meet 10ms
- ✓ src/career/calendar.test.ts > a decade > never puts two of one federation’s tiers on the same day 3ms
+ ✓ src/career/calendar.test.ts > the shape of a year > carries the federation’s own ruleset onto every meet 9ms
+ ✓ src/career/calendar.test.ts > a decade > never puts two of one federation’s tiers on the same day 4ms
  ✓ src/career/calendar.test.ts > a decade > keeps each tier on one weekday for ten years, leap years included 1ms
  ✓ src/career/calendar.test.ts > upcoming meets > starts at today and runs to the horizon 1ms
- ✓ src/career/calendar.test.ts > upcoming meets > refuses a horizon that is not a whole number of days at or above zero 0ms
+ ✓ src/career/calendar.test.ts > upcoming meets > refuses a horizon that is not a whole number of days at or above zero 1ms
  ✓ src/career/calendar.test.ts > upcoming meets > shows every tier inside the default horizon 1ms
  ✓ src/career/calendar.test.ts > the next meet of a tier > is the first on or after the day given 0ms
  ✓ src/career/calendar.test.ts > the next meet of a tier > is null when the horizon given holds none 0ms
  ✓ src/career/calendar.test.ts > ISO dates > pads month and day 0ms
  ✓ src/career/calendar.test.ts > ISO dates > handles a leap day 0ms
  ✓ src/career/calendar.test.ts > one meet > is built from the federation, the tier and the day, and nothing else 0ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > sees a rule keyed to the annual tier now that totals stop above it, and the margin is -10 kg 3803ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > a season is a real season: every meet distinct, and none of them entered twice 6ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > reaches the second worlds meet and not the first, and the first is unreachable by arithmetic 96ms
+ ✓ src/meet/careerSurface.test.ts > the chooser’s options > are federation.ts’s own data: four federations, labelled by its own rule 3ms
+ ✓ src/meet/careerSurface.test.ts > which screen is up > gates the calendar on `chosen`, exactly as the 1a handoff states 2ms
+ ✓ src/meet/careerSurface.test.ts > the calendar rows > are null before the first snapshot, like every career read model 0ms
+ ✓ src/meet/careerSurface.test.ts > the calendar rows > draw one row per rung of GDD §6.1’s ladder, in ladder order, soonest of each tier 2ms
+ ✓ src/meet/careerSurface.test.ts > the calendar rows > a fresh lifter: local is OPEN today, the gated rungs carry the server’s sentence 1ms
+ ✓ src/meet/careerSurface.test.ts > the calendar rows > GDD §10.0’s lock is presentation over the verdict, NOT eligibility — an open verdict still draws locked 3ms
+ ✓ src/meet/careerSurface.test.ts > the optimistic choose-federation path, end to end > parks the proposal, sends it, and settles into a chosen federation 2ms
+ ✓ src/meet/careerSurface.test.ts > the optimistic choose-federation path, end to end > a refusal renders the server’s sentence and leaves the chooser retryable — not a dead end 1ms
+ ✓ src/meet/careerSurface.test.ts > the recap career lines (GDD §6.5) > draw the standing best and the newly qualified tiers from the server outcome 1ms
+ ✓ src/meet/careerSurface.test.ts > the recap career lines (GDD §6.5) > an outcome that unlocked nothing draws the best alone; no best draws nothing 0ms
+ ✓ src/meet/careerSurface.test.ts > the calendar draws on the day the app actually resolves > the 1a arithmetic is real: from the SIGNUP day, the default horizon holds nothing 0ms
+ ✓ src/meet/careerSurface.test.ts > the calendar draws on the day the app actually resolves > ...and the app’s day is the WALL CLOCK’s, which sits at or past the anchor for good 1ms
  ✓ src/career/careerTuning.test.ts > the tier ladder > is GDD §6.1’s, with §6.6’s summit split in two, in its order 2ms
  ✓ src/career/careerTuning.test.ts > the tier ladder > splits async and sync where GDD §6.6 splits it, which is not one cut 0ms
  ✓ src/career/careerTuning.test.ts > the tier ladder > opens on a tier that asks for nothing 0ms
@@ -368,44 +453,41 @@ $ npx vitest run src/career src/game/careerServer.test.ts src/game/progression.t
  ✓ src/career/careerTuning.test.ts > the schedule constants > are frozen 0ms
  ✓ src/career/careerTuning.test.ts > the federations > are one per ruleset, covering all four combinations exactly once 1ms
  ✓ src/career/careerTuning.test.ts > the federations > have unique ids and unique names 0ms
- ✓ src/career/careerTuning.test.ts > the federations > carry no real federation, brand or athlete name 4ms
- ✓ src/career/careerTuning.test.ts > the copy > has a label and a meet name for every tier 5ms
+ ✓ src/career/careerTuning.test.ts > the federations > carry no real federation, brand or athlete name 1ms
+ ✓ src/career/careerTuning.test.ts > the copy > has a label and a meet name for every tier 0ms
  ✓ src/career/careerTuning.test.ts > the copy > has a distinct sentence for every refusal 0ms
  ✓ src/career/federation.test.ts > looking a federation up > lists every id in the order the picker shows them 3ms
  ✓ src/career/federation.test.ts > looking a federation up > finds each one by id 1ms
  ✓ src/career/federation.test.ts > looking a federation up > throws rather than defaulting on an id that does not exist 0ms
  ✓ src/career/federation.test.ts > rulesets > are two axes, and both have to agree 0ms
- ✓ src/career/federation.test.ts > rulesets > have exactly one federation each 1ms
+ ✓ src/career/federation.test.ts > rulesets > have exactly one federation each 0ms
  ✓ src/career/federation.test.ts > rulesets > read as both axes on screen 0ms
  ✓ src/career/federation.test.ts > the tier ladder > indexes lowest first 0ms
  ✓ src/career/federation.test.ts > the tier ladder > orders the two summits by their gate and by nothing else 0ms
  ✓ src/career/federation.test.ts > the tier ladder > throws on a tier that is not on it 1ms
  ✓ src/career/federation.test.ts > the tier ladder > starts at local 0ms
- ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > sees a rule keyed to the annual tier now that totals stop above it, and the margin is -10 kg 4819ms
- ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > a season is a real season: every meet distinct, and none of them entered twice 5ms
- ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > reaches the second worlds meet and not the first, and the first is unreachable by arithmetic 92ms
- ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > builds the same careers incrementally as `careerAfter` builds from the top 416ms
+ ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > builds the same careers incrementally as `careerAfter` builds from the top 269ms
  ✓ src/career/eligibility.test.ts > AXIS B — competing at one more meet never qualifies for fewer > the sweep’s depth is read off the shipped calendar, not chosen in the sweep 1ms
- ✓ src/career/eligibility.test.ts > the totals generator is bounded to a plausible range for the sport > never lets any career, at any depth, exceed the ceiling it drew 48ms
+ ✓ src/career/eligibility.test.ts > the totals generator is bounded to a plausible range for the sport > never lets any career, at any depth, exceed the ceiling it drew 38ms
  ✓ src/career/eligibility.test.ts > the totals generator is bounded to a plausible range for the sport > draws different ceilings for different seeds, so nothing piles up on one number 1ms
  ✓ src/career/eligibility.test.ts > the totals generator is bounded to a plausible range for the sport > holds the constant inequality its bound is proved from 0ms
  ✓ src/career/eligibility.test.ts > the totals generator is bounded to a plausible range for the sport > puts the band where the sourced research puts real elite totals 0ms
  ✓ src/career/eligibility.test.ts > the totals generator is bounded to a plausible range for the sport > keeps the totals two-sided, which every record control depends on 1ms
  ✓ src/career/eligibility.test.ts > the totals generator is bounded to a plausible range for the sport > is a prefix extension in its depth argument, so both sweeps get the same lifters 4ms
- ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > every skipped meet in every seeded season, against a rest control and three tier-keyed ones 86428ms
- ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > is blind at axis B’s evaluation lag, which is why it has its own 73536ms
- ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > runs its shipped arm on the engine’s own list, and every control as a filter of it 6ms
+ ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > every skipped meet in every seeded season, against a rest control and three tier-keyed ones 80171ms
+ ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > is blind at axis B’s evaluation lag, which is why it has its own 71497ms
+ ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > runs its shipped arm on the engine’s own list, and every control as a filter of it 5ms
  ✓ src/career/eligibility.test.ts > AXIS C — entering a meet spends that meet and takes nothing else > the two axes read two different functions, so neither can stand in for the other 1ms
  ✓ src/career/eligibility.test.ts > days > a verdict reads the day it is given and nothing else 1ms
  ✓ src/career/eligibility.test.ts > AXIS D — GDD §6.6’s campaign summit is reachable, and the two calendars it is not > generates its variant calendars with the engine’s own arithmetic 5ms
- ✓ src/career/eligibility.test.ts > AXIS D — GDD §6.6’s campaign summit is reachable, and the two calendars it is not > takes every simulated arc to a campaign summit, which neither unfixed calendar does 686ms
- ✓ src/career/eligibility.test.ts > AXIS D — GDD §6.6’s campaign summit is reachable, and the two calendars it is not > counts what the sweep actually saw, per tier, so none of the zeros is about an empty domain 179ms
- ✓ src/career/eligibility.test.ts > AXIS D — GDD §6.6’s campaign summit is reachable, and the two calendars it is not > reproduces §6.6’s own finding under the unfixed calendar, and the tie-break it forces 517ms
+ ✓ src/career/eligibility.test.ts > AXIS D — GDD §6.6’s campaign summit is reachable, and the two calendars it is not > takes every simulated arc to a campaign summit, which neither unfixed calendar does 662ms
+ ✓ src/career/eligibility.test.ts > AXIS D — GDD §6.6’s campaign summit is reachable, and the two calendars it is not > counts what the sweep actually saw, per tier, so none of the zeros is about an empty domain 169ms
+ ✓ src/career/eligibility.test.ts > AXIS D — GDD §6.6’s campaign summit is reachable, and the two calendars it is not > reproduces §6.6’s own finding under the unfixed calendar, and the tie-break it forces 484ms
 
- Test Files  9 passed (9)
-      Tests  343 passed (343)
-   Start at  02:21:32
-   Duration  177.68s (transform 3.63s, setup 0ms, import 7.66s, tests 196.10s, environment 1ms)
+ Test Files  12 passed (12)
+      Tests  425 passed (425)
+   Start at  06:03:48
+   Duration  166.06s (transform 3.24s, setup 0ms, import 7.37s, tests 182.60s, environment 1ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -420,13 +502,13 @@ $ npx vitest run
 [whole suite] exit code: 0
 ======================================================================
 
- RUN  v4.1.10 /home/user/wt-career-wiring
+ RUN  v4.1.10 /home/user/three-white-lights
 
 
- Test Files  92 passed (92)
-      Tests  3529 passed (3529)
-   Start at  02:24:31
-   Duration  351.03s (transform 7.48s, setup 0ms, import 31.68s, tests 828.97s, environment 11ms)
+ Test Files  93 passed (93)
+      Tests  3551 passed (3551)
+   Start at  06:06:35
+   Duration  283.88s (transform 6.72s, setup 0ms, import 28.27s, tests 706.67s, environment 10ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
