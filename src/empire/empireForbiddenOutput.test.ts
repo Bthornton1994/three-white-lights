@@ -1282,8 +1282,8 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const SURFACE_CENSUS = Object.freeze({
-  MODULES: 10,
-  EXPORTS: 230,
+  MODULES: 11,
+  EXPORTS: 245,
   BARE_POSITIONS: 0,
   BARE_FIELDS: 0,
   BRANDED_POSITIONS: 34,
@@ -1298,7 +1298,7 @@ const SURFACE_CENSUS = Object.freeze({
   UNCLASSIFIED_TYPES: 0,
   /** The banned vocabulary's own length, so an emptied ban list is not a clean sweep. */
   BANNED: 7,
-  LITERAL_POSITIONS: 1175,
+  LITERAL_POSITIONS: 1329,
   DISTINCT_LITERAL_MEMBERS: 93,
   DEPTH_CUTS: 0,
 });
@@ -3845,7 +3845,7 @@ const FIXTURE_LISTS: readonly FixtureList[] = Object.freeze([
   Object.freeze({
     name: 'CLOCKS',
     derivedFrom: 'SECONDS',
-    size: 166,
+    size: 180,
     why: 'One clock per point of the seconds domain, at a fixed skip. Derived, so the seconds domain losing its ceiling this round widened this list without anybody touching it.',
   }),
   Object.freeze({
@@ -3973,9 +3973,23 @@ const CENSUS_LISTS: readonly string[] = Object.freeze([
  * names are what a reader can disagree with.
  */
 const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
+  // The stage-1 income rates put exempt leaves above the DAY and COUNT
+  // ceilings for the first time — 900 and 3000 are rates, not thresholds, and
+  // both sit above 600. What covers a dropped exempt leaf is what covers any
+  // dropped branch point: the overflow pass drives every one of these values
+  // one at a time, per domain, since EVERY_BRANCH_POINT carries exempt
+  // leaves too and overflowPointsFor reads it whole.
+  'COUNT/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
+  'COUNT/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
+  'DAY/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
+  'DAY/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
   'ROSTER_SHAPE/CHECK_IN_TARGET_SECONDS_MAX=60',
   'ROSTER_SHAPE/CHECK_IN_TARGET_SECONDS_MIN=30',
   'ROSTER_SHAPE/GYM_BUCKS_BASE_PER_HOUR=120',
+  'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.garage=60',
+  'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.storage-unit=240',
+  'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
+  'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
   'ROSTER_SHAPE/NPC_GYM_BUCKS_PER_HOUR_BASE=40',
 ]);
 
@@ -3998,25 +4012,25 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
 const DOMAIN_CENSUS = Object.freeze({
   UNITS: 8,
   /** Labels in `UNIT_THRESHOLDS`, including the two derived seconds entries. */
-  THRESHOLDS: 68,
+  THRESHOLDS: 75,
   /** Numeric leaves of EMPIRE_TUNING filed under a unit. */
-  FILED: 66,
+  FILED: 73,
   /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
-  EXEMPT: 34,
-  TUNING_NUMERIC_LEAVES: 100,
-  TUNING_STRING_LEAVES: 14,
+  EXEMPT: 38,
+  TUNING_NUMERIC_LEAVES: 111,
+  TUNING_STRING_LEAVES: 40,
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
-  BRANCH_POINTS: 102,
+  BRANCH_POINTS: 113,
   DOMAINS: 6,
-  CONTAINMENT_CHECKS: 478,
+  CONTAINMENT_CHECKS: 519,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
     SECONDS: 0,
-    DAY: 39,
-    COUNT: 39,
+    DAY: 46,
+    COUNT: 46,
     LEVEL: 0,
-    ROSTER_SHAPE: 56,
+    ROSTER_SHAPE: 67,
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -4033,12 +4047,12 @@ const DOMAIN_CENSUS = Object.freeze({
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
   /** (domain, point) pairs the NUMBER-containment loop actually compares. */
-  NUMBER_CONTAINMENT_CHECKS: 660,
-  NUMBER_POINTS: 221,
-  SECONDS_POINTS: 166,
-  DAY_POINTS: 51,
-  COUNT_POINTS: 55,
-  LEVEL_POINTS: 150,
+  NUMBER_CONTAINMENT_CHECKS: 721,
+  NUMBER_POINTS: 241,
+  SECONDS_POINTS: 180,
+  DAY_POINTS: 57,
+  COUNT_POINTS: 61,
+  LEVEL_POINTS: 165,
   ROSTER_SHAPE_POINTS: 17,
 });
 
@@ -6054,9 +6068,9 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
  * be.
  */
 const MAIN_DRIVE_ROWS_BY_AXIS: Readonly<Record<string, number>> = Object.freeze({
-  COUNT: 542,
-  DAY: 8481,
-  ROSTER_SHAPE: 68986,
+  COUNT: 602,
+  DAY: 9495,
+  ROSTER_SHAPE: 74800,
 });
 
 /**
@@ -6478,7 +6492,7 @@ const OVERFLOW_CENSUS = Object.freeze({
    * below drives all thirty of them one at a time and a shrunken list would
    * otherwise pass quietly.
    */
-  ROSTER_POINTS_ABOVE_THE_CEILING: 30,
+  ROSTER_POINTS_ABOVE_THE_CEILING: 34,
   /**
    * DERIVED INDEPENDENTLY RATHER THAN READ OFF A FAILURE, for the four that
    * can be. The old values were 1 789 rows, 521 418 nodes and 3 538 100
@@ -6489,7 +6503,7 @@ const OVERFLOW_CENSUS = Object.freeze({
    * `DISTINCT_STRINGS`, moved 4 229 -> 4 307 and is transcribed: a distinct-set
    * size is not additive and there is no second way to get it.
    */
-  ROWS: 2479,
+  ROWS: 2961,
   NODES: 523440,
   STRINGS: 3545262,
   DISTINCT_STRINGS: 4309,
@@ -6553,12 +6567,12 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // zero. The main drive is what produces it, 135 times.
   // 26 before E17 and 56 after: one more refusal per ROSTER_SHAPE point the
   // budget used to decline, which is thirty. The arm is the same arm.
-  ['beginRecruitment#refused', 56],
+  ['beginRecruitment#refused', 67],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
-  ['recordFriendVisit#refused', 234],
-  ['recordFriendVisit#visited', 78],
+  ['recordFriendVisit#refused', 276],
+  ['recordFriendVisit#visited', 92],
 ]);
 
 // ---------------------------------------------------------------------------
@@ -6807,8 +6821,8 @@ function measureDrive(): DriveMeasurement {
 }
 
 const DRIVE_CENSUS = Object.freeze({
-  ROWS: 206730,
-  EXPORTS_DRIVEN: 230,
+  ROWS: 253644,
+  EXPORTS_DRIVEN: 245,
   NODES: 2393060,
   STRINGS: 11205010,
   DISTINCT_STRINGS: 1611,
@@ -7501,8 +7515,12 @@ const DIAGNOSTIC_CHANNEL_CENSUS: readonly (readonly [string, number])[] = Object
 const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.freeze([
   ['beginRecruitment#accepted', 135],
   ['beginRecruitment#refused', 290],
-  ['recordFriendVisit#refused', 308],
-  ['recordFriendVisit#visited', 100],
+  ['buyLadderEquipment#bought', 3006],
+  ['buyLadderEquipment#refused', 8562],
+  ['moveUpLadder#moved', 621],
+  ['moveUpLadder#refused', 2271],
+  ['recordFriendVisit#refused', 344],
+  ['recordFriendVisit#visited', 112],
 ]);
 
 /**
@@ -11015,7 +11033,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   /** Deepest chain from an exported surface, in the control's own accounting. */
   DEEPEST: 9,
   /** Exported positions measured. A truncated walk would report a shallow tree. */
-  POSITIONS: 517,
+  POSITIONS: 557,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -14668,7 +14686,7 @@ function cyclicDeclarations(
  */
 const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   /** Type aliases, interfaces and classes declared across the ten shipped modules. */
-  DECLARATIONS: 121,
+  DECLARATIONS: 132,
   /** Those carrying type parameters. An instantiation depth needs one. */
   GENERIC: 11,
   /**
@@ -19327,7 +19345,7 @@ const REGISTRY_MUTANTS: readonly RegistryMutant[] = Object.freeze([
     id: 'G11',
     what: 'the ROSTER_SHAPE/topNpcTierUnlocked row deleted from OVERFLOW_RESIDUAL, which is how a declared residual would shrink without the skip shrinking',
     reddened:
-      'declares every pair the allocation budgets skipped: expected [ …(33) ] to deeply equal [ …(32) ], + { domain: ROSTER_SHAPE, export: topNpcTierUnlocked, skipped: 30, largestSkipped: 120000 }. The residual is a set equality in both directions, so it cannot be made to read smaller than it is.',
+      'declares every pair the allocation budgets skipped: expected [ …(33) ] to deeply equal [ …(32) ], + { domain: ROSTER_SHAPE, export: topNpcTierUnlocked, skipped: 34, largestSkipped: 120000 }. The residual is a set equality in both directions, so it cannot be made to read smaller than it is.',
   }),
   Object.freeze({
     id: 'G12',

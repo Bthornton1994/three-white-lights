@@ -8,9 +8,10 @@
  * sessions model (stage 2), no sponsors (stage 5), nothing social (§5.9).
  *
  * Pure module (CLAUDE.md, "Pure logic is separate from UI"): zero React, zero
- * side effects, zero I/O, no clock reading, no randomness. Its two imports are
- * `./empireTuning` and `./production`, so every magnitude is named in one
- * place and the offline cap is the v1 mechanism rather than a rewrite.
+ * side effects, zero I/O, no clock reading, no randomness. Its three imports
+ * are `./empireTuning`, `./production` and `./empireCore` (for `refuseWith`,
+ * the directory's one throw gate), so every magnitude is named in one place
+ * and the offline cap is the v1 mechanism rather than a rewrite.
  *
  * ===========================================================================
  * 1. One rung, not a list — why two phase-1 locations cannot be written
@@ -99,6 +100,7 @@
  *     there is nothing to skip; the single time axis is wall-clock seconds.
  */
 
+import { refuseWith } from './empireCore';
 import {
   type OfflineBankingPolicy,
   SHIPPED_OFFLINE_BANKING_POLICY,
@@ -224,22 +226,17 @@ export interface LadderRun {
 }
 
 // ---------------------------------------------------------------------------
-// Refusals
-// ---------------------------------------------------------------------------
-
-/** Throw with `message`. The one abrupt-completion route this module uses. */
-function refuse(message: string): never {
-  throw new Error(`ladder: ${message}`);
-}
-
-// ---------------------------------------------------------------------------
 // Lookups
+//
+// Refusals throw through `empireCore.ts`'s `refuseWith`, the directory's one
+// throw gate, so the channel census stays a two-site list and every thrown
+// message passes the forbidden-name containment check on the way out.
 // ---------------------------------------------------------------------------
 
 /** A rung's position on the ladder, bottom rung 0. Loud off the ladder. */
 export function ladderRungIndex(rung: LadderRung): number {
   const index = EMPIRE_TUNING.LADDER_RUNGS.indexOf(rung);
-  if (index < 0) refuse(`${String(rung)} is not a rung of the ladder`);
+  if (index < 0) refuseWith(`${String(rung)} is not a rung of the ladder`);
   return index;
 }
 
@@ -253,7 +250,7 @@ export function nextLadderRung(rung: LadderRung): LadderDestination | null {
 export function ladderIncomeRatePerHour(rung: LadderRung): number {
   const rate = EMPIRE_TUNING.LADDER_INCOME_GYM_BUCKS_PER_HOUR[rung];
   if (!Number.isFinite(rate) || rate < 0) {
-    refuse(`${String(rung)} has no income rate on the ladder`);
+    refuseWith(`${String(rung)} has no income rate on the ladder`);
   }
   return rate;
 }
@@ -262,7 +259,7 @@ export function ladderIncomeRatePerHour(rung: LadderRung): number {
 export function ladderMoveCost(to: LadderDestination): number {
   const cost = EMPIRE_TUNING.LADDER_MOVE_COST_GYM_BUCKS[to];
   if (!Number.isFinite(cost) || cost < 0) {
-    refuse(`${String(to)} has no relocation cost on the ladder`);
+    refuseWith(`${String(to)} has no relocation cost on the ladder`);
   }
   return cost;
 }
@@ -271,7 +268,7 @@ export function ladderMoveCost(to: LadderDestination): number {
 export function ladderEquipmentCost(item: LadderEquipmentItem): number {
   const cost = EMPIRE_TUNING.LADDER_EQUIPMENT_COST_GYM_BUCKS[item];
   if (!Number.isFinite(cost) || cost < 0) {
-    refuse(`${String(item)} has no price on the equipment list`);
+    refuseWith(`${String(item)} has no price on the equipment list`);
   }
   return cost;
 }
@@ -281,7 +278,7 @@ export function ladderEquipmentMinRung(item: LadderEquipmentItem): LadderRung {
   // Widened before the read, because the honest key type cannot miss and the
   // route this refusal exists for is a cast-in item the table has no row for.
   const rung: LadderRung | undefined = EMPIRE_TUNING.LADDER_EQUIPMENT_MIN_RUNG[item];
-  if (rung === undefined) refuse(`${String(item)} has no minimum rung`);
+  if (rung === undefined) refuseWith(`${String(item)} has no minimum rung`);
   return rung;
 }
 
@@ -330,29 +327,29 @@ function canonicalEquipment(
 export function requireLadderState(state: LadderState): LadderState {
   ladderRungIndex(state.rung);
   if (!Number.isFinite(state.gymBucks) || state.gymBucks < 0) {
-    refuse(`gym bucks must be finite and at or above zero, received ${state.gymBucks}`);
+    refuseWith(`gym bucks must be finite and at or above zero, received ${state.gymBucks}`);
   }
   if (
     !Number.isFinite(state.collectedAt) ||
     state.collectedAt < 0 ||
     state.collectedAt % EMPIRE_TUNING.TICK_SECONDS !== 0
   ) {
-    refuse(
+    refuseWith(
       `the collection mark must be a whole non-negative tick, received ${state.collectedAt}`,
     );
   }
   const seen = new Set<string>();
   for (const item of state.equipment) {
     if (!EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.includes(item)) {
-      refuse(`${String(item)} is not a Barbell-group item`);
+      refuseWith(`${String(item)} is not a Barbell-group item`);
     }
-    if (seen.has(item)) refuse(`${String(item)} is held twice`);
+    if (seen.has(item)) refuseWith(`${String(item)} is held twice`);
     seen.add(item);
   }
   const canonical = canonicalEquipment(state.equipment);
   for (const [at, item] of canonical.entries()) {
     if (state.equipment[at] !== item) {
-      refuse(`equipment must be listed in the fixed item order, received ${state.equipment.join(', ')}`);
+      refuseWith(`equipment must be listed in the fixed item order, received ${state.equipment.join(', ')}`);
     }
   }
   return state;
@@ -386,7 +383,7 @@ export function accrueLadderGymBucks(
   policy: OfflineBankingPolicy = SHIPPED_OFFLINE_BANKING_POLICY,
 ): LadderAccrual {
   if (!Number.isFinite(ratePerHourSum) || ratePerHourSum < 0) {
-    refuse(`a summed income rate must be finite and at or above zero, received ${ratePerHourSum}`);
+    refuseWith(`a summed income rate must be finite and at or above zero, received ${ratePerHourSum}`);
   }
   const secondsElapsed = quantiseElapsedSeconds(gapSeconds);
   const secondsBanked = bankableOfflineSeconds(gapSeconds, policy);
@@ -415,10 +412,10 @@ export function ladderCheckIn(state: LadderState, atSeconds: number): LadderChec
     atSeconds < 0 ||
     atSeconds % EMPIRE_TUNING.TICK_SECONDS !== 0
   ) {
-    refuse(`a check-in time must be a whole non-negative tick, received ${atSeconds}`);
+    refuseWith(`a check-in time must be a whole non-negative tick, received ${atSeconds}`);
   }
   if (atSeconds < state.collectedAt) {
-    refuse(
+    refuseWith(
       `the check-in at ${atSeconds} is ${state.collectedAt - atSeconds} seconds behind the mark`,
     );
   }
@@ -541,7 +538,7 @@ export function runLadder(
   policy: LadderPolicy,
 ): LadderRun {
   if (!LADDER_POLICIES.includes(policy)) {
-    refuse(`${String(policy)} is not a ladder policy`);
+    refuseWith(`${String(policy)} is not a ladder policy`);
   }
   let state = createLadderState();
   let accruedGymBucks = 0;
@@ -552,7 +549,7 @@ export function runLadder(
   let previous = -1;
   for (const at of checkInsSeconds) {
     if (at <= previous) {
-      refuse(`check-ins must be strictly ascending, received ${at} after ${previous}`);
+      refuseWith(`check-ins must be strictly ascending, received ${at} after ${previous}`);
     }
     previous = at;
     const checkedIn = ladderCheckIn(state, at);
@@ -566,13 +563,13 @@ export function runLadder(
       if (pick === null) break;
       if (pick.action === 'buy') {
         const outcome = buyLadderEquipment(state, pick.item);
-        if (outcome.kind !== 'bought') refuse(`the affordable ${pick.item} was refused`);
+        if (outcome.kind !== 'bought') refuseWith(`the affordable ${pick.item} was refused`);
         state = outcome.state;
         bought.push(outcome.item);
         continue;
       }
       const outcome = moveUpLadder(state);
-      if (outcome.kind !== 'moved') refuse('the affordable move up was refused');
+      if (outcome.kind !== 'moved') refuseWith('the affordable move up was refused');
       state = outcome.state;
       movedTo.push(outcome.to);
     }

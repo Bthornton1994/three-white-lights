@@ -2508,12 +2508,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // the map really has edges in it. Pinned exactly, so a directory whose
     // cross-references thinned out is a decision somebody signs.
     expect(bodies.size).toBe(shipped.length);
-    expect(pairs).toBe(48);
+    expect(pairs).toBe(49);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
     expect(mentionersOf('empireNotAModule.ts')).toEqual([]);
-    expect(mentionersOf('empireCore.ts').length).toBe(9);
+    expect(mentionersOf('empireCore.ts').length).toBe(10);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -2999,7 +2999,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // name an unrecognised label without interpolating one.
     expect(singleQuoted.size).toBe(192);
     expect(doubleQuoted.size).toBe(0);
-    expect(templateChunks.size).toBe(156);
+    expect(templateChunks.size).toBe(155);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3171,7 +3171,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       stringsChecked += 1;
     }
     expect(stringsChecked).toBe(singleQuoted.size + doubleQuoted.size + templateChunks.size);
-    expect(stringsChecked).toBe(348);
+    expect(stringsChecked).toBe(347);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3443,7 +3443,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'empireTuning.ts': [],
       'engagement.ts': ['./empireCore', './empireTuning', './empireInvariant', './social'],
       'expansion.ts': ['./empireCore', './empireTuning'],
-      'ladder.ts': ['./empireTuning', './production'],
+      'ladder.ts': ['./empireCore', './empireTuning', './production'],
       'npc.ts': ['./empireCore', './empireTuning'],
       'production.ts': ['./empireCore', './empireTuning'],
       'recruitment.ts': ['./empireCore', './empireTuning'],
@@ -3486,7 +3486,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         specifiers += 1;
       }
     }
-    expect(specifiers).toBe(29);
+    expect(specifiers).toBe(30);
     // The resolver is driven rather than trusted, on both the shape the tree
     // has and the shape it does not, so this is a subject rather than a helper.
     expect(resolved('empireCore.ts', './empireTuning')).toBe('empireTuning.ts');
