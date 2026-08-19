@@ -380,6 +380,7 @@ import * as tuningModule from './empireTuning';
 import * as engagementModule from './engagement';
 import * as expansionModule from './expansion';
 import * as ladderModule from './ladder';
+import * as ladderViewModule from './ladderView';
 import * as npcModule from './npc';
 import * as productionModule from './production';
 import * as recruitmentModule from './recruitment';
@@ -1047,7 +1048,14 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
   readonly field: string;
   readonly why: string;
   readonly positions: readonly string[];
-}[] = Object.freeze([]);
+}[] = Object.freeze([
+  Object.freeze({
+    field: 'ReactElement.key',
+    why:
+      'React’s own element key on the stage-1 view’s return type: the jsx transform’s ReactElement carries `key: string | null`, and that declaration is react’s, not this directory’s to narrow or brand. What the view writes into it today comes from two closed vocabularies — the equipment item union and the dev-step pattern labels — both of which are positions this census already classifies, and the colocated render test walks the produced tree. The bare position is the container, not a new producing channel.',
+    positions: Object.freeze(['ladderView.tsx#LadderView#return.key']),
+  }),
+]);
 
 /**
  * The five fields that WERE bare strings, why each was, and what closed it.
@@ -1236,15 +1244,26 @@ const DECLARED_BRANDED_STRING_POSITIONS: readonly string[] = Object.freeze([
  * Every PATTERN position in the directory — a template literal or string
  * mapping type on an exported surface.
  *
- * EMPTY, and empty is the point. This list exists because the position walk had
- * no arm for these types at all: M56 widened one branded field to
+ * This list exists because the position walk had no arm for these types at
+ * all: M56 widened one branded field to
  * ``DisplayName | `${EmpireForbiddenOutput}${string}` ``, which admits
  * `'covered-day'` exactly, and every position pin in this instrument stayed
  * green because the four template constituents were dropped rather than
- * classified. A first row here is a decision somebody signs, and the row
- * carries the pattern's own texts so what it admits is readable.
+ * classified. Each row is a decision somebody signs and carries the pattern's
+ * own texts, so what it admits is readable.
+ *
+ * The four shipped rows are the stage-1 view's two display shapes, typed as
+ * patterns PRECISELY SO they would land here rather than on the bare list:
+ * the clock readout (digits and unit letters) and the dev-step labels (a
+ * plus sign, digits, a unit letter). Neither admits any banned name — the
+ * `patternAdmits` sweep below runs over these rows now, non-vacuously.
  */
-const DECLARED_PATTERN_POSITIONS: readonly string[] = Object.freeze([]);
+const DECLARED_PATTERN_POSITIONS: readonly string[] = Object.freeze([
+  'ladder.ts#describeLadderClock#return=|d |h |s',
+  'ladder.ts#ladderDevTimeSteps#return[].label=+|d',
+  'ladder.ts#ladderDevTimeSteps#return[].label=+|h',
+  'ladder.ts#ladderDevTimeSteps#return[].label=+|s',
+]);
 
 /**
  * Every method this directory calls on a value its caller handed it, by name.
@@ -1289,10 +1308,10 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const SURFACE_CENSUS = Object.freeze({
-  MODULES: 11,
-  EXPORTS: 245,
-  BARE_POSITIONS: 0,
-  BARE_FIELDS: 0,
+  MODULES: 12,
+  EXPORTS: 251,
+  BARE_POSITIONS: 1,
+  BARE_FIELDS: 1,
   BRANDED_POSITIONS: 34,
   /**
    * Zero, and the zero is the sixteenth bypass's repair rather than a fact
@@ -1300,12 +1319,12 @@ const SURFACE_CENSUS = Object.freeze({
    * walk had no arm for; the shipped tree has none, so a first one is a red
    * line in `DECLARED_PATTERN_POSITIONS` naming the export and the shape.
    */
-  PATTERN_POSITIONS: 0,
+  PATTERN_POSITIONS: 4,
   /** Types the walk reached and could not classify at all. */
   UNCLASSIFIED_TYPES: 0,
   /** The banned vocabulary's own length, so an emptied ban list is not a clean sweep. */
   BANNED: 7,
-  LITERAL_POSITIONS: 1329,
+  LITERAL_POSITIONS: 1362,
   DISTINCT_LITERAL_MEMBERS: 109,
   DEPTH_CUTS: 0,
 });
@@ -1867,9 +1886,9 @@ describe('instrument A — no export type admits a forbidden literal, and no new
     // And the arm under it: a type the walk reached and could not name at all.
     expect(surface.unclassifiedTypes, surface.unclassifiedTypes.join(' | ')).toEqual([]);
     expect(surface.unclassifiedTypes.length).toBe(SURFACE_CENSUS.UNCLASSIFIED_TYPES);
-    // No pattern anywhere admits a banned name. Vacuous on this tree by
-    // construction, which is why `sees a pattern type that admits a banned
-    // name` runs the same predicate over the probe.
+    // No pattern anywhere admits a banned name. Non-vacuous since the four
+    // ladder display shapes landed; `sees a pattern type that admits a banned
+    // name` still runs the same predicate over the probe, where it fires.
     const admitting = surface.positions
       .filter((position) => position.kind === 'pattern')
       .filter((position) => BANNED_VOCABULARY.some((name) => patternAdmits(position.members, name)))
@@ -2021,8 +2040,12 @@ describe('instrument A bites — the census is re-run over a probe carrying five
       .map(positionKey);
     expect(distinct(admitting)).toEqual([`${PROBE_MODULE}#probeTemplateFeed#return.note`]);
     // The shipped census does not have it, which is the mechanism: the set
-    // equality goes red on arrival.
-    expect(patternKeys(stringSurface())).toEqual([]);
+    // equality goes red on arrival. The shipped rows are the four signed
+    // ladder display shapes, and the probe's key is not among them.
+    expect(patternKeys(stringSurface())).toEqual([...DECLARED_PATTERN_POSITIONS].sort());
+    expect(DECLARED_PATTERN_POSITIONS).not.toContain(
+      `${PROBE_MODULE}#probeTemplateFeed#return.note`,
+    );
     // AND IT IS NOT A BARE POSITION EITHER, which is the half that says the
     // fourth kind was needed. Reading a pattern as `bare` would have put it in
     // a list whose own header says the directory has none.
@@ -2320,7 +2343,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   CONSTRUCTORS: 4,
   SITES: 13,
   MINTS: 13,
-  MODULES: 11,
+  MODULES: 12,
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -2338,7 +2361,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // expressions, with zero new brand-constructor sites among them — SITES and
   // MINTS above are unchanged, which is the half of this census that is about
   // brands rather than about how much code the walk covered.
-  CALLS_EXAMINED: 1139,
+  CALLS_EXAMINED: 1176,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -2517,10 +2540,19 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     // pinned in its new home rather than dropped.
     expect(checked).toBe(23);
     expect(CLOSED_BARE_STRING_FIELDS.length).toBe(5);
-    // And the live bare list really is empty, said here as well as in its own
-    // test so the two halves of the move are asserted together.
+    // And the live bare list holds exactly the one declared arrival — React's
+    // element key on the stage-1 view — and none of the five closed fields
+    // has reopened onto it. Zero until `ladderView.tsx`; the position that
+    // moved it is a type react declares, not a reopening of anything here.
     expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
-    expect(SURFACE_CENSUS.BARE_POSITIONS).toBe(0);
+    expect(SURFACE_CENSUS.BARE_POSITIONS).toBe(1);
+    expect(DECLARED_BARE_STRING_FIELDS.flatMap((group) => [...group.positions])).toEqual([
+      'ladderView.tsx#LadderView#return.key',
+    ]);
+    const reopened = CLOSED_BARE_STRING_FIELDS.flatMap((group) => [...group.positions]).filter(
+      (position) => DECLARED_BARE_STRING_FIELDS.some((group) => group.positions.includes(position)),
+    );
+    expect(reopened).toEqual([]);
   });
 });
 
@@ -2825,7 +2857,7 @@ function deepScan(root: unknown, label: string): ScanResult {
   };
 }
 
-/** The ten shipped namespaces, keyed by the file name the census reports. */
+/** The shipped namespaces, keyed by the file name the census reports. */
 const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown>>>> = Object.freeze({
   'empireCore.ts': core as unknown as Readonly<Record<string, unknown>>,
   'empireInvariant.ts': invariant as unknown as Readonly<Record<string, unknown>>,
@@ -2833,6 +2865,7 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'engagement.ts': engagementModule as unknown as Readonly<Record<string, unknown>>,
   'expansion.ts': expansionModule as unknown as Readonly<Record<string, unknown>>,
   'ladder.ts': ladderModule as unknown as Readonly<Record<string, unknown>>,
+  'ladderView.tsx': ladderViewModule as unknown as Readonly<Record<string, unknown>>,
   'npc.ts': npcModule as unknown as Readonly<Record<string, unknown>>,
   'production.ts': productionModule as unknown as Readonly<Record<string, unknown>>,
   'recruitment.ts': recruitmentModule as unknown as Readonly<Record<string, unknown>>,
@@ -3238,6 +3271,10 @@ function exemptTable(prefix: string, why: string): readonly ExemptLeaf[] {
 }
 
 const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
+  ...exemptTable(
+    'LADDER_DEV_TIME_STEPS_SECONDS',
+    'THREE SPANS, in seconds, that the stage-gate dev view feeds whole to `ladderCheckInAfter` as the gap since the mark. What a gap is compared AGAINST is the offline horizon, filed under `second` as the derived `OFFLINE_EARNINGS_CAP_SECONDS`; these are the sampling grains a human taps while judging the stage-1 pacing, and nothing in this directory compares a value against one of them. They do enter `EVERY_BRANCH_POINT` like every exempt leaf, so the domains still straddle them as foreign points within each ceiling.',
+  ),
   ...exemptTable(
     'PRECISION_DECIMALS',
     'A DIGIT COUNT. It is handed to the rounding helper that scrubs IEEE-754 noise out of an accrual, so it sizes the arithmetic rather than naming a place on any axis. No quantity in this directory is denominated in decimal places.',
@@ -3857,7 +3894,7 @@ const FIXTURE_LISTS: readonly FixtureList[] = Object.freeze([
   Object.freeze({
     name: 'CLOCKS',
     derivedFrom: 'SECONDS',
-    size: 180,
+    size: 185,
     why: 'One clock per point of the seconds domain, at a fixed skip. Derived, so the seconds domain losing its ceiling this round widened this list without anybody touching it.',
   }),
   Object.freeze({
@@ -3991,13 +4028,22 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   // dropped branch point: the overflow pass drives every one of these values
   // one at a time, per domain, since EVERY_BRANCH_POINT carries exempt
   // leaves too and overflowPointsFor reads it whole.
+  'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
+  'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
+  'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
   'COUNT/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
   'COUNT/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
+  'DAY/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
+  'DAY/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
+  'DAY/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
   'DAY/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
   'DAY/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
   'ROSTER_SHAPE/CHECK_IN_TARGET_SECONDS_MAX=60',
   'ROSTER_SHAPE/CHECK_IN_TARGET_SECONDS_MIN=30',
   'ROSTER_SHAPE/GYM_BUCKS_BASE_PER_HOUR=120',
+  'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
+  'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
+  'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.garage=60',
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.storage-unit=240',
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
@@ -4028,21 +4074,21 @@ const DOMAIN_CENSUS = Object.freeze({
   /** Numeric leaves of EMPIRE_TUNING filed under a unit. */
   FILED: 73,
   /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
-  EXEMPT: 38,
-  TUNING_NUMERIC_LEAVES: 111,
+  EXEMPT: 41,
+  TUNING_NUMERIC_LEAVES: 114,
   TUNING_STRING_LEAVES: 40,
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
-  BRANCH_POINTS: 113,
+  BRANCH_POINTS: 116,
   DOMAINS: 6,
-  CONTAINMENT_CHECKS: 519,
+  CONTAINMENT_CHECKS: 528,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
     SECONDS: 0,
-    DAY: 46,
-    COUNT: 46,
+    DAY: 49,
+    COUNT: 49,
     LEVEL: 0,
-    ROSTER_SHAPE: 67,
+    ROSTER_SHAPE: 70,
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -4059,12 +4105,12 @@ const DOMAIN_CENSUS = Object.freeze({
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
   /** (domain, point) pairs the NUMBER-containment loop actually compares. */
-  NUMBER_CONTAINMENT_CHECKS: 721,
-  NUMBER_POINTS: 241,
-  SECONDS_POINTS: 180,
+  NUMBER_CONTAINMENT_CHECKS: 737,
+  NUMBER_POINTS: 246,
+  SECONDS_POINTS: 185,
   DAY_POINTS: 57,
   COUNT_POINTS: 61,
-  LEVEL_POINTS: 165,
+  LEVEL_POINTS: 171,
   ROSTER_SHAPE_POINTS: 17,
 });
 
@@ -5021,6 +5067,68 @@ function driveEverything(): readonly DrivenRow[] {
         ladderModule.runLadder(schedule, policy), [schedule],
       );
     }
+  }
+
+  // --- ladderView.tsx — the stage-gate view: the helpers, the reducer's
+  // three arms, and the component itself invoked as the pure function it is,
+  // so its element tree (copy included) passes through the same string scan
+  // as every other returned value.
+  drive('ladderDevTimeSteps', 'zero-arg', () => ladderModule.ladderDevTimeSteps());
+  for (const seconds of SECONDS_DOMAIN) {
+    drive('describeLadderClock', String(seconds), () => ladderModule.describeLadderClock(seconds));
+    drive('ladderCheckInAfter', String(seconds), () =>
+      ladderModule.ladderCheckInAfter(ladderModule.createLadderState(), seconds),
+    );
+  }
+  drive('createLadderViewState', 'zero-arg', () => ladderViewModule.createLadderViewState());
+  {
+    const opening = ladderViewModule.createLadderViewState();
+    let played = opening;
+    for (const step of ladderModule.ladderDevTimeSteps()) {
+      drive('ladderViewReduce', `advance/${String(step.seconds)}`, () =>
+        ladderViewModule.ladderViewReduce(played, { kind: 'advance-clock', gapSeconds: step.seconds }), [played],
+      );
+      played = ladderViewModule.ladderViewReduce(played, {
+        kind: 'advance-clock',
+        gapSeconds: step.seconds,
+      });
+    }
+    // Buys off the played garage state reach bought, already-owned,
+    // rung-too-low and not-enough arms of the underlying call; the move off
+    // the same state is refused on money, and off a rich state it lands.
+    for (const item of EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS) {
+      drive('ladderViewReduce', `buy/${item}`, () =>
+        ladderViewModule.ladderViewReduce(played, { kind: 'buy', item }), [played],
+      );
+    }
+    drive('ladderViewReduce', 'move-up/refused', () =>
+      ladderViewModule.ladderViewReduce(played, { kind: 'move-up' }), [played],
+    );
+    const rich = Object.freeze({
+      ladder: ladderStateAt(
+        EMPIRE_TUNING.LADDER_RUNGS[0],
+        EMPIRE_TUNING.LADDER_MOVE_COST_GYM_BUCKS['storage-unit'],
+        ladderModule.createLadderState().equipment,
+      ),
+      lastAccrual: played.lastAccrual,
+      lastRefusal: played.lastRefusal,
+    });
+    drive('ladderViewReduce', 'move-up/moved', () =>
+      ladderViewModule.ladderViewReduce(rich, { kind: 'move-up' }), [rich],
+    );
+    const silent = (): undefined => undefined;
+    drive('LadderView', 'opening', () =>
+      ladderViewModule.LadderView({ state: opening, dispatch: silent }), [opening],
+    );
+    drive('LadderView', 'played', () =>
+      ladderViewModule.LadderView({ state: played, dispatch: silent }), [played],
+    );
+    drive('LadderView', 'moved', () =>
+      ladderViewModule.LadderView({
+        state: ladderViewModule.ladderViewReduce(rich, { kind: 'move-up' }),
+        dispatch: silent,
+      }), [rich],
+    );
   }
 
   // --- empireInvariant.ts, the loop
@@ -6082,7 +6190,7 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
 const MAIN_DRIVE_ROWS_BY_AXIS: Readonly<Record<string, number>> = Object.freeze({
   COUNT: 602,
   DAY: 9495,
-  ROSTER_SHAPE: 74800,
+  ROSTER_SHAPE: 76330,
 });
 
 /**
@@ -6398,43 +6506,43 @@ const OVERFLOW_RESIDUAL: readonly OverflowResidualRow[] = Object.freeze([
   //
   // The eleven DAY rows: the pair is not driven at all, and the price of
   // driving it is in `OVERFLOW_COST_SECONDS`.
-  residual('DAY', 'amountSeries', 'the pair', 34, 120000),
-  residual('DAY', 'arrivalDays', 'the pair', 34, 120000),
-  residual('DAY', 'compareDayLists', 'the pair', 34, 120000),
-  residual('DAY', 'compareLedgers', 'the pair', 34, 120000),
-  residual('DAY', 'empireRunFaults', 'the pair', 34, 120000),
-  residual('DAY', 'idleDayLedger', 'the pair', 34, 120000),
-  residual('DAY', 'outputSeries', 'the pair', 34, 120000),
-  residual('DAY', 'progressionDayLedger', 'the pair', 34, 120000),
-  residual('DAY', 'rivalPeriodCloseDays', 'the pair', 34, 120000),
-  residual('DAY', 'runEmpire', 'the pair', 34, 120000),
-  residual('DAY', 'socialRewardSchedule', 'the pair', 34, 120000),
+  residual('DAY', 'amountSeries', 'the pair', 37, 259200),
+  residual('DAY', 'arrivalDays', 'the pair', 37, 259200),
+  residual('DAY', 'compareDayLists', 'the pair', 37, 259200),
+  residual('DAY', 'compareLedgers', 'the pair', 37, 259200),
+  residual('DAY', 'empireRunFaults', 'the pair', 37, 259200),
+  residual('DAY', 'idleDayLedger', 'the pair', 37, 259200),
+  residual('DAY', 'outputSeries', 'the pair', 37, 259200),
+  residual('DAY', 'progressionDayLedger', 'the pair', 37, 259200),
+  residual('DAY', 'rivalPeriodCloseDays', 'the pair', 37, 259200),
+  residual('DAY', 'runEmpire', 'the pair', 37, 259200),
+  residual('DAY', 'socialRewardSchedule', 'the pair', 37, 259200),
   // The twenty-three ROSTER_SHAPE rows: the pair IS driven at all thirty of
   // these points and its return is scanned; the state handed in is not walked a
   // second time afterwards. See `FROZEN_ARGUMENT_WITNESS` for what covers that.
-  residual('ROSTER_SHAPE', 'accrueProduction', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'accrueReputation', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'accrueSponsorship', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'assertEmpireState', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'beginRecruitment', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'completeRecruitment', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'empireStateFaults', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'expansionContext', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'mayRecruit', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'npcTierUnlocks', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'productionRates', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'recruitmentBoard', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'recruitmentOffer', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'recruitmentRefusals', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'reputationRates', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'rosterOutputRates', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 'the argument re-read', 34, 120000),
-  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 'the argument re-read', 34, 120000),
+  residual('ROSTER_SHAPE', 'accrueProduction', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'accrueReputation', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'accrueSponsorship', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'assertEmpireState', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'beginRecruitment', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'completeRecruitment', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'composeTrainingIqRate', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'empireStateFaults', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'expansionContext', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'gymBucksRatePerHour', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'mayRecruit', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'npcTierUnlocks', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'productionRates', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'recruitmentBoard', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'recruitmentOffer', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'recruitmentRefusals', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'reputationRates', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'rosterGymBucksPerHour', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'rosterOutputRates', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'rosterTrainingIqPerDay', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'topNpcTierUnlocked', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'trainingIqRatePerDay', 'the argument re-read', 37, 259200),
+  residual('ROSTER_SHAPE', 'unlockedNpcTiers', 'the argument re-read', 37, 259200),
 ]);
 
 /**
@@ -6485,18 +6593,18 @@ const OVERFLOW_DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
 
 const OVERFLOW_CENSUS = Object.freeze({
   /** (domain, label) pairs the ceilings drop. Equals the sum of OMITTED_ABOVE_CEILING. */
-  POINTS: 159,
+  POINTS: 168,
   /** Of those, how many at least one subject was driven at. */
-  POINTS_DRIVEN: 159,
+  POINTS_DRIVEN: 168,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
   RETURN_HEAVY_SUBJECTS: 15,
   /** (subject, point) pairs driven, and pairs the budgets did not drive at all. */
-  PAIRS_DRIVEN: 2363,
-  PAIRS_SKIPPED: 374,
+  PAIRS_DRIVEN: 2477,
+  PAIRS_SKIPPED: 407,
   /** Of the driven, how many had the re-read argument region left unscanned. */
-  PAIRS_ARGUMENT_SKIPPED: 782,
+  PAIRS_ARGUMENT_SKIPPED: 851,
   /**
    * ROSTER_SHAPE points above its allocation ceiling.
    *
@@ -6504,7 +6612,7 @@ const OVERFLOW_CENSUS = Object.freeze({
    * below drives all thirty of them one at a time and a shrunken list would
    * otherwise pass quietly.
    */
-  ROSTER_POINTS_ABOVE_THE_CEILING: 34,
+  ROSTER_POINTS_ABOVE_THE_CEILING: 37,
   /**
    * DERIVED INDEPENDENTLY RATHER THAN READ OFF A FAILURE, for the four that
    * can be. The old values were 1 789 rows, 521 418 nodes and 3 538 100
@@ -6515,10 +6623,10 @@ const OVERFLOW_CENSUS = Object.freeze({
    * `DISTINCT_STRINGS`, moved 4 229 -> 4 307 and is transcribed: a distinct-set
    * size is not additive and there is no second way to get it.
    */
-  ROWS: 2961,
-  NODES: 664345,
-  STRINGS: 4509099,
-  DISTINCT_STRINGS: 4324,
+  ROWS: 3114,
+  NODES: 665641,
+  STRINGS: 4513143,
+  DISTINCT_STRINGS: 4330,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
   /**
@@ -6583,12 +6691,12 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // zero. The main drive is what produces it, 135 times.
   // 26 before E17 and 56 after: one more refusal per ROSTER_SHAPE point the
   // budget used to decline, which is thirty. The arm is the same arm.
-  ['beginRecruitment#refused', 67],
+  ['beginRecruitment#refused', 70],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
-  ['recordFriendVisit#refused', 276],
-  ['recordFriendVisit#visited', 92],
+  ['recordFriendVisit#refused', 294],
+  ['recordFriendVisit#visited', 98],
 ]);
 
 // ---------------------------------------------------------------------------
@@ -6837,21 +6945,25 @@ function measureDrive(): DriveMeasurement {
 }
 
 const DRIVE_CENSUS = Object.freeze({
-  ROWS: 253644,
-  EXPORTS_DRIVEN: 245,
-  NODES: 2840679,
-  STRINGS: 13168928,
-  DISTINCT_STRINGS: 1748,
+  ROWS: 261632,
+  EXPORTS_DRIVEN: 251,
+  NODES: 2886143,
+  STRINGS: 13362627,
+  DISTINCT_STRINGS: 2036,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
    *
-   * Both zero, and both pinned rather than omitted: this directory constructs
-   * neither, so the two branches of the walker that exist for attack shape 9
-   * are exercised by the tripwire and by nothing in the subject. A non-zero
-   * number here means one arrived, which is worth a look on its own.
+   * Both were zero until `ladderView.tsx`: nothing in this directory
+   * constructs either, and the 21 getters are react's own dev-mode `key`
+   * warning accessors on the element trees the three LadderView drives
+   * return — seven keyed children per screen (four shop rows, three dev-step
+   * buttons), each carrying a react-defined getter the walk invokes and
+   * scans through. They are react's, not this directory's; a getter arriving
+   * from any OTHER module is still worth a look on its own, which is why the
+   * number is pinned rather than bounded.
    */
-  GETTERS_INVOKED: 0,
+  GETTERS_INVOKED: 21,
   PROXIES: 0,
   /**
    * Nullary functions the walk CALLED, how many threw, and how many
@@ -6869,7 +6981,13 @@ const DRIVE_CENSUS = Object.freeze({
    * position in a shipped return is one added member rather than a count that
    * moved by a number nobody can attribute.
    */
-  CLOSURES_INVOKED: 0,
+  /**
+   * Fifteen, all from `ladderView.tsx`'s element trees: every onClick the
+   * three driven screens carry is a nullary arrow (five per screen — three
+   * dev steps, a buy, the relocation), so the walk calls each one against
+   * the silent dispatch fixture and scans onward. Zero before the view.
+   */
+  CLOSURES_INVOKED: 15,
   CLOSURE_THROWS: 0,
   CLOSURES_DECLINED: 2046,
   /**
@@ -6889,7 +7007,7 @@ const DRIVE_CENSUS = Object.freeze({
    * tell from an absence. This is the number that says the branch is live, in
    * the same role `TRIPWIRE_CENSUS.GETTERS_INVOKED` plays for the getter arm.
    */
-  STACKS: 3113,
+  STACKS: 3244,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -7531,10 +7649,10 @@ const DIAGNOSTIC_CHANNEL_CENSUS: readonly (readonly [string, number])[] = Object
 const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.freeze([
   ['beginRecruitment#accepted', 135],
   ['beginRecruitment#refused', 290],
-  ['buyLadderEquipment#bought', 3006],
-  ['buyLadderEquipment#refused', 8562],
-  ['moveUpLadder#moved', 621],
-  ['moveUpLadder#refused', 2271],
+  ['buyLadderEquipment#bought', 3096],
+  ['buyLadderEquipment#refused', 8712],
+  ['moveUpLadder#moved', 660],
+  ['moveUpLadder#refused', 2292],
   ['recordFriendVisit#refused', 344],
   ['recordFriendVisit#visited', 112],
 ]);
@@ -10557,7 +10675,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'empireInvariant.ts': 60,
       'engagement.ts': 23,
       'expansion.ts': 47,
-      'ladder.ts': 21,
+      'ladder.ts': 25,
+      'ladderView.tsx': 5,
       'npc.ts': 12,
       'production.ts': 11,
       'recruitment.ts': 9,
@@ -10588,7 +10707,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'social.ts': 7,
     }),
     'argument-mutation': Object.freeze({}),
-    'callback-invocation': Object.freeze({ 'engagement.ts': 1, 'production.ts': 2 }),
+    'callback-invocation': Object.freeze({ 'engagement.ts': 1, 'ladderView.tsx': 3, 'production.ts': 2 }),
     'internal-callback-invocation': Object.freeze({ 'expansion.ts': 1 }),
     'module-mutable-state': Object.freeze({}),
     'ambient-global': Object.freeze({}),
@@ -10648,7 +10767,7 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'empireInvariant.ts': 8,
   'engagement.ts': 13,
   'expansion.ts': 3,
-  'ladder.ts': 17,
+  'ladder.ts': 20,
   'production.ts': 9,
   'recruitment.ts': 1,
   'reputation.ts': 6,
@@ -10666,6 +10785,13 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
  */
 const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
   'engagement.ts#historyFrom#attended x1',
+  // The three onClick arrows in the stage-1 view, each handing
+  // `props.dispatch` exactly one action object. One site per control kind
+  // (advance, buy, relocate); `x1` widening to `x2` at any of them is a
+  // payload arriving one argument wider, which is what this census is for.
+  'ladderView.tsx#LadderView#props.dispatch x1',
+  'ladderView.tsx#LadderView#props.dispatch x1',
+  'ladderView.tsx#LadderView#props.dispatch x1',
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour x2',
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay x2',
 ]);
@@ -10869,7 +10995,9 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'engagement.ts:437 returned=unfollowable:gym',
   'engagement.ts:455 returned=unfollowable:gym',
   'expansion.ts:549 returned=unfollowable:state',
-  'ladder.ts:312 receiver=ArrayLiteralExpression',
+  'ladder.ts:324 receiver=ArrayLiteralExpression',
+  'ladderView.tsx:115 returned=unfollowable:state',
+  'ladderView.tsx:123 returned=unfollowable:state',
   'recruitment.ts:388 returned=unfollowable:state',
   'social.ts:345 receiver=ArrayLiteralExpression',
   'social.ts:535 returned=unfollowable:context',
@@ -10900,9 +11028,15 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'engagement.ts:437 EmpireState asked=true walked=false',
   'engagement.ts:455 EmpireState asked=true walked=false',
   'expansion.ts:549 EmpireClock asked=true walked=false',
-  'ladder.ts:557 LadderState asked=true walked=false',
-  'ladder.ts:568 LadderState asked=true walked=false',
-  'ladder.ts:574 LadderState asked=true walked=false',
+  'ladder.ts:585 LadderState asked=true walked=false',
+  'ladder.ts:596 LadderState asked=true walked=false',
+  'ladder.ts:602 LadderState asked=true walked=false',
+  'ladderView.tsx:106 LadderState asked=true walked=false',
+  'ladderView.tsx:107 LadderAccrual asked=true walked=false',
+  'ladderView.tsx:114 LadderState asked=true walked=false',
+  'ladderView.tsx:115 LadderAccrual | null asked=true walked=false',
+  'ladderView.tsx:122 LadderState asked=true walked=false',
+  'ladderView.tsx:123 LadderAccrual | null asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
   'social.ts:535 readonly FriendVisit[] asked=true walked=false',
 ]);
@@ -10910,7 +11044,7 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
 /** What the two readings of the screen measured against each other. */
 const SCREEN_AGREEMENT = Object.freeze({
   /** Rows in `SHIPPED_SCREEN_DISAGREEMENTS`, so a shorter list is red too. */
-  SHIPPED_DISAGREEMENTS: 14,
+  SHIPPED_DISAGREEMENTS: 20,
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -10962,9 +11096,9 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   parameter: 2,
   'module-variable': 34,
   local: 0,
-  function: 556,
-  member: 531,
-  'member-callback': 2,
+  function: 573,
+  member: 548,
+  'member-callback': 5,
   'member-of-parameter': 14,
   fresh: 0,
   unclassified: 0,
@@ -10994,18 +11128,18 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
-  MODULES: 11,
+  MODULES: 12,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved. */
-  SITES: 351,
+  SITES: 363,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
    * grammar declarations and the `satisfies` clause are 23 AST nodes, and no
    * site, channel or wrap count moved with them.
    */
-  NODES_EXAMINED: 23_965,
+  NODES_EXAMINED: 25_083,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
-  WRAP_CALLS: 72,
+  WRAP_CALLS: 75,
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
@@ -11056,7 +11190,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   /** Deepest chain from an exported surface, in the control's own accounting. */
   DEEPEST: 9,
   /** Exported positions measured. A truncated walk would report a shallow tree. */
-  POSITIONS: 557,
+  POSITIONS: 576,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -11940,6 +12074,35 @@ const recordingRates = (record: (args: readonly unknown[]) => void): RosterRateS
     },
   } as unknown as RosterRateSource);
 
+/**
+ * The stage-1 view's control count on an opening-kit screen: the dev steps,
+ * the one item the starting kit does not hold, and the relocation. Derived
+ * from the tuning vocabulary rather than written as a number, so a fourth
+ * step or a wider kit moves it without an edit here.
+ */
+const LADDER_VIEW_CONTROLS =
+  EMPIRE_TUNING.LADDER_DEV_TIME_STEPS_SECONDS.length +
+  (EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.length - EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.length) +
+  1;
+
+/** Every onClick in an element tree, pressed in tree order. */
+function pressEveryControl(node: unknown): number {
+  if (typeof node !== 'object' || node === null) return 0;
+  if (Array.isArray(node)) {
+    return node.reduce((sum: number, child) => sum + pressEveryControl(child), 0);
+  }
+  const props = (node as { readonly props?: unknown }).props;
+  if (typeof props !== 'object' || props === null) return 0;
+  const bag = props as Readonly<Record<string, unknown>>;
+  let pressed = 0;
+  const handler = bag['onClick'];
+  if (typeof handler === 'function') {
+    (handler as () => void)();
+    pressed += 1;
+  }
+  return pressed + pressEveryControl(bag['children']);
+}
+
 const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
   Object.freeze({
     key: 'engagement.ts#historyFrom#attended',
@@ -11978,6 +12141,37 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
           );
         },
         callsAt: (): number => TRAINED_DAYS_AXIS_SLOTS,
+        argumentsPerCall: 1,
+      }),
+    ]),
+  }),
+  Object.freeze({
+    key: 'ladderView.tsx#LadderView#props.dispatch',
+    axes: Object.freeze([
+      Object.freeze({
+        name: 'ladderView.tsx#LadderView#props.dispatch#gymBucks',
+        domain: 'NUMBER',
+        means:
+          'the money the rendered screen shows. The dispatch count is the CONTROL count — three dev steps, the one open buy, the relocation — and deliberately does not vary with the point: the view disables nothing, every control dispatches whatever the balance, and refusals are the reducer\u2019s to report. What the pass scans is the action objects the screen hands its caller.',
+        drive: (record: (args: readonly unknown[]) => void, point: number): void => {
+          pressEveryControl(
+            ladderViewModule.LadderView({
+              state: Object.freeze({
+                ladder: ladderStateAt(
+                  EMPIRE_TUNING.LADDER_RUNGS[0],
+                  point,
+                  ladderModule.createLadderState().equipment,
+                ),
+                lastAccrual: null,
+                lastRefusal: null,
+              }),
+              dispatch: (action: ladderViewModule.LadderViewAction): void => {
+                record([action]);
+              },
+            }),
+          );
+        },
+        callsAt: (): number => LADDER_VIEW_CONTROLS,
         argumentsPerCall: 1,
       }),
     ]),
@@ -12201,28 +12395,34 @@ interface CallbackAxisCensus {
 
 const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Object.freeze({
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
-    points: 97,
+    points: 99,
     refusedPoints: 1,
-    calls: 750283,
-    recorded: 750283,
+    calls: 1038283,
+    recorded: 1038283,
   }),
   'engagement.ts#historyFrom#attended#trainedDays': Object.freeze({
-    points: 97,
+    points: 99,
     refusedPoints: 0,
-    calls: 291,
-    recorded: 291,
+    calls: 297,
+    recorded: 297,
+  }),
+  'ladderView.tsx#LadderView#props.dispatch#gymBucks': Object.freeze({
+    points: 246,
+    refusedPoints: 0,
+    calls: 1230,
+    recorded: 1230,
   }),
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize': Object.freeze({
-    points: 66,
+    points: 68,
     refusedPoints: 0,
-    calls: 743979,
-    recorded: 1487958,
+    calls: 1031979,
+    recorded: 2063958,
   }),
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize': Object.freeze({
-    points: 66,
+    points: 68,
     refusedPoints: 0,
-    calls: 743979,
-    recorded: 1487958,
+    calls: 1031979,
+    recorded: 2063958,
   }),
 });
 
@@ -12239,7 +12439,7 @@ const CALLBACK_AXIS_RESIDUAL: readonly string[] = Object.freeze([
 ]);
 
 const CALLBACK_PASS_CENSUS = Object.freeze({
-  SUBJECTS: 3,
+  SUBJECTS: 4,
   /**
    * Axes driven, summed over subjects.
    *
@@ -12250,7 +12450,7 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    * reader — with `CALLBACK_AXIS_RESIDUAL` naming what a per-axis drive still
    * cannot express.
    */
-  AXES_VARIED: 4,
+  AXES_VARIED: 5,
   /**
    * Points, refusals, calls and values, summed across every axis.
    *
@@ -12258,10 +12458,10 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    * reader checks at a glance and the table is what cannot be gamed by one axis
    * growing while another dies.
    */
-  POINTS: 326,
+  POINTS: 580,
   REFUSED_POINTS: 1,
-  CALLS: 2238532,
-  RECORDED: 3726490,
+  CALLS: 3103768,
+  RECORDED: 5167726,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
@@ -12749,7 +12949,17 @@ describe('the channel census — the routes a string can leave this directory by
       // on the drive's side — reports itself.
       for (const point of registry.points) expect(points, axis.name).toContain(point);
       const dropped = overflowPointsFor(axis.domain, registry);
-      expect(dropped.length, `${axis.name} has no points above its ceiling`).toBeGreaterThan(0);
+      // A domain that declares NO_CEILING pays for every branch point up
+      // front, so its overflow is empty BY CONSTRUCTION and an empty list is
+      // the correct reading, not a truncation — the containment loop above
+      // already required every registry point present. This arm arrived with
+      // the view's dispatch axis, the first callback axis on the NUMBER
+      // domain; every ceilinged axis keeps the stronger demand.
+      if (registry.foreignCeiling === FOREIGN_CEILINGS.NO_CEILING) {
+        expect(dropped, `${axis.name} dropped points despite declaring no ceiling`).toEqual([]);
+      } else {
+        expect(dropped.length, `${axis.name} has no points above its ceiling`).toBeGreaterThan(0);
+      }
       for (const point of dropped) expect(points, `${axis.name} ${point.label}`).toContain(point.value);
       // And it is not merely the two lists concatenated: it straddles branch
       // points the E18 fixture could not express. Two named ones, each a real
@@ -12767,10 +12977,10 @@ describe('the channel census — the routes a string can leave this directory by
     const count = NUMERIC_DOMAINS.COUNT;
     const countPoints = callbackPointsFor('COUNT');
     const countDropped = overflowPointsFor('COUNT', count);
-    expect(distinct(countDropped.map((point) => String(point.value))).length).toBe(36);
-    expect(countPoints.filter((point) => point > FOREIGN_CEILINGS.COUNT).length).toBe(37);
+    expect(distinct(countDropped.map((point) => String(point.value))).length).toBe(38);
+    expect(countPoints.filter((point) => point > FOREIGN_CEILINGS.COUNT).length).toBe(39);
     expect(count.points.length).toBe(DOMAIN_CENSUS.COUNT_POINTS);
-    expect(countPoints.length).toBe(DOMAIN_CENSUS.COUNT_POINTS + 36);
+    expect(countPoints.length).toBe(DOMAIN_CENSUS.COUNT_POINTS + 38);
     // Every axis names a domain the registry has, and every axis name is
     // distinct — a duplicate would let two axes share one census row.
     expect(distinct(axes.map((axis) => axis.name)).length).toBe(axes.length);
@@ -14709,7 +14919,7 @@ function cyclicDeclarations(
  */
 const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   /** Type aliases, interfaces and classes declared across the ten shipped modules. */
-  DECLARATIONS: 132,
+  DECLARATIONS: 139,
   /** Those carrying type parameters. An instantiation depth needs one. */
   GENERIC: 11,
   /**

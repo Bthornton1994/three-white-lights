@@ -844,6 +844,18 @@ export const EMPIRE_TUNING = Object.freeze({
     bench: Object.freeze(['power-bar', 'comp-plates', 'flat-bench'] as const),
     deadlift: Object.freeze(['power-bar', 'comp-plates'] as const),
   }),
+
+  /**
+   * The dev-only time steps of the stage-1 ladder view, in seconds: one hour,
+   * eight hours, three days. `ladder.ts`'s `ladderDevTimeSteps` labels them and
+   * `ladderView.tsx`'s visibly-marked dev control feeds them to the shipped
+   * accrual functions, so the §5.11 stage-gate human can feel the pacing
+   * without waiting a real week. Each step must be a positive whole multiple
+   * of `TICK_SECONDS`, which `ladderDevTimeSteps` refuses loudly rather than
+   * trusting. Knobs: the gate's open question is the income magnitudes, and
+   * the sampling grain a human judges them at is tuned with the same hand.
+   */
+  LADDER_DEV_TIME_STEPS_SECONDS: Object.freeze([3600, 28800, 259200] as const),
 } satisfies EmpireTuningRecord);
 
 /**
@@ -923,4 +935,5 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   LADDER_EQUIPMENT_COST_GYM_BUCKS: 'knob',
   LADDER_EQUIPMENT_MIN_RUNG: 'structural',
   LADDER_LIFT_REQUIREMENTS: 'structural',
+  LADDER_DEV_TIME_STEPS_SECONDS: 'knob',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

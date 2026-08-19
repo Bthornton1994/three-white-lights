@@ -98,6 +98,18 @@
  *     v1 modules kept their math against local types.
  *   - No accelerants and no second clock. Stage 1 has no build timers, so
  *     there is nothing to skip; the single time axis is wall-clock seconds.
+ *
+ * ===========================================================================
+ * 6. The stage gate's instrument reads this module and adds nothing to it
+ * ===========================================================================
+ *
+ * §5.11 gates stage 1 on a human having PLAYED it. `ladderView.tsx` is that
+ * gate's instrument: a render-only view whose reducer arms each make exactly
+ * one call into this module, so every quantity a player sees here is computed
+ * here. The view-facing helpers below (`ladderCheckInAfter`,
+ * `ladderDevTimeSteps`, `describeLadderClock`) exist so the view carries no
+ * arithmetic of its own — the rule that game math does not live in a `.tsx`,
+ * applied at the view's birth rather than retrofitted.
  */
 
 import { refuseWith } from './empireCore';
@@ -433,6 +445,22 @@ export function ladderCheckIn(state: LadderState, atSeconds: number): LadderChec
   });
 }
 
+/**
+ * A check-in `gapSeconds` after the last mark — the shape the stage-gate view
+ * dispatches, where the player advances a dev clock by a step rather than
+ * naming an absolute second. Delegates wholly to `ladderCheckIn`, so the tick
+ * contract and the backwards-mark refusal are one implementation; the one
+ * refusal added here is a gap that is not a finite non-negative number, named
+ * in the gap's own terms before it is folded into an absolute time.
+ */
+export function ladderCheckInAfter(state: LadderState, gapSeconds: number): LadderCheckIn {
+  requireLadderState(state);
+  if (!Number.isFinite(gapSeconds) || gapSeconds < 0) {
+    refuseWith(`a clock advance must be finite and at or above zero, received ${gapSeconds}`);
+  }
+  return ladderCheckIn(state, state.collectedAt + gapSeconds);
+}
+
 // ---------------------------------------------------------------------------
 // Decisions — the two spends, each with a shown cost and loud refusals
 // ---------------------------------------------------------------------------
@@ -584,4 +612,73 @@ export function runLadder(
     bought: Object.freeze(bought),
     movedTo: Object.freeze(movedTo),
   });
+}
+
+// ---------------------------------------------------------------------------
+// View-facing helpers — §6 of the header: the view renders, this file computes
+// ---------------------------------------------------------------------------
+
+/**
+ * A dev step's label: a sign, a magnitude, a unit. A pattern type rather than
+ * a bare string, so the position census in `empireForbiddenOutput.test.ts`
+ * can read exactly what this field admits — nothing shaped like a vocabulary
+ * word fits it.
+ */
+export type LadderDevStepLabel = `+${number}d` | `+${number}h` | `+${number}s`;
+
+/** One labelled dev-control step: how far a tap advances the clock. */
+export interface LadderDevTimeStep {
+  readonly seconds: number;
+  /** Derived from the seconds, in the largest whole unit they fill. */
+  readonly label: LadderDevStepLabel;
+}
+
+/**
+ * The dev control's steps, read from `LADDER_DEV_TIME_STEPS_SECONDS` and
+ * labelled in the largest whole unit each fills — days, then hours, then bare
+ * seconds. Refuses a step that is not a positive whole multiple of the tick,
+ * because feeding one to `ladderCheckInAfter` would surface as a confusing
+ * check-in refusal two calls away from the value that caused it.
+ */
+export function ladderDevTimeSteps(): readonly LadderDevTimeStep[] {
+  return Object.freeze(
+    EMPIRE_TUNING.LADDER_DEV_TIME_STEPS_SECONDS.map((seconds) => {
+      if (
+        !Number.isInteger(seconds) ||
+        seconds <= 0 ||
+        seconds % EMPIRE_TUNING.TICK_SECONDS !== 0
+      ) {
+        refuseWith(`${seconds} is not a positive whole-tick dev step`);
+      }
+      const label: LadderDevStepLabel =
+        seconds % EMPIRE_TUNING.SECONDS_PER_DAY === 0
+          ? `+${seconds / EMPIRE_TUNING.SECONDS_PER_DAY}d`
+          : seconds % EMPIRE_TUNING.SECONDS_PER_HOUR === 0
+            ? `+${seconds / EMPIRE_TUNING.SECONDS_PER_HOUR}h`
+            : `+${seconds}s`;
+      return Object.freeze({ seconds, label });
+    }),
+  );
+}
+
+/** The clock readout's shape: whole days, hours, leftover seconds. */
+export type LadderClockText = `${number}d ${number}h ${number}s`;
+
+/**
+ * A clock reading as days, hours and leftover seconds — display arithmetic
+ * for the view, kept here so the view divides nothing. Uses the tuning
+ * block's own day and hour lengths rather than restating them. Returns the
+ * pattern type rather than a bare string, for the same census reason as
+ * `LadderDevStepLabel`.
+ */
+export function describeLadderClock(atSeconds: number): LadderClockText {
+  if (!Number.isFinite(atSeconds) || atSeconds < 0) {
+    refuseWith(`a clock reading must be finite and at or above zero, received ${atSeconds}`);
+  }
+  const days = Math.floor(atSeconds / EMPIRE_TUNING.SECONDS_PER_DAY);
+  const hours = Math.floor(
+    (atSeconds % EMPIRE_TUNING.SECONDS_PER_DAY) / EMPIRE_TUNING.SECONDS_PER_HOUR,
+  );
+  const seconds = atSeconds % EMPIRE_TUNING.SECONDS_PER_HOUR;
+  return `${days}d ${hours}h ${seconds}s`;
 }

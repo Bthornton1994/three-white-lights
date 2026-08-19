@@ -45,7 +45,10 @@ import {
   accrueLadderGymBucks,
   buyLadderEquipment,
   createLadderState,
+  describeLadderClock,
   ladderCheckIn,
+  ladderCheckInAfter,
+  ladderDevTimeSteps,
   ladderEquipmentCost,
   ladderEquipmentMinRung,
   ladderIncomeRatePerHour,
@@ -888,5 +891,85 @@ describe('never punish absence: the gap costs capped income and nothing else', (
     // The chains are not empty: the step count is the sum of the four
     // calendars' attended slots, walked twice (once per policy).
     expect(steps).toBe(768);
+  });
+});
+
+describe('the view-facing helpers compute what the view will only render', () => {
+  it('labels each dev step in the largest whole unit it fills, off the tuning row', () => {
+    const steps = ladderDevTimeSteps();
+    // Derived from the tuning entry rather than restated: same order, same
+    // seconds, and each label re-derived here with the same unit rule.
+    expect(steps.map((step) => step.seconds)).toEqual([
+      ...T.LADDER_DEV_TIME_STEPS_SECONDS,
+    ]);
+    for (const step of steps) {
+      expect(Number.isInteger(step.seconds)).toBe(true);
+      expect(step.seconds).toBeGreaterThan(0);
+      expect(step.seconds % T.TICK_SECONDS).toBe(0);
+      const expected =
+        step.seconds % T.SECONDS_PER_DAY === 0
+          ? `+${step.seconds / T.SECONDS_PER_DAY}d`
+          : step.seconds % T.SECONDS_PER_HOUR === 0
+            ? `+${step.seconds / T.SECONDS_PER_HOUR}h`
+            : `+${step.seconds}s`;
+      expect(step.label).toBe(expected);
+    }
+    // The shipped values, named, so a tuning change is a visible diff here:
+    // one hour, eight hours, three days.
+    expect(steps.map((step) => step.label)).toEqual(['+1h', '+8h', '+3d']);
+    // And every step is walkable by the check-in it will be fed to.
+    let advanced = createLadderState();
+    for (const step of steps) {
+      advanced = ladderCheckInAfter(advanced, step.seconds).state;
+    }
+    expect(advanced.collectedAt).toBe(
+      T.LADDER_DEV_TIME_STEPS_SECONDS.reduce((sum, seconds) => sum + seconds, 0),
+    );
+  });
+
+  it('advances by a gap exactly as the absolute-time check-in would', () => {
+    // The helper is delegation, not a second implementation: byte-identical
+    // outcome to ladderCheckIn at the folded absolute time, across a domain
+    // that includes zero, one tick, the horizon straddle and a beyond-cap gap.
+    const horizon = offlineBankingHorizonSeconds();
+    const gaps = [0, T.TICK_SECONDS, horizon - T.TICK_SECONDS, horizon, horizon + T.TICK_SECONDS, horizon * 4];
+    let compared = 0;
+    let state = createLadderState();
+    for (const gap of gaps) {
+      const viaGap = ladderCheckInAfter(state, gap);
+      const viaAbsolute = ladderCheckIn(state, state.collectedAt + gap);
+      expect(viaGap).toEqual(viaAbsolute);
+      state = viaGap.state;
+      compared += 1;
+    }
+    expect(compared).toBe(gaps.length);
+    expect(compared).toBe(6);
+    // Refusals, in the gap's own vocabulary before the fold can obscure it.
+    expect(() => ladderCheckInAfter(createLadderState(), -1)).toThrowError(
+      /clock advance must be finite and at or above zero/,
+    );
+    expect(() => ladderCheckInAfter(createLadderState(), Number.NaN)).toThrowError(
+      /clock advance must be finite and at or above zero/,
+    );
+    // An off-tick gap reaches the one shared tick contract in ladderCheckIn.
+    // (At the shipped one-second tick no off-tick number exists, so this
+    // refusal is reachable only through a non-integer gap.)
+    expect(() => ladderCheckInAfter(createLadderState(), 0.5)).toThrowError(
+      /whole non-negative tick/,
+    );
+  });
+
+  it('reads the clock back in days, hours and leftover seconds', () => {
+    expect(describeLadderClock(0)).toBe('0d 0h 0s');
+    expect(describeLadderClock(T.SECONDS_PER_HOUR)).toBe('0d 1h 0s');
+    expect(describeLadderClock(T.SECONDS_PER_DAY)).toBe('1d 0h 0s');
+    const mixed = T.SECONDS_PER_DAY + T.SECONDS_PER_HOUR + T.TICK_SECONDS;
+    expect(describeLadderClock(mixed)).toBe(`1d 1h ${T.TICK_SECONDS}s`);
+    expect(() => describeLadderClock(-1)).toThrowError(
+      /clock reading must be finite and at or above zero/,
+    );
+    expect(() => describeLadderClock(Number.POSITIVE_INFINITY)).toThrowError(
+      /clock reading must be finite and at or above zero/,
+    );
   });
 });

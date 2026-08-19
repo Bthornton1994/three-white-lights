@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>ladder dev view</title>
+    <style>
+      /* Dev-only chrome. Styling lives here so the view module carries no
+         style objects and therefore no numeric literals. */
+      body {
+        font-family: ui-monospace, monospace;
+        background: #14161a;
+        color: #e8e4da;
+        max-width: 40rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.6;
+      }
+      h1 {
+        font-size: 1.4rem;
+        border-bottom: 1px solid #3a3f47;
+        padding-bottom: 0.4rem;
+      }
+      button {
+        font: inherit;
+        background: #2b303a;
+        color: inherit;
+        border: 1px solid #4a5160;
+        border-radius: 4px;
+        padding: 0.2rem 0.8rem;
+        margin: 0 0.25rem;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #3a4150;
+      }
+      ul {
+        padding-left: 1.2rem;
+      }
+      [data-testid='ladder-refusal'] {
+        color: #e07a5f;
+      }
+      [data-testid='ladder-accrual'] {
+        color: #81b29a;
+      }
+      [data-testid='ladder-dev-controls'] {
+        margin-top: 1.5rem;
+        border-top: 1px dashed #4a5160;
+        padding-top: 0.5rem;
+        color: #b8b2a6;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="ladder-root"></div>
+    <script type="module" src="/ladder-dev.tsx"></script>
+  </body>
+</html>
