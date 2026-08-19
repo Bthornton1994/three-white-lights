@@ -441,3 +441,133 @@ describe('the career half chooses on the row the other halves read', () => {
     expect(second.error.code).toBe('FEDERATION_ALREADY_CHOSEN');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Sprint 2 — the row survives a reload, through the injected store
+// ---------------------------------------------------------------------------
+
+import { decodeSavedGame, SAVE_VERSION } from '../game/saveGame';
+import type { SaveStore } from './localSessionServer';
+
+/** An in-memory store a test can read back out of, with every call counted. */
+function fakeStore(initial: string | null = null): SaveStore & {
+  text: string | null;
+  saves: number;
+  quarantined: Array<{ text: string; code: string }>;
+} {
+  const box = {
+    text: initial,
+    saves: 0,
+    quarantined: [] as Array<{ text: string; code: string }>,
+    load: () => box.text,
+    save: (text: string) => {
+      box.saves += 1;
+      box.text = text;
+    },
+    quarantine: (text: string, code: string) => {
+      box.quarantined.push({ text, code });
+    },
+  };
+  return box;
+}
+
+const CHOOSE_IRONLINE = {
+  kind: 'choose-federation',
+  report: { federationId: 'ironline' },
+} as const;
+
+describe('the row survives a reload (Sprint 2)', () => {
+  it('an accepted mutation writes a decodable save, and a second server opens on it', async () => {
+    const store = fakeStore();
+    const first = localSessionServer({ store, sleep: instantly, freshSignupDay: SIGNUP_DAY });
+    const chosen = await first.chooseFederation(CHOOSE_IRONLINE, asProposalId('save-c1'));
+    expect(chosen.kind).toBe('chosen');
+    expect(store.saves).toBe(1);
+    expect(store.text).not.toBeNull();
+    const decoded = decodeSavedGame(store.text ?? '');
+    expect(decoded.ok, decoded.ok ? '' : decoded.detail).toBe(true);
+
+    // THE RELOAD, at the port level: a brand-new server over the same store is
+    // the same lifter — the choice made before the "reload" is on the snapshot
+    // the fresh connection opens with.
+    const second = localSessionServer({ store, sleep: instantly, freshSignupDay: SIGNUP_DAY });
+    const reading = readFederation(openingCache(second));
+    expect(readingValue(reading)).toEqual({ id: 'ironline', chosen: true });
+  });
+
+  it('a REFUSED mutation writes nothing — the row did not move, so neither does the save', async () => {
+    const store = fakeStore();
+    const port = localSessionServer({ store, sleep: instantly, freshSignupDay: SIGNUP_DAY });
+    await port.chooseFederation(CHOOSE_IRONLINE, asProposalId('save-c2'));
+    expect(store.saves).toBe(1);
+    const again = await port.chooseFederation(
+      { kind: 'choose-federation', report: { federationId: 'grandhall' } },
+      asProposalId('save-c3'),
+    );
+    expect(again.kind).toBe('refused');
+    expect(store.saves).toBe(1);
+  });
+
+  it('a save this build cannot read is QUARANTINED before the fresh lifter can overwrite it', async () => {
+    const store = fakeStore('not a save at all');
+    const port = localSessionServer({ store, sleep: instantly, freshSignupDay: SIGNUP_DAY });
+    // Quarantined at construction — with the ORIGINAL bytes and the refusal's
+    // own code — and only then does the fresh lifter's first accepted
+    // mutation overwrite the live key.
+    expect(store.quarantined).toEqual([{ text: 'not a save at all', code: 'NOT_JSON' }]);
+    await port.chooseFederation(CHOOSE_IRONLINE, asProposalId('save-c4'));
+    expect(store.text).not.toBe('not a save at all');
+    expect(store.quarantined[0]?.text).toBe('not a save at all');
+  });
+
+  it('A SAVE FROM THE FUTURE is refused into quarantine under FUTURE_VERSION — a newer lifter waits for the app, never dies to it', async () => {
+    const store0 = fakeStore();
+    const writer = localSessionServer({ store: store0, sleep: instantly, freshSignupDay: SIGNUP_DAY });
+    await writer.chooseFederation(CHOOSE_IRONLINE, asProposalId('save-c5'));
+    const fromTheFuture = (store0.text ?? '').replace(
+      `"version":${SAVE_VERSION}`,
+      `"version":${SAVE_VERSION + 1}`,
+    );
+    expect(fromTheFuture).not.toBe(store0.text);
+
+    const store = fakeStore(fromTheFuture);
+    const port = localSessionServer({ store, sleep: instantly, freshSignupDay: SIGNUP_DAY });
+    expect(store.quarantined.map((q) => q.code)).toEqual(['FUTURE_VERSION']);
+    expect(store.quarantined[0]?.text).toBe(fromTheFuture);
+    // ...and the port is a working fresh lifter, not a dead app.
+    const reading = readFederation(openingCache(port));
+    expect(readingValue(reading)).toEqual({ id: CAREER_TUNING.DEFAULT_FEDERATION_ID, chosen: false });
+  });
+
+  it('a fresh lifter signs up on the day the CALLER names — the wall-clock day, once appServer passes it', async () => {
+    const store = fakeStore();
+    const port = localSessionServer({ store, sleep: instantly, freshSignupDay: 12345 });
+    // Read through the save the server itself writes: the anchor every absence
+    // is charged from (GDD §4.2) is the caller's day, not the test constant.
+    await port.chooseFederation(CHOOSE_IRONLINE, asProposalId('save-c7'));
+    const decoded = decodeSavedGame(store.text ?? '');
+    expect(decoded.ok, decoded.ok ? '' : decoded.detail).toBe(true);
+    if (decoded.ok) expect(decoded.record.streak.signupDay).toBe(12345);
+  });
+
+  it('an explicit record still wins over the store — a test that hands a row in means THAT row', () => {
+    const store = fakeStore();
+    const seeded = localSessionServer({ store, sleep: instantly, freshSignupDay: SIGNUP_DAY });
+    // no await needed for a synchronous check: the store had no save, so the
+    // explicit-record server below cannot be reading one.
+    void seeded;
+    const port = localSessionServer({ record: storedRecord(), store, sleep: instantly });
+    const reading = readFederation(openingCache(port));
+    expect(readingValue(reading)).toEqual({ id: CAREER_TUNING.DEFAULT_FEDERATION_ID, chosen: false });
+  });
+
+  it('a store that THROWS does not take the mutation down with it', async () => {
+    const store = fakeStore();
+    store.save = () => {
+      throw new Error('QuotaExceededError: the disk is full');
+    };
+    const port = localSessionServer({ store, sleep: instantly, freshSignupDay: SIGNUP_DAY });
+    const chosen = await port.chooseFederation(CHOOSE_IRONLINE, asProposalId('save-c6'));
+    expect(chosen.kind).toBe('chosen');
+  });
+});

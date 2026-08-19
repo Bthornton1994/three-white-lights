@@ -34,16 +34,53 @@
  * `ProgressionSnapshotWire` through `progression.ts`'s read accessors. This
  * module holds a REFERENCE; it does not hold truth.
  *
- * NOTHING IS PERSISTED. A reload still starts a fresh lifter, because
- * persistence is the server's job (see `localSessionServer.ts`). What survives
- * is navigation within one run of the app, which is exactly the hole the shell
- * would otherwise have opened.
+ * THE ROW SURVIVES A RELOAD NOW (Sprint 2 — GDD §10.0's "Nothing Is Lost").
+ * Persistence stayed the server's job: `localSessionServer` writes the row
+ * through `saveGame.ts`'s schema after every accepted mutation, and what THIS
+ * module adds is only the two things a server cannot decide for itself —
+ * WHERE a save lives on this platform (the web store below), and WHAT DAY a
+ * brand-new lifter's account begins (the real wall-clock day, so a fresh
+ * install's absences are charged from the day the account actually began
+ * rather than from a test constant — GDD §4.2's anchor, made real the moment
+ * saves were).
  */
 
-import { localSessionServer, type LocalAppServerPort } from '../session/localSessionServer';
+import { localSessionServer, type LocalAppServerPort, type SaveStore } from '../session/localSessionServer';
 import type { CareerServerPort } from '../game/careerClient';
 import type { MeetServerPort } from '../game/meetClient';
 import type { SessionServerPort } from '../game/sessionClient';
+import type { SaveRefusalCode } from '../game/saveGame';
+import { streakDayFromLocalWallClock } from '../game/streak';
+
+/** One key, versioned by the schema INSIDE the string rather than the name. */
+const SAVE_KEY = 'three-white-lights.save';
+
+/**
+ * Where a refused save's bytes go, keyed by why they were refused, so the
+ * first accepted mutation of the fresh lifter cannot overwrite the one copy
+ * of a save this build could not read. A FUTURE_VERSION quarantine is a
+ * player's newer lifter waiting for the app to catch up — the most important
+ * bytes this store will ever hold.
+ */
+const QUARANTINE_KEY = (code: SaveRefusalCode): string => `three-white-lights.save.refused.${code}`;
+
+/**
+ * The web store. `null` where there is no `localStorage` (a native build, a
+ * worker) — the server treats a null store as "nothing persists", which is
+ * yesterday's shipped behavior rather than a new failure mode.
+ */
+function webSaveStore(): SaveStore | null {
+  if (typeof localStorage === 'undefined') return null;
+  return {
+    load: () => localStorage.getItem(SAVE_KEY),
+    save: (text) => {
+      localStorage.setItem(SAVE_KEY, text);
+    },
+    quarantine: (text, code) => {
+      localStorage.setItem(QUARANTINE_KEY(code), text);
+    },
+  };
+}
 
 let connection: LocalAppServerPort | null = null;
 
@@ -57,7 +94,18 @@ let connection: LocalAppServerPort | null = null;
  * without a renderer: two calls returning the same object IS the guarantee.
  */
 function appConnection(): LocalAppServerPort {
-  if (connection === null) connection = localSessionServer();
+  if (connection === null) {
+    const now = new Date();
+    connection = localSessionServer({
+      store: webSaveStore() ?? undefined,
+      freshSignupDay: streakDayFromLocalWallClock({
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+        day: now.getDate(),
+        hour: now.getHours(),
+      }),
+    });
+  }
   return connection;
 }
 

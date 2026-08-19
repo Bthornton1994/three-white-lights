@@ -957,11 +957,24 @@
  *   | record  | src/game/meetServer.ts        | applyMeetResult               | 1 |
  *   | record  | src/game/careerServer.ts      | applyFederationChoice         | 1 |
  *   | record  | src/game/meetPreview.ts       | previewServerRecord           | 1 |
+ *   | record  | src/game/saveGame.ts          | decodeSavedGame               | 1 |
  *   | record  | src/session/sessionPreview.ts | recordBeforeSession           | 1 |
  *   | record  | src/session/sessionPreview.ts | recordAfterServer             | 1 |
  *   | wire    | src/game/sessionServer.ts     | snapshotWireFor               | 1 |
  *   | facts   | src/game/progression.ts       | receiveProgressionSnapshot    | 1 |
  *   | receive | src/game/sessionClient.ts     | receiveSnapshot               | 1 |
+ *   | receive | src/game/saveGame.ts          | decodeSavedGame               | 1 |
+ *
+ * THE TWO `saveGame.ts` ROWS ARE ONE ROUTE SEEN TWICE, AND BOTH SIGHTINGS ARE
+ * WANTED (Sprint 2). Loading a save rebuilds the row a whole career resumes
+ * from — the most consequential record construction in the app once saves are
+ * real — and it does it by running the stored wire through
+ * `receiveProgressionSnapshot` (the `receive` row: the SAME decoder that
+ * guards the client, so a save inherits every refusal the boundary can make)
+ * and then assembling a sealed `ServerRecord` from what the decoder proved
+ * (the `record` row). It is server-side: the caller is
+ * `localSessionServer.ts`'s opening, never a screen, and a refused save
+ * quarantines rather than becoming a route around this table.
  *
  * THE `facts` ROW IS THE ONE THIS TABLE WAS ABOUT ALL ALONG AND DID NOT HOLD.
  * §7.1's claim is about every number that reaches a `ConfirmedFacts` mass field;

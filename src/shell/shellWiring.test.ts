@@ -2380,12 +2380,14 @@ describe('navigating away and back cannot buy a second session of the day', () =
     // A `useRef` only survives as long as the component holding it, which is
     // exactly the thing that stops surviving when the shell can route away.
     expect(APP_SERVER).toMatch(/let connection: LocalAppServerPort \| null = null;/);
-    expect(APP_SERVER).toMatch(/if \(connection === null\) connection = localSessionServer\(\);/);
+    // Since Sprint 2 the one construction carries the store and the real
+    // signup day, so the pin is on the guard and the call rather than one line.
+    expect(APP_SERVER).toMatch(/if \(connection === null\) \{\s*\n\s*const now = new Date\(\);\s*\n\s*connection = localSessionServer\(\{/);
     expect(APP_SERVER).not.toMatch(/useRef|useState|useMemo/);
     // AND THERE IS EXACTLY ONE `localSessionServer()` CALL IN THE FILE. Two
     // would typecheck, would keep every assertion above green except the
     // identity one, and would be the defect back.
-    expect(APP_SERVER.match(/localSessionServer\(\)/g)).toHaveLength(1);
+    expect(APP_SERVER.match(/localSessionServer\(/g)).toHaveLength(1);
   });
 
   it('the shell hands that port to the session, rather than letting it build one', () => {

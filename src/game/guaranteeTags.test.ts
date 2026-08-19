@@ -768,8 +768,13 @@ const GUARANTEE_COVERAGE = {
    * 262 -> 255 when the placeholder trio was deleted (Sprint 1c's last step):
    * seven triggering paragraphs lived in a stopgap whose whole job was to
    * shout about its own bounds, and they left with it.
+   *
+   * 255 -> 256 when saveGame.ts arrived (Sprint 2): the save codec's header
+   * argues its one-decoder principle in this file's house style, and one of
+   * its paragraphs trips the capitalised-absolute trigger. Re-measured, not
+   * hand-bumped.
    */
-  TREE_WIDE: 255,
+  TREE_WIDE: 256,
 } as const;
 
 // ---------------------------------------------------------------------------

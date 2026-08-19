@@ -1002,6 +1002,11 @@ const SEAL_RUNTIME_WITNESSES: readonly {
     title: 'freezes the drifted row the server answers with',
   },
   {
+    route: 'record src/game/saveGame.ts decodeSavedGame',
+    testFile: 'src/game/saveGame.test.ts',
+    title: 'seals the record a save decodes into, every nested object included',
+  },
+  {
     route: 'facts src/game/progression.ts receiveProgressionSnapshot',
     testFile: 'src/game/progression.test.ts',
     title: 'freezes what it hands back, symbol payload included',
@@ -1667,7 +1672,10 @@ describe('purity', () => {
     // test down, which had the same bound. Nine is §7.5's eight producer rows
     // plus its one `receive` row. It moves when a route is added or deleted,
     // which is a diff somebody writes on purpose.
-    expect(routeScan().shipped.length, 'shipped rows the scan resolves').toBe(10);
+    // 10 -> 12 with Sprint 2's save loader: `decodeSavedGame` is one route seen
+    // twice — a `receive` (the stored wire through the boundary's own decoder)
+    // and a `record` (the sealed row assembled from what it proved).
+    expect(routeScan().shipped.length, 'shipped rows the scan resolves').toBe(12);
     expect(sortedKeys(routeScan().shipped)).toContain('record src/game/sessionServer.ts newServerRecord x1');
     expect(sortedKeys(routeScan().shipped)).toContain('record src/game/meetServer.ts applyMeetResult x1');
     // The anchor that would have caught round seven's defect. A route pin whose
@@ -1696,7 +1704,8 @@ describe('purity', () => {
     // walks the table, so a deleted row is simply not walked. This is the pin
     // that catches the table shrinking, and it was the one number in the pair
     // that could be stated exactly.
-    expect(declaredRoutes().length, '§7.5 rows parsed out of the header').toBe(10);
+    // 10 -> 12 with the two saveGame rows, declared beside their reasoning.
+    expect(declaredRoutes().length, '§7.5 rows parsed out of the header').toBe(12);
     const found = new Set(sortedKeys(routeScan().shipped));
     for (const row of declaredRoutes()) {
       expect(
@@ -1741,8 +1750,10 @@ describe('purity', () => {
     const rows = scan.shipped.filter((row) => row.kind !== 'receive');
 
     // NON-VACUITY AS A COUNT, so an empty scan cannot satisfy the loop below.
-    expect(rows.length, 'shipped record/wire/facts rows to find witnesses for').toBe(9);
-    expect(SEAL_RUNTIME_WITNESSES.length, 'ledger rows').toBe(9);
+    // 9 -> 10 with the save loader's record row (its receive row needs no
+    // freeze witness — a receive mints facts behind the snapshot's own seal).
+    expect(rows.length, 'shipped record/wire/facts rows to find witnesses for').toBe(10);
+    expect(SEAL_RUNTIME_WITNESSES.length, 'ledger rows').toBe(10);
 
     // BOTH DIRECTIONS. An unwitnessed row is the defect this closes; a witness
     // for a row that no longer exists is bookkeeping about deleted code, and
@@ -1877,7 +1888,13 @@ describe('purity', () => {
     // sessionServer test carries two and is audited once per route it
     // witnesses), plus the seven arguments of the new `applyFederationChoice`
     // witness.
-    expect(frozen, 'Object.isFrozen arguments read out of the witness bodies').toBe(81);
+    //
+    // 81 -> 92 when the save codec's `decodeSavedGame` row arrived (Sprint 2):
+    // its witness reads eleven arguments, because a decoded record is the one
+    // producer whose arrays arrive from JSON.parse thawed — it asserts both
+    // array shells, an element of each, and the entitlement, where the other
+    // rows' fixtures inherit those from an already-sealed input.
+    expect(frozen, 'Object.isFrozen arguments read out of the witness bodies').toBe(92);
 
     // AND THE DEPTH THE LEDGER DOES NOT REACH, TABULATED RATHER THAN CLAIMED.
     // One array element down — `meets[0]`, where a stored meet's Total lives —
@@ -1888,12 +1905,18 @@ describe('purity', () => {
     // is red and adding a third is a deliberate line. `sessionServer.test.ts`
     // covers the wire's element in a separate test ('seals a meet inside the
     // wire, one array element down') which this ledger does not name.
+    //
+    // The third line was drawn deliberately (Sprint 2): `decodeSavedGame` is
+    // the producer where element depth does the most work, because its meets
+    // rows come out of JSON.parse writable rather than inherited from a
+    // sealed fixture.
     expect(
       audits.filter((audit) => audit.freezesElement).map((audit) => audit.route).sort(),
       'the rows whose witness reaches one array element down',
     ).toEqual([
       'record src/game/meetPreview.ts previewServerRecord',
       'record src/game/meetServer.ts applyMeetResult',
+      'record src/game/saveGame.ts decodeSavedGame',
     ]);
   });
 
@@ -1916,7 +1939,8 @@ describe('purity', () => {
     // Eight is §7.5's six `record` rows, its one `wire` row, and the `facts`
     // row — the snapshot mint, which reached this count by having its
     // `deepFreeze` call respelled as the seal it already was.
-    expect(scan.sealedLiterals, 'shipped record/wire/facts literals seen sealed').toBe(9);
+    // 9 -> 10: decodeSavedGame's record literal is passed to sealServerValue.
+    expect(scan.sealedLiterals, 'shipped record/wire/facts literals seen sealed').toBe(10);
 
     // AND THE CALLEE IS THE SEAL, NOT A FUNCTION SPELLED LIKE IT.
     //
@@ -1956,7 +1980,8 @@ describe('purity', () => {
     // file. The `facts` witness now does the same thing to the snapshot, so
     // "sealed by name and counted here" is no longer the whole of the evidence:
     // a string-only walk in `deepFreeze` reddens it.
-    expect(scan.sealCallSites.length, 'shipped sealServerValue call sites').toBe(10);
+    // 10 -> 11 with saveGame.ts's one seal.
+    expect(scan.sealCallSites.length, 'shipped sealServerValue call sites').toBe(11);
 
     // AND THE NAME THE SCAN MATCHES ON IS A REAL EXPORT. Without this, renaming
     // the seal turns the whole check into "no literal is sealed, and none is
@@ -1991,7 +2016,9 @@ describe('purity', () => {
     // 22 -> 24 with `careerServer.test.ts`'s two `receive` rows: `cacheFor`,
     // the fixture that reads a boundary-swept row back through the one door,
     // and the choose-federation test that decodes the choice's own wire.
-    expect(routeScan().fixtures.length, 'fixture rows the scan sees and discards').toBe(24);
+    // 24 -> 25 with saveGame.test.ts's injured-rung record spread — a fixture,
+    // seen and correctly discarded.
+    expect(routeScan().fixtures.length, 'fixture rows the scan sees and discards').toBe(25);
     expect(routeScan().fixtures.map((row) => row.file)).toContain('src/game/meetServer.test.ts');
     // ...and no fixture leaked into the pinned table.
     expect(declaredRoutes().filter((row) => IS_TEST_FILE.test(row.file))).toEqual([]);

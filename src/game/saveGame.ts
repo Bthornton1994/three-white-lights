@@ -65,6 +65,7 @@
 import { EMPTY_FATIGUE_STATE, INJURY_KINDS, SIM_LIFTS, type FatigueState, type InjuryKind, type SessionRecord, type SimLift } from './fatigue';
 import {
   receiveProgressionSnapshot,
+  sealServerValue,
   snapshotFacts,
   type ProgressionSnapshotWire,
 } from './progression';
@@ -247,7 +248,11 @@ export function decodeSavedGame(text: string): SaveDecodeResult {
   return {
     ok: true,
     savedAtIso: envelope.savedAtIso,
-    record: {
+    // SEALED LIKE EVERY OTHER §7.5 PRODUCER — this is a route into permanent
+    // progression (the row a whole career resumes from), and the parsed wire's
+    // arrays arrive from JSON.parse thawed, so the deep seal here is doing
+    // real work on `meets` and `wallet` rather than re-freezing frozen things.
+    record: sealServerValue({
       revision: wire.revision,
       totalKg: wire.totalKg,
       bestE1rmKg: wire.bestE1rmKg,
@@ -256,6 +261,6 @@ export function decodeSavedGame(text: string): SaveDecodeResult {
       wallet: wire.wallet,
       fatigue: fatigue.state,
       federation: facts.federation,
-    },
+    }),
   };
 }

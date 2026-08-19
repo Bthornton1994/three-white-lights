@@ -253,3 +253,45 @@ describe('schema stability', () => {
     expect(encodeSavedGame(newServerRecord(SIGNUP_DAY), '2026-08-19T00:00:00.000Z')).toBe(GOLDEN_V1);
   });
 });
+
+describe('the save loader is a §7.5 route, and behaves like one', () => {
+  it('seals the record a save decodes into, every nested object included', () => {
+    // §7.5's `record` row for this module — the runtime half of the route
+    // table's seal claim, in the shape every other row's witness takes. The
+    // nested reads matter MORE here than at the other producers: the parsed
+    // wire's arrays arrive from JSON.parse thawed, so a shallow freeze would
+    // leave `meets` and its rows writable — the exact half a shell-only check
+    // misses, and the half the deep seal is doing real work on.
+    const ladder = recordLadder();
+    const met = ladder[3];
+    if (met === undefined) throw new Error('fixture: the ladder lost its met rung');
+    const decoded = decodeSavedGame(encodeSavedGame(met.record, SAVED_AT));
+    expect(decoded.ok, decoded.ok ? '' : decoded.detail).toBe(true);
+    if (!decoded.ok) return;
+    const record = decoded.record;
+    expect(Object.isFrozen(record), 'the record itself').toBe(true);
+    expect(Object.isFrozen(record.bestE1rmKg), 'bestE1rmKg').toBe(true);
+    expect(Object.isFrozen(record.streak), 'streak').toBe(true);
+    expect(Object.isFrozen(record.streak.entitlement), 'the live entitlement').toBe(true);
+    expect(Object.isFrozen(record.wallet), 'wallet').toBe(true);
+    expect(Object.isFrozen(record.meets), 'the meets array').toBe(true);
+    // Guarded locals rather than direct `[0]` reads, for two reasons that are
+    // really one: `Object.isFrozen(undefined)` is TRUE, so an indexed read on
+    // an empty array would pass vacuously — and the narrowed type is what lets
+    // the §7.5 ledger's audit see this as an element-depth read at all.
+    const storedMeet = record.meets[0];
+    if (storedMeet === undefined) throw new Error('fixture: the met rung decoded with no meet row');
+    expect(Object.isFrozen(storedMeet), 'the meet row that carries totalKg').toBe(true);
+    expect(Object.isFrozen(record.fatigue), 'fatigue').toBe(true);
+    expect(Object.isFrozen(record.fatigue.sessions), 'the fatigue ledger').toBe(true);
+    const fatigueRow = record.fatigue.sessions[0];
+    if (fatigueRow === undefined) throw new Error('fixture: the met rung decoded with no fatigue row');
+    expect(Object.isFrozen(fatigueRow), 'a fatigue row').toBe(true);
+    expect(Object.isFrozen(record.federation), 'federation').toBe(true);
+    const loose: { totalKg: number | null } = record;
+    expect(() => {
+      loose.totalKg = 9999;
+    }).toThrow(TypeError);
+    expect(record.totalKg, 'the write did not land').toBe(met.record.totalKg);
+  });
+});

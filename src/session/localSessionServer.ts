@@ -39,11 +39,27 @@
  * "must not". The row is in the closure below and there is no getter.
  *
  * ---------------------------------------------------------------------------
- * NOTHING IS PERSISTED
+ * PERSISTENCE IS THIS SERVER'S JOB, AND NOW IT DOES IT (Sprint 2)
  * ---------------------------------------------------------------------------
- * The record dies with the tab, because persistence is the server's job and
- * inventing a client-side store now is exactly the code CLAUDE.md says would
- * have to be unwound. A reload starts a fresh lifter. Stated rather than hidden.
+ * This header said "nothing is persisted" for as long as persistence would
+ * have been client-side code CLAUDE.md says must be unwound. It is server-side
+ * now: the row is written through `saveGame.ts`'s schema after every accepted
+ * mutation, into a `SaveStore` the CALLER injects — `appServer.ts` hands in
+ * the web store, tests hand in a fake or nothing — so this file still holds
+ * the only reference to the row and the app above the port never sees a save.
+ *
+ * LOADING RE-PROVES EVERYTHING. A stored save is untrusted input whatever
+ * wrote it; `decodeSavedGame` re-validates it through the same decoder that
+ * guards the client boundary, and a refused save QUARANTINES rather than
+ * deletes — the store keeps the refused bytes under a separate key before the
+ * fresh lifter's first accepted mutation can overwrite them, because "Nothing
+ * Is Lost" applies hardest to the save this build cannot read (a player's
+ * future version, most of all).
+ *
+ * A SAVE FAILURE NEVER TAKES A MUTATION DOWN. The row moved; the answer the
+ * client gets is about the row, and a full disk or a private-mode storage
+ * refusal is reported to the console rather than converted into a refused
+ * session. The next accepted mutation tries again.
  */
 
 import {
@@ -59,6 +75,7 @@ import { applyMeetResult } from '../game/meetServer';
 import type { MeetDefinition } from '../game/meetTuning';
 import type { LiftKind } from '../game/meet';
 import type { ProposalId, ProposalOfKind, ProgressionSnapshotWire } from '../game/progression';
+import { decodeSavedGame, encodeSavedGame, type SaveRefusalCode } from '../game/saveGame';
 import {
   applyTrainingSession,
   newServerRecord,
@@ -89,12 +106,38 @@ const realSleep: Sleep = (ms) =>
     setTimeout(resolve, ms);
   });
 
+/**
+ * Where a save string lives. Injected, so this file stays free of platform
+ * APIs and a test's store is an object it can read back out of; `appServer.ts`
+ * owns the web implementation. `quarantine` is optional because only stores
+ * with somewhere to put refused bytes can offer it — a store without one still
+ * gets the refusal logged.
+ */
+export interface SaveStore {
+  /** The stored save, or null when there has never been one. */
+  load(): string | null;
+  save(text: string): void;
+  /** Keep refused bytes somewhere the next `save` cannot overwrite. */
+  quarantine?(text: string, code: SaveRefusalCode): void;
+}
+
 export interface LocalSessionServerOptions {
-  /** The row to start from. Defaults to a lifter who has never trained. */
+  /** The row to start from. Wins over the store's save — a test that hands a
+   *  record in means THAT record. Defaults to the store's save, then fresh. */
   readonly record?: ServerRecord;
   /** Round-trip stand-in. Defaults to `SESSION_BOUNDARY.LOCAL_SERVER_LATENCY_MS`. */
   readonly latencyMs?: number;
   readonly sleep?: Sleep;
+  /** The save's home. Omitted (every existing test), nothing persists. */
+  readonly store?: SaveStore;
+  /** Signup day for a FRESH lifter — one the store had no readable save for.
+   *  `appServer.ts` passes the real wall-clock day, so a new install's
+   *  absences are charged from the day the account actually began (GDD §4.2);
+   *  the default keeps every fixture on the stable test constant. */
+  readonly freshSignupDay?: number;
+  /** The save's clock, for `savedAtIso`. The server owns the clock the way it
+   *  owns the row; injected so tests are deterministic. */
+  readonly nowIso?: () => string;
 }
 
 /**
@@ -109,9 +152,53 @@ export interface LocalSessionServerOptions {
  * `SESSION_BOUNDARY.LOCAL_SERVER_LATENCY_MS`.
  */
 export function localSessionServer(options: LocalSessionServerOptions = {}): LocalAppServerPort {
-  let record: ServerRecord = options.record ?? newServerRecord(SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY);
+  const store = options.store ?? null;
+  const nowIso = options.nowIso ?? (() => new Date().toISOString());
+
+  /**
+   * The row this server opens on: an explicit record wins, then the store's
+   * save (re-proved through the one decoder), then a fresh lifter. A refused
+   * save is QUARANTINED FIRST — before any mutation can `save()` over it —
+   * and the refusal is loud, because a silently discarded save is the exact
+   * loss this sprint is named against.
+   */
+  const openingRecord = (): ServerRecord => {
+    const fresh = () => newServerRecord(options.freshSignupDay ?? SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY);
+    if (options.record !== undefined) return options.record;
+    if (store === null) return fresh();
+    const text = store.load();
+    if (text === null) return fresh();
+    const decoded = decodeSavedGame(text);
+    if (!decoded.ok) {
+      store.quarantine?.(text, decoded.code);
+      console.warn(
+        `localSessionServer: the stored save was refused (${decoded.code}: ${decoded.detail}); ` +
+          `starting a fresh lifter — the refused bytes are ${store.quarantine ? 'quarantined' : 'NOT preserved (this store cannot quarantine)'}`,
+      );
+      return fresh();
+    }
+    return decoded.record;
+  };
+
+  let record: ServerRecord = openingRecord();
   const latencyMs = options.latencyMs ?? SESSION_BOUNDARY.LOCAL_SERVER_LATENCY_MS;
   const sleep = options.sleep ?? realSleep;
+
+  /**
+   * ONE persist, called after every site that reassigns `record` — three
+   * today, and a fourth mutation gets this line with its reassignment or the
+   * sibling rule has failed again. Never throws into the mutation's answer:
+   * the row moved, the response describes the row, and a storage refusal is a
+   * console fact until the port grows an error channel worth designing.
+   */
+  const persist = (): void => {
+    if (store === null) return;
+    try {
+      store.save(encodeSavedGame(record, nowIso()));
+    } catch (error) {
+      console.warn(`localSessionServer: persisting the row failed — ${String(error)}`);
+    }
+  };
 
   return {
     openingSnapshot(): ProgressionSnapshotWire {
@@ -141,6 +228,7 @@ export function localSessionServer(options: LocalSessionServerOptions = {}): Loc
         return { kind: 'refused', message: applied.error.message };
       }
       record = applied.value.record;
+      persist();
       return { kind: 'snapshot', wire: applied.value.wire };
     },
 
@@ -185,6 +273,7 @@ export function localSessionServer(options: LocalSessionServerOptions = {}): Loc
       const applied = applyMeetResult(record, day, meet, proposal, proposalId);
       if (!applied.ok) return { kind: 'refused', error: applied.error };
       record = applied.value.record;
+      persist();
       return {
         kind: 'recorded',
         wire: applied.value.wire,
@@ -226,6 +315,7 @@ export function localSessionServer(options: LocalSessionServerOptions = {}): Loc
       const applied = applyFederationChoice(record, proposal, proposalId);
       if (!applied.ok) return { kind: 'refused', error: applied.error };
       record = applied.value.record;
+      persist();
       return { kind: 'chosen', wire: applied.value.wire };
     },
   };
