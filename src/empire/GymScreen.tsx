@@ -27,18 +27,31 @@
  * `sessions.ts` pure function call, the same discipline `GymView`'s own
  * header states and the render test below drives.
  *
- * NO HELPER SUB-COMPONENT, ON PURPOSE. An earlier version of this file
- * factored the repeated "Pressable wrapping a Text label" shape into a
- * `DispatchButton` function and referenced it as a JSX `type`
- * (`<DispatchButton .../>`). That makes the returned element's `type` field a
- * FUNCTION rather than a string — unlike every element `GymView` ever
- * returns, whose `type` is always a DOM tag name — and it is read by
- * `empireForbiddenOutput.test.ts`'s driver as a new, previously-unseen kind of
- * declined closure position that instrument C's own returned-closure census
- * had no row for. `GymView` and `LadderView` both avoid this by using no
- * sub-components at all; this file matches that convention instead of
- * teaching a second census about a position a plain inline element does not
- * create. Every button below is therefore written out at its own call site.
+ * NO HELPER SUB-COMPONENT FOR ANYTHING THIS FILE COULD WRITE INLINE, ON
+ * PURPOSE. An earlier version of this file factored the repeated "Pressable
+ * wrapping a Text label" shape into a `DispatchButton` function and
+ * referenced it as a JSX `type` (`<DispatchButton .../>`). That makes the
+ * returned element's `type` field a FUNCTION rather than a string — unlike
+ * every element `GymView` ever returns, whose `type` is always a DOM tag
+ * name — and it is read by `empireForbiddenOutput.test.ts`'s driver as a new,
+ * previously-unseen kind of declined closure position that instrument C's
+ * own returned-closure census had no row for. `GymView` and `LadderView` both
+ * avoid this by using no sub-components at all; every button in THIS file
+ * that could be written inline still is, at its own call site, for the same
+ * reason.
+ *
+ * ONE EXCEPTION, NAMED RATHER THAN SILENTLY BREAKING THE RULE ABOVE:
+ * `<FloorGrid .../>` (GDD §5.13 Phase 1, `./FloorGrid`). Unlike
+ * `DispatchButton`, `FloorGrid` cannot be written inline even in principle —
+ * it needs component-local state to track a live drag gesture across a
+ * grab/move/release sequence, and `GymScreen` itself must stay hook-free (see
+ * "WHO OWNS THE STATE" below) because `GymScreen.test.ts` and
+ * `empireForbiddenOutput.test.ts` both call `GymScreen({state, dispatch})`
+ * directly, outside React's reconciler, where a hook throws. So this is a
+ * second closure position — not a re-introduction of the first — and
+ * `empireForbiddenOutput.test.ts`'s own registrations name it explicitly
+ * rather than the census silently walking past it. `FloorGrid.tsx`'s own
+ * header explains the shape in full.
  *
  * WHO OWNS THE STATE. `GymScreen` takes `{ state, dispatch }` as props and
  * computes nothing else — a pure function of its props, exactly like
@@ -69,6 +82,7 @@
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { EMPIRE_TUNING } from './empireTuning';
+import { FloorGrid } from './FloorGrid';
 import { type GymViewAction, type GymViewProps } from './ladderView';
 import {
   describeLadderClock,
@@ -110,8 +124,16 @@ function describeSlotOutcome(outcome: GymWeekReport['slots'][number]): string {
  * it directly, and so the one stateful hook stays outside `src/empire/`.
  */
 export function GymScreen(props: GymViewProps) {
-  const { gym, lastAccrual, lastRefusal, weekIndex, allocation, allocationSetThisWeek, weekLog } =
-    props.state;
+  const {
+    gym,
+    lastAccrual,
+    lastRefusal,
+    weekIndex,
+    allocation,
+    allocationSetThisWeek,
+    weekLog,
+    floor,
+  } = props.state;
   const destination = nextLadderRung(gym.ladder.rung);
   const ownedLadder = new Set<string>(gym.ladder.equipment);
   const ownedSession = new Set<string>(gym.sessionEquipment);
@@ -237,6 +259,10 @@ export function GymScreen(props: GymViewProps) {
             {week.effects.ceilingGrowthPerWeek}
           </Text>
         ))}
+      </View>
+      <View testID={'gymscreen-floor'}>
+        <Text>the floor — grid and placement, no members, no final art yet</Text>
+        <FloorGrid owned={gym.sessionEquipment} floor={floor} dispatch={dispatch} />
       </View>
       <View testID={'gymscreen-dev-controls'}>
         <Text>

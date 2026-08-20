@@ -280,6 +280,15 @@ export function LadderView(props: LadderViewProps) {
 // ===========================================================================
 
 import {
+  type FloorPlaceResult,
+  type FloorState,
+  type GridPosition,
+  createFloorState,
+  placeFloorItem,
+  relocateFloorState,
+  removeFloorItem,
+} from './floor';
+import {
   type FlexibleSlot,
   type GymState,
   type GymWeekReport,
@@ -307,8 +316,14 @@ import {
  * own report (accrual or refusal — header rule, same as `LadderViewState`),
  * which training week is current, the standing allocation plan (sticky
  * across weeks until a slot is edited — header rule), whether that plan has
- * been touched since the current week began, and the log of weeks that have
- * actually completed.
+ * been touched since the current week began, the log of weeks that have
+ * actually completed, and — GDD §5.13 Phase 1 — the floor layout for the
+ * gym's current rung.
+ *
+ * `floor` is a VIEW composed on top of `gym.sessionEquipment`, never a second
+ * copy of it (`floor.ts`'s own header states the same claim about its own
+ * functions). Nothing here stores which items are owned a second time — only
+ * where the owned ones currently sit.
  */
 export interface GymViewState {
   readonly gym: GymState;
@@ -318,19 +333,21 @@ export interface GymViewState {
   readonly allocation: WeekAllocation;
   readonly allocationSetThisWeek: boolean;
   readonly weekLog: readonly GymWeekReport[];
+  readonly floor: FloorState;
 }
 
 /**
  * Every reason a spend can be refused across the whole loop, derived from
- * the three result types rather than restated — a closed union, so the
+ * the four result types rather than restated — a closed union, so the
  * position census reads this field as vocabulary and not as an open string.
  */
 export type GymViewRefusal =
   | Extract<LadderBuyResult, { readonly kind: 'refused' }>['reason']
   | Extract<LadderMoveResult, { readonly kind: 'refused' }>['reason']
-  | Extract<SessionBuyResult, { readonly kind: 'refused' }>['reason'];
+  | Extract<SessionBuyResult, { readonly kind: 'refused' }>['reason']
+  | Extract<FloorPlaceResult, { readonly kind: 'refused' }>['reason'];
 
-/** The six things a player can do on this screen. */
+/** The eight things a player can do on this screen — six from stage 1/2, and GDD §5.13 Phase 1's place/remove. */
 export type GymViewAction =
   | { readonly kind: 'advance-clock'; readonly gapSeconds: number }
   | { readonly kind: 'advance-to-next-week' }
@@ -341,9 +358,15 @@ export type GymViewAction =
       readonly kind: 'set-allocation-slot';
       readonly slotIndex: 0 | 1 | 2;
       readonly slot: FlexibleSlot;
-    };
+    }
+  | {
+      readonly kind: 'floor-place';
+      readonly item: SessionEquipmentItem;
+      readonly position: GridPosition;
+    }
+  | { readonly kind: 'floor-remove'; readonly item: SessionEquipmentItem };
 
-/** The opening screen: a fresh gym, an all-rest plan, nothing yet to report. */
+/** The opening screen: a fresh gym, an all-rest plan, an empty floor, nothing yet to report. */
 export function createGymViewState(): GymViewState {
   const gym = createGymState();
   return Object.freeze({
@@ -354,6 +377,7 @@ export function createGymViewState(): GymViewState {
     allocation: createRestAllocation(),
     allocationSetThisWeek: false,
     weekLog: Object.freeze([]),
+    floor: createFloorState(gym.ladder.rung),
   });
 }
 
@@ -392,6 +416,9 @@ function advanceGymClock(state: GymViewState, gapSeconds: number): GymViewState 
     allocation: state.allocation,
     allocationSetThisWeek,
     weekLog,
+    // A clock advance never relocates and never touches ownership, so the
+    // floor layout is untouched — only a successful `move-up` resets it.
+    floor: state.floor,
   });
 }
 
@@ -428,6 +455,34 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
         ...state,
         gym: withLadder(state.gym, outcome.state),
         lastRefusal: outcome.kind === 'refused' ? outcome.reason : null,
+        // GDD §5.1: a relocation is a full move, "you leave the old place
+        // behind" — `floor.ts`'s `relocateFloorState` header explains why a
+        // position on the old grid has no reading on the new one. A refused
+        // move leaves `outcome.state` byte-identical to `state.gym.ladder`
+        // (`ladder.ts`'s own contract), so reading the POST-outcome rung here
+        // is a no-op on refusal and a real reset only when the move landed.
+        floor:
+          outcome.kind === 'moved' ? relocateFloorState(outcome.state.rung) : state.floor,
+      });
+    }
+    case 'floor-place': {
+      const outcome = placeFloorItem(
+        state.floor,
+        state.gym.sessionEquipment,
+        action.item,
+        action.position,
+      );
+      return Object.freeze({
+        ...state,
+        floor: outcome.state,
+        lastRefusal: outcome.kind === 'refused' ? outcome.reason : null,
+      });
+    }
+    case 'floor-remove': {
+      return Object.freeze({
+        ...state,
+        floor: removeFloorItem(state.floor, action.item),
+        lastRefusal: null,
       });
     }
     case 'set-allocation-slot': {

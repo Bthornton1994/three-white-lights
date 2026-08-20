@@ -1361,6 +1361,84 @@ export const EMPIRE_TUNING = Object.freeze({
    * is kept at.
    */
   MEMBER_EQUIPMENT_BIAS_TIE_TOLERANCE: 0.02,
+
+  // -------------------------------------------------------------------------
+  // §5.13 presentation Phase 1 — the floor grid and placement. Read by
+  // `floor.ts`. GDD §5.13's build order step 1: "Grid + placement alone. No
+  // members, no final art." Nobody has played this — GDD §5.13's own
+  // grounding check states both tables below are first-pass proposals,
+  // reasoned from real-world footprint intuition and NOT tuned. Units are
+  // abstract grid tiles, not a literal foot conversion.
+  // -------------------------------------------------------------------------
+
+  /**
+   * The floor grid a player builds into at each ladder rung, width x height
+   * in tiles — GDD §5.13's own proposal, reasoned from real-world footprint
+   * intuition and scaled to the equipment cumulatively unlockable by that
+   * rung: garage 8x6, storage-unit 12x9, strip-mall-unit 22x16, warehouse
+   * 40x28. Keyed by exactly `LADDER_RUNGS`; `floor.test.ts` drives both
+   * directions.
+   */
+  FLOOR_GRID_SIZE: Object.freeze({
+    garage: Object.freeze({ width: 8, height: 6 }),
+    'storage-unit': Object.freeze({ width: 12, height: 9 }),
+    'strip-mall-unit': Object.freeze({ width: 22, height: 16 }),
+    warehouse: Object.freeze({ width: 40, height: 28 }),
+  }),
+
+  /**
+   * Each stage-2 item's footprint on the floor, width x height in tiles — a
+   * first-pass proposal grounded in real-world size intuition ("a mat is
+   * small and flat, a sauna or a sled track needs real room"), not tuned or
+   * played. Keyed by exactly `SESSION_EQUIPMENT_ITEMS`; `floor.test.ts`
+   * drives both directions and also drives that every footprint fits inside
+   * the grid of the item's own `SESSION_EQUIPMENT_MIN_RUNG` rather than
+   * trusting this prose.
+   */
+  SESSION_EQUIPMENT_FOOTPRINT: Object.freeze({
+    bike: Object.freeze({ width: 2, height: 2 }),
+    treadmill: Object.freeze({ width: 2, height: 4 }),
+    rower: Object.freeze({ width: 2, height: 5 }),
+    sled: Object.freeze({ width: 3, height: 12 }),
+    dumbbells: Object.freeze({ width: 3, height: 2 }),
+    cables: Object.freeze({ width: 2, height: 3 }),
+    machines: Object.freeze({ width: 3, height: 3 }),
+    mats: Object.freeze({ width: 3, height: 3 }),
+    'foam-rollers': Object.freeze({ width: 1, height: 1 }),
+    sauna: Object.freeze({ width: 4, height: 4 }),
+    'wrist-wraps': Object.freeze({ width: 1, height: 1 }),
+    belts: Object.freeze({ width: 1, height: 1 }),
+    sleeves: Object.freeze({ width: 1, height: 1 }),
+    'specialty-bars': Object.freeze({ width: 1, height: 3 }),
+  }),
+
+  /**
+   * Pixels per grid tile the floor renders at — a rendering/legibility knob,
+   * not game math, but a felt one (spacing, tap-target size, how fiddly a
+   * drag reads), so it lives here rather than as a magic number in
+   * `FloorGrid.tsx`. Read by `FloorGrid.tsx` only.
+   */
+  FLOOR_TILE_PIXELS: 28,
+
+  /** Border thickness, in pixels, of the floor grid's own outer frame. Read by `FloorGrid.tsx` only. */
+  FLOOR_GRID_BORDER_WIDTH_PIXELS: 1,
+
+  /** Border thickness, in pixels, around every placed or tray equipment chip. Read by `FloorGrid.tsx` only. */
+  FLOOR_ITEM_BORDER_WIDTH_PIXELS: 2,
+
+  /** Gap, in pixels, between adjacent chips in the unplaced-equipment tray. Read by `FloorGrid.tsx` only. */
+  FLOOR_TRAY_ITEM_MARGIN_PIXELS: 4,
+
+  /** Stacking order an in-flight drag renders at, above every resting chip. Read by `FloorGrid.tsx` only. */
+  FLOOR_DRAGGING_Z_INDEX: 10,
+
+  /**
+   * The smallest a tray chip is ever drawn, in tiles, for an item whose real
+   * footprint is smaller than this on one or both axes (support items are
+   * mostly 1x1) — a legibility floor so a tray chip stays a real tap target,
+   * never the item's real placed size. Read by `FloorGrid.tsx` only.
+   */
+  FLOOR_TRAY_ITEM_MIN_TILES: 2,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -1476,4 +1554,13 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   MEMBER_TYPE_CROWDING_LOAD_WEIGHT: 'knob',
   MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY: 'knob',
   MEMBER_EQUIPMENT_BIAS_TIE_TOLERANCE: 'budget',
+
+  FLOOR_GRID_SIZE: 'knob',
+  SESSION_EQUIPMENT_FOOTPRINT: 'knob',
+  FLOOR_TILE_PIXELS: 'knob',
+  FLOOR_GRID_BORDER_WIDTH_PIXELS: 'knob',
+  FLOOR_ITEM_BORDER_WIDTH_PIXELS: 'knob',
+  FLOOR_TRAY_ITEM_MARGIN_PIXELS: 'knob',
+  FLOOR_DRAGGING_Z_INDEX: 'knob',
+  FLOOR_TRAY_ITEM_MIN_TILES: 'knob',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

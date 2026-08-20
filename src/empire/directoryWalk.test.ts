@@ -151,8 +151,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
  */
 export const DIRECTORY_WALK = Object.freeze({
   /** Shipped (non-test) modules this directory holds today. */
-  // 14 -> 15: members.ts (§5.11 stage 3, unpaused as a named exception).
-  SHIPPED_MODULES: 15,
+  // 14 -> 17: members.ts (§5.11 stage 3, unpaused as a named exception),
+  // plus GDD §5.13 presentation Phase 1's `floor.ts` (pure grid/placement
+  // logic) and `FloorGrid.tsx` (the drag-interaction screen).
+  SHIPPED_MODULES: 17,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -162,8 +164,9 @@ export const DIRECTORY_WALK = Object.freeze({
    * eleven of its twenty-three files, in a file that pins counts everywhere
    * else. A truncated or reshaped file set now reports itself here.
    */
-  // 31 -> 33: members.ts and members.test.ts.
-  DIRECTORY_FILES: 33,
+  // 31 -> 36: members.ts and members.test.ts, plus floor.ts, floor.test.ts,
+  // FloorGrid.tsx.
+  DIRECTORY_FILES: 36,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -924,12 +927,14 @@ describe('the directory walk every census in src/empire/ shares', () => {
     // is a scan over this list, and a list that had gone empty would make all
     // five pass.
     expect(shippedModuleNames()).toEqual([
+      'FloorGrid.tsx',
       'GymScreen.tsx',
       'empireCore.ts',
       'empireInvariant.ts',
       'empireTuning.ts',
       'engagement.ts',
       'expansion.ts',
+      'floor.ts',
       'ladder.ts',
       'ladderView.tsx',
       'members.ts',
