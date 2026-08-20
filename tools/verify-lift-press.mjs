@@ -194,7 +194,7 @@ import { gateDevServer } from './devServerSentinel.mjs';
 import { armFreshLifterPerBoot } from './freshLifterBoundary.mjs';
 import { enterMeetFromCalendar } from './enterMeetFromCalendar.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -209,9 +209,88 @@ import {
   untilMeet,
   waitUntilDrawn,
 } from './meetDrive.mjs';
+import { markerDirFor } from './verifyMarker.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.resolve(HERE, '..');
+
+// ---------------------------------------------------------------------------
+// RAW LOG, WRITTEN UNCONDITIONALLY — the gap that cost a named cause.
+// ---------------------------------------------------------------------------
+/**
+ * This tool's first post-fix run for the drive-boost/hold decoupling
+ * (2026-08-20) reported two failures — a meet-arm probe and a downstream
+ * CROSS-ARM comparison — then a clean re-run 85/85 minutes later. The
+ * re-run was structurally sound (the fix only widens a boolean gate, so it
+ * could not have CAUSED a new failure) but the first run's own output had
+ * gone nowhere but a terminal nobody piped to a file, so which check named
+ * which assertion could not be recovered afterward. Six subsequent re-runs
+ * could not reproduce it either. A flake with no name is not evidence either
+ * way; the fix here is not to explain that one after the fact, but to make
+ * sure the next one leaves a transcript.
+ *
+ * So every run now writes its own log, unconditionally — pass, fail, or a
+ * crash before either verdict is reached. Written SYNCHRONOUSLY, one
+ * `appendFileSync` per line rather than a buffered stream, so a hard kill
+ * (watchdog's `--budget` SIGKILLs the whole process group on timeout) loses
+ * at most the line in flight — the same "write before, not after"
+ * discipline `verifyMarker.mjs` already applies to its own marker file.
+ *
+ * `uncaughtException` / `unhandledRejection` are caught here too, because
+ * this script is top-level-await with no wrapping try/catch: an unguarded
+ * `await` that throws (a Playwright call with no `.catch()`) unwinds the
+ * whole module, `browser.close()` at the bottom never runs, and nothing in
+ * `checks`/`reds()` ever gets a chance to name what happened — exactly the
+ * shape that would explain a failure with no named assertion. That is
+ * reported here and then the process still exits non-zero exactly as it
+ * would have without this block; nothing about the crash's outward behavior
+ * changes, only whether it leaves a record.
+ *
+ * Lands in `.gauntlet/verify/` (via `markerDirFor`, so `VERIFY_MARKER_DIR`
+ * overrides it the same way it overrides the JSON markers) as
+ * `lift-press-<timestamp>.verify.log`. That directory and the
+ * `*.verify.log` suffix are both already gitignored and already excluded
+ * from `treeIdentity.mjs`'s hash — this reuses an existing, anticipated
+ * convention rather than adding a new one. Not rotated or pruned; on this
+ * environment's fixed disk allowance that is a known limit, not a defect,
+ * and cheap to add later if the directory grows large enough to matter.
+ */
+const RUN_LOG_DIR = markerDirFor(SRC_ROOT);
+mkdirSync(RUN_LOG_DIR, { recursive: true });
+const RUN_LOG_PATH = path.join(
+  RUN_LOG_DIR,
+  `lift-press-${new Date().toISOString().replace(/[:.]/g, '-')}.verify.log`,
+);
+const rawLog = (line) => {
+  try {
+    appendFileSync(RUN_LOG_PATH, `${line}\n`);
+  } catch {
+    // Best-effort. A logging failure must never be why the verification
+    // itself fails — that would be a worse defect than the one this closes.
+  }
+};
+const realConsoleLog = console.log.bind(console);
+console.log = (...parts) => {
+  rawLog(parts.map((p) => (typeof p === 'string' ? p : JSON.stringify(p))).join(' '));
+  realConsoleLog(...parts);
+};
+const onFatal = (label) => (error) => {
+  const text = error?.stack ?? String(error);
+  rawLog(`${label}: ${text}`);
+  realConsoleLog(`\n!! ${label} (see ${RUN_LOG_PATH}): ${text}`);
+  process.exit(1);
+};
+process.on('uncaughtException', onFatal('UNCAUGHT EXCEPTION'));
+process.on('unhandledRejection', onFatal('UNHANDLED REJECTION'));
+{
+  let headShort = 'unknown';
+  try {
+    headShort = execFileSync('git', ['-C', SRC_ROOT, 'rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim();
+  } catch {
+    // left as 'unknown' — see capturedFrom below for the full provenance record
+  }
+  rawLog(`=== verify-lift-press.mjs started ${new Date().toISOString()} @ ${headShort} ===`);
+}
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -1962,6 +2041,7 @@ await writeFile(recordPath, `${JSON.stringify(record, null, 2)}\n`);
 
 console.log('');
 console.log(`record: ${recordPath}`);
+console.log(`log:    ${RUN_LOG_PATH}`);
 console.log(`skipped: ${skipped.length} named check(s)`);
 if (failed > 0) {
   console.log(`\nFAILED ${failed} of ${checks.length} checks:`);
