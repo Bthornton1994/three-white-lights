@@ -2026,6 +2026,68 @@ failure) stays paused; nothing in the presentation build order through Phase
 satisfaction, pure logic) may both proceed now, in parallel — neither depends
 on the other. Phase 2 (which needs both) waits until Phase 1 has been played
 by a human, per this section's own gate.
+
+### PLAYTEST 2 — PHASE 1'S OWN GATE, RUN, AND NOT PASSED
+
+The first real device playtest (recorded above, under §5.11) covered
+Crossing 6's mechanics and found no presentation layer at all. This is the
+second: the same player, on the real app, played Phase 1 itself — the grid
+and placement work this section specified — through the same `GYM EMPIRE`
+entry point. **Verdict: not a defect report, and not a pass.** The engine is
+correct — every number and refusal the player saw matches what `floor.ts`
+and `sessions.ts` actually compute, confirmed by reading the shipped code
+rather than assumed — and the gate question this section asks, "does
+placing things feel good?", cannot be answered yes to an empty rectangle.
+
+**What the player saw:** a solid-colored box with no tile lines, captioned
+"floor (garage) — 8x6 tiles, 0 placed, 0 unplaced," under a long shop/session
+text dump, with an empty tray inviting a drag it cannot receive.
+
+**Four concrete gaps, traced to real causes rather than guessed at:**
+
+1. **Opening day has nothing to place.** A new gym's `sessionEquipment` is
+   `[]` and `floor.ts` places only `SESSION_EQUIPMENT_ITEMS` — the stage-2
+   items. The three rows that read as "owned" in the shop (power-bar,
+   comp-plates, flat-bench) are Barbell-group items, and this section's own
+   grounding check flagged before Phase 1 was built that **the Barbell group
+   has no ownable state in this codebase at all** — it is the always-present
+   baseline the fixed four sessions assume, never purchased, never a
+   `SESSION_EQUIPMENT_ITEMS` member. So those rows were never going to be
+   draggable, and nothing else is ownable on day one either: starting Gym
+   Bucks is 0 until the player uses the dev clock-skip controls, so even the
+   cheapest garage-legal buys (mats, wrist-wraps) are unreachable on a
+   genuinely cold start.
+2. **The drag prompt is a dead control** when the tray is empty — "drag onto
+   the floor above" with nothing in the tray to drag.
+3. **The grid does not read as a grid.** `FloorGrid.tsx` draws one solid
+   `darkslategray` rectangle at `8 tiles × 6 tiles × 28px`; it never paints
+   the tile boundaries the grid concept depends on.
+4. **The floor is buried.** It sits below the full shop and week-allocator
+   text, which is what a returning player needs but is not what a first
+   frame should lead with.
+
+**Ruled: Phase 1's gate is NOT met, and Phase 2 does not start.** This is the
+same standing rule §5.11 already states, applied to its own next stage: a
+mechanically-correct build that a human cannot recognize as a game does not
+clear the gate that exists specifically to catch that. The fix stays inside
+`src/empire/` (`floor.ts`, `FloorGrid.tsx`, `GymScreen.tsx`'s layout) —
+presentation only, no new crossing, no change to the economy engine's real
+numbers.
+
+**The fix for gap 1, decided here because it is a presentation call rather
+than a repeat of the original grounding question:** render the Barbell
+group's always-present baseline as fixed, non-draggable floor furniture —
+a bar/rack/bench occupying set positions from the moment a gym exists, drawn
+but not part of `FloorState.placements` since there is no ownership or
+position data for them to attach to. This closes gap 1 (a garage never
+opens visually empty) and gap 3 (a floor with real objects on it reads as a
+floor) without touching Gym Bucks, starting inventory, or anything
+`sessions.ts`/`ladder.ts` compute — it is a rendering decision about
+already-true state (the fixed four sessions already assume this equipment
+exists), not a new grant. Gaps 2 and 4 are fixed directly: the drag prompt
+is suppressed (or replaced with an explicit empty-state message) when the
+tray is empty, tile boundaries are drawn, and the floor moves above the
+shop/allocator text rather than below it.
 ---
 
 ## 6. Meet Day
