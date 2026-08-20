@@ -1,14 +1,14 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-20T17:00:27.654Z",
+    "capturedAt": "2026-08-20T22:10:39.672Z",
     "url": "http://localhost:8081",
-    "commit": "425d1d4",
+    "commit": "8422d7a",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [],
     "instrument": {
-      "verify-lift-press.mjs": "78a0ee1bc4e2e395",
-      "sessionDrive.mjs": "2a63eac7a653d32b",
+      "verify-lift-press.mjs": "b4a10b2c89ac9a37",
+      "sessionDrive.mjs": "1252485a87734704",
       "meetDrive.mjs": "9ad796fe39e61305",
       "enterMeetFromCalendar.mjs": "68394ae0c9c75051"
     }
@@ -292,7 +292,7 @@
             }
           },
           {
-            "phase": "attempt2-5-ascent-before-drive(drive-cue-seen=true)",
+            "phase": "attempt2-6-drive-tap-1-released",
             "loopPrompt": "DRIVE — TAP",
             "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
@@ -309,7 +309,160 @@
             }
           },
           {
-            "phase": "attempt2-6-immediately-after-drive-press",
+            "phase": "attempt2-6-drive-tap-1-settled",
+            "loopPrompt": "RIDE IT",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt2-6-drive-tap-2-released",
+            "loopPrompt": "NO LIFT",
+            "loopDetail": "The bar beat you at the sticking point.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt2-6-drive-tap-2-settled",
+            "loopPrompt": "NO LIFT",
+            "loopDetail": "The bar beat you at the sticking point.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt2-8-after-drive-sequence",
+            "loopPrompt": "NO LIFT",
+            "loopDetail": "The bar beat you at the sticking point.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt3-0-brace-before-press",
+            "loopPrompt": "TAP AND HOLD TO DESCEND",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt3-1-descent",
+            "loopPrompt": "RELEASE AT DEPTH",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt3-2-descent-mid-hold",
+            "loopPrompt": "RELEASE AT DEPTH",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt3-3-immediately-after-release",
+            "loopPrompt": "OUT OF THE HOLE",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt3-4-hole",
+            "loopPrompt": "RIDE IT",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt3-6-drive-tap-1-released",
             "loopPrompt": "DRIVE — TAP",
             "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
@@ -326,7 +479,245 @@
             }
           },
           {
-            "phase": "attempt2-7-lockout-still-held",
+            "phase": "attempt3-6-drive-tap-1-settled",
+            "loopPrompt": "RIDE IT",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt3-6-drive-tap-2-released",
+            "loopPrompt": "DRIVE — TAP",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt3-6-drive-tap-2-settled",
+            "loopPrompt": "NO LIFT",
+            "loopDetail": "The bar beat you at the sticking point.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt3-8-after-drive-sequence",
+            "loopPrompt": "NO LIFT",
+            "loopDetail": "The bar beat you at the sticking point.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-0-brace-before-press",
+            "loopPrompt": "TAP AND HOLD TO DESCEND",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-1-descent",
+            "loopPrompt": "RELEASE AT DEPTH",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-2-descent-mid-hold",
+            "loopPrompt": "RELEASE AT DEPTH",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-3-immediately-after-release",
+            "loopPrompt": "OUT OF THE HOLE",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-4-hole",
+            "loopPrompt": "RIDE IT",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-6-drive-tap-1-released",
+            "loopPrompt": "DRIVE — TAP",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-6-drive-tap-1-settled",
+            "loopPrompt": "RIDE IT",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-6-drive-tap-2-released",
+            "loopPrompt": "RIDE IT",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-6-drive-tap-2-settled",
+            "loopPrompt": "RIDE IT",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-6-drive-tap-3-released",
+            "loopPrompt": "RIDE IT",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-6-drive-tap-3-settled",
             "loopPrompt": "LOCK IT",
             "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
@@ -343,8 +734,25 @@
             }
           },
           {
-            "phase": "attempt2-8-after-release-post-lockout",
-            "loopPrompt": "GOOD LIFT",
+            "phase": "attempt4-7-lockout-after-3-tap(s)",
+            "loopPrompt": "GRINDER",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt4-8-after-drive-sequence",
+            "loopPrompt": "GRINDER",
             "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
@@ -361,7 +769,7 @@
           },
           {
             "phase": "resolved-or-reset-for-next-rep",
-            "loopPrompt": "GOOD LIFT",
+            "loopPrompt": "GRINDER",
             "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
@@ -377,13 +785,25 @@
             }
           }
         ],
-        "attemptsUsed": 2,
+        "attemptsUsed": 4,
         "misses": [
           {
             "attempt": 1,
             "holdMs": 1000,
             "outcome": "NO LIFT",
             "detail": "Buried it. Never got the reversal."
+          },
+          {
+            "attempt": 2,
+            "holdMs": 820,
+            "outcome": "NO LIFT",
+            "detail": "The bar beat you at the sticking point."
+          },
+          {
+            "attempt": 3,
+            "holdMs": 820,
+            "outcome": "NO LIFT",
+            "detail": "The bar beat you at the sticking point."
           }
         ]
       },
@@ -1821,17 +2241,22 @@
     {
       "ok": true,
       "what": "ARM session: PROBE 3 — session-detail shows the real LIFT_COPY.SUBTITLE verbatim somewhere in a driven rep, not just at BRACE",
-      "detail": "matched at: attempt1-0-brace-before-press, attempt1-1-descent, attempt2-0-brace-before-press, attempt2-1-descent, attempt2-2-descent-mid-hold, attempt2-3-immediately-after-release, attempt2-4-hole, attempt2-5-ascent-before-drive(drive-cue-seen=true), attempt2-6-immediately-after-drive-press, attempt2-7-lockout-still-held, attempt2-8-after-release-post-lockout, resolved-or-reset-for-next-rep"
+      "detail": "matched at: attempt1-0-brace-before-press, attempt1-1-descent, attempt2-0-brace-before-press, attempt2-1-descent, attempt2-2-descent-mid-hold, attempt2-3-immediately-after-release, attempt2-4-hole, attempt2-6-drive-tap-1-released, attempt2-6-drive-tap-1-settled, attempt3-0-brace-before-press, attempt3-1-descent, attempt3-2-descent-mid-hold, attempt3-3-immediately-after-release, attempt3-4-hole, attempt3-6-drive-tap-1-released, attempt3-6-drive-tap-1-settled, attempt3-6-drive-tap-2-released, attempt4-0-brace-before-press, attempt4-1-descent, attempt4-2-descent-mid-hold, attempt4-3-immediately-after-release, attempt4-4-hole, attempt4-6-drive-tap-1-released, attempt4-6-drive-tap-1-settled, attempt4-6-drive-tap-2-released, attempt4-6-drive-tap-2-settled, attempt4-6-drive-tap-3-released, attempt4-6-drive-tap-3-settled, attempt4-7-lockout-after-3-tap(s), attempt4-8-after-drive-sequence, resolved-or-reset-for-next-rep"
+    },
+    {
+      "ok": true,
+      "what": "ARM session: PROBE 3 — RIDE IT (ASCENT_AFTER_CUE) actually renders between drive cues in a real driven rep, not just traced as reachable",
+      "detail": "7 settled phase(s) checked; matched at: attempt2-6-drive-tap-1-settled, attempt3-6-drive-tap-1-settled, attempt4-6-drive-tap-1-settled, attempt4-6-drive-tap-2-settled"
     },
     {
       "ok": true,
       "what": "ARM session: PROBE 3 DOMAIN — a real rep was driven through every phase to LOCKOUT (adaptively, up to 6 tries), so the check below has something to say",
-      "detail": "drove 14 phase reading(s) over 2 attempt(s), drovePastLockout=true; misses along the way: #1@1000ms=\"NO LIFT\""
+      "detail": "drove 38 phase reading(s) over 4 attempt(s), drovePastLockout=true; misses along the way: #1@1000ms=\"NO LIFT\", #2@820ms=\"NO LIFT\", #3@820ms=\"NO LIFT\""
     },
     {
       "ok": true,
       "what": "ARM session: PROBE 3 — user-select and touch-action hold at every phase of a real rep, not only at BRACE",
-      "detail": "14 phase(s) checked, none deviated"
+      "detail": "38 phase(s) checked, none deviated"
     },
     {
       "ok": true,
