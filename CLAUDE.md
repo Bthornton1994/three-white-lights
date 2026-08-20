@@ -257,6 +257,36 @@ Session A stewardship while they are idle, and this line is the notice.
 5. **Beta Hardening** — device passes, remaining playtest copy, PWA packaging,
    D's CI gate as the release gate.
 
+### SPRINT 3 GATE STATUS, FILED 2026-08-20 — ONE CLOSED, TWO STILL OPEN
+
+Written so the phone-re-test thread does not quietly read as fully resolved —
+three commits landing in sequence (`f3576bf`, `425d1d4`, `8010f19`) is easy to
+misread as "done" from the log alone.
+
+**Closed.** Finding 1 (the drive boost silently re-coupled to `m.held`,
+regressing a verified tap mechanic back into a hold) is fixed, mutation-tested,
+and browser-confirmed at `db74632`/`e3bbd00`. The copy that described it
+(`DRIVE — HOLD IT` / `HOLD` / "one timed tap") was wrong on both counts a
+phone re-test surfaced — corrected at `f3576bf`, both strings exact-pinned
+and mutation-tested, browser evidence re-taken and stamped clean at `8010f19`.
+
+**Still open, not blocking, not to be read as resolved by the commits above:**
+
+1. **Finding 2 — axis legibility.** "Feels harder, hard to tell why" from the
+   first phone playtest. Investigated, two proposal options written up
+   (haptic-per-axis, a visual cue via `RepPips`/`hapticFor`), deliberately
+   **not implemented** — held on purpose to see what signal survives once
+   Finding 1's fix lands. Needs a further human phone re-test before anyone
+   picks an option, let alone builds it.
+2. **`RIDE IT` has never been observed rendering, on-device or in this
+   repo's own browser evidence.** It is the `ASCENT_AFTER_CUE` copy, shown
+   only between a rep's 2nd+ required drive cue — `verify-lift-press.mjs`'s
+   driven rep at `8010f19` needed exactly one drive attempt, so the probe
+   never reached the state that shows it. Traced, not guessed: the cause is
+   named rather than assumed. Closing it needs either a scripted heavier-load
+   probe (so a real second cue fires) or a human re-test at a load where one
+   naturally does — neither has happened yet.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
