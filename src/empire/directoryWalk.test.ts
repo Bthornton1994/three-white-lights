@@ -151,7 +151,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
  */
 export const DIRECTORY_WALK = Object.freeze({
   /** Shipped (non-test) modules this directory holds today. */
-  SHIPPED_MODULES: 13,
+  SHIPPED_MODULES: 14,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -161,7 +161,7 @@ export const DIRECTORY_WALK = Object.freeze({
    * eleven of its twenty-three files, in a file that pins counts everywhere
    * else. A truncated or reshaped file set now reports itself here.
    */
-  DIRECTORY_FILES: 29,
+  DIRECTORY_FILES: 31,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -922,6 +922,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
     // is a scan over this list, and a list that had gone empty would make all
     // five pass.
     expect(shippedModuleNames()).toEqual([
+      'GymScreen.tsx',
       'empireCore.ts',
       'empireInvariant.ts',
       'empireTuning.ts',

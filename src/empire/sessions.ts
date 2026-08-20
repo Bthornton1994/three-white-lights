@@ -994,3 +994,10 @@ export function secondsUntilNextWeekBoundary(atSeconds: number): number {
   const intoWeek = atSeconds % weekSeconds;
   return intoWeek === 0 ? weekSeconds : weekSeconds - intoWeek;
 }
+
+// `GymScreen.tsx` (CROSSING 6, `src/shell/`'s wiring) is the native render of
+// this module's pure outputs -- `resolveWeek`, `weeklyAttributeEffects`,
+// `availableActivities` and `trainingWeekShape` feed its allocation section
+// directly, alongside `ladder.ts`'s rung and clock. Named here so a reader of
+// this file's own account of the directory can find the screen; this module
+// stays render-free and imports nothing from it.

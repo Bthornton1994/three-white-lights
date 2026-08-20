@@ -365,7 +365,27 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import ts from 'typescript';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// CROSSING 6: `GymScreen.tsx` imports `react-native`, whose real
+// `node_modules` entry is written in Flow — `vitest.config.ts`'s
+// `environment: 'node'` has no Flow-stripping transform, so an unmocked
+// `import * as gymScreenModule from './GymScreen'` below would crash loading
+// this ENTIRE test file at import time (a `RolldownError: Parse failure …
+// Flow is not supported`), not just one test — measured directly the same
+// way `GymScreen.test.ts`'s own header records it. The mock replaces the
+// specifier before the real module is ever resolved, so the Flow source is
+// never parsed; every census below that reflects on `GymScreen`'s exported
+// function still sees the real function and the real element tree it
+// returns, because the mock only replaces what `View` / `Text` / `Pressable`
+// / `ScrollView` resolve to as VALUES, not the shape of the tree `GymScreen`
+// builds out of them.
+vi.mock('react-native', () => ({
+  View: 'View',
+  Text: 'Text',
+  Pressable: 'Pressable',
+  ScrollView: 'ScrollView',
+}));
 
 import {
   directoryFileNames,
@@ -379,6 +399,7 @@ import * as invariant from './empireInvariant';
 import * as tuningModule from './empireTuning';
 import * as engagementModule from './engagement';
 import * as expansionModule from './expansion';
+import * as gymScreenModule from './GymScreen';
 import * as ladderModule from './ladder';
 import * as ladderViewModule from './ladderView';
 import * as npcModule from './npc';
@@ -1061,8 +1082,9 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
   Object.freeze({
     field: 'ReactElement.key',
     why:
-      'React’s own element key on the stage-1/stage-2 views’ return types: the jsx transform’s ReactElement carries `key: string | null`, and that declaration is react’s, not this directory’s to narrow or brand. What the two views write into it comes from closed vocabularies this census already classifies elsewhere — the equipment item unions, the dev-step pattern labels, the flexible-slot vocabulary, and (for `GymView`) plain numbers stringified by React itself (`weekIndex`, `slotIndex`) — and the colocated render tests walk the produced trees. The bare position is the container, not a new producing channel.',
+      'React’s own element key on the stage-1/stage-2 views’ (and, since CROSSING 6, GymScreen’s) return types: the jsx transform’s ReactElement carries `key: string | null`, and that declaration is react’s, not this directory’s to narrow or brand. What the views write into it comes from closed vocabularies this census already classifies elsewhere — the equipment item unions, the dev-step pattern labels, the flexible-slot vocabulary, and (for `GymView`/`GymScreen`) plain numbers stringified by React itself (`weekIndex`, `slotIndex`) — and the colocated render tests walk the produced trees. The bare position is the container, not a new producing channel.',
     positions: Object.freeze([
+      'GymScreen.tsx#GymScreen#return.key',
       'ladderView.tsx#GymView#return.key',
       'ladderView.tsx#LadderView#return.key',
     ]),
@@ -1296,6 +1318,14 @@ const DECLARED_PATTERN_POSITIONS: readonly string[] = Object.freeze([
  * FUNCTION as far as any type in the directory says.
  */
 const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
+  // CROSSING 6: GymScreen's own two `.map()` reads of caller-supplied
+  // state — `weekLog.map(...)` (`weekLog` destructured straight off
+  // `props.state`, hence `props.map`) and, nested inside it, one week's
+  // `.slots.map(describeSlotOutcome)` (`week.map`) — the identical pair
+  // `ladderView.tsx#GymView` already has below, ported the same way the
+  // rest of the render tree was.
+  'GymScreen.tsx#GymScreen#props.map x1',
+  'GymScreen.tsx#GymScreen#week.map x1',
   'empireCore.ts#idleLedger#ledger.filter x1',
   'empireCore.ts#progressionLedger#ledger.filter x1',
   'empireInvariant.ts#composeTrainingIqRate#state.filter x1',
@@ -1329,14 +1359,20 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const SURFACE_CENSUS = Object.freeze({
-  MODULES: 13,
+  // 13 -> 14: GymScreen.tsx — CROSSING 6's native screen, the first shipped
+  // module outside `ladderView.tsx` to carry any JSX.
+  MODULES: 14,
   // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
   // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
   // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
   // and withLadder, gymCheckInAfter, trainingWeekIndexAt,
   // secondsUntilNextWeekBoundary from sessions.ts.
-  EXPORTS: 280,
-  BARE_POSITIONS: 2,
+  // 280 -> 281: GymScreen.tsx's one runtime export, `GymScreen` itself — no
+  // new types exported from that file (it reuses `GymViewState` /
+  // `GymViewAction` / `GymViewProps` from `ladderView.tsx` unchanged).
+  EXPORTS: 281,
+  // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
+  BARE_POSITIONS: 3,
   BARE_FIELDS: 1,
   BRANDED_POSITIONS: 34,
   /**
@@ -2371,7 +2407,7 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   CONSTRUCTORS: 4,
   SITES: 13,
   MINTS: 13,
-  MODULES: 13,
+  MODULES: 14,
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -2390,7 +2426,10 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // MINTS above are unchanged, which is the half of this census that is about
   // brands rather than about how much code the walk covered.
   // 1357 -> 1431: GymView's and the new sessions.ts helpers' own call sites.
-  CALLS_EXAMINED: 1431,
+  // 1431 -> 1470: GymScreen.tsx's own call expressions (dispatch calls, the
+  // ladder.ts/sessions.ts lookups, .map/.has, the DispatchButton helper).
+  // Measured by running this exact assertion rather than hand-counted.
+  CALLS_EXAMINED: 1470,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -2570,14 +2609,17 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     expect(checked).toBe(23);
     expect(CLOSED_BARE_STRING_FIELDS.length).toBe(5);
     // And the live bare list holds exactly the declared arrivals — React's
-    // element key on the stage-1 and stage-2 views — and none of the five
-    // closed fields has reopened onto either. Zero until `ladderView.tsx`;
-    // the position that moved it is a type react declares, not a reopening
-    // of anything here. Two rather than one once `GymView` landed beside
-    // `LadderView` in the same file, still the same one field.
+    // element key on the stage-1 and stage-2 views, and now GymScreen's — and
+    // none of the five closed fields has reopened onto any of them. Zero
+    // until `ladderView.tsx`; the position that moved it is a type react
+    // declares, not a reopening of anything here. Two rather than one once
+    // `GymView` landed beside `LadderView` in the same file, still the same
+    // one field. Three once `GymScreen.tsx` — CROSSING 6's native screen —
+    // landed beside them in a second file, same field again.
     expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
-    expect(SURFACE_CENSUS.BARE_POSITIONS).toBe(2);
+    expect(SURFACE_CENSUS.BARE_POSITIONS).toBe(3);
     expect(DECLARED_BARE_STRING_FIELDS.flatMap((group) => [...group.positions])).toEqual([
+      'GymScreen.tsx#GymScreen#return.key',
       'ladderView.tsx#GymView#return.key',
       'ladderView.tsx#LadderView#return.key',
     ]);
@@ -2896,6 +2938,7 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'empireTuning.ts': tuningModule as unknown as Readonly<Record<string, unknown>>,
   'engagement.ts': engagementModule as unknown as Readonly<Record<string, unknown>>,
   'expansion.ts': expansionModule as unknown as Readonly<Record<string, unknown>>,
+  'GymScreen.tsx': gymScreenModule as unknown as Readonly<Record<string, unknown>>,
   'ladder.ts': ladderModule as unknown as Readonly<Record<string, unknown>>,
   'ladderView.tsx': ladderViewModule as unknown as Readonly<Record<string, unknown>>,
   'sessions.ts': sessionsModule as unknown as Readonly<Record<string, unknown>>,
@@ -5304,6 +5347,24 @@ function driveEverything(): readonly DrivenRow[] {
         dispatch: gymSilent,
       }), [gymRich],
     );
+
+    // --- GymScreen.tsx — CROSSING 6's native port of GymView, driven off
+    // the SAME three states just built (`gymOpening`, `gymAfterWeek`, the
+    // moved-off-`gymRich` state) rather than a second set constructed for
+    // it: the two components take byte-identical props (`GymViewProps`),
+    // so the same three points on that domain exercise both.
+    drive('GymScreen', 'opening', () =>
+      gymScreenModule.GymScreen({ state: gymOpening, dispatch: gymSilent }), [gymOpening],
+    );
+    drive('GymScreen', 'played', () =>
+      gymScreenModule.GymScreen({ state: gymAfterWeek, dispatch: gymSilent }), [gymAfterWeek],
+    );
+    drive('GymScreen', 'moved', () =>
+      gymScreenModule.GymScreen({
+        state: ladderViewModule.gymViewReduce(gymRich, { kind: 'move-up' }),
+        dispatch: gymSilent,
+      }), [gymRich],
+    );
   }
 
   // --- sessions.ts (GDD §5 v2, stage 2)
@@ -7280,11 +7341,17 @@ function measureDrive(): DriveMeasurement {
 }
 
 const DRIVE_CENSUS = Object.freeze({
-  ROWS: 303208,
-  EXPORTS_DRIVEN: 280,
-  NODES: 3239590,
-  STRINGS: 14937885,
-  DISTINCT_STRINGS: 2362,
+  // Every count below this line moved when GymScreen.tsx's three new drive
+  // rows (CROSSING 6) joined the walk — each was re-measured by running its
+  // own assertion rather than computed by hand, in the order the file's own
+  // assertions read them.
+  ROWS: 303211,
+  EXPORTS_DRIVEN: 281,
+  NODES: 3241559,
+  // 14937885 -> 14946058, DISTINCT_STRINGS 2362 -> 2434: GymScreen's three
+  // driven element trees' own string positions.
+  STRINGS: 14946058,
+  DISTINCT_STRINGS: 2434,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -7301,7 +7368,10 @@ const DRIVE_CENSUS = Object.freeze({
    * more keyed lists (fourteen stage-2 shop rows, five slot-option buttons on
    * three slots, per-week log entries) than the seven `LadderView` had.
    */
-  GETTERS_INVOKED: 140,
+  // 140 -> 259: GymScreen's element trees carry the same keyed lists GymView's
+  // do (same state, same shop/slot/week-log structure), each with its own
+  // react-defined `key` getter.
+  GETTERS_INVOKED: 259,
   PROXIES: 0,
   /**
    * Nullary functions the walk CALLED, how many threw, and how many
@@ -7328,7 +7398,9 @@ const DRIVE_CENSUS = Object.freeze({
    * own driven screens — with their larger shops, the allocation controls
    * and the week-boundary jump — are added.
    */
-  CLOSURES_INVOKED: 120,
+  // 120 -> 225: GymScreen's own onPress closures, driven the same way
+  // GymView's onClick arrows are.
+  CLOSURES_INVOKED: 225,
   CLOSURE_THROWS: 0,
   CLOSURES_DECLINED: 2046,
   /**
@@ -7348,7 +7420,9 @@ const DRIVE_CENSUS = Object.freeze({
    * tell from an absence. This is the number that says the branch is live, in
    * the same role `TRIPWIRE_CENSUS.GETTERS_INVOKED` plays for the getter arm.
    */
-  STACKS: 3791,
+  // 3791 -> 4197: GymScreen's driven trees carry the same Error-shaped
+  // `stack` own-properties (react's own dev-mode bookkeeping) GymView's do.
+  STACKS: 4197,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -11018,6 +11092,11 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'empireInvariant.ts': 60,
       'engagement.ts': 23,
       'expansion.ts': 47,
+      // CROSSING 6: GymScreen.tsx's own two helper functions
+      // (`allocationOptions`, `describeSlotOutcome`, the latter with three
+      // return statements across its three arms) plus the component's own
+      // JSX return.
+      'GymScreen.tsx': 5,
       'ladder.ts': 25,
       'ladderView.tsx': 18,
       'npc.ts': 12,
@@ -11052,7 +11131,16 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'social.ts': 7,
     }),
     'argument-mutation': Object.freeze({}),
-    'callback-invocation': Object.freeze({ 'engagement.ts': 1, 'ladderView.tsx': 9, 'production.ts': 2 }),
+    // CROSSING 6: GymScreen.tsx's one call of `props.dispatch` (wrapped by
+    // its own local `dispatch` helper, called once from the outer scope —
+    // every actual dispatch site below calls THAT local, which is a plain
+    // function call and not a second `props.dispatch` invocation).
+    'callback-invocation': Object.freeze({
+      'engagement.ts': 1,
+      'GymScreen.tsx': 1,
+      'ladderView.tsx': 9,
+      'production.ts': 2,
+    }),
     'internal-callback-invocation': Object.freeze({ 'expansion.ts': 1 }),
     'module-mutable-state': Object.freeze({}),
     'ambient-global': Object.freeze({}),
@@ -11130,6 +11218,12 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
  * site, one argument wider — and `x1` going to `x2` is what reddens here.
  */
 const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
+  // CROSSING 6: GymScreen's one `props.dispatch` call, through its own local
+  // `dispatch` helper — every actual dispatch site in the component calls
+  // that local wrapper, a plain function and not `props.dispatch` itself, so
+  // this is the ONE site rather than one per onPress arrow (unlike GymView,
+  // which calls `props.dispatch` directly at each of its six sites below).
+  'GymScreen.tsx#GymScreen#props.dispatch x1',
   'engagement.ts#historyFrom#attended x1',
   // Ordered by owner name within a module (`GymView` before `LadderView`),
   // which is the walk's own order rather than source position. Six onClick
@@ -11461,14 +11555,17 @@ const SCREEN_AGREEMENT = Object.freeze({
  *     `pick()(slot)`, or an identifier the checker does not resolve. Both are
  *     named individually in `DECLARED_FRESH_RECEIVERS` as well as counted.
  */
+// CROSSING 6: GymScreen.tsx moved four of these — function 708 -> 731,
+// member 651 -> 664, member-callback 11 -> 12, member-of-parameter 16 -> 18
+// — measured by running this exact assertion rather than guessed.
 const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze({
   parameter: 2,
   'module-variable': 43,
   local: 0,
-  function: 708,
-  member: 651,
-  'member-callback': 11,
-  'member-of-parameter': 16,
+  function: 731,
+  member: 664,
+  'member-callback': 12,
+  'member-of-parameter': 18,
   fresh: 0,
   unclassified: 0,
 });
@@ -11497,19 +11594,22 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
-  MODULES: 13,
+  MODULES: 14,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
    * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
    * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
-   * sites (39 -> 43) on `sessions.ts`. */
-  SITES: 427,
+   * sites (39 -> 43) on `sessions.ts`.
+   * 427 -> 433 with GymScreen.tsx (CROSSING 6): +5 `return` sites and +1
+   * `callback-invocation` site, both on the new file. */
+  SITES: 433,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
    * grammar declarations and the `satisfies` clause are 23 AST nodes, and no
    * site, channel or wrap count moved with them.
    */
-  NODES_EXAMINED: 30_722,
+  // 30722 -> 31964: GymScreen.tsx's own AST nodes (CROSSING 6).
+  NODES_EXAMINED: 31_964,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
   WRAP_CALLS: 99,
   CHANNELS: 11,
@@ -11561,8 +11661,10 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
 const SHIPPED_TYPE_DEPTH = Object.freeze({
   /** Deepest chain from an exported surface, in the control's own accounting. */
   DEEPEST: 9,
+  // 661 -> 663: GymScreen's own exported signature (CROSSING 6) — its one
+  // parameter position and its one return position.
   /** Exported positions measured. A truncated walk would report a shallow tree. */
-  POSITIONS: 661,
+  POSITIONS: 663,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -12472,7 +12574,15 @@ const GYM_VIEW_CONTROLS =
   1 + // relocate
   EMPIRE_TUNING.FLEXIBLE_SESSIONS_PER_WEEK * (EMPIRE_TUNING.FLEXIBLE_ACTIVITIES.length + 1);
 
-/** Every onClick in an element tree, pressed in tree order. */
+/**
+ * Every onClick OR onPress in an element tree, pressed in tree order.
+ *
+ * CROSSING 6: `onPress` joined `onClick` here rather than getting a second,
+ * near-identical walker — `GymView`'s DOM tree wires `onClick`, `GymScreen`'s
+ * RN tree wires `onPress` (RN has no `onClick` at all), and a control cannot
+ * carry both, so checking for either is a widening of what counts as a
+ * control rather than a loosening of what "pressed" means for either screen.
+ */
 function pressEveryControl(node: unknown): number {
   if (typeof node !== 'object' || node === null) return 0;
   if (Array.isArray(node)) {
@@ -12482,7 +12592,7 @@ function pressEveryControl(node: unknown): number {
   if (typeof props !== 'object' || props === null) return 0;
   const bag = props as Readonly<Record<string, unknown>>;
   let pressed = 0;
-  const handler = bag['onClick'];
+  const handler = bag['onClick'] ?? bag['onPress'];
   if (typeof handler === 'function') {
     (handler as () => void)();
     pressed += 1;
@@ -12491,6 +12601,45 @@ function pressEveryControl(node: unknown): number {
 }
 
 const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
+  Object.freeze({
+    key: 'GymScreen.tsx#GymScreen#props.dispatch',
+    axes: Object.freeze([
+      Object.freeze({
+        name: 'GymScreen.tsx#GymScreen#props.dispatch#gymBucks',
+        domain: 'NUMBER',
+        means:
+          'the settled purse the rendered screen shows — the identical claim `ladderView.tsx#GymView#props.dispatch#gymBucks` makes for the DOM twin, reused here because GymScreen ports GymView’s shape tag for tag: same control set (GYM_VIEW_CONTROLS), same "every control dispatches regardless of balance" rule, same one-call-per-control wrap through GymScreen’s own local `dispatch`.',
+        drive: (record: (args: readonly unknown[]) => void, point: number): void => {
+          pressEveryControl(
+            gymScreenModule.GymScreen({
+              state: Object.freeze({
+                gym: Object.freeze({
+                  ladder: ladderStateAt(
+                    EMPIRE_TUNING.LADDER_RUNGS[0],
+                    point,
+                    ladderModule.createLadderState().equipment,
+                  ),
+                  acceleratedGymBucks: 0,
+                  sessionEquipment: Object.freeze([]),
+                }),
+                lastAccrual: null,
+                lastRefusal: null,
+                weekIndex: 0,
+                allocation: sessionsModule.createRestAllocation(),
+                allocationSetThisWeek: false,
+                weekLog: Object.freeze([]),
+              }),
+              dispatch: (action: ladderViewModule.GymViewAction): void => {
+                record([action]);
+              },
+            }),
+          );
+        },
+        callsAt: (): number => GYM_VIEW_CONTROLS,
+        argumentsPerCall: 1,
+      }),
+    ]),
+  }),
   Object.freeze({
     key: 'engagement.ts#historyFrom#attended',
     axes: Object.freeze([
@@ -12820,6 +12969,16 @@ interface CallbackAxisCensus {
 }
 
 const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Object.freeze({
+  // CROSSING 6: byte-identical to `ladderView.tsx#GymView#props.dispatch
+  // #gymBucks` below — same `NUMBER` domain, same `GYM_VIEW_CONTROLS`
+  // constant callsAt (does not vary with the point), so the same domain
+  // produces the same points/calls/recorded on the ported screen.
+  'GymScreen.tsx#GymScreen#props.dispatch#gymBucks': Object.freeze({
+    points: 272,
+    refusedPoints: 0,
+    calls: 9520,
+    recorded: 9520,
+  }),
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
     points: 106,
     refusedPoints: 1,
@@ -12871,7 +13030,9 @@ const CALLBACK_AXIS_RESIDUAL: readonly string[] = Object.freeze([
 ]);
 
 const CALLBACK_PASS_CENSUS = Object.freeze({
-  SUBJECTS: 5,
+  // CROSSING 6: GymScreen.tsx#GymScreen#props.dispatch, one new subject, one
+  // new axis (gymBucks). Every count below is re-measured, not guessed.
+  SUBJECTS: 6,
   /**
    * Axes driven, summed over subjects.
    *
@@ -12882,7 +13043,7 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    * reader — with `CALLBACK_AXIS_RESIDUAL` naming what a per-axis drive still
    * cannot express.
    */
-  AXES_VARIED: 6,
+  AXES_VARIED: 7,
   /**
    * Points, refusals, calls and values, summed across every axis.
    *
@@ -12890,10 +13051,12 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    * reader checks at a glance and the table is what cannot be gamed by one axis
    * growing while another dies.
    */
-  POINTS: 904,
+  // +272 points, +9520 calls, +9520 recorded, +0 refused — the new axis's own
+  // row above, summed in.
+  POINTS: 1176,
   REFUSED_POINTS: 1,
-  CALLS: 3296539,
-  RECORDED: 5482297,
+  CALLS: 3306059,
+  RECORDED: 5491817,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
@@ -18032,6 +18195,32 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
       });
     },
   }),
+  // CROSSING 6: the identical pair of drives, on the ported screen. Same
+  // isolation shapes, same fixtures — only the driven function differs.
+  Object.freeze({
+    site: 'GymScreen.tsx#GymScreen#props.map x1',
+    run: (record: MemberCallRecord): void => {
+      const weekLog = recordOn([memberCallWeekReport()], 'map', record);
+      gymScreenModule.GymScreen({
+        state: memberCallGymViewState(weekLog),
+        dispatch: MEMBER_CALL_SILENT_DISPATCH,
+      });
+    },
+  }),
+  Object.freeze({
+    site: 'GymScreen.tsx#GymScreen#week.map x1',
+    run: (record: MemberCallRecord): void => {
+      const week = memberCallWeekReport();
+      const instrumented = Object.freeze({
+        ...week,
+        slots: recordOn([...week.slots], 'map', record) as unknown as GymWeekReport['slots'],
+      });
+      gymScreenModule.GymScreen({
+        state: memberCallGymViewState([instrumented]),
+        dispatch: MEMBER_CALL_SILENT_DISPATCH,
+      });
+    },
+  }),
 ]);
 
 /**
@@ -18107,9 +18296,10 @@ const MEMBER_CALL_TRIPWIRE: readonly MemberCallSubject[] = Object.freeze([
 
 /** What the pass measured. Counts, not bounds, so an empty drive reports itself. */
 const MEMBER_CALL_PASS_CENSUS = Object.freeze({
-  SUBJECTS: 16,
+  // CROSSING 6: GymScreen's own two sites, appended.
+  SUBJECTS: 18,
   /** One call of the instrumented method per subject, two at the ladder site. */
-  CALLS: 17,
+  CALLS: 19,
   /**
    * Callback invocations across every subject: 4 + 33, the second number being
    * E23's ten sites. Per site — and per ARM, which is the half a total cannot
@@ -18117,7 +18307,8 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
    */
   // 37 -> 41: GymView's own two sites add 1 (the week-row callback, once)
   // and 3 (describeSlotOutcome, once per slot).
-  CALLBACK_CALLS: 41,
+  // 41 -> 45: GymScreen's own two sites, the identical +1 and +3.
+  CALLBACK_CALLS: 45,
   /**
    * Strings reachable from the non-function arguments.
    *
@@ -18138,7 +18329,9 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
    */
   // 46 -> 79: GymView's own two sites add 30 (a whole rendered week-row
   // element, deep-scanned) and 3 (describeSlotOutcome's three strings).
-  RETURNED: 79,
+  // 79 -> 111: GymScreen's own two sites, +29 (measured, one less than
+  // GymView's +30 — see the site observation's own comment) and +3.
+  RETURNED: 111,
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
@@ -18218,6 +18411,14 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   'social.ts#visitRefusals#context.some x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
   'ladderView.tsx#GymView#props.map x1 calls=1 callbacks=1 handed=0 returned=30 verdicts=objectx1',
   'ladderView.tsx#GymView#week.map x1 calls=1 callbacks=3 handed=0 returned=3 verdicts=stringx3',
+  // CROSSING 6: the same drive shape as the GymView pair above, on the
+  // ported screen. `returned=29` rather than GymView's 30 — measured, not
+  // assumed identical: the rendered week-row element carries one fewer
+  // deep-scanned string, because the RN tree's `<Text>` wraps the row in a
+  // single string-concatenating child rather than the DOM tree's several
+  // separately-scanned text nodes.
+  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=29 verdicts=objectx1',
+  'GymScreen.tsx#GymScreen#week.map x1 calls=1 callbacks=3 handed=0 returned=3 verdicts=stringx3',
 ]);
 
 /** One site's drive, as the line `MEMBER_CALL_SITE_OBSERVATIONS` pins. */
