@@ -873,7 +873,7 @@ export const LIFT_COPY = Object.freeze({
    * have never seen it (GDD §10: "10-20 people, roughly half real lifters"), so
    * the rules have to be on the screen rather than in a tutorial nobody built.
    */
-  SUBTITLE: 'Two moments, not two motions: release at the bottom, one timed tap to drive. Catch the beat.',
+  SUBTITLE: 'Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.',
 
   OUTCOME: Object.freeze({
     'good-lift': 'GOOD LIFT',

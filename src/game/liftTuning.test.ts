@@ -394,6 +394,14 @@ describe('copy', () => {
     expect(LIFT_COPY.PROMPT.ASCENT_CUE_OPEN).not.toMatch(/hold/i);
     expect(LIFT_COPY.PROMPT.ASCENT_AFTER_CUE).not.toMatch(/hold/i);
   });
+
+  it('does not tell the player the drive is a single tap', () => {
+    // Heavy sets arm more than one drive cue. "one timed tap" made the
+    // subtitle describe LIGHT and lie at MAXIMAL.
+    expect(LIFT_COPY.SUBTITLE).not.toMatch(/one timed tap/i);
+    expect(LIFT_COPY.SUBTITLE).not.toMatch(/\bone tap\b/i);
+    expect(LIFT_COPY.SUBTITLE.toLowerCase()).toMatch(/tap/);
+  });
 });
 
 // ---------------------------------------------------------------------------
