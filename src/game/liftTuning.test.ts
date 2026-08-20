@@ -385,6 +385,15 @@ describe('copy', () => {
     const all = JSON.stringify(LIFT_COPY);
     expect(all).not.toMatch(/\d/);
   });
+
+  it('tells the player to tap the drive cue, not to hold', () => {
+    // Finding 1 decoupled the boost from `held`. A revert of the copy to
+    // "HOLD IT" / "HOLD" would pass every promptFor test (they read the
+    // constant) and lie on the phone again.
+    expect(LIFT_COPY.PROMPT.ASCENT_CUE_OPEN).toBe('DRIVE — TAP');
+    expect(LIFT_COPY.PROMPT.ASCENT_CUE_OPEN).not.toMatch(/hold/i);
+    expect(LIFT_COPY.PROMPT.ASCENT_AFTER_CUE).not.toMatch(/hold/i);
+  });
 });
 
 // ---------------------------------------------------------------------------

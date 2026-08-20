@@ -1097,7 +1097,7 @@ const FULL_CYCLE = Object.freeze({
 /**
  * Poll `readLoop`'s prompt text until it CONTAINS `wanted`, or the deadline
  * passes. Substring rather than equality, matching `sessionDrive.mjs`'s own
- * `saying()` — `LIFT_COPY.PROMPT.ASCENT_CUE_OPEN` is `'DRIVE — HOLD IT'`, not
+ * `saying()` — `LIFT_COPY.PROMPT.ASCENT_CUE_OPEN` is `'DRIVE — TAP'`, not
  * the bare `SESSION_PROMPTS.DRIVE` this checks against, and an equality check
  * here silently never matches it. Measured, not theorised: the first version
  * of this probe used `===` and reported `drovePastLockout: false` on every

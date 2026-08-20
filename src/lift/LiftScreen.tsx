@@ -8,8 +8,8 @@
  * ---------------------------------------------------------------------------
  * THE WHOLE INTERACTION IS ONE TOUCH
  * ---------------------------------------------------------------------------
- * Press and hold to descend. Release at depth. Press again to drive through the
- * sticking point and KEEP HOLDING. That is the entire control scheme, and it is
+ * Press and hold to descend. Release at depth. Tap to drive through the
+ * sticking point. That is the entire control scheme, and it is
  * deliberately the thing GDD §12.1 names — "pressing the screen to grind out a
  * squat" — rather than a set of buttons.
  *
