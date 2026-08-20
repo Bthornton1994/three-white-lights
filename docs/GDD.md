@@ -1853,6 +1853,36 @@ playable at any point.
 it.** That is the specific thing that went wrong the first time — five rounds
 of grading a screen nobody could play.
 
+**RULED, AFTER THE FIRST REAL DEVICE PLAYTEST: "PLAYABLE" WAS BEING SATISFIED
+MECHANICALLY BUT NOT PRESENTATIONALLY, AND THE GATE DID NOT CATCH IT.** Stages
+1–2b were built and gated against a render-only view (`ladderView.tsx`'s
+`GymView`, later ported to a genuine native `GymScreen.tsx`) that is correct —
+every number on screen is a real read of `ladder.ts`/`sessions.ts`, every
+interaction dispatches a real action, and it has been driven end to end on a
+real phone via `AppShell.tsx`'s new `'gym'` surface. It is also, in the
+playtester's own words, "a settings page" rather than a mode — no sprites, no
+gym scene, nothing a player would recognize as belonging to this game rather
+than to a debug harness. **The stage gate's own text — "playable, and a human
+must have played it" — does not distinguish those two things, and this is the
+first time the distinction mattered enough to be visible.** A gate that checks
+"can a human operate this" is not the same gate as "does a human recognize
+this as the game," and §5.11 was silently treating the first as proof of the
+second.
+
+**Standing until this is addressed: no further §5 logic work lands on top of
+the current build.** Everything through stage 2b (ladder, equipment, sessions,
+the staffing/maintenance groundwork already in `empireCore.ts`) is complete and
+heavily verified at the logic layer — that verification is real and stands.
+What does not stand is treating any of it as shippable, or treating stage 3
+onward as clear to start, while the presentation layer is unbuilt. The next
+piece is the presentation layer itself — sprites, a real gym scene, whatever
+makes this read as a mode rather than a settings page — scoped and built as
+its own deliverable, not folded silently into whichever logic stage comes
+next. Until that piece exists and has itself been played by a human, no
+further §5 stage may be graded "playable" on mechanical correctness alone;
+the stage-gate playtest going forward has to answer the presentation question
+explicitly, not just "did the controls work."
+
 ### 5.12 Design questions — all resolved
 
 All open items from the prior draft are settled:

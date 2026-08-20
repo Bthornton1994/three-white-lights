@@ -1256,6 +1256,37 @@ used to isolate them were deleted before finishing — `git status` on the
 verification pass's changes is clean of anything outside the files this
 section already names.
 
+### §5 IS PAUSED ON LOGIC — RULED AFTER THE FIRST REAL DEVICE PLAYTEST OF
+### CROSSING 6, AND THE STOP IS RECORDED HERE BEFORE ANY NEXT PIECE STARTS
+
+A human played Gym Empire on a real phone through the shell wiring above —
+the first time any §5 build has been played on the actual target device rather
+than the web dev harness. The verdict was not a defect report: the mechanics
+work, exactly as the independent verification pass above found. It was a gap
+in what the stage gate had been checking. Recorded in full in `docs/GDD.md`
+§5.11 (read it there for the complete ruling); the summary for this file's
+purpose is the standing instruction, not the reasoning.
+
+**Standing instruction: no further §5 logic lands until the presentation
+layer is scoped and built as its own piece.** Everything through stage 2b —
+`ladder.ts`, `sessions.ts`, `empireCore.ts`'s staffing/maintenance groundwork,
+`GymScreen.tsx`'s wiring — is complete, heavily verified, and stays exactly as
+it is. What stops is treating any of it as shippable, or starting stage 3
+(members with types and satisfaction) or anything after it, while Gym Empire
+has no sprites, no scene, nothing a player recognizes as a mode rather than a
+settings page. That gap was always there; it took a real device playtest
+through a real navigation path to surface it, which is the mechanism §5.11's
+gate exists to provide and had not yet been asked to provide for this
+specific question.
+
+**If a future session or round is tempted to keep building §5 logic because
+the math is the familiar, well-guarded ground and the visual piece is not:**
+that is exactly the failure this spec was written to correct the first time
+(§5.0's "a large system that was never playable at any point"), one layer in.
+Don't fold the presentation piece silently into whatever comes next either —
+it is its own scoped deliverable, per the human ruling, not a subtask of the
+next logic stage.
+
 ## Subagent Roles
 
 Two subagent definitions live in `.claude/agents/`. Use them; do not improvise
