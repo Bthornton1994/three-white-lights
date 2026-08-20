@@ -1173,6 +1173,89 @@ pressing normal in-app navigation, not a separate dev route the tester has to
 know to type in" — so this is not a new standard, it is the existing one
 applied to what was asked.
 
+### CROSSING 6, DELIVERED AND INDEPENDENTLY VERIFIED — PLUS TWO REPORTS FOR
+### WHOEVER OWNS `src/tuning/`
+
+The crossing above is built. `src/empire/GymScreen.tsx` is a genuine React
+Native screen (`View`/`Text`/`Pressable`/`ScrollView`, zero DOM host tags)
+reusing `ladderView.tsx`'s existing reducer unchanged (confirmed byte-identical
+by hash across the commit before this round and the commit after). It is wired
+into `src/shell/shellRoute.ts` as a new `'gym'` surface with two new
+`ShellIntent`s, into `src/shell/shellTuning.ts` for its copy, and into
+`src/shell/AppShell.tsx` as a second, independently-gated pill drawn alongside
+the existing meet pill. `src/shell/shellRoute.test.ts` and `shellWiring.test.ts`
+carry the corresponding pins, including a full 4x4 surface-by-intent cross
+product.
+
+**This was not taken on the builder's report.** A separate verification pass —
+four independent agents, none shown the builder's transcript, each re-deriving
+one dimension from the real tree — checked it after the fact: a genuine
+mutation test on `navigate()` (planting the `'meet'`-to-`'gym'` edge produces a
+real red run naming three assertions, then the file was restored and confirmed
+byte-identical to `HEAD`), a byte-level purity/import-fence/wallet-isolation
+audit of `GymScreen.tsx`, and a from-scratch cold-boot rerun of the live
+Playwright reachability check that reproduced the builder's claimed 13/13
+exactly, including reading the real DOM text before and after each press
+(`"rung garage" -> "rung storage-unit"`) rather than trusting presence alone.
+All three came back clean; nothing about the mid-meet refusal, the affordance
+gating, the import/purity fence, the wallet isolation, or the live check's own
+rigor was refuted or left uncertain.
+
+**The one thing the verification pass caught that needed a real fix rather
+than a note: `gymAffordanceFor`'s doc comment was worded "IS NOT OFFERED..."
+specifically to dodge `guaranteeTags.test.ts`'s `GUARANTEE_COVERAGE.TREE_WIDE`
+pin**, because the builder was correctly barred from that file and could not
+take the bump itself. Once the guarantee was confirmed real and mutation-tested
+(the same `navigate()` mutation above), the wording was reverted to plain
+capitalised language and the pin taken, 235 -> 236 — per this file's own
+standing rule that a method note declines the bump and a claim with a check
+behind it takes it. Worth recording here rather than only in that file's
+comment: the paragraph documenting the fix itself first quoted both the dodge
+and the reverted wording in full, which put the capitalised trigger word back
+into that very paragraph and read 237 — the exact "the citation is the trap"
+failure this document already names, reproduced while writing about it, caught
+by running the count rather than by re-reading the prose, and fixed by
+describing the reverted wording instead of reproducing it.
+
+**Two pre-existing bugs in `src/tuning/audit.ts` / `audit.test.ts`, found by
+the verification pass, NOT fixed — `src/tuning/` is the one place both
+sessions share and this session does not edit it without asking first.**
+
+1. **`audit.ts`'s hand-rolled lexer misreads an apostrophe inside JSX prose
+   text as a string-literal delimiter.** `src/empire/ladderView.tsx:551` reads
+   `<h2>this week's allocation</h2>` — the apostrophe in "week's" is plain JSX
+   text, not code, but the lexer's quote-handling branch fires on any `'`
+   wherever it appears, opening a spurious string that swallows brace/comment
+   structure until the next stray `'` later in the file. Reproduced and
+   root-caused by bisection: replacing "week's" with "weekly" alone drops the
+   file's internal `braceDepth` miscount from 1 to the correct 0 at EOF and
+   eliminates all downstream misclassification. **This is already live in the
+   committed file today** — scanning `ladderView.tsx` as it stands now leaves
+   `braceDepth` at 1 instead of 0 at EOF, currently with no visible effect only
+   because nothing the audit cares about happens to fall after line 551 in a
+   position the mis-scan corrupts. It is not isolated to this one file: any
+   apostrophe inside JSX text, in any audited file, is the same shape of bug.
+   Nobody has swept the tree for the pattern; that has not been done here and
+   is worth doing before treating this as a one-file issue.
+
+2. **`audit.test.ts`'s own oracle, `parserCommentMask`, misclassifies a
+   `/** */` block comment sitting immediately before EOF with nothing after
+   it.** The real TypeScript parser attaches it as a synthetic `JSDocComment`
+   child of the `EndOfFileToken`; the oracle's leaf check (`children.length ===
+   0`) never fires for that token, so its trivia scan never runs and the
+   comment reads as not-a-comment. Reproduced in isolation against the real
+   `typescript` package with the verbatim oracle function — confirmed
+   mechanism, code path and outcome, not just the symptom. Not checked: whether
+   any file currently in the tree actually ends this way (a live, currently
+   wrong result) or whether the shape simply hasn't occurred yet.
+
+Neither bug was fixed and neither file was touched. Both were empirically
+isolated (bisection for the first, a synthetic repro against the real TS
+parser for the second) rather than merely asserted, and the scratch artifacts
+used to isolate them were deleted before finishing — `git status` on the
+verification pass's changes is clean of anything outside the files this
+section already names.
+
 ## Subagent Roles
 
 Two subagent definitions live in `.claude/agents/`. Use them; do not improvise

@@ -630,8 +630,38 @@ const GUARANTEE_COVERAGE = {
    * test is what the sentence CLAIMS, not how loudly it claims it or how awkward
    * the crossing is. The same round produced a second rewording that IS a method
    * note; it was left alone, so the undercount is five.
+   *
+   * FIFTEENTH ROUND, 235 -> 236, CROSSING 6 (`src/shell/shellRoute.ts`), AND THE
+   * DODGE WAS CAUGHT BEFORE IT SHIPPED RATHER THAN LEFT STANDING. The builder
+   * wiring Gym Empire into the shell wrote `gymAffordanceFor`'s doc comment as
+   * "IS NOT OFFERED OFF THE SESSION SURFACE" specifically to avoid this pin —
+   * the four-word trigger list catches `NEVER` and does not catch a synonym, and
+   * the builder was barred from this file so it could not take the bump itself.
+   * An independent verification pass confirmed the guarantee is real and
+   * mutation-tested: `navigate()` has no `open-gym` edge from `'meet'` at all,
+   * planting one produces a genuine red run naming three assertions
+   * (`shellRoute.test.ts`'s mid-meet-duck test, its path-between check, and its
+   * full 4x4 surface-by-intent cross product), and `gymAffordanceFor` itself
+   * refuses unconditionally before any phase check for any surface other than
+   * `'session'`. That is exactly the class this pin exists to count, so the
+   * dodge was reverted to plain capitalised language and the increment taken
+   * rather than left as a sixth undercount.
+   *
+   * THIS PARAGRAPH ALMOST BECAME A SEVENTEENTH INSTANCE OF ITS OWN SUBJECT.
+   * A first draft quoted both the dodge and the reverted wording in full,
+   * which put the capitalised trigger word back into THIS comment a second
+   * time and read 237, not 236 — the exact trap CLAUDE.md's "the citation is
+   * the trap" paragraph describes, caught by running the count rather than by
+   * re-reading the prose. Fixed by describing the reverted wording instead of
+   * reproducing it, which is the rule that paragraph states and this one had
+   * just failed to follow while writing about it.
+   *
+   * Attributed by measurement, the same as every round before it: the edit was
+   * one word in one file, and running this test with only that word reverted
+   * back to the dodge reads `expected 236 to be 235` — so the whole delta is
+   * this one paragraph's own capitalised absolute, not a change anywhere else.
    */
-  TREE_WIDE: 235,
+  TREE_WIDE: 236,
 } as const;
 
 // ---------------------------------------------------------------------------

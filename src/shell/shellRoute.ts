@@ -322,7 +322,7 @@ export function shellAffordanceFor(
  * the one list a human will actually tune rather than a second one nobody
  * has reason to diverge from yet.
  *
- * IS NOT OFFERED OFF THE SESSION SURFACE — in particular, never mid-meet.
+ * NEVER OFFERED OFF THE SESSION SURFACE — in particular, never mid-meet.
  * `route.surface !== 'session'` refuses unconditionally, first, before the
  * phase check, so a player on `meet` is never shown a way to duck into the
  * gym. `navigate` refuses the same route one layer down even if this gate
