@@ -1897,6 +1897,125 @@ All open items from the prior draft are settled:
 
 No open design questions remain. This spec is ready to move to implementation
 scoping.
+
+### 5.13 Presentation layer (RCT-style floor sim) — DESIGN, NOT YET CLEAR TO
+### BUILD IN FULL
+
+Submitted in response to the 5.11 ruling above: a spatial floor the player
+builds into, populated by NPCs with visible state, in the direction of
+RollerCoaster Tycoon rather than a settings page. Confirmed scope: **direct
+placement** (drag equipment onto a floor grid — layout is a real decision) and
+**real member behavior** (members walk, queue, use equipment, visibly react —
+not ambient population density). `src/art/gymScene.ts`'s existing rendering
+is a passive camera-only parallax backdrop built for a different job and is
+not reused here in any load-bearing way. Needed: a grid-based floor
+representation, placement mechanics (drag/validate/move/remove/persist),
+equipment sprites, member sprites with pathing and a visible state machine,
+and a real pan/zoom camera over the grid.
+
+**Hard constraint, unchanged from every other piece of §5: this is
+presentation, not a second source of truth.** It reads owned equipment,
+member count/type, and satisfaction from the real economic state and may
+*display* consequences of it; it does not maintain its own copy of anything
+progression-affecting.
+
+**Build order, gated exactly like §5.11 itself — the discipline this section
+exists because it wasn't applied here the first time:**
+
+1. Grid + placement alone. No members, no final art. Gate: does placing
+   things feel good?
+2. Ambient members at fixed positions, static or idle-animated, from real
+   count/type data. Gate: does the gym read as populated and alive?
+3. Real pathing, queuing, use, and visible reaction. Gate: does watching the
+   gym run feel like the reference, or like members-shaped set dressing?
+4. Real pixel-art pass, once 1–3 have proven the system worth finishing.
+
+Art direction: 16-bit, Nintendo-adjacent — the existing style set for the
+lift screen and meet-day cut-ins, extended to a new surface, not a new
+decision. Phases 1–2 build against placeholder shapes; committing final art
+to a layout system that might still change shape wastes budget on a moving
+target.
+
+**GROUNDING CHECK AGAINST THE REAL TREE, DONE BEFORE ANY OF THIS IS BUILT,
+BECAUSE THE SUBMITTED SPEC DESCRIBES SEVERAL THINGS AS ALREADY-COMPUTED THAT
+ARE NOT YET CODE.** `src/empire/` was read, not assumed, before writing the
+proposals below:
+
+- **Member types, satisfaction, and equipment condition are §5.6/§5.7 design
+  prose only — stage 3 and stage 4 of §5.11's own build order, both paused by
+  this section's ruling above.** `grep -rn "satisfaction\|MemberType" src/
+  empire/` finds nothing. Phase 1 (grid + placement, reading only
+  `sessions.ts`'s real `GymState.sessionEquipment`) needs none of this and can
+  proceed. **Phases 2 and 3 as written cannot** — "members appear at fixed
+  positions based on real count/type data" and "visible reaction states tied
+  to the existing satisfaction mechanic" both name state that does not exist
+  in code yet. This is the one item that needs a human ruling before Phase 2
+  is scoped, not something this section can resolve by itself: it would mean
+  either building stage 3's member/satisfaction logic now, as a named
+  exception to the pause because Phase 2 of an approved piece structurally
+  depends on it, or holding Phase 2 until stage 3 is separately unpaused.
+  Recorded here rather than decided here.
+- **The Barbell equipment group — the competition lifts, GDD's own first row
+  of §5.4's table — has no ownable state in code.** `SESSION_ACTIVITY_GROUPS`
+  in `empireTuning.ts` is `['conditioning', 'accessory', 'recovery',
+  'support']`, four groups, not five; the fixed four powerlifting sessions
+  never gate on owned equipment, so a bar/rack/platform is assumed always
+  present rather than purchased. A floor built purely from real ownership
+  state has no barbell equipment to place at all under the current model.
+- **No `condition` field exists on any equipment item.** §5.4's own table
+  names it as one of four numbers every item carries; it is stage-4 (§5.7,
+  also paused) and does not exist in `SESSION_EQUIPMENT_ITEMS`'s tuning today.
+- **`GymState.sessionEquipment` (`sessions.ts:554`) is a flat, position-less
+  list that refuses a duplicate item outright** (`requireSessionEquipment`
+  raises `"... is held twice"`). Phase 1 needs a real state addition — at
+  minimum a position per owned item — and if placing two of the same item is
+  wanted, that is an economic-model change (what a purchase means), not a
+  presentation one, and needs to be named as its own decision rather than
+  folded into "add positions."
+- **"Sprint 2's schema-versioned persistence work," named in the submitted
+  spec as where layout data should live, does not exist anywhere in this
+  repository.** `grep -rn "schemaVersion\|Sprint" docs/GDD.md CLAUDE.md
+  src/empire/ src/game/` finds no such system. Either this refers to
+  something outside this repo's visibility, or it has not been built yet —
+  flagged rather than guessed at.
+
+**The three items the submitted spec explicitly asked Session B to propose,
+answered here for review — none are built yet, all are provisional:**
+
+- **Grid dimensions per location**, reasoned from real-world footprint
+  intuition and scaled to the equipment cumulatively unlockable by that rung
+  (2 items at garage, 6 at storage-unit, 13 at strip-mall-unit, 14 at
+  warehouse, `SESSION_EQUIPMENT_MIN_RUNG` counted directly): **garage 8×6**,
+  **storage-unit 12×9**, **strip-mall-unit 22×16**, **warehouse 40×28**, in
+  abstract grid tiles rather than a literal foot conversion. Proposal only —
+  not tuned, not played.
+- **The layout-to-satisfaction formula.** Proposed as a multiplier on top of
+  §5.6's existing satisfaction drivers rather than a new independent term, so
+  it composes with that formula once stage 3 exists rather than competing
+  with it: for each placed item, a placement-quality score in [0, 1] from (a)
+  whether its spacing/clearance requirement is met and (b) path-distance from
+  the floor's entry point, tapering rather than linear so a large warehouse
+  isn't punished for its own size; aggregate to a single multiplier applied to
+  the crowding/condition-driven satisfaction inputs. This can be designed now
+  but not wired in until stage 3's satisfaction mechanic is real code to
+  multiply against.
+- **The pathing-interruption fallback**, when a member's target equipment is
+  moved or removed mid-approach or mid-use. The spec frames this as a binary
+  (re-target silently vs. abandon-and-react); proposed instead as a single
+  additional transient sub-state inside the existing seeking → queuing →
+  using → leaving machine: **interrupted**, entered whenever a target
+  vanishes, holding a short fixed beat with a visible reaction cue (RCT's
+  thought-bubble pattern), then always resolving back into **seeking**. This
+  satisfies both stated requirements at once — never freezes or paths into
+  empty space, and the interruption is legible rather than silent — without
+  inventing a permanent fifth state or a real behavioral fork.
+
+**Status: not cleared to start Phase 1 implementation yet.** The three
+proposals above are for review, per the submitted spec's own request. The
+stage-3-dependency question is a human ruling, not a proposal — building
+ahead of it in either direction (starting Phase 2 against invented member
+data, or quietly unpausing stage 3 to unblock it) repeats exactly the failure
+the 5.11 ruling just named.
 ---
 
 ## 6. Meet Day
