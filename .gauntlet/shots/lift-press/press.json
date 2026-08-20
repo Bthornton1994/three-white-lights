@@ -1,13 +1,13 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-20T15:18:06.215Z",
+    "capturedAt": "2026-08-20T17:00:27.654Z",
     "url": "http://localhost:8081",
-    "commit": "f3576bf",
+    "commit": "425d1d4",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "clean",
     "dirtyPaths": [],
     "instrument": {
-      "verify-lift-press.mjs": "ba8695918ae0189a",
+      "verify-lift-press.mjs": "78a0ee1bc4e2e395",
       "sessionDrive.mjs": "2a63eac7a653d32b",
       "meetDrive.mjs": "9ad796fe39e61305",
       "enterMeetFromCalendar.mjs": "68394ae0c9c75051"
@@ -141,6 +141,7 @@
           {
             "phase": "attempt1-0-brace-before-press",
             "loopPrompt": "TAP AND HOLD TO DESCEND",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -157,6 +158,7 @@
           {
             "phase": "attempt1-1-descent",
             "loopPrompt": "RELEASE AT DEPTH",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -173,6 +175,7 @@
           {
             "phase": "attempt1-2-descent-mid-hold",
             "loopPrompt": "NO LIFT",
+            "loopDetail": "Buried it. Never got the reversal.",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -189,6 +192,7 @@
           {
             "phase": "attempt1-3-immediately-after-release",
             "loopPrompt": "NO LIFT",
+            "loopDetail": "Buried it. Never got the reversal.",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -205,6 +209,7 @@
           {
             "phase": "attempt2-0-brace-before-press",
             "loopPrompt": "TAP AND HOLD TO DESCEND",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -221,6 +226,7 @@
           {
             "phase": "attempt2-1-descent",
             "loopPrompt": "RELEASE AT DEPTH",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -237,6 +243,7 @@
           {
             "phase": "attempt2-2-descent-mid-hold",
             "loopPrompt": "RELEASE AT DEPTH",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -253,6 +260,7 @@
           {
             "phase": "attempt2-3-immediately-after-release",
             "loopPrompt": "OUT OF THE HOLE",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -269,6 +277,7 @@
           {
             "phase": "attempt2-4-hole",
             "loopPrompt": "OUT OF THE HOLE",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -285,6 +294,7 @@
           {
             "phase": "attempt2-5-ascent-before-drive(drive-cue-seen=true)",
             "loopPrompt": "DRIVE — TAP",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -301,6 +311,7 @@
           {
             "phase": "attempt2-6-immediately-after-drive-press",
             "loopPrompt": "DRIVE — TAP",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -317,6 +328,7 @@
           {
             "phase": "attempt2-7-lockout-still-held",
             "loopPrompt": "LOCK IT",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -333,6 +345,7 @@
           {
             "phase": "attempt2-8-after-release-post-lockout",
             "loopPrompt": "GOOD LIFT",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -349,6 +362,7 @@
           {
             "phase": "resolved-or-reset-for-next-rep",
             "loopPrompt": "GOOD LIFT",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -1803,6 +1817,11 @@
       "ok": true,
       "what": "ARM session: PROBE 2 — nor does a 20px finger drift, which is the gesture the descent actually is",
       "detail": "pointercancel=0 at 20px vs 0 at 200px, both with touch-action \"none\"; wanted exactly 0. The page heard 3 touchmove(s) of the 10 dispatched before that verdict"
+    },
+    {
+      "ok": true,
+      "what": "ARM session: PROBE 3 — session-detail shows the real LIFT_COPY.SUBTITLE verbatim somewhere in a driven rep, not just at BRACE",
+      "detail": "matched at: attempt1-0-brace-before-press, attempt1-1-descent, attempt2-0-brace-before-press, attempt2-1-descent, attempt2-2-descent-mid-hold, attempt2-3-immediately-after-release, attempt2-4-hole, attempt2-5-ascent-before-drive(drive-cue-seen=true), attempt2-6-immediately-after-drive-press, attempt2-7-lockout-still-held, attempt2-8-after-release-post-lockout, resolved-or-reset-for-next-rep"
     },
     {
       "ok": true,
