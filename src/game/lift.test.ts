@@ -655,6 +655,7 @@ describe('outcome space', () => {
     const press = pressTickFor(load);
     const release = releaseTickFor(load, depth);
     let pairsChecked = 0;
+    let pairsPassed = 0;
     let skippedNoCue1 = 0;
     for (let seed = 1; seed <= 12; seed += 1) {
       const config: LiftConfig = { loadRatio: load, seed };
@@ -679,11 +680,18 @@ describe('outcome space', () => {
           { tick: cue1.idealTick, kind: 'press' },
         ];
         const outcome = runLift(config, script).final.resolution?.outcome;
+        pairsChecked += 1;
+        // Counted from the boolean directly, not from expect() surviving —
+        // so this number means "passed", not "was reached before something
+        // else threw". The expect() below still fails fast with a
+        // per-pair message naming the offending seed/offset/cues; this
+        // counter is the thing that lets the final assertion say 48/48
+        // rather than merely "we got through the loop".
+        if (outcome !== 'miss') pairsPassed += 1;
         expect(
           outcome,
           `seed=${seed} releaseOffset=${releaseOffsetTicks}t (cue0=${cue0.idealTick} cue1=${cue1.idealTick})`,
         ).not.toBe('miss');
-        pairsChecked += 1;
       }
     }
     // Non-vacuity: the sweep actually exercised real (cue0, cue1) pairs, and
@@ -692,8 +700,10 @@ describe('outcome space', () => {
     // Pinned counts, not bounds — measured at 48 pairs (12 seeds x 4 release
     // offsets, none skipped) so a change that quietly narrows the domain
     // (fewer seeds offering a real cue 1, say) is a red test, not a smaller
-    // green one.
+    // green one. pairsPassed pinned separately and explicitly at the same
+    // 48, so this reads as 48/48 passed rather than merely 48 attempted.
     expect(pairsChecked).toBe(48);
+    expect(pairsPassed).toBe(48);
     expect(skippedNoCue1).toBe(0);
   });
 });

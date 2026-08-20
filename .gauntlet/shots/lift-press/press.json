@@ -1,15 +1,12 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-20T05:22:20.843Z",
+    "capturedAt": "2026-08-20T06:12:13.796Z",
     "url": "http://localhost:8081",
-    "commit": "adfab1e",
+    "commit": "9dac14c",
     "branch": "claude/agent-config-setup-m2r6ny",
-    "workingTree": "DIRTY — this run is not against a commit",
+    "workingTree": "clean",
     "dirtyPaths": [
-      "M .gauntlet/shots/lift-press/press.json",
-      " M src/game/lift.test.ts",
-      " M src/game/lift.ts",
-      " M src/game/liftTuning.ts"
+      "M .gauntlet/shots/lift-press/press.json"
     ],
     "instrument": {
       "verify-lift-press.mjs": "47bdf4433ace23c8",
@@ -177,7 +174,7 @@
           },
           {
             "phase": "attempt1-2-descent-mid-hold",
-            "loopPrompt": "NO LIFT",
+            "loopPrompt": "RELEASE AT DEPTH",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -193,70 +190,6 @@
           },
           {
             "phase": "attempt1-3-immediately-after-release",
-            "loopPrompt": "NO LIFT",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-0-brace-before-press",
-            "loopPrompt": "TAP AND HOLD TO DESCEND",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-1-descent",
-            "loopPrompt": "RELEASE AT DEPTH",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-2-descent-mid-hold",
-            "loopPrompt": "RELEASE AT DEPTH",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-3-immediately-after-release",
             "loopPrompt": "OUT OF THE HOLE",
             "touch": {
               "userSelect": "none",
@@ -272,7 +205,7 @@
             }
           },
           {
-            "phase": "attempt2-4-hole",
+            "phase": "attempt1-4-hole",
             "loopPrompt": "OUT OF THE HOLE",
             "touch": {
               "userSelect": "none",
@@ -288,7 +221,7 @@
             }
           },
           {
-            "phase": "attempt2-5-ascent-before-drive(drive-cue-seen=true)",
+            "phase": "attempt1-5-ascent-before-drive(drive-cue-seen=true)",
             "loopPrompt": "DRIVE — HOLD IT",
             "touch": {
               "userSelect": "none",
@@ -304,7 +237,7 @@
             }
           },
           {
-            "phase": "attempt2-6-immediately-after-drive-press",
+            "phase": "attempt1-6-immediately-after-drive-press",
             "loopPrompt": "DRIVE — HOLD IT",
             "touch": {
               "userSelect": "none",
@@ -320,7 +253,7 @@
             }
           },
           {
-            "phase": "attempt2-7-lockout-still-held",
+            "phase": "attempt1-7-lockout-still-held",
             "loopPrompt": "LOCK IT",
             "touch": {
               "userSelect": "none",
@@ -336,8 +269,8 @@
             }
           },
           {
-            "phase": "attempt2-8-after-release-post-lockout",
-            "loopPrompt": "GOOD LIFT",
+            "phase": "attempt1-8-after-release-post-lockout",
+            "loopPrompt": "GRINDER",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -353,7 +286,7 @@
           },
           {
             "phase": "resolved-or-reset-for-next-rep",
-            "loopPrompt": "GOOD LIFT",
+            "loopPrompt": "GRINDER",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -368,15 +301,8 @@
             }
           }
         ],
-        "attemptsUsed": 2,
-        "misses": [
-          {
-            "attempt": 1,
-            "holdMs": 1000,
-            "outcome": "NO LIFT",
-            "detail": "Buried it. Never got the reversal."
-          }
-        ]
+        "attemptsUsed": 1,
+        "misses": []
       },
       "queryString": "",
       "touchTestId": "session-touch",
@@ -1812,12 +1738,12 @@
     {
       "ok": true,
       "what": "ARM session: PROBE 3 DOMAIN — a real rep was driven through every phase to LOCKOUT (adaptively, up to 6 tries), so the check below has something to say",
-      "detail": "drove 14 phase reading(s) over 2 attempt(s), drovePastLockout=true; misses along the way: #1@1000ms=\"NO LIFT\""
+      "detail": "drove 10 phase reading(s) over 1 attempt(s), drovePastLockout=true"
     },
     {
       "ok": true,
       "what": "ARM session: PROBE 3 — user-select and touch-action hold at every phase of a real rep, not only at BRACE",
-      "detail": "14 phase(s) checked, none deviated"
+      "detail": "10 phase(s) checked, none deviated"
     },
     {
       "ok": true,
