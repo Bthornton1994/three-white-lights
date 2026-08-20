@@ -2451,12 +2451,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // Counts, not bounds. Every check in this block walks this list, and a
     // list that had gone empty would make all of them pass.
     expect(shipped).toEqual([
+      'FloorGrid.tsx',
       'GymScreen.tsx',
       'empireCore.ts',
       'empireInvariant.ts',
       'empireTuning.ts',
       'engagement.ts',
       'expansion.ts',
+      'floor.ts',
       'ladder.ts',
       'ladderView.tsx',
       'npc.ts',
@@ -2529,12 +2531,21 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // in that oracle's subject (`onlyComments`'s brace-depth tracking desyncs
     // partway through `GymView`'s nested template-literal JSX). A plain `//`
     // block, placed in a file with no such JSX, avoids both.
-    expect(pairs).toBe(65);
+    // 65 -> 79: GDD §5.13 presentation Phase 1's two new modules —
+    // `floor.ts` (mentioned by `ladderView.tsx`, `FloorGrid.tsx` and its own
+    // `sessions.ts`/`ladder.ts`/`empireCore.ts` import mentions running the
+    // other direction where those files' bodies name it back) and
+    // `FloorGrid.tsx` (mentioned by `GymScreen.tsx`'s import and by its own
+    // header naming `GymScreen.tsx`, `ladderView.tsx` and `floor.ts`),
+    // measured by running this exact assertion rather than hand-counted
+    // against the source.
+    expect(pairs).toBe(79);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
     expect(mentionersOf('empireNotAModule.ts')).toEqual([]);
-    expect(mentionersOf('empireCore.ts').length).toBe(11);
+    // 11 -> 12: floor.ts's `refuseWith` import.
+    expect(mentionersOf('empireCore.ts').length).toBe(12);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -2566,19 +2577,29 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       /\blocalStorage\b/,
       // Exact-match on the bare `react` specifier — NOT a prefix match. The
       // prefix form `/from ['"]react/` also matched `from 'react-native'`,
-      // because "react-native" starts with the literal string "react": no
-      // shipped module here has ever needed a bare `react` import (the
-      // project's `jsx: react-jsx` transform supplies the JSX runtime at
-      // build time with no explicit import), so this stays a real ban on
-      // that one specifier. `GymScreen.tsx` is this directory's one native
-      // screen and needs `View`/`Text`/`Pressable`/`ScrollView` as VALUES —
-      // unlike a DOM tag name, an RN component reference is not ambient, so
-      // it must be imported explicitly — and the check below drives it
-      // through unchanged rather than carving an exception into this list.
+      // because "react-native" starts with the literal string "react". Until
+      // GDD §5.13 presentation Phase 1 no shipped module here had ever
+      // needed a bare `react` import (the project's `jsx: react-jsx`
+      // transform supplies the JSX runtime at build time with no explicit
+      // import), so this stayed a real ban on that one specifier with no
+      // exception. `FloorGrid.tsx` (`./FloorGrid`) is the first genuine one:
+      // it is this directory's one component that needs a stateful hook
+      // (`useRef`/`useState`, for a live drag gesture — its own header
+      // explains why `GymScreen.tsx` itself cannot be where that hook
+      // lives), and a hook is a named export of `react` rather than a value
+      // ambient the way JSX itself is. The exemption below is scoped to
+      // exactly that one (file, pattern) pair — every other shipped module,
+      // and every other pattern against `FloorGrid.tsx` itself, is still
+      // driven through unchanged.
       /from ['"]react['"]/,
     ];
+    // The one documented exemption from the scan below — a (file, pattern)
+    // pair, not a file-wide carve-out, so `FloorGrid.tsx` is still checked
+    // against the other seventeen patterns.
+    const REACT_IMPORT_BAN_EXEMPT_FILES: readonly string[] = ['FloorGrid.tsx'];
     let scanned = 0;
     let checks = 0;
+    let exemptions = 0;
     for (const name of shipped) {
       const source = readFileSync(path.join(HERE, name), 'utf8');
       const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
@@ -2587,6 +2608,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       expect(code.length, `${name} stripped to nothing`).toBeGreaterThan(0);
       expect(code, `${name} lost its declarations to the comment strip`).toMatch(/export /);
       for (const pattern of banned) {
+        if (
+          REACT_IMPORT_BAN_EXEMPT_FILES.includes(name) &&
+          pattern.source === "from ['\"]react['\"]"
+        ) {
+          exemptions += 1;
+          continue;
+        }
         expect(code, `${name} must not reach ${String(pattern)}`).not.toMatch(pattern);
         checks += 1;
       }
@@ -2601,7 +2629,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // SUBJECT in it: a module added to this directory, or one that stopped
     // being read, moves 36 as surely as a shortened ban list does.
     expect(scanned).toBe(shipped.length);
-    expect(checks).toBe(shipped.length * banned.length);
+    // The product minus the one documented exemption above — not a bound,
+    // because `exemptions` is itself pinned on the next line, so a second
+    // exemption sneaking in moves BOTH numbers and neither can absorb it
+    // alone.
+    expect(exemptions).toBe(1);
+    expect(checks).toBe(shipped.length * banned.length - exemptions);
     // And the patterns are not all dead letters: each one is driven against a
     // string that should trip it, derived from the pattern's own purpose, so a
     // regex that stopped matching anything is red rather than quietly green.
@@ -3030,12 +3063,24 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // tree, and the list here is its non-vacuity on the shipped one.
     const jsxCensus = jsxTextCensusUnder(HERE);
     const SIGNED_JSX_TEXT_CHUNKS: readonly string[] = Object.freeze([
-      // GymScreen.tsx, in tree order — first because `tsFilesUnder` sorts
-      // and a capital `G` sorts before every lowercase shipped module name,
-      // GymScreen.tsx's chunks come before ladderView.tsx's below rather
-      // than after it. Transcribed from a driven run of this exact census
-      // (`jsxCensus.chunks.join(' | ')` on the failing assertion), not typed
-      // by hand against the source, for the same reason the note above gives.
+      // FloorGrid.tsx, in tree order — first of all, because `tsFilesUnder`
+      // sorts and a capital `F` sorts before every other shipped `.tsx`
+      // module name here, GymScreen.tsx included. Transcribed from a driven
+      // run of this exact census (`jsxCensus.chunks.join(' | ')` on the
+      // failing assertion), not typed by hand against the source, for the
+      // same reason the GymScreen.tsx note below gives.
+      'floor (',
+      ') —',
+      'x',
+      'tiles,',
+      'placed,',
+      'unplaced',
+      'x',
+      'unplaced equipment — drag onto the floor above',
+      // GymScreen.tsx, in tree order — second, because a capital `G` sorts
+      // before every lowercase shipped module name, GymScreen.tsx's chunks
+      // come before ladderView.tsx's below rather than after it. Transcribed
+      // the same way as the block above.
       'week',
       '(',
       'fixed +',
@@ -3080,6 +3125,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       ', injury chance',
       ', technique bonus',
       ', ceiling growth',
+      // GDD §5.13 Phase 1's floor section header text, between the week log
+      // and the dev controls — exactly where `GymScreen.tsx` renders it. No
+      // section number in the on-screen string itself (kept to comments,
+      // which the magic-number audit strips) — a bare "5.13" inside JSX
+      // text is not a comment and the audit's numeric-literal scan does not
+      // distinguish it from code, so it was a finding until reworded.
+      'the floor — grid and placement, no members, no final art yet',
       'not part of the game: each button feeds that many elapsed seconds to the shipped accrual, so a player checks in without waiting it out. The last one jumps straight to the next weekly-allocation boundary.',
       '+1 week boundary',
       // ladderView.tsx, in tree order: the header line, the money line, the
@@ -3163,8 +3215,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     ]);
     expect(jsxCensus.chunks, jsxCensus.chunks.join(' | ')).toEqual(SIGNED_JSX_TEXT_CHUNKS);
     expect(jsxCensus.jsxFilesRead).toBe(shipped.filter((name) => name.endsWith('.tsx')).length);
-    // 1 -> 2: GymScreen.tsx is the second shipped `.tsx`.
-    expect(jsxCensus.jsxFilesRead).toBe(2);
+    // 1 -> 2: GymScreen.tsx is the second shipped `.tsx`. 2 -> 3:
+    // FloorGrid.tsx is the third.
+    expect(jsxCensus.jsxFilesRead).toBe(3);
     // Counts before contents, so an empty domain reports itself rather than
     // making the pin below a comparison of two empty lists.
     // 172 rather than 171 since `sealRate`'s label refusal arrived — a fixed
@@ -3175,7 +3228,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 274 -> 296: GymScreen.tsx's new `gymscreen-*` testID vocabulary and
     // label strings, measured by running this exact assertion rather than
     // hand-counted against the source.
-    expect(singleQuoted.size).toBe(296);
+    // 296 -> 326: GDD §5.13 presentation Phase 1's floor.ts/FloorGrid.tsx —
+    // floor.ts's refusal vocabulary and action-kind strings, and
+    // FloorGrid.tsx's `floorgrid-*` testID vocabulary, colour names and
+    // style-key strings (including `'relative'`, added once the grid
+    // container needed an explicit `position: 'relative'` — see
+    // `FloorGrid.tsx`'s own comment on that value), measured the same way as
+    // every delta above.
+    expect(singleQuoted.size).toBe(326);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3184,7 +3244,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `gymscreen-slot-${slotIndex}`, `gymscreen-slot-${slotIndex}-set-
     // ${option}`, `gymscreen-advance-${step.seconds}`, `gymscreen-week-log-
     // ${week.weekIndex}`), measured the same way as the count above.
-    expect(templateChunks.size).toBe(194);
+    // 194 -> 202: floor.ts's templated refusal messages and
+    // FloorGrid.tsx's three templated testID literals
+    // (`floorgrid-placed-${row.item}`, `floorgrid-remove-${row.item}`,
+    // `floorgrid-tray-item-${item}`), measured by running this exact
+    // assertion rather than hand-counted.
+    expect(templateChunks.size).toBe(202);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3196,10 +3261,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
 
     const spaceFree = [...singleQuoted].filter((literal) => !literal.includes(' ')).sort();
     expect(spaceFree).toEqual([
+      './FloorGrid',
       './empireCore',
       './empireInvariant',
       './empireTuning',
       './expansion',
+      './floor',
       './ladder',
       './ladderView',
       './npc',
@@ -3209,6 +3276,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './sessions',
       './social',
       'Placeholder',
+      'absolute',
       'accelerated',
       'accelerated-purse',
       'accelerated-seconds',
@@ -3230,6 +3298,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'belts',
       'bench',
       'bike',
+      'black',
       'bought',
       'budget',
       'buy',
@@ -3258,6 +3327,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'covered-day',
       'currency-purchase',
       'daily-allowance-spent',
+      'darkslategray',
+      'darkturquoise',
       'deadlift',
       'display-name',
       'displayName',
@@ -3267,14 +3338,26 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'equipment',
       'fault-message',
       'faultMessage',
+      'firebrick',
       'fixed-order-no-rotation',
       'flat-bench',
+      'floor-place',
+      'floor-remove',
+      'floorgrid-caption',
+      'floorgrid-grid',
+      'floorgrid-root',
+      'floorgrid-scroll-x',
+      'floorgrid-scroll-y',
+      'floorgrid-tray',
+      'floorgrid-tray-scroll',
       'foam-rollers',
       'friend',
       'friend-encouragement',
       'friend-visit-allowance-reset',
       'garage',
       'global',
+      'goldenrod',
+      'gray',
       'gym-accelerated-bucks',
       'gym-accrual',
       'gym-advance-next-week',
@@ -3311,6 +3394,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-available-now',
       'gymscreen-clock',
       'gymscreen-dev-controls',
+      'gymscreen-floor',
       'gymscreen-gym-bucks',
       'gymscreen-ladder-shop',
       'gymscreen-lifts',
@@ -3351,6 +3435,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'level',
       'machines',
       'mats',
+      'mediumpurple',
+      'mediumvioletred',
       'monolift',
       'move',
       'move-up',
@@ -3361,23 +3447,29 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'not-enough-gym-bucks',
       'not-enough-reputation',
       'not-enough-wall-clock-earnings',
+      'not-owned',
       'novice',
       'npc-id',
       'npcId',
       'number',
       'other-recovery',
+      'out-of-bounds',
+      'overlaps',
       'own-gym',
       'paid-pull',
       'physio',
       'physio-days-saved',
+      'placed',
       'power-bar',
       'progression-reaching',
+      'react',
       'react-native',
       'reason',
       'recovery',
       'refusal',
       'refused',
       'regional',
+      'relative',
       'reputation',
       'reputation-below-threshold',
       'reputation-milestone',
@@ -3396,6 +3488,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'rung-too-low',
       'sauna',
       'save-for-physio-first',
+      'seagreen',
       'set-allocation-slot',
       'settled-level',
       'settled-purse-wired-control',
@@ -3417,6 +3510,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'spotter',
       'squat',
       'squat-rack',
+      'steelblue',
       'storage-unit',
       'store-purchase',
       'stretching-yoga',
@@ -3461,7 +3555,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // already counted by the JSX-text collector above, not a quoted code
     // literal — inlining the button (no shared `DispatchButton`, per this
     // file's own header) means no `'relocate'` string ever appears in code.
-    expect(stringsChecked).toBe(490);
+    // 490 -> 528: GDD §5.13 presentation Phase 1 — singleQuoted (296 -> 326,
+    // the extra one being `'relative'`, added once the grid container
+    // needed an explicit `position: 'relative'`) and templateChunks
+    // (194 -> 202), measured the same way as every delta above.
+    expect(stringsChecked).toBe(528);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3496,7 +3594,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // Not 23: `relocate` is in `spaceFree`'s own comment above as the one
     // entry that did NOT arrive with GymScreen.tsx's code strings — it is
     // JSX text, already counted by the fourth (JSX) collector, not this one.
-    expect(probes).toBe(246);
+    // 246 -> 275: spaceFree grew by the same 29 entries GDD §5.13
+    // presentation Phase 1 added above (none is under two letters, so all
+    // 29 clear the guard below).
+    expect(probes).toBe(275);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -3731,9 +3832,25 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'empireTuning.ts': [],
       'engagement.ts': ['./empireCore', './empireTuning', './empireInvariant', './social'],
       'expansion.ts': ['./empireCore', './empireTuning'],
-      'GymScreen.tsx': ['./empireTuning', './ladder', './ladderView', './sessions', 'react-native'],
+      'floor.ts': ['./empireCore', './empireTuning', './ladder', './sessions'],
+      'FloorGrid.tsx': [
+        './empireTuning',
+        './floor',
+        './ladderView',
+        './sessions',
+        'react',
+        'react-native',
+      ],
+      'GymScreen.tsx': [
+        './empireTuning',
+        './FloorGrid',
+        './ladder',
+        './ladderView',
+        './sessions',
+        'react-native',
+      ],
       'ladder.ts': ['./empireCore', './empireTuning', './production'],
-      'ladderView.tsx': ['./empireTuning', './ladder', './sessions'],
+      'ladderView.tsx': ['./empireTuning', './floor', './ladder', './sessions'],
       'npc.ts': ['./empireCore', './empireTuning'],
       'production.ts': ['./empireCore', './empireTuning'],
       'recruitment.ts': ['./empireCore', './empireTuning'],
@@ -3752,8 +3869,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // sentinel rather than passing unchecked, and the set equality catches a
     // row left behind by a deleted module.
     expect(fenced).toBe(SHIPPED_MODULES.length);
-    // 13 -> 14: GymScreen.tsx.
-    expect(fenced).toBe(14);
+    // 13 -> 14: GymScreen.tsx. 14 -> 16: GDD §5.13 presentation Phase 1's
+    // floor.ts and FloorGrid.tsx.
+    expect(fenced).toBe(16);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -3794,6 +3912,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // below are pinned separately so one cannot silently absorb the other.
     const EXTERNAL_PACKAGE_IMPORTS: Readonly<Record<string, readonly string[]>> = {
       'GymScreen.tsx': ['react-native'],
+      // GDD §5.13 Phase 1's drag-interaction screen — the one module in this
+      // directory that needs a real hook (`useRef`/`useState`), so it needs
+      // `react` explicitly rather than the ambient jsx-runtime GymScreen.tsx
+      // and ladderView.tsx get away with. `FloorGrid.tsx`'s own header
+      // explains why it, and not `GymScreen.tsx`, is where that hook lives.
+      'FloorGrid.tsx': ['react', 'react-native'],
     };
     let specifiers = 0;
     let externalSpecifiers = 0;
@@ -3817,17 +3941,22 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       }
     }
     // 37 -> 41: GymScreen.tsx's four intra-directory edges (./empireTuning,
-    // ./ladder, ./ladderView, ./sessions).
-    expect(specifiers).toBe(41);
+    // ./ladder, ./ladderView, ./sessions). 41 -> 51: GDD §5.13 presentation
+    // Phase 1 — floor.ts (4: ./empireCore, ./empireTuning, ./ladder,
+    // ./sessions), FloorGrid.tsx (4: ./empireTuning, ./floor, ./ladderView,
+    // ./sessions), ladderView.tsx's new ./floor edge (1), and GymScreen.tsx's
+    // new ./FloorGrid edge (1).
+    expect(specifiers).toBe(51);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
     // package on a module with no row would fail on `[]`, driven directly
     // below rather than only implied by the loop above.
-    expect(externalSpecifiers).toBe(1);
+    // 1 -> 3: FloorGrid.tsx's react and react-native.
+    expect(externalSpecifiers).toBe(3);
     expect(
       Object.values(EXTERNAL_PACKAGE_IMPORTS).reduce((total, list) => total + list.length, 0),
-    ).toBe(1);
+    ).toBe(3);
     expect(EXTERNAL_PACKAGE_IMPORTS['sessions.ts'] ?? []).not.toContain('react-native');
     // The resolver is driven rather than trusted, on both the shape the tree
     // has and the shape it does not, so this is a subject rather than a helper.
@@ -3944,7 +4073,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'the count of literals the audit finds in empireTuning.ts moved: an entry was added or ' +
         'removed, or the instrument stopped reporting. Both are decisions; neither is a tuning ' +
         `pass. First finding: ${formatFindings(asRenderer.slice(0, 1)).trim()}`,
-    ).toBe(136);
+      // 136 -> 168: GDD §5.13 presentation Phase 1's three new tuning blocks
+      // (FLOOR_GRID_SIZE, SESSION_EQUIPMENT_FOOTPRINT, and the five scalar
+      // pixel/z-index knobs), measured by running this exact assertion
+      // rather than hand-counted leaves.
+    ).toBe(168);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

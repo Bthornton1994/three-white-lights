@@ -82,6 +82,7 @@ describe('the block is frozen and every entry is classified', () => {
       'EQUIPMENT_TIER_BUCKS_MULTIPLIER',
       'EQUIPMENT_TIER_COST_GYM_BUCKS',
       'FLEXIBLE_ACTIVITIES',
+      'FLOOR_GRID_SIZE',
       'LADDER_DEV_TIME_STEPS_SECONDS',
       'LADDER_EQUIPMENT_COST_GYM_BUCKS',
       'LADDER_EQUIPMENT_ITEMS',
@@ -104,6 +105,7 @@ describe('the block is frozen and every entry is classified', () => {
       'SESSION_ACTIVITY_GROUPS',
       'SESSION_EQUIPMENT_CAPABILITY',
       'SESSION_EQUIPMENT_COST_GYM_BUCKS',
+      'SESSION_EQUIPMENT_FOOTPRINT',
       'SESSION_EQUIPMENT_GROUP',
       'SESSION_EQUIPMENT_ITEMS',
       'SESSION_EQUIPMENT_MIN_RUNG',
@@ -578,11 +580,16 @@ describe('§5.5 social', () => {
     // one that was missing: how many keys the loop actually looked at. An empty
     // or truncated key set would have made every assertion above pass.
     expect(examined).toBe(Object.keys(EMPIRE_TUNING).length);
-    expect(examined).toBe(87);
+    // 87 -> 95: §5.13 presentation Phase 1's eight floor knobs
+    // (FLOOR_GRID_SIZE, SESSION_EQUIPMENT_FOOTPRINT, FLOOR_TILE_PIXELS,
+    // FLOOR_GRID_BORDER_WIDTH_PIXELS, FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+    // FLOOR_TRAY_ITEM_MARGIN_PIXELS, FLOOR_DRAGGING_Z_INDEX,
+    // FLOOR_TRAY_ITEM_MIN_TILES).
+    expect(examined).toBe(95);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
-    expect(probed).toBe(435);
+    expect(probed).toBe(475);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

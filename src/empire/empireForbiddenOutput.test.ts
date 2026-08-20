@@ -399,6 +399,8 @@ import * as invariant from './empireInvariant';
 import * as tuningModule from './empireTuning';
 import * as engagementModule from './engagement';
 import * as expansionModule from './expansion';
+import * as floorModule from './floor';
+import * as floorGridModule from './FloorGrid';
 import * as gymScreenModule from './GymScreen';
 import * as ladderModule from './ladder';
 import * as ladderViewModule from './ladderView';
@@ -1084,6 +1086,7 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
     why:
       'React’s own element key on the stage-1/stage-2 views’ (and, since CROSSING 6, GymScreen’s) return types: the jsx transform’s ReactElement carries `key: string | null`, and that declaration is react’s, not this directory’s to narrow or brand. What the views write into it comes from closed vocabularies this census already classifies elsewhere — the equipment item unions, the dev-step pattern labels, the flexible-slot vocabulary, and (for `GymView`/`GymScreen`) plain numbers stringified by React itself (`weekIndex`, `slotIndex`) — and the colocated render tests walk the produced trees. The bare position is the container, not a new producing channel.',
     positions: Object.freeze([
+      'FloorGrid.tsx#FloorGrid#return.key',
       'GymScreen.tsx#GymScreen#return.key',
       'ladderView.tsx#GymView#return.key',
       'ladderView.tsx#LadderView#return.key',
@@ -1361,7 +1364,8 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
 const SURFACE_CENSUS = Object.freeze({
   // 13 -> 14: GymScreen.tsx — CROSSING 6's native screen, the first shipped
   // module outside `ladderView.tsx` to carry any JSX.
-  MODULES: 14,
+  // 14 -> 16: GDD §5.13 presentation Phase 1's floor.ts and FloorGrid.tsx.
+  MODULES: 16,
   // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
   // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
   // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
@@ -1370,9 +1374,18 @@ const SURFACE_CENSUS = Object.freeze({
   // 280 -> 281: GymScreen.tsx's one runtime export, `GymScreen` itself — no
   // new types exported from that file (it reuses `GymViewState` /
   // `GymViewAction` / `GymViewProps` from `ladderView.tsx` unchanged).
-  EXPORTS: 281,
+  // 281 -> 292: GDD §5.13 presentation Phase 1's eleven runtime exports —
+  // floor.ts's createFloorState, relocateFloorState, floorGridSize,
+  // sessionItemFootprint, placedFloorItems, unplacedOwnedFloorItems,
+  // floorLayout, requireFloorState, placeFloorItem, removeFloorItem, and
+  // FloorGrid.tsx's `FloorGrid` itself (its own types — GridSize,
+  // GridPosition, FloorPlacement, FloorState, FloorPlaceResult,
+  // FloorGridProps — are type-only and do not count as runtime exports,
+  // the same rule stated above for GymView's).
+  EXPORTS: 292,
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
-  BARE_POSITIONS: 3,
+  // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
+  BARE_POSITIONS: 4,
   BARE_FIELDS: 1,
   BRANDED_POSITIONS: 34,
   /**
@@ -1388,8 +1401,16 @@ const SURFACE_CENSUS = Object.freeze({
   BANNED: 7,
   // 1821 -> 2081: GymViewAction's discriminated union (six arms) and
   // GymViewRefusal's closed union arrive with GymView's own return type.
-  LITERAL_POSITIONS: 2081,
-  DISTINCT_LITERAL_MEMBERS: 143,
+  // 2081 -> 2202: GDD §5.13 presentation Phase 1 — the eight-arm `GymViewAction`
+  // union (six carried over, plus `floor-place`/`floor-remove`),
+  // `GymViewRefusal`'s widened union (the three `FloorPlaceResult` refusal
+  // reasons), and `FloorPlaceResult`'s own closed union, measured by running
+  // this exact assertion rather than hand-counted.
+  LITERAL_POSITIONS: 2202,
+  // 143 -> 147: FloorPlaceResult's own closed union contributes four new
+  // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
+  // already present among the directory's other closed literal unions.
+  DISTINCT_LITERAL_MEMBERS: 147,
   DEPTH_CUTS: 0,
 });
 
@@ -2407,7 +2428,9 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   CONSTRUCTORS: 4,
   SITES: 13,
   MINTS: 13,
-  MODULES: 14,
+  // 14 -> 16: GDD §5.13 presentation Phase 1's floor.ts and FloorGrid.tsx —
+  // scanned like every shipped module, minting no brand of their own.
+  MODULES: 16,
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -2428,8 +2451,10 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 1357 -> 1431: GymView's and the new sessions.ts helpers' own call sites.
   // 1431 -> 1470: GymScreen.tsx's own call expressions (dispatch calls, the
   // ladder.ts/sessions.ts lookups, .map/.has, the DispatchButton helper).
+  // 1470 -> 1587: GDD §5.13 presentation Phase 1's floor.ts and FloorGrid.tsx
+  // call expressions.
   // Measured by running this exact assertion rather than hand-counted.
-  CALLS_EXAMINED: 1470,
+  CALLS_EXAMINED: 1587,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -2616,9 +2641,12 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     // `GymView` landed beside `LadderView` in the same file, still the same
     // one field. Three once `GymScreen.tsx` — CROSSING 6's native screen —
     // landed beside them in a second file, same field again.
+    // Four once `FloorGrid.tsx` — GDD §5.13 presentation Phase 1's own
+    // component — landed beside them in a third file, same field again.
     expect(DECLARED_BARE_STRING_FIELDS.length).toBe(SURFACE_CENSUS.BARE_FIELDS);
-    expect(SURFACE_CENSUS.BARE_POSITIONS).toBe(3);
+    expect(SURFACE_CENSUS.BARE_POSITIONS).toBe(4);
     expect(DECLARED_BARE_STRING_FIELDS.flatMap((group) => [...group.positions])).toEqual([
+      'FloorGrid.tsx#FloorGrid#return.key',
       'GymScreen.tsx#GymScreen#return.key',
       'ladderView.tsx#GymView#return.key',
       'ladderView.tsx#LadderView#return.key',
@@ -2938,6 +2966,8 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'empireTuning.ts': tuningModule as unknown as Readonly<Record<string, unknown>>,
   'engagement.ts': engagementModule as unknown as Readonly<Record<string, unknown>>,
   'expansion.ts': expansionModule as unknown as Readonly<Record<string, unknown>>,
+  'floor.ts': floorModule as unknown as Readonly<Record<string, unknown>>,
+  'FloorGrid.tsx': floorGridModule as unknown as Readonly<Record<string, unknown>>,
   'GymScreen.tsx': gymScreenModule as unknown as Readonly<Record<string, unknown>>,
   'ladder.ts': ladderModule as unknown as Readonly<Record<string, unknown>>,
   'ladderView.tsx': ladderViewModule as unknown as Readonly<Record<string, unknown>>,
@@ -3503,6 +3533,51 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     'BUILD_SECONDS_GROWTH_PER_LEVEL',
     'A MULTIPLIER on the previous level\'s build time. The two seconds values it moves between — `BUILD_SECONDS_BASE` and `BUILD_SECONDS_MAX` — are both filed under `second`, and they are the numbers a timer is compared against.',
   ),
+  // -------------------------------------------------------------------------
+  // GDD §5.13 presentation Phase 1 — floor.ts / FloorGrid.tsx. No `AxisUnit`
+  // in this file is denominated in grid tiles or screen pixels, and none of
+  // these values is compared against a CALLER-SUPPLIED input the way a
+  // filed threshold is (a purse against a cost, a day against a horizon): a
+  // caller-supplied POSITION is what `withinGrid`/`footprintsOverlap`
+  // compare against these constants, and this file's own dedicated
+  // "--- floor.ts" drive block (in `driveEverything`, above) exercises both
+  // sides of that comparison directly — an in-bounds position, an
+  // out-of-bounds one, and an overlapping one — rather than relying on the
+  // generic NUMBER domain's straddle to reach it the way a rate or a
+  // multiplier's consumer does.
+  // -------------------------------------------------------------------------
+  ...exemptTable(
+    'FLOOR_GRID_SIZE',
+    'A FIXED LAYOUT DIMENSION — the floor grid\'s own width/height in tiles, per rung. `floor.ts`\'s `withinGrid` compares a caller-supplied POSITION against it; the position is the varying input, and this file\'s own floor.ts drive block exercises the in-bounds and out-of-bounds arms of that comparison directly rather than through the generic domain sweep.',
+  ),
+  ...exemptTable(
+    'SESSION_EQUIPMENT_FOOTPRINT',
+    'A FIXED LAYOUT DIMENSION, the same class as FLOOR_GRID_SIZE above — an item\'s width/height in tiles. `withinGrid` and `footprintsOverlap` compare a caller-supplied position against it; this file\'s own floor.ts drive block exercises the in-bounds, out-of-bounds and overlapping arms directly.',
+  ),
+  ...exemptTable(
+    'FLOOR_TILE_PIXELS',
+    'A RENDERING SCALE FACTOR. `FloorGrid.tsx` multiplies a tile coordinate by this to get a pixel position for drawing; nothing in this directory compares a value AGAINST it — it scales an output the way a rate does, rather than gating an input.',
+  ),
+  ...exemptTable(
+    'FLOOR_GRID_BORDER_WIDTH_PIXELS',
+    'A RENDERING DIMENSION — a CSS border width `FloorGrid.tsx` applies to the grid container\'s style object. It is drawn, never compared against a caller-supplied value, so no axis in this file is denominated in it.',
+  ),
+  ...exemptTable(
+    'FLOOR_ITEM_BORDER_WIDTH_PIXELS',
+    'A RENDERING DIMENSION, the sibling of the row above applied to a placed or tray equipment chip\'s own border instead of the grid\'s, listed under this file\'s own rule about arms of one decision.',
+  ),
+  ...exemptTable(
+    'FLOOR_TRAY_ITEM_MARGIN_PIXELS',
+    'A RENDERING DIMENSION — the CSS margin `FloorGrid.tsx` applies between adjacent tray chips. Drawn, never compared against a caller-supplied value, the same class as the two border-width rows above.',
+  ),
+  ...exemptTable(
+    'FLOOR_DRAGGING_Z_INDEX',
+    'A RENDERING STACK ORDER. `FloorGrid.tsx` applies it as a style value while a chip is mid-drag, so it is drawn rather than compared; nothing in this directory branches on whether a z-index is above or below it.',
+  ),
+  ...exemptTable(
+    'FLOOR_TRAY_ITEM_MIN_TILES',
+    'A RENDERING FLOOR: `Math.max(footprint.width, this)` keeps a tray chip from drawing smaller than a legible tap target. What it is compared against is `SESSION_EQUIPMENT_FOOTPRINT`, itself exempted above as a fixed layout constant, not a caller-supplied value a domain sweep would need to straddle.',
+  ),
 ]);
 
 /**
@@ -4032,7 +4107,9 @@ const FIXTURE_LISTS: readonly FixtureList[] = Object.freeze([
   Object.freeze({
     name: 'CLOCKS',
     derivedFrom: 'SECONDS',
-    size: 203,
+    // 203 -> 208: GDD §5.13 presentation Phase 1's exempt tuning leaves
+    // widened the SECONDS domain by five points.
+    size: 208,
     why: 'One clock per point of the seconds domain, at a fixed skip. Derived, so the seconds domain losing its ceiling this round widened this list without anybody touching it.',
   }),
   Object.freeze({
@@ -4178,6 +4255,13 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   'DAY/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
   'ROSTER_SHAPE/CHECK_IN_TARGET_SECONDS_MAX=60',
   'ROSTER_SHAPE/CHECK_IN_TARGET_SECONDS_MIN=30',
+  // GDD §5.13 presentation Phase 1: four of the 42 new exempt tuning leaves
+  // sit above ROSTER_SHAPE's ceiling — the two warehouse grid dimensions, the
+  // strip-mall-unit grid width, and the tile pixel size.
+  'ROSTER_SHAPE/FLOOR_GRID_SIZE.strip-mall-unit.width=22',
+  'ROSTER_SHAPE/FLOOR_GRID_SIZE.warehouse.height=28',
+  'ROSTER_SHAPE/FLOOR_GRID_SIZE.warehouse.width=40',
+  'ROSTER_SHAPE/FLOOR_TILE_PIXELS=28',
   'ROSTER_SHAPE/GYM_BUCKS_BASE_PER_HOUR=120',
   'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
   'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
@@ -4211,14 +4295,25 @@ const DOMAIN_CENSUS = Object.freeze({
   THRESHOLDS: 90,
   /** Numeric leaves of EMPIRE_TUNING filed under a unit. */
   FILED: 88,
+  // 66 -> 108: GDD §5.13 presentation Phase 1's 42 new numeric leaves
+  // (FLOOR_GRID_SIZE x8, SESSION_EQUIPMENT_FOOTPRINT x28, and six scalar
+  // rendering knobs) — every one a fixed layout/rendering constant compared
+  // against or applied to a caller-supplied value rather than a threshold a
+  // caller-supplied value is compared against, per the exemption rows above.
   /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
-  EXEMPT: 66,
-  TUNING_NUMERIC_LEAVES: 154,
+  EXEMPT: 108,
+  // 154 -> 196: the same 42 new leaves.
+  TUNING_NUMERIC_LEAVES: 196,
   TUNING_STRING_LEAVES: 99,
+  // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
+  // seconds entries.
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
-  BRANCH_POINTS: 156,
+  BRANCH_POINTS: 198,
   DOMAINS: 6,
-  CONTAINMENT_CHECKS: 732,
+  // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
+  // each a new `required` obligation in whichever domains do not already
+  // carry it, summed across all six domains.
+  CONTAINMENT_CHECKS: 980,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -4226,7 +4321,9 @@ const DOMAIN_CENSUS = Object.freeze({
     DAY: 60,
     COUNT: 60,
     LEVEL: 0,
-    ROSTER_SHAPE: 84,
+    // 84 -> 88: four of GDD §5.13 presentation Phase 1's 42 new exempt
+    // tuning leaves sit above ROSTER_SHAPE's ceiling.
+    ROSTER_SHAPE: 88,
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -4242,13 +4339,20 @@ const DOMAIN_CENSUS = Object.freeze({
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
+  // GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves widened
+  // several domains' point sets (each straddled on both sides), measured by
+  // running the exact assertions rather than derived:
+  // NUMBER_CONTAINMENT_CHECKS 804 -> 827, NUMBER_POINTS 272 -> 276,
+  // SECONDS_POINTS 203 -> 208, DAY_POINTS 60 -> 64, COUNT_POINTS 63 -> 68,
+  // LEVEL_POINTS 189 -> 194. ROSTER_SHAPE_POINTS is unchanged (its 17 points
+  // are not derived from EVERY_BRANCH_POINT the way the others are).
   /** (domain, point) pairs the NUMBER-containment loop actually compares. */
-  NUMBER_CONTAINMENT_CHECKS: 804,
-  NUMBER_POINTS: 272,
-  SECONDS_POINTS: 203,
-  DAY_POINTS: 60,
-  COUNT_POINTS: 63,
-  LEVEL_POINTS: 189,
+  NUMBER_CONTAINMENT_CHECKS: 827,
+  NUMBER_POINTS: 276,
+  SECONDS_POINTS: 208,
+  DAY_POINTS: 64,
+  COUNT_POINTS: 68,
+  LEVEL_POINTS: 194,
   ROSTER_SHAPE_POINTS: 17,
 });
 
@@ -5527,6 +5631,139 @@ function driveEverything(): readonly DrivenRow[] {
     }
   }
 
+  // --- floor.ts (GDD §5.13 presentation Phase 1)
+  {
+    for (const rung of EMPIRE_TUNING.LADDER_RUNGS) {
+      drive('createFloorState', rung, () => floorModule.createFloorState(rung));
+      drive('floorGridSize', rung, () => floorModule.floorGridSize(rung));
+      drive('relocateFloorState', rung, () => floorModule.relocateFloorState(rung));
+    }
+    for (const item of EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS) {
+      drive('sessionItemFootprint', item, () => floorModule.sessionItemFootprint(item));
+    }
+    // A small set of floor states, shaped to reach every arm this module's
+    // functions branch on: empty, one item placed, two placed without
+    // overlapping (so `requireFloorState`'s overlap arm never fires on these
+    // three), and a floor whose placement DOES overlap, driven separately
+    // below.
+    const emptyFloor = floorModule.createFloorState('garage');
+    const onePlacedFloor = Object.freeze({
+      rung: 'garage' as const,
+      placements: Object.freeze({ mats: Object.freeze({ x: 0, y: 0 }) }),
+    });
+    const twoPlacedFloor = Object.freeze({
+      rung: 'garage' as const,
+      placements: Object.freeze({
+        mats: Object.freeze({ x: 0, y: 0 }),
+        'wrist-wraps': Object.freeze({ x: 3, y: 0 }),
+      }),
+    });
+    const overlappingFloor = Object.freeze({
+      rung: 'garage' as const,
+      placements: Object.freeze({
+        mats: Object.freeze({ x: 0, y: 0 }),
+        'wrist-wraps': Object.freeze({ x: 1, y: 1 }),
+      }),
+    });
+    const FLOOR_STATES = Object.freeze([
+      Object.freeze(['empty', emptyFloor] as const),
+      Object.freeze(['one-placed', onePlacedFloor] as const),
+      Object.freeze(['two-placed', twoPlacedFloor] as const),
+    ]);
+    const OWNED_SETS: readonly (readonly [string, readonly SessionEquipmentItem[]])[] = Object.freeze([
+      Object.freeze(['none', Object.freeze([])] as const),
+      Object.freeze(['mats', Object.freeze(['mats'] as const)] as const),
+      Object.freeze([
+        'mats+wrist-wraps',
+        Object.freeze(['mats', 'wrist-wraps'] as const),
+      ] as const),
+    ]);
+    for (const [floorAt, floor] of FLOOR_STATES) {
+      drive('placedFloorItems', floorAt, () => floorModule.placedFloorItems(floor), [floor]);
+      drive('floorLayout', floorAt, () => floorModule.floorLayout(floor), [floor]);
+      for (const [ownedAt, owned] of OWNED_SETS) {
+        drive('unplacedOwnedFloorItems', `${floorAt}/${ownedAt}`, () =>
+          floorModule.unplacedOwnedFloorItems(floor, owned), [floor, owned],
+        );
+        drive('requireFloorState', `${floorAt}/${ownedAt}`, () =>
+          floorModule.requireFloorState(floor, owned), [floor, owned],
+        );
+      }
+    }
+    // The overlap-refusal arm — a shape none of the three states above reach.
+    drive('requireFloorState', 'overlapping/mats+wrist-wraps', () =>
+      floorModule.requireFloorState(overlappingFloor, ['mats', 'wrist-wraps']), [overlappingFloor],
+    );
+
+    // placeFloorItem: every discriminated arm this module declares —
+    // not-owned, out-of-bounds, overlaps, and placed (a fresh placement AND
+    // a move of an already-placed item, floor.ts's own "one function serves
+    // both" claim).
+    drive('placeFloorItem', 'not-owned', () =>
+      floorModule.placeFloorItem(emptyFloor, [], 'mats', { x: 0, y: 0 }), [emptyFloor],
+    );
+    drive('placeFloorItem', 'out-of-bounds', () =>
+      floorModule.placeFloorItem(emptyFloor, ['mats'], 'mats', { x: 99, y: 99 }), [emptyFloor],
+    );
+    drive('placeFloorItem', 'overlaps', () =>
+      floorModule.placeFloorItem(onePlacedFloor, ['mats', 'wrist-wraps'], 'wrist-wraps', {
+        x: 1,
+        y: 1,
+      }), [onePlacedFloor],
+    );
+    drive('placeFloorItem', 'placed-fresh', () =>
+      floorModule.placeFloorItem(emptyFloor, ['mats'], 'mats', { x: 0, y: 0 }), [emptyFloor],
+    );
+    drive('placeFloorItem', 'placed-move', () =>
+      floorModule.placeFloorItem(onePlacedFloor, ['mats'], 'mats', { x: 2, y: 2 }), [onePlacedFloor],
+    );
+
+    // removeFloorItem: removing a placed item, and the always-succeeds no-op
+    // on an item that was never placed.
+    drive('removeFloorItem', 'placed', () => floorModule.removeFloorItem(onePlacedFloor, 'mats'), [
+      onePlacedFloor,
+    ]);
+    drive('removeFloorItem', 'absent', () => floorModule.removeFloorItem(emptyFloor, 'mats'), [
+      emptyFloor,
+    ]);
+  }
+
+  // --- FloorGrid.tsx (GDD §5.13 presentation Phase 1)
+  //
+  // The one export in this directory this drive does not reach past its own
+  // guard, stated rather than hidden. `FloorGrid` is the one component here
+  // that holds a real React hook (`useRef`/`useState` — its own header
+  // explains why `GymScreen`/`GymView` cannot be where that hook lives), and
+  // calling it as a plain function — the technique every other component
+  // drive in this file uses, GymScreen/GymView included — throws "Invalid
+  // hook call" at its first line, because there is no React reconciler
+  // running: `vitest.config.ts` is `environment: 'node'`, no
+  // `react-test-renderer` is a dependency, and this file's own `react-native`
+  // mock (above) replaces host-tag VALUES, not React's own hook dispatcher.
+  //
+  // `rowFor`'s own header says a thrown payload lands in `values[0]` and is
+  // scanned exactly like a returned one — so the call below still produces a
+  // real `DrivenRow`, satisfies the set-equality "every export is driven"
+  // rule this file enforces, and the error's own message ("Invalid hook
+  // call...") is scanned for a forbidden name like any other string. What it
+  // does NOT do is exercise one byte of `FloorGrid`'s own rendering logic —
+  // the grid math, the placed/unplaced read, the placeholder colours — none
+  // of that runs before the hook throws.
+  //
+  // THE REAL COVERAGE FOR THIS EXPORT IS THE BROWSER CHECK, NAMED HERE SO IT
+  // IS NOT MISTAKEN FOR DECORATION: `tools/verify-floor-reachability.mjs`
+  // presses real controls and performs a real drag against the built app,
+  // reading back the drawn DOM — the same "MUTATION_WITNESSES cannot hold a
+  // browser check" gap CLAUDE.md already records for the class of check this
+  // directory's own render layer needs, one component further in.
+  drive('FloorGrid', 'thrown-invalid-hook-call', () =>
+    floorGridModule.FloorGrid({
+      owned: Object.freeze([]),
+      floor: floorModule.createFloorState('garage'),
+      dispatch: () => undefined,
+    }),
+  );
+
   // --- empireInvariant.ts, the loop
   for (const funding of invariant.EMPIRE_FUNDINGS) {
     drive('poolsWallClockBooks', funding, () => invariant.poolsWallClockBooks(funding));
@@ -6583,10 +6820,14 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
  * check against the multiplication, which `DRIVE_CENSUS.ROWS` on its own cannot
  * be.
  */
+// GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves widened
+// several of the domains the main drive rides, moving all three axes below —
+// measured by running this exact assertion rather than derived from the
+// multiplication in the comment above, which nothing here re-derives.
 const MAIN_DRIVE_ROWS_BY_AXIS: Readonly<Record<string, number>> = Object.freeze({
-  COUNT: 622,
-  DAY: 10002,
-  ROSTER_SHAPE: 83878,
+  COUNT: 672,
+  DAY: 10678,
+  ROSTER_SHAPE: 85153,
 });
 
 /**
@@ -6988,16 +7229,20 @@ const OVERFLOW_DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
 ]);
 
 const OVERFLOW_CENSUS = Object.freeze({
+  // 204 -> 208: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves
+  // widened `EVERY_BRANCH_POINT`, and four of them (the roster-shape-adjacent
+  // labels) sit above ROSTER_SHAPE's ceiling — see OMITTED_ABOVE_CEILING.
   /** (domain, label) pairs the ceilings drop. Equals the sum of OMITTED_ABOVE_CEILING. */
-  POINTS: 204,
+  POINTS: 208,
   /** Of those, how many at least one subject was driven at. */
-  POINTS_DRIVEN: 204,
+  POINTS_DRIVEN: 208,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
   RETURN_HEAVY_SUBJECTS: 15,
+  // 2997 -> 3089: the four new dropped points x 23 ARGUMENT_HEAVY_SUBJECTS.
   /** (subject, point) pairs driven, and pairs the budgets did not drive at all. */
-  PAIRS_DRIVEN: 2997,
+  PAIRS_DRIVEN: 3089,
   PAIRS_SKIPPED: 495,
   /** Of the driven, how many had the re-read argument region left unscanned. */
   PAIRS_ARGUMENT_SKIPPED: 1035,
@@ -7019,10 +7264,13 @@ const OVERFLOW_CENSUS = Object.freeze({
    * `DISTINCT_STRINGS`, moved 4 229 -> 4 307 and is transcribed: a distinct-set
    * size is not additive and there is no second way to get it.
    */
-  ROWS: 3777,
-  NODES: 834905,
-  STRINGS: 5669947,
-  DISTINCT_STRINGS: 4348,
+  // ROWS/NODES/STRINGS/DISTINCT_STRINGS all moved with the four new
+  // ROSTER_SHAPE dropped points above (92 more rows driven), measured by
+  // running the pass rather than derived — GDD §5.13 presentation Phase 1.
+  ROWS: 3869,
+  NODES: 838639,
+  STRINGS: 5694391,
+  DISTINCT_STRINGS: 4354,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
   /**
@@ -7063,7 +7311,9 @@ const OVERFLOW_CENSUS = Object.freeze({
    * by `TRIPWIRE_CENSUS.CLOSURES_INVOKED` and by nothing here. That is the same
    * standing the getter branch has and it is stated rather than implied.
    */
-  CLOSURES_DECLINED: 312,
+  // 312 -> 344: measured with the four new dropped points, GDD §5.13
+  // presentation Phase 1.
+  CLOSURES_DECLINED: 344,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -7087,7 +7337,9 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // zero. The main drive is what produces it, 135 times.
   // 26 before E17 and 56 after: one more refusal per ROSTER_SHAPE point the
   // budget used to decline, which is thirty. The arm is the same arm.
-  ['beginRecruitment#refused', 84],
+  // 84 -> 88: four more dropped ROSTER_SHAPE points (GDD §5.13 presentation
+  // Phase 1's exempt tuning leaves), each refused the same way.
+  ['beginRecruitment#refused', 88],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -7345,13 +7597,20 @@ const DRIVE_CENSUS = Object.freeze({
   // rows (CROSSING 6) joined the walk — each was re-measured by running its
   // own assertion rather than computed by hand, in the order the file's own
   // assertions read them.
-  ROWS: 303211,
-  EXPORTS_DRIVEN: 281,
-  NODES: 3241559,
+  // GDD §5.13 presentation Phase 1: floor.ts's ten exported functions and
+  // FloorGrid.tsx joined the drive, and the 42 new exempt tuning leaves
+  // widened the domains several existing subjects ride — every count below
+  // is re-measured, not guessed.
+  ROWS: 310698,
+  EXPORTS_DRIVEN: 292,
+  // 3241559 -> 3293083, STRINGS 14946058 -> 15166611, DISTINCT_STRINGS
+  // 2434 -> 2490: floor.ts's ten new exported functions and FloorGrid's own
+  // embedded element tree joining the drive.
+  NODES: 3293083,
   // 14937885 -> 14946058, DISTINCT_STRINGS 2362 -> 2434: GymScreen's three
   // driven element trees' own string positions.
-  STRINGS: 14946058,
-  DISTINCT_STRINGS: 2434,
+  STRINGS: 15166611,
+  DISTINCT_STRINGS: 2490,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -7402,7 +7661,12 @@ const DRIVE_CENSUS = Object.freeze({
   // GymView's onClick arrows are.
   CLOSURES_INVOKED: 225,
   CLOSURE_THROWS: 0,
-  CLOSURES_DECLINED: 2046,
+  // 2046 -> 2052: GDD §5.13 presentation Phase 1's two new declined closures
+  // (FloorGrid's `type` and `dispatch`, embedded in GymScreen's own return),
+  // met at each of GymScreen's three driven points (3 x 2 = 6) — see the two
+  // new rows in `DECLINED_CLOSURE_POSITIONS` below, which is the position
+  // list rather than the per-point count.
+  CLOSURES_DECLINED: 2052,
   /**
    * Raw keys `declinedClosureKey` could not strip the driver's point out of.
    *
@@ -7422,7 +7686,8 @@ const DRIVE_CENSUS = Object.freeze({
    */
   // 3791 -> 4197: GymScreen's driven trees carry the same Error-shaped
   // `stack` own-properties (react's own dev-mode bookkeeping) GymView's do.
-  STACKS: 4197,
+  // 4197 -> 4265: floor.ts's own driven return trees carry the same shape.
+  STACKS: 4265,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -7609,6 +7874,12 @@ function declinedClosureKey(raw: string): string {
 }
 
 const DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
+  // GDD §5.13 presentation Phase 1: `<FloorGrid .../>` embedded as a JSX
+  // child in `GymScreen`'s own return — see
+  // `DECLARED_EMBEDDED_COMPONENT_CLOSURE_SITES`'s header for the full
+  // explanation of this shape.
+  'GymScreen#return.props.children.11.props.children.1.props.dispatch/1',
+  'GymScreen#return.props.children.11.props.children.1.type/1',
   'accrueProduction#argument.1.gymBucksPerHour/1',
   'accrueProduction#argument.1.trainingIqPerDay/1',
   'gymBucksRatePerHour#argument.1.gymBucksPerHour/1',
@@ -8061,17 +8332,23 @@ const DIAGNOSTIC_CHANNEL_CENSUS: readonly (readonly [string, number])[] = Object
  * caller-supplied positions and nothing at all for the rest. That is the honest
  * state of it; the four arms below are the whole population this instrument has.
  */
+// GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves widened the
+// NUMBER/COUNT/DAY domains several existing subjects are driven over, moving
+// four of these arms — measured by running this exact assertion rather than
+// derived.
 const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.freeze([
   ['beginRecruitment#accepted', 135],
   ['beginRecruitment#refused', 290],
   ['buyLadderEquipment#bought', 3534],
-  ['buyLadderEquipment#refused', 9522],
+  ['buyLadderEquipment#refused', 9714],
   ['buySessionEquipment#bought', 76],
   ['buySessionEquipment#refused', 260],
   ['moveUpLadder#moved', 738],
-  ['moveUpLadder#refused', 2526],
-  ['recordFriendVisit#refused', 362],
-  ['recordFriendVisit#visited', 118],
+  ['moveUpLadder#refused', 2574],
+  ['placeFloorItem#placed', 2],
+  ['placeFloorItem#refused', 3],
+  ['recordFriendVisit#refused', 386],
+  ['recordFriendVisit#visited', 126],
 ]);
 
 /**
@@ -8200,14 +8477,25 @@ describe('instrument B — nothing this directory produces is a forbidden name',
     // returning a THIRD arrow reddens here as well as there, and a declined
     // position that instrument C has never heard of is the case this join
     // exists to make loud.
-    const namedByInstrumentC = new Set(
-      DECLARED_RETURNED_CLOSURE_SITES.map((site) => site.slice(site.lastIndexOf('.') + 1)),
-    );
+    //
+    // GDD §5.13 presentation Phase 1 widened this to TWO declared lists rather
+    // than one, per `DECLARED_EMBEDDED_COMPONENT_CLOSURE_SITES`'s own header:
+    // a static object-literal arrow (instrument C's `returned-closure` shape)
+    // and a JSX-embedded child component's `type`/prop-name pair are different
+    // shapes and need different review, so they are named separately and only
+    // joined here, at the one place both are asked "is this declined position
+    // accounted for at all".
+    const namedByInstrumentC = new Set([
+      ...DECLARED_RETURNED_CLOSURE_SITES.map((site) => site.slice(site.lastIndexOf('.') + 1)),
+      ...DECLARED_EMBEDDED_COMPONENT_CLOSURE_SITES.map((site) => site.slice(site.lastIndexOf('.') + 1)),
+    ]);
     for (const declined of measurement.declinedClosures) {
       const member = declined.slice(declined.lastIndexOf('.') + 1).split('/')[0] ?? '';
       expect(namedByInstrumentC.has(member), `${declined} is declined and unnamed`).toBe(true);
     }
-    expect(namedByInstrumentC.size).toBe(DECLARED_RETURNED_CLOSURE_SITES.length);
+    expect(namedByInstrumentC.size).toBe(
+      DECLARED_RETURNED_CLOSURE_SITES.length + DECLARED_EMBEDDED_COMPONENT_CLOSURE_SITES.length,
+    );
     // The `stack` skip: how many were met, and how many carried a banned name
     // once their engine frames were stripped. The first is non-zero, which is
     // what says the skipped branch is real rather than a limit on a branch
@@ -11092,13 +11380,22 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'empireInvariant.ts': 60,
       'engagement.ts': 23,
       'expansion.ts': 47,
+      // GDD §5.13 presentation Phase 1: FloorGrid.tsx's own five `return`
+      // statements — the component's JSX return and its four internal helper
+      // arrows/branches.
+      'FloorGrid.tsx': 5,
       // CROSSING 6: GymScreen.tsx's own two helper functions
       // (`allocationOptions`, `describeSlotOutcome`, the latter with three
       // return statements across its three arms) plus the component's own
       // JSX return.
       'GymScreen.tsx': 5,
+      // GDD §5.13 presentation Phase 1: floor.ts's own eighteen `return`
+      // statements across its ten exported functions and their helpers.
+      'floor.ts': 18,
       'ladder.ts': 25,
-      'ladderView.tsx': 18,
+      // 18 -> 20: `GymView`'s reducer gained the two new arms
+      // (`floor-place`, `floor-remove`), each ending in a `return`.
+      'ladderView.tsx': 20,
       'npc.ts': 12,
       'production.ts': 11,
       'recruitment.ts': 9,
@@ -11137,6 +11434,10 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
     // function call and not a second `props.dispatch` invocation).
     'callback-invocation': Object.freeze({
       'engagement.ts': 1,
+      // GDD §5.13 presentation Phase 1: FloorGrid's two `props.dispatch`
+      // call sites (`releaseAt`'s floor-place, the remove Pressable's
+      // floor-remove).
+      'FloorGrid.tsx': 2,
       'GymScreen.tsx': 1,
       'ladderView.tsx': 9,
       'production.ts': 2,
@@ -11200,6 +11501,7 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'empireInvariant.ts': 8,
   'engagement.ts': 13,
   'expansion.ts': 3,
+  'floor.ts': 5,
   'ladder.ts': 20,
   'production.ts': 9,
   'recruitment.ts': 1,
@@ -11218,6 +11520,12 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
  * site, one argument wider — and `x1` going to `x2` is what reddens here.
  */
 const DECLARED_CALLBACK_SITES: readonly string[] = Object.freeze([
+  // GDD §5.13 presentation Phase 1: FloorGrid's two `props.dispatch` call
+  // sites — `releaseAt`'s `floor-place` and the remove `Pressable`'s
+  // `floor-remove` — each handing `dispatch` exactly one action object, the
+  // same `x1` shape GymView's own six sites below carry.
+  'FloorGrid.tsx#FloorGrid#props x1',
+  'FloorGrid.tsx#FloorGrid#props x1',
   // CROSSING 6: GymScreen's one `props.dispatch` call, through its own local
   // `dispatch` helper — every actual dispatch site in the component calls
   // that local wrapper, a plain function and not `props.dispatch` itself, so
@@ -11290,6 +11598,45 @@ const DECLARED_INTERNAL_CALLBACK_ARGUMENTS: readonly string[] = Object.freeze([
 const DECLARED_RETURNED_CLOSURE_SITES: readonly string[] = Object.freeze([
   'empireInvariant.ts#rosterRatesAt#closure:.gymBucksPerHour',
   'empireInvariant.ts#rosterRatesAt#closure:.trainingIqPerDay',
+]);
+
+/**
+ * A DIFFERENT SHAPE OF DECLINED CLOSURE, NAMED SEPARATELY RATHER THAN FOLDED
+ * IN, because it is not the shape `DECLARED_RETURNED_CLOSURE_SITES` is about.
+ *
+ * That list is instrument C's STATIC scan of an object literal whose member is
+ * literally an arrow function (`return { gymBucksPerHour: () => … }`). GDD
+ * §5.13 presentation Phase 1 embedded `<FloorGrid .../>` as a JSX CHILD inside
+ * `GymScreen`'s own returned tree for the first time in this directory — no
+ * driven component had rendered another custom component as a child before —
+ * and JSX compiles that to `React.createElement(FloorGrid, { dispatch, … })`,
+ * which is `{ type: FloorGrid, props: { dispatch, … } }`. The dynamic walk
+ * (`measureDrive`) correctly declines to CALL either: `type` holds the
+ * `FloorGrid` function component itself (calling it outside a component tree
+ * throws `Invalid hook call`, which is exactly what the explicit
+ * `drive('FloorGrid', 'thrown-invalid-hook-call', …)` row above is for), and
+ * `dispatch` is `GymScreen`'s own local dispatch closure, held as a value and
+ * never invoked by the walk.
+ *
+ * Two members, not the `DECLARED_RETURNED_CLOSURE_SITES` two, and the
+ * `namedByInstrumentC` join below is widened to accept members from EITHER
+ * list rather than merging this into that one — because merging would make a
+ * genuine STATIC `returned-closure` arrival (a THIRD `rosterRatesAt` arrow)
+ * indistinguishable from a genuine new EMBEDDED-COMPONENT arrival (a second
+ * child component with its own differently-named prop), and the two need
+ * different review: a third arrow is instrument C's own static scan reporting
+ * a new site; an embedded component's `type`/prop-name pair is a JSX shape
+ * `channelCensus()`'s `returned-closure` scan does not and should not try to
+ * recognise, because it is not an object-literal arrow function.
+ *
+ * ITS LIMIT, STATED so the next one is not a surprise: any THIRD custom
+ * component ever embedded in a driven return's JSX tree adds `type` (already
+ * named) plus one row per distinctly-named function-valued prop it is handed
+ * — which reddens here, by design, until the new prop name is added.
+ */
+const DECLARED_EMBEDDED_COMPONENT_CLOSURE_SITES: readonly string[] = Object.freeze([
+  'GymScreen.tsx#GymScreen#embedded:FloorGrid.dispatch',
+  'GymScreen.tsx#GymScreen#embedded:FloorGrid.type',
 ]);
 
 /**
@@ -11444,10 +11791,20 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'engagement.ts:437 returned=unfollowable:gym',
   'engagement.ts:455 returned=unfollowable:gym',
   'expansion.ts:549 returned=unfollowable:state',
+  // GDD §5.13 presentation Phase 1: floor.ts's two `Readonly<Partial<Record<…,
+  // GridPosition>>>` returns, unfollowable for the same reason every entry
+  // here is — the walk cannot see past a returned member access.
+  'floor.ts:313 returned=unfollowable:floor',
+  'floor.ts:323 returned=unfollowable:floor',
   'ladder.ts:333 receiver=ArrayLiteralExpression',
   'ladderView.tsx:115 returned=unfollowable:state',
   'ladderView.tsx:123 returned=unfollowable:state',
-  'ladderView.tsx:370 returned=unfollowable:state',
+  // :370 -> :394/:421/:465: the `floor` field's addition shifted the one
+  // existing site down, and the reducer's two new arms (`floor-place`,
+  // `floor-remove`) each return an unfollowable `FloorState`.
+  'ladderView.tsx:394 returned=unfollowable:state',
+  'ladderView.tsx:421 returned=unfollowable:state',
+  'ladderView.tsx:465 returned=unfollowable:state',
   'recruitment.ts:388 returned=unfollowable:state',
   'sessions.ts:562 receiver=ArrayLiteralExpression',
   'sessions.ts:655 returned=unfollowable:state',
@@ -11482,6 +11839,10 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'engagement.ts:437 EmpireState asked=true walked=false',
   'engagement.ts:455 EmpireState asked=true walked=false',
   'expansion.ts:549 EmpireClock asked=true walked=false',
+  // GDD §5.13 presentation Phase 1: floor.ts's two `Readonly<Partial<Record<…,
+  // GridPosition>>>` returns.
+  'floor.ts:313 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
+  'floor.ts:323 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
   'ladder.ts:594 LadderState asked=true walked=false',
   'ladder.ts:605 LadderState asked=true walked=false',
   'ladder.ts:611 LadderState asked=true walked=false',
@@ -11491,10 +11852,16 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'ladderView.tsx:115 LadderAccrual | null asked=true walked=false',
   'ladderView.tsx:122 LadderState asked=true walked=false',
   'ladderView.tsx:123 LadderAccrual | null asked=true walked=false',
-  'ladderView.tsx:370 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:388 GymState asked=true walked=false',
-  'ladderView.tsx:389 LadderAccrual asked=true walked=false',
-  'ladderView.tsx:421 GymState asked=true walked=false',
+  // Renumbered by the `floor` field's addition, and widened by it: two new
+  // `GymState`/`FloorState` reads for the `floor-place`/`floor-remove` arms
+  // (:412/:413 unchanged in kind, :421/:448/:465/:477 new).
+  'ladderView.tsx:394 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:412 GymState asked=true walked=false',
+  'ladderView.tsx:413 LadderAccrual asked=true walked=false',
+  'ladderView.tsx:421 FloorState asked=true walked=false',
+  'ladderView.tsx:448 GymState asked=true walked=false',
+  'ladderView.tsx:465 FloorState asked=true walked=false',
+  'ladderView.tsx:477 FloorState asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
   'sessions.ts:655 LadderState asked=true walked=false',
   'sessions.ts:689 LadderState asked=true walked=false',
@@ -11506,8 +11873,10 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
 
 /** What the two readings of the screen measured against each other. */
 const SCREEN_AGREEMENT = Object.freeze({
+  // 29 -> 34: GDD §5.13 presentation Phase 1's floor.ts (+2) and the
+  // `floor` field's renumbering/widening of ladderView.tsx's rows (+3).
   /** Rows in `SHIPPED_SCREEN_DISAGREEMENTS`, so a shorter list is red too. */
-  SHIPPED_DISAGREEMENTS: 29,
+  SHIPPED_DISAGREEMENTS: 34,
   /**
    * The probe's own disagreements, and every one is a closure the control
    * answered `false` about. A count rather than a list because the member paths
@@ -11558,12 +11927,17 @@ const SCREEN_AGREEMENT = Object.freeze({
 // CROSSING 6: GymScreen.tsx moved four of these — function 708 -> 731,
 // member 651 -> 664, member-callback 11 -> 12, member-of-parameter 16 -> 18
 // — measured by running this exact assertion rather than guessed.
+// GDD §5.13 presentation Phase 1: floor.ts and FloorGrid.tsx moved five more
+// — parameter 2 -> 4 (FloorGrid's own two callback-typed parameters called
+// internally), module-variable 43 -> 49, local 0 -> 3 (FloorGrid's own
+// PanResponder/Animated helper locals), function 731 -> 772, member 664 -> 729
+// — each measured by running this exact assertion rather than guessed.
 const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze({
-  parameter: 2,
-  'module-variable': 43,
-  local: 0,
-  function: 731,
-  member: 664,
+  parameter: 4,
+  'module-variable': 49,
+  local: 3,
+  function: 772,
+  member: 729,
   'member-callback': 12,
   'member-of-parameter': 18,
   fresh: 0,
@@ -11583,7 +11957,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
 const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze({
   parameter: 0,
   'module-variable': 0,
-  local: 163,
+  // 163 -> 165: FloorGrid.tsx's own two local writes (drag-gesture state).
+  local: 165,
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -11594,14 +11969,18 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
-  MODULES: 14,
+  // 14 -> 16: GDD §5.13 presentation Phase 1's floor.ts and FloorGrid.tsx.
+  MODULES: 16,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
    * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
    * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
    * sites (39 -> 43) on `sessions.ts`.
    * 427 -> 433 with GymScreen.tsx (CROSSING 6): +5 `return` sites and +1
-   * `callback-invocation` site, both on the new file. */
-  SITES: 433,
+   * `callback-invocation` site, both on the new file.
+   * 433 -> 460: GDD §5.13 presentation Phase 1's floor.ts (+18 `return`) and
+   * FloorGrid.tsx (+5 `return`, +2 `callback-invocation`), and `ladderView.tsx`
+   * gaining +2 `return` sites for its two new reducer arms. */
+  SITES: 460,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -11609,9 +11988,12 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
    * site, channel or wrap count moved with them.
    */
   // 30722 -> 31964: GymScreen.tsx's own AST nodes (CROSSING 6).
-  NODES_EXAMINED: 31_964,
+  // 31964 -> 34606: GDD §5.13 presentation Phase 1's floor.ts and
+  // FloorGrid.tsx, plus ladderView.tsx's two new reducer arms.
+  NODES_EXAMINED: 34_606,
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
-  WRAP_CALLS: 99,
+  // 99 -> 104: floor.ts's own five `refuseWith` calls.
+  WRAP_CALLS: 104,
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
@@ -11663,8 +12045,11 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   DEEPEST: 9,
   // 661 -> 663: GymScreen's own exported signature (CROSSING 6) — its one
   // parameter position and its one return position.
+  // 663 -> 691: GDD §5.13 presentation Phase 1's floor.ts (ten exported
+  // functions) and FloorGrid.tsx (its own exported signature), each
+  // contributing their parameter and return positions.
   /** Exported positions measured. A truncated walk would report a shallow tree. */
-  POSITIONS: 663,
+  POSITIONS: 691,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -12602,6 +12987,41 @@ function pressEveryControl(node: unknown): number {
 
 const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
   Object.freeze({
+    key: 'FloorGrid.tsx#FloorGrid#props',
+    axes: Object.freeze([
+      Object.freeze({
+        name: 'FloorGrid.tsx#FloorGrid#props#owned',
+        domain: 'NUMBER',
+        means:
+          'GDD §5.13 Phase 1: `FloorGrid` cannot be called and produce a value the ' +
+          'way every other subject in this table can — it holds a real React hook ' +
+          '(`useRef`/`useState`), and calling it as a plain function throws "Invalid ' +
+          'hook call" at its first line, because no React reconciler is running in ' +
+          'this suite (`FloorGrid.tsx`\'s own header explains why, and ' +
+          '`empireForbiddenOutput.test.ts`\'s driven-export row for `FloorGrid` — ' +
+          "search 'thrown-invalid-hook-call' — makes the same point about the " +
+          'export census). `callbackPass` treats that throw as a refused point, not ' +
+          'a silent pass — it is counted in `refusedPoints` — so this axis is ' +
+          "honest about calling `dispatch` ZERO times at every point, matching " +
+          "`callsAt` below exactly, rather than pretending a domain it cannot reach. " +
+          'The real coverage for what a real drag actually dispatches is ' +
+          '`tools/verify-floor-reachability.mjs`, which drives the built app in a ' +
+          'browser and reads back the real drawn state after a real drag.',
+        drive: (record: (args: readonly unknown[]) => void): void => {
+          floorGridModule.FloorGrid({
+            owned: Object.freeze([]),
+            floor: floorModule.createFloorState('garage'),
+            dispatch: (action: ladderViewModule.GymViewAction): void => {
+              record([action]);
+            },
+          });
+        },
+        callsAt: (): number => 0,
+        argumentsPerCall: 1,
+      }),
+    ]),
+  }),
+  Object.freeze({
     key: 'GymScreen.tsx#GymScreen#props.dispatch',
     axes: Object.freeze([
       Object.freeze({
@@ -12628,6 +13048,7 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
                 allocation: sessionsModule.createRestAllocation(),
                 allocationSetThisWeek: false,
                 weekLog: Object.freeze([]),
+                floor: floorModule.createFloorState(EMPIRE_TUNING.LADDER_RUNGS[0]),
               }),
               dispatch: (action: ladderViewModule.GymViewAction): void => {
                 record([action]);
@@ -12708,6 +13129,7 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
                 allocation: sessionsModule.createRestAllocation(),
                 allocationSetThisWeek: false,
                 weekLog: Object.freeze([]),
+                floor: floorModule.createFloorState(EMPIRE_TUNING.LADDER_RUNGS[0]),
               }),
               dispatch: (action: ladderViewModule.GymViewAction): void => {
                 record([action]);
@@ -12968,52 +13390,66 @@ interface CallbackAxisCensus {
   readonly recorded: number;
 }
 
+// GDD §5.13 presentation Phase 1: every point count below moved with the 42
+// new exempt tuning leaves widening `NUMBER_DOMAIN` (the domain `gymBucks`
+// and `rosterSize` axes both draw from) — measured by running the pass
+// rather than derived. `FloorGrid.tsx#FloorGrid#props#owned` is the one new
+// axis; its `refusedPoints === points` and `calls === recorded === 0` is not
+// a bug in the pass, it is the hook-throw limitation this axis's own `means`
+// documents — every point is refused because calling `FloorGrid` outside a
+// component tree throws before `props.dispatch` is ever reached.
 const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Object.freeze({
+  'FloorGrid.tsx#FloorGrid#props#owned': Object.freeze({
+    points: 276,
+    refusedPoints: 276,
+    calls: 0,
+    recorded: 0,
+  }),
   // CROSSING 6: byte-identical to `ladderView.tsx#GymView#props.dispatch
   // #gymBucks` below — same `NUMBER` domain, same `GYM_VIEW_CONTROLS`
   // constant callsAt (does not vary with the point), so the same domain
   // produces the same points/calls/recorded on the ported screen.
   'GymScreen.tsx#GymScreen#props.dispatch#gymBucks': Object.freeze({
-    points: 272,
+    points: 276,
     refusedPoints: 0,
-    calls: 9520,
-    recorded: 9520,
+    calls: 9660,
+    recorded: 9660,
   }),
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
-    points: 106,
+    points: 111,
     refusedPoints: 1,
-    calls: 1099583,
-    recorded: 1099583,
+    calls: 1099704,
+    recorded: 1099704,
   }),
   'engagement.ts#historyFrom#attended#trainedDays': Object.freeze({
-    points: 106,
+    points: 111,
     refusedPoints: 0,
-    calls: 318,
-    recorded: 318,
+    calls: 333,
+    recorded: 333,
   }),
   'ladderView.tsx#GymView#props.dispatch#gymBucks': Object.freeze({
-    points: 272,
+    points: 276,
     refusedPoints: 0,
-    calls: 9520,
-    recorded: 9520,
+    calls: 9660,
+    recorded: 9660,
   }),
   'ladderView.tsx#LadderView#props.dispatch#gymBucks': Object.freeze({
-    points: 272,
+    points: 276,
     refusedPoints: 0,
-    calls: 1360,
-    recorded: 1360,
+    calls: 1380,
+    recorded: 1380,
   }),
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize': Object.freeze({
-    points: 74,
+    points: 76,
     refusedPoints: 0,
-    calls: 1092879,
-    recorded: 2185758,
+    calls: 1092929,
+    recorded: 2185858,
   }),
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize': Object.freeze({
-    points: 74,
+    points: 76,
     refusedPoints: 0,
-    calls: 1092879,
-    recorded: 2185758,
+    calls: 1092929,
+    recorded: 2185858,
   }),
 });
 
@@ -13032,7 +13468,9 @@ const CALLBACK_AXIS_RESIDUAL: readonly string[] = Object.freeze([
 const CALLBACK_PASS_CENSUS = Object.freeze({
   // CROSSING 6: GymScreen.tsx#GymScreen#props.dispatch, one new subject, one
   // new axis (gymBucks). Every count below is re-measured, not guessed.
-  SUBJECTS: 6,
+  // GDD §5.13 presentation Phase 1: FloorGrid.tsx#FloorGrid#props, one more
+  // new subject, one more new axis (owned).
+  SUBJECTS: 7,
   /**
    * Axes driven, summed over subjects.
    *
@@ -13043,7 +13481,7 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    * reader — with `CALLBACK_AXIS_RESIDUAL` naming what a per-axis drive still
    * cannot express.
    */
-  AXES_VARIED: 7,
+  AXES_VARIED: 8,
   /**
    * Points, refusals, calls and values, summed across every axis.
    *
@@ -13053,10 +13491,13 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    */
   // +272 points, +9520 calls, +9520 recorded, +0 refused — the new axis's own
   // row above, summed in.
-  POINTS: 1176,
-  REFUSED_POINTS: 1,
-  CALLS: 3306059,
-  RECORDED: 5491817,
+  // 1176 -> 1478, 1 -> 277, 3306059 -> 3306595, 5491817 -> 5492453: the 42 new
+  // exempt tuning leaves widening every existing NUMBER-domain axis's point
+  // count, plus FloorGrid's own new axis (276 points, all 276 refused).
+  POINTS: 1478,
+  REFUSED_POINTS: 277,
+  CALLS: 3306595,
+  RECORDED: 5492453,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
@@ -15516,7 +15957,10 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   /** Type aliases, interfaces and classes declared across the ten shipped modules. */
   // 165 -> 169: GymView's four new type declarations (GymViewState,
   // GymViewRefusal, GymViewAction, GymViewProps).
-  DECLARATIONS: 169,
+  // 169 -> 176: GDD §5.13 presentation Phase 1's floor.ts (GridSize,
+  // GridPosition, FloorPlacement, FloorState, FloorPlaceResult) and
+  // FloorGrid.tsx (FloorGridProps, WebSelectableViewStyle).
+  DECLARATIONS: 176,
   /** Those carrying type parameters. An instantiation depth needs one. */
   GENERIC: 12,
   /**
@@ -18030,6 +18474,7 @@ function memberCallGymViewState(weekLog: readonly GymWeekReport[]): ladderViewMo
     allocation: sessionsModule.createRestAllocation(),
     allocationSetThisWeek: false,
     weekLog,
+    floor: floorModule.createFloorState(EMPIRE_TUNING.LADDER_RUNGS[0]),
   });
 }
 
@@ -21932,3 +22377,4 @@ describe('the dispatch-chain census — a ladder nobody looked at cannot be adde
     expect(rows.every((row) => row.cases === core.EMPIRE_ACCELERANTS.length)).toBe(true);
   });
 });
+

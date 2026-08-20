@@ -66,6 +66,12 @@ import {
   withLadder,
 } from './sessions';
 import { EMPIRE_TUNING } from './empireTuning';
+import {
+  createFloorState,
+  placeFloorItem,
+  relocateFloorState,
+  removeFloorItem,
+} from './floor';
 
 const T = EMPIRE_TUNING;
 
@@ -617,6 +623,135 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
     expect(advanced.weekIndex).toBe(0);
     expect(advanced.weekLog).toEqual([]);
     expect(advanced.allocationSetThisWeek).toBe(false);
+  });
+
+  // -------------------------------------------------------------------------
+  // GDD §5.13 Phase 1: floor-place, floor-remove, and move-up's floor reset.
+  // Same arm-for-arm discipline — each makes exactly the one floor.ts call
+  // it claims, compared against the same call made directly.
+  // -------------------------------------------------------------------------
+
+  it('floor-place: places (or moves) an item, comparing against placeFloorItem called directly', () => {
+    const opened = createGymViewState();
+    expect(opened.floor).toEqual(createFloorState('garage'));
+
+    // Refused: nothing owned yet.
+    const refused = dispatchGymThrough(opened, {
+      kind: 'floor-place',
+      item: 'mats',
+      position: { x: 0, y: 0 },
+    });
+    const directRefused = placeFloorItem(opened.floor, opened.gym.sessionEquipment, 'mats', {
+      x: 0,
+      y: 0,
+    });
+    expect(directRefused.kind).toBe('refused');
+    expect(refused.floor).toEqual(directRefused.state);
+    expect(refused.lastRefusal).toBe('not-owned');
+    // A floor refusal never touches the gym itself.
+    expect(refused.gym).toEqual(opened.gym);
+
+    // A rich state, granted directly, owning mats — so the placed arm below
+    // is driven on its GRANTED (not refused) outcome, the same pattern the
+    // buy/move tests above use.
+    const withMats: GymViewState = Object.freeze({
+      ...opened,
+      gym: Object.freeze({
+        ...opened.gym,
+        sessionEquipment: Object.freeze(['mats'] as const),
+      }),
+    });
+    const placed = dispatchGymThrough(withMats, {
+      kind: 'floor-place',
+      item: 'mats',
+      position: { x: 0, y: 0 },
+    });
+    const directPlaced = placeFloorItem(withMats.floor, withMats.gym.sessionEquipment, 'mats', {
+      x: 0,
+      y: 0,
+    });
+    expect(directPlaced.kind).toBe('placed');
+    expect(placed.floor).toEqual(directPlaced.state);
+    expect(placed.lastRefusal).toBeNull();
+
+    // Placing an already-placed item MOVES it — one action, both jobs,
+    // matching floor.ts's own claim about placeFloorItem.
+    const moved = dispatchGymThrough(placed, {
+      kind: 'floor-place',
+      item: 'mats',
+      position: { x: 1, y: 1 },
+    });
+    const directMoved = placeFloorItem(placed.floor, withMats.gym.sessionEquipment, 'mats', {
+      x: 1,
+      y: 1,
+    });
+    expect(directMoved.kind).toBe('placed');
+    expect(moved.floor).toEqual(directMoved.state);
+    expect(Object.keys(moved.floor.placements)).toEqual(['mats']);
+  });
+
+  it('floor-remove: removes a placed item, comparing against removeFloorItem called directly, and clears any refusal', () => {
+    const opened = createGymViewState();
+    const withMats: GymViewState = Object.freeze({
+      ...opened,
+      gym: Object.freeze({ ...opened.gym, sessionEquipment: Object.freeze(['mats'] as const) }),
+      lastRefusal: 'not-enough-gym-bucks',
+    });
+    const placeResult = placeFloorItem(withMats.floor, withMats.gym.sessionEquipment, 'mats', {
+      x: 0,
+      y: 0,
+    });
+    expect(placeResult.kind).toBe('placed');
+    const withPlaced: GymViewState = Object.freeze({ ...withMats, floor: placeResult.state });
+
+    const removed = dispatchGymThrough(withPlaced, { kind: 'floor-remove', item: 'mats' });
+    const directRemoved = removeFloorItem(withPlaced.floor, 'mats');
+    expect(removed.floor).toEqual(directRemoved);
+    expect(Object.keys(removed.floor.placements)).toEqual([]);
+    // A remove always clears whatever refusal was showing — it is not itself
+    // a refusable action, and stale refusal text is not left on screen.
+    expect(removed.lastRefusal).toBeNull();
+  });
+
+  it('move-up resets the floor to a fresh one at the destination rung on success, and leaves it untouched on refusal', () => {
+    // Refused: no money yet, so the floor is byte-identical afterward —
+    // GDD §5.1's relocation reset only fires on an actual move.
+    const opened = createGymViewState();
+    const withMats: GymViewState = Object.freeze({
+      ...opened,
+      gym: Object.freeze({ ...opened.gym, sessionEquipment: Object.freeze(['mats'] as const) }),
+    });
+    const placeResult = placeFloorItem(withMats.floor, withMats.gym.sessionEquipment, 'mats', {
+      x: 0,
+      y: 0,
+    });
+    expect(placeResult.kind).toBe('placed');
+    const withPlacedFloor: GymViewState = Object.freeze({ ...withMats, floor: placeResult.state });
+
+    const refusedMove = dispatchGymThrough(withPlacedFloor, { kind: 'move-up' });
+    expect(refusedMove.lastRefusal).toBe('not-enough-gym-bucks');
+    expect(refusedMove.floor).toEqual(withPlacedFloor.floor);
+    expect(Object.keys(refusedMove.floor.placements)).toEqual(['mats']);
+
+    // Granted enough money directly, the same way the buy/move battery above
+    // does — the move now lands, and the floor resets to a fresh, empty one
+    // at the destination rung, matching relocateFloorState called directly.
+    const rich: GymViewState = Object.freeze({
+      ...withPlacedFloor,
+      gym: Object.freeze({
+        ...withPlacedFloor.gym,
+        ladder: Object.freeze({
+          ...withPlacedFloor.gym.ladder,
+          gymBucks: T.LADDER_MOVE_COST_GYM_BUCKS['storage-unit'],
+        }),
+      }),
+    });
+    const moved = dispatchGymThrough(rich, { kind: 'move-up' });
+    expect(moved.lastRefusal).toBeNull();
+    expect(moved.gym.ladder.rung).toBe('storage-unit');
+    expect(moved.floor).toEqual(relocateFloorState('storage-unit'));
+    // Ownership is untouched by the reset — only where things SIT resets.
+    expect(moved.gym.sessionEquipment).toEqual(rich.gym.sessionEquipment);
   });
 });
 
