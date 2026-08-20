@@ -385,6 +385,25 @@ describe('copy', () => {
     const all = JSON.stringify(LIFT_COPY);
     expect(all).not.toMatch(/\d/);
   });
+
+  it('tells the player to tap the drive cue, not to hold', () => {
+    // Finding 1 (2026-08-20) decoupled the boost from `held`. A revert of the
+    // copy to "HOLD IT" / "HOLD" would pass every promptFor test — they read
+    // the constant, not its text — and lie on the phone again, which is
+    // exactly what a real playtest caught.
+    expect(LIFT_COPY.PROMPT.ASCENT_CUE_OPEN).toBe('DRIVE — TAP');
+    expect(LIFT_COPY.PROMPT.ASCENT_CUE_OPEN).not.toMatch(/hold/i);
+    expect(LIFT_COPY.PROMPT.ASCENT_AFTER_CUE).not.toMatch(/hold/i);
+  });
+
+  it('does not tell the player the drive is a single tap', () => {
+    // DRIVE_ATTEMPTS_PER_REP is { LIGHT: 1, MAXIMAL: 3 } — heavy sets arm
+    // more than one drive cue. "one timed tap" described LIGHT correctly and
+    // lied about MAXIMAL, which is what the phone playtest actually caught.
+    expect(LIFT_COPY.SUBTITLE).not.toMatch(/one timed tap/i);
+    expect(LIFT_COPY.SUBTITLE).not.toMatch(/\bone tap\b/i);
+    expect(LIFT_COPY.SUBTITLE.toLowerCase()).toMatch(/tap/);
+  });
 });
 
 // ---------------------------------------------------------------------------
