@@ -70,18 +70,26 @@ import { SHELL_NAV } from './shellTuning';
 // ---------------------------------------------------------------------------
 
 /**
- * The three things the shell can put on screen.
+ * The four things the shell can put on screen.
  *
  * `replay` is the scripted single rep the lift-mechanic harness photographs. It
  * is deliberately NOT player-reachable — it is a debug surface and appears in
  * `playerReachableFrom` nowhere.
+ *
+ * `gym` is GDD §5's Gym Empire — CROSSING 6 in CLAUDE.md's Session
+ * Coordination section. Reachable only from `session`, and only by a real
+ * press: there is no debug query-string entry point for it anywhere in this file's debug
+ * section below, unlike `meet`, `session` and `replay`, which all have one for
+ * the evidence harness. Gym Empire has no scripted moment a screenshot tool
+ * needs, so it does not get one either.
  */
-export type ShellSurface = 'session' | 'meet' | 'replay';
+export type ShellSurface = 'session' | 'meet' | 'replay' | 'gym';
 
 export const SHELL_SURFACES = Object.freeze([
   'session',
   'meet',
   'replay',
+  'gym',
 ] as const satisfies readonly ShellSurface[]);
 
 /** Why the shell is on this surface. */
@@ -114,8 +122,8 @@ export const DEFAULT_ROUTE: ShellRoute = Object.freeze({ surface: 'session', sou
 /**
  * Everything a player can ask the shell to do.
  *
- * Two, and that is the honest size of the shell's ROUTE GRAPH right now: the
- * daily session and meet day are the surfaces this module moves between.
+ * Four, up from two: the daily session, meet day, and now Gym Empire (GDD §5)
+ * are the surfaces this module moves between — CROSSING 6.
  *
  * THIS IS NOT THE CLAIM THAT NOTHING ELSE RENDERS. `LicensingScreen`
  * (`src/licensing/LicensedPanelView.tsx`) is a GDD §7.3 identity-tier shop that
@@ -125,14 +133,17 @@ export const DEFAULT_ROUTE: ShellRoute = Object.freeze({ surface: 'session', sou
  * not name it. Whether that screen counts as one of GDD §2's four modes for the
  * purpose of "a player can reach every mode" is a scoping call, and this file
  * is not the place it gets made. What this comment states is only what is true
- * here: two intents, two player-reachable surfaces, and a third surface that
- * exists behind a separate entry point rather than behind nothing.
+ * here: four intents, three player-reachable surfaces besides the harness, and
+ * a fourth surface (`LicensingScreen`) that exists behind a separate entry
+ * point rather than behind nothing.
  */
-export type ShellIntent = 'open-meet' | 'leave-meet';
+export type ShellIntent = 'open-meet' | 'leave-meet' | 'open-gym' | 'leave-gym';
 
 export const SHELL_INTENTS = Object.freeze([
   'open-meet',
   'leave-meet',
+  'open-gym',
+  'leave-gym',
 ] as const satisfies readonly ShellIntent[]);
 
 /**
@@ -143,12 +154,32 @@ export const SHELL_INTENTS = Object.freeze([
  * `meet --leave-meet--> session` is the way back, which GDD §6.5's recap and
  * §6.3's bomb-out both need and which used to be `window.location.search = ''`
  * — a full page reload, on web only, doing nothing at all on a phone.
+ *
+ * `session --open-gym--> gym` and `gym --leave-gym--> session` are CROSSING
+ * 6's pair, built the same shape as the meet pair above. THE MID-MEET REFUSAL
+ * IS STRUCTURAL, NOT A GATE SOMEBODY COULD FORGET: `open-gym` matches only
+ * `route.surface === 'session'`, so dispatching it from `'meet'` is the same
+ * no-op every other inapplicable intent already is here — there is no arm
+ * that reads `route.surface === 'meet'` for `open-gym` to fall into. GDD §6.2's
+ * attempt loop is uninterruptible, and a player cannot duck into the gym
+ * mid-meet twice over: `gymAffordanceFor` in this same file never offers the
+ * control while `route.surface !== 'session'` (so no meet screen ever draws
+ * it), and even a dispatch that bypassed the UI entirely would still refuse
+ * here. `shellRoute.test.ts`'s full surface-by-intent cross product is what
+ * proves both of those are true of the real graph rather than of this
+ * paragraph.
  */
 export function navigate(route: ShellRoute, intent: ShellIntent): ShellRoute {
   if (intent === 'open-meet' && route.surface === 'session') {
     return { surface: 'meet', source: 'player' };
   }
   if (intent === 'leave-meet' && route.surface === 'meet') {
+    return { surface: 'session', source: 'player' };
+  }
+  if (intent === 'open-gym' && route.surface === 'session') {
+    return { surface: 'gym', source: 'player' };
+  }
+  if (intent === 'leave-gym' && route.surface === 'gym') {
     return { surface: 'session', source: 'player' };
   }
   return route;
@@ -253,6 +284,16 @@ export function shellAffordanceFor(
   cutIn: CutInPresence = 'none',
 ): ShellIntent | null {
   if (cutIn === 'live') return null;
+  // CROSSING 6: the gym surface's own way out. Checked before the `phase ===
+  // null` refusal below, on purpose — `gym` has no beat machine of its own
+  // (no `GymPhase` type, no `onPhase` report, nothing `SHELL_NAV` gates it
+  // on), so a caller on the gym surface always passes `phase = null`, and
+  // gating this arm on `phase` the way `session`/`meet` are gated would mean
+  // this pill could never draw. `LEAVE_GYM_LABEL`'s pill is therefore
+  // unconditional — the same choice `MEET_PHASES`'s `bombed` exclusion makes
+  // for the opposite reason (a screen that draws its OWN way out gets no
+  // pill); Gym Empire draws none of its own, so the shell's is the only one.
+  if (route.surface === 'gym') return 'leave-gym';
   if (phase === null) return null;
   if (route.surface === 'session') {
     return (SHELL_NAV.SESSION_PHASES as readonly string[]).includes(phase) ? 'open-meet' : null;
@@ -261,6 +302,41 @@ export function shellAffordanceFor(
     return (SHELL_NAV.MEET_PHASES as readonly string[]).includes(phase) ? 'leave-meet' : null;
   }
   return null;
+}
+
+/**
+ * THE SECOND AFFORDANCE, drawn ALONGSIDE `shellAffordanceFor`'s pill rather
+ * than instead of it — CROSSING 6's answer to "the concrete navigation
+ * shape... is a builder decision". Kept as its own function rather than
+ * folded into a widened `shellAffordanceFor` return, because every existing
+ * caller and every existing pin in `shellRoute.test.ts` already assumes that
+ * function returns AT MOST ONE `ShellIntent`; two independently-gated
+ * single-valued functions compose to "zero, one or two pills" without
+ * touching that assumption or any of its pinned cases.
+ *
+ * GATED IDENTICALLY TO THE MEET PILL ON THE WAY IN — same `SESSION_PHASES`
+ * list, same cut-in rule. Nothing yet distinguishes "safe to open a meet"
+ * from "safe to open the gym", and inventing a second, ungated judgement with
+ * no evidence behind it would be exactly the unplayed-number problem
+ * CLAUDE.md's "Game Feel Values Must Be Tunable" warns about — so this reads
+ * the one list a human will actually tune rather than a second one nobody
+ * has reason to diverge from yet.
+ *
+ * IS NOT OFFERED OFF THE SESSION SURFACE — in particular, never mid-meet.
+ * `route.surface !== 'session'` refuses unconditionally, first, before the
+ * phase check, so a player on `meet` is never shown a way to duck into the
+ * gym. `navigate` refuses the same route one layer down even if this gate
+ * were bypassed (see its own comment), so the property holds twice over.
+ */
+export function gymAffordanceFor(
+  route: ShellRoute,
+  phase: SessionPhase | null,
+  cutIn: CutInPresence = 'none',
+): ShellIntent | null {
+  if (cutIn === 'live') return null;
+  if (route.surface !== 'session') return null;
+  if (phase === null) return null;
+  return (SHELL_NAV.SESSION_PHASES as readonly string[]).includes(phase) ? 'open-gym' : null;
 }
 
 // ---------------------------------------------------------------------------

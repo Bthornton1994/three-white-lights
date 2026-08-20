@@ -181,6 +181,51 @@ describe('the shell is the join, and it is the only one', () => {
     expect(SHELL).toMatch(/affordance === null \? null :/);
   });
 
+  it('CROSSING 6: renders Gym Empire, drives it through `navigate`, and gates its second pill separately', () => {
+    expect(SHELL).toMatch(/\bGymScreen\b/);
+    expect(SHELL).toMatch(/\bGymHost\b/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/from '\.\.\/empire\/GymScreen'/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/from '\.\.\/empire\/ladderView'/);
+    // Driven through the same route function as the meet pair, not a
+    // hand-set surface.
+    expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'open-gym'\)/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(/navigate\(current, 'leave-gym'\)/);
+    // The second pill is gated by its OWN function, not folded into the call
+    // above — `gymAffordanceFor\(` matching is what proves it is a second
+    // gate rather than a second literal reading the first one's result.
+    expect(SHELL).toMatch(/gymAffordanceFor\(/);
+    expect(SHELL).toMatch(/gymAffordance === null \? null :/);
+    // `useReducer` is the ONE stateful hook Gym Empire needs, and it lives
+    // here — outside `src/empire/` — not inside the pure `GymScreen`.
+    expect(SHELL).toMatch(/useReducer\(/);
+    expect(source('src/shell/AppShell.tsx')).toMatch(
+      /useReducer\(gymViewReduce, undefined, createGymViewState\)/,
+    );
+  });
+
+  it('CROSSING 6: no `?gym=` debug route exists — reachability is by press only', () => {
+    // The one thing this piece's own brief forbids as a verification
+    // shortcut. `shellRoute.ts` has one debug entry per OTHER surface
+    // (`?meet=`, `?session=`, `?replay=`) and deliberately none for gym — see
+    // that file's own `ShellSurface` doc comment.
+    //
+    // RAW SOURCE, NOT `codeOnly` — a debug route is a STRING LITERAL
+    // (`'?gym='` or similar), and `codeOnly` blanks every string to `''`
+    // before this file's other checks read it, which would make a check
+    // aimed at a string literal vacuously pass whether or not one existed.
+    // Comments are excluded by hand instead of by the stripper, which is why
+    // the prose describing this absence, two files over, is careful not to
+    // spell the four characters this looks for.
+    const rawShellRoute = source('src/shell/shellRoute.ts').replace(/\/\*[\s\S]*?\*\//g, ' ');
+    const rawShell = source('src/shell/AppShell.tsx').replace(/\/\*[\s\S]*?\*\//g, ' ');
+    const rawApp = source('App.tsx').replace(/\/\*[\s\S]*?\*\//g, ' ');
+    expect(rawShellRoute).not.toMatch(/gym=/);
+    expect(rawShell).not.toMatch(/gym=/);
+    expect(rawApp).not.toMatch(/gym=/);
+    // The scan can see the shape it would be looking for.
+    expect("const q = '?gym=x';").toMatch(/gym=/);
+  });
+
   it('tells the gate whether a GDD §7.2 cut-in is up, and is told by the hosts', () => {
     // THE HALF NO PURE TEST CAN SEE. `shellRoute.test.ts` pins that a live
     // cut-in takes the chrome off every beat; that is worth nothing if the
@@ -203,7 +248,10 @@ describe('the shell is the join, and it is the only one', () => {
     expect(HOST).toMatch(/onLive\?\.\(false\)/);
     // And the flag is cleared on the way between surfaces, like the phases, so
     // a host that un-mounted mid-cut-in cannot leave the next screen bare.
-    expect(source('src/shell/AppShell.tsx').match(/setCutInLive\(false\)/g)?.length).toBe(2);
+    // 2 -> 4: CROSSING 6's `openGym` / `leaveGym` clear it too, for the same
+    // reason `openMeet` / `leaveMeet` do — see their own comment in
+    // AppShell.tsx. Measured by running this exact assertion, not guessed.
+    expect(source('src/shell/AppShell.tsx').match(/setCutInLive\(false\)/g)?.length).toBe(4);
     // The scans can see what they are looking for, and can see it change.
     expect(codeOnly("const a = x ? 'live' : 'none';")).toMatch(/x \? '' : ''/);
     expect(codeOnly('onLive?.(true);')).not.toMatch(/onLive\?\.\(live !== null\)/);

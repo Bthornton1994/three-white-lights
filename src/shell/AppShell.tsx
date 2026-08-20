@@ -62,7 +62,7 @@
  * building `MEET_LOCAL` itself. Nothing about the route graph changes.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -71,6 +71,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { GymScreen } from '../empire/GymScreen';
+import { createGymViewState, gymViewReduce } from '../empire/ladderView';
 import { LIFT_PALETTE } from '../lift/liftPalette';
 import { LiftScreen } from '../lift/LiftScreen';
 import { MeetScreen } from '../meet/MeetScreen';
@@ -79,6 +81,7 @@ import { appMeetPort, appSessionPort } from './appServer';
 import {
   frozenMeetFor,
   frozenSessionFor,
+  gymAffordanceFor,
   navigate,
   resolveEntry,
   shellAffordanceFor,
@@ -101,16 +104,28 @@ const INTENT_COPY: Readonly<Record<ShellIntent, { readonly label: string; readon
       label: SHELL_COPY.LEAVE_MEET_LABEL,
       hint: SHELL_COPY.LEAVE_MEET_HINT,
     }),
+    'open-gym': Object.freeze({
+      label: SHELL_COPY.GYM_NAV_LABEL,
+      hint: SHELL_COPY.GYM_NAV_HINT,
+    }),
+    'leave-gym': Object.freeze({
+      label: SHELL_COPY.LEAVE_GYM_LABEL,
+      hint: SHELL_COPY.LEAVE_GYM_HINT,
+    }),
   });
 
 /**
- * The one control the shell draws.
+ * One pill. Fades IN only: the component unmounts the instant its surface
+ * leaves a listed beat, because the beat it is leaving for is usually the
+ * set, and a control still fading while the bar is unracked is still
+ * pressable.
  *
- * Bottom-anchored and arriving late, so it never competes with the screen under
- * it for the first look. It fades IN only: the component unmounts the instant
- * its surface leaves a listed beat, because the beat it is leaving for is
- * usually the set, and a control still fading while the bar is unracked is
- * still pressable.
+ * CROSSING 6 moved the bottom-anchored POSITIONING out of this component and
+ * onto `styles.navSlot`, now rendered once by `AppShell` around a ROW of
+ * these rather than by each pill individually — up to two can be on screen
+ * together (the session surface's MEET DAY and GYM EMPIRE pills), and two
+ * absolutely-positioned, individually-centred pills would draw on top of
+ * each other. This component now only fades and draws.
  */
 function ShellNav({
   intent,
@@ -129,7 +144,7 @@ function ShellNav({
   const style = useAnimatedStyle(() => ({ opacity: shown.value }));
   const copy = INTENT_COPY[intent];
   return (
-    <Animated.View style={[styles.navSlot, style]} pointerEvents="box-none">
+    <Animated.View style={style} pointerEvents="box-none">
       <Pressable
         style={styles.nav}
         accessibilityRole="button"
@@ -143,6 +158,21 @@ function ShellNav({
       </Pressable>
     </Animated.View>
   );
+}
+
+/**
+ * CROSSING 6: the Gym Empire surface's mount point, and the one place the
+ * `useReducer` hook this screen needs lives — outside `src/empire/`, the same
+ * rule `ladder-dev.tsx` follows for the web dev harness
+ * (`ladderView.tsx`'s own header: "The one stateful hook lives in the dev
+ * mount, outside this directory, which is what keeps this file render-only in
+ * the checkable sense"). `GymScreen` itself stays a pure function of
+ * `{ state, dispatch }`; this component computes nothing and is the only
+ * thing in `src/shell/` that reads `src/empire/`.
+ */
+function GymHost(): React.ReactElement {
+  const [state, dispatch] = useReducer(gymViewReduce, undefined, createGymViewState);
+  return <GymScreen state={state} dispatch={dispatch} />;
 }
 
 export interface AppShellProps {
@@ -217,12 +247,48 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
     setRoute((current) => navigate(current, 'leave-meet'));
   }, []);
 
+  // CROSSING 6. `openGym` clears no destination phase because `gym` has none
+  // to clear — see `shellAffordanceFor`'s own comment on why its gym arm
+  // reads no phase at all. `leaveGym` clears `sessionPhase` for the same
+  // reason `leaveMeet` clears it: the surface being ENTERED is `session`, and
+  // a stale phase from before the gym visit is what the gate would read for
+  // one frame otherwise. Both clear the cut-in flag, matching `openMeet` /
+  // `leaveMeet` exactly, even though neither gym surface can itself have set
+  // it live — Gym Empire mounts no `CutInHost` — because the flag still
+  // belongs to whichever surface is about to draw, and clearing it on every
+  // transition is one rule instead of one rule plus an argued exception.
+  const openGym = useCallback(() => {
+    setCutInLive(false);
+    setRoute((current) => navigate(current, 'open-gym'));
+  }, []);
+  const leaveGym = useCallback(() => {
+    setSessionPhase(null);
+    setCutInLive(false);
+    setRoute((current) => navigate(current, 'leave-gym'));
+  }, []);
+
   const affordance = shellAffordanceFor(
     route,
     route.surface === 'meet' ? meetPhase : route.surface === 'session' ? sessionPhase : null,
     cutInLive ? 'live' : 'none',
   );
+  // CROSSING 6's second, independently-gated pill — see `gymAffordanceFor`'s
+  // own header for why this is a second function rather than a wider
+  // `shellAffordanceFor`. Only ever non-null on the session surface, so it is
+  // never on screen at the same time as `leave-meet` or `leave-gym`.
+  const gymAffordance = gymAffordanceFor(
+    route,
+    route.surface === 'session' ? sessionPhase : null,
+    cutInLive ? 'live' : 'none',
+  );
   const meetFrame = frozenMeetFor(entry, route);
+
+  const ON_PRESS: Readonly<Record<ShellIntent, () => void>> = {
+    'open-meet': openMeet,
+    'leave-meet': leaveMeet,
+    'open-gym': openGym,
+    'leave-gym': leaveGym,
+  };
 
   return (
     <View style={styles.root} testID="app-shell">
@@ -251,6 +317,12 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           onCutIn={setCutInLive}
           cutInSearch={search}
         />
+      ) : route.surface === 'gym' ? (
+        // CROSSING 6. No preview, no server port, no cut-in host: Gym Empire's
+        // local reducer state stays local to this component tree (`GymHost`),
+        // pays into no wallet and reads no debug frame — there is no debug query string for it
+        // entry, so `entry` never carries one to hand over.
+        <GymHost />
       ) : route.surface === 'replay' && entry.replay !== undefined ? (
         <LiftScreen replay={entry.replay} />
       ) : (
@@ -263,14 +335,24 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
         />
       )}
 
-      {affordance === null ? null : (
-        <ShellNav
-          // Remounts when the intent changes, so the fade plays for each
-          // affordance rather than only for the first one of the app's life.
-          key={affordance}
-          intent={affordance}
-          onPress={affordance === 'open-meet' ? openMeet : leaveMeet}
-        />
+      {affordance === null && gymAffordance === null ? null : (
+        <View style={styles.navSlot} pointerEvents="box-none">
+          <View style={styles.navRow} pointerEvents="box-none">
+            {affordance === null ? null : (
+              <ShellNav
+                // Remounts when the intent changes, so the fade plays for each
+                // affordance rather than only for the first one of the app's
+                // life.
+                key={affordance}
+                intent={affordance}
+                onPress={ON_PRESS[affordance]}
+              />
+            )}
+            {gymAffordance === null ? null : (
+              <ShellNav key={gymAffordance} intent={gymAffordance} onPress={ON_PRESS[gymAffordance]} />
+            )}
+          </View>
+        </View>
       )}
     </View>
   );
@@ -293,6 +375,15 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: L.NAV_BOTTOM_INSET,
     alignItems: 'center',
+  },
+  /**
+   * CROSSING 6: up to two pills side by side (the session surface's MEET DAY
+   * and GYM EMPIRE). `navSlot` above still does the bottom-anchored centring
+   * of the ROW as a whole; this only lays out what is inside it.
+   */
+  navRow: {
+    flexDirection: 'row',
+    columnGap: L.NAV_GAP,
   },
   nav: {
     height: L.NAV_HEIGHT,

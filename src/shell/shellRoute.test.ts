@@ -25,6 +25,7 @@ import {
   entryRoute,
   frozenMeetFor,
   frozenSessionFor,
+  gymAffordanceFor,
   meetEntryFrom,
   navigate,
   pathBetween,
@@ -186,6 +187,55 @@ describe('a player can get from the daily session to a meet, and back', () => {
 });
 
 // ---------------------------------------------------------------------------
+// CROSSING 6: the same reachability standard, for Gym Empire
+// ---------------------------------------------------------------------------
+
+describe('a player can get from the daily session to Gym Empire, and back', () => {
+  it('THE SESSION -> GYM ROUTE EXISTS AND IS A PATH, NOT A COMPONENT', () => {
+    const path = pathBetween('session', 'gym');
+    expect(path, 'a player cannot reach Gym Empire at all').not.toBeNull();
+    expect(path).toEqual(['open-gym']);
+  });
+
+  it('and the way back exists too', () => {
+    expect(pathBetween('gym', 'session')).toEqual(['leave-gym']);
+  });
+
+  it('the two compose into a round trip that ends where the app opens', () => {
+    let route = DEFAULT_ROUTE;
+    for (const intent of pathBetween('session', 'gym') ?? []) route = navigate(route, intent);
+    expect(route.surface).toBe('gym');
+    for (const intent of pathBetween('gym', 'session') ?? []) route = navigate(route, intent);
+    expect(route).toEqual({ surface: 'session', source: 'player' });
+  });
+
+  it('reaching Gym Empire never needs a debug URL', () => {
+    let route: ShellRoute = DEFAULT_ROUTE;
+    const sources: string[] = [];
+    for (const intent of ['open-gym', 'leave-gym', 'open-gym'] as const) {
+      route = navigate(route, intent);
+      sources.push(route.source);
+    }
+    expect(sources).toEqual(['player', 'player', 'player']);
+  });
+
+  it('a player cannot duck into the gym mid-meet, even by trying the intent directly', () => {
+    // The behavioural half of the structural claim `navigate`'s own comment
+    // makes: dispatching `open-gym` while on `meet` is a no-op, not a route.
+    const midMeet = AS_PLAYER('meet');
+    expect(navigate(midMeet, 'open-gym')).toBe(midMeet);
+  });
+
+  it('the gym is reachable from a meet only by leaving it first — a two-step path, not a direct one', () => {
+    // `playerReachableFrom` is a transitive closure, so `meet` DOES reach
+    // `gym` — through `session`, the hub every surface but `replay` reaches.
+    // What must NOT exist is a ONE-INTENT path, which is what "mid-meet" means.
+    expect(playerReachableFrom('meet')).toContain('gym');
+    expect(pathBetween('meet', 'gym')).toEqual(['leave-meet', 'open-gym']);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // The graph, and the positive controls that make its absence visible
 // ---------------------------------------------------------------------------
 
@@ -193,6 +243,12 @@ describe('the route graph', () => {
   it('has exactly the edges the shell claims, and no others', () => {
     // Written as the full cross product rather than as the two true cases, so
     // an edge ADDED by accident fails here too.
+    //
+    // 6 -> 16: CROSSING 6 added a surface (`gym`) and a pair of intents
+    // (`open-gym` / `leave-gym`), so the 4x4 cross product grew from 2x3.
+    // Every non-diagonal, non-designed edge below is a no-op returning the
+    // SAME surface it started on — measured by running this exact assertion
+    // rather than guessed from reading `navigate`.
     const edges: Record<string, string> = {};
     for (const surface of SHELL_SURFACES) {
       for (const intent of SHELL_INTENTS) {
@@ -202,10 +258,25 @@ describe('the route graph', () => {
     expect(edges).toEqual({
       'session --open-meet-->': 'meet',
       'session --leave-meet-->': 'session',
+      'session --open-gym-->': 'gym',
+      'session --leave-gym-->': 'session',
       'meet --open-meet-->': 'meet',
       'meet --leave-meet-->': 'session',
+      // THE ROW THAT PROVES THE MID-MEET REFUSAL: neither gym intent moves a
+      // player off `meet`. `open-gym` is a no-op here because `navigate`'s
+      // `open-gym` arm matches only `route.surface === 'session'` — there is
+      // no `meet` arm for it to fall into, structurally, not by a gate that
+      // could be forgotten.
+      'meet --open-gym-->': 'meet',
+      'meet --leave-gym-->': 'meet',
       'replay --open-meet-->': 'replay',
       'replay --leave-meet-->': 'replay',
+      'replay --open-gym-->': 'replay',
+      'replay --leave-gym-->': 'replay',
+      'gym --open-meet-->': 'gym',
+      'gym --leave-meet-->': 'gym',
+      'gym --open-gym-->': 'gym',
+      'gym --leave-gym-->': 'session',
     });
   });
 
@@ -392,6 +463,81 @@ describe('when the shell may draw a control — pinned, one beat at a time', () 
       shellAffordanceFor(DEFAULT_ROUTE, 'check-in', 'none'),
     );
     expect(shellAffordanceFor(DEFAULT_ROUTE, 'check-in')).toBe('open-meet');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CROSSING 6's chrome gate: the gym's own way out, and the second pill
+// ---------------------------------------------------------------------------
+
+describe('CROSSING 6: the gym surface draws its own way out, unconditionally', () => {
+  const GYM = AS_PLAYER('gym');
+
+  it('THE WAY BACK IS ALWAYS THERE — the gym has no beat machine to gate it on', () => {
+    // Unlike session/meet, `phase` is meaningless on this surface (no
+    // `GymPhase` type exists, nothing reports one), so this is deliberately
+    // NOT gated on the second argument at all.
+    expect(shellAffordanceFor(GYM, null)).toBe('leave-gym');
+    expect(shellAffordanceFor(GYM, 'check-in')).toBe('leave-gym');
+    expect(shellAffordanceFor(GYM, 'recap')).toBe('leave-gym');
+  });
+
+  it('...except under a live cut-in, same as every other surface', () => {
+    // Gym Empire mounts no `CutInHost`, so this can only fire from a flag left
+    // over from a surface the player has since departed — and the pin exists
+    // so that IF that ever happens, the rule is the same one every other
+    // surface already follows rather than a silent exception.
+    expect(shellAffordanceFor(GYM, null, 'live')).toBe(null);
+    expect(shellAffordanceFor(GYM, null, 'none')).toBe('leave-gym');
+  });
+
+  it('does not answer for a beat belonging to session or meet', () => {
+    expect(shellAffordanceFor(GYM, 'check-in')).not.toBe('open-meet');
+    expect(shellAffordanceFor(GYM, 'recap')).not.toBe('leave-meet');
+  });
+});
+
+describe('CROSSING 6: the second pill, gated the same as the meet pill and never off session', () => {
+  const SESSION = DEFAULT_ROUTE;
+  const MEET = AS_PLAYER('meet');
+  const GYM = AS_PLAYER('gym');
+
+  it('offers open-gym on exactly the beats the meet pill is offered on', () => {
+    // Deliberately reuses SESSION_PHASES rather than a second list — see
+    // `gymAffordanceFor`'s own header for why.
+    expect(gymAffordanceFor(SESSION, 'check-in')).toBe('open-gym');
+    expect(gymAffordanceFor(SESSION, 'briefing')).toBe('open-gym');
+    expect(gymAffordanceFor(SESSION, 'close-out')).toBe('open-gym');
+    expect(gymAffordanceFor(SESSION, 'set')).toBe(null);
+    expect(gymAffordanceFor(SESSION, 'rest')).toBe(null);
+  });
+
+  it('NEVER shown mid-meet, and never on the gym surface itself', () => {
+    expect(gymAffordanceFor(MEET, null)).toBe(null);
+    // The surface check wins regardless of phase: `gymAffordanceFor`'s
+    // parameter type is `SessionPhase | null` (the real call site in
+    // `AppShell.tsx` never feeds it a `MeetDayPhaseId`), but even fed a
+    // beat that would draw the pill on `session`, `meet` still refuses.
+    expect(gymAffordanceFor(MEET, 'check-in')).toBe(null);
+    expect(gymAffordanceFor(GYM, null)).toBe(null);
+  });
+
+  it('takes the chrome off under a live cut-in, same as the meet pill', () => {
+    expect(gymAffordanceFor(SESSION, 'check-in', 'live')).toBe(null);
+    expect(gymAffordanceFor(SESSION, 'check-in', 'none')).toBe('open-gym');
+  });
+
+  it('draws nothing before the session has reported a beat', () => {
+    expect(gymAffordanceFor(SESSION, null)).toBe(null);
+  });
+
+  it('composes with the meet pill: both non-null on the same session beat', () => {
+    // The point of CROSSING 6's two-function design — this is the state
+    // `AppShell` renders as two simultaneous pills.
+    for (const phase of ['check-in', 'briefing', 'close-out'] as const) {
+      expect(shellAffordanceFor(SESSION, phase)).toBe('open-meet');
+      expect(gymAffordanceFor(SESSION, phase)).toBe('open-gym');
+    }
   });
 });
 

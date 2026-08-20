@@ -88,6 +88,14 @@ export const SHELL_LAYOUT = Object.freeze({
   NAV_LETTER_SPACING: 2,
   /** Widens the touch target past the drawn pill, for a thumb. */
   NAV_HIT_SLOP: 14,
+  /**
+   * CROSSING 6: the gap between two simultaneous pills, when the session
+   * surface draws both MEET DAY and the Gym Empire entry side by side. Unused
+   * (and unread) whenever at most one pill is on screen, which is every beat
+   * but the session's — the row has one item there and a `columnGap` on a
+   * single flex child paints nothing.
+   */
+  NAV_GAP: 12,
 });
 
 /**
@@ -110,4 +118,17 @@ export const SHELL_COPY = Object.freeze({
   /** Meet surface -> back to the daily loop. */
   LEAVE_MEET_LABEL: 'BACK TO TRAINING',
   LEAVE_MEET_HINT: 'Returns to the daily session.',
+
+  /**
+   * CROSSING 6: session surface -> Gym Empire (GDD §5), and the way back.
+   * "GYM EMPIRE" rather than a shortened form, because the shell's other two
+   * labels ("MEET DAY", "BACK TO TRAINING") both name the destination or the
+   * return in full and a clipped label here would read as a different register
+   * next to them.
+   */
+  GYM_NAV_LABEL: 'GYM EMPIRE',
+  GYM_NAV_HINT: 'Opens Gym Empire.',
+
+  LEAVE_GYM_LABEL: 'BACK TO TRAINING',
+  LEAVE_GYM_HINT: 'Returns to the daily session.',
 });
