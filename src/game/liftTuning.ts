@@ -350,9 +350,19 @@ export const LIFT_TUNING = Object.freeze({
   DRIVE_IMPULSE_MAX: 0.005,
 
   /**
-   * Sustained force added while the player HOLDS after a good drive, at quality
-   * 1, decaying linearly to zero over DRIVE_BOOST_TICKS. Releasing early cuts
-   * it off immediately — the hold is the drive, not a button press.
+   * Force added by a landed drive, at quality 1, decaying linearly to zero
+   * over DRIVE_BOOST_TICKS from the tick it was thrown.
+   *
+   * NOT GATED ON THE PLAYER CONTINUING TO HOLD. It used to be — "the hold is
+   * the drive, not a button press" was this comment's own framing — and that
+   * coupling was a defect a phone playtest found: landing a second or third
+   * cue (the tap-rate mechanic) can only happen on a real device by releasing
+   * and re-touching, and at MAXIMAL load an undriven bar's demand exceeds
+   * capacity, so the old gate meant every release — measured down to the
+   * fastest physically possible re-tap, 1 tick — killed the rep before a
+   * second tap could land. A drive is a committed impulse once thrown, same
+   * as a real press: it decays on its own clock, and releasing no longer
+   * touches it. `lift.ts`'s ASCENT physics is the one site this reads from.
    *
    * THE STATIC ARITHMETIC IS NOT THE WHOLE STORY, and an earlier version of this
    * comment claimed it was. Instantaneously, the peak deficit is 0.24 at
@@ -361,7 +371,9 @@ export const LIFT_TUNING = Object.freeze({
    * LOAD_PRESETS.MAXIMAL with an ideal-depth release the winning drive quality
    * starts at about 0.65, because the boost decays over DRIVE_BOOST_TICKS while
    * the bar is still travelling up to the stick and because STALL_CAPACITY_DECAY
-   * has already taken a bite out of capacity by the time it arrives.
+   * has already taken a bite out of capacity by the time it arrives. That
+   * measurement predates the hold-gate removal and is a claim about DECAY, not
+   * about hold state, so it is unaffected by it — re-verified below.
    *
    * So this number and DRIVE_BOOST_TICKS decide the good-lift / grind / miss
    * split TOGETHER, and neither can be read on its own. `lift.test.ts` measures

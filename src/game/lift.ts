@@ -63,10 +63,14 @@
  *             stops, and goes backwards.
  *
  *             The DRIVE cue arms at DRIVE_ARM_HEIGHT and its ideal moment is
- *             DRIVE_IDEAL_LEAD_MS later. A press inside the window adds an
- *             impulse and, WHILE THE PLAYER KEEPS HOLDING, a decaying force
- *             boost. Releasing early cuts the boost off. A press outside the
- *             window costs velocity and burns the attempt.
+ *             DRIVE_IDEAL_LEAD_MS later. A press inside the window commits a
+ *             decaying force boost, independent of whether the player keeps
+ *             holding afterward — landing a second or third cue (the tap-rate
+ *             mechanic) requires releasing and re-pressing on a real device,
+ *             so the boost cannot depend on a continuous hold without making
+ *             that mechanic self-defeating (measured: it did, until this was
+ *             fixed). A press outside the window costs velocity and burns the
+ *             attempt.
  *
  *   LOCKOUT   h reached 1. A short beat, then resolution.
  *
@@ -1073,7 +1077,24 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     // --- physics ---------------------------------------------------------
     const demand = ascentDemand(m.height, load, m.extraDepth);
     let drive = capacity - m.stallCapacityLoss;
-    if (m.driveTick !== null && m.held && m.driveQuality > 0) {
+    // A LANDED DRIVE IS A COMMITTED IMPULSE, NOT A STATE THE PLAYER MAINTAINS.
+    // Deliberately NOT gated on `m.held`. It used to be, and that coupling was
+    // a defect discovered by a phone playtest, not a design choice: landing a
+    // SECOND or THIRD drive cue (Sprint 3's tap-rate mechanic) is only
+    // reachable on a real device by releasing and re-touching — `Pressable`'s
+    // `onPressIn` does not re-fire on a continuous hold — and at MAXIMAL load
+    // `ascentDemand` exceeds capacity when undriven, so the instant the old
+    // gate saw `held` go false the boost vanished and the bar started falling.
+    // Measured before this fix: EVERY release duration tested, 1 to 64 ticks,
+    // produced a miss, including the fastest physically possible re-tap. The
+    // only winning strategy was to never release at all — exactly backwards
+    // from what the tap-rate mechanic asks for. A real press is a discrete
+    // effort that pays out once thrown, not a button that has to stay down to
+    // keep paying — this is that property, made physical. `m.held` keeps its
+    // three other jobs (BRACE's finger-already-down start, DESCENT's
+    // depth-while-held growth) untouched; this is the only site it is removed
+    // from.
+    if (m.driveTick !== null && m.driveQuality > 0) {
       const elapsed = tick - m.driveTick;
       const decay = clamp01(1 - elapsed / LIFT_TUNING.DRIVE_BOOST_TICKS);
       drive += LIFT_TUNING.DRIVE_BOOST_FORCE_MAX * m.driveQuality * decay;

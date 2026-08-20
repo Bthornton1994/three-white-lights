@@ -552,12 +552,149 @@ describe('outcome space', () => {
     expect(early.drivesUsed).toBe(1);
   });
 
-  it('gives the drive boost only while the player keeps holding', () => {
+  it('gives the drive boost regardless of whether the player keeps holding — a landed drive is a committed impulse', () => {
+    // THIS TEST USED TO PIN THE OPPOSITE, and that pin was the bug: it
+    // asserted a released rep must reach a LOWER peak height than a held one.
+    // Fixed after a phone playtest found landing a second or third drive cue
+    // (the tap-rate mechanic) is only reachable on a real device by releasing
+    // and re-touching — Pressable's onPressIn does not re-fire on a
+    // continuous hold — and the old hold-gated boost made every release fatal
+    // at MAXIMAL load, the exact load the tap-rate mechanic exists for.
     const load = 0.95;
     const held = play(load, { driveOffsetTicks: 0 });
     const dropped = play(load, { driveOffsetTicks: 0, releaseAfterDriveTicks: 3 });
     expect(outcomeOf(held)).not.toBe('miss');
-    expect(dropped.resolution?.peakHeight ?? 1).toBeLessThan(held.resolution?.peakHeight ?? 0);
+    // The committed impulse does not care that the finger came up: releasing
+    // 3 ticks after a perfectly-timed drive reaches the SAME peak height as
+    // never releasing at all.
+    expect(dropped.resolution?.peakHeight).toBeCloseTo(held.resolution?.peakHeight ?? Number.NaN, 6);
+    expect(outcomeOf(dropped)).not.toBe('miss');
+  });
+
+  it('a release that never re-presses reaches the SAME peak as never releasing at all — the boost no longer cares', () => {
+    // The direct claim the fix makes: once landed, a drive's boost is
+    // independent of hold state. Releasing with no second tap at all — the
+    // simplest possible case — must trace an IDENTICAL trajectory to holding
+    // straight through, at every load the old coupling could have mattered.
+    const load = LOAD_PRESETS.MAXIMAL;
+    const config: LiftConfig = { loadRatio: load, seed: 424242 };
+    const depth = LIFT_TUNING.DEPTH_IDEAL;
+    const press = pressTickFor(load);
+    const release = releaseTickFor(load, depth);
+    const base: ScriptedInput[] = [
+      { tick: press, kind: 'press' },
+      { tick: release, kind: 'release' },
+    ];
+    const cue0 = latestDriveCue(config, base);
+    expect(cue0).not.toBeNull();
+    if (cue0 === null) return;
+    const held: ScriptedInput[] = [...base, { tick: cue0.idealTick, kind: 'press' }];
+    const releasedNoRepress: ScriptedInput[] = [...held, { tick: cue0.idealTick + 1, kind: 'release' }];
+    const heldFinal = runLift(config, held).final;
+    const releasedFinal = runLift(config, releasedNoRepress).final;
+    expect(heldFinal.resolution?.outcome).not.toBe('miss');
+    expect(releasedFinal.resolution?.outcome).toBe(heldFinal.resolution?.outcome);
+    expect(releasedFinal.resolution?.peakHeight).toBeCloseTo(
+      heldFinal.resolution?.peakHeight ?? Number.NaN,
+      9,
+    );
+  });
+
+  it('tolerates a real motor-timing gap — release after cue 0, then land the REAL cue 1 the release exists to reach', () => {
+    // The regression this fix exists for, reproduced and closed. Before the
+    // fix, THIS exact sequence — release, then accurately land the next real
+    // cue — still failed, because the release alone had already doomed the
+    // rep by the time the second tap could land: the "natural, never
+    // re-press" outcome was ALREADY a miss regardless of when or whether the
+    // player re-pressed. That is the bug. A repress landing too EARLY (before
+    // the next cue has actually armed) is a separate, correct mechanism —
+    // Piece 2's own mistimed-press penalty — and is not what this test is
+    // about; it targets cue 1's own real ideal tick, read back from the sim
+    // the same way `driveCueSequence` does, not guessed.
+    const load = LOAD_PRESETS.MAXIMAL;
+    const config: LiftConfig = { loadRatio: load, seed: 424242 };
+    const depth = LIFT_TUNING.DEPTH_IDEAL;
+    const press = pressTickFor(load);
+    const release = releaseTickFor(load, depth);
+    const base: ScriptedInput[] = [
+      { tick: press, kind: 'press' },
+      { tick: release, kind: 'release' },
+    ];
+    const cue0 = latestDriveCue(config, base);
+    expect(cue0).not.toBeNull();
+    if (cue0 === null) return;
+    const releasedOnly: ScriptedInput[] = [
+      ...base,
+      { tick: cue0.idealTick, kind: 'press' },
+      { tick: cue0.idealTick + 1, kind: 'release' },
+    ];
+    const cue1 = latestDriveCue(config, releasedOnly);
+    expect(cue1, 'a real cue 1 must arm after the release for this test to mean anything').not.toBeNull();
+    if (cue1 === null) return;
+    const script: ScriptedInput[] = [...releasedOnly, { tick: cue1.idealTick, kind: 'press' }];
+    const final = runLift(config, script).final;
+    expect(final.resolution?.outcome, 'release then an accurate second tap must not miss').not.toBe(
+      'miss',
+    );
+    const timings = final.timings.filter((t) => t.cue === 'drive');
+    expect(timings.length).toBe(2);
+    expect(timings.every((t) => t.grade === 'perfect')).toBe(true);
+  });
+
+  it('holds across a real spread of release timing and seeds — not one cherry-picked config', () => {
+    // Non-vacuity for the two tests above: a fix proven on one seed could be
+    // an artefact of that seed's own arithmetic. Sweeps 12 seeds at MAXIMAL,
+    // releasing anywhere from 1 tick after cue 0's press to a full second
+    // BEFORE landing the real cue 1 (queried per seed, not assumed) — the
+    // full plausible range of "when does a real thumb come off the glass".
+    // Every reachable (cue0, cue1) pair must survive at every release point
+    // tried on it; a load where no cue1 ever arms is skipped and counted,
+    // so the sweep cannot pass by silently finding nothing to test.
+    const load = LOAD_PRESETS.MAXIMAL;
+    const depth = LIFT_TUNING.DEPTH_IDEAL;
+    const press = pressTickFor(load);
+    const release = releaseTickFor(load, depth);
+    let pairsChecked = 0;
+    let skippedNoCue1 = 0;
+    for (let seed = 1; seed <= 12; seed += 1) {
+      const config: LiftConfig = { loadRatio: load, seed };
+      const base: ScriptedInput[] = [
+        { tick: press, kind: 'press' },
+        { tick: release, kind: 'release' },
+      ];
+      const cue0 = latestDriveCue(config, base);
+      if (cue0 === null) continue;
+      const heldThrough: ScriptedInput[] = [...base, { tick: cue0.idealTick, kind: 'press' }];
+      const cue1 = latestDriveCue(config, heldThrough);
+      if (cue1 === null) {
+        skippedNoCue1 += 1;
+        continue;
+      }
+      for (const releaseOffsetTicks of [1, 15, 30, 60]) {
+        const releaseAt = cue0.idealTick + releaseOffsetTicks;
+        if (releaseAt >= cue1.idealTick) continue; // must still precede the tap it's testing
+        const script: ScriptedInput[] = [
+          ...heldThrough,
+          { tick: releaseAt, kind: 'release' },
+          { tick: cue1.idealTick, kind: 'press' },
+        ];
+        const outcome = runLift(config, script).final.resolution?.outcome;
+        expect(
+          outcome,
+          `seed=${seed} releaseOffset=${releaseOffsetTicks}t (cue0=${cue0.idealTick} cue1=${cue1.idealTick})`,
+        ).not.toBe('miss');
+        pairsChecked += 1;
+      }
+    }
+    // Non-vacuity: the sweep actually exercised real (cue0, cue1) pairs, and
+    // most seeds offered one — if this drops to 0 the sweep is testing
+    // nothing and the checks above are passing vacuously.
+    // Pinned counts, not bounds — measured at 48 pairs (12 seeds x 4 release
+    // offsets, none skipped) so a change that quietly narrows the domain
+    // (fewer seeds offering a real cue 1, say) is a red test, not a smaller
+    // green one.
+    expect(pairsChecked).toBe(48);
+    expect(skippedNoCue1).toBe(0);
   });
 });
 

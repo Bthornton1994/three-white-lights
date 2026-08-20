@@ -1,24 +1,15 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-19T22:55:29.117Z",
+    "capturedAt": "2026-08-20T05:22:20.843Z",
     "url": "http://localhost:8081",
-    "commit": "4340e79",
+    "commit": "adfab1e",
     "branch": "claude/agent-config-setup-m2r6ny",
     "workingTree": "DIRTY — this run is not against a commit",
     "dirtyPaths": [
-      "M src/game/progression.test.ts",
-      " M src/game/progression.ts",
-      " M src/game/saveGame.test.ts",
-      " M src/game/session.test.ts",
-      " M src/game/session.ts",
-      " M src/game/sessionClient.test.ts",
-      " M src/game/sessionServer.test.ts",
-      " M src/game/sessionServer.ts",
-      " M src/game/sessionTuning.ts",
-      " M src/session/SessionScreen.tsx",
-      " M src/session/SetView.tsx",
-      " M src/session/localSessionServer.test.ts",
-      " M src/session/sessionPreview.ts"
+      "M .gauntlet/shots/lift-press/press.json",
+      " M src/game/lift.test.ts",
+      " M src/game/lift.ts",
+      " M src/game/liftTuning.ts"
     ],
     "instrument": {
       "verify-lift-press.mjs": "47bdf4433ace23c8",
@@ -314,7 +305,7 @@
           },
           {
             "phase": "attempt2-6-immediately-after-drive-press",
-            "loopPrompt": "HOLD",
+            "loopPrompt": "DRIVE — HOLD IT",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -346,7 +337,7 @@
           },
           {
             "phase": "attempt2-8-after-release-post-lockout",
-            "loopPrompt": "GRINDER",
+            "loopPrompt": "GOOD LIFT",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
@@ -362,7 +353,7 @@
           },
           {
             "phase": "resolved-or-reset-for-next-rep",
-            "loopPrompt": "GRINDER",
+            "loopPrompt": "GOOD LIFT",
             "touch": {
               "userSelect": "none",
               "webkitUserSelect": "none",
