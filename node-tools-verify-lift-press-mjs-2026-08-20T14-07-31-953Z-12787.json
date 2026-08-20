@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-lift-press-mjs-2026-08-20T14-07-31-953Z-12787",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-lift-press.mjs"
+  ],
+  "budgetSeconds": 300,
+  "startedAtIso": "2026-08-20T14:07:31.953Z",
+  "startedAtMs": 1787234851953,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "db74632404ed65c8f799178c53496e315e3a0a33",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 1,
+  "dirtyPaths": [
+    "tools/verify-lift-press.mjs"
+  ],
+  "runner": {
+    "pid": 12787,
+    "startTick": "69546",
+    "cmdline": "node tools/watchdog.mjs --budget 300 -- node tools/verify-lift-press.mjs",
+    "bootId": "3ac675c4-eb1e-49ee-920a-64268d2dcfe0",
+    "bootEpochSeconds": 1787234156,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-20T14:07:32.886Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
