@@ -172,6 +172,15 @@ export function GymScreen(props: GymViewProps) {
       {lastRefusal === null ? null : (
         <Text testID={'gymscreen-refusal'}>refused: {lastRefusal}</Text>
       )}
+      <View testID={'gymscreen-floor'}>
+        <Text>the floor — grid and placement, no members, no final art yet</Text>
+        <FloorGrid
+          owned={gym.sessionEquipment}
+          barbellOwned={gym.ladder.equipment}
+          floor={floor}
+          dispatch={dispatch}
+        />
+      </View>
       <View testID={'gymscreen-ladder-shop'}>
         {EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.map((item) => (
           <View key={item}>
@@ -259,10 +268,6 @@ export function GymScreen(props: GymViewProps) {
             {week.effects.ceilingGrowthPerWeek}
           </Text>
         ))}
-      </View>
-      <View testID={'gymscreen-floor'}>
-        <Text>the floor — grid and placement, no members, no final art yet</Text>
-        <FloorGrid owned={gym.sessionEquipment} floor={floor} dispatch={dispatch} />
       </View>
       <View testID={'gymscreen-dev-controls'}>
         <Text>

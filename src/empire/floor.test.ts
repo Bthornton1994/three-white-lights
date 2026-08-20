@@ -2,24 +2,27 @@
  * floor.test.ts — GDD §5.13 presentation Phase 1: the floor grid and
  * placement mechanics.
  *
- * Four groups, in the house shape this directory already uses: tuning
+ * Five groups, in the house shape this directory already uses: tuning
  * shape (both new tables keyed exactly, every footprint fits its item's own
  * minimum rung), state transitions (create/relocate/place/move/remove, each
  * arm driven directly against the same computation it claims), the ownership
  * guarantee (a floor never diverges from `owned` — driven with a
- * deliberately stale floor rather than trusted), and the read model
- * (placed/unplaced/layout, exhaustive over every §5.4 stage-2 item).
+ * deliberately stale floor rather than trusted), the read model
+ * (placed/unplaced/layout, exhaustive over every §5.4 stage-2 item), and
+ * PLAYTEST 2's fixed Barbell furniture (keyed exactly, non-overlapping, fits
+ * every rung's grid, and reads real ownership rather than assuming it).
  */
 
 import { describe, expect, it } from 'vitest';
 
 import { EMPIRE_TUNING } from './empireTuning';
-import { type LadderRung } from './ladder';
+import { type LadderEquipmentItem, type LadderRung } from './ladder';
 import { type SessionEquipmentItem } from './sessions';
 import {
   type FloorState,
   type GridPosition,
   createFloorState,
+  fixedFloorFurniture,
   floorGridSize,
   floorLayout,
   placeFloorItem,
@@ -433,5 +436,126 @@ describe('a played sequence', () => {
     expect(unplacedOwnedFloorItems(relocated, owned)).toEqual([...owned].sort(
       (left, right) => T.SESSION_EQUIPMENT_ITEMS.indexOf(left) - T.SESSION_EQUIPMENT_ITEMS.indexOf(right),
     ));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fixed furniture — GDD §5.13's PLAYTEST 2 ruling, gap 1: the Barbell-group
+// starting baseline drawn as fixed, non-draggable floor furniture.
+// ---------------------------------------------------------------------------
+
+describe('FLOOR_FIXED_FURNITURE_LAYOUT is keyed exactly, non-overlapping, and fits every rung', () => {
+  it('is keyed by exactly LADDER_STARTING_EQUIPMENT, both directions', () => {
+    const keys = Object.keys(T.FLOOR_FIXED_FURNITURE_LAYOUT).sort();
+    expect(keys).toEqual([...T.LADDER_STARTING_EQUIPMENT].sort());
+  });
+
+  it('every entry is a positive whole-tile footprint at a non-negative whole-tile position', () => {
+    for (const item of T.LADDER_STARTING_EQUIPMENT) {
+      const layout = T.FLOOR_FIXED_FURNITURE_LAYOUT[item];
+      expect(layout, item).toBeDefined();
+      if (layout === undefined) continue;
+      expect(layout.footprint.width, item).toBeGreaterThan(0);
+      expect(layout.footprint.height, item).toBeGreaterThan(0);
+      expect(Number.isInteger(layout.footprint.width), item).toBe(true);
+      expect(Number.isInteger(layout.footprint.height), item).toBe(true);
+      expect(layout.position.x, item).toBeGreaterThanOrEqual(0);
+      expect(layout.position.y, item).toBeGreaterThanOrEqual(0);
+      expect(Number.isInteger(layout.position.x), item).toBe(true);
+      expect(Number.isInteger(layout.position.y), item).toBe(true);
+    }
+  });
+
+  it('no two fixed-furniture items overlap each other', () => {
+    const rows = T.LADDER_STARTING_EQUIPMENT.map((item) => {
+      const layout = T.FLOOR_FIXED_FURNITURE_LAYOUT[item] as {
+        position: GridPosition;
+        footprint: { width: number; height: number };
+      };
+      return { item, ...layout };
+    });
+    let compared = 0;
+    for (let i = 0; i < rows.length; i += 1) {
+      for (let j = i + 1; j < rows.length; j += 1) {
+        const a = rows[i] as (typeof rows)[number];
+        const b = rows[j] as (typeof rows)[number];
+        const overlaps =
+          a.position.x < b.position.x + b.footprint.width &&
+          b.position.x < a.position.x + a.footprint.width &&
+          a.position.y < b.position.y + b.footprint.height &&
+          b.position.y < a.position.y + a.footprint.height;
+        expect(overlaps, `${a.item} and ${b.item}`).toBe(false);
+        compared += 1;
+      }
+    }
+    // Non-vacuity: the pairwise loop really compared something, over all three.
+    expect(rows.length).toBe(3);
+    expect(compared).toBe(3);
+  });
+
+  it("fits inside EVERY rung's grid, not only the garage the layout was hand-sized for — the containment claim fixedFloorFurniture's own header makes, driven rather than trusted", () => {
+    let checked = 0;
+    for (const rung of T.LADDER_RUNGS) {
+      const grid = floorGridSize(rung);
+      for (const item of T.LADDER_STARTING_EQUIPMENT) {
+        const layout = T.FLOOR_FIXED_FURNITURE_LAYOUT[item] as {
+          position: GridPosition;
+          footprint: { width: number; height: number };
+        };
+        expect(layout.position.x + layout.footprint.width, `${item} at ${rung}`).toBeLessThanOrEqual(
+          grid.width,
+        );
+        expect(layout.position.y + layout.footprint.height, `${item} at ${rung}`).toBeLessThanOrEqual(
+          grid.height,
+        );
+        checked += 1;
+      }
+    }
+    // Non-vacuity: every rung, every fixed item, really examined — 4 rungs x 3 items.
+    expect(T.LADDER_RUNGS.length).toBe(4);
+    expect(checked).toBe(12);
+  });
+});
+
+describe('fixedFloorFurniture reads real ownership and invents nothing for squat-rack', () => {
+  it('owning every LADDER_STARTING_EQUIPMENT item returns all three, in LADDER_STARTING_EQUIPMENT order, matching the registered layout exactly', () => {
+    const rows = fixedFloorFurniture([...T.LADDER_STARTING_EQUIPMENT]);
+    expect(rows.map((row) => row.item)).toEqual([...T.LADDER_STARTING_EQUIPMENT]);
+    for (const row of rows) {
+      const layout = (
+        T.FLOOR_FIXED_FURNITURE_LAYOUT as Readonly<
+          Record<LadderEquipmentItem, { position: GridPosition; footprint: { width: number; height: number } }>
+        >
+      )[row.item];
+      expect(row.position).toEqual(layout.position);
+      expect(row.footprint).toEqual(layout.footprint);
+    }
+  });
+
+  it('a partial ownership list draws exactly what is owned, nothing invented for the rest', () => {
+    const rows = fixedFloorFurniture(['flat-bench']);
+    expect(rows.map((row) => row.item)).toEqual(['flat-bench']);
+  });
+
+  it('owning nothing on the ladder draws nothing — this function never assumes the starting kit is present', () => {
+    expect(fixedFloorFurniture([])).toEqual([]);
+  });
+
+  it('owning squat-rack alone draws nothing — squat-rack is a real, refusable purchase with no fixed floor spot, not part of the always-present baseline', () => {
+    expect(fixedFloorFurniture(['squat-rack'])).toEqual([]);
+  });
+
+  it('owning every LADDER_EQUIPMENT_ITEMS entry — the starting three plus a purchased squat-rack — still draws only the three starting items', () => {
+    const rows = fixedFloorFurniture([...T.LADDER_EQUIPMENT_ITEMS]);
+    expect(rows.map((row) => row.item)).toEqual([...T.LADDER_STARTING_EQUIPMENT]);
+  });
+
+  it('never draws a row for a SessionEquipmentItem — the two vocabularies are disjoint, so a fixed-furniture row can never be confused with a real FloorPlacement', () => {
+    const rows = fixedFloorFurniture([...T.LADDER_STARTING_EQUIPMENT]);
+    for (const row of rows) {
+      expect(T.SESSION_EQUIPMENT_ITEMS).not.toContain(row.item);
+    }
+    // Non-vacuity: there really are rows to check this on.
+    expect(rows.length).toBe(3);
   });
 });

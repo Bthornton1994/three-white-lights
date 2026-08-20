@@ -172,6 +172,85 @@ try {
   }
 
   // -------------------------------------------------------------------------
+  // 1a. PLAYTEST 2's four gaps, checked on the COLD state — zero equipment,
+  // zero Gym Bucks, no dev clock-skip pressed yet. This is the exact state
+  // the human played against; every claim below reads real testIDs/text off
+  // the drawn DOM (CLAUDE.md's "presence is not visibility"), not presence
+  // alone.
+  // -------------------------------------------------------------------------
+
+  // Gap 1: the Barbell-group starting baseline drawn as fixed furniture,
+  // from the very first frame — a garage never opens visually empty.
+  const FIXED_FURNITURE_ITEMS = ['power-bar', 'comp-plates', 'flat-bench'];
+  for (const item of FIXED_FURNITURE_ITEMS) {
+    const drawn = await waitUntilDrawn(page, `floorgrid-fixed-${item}`, BEAT_TIMEOUT_MS);
+    if (!drawn.drawn) {
+      fail(`gap 1: floorgrid-fixed-${item} never drawn on a cold gym — ${drawn.why}`);
+      continue;
+    }
+    const text = await textOf(`floorgrid-fixed-${item}`);
+    if (text !== null && text.includes(item) && text.includes('(fixed)')) {
+      ok(`gap 1: floorgrid-fixed-${item} is drawn on a cold gym, reading "${text}"`);
+    } else {
+      fail(`gap 1: floorgrid-fixed-${item} drawn but its text ("${text}") does not read as fixed furniture`);
+    }
+  }
+
+  // Gap 3: the grid reads as a grid — real tile boundaries, counted exactly
+  // against the garage's real FLOOR_GRID_SIZE (8x6), not "some lines exist".
+  const GARAGE_GRID = { WIDTH: 8, HEIGHT: 6 };
+  const verticalLines = await page.locator('[data-testid^="floorgrid-line-v-"]').count();
+  const horizontalLines = await page.locator('[data-testid^="floorgrid-line-h-"]').count();
+  const expectedVertical = GARAGE_GRID.WIDTH - 1;
+  const expectedHorizontal = GARAGE_GRID.HEIGHT - 1;
+  if (verticalLines === expectedVertical && horizontalLines === expectedHorizontal) {
+    ok(
+      `gap 3: the grid draws exactly ${verticalLines} vertical + ${horizontalLines} horizontal tile-boundary lines, matching the garage's real 8x6 FLOOR_GRID_SIZE`,
+    );
+  } else {
+    fail(
+      `gap 3: expected ${expectedVertical} vertical + ${expectedHorizontal} horizontal tile-boundary lines for an 8x6 garage, drew ${verticalLines} + ${horizontalLines}`,
+    );
+  }
+
+  // Gap 2: no dead drag prompt when the tray is genuinely empty (0 owned,
+  // 0 unplaced) — an honest empty-state message instead.
+  const trayEmptyDrawn = await waitUntilDrawn(page, 'floorgrid-tray-empty', BEAT_TIMEOUT_MS);
+  const trayEmptyText = await textOf('floorgrid-tray-empty');
+  const deadPromptCount = await page
+    .getByText('unplaced equipment — drag onto the floor above', { exact: true })
+    .count();
+  if (trayEmptyDrawn.drawn && trayEmptyText === 'nothing owned yet — buy equipment above, then drag it here to place it' && deadPromptCount === 0) {
+    ok(`gap 2: the empty tray shows an honest empty-state message ("${trayEmptyText}") and not the dead drag prompt`);
+  } else {
+    fail(
+      `gap 2: expected floorgrid-tray-empty drawn with the "nothing owned yet" copy and the dead prompt absent — drawn=${trayEmptyDrawn.drawn}, text="${trayEmptyText}", dead-prompt-count=${deadPromptCount}`,
+    );
+  }
+
+  // Gap 4: the floor section is above the shop/allocator sections in render
+  // order — a relative DOM position, not merely that both exist.
+  const floorBox = await boxOf('gymscreen-floor');
+  const ladderShopBox = await boxOf('gymscreen-ladder-shop');
+  const sessionShopBox = await boxOf('gymscreen-session-shop');
+  if (floorBox !== null && ladderShopBox !== null && sessionShopBox !== null) {
+    const aboveBoth = floorBox.y < ladderShopBox.y && floorBox.y < sessionShopBox.y;
+    if (aboveBoth) {
+      ok(
+        `gap 4: gymscreen-floor (y=${Math.round(floorBox.y)}) is drawn above gymscreen-ladder-shop (y=${Math.round(ladderShopBox.y)}) and gymscreen-session-shop (y=${Math.round(sessionShopBox.y)})`,
+      );
+    } else {
+      fail(
+        `gap 4: gymscreen-floor (y=${Math.round(floorBox.y)}) is NOT above the shop sections (ladder y=${Math.round(ladderShopBox.y)}, session y=${Math.round(sessionShopBox.y)})`,
+      );
+    }
+  } else {
+    fail(
+      `gap 4: could not read a bounding box for one of the three sections (floor=${floorBox !== null}, ladder-shop=${ladderShopBox !== null}, session-shop=${sessionShopBox !== null})`,
+    );
+  }
+
+  // -------------------------------------------------------------------------
   // 2. Earn enough to buy mats (200 Gym Bucks, fits a garage — no relocation
   //    needed), then buy it, then confirm it shows up in the unplaced tray.
   // -------------------------------------------------------------------------

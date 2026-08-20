@@ -16,13 +16,23 @@
  * GDD §5.13's grounding check, read before any of this was written, states
  * plainly what does and does not exist in code yet: member types,
  * satisfaction and equipment condition are stage 3/4 concepts, and the
- * Barbell group (`LADDER_EQUIPMENT_ITEMS`) has no ownable *floor* state in
- * this build — it is not gated by rung-fitting space the way stage-2
- * equipment is, and the presentation piece's own brief scopes Phase 1 to
- * `sessions.ts`'s `GymState.sessionEquipment` alone. So `floor.ts` places
- * exactly the fourteen `SESSION_EQUIPMENT_ITEMS`, and nothing else. Placing
- * the Barbell group is an open question this module does not answer — see
- * this piece's own report rather than a code comment pretending otherwise.
+ * Barbell group (`LADDER_EQUIPMENT_ITEMS`) has no ownable *floor position*
+ * state in this build — it is not gated by rung-fitting space the way
+ * stage-2 equipment is, and the presentation piece's own brief scopes Phase 1
+ * to `sessions.ts`'s `GymState.sessionEquipment` alone. So `FloorState.
+ * placements` — the position table `placeFloorItem`/`removeFloorItem` write
+ * — holds exactly the fourteen `SESSION_EQUIPMENT_ITEMS`, and nothing else;
+ * this module invents no position/ownership schema for the Barbell group.
+ *
+ * PLAYTEST 2's ruling (GDD §5.13) answers a narrower, purely presentational
+ * question the grounding check left open: `fixedFloorFurniture`, below,
+ * draws the Barbell group's always-present starting baseline
+ * (`LADDER_STARTING_EQUIPMENT` — power-bar, comp-plates, flat-bench) as
+ * fixed, non-draggable furniture at set positions, reading `LadderState.
+ * equipment` — real, already-existing ownership state — the same way
+ * `floorLayout` reads `owned` for session items. It returns a plain read
+ * model, never a `FloorState`, and adds no field to `FloorState` — see that
+ * function's own header for what it does and does not guarantee.
  *
  * ===========================================================================
  * The hard constraint: a floor is a VIEW of ownership, never a second copy
@@ -88,7 +98,7 @@
  */
 
 import { refuseWith } from './empireCore';
-import { type LadderRung } from './ladder';
+import { type LadderEquipmentItem, type LadderRung } from './ladder';
 import { type SessionEquipmentItem } from './sessions';
 import { EMPIRE_TUNING } from './empireTuning';
 
@@ -131,6 +141,73 @@ export function sessionItemFootprint(item: SessionEquipmentItem): GridSize {
   const footprint = EMPIRE_TUNING.SESSION_EQUIPMENT_FOOTPRINT[item];
   if (footprint === undefined) refuseWith(`${String(item)} has no registered floor footprint`);
   return footprint;
+}
+
+// ---------------------------------------------------------------------------
+// Fixed furniture — GDD §5.13's PLAYTEST 2 ruling, gap 1
+// ---------------------------------------------------------------------------
+
+/**
+ * One item of the Barbell-group starting baseline, drawn as fixed floor
+ * furniture: its position and footprint, both read from
+ * `FLOOR_FIXED_FURNITURE_LAYOUT`. Never a `FloorPlacement` — that type names
+ * a `SessionEquipmentItem`, and this one deliberately does not, so a caller
+ * cannot pass a fixed-furniture row to a function (`placeFloorItem`,
+ * `removeFloorItem`, `requireFloorState`) that expects a real placement.
+ */
+export interface FixedFurniturePlacement {
+  readonly item: LadderEquipmentItem;
+  readonly position: GridPosition;
+  readonly footprint: GridSize;
+}
+
+/**
+ * The Barbell-group starting baseline (`LADDER_STARTING_EQUIPMENT` — "a bar,
+ * some plates, a bench") as fixed, non-draggable floor furniture — GDD
+ * §5.13's PLAYTEST 2 ruling, closing gap 1 ("opening day has nothing
+ * placeable") and contributing to gap 3 (a floor with real objects on it
+ * reads as a floor): "render the Barbell group's always-present baseline as
+ * fixed, non-draggable floor furniture... drawn but not part of
+ * `FloorState.placements` since there is no ownership or position data for
+ * them to attach to."
+ *
+ * Filtered against `owned` — the caller's real `LadderState.equipment`, read
+ * exactly the way `floorLayout` reads its caller's `owned` for session items
+ * — rather than assumed present. In practice this is always every entry of
+ * `LADDER_STARTING_EQUIPMENT`: `createLadderState` grants all three on
+ * creation and there is no `sell` on the ladder any more than there is on
+ * `sessions.ts`. The filter is what keeps this function a reader of real
+ * state rather than an invented assumption, and is what `floor.test.ts`
+ * drives directly (an `owned` list missing one of the three omits exactly
+ * that one row).
+ *
+ * ONE LAYOUT FOR EVERY RUNG — see `FLOOR_FIXED_FURNITURE_LAYOUT`'s own
+ * tuning comment for why a single arrangement, not a per-rung table, is the
+ * right shape here: every rung's grid contains the garage's, so a layout
+ * that fits the garage fits every rung. `floor.test.ts` drives the
+ * containment claim against every rung in `LADDER_RUNGS`, not only the
+ * garage.
+ *
+ * THE LIMIT, STATED RATHER THAN HIDDEN: this returns a plain read model, not
+ * a `FloorState`, and nothing in `placeFloorItem`/`requireFloorState`'s
+ * overlap logic knows this table exists. A session item CAN be dragged to a
+ * position that visually overlaps a fixed-furniture row today — whether that
+ * should be refused is a design question this piece's own report raises
+ * rather than answers, and no test here claims otherwise.
+ */
+export function fixedFloorFurniture(
+  owned: readonly LadderEquipmentItem[],
+): readonly FixedFurniturePlacement[] {
+  const ownedSet = new Set<string>(owned);
+  return Object.freeze(
+    EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.filter((item) => ownedSet.has(item)).map((item) => {
+      const layout = EMPIRE_TUNING.FLOOR_FIXED_FURNITURE_LAYOUT[item];
+      if (layout === undefined) {
+        refuseWith(`${String(item)} has no registered fixed-furniture layout`);
+      }
+      return Object.freeze({ item, position: layout.position, footprint: layout.footprint });
+    }),
+  );
 }
 
 // ---------------------------------------------------------------------------

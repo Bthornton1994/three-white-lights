@@ -82,6 +82,7 @@ describe('the block is frozen and every entry is classified', () => {
       'EQUIPMENT_TIER_BUCKS_MULTIPLIER',
       'EQUIPMENT_TIER_COST_GYM_BUCKS',
       'FLEXIBLE_ACTIVITIES',
+      'FLOOR_FIXED_FURNITURE_LAYOUT',
       'FLOOR_GRID_SIZE',
       'LADDER_DEV_TIME_STEPS_SECONDS',
       'LADDER_EQUIPMENT_COST_GYM_BUCKS',
@@ -593,12 +594,17 @@ describe('§5.5 social', () => {
     // FLOOR_GRID_BORDER_WIDTH_PIXELS, FLOOR_ITEM_BORDER_WIDTH_PIXELS,
     // FLOOR_TRAY_ITEM_MARGIN_PIXELS, FLOOR_DRAGGING_Z_INDEX,
     // FLOOR_TRAY_ITEM_MIN_TILES), both landing on the same base of 87.
-    expect(examined).toBe(105);
+    // 105 -> 107: GDD §5.13's PLAYTEST 2 ruling adds two top-level entries —
+    // FLOOR_FIXED_FURNITURE_LAYOUT (gap 1, fixed Barbell-baseline furniture)
+    // and FLOOR_GRID_LINE_WIDTH_PIXELS (gap 3, tile-boundary lines). Measured
+    // by running this assertion and reading its failure value, not computed
+    // by hand.
+    expect(examined).toBe(107);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
-    // 435 -> 525.
-    expect(probed).toBe(525);
+    // 435 -> 525 -> 535.
+    expect(probed).toBe(535);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

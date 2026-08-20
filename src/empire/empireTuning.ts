@@ -1413,6 +1413,49 @@ export const EMPIRE_TUNING = Object.freeze({
   }),
 
   /**
+   * GDD §5.13's PLAYTEST 2 ruling, gap 1: the Barbell-group starting baseline
+   * (`LADDER_STARTING_EQUIPMENT` — "a bar, some plates, a bench") drawn as
+   * FIXED, NON-DRAGGABLE floor furniture from the moment a gym exists, rather
+   * than a floor that opens genuinely empty. Read by `floor.ts`'s
+   * `fixedFloorFurniture` only.
+   *
+   * ONE ARRANGEMENT FOR EVERY RUNG, NOT A TABLE PER RUNG — the judgement call
+   * this piece's own report names and reasons about. Every rung's grid
+   * (`FLOOR_GRID_SIZE`) is a strict superset of the garage's — the smallest,
+   * 8x6 — in BOTH dimensions, so a small always-fits corner layout sized to
+   * the smallest rung needs no per-rung table and no runtime resizing.
+   * `floor.test.ts` drives the containment claim against every rung, not only
+   * the garage, so a future rung shrinking below the garage would redden it
+   * rather than silently clipping the furniture off-grid.
+   *
+   * Positions are hand-placed to be pairwise non-overlapping and to fit
+   * inside the garage's 8x6 grid with room to spare: power-bar (0,0)-(1,3),
+   * comp-plates (1,0)-(3,2), flat-bench (3,0)-(5,4) — five tiles wide, four
+   * tall, against an 8x6 floor.
+   *
+   * Keyed by exactly `LADDER_STARTING_EQUIPMENT`, not the wider
+   * `LADDER_EQUIPMENT_ITEMS` — `squat-rack` is a real purchase (flat price,
+   * gated by rung, refusable) and stays in the ladder shop with no floor
+   * furniture of its own; only the baseline every `createLadderState()`
+   * already owns for free is fixed furniture. `floor.test.ts` drives both
+   * directions of that key set.
+   */
+  FLOOR_FIXED_FURNITURE_LAYOUT: Object.freeze({
+    'power-bar': Object.freeze({
+      position: Object.freeze({ x: 0, y: 0 }),
+      footprint: Object.freeze({ width: 1, height: 3 }),
+    }),
+    'comp-plates': Object.freeze({
+      position: Object.freeze({ x: 1, y: 0 }),
+      footprint: Object.freeze({ width: 2, height: 2 }),
+    }),
+    'flat-bench': Object.freeze({
+      position: Object.freeze({ x: 3, y: 0 }),
+      footprint: Object.freeze({ width: 2, height: 4 }),
+    }),
+  }),
+
+  /**
    * Pixels per grid tile the floor renders at — a rendering/legibility knob,
    * not game math, but a felt one (spacing, tap-target size, how fiddly a
    * drag reads), so it lives here rather than as a magic number in
@@ -1422,6 +1465,14 @@ export const EMPIRE_TUNING = Object.freeze({
 
   /** Border thickness, in pixels, of the floor grid's own outer frame. Read by `FloorGrid.tsx` only. */
   FLOOR_GRID_BORDER_WIDTH_PIXELS: 1,
+
+  /**
+   * GDD §5.13's PLAYTEST 2 ruling, gap 3: line thickness, in pixels, of the
+   * grid's own internal tile boundaries — the lines that make a floor read as
+   * a grid of discrete cells rather than one solid rectangle. Read by
+   * `FloorGrid.tsx` only.
+   */
+  FLOOR_GRID_LINE_WIDTH_PIXELS: 1,
 
   /** Border thickness, in pixels, around every placed or tray equipment chip. Read by `FloorGrid.tsx` only. */
   FLOOR_ITEM_BORDER_WIDTH_PIXELS: 2,
@@ -1557,8 +1608,10 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
 
   FLOOR_GRID_SIZE: 'knob',
   SESSION_EQUIPMENT_FOOTPRINT: 'knob',
+  FLOOR_FIXED_FURNITURE_LAYOUT: 'knob',
   FLOOR_TILE_PIXELS: 'knob',
   FLOOR_GRID_BORDER_WIDTH_PIXELS: 'knob',
+  FLOOR_GRID_LINE_WIDTH_PIXELS: 'knob',
   FLOOR_ITEM_BORDER_WIDTH_PIXELS: 'knob',
   FLOOR_TRAY_ITEM_MARGIN_PIXELS: 'knob',
   FLOOR_DRAGGING_Z_INDEX: 'knob',

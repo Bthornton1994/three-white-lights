@@ -3077,6 +3077,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'tiles,',
       'placed,',
       'unplaced',
+      // GDD §5.13's PLAYTEST 2 ruling, gap 1: the one new JsxText chunk this
+      // file gains — the fixed-furniture label. The ternary in the tray
+      // section below (gap 2's empty state) contributes NOTHING here: both
+      // its branches' string literals sit inside a JSX EXPRESSION container
+      // (`{...}`), which `ts.isJsxText` does not visit — only the plain
+      // "unplaced equipment — drag onto the floor above" literal, still
+      // present unconditionally in the AST regardless of which ternary arm
+      // runs, is JsxText. Transcribed from a driven run, the same discipline
+      // as every other entry in this list.
+      '(fixed)',
       'x',
       'unplaced equipment — drag onto the floor above',
       // GymScreen.tsx, in tree order — second, because a capital `G` sorts
@@ -3101,6 +3111,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gym bucks, cap discarded',
       's',
       'refused:',
+      // GDD §5.13's PLAYTEST 2 ruling, gap 4: this chunk moved here, from
+      // between the week log and the dev controls (its position before this
+      // round), because `GymScreen.tsx`'s render order moved — the floor
+      // section is now the first thing after the compact status readouts,
+      // above the shop/allocator text. The AST-order census reads that move
+      // exactly: same string, new position, nothing about the text itself
+      // changed.
+      'the floor — grid and placement, no members, no final art yet',
       'costs',
       'gym bucks, fits from',
       'buy',
@@ -3127,13 +3145,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       ', injury chance',
       ', technique bonus',
       ', ceiling growth',
-      // GDD §5.13 Phase 1's floor section header text, between the week log
-      // and the dev controls — exactly where `GymScreen.tsx` renders it. No
-      // section number in the on-screen string itself (kept to comments,
-      // which the magic-number audit strips) — a bare "5.13" inside JSX
-      // text is not a comment and the audit's numeric-literal scan does not
-      // distinguish it from code, so it was a finding until reworded.
-      'the floor — grid and placement, no members, no final art yet',
       'not part of the game: each button feeds that many elapsed seconds to the shipped accrual, so a player checks in without waiting it out. The last one jumps straight to the next weekly-allocation boundary.',
       '+1 week boundary',
       // ladderView.tsx, in tree order: the header line, the money line, the
@@ -3238,7 +3249,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // style-key strings (including `'relative'`, added once the grid
     // container needed an explicit `position: 'relative'`). Re-measured on
     // the merged tree rather than hand-summed.
-    expect(singleQuoted.size).toBe(331);
+    // 331 -> 335: GDD §5.13's PLAYTEST 2 ruling — FloorGrid.tsx's new
+    // `'floorgrid-tray-empty'` testID and `'dimgray'` fixed-furniture colour,
+    // plus its two new empty-tray copy strings. Measured by running this
+    // assertion and reading the failure value.
+    expect(singleQuoted.size).toBe(335);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3252,7 +3267,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // FloorGrid.tsx's three templated testID literals
     // (`floorgrid-placed-${row.item}`, `floorgrid-remove-${row.item}`,
     // `floorgrid-tray-item-${item}`). Re-measured on the merged tree.
-    expect(templateChunks.size).toBe(211);
+    // 211 -> 217: GDD §5.13's PLAYTEST 2 ruling — floor.ts's one new
+    // `refuseWith` template message, and FloorGrid.tsx's five new template
+    // literals (`floorgrid-fixed-${row.item}`, `floorgrid-line-v-${i}`,
+    // `floorgrid-line-h-${j}`, and the two `key={...}` template literals on
+    // the line/`v`/`h` elements). Measured by running this assertion.
+    expect(templateChunks.size).toBe(217);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3336,6 +3356,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'darkslategray',
       'darkturquoise',
       'deadlift',
+      'dimgray',
       'display-name',
       'displayName',
       'dumbbells',
@@ -3355,6 +3376,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-scroll-x',
       'floorgrid-scroll-y',
       'floorgrid-tray',
+      'floorgrid-tray-empty',
       'floorgrid-tray-scroll',
       'foam-rollers',
       'friend',
@@ -3569,7 +3591,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // an explicit `position: 'relative'`). Re-measured on the merged tree,
     // same as `singleQuoted.size`/`templateChunks.size` above — this is their
     // sum plus doubleQuoted (0), so it moves in lockstep with both.
-    expect(stringsChecked).toBe(542);
+    // 542 -> 552: singleQuoted (331 -> 335) and templateChunks (211 -> 217),
+    // both from GDD §5.13's PLAYTEST 2 ruling.
+    expect(stringsChecked).toBe(552);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3609,7 +3633,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // all clearing the two-letter guard below), independently of the 29
     // entries GDD §5.13 presentation Phase 1 added (also none under two
     // letters). Re-measured on the merged tree.
-    expect(probes).toBe(280);
+    // 280 -> 282: PLAYTEST 2's 'dimgray' and 'floorgrid-tray-empty', both
+    // clearing the two-letter guard below.
+    expect(probes).toBe(282);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -3848,6 +3874,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'FloorGrid.tsx': [
         './empireTuning',
         './floor',
+        './ladder',
         './ladderView',
         './sessions',
         'react',
@@ -3961,7 +3988,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // ./empireTuning, ./ladder, ./sessions), FloorGrid.tsx (4: ./empireTuning,
     // ./floor, ./ladderView, ./sessions), ladderView.tsx's new ./floor edge
     // (1), and GymScreen.tsx's new ./FloorGrid edge (1).
-    expect(specifiers).toBe(55);
+    // 55 -> 56: GDD §5.13's PLAYTEST 2 ruling adds FloorGrid.tsx's new
+    // ./ladder edge (`fixedFloorFurniture`, `LadderEquipmentItem`), read from
+    // this assertion's own failure value.
+    expect(specifiers).toBe(56);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -4089,12 +4119,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // blocks (FLOOR_GRID_SIZE, SESSION_EQUIPMENT_FOOTPRINT, and the five
     // scalar pixel/z-index knobs). Re-measured on the merged tree rather than
     // hand-counted leaves.
+    // 218 -> 224: GDD §5.13's PLAYTEST 2 ruling's two new tuning entries —
+    // FLOOR_FIXED_FURNITURE_LAYOUT (gap 1) and FLOOR_GRID_LINE_WIDTH_PIXELS
+    // (gap 3). Read from this assertion's own failure value, not
+    // hand-counted from the new source lines.
     expect(
       asRenderer.length,
       'the count of literals the audit finds in empireTuning.ts moved: an entry was added or ' +
         'removed, or the instrument stopped reporting. Both are decisions; neither is a tuning ' +
         `pass. First finding: ${formatFindings(asRenderer.slice(0, 1)).trim()}`,
-    ).toBe(218);
+    ).toBe(224);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

@@ -1397,7 +1397,10 @@ const SURFACE_CENSUS = Object.freeze({
   // GridPosition, FloorPlacement, FloorState, FloorPlaceResult,
   // FloorGridProps — are type-only and do not count as runtime exports,
   // the same rule stated above for GymView's).
-  EXPORTS: 300,
+  // 300 -> 301: PLAYTEST 2's one new runtime export, floor.ts's
+  // `fixedFloorFurniture` (`FixedFurniturePlacement` is type-only and does
+  // not count, same rule).
+  EXPORTS: 301,
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   BARE_POSITIONS: 4,
@@ -1428,7 +1431,10 @@ const SURFACE_CENSUS = Object.freeze({
   // `GymViewRefusal`'s widened union (the three `FloorPlaceResult` refusal
   // reasons), and `FloorPlaceResult`'s own closed union, measured by running
   // this exact assertion rather than hand-counted.
-  LITERAL_POSITIONS: 2223,
+  // 2223 -> 2229: PLAYTEST 2's `fixedFloorFurniture`, a new exported position
+  // carrying `LadderEquipmentItem`'s closed union on its return type's
+  // `item` field, measured by running this exact assertion.
+  LITERAL_POSITIONS: 2229,
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -2481,7 +2487,9 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // call expressions.
   // Measured by running this exact assertion rather than hand-counted.
   // 1470 -> 1538: members.ts's own call expressions (§5.11 stage 3).
-  CALLS_EXAMINED: 1655,
+  // 1655 -> 1680: PLAYTEST 2's own new call expressions across floor.ts and
+  // FloorGrid.tsx, measured by running this exact assertion.
+  CALLS_EXAMINED: 1680,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3649,6 +3657,17 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     'FLOOR_TRAY_ITEM_MIN_TILES',
     'A RENDERING FLOOR: `Math.max(footprint.width, this)` keeps a tray chip from drawing smaller than a legible tap target. What it is compared against is `SESSION_EQUIPMENT_FOOTPRINT`, itself exempted above as a fixed layout constant, not a caller-supplied value a domain sweep would need to straddle.',
   ),
+  // GDD §5.13's PLAYTEST 2 ruling — two more entries in the same class as the
+  // eight rows immediately above: fixed layout/rendering constants, not
+  // economic thresholds a caller-supplied value is compared against.
+  ...exemptTable(
+    'FLOOR_FIXED_FURNITURE_LAYOUT',
+    'A FIXED LAYOUT DIMENSION, the same class as FLOOR_GRID_SIZE and SESSION_EQUIPMENT_FOOTPRINT above — each Barbell-baseline item\'s hand-placed position and footprint, in tiles. Nothing in this directory compares a caller-supplied value against these; `fixedFloorFurniture` reads them straight through to a read model `FloorGrid.tsx` draws, and `floor.test.ts`\'s own containment battery drives the fit claim directly rather than through the generic domain sweep.',
+  ),
+  ...exemptTable(
+    'FLOOR_GRID_LINE_WIDTH_PIXELS',
+    'A RENDERING DIMENSION, the same class as FLOOR_GRID_BORDER_WIDTH_PIXELS above — a CSS line width `FloorGrid.tsx` applies to each interior tile-boundary line. Drawn, never compared against a caller-supplied value.',
+  ),
 ]);
 
 /**
@@ -4389,21 +4408,27 @@ const DOMAIN_CENSUS = Object.freeze({
   // rendering knobs) — every one a fixed layout/rendering constant compared
   // against or applied to a caller-supplied value rather than a threshold a
   // caller-supplied value is compared against, per the exemption rows above.
+  // 163 -> 176: PLAYTEST 2's 13 new numeric leaves (FLOOR_FIXED_FURNITURE_
+  // LAYOUT x12, FLOOR_GRID_LINE_WIDTH_PIXELS x1), same class, measured by
+  // running the assertion below rather than hand-summed.
   /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
-  EXEMPT: 163,
-  // 154 -> 196: the same 42 new leaves.
-  TUNING_NUMERIC_LEAVES: 251,
+  EXEMPT: 176,
+  // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
+  TUNING_NUMERIC_LEAVES: 264,
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
   // seconds entries.
+  // 253 -> 266: the same 13 new exempt leaves.
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
-  BRANCH_POINTS: 253,
+  BRANCH_POINTS: 266,
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
   // carry it, summed across all six domains.
-  CONTAINMENT_CHECKS: 1305,
+  // 1305 -> 1383: PLAYTEST 2's 13 new exempt tuning leaves, same shape,
+  // measured by running the assertion below.
+  CONTAINMENT_CHECKS: 1383,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -5805,6 +5830,25 @@ function driveEverything(): readonly DrivenRow[] {
     for (const item of EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS) {
       drive('sessionItemFootprint', item, () => floorModule.sessionItemFootprint(item));
     }
+    // GDD §5.13's PLAYTEST 2 ruling: `fixedFloorFurniture`'s own filter arm
+    // (owns nothing, owns one, owns the whole baseline) and its scope
+    // boundary (squat-rack, a real ladder purchase with no fixed spot).
+    const BARBELL_OWNED_SETS: readonly (readonly [string, readonly LadderEquipmentItem[]])[] =
+      Object.freeze([
+        Object.freeze(['none', Object.freeze([])] as const),
+        Object.freeze(['flat-bench', Object.freeze(['flat-bench'] as const)] as const),
+        Object.freeze([
+          'starting-kit',
+          Object.freeze([...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT]),
+        ] as const),
+        Object.freeze([
+          'starting-kit+squat-rack',
+          Object.freeze([...EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS]),
+        ] as const),
+      ]);
+    for (const [ownedAt, owned] of BARBELL_OWNED_SETS) {
+      drive('fixedFloorFurniture', ownedAt, () => floorModule.fixedFloorFurniture(owned), [owned]);
+    }
     // A small set of floor states, shaped to reach every arm this module's
     // functions branch on: empty, one item placed, two placed without
     // overlapping (so `requireFloorState`'s overlap arm never fires on these
@@ -5923,6 +5967,7 @@ function driveEverything(): readonly DrivenRow[] {
   drive('FloorGrid', 'thrown-invalid-hook-call', () =>
     floorGridModule.FloorGrid({
       owned: Object.freeze([]),
+      barbellOwned: Object.freeze([]),
       floor: floorModule.createFloorState('garage'),
       dispatch: () => undefined,
     }),
@@ -7795,11 +7840,17 @@ const DRIVE_CENSUS = Object.freeze({
   // alone (289/292 matching that census's own deltas), so it is taken as the
   // same merged total, 300, rather than sentinelled with the row/node/string
   // counts that do not have that cross-check available.
-  ROWS: 321859,
-  EXPORTS_DRIVEN: 300,
-  NODES: 3458073,
-  STRINGS: 15936273,
-  DISTINCT_STRINGS: 2546,
+  // PLAYTEST 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.EXPORTS 1:1 again
+  // (300 -> 301, the new `fixedFloorFurniture` row). ROWS re-measured by
+  // running the assertion below rather than derived.
+  ROWS: 321863,
+  EXPORTS_DRIVEN: 301,
+  // 3458073 -> 3458119: re-measured by running the assertion below.
+  NODES: 3458119,
+  // 15936273 -> 15936376: re-measured by running the assertion below.
+  STRINGS: 15936376,
+  // 2546 -> 2549: re-measured by running the assertion below.
+  DISTINCT_STRINGS: 2549,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -8070,8 +8121,13 @@ const DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
   // child in `GymScreen`'s own return — see
   // `DECLARED_EMBEDDED_COMPONENT_CLOSURE_SITES`'s header for the full
   // explanation of this shape.
-  'GymScreen#return.props.children.11.props.children.1.props.dispatch/1',
-  'GymScreen#return.props.children.11.props.children.1.type/1',
+  // children.11 -> children.6: PLAYTEST 2's gap 4 — the floor section moved
+  // earlier in GymScreen's own render order (above the shop/allocator
+  // sections), so `<FloorGrid .../>`'s own child index moved with it. Same
+  // component, same embed, new position — read from a driven run rather
+  // than hand-counted.
+  'GymScreen#return.props.children.6.props.children.1.props.dispatch/1',
+  'GymScreen#return.props.children.6.props.children.1.type/1',
   'accrueProduction#argument.1.gymBucksPerHour/1',
   'accrueProduction#argument.1.trainingIqPerDay/1',
   'gymBucksRatePerHour#argument.1.gymBucksPerHour/1',
@@ -11589,7 +11645,9 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'GymScreen.tsx': 5,
       // GDD §5.13 presentation Phase 1: floor.ts's own eighteen `return`
       // statements across its ten exported functions and their helpers.
-      'floor.ts': 18,
+      // 18 -> 20: PLAYTEST 2's `fixedFloorFurniture` — its own top-level
+      // `return` plus one inside its `.map()` callback.
+      'floor.ts': 20,
       'ladder.ts': 25,
       // members.ts's 13 return statements (§5.11 stage 3).
       'members.ts': 13,
@@ -11701,7 +11759,8 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'empireInvariant.ts': 8,
   'engagement.ts': 13,
   'expansion.ts': 3,
-  'floor.ts': 5,
+  // 5 -> 6: PLAYTEST 2's `fixedFloorFurniture` adds one `refuseWith` call.
+  'floor.ts': 6,
   'ladder.ts': 20,
   'members.ts': 9,
   'production.ts': 9,
@@ -11995,8 +12054,8 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // GDD §5.13 presentation Phase 1: floor.ts's two `Readonly<Partial<Record<…,
   // GridPosition>>>` returns, unfollowable for the same reason every entry
   // here is — the walk cannot see past a returned member access.
-  'floor.ts:313 returned=unfollowable:floor',
-  'floor.ts:323 returned=unfollowable:floor',
+  'floor.ts:390 returned=unfollowable:floor',
+  'floor.ts:400 returned=unfollowable:floor',
   'ladder.ts:333 receiver=ArrayLiteralExpression',
   'ladderView.tsx:115 returned=unfollowable:state',
   'ladderView.tsx:123 returned=unfollowable:state',
@@ -12042,8 +12101,8 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'expansion.ts:549 EmpireClock asked=true walked=false',
   // GDD §5.13 presentation Phase 1: floor.ts's two `Readonly<Partial<Record<…,
   // GridPosition>>>` returns.
-  'floor.ts:313 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
-  'floor.ts:323 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
+  'floor.ts:390 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
+  'floor.ts:400 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
   'ladder.ts:594 LadderState asked=true walked=false',
   'ladder.ts:605 LadderState asked=true walked=false',
   'ladder.ts:611 LadderState asked=true walked=false',
@@ -12137,12 +12196,15 @@ const SCREEN_AGREEMENT = Object.freeze({
 // PanResponder/Animated helper locals), function 731 -> 772, member 664 -> 729.
 // Combined on the merged tree and re-measured rather than hand-summed, since
 // module-variable/function/member move under both branches.
+// PLAYTEST 2: module-variable 50 -> 51, function 804 -> 806, member 762 ->
+// 784 — floor.ts's new `fixedFloorFurniture` and FloorGrid.tsx's new
+// call/member expressions, measured by running the assertion below.
 const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze({
   parameter: 4,
-  'module-variable': 50,
+  'module-variable': 51,
   local: 3,
-  function: 804,
-  member: 762,
+  function: 806,
+  member: 784,
   'member-callback': 12,
   'member-of-parameter': 20,
   fresh: 0,
@@ -12192,8 +12254,11 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
    * 433 -> 460 independently with GDD §5.13 presentation Phase 1's floor.ts
    * (+18 `return`) and FloorGrid.tsx (+5 `return`, +2 `callback-invocation`),
    * and `ladderView.tsx` gaining +2 `return` sites for its two new reducer
-   * arms. Combined: 433 -> 473. */
-  SITES: 473,
+   * arms. Combined: 433 -> 473.
+   * 473 -> 475: PLAYTEST 2's floor.ts +2 `return` sites
+   * (`fixedFloorFurniture`'s own return plus its `.map()` callback's).
+   */
+  SITES: 475,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -12205,12 +12270,17 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 31964 -> 34606: GDD §5.13 presentation Phase 1's floor.ts and
   // FloorGrid.tsx, plus ladderView.tsx's two new reducer arms, independently.
   // Combined: 31_964 -> 35_854.
-  NODES_EXAMINED: 35_854,
+  // 35_854 -> 36_452: PLAYTEST 2's own AST nodes across floor.ts,
+  // FloorGrid.tsx, GymScreen.tsx and empireTuning.ts, re-measured by running
+  // the assertion below.
+  NODES_EXAMINED: 36_452,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
+  // 113 -> 114: PLAYTEST 2's floor.ts +1 `refuseWith` call
+  // (`fixedFloorFurniture`'s layout-lookup refusal).
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
-  WRAP_CALLS: 113,
+  WRAP_CALLS: 114,
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
@@ -12267,8 +12337,10 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // 663 -> 691: GDD §5.13 presentation Phase 1's floor.ts (ten exported
   // functions) and FloorGrid.tsx (its own exported signature), each
   // contributing their parameter and return positions.
+  // 712 -> 715: PLAYTEST 2's `fixedFloorFurniture`, measured by running the
+  // assertion below.
   /** Exported positions measured. A truncated walk would report a shallow tree. */
-  POSITIONS: 712,
+  POSITIONS: 715,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -13229,6 +13301,7 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
         drive: (record: (args: readonly unknown[]) => void): void => {
           floorGridModule.FloorGrid({
             owned: Object.freeze([]),
+            barbellOwned: Object.freeze([]),
             floor: floorModule.createFloorState('garage'),
             dispatch: (action: ladderViewModule.GymViewAction): void => {
               record([action]);
@@ -16193,7 +16266,8 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 169 -> 176: GDD §5.13 presentation Phase 1's floor.ts (GridSize,
   // GridPosition, FloorPlacement, FloorState, FloorPlaceResult) and
   // FloorGrid.tsx (FloorGridProps, WebSelectableViewStyle).
-  DECLARATIONS: 181,
+  // 181 -> 182: PLAYTEST 2's `FixedFurniturePlacement` (floor.ts).
+  DECLARATIONS: 182,
   /** Those carrying type parameters. An instantiation depth needs one. */
   GENERIC: 12,
   /**
