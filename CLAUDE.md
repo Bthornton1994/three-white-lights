@@ -1287,6 +1287,32 @@ Don't fold the presentation piece silently into whatever comes next either —
 it is its own scoped deliverable, per the human ruling, not a subtask of the
 next logic stage.
 
+### THE PRESENTATION LAYER SPEC ARRIVED, AND STAGE 3 IS UNPAUSED — NAMED
+### EXCEPTION, NOT A GENERAL REOPENING
+
+A full presentation-layer spec (grid + placement, member pathing/behavior,
+gated build order matching §5.11's own discipline) is recorded in
+`docs/GDD.md` §5.13. Grounded against the real tree before anything was
+built: member types, satisfaction, and equipment condition are §5.6/§5.7
+design prose with no code behind them (`grep -rn "satisfaction\|MemberType"
+src/empire/` finds nothing), which blocks Phase 2/3 of the presentation build
+order as literally written.
+
+**Ruled, after checking why stage 3/4 were unbuilt rather than assuming:**
+the halt above was about presentation, and stage 3/4 simply hadn't been
+reached yet in §5.11's sequence — not an unsettled data model. §5.12 already
+states every §5.6/§5.7 design question is resolved, and §5.7's failure state
+already names its enforcement mechanism. So **stage 3 (members with types and
+satisfaction) is unpaused as a named exception, scoped to exactly what Phase
+2 of the presentation layer needs.** Stage 4 (portfolio, staffing,
+maintenance, failure) stays paused — nothing through presentation Phase 3
+needs it, and unpausing it here would be the general reopening this section
+exists to prevent.
+
+Full reasoning and the three provisional proposals (grid dimensions, the
+layout-to-satisfaction formula, the pathing-interruption fallback) are in
+`docs/GDD.md` §5.13, not repeated here.
+
 ## Subagent Roles
 
 Two subagent definitions live in `.claude/agents/`. Use them; do not improvise

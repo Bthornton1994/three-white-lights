@@ -2010,12 +2010,22 @@ answered here for review — none are built yet, all are provisional:**
   empty space, and the interruption is legible rather than silent — without
   inventing a permanent fifth state or a real behavioral fork.
 
-**Status: not cleared to start Phase 1 implementation yet.** The three
-proposals above are for review, per the submitted spec's own request. The
-stage-3-dependency question is a human ruling, not a proposal — building
-ahead of it in either direction (starting Phase 2 against invented member
-data, or quietly unpausing stage 3 to unblock it) repeats exactly the failure
-the 5.11 ruling just named.
+**RULED: stage 3 is unpaused as a named exception, scoped to Phase 2's actual
+dependency.** Checked before ruling rather than assumed: the pause on stage
+3/4 was pure sequencing, not an unsettled data model — §5.12 already states
+"all design questions are resolved... none open," naming the §5.6/§5.7 items
+specifically, and §5.7's failure state already has its enforcement mechanism
+named (the never-punish sweep transfer). So building stage 3 now is executing
+already-settled design early, not deciding anything new. The exception is
+scoped to **stage 3 only** (members with types and satisfaction) — the
+specific thing Phase 2 needs. Stage 4 (portfolio, staffing, maintenance,
+failure) stays paused; nothing in the presentation build order through Phase
+3 needs it.
+
+**Status:** Phase 1 (grid + placement, no members) and stage 3 (members +
+satisfaction, pure logic) may both proceed now, in parallel — neither depends
+on the other. Phase 2 (which needs both) waits until Phase 1 has been played
+by a human, per this section's own gate.
 ---
 
 ## 6. Meet Day
