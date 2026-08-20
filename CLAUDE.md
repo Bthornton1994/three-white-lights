@@ -257,11 +257,11 @@ Session A stewardship while they are idle, and this line is the notice.
 5. **Beta Hardening** — device passes, remaining playtest copy, PWA packaging,
    D's CI gate as the release gate.
 
-### SPRINT 3 GATE STATUS, FILED 2026-08-20 — ONE CLOSED, TWO STILL OPEN
+### SPRINT 3 GATE STATUS, FILED 2026-08-20, UPDATED SAME DAY — TWO CLOSED, ONE STILL OPEN, ONE KNOWN LIMITATION
 
 Written so the phone-re-test thread does not quietly read as fully resolved —
-three commits landing in sequence (`f3576bf`, `425d1d4`, `8010f19`) is easy to
-misread as "done" from the log alone.
+several commits landing in sequence is easy to misread as "done" from the log
+alone.
 
 **Closed.** Finding 1 (the drive boost silently re-coupled to `m.held`,
 regressing a verified tap mechanic back into a hold) is fixed, mutation-tested,
@@ -270,7 +270,32 @@ and browser-confirmed at `db74632`/`e3bbd00`. The copy that described it
 phone re-test surfaced — corrected at `f3576bf`, both strings exact-pinned
 and mutation-tested, browser evidence re-taken and stamped clean at `8010f19`.
 
-**Still open, not blocking, not to be read as resolved by the commits above:**
+**Also closed, `8422d7a`/`0a5f472`.** `RIDE IT` (`ASCENT_AFTER_CUE`) is now
+observed rendering for real: `verify-lift-press.mjs`'s SESSION-arm driven-rep
+probe opens its own fresh session at RPE 9 (`SESSION_DRIVE.RPE_CHOICE_HEAVY`
+— a real, ordinary, player-reachable ladder choice, not a debug override) and
+taps each armed cue instead of holding through the ascent, closing four real
+bugs found along the way (a phantom-retap that could waste one of only 2
+available drive-cue slots; PROBE 1/2 and this probe sharing — and exhausting —
+one session's 5-set budget; a timing-critical evidence snapshot silently
+eating the tap-aim window's own margin; a win showing `GRINDER` being filed as
+a miss because the check required literally seeing `LOCK IT` text). Full
+reasoning, including why RPE 9 rather than the ladder's literal top, is in the
+commit and in `verify-lift-press.mjs`'s own header.
+
+**One known limitation from that same work, disclosed rather than smoothed
+over.** The pre-existing "a real rep was driven through every phase to
+LOCKOUT" check improved substantially through the four fixes above but is
+**not fully deterministic** in this environment: measured at 5 of 6 full-tool
+runs passing outright on the final RPE-9/zero-delay configuration. The RIDE IT
+check itself is unaffected — it passed in every run, including the one where
+this domain check still failed. Real browser dispatch latency in this
+sandboxed environment occasionally beats even a wide sim-measured timing
+margin; increasing the retry budget did not change the outcome in testing.
+Noted here rather than left for whoever next reads a red run on this probe to
+rediscover.
+
+**Still open, not blocking, not to be read as resolved by any of the above:**
 
 1. **Finding 2 — axis legibility.** "Feels harder, hard to tell why" from the
    first phone playtest. Investigated, two proposal options written up
@@ -278,14 +303,6 @@ and mutation-tested, browser evidence re-taken and stamped clean at `8010f19`.
    **not implemented** — held on purpose to see what signal survives once
    Finding 1's fix lands. Needs a further human phone re-test before anyone
    picks an option, let alone builds it.
-2. **`RIDE IT` has never been observed rendering, on-device or in this
-   repo's own browser evidence.** It is the `ASCENT_AFTER_CUE` copy, shown
-   only between a rep's 2nd+ required drive cue — `verify-lift-press.mjs`'s
-   driven rep at `8010f19` needed exactly one drive attempt, so the probe
-   never reached the state that shows it. Traced, not guessed: the cause is
-   named rather than assumed. Closing it needs either a scripted heavier-load
-   probe (so a real second cue fires) or a human re-test at a load where one
-   naturally does — neither has happened yet.
 
 ### If scope shifts
 
