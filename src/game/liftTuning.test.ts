@@ -391,7 +391,13 @@ describe('copy', () => {
     // copy to "HOLD IT" / "HOLD" would pass every promptFor test — they read
     // the constant, not its text — and lie on the phone again, which is
     // exactly what a real playtest caught.
+    //
+    // Both pinned to their exact strings, not merely "not hold" — a
+    // not.toMatch(/hold/i) alone would pass ASCENT_AFTER_CUE unchanged if it
+    // were edited to any other non-hold word, silently losing the "same as
+    // before a cue" unification the phone fix intentionally made.
     expect(LIFT_COPY.PROMPT.ASCENT_CUE_OPEN).toBe('DRIVE — TAP');
+    expect(LIFT_COPY.PROMPT.ASCENT_AFTER_CUE).toBe('RIDE IT');
     expect(LIFT_COPY.PROMPT.ASCENT_CUE_OPEN).not.toMatch(/hold/i);
     expect(LIFT_COPY.PROMPT.ASCENT_AFTER_CUE).not.toMatch(/hold/i);
   });
@@ -400,6 +406,14 @@ describe('copy', () => {
     // DRIVE_ATTEMPTS_PER_REP is { LIGHT: 1, MAXIMAL: 3 } — heavy sets arm
     // more than one drive cue. "one timed tap" described LIGHT correctly and
     // lied about MAXIMAL, which is what the phone playtest actually caught.
+    //
+    // Pinned to the exact string, not just the pattern checks below it — the
+    // pattern checks alone would pass any rewrite that happens to contain
+    // "tap" and avoid "one tap", which is not the same as this being the
+    // sentence a human actually approved.
+    expect(LIFT_COPY.SUBTITLE).toBe(
+      'Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.',
+    );
     expect(LIFT_COPY.SUBTITLE).not.toMatch(/one timed tap/i);
     expect(LIFT_COPY.SUBTITLE).not.toMatch(/\bone tap\b/i);
     expect(LIFT_COPY.SUBTITLE.toLowerCase()).toMatch(/tap/);

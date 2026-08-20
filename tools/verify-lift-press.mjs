@@ -950,13 +950,36 @@ async function probeContextMenu(page, testId) {
  * DESCENT and RESOLVED — is kept and checked, not just the ones from the
  * attempt that finally reached LOCKOUT.
  */
+/**
+ * Restated from `LIFT_COPY.SUBTITLE` in `src/game/liftTuning.ts`, the same
+ * way `SESSION_PROMPTS` above already mirrors `LIFT_COPY.PROMPT` — a plain
+ * `.mjs` tool cannot import a `.ts` module without a loader this tree does
+ * not run, so the check below compares the BROWSER'S rendered text against
+ * this local copy rather than against the constant itself. That means a
+ * future edit to the real subtitle reddens THIS line, same as it would for
+ * SESSION_PROMPTS.DRIVE — this is not weaker evidence, it is the established
+ * pattern for exactly this boundary.
+ */
+const REAL_SUBTITLE_MIRROR =
+  'Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.';
 async function probeFullRepCycle(page) {
   const phases = [];
   const snapshot = async (phase) => {
     const touch = await readTarget(page, 'session-touch');
     const text = await readTarget(page, 'session-prompt');
     const loop = await readLoop(page);
-    phases.push({ phase, loopPrompt: loop.prompt, touch: touch?.self ?? null, text: text?.self ?? null });
+    // loop.detail was already being fetched by readLoop on every call below
+    // and discarded — session-detail carries LIFT_COPY.SUBTITLE (see
+    // REAL_SUBTITLE_MIRROR below) for most of a rep (LiftScreen.tsx: shown
+    // whenever resolution is null or has no detail of its own), so this was
+    // free evidence this probe was already paying for and not keeping.
+    phases.push({
+      phase,
+      loopPrompt: loop.prompt,
+      loopDetail: loop.detail,
+      touch: touch?.self ?? null,
+      text: text?.self ?? null,
+    });
   };
 
   // ADAPTIVE, NOT A SINGLE GUESSED HOLD. `sessionDrive.mjs`'s own header
@@ -1890,9 +1913,19 @@ for (const arm of armsToRun) {
     for (const step of fullCycle.phases) {
       console.log(
         `  cycle ${step.phase.padEnd(38)} loop-prompt=${JSON.stringify(step.loopPrompt).padEnd(28)} ` +
+          `loop-detail=${JSON.stringify(step.loopDetail).padEnd(96)} ` +
           `touch=${JSON.stringify(step.touch)}  text=${JSON.stringify(step.text)}`,
       );
     }
+    // Non-vacuity for the subtitle read: at least one phase of a real driven
+    // rep must show it verbatim, or the field above is just being printed,
+    // not checked — the exact failure shape CLAUDE.md's "measured, carried,
+    // displayed, never compared" section warns about.
+    check(
+      fullCycle.phases.some((step) => step.loopDetail === REAL_SUBTITLE_MIRROR),
+      `ARM ${arm.id}: PROBE 3 — session-detail shows the real LIFT_COPY.SUBTITLE verbatim somewhere in a driven rep, not just at BRACE`,
+      `matched at: ${fullCycle.phases.filter((step) => step.loopDetail === REAL_SUBTITLE_MIRROR).map((step) => step.phase).join(', ') || 'nowhere'}`,
+    );
     check(
       fullCycle.drove && fullCycle.drovePastLockout,
       `ARM ${arm.id}: PROBE 3 DOMAIN — a real rep was driven through every phase to LOCKOUT (adaptively, up to ${FULL_CYCLE.MAX_ATTEMPTS} tries), so the check below has something to say`,
