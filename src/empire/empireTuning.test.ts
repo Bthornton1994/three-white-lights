@@ -94,6 +94,13 @@ describe('the block is frozen and every entry is classified', () => {
       'LADDER_STARTING_EQUIPMENT',
       'LEADERBOARD_BRACKET_SIZE',
       'LEADERBOARD_SCOPES',
+      'MEMBER_DUES_GYM_BUCKS_PER_DAY',
+      'MEMBER_TYPES',
+      'MEMBER_TYPE_BARBELL_AFFINITY',
+      'MEMBER_TYPE_CROWDING_LOAD_WEIGHT',
+      'MEMBER_TYPE_CROWDING_SENSITIVITY',
+      'MEMBER_TYPE_ITEM_AFFINITY',
+      'MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY',
       'NPC_RECRUIT_COST_GYM_BUCKS',
       'NPC_RECRUIT_REPUTATION_THRESHOLD',
       'NPC_RECRUIT_SECONDS',
@@ -578,11 +585,13 @@ describe('§5.5 social', () => {
     // one that was missing: how many keys the loop actually looked at. An empty
     // or truncated key set would have made every assertion above pass.
     expect(examined).toBe(Object.keys(EMPIRE_TUNING).length);
-    expect(examined).toBe(87);
+    // 87 -> 97: the ten §5 (v2) stage-3 member entries.
+    expect(examined).toBe(97);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
-    expect(probed).toBe(435);
+    // 435 -> 485.
+    expect(probed).toBe(485);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

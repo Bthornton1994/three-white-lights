@@ -402,6 +402,7 @@ import * as expansionModule from './expansion';
 import * as gymScreenModule from './GymScreen';
 import * as ladderModule from './ladder';
 import * as ladderViewModule from './ladderView';
+import * as membersModule from './members';
 import * as npcModule from './npc';
 import * as productionModule from './production';
 import * as recruitmentModule from './recruitment';
@@ -1352,6 +1353,12 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   // other row on this list is about.
   'ladderView.tsx#GymView#props.map x1',
   'ladderView.tsx#GymView#week.map x1',
+  // members.ts's two reads of a caller-supplied roster: `crowdingLoad` and
+  // `reputationFromMembers` each sum a caller-supplied `MemberRoster` with
+  // `roster.reduce(callback, 0)` — two arguments, the initial value included,
+  // which is why each reads `x2` rather than `x1`.
+  'members.ts#crowdingLoad#roster.reduce x2',
+  'members.ts#reputationFromMembers#roster.reduce x2',
   'social.ts#rankLeaderboard#entries.map x1',
   'social.ts#visitRefusals#context.some x1',
   'social.ts#visitRefusals#context.some x1',
@@ -1361,7 +1368,8 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
 const SURFACE_CENSUS = Object.freeze({
   // 13 -> 14: GymScreen.tsx — CROSSING 6's native screen, the first shipped
   // module outside `ladderView.tsx` to carry any JSX.
-  MODULES: 14,
+  // 14 -> 15: members.ts (§5.11 stage 3, unpaused as a named exception).
+  MODULES: 15,
   // 273 -> 280: GymView's four new exports (createGymViewState, GymViewState,
   // GymViewAction, GymViewRefusal don't count as runtime exports — the seven
   // that do are createGymViewState, gymViewReduce, GymView from ladderView.tsx
@@ -1370,7 +1378,14 @@ const SURFACE_CENSUS = Object.freeze({
   // 280 -> 281: GymScreen.tsx's one runtime export, `GymScreen` itself — no
   // new types exported from that file (it reuses `GymViewState` /
   // `GymViewAction` / `GymViewProps` from `ladderView.tsx` unchanged).
-  EXPORTS: 281,
+  // 281 -> 289: members.ts's eight runtime exports (memberBaseDuesGymBucks,
+  // memberDuesGymBucks, equipmentFitScore, equipmentBiasedMemberTypes,
+  // crowdingLoad, crowdingSatisfactionMultiplier, memberSatisfaction,
+  // reputationFromMembers) — its five type/interface exports (MemberType,
+  // MemberRosterEntry, MemberRoster, MemberSatisfactionInput,
+  // MemberSatisfactionScore) do not count as runtime exports, the same rule
+  // GymView's own types were exempted under above.
+  EXPORTS: 289,
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   BARE_POSITIONS: 3,
   BARE_FIELDS: 1,
@@ -1388,8 +1403,15 @@ const SURFACE_CENSUS = Object.freeze({
   BANNED: 7,
   // 1821 -> 2081: GymViewAction's discriminated union (six arms) and
   // GymViewRefusal's closed union arrive with GymView's own return type.
-  LITERAL_POSITIONS: 2081,
-  DISTINCT_LITERAL_MEMBERS: 143,
+  // 2081 -> 2102: members.ts's MemberType union (five members) arrives at
+  // several exported positions (MemberRosterEntry.type, the roster/type
+  // parameters and return types across memberBaseDuesGymBucks,
+  // memberDuesGymBucks, equipmentFitScore, equipmentBiasedMemberTypes,
+  // crowdingLoad, crowdingSatisfactionMultiplier, memberSatisfaction,
+  // MemberSatisfactionInput.type).
+  LITERAL_POSITIONS: 2102,
+  // 143 -> 148: members.ts's MemberType union's five literal members.
+  DISTINCT_LITERAL_MEMBERS: 148,
   DEPTH_CUTS: 0,
 });
 
@@ -2407,7 +2429,11 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   CONSTRUCTORS: 4,
   SITES: 13,
   MINTS: 13,
-  MODULES: 14,
+  // 14 -> 15: members.ts joined the directory (§5.11 stage 3). It calls none
+  // of the four brand constructors this instrument tracks (it calls
+  // `asReputation`, which is out of this instrument's scope), so SITES and
+  // MINTS are unchanged.
+  MODULES: 15,
   /**
    * Call expressions the walk examined across the directory.
    *
@@ -2429,7 +2455,8 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 1431 -> 1470: GymScreen.tsx's own call expressions (dispatch calls, the
   // ladder.ts/sessions.ts lookups, .map/.has, the DispatchButton helper).
   // Measured by running this exact assertion rather than hand-counted.
-  CALLS_EXAMINED: 1470,
+  // 1470 -> 1538: members.ts's own call expressions (§5.11 stage 3).
+  CALLS_EXAMINED: 1538,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -2941,6 +2968,7 @@ const MODULE_NAMESPACES: Readonly<Record<string, Readonly<Record<string, unknown
   'GymScreen.tsx': gymScreenModule as unknown as Readonly<Record<string, unknown>>,
   'ladder.ts': ladderModule as unknown as Readonly<Record<string, unknown>>,
   'ladderView.tsx': ladderViewModule as unknown as Readonly<Record<string, unknown>>,
+  'members.ts': membersModule as unknown as Readonly<Record<string, unknown>>,
   'sessions.ts': sessionsModule as unknown as Readonly<Record<string, unknown>>,
   'npc.ts': npcModule as unknown as Readonly<Record<string, unknown>>,
   'production.ts': productionModule as unknown as Readonly<Record<string, unknown>>,
@@ -3503,6 +3531,49 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     'BUILD_SECONDS_GROWTH_PER_LEVEL',
     'A MULTIPLIER on the previous level\'s build time. The two seconds values it moves between — `BUILD_SECONDS_BASE` and `BUILD_SECONDS_MAX` — are both filed under `second`, and they are the numbers a timer is compared against.',
   ),
+  // §5 (v2) stage 3 — members.ts. None of these nine tables are compared
+  // against a live balance or elapsed span the way a price or a threshold is;
+  // every one is a RATE multiplied into an accrual or a MULTIPLIER/weight
+  // folded into `equipmentFitScore` / `crowdingLoad` /
+  // `crowdingSatisfactionMultiplier` / `memberDuesGymBucks`. Grounding: these
+  // first-pass numbers are flagged for human review in the piece's own report
+  // (CLAUDE.md, "Game Feel Values Must Be Tunable").
+  ...exemptTable(
+    'MEMBER_DUES_GYM_BUCKS_PER_DAY',
+    'A RATE, in Gym Bucks per day per member of a type, at full satisfaction. `memberDuesGymBucks` multiplies it by an interpolated satisfaction fraction and compares the result with nothing.',
+  ),
+  ...exemptTable(
+    'MEMBER_DUES_SATISFACTION_FLOOR',
+    'A MULTIPLIER ENDPOINT, the same class as `RESIDUAL_CARRY_MULTIPLIER_FLOOR`: it bounds the LOW end of the dues interpolation in `memberDuesGymBucks`, in dues-fraction space, rather than gating any input.',
+  ),
+  ...exemptTable(
+    'MEMBER_TYPE_BARBELL_AFFINITY',
+    'A MULTIPLIER/weight, dimensionless, summed with the item-affinity table below and divided by a per-type maximum in `equipmentFitScore`. Nothing compares it with a live value; it is an addend.',
+  ),
+  ...exemptTable(
+    'MEMBER_TYPE_ITEM_AFFINITY',
+    'A MULTIPLIER/weight, the sibling of the row above per owned item, summed the same way in `equipmentFitScore` and in the reachable-maximum `maxFitFor` computes to normalise it.',
+  ),
+  ...exemptTable(
+    'MEMBER_TYPE_CROWDING_SENSITIVITY',
+    'A MULTIPLIER, dimensionless, applied inside `crowdingSatisfactionMultiplier`\'s curve (`sensitivity * load`) rather than compared with a live value.',
+  ),
+  ...exemptTable(
+    'MEMBER_CROWDING_SATISFACTION_FLOOR',
+    'A MULTIPLIER ENDPOINT, the same class as `INJURY_CHANCE_MULTIPLIER_FLOOR`: the low end of `crowdingSatisfactionMultiplier`\'s curve, in satisfaction-multiplier space.',
+  ),
+  ...exemptTable(
+    'MEMBER_TYPE_CROWDING_LOAD_WEIGHT',
+    'A MULTIPLIER/weight, dimensionless, scaling one member\'s contribution to `crowdingLoad`\'s weighted headcount before it is divided by an equipment count. Nothing compares it with a live value.',
+  ),
+  ...exemptTable(
+    'MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY',
+    'A RATE, in reputation points per member per day, summed across a roster by `reputationFromMembers` and compared with nothing — the ceiling it accumulates towards, `REPUTATION_MAX`, is a v1 (`reputation.ts`) constant this module does not read.',
+  ),
+  ...exemptTable(
+    'MEMBER_EQUIPMENT_BIAS_TIE_TOLERANCE',
+    'A MULTIPLIER ENDPOINT: the width of the band `equipmentBiasedMemberTypes` treats as a tie in fit-score space, subtracted from the best score and compared with itself rather than with a live axis value.',
+  ),
 ]);
 
 /**
@@ -3978,6 +4049,7 @@ const LITERAL_AXES: readonly (readonly [string, string])[] = Object.freeze([
   ['accelerant', 'null and one purchasable accelerant: the presence of a plan, not a magnitude.'],
   ['diagnostic', 'the fixed list of TypeScript diagnostic categories the surface walk reports.'],
   ['encourage', 'the boolean argument to recordFriendVisit. Two points is the whole domain.'],
+  ['equipmentUnitCount', 'three hand-picked equipment counts driven against crowdingLoad (§5.11 stage 3, members.ts) — none owned, a typical kit, the full item list. A shape parameter for the crowding ratio, not a magnitude with thresholds; crowdingSatisfactionMultiplier is what drives the load axis itself, over MEMBER_LOADS.'],
   ['everyNth', 'a divisor selecting which slots are check-ins. A shape parameter — every slot, or every other — and not a magnitude with thresholds.'],
   ['gymId', 'four caller-supplied identifiers: two friends, the player, and one that is not on the friend list. The second friend is what makes the VISITED arm reachable. Strings, not numbers.'],
   ['identifier', 'the three sentinels fed to the four string brand constructors, one per caller-supplied identifier position. Strings, not numbers.'],
@@ -4032,7 +4104,8 @@ const FIXTURE_LISTS: readonly FixtureList[] = Object.freeze([
   Object.freeze({
     name: 'CLOCKS',
     derivedFrom: 'SECONDS',
-    size: 203,
+    // 203 -> 209: SECONDS_DOMAIN widened by members.ts's new distinct values.
+    size: 209,
     why: 'One clock per point of the seconds domain, at a fixed skip. Derived, so the seconds domain losing its ceiling this round widened this list without anybody touching it.',
   }),
   Object.freeze({
@@ -4186,6 +4259,13 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.storage-unit=240',
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
   'ROSTER_SHAPE/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
+  // §5 (v2) stage 3's dues table: all five are Gym-Bucks-per-day RATES above
+  // the ROSTER_SHAPE ceiling, the same shape as the ladder income rates above.
+  'ROSTER_SHAPE/MEMBER_DUES_GYM_BUCKS_PER_DAY.athlete=220',
+  'ROSTER_SHAPE/MEMBER_DUES_GYM_BUCKS_PER_DAY.bodybuilder=130',
+  'ROSTER_SHAPE/MEMBER_DUES_GYM_BUCKS_PER_DAY.casual=60',
+  'ROSTER_SHAPE/MEMBER_DUES_GYM_BUCKS_PER_DAY.powerlifter=130',
+  'ROSTER_SHAPE/MEMBER_DUES_GYM_BUCKS_PER_DAY.serious-lifter=220',
   'ROSTER_SHAPE/NPC_GYM_BUCKS_PER_HOUR_BASE=40',
 ]);
 
@@ -4211,14 +4291,20 @@ const DOMAIN_CENSUS = Object.freeze({
   THRESHOLDS: 90,
   /** Numeric leaves of EMPIRE_TUNING filed under a unit. */
   FILED: 88,
+  // 66 -> 121: members.ts's nine tables (§5.11 stage 3), 55 numeric leaves,
+  // all exempt (RATE/MULTIPLIER, none compared against a live value).
   /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
-  EXEMPT: 66,
-  TUNING_NUMERIC_LEAVES: 154,
-  TUNING_STRING_LEAVES: 99,
+  EXEMPT: 121,
+  // 154 -> 209.
+  TUNING_NUMERIC_LEAVES: 209,
+  // 99 -> 104: members.ts's MEMBER_TYPES, five string leaves.
+  TUNING_STRING_LEAVES: 104,
+  // 156 -> 211.
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
-  BRANCH_POINTS: 156,
+  BRANCH_POINTS: 211,
   DOMAINS: 6,
-  CONTAINMENT_CHECKS: 732,
+  // 732 -> 1057: every domain straddles the 55 new exempt leaves too.
+  CONTAINMENT_CHECKS: 1057,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -4226,7 +4312,8 @@ const DOMAIN_CENSUS = Object.freeze({
     DAY: 60,
     COUNT: 60,
     LEVEL: 0,
-    ROSTER_SHAPE: 84,
+    // 84 -> 89: the five MEMBER_DUES_GYM_BUCKS_PER_DAY rates.
+    ROSTER_SHAPE: 89,
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -4237,18 +4324,25 @@ const DOMAIN_CENSUS = Object.freeze({
    */
   ALIASES: 8,
   NON_DOMAIN_LISTS: 2,
-  LITERAL_AXES: 11,
+  // 11 -> 12: members.ts's equipmentUnitCount (§5.11 stage 3).
+  LITERAL_AXES: 12,
   LABELLED_LISTS: 25,
   HAND_PICKED_LISTS: 4,
   COST_ROWS: 3,
   COST_ROWS_THAT_DID_NOT_FINISH: 1,
   /** (domain, point) pairs the NUMBER-containment loop actually compares. */
-  NUMBER_CONTAINMENT_CHECKS: 804,
-  NUMBER_POINTS: 272,
-  SECONDS_POINTS: 203,
-  DAY_POINTS: 60,
-  COUNT_POINTS: 63,
-  LEVEL_POINTS: 189,
+  // 804 -> 834: members.ts's new distinct branch-point VALUES (§5.11 stage 3).
+  NUMBER_CONTAINMENT_CHECKS: 834,
+  // 272 -> 278.
+  NUMBER_POINTS: 278,
+  // 203 -> 209.
+  SECONDS_POINTS: 209,
+  // 60 -> 66.
+  DAY_POINTS: 66,
+  // 63 -> 69.
+  COUNT_POINTS: 69,
+  // 189 -> 195.
+  LEVEL_POINTS: 195,
   ROSTER_SHAPE_POINTS: 17,
 });
 
@@ -5527,6 +5621,72 @@ function driveEverything(): readonly DrivenRow[] {
     }
   }
 
+  // --- members.ts (GDD §5 v2, stage 3, unpaused as a named exception)
+  {
+    const MEMBER_SATISFACTIONS = [0, 0.5, 1] as const;
+    const MEMBER_LOADS = [0, 0.5, 2, Infinity] as const;
+    const MEMBER_KITS: readonly (readonly SessionEquipmentItem[])[] = [
+      Object.freeze([]),
+      Object.freeze(['dumbbells', 'cables'] as const),
+      EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS,
+    ];
+    const MEMBER_ROSTERS: readonly membersModule.MemberRoster[] = [
+      Object.freeze([]),
+      Object.freeze([
+        { type: 'casual', count: 3 },
+        { type: 'bodybuilder', count: 2 },
+      ]),
+      Object.freeze(EMPIRE_TUNING.MEMBER_TYPES.map((type) => ({ type, count: 4 }))),
+    ];
+    const memberKitLabel = (kit: readonly SessionEquipmentItem[]): string =>
+      kit.join('+') === '' ? 'none' : kit.join('+');
+    for (const type of EMPIRE_TUNING.MEMBER_TYPES) {
+      drive('memberBaseDuesGymBucks', type, () => membersModule.memberBaseDuesGymBucks(type));
+      for (const satisfaction of MEMBER_SATISFACTIONS) {
+        drive('memberDuesGymBucks', `${type}/${String(satisfaction)}`, () =>
+          membersModule.memberDuesGymBucks(type, satisfaction),
+        );
+      }
+      for (const kit of MEMBER_KITS) {
+        drive('equipmentFitScore', `${type}/${memberKitLabel(kit)}`, () =>
+          membersModule.equipmentFitScore(type, kit), [kit],
+        );
+      }
+      for (const load of MEMBER_LOADS) {
+        drive('crowdingSatisfactionMultiplier', `${type}/${String(load)}`, () =>
+          membersModule.crowdingSatisfactionMultiplier(type, load),
+        );
+      }
+    }
+    for (const kit of MEMBER_KITS) {
+      drive('equipmentBiasedMemberTypes', memberKitLabel(kit), () =>
+        membersModule.equipmentBiasedMemberTypes(kit), [kit],
+      );
+    }
+    for (const [at, roster] of MEMBER_ROSTERS.entries()) {
+      for (const equipmentUnitCount of [0, 5, 14]) {
+        drive('crowdingLoad', `${String(at)}/${String(equipmentUnitCount)}`, () =>
+          membersModule.crowdingLoad(roster, equipmentUnitCount), [roster],
+        );
+      }
+      drive('reputationFromMembers', String(at), () =>
+        membersModule.reputationFromMembers(roster), [roster],
+      );
+      for (const type of EMPIRE_TUNING.MEMBER_TYPES) {
+        for (const kit of MEMBER_KITS) {
+          drive('memberSatisfaction', `${type}/${String(at)}/${memberKitLabel(kit)}`, () =>
+            membersModule.memberSatisfaction({
+              type,
+              roster,
+              ownedItems: kit,
+              conditionMultiplier: 1,
+            }), [roster, kit],
+          );
+        }
+      }
+    }
+  }
+
   // --- empireInvariant.ts, the loop
   for (const funding of invariant.EMPIRE_FUNDINGS) {
     drive('poolsWallClockBooks', funding, () => invariant.poolsWallClockBooks(funding));
@@ -6583,10 +6743,12 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
  * check against the multiplication, which `DRIVE_CENSUS.ROWS` on its own cannot
  * be.
  */
+// The ROSTER_SHAPE domain widened by members.ts's five new distinct dues
+// values (§5.11 stage 3), which moves every axis driven over it.
 const MAIN_DRIVE_ROWS_BY_AXIS: Readonly<Record<string, number>> = Object.freeze({
-  COUNT: 622,
-  DAY: 10002,
-  ROSTER_SHAPE: 83878,
+  COUNT: 682,
+  DAY: 11016,
+  ROSTER_SHAPE: 85714,
 });
 
 /**
@@ -6988,16 +7150,19 @@ const OVERFLOW_DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
 ]);
 
 const OVERFLOW_CENSUS = Object.freeze({
+  // 204 -> 209: DOMAIN_CENSUS.OMITTED_ABOVE_CEILING.ROSTER_SHAPE 84 -> 89
+  // (members.ts's five dues rates, §5.11 stage 3).
   /** (domain, label) pairs the ceilings drop. Equals the sum of OMITTED_ABOVE_CEILING. */
-  POINTS: 204,
+  POINTS: 209,
   /** Of those, how many at least one subject was driven at. */
-  POINTS_DRIVEN: 204,
+  POINTS_DRIVEN: 209,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
   RETURN_HEAVY_SUBJECTS: 15,
   /** (subject, point) pairs driven, and pairs the budgets did not drive at all. */
-  PAIRS_DRIVEN: 2997,
+  // 2997 -> 3112: the widened ROSTER_SHAPE/COUNT/DAY axes (members.ts).
+  PAIRS_DRIVEN: 3112,
   PAIRS_SKIPPED: 495,
   /** Of the driven, how many had the re-read argument region left unscanned. */
   PAIRS_ARGUMENT_SKIPPED: 1035,
@@ -7019,10 +7184,13 @@ const OVERFLOW_CENSUS = Object.freeze({
    * `DISTINCT_STRINGS`, moved 4 229 -> 4 307 and is transcribed: a distinct-set
    * size is not additive and there is no second way to get it.
    */
-  ROWS: 3777,
-  NODES: 834905,
-  STRINGS: 5669947,
-  DISTINCT_STRINGS: 4348,
+  ROWS: 3892,
+  // 834905 -> 853660: the widened ROSTER_SHAPE axis's dropped-point subjects.
+  NODES: 853660,
+  // 5669947 -> 5813202.
+  STRINGS: 5813202,
+  // 4348 -> 4354.
+  DISTINCT_STRINGS: 4354,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
   /**
@@ -7063,7 +7231,9 @@ const OVERFLOW_CENSUS = Object.freeze({
    * by `TRIPWIRE_CENSUS.CLOSURES_INVOKED` and by nothing here. That is the same
    * standing the getter branch has and it is stated rather than implied.
    */
-  CLOSURES_DECLINED: 312,
+  // 312 -> 352: the widened ROSTER_SHAPE ceiling gap (members.ts, §5.11
+  // stage 3) drives more argument-skipped subjects through this pass.
+  CLOSURES_DECLINED: 352,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -7087,7 +7257,8 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // zero. The main drive is what produces it, 135 times.
   // 26 before E17 and 56 after: one more refusal per ROSTER_SHAPE point the
   // budget used to decline, which is thirty. The arm is the same arm.
-  ['beginRecruitment#refused', 84],
+  // 84 -> 89: five more ROSTER_SHAPE points dropped (members.ts's dues rates).
+  ['beginRecruitment#refused', 89],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -7345,13 +7516,25 @@ const DRIVE_CENSUS = Object.freeze({
   // rows (CROSSING 6) joined the walk — each was re-measured by running its
   // own assertion rather than computed by hand, in the order the file's own
   // assertions read them.
-  ROWS: 303211,
-  EXPORTS_DRIVEN: 281,
-  NODES: 3241559,
+  // members.ts's eight new exports (memberBaseDuesGymBucks,
+  // memberDuesGymBucks, equipmentFitScore, equipmentBiasedMemberTypes,
+  // crowdingLoad, crowdingSatisfactionMultiplier, memberSatisfaction,
+  // reputationFromMembers) join the drive; every count below this line is
+  // re-measured by running its own assertion rather than computed by hand.
+  // ROWS 303211 -> 314161 once members.ts's exports were actually registered
+  // in MODULE_NAMESPACES and driven. NODES/STRINGS/DISTINCT_STRINGS/
+  // GETTERS_INVOKED and the closure counts below are re-measured the same way.
+  // 314161 -> 314276: members.ts's own drive rows, once written (§5.11 stage 3).
+  ROWS: 314276,
+  EXPORTS_DRIVEN: 289,
+  // 3241571 -> 3406357: members.ts's own drive rows (§5.11 stage 3).
+  NODES: 3406357,
   // 14937885 -> 14946058, DISTINCT_STRINGS 2362 -> 2434: GymScreen's three
   // driven element trees' own string positions.
-  STRINGS: 14946058,
-  DISTINCT_STRINGS: 2434,
+  // 14946058 -> 15715240: members.ts's own drive rows (§5.11 stage 3).
+  STRINGS: 15715240,
+  // 2434 -> 2490.
+  DISTINCT_STRINGS: 2490,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -7422,7 +7605,10 @@ const DRIVE_CENSUS = Object.freeze({
    */
   // 3791 -> 4197: GymScreen's driven trees carry the same Error-shaped
   // `stack` own-properties (react's own dev-mode bookkeeping) GymView's do.
-  STACKS: 4197,
+  // 4197 -> 4275: the widened NUMBER/SECONDS/DAY/COUNT/LEVEL/ROSTER_SHAPE
+  // axes (members.ts, §5.11 stage 3) drive more rows through existing
+  // throwing functions.
+  STACKS: 4275,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -8065,13 +8251,15 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   ['beginRecruitment#accepted', 135],
   ['beginRecruitment#refused', 290],
   ['buyLadderEquipment#bought', 3534],
-  ['buyLadderEquipment#refused', 9522],
+  // The ROSTER_SHAPE domain widened by members.ts's five new distinct
+  // dues values (§5.11 stage 3), which moves every arm count driven over it.
+  ['buyLadderEquipment#refused', 9810],
   ['buySessionEquipment#bought', 76],
   ['buySessionEquipment#refused', 260],
   ['moveUpLadder#moved', 738],
-  ['moveUpLadder#refused', 2526],
-  ['recordFriendVisit#refused', 362],
-  ['recordFriendVisit#visited', 118],
+  ['moveUpLadder#refused', 2598],
+  ['recordFriendVisit#refused', 398],
+  ['recordFriendVisit#visited', 130],
 ]);
 
 /**
@@ -11099,6 +11287,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'GymScreen.tsx': 5,
       'ladder.ts': 25,
       'ladderView.tsx': 18,
+      // members.ts's 13 return statements (§5.11 stage 3).
+      'members.ts': 13,
       'npc.ts': 12,
       'production.ts': 11,
       'recruitment.ts': 9,
@@ -11201,6 +11391,7 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   'engagement.ts': 13,
   'expansion.ts': 3,
   'ladder.ts': 20,
+  'members.ts': 9,
   'production.ts': 9,
   'recruitment.ts': 1,
   'reputation.ts': 6,
@@ -11558,14 +11749,17 @@ const SCREEN_AGREEMENT = Object.freeze({
 // CROSSING 6: GymScreen.tsx moved four of these — function 708 -> 731,
 // member 651 -> 664, member-callback 11 -> 12, member-of-parameter 16 -> 18
 // — measured by running this exact assertion rather than guessed.
+// members.ts (§5.11 stage 3) moved four of these: function 731 -> 763,
+// member 664 -> 697, member-of-parameter 18 -> 20, module-variable 43 -> 44 —
+// measured by running this exact assertion rather than guessed.
 const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze({
   parameter: 2,
-  'module-variable': 43,
+  'module-variable': 44,
   local: 0,
-  function: 731,
-  member: 664,
+  function: 763,
+  member: 697,
   'member-callback': 12,
-  'member-of-parameter': 18,
+  'member-of-parameter': 20,
   fresh: 0,
   unclassified: 0,
 });
@@ -11583,7 +11777,8 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
 const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze({
   parameter: 0,
   'module-variable': 0,
-  local: 163,
+  // 163 -> 164: members.ts (§5.11 stage 3) joined the directory.
+  local: 164,
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -11594,14 +11789,18 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
 
 /** What the census measured on the shipped tree. Counts, not bounds. */
 const CHANNEL_CENSUS_TOTALS = Object.freeze({
-  MODULES: 14,
+  // 14 -> 15: members.ts (§5.11 stage 3).
+  MODULES: 15,
   /** 376 until the wrap: 54 `throw` sites became 2, and nothing else moved.
    * 404 -> 427 with GymView: +13 `return` sites (5 -> 18) and +6
    * `callback-invocation` sites (3 -> 9) on `ladderView.tsx`, +4 `return`
    * sites (39 -> 43) on `sessions.ts`.
    * 427 -> 433 with GymScreen.tsx (CROSSING 6): +5 `return` sites and +1
-   * `callback-invocation` site, both on the new file. */
-  SITES: 433,
+   * `callback-invocation` site, both on the new file.
+   * 433 -> 446 with members.ts (§5.11 stage 3): +13 `return` sites, no new
+   * `callback-invocation` sites (its two `.reduce` calls are member calls on
+   * a parameter, not callback-invocation). */
+  SITES: 446,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -11609,9 +11808,11 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
    * site, channel or wrap count moved with them.
    */
   // 30722 -> 31964: GymScreen.tsx's own AST nodes (CROSSING 6).
-  NODES_EXAMINED: 31_964,
+  // 31_964 -> 33_212: members.ts's own AST nodes (§5.11 stage 3).
+  NODES_EXAMINED: 33_212,
+  // 99 -> 108: members.ts's nine refuseWith calls.
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
-  WRAP_CALLS: 99,
+  WRAP_CALLS: 108,
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
@@ -11663,8 +11864,9 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   DEEPEST: 9,
   // 661 -> 663: GymScreen's own exported signature (CROSSING 6) — its one
   // parameter position and its one return position.
+  // 663 -> 684: members.ts's exported signatures (§5.11 stage 3).
   /** Exported positions measured. A truncated walk would report a shallow tree. */
-  POSITIONS: 663,
+  POSITIONS: 684,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -12973,47 +13175,52 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // #gymBucks` below — same `NUMBER` domain, same `GYM_VIEW_CONTROLS`
   // constant callsAt (does not vary with the point), so the same domain
   // produces the same points/calls/recorded on the ported screen.
+  // Every row below moved because the NUMBER domain widened by six distinct
+  // points (members.ts's §5.11 stage-3 dues/affinity/weight values that
+  // happened to be both new and within every ceiling) — measured, not
+  // guessed, the same ripple `KINDED_RETURN_CENSUS` and
+  // `MAIN_DRIVE_ROWS_BY_AXIS` show for the ROSTER_SHAPE/COUNT/DAY axes.
   'GymScreen.tsx#GymScreen#props.dispatch#gymBucks': Object.freeze({
-    points: 272,
+    points: 278,
     refusedPoints: 0,
-    calls: 9520,
-    recorded: 9520,
+    calls: 9730,
+    recorded: 9730,
   }),
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
-    points: 106,
+    points: 112,
     refusedPoints: 1,
-    calls: 1099583,
-    recorded: 1099583,
+    calls: 1100633,
+    recorded: 1100633,
   }),
   'engagement.ts#historyFrom#attended#trainedDays': Object.freeze({
-    points: 106,
+    points: 112,
     refusedPoints: 0,
-    calls: 318,
-    recorded: 318,
+    calls: 336,
+    recorded: 336,
   }),
   'ladderView.tsx#GymView#props.dispatch#gymBucks': Object.freeze({
-    points: 272,
+    points: 278,
     refusedPoints: 0,
-    calls: 9520,
-    recorded: 9520,
+    calls: 9730,
+    recorded: 9730,
   }),
   'ladderView.tsx#LadderView#props.dispatch#gymBucks': Object.freeze({
-    points: 272,
+    points: 278,
     refusedPoints: 0,
-    calls: 1360,
-    recorded: 1360,
+    calls: 1390,
+    recorded: 1390,
   }),
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize': Object.freeze({
-    points: 74,
+    points: 76,
     refusedPoints: 0,
-    calls: 1092879,
-    recorded: 2185758,
+    calls: 1093229,
+    recorded: 2186458,
   }),
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize': Object.freeze({
-    points: 74,
+    points: 76,
     refusedPoints: 0,
-    calls: 1092879,
-    recorded: 2185758,
+    calls: 1093229,
+    recorded: 2186458,
   }),
 });
 
@@ -13053,10 +13260,14 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
    */
   // +272 points, +9520 calls, +9520 recorded, +0 refused — the new axis's own
   // row above, summed in.
-  POINTS: 1176,
+  // The NUMBER domain widened by members.ts's six new distinct points (§5.11
+  // stage 3), which moves every row above by +6 points (+2 for the two
+  // COUNT-derived rosterSize rows) — re-summed, not guessed: 1176 -> 1210
+  // points, 3306059 -> 3308277 calls, 5491817 -> 5494735 recorded.
+  POINTS: 1210,
   REFUSED_POINTS: 1,
-  CALLS: 3306059,
-  RECORDED: 5491817,
+  CALLS: 3308277,
+  RECORDED: 5494735,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
@@ -15516,7 +15727,9 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   /** Type aliases, interfaces and classes declared across the ten shipped modules. */
   // 165 -> 169: GymView's four new type declarations (GymViewState,
   // GymViewRefusal, GymViewAction, GymViewProps).
-  DECLARATIONS: 169,
+  // 169 -> 174: members.ts's five (MemberType, MemberRosterEntry,
+  // MemberRoster, MemberSatisfactionInput, MemberSatisfactionScore).
+  DECLARATIONS: 174,
   /** Those carrying type parameters. An instantiation depth needs one. */
   GENERIC: 12,
   /**
@@ -18221,6 +18434,40 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
       });
     },
   }),
+  // members.ts (§5.11 stage 3): both sites sum a caller-supplied
+  // `MemberRoster` with `.reduce`, so the same array is watched twice, once
+  // per function. `reduce`'s own callback receives no argument this pass's
+  // deep scan would find a banned name through (a number and a roster row),
+  // so `verdicts`/`returned` are empty here the same way `order.includes`'s
+  // are — what the row pins is the call count and the handed roster values.
+  Object.freeze({
+    site: 'members.ts#crowdingLoad#roster.reduce x2',
+    run: (record: MemberCallRecord): void => {
+      const roster = recordOn(
+        [
+          { type: 'casual' as const, count: 3 },
+          { type: 'bodybuilder' as const, count: 2 },
+        ],
+        'reduce',
+        record,
+      );
+      membersModule.crowdingLoad(roster, 5);
+    },
+  }),
+  Object.freeze({
+    site: 'members.ts#reputationFromMembers#roster.reduce x2',
+    run: (record: MemberCallRecord): void => {
+      const roster = recordOn(
+        [
+          { type: 'powerlifter' as const, count: 4 },
+          { type: 'serious-lifter' as const, count: 1 },
+        ],
+        'reduce',
+        record,
+      );
+      membersModule.reputationFromMembers(roster);
+    },
+  }),
 ]);
 
 /**
@@ -18297,9 +18544,12 @@ const MEMBER_CALL_TRIPWIRE: readonly MemberCallSubject[] = Object.freeze([
 /** What the pass measured. Counts, not bounds, so an empty drive reports itself. */
 const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // CROSSING 6: GymScreen's own two sites, appended.
-  SUBJECTS: 18,
+  // members.ts's own two sites (§5.11 stage 3), appended: 18 -> 20 subjects,
+  // 19 -> 21 calls (one `.reduce` call per site), 45 -> 49 callback calls
+  // (each `.reduce` callback runs once per roster row, two rows per site).
+  SUBJECTS: 20,
   /** One call of the instrumented method per subject, two at the ladder site. */
-  CALLS: 19,
+  CALLS: 21,
   /**
    * Callback invocations across every subject: 4 + 33, the second number being
    * E23's ten sites. Per site — and per ARM, which is the half a total cannot
@@ -18308,7 +18558,9 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 37 -> 41: GymView's own two sites add 1 (the week-row callback, once)
   // and 3 (describeSlotOutcome, once per slot).
   // 41 -> 45: GymScreen's own two sites, the identical +1 and +3.
-  CALLBACK_CALLS: 45,
+  // 45 -> 49: members.ts's own two sites, +2 and +2 (one roster.reduce
+  // callback per roster row, two rows, on each of the two sites).
+  CALLBACK_CALLS: 49,
   /**
    * Strings reachable from the non-function arguments.
    *
@@ -18419,6 +18671,12 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   // separately-scanned text nodes.
   'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=29 verdicts=objectx1',
   'GymScreen.tsx#GymScreen#week.map x1 calls=1 callbacks=3 handed=0 returned=3 verdicts=stringx3',
+  // members.ts (§5.11 stage 3): `.reduce(callback, 0)` is one call, with the
+  // callback invoked once per roster row (two rows in both fixtures). The
+  // callback returns a plain number (a running sum), never a string, so
+  // `handed`/`returned` are both zero and every verdict shape is `number`.
+  'members.ts#crowdingLoad#roster.reduce x2 calls=1 callbacks=2 handed=0 returned=0 verdicts=numberx2',
+  'members.ts#reputationFromMembers#roster.reduce x2 calls=1 callbacks=2 handed=0 returned=0 verdicts=numberx2',
 ]);
 
 /** One site's drive, as the line `MEMBER_CALL_SITE_OBSERVATIONS` pins. */

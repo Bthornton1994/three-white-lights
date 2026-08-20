@@ -151,7 +151,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
  */
 export const DIRECTORY_WALK = Object.freeze({
   /** Shipped (non-test) modules this directory holds today. */
-  SHIPPED_MODULES: 14,
+  // 14 -> 15: members.ts (§5.11 stage 3, unpaused as a named exception).
+  SHIPPED_MODULES: 15,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -161,7 +162,8 @@ export const DIRECTORY_WALK = Object.freeze({
    * eleven of its twenty-three files, in a file that pins counts everywhere
    * else. A truncated or reshaped file set now reports itself here.
    */
-  DIRECTORY_FILES: 31,
+  // 31 -> 33: members.ts and members.test.ts.
+  DIRECTORY_FILES: 33,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -930,6 +932,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'expansion.ts',
       'ladder.ts',
       'ladderView.tsx',
+      'members.ts',
       'npc.ts',
       'production.ts',
       'recruitment.ts',

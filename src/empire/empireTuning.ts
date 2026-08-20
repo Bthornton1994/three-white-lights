@@ -1162,6 +1162,205 @@ export const EMPIRE_TUNING = Object.freeze({
 
   /** Ceiling on one week's ceiling growth. A budget guard, slack as shipped. */
   CEILING_GROWTH_PER_WEEK_MAX: 0.003,
+
+  // -------------------------------------------------------------------------
+  // §5 (v2) stage 3 — members: types and satisfaction. Read by `members.ts`.
+  //
+  // GDD §5.11's third stage, unpaused as a NAMED EXCEPTION (§5.13) scoped to
+  // exactly what the presentation layer's Phase 2 needs: member types with
+  // their attraction/pay/quirk, and a satisfaction function driven by
+  // crowding, equipment condition (an INPUT PARAMETER here, not computed —
+  // see `members.ts` header §2) and equipment fit. Stage 4 (staffing,
+  // maintenance, condition decay itself, the failure state) is NOT built by
+  // this section; every number below stops at the satisfaction/reputation
+  // boundary stage 3 owns.
+  //
+  // EVERY NUMBER BELOW IS A FIRST-PASS PROPOSAL, NOT A TUNED VALUE — same
+  // disclaimer as the rest of this file, repeated because these have had zero
+  // review of any kind, not even the stage-1/stage-2 gate playtest. Flagged
+  // for human review in the piece's own report.
+  // -------------------------------------------------------------------------
+
+  /**
+   * GDD §5.6's five member types, verbatim from its table. Structural: a type
+   * is a vocabulary token this module and the presentation layer share, not a
+   * feel value.
+   */
+  MEMBER_TYPES: Object.freeze([
+    'casual',
+    'bodybuilder',
+    'powerlifter',
+    'athlete',
+    'serious-lifter',
+  ] as const),
+
+  /**
+   * §5.6's "Pays" column, given real numbers: relative tier only in the GDD
+   * (Casual low; Bodybuilder/Powerlifter medium; Athlete/Serious Lifter
+   * high), denominated here in Gym Bucks per day at full satisfaction.
+   *
+   * GROUNDING, STATED HONESTLY RATHER THAN CLAIMED PRECISE: these are NOT a
+   * decomposition of `LADDER_INCOME_GYM_BUCKS_PER_HOUR` into per-member dues —
+   * that rate is stage 1's single abstracted passive-income number for a whole
+   * rung (rent, upsells, informal clients, everything lumped together, "a
+   * business you have not yet decomposed"), and reconciling it against a real
+   * member roster is stage 4 wiring this piece does not do. What is grounded
+   * here is order of magnitude only: `garage`'s 60 Gym Bucks/hour is close to
+   * one low-tier member's whole DAY of dues, which reads as "a couple of
+   * informal clients" the way §5.1's table describes the garage. A tuner
+   * revisiting this number should feel free to move it independently of the
+   * ladder rates; the two are not mechanically linked.
+   */
+  MEMBER_DUES_GYM_BUCKS_PER_DAY: Object.freeze({
+    casual: 60,
+    bodybuilder: 130,
+    powerlifter: 130,
+    athlete: 220,
+    'serious-lifter': 220,
+  }),
+
+  /**
+   * The floor a member's dues fall to as satisfaction approaches zero, as a
+   * fraction of `MEMBER_DUES_GYM_BUCKS_PER_DAY`. A present but unhappy member
+   * still pays something rather than a literal zero; `memberDuesGymBucks`
+   * interpolates linearly between this floor (satisfaction 0) and the full
+   * rate (satisfaction 1). A budget: the design promise is "dues degrade
+   * gracefully, not to zero", and this is the number that promise is kept at.
+   */
+  MEMBER_DUES_SATISFACTION_FLOOR: 0.2,
+
+  /**
+   * §5.4's Barbell group has no ownable state in this codebase (only four of
+   * five §5.4 equipment groups are implemented — see `members.ts` header §3)
+   * and the fixed four powerlifting sessions treat a working barbell setup as
+   * always present. This table is each type's affinity to that ALWAYS-TRUE
+   * baseline, applied unconditionally to every gym regardless of what is
+   * actually owned. It cannot currently distinguish one gym from another —
+   * that is the model's real limitation, stated rather than hidden — but it
+   * is what lets `equipmentFitScore` read Powerlifter as the type a bare
+   * garage is structurally biased toward, which is the correct answer for a
+   * bar-plates-and-a-bench gym even though no Barbell item is measured here.
+   */
+  MEMBER_TYPE_BARBELL_AFFINITY: Object.freeze({
+    casual: 0.05,
+    bodybuilder: 0.05,
+    powerlifter: 0.5,
+    athlete: 0.05,
+    'serious-lifter': 0.3,
+  }),
+
+  /**
+   * §5.6's "Attracted by" column, at item resolution rather than group
+   * resolution, over the four §5.4 groups that DO have ownable state
+   * (`SESSION_EQUIPMENT_ITEMS`) — never the Barbell group (see the affinity
+   * table above). A missing item for a type is an implicit zero, read through
+   * `?? 0` at every lookup, the same convention `SESSION_EQUIPMENT_CAPABILITY`
+   * and `SUPPORT_ITEM_AMPLIFIER` already use for a sparse per-item table.
+   * `equipmentFitScore` normalises this against each type's own reachable
+   * maximum, so raw magnitudes here only need to be internally ordered
+   * within one type — they do not need to compare across types.
+   */
+  MEMBER_TYPE_ITEM_AFFINITY: Object.freeze({
+    casual: Object.freeze({
+      bike: 0.4,
+      treadmill: 0.4,
+      rower: 0.3,
+      machines: 0.4,
+      mats: 0.2,
+    }),
+    bodybuilder: Object.freeze({
+      dumbbells: 0.6,
+      cables: 0.6,
+      machines: 0.5,
+    }),
+    powerlifter: Object.freeze({
+      'specialty-bars': 0.7,
+    }),
+    athlete: Object.freeze({
+      sled: 0.7,
+      bike: 0.3,
+      treadmill: 0.3,
+      rower: 0.3,
+    }),
+    'serious-lifter': Object.freeze({
+      dumbbells: 0.3,
+      cables: 0.3,
+      machines: 0.3,
+      bike: 0.2,
+      treadmill: 0.2,
+      rower: 0.2,
+      sled: 0.2,
+      mats: 0.3,
+      'foam-rollers': 0.3,
+      sauna: 0.3,
+      'specialty-bars': 0.3,
+      belts: 0.2,
+      sleeves: 0.2,
+      'wrist-wraps': 0.2,
+    }),
+  }),
+
+  /**
+   * How steeply crowding hurts each type's satisfaction — §5.6's "Casual:
+   * leaves fastest when crowded" quirk, made comparable across types. Higher
+   * is more sensitive (satisfaction falls off faster as the equipment-to-
+   * member ratio worsens); the curve itself is `crowdingSatisfactionMultiplier`.
+   */
+  MEMBER_TYPE_CROWDING_SENSITIVITY: Object.freeze({
+    casual: 1.4,
+    bodybuilder: 0.7,
+    powerlifter: 0.7,
+    athlete: 0.8,
+    'serious-lifter': 0.5,
+  }),
+
+  /**
+   * The floor the crowding multiplier falls to however crowded the gym gets.
+   * A budget guard in the `RESIDUAL_CARRY_MULTIPLIER_FLOOR` spirit: crowding
+   * may hurt satisfaction badly and may not zero it outright, which keeps a
+   * hopelessly overcrowded gym a bad decision rather than a impossible one.
+   */
+  MEMBER_CROWDING_SATISFACTION_FLOOR: 0.3,
+
+  /**
+   * How much one member of a type counts toward the crowding load the REST of
+   * the roster feels — §5.6's "Bodybuilder: occupies equipment for a long
+   * time" quirk, made mechanical: a roster with more bodybuilders is more
+   * crowded than the same headcount of any other type, at the same equipment
+   * count. 1.0 is the baseline one-member-one-slot reading every other type
+   * uses.
+   */
+  MEMBER_TYPE_CROWDING_LOAD_WEIGHT: Object.freeze({
+    casual: 1,
+    bodybuilder: 1.6,
+    powerlifter: 1,
+    athlete: 1,
+    'serious-lifter': 1,
+  }),
+
+  /**
+   * §5.6: "Reputation is earned mostly by powerlifter and serious-lifter
+   * members." Reputation points contributed per member of a type, per day,
+   * before `reputationFromMembers` sums a roster and adds the (currently
+   * always-zero) competition-result extension point — see `members.ts`
+   * header §4 for why that second input has no producer yet.
+   */
+  MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY: Object.freeze({
+    casual: 0,
+    bodybuilder: 0.02,
+    powerlifter: 0.15,
+    athlete: 0.02,
+    'serious-lifter': 0.15,
+  }),
+
+  /**
+   * How close two types' equipment-fit scores must be for
+   * `equipmentBiasedMemberTypes` to report both as the equipment set's bias,
+   * rather than only the single highest. A budget: the design promise is
+   * "near-ties read as a mixed-use gym", and this is the number that promise
+   * is kept at.
+   */
+  MEMBER_EQUIPMENT_BIAS_TIE_TOLERANCE: 0.02,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -1266,4 +1465,15 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   TECHNIQUE_QUALITY_BONUS_MAX: 'budget',
   HYPERTROPHY_CEILING_GROWTH_PER_GRADE_SESSION: 'knob',
   CEILING_GROWTH_PER_WEEK_MAX: 'budget',
+
+  MEMBER_TYPES: 'structural',
+  MEMBER_DUES_GYM_BUCKS_PER_DAY: 'knob',
+  MEMBER_DUES_SATISFACTION_FLOOR: 'budget',
+  MEMBER_TYPE_BARBELL_AFFINITY: 'knob',
+  MEMBER_TYPE_ITEM_AFFINITY: 'knob',
+  MEMBER_TYPE_CROWDING_SENSITIVITY: 'knob',
+  MEMBER_CROWDING_SATISFACTION_FLOOR: 'budget',
+  MEMBER_TYPE_CROWDING_LOAD_WEIGHT: 'knob',
+  MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY: 'knob',
+  MEMBER_EQUIPMENT_BIAS_TIE_TOLERANCE: 'budget',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

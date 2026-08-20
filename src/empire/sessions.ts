@@ -995,6 +995,12 @@ export function secondsUntilNextWeekBoundary(atSeconds: number): number {
   return intoWeek === 0 ? weekSeconds : weekSeconds - intoWeek;
 }
 
+// members.ts (§5.11 stage 3, unpaused as a named exception -- see its own
+// header) reads this module's SessionEquipmentItem/SessionActivityGroup
+// vocabulary for its equipment-fit function, over the four §5.4 groups this
+// module owns. Named here so a reader of this file's own account of the
+// directory can find it; this module imports nothing back from it.
+
 // `GymScreen.tsx` (CROSSING 6, `src/shell/`'s wiring) is the native render of
 // this module's pure outputs -- `resolveWeek`, `weeklyAttributeEffects`,
 // `availableActivities` and `trainingWeekShape` feed its allocation section

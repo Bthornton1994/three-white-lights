@@ -2459,6 +2459,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'expansion.ts',
       'ladder.ts',
       'ladderView.tsx',
+      'members.ts',
       'npc.ts',
       'production.ts',
       'recruitment.ts',
@@ -2529,12 +2530,19 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // in that oracle's subject (`onlyComments`'s brace-depth tracking desyncs
     // partway through `GymView`'s nested template-literal JSX). A plain `//`
     // block, placed in a file with no such JSX, avoids both.
-    expect(pairs).toBe(65);
+    // 65 -> 72: members.ts arrived (§5.11 stage 3). Its own header names five
+    // other shipped modules by file name (empireCore.ts, empireTuning.ts,
+    // ladder.ts, production.ts, sessions.ts — six mentions of `sessions.ts`
+    // alone, deduplicated by `mentionersOf`'s per-module scan to one pair
+    // each), and sessions.ts's own header now names `members.ts` back, so it
+    // is not an orphan. Six + one = seven new pairs.
+    expect(pairs).toBe(72);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
     expect(mentionersOf('empireNotAModule.ts')).toEqual([]);
-    expect(mentionersOf('empireCore.ts').length).toBe(11);
+    // 11 -> 12: members.ts's header names empireCore.ts by file name too.
+    expect(mentionersOf('empireCore.ts').length).toBe(12);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -3175,7 +3183,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 274 -> 296: GymScreen.tsx's new `gymscreen-*` testID vocabulary and
     // label strings, measured by running this exact assertion rather than
     // hand-counted against the source.
-    expect(singleQuoted.size).toBe(296);
+    // 296 -> 301: §5.6's five member-type vocabulary tokens
+    // (empireTuning.ts's MEMBER_TYPES / MEMBER_TYPE_ITEM_AFFINITY etc.).
+    expect(singleQuoted.size).toBe(301);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3184,7 +3194,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `gymscreen-slot-${slotIndex}`, `gymscreen-slot-${slotIndex}-set-
     // ${option}`, `gymscreen-advance-${step.seconds}`, `gymscreen-week-log-
     // ${week.weekIndex}`), measured the same way as the count above.
-    expect(templateChunks.size).toBe(194);
+    // 194 -> 203: members.ts's nine refuseWith template messages.
+    expect(templateChunks.size).toBe(203);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3224,12 +3235,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'already-visited-today',
       'at-ceiling',
       'at-the-top',
+      'athlete',
       'axes',
       'bare-bar',
       'behind',
       'belts',
       'bench',
       'bike',
+      'bodybuilder',
       'bought',
       'budget',
       'buy',
@@ -3238,6 +3251,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'cables',
       'calendar-day',
       'cardio',
+      'casual',
       'ceiling-growth',
       'ceiling-growth-per-week',
       'chalk',
@@ -3371,6 +3385,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'physio',
       'physio-days-saved',
       'power-bar',
+      'powerlifter',
       'progression-reaching',
       'react-native',
       'reason',
@@ -3396,6 +3411,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'rung-too-low',
       'sauna',
       'save-for-physio-first',
+      'serious-lifter',
       'set-allocation-slot',
       'settled-level',
       'settled-purse-wired-control',
@@ -3461,7 +3477,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // already counted by the JSX-text collector above, not a quoted code
     // literal — inlining the button (no shared `DispatchButton`, per this
     // file's own header) means no `'relocate'` string ever appears in code.
-    expect(stringsChecked).toBe(490);
+    // 490 -> 504: singleQuoted (296 -> 301) and templateChunks (194 -> 203).
+    expect(stringsChecked).toBe(504);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3496,7 +3513,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // Not 23: `relocate` is in `spaceFree`'s own comment above as the one
     // entry that did NOT arrive with GymScreen.tsx's code strings — it is
     // JSX text, already counted by the fourth (JSX) collector, not this one.
-    expect(probes).toBe(246);
+    // 246 -> 251: spaceFree grew by the five member-type tokens members.ts's
+    // tuning added (athlete, bodybuilder, casual, powerlifter, serious-lifter
+    // -> Serious-lifter, all clearing the two-letter guard below).
+    expect(probes).toBe(251);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -3734,6 +3754,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'GymScreen.tsx': ['./empireTuning', './ladder', './ladderView', './sessions', 'react-native'],
       'ladder.ts': ['./empireCore', './empireTuning', './production'],
       'ladderView.tsx': ['./empireTuning', './ladder', './sessions'],
+      'members.ts': ['./empireCore', './empireTuning', './production', './sessions'],
       'npc.ts': ['./empireCore', './empireTuning'],
       'production.ts': ['./empireCore', './empireTuning'],
       'recruitment.ts': ['./empireCore', './empireTuning'],
@@ -3753,7 +3774,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // row left behind by a deleted module.
     expect(fenced).toBe(SHIPPED_MODULES.length);
     // 13 -> 14: GymScreen.tsx.
-    expect(fenced).toBe(14);
+    // 14 -> 15: members.ts (§5.11 stage 3).
+    expect(fenced).toBe(15);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -3818,7 +3840,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     }
     // 37 -> 41: GymScreen.tsx's four intra-directory edges (./empireTuning,
     // ./ladder, ./ladderView, ./sessions).
-    expect(specifiers).toBe(41);
+    // 41 -> 45: members.ts's four intra-directory edges (./empireCore,
+    // ./empireTuning, ./production, ./sessions).
+    expect(specifiers).toBe(45);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -3918,7 +3942,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // module and there are exactly this many of them — the one tree-wide
       // failure this piece expects, pinned rather than bounded so a literal
       // arriving in it is a decision somebody signs.
-      expect(findings.get(REGISTERED_PATH)?.length, report(REGISTERED_PATH)).toBe(136);
+      // 136 -> 186: §5 (v2) stage 3's ten new member tuning entries.
+      expect(findings.get(REGISTERED_PATH)?.length, report(REGISTERED_PATH)).toBe(186);
       // And the row would fix it rather than hide it: audited under a path that
       // already carries the rule it is asking for, the same bytes report
       // nothing, because every literal sits inside a frozen, named, top-level
@@ -3939,12 +3964,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'src/empire/__unregistered.ts',
       sources.get(REGISTERED_PATH) ?? '',
     );
+    // 136 -> 186: §5 (v2) stage 3's ten new member tuning entries.
     expect(
       asRenderer.length,
       'the count of literals the audit finds in empireTuning.ts moved: an entry was added or ' +
         'removed, or the instrument stopped reporting. Both are decisions; neither is a tuning ' +
         `pass. First finding: ${formatFindings(asRenderer.slice(0, 1)).trim()}`,
-    ).toBe(136);
+    ).toBe(186);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });
