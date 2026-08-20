@@ -200,7 +200,14 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-import { SESSION_PROMPTS, adaptDepthSearch, freshDepthSearch, openSessionToFirstSet, readLoop } from './sessionDrive.mjs';
+import {
+  SESSION_DRIVE,
+  SESSION_PROMPTS,
+  adaptDepthSearch,
+  freshDepthSearch,
+  openSessionToFirstSet,
+  readLoop,
+} from './sessionDrive.mjs';
 import {
   MEET_DRIVE,
   driveMeetToItsEnd,
@@ -949,6 +956,59 @@ async function probeContextMenu(page, testId) {
  * from every attempt — including the missed ones, which still visit BRACE,
  * DESCENT and RESOLVED — is kept and checked, not just the ones from the
  * attempt that finally reached LOCKOUT.
+ *
+ * ===========================================================================
+ * WHY THIS ARM PICKS SESSION_DRIVE.RPE_CHOICE_HEAVY, AND WHAT KIND OF
+ * CLAIM THAT IS
+ * ===========================================================================
+ * `ASCENT_AFTER_CUE` (RIDE IT, `promptFor` in `src/game/lift.ts`) had never
+ * been observed rendering anywhere in this repo's own browser evidence — not
+ * on-device, not here. Traced rather than guessed: it only shows once
+ * `drivesUsed > 0` with no cue currently open, i.e. between a rep's 2nd+
+ * required drive cue, and `driveAttemptsFor` needs `loadRatio` above what
+ * `SESSION_DRIVE.RPE_CHOICE` (mid-ladder, RPE 8) reaches.
+ *
+ * THIS IS A REAL, PLAYER-REACHABLE STATE, NOT A SYNTHETIC OVERRIDE — worth
+ * being exact about, because the two support different strength claims and
+ * this file elsewhere refuses to blur them. `SESSION_DRIVE.RPE_CHOICE_HEAVY`
+ * presses `session-rpe-9`, one button on the RPE ladder `BriefingView.tsx`
+ * renders for every player on every session (`SESSION_TUNING.RPE_CHOICES` is
+ * `[6, 7, 8, 9, 10]`) — not `?replay=` or any other debug entry point. A real
+ * lifter choosing to work at RPE 9 is an ordinary, ungated decision the game
+ * already offers; this arm just makes the same choice a heavy-effort player
+ * would, rather than the mid-ladder one `openSessionToFirstSet`'s default
+ * models for every other caller of it. So what this proves is "a real player
+ * choosing a heavy RPE the session offers sees RIDE IT render", which is
+ * a strictly weaker claim than "every player sees it" — most days, at the
+ * mid-ladder RPE this file's other tools keep photographing, a session never
+ * reaches a second drive cue at all, and that is not a defect.
+ *
+ * RPE 9, NOT RPE 10 — chosen for the single-tap forgiveness margin, measured
+ * via the pure sim: at RPE 9 a press anywhere from dead-on-ideal to +90ms
+ * late still grades a clean `good-lift` at every seed tried, +120ms still
+ * wins as a `grind`, and only past +140ms of a ~151ms half-window does it
+ * actually miss. At RPE 10 the same sweep started failing past +100ms of a
+ * narrower ~147ms half-window — a real, load-scaled difference (the RPE-
+ * scaled precision axis working as designed), not noise, and this loop's own
+ * `AIM_FOR_CENTER_DELAY_MS` cannot fully account for the real wall-clock
+ * latency a browser-driven tap carries (see that constant's own header). RPE
+ * 9's wider margin absorbs that; RPE 10's measurably did not.
+ *
+ * IT DOES NOT REACH EVERY CUE COUNT THE MECHANIC HAS, either, and that is
+ * also stated rather than implied: measured, `percentOf1RM(REPS_PER_SET, 9)`
+ * is 89.2% of e1RM, short of the ~100% loadRatio `driveAttemptsFor` needs to
+ * return 3 (the count `LOAD_PRESETS.MAXIMAL` reaches in `lift.test.ts`). RPE
+ * 9 tops out at 2 drive cues, same as every other RPE this ladder offers —
+ * so this closes "does RIDE IT ever render", not "does a 3-cue rep".
+ *
+ * SECOND, INDEPENDENT FIX BUNDLED HERE, BECAUSE THE FIRST ONE IS USELESS
+ * WITHOUT IT: even at a load requiring 2 cues, the OLD single
+ * `mouse.down()`-held-to-lockout below could only ever satisfy the FIRST
+ * one — `lift.ts`'s ASCENT step reads `pressed` off a single 'press' EVENT
+ * per physical touch edge, so a continuous hold produces exactly one such
+ * edge. The drive loop below taps and releases for each cue as it opens,
+ * matching how a real finger moves rather than how this probe's OLDER,
+ * single-cue-era code happened to model it.
  */
 /**
  * Restated from `LIFT_COPY.SUBTITLE` in `src/game/liftTuning.ts`, the same
@@ -962,7 +1022,52 @@ async function probeContextMenu(page, testId) {
  */
 const REAL_SUBTITLE_MIRROR =
   'Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.';
-async function probeFullRepCycle(page) {
+/**
+ * Same pattern as `REAL_SUBTITLE_MIRROR` immediately above, restated from
+ * `LIFT_COPY.PROMPT.ASCENT_AFTER_CUE` in `src/game/liftTuning.ts`.
+ *
+ * `ASCENT_BEFORE_CUE` (shown before ANY cue has ever landed) and
+ * `ASCENT_AFTER_CUE` (shown between cues, once `drivesUsed > 0` —
+ * `promptFor` in `src/game/lift.ts`) currently render the SAME string, so
+ * this mirror cannot by itself prove which branch fired — a phase captured
+ * before the first tap would match it just as well and the check would be
+ * vacuous the same way a floor-wide 'RIDE IT' search would be. What makes it
+ * non-vacuous is WHERE it is checked: only against phases this probe itself
+ * labelled `-drive-tap-N-settled`, which by construction only exist after
+ * `drivesTapped` taps have already landed — so if one of THOSE phases reads
+ * this string, `promptFor` can only have taken the AFTER branch to produce
+ * it. See the check itself for the phase-name filter that makes this true.
+ */
+const REAL_ASCENT_AFTER_CUE_MIRROR = 'RIDE IT';
+async function probeFullRepCycle(page, url) {
+  // A FRESH, ISOLATED SESSION — NOT THE ONE PROBE 1/2 ALREADY PLAYED. See the
+  // "WHY THIS ARM PICKS SESSION_DRIVE.RPE_CHOICE_HEAVY" section of this
+  // function's header for what RPE_CHOICE_HEAVY is and is not. This
+  // paragraph is about a DIFFERENT constraint discovered wiring it in: GDD's
+  // session.ts says plainly, "A missed rep ends the set" — a whole
+  // `SESSION_TUNING.WORK_SETS` slot (5 total), not one rep-slot. The caller's
+  // arm-entry `openSessionToFirstSet` already spent some of those 5 on PROBE
+  // 1/2's four real pans before this function is ever reached. Sharing that
+  // SAME session at the heavier RPE meant PROBE 1/2's pans were now ALSO
+  // running the harder load — burning sets neither they nor this loop's own
+  // retries could afford, measured: attemptsUsed stalled at 4 instead of
+  // reaching FULL_CYCLE.MAX_ATTEMPTS' declared 6, the budget silently smaller
+  // than the number written for it. `armFreshLifterPerBoot` (this file's
+  // top level) makes every `page.goto` a brand-new lifter, so this function
+  // opening its OWN session gives it the full 5-set budget to itself, spent
+  // on nothing but its own drive-tap retries.
+  const opened = await openSessionToFirstSet(page, url, undefined, SESSION_DRIVE.RPE_CHOICE_HEAVY);
+  if (!opened.reached) {
+    return {
+      drove: false,
+      drovePastLockout: false,
+      why: `this probe's own fresh session never reached a work set — ${opened.why ?? 'unknown'}`,
+      phases: [],
+      attemptsUsed: 0,
+      misses: [],
+    };
+  }
+
   const phases = [];
   const snapshot = async (phase) => {
     const touch = await readTarget(page, 'session-touch');
@@ -1064,29 +1169,144 @@ async function probeFullRepCycle(page) {
       FULL_CYCLE.DRIVE_TIMEOUT_MS,
     );
     const driveOpen = ascentEnded !== null && ascentEnded.prompt !== null && ascentEnded.prompt.includes(SESSION_PROMPTS.DRIVE);
-    await snapshot(`attempt${attempt}-5-ascent-before-drive(drive-cue-seen=${driveOpen})`);
     if (!driveOpen) {
+      await snapshot(`attempt${attempt}-5-ascent-before-drive(drive-cue-seen=${driveOpen})`);
       const outcome = ascentEnded ?? (await readLoop(page));
+      // Same non-vacuity as the tap loop below: an ascent that resolves
+      // before ever showing a drive cue is a real miss ONLY if the outcome
+      // is 'NO LIFT'. 'GOOD LIFT'/'GRINDER' without a cue is not reachable
+      // at this arm's load in practice (the whole point of the load choice
+      // is that an undriven bar cannot clear it), but treating it as a miss
+      // by construction, rather than checking, is exactly the bug measured
+      // in the tap loop — closed here too rather than left as a latent copy.
+      if (SESSION_PROMPTS.OUTCOMES.includes(outcome.prompt) && outcome.prompt !== 'NO LIFT') {
+        drovePastLockout = true;
+        break;
+      }
       misses.push({ attempt, holdMs: search.holdMs, outcome: outcome.prompt, detail: outcome.detail });
       search = adaptDepthSearch(search, { detail: outcome.detail });
       continue;
     }
+    // NO SNAPSHOT HERE WHEN A CUE IS OPEN — moved to just after the first
+    // tap below. See AIM_FOR_CENTER_DELAY_MS's header: `snapshot`'s own two
+    // `readTarget` calls plus `readLoop` are three sequential CDP round
+    // trips, measured costing 29-93ms in this exact spot — silently spent
+    // out of the aim delay's own budget rather than the window's slack, the
+    // largest single cause of every real drive-attempt landing late.
 
-    await page.mouse.down();
-    await snapshot(`attempt${attempt}-6-immediately-after-drive-press`);
-    const lockedOut = await untilLoopSaying(page, 'LOCK IT', FULL_CYCLE.DRIVE_TIMEOUT_MS);
-    if (lockedOut) {
-      await snapshot(`attempt${attempt}-7-lockout-still-held`);
-      drovePastLockout = true;
+    // TAP EACH ARMED CUE — do not hold through the ascent. `lift.ts`'s ASCENT
+    // step reads `pressed` off a single 'press' EVENT per physical touch edge
+    // (`const pressed = input !== null && input.kind === 'press'`), so ONE
+    // mouse.down() held to lockout satisfies at most the FIRST armed cue.
+    // `driveAttemptsFor` (lift.ts) returns 2 at every RPE this session's own
+    // ladder offers — 6 through 10, see SESSION_DRIVE.RPE_CHOICE_HEAVY's
+    // header for the measured numbers — so a held-not-tapped drive silently
+    // starves the second cue: it arms, times out unpressed (a miss the sim
+    // absorbs without ending the rep — "A MISSED TAP COSTS VELOCITY. IT NEVER
+    // ENDS THE REP ON ITS OWN"), and `promptFor`'s ASCENT_AFTER_CUE branch
+    // (`state.drivesUsed > 0`, `LIFT_COPY.PROMPT.ASCENT_AFTER_CUE` — RIDE IT)
+    // never had a first cue land to follow. This loop taps and releases for
+    // each cue as it opens, the way a real finger does, and keeps going until
+    // either lockout or the rep ends some other way.
+    let drivesTapped = 0;
+    let lockedOut = false;
+    let finalOutcome = null;
+    for (;;) {
+      // TAP AS SOON AS THIS LOOP SEES THE CUE — deliberately, not merely
+      // convenient. `promptFor` starts showing 'DRIVE — TAP' at
+      // `cue.openTick` (lift.ts), the window's LEADING edge, and at this
+      // arm's load that edge is ALREADY a winning point (measured via the
+      // pure sim; see AIM_FOR_CENTER_DELAY_MS's own header for the numbers
+      // and for why that was not true at the RPE this arm tried first).
+      // Waiting only spends margin toward the window's one losing edge.
+      await page.waitForTimeout(FULL_CYCLE.AIM_FOR_CENTER_DELAY_MS);
+      await page.mouse.down();
+      await page.waitForTimeout(FULL_CYCLE.DRIVE_TAP_MS);
+      await page.mouse.up();
+      drivesTapped += 1;
+      // This IS the "cue was open, a tap was dispatched" evidence — taken
+      // here, right after dispatch, rather than as a separate call before
+      // it. See the comment above this loop for why: a snapshot before the
+      // tap is not free, and its cost was eating the aim delay's own budget.
+      await snapshot(`attempt${attempt}-6-drive-tap-${drivesTapped}-released`);
+
+      // A beat for the state machine to land on whatever is next before this
+      // asks. RIDE IT between cues (ASCENT_AFTER_CUE) is exactly this window
+      // — `driveSpacingTicks` guarantees it is non-empty (measured: ~450ms at
+      // RPE_CHOICE_HEAVY's loadRatio, comfortably above this settle) — and
+      // asking immediately risks a snapshot mid-transition.
+      await page.waitForTimeout(FULL_CYCLE.BETWEEN_CUES_SETTLE_MS);
+      await snapshot(`attempt${attempt}-6-drive-tap-${drivesTapped}-settled`);
+
+      // DO NOT DECIDE WHETHER TO TAP AGAIN FROM THIS READING. Measured: a tap
+      // that landed cleanly can still show 'DRIVE — TAP' on screen for a beat
+      // after the sim has already accepted it and moved on — display lag, not
+      // an unconsumed cue. Acting on that reading re-taps into an
+      // ALREADY-RESOLVED cue: the press lands with `activeCue === null`,
+      // grades a full window early (a MISS), and silently burns one of
+      // `driveAttemptsFor`'s few slots — 2 at this arm's load, so losing one
+      // to a phantom re-tap can leave only 1 real hit for the whole ascent.
+      // No cue can legitimately arm before `driveSpacingTicks` elapses
+      // (`lift.ts`), so waiting out that floor before reading again removes
+      // the window where a lingering display could be misread as a new cue.
+      const spacingFloorRemaining = FULL_CYCLE.MIN_CUE_SPACING_MS - FULL_CYCLE.BETWEEN_CUES_SETTLE_MS;
+      if (spacingFloorRemaining > 0) await page.waitForTimeout(spacingFloorRemaining);
+
+      const next = await untilLoop(
+        page,
+        (loop) =>
+          (loop.prompt !== null && (loop.prompt.includes('LOCK IT') || loop.prompt.includes(SESSION_PROMPTS.DRIVE))) ||
+          SESSION_PROMPTS.OUTCOMES.includes(loop.prompt),
+        FULL_CYCLE.DRIVE_TIMEOUT_MS,
+      );
+      // WON IS NOT ONLY THE LITERAL 'LOCK IT' FRAME. `SESSION_PROMPTS.OUTCOMES`
+      // is `['GOOD LIFT', 'GRINDER', 'NO LIFT']` — only the last is an actual
+      // miss. LOCKOUT_TICKS at this arm's load is short enough (~230ms) that
+      // this loop's own poll can land AFTER it, catching RESOLVED with
+      // 'GRINDER' or 'GOOD LIFT' already showing, having never separately
+      // observed 'LOCK IT' text at all. Measured: a run recorded three
+      // "misses" whose outcome was 'GRINDER' — a rep that reached lockout and
+      // won, filed as a failure because this check required the one frame it
+      // happened to skip past. A won rep is 'LOCK IT' OR any OUTCOME that is
+      // not specifically 'NO LIFT', not the narrower of the two.
+      const wonOutright =
+        next !== null &&
+        next.prompt !== null &&
+        (next.prompt.includes('LOCK IT') || (SESSION_PROMPTS.OUTCOMES.includes(next.prompt) && next.prompt !== 'NO LIFT'));
+      if (wonOutright) {
+        lockedOut = true;
+        await snapshot(`attempt${attempt}-7-lockout-after-${drivesTapped}-tap(s)`);
+        break;
+      }
+      if (next !== null && next.prompt !== null && next.prompt.includes(SESSION_PROMPTS.DRIVE)) {
+        continue; // the spacing floor has passed, so this is a genuinely new cue — tap it
+      }
+      // Resolved (as a real miss — 'NO LIFT') with no further cue, or this
+      // wait timed out — either way, CAPTURE THE READING THAT ENDED THE
+      // LOOP, right here, rather than reading again after the wait below.
+      // This is the same race the file header already names for the
+      // cue-detection wait above, in a spot this loop's own extra taps and
+      // settle waits newly reach: a FRESH readLoop() taken 150ms+ after a
+      // miss can land after the app's own automatic next-rep reset,
+      // returning the NEXT rep's BRACE prompt (or, measured once, a
+      // transitional null) as if it were this attempt's miss reason.
+      // Measured on this exact loop: outcome recorded as "TAP AND HOLD TO
+      // DESCEND" on one attempt and `null` on another, neither a real miss
+      // reason, both from re-reading late.
+      finalOutcome = next;
+      break;
     }
+    drovePastLockout = drovePastLockout || lockedOut;
     await page.waitForTimeout(150);
-    await page.mouse.up();
-    await snapshot(`attempt${attempt}-8-after-release-post-lockout`);
+    await snapshot(`attempt${attempt}-8-after-drive-sequence`);
 
     if (!lockedOut) {
-      const afterDrive = await readLoop(page);
-      misses.push({ attempt, holdMs: search.holdMs, outcome: afterDrive.prompt, detail: afterDrive.detail });
-      search = adaptDepthSearch(search, { detail: afterDrive.detail });
+      // finalOutcome is null only if untilLoop's own wait timed out with
+      // nothing matching — a real "nothing happened" the fallback readLoop()
+      // legitimately describes, not a race with the reset.
+      const outcome = finalOutcome ?? (await readLoop(page));
+      misses.push({ attempt, holdMs: search.holdMs, outcome: outcome.prompt, detail: outcome.detail });
+      search = adaptDepthSearch(search, { detail: outcome.detail });
     }
   }
 
@@ -1115,6 +1335,99 @@ const FULL_CYCLE = Object.freeze({
   DRIVE_TIMEOUT_MS: PRESS_PROBE.HOLD_MS * 6,
   /** REP_RESULT_HOLD_MS plus the reset, generously. */
   NEXT_BRACE_TIMEOUT_MS: 8000,
+  /**
+   * How long each drive tap's mouse.down() is held before releasing — a real
+   * quick tap, not a hold. Several sim ticks (TICK_MS ~16.7) so the press is
+   * unambiguously registered, nowhere near driveSpacingTicks' ~450ms gap so
+   * it cannot itself eat into the window the next cue needs to arm in.
+   */
+  DRIVE_TAP_MS: 60,
+  /**
+   * After releasing a tap, how long to let the state machine settle before
+   * reading it. Comfortably inside driveSpacingTicks' measured ~450ms (at
+   * RPE_CHOICE_HEAVY's loadRatio) so the RIDE IT window between cues, if
+   * one is owed, is still open when this reads it.
+   */
+  BETWEEN_CUES_SETTLE_MS: 200,
+  /**
+   * The floor this loop waits out, after BETWEEN_CUES_SETTLE_MS, before
+   * treating a still-'DRIVE — TAP' reading as a genuinely new cue worth
+   * tapping again. Measured: `driveSpacingTicks(0.892)` (lift.ts, at
+   * RPE_CHOICE_HEAVY's loadRatio) is 27 ticks, ~450ms — no cue can
+   * legitimately arm before that elapses. Set above the measured value with
+   * margin, because this is a floor a real cue cannot beat, not an estimate
+   * to land close to; being generous here costs a few hundred ms of wall
+   * clock; being short risks a phantom re-tap on a cue this loop already
+   * resolved, which is the defect this constant exists to close.
+   */
+  MIN_CUE_SPACING_MS: 550,
+  /**
+   * How long to wait, after this loop detects a cue is open, before actually
+   * tapping. NOT load-bearing precision the way an earlier version of this
+   * constant had to be — that history is kept here because it is what
+   * explains RPE_CHOICE_HEAVY being RPE 9 rather than RPE 10, and because the
+   * bugs it surfaced were real regardless of which RPE this arm settled on.
+   *
+   * FIRST TRIED AT RPE 10, THEORETICALLY: `byLoad(DRIVE_WINDOW_MS, 0.922)`
+   * gives a half-window of ~147ms, so this was set to that value, aiming for
+   * `idealTick` dead center. It measurably missed — the true cost from
+   * "detected open" to "the sim registers the press" runs longer than a
+   * `waitForTimeout` alone accounts for.
+   *
+   * RECALIBRATED EMPIRICALLY, the same way `sessionDrive.mjs` calibrates
+   * `DEPTH_HOLD_MS` against the real mechanic rather than deriving it from
+   * tuning constants: single-tap-only trials in an isolated browser (no other
+   * arm's load on the page, still at RPE 10), sweeping delay against LOCKOUT
+   * reached on that one tap alone — a reliable band from roughly 80ms to
+   * 120ms, falling off on both sides, 100ms in the middle. STILL not enough
+   * once wired into the real loop: every drive-reaching attempt across a full
+   * 6-try budget stalled. Instrumented rather than guessed again —
+   * `Date.now()` either side of the wait, printed for several real attempts —
+   * and found the actual cause: this loop used to take an evidence snapshot
+   * (`snapshot(...)`, three sequential CDP round trips) BETWEEN detecting the
+   * cue and starting this wait. Measured cost of that call alone: 29-93ms,
+   * silently spent out of this delay's own budget — total detected-open-to-
+   * mouse-down ran 126-173ms, past RPE 10's ~147ms half-width on several
+   * attempts. That snapshot is no longer taken before the tap (see the
+   * comment above this loop). A SEPARATE bug surfaced alongside it: this
+   * loop's own success check required literally seeing 'LOCK IT' text, and
+   * `LOCKOUT_TICKS` at this load is short enough that a poll can land after
+   * it — a rep that reached RESOLVED showing 'GRINDER' (a real win,
+   * `SESSION_PROMPTS.OUTCOMES`) was being filed as a miss because the one
+   * frame it happened to skip past was the only thing this loop accepted as
+   * success. Fixed alongside (see the `wonOutright` check below).
+   *
+   * With both of those genuine bugs closed, RPE 10 still was not reliable —
+   * runs still varied between passing outright and 0/6 drive-attempts
+   * landing. Measured via the pure sim rather than tuned further by feel: at
+   * RPE 10, a single tap only wins from dead-on-ideal to +100ms late (of a
+   * ~147ms half-window) before it starts missing — LOSING on both the early
+   * and the late side, which is what made aiming for the center the right
+   * shape of fix there.
+   *
+   * AT RPE 9 THE SHAPE IS DIFFERENT, AND THAT CHANGES WHAT "AIM FOR CENTER"
+   * SHOULD MEAN. Same sweep: offset 0 (dead-on-`openTick`, no deliberate wait
+   * at all) already grades a clean `good-lift` at every seed tried, and stays
+   * a win all the way out to +90ms as `good-lift`, +120ms as `grind`, only
+   * missing past +140ms of a ~151ms half-window. So the LEADING edge is not
+   * a losing zone here the way it was at RPE 10 — only the trailing one is.
+   * Adding a deliberate wait before tapping does not move this loop toward
+   * any better-scoring point; it only spends margin against the one edge
+   * that actually loses, on top of whatever real dispatch latency this loop
+   * cannot observe or bound (measured elsewhere in this header: readLoop's
+   * own round trip alone ranged 1-25ms across two runs of the same code, and
+   * total open-to-mouse-down 65-969ms across a single run's own attempts —
+   * a spread no fixed small delay added on top makes safer). Zero is the
+   * REASONED choice at this load, not merely the cheapest one: it is the
+   * point in the sim-measured winning band furthest from the only edge that
+   * loses, with the full ~140ms of margin available to absorb whatever this
+   * loop cannot see, instead of consuming part of that margin up front for a
+   * shape of forgiveness (a losing leading edge) this load does not have.
+   * `untilLoop`/`untilLoopSaying` still poll at 15ms rather than the 30ms
+   * they used during the original RPE 10 calibration, closing a real but
+   * smaller systematic detection lag on top of this.
+   */
+  AIM_FOR_CENTER_DELAY_MS: 0,
 });
 
 /**
@@ -1132,7 +1445,7 @@ async function untilLoopSaying(page, wanted, timeoutMs) {
     const loop = await readLoop(page);
     if (loop.prompt !== null && loop.prompt.includes(wanted)) return true;
     if (Date.now() - started >= timeoutMs) return false;
-    await page.waitForTimeout(30);
+    await page.waitForTimeout(15);
   }
 }
 
@@ -1152,7 +1465,7 @@ async function untilLoop(page, predicate, timeoutMs) {
     const loop = await readLoop(page);
     if (predicate(loop)) return loop;
     if (Date.now() - started >= timeoutMs) return null;
-    await page.waitForTimeout(30);
+    await page.waitForTimeout(15);
   }
 }
 
@@ -1327,6 +1640,13 @@ async function openArm(page, arm) {
   // answers and an RPE — which is the only way to a work set. No `?session=`
   // frame: those set `preview`, and a previewed set is not a set a player
   // pressed.
+  //
+  // MID-LADDER DEFAULT, UNCHANGED — this arm's own PROBE 1/2 checks below
+  // (selection, touch-action, four real pans) do not care which RPE governs
+  // the day, and every one of `SESSION_TUNING.WORK_SETS` (5) sets they can
+  // consume comes out of the SAME budget `probeFullRepCycle`'s retry loop
+  // needs. `probeFullRepCycle` opens its OWN fresh session at
+  // RPE_CHOICE_HEAVY instead of sharing this one — see its header for why.
   const opened = await openSessionToFirstSet(page, url);
   if (!opened.reached) return { reached: false, why: opened.why ?? 'the session never reached a work set' };
   const back = await waitForStage(page, arm.touchTestId);
@@ -1909,7 +2229,7 @@ for (const arm of armsToRun) {
   // ---------------------------------------------------------------------------
   let fullCycle = null;
   if (arm.id === 'session') {
-    fullCycle = await probeFullRepCycle(page);
+    fullCycle = await probeFullRepCycle(page, url);
     for (const step of fullCycle.phases) {
       console.log(
         `  cycle ${step.phase.padEnd(38)} loop-prompt=${JSON.stringify(step.loopPrompt).padEnd(28)} ` +
@@ -1925,6 +2245,20 @@ for (const arm of armsToRun) {
       fullCycle.phases.some((step) => step.loopDetail === REAL_SUBTITLE_MIRROR),
       `ARM ${arm.id}: PROBE 3 — session-detail shows the real LIFT_COPY.SUBTITLE verbatim somewhere in a driven rep, not just at BRACE`,
       `matched at: ${fullCycle.phases.filter((step) => step.loopDetail === REAL_SUBTITLE_MIRROR).map((step) => step.phase).join(', ') || 'nowhere'}`,
+    );
+    // Non-vacuity is the phase-name filter, not the string match — see
+    // REAL_ASCENT_AFTER_CUE_MIRROR's header. Only `-settled` phases count,
+    // because those are the only ones this probe labels as coming after a
+    // tap it recorded; a floor-wide search for 'RIDE IT' would also match
+    // ASCENT_BEFORE_CUE, which this codebase already renders and was never
+    // the open question.
+    const settledDrivePhases = fullCycle.phases.filter((step) => step.phase.includes('-settled'));
+    check(
+      settledDrivePhases.some((step) => step.loopPrompt === REAL_ASCENT_AFTER_CUE_MIRROR),
+      `ARM ${arm.id}: PROBE 3 — RIDE IT (ASCENT_AFTER_CUE) actually renders between drive cues in a real driven rep, not just traced as reachable`,
+      settledDrivePhases.length === 0
+        ? 'no drive-tap-settled phase was ever recorded this run — see the domain check below for why the rep never got that far'
+        : `${settledDrivePhases.length} settled phase(s) checked; matched at: ${settledDrivePhases.filter((step) => step.loopPrompt === REAL_ASCENT_AFTER_CUE_MIRROR).map((step) => step.phase).join(', ') || 'none'}`,
     );
     check(
       fullCycle.drove && fullCycle.drovePastLockout,

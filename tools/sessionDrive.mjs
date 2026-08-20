@@ -155,6 +155,38 @@ export const SESSION_DRIVE = Object.freeze({
   ]),
   /** The RPE the driver picks. Mid-ladder: heavy enough to be a real session. */
   RPE_CHOICE: 'session-rpe-8',
+  /**
+   * The same ladder, answered near its top — the same pattern as
+   * `BEST_CHECK_IN_TAPS` above, for the same reason: a caller that needs a
+   * heavier load an ordinary player can choose has to ask for it explicitly.
+   * `SESSION_TUNING.RPE_CHOICES` is `[6, 7, 8, 9, 10]`; this is the second
+   * from the top, pressed through the briefing's own ladder button — a real
+   * player decision offered on every session, not a debug override.
+   * `driveAttemptsFor` (lift.ts) is 2 here, same as at every other choice on
+   * the ladder including RPE 10 itself — never the 3 a `LOAD_PRESETS.MAXIMAL`
+   * config reaches in tests, measured: percentOf1RM(REPS_PER_SET, 9) is
+   * 89.2%, short of the ~100% loadRatio the third cue needs. So this reaches
+   * the multi-cue ascent for real, and does not claim to reach every cue
+   * count the mechanic has.
+   *
+   * RPE 9, NOT RPE 10 — chosen over the top choice for margin, not caution.
+   * `driveAttemptsFor` is identical at both, but the SINGLE-TAP forgiveness
+   * is not: measured via the pure sim, a press anywhere from dead-on-ideal to
+   * +90ms late still grades a clean `good-lift` at every seed tried, +120ms
+   * still wins as a `grind`, and only beyond +140ms (of a ~151ms half-window)
+   * does it actually miss. At RPE 10 that same sweep started failing at
+   * +100ms of a narrower ~147ms half-window — a real, load-scaled difference
+   * (GDD's RPE-scaled precision axis working as designed), not noise. A
+   * browser-driven tap is real wall-clock latency a fixed `waitForTimeout`
+   * cannot fully account for (measured elsewhere in this file's own callers);
+   * RPE 9's wider margin absorbs that without needing to land the delay
+   * exactly, where RPE 10's did not.
+   *
+   * NOT MADE THE DEFAULT, for the same reason `BEST_CHECK_IN_TAPS` is not:
+   * the mid-ladder choice is the ordinary day the capture tools should keep
+   * photographing.
+   */
+  RPE_CHOICE_HEAVY: 'session-rpe-9',
 
   /** Let the briefing's reveal beat finish before choosing an RPE. */
   BRIEFING_SETTLE_MS: 600,
@@ -332,8 +364,18 @@ const resolved = (state) =>
  * `SESSION_DRIVE.CHECK_IN_TAPS` — an ordinary day. Pass
  * `SESSION_DRIVE.BEST_CHECK_IN_TAPS` when the caller needs the session to move
  * the lifter's e1RM; the block above that constant has the measurements.
+ * @param rpeChoice which RPE-ladder testID to press. Defaults to
+ * `SESSION_DRIVE.RPE_CHOICE` — the mid-ladder choice every other caller of
+ * this function keeps getting. Pass `SESSION_DRIVE.RPE_CHOICE_HEAVY` when the
+ * caller needs a heavier load an ordinary player can choose; see that
+ * constant for what it does and does not reach, and why it is not RPE 10.
  */
-export async function openSessionToFirstSet(page, url, checkInTaps = SESSION_DRIVE.CHECK_IN_TAPS) {
+export async function openSessionToFirstSet(
+  page,
+  url,
+  checkInTaps = SESSION_DRIVE.CHECK_IN_TAPS,
+  rpeChoice = SESSION_DRIVE.RPE_CHOICE,
+) {
   await page.goto(url, { waitUntil: 'load' });
   await page
     .getByTestId('check-in-sleep-good')
@@ -361,9 +403,9 @@ export async function openSessionToFirstSet(page, url, checkInTaps = SESSION_DRI
   await page.waitForTimeout(SESSION_DRIVE.BRIEFING_SETTLE_MS);
 
   try {
-    await page.getByTestId(SESSION_DRIVE.RPE_CHOICE).click();
+    await page.getByTestId(rpeChoice).click();
   } catch {
-    return { reached: false, why: `the briefing had no ${SESSION_DRIVE.RPE_CHOICE} to press` };
+    return { reached: false, why: `the briefing had no ${rpeChoice} to press` };
   }
   try {
     await page
