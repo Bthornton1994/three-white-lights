@@ -257,7 +257,7 @@ Session A stewardship while they are idle, and this line is the notice.
 5. **Beta Hardening** — device passes, remaining playtest copy, PWA packaging,
    D's CI gate as the release gate.
 
-### SPRINT 3 GATE STATUS, FILED 2026-08-20, UPDATED SAME DAY — TWO CLOSED, ONE STILL OPEN, ONE KNOWN LIMITATION
+### SPRINT 3 GATE STATUS, FILED 2026-08-20, UPDATED 2026-08-21 — THREE CLOSED, ONE STILL OPEN
 
 Written so the phone-re-test thread does not quietly read as fully resolved —
 several commits landing in sequence is easy to misread as "done" from the log
@@ -283,17 +283,26 @@ a miss because the check required literally seeing `LOCK IT` text). Full
 reasoning, including why RPE 9 rather than the ladder's literal top, is in the
 commit and in `verify-lift-press.mjs`'s own header.
 
-**One known limitation from that same work, disclosed rather than smoothed
-over.** The pre-existing "a real rep was driven through every phase to
-LOCKOUT" check improved substantially through the four fixes above but is
-**not fully deterministic** in this environment: measured at 5 of 6 full-tool
-runs passing outright on the final RPE-9/zero-delay configuration. The RIDE IT
-check itself is unaffected — it passed in every run, including the one where
-this domain check still failed. Real browser dispatch latency in this
-sandboxed environment occasionally beats even a wide sim-measured timing
-margin; increasing the retry budget did not change the outcome in testing.
-Noted here rather than left for whoever next reads a red run on this probe to
-rediscover.
+**Also closed, `0a87d17`/`b374cf0` — the "not fully deterministic" note above
+was itself wrong, and is corrected here rather than quietly edited away.**
+What was recorded as inherent randomness ("real browser dispatch latency
+occasionally beats even a wide sim-measured margin") was a real, measurable,
+fixable bug: the press-to-DESCENT-confirmed detection lag was never being
+subtracted from the intended hold duration, so every real hold ran longer
+than `search.holdMs` by however long the robot's own poll took to notice
+DESCENT had started. Instrumented directly (`Date.now()` either side,
+`AIM_FOR_CENTER_DELAY_MS`'s own method) rather than accepted on faith:
+attempt 1 measured 75-116ms, every retry attempt measured 281-337ms — too
+large and too attempt-dependent for a fixed constant to absorb, which is why
+"increasing the retry budget did not change the outcome" — a bigger budget
+still exhausts against the same undercompensated wait every time. Fixed by
+measuring the real gap per attempt and subtracting it live. A first attempt
+at a fix (retuning the search's starting point to 830ms based on a perfect-
+tap pure-sim measurement) was tried, tested against 4 real runs, and
+**refuted** — the sim didn't model real dispatch timing at all, so it missed
+the actual mechanism entirely, and the retune was correctly reverted rather
+than shipped once real execution contradicted it. Verified: 8/8 real browser
+runs reached LOCKOUT after the actual fix, 5 of 8 on the first attempt.
 
 **Still open, not blocking, not to be read as resolved by any of the above:**
 
