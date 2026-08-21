@@ -1,47 +1,43 @@
 {
   "schema": 1,
-  "status": "FAIL",
-  "id": "node-tools-verify-lift-press-mjs-2026-08-20T21-23-50-855Z-17497",
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-lift-press-mjs-2026-08-21T16-56-35-446Z-28510",
   "label": null,
   "command": [
     "node",
     "tools/verify-lift-press.mjs"
   ],
   "budgetSeconds": 300,
-  "startedAtIso": "2026-08-20T21:23:50.855Z",
-  "startedAtMs": 1787261030855,
+  "startedAtIso": "2026-08-21T16:56:35.446Z",
+  "startedAtMs": 1787331395446,
   "cwd": "/home/user/three-white-lights",
-  "commit": "ecfee97e0226a36ae500fa08387207814fe23d83",
+  "commit": "2be57eef87dbe45671402b9b47a83156bbd6403f",
   "branch": "claude/agent-config-setup-m2r6ny",
-  "dirty": 3,
+  "dirty": 4,
   "dirtyPaths": [
     ".gauntlet/shots/lift-press/press.json",
-    "tools/sessionDrive.mjs",
+    "src/game/lift.test.ts",
+    "src/game/liftTuning.ts",
     "tools/verify-lift-press.mjs"
   ],
   "runner": {
-    "pid": 17497,
-    "startTick": "474415",
+    "pid": 28510,
+    "startTick": "206289",
     "cmdline": "node tools/watchdog.mjs --budget 300 -- node tools/verify-lift-press.mjs",
-    "bootId": "abd9cf0e-30f9-47d6-bb12-d9dc78b18dd9",
-    "bootEpochSeconds": 1787256287,
+    "bootId": "2d9e1a12-77b4-4ea6-8bbc-dea30cb8ca1c",
+    "bootEpochSeconds": 1787329332,
     "host": "vm",
     "platform": "linux",
     "procAvailable": true
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 4,
-    "okCount": 3,
+    "count": 1,
+    "okCount": 0,
     "errors": [],
-    "lastAttemptIso": "2026-08-20T21:26:48.010Z",
-    "lastReason": "final",
+    "lastAttemptIso": "2026-08-21T16:56:35.469Z",
+    "lastReason": "start",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm",
-    "ok": true,
-    "lastOkIso": "2026-08-20T21:25:54.935Z"
-  },
-  "exitCode": 1,
-  "finishedAtIso": "2026-08-20T21:26:48.009Z",
-  "elapsedSeconds": 177.2
+    "ref": "refs/heads/verify-markers/vm"
+  }
 }
