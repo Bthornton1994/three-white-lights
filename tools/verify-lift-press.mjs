@@ -1126,6 +1126,19 @@ async function probeFullRepCycle(page, url) {
     const box = await page.getByTestId('session-touch').boundingBox().catch(() => null);
     if (box === null) return { drove: false, drovePastLockout: false, why: 'no session-touch box to start a rep on', phases, attemptsUsed, misses };
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    // PRESS-TO-DESCENT-CONFIRMED IS NOT FREE, AND IT IS NOT CONSTANT.
+    // `search.holdMs` is meant as the total real time the app's depth
+    // tracking sees between press and release — but the wait below used to
+    // start only once THIS ROBOT'S OWN POLL noticed DESCENT, not from the
+    // actual press. Instrumented rather than guessed (Date.now() either
+    // side, printed across several real attempts, the same method
+    // AIM_FOR_CENTER_DELAY_MS's header already documents): attempt 1 measured
+    // 75-116ms, every retry attempt measured 281-337ms — NOT one constant
+    // that could be baked into `search.holdMs` as a fixed offset, because
+    // attempt 1 and attempt 2+ differ by roughly 200ms from each other. A
+    // static compensation cannot fit both; a live one, subtracting THIS
+    // attempt's own measured gap, does.
+    const pressAt = Date.now();
     await page.mouse.down();
 
     const descending = await untilLoopSaying(page, SESSION_PROMPTS.DESCENT, FULL_CYCLE.PHASE_TIMEOUT_MS);
@@ -1134,7 +1147,9 @@ async function probeFullRepCycle(page, url) {
       return { drove: false, drovePastLockout: false, why: 'holding never started a descent', phases, attemptsUsed, misses };
     }
     await snapshot(`attempt${attempt}-1-descent`);
-    await page.waitForTimeout(search.holdMs);
+    const detectionLagMs = Date.now() - pressAt;
+    const remainingHoldMs = Math.max(0, search.holdMs - detectionLagMs);
+    await page.waitForTimeout(remainingHoldMs);
     await snapshot(`attempt${attempt}-2-descent-mid-hold`);
     await page.mouse.up();
     await snapshot(`attempt${attempt}-3-immediately-after-release`);
