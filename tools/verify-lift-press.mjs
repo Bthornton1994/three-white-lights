@@ -995,14 +995,18 @@ async function probeContextMenu(page, testId) {
  * 9's wider margin absorbs that; RPE 10's measurably did not.
  *
  * IT DOES NOT REACH EVERY CUE COUNT THE MECHANIC HAS, either, and that is
- * also stated rather than implied: measured, `percentOf1RM(REPS_PER_SET, 9)`
- * is 89.2% of e1RM, short of the ~100% loadRatio `driveAttemptsFor` needs to
- * return 3 (the count `LOAD_PRESETS.MAXIMAL` reaches in `lift.test.ts`). RPE
- * 9 tops out at 2 drive cues, same as every other RPE this ladder offers —
- * so this closes "does RIDE IT ever render", not "does a 3-cue rep".
+ * also stated rather than implied — RE-MEASURED after the Finding 2 retune
+ * (`liftTuning.ts`'s `DRIVE_ATTEMPTS_PER_REP.MAXIMAL` 3 → 6): measured,
+ * `percentOf1RM(REPS_PER_SET, 9)` is 89.2% of e1RM, short of the ~100%
+ * loadRatio `driveAttemptsFor` needs to return 5 (the count
+ * `LOAD_PRESETS.MAXIMAL` reaches in `lift.test.ts`). RPE 9 gives 4 drive
+ * cues now — no longer uniform across the ladder the way the old tuning's
+ * flat "2 everywhere" was: RPE6=3, RPE7=4, RPE8=4, RPE9=4, RPE10=5,
+ * measured directly rather than assumed to still hold — so this closes
+ * "does RIDE IT ever render", not "does a 6-cue rep".
  *
  * SECOND, INDEPENDENT FIX BUNDLED HERE, BECAUSE THE FIRST ONE IS USELESS
- * WITHOUT IT: even at a load requiring 2 cues, the OLD single
+ * WITHOUT IT: even at a load requiring 4 cues, the OLD single
  * `mouse.down()`-held-to-lockout below could only ever satisfy the FIRST
  * one — `lift.ts`'s ASCENT step reads `pressed` off a single 'press' EVENT
  * per physical touch edge, so a continuous hold produces exactly one such
@@ -1213,10 +1217,11 @@ async function probeFullRepCycle(page, url) {
     // step reads `pressed` off a single 'press' EVENT per physical touch edge
     // (`const pressed = input !== null && input.kind === 'press'`), so ONE
     // mouse.down() held to lockout satisfies at most the FIRST armed cue.
-    // `driveAttemptsFor` (lift.ts) returns 2 at every RPE this session's own
-    // ladder offers — 6 through 10, see SESSION_DRIVE.RPE_CHOICE_HEAVY's
-    // header for the measured numbers — so a held-not-tapped drive silently
-    // starves the second cue: it arms, times out unpressed (a miss the sim
+    // `driveAttemptsFor` (lift.ts) returns 3-5 across this session's own
+    // ladder (RPE6-10; RPE9 specifically is 4, after the Finding 2 retune —
+    // see SESSION_DRIVE.RPE_CHOICE_HEAVY's header for the measured numbers),
+    // so a held-not-tapped drive silently starves every cue after the
+    // first: each arms, times out unpressed (a miss the sim
     // absorbs without ending the rep — "A MISSED TAP COSTS VELOCITY. IT NEVER
     // ENDS THE REP ON ITS OWN"), and `promptFor`'s ASCENT_AFTER_CUE branch
     // (`state.drivesUsed > 0`, `LIFT_COPY.PROMPT.ASCENT_AFTER_CUE` — RIDE IT)
@@ -1259,8 +1264,9 @@ async function probeFullRepCycle(page, url) {
       // an unconsumed cue. Acting on that reading re-taps into an
       // ALREADY-RESOLVED cue: the press lands with `activeCue === null`,
       // grades a full window early (a MISS), and silently burns one of
-      // `driveAttemptsFor`'s few slots — 2 at this arm's load, so losing one
-      // to a phantom re-tap can leave only 1 real hit for the whole ascent.
+      // `driveAttemptsFor`'s slots — 4 at this arm's load after the Finding
+      // 2 retune, so losing one to a phantom re-tap still costs a quarter of
+      // the whole ascent's cues.
       // No cue can legitimately arm before `driveSpacingTicks` elapses
       // (`lift.ts`), so waiting out that floor before reading again removes
       // the window where a lingering display could be misread as a new cue.
@@ -1359,23 +1365,28 @@ const FULL_CYCLE = Object.freeze({
   DRIVE_TAP_MS: 60,
   /**
    * After releasing a tap, how long to let the state machine settle before
-   * reading it. Comfortably inside driveSpacingTicks' measured ~450ms (at
-   * RPE_CHOICE_HEAVY's loadRatio) so the RIDE IT window between cues, if
-   * one is owed, is still open when this reads it.
+   * reading it. RE-MEASURED after the Finding 2 retune (liftTuning.ts:
+   * DRIVE_ATTEMPTS_SPACING_MS.MAXIMAL 380ms → 60ms): `driveSpacingTicks(0.892)`
+   * is now 15 ticks, 250ms, down from 27 ticks/~450ms. 200ms no longer sits
+   * comfortably inside that — moved to 100ms so this still lands safely
+   * before the real floor rather than nearly on top of it.
    */
-  BETWEEN_CUES_SETTLE_MS: 200,
+  BETWEEN_CUES_SETTLE_MS: 100,
   /**
    * The floor this loop waits out, after BETWEEN_CUES_SETTLE_MS, before
    * treating a still-'DRIVE — TAP' reading as a genuinely new cue worth
-   * tapping again. Measured: `driveSpacingTicks(0.892)` (lift.ts, at
-   * RPE_CHOICE_HEAVY's loadRatio) is 27 ticks, ~450ms — no cue can
-   * legitimately arm before that elapses. Set above the measured value with
-   * margin, because this is a floor a real cue cannot beat, not an estimate
-   * to land close to; being generous here costs a few hundred ms of wall
-   * clock; being short risks a phantom re-tap on a cue this loop already
-   * resolved, which is the defect this constant exists to close.
+   * tapping again. RE-MEASURED after the Finding 2 retune, same reason as
+   * `BETWEEN_CUES_SETTLE_MS` above: `driveSpacingTicks(0.892)` (lift.ts, at
+   * RPE_CHOICE_HEAVY's loadRatio) is now 15 ticks, ~250ms — no cue can
+   * legitimately arm before that elapses. 550ms (the old value, set above a
+   * ~450ms floor) would now poll for the next cue only after its window
+   * (open at the floor, closing `DRIVE_IDEAL_LEAD_MS + DRIVE_WINDOW_MS/2`
+   * — ~400ms — later, so ~650ms after cue N resolves) has only 100ms left
+   * rather than the ~400ms margin the old pairing had — set above the NEW
+   * measured value with a smaller but still real margin (30ms) rather than
+   * reusing a margin sized for a floor that no longer exists.
    */
-  MIN_CUE_SPACING_MS: 550,
+  MIN_CUE_SPACING_MS: 280,
   /**
    * How long to wait, after this loop detects a cue is open, before actually
    * tapping. NOT load-bearing precision the way an earlier version of this

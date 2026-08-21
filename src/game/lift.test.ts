@@ -1047,9 +1047,23 @@ describe('the drive tap-rate mechanic (Sprint 3 gate)', () => {
     expect(final.driveQuality).toBeLessThanOrEqual(1);
   });
 
-  it('driveAttemptsFor is 1 at the light end and LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL at the heavy end', () => {
-    expect(driveAttemptsFor(LOAD_PRESETS.LIGHT)).toBe(1);
-    expect(driveAttemptsFor(LOAD_PRESETS.MAXIMAL)).toBe(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL);
+  it('driveAttemptsFor is 1 at the true floor and LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL at the true ceiling', () => {
+    // LOAD_RANGE.MIN / LOAD_RANGE.MAX, not LOAD_PRESETS.LIGHT / .MAXIMAL —
+    // the Finding 2 retune (DRIVE_ATTEMPTS_PER_REP.MAXIMAL 3 -> 6) steepened
+    // byLoad's whole curve, and neither LOAD_PRESETS.LIGHT (0.55) nor
+    // LOAD_PRESETS.MAXIMAL (1, short of LOAD_RANGE.MAX's 1.05) sits exactly
+    // at byLoad's own endpoints. LOAD_PRESETS.MAXIMAL landing on the exact
+    // ceiling (3, under the old tuning) was a numeric coincidence of the old
+    // numbers, not a guarantee: at the new values it rounds to 5, one short
+    // of the true 6. LOAD_PRESETS.LIGHT similarly now rounds to 2, not 1 —
+    // measured by this file's own multi-seed sweep below. The floor/ceiling
+    // claim this test means to make is true at LOAD_RANGE.MIN/MAX, which no
+    // RPE this session's ladder reaches goes anywhere near (RPE6 x3, the
+    // ladder's own lightest choice, is 81.1% of e1RM and gives 3; RPE10 x3,
+    // the heaviest, is 92.2% and gives 5 — see liftTuning.ts's
+    // DRIVE_ATTEMPTS_PER_REP header for the full RPE6-10 measurement).
+    expect(driveAttemptsFor(LOAD_RANGE.MIN)).toBe(1);
+    expect(driveAttemptsFor(LOAD_RANGE.MAX)).toBe(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL);
   });
 
   it('the drive window is narrower at MAXIMAL than at LIGHT, read back from a played cue', () => {

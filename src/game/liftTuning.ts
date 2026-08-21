@@ -402,12 +402,44 @@ export const LIFT_TUNING = Object.freeze({
    * today's single cue. What changed is that a maximal attempt asks for up
    * to `MAXIMAL` well-timed cues in sequence rather than one.
    *
-   * MAXIMAL's value is a placeholder for real playtesting: 3 cues, spaced by
-   * `DRIVE_ATTEMPTS_SPACING_MS`, fits comfortably inside
-   * `ASCENT_TIMEOUT_TICKS`'s budget with room to spare — measured in
-   * `liftTuning.test.ts` rather than assumed.
+   * RAISED AGAIN, SAME PLACEHOLDER STATUS. A second phone re-test (Finding
+   * 2, Sprint 3's gate) confirmed the tap-not-hold shape was right but called
+   * 3 cues too sparse to read as a drive — "a couple of isolated cues", not
+   * "a run of taps through the sticking point". 3 → 6, paired with
+   * `DRIVE_ATTEMPTS_SPACING_MS.MAXIMAL` tightening 380ms → 60ms (see that
+   * constant's own header for why spacing had to move too, not cue count
+   * alone). Structurally verified rather than assumed: the same
+   * `liftTuning.test.ts` check this comment already cites re-measures the
+   * worst-case sequence span at the new values — 2700ms against
+   * `ASCENT_TIMEOUT_TICKS`'s 2833ms budget, 133ms of real margin, not zero.
+   * `DRIVE_IDEAL_LEAD_MS` and `DRIVE_WINDOW_MS` are untouched — the phone
+   * re-test's complaint was rate, not per-cue precision, and raising cue
+   * count alone pushes against that same 2833ms ceiling regardless: even at
+   * spacing 0, `DRIVE_IDEAL_LEAD_MS + DRIVE_WINDOW_MS.MAXIMAL/2`'s ~400ms
+   * per-cue floor caps a worst-case sequence at 7 cues, so 6 is close to the
+   * structural ceiling this file's other axes leave available, not a number
+   * chosen by feel.
+   *
+   * A FINDING THIS RETUNE SURFACED, WORTH RECORDING RATHER THAN LEFT
+   * IMPLICIT: under the OLD tuning, `driveAttemptsFor` returned exactly 2
+   * at EVERY RPE `SESSION_TUNING.RPE_CHOICES` offers (measured directly,
+   * `percentOf1RM(REPS_PER_SET, rpe)` for rpe 6-10: 81.1%, 83.7%, 86.3%,
+   * 89.2%, 92.2% of e1RM, all rounding to 2 cues). So the tap-RATE axis
+   * never actually differentiated a real player's RPE choice at all — only
+   * `DRIVE_WINDOW_MS`'s per-cue precision did. That is plausibly part of why
+   * 3 cues read as "isolated" rather than scaling with load the way the
+   * player expected: light and heavy played identically on this axis. At
+   * the new values the same five RPEs give 3, 4, 4, 4, 5 — real, if
+   * compressed, differentiation across the ladder a player can actually
+   * reach, not just between this file's abstract LIGHT/MAXIMAL endpoints.
+   *
+   * STILL A PLACEHOLDER, LIKE THE FIRST VALUE WAS. This build cannot judge
+   * whether 6 cues at 60ms spacing actually READS as "a run of taps" any
+   * more than 3 cues at 380ms could be judged that way from here — that is
+   * exactly the axis a human phone re-test measures and this file cannot.
+   * Built tunable and structurally sound; not asserted as felt-right.
    */
-  DRIVE_ATTEMPTS_PER_REP: { LIGHT: 1, MAXIMAL: 3 },
+  DRIVE_ATTEMPTS_PER_REP: { LIGHT: 1, MAXIMAL: 6 },
 
   /**
    * Ms between one drive cue resolving (hit, mistimed, or left unpressed as
@@ -417,8 +449,21 @@ export const LIFT_TUNING = Object.freeze({
    * "rate" a maximal attempt is graded on: a player who cannot land cues
    * roughly this close together loses the sustained boost between them
    * (`DRIVE_BOOST_TICKS` decays independently of this).
+   *
+   * MAXIMAL TIGHTENED 380 → 60 ALONGSIDE `DRIVE_ATTEMPTS_PER_REP.MAXIMAL`'s
+   * 3 → 6, not on its own — see that constant's header for the phone
+   * re-test finding both moved together for. Cue count and spacing are the
+   * same axis seen from two sides here: `ASCENT_TIMEOUT_TICKS`'s budget is
+   * fixed, `DRIVE_IDEAL_LEAD_MS` and `DRIVE_WINDOW_MS` are untouched (the
+   * re-test's complaint was rate, not precision), so more cues is only
+   * reachable by shrinking the dead time between them. Spacing does NOT
+   * shrink the player's per-cue reaction window — `DRIVE_IDEAL_LEAD_MS` and
+   * `DRIVE_WINDOW_MS` still give every cue its own full telegraph-then-window;
+   * this only shrinks how soon after one cue resolves the next is ALLOWED to
+   * arm, which is the "gap between taps" half of what made 3 cues at 380ms
+   * read as isolated rather than a run.
    */
-  DRIVE_ATTEMPTS_SPACING_MS: { LIGHT: 600, MAXIMAL: 380 },
+  DRIVE_ATTEMPTS_SPACING_MS: { LIGHT: 600, MAXIMAL: 60 },
 
   /**
    * Velocity lost by driving outside the window — too early, or after it has
