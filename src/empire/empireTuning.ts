@@ -1490,6 +1490,27 @@ export const EMPIRE_TUNING = Object.freeze({
    * never the item's real placed size. Read by `FloorGrid.tsx` only.
    */
   FLOOR_TRAY_ITEM_MIN_TILES: 2,
+
+  /**
+   * GDD §5.13's PLAYTEST 3 ruling on the furniture/session-item overlap gap:
+   * how long, in milliseconds, a refused drop's "can't place here" outline
+   * and message stay visible on the fixed-furniture cell that refused it,
+   * before clearing on their own. A felt duration — long enough to register
+   * as an answer to the gesture that just ended, short enough not to still be
+   * showing on the next unrelated drag — not tuned or played, the same
+   * first-pass-proposal status this file's other `_MS`/pixel knobs carry.
+   * Read by `FloorGrid.tsx` only.
+   */
+  FLOOR_OVERLAP_REFUSAL_FLASH_MS: 1200,
+
+  /**
+   * Border thickness, in pixels, of the "can't place here" outline drawn on
+   * a fixed-furniture cell while `FLOOR_OVERLAP_REFUSAL_FLASH_MS` is
+   * running — thicker than the resting `FLOOR_ITEM_BORDER_WIDTH_PIXELS` so
+   * the refusal reads as a distinct state, not a slightly-different resting
+   * one. Read by `FloorGrid.tsx` only.
+   */
+  FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS: 4,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -1616,4 +1637,6 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_TRAY_ITEM_MARGIN_PIXELS: 'knob',
   FLOOR_DRAGGING_Z_INDEX: 'knob',
   FLOOR_TRAY_ITEM_MIN_TILES: 'knob',
+  FLOOR_OVERLAP_REFUSAL_FLASH_MS: 'knob',
+  FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS: 'knob',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

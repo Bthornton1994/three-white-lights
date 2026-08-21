@@ -25,6 +25,7 @@ import {
   fixedFloorFurniture,
   floorGridSize,
   floorLayout,
+  overlapsFixedFurniture,
   placeFloorItem,
   placedFloorItems,
   relocateFloorState,
@@ -557,5 +558,52 @@ describe('fixedFloorFurniture reads real ownership and invents nothing for squat
     }
     // Non-vacuity: there really are rows to check this on.
     expect(rows.length).toBe(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// overlapsFixedFurniture — GDD §5.13's PLAYTEST 3 ruling on the furniture/
+// session-item overlap gap
+// ---------------------------------------------------------------------------
+
+describe('overlapsFixedFurniture refuses a drop that shares a cell with fixed furniture, and only that', () => {
+  // Driven against the REAL registered layout via fixedFloorFurniture — not
+  // a hand-typed duplicate of FLOOR_FIXED_FURNITURE_LAYOUT — so a future
+  // rearrangement of that table cannot silently disagree with this file.
+  // power-bar (0,0)-(1,3), comp-plates (1,0)-(3,2), flat-bench (3,0)-(5,4).
+  const fixed = fixedFloorFurniture([...T.LADDER_STARTING_EQUIPMENT]);
+  const matsFootprint = sessionItemFootprint('mats'); // 3x3
+  const wristWrapsFootprint = sessionItemFootprint('wrist-wraps'); // 1x1
+
+  it('refuses a footprint sharing a cell with power-bar (and, at this size, comp-plates too — both are real overlaps)', () => {
+    expect(overlapsFixedFurniture({ x: 0, y: 0 }, matsFootprint, fixed)).toBe(true);
+  });
+
+  it('refuses a footprint sharing a cell with comp-plates ALONE — not only the first row in the table', () => {
+    // (1,0)-(2,1), 1x1: inside comp-plates ((1,0)-(3,2)), touches power-bar's
+    // right edge (x=1) without crossing it, and is nowhere near flat-bench.
+    // A predicate that only checked fixed[0] would wrongly clear this.
+    expect(overlapsFixedFurniture({ x: 1, y: 0 }, wristWrapsFootprint, fixed)).toBe(true);
+  });
+
+  it('refuses a footprint sharing a cell with flat-bench ALONE — the last row, not only the first or second', () => {
+    // (4,1)-(5,2), 1x1: inside flat-bench ((3,0)-(5,4)), clear of power-bar
+    // (x=0-1) and comp-plates (x=1-3).
+    expect(overlapsFixedFurniture({ x: 4, y: 1 }, wristWrapsFootprint, fixed)).toBe(true);
+  });
+
+  it('accepts a footprint that merely touches flat-bench — an edge, not an area, shared', () => {
+    // mats at (5,0)-(8,3): flat-bench's right edge is x=5, mats' left edge is
+    // x=5 — the same touching-not-overlapping boundary placeFloorItem's own
+    // check already draws between two session items.
+    expect(overlapsFixedFurniture({ x: 5, y: 0 }, matsFootprint, fixed)).toBe(false);
+  });
+
+  it('accepts a footprint entirely clear of every fixed row', () => {
+    expect(overlapsFixedFurniture({ x: 0, y: 3 }, matsFootprint, fixed)).toBe(false);
+  });
+
+  it('is vacuously false against an empty fixed list — never refuses a floor with no fixed furniture drawn', () => {
+    expect(overlapsFixedFurniture({ x: 0, y: 0 }, matsFootprint, [])).toBe(false);
   });
 });

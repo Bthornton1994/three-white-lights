@@ -54,6 +54,13 @@
  *      `floor.test.ts`.
  *   5. REMOVE. Pressing `floorgrid-remove-mats` takes it off the grid and
  *      back into the unplaced tray.
+ *   6. THE FIXED-FURNITURE OVERLAP REFUSAL (GDD §5.13's PLAYTEST 3 ruling).
+ *      Dragging mats onto power-bar's cell is refused: no
+ *      `floorgrid-placed-mats`, mats stays in the tray, `floorgrid-fixed-
+ *      power-bar` is still the only thing reading "power-bar (fixed)" at
+ *      that cell, and `floorgrid-drop-refused` shows a "can't place here"
+ *      signal. Driven BEFORE claim 3's own drag, since claim 3 now targets a
+ *      cell clear of every fixed row (0,0 is no longer usable for it).
  *
  * USAGE. Start the web build first (`npx expo start --web`), then:
  *
@@ -312,19 +319,64 @@ try {
   }
 
   // -------------------------------------------------------------------------
-  // 3. THE DRAG — from the tray onto the grid, with a real mouse sequence.
+  // 2b. GDD §5.13's PLAYTEST 3 ruling on the furniture/session-item overlap
+  //     gap — dragging mats (3x3) onto power-bar's cell (0,0)-(1,3) must be
+  //     REFUSED: no floorgrid-placed-mats, mats stays in the tray, power-bar
+  //     is still the only thing drawn at that cell, and the refusal signal
+  //     (floorgrid-drop-refused) shows.
   // -------------------------------------------------------------------------
   const gridBoxBefore = await boxOf('floorgrid-grid');
-  const trayBox = await boxOf('floorgrid-tray-item-mats');
-  if (gridBoxBefore === null || trayBox === null) {
-    fail(`could not read a bounding box for the grid (${gridBoxBefore !== null}) or the tray chip (${trayBox !== null})`);
+  const trayBoxBeforeRefusal = await boxOf('floorgrid-tray-item-mats');
+  if (gridBoxBefore === null || trayBoxBeforeRefusal === null) {
+    fail(`could not read a bounding box for the grid (${gridBoxBefore !== null}) or the tray chip (${trayBoxBeforeRefusal !== null})`);
     throw new Error('unreachable');
   }
-  // Aim inside tile (0, 0), a quarter-tile in from the grid's own top-left
-  // corner rather than at its exact centre — `pixelsToTile` in `FloorGrid.tsx`
-  // rounds to the NEAREST tile, so aiming at an exact half-tile offset is a
-  // coin flip between cell 0 and cell 1 and is not this tool's subject.
-  const targetX = gridBoxBefore.x + FLOOR_TILE_PIXELS * 0.25;
+  // Aim inside tile (0, 0) — power-bar's cell — a quarter-tile in from the
+  // grid's own top-left corner rather than at its exact centre:
+  // `pixelsToTile` in `FloorGrid.tsx` rounds to the NEAREST tile, so aiming
+  // at an exact half-tile offset is a coin flip between cell 0 and cell 1
+  // and is not this tool's subject.
+  const refusalTargetX = gridBoxBefore.x + FLOOR_TILE_PIXELS * 0.25;
+  const refusalTargetY = gridBoxBefore.y + FLOOR_TILE_PIXELS * 0.25;
+  await dragBox(trayBoxBeforeRefusal, refusalTargetX, refusalTargetY);
+  await page.waitForTimeout(250);
+  const refusedMessage = await textOf('floorgrid-drop-refused');
+  const placedAfterRefusal = await page.getByTestId('floorgrid-placed-mats').count().then((n) => n > 0).catch(() => false);
+  const stillInTrayAfterRefusal = await page.getByTestId('floorgrid-tray-item-mats').count().then((n) => n > 0).catch(() => false);
+  const powerBarTextAfterRefusal = await textOf('floorgrid-fixed-power-bar');
+  // The refusal message renders INSIDE power-bar's own View (so it overlays
+  // the cell it targets), so power-bar's innerText legitimately carries both
+  // strings now — checked by containment, not exact match. No
+  // `floorgrid-placed-*` chip exists at all (asserted above), which is the
+  // actual "nothing else landed on this cell" claim.
+  if (
+    refusedMessage === "can't place here" &&
+    !placedAfterRefusal &&
+    stillInTrayAfterRefusal &&
+    powerBarTextAfterRefusal !== null &&
+    powerBarTextAfterRefusal.includes('power-bar (fixed)')
+  ) {
+    ok(
+      `gap 6: dragging mats onto power-bar's cell is refused (message "${refusedMessage}"), mats stays in the tray, and power-bar (fixed) is still drawn there`,
+    );
+  } else {
+    fail(
+      `gap 6: expected the fixed-furniture overlap to be refused — refusal message="${refusedMessage}", placed=${placedAfterRefusal}, still-in-tray=${stillInTrayAfterRefusal}, power-bar text="${powerBarTextAfterRefusal}"`,
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // 3. THE DRAG — from the tray onto the grid, with a real mouse sequence.
+  //    Targets tile (5,0), clear of every fixed row (power-bar (0,0)-(1,3),
+  //    comp-plates (1,0)-(3,2), flat-bench (3,0)-(5,4) all end at x<=5) —
+  //    (0,0) is no longer usable here now that gap 6 refuses it.
+  // -------------------------------------------------------------------------
+  const trayBox = await boxOf('floorgrid-tray-item-mats');
+  if (trayBox === null) {
+    fail('could not read a bounding box for the tray chip after the refusal drag');
+    throw new Error('unreachable');
+  }
+  const targetX = gridBoxBefore.x + FLOOR_TILE_PIXELS * 5.25;
   const targetY = gridBoxBefore.y + FLOOR_TILE_PIXELS * 0.25;
   await dragBox(trayBox, targetX, targetY);
   await page.waitForTimeout(250);
@@ -375,10 +427,13 @@ try {
 
   // -------------------------------------------------------------------------
   // 4. A SECOND DRAG MOVES THE ALREADY-PLACED CHIP — place vs. move, driven.
+  //    Targets tile (0,3), also clear of every fixed row (power-bar and
+  //    comp-plates both end at y<=2, flat-bench ends at y=4 but only for
+  //    x in [3,5), and mats' footprint at x=0 misses that entirely).
   // -------------------------------------------------------------------------
   if (placedBoxAfterFirstDrag !== null && gridBoxBefore !== null) {
-    const secondTargetX = gridBoxBefore.x + FLOOR_TILE_PIXELS * 4.5;
-    const secondTargetY = gridBoxBefore.y + FLOOR_TILE_PIXELS * 3.5;
+    const secondTargetX = gridBoxBefore.x + FLOOR_TILE_PIXELS * 0.25;
+    const secondTargetY = gridBoxBefore.y + FLOOR_TILE_PIXELS * 3.25;
     await dragBox(placedBoxAfterFirstDrag, secondTargetX, secondTargetY);
     await page.waitForTimeout(250);
     const placedBoxAfterSecondDrag = await boxOf('floorgrid-placed-mats');

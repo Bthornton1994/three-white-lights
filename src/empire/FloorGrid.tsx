@@ -88,7 +88,7 @@
  * raises rather than answers.
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   PanResponder,
@@ -107,6 +107,7 @@ import {
   fixedFloorFurniture,
   floorGridSize,
   floorLayout,
+  overlapsFixedFurniture,
   sessionItemFootprint,
   unplacedOwnedFloorItems,
 } from './floor';
@@ -171,6 +172,8 @@ const FLOOR_ITEM_BORDER_COLOR = 'black';
 const FLOOR_GRID_LINE_COLOR = FLOOR_GRID_BORDER_COLOR;
 /** GDD §5.13's PLAYTEST 2 ruling, gap 1: fixed-furniture chips get their own colour, distinct from `PLACEHOLDER_PALETTE`, so "fixed" reads as one visual class rather than cycling like draggable equipment does. */
 const FLOOR_FIXED_FURNITURE_COLOR = 'dimgray';
+/** GDD §5.13's PLAYTEST 3 ruling: the outline a fixed-furniture cell draws while it is the target of a just-refused drop — distinct from `FLOOR_ITEM_BORDER_COLOR` so a refusal reads as a warning, not a resting state. */
+const FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR = 'crimson';
 
 function colorFor(item: SessionEquipmentItem): string {
   const index = EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS.indexOf(item);
@@ -240,6 +243,23 @@ export function FloorGrid(props: FloorGridProps) {
   const [draggingItem, setDraggingItem] = useState<SessionEquipmentItem | null>(null);
   const dragOffset = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
 
+  // GDD §5.13's PLAYTEST 3 ruling on the furniture/session-item overlap gap:
+  // which fixed row, if any, a drop was just refused for landing on — purely
+  // visual, cleared by its own timeout, never persisted and never read by
+  // `floor.ts`. The refusal is decided and enforced HERE, before `dispatch`
+  // is ever called — `placeFloorItem`/`FloorState` stay exactly as blind to
+  // fixed furniture as `floor.ts`'s own header states; this is the one place
+  // in the shipped app that ever dispatches `floor-place` (grepped, not
+  // assumed), so refusing here is refusing for the whole app.
+  const [overlapRefusalItem, setOverlapRefusalItem] = useState<LadderEquipmentItem | null>(null);
+  const overlapRefusalTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (overlapRefusalTimeout.current !== null) clearTimeout(overlapRefusalTimeout.current);
+    },
+    [],
+  );
+
   const releaseAt = (
     item: SessionEquipmentItem,
     gestureState: PanResponderGestureState,
@@ -248,7 +268,19 @@ export function FloorGrid(props: FloorGridProps) {
       x: pixelsToTile(gestureState.moveX - gridOrigin.current.x, tile),
       y: pixelsToTile(gestureState.moveY - gridOrigin.current.y, tile),
     };
-    dispatch({ kind: 'floor-place', item, position });
+    const overlappedFixedRow = fixed.find((row) =>
+      overlapsFixedFurniture(position, sessionItemFootprint(item), [row]),
+    );
+    if (overlappedFixedRow !== undefined) {
+      if (overlapRefusalTimeout.current !== null) clearTimeout(overlapRefusalTimeout.current);
+      setOverlapRefusalItem(overlappedFixedRow.item);
+      overlapRefusalTimeout.current = setTimeout(() => {
+        setOverlapRefusalItem(null);
+        overlapRefusalTimeout.current = null;
+      }, EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_FLASH_MS);
+    } else {
+      dispatch({ kind: 'floor-place', item, position });
+    }
     setDraggingItem(null);
     dragOffset.setValue({ x: 0, y: 0 });
   };
@@ -331,24 +363,39 @@ export function FloorGrid(props: FloorGridProps) {
                 }}
               />
             ))}
-            {fixed.map((row) => (
-              <View
-                key={row.item}
-                testID={`floorgrid-fixed-${row.item}`}
-                style={{
-                  position: 'absolute',
-                  left: row.position.x * tile,
-                  top: row.position.y * tile,
-                  width: row.footprint.width * tile,
-                  height: row.footprint.height * tile,
-                  backgroundColor: FLOOR_FIXED_FURNITURE_COLOR,
-                  borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
-                  borderColor: FLOOR_ITEM_BORDER_COLOR,
-                }}
-              >
-                <Text>{row.item} (fixed)</Text>
-              </View>
-            ))}
+            {fixed.map((row) => {
+              const isRefusalTarget = overlapRefusalItem === row.item;
+              return (
+                <View
+                  key={row.item}
+                  testID={`floorgrid-fixed-${row.item}`}
+                  style={{
+                    position: 'absolute',
+                    left: row.position.x * tile,
+                    top: row.position.y * tile,
+                    width: row.footprint.width * tile,
+                    height: row.footprint.height * tile,
+                    backgroundColor: FLOOR_FIXED_FURNITURE_COLOR,
+                    borderWidth: isRefusalTarget
+                      ? EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS
+                      : EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+                    borderColor: isRefusalTarget
+                      ? FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR
+                      : FLOOR_ITEM_BORDER_COLOR,
+                  }}
+                >
+                  <Text>{row.item} (fixed)</Text>
+                  {isRefusalTarget ? (
+                    // GDD §5.13's PLAYTEST 3 ruling: a clear "can't place
+                    // here" signal on the cell a drop was just refused for,
+                    // not a silent reject — the drag itself already snapped
+                    // back to the tray/its prior position, since `releaseAt`
+                    // never dispatched.
+                    <Text testID={'floorgrid-drop-refused'}>can&apos;t place here</Text>
+                  ) : null}
+                </View>
+              );
+            })}
             {placed.map((row) => {
               const isDragging = draggingItem === row.item;
               const responder = panResponderFor(row.item);

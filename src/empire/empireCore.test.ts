@@ -2540,7 +2540,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // assertion against each branch alone; the merged value is re-measured
     // here rather than hand-summed, since the two branches' mention graphs
     // could in principle overlap.
-    expect(pairs).toBe(86);
+    // 86 -> 88: PLAYTEST 3's overlap-refusal ruling added two mentions to
+    // `floor.ts`'s own header, both new pairs measured by diffing this exact
+    // walk against HEAD rather than hand-counted — `floor.ts` now names
+    // `FloorGrid.tsx` (the drop handler that calls the new
+    // `overlapsFixedFurniture`) and `ladderView.test.ts` (the reducer-level
+    // direct-call tests `placeFloorItem`'s own header points at). Neither
+    // mention existed before this round.
+    expect(pairs).toBe(88);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3091,6 +3098,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // runs, is JsxText. Transcribed from a driven run, the same discipline
       // as every other entry in this list.
       '(fixed)',
+      // GDD §5.13's PLAYTEST 3 ruling on the furniture/session-item overlap
+      // gap: the refusal message, rendered as JsxText with the apostrophe
+      // written as `&apos;` — a JSX entity, not a quote character, so this
+      // chunk sidesteps `src/tuning/audit.ts`'s reported (not fixed)
+      // apostrophe-inside-JsxText lexer bug entirely rather than tripping it.
+      'can&apos;t place here',
       'x',
       'unplaced equipment — drag onto the floor above',
       // GymScreen.tsx, in tree order — second, because a capital `G` sorts
@@ -3257,7 +3270,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `'floorgrid-tray-empty'` testID and `'dimgray'` fixed-furniture colour,
     // plus its two new empty-tray copy strings. Measured by running this
     // assertion and reading the failure value.
-    expect(singleQuoted.size).toBe(335);
+    // 335 -> 337: PLAYTEST 3's overlap-refusal ruling — FloorGrid.tsx's new
+    // `'floorgrid-drop-refused'` testID and `'crimson'` refusal-outline
+    // colour. The refusal MESSAGE itself ("can&apos;t place here") is JSX
+    // text with no surrounding quote characters, so it belongs to (and was
+    // already added to) SIGNED_JSX_TEXT_CHUNKS above, not here.
+    expect(singleQuoted.size).toBe(337);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3355,6 +3373,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'cosmetics',
       'costliest-affordable-first',
       'covered-day',
+      'crimson',
       'currency-purchase',
       'daily-allowance-spent',
       'darkslategray',
@@ -3375,6 +3394,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floor-place',
       'floor-remove',
       'floorgrid-caption',
+      'floorgrid-drop-refused',
       'floorgrid-grid',
       'floorgrid-root',
       'floorgrid-scroll-x',
@@ -3595,9 +3615,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // an explicit `position: 'relative'`). Re-measured on the merged tree,
     // same as `singleQuoted.size`/`templateChunks.size` above — this is their
     // sum plus doubleQuoted (0), so it moves in lockstep with both.
+    // 552 -> 554: singleQuoted (335 -> 337), PLAYTEST 3's overlap-refusal
+    // ruling; templateChunks unchanged.
     // 542 -> 552: singleQuoted (331 -> 335) and templateChunks (211 -> 217),
     // both from GDD §5.13's PLAYTEST 2 ruling.
-    expect(stringsChecked).toBe(552);
+    expect(stringsChecked).toBe(554);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3639,7 +3661,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // letters). Re-measured on the merged tree.
     // 280 -> 282: PLAYTEST 2's 'dimgray' and 'floorgrid-tray-empty', both
     // clearing the two-letter guard below.
-    expect(probes).toBe(282);
+    // 282 -> 284: PLAYTEST 3's 'crimson' and 'floorgrid-drop-refused', same.
+    expect(probes).toBe(284);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -4127,12 +4150,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // FLOOR_FIXED_FURNITURE_LAYOUT (gap 1) and FLOOR_GRID_LINE_WIDTH_PIXELS
     // (gap 3). Read from this assertion's own failure value, not
     // hand-counted from the new source lines.
+    // 224 -> 226: PLAYTEST 3's overlap-refusal ruling's two new tuning
+    // entries — FLOOR_OVERLAP_REFUSAL_FLASH_MS (1200) and
+    // FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS (4), one literal each.
+    // Read from this assertion's own failure value, not hand-counted.
     expect(
       asRenderer.length,
       'the count of literals the audit finds in empireTuning.ts moved: an entry was added or ' +
         'removed, or the instrument stopped reporting. Both are decisions; neither is a tuning ' +
         `pass. First finding: ${formatFindings(asRenderer.slice(0, 1)).trim()}`,
-    ).toBe(224);
+    ).toBe(226);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

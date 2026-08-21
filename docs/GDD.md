@@ -2116,6 +2116,59 @@ All three are string-only fixes in `FloorGrid.tsx`, no logic change. The
 furniture/session-item overlap gap named at gap 1's ruling above is still
 open and was not exercised this pass (wallet was 0; no session item was
 bought to drag).
+
+**THE FURNITURE/SESSION-ITEM OVERLAP GAP IS RULED AND CLOSED.** Asked
+concretely rather than left as a named-but-abstract gap: dragging a session
+item onto a fixed-furniture cell was accepted silently, both at the data
+layer (`placeFloorItem`'s overlap check never knew `fixedFloorFurniture`'s
+table existed) and visually (the session item's opaque chip painted
+directly over the fixed item's, since it rendered later in the tree with a
+higher resting z-index — no refusal, no warning, no way to tell from the
+screen alone that anything unusual had happened).
+
+**The ruling: refuse the overlap, and refuse it in `FloorGrid.tsx`'s drop
+handler, not in `placeFloorItem`/`FloorState`.** `floor.ts` gained one new
+pure export, `overlapsFixedFurniture(position, footprint, fixed)` — the
+same geometry `requireFloorState` already applies between two session
+items, applied against the fixed-furniture table instead, taken as a plain
+parameter and never threaded into `FloorState`. `FloorGrid.tsx`'s
+`releaseAt` calls it before ever dispatching `floor-place`; on a hit, the
+drop is dropped (nothing dispatched, so the dragged item snaps back to
+wherever it came from) and the targeted fixed row shows a "can't place
+here" message with a highlighted outline for
+`FLOOR_OVERLAP_REFUSAL_FLASH_MS` (a new tunable, alongside the outline's
+own border-width knob). `placeFloorItem`, `removeFloorItem` and
+`FloorState` stay exactly as blind to fixed furniture as `fixedFloorFurniture`'s
+own header already said — a `FloorState` built directly, or `placeFloorItem`
+called directly the way `floor.test.ts` and `ladderView.tsx`'s own
+reducer-level tests do, can still record an overlapping session item. What
+closed is the one route a player can actually reach.
+
+**Grepped, not assumed, that the drop handler is the only route.**
+Every `placeFloorItem` call site in the tree was enumerated: `floor.test.ts`
+and `empireForbiddenOutput.test.ts` drive it directly as pure-logic tests,
+and `ladderView.tsx`'s shared reducer calls it inside its `floor-place`
+case — but nothing in the shipped app ever dispatches a `floor-place` action
+except `FloorGrid.tsx`'s own `releaseAt` (the only production call site,
+confirmed by grep). `GymView`, the DOM stage-1/2 dev harness in the same
+file, predates the floor entirely and has no floor-related rendering at
+all. So refusing inside `FloorGrid.tsx` covers the whole reachable surface
+without widening the reducer or touching the pure module's own contract.
+
+**Regression coverage, at both the layer that changed and the layer that
+didn't.** `floor.test.ts` drives `overlapsFixedFurniture` directly against
+the real registered layout — a footprint sharing a cell with each of the
+three fixed rows individually (so a predicate that only checked the first
+row in the table can't pass by accident), a footprint merely touching an
+edge (legal, the same boundary `placeFloorItem`'s own overlap check already
+draws), a footprint entirely clear, and the vacuous case of an empty fixed
+list. `tools/verify-floor-reachability.mjs` gained a browser-driven gap-6
+check, run before its existing place/move/remove sequence (which now
+targets a cell clear of every fixed row instead of the one it used to
+share with power-bar): drag mats onto power-bar's cell, and assert the drop
+is refused, mats stays in the tray, no `floorgrid-placed-*` chip exists
+anywhere, and power-bar's own fixed-furniture chip is still drawn at that
+cell. Independently re-verified cold-boot: 18/18, including that check.
 ---
 
 ## 6. Meet Day

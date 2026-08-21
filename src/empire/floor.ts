@@ -190,10 +190,20 @@ export interface FixedFurniturePlacement {
  *
  * THE LIMIT, STATED RATHER THAN HIDDEN: this returns a plain read model, not
  * a `FloorState`, and nothing in `placeFloorItem`/`requireFloorState`'s
- * overlap logic knows this table exists. A session item CAN be dragged to a
- * position that visually overlaps a fixed-furniture row today — whether that
- * should be refused is a design question this piece's own report raises
- * rather than answers, and no test here claims otherwise.
+ * overlap logic knows this table exists — that is unchanged by GDD §5.13's
+ * PLAYTEST 3 ruling on the furniture/session-item overlap gap, below.
+ * `placeFloorItem`, `removeFloorItem` and `FloorState` stay exactly as blind
+ * to fixed furniture as this paragraph originally said: a `FloorState` built
+ * directly, or `placeFloorItem` called directly (as `floor.test.ts` and
+ * `ladderView.test.ts`'s own reducer-level tests do), can still record a
+ * session item at a position that visually overlaps a fixed row. What closed
+ * is the PLAYER-REACHABLE route: `FloorGrid.tsx`'s drop handler is the only
+ * place in the shipped app that ever dispatches a `floor-place` action (the
+ * single production call site — grepped, not assumed), and it now refuses a
+ * drop there using `overlapsFixedFurniture`, below, before ever reaching
+ * `placeFloorItem`. So the data model's blindness stays exactly as
+ * documented; the refusal lives one layer up, at the one place a real drag
+ * can originate.
  */
 export function fixedFloorFurniture(
   owned: readonly LadderEquipmentItem[],
@@ -282,6 +292,29 @@ function footprintsOverlap(
   const leftBottom = left.y + leftSize.height;
   const rightBottom = right.y + rightSize.height;
   return left.x < rightRight && right.x < leftRight && left.y < rightBottom && right.y < leftBottom;
+}
+
+/**
+ * Whether placing something of `footprint` at `position` would overlap ANY
+ * row of `fixed` — GDD §5.13's PLAYTEST 3 ruling on the furniture/
+ * session-item overlap gap: refuse the drop where the drop originates
+ * (`FloorGrid.tsx`'s drop handler), not by teaching `placeFloorItem`/
+ * `FloorState` about fixed furniture, which stays exactly as separate as
+ * `fixedFloorFurniture`'s own header commits to above. Reuses the identical
+ * geometry `requireFloorState` already applies between two session items,
+ * against the fixed-furniture table instead — `fixed` is a plain parameter,
+ * never stored, never threaded into `FloorState`.
+ *
+ * Pure and total: never throws, never reads `FloorState`, never calls
+ * `placeFloorItem`/`removeFloorItem`. Read by `FloorGrid.tsx`'s drop handler
+ * only — `floor.test.ts` drives it directly.
+ */
+export function overlapsFixedFurniture(
+  position: GridPosition,
+  footprint: GridSize,
+  fixed: readonly FixedFurniturePlacement[],
+): boolean {
+  return fixed.some((row) => footprintsOverlap(position, footprint, row.position, row.footprint));
 }
 
 /** Whether `position`/`size` sits entirely inside a grid of `grid`. */

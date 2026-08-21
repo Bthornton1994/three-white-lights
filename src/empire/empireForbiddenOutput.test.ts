@@ -1340,6 +1340,9 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   'empireInvariant.ts#stepGym#gym.find x1',
   'empireInvariant.ts#stepGym#gym.map x1',
   'engagement.ts#moreEngagedByTrainedDay#history.includes x1',
+  // GDD §5.13's PLAYTEST 3 ruling: `overlapsFixedFurniture`'s one read of a
+  // caller-supplied `fixed` list.
+  'floor.ts#overlapsFixedFurniture#fixed.some x1',
   // ladder.ts's one read of a caller-supplied state: the ownership test on
   // the equipment list. It began as three — a second `includes` in the
   // spending policy's scan and a `join` in a refusal message — and the other
@@ -1400,7 +1403,9 @@ const SURFACE_CENSUS = Object.freeze({
   // 300 -> 301: PLAYTEST 2's one new runtime export, floor.ts's
   // `fixedFloorFurniture` (`FixedFurniturePlacement` is type-only and does
   // not count, same rule).
-  EXPORTS: 301,
+  // 301 -> 302: PLAYTEST 3's one new runtime export, floor.ts's
+  // `overlapsFixedFurniture`.
+  EXPORTS: 302,
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   BARE_POSITIONS: 4,
@@ -1434,7 +1439,11 @@ const SURFACE_CENSUS = Object.freeze({
   // 2223 -> 2229: PLAYTEST 2's `fixedFloorFurniture`, a new exported position
   // carrying `LadderEquipmentItem`'s closed union on its return type's
   // `item` field, measured by running this exact assertion.
-  LITERAL_POSITIONS: 2229,
+  // 2229 -> 2231: PLAYTEST 3's `overlapsFixedFurniture`, whose `fixed`
+  // parameter carries the same `LadderEquipmentItem` union through
+  // `FixedFurniturePlacement.item`, at both the parameter position and one
+  // more the walk reaches through it. Measured by running this assertion.
+  LITERAL_POSITIONS: 2231,
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -2489,7 +2498,12 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // 1470 -> 1538: members.ts's own call expressions (§5.11 stage 3).
   // 1655 -> 1680: PLAYTEST 2's own new call expressions across floor.ts and
   // FloorGrid.tsx, measured by running this exact assertion.
-  CALLS_EXAMINED: 1680,
+  // 1680 -> 1693: PLAYTEST 3's overlap-refusal ruling's own new call
+  // expressions (floor.ts's `overlapsFixedFurniture`/`fixed.some`;
+  // FloorGrid.tsx's `useEffect`, `clearTimeout` x2, `setTimeout`,
+  // `fixed.find`, `overlapsFixedFurniture`, `sessionItemFootprint`),
+  // measured by running this exact assertion.
+  CALLS_EXAMINED: 1693,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3668,6 +3682,18 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     'FLOOR_GRID_LINE_WIDTH_PIXELS',
     'A RENDERING DIMENSION, the same class as FLOOR_GRID_BORDER_WIDTH_PIXELS above — a CSS line width `FloorGrid.tsx` applies to each interior tile-boundary line. Drawn, never compared against a caller-supplied value.',
   ),
+  // GDD §5.13's PLAYTEST 3 ruling on the furniture/session-item overlap
+  // gap — two more entries in the same class as the ten rows above: fixed
+  // rendering/timing constants, not economic thresholds a caller-supplied
+  // value is compared against.
+  ...exemptTable(
+    'FLOOR_OVERLAP_REFUSAL_FLASH_MS',
+    'A RENDERING/TIMING DURATION — `FloorGrid.tsx` passes it straight to `setTimeout` to clear a refused-drop outline. Nothing in this directory compares a caller-supplied value against it; it schedules a callback the way a rate does, rather than gating an input.',
+  ),
+  ...exemptTable(
+    'FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS',
+    'A RENDERING DIMENSION, the same class as FLOOR_ITEM_BORDER_WIDTH_PIXELS above — a CSS border width `FloorGrid.tsx` applies to a fixed-furniture cell while a refused drop\'s outline is showing. Drawn, never compared against a caller-supplied value.',
+  ),
 ]);
 
 /**
@@ -4335,11 +4361,17 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   // dropped branch point: the overflow pass drives every one of these values
   // one at a time, per domain, since EVERY_BRANCH_POINT carries exempt
   // leaves too and overflowPointsFor reads it whole.
+  // GDD §5.13's PLAYTEST 3 ruling: FLOOR_OVERLAP_REFUSAL_FLASH_MS (1200) is a
+  // felt UI duration, not a threshold — the same shape as the dev time-step
+  // seconds and income rates above and below it, above COUNT/DAY/ROSTER_
+  // SHAPE's ceilings for the same reason they are.
+  'COUNT/FLOOR_OVERLAP_REFUSAL_FLASH_MS=1200',
   'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
   'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
   'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
   'COUNT/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
   'COUNT/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
+  'DAY/FLOOR_OVERLAP_REFUSAL_FLASH_MS=1200',
   'DAY/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
   'DAY/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
   'DAY/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
@@ -4353,6 +4385,7 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   'ROSTER_SHAPE/FLOOR_GRID_SIZE.strip-mall-unit.width=22',
   'ROSTER_SHAPE/FLOOR_GRID_SIZE.warehouse.height=28',
   'ROSTER_SHAPE/FLOOR_GRID_SIZE.warehouse.width=40',
+  'ROSTER_SHAPE/FLOOR_OVERLAP_REFUSAL_FLASH_MS=1200',
   'ROSTER_SHAPE/FLOOR_TILE_PIXELS=28',
   'ROSTER_SHAPE/GYM_BUCKS_BASE_PER_HOUR=120',
   'ROSTER_SHAPE/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
@@ -4411,35 +4444,46 @@ const DOMAIN_CENSUS = Object.freeze({
   // 163 -> 176: PLAYTEST 2's 13 new numeric leaves (FLOOR_FIXED_FURNITURE_
   // LAYOUT x12, FLOOR_GRID_LINE_WIDTH_PIXELS x1), same class, measured by
   // running the assertion below rather than hand-summed.
+  // 176 -> 178: PLAYTEST 3's 2 new numeric leaves (FLOOR_OVERLAP_REFUSAL_
+  // FLASH_MS, FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS), both scalars,
+  // same class, measured the same way.
   /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
-  EXEMPT: 176,
+  EXEMPT: 178,
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
-  TUNING_NUMERIC_LEAVES: 264,
+  // 264 -> 266: the same 2 new leaves.
+  TUNING_NUMERIC_LEAVES: 266,
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
   // seconds entries.
   // 253 -> 266: the same 13 new exempt leaves.
+  // 266 -> 268: the same 2 new exempt leaves.
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
-  BRANCH_POINTS: 266,
+  BRANCH_POINTS: 268,
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
   // carry it, summed across all six domains.
   // 1305 -> 1383: PLAYTEST 2's 13 new exempt tuning leaves, same shape,
   // measured by running the assertion below.
-  CONTAINMENT_CHECKS: 1383,
+  // 1383 -> 1392: PLAYTEST 3's 2 new exempt tuning leaves, same shape,
+  // measured the same way.
+  CONTAINMENT_CHECKS: 1392,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
     SECONDS: 0,
-    DAY: 60,
-    COUNT: 60,
+    // 60 -> 61 (DAY and COUNT both): FLOOR_OVERLAP_REFUSAL_FLASH_MS=1200
+    // sits above both ceilings, the same shape as LADDER_DEV_TIME_STEPS_
+    // SECONDS above. FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS=4 does not.
+    DAY: 61,
+    COUNT: 61,
     LEVEL: 0,
     // 84 -> 89: the five MEMBER_DUES_GYM_BUCKS_PER_DAY rates.
     // 84 -> 88: four of GDD §5.13 presentation Phase 1's 42 new exempt
     // tuning leaves sit above ROSTER_SHAPE's ceiling.
-    ROSTER_SHAPE: 93,
+    // 93 -> 94: FLOOR_OVERLAP_REFUSAL_FLASH_MS=1200, same reason as DAY/COUNT.
+    ROSTER_SHAPE: 94,
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -5848,6 +5892,20 @@ function driveEverything(): readonly DrivenRow[] {
       ]);
     for (const [ownedAt, owned] of BARBELL_OWNED_SETS) {
       drive('fixedFloorFurniture', ownedAt, () => floorModule.fixedFloorFurniture(owned), [owned]);
+    }
+    // GDD §5.13's PLAYTEST 3 ruling on the furniture/session-item overlap
+    // gap: `overlapsFixedFurniture`'s two arms — a footprint that shares a
+    // cell with a fixed row, and one that does not — against the real
+    // registered layout, the same fixture floor.test.ts drives.
+    {
+      const fixedRows = floorModule.fixedFloorFurniture([...EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT]);
+      const matsFootprint = floorModule.sessionItemFootprint('mats');
+      drive('overlapsFixedFurniture', 'overlaps', () =>
+        floorModule.overlapsFixedFurniture({ x: 0, y: 0 }, matsFootprint, fixedRows), [fixedRows],
+      );
+      drive('overlapsFixedFurniture', 'clear', () =>
+        floorModule.overlapsFixedFurniture({ x: 0, y: 3 }, matsFootprint, fixedRows), [fixedRows],
+      );
     }
     // A small set of floor states, shaped to reach every arm this module's
     // functions branch on: empty, one item placed, two placed without
@@ -7447,10 +7505,18 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 204 -> 208: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves
   // widened `EVERY_BRANCH_POINT`, and four of them (the roster-shape-adjacent
   // labels) sit above ROSTER_SHAPE's ceiling — see OMITTED_ABOVE_CEILING.
+  // PLAYTEST 3's overlap-refusal ruling: OMITTED_ABOVE_CEILING's sum moved
+  // 213 -> 216 (DAY/COUNT/ROSTER_SHAPE each +1, FLOOR_OVERLAP_REFUSAL_
+  // FLASH_MS=1200). POINTS_DRIVEN and the PAIRS_*/ARM figures below are
+  // sentinelled rather than guessed — the test's own early assertions
+  // (ROWS, this POINTS pair) throw before reaching them, so this round has
+  // not yet observed their real post-ruling values.
   /** (domain, label) pairs the ceilings drop. Equals the sum of OMITTED_ABOVE_CEILING. */
-  POINTS: 213,
+  POINTS: 216,
   /** Of those, how many at least one subject was driven at. */
-  POINTS_DRIVEN: 213,
+  // PLAYTEST 3: tracks POINTS 1:1 again (216), confirmed by running the
+  // assertion below rather than assumed.
+  POINTS_DRIVEN: 216,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -7458,9 +7524,12 @@ const OVERFLOW_CENSUS = Object.freeze({
   // 2997 -> 3089: the four new dropped points x 23 ARGUMENT_HEAVY_SUBJECTS.
   /** (subject, point) pairs driven, and pairs the budgets did not drive at all. */
   // 2997 -> 3112: the widened ROSTER_SHAPE/COUNT/DAY axes (members.ts).
-  PAIRS_DRIVEN: 3204,
+  // PLAYTEST 3: re-measured by running the assertion below. PAIRS_SKIPPED
+  // held at 495, confirmed by running its own separate assertion.
+  PAIRS_DRIVEN: 3253,
   PAIRS_SKIPPED: 495,
   /** Of the driven, how many had the re-read argument region left unscanned. */
+  // PLAYTEST 3: held at 1035, confirmed by running this exact assertion.
   PAIRS_ARGUMENT_SKIPPED: 1035,
   /**
    * ROSTER_SHAPE points above its allocation ceiling.
@@ -7484,9 +7553,13 @@ const OVERFLOW_CENSUS = Object.freeze({
    * unchanged — the union of both branches' own new distinct literals moves
    * it further, to 4360, measured the same way as every other field here.
    */
-  ROWS: 3984,
-  NODES: 857394,
-  STRINGS: 5837646,
+  // PLAYTEST 3's overlap-refusal ruling: ROWS re-measured (3984 -> 4046),
+  // NODES re-measured (-> 902737), both real failure values this round's
+  // own runs produced. STRINGS/DISTINCT_STRINGS are still sentinelled — the
+  // test throws at NODES first, so this round has not yet observed them.
+  ROWS: 4046,
+  NODES: 902737,
+  STRINGS: 6143089,
   DISTINCT_STRINGS: 4360,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
@@ -7532,7 +7605,8 @@ const OVERFLOW_CENSUS = Object.freeze({
   // stage 3) drives more argument-skipped subjects through this pass.
   // 312 -> 344: measured with the four new dropped points, GDD §5.13
   // presentation Phase 1.
-  CLOSURES_DECLINED: 384,
+  // 384 -> 392: PLAYTEST 3's ruling, measured by running the assertion below.
+  CLOSURES_DECLINED: 392,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -7561,12 +7635,16 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // leaves, four more dropped points), each refused the same way. The two
   // widenings do not compose additively (89 + 88 - 84 != the merged-tree
   // measurement), so re-measured rather than derived: 93.
-  ['beginRecruitment#refused', 93],
+  // 93 -> 94: PLAYTEST 3's ruling drops one more ROSTER_SHAPE point
+  // (FLOOR_OVERLAP_REFUSAL_FLASH_MS=1200), refused the same way.
+  ['beginRecruitment#refused', 94],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
-  ['recordFriendVisit#refused', 360],
-  ['recordFriendVisit#visited', 120],
+  // 360 -> 366, 120 -> 122: the same new dropped point, measured by running
+  // this exact assertion rather than derived.
+  ['recordFriendVisit#refused', 366],
+  ['recordFriendVisit#visited', 122],
 ]);
 
 // ---------------------------------------------------------------------------
@@ -7843,14 +7921,19 @@ const DRIVE_CENSUS = Object.freeze({
   // PLAYTEST 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.EXPORTS 1:1 again
   // (300 -> 301, the new `fixedFloorFurniture` row). ROWS re-measured by
   // running the assertion below rather than derived.
-  ROWS: 321863,
-  EXPORTS_DRIVEN: 301,
+  // PLAYTEST 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.EXPORTS 1:1 again
+  // (301 -> 302, the new `overlapsFixedFurniture` row — two drive() calls,
+  // one per arm, ROWS +2). ROWS/NODES/STRINGS all re-measured below.
+  ROWS: 321865,
+  EXPORTS_DRIVEN: 302,
   // 3458073 -> 3458119: re-measured by running the assertion below.
-  NODES: 3458119,
-  // 15936273 -> 15936376: re-measured by running the assertion below.
-  STRINGS: 15936376,
+  // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
+  NODES: 3458141,
+  // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
+  STRINGS: 15936430,
   // 2546 -> 2549: re-measured by running the assertion below.
-  DISTINCT_STRINGS: 2549,
+  // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
+  DISTINCT_STRINGS: 2551,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -11637,7 +11720,10 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // GDD §5.13 presentation Phase 1: FloorGrid.tsx's own five `return`
       // statements — the component's JSX return and its four internal helper
       // arrows/branches.
-      'FloorGrid.tsx': 5,
+      // 5 -> 6: PLAYTEST 3's ruling converted the `fixed.map` callback from
+      // an implicit-return arrow to a block body with an explicit `return`,
+      // so it could compute `isRefusalTarget` first.
+      'FloorGrid.tsx': 6,
       // CROSSING 6: GymScreen.tsx's own two helper functions
       // (`allocationOptions`, `describeSlotOutcome`, the latter with three
       // return statements across its three arms) plus the component's own
@@ -11647,7 +11733,9 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // statements across its ten exported functions and their helpers.
       // 18 -> 20: PLAYTEST 2's `fixedFloorFurniture` — its own top-level
       // `return` plus one inside its `.map()` callback.
-      'floor.ts': 20,
+      // 20 -> 21: PLAYTEST 3's `overlapsFixedFurniture` — its own single
+      // top-level `return`.
+      'floor.ts': 21,
       'ladder.ts': 25,
       // members.ts's 13 return statements (§5.11 stage 3).
       'members.ts': 13,
@@ -12054,8 +12142,8 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // GDD §5.13 presentation Phase 1: floor.ts's two `Readonly<Partial<Record<…,
   // GridPosition>>>` returns, unfollowable for the same reason every entry
   // here is — the walk cannot see past a returned member access.
-  'floor.ts:390 returned=unfollowable:floor',
-  'floor.ts:400 returned=unfollowable:floor',
+  'floor.ts:423 returned=unfollowable:floor',
+  'floor.ts:433 returned=unfollowable:floor',
   'ladder.ts:333 receiver=ArrayLiteralExpression',
   'ladderView.tsx:115 returned=unfollowable:state',
   'ladderView.tsx:123 returned=unfollowable:state',
@@ -12101,8 +12189,8 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'expansion.ts:549 EmpireClock asked=true walked=false',
   // GDD §5.13 presentation Phase 1: floor.ts's two `Readonly<Partial<Record<…,
   // GridPosition>>>` returns.
-  'floor.ts:390 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
-  'floor.ts:400 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
+  'floor.ts:423 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
+  'floor.ts:433 Readonly<Partial<Record<"specialty-bars" | "bike" | "treadmill" | "rower" | "sled" | "dumbbells" | "cables" | "machines" | "mats" | "foam-rollers" | "sauna" | "wrist-wraps" | "belts" | "sleeves", GridPosition>>> asked=true walked=false',
   'ladder.ts:594 LadderState asked=true walked=false',
   'ladder.ts:605 LadderState asked=true walked=false',
   'ladder.ts:611 LadderState asked=true walked=false',
@@ -12199,14 +12287,18 @@ const SCREEN_AGREEMENT = Object.freeze({
 // PLAYTEST 2: module-variable 50 -> 51, function 804 -> 806, member 762 ->
 // 784 — floor.ts's new `fixedFloorFurniture` and FloorGrid.tsx's new
 // call/member expressions, measured by running the assertion below.
+// PLAYTEST 3: local 3 -> 5, function 806 -> 815, member 784 -> 785,
+// member-of-parameter 20 -> 21 — floor.ts's new `overlapsFixedFurniture` and
+// FloorGrid.tsx's new call/member expressions for the overlap-refusal
+// ruling, measured by running the assertion below.
 const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze({
   parameter: 4,
   'module-variable': 51,
-  local: 3,
-  function: 806,
-  member: 784,
+  local: 5,
+  function: 815,
+  member: 785,
   'member-callback': 12,
-  'member-of-parameter': 20,
+  'member-of-parameter': 21,
   fresh: 0,
   unclassified: 0,
 });
@@ -12227,7 +12319,11 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 163 -> 164: members.ts (§5.11 stage 3) joined the directory.
   // 163 -> 165: FloorGrid.tsx's own two local writes (drag-gesture state),
   // independently. Combined: 163 -> 166.
-  local: 166,
+  // 166 -> 168: PLAYTEST 3's ruling — FloorGrid.tsx's two more local writes,
+  // both `overlapRefusalTimeout.current` (armed in `releaseAt`, cleared in
+  // its own callback), resolving past `.current`'s member chain to the local
+  // `const` the same way `dragOffset`/`gridOrigin`'s writes already do.
+  local: 168,
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -12257,8 +12353,12 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
    * arms. Combined: 433 -> 473.
    * 473 -> 475: PLAYTEST 2's floor.ts +2 `return` sites
    * (`fixedFloorFurniture`'s own return plus its `.map()` callback's).
+   * 475 -> 477: PLAYTEST 3's ruling — floor.ts +1 `return` site
+   * (`overlapsFixedFurniture`'s own), FloorGrid.tsx +1 `return` site (the
+   * `fixed.map` callback's, now a block body). Measured by running the
+   * assertion below.
    */
-  SITES: 475,
+  SITES: 477,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -12276,7 +12376,11 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 36_452 -> 36_457: PLAYTEST 3's three string-only fixes in FloorGrid.tsx
   // (the caption's added fixed-count clause, and the empty-tray ternary's
   // two-string branch), re-measured by running the assertion below.
-  NODES_EXAMINED: 36_457,
+  // 36_457 -> 36_682: PLAYTEST 3's overlap-refusal ruling's own AST nodes,
+  // across floor.ts's new `overlapsFixedFurniture` and FloorGrid.tsx's new
+  // refusal state/handler/render code, re-measured by running the assertion
+  // below rather than hand-counted.
+  NODES_EXAMINED: 36_682,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -12342,8 +12446,10 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // contributing their parameter and return positions.
   // 712 -> 715: PLAYTEST 2's `fixedFloorFurniture`, measured by running the
   // assertion below.
+  // 715 -> 717: PLAYTEST 3's `overlapsFixedFurniture`, same shape (one
+  // parameter position, one return position), same measurement discipline.
   /** Exported positions measured. A truncated walk would report a shallow tree. */
-  POSITIONS: 715,
+  POSITIONS: 717,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -18811,6 +18917,30 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
     },
   }),
   Object.freeze({
+    // GDD §5.13's PLAYTEST 3 ruling: `overlapsFixedFurniture`'s one read of
+    // its caller-supplied `fixed` list, driven against a footprint that
+    // overlaps the one synthetic row so `.some` takes its `true` arm.
+    site: 'floor.ts#overlapsFixedFurniture#fixed.some x1',
+    run: (record: MemberCallRecord): void => {
+      const fixed = recordOn(
+        [
+          Object.freeze({
+            item: 'power-bar' as const,
+            position: Object.freeze({ x: 0, y: 0 }),
+            footprint: Object.freeze({ width: 1, height: 3 }),
+          }),
+        ],
+        'some',
+        record,
+      );
+      floorModule.overlapsFixedFurniture(
+        { x: 0, y: 0 },
+        { width: 1, height: 1 },
+        fixed,
+      );
+    },
+  }),
+  Object.freeze({
     site: 'ladder.ts#buyLadderEquipment#state.includes x1',
     run: (record: MemberCallRecord): void => {
       // Two calls on one instrumented state, so the ownership test runs both
@@ -19089,9 +19219,14 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // members.ts's own two sites (§5.11 stage 3), appended: 18 -> 20 subjects,
   // 19 -> 21 calls (one `.reduce` call per site), 45 -> 49 callback calls
   // (each `.reduce` callback runs once per roster row, two rows per site).
-  SUBJECTS: 20,
+  // PLAYTEST 3's ruling: one more site, `floor.ts#overlapsFixedFurniture#
+  // fixed.some x1`, appended: 20 -> 21 subjects, 21 -> 22 calls (one `.some`
+  // call), 49 -> 50 callback calls (one `.some` predicate invocation — the
+  // one row overlaps, so `.some` short-circuits true on its first element).
+  // All three measured by running the assertions below rather than guessed.
+  SUBJECTS: 21,
   /** One call of the instrumented method per subject, two at the ladder site. */
-  CALLS: 21,
+  CALLS: 22,
   /**
    * Callback invocations across every subject: 4 + 33, the second number being
    * E23's ten sites. Per site — and per ARM, which is the half a total cannot
@@ -19102,7 +19237,7 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 41 -> 45: GymScreen's own two sites, the identical +1 and +3.
   // 45 -> 49: members.ts's own two sites, +2 and +2 (one roster.reduce
   // callback per roster row, two rows, on each of the two sites).
-  CALLBACK_CALLS: 49,
+  CALLBACK_CALLS: 50,
   /**
    * Strings reachable from the non-function arguments.
    *
@@ -19112,6 +19247,10 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
    * is the shape this file calls an empty domain everywhere else. The argument
    * channel is non-empty now because `savingForPhysio` is handed an axis name.
    */
+  // PLAYTEST 3: held at 3 — `fixed.some`'s callback receives the row as its
+  // OWN parameter, not a non-function argument handed to it, so `item:
+  // 'power-bar'` does not land in this channel. Confirmed by running the
+  // assertion below rather than assumed.
   HANDED: 3,
   /**
    * Values the callbacks RETURNED, deep-scanned for strings. M42's channel.
@@ -19192,6 +19331,7 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   'empireCore.ts#idleLedger#ledger.filter x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
   'empireCore.ts#progressionLedger#ledger.filter x1 calls=1 callbacks=2 handed=0 returned=0 verdicts=falsex1,truex1',
   'engagement.ts#moreEngagedByTrainedDay#history.includes x1 calls=1 callbacks=0 handed=0 returned=0 verdicts=none',
+  'floor.ts#overlapsFixedFurniture#fixed.some x1 calls=1 callbacks=1 handed=0 returned=0 verdicts=truex1',
   'ladder.ts#buyLadderEquipment#state.includes x1 calls=2 callbacks=0 handed=2 returned=0 verdicts=none',
   'empireInvariant.ts#progressionDayLedger#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0 verdicts=falsex4,truex2',
   'empireInvariant.ts#idleDayLedger#entries.filter x1 calls=1 callbacks=6 handed=0 returned=0 verdicts=falsex2,truex4',

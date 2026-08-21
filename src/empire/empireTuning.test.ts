@@ -599,12 +599,16 @@ describe('§5.5 social', () => {
     // and FLOOR_GRID_LINE_WIDTH_PIXELS (gap 3, tile-boundary lines). Measured
     // by running this assertion and reading its failure value, not computed
     // by hand.
-    expect(examined).toBe(107);
+    // 107 -> 109: PLAYTEST 3's overlap-refusal ruling adds two more —
+    // FLOOR_OVERLAP_REFUSAL_FLASH_MS and
+    // FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS. Same measurement discipline.
+    expect(examined).toBe(109);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
-    // 435 -> 525 -> 535.
-    expect(probed).toBe(535);
+    // 435 -> 525 -> 535 -> 545 (109 keys x 5 banned units, PLAYTEST 3's two
+    // new tuning entries).
+    expect(probed).toBe(545);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {
