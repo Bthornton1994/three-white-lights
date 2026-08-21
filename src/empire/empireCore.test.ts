@@ -3075,6 +3075,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       ') —',
       'x',
       'tiles,',
+      // GDD §5.13's PLAYTEST 3 ruling: the caption now also states the fixed
+      // count, closing the gap where '0 placed, 0 unplaced' sat beside three
+      // visible fixed items and said nothing about them.
+      'fixed,',
       'placed,',
       'unplaced',
       // GDD §5.13's PLAYTEST 2 ruling, gap 1: the one new JsxText chunk this

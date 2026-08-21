@@ -215,17 +215,34 @@ try {
 
   // Gap 2: no dead drag prompt when the tray is genuinely empty (0 owned,
   // 0 unplaced) — an honest empty-state message instead.
+  //
+  // PLAYTEST 3's ruling, gap 5, changed the exact copy this asserts: the old
+  // string pointed "above" at the shop, which was wrong once gap 4 moved the
+  // floor above the shop, so the directional word was dropped rather than
+  // flipped, and "nothing owned yet" — which read as a claim about the whole
+  // gym next to three (fixed) items on the same screen — was reworded to
+  // name session equipment explicitly.
   const trayEmptyDrawn = await waitUntilDrawn(page, 'floorgrid-tray-empty', BEAT_TIMEOUT_MS);
   const trayEmptyText = await textOf('floorgrid-tray-empty');
   const deadPromptCount = await page
     .getByText('unplaced equipment — drag onto the floor above', { exact: true })
     .count();
-  if (trayEmptyDrawn.drawn && trayEmptyText === 'nothing owned yet — buy equipment above, then drag it here to place it' && deadPromptCount === 0) {
+  if (trayEmptyDrawn.drawn && trayEmptyText === 'no session equipment yet — buy some, then drag it here to place it' && deadPromptCount === 0) {
     ok(`gap 2: the empty tray shows an honest empty-state message ("${trayEmptyText}") and not the dead drag prompt`);
   } else {
     fail(
-      `gap 2: expected floorgrid-tray-empty drawn with the "nothing owned yet" copy and the dead prompt absent — drawn=${trayEmptyDrawn.drawn}, text="${trayEmptyText}", dead-prompt-count=${deadPromptCount}`,
+      `gap 2: expected floorgrid-tray-empty drawn with the "no session equipment yet" copy and the dead prompt absent — drawn=${trayEmptyDrawn.drawn}, text="${trayEmptyText}", dead-prompt-count=${deadPromptCount}`,
     );
+  }
+
+  // Gap 5 (PLAYTEST 3): the caption states the fixed-furniture count
+  // alongside placed/unplaced, so "0 placed, 0 unplaced" no longer reads as
+  // if the three (fixed) items on the grid do not exist.
+  const captionText = await textOf('floorgrid-caption');
+  if (captionText !== null && /\b3 fixed,/.test(captionText)) {
+    ok(`gap 5: the caption states the fixed count ("${captionText}")`);
+  } else {
+    fail(`gap 5: expected the caption to state "3 fixed," on a cold garage — got "${captionText}"`);
   }
 
   // Gap 4: the floor section is above the shop/allocator sections in render

@@ -275,8 +275,8 @@ export function FloorGrid(props: FloorGridProps) {
   return (
     <View testID={'floorgrid-root'}>
       <Text testID={'floorgrid-caption'}>
-        floor ({floor.rung}) — {grid.width}x{grid.height} tiles, {placed.length} placed,{' '}
-        {unplaced.length} unplaced
+        floor ({floor.rung}) — {grid.width}x{grid.height} tiles, {fixed.length} fixed,{' '}
+        {placed.length} placed, {unplaced.length} unplaced
       </Text>
       <ScrollView horizontal testID={'floorgrid-scroll-x'}>
         <ScrollView testID={'floorgrid-scroll-y'}>
@@ -399,10 +399,22 @@ export function FloorGrid(props: FloorGridProps) {
           // honest empty state instead — and the two readings ("own nothing
           // yet" vs. "own some, all of it already placed") say something
           // true rather than the same dead prompt either way.
+          //
+          // PLAYTEST 3's ruling, gap 5: two things this pass got wrong about
+          // this same message. First, "buy equipment above" pointed at the
+          // shop by direction — correct before gap 4's reorder, wrong after
+          // it moved the floor above the shop, and a directional word tied
+          // to render order breaks again the next time that order changes
+          // without anyone touching this string, so it is dropped rather
+          // than corrected to "below". Second, "nothing owned yet" reads as
+          // a claim about the whole gym, on a screen already showing three
+          // (fixed) items on the grid and `owned` in the shop list — `owned`
+          // here is `FloorGridProps.owned`, SESSION equipment only, and the
+          // word needs to say so rather than read as blanket false.
           <Text testID={'floorgrid-tray-empty'}>
             {owned.length === 0
-              ? 'nothing owned yet — buy equipment above, then drag it here to place it'
-              : 'everything you own is already placed on the floor'}
+              ? 'no session equipment yet — buy some, then drag it here to place it'
+              : 'every session item you own is already placed on the floor'}
           </Text>
         ) : (
           <Text>unplaced equipment — drag onto the floor above</Text>

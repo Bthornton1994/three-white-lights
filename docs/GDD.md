@@ -2088,6 +2088,34 @@ exists), not a new grant. Gaps 2 and 4 are fixed directly: the drag prompt
 is suppressed (or replaced with an explicit empty-state message) when the
 tray is empty, tile boundaries are drawn, and the floor moves above the
 shop/allocator text rather than below it.
+
+**PLAYTEST 3, same opening frame, on a real phone: all four named gaps
+confirmed closed, and the fix itself created two new small ones.** Fixed
+furniture, real grid lines, the honest empty-tray message, and the
+floor-above-shop order all read correctly on the device. What the fix
+introduced, found only because it was played rather than only re-tested by
+the driven check that already passed:
+
+1. **The empty-tray message pointed the wrong direction.** "Buy equipment
+   above" was correct before gap 4's reorder and wrong after it — the shop is
+   now below the floor, not above. A directional word tied to render order is
+   exactly the kind of thing that breaks silently the next time the order
+   changes without anyone touching the string; dropped rather than corrected
+   to "below" for that reason.
+2. **"Nothing owned yet" read as a claim about the whole gym**, on a screen
+   already showing three `(fixed)` items on the grid and the same three rows
+   `owned` in the shop list. The word was accurate about its actual subject
+   (`FloorGridProps.owned` is session equipment only) and false-reading about
+   what the player was looking at. Reworded to name session equipment
+   explicitly rather than say "owned" unqualified.
+3. **The `0 placed, 0 unplaced` caption ignored the three visible fixed
+   pieces**, correct about the placement table and confusing beside a floor
+   that is not, in fact, empty. The caption now also states the fixed count.
+
+All three are string-only fixes in `FloorGrid.tsx`, no logic change. The
+furniture/session-item overlap gap named at gap 1's ruling above is still
+open and was not exercised this pass (wallet was 0; no session item was
+bought to drag).
 ---
 
 ## 6. Meet Day

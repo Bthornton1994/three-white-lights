@@ -12273,7 +12273,10 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 35_854 -> 36_452: PLAYTEST 2's own AST nodes across floor.ts,
   // FloorGrid.tsx, GymScreen.tsx and empireTuning.ts, re-measured by running
   // the assertion below.
-  NODES_EXAMINED: 36_452,
+  // 36_452 -> 36_457: PLAYTEST 3's three string-only fixes in FloorGrid.tsx
+  // (the caption's added fixed-count clause, and the empty-tray ternary's
+  // two-string branch), re-measured by running the assertion below.
+  NODES_EXAMINED: 36_457,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
