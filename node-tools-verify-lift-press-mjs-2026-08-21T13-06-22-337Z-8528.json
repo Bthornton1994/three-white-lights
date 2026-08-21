@@ -1,45 +1,41 @@
 {
   "schema": 1,
-  "status": "PASS",
-  "id": "node-tools-verify-lift-press-mjs-2026-08-20T14-07-31-953Z-12787",
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-lift-press-mjs-2026-08-21T13-06-22-337Z-8528",
   "label": null,
   "command": [
     "node",
     "tools/verify-lift-press.mjs"
   ],
   "budgetSeconds": 300,
-  "startedAtIso": "2026-08-20T14:07:31.953Z",
-  "startedAtMs": 1787234851953,
+  "startedAtIso": "2026-08-21T13:06:22.337Z",
+  "startedAtMs": 1787317582337,
   "cwd": "/home/user/three-white-lights",
-  "commit": "db74632404ed65c8f799178c53496e315e3a0a33",
+  "commit": "c02df4f4c9c1200165720fc0c40e6aebb4363926",
   "branch": "claude/agent-config-setup-m2r6ny",
-  "dirty": 1,
+  "dirty": 2,
   "dirtyPaths": [
+    ".gauntlet/shots/lift-press/press.json",
     "tools/verify-lift-press.mjs"
   ],
   "runner": {
-    "pid": 12787,
-    "startTick": "69546",
+    "pid": 8528,
+    "startTick": "126958",
     "cmdline": "node tools/watchdog.mjs --budget 300 -- node tools/verify-lift-press.mjs",
-    "bootId": "3ac675c4-eb1e-49ee-920a-64268d2dcfe0",
-    "bootEpochSeconds": 1787234156,
+    "bootId": "f87ea04a-0f61-4d10-9c43-b8ad14848739",
+    "bootEpochSeconds": 1787316313,
     "host": "vm",
     "platform": "linux",
     "procAvailable": true
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 4,
-    "okCount": 3,
+    "count": 1,
+    "okCount": 0,
     "errors": [],
-    "lastAttemptIso": "2026-08-20T14:10:30.032Z",
-    "lastReason": "final",
+    "lastAttemptIso": "2026-08-21T13:06:22.358Z",
+    "lastReason": "start",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm",
-    "ok": true,
-    "lastOkIso": "2026-08-20T14:09:36.033Z"
-  },
-  "exitCode": 0,
-  "finishedAtIso": "2026-08-20T14:10:30.031Z",
-  "elapsedSeconds": 178.1
+    "ref": "refs/heads/verify-markers/vm"
+  }
 }
