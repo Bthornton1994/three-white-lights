@@ -1,46 +1,41 @@
 {
   "schema": 1,
-  "status": "PASS",
-  "id": "node-tools-verify-lift-press-mjs-2026-08-20T06-14-39-681Z-12986",
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-lift-press-mjs-2026-08-21T12-59-23-040Z-6223",
   "label": null,
   "command": [
     "node",
     "tools/verify-lift-press.mjs"
   ],
   "budgetSeconds": 300,
-  "startedAtIso": "2026-08-20T06:14:39.681Z",
-  "startedAtMs": 1787206479681,
+  "startedAtIso": "2026-08-21T12:59:23.040Z",
+  "startedAtMs": 1787317163040,
   "cwd": "/home/user/three-white-lights",
-  "commit": "9dac14c4ce84efe307c2b07e0293264f262855d2",
+  "commit": "c02df4f4c9c1200165720fc0c40e6aebb4363926",
   "branch": "claude/agent-config-setup-m2r6ny",
   "dirty": 2,
   "dirtyPaths": [
     ".gauntlet/shots/lift-press/press.json",
-    "src/game/lift.test.ts"
+    "tools/verify-lift-press.mjs"
   ],
   "runner": {
-    "pid": 12986,
-    "startTick": "81888",
+    "pid": 6223,
+    "startTick": "85028",
     "cmdline": "node tools/watchdog.mjs --budget 300 -- node tools/verify-lift-press.mjs",
-    "bootId": "22f368da-f3e9-4344-91f2-4db1d44e04ae",
-    "bootEpochSeconds": 1787205661,
+    "bootId": "f87ea04a-0f61-4d10-9c43-b8ad14848739",
+    "bootEpochSeconds": 1787316313,
     "host": "vm",
     "platform": "linux",
     "procAvailable": true
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 4,
-    "okCount": 3,
+    "count": 1,
+    "okCount": 0,
     "errors": [],
-    "lastAttemptIso": "2026-08-20T06:17:00.910Z",
-    "lastReason": "final",
+    "lastAttemptIso": "2026-08-21T12:59:23.060Z",
+    "lastReason": "start",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm",
-    "ok": true,
-    "lastOkIso": "2026-08-20T06:16:42.452Z"
-  },
-  "exitCode": 0,
-  "finishedAtIso": "2026-08-20T06:17:00.909Z",
-  "elapsedSeconds": 141.2
+    "ref": "refs/heads/verify-markers/vm"
+  }
 }
