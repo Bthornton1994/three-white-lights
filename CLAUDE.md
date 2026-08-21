@@ -304,14 +304,30 @@ the actual mechanism entirely, and the retune was correctly reverted rather
 than shipped once real execution contradicted it. Verified: 8/8 real browser
 runs reached LOCKOUT after the actual fix, 5 of 8 on the first attempt.
 
-**Still open, not blocking, not to be read as resolved by any of the above:**
+**Finding 2 — axis legibility, IN PROGRESS, NOT CLOSED.** "Feels harder, hard
+to tell why" from the first phone playtest. First pass: two proposal options
+written up (haptic-per-axis, a visual cue via `RepPips`/`hapticFor`),
+deliberately not implemented — held to see what signal survived once
+Finding 1's fix landed. A second phone re-test then landed a concrete ruling
+that reframed the axis rather than picking one of those two options: the
+tap-RATE half of "heavier = harder" was too sparse to read as a drive at all
+— 3 cues at MAXIMAL felt like "a couple of isolated cues", not "a run of taps
+through the sticking point". Implemented at `ba1931c`/`fe5ac2c` —
+`DRIVE_ATTEMPTS_PER_REP.MAXIMAL` 3 → 6, `DRIVE_ATTEMPTS_SPACING_MS.MAXIMAL`
+380ms → 60ms, structurally verified against `ASCENT_TIMEOUT_TICKS`'s budget
+and confirmed working in 4 real browser runs (multi-tap sequences observed,
+RIDE IT still rendering, lockout reached).
 
-1. **Finding 2 — axis legibility.** "Feels harder, hard to tell why" from the
-   first phone playtest. Investigated, two proposal options written up
-   (haptic-per-axis, a visual cue via `RepPips`/`hapticFor`), deliberately
-   **not implemented** — held on purpose to see what signal survives once
-   Finding 1's fix lands. Needs a further human phone re-test before anyone
-   picks an option, let alone builds it.
+**What that verification does and does not establish, stated so neither gets
+overread.** It confirms the retuned mechanic FUNCTIONS — cues arm, taps land,
+the rep resolves, nothing broke. It says nothing about whether 6 cues at 60ms
+actually READS as "a run of taps through the sticking point" to a human
+finger, any more than the original 3-cue value could have been judged that
+way from here. That is exactly the axis a phone re-test measures and this
+build cannot. The haptic-per-axis and visual-cue proposals from the first
+pass are still shelved, not chosen and not ruled out — whether the sparsity
+fix alone resolves "feels harder, hard to tell why", or whether one of those
+is still needed on top of it, is what the next re-test answers.
 
 ### If scope shifts
 
