@@ -390,6 +390,63 @@ export const LIFT_TUNING = Object.freeze({
   PRESS_REACTION_WINDOW_MS: 420,
 
   /**
+   * How much harder a slow press makes the WHOLE bench ascent, at reaction
+   * quality 0. Scales the demand curve, exactly as `BURIED_DEMAND_PER_DEPTH`
+   * does for a squat buried past ideal depth.
+   *
+   * ---------------------------------------------------------------------------
+   * THIS EXISTS BECAUSE THE REACTION WAS DECORATIVE, AND THAT WAS MEASURED
+   * ---------------------------------------------------------------------------
+   * The first version of this beat set only the bar's velocity off the chest
+   * from `pressQuality`. That is real for about ten ticks and then gone:
+   * `velocity` chases `netForce * VELOCITY_PER_NET_FORCE` at `VELOCITY_RESPONSE`
+   * per tick, so an initial velocity washes out over roughly
+   * `1/VELOCITY_RESPONSE` ticks — which `REVERSAL_VELOCITY`'s own comment
+   * already says about the depth reversal, and which nobody applied to this.
+   *
+   * MEASURED at seed 7, no drive thrown, perfect reaction vs never pressing at
+   * all: velocity at ascent tick 1 was 0.01900 against 0.00040 — a 47x spread,
+   * which is what the first tests read and passed on — and by tick 10 it was
+   * 0.01478 against 0.00989. Across the thirty cases first sampled the OUTCOME
+   * was identical every time: good-lift at 0.85 whatever the player did, miss
+   * at 1.00 whatever the player did, and with a drive thrown every reaction
+   * from perfect to absent made the lift.
+   *
+   * THE FIRST WORD FOR THAT WAS "DECORATIVE" AND IT WAS TOO STRONG — corrected
+   * here rather than left standing, because the wider sweep says something
+   * more useful. Over the full 240-case sweep the transient alone flips 40
+   * outcomes; with this penalty it is 160. So the reaction was never worth
+   * NOTHING, it was worth about a sixth of the cases in a pattern spread
+   * unpredictably across loads and seeds — which is worse than nothing for a
+   * player trying to learn a mechanic, because it is indistinguishable from
+   * noise. The thirty-case probe reported zero only because it happened to
+   * sample loads where the transient decided none of them. A measurement that
+   * small can be honestly taken and still be the wrong shape.
+   *
+   * So a player could ignore the command and mostly never find out. That is
+   * also the honest explanation of the phone report that the command was
+   * "too easy to miss": missing it cost nothing, so nothing taught them it was
+   * there. A more visible cue on a consequence-free input is a louder button
+   * that still does nothing.
+   *
+   * The lesson is CLAUDE.md's "verifying a mechanism is not verifying what
+   * follows from it", committed in the module that documents it. Eight mutants
+   * were run on the first version and all eight passed, because every one of
+   * them tested a mechanism — is the delay seeded, is the press consumed, is
+   * the velocity set — and not one asked whether the rep CHANGED. The fix for
+   * the tests is the same shape as the fix for the code: assert the outcome
+   * moves, not that a number was written.
+   *
+   * The value is a placeholder like everything else here and is NOT played.
+   * What it was chosen against is a swept measurement recorded in
+   * `lift.test.ts`'s "the press decides the lift" block: it has to leave a
+   * band where the reaction flips make into miss, without making a missed
+   * command an automatic loss at every load — GDD §12.3 forbids the second,
+   * and a beat that always kills you is a cutscene with a fine.
+   */
+  PRESS_SLOW_DEMAND_PENALTY: 0.16,
+
+  /**
    * Velocity the bar leaves the chest with, at reaction quality 0 and 1.
    *
    * THIS IS THE "BAR-SPEED CHECK OFF THE CHEST" HALF OF §6.2's LINE, and it is

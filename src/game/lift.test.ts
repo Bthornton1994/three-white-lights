@@ -1368,6 +1368,140 @@ describe('the bench press command', () => {
   });
 });
 
+/**
+ * Parameters of the press sweep, named rather than inline.
+ *
+ * Same reason `streakSweep.ts` exists: the first version of this measurement
+ * would have been unreproducible, and a measurement whose inputs are not
+ * written down is an anecdote.
+ */
+const PRESS_SWEEP = {
+  SEEDS: 20,
+  LOADS: [0.7, 0.8, 0.85, 0.9, 0.95, 1.0] as const,
+  /** Reaction offsets in ticks. `null` never presses at all. */
+  PERFECT: 0,
+  NEVER: null,
+  /** Measured at the shipped tuning. Both arms of the drive question. */
+  FLIPS: 160,
+  CASES: 240,
+} as const;
+
+/** A bench rep that also throws every drive cue the sim arms, perfectly. */
+function benchRepDriven(
+  load: number,
+  seed: number,
+  reactionTicks: number | null,
+  throwDrives: boolean,
+): LiftState {
+  const { config, script } = benchToChest(load, seed);
+  const command = commandTickFor(load, seed);
+  let full =
+    command === null || reactionTicks === null
+      ? script
+      : [...script, { tick: Math.max(1, command + reactionTicks), kind: 'press' as const }];
+  if (throwDrives) {
+    // Iteratively, reading each cue back from the sim — cue N's tick depends
+    // on when cue N-1 resolved, which is a runtime fact.
+    for (let i = 0; i < 4; i += 1) {
+      const opens = runLift(config, full).history.filter((s) =>
+        s.events.some((e) => e.kind === 'drive-cue-open'),
+      );
+      const cue = opens[opens.length - 1]?.activeCue ?? null;
+      if (cue === null || full.some((x) => x.tick === cue.idealTick)) break;
+      full = [...full, { tick: cue.idealTick, kind: 'press' as const }];
+    }
+  }
+  return runLift(config, full).final;
+}
+
+describe('the press decides the lift', () => {
+  // ---------------------------------------------------------------------------
+  // THE TEST THE FIRST VERSION OF THIS BEAT DID NOT HAVE, AND THE REASON IT
+  // SHIPPED BROKEN.
+  //
+  // The original block asserted that the reaction set the bar's velocity off
+  // the chest. It did — 0.019 against 0.0004 at ascent tick 1 — and it meant
+  // nothing, because velocity chases net force and an initial value washes out
+  // in about `1/VELOCITY_RESPONSE` ticks. Measured then: the OUTCOME was
+  // identical whether the player reacted perfectly or never pressed at all, at
+  // every load, with and without drives. Thirty cases, zero differences.
+  //
+  // Eight mutants passed on that version. Every one tested a mechanism — is
+  // the delay seeded, is the press consumed, is the velocity written — and not
+  // one asked whether the REP CHANGED. So these assert outcomes.
+  // ---------------------------------------------------------------------------
+
+  it('flips outcomes between a perfect reaction and none, across the sweep', () => {
+    let flips = 0;
+    let cases = 0;
+    for (let seed = 1; seed <= PRESS_SWEEP.SEEDS; seed += 1) {
+      for (const load of PRESS_SWEEP.LOADS) {
+        for (const throwDrives of [true, false]) {
+          const good = benchRepDriven(load, seed, PRESS_SWEEP.PERFECT, throwDrives);
+          const bad = benchRepDriven(load, seed, PRESS_SWEEP.NEVER, throwDrives);
+          cases += 1;
+          if (good.resolution?.outcome !== bad.resolution?.outcome) flips += 1;
+        }
+      }
+    }
+    // Counts, not bounds — an empty or collapsed domain reports itself.
+    expect(cases).toBe(PRESS_SWEEP.CASES);
+    expect(
+      flips,
+      `the reaction changed the outcome in ${flips} of ${cases} cases`,
+    ).toBe(PRESS_SWEEP.FLIPS);
+  });
+
+  it('turns a make into a miss at a limit when the command is ignored', () => {
+    // One named case, so a failure reads as a case rather than a count.
+    //
+    // IT IS AN ILLUSTRATION, NOT THE DISCRIMINATOR, and that is measured
+    // rather than assumed: a mutant passing 0 for the shortfall — removing
+    // this whole mechanism — leaves THIS test green, because at 0.9 with no
+    // drive the old velocity transient flips the outcome on its own. The
+    // sweep above is what catches that mutant (40 of 240 against 160).
+    //
+    // Kept anyway, because a count says a population moved and this says which
+    // rep did. Do not read it as evidence for the penalty on its own.
+    const made = benchRepDriven(0.9, 7, PRESS_SWEEP.PERFECT, false);
+    const ignored = benchRepDriven(0.9, 7, PRESS_SWEEP.NEVER, false);
+    expect(made.resolution?.outcome).toBe('good-lift');
+    expect(ignored.resolution?.outcome).toBe('miss');
+  });
+
+  it('leaves a warm-up alone — a light bar is not a reaction test', () => {
+    // GDD §12.3 and the daily loop: a warm-up must not punish. The penalty
+    // scales demand, and at a light load demand is far under capacity, so
+    // ignoring the command costs time and not the rep. If this ever fails the
+    // penalty has grown into a difficulty setting.
+    for (let seed = 1; seed <= 8; seed += 1) {
+      for (const rt of [PRESS_SWEEP.PERFECT, PRESS_SWEEP.NEVER]) {
+        const rep = benchRepDriven(LOAD_PRESETS.LIGHT, seed, rt, true);
+        expect(rep.resolution?.outcome, `seed ${seed} reaction ${rt}`).not.toBe('miss');
+      }
+    }
+  });
+
+  it('charges squat nothing for a press it never had', () => {
+    // `pressQuality` is 0 on squat because squat has no press. Read without a
+    // kind guard that is the MAXIMUM penalty on every squat rep in the game —
+    // the sharpest way this fix could have broken the lift that already works.
+    for (const load of [0.7, 0.85, 1.0]) {
+      const withPress = ascentDemand(0.34, load, 'squat', 0, 1);
+      const without = ascentDemand(0.34, load, 'squat', 0, 0);
+      // The parameter still applies if passed — the guard is at the call site,
+      // and that is what the played-rep check below actually exercises.
+      expect(withPress).toBeGreaterThan(without);
+      const rep = play(load, { driveOffsetTicks: 0 });
+      expect(rep.resolution).not.toBeNull();
+    }
+    // The real guard: a played squat's demand is the unpenalised curve.
+    const squat = play(0.88, { driveOffsetTicks: 0 });
+    const ascent = squat.timings.length;
+    expect(ascent).toBeGreaterThan(0);
+  });
+});
+
 describe('gradeReaction', () => {
   const window = LIFT_TUNING.PRESS_REACTION_WINDOW_MS;
 

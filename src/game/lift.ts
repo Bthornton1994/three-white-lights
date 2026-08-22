@@ -655,6 +655,7 @@ export function ascentDemand(
   loadRatio: number,
   kind: PlayableLiftKind,
   extraDepth: number = 0,
+  pressShortfall: number = 0,
 ): number {
   const load = clampLoadRatio(loadRatio);
   const base = byLoad(LIFT_TUNING.DEMAND_BASE[kind], load);
@@ -662,7 +663,12 @@ export function ascentDemand(
     byLoad(LIFT_TUNING.DEMAND_STICK_GAIN[kind], load) *
     gauss(h, STICK_HEIGHT_FRAC[kind], STICK_WIDTH[kind]);
   const buried = 1 + LIFT_TUNING.BURIED_DEMAND_PER_DEPTH * Math.max(0, extraDepth);
-  return scrub((base + stick) * buried);
+  // BENCH: what a slow press off the chest actually COSTS. See
+  // `PRESS_SLOW_DEMAND_PENALTY` — this scales the whole curve for the whole
+  // ascent, exactly as `buried` does, because a transient does not survive
+  // long enough to decide anything.
+  const slow = 1 + LIFT_TUNING.PRESS_SLOW_DEMAND_PENALTY * clamp01(pressShortfall);
+  return scrub((base + stick) * buried * slow);
 }
 
 /** Ticks the reversal beat lasts at this load. */
@@ -1311,7 +1317,17 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     }
 
     // --- physics ---------------------------------------------------------
-    const demand = ascentDemand(m.height, load, state.config.kind, m.extraDepth);
+    // THE PRESS'S SHORTFALL, CARRIED FOR THE WHOLE ASCENT. Squat passes 0 —
+    // its `pressQuality` is 0 because it has no press, and reading it without
+    // this guard would charge every squat the maximum penalty.
+    const pressShortfall = state.config.kind === 'bench' ? 1 - clamp01(m.pressQuality) : 0;
+    const demand = ascentDemand(
+      m.height,
+      load,
+      state.config.kind,
+      m.extraDepth,
+      pressShortfall,
+    );
     let drive = capacity - m.stallCapacityLoss;
     // A LANDED DRIVE IS A COMMITTED IMPULSE, NOT A STATE THE PLAYER MAINTAINS.
     // Deliberately NOT gated on `m.held`. It used to be, and that coupling was
