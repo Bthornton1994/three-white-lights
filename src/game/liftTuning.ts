@@ -294,11 +294,24 @@ export const LIFT_TUNING = Object.freeze({
    * not move when it does — the window shrinks symmetrically about it — so a
    * fatigued player is asked for the same moment, more precisely.
    *
-   * BENCH NARROWER THAN SQUAT'S (260ms vs 300ms): a chest touch is a more
-   * discrete, more quickly-over event than a squat's hole, with less natural
-   * room for a sloppy-but-legal middle. A placeholder, not measured.
+   * BENCH FAR NARROWER THAN SQUAT'S (120ms vs 300ms) — NOT AN INDEPENDENT
+   * CHOICE. A first pass set this at 260ms, reasoned only from "a chest touch
+   * is more discrete than a squat's hole" in isolation from bench's other two
+   * numbers. `liftTuning.test.ts`'s "never lets the late edge of the depth
+   * window be an instant bury" caught the interaction: bench's collapse
+   * margin above IDEAL is deliberately small (0.15, vs squat's 0.3, because a
+   * chest does not compress as far as a hip) and bench's descent is
+   * deliberately fast (DESCENT_DEPTH_PER_TICK), so at 260ms the window's late
+   * edge already landed past DEPTH_COLLAPSE at the light end of the load
+   * range (measured 1.264 depth against a 1.15 collapse point) — releasing
+   * inside the window the game itself drew would have been an instant bury.
+   * 120ms keeps the same proportion of the (smaller) collapse budget squat's
+   * 300ms uses of its own (~83% at the worst-case load, both measured), which
+   * is what makes the two numbers consistent with each other rather than
+   * independently plausible-sounding. Still a placeholder, not measured by
+   * play — GDD §10 applies — but now one that cannot draw a cue that lies.
    */
-  DEPTH_WINDOW_MS: { squat: 300, bench: 260 } satisfies PerKind<number>,
+  DEPTH_WINDOW_MS: { squat: 300, bench: 120 } satisfies PerKind<number>,
 
   /**
    * Extra demand per unit of depth past DEPTH_IDEAL. Being buried makes the
