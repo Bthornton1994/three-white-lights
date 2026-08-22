@@ -1080,7 +1080,11 @@ export const LIFT_COPY = Object.freeze({
   PROMPT: Object.freeze({
     BRACE: 'TAP AND HOLD TO DESCEND',
     DESCENT: 'RELEASE AT DEPTH',
-    HOLE: 'OUT OF THE HOLE',
+    // Per kind: "OUT OF THE HOLE" is squat/deadlift jargon for the bottom
+    // position and reads as nonsense on a bench rep, which has no hole — it
+    // has a chest. Every other PROMPT entry ("RIDE IT", "DRIVE — TAP", "LOCK
+    // IT") is generic press language that already applies to both.
+    HOLE: { squat: 'OUT OF THE HOLE', bench: 'OFF THE CHEST' } satisfies PerKind<string>,
     ASCENT_BEFORE_CUE: 'RIDE IT',
     ASCENT_CUE_OPEN: 'DRIVE — TAP',
     ASCENT_AFTER_CUE: 'RIDE IT',

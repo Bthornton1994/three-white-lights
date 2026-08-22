@@ -1330,7 +1330,7 @@ export function promptFor(state: LiftState): string {
     case 'DESCENT':
       return p.DESCENT;
     case 'HOLE':
-      return p.HOLE;
+      return p.HOLE[state.config.kind];
     case 'ASCENT': {
       const cue = state.activeCue;
       if (cue !== null && state.tick >= cue.openTick) return p.ASCENT_CUE_OPEN;

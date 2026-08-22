@@ -412,9 +412,15 @@ describe('presentation feel', () => {
 });
 
 describe('copy', () => {
-  it('says something for every prompt', () => {
+  it('says something for every prompt, for every playable kind where one applies', () => {
     for (const [key, value] of Object.entries(LIFT_COPY.PROMPT)) {
-      expect(value.length, key).toBeGreaterThan(0);
+      if (typeof value === 'string') {
+        expect(value.length, key).toBeGreaterThan(0);
+        continue;
+      }
+      for (const kind of PLAYABLE_LIFT_KINDS) {
+        expect(value[kind].length, `${key}.${kind}`).toBeGreaterThan(0);
+      }
     }
   });
 
