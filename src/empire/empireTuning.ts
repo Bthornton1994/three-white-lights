@@ -1558,6 +1558,88 @@ export const EMPIRE_TUNING = Object.freeze({
    * count at this stride, via the documented fallback pass.
    */
   AMBIENT_MEMBER_PLACEMENT_STRIDE: 3,
+
+  // -------------------------------------------------------------------------
+  // §5.13 presentation Phase 2, PLAYTEST 4 — a real device playtest found the
+  // three ambient members reading as "small teal chips on a teal grid... extra
+  // tiles, not a population" rather than as people. Root cause, verified by
+  // hand rather than guessed: on the exact state every new gym opens in —
+  // zero session equipment owned — `equipmentBiasedMemberTypes([])` returns a
+  // single type, `'powerlifter'`, so every member in the roster maps to the
+  // SAME `AMBIENT_MEMBER_PALETTE` colour, and that colour
+  // (`AMBIENT_MEMBER_PALETTE[MEMBER_TYPES.indexOf('powerlifter')]`,
+  // `'lightseagreen'`) sits in the same teal/cyan hue family as
+  // `FLOOR_BACKGROUND_COLOR` (`'darkslategray'`) — so every opening-day
+  // member reads as the same colour as the floor itself. The player's own
+  // menu named three fixes and asked for any/all: contrast (fixed by
+  // replacing `AMBIENT_MEMBER_PALETTE`'s values, in `FloorGrid.tsx`, not
+  // here, since it stays a local named-colour-keyword table by the same
+  // precedent `PLACEHOLDER_PALETTE` sets), a distinct silhouette instead of a
+  // plain circle, and a tiny idle motion. The seven knobs below are the
+  // sizing/timing constants the second and third need — first-pass
+  // proposals, not tuned or played, the same status every other knob in this
+  // block already carries. Read by `FloorGrid.tsx` only.
+  // -------------------------------------------------------------------------
+
+  /**
+   * The placeholder body's "head" diameter, as a fraction of
+   * `AMBIENT_MEMBER_FOOTPRINT_TILES`'s smaller rendered dimension (so it
+   * stays circular and inside the footprint on a non-square footprint too).
+   * Paired with `AMBIENT_MEMBER_BODY_HEIGHT_FRACTION` below — the two sum to
+   * exactly 1 so a head-then-body stack fills the footprint's height with no
+   * gap and no overflow.
+   */
+  AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION: 0.45,
+
+  /**
+   * The placeholder body's "body" width, as a fraction of the footprint's
+   * rendered width — narrower than the full tile so the body silhouette
+   * reads apart from a session-equipment chip's own full-width rectangle.
+   */
+  AMBIENT_MEMBER_BODY_WIDTH_FRACTION: 0.8,
+
+  /**
+   * The placeholder body's "body" height, as a fraction of the footprint's
+   * rendered height. See `AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION` above for
+   * why this and that fraction sum to 1.
+   */
+  AMBIENT_MEMBER_BODY_HEIGHT_FRACTION: 0.55,
+
+  /** Corner radius, in pixels, of the placeholder body's "body" rectangle — rounded rather than square so it reads as a torso, not a tile. Small relative to `FLOOR_TILE_PIXELS` on purpose, at Phase 2's placeholder scale. */
+  AMBIENT_MEMBER_BODY_CORNER_RADIUS_PIXELS: 3,
+
+  /**
+   * How far, in pixels, an ambient member's idle bob displaces it vertically
+   * at the top of its cycle — a couple of pixels, deliberately small: this is
+   * meant to read as "not a frozen photograph," not as pathing or movement
+   * between grid cells (Phase 3's job, explicitly out of scope here). The
+   * base `left`/`top` position drawn from `member.position` is never touched;
+   * this is an additive transform on top of it, the same pattern the drag
+   * preview's own `dragOffset` already uses.
+   */
+  AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS: 2,
+
+  /**
+   * Duration, in milliseconds, of ONE HALF of an idle bob's cycle (rest to
+   * peak, or peak to rest) — the full up-and-down cycle is twice this. A felt
+   * timing knob, not tuned or played, in the same class as
+   * `FLOOR_OVERLAP_REFUSAL_FLASH_MS`'s "first-pass-proposal" status.
+   */
+  AMBIENT_MEMBER_BOB_HALF_CYCLE_MS: 900,
+
+  /**
+   * How many distinct stagger "lanes" an ambient member's bob start-delay is
+   * drawn from, keyed by the member's own roster index modulo this count —
+   * so a 3-member garage and a 40-member warehouse both get a small, fixed
+   * number of out-of-phase groups rather than either all bobbing in lockstep
+   * (one lane) or needing one distinct delay per member (an unbounded, and
+   * for a warehouse, pointless, table). Lockstep reads as one mechanism;
+   * staggered reads as individuals, which is the whole point of this round.
+   */
+  AMBIENT_MEMBER_BOB_STAGGER_LANES: 4,
+
+  /** The delay, in milliseconds, between one stagger lane's bob start and the next's — `lane * this` is a given member's own start delay. */
+  AMBIENT_MEMBER_BOB_STAGGER_STEP_MS: 150,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -1690,4 +1772,12 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   AMBIENT_MEMBER_COUNT_BY_RUNG: 'knob',
   AMBIENT_MEMBER_FOOTPRINT_TILES: 'knob',
   AMBIENT_MEMBER_PLACEMENT_STRIDE: 'knob',
+  AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION: 'knob',
+  AMBIENT_MEMBER_BODY_WIDTH_FRACTION: 'knob',
+  AMBIENT_MEMBER_BODY_HEIGHT_FRACTION: 'knob',
+  AMBIENT_MEMBER_BODY_CORNER_RADIUS_PIXELS: 'knob',
+  AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS: 'knob',
+  AMBIENT_MEMBER_BOB_HALF_CYCLE_MS: 'knob',
+  AMBIENT_MEMBER_BOB_STAGGER_LANES: 'knob',
+  AMBIENT_MEMBER_BOB_STAGGER_STEP_MS: 'knob',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

@@ -190,15 +190,44 @@ function colorFor(item: SessionEquipmentItem): string {
  * its own visual class rather than being mistaken for draggable equipment or
  * fixed furniture. Placeholder shapes only, per this piece's own build
  * order — Phase 4 is the real pixel-art pass.
+ *
+ * PLAYTEST 4's replacement, and why. The original five
+ * (`'coral'`/`'khaki'`/`'lightseagreen'`/`'plum'`/`'tan'`) were reasoned about
+ * only as a set distinct FROM EACH OTHER and from the other two palettes in
+ * this file — nobody checked them against `FLOOR_BACKGROUND_COLOR`
+ * (`'darkslategray'`). On the one real device playtest that matters most, the
+ * opening-day one, `equipmentBiasedMemberTypes([])` returns exactly one type
+ * (`'powerlifter'`, verified by hand from `MEMBER_TYPE_BARBELL_AFFINITY`/
+ * `MEMBER_TYPE_ITEM_AFFINITY` at the empty-equipment baseline — nothing else
+ * clears `MEMBER_EQUIPMENT_BIAS_TIE_TOLERANCE` of its score), so every member
+ * in the roster gets the SAME colour — and `'lightseagreen'`, the colour that
+ * index lands on, is itself a dark cyan/teal, the same hue family as the
+ * floor it sits on. Every new gym's opening frame showed three teal chips on
+ * a teal grid. This replacement palette is chosen to fail that reading even
+ * in the worst case (a single repeated colour): every one of the five is a
+ * warm, saturated hue with no teal/cyan/dark-slate-gray component at all, so
+ * it reads against `'darkslategray'` regardless of which single type an empty
+ * inventory biases toward. None repeats a literal string value already used
+ * elsewhere in this file (`PLACEHOLDER_PALETTE`, the fixed/refusal/grid/
+ * background colours above). A felt palette choice, not tuned or played — the
+ * next human phone pass is what actually judges it.
  */
 const AMBIENT_MEMBER_PALETTE: readonly string[] = Object.freeze([
-  'coral',
-  'khaki',
-  'lightseagreen',
-  'plum',
-  'tan',
+  'orange',
+  'gold',
+  'hotpink',
+  'chartreuse',
+  'tomato',
 ]);
 const AMBIENT_MEMBER_BORDER_COLOR = 'black';
+/**
+ * PLAYTEST 4: the placeholder body's "head" piece is a fixed neutral shade
+ * rather than cycling `AMBIENT_MEMBER_PALETTE` a second time — one colour
+ * reads as a head regardless of the type-coloured "body" beneath it, and
+ * keeps the two-part silhouette legible at Phase 2's placeholder (1 tile)
+ * scale instead of needing a second hue pairing per type.
+ */
+const AMBIENT_MEMBER_HEAD_COLOR = 'white';
 
 function colorForMemberType(type: MemberType): string {
   const index = EMPIRE_TUNING.MEMBER_TYPES.indexOf(type);
@@ -208,6 +237,144 @@ function colorForMemberType(type: MemberType): string {
 /** Round a page-relative pixel offset to the NEAREST whole grid tile. */
 function pixelsToTile(pixels: number, tilePixels: number): number {
   return Math.round(pixels / tilePixels);
+}
+
+interface AmbientMemberBodyProps {
+  readonly index: number;
+  readonly type: MemberType;
+  readonly position: GridPosition;
+  readonly tile: number;
+}
+
+/**
+ * GDD §5.13 presentation Phase 2, PLAYTEST 4: one ambient member, drawn as a
+ * two-part placeholder silhouette (a circular "head" over a rounded-rect
+ * "body") instead of the single plain circle this piece shipped with, plus a
+ * small, purely-visual, staggered idle bob — the player's own three-item
+ * menu for "does not read as a person," all three built together.
+ *
+ * WHY A SEPARATE COMPONENT, rather than the bob's `Animated.Value` living in
+ * `FloorGrid` and being indexed by array position: React's rules of hooks
+ * forbid calling `useRef`/`useEffect` inside a `.map` callback, and each
+ * member needs its OWN animated value and its OWN start/stop lifecycle (a
+ * garage's 3 members and a warehouse's 40 must each bob independently,
+ * out of phase by lane). Giving each member its own component instance,
+ * keyed by roster index the same way the single `View` this replaces already
+ * was, makes that legal: each instance owns one `Animated.Value`, starts its
+ * own `Animated.loop` on mount, and `useEffect`'s cleanup function stops it
+ * on unmount — which covers "the ambient roster's length changes" exactly,
+ * since a shorter roster on re-render unmounts every index past the new
+ * length and a longer one mounts a fresh instance (fresh loop, correctly
+ * un-started-until-now) for every new index.
+ *
+ * THE BOB IS PURELY VISUAL. It reads no `GymState`, no `EmpireGym`, no
+ * reputation and no wallet; it dispatches nothing; and it never touches
+ * `member.position` (the `left`/`top` below, read straight from
+ * `ambientMemberRoster`'s real output) — only an ADDITIVE `translateY`
+ * transform on top of that fixed base position, the identical pattern the
+ * drag preview above already uses via `dragOffset`. This is Phase 2's "not a
+ * frozen photograph," not Phase 3's pathing — there is no target cell, no
+ * movement between grid cells, and no game-state input of any kind.
+ *
+ * The bounded version of that claim, in the shape CLAUDE.md's own "Form That
+ * Survived" section asks for: `AmbientMemberBodyProps` is a closed,
+ * four-member interface — `index`, `type`, `position`, `tile` — none of them
+ * a callback or a game-state type, so this component has no dispatch or
+ * `GymState`/`EmpireGym`/reputation/wallet channel to reach through, whatever
+ * the render body below does with the fields it has. Its limit, stated
+ * because no check reaches past it: this only pins the member NAMES, not
+ * what an existing member's type could later be widened to smuggle a channel
+ * in through — `position`'s type quietly growing a callback field would sit
+ * outside it, though nothing here does that today. The named catcher is
+ * `empireForbiddenOutput.test.ts`'s "pins `AmbientMemberBodyProps`'s closed
+ * member set, and reddens on a planted dispatch/game-state member" test,
+ * mutation-tested by planting a `dispatch: (action: GymViewAction) => void`
+ * member into this interface and watching that test redden naming
+ * `dispatch`, then reverting — see that test's own header for the verbatim
+ * mutant and the observed failure.
+ *
+ * Outer element keeps the `floorgrid-ambient-<index>` testID the browser
+ * check and existing unit tests key off of, with the SAME real, non-zero
+ * `width`/`height` (`AMBIENT_MEMBER_FOOTPRINT_TILES` scaled by `tile`) the
+ * single-`View` version carried, so a bounding-box read still covers the
+ * whole visible member.
+ */
+function AmbientMemberBody({ index, type, position, tile }: AmbientMemberBodyProps) {
+  const footprintWidth = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.width * tile;
+  const footprintHeight = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.height * tile;
+  const headDiameter =
+    Math.min(footprintWidth, footprintHeight) * EMPIRE_TUNING.AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION;
+  const bodyWidth = footprintWidth * EMPIRE_TUNING.AMBIENT_MEMBER_BODY_WIDTH_FRACTION;
+  const bodyHeight = footprintHeight * EMPIRE_TUNING.AMBIENT_MEMBER_BODY_HEIGHT_FRACTION;
+
+  const bob = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const lane = index % EMPIRE_TUNING.AMBIENT_MEMBER_BOB_STAGGER_LANES;
+    const delay = lane * EMPIRE_TUNING.AMBIENT_MEMBER_BOB_STAGGER_STEP_MS;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(bob, {
+          toValue: 1,
+          duration: EMPIRE_TUNING.AMBIENT_MEMBER_BOB_HALF_CYCLE_MS,
+          useNativeDriver: false,
+        }),
+        Animated.timing(bob, {
+          toValue: 0,
+          duration: EMPIRE_TUNING.AMBIENT_MEMBER_BOB_HALF_CYCLE_MS,
+          useNativeDriver: false,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [bob, index]);
+
+  const bobTranslateY = bob.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, EMPIRE_TUNING.AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS],
+  });
+
+  return (
+    <Animated.View
+      testID={`floorgrid-ambient-${index}`}
+      style={{
+        position: 'absolute',
+        left: position.x * tile,
+        top: position.y * tile,
+        width: footprintWidth,
+        height: footprintHeight,
+        transform: [{ translateY: bobTranslateY }],
+      }}
+    >
+      <View
+        style={{
+          position: 'absolute',
+          left: (footprintWidth - headDiameter) / 2,
+          top: 0,
+          width: headDiameter,
+          height: headDiameter,
+          borderRadius: headDiameter / 2,
+          backgroundColor: AMBIENT_MEMBER_HEAD_COLOR,
+          borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+          borderColor: AMBIENT_MEMBER_BORDER_COLOR,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: (footprintWidth - bodyWidth) / 2,
+          top: headDiameter,
+          width: bodyWidth,
+          height: bodyHeight,
+          borderRadius: EMPIRE_TUNING.AMBIENT_MEMBER_BODY_CORNER_RADIUS_PIXELS,
+          backgroundColor: colorForMemberType(type),
+          borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+          borderColor: AMBIENT_MEMBER_BORDER_COLOR,
+        }}
+      />
+    </Animated.View>
+  );
 }
 
 export function FloorGrid(props: FloorGridProps) {
@@ -466,33 +633,27 @@ export function FloorGrid(props: FloorGridProps) {
                 </Animated.View>
               );
             })}
-            {ambient.map((member, index) => {
-              const width = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.width * tile;
-              const height = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.height * tile;
-              return (
-                // GDD §5.13 presentation Phase 2: a static, non-draggable,
-                // non-collidable placeholder body — no `PanResponder`, no
-                // remove control, never wrapped in a `FloorPlacement`, never
-                // dispatched through `floor-place`/`floor-remove`. Same "read
-                // model, not `FloorState`" discipline the fixed-furniture
-                // rows above already carry.
-                <View
+            {
+              // GDD §5.13 presentation Phase 2, PLAYTEST 4: a static-
+              // position, non-draggable, non-collidable placeholder body —
+              // no `PanResponder`, no remove control, never wrapped in a
+              // `FloorPlacement`, never dispatched through
+              // `floor-place`/`floor-remove`. Same "read model, not
+              // `FloorState`" discipline the fixed-furniture rows above
+              // already carry. `AmbientMemberBody`'s own header explains why
+              // the render moved into its own component (each member needs
+              // its own `Animated.Value` and its own start/stop lifecycle for
+              // the idle bob, which `.map` cannot give a hook directly).
+              ambient.map((member, index) => (
+                <AmbientMemberBody
                   key={`ambient-${index}`}
-                  testID={`floorgrid-ambient-${index}`}
-                  style={{
-                    position: 'absolute',
-                    left: member.position.x * tile,
-                    top: member.position.y * tile,
-                    width,
-                    height,
-                    borderRadius: Math.min(width, height) / 2,
-                    backgroundColor: colorForMemberType(member.type),
-                    borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
-                    borderColor: AMBIENT_MEMBER_BORDER_COLOR,
-                  }}
+                  index={index}
+                  type={member.type}
+                  position={member.position}
+                  tile={tile}
                 />
-              );
-            })}
+              ))
+            }
           </View>
         </ScrollView>
       </ScrollView>

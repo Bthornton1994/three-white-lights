@@ -3295,7 +3295,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // ('black') is NOT new — it duplicates `FLOOR_ITEM_BORDER_COLOR`'s
     // existing value, and this is a set of distinct VALUES, not declarations.
     // Measured by running this assertion and reading the failure value.
-    expect(singleQuoted.size).toBe(344);
+    // 344 -> 345: PLAYTEST 4 replaced `AMBIENT_MEMBER_PALETTE`'s five values
+    // ('coral', 'khaki', 'lightseagreen', 'plum', 'tan' — the last of which
+    // was the "same colour as the floor" defect) with five new ones
+    // ('orange', 'gold', 'hotpink', 'chartreuse', 'tomato' — net zero), and
+    // added one new colour, `AMBIENT_MEMBER_HEAD_COLOR` ('white'), which is
+    // the net +1. Measured by running this assertion and reading the failure
+    // value.
+    expect(singleQuoted.size).toBe(345);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3385,6 +3392,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'ceiling-growth-per-week',
       'chalk',
       'chance-draw',
+      'chartreuse',
       'cheapest-affordable-first',
       'check-in-upkeep',
       'club',
@@ -3395,7 +3403,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'competition-total',
       'composed-gym',
       'conditioning',
-      'coral',
       'cosmetic-unlock',
       'cosmetics',
       'costliest-affordable-first',
@@ -3436,6 +3443,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'friend-visit-allowance-reset',
       'garage',
       'global',
+      'gold',
       'goldenrod',
       'gray',
       'gym-accelerated-bucks',
@@ -3489,6 +3497,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-week-log',
       'gymscreen-week-preview',
       'hoard',
+      'hotpink',
       'hypertrophy',
       'idle-clock',
       'idle-only',
@@ -3498,7 +3507,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'injury-days-saved',
       'injury-risk',
       'injuryDaysSaved',
-      'khaki',
       'knob',
       'ladder-accrual',
       'ladder-clock',
@@ -3514,7 +3522,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'leaderboard-placement',
       'legendary',
       'level',
-      'lightseagreen',
       'machines',
       'mats',
       'mediumpurple',
@@ -3534,6 +3541,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'npc-id',
       'npcId',
       'number',
+      'orange',
       'other-recovery',
       'out-of-bounds',
       'overlaps',
@@ -3542,7 +3550,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'physio',
       'physio-days-saved',
       'placed',
-      'plum',
       'power-bar',
       'powerlifter',
       'progression-reaching',
@@ -3603,10 +3610,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'strip-mall-unit',
       'structural',
       'support',
-      'tan',
       'technique-quality',
       'technique-quality-bonus',
       'thrownMessage',
+      'tomato',
       'trained',
       'trained-day-upkeep',
       'training-iq',
@@ -3621,6 +3628,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'wall-clock',
       'wall-clock-earned',
       'warehouse',
+      'white',
       'wrist-wraps',
     ]);
 
@@ -3653,7 +3661,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // both from GDD §5.13's PLAYTEST 2 ruling.
     // 554 -> 566: singleQuoted (337 -> 344) and templateChunks (217 -> 222),
     // GDD §5.13 presentation Phase 2.
-    expect(stringsChecked).toBe(566);
+    // 566 -> 567: singleQuoted (344 -> 345), PLAYTEST 4; templateChunks
+    // unchanged (222).
+    expect(stringsChecked).toBe(567);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3699,7 +3709,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 284 -> 291: GDD §5.13 presentation Phase 2's seven new spaceFree
     // entries ('./members', 'coral', 'khaki', 'lightseagreen', 'plum', 'tan',
     // 'floorgrid-ambient-caption'), all clearing the two-letter guard below.
-    expect(probes).toBe(291);
+    // 291 -> 292: PLAYTEST 4 removed five spaceFree entries ('coral', 'khaki',
+    // 'lightseagreen', 'plum', 'tan') and added six ('orange', 'gold',
+    // 'hotpink', 'chartreuse', 'tomato', 'white'), all clearing the
+    // two-letter guard below — net +1. Measured by running this assertion.
+    expect(probes).toBe(292);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -4200,12 +4214,18 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // AMBIENT_MEMBER_FOOTPRINT_TILES (width, height) and
     // AMBIENT_MEMBER_PLACEMENT_STRIDE (one value). Read from this assertion's
     // own failure value, not hand-counted.
+    // 231 -> 239: PLAYTEST 4's eight new scalar knobs
+    // (AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION, AMBIENT_MEMBER_BODY_WIDTH_FRACTION,
+    // AMBIENT_MEMBER_BODY_HEIGHT_FRACTION, AMBIENT_MEMBER_BODY_CORNER_RADIUS_PIXELS,
+    // AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS, AMBIENT_MEMBER_BOB_HALF_CYCLE_MS,
+    // AMBIENT_MEMBER_BOB_STAGGER_LANES, AMBIENT_MEMBER_BOB_STAGGER_STEP_MS —
+    // one numeric literal each). Read from this assertion's own failure value.
     expect(
       asRenderer.length,
       'the count of literals the audit finds in empireTuning.ts moved: an entry was added or ' +
         'removed, or the instrument stopped reporting. Both are decisions; neither is a tuning ' +
         `pass. First finding: ${formatFindings(asRenderer.slice(0, 1)).trim()}`,
-    ).toBe(231);
+    ).toBe(239);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

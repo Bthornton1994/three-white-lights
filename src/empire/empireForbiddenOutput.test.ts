@@ -1452,13 +1452,27 @@ const SURFACE_CENSUS = Object.freeze({
   // (`SessionEquipmentItem`), and its return type's `AmbientMemberPlacement.
   // type` field (`MemberType`), each an already-known union arriving at a
   // new exported position. Measured by running this exact assertion.
-  LITERAL_POSITIONS: 2239,
+  // 2239 -> 2247: PLAYTEST 4 changed the SHAPE of the JSX tree `FloorGrid`
+  // returns — the ambient members are now `<AmbientMemberBody .../>` (a
+  // circular "head" `View` over a rounded-rect "body" `View`) instead of the
+  // old flat single `View`. `FloorGrid`'s own return type is this walk's
+  // entry point (`entryPath: 'return'`), and the walk recurses through every
+  // property of a value's structural type — a numeric knob by itself reaches
+  // nothing (numbers stop the walk, per this function's own `PRIMITIVE_FLAGS`
+  // arm), but a different-shaped returned React element tree changes which
+  // nested React/JSX-internal properties the walk reaches. Measured by
+  // running this exact assertion and reading the failure value; the specific
+  // eight new positions were not hand-traced through React's own type
+  // definitions.
+  LITERAL_POSITIONS: 2247,
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
   // `ambientMemberRoster`'s four new literal positions above (`LadderRung`,
   // `LadderEquipmentItem`, `SessionEquipmentItem`, `MemberType`) are ALL
   // unions already counted from earlier exports, so this does not move.
+  // PLAYTEST 4's new positions are also all already-known unions
+  // (`MemberType`), so this does not move either.
   DISTINCT_LITERAL_MEMBERS: 152,
   DEPTH_CUTS: 0,
 });
@@ -2523,7 +2537,14 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // x3, String x2) and FloorGrid.tsx's new render call expressions
   // (ambientMemberRoster, ambient.map, colorForMemberType, Math.min),
   // measured by running this exact assertion rather than hand-counted.
-  CALLS_EXAMINED: 1722,
+  // 1722 -> 1732: PLAYTEST 4's new call expressions in FloorGrid.tsx —
+  // `AmbientMemberBody`'s own body (`Math.min` x1, `useRef`, `Animated.Value`
+  // constructor, `useEffect`, `Animated.loop`, `Animated.sequence`,
+  // `Animated.delay`, `Animated.timing` x2, `loop.start`, the returned
+  // `loop.stop` closure) and the `ambient.map` callback now constructing
+  // `AmbientMemberBody` instead of the old inline `View`. Measured by running
+  // this exact assertion rather than hand-counted.
+  CALLS_EXAMINED: 1732,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3730,6 +3751,42 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     'AMBIENT_MEMBER_PLACEMENT_STRIDE',
     'A SPACING DIVISOR, the same class as TICK_SECONDS/DAYS_PER_TRAINING_WEEK above — candidates are filtered by `index % stride === 0`, an arithmetic spacing rule rather than a threshold gating a caller-supplied value. Nothing in this directory compares a value AGAINST it.',
   ),
+  // GDD §5.13 presentation Phase 2, PLAYTEST 4 — eight more entries, same
+  // class as the fifteen rows above: fixed rendering/timing constants
+  // `FloorGrid.tsx` applies while drawing or animating an ambient member,
+  // not economic thresholds a caller-supplied value is compared against.
+  ...exemptTable(
+    'AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION',
+    'A RENDERING SCALE FACTOR, the same class as FLOOR_TILE_PIXELS above — `FloorGrid.tsx` multiplies the ambient body\'s rendered footprint by this to get the placeholder "head" circle\'s diameter. Nothing in this directory compares a caller-supplied value against it; it scales an output rather than gating an input.',
+  ),
+  ...exemptTable(
+    'AMBIENT_MEMBER_BODY_WIDTH_FRACTION',
+    'A RENDERING SCALE FACTOR, the sibling of the row above applied to the placeholder "body" rectangle\'s width instead of the head circle\'s diameter.',
+  ),
+  ...exemptTable(
+    'AMBIENT_MEMBER_BODY_HEIGHT_FRACTION',
+    'A RENDERING SCALE FACTOR, the sibling of the two rows above applied to the placeholder "body" rectangle\'s height. Paired with `AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION` (the two sum to 1) so a head-then-body stack fills the footprint exactly; that pairing is a layout fact stated in both entries\' own comments, not a comparison a domain sweep needs to straddle.',
+  ),
+  ...exemptTable(
+    'AMBIENT_MEMBER_BODY_CORNER_RADIUS_PIXELS',
+    'A RENDERING DIMENSION, the same class as FLOOR_GRID_BORDER_WIDTH_PIXELS above — a CSS border radius `FloorGrid.tsx` applies to the placeholder "body" rectangle so it reads as a torso rather than a tile. Drawn, never compared against a caller-supplied value.',
+  ),
+  ...exemptTable(
+    'AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS',
+    'A RENDERING DIMENSION — the top of an idle bob\'s `Animated.Value` interpolation range, applied as an additive `translateY` on top of `member.position`. Drawn, never compared against a caller-supplied value; the base position it sits on top of is untouched, per `AmbientMemberBody`\'s own header.',
+  ),
+  ...exemptTable(
+    'AMBIENT_MEMBER_BOB_HALF_CYCLE_MS',
+    'A RENDERING/TIMING DURATION, the same class as FLOOR_OVERLAP_REFUSAL_FLASH_MS above — `AmbientMemberBody` passes it straight to `Animated.timing`\'s `duration`. Nothing in this directory compares a caller-supplied value against it; it schedules an animation the way a rate does, rather than gating an input.',
+  ),
+  ...exemptTable(
+    'AMBIENT_MEMBER_BOB_STAGGER_LANES',
+    'A SPACING DIVISOR, the same class as AMBIENT_MEMBER_PLACEMENT_STRIDE above — a member\'s roster index modulo this picks its stagger lane. Nothing in this directory compares a caller-supplied value against it.',
+  ),
+  ...exemptTable(
+    'AMBIENT_MEMBER_BOB_STAGGER_STEP_MS',
+    'A RENDERING/TIMING DURATION, the sibling of AMBIENT_MEMBER_BOB_HALF_CYCLE_MS above — `lane * this` is a given member\'s own `Animated.delay` before its bob loop starts. Nothing in this directory compares a caller-supplied value against it.',
+  ),
 ]);
 
 /**
@@ -4267,7 +4324,10 @@ const FIXTURE_LISTS: readonly FixtureList[] = Object.freeze([
     // widened the SECONDS domain by two points (foreign points every exempt
     // leaf straddles every domain's ceiling with), measured by running the
     // assertion below.
-    size: 216,
+    // 216 -> 219: PLAYTEST 4's eight new exempt tuning leaves widened the
+    // SECONDS domain by three points, measured by running the assertion
+    // below.
+    size: 219,
     why: 'One clock per point of the seconds domain, at a fixed skip. Derived, so the seconds domain losing its ceiling this round widened this list without anybody touching it.',
   }),
   Object.freeze({
@@ -4405,12 +4465,17 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   // felt UI duration, not a threshold — the same shape as the dev time-step
   // seconds and income rates above and below it, above COUNT/DAY/ROSTER_
   // SHAPE's ceilings for the same reason they are.
+  // PLAYTEST 4: AMBIENT_MEMBER_BOB_HALF_CYCLE_MS (900) is a felt animation
+  // duration, the same shape as FLOOR_OVERLAP_REFUSAL_FLASH_MS above and
+  // below it — above COUNT/DAY/ROSTER_SHAPE's ceilings for the same reason.
+  'COUNT/AMBIENT_MEMBER_BOB_HALF_CYCLE_MS=900',
   'COUNT/FLOOR_OVERLAP_REFUSAL_FLASH_MS=1200',
   'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
   'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
   'COUNT/LADDER_DEV_TIME_STEPS_SECONDS[2]=259200',
   'COUNT/LADDER_INCOME_GYM_BUCKS_PER_HOUR.strip-mall-unit=900',
   'COUNT/LADDER_INCOME_GYM_BUCKS_PER_HOUR.warehouse=3000',
+  'DAY/AMBIENT_MEMBER_BOB_HALF_CYCLE_MS=900',
   'DAY/FLOOR_OVERLAP_REFUSAL_FLASH_MS=1200',
   'DAY/LADDER_DEV_TIME_STEPS_SECONDS[0]=3600',
   'DAY/LADDER_DEV_TIME_STEPS_SECONDS[1]=28800',
@@ -4421,6 +4486,14 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   // values (18 and 40, the strip-mall-unit and warehouse counts) sit above
   // ROSTER_SHAPE's ceiling (ROSTER_SLOTS_MAX + 1 = 17); the garage (3) and
   // storage-unit (8) counts do not.
+  // PLAYTEST 4: two of the eight new scalar knobs sit above ROSTER_SHAPE's
+  // ceiling (ROSTER_SLOTS_MAX + 1 = 17) — AMBIENT_MEMBER_BOB_HALF_CYCLE_MS
+  // (900) and AMBIENT_MEMBER_BOB_STAGGER_STEP_MS (150), both felt timing
+  // durations, not roster counts. The other six (all fractions, a corner
+  // radius of 3, a bob amplitude of 2, and a stagger-lane count of 4) sit
+  // below it.
+  'ROSTER_SHAPE/AMBIENT_MEMBER_BOB_HALF_CYCLE_MS=900',
+  'ROSTER_SHAPE/AMBIENT_MEMBER_BOB_STAGGER_STEP_MS=150',
   'ROSTER_SHAPE/AMBIENT_MEMBER_COUNT_BY_RUNG.strip-mall-unit=18',
   'ROSTER_SHAPE/AMBIENT_MEMBER_COUNT_BY_RUNG.warehouse=40',
   'ROSTER_SHAPE/CHECK_IN_TARGET_SECONDS_MAX=60',
@@ -4497,12 +4570,21 @@ const DOMAIN_CENSUS = Object.freeze({
   // (AMBIENT_MEMBER_COUNT_BY_RUNG x4, AMBIENT_MEMBER_FOOTPRINT_TILES x2,
   // AMBIENT_MEMBER_PLACEMENT_STRIDE x1), same class, measured by running the
   // assertion below rather than hand-summed.
+  // 185 -> 193: PLAYTEST 4's eight new scalar exempt leaves
+  // (AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION, AMBIENT_MEMBER_BODY_WIDTH_FRACTION,
+  // AMBIENT_MEMBER_BODY_HEIGHT_FRACTION, AMBIENT_MEMBER_BODY_CORNER_RADIUS_PIXELS,
+  // AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS, AMBIENT_MEMBER_BOB_HALF_CYCLE_MS,
+  // AMBIENT_MEMBER_BOB_STAGGER_LANES, AMBIENT_MEMBER_BOB_STAGGER_STEP_MS),
+  // each a single-scalar `exemptTable` row, same class as the six scalar
+  // rendering knobs Phase 1 added. Measured by running the assertion below.
   /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
-  EXEMPT: 185,
+  EXEMPT: 193,
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
   // 264 -> 266: the same 2 new leaves.
   // 266 -> 273: the same 7 new leaves.
-  TUNING_NUMERIC_LEAVES: 273,
+  // 273 -> 281: the same 8 new PLAYTEST 4 leaves, measured by running the
+  // assertion below.
+  TUNING_NUMERIC_LEAVES: 281,
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -4511,8 +4593,11 @@ const DOMAIN_CENSUS = Object.freeze({
   // 266 -> 268: the same 2 new exempt leaves.
   // 268 -> 275: the same 7 new exempt leaves, measured by running the
   // assertion below.
+  // 275 -> 283: the same 8 new PLAYTEST 4 exempt leaves (FILED unchanged at
+  // 88, the 2 derived seconds entries unchanged), measured by running the
+  // assertion below.
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
-  BRANCH_POINTS: 275,
+  BRANCH_POINTS: 283,
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -4525,7 +4610,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // leaves, each a new `required` obligation in whichever domains do not
   // already carry it, summed across all six domains. Measured by running
   // the assertion below.
-  CONTAINMENT_CHECKS: 1432,
+  // 1432 -> 1476: PLAYTEST 4's eight new exempt tuning leaves, same shape,
+  // measured by running the assertion below.
+  CONTAINMENT_CHECKS: 1476,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -4533,8 +4620,11 @@ const DOMAIN_CENSUS = Object.freeze({
     // 60 -> 61 (DAY and COUNT both): FLOOR_OVERLAP_REFUSAL_FLASH_MS=1200
     // sits above both ceilings, the same shape as LADDER_DEV_TIME_STEPS_
     // SECONDS above. FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS=4 does not.
-    DAY: 61,
-    COUNT: 61,
+    // 61 -> 62 (DAY and COUNT both): PLAYTEST 4's AMBIENT_MEMBER_BOB_HALF_
+    // CYCLE_MS=900 sits above both ceilings, the same shape as
+    // FLOOR_OVERLAP_REFUSAL_FLASH_MS above. The other seven new knobs do not.
+    DAY: 62,
+    COUNT: 62,
     LEVEL: 0,
     // 84 -> 89: the five MEMBER_DUES_GYM_BUCKS_PER_DAY rates.
     // 84 -> 88: four of GDD §5.13 presentation Phase 1's 42 new exempt
@@ -4543,7 +4633,10 @@ const DOMAIN_CENSUS = Object.freeze({
     // 94 -> 96: GDD §5.13 presentation Phase 2's AMBIENT_MEMBER_COUNT_BY_RUNG
     // strip-mall-unit/warehouse values (18, 40), both above ROSTER_SHAPE's
     // ceiling.
-    ROSTER_SHAPE: 96,
+    // 96 -> 98: PLAYTEST 4's AMBIENT_MEMBER_BOB_HALF_CYCLE_MS=900 and
+    // AMBIENT_MEMBER_BOB_STAGGER_STEP_MS=150, both above ROSTER_SHAPE's
+    // ceiling. The other six new knobs are not.
+    ROSTER_SHAPE: 98,
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -4578,17 +4671,26 @@ const DOMAIN_CENSUS = Object.freeze({
   // several domains' point sets further, measured by running the exact
   // assertions below rather than derived: NUMBER_CONTAINMENT_CHECKS
   // 857 -> 867, NUMBER_POINTS 282 -> 284, SECONDS_POINTS 214 -> 216.
-  NUMBER_CONTAINMENT_CHECKS: 867,
-  NUMBER_POINTS: 284,
-  SECONDS_POINTS: 216,
+  // PLAYTEST 4's eight new exempt tuning leaves widened several domains'
+  // point sets further, measured by running the exact assertions below
+  // rather than derived: NUMBER_CONTAINMENT_CHECKS 867 -> 882, NUMBER_POINTS
+  // 284 -> 287, SECONDS_POINTS 216 -> 219.
+  NUMBER_CONTAINMENT_CHECKS: 882,
+  NUMBER_POINTS: 287,
+  SECONDS_POINTS: 219,
   // 74 -> 76: GDD §5.13 presentation Phase 2's exempt tuning leaves widened
   // the COUNT domain by two points, cross-checked directly against
   // `NUMERIC_DOMAINS.COUNT.points.length` by running the assertion below.
   // 70 -> 72: the same widening, measured by running the assertion below.
-  DAY_POINTS: 72,
-  COUNT_POINTS: 76,
-  // 200 -> 202: the same widening, measured by running the assertion below.
-  LEVEL_POINTS: 202,
+  // PLAYTEST 4's eight new exempt tuning leaves widened DAY by 3 (72 -> 75),
+  // COUNT by 3 (76 -> 79) and LEVEL by 3 (202 -> 205), each measured by
+  // running the assertion below rather than derived — the sentinel-then-
+  // measure discipline, since a five-point `straddle()` per new leaf does not
+  // land on a fixed per-domain delta (some straddle points coincide with
+  // values already in the domain).
+  DAY_POINTS: 75,
+  COUNT_POINTS: 79,
+  LEVEL_POINTS: 205,
   ROSTER_SHAPE_POINTS: 17,
 });
 
@@ -7189,10 +7291,14 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
 // ceilinged domains' point sets, moving every row here: COUNT 732 -> 752,
 // DAY 11692 -> 12030, ROSTER_SHAPE 86989 -> 87601. Measured by running the
 // assertion below rather than derived.
+// PLAYTEST 4's eight new exempt tuning leaves widened the ceilinged domains'
+// point sets further, moving every row here again: COUNT 752 -> 782,
+// DAY 12030 -> 12537, ROSTER_SHAPE 87601 -> 88519. Measured by running the
+// assertion below rather than derived.
 const MAIN_DRIVE_ROWS_BY_AXIS: Readonly<Record<string, number>> = Object.freeze({
-  COUNT: 752,
-  DAY: 12030,
-  ROSTER_SHAPE: 87601,
+  COUNT: 782,
+  DAY: 12537,
+  ROSTER_SHAPE: 88519,
 });
 
 /**
@@ -7611,11 +7717,15 @@ const OVERFLOW_CENSUS = Object.freeze({
   // GDD §5.13 presentation Phase 2: OMITTED_ABOVE_CEILING's sum moved
   // 216 -> 218 (ROSTER_SHAPE 94 -> 96, the two new AMBIENT_MEMBER_COUNT_
   // BY_RUNG points above its ceiling).
-  POINTS: 218,
+  // PLAYTEST 4: OMITTED_ABOVE_CEILING's sum moved 218 -> 222 (DAY 61 -> 62,
+  // COUNT 61 -> 62, ROSTER_SHAPE 96 -> 98 — AMBIENT_MEMBER_BOB_HALF_CYCLE_MS
+  // and AMBIENT_MEMBER_BOB_STAGGER_STEP_MS, both above their ceilings).
+  POINTS: 222,
   /** Of those, how many at least one subject was driven at. */
   // Tracks POINTS 1:1 again (218), confirmed by running the assertion below
-  // rather than assumed.
-  POINTS_DRIVEN: 218,
+  // rather than assumed. PLAYTEST 4: tracks POINTS 1:1 again (222), confirmed
+  // by running this exact assertion.
+  POINTS_DRIVEN: 222,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -7632,10 +7742,18 @@ const OVERFLOW_CENSUS = Object.freeze({
   // them, so this round has not yet observed their real values. Left at
   // their pre-round pins deliberately, to be corrected from the next run's
   // real failure rather than guessed.
-  PAIRS_DRIVEN: 3299,
+  // PLAYTEST 4: PAIRS_DRIVEN re-measured (3299 -> 3371). PAIRS_SKIPPED
+  // re-confirmed at 495, unchanged, cross-checked independently against
+  // `OVERFLOW_RESIDUAL`'s own summed 'the pair' rows in the
+  // "walked a domain that is not empty at the dropped points" test's
+  // sibling. PAIRS_ARGUMENT_SKIPPED is still UNCONFIRMED for this round —
+  // left at a sentinel to be corrected from the next run's real failure.
+  PAIRS_DRIVEN: 3371,
   PAIRS_SKIPPED: 495,
   /** Of the driven, how many had the re-read argument region left unscanned. */
   // PLAYTEST 3: held at 1035, confirmed by running this exact assertion.
+  // PLAYTEST 4: re-confirmed at 1035, unchanged, cross-checked independently
+  // against `OVERFLOW_RESIDUAL`'s own summed 'the argument re-read' rows.
   PAIRS_ARGUMENT_SKIPPED: 1035,
   /**
    * ROSTER_SHAPE points above its allocation ceiling.
@@ -7670,13 +7788,26 @@ const OVERFLOW_CENSUS = Object.freeze({
   // mismatch each round. DISTINCT_STRINGS is still UNCONFIRMED — left at its
   // pre-round pin to be corrected from the next run's real failure rather
   // than guessed.
-  ROWS: 4092,
-  NODES: 904581,
-  STRINGS: 6155127,
-  // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (4360 ->
-  // 4363), a real failure value this round's own run produced — this closes
-  // the last UNCONFIRMED field on OVERFLOW_CENSUS for this round.
-  DISTINCT_STRINGS: 4363,
+  // PLAYTEST 4: ROWS re-measured (4092 -> 4177), a real failure value this
+  // round's own run produced. NODES/STRINGS/DISTINCT_STRINGS below are
+  // UNCONFIRMED for this round — the test throws at ROWS first — left at
+  // their pre-round pins to be corrected from the next run's real failure
+  // rather than guessed.
+  // PLAYTEST 4: NODES re-measured (904581 -> 942486), a real failure value
+  // this round's own run produced. STRINGS/DISTINCT_STRINGS below are still
+  // UNCONFIRMED for this round — the test throws at NODES first — left at
+  // sentinels to be corrected from the next run's real failure.
+  // PLAYTEST 4: STRINGS re-measured (6155127 -> 6413124), a real failure
+  // value this round's own run produced. DISTINCT_STRINGS below is still
+  // UNCONFIRMED for this round — left at a sentinel to be corrected from the
+  // next run's real failure.
+  // PLAYTEST 4: DISTINCT_STRINGS re-measured (4363 -> 4366), a real failure
+  // value this round's own run produced — this closes the last UNCONFIRMED
+  // field on OVERFLOW_CENSUS for this round.
+  ROWS: 4177,
+  NODES: 942486,
+  STRINGS: 6413124,
+  DISTINCT_STRINGS: 4366,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
   /**
@@ -7726,7 +7857,10 @@ const OVERFLOW_CENSUS = Object.freeze({
   // round's own run produced (the overflow pass's dropped-point domain grew
   // with the new ambient-member tuning leaves' exempted ceilings, so more
   // closures are declined on the resulting extra dropped points).
-  CLOSURES_DECLINED: 408,
+  // PLAYTEST 4: 408 -> 424, the same shape — the eight new exempt tuning
+  // leaves widened the dropped-point domain further. Measured by running the
+  // assertion below rather than derived.
+  CLOSURES_DECLINED: 424,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -7760,14 +7894,19 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // 94 -> 96: GDD §5.13 presentation Phase 2's two more dropped ROSTER_SHAPE
   // points (AMBIENT_MEMBER_COUNT_BY_RUNG's strip-mall-unit/warehouse
   // values), refused the same way.
-  ['beginRecruitment#refused', 96],
+  // 96 -> 98: PLAYTEST 4's two more dropped ROSTER_SHAPE points
+  // (AMBIENT_MEMBER_BOB_HALF_CYCLE_MS, AMBIENT_MEMBER_BOB_STAGGER_STEP_MS),
+  // refused the same way.
+  ['beginRecruitment#refused', 98],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
   // 360 -> 366, 120 -> 122: the same new dropped point, measured by running
   // this exact assertion rather than derived.
-  ['recordFriendVisit#refused', 366],
-  ['recordFriendVisit#visited', 122],
+  // PLAYTEST 4: 366 -> 372, 122 -> 124, the same two new dropped DAY/COUNT
+  // points, measured by running this exact assertion.
+  ['recordFriendVisit#refused', 372],
+  ['recordFriendVisit#visited', 124],
 ]);
 
 // ---------------------------------------------------------------------------
@@ -8054,7 +8193,18 @@ const DRIVE_CENSUS = Object.freeze({
   // UNCONFIRMED for this round — the test throws at ROWS first — left at
   // their pre-round pins to be corrected from the next run's real failure
   // rather than guessed.
-  ROWS: 325584,
+  // PLAYTEST 4: ROWS re-measured (325584 -> 331185), a real failure value
+  // this round's own run produced — the eight new exempt tuning leaves
+  // widen NUMBER/DAY/COUNT/LEVEL/SECONDS, and `driveEverything()` sweeps
+  // several existing subjects across those domains, so every point added to
+  // a domain multiplies out across every drive loop keyed on it.
+  // `AmbientMemberBody` itself contributes nothing here — `FloorGrid`'s own
+  // drive still throws at its first hook call before reaching the JSX that
+  // would construct one, per this file's own "--- FloorGrid.tsx" comment.
+  // NODES/STRINGS/DISTINCT_STRINGS below are UNCONFIRMED for this round —
+  // the test throws at ROWS first — left at their pre-round pins to be
+  // corrected from the next run's real failure rather than guessed.
+  ROWS: 331185,
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   EXPORTS_DRIVEN: 303,
@@ -8065,20 +8215,33 @@ const DRIVE_CENSUS = Object.freeze({
   // still UNCONFIRMED — the test throws at NODES first — left at its
   // pre-round pin to be corrected from the next run's real failure rather
   // than guessed.
-  NODES: 3482640,
+  // PLAYTEST 4: NODES re-measured (3482640 -> 3557756), a real failure value
+  // this round's own run produced — same domain-widening cause as ROWS
+  // above. STRINGS/DISTINCT_STRINGS below are still UNCONFIRMED for this
+  // round — the test throws at NODES first — left at their pre-round pins to
+  // be corrected from the next run's real failure rather than guessed.
+  NODES: 3557756,
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
   // DISTINCT_STRINGS below is still UNCONFIRMED — the test throws at
   // STRINGS first — left at its pre-round pin to be corrected from the next
   // run's real failure rather than guessed.
-  STRINGS: 16040187,
+  // PLAYTEST 4: STRINGS re-measured (16040187 -> 16388392), a real failure
+  // value this round's own run produced — same domain-widening cause as
+  // ROWS/NODES above. DISTINCT_STRINGS below is still UNCONFIRMED for this
+  // round — the test throws at STRINGS first — left at its pre-round pin to
+  // be corrected from the next run's real failure rather than guessed.
+  STRINGS: 16388392,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
   // 2566), a real failure value this round's own run produced — this closes
   // the last UNCONFIRMED field on DRIVE_CENSUS for this round.
-  DISTINCT_STRINGS: 2566,
+  // PLAYTEST 4: DISTINCT_STRINGS re-measured (2566 -> 2592), a real failure
+  // value this round's own run produced — this closes the last UNCONFIRMED
+  // field on DRIVE_CENSUS for this round.
+  DISTINCT_STRINGS: 2592,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -8161,7 +8324,11 @@ const DRIVE_CENSUS = Object.freeze({
   // GDD §5.13 presentation Phase 2: 4343 -> 4369, a real failure value this
   // round's own run produced (ambientMemberRoster's driven return trees add
   // more Error-shaped `stack` own-properties of the same react dev-mode kind).
-  STACKS: 4369,
+  // PLAYTEST 4: 4369 -> 4408, a real failure value this round's own run
+  // produced — the widened NUMBER/DAY/COUNT/LEVEL/SECONDS axes (the eight new
+  // exempt tuning leaves) drive more rows through existing throwing
+  // functions, the same shape as the two entries above.
+  STACKS: 4408,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -8828,15 +8995,18 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   // GDD §5.13 presentation Phase 2's 7 new exempt tuning leaves widened the
   // domains again, moving four of these arms further — measured by running
   // this exact assertion rather than derived.
-  ['buyLadderEquipment#refused', 10098],
+  // PLAYTEST 4's eight new exempt tuning leaves widened the domains again,
+  // moving four of these arms further — measured by running this exact
+  // assertion rather than derived.
+  ['buyLadderEquipment#refused', 10242],
   ['buySessionEquipment#bought', 76],
   ['buySessionEquipment#refused', 260],
   ['moveUpLadder#moved', 738],
-  ['moveUpLadder#refused', 2670],
+  ['moveUpLadder#refused', 2706],
   ['placeFloorItem#placed', 2],
   ['placeFloorItem#refused', 3],
-  ['recordFriendVisit#refused', 434],
-  ['recordFriendVisit#visited', 142],
+  ['recordFriendVisit#refused', 452],
+  ['recordFriendVisit#visited', 148],
 ]);
 
 /**
@@ -11876,7 +12046,11 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // so it could compute `isRefusalTarget` first.
       // 6 -> 8: GDD §5.13 presentation Phase 2 — `colorForMemberType`'s own
       // `return`, plus the `ambient.map` callback's block-body `return`.
-      'FloorGrid.tsx': 8,
+      // 8 -> 9: PLAYTEST 4 — `AmbientMemberBody`'s own JSX `return`. Its
+      // `useEffect` cleanup (`return () => loop.stop();`) does NOT count
+      // here — it returns a closure, so the census classifies it under
+      // `returned-closure` instead, below.
+      'FloorGrid.tsx': 9,
       // CROSSING 6: GymScreen.tsx's own two helper functions
       // (`allocationOptions`, `describeSlotOutcome`, the latter with three
       // return statements across its three arms) plus the component's own
@@ -11956,8 +12130,13 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
      * expression to be LITERALLY an arrow, so it counted zero. The zero was a
      * fact about the scan. Both sites are named in
      * `DECLARED_RETURNED_CLOSURE_SITES`.
+     *
+     * PLAYTEST 4 adds a third, in a new module: `AmbientMemberBody`'s
+     * `useEffect` cleanup, `return () => loop.stop();` — literally an arrow,
+     * the same shape as the two above. Also named in
+     * `DECLARED_RETURNED_CLOSURE_SITES`.
      */
-    'returned-closure': Object.freeze({ 'empireInvariant.ts': 2 }),
+    'returned-closure': Object.freeze({ 'FloorGrid.tsx': 1, 'empireInvariant.ts': 2 }),
     'deferred-completion': Object.freeze({}),
   });
 
@@ -12102,6 +12281,10 @@ const DECLARED_INTERNAL_CALLBACK_ARGUMENTS: readonly string[] = Object.freeze([
  * same returned object is red rather than absorbed into a count.
  */
 const DECLARED_RETURNED_CLOSURE_SITES: readonly string[] = Object.freeze([
+  // PLAYTEST 4: `AmbientMemberBody`'s `useEffect` cleanup,
+  // `return () => loop.stop();` — a literal arrow, the same shape as the two
+  // `rosterRatesAt` sites below, in a new module.
+  'FloorGrid.tsx#AmbientMemberBody#closure:return',
   'empireInvariant.ts#rosterRatesAt#closure:.gymBucksPerHour',
   'empireInvariant.ts#rosterRatesAt#closure:.trainingIqPerDay',
 ]);
@@ -12124,10 +12307,13 @@ const DECLARED_RETURNED_CLOSURE_SITES: readonly string[] = Object.freeze([
  * `dispatch` is `GymScreen`'s own local dispatch closure, held as a value and
  * never invoked by the walk.
  *
- * Two members, not the `DECLARED_RETURNED_CLOSURE_SITES` two, and the
- * `namedByInstrumentC` join below is widened to accept members from EITHER
- * list rather than merging this into that one — because merging would make a
- * genuine STATIC `returned-closure` arrival (a THIRD `rosterRatesAt` arrow)
+ * Two members, not `DECLARED_RETURNED_CLOSURE_SITES`'s own members (three, as
+ * of PLAYTEST 4 — see `DECLARED_UNSEALED_RETURNED_CLOSURE_SITES` for the
+ * third, a differently-shaped statically-detected closure this same reasoning
+ * applies to one level further out), and the `namedByInstrumentC` join below
+ * is widened to accept members from EITHER list rather than merging this into
+ * that one — because merging would make a genuine STATIC `returned-closure`
+ * arrival (a THIRD `rosterRatesAt` arrow)
  * indistinguishable from a genuine new EMBEDDED-COMPONENT arrival (a second
  * child component with its own differently-named prop), and the two need
  * different review: a third arrow is instrument C's own static scan reporting
@@ -12165,9 +12351,53 @@ const RETURNED_CLOSURE_SEAL = Object.freeze({
   ARROWS_PER_SITE: 1,
 });
 
+/**
+ * Returned-closure sites the seal check DOES NOT COVER, and named rather than
+ * silently excluded.
+ *
+ * `RETURNED_CLOSURE_SEAL`'s own check (`isTheArrow` inside
+ * `returnedClosureSealReading`) requires the arrow's PARENT to be a
+ * `PropertyAssignment` whose name equals the site's own member path — the
+ * exact shape `rosterRatesAt`'s `return { gymBucksPerHour: () => …,
+ * trainingIqPerDay: () => … }` takes, and the shape `CLOSURE_KEY_MARK`
+ * (`'#closure:.'`, a literal dot before the member name) is built to key off
+ * of. PLAYTEST 4's `AmbientMemberBody` returns a closure of a DIFFERENT
+ * shape — `return () => loop.stop();`, a `useEffect` cleanup returned
+ * directly, with no enclosing object literal and no member name at all, so
+ * the channel census's own key for it is `closure:return`, not
+ * `closure:.<name>`.
+ *
+ * Forcing that shape through `sealRate` would be dishonest in the other
+ * direction: `sealRate` composes a RATE LABEL, and an animation cleanup has
+ * no label and nothing to compose. So rather than widening
+ * `RETURNED_CLOSURE_SEAL`'s narrow, correctly-scoped invariant to a shape it
+ * was never about — which is exactly the mistake
+ * `DECLARED_EMBEDDED_COMPONENT_CLOSURE_SITES`'s own header already refuses
+ * for a different arrival shape — this site is named here instead, and the
+ * test below asserts the two lists TOGETHER are set-equal, in both
+ * directions, to the channel census's whole `returned-closure` list. A
+ * fourth arrival of either shape is red until it is filed on the correct
+ * side of this split.
+ */
+const DECLARED_UNSEALED_RETURNED_CLOSURE_SITES: readonly string[] = Object.freeze([
+  'FloorGrid.tsx#AmbientMemberBody#closure:return',
+]);
+
 interface ReturnedClosureSealReading {
-  /** The site list, taken from the channel census rather than from a copy. */
+  /**
+   * The seal-eligible site list — `channelCensus()`'s whole `returned-closure`
+   * list, filtered to the `CLOSURE_KEY_MARK` (object-literal-member) shape the
+   * seal check can structurally recognise. Everything the channel census found
+   * that this filter drops is `outOfScope`, below, so nothing is silently lost
+   * between the two.
+   */
   readonly sites: readonly string[];
+  /**
+   * Every `returned-closure` site the channel census found that is NOT the
+   * seal-eligible shape — named rather than dropped, and checked against
+   * `DECLARED_UNSEALED_RETURNED_CLOSURE_SITES` in both directions.
+   */
+  readonly outOfScope: readonly string[];
   /** `[site, arrows located]`, sorted. Pinned so an unlocatable site is red. */
   readonly matched: readonly (readonly [string, number])[];
   readonly sealed: readonly string[];
@@ -12204,9 +12434,20 @@ interface ReturnedClosureSealReading {
  * naming the body and an under-report is silence. What it does not cover at all
  * is the seal's own body being weakened, which is `sealRate`'s runtime refusal
  * and is a different subject.
+ *
+ * A SECOND LIMIT, ADDED WITH PLAYTEST 4: the seal check is scoped to the
+ * `CLOSURE_KEY_MARK` (object-literal-member) shape only — see
+ * `DECLARED_UNSEALED_RETURNED_CLOSURE_SITES`'s own header for why a
+ * differently-shaped returned closure (a bare `return () => …;`) is filtered
+ * OUT of `sites` here rather than forced through a check built for a
+ * different shape. Nothing is silently dropped: `outOfScope` carries what the
+ * filter removed, and the test below checks both lists against the channel
+ * census's whole `returned-closure` list, in both directions.
  */
 function returnedClosureSealReading(): ReturnedClosureSealReading {
-  const sites = channelCensus().sites['returned-closure'];
+  const allSites = channelCensus().sites['returned-closure'];
+  const sites = allSites.filter((site) => site.includes(CLOSURE_KEY_MARK));
+  const outOfScope = allSites.filter((site) => !site.includes(CLOSURE_KEY_MARK));
   const program = programWith(compilerOptions(), shippedModulePaths(), null);
   const checker = program.getTypeChecker();
 
@@ -12266,6 +12507,7 @@ function returnedClosureSealReading(): ReturnedClosureSealReading {
 
   return {
     sites,
+    outOfScope: Object.freeze(outOfScope),
     matched: Object.freeze([...matched.entries()].sort()),
     sealed: Object.freeze(sealed),
     unsealed: Object.freeze(unsealed),
@@ -12458,12 +12700,17 @@ const SCREEN_AGREEMENT = Object.freeze({
 // 815 -> 825, member 785 -> 802 — floor.ts's `ambientMemberRoster`/`cellKey`
 // and FloorGrid.tsx's new render call/member expressions, measured by
 // running the assertion below.
+// PLAYTEST 4: function 825 -> 827, member 802 -> 810 — `AmbientMemberBody`'s
+// own new call/member expressions (`Math.min`, `useRef`, `Animated.Value`,
+// `useEffect`, `Animated.loop`/`sequence`/`delay`/`timing`, `loop.start`/
+// `stop`, `bob.interpolate`), measured by running the assertion below rather
+// than hand-counted.
 const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze({
   parameter: 4,
   'module-variable': 53,
   local: 5,
-  function: 825,
-  member: 802,
+  function: 827,
+  member: 810,
   'member-callback': 12,
   'member-of-parameter': 21,
   fresh: 0,
@@ -12532,8 +12779,11 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
    * (`cellKey`, `ambientMemberRoster`'s early and final returns),
    * FloorGrid.tsx +2 `return` sites (`colorForMemberType`, the `ambient.map`
    * callback). Measured by running the assertion below.
+   * 482 -> 484: PLAYTEST 4 — FloorGrid.tsx +1 `return` site
+   * (`AmbientMemberBody`'s own JSX return) and +1 `returned-closure` site
+   * (its `useEffect` cleanup). Measured by running the assertion below.
    */
-  SITES: 482,
+  SITES: 484,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -12558,7 +12808,11 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 36_682 -> 37_307: GDD §5.13 presentation Phase 2's own AST nodes, across
   // floor.ts's `ambientMemberRoster`/`cellKey` and FloorGrid.tsx's new
   // render code, re-measured by running the assertion below.
-  NODES_EXAMINED: 37_307,
+  // 37_307 -> 37_662: PLAYTEST 4's own AST nodes, across FloorGrid.tsx's new
+  // palette/colour comments, new `EMPIRE_TUNING` reads, and the whole new
+  // `AmbientMemberBody` component, measured by running the assertion below
+  // rather than hand-counted.
+  NODES_EXAMINED: 37_662,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -13995,9 +14249,13 @@ interface CallbackAxisCensus {
 // merged tree rather than derived, the same treatment the block comment
 // above already gives this table.
 const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Object.freeze({
+  // PLAYTEST 4: the eight new exempt tuning leaves widened NUMBER/DAY/COUNT/
+  // LEVEL/SECONDS/ROSTER_SHAPE, so every subject below driven over one of
+  // those domains moved. Every count re-measured by running the assertion
+  // below rather than derived.
   'FloorGrid.tsx#FloorGrid#props#owned': Object.freeze({
-    points: 284,
-    refusedPoints: 284,
+    points: 287,
+    refusedPoints: 287,
     calls: 0,
     recorded: 0,
   }),
@@ -14006,46 +14264,46 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // constant callsAt (does not vary with the point), so the same domain
   // produces the same points/calls/recorded on the ported screen.
   'GymScreen.tsx#GymScreen#props.dispatch#gymBucks': Object.freeze({
-    points: 284,
+    points: 287,
     refusedPoints: 0,
-    calls: 9940,
-    recorded: 9940,
+    calls: 10045,
+    recorded: 10045,
   }),
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
-    points: 119,
+    points: 122,
     refusedPoints: 1,
-    calls: 1100791,
-    recorded: 1100791,
+    calls: 1101241,
+    recorded: 1101241,
   }),
   'engagement.ts#historyFrom#attended#trainedDays': Object.freeze({
-    points: 119,
+    points: 122,
     refusedPoints: 0,
-    calls: 357,
-    recorded: 357,
+    calls: 366,
+    recorded: 366,
   }),
   'ladderView.tsx#GymView#props.dispatch#gymBucks': Object.freeze({
-    points: 284,
+    points: 287,
     refusedPoints: 0,
-    calls: 9940,
-    recorded: 9940,
+    calls: 10045,
+    recorded: 10045,
   }),
   'ladderView.tsx#LadderView#props.dispatch#gymBucks': Object.freeze({
-    points: 284,
+    points: 287,
     refusedPoints: 0,
-    calls: 1420,
-    recorded: 1420,
+    calls: 1435,
+    recorded: 1435,
   }),
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize': Object.freeze({
-    points: 79,
+    points: 80,
     refusedPoints: 0,
-    calls: 1093297,
-    recorded: 2186594,
+    calls: 1093447,
+    recorded: 2186894,
   }),
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize': Object.freeze({
-    points: 79,
+    points: 80,
     refusedPoints: 0,
-    calls: 1093297,
-    recorded: 2186594,
+    calls: 1093447,
+    recorded: 2186894,
   }),
 });
 
@@ -14096,10 +14354,13 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // over already-real numbers, not a second independent derivation.
   // GDD §5.13 presentation Phase 2: re-summed from the table above
   // (284+284+119+119+284+284+79+79 points; 284+1 refused; etc.).
-  POINTS: 1532,
-  REFUSED_POINTS: 285,
-  CALLS: 3309042,
-  RECORDED: 5495636,
+  // PLAYTEST 4: re-summed from the table above
+  // (287+287+122+122+287+287+80+80 points; 287+1 refused; etc.), a plain sum
+  // over the now-measured `DECLARED_CALLBACK_AXES` entries.
+  POINTS: 1552,
+  REFUSED_POINTS: 288,
+  CALLS: 3310026,
+  RECORDED: 5496920,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
@@ -14237,6 +14498,22 @@ describe('the channel census — the routes a string can leave this directory by
     'seals every returned-closure result the channel census found',
     () => {
       const reading = returnedClosureSealReading();
+      // PLAYTEST 4: the site the census found split first, before any of the
+      // seal's own checks run — the same "name the route before the count"
+      // ordering this test already applies one level in. Every
+      // `returned-closure` site the census knows about is EITHER seal-eligible
+      // (`reading.sites`) or explicitly out of scope
+      // (`reading.outOfScope`/`DECLARED_UNSEALED_RETURNED_CLOSURE_SITES`), in
+      // both directions — so a differently-shaped closure arriving is red
+      // here, by name, rather than silently vanishing from the seal check's
+      // domain the way the filter inside `returnedClosureSealReading` could
+      // otherwise let it.
+      expect([...reading.outOfScope].sort()).toEqual(
+        [...DECLARED_UNSEALED_RETURNED_CLOSURE_SITES].sort(),
+      );
+      expect([...reading.sites, ...reading.outOfScope].sort()).toEqual(
+        [...channelCensus().sites['returned-closure']].sort(),
+      );
       // The naming assertions first, the same ordering the throw census above
       // applies and the site table records: the checks that name the route run
       // before the count pins, so a third arrow arriving reddens with WHERE it
@@ -14244,10 +14521,15 @@ describe('the channel census — the routes a string can leave this directory by
       // reads as "found none". The bite: an arrow whose body is not a call to
       // the seal names itself, with the body text in the message.
       expect(reading.unsealed, reading.unsealed.join(' | ')).toEqual([]);
-      // Both directions, by site. A third returned closure arriving sealed is
-      // named here (`+ 'module#fn#closure:.x'`); a seal call left behind by a
-      // deleted arrow is named the other way.
-      expect([...reading.sealed].sort()).toEqual([...DECLARED_RETURNED_CLOSURE_SITES].sort());
+      // Both directions, by site — scoped to the seal-eligible sites only, now
+      // that PLAYTEST 4 has shown a differently-shaped returned closure exists
+      // and is accounted for above instead. A third SEAL-ELIGIBLE closure
+      // arriving sealed is still named here (`+ 'module#fn#closure:.x'`); a
+      // seal call left behind by a deleted arrow is named the other way.
+      const sealEligibleDeclared = DECLARED_RETURNED_CLOSURE_SITES.filter(
+        (site) => !DECLARED_UNSEALED_RETURNED_CLOSURE_SITES.includes(site),
+      );
+      expect([...reading.sealed].sort()).toEqual([...sealEligibleDeclared].sort());
       // Every site was located exactly once. A walk that found nothing would
       // otherwise report an empty `unsealed` and read as a pass, so this is the
       // non-vacuity guard for the naming assertions above.
@@ -14260,6 +14542,7 @@ describe('the channel census — the routes a string can leave this directory by
         RETURNED_CLOSURE_SEAL.SITES,
       );
       expect(reading.sealed.length).toBe(RETURNED_CLOSURE_SEAL.SITES);
+      expect(reading.outOfScope.length).toBe(DECLARED_UNSEALED_RETURNED_CLOSURE_SITES.length);
     },
     CHANNEL_BLOCK_TIMEOUT_MS,
   );
@@ -16569,7 +16852,8 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // (floor.ts). PLAYTEST 3's `overlapsFixedFurniture` added no type
   // declaration of its own, which is why this stayed at 182 through that
   // round.
-  DECLARATIONS: 183,
+  // 183 -> 184: PLAYTEST 4's `AmbientMemberBodyProps` (FloorGrid.tsx).
+  DECLARATIONS: 184,
   /** Those carrying type parameters. An instantiation depth needs one. */
   GENERIC: 12,
   /**
@@ -16728,6 +17012,103 @@ describe('the relation certifies from a cycle and not from a depth, and the cycl
     );
     expect(withProbe.declarations).toBeGreaterThan(reading.declarations);
   });
+});
+
+// ---------------------------------------------------------------------------
+// PLAYTEST 4's own bounded claim: `AmbientMemberBody`'s prop surface has no
+// dispatch/game-state channel. See that component's own header in
+// `FloorGrid.tsx` for the bounded claim, its stated limit, and this test
+// named as the catcher.
+// ---------------------------------------------------------------------------
+
+/**
+ * `AmbientMemberBodyProps`'s declared member names, read from the checker
+ * rather than transcribed — a hand-copied list drifts the moment the
+ * interface does and nobody would notice until a docstring quoting it was
+ * already wrong, which is the exact failure class CLAUDE.md's
+ * guarantee-comment section is about.
+ */
+function ambientMemberBodyPropsMembers(): readonly string[] {
+  const program = programWith(compilerOptions(), shippedModulePaths(), null);
+  const floorGridPath = path.join(HERE, 'FloorGrid.tsx');
+  const source = program.getSourceFile(floorGridPath);
+  if (source === undefined) throw new Error(`${floorGridPath} is not in the program`);
+  let found: ts.InterfaceDeclaration | undefined;
+  const visit = (node: ts.Node): void => {
+    if (found !== undefined) return;
+    if (ts.isInterfaceDeclaration(node) && node.name.text === 'AmbientMemberBodyProps') {
+      found = node;
+      return;
+    }
+    node.forEachChild(visit);
+  };
+  visit(source);
+  if (found === undefined) {
+    throw new Error('FloorGrid.tsx no longer declares AmbientMemberBodyProps');
+  }
+  const declaration = found;
+  return Object.freeze(
+    declaration.members.map((member) =>
+      member.name !== undefined ? member.name.getText(source) : '<unnamed>',
+    ).sort(),
+  );
+}
+
+/**
+ * The closed member set `AmbientMemberBody`'s own header claims — `index`,
+ * `type`, `position`, `tile`, and nothing else. Set-equal in both
+ * directions, so a member removed is red the same as one added.
+ *
+ * ITS LIMIT, IN THE MECHANISM'S OWN TERMS, matching the header this pin is
+ * the catcher for: this reads member NAMES only, off the interface
+ * declaration's own AST, not what an already-declared member's TYPE could
+ * later be widened to carry. A channel smuggled in under an existing name —
+ * `position`'s type quietly growing a callback field, say — sits outside
+ * what this test reaches. What it does reach, and what the round that added
+ * it was actually asked to close: a later piece THREADING A NEW PROP, which
+ * is the shape CLAUDE.md's own report of the finding names — "no test that
+ * would go red if a later stage 3/4 piece threaded a `dispatch` or
+ * `gymState` prop into this component."
+ */
+const DECLARED_AMBIENT_MEMBER_BODY_PROPS_MEMBERS: readonly string[] = Object.freeze([
+  'index',
+  'position',
+  'tile',
+  'type',
+]);
+
+describe("AmbientMemberBody's prop surface has no dispatch/game-state channel", () => {
+  it(
+    "pins AmbientMemberBodyProps's closed member set, and reddens on a planted dispatch/game-state member",
+    () => {
+      // The bite, taken by hand rather than merely claimed — a mutant, not
+      // an assertion about one. `FloorGrid.tsx`'s `AmbientMemberBodyProps` was
+      // widened with `readonly dispatch: (action: GymViewAction) => void;`,
+      // the exact shape `FloorGridProps.dispatch` already carries a few lines
+      // above it, so a later stage 3/4 piece threading one into this
+      // component would look exactly like this. Run against that mutant,
+      // this exact assertion reddened:
+      //
+      //   AssertionError: expected [ 'dispatch', 'index', …(3) ] to deeply
+      //   equal [ 'index', 'position', 'tile', 'type' ]
+      //   + "dispatch",
+      //     "index",
+      //     "position",
+      //     "tile",
+      //     "type",
+      //
+      // — naming the new member directly, `+ "dispatch"`, rather than a bare
+      // count moving. The mutant was then reverted and this test re-run
+      // green before being recorded here, the same two-step
+      // break-it-then-restore-it discipline CLAUDE.md's guarantee-comment
+      // section asks for, on the codebase's own narrative convention for a
+      // witness — this file records mutation evidence in prose beside the
+      // assertion it is about rather than in a separate table, the same way
+      // every other planted-mutant row in this file already does.
+      const members = ambientMemberBodyPropsMembers();
+      expect(members).toEqual(DECLARED_AMBIENT_MEMBER_BODY_PROPS_MEMBERS);
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -22647,6 +23028,12 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#guardedRead<handlerTablesIn#parent', arms: 3, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#mapEntryKeys<handlerTablesIn#first', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<handlerTablesIn#node', arms: 4, dispatch: false, terminal: 'next-statement' }),
+  // PLAYTEST 4's own reader: `ambientMemberBodyPropsMembers`'s local `visit`
+  // walks `FloorGrid.tsx`'s AST looking for the `AmbientMemberBodyProps`
+  // interface declaration by name, one `if` arm, falling through to
+  // `node.forEachChild(visit)` on everything else — the same shape as
+  // `visit<switchesIn#node`/`visit<handlerTablesIn#node` above.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<ambientMemberBodyPropsMembers#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
 ]);
 
 /**
@@ -22762,11 +23149,14 @@ const CHAIN_CENSUS = Object.freeze({
   FILES: 2,
   /** Rows in `DECLARED_HANDLER_ROWS`. Every one a tally or an enum read. */
   DISCRIMINANT_LOOKUPS: 8,
-  CHAINS: 95,
-  DISPATCH: 59,
+  // PLAYTEST 4: +1 for `visit<ambientMemberBodyPropsMembers#node`
+  // (`dispatch: true`, terminal `next-statement`), measured by running the
+  // assertion below rather than hand-counted.
+  CHAINS: 96,
+  DISPATCH: 60,
   BY_TERMINAL: Object.freeze({
     else: 8,
-    'next-statement': 71,
+    'next-statement': 72,
     loop: 14,
     enclosing: 2,
     /**

@@ -608,13 +608,19 @@ describe('§5.5 social', () => {
     // entries (AMBIENT_MEMBER_COUNT_BY_RUNG, AMBIENT_MEMBER_FOOTPRINT_TILES,
     // AMBIENT_MEMBER_PLACEMENT_STRIDE). Measured by running this assertion
     // and reading its failure value, not computed by hand.
-    expect(examined).toBe(112);
+    // 112 -> 120: PLAYTEST 4's eight new sizing/timing knobs
+    // (AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION, AMBIENT_MEMBER_BODY_WIDTH_FRACTION,
+    // AMBIENT_MEMBER_BODY_HEIGHT_FRACTION, AMBIENT_MEMBER_BODY_CORNER_RADIUS_PIXELS,
+    // AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS, AMBIENT_MEMBER_BOB_HALF_CYCLE_MS,
+    // AMBIENT_MEMBER_BOB_STAGGER_LANES, AMBIENT_MEMBER_BOB_STAGGER_STEP_MS).
+    // Measured by running this assertion and reading its failure value.
+    expect(examined).toBe(120);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
-    // 435 -> 525 -> 535 -> 545 -> 560 (112 keys x 5 banned units, Phase 2's
-    // three new tuning entries).
-    expect(probed).toBe(560);
+    // 435 -> 525 -> 535 -> 545 -> 560 -> 600 (120 keys x 5 banned units,
+    // PLAYTEST 4's eight new tuning entries).
+    expect(probed).toBe(600);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

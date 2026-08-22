@@ -2244,6 +2244,64 @@ fixed furniture, the type mix is checked against the real
 `equipmentBiasedMemberTypes` output rather than only a count, a different
 owned-equipment set changes the mix, and an unregistered rung refuses loudly
 rather than drawing nothing.
+
+**PLAYTEST 4 — PHASE 2's OWN GATE, RUN ON THE STATE EVERY NEW PLAYER ACTUALLY
+OPENS IN.** The same player, on a real phone, opened a fresh gym (garage, 0
+Gym Bucks, no session equipment owned — opening day, not a played-in state)
+and found the three ambient members reading as "small teal chips on a teal
+grid... same colour family as the floor, static, no idle motion, no facing,
+no body... extra tiles, not a population." Not a defect in the count or the
+type mix — both were re-read from the shipped code and confirmed correct —
+but a defect in what the count and type mix were drawn AS.
+
+**Root cause, traced rather than guessed.** `equipmentBiasedMemberTypes([])`
+— the exact call `ambientMemberRoster` makes on a garage's real
+`sessionOwned` on day one, since nothing is owned yet — returns a single
+type, `'powerlifter'`, computed by hand from `MEMBER_TYPE_BARBELL_AFFINITY`/
+`MEMBER_TYPE_ITEM_AFFINITY` at the empty-equipment baseline (powerlifter
+≈0.4167 against `MEMBER_EQUIPMENT_BIAS_TIE_TOLERANCE`'s 0.02 band; nothing
+else clears it). Round-robin over a length-one list maps every roster index
+to that one type, so all three garage-day members get the same colour — and
+that colour, `AMBIENT_MEMBER_PALETTE[MEMBER_TYPES.indexOf('powerlifter')]` =
+`'lightseagreen'`, is itself a dark cyan/teal, the same hue family as
+`FLOOR_BACKGROUND_COLOR` (`'darkslategray'`). Every new gym's opening frame
+drew three identically-coloured teal circles on a teal floor, which is
+exactly what the player saw — and this is not a rare state, it is what EVERY
+new player's first garage looks like, since opening day always has zero
+owned session equipment.
+
+**The fix: all three of the player's own named directions, built together
+rather than singly.** (1) *Contrast* — `AMBIENT_MEMBER_PALETTE` replaced with
+five colours with no teal/cyan/dark-slate-gray component (`'orange'`,
+`'gold'`, `'hotpink'`, `'chartreuse'`, `'tomato'`), so a repeated single type
+reads against the floor regardless of which type an empty inventory biases
+toward. (2) *A distinct silhouette* — each member is now a two-part
+placeholder body, a small circular "head" (a fixed neutral shade, `'white'`)
+over a wider, shorter rounded-rect "body" (coloured by type), in place of the
+one plain circle, within the same outer footprint. (3) *A tiny idle motion* —
+each member now bobs a couple of pixels vertically on a continuous loop,
+staggered per roster index across a small number of lanes so members read as
+individuals rather than one mechanism moving in lockstep, and touches nothing
+but its own additive `translateY` — `member.position`, the type mix, and the
+count are all exactly as before. Every new sizing/timing value (head
+diameter, body width/height fractions, corner radius, bob amplitude, bob
+half-cycle duration, stagger lane count, stagger step) is a new named
+`EMPIRE_TUNING` entry, classified `knob` — first-pass proposals, not tuned or
+played, the same status every other rendering/timing knob in this section
+already carries.
+
+**What this closes, and what it does not claim.** The diagnosed defect —
+the colour-family collision on the single-type-on-empty-inventory state, the
+plain-circle shape, and the zero motion, all three named by the player — is
+fixed and verified: `tsc --noEmit` clean, the whole `src/empire` suite green,
+and `tools/verify-floor-reachability.mjs` still passes every one of its
+claims on a cold garage, including the three Phase 2 ambient-member claims
+(real non-zero bounding boxes, no fourth body drawn, the caption reporting
+the real count). **What is NOT claimed here is that Phase 2's own gate —
+"does the gym read as populated and alive?" — is now met.** That is a felt
+verdict for the next human phone pass, on the same opening-day state, to
+answer; this round closes the one concrete, diagnosed defect that made "yes"
+impossible to answer on the last one.
 ---
 
 ## 6. Meet Day
