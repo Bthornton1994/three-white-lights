@@ -433,11 +433,18 @@ export const LIFT_TUNING = Object.freeze({
    * compressed, differentiation across the ladder a player can actually
    * reach, not just between this file's abstract LIGHT/MAXIMAL endpoints.
    *
-   * STILL A PLACEHOLDER, LIKE THE FIRST VALUE WAS. This build cannot judge
-   * whether 6 cues at 60ms spacing actually READS as "a run of taps" any
-   * more than 3 cues at 380ms could be judged that way from here — that is
-   * exactly the axis a human phone re-test measures and this file cannot.
-   * Built tunable and structurally sound; not asserted as felt-right.
+   * NO LONGER A PLACEHOLDER ON THIS AXIS — CONFIRMED BY A THIRD PHONE
+   * RE-TEST, 2026-08-22, against this exact build. This file could not judge
+   * whether 6 cues at 60ms spacing reads as "a run of taps" any more than it
+   * could judge 3 cues at 380ms; a human tester on a real device, daily
+   * session, now has: "reads as a run of taps through the stick", and light
+   * versus heavy is now distinguishable on this axis where the old tuning
+   * gave literally the same cue count (2) at every RPE the ladder offers —
+   * see the finding recorded above. CLAUDE.md's Sprint 3 gate status records
+   * the full result. Still a candidate for further tuning like any shipped
+   * feel value — GDD §10's ~30-iteration expectation applies to this number
+   * same as every other — but the specific complaint this retune answers is
+   * closed, not merely built.
    */
   DRIVE_ATTEMPTS_PER_REP: { LIGHT: 1, MAXIMAL: 6 },
 

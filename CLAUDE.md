@@ -257,11 +257,14 @@ Session A stewardship while they are idle, and this line is the notice.
 5. **Beta Hardening** — device passes, remaining playtest copy, PWA packaging,
    D's CI gate as the release gate.
 
-### SPRINT 3 GATE STATUS, FILED 2026-08-20, UPDATED 2026-08-21 — THREE CLOSED, ONE STILL OPEN
+### SPRINT 3 GATE STATUS, FILED 2026-08-20, UPDATED 2026-08-21 & 2026-08-22 — ALL FOUR CLOSED
 
-Written so the phone-re-test thread does not quietly read as fully resolved —
-several commits landing in sequence is easy to misread as "done" from the log
-alone.
+Written so the phone-re-test thread would not quietly read as fully resolved
+before it actually was — several commits landing in sequence is easy to
+misread as "done" from the log alone. As of 2026-08-22 it genuinely is: all
+four items below are closed, each against a named build, by a real check —
+either this build's own browser evidence or a human phone re-test, stated
+explicitly per item rather than left to be inferred from the commit log.
 
 **Closed.** Finding 1 (the drive boost silently re-coupled to `m.held`,
 regressing a verified tap mechanic back into a hold) is fixed, mutation-tested,
@@ -304,9 +307,9 @@ the actual mechanism entirely, and the retune was correctly reverted rather
 than shipped once real execution contradicted it. Verified: 8/8 real browser
 runs reached LOCKOUT after the actual fix, 5 of 8 on the first attempt.
 
-**Finding 2 — axis legibility, IN PROGRESS, NOT CLOSED.** "Feels harder, hard
-to tell why" from the first phone playtest. First pass: two proposal options
-written up (haptic-per-axis, a visual cue via `RepPips`/`hapticFor`),
+**Finding 2 — axis legibility — CLOSED, `ba1931c`/`4aaa4b1`.** "Feels harder,
+hard to tell why" from the first phone playtest. First pass: two proposal
+options written up (haptic-per-axis, a visual cue via `RepPips`/`hapticFor`),
 deliberately not implemented — held to see what signal survived once
 Finding 1's fix landed. A second phone re-test then landed a concrete ruling
 that reframed the axis rather than picking one of those two options: the
@@ -316,18 +319,23 @@ through the sticking point". Implemented at `ba1931c`/`fe5ac2c` —
 `DRIVE_ATTEMPTS_PER_REP.MAXIMAL` 3 → 6, `DRIVE_ATTEMPTS_SPACING_MS.MAXIMAL`
 380ms → 60ms, structurally verified against `ASCENT_TIMEOUT_TICKS`'s budget
 and confirmed working in 4 real browser runs (multi-tap sequences observed,
-RIDE IT still rendering, lockout reached).
+RIDE IT still rendering, lockout reached) — but that verification, on its
+own, established only that the retuned mechanic FUNCTIONS, not that it reads
+as intended. Recorded as an open feel question at `4aaa4b1`, on purpose,
+rather than assumed closed by the browser evidence alone.
 
-**What that verification does and does not establish, stated so neither gets
-overread.** It confirms the retuned mechanic FUNCTIONS — cues arm, taps land,
-the rep resolves, nothing broke. It says nothing about whether 6 cues at 60ms
-actually READS as "a run of taps through the sticking point" to a human
-finger, any more than the original 3-cue value could have been judged that
-way from here. That is exactly the axis a phone re-test measures and this
-build cannot. The haptic-per-axis and visual-cue proposals from the first
-pass are still shelved, not chosen and not ruled out — whether the sparsity
-fix alone resolves "feels harder, hard to tell why", or whether one of those
-is still needed on top of it, is what the next re-test answers.
+**THE FEEL QUESTION IS NOW ANSWERED, BY A THIRD PHONE RE-TEST — the axis this
+build could not judge from here.** Human tester, real device, daily session,
+against the `ba1931c`/`4aaa4b1` build. Result: the fix reads correctly on the
+axis it targeted — "reads as a run of taps through the stick," not the
+isolated 3-cue feel the second re-test complained about, and light versus
+heavy is now distinguishable on the tap-rate axis rather than uniform (this
+build's own investigation had already found the OLD tuning gave literally
+identical cue counts, 2, at every RPE the ladder offers — see the finding
+recorded above the retune's own header in `liftTuning.ts`). The haptic-per-
+axis and visual-cue proposals from the first pass are retired along with the
+finding — the sparsity fix alone was sufficient, so neither is needed on top
+of it. Nothing further pending on this thread.
 
 ### If scope shifts
 
