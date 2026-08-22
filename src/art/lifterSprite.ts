@@ -99,6 +99,7 @@ import {
 } from './plates';
 import { applyMarks, type MarkPlacement } from './spriteMarks';
 import type { SquatFrame } from './squatAnimation';
+import { renderBenchFrame } from './benchPress';
 
 const DEG = Math.PI / 180;
 
@@ -122,8 +123,19 @@ const HAIR_RX_INSET = 0.1;
 const BACKDROP_BAND_H = 18;
 
 export interface LifterFrameSpec {
+  /**
+   * Which drawing. Omitted = squat, so every existing caller is unchanged.
+   * Bench is a second camera (side-on recumbent press), not a new squat pose.
+   */
+  readonly kind?: 'squat' | 'bench';
   /** 0 = standing, 1 = bottom of the hole. Quantised by the animation. */
   readonly depth: number;
+  /**
+   * 0 = bar on the chest, 1 = lockout. Quantised. Squat ignores this and
+   * reads `depth`; bench ignores `depth` for the bar and reads this, because
+   * a played ascent holds depth at 1 while height climbs.
+   */
+  readonly height?: number;
   readonly direction: RepDirection;
   /** Quantised strain level, 0..STRAIN.LEVELS-1. */
   readonly strainLevel: number;
@@ -794,6 +806,20 @@ function drawCording(g: IndexGrid, pose: Pose, strainLevelValue: number): void {
 
 /** Render one animation frame to an index grid with a transparent background. */
 export function renderLifterFrame(spec: LifterFrameSpec): RenderedFrame {
+  if (spec.kind === 'bench') {
+    const bench = renderBenchFrame(spec);
+    const stack = visualPlateStack(spec.totalKg, spec.barKg ?? BAR_AND_COLLARS_KG);
+    return {
+      grid: bench.grid,
+      pose: bench.pose,
+      barCenterY: bench.barCenterY,
+      sleeve: layoutSleeve(stack),
+      strain: strainForLevel(spec.strainLevel),
+      pitch: pitchForLevel(spec.pitchLevel ?? 0),
+      marks: [],
+    };
+  }
+
   const strain = strainForLevel(spec.strainLevel);
   const pitch = pitchForLevel(spec.pitchLevel ?? 0);
   const pose = deformPose(poseAtDepth(spec.depth, spec.direction), strain, pitch);

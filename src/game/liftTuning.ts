@@ -1198,12 +1198,20 @@ export const LIFT_TUNING = Object.freeze({
  */
 export const LIFT_COPY = Object.freeze({
   PROMPT: Object.freeze({
-    BRACE: 'TAP AND HOLD TO DESCEND',
-    DESCENT: 'RELEASE AT DEPTH',
+    BRACE: {
+      squat: 'TAP AND HOLD TO DESCEND',
+      bench: 'TAP AND HOLD TO LOWER',
+    } satisfies PerKind<string>,
+    DESCENT: {
+      squat: 'RELEASE AT DEPTH',
+      bench: 'TOUCH THE CHEST',
+    } satisfies PerKind<string>,
     // Per kind: "OUT OF THE HOLE" is squat/deadlift jargon for the bottom
     // position and reads as nonsense on a bench rep, which has no hole — it
-    // has a chest. Every other PROMPT entry ("RIDE IT", "DRIVE — TAP", "LOCK
-    // IT") is generic press language that already applies to both.
+    // has a chest. BRACE and DESCENT are per-kind for the same reason: "DESCEND"
+    // / "DEPTH" are squat instructions, and a phone playtest of the first bench
+    // pass reported them as "still a squat". Ascent copy ("RIDE IT", "DRIVE —
+    // TAP", "LOCK IT") is generic press language that already applies to both.
     //
     // BENCH'S IS THE WAITING LINE, NOT THE COMMAND. On bench the HOLE beat is
     // the pause on the chest, and what the player is being asked for is to

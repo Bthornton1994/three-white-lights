@@ -70,13 +70,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LiftStage } from '../lift/LiftStage';
 import { useLiftLoop } from '../lift/useLiftLoop';
 import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN, SUPPRESS_CONTEXT_MENU } from '../lift/pressGuard';
-import { promptFor, type LiftResolution } from '../game/lift';
+import { pressCommandIsLive, promptFor, type LiftResolution } from '../game/lift';
 import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
 import { ATTEMPTS_PER_LIFT } from '../game/meet';
 import { MEET_COPY, MEET_LAYOUT, MEET_TUNING } from '../game/meetTuning';
 import { attemptConfigFor, liveAttemptWeightText, type MeetDayState } from '../game/meetDay';
 import { settledCrowdRisePx, walkoutRequestFor } from './walkout';
 import { MEET_PALETTE } from './meetPalette';
+import { LIFT_PALETTE } from '../lift/liftPalette';
 
 const L = MEET_LAYOUT;
 
@@ -159,7 +160,18 @@ export function AttemptView({
           */}
           {liveAttemptWeightText(state)}
         </Text>
-        <Text style={styles.prompt} testID="attempt-prompt">
+        <Text
+          style={[
+            styles.prompt,
+            pressCommandIsLive(loop.state)
+              ? {
+                  fontSize: LIFT_TUNING.LAYOUT.HEADLINE_FONT,
+                  color: LIFT_PALETTE.CUE_PERFECT,
+                }
+              : null,
+          ]}
+          testID="attempt-prompt"
+        >
           {resolution === null ? promptFor(loop.state) : resolution.headline}
         </Text>
         <Text style={styles.detail} testID="attempt-detail">

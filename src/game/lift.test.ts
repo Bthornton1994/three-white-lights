@@ -57,6 +57,7 @@ import {
   lifterCapacity,
   lockoutTicks,
   promptFor,
+  pressCommandIsLive,
   runLift,
   stepLift,
   type CueWindow,
@@ -1325,14 +1326,44 @@ describe('the bench press command', () => {
     for (const s of commanded) expect(promptFor(s)).toBe(LIFT_COPY.PROMPT.HOLE_COMMANDED);
   });
 
-  it('draws no countdown ring for the command — a telegraphed reaction is not one', () => {
-    // `cueProgress` is what the ring is sized from. If it ever returned a
-    // number here the player would see the command coming and the reaction
-    // check would silently become an anticipation check.
+  it('draws no countdown ring before the command — a telegraphed reaction is not one', () => {
+    // `cueProgress` is what the ring is sized from. A number HERE would let
+    // the player see the command coming and the reaction check would silently
+    // become an anticipation check. The GO ring starts at the command tick,
+    // which is the next test.
     const { config, script } = benchToChest(load, 3);
+    const command = commandTickFor(load, 3);
+    expect(command).not.toBeNull();
+    if (command === null) return;
     for (const s of runLift(config, script).history) {
       if (s.phase !== 'HOLE') continue;
+      if (s.tick >= command) continue;
       expect(cueProgress(s), `tick ${s.tick}`).toBeNull();
+      expect(pressCommandIsLive(s), `tick ${s.tick}`).toBe(false);
+    }
+  });
+
+  it('puts the ring on the target the instant the command fires, then closes', () => {
+    // Progress 1 is the target radius — GO, not a countdown. Progress then
+    // runs toward 2 as the reaction window closes, so a late press is a
+    // shrinking ring the same way a late drive is.
+    const { config, script } = benchToChest(load, 3);
+    const command = commandTickFor(load, 3);
+    expect(command).not.toBeNull();
+    if (command === null) return;
+    const hole = runLift(config, script).history.filter((s) => s.phase === 'HOLE');
+    const atFire = hole.find((s) => s.tick === command);
+    expect(atFire, 'command tick was not in HOLE').toBeDefined();
+    if (atFire === undefined) return;
+    expect(pressCommandIsLive(atFire)).toBe(true);
+    expect(cueProgress(atFire)).toBe(1);
+
+    const later = hole.filter((s) => s.tick > command && pressCommandIsLive(s));
+    expect(later.length, 'no post-command HOLE ticks').toBeGreaterThan(0);
+    for (const s of later) {
+      const progress = cueProgress(s);
+      expect(progress, `tick ${s.tick}`).not.toBeNull();
+      expect(progress ?? 0, `tick ${s.tick}`).toBeGreaterThan(1);
     }
   });
 });
