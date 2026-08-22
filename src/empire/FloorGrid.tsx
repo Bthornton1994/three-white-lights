@@ -277,21 +277,54 @@ interface AmbientMemberBodyProps {
  * movement between grid cells, and no game-state input of any kind.
  *
  * The bounded version of that claim, in the shape CLAUDE.md's own "Form That
- * Survived" section asks for: `AmbientMemberBodyProps` is a closed,
- * four-member interface — `index`, `type`, `position`, `tile` — none of them
- * a callback or a game-state type, so this component has no dispatch or
- * `GymState`/`EmpireGym`/reputation/wallet channel to reach through, whatever
- * the render body below does with the fields it has. Its limit, stated
- * because no check reaches past it: this only pins the member NAMES, not
- * what an existing member's type could later be widened to smuggle a channel
- * in through — `position`'s type quietly growing a callback field would sit
- * outside it, though nothing here does that today. The named catcher is
- * `empireForbiddenOutput.test.ts`'s "pins `AmbientMemberBodyProps`'s closed
- * member set, and reddens on a planted dispatch/game-state member" test,
- * mutation-tested by planting a `dispatch: (action: GymViewAction) => void`
- * member into this interface and watching that test redden naming
- * `dispatch`, then reverting — see that test's own header for the verbatim
- * mutant and the observed failure.
+ * Survived" section asks for.
+ *
+ * WHAT THE MECHANISM GUARANTEES, in its own terms. `empireForbiddenOutput.
+ * test.ts` reads this component's prop surface out of the TYPE CHECKER — the
+ * interface's resolved type, via `getPropertiesOfType`, and not the member
+ * list written between one declaration's braces — and pins, in both
+ * directions, the set of `{name, shape}` pairs it finds: `index: number`,
+ * `tile: number`, `position: object{x:number,y:number}`, and `type` as its
+ * five string literals. Because the reading is the resolved type, three things
+ * are inside it that a member-name list off the AST left outside: a member
+ * arriving on a SECOND, merged `interface AmbientMemberBodyProps` declaration;
+ * a member inherited through an `extends`; and an existing member's TYPE being
+ * widened to carry a callable — `tile: number | { px: number; dispatch: ... }`
+ * renders `union[number|object{dispatch:callable,px:number}]` and the diff
+ * names both the member and the smuggled field. A second reading, the
+ * directory's own `memberTypeScreen`, is joined to the first and covers the
+ * structural render's weak spot, which is a type that declares no function
+ * while still being able to hold one.
+ *
+ * A separate pin resolves this component's own parameter type by IDENTITY
+ * against the interface, so leaving `AmbientMemberBodyProps` in place as dead
+ * code and re-annotating the function with something else is red rather than
+ * green — `tsconfig.json` sets no `noUnusedLocals`, so that edit compiles.
+ *
+ * ITS LIMITS, named concretely because none of the three is covered:
+ *
+ *   1. The prop surface is not the render body. This component could read a
+ *      React context, or a module-scope binding written by `FloorGrid` below,
+ *      and hold a dispatch that appears in no prop. The import fence in
+ *      `empireCore.test.ts` pins which PACKAGES this file may import and not
+ *      which names it takes from them, so adding `useContext` to the existing
+ *      `react` import passes it. There is no catcher for that route today.
+ *   2. The render sees structure, not modifiers, so dropping `readonly` from a
+ *      member is invisible to it. That weakens the surface without opening a
+ *      channel, which is why it is listed as a limit rather than a hole.
+ *   3. `memberTypeScreen` refuses every interface-typed member whatever it
+ *      holds, because TypeScript withholds an implicit index signature from an
+ *      `interface`. `position` is therefore on that reading's refused list as a
+ *      conservative answer rather than a finding, and the census entry carries
+ *      the matched control rows that measure the difference.
+ *
+ * The named catcher is `empireForbiddenOutput.test.ts`'s describe block
+ * "AmbientMemberBody's prop surface has no dispatch/game-state channel" — four
+ * tests. Three mutants were planted against it and all three redden it: a
+ * direct `dispatch` member, a second merged declaration carrying one, and the
+ * `tile` widening above, each left compiling at `tsc --noEmit` exit 0 so that
+ * the mutant is one that could really ship. See that block's own header for the
+ * verbatim mutants and their observed failures.
  *
  * Outer element keeps the `floorgrid-ambient-<index>` testID the browser
  * check and existing unit tests key off of, with the SAME real, non-zero

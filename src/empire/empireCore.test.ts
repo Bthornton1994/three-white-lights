@@ -2553,14 +2553,26 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `ambientMemberRoster` header prose, `FloorGrid.tsx` via its new
     // `./members` import for `MemberType`. Two new pairs, measured by running
     // this exact assertion and reading its failure value.
-    expect(pairs).toBe(90);
+    // 90 -> 91: PLAYTEST 4's rework of the ambient-body prop-surface guard.
+    // `FloorGrid.tsx`'s rewritten limit paragraph names `empireCore.test.ts`
+    // for the first time — the import fence lives there, and the paragraph
+    // names it as the reason a `useContext` channel would pass unnoticed, which
+    // is CLAUDE.md's "name the check that covers the route" applied to a route
+    // that turns out to have no cover. One new pair, `FloorGrid.tsx` ->
+    // `empireCore.ts`, measured by running this exact assertion and reading its
+    // failure value rather than hand-counted.
+    expect(pairs).toBe(91);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
     expect(mentionersOf('empireNotAModule.ts')).toEqual([]);
     // 11 -> merged: members.ts's header names empireCore.ts by file name, and
     // floor.ts's `refuseWith` import does too — two independent new mentions.
-    expect(mentionersOf('empireCore.ts').length).toBe(13);
+    // 13 -> 14: PLAYTEST 4 again, and this assertion is what ATTRIBUTED the
+    // pair count above rather than merely agreeing with it — the new mentioner
+    // is `FloorGrid.tsx`, naming `empireCore.test.ts`'s import fence in its
+    // rewritten limit paragraph.
+    expect(mentionersOf('empireCore.ts').length).toBe(14);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {

@@ -9880,7 +9880,7 @@ describe('the injected axes were varied, and the variation was measured', () => 
  *      abrupt completion (a throw), a write into memory the caller already holds
  *      (an argument, a module-level binding, or an ambient object), a call into
  *      something the caller supplied (a callback), or a value the caller reads
- *      LATER through machinery the module handed it (a getter, a coercion
+ *      LATER through machinery the module handed the caller (a getter, a coercion
  *      method, a returned closure, a thenable). That enumeration is a property
  *      of JavaScript, not of this directory, which is why it can be closed at
  *      all — and it is the reformulation CLAUDE.md's newest rule asks for: an
@@ -17022,93 +17022,748 @@ describe('the relation certifies from a cycle and not from a depth, and the cycl
 // ---------------------------------------------------------------------------
 
 /**
- * `AmbientMemberBodyProps`'s declared member names, read from the checker
- * rather than transcribed — a hand-copied list drifts the moment the
- * interface does and nobody would notice until a docstring quoting it was
- * already wrong, which is the exact failure class CLAUDE.md's
- * guarantee-comment section is about.
+ * Depth ceiling for the prop-shape render below, with cuts counted.
+ *
+ * Eight, matching `MEMBER_TYPE_WALK_MAX_DEPTH`, and the number is not the
+ * argument — `PROP_SURFACE_CENSUS.DEEPEST` is. The shipped interface's deepest
+ * member renders at depth 1 (`position`, an object of two numbers), so the
+ * ceiling has seven levels of headroom, and `CUTS` is pinned at zero so a type
+ * that grew past the ceiling reddens rather than being silently truncated. That
+ * is the same depth-plus-cut-counter shape the member-type screen above already
+ * uses, for the same reason: a fixed depth with the cuts unmeasured is a
+ * guess, and a fixed depth with the cuts pinned at zero is a depth re-verified
+ * as adequate on every run.
  */
-function ambientMemberBodyPropsMembers(): readonly string[] {
-  const program = programWith(compilerOptions(), shippedModulePaths(), null);
-  const floorGridPath = path.join(HERE, 'FloorGrid.tsx');
-  const source = program.getSourceFile(floorGridPath);
-  if (source === undefined) throw new Error(`${floorGridPath} is not in the program`);
-  let found: ts.InterfaceDeclaration | undefined;
+const AMBIENT_PROP_SHAPE_MAX_DEPTH = 8;
+
+/** One member of the ambient body's prop surface, as this file reads it. */
+interface AmbientPropReading {
+  /** The property name, from the checker's property list. */
+  readonly name: string;
+  /**
+   * A structural rendering of the property's TYPE. `callable` anywhere in the
+   * string is a call signature the walk found at that position.
+   */
+  readonly shape: string;
+}
+
+/** What `ambientPropSurfaceIn` measured about one component's prop interface. */
+interface AmbientPropSurface {
+  /**
+   * How many declarations the interface SYMBOL has. Two means the interface was
+   * declaration-merged, which is one of the two routes the name-only reader
+   * this replaced could not see.
+   */
+  readonly declarations: number;
+  /** Every property of the interface TYPE, name and shape, sorted by name. */
+  readonly members: readonly AmbientPropReading[];
+  /**
+   * Members the member-type screen says can hold a function, each rendered as
+   * `name: shape` so a failure names the offender and what is wrong with it.
+   *
+   * A SECOND READING, not a restatement of `members`. The render below reports
+   * `object{}` for `{}` and `array[...]` for a list, both of which read as data
+   * in the string while `const held: {} = () => 1` compiles — so the two
+   * disagree exactly where the render is weakest, and the disagreement is
+   * pinned as a row of the control battery rather than described.
+   */
+  readonly holdAFunction: readonly string[];
+  /** Times the render hit `AMBIENT_PROP_SHAPE_MAX_DEPTH`. Pinned at zero. */
+  readonly cuts: number;
+  /** The deepest level the render actually reached. The headroom measurement. */
+  readonly deepest: number;
+  /** The component function's own parameter type, resolved. */
+  readonly parameter: AmbientParameterReading;
+}
+
+/**
+ * Whether the component is still annotated with the interface this file pins.
+ *
+ * The gap it closes: `tsconfig.json` sets no `noUnusedLocals`, so leaving the
+ * interface in place as dead code and re-annotating the component with a
+ * different props type compiles clean and leaves a pin on the interface green
+ * while the interface has stopped being the component's prop surface. A pin on
+ * a type nothing uses is decoration, however exact it is.
+ */
+interface AmbientParameterReading {
+  /** The component whose first parameter was resolved. */
+  readonly component: string;
+  /** What the checker prints for that parameter's type. */
+  readonly annotation: string;
+  /**
+   * Type IDENTITY, not name: `checker.getDeclaredTypeOfSymbol(interface)` and
+   * the parameter's own type are compared as objects, so
+   * `AmbientMemberBodyProps & { dispatch }` prints differently AND fails this,
+   * and a same-named interface from elsewhere fails it too.
+   */
+  readonly isDeclaredInterfaceType: boolean;
+}
+
+/**
+ * Read a component's prop surface from the CHECKER — the interface's resolved
+ * TYPE, not its declaration body's own AST member list.
+ *
+ * WHY THE DISTINCTION IS THE WHOLE POINT, and it is stated first because the
+ * sentence this docstring replaced claimed the checker and used the AST. A
+ * declaration body's `members` are the `TypeElement`s written between that
+ * declaration's own braces. The TYPE has more in it than that, in two ways that
+ * are both ordinary TypeScript rather than exotic:
+ *
+ *   - DECLARATION MERGING. A second `interface AmbientMemberBodyProps { ... }`
+ *     anywhere in the same file merges into one type. A reader that takes the
+ *     first matching declaration's `members` reports the first declaration's
+ *     names and misses every member of the second.
+ *   - `extends`. Inherited members are part of the type and appear in no
+ *     declaration body at all.
+ *
+ * `checker.getSymbolAtLocation(name)` resolves the MERGED symbol — its
+ * `declarations` array is the count this surface pins — and
+ * `getPropertiesOfType(getDeclaredTypeOfSymbol(symbol))` enumerates own,
+ * merged and inherited properties together. Both routes were planted and both
+ * redden; the mutants and their verbatim failures are recorded at the
+ * assertions below.
+ *
+ * THE SECOND HALF, WHICH IS A DIFFERENT QUESTION FROM MEMBERSHIP. A name-keyed
+ * pin says which members exist and says nothing about what an existing member's
+ * type carries, so widening `tile` from `number` to
+ * `number | { px: number; dispatch: ... }` smuggles a channel through under a
+ * name that was already on the list. Every property's type is therefore
+ * rendered structurally as well, by `renderPropShape` below, and the render is
+ * part of the pinned pair.
+ *
+ * ITS LIMIT, AND THE READING THAT COVERS IT. The render is a structural walk,
+ * so it reports as data any type that declares no function while still being
+ * able to hold one — `{}` is the canonical case and `any` would be, were it not
+ * answered separately. That limit is covered by the second reading rather than
+ * argued away: `holdAFunction` is `memberTypeScreen`'s verdict, the predicate
+ * this file has hardened across the bypass rounds `FAMILY_TABLE` records, and
+ * the control battery below pins a row where the two readings disagree.
+ */
+function ambientPropSurfaceIn(
+  program: ts.Program,
+  checker: ts.TypeChecker,
+  filePath: string,
+  interfaceName: string,
+  componentName: string,
+): AmbientPropSurface {
+  const source = program.getSourceFile(filePath);
+  if (source === undefined) throw new Error(`${filePath} is not in the program`);
+  let foundInterface: ts.InterfaceDeclaration | undefined;
+  let foundComponent: ts.SignatureDeclaration | undefined;
   const visit = (node: ts.Node): void => {
-    if (found !== undefined) return;
-    if (ts.isInterfaceDeclaration(node) && node.name.text === 'AmbientMemberBodyProps') {
-      found = node;
-      return;
+    if (
+      foundInterface === undefined &&
+      ts.isInterfaceDeclaration(node) &&
+      node.name.text === interfaceName
+    ) {
+      foundInterface = node;
+    }
+    if (
+      foundComponent === undefined &&
+      ts.isFunctionDeclaration(node) &&
+      node.name?.text === componentName
+    ) {
+      foundComponent = node;
     }
     node.forEachChild(visit);
   };
   visit(source);
-  if (found === undefined) {
-    throw new Error('FloorGrid.tsx no longer declares AmbientMemberBodyProps');
+  if (foundInterface === undefined) {
+    throw new Error(`${filePath} no longer declares ${interfaceName}`);
   }
-  const declaration = found;
-  return Object.freeze(
-    declaration.members.map((member) =>
-      member.name !== undefined ? member.name.getText(source) : '<unnamed>',
-    ).sort(),
+  if (foundComponent === undefined) {
+    throw new Error(`${filePath} no longer declares a ${componentName} function`);
+  }
+  const declaration = foundInterface;
+  const component = foundComponent;
+  const symbol = checker.getSymbolAtLocation(declaration.name);
+  if (symbol === undefined) throw new Error(`${interfaceName} resolves to no symbol`);
+  const declaredType = checker.getDeclaredTypeOfSymbol(symbol);
+  const screen = memberTypeScreen(program, checker);
+
+  const render = renderPropShape(checker, declaration);
+  // One pass, so the render and the screen are asked about the SAME type object
+  // for the same property rather than about two separate re-reads of it.
+  const read = checker
+    .getPropertiesOfType(declaredType)
+    .map((property) => {
+      const type = checker.getTypeOfSymbolAtLocation(property, declaration);
+      return {
+        name: property.getName(),
+        shape: render.of(type),
+        holds: screen.holdsAFunctionAnywhere(type, `${interfaceName}#${property.getName()}`),
+      };
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
+
+  const members = read.map(({ name, shape }) => Object.freeze({ name, shape }));
+  const holdAFunction = read
+    .filter((member) => member.holds)
+    .map((member) => `${member.name}: ${member.shape}`);
+
+  const parameter = component.parameters[0];
+  if (parameter === undefined) throw new Error(`${componentName} takes no parameter`);
+  const parameterType = checker.getTypeAtLocation(parameter);
+
+  return Object.freeze({
+    declarations: symbol.declarations?.length ?? 0,
+    members: Object.freeze(members),
+    holdAFunction: Object.freeze(holdAFunction),
+    cuts: render.cuts(),
+    deepest: render.deepest(),
+    parameter: Object.freeze({
+      component: componentName,
+      annotation: checker.typeToString(parameterType),
+      isDeclaredInterfaceType: parameterType === declaredType,
+    }),
+  });
+}
+
+/** A render pass with its own cut and depth counters. */
+interface PropShapeRender {
+  readonly of: (type: ts.Type) => string;
+  readonly cuts: () => number;
+  readonly deepest: () => number;
+}
+
+/**
+ * Render a type's structure as a string, so a pinned pair says what a member's
+ * type IS and a diff says what changed about it.
+ *
+ * THE DEPTH RULE, stated because an unbounded property walk here is wrong
+ * rather than merely slow. `checker.getPropertiesOfType(numberType)` returns
+ * `toFixed`, `toString` and four more — the APPARENT members `number` gets from
+ * `lib.es5.d.ts` — and every one of them is callable. A walk that recursed into
+ * them would report `index: number` as carrying a call signature, which is a
+ * false positive on the most ordinary member there is. So property recursion is
+ * gated on `ts.TypeFlags.Object`: a primitive, a literal and an enum member
+ * render as the checker's own printed name and stop, while an object type,
+ * an interface, an anonymous type literal, an array and a union/intersection of
+ * any of those are walked through. Measured on the shipped interface: `number`
+ * renders `number`, `MemberType` renders its five string literals, and
+ * `GridPosition` renders `object{x:number,y:number}`.
+ *
+ * Termination has two independent guards because they answer different
+ * questions: `path` refuses a type already on the current chain, which is what
+ * makes a self-referential type render `cycle` instead of recursing forever;
+ * and the depth ceiling bounds a chain that is deep without being cyclic, which
+ * is the one a cycle guard cannot see. Cuts are counted, and the census pins
+ * them at zero.
+ */
+function renderPropShape(checker: ts.TypeChecker, at: ts.Node): PropShapeRender {
+  let cuts = 0;
+  let deepest = 0;
+  const walk = (type: ts.Type, depth: number, path: readonly ts.Type[]): string => {
+    if (depth > AMBIENT_PROP_SHAPE_MAX_DEPTH) {
+      cuts += 1;
+      return 'cut';
+    }
+    if (depth > deepest) deepest = depth;
+    if (path.includes(type)) return 'cycle';
+    if (checker.getSignaturesOfType(type, ts.SignatureKind.Call).length > 0) return 'callable';
+    if (checker.getSignaturesOfType(type, ts.SignatureKind.Construct).length > 0) {
+      return 'constructable';
+    }
+    // `any` and `unknown` before anything structural: both render as a plain
+    // keyword and both can hold a function, so letting them fall through to the
+    // primitive arm below would print a reassuring `any` in the pinned shape.
+    if ((type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) !== 0) {
+      return `opaque:${checker.typeToString(type)}`;
+    }
+    const next = [...path, type];
+    if (type.isUnion()) {
+      return `union[${type.types.map((part) => walk(part, depth + 1, next)).sort().join('|')}]`;
+    }
+    if (type.isIntersection()) {
+      return `intersection[${type.types.map((part) => walk(part, depth + 1, next)).sort().join('&')}]`;
+    }
+    if (checker.isArrayType(type) || checker.isTupleType(type)) {
+      const args = checker
+        .getTypeArguments(type as ts.TypeReference)
+        .map((argument) => walk(argument, depth + 1, next));
+      return `array[${args.join(',')}]`;
+    }
+    if ((type.flags & ts.TypeFlags.Object) === 0) return checker.typeToString(type);
+    const index = checker
+      .getIndexInfosOfType(type)
+      .map((info) => `index<${walk(info.type, depth + 1, next)}>`);
+    const properties = checker
+      .getPropertiesOfType(type)
+      .map(
+        (property) =>
+          `${property.getName()}:${walk(checker.getTypeOfSymbolAtLocation(property, at), depth + 1, next)}`,
+      )
+      .sort();
+    return `object{${[...index, ...properties].join(',')}}`;
+  };
+  return Object.freeze({
+    of: (type: ts.Type) => walk(type, 0, []),
+    cuts: () => cuts,
+    deepest: () => deepest,
+  });
+}
+
+/** The shipped reading, taken against the real directory. */
+function ambientMemberBodyPropSurface(): AmbientPropSurface {
+  const options = compilerOptions();
+  const program = programWith(
+    options,
+    shippedModulePaths(),
+    null,
+    PROBE_PATH,
+    FUNCTION_FREE_DATA_FILE,
+  );
+  return ambientPropSurfaceIn(
+    program,
+    program.getTypeChecker(),
+    path.join(HERE, 'FloorGrid.tsx'),
+    'AmbientMemberBodyProps',
+    'AmbientMemberBody',
   );
 }
 
 /**
- * The closed member set `AmbientMemberBody`'s own header claims — `index`,
- * `type`, `position`, `tile`, and nothing else. Set-equal in both
- * directions, so a member removed is red the same as one added.
+ * The closed prop surface `AmbientMemberBody`'s own header claims — four
+ * members, and the TYPE of each. Set-equal in both directions, so a member
+ * removed is red the same as one added, and a member RETYPED is red as well.
  *
- * ITS LIMIT, IN THE MECHANISM'S OWN TERMS, matching the header this pin is
- * the catcher for: this reads member NAMES only, off the interface
- * declaration's own AST, not what an already-declared member's TYPE could
- * later be widened to carry. A channel smuggled in under an existing name —
- * `position`'s type quietly growing a callback field, say — sits outside
- * what this test reaches. What it does reach, and what the round that added
- * it was actually asked to close: a later piece THREADING A NEW PROP, which
- * is the shape CLAUDE.md's own report of the finding names — "no test that
- * would go red if a later stage 3/4 piece threaded a `dispatch` or
- * `gymState` prop into this component."
+ * WHAT EACH SHAPE SAYS, since the strings carry the round's actual content.
+ * `number` is a primitive the render stops at rather than descending into (see
+ * `renderPropShape`'s depth rule for why descending would be wrong). `type`
+ * renders the five string literals `MemberType` is, so replacing one of them
+ * with anything structural changes this string. `position` renders
+ * `object{x:number,y:number}`, which is the pin that makes the type-widening
+ * route visible: `GridPosition` growing a callback field renders
+ * `object{...,dispatch:callable,...}` and the diff names both the member and
+ * the field.
+ *
+ * A MAINTENANCE COST, STATED RATHER THAN DISCOVERED IN A DIFF: because `type`
+ * renders `MemberType`'s membership, a stage-3 piece adding a sixth member type
+ * reddens this pin. That is a real change to this component's prop surface and
+ * the failure prints the new string to paste in, so the cost is one line — but
+ * it lands on a builder who was editing `members.ts` and not this file, which
+ * is worth knowing before it happens.
+ *
+ * ITS LIMIT, IN THE MECHANISM'S OWN TERMS. The shapes come from a structural
+ * render, so a type that declares no function while still being able to hold
+ * one reads as data here: `{}` renders `object{}`, and an index signature over
+ * a permissive value type renders its own shape. That limit is covered by the
+ * second reading rather than left open — `PROP_SURFACE_CENSUS.HOLDS_A_FUNCTION`
+ * is `memberTypeScreen`'s verdict, and `AMBIENT_PROP_CONTROL_SHAPES` pins a row
+ * (`emptyObject`) where the render says data and the screen says otherwise, so
+ * the disagreement is a measurement in the file rather than a claim about one.
  */
-const DECLARED_AMBIENT_MEMBER_BODY_PROPS_MEMBERS: readonly string[] = Object.freeze([
-  'index',
-  'position',
-  'tile',
-  'type',
+const DECLARED_AMBIENT_MEMBER_BODY_PROPS: readonly AmbientPropReading[] = Object.freeze([
+  Object.freeze({ name: 'index', shape: 'number' }),
+  Object.freeze({ name: 'position', shape: 'object{x:number,y:number}' }),
+  Object.freeze({ name: 'tile', shape: 'number' }),
+  Object.freeze({
+    name: 'type',
+    shape: 'union["athlete"|"bodybuilder"|"casual"|"powerlifter"|"serious-lifter"]',
+  }),
 ]);
+
+/** What the shipped reading measured about itself. Counts, not bounds. */
+const PROP_SURFACE_CENSUS = Object.freeze({
+  /**
+   * ONE. Two is declaration merging, which is the route the AST-member reader
+   * this replaced could not see at all.
+   */
+  DECLARATIONS: 1,
+  /**
+   * What the member-type screen refuses to certify, `name: shape`, set-equal in
+   * both directions.
+   *
+   * IT IS NOT EMPTY, AND THE ONE ROW IS THE RELATION BEING CONSERVATIVE RATHER
+   * THAN A CHANNEL. `position` is a `GridPosition`, declared as an `interface`
+   * in `floor.ts`; TypeScript hands an implicit index signature to an object
+   * literal type and withholds it from an interface, so the relation's
+   * `FunctionFreeData` constituent refuses every interface-typed member whatever
+   * it holds. The screen's own header says `true` means "a function could be in
+   * there, go and look", so a conservative refusal is the predicate working as
+   * designed and not a defect in it.
+   *
+   * That claim is a measurement rather than an argument, and the measurement is
+   * in this file: `AMBIENT_PROP_CONTROL_CENSUS`'s `nestedData` and
+   * `interfaceData` rows are the same two readonly numbers written as a type
+   * literal and as an `interface`, and only the second is on the control's list.
+   * Taken directly against the real `GridPosition` as well:
+   * `isTypeAssignableTo(GridPosition, FunctionFreeData)` is `false` while the
+   * identical type alias is `true`, and `isTypeAssignableTo(anyFunction,
+   * GridPosition)` — "may a function be stored here" — is `false`.
+   *
+   * WHAT THE ROW COSTS AND WHAT IT STILL BUYS, said plainly because a pinned
+   * list containing a false positive is worth less than an empty one. The set
+   * equality is unchanged in strength: `index`, `tile` and `type` arriving here
+   * is red, a second interface-typed member arriving is red under its own name,
+   * and `position` dropping off is red too. What is lost is the ability to read
+   * this list's non-emptiness as a signal by itself.
+   */
+  HOLDS_A_FUNCTION: Object.freeze([
+    'position: object{x:number,y:number}',
+  ] as readonly string[]),
+  /** Render cuts at the depth ceiling. Zero, so the ceiling is verified. */
+  CUTS: 0,
+  /**
+   * The deepest level the render reached on the shipped interface: 1, from
+   * `position`'s two number fields. The headroom under
+   * `AMBIENT_PROP_SHAPE_MAX_DEPTH` is therefore seven levels, which is the
+   * number that says the ceiling is not close rather than the ceiling itself.
+   */
+  DEEPEST: 1,
+  /** The component's parameter type, resolved by identity and not by name. */
+  PARAMETER: Object.freeze({
+    component: 'AmbientMemberBody',
+    annotation: 'AmbientMemberBodyProps',
+    isDeclaredInterfaceType: true,
+  }),
+});
+
+/**
+ * The control: an interface built to carry a channel at every position this
+ * round is about, served from memory and never written to disk.
+ *
+ * WHY IT IS HERE AT ALL. The shipped reading's whole output is four data
+ * members, an empty `holdAFunction` list and two zeros — every number it pins
+ * is the boring answer, and a walk that had quietly stopped walking would
+ * produce the identical boring answer. This battery is the domain the zeros are
+ * zero against, in the shape `src/game/streakSweep.ts` sets for a sweep in this
+ * codebase: the routes are enumerated, driven, and their non-zero results kept
+ * in the file beside the zeros.
+ *
+ * THE ROWS, and each one is a route rather than a variation on a route:
+ *
+ *   - `directCallable` — a member that is a function. The shape a stage-3 piece
+ *     threading `dispatch` in would take.
+ *   - `inheritedCallable` — reached through `extends`, so it is in the TYPE and
+ *     in no declaration body.
+ *   - `mergedCallable` — reached through a second declaration of the same
+ *     interface name.
+ *   - `unionCallable` — a function as one constituent of a union.
+ *   - `unionSmuggle` — a function inside an OBJECT constituent of a union,
+ *     which is the exact widening this round was sent back over.
+ *   - `deepSmuggle` — the same thing three property levels down, so the walk is
+ *     shown reaching past one level rather than assumed to.
+ *   - `listOfCallables` — behind an array element, which is not a property.
+ *   - `emptyObject` and `opaque` — the two rows where the render and the screen
+ *     are meant to disagree or agree for different reasons, which is what makes
+ *     the joined reading a measurement.
+ *   - `plainNumber`, `literalUnion`, `nestedData` — benign, and they are the
+ *     reason the battery is evidence: a walk that answered "channel" to
+ *     everything would pass every row above and fail these three.
+ */
+const AMBIENT_PROP_CONTROL_PATH = path.join(HERE, '__ambientPropControl.ts');
+
+const AMBIENT_PROP_CONTROL_SOURCE = `type ControlAction = { readonly kind: string };
+
+interface ControlBase {
+  readonly inheritedCallable: (action: ControlAction) => void;
+}
+
+interface ControlPoint {
+  readonly x: number;
+  readonly y: number;
+}
+
+interface ControlProps extends ControlBase {
+  readonly plainNumber: number;
+  readonly literalUnion: 'a' | 'b';
+  readonly nestedData: { readonly x: number; readonly y: number };
+  readonly interfaceData: ControlPoint;
+  readonly directCallable: (action: ControlAction) => void;
+  readonly unionCallable: number | ((action: ControlAction) => void);
+  readonly unionSmuggle: number | { readonly px: number; readonly dispatch: (action: ControlAction) => void };
+  readonly deepSmuggle: { readonly a: { readonly b: { readonly send: (action: ControlAction) => void } } };
+  readonly listOfCallables: readonly ((action: ControlAction) => void)[];
+  readonly emptyObject: {};
+  readonly opaque: any;
+}
+
+interface ControlProps {
+  readonly mergedCallable: (action: ControlAction) => void;
+}
+
+declare function ControlBody(props: ControlProps & { readonly extra: number }): void;
+
+export {};
+`;
+
+function ambientPropControlSurface(): AmbientPropSurface {
+  const options = compilerOptions();
+  const program = programWith(
+    options,
+    [AMBIENT_PROP_CONTROL_PATH],
+    AMBIENT_PROP_CONTROL_SOURCE,
+    AMBIENT_PROP_CONTROL_PATH,
+    FUNCTION_FREE_DATA_FILE,
+  );
+  return ambientPropSurfaceIn(
+    program,
+    program.getTypeChecker(),
+    AMBIENT_PROP_CONTROL_PATH,
+    'ControlProps',
+    'ControlBody',
+  );
+}
+
+/** Every control row's rendered shape, name by name. */
+const AMBIENT_PROP_CONTROL_SHAPES: readonly AmbientPropReading[] = Object.freeze([
+  Object.freeze({ name: 'deepSmuggle', shape: 'object{a:object{b:object{send:callable}}}' }),
+  Object.freeze({ name: 'directCallable', shape: 'callable' }),
+  Object.freeze({ name: 'emptyObject', shape: 'object{}' }),
+  Object.freeze({ name: 'inheritedCallable', shape: 'callable' }),
+  // Structurally identical to `nestedData` above and declared as an
+  // `interface` rather than a type literal. The pair is the measurement behind
+  // `position`'s row in the shipped census: same shape, different verdict.
+  Object.freeze({ name: 'interfaceData', shape: 'object{x:number,y:number}' }),
+  Object.freeze({ name: 'listOfCallables', shape: 'array[callable]' }),
+  Object.freeze({ name: 'literalUnion', shape: 'union["a"|"b"]' }),
+  Object.freeze({ name: 'mergedCallable', shape: 'callable' }),
+  Object.freeze({ name: 'nestedData', shape: 'object{x:number,y:number}' }),
+  Object.freeze({ name: 'opaque', shape: 'opaque:any' }),
+  Object.freeze({ name: 'plainNumber', shape: 'number' }),
+  Object.freeze({ name: 'unionCallable', shape: 'union[callable|number]' }),
+  Object.freeze({
+    name: 'unionSmuggle',
+    shape: 'union[number|object{dispatch:callable,px:number}]',
+  }),
+]);
+
+/**
+ * What the control measured. The non-zero numbers the shipped zeros are zero
+ * against, and they are pinned exactly so a battery that stopped reaching a
+ * route reports itself instead of shrinking quietly.
+ */
+const AMBIENT_PROP_CONTROL_CENSUS = Object.freeze({
+  /** TWO — the control is declaration-merged on purpose. */
+  DECLARATIONS: 2,
+  /**
+   * The screen's verdict, row by row, and the MEMBERSHIP is the content rather
+   * than the count. Three things are being measured at once here:
+   *
+   *   - every genuine channel is found — direct, inherited, merged, in a union
+   *     constituent, inside an object inside a union constituent, three
+   *     property levels down, and behind an array element;
+   *   - `emptyObject` is found while its own render says `object{}`, which is
+   *     the disagreement the joined reading exists for and the evidence that
+   *     the screen covers the render's stated limit rather than restating it;
+   *   - `plainNumber`, `literalUnion` and `nestedData` are ABSENT, which is
+   *     what says the screen discriminates rather than being alarmed by
+   *     everything.
+   *
+   * `interfaceData` is the fourth thing and it is the one worth reading. It is
+   * structurally identical to `nestedData` — two readonly numbers — and it is
+   * on this list while `nestedData` is not. The difference is the declaration
+   * form: TypeScript gives an implicit index signature to an object literal
+   * type and not to an `interface`, so an interface is refused by the
+   * relation's `FunctionFreeData` constituent whatever it contains. Measured
+   * directly rather than reasoned about: the same two fields as a type alias
+   * are assignable to `FunctionFreeData` and as an `interface` are not, with
+   * `isTypeAssignableTo(anyFunction, ...)` false for both — so this is the
+   * relation being conservative about a declaration form, and not a function
+   * anybody can reach. It sits in the control so that the identical row in the
+   * shipped census is explained by a measurement in this file.
+   */
+  HOLDS_A_FUNCTION: Object.freeze([
+    'deepSmuggle: object{a:object{b:object{send:callable}}}',
+    'directCallable: callable',
+    'emptyObject: object{}',
+    'inheritedCallable: callable',
+    'interfaceData: object{x:number,y:number}',
+    'listOfCallables: array[callable]',
+    'mergedCallable: callable',
+    'opaque: opaque:any',
+    'unionCallable: union[callable|number]',
+    'unionSmuggle: union[number|object{dispatch:callable,px:number}]',
+  ] as readonly string[]),
+  /** Zero here too: the deepest control row is three levels, well under eight. */
+  CUTS: 0,
+  DEEPEST: 3,
+  /**
+   * The parameter reading's FALSE case, which is what stops the shipped `true`
+   * from being a field that is true whatever the tree does. `ControlBody` takes
+   * `ControlProps & { extra: number }` — the interface is still named, still
+   * exists, and is no longer the parameter's type.
+   */
+  PARAMETER: Object.freeze({
+    component: 'ControlBody',
+    annotation: 'ControlProps & { readonly extra: number; }',
+    isDeclaredInterfaceType: false,
+  }),
+});
 
 describe("AmbientMemberBody's prop surface has no dispatch/game-state channel", () => {
   it(
     "pins AmbientMemberBodyProps's closed member set, and reddens on a planted dispatch/game-state member",
     () => {
-      // The bite, taken by hand rather than merely claimed — a mutant, not
-      // an assertion about one. `FloorGrid.tsx`'s `AmbientMemberBodyProps` was
-      // widened with `readonly dispatch: (action: GymViewAction) => void;`,
-      // the exact shape `FloorGridProps.dispatch` already carries a few lines
-      // above it, so a later stage 3/4 piece threading one into this
-      // component would look exactly like this. Run against that mutant,
-      // this exact assertion reddened:
+      // THREE MUTANTS, EACH PLANTED AND RUN, because the version of this test
+      // that shipped last round was reddened by one of them and walked past the
+      // other two. All three were left compiling — `tsc --noEmit` exit 0 —
+      // which is the part the previous round's recorded witness got wrong: it
+      // widened the interface without touching the call site, so `tsc` rejected
+      // it at exit 2 and the mutant could not have shipped in the first place.
+      // A mutant the compiler refuses is a weaker witness than it reads as.
       //
-      //   AssertionError: expected [ 'dispatch', 'index', …(3) ] to deeply
-      //   equal [ 'index', 'position', 'tile', 'type' ]
-      //   + "dispatch",
-      //     "index",
-      //     "position",
-      //     "tile",
-      //     "type",
+      // (a) DIRECT MEMBER. `readonly dispatch: (action: GymViewAction) => void;`
+      //     added to the interface AND `dispatch={dispatch}` added at the call
+      //     site. `tsc --noEmit` exit 0. This assertion reddened:
       //
-      // — naming the new member directly, `+ "dispatch"`, rather than a bare
-      // count moving. The mutant was then reverted and this test re-run
-      // green before being recorded here, the same two-step
-      // break-it-then-restore-it discipline CLAUDE.md's guarantee-comment
-      // section asks for, on the codebase's own narrative convention for a
-      // witness — this file records mutation evidence in prose beside the
-      // assertion it is about rather than in a separate table, the same way
-      // every other planted-mutant row in this file already does.
-      const members = ambientMemberBodyPropsMembers();
-      expect(members).toEqual(DECLARED_AMBIENT_MEMBER_BODY_PROPS_MEMBERS);
+      //       AssertionError: expected [ { name: 'dispatch', …(1) }, …(4) ] to
+      //       deeply equal [ { name: 'index', …(1) }, …(3) ]
+      //       + { "name": "dispatch", "shape": "callable" },
+      //
+      //     — naming the member and saying what is wrong with it in the same
+      //     row, rather than a bare count moving.
+      //
+      // (b) DECLARATION MERGING. A second
+      //     `interface AmbientMemberBodyProps { readonly dispatch: (action:
+      //     GymViewAction) => void }` added lower in the same file, plus the
+      //     same call-site argument. `tsc --noEmit` exit 0. AGAINST THE READER
+      //     THIS ROUND REPLACED THIS MUTANT WAS GREEN — measured, not assumed:
+      //     the whole file was run against it and the single red was an
+      //     AST-node census at `expected 37677 to be 37662`, which moves on any
+      //     added line and says nothing about a channel. Against the checker
+      //     reading it reddens three tests: this one with `+ { "name":
+      //     "dispatch", "shape": "callable" }`, the screen reading below, and
+      //     the single-declaration pin at `expected 2 to be 1`.
+      //
+      // (c) TYPE WIDENING, the route the previous round declared as its own
+      //     limit and left with no catcher. `tile` widened to
+      //     `number | { readonly px: number; readonly dispatch: (action:
+      //     GymViewAction) => void }`, the call site passing
+      //     `tile={{ px: tile, dispatch }}`, and the body actually calling it.
+      //     `tsc --noEmit` exit 0, and against the old name-only reader the
+      //     named catcher PASSED. Against the shape reading:
+      //
+      //       - "shape": "number"
+      //       + "shape": "union[number|object{dispatch:callable,px:number}]"
+      //
+      //     which names `tile` and the smuggled field.
+      //
+      // Each mutant was reverted and this test re-run green before being
+      // recorded, and `FloorGrid.tsx` was confirmed byte-identical to its
+      // pre-mutation hash afterwards.
+      //
+      // THE DOMAIN THIS RANGES OVER, recorded per CLAUDE.md's own instruction
+      // that a witness says nothing about the enumeration: every property of
+      // the interface TYPE, as `checker.getPropertiesOfType` enumerates it —
+      // own members, merged members and inherited members — and, per property,
+      // the structural render of its type down to
+      // `AMBIENT_PROP_SHAPE_MAX_DEPTH` with cuts pinned at zero. It does NOT
+      // range over the component's render body, over props passed to children
+      // of that body, or over anything reachable from a module-level binding.
+      const surface = ambientMemberBodyPropSurface();
+      expect(surface.members).toEqual(DECLARED_AMBIENT_MEMBER_BODY_PROPS);
     },
   );
+
+  it('pins the interface at a single declaration, so a merged second one is red on its own', () => {
+    // ITS OWN TEST, AND THE REASON IS A CORRECTION. This assertion first sat on
+    // the line below the member-set pin, and the note beside it said mutant (b)
+    // "reddens twice, on `declarations` and on the member list". That was
+    // measured false the moment it was run: `toEqual` throws, so the second
+    // assertion in the same body is never evaluated and the merging route
+    // reported only as a member appearing. Split out, it is evaluated whatever
+    // the member list does — `expected 2 to be 1` — so the two facts a reader
+    // needs are separable: WHAT arrived, and THAT it arrived on a second
+    // declaration of the same interface name.
+    //
+    // It also covers a merge that adds no member at all, which the member-set
+    // pin by construction cannot see.
+    const surface = ambientMemberBodyPropSurface();
+    expect(surface.declarations).toBe(PROP_SURFACE_CENSUS.DECLARATIONS);
+  });
+
+  it('reads the member-type screen over the same prop surface, and pins every member it refuses', () => {
+    // The second reading, joined to the render rather than replacing it, and
+    // this assertion is first in its own test so its failure is the one a
+    // reader sees: it prints `name: shape`, so a red line here says which
+    // member the screen refused and what its type renders as.
+    //
+    // THE TITLE OF THIS TEST SAYS "refuses" AND NOT "finds a channel", which is
+    // a correction rather than a hedge. It was first written as "finds nothing
+    // that can hold a function" and that was measured false on the first run —
+    // `position` is refused, because the relation withholds an implicit index
+    // signature from an `interface`. The census entry carries the measurement
+    // and the control carries the matched pair; the title is narrowed to what
+    // the assertion actually checks.
+    const surface = ambientMemberBodyPropSurface();
+    expect(surface.holdAFunction, surface.holdAFunction.join(' | ')).toEqual(
+      PROP_SURFACE_CENSUS.HOLDS_A_FUNCTION,
+    );
+    // The non-vacuity guard for the render itself: a walk that truncated would
+    // report data for whatever it did not reach, and `DEEPEST` is what says the
+    // ceiling is far from the floor rather than just above it.
+    expect(surface.cuts).toBe(PROP_SURFACE_CENSUS.CUTS);
+    expect(surface.deepest).toBe(PROP_SURFACE_CENSUS.DEEPEST);
+  });
+
+  it('pins the component to this interface, so the pin cannot outlive the annotation', () => {
+    // `tsconfig.json` sets no `noUnusedLocals`, so a piece that left
+    // `AmbientMemberBodyProps` in place as dead code and annotated
+    // `AmbientMemberBody` with something else would compile clean and leave
+    // every assertion above green on an interface that had stopped being the
+    // component's prop surface. This is that gap closed by type IDENTITY:
+    // `getDeclaredTypeOfSymbol(interface)` compared as an object against the
+    // parameter's own type, so a same-named interface from elsewhere and an
+    // intersection that merely mentions this one both fail it. The control
+    // below is the row where the field reads `false`, which is what stops this
+    // `true` from being a value no state of the tree can move.
+    //
+    // (d) THE MUTANT, PLANTED AND RUN. A second interface
+    // `AmbientMemberBodyLiveProps` — the four real members plus
+    // `readonly dispatch: (action: GymViewAction) => void` — added beside the
+    // pinned one, `AmbientMemberBody` re-annotated with it, and
+    // `dispatch={dispatch}` passed at the call site. `AmbientMemberBodyProps`
+    // is left in the file, referenced by nothing. `tsc --noEmit` exit 0, since
+    // `tsconfig.json` sets no `noUnusedLocals`. This assertion reddened:
+    //
+    //   - "annotation": "AmbientMemberBodyProps",
+    //   + "annotation": "AmbientMemberBodyLiveProps",
+    //     "component": "AmbientMemberBody",
+    //   - "isDeclaredInterfaceType": true,
+    //   + "isDeclaredInterfaceType": false,
+    //
+    // and it was the ONE red in the block: the other four tests stayed green,
+    // correctly, because the interface they read was genuinely unchanged. That
+    // is the measurement that says this test is about a different fact from
+    // the four above rather than a fifth reading of the same one.
+    const surface = ambientMemberBodyPropSurface();
+    expect(surface.parameter).toEqual(PROP_SURFACE_CENSUS.PARAMETER);
+  });
+
+  it('drives the whole reading over a control carrying a channel at every position, and finds each one', () => {
+    // The domain the four zeros above are zero against. Without this the
+    // shipped reading's output — four data members, an empty list, two zeros —
+    // is indistinguishable from a walk that had quietly stopped walking, which
+    // is the shape CLAUDE.md's vacuity section calls an empty domain.
+    //
+    // The control compiles cleanly first, because a verdict taken over a file
+    // with a syntax error is an error report wearing a verdict's clothes.
+    const options = compilerOptions();
+    const program = programWith(
+      options,
+      [AMBIENT_PROP_CONTROL_PATH],
+      AMBIENT_PROP_CONTROL_SOURCE,
+      AMBIENT_PROP_CONTROL_PATH,
+      FUNCTION_FREE_DATA_FILE,
+    );
+    const file = program.getSourceFile(AMBIENT_PROP_CONTROL_PATH);
+    expect(file).toBeDefined();
+    const diagnostics = [
+      ...program.getSyntacticDiagnostics(file),
+      ...program.getSemanticDiagnostics(file),
+    ].map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, ' '));
+    expect(diagnostics, diagnostics.join(' | ')).toEqual([]);
+
+    const control = ambientPropControlSurface();
+    expect(control.members).toEqual(AMBIENT_PROP_CONTROL_SHAPES);
+    expect(control.declarations).toBe(AMBIENT_PROP_CONTROL_CENSUS.DECLARATIONS);
+    expect(control.holdAFunction).toEqual(AMBIENT_PROP_CONTROL_CENSUS.HOLDS_A_FUNCTION);
+    expect(control.cuts).toBe(AMBIENT_PROP_CONTROL_CENSUS.CUTS);
+    expect(control.deepest).toBe(AMBIENT_PROP_CONTROL_CENSUS.DEEPEST);
+    expect(control.parameter).toEqual(AMBIENT_PROP_CONTROL_CENSUS.PARAMETER);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -22280,7 +22935,7 @@ const CHAIN_SCAN_GLOBALS: readonly string[] = Object.freeze([
  * and `grep -rn parseDiagnostics src/` shows nothing in the product reads this
  * array. Measured: a `.tsx` carrying a real three-arm `if/else if/else if`,
  * parsed with an explicit `ts.ScriptKind.TS`, gives `ifStatements=0 nodes=34
- * parseDiagnostics=3`; parsed as its extension names it (TSX), `ifStatements=3
+ * parseDiagnostics=3`; parsed as its extension dictates (TSX), `ifStatements=3
  * nodes=111 parseDiagnostics=0`. So a census that hardcodes `.TS` on a walked
  * `.tsx` sees a wrong, smaller tree and NOTHING reports it.
  */
@@ -23028,12 +23683,24 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#guardedRead<handlerTablesIn#parent', arms: 3, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#mapEntryKeys<handlerTablesIn#first', arms: 1, dispatch: true, terminal: 'next-statement' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<handlerTablesIn#node', arms: 4, dispatch: false, terminal: 'next-statement' }),
-  // PLAYTEST 4's own reader: `ambientMemberBodyPropsMembers`'s local `visit`
-  // walks `FloorGrid.tsx`'s AST looking for the `AmbientMemberBodyProps`
-  // interface declaration by name, one `if` arm, falling through to
-  // `node.forEachChild(visit)` on everything else — the same shape as
-  // `visit<switchesIn#node`/`visit<handlerTablesIn#node` above.
-  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<ambientMemberBodyPropsMembers#node', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  // PLAYTEST 4's own reader, rebuilt on the checker. Three rows where there
+  // used to be one, and each of the three is read from this assertion's own
+  // failure value rather than hand-counted.
+  //
+  // `visit<ambientPropSurfaceIn#node` REPLACES `visit<ambientMemberBodyPropsMembers
+  // #node`, and the row changed shape as well as name: `arms=1 dispatch=true`
+  // became `arms=2 dispatch=false`. That is the reader's actual repair showing
+  // up in a census — the old walk short-circuited on the first matching
+  // interface declaration and `return`ed, which is what made a second, merged
+  // declaration invisible to it; the new one collects the interface and the
+  // component function in one pass and falls through to
+  // `node.forEachChild(visit)` on every node, so no arm ends control flow.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#visit<ambientPropSurfaceIn#node', arms: 2, dispatch: false, terminal: 'next-statement' }),
+  // `renderPropShape`'s walk, in two ladders. The first is the depth cut on its
+  // own; the second is the run of structural questions the render asks before
+  // it descends. Both dispatch — every arm returns a rendered string.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walk<renderPropShape#type', arms: 1, dispatch: true, terminal: 'next-statement' }),
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#walk<renderPropShape#type#2', arms: 4, dispatch: true, terminal: 'next-statement' }),
 ]);
 
 /**
@@ -23152,11 +23819,19 @@ const CHAIN_CENSUS = Object.freeze({
   // PLAYTEST 4: +1 for `visit<ambientMemberBodyPropsMembers#node`
   // (`dispatch: true`, terminal `next-statement`), measured by running the
   // assertion below rather than hand-counted.
-  CHAINS: 96,
-  DISPATCH: 60,
+  // 96 -> 98: PLAYTEST 4's rework replaces that one row with three — the
+  // rebuilt `visit<ambientPropSurfaceIn#node` plus `renderPropShape`'s two
+  // ladders. Read from this assertion's own failure value.
+  CHAINS: 98,
+  // 60 -> 61: PLAYTEST 4's rework, net. The replaced reader row was
+  // `dispatch: true` and the two `renderPropShape` ladders both are, so one
+  // dispatching row left and two arrived. Read from this assertion's failure.
+  DISPATCH: 61,
   BY_TERMINAL: Object.freeze({
     else: 8,
-    'next-statement': 72,
+    // 72 -> 74: all three of PLAYTEST 4's rework rows are `next-statement`,
+    // against one `next-statement` row removed.
+    'next-statement': 74,
     loop: 14,
     enclosing: 2,
     /**
