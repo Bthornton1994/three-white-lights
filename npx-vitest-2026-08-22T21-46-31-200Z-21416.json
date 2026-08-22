@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-22T21-46-31-200Z-21416",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "--reporter=dot"
+  ],
+  "budgetSeconds": 240,
+  "startedAtIso": "2026-08-22T21:46:31.200Z",
+  "startedAtMs": 1787435191200,
+  "cwd": "/workspace",
+  "commit": "0f27062a7827bdfc791b47afb2c7a4ed9d4553e5",
+  "branch": "cursor/bench-press-art-8f47",
+  "dirty": 19,
+  "dirtyPaths": [
+    "CLAUDE.md",
+    "src/art/gymScene.ts",
+    "src/art/index.ts",
+    "src/art/lifterSprite.ts",
+    "src/art/spriteTuning.ts",
+    "src/game/lift.test.ts",
+    "src/game/lift.ts",
+    "src/game/liftTuning.test.ts",
+    "src/game/liftTuning.ts",
+    "src/lift/LiftScreen.tsx",
+    "src/lift/liftFrame.test.ts",
+    "src/lift/liftFrame.ts",
+    "src/meet/AttemptView.tsx",
+    "src/session/SetView.tsx",
+    "src/tuning/audit.test.ts",
+    "src/tuning/audit.ts",
+    "public/canvaskit.js",
+    "src/art/benchPress.test.ts",
+    "src/art/benchPress.ts"
+  ],
+  "runner": {
+    "pid": 21416,
+    "startTick": "2686142",
+    "cmdline": "node tools/watchdog.mjs --budget 240 -- npx vitest run --reporter=dot",
+    "bootId": "0a07ecf6-eb57-4b8d-a4b3-63122f50c10a",
+    "bootEpochSeconds": 1787408330,
+    "host": "cursor",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-22T21:46:31.211Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/cursor"
+  }
+}
