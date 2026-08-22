@@ -456,12 +456,29 @@ describe('copy', () => {
     // pattern checks alone would pass any rewrite that happens to contain
     // "tap" and avoid "one tap", which is not the same as this being the
     // sentence a human actually approved.
-    expect(LIFT_COPY.SUBTITLE).toBe(
+    expect(LIFT_COPY.SUBTITLE.squat).toBe(
       'Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.',
     );
-    expect(LIFT_COPY.SUBTITLE).not.toMatch(/one timed tap/i);
-    expect(LIFT_COPY.SUBTITLE).not.toMatch(/\bone tap\b/i);
-    expect(LIFT_COPY.SUBTITLE.toLowerCase()).toMatch(/tap/);
+    for (const kind of PLAYABLE_LIFT_KINDS) {
+      expect(LIFT_COPY.SUBTITLE[kind], kind).not.toMatch(/one timed tap/i);
+      expect(LIFT_COPY.SUBTITLE[kind], kind).not.toMatch(/\bone tap\b/i);
+      expect(LIFT_COPY.SUBTITLE[kind].toLowerCase(), kind).toMatch(/tap/);
+    }
+  });
+
+  it('gives bench instructions that describe bench, not squat', () => {
+    // The copy half of the same phone finding that produced the press command.
+    // A player who is told to "release at the bottom" and nothing else has been
+    // handed squat's instructions on a lift whose decisive moment is a reaction
+    // to a call — so this pins that bench's line names the wait and the press,
+    // and that the two lifts do not ship the same sentence.
+    const bench = LIFT_COPY.SUBTITLE.bench;
+    expect(bench).not.toBe(LIFT_COPY.SUBTITLE.squat);
+    expect(bench.toLowerCase()).toMatch(/wait/);
+    expect(bench.toLowerCase()).toMatch(/press/);
+    expect(bench.toLowerCase()).toMatch(/chest/);
+    // ...and it must not tell a bench player to look for a squat's bottom.
+    expect(bench.toLowerCase()).not.toMatch(/\bat the bottom\b/);
   });
 });
 

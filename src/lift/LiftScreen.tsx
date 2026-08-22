@@ -256,7 +256,7 @@ export function LiftScreen({ replay }: LiftScreenProps = {}): React.ReactElement
         </Text>
         <Text style={styles.detail} testID="lift-detail">
           {resolution === null || resolution.detail === ''
-            ? LIFT_COPY.SUBTITLE
+            ? LIFT_COPY.SUBTITLE[state.config.kind]
             : resolution.detail}
         </Text>
         {/* The retry hint. Its own line so a miss can show BOTH why it failed

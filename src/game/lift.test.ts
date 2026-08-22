@@ -49,6 +49,7 @@ import {
   depthWindowHalfTicks,
   descentRate,
   driveAttemptsFor,
+  gradeReaction,
   gradeTiming,
   hapticFor,
   holeTicks,
@@ -189,6 +190,67 @@ function outcomeOf(state: LiftState): LiftOutcome {
   const resolution = state.resolution;
   if (resolution === null) throw new Error('rep did not resolve');
   return resolution.outcome;
+}
+
+// ---------------------------------------------------------------------------
+// Bench harness (GDD §6.2's press-timing check)
+//
+// The command tick is READ BACK OUT OF THE SIM, never recomputed from
+// `PRESS_COMMAND_DELAY_TICKS`. Same discipline as `driveIdealTick` above and
+// for the same reason: a test that derived the command tick from the tuning
+// file would agree with a broken sim that fired the command at the wrong
+// moment, which is precisely the bug worth catching.
+// ---------------------------------------------------------------------------
+
+const BENCH: PlayableLiftKind = 'bench';
+
+/** Press-and-release down to the chest. Everything before the pause. */
+function benchToChest(load: number, seed: number): { config: LiftConfig; script: ScriptedInput[] } {
+  return {
+    config: { kind: BENCH, loadRatio: load, seed },
+    script: [
+      { tick: pressTickFor(load, BENCH), kind: 'press' },
+      { tick: releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL[BENCH], BENCH), kind: 'release' },
+    ],
+  };
+}
+
+/** The tick the sim itself fired the press command on, or null if it never did. */
+function commandTickFor(load: number, seed: number): number | null {
+  const { config, script } = benchToChest(load, seed);
+  for (const state of runLift(config, script).history) {
+    if (state.events.some((e) => e.kind === 'press-command')) return state.tick;
+  }
+  return null;
+}
+
+/**
+ * A whole bench rep, pressing `reactionTicks` after the command the sim armed.
+ *
+ * A negative value is a false start — a press thrown that many ticks BEFORE the
+ * command lands. `null` never presses at all, which is what exercises the
+ * give-up path.
+ */
+function benchRep(
+  load: number,
+  seed: number,
+  reactionTicks: number | null,
+  driveOffsetTicks: number | null = 0,
+): LiftState {
+  const { config, script } = benchToChest(load, seed);
+  const command = commandTickFor(load, seed);
+  const full = [...script];
+  if (command !== null && reactionTicks !== null) {
+    full.push({ tick: Math.max(1, command + reactionTicks), kind: 'press' });
+  }
+  if (driveOffsetTicks !== null) {
+    // The drive cue's own ideal tick, again read back rather than derived.
+    const probe = runLift(config, full);
+    const opens = probe.history.filter((s) => s.events.some((e) => e.kind === 'drive-cue-open'));
+    const cue = opens[opens.length - 1]?.activeCue ?? null;
+    if (cue !== null) full.push({ tick: cue.idealTick + driveOffsetTicks, kind: 'press' });
+  }
+  return runLift(config, full).final;
 }
 
 /** Every outcome produced across a fine offset sweep at one load. */
@@ -1114,6 +1176,212 @@ describe('the drive tap-rate mechanic (Sprint 3 gate)', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// BENCH — the press command (GDD §6.2, "press-timing / bar-speed check off the
+// chest")
+//
+// WHAT THESE ARE FOR. A phone playtest found bench was "still a squat": the
+// per-kind numbers made it a retuned squat, not a different lift. The claim
+// these tests defend is the structural one — that bench's HOLE asks for
+// something squat's does not, that what it asks for is a REACTION rather than
+// an anticipation, and that what the reaction buys is bar speed. They say
+// nothing about whether it feels good; GDD §12.1 puts that with a human.
+// ---------------------------------------------------------------------------
+
+describe('the bench press command', () => {
+  const load = LOAD_PRESETS.MAXIMAL;
+
+  it('fires a command on bench and never on squat', () => {
+    const benched = benchRep(load, 3, 2);
+    expect(benched.timings.some((t) => t.cue === 'press')).toBe(true);
+
+    // The discriminator. Squat's HOLE is a fixed reversal beat that asks for
+    // nothing, and no squat rep at any timing may produce a press cue.
+    for (let offset = -6; offset <= 6; offset += 1) {
+      const squat = play(load, { driveOffsetTicks: offset });
+      expect(squat.timings.some((t) => t.cue === 'press'), `squat offset ${offset}`).toBe(false);
+      expect(squat.pressCommandTick, `squat offset ${offset}`).toBeNull();
+    }
+  });
+
+  it('puts the command inside its declared range, and does not put it in the same place twice', () => {
+    // FACT 3 OF THE PROGRESSION RULE, applied to a delay: a constant would
+    // satisfy "inside the range" perfectly and be exactly the defect — a
+    // learnable pause is an anticipation check wearing a reaction's name.
+    const { MIN, MAX } = LIFT_TUNING.PRESS_COMMAND_DELAY_TICKS;
+    const delays = new Set<number>();
+    for (let seed = 1; seed <= 40; seed += 1) {
+      const holeEntry = runLift(
+        benchToChest(load, seed).config,
+        benchToChest(load, seed).script,
+      ).history.find((s) => s.phase === 'HOLE');
+      const command = commandTickFor(load, seed);
+      expect(holeEntry, `seed ${seed}`).toBeDefined();
+      expect(command, `seed ${seed}`).not.toBeNull();
+      if (holeEntry === undefined || command === null) continue;
+      const delay = command - holeEntry.tick;
+      expect(delay, `seed ${seed}`).toBeGreaterThanOrEqual(MIN);
+      expect(delay, `seed ${seed}`).toBeLessThanOrEqual(MAX);
+      delays.add(delay);
+    }
+    // It MOVES. Pinned as a count rather than a bound so an empty or collapsed
+    // domain reports itself instead of passing.
+    expect(delays.size, `only ${delays.size} distinct pauses over 40 seeds`).toBeGreaterThan(8);
+  });
+
+  it('is deterministic: the same seed pauses for exactly the same length', () => {
+    // The other half of unpredictability. Unpredictable to the player, and
+    // byte-identical on replay, or the recorded-attempt guarantee dies.
+    for (let seed = 1; seed <= 6; seed += 1) {
+      expect(commandTickFor(load, seed), `seed ${seed}`).toBe(commandTickFor(load, seed));
+      expect(JSON.stringify(benchRep(load, seed, 3))).toBe(JSON.stringify(benchRep(load, seed, 3)));
+    }
+  });
+
+  it('buys bar speed with the reaction — sharp off the chest beats slow', () => {
+    // "bar-speed check off the chest", measured on the bar rather than on the
+    // grade. The velocity entering the ascent must fall as the reaction slows.
+    const speedAt = (reactionTicks: number): number => {
+      const { config, script } = benchToChest(load, 7);
+      const command = commandTickFor(load, 7);
+      if (command === null) throw new Error('no command');
+      const full = [...script, { tick: command + reactionTicks, kind: 'press' as const }];
+      const ascent = runLift(config, full).history.find((s) => s.phase === 'ASCENT');
+      if (ascent === undefined) throw new Error('never reached the ascent');
+      return ascent.velocity;
+    };
+    const sharp = speedAt(0);
+    const middling = speedAt(9);
+    const slow = speedAt(20);
+    expect(sharp).toBeGreaterThan(middling);
+    expect(middling).toBeGreaterThan(slow);
+  });
+
+  it('consumes the press on a false start, so mashing the pause is not a strategy', () => {
+    // The reason the false start costs the reaction rather than the rep. If a
+    // false start were merely ignored, holding the button down through the
+    // pause would land on the command by construction and the whole check
+    // would be optional.
+    const jumped = benchRep(load, 11, -8);
+    const pressTiming = jumped.timings.find((t) => t.cue === 'press');
+    expect(pressTiming).toBeDefined();
+    expect(pressTiming?.grade).toBe('missed');
+    expect(jumped.pressQuality).toBe(LIFT_TUNING.PRESS_FALSE_START_QUALITY);
+    expect(jumped.pressUsed).toBe(true);
+
+    // And it is strictly worse off the chest than reacting properly.
+    const reacted = benchRep(load, 11, 1);
+    expect(jumped.pressQuality).toBeLessThan(reacted.pressQuality);
+  });
+
+  it('does NOT end the rep on a false start — the bar still leaves the chest', () => {
+    // `PRESS_FALSE_START_QUALITY`'s comment says in capitals that a false start
+    // "DOES NOT END THE REP", consistent with the drive branch's own rule. That
+    // sentence had nothing behind it until this test: the guarantee-tag census
+    // flagged the paragraph as newly triggering, and checking what actually
+    // backed it turned up nothing. Prose is not a check.
+    const { config, script } = benchToChest(load, 11);
+    const command = commandTickFor(load, 11);
+    expect(command).not.toBeNull();
+    if (command === null) return;
+    const jumpedScript = [...script, { tick: command - 8, kind: 'press' as const }];
+    const replay = runLift(config, jumpedScript);
+
+    // The false start really happened — otherwise everything below is true of
+    // a rep that simply never pressed, and the test is about nothing.
+    const pressTiming = replay.final.timings.find((t) => t.cue === 'press');
+    expect(pressTiming?.grade, 'no false start was actually thrown').toBe('missed');
+    expect(pressTiming?.offsetMs ?? 0).toBeLessThan(0);
+
+    // And the rep outlived it: the bar left the chest and the ascent ran.
+    expect(replay.history.some((s) => s.phase === 'ASCENT')).toBe(true);
+    expect(replay.final.ascentTicks).toBeGreaterThan(0);
+    // Resolved on the physics' own terms, never 'buried' — the reason a rep
+    // killed at the chest would carry.
+    expect(replay.final.resolution?.missReason).not.toBe('buried');
+  });
+
+  it('lets go of the bar if the command is ignored, rather than hanging on the chest', () => {
+    const ignored = benchRep(load, 5, null, null);
+    expect(ignored.phase).toBe('RESOLVED');
+    expect(ignored.resolution).not.toBeNull();
+    // At quality 0 the bar leaves the chest at PRESS_VELOCITY.MIN, which at a
+    // limit load is a stall — called on its own merits by the existing physics
+    // rather than by a fifth MissReason invented for it.
+    expect(ignored.resolution?.outcome).toBe('miss');
+  });
+
+  it('shows the command in the prompt, and only from the tick it fires', () => {
+    const { config, script } = benchToChest(load, 3);
+    const command = commandTickFor(load, 3);
+    expect(command).not.toBeNull();
+    if (command === null) return;
+    const hole = runLift(config, script).history.filter((s) => s.phase === 'HOLE');
+    const waiting = hole.filter((s) => s.tick < command);
+    const commanded = hole.filter((s) => s.tick >= command);
+    expect(waiting.length, 'no waiting ticks to check').toBeGreaterThan(0);
+    expect(commanded.length, 'no commanded ticks to check').toBeGreaterThan(0);
+    for (const s of waiting) expect(promptFor(s)).toBe(LIFT_COPY.PROMPT.HOLE.bench);
+    for (const s of commanded) expect(promptFor(s)).toBe(LIFT_COPY.PROMPT.HOLE_COMMANDED);
+  });
+
+  it('draws no countdown ring for the command — a telegraphed reaction is not one', () => {
+    // `cueProgress` is what the ring is sized from. If it ever returned a
+    // number here the player would see the command coming and the reaction
+    // check would silently become an anticipation check.
+    const { config, script } = benchToChest(load, 3);
+    for (const s of runLift(config, script).history) {
+      if (s.phase !== 'HOLE') continue;
+      expect(cueProgress(s), `tick ${s.tick}`).toBeNull();
+    }
+  });
+});
+
+describe('gradeReaction', () => {
+  const window = LIFT_TUNING.PRESS_REACTION_WINDOW_MS;
+
+  it('is 1 at the stimulus and 0 at the end of the window', () => {
+    expect(gradeReaction(0, window).quality).toBe(1);
+    expect(gradeReaction(window, window).quality).toBe(0);
+    expect(gradeReaction(window + 1, window).grade).toBe('missed');
+  });
+
+  it('never rises as the reaction gets slower', () => {
+    let previous = Number.POSITIVE_INFINITY;
+    for (let ms = 0; ms <= window; ms += 10) {
+      const q = gradeReaction(ms, window).quality;
+      expect(q).toBeLessThanOrEqual(previous);
+      previous = q;
+    }
+  });
+
+  it('IS ASYMMETRIC — which is the whole difference from gradeTiming', () => {
+    // The claim the bench beat rests on. `gradeTiming` scores -100/+100 the
+    // same; a reaction cannot, because you cannot react before the stimulus.
+    expect(gradeTiming(-100, window).quality).toBe(gradeTiming(100, window).quality);
+    expect(gradeReaction(-100, window).quality).not.toBe(gradeReaction(100, window).quality);
+    expect(gradeReaction(-100, window).grade).toBe('missed');
+  });
+
+  it('cannot ever return "early", and that is checked rather than asserted', () => {
+    // A comment claiming a grade is unreachable is exactly the sentence
+    // CLAUDE.md has caught being false eight times. Swept instead.
+    const seen = new Set<string>();
+    for (let ms = -window; ms <= window * 2; ms += 1) seen.add(gradeReaction(ms, window).grade);
+    expect(seen.has('early')).toBe(false);
+    // ...and the sweep is not vacuous: it reaches the other four.
+    for (const grade of ['perfect', 'good', 'late', 'missed']) {
+      expect(seen.has(grade), `grade ${grade} unreachable in the sweep`).toBe(true);
+    }
+  });
+
+  it('refuses nonsense rather than trusting its caller', () => {
+    expect(gradeReaction(Number.NaN, window).grade).toBe('missed');
+    expect(gradeReaction(0, 0).grade).toBe('missed');
+    expect(gradeReaction(0, -1).grade).toBe('missed');
+  });
+});
+
 describe('the winning band at a limit attempt', () => {
   const limit = LOAD_PRESETS.MAXIMAL;
 
@@ -1566,6 +1834,23 @@ describe('read models', () => {
     // A drive thrown before the cue armed, for drive-mistimed.
     const mistimed = runLift({ kind: DEFAULT_KIND, loadRatio: 0.88, seed: 3 }, earlyDriveScript(0.88));
     for (const state of mistimed.history) for (const e of state.events) seen.add(e.kind);
+    // BENCH, for the three press kinds. Squat cannot reach them — its HOLE
+    // asks for nothing — so a squat-only sweep would report them unreachable,
+    // which is exactly what this guard caught when the press beat landed.
+    for (const [seed, reaction] of [
+      [3, 2],
+      [3, -6],
+    ] as const) {
+      const { config, script } = benchToChest(LOAD_PRESETS.MAXIMAL, seed);
+      const command = commandTickFor(LOAD_PRESETS.MAXIMAL, seed);
+      const full =
+        command === null
+          ? script
+          : [...script, { tick: Math.max(1, command + reaction), kind: 'press' as const }];
+      for (const state of runLift(config, full).history) {
+        for (const e of state.events) seen.add(e.kind);
+      }
+    }
     return seen;
   }
 

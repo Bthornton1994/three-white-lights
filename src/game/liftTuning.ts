@@ -333,6 +333,102 @@ export const LIFT_TUNING = Object.freeze({
     bench: { LIGHT: 5, MAXIMAL: 14 },
   } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
+  // -------------------------------------------------------------------------
+  // THE PRESS COMMAND — BENCH ONLY (GDD §6.2, "Bench — press-timing /
+  // bar-speed check off the chest")
+  //
+  // WHAT MAKES BENCH A DIFFERENT LIFT AND NOT A RETUNED SQUAT. Squat's decisive
+  // input is an ANTICIPATION check: the bar is moving, the player predicts the
+  // moment it reaches depth, and releases. Bench's is a REACTION check: the bar
+  // is motionless on the chest and a command arrives at a moment the player
+  // cannot predict. Those are different faculties, not different numbers, and
+  // it is why `HOLE` — a beat that asks for nothing on squat, by design — is
+  // where bench's whole lift is decided.
+  //
+  // Every value below is bench's only. Squat reads none of them and its HOLE
+  // branch is untouched; `lift.test.ts` pins squat's histories byte-identical
+  // across this change.
+  // -------------------------------------------------------------------------
+
+  /**
+   * How long the bar sits motionless on the chest before the command, in ticks.
+   *
+   * DRAWN FROM THE REP'S SEED, NOT FROM A CLOCK AND NOT FROM `Math.random`. The
+   * delay has to be unpredictable or the reaction check degrades into a second
+   * anticipation check — a fixed pause is learnable in about three reps, and a
+   * learnable pause is squat's mechanic wearing bench's name. Seeded means
+   * unpredictable to the PLAYER while a rep stays a pure function of
+   * (config, seed, inputs), which `lift.test.ts` pins.
+   *
+   * THIS IS NOT THE ROLLED OUTCOME `lift.ts`'s header refuses, and the
+   * distinction is worth stating because a reader will reasonably ask. What is
+   * rolled is WHEN THE TEST STARTS, never whether it is passed: at every delay
+   * in this range a player who reacts well gets the same quality and the same
+   * bar speed. GDD §8.1's "100% skill- and consistency-driven" is about the
+   * OUTCOME, and the outcome here is decided entirely by the reaction. A
+   * starter's pistol that fires at an unpredictable moment is not a dice roll
+   * on the race.
+   *
+   * The range's floor is not zero: a command that can arrive on the same tick
+   * the bar settles is indistinguishable from no pause at all.
+   */
+  PRESS_COMMAND_DELAY_TICKS: { MIN: 24, MAX: 96 },
+
+  /**
+   * How long the reaction window stays open after the command, ms.
+   *
+   * Graded ASYMMETRICALLY, unlike every other window in this file — see
+   * `gradeReaction` in `lift.ts`. Quality runs from 1 at the command tick down
+   * to 0 at the end of this window; there is no early half, because a press
+   * before the stimulus is not an early reaction, it is a false start.
+   *
+   * 420ms is chosen above human visual reaction time (~250ms) with room for a
+   * phone's touch latency, so a player who genuinely reacts lands inside it and
+   * the grading separates sharp from slow rather than separating "reacted" from
+   * "did not". Not measured by play; GDD §10 applies.
+   */
+  PRESS_REACTION_WINDOW_MS: 420,
+
+  /**
+   * Velocity the bar leaves the chest with, at reaction quality 0 and 1.
+   *
+   * THIS IS THE "BAR-SPEED CHECK OFF THE CHEST" HALF OF §6.2's LINE, and it is
+   * why one input covers both halves: the press is the timing check, and what
+   * the timing BUYS is bar speed. On bench this replaces the depth-release
+   * quality as the thing that sets ascent velocity — the chest touch still
+   * decides legality, the reaction decides speed.
+   *
+   * MIN is deliberately below `REVERSAL_VELOCITY.MIN`: a bench pressed late off
+   * the chest is slower off the bottom than a scruffy squat reversal, which is
+   * the whole texture of a missed bench.
+   */
+  PRESS_VELOCITY: { MIN: 0.0004, MAX: 0.019 },
+
+  /**
+   * What a false start costs — a press thrown before the command lands.
+   *
+   * IT DOES NOT END THE REP, deliberately and consistently with the rule
+   * `stepLift`'s drive branch already states in capitals: "A MISSED TAP COSTS
+   * VELOCITY. IT NEVER ENDS THE REP ON ITS OWN." A competition bench would red
+   * light this outright, and that is left on the table rather than taken: a
+   * hard fail on a reaction test the player cannot see coming is the shape that
+   * reads as the game cheating, and it is exactly the judgement GDD §12.1 puts
+   * with a human on a phone. What it costs instead is the reaction: the false
+   * start CONSUMES the press, so mashing through the pause is punished with the
+   * worst bar speed rather than rewarded with a lucky hit.
+   */
+  PRESS_FALSE_START_QUALITY: 0,
+
+  /**
+   * Ticks after the command before an unpressed bar gives up and rises anyway.
+   *
+   * Not a miss — the rep proceeds at reaction quality 0, which at bench's
+   * demand curve is usually a stall and a 'stalled' miss on its own merits.
+   * Failing it HERE instead would invent a fifth `MissReason` for something the
+   * existing physics already calls correctly.
+   */
+  PRESS_TIMEOUT_TICKS: 90,
+
   /**
    * Velocity the bar leaves the hole with, at depth timing quality 0 and 1.
    * This is what a well-timed reversal actually buys: not points, speed.
@@ -871,6 +967,30 @@ export const LIFT_TUNING = Object.freeze({
     DEPTH_HIGH: pattern({ style: 'warning', delayMs: 0 }),
     /** Reversal out of the hole. The thud. */
     REVERSAL: pattern({ style: 'heavy', delayMs: 0 }),
+
+    /**
+     * BENCH ONLY: the press command.
+     *
+     * THE STIMULUS ITSELF, not decoration on it. A reaction check on a phone is
+     * won or lost on how fast the command registers, and a thumb resting on
+     * glass feels a haptic sooner than an eye reads a word — so this is the
+     * channel the mechanic actually runs through, and `LIFT_COPY.PROMPT
+     * .HOLE_COMMANDED` is the confirmation rather than the other way round.
+     *
+     * `rigid` and alone: a single sharp edge is what a reaction wants. Every
+     * multi-beat pattern in this table takes tens of ms to resolve into
+     * something recognisable, which would be spent out of the player's window.
+     */
+    PRESS_COMMAND: pattern({ style: 'rigid', delayMs: 0 }),
+
+    /** BENCH ONLY: a sharp press off the chest. Distinguishable from a slow one. */
+    PRESS_SHARP: pattern({ style: 'heavy', delayMs: 0 }, { style: 'light', delayMs: 70 }),
+
+    /** BENCH ONLY: the bar moved, but late. */
+    PRESS_SLOW: pattern({ style: 'medium', delayMs: 0 }),
+
+    /** BENCH ONLY: pressed before the command. */
+    PRESS_FALSE_START: pattern({ style: 'warning', delayMs: 0 }),
     /** Drive landed in the window. */
     DRIVE_PERFECT: pattern(
       { style: 'heavy', delayMs: 0 },
@@ -1084,7 +1204,24 @@ export const LIFT_COPY = Object.freeze({
     // position and reads as nonsense on a bench rep, which has no hole — it
     // has a chest. Every other PROMPT entry ("RIDE IT", "DRIVE — TAP", "LOCK
     // IT") is generic press language that already applies to both.
-    HOLE: { squat: 'OUT OF THE HOLE', bench: 'OFF THE CHEST' } satisfies PerKind<string>,
+    //
+    // BENCH'S IS THE WAITING LINE, NOT THE COMMAND. On bench the HOLE beat is
+    // the pause on the chest, and what the player is being asked for is to
+    // WAIT — so this line has to read as an instruction to hold still, or a
+    // player reads "OFF THE CHEST" as "go now" and false-starts every rep. The
+    // command itself is `HOLE_COMMANDED` below.
+    HOLE: { squat: 'OUT OF THE HOLE', bench: 'WAIT FOR IT' } satisfies PerKind<string>,
+    /**
+     * BENCH ONLY: the press command, shown from the tick it fires.
+     *
+     * Deliberately the shortest line in the table and the only one that ends in
+     * a mark. It is a starter's pistol rendered as text — every millisecond a
+     * player spends parsing it comes out of their reaction, so it has to be one
+     * word they can read in peripheral vision. The haptic
+     * (`HAPTICS.PRESS_COMMAND`) is the real stimulus on a phone; this is what
+     * the eye confirms it against.
+     */
+    HOLE_COMMANDED: 'PRESS!',
     ASCENT_BEFORE_CUE: 'RIDE IT',
     ASCENT_CUE_OPEN: 'DRIVE — TAP',
     ASCENT_AFTER_CUE: 'RIDE IT',
@@ -1092,11 +1229,21 @@ export const LIFT_COPY = Object.freeze({
     RESOLVED: 'TAP TO LIFT AGAIN',
   }),
   /**
-   * The whole control scheme, in one line. Prototype 1 is played by people who
-   * have never seen it (GDD §10: "10-20 people, roughly half real lifters"), so
-   * the rules have to be on the screen rather than in a tutorial nobody built.
+   * The whole control scheme, in one line, PER LIFT. Prototype 1 is played by
+   * people who have never seen it (GDD §10: "10-20 people, roughly half real
+   * lifters"), so the rules have to be on the screen rather than in a tutorial
+   * nobody built.
+   *
+   * PER-KIND BECAUSE THE CONTROL SCHEMES GENUINELY DIFFER NOW. A phone playtest
+   * of the first bench pass reported the controls reading as "still a squat",
+   * and this line was part of why: it is the instructions, and it described
+   * squat's two moments on a lift that has three. Squat's wording is unchanged
+   * and still exact-pinned in `liftTuning.test.ts`.
    */
-  SUBTITLE: 'Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.',
+  SUBTITLE: {
+    squat: 'Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.',
+    bench: 'Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.',
+  } satisfies PerKind<string>,
 
   OUTCOME: Object.freeze({
     'good-lift': 'GOOD LIFT',

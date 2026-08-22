@@ -783,8 +783,43 @@ const GUARANTEE_COVERAGE = {
    * debt, not a claimed `@guarantee`, and the guarantee itself is covered by
    * hand-run mutation tests instead (see `lift.test.ts`'s "the drive
    * tap-rate mechanic" block).
+   *
+   * 257 -> 258 with bench's press command (GDD §6.2). Measured per file the
+   * usual way, by restoring each touched file to its pre-change text and
+   * re-reading this count: `lift.ts`, `lift.test.ts` and `liftTuning.test.ts`
+   * measured FLAT despite `lift.ts` carrying most of the new prose and the
+   * whole new HOLE branch — the declared lower-case blind spot again. The
+   * single new paragraph is `PRESS_FALSE_START_QUALITY`'s in `liftTuning.ts`.
+   *
+   * IT MOVED FOR THE REASON THE NOTE DIRECTLY ABOVE PREDICTED, which is worth
+   * recording rather than quietly fixing. That note warns that quoting a
+   * capitalised run makes the quoting paragraph trigger too. This paragraph
+   * quotes the drive branch's own no-instant-fail rule verbatim, to say that
+   * a bench false start is treated the same way — so the trigger is a
+   * quotation, exactly the shape the note describes.
+   *
+   * It is kept rather than lower-cased, because unlike the notes in THIS file
+   * the paragraph is not the scan reading its own documentation: it is a doc
+   * comment on a shipped constant, and it makes a NEW claim about NEW
+   * behaviour beside the quotation — that a false start costs the reaction and
+   * not the rep.
+   *
+   * That new claim had nothing behind it when the census flagged it, which is
+   * the census earning its keep. `lift.test.ts`'s "does NOT end the rep on a
+   * false start" was written in response and mutation-tested: a mutant that
+   * resolves the rep at the chest reddens it. The first attempt at that mutant
+   * did NOT redden it and looked like a biting test — it set RESOLVED and the
+   * next block's `if (m.pressUsed || gaveUp)` called `enter('ASCENT')` and
+   * overwrote it on the same tick. A mutant silently undone by the code around
+   * it is indistinguishable from a test that bites, and it was caught by
+   * tracing the rep rather than by reading the colour.
+   *
+   * Untagged, on the same footing as the 256 -> 257 entry: `lift.ts` is
+   * outside `GUARANTEE_PROSE_FILES`, so the tag rule does not reach it, and
+   * the evidence is the hand-run mutation set recorded in `lift.test.ts`'s
+   * "the bench press command" block.
    */
-  TREE_WIDE: 257,
+  TREE_WIDE: 258,
 } as const;
 
 // ---------------------------------------------------------------------------

@@ -167,10 +167,21 @@ export const LIFT_PHASES = Object.freeze([
   'RESOLVED',
 ] as const satisfies readonly LiftPhase[]);
 
-/** The two moments the rep asks the player for. */
-export type LiftCueId = 'depth' | 'drive';
+/**
+ * The moments a rep asks the player for.
+ *
+ * 'depth' and 'drive' are on every lift. 'press' is BENCH ONLY — GDD §6.2's
+ * "press-timing / bar-speed check off the chest" — and is the one cue in this
+ * module graded as a REACTION rather than as an anticipation: see
+ * `gradeReaction`.
+ */
+export type LiftCueId = 'depth' | 'drive' | 'press';
 
-export const LIFT_CUES = Object.freeze(['depth', 'drive'] as const satisfies readonly LiftCueId[]);
+export const LIFT_CUES = Object.freeze([
+  'depth',
+  'drive',
+  'press',
+] as const satisfies readonly LiftCueId[]);
 
 /** What the cue wants: the depth cue wants a release, the drive wants a press. */
 export type LiftInputKind = 'press' | 'release';
@@ -222,6 +233,12 @@ export type LiftEventKind =
   | 'depth-hit'
   | 'depth-high'
   | 'reversal'
+  /** BENCH ONLY: the press command fired. The stimulus of the reaction check. */
+  | 'press-command'
+  /** BENCH ONLY: pressed after the command. Carries the reaction grade. */
+  | 'press-hit'
+  /** BENCH ONLY: pressed before the command. */
+  | 'press-false-start'
   | 'drive-cue-open'
   | 'drive-hit'
   | 'drive-mistimed'
@@ -235,6 +252,9 @@ export const LIFT_EVENT_KINDS = Object.freeze([
   'depth-hit',
   'depth-high',
   'reversal',
+  'press-command',
+  'press-hit',
+  'press-false-start',
   'drive-cue-open',
   'drive-hit',
   'drive-mistimed',
@@ -392,6 +412,27 @@ export interface LiftState {
   /** Depth past DEPTH_IDEAL at the reversal. Adds demand for the whole ascent. */
   readonly extraDepth: number;
 
+  /**
+   * BENCH ONLY (GDD §6.2). Tick the press command fires on, set when the bar
+   * settles on the chest. Null on squat, and null on bench until HOLE begins.
+   *
+   * NOT SECRET FROM THE RENDERER, and it cannot be: `promptFor` has to know
+   * whether the command has landed to switch the line. What keeps the reaction
+   * honest is that nothing draws a COUNTDOWN to it — `cueProgress` returns null
+   * for the press cue by construction (its window has zero lead, so the span is
+   * zero), so the shrinking ring that telegraphs the depth and drive cues has
+   * nothing to draw here. A ring on this cue would defeat the mechanic.
+   */
+  readonly pressCommandTick: number | null;
+  /**
+   * BENCH ONLY. How well the press off the chest landed, 0..1. This is what
+   * buys bar speed — see `PRESS_VELOCITY`. 0 until pressed, and 0 forever on a
+   * false start.
+   */
+  readonly pressQuality: number;
+  /** BENCH ONLY. Has the press been spent — by a real reaction or a false start? */
+  readonly pressUsed: boolean;
+
   readonly drivesUsed: number;
   /** Tick the last accepted drive landed on. Null if none has. */
   readonly driveTick: number | null;
@@ -506,7 +547,14 @@ export function cueWindowMs(cue: LiftCueId, config: LiftConfig): number {
   const base =
     cue === 'depth'
       ? LIFT_TUNING.DEPTH_WINDOW_MS[config.kind]
-      : byLoad(LIFT_TUNING.DRIVE_WINDOW_MS[config.kind], clampLoadRatio(config.loadRatio));
+      : cue === 'press'
+        // The reaction window. Load-independent on purpose: how fast a human
+        // can react to a stimulus is not a function of what is on the bar, and
+        // scaling it would be modelling the player rather than the lift.
+        // Fatigue still narrows it below, which is GDD §3.4's channel and is
+        // about the lifter, not the bar.
+        ? LIFT_TUNING.PRESS_REACTION_WINDOW_MS
+        : byLoad(LIFT_TUNING.DRIVE_WINDOW_MS[config.kind], clampLoadRatio(config.loadRatio));
   const feel = config.feel;
   if (feel === undefined) return base;
   return adjustedTimingWindowMs(base, feel, config.moment);
@@ -542,6 +590,50 @@ export function gradeTiming(offsetMs: number, halfWindowMs: number): {
   return { quality, grade: offsetMs < 0 ? 'early' : 'late' };
 }
 
+/**
+ * Grade a REACTION — bench's press off the chest (GDD §6.2).
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS IS NOT `gradeTiming`, WHICH IS THE WHOLE POINT OF THE BENCH BEAT
+ * ---------------------------------------------------------------------------
+ * `gradeTiming` grades |offset| about an ideal moment, so -100ms and +100ms
+ * score identically. That is CORRECT for an anticipation check: the player is
+ * predicting a moment they can see coming, and missing it in either direction
+ * is the same error. It is WRONG for a reaction, because the two directions are
+ * not the same event. A press 100ms after the command is a sharp reaction. A
+ * press 100ms BEFORE it is not an early reaction — it is a press thrown at a
+ * stimulus that had not happened yet, which is a guess.
+ *
+ * So quality falls one way only: 1 on the command tick, 0 at the end of the
+ * window, and there is no early half to fall through. Anything before the
+ * command never reaches this function — `stepLift` routes it to the false-start
+ * branch — and `elapsedMs < 0` is refused here as well rather than trusted,
+ * because a grader that silently accepts an impossible input is how the caller's
+ * bug becomes the grader's answer.
+ *
+ * The grade vocabulary is reused rather than grown: 'perfect' for the central
+ * band, 'good' next, then 'late' — and never 'early', which is unreachable by
+ * construction. `lift.test.ts` pins that unreachability rather than leaving it
+ * as a claim, because "this grade cannot happen" is exactly the sort of sentence
+ * CLAUDE.md has caught being false eight times.
+ */
+export function gradeReaction(elapsedMs: number, windowMs: number): {
+  readonly quality: number;
+  readonly grade: TimingGrade;
+} {
+  if (!Number.isFinite(elapsedMs) || !Number.isFinite(windowMs) || windowMs <= 0) {
+    return { quality: 0, grade: 'missed' };
+  }
+  // Before the stimulus is not this function's case. See the header.
+  if (elapsedMs < 0 || elapsedMs > windowMs) return { quality: 0, grade: 'missed' };
+  const quality = scrub(1 - elapsedMs / windowMs);
+  const perfectBand = windowMs * LIFT_TUNING.PERFECT_BAND_FRACTION;
+  if (elapsedMs <= perfectBand) return { quality, grade: 'perfect' };
+  const goodBand = perfectBand + (windowMs - perfectBand) / 2;
+  if (elapsedMs <= goodBand) return { quality, grade: 'good' };
+  return { quality, grade: 'late' };
+}
+
 // ---------------------------------------------------------------------------
 // The ascent model
 // ---------------------------------------------------------------------------
@@ -574,6 +666,38 @@ export function ascentDemand(
 /** Ticks the reversal beat lasts at this load. */
 export function holeTicks(loadRatio: number, kind: PlayableLiftKind): number {
   return Math.max(1, Math.round(byLoad(LIFT_TUNING.HOLE_TICKS[kind], clampLoadRatio(loadRatio))));
+}
+
+/**
+ * BENCH ONLY: how long the bar waits on the chest before the press command.
+ *
+ * A PURE FUNCTION OF THE REP'S SEED, computed once when the bar settles rather
+ * than drawn from the per-tick generator. Two properties have to hold at once
+ * and this is what gets both:
+ *
+ *   UNPREDICTABLE TO THE PLAYER. A fixed pause is learnable in about three reps,
+ *   and once learned the reaction check has silently become an anticipation
+ *   check — squat's mechanic under bench's name, which is the exact failure
+ *   this beat exists to avoid.
+ *
+ *   DETERMINISTIC TO EVERYTHING ELSE. `lift.test.ts` pins that a rep is a pure
+ *   function of (config, seed, inputs), and a replayed rep has to produce a
+ *   byte-identical history. Taking the delay from the per-tick generator would
+ *   have broken that in a subtler way than it looks: the tick HOLE begins on
+ *   depends on when the player released, so the same seed would give different
+ *   pauses to different players, and the replay guarantee would hold only for
+ *   the exact script that produced it.
+ *
+ * It deliberately shares its seed lineage with the bar-path jitter — the first
+ * draw off `seedState(seed)` is the same value tick 1 uses. That is stated
+ * rather than engineered around because the two are never compared and never
+ * rendered together, and an extra decorrelating step would be a magic constant
+ * bought with nothing.
+ */
+export function pressCommandDelayTicks(seed: number): number {
+  const { MIN, MAX } = LIFT_TUNING.PRESS_COMMAND_DELAY_TICKS;
+  const roll = nextRandom(seedState(seed)).value;
+  return MIN + Math.round((MAX - MIN) * clamp01(roll));
 }
 
 /** Ticks the lockout beat lasts at this load. */
@@ -771,6 +895,9 @@ export function createLift(config: LiftConfig): LiftState {
     timings: [],
     depthAchieved: false,
     extraDepth: 0,
+    pressCommandTick: null,
+    pressQuality: 0,
+    pressUsed: false,
     drivesUsed: 0,
     driveTick: null,
     driveQuality: 0,
@@ -842,6 +969,9 @@ interface Mutable {
   timings: InputTiming[];
   depthAchieved: boolean;
   extraDepth: number;
+  pressCommandTick: number | null;
+  pressQuality: number;
+  pressUsed: boolean;
   drivesUsed: number;
   driveTick: number | null;
   driveQuality: number;
@@ -892,6 +1022,9 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     timings: state.timings.map((t) => ({ ...t })),
     depthAchieved: state.depthAchieved,
     extraDepth: state.extraDepth,
+    pressCommandTick: state.pressCommandTick,
+    pressQuality: state.pressQuality,
+    pressUsed: state.pressUsed,
     drivesUsed: state.drivesUsed,
     driveTick: state.driveTick,
     driveQuality: state.driveQuality,
@@ -1007,12 +1140,78 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
   }
 
   // -------------------------------------------------------------------------
-  // HOLE — the reversal beat. Velocity was set on release; the bar has not
-  // started moving yet. Nothing is asked for, deliberately: the reversal is the
-  // consequence of the depth input, not a third thing to hit.
+  // HOLE — the beat whose JOB DEPENDS ON THE LIFT, and the one place the two
+  // mechanics genuinely diverge rather than differing by tuning.
+  //
+  //   SQUAT   The reversal beat. Nothing is asked for, deliberately: the
+  //           reversal is the consequence of the depth input, not a third thing
+  //           to hit. Velocity was set on release; the bar has not started
+  //           moving yet.
+  //
+  //   BENCH   The pause on the chest, and where the whole lift is decided
+  //           (GDD §6.2, "press-timing / bar-speed check off the chest"). The
+  //           bar sits motionless, a command fires at a tick drawn from the
+  //           rep's seed, and the player REACTS. What the reaction buys is bar
+  //           speed off the chest — see `PRESS_VELOCITY`.
+  //
+  // The phase names are shared and the beat is not. That is the difference
+  // between building a second lift and retuning the first one.
   // -------------------------------------------------------------------------
   else if (m.phase === 'HOLE') {
-    if (m.phaseTick >= holeTicks(load, state.config.kind)) {
+    const benched = state.config.kind === 'bench';
+
+    if (benched) {
+      // Set the command on the first tick of the beat, not at `createLift`:
+      // the tick HOLE begins on is a function of when the player released, so
+      // the delay is anchored to the pause the player actually sees.
+      if (m.pressCommandTick === null) {
+        m.pressCommandTick = tick + pressCommandDelayTicks(state.config.seed);
+      }
+      const commandTick = m.pressCommandTick;
+      const commanded = tick >= commandTick;
+      if (tick === commandTick) m.events.push({ kind: 'press-command', tick });
+
+      if (pressed && !m.pressUsed) {
+        m.pressUsed = true;
+        if (!commanded) {
+          // A FALSE START CONSUMES THE PRESS. Without this, mashing through the
+          // pause would eventually land on the command by luck and be rewarded
+          // for it, which would make the reaction check optional. It costs the
+          // reaction rather than the rep — see `PRESS_FALSE_START_QUALITY`.
+          m.pressQuality = LIFT_TUNING.PRESS_FALSE_START_QUALITY;
+          m.timings.push({
+            cue: 'press',
+            tick,
+            offsetMs: scrub((tick - commandTick) * TICK_MS),
+            quality: m.pressQuality,
+            grade: 'missed',
+          });
+          m.events.push({ kind: 'press-false-start', tick, grade: 'missed', quality: 0 });
+        } else {
+          const elapsedMs = (tick - commandTick) * TICK_MS;
+          const windowMs = cueWindowMs('press', state.config);
+          const { quality, grade } = gradeReaction(elapsedMs, windowMs);
+          m.pressQuality = quality;
+          m.timings.push({ cue: 'press', tick, offsetMs: scrub(elapsedMs), quality, grade });
+          m.events.push({ kind: 'press-hit', tick, grade, quality });
+        }
+      }
+
+      // The bar leaves the chest once the press is spent, or once the command
+      // has been ignored for long enough. NOT `holeTicks` — that is squat's
+      // fixed reversal beat, and on bench the beat's length is the player's.
+      const gaveUp = commanded && tick - commandTick >= LIFT_TUNING.PRESS_TIMEOUT_TICKS;
+      if (m.pressUsed || gaveUp) {
+        // THE BAR-SPEED HALF OF §6.2's LINE. This OVERWRITES the velocity the
+        // depth release set: on bench the chest touch decides legality and the
+        // reaction decides speed, which is what makes one input cover both
+        // halves of "press-timing / bar-speed check".
+        const { MIN, MAX } = LIFT_TUNING.PRESS_VELOCITY;
+        m.velocity = scrub(MIN + (MAX - MIN) * clamp01(m.pressQuality));
+        enter('ASCENT');
+        m.peakHeight = m.height;
+      }
+    } else if (m.phaseTick >= holeTicks(load, state.config.kind)) {
       enter('ASCENT');
       // The ascent starts from where the bar ACTUALLY is. A high squat starts
       // near lockout and finishes in a few ticks — trivially easy, and then
@@ -1254,6 +1453,9 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     timings: m.timings,
     depthAchieved: m.depthAchieved,
     extraDepth: m.extraDepth,
+    pressCommandTick: m.pressCommandTick,
+    pressQuality: m.pressQuality,
+    pressUsed: m.pressUsed,
     drivesUsed: m.drivesUsed,
     driveTick: m.driveTick,
     driveQuality: m.driveQuality,
@@ -1329,8 +1531,16 @@ export function promptFor(state: LiftState): string {
       return p.BRACE;
     case 'DESCENT':
       return p.DESCENT;
-    case 'HOLE':
+    case 'HOLE': {
+      // BENCH: the line flips the instant the command fires, and it is the
+      // only visual the reaction has. `pressCommandTick` is null until the bar
+      // settles, so the waiting line covers that tick too.
+      const commandTick = state.pressCommandTick;
+      if (state.config.kind === 'bench' && commandTick !== null && state.tick >= commandTick) {
+        return p.HOLE_COMMANDED;
+      }
       return p.HOLE[state.config.kind];
+    }
     case 'ASCENT': {
       const cue = state.activeCue;
       if (cue !== null && state.tick >= cue.openTick) return p.ASCENT_CUE_OPEN;
@@ -1364,6 +1574,15 @@ export function hapticFor(event: LiftEvent): HapticPattern | null {
       return h.DEPTH_HIGH;
     case 'reversal':
       return h.REVERSAL;
+    // BENCH. The command's haptic is the STIMULUS, not feedback on an input
+    // the player already made — the only entry in this table that leads the
+    // player rather than answering them.
+    case 'press-command':
+      return h.PRESS_COMMAND;
+    case 'press-hit':
+      return event.grade === 'perfect' ? h.PRESS_SHARP : h.PRESS_SLOW;
+    case 'press-false-start':
+      return h.PRESS_FALSE_START;
     case 'drive-hit':
       return event.grade === 'perfect' ? h.DRIVE_PERFECT : h.DRIVE_LOOSE;
     case 'drive-mistimed':

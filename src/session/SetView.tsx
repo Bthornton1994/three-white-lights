@@ -165,7 +165,7 @@ export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElem
         </Text>
         <Text style={styles.detail} testID="session-detail">
           {resolution === null || resolution.detail === ''
-            ? LIFT_COPY.SUBTITLE
+            ? LIFT_COPY.SUBTITLE[loop.state.config.kind]
             : resolution.detail}
         </Text>
       </View>

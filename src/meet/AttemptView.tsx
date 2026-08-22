@@ -163,7 +163,9 @@ export function AttemptView({
           {resolution === null ? promptFor(loop.state) : resolution.headline}
         </Text>
         <Text style={styles.detail} testID="attempt-detail">
-          {resolution === null || resolution.detail === '' ? LIFT_COPY.SUBTITLE : resolution.detail}
+          {resolution === null || resolution.detail === ''
+            ? LIFT_COPY.SUBTITLE[loop.state.config.kind]
+            : resolution.detail}
         </Text>
       </View>
       </View>
