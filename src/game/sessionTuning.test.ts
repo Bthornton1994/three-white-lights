@@ -103,7 +103,7 @@ describe('the RPE ladder is not degenerate in the lift mechanic', () => {
   function peakDemand(loadRatio: number): number {
     let peak = 0;
     for (let h = 0; h <= 1.0001; h += 0.005) {
-      const demand = ascentDemand(h, loadRatio);
+      const demand = ascentDemand(h, loadRatio, 'squat');
       if (demand > peak) peak = demand;
     }
     return peak;

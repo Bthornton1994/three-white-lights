@@ -136,6 +136,7 @@ import {
   byLoad,
   clampLoadRatio,
   type HapticPattern,
+  type PlayableLiftKind,
 } from './liftTuning';
 import {
   BAR_SPEED_CUE_ORDER,
@@ -329,6 +330,13 @@ export interface LiftResolution {
  * module, and there is no fatigue number in this file to invent.
  */
 export interface LiftConfig {
+  /**
+   * Which lift this rep is. Required, not defaulted — GDD §6.2 gives squat and
+   * bench different mechanical checks (depth timing vs. press timing), and a
+   * config with no kind would silently run bench under squat's numbers rather
+   * than fail to compile.
+   */
+  readonly kind: PlayableLiftKind;
   /** Attempt weight over current best single. 0.55 is a working set, 1.0 a limit. */
   readonly loadRatio: number;
   /** Seed for the bar's wobble jitter. Same seed, same rep. */
@@ -497,8 +505,8 @@ export function lifterCapacity(config: LiftConfig): number {
 export function cueWindowMs(cue: LiftCueId, config: LiftConfig): number {
   const base =
     cue === 'depth'
-      ? LIFT_TUNING.DEPTH_WINDOW_MS
-      : byLoad(LIFT_TUNING.DRIVE_WINDOW_MS, clampLoadRatio(config.loadRatio));
+      ? LIFT_TUNING.DEPTH_WINDOW_MS[config.kind]
+      : byLoad(LIFT_TUNING.DRIVE_WINDOW_MS[config.kind], clampLoadRatio(config.loadRatio));
   const feel = config.feel;
   if (feel === undefined) return base;
   return adjustedTimingWindowMs(base, feel, config.moment);
@@ -548,22 +556,29 @@ export function gradeTiming(offsetMs: number, halfWindowMs: number): {
  * `extraDepth` is how far past DEPTH_IDEAL the lifter was buried; it scales the
  * whole curve, so being buried is harder rather than merely longer.
  */
-export function ascentDemand(h: number, loadRatio: number, extraDepth: number = 0): number {
+export function ascentDemand(
+  h: number,
+  loadRatio: number,
+  kind: PlayableLiftKind,
+  extraDepth: number = 0,
+): number {
   const load = clampLoadRatio(loadRatio);
-  const base = byLoad(LIFT_TUNING.DEMAND_BASE, load);
-  const stick = byLoad(LIFT_TUNING.DEMAND_STICK_GAIN, load) * gauss(h, STICK_HEIGHT_FRAC, STICK_WIDTH);
+  const base = byLoad(LIFT_TUNING.DEMAND_BASE[kind], load);
+  const stick =
+    byLoad(LIFT_TUNING.DEMAND_STICK_GAIN[kind], load) *
+    gauss(h, STICK_HEIGHT_FRAC[kind], STICK_WIDTH[kind]);
   const buried = 1 + LIFT_TUNING.BURIED_DEMAND_PER_DEPTH * Math.max(0, extraDepth);
   return scrub((base + stick) * buried);
 }
 
 /** Ticks the reversal beat lasts at this load. */
-export function holeTicks(loadRatio: number): number {
-  return Math.max(1, Math.round(byLoad(LIFT_TUNING.HOLE_TICKS, clampLoadRatio(loadRatio))));
+export function holeTicks(loadRatio: number, kind: PlayableLiftKind): number {
+  return Math.max(1, Math.round(byLoad(LIFT_TUNING.HOLE_TICKS[kind], clampLoadRatio(loadRatio))));
 }
 
 /** Ticks the lockout beat lasts at this load. */
-export function lockoutTicks(loadRatio: number): number {
-  return Math.max(1, Math.round(byLoad(LIFT_TUNING.LOCKOUT_TICKS, clampLoadRatio(loadRatio))));
+export function lockoutTicks(loadRatio: number, kind: PlayableLiftKind): number {
+  return Math.max(1, Math.round(byLoad(LIFT_TUNING.LOCKOUT_TICKS[kind], clampLoadRatio(loadRatio))));
 }
 
 /**
@@ -572,8 +587,11 @@ export function lockoutTicks(loadRatio: number): number {
  * per-cue PRECISION half. Never below 1: every rep offers at least the one
  * cue the mechanic has always had.
  */
-export function driveAttemptsFor(loadRatio: number): number {
-  return Math.max(1, Math.round(byLoad(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP, clampLoadRatio(loadRatio))));
+export function driveAttemptsFor(loadRatio: number, kind: PlayableLiftKind): number {
+  return Math.max(
+    1,
+    Math.round(byLoad(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP[kind], clampLoadRatio(loadRatio))),
+  );
 }
 
 /**
@@ -581,18 +599,23 @@ export function driveAttemptsFor(loadRatio: number): number {
  * this load. Only consulted once `drivesUsed > 0` — the first cue arms on
  * `DRIVE_ARM_HEIGHT` alone, never on this.
  */
-export function driveSpacingTicks(loadRatio: number): number {
-  return Math.max(1, Math.round(msToTicks(byLoad(LIFT_TUNING.DRIVE_ATTEMPTS_SPACING_MS, clampLoadRatio(loadRatio)))));
+export function driveSpacingTicks(loadRatio: number, kind: PlayableLiftKind): number {
+  return Math.max(
+    1,
+    Math.round(
+      msToTicks(byLoad(LIFT_TUNING.DRIVE_ATTEMPTS_SPACING_MS[kind], clampLoadRatio(loadRatio))),
+    ),
+  );
 }
 
 /** Depth gained per tick of hold at this load. */
-export function descentRate(loadRatio: number): number {
-  return byLoad(LIFT_TUNING.DESCENT_DEPTH_PER_TICK, clampLoadRatio(loadRatio));
+export function descentRate(loadRatio: number, kind: PlayableLiftKind): number {
+  return byLoad(LIFT_TUNING.DESCENT_DEPTH_PER_TICK[kind], clampLoadRatio(loadRatio));
 }
 
 /** Ticks of brace before input is accepted at this load. */
-export function braceTicks(loadRatio: number): number {
-  return Math.max(1, Math.round(byLoad(LIFT_TUNING.BRACE_TICKS, clampLoadRatio(loadRatio))));
+export function braceTicks(loadRatio: number, kind: PlayableLiftKind): number {
+  return Math.max(1, Math.round(byLoad(LIFT_TUNING.BRACE_TICKS[kind], clampLoadRatio(loadRatio))));
 }
 
 /**
@@ -615,8 +638,12 @@ export function braceTicks(loadRatio: number): number {
  * `lift.test.ts` measures the depth at the window's opening tick from played
  * reps across the load range and asserts it is legal, rather than trusting this.
  */
-export function depthWindowHalfTicks(loadRatio: number, windowMs: number): number {
-  const rate = descentRate(loadRatio);
+export function depthWindowHalfTicks(
+  loadRatio: number,
+  windowMs: number,
+  kind: PlayableLiftKind,
+): number {
+  const rate = descentRate(loadRatio, kind);
   const fromMs = Math.round(windowMs / TICK_MS / 2);
   // In TICKS, not in depth: the ideal tick is a rounded quantity, so the depth
   // it actually lands on is a little under DEPTH_IDEAL. Measuring the gap in
@@ -624,8 +651,8 @@ export function depthWindowHalfTicks(loadRatio: number, windowMs: number): numbe
   // thousandths of a unit above legal at some loads — small, and still a red
   // light. `firstLegalTick` is the first tick whose depth is at or above legal,
   // so the arithmetic below is exact.
-  const idealTick = Math.round(LIFT_TUNING.DEPTH_IDEAL / rate);
-  const firstLegalTick = Math.ceil(LIFT_TUNING.DEPTH_LEGAL / rate);
+  const idealTick = Math.round(LIFT_TUNING.DEPTH_IDEAL[kind] / rate);
+  const firstLegalTick = Math.ceil(LIFT_TUNING.DEPTH_LEGAL[kind] / rate);
   return Math.max(1, Math.min(fromMs, idealTick - firstLegalTick));
 }
 
@@ -656,6 +683,7 @@ function barPathFor(
   depth: number,
   h: number,
   loadRatio: number,
+  kind: PlayableLiftKind,
   netForce: number,
   tick: number,
   jitter: number,
@@ -675,7 +703,7 @@ function barPathFor(
   const carried = atHole * (1 - h);
   const fight =
     (peak + LIFT_TUNING.BAR_FORWARD_STRUGGLE_PX * s) *
-    gauss(h, STICK_HEIGHT_FRAC, STICK_WIDTH) *
+    gauss(h, STICK_HEIGHT_FRAC[kind], STICK_WIDTH[kind]) *
     (1 - h);
 
   // The shake is gated on the struggle, so a rep that never stalls never shakes
@@ -719,6 +747,7 @@ export function createLift(config: LiftConfig): LiftState {
   assertConfig(config);
   return {
     config: {
+      kind: config.kind,
       loadRatio: config.loadRatio,
       seed: config.seed,
       ...(config.feel === undefined ? {} : { feel: config.feel }),
@@ -890,7 +919,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
   // BRACE — nothing is asked for. The first press starts the descent.
   // -------------------------------------------------------------------------
   if (m.phase === 'BRACE') {
-    const ready = m.phaseTick >= braceTicks(load);
+    const ready = m.phaseTick >= braceTicks(load, state.config.kind);
     const timedOut = m.phaseTick >= LIFT_TUNING.BRACE_TIMEOUT_TICKS;
     // A FINGER ALREADY DOWN COUNTS, not only a press edge on this exact tick.
     // Players tap the instant the screen appears — before the brace is over —
@@ -905,9 +934,13 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
       // The depth window is known analytically: depth grows at a fixed rate
       // while held, so the tick it reaches DEPTH_IDEAL is arithmetic, not a
       // prediction. Fatigue narrows the window about that tick, never off it.
-      const rate = descentRate(load);
-      const idealTick = tick + Math.round(LIFT_TUNING.DEPTH_IDEAL / rate);
-      const halfTicks = depthWindowHalfTicks(load, cueWindowMs('depth', state.config));
+      const rate = descentRate(load, state.config.kind);
+      const idealTick = tick + Math.round(LIFT_TUNING.DEPTH_IDEAL[state.config.kind] / rate);
+      const halfTicks = depthWindowHalfTicks(
+        load,
+        cueWindowMs('depth', state.config),
+        state.config.kind,
+      );
       m.activeCue = {
         cue: 'depth',
         wants: 'release',
@@ -930,15 +963,15 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
       m.events.push({ kind: 'depth-cue-open', tick });
     }
     if (m.held) {
-      m.depth = scrub(m.depth + descentRate(load));
+      m.depth = scrub(m.depth + descentRate(load, state.config.kind));
       m.height = scrub(clamp01(1 - m.depth));
     }
 
-    const reverseNow = released || m.depth >= LIFT_TUNING.DEPTH_COLLAPSE;
+    const reverseNow = released || m.depth >= LIFT_TUNING.DEPTH_COLLAPSE[state.config.kind];
     if (reverseNow) {
-      const buried = !released && m.depth >= LIFT_TUNING.DEPTH_COLLAPSE;
-      m.depthAchieved = m.depth >= LIFT_TUNING.DEPTH_LEGAL;
-      m.extraDepth = scrub(Math.max(0, m.depth - LIFT_TUNING.DEPTH_IDEAL));
+      const buried = !released && m.depth >= LIFT_TUNING.DEPTH_COLLAPSE[state.config.kind];
+      m.depthAchieved = m.depth >= LIFT_TUNING.DEPTH_LEGAL[state.config.kind];
+      m.extraDepth = scrub(Math.max(0, m.depth - LIFT_TUNING.DEPTH_IDEAL[state.config.kind]));
 
       if (cue !== null) {
         const offsetMs = (tick - cue.idealTick) * TICK_MS;
@@ -979,7 +1012,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
   // consequence of the depth input, not a third thing to hit.
   // -------------------------------------------------------------------------
   else if (m.phase === 'HOLE') {
-    if (m.phaseTick >= holeTicks(load)) {
+    if (m.phaseTick >= holeTicks(load, state.config.kind)) {
       enter('ASCENT');
       // The ascent starts from where the bar ACTUALLY is. A high squat starts
       // near lockout and finishes in a few ticks — trivially easy, and then
@@ -1000,14 +1033,14 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     // spacing has elapsed. `driveAttemptsFor`/`driveSpacingTicks` are the
     // tap-RATE half of the ascent's difficulty — how many cues, how close
     // together — `cueWindowMs`'s per-cue width is the PRECISION half.
-    const attempts = driveAttemptsFor(load);
+    const attempts = driveAttemptsFor(load, state.config.kind);
     const canArmNext =
       m.drivesUsed === 0 ||
       (m.driveArmReadyTick !== null && tick >= m.driveArmReadyTick);
     if (
       m.activeCue === null &&
       m.drivesUsed < attempts &&
-      m.height >= LIFT_TUNING.DRIVE_ARM_HEIGHT &&
+      m.height >= LIFT_TUNING.DRIVE_ARM_HEIGHT[state.config.kind] &&
       canArmNext
     ) {
       const widthMs = cueWindowMs('drive', state.config);
@@ -1031,7 +1064,9 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
       // as a full window early rather than as -Infinity, so an `InputTiming`
       // always survives JSON.
       const offsetMs =
-        cue === null ? -byLoad(LIFT_TUNING.DRIVE_WINDOW_MS, load) : (tick - cue.idealTick) * TICK_MS;
+        cue === null
+          ? -byLoad(LIFT_TUNING.DRIVE_WINDOW_MS[state.config.kind], load)
+          : (tick - cue.idealTick) * TICK_MS;
       const halfMs = cue === null ? 0 : cue.widthMs / 2;
       const { quality, grade } = gradeTiming(offsetMs, halfMs);
       m.drivesUsed += 1;
@@ -1061,7 +1096,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
         if (load >= LIFT_TUNING.CHALK_MIN_LOAD_RATIO) m.chalkPuff = 1;
       }
       m.activeCue = null;
-      m.driveArmReadyTick = tick + driveSpacingTicks(load);
+      m.driveArmReadyTick = tick + driveSpacingTicks(load, state.config.kind);
     }
 
     // The window closed with nothing thrown at it. The cue goes away; the bar
@@ -1071,11 +1106,11 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     const openCue = m.activeCue;
     if (openCue !== null && tick > openCue.closeTick) {
       m.activeCue = null;
-      m.driveArmReadyTick = tick + driveSpacingTicks(load);
+      m.driveArmReadyTick = tick + driveSpacingTicks(load, state.config.kind);
     }
 
     // --- physics ---------------------------------------------------------
-    const demand = ascentDemand(m.height, load, m.extraDepth);
+    const demand = ascentDemand(m.height, load, state.config.kind, m.extraDepth);
     let drive = capacity - m.stallCapacityLoss;
     // A LANDED DRIVE IS A COMMITTED IMPULSE, NOT A STATE THE PLAYER MAINTAINS.
     // Deliberately NOT gated on `m.held`. It used to be, and that coupling was
@@ -1115,7 +1150,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
       clamp(m.height + m.velocity, -LIFT_TUNING.ASCENT_COLLAPSE_DROP, 1),
     );
     if (m.height > m.peakHeight) m.peakHeight = m.height;
-    m.depth = scrub(clamp(1 - m.height, 0, LIFT_TUNING.DEPTH_COLLAPSE));
+    m.depth = scrub(clamp(1 - m.height, 0, LIFT_TUNING.DEPTH_COLLAPSE[state.config.kind]));
 
     if (m.chalkPuff > 0) {
       m.chalkPuff = scrub(Math.max(0, m.chalkPuff - 1 / LIFT_TUNING.CHALK_PUFF_TICKS));
@@ -1164,7 +1199,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     if (m.chalkPuff > 0) {
       m.chalkPuff = scrub(Math.max(0, m.chalkPuff - 1 / LIFT_TUNING.CHALK_PUFF_TICKS));
     }
-    if (m.phaseTick >= lockoutTicks(load)) {
+    if (m.phaseTick >= lockoutTicks(load, state.config.kind)) {
       const outcome: LiftOutcome = !m.depthAchieved
         ? 'miss'
         : isGrind(m.stallTicks, m.ascentTicks)
@@ -1192,6 +1227,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     m.depth,
     m.height,
     load,
+    state.config.kind,
     m.netForce,
     tick,
     roll.value,

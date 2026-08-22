@@ -266,14 +266,16 @@ function armedCue(config: LiftConfig, script: readonly ScriptedInput[], cue: 'de
  * NOT A TICK NUMBER ANYWHERE. Every moment is asked of `lift.ts`.
  */
 export function repScript(config: LiftConfig, style: RepStyle): ScriptedInput[] {
-  const script: ScriptedInput[] = [{ tick: braceTicks(config.loadRatio) + 1, kind: 'press' }];
+  const script: ScriptedInput[] = [
+    { tick: braceTicks(config.loadRatio, config.kind) + 1, kind: 'press' },
+  ];
   const depth = armedCue(config, script, 'depth');
   if (depth === null) return script;
 
   if (style === 'dumped') {
     // Straight back up. The depth cue may not even be armed yet, which is the
     // point: there is nothing here for a referee to weigh.
-    script.push({ tick: braceTicks(config.loadRatio) + 2, kind: 'release' });
+    script.push({ tick: braceTicks(config.loadRatio, config.kind) + 2, kind: 'release' });
   } else if (style === 'high') {
     // Stand up before the window opens. The mechanic records the signed offset
     // even though the input landed outside, which is what makes a high squat

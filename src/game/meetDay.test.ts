@@ -479,7 +479,7 @@ describe('the two choices GDD §6.3 names', () => {
 // ---------------------------------------------------------------------------
 
 describe('the judging model reads the rep (GDD §6.2 step 4)', () => {
-  const CONFIG = { loadRatio: 0.9, seed: 4242 };
+  const CONFIG = { kind: 'squat' as const, loadRatio: 0.9, seed: 4242 };
 
   it('scores a clean lift as obvious and a marginal one as arguable', () => {
     const clean = judgingMargin(playRep(CONFIG, 'perfect'));
@@ -524,8 +524,8 @@ describe('the judging model reads the rep (GDD §6.2 step 4)', () => {
   it('doubts a grind more than a lift that went up fast', () => {
     // Both hit depth perfectly; only one of them ground. The doubt has to come
     // from the ascent, so a heavier bar on the same input scores lower.
-    const fast = playRep({ loadRatio: 0.7, seed: 99 }, 'perfect');
-    const ground = playRep({ loadRatio: 1.02, seed: 99 }, 'perfect');
+    const fast = playRep({ kind: 'squat', loadRatio: 0.7, seed: 99 }, 'perfect');
+    const ground = playRep({ kind: 'squat', loadRatio: 1.02, seed: 99 }, 'perfect');
     expect(ground.stallTicks).toBeGreaterThan(fast.stallTicks);
     expect(judgingMargin(ground)).toBeLessThan(judgingMargin(fast));
   });
@@ -623,7 +623,7 @@ describe('the three lights (GDD §6.2 step 4)', () => {
 });
 
 describe('the feedback cue (GDD §6.2 step 5)', () => {
-  const CONFIG = { loadRatio: 0.9, seed: 4242 };
+  const CONFIG = { kind: 'squat' as const, loadRatio: 0.9, seed: 4242 };
 
   it('names what actually happened, and differs by outcome', () => {
     const lines = (['perfect', 'marginal', 'high', 'stalled'] as const).map((style) => {
@@ -664,7 +664,7 @@ describe('readiness silently adjusts the timing window (GDD §6.2 step 3)', () =
   it('reaches the mechanic — a tired lifter gets a narrower window', () => {
     const rested = openedMeet({ ...previewContext(), fatigue: EMPTY_FATIGUE_STATE });
     const tired = openedMeet({ ...previewContext(), fatigue: tiredLedger() });
-    const base = LIFT_TUNING.DEPTH_WINDOW_MS;
+    const base = LIFT_TUNING.DEPTH_WINDOW_MS.squat;
     const restedWindow = adjustedTimingWindowMs(base, attemptConfigFor(rested).feel!);
     const tiredWindow = adjustedTimingWindowMs(base, attemptConfigFor(tired).feel!);
     expect(tiredWindow).toBeLessThan(restedWindow);
@@ -682,7 +682,7 @@ describe('readiness silently adjusts the timing window (GDD §6.2 step 3)', () =
     expect(lateConfig.moment?.workSetsCompleted ?? 0).toBeGreaterThan(
       early.moment?.workSetsCompleted ?? 0,
     );
-    const base = LIFT_TUNING.DEPTH_WINDOW_MS;
+    const base = LIFT_TUNING.DEPTH_WINDOW_MS.squat;
     expect(adjustedTimingWindowMs(base, lateConfig.feel!, lateConfig.moment)).toBeLessThan(
       adjustedTimingWindowMs(base, early.feel!, early.moment),
     );
@@ -1582,7 +1582,7 @@ describe('the meet engine stays the authority', () => {
     // `judgeAttempt` reports the ENGINE's reading of the panel it built, so a
     // model that decided "good" separately from the lights would show up here.
     for (const style of ['perfect', 'marginal', 'high', 'stalled'] as const) {
-      const resolution = playRep({ loadRatio: 0.9, seed: 777 }, style);
+      const resolution = playRep({ kind: 'squat', loadRatio: 0.9, seed: 777 }, style);
       const call = judgeAttempt(resolution, 12345);
       expect(call.good).toBe(isGoodLift(call.lights));
       expect(call.split).toBe(isSplitDecision(call.lights));

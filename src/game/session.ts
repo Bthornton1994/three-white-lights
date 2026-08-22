@@ -210,6 +210,7 @@ import {
 import { TO_FAILURE_RPE, tryEstimateE1rm } from './e1rm';
 import { percentOf1RM, rawLoadForRpeTarget, roundLoad, type WeightUnit } from './rpe';
 import type { LiftConfig, LiftOutcome, LiftResolution } from './lift';
+import { simKindFor } from './liftTuning';
 import type { LiftKind } from './meet';
 import {
   emptyProjection,
@@ -643,6 +644,7 @@ export function repConfigFor(state: SessionState): LiftConfig {
   }
   const feel = state.feel;
   return {
+    kind: simKindFor(state.context.lift),
     loadRatio: plan.loadRatio,
     seed: repSeed(state.context.day, state.setIndex, state.repIndex),
     ...(feel === null ? {} : { feel }),

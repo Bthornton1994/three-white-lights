@@ -130,8 +130,12 @@ export interface CaptureFrame {
  */
 export const CAPTURE_SEED = LIFT_TUNING.DEMO.BEST_SINGLE_KG;
 
+// SQUAT ONLY. This capture tool exists for `squatAnimation.ts`'s sprite-work
+// evidence (GDD §12.2) and predates bench's phase model; it is not the
+// player-reachable session path. Widen alongside a bench capture pass if one
+// is ever needed, rather than defaulting silently.
 function configFor(loadRatio: number): LiftConfig {
-  return { loadRatio, seed: CAPTURE_SEED };
+  return { kind: 'squat', loadRatio, seed: CAPTURE_SEED };
 }
 
 /** The cue the mechanic itself armed, read out of a played rep. */
@@ -157,7 +161,7 @@ function armedCue(
  */
 export function captureScript(loadRatio: number): ScriptedInput[] {
   const config = configFor(loadRatio);
-  const script: ScriptedInput[] = [{ tick: braceTicks(loadRatio) + 1, kind: 'press' }];
+  const script: ScriptedInput[] = [{ tick: braceTicks(loadRatio, 'squat') + 1, kind: 'press' }];
 
   const depthCue = armedCue(config, script, 'depth');
   if (depthCue === null) return script;
@@ -217,7 +221,7 @@ export function captureFrames(loadRatio: number): CaptureFrame[] {
     // The tick the bar is losing hardest. On a limit attempt this is the grind.
     losing: pick(ascent, () => true, (s) => s.netForce),
     // The tick the bar is nearest the height the sprite system draws a stall at.
-    'sticking-point': pick(ascent, () => true, (s) => Math.abs(s.height - STICK_HEIGHT_FRAC)),
+    'sticking-point': pick(ascent, () => true, (s) => Math.abs(s.height - STICK_HEIGHT_FRAC.squat)),
     lockout: pick(all, (s) => s.phase === 'LOCKOUT'),
     result: pick(all, (s) => s.phase === 'RESOLVED'),
   };

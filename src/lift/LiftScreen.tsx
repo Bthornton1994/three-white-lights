@@ -196,7 +196,11 @@ export function LiftScreen({ replay }: LiftScreenProps = {}): React.ReactElement
   const loadRatio = DEMO.LOAD_CHOICES[loadIndex] ?? DEMO.LOAD_CHOICES[0] ?? 1;
 
   const loop = useLiftLoop(
-    useMemo(() => ({ loadRatio, seed: DEMO.BEST_SINGLE_KG }), []),
+    // SQUAT ONLY. This is the standalone Prototype-1 demo harness (GDD §10),
+    // not the session path — `SetView`/`repConfigFor` is what actually plays
+    // a prescribed kind. A kind selector here is a separate piece if this
+    // screen is ever used to demo bench.
+    useMemo(() => ({ kind: 'squat' as const, loadRatio, seed: DEMO.BEST_SINGLE_KG }), []),
     frame !== null,
   );
   const { onPressIn, onPressOut, restart } = loop;

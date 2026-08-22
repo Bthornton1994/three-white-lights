@@ -74,6 +74,7 @@ import {
   LOAD_RANGE,
   STICK_HEIGHT_FRAC,
   TICK_MS,
+  type PlayableLiftKind,
 } from './liftTuning';
 import {
   BAR_SPEED_CUE_ORDER,
@@ -90,14 +91,23 @@ import { STICK } from '../art/spriteTuning';
 // test is the same object a rep in the app is.
 // ---------------------------------------------------------------------------
 
+/**
+ * Every "played" rep in this file is squat unless a test says otherwise —
+ * this file predates bench and its assertions are about the mechanic's
+ * general shape, not squat specifically. A default keeps that unchanged
+ * rather than forcing every existing call site to spell out a kind that was
+ * always implied.
+ */
+const DEFAULT_KIND: PlayableLiftKind = 'squat';
+
 /** Tick the player presses to start the descent. */
-function pressTickFor(load: number): number {
-  return braceTicks(load) + 1;
+function pressTickFor(load: number, kind: PlayableLiftKind = DEFAULT_KIND): number {
+  return braceTicks(load, kind) + 1;
 }
 
 /** Tick at which a hold started on `pressTick` reaches `depth`. */
-function releaseTickFor(load: number, depth: number): number {
-  return pressTickFor(load) + Math.round(depth / descentRate(load));
+function releaseTickFor(load: number, depth: number, kind: PlayableLiftKind = DEFAULT_KIND): number {
+  return pressTickFor(load, kind) + Math.round(depth / descentRate(load, kind));
 }
 
 /**
@@ -112,8 +122,8 @@ function releaseTickFor(load: number, depth: number): number {
 function driveIdealTick(config: LiftConfig, depth: number): number | null {
   const load = config.loadRatio;
   const probe = runLift(config, [
-    { tick: pressTickFor(load), kind: 'press' },
-    { tick: releaseTickFor(load, depth), kind: 'release' },
+    { tick: pressTickFor(load, config.kind), kind: 'press' },
+    { tick: releaseTickFor(load, depth, config.kind), kind: 'release' },
   ]);
   for (const state of probe.history) {
     if (state.events.some((e) => e.kind === 'drive-cue-open')) {
@@ -131,18 +141,21 @@ interface PlayOptions {
   readonly releaseAfterDriveTicks?: number;
   readonly seed?: number;
   readonly feel?: SessionFeel;
+  readonly kind?: PlayableLiftKind;
 }
 
 function play(loadRatio: number, options: PlayOptions = {}): LiftState {
-  const depth = options.depth ?? LIFT_TUNING.DEPTH_IDEAL;
+  const kind = options.kind ?? DEFAULT_KIND;
+  const depth = options.depth ?? LIFT_TUNING.DEPTH_IDEAL[kind];
   const config: LiftConfig = {
+    kind,
     loadRatio,
     seed: options.seed ?? 20260801,
     ...(options.feel === undefined ? {} : { feel: options.feel }),
   };
   const script: ScriptedInput[] = [
-    { tick: pressTickFor(loadRatio), kind: 'press' },
-    { tick: releaseTickFor(loadRatio, depth), kind: 'release' },
+    { tick: pressTickFor(loadRatio, kind), kind: 'press' },
+    { tick: releaseTickFor(loadRatio, depth, kind), kind: 'release' },
   ];
   const offset = options.driveOffsetTicks;
   if (offset !== undefined && offset !== null) {
@@ -164,11 +177,11 @@ function play(loadRatio: number, options: PlayOptions = {}): LiftState {
  * where there is no cue to be early for and the press is swallowed.
  */
 function earlyDriveScript(load: number): ScriptedInput[] {
-  const release = releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL);
+  const release = releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]);
   return [
     { tick: pressTickFor(load), kind: 'press' },
     { tick: release, kind: 'release' },
-    { tick: release + holeTicks(load) + 2, kind: 'press' },
+    { tick: release + holeTicks(load, DEFAULT_KIND) + 2, kind: 'press' },
   ];
 }
 
@@ -241,7 +254,10 @@ describe('vocabulary', () => {
       expect(LIFT_COPY.GRADE[grade], grade).toBeTruthy();
     }
     for (const phase of LIFT_PHASES) {
-      expect(promptFor({ ...createLift({ loadRatio: 1, seed: 1 }), phase }), phase).toBeTruthy();
+      expect(
+        promptFor({ ...createLift({ kind: DEFAULT_KIND, loadRatio: 1, seed: 1 }), phase }),
+        phase,
+      ).toBeTruthy();
     }
   });
 });
@@ -281,13 +297,19 @@ describe('purity', () => {
     // The jitter only reaches the bar while the lifter is losing, so this has
     // to be a rep that struggles. A test that used a light rep would compare
     // two identical zero-jitter reps and pass on a module with no randomness.
-    const a = runLift({ loadRatio: LOAD_PRESETS.MAXIMAL, seed: 1 }, [
+    const a = runLift({ kind: DEFAULT_KIND, loadRatio: LOAD_PRESETS.MAXIMAL, seed: 1 }, [
       { tick: pressTickFor(LOAD_PRESETS.MAXIMAL), kind: 'press' },
-      { tick: releaseTickFor(LOAD_PRESETS.MAXIMAL, LIFT_TUNING.DEPTH_IDEAL), kind: 'release' },
+      {
+        tick: releaseTickFor(LOAD_PRESETS.MAXIMAL, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]),
+        kind: 'release',
+      },
     ]);
-    const b = runLift({ loadRatio: LOAD_PRESETS.MAXIMAL, seed: 2 }, [
+    const b = runLift({ kind: DEFAULT_KIND, loadRatio: LOAD_PRESETS.MAXIMAL, seed: 2 }, [
       { tick: pressTickFor(LOAD_PRESETS.MAXIMAL), kind: 'press' },
-      { tick: releaseTickFor(LOAD_PRESETS.MAXIMAL, LIFT_TUNING.DEPTH_IDEAL), kind: 'release' },
+      {
+        tick: releaseTickFor(LOAD_PRESETS.MAXIMAL, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]),
+        kind: 'release',
+      },
     ]);
     const lateralOf = (r: typeof a): number[] => r.history.map((s) => s.barLateralPx);
     expect(lateralOf(a).some((v) => v !== 0)).toBe(true);
@@ -312,7 +334,10 @@ describe('purity', () => {
         kind = kind === 'press' ? 'release' : 'press';
         tick += 1 + Math.floor(draw() * 90);
       }
-      const rep = runLift({ loadRatio: load, seed: Math.floor(draw() * 1e6) }, script);
+      const rep = runLift(
+        { kind: DEFAULT_KIND, loadRatio: load, seed: Math.floor(draw() * 1e6) },
+        script,
+      );
       expect(rep.final.phase, JSON.stringify(script)).toBe('RESOLVED');
       expect(rep.final.resolution).not.toBeNull();
     }
@@ -375,21 +400,21 @@ describe('ascentDemand', () => {
     let peakH = 0;
     let peak = -Infinity;
     for (let h = 0; h <= 1.0001; h += 0.001) {
-      const d = ascentDemand(h, LOAD_PRESETS.MAXIMAL);
+      const d = ascentDemand(h, LOAD_PRESETS.MAXIMAL, DEFAULT_KIND);
       if (d > peak) {
         peak = d;
         peakH = h;
       }
     }
-    expect(peakH).toBeCloseTo(STICK_HEIGHT_FRAC, 2);
-    expect(STICK_HEIGHT_FRAC).toBe(STICK.HEIGHT_FRAC);
+    expect(peakH).toBeCloseTo(STICK_HEIGHT_FRAC[DEFAULT_KIND], 2);
+    expect(STICK_HEIGHT_FRAC[DEFAULT_KIND]).toBe(STICK.HEIGHT_FRAC);
   });
 
   it('rises with load everywhere in the range', () => {
     for (let h = 0; h <= 1.0001; h += 0.05) {
       let previous = -Infinity;
       for (let load = 0.4; load <= 1.05; load += 0.05) {
-        const d = ascentDemand(h, load);
+        const d = ascentDemand(h, load, DEFAULT_KIND);
         expect(d).toBeGreaterThan(previous);
         previous = d;
       }
@@ -397,37 +422,45 @@ describe('ascentDemand', () => {
   });
 
   it('makes being buried strictly harder', () => {
-    const flat = ascentDemand(STICK_HEIGHT_FRAC, LOAD_PRESETS.MAXIMAL, 0);
-    const buried = ascentDemand(STICK_HEIGHT_FRAC, LOAD_PRESETS.MAXIMAL, 0.2);
+    const flat = ascentDemand(STICK_HEIGHT_FRAC[DEFAULT_KIND], LOAD_PRESETS.MAXIMAL, DEFAULT_KIND, 0);
+    const buried = ascentDemand(STICK_HEIGHT_FRAC[DEFAULT_KIND], LOAD_PRESETS.MAXIMAL, DEFAULT_KIND, 0.2);
     expect(buried).toBeGreaterThan(flat);
   });
 
   it('exceeds what the lifter has at a limit and not at a warm-up', () => {
     // If neither of these held there would be no sticking point to grind
     // through, or no weight a lifter could warm up with.
-    expect(ascentDemand(STICK_HEIGHT_FRAC, LOAD_PRESETS.MAXIMAL)).toBeGreaterThan(
-      LIFT_TUNING.LIFTER_CAPACITY,
-    );
-    expect(ascentDemand(STICK_HEIGHT_FRAC, LOAD_PRESETS.WARMUP)).toBeLessThan(
-      LIFT_TUNING.LIFTER_CAPACITY,
-    );
+    expect(
+      ascentDemand(STICK_HEIGHT_FRAC[DEFAULT_KIND], LOAD_PRESETS.MAXIMAL, DEFAULT_KIND),
+    ).toBeGreaterThan(LIFT_TUNING.LIFTER_CAPACITY);
+    expect(
+      ascentDemand(STICK_HEIGHT_FRAC[DEFAULT_KIND], LOAD_PRESETS.WARMUP, DEFAULT_KIND),
+    ).toBeLessThan(LIFT_TUNING.LIFTER_CAPACITY);
   });
 });
 
 describe('load-derived timings', () => {
   it('descends slower, braces longer and holds longer under load', () => {
-    expect(descentRate(LOAD_PRESETS.MAXIMAL)).toBeLessThan(descentRate(LOAD_PRESETS.LIGHT));
-    expect(braceTicks(LOAD_PRESETS.MAXIMAL)).toBeGreaterThan(braceTicks(LOAD_PRESETS.LIGHT));
-    expect(holeTicks(LOAD_PRESETS.MAXIMAL)).toBeGreaterThan(holeTicks(LOAD_PRESETS.LIGHT));
-    expect(lockoutTicks(LOAD_PRESETS.MAXIMAL)).toBeGreaterThan(lockoutTicks(LOAD_PRESETS.LIGHT));
+    expect(descentRate(LOAD_PRESETS.MAXIMAL, DEFAULT_KIND)).toBeLessThan(
+      descentRate(LOAD_PRESETS.LIGHT, DEFAULT_KIND),
+    );
+    expect(braceTicks(LOAD_PRESETS.MAXIMAL, DEFAULT_KIND)).toBeGreaterThan(
+      braceTicks(LOAD_PRESETS.LIGHT, DEFAULT_KIND),
+    );
+    expect(holeTicks(LOAD_PRESETS.MAXIMAL, DEFAULT_KIND)).toBeGreaterThan(
+      holeTicks(LOAD_PRESETS.LIGHT, DEFAULT_KIND),
+    );
+    expect(lockoutTicks(LOAD_PRESETS.MAXIMAL, DEFAULT_KIND)).toBeGreaterThan(
+      lockoutTicks(LOAD_PRESETS.LIGHT, DEFAULT_KIND),
+    );
   });
 
   it('never returns a zero-length phase, even at absurd loads', () => {
     for (const load of [0.01, 0.35, 1.05, 50]) {
-      expect(braceTicks(load)).toBeGreaterThanOrEqual(1);
-      expect(holeTicks(load)).toBeGreaterThanOrEqual(1);
-      expect(lockoutTicks(load)).toBeGreaterThanOrEqual(1);
-      expect(descentRate(load)).toBeGreaterThan(0);
+      expect(braceTicks(load, DEFAULT_KIND)).toBeGreaterThanOrEqual(1);
+      expect(holeTicks(load, DEFAULT_KIND)).toBeGreaterThanOrEqual(1);
+      expect(lockoutTicks(load, DEFAULT_KIND)).toBeGreaterThanOrEqual(1);
+      expect(descentRate(load, DEFAULT_KIND)).toBeGreaterThan(0);
     }
   });
 });
@@ -463,8 +496,9 @@ describe('outcome space', () => {
     const reasons = new Set<string>();
     // Never release: buried.
     reasons.add(
-      runLift({ loadRatio: load, seed: 3 }, [{ tick: pressTickFor(load), kind: 'press' }]).final
-        .resolution?.missReason ?? '',
+      runLift({ kind: DEFAULT_KIND, loadRatio: load, seed: 3 }, [
+        { tick: pressTickFor(load), kind: 'press' },
+      ]).final.resolution?.missReason ?? '',
     );
     // Release far above depth, then drive perfectly: a high squat that locks out.
     reasons.add(play(load, { depth: 0.5, driveOffsetTicks: 0 }).resolution?.missReason ?? '');
@@ -543,7 +577,8 @@ describe('outcome space', () => {
     // Two ticks into the ascent, long before the cue arms. A press during the
     // HOLE would not do: the reversal beat has no cue and swallows presses,
     // which a test written against the tick count alone would miss.
-    const early = runLift({ loadRatio: load, seed: 5 }, earlyDriveScript(load)).final;
+    const early = runLift({ kind: DEFAULT_KIND, loadRatio: load, seed: 5 }, earlyDriveScript(load))
+      .final;
     expect(early.timings.some((t) => t.cue === 'drive' && t.grade === 'missed')).toBe(true);
     // The script presses exactly once, so drivesUsed is 1 whatever the
     // load's own attempts budget is — not `driveAttemptsFor(load)`, which
@@ -577,8 +612,8 @@ describe('outcome space', () => {
     // simplest possible case — must trace an IDENTICAL trajectory to holding
     // straight through, at every load the old coupling could have mattered.
     const load = LOAD_PRESETS.MAXIMAL;
-    const config: LiftConfig = { loadRatio: load, seed: 424242 };
-    const depth = LIFT_TUNING.DEPTH_IDEAL;
+    const config: LiftConfig = { kind: DEFAULT_KIND, loadRatio: load, seed: 424242 };
+    const depth = LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND];
     const press = pressTickFor(load);
     const release = releaseTickFor(load, depth);
     const base: ScriptedInput[] = [
@@ -612,8 +647,8 @@ describe('outcome space', () => {
     // about; it targets cue 1's own real ideal tick, read back from the sim
     // the same way `driveCueSequence` does, not guessed.
     const load = LOAD_PRESETS.MAXIMAL;
-    const config: LiftConfig = { loadRatio: load, seed: 424242 };
-    const depth = LIFT_TUNING.DEPTH_IDEAL;
+    const config: LiftConfig = { kind: DEFAULT_KIND, loadRatio: load, seed: 424242 };
+    const depth = LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND];
     const press = pressTickFor(load);
     const release = releaseTickFor(load, depth);
     const base: ScriptedInput[] = [
@@ -651,14 +686,14 @@ describe('outcome space', () => {
     // tried on it; a load where no cue1 ever arms is skipped and counted,
     // so the sweep cannot pass by silently finding nothing to test.
     const load = LOAD_PRESETS.MAXIMAL;
-    const depth = LIFT_TUNING.DEPTH_IDEAL;
+    const depth = LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND];
     const press = pressTickFor(load);
     const release = releaseTickFor(load, depth);
     let pairsChecked = 0;
     let pairsPassed = 0;
     let skippedNoCue1 = 0;
     for (let seed = 1; seed <= 12; seed += 1) {
-      const config: LiftConfig = { loadRatio: load, seed };
+      const config: LiftConfig = { kind: DEFAULT_KIND, loadRatio: load, seed };
       const base: ScriptedInput[] = [
         { tick: press, kind: 'press' },
         { tick: release, kind: 'release' },
@@ -828,7 +863,7 @@ interface CueObedientSweep {
  * it.
  */
 function cueObedientSweep(load: number): CueObedientSweep {
-  const config: LiftConfig = { loadRatio: load, seed: 20260801 };
+  const config: LiftConfig = { kind: DEFAULT_KIND, loadRatio: load, seed: 20260801 };
   const press = pressTickFor(load);
   const start: ScriptedInput[] = [{ tick: press, kind: 'press' }];
   const depthCue = armedCue(config, start, 'depth');
@@ -915,11 +950,11 @@ function driveCueSequence(
 ): { readonly cues: readonly CueWindow[]; readonly script: ScriptedInput[]; readonly final: LiftState } {
   const load = config.loadRatio;
   const script: ScriptedInput[] = [
-    { tick: pressTickFor(load), kind: 'press' },
-    { tick: releaseTickFor(load, depth), kind: 'release' },
+    { tick: pressTickFor(load, config.kind), kind: 'press' },
+    { tick: releaseTickFor(load, depth, config.kind), kind: 'release' },
   ];
   const cues: CueWindow[] = [];
-  const attempts = driveAttemptsFor(load);
+  const attempts = driveAttemptsFor(load, config.kind);
   for (let index = 0; index < attempts; index += 1) {
     const opened = latestDriveCue(config, script);
     const lastKnown = cues[cues.length - 1];
@@ -955,7 +990,7 @@ function latestDriveCue(config: LiftConfig, script: readonly ScriptedInput[]): C
 
 describe('the drive tap-rate mechanic (Sprint 3 gate)', () => {
   const limit = LOAD_PRESETS.MAXIMAL;
-  const config: LiftConfig = { loadRatio: limit, seed: 20260819 };
+  const config: LiftConfig = { kind: DEFAULT_KIND, loadRatio: limit, seed: 20260819 };
 
   it('offers more than one drive cue at MAXIMAL, at or under the driveAttemptsFor(load) ceiling', () => {
     // `driveAttemptsFor` is a CEILING, not a promise every rep needs that
@@ -967,16 +1002,16 @@ describe('the drive tap-rate mechanic (Sprint 3 gate)', () => {
     // 3-attempt ceiling before it resolves. What must hold structurally is
     // that MORE than one cue is reachable at all, and never more than the
     // declared ceiling.
-    const attempts = driveAttemptsFor(limit);
+    const attempts = driveAttemptsFor(limit, config.kind);
     expect(attempts).toBeGreaterThan(1);
-    const { cues, final } = driveCueSequence(config, LIFT_TUNING.DEPTH_IDEAL, 0);
+    const { cues, final } = driveCueSequence(config, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND], 0);
     expect(cues.length).toBeGreaterThanOrEqual(2);
     expect(cues.length).toBeLessThanOrEqual(attempts);
     expect(final.drivesUsed).toBe(cues.length);
   });
 
   it('each cue is genuinely a NEW window, not the first one read twice', () => {
-    const { cues } = driveCueSequence(config, LIFT_TUNING.DEPTH_IDEAL, 0);
+    const { cues } = driveCueSequence(config, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND], 0);
     // Non-vacuity: with fewer than 2 cues the distinctness/ordering checks
     // below hold on an empty or singleton array without saying anything.
     expect(cues.length).toBeGreaterThanOrEqual(2);
@@ -1002,12 +1037,12 @@ describe('the drive tap-rate mechanic (Sprint 3 gate)', () => {
     // Landing cue 0 cleanly, then pressing again one tick later — deep
     // inside `driveSpacingTicks(MAXIMAL)`'s gap, before cue 1 has re-armed —
     // is exactly that case.
-    const cue0 = driveIdealTick(config, LIFT_TUNING.DEPTH_IDEAL);
+    const cue0 = driveIdealTick(config, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]);
     expect(cue0).not.toBeNull();
     if (cue0 === null) return;
     const cue0Script: ScriptedInput[] = [
       { tick: pressTickFor(limit), kind: 'press' },
-      { tick: releaseTickFor(limit, LIFT_TUNING.DEPTH_IDEAL), kind: 'release' },
+      { tick: releaseTickFor(limit, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]), kind: 'release' },
       { tick: cue0, kind: 'press' },
     ];
     const gapScript: ScriptedInput[] = [...cue0Script, { tick: cue0 + 1, kind: 'press' }];
@@ -1042,7 +1077,7 @@ describe('the drive tap-rate mechanic (Sprint 3 gate)', () => {
     // Land cue 0 with mediocre timing, then cue 1 dead-on — driveQuality
     // after cue 1 must read cue 1's own quality (close to 1), not a sum or
     // an average with cue 0's.
-    const { final } = driveCueSequence(config, LIFT_TUNING.DEPTH_IDEAL, 0);
+    const { final } = driveCueSequence(config, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND], 0);
     expect(final.driveQuality).toBeGreaterThan(0.9);
     expect(final.driveQuality).toBeLessThanOrEqual(1);
   });
@@ -1062,14 +1097,16 @@ describe('the drive tap-rate mechanic (Sprint 3 gate)', () => {
     // ladder's own lightest choice, is 81.1% of e1RM and gives 3; RPE10 x3,
     // the heaviest, is 92.2% and gives 5 — see liftTuning.ts's
     // DRIVE_ATTEMPTS_PER_REP header for the full RPE6-10 measurement).
-    expect(driveAttemptsFor(LOAD_RANGE.MIN)).toBe(1);
-    expect(driveAttemptsFor(LOAD_RANGE.MAX)).toBe(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL);
+    expect(driveAttemptsFor(LOAD_RANGE.MIN, DEFAULT_KIND)).toBe(1);
+    expect(driveAttemptsFor(LOAD_RANGE.MAX, DEFAULT_KIND)).toBe(
+      LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP[DEFAULT_KIND].MAXIMAL,
+    );
   });
 
   it('the drive window is narrower at MAXIMAL than at LIGHT, read back from a played cue', () => {
-    const lightConfig: LiftConfig = { loadRatio: LOAD_PRESETS.LIGHT, seed: config.seed };
-    const lightCue = driveIdealTick(lightConfig, LIFT_TUNING.DEPTH_IDEAL);
-    const heavyCue = driveCueSequence(config, LIFT_TUNING.DEPTH_IDEAL, 0).cues[0];
+    const lightConfig: LiftConfig = { kind: DEFAULT_KIND, loadRatio: LOAD_PRESETS.LIGHT, seed: config.seed };
+    const lightCue = driveIdealTick(lightConfig, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]);
+    const heavyCue = driveCueSequence(config, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND], 0).cues[0];
     expect(lightCue).not.toBeNull();
     expect(heavyCue).toBeDefined();
     const lightWidthMs = cueWindowMs('drive', lightConfig);
@@ -1131,17 +1168,17 @@ describe('the winning band at a limit attempt', () => {
     // the bar itself: with a perfectly timed drive, the net force must come back
     // to positive WHILE THE BAR IS INSIDE the sticking band the sprite system
     // draws — not before it, and not after it is already past.
-    const config: LiftConfig = { loadRatio: limit, seed: 20260801 };
+    const config: LiftConfig = { kind: DEFAULT_KIND, loadRatio: limit, seed: 20260801 };
     const base: ScriptedInput[] = [
       { tick: pressTickFor(limit), kind: 'press' },
-      { tick: releaseTickFor(limit, LIFT_TUNING.DEPTH_IDEAL), kind: 'release' },
+      { tick: releaseTickFor(limit, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]), kind: 'release' },
     ];
     const cue = armedCue(config, base, 'drive');
     expect(cue).not.toBeNull();
     if (cue === null) return;
 
     const driven = ascentOf(config, [...base, { tick: cue.idealTick, kind: 'press' }]);
-    const crossing = driven.find((s) => s.height >= STICK_HEIGHT_FRAC);
+    const crossing = driven.find((s) => s.height >= STICK_HEIGHT_FRAC[DEFAULT_KIND]);
     expect(crossing, 'the driven bar never reached the sticking point').toBeDefined();
     expect(
       crossing?.netForce ?? 0,
@@ -1152,7 +1189,7 @@ describe('the winning band at a limit attempt', () => {
     // assertion above is true of a bar that never needed driving, and the whole
     // section is measuring nothing.
     const undriven = ascentOf(config, base);
-    expect(Math.max(...undriven.map((s) => s.height))).toBeLessThan(STICK_HEIGHT_FRAC);
+    expect(Math.max(...undriven.map((s) => s.height))).toBeLessThan(STICK_HEIGHT_FRAC[DEFAULT_KIND]);
   });
 });
 
@@ -1175,7 +1212,7 @@ describe('the load the screen opens on', () => {
     expect(defaultLoad).toBeDefined();
     if (defaultLoad === undefined) return;
     expect(
-      ascentDemand(STICK_HEIGHT_FRAC, defaultLoad),
+      ascentDemand(STICK_HEIGHT_FRAC[DEFAULT_KIND], defaultLoad, DEFAULT_KIND),
       `load ${defaultLoad} never exceeds the lifter's capacity at the stick`,
     ).toBeGreaterThan(LIFT_TUNING.LIFTER_CAPACITY);
   });
@@ -1184,9 +1221,9 @@ describe('the load the screen opens on', () => {
     expect(defaultLoad).toBeDefined();
     if (defaultLoad === undefined) return;
     const undrivenAscent = (load: number): LiftState[] =>
-      ascentOf({ loadRatio: load, seed: 20260801 }, [
+      ascentOf({ kind: DEFAULT_KIND, loadRatio: load, seed: 20260801 }, [
         { tick: pressTickFor(load), kind: 'press' },
-        { tick: releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL), kind: 'release' },
+        { tick: releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]), kind: 'release' },
       ]);
 
     const here = undrivenAscent(defaultLoad);
@@ -1235,7 +1272,7 @@ describe('depth', () => {
 
   it('passes a squat that reaches legal depth', () => {
     const state = play(LOAD_PRESETS.LIGHT, {
-      depth: LIFT_TUNING.DEPTH_LEGAL + descentRate(LOAD_PRESETS.LIGHT) * 2,
+      depth: LIFT_TUNING.DEPTH_LEGAL[DEFAULT_KIND] + descentRate(LOAD_PRESETS.LIGHT, DEFAULT_KIND) * 2,
       driveOffsetTicks: 0,
     });
     expect(state.resolution?.depthAchieved).toBe(true);
@@ -1244,11 +1281,11 @@ describe('depth', () => {
 
   it('buries a player who never lets go', () => {
     const load = LOAD_PRESETS.MAXIMAL;
-    const state = runLift({ loadRatio: load, seed: 11 }, [
+    const state = runLift({ kind: DEFAULT_KIND, loadRatio: load, seed: 11 }, [
       { tick: pressTickFor(load), kind: 'press' },
     ]).final;
     expect(state.resolution?.missReason).toBe('buried');
-    expect(state.depth).toBeGreaterThanOrEqual(LIFT_TUNING.DEPTH_COLLAPSE);
+    expect(state.depth).toBeGreaterThanOrEqual(LIFT_TUNING.DEPTH_COLLAPSE[DEFAULT_KIND]);
   });
 
   it('never opens the depth cue above legal depth, at any load', () => {
@@ -1257,7 +1294,7 @@ describe('depth', () => {
     // whether the cue's front edge is legal depends on a rate that changes with
     // load. It was not, at the light end, before `depthWindowHalfTicks` existed.
     for (let load = LOAD_RANGE.MIN; load <= LOAD_RANGE.MAX; load += 0.02) {
-      const rep = runLift({ loadRatio: load, seed: 2 }, [
+      const rep = runLift({ kind: DEFAULT_KIND, loadRatio: load, seed: 2 }, [
         { tick: pressTickFor(load), kind: 'press' },
       ]);
       const withCue = rep.history.find((s) => s.activeCue?.cue === 'depth');
@@ -1267,32 +1304,32 @@ describe('depth', () => {
       const atOpen = rep.history.find((s) => s.tick === cue.openTick);
       expect(atOpen, `load ${load}`).toBeTruthy();
       expect(atOpen?.depth ?? 0, `load ${load} opens at depth`).toBeGreaterThanOrEqual(
-        LIFT_TUNING.DEPTH_LEGAL,
+        LIFT_TUNING.DEPTH_LEGAL[DEFAULT_KIND],
       );
     }
   });
 
   it('reports a depth window narrower than asked for only when it has to', () => {
-    const wide = LIFT_TUNING.DEPTH_WINDOW_MS;
+    const wide = LIFT_TUNING.DEPTH_WINDOW_MS[DEFAULT_KIND];
     // Heavy: the descent is slow, so the millisecond width is what binds.
-    expect(depthWindowHalfTicks(LOAD_PRESETS.MAXIMAL, wide)).toBe(
+    expect(depthWindowHalfTicks(LOAD_PRESETS.MAXIMAL, wide, DEFAULT_KIND)).toBe(
       Math.round(wide / TICK_MS / 2),
     );
     // Light: the descent is fast, so the legal-depth clamp binds instead.
-    expect(depthWindowHalfTicks(LOAD_PRESETS.WARMUP, wide)).toBeLessThan(
+    expect(depthWindowHalfTicks(LOAD_PRESETS.WARMUP, wide, DEFAULT_KIND)).toBeLessThan(
       Math.round(wide / TICK_MS / 2),
     );
     // Never zero, whatever it is handed.
-    expect(depthWindowHalfTicks(LOAD_PRESETS.WARMUP, 1)).toBeGreaterThanOrEqual(1);
+    expect(depthWindowHalfTicks(LOAD_PRESETS.WARMUP, 1, DEFAULT_KIND)).toBeGreaterThanOrEqual(1);
   });
 
   it('makes a deeper reversal a harder ascent', () => {
     const shallow = play(LOAD_PRESETS.HEAVY, {
-      depth: LIFT_TUNING.DEPTH_IDEAL,
+      depth: LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND],
       driveOffsetTicks: 0,
     });
     const deep = play(LOAD_PRESETS.HEAVY, {
-      depth: LIFT_TUNING.DEPTH_IDEAL + 0.2,
+      depth: LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND] + 0.2,
       driveOffsetTicks: 0,
     });
     expect(deep.extraDepth).toBeGreaterThan(shallow.extraDepth);
@@ -1316,9 +1353,9 @@ describe('depth', () => {
 describe('the sticking point', () => {
   it('is where a real rep actually stalls', () => {
     const load = LOAD_PRESETS.MAXIMAL;
-    const rep = runLift({ loadRatio: load, seed: 77 }, [
+    const rep = runLift({ kind: DEFAULT_KIND, loadRatio: load, seed: 77 }, [
       { tick: pressTickFor(load), kind: 'press' },
-      { tick: releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL), kind: 'release' },
+      { tick: releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]), kind: 'release' },
     ]);
     const stalled = rep.history.filter(
       (s) => s.phase === 'ASCENT' && s.velocity < LIFT_TUNING.GRIND_STALL_VELOCITY,
@@ -1327,14 +1364,14 @@ describe('the sticking point', () => {
     const meanHeight =
       stalled.reduce((a, s) => a + s.height, 0) / Math.max(1, stalled.length);
     // Inside the notch the sprite system draws, not merely somewhere on the way up.
-    expect(Math.abs(meanHeight - STICK_HEIGHT_FRAC)).toBeLessThan(STICK.WIDTH * 2);
+    expect(Math.abs(meanHeight - STICK_HEIGHT_FRAC[DEFAULT_KIND])).toBeLessThan(STICK.WIDTH * 2);
   });
 
   it('drifts the bar forward most where it stalls, and more under load', () => {
     const peakForward = (load: number): { px: number; atHeight: number } => {
-      const rep = runLift({ loadRatio: load, seed: 5 }, [
+      const rep = runLift({ kind: DEFAULT_KIND, loadRatio: load, seed: 5 }, [
         { tick: pressTickFor(load), kind: 'press' },
-        { tick: releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL), kind: 'release' },
+        { tick: releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]), kind: 'release' },
       ]);
       let px = 0;
       let atHeight = 0;
@@ -1350,14 +1387,14 @@ describe('the sticking point', () => {
     const light = peakForward(LOAD_PRESETS.LIGHT);
     const maximal = peakForward(LOAD_PRESETS.MAXIMAL);
     expect(maximal.px).toBeGreaterThan(light.px * 2);
-    expect(Math.abs(maximal.atHeight - STICK_HEIGHT_FRAC)).toBeLessThan(STICK.WIDTH * 2);
+    expect(Math.abs(maximal.atHeight - STICK_HEIGHT_FRAC[DEFAULT_KIND])).toBeLessThan(STICK.WIDTH * 2);
   });
 
   it('shakes and tilts the bar only when the lifter is losing', () => {
     const peaks = (load: number): { lateral: number; tilt: number } => {
-      const rep = runLift({ loadRatio: load, seed: 5 }, [
+      const rep = runLift({ kind: DEFAULT_KIND, loadRatio: load, seed: 5 }, [
         { tick: pressTickFor(load), kind: 'press' },
-        { tick: releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL), kind: 'release' },
+        { tick: releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]), kind: 'release' },
       ]);
       return {
         lateral: rep.history.reduce((m, s) => Math.max(m, Math.abs(s.barLateralPx)), 0),
@@ -1374,9 +1411,9 @@ describe('the sticking point', () => {
 
   it('bows the bar harder under load', () => {
     const peakBend = (load: number): number => {
-      const rep = runLift({ loadRatio: load, seed: 5 }, [
+      const rep = runLift({ kind: DEFAULT_KIND, loadRatio: load, seed: 5 }, [
         { tick: pressTickFor(load), kind: 'press' },
-        { tick: releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL), kind: 'release' },
+        { tick: releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]), kind: 'release' },
       ]);
       return rep.history.reduce((m, s) => Math.max(m, s.barBendPx), 0);
     };
@@ -1391,7 +1428,7 @@ describe('the sticking point', () => {
 
 describe('fatigue integration', () => {
   it('tightens both windows when fatigued and widens them when primed', () => {
-    const base: LiftConfig = { loadRatio: LOAD_PRESETS.MAXIMAL, seed: 1 };
+    const base: LiftConfig = { kind: DEFAULT_KIND, loadRatio: LOAD_PRESETS.MAXIMAL, seed: 1 };
     for (const cue of LIFT_CUES) {
       const neutral = cueWindowMs(cue, base);
       const primed = cueWindowMs(cue, { ...base, feel: primedFeel() });
@@ -1403,8 +1440,9 @@ describe('fatigue integration', () => {
 
   it('tightens the window further deeper into a session', () => {
     const feel = fatiguedFeel();
-    const start = cueWindowMs('drive', { loadRatio: 1, seed: 1, feel });
+    const start = cueWindowMs('drive', { kind: DEFAULT_KIND, loadRatio: 1, seed: 1, feel });
     const late = cueWindowMs('drive', {
+      kind: DEFAULT_KIND,
       loadRatio: 1,
       seed: 1,
       feel,
@@ -1423,10 +1461,10 @@ describe('fatigue integration', () => {
   });
 
   it('gives a primed lifter more output than a fatigued one', () => {
-    const primed = lifterCapacity({ loadRatio: 1, seed: 1, feel: primedFeel() });
-    const tired = lifterCapacity({ loadRatio: 1, seed: 1, feel: fatiguedFeel() });
+    const primed = lifterCapacity({ kind: DEFAULT_KIND, loadRatio: 1, seed: 1, feel: primedFeel() });
+    const tired = lifterCapacity({ kind: DEFAULT_KIND, loadRatio: 1, seed: 1, feel: fatiguedFeel() });
     expect(primed).toBeGreaterThan(tired);
-    expect(lifterCapacity({ loadRatio: 1, seed: 1 })).toBe(LIFT_TUNING.LIFTER_CAPACITY);
+    expect(lifterCapacity({ kind: DEFAULT_KIND, loadRatio: 1, seed: 1 })).toBe(LIFT_TUNING.LIFTER_CAPACITY);
   });
 
   it('leaves a fatigued lifter a strictly narrower band of makes', () => {
@@ -1493,7 +1531,7 @@ describe('read models', () => {
         script: [
           { tick: pressTickFor(LOAD_PRESETS.MAXIMAL), kind: 'press' },
           {
-            tick: releaseTickFor(LOAD_PRESETS.MAXIMAL, LIFT_TUNING.DEPTH_IDEAL),
+            tick: releaseTickFor(LOAD_PRESETS.MAXIMAL, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]),
             kind: 'release',
           },
         ],
@@ -1511,22 +1549,22 @@ describe('read models', () => {
       },
     ];
     for (const { load, script } of scripts) {
-      for (const state of runLift({ loadRatio: load, seed: 3 }, script).history) {
+      for (const state of runLift({ kind: DEFAULT_KIND, loadRatio: load, seed: 3 }, script).history) {
         for (const event of state.events) seen.add(event.kind);
       }
     }
     // A well-driven rep, for the drive-hit and lockout kinds.
-    const ideal = driveIdealTick({ loadRatio: 0.88, seed: 3 }, LIFT_TUNING.DEPTH_IDEAL);
+    const ideal = driveIdealTick({ kind: DEFAULT_KIND, loadRatio: 0.88, seed: 3 }, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]);
     if (ideal !== null) {
-      const driven = runLift({ loadRatio: 0.88, seed: 3 }, [
+      const driven = runLift({ kind: DEFAULT_KIND, loadRatio: 0.88, seed: 3 }, [
         { tick: pressTickFor(0.88), kind: 'press' },
-        { tick: releaseTickFor(0.88, LIFT_TUNING.DEPTH_IDEAL), kind: 'release' },
+        { tick: releaseTickFor(0.88, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]), kind: 'release' },
         { tick: ideal, kind: 'press' },
       ]);
       for (const state of driven.history) for (const e of state.events) seen.add(e.kind);
     }
     // A drive thrown before the cue armed, for drive-mistimed.
-    const mistimed = runLift({ loadRatio: 0.88, seed: 3 }, earlyDriveScript(0.88));
+    const mistimed = runLift({ kind: DEFAULT_KIND, loadRatio: 0.88, seed: 3 }, earlyDriveScript(0.88));
     for (const state of mistimed.history) for (const e of state.events) seen.add(e.kind);
     return seen;
   }
@@ -1560,11 +1598,11 @@ describe('read models', () => {
   it('reaches every phase across the reps a player can produce', () => {
     const seen = new Set<LiftPhase>();
     const load = LOAD_PRESETS.LIGHT;
-    const ideal = driveIdealTick({ loadRatio: load, seed: 3 }, LIFT_TUNING.DEPTH_IDEAL);
+    const ideal = driveIdealTick({ kind: DEFAULT_KIND, loadRatio: load, seed: 3 }, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]);
     expect(ideal).not.toBeNull();
-    const rep = runLift({ loadRatio: load, seed: 3 }, [
+    const rep = runLift({ kind: DEFAULT_KIND, loadRatio: load, seed: 3 }, [
       { tick: pressTickFor(load), kind: 'press' },
-      { tick: releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL), kind: 'release' },
+      { tick: releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL[DEFAULT_KIND]), kind: 'release' },
       { tick: ideal ?? 0, kind: 'press' },
     ]);
     seen.add('BRACE');
@@ -1575,13 +1613,13 @@ describe('read models', () => {
   });
 
   it('shows a different prompt for every phase', () => {
-    const base = createLift({ loadRatio: 1, seed: 1 });
+    const base = createLift({ kind: DEFAULT_KIND, loadRatio: 1, seed: 1 });
     const prompts = LIFT_PHASES.map((phase) => promptFor({ ...base, phase }));
     expect(new Set(prompts).size).toBe(LIFT_PHASES.length);
   });
 
   it('switches the ascent prompt when the cue opens', () => {
-    const base = createLift({ loadRatio: 1, seed: 1 });
+    const base = createLift({ kind: DEFAULT_KIND, loadRatio: 1, seed: 1 });
     const armed: LiftState = {
       ...base,
       phase: 'ASCENT',
@@ -1592,7 +1630,7 @@ describe('read models', () => {
         openTick: 110,
         idealTick: 120,
         closeTick: 130,
-        widthMs: LIFT_TUNING.DRIVE_WINDOW_MS.MAXIMAL,
+        widthMs: LIFT_TUNING.DRIVE_WINDOW_MS[DEFAULT_KIND].MAXIMAL,
       },
     };
     expect(promptFor(armed)).toBe(LIFT_COPY.PROMPT.ASCENT_BEFORE_CUE);
@@ -1603,7 +1641,7 @@ describe('read models', () => {
   });
 
   it('reports cue progress as 0 at the open and 1 at the ideal moment', () => {
-    const base = createLift({ loadRatio: 1, seed: 1 });
+    const base = createLift({ kind: DEFAULT_KIND, loadRatio: 1, seed: 1 });
     expect(cueProgress(base)).toBeNull();
     const cue = {
       cue: 'drive' as const,
@@ -1611,7 +1649,7 @@ describe('read models', () => {
       openTick: 100,
       idealTick: 120,
       closeTick: 140,
-      widthMs: LIFT_TUNING.DRIVE_WINDOW_MS.MAXIMAL,
+      widthMs: LIFT_TUNING.DRIVE_WINDOW_MS[DEFAULT_KIND].MAXIMAL,
     };
     expect(cueProgress({ ...base, tick: 100, activeCue: cue })).toBe(0);
     expect(cueProgress({ ...base, tick: 120, activeCue: cue })).toBe(1);
@@ -1620,7 +1658,7 @@ describe('read models', () => {
 
   it('reports a window whose width matches the ticks it spans', () => {
     const load = LOAD_PRESETS.MAXIMAL;
-    const rep = runLift({ loadRatio: load, seed: 3 }, [
+    const rep = runLift({ kind: DEFAULT_KIND, loadRatio: load, seed: 3 }, [
       { tick: pressTickFor(load), kind: 'press' },
     ]);
     const withCue = rep.history.find((s) => s.activeCue !== null);
@@ -1639,7 +1677,7 @@ describe('read models', () => {
 
 describe('createLift and stepLift', () => {
   it('starts standing, braced and untouched', () => {
-    const state = createLift({ loadRatio: LOAD_PRESETS.MAXIMAL, seed: 1 });
+    const state = createLift({ kind: DEFAULT_KIND, loadRatio: LOAD_PRESETS.MAXIMAL, seed: 1 });
     expect(state.phase).toBe('BRACE');
     expect(state.depth).toBe(0);
     expect(state.held).toBe(false);
@@ -1649,9 +1687,9 @@ describe('createLift and stepLift', () => {
   });
 
   it('refuses a nonsense config', () => {
-    expect(() => createLift({ loadRatio: 0, seed: 1 })).toThrow(RangeError);
-    expect(() => createLift({ loadRatio: Number.NaN, seed: 1 })).toThrow(RangeError);
-    expect(() => createLift({ loadRatio: 1, seed: Number.POSITIVE_INFINITY })).toThrow(RangeError);
+    expect(() => createLift({ kind: DEFAULT_KIND, loadRatio: 0, seed: 1 })).toThrow(RangeError);
+    expect(() => createLift({ kind: DEFAULT_KIND, loadRatio: Number.NaN, seed: 1 })).toThrow(RangeError);
+    expect(() => createLift({ kind: DEFAULT_KIND, loadRatio: 1, seed: Number.POSITIVE_INFINITY })).toThrow(RangeError);
   });
 
   it('stops advancing once resolved, and stops re-emitting events', () => {
@@ -1664,7 +1702,7 @@ describe('createLift and stepLift', () => {
   });
 
   it('starts the descent on its own if the player never presses', () => {
-    const rep = runLift({ loadRatio: LOAD_PRESETS.LIGHT, seed: 1 }, []);
+    const rep = runLift({ kind: DEFAULT_KIND, loadRatio: LOAD_PRESETS.LIGHT, seed: 1 }, []);
     expect(rep.final.phase).toBe('RESOLVED');
     expect(rep.final.timings.length).toBeGreaterThan(0);
   });

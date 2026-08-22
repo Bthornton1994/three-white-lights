@@ -745,7 +745,7 @@ describe('a worse-executed rep banks a smaller gain — driven end to end from a
   const SEED = 20260820;
 
   function playedReport(offsetTicks: number): { readonly quality: number; readonly report: TrainingSetReport } {
-    const config: LiftConfig = { loadRatio: LOAD_RATIO, seed: SEED };
+    const config: LiftConfig = { kind: 'squat', loadRatio: LOAD_RATIO, seed: SEED };
     let state: LiftState = createLift(config);
     let ticks = 0;
     while (state.phase !== 'RESOLVED' && ticks < 1000) {

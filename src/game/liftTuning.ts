@@ -97,17 +97,69 @@ import {
   loadT,
   type LoadEndpoints,
 } from '../art/spriteTuning';
+import type { LiftKind } from './meet';
 
 export { LOAD_PRESETS, LOAD_RANGE, TICK_HZ, TICK_MS, byLoad, clampLoadRatio, loadT };
 export type { LoadEndpoints };
 
 /**
- * WHERE THE STICKING POINT IS, and how wide it is — re-exported from the sprite
- * system rather than restated, so the height the bar mechanically stalls at is
- * the height the lifter is drawn fighting at. See the header.
+ * `LiftKind` has three members (`meet.ts`); this build only has one lift's
+ * mechanic playable. Deliberately narrower than `LiftKind` rather than a
+ * `Partial<Record<LiftKind, ...>>` with a runtime check for the missing
+ * third: TypeScript enforces every per-kind table below is complete for
+ * every kind this module can actually be asked to simulate, and a call site
+ * passing `'deadlift'` is a compile error rather than an unhandled case
+ * discovered at runtime. Widens to the full `LiftKind` when deadlift's own
+ * phase-model piece lands — one type edit, plus that lift's own table rows.
  */
-export const STICK_HEIGHT_FRAC = STICK.HEIGHT_FRAC;
-export const STICK_WIDTH = STICK.WIDTH;
+export type PlayableLiftKind = Extract<LiftKind, 'squat' | 'bench'>;
+
+export const PLAYABLE_LIFT_KINDS = Object.freeze(['squat', 'bench'] as const satisfies readonly PlayableLiftKind[]);
+
+/**
+ * Which playable kind a real `LiftKind` day or attempt should be simulated as.
+ *
+ * CLAUDE.md's Sprint 3 ruling: deadlift's phase model is a serial follow-up,
+ * not a parallel build, because it has no eccentric phase and cannot run
+ * through squat's BRACE -> DESCENT -> HOLE -> ASCENT shape. `LIFT_ROTATION`
+ * and every meet already cycle through deadlift regardless, so until that
+ * piece lands, a deadlift rep plays on squat's numbers — the same placeholder
+ * fidelity every kind had before `LiftConfig.kind` was required, now written
+ * down in one place instead of left for each caller to decide separately.
+ * Not a claim that deadlift feels like a squat.
+ */
+export function simKindFor(lift: LiftKind): PlayableLiftKind {
+  return lift === 'deadlift' ? 'squat' : lift;
+}
+
+/** A `{LIGHT, MAXIMAL}` pair, one per playable lift kind. */
+type PerKind<T> = Readonly<Record<PlayableLiftKind, T>>;
+
+/**
+ * WHERE THE STICKING POINT IS, and how wide it is — per lift kind.
+ *
+ * squat's pair is re-exported from the sprite system rather than restated, so
+ * the height the bar mechanically stalls at is the height the lifter is drawn
+ * fighting at (see `spriteTuning.ts`'s own header). bench has no analogous
+ * animation system yet — there is no `benchAnimation.ts` this needs to stay
+ * in sync with — so its pair is a local placeholder rather than an import.
+ *
+ * BENCH'S NUMBERS, REASONED RATHER THAN MEASURED: a bench sticking point is
+ * commonly felt low in the press, shortly after the bar leaves the chest —
+ * lower than squat's mid-range stall (0.34) — so 0.20. The stall band is kept
+ * comparably narrow (0.12 vs squat's 0.14): an "off the chest" grind reads as
+ * a sharper, shorter-lived event than a squat's more sustained mid-range
+ * fight. Neither number has been played. GDD §10's ~30-iteration expectation
+ * applies here exactly as it does to every squat value in this file.
+ */
+export const STICK_HEIGHT_FRAC: PerKind<number> = Object.freeze({
+  squat: STICK.HEIGHT_FRAC,
+  bench: 0.2,
+});
+export const STICK_WIDTH: PerKind<number> = Object.freeze({
+  squat: STICK.WIDTH,
+  bench: 0.12,
+});
 
 /** One haptic beat. `style` is mapped to the platform API by the UI layer. */
 export type HapticStyle =
@@ -167,56 +219,86 @@ export const LIFT_TUNING = Object.freeze({
   // -------------------------------------------------------------------------
 
   /**
-   * Depth gained per tick while the player holds. Heavier descends SLOWER, not
-   * faster — a limit squat is controlled down, and a bar that fell faster under
-   * load would read as weightless.
+   * Depth gained per tick while the player holds, per lift kind. Heavier
+   * descends SLOWER, not faster — a limit attempt is controlled down, and a
+   * bar that fell faster under load would read as weightless.
    *
-   * At the MAXIMAL endpoint, 1.0 depth takes 1/0.0155 = 65 ticks = 1.08 s.
+   * squat, at the MAXIMAL endpoint: 1.0 depth takes 1/0.0155 = 65 ticks =
+   * 1.08 s. bench's pair is a placeholder chosen faster than squat's — a
+   * bench eccentric is a shorter range of motion — not measured: MAXIMAL
+   * takes 1/0.019 ≈ 53 ticks ≈ 0.88 s. Not played; GDD §10 applies.
    */
-  DESCENT_DEPTH_PER_TICK: { LIGHT: 0.0278, MAXIMAL: 0.0155 },
+  DESCENT_DEPTH_PER_TICK: {
+    squat: { LIGHT: 0.0278, MAXIMAL: 0.0155 },
+    bench: { LIGHT: 0.034, MAXIMAL: 0.019 },
+  } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
   /**
-   * The brace beat before the descent starts. The player's first press begins
-   * the descent; this is how long the "SET" prompt is shown before input is
-   * accepted, so a mashed press does not immediately start the rep.
+   * The brace beat before the descent starts, per lift kind. The player's
+   * first press begins the descent; this is how long the "SET" prompt is
+   * shown before input is accepted, so a mashed press does not immediately
+   * start the rep. bench's pair is shorter than squat's — unracking is
+   * quicker than a squat's brace-and-walkout — a placeholder, not measured.
    */
-  BRACE_TICKS: { LIGHT: 14, MAXIMAL: 34 },
+  BRACE_TICKS: {
+    squat: { LIGHT: 14, MAXIMAL: 34 },
+    bench: { LIGHT: 10, MAXIMAL: 26 },
+  } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
   /** Longest the brace will wait for a press before starting the descent itself. */
   BRACE_TIMEOUT_TICKS: 600,
 
   // -------------------------------------------------------------------------
-  // Depth — GDD §6.2: "Squat — depth timing check in the hole"
+  // Depth — GDD §6.2: "Squat — depth timing check in the hole", "Bench —
+  // press-timing / bar-speed check off the chest". Same field names, one
+  // reading per kind: for squat this is hip-crease depth in the hole; for
+  // bench it is how far the bar has travelled toward the chest, and the
+  // "reversal" this section's DESCENT phase asks for is the chest touch.
   // -------------------------------------------------------------------------
 
   /**
-   * Depth at which the lift is legal. Releasing above this is a high squat and
-   * resolves as a miss with reason 'no-depth', which is what the red light is
-   * for in the real sport. Not a difficulty knob so much as the rule.
+   * Depth at which the lift is legal, per kind. Releasing above this misses
+   * with reason 'no-depth' — a high squat for squat, an incomplete chest
+   * touch for bench. Not a difficulty knob so much as the rule.
+   *
+   * BENCH SET STRICTER THAN SQUAT'S (0.92 vs 0.8, both against the same
+   * IDEAL=1.0): a partial bench press is a more binary, more strictly judged
+   * foul in the real sport than squat's depth standard, which has more
+   * legitimate room to be "close enough". A placeholder reasoned from that,
+   * not measured — GDD §10 applies.
    */
-  DEPTH_LEGAL: 0.8,
+  DEPTH_LEGAL: { squat: 0.8, bench: 0.92 } satisfies PerKind<number>,
 
-  /** The depth the timing window is centred on. Where a good rep reverses. */
-  DEPTH_IDEAL: 1.0,
+  /** The depth the timing window is centred on, per kind. Where a good rep reverses. Same for both. */
+  DEPTH_IDEAL: { squat: 1.0, bench: 1.0 } satisfies PerKind<number>,
 
   /**
-   * Past this the lifter is buried and the rep is over — miss, reason 'buried'.
-   * A player who never releases gets here on their own, which is the point:
-   * doing nothing is a distinct failure with its own texture.
+   * Past this the lifter is buried and the rep is over — miss, reason
+   * 'buried'. A player who never releases gets here on their own, which is
+   * the point: doing nothing is a distinct failure with its own texture.
+   *
+   * BENCH'S MARGIN ABOVE IDEAL IS SMALLER THAN SQUAT'S (1.15 vs 1.3): a chest
+   * does not compress nearly as far as a hip can sink into a squat's bottom,
+   * so bouncing/sinking into the chest reaches its own foul sooner. Not
+   * measured; a placeholder reasoned the same way as DEPTH_LEGAL above.
    */
-  DEPTH_COLLAPSE: 1.3,
+  DEPTH_COLLAPSE: { squat: 1.3, bench: 1.15 } satisfies PerKind<number>,
 
   /**
-   * Full width of the depth window, ms. The player must release inside
-   * `ideal ± width/2`. Outside it but still between DEPTH_LEGAL and
+   * Full width of the depth window, ms, per kind. The player must release
+   * inside `ideal ± width/2`. Outside it but still between DEPTH_LEGAL and
    * DEPTH_COLLAPSE is legal-but-sloppy: it grades 'missed' and costs reversal
    * speed, it does not end the rep.
    *
    * `fatigue.ts` scales this (GDD §3.4, tighter when fatigued). The IDEAL does
    * not move when it does — the window shrinks symmetrically about it — so a
    * fatigued player is asked for the same moment, more precisely.
+   *
+   * BENCH NARROWER THAN SQUAT'S (260ms vs 300ms): a chest touch is a more
+   * discrete, more quickly-over event than a squat's hole, with less natural
+   * room for a sloppy-but-legal middle. A placeholder, not measured.
    */
-  DEPTH_WINDOW_MS: 300,
+  DEPTH_WINDOW_MS: { squat: 300, bench: 260 } satisfies PerKind<number>,
 
   /**
    * Extra demand per unit of depth past DEPTH_IDEAL. Being buried makes the
@@ -228,8 +310,15 @@ export const LIFT_TUNING = Object.freeze({
   // Reversal out of the hole
   // -------------------------------------------------------------------------
 
-  /** Ticks spent at the bottom before the ascent begins. */
-  HOLE_TICKS: { LIGHT: 4, MAXIMAL: 12 },
+  /**
+   * Ticks spent at the bottom before the ascent begins, per kind. bench's
+   * pair is slightly longer than squat's — the sport requires a visible
+   * command pause at the chest — a placeholder, not measured.
+   */
+  HOLE_TICKS: {
+    squat: { LIGHT: 4, MAXIMAL: 12 },
+    bench: { LIGHT: 5, MAXIMAL: 14 },
+  } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
   /**
    * Velocity the bar leaves the hole with, at depth timing quality 0 and 1.
@@ -283,37 +372,60 @@ export const LIFT_TUNING = Object.freeze({
   MAX_SINK_VELOCITY: 0.02,
 
   /**
-   * Demand away from the sticking point, as a multiple of LIFTER_CAPACITY.
-   * At the MAXIMAL endpoint this is 0.86, so even the easy part of a limit
-   * squat is most of what the lifter has.
+   * Demand away from the sticking point, as a multiple of LIFTER_CAPACITY,
+   * per kind. squat's MAXIMAL is 0.86, so even the easy part of a limit squat
+   * is most of what the lifter has.
+   *
+   * BENCH SET SLIGHTLY LOWER (0.80), WITH MORE OF THE LIFT'S DIFFICULTY MOVED
+   * INTO THE STICK GAIN BELOW — reasoned rather than measured: a bench grind
+   * is commonly described as fine everywhere except right off the chest,
+   * more so than a squat's more evenly-distributed grind. GDD §10 applies.
    */
-  DEMAND_BASE: { LIGHT: 0.42, MAXIMAL: 0.86 },
+  DEMAND_BASE: {
+    squat: { LIGHT: 0.42, MAXIMAL: 0.86 },
+    bench: { LIGHT: 0.38, MAXIMAL: 0.8 },
+  } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
   /**
-   * Extra demand at the peak of the sticking point. Added to DEMAND_BASE, so at
-   * the MAXIMAL endpoint the peak is 0.86 + 0.52 = 1.38 — comfortably above
+   * Extra demand at the peak of the sticking point, per kind. Added to
+   * DEMAND_BASE. squat's MAXIMAL peak: 0.86 + 0.48 = 1.34 — comfortably above
    * capacity, which is why an undriven maximal attempt goes backwards.
    *
    * THIS IS THE NUMBER THAT MAKES THE GRIND EXIST. Set it low enough that
    * base + gain < LIFTER_CAPACITY at every load and the bar never stalls, the
    * drive input never matters, and the mechanic is a cutscene.
-   * `liftTuning.test.ts` fails if that happens.
+   * `liftTuning.test.ts` fails if that happens, for every kind in
+   * `PLAYABLE_LIFT_KINDS`, not only squat.
+   *
+   * BENCH'S GAIN IS LARGER THAN SQUAT'S (0.55 vs 0.48) — the flip side of
+   * DEMAND_BASE above: bench's MAXIMAL peak is 0.80 + 0.55 = 1.35, a
+   * comparable margin above capacity to squat's, reached by a sharper stick
+   * rather than a higher base. Reasoned, not measured.
    */
-  DEMAND_STICK_GAIN: { LIGHT: 0.06, MAXIMAL: 0.48 },
+  DEMAND_STICK_GAIN: {
+    squat: { LIGHT: 0.06, MAXIMAL: 0.48 },
+    bench: { LIGHT: 0.05, MAXIMAL: 0.55 },
+  } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
   // -------------------------------------------------------------------------
   // The drive input — the beat this whole piece is about
   // -------------------------------------------------------------------------
 
   /**
-   * Bar height at which the drive cue arms. Below the sticking point, so the
-   * cue appears as the bar starts into the hard part rather than after it.
+   * Bar height at which the drive cue arms, per kind. Below the sticking
+   * point, so the cue appears as the bar starts into the hard part rather
+   * than after it.
    *
    * Height-anchored rather than time-anchored on purpose: the ascent's timing
    * depends on player input, so there is no tick known in advance at which the
    * bar reaches the stick.
+   *
+   * BENCH ARMS CLOSER TO ITS OWN (LOWER) STICKING POINT (0.10 vs squat's
+   * 0.16, against STICK_HEIGHT_FRAC 0.20 vs squat's 0.34) — proportionally
+   * similar lead-in gap to squat's, scaled to bench's shorter run-up to the
+   * stick. Not measured.
    */
-  DRIVE_ARM_HEIGHT: 0.16,
+  DRIVE_ARM_HEIGHT: { squat: 0.16, bench: 0.1 } satisfies PerKind<number>,
 
   /**
    * Ms after arming at which the drive is perfectly timed. The window is
@@ -338,9 +450,22 @@ export const LIFT_TUNING = Object.freeze({
    * 260ms keeps `DRIVE_IDEAL_LEAD_MS` (270ms) safely above half of it, so the
    * "open after arming, not before" invariant holds at every load without
    * being re-derived per load — `liftTuning.test.ts` checks that at both
-   * endpoints rather than assuming the middle is fine because the ends are.
+   * endpoints, for every kind in `PLAYABLE_LIFT_KINDS`, rather than assuming
+   * the middle is fine because the ends are.
+   *
+   * BENCH REUSES SQUAT'S JUST-PLAYTESTED PAIR RATHER THAN GUESSING A NEW ONE.
+   * squat's precision axis (this constant) was the subject of Sprint 3's
+   * Finding 1/Finding 2 phone re-tests and is the one piece of this file with
+   * real human signal behind it. Bench has none yet, so starting from the
+   * verified numbers is a more defensible placeholder than inventing a
+   * different pair with no basis — explicitly not a claim that bench's
+   * precision axis needs the same width, only that this is where a re-test
+   * should start from.
    */
-  DRIVE_WINDOW_MS: { LIGHT: 380, MAXIMAL: 260 },
+  DRIVE_WINDOW_MS: {
+    squat: { LIGHT: 380, MAXIMAL: 260 },
+    bench: { LIGHT: 380, MAXIMAL: 260 },
+  } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
   /**
    * Instant velocity added by a perfectly timed drive, scaled by quality.
@@ -445,8 +570,19 @@ export const LIFT_TUNING = Object.freeze({
    * feel value — GDD §10's ~30-iteration expectation applies to this number
    * same as every other — but the specific complaint this retune answers is
    * closed, not merely built.
+   *
+   * ALL OF THE ABOVE IS SQUAT'S HISTORY, KEPT AS SQUAT'S HISTORY — it is not
+   * evidence about bench. BENCH'S MAXIMAL IS A FRESH, UNTESTED PLACEHOLDER
+   * (3, not 6): GDD §6.2 names bench's check as one "press-timing" event off
+   * the chest, singular, not the sustained multi-cue rhythm squat's re-tests
+   * specifically asked for — so starting bench lower than squat's freshly-
+   * tuned 6 is the more defensible first guess, not a derivation. No phone
+   * re-test has touched bench's tap-rate axis at all yet.
    */
-  DRIVE_ATTEMPTS_PER_REP: { LIGHT: 1, MAXIMAL: 6 },
+  DRIVE_ATTEMPTS_PER_REP: {
+    squat: { LIGHT: 1, MAXIMAL: 6 },
+    bench: { LIGHT: 1, MAXIMAL: 3 },
+  } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
   /**
    * Ms between one drive cue resolving (hit, mistimed, or left unpressed as
@@ -469,8 +605,19 @@ export const LIFT_TUNING = Object.freeze({
    * this only shrinks how soon after one cue resolves the next is ALLOWED to
    * arm, which is the "gap between taps" half of what made 3 cues at 380ms
    * read as isolated rather than a run.
+   *
+   * BENCH'S PAIR IS ITS OWN FRESH PLACEHOLDER, LOOSER THAN SQUAT'S RETUNED
+   * 60MS. With only 3 cues to fit (`DRIVE_ATTEMPTS_PER_REP.bench.MAXIMAL`)
+   * against the same 2833ms `ASCENT_TIMEOUT_TICKS` budget, there is no
+   * structural pressure to tighten this the way squat's 6-cue sequence
+   * needed — worst case at 150ms spacing is 1500ms, 1333ms of margin. Not
+   * measured against a human; a defensible starting point given the budget,
+   * nothing more.
    */
-  DRIVE_ATTEMPTS_SPACING_MS: { LIGHT: 600, MAXIMAL: 60 },
+  DRIVE_ATTEMPTS_SPACING_MS: {
+    squat: { LIGHT: 600, MAXIMAL: 60 },
+    bench: { LIGHT: 600, MAXIMAL: 150 },
+  } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
   /**
    * Velocity lost by driving outside the window — too early, or after it has
@@ -524,8 +671,15 @@ export const LIFT_TUNING = Object.freeze({
    */
   ASCENT_TIMEOUT_TICKS: 170,
 
-  /** Ticks standing at lockout before the rep resolves. */
-  LOCKOUT_TICKS: { LIGHT: 8, MAXIMAL: 16 },
+  /**
+   * Ticks standing at lockout before the rep resolves, per kind. bench
+   * reuses squat's pair unchanged — no reasoned basis to differ found while
+   * building bench's other constants, so kept equal rather than invented.
+   */
+  LOCKOUT_TICKS: {
+    squat: { LIGHT: 8, MAXIMAL: 16 },
+    bench: { LIGHT: 8, MAXIMAL: 16 },
+  } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
   // -------------------------------------------------------------------------
   // Grind classification — a make that was ugly

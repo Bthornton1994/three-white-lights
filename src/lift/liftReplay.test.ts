@@ -63,7 +63,10 @@ describe('captureScript', () => {
     // Without this the capture cannot photograph a lockout at all, and the
     // sequence quietly degrades into the failure it exists to prevent.
     for (const load of CHOICES) {
-      const final = runLift({ loadRatio: load, seed: CAPTURE_SEED }, captureScript(load)).final;
+      const final = runLift(
+        { kind: 'squat', loadRatio: load, seed: CAPTURE_SEED },
+        captureScript(load),
+      ).final;
       expect(final.resolution?.outcome, `load ${load}`).not.toBe('miss');
       expect(final.resolution?.depthAchieved, `load ${load}`).toBe(true);
       expect(final.peakHeight, `load ${load}`).toBe(1);
@@ -85,7 +88,7 @@ describe('captureScript', () => {
     // nothing.
     const load = MAXIMAL;
     const script = captureScript(load);
-    const replay = runLift({ loadRatio: load, seed: CAPTURE_SEED }, script);
+    const replay = runLift({ kind: 'squat', loadRatio: load, seed: CAPTURE_SEED }, script);
     const depth = replay.final.timings.find((t) => t.cue === 'depth');
     const drive = replay.final.timings.find((t) => t.cue === 'drive');
     expect(depth?.offsetMs).toBe(0);
@@ -142,7 +145,7 @@ describe('captureFrames', () => {
 
   it('photographs the maximal attempt at the height the sprite draws a stall at', () => {
     const frame = frameAt(MAXIMAL, 'sticking-point');
-    expect(Math.abs(frame.state.height - STICK_HEIGHT_FRAC)).toBeLessThan(STICK.WIDTH);
+    expect(Math.abs(frame.state.height - STICK_HEIGHT_FRAC.squat)).toBeLessThan(STICK.WIDTH);
   });
 
   it('draws the maximal attempt more strained than the light one at the same beat', () => {

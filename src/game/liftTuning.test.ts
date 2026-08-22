@@ -26,6 +26,7 @@ import {
   LIFT_TUNING,
   LOAD_PRESETS,
   LOAD_RANGE,
+  PLAYABLE_LIFT_KINDS,
   STICK_HEIGHT_FRAC,
   STICK_WIDTH,
   TICK_HZ,
@@ -34,6 +35,7 @@ import {
   clampLoadRatio,
   loadT,
   type HapticStyle,
+  type PlayableLiftKind,
 } from './liftTuning';
 import {
   STICK,
@@ -55,14 +57,18 @@ describe('shared facts', () => {
     expect(TICK_MS).toBeCloseTo(1000 / TICK_HZ, 9);
   });
 
-  it('puts the mechanical sticking point where the sprite draws one', () => {
+  it('puts the mechanical sticking point where the sprite draws one, for squat', () => {
     // If these ever disagree the bar stalls at one height and the lifter is
     // drawn fighting at another, which is the kind of incoherence that is
-    // invisible in either file on its own.
-    expect(STICK_HEIGHT_FRAC).toBe(STICK.HEIGHT_FRAC);
-    expect(STICK_WIDTH).toBe(STICK.WIDTH);
-    expect(STICK_HEIGHT_FRAC).toBeGreaterThan(0);
-    expect(STICK_HEIGHT_FRAC).toBeLessThan(1);
+    // invisible in either file on its own. SQUAT ONLY: `spriteTuning.ts`'s
+    // `STICK` constants are the canned squat animation's, and bench has no
+    // sprite of its own yet to agree or disagree with.
+    expect(STICK_HEIGHT_FRAC.squat).toBe(STICK.HEIGHT_FRAC);
+    expect(STICK_WIDTH.squat).toBe(STICK.WIDTH);
+    for (const kind of PLAYABLE_LIFT_KINDS) {
+      expect(STICK_HEIGHT_FRAC[kind], kind).toBeGreaterThan(0);
+      expect(STICK_HEIGHT_FRAC[kind], kind).toBeLessThan(1);
+    }
   });
 
   it('draws a played rep from the same strain model as the canned one', () => {
@@ -128,10 +134,12 @@ describe('immutability', () => {
 // ---------------------------------------------------------------------------
 
 describe('depth thresholds', () => {
-  it('leaves room between illegal, ideal and buried', () => {
-    expect(LIFT_TUNING.DEPTH_LEGAL).toBeGreaterThan(0);
-    expect(LIFT_TUNING.DEPTH_LEGAL).toBeLessThan(LIFT_TUNING.DEPTH_IDEAL);
-    expect(LIFT_TUNING.DEPTH_IDEAL).toBeLessThan(LIFT_TUNING.DEPTH_COLLAPSE);
+  it('leaves room between illegal, ideal and buried, for every playable kind', () => {
+    for (const kind of PLAYABLE_LIFT_KINDS) {
+      expect(LIFT_TUNING.DEPTH_LEGAL[kind], kind).toBeGreaterThan(0);
+      expect(LIFT_TUNING.DEPTH_LEGAL[kind], kind).toBeLessThan(LIFT_TUNING.DEPTH_IDEAL[kind]);
+      expect(LIFT_TUNING.DEPTH_IDEAL[kind], kind).toBeLessThan(LIFT_TUNING.DEPTH_COLLAPSE[kind]);
+    }
   });
 
   it('never lets the late edge of the depth window be an instant bury', () => {
@@ -140,52 +148,68 @@ describe('depth thresholds', () => {
     // `lift.test.ts` that measures it. The LATE edge has no such clamp, so it
     // is checked here: releasing at the far end of the window must still leave
     // the lifter above the point of collapse.
-    for (const load of Object.values(LOAD_PRESETS)) {
-      const rate = byLoad(LIFT_TUNING.DESCENT_DEPTH_PER_TICK, clampLoadRatio(load));
-      const halfWindowDepth = (LIFT_TUNING.DEPTH_WINDOW_MS / 2 / TICK_MS) * rate;
-      expect(LIFT_TUNING.DEPTH_IDEAL + halfWindowDepth, `load ${load}`).toBeLessThan(
-        LIFT_TUNING.DEPTH_COLLAPSE,
-      );
+    for (const kind of PLAYABLE_LIFT_KINDS) {
+      for (const load of Object.values(LOAD_PRESETS)) {
+        const rate = byLoad(LIFT_TUNING.DESCENT_DEPTH_PER_TICK[kind], clampLoadRatio(load));
+        const halfWindowDepth = (LIFT_TUNING.DEPTH_WINDOW_MS[kind] / 2 / TICK_MS) * rate;
+        expect(LIFT_TUNING.DEPTH_IDEAL[kind] + halfWindowDepth, `${kind} load ${load}`).toBeLessThan(
+          LIFT_TUNING.DEPTH_COLLAPSE[kind],
+        );
+      }
     }
   });
 
   it('leaves at least a couple of ticks between legal depth and the ideal one', () => {
     // If these were the same depth the window would collapse to nothing at
     // every load and the depth beat would become a single-frame check.
-    for (const load of Object.values(LOAD_PRESETS)) {
-      const rate = byLoad(LIFT_TUNING.DESCENT_DEPTH_PER_TICK, clampLoadRatio(load));
-      const ticks = (LIFT_TUNING.DEPTH_IDEAL - LIFT_TUNING.DEPTH_LEGAL) / rate;
-      expect(ticks, `load ${load}`).toBeGreaterThan(2);
+    for (const kind of PLAYABLE_LIFT_KINDS) {
+      for (const load of Object.values(LOAD_PRESETS)) {
+        const rate = byLoad(LIFT_TUNING.DESCENT_DEPTH_PER_TICK[kind], clampLoadRatio(load));
+        const ticks = (LIFT_TUNING.DEPTH_IDEAL[kind] - LIFT_TUNING.DEPTH_LEGAL[kind]) / rate;
+        expect(ticks, `${kind} load ${load}`).toBeGreaterThan(2);
+      }
     }
   });
 });
 
 describe('the force balance', () => {
-  const demandPeak = (load: number): number =>
-    byLoad(LIFT_TUNING.DEMAND_BASE, clampLoadRatio(load)) +
-    byLoad(LIFT_TUNING.DEMAND_STICK_GAIN, clampLoadRatio(load));
+  const demandPeak = (kind: PlayableLiftKind, load: number): number =>
+    byLoad(LIFT_TUNING.DEMAND_BASE[kind], clampLoadRatio(load)) +
+    byLoad(LIFT_TUNING.DEMAND_STICK_GAIN[kind], clampLoadRatio(load));
 
-  it('gives a limit attempt a sticking point the lifter cannot hold', () => {
+  it('gives a limit attempt a sticking point the lifter cannot hold, for every playable kind', () => {
     // Without this there is no grind, the drive input does nothing, and the
     // mechanic is a cutscene with a button on it.
-    expect(demandPeak(LOAD_PRESETS.MAXIMAL)).toBeGreaterThan(LIFT_TUNING.LIFTER_CAPACITY);
+    for (const kind of PLAYABLE_LIFT_KINDS) {
+      expect(demandPeak(kind, LOAD_PRESETS.MAXIMAL), kind).toBeGreaterThan(
+        LIFT_TUNING.LIFTER_CAPACITY,
+      );
+    }
   });
 
-  it('leaves a warm-up with no sticking point at all', () => {
-    expect(demandPeak(LOAD_PRESETS.WARMUP)).toBeLessThan(LIFT_TUNING.LIFTER_CAPACITY);
+  it('leaves a warm-up with no sticking point at all, for every playable kind', () => {
+    for (const kind of PLAYABLE_LIFT_KINDS) {
+      expect(demandPeak(kind, LOAD_PRESETS.WARMUP), kind).toBeLessThan(
+        LIFT_TUNING.LIFTER_CAPACITY,
+      );
+    }
   });
 
-  it('makes a full-quality drive enough to clear the worst deficit', () => {
+  it('makes a full-quality drive enough to clear the worst deficit, for every playable kind', () => {
     // The other half of the same coin: if the boost cannot cover the deficit at
     // the top of the load range, a maximal attempt is unwinnable however it is
     // played, and the timing input is decoration.
-    const worstDeficit = demandPeak(LOAD_RANGE.MAX) - LIFT_TUNING.LIFTER_CAPACITY;
-    expect(LIFT_TUNING.DRIVE_BOOST_FORCE_MAX).toBeGreaterThan(worstDeficit);
+    for (const kind of PLAYABLE_LIFT_KINDS) {
+      const worstDeficit = demandPeak(kind, LOAD_RANGE.MAX) - LIFT_TUNING.LIFTER_CAPACITY;
+      expect(LIFT_TUNING.DRIVE_BOOST_FORCE_MAX, kind).toBeGreaterThan(worstDeficit);
+    }
   });
 
-  it('arms the drive cue below the sticking point, not after it', () => {
-    expect(LIFT_TUNING.DRIVE_ARM_HEIGHT).toBeLessThan(STICK_HEIGHT_FRAC);
-    expect(LIFT_TUNING.DRIVE_ARM_HEIGHT).toBeGreaterThan(0);
+  it('arms the drive cue below the sticking point, not after it, for every playable kind', () => {
+    for (const kind of PLAYABLE_LIFT_KINDS) {
+      expect(LIFT_TUNING.DRIVE_ARM_HEIGHT[kind], kind).toBeLessThan(STICK_HEIGHT_FRAC[kind]);
+      expect(LIFT_TUNING.DRIVE_ARM_HEIGHT[kind], kind).toBeGreaterThan(0);
+    }
   });
 
   it('keeps the stall-decay trigger below the grind threshold', () => {
@@ -220,17 +244,19 @@ describe('the force balance', () => {
 });
 
 describe('windows', () => {
-  it('are positive and at least a few ticks wide, at both ends of the load range', () => {
-    const ms = [
-      LIFT_TUNING.DEPTH_WINDOW_MS,
-      LIFT_TUNING.DRIVE_WINDOW_MS.LIGHT,
-      LIFT_TUNING.DRIVE_WINDOW_MS.MAXIMAL,
-    ];
-    for (const width of ms) {
-      expect(width).toBeGreaterThan(0);
-      // Narrower than about four ticks and the window cannot be hit reliably at
-      // 60 Hz even before fatigue tightens it.
-      expect(width / TICK_MS).toBeGreaterThan(4);
+  it('are positive and at least a few ticks wide, at both ends of the load range, for every playable kind', () => {
+    for (const kind of PLAYABLE_LIFT_KINDS) {
+      const ms = [
+        LIFT_TUNING.DEPTH_WINDOW_MS[kind],
+        LIFT_TUNING.DRIVE_WINDOW_MS[kind].LIGHT,
+        LIFT_TUNING.DRIVE_WINDOW_MS[kind].MAXIMAL,
+      ];
+      for (const width of ms) {
+        expect(width, kind).toBeGreaterThan(0);
+        // Narrower than about four ticks and the window cannot be hit reliably at
+        // 60 Hz even before fatigue tightens it.
+        expect(width / TICK_MS, kind).toBeGreaterThan(4);
+      }
     }
   });
 
@@ -239,37 +265,48 @@ describe('windows', () => {
     expect(LIFT_TUNING.PERFECT_BAND_FRACTION).toBeLessThan(1);
   });
 
-  it('open the drive cue after arming, not before it, at every load', () => {
+  it('open the drive cue after arming, not before it, at every load, for every playable kind', () => {
     // Checked at both endpoints, not the middle: DRIVE_WINDOW_MS is now
     // load-scaled, and `byLoad`'s interpolation never overshoots its own
     // endpoints, so an invariant true at LIGHT and at MAXIMAL is true
     // everywhere `byLoad` can return.
-    expect(LIFT_TUNING.DRIVE_IDEAL_LEAD_MS).toBeGreaterThan(LIFT_TUNING.DRIVE_WINDOW_MS.LIGHT / 2);
-    expect(LIFT_TUNING.DRIVE_IDEAL_LEAD_MS).toBeGreaterThan(LIFT_TUNING.DRIVE_WINDOW_MS.MAXIMAL / 2);
+    for (const kind of PLAYABLE_LIFT_KINDS) {
+      expect(LIFT_TUNING.DRIVE_IDEAL_LEAD_MS, kind).toBeGreaterThan(
+        LIFT_TUNING.DRIVE_WINDOW_MS[kind].LIGHT / 2,
+      );
+      expect(LIFT_TUNING.DRIVE_IDEAL_LEAD_MS, kind).toBeGreaterThan(
+        LIFT_TUNING.DRIVE_WINDOW_MS[kind].MAXIMAL / 2,
+      );
+    }
   });
 
-  it('the drive window tightens toward MAXIMAL, and DEPTH stays a single number', () => {
+  it('the drive window tightens toward MAXIMAL, and DEPTH stays a single number, for every playable kind', () => {
     // Sprint 3's gate: a heavier attempt asks for more PRECISION on the
     // drive specifically, not on the release — see DRIVE_WINDOW_MS's own
     // comment for why the two halves are not tightened together.
-    expect(LIFT_TUNING.DRIVE_WINDOW_MS.MAXIMAL).toBeLessThan(LIFT_TUNING.DRIVE_WINDOW_MS.LIGHT);
-    expect(typeof LIFT_TUNING.DEPTH_WINDOW_MS).toBe('number');
+    for (const kind of PLAYABLE_LIFT_KINDS) {
+      expect(LIFT_TUNING.DRIVE_WINDOW_MS[kind].MAXIMAL, kind).toBeLessThan(
+        LIFT_TUNING.DRIVE_WINDOW_MS[kind].LIGHT,
+      );
+      expect(typeof LIFT_TUNING.DEPTH_WINDOW_MS[kind], kind).toBe('number');
+    }
   });
 
-  it('offers at least one drive cue everywhere, and more only toward MAXIMAL', () => {
+  it('offers at least one drive cue everywhere, and more only toward MAXIMAL, for every playable kind', () => {
     // Sprint 3's gate, the tap-RATE half: a heavier attempt asks for MORE
     // cues, closer together — the title this test replaces asserted the
     // opposite design ("a decision, not a rate"), which is exactly what
     // that playtest finding overturned.
-    expect(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.LIGHT).toBeGreaterThanOrEqual(1);
-    expect(Number.isInteger(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.LIGHT)).toBe(true);
-    expect(Number.isInteger(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL)).toBe(true);
-    expect(LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL).toBeGreaterThan(
-      LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.LIGHT,
-    );
+    for (const kind of PLAYABLE_LIFT_KINDS) {
+      const attempts = LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP[kind];
+      expect(attempts.LIGHT, kind).toBeGreaterThanOrEqual(1);
+      expect(Number.isInteger(attempts.LIGHT), kind).toBe(true);
+      expect(Number.isInteger(attempts.MAXIMAL), kind).toBe(true);
+      expect(attempts.MAXIMAL, kind).toBeGreaterThan(attempts.LIGHT);
+    }
   });
 
-  it('a maximal attempt fits its full cue sequence inside the ascent timeout, with room to spare', () => {
+  it('a maximal attempt fits its full cue sequence inside the ascent timeout, with room to spare, for every playable kind', () => {
     // Not a game-feel claim — a structural one, and deliberately scoped to
     // what a tuning-only test can derive: the SPAN of the cue sequence
     // itself, from the first cue arming to the last cue's window closing at
@@ -280,15 +317,17 @@ describe('windows', () => {
     // played-rep territory, not this file's. What this checks is that the
     // sequence this file's numbers describe does not itself exceed the
     // timeout budget before a player has done anything wrong.
-    const attempts = LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL;
-    const windowMs = LIFT_TUNING.DRIVE_WINDOW_MS.MAXIMAL;
-    const spacingMs = LIFT_TUNING.DRIVE_ATTEMPTS_SPACING_MS.MAXIMAL;
-    const worstCaseMs =
-      LIFT_TUNING.DRIVE_IDEAL_LEAD_MS +
-      windowMs / 2 +
-      (attempts - 1) * (spacingMs + LIFT_TUNING.DRIVE_IDEAL_LEAD_MS + windowMs / 2);
-    const budgetMs = LIFT_TUNING.ASCENT_TIMEOUT_TICKS * TICK_MS;
-    expect(worstCaseMs).toBeLessThan(budgetMs);
+    for (const kind of PLAYABLE_LIFT_KINDS) {
+      const attempts = LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP[kind].MAXIMAL;
+      const windowMs = LIFT_TUNING.DRIVE_WINDOW_MS[kind].MAXIMAL;
+      const spacingMs = LIFT_TUNING.DRIVE_ATTEMPTS_SPACING_MS[kind].MAXIMAL;
+      const worstCaseMs =
+        LIFT_TUNING.DRIVE_IDEAL_LEAD_MS +
+        windowMs / 2 +
+        (attempts - 1) * (spacingMs + LIFT_TUNING.DRIVE_IDEAL_LEAD_MS + windowMs / 2);
+      const budgetMs = LIFT_TUNING.ASCENT_TIMEOUT_TICKS * TICK_MS;
+      expect(worstCaseMs, kind).toBeLessThan(budgetMs);
+    }
   });
 });
 

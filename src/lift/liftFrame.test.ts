@@ -62,14 +62,14 @@ const DEMO_KG = LIFT_TUNING.DEMO.BEST_SINGLE_KG;
 // ---------------------------------------------------------------------------
 
 function scriptFor(load: number, drive: boolean): ScriptedInput[] {
-  const press = braceTicks(load) + 1;
-  const release = press + Math.round(LIFT_TUNING.DEPTH_IDEAL / descentRate(load));
+  const press = braceTicks(load, 'squat') + 1;
+  const release = press + Math.round(LIFT_TUNING.DEPTH_IDEAL.squat / descentRate(load, 'squat'));
   const script: ScriptedInput[] = [
     { tick: press, kind: 'press' },
     { tick: release, kind: 'release' },
   ];
   if (!drive) return script;
-  const probe = runLift({ loadRatio: load, seed: 4 }, script);
+  const probe = runLift({ kind: 'squat', loadRatio: load, seed: 4 }, script);
   for (const state of probe.history) {
     if (state.events.some((e) => e.kind === 'drive-cue-open')) {
       const ideal = state.activeCue?.idealTick;
@@ -81,7 +81,7 @@ function scriptFor(load: number, drive: boolean): ScriptedInput[] {
 }
 
 function rep(load: number, drive: boolean = true): readonly LiftState[] {
-  return runLift({ loadRatio: load, seed: 4 }, scriptFor(load, drive)).history;
+  return runLift({ kind: 'squat', loadRatio: load, seed: 4 }, scriptFor(load, drive)).history;
 }
 
 // ---------------------------------------------------------------------------

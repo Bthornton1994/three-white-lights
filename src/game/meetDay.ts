@@ -161,7 +161,7 @@ import {
 import { nextRandom, seedState } from './prng';
 import { sessionFeel, type FatigueState, type LiftMoment, type SessionFeel } from './fatigue';
 import type { LiftConfig, LiftResolution, MissReason } from './lift';
-import type { HapticPattern } from './liftTuning';
+import { simKindFor, type HapticPattern } from './liftTuning';
 import type { MeetAttemptReport, MeetCardReport, MeetResultReport, MeetId } from './progression';
 import { asMeetId } from './progression';
 import {
@@ -1160,7 +1160,7 @@ export function attemptConfigFor(state: MeetDayState): LiftConfig {
     workSetsCompleted: state.attempts.length,
     repsCompletedInSet: 0,
   };
-  return { loadRatio: live.loadRatio, seed: live.seed, feel, moment };
+  return { kind: simKindFor(live.lift), loadRatio: live.loadRatio, seed: live.seed, feel, moment };
 }
 
 // ---------------------------------------------------------------------------

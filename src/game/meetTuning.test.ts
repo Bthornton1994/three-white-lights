@@ -89,7 +89,7 @@ describe('the high-squat threshold', () => {
     // moment is already at least the half-width. A threshold at or below that
     // would score every miss at margin 1 and the "you thought you got it" beat
     // could not exist.
-    const halfWindowMs = LIFT_TUNING.DEPTH_WINDOW_MS / 2;
+    const halfWindowMs = LIFT_TUNING.DEPTH_WINDOW_MS.squat / 2;
     expect(MEET_TUNING.HIGH_SQUAT_UNANIMOUS_OFFSET_MS).toBeGreaterThan(halfWindowMs);
 
     // And the gap is wide enough that a just-outside miss lands under the

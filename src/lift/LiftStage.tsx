@@ -227,12 +227,13 @@ export function LiftStage({
     return out;
   }, [history]);
 
-  const stickY = traceY(STICK_HEIGHT_FRAC);
-  const legalY = traceY(1 - LIFT_TUNING.DEPTH_LEGAL);
+  const kind = state.config.kind;
+  const stickY = traceY(STICK_HEIGHT_FRAC[kind]);
+  const legalY = traceY(1 - LIFT_TUNING.DEPTH_LEGAL[kind]);
   const barY = traceY(state.height);
   // Half-height of the sticking-point band, from the width the demand curve
   // actually uses, so the drawn band is the region the bar really slows in.
-  const stickBandH = Math.max(1, traceY(STICK_HEIGHT_FRAC - STICK_WIDTH) - stickY);
+  const stickBandH = Math.max(1, traceY(STICK_HEIGHT_FRAC[kind] - STICK_WIDTH[kind]) - stickY);
 
   return (
     <Canvas style={{ width: L.STAGE_W, height: L.STAGE_H }}>
