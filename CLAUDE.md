@@ -1208,11 +1208,16 @@ BRACE/DESCENT copy, and no on-stage PRESS cue — even though HOLE already fires
 tip. Session C never pushes to `main`, to Session A's branch, or to Session B's
 branch.
 
-**Active claim (unambiguous): a bench session draws a side-on recumbent press,
-and the press command is an on-stage cue the player can see the instant it
-fires.** Artwork and mechanics together. The reaction stays a reaction: nothing
-telegraphs the command before it lands. The ring (and the prompt) appear AT the
-command, which is the stimulus, the same way the haptic already is.
+**WITHDRAWN 2026-08-22, same day, by the human.** Session A owns lift and art.
+C is a playtest relay, not the builder of this piece. The exclusive lock below
+("Session A must not start a parallel side-on bench rig") is **retracted** so A
+can work those files. PR #15 stays up as optional reference only — A may take
+it, rewrite it, or ignore it. C does not call the bar met and does not continue
+the claim.
+
+**Was:** a bench session draws a side-on recumbent press, and the press command
+is an on-stage cue the player can see the instant it fires. Left standing as
+history of what C built, not as an active claim.
 
 **This claim is GDD §6.2's bench line made visible. It is not a deadlift phase
 model and not a squat retune.**
@@ -1220,8 +1225,8 @@ model and not a squat retune.**
 #### CROSSINGS FILED BY SESSION C, BEFORE THE WORK, 2026-08-22
 
 Session C owns none of these files; they are Session A's lift / art / tuning
-surface. Filed here first. **Session A must not start a parallel side-on bench
-rig on the same files while this branch is open.**
+surface. Filed here first. **RETRACTED: Session A may work these files. C does
+not hold them.**
 
 1. **`src/art/benchPress.ts`** — new. Side-on recumbent press on the 96×72
    index grid. Joint anchors live here, same class as `rig.ts` (`data`).
