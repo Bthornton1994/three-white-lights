@@ -3,7 +3,7 @@
  *
  * ```
  * Open app
- *   -> Readiness check-in (3 taps, one screen)
+ *   -> Readiness check-in (3 taps, one screen; today's lift chosen here)
  *   -> Modifier surfaced + RPE target picked (1 tap, one screen)
  *   -> The work sets, on the existing lift mechanic
  *   -> Close-out: e1RM, streak, feedback
@@ -137,7 +137,7 @@ export function SessionScreen({
   cutInSearch,
 }: SessionScreenProps = {}): React.ReactElement {
   const loop = useSession(preview, serverPort);
-  const { dispatch, restartDay } = loop;
+  const { dispatch, restartDay, chooseLift } = loop;
   const state = loop.state;
 
   useEffect(() => {
@@ -173,7 +173,9 @@ export function SessionScreen({
         {state.phase === 'check-in' ? (
           <CheckInView
             answers={state.answers}
+            lift={state.context.lift}
             onTap={(tap) => dispatch({ kind: 'check-in-tap', tap })}
+            onChooseLift={chooseLift}
           />
         ) : null}
 

@@ -3,7 +3,8 @@
  *
  * ```
  * Open app
- *   -> Readiness check-in (5 sec, 3 taps: sleep / soreness / motivation)
+ *   -> Readiness check-in (5 sec, 3 taps: sleep / soreness / motivation;
+ *      today's lift is chosen here, defaulting to the rotation)
  *   -> Modifier applied and surfaced ("Feeling primed +5%" / "Grinding today")
  *   -> One lift-focused session (60-90 sec, timing-based sets)
  *   -> e1RM updated, streak incremented, feedback shown
@@ -261,6 +262,13 @@ export type CheckInTap =
 /** Everything the player can do. One event per meaningful tap or beat. */
 export type SessionEvent =
   | { readonly kind: 'check-in-tap'; readonly tap: CheckInTap }
+  /**
+   * Retarget today's session to another competition lift. The caller supplies
+   * the full next `SessionContext` (same day, new lift, that lift's e1RM)
+   * because this module never talks to the cache. Legal only on the check-in;
+   * later beats ignore it the way every other out-of-phase event is ignored.
+   */
+  | { readonly kind: 'choose-lift'; readonly context: SessionContext }
   | { readonly kind: 'choose-rpe'; readonly rpe: number }
   /**
    * A rep of the lift mechanic resolved. `lift.ts` decided the outcome;
@@ -458,7 +466,10 @@ export function isMadeRep(outcome: LiftOutcome): boolean {
 }
 
 /**
- * Which lift today is (GDD §3.2: "One lift per day ... on rotation").
+ * Which lift the rotation programmes for this day (GDD §3.2).
+ *
+ * The player may pick a different competition lift on the check-in; this is
+ * the default the session opens on, not the only lift they can train.
  *
  * Modulo, corrected for negative days so a day index before the epoch does not
  * index off the front of the rotation.
@@ -1175,6 +1186,13 @@ function withTap(answers: PartialCheckIn, tap: CheckInTap): PartialCheckIn {
  */
 export function stepSession(state: SessionState, event: SessionEvent): SessionState {
   switch (event.kind) {
+    case 'choose-lift': {
+      if (state.phase !== 'check-in') return state;
+      if (event.context.day !== state.context.day) return state;
+      if (event.context.lift === state.context.lift) return state;
+      return { ...state, context: event.context };
+    }
+
     case 'check-in-tap': {
       if (state.phase !== 'check-in') return state;
       const answers = withTap(state.answers, event.tap);

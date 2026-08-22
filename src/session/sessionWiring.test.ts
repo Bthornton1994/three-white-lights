@@ -161,6 +161,19 @@ describe('SessionScreen hands the readings down and computes nothing', () => {
       expect(SCREEN, banned).not.toMatch(new RegExp(`\\b${banned}\\b`));
     }
   });
+
+  it('the check-in retargets the lift through the cache, not a second context', () => {
+    // `'choose-lift'` is a string literal, which `codeOnly` strips, so this
+    // one reads the raw source. The rest of the path is code.
+    expect(source('useSession.ts')).toMatch(/'choose-lift'/);
+    expect(USE_SESSION).toMatch(/\bchooseLift\b/);
+    expect(USE_SESSION).toMatch(/sessionContextFrom/);
+    expect(USE_SESSION).toMatch(/sessionBrief/);
+    expect(SCREEN).toMatch(/onChooseLift=\{chooseLift\}/);
+    expect(source('CheckInView.tsx')).toMatch(/onChooseLift/);
+    expect(source('CheckInView.tsx')).toMatch(/LIFT_ROTATION/);
+    expect(source('CheckInView.tsx')).toMatch(/check-in-lift-/);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -83,6 +83,7 @@ import {
   type SessionEvent,
   type SessionState,
 } from '../game/session';
+import type { LiftKind } from '../game/meet';
 import {
   closeOutReadings,
   openingCache,
@@ -139,6 +140,12 @@ export interface SessionLoop {
   readonly dispatch: (event: SessionEvent) => void;
   /** Starts a fresh session for whatever day it is now. */
   readonly restartDay: () => void;
+  /**
+   * Retargets today's session to another competition lift. Legal on the
+   * check-in; ignored later. Rebuilds the context through the cache so the
+   * bar is prescribed from that lift's e1RM.
+   */
+  readonly chooseLift: (lift: LiftKind) => void;
 }
 
 export function useSession(
@@ -210,6 +217,23 @@ export function useSession(
   useEffect(() => {
     cacheRef.current = liveCache;
   }, [liveCache]);
+
+  const chooseLift = useCallback(
+    (lift: LiftKind) => {
+      setLiveState((current) => {
+        if (current.phase !== 'check-in' || current.context.lift === lift) return current;
+        const { day } = current.context;
+        const nextContext = sessionContextFrom(
+          cacheRef.current,
+          port.sessionBrief(day, lift),
+          day,
+          lift,
+        );
+        return stepSession(current, { kind: 'choose-lift', context: nextContext });
+      });
+    },
+    [port],
+  );
 
   // --- the close-out goes to the server -------------------------------------
   //
@@ -303,6 +327,7 @@ export function useSession(
     alreadyTrainedToday,
     dispatch,
     restartDay,
+    chooseLift,
   };
 }
 

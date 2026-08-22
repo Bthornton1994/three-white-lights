@@ -333,7 +333,7 @@ describe('purity contract — CLAUDE.md, GDD §9.2', () => {
   });
 });
 
-describe('liftForDay — GDD §3.2 one lift per day on rotation', () => {
+describe('liftForDay — GDD §3.2 programmed lift on rotation', () => {
   it('walks squat -> bench -> deadlift and wraps', () => {
     // Hand-written, not derived from LIFT_ROTATION: deriving the expectation
     // from the table being checked would pass on any table.
@@ -400,6 +400,70 @@ describe('the check-in — GDD §3.2, three taps', () => {
     expect(state.phase).toBe('briefing');
     expect(state.readiness?.headline).toBe('Feeling primed');
     expect(state.readiness?.label).toBe('Feeling primed +5%');
+  });
+
+  it('a check-in choose-lift retargets the session, including the e1RM the bar will be prescribed from', () => {
+    const started = createSession(context({ lift: 'squat', e1rmKg: 200, bestE1rmKg: 200 }));
+    const retargeted = stepSession(started, {
+      kind: 'choose-lift',
+      context: context({ lift: 'bench', e1rmKg: 140, bestE1rmKg: 140 }),
+    });
+    expect(retargeted).not.toBe(started);
+    expect(retargeted.phase).toBe('check-in');
+    expect(retargeted.context.lift).toBe('bench');
+    expect(retargeted.context.e1rmKg).toBe(140);
+    expect(retargeted.answers).toEqual(EMPTY_CHECK_IN);
+  });
+
+  it('keeps any readiness taps already given when the lift changes', () => {
+    const started = stepSession(createSession(context({ lift: 'squat', e1rmKg: 200 })), {
+      kind: 'check-in-tap',
+      tap: { question: 'sleep', answer: 'good' },
+    });
+    const retargeted = stepSession(started, {
+      kind: 'choose-lift',
+      context: context({ lift: 'bench', e1rmKg: 140, bestE1rmKg: 140 }),
+    });
+    expect(retargeted.phase).toBe('check-in');
+    expect(retargeted.answers.sleep).toBe('good');
+    expect(retargeted.answers.soreness).toBeNull();
+    expect(retargeted.context.lift).toBe('bench');
+  });
+
+  it('ignores a choose-lift that would change the day, or that names the lift already selected', () => {
+    const started = createSession(context({ day: 4, lift: 'squat', e1rmKg: 200 }));
+    expect(
+      stepSession(started, {
+        kind: 'choose-lift',
+        context: context({ day: 5, lift: 'bench', e1rmKg: 140 }),
+      }),
+    ).toBe(started);
+    expect(
+      stepSession(started, {
+        kind: 'choose-lift',
+        context: context({ day: 4, lift: 'squat', e1rmKg: 999 }),
+      }),
+    ).toBe(started);
+  });
+
+  it('locks the lift once the check-in is complete', () => {
+    const briefing = tapThrough(createSession(context({ lift: 'squat', e1rmKg: 200 })), NEUTRAL);
+    expect(
+      stepSession(briefing, {
+        kind: 'choose-lift',
+        context: context({ lift: 'bench', e1rmKg: 140, bestE1rmKg: 140 }),
+      }),
+    ).toBe(briefing);
+  });
+
+  it('a bench chosen on the check-in is the lift the mechanic is configured with', () => {
+    const started = createSession(context({ lift: 'squat', e1rmKg: 200 }));
+    const retargeted = stepSession(started, {
+      kind: 'choose-lift',
+      context: context({ lift: 'bench', e1rmKg: 140, bestE1rmKg: 140 }),
+    });
+    const lifting = stepSession(tapThrough(retargeted, NEUTRAL), { kind: 'choose-rpe', rpe: 8 });
+    expect(repConfigFor(lifting).kind).toBe('bench');
   });
 
   it('surfaces "Grinding today" at the other end, GDD §3.2 verbatim', () => {

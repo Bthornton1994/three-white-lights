@@ -6,19 +6,22 @@
  * ---------------------------------------------------------------------------
  * The bar this piece is measured against (GDD §12.2) names TIME-TO-FIRST-INPUT
  * first. One question per screen would be three paints and two transitions
- * before the third tap; three rows on one screen means the first tap is live on
- * the first paint and the other two need no navigation at all. There is no
- * splash, no home screen and no "start session" button in front of it, because
- * every one of those is a tap that answers nothing.
+ * before the third tap; three readiness rows on one screen means the first tap
+ * is live on the first paint and the other two need no navigation at all.
+ * Today's lift is offered as chips on that same first paint, defaulting to
+ * the rotation, so choosing bench is not a screen in front of the first
+ * question. There is no splash, no home screen and no "start session" button
+ * in front of it, because every one of those is a tap that answers nothing.
  *
  * ---------------------------------------------------------------------------
  * WHAT THIS FILE IS AND IS NOT ALLOWED TO KNOW
  * ---------------------------------------------------------------------------
- * It renders three rows of three chips and forwards taps. It scores nothing:
+ * It renders today's lift chips plus three rows of three readiness chips and
+ * forwards taps. It scores nothing:
  * the readiness score, the band and the load percentage are `fatigue.ts`'s, and
  * they are computed in `session.ts` when the third tap lands (CLAUDE.md: "If
  * you find yourself computing a load or a fatigue modifier inside a .tsx file,
- * stop"). This screen does not even know which answer is the good one.
+ * stop"). This screen does not even know which readiness answer is the good one.
  *
  * NO FATIGUE READOUT (GDD §3.4, §12.3). Nothing here shows how tired the lifter
  * is, and it cannot: the only thing on screen is what the player just tapped.
@@ -27,8 +30,9 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { SESSION_COPY, SESSION_LAYOUT, type CheckInQuestion } from '../game/sessionTuning';
+import { SESSION_COPY, SESSION_LAYOUT, SESSION_TUNING, type CheckInQuestion } from '../game/sessionTuning';
 import type { CheckInTap, PartialCheckIn } from '../game/session';
+import type { LiftKind } from '../game/meet';
 import { SESSION_PALETTE } from './sessionPalette';
 
 const L = SESSION_LAYOUT;
@@ -92,13 +96,36 @@ const ROWS: readonly RowSpec[] = [
 
 export interface CheckInViewProps {
   readonly answers: PartialCheckIn;
+  readonly lift: LiftKind;
   readonly onTap: (tap: CheckInTap) => void;
+  readonly onChooseLift: (lift: LiftKind) => void;
 }
 
-export function CheckInView({ answers, onTap }: CheckInViewProps): React.ReactElement {
+export function CheckInView({ answers, lift, onTap, onChooseLift }: CheckInViewProps): React.ReactElement {
   return (
     <View style={styles.root} testID="session-check-in">
       <Text style={styles.title}>{SESSION_COPY.CHECK_IN_TITLE}</Text>
+      <View style={styles.row} testID="check-in-lift">
+        <Text style={styles.question}>{SESSION_COPY.CHECK_IN_LIFT_QUESTION}</Text>
+        <View style={styles.chips}>
+          {SESSION_TUNING.LIFT_ROTATION.map((option) => {
+            const isChosen = option === lift;
+            return (
+              <Pressable
+                key={option}
+                testID={`check-in-lift-${option}`}
+                accessibilityRole="button"
+                onPress={() => onChooseLift(option)}
+                style={[styles.chip, isChosen ? styles.chipChosen : null]}
+              >
+                <Text style={[styles.chipLabel, isChosen ? styles.chipLabelChosen : null]}>
+                  {SESSION_COPY.LIFT_LABEL[option]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
       {ROWS.map((row) => {
         const chosen = row.chosen(answers);
         return (
