@@ -1898,8 +1898,8 @@ All open items from the prior draft are settled:
 No open design questions remain. This spec is ready to move to implementation
 scoping.
 
-### 5.13 Presentation layer (RCT-style floor sim) — DESIGN, NOT YET CLEAR TO
-### BUILD IN FULL
+### 5.13 Presentation layer (RCT-style floor sim) — PHASE 1 BUILT AND GATED
+### IN, PHASES 2-4 STILL DESIGN-ONLY
 
 Submitted in response to the 5.11 ruling above: a spatial floor the player
 builds into, populated by NPCs with visible state, in the direction of
@@ -2169,6 +2169,17 @@ share with power-bar): drag mats onto power-bar's cell, and assert the drop
 is refused, mats stays in the tray, no `floorgrid-placed-*` chip exists
 anywhere, and power-bar's own fixed-furniture chip is still drawn at that
 cell. Independently re-verified cold-boot: 18/18, including that check.
+
+**PHASE 1'S GATE IS MET, PER PLAYTEST 3 — RULED.** Playtest 3 is what this
+section's own build order names as the trigger: a human, on a real device,
+playing Phase 1 (grid + placement alone, no members, no final art). It
+found two gaps the Playtest 2 fix had introduced and confirmed the
+original four closed; both new gaps, plus the separately-named furniture/
+session-item overlap gap, are fixed and independently re-verified above.
+No further human pass has been run since, and none is required to record
+this: the gate's own question — "does placing things feel good?" — was
+answered on a real phone, against the shipped build, and the answer was
+not "no," it was "close, then closed." **Phase 2 may proceed.**
 ---
 
 ## 6. Meet Day
