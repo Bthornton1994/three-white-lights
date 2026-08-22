@@ -271,8 +271,21 @@ const PINNED = Object.freeze({
    * after this session's uncommitted edits. Re-measured rather than
    * hand-bumped, per this file's own rule; the origin of the one-off drift in
    * "301" is not traced further here.
+   *
+   * 302 -> 304 with bench's artwork: `src/art/benchPress.ts` and
+   * `src/art/benchPress.test.ts`, both added by PR #15. TRACED TO THOSE TWO
+   * FILES rather than re-measured and bumped — `git diff --diff-filter=A`
+   * across that merge names exactly them, and 302 + 2 lands on 304.
+   *
+   * WORTH RECORDING: PR #15 WAS MERGED WITH THIS PIN ALREADY RED. Checked out
+   * at its own merge commit the suite reports `1 failed | 27 passed` in this
+   * file, so the pin never held on that branch. It is not a defect in the two
+   * new files — they are real files and the count is honestly higher — but it
+   * is a concrete instance of the standing rule that a session's own pass is
+   * not verification, and it is why the number is corrected here by the
+   * session that owns the tree rather than left to be rediscovered.
    */
-  SCANNED_FILES: 302,
+  SCANNED_FILES: 304,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -288,8 +301,11 @@ const PINNED = Object.freeze({
    */
   /** 93 -> 94 with Sprint 1c's `src/game/careerMeet.test.ts`; 94 -> 93 when
    *  `careerCalendarPlaceholder.test.ts` was deleted with its trio; 93 -> 94
-   *  with Sprint 2's `src/game/saveGame.test.ts`. */
-  TEST_FILES: 94,
+   *  with Sprint 2's `src/game/saveGame.test.ts`; 94 -> 95 with bench's
+   *  `src/art/benchPress.test.ts`, the test half of the same PR #15 pair that
+   *  moved `SCANNED_FILES` above — and masked by it, since both assertions
+   *  live in one test and the first to fail hides the second. */
+  TEST_FILES: 95,
 });
 
 /**
