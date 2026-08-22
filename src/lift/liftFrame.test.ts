@@ -22,6 +22,7 @@ import { describe, expect, it } from 'vitest';
 import {
   LIFT_PHASES,
   braceTicks,
+  createLift,
   descentRate,
   runLift,
   type LiftState,
@@ -369,6 +370,7 @@ describe('frameKey', () => {
     const base = liftFrameSpec(rep(LOAD_PRESETS.MAXIMAL)[0] as LiftState, DEMO_KG);
     const key = frameKey(base);
     const fields = [
+      'kind',
       'depth',
       'direction',
       'strainLevel',
@@ -396,6 +398,32 @@ describe('frameKey', () => {
     const keys = new Set(history.map((s) => frameKey(liftFrameSpec(s, DEMO_KG))));
     expect(history.length).toBeGreaterThan(0);
     expect(keys.size).toBeLessThan(history.length / 2);
+  });
+});
+
+describe('bench frame adapter', () => {
+  it('tags a bench rep as bench and keys the concentric on height', () => {
+    const state = createLift({ kind: 'bench', loadRatio: 1, seed: 1 });
+    const drawn = liftFrameSpec(state, DEMO_KG);
+    expect(drawn.kind).toBe('bench');
+    expect(drawn.height).toBe(1);
+    const chest = { ...drawn, height: 0 };
+    const lock = { ...drawn, height: 1 };
+    expect(frameKey(chest)).not.toBe(frameKey(lock));
+    // Depth is squat's channel. A bench drawing that still keyed on it would
+    // freeze the bar on the chest for the whole concentric — HOLE and ASCENT
+    // both hold depth at 1.
+    expect(frameKey({ ...chest, depth: 0 })).toBe(frameKey(chest));
+  });
+
+  it('draws that spec as a press, not as a squat', () => {
+    const squat = renderLifterFrame(
+      liftFrameSpec(createLift({ kind: 'squat', loadRatio: 1, seed: 1 }), DEMO_KG),
+    );
+    const bench = renderLifterFrame(
+      liftFrameSpec(createLift({ kind: 'bench', loadRatio: 1, seed: 1 }), DEMO_KG),
+    );
+    expect(bodyPixelDiff(squat.grid, bench.grid).silhouette).toBeGreaterThan(0);
   });
 });
 

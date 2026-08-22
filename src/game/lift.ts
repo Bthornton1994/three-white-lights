@@ -416,12 +416,14 @@ export interface LiftState {
    * BENCH ONLY (GDD §6.2). Tick the press command fires on, set when the bar
    * settles on the chest. Null on squat, and null on bench until HOLE begins.
    *
-   * NOT SECRET FROM THE RENDERER, and it cannot be: `promptFor` has to know
-   * whether the command has landed to switch the line. What keeps the reaction
-   * honest is that nothing draws a COUNTDOWN to it — `cueProgress` returns null
-   * for the press cue by construction (its window has zero lead, so the span is
-   * zero), so the shrinking ring that telegraphs the depth and drive cues has
-   * nothing to draw here. A ring on this cue would defeat the mechanic.
+   * NOT SECRET FROM THE RENDERER. `promptFor` switches the line, and
+   * `cueProgress` draws the GO ring from the tick the command fires — progress
+   * 1 at the stimulus, rising toward 2 as the window closes. What keeps the
+   * reaction honest is that nothing draws a COUNTDOWN to it: before the
+   * command tick `cueProgress` is still null, so the shrinking ring that
+   * telegraphs depth and drive cannot show the player the command coming.
+   * A ring that opened before the command would defeat the mechanic; a ring
+   * that appears AT the command is the command, the same way the haptic is.
    */
   readonly pressCommandTick: number | null;
   /**
@@ -1528,13 +1530,14 @@ export function promptFor(state: LiftState): string {
   const p = LIFT_COPY.PROMPT;
   switch (state.phase) {
     case 'BRACE':
-      return p.BRACE;
+      return p.BRACE[state.config.kind];
     case 'DESCENT':
-      return p.DESCENT;
+      return p.DESCENT[state.config.kind];
     case 'HOLE': {
-      // BENCH: the line flips the instant the command fires, and it is the
-      // only visual the reaction has. `pressCommandTick` is null until the bar
-      // settles, so the waiting line covers that tick too.
+      // BENCH: the line flips the instant the command fires. The ring appears
+      // at the same tick (`pressCommandIsLive` / `cueProgress`); the caption
+      // is what the eye confirms the haptic against. `pressCommandTick` is
+      // null until the bar settles, so the waiting line covers that tick too.
       const commandTick = state.pressCommandTick;
       if (state.config.kind === 'bench' && commandTick !== null && state.tick >= commandTick) {
         return p.HOLE_COMMANDED;
@@ -1602,14 +1605,41 @@ export function hapticFor(event: LiftEvent): HapticPattern | null {
 }
 
 /**
+ * True while the bench press command is the live stimulus — HOLE, command
+ * has fired, press not yet spent. The ring and the headline both key off this
+ * so they cannot disagree about whether the player is being asked to press.
+ */
+export function pressCommandIsLive(state: LiftState): boolean {
+  if (state.config.kind !== 'bench') return false;
+  if (state.phase !== 'HOLE') return false;
+  if (state.pressUsed) return false;
+  const commandTick = state.pressCommandTick;
+  if (commandTick === null) return false;
+  return state.tick >= commandTick;
+}
+
+/**
  * Cue progress for the renderer: 0 when the window opens, 1 at the ideal
  * moment, above 1 as it closes. Null when no cue is up.
  *
  * A number the UI draws a shrinking ring from. It says nothing about fatigue —
  * the window it describes has already been adjusted, and there is no base to
  * compare it against here.
+ *
+ * BENCH'S PRESS COMMAND IS NOT A COUNTDOWN. Before the command fires this
+ * returns null, same as squat HOLE. From the command tick it starts at 1
+ * (the ring sits on the target — GO) and runs toward 2 as the reaction
+ * window closes. That is a stimulus, not a telegraph.
  */
 export function cueProgress(state: LiftState): number | null {
+  if (pressCommandIsLive(state)) {
+    const commandTick = state.pressCommandTick;
+    if (commandTick === null) return null;
+    const elapsedMs = (state.tick - commandTick) * TICK_MS;
+    const windowMs = cueWindowMs('press', state.config);
+    if (windowMs <= 0) return null;
+    return scrub(1 + elapsedMs / windowMs);
+  }
   const cue = state.activeCue;
   if (cue === null) return null;
   const span = cue.idealTick - cue.openTick;

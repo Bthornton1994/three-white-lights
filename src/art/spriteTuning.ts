@@ -1181,6 +1181,28 @@ export const CHALK = {
 } as const;
 
 /**
+ * BENCH_PRESS — feel knobs for the side-on recumbent drawing.
+ *
+ * Joint coordinates live in `benchPress.ts`, same class as `rig.ts`: an anchor
+ * cannot be moved without redrawing the pose it names. What lives here is what
+ * a playtester turns without redrawing: how coarse the bar-height sheet is,
+ * and how much a strained lockout fails to finish.
+ *
+ * Plate diameters stay true (`plates.ts`). The side-on camera shows them as
+ * faces rather than edges; that is a view change, not a scale change.
+ */
+export const BENCH_PRESS = {
+  /** Distinct bar-height steps. Same job QUANTISE.DEPTH_STEPS does for squat. */
+  HEIGHT_STEPS: 12,
+  /**
+   * How many sprite pixels a fully-strained lockout sits short of the authored
+   * lockout. Zero at strain 0. A playtester turns this to make a grind look
+   * unfinished without moving the CHEST / LOCKOUT anchors.
+   */
+  STRAIN_LOCKOUT_DROP_PX: 3,
+} as const;
+
+/**
  * Everything above, in one object, for callers that want to pass the whole
  * tuning set around (a debug tuner UI, a playtest build with hot-reloaded
  * values). The individual exports stay because tree-shaken imports read better
@@ -1195,6 +1217,7 @@ export const SPRITE_TUNING = {
   QUANTISE,
   BRACE_SETTLE_DEPTH,
   BAR,
+  BENCH_PRESS,
   LOAD_PRESETS,
   LOAD_RANGE,
   TIMING,

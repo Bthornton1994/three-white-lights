@@ -39,7 +39,7 @@ import { LiftStage } from '../lift/LiftStage';
 import { useLiftLoop } from '../lift/useLiftLoop';
 import { totalKgFor } from '../lift/liftFrame';
 import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN, SUPPRESS_CONTEXT_MENU } from '../lift/pressGuard';
-import { promptFor, type LiftOutcome } from '../game/lift';
+import { pressCommandIsLive, promptFor, type LiftOutcome } from '../game/lift';
 import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
 import { SESSION_COPY, SESSION_LAYOUT, SESSION_TUNING } from '../game/sessionTuning';
 import {
@@ -49,6 +49,7 @@ import {
   type SessionState,
 } from '../game/session';
 import { SESSION_PALETTE } from './sessionPalette';
+import { LIFT_PALETTE } from '../lift/liftPalette';
 
 const L = SESSION_LAYOUT;
 
@@ -157,6 +158,12 @@ export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElem
         <Text
           style={[
             styles.prompt,
+            pressCommandIsLive(loop.state)
+              ? {
+                  fontSize: LIFT_TUNING.LAYOUT.HEADLINE_FONT,
+                  color: LIFT_PALETTE.CUE_PERFECT,
+                }
+              : null,
             resolution === null ? null : { color: OUTCOME_COLOUR[resolution.outcome] },
           ]}
           testID="session-prompt"

@@ -1198,6 +1198,60 @@ that seeds a bench day.
 BENCH and the session that follows is a bench session; Session C does not call
 the bar met.
 
+### SESSION C — BENCH PRESS ART + PRESS CUE (NOT DEADLIFT)
+
+Written here **before** the work starts, as this section requires. Human-requested
+2026-08-22 after a phone playtest of A's press-command beat (`0f27062a`): the
+session was still a squat on screen — front-on back-squat figure, squat
+BRACE/DESCENT copy, and no on-stage PRESS cue — even though HOLE already fires
+`PRESS!` in the caption. Branch: `cursor/bench-press-art-8f47`, based on that
+tip. Session C never pushes to `main`, to Session A's branch, or to Session B's
+branch.
+
+**Active claim (unambiguous): a bench session draws a side-on recumbent press,
+and the press command is an on-stage cue the player can see the instant it
+fires.** Artwork and mechanics together. The reaction stays a reaction: nothing
+telegraphs the command before it lands. The ring (and the prompt) appear AT the
+command, which is the stimulus, the same way the haptic already is.
+
+**This claim is GDD §6.2's bench line made visible. It is not a deadlift phase
+model and not a squat retune.**
+
+#### CROSSINGS FILED BY SESSION C, BEFORE THE WORK, 2026-08-22
+
+Session C owns none of these files; they are Session A's lift / art / tuning
+surface. Filed here first. **Session A must not start a parallel side-on bench
+rig on the same files while this branch is open.**
+
+1. **`src/art/benchPress.ts`** — new. Side-on recumbent press on the 96×72
+   index grid. Joint anchors live here, same class as `rig.ts` (`data`).
+2. **`src/art/lifterSprite.ts`**, **`src/art/index.ts`**, **`src/art/gymScene.ts`**
+   — `LifterFrameSpec.kind` / `height`; `renderLifterFrame` dispatches; contact
+   shadow for a figure that is lying down.
+3. **`src/art/spriteTuning.ts`** — `BENCH_PRESS` feel knobs (height steps,
+   strain lockout drop). Already a feel home; no new `TUNING_MODULES` row.
+4. **`src/tuning/audit.ts`**, **`src/tuning/audit.test.ts`** — one `SOURCE_RULES`
+   row classifying `src/art/benchPress.ts` as `data`, beside `rig.ts`. Not
+   `feel`, so `src/tuning/index.ts` is untouched.
+5. **`src/lift/liftFrame.ts`** — pass `kind` and quantised `height` so the bar
+   leaves the chest on the way up.
+6. **`src/game/lift.ts`**, **`src/game/liftTuning.ts`** — `cueProgress` drives
+   the existing cue ring from the command tick (progress 1 at fire, toward 2 as
+   the window closes; still null before); per-kind BRACE/DESCENT copy so bench
+   does not say "descend" / "depth".
+7. **`src/lift/LiftScreen.tsx`**, **`src/session/SetView.tsx`**,
+   **`src/meet/AttemptView.tsx`** — the PRESS prompt is the command, so it
+   renders as the headline the ring is already using, not as the quiet caption
+   a squat waits behind.
+
+**Explicitly OUT of this claim:** deadlift's own phase model, `src/game/progression.ts`
+wallet writes, `src/empire/**`, mutation-witness authorship, a finished 16-bit
+bench sheet (this is the first playable drawing), Session C calling the bar met.
+
+**Done when the slice is ready for review:** a player who taps BENCH on
+check-in sees a press, not a squat, and cannot miss the PRESS command on the
+stage; Session C does not call the bar met.
+
 ### SESSION D — CLAUDE.md INDEX (ONE-SHOT, NOT A LANE)
 
 Written here **before** the work starts, as this section requires. Human-approved

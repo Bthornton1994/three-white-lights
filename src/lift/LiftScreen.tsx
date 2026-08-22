@@ -44,7 +44,7 @@ import {
   LIFT_COPY,
   LIFT_TUNING,
 } from '../game/liftTuning';
-import { promptFor, type LiftOutcome, type LiftState } from '../game/lift';
+import { pressCommandIsLive, promptFor, type LiftOutcome, type LiftState } from '../game/lift';
 import { LIFT_PALETTE } from './liftPalette';
 import { LiftStage } from './LiftStage';
 import { totalKgFor } from './liftFrame';
@@ -246,6 +246,9 @@ export function LiftScreen({ replay }: LiftScreenProps = {}): React.ReactElement
         <Text
           style={[
             styles.prompt,
+            pressCommandIsLive(state)
+              ? [styles.headline, { color: LIFT_PALETTE.CUE_PERFECT }]
+              : null,
             resolution === null
               ? null
               : [styles.headline, { color: OUTCOME_COLOUR[resolution.outcome] }],

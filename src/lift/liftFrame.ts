@@ -44,6 +44,7 @@
  */
 
 import {
+  BENCH_PRESS,
   CHALK,
   QUANTISE,
   RESOLUTION,
@@ -135,8 +136,11 @@ export function totalKgFor(loadRatio: number, bestSingleKg: number): number {
  */
 export function liftFrameSpec(state: LiftState, totalKg: number): LifterFrameSpec {
   const depthSteps = QUANTISE.DEPTH_STEPS;
+  const heightSteps = BENCH_PRESS.HEIGHT_STEPS;
   return {
+    kind: state.config.kind,
     depth: Math.round(clamp01(state.depth) * depthSteps) / depthSteps,
+    height: Math.round(clamp01(state.height) * heightSteps) / heightSteps,
     direction: directionFor(state.phase),
     strainLevel: strainLevel(liveStrain(state)),
     pitchLevel: pitchLevelForDriftPx(state.barForwardPx),
@@ -161,8 +165,11 @@ export function liftFrameSpec(state: LiftState, totalKg: number): LifterFrameSpe
  * the same idea `coalesceFrames` implements offline.
  */
 export function frameKey(spec: LifterFrameSpec): string {
+  const kind = spec.kind ?? 'squat';
+  const pose = kind === 'bench' ? (spec.height ?? 0) : spec.depth;
   return [
-    spec.depth,
+    kind,
+    pose,
     spec.direction,
     spec.strainLevel,
     spec.pitchLevel,

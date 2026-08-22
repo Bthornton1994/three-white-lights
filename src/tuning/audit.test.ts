@@ -966,6 +966,7 @@ describe('the registered allowlist', () => {
         'src/art/plates.ts',
         'src/art/raster.ts',
         'src/art/rig.ts',
+        'src/art/benchPress.ts',
         'src/art/spriteMarks.ts',
         'src/art/spriteTuning.ts',
         'src/art/squatAnimation.ts',

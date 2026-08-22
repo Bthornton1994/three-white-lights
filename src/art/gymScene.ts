@@ -50,6 +50,7 @@ import { fillRect, createGrid, getPx, setPx, type IndexGrid } from './raster';
 import { PAL, isTransparentIndex } from './palette';
 import { deformPose, pitchForLevel, poseAtDepth, strainForLevel } from './rig';
 import { renderContactShadow, type LifterFrameSpec } from './lifterSprite';
+import { renderBenchContactShadow } from './benchPress';
 import { GYM, GYM_RAMPS, dimIndex, lumaOfIndex, stepIndex } from './gymPalette';
 import { PROP_ART, type PropArt } from './gymProps';
 import {
@@ -890,6 +891,7 @@ export const LIFT_SPRITE_ORIGIN = Object.freeze({
  * to read the pose off the result.
  */
 export function liftContactShadow(spec: LifterFrameSpec): IndexGrid {
+  if (spec.kind === 'bench') return renderBenchContactShadow();
   const pose = deformPose(
     poseAtDepth(spec.depth, spec.direction),
     strainForLevel(spec.strainLevel),
