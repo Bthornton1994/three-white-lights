@@ -249,7 +249,13 @@ Open app
   → Done
 ```
 
-One lift per day (squat day, bench day, deadlift day, accessory day on rotation).
+One session per day, one competition lift. The day's **programmed** lift follows
+the squat → bench → deadlift rotation; the player may choose a different
+competition lift on the check-in before the session starts. That choice does not
+add a screen in front of the first question — the three readiness taps stay on
+the first paint, with today's lift offered as chips above them, defaulting to
+the rotation. Accessory day is still not a fourth `LiftKind` (see the ruling
+below).
 
 **Accessory day pays Training IQ, and nothing lift-specific — RULED.** The
 competition lifts are exactly three, because that is the meet (§6.2), so

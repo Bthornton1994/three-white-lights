@@ -85,7 +85,9 @@ export const SESSION_TUNING = Object.freeze({
   // -------------------------------------------------------------------------
 
   /**
-   * The daily rotation (GDD §3.2: "One lift per day ... on rotation").
+   * The day's programmed lift (GDD §3.2). The session opens on
+   * `liftForDay(today)`; the player may pick a different member of this list
+   * on the check-in. This is still the chooser list, not only a calendar.
    *
    * THREE LIFTS, NOT FOUR. §3.2 names "squat day, bench day, deadlift day,
    * accessory day", and what an accessory day may move HAS NOW BEEN RULED:
@@ -507,6 +509,7 @@ export const SESSION_PROGRESSION_GUARD = Object.freeze({
 export const SESSION_COPY = Object.freeze({
   /** GDD §3.2: "3 taps: sleep / soreness / motivation". */
   CHECK_IN_TITLE: 'HOW ARE YOU TODAY?',
+  CHECK_IN_LIFT_QUESTION: 'TODAY',
   CHECK_IN_QUESTION: Object.freeze({
     sleep: 'SLEEP',
     soreness: 'SORENESS',

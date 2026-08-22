@@ -220,6 +220,7 @@ describe('copy', () => {
   });
 
   it('covers every lift it rotates through', () => {
+    expect(SESSION_COPY.CHECK_IN_LIFT_QUESTION.length).toBeGreaterThan(0);
     for (const lift of SESSION_TUNING.LIFT_ROTATION) {
       expect(SESSION_COPY.LIFT_LABEL[lift].length).toBeGreaterThan(0);
     }

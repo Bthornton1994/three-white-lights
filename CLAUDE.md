@@ -1155,6 +1155,49 @@ import) without a red test; `Math.random` in any of them is red; planting
 `export let careerDebugWallet` and reading it from `qualifiesFor` is red;
 Session C does not call the bar met.
 
+### SESSION C — DAILY LIFT CHOICE ON THE CHECK-IN (NOT DEADLIFT, NOT ONBOARDING)
+
+Written here **before** the work starts, as this section requires. Human-requested
+2026-08-22 from the bench playtest: today's rotation is deadlift, and the player
+should be able to select what they are training today rather than wait on the
+calendar or change the phone date. Branch: `cursor/session-lift-picker-8f47`,
+based on Session A's bench tip (`5775ceb7`). Session C never pushes to `main`,
+to Session A's branch, or to Session B's branch.
+
+**Active claim (unambiguous): the daily session check-in offers squat / bench /
+deadlift, defaulting to `liftForDay`, and a tap retargets that session's
+`LiftKind` (and the e1RM it is prescribed from) before the three readiness taps
+complete.** One session per day is unchanged. Deadlift still plays through
+`simKindFor`'s squat stopgap. No new screen in front of the first question.
+
+**This claim is a GDD §3.2 amendment, not a deadlift phase model and not
+onboarding.** The programmed rotation stays as the default; the player may
+override it on the check-in.
+
+#### CROSSINGS FILED BY SESSION C, BEFORE THE WORK, 2026-08-22
+
+Session C owns none of these files; they are Session A's session surface. Filed
+here first:
+
+1. **`docs/GDD.md` §3.2** — one session per day, one competition lift; rotation
+   is the programmed default, player may choose another competition lift on
+   the check-in.
+2. **`src/game/session.ts` / `session.test.ts`** — `choose-lift` event, legal
+   only on check-in, same-day, keeps answers.
+3. **`src/game/sessionTuning.ts` / `sessionTuning.test.ts`** — check-in lift
+   copy; rotation comment names the default rather than the only path.
+4. **`src/session/CheckInView.tsx`, `SessionScreen.tsx`, `useSession.ts`,
+   `sessionWiring.test.ts`** — render the chooser; rebuild context through
+   `sessionContextFrom` so bench is prescribed from bench's e1RM.
+
+**Explicitly OUT of this claim:** deadlift's own phase model, onboarding,
+`src/game/progression.ts` wallet writes, `src/empire/**`, a browser harness
+that seeds a bench day.
+
+**Done when the slice is ready for review:** a player on the check-in can tap
+BENCH and the session that follows is a bench session; Session C does not call
+the bar met.
+
 ### SESSION D — CLAUDE.md INDEX (ONE-SHOT, NOT A LANE)
 
 Written here **before** the work starts, as this section requires. Human-approved
