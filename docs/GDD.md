@@ -2180,6 +2180,70 @@ No further human pass has been run since, and none is required to record
 this: the gate's own question — "does placing things feel good?" — was
 answered on a real phone, against the shipped build, and the answer was
 not "no," it was "close, then closed." **Phase 2 may proceed.**
+
+**PHASE 2 IS BUILT — AMBIENT MEMBERS, FROM REAL COUNT/TYPE DATA, WITH NO FEEL
+VERDICT YET.** This section's own Phase 2 gate is "does the gym read as
+populated and alive?", and that is a question for a human on a real device,
+the same standard Phase 1 was held to. Nothing below claims that bar is met —
+it records what was built and tested so the next human pass has something to
+judge.
+
+Three new entries in `empireTuning.ts`, all provisional in the exact sense
+`FLOOR_GRID_SIZE`'s own comment already claims for itself — reasoned from
+intuition, not tuned or played: `AMBIENT_MEMBER_COUNT_BY_RUNG` (garage 3,
+storage-unit 8, strip-mall-unit 18, warehouse 40 — strictly increasing,
+"garage sparse, warehouse populated"), `AMBIENT_MEMBER_FOOTPRINT_TILES` (a
+1x1 placeholder body), and `AMBIENT_MEMBER_PLACEMENT_STRIDE` (3, a spacing
+knob so bodies do not cluster in one corner of a big room). All three are
+classified `knob` in `EMPIRE_TUNING_CLASSIFICATION`.
+
+`floor.ts` gained one new pure export, `ambientMemberRoster(rung,
+barbellOwned, sessionOwned)` — same pattern as `fixedFloorFurniture` above: a
+plain read model, computed fresh on every call, never a `FloorState`, never
+stored. Count is read off the new table by rung alone (no equipment-count
+scaling in this first pass, though the signature already has room for one
+later). Type mix is `equipmentBiasedMemberTypes(sessionOwned)` — GDD §5.6's
+own function, not a second formula — cycled round-robin across whatever it
+returns; the stated limit is that round-robin weights every biased type
+equally and does not favour the first one, which is a design call for later.
+Positions are chosen from the rung's own grid, scanned row-major and filtered
+through `overlapsFixedFurniture` so no member is drawn standing on a fixed
+furniture chip, with a stride-then-fallback scan so bodies spread across a
+big room instead of packing the top-left corner. The stated limit, in the
+function's own header: it avoids the FIXED Barbell furniture only, not a
+player's own placed session equipment, because that state is mutable and this
+function deliberately takes no `FloorState` — reading it would be a step
+toward Phase 3's real pathing/reaction machinery, not a static Phase 2 body.
+And, in the words the ruling that scoped this piece asked for: **if a later,
+separately-serialised piece puts reputation on this screen's state, this
+derivation can grow to use it; it must not grow to use it in this phase.**
+
+Rendered in `FloorGrid.tsx` as simple placeholder circles, one small named
+colour palette per member type (distinct from the session-equipment and
+fixed-furniture palettes so the three visual classes read apart), each
+carrying a `floorgrid-ambient-<index>` testID and a small
+`floorgrid-ambient-caption` text reporting the count — not draggable, not
+collidable with `placeFloorItem`'s overlap check, dispatching nothing.
+`tools/verify-floor-reachability.mjs` gained a browser-driven check that on a
+cold garage gym, reached the same way every other claim in that file already
+is (press GYM EMPIRE, scroll to the floor, no debug query string), at least
+one `floorgrid-ambient-*` body is actually drawn with a non-zero bounding
+box — Presence is not visibility, so the check reads a real box, not just
+attachment. It does not drive the warehouse case in the browser, since
+reaching one requires a long grind through the dev clock-skip controls; a
+unit test in `floor.test.ts` already drives the count-scales-by-rung claim
+(a real `warehouse.length > garage.length` comparison, not two independent
+pins) and that division of labour is stated here rather than left implicit.
+
+Test coverage in `floor.test.ts`: the three tuning tables (keyed correctly,
+strictly increasing, every rung has enough free grid cells for its own
+registered count); `ambientMemberRoster` is deterministic (called twice on
+the same inputs, byte-identical), returns exactly the registered count per
+rung, every position fits inside the rung's own grid, no position overlaps
+fixed furniture, the type mix is checked against the real
+`equipmentBiasedMemberTypes` output rather than only a count, a different
+owned-equipment set changes the mix, and an unregistered rung refuses loudly
+rather than drawing nothing.
 ---
 
 ## 6. Meet Day

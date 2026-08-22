@@ -1511,6 +1511,53 @@ export const EMPIRE_TUNING = Object.freeze({
    * one. Read by `FloorGrid.tsx` only.
    */
   FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS: 4,
+
+  // -------------------------------------------------------------------------
+  // §5.13 presentation Phase 2 — ambient members: "ambient members at fixed
+  // positions, static or idle-animated, from real count/type data." Provisional,
+  // exactly as the FLOOR_* block above says of itself: reasoned from a
+  // "garage sparse, warehouse populated" intuition and NOT tuned or played.
+  // -------------------------------------------------------------------------
+
+  /**
+   * How many ambient bodies `floor.ts`'s `ambientMemberRoster` draws at each
+   * rung — a first-pass proposal, not tuned or played, in the same spirit as
+   * `FLOOR_GRID_SIZE` above: garage sparse ("no members, nobody knows you"
+   * per §5.1's own ladder table), warehouse populated. Strictly increasing;
+   * `floor.test.ts` drives that directly rather than trusting this sentence.
+   * Chosen small enough that every rung's grid, minus
+   * `FLOOR_FIXED_FURNITURE_LAYOUT`'s footprint, has generous room to spare —
+   * `floor.test.ts` also drives that no rung's count exceeds the candidate
+   * cells `ambientMemberRoster` can actually offer.
+   */
+  AMBIENT_MEMBER_COUNT_BY_RUNG: Object.freeze({
+    garage: 3,
+    'storage-unit': 8,
+    'strip-mall-unit': 18,
+    warehouse: 40,
+  }),
+
+  /**
+   * The footprint one ambient body occupies for placement purposes, in
+   * tiles — a legibility/placement knob like `FLOOR_TRAY_ITEM_MIN_TILES`
+   * above, not game math. A single tile is the simplest static-body size for
+   * this phase; Phase 4's real pixel-art pass may need a wider or taller
+   * footprint once real sprites exist. Read by `floor.ts`'s
+   * `ambientMemberRoster` only.
+   */
+  AMBIENT_MEMBER_FOOTPRINT_TILES: Object.freeze({ width: 1, height: 1 }),
+
+  /**
+   * `ambientMemberRoster`'s placement stride, in scanned candidate cells —
+   * how many candidate positions it skips between chosen ones on its first
+   * pass, so members spread across a room instead of clustering into the
+   * grid's top-left corner. A felt spacing knob, not tuned or played, in the
+   * same class as `FLOOR_OVERLAP_REFUSAL_FLASH_MS`'s "first-pass-proposal"
+   * status. Must be at least 1 (a stride of 0 is not a stride); `floor.test.ts`
+   * drives that every rung still reaches its full `AMBIENT_MEMBER_COUNT_BY_RUNG`
+   * count at this stride, via the documented fallback pass.
+   */
+  AMBIENT_MEMBER_PLACEMENT_STRIDE: 3,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -1639,4 +1686,8 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_TRAY_ITEM_MIN_TILES: 'knob',
   FLOOR_OVERLAP_REFUSAL_FLASH_MS: 'knob',
   FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS: 'knob',
+
+  AMBIENT_MEMBER_COUNT_BY_RUNG: 'knob',
+  AMBIENT_MEMBER_FOOTPRINT_TILES: 'knob',
+  AMBIENT_MEMBER_PLACEMENT_STRIDE: 'knob',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

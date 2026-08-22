@@ -104,6 +104,7 @@ import { EMPIRE_TUNING } from './empireTuning';
 import {
   type FloorState,
   type GridPosition,
+  ambientMemberRoster,
   fixedFloorFurniture,
   floorGridSize,
   floorLayout,
@@ -113,6 +114,7 @@ import {
 } from './floor';
 import { type LadderEquipmentItem } from './ladder';
 import { type GymViewAction } from './ladderView';
+import { type MemberType } from './members';
 import { type SessionEquipmentItem } from './sessions';
 
 /**
@@ -180,6 +182,29 @@ function colorFor(item: SessionEquipmentItem): string {
   return PLACEHOLDER_PALETTE[index % PLACEHOLDER_PALETTE.length] as string;
 }
 
+/**
+ * GDD §5.13 presentation Phase 2's ambient-member placeholder colours — a
+ * separate small named-colour palette from `PLACEHOLDER_PALETTE` above (same
+ * reasoning: named CSS colour keywords, not hex/`rgb()`, so this table needs
+ * no `src/tuning/` palette-module registration) so a member body reads as
+ * its own visual class rather than being mistaken for draggable equipment or
+ * fixed furniture. Placeholder shapes only, per this piece's own build
+ * order — Phase 4 is the real pixel-art pass.
+ */
+const AMBIENT_MEMBER_PALETTE: readonly string[] = Object.freeze([
+  'coral',
+  'khaki',
+  'lightseagreen',
+  'plum',
+  'tan',
+]);
+const AMBIENT_MEMBER_BORDER_COLOR = 'black';
+
+function colorForMemberType(type: MemberType): string {
+  const index = EMPIRE_TUNING.MEMBER_TYPES.indexOf(type);
+  return AMBIENT_MEMBER_PALETTE[index % AMBIENT_MEMBER_PALETTE.length] as string;
+}
+
 /** Round a page-relative pixel offset to the NEAREST whole grid tile. */
 function pixelsToTile(pixels: number, tilePixels: number): number {
   return Math.round(pixels / tilePixels);
@@ -191,6 +216,11 @@ export function FloorGrid(props: FloorGridProps) {
   const placed = floorLayout(floor);
   const unplaced = unplacedOwnedFloorItems(floor, owned);
   const fixed = fixedFloorFurniture(barbellOwned);
+  // GDD §5.13 presentation Phase 2: static ambient bodies, from real
+  // rung/ownership state — see `ambientMemberRoster`'s own header for the
+  // count/type-mix/position rules and stated limits. Never draggable, never
+  // dispatched, never collidable with `placeFloorItem`'s overlap check.
+  const ambient = ambientMemberRoster(floor.rung, barbellOwned, owned);
   const tile = EMPIRE_TUNING.FLOOR_TILE_PIXELS;
   // GDD §5.13's PLAYTEST 2 ruling, gap 3: the grid's own internal tile
   // boundaries, one line per interior column/row edge — `grid.width - 1`
@@ -436,9 +466,37 @@ export function FloorGrid(props: FloorGridProps) {
                 </Animated.View>
               );
             })}
+            {ambient.map((member, index) => {
+              const width = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.width * tile;
+              const height = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.height * tile;
+              return (
+                // GDD §5.13 presentation Phase 2: a static, non-draggable,
+                // non-collidable placeholder body — no `PanResponder`, no
+                // remove control, never wrapped in a `FloorPlacement`, never
+                // dispatched through `floor-place`/`floor-remove`. Same "read
+                // model, not `FloorState`" discipline the fixed-furniture
+                // rows above already carry.
+                <View
+                  key={`ambient-${index}`}
+                  testID={`floorgrid-ambient-${index}`}
+                  style={{
+                    position: 'absolute',
+                    left: member.position.x * tile,
+                    top: member.position.y * tile,
+                    width,
+                    height,
+                    borderRadius: Math.min(width, height) / 2,
+                    backgroundColor: colorForMemberType(member.type),
+                    borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+                    borderColor: AMBIENT_MEMBER_BORDER_COLOR,
+                  }}
+                />
+              );
+            })}
           </View>
         </ScrollView>
       </ScrollView>
+      <Text testID={'floorgrid-ambient-caption'}>{ambient.length} member(s) around the gym</Text>
       <View testID={'floorgrid-tray'}>
         {unplaced.length === 0 ? (
           // GDD §5.13's PLAYTEST 2 ruling, gap 2: "drag onto the floor above"

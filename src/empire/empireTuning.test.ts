@@ -78,6 +78,8 @@ describe('the block is frozen and every entry is classified', () => {
     // decision somebody signs rather than a shrinking loop nobody sees.
     expect(nested.map(([key]) => key).sort()).toEqual([
       'ADVANCED_RECOVERY_ITEMS',
+      'AMBIENT_MEMBER_COUNT_BY_RUNG',
+      'AMBIENT_MEMBER_FOOTPRINT_TILES',
       'EQUIPMENT_TIERS',
       'EQUIPMENT_TIER_BUCKS_MULTIPLIER',
       'EQUIPMENT_TIER_COST_GYM_BUCKS',
@@ -602,13 +604,17 @@ describe('§5.5 social', () => {
     // 107 -> 109: PLAYTEST 3's overlap-refusal ruling adds two more —
     // FLOOR_OVERLAP_REFUSAL_FLASH_MS and
     // FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS. Same measurement discipline.
-    expect(examined).toBe(109);
+    // 109 -> 112: GDD §5.13 presentation Phase 2's three ambient-member
+    // entries (AMBIENT_MEMBER_COUNT_BY_RUNG, AMBIENT_MEMBER_FOOTPRINT_TILES,
+    // AMBIENT_MEMBER_PLACEMENT_STRIDE). Measured by running this assertion
+    // and reading its failure value, not computed by hand.
+    expect(examined).toBe(112);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
-    // 435 -> 525 -> 535 -> 545 (109 keys x 5 banned units, PLAYTEST 3's two
-    // new tuning entries).
-    expect(probed).toBe(545);
+    // 435 -> 525 -> 535 -> 545 -> 560 (112 keys x 5 banned units, Phase 2's
+    // three new tuning entries).
+    expect(probed).toBe(560);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

@@ -5,9 +5,11 @@
  * Pure module (CLAUDE.md, "Pure logic is separate from UI"): zero React,
  * zero side effects, zero I/O, no clock reading, no randomness. Its only
  * imports are `./empireCore` (for `refuseWith`, the directory's throw gate),
- * `./ladder` (for `LadderRung`), `./sessions` (for `SessionEquipmentItem`)
- * and `./empireTuning` — the same import-fence discipline every module in
- * this directory carries.
+ * `./ladder` (for `LadderRung`), `./members` (for `equipmentBiasedMemberTypes`
+ * and `MemberType` — GDD §5.13 presentation Phase 2's ambient-member type
+ * mix, see that section below), `./sessions` (for `SessionEquipmentItem`) and
+ * `./empireTuning` — the same import-fence discipline every module in this
+ * directory carries.
  *
  * ===========================================================================
  * What this module is, and what it deliberately is not
@@ -99,6 +101,7 @@
 
 import { refuseWith } from './empireCore';
 import { type LadderEquipmentItem, type LadderRung } from './ladder';
+import { equipmentBiasedMemberTypes, type MemberType } from './members';
 import { type SessionEquipmentItem } from './sessions';
 import { EMPIRE_TUNING } from './empireTuning';
 
@@ -433,4 +436,146 @@ export function removeFloorItem(floor: FloorState, item: SessionEquipmentItem): 
   const next = { ...floor.placements };
   delete next[item];
   return Object.freeze({ ...floor, placements: Object.freeze(next) });
+}
+
+// ---------------------------------------------------------------------------
+// Ambient members — GDD §5.13 presentation Phase 2: "ambient members at fixed
+// positions, static or idle-animated, from real count/type data. Gate: does
+// the gym read as populated and alive?"
+// ---------------------------------------------------------------------------
+
+/**
+ * One ambient body's type and fixed grid position. Never a `FloorPlacement`
+ * (that names a `SessionEquipmentItem`) and never a `FixedFurniturePlacement`
+ * (that names a `LadderEquipmentItem`) — a member is neither draggable
+ * equipment nor Barbell-group furniture, and this is a third, disjoint read
+ * model, kept apart from the other two for the same reason those two are
+ * kept apart from each other (`FixedFurniturePlacement`'s own header).
+ */
+export interface AmbientMemberPlacement {
+  readonly type: MemberType;
+  readonly position: GridPosition;
+}
+
+/** A stable string key for a grid cell, used only to de-duplicate candidate positions below. */
+function cellKey(position: GridPosition): string {
+  return `${position.x},${position.y}`;
+}
+
+/**
+ * Phase 2's ambient roster for a gym at `rung`, owning `barbellOwned` (the
+ * Barbell-group ladder equipment — read only so members can be placed off
+ * `fixedFloorFurniture`'s cells) and `sessionOwned` (the stage-2 session
+ * equipment — read only to bias the type mix via `equipmentBiasedMemberTypes`,
+ * GDD §5.6's own function; no second type-mix formula is invented here).
+ *
+ * Same pattern as `fixedFloorFurniture`, above: a plain read model, computed
+ * fresh from real state on every call, never a `FloorState` and never stored
+ * anywhere. Nothing here is draggable, nothing here is collidable with
+ * `placeFloorItem`'s overlap check, and nothing here dispatches.
+ *
+ * COUNT: read off the provisional `AMBIENT_MEMBER_COUNT_BY_RUNG` table, keyed
+ * by rung alone — garage sparse, warehouse populated, per that table's own
+ * comment. This first version does not also scale by owned-equipment count;
+ * that is a real, separate tuning axis this signature already has room for
+ * (nothing about it would need a new parameter, since `barbellOwned` and
+ * `sessionOwned` are already threaded through), deliberately not built now to
+ * keep this function's first pass simple and testable.
+ *
+ * TYPE MIX: `equipmentBiasedMemberTypes(sessionOwned)` names the type(s) the
+ * gym's owned equipment is biased toward (never empty — see that function's
+ * own header). This roster is filled by CYCLING ROUND-ROBIN through that
+ * list, in order, wrapping as needed: member index `i` gets
+ * `biased[i % biased.length]`. STATED LIMIT: round-robin gives every biased
+ * type an equal share of the roster; it does NOT weight members toward the
+ * FIRST-biased type more than any other, which may or may not be the right
+ * read of "the mix is a consequence of what you built" — a design call for
+ * later, not one this function's shape resolves.
+ *
+ * POSITIONS: every candidate cell of the rung's own `floorGridSize` grid,
+ * scanned row-major at `AMBIENT_MEMBER_FOOTPRINT_TILES` resolution, that does
+ * NOT overlap any row of `fixedFloorFurniture(barbellOwned)` (via
+ * `overlapsFixedFurniture`, reused rather than re-implemented) is a legal
+ * candidate — so a member is never drawn standing exactly on top of a
+ * furniture chip, even though nothing here is mechanically collidable. To
+ * avoid every member clustering into the grid's top-left corner, candidates
+ * are first taken every `AMBIENT_MEMBER_PLACEMENT_STRIDE`'th one in scan
+ * order; only if that strided pass does not yield `count` positions does the
+ * function fall back to filling the remaining slots from the skipped
+ * candidates, in order. `floor.test.ts` drives that every returned position
+ * lies inside the rung's grid and outside every fixed row's footprint.
+ *
+ * STATED LIMIT, NAMED RATHER THAN SILENTLY DECIDED: this avoids the FIXED
+ * Barbell furniture only. It does NOT avoid a player's own placed session
+ * equipment (`FloorState.placements`) — that state is mutable, per-gym, and
+ * this function's signature deliberately does not take a `FloorState` at
+ * all, so an ambient member's fixed position CAN visually coincide with a
+ * chip a player has dragged onto the floor. Reading the live floor here would
+ * make an ambient body move whenever equipment moves, which is a step toward
+ * Phase 3's real pathing/reaction machinery ("NOT this piece", per this
+ * piece's own brief) rather than a static Phase 2 body.
+ *
+ * WHAT THIS FUNCTION DOES NOT, AND MUST NOT, TAKE AS INPUT: reputation,
+ * satisfaction, dues, or any other economic quantity `members.ts` computes
+ * from a real economic roster — this screen's state (`sessions.ts`'s
+ * `GymState`) has no roster field and no reputation field to read. This is
+ * presentation reading real state (a rung and two ownership lists),
+ * inventing no new source of truth — the same discipline
+ * `fixedFloorFurniture`'s own header states. If a later, separately-
+ * serialised piece puts reputation on this screen's state, this derivation
+ * can grow to use it; it must not grow to use it in this phase.
+ */
+export function ambientMemberRoster(
+  rung: LadderRung,
+  barbellOwned: readonly LadderEquipmentItem[],
+  sessionOwned: readonly SessionEquipmentItem[],
+): readonly AmbientMemberPlacement[] {
+  const count: number = EMPIRE_TUNING.AMBIENT_MEMBER_COUNT_BY_RUNG[rung];
+  if (count === undefined) refuseWith(`${String(rung)} has no registered ambient member count`);
+  if (count === 0) return Object.freeze([]);
+
+  const grid = floorGridSize(rung);
+  const fixed = fixedFloorFurniture(barbellOwned);
+  const footprint = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES;
+  const stride = EMPIRE_TUNING.AMBIENT_MEMBER_PLACEMENT_STRIDE;
+
+  const candidates: GridPosition[] = [];
+  for (let y = 0; y + footprint.height <= grid.height; y += 1) {
+    for (let x = 0; x + footprint.width <= grid.width; x += 1) {
+      const position: GridPosition = { x, y };
+      if (!overlapsFixedFurniture(position, footprint, fixed)) candidates.push(position);
+    }
+  }
+
+  const used = new Set<string>();
+  const positions: GridPosition[] = [];
+  for (const candidate of candidates.filter((_unused, index) => index % stride === 0)) {
+    if (positions.length >= count) break;
+    positions.push(candidate);
+    used.add(cellKey(candidate));
+  }
+  if (positions.length < count) {
+    for (const candidate of candidates) {
+      if (positions.length >= count) break;
+      const key = cellKey(candidate);
+      if (used.has(key)) continue;
+      positions.push(candidate);
+      used.add(key);
+    }
+  }
+  if (positions.length < count) {
+    refuseWith(
+      `${String(rung)}'s floor has room for only ${positions.length} of ${count} ambient members outside fixed furniture`,
+    );
+  }
+
+  const types = equipmentBiasedMemberTypes(sessionOwned);
+  return Object.freeze(
+    positions.map((position, index) =>
+      Object.freeze({
+        type: types[index % types.length] as MemberType,
+        position,
+      }),
+    ),
+  );
 }

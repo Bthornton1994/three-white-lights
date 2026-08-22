@@ -2547,7 +2547,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `overlapsFixedFurniture`) and `ladderView.test.ts` (the reducer-level
     // direct-call tests `placeFloorItem`'s own header points at). Neither
     // mention existed before this round.
-    expect(pairs).toBe(88);
+    // 88 -> 90: GDD §5.13 presentation Phase 2's ambient-member work gives
+    // `floor.ts` and `FloorGrid.tsx` each a first mention of `members.ts` —
+    // `floor.ts` via its new `./members` import plus its
+    // `ambientMemberRoster` header prose, `FloorGrid.tsx` via its new
+    // `./members` import for `MemberType`. Two new pairs, measured by running
+    // this exact assertion and reading its failure value.
+    expect(pairs).toBe(90);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3105,6 +3111,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // apostrophe-inside-JsxText lexer bug entirely rather than tripping it.
       'can&apos;t place here',
       'x',
+      // GDD §5.13 presentation Phase 2: the ambient-member caption, in tree
+      // order — rendered after the grid's ScrollView and before the tray,
+      // which is why it lands between the placed-item remove control's 'x'
+      // and the tray's own empty/non-empty text.
+      'member(s) around the gym',
       'unplaced equipment — drag onto the floor above',
       // GymScreen.tsx, in tree order — second, because a capital `G` sorts
       // before every lowercase shipped module name, GymScreen.tsx's chunks
@@ -3275,7 +3286,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // colour. The refusal MESSAGE itself ("can&apos;t place here") is JSX
     // text with no surrounding quote characters, so it belongs to (and was
     // already added to) SIGNED_JSX_TEXT_CHUNKS above, not here.
-    expect(singleQuoted.size).toBe(337);
+    // 337 -> 344: GDD §5.13 presentation Phase 2 — floor.ts's and
+    // FloorGrid.tsx's new `'./members'` import specifier (one new distinct
+    // value, shared by both call sites), FloorGrid.tsx's five new
+    // `AMBIENT_MEMBER_PALETTE` colours ('coral', 'khaki', 'lightseagreen',
+    // 'plum', 'tan' — none a repeat of `PLACEHOLDER_PALETTE`), and its one
+    // new `'floorgrid-ambient-caption'` testID. `AMBIENT_MEMBER_BORDER_COLOR`
+    // ('black') is NOT new — it duplicates `FLOOR_ITEM_BORDER_COLOR`'s
+    // existing value, and this is a set of distinct VALUES, not declarations.
+    // Measured by running this assertion and reading the failure value.
+    expect(singleQuoted.size).toBe(344);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3294,7 +3314,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // literals (`floorgrid-fixed-${row.item}`, `floorgrid-line-v-${i}`,
     // `floorgrid-line-h-${j}`, and the two `key={...}` template literals on
     // the line/`v`/`h` elements). Measured by running this assertion.
-    expect(templateChunks.size).toBe(217);
+    // 217 -> 222: GDD §5.13 presentation Phase 2 — floor.ts's `cellKey`
+    // template (`${position.x},${position.y}`) and its two new `refuseWith`
+    // template messages, plus FloorGrid.tsx's `floorgrid-ambient-${index}`
+    // testID and `ambient-${index}` key templates. Measured by running this
+    // assertion.
+    expect(templateChunks.size).toBe(222);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3314,6 +3339,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './floor',
       './ladder',
       './ladderView',
+      './members',
       './npc',
       './production',
       './recruitment',
@@ -3369,6 +3395,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'competition-total',
       'composed-gym',
       'conditioning',
+      'coral',
       'cosmetic-unlock',
       'cosmetics',
       'costliest-affordable-first',
@@ -3393,6 +3420,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'flat-bench',
       'floor-place',
       'floor-remove',
+      'floorgrid-ambient-caption',
       'floorgrid-caption',
       'floorgrid-drop-refused',
       'floorgrid-grid',
@@ -3470,6 +3498,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'injury-days-saved',
       'injury-risk',
       'injuryDaysSaved',
+      'khaki',
       'knob',
       'ladder-accrual',
       'ladder-clock',
@@ -3485,6 +3514,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'leaderboard-placement',
       'legendary',
       'level',
+      'lightseagreen',
       'machines',
       'mats',
       'mediumpurple',
@@ -3512,6 +3542,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'physio',
       'physio-days-saved',
       'placed',
+      'plum',
       'power-bar',
       'powerlifter',
       'progression-reaching',
@@ -3572,6 +3603,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'strip-mall-unit',
       'structural',
       'support',
+      'tan',
       'technique-quality',
       'technique-quality-bonus',
       'thrownMessage',
@@ -3619,7 +3651,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // ruling; templateChunks unchanged.
     // 542 -> 552: singleQuoted (331 -> 335) and templateChunks (211 -> 217),
     // both from GDD §5.13's PLAYTEST 2 ruling.
-    expect(stringsChecked).toBe(554);
+    // 554 -> 566: singleQuoted (337 -> 344) and templateChunks (217 -> 222),
+    // GDD §5.13 presentation Phase 2.
+    expect(stringsChecked).toBe(566);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3662,7 +3696,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 280 -> 282: PLAYTEST 2's 'dimgray' and 'floorgrid-tray-empty', both
     // clearing the two-letter guard below.
     // 282 -> 284: PLAYTEST 3's 'crimson' and 'floorgrid-drop-refused', same.
-    expect(probes).toBe(284);
+    // 284 -> 291: GDD §5.13 presentation Phase 2's seven new spaceFree
+    // entries ('./members', 'coral', 'khaki', 'lightseagreen', 'plum', 'tan',
+    // 'floorgrid-ambient-caption'), all clearing the two-letter guard below.
+    expect(probes).toBe(291);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -3897,12 +3934,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'empireTuning.ts': [],
       'engagement.ts': ['./empireCore', './empireTuning', './empireInvariant', './social'],
       'expansion.ts': ['./empireCore', './empireTuning'],
-      'floor.ts': ['./empireCore', './empireTuning', './ladder', './sessions'],
+      'floor.ts': ['./empireCore', './empireTuning', './ladder', './members', './sessions'],
       'FloorGrid.tsx': [
         './empireTuning',
         './floor',
         './ladder',
         './ladderView',
+        './members',
         './sessions',
         'react',
         'react-native',
@@ -4018,7 +4056,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 55 -> 56: GDD §5.13's PLAYTEST 2 ruling adds FloorGrid.tsx's new
     // ./ladder edge (`fixedFloorFurniture`, `LadderEquipmentItem`), read from
     // this assertion's own failure value.
-    expect(specifiers).toBe(56);
+    // 56 -> 58: GDD §5.13 presentation Phase 2 adds a ./members edge to both
+    // floor.ts (`equipmentBiasedMemberTypes`, `MemberType`) and FloorGrid.tsx
+    // (`MemberType`). Read from this assertion's own failure value.
+    expect(specifiers).toBe(58);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -4154,12 +4195,17 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // entries — FLOOR_OVERLAP_REFUSAL_FLASH_MS (1200) and
     // FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS (4), one literal each.
     // Read from this assertion's own failure value, not hand-counted.
+    // 226 -> 231: GDD §5.13 presentation Phase 2's three new tuning entries —
+    // AMBIENT_MEMBER_COUNT_BY_RUNG (four rung values),
+    // AMBIENT_MEMBER_FOOTPRINT_TILES (width, height) and
+    // AMBIENT_MEMBER_PLACEMENT_STRIDE (one value). Read from this assertion's
+    // own failure value, not hand-counted.
     expect(
       asRenderer.length,
       'the count of literals the audit finds in empireTuning.ts moved: an entry was added or ' +
         'removed, or the instrument stopped reporting. Both are decisions; neither is a tuning ' +
         `pass. First finding: ${formatFindings(asRenderer.slice(0, 1)).trim()}`,
-    ).toBe(226);
+    ).toBe(231);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

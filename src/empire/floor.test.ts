@@ -17,10 +17,12 @@ import { describe, expect, it } from 'vitest';
 
 import { EMPIRE_TUNING } from './empireTuning';
 import { type LadderEquipmentItem, type LadderRung } from './ladder';
+import { equipmentBiasedMemberTypes } from './members';
 import { type SessionEquipmentItem } from './sessions';
 import {
   type FloorState,
   type GridPosition,
+  ambientMemberRoster,
   createFloorState,
   fixedFloorFurniture,
   floorGridSize,
@@ -605,5 +607,152 @@ describe('overlapsFixedFurniture refuses a drop that shares a cell with fixed fu
 
   it('is vacuously false against an empty fixed list — never refuses a floor with no fixed furniture drawn', () => {
     expect(overlapsFixedFurniture({ x: 0, y: 0 }, matsFootprint, [])).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Ambient members — GDD §5.13 presentation Phase 2
+// ---------------------------------------------------------------------------
+
+describe('the three ambient-member tables are well-shaped', () => {
+  it('AMBIENT_MEMBER_COUNT_BY_RUNG is keyed by exactly LADDER_RUNGS, both directions, and is strictly increasing', () => {
+    const keys = Object.keys(T.AMBIENT_MEMBER_COUNT_BY_RUNG).sort();
+    expect(keys).toEqual([...T.LADDER_RUNGS].sort());
+    const counts = T.LADDER_RUNGS.map((rung) => T.AMBIENT_MEMBER_COUNT_BY_RUNG[rung]);
+    for (const count of counts) {
+      expect(Number.isInteger(count)).toBe(true);
+      expect(count).toBeGreaterThan(0);
+    }
+    for (let i = 1; i < counts.length; i += 1) {
+      expect(counts[i], `index ${i}`).toBeGreaterThan(counts[i - 1] as number);
+    }
+    // Non-vacuity: the ladder really has more than one rung to compare.
+    expect(T.LADDER_RUNGS.length).toBe(4);
+  });
+
+  it('AMBIENT_MEMBER_FOOTPRINT_TILES is a positive whole-tile size', () => {
+    expect(Number.isInteger(T.AMBIENT_MEMBER_FOOTPRINT_TILES.width)).toBe(true);
+    expect(Number.isInteger(T.AMBIENT_MEMBER_FOOTPRINT_TILES.height)).toBe(true);
+    expect(T.AMBIENT_MEMBER_FOOTPRINT_TILES.width).toBeGreaterThan(0);
+    expect(T.AMBIENT_MEMBER_FOOTPRINT_TILES.height).toBeGreaterThan(0);
+  });
+
+  it('AMBIENT_MEMBER_PLACEMENT_STRIDE is a whole number of at least 1', () => {
+    expect(Number.isInteger(T.AMBIENT_MEMBER_PLACEMENT_STRIDE)).toBe(true);
+    expect(T.AMBIENT_MEMBER_PLACEMENT_STRIDE).toBeGreaterThanOrEqual(1);
+  });
+
+  it('every rung has enough candidate cells, outside fixed furniture, for its own registered count — the claim ambientMemberRoster would otherwise refuse at runtime, driven rather than trusted', () => {
+    const fixed = fixedFloorFurniture([...T.LADDER_STARTING_EQUIPMENT]);
+    const footprint = T.AMBIENT_MEMBER_FOOTPRINT_TILES;
+    let checked = 0;
+    for (const rung of T.LADDER_RUNGS) {
+      const grid = floorGridSize(rung);
+      let free = 0;
+      for (let y = 0; y + footprint.height <= grid.height; y += 1) {
+        for (let x = 0; x + footprint.width <= grid.width; x += 1) {
+          if (!overlapsFixedFurniture({ x, y }, footprint, fixed)) free += 1;
+        }
+      }
+      expect(free, rung).toBeGreaterThanOrEqual(T.AMBIENT_MEMBER_COUNT_BY_RUNG[rung]);
+      checked += 1;
+    }
+    expect(checked).toBe(4);
+  });
+});
+
+describe('ambientMemberRoster', () => {
+  const barbellOwned: readonly LadderEquipmentItem[] = [...T.LADDER_STARTING_EQUIPMENT];
+
+  it('is deterministic: the same inputs, called twice, produce a byte-identical roster', () => {
+    const first = ambientMemberRoster('storage-unit', barbellOwned, ['bike', 'mats']);
+    const second = ambientMemberRoster('storage-unit', barbellOwned, ['bike', 'mats']);
+    expect(second).toEqual(first);
+  });
+
+  it('returns exactly AMBIENT_MEMBER_COUNT_BY_RUNG members (keyed by rung), for every rung', () => {
+    let checked = 0;
+    for (const rung of T.LADDER_RUNGS) {
+      const roster = ambientMemberRoster(rung, barbellOwned, []);
+      expect(roster.length, rung).toBe(T.AMBIENT_MEMBER_COUNT_BY_RUNG[rung]);
+      checked += 1;
+    }
+    expect(checked).toBe(4);
+  });
+
+  it('a real comparison, not two independent pins: the warehouse roster is strictly larger than the garage roster', () => {
+    const garage = ambientMemberRoster('garage', barbellOwned, []);
+    const warehouse = ambientMemberRoster('warehouse', barbellOwned, []);
+    expect(warehouse.length).toBeGreaterThan(garage.length);
+  });
+
+  it('every position fits entirely inside the rung’s own grid', () => {
+    const footprint = T.AMBIENT_MEMBER_FOOTPRINT_TILES;
+    let checked = 0;
+    for (const rung of T.LADDER_RUNGS) {
+      const grid = floorGridSize(rung);
+      const roster = ambientMemberRoster(rung, barbellOwned, []);
+      for (const member of roster) {
+        expect(member.position.x, `${rung} member x`).toBeGreaterThanOrEqual(0);
+        expect(member.position.y, `${rung} member y`).toBeGreaterThanOrEqual(0);
+        expect(member.position.x + footprint.width, `${rung} member right edge`).toBeLessThanOrEqual(
+          grid.width,
+        );
+        expect(member.position.y + footprint.height, `${rung} member bottom edge`).toBeLessThanOrEqual(
+          grid.height,
+        );
+        checked += 1;
+      }
+    }
+    // Non-vacuity: really walked every rung's real roster, not an empty one.
+    expect(checked).toBe(
+      T.LADDER_RUNGS.reduce((sum, rung) => sum + T.AMBIENT_MEMBER_COUNT_BY_RUNG[rung], 0),
+    );
+  });
+
+  it('no member overlaps a fixed-furniture row, at any rung', () => {
+    const fixed = fixedFloorFurniture(barbellOwned);
+    const footprint = T.AMBIENT_MEMBER_FOOTPRINT_TILES;
+    let checked = 0;
+    for (const rung of T.LADDER_RUNGS) {
+      const roster = ambientMemberRoster(rung, barbellOwned, []);
+      for (const member of roster) {
+        expect(
+          overlapsFixedFurniture(member.position, footprint, fixed),
+          `${rung} member at (${member.position.x}, ${member.position.y})`,
+        ).toBe(false);
+        checked += 1;
+      }
+    }
+    expect(checked).toBe(
+      T.LADDER_RUNGS.reduce((sum, rung) => sum + T.AMBIENT_MEMBER_COUNT_BY_RUNG[rung], 0),
+    );
+  });
+
+  it('the type mix is exactly a round-robin cycle over the REAL equipmentBiasedMemberTypes(sessionOwned) — not just a count', () => {
+    const sessionOwned: readonly SessionEquipmentItem[] = ['dumbbells', 'cables'];
+    const biased = equipmentBiasedMemberTypes(sessionOwned);
+    // Non-vacuity: equipmentBiasedMemberTypes really returned something to cycle over.
+    expect(biased.length).toBeGreaterThan(0);
+    const roster = ambientMemberRoster('strip-mall-unit', barbellOwned, sessionOwned);
+    const expectedTypes = roster.map((_unused, index) => biased[index % biased.length]);
+    expect(roster.map((member) => member.type)).toEqual(expectedTypes);
+  });
+
+  it('a different owned-equipment set changes the type mix — the bias is real, not a fixed default', () => {
+    const rosterEmpty = ambientMemberRoster('garage', barbellOwned, []);
+    // Every §5.4 item this type table lists an affinity for, so the fit score
+    // (and therefore the bias) moves away from the always-true Barbell
+    // baseline that dominates an empty owned list.
+    const rosterEquipped = ambientMemberRoster('garage', barbellOwned, [...T.SESSION_EQUIPMENT_ITEMS]);
+    expect(rosterEquipped.map((member) => member.type)).not.toEqual(
+      rosterEmpty.map((member) => member.type),
+    );
+  });
+
+  it('refuses a rung with no registered count, rather than silently drawing nothing', () => {
+    expect(() =>
+      ambientMemberRoster('nonexistent-rung' as LadderRung, barbellOwned, []),
+    ).toThrow(/no registered ambient member count/);
   });
 });

@@ -61,6 +61,15 @@
  *      that cell, and `floorgrid-drop-refused` shows a "can't place here"
  *      signal. Driven BEFORE claim 3's own drag, since claim 3 now targets a
  *      cell clear of every fixed row (0,0 is no longer usable for it).
+ *   7. GDD §5.13 PRESENTATION PHASE 2 — AMBIENT MEMBERS. On the same cold
+ *      garage state as claims 1/2/5 above, every `floorgrid-ambient-<index>`
+ *      the garage's real `AMBIENT_MEMBER_COUNT_BY_RUNG` registers (3) is
+ *      drawn with a real, non-zero bounding box — not merely attached — and
+ *      a fourth is NOT drawn, so the count really comes from real rung state
+ *      rather than a fixed stub. Only the garage case is driven here; the
+ *      count-scales-by-rung claim (warehouse > garage) is covered by a unit
+ *      test in `floor.test.ts` instead, because reaching a warehouse gym in
+ *      this harness needs a long grind through the dev clock-skip controls.
  *
  * USAGE. Start the web build first (`npx expo start --web`), then:
  *
@@ -250,6 +259,44 @@ try {
     ok(`gap 5: the caption states the fixed count ("${captionText}")`);
   } else {
     fail(`gap 5: expected the caption to state "3 fixed," on a cold garage — got "${captionText}"`);
+  }
+
+  // -------------------------------------------------------------------------
+  // 1b. GDD §5.13 presentation Phase 2 — ambient members, on the same cold
+  // garage state. `AMBIENT_MEMBER_COUNT_BY_RUNG.garage` is 3, read here as a
+  // number this tool asserts against rather than trusted (the cross-check
+  // below reads a fourth index back as absent, which is the discriminating
+  // half — a stub that always drew SOME bodies would still pass the presence
+  // checks alone). CLAUDE.md's "presence is not visibility": every claim
+  // below reads a real, non-zero bounding box, not merely that the testID is
+  // attached.
+  // -------------------------------------------------------------------------
+  const GARAGE_AMBIENT_MEMBER_COUNT = 3;
+  let ambientBoxesOk = true;
+  for (let index = 0; index < GARAGE_AMBIENT_MEMBER_COUNT; index += 1) {
+    const box = await boxOf(`floorgrid-ambient-${index}`);
+    if (box === null || box.width <= 0 || box.height <= 0) {
+      ambientBoxesOk = false;
+      fail(`Phase 2: floorgrid-ambient-${index} is not drawn with a real, non-zero bounding box (got ${JSON.stringify(box)})`);
+    }
+  }
+  if (ambientBoxesOk) {
+    ok(`Phase 2: all ${GARAGE_AMBIENT_MEMBER_COUNT} ambient members on a cold garage are drawn with real, non-zero bounding boxes`);
+  }
+  // The discriminating half: a fourth body is NOT drawn on a garage — the
+  // count really is read from real rung/ownership state and not a fixed
+  // stub that always draws some number of bodies.
+  const extraAmbientBox = await boxOf(`floorgrid-ambient-${GARAGE_AMBIENT_MEMBER_COUNT}`);
+  if (extraAmbientBox === null) {
+    ok(`Phase 2: no floorgrid-ambient-${GARAGE_AMBIENT_MEMBER_COUNT} is drawn on a garage — the count is real, not a fixed stub`);
+  } else {
+    fail(`Phase 2: floorgrid-ambient-${GARAGE_AMBIENT_MEMBER_COUNT} is drawn on a garage, which registers only ${GARAGE_AMBIENT_MEMBER_COUNT} ambient members`);
+  }
+  const ambientCaptionText = await textOf('floorgrid-ambient-caption');
+  if (ambientCaptionText !== null && ambientCaptionText.includes(`${GARAGE_AMBIENT_MEMBER_COUNT} member`)) {
+    ok(`Phase 2: the ambient-member caption reports the real count ("${ambientCaptionText}")`);
+  } else {
+    fail(`Phase 2: expected the ambient-member caption to report ${GARAGE_AMBIENT_MEMBER_COUNT} member(s) — got "${ambientCaptionText}"`);
   }
 
   // Gap 4: the floor section is above the shop/allocator sections in render
