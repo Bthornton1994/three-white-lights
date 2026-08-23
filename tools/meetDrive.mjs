@@ -685,6 +685,29 @@ export const meetIsOver = (state) => state.recap || state.waiting || state.refus
  *
  * A reading outside `FRAME_RATE_BAND` is reported and NOT used: see that
  * constant for why a broken measurement must not become a multiplier.
+ *
+ * ===========================================================================
+ * WHAT THE SHIPPED EVIDENCE DOES AND DOES NOT SHOW ABOUT THIS
+ * ===========================================================================
+ * Stated because the mechanism is verified and the CONSEQUENCE is not, which is
+ * a distinction CLAUDE.md keeps a whole section for.
+ *
+ * VERIFIED: the counter reads back, the arithmetic runs, and every attempt in
+ * `.gauntlet/shots/shell/route.json` carries the rate it measured.
+ *
+ * NOT VERIFIED BY THAT RECORD: that scaling a hold UP rescues a rep. The green
+ * run measured **59.4-60.8 fps** on every one of its 27 attempts, so the factor
+ * was ~1.00 and the holds it used were within 10 ms of the declared ones. The
+ * 52.5 fps that motivated this was measured on the same box while other work
+ * was on it, so the rate is real and varies between runs — but the arm where
+ * the scaling does something is the arm that record did not take.
+ *
+ * The evidence for the scaled arm is the sweep in `START_HOLD_MS`: at 50 fps an
+ * UNSCALED squat hold of 840 makes 64 of 192 driven reps and bench's 760 makes
+ * 0 of 192, against 768/768 and 768/768 for the same values at 60 Hz-normalised
+ * timing. That is a pure-sim result and it is not a browser run. Read it as the
+ * reason the mechanism exists, not as proof that it works in a browser at a low
+ * frame rate.
  */
 export async function armFrameRateCounter(page) {
   await page
