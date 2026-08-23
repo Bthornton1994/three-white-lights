@@ -284,8 +284,21 @@ const PINNED = Object.freeze({
    * is a concrete instance of the standing rule that a session's own pass is
    * not verification, and it is why the number is corrected here by the
    * session that owns the tree rather than left to be rediscovered.
+   *
+   * 304 -> 306 with the GDD §4.2 first-run onboarding disclosures:
+   * `src/game/onboardingDisclosure.ts` and
+   * `src/game/onboardingDisclosure.test.ts`. TRACED, not re-measured and
+   * bumped, the same way the PR #15 pair above was: `git diff
+   * --diff-filter=A 22ada1e cab8a58` names exactly those two files and
+   * nothing else, and 304 + 2 lands on 306.
+   *
+   * A note for whoever moves this next, because it cost a run here: these two
+   * files were UNTRACKED for the first full-suite pass of that piece, so this
+   * pin stayed green while the work was uncommitted and went red only on the
+   * run after the commit. The census reads tracked files, so "the suite was
+   * green before I committed" is not evidence about it.
    */
-  SCANNED_FILES: 304,
+  SCANNED_FILES: 306,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -305,7 +318,16 @@ const PINNED = Object.freeze({
    *  `src/art/benchPress.test.ts`, the test half of the same PR #15 pair that
    *  moved `SCANNED_FILES` above — and masked by it, since both assertions
    *  live in one test and the first to fail hides the second. */
-  TEST_FILES: 95,
+  /**
+   * 95 -> 96 with `src/game/onboardingDisclosure.test.ts`, the test half of
+   * the same pair that moved `SCANNED_FILES` to 306 above.
+   *
+   * Masked by that assertion in exactly the way the previous entry warns
+   * about, and confirmed rather than assumed this time: bumping
+   * `SCANNED_FILES` alone leaves this one red on the next run, so both halves
+   * of an added module/test pair have to move together.
+   */
+  TEST_FILES: 96,
 });
 
 /**
