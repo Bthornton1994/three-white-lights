@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "baseline-shell-route-2026-08-23T20-37-06-599Z-25063",
   "label": "baseline-shell-route",
   "command": [
@@ -29,14 +29,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 8,
-    "okCount": 7,
+    "count": 9,
+    "okCount": 8,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T20:44:06.902Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-23T20:44:09.581Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-23T20:43:09.131Z"
-  }
+    "lastOkIso": "2026-08-23T20:44:09.287Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-23T20:44:09.580Z",
+  "elapsedSeconds": 423
 }
