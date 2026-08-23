@@ -1898,8 +1898,8 @@ All open items from the prior draft are settled:
 No open design questions remain. This spec is ready to move to implementation
 scoping.
 
-### 5.13 Presentation layer (RCT-style floor sim) — PHASE 1 BUILT AND GATED
-### IN, PHASES 2-4 STILL DESIGN-ONLY
+### 5.13 Presentation layer (RCT-style floor sim) — PHASES 1 AND 2 BUILT AND
+### GATED IN ON A REAL PHONE, PHASE 3 IN BUILD, PHASE 4 STILL DESIGN-ONLY
 
 Submitted in response to the 5.11 ruling above: a spatial floor the player
 builds into, populated by NPCs with visible state, in the direction of
