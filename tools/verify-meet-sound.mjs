@@ -70,8 +70,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { numberInBlock, parserSelfTest } from './readTuning.mjs';
-import { freshDepthSearch } from './sessionDrive.mjs';
-import { MEET_DRIVE, MEET_WALKOUT_SAYS, driveMeetToItsEnd } from './meetDrive.mjs';
+
+import { MEET_DRIVE, MEET_WALKOUT_SAYS, driveMeetToItsEnd, freshMeetSearches, holdsIn } from './meetDrive.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -820,7 +820,7 @@ if (entryDrawn.drawn) {
 
 if (PLAYED.reachedMeet) {
   PLAYED.drive = await driveMeetToItsEnd(page, {
-    search: freshDepthSearch(),
+    searches: freshMeetSearches(),
     // No recap deadline is derived here because this section never intends to
     // reach one: `shouldStop` leaves as soon as both arms of the walk-out branch
     // have been heard. `driveMeetToItsEnd` reports that as `'stopped'`, which is
@@ -1086,7 +1086,7 @@ await writeFile(
                 why: PLAYED.drive.why,
                 ms: PLAYED.drive.ms,
                 attempts: PLAYED.drive.attempts,
-                holdMs: PLAYED.drive.search?.holdMs ?? null,
+                holds: holdsIn(PLAYED.drive.searches),
               },
         walkoutsDriverSaw: PLAYED.walkoutsDriverSaw,
         walkouts: PLAYED.beats,

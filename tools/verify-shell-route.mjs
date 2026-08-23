@@ -194,9 +194,9 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 import {
+  LIFT_PROMPTS,
   SESSION_DRIVE,
   SESSION_PROMPTS,
-  freshDepthSearch,
   openSessionToFirstSet,
   playSessionToCloseOut,
   pressCloseOutAction,
@@ -219,6 +219,8 @@ import {
   MEET_WALKOUT_SAYS as MEET_TAIL_SAYS,
   ON_SCREEN_MIN_OPACITY,
   driveMeetToItsEnd,
+  freshMeetSearches,
+  holdsIn,
   effectiveOpacity,
   waitUntilDrawn,
 } from './meetDrive.mjs';
@@ -627,9 +629,56 @@ const CAREER_IRONLINE_NAME = 'Ironline Open Alliance';
  * cross-checked against `sessionTuning.ts` at the end of the run so the
  * restatement cannot rot.
  */
+/**
+ * ===========================================================================
+ * WHICH LIFT `?session=set` DRAWS — DERIVED FROM THE PREVIEW'S OWN DAY, NOT
+ * ASSUMED TO BE SQUAT
+ * ===========================================================================
+ * `sessionPreview.ts` pins `PREVIEW_DAY = SESSION_PREVIEW.DAY` and takes
+ * `PREVIEW_LIFT = liftForDay(PREVIEW_DAY)`, so the frozen set that route draws
+ * is one deterministic lift — no clock, no rotation under the tool — and it is
+ * NOT squat: `20300 % 3 === 2`, and `SESSION_TUNING.LIFT_ROTATION[2]` is the
+ * deadlift.
+ *
+ * `BEAT_SAYS.SET` USED TO BE `SESSION_PROMPTS.BRACE` — squat's line — and was
+ * right for the wrong reason. Before the three lifts landed, `simKindFor` mapped
+ * every session onto squat's phase model, so a deadlift day still said
+ * 'TAP AND HOLD TO DESCEND'. That stopgap is deleted, the preview draws a real
+ * deadlift, and at `b38980e` this leg failed with `expected the screen to say
+ * "TAP AND HOLD TO DESCEND"; it says "…SET 1 OF 5 172.5 kg TAP TO PULL No way
+ * down: p"`. The APP was right and the expectation was stale.
+ *
+ * DERIVED RATHER THAN RE-TYPED AS 'TAP TO PULL', and that is the point: a
+ * literal would go stale again the next time `SESSION_PREVIEW.DAY` moves, and
+ * re-aiming the assertion at whatever the screen currently says is the "widen
+ * the tolerance until it stops failing" move CLAUDE.md refuses by name. Both
+ * restatements below are cross-checked against `sessionTuning.ts` at the end of
+ * the run, so a moved day or a reordered rotation reddens rather than quietly
+ * re-aiming the expectation.
+ *
+ * AND IT IS A STRONGER CHECK THAN THE ONE IT REPLACES. The old line asserted
+ * squat's copy on a screen that could only ever be squat. This one asserts that
+ * the preview's declared lift and the phase ladder the mechanic actually walks
+ * agree — which is exactly what a `simKindFor`-shaped fallback breaks, and which
+ * is a defect this repository has shipped once.
+ */
+const PREVIEW_DAY_RESTATED = 20300;
+/** src/game/sessionTuning.ts — SESSION_TUNING.LIFT_ROTATION. */
+const LIFT_ROTATION_RESTATED = Object.freeze(['squat', 'bench', 'deadlift']);
+/** `liftForDay`'s arithmetic (src/game/session.ts), restated on those two. */
+const PREVIEW_LIFT_RESTATED =
+  LIFT_ROTATION_RESTATED[
+    ((PREVIEW_DAY_RESTATED % LIFT_ROTATION_RESTATED.length) + LIFT_ROTATION_RESTATED.length) %
+      LIFT_ROTATION_RESTATED.length
+  ];
+
 const BEAT_SAYS = Object.freeze({
-  /** tools/sessionDrive.mjs — SESSION_PROMPTS.BRACE, the mechanic's first cue. */
-  SET: SESSION_PROMPTS.BRACE,
+  /**
+   * tools/sessionDrive.mjs — `LIFT_PROMPTS[<the preview day's lift>].BRACE`,
+   * the mechanic's first cue on the lift `?session=set` actually draws. See the
+   * block above for why this is derived rather than squat's line.
+   */
+  SET: LIFT_PROMPTS[PREVIEW_LIFT_RESTATED].BRACE,
   /** src/game/sessionTuning.ts — SESSION_COPY.REST_PROMPT. */
   REST: 'RACK IT',
   /**
@@ -2584,6 +2633,39 @@ async function checkSessionLayoutMatchesTuning() {
     `looked for ALREADY_TRAINED_HEADLINE: '${BEAT_SAYS.ALREADY_TRAINED}' in sessionTuning.ts`,
   );
 
+  // ---- THE TWO NUMBERS `BEAT_SAYS.SET` IS DERIVED FROM -------------------
+  //
+  // `?session=set` draws `liftForDay(SESSION_PREVIEW.DAY)`, and this tool
+  // restates both halves of that to know which brace line to expect. Neither is
+  // copy, so neither is caught by the string pins above, and a derived
+  // expectation with an un-pinned derivation is a stale literal with extra
+  // steps. See the block above `PREVIEW_DAY_RESTATED`.
+  const previewDay = numberInBlock(text, 'SESSION_PREVIEW', 'DAY');
+  check(
+    previewDay === PREVIEW_DAY_RESTATED,
+    'SESSION_PREVIEW.DAY is the day this tool derives the preview session’s LIFT from',
+    `sessionTuning.ts ${previewDay} vs this tool ${PREVIEW_DAY_RESTATED}` +
+      ` (which makes the preview a ${PREVIEW_LIFT_RESTATED}, expecting ${JSON.stringify(BEAT_SAYS.SET)})`,
+  );
+  // The ROTATION, in order and exactly — a set membership check would pass on a
+  // reordering, and a reordering is precisely what moves which lift day 20300
+  // lands on.
+  const rotationInSource = /LIFT_ROTATION:\s*Object\.freeze\(\[([^\]]*)\]/.exec(text);
+  const rotationRead =
+    rotationInSource === null
+      ? null
+      : rotationInSource[1]
+          .split(',')
+          .map((entry) => entry.trim().replace(/^'|'$/g, ''))
+          .filter((entry) => entry.length > 0 && !entry.startsWith('as '));
+  check(
+    rotationRead !== null &&
+      rotationRead.length === LIFT_ROTATION_RESTATED.length &&
+      rotationRead.every((kind, i) => kind === LIFT_ROTATION_RESTATED[i]),
+    'SESSION_TUNING.LIFT_ROTATION is in the order this tool indexes that day into',
+    `sessionTuning.ts ${JSON.stringify(rotationRead)} vs this tool ${JSON.stringify([...LIFT_ROTATION_RESTATED])}`,
+  );
+
   // THE BRIEFING'S PROMPT, FOR THE SAME REASON THE CHECK-IN TITLE ABOVE NEEDED
   // A PIN. Section 10b uses it BOTH ways — present before the round trip, absent
   // after it — and the absent half is true of every string no screen says, so a
@@ -4141,15 +4223,19 @@ function beatMsForLine(line) {
 // file used to do inline during the drive it now passes in as hooks.
 
 /**
- * The hold the last driven meet converged on, carried to the next one.
+ * The holds the last driven meet converged on, carried to the next one.
  *
- * `driveMeetToItsEnd` already threads a depth search in and out so a second meet
- * starts from the mechanic the first one learned. Sections 4 and 4b hand it
- * along by hand because they are adjacent; section 6c is three sections and a
- * whole session away from 4b's `second`, so the handoff lives here instead of
- * being re-derived or restarted from scratch — a meet restarted on
- * `freshDepthSearch()` spends its first attempts re-learning a hold this machine
+ * `driveMeetToItsEnd` already threads a PER-LIFT depth search in and out so a
+ * second meet starts from the mechanic the first one learned. Sections 4 and 4b
+ * hand it along by hand because they are adjacent; section 6c is three sections
+ * and a whole session away from 4b's `second`, so the handoff lives here instead
+ * of being re-derived or restarted from scratch — a meet restarted on
+ * `freshMeetSearches()` spends its first attempts re-learning holds this machine
  * has already measured, and a bombed meet draws no pill at all.
+ *
+ * PER LIFT SINCE THE DRIVER LEARNED ALL THREE. Squat's converged hold is past
+ * the point a bench rep is buried at the same load, so one hold carried across
+ * the lift change bombs the bench — see `MEET_DRIVE.START_HOLD_MS`.
  */
 let lastMeetDepthSearch = null;
 
@@ -4177,7 +4263,7 @@ async function checkDrivenMeet(tag, searchIn, expected, whatEnding, chooseOption
   const record = { tag, appRun: APP_RUNS.serial, ended: null };
   MEETS_DRIVEN.push(record);
   const drive = await driveMeetToItsEnd(page, {
-    search: searchIn,
+    searches: searchIn,
     recapSettleMs,
     // THE ONE BEAT THIS TOOL DOES MORE THAN WAIT THROUGH. See the block above
     // `WALKOUT_TAIL_PROBE`: the walk-out's tail is where every millisecond of
@@ -4207,7 +4293,8 @@ async function checkDrivenMeet(tag, searchIn, expected, whatEnding, chooseOption
   check(
     drive.ended === expected,
     whatEnding,
-    `${drive.attempts.length} attempts in ${drive.ms}ms, hold settled at ${drive.search.holdMs}ms;` +
+    `${drive.attempts.length} attempts in ${drive.ms}ms on ${JSON.stringify(drive.liftsPlayed ?? [])},` +
+      ` holds settled at ${holdsIn(drive.searches)};` +
       ` ended on '${drive.ended}'` +
       (drive.ended === expected
         ? ''
@@ -4231,14 +4318,20 @@ async function checkDrivenMeet(tag, searchIn, expected, whatEnding, chooseOption
   // see the holds it settled on.
   note(
     `${tag}: ${drive.attempts
-      .map((a) => `${a.attempt ?? '?'} @${a.holdMs ?? '?'}ms -> ${JSON.stringify(a.feedback ?? a.why ?? null)}`)
+      .map(
+        (a) =>
+          `${a.attempt ?? '?'} @${a.holdMs === null || a.holdMs === undefined ? 'no eccentric' : `${a.holdMs}ms`}` +
+          ` x${a.drivesTapped ?? 0} drive tap(s)${a.downCommandSeen === true ? ' + down command' : ''}` +
+          ` -> ${JSON.stringify(a.feedback ?? a.why ?? null)}`,
+      )
       .join(' | ')}`,
   );
   // ALSO NOT AN ASSERTION. Which card §6.3's choice was answered with, in order,
   // so a reader can see whether the run played the dilemma or ducked it.
   note(`${tag}: §6.3 answered with ${JSON.stringify(drive.pressedOptions ?? [])}`);
   record.ended = drive.ended;
-  lastMeetDepthSearch = drive.search;
+  record.liftsPlayed = drive.liftsPlayed ?? [];
+  lastMeetDepthSearch = drive.searches;
   return drive;
 }
 
@@ -4928,7 +5021,7 @@ if (!reachedMeet) {
   // ---- 4. play it out, and leave by the control ---------------------------
   const first = await checkDrivenMeet(
     'meet 1',
-    freshDepthSearch(),
+    freshMeetSearches(),
     'recap',
     'THE MEET THE PLAYER OPENED IS PLAYED TO ITS END — nine attempts on the real mechanic, through to GDD §6.5’s recap',
   );
@@ -4936,7 +5029,8 @@ if (!reachedMeet) {
     ended: first.ended,
     ms: first.ms,
     attempts: first.attempts.length,
-    holdMs: first.search.holdMs,
+    holds: holdsIn(first.searches),
+    liftsPlayed: first.liftsPlayed ?? [],
   };
 
   const urlAtRecap = page.url();
@@ -5156,7 +5250,7 @@ if (!reachedMeet) {
       // starts from a mechanic this machine has already been measured against.
       const second = await checkDrivenMeet(
         'meet 2',
-        first.search,
+        first.searches,
         'recap',
         'THE SECOND MEET ENDS IN A REAL RECAP OF ITS OWN — banked under its own id, because the calendar handed it one (Sprint 1c)',
         // FROM HERE THE ROBOT PLAYS §6.3'S DILEMMA. See the block above
@@ -5168,7 +5262,8 @@ if (!reachedMeet) {
         ended: second.ended,
         ms: second.ms,
         attempts: second.attempts.length,
-        holdMs: second.search.holdMs,
+        holds: holdsIn(second.searches),
+        liftsPlayed: second.liftsPlayed ?? [],
       };
 
       const secondRecapArrived = await waitUntilDrawn(page, 'recap-action', RECAP_SETTLE_MS);
@@ -5933,7 +6028,7 @@ const playedOut = { attempted: true };
 
       const third = await checkDrivenMeet(
         'meet 3',
-        lastMeetDepthSearch ?? freshDepthSearch(),
+        lastMeetDepthSearch ?? freshMeetSearches(),
         'recap',
         'THE MEET OPENED FROM THE ALREADY-TRAINED SURFACE IS PLAYED TO ITS END, so its way back is on screen (GDD §6.5)',
         takeTheBigJumpWhenSomethingIsBanked,
@@ -5941,6 +6036,8 @@ const playedOut = { attempted: true };
       returnLeg.meetEnded = third.ended;
       returnLeg.meetAttempts = third.attempts.length;
       returnLeg.meetMs = third.ms;
+      returnLeg.meetLiftsPlayed = third.liftsPlayed ?? [];
+      returnLeg.meetHolds = holdsIn(third.searches);
 
       // WHICH ENDINGS CARRY A PILL, AND THEREFORE WHICH ONES THIS LEG CAN BE
       // MEASURED FROM. `SHELL_NAV.MEET_PHASES` is the `recap` beat and nothing
