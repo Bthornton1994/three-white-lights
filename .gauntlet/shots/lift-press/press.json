@@ -1,35 +1,23 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-23T22:33:18.889Z",
+    "capturedAt": "2026-08-23T23:27:28.100Z",
     "url": "http://localhost:8093",
-    "commit": "44c6409",
+    "commit": "5f40744",
     "branch": "claude/meetdrive-three-lifts",
     "workingTree": "clean",
     "dirtyPaths": [
-      "M .gauntlet/shots/shell/01-session-with-nav.png",
+      "M .gauntlet/shots/meet/sound.json",
       " M .gauntlet/shots/shell/04a-live-recap-with-way-back.png",
       " M .gauntlet/shots/shell/04b-second-meet-real-recap.png",
-      " M .gauntlet/shots/shell/05-back-on-the-session.png",
-      " M .gauntlet/shots/shell/05a-check-in-after-a-played-meet.png",
       " M .gauntlet/shots/shell/05b-check-in-after-the-second-meet.png",
-      " M .gauntlet/shots/shell/08-set-has-no-nav.png",
       " M .gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
-      " M .gauntlet/shots/shell/12-cutin-has-no-shell-chrome.png",
-      " M .gauntlet/shots/shell/12-openers-follow-the-session.png",
-      " M .gauntlet/shots/shell/13-recap-before-the-return-leg.png",
-      " M .gauntlet/shots/shell/15b-reload-calendar-survives.png",
-      " M .gauntlet/shots/shell/16-empire-round-trip-closed.png",
       " M .gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
-      " M .gauntlet/shots/shell/18-briefing-round-trip-lands-back-on-the-briefing.png",
-      " M .gauntlet/shots/shell/21-career-calendar-chosen.png",
-      " M .gauntlet/shots/shell/22-career-round-trip-closed.png",
-      " M .gauntlet/shots/shell/24-calendar-after-a-banked-meet.png",
       " M .gauntlet/shots/shell/route.json"
     ],
     "instrument": {
       "verify-lift-press.mjs": "2b1f5a8a12b86a91",
       "sessionDrive.mjs": "f9ec486d0b182c13",
-      "meetDrive.mjs": "3647e8e038348281",
+      "meetDrive.mjs": "9a12381f9310a2a5",
       "enterMeetFromCalendar.mjs": "68394ae0c9c75051"
     },
     "coverage": {
@@ -247,7 +235,7 @@
           },
           {
             "phase": "attempt1-4-hole",
-            "loopPrompt": "RIDE IT",
+            "loopPrompt": "OUT OF THE HOLE",
             "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
@@ -281,7 +269,7 @@
           },
           {
             "phase": "attempt1-6-drive-tap-1-settled",
-            "loopPrompt": "RIDE IT",
+            "loopPrompt": "DRIVE — TAP",
             "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
@@ -332,7 +320,7 @@
           },
           {
             "phase": "attempt1-6-drive-tap-3-released",
-            "loopPrompt": "RIDE IT",
+            "loopPrompt": "DRIVE — TAP",
             "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
               "userSelect": "none",
@@ -366,295 +354,6 @@
           },
           {
             "phase": "attempt1-6-drive-tap-4-released",
-            "loopPrompt": "RIDE IT",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt1-6-drive-tap-4-settled",
-            "loopPrompt": "RIDE IT",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt1-8-after-drive-sequence",
-            "loopPrompt": "NO LIFT",
-            "loopDetail": "Ran out of air.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-0-brace-before-press",
-            "loopPrompt": "TAP AND HOLD TO DESCEND",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-1-descent",
-            "loopPrompt": "RELEASE AT DEPTH",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-2-descent-mid-hold",
-            "loopPrompt": "RELEASE AT DEPTH",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-3-immediately-after-release",
-            "loopPrompt": "OUT OF THE HOLE",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-4-hole",
-            "loopPrompt": "RIDE IT",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-6-drive-tap-1-released",
-            "loopPrompt": "DRIVE — TAP",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-6-drive-tap-1-settled",
-            "loopPrompt": "DRIVE — TAP",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-6-drive-tap-2-released",
-            "loopPrompt": "DRIVE — TAP",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-6-drive-tap-2-settled",
-            "loopPrompt": "RIDE IT",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-6-drive-tap-3-released",
-            "loopPrompt": "RIDE IT",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-6-drive-tap-3-settled",
-            "loopPrompt": "RIDE IT",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-6-drive-tap-4-released",
-            "loopPrompt": "DRIVE — TAP",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-6-drive-tap-4-settled",
-            "loopPrompt": "RIDE IT",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-6-drive-tap-5-released",
-            "loopPrompt": "RIDE IT",
-            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
-            "touch": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "none",
-              "webkitTouchCallout": ""
-            },
-            "text": {
-              "userSelect": "none",
-              "webkitUserSelect": "none",
-              "touchAction": "auto",
-              "webkitTouchCallout": ""
-            }
-          },
-          {
-            "phase": "attempt2-6-drive-tap-5-settled",
             "loopPrompt": "LOCK IT",
             "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
@@ -671,7 +370,7 @@
             }
           },
           {
-            "phase": "attempt2-7-lockout-after-5-tap(s)",
+            "phase": "attempt1-6-drive-tap-4-settled",
             "loopPrompt": "GRINDER",
             "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
@@ -688,7 +387,24 @@
             }
           },
           {
-            "phase": "attempt2-8-after-drive-sequence",
+            "phase": "attempt1-7-lockout-after-4-tap(s)",
+            "loopPrompt": "GRINDER",
+            "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
+            "touch": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "none",
+              "webkitTouchCallout": ""
+            },
+            "text": {
+              "userSelect": "none",
+              "webkitUserSelect": "none",
+              "touchAction": "auto",
+              "webkitTouchCallout": ""
+            }
+          },
+          {
+            "phase": "attempt1-8-after-drive-sequence",
             "loopPrompt": "GRINDER",
             "loopDetail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
             "touch": {
@@ -722,15 +438,8 @@
             }
           }
         ],
-        "attemptsUsed": 2,
-        "misses": [
-          {
-            "attempt": 1,
-            "holdMs": 1000,
-            "outcome": "NO LIFT",
-            "detail": "Ran out of air."
-          }
-        ]
+        "attemptsUsed": 1,
+        "misses": []
       },
       "queryString": "",
       "touchTestId": "session-touch",
@@ -1146,10 +855,9 @@
             false,
             false,
             false,
-            false,
             false
           ],
-          "moves": 10,
+          "moves": 9,
           "forcedTo": {
             "userSelect": "none",
             "touchAction": "manipulation"
@@ -2165,70 +1873,70 @@
             "ladder": {
               "rows": [
                 {
-                  "t": 2630,
-                  "via": "interval",
+                  "t": 2665,
+                  "via": "raf",
                   "session-prompt": "TAP AND HOLD TO DESCEND",
                   "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                   "session-weight": "155 kg"
                 },
                 {
-                  "t": 2771,
-                  "via": "interval",
+                  "t": 2896,
+                  "via": "raf",
                   "session-prompt": "RELEASE AT DEPTH",
                   "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                   "session-weight": "155 kg"
                 },
                 {
-                  "t": 3713,
+                  "t": 3851,
                   "via": "raf",
                   "session-prompt": "OUT OF THE HOLE",
                   "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                   "session-weight": "155 kg"
                 },
                 {
-                  "t": 3845,
+                  "t": 4000,
                   "via": "interval",
                   "session-prompt": "RIDE IT",
                   "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                   "session-weight": "155 kg"
                 },
                 {
-                  "t": 4220,
+                  "t": 4367,
                   "via": "interval",
                   "session-prompt": "DRIVE — TAP",
                   "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                   "session-weight": "155 kg"
                 },
                 {
-                  "t": 4322,
+                  "t": 4471,
                   "via": "raf",
                   "session-prompt": "RIDE IT",
                   "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                   "session-weight": "155 kg"
                 },
                 {
-                  "t": 4738,
-                  "via": "raf",
+                  "t": 4871,
+                  "via": "interval",
                   "session-prompt": "DRIVE — TAP",
                   "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                   "session-weight": "155 kg"
                 },
                 {
-                  "t": 4843,
+                  "t": 4983,
                   "via": "raf",
                   "session-prompt": "RIDE IT",
                   "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                   "session-weight": "155 kg"
                 },
                 {
-                  "t": 4867,
+                  "t": 5007,
                   "via": "interval",
                   "session-prompt": "LOCK IT",
                   "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                   "session-weight": "155 kg"
                 },
                 {
-                  "t": 5069,
+                  "t": 5210,
                   "via": "interval",
                   "session-prompt": "GOOD LIFT",
                   "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
@@ -2237,39 +1945,39 @@
               ],
               "pointers": [
                 {
-                  "t": 2698,
+                  "t": 2818,
                   "kind": "pointerdown",
                   "on": "session-touch"
                 },
                 {
-                  "t": 3687,
+                  "t": 3821,
                   "kind": "pointerup",
                   "on": "session-touch"
                 },
                 {
-                  "t": 4243,
+                  "t": 4385,
                   "kind": "pointerdown",
                   "on": "session-touch"
                 },
                 {
-                  "t": 4316,
+                  "t": 4465,
                   "kind": "pointerup",
                   "on": "session-touch"
                 },
                 {
-                  "t": 4759,
+                  "t": 4894,
                   "kind": "pointerdown",
                   "on": "session-touch"
                 },
                 {
-                  "t": 4836,
+                  "t": 4978,
                   "kind": "pointerup",
                   "on": "session-touch"
                 }
               ],
               "counts": {
-                "raf": 108,
-                "interval": 88,
+                "raf": 117,
+                "interval": 87,
                 "dropped": 0
               }
             },
@@ -2283,19 +1991,19 @@
               "at": [
                 {
                   "line": "TAP AND HOLD TO DESCEND",
-                  "at": 2630
+                  "at": 2665
                 },
                 {
                   "line": "RELEASE AT DEPTH",
-                  "at": 2771
+                  "at": 2896
                 },
                 {
                   "line": "OUT OF THE HOLE",
-                  "at": 3713
+                  "at": 3851
                 },
                 {
                   "line": "RIDE IT",
-                  "at": 3845
+                  "at": 4000
                 }
               ],
               "matchedCount": 4,
@@ -2332,70 +2040,70 @@
           "ladder": {
             "rows": [
               {
-                "t": 2630,
-                "via": "interval",
+                "t": 2665,
+                "via": "raf",
                 "session-prompt": "TAP AND HOLD TO DESCEND",
                 "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                 "session-weight": "155 kg"
               },
               {
-                "t": 2771,
-                "via": "interval",
+                "t": 2896,
+                "via": "raf",
                 "session-prompt": "RELEASE AT DEPTH",
                 "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                 "session-weight": "155 kg"
               },
               {
-                "t": 3713,
+                "t": 3851,
                 "via": "raf",
                 "session-prompt": "OUT OF THE HOLE",
                 "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                 "session-weight": "155 kg"
               },
               {
-                "t": 3845,
+                "t": 4000,
                 "via": "interval",
                 "session-prompt": "RIDE IT",
                 "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                 "session-weight": "155 kg"
               },
               {
-                "t": 4220,
+                "t": 4367,
                 "via": "interval",
                 "session-prompt": "DRIVE — TAP",
                 "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                 "session-weight": "155 kg"
               },
               {
-                "t": 4322,
+                "t": 4471,
                 "via": "raf",
                 "session-prompt": "RIDE IT",
                 "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                 "session-weight": "155 kg"
               },
               {
-                "t": 4738,
-                "via": "raf",
+                "t": 4871,
+                "via": "interval",
                 "session-prompt": "DRIVE — TAP",
                 "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                 "session-weight": "155 kg"
               },
               {
-                "t": 4843,
+                "t": 4983,
                 "via": "raf",
                 "session-prompt": "RIDE IT",
                 "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                 "session-weight": "155 kg"
               },
               {
-                "t": 4867,
+                "t": 5007,
                 "via": "interval",
                 "session-prompt": "LOCK IT",
                 "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
                 "session-weight": "155 kg"
               },
               {
-                "t": 5069,
+                "t": 5210,
                 "via": "interval",
                 "session-prompt": "GOOD LIFT",
                 "session-detail": "Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.",
@@ -2404,39 +2112,39 @@
             ],
             "pointers": [
               {
-                "t": 2698,
+                "t": 2818,
                 "kind": "pointerdown",
                 "on": "session-touch"
               },
               {
-                "t": 3687,
+                "t": 3821,
                 "kind": "pointerup",
                 "on": "session-touch"
               },
               {
-                "t": 4243,
+                "t": 4385,
                 "kind": "pointerdown",
                 "on": "session-touch"
               },
               {
-                "t": 4316,
+                "t": 4465,
                 "kind": "pointerup",
                 "on": "session-touch"
               },
               {
-                "t": 4759,
+                "t": 4894,
                 "kind": "pointerdown",
                 "on": "session-touch"
               },
               {
-                "t": 4836,
+                "t": 4978,
                 "kind": "pointerup",
                 "on": "session-touch"
               }
             ],
             "counts": {
-              "raf": 108,
-              "interval": 88,
+              "raf": 117,
+              "interval": 87,
               "dropped": 0
             }
           },
@@ -2450,19 +2158,19 @@
             "at": [
               {
                 "line": "TAP AND HOLD TO DESCEND",
-                "at": 2630
+                "at": 2665
               },
               {
                 "line": "RELEASE AT DEPTH",
-                "at": 2771
+                "at": 2896
               },
               {
                 "line": "OUT OF THE HOLE",
-                "at": 3713
+                "at": 3851
               },
               {
                 "line": "RIDE IT",
-                "at": 3845
+                "at": 4000
               }
             ],
             "matchedCount": 4,
@@ -2502,137 +2210,106 @@
             "holdAtLockout": true,
             "reachedDescent": true,
             "reachedCommand": true,
-            "reachedLockout": true,
-            "drivesTapped": 2,
+            "reachedLockout": false,
+            "drivesTapped": 1,
             "downCommandSeen": false,
             "outcome": "NO LIFT",
-            "detail": "Came up short of depth.",
+            "detail": "The bar beat you at the sticking point.",
             "shots": null,
             "ladder": {
               "rows": [
                 {
-                  "t": 2436,
+                  "t": 2616,
                   "via": "interval",
                   "session-prompt": "TAP AND HOLD TO LOWER",
                   "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
                   "session-weight": "102.5 kg"
                 },
                 {
-                  "t": 2599,
-                  "via": "raf",
+                  "t": 2858,
+                  "via": "interval",
                   "session-prompt": "TOUCH THE CHEST",
                   "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
                   "session-weight": "102.5 kg"
                 },
                 {
-                  "t": 3227,
+                  "t": 3508,
                   "via": "interval",
                   "session-prompt": "WAIT FOR IT",
                   "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
                   "session-weight": "102.5 kg"
                 },
                 {
-                  "t": 3810,
+                  "t": 4085,
                   "via": "interval",
                   "session-prompt": "PRESS!",
                   "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
                   "session-weight": "102.5 kg"
                 },
                 {
-                  "t": 5312,
-                  "via": "raf",
+                  "t": 5556,
+                  "via": "interval",
                   "session-prompt": "RIDE IT",
                   "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
                   "session-weight": "102.5 kg"
                 },
                 {
-                  "t": 5458,
+                  "t": 5719,
                   "via": "interval",
                   "session-prompt": "DRIVE — TAP",
                   "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
                   "session-weight": "102.5 kg"
                 },
                 {
-                  "t": 5572,
-                  "via": "raf",
+                  "t": 6045,
+                  "via": "interval",
                   "session-prompt": "RIDE IT",
                   "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
                   "session-weight": "102.5 kg"
                 },
                 {
-                  "t": 6080,
+                  "t": 6220,
                   "via": "interval",
-                  "session-prompt": "DRIVE — TAP",
-                  "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
-                  "session-weight": "102.5 kg"
-                },
-                {
-                  "t": 6205,
-                  "via": "raf",
-                  "session-prompt": "RIDE IT",
-                  "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
-                  "session-weight": "102.5 kg"
-                },
-                {
-                  "t": 6210,
-                  "via": "interval",
-                  "session-prompt": "LOCK IT",
-                  "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
-                  "session-weight": "102.5 kg"
-                },
-                {
-                  "t": 6444,
-                  "via": "raf",
                   "session-prompt": "NO LIFT",
-                  "session-detail": "Came up short of depth.",
+                  "session-detail": "The bar beat you at the sticking point.",
                   "session-weight": "102.5 kg"
                 }
               ],
               "pointers": [
                 {
-                  "t": 2495,
+                  "t": 2782,
                   "kind": "pointerdown",
                   "on": "session-touch"
                 },
                 {
-                  "t": 3203,
+                  "t": 3480,
                   "kind": "pointerup",
                   "on": "session-touch"
                 },
                 {
-                  "t": 3847,
+                  "t": 4109,
                   "kind": "pointerdown",
                   "on": "session-touch"
                 },
                 {
-                  "t": 3915,
+                  "t": 4175,
                   "kind": "pointerup",
                   "on": "session-touch"
                 },
                 {
-                  "t": 5497,
+                  "t": 5737,
                   "kind": "pointerdown",
                   "on": "session-touch"
                 },
                 {
-                  "t": 5566,
-                  "kind": "pointerup",
-                  "on": "session-touch"
-                },
-                {
-                  "t": 6112,
-                  "kind": "pointerdown",
-                  "on": "session-touch"
-                },
-                {
-                  "t": 6200,
+                  "t": 5840,
                   "kind": "pointerup",
                   "on": "session-touch"
                 }
               ],
               "counts": {
-                "raf": 210,
-                "interval": 196,
+                "raf": 169,
+                "interval": 139,
                 "dropped": 0
               }
             },
@@ -2647,23 +2324,23 @@
               "at": [
                 {
                   "line": "TAP AND HOLD TO LOWER",
-                  "at": 2436
+                  "at": 2616
                 },
                 {
                   "line": "TOUCH THE CHEST",
-                  "at": 2599
+                  "at": 2858
                 },
                 {
                   "line": "WAIT FOR IT",
-                  "at": 3227
+                  "at": 3508
                 },
                 {
                   "line": "PRESS!",
-                  "at": 3810
+                  "at": 4085
                 },
                 {
                   "line": "RIDE IT",
-                  "at": 5312
+                  "at": 5556
                 }
               ],
               "matchedCount": 5,
@@ -2676,9 +2353,6 @@
                 "RIDE IT",
                 "DRIVE — TAP",
                 "RIDE IT",
-                "DRIVE — TAP",
-                "RIDE IT",
-                "LOCK IT",
                 "NO LIFT"
               ]
             }
@@ -2692,137 +2366,106 @@
           "holdAtLockout": true,
           "reachedDescent": true,
           "reachedCommand": true,
-          "reachedLockout": true,
-          "drivesTapped": 2,
+          "reachedLockout": false,
+          "drivesTapped": 1,
           "downCommandSeen": false,
           "outcome": "NO LIFT",
-          "detail": "Came up short of depth.",
+          "detail": "The bar beat you at the sticking point.",
           "shots": null,
           "ladder": {
             "rows": [
               {
-                "t": 2436,
+                "t": 2616,
                 "via": "interval",
                 "session-prompt": "TAP AND HOLD TO LOWER",
                 "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
                 "session-weight": "102.5 kg"
               },
               {
-                "t": 2599,
-                "via": "raf",
+                "t": 2858,
+                "via": "interval",
                 "session-prompt": "TOUCH THE CHEST",
                 "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
                 "session-weight": "102.5 kg"
               },
               {
-                "t": 3227,
+                "t": 3508,
                 "via": "interval",
                 "session-prompt": "WAIT FOR IT",
                 "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
                 "session-weight": "102.5 kg"
               },
               {
-                "t": 3810,
+                "t": 4085,
                 "via": "interval",
                 "session-prompt": "PRESS!",
                 "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
                 "session-weight": "102.5 kg"
               },
               {
-                "t": 5312,
-                "via": "raf",
+                "t": 5556,
+                "via": "interval",
                 "session-prompt": "RIDE IT",
                 "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
                 "session-weight": "102.5 kg"
               },
               {
-                "t": 5458,
+                "t": 5719,
                 "via": "interval",
                 "session-prompt": "DRIVE — TAP",
                 "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
                 "session-weight": "102.5 kg"
               },
               {
-                "t": 5572,
-                "via": "raf",
+                "t": 6045,
+                "via": "interval",
                 "session-prompt": "RIDE IT",
                 "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
                 "session-weight": "102.5 kg"
               },
               {
-                "t": 6080,
+                "t": 6220,
                 "via": "interval",
-                "session-prompt": "DRIVE — TAP",
-                "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
-                "session-weight": "102.5 kg"
-              },
-              {
-                "t": 6205,
-                "via": "raf",
-                "session-prompt": "RIDE IT",
-                "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
-                "session-weight": "102.5 kg"
-              },
-              {
-                "t": 6210,
-                "via": "interval",
-                "session-prompt": "LOCK IT",
-                "session-detail": "Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.",
-                "session-weight": "102.5 kg"
-              },
-              {
-                "t": 6444,
-                "via": "raf",
                 "session-prompt": "NO LIFT",
-                "session-detail": "Came up short of depth.",
+                "session-detail": "The bar beat you at the sticking point.",
                 "session-weight": "102.5 kg"
               }
             ],
             "pointers": [
               {
-                "t": 2495,
+                "t": 2782,
                 "kind": "pointerdown",
                 "on": "session-touch"
               },
               {
-                "t": 3203,
+                "t": 3480,
                 "kind": "pointerup",
                 "on": "session-touch"
               },
               {
-                "t": 3847,
+                "t": 4109,
                 "kind": "pointerdown",
                 "on": "session-touch"
               },
               {
-                "t": 3915,
+                "t": 4175,
                 "kind": "pointerup",
                 "on": "session-touch"
               },
               {
-                "t": 5497,
+                "t": 5737,
                 "kind": "pointerdown",
                 "on": "session-touch"
               },
               {
-                "t": 5566,
-                "kind": "pointerup",
-                "on": "session-touch"
-              },
-              {
-                "t": 6112,
-                "kind": "pointerdown",
-                "on": "session-touch"
-              },
-              {
-                "t": 6200,
+                "t": 5840,
                 "kind": "pointerup",
                 "on": "session-touch"
               }
             ],
             "counts": {
-              "raf": 210,
-              "interval": 196,
+              "raf": 169,
+              "interval": 139,
               "dropped": 0
             }
           },
@@ -2837,23 +2480,23 @@
             "at": [
               {
                 "line": "TAP AND HOLD TO LOWER",
-                "at": 2436
+                "at": 2616
               },
               {
                 "line": "TOUCH THE CHEST",
-                "at": 2599
+                "at": 2858
               },
               {
                 "line": "WAIT FOR IT",
-                "at": 3227
+                "at": 3508
               },
               {
                 "line": "PRESS!",
-                "at": 3810
+                "at": 4085
               },
               {
                 "line": "RIDE IT",
-                "at": 5312
+                "at": 5556
               }
             ],
             "matchedCount": 5,
@@ -2866,9 +2509,6 @@
               "RIDE IT",
               "DRIVE — TAP",
               "RIDE IT",
-              "DRIVE — TAP",
-              "RIDE IT",
-              "LOCK IT",
               "NO LIFT"
             ]
           }
@@ -2895,7 +2535,7 @@
             "reachedDescent": false,
             "reachedCommand": false,
             "reachedLockout": true,
-            "drivesTapped": 2,
+            "drivesTapped": 1,
             "downCommandSeen": true,
             "outcome": "GOOD LIFT",
             "detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
@@ -2916,64 +2556,50 @@
             "ladder": {
               "rows": [
                 {
-                  "t": 2657,
+                  "t": 2507,
                   "via": "interval",
                   "session-prompt": "TAP TO PULL",
                   "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                   "session-weight": "187.5 kg"
                 },
                 {
-                  "t": 2904,
-                  "via": "interval",
-                  "session-prompt": "RIDE IT",
-                  "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
-                  "session-weight": "187.5 kg"
-                },
-                {
-                  "t": 3548,
-                  "via": "interval",
-                  "session-prompt": "DRIVE — TAP",
-                  "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
-                  "session-weight": "187.5 kg"
-                },
-                {
-                  "t": 3857,
-                  "via": "interval",
-                  "session-prompt": "RIDE IT",
-                  "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
-                  "session-weight": "187.5 kg"
-                },
-                {
-                  "t": 3991,
-                  "via": "raf",
-                  "session-prompt": "DRIVE — TAP",
-                  "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
-                  "session-weight": "187.5 kg"
-                },
-                {
-                  "t": 4084,
+                  "t": 2731,
                   "via": "raf",
                   "session-prompt": "RIDE IT",
                   "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                   "session-weight": "187.5 kg"
                 },
                 {
-                  "t": 4089,
+                  "t": 3372,
+                  "via": "interval",
+                  "session-prompt": "DRIVE — TAP",
+                  "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
+                  "session-weight": "187.5 kg"
+                },
+                {
+                  "t": 3492,
+                  "via": "raf",
+                  "session-prompt": "RIDE IT",
+                  "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
+                  "session-weight": "187.5 kg"
+                },
+                {
+                  "t": 3722,
                   "via": "interval",
                   "session-prompt": "DON'T LET GO",
                   "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                   "session-weight": "187.5 kg"
                 },
                 {
-                  "t": 4881,
+                  "t": 4493,
                   "via": "interval",
                   "session-prompt": "DOWN",
                   "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                   "session-weight": "187.5 kg"
                 },
                 {
-                  "t": 5218,
-                  "via": "raf",
+                  "t": 4826,
+                  "via": "interval",
                   "session-prompt": "GOOD LIFT",
                   "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                   "session-weight": "187.5 kg"
@@ -2981,49 +2607,39 @@
               ],
               "pointers": [
                 {
-                  "t": 2811,
+                  "t": 2653,
                   "kind": "pointerdown",
                   "on": "session-touch"
                 },
                 {
-                  "t": 2990,
+                  "t": 2855,
                   "kind": "pointerup",
                   "on": "session-touch"
                 },
                 {
-                  "t": 3568,
+                  "t": 3410,
                   "kind": "pointerdown",
                   "on": "session-touch"
                 },
                 {
-                  "t": 3633,
+                  "t": 3487,
                   "kind": "pointerup",
                   "on": "session-touch"
                 },
                 {
-                  "t": 4008,
+                  "t": 3782,
                   "kind": "pointerdown",
                   "on": "session-touch"
                 },
                 {
-                  "t": 4078,
-                  "kind": "pointerup",
-                  "on": "session-touch"
-                },
-                {
-                  "t": 4247,
-                  "kind": "pointerdown",
-                  "on": "session-touch"
-                },
-                {
-                  "t": 5213,
+                  "t": 4768,
                   "kind": "pointerup",
                   "on": "session-touch"
                 }
               ],
               "counts": {
-                "raf": 120,
-                "interval": 99,
+                "raf": 115,
+                "interval": 93,
                 "dropped": 0
               }
             },
@@ -3037,27 +2653,25 @@
               "at": [
                 {
                   "line": "TAP TO PULL",
-                  "at": 2657
+                  "at": 2507
                 },
                 {
                   "line": "RIDE IT",
-                  "at": 2904
+                  "at": 2731
                 },
                 {
                   "line": "DON'T LET GO",
-                  "at": 4089
+                  "at": 3722
                 },
                 {
                   "line": "DOWN",
-                  "at": 4881
+                  "at": 4493
                 }
               ],
               "matchedCount": 4,
               "walkedInOrder": true,
               "rungs": [
                 "TAP TO PULL",
-                "RIDE IT",
-                "DRIVE — TAP",
                 "RIDE IT",
                 "DRIVE — TAP",
                 "RIDE IT",
@@ -3077,7 +2691,7 @@
           "reachedDescent": false,
           "reachedCommand": false,
           "reachedLockout": true,
-          "drivesTapped": 2,
+          "drivesTapped": 1,
           "downCommandSeen": true,
           "outcome": "GOOD LIFT",
           "detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
@@ -3098,64 +2712,50 @@
           "ladder": {
             "rows": [
               {
-                "t": 2657,
+                "t": 2507,
                 "via": "interval",
                 "session-prompt": "TAP TO PULL",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 2904,
-                "via": "interval",
-                "session-prompt": "RIDE IT",
-                "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
-                "session-weight": "187.5 kg"
-              },
-              {
-                "t": 3548,
-                "via": "interval",
-                "session-prompt": "DRIVE — TAP",
-                "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
-                "session-weight": "187.5 kg"
-              },
-              {
-                "t": 3857,
-                "via": "interval",
-                "session-prompt": "RIDE IT",
-                "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
-                "session-weight": "187.5 kg"
-              },
-              {
-                "t": 3991,
-                "via": "raf",
-                "session-prompt": "DRIVE — TAP",
-                "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
-                "session-weight": "187.5 kg"
-              },
-              {
-                "t": 4084,
+                "t": 2731,
                 "via": "raf",
                 "session-prompt": "RIDE IT",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 4089,
+                "t": 3372,
+                "via": "interval",
+                "session-prompt": "DRIVE — TAP",
+                "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
+                "session-weight": "187.5 kg"
+              },
+              {
+                "t": 3492,
+                "via": "raf",
+                "session-prompt": "RIDE IT",
+                "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
+                "session-weight": "187.5 kg"
+              },
+              {
+                "t": 3722,
                 "via": "interval",
                 "session-prompt": "DON'T LET GO",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 4881,
+                "t": 4493,
                 "via": "interval",
                 "session-prompt": "DOWN",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 5218,
-                "via": "raf",
+                "t": 4826,
+                "via": "interval",
                 "session-prompt": "GOOD LIFT",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
@@ -3163,49 +2763,39 @@
             ],
             "pointers": [
               {
-                "t": 2811,
+                "t": 2653,
                 "kind": "pointerdown",
                 "on": "session-touch"
               },
               {
-                "t": 2990,
+                "t": 2855,
                 "kind": "pointerup",
                 "on": "session-touch"
               },
               {
-                "t": 3568,
+                "t": 3410,
                 "kind": "pointerdown",
                 "on": "session-touch"
               },
               {
-                "t": 3633,
+                "t": 3487,
                 "kind": "pointerup",
                 "on": "session-touch"
               },
               {
-                "t": 4008,
+                "t": 3782,
                 "kind": "pointerdown",
                 "on": "session-touch"
               },
               {
-                "t": 4078,
-                "kind": "pointerup",
-                "on": "session-touch"
-              },
-              {
-                "t": 4247,
-                "kind": "pointerdown",
-                "on": "session-touch"
-              },
-              {
-                "t": 5213,
+                "t": 4768,
                 "kind": "pointerup",
                 "on": "session-touch"
               }
             ],
             "counts": {
-              "raf": 120,
-              "interval": 99,
+              "raf": 115,
+              "interval": 93,
               "dropped": 0
             }
           },
@@ -3219,27 +2809,25 @@
             "at": [
               {
                 "line": "TAP TO PULL",
-                "at": 2657
+                "at": 2507
               },
               {
                 "line": "RIDE IT",
-                "at": 2904
+                "at": 2731
               },
               {
                 "line": "DON'T LET GO",
-                "at": 4089
+                "at": 3722
               },
               {
                 "line": "DOWN",
-                "at": 4881
+                "at": 4493
               }
             ],
             "matchedCount": 4,
             "walkedInOrder": true,
             "rungs": [
               "TAP TO PULL",
-              "RIDE IT",
-              "DRIVE — TAP",
               "RIDE IT",
               "DRIVE — TAP",
               "RIDE IT",
@@ -3278,63 +2866,63 @@
           "ladder": {
             "rows": [
               {
-                "t": 5647,
+                "t": 5256,
                 "via": "interval",
                 "session-prompt": "GOOD LIFT",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 5926,
-                "via": "raf",
+                "t": 5560,
+                "via": "interval",
                 "session-prompt": "TAP TO PULL",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 6460,
+                "t": 6086,
                 "via": "interval",
                 "session-prompt": "RIDE IT",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 7104,
+                "t": 6729,
                 "via": "interval",
                 "session-prompt": "DRIVE — TAP",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 7411,
+                "t": 7082,
                 "via": "interval",
                 "session-prompt": "RIDE IT",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 7539,
-                "via": "interval",
+                "t": 7188,
+                "via": "raf",
                 "session-prompt": "DRIVE — TAP",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 7667,
-                "via": "interval",
+                "t": 7305,
+                "via": "raf",
                 "session-prompt": "DON'T LET GO",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 8365,
-                "via": "raf",
+                "t": 7976,
+                "via": "interval",
                 "session-prompt": "DOWN",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 8700,
+                "t": 8323,
                 "via": "interval",
                 "session-prompt": "GRINDER",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
@@ -3343,39 +2931,39 @@
             ],
             "pointers": [
               {
-                "t": 5956,
+                "t": 5592,
                 "kind": "pointerdown",
                 "on": "session-touch"
               },
               {
-                "t": 6557,
+                "t": 6193,
                 "kind": "pointerup",
                 "on": "session-touch"
               },
               {
-                "t": 7142,
+                "t": 6735,
                 "kind": "pointerdown",
                 "on": "session-touch"
               },
               {
-                "t": 7210,
+                "t": 6804,
                 "kind": "pointerup",
                 "on": "session-touch"
               },
               {
-                "t": 7581,
+                "t": 7231,
                 "kind": "pointerdown",
                 "on": "session-touch"
               },
               {
-                "t": 7648,
+                "t": 7300,
                 "kind": "pointerup",
                 "on": "session-touch"
               }
             ],
             "counts": {
-              "raf": 170,
-              "interval": 169,
+              "raf": 164,
+              "interval": 166,
               "dropped": 0
             }
           }
@@ -3390,56 +2978,56 @@
           "ladder": {
             "rows": [
               {
-                "t": 9137,
+                "t": 8756,
                 "via": "interval",
                 "session-prompt": "GRINDER",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 9437,
+                "t": 9056,
                 "via": "interval",
                 "session-prompt": "TAP TO PULL",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 19440,
+                "t": 19081,
                 "via": "interval",
                 "session-prompt": "RIDE IT",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 20069,
+                "t": 19743,
                 "via": "interval",
                 "session-prompt": "DRIVE — TAP",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 20387,
+                "t": 20048,
                 "via": "interval",
                 "session-prompt": "RIDE IT",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 20537,
+                "t": 20183,
                 "via": "raf",
                 "session-prompt": "DRIVE — TAP",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 20662,
+                "t": 20321,
                 "via": "interval",
                 "session-prompt": "DON'T LET GO",
                 "session-detail": "No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.",
                 "session-weight": "187.5 kg"
               },
               {
-                "t": 21572,
+                "t": 21215,
                 "via": "interval",
                 "session-prompt": "NO LIFT",
                 "session-detail": "Put it down before the call.",
@@ -3448,8 +3036,8 @@
             ],
             "pointers": [],
             "counts": {
-              "raf": 696,
-              "interval": 656,
+              "raf": 705,
+              "interval": 748,
               "dropped": 0
             }
           }
@@ -3556,12 +3144,12 @@
     {
       "ok": true,
       "what": "ARM session: PROBE 2 — the page saw all 4 pans, so none of the cancel counts is a count of nothing",
-      "detail": "4 of 4; as-shipped=10 moves @200px, 0 cancel(s); as-shipped-small=3 moves @20px, 0 cancel(s); neutralised=10 moves @200px, 1 cancel(s); forced-fixed=10 moves @200px, 0 cancel(s)"
+      "detail": "4 of 4; as-shipped=10 moves @200px, 0 cancel(s); as-shipped-small=3 moves @20px, 0 cancel(s); neutralised=9 moves @200px, 1 cancel(s); forced-fixed=10 moves @200px, 0 cancel(s)"
     },
     {
       "ok": true,
       "what": "ARM session: PROBE 2 — touchmove cancelability is [true, false…] on all 3 full-size pans whatever touch-action says, so it is not the discriminator and the cancel count is",
-      "detail": "3 of 3; as-shipped@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false] as-shipped-small@20px(ta=\"none\")=[true,true,true] neutralised@200px(ta=\"manipulation\")=[true,false,false,false,false,false,false,false,false,false] forced-fixed@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false]"
+      "detail": "3 of 3; as-shipped@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false] as-shipped-small@20px(ta=\"none\")=[true,true,true] neutralised@200px(ta=\"manipulation\")=[true,false,false,false,false,false,false,false,false] forced-fixed@200px(ta=\"none\")=[true,false,false,false,false,false,false,false,false,false]"
     },
     {
       "ok": true,
@@ -3581,22 +3169,22 @@
     {
       "ok": true,
       "what": "ARM session: PROBE 3 — session-detail shows the real LIFT_COPY.SUBTITLE verbatim somewhere in a driven rep, not just at BRACE",
-      "detail": "matched at: attempt1-0-brace-before-press, attempt1-1-descent, attempt1-2-descent-mid-hold, attempt1-3-immediately-after-release, attempt1-4-hole, attempt1-6-drive-tap-1-released, attempt1-6-drive-tap-1-settled, attempt1-6-drive-tap-2-released, attempt1-6-drive-tap-2-settled, attempt1-6-drive-tap-3-released, attempt1-6-drive-tap-3-settled, attempt1-6-drive-tap-4-released, attempt1-6-drive-tap-4-settled, attempt2-0-brace-before-press, attempt2-1-descent, attempt2-2-descent-mid-hold, attempt2-3-immediately-after-release, attempt2-4-hole, attempt2-6-drive-tap-1-released, attempt2-6-drive-tap-1-settled, attempt2-6-drive-tap-2-released, attempt2-6-drive-tap-2-settled, attempt2-6-drive-tap-3-released, attempt2-6-drive-tap-3-settled, attempt2-6-drive-tap-4-released, attempt2-6-drive-tap-4-settled, attempt2-6-drive-tap-5-released, attempt2-6-drive-tap-5-settled, attempt2-7-lockout-after-5-tap(s), attempt2-8-after-drive-sequence, resolved-or-reset-for-next-rep"
+      "detail": "matched at: attempt1-0-brace-before-press, attempt1-1-descent, attempt1-2-descent-mid-hold, attempt1-3-immediately-after-release, attempt1-4-hole, attempt1-6-drive-tap-1-released, attempt1-6-drive-tap-1-settled, attempt1-6-drive-tap-2-released, attempt1-6-drive-tap-2-settled, attempt1-6-drive-tap-3-released, attempt1-6-drive-tap-3-settled, attempt1-6-drive-tap-4-released, attempt1-6-drive-tap-4-settled, attempt1-7-lockout-after-4-tap(s), attempt1-8-after-drive-sequence, resolved-or-reset-for-next-rep"
     },
     {
       "ok": true,
       "what": "ARM session: PROBE 3 — RIDE IT (ASCENT_AFTER_CUE) actually renders between drive cues in a real driven rep, not just traced as reachable",
-      "detail": "9 settled phase(s) checked; matched at: attempt1-6-drive-tap-1-settled, attempt1-6-drive-tap-2-settled, attempt1-6-drive-tap-3-settled, attempt1-6-drive-tap-4-settled, attempt2-6-drive-tap-2-settled, attempt2-6-drive-tap-3-settled, attempt2-6-drive-tap-4-settled"
+      "detail": "4 settled phase(s) checked; matched at: attempt1-6-drive-tap-2-settled, attempt1-6-drive-tap-3-settled"
     },
     {
       "ok": true,
       "what": "ARM session: PROBE 3 DOMAIN — a real rep was driven through every phase to LOCKOUT (adaptively, up to 6 tries), so the check below has something to say",
-      "detail": "drove 32 phase reading(s) over 2 attempt(s), drovePastLockout=true; misses along the way: #1@1000ms=\"NO LIFT\""
+      "detail": "drove 16 phase reading(s) over 1 attempt(s), drovePastLockout=true"
     },
     {
       "ok": true,
       "what": "ARM session: PROBE 3 — user-select and touch-action hold at every phase of a real rep, not only at BRACE",
-      "detail": "32 phase(s) checked, none deviated"
+      "detail": "16 phase(s) checked, none deviated"
     },
     {
       "ok": true,
@@ -3876,7 +3464,7 @@
     {
       "ok": true,
       "what": "LADDER squat DOMAIN: the page-side frame recorder was live, and lost nothing, for the rep every claim below is read off",
-      "detail": "108 animation-frame sample(s), 88 interval sample(s), 10 recorded change(s), 0 dropped against a 4000-row cap"
+      "detail": "117 animation-frame sample(s), 87 interval sample(s), 10 recorded change(s), 0 dropped against a 4000-row cap"
     },
     {
       "ok": true,
@@ -3886,7 +3474,7 @@
     {
       "ok": true,
       "what": "LADDER squat: the prompt ladder walked all 4 of squat's own beats, each one after the last",
-      "detail": "4 of 4: \"TAP AND HOLD TO DESCEND\"@2630 -> \"RELEASE AT DEPTH\"@2771 -> \"OUT OF THE HOLE\"@3713 -> \"RIDE IT\"@3845 (over 1 attempt(s): #1@1000ms=\"GOOD LIFT\")"
+      "detail": "4 of 4: \"TAP AND HOLD TO DESCEND\"@2665 -> \"RELEASE AT DEPTH\"@2896 -> \"OUT OF THE HOLE\"@3851 -> \"RIDE IT\"@4000 (over 1 attempt(s): #1@1000ms=\"GOOD LIFT\")"
     },
     {
       "ok": true,
@@ -3906,17 +3494,17 @@
     {
       "ok": true,
       "what": "LADDER bench DOMAIN: the page-side frame recorder was live, and lost nothing, for the rep every claim below is read off",
-      "detail": "210 animation-frame sample(s), 196 interval sample(s), 11 recorded change(s), 0 dropped against a 4000-row cap"
+      "detail": "169 animation-frame sample(s), 139 interval sample(s), 8 recorded change(s), 0 dropped against a 4000-row cap"
     },
     {
       "ok": true,
       "what": "LADDER bench: session-detail carries bench's own LIFT_COPY.SUBTITLE verbatim, so the sim ran THAT lift's config",
-      "detail": "saw [\"Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.\",\"Came up short of depth.\"]"
+      "detail": "saw [\"Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.\",\"The bar beat you at the sticking point.\"]"
     },
     {
       "ok": true,
       "what": "LADDER bench: the prompt ladder walked all 5 of bench's own beats, each one after the last",
-      "detail": "5 of 5: \"TAP AND HOLD TO LOWER\"@2436 -> \"TOUCH THE CHEST\"@2599 -> \"WAIT FOR IT\"@3227 -> \"PRESS!\"@3810 -> \"RIDE IT\"@5312 (over 1 attempt(s): #1@700ms=\"NO LIFT\")"
+      "detail": "5 of 5: \"TAP AND HOLD TO LOWER\"@2616 -> \"TOUCH THE CHEST\"@2858 -> \"WAIT FOR IT\"@3508 -> \"PRESS!\"@4085 -> \"RIDE IT\"@5556 (over 1 attempt(s): #1@700ms=\"NO LIFT\")"
     },
     {
       "ok": true,
@@ -3936,7 +3524,7 @@
     {
       "ok": true,
       "what": "LADDER deadlift DOMAIN: the page-side frame recorder was live, and lost nothing, for the rep every claim below is read off",
-      "detail": "120 animation-frame sample(s), 99 interval sample(s), 9 recorded change(s), 0 dropped against a 4000-row cap"
+      "detail": "115 animation-frame sample(s), 93 interval sample(s), 7 recorded change(s), 0 dropped against a 4000-row cap"
     },
     {
       "ok": true,
@@ -3946,7 +3534,7 @@
     {
       "ok": true,
       "what": "LADDER deadlift: the prompt ladder walked all 4 of deadlift's own beats, each one after the last",
-      "detail": "4 of 4: \"TAP TO PULL\"@2657 -> \"RIDE IT\"@2904 -> \"DON'T LET GO\"@4089 -> \"DOWN\"@4881 (over 1 attempt(s): #1@0ms=\"GOOD LIFT\")"
+      "detail": "4 of 4: \"TAP TO PULL\"@2507 -> \"RIDE IT\"@2731 -> \"DON'T LET GO\"@3722 -> \"DOWN\"@4493 (over 1 attempt(s): #1@0ms=\"GOOD LIFT\")"
     },
     {
       "ok": true,
@@ -3956,7 +3544,7 @@
     {
       "ok": true,
       "what": "LADDER deadlift DOMAIN: a real rep was driven from the check-in to LOCKOUT, so the hold below has something to say",
-      "detail": "reachedLockout=true, 2 drive tap(s), outcome \"GOOD LIFT\""
+      "detail": "reachedLockout=true, 1 drive tap(s), outcome \"GOOD LIFT\""
     },
     {
       "ok": true,
@@ -3966,27 +3554,27 @@
     {
       "ok": true,
       "what": "LADDER deadlift: the hold ran inside DOWN_COMMAND_DELAY_TICKS' declared band, read out of liftTuning.ts rather than typed here",
-      "detail": "792ms against 36-96 ticks at 60Hz = 600-1600ms, widened by this recorder's own 100ms grain to 500-1700ms"
+      "detail": "771ms against 36-96 ticks at 60Hz = 600-1600ms, widened by this recorder's own 100ms grain to 500-1700ms"
     },
     {
       "ok": true,
       "what": "LADDER deadlift: the re-grip landed inside LOCKOUT_GRIP_GRACE_TICKS, so the held rep is a clean hold and the pair below differs in exactly one thing",
-      "detail": "158ms against 167ms (LOCKOUT_GRIP_GRACE_TICKS 10 at 60Hz, read from liftTuning.ts)"
+      "detail": "60ms against 167ms (LOCKOUT_GRIP_GRACE_TICKS 10 at 60Hz, read from liftTuning.ts)"
     },
     {
       "ok": true,
       "what": "LADDER deadlift: the page received ZERO pointer events for the whole span between the re-grip and the down command — the one beat in this game where the correct play is no input, played that way and made",
-      "detail": "0 event(s) in 634ms, against a floor of 333ms derived from (DOWN_COMMAND_DELAY_TICKS.MIN 36 - LOCKOUT_GRIP_GRACE_TICKS 10) ticks less this recorder's 100ms grain; the rep's whole pointer stream was [\"pointerdown@2811\",\"pointerup@2990\",\"pointerdown@3568\",\"pointerup@3633\",\"pointerdown@4008\",\"pointerup@4078\",\"pointerdown@4247\",\"pointerup@5213\"]"
+      "detail": "0 event(s) in 711ms, against a floor of 333ms derived from (DOWN_COMMAND_DELAY_TICKS.MIN 36 - LOCKOUT_GRIP_GRACE_TICKS 10) ticks less this recorder's 100ms grain; the rep's whole pointer stream was [\"pointerdown@2653\",\"pointerup@2855\",\"pointerdown@3410\",\"pointerup@3487\",\"pointerdown@3782\",\"pointerup@4768\"]"
     },
     {
       "ok": true,
       "what": "LADDER deadlift CONTROL: another rep of the same session, differing in that the finger never returns to the bar at lockout, resolved, and is never a clean GOOD LIFT",
-      "detail": "held rep: \"GOOD LIFT\" after 2 drive tap(s) — control rep: \"GRINDER\" / \"No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.\" after 2"
+      "detail": "held rep: \"GOOD LIFT\" after 1 drive tap(s) — control rep: \"GRINDER\" / \"No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.\" after 2"
     },
     {
       "ok": true,
       "what": "LADDER deadlift CONTROL: the two reps had the SAME weight on the bar, and the held one graded strictly better — so the hold is what made it and not the load",
-      "detail": "bar: held [\"187.5 kg\"] vs un-held [\"187.5 kg\"]; verdict: held \"GOOD LIFT\" (rank 2) against un-held \"GRINDER\" (rank 1); the held rep re-gripped 158ms into a 167ms grace, so a held rep that graded GRINDER here means the re-grip missed that window"
+      "detail": "bar: held [\"187.5 kg\"] vs un-held [\"187.5 kg\"]; verdict: held \"GOOD LIFT\" (rank 2) against un-held \"GRINDER\" (rank 1); the held rep re-gripped 60ms into a 167ms grace, so a held rep that graded GRINDER here means the re-grip missed that window"
     },
     {
       "ok": true,
