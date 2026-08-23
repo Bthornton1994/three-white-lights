@@ -174,6 +174,7 @@ export function SessionScreen({
           <CheckInView
             answers={state.answers}
             lift={state.context.lift}
+            disclosures={loop.onboardingDisclosures}
             onTap={(tap) => dispatch({ kind: 'check-in-tap', tap })}
             onChooseLift={chooseLift}
           />

@@ -79,6 +79,29 @@ export const CHECK_IN_QUESTIONS = Object.freeze([
   'motivation',
 ] as const satisfies readonly CheckInQuestion[]);
 
+/**
+ * The two facts about the streak clock a first-run lifter is told rather than
+ * left to discover (GDD §4.2).
+ *
+ * Both are already implemented and both are already correct. What was missing
+ * is that nothing said either one out loud, so the way a player found out was
+ * by losing something. The GDD asks for the disclosure in as many words in
+ * both places — "Onboarding copy has to say so" under §4.2's no-free-absences
+ * ruling, and "store and onboarding copy have to say it plainly" under §4.2's
+ * rolling-entitlement ruling.
+ *
+ * Declared here beside the copy, the way `CheckInQuestion` is, so the id set
+ * and the sentence table are one edit rather than two that can drift apart.
+ * `src/game/onboardingDisclosure.ts` decides which of them a given screen
+ * shows and is the module that pairs each id with its sentence.
+ */
+export type OnboardingDisclosureId = 'signup-grant-loss' | 'entitlement-non-carryover';
+
+export const ONBOARDING_DISCLOSURE_IDS = Object.freeze([
+  'signup-grant-loss',
+  'entitlement-non-carryover',
+] as const satisfies readonly OnboardingDisclosureId[]);
+
 export const SESSION_TUNING = Object.freeze({
   // -------------------------------------------------------------------------
   // What today's session is
@@ -457,6 +480,21 @@ export const SESSION_LAYOUT = Object.freeze({
   /** Close-out stat rows. */
   STAT_ROW_GAP: 18,
   DIVIDER_HEIGHT: 1,
+
+  /**
+   * The first-run disclosure block on the check-in (GDD §4.2).
+   *
+   * Smaller than a question row and set below all three of them on purpose:
+   * GDD §12.2 measures this screen on time-to-first-input, so the disclosure
+   * has to be readable without pushing the first tap off the first paint. Both
+   * of these are placeholders in the sense the file header describes, and the
+   * line height in particular is the one to turn first — two sentences of body
+   * text set at the same tight leading as a chip label is the shape that reads
+   * as a wall.
+   */
+  DISCLOSURE_FONT: 11,
+  DISCLOSURE_LINE_HEIGHT: 16,
+  DISCLOSURE_GAP: 8,
 });
 
 /**
@@ -587,6 +625,43 @@ export const SESSION_COPY = Object.freeze({
    */
   ALREADY_TRAINED_HEADLINE: 'TRAINED TODAY',
   ALREADY_TRAINED_SUBHEAD: 'Come back tomorrow. The bar keeps.',
+
+  /**
+   * The first-run disclosures (GDD §4.2). See `OnboardingDisclosureId` above
+   * for what they are and why they exist; this is the sentence table.
+   *
+   * Keyed by id and never re-derived. That is the same shape the store's
+   * refusal copy uses — it is keyed to `renderedOffer`, an input, so that what
+   * a test asserts is the sentence the screen actually rendered rather than a
+   * sentence something else re-derived later.
+   * `firstRunDisclosuresFor` carries the line out beside the id for the same
+   * reason, and `onboardingDisclosure.test.ts` asserts the pairing.
+   *
+   * Each sentence is pinned against the behaviour it describes, not merely
+   * against itself: `onboardingDisclosure.test.ts` drives `streak.ts` and
+   * `streakEntitlement.ts` and goes red when the engine stops matching the
+   * words. Editing a sentence without editing the engine is a lie the suite
+   * has no way to catch, so the tests are written against the engine and the
+   * sentence is checked to still describe it.
+   *
+   * No quantity appears in either line, and that is a choice rather than a
+   * restriction worked around. The digits ban a few tests down would refuse a
+   * numeral anyway (a number in this table is how a fatigue meter ships by
+   * accident, GDD §3.4 and §12.3) — but the words "two a month" were dropped
+   * as well, because neither fact needs the rate to be understood and a rate
+   * printed here is a second place for the tuning to drift out of.
+   *
+   * Untuned, like every string in this block, and more than most: whether
+   * either line reads as clear or as a wall of text on the screen a brand-new
+   * player opens is a playtest question and nothing here answers it.
+   */
+  FIRST_RUN_TITLE: 'BEFORE YOUR FIRST SESSION',
+  FIRST_RUN_DISCLOSURE: Object.freeze({
+    'signup-grant-loss':
+      'Your streak clock started the day you signed up, not today. Days off before your first session count like any other days off.',
+    'entitlement-non-carryover':
+      'Recovery Days cover a missed day for you. They refresh every month, and unused ones do not carry over — there is nothing to save up.',
+  } as const satisfies Record<OnboardingDisclosureId, string>),
 });
 
 /**

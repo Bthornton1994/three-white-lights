@@ -32,6 +32,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SESSION_COPY, SESSION_LAYOUT, SESSION_TUNING, type CheckInQuestion } from '../game/sessionTuning';
 import type { CheckInTap, PartialCheckIn } from '../game/session';
+import type { OnboardingDisclosure } from '../game/onboardingDisclosure';
 import type { LiftKind } from '../game/meet';
 import { SESSION_PALETTE } from './sessionPalette';
 
@@ -97,11 +98,27 @@ const ROWS: readonly RowSpec[] = [
 export interface CheckInViewProps {
   readonly answers: PartialCheckIn;
   readonly lift: LiftKind;
+  /**
+   * GDD §4.2's first-run disclosures, already decided. Empty for everyone but
+   * a lifter on their first run of the first-run lift.
+   *
+   * The decision is `onboardingDisclosure.ts`'s and the sentences travel with
+   * it, so this screen chooses nothing and looks nothing up — it renders what
+   * it was handed, which is the only way a test asserting a sentence is
+   * asserting the sentence a player sees.
+   */
+  readonly disclosures: readonly OnboardingDisclosure[];
   readonly onTap: (tap: CheckInTap) => void;
   readonly onChooseLift: (lift: LiftKind) => void;
 }
 
-export function CheckInView({ answers, lift, onTap, onChooseLift }: CheckInViewProps): React.ReactElement {
+export function CheckInView({
+  answers,
+  lift,
+  disclosures,
+  onTap,
+  onChooseLift,
+}: CheckInViewProps): React.ReactElement {
   return (
     <View style={styles.root} testID="session-check-in">
       <Text style={styles.title}>{SESSION_COPY.CHECK_IN_TITLE}</Text>
@@ -152,6 +169,26 @@ export function CheckInView({ answers, lift, onTap, onChooseLift }: CheckInViewP
           </View>
         );
       })}
+      {/*
+        GDD §4.2's first-run disclosures, BELOW all three question rows on
+        purpose: this screen is held to §12.2's time-to-first-input bar, so the
+        first tap has to stay on the first paint. Text costs no tap and no
+        navigation; a screen in front of the questions would cost both.
+      */}
+      {disclosures.length > 0 ? (
+        <View style={styles.disclosures} testID="check-in-disclosures">
+          <Text style={styles.disclosureTitle}>{SESSION_COPY.FIRST_RUN_TITLE}</Text>
+          {disclosures.map((disclosure) => (
+            <Text
+              key={disclosure.id}
+              testID={`check-in-disclosure-${disclosure.id}`}
+              style={styles.disclosureLine}
+            >
+              {disclosure.line}
+            </Text>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -203,5 +240,18 @@ const styles = StyleSheet.create({
   chipLabelChosen: {
     color: SESSION_PALETTE.TEXT,
     fontWeight: '700',
+  },
+  disclosures: {
+    gap: L.DISCLOSURE_GAP,
+  },
+  disclosureTitle: {
+    color: SESSION_PALETTE.TEXT_DIM,
+    fontSize: L.QUESTION_FONT,
+    letterSpacing: L.LETTER_SPACING,
+  },
+  disclosureLine: {
+    color: SESSION_PALETTE.TEXT_DIM,
+    fontSize: L.DISCLOSURE_FONT,
+    lineHeight: L.DISCLOSURE_LINE_HEIGHT,
   },
 });
