@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "partial-demo-2026-08-23T19-56-53-628Z-4726",
   "label": "partial-demo",
   "command": [
@@ -36,12 +36,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 1,
-    "okCount": 0,
+    "count": 2,
+    "okCount": 1,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T19:56:53.649Z",
-    "lastReason": "start",
+    "lastAttemptIso": "2026-08-23T19:57:27.841Z",
+    "lastReason": "final",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm"
-  }
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": true,
+    "lastOkIso": "2026-08-23T19:56:56.077Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-23T19:57:27.840Z",
+  "elapsedSeconds": 34.2
 }
