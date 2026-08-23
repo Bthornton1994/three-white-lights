@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "capture-session-rotation-fix-2026-08-23T20-15-41-840Z-28198",
   "label": "capture-session-rotation-fix",
   "command": [
@@ -34,13 +34,18 @@
     "procAvailable": true
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-23T20:15:42.340Z",
+  "elapsedSeconds": 0.5,
   "sync": {
-    "count": 1,
-    "okCount": 0,
+    "count": 2,
+    "okCount": 1,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T20:15:41.864Z",
-    "lastReason": "start",
+    "lastAttemptIso": "2026-08-23T20:15:45.493Z",
+    "lastReason": "final",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm"
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": true,
+    "lastOkIso": "2026-08-23T20:15:45.491Z"
   }
 }
