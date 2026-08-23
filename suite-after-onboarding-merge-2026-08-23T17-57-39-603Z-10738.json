@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "suite-after-onboarding-merge-2026-08-23T17-57-39-603Z-10738",
   "label": "suite-after-onboarding-merge",
   "command": [
@@ -28,14 +28,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 5,
-    "okCount": 4,
+    "count": 6,
+    "okCount": 5,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T18:01:39.782Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-23T18:02:00.209Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-23T18:00:42.399Z"
-  }
+    "lastOkIso": "2026-08-23T18:01:42.356Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-23T18:02:00.208Z",
+  "elapsedSeconds": 260.6
 }
