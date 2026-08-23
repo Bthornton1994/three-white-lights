@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "partial-demo-2026-08-23T19-56-53-628Z-4726",
+  "label": "partial-demo",
+  "command": [
+    "node",
+    "tools/verify-lift-press.mjs",
+    "--url",
+    "http://localhost:8091",
+    "--arms",
+    "ladder",
+    "--out",
+    "/tmp/partial-shots"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-23T19:56:53.628Z",
+  "startedAtMs": 1787515013628,
+  "cwd": "/home/user/wt-deadlift",
+  "commit": "ccc62d502ea885010717b65df997c665384451cf",
+  "branch": "claude/deadlift-browser-evidence",
+  "dirty": 2,
+  "dirtyPaths": [
+    ".gauntlet/shots/lift-press/press.json",
+    "tools/verify-lift-press.mjs"
+  ],
+  "runner": {
+    "pid": 4726,
+    "startTick": "1065599",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --label partial-demo -- node tools/verify-lift-press.mjs --url http://localhost:8091 --arms ladder --out /tmp/partial-shots",
+    "bootId": "fabf06d4-ff34-4c2a-84e5-869c226847d2",
+    "bootEpochSeconds": 1787504358,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-23T19:56:53.649Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
