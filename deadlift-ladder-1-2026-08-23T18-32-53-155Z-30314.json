@@ -37,19 +37,19 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 2,
-    "okCount": 0,
+    "count": 3,
+    "okCount": 1,
     "errors": [
       {
         "at": "2026-08-23T18:32:57.536Z",
         "why": "Command failed: git -C /home/user/wt-deadlift ls-remote --exit-code origin refs/heads/verify-markers/vm remote: session scope unavailable fatal: unable to access 'https://github.com/Bthornton1994/three-white-lights/': The requested URL returned error: 502 remote: session scope unavailable fatal: una"
       }
     ],
-    "lastAttemptIso": "2026-08-23T18:33:53.242Z",
+    "lastAttemptIso": "2026-08-23T18:34:53.282Z",
     "lastReason": "heartbeat",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
-    "ok": false,
-    "lastOkIso": null
+    "ok": true,
+    "lastOkIso": "2026-08-23T18:33:55.865Z"
   }
 }
