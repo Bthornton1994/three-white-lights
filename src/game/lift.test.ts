@@ -58,6 +58,7 @@ import {
   holeTicks,
   isGrind,
   lifterCapacity,
+  lockoutSagPerTick,
   lockoutTicks,
   promptFor,
   pressCommandIsLive,
@@ -182,6 +183,47 @@ function play(loadRatio: number, options: PlayOptions = {}): LiftState {
   }
   return runLift(config, script).final;
 }
+
+/**
+ * A squat or bench GENUINELY STANDING IN `LOCKOUT` — the phase states, not the
+ * resolved one `play` hands back.
+ *
+ * -------------------------------------------------------------------------
+ * WHY THIS EXISTS AT ALL, AND IT IS A VACUITY FIX RATHER THAN A CONVENIENCE.
+ * -------------------------------------------------------------------------
+ * `lockoutHoldIsLive` refuses on two counts in sequence: the KIND is not a
+ * deadlift, and the PHASE is not `LOCKOUT`. A check handed `play(...)`'s return
+ * value — which is always `RESOLVED` — trips the phase guard and returns before
+ * the kind guard has said anything, so it reads as covering both and covers
+ * one. Measured: deleting `if (state.config.kind !== 'deadlift') return false;`
+ * left the whole file green.
+ *
+ * A squat in `LOCKOUT` is exactly the state that separates them, and it is the
+ * state the null arm is dangerous in: `downCommandTick` is null for a squat
+ * forever, and the null arm returns TRUE, so the kind guard is the only thing
+ * standing between an eccentric lockout and deadlift's "don't let go" line.
+ */
+function eccentricLockoutStates(kind: EccentricLiftKind, loadRatio: number): LiftState[] {
+  const depth = LIFT_TUNING.DEPTH_IDEAL[kind];
+  const config: LiftConfig = { kind, loadRatio, seed: ECCENTRIC_LOCKOUT_SEED };
+  const script: ScriptedInput[] = [
+    { tick: pressTickFor(loadRatio, kind), kind: 'press' },
+    { tick: releaseTickFor(loadRatio, depth, kind), kind: 'release' },
+  ];
+  const ideal = driveIdealTick(config, depth);
+  if (ideal !== null) script.push({ tick: ideal, kind: 'press' });
+  return runLift(config, script).history.filter((s) => s.phase === 'LOCKOUT');
+}
+
+/** Seed for `eccentricLockoutStates`. Any rep that locks out will do; this one does. */
+const ECCENTRIC_LOCKOUT_SEED = 20260801;
+/**
+ * Measured: LOCKOUT ticks the eccentric fixture produces, squat and bench
+ * together, at `LOAD_PRESETS.HEAVY`. Pinned so a fixture that stopped reaching
+ * the phase reports itself instead of passing on an empty loop — which is the
+ * exact failure this fixture was written to repair.
+ */
+const ECCENTRIC_LOCKOUT_TICKS = 26;
 
 /**
  * A script whose drive press lands two ticks into the ascent — after the hole,
@@ -1646,6 +1688,125 @@ const DEADLIFT_SWEEP = {
   CLAMPER_GOOD_LIFTS: 10,
 } as const;
 
+/**
+ * Parameters of the NEVER-PRESS sweep: a deadlift played by a player whose
+ * finger never touches the glass at all.
+ *
+ * -------------------------------------------------------------------------
+ * WHY THIS SWEEP EXISTS, WHICH IS NOT THE SAME AS WHAT IT MEASURES.
+ * -------------------------------------------------------------------------
+ * `stepLift`'s deadlift BRACE branch carries a paragraph saying `m.held` is
+ * deliberately NOT forced true there, unlike the descent branch four lines
+ * below it. For a round that was prose with nothing behind it: an independent
+ * critic inserted the one line the paragraph names and the whole suite stayed
+ * green, while a player who never touched the screen took a clean deadlift at
+ * every load, 100 of 100. The forced grip is never released, so the ascent
+ * needs no drive taps AND the lockout sag branch can never fire — one
+ * assignment, both of deadlift's checks gone.
+ *
+ * THE LOADS ARE THE CRITIC'S, KEPT VERBATIM so the reproduction is exact, and
+ * they stop at 0.85 for a reason worth declaring rather than leaving implied:
+ * above it an undriven pull misses on the ASCENT and never reaches the hold at
+ * all, so a heavier arm would report 'miss' for a reason this sweep is not
+ * about. That the ascent must be driven at a limit pull is pinned separately,
+ * by "still needs the ascent driven at a limit pull".
+ *
+ * The two lightest are `LOAD_PRESETS.WARMUP` and `LOAD_PRESETS.LIGHT`, and
+ * what they produce is a GRIND rather than a miss — GDD §12.3's warm-up
+ * guarantee holding at exactly the load a distracted player is most likely to
+ * meet it at.
+ */
+const NEVER_PRESS_SWEEP = {
+  SEEDS: 25,
+  LOADS: [LOAD_PRESETS.WARMUP, LOAD_PRESETS.LIGHT, 0.7, 0.85] as const,
+  /** Ticks each rep is given: the whole brace timeout, an ascent, and a hold. */
+  MAX_TICKS: 2000,
+  /** Measured at the shipped tuning. */
+  CASES: 100,
+  /** The claim. A rep nobody played is never a clean lift. */
+  GOOD_LIFTS: 0,
+  /** Non-vacuity: the two outcomes the untouched rep actually reaches. */
+  GRINDS: 81,
+  DROPPED: 19,
+  /**
+   * THE COMPARISON THAT MAKES `GOOD_LIFTS: 0` A CLAIM. Without it the pin above
+   * is equally satisfied by a build where nobody can EVER get a clean lift at
+   * these loads. Same 100 configs, driven up and held.
+   */
+  DRIVEN_GOOD_LIFTS: 100,
+} as const;
+
+/**
+ * Parameters of the DOWN-COMMAND DELAY sweep, which grades `downCommandDelayTicks`'s
+ * own docstring rather than a played rep's outcome in isolation.
+ *
+ * Every reachable delay, sampled at `SEEDS_PER_DELAY` distinct seeds, against
+ * every load in `DEADLIFT_SWEEP.LOADS`. The seed is what draws the delay, so
+ * "every delay" has to be reached by searching seeds rather than by setting a
+ * number — and the seed also drives the bar jitter, so more than one seed per
+ * delay is what stops the sweep being a statement about 61 particular reps.
+ */
+const DELAY_SWEEP = {
+  SEEDS_PER_DELAY: 3,
+  /** Seeds searched to find them. Every delay in the range is reachable well inside this. */
+  SEED_SEARCH_LIMIT: 20000,
+  MAX_TICKS: 2000,
+  /** Measured: distinct delays `downCommandDelayTicks` can draw. */
+  DELAYS: 61,
+  CASES: 1098,
+  /** Claim 1: holding makes the lift at every delay. No misses anywhere. */
+  HELD_MAKES: 1098,
+  HELD_GOOD_LIFTS: 549,
+  HELD_GRINDS: 549,
+  /** Claim 2: letting go and staying off is never rewarded. */
+  LET_GO_GOOD_LIFTS: 0,
+  /** And what it costs instead — the split the old docstring got wrong. */
+  LET_GO_GRINDS: 351,
+  LET_GO_DROPPED: 747,
+  /** Cases where the closed-form sag threshold disagreed with the played rep. */
+  CLOSED_FORM_MISMATCHES: 0,
+} as const;
+
+/** How many disagreeing cases the delay sweep names in its failure message. */
+const DELAY_SWEEP_DISAGREEMENTS_REPORTED = 12;
+
+/**
+ * Parameters of the derived-depth track sweep — deadlift's one output that
+ * exists only for the drawing.
+ */
+const DEPTH_TRACK_SWEEP = {
+  SEEDS: 4,
+  MAX_TICKS: 2000,
+  REPS: 24,
+  /**
+   * Ascent ticks the ASCENT BRANCH ITSELF WROTE A DEPTH ON, across the sweep.
+   *
+   * `phaseTick > 0` is what selects them, and it is load-bearing rather than
+   * tidiness. The tick that ENTERS the ascent is written by the BRACE branch,
+   * which does not touch `m.depth` — so that state still carries `createLift`'s
+   * opening 1, which no mutant to the derivation can move. A max taken over the
+   * unfiltered phase is therefore a claim about `createLift` wearing the
+   * grammar of a claim about the drawing, and a halve-the-track mutant walks
+   * straight past it. Measured: unfiltered the sweep is 2204 ticks and its max
+   * is exactly 1 whatever the branch does.
+   */
+  BRANCH_WRITTEN_TICKS: 2180,
+  /** Distinct derived depths across the whole sweep. THE FACT THAT IT MOVES. */
+  DISTINCT_DEPTHS: 2180,
+  /**
+   * The track's halfway mark, and the ticks either side of it.
+   *
+   * A distinct count alone survives a SCALE error — a track running 0..0.5 has
+   * exactly as many distinct values and draws a lifter who never bends to the
+   * bar. These two counts are what separate the two, and they are counts rather
+   * than a pinned float so a legitimate retune moves them legibly instead of
+   * failing on a seventh decimal place.
+   */
+  HALFWAY_DEPTH: 0.5,
+  DEEP_TICKS: 1012,
+  SHALLOW_TICKS: 1168,
+} as const;
+
 /** How long the habitual tapper keeps tapping into the lockout, in ticks. */
 const TAPPER_TICKS = 120;
 /** Ticks between the tapper's taps. */
@@ -1714,6 +1875,127 @@ describe('the deadlift has no eccentric', () => {
     // fact about deadlift rather than about `createLift`.
     expect(createLift({ kind: 'squat', loadRatio: 0.9, seed: 1 }).height).toBe(1);
     expect(createLift({ kind: 'bench', loadRatio: 0.9, seed: 1 }).height).toBe(1);
+  });
+
+  it('leaves the grip where the player left it when the brace ends — the descent branch does not', () => {
+    // ---------------------------------------------------------------------
+    // THE DEADLIFT BRACE BRANCH'S OWN GUARANTEE, READ DIRECTLY.
+    //
+    // `stepLift` says, in prose, that `m.held` is NOT forced true on the
+    // deadlift arm "unlike the descent branches below". It was prose with
+    // nothing behind it: adding `m.held = true;` there left the whole suite
+    // green. This is the assertion at the level the sentence is written at —
+    // the outcome sweep in the lockout block is the one that says why it
+    // matters.
+    //
+    // THE DISCRIMINATOR IS THE SIBLING BRANCH, WHICH IS THE POINT. Squat and
+    // bench take the `else` arm four lines down and it DOES set `m.held =
+    // true`. Same input (none at all), same brace timeout, opposite grip
+    // state, and the only thing that differs is the lift. An assertion that
+    // only read deadlift's `false` would be satisfied by a `held` field
+    // nothing ever writes.
+    // ---------------------------------------------------------------------
+    let checked = 0;
+    for (const load of DEADLIFT_SWEEP.LOADS) {
+      const exit = (kind: PlayableLiftKind): LiftState | undefined =>
+        runLift({ kind, loadRatio: load, seed: 1 }, [], NEVER_PRESS_SWEEP.MAX_TICKS).history.find(
+          (s) => s.phase !== 'BRACE',
+        );
+
+      const deadlift = exit(DEADLIFT);
+      expect(deadlift, `deadlift at ${load} never left BRACE`).toBeDefined();
+      expect(deadlift?.phase, `load ${load}`).toBe('ASCENT');
+      expect(deadlift?.held, `the deadlift brace forced the finger down at ${load}`).toBe(false);
+
+      for (const kind of ['squat', 'bench'] as const) {
+        const eccentric = exit(kind);
+        expect(eccentric, `${kind} at ${load} never left BRACE`).toBeDefined();
+        expect(eccentric?.phase, `${kind} at ${load}`).toBe('DESCENT');
+        expect(eccentric?.held, `the ${kind} brace did not take the grip at ${load}`).toBe(true);
+      }
+      checked += 1;
+    }
+    // Counts, not bounds — a loop over an empty load list asserts nothing.
+    expect(checked, 'no loads were checked').toBe(DEADLIFT_SWEEP.LOADS.length);
+  });
+
+  it('derives a depth track for the drawing that actually moves down the ascent', () => {
+    // ---------------------------------------------------------------------
+    // `m.depth` ON A DEADLIFT IS NOT A JUDGEMENT, IT IS A DRAWING. No outcome
+    // reads it — `depthAchieved` starts true and the LOCKOUT branch never
+    // consults depth — so it is exactly the shape of value that can be
+    // silently nulled with every outcome test still green. Measured: replacing
+    // `scrub(clamp01(1 - m.height))` with `0` survives the whole suite.
+    //
+    // ASSERTED AS THE THIRD OF THE THREE PROGRESSION FACTS. "Never invalid"
+    // and "never regresses" are both true of a constant; only a count of
+    // DISTINCT values says the track moves. The deep/shallow split is beside
+    // it because a distinct count alone survives a SCALE error, which is a
+    // different mutant and not a weaker one.
+    //
+    // ONE ASSERTION WAS DELETED FROM THIS TEST FOR BEING DOMINATED, and the
+    // domination is recorded rather than the check quietly dropped. A
+    // `collapsedReps === 0` pin cannot fail while the two lines below hold:
+    // `distinct === BRANCH_WRITTEN_TICKS` with `distinct_i <= ticks_i` forces
+    // `distinct_i === ticks_i` for every rep, and the shortest rep in this
+    // sweep is 47 ticks, so no rep can be down to one value. Two checks where
+    // one can never speak.
+    //
+    // WHAT THIS DOES AND DOES NOT COVER. It is the raw derived value, which is
+    // strictly finer than what reaches the sprite: `liftFrameSpec` quantises
+    // to `QUANTISE.DEPTH_STEPS` before anything is drawn, so a collapse here
+    // is visible there and not every wobble here is. Whether the resulting
+    // figure looks like a deadlift is not a question this file can ask.
+    // ---------------------------------------------------------------------
+    let reps = 0;
+    let branchWritten = 0;
+    let distinct = 0;
+    let deep = 0;
+    let shallow = 0;
+    for (const load of DEADLIFT_SWEEP.LOADS) {
+      for (let seed = 1; seed <= DEPTH_TRACK_SWEEP.SEEDS; seed += 1) {
+        const config: LiftConfig = { kind: DEADLIFT, loadRatio: load, seed };
+        // `phaseTick > 0` drops the entering tick, which the BRACE branch wrote
+        // and the derivation never touched. See `BRANCH_WRITTEN_TICKS`.
+        const written = runLift(
+          config,
+          deadliftAscent(config),
+          DEPTH_TRACK_SWEEP.MAX_TICKS,
+        ).history.filter((s) => s.phase === 'ASCENT' && s.phaseTick > 0);
+        for (const state of written) {
+          expect(
+            state.depth,
+            `load ${load} seed ${seed} tick ${state.tick} drew an undrawable depth`,
+          ).toBeGreaterThanOrEqual(0);
+          expect(
+            state.depth,
+            `load ${load} seed ${seed} tick ${state.tick} drew an undrawable depth`,
+          ).toBeLessThanOrEqual(1);
+          if (state.depth >= DEPTH_TRACK_SWEEP.HALFWAY_DEPTH) deep += 1;
+          else shallow += 1;
+        }
+        distinct += new Set(written.map((s) => s.depth)).size;
+        branchWritten += written.length;
+        reps += 1;
+      }
+    }
+    // Counts, not bounds — and the domain first, so a sweep that never left the
+    // brace reports itself rather than passing on an empty set.
+    expect(reps, 'no reps were played').toBe(DEPTH_TRACK_SWEEP.REPS);
+    expect(branchWritten, 'the ascent branch wrote no depths to read').toBe(
+      DEPTH_TRACK_SWEEP.BRANCH_WRITTEN_TICKS,
+    );
+    // FACT 3: IT MOVES.
+    expect(distinct, `the drawn depth took ${distinct} distinct values across the sweep`).toBe(
+      DEPTH_TRACK_SWEEP.DISTINCT_DEPTHS,
+    );
+    // ...and it moves across the whole range rather than inside a squashed one.
+    expect(deep, `${deep} ticks drew the lifter still down at the bar`).toBe(
+      DEPTH_TRACK_SWEEP.DEEP_TICKS,
+    );
+    expect(shallow, `${shallow} ticks drew the lifter near lockout`).toBe(
+      DEPTH_TRACK_SWEEP.SHALLOW_TICKS,
+    );
   });
 
   it('refuses to be stepped in a phase it cannot reach, rather than absorbing it', () => {
@@ -1882,9 +2164,50 @@ describe('the deadlift has no eccentric', () => {
     expect(promptFor(command)).toBe(LIFT_COPY.PROMPT.LOCKOUT_DOWN_COMMANDED);
     expect(lockoutHoldIsLive(command)).toBe(false);
     // The other two lifts keep their own line and never see the deadlift one.
-    const squat = play(0.85, { driveOffsetTicks: 0 });
     expect(LIFT_COPY.PROMPT.LOCKOUT.squat).not.toBe(LIFT_COPY.PROMPT.LOCKOUT.deadlift);
-    expect(lockoutHoldIsLive(squat)).toBe(false);
+    expect(LIFT_COPY.PROMPT.LOCKOUT.bench).not.toBe(LIFT_COPY.PROMPT.LOCKOUT.deadlift);
+  });
+
+  it('is not live on a squat or a bench that is genuinely standing in LOCKOUT', () => {
+    // ---------------------------------------------------------------------
+    // THE KIND GUARD, WHICH WAS UNTESTED WHILE LOOKING TESTED — the exact
+    // shape CLAUDE.md calls an empty domain. The assertion that appeared to
+    // cover it was `expect(lockoutHoldIsLive(squat)).toBe(false)` handed
+    // `play(...)`, whose return value is always RESOLVED, so it exercised the
+    // PHASE guard and stopped there. Measured: deleting
+    // `if (state.config.kind !== 'deadlift') return false;` left every test in
+    // this file green.
+    //
+    // AND THE STATE BELOW IS THE ONE THE GUARD IS LOAD-BEARING IN, not merely
+    // one that reaches it. `downCommandTick` is null for a squat for the whole
+    // rep, and the null arm of this predicate returns TRUE — deliberately, so
+    // that deadlift's "don't let go" line is up on the frame the bar arrives.
+    // So on an eccentric lockout every other line in the function votes
+    // "live", and the kind guard is the only thing between a squat and
+    // deadlift's copy.
+    // ---------------------------------------------------------------------
+    let checked = 0;
+    for (const kind of ['squat', 'bench'] as const) {
+      const lockout = eccentricLockoutStates(kind, LOAD_PRESETS.HEAVY);
+      expect(lockout.length, `a ${kind} at HEAVY never reached LOCKOUT`).toBeGreaterThan(0);
+      for (const state of lockout) {
+        // Both facts spelled out, because the second is why the first bites:
+        // the state really is in the phase, and the phase guard really does
+        // pass it through to the kind guard.
+        expect(state.phase, `${kind} tick ${state.tick}`).toBe('LOCKOUT');
+        expect(state.downCommandTick, `${kind} tick ${state.tick}`).toBeNull();
+        expect(lockoutHoldIsLive(state), `${kind} tick ${state.tick}`).toBe(false);
+        expect(promptFor(state), `${kind} tick ${state.tick}`).toBe(LIFT_COPY.PROMPT.LOCKOUT[kind]);
+        checked += 1;
+      }
+    }
+    // Counts, not bounds. An empty history would satisfy the loop trivially.
+    expect(checked, 'no eccentric lockout ticks were checked').toBe(ECCENTRIC_LOCKOUT_TICKS);
+    // ...and the PHASE guard keeps its own case rather than being folded into
+    // this one, since a state that fails both guards proves neither.
+    const resolvedDeadlift = deadliftRep(LOAD_PRESETS.HEAVY, 4, DEADLIFT_SWEEP.HELD);
+    expect(resolvedDeadlift.phase).toBe('RESOLVED');
+    expect(lockoutHoldIsLive(resolvedDeadlift)).toBe(false);
   });
 
   it('has an unguessable hold that is still a pure function of the seed', () => {
@@ -1959,6 +2282,196 @@ describe('the lockout hold decides the deadlift', () => {
       makeToMiss,
       `holding made the lift and letting go lost it in ${makeToMiss} of ${cases} cases`,
     ).toBe(DEADLIFT_SWEEP.MAKE_TO_MISS);
+  });
+
+  it('never hands a clean lift to a player who never touches the screen', () => {
+    // ---------------------------------------------------------------------
+    // THE TEST THE BRACE BRANCH'S PROSE DID NOT HAVE, AND THE ONE THE BENCH
+    // DEFECT WOULD HAVE NEEDED.
+    //
+    // `stepLift`'s deadlift BRACE arm says `m.held` is deliberately not forced
+    // true. Adding `m.held = true;` there is a one-line edit that leaves
+    // `tsc` clean and — before this test — the whole suite green, while
+    // handing a player who never touched the glass a CLEAN DEADLIFT at every
+    // load. The grip is never released, so the ascent needs no drive taps and
+    // the lockout sag branch can never fire.
+    //
+    // ASSERTED ON `resolution.outcome` AND NOTHING ELSE, for the reason this
+    // block's header records: eight mutants once passed against the bench
+    // command because every one of them asked whether a mechanism RAN. A
+    // forced grip is a mechanism running perfectly.
+    //
+    // NO INPUT AT ALL, not "a bad input". The brace starts the pull by itself
+    // at `BRACE_TIMEOUT_TICKS`, so a rep with an empty script is a real rep
+    // that a real distracted player produces — it is not a synthetic state.
+    // ---------------------------------------------------------------------
+    const outcomes: Record<string, number> = {};
+    let cases = 0;
+    let goodLifts = 0;
+    let grinds = 0;
+    let dropped = 0;
+    let drivenGoodLifts = 0;
+    for (const load of NEVER_PRESS_SWEEP.LOADS) {
+      for (let seed = 1; seed <= NEVER_PRESS_SWEEP.SEEDS; seed += 1) {
+        const config: LiftConfig = { kind: DEADLIFT, loadRatio: load, seed };
+        const untouched = runLift(config, [], NEVER_PRESS_SWEEP.MAX_TICKS).final.resolution;
+        expect(untouched, `load ${load} seed ${seed} never resolved`).not.toBeNull();
+        const outcome = untouched?.outcome;
+        outcomes[`${load}:${outcome}`] = (outcomes[`${load}:${outcome}`] ?? 0) + 1;
+        if (outcome === 'good-lift') goodLifts += 1;
+        if (outcome === 'grind') grinds += 1;
+        if (outcome === 'miss' && untouched?.missReason === 'dropped') dropped += 1;
+        // THE SAME CONFIG, PLAYED. Without this arm the zero below is equally
+        // true of a build where a clean lift is unreachable at these loads.
+        if (
+          runLift(config, deadliftAscent(config), NEVER_PRESS_SWEEP.MAX_TICKS).final.resolution
+            ?.outcome === 'good-lift'
+        ) {
+          drivenGoodLifts += 1;
+        }
+        cases += 1;
+      }
+    }
+    // Counts, not bounds, and the domain first.
+    expect(cases, 'no reps were played').toBe(NEVER_PRESS_SWEEP.CASES);
+    expect(
+      goodLifts,
+      `an untouched screen produced ${goodLifts} clean lifts: ${JSON.stringify(outcomes)}`,
+    ).toBe(NEVER_PRESS_SWEEP.GOOD_LIFTS);
+    expect(drivenGoodLifts, 'nobody can get a clean lift at these loads at all').toBe(
+      NEVER_PRESS_SWEEP.DRIVEN_GOOD_LIFTS,
+    );
+    // What the untouched rep DOES get, split, so a sweep that collapsed onto
+    // one outcome for a new reason reports itself rather than staying green on
+    // the zero above.
+    expect(grinds, `untouched grinds: ${JSON.stringify(outcomes)}`).toBe(
+      NEVER_PRESS_SWEEP.GRINDS,
+    );
+    expect(dropped, `untouched drops: ${JSON.stringify(outcomes)}`).toBe(
+      NEVER_PRESS_SWEEP.DROPPED,
+    );
+    // GDD §12.3, at the two loads a player meets it at: a warm-up left alone
+    // is a grind, never a lost rep. This is the same guarantee the warm-up
+    // test below plays with a scripted release, reached by doing nothing.
+    for (const load of [LOAD_PRESETS.WARMUP, LOAD_PRESETS.LIGHT]) {
+      expect(outcomes[`${load}:grind`], `warm-up load ${load} was not left alone`).toBe(
+        NEVER_PRESS_SWEEP.SEEDS,
+      );
+    }
+  });
+
+  it('never rewards letting go, and loses the bar exactly when the sag arithmetic says so', () => {
+    // ---------------------------------------------------------------------
+    // `downCommandDelayTicks`'s DOCSTRING, GRADED. It claimed two things, and
+    // the second was false as written: "at every delay one who lets go and
+    // stays off loses it". At the shortest delays the releaser gets a GRIND,
+    // because the bar has not had time to fall `LOCKOUT_DROP_HEIGHT_LOSS`.
+    //
+    // IT WAS FALSE BY DESIGN, WHICH IS WHY REWORDING IT WAS THE FIX RATHER
+    // THAN RETUNING. The same inequality is `lockoutSagPerTick`'s §12.3
+    // promise seen from the other end: at the light end the threshold is far
+    // past `DOWN_COMMAND_DELAY_TICKS.MAX`, so a warm-up CANNOT be dropped
+    // whatever the player does. Making the old sentence true would have meant
+    // breaking a refusal condition.
+    //
+    // THE CLOSED FORM IS NOT AN ORACLE MIRRORING ITS SUBJECT. `stepLift` sags
+    // the bar a tick at a time and compares a height; this compares a delay to
+    // a threshold in ticks. Different derivations, and their agreeing on every
+    // case is the claim.
+    // ---------------------------------------------------------------------
+    const seedsFor = new Map<number, number[]>();
+    for (let seed = 1; seed <= DELAY_SWEEP.SEED_SEARCH_LIMIT; seed += 1) {
+      const delay = downCommandDelayTicks(seed);
+      const found = seedsFor.get(delay) ?? [];
+      if (found.length < DELAY_SWEEP.SEEDS_PER_DELAY) {
+        found.push(seed);
+        seedsFor.set(delay, found);
+      }
+    }
+    const delays = [...seedsFor.keys()].sort((a, b) => a - b);
+
+    /**
+     * Ticks past the grace the bar needs to have fallen far enough to be lost,
+     * read off the two tuning constants rather than off the sim.
+     */
+    const dropsAt = (load: number, delay: number): boolean =>
+      delay >
+      LIFT_TUNING.LOCKOUT_GRIP_GRACE_TICKS +
+        LIFT_TUNING.LOCKOUT_DROP_HEIGHT_LOSS / lockoutSagPerTick(load);
+
+    let cases = 0;
+    let heldMakes = 0;
+    let heldGoodLifts = 0;
+    let heldGrinds = 0;
+    let letGoGoodLifts = 0;
+    let letGoGrinds = 0;
+    let letGoDropped = 0;
+    let mismatches = 0;
+    const disagreements: string[] = [];
+    for (const delay of delays) {
+      for (const seed of seedsFor.get(delay) ?? []) {
+        for (const load of DEADLIFT_SWEEP.LOADS) {
+          const config: LiftConfig = { kind: DEADLIFT, loadRatio: load, seed };
+          const ascent = deadliftAscent(config);
+          const lockout = deadliftLockoutTick(config, ascent);
+          expect(lockout, `delay ${delay} seed ${seed} load ${load} never locked out`).not.toBeNull();
+          if (lockout === null) continue;
+          // BOTH ARMS SHARE AN ASCENT EXACTLY, same as `deadliftRep`: the
+          // release is strictly after lockout, so every difference is the hold.
+          const held = runLift(config, ascent, DELAY_SWEEP.MAX_TICKS).final.resolution;
+          const letGo = runLift(
+            config,
+            [...ascent, { tick: lockout + DEADLIFT_SWEEP.LET_GO_AFTER_TICKS, kind: 'release' }],
+            DELAY_SWEEP.MAX_TICKS,
+          ).final.resolution;
+          if (held?.outcome !== 'miss') heldMakes += 1;
+          if (held?.outcome === 'good-lift') heldGoodLifts += 1;
+          if (held?.outcome === 'grind') heldGrinds += 1;
+          if (letGo?.outcome === 'good-lift') letGoGoodLifts += 1;
+          if (letGo?.outcome === 'grind') letGoGrinds += 1;
+          if (letGo?.outcome === 'miss' && letGo.missReason === 'dropped') letGoDropped += 1;
+          if ((letGo?.outcome === 'miss') !== dropsAt(load, delay)) {
+            mismatches += 1;
+            if (disagreements.length < DELAY_SWEEP_DISAGREEMENTS_REPORTED) {
+              disagreements.push(`load ${load} delay ${delay} seed ${seed} -> ${letGo?.outcome}`);
+            }
+          }
+          cases += 1;
+        }
+      }
+    }
+    // Counts, not bounds. The domain first — a search that found no seeds for
+    // a delay would quietly shrink this sweep.
+    expect(delays.length, 'delays reachable from a seed').toBe(DELAY_SWEEP.DELAYS);
+    expect(cases, 'no reps were played').toBe(DELAY_SWEEP.CASES);
+    // CLAIM 1: the draw never takes the rep off a player who holds.
+    expect(heldMakes, `holding made the lift in ${heldMakes} of ${cases}`).toBe(
+      DELAY_SWEEP.HELD_MAKES,
+    );
+    expect(heldGoodLifts).toBe(DELAY_SWEEP.HELD_GOOD_LIFTS);
+    expect(heldGrinds).toBe(DELAY_SWEEP.HELD_GRINDS);
+    // CLAIM 2: letting go is never rewarded, at any delay or load.
+    expect(
+      letGoGoodLifts,
+      `letting go still got a clean lift in ${letGoGoodLifts} of ${cases}`,
+    ).toBe(DELAY_SWEEP.LET_GO_GOOD_LIFTS);
+    // WHICH ONE IT COSTS IS THE CLOSED FORM'S CLAIM, AND IT IS ASSERTED BEFORE
+    // THE AGGREGATES ON PURPOSE. A tuning pass moves the aggregates and somebody
+    // re-pins them from a fresh run; this line is the one that still has
+    // something to say afterwards, because it compares the sim against
+    // arithmetic rather than against a number copied out of the sim. Putting it
+    // last would mean every threshold defect reported itself as "201 expected
+    // 351" instead of naming the load and the delay it happened at.
+    expect(
+      mismatches,
+      `the sag arithmetic disagreed with the sim: ${disagreements.join('; ')}`,
+    ).toBe(DELAY_SWEEP.CLOSED_FORM_MISMATCHES);
+    // AND THE SPLIT THE OLD SENTENCE GOT WRONG, pinned rather than described.
+    expect(letGoGrinds, `letting go cost only the clean lift in ${letGoGrinds} of ${cases}`).toBe(
+      DELAY_SWEEP.LET_GO_GRINDS,
+    );
+    expect(letGoDropped).toBe(DELAY_SWEEP.LET_GO_DROPPED);
+    expect(letGoGrinds + letGoDropped, 'an outcome escaped both arms').toBe(cases);
   });
 
   it('turns a made pull into a dropped one at a heavy single', () => {

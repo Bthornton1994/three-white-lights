@@ -864,8 +864,39 @@ export function lockoutTicks(loadRatio: number, kind: EccentricLiftKind): number
  * decorrelating step would be a magic constant bought with nothing.
  *
  * NOT GDD §8.1'S FORBIDDEN DICE. What is drawn is WHEN THE HOLD ENDS, never
- * whether it was passed: at every delay in the range a player who keeps holding
- * makes the lift, and at every delay one who lets go and stays off loses it.
+ * whether it was passed. Two claims, and they are not the same claim:
+ *
+ *   1. AT EVERY DELAY IN THE RANGE, HOLDING MAKES THE LIFT. Measured 1098 of
+ *      1098 — all 61 reachable delays, three seeds each, six loads — with 0
+ *      misses. Nothing the draw can do takes the rep off a player who holds.
+ *   2. AT EVERY DELAY, LETTING GO AND STAYING OFF COSTS AT LEAST THE CLEAN
+ *      LIFT. Measured 0 good-lifts of 1098. Never a reward, ever.
+ *
+ * WHETHER IT ALSO COSTS THE REP IS ARITHMETIC, NOT THE DRAW, and an earlier
+ * version of this docstring got that wrong — it claimed the releaser "loses it"
+ * at every delay, which is false at 351 of those 1098 and false BY DESIGN. The
+ * bar has to physically fall `LOCKOUT_DROP_HEIGHT_LOSS`, at
+ * `lockoutSagPerTick(load)` a tick, after `LOCKOUT_GRIP_GRACE_TICKS` of grace.
+ * So the rep is lost exactly when
+ *
+ *     delay > LOCKOUT_GRIP_GRACE_TICKS + LOCKOUT_DROP_HEIGHT_LOSS / sag(load)
+ *
+ * and a hold that ends before the bar is gone grades a grind instead. That
+ * closed form agrees with the played sim on all 1098 cases.
+ *
+ * THE FALSE HALF WAS THE §12.3 GUARANTEE SEEN FROM THE OTHER END. The same
+ * inequality is what `lockoutSagPerTick` uses to promise that a warm-up pull
+ * CANNOT be dropped: at the light end the right-hand side is far past
+ * `DOWN_COMMAND_DELAY_TICKS.MAX`, so no delay in the range clears it. A
+ * sentence saying every delay loses the bar for a releaser therefore
+ * contradicted a refusal condition two functions down, and both were shipped.
+ * `lift.test.ts`'s "never rewards letting go, and loses the bar exactly when
+ * the sag arithmetic says so" is where every count in this docstring comes
+ * from, and it pins them in `DELAY_SWEEP` rather than sampling at a call site:
+ * 1098 cases over 61 delays at 3 seeds each, 1098 makes, 0 good-lifts for the
+ * releaser, 351 grinds, and 0 disagreements with the closed form. The load
+ * list is `DEADLIFT_SWEEP.LOADS`, so "six loads" is that list's length rather
+ * than a number written down twice.
  */
 export function downCommandDelayTicks(seed: number): number {
   const { MIN, MAX } = LIFT_TUNING.DOWN_COMMAND_DELAY_TICKS;
@@ -1326,6 +1357,26 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
         // here is to TAP the drive cues, and the hold that matters comes
         // later, at lockout. Forcing it down would misreport the player's
         // actual grip state into the ascent.
+        //
+        // AND THAT SENTENCE NOW HAS A TEST UNDER IT, BECAUSE FOR A ROUND IT
+        // DID NOT. An independent critic added the one line this paragraph
+        // names — `m.held = true;` immediately below — and the whole suite
+        // stayed green while a player who never touched the screen got a
+        // CLEAN DEADLIFT at every load, 100 of 100. One assignment collapses
+        // both of deadlift's checks at once: the forced grip is never
+        // released, so the ascent needs no drive taps and the lockout sag
+        // branch can never fire. This repository has shipped this exact
+        // defect once already, on bench, where the drive boost silently
+        // re-coupled to `m.held` and turned a tap mechanic into a hold — and
+        // it was caught by a human on a phone, not by the suite.
+        //
+        // Two tests in `lift.test.ts` redden on it, and they are deliberately
+        // at different levels so neither is the only thing standing here:
+        //   - "leaves the grip where the player left it" reads `held` on the
+        //     first ASCENT state, against squat and bench on the same input;
+        //   - "never hands a clean lift to a player who never touches the
+        //     screen" reads `resolution.outcome` over `NEVER_PRESS_SWEEP`,
+        //     which is the one that would have caught the bench defect.
         // ---------------------------------------------------------------
         enter('ASCENT');
         m.velocity = scrub(floorBreakVelocity(load));
