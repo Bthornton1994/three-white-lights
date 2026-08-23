@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "shell-record-final-2026-08-23T23-32-18-245Z-11231",
   "label": "shell-record-final",
   "command": [
@@ -29,14 +29,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 12,
-    "okCount": 11,
+    "count": 13,
+    "okCount": 12,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T23:43:18.628Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-23T23:43:58.682Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-23T23:42:22.153Z"
-  }
+    "lastOkIso": "2026-08-23T23:43:21.005Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-23T23:43:58.680Z",
+  "elapsedSeconds": 700.4
 }
