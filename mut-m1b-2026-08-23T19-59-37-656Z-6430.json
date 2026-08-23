@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "mut-m1b-2026-08-23T19-59-37-656Z-6430",
   "label": "mut-M1b",
   "command": [
@@ -37,12 +37,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 1,
-    "okCount": 0,
+    "count": 2,
+    "okCount": 1,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T19:59:37.677Z",
-    "lastReason": "start",
+    "lastAttemptIso": "2026-08-23T20:00:12.640Z",
+    "lastReason": "final",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm"
-  }
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": true,
+    "lastOkIso": "2026-08-23T19:59:40.526Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-23T20:00:12.639Z",
+  "elapsedSeconds": 35
 }
