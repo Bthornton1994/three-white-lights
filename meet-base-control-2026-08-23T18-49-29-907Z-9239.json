@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "meet-base-control-2026-08-23T18-49-29-907Z-9239",
+  "label": "meet-base-control",
+  "command": [
+    "node",
+    "tools/verify-lift-press.mjs",
+    "--url",
+    "http://localhost:8091",
+    "--arms",
+    "meet"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-23T18:49:29.907Z",
+  "startedAtMs": 1787510969907,
+  "cwd": "/home/user/wt-deadlift-base",
+  "commit": "8ef61c93534502c4244a9d0887588c14e77d563c",
+  "branch": "HEAD",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 9239,
+    "startTick": "661228",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --label meet-base-control -- node tools/verify-lift-press.mjs --url http://localhost:8091 --arms meet",
+    "bootId": "fabf06d4-ff34-4c2a-84e5-869c226847d2",
+    "bootEpochSeconds": 1787504358,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-23T18:49:29.978Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
