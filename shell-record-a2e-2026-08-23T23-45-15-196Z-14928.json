@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "shell-record-a2e-2026-08-23T23-45-15-196Z-14928",
   "label": "shell-record-a2e",
   "command": [
@@ -29,14 +29,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 12,
-    "okCount": 11,
+    "count": 13,
+    "okCount": 12,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T23:56:15.544Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-23T23:56:51.770Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-23T23:55:18.170Z"
-  }
+    "lastOkIso": "2026-08-23T23:56:18.237Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-23T23:56:51.768Z",
+  "elapsedSeconds": 696.6
 }
