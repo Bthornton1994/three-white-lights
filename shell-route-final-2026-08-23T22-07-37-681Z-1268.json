@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "shell-route-final-2026-08-23T22-07-37-681Z-1268",
+  "label": "shell-route-final",
+  "command": [
+    "node",
+    "tools/verify-shell-route.mjs",
+    "--url",
+    "http://localhost:8093"
+  ],
+  "budgetSeconds": 1800,
+  "startedAtIso": "2026-08-23T22:07:37.681Z",
+  "startedAtMs": 1787522857681,
+  "cwd": "/home/user/wt-meetdrive",
+  "commit": "fd845bd1b3d2a8272231e5f4bf199d6945d0221e",
+  "branch": "claude/meetdrive-three-lifts",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 1268,
+    "startTick": "1850005",
+    "cmdline": "node tools/watchdog.mjs --budget 1800 --label shell-route-final -- node tools/verify-shell-route.mjs --url http://localhost:8093",
+    "bootId": "fabf06d4-ff34-4c2a-84e5-869c226847d2",
+    "bootEpochSeconds": 1787504358,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-23T22:07:37.697Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
