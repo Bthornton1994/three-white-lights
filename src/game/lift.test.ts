@@ -1652,6 +1652,23 @@ const TAPPER_TICKS = 120;
 const TAPPER_PERIOD_TICKS = 7;
 /** Ticks the tapper's finger is off the glass per tap. */
 const TAPPER_FINGER_UP_TICKS = 2;
+/**
+ * Step and expected sample count for the floor-break press sweep.
+ *
+ * The sweep's RANGE is not a constant — it is the whole window a player can
+ * press in, derived from `BRACE_TIMEOUT_TICKS` and the load's own brace, so it
+ * cannot drift out of date when either moves. Only the step size and the
+ * resulting count are pinned here, and the count is what makes an emptied or
+ * shortened sweep report itself instead of passing.
+ */
+const FLOOR_BREAK_PRESS_SWEEP_STEP = 5;
+/**
+ * Ticks the floor-break sweep gives each rep to resolve. Well above the worst
+ * case: the whole brace window, plus an ascent, plus the longest hold, plus the
+ * settle. `runLift`'s own default is a rep's budget, not a late-press rep's.
+ */
+const FLOOR_BREAK_PRESS_SWEEP_MAX_TICKS = 1400;
+const FLOOR_BREAK_PRESS_SWEEP_SAMPLES = 114;
 /** Ticks past the grace period at which the slip test re-grips. */
 const REGRIP_AFTER_TICKS = 8;
 /**
@@ -1738,28 +1755,85 @@ describe('the deadlift has no eccentric', () => {
   });
 
   it('is given its speed off the floor by the load alone, not by an input', () => {
-    // The absence that defines the lift. Two players who play the ascent
-    // identically leave the floor identically, because there was no beat before
-    // this one to have played well — unlike squat's reversal and bench's press,
-    // where the previous beat's quality IS the starting velocity.
-    const first = runLift(
-      { kind: DEADLIFT, loadRatio: 0.9, seed: 1 },
-      [{ tick: pullTickFor(0.9), kind: 'press' }],
-    ).history.find((s) => s.phase === 'ASCENT');
-    const late = runLift(
-      { kind: DEADLIFT, loadRatio: 0.9, seed: 1 },
-      // A much later press: the brace waits, so the pull starts later.
-      [{ tick: pullTickFor(0.9) + 40, kind: 'press' }],
-    ).history.find((s) => s.phase === 'ASCENT');
-    expect(first).toBeDefined();
-    expect(late).toBeDefined();
-    expect(late?.velocity).toBe(first?.velocity);
+    // The absence that defines the lift. Squat's ascent velocity is bought by
+    // the depth release and bench's by the reaction; a deadlift's is bought by
+    // nothing, because there was no beat before it to have played well.
+    //
+    // ---------------------------------------------------------------------
+    // WHY THIS SWEEPS RATHER THAN COMPARING TWO PRESS TICKS, and one wrong
+    // reason it does not, recorded because the wrong one was believed first.
+    //
+    // The first version ran a rep pressed as early as the brace allows against
+    // one pressed 40 ticks later and asserted the velocities matched. A mutant
+    // scaling the floor-break velocity by `state.phaseTick > 20` left all 114
+    // tests green, which LOOKED like a hole in the test and was not one: at
+    // this load `braceTicks` is already ~34, so every reachable press is above
+    // 20 and that mutant multiplies a CONSTANT by two over the whole domain. A
+    // uniformly doubled constant is a retune, not an input dependence, and this
+    // test is right not to call it one. The mutant was invalid, not survived.
+    //
+    // The real argument for the sweep is weaker and still sufficient: two
+    // samples only discriminate if they happen to straddle wherever a defect
+    // puts its threshold. Moving that same mutant to `> 60` — inside the
+    // reachable range — is caught by the sweep, and would have been caught by
+    // the two-sample version too, by luck of where 40 landed. The sweep removes
+    // the luck.
+    //
+    // WHAT IT COVERS, DECLARED RATHER THAN IMPLIED: press delays from the
+    // earliest legal press to `BRACE_TIMEOUT_TICKS`, which is the whole window
+    // a player can press in — past it the brace starts the pull by itself. A
+    // dependence keyed on something other than the press tick is not covered by
+    // this test at all.
+    // ---------------------------------------------------------------------
+    const load = 0.9;
+    const velocities = new Set<number>();
+    const outcomes = new Set<string>();
+    let samples = 0;
+    for (
+      let delay = 0;
+      delay <= LIFT_TUNING.BRACE_TIMEOUT_TICKS - braceTicks(load, DEADLIFT);
+      delay += FLOOR_BREAK_PRESS_SWEEP_STEP
+    ) {
+      const config: LiftConfig = { kind: DEADLIFT, loadRatio: load, seed: 1 };
+      // AN EXPLICIT TICK BUDGET, because `runLift`'s default is not enough
+      // here and the shortfall is silent: a rep that runs out of ticks comes
+      // back with `resolution` null, which reads as "the outcome differed"
+      // rather than as "the harness stopped early". A press near
+      // `BRACE_TIMEOUT_TICKS` starts its ascent ~600 ticks in and then needs
+      // the ascent, the hold and the settle on top of that.
+      const replay = runLift(
+        config,
+        [{ tick: pullTickFor(load) + delay, kind: 'press' }],
+        FLOOR_BREAK_PRESS_SWEEP_MAX_TICKS,
+      );
+      const first = replay.history.find((s) => s.phase === 'ASCENT');
+      expect(first, `delay ${delay} never reached the ascent`).toBeDefined();
+      if (first !== undefined) velocities.add(first.velocity);
+      outcomes.add(`${replay.final.resolution?.outcome}`);
+      samples += 1;
+    }
+    // Counts, not bounds. A sweep that produced one sample would satisfy
+    // `size === 1` trivially.
+    expect(samples, 'press ticks swept').toBe(FLOOR_BREAK_PRESS_SWEEP_SAMPLES);
+    expect(
+      [...velocities],
+      'the bar left the floor at more than one speed for the same weight',
+    ).toHaveLength(1);
+    // AND THE OUTCOME, not only the velocity — the lesson the bench beat paid
+    // for. A starting velocity that differed and washed out would be caught by
+    // the line above and would not matter; one that differed and DECIDED the
+    // rep is what this says cannot happen.
+    expect([...outcomes], 'when the player pressed changed the rep').toHaveLength(1);
+
     // Heavier breaks the floor slower, which is the only thing that moves it.
-    const heavy = runLift(
-      { kind: DEADLIFT, loadRatio: 1.0, seed: 1 },
-      [{ tick: pullTickFor(1.0), kind: 'press' }],
-    ).history.find((s) => s.phase === 'ASCENT');
-    expect(heavy?.velocity ?? 1).toBeLessThan(first?.velocity ?? 0);
+    // Without this the assertions above are satisfied by a constant.
+    const lighter = runLift({ kind: DEADLIFT, loadRatio: load, seed: 1 }, [
+      { tick: pullTickFor(load), kind: 'press' },
+    ]).history.find((s) => s.phase === 'ASCENT');
+    const heavy = runLift({ kind: DEADLIFT, loadRatio: 1.0, seed: 1 }, [
+      { tick: pullTickFor(1.0), kind: 'press' },
+    ]).history.find((s) => s.phase === 'ASCENT');
+    expect(heavy?.velocity ?? 1).toBeLessThan(lighter?.velocity ?? 0);
   });
 
   it('draws no countdown to the down command — a telegraphed hold is a timed one', () => {
