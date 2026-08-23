@@ -1314,6 +1314,32 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       "matches any more: purchaseArrivalOfX: expected [ 'ACCELERANT_ARRIVAL', …(87) ] to deeply " +
       "equal [ 'ACCELERANT_ARRIVAL', …(87) ]",
   },
+  {
+    // Landed here because Session A's tree does not contain the two subject
+    // files. Session A mutation-verified the row in a worktree at 0ac38f5:
+    // planting `readonly dispatch: (action: { readonly kind: string }) => void;`
+    // into `AmbientMemberBodyProps` took the named test from 1 passed | 126
+    // skipped to 1 failed | 126 skipped (127 collected both times — the
+    // assertion ran rather than dying at collection) and the failure named the
+    // member (`+ "name": "dispatch"`), not a moved count. A's own tree reddens
+    // the row on `existsSync`. A's schema also carries a `mutatedTo` field this
+    // file does not; the mutant is recorded in `observed` instead. Residual,
+    // copied from A's verified text rather than inferred: this row does not
+    // reach the render body, props passed to children, or anything reachable
+    // from a module-level binding.
+    guarantee: 'ambient-member-props-hold-no-channel',
+    mutatedFile: 'src/empire/FloorGrid.tsx',
+    mutated: '  readonly tile: number;\n}',
+    testFile: 'src/empire/empireForbiddenOutput.test.ts',
+    redAssertion: 'expect(surface.members).toEqual(DECLARED_AMBIENT_MEMBER_BODY_PROPS);',
+    observed:
+      "AssertionError: expected [ { name: 'dispatch', …(1) }, …(4) ] to deeply equal [ …(4) ] — " +
+      '+ "name": "dispatch". 127 collected, 1 failed | 126 skipped, so the named ' +
+      'assertion ran rather than dying at collection. Ranges over every property of ' +
+      'the interface TYPE as getPropertiesOfType enumerates it — own, merged and ' +
+      'inherited. It does NOT reach the render body, props passed to children, or ' +
+      'anything reachable from a module-level binding.',
+  },
 ];
 
 /**
@@ -1631,6 +1657,7 @@ describe('the guarantee-tag convention', () => {
     // diff here, on purpose.
     expect(censused, 'the files the witness table scopes into').toEqual([
       'src/cutin/cutInWiring.test.ts',
+      'src/empire/empireForbiddenOutput.test.ts',
       'src/game/meetClient.test.ts',
       'src/game/progression.test.ts',
       'src/game/sessionServer.test.ts',
