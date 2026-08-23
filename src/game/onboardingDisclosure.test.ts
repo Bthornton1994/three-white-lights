@@ -30,21 +30,23 @@
  * only the colour is read. The total stays 19 on every row, so every kill below
  * is an assertion that ran and disagreed.
  *
- *   baseline                                             19 passed (19)
- *   M1  daysMissedBefore returns 0 when never trained     3 failed | 16 passed (19)
- *   M2  createStreakState arms nothing at signup          2 failed | 17 passed (19)
- *   M3  afterSession carries unused coverage over         2 failed | 17 passed (19)
- *   M4  coveredDaysAvailable reports carried-over cover   2 failed | 17 passed (19)
- *   M5  hasNeverTrained reads lastTrainedDay alone        2 failed | 17 passed (19)
- *   restored                                             19 passed (19)
+ *   baseline                                             20 passed (20)
+ *   M1  daysMissedBefore returns 0 when never trained     3 failed | 17 passed (20)
+ *   M2  createStreakState arms nothing at signup          2 failed | 18 passed (20)
+ *   M3  afterSession carries unused coverage over         2 failed | 18 passed (20)
+ *   M4  coveredDaysAvailable reports carried-over cover   2 failed | 18 passed (20)
+ *   M5  hasNeverTrained reads lastTrainedDay alone        2 failed | 18 passed (20)
+ *   M6  newServerRecord seeds a fresh lifter as trained   1 failed | 19 passed (20)
+ *   restored                                             20 passed (20)
  *
  * M1 and M2 are the signup sentence; M3 and M4 are the carry-over sentence; M5
- * is the predicate that decides who is shown either. No mutant of this piece's
- * own copy table appears, and that is the point of the split: editing a
- * sentence reddens the verbatim pins at the bottom of this file, while editing
- * the ENGINE reddens the behavioural checks above them. A sentence that stayed
- * true only because nobody had touched the engine is the failure being guarded
- * against, so the engine mutants are the load-bearing rows here.
+ * is the predicate that decides who is shown either; M6 is the one that says
+ * the feature is reachable at all. No mutant of this piece's own copy table
+ * appears, and that is the point of the split: editing a sentence reddens the
+ * verbatim pins at the bottom of this file, while editing the ENGINE reddens
+ * the behavioural checks above them. A sentence that stayed true only because
+ * nobody had touched the engine is the failure being guarded against, so the
+ * engine mutants are the load-bearing rows here.
  *
  * ---------------------------------------------------------------------------
  * Why the sweep parameters are here and not in `streakSweep.ts`
@@ -65,7 +67,10 @@ import {
   firstRunDisclosuresFor,
   hasNeverTrained,
 } from './onboardingDisclosure';
-import { ONBOARDING_DISCLOSURE_IDS, SESSION_COPY } from './sessionTuning';
+import { ONBOARDING_DISCLOSURE_IDS, SESSION_BOUNDARY, SESSION_COPY } from './sessionTuning';
+import { newServerRecord, snapshotWireFor } from './sessionServer';
+import { openingCache } from './sessionClient';
+import { readStreakState } from './progression';
 import {
   LONGEST_REPAIRABLE_ABSENCE_DAYS,
   RECOVERY_DAY_GUARDRAILS,
@@ -504,6 +509,52 @@ describe('which screens carry the disclosures', () => {
 
   it('shows none while the history is unknown', () => {
     expect(firstRunDisclosuresFor(null, FIRST_RUN_DISCLOSURE_LIFT)).toEqual([]);
+  });
+
+  /**
+   * The empty-domain check, and the reason it is worth a test of its own.
+   *
+   * Everything above builds its own `StreakState`, so all of it would still
+   * pass if the shipped app never produced a lifter who qualifies — the
+   * disclosures would be correct, tested, and dead code nobody could reach.
+   * CLAUDE.md records that exact shape: a defect that survived because the
+   * fixture, the preview context and the browser fixtures were all blind the
+   * same way, so more harnesses added no coverage.
+   *
+   * So this drives the real opening path a fresh install takes — a new server
+   * record, sealed onto the wire, decoded back through `progression.ts`'s read
+   * accessor — rather than a state this file constructed. It is the same route
+   * `openingCache` takes in `useSession`, one directory over: that hook builds
+   * its cache from `port.openingSnapshot()`, which is `snapshotWireFor` of
+   * exactly this record.
+   *
+   * Reddening edit: `newServerRecord` seeding `streak` from a state whose
+   * `lastTrainedDay` is the signup day rather than `createStreakState`'s null,
+   * which is the shape that would silently make the whole feature unreachable.
+   */
+  it('reaches a lifter the shipped opening path actually produces', () => {
+    const fresh = newServerRecord(SESSION_BOUNDARY.LOCAL_SERVER_SIGNUP_DAY);
+    // `openingCache` is the function `useSession` itself calls, handed the same
+    // wire `localSessionServer.openingSnapshot()` returns — so this is the real
+    // opening path rather than a re-implementation of it.
+    const cache = openingCache({ openingSnapshot: () => snapshotWireFor(fresh, null) });
+    const reading = readStreakState(cache);
+
+    expect(reading.kind).not.toBe('unknown');
+    if (reading.kind === 'unknown') throw new Error('unreachable');
+
+    // A brand-new install is a never-trained lifter, so the disclosures have a
+    // real audience rather than a hypothetical one.
+    expect(hasNeverTrained(reading.value)).toBe(true);
+    expect(firstRunDisclosuresFor(reading.value, FIRST_RUN_DISCLOSURE_LIFT).map((d) => d.id)).toEqual(
+      [...ONBOARDING_DISCLOSURE_IDS],
+    );
+
+    // And the scoping really does bite on that same reachable lifter, so the
+    // emptiness on the other lifts is not an artefact of an unreachable state.
+    for (const lift of OTHER_LIFTS) {
+      expect(firstRunDisclosuresFor(reading.value, lift), lift).toEqual([]);
+    }
   });
 });
 
