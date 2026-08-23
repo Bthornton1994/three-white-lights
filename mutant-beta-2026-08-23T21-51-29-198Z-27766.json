@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "mutant-beta-2026-08-23T21-51-29-198Z-27766",
   "label": "mutant-beta",
   "command": [
@@ -33,14 +33,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 7,
-    "okCount": 6,
+    "count": 8,
+    "okCount": 7,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T21:57:29.388Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-23T21:58:28.474Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-23T21:56:31.877Z"
-  }
+    "lastOkIso": "2026-08-23T21:57:31.930Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-23T21:58:28.472Z",
+  "elapsedSeconds": 419.3
 }
