@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "deadlift-record-final-2026-08-23T19-18-39-887Z-30807",
   "label": "deadlift-record-final",
   "command": [
@@ -29,14 +29,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 3,
-    "okCount": 2,
+    "count": 4,
+    "okCount": 3,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T19:20:39.957Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-23T19:20:42.402Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-23T19:19:42.456Z"
-  }
+    "lastOkIso": "2026-08-23T19:20:42.401Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-23T19:20:41.174Z",
+  "elapsedSeconds": 121.3
 }
