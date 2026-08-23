@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "sound-final2-2026-08-23T23-02-19-340Z-26458",
+  "label": "sound-final2",
+  "command": [
+    "node",
+    "tools/verify-meet-sound.mjs",
+    "--url",
+    "http://localhost:8093"
+  ],
+  "budgetSeconds": 400,
+  "startedAtIso": "2026-08-23T23:02:19.340Z",
+  "startedAtMs": 1787526139340,
+  "cwd": "/home/user/wt-meetdrive",
+  "commit": "fe328560c09adce73d2022f72bccb74b65dccd4d",
+  "branch": "claude/meetdrive-three-lifts",
+  "dirty": 6,
+  "dirtyPaths": [
+    ".gauntlet/shots/lift-press/press.json",
+    ".gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+    ".gauntlet/shots/shell/04b-second-meet-real-recap.png",
+    ".gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+    ".gauntlet/shots/shell/13-recap-before-the-return-leg.png",
+    ".gauntlet/shots/shell/route.json"
+  ],
+  "runner": {
+    "pid": 26458,
+    "startTick": "2178170",
+    "cmdline": "node tools/watchdog.mjs --budget 400 --label sound-final2 -- node tools/verify-meet-sound.mjs --url http://localhost:8093",
+    "bootId": "fabf06d4-ff34-4c2a-84e5-869c226847d2",
+    "bootEpochSeconds": 1787504358,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-23T23:02:19.362Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
