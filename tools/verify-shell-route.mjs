@@ -4335,6 +4335,38 @@ function checkTheThreeLaddersWereWalked(attempts) {
       ` ${count('deadlift', 'reachedDescent')} of ${of('deadlift').length} deadlift attempts did. ${census}`,
   );
 
+  // ---- THE ONE THING THE MEASURED FRAME RATE REACHES ---------------------
+  //
+  // Every hold in `MEET_DRIVE.START_HOLD_MS` is a wall-clock wait, and
+  // `useLiftLoop` keeps wall-clock time through a time accumulator down to
+  // `SIM_CATCH_UP_FLOOR_FPS` (60 / MAX_CATCH_UP_TICKS = 15) frames a second and
+  // no lower. Below that every hold buys less depth than it is written for and
+  // every number in the notes above is about a rep nobody meant to play.
+  //
+  // `meetDrive.mjs` measures the rate on every attempt, during a wait it was
+  // already spending. This is what the reading REACHES — without it, it would be
+  // a number printed into a note and compared with nothing, which CLAUDE.md
+  // gives two ways out of and this is the first.
+  //
+  // THE DOMAIN IS EMPTY ON THIS BOX AND THAT IS SAID RATHER THAN HIDDEN: the
+  // observed range is printed beside the verdict, and on hardware that has never
+  // been near 15 fps this check cannot have gone the other way. It is here for
+  // the run on a slower machine, and the range is how a reader tells which kind
+  // of run they are looking at.
+  const rates = played.map((a) => a.fps).filter((f) => typeof f === 'number');
+  const belowFloor = played.filter((a) => a.fpsKeepsUp === false);
+  const unread = played.filter((a) => a.fps === null || a.fps === undefined);
+  check(
+    belowFloor.length === 0 && unread.length === 0 && rates.length === played.length,
+    'AND EVERY ONE WAS DRAWN FAST ENOUGH FOR A WALL-CLOCK HOLD TO MEAN WHAT IT SAYS — above the sim’s own catch-up floor',
+    `${rates.length} of ${played.length} attempts measured, ` +
+      (rates.length === 0
+        ? 'none read back'
+        : `${Math.min(...rates).toFixed(1)}-${Math.max(...rates).toFixed(1)} fps`) +
+      `; ${belowFloor.length} below the floor, ${unread.length} unread.` +
+      ' EMPTY DOMAIN on hardware nowhere near 15 fps — read the range, not the tick',
+  );
+
   // ---- the two commands: one lift each, with a control on the other two ---
   check(
     count('bench', 'reachedCommand') > 0 &&
@@ -4426,8 +4458,8 @@ async function checkDrivenMeet(tag, searchIn, expected, whatEnding, chooseOption
     `${tag}: ${drive.attempts
       .map(
         (a) =>
-          `${a.attempt ?? '?'} @${a.holdMs === null || a.holdMs === undefined ? 'no eccentric' : `${a.holdMs}ms(60Hz)/${a.heldForMs}ms(held)`}` +
-          ` ${a.fps ?? '?'}fps${a.fpsUsable === false ? ` UNUSABLE: ${a.fpsWhy}` : ''}` +
+          `${a.attempt ?? '?'} @${a.holdMs === null || a.holdMs === undefined ? 'no eccentric' : `${a.holdMs}ms`}` +
+          ` ${a.fps ?? '?'}fps${a.fpsKeepsUp === false ? ` BELOW THE SIM'S CATCH-UP FLOOR: ${a.fpsWhy}` : ''}` +
           ` x${a.drivesTapped ?? 0} drive tap(s)${a.downCommandSeen === true ? ' + down command' : ''}` +
           ` -> ${JSON.stringify(a.feedback ?? a.why ?? null)}`,
       )

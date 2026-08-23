@@ -342,29 +342,36 @@ export const MEET_DRIVE = Object.freeze({
    * and bombs the lift, which ends the meet before the deadlift.
    *
    * ===========================================================================
-   * THESE ARE SIM-TICK DURATIONS AT 60 Hz, AND THE DRIVER SCALES THEM BY THE
-   * FRAME RATE THE PAGE IS REALLY DELIVERING
+   * A WALL-CLOCK HOLD BUYS THE SAME DEPTH AT 52 fps AS AT 60, AND THE FIRST
+   * VERSION OF THIS BLOCK SAID OTHERWISE — CORRECTED HERE RATHER THAN DELETED
    * ===========================================================================
-   * `useLiftLoop` advances the sim on ANIMATION FRAMES, taking at most
-   * `FEEDBACK.MAX_CATCH_UP_TICKS` per frame — deliberately, so a hitch slows a
-   * rep down instead of fast-forwarding through the player's input. So a
-   * wall-clock millisecond does not buy a fixed amount of depth: it buys
-   * `fps / 60` of what a 60 Hz derivation predicts.
+   * `useLiftLoop` advances the sim on animation frames, and the obvious reading
+   * of that — one frame, one tick, so a slow page runs the sim slow — is FALSE.
+   * It keeps a TIME ACCUMULATOR: `accumulator += now - last`, then
+   * `floor(accumulator / TICK_MS)` ticks per frame, with the remainder carried.
+   * So at 52 fps a frame is ~19.2 ms and takes 1 tick, the leftover 2.5 ms
+   * builds up, and every seventh frame takes 2 — sixty ticks a second either
+   * way. The catch-up is capped at `FEEDBACK.MAX_CATCH_UP_TICKS` (4), so the sim
+   * only falls behind the clock below `TICK_HZ / 4` = **15 fps**.
    *
-   * MEASURED IN THIS ENVIRONMENT, on a live rep, at `c9443b8`: the page renders
-   * at **52.5 fps** with the sim running under swiftshader. A hold derived at
-   * 60 Hz therefore buys 12.5% less depth than it is written for, and bench's
-   * legal band is only ~147 ms wide — so the first real run of this driver lost
-   * a bench attempt to `no-depth` at 720 ms and then, once `adaptDepthSearch`
-   * had pushed it to 780, lost a whole lift to three `stalled` releases that
-   * were legal but too shallow to reverse from.
+   * THIS BLOCK SHIPPED A SCALING FOR ONE COMMIT THAT WAS BUILT ON THE FALSE
+   * READING, and it is recorded rather than quietly removed because the shape is
+   * the one CLAUDE.md keeps a section for: the mechanism was verified (the frame
+   * counter reads back, the arithmetic runs, the record carries every reading)
+   * and the CONSEQUENCE was never attacked separately. The measurement that
+   * motivated it — 52.5 fps on a live rep — was real; what did not follow was
+   * that a hold therefore ran short.
    *
-   * `sessionDrive.mjs`'s `DEPTH_HOLD_MS` header already names this hazard and
-   * answers it by biasing above the ideal. That is a guess about the machine.
-   * `pageFrameRate` MEASURES it instead, during the brace wait this driver was
-   * already spending, and `scaledHoldMs` converts. The numbers below can then
-   * be read straight off a 60 Hz derivation, which is the only place anybody
-   * can derive them.
+   * IT ALSO DID NOTHING, WHICH IS WHY THE GREEN RUN DID NOT CATCH IT. Every
+   * attempt of that run measured 55-62 fps, so the factor was within a few
+   * percent of 1.00 and the holds it used were within 10 ms of the declared
+   * ones. What actually took a bombed bench to a finished meet was the value
+   * below moving 720 -> 760, which the sweep chose. A mechanism that cannot
+   * move the result cannot be credited with one.
+   *
+   * `pageFrameRate` stays, with the floor above as its consequence: a page
+   * under 15 fps IS one where a wall-clock hold means less than it says, and
+   * that is worth a named report rather than a silent short rep.
    *
    * CHOSEN BY SWEEP, NOT BY MIDPOINT. Driven against the real `createLift` /
    * `stepLift`, 32 seeds x {0.88, 0.90, 0.92, 0.94, 0.96, 0.97} x four
@@ -414,19 +421,21 @@ export const MEET_DRIVE = Object.freeze({
    */
   START_HOLD_MS: Object.freeze({ squat: 840, bench: 760, deadlift: null }),
 
-  /** The frame rate `START_HOLD_MS` and `ASCENT_TIMING` are derived at. */
-  DERIVED_AT_FPS: 60,
   /**
-   * The band a measured frame rate is believed inside.
+   * THE FRAME RATE BELOW WHICH THE SIM GENUINELY FALLS BEHIND THE CLOCK.
    *
-   * NOT A TOLERANCE, A SANITY GUARD: a reading outside this is a broken
-   * measurement (a backgrounded tab, a paused rAF, a torn sample), not a slow
-   * machine, and the safe answer is to fall back to `DERIVED_AT_FPS` rather
-   * than to multiply a hold by an arbitrary number. The floor is well under the
-   * 52.5 fps this environment measures and the ceiling is one frame above the
-   * display's own rate.
+   * DERIVED, NOT CHOSEN: `useLiftLoop` takes at most
+   * `LIFT_TUNING.FEEDBACK.MAX_CATCH_UP_TICKS` (4) ticks per animation frame out
+   * of a time accumulator, so it keeps wall-clock time down to
+   * `TICK_HZ / MAX_CATCH_UP_TICKS` = 60 / 4 = 15 frames a second and no lower.
+   * Above this every duration in this block means what it says; below it, every
+   * hold buys less depth than it is written for and every cue window is wider
+   * in wall clock than the tuning declares.
+   *
+   * Restated from `liftTuning.ts` rather than imported, like every other number
+   * this tool reads out of the app — see `MEET_WALKOUT_SAYS`.
    */
-  FRAME_RATE_BAND: Object.freeze({ MIN: 20, MAX: 61 }),
+  SIM_CATCH_UP_FLOOR_FPS: 15,
 
   /**
    * HOW FAR `adaptDepthSearch` MOVES THE HOLD AFTER A MISTIMED RELEASE, PER
@@ -531,14 +540,15 @@ export const MEET_DRIVE = Object.freeze({
     /**
      * The floor below which a still-'DRIVE — TAP' display cannot be a NEW cue.
      *
-     * A SIM-TICK DURATION, SO IT IS SCALED WITH THE HOLDS. `driveSpacingTicks`
-     * is what it stands for, and that is counted in ticks: at 52 fps the real
-     * gap between two cues is 14% longer in wall clock than a 60 Hz derivation
-     * says, so an unscaled floor would start looking for the next cue before
-     * one could arm — which is the phantom-re-tap window this floor exists to
-     * close. Computed at meet loads: squat 167-233 ms, bench 233-300 ms,
-     * deadlift 200-267 ms at 60 Hz, so 280 is at the top of that range and the
-     * scaling keeps it there.
+     * `driveSpacingTicks` is what it stands for. Computed at meet loads: squat
+     * 167-233 ms, bench 233-300 ms, deadlift 200-267 ms, so 280 sits at the top
+     * of that range — which is the conservative side for a floor whose job is
+     * to stop a lingering 'DRIVE — TAP' display being read as a new cue.
+     *
+     * NOT SCALED BY THE MEASURED FRAME RATE, and it was for one commit. See
+     * `START_HOLD_MS`'s header: the sim keeps wall-clock time through an
+     * accumulator down to 15 fps, so a wall-clock floor is the right unit and
+     * the scaling was answering a question the mechanic does not ask.
      */
     minCueSpacingMs: 280,
     /** "The ascent has stopped advancing", not "the ascent was slow". */
@@ -680,18 +690,19 @@ export const meetIsOver = (state) => state.recap || state.waiting || state.refus
 
 /**
  * ===========================================================================
- * HOW FAST THE PAGE IS ACTUALLY DRAWING, MEASURED RATHER THAN ASSUMED
+ * HOW FAST THE PAGE IS ACTUALLY DRAWING, AND THE ONE THING THAT TURNS ON IT
  * ===========================================================================
- * Every duration in `START_HOLD_MS` and `ASCENT_TIMING` is really a count of
- * SIM TICKS, and `useLiftLoop` advances the sim on animation frames. So the
- * wall-clock wait that buys a given depth is `ticks / fps` seconds, and this
- * environment does not deliver 60: measured on a live rep at `c9443b8`, the
- * page draws at **52.5 fps** under swiftshader, which makes every 60 Hz-derived
- * hold 12.5% short.
+ * `useLiftLoop` keeps wall-clock time through a time accumulator and can do so
+ * down to `MEET_DRIVE.SIM_CATCH_UP_FLOOR_FPS` (15) frames a second — see
+ * `START_HOLD_MS`'s header, and the correction recorded there of a scaling this
+ * module shipped for one commit on the opposite belief. So above 15 fps this
+ * reading changes nothing, and below it every hold in this file silently buys
+ * less depth than it is written for.
  *
- * `sessionDrive.mjs`'s `DEPTH_HOLD_MS` header already names this and answers it
- * by biasing the constant upward — a guess about the machine, baked into a
- * number, that goes stale when the machine changes. This measures instead.
+ * That floor is the whole consequence, and it is why the number is taken rather
+ * than dropped: a number with no consequence is worse than an absent one, and
+ * this one has exactly one. It is reported per attempt with `fpsKeepsUp` beside
+ * it so a reader can see both the reading and the verdict.
  *
  * ===========================================================================
  * IT COSTS NOTHING, AND THAT IS WHY IT IS TAKEN WHERE IT IS TAKEN
@@ -706,31 +717,10 @@ export const meetIsOver = (state) => state.recap || state.waiting || state.refus
  * It increments one integer per frame and does nothing else, so it cannot be the
  * reason the page is slow.
  *
- * A reading outside `FRAME_RATE_BAND` is reported and NOT used: see that
- * constant for why a broken measurement must not become a multiplier.
- *
- * ===========================================================================
- * WHAT THE SHIPPED EVIDENCE DOES AND DOES NOT SHOW ABOUT THIS
- * ===========================================================================
- * Stated because the mechanism is verified and the CONSEQUENCE is not, which is
- * a distinction CLAUDE.md keeps a whole section for.
- *
- * VERIFIED: the counter reads back, the arithmetic runs, and every attempt in
- * `.gauntlet/shots/shell/route.json` carries the rate it measured.
- *
- * NOT VERIFIED BY THAT RECORD: that scaling a hold UP rescues a rep. The green
- * run measured **59.4-60.8 fps** on every one of its 27 attempts, so the factor
- * was ~1.00 and the holds it used were within 10 ms of the declared ones. The
- * 52.5 fps that motivated this was measured on the same box while other work
- * was on it, so the rate is real and varies between runs — but the arm where
- * the scaling does something is the arm that record did not take.
- *
- * The evidence for the scaled arm is the sweep in `START_HOLD_MS`: at 50 fps an
- * UNSCALED squat hold of 840 makes 64 of 192 driven reps and bench's 760 makes
- * 0 of 192, against 768/768 and 768/768 for the same values at 60 Hz-normalised
- * timing. That is a pure-sim result and it is not a browser run. Read it as the
- * reason the mechanism exists, not as proof that it works in a browser at a low
- * frame rate.
+ * MEASURED IN THIS ENVIRONMENT: 52.5 fps on a live rep under load at `c9443b8`,
+ * and 55-62 fps across the 27 attempts of a quiet run. Both are far above the
+ * floor, so on this box the verdict has never yet been anything but "keeps up" —
+ * an empty domain, reported as one rather than dressed as coverage.
  */
 export async function armFrameRateCounter(page) {
   await page
@@ -765,34 +755,21 @@ export async function pageFrameRate(page, duringMs) {
   await page.waitForTimeout(duringMs);
   const after = await readFrameCounter(page);
   if (before.frames === null || after.frames === null || after.at <= before.at) {
-    return { fps: null, frames: null, spanMs: null, usable: false, why: 'the frame counter did not read back' };
+    return { fps: null, frames: null, spanMs: null, keepsUp: null, why: 'the frame counter did not read back' };
   }
   const frames = after.frames - before.frames;
   const spanMs = after.at - before.at;
   const fps = (frames * 1000) / spanMs;
-  const usable = fps >= MEET_DRIVE.FRAME_RATE_BAND.MIN && fps <= MEET_DRIVE.FRAME_RATE_BAND.MAX;
+  const keepsUp = fps >= MEET_DRIVE.SIM_CATCH_UP_FLOOR_FPS;
   return {
     fps,
     frames,
     spanMs,
-    usable,
-    why: usable
+    keepsUp,
+    why: keepsUp
       ? null
-      : `${fps.toFixed(1)} fps is outside FRAME_RATE_BAND ${MEET_DRIVE.FRAME_RATE_BAND.MIN}-${MEET_DRIVE.FRAME_RATE_BAND.MAX}, so it is a broken reading rather than a slow machine`,
+      : `${fps.toFixed(1)} fps is below SIM_CATCH_UP_FLOOR_FPS (${MEET_DRIVE.SIM_CATCH_UP_FLOOR_FPS}), so useLiftLoop's accumulator cannot keep wall-clock time and every hold below buys less depth than it is written for`,
   };
-}
-
-/**
- * A 60 Hz-derived sim-tick duration, in the wall clock this page is running at.
- *
- * Falls back to the declared duration when the rate could not be measured, so a
- * failed measurement leaves the driver exactly where it was rather than
- * multiplying a hold by a number nobody checked.
- */
-export function scaledForFrameRate(ms, rate) {
-  if (ms === null || ms === undefined) return ms;
-  if (rate === null || !rate.usable) return ms;
-  return Math.round((ms * MEET_DRIVE.DERIVED_AT_FPS) / rate.fps);
 }
 
 /**
@@ -940,11 +917,6 @@ export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
   // frame rate is measured across exactly that wait — see `pageFrameRate`. One
   // wait, two jobs, no extra time on the clock.
   const rate = await pageFrameRate(page, MEET_DRIVE.BRACE_ELAPSE_MS);
-  const heldForMs = scaledForFrameRate(holdMs, rate);
-  const timing = {
-    ...MEET_DRIVE.ASCENT_TIMING,
-    minCueSpacingMs: scaledForFrameRate(MEET_DRIVE.ASCENT_TIMING.minCueSpacingMs, rate),
-  };
 
   let reachedDescent = false;
   let reachedCommand = false;
@@ -988,7 +960,7 @@ export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
       };
     }
     reachedDescent = true;
-    await page.waitForTimeout(Math.max(0, heldForMs - (Date.now() - pressedAt)));
+    await page.waitForTimeout(Math.max(0, holdMs - (Date.now() - pressedAt)));
     await page.mouse.up();
 
     if (ladder.COMMAND !== null) {
@@ -1033,7 +1005,7 @@ export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
   };
   const ascentArgs = {
     read: readMeetAscent,
-    timing,
+    timing: MEET_DRIVE.ASCENT_TIMING,
     lockoutPrompt: ladder.LOCKOUT,
     hasLeft: meetHasLeftTheRep,
   };
@@ -1082,18 +1054,16 @@ export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
   return {
     played: true,
     kind,
-    /** The 60 Hz-derived hold this attempt was asked for. */
     holdMs,
     /**
-     * ...and the wall-clock wait it became at this page's measured frame rate.
-     * BOTH are reported because they answer different questions: `holdMs` is
-     * what the search is converging on and what a re-tune moves, `heldForMs` is
-     * what the finger actually did. A reader comparing a miss reason against a
-     * hold wants the second.
+     * The frame rate this attempt was drawn at, and whether the sim could keep
+     * wall-clock time at it. `keepsUp` is what the number reaches: below
+     * `SIM_CATCH_UP_FLOOR_FPS` the hold above stops meaning what it says, and
+     * that is a fact about the run the caller should be able to check rather
+     * than a caption. See `SIM_CATCH_UP_FLOOR_FPS` and `pageFrameRate`.
      */
-    heldForMs,
     fps: rate.fps === null ? null : Number(rate.fps.toFixed(1)),
-    fpsUsable: rate.usable,
+    fpsKeepsUp: rate.keepsUp,
     fpsWhy: rate.why,
     reachedDescent,
     reachedCommand,
