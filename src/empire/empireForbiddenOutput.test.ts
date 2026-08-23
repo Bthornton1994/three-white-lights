@@ -1426,7 +1426,11 @@ const SURFACE_CENSUS = Object.freeze({
   // FloorSimInterruption, FloorStationRef, FloorStation, FloorSimMember,
   // FloorSimState, FloorSimContext) do not count as runtime exports, the same
   // rule stated above for GymView's and floor.ts's.
-  EXPORTS: 310,
+  // 310 -> 311: FLOOR_SIM_INTERRUPTIBLE_STATES, the source arms of the
+  // interruption beat, declared as a value so a census can join the arms the
+  // type admits against the arms a drive reached. Its type export
+  // (FloorSimInterruptibleState) does not count, the same rule as above.
+  EXPORTS: 311,
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   BARE_POSITIONS: 4,
@@ -1483,7 +1487,11 @@ const SURFACE_CENSUS = Object.freeze({
   // eight new positions were not hand-traced through React's own type
   // definitions.
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
-  LITERAL_POSITIONS: 2383,
+  // 2383 -> 2390: the `route-blocked` cause widens FLOOR_SIM_INTERRUPTIONS'
+  // union at every position it reaches, and FLOOR_SIM_INTERRUPTIBLE_STATES
+  // arrives as a new closed union of its own. Read from this pin's own failure
+  // value.
+  LITERAL_POSITIONS: 2390,
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -1496,7 +1504,10 @@ const SURFACE_CENSUS = Object.freeze({
   // members — the five FLOOR_SIM_MEMBER_STATES, the two
   // FLOOR_SIM_INTERRUPTIONS and FloorStationRef's two kinds. Read from this
   // pin's own failure value.
-  DISTINCT_LITERAL_MEMBERS: 161,
+  // 161 -> 162: the `route-blocked` cause. FLOOR_SIM_INTERRUPTIBLE_STATES's
+  // three members are already counted as FLOOR_SIM_MEMBER_STATES members, so
+  // only the new cause moves this. Read from this pin's own failure value.
+  DISTINCT_LITERAL_MEMBERS: 162,
   DEPTH_CUTS: 0,
 });
 
@@ -2570,7 +2581,8 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // `AmbientMemberBody` instead of the old inline `View`. Measured by running
   // this exact assertion rather than hand-counted.
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
-  CALLS_EXAMINED: 1909,
+  // GDD §5.13 Phase 3, the route-blocked round: read from this pin's own failure value.
+  CALLS_EXAMINED: 1914,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -8476,12 +8488,18 @@ const DRIVE_CENSUS = Object.freeze({
   // real failure value this round's own run produced — floorSim.ts's own
   // drive rows plus the 17 new exempt tuning leaves widening every domain the
   // existing subjects are swept over.
-  ROWS: 349374,
+  // GDD §5.13 Phase 3, the route-blocked round: 349374 -> 349375, the one new
+  // driven export (FLOOR_SIM_INTERRUPTIBLE_STATES). Read from this pin's own
+  // failure value.
+  ROWS: 349375,
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (303 -> 310, floorSim.ts's seven runtime exports).
-  EXPORTS_DRIVEN: 310,
+  // GDD §5.13 Phase 3, the route-blocked round: EXPORTS_DRIVEN tracks
+  // SURFACE_CENSUS.EXPORTS 1:1 again (310 -> 311,
+  // FLOOR_SIM_INTERRUPTIBLE_STATES).
+  EXPORTS_DRIVEN: 311,
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -8496,7 +8514,8 @@ const DRIVE_CENSUS = Object.freeze({
   // be corrected from the next run's real failure rather than guessed.
   // GDD §5.13 presentation Phase 3: NODES re-measured (3557756 -> 3675964),
   // a real failure value this round's own run produced.
-  NODES: 3675964,
+  // GDD §5.13 Phase 3, the route-blocked round: read from this pin's own failure value.
+  NODES: 3675966,
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -8510,7 +8529,9 @@ const DRIVE_CENSUS = Object.freeze({
   // be corrected from the next run's real failure rather than guessed.
   // GDD §5.13 presentation Phase 3: re-measured (16388392 -> 16899790), a real
   // failure value this round's own run produced.
-  STRINGS: 16899790,
+  // GDD §5.13 Phase 3, the route-blocked round: re-measured (16899790 ->
+  // 16900230), a real failure value this round's own run produced.
+  STRINGS: 16900230,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -8521,7 +8542,8 @@ const DRIVE_CENSUS = Object.freeze({
   // field on DRIVE_CENSUS for this round.
   // GDD §5.13 presentation Phase 3: re-measured (2592 -> 2693), a real
   // failure value this round's own run produced.
-  DISTINCT_STRINGS: 2693,
+  // GDD §5.13 Phase 3, the route-blocked round: read from this pin's own failure value.
+  DISTINCT_STRINGS: 2695,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -12357,7 +12379,11 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // GDD §5.13 presentation Phase 3: floorSim.ts's own `return` statements
       // across its seven exported functions and its helpers. Read from this
       // table's own failure value.
-      'floorSim.ts': 60,
+      // 60 -> 58: the route-lost branch stopped assembling its own member
+      // object and now returns one call's result, and the interruption pass
+      // reads a declared list instead of a two-armed condition. Read from this
+      // table's own failure value.
+      'floorSim.ts': 58,
       'ladder.ts': 25,
       // members.ts's 13 return statements (§5.11 stage 3).
       'members.ts': 13,
@@ -12390,7 +12416,9 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'expansion.ts': 7,
       // GDD §5.13 presentation Phase 3: floorSim.ts's two exported const
       // bindings, `FLOOR_SIM_MEMBER_STATES` and `FLOOR_SIM_INTERRUPTIONS`.
-      'floorSim.ts': 2,
+      // 2 -> 3: `FLOOR_SIM_INTERRUPTIBLE_STATES`, the beat's declared source
+      // arms. Read from this table's own failure value.
+      'floorSim.ts': 3,
       'ladder.ts': 1,
       'production.ts': 1,
       'recruitment.ts': 2,
@@ -12855,13 +12883,13 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // The three returns are member accesses the walk cannot see past, the same
   // shape as every other `returned=unfollowable` row here. Read from this
   // assertion's own failure value rather than hand-counted.
-  'floorSim.ts:448 receiver=NewExpression',
-  'floorSim.ts:522 receiver=NewExpression',
-  'floorSim.ts:585 receiver=ArrayLiteralExpression',
-  'floorSim.ts:635 returned=unfollowable:plan',
-  'floorSim.ts:749 returned=unfollowable:member',
-  'floorSim.ts:750 returned=unfollowable:member',
-  'floorSim.ts:770 returned=unfollowable:walk',
+  'floorSim.ts:551 receiver=NewExpression',
+  'floorSim.ts:625 receiver=NewExpression',
+  'floorSim.ts:711 receiver=ArrayLiteralExpression',
+  'floorSim.ts:758 returned=unfollowable:plan',
+  'floorSim.ts:882 returned=unfollowable:member',
+  'floorSim.ts:883 returned=unfollowable:member',
+  'floorSim.ts:903 returned=unfollowable:walk',
   'ladder.ts:333 receiver=ArrayLiteralExpression',
   'ladderView.tsx:115 returned=unfollowable:state',
   'ladderView.tsx:123 returned=unfollowable:state',
@@ -12916,12 +12944,12 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   // `plan.stations`, the walk's `member.cell`/`member.next`, and two
   // `GridPosition` returns from the step helpers. Read from this list's own
   // failure value rather than hand-counted.
-  'floorSim.ts:626 readonly FloorStation[] asked=true walked=false',
-  'floorSim.ts:635 readonly FloorStation[] asked=true walked=false',
-  'floorSim.ts:749 GridPosition asked=true walked=false',
-  'floorSim.ts:750 GridPosition | null asked=true walked=false',
-  'floorSim.ts:770 GridPosition asked=true walked=false',
-  'floorSim.ts:994 GridPosition asked=true walked=false',
+  'floorSim.ts:1153 GridPosition asked=true walked=false',
+  'floorSim.ts:749 readonly FloorStation[] asked=true walked=false',
+  'floorSim.ts:758 readonly FloorStation[] asked=true walked=false',
+  'floorSim.ts:882 GridPosition asked=true walked=false',
+  'floorSim.ts:883 GridPosition | null asked=true walked=false',
+  'floorSim.ts:903 GridPosition asked=true walked=false',
   'ladder.ts:594 LadderState asked=true walked=false',
   'ladder.ts:605 LadderState asked=true walked=false',
   'ladder.ts:611 LadderState asked=true walked=false',
@@ -13040,7 +13068,9 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // member-of-parameter 21 -> 27, all floorSim.ts's own call targets. Read
   // from this table's own failure value.
   function: 918,
-  member: 896,
+  // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
+  // pin's own failure value.
+  member: 901,
   'member-callback': 12,
   'member-of-parameter': 21,
   fresh: 0,
@@ -13076,7 +13106,9 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // the frontier and accumulator rebinds, the walk's cell/next/progress
   // locals). Measured by running this exact assertion rather than
   // hand-counted.
-  local: 197,
+  // GDD §5.13 Phase 3, the route-blocked round: 197 -> 200, floorSim.ts's own
+  // new local writes. Read from this pin's own failure value.
+  local: 200,
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -13126,7 +13158,8 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 484 -> 548: GDD §5.13 presentation Phase 3's floorSim.ts — 62 `return`
   // sites and 2 exported-binding sites. Read from this pin's own failure
   // value.
-  SITES: 546,
+  // GDD §5.13 Phase 3, the route-blocked round: read from this pin's own failure value.
+  SITES: 545,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -13157,7 +13190,8 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // rather than hand-counted.
   // 37_662 -> 42_276: GDD §5.13 presentation Phase 3's floorSim.ts. Measured
   // by running the assertion below rather than hand-counted.
-  NODES_EXAMINED: 42_369,
+  // GDD §5.13 Phase 3, the route-blocked round: read from this pin's own failure value.
+  NODES_EXAMINED: 42_470,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -13234,7 +13268,8 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // measured by running the assertion below rather than hand-counted.
   /** Exported positions measured. A truncated walk would report a shallow tree. */
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
-  POSITIONS: 739,
+  // GDD §5.13 Phase 3, the route-blocked round: read from this pin's own failure value.
+  POSITIONS: 741,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -17217,7 +17252,8 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // round.
   // 183 -> 184: PLAYTEST 4's `AmbientMemberBodyProps` (FloorGrid.tsx).
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
-  DECLARATIONS: 193,
+  // GDD §5.13 Phase 3, the route-blocked round: read from this pin's own failure value.
+  DECLARATIONS: 194,
   /** Those carrying type parameters. An instantiation depth needs one. */
   GENERIC: 12,
   /**

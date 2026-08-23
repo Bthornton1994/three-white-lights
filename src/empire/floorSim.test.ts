@@ -17,7 +17,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import * as path from 'node:path';
 import {
+  FLOOR_SIM_INTERRUPTIBLE_STATES,
   FLOOR_SIM_INTERRUPTIONS,
   FLOOR_SIM_MEMBER_STATES,
   createFloorSimState,
@@ -26,6 +29,7 @@ import {
   runFloorSim,
   stepFloorSim,
   type FloorSimContext,
+  type FloorSimInterruptibleState,
   type FloorSimInterruption,
   type FloorSimMember,
   type FloorSimMemberState,
@@ -73,14 +77,31 @@ export const FLOOR_SIM_SWEEP = Object.freeze({
   /** Ticks per phase. Four phases, so a run is four times this. */
   PHASE_TICKS: 60,
   /**
-   * The four phases every sweep run walks, in order. Each names how the floor
+   * The five phases every sweep run walks, in order. Each names how the floor
    * changes at its start, which is what makes the interruption arms reachable:
-   * `removed` and `moved` are exactly GDD §5.13's two causes, driven as a
-   * player would cause them (a drag on `FloorGrid.tsx`), and `cleared` takes
-   * the floor back to fixed furniture alone.
+   * `first-item-moved` and `first-item-removed` are exactly GDD §5.13's two
+   * causes, driven as a player would cause them (a drag on `FloorGrid.tsx`),
+   * `route-cut` is the third cause this module adds, and `cleared` takes the
+   * floor back to fixed furniture alone.
+   *
+   * `route-cut` EXISTS BECAUSE THE OTHER FOUR PHASES COULD NOT PRODUCE ITS ARM,
+   * which is the finding rather than the fix. The generator only ever moved one
+   * item down by two and then removed items, and removing an item frees cells
+   * rather than walling anything off — so every member whose target changed was
+   * caught by the interruption pass first, and the route-lost branch was
+   * instrumented across all 66240 observations of the four-phase sweep at
+   * exactly 0. This phase re-places the surviving layout and seals the approach
+   * of one station that phase 3 left standing, so a member holding that station
+   * loses its route without the station moving or being removed.
    */
-  PHASES: Object.freeze(['as-laid-out', 'first-item-moved', 'first-item-removed', 'cleared'] as const),
-  /** Where the moved item goes in phase 3, as an offset from its laid-out corner. */
+  PHASES: Object.freeze([
+    'as-laid-out',
+    'first-item-moved',
+    'first-item-removed',
+    'route-cut',
+    'cleared',
+  ] as const),
+  /** Where the moved item goes in the `first-item-moved` phase, as an offset from its laid-out corner. */
   MOVE_OFFSET: Object.freeze({ x: 0, y: 2 }),
 });
 
@@ -97,7 +118,7 @@ export const FLOOR_SIM_SWEEP = Object.freeze({
 const SWEEP_LAYOUTS: Readonly<Record<LadderRung, readonly LayoutRow[]>> = Object.freeze({
   garage: Object.freeze([
     Object.freeze(['foam-rollers', Object.freeze({ x: 7, y: 0 })] as const),
-    Object.freeze(['wrist-wraps', Object.freeze({ x: 0, y: 5 })] as const),
+    Object.freeze(['wrist-wraps', Object.freeze({ x: 7, y: 5 })] as const),
   ] as const),
   'storage-unit': Object.freeze([
     Object.freeze(['bike', Object.freeze({ x: 9, y: 0 })] as const),
@@ -110,6 +131,7 @@ const SWEEP_LAYOUTS: Readonly<Record<LadderRung, readonly LayoutRow[]>> = Object
     Object.freeze(['mats', Object.freeze({ x: 16, y: 6 })] as const),
     Object.freeze(['dumbbells', Object.freeze({ x: 2, y: 8 })] as const),
     Object.freeze(['sauna', Object.freeze({ x: 8, y: 11 })] as const),
+    Object.freeze(['belts', Object.freeze({ x: 0, y: 15 })] as const),
   ] as const),
   warehouse: Object.freeze([
     Object.freeze(['bike', Object.freeze({ x: 10, y: 0 })] as const),
@@ -118,7 +140,131 @@ const SWEEP_LAYOUTS: Readonly<Record<LadderRung, readonly LayoutRow[]>> = Object
     Object.freeze(['mats', Object.freeze({ x: 30, y: 6 })] as const),
     Object.freeze(['dumbbells', Object.freeze({ x: 4, y: 12 })] as const),
     Object.freeze(['sauna', Object.freeze({ x: 20, y: 18 })] as const),
+    Object.freeze(['belts', Object.freeze({ x: 0, y: 27 })] as const),
   ] as const),
+});
+
+/**
+ * The `route-cut` phase's floor, per rung: everything the `first-item-removed`
+ * phase left standing, plus the items that seal one surviving station's
+ * approach into a pocket.
+ *
+ * The sealed station is each rung's bottom-left 1x1 — `wrist-wraps` on a
+ * garage, `belts` on the other three — chosen because a one-tile item in a grid
+ * corner has two approach cells rather than a ring of them, so three wall
+ * pieces close it and the pocket that is left is a legal 3-tile room with a
+ * walkable neighbour under every cell. The station keeps its use cell and its
+ * queue cells; what changes is that they are all inside the pocket, so a member
+ * standing outside holds a target it cannot reach and the station has neither
+ * moved nor gone.
+ *
+ * THE SHIPPED COMMENT THIS REPLACES SAID SUCH A FIXTURE WOULD NEED A FLOOR NO
+ * LAYOUT CAN PRODUCE. It needs one `LayoutRow` per wall piece, and the pieces
+ * are ordinary session equipment placed through the real `placeFloorItem`.
+ */
+const ROUTE_CUT_LAYOUTS: Readonly<Record<LadderRung, readonly LayoutRow[]>> = Object.freeze({
+  garage: Object.freeze([
+    Object.freeze(['wrist-wraps', Object.freeze({ x: 7, y: 5 })] as const),
+    Object.freeze(['bike', Object.freeze({ x: 6, y: 2 })] as const),
+    Object.freeze(['specialty-bars', Object.freeze({ x: 5, y: 3 })] as const),
+  ] as const),
+  'storage-unit': Object.freeze([
+    Object.freeze(['mats', Object.freeze({ x: 6, y: 5 })] as const),
+    Object.freeze(['belts', Object.freeze({ x: 0, y: 8 })] as const),
+    Object.freeze(['dumbbells', Object.freeze({ x: 0, y: 5 })] as const),
+    Object.freeze(['bike', Object.freeze({ x: 2, y: 7 })] as const),
+  ] as const),
+  'strip-mall-unit': Object.freeze([
+    Object.freeze(['treadmill', Object.freeze({ x: 12, y: 0 })] as const),
+    Object.freeze(['mats', Object.freeze({ x: 16, y: 6 })] as const),
+    Object.freeze(['dumbbells', Object.freeze({ x: 2, y: 8 })] as const),
+    Object.freeze(['sauna', Object.freeze({ x: 8, y: 11 })] as const),
+    Object.freeze(['belts', Object.freeze({ x: 0, y: 15 })] as const),
+    Object.freeze(['bike', Object.freeze({ x: 0, y: 12 })] as const),
+    Object.freeze(['specialty-bars', Object.freeze({ x: 2, y: 13 })] as const),
+  ] as const),
+  warehouse: Object.freeze([
+    Object.freeze(['treadmill', Object.freeze({ x: 16, y: 0 })] as const),
+    Object.freeze(['rower', Object.freeze({ x: 22, y: 0 })] as const),
+    Object.freeze(['mats', Object.freeze({ x: 30, y: 6 })] as const),
+    Object.freeze(['dumbbells', Object.freeze({ x: 4, y: 12 })] as const),
+    Object.freeze(['sauna', Object.freeze({ x: 20, y: 18 })] as const),
+    Object.freeze(['belts', Object.freeze({ x: 0, y: 27 })] as const),
+    Object.freeze(['bike', Object.freeze({ x: 0, y: 24 })] as const),
+    Object.freeze(['specialty-bars', Object.freeze({ x: 2, y: 25 })] as const),
+  ] as const),
+});
+
+/**
+ * A pocket with NO station approach inside it, per rung — the floor a member
+ * with nothing at all in reach stands on.
+ *
+ * THE FIRST VERSION OF THIS FIXTURE MEASURED ZERO, and the reason is worth
+ * keeping. It reused `ROUTE_CUT_LAYOUTS`'s pocket, which is built around a
+ * station's own use cell — so a member inside it could reach that station
+ * perfectly well and was never stranded at all. The sealed sweep read 0
+ * reactions and the pocket looked sealed, because it was: sealed around
+ * something reachable is not the same shape as sealed away from everything.
+ *
+ * What makes this one different is which side of the wall the wall's own use
+ * cell lands on. `routePlan` picks a station's use cell as the approach cell
+ * with the lowest (row, column), so a pocket placed BELOW and RIGHT of the two
+ * items that seal it leaves both of their use cells outside — and a station's
+ * queue cells are found by walking out from its use cell, so those land outside
+ * too. From inside the pocket every distance field reads unreachable, which is
+ * the state `strandedAt` exists to name.
+ */
+const SEALED_LAYOUTS: Readonly<Record<LadderRung, readonly LayoutRow[]>> = Object.freeze({
+  garage: Object.freeze([
+    Object.freeze(['bike', Object.freeze({ x: 6, y: 2 })] as const),
+    Object.freeze(['specialty-bars', Object.freeze({ x: 5, y: 3 })] as const),
+  ] as const),
+  'storage-unit': Object.freeze([
+    Object.freeze(['bike', Object.freeze({ x: 10, y: 5 })] as const),
+    Object.freeze(['specialty-bars', Object.freeze({ x: 9, y: 6 })] as const),
+  ] as const),
+  'strip-mall-unit': Object.freeze([
+    Object.freeze(['bike', Object.freeze({ x: 20, y: 12 })] as const),
+    Object.freeze(['specialty-bars', Object.freeze({ x: 19, y: 13 })] as const),
+  ] as const),
+  warehouse: Object.freeze([
+    Object.freeze(['bike', Object.freeze({ x: 38, y: 24 })] as const),
+    Object.freeze(['specialty-bars', Object.freeze({ x: 37, y: 25 })] as const),
+  ] as const),
+});
+
+/**
+ * The sealed-pocket sweep's parameters, kept apart from `FLOOR_SIM_SWEEP` for
+ * the reason `streakSweep.ts` keeps its own: this is a different measurement
+ * with a different domain, and folding it into the first one's numbers would
+ * make neither re-derivable.
+ *
+ * The subject is a member with NOTHING it can reach — sealed into a pocket
+ * while stations stand elsewhere on the floor. That case cannot be produced by
+ * letting a roster wander into a corner and then walling it: which cells the
+ * roster occupies at a phase boundary is not something a layout can decide, so
+ * a sweep built that way would report a large honest number and reach the arm
+ * by luck. The members here are hand-placed inside the pocket, on every rung,
+ * which is what makes the arm reached rather than sampled for.
+ */
+const SEALED_SWEEP = Object.freeze({
+  /** Two seeds, so the wander direction is not one point. */
+  SEEDS: Object.freeze([3, 19]),
+  /** Ticks per run — comfortably past the beat, the wander hold and a use. */
+  TICKS: 90,
+  /** Where the hand-placed member starts, per rung: a free cell inside the sealed pocket. */
+  STARTS: Object.freeze({
+    garage: Object.freeze({ x: 6, y: 4 }),
+    'storage-unit': Object.freeze({ x: 10, y: 7 }),
+    'strip-mall-unit': Object.freeze({ x: 20, y: 14 }),
+    warehouse: Object.freeze({ x: 38, y: 26 }),
+  }),
+  /**
+   * The wall piece removed to build the control. Taking one item away opens the
+   * pocket and leaves everything else identical, so the control differs from
+   * the subject on exactly the axis being measured.
+   */
+  CONTROL_OMITS: 'specialty-bars' as SessionEquipmentItem,
 });
 
 const RUNGS: readonly LadderRung[] = Object.freeze([...T.LADDER_RUNGS]);
@@ -141,7 +287,7 @@ function floorFrom(rung: LadderRung, rows: readonly LayoutRow[]): FloorState {
   return floor;
 }
 
-/** The four floors one sweep run walks, in `FLOOR_SIM_SWEEP.PHASES` order. */
+/** The five floors one sweep run walks, in `FLOOR_SIM_SWEEP.PHASES` order. */
 function phaseFloors(rung: LadderRung): readonly FloorState[] {
   const rows = SWEEP_LAYOUTS[rung];
   const first = rows[0] as LayoutRow;
@@ -156,8 +302,17 @@ function phaseFloors(rung: LadderRung): readonly FloorState[] {
     floorFrom(rung, rows),
     floorFrom(rung, [moved, ...rows.slice(1)]),
     floorFrom(rung, rows.slice(1)),
+    floorFrom(rung, ROUTE_CUT_LAYOUTS[rung]),
     createFloorState(rung),
   ]);
+}
+
+/** Every item either layout for `rung` names, so ownership never gates a phase. */
+function ownedFor(rung: LadderRung): readonly SessionEquipmentItem[] {
+  const owned = new Set<SessionEquipmentItem>();
+  for (const [item] of SWEEP_LAYOUTS[rung]) owned.add(item);
+  for (const [item] of ROUTE_CUT_LAYOUTS[rung]) owned.add(item);
+  return Object.freeze([...owned]);
 }
 
 function contextFor(rung: LadderRung, floor: FloorState): FloorSimContext {
@@ -165,7 +320,7 @@ function contextFor(rung: LadderRung, floor: FloorState): FloorSimContext {
     rung,
     floor,
     barbellOwned: KIT,
-    sessionOwned: SWEEP_LAYOUTS[rung].map(([item]) => item),
+    sessionOwned: ownedFor(rung),
   };
 }
 
@@ -204,6 +359,7 @@ function memberAt(index: number, type: MemberType, cell: GridPosition): FloorSim
     timer: 0,
     interruptedBy: null,
     awayFrom: null,
+    strandedAt: null,
   });
 }
 
@@ -220,6 +376,18 @@ interface SweepReading {
   readonly entries: Readonly<Record<FloorSimMemberState, number>>;
   /** How many times each interruption cause fired. */
   readonly causes: Readonly<Record<FloorSimInterruption, number>>;
+  /**
+   * How many times the beat was entered FROM each interruptible state.
+   *
+   * The destination census answers "was `interrupted` ever reached"; this one
+   * answers "from which of the three states `applyInterruptions` admits", which
+   * is a different question and was the one nothing here asked.
+   */
+  readonly sources: Readonly<Record<FloorSimInterruptibleState, number>>;
+  /** Observations where a member was holding `strandedAt` — walled off from every station. */
+  readonly strandedObservations: number;
+  /** Distinct (run, member) pairs that were ever stranded. */
+  readonly strandedMembers: number;
   /** (member, tick) pairs observed — the non-vacuity guard. */
   readonly observations: number;
   /** Observations where a member stood on a blocked cell, or was stepping into one. */
@@ -247,7 +415,15 @@ function sweep(): SweepReading {
   const causes: Record<FloorSimInterruption, number> = {
     'target-removed': 0,
     'target-moved': 0,
+    'route-blocked': 0,
   };
+  const sources: Record<FloorSimInterruptibleState, number> = {
+    seeking: 0,
+    queuing: 0,
+    using: 0,
+  };
+  let strandedObservations = 0;
+  const strandedSeen = new Set<string>();
   let observations = 0;
   let onEquipment = 0;
   let longestStill = 0;
@@ -277,7 +453,18 @@ function sweep(): SweepReading {
               entries[member.state] += 1;
               if (member.state === 'interrupted' && member.interruptedBy !== null) {
                 causes[member.interruptedBy] += 1;
+                if (
+                  FLOOR_SIM_INTERRUPTIBLE_STATES.includes(
+                    before.state as FloorSimInterruptibleState,
+                  )
+                ) {
+                  sources[before.state as FloorSimInterruptibleState] += 1;
+                }
               }
+            }
+            if (member.strandedAt !== null) {
+              strandedObservations += 1;
+              strandedSeen.add(`${rung}:${seed}:${member.index}`);
             }
             if (blocked.has(cellKey(member.cell))) onEquipment += 1;
             if (member.next !== null && blocked.has(cellKey(member.next))) onEquipment += 1;
@@ -310,6 +497,9 @@ function sweep(): SweepReading {
   return {
     entries: Object.freeze(entries),
     causes: Object.freeze(causes),
+    sources: Object.freeze(sources),
+    strandedObservations,
+    strandedMembers: strandedSeen.size,
     observations,
     onEquipment,
     longestStill,
@@ -322,25 +512,154 @@ function sweep(): SweepReading {
 
 const SWEEP = sweep();
 
+// ---------------------------------------------------------------------------
+// The sealed-pocket sweep — the arm no roster wanders into
+// ---------------------------------------------------------------------------
+
+/** What one sealed-pocket run saw. */
+interface SealedReading {
+  /** (member, tick) pairs observed. */
+  readonly observations: number;
+  /** Observations where the member was holding `strandedAt`. */
+  readonly stranded: number;
+  /** Times the beat was entered naming `route-blocked`. */
+  readonly reactions: number;
+  /** Distinct cells the member stood on — how big the box it paces is. */
+  readonly cells: number;
+  /** Distinct states the member was ever in. */
+  readonly states: readonly FloorSimMemberState[];
+  /** Times the member claimed anything at all. */
+  readonly claims: number;
+  /** Stations standing on the floor it cannot reach. */
+  readonly stations: number;
+  /** Runs walked. */
+  readonly runs: number;
+}
+
+/**
+ * Drive one hand-placed member per rung, inside the `route-cut` phase's sealed
+ * pocket, and read what a member cut off from the whole gym actually does.
+ *
+ * `omit` drops one wall piece, which is the control: the same pocket with a way
+ * out. Every other input is held identical, so a difference between the two
+ * readings is the seal and nothing else.
+ */
+function sealedSweep(omit: SessionEquipmentItem | null): SealedReading {
+  let observations = 0;
+  let stranded = 0;
+  let reactions = 0;
+  let claims = 0;
+  let cells = 0;
+  let stations = 0;
+  let runs = 0;
+  const states = new Set<FloorSimMemberState>();
+  for (const rung of RUNGS) {
+    const rows = SEALED_LAYOUTS[rung].filter(([item]) => item !== omit);
+    const context: FloorSimContext = {
+      rung,
+      floor: floorFrom(rung, rows),
+      barbellOwned: KIT,
+      sessionOwned: rows.map(([item]) => item),
+    };
+    stations += floorStations(context).length;
+    for (const seed of SEALED_SWEEP.SEEDS) {
+      runs += 1;
+      const start = SEALED_SWEEP.STARTS[rung];
+      let at = stateOf(seed, [memberAt(0, 'casual', start)]);
+      let previous = at.members[0] as FloorSimMember;
+      const visited = new Set<string>([cellKey(start)]);
+      for (let step = 0; step < SEALED_SWEEP.TICKS; step += 1) {
+        at = stepFloorSim(at, context);
+        const member = at.members[0] as FloorSimMember;
+        observations += 1;
+        states.add(member.state);
+        visited.add(cellKey(member.cell));
+        if (member.strandedAt !== null) stranded += 1;
+        if (member.state !== previous.state && member.interruptedBy === 'route-blocked') {
+          reactions += 1;
+        }
+        if (member.target !== null && previous.target === null) claims += 1;
+        previous = member;
+      }
+      cells += visited.size;
+    }
+  }
+  return {
+    observations,
+    stranded,
+    reactions,
+    claims,
+    cells,
+    states: Object.freeze([...states].sort()),
+    stations,
+    runs,
+  };
+}
+
+const SEALED = sealedSweep(null);
+const SEALED_CONTROL = sealedSweep(SEALED_SWEEP.CONTROL_OMITS);
+
+/** Both readings, every number taken from its own assertion's failure value. */
+const SEALED_CENSUS = Object.freeze({
+  RUNS: 8,
+  OBSERVATIONS: 720,
+  SEALED: Object.freeze({
+    STRANDED: 720,
+    REACTIONS: 8,
+    CLAIMS: 0,
+    CELLS: 32,
+    STATIONS: 19,
+  }),
+  CONTROL: Object.freeze({
+    STRANDED: 0,
+    REACTIONS: 0,
+    CLAIMS: 20,
+    CELLS: 66,
+    STATIONS: 16,
+  }),
+});
+
+
 /**
  * Every number the sweep produced, measured by running the assertions below
  * against a sentinel and reading the failure value — never computed by hand.
  */
 const SWEEP_CENSUS = Object.freeze({
   RUNS: 16,
-  OBSERVATIONS: 66240,
+  // 66240 -> 82800: the sweep grew a fifth phase (`route-cut`), so every run
+  // walks 60 more ticks. Read from this pin's own failure value.
+  OBSERVATIONS: 82800,
+  // Every number in this block moved when the fifth phase landed AND when the
+  // roster's type mix changed with `contextFor`'s widened `sessionOwned`, which
+  // now names the wall pieces the gym has to own to place them. Each is read
+  // from its own assertion's failure value, never computed by hand. The
+  // four-phase values, kept so the deltas are legible rather than asserted:
+  // seeking 904, queuing 511, using 542, leaving 452, interrupted 183.
   ENTRIES: Object.freeze({
-    seeking: 904,
-    queuing: 511,
-    using: 542,
-    leaving: 452,
-    interrupted: 183,
+    seeking: 967,
+    queuing: 575,
+    using: 579,
+    leaving: 479,
+    interrupted: 216,
   }),
+  // Four-phase values: 'target-removed' 150, 'target-moved' 33, and
+  // 'route-blocked' did not exist. Instrumented on the shipped four-phase
+  // sweep, the branch that now raises 'route-blocked' fired 0 times across all
+  // 66240 observations, which is why the fifth phase exists.
   CAUSES: Object.freeze({
-    'target-removed': 150,
-    'target-moved': 33,
+    'target-removed': 174,
+    'target-moved': 32,
+    'route-blocked': 10,
   }),
-  LONGEST_STILL: 46,
+  // The source arms of the beat, measured for the first time this round.
+  SOURCES: Object.freeze({
+    seeking: 79,
+    queuing: 76,
+    using: 61,
+  }),
+  STRANDED_OBSERVATIONS: 18,
+  STRANDED_MEMBERS: 2,
+  LONGEST_STILL: 48,
   LONGEST_QUEUE: 3,
 });
 
@@ -469,20 +788,124 @@ describe('the arms this machine declares are the arms the sweep reached', () => 
     expect(pinned).toBe(5);
   });
 
-  it('reaches both interruption causes and pins each one', () => {
+  it('reaches all three interruption causes and pins each one', () => {
     const reached = FLOOR_SIM_INTERRUPTIONS.filter((cause) => SWEEP.causes[cause] > 0);
     expect([...reached].sort()).toEqual([...FLOOR_SIM_INTERRUPTIONS].sort());
     let pinned = 0;
+    let total = 0;
     for (const cause of FLOOR_SIM_INTERRUPTIONS) {
       expect(SWEEP.causes[cause], cause).toBe(SWEEP_CENSUS.CAUSES[cause]);
       pinned += 1;
+      total += SWEEP.causes[cause];
     }
-    expect(pinned).toBe(2);
-    // The two causes sum to the entries into the beat, so a cause going
-    // unrecorded is red here as well as on its own count.
-    expect(SWEEP.causes['target-removed'] + SWEEP.causes['target-moved']).toBe(
-      SWEEP.entries.interrupted,
+    expect(pinned).toBe(3);
+    expect(pinned).toBe(FLOOR_SIM_INTERRUPTIONS.length);
+    // The causes sum to the entries into the beat, so a cause going unrecorded
+    // is red here as well as on its own count.
+    expect(total).toBe(SWEEP.entries.interrupted);
+  });
+
+  it('reaches every declared source arm of the beat and pins each one', () => {
+    // The census one dimension over. `applyInterruptions` admits three states
+    // and the destination census says nothing about which of them a drive
+    // reached; before this existed, nothing here drove an interruption out of
+    // `seeking` at all, while a test title claimed all three.
+    const reached = FLOOR_SIM_INTERRUPTIBLE_STATES.filter((state) => SWEEP.sources[state] > 0);
+    expect([...reached].sort()).toEqual([...FLOOR_SIM_INTERRUPTIBLE_STATES].sort());
+    expect(Object.keys(SWEEP.sources).sort()).toEqual([...FLOOR_SIM_INTERRUPTIBLE_STATES].sort());
+    let pinned = 0;
+    let total = 0;
+    for (const state of FLOOR_SIM_INTERRUPTIBLE_STATES) {
+      expect(SWEEP.sources[state], state).toBe(SWEEP_CENSUS.SOURCES[state]);
+      pinned += 1;
+      total += SWEEP.sources[state];
+    }
+    expect(pinned).toBe(3);
+    // Every entry into the beat came out of one of the three declared source
+    // arms, so a fourth source would show up as a shortfall here.
+    expect(total).toBe(SWEEP.entries.interrupted);
+    // And the states this list leaves out are the two that hold no station.
+    expect(
+      FLOOR_SIM_MEMBER_STATES.filter(
+        (state) => !FLOOR_SIM_INTERRUPTIBLE_STATES.includes(state as FloorSimInterruptibleState),
+      ).sort(),
+    ).toEqual(['interrupted', 'leaving']);
+  });
+
+  it('pins how many observations found a member walled off from every station', () => {
+    // The counter that did not exist. A member sealed into a pocket keeps
+    // walking, so nothing else in this file can tell it apart from a member
+    // walking somewhere; `strandedAt` is the state that can, and this is the
+    // census of it over the main sweep's own floors.
+    expect(SWEEP.strandedObservations).toBe(SWEEP_CENSUS.STRANDED_OBSERVATIONS);
+    expect(SWEEP.strandedMembers).toBe(SWEEP_CENSUS.STRANDED_MEMBERS);
+    // WHAT THIS NUMBER IS AND IS NOT. Whether a roster member happens to be
+    // standing inside the pocket when `route-cut` seals it is not something a
+    // layout decides, so this count is a fact about these four floors and these
+    // four seeds rather than a domain that was designed to reach the arm. The
+    // domain that WAS designed to reach it is the sealed-pocket sweep below,
+    // where the member is hand-placed inside the pocket on every rung.
+    expect(SEALED.stranded).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2b. THE SEALED POCKET — a member with nothing it can reach
+// ---------------------------------------------------------------------------
+
+describe('a member sealed away from every station reacts once and then paces', () => {
+  it('walked a non-empty domain, so the two readings below are measuring something', () => {
+    expect(SEALED.runs).toBe(SEALED_CENSUS.RUNS);
+    expect(SEALED.runs).toBe(RUNGS.length * SEALED_SWEEP.SEEDS.length);
+    expect(SEALED.observations).toBe(SEALED_CENSUS.OBSERVATIONS);
+    expect(SEALED.observations).toBe(
+      RUNGS.length * SEALED_SWEEP.SEEDS.length * SEALED_SWEEP.TICKS,
     );
+    expect(SEALED_CONTROL.observations).toBe(SEALED.observations);
+  });
+
+  it('finds stations on the floor and no route to any of them, on every rung', () => {
+    // Both halves matter. Stations exist — so this is not the empty-garage case
+    // that legitimately signals nothing — and none of them is reachable.
+    expect(SEALED.stations).toBe(SEALED_CENSUS.SEALED.STATIONS);
+    expect(SEALED.stations).toBeGreaterThan(0);
+    expect(SEALED.claims).toBe(SEALED_CENSUS.SEALED.CLAIMS);
+    expect(SEALED.claims).toBe(0);
+    expect(SEALED.stranded).toBe(SEALED_CENSUS.SEALED.STRANDED);
+  });
+
+  it('holds up exactly one route-blocked reaction per run rather than beating on a loop', () => {
+    // THE DECISION, PINNED. A member that armed the beat on every tick it found
+    // nothing reachable would stand still for the rest of the run, which is the
+    // freeze this module is written against; one that armed it never would be
+    // the silent version the round before this one shipped. It arms once, on
+    // the tick it first finds itself cut off, and then paces.
+    expect(SEALED.reactions).toBe(SEALED_CENSUS.SEALED.REACTIONS);
+    expect(SEALED.reactions).toBe(SEALED.runs);
+  });
+
+  it('paces a box rather than freezing, and the box is the pocket', () => {
+    // The liveness half, and the reason it is not enough on its own: the member
+    // really is still moving, which is exactly why `longestStill` and the
+    // walkable-neighbour enumeration were both green on this case.
+    expect(SEALED.cells).toBe(SEALED_CENSUS.SEALED.CELLS);
+    expect(SEALED.cells).toBeGreaterThan(SEALED.runs);
+    expect(SEALED.states).toEqual(['interrupted', 'seeking']);
+  });
+
+  it('reads differently from the same pocket with one wall piece taken away', () => {
+    // The control. One `LayoutRow` removed and nothing else changed: the member
+    // walks out, claims, and is never stranded. A subject-and-control pair whose
+    // numbers matched would mean the seal is doing nothing.
+    expect(SEALED_CONTROL.stations).toBe(SEALED_CENSUS.CONTROL.STATIONS);
+    expect(SEALED_CONTROL.stranded).toBe(SEALED_CENSUS.CONTROL.STRANDED);
+    expect(SEALED_CONTROL.stranded).toBe(0);
+    expect(SEALED_CONTROL.reactions).toBe(SEALED_CENSUS.CONTROL.REACTIONS);
+    expect(SEALED_CONTROL.reactions).toBe(0);
+    expect(SEALED_CONTROL.claims).toBe(SEALED_CENSUS.CONTROL.CLAIMS);
+    expect(SEALED_CONTROL.claims).toBeGreaterThan(0);
+    expect(SEALED_CONTROL.cells).toBe(SEALED_CENSUS.CONTROL.CELLS);
+    expect(SEALED_CONTROL.cells).toBeGreaterThan(SEALED.cells);
   });
 });
 
@@ -572,7 +995,9 @@ describe('a member does not freeze', () => {
     expect(isolated).toBe(0);
     // Non-vacuity: a count, not a bound, so an empty enumeration reports
     // itself instead of passing.
-    expect(inspected).toBe(5949);
+    // 5949 -> 7381: the sweep grew a fifth phase, so this enumerates a fifth
+    // floor per rung. Read from this pin's own failure value.
+    expect(inspected).toBe(7379);
   });
 
   it('holds no member in one state on one cell longer than the derived bound', () => {
@@ -627,13 +1052,12 @@ describe('a member does not freeze', () => {
     expect(visited.map((cells) => cells.size)).toEqual([8, 14, 12]);
   });
 
-  it('drops a target it can no longer reach and keeps walking', () => {
-    // The one liveness hole this file found in itself, and the case GDD §5.13
-    // does not name: the target has NEITHER moved NOR been removed — it is
-    // still on the floor with a free cell beside it — but other equipment has
-    // walled the member off from it. Distinguishing that from a removal is the
-    // whole point of the fixture, and the two assertions below say so: the
-    // station is still reported, and the member is not in the beat.
+  it('sends a member whose route is walled off into the beat, naming route-blocked', () => {
+    // The case GDD §5.13 does not name: the target has NEITHER moved NOR been
+    // removed — it is still on the floor with a free cell beside it — but other
+    // equipment has walled the member off from it. Distinguishing that from a
+    // removal is the whole point of the fixture, and the assertions below say
+    // so: the station is still reported, and the cause names the route.
     const rung: LadderRung = 'storage-unit';
     const owned: readonly SessionEquipmentItem[] = Object.freeze([
       'mats',
@@ -663,32 +1087,41 @@ describe('a member does not freeze', () => {
     expect(floorStations(sealed).some((station) => station.ref.item === 'mats')).toBe(true);
     const after = stepFloorSim(at, sealed);
     const walker = after.members[0] as FloorSimMember;
-    expect(walker.state).toBe('seeking');
-    expect(walker.interruptedBy).toBe(null);
+    expect(walker.state).toBe('interrupted');
+    expect(walker.interruptedBy).toBe('route-blocked');
     expect(walker.target).toBe(null);
+    // Not stranded: this pocket is sealed against the mats and is NOT sealed
+    // against the two items that seal it, and a wall a member can touch is a
+    // wall a member can use. So there is something in reach, and the member is
+    // route-blocked rather than cut off from everything.
+    expect(walker.strandedAt).toBe(null);
 
-    // And it does not freeze afterwards. WHAT IT DOES INSTEAD IS WORTH BEING
-    // EXACT ABOUT, because the pocket is sealed against the mats and is NOT
-    // sealed against the two items that seal it — a wall a member can touch is
-    // a wall a member can use, and the sim treats it as a station like any
-    // other. So the member re-claims one of the wall pieces on the very next
-    // tick. That is the fallback doing its job (a dropped target, then a fresh
-    // reachable one) rather than the wander leg, and pretending otherwise
-    // would need a fixture no floor can produce.
+    // WHAT IT DOES AFTERWARDS, STATED THE WAY THE DRIVE ACTUALLY RUNS IT rather
+    // than the way the previous version of this comment described it. That
+    // version said the member "drops the target and walks a wander leg
+    // instead", and its own assertions three lines below showed it re-claiming
+    // a wall piece on the very next tick and never wandering at all. The beat
+    // resolves back to seeking on the tuned tick and the member then claims
+    // `specialty-bars`, which is the fallback doing its job.
     let moving = after;
     const visited = new Set<string>([cellKey(walker.cell)]);
     const states = new Set<string>([walker.state]);
+    let firstClaimAt: number | null = null;
     for (let step = 0; step < T.FLOOR_SIM_WANDER_HOLD_TICKS * 4; step += 1) {
       moving = stepFloorSim(moving, sealed);
       const member = moving.members[0] as FloorSimMember;
       visited.add(cellKey(member.cell));
       states.add(member.state);
-      expect(member.interruptedBy, `step ${step}`).toBe(null);
+      expect(member.strandedAt, `step ${step}`).toBe(null);
+      if (member.target !== null && firstClaimAt === null) firstClaimAt = step;
     }
     const reclaimed = (moving.members[0] as FloorSimMember).target;
     expect(reclaimed).not.toBe(null);
-    expect((reclaimed as { readonly item: string }).item).toBe('specialty-bars');
-    expect([...states].sort()).toEqual(['seeking', 'using']);
+    expect((reclaimed as { readonly item: string }).item).toBe('cables');
+    // The beat runs first, so the claim lands after it rather than on the next
+    // tick — the exact number, so a beat length change is visible here.
+    expect(firstClaimAt).toBe(8);
+    expect([...states].sort()).toEqual(['interrupted', 'seeking', 'using']);
     expect(visited.size).toBe(2);
   });
 });
@@ -707,6 +1140,39 @@ function draggableGarage(position: GridPosition): FloorSimContext {
   };
 }
 
+/**
+ * A member holding a reachable target, and the same floor with that target
+ * walled off — the `route-blocked` disturbance, built once and reused.
+ *
+ * The station stays exactly where it is in both, which is what makes this a
+ * lost route rather than a move or a removal.
+ */
+const walledOff = Object.freeze({
+  context: ((): FloorSimContext => {
+    const rung: LadderRung = 'storage-unit';
+    return {
+      rung,
+      floor: floorFrom(rung, [
+        ['mats', { x: 9, y: 6 }] as LayoutRow,
+        ['specialty-bars', { x: 2, y: 0 }] as LayoutRow,
+        ['cables', { x: 0, y: 2 }] as LayoutRow,
+      ]),
+      barbellOwned: [],
+      sessionOwned: ['mats', 'specialty-bars', 'cables'],
+    };
+  })(),
+  before: (): FloorSimState => {
+    const rung: LadderRung = 'storage-unit';
+    const open: FloorSimContext = {
+      rung,
+      floor: floorFrom(rung, [['mats', { x: 9, y: 6 }] as LayoutRow]),
+      barbellOwned: [],
+      sessionOwned: ['mats', 'specialty-bars', 'cables'],
+    };
+    return stepFloorSim(stateOf(2, [memberAt(0, 'casual', { x: 0, y: 0 })]), open);
+  },
+});
+
 describe('a target that is moved or removed produces the beat, and the beat always ends', () => {
   const laid: GridPosition = { x: 5, y: 3 };
   const settled = (): FloorSimState => {
@@ -716,20 +1182,44 @@ describe('a target that is moved or removed produces the beat, and the beat alwa
     return at;
   };
 
-  it('reaches all three interruptible source states before the interruption', () => {
-    // The domain guard for the two checks below: if every member happened to
-    // be `seeking` at the moment the equipment moved, this section would be
-    // measuring one arm and reading as three.
+  it('drives an interruption out of each of the three interruptible source states', () => {
+    // THE TITLE THIS REPLACES CLAIMED COVERAGE THE BODY DID NOT HAVE. It
+    // asserted that the settled fixture holds `queuing` and `using` members,
+    // then built a third member, checked it was `seeking` with a target, and
+    // never disturbed it — so no interruption was ever driven out of `seeking`
+    // anywhere in this file, while the title said three.
+    //
+    // Each arm here is driven to the interruption and the resulting cause is
+    // read, so the claim and the assertions are the same statement.
     const at = settled();
-    const states = new Set(at.members.map((member) => member.state));
-    expect([...states].sort()).toEqual(['queuing', 'using']);
-    // `seeking` is driven separately, from a member that has just claimed.
+    const settledStates = new Set(at.members.map((member) => member.state));
+    expect([...settledStates].sort()).toEqual(['queuing', 'using']);
+    const removed = { ...draggableGarage(laid), floor: createFloorState('garage') };
+    const disturbed = stepFloorSim(at, removed);
+    const sourcesDriven = new Set<FloorSimInterruptibleState>();
+    for (const member of at.members) {
+      const after = disturbed.members[member.index] as FloorSimMember;
+      expect(after.state, `member ${member.index}`).toBe('interrupted');
+      sourcesDriven.add(member.state as FloorSimInterruptibleState);
+    }
+    expect([...sourcesDriven].sort()).toEqual(['queuing', 'using']);
+
+    // `seeking` needs its own drive, because the settled fixture holds nobody
+    // in it: a member that has just claimed from across the room, whose target
+    // is then removed under it.
     const fresh = stepFloorSim(
       stateOf(5, [memberAt(0, 'casual', { x: 0, y: 5 })]),
       draggableGarage(laid),
     );
-    expect((fresh.members[0] as FloorSimMember).state).toBe('seeking');
-    expect((fresh.members[0] as FloorSimMember).target).not.toBe(null);
+    const seeker = fresh.members[0] as FloorSimMember;
+    expect(seeker.state).toBe('seeking');
+    expect(seeker.target).not.toBe(null);
+    const seekerAfter = stepFloorSim(fresh, removed).members[0] as FloorSimMember;
+    expect(seekerAfter.state).toBe('interrupted');
+    expect(seekerAfter.interruptedBy).toBe('target-removed');
+    sourcesDriven.add('seeking');
+    expect([...sourcesDriven].sort()).toEqual([...FLOOR_SIM_INTERRUPTIBLE_STATES].sort());
+    expect(sourcesDriven.size).toBe(3);
   });
 
   it('interrupts every claimant when the target is removed, naming the cause', () => {
@@ -755,18 +1245,27 @@ describe('a target that is moved or removed produces the beat, and the beat alwa
     }
   });
 
-  it('resolves the beat to seeking on exactly the tuned tick, from both causes', () => {
+  it('resolves the beat to seeking on exactly the tuned tick, from all three causes', () => {
     // EXACT, not eventual. The beat is armed on the interrupting tick and that
     // same tick's advance pass decrements it, so a member is in the beat for
     // exactly `FLOOR_SIM_INTERRUPTED_BEAT_TICKS` ticks counting the one that
     // armed it — and is `seeking` on the tick after that.
+    //
+    // The third cause needs its own fixture rather than the settled garage: a
+    // route is lost by walling a member off from a station that stays exactly
+    // where it is, which is a different disturbance from a drag.
     const causes = [
-      ['target-removed', { ...draggableGarage(laid), floor: createFloorState('garage') }],
-      ['target-moved', draggableGarage({ x: 1, y: 3 })],
+      [
+        'target-removed',
+        settled,
+        { ...draggableGarage(laid), floor: createFloorState('garage') },
+      ],
+      ['target-moved', settled, draggableGarage({ x: 1, y: 3 })],
+      ['route-blocked', walledOff.before, walledOff.context],
     ] as const;
     let driven = 0;
-    for (const [cause, disturbed] of causes) {
-      let at = stepFloorSim(settled(), disturbed);
+    for (const [cause, start, disturbed] of causes) {
+      let at = stepFloorSim(start(), disturbed);
       expect((at.members[0] as FloorSimMember).interruptedBy, cause).toBe(cause);
       for (let step = 1; step < T.FLOOR_SIM_INTERRUPTED_BEAT_TICKS; step += 1) {
         at = stepFloorSim(at, disturbed);
@@ -783,7 +1282,7 @@ describe('a target that is moved or removed produces the beat, and the beat alwa
       driven += 1;
     }
     expect(driven).toBe(FLOOR_SIM_INTERRUPTIONS.length);
-    expect(driven).toBe(2);
+    expect(driven).toBe(3);
   });
 
   it('leaves a member that is walking away alone, because it has already let go', () => {
@@ -1097,7 +1596,138 @@ describe('floorStations reports somewhere real to stand', () => {
       }
     }
     expect(checked).toBe(RUNGS.length * FLOOR_SIM_SWEEP.PHASES.length);
-    expect(checked).toBe(16);
+    // 16 -> 20: a fifth phase per rung.
+    expect(checked).toBe(20);
+  });
+
+  it('gives every station on every registered rung its own queue cells too', () => {
+    // GAP THE `use cell` CHECK ABOVE DOES NOT COVER, and it was open: queue
+    // cells used to be reserved only against the stations already processed, so
+    // station A's queue slot could be station B's use cell whenever B came
+    // second. Measured on the four-phase sweep this file shipped last round,
+    // before the fix: 18 such collisions across the 92 stations those floors
+    // posted, `fixed:power-bar`'s queue cell at (2,2) against
+    // `fixed:comp-plates`'s use cell on every rung and every phase. Two bodies
+    // on one tile, on the screen whose gate is whether this reads as real
+    // behaviour. Those two numbers are history — the sweep has since grown a
+    // phase and two layouts — and the counts this check pins below are what a
+    // run today re-derives.
+    let collisions = 0;
+    let cellsChecked = 0;
+    let stationsChecked = 0;
+    for (const rung of RUNGS) {
+      for (const [phase, floor] of phaseFloors(rung).entries()) {
+        const context = contextFor(rung, floor);
+        const stations = floorStations(context);
+        const spokenFor = new Map<string, string>();
+        for (const station of stations) {
+          spokenFor.set(cellKey(station.useCell), `use:${station.ref.kind}:${station.ref.item}`);
+        }
+        for (const station of stations) {
+          stationsChecked += 1;
+          for (const cell of station.queueCells) {
+            cellsChecked += 1;
+            const held = spokenFor.get(cellKey(cell));
+            const mine = `queue:${station.ref.kind}:${station.ref.item}`;
+            if (held !== undefined) {
+              collisions += 1;
+              expect(held, `${rung} phase ${phase} ${cellKey(cell)}`).toBe(mine);
+            }
+            spokenFor.set(cellKey(cell), mine);
+          }
+        }
+      }
+    }
+    expect(collisions).toBe(0);
+    // Counts rather than bounds, so an empty enumeration reports itself.
+    expect(stationsChecked).toBe(131);
+    expect(cellsChecked).toBe(387);
+  });
+
+  it('orders every queue nearest-first from its own use cell', () => {
+    // The claim `FloorStation.queueCells` makes about itself, which nothing
+    // used to check — and which was FALSE while a spoken cell was merely sorted
+    // last instead of dropped, because an unspoken far cell then preceded a
+    // spoken near one. The oracle is an independent breadth-first search over
+    // the same blocked set, written here rather than read out of the module.
+    let inspected = 0;
+    let queues = 0;
+    for (const rung of RUNGS) {
+      for (const floor of phaseFloors(rung)) {
+        const context = contextFor(rung, floor);
+        const grid = floorGridSize(rung);
+        const blocked = blockedCells(context);
+        for (const station of floorStations(context)) {
+          const distance = new Map<string, number>([[cellKey(station.useCell), 0]]);
+          let frontier: GridPosition[] = [station.useCell];
+          while (frontier.length > 0) {
+            const next: GridPosition[] = [];
+            for (const at of frontier) {
+              const here = distance.get(cellKey(at)) as number;
+              for (const step of [
+                { x: 0, y: -1 },
+                { x: 1, y: 0 },
+                { x: 0, y: 1 },
+                { x: -1, y: 0 },
+              ]) {
+                const to: GridPosition = { x: at.x + step.x, y: at.y + step.y };
+                if (to.x < 0 || to.y < 0 || to.x >= grid.width || to.y >= grid.height) continue;
+                if (blocked.has(cellKey(to))) continue;
+                if (distance.has(cellKey(to))) continue;
+                distance.set(cellKey(to), here + 1);
+                next.push(to);
+              }
+            }
+            frontier = next;
+          }
+          const steps = station.queueCells.map((cell) => distance.get(cellKey(cell)));
+          for (const value of steps) {
+            expect(value, `${rung} ${station.ref.item}`).not.toBe(undefined);
+            inspected += 1;
+          }
+          for (let k = 1; k < steps.length; k += 1) {
+            expect(
+              (steps[k] as number) >= (steps[k - 1] as number),
+              `${rung} ${station.ref.item} slot ${k}`,
+            ).toBe(true);
+          }
+          queues += 1;
+        }
+      }
+    }
+    expect(queues).toBe(131);
+    expect(inspected).toBe(387);
+  });
+
+  it('posts every station on every registered rung after the two-pass reservation', () => {
+    // Making a spoken cell ineligible rather than merely last can drop a
+    // station that is left with nowhere to queue. This is the census that says
+    // the shipped rungs lose none: the station count per rung and phase, pinned
+    // against the items each floor actually holds.
+    const counted: number[] = [];
+    for (const rung of RUNGS) {
+      for (const [phase, floor] of phaseFloors(rung).entries()) {
+        const context = contextFor(rung, floor);
+        const stations = floorStations(context);
+        const drawn =
+          fixedFloorFurniture(context.barbellOwned).length + floorLayout(context.floor).length;
+        expect(stations.length, `${rung} phase ${phase}`).toBeLessThanOrEqual(drawn);
+        counted.push(stations.length);
+      }
+    }
+    // Every count read from this pin's own failure value. Twenty entries, four
+    // rungs by five phases, in `RUNGS` x `PHASES` order.
+    //
+    // WHAT THESE NUMBERS SAY, AND IT IS THE POINT OF PINNING THEM RATHER THAN
+    // BOUNDING THEM. On the four shipped sweep layouts every drawn item posts a
+    // station: garage 5 = three fixed plus two placed, storage-unit 6 = three
+    // plus three, and so on down each rung's column. The `route-cut` phase is
+    // where a drop shows, and garage's 5-of-6 is a real one: that floor's
+    // top-right corner is seven walkable cells with three stations competing for
+    // them, so `specialty-bars` is left with nowhere to queue and is dropped the
+    // same way a station with no walkable approach is. The pocket's own station
+    // survives, which is what the phase is for.
+    expect(JSON.stringify(counted)).toBe('[5,5,4,5,3,6,6,5,7,3,9,9,8,10,3,10,10,9,11,3]');
   });
 
   it('puts every use cell and queue cell on a free tile beside the equipment', () => {
@@ -1127,7 +1757,9 @@ describe('floorStations reports somewhere real to stand', () => {
         inspected += 1;
       }
     }
-    expect(inspected).toBe(28);
+    // 28 -> 30: strip-mall-unit and warehouse each gained a corner item, so
+    // each posts one more station on its laid-out floor.
+    expect(inspected).toBe(30);
   });
 
   it('reports the fixed Barbell baseline and the placed session items, and nothing else', () => {
@@ -1185,18 +1817,167 @@ describe('floorStations reports somewhere real to stand', () => {
 // 10. What this module is allowed to see
 // ---------------------------------------------------------------------------
 
+/**
+ * The context's key set, stated as a TYPE-LEVEL requirement rather than read
+ * off a value.
+ *
+ * The check below used to be `Object.keys` over a value `contextFor` built,
+ * which sees a REQUIRED fifth field — the value could not be constructed
+ * without one — and is blind to an OPTIONAL one, which is the shape a widening
+ * would most plausibly take. `keyof` includes optional keys, so this literal
+ * stops compiling the moment a fifth field of either kind is declared.
+ *
+ * Both mutants were run rather than argued, and the interesting one is the
+ * second. `readonly reputation: number` on `FloorSimContext` gives `npx tsc
+ * --noEmit` exit 2 with 21 errors across this file and
+ * `empireForbiddenOutput.test.ts`, because no fixture anywhere can build the
+ * context any more. `readonly reputation?: number` gives exit 2 with exactly
+ * ONE error, and it is this literal — "Property 'reputation' is missing in type
+ * 'Readonly<{ rung: true; floor: true; barbellOwned: true; sessionOwned: true;
+ * }>' but required in type 'Readonly<Record<keyof FloorSimContext, true>>'".
+ *
+ * Under that same optional mutant `npx vitest run src/empire/floorSim.test.ts`
+ * is 52 of 52 green, which is the honest statement of where the catcher lives:
+ * it is `tsc`, and a run of this file alone does not see it.
+ *
+ * Its own limit, and the catcher for it: this says which keys the type has and
+ * nothing about what the module reads out of `EMPIRE_TUNING`, which is the
+ * other way an economic quantity could arrive. That is the next check.
+ */
+const CONTEXT_KEYS: Readonly<Record<keyof FloorSimContext, true>> = Object.freeze({
+  rung: true,
+  floor: true,
+  barbellOwned: true,
+  sessionOwned: true,
+});
+
+/**
+ * Every `EMPIRE_TUNING` entry `floorSim.ts` is allowed to read, as a set the
+ * scan below joins against in both directions.
+ *
+ * Fifteen entries: thirteen `FLOOR_SIM_` knobs and guards, plus §5.6's two
+ * published affinity tables. `MEMBER_TYPE_REPUTATION_PER_MEMBER_PER_DAY` is the
+ * one this piece's brief named, and it is refused by not being on this list
+ * rather than by being named on a ban list, which is the difference between a
+ * closed set and a list of the routes somebody thought of.
+ */
+const TUNING_READS: readonly string[] = Object.freeze([
+  'FLOOR_SIM_AFFINITY_PULL_TILES',
+  'FLOOR_SIM_INTERRUPTED_BEAT_TICKS',
+  'FLOOR_SIM_LEAVING_TICKS',
+  'FLOOR_SIM_MAX_RUN_TICKS',
+  'FLOOR_SIM_QUEUE_AVERSION_TILES',
+  'FLOOR_SIM_QUEUE_MAX_LENGTH',
+  'FLOOR_SIM_ROUTE_VISIT_BUDGET',
+  'FLOOR_SIM_SPEED_JITTER_FRACTION',
+  'FLOOR_SIM_STEP_PROGRESS_PER_TICK',
+  'FLOOR_SIM_TARGET_NOISE_TILES',
+  'FLOOR_SIM_USE_TICKS_BY_TYPE',
+  'FLOOR_SIM_USE_TICKS_SPREAD',
+  'FLOOR_SIM_WANDER_HOLD_TICKS',
+  'MEMBER_TYPE_BARBELL_AFFINITY',
+  'MEMBER_TYPE_ITEM_AFFINITY',
+]);
+
+const HERE = path.dirname(new URL(import.meta.url).pathname);
+const FLOOR_SIM_SOURCE = readFileSync(path.join(HERE, 'floorSim.ts'), 'utf8');
+const EMPIRE_TUNING_SOURCE = readFileSync(path.join(HERE, 'empireTuning.ts'), 'utf8');
+
 describe('the sim reads presentation inputs and nothing economic', () => {
   it('carries exactly the four presentation inputs on its context', () => {
-    // The set equality `floorSim.ts`'s header §5 names as the check for its
-    // own declared limit — a type cannot stop a fifth field being added, and
-    // this reddens when one is.
+    // Two directions and two mechanisms. The runtime half says the value
+    // `contextFor` builds carries these four keys and no others; the type half
+    // is `CONTEXT_KEYS` above, whose catcher is `tsc` rather than vitest and
+    // which is what covers an optional fifth field.
     const context = contextFor('garage', createFloorState('garage'));
-    expect(Object.keys(context).sort()).toEqual([
+    expect(Object.keys(CONTEXT_KEYS).sort()).toEqual([
       'barbellOwned',
       'floor',
       'rung',
       'sessionOwned',
     ]);
+    expect(Object.keys(context).sort()).toEqual(Object.keys(CONTEXT_KEYS).sort());
+    expect(Object.keys(CONTEXT_KEYS).length).toBe(4);
+  });
+
+  it('reads exactly the fifteen tuning entries it declares', () => {
+    // A set equality over the tuning keys this module's own source names, in
+    // both directions, so reading a new entry is a red line somebody looks at
+    // rather than a quiet widening.
+    // Comments stripped first, the same way `empireCore.test.ts`'s import fence
+    // strips them: prose in this module's header names `EMPIRE_TUNING.KEY` as a
+    // shape, and a scan that counts that is reading documentation rather than
+    // code.
+    const code = FLOOR_SIM_SOURCE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    const named = new Set<string>();
+    for (const match of code.matchAll(/EMPIRE_TUNING\.([A-Z][A-Z0-9_]*)/g)) {
+      named.add(match[1] as string);
+    }
+    expect([...named].sort()).toEqual([...TUNING_READS].sort());
+    expect(named.size).toBe(15);
+    // And the keys are real, so a typo cannot pass by matching a list entry
+    // that names nothing.
+    for (const key of TUNING_READS) {
+      expect(Object.prototype.hasOwnProperty.call(T, key), key).toBe(true);
+    }
+    // THE TWO ROUTES PAST A DOTTED SCAN, EACH WITH ITS OWN CATCHER. A computed
+    // `EMPIRE_TUNING[key]` access matches no dotted pattern, so bracket access
+    // into that identifier is banned outright. An alias — `const X =
+    // EMPIRE_TUNING` and then `X.WHATEVER` — would read keys this scan never
+    // sees, so the total number of times the identifier appears in the file is
+    // pinned against the dotted matches plus its one import.
+    expect(code.match(/EMPIRE_TUNING\s*\[/g)).toBe(null);
+    const occurrences = code.match(/EMPIRE_TUNING/g) ?? [];
+    const dotted = code.match(/EMPIRE_TUNING\.[A-Z][A-Z0-9_]*/g) ?? [];
+    expect(occurrences.length - dotted.length).toBe(1);
+    expect(dotted.length).toBe(19);
+  });
+
+  it('pins the realised affinity pull in tiles, derived from both published tables', () => {
+    // THE KNOB'S OWN COMMENT SAID TEN TILES AND THE FUNCTION'S SAID ROUGHLY
+    // FIVE, and the tables say seven. `affinityFor` reads both tables, so the
+    // reachable maximum is the maximum over both — 0.7, at
+    // `powerlifter.specialty-bars` and `athlete.sled` — and the pull is that
+    // times the knob.
+    let strongest = 0;
+    let strongestName = '';
+    let cellsRead = 0;
+    for (const type of T.MEMBER_TYPES) {
+      const barbell = T.MEMBER_TYPE_BARBELL_AFFINITY[type];
+      cellsRead += 1;
+      if (barbell > strongest) {
+        strongest = barbell;
+        strongestName = `barbell:${type}`;
+      }
+      const items: Readonly<Partial<Record<SessionEquipmentItem, number>>> =
+        T.MEMBER_TYPE_ITEM_AFFINITY[type];
+      for (const [item, value] of Object.entries(items)) {
+        cellsRead += 1;
+        if ((value as number) > strongest) {
+          strongest = value as number;
+          strongestName = `item:${type}.${item}`;
+        }
+      }
+    }
+    // Non-vacuity: both tables were really walked.
+    expect(cellsRead).toBe(32);
+    expect(strongest).toBe(0.7);
+    expect(strongestName).toBe('item:powerlifter.specialty-bars');
+    expect(T.FLOOR_SIM_AFFINITY_PULL_TILES).toBe(10);
+    const realisedTiles = strongest * T.FLOOR_SIM_AFFINITY_PULL_TILES;
+    expect(realisedTiles).toBe(7);
+    // And the two sentences that got this wrong are read back out of their own
+    // source files, so raising an affinity reddens here instead of quietly
+    // making both comments wrong a second time. The match COUNT is pinned as
+    // well as the presence, because a phrase with more than one witness in a
+    // file is a pin that survives the edit it exists to catch.
+    const knobClaim = new RegExp(`reads ${realisedTiles} tiles\\s*\\n?\\s*\\*?\\s*nearer`, 'g');
+    expect((EMPIRE_TUNING_SOURCE.match(knobClaim) ?? []).length).toBe(1);
+    const functionClaim = new RegExp(
+      `realise is ${realisedTiles} of its ${T.FLOOR_SIM_AFFINITY_PULL_TILES}`,
+      'g',
+    );
+    expect((FLOOR_SIM_SOURCE.match(functionClaim) ?? []).length).toBe(1);
   });
 
   it('builds the same opening roster Phase 2 already draws', () => {
@@ -1244,6 +2025,7 @@ describe('the sim reads presentation inputs and nothing economic', () => {
         placed += 1;
       }
     }
-    expect(placed).toBe(16);
+    // 16 -> 18: the two corner items above.
+    expect(placed).toBe(18);
   });
 });

@@ -1733,9 +1733,17 @@ export const EMPIRE_TUNING = Object.freeze({
    * CLOSER by a member's full affinity for it — the §5.6 "Attracted by"
    * column read straight off `MEMBER_TYPE_ITEM_AFFINITY` /
    * `MEMBER_TYPE_BARBELL_AFFINITY`, so a powerlifter walks past the bikes to
-   * reach the bar. At 10 a maximally-attractive station reads ten tiles
-   * nearer, which is most of a garage and a small part of a warehouse; that
-   * asymmetry is deliberate and is one of the things a playtest should judge.
+   * reach the bar.
+   *
+   * THIS IS A CEILING THE TABLES DO NOT REACH, and the number that matters to a
+   * tuner is the realised one. The largest affinity either table publishes is
+   * 0.7, so at 10 the most attractive station a member can meet reads 7 tiles
+   * nearer, not ten — which is most of a garage and a small part of a
+   * warehouse; that asymmetry is deliberate and is one of the things a playtest
+   * should judge. This sentence used to claim ten and was wrong by 43%;
+   * `floorSim.test.ts` derives the 7 from both tables and reads it back out of
+   * this comment, so raising an affinity reddens rather than quietly making the
+   * sentence wrong a second time.
    */
   FLOOR_SIM_AFFINITY_PULL_TILES: 10,
 

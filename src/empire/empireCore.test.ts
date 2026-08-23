@@ -3365,7 +3365,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // adjacent import specifiers — all of which except './floor' already
     // existed as values elsewhere in the directory, which is why the delta is
     // nine and not larger.
-    expect(singleQuoted.size).toBe(354);
+    // 354 -> 355: the `route-blocked` interruption cause, GDD §5.13's third
+    // cause and this module's own addition to it. One new distinct
+    // single-quoted value; `FLOOR_SIM_INTERRUPTIBLE_STATES`'s three tokens are
+    // already in this set as member states. Measured by running this assertion
+    // and reading its failure value.
+    expect(singleQuoted.size).toBe(355);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3647,6 +3652,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'roster-at-capacity',
       'roster-slot',
       'rotate-greedy-per-check-in',
+      // GDD §5.13 presentation Phase 3's third interruption cause, added this
+      // round: a target still standing on the floor with the route to it walled
+      // off, or a member with nothing on the floor it can reach.
+      'route-blocked',
       'rower',
       'rung-too-low',
       'sauna',
@@ -3743,7 +3752,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 567 -> 582: singleQuoted (345 -> 354) and templateChunks (222 -> 228),
     // GDD §5.13 presentation Phase 3's floorSim.ts. Read from this
     // assertion's own failure value.
-    expect(stringsChecked).toBe(582);
+    // 582 -> 583: the `route-blocked` interruption cause. Read from this
+    // assertion's own failure value.
+    expect(stringsChecked).toBe(583);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3797,7 +3808,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // ('seeking', 'queuing', 'using', 'leaving', 'interrupted',
     // 'target-removed', 'target-moved', 'fixed', 'session'), all clearing the
     // two-letter guard below. Measured by running this assertion.
-    expect(probes).toBe(301);
+    // 301 -> 302: the `route-blocked` cause, which clears the two-letter guard
+    // like the rest. Measured by running this assertion.
+    expect(probes).toBe(302);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);

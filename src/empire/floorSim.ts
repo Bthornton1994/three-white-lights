@@ -27,6 +27,18 @@
  * into seeking. `FLOOR_SIM_MEMBER_STATES` is that list, and it is the alphabet
  * every census in this file joins against.
  *
+ * The beat has THREE causes rather than §5.13's two, and the third is this
+ * file's own addition: `route-blocked`, for a target that is still on the floor
+ * with the route to it walled off, and for a member that finds nothing on the
+ * floor it can reach at all. §5.13's ruling is that the sim never freezes or
+ * paths into empty space AND that the interruption is legible rather than
+ * silent; the first draft of this module met the first half by dropping such a
+ * target quietly, which broke the second. `FLOOR_SIM_INTERRUPTIONS` carries all
+ * three and the census joins against it, so the widening is measured rather
+ * than assumed. `FLOOR_SIM_INTERRUPTIBLE_STATES` is the same treatment for the
+ * source arms — the three states the beat can be entered from, read by
+ * `applyInterruptions` itself and joined against what a drive produced.
+ *
  * `leaving` means leaving the EQUIPMENT, not leaving the gym. The roster is
  * fixed — Phase 2's `AMBIENT_MEMBER_COUNT_BY_RUNG`, read through
  * `ambientMemberRoster` — so a member that walked out of the building would
@@ -43,10 +55,12 @@
  * exactly the tuned tick, from both causes`, which asserts the exit tick
  * exactly rather than eventually.
  *
- * Run, not asserted. Replacing the exit with a re-arm gives four red tests, the
+ * Run, not asserted. Replacing the exit with a re-arm gives nine red tests, the
  * named one failing at `target-removed at the exit: expected 'interrupted' to
  * be 'seeking'`, and the sweep's own arm census moving with it (`seeking:
- * expected 708 to be 904`).
+ * expected 738 to be 967`). The count of red tests and the census number both
+ * moved this round, because the sweep grew a phase; the mutant was re-run
+ * rather than the sentence re-used.
  *
  * ===========================================================================
  * 2. Position model: a cell, a next cell, and a fraction of the step
@@ -124,9 +138,22 @@
  * whose target is still
  * on the floor but whose route to it has been walled off by OTHER equipment.
  * `stepDownField` returns nothing from an unreachable cell, so the member would
- * hold its cell in `seeking`. It drops the target and wanders instead — see the
- * ROUTE LOST comment at the site, which also says why that case does not enter
- * the beat.
+ * hold its cell in `seeking`. It enters the `route-blocked` beat and comes back
+ * out into `seeking` with no claim — see the ROUTE LOST comment at the site.
+ *
+ * The sibling of that case is a member with no reachable station at all, sealed
+ * into a pocket by two drags while stations stand elsewhere on the floor. That
+ * one does not freeze either — it wanders — and the reason it needed work
+ * anyway is that WANDERING IS WHAT PURPOSEFUL WALKING LOOKS LIKE from outside.
+ * `holds no member in one state on one cell longer than the derived bound` stays
+ * low for a member pacing a sealed 2x2 pocket for the rest of the run, and
+ * `has a walkable neighbour under every cell` passes on a pocket that has four
+ * of them. So the liveness instruments were both green on a member cut off from
+ * the whole gym for good, which is the set-dressing reading §5.13's Phase 3 gate
+ * is written against. `FloorSimMember.strandedAt` is the state that tells the
+ * two apart, `route-blocked` is the reaction it arms once, and
+ * `floorSim.test.ts`'s sealed-pocket sweep is what drives it on every rung with
+ * an unsealed control beside it.
  *
  * The exception: `queuing`. A queued member waits for the station ahead of it,
  * and that wait is bounded only because the member ahead is itself in a timed
@@ -158,13 +185,31 @@
  * says reputation must not grow onto this screen in this phase; this file
  * inherits that unchanged.
  *
- * The fence is the context type plus the import fence, and its limit is that a
- * type cannot stop a future edit from adding a fifth field. The check that
- * covers the limit is `floorSim.test.ts`'s `carries exactly the four
- * presentation inputs on its context`, a set equality over the context's own keys
- * driven from a real value, beside `empireCore.test.ts`'s per-file import
- * fence, which pins this module's six edges exactly. A fifth field or a
- * seventh edge is a red line somebody has to look at.
+ * The fence is the context type plus the import fence, and it is worth being
+ * exact about which mechanism catches which widening, because an earlier
+ * version of this paragraph named one check for a route it did not cover.
+ *
+ * A fifth field on `FloorSimContext` is caught by `floorSim.test.ts`'s `carries
+ * exactly the four presentation inputs on its context`. That check used to read
+ * `Object.keys` over a VALUE, which sees a required fifth field (the value could
+ * not be built without it) and is blind to an OPTIONAL one. It now also carries
+ * a `Record<keyof FloorSimContext, true>`, so the catcher for an optional field
+ * is `tsc` rather than vitest: `keyof` includes optional keys, the literal is
+ * missing one, and the compile fails. Both directions were run rather than
+ * argued — the mutant and its error are recorded at the check.
+ *
+ * A tuning value this module has no business reading — reputation is the one
+ * this piece's brief named — is caught by `reads exactly the fifteen tuning
+ * entries it declares`, a set equality over every `EMPIRE_TUNING.KEY` this
+ * file's source names. Its limits, and each has a catcher beside it: a computed
+ * `EMPIRE_TUNING[key]` access would not match the dotted pattern, so bracket
+ * access into that object is banned outright and the ban is driven; an alias
+ * bound to `EMPIRE_TUNING` would read keys the scan never sees, so the total
+ * count of the identifier in the file is pinned against the dotted matches plus
+ * its one import.
+ *
+ * A seventh import edge is caught by `empireCore.test.ts`'s per-file import
+ * fence, which pins this module's six edges exactly.
  *
  * Phase 2 deliberately took no `FloorState`; Phase 3 does, and the widening is
  * the pathing job itself — a member walking to equipment has to know where the
@@ -237,11 +282,46 @@ export const FLOOR_SIM_MEMBER_STATES = Object.freeze([
 /** One member's behavioural state — GDD §5.13's four, plus the transient fifth. */
 export type FloorSimMemberState = (typeof FLOOR_SIM_MEMBER_STATES)[number];
 
-/** Both causes of an interruption, so a reaction cue can say which happened. */
-export const FLOOR_SIM_INTERRUPTIONS = Object.freeze(['target-removed', 'target-moved'] as const);
+/**
+ * The three causes of an interruption, so a reaction cue can say which happened.
+ *
+ * The first two are GDD §5.13's own "moved or removed". The third is the case
+ * §5.13 does not name and a player can produce with two drags: the target is
+ * still standing on the floor, and the route to it has been walled off by OTHER
+ * equipment. §5.13's ruling has two halves — the sim "never freezes or paths
+ * into empty space, AND the interruption is legible rather than silent" — so
+ * dropping that target quietly satisfied the first half by breaking the second.
+ * It is a third cause flowing through the same beat rather than a fourth
+ * behaviour, and `floorSim.test.ts` joins this list against the causes a drive
+ * actually produced, in both directions, with each count pinned.
+ */
+export const FLOOR_SIM_INTERRUPTIONS = Object.freeze([
+  'target-removed',
+  'target-moved',
+  'route-blocked',
+] as const);
 
-/** Why a member was interrupted: its target vanished, or it was dragged elsewhere. */
+/** Why a member was interrupted: its target vanished, moved, or became unreachable. */
 export type FloorSimInterruption = (typeof FLOOR_SIM_INTERRUPTIONS)[number];
+
+/**
+ * The states a member can be interrupted OUT of — the source arms of the beat,
+ * declared as a value for the same reason the destination arms are.
+ *
+ * `applyInterruptions` reads this list rather than spelling the three states in
+ * a condition, so the census in `floorSim.test.ts` joins against the thing the
+ * code branches on instead of against a second copy of it. `leaving` is absent
+ * because a leaving member has already let go of its station, and `interrupted`
+ * because it is already in the beat.
+ */
+export const FLOOR_SIM_INTERRUPTIBLE_STATES = Object.freeze([
+  'seeking',
+  'queuing',
+  'using',
+] as const);
+
+/** A state the beat can be entered from. */
+export type FloorSimInterruptibleState = (typeof FLOOR_SIM_INTERRUPTIBLE_STATES)[number];
 
 /**
  * A reference to something on the floor a member can walk to and use.
@@ -265,9 +345,12 @@ export type FloorStationRef =
  * One usable station: what it is, where it sits, the cell a member stands in
  * to use it, and the cells the queue behind it stands on.
  *
- * `queueCells` is ordered nearest-first from `useCell`, so slot k stands on
- * `queueCells[k]` and the line visibly shuffles forward when the head is
- * served.
+ * `queueCells` is ordered nearest-first from `useCell` by walking distance
+ * (ties by row then column), so slot k stands on `queueCells[k]` and the line
+ * visibly shuffles forward when the head is served. Every cell here is free of
+ * every other station's use cell and queue cells — `routePlan`'s two passes are
+ * what make that true, and `floorSim.test.ts` measures both the ordering and
+ * the disjointness rather than taking this sentence for it.
  */
 export interface FloorStation {
   readonly ref: FloorStationRef;
@@ -303,6 +386,26 @@ export interface FloorSimMember {
   readonly interruptedBy: FloorSimInterruption | null;
   /** The cell a `leaving` member is walking away from. */
   readonly awayFrom: GridPosition | null;
+  /**
+   * The tick this member last found itself with stations on the floor and no
+   * route to any of them, or null while at least one station was in reach.
+   *
+   * This is the second half of the route-blocked case, and it is a field rather
+   * than a counter because a renderer needs it: a member sealed into a pocket
+   * keeps walking, so "still moving" is exactly what a walled-off member and a
+   * member walking with purpose have in common. Whoever draws this screen holds
+   * the reaction cue up for as long as this is set.
+   *
+   * Set once per stretch, on the tick the member first finds nothing reachable,
+   * and cleared the moment it claims a station or finds one merely full. That
+   * edge is also what arms the `route-blocked` beat, so a stranded member
+   * reacts once and then paces rather than beating on a loop.
+   *
+   * An empty floor is deliberately not this: a garage on opening day has no
+   * stations at all, nobody is walled off from anything, and its members wander
+   * with this field null. `floorSim.test.ts` drives both.
+   */
+  readonly strandedAt: number | null;
 }
 
 /** The whole simulation: a tick counter, the seed every choice is drawn from, and the members. */
@@ -542,21 +645,39 @@ function routePlan(context: FloorSimContext): RoutePlan {
     }
   }
 
-  // Use cells are reserved across stations, so two machines beside each other
-  // do not both send their user to the same tile — that would draw one body
-  // on top of another at the moment the sim is trying to make "who is using
-  // what" legible. Queue cells are reserved too, but only against each other
-  // and against use cells, and both reservations DEGRADE rather than drop the
-  // station: a boxed-in machine still gets a shared cell, because a machine
-  // nobody can ever use reads worse on screen than two bodies on one tile, and
-  // header §2 already says members do not block each other. The check that
-  // says the shipped rungs do not fall back is `floorSim.test.ts`'s `gives
-  // every station on every registered rung its own use cell`, driven at every
-  // phase of every rung's layout rather than only on an empty floor.
+  // CELL RESERVATION RUNS IN TWO PASSES, AND THE ORDER IS THE WHOLE POINT.
+  // Every station's use cell is assigned first, then every station's queue
+  // cells are assigned against the finished set of use cells. A single pass
+  // could only reserve against the stations it had already seen, so station A's
+  // queue slot could be station B's use cell whenever B was processed second —
+  // which is two bodies on one tile at the moment this sim is trying to make
+  // "who is using what" legible. Measured on the four-phase sweep layouts this
+  // file shipped last round, before the fix: 18 such collisions across the 92
+  // stations those floors posted, `fixed:power-bar`'s queue cell at (2,2)
+  // against `fixed:comp-plates`'s use cell on every rung and every phase. The
+  // sweep has since grown a phase and two layouts, so that pair of numbers is
+  // history rather than something a run today re-derives; what a run today
+  // measures is 0 collisions over 131 stations.
+  //
+  // A cell already spoken for is now INELIGIBLE rather than merely sorted last,
+  // which is what makes `queueCells` genuinely nearest-first from `useCell` —
+  // the ordering `FloorStation`'s own comment claims and `floorSim.test.ts`'s
+  // `orders every queue nearest-first from its own use cell` measures with an
+  // independent breadth-first search.
+  //
+  // Two degrades survive, both stated rather than buried. A station whose every
+  // approach cell is already another station's use cell falls back to sharing
+  // one, because a machine nobody can walk to reads worse than two bodies on a
+  // tile and header §2 already says members do not block each other; `gives
+  // every station on every registered rung its own use cell` is what says the
+  // shipped rungs do not reach that fallback. A station left with no free cell
+  // to queue on at all is dropped from the plan entirely, the same way a
+  // station with no walkable approach is; `posts every station on every
+  // registered rung after the two-pass reservation` pins that the shipped rungs
+  // lose none.
   const takenUseCells = new Set<number>();
-  const takenQueueCells = new Set<number>();
-  const stations: FloorStation[] = [];
-  const fields: (readonly (readonly number[])[])[] = [];
+  const seated: { readonly occupant: (typeof occupants)[number]; readonly useCell: GridPosition }[] =
+    [];
   for (const occupant of occupants) {
     const approaches = approachCells(occupant.position, occupant.footprint, grid, blocked);
     const useCell =
@@ -564,28 +685,30 @@ function routePlan(context: FloorSimContext): RoutePlan {
       approaches[0];
     if (useCell === undefined) continue;
     takenUseCells.add(cellIndex(useCell, grid));
+    seated.push({ occupant, useCell });
+  }
+
+  const takenQueueCells = new Set<number>();
+  const stations: FloorStation[] = [];
+  const fields: (readonly (readonly number[])[])[] = [];
+  for (const { occupant, useCell } of seated) {
     const useField = distanceField(useCell, grid, blocked);
-    const scored: { readonly cell: GridPosition; readonly steps: number; readonly spoken: boolean }[] =
-      [];
+    const scored: { readonly cell: GridPosition; readonly steps: number }[] = [];
     for (let y = 0; y < grid.height; y += 1) {
       for (let x = 0; x < grid.width; x += 1) {
         const at = y * grid.width + x;
         if (blocked[at] === true) continue;
         const steps = useField[at] as number;
         if (steps === UNREACHABLE || steps === 0) continue;
-        scored.push({
-          cell: { x, y },
-          steps,
-          spoken: takenUseCells.has(at) || takenQueueCells.has(at),
-        });
+        if (takenUseCells.has(at) || takenQueueCells.has(at)) continue;
+        scored.push({ cell: { x, y }, steps });
       }
     }
     // Sorted on a COPY: the receiver is a fresh expression, so nothing outside
-    // this function holds the array being reordered.
-    const ordered = [...scored].sort((left, right) => {
-      if (left.spoken !== right.spoken) return left.spoken ? 1 : -1;
-      return left.steps - right.steps;
-    });
+    // this function holds the array being reordered. The scan above is row
+    // major, and `Array.prototype.sort` is stable, so equal-distance cells keep
+    // (y, x) order.
+    const ordered = [...scored].sort((left, right) => left.steps - right.steps);
     const queueCells = Object.freeze(
       ordered.slice(0, EMPIRE_TUNING.FLOOR_SIM_QUEUE_MAX_LENGTH).map((row) => row.cell),
     );
@@ -696,12 +819,22 @@ function isOccupied(members: readonly FloorSimMember[], ref: FloorStationRef): b
  * How attractive `station` is to `type`, read straight off §5.6's published
  * affinity tables rather than through a second formula.
  *
- * A NUMBER WHOSE SCALE IS THE TABLE'S, not [0, 1]. The published affinities top
- * out near 0.5 (`MEMBER_TYPE_BARBELL_AFFINITY.powerlifter`), so the realised
- * pull is roughly half of `FLOOR_SIM_AFFINITY_PULL_TILES` at best. That is
- * stated here because a tuner reading the knob's name would otherwise expect
- * the full value; the knob still scales the effect proportionally, which is
- * what a knob has to do.
+ * A NUMBER WHOSE SCALE IS THE TABLE'S, not [0, 1], and this function reads BOTH
+ * tables: `MEMBER_TYPE_BARBELL_AFFINITY` for a fixed Barbell station and
+ * `MEMBER_TYPE_ITEM_AFFINITY` for a placed session item. The largest value
+ * either table holds is 0.7 — `powerlifter.specialty-bars` and `athlete.sled`
+ * — so the most `FLOOR_SIM_AFFINITY_PULL_TILES` can realise is 7 of its 10
+ * tiles. A tuner reading the knob's name would otherwise expect the full value.
+ *
+ * An earlier version of this paragraph said the tables top out near 0.5 at
+ * `MEMBER_TYPE_BARBELL_AFFINITY.powerlifter`, which is the largest value in the
+ * table this function reads FIRST rather than the largest value it can return.
+ * The number is derived rather than transcribed now:
+ * `floorSim.test.ts`'s `pins the realised affinity pull in tiles, derived from
+ * both published tables` walks both tables, pins the maximum at 0.7 and the
+ * realised pull at 7 tiles, and reads this sentence and the knob's own out of
+ * their source files so that raising an affinity reddens instead of quietly
+ * making two comments wrong again.
  */
 function affinityFor(type: MemberType, station: FloorStation): number {
   if (station.ref.kind === 'fixed') {
@@ -894,7 +1027,7 @@ function applyInterruptions(
       settled.push(member);
       continue;
     }
-    if (member.state === 'leaving' || member.state === 'interrupted') {
+    if (!FLOOR_SIM_INTERRUPTIBLE_STATES.includes(member.state as FloorSimInterruptibleState)) {
       settled.push(member);
       continue;
     }
@@ -929,12 +1062,14 @@ function applyClaims(
     if (member.state !== 'seeking' || member.target !== null) continue;
     let chosen: FloorStation | null = null;
     let chosenScore = UNREACHABLE;
+    let reachable = 0;
     for (let slot = 0; slot < plan.stations.length; slot += 1) {
       const station = plan.stations[slot] as FloorStation;
       const goals = plan.fields[slot] as readonly (readonly number[])[];
       const field = goals[0] as readonly number[];
       const distance = field[cellIndex(member.cell, plan.grid)] as number;
       if (distance === UNREACHABLE) continue;
+      reachable += 1;
       const waiting = claimantsOf(settled, station.ref).length;
       if (waiting >= Math.min(EMPIRE_TUNING.FLOOR_SIM_QUEUE_MAX_LENGTH, station.queueCells.length)) {
         continue;
@@ -949,13 +1084,37 @@ function applyClaims(
         chosen = station;
       }
     }
-    if (chosen === null) continue;
-    settled[i] = Object.freeze({
-      ...member,
-      target: Object.freeze(chosen.ref),
-      targetPosition: chosen.position,
-      claimedAt: tick,
-    });
+    if (chosen !== null) {
+      settled[i] = Object.freeze({
+        ...member,
+        target: Object.freeze(chosen.ref),
+        targetPosition: chosen.position,
+        claimedAt: tick,
+        strandedAt: null,
+      });
+      continue;
+    }
+    // Nothing was claimed, and the three reasons for that are different
+    // situations that should not read the same on screen.
+    //
+    // A floor with no stations at all is a garage on opening day: nobody is cut
+    // off from anything, so the member wanders and signals nothing. A floor
+    // whose reachable stations are all full is an ordinary busy gym, and the
+    // member walks on. What is left — stations standing on this floor and no
+    // route from this cell to any of them — is a member sealed into a pocket by
+    // two drags, and that is the case a liveness check written around "is it
+    // still moving" cannot tell apart from purposeful walking, because it is
+    // still moving.
+    if (plan.stations.length === 0 || reachable > 0) {
+      if (member.strandedAt !== null) settled[i] = Object.freeze({ ...member, strandedAt: null });
+      continue;
+    }
+    // One reaction per stretch. `strandedAt` stays set while the member paces,
+    // so the beat is armed on the edge into being walled off and not on every
+    // tick after it — a member beating on a loop would stand still, which is
+    // the freeze this whole section exists to avoid.
+    if (member.strandedAt !== null) continue;
+    settled[i] = Object.freeze({ ...interrupt(member, 'route-blocked'), strandedAt: tick });
   }
   return Object.freeze(settled);
 }
@@ -1048,39 +1207,48 @@ function advanceMember(
 
   const walked = continueStep(relocated, plan, speed);
   if ((goalField[cellIndex(walked.cell, plan.grid)] as number) === UNREACHABLE) {
-    // ROUTE LOST — the one liveness hole this file found in itself, and the
-    // §5.13 case that section does not cover. The member's target has neither
-    // moved nor been removed, so pass one does not interrupt it; what changed
-    // is that OTHER equipment was placed between the member and the station,
-    // and `stepDownField` on an unreachable cell returns nothing, which would
-    // leave the member standing still in `seeking` forever.
+    // ROUTE LOST — the liveness hole this file found in itself, and the §5.13
+    // case that section does not name. The member's target has neither moved
+    // nor been removed, so pass one leaves it alone; what changed is that OTHER
+    // equipment was placed between the member and the station, and
+    // `stepDownField` on an unreachable cell returns nothing, which would leave
+    // the member standing still in `seeking` for good.
     //
-    // It drops the target and walks a wander leg instead, which puts it back
-    // in the same position as a member that never had a target: it re-claims
-    // on a later tick, from wherever it has walked to. It deliberately does
-    // NOT enter the beat, because `FloorSimInterruption`'s two members are
-    // §5.13's own "moved or removed" and widening them would make the
-    // interruption census claim coverage §5.13 does not give it. Reported as a
-    // design call rather than settled here.
+    // It enters the beat as `route-blocked` and resolves back to `seeking` like
+    // the other two causes, so it drops the claim, holds one legible reaction,
+    // and then re-claims from wherever it has walked to.
     //
-    // The check that covers it is `floorSim.test.ts`'s `drops a target it can
-    // no longer reach and keeps walking`, which builds the wall, asserts the
-    // station is still reported (so this is not a removal), and asserts the
-    // target is gone without the member entering the beat. Run, not asserted:
-    // deleting this branch leaves that test red at `expected { kind:
-    // 'session', item: 'mats' } to be null`.
-    const stepped = beginStep(
-      walked,
-      stepWander(walked.cell, plan, seed, relocated.index, tick),
-    );
+    // AN EARLIER VERSION DROPPED THE TARGET SILENTLY, and the reason it gave
+    // for not widening `FloorSimInterruption` was wrong on its own terms: the
+    // interruption census is a set equality over `FLOOR_SIM_INTERRUPTIONS`, an
+    // array this module owns, so a third member plus a pinned count keeps it
+    // exact rather than overclaiming. The silent version also had no measurable
+    // subject — it wrote `seeking` onto members that were mostly already
+    // `seeking`, and the sweep's arm census counts state CHANGES, so the branch
+    // could not move a number. Instrumented directly across the whole 66240
+    // observation sweep it fired 0 times, so what looked like coverage was an
+    // empty domain.
+    //
+    // The checks that cover it now: `floorSim.test.ts`'s `sends a member whose
+    // route is walled off into the beat, naming route-blocked` drives the exact
+    // fixture, and the sweep reaches this cause 10 times across its four rungs
+    // — a count the arm census pins. That total is shared with the stranded
+    // arming in the claim pass, so it is the cause's number rather than this
+    // branch's alone, and the split was measured rather than divided up by
+    // argument: restoring the silent drop here takes the census from 10 to 2,
+    // so 8 of the 10 are this branch and 2 are the claim pass.
+    //
+    // ARMED WITH THE BEAT ITSELF rather than one more, which is the opposite of
+    // what `interrupt` does and for the same reason. That extra tick exists so
+    // that a beat armed in the interruption pass survives the decrement this
+    // advance pass runs later in the same tick; this branch IS the advance
+    // pass, so there is no later decrement to survive. `resolves the beat to
+    // seeking on exactly the tuned tick, from all three causes` drives it, and
+    // arming with `interrupt`'s value leaves that check red at `route-blocked
+    // at the exit: expected 'interrupted' to be 'seeking'`.
     return Object.freeze({
-      ...relocated,
-      ...stepped,
-      state: 'seeking',
-      target: null,
-      targetPosition: null,
-      claimedAt: null,
-      queuedAt: null,
+      ...interrupt(relocated, 'route-blocked'),
+      timer: EMPIRE_TUNING.FLOOR_SIM_INTERRUPTED_BEAT_TICKS,
     });
   }
   if (head && walked.next === null && sameCell(walked.cell, station.useCell)) {
@@ -1147,6 +1315,7 @@ export function createFloorSimState(context: FloorSimContext, seed: number): Flo
           timer: 0,
           interruptedBy: null,
           awayFrom: null,
+          strandedAt: null,
         }),
       ),
     ),
