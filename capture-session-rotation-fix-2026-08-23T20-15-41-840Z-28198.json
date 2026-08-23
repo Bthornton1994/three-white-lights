@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "capture-session-rotation-fix-2026-08-23T20-15-41-840Z-28198",
+  "label": "capture-session-rotation-fix",
+  "command": [
+    "node",
+    "tools/capture-session.mjs",
+    "--url",
+    "http://localhost:8091",
+    "--out",
+    "/tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/cap-out",
+    "--live"
+  ],
+  "budgetSeconds": 600,
+  "startedAtIso": "2026-08-23T20:15:41.840Z",
+  "startedAtMs": 1787516141840,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "4e4ea8aa0d2475a2174e70e4613af65f32c30ce8",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 2,
+  "dirtyPaths": [
+    "tools/capture-session.mjs",
+    "tools/verify-shell-route.mjs"
+  ],
+  "runner": {
+    "pid": 28198,
+    "startTick": "1178420",
+    "cmdline": "node tools/watchdog.mjs --budget 600 --label capture-session-rotation-fix -- node tools/capture-session.mjs --url http://localhost:8091 --out /tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-",
+    "bootId": "fabf06d4-ff34-4c2a-84e5-869c226847d2",
+    "bootEpochSeconds": 1787504358,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-23T20:15:41.864Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
