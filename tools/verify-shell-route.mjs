@@ -3539,14 +3539,23 @@ async function checkMeetRestatementsMatchTuning() {
     // uses. THIS IS THAT CROSS-CHECK, and until it was written that sentence was
     // a guarantee in prose with nothing behind it — the defect this repository
     // keeps paying for, in the module that had just been rebuilt around it.
+    //
+    // NO REGEX, AND THAT IS A BUG'S DOING. The first version of this built its
+    // needle with ``new RegExp(`${kind}:\s*'${word}'`)`` — and inside a TEMPLATE
+    // LITERAL `\s` is an escape JavaScript resolves to a plain `s`, so the
+    // pattern was `squat:s*'SQUAT'` and could never match. It went red against
+    // source that visibly contained the line, printing the matching block in its
+    // own failure message. A whitespace-normalised `includes` has nothing to
+    // escape and says the same thing.
     const labelBlock = /LIFT_LABEL:\s*Object\.freeze\(\{([^}]*)\}/.exec(meetText);
+    const labelText = labelBlock === null ? '' : labelBlock[1].replace(/\s+/g, ' ').trim();
     for (const [kind, word] of Object.entries(MEET_LIFT_LABELS)) {
       check(
-        labelBlock !== null && new RegExp(`${kind}:\s*'${word}'`).test(labelBlock[1]),
+        labelBlock !== null && labelText.includes(`${kind}: '${word}'`),
         `MEET_COPY.LIFT_LABEL.${kind} is the word meetDrive.mjs reads a ${kind} attempt's lift off`,
         labelBlock === null
           ? 'LIFT_LABEL was not found as an Object.freeze block in meetTuning.ts'
-          : `looked for ${kind}: '${word}' in meetTuning.ts's LIFT_LABEL block, which reads ${JSON.stringify(labelBlock[1].replace(/\s+/g, ' ').trim())}`,
+          : `looked for ${kind}: '${word}' in meetTuning.ts's LIFT_LABEL block, which reads ${JSON.stringify(labelText)}`,
       );
     }
     const staggerMs = numberInSource(meetText, 'RECAP_ROW_STAGGER_MS');
