@@ -154,7 +154,9 @@ export const DIRECTORY_WALK = Object.freeze({
   // 14 -> 17: members.ts (§5.11 stage 3, unpaused as a named exception),
   // plus GDD §5.13 presentation Phase 1's `floor.ts` (pure grid/placement
   // logic) and `FloorGrid.tsx` (the drag-interaction screen).
-  SHIPPED_MODULES: 17,
+  // 17 -> 18: GDD §5.13 presentation Phase 3's `floorSim.ts` — the pathing,
+  // queuing and use simulation. Read from this pin's own failure value.
+  SHIPPED_MODULES: 18,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -166,7 +168,9 @@ export const DIRECTORY_WALK = Object.freeze({
    */
   // 31 -> 36: members.ts and members.test.ts, plus floor.ts, floor.test.ts,
   // FloorGrid.tsx.
-  DIRECTORY_FILES: 36,
+  // 36 -> 38: GDD §5.13 presentation Phase 3's floorSim.ts and
+  // floorSim.test.ts. Read from this pin's own failure value.
+  DIRECTORY_FILES: 38,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -935,6 +939,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'engagement.ts',
       'expansion.ts',
       'floor.ts',
+      'floorSim.ts',
       'ladder.ts',
       'ladderView.tsx',
       'members.ts',

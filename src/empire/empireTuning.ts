@@ -1640,6 +1640,158 @@ export const EMPIRE_TUNING = Object.freeze({
 
   /** The delay, in milliseconds, between one stagger lane's bob start and the next's — `lane * this` is a given member's own start delay. */
   AMBIENT_MEMBER_BOB_STAGGER_STEP_MS: 150,
+
+  // -------------------------------------------------------------------------
+  // §5.13 presentation Phase 3 — the floor simulation: "real pathing, queuing,
+  // use, and visible reaction." Read by `floorSim.ts` only.
+  //
+  // PROVISIONAL, in exactly the sense `FLOOR_GRID_SIZE` and
+  // `AMBIENT_MEMBER_COUNT_BY_RUNG` already claim for themselves: every number
+  // below is reasoned from an intuition about how a gym floor reads, and NONE
+  // of it has been tuned or played. Phase 3's gate is a human watching the
+  // gym run; until that has happened these are first-pass proposals.
+  //
+  // THE UNIT OF TIME HERE IS A SIM TICK, NOT A SECOND AND NOT A FRAME. The
+  // sim advances one tick per `stepFloorSim` call and holds no clock of its
+  // own (`floorSim.ts` is pure — no `Date.now`, no `Math.random`), so what a
+  // tick is worth in wall time is the renderer's decision, not this file's.
+  // A tuner moving these should decide the tick rate first: every `_TICKS`
+  // knob below is denominated in it.
+  // -------------------------------------------------------------------------
+
+  /**
+   * How far along its current tile-to-tile step a walking member advances per
+   * tick, as a fraction of one tile. At 0.34 a member crosses a tile in three
+   * ticks, which is the pace this piece proposes for "walking, not gliding."
+   *
+   * MUST STAY AT OR BELOW 1: `floorSim.ts` advances at most one cell per
+   * tick, so a value above 1 would silently discard the surplus rather than
+   * move faster. `floorSim.test.ts` pins that bound rather than trusting this
+   * sentence.
+   */
+  FLOOR_SIM_STEP_PROGRESS_PER_TICK: 0.34,
+
+  /**
+   * How much a single member's own walking speed may differ from the base
+   * rate above, as a fraction of it — a member's seeded jitter is drawn
+   * deterministically from its index and the sim seed and lands somewhere in
+   * `[1 - this, 1 + this]`. Zero would make every member move in lockstep,
+   * which is the Phase 2 defect ("one mechanism moving") one layer out.
+   * Must stay strictly below 1 so no member's speed can reach zero.
+   */
+  FLOOR_SIM_SPEED_JITTER_FRACTION: 0.25,
+
+  /**
+   * How many ticks one member of each §5.6 type occupies a piece of equipment
+   * for, before it stops and walks away. Ordered from §5.6's own table rather
+   * than invented: Bodybuilder is the longest because "occupies equipment for
+   * a long time" is that row's stated quirk, Casual the shortest.
+   *
+   * DELIBERATELY A SEPARATE TABLE FROM `MEMBER_TYPE_CROWDING_LOAD_WEIGHT`,
+   * which encodes the same quirk on the satisfaction axis. Reusing that one
+   * here was considered and refused: it would couple two different feels —
+   * how crowded a gym FEELS and how long a body is visibly parked on a
+   * machine — to one number, so a playtester fixing the look would move the
+   * economy. Two knobs, seeded from the same design row, is the honest shape.
+   */
+  FLOOR_SIM_USE_TICKS_BY_TYPE: Object.freeze({
+    casual: 18,
+    bodybuilder: 42,
+    powerlifter: 30,
+    athlete: 22,
+    'serious-lifter': 34,
+  }),
+
+  /**
+   * How many ticks of seeded spread sit on top of the per-type duration above
+   * — one use lasts `base + (a seeded value in [0, this))`, so two members of
+   * the same type on the same machine do not finish together. Zero makes
+   * every use of a type identical in length, which reads mechanical.
+   */
+  FLOOR_SIM_USE_TICKS_SPREAD: 12,
+
+  /**
+   * The most members that may be waiting for one station at once, the queue's
+   * head included. A station already holding this many claimants is not
+   * offered to a member choosing where to go, so a queue can never grow
+   * without bound and a floor with more members than queue capacity leaves
+   * the surplus walking rather than stacked invisibly on one tile.
+   */
+  FLOOR_SIM_QUEUE_MAX_LENGTH: 3,
+
+  /**
+   * How many tiles of extra perceived distance each member already waiting at
+   * a station adds, when a member is choosing where to go. This is the whole
+   * of "members prefer a free machine to a busy one" — at 4, one waiting body
+   * makes a station read as four tiles further away than it is. Zero would
+   * make every member pile onto the nearest station regardless of the queue.
+   */
+  FLOOR_SIM_QUEUE_AVERSION_TILES: 4,
+
+  /**
+   * How many tiles of perceived distance a station is worth being pulled
+   * CLOSER by a member's full affinity for it — the §5.6 "Attracted by"
+   * column read straight off `MEMBER_TYPE_ITEM_AFFINITY` /
+   * `MEMBER_TYPE_BARBELL_AFFINITY`, so a powerlifter walks past the bikes to
+   * reach the bar. At 10 a maximally-attractive station reads ten tiles
+   * nearer, which is most of a garage and a small part of a warehouse; that
+   * asymmetry is deliberate and is one of the things a playtest should judge.
+   */
+  FLOOR_SIM_AFFINITY_PULL_TILES: 10,
+
+  /**
+   * How many tiles of seeded noise sit on a member's perceived distance to a
+   * station, breaking ties so members of the same type standing near each
+   * other do not all choose the same machine. Zero collapses a roster of one
+   * type into a single conga line, which is the lockstep defect again.
+   */
+  FLOOR_SIM_TARGET_NOISE_TILES: 3,
+
+  /**
+   * How many ticks the transient `interrupted` state holds — GDD §5.13's
+   * "holding a short fixed beat with a visible reaction cue... then always
+   * resolving back into seeking." Long enough for a reaction bubble to
+   * register, short enough that the member is not standing still while the
+   * player waits. Must be at or above 1: a beat of zero ticks is not a beat,
+   * and `floorSim.test.ts` pins that.
+   */
+  FLOOR_SIM_INTERRUPTED_BEAT_TICKS: 8,
+
+  /**
+   * How many ticks a member spends walking away from a station it has
+   * finished with, before it starts looking for the next one. This is the
+   * `leaving` arm of §5.13's own four-state machine, and it exists so a
+   * finished member visibly steps off the equipment instead of teleporting
+   * into its next approach. Must be at or above 1.
+   */
+  FLOOR_SIM_LEAVING_TICKS: 6,
+
+  /**
+   * How many ticks a member with nowhere to go holds one wander direction
+   * before drawing another. A gym with no reachable equipment (an empty
+   * garage before anything is placed, or a member walled off from every
+   * station) leaves its members walking rather than frozen; this is how long
+   * each leg of that walk is. At 1 the walk reads as jitter; at a large value
+   * it reads as marching into a wall and stopping.
+   */
+  FLOOR_SIM_WANDER_HOLD_TICKS: 5,
+
+  /**
+   * A GUARD, NOT A FEEL VALUE. The most grid cells one route search may visit
+   * before `floorSim.ts` refuses. The largest registered floor is the
+   * warehouse's 40x28 = 1120 cells, so this leaves headroom of more than
+   * three times over; it exists so a future rung with an enormous grid fails
+   * loudly here rather than making a frame drop somewhere a player notices.
+   */
+  FLOOR_SIM_ROUTE_VISIT_BUDGET: 4096,
+
+  /**
+   * A GUARD, NOT A FEEL VALUE. The most ticks one `runFloorSim` call may
+   * advance. A sweep asking for more than this has almost certainly
+   * multiplied two horizons together by mistake, and a pure function that
+   * quietly runs for a minute is worse than one that refuses.
+   */
+  FLOOR_SIM_MAX_RUN_TICKS: 20000,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -1780,4 +1932,18 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   AMBIENT_MEMBER_BOB_HALF_CYCLE_MS: 'knob',
   AMBIENT_MEMBER_BOB_STAGGER_LANES: 'knob',
   AMBIENT_MEMBER_BOB_STAGGER_STEP_MS: 'knob',
+
+  FLOOR_SIM_STEP_PROGRESS_PER_TICK: 'knob',
+  FLOOR_SIM_SPEED_JITTER_FRACTION: 'knob',
+  FLOOR_SIM_USE_TICKS_BY_TYPE: 'knob',
+  FLOOR_SIM_USE_TICKS_SPREAD: 'knob',
+  FLOOR_SIM_QUEUE_MAX_LENGTH: 'knob',
+  FLOOR_SIM_QUEUE_AVERSION_TILES: 'knob',
+  FLOOR_SIM_AFFINITY_PULL_TILES: 'knob',
+  FLOOR_SIM_TARGET_NOISE_TILES: 'knob',
+  FLOOR_SIM_INTERRUPTED_BEAT_TICKS: 'knob',
+  FLOOR_SIM_LEAVING_TICKS: 'knob',
+  FLOOR_SIM_WANDER_HOLD_TICKS: 'knob',
+  FLOOR_SIM_ROUTE_VISIT_BUDGET: 'budget',
+  FLOOR_SIM_MAX_RUN_TICKS: 'budget',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

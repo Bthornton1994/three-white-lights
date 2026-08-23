@@ -86,6 +86,7 @@ describe('the block is frozen and every entry is classified', () => {
       'FLEXIBLE_ACTIVITIES',
       'FLOOR_FIXED_FURNITURE_LAYOUT',
       'FLOOR_GRID_SIZE',
+      'FLOOR_SIM_USE_TICKS_BY_TYPE',
       'LADDER_DEV_TIME_STEPS_SECONDS',
       'LADDER_EQUIPMENT_COST_GYM_BUCKS',
       'LADDER_EQUIPMENT_ITEMS',
@@ -614,13 +615,16 @@ describe('§5.5 social', () => {
     // AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS, AMBIENT_MEMBER_BOB_HALF_CYCLE_MS,
     // AMBIENT_MEMBER_BOB_STAGGER_LANES, AMBIENT_MEMBER_BOB_STAGGER_STEP_MS).
     // Measured by running this assertion and reading its failure value.
-    expect(examined).toBe(120);
+    // 120 -> 133: GDD §5.13 presentation Phase 3's thirteen FLOOR_SIM entries.
+    // Measured by running this assertion and reading its failure value.
+    expect(examined).toBe(133);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
     // 435 -> 525 -> 535 -> 545 -> 560 -> 600 (120 keys x 5 banned units,
     // PLAYTEST 4's eight new tuning entries).
-    expect(probed).toBe(600);
+    // 600 -> 665 (133 keys x 5 banned units).
+    expect(probed).toBe(665);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {
