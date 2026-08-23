@@ -3915,9 +3915,20 @@ if (armsWanted === 'all' || armsWanted === 'ladder') {
       // is past `LOCKOUT_SLIP_GRIND_TICKS` (6) whatever the load. Confirmed in
       // the pure sim over 40 seeds at every rung of the RPE ladder: 0 of 40
       // clean lifts at every one, against 40 of 40 when the same rep is held.
+      //
+      // `slip.outcome !== null` IS NOT BELT-AND-BRACES, IT IS WHAT KEEPS THIS
+      // CHECK ABLE TO FAIL ON ITS OWN. Without it a control rep that never
+      // resolved at all reads `null !== 'GOOD LIFT'` as TRUE here and ranks 0
+      // in the comparison below — green on both, over a rep that did not
+      // happen. It is also what stops this line being DOMINATED by that
+      // comparison: with the null admitted, every state that reddens this one
+      // reddens that one too, and CLAUDE.md requires a new rule to be checked
+      // against the thresholds of the ones beside it. With the null refused,
+      // an unresolved control reddens HERE and passes THERE, which is the
+      // independent failure this line is for.
       check(
-        slip.outcome !== 'GOOD LIFT',
-        'LADDER deadlift CONTROL: the same rep, played identically except that the finger never returns to the bar at lockout, is never a clean GOOD LIFT',
+        slip.outcome !== null && slip.outcome !== 'GOOD LIFT',
+        'LADDER deadlift CONTROL: the same rep, played identically except that the finger never returns to the bar at lockout, resolved, and is never a clean GOOD LIFT',
         `held rep: ${JSON.stringify(best?.outcome)} — control rep: ${JSON.stringify(slip.outcome)} / ${JSON.stringify(slip.detail)}`,
       );
       // ---- AND THE DISCRIMINATION, WHICH IS THE POINT OF THE PAIR ----------
