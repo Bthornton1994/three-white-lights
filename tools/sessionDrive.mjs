@@ -83,11 +83,120 @@
  * caller can say "the driver no longer knows this screen" instead of "something
  * took too long".
  */
+/**
+ * ===========================================================================
+ * THE WHOLE PROMPT LADDER, PER LIFT — THE TABLE THIS DRIVER STEERS BY
+ * ===========================================================================
+ * `SESSION_PROMPTS` below is SQUAT'S ladder and nothing else, which was fine
+ * while squat was the only lift with a phase model and is now a statement
+ * about one third of the game. `LIFT_COPY.PROMPT` in `src/game/liftTuning.ts`
+ * is keyed per `LiftKind`, and the three ladders are genuinely different
+ * shapes rather than three spellings of one shape (see `lift.ts`'s "THREE
+ * LIFTS, THREE PHASE PATHS, THREE FACULTIES"):
+ *
+ *   squat     BRACE -> DESCENT -> HOLE -> ASCENT -> LOCKOUT
+ *   bench     BRACE -> DESCENT -> HOLE (which fires a COMMAND) -> ASCENT -> LOCKOUT
+ *   deadlift  BRACE ->                    ASCENT -> LOCKOUT (which fires a DOWN command)
+ *
+ * `null` MEANS "THIS LIFT HAS NO SUCH BEAT", not "the copy has not been
+ * transcribed yet", and the difference is load-bearing: a deadlift's DESCENT
+ * and HOLE entries are null because `stepLift` REFUSES a (deadlift, DESCENT)
+ * state outright — `DEPTH_LEGAL.deadlift` does not compile — so a driver that
+ * waits for one is waiting for a state the type system has ruled out. A caller
+ * reading a null here must skip the beat, never wait on it.
+ *
+ * RESTATED FROM `LIFT_COPY`, NOT IMPORTED, for the reason the header above
+ * already gives for `SESSION_PROMPTS`: a `.mjs` tool cannot import a `.ts`
+ * module without a loader this tree does not run, AND a driver that read its
+ * copy out of the app would happily drive a broken app in circles. A re-write
+ * of the real copy therefore reddens the checks that compare against these,
+ * which is the intended behaviour and not an oversight.
+ */
+export const LIFT_PROMPTS = Object.freeze({
+  squat: Object.freeze({
+    BRACE: 'TAP AND HOLD TO DESCEND',
+    DESCENT: 'RELEASE AT DEPTH',
+    HOLE: 'OUT OF THE HOLE',
+    /** BENCH ONLY — the press command. Squat's HOLE beat asks for nothing. */
+    COMMAND: null,
+    LOCKOUT: 'LOCK IT',
+    /** DEADLIFT ONLY — the down command. */
+    DOWN: null,
+    SUBTITLE:
+      'Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.',
+  }),
+  bench: Object.freeze({
+    BRACE: 'TAP AND HOLD TO LOWER',
+    DESCENT: 'TOUCH THE CHEST',
+    HOLE: 'WAIT FOR IT',
+    COMMAND: 'PRESS!',
+    LOCKOUT: 'LOCK IT',
+    DOWN: null,
+    SUBTITLE:
+      'Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.',
+  }),
+  deadlift: Object.freeze({
+    BRACE: 'TAP TO PULL',
+    /** NO ECCENTRIC. See the block header — these two nulls are the lift. */
+    DESCENT: null,
+    HOLE: null,
+    COMMAND: null,
+    LOCKOUT: "DON'T LET GO",
+    DOWN: 'DOWN',
+    SUBTITLE:
+      'No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.',
+  }),
+});
+
+/** The ascent lines, which are generic press language shared by all three. */
+export const ASCENT_PROMPTS = Object.freeze({
+  /** `ASCENT_BEFORE_CUE` and `ASCENT_AFTER_CUE` currently render the same. */
+  RIDE: 'RIDE IT',
+  /** `ASCENT_CUE_OPEN`. `SESSION_PROMPTS.DRIVE` is the substring of this. */
+  CUE_OPEN: 'DRIVE — TAP',
+});
+
+/**
+ * EVERY LINE IN THE GAME THAT CAN ONLY BE PRINTED FROM A `DESCENT` OR `HOLE`
+ * STATE, across all three lifts — the set a deadlift's prompt ladder must
+ * never contain.
+ *
+ * Built by reading `LIFT_PROMPTS` rather than typed out a second time, so a
+ * kind added to that table cannot be forgotten here. The `null`s drop out,
+ * which is exactly right: deadlift contributes nothing to this list because it
+ * has no eccentric, and that is the fact under test.
+ *
+ * WHY THIS IS A LIST AND NOT `LIFT_PROMPTS.squat.DESCENT`: the failure this
+ * guards against is a deadlift silently falling back to ANOTHER LIFT'S phase
+ * model — the shape `repConfigFor` shipped for a round as
+ * `simKindFor(state.context.lift)`, which mapped a deadlift day onto squat's
+ * beat. A check written against squat's two lines alone would be blind to a
+ * fallback onto bench's, so the ban is over every eccentric line there is.
+ */
+export const ECCENTRIC_ONLY_PROMPTS = Object.freeze(
+  Object.values(LIFT_PROMPTS)
+    .flatMap((ladder) => [ladder.DESCENT, ladder.HOLE, ladder.COMMAND])
+    .filter((line) => line !== null),
+);
+
+/** The check-in chip that retargets today's session onto `kind` (GDD §3.2). */
+export function checkInLiftTestId(kind) {
+  return `check-in-lift-${kind}`;
+}
+
 export const SESSION_PROMPTS = Object.freeze({
-  /** BRACE. Nothing is asked for yet; the first press starts the descent. */
-  BRACE: 'TAP AND HOLD TO DESCEND',
-  /** DESCENT. Depth is growing while the finger is down. */
-  DESCENT: 'RELEASE AT DEPTH',
+  /**
+   * BRACE. Nothing is asked for yet; the first press starts the descent.
+   *
+   * SQUAT'S, AND THE NAME DOES NOT SAY SO — read `LIFT_PROMPTS` above for the
+   * other two. Left spelled this way rather than renamed because
+   * `verify-shell-route.mjs` and `meetDrive.mjs` both import it by this name to
+   * drive a SQUAT-shaped rep, which is what they mean; derived from the table
+   * rather than typed twice so the two cannot drift.
+   */
+  BRACE: LIFT_PROMPTS.squat.BRACE,
+  /** DESCENT. Depth is growing while the finger is down. Squat's, as above. */
+  DESCENT: LIFT_PROMPTS.squat.DESCENT,
   /** ASCENT, with the drive cue open. The one press that matters. */
   DRIVE: 'DRIVE',
   /** The three things a resolved rep can say. */
@@ -369,12 +478,37 @@ const resolved = (state) =>
  * this function keeps getting. Pass `SESSION_DRIVE.RPE_CHOICE_HEAVY` when the
  * caller needs a heavier load an ordinary player can choose; see that
  * constant for what it does and does not reach, and why it is not RPE 10.
+ * @param lift which competition lift to train, or `null` to take the day's
+ * programmed one.
+ *
+ * ===========================================================================
+ * WHY A CALLER SHOULD ALMOST ALWAYS PASS ONE — MEASURED, NOT A PREFERENCE
+ * ===========================================================================
+ * The default is NOT squat. It is `liftForDay(streakDayFromLocalWallClock(...))`
+ * (`useSession.ts`), which is `SESSION_TUNING.LIFT_ROTATION` indexed by the
+ * REAL CALENDAR — so which lift this function lands on changes every midnight.
+ * Measured on the machine this was written on: day index 20688 is squat, 20689
+ * is bench, 20690 is deadlift. A caller that leaves this null and then drives a
+ * squat-shaped rep works one day in three and reports a wall of timeouts on the
+ * other two.
+ *
+ * Passing a `lift` presses `check-in-lift-<kind>` — a chip `CheckInView.tsx`
+ * renders for every entry of `LIFT_ROTATION`, one tap, on the first paint of
+ * the check-in. It is an ordinary player control (GDD §3.2: "the player may
+ * choose a different competition lift on the check-in"), NOT a debug route and
+ * NOT a query string, which is what lets a check driven through it still claim
+ * the played arm.
+ *
+ * PRESSED BEFORE THE THREE READINESS TAPS, deliberately: the third tap
+ * completes the check-in and the session leaves that screen, and `choose-lift`
+ * is only legal while it is still on it.
  */
 export async function openSessionToFirstSet(
   page,
   url,
   checkInTaps = SESSION_DRIVE.CHECK_IN_TAPS,
   rpeChoice = SESSION_DRIVE.RPE_CHOICE,
+  lift = null,
 ) {
   await page.goto(url, { waitUntil: 'load' });
   await page
@@ -382,6 +516,19 @@ export async function openSessionToFirstSet(
     .waitFor({ state: 'visible', timeout: SESSION_DRIVE.FIRST_SET_TIMEOUT_MS });
 
   const startedAt = Date.now();
+  // THE LIFT CHOICE, FIRST. See the `lift` parameter's own block above for why
+  // it is here rather than after the three answers, and for what the default
+  // actually is. Reported, not thrown, the same way the answers below are.
+  if (lift !== null) {
+    try {
+      await page.getByTestId(checkInLiftTestId(lift)).click({ timeout: 20000 });
+    } catch {
+      return {
+        reached: false,
+        why: `the check-in offered no ${checkInLiftTestId(lift)} chip to press — GDD §3.2's lift choice is not on this screen`,
+      };
+    }
+  }
   // Reported, not thrown. A check-in answer that cannot be pressed — covered by
   // something, or gone — is a fact about the app, and the caller has to be able
   // to say which one it was rather than die inside the harness.
@@ -419,15 +566,39 @@ export async function openSessionToFirstSet(
   // THE POSITIVE CONTROL ON THE PROMPT TABLE. If the mechanic's copy has moved,
   // say so HERE — where it is one legible sentence — rather than letting every
   // rep below time out and reporting a wall of deadlines.
+  // THE POSITIVE CONTROL, AGAINST THE LADDER OF THE LIFT THAT WAS ASKED FOR.
+  // When a `lift` was chosen this is the check that the CHIP TOOK EFFECT — a
+  // deadlift session that opens on 'TAP AND HOLD TO DESCEND' has fallen back to
+  // squat's phase model, which is a real defect this repository has shipped
+  // once (`repConfigFor`'s deleted `simKindFor` stopgap) and is exactly what a
+  // silent fallback looks like from here.
+  const wantedBrace = lift === null ? SESSION_PROMPTS.BRACE : LIFT_PROMPTS[lift].BRACE;
   const first = await readLoop(page);
-  if (!saying(first, SESSION_PROMPTS.BRACE)) {
+  if (!saying(first, wantedBrace)) {
+    // WHICH LADDER DID IT MATCH, IF ANY — because the two causes need
+    // different fixes and the old message named only one of them. A prompt
+    // that is another LIFT'S brace line means the chip did not take (or, with
+    // no chip pressed, that the calendar rotated under a squat-shaped caller);
+    // a prompt that matches no ladder at all means the copy moved.
+    const matched = Object.entries(LIFT_PROMPTS)
+      .filter(([, ladder]) => first.prompt !== null && first.prompt.includes(ladder.BRACE))
+      .map(([kind]) => kind);
     return {
       reached: false,
       unrecognisedPrompt: first.prompt,
-      why: `the first set says ${JSON.stringify(first.prompt)}, which this driver does not recognise — SESSION_PROMPTS is out of date with LIFT_COPY`,
+      matchedKinds: matched,
+      why:
+        matched.length > 0
+          ? `the first set says ${JSON.stringify(first.prompt)}, which is ${matched.join('/')}'s brace line and not ${lift === null ? 'squat' : lift}'s — the session is on a different lift than this driver asked for (the default is the CALENDAR'S rotation, see openSessionToFirstSet's \`lift\` parameter)`
+          : `the first set says ${JSON.stringify(first.prompt)}, which matches no lift's brace line in LIFT_PROMPTS — the mechanic's copy has moved`,
     };
   }
-  return { reached: true, msFromFirstTapToSet: Date.now() - startedAt, state: first };
+  return {
+    reached: true,
+    msFromFirstTapToSet: Date.now() - startedAt,
+    state: first,
+    lift,
+  };
 }
 
 /**
