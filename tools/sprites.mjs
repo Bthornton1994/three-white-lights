@@ -779,9 +779,9 @@ function benchSheet(lightKg, maxKg) {
   const STEPS = 9;
   const cw = CELL_W * SCALE + 6;
   const ch = CELL_H * SCALE + 34;
-  const c = canvas(24 + STEPS * cw, 96 + 2 * ch, BG);
+  const c = canvas(24 + STEPS * cw, 96 + 4 * ch, BG);
 
-  text(c, 'BENCH: DOES IT READ AS A PRESS, AND DOES MAXIMAL LOOK HEAVIER?', 12, 12, INK, 3);
+  text(c, 'BENCH: DOES IT READ AS A PRESS? (THE HEAVINESS ROWS ARE THE CONTROL)', 12, 12, INK, 3);
   text(
     c,
     'EACH CELL IS ONE DRAWING AT A BAR HEIGHT. H0 = BAR ON THE CHEST, H100 = LOCKED OUT.',
@@ -792,17 +792,50 @@ function benchSheet(lightKg, maxKg) {
   );
   text(
     c,
-    'TOP ROW LIGHT, BOTTOM ROW MAXIMAL STRAIN. THE TOOL RENDERS; A HUMAN JUDGES.',
+    'ROWS 1-2 ARE WHAT A PLAYER SEES. ROWS 3-4 HOLD THE BAR IDENTICAL AND MOVE ONLY STRAIN.',
     12,
     48,
     INK_DIM,
     1,
   );
 
+  // ---------------------------------------------------------------------------
+  // THE FIRST VERSION OF THIS SHEET COULD NOT ANSWER ITS OWN TITLE, AND THAT IS
+  // WORTH WRITING DOWN RATHER THAN QUIETLY FIXING.
+  //
+  // It printed "DOES MAXIMAL LOOK HEAVIER?" across the top over two rows that
+  // varied `totalKg` AND `strainLevel` AND `pitchLevel` together. Three moving
+  // variables cannot attribute a difference to any one of them, so every
+  // difference a reader saw was explicable by the plate count alone — which is
+  // the trivial half of the question and not the half GDD §12.2 is asking.
+  //
+  // The squat's `body-load.png` had this right from the start and is the model
+  // copied here: SAME BAR, only the body's strain moved, so what remains is
+  // the drawing's own answer. A critic ran that control by hand and measured
+  // 635 vs 635 silhouette pixels at the chest — ZERO difference — against the
+  // squat's own 148-201 of ~1400. The confound in this tool is what let a
+  // ten-times-below-house-standard result look like a sheet that had been
+  // looked at.
+  //
+  // Rows 1-2 are kept because what a player actually sees IS worth a look; they
+  // are simply no longer the evidence for the heaviness clause. Rows 3-4 are.
+  // ---------------------------------------------------------------------------
   const rows = [
     { label: `LIGHT ${lightKg}KG`, strainLevel: 0, pitchLevel: 0, totalKg: lightKg },
     {
       label: `MAXIMAL ${maxKg}KG`,
+      strainLevel: STRAIN.LEVELS - 1,
+      pitchLevel: PITCH.LEVELS - 1,
+      totalKg: maxKg,
+    },
+    {
+      label: `CONTROL: ${maxKg}KG BAR, STRAIN 0 — MATCHED`,
+      strainLevel: 0,
+      pitchLevel: 0,
+      totalKg: maxKg,
+    },
+    {
+      label: `CONTROL: ${maxKg}KG BAR, STRAIN ${STRAIN.LEVELS - 1} — ONLY THING MOVED`,
       strainLevel: STRAIN.LEVELS - 1,
       pitchLevel: PITCH.LEVELS - 1,
       totalKg: maxKg,
@@ -842,7 +875,7 @@ function benchSheet(lightKg, maxKg) {
         1,
       );
     }
-    text(c, row.label, 12, y0 - 10, r === 0 ? LIGHT_C : MAX_C, 2);
+    text(c, row.label, 12, y0 - 10, r % 2 === 0 ? LIGHT_C : MAX_C, 2);
   });
 
   return c;
