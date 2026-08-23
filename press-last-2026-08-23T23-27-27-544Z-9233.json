@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "press-last-2026-08-23T23-27-27-544Z-9233",
+  "label": "press-last",
+  "command": [
+    "node",
+    "tools/verify-lift-press.mjs",
+    "--url",
+    "http://localhost:8093"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-23T23:27:27.544Z",
+  "startedAtMs": 1787527647544,
+  "cwd": "/home/user/wt-meetdrive",
+  "commit": "5f407442577514c38f1a8ba3691582bba26447e4",
+  "branch": "claude/meetdrive-three-lifts",
+  "dirty": 7,
+  "dirtyPaths": [
+    ".gauntlet/shots/meet/sound.json",
+    ".gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+    ".gauntlet/shots/shell/04b-second-meet-real-recap.png",
+    ".gauntlet/shots/shell/05b-check-in-after-the-second-meet.png",
+    ".gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+    ".gauntlet/shots/shell/17-empire-pill-on-the-played-briefing.png",
+    ".gauntlet/shots/shell/route.json"
+  ],
+  "runner": {
+    "pid": 9233,
+    "startTick": "2328990",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --label press-last -- node tools/verify-lift-press.mjs --url http://localhost:8093",
+    "bootId": "fabf06d4-ff34-4c2a-84e5-869c226847d2",
+    "bootEpochSeconds": 1787504358,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-23T23:27:27.567Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
