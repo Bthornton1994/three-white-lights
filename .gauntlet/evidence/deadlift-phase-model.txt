@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece deadlift-phase-model
-generated 2026-08-23T05:13:10.891Z
+generated 2026-08-23T05:25:09.767Z
 repo /home/user/three-white-lights/.claude/worktrees/agent-a17b5fc7cc599c6c9
-commit 90aaac6516a64334e93626d8f42daebbf58f5f7e
+commit 1412a8cab78e580296144d92f45bf65bbf7e31f2
 working tree clean (ignoring only this script's own output and .gauntlet/state.json)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -52,21 +52,174 @@ reads. tools/treeIdentity.test.ts pins that control flow; tools/treeIdentity.mjs
 states what the identity covers and what it explicitly cannot see.
 
 ======================================================================
-$ npx vitest run src/game/lift --reporter=verbose
+$ npx vitest run lift --reporter=verbose
 [tests] exit code: 0
 ======================================================================
 
  RUN  v4.1.10 /home/user/three-white-lights/.claude/worktrees/agent-a17b5fc7cc599c6c9
 
+ ✓ src/game/lift.test.ts > vocabulary > lists every member of each enum exactly once 2ms
+ ✓ src/game/lift.test.ts > vocabulary > has copy for every outcome, miss reason, grade and phase 2ms
+ ✓ src/game/lift.test.ts > purity > has no clock and no global randomness in its source 2ms
+ ✓ src/game/lift.test.ts > purity > does not mutate the state it is given 11ms
+ ✓ src/game/lift.test.ts > purity > replays a rep identically from the same seed and script 9ms
+ ✓ src/game/lift.test.ts > purity > actually uses the seed, so the determinism test above is not vacuous 3ms
+ ✓ src/game/lift.test.ts > purity > always terminates, over randomised input scripts 241ms
+ ✓ src/game/lift.test.ts > gradeTiming > is 1 at the ideal moment and 0 at the edge 0ms
+ ✓ src/game/lift.test.ts > gradeTiming > never rises as the input gets further from the ideal moment 6ms
+ ✓ src/game/lift.test.ts > gradeTiming > grades everything outside the window as missed 0ms
+ ✓ src/game/lift.test.ts > gradeTiming > reaches every grade, and each one only on its own side 0ms
+ ✓ src/game/lift.test.ts > ascentDemand > peaks where the sprite system puts the sticking point 1ms
+ ✓ src/game/lift.test.ts > ascentDemand > rises with load everywhere in the range 13ms
+ ✓ src/game/lift.test.ts > ascentDemand > makes being buried strictly harder 0ms
+ ✓ src/game/lift.test.ts > ascentDemand > exceeds what the lifter has at a limit and not at a warm-up 0ms
+ ✓ src/game/lift.test.ts > load-derived timings > descends slower, braces longer and holds longer under load 0ms
+ ✓ src/game/lift.test.ts > load-derived timings > never returns a zero-length phase, even at absurd loads 0ms
+ ✓ src/game/lift.test.ts > isGrind > is true past either threshold and false below both 0ms
+ ✓ src/game/lift.test.ts > outcome space > produces all three outcomes across the load and timing space 274ms
+ ✓ src/game/lift.test.ts > outcome space > reaches every miss reason 79ms
+ ✓ src/game/lift.test.ts > outcome space > is decided by the drive input at a limit attempt 3ms
+ ✓ src/game/lift.test.ts > outcome space > lets a light rep through however it is driven 56ms
+ ✓ src/game/lift.test.ts > outcome space > gets harder as the bar gets heavier, measured as makes per sweep 99ms
+ ✓ src/game/lift.test.ts > outcome space > rewards better drive timing with a faster ascent 3ms
+ ✓ src/game/lift.test.ts > outcome space > punishes a drive thrown before the bar is anywhere near the stick 1ms
+ ✓ src/game/lift.test.ts > outcome space > gives the drive boost regardless of whether the player keeps holding — a landed drive is a committed impulse 2ms
+ ✓ src/game/lift.test.ts > outcome space > a release that never re-presses reaches the SAME peak as never releasing at all — the boost no longer cares 2ms
+ ✓ src/game/lift.test.ts > outcome space > tolerates a real motor-timing gap — release after cue 0, then land the REAL cue 1 the release exists to reach 2ms
+ ✓ src/game/lift.test.ts > outcome space > holds across a real spread of release timing and seeds — not one cherry-picked config 44ms
+ ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > offers more than one drive cue at MAXIMAL, at or under the driveAttemptsFor(load) ceiling 3ms
+ ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > each cue is genuinely a NEW window, not the first one read twice 3ms
+ ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > a mistimed press between cues costs velocity, does not end the rep, and the next cue still arms 2ms
+ ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > a new hit REPLACES the boost rather than stacking it 3ms
+ ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > driveAttemptsFor is 1 at the true floor and LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL at the true ceiling 0ms
+ ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > the drive window is narrower at MAXIMAL than at LIGHT, read back from a played cue 3ms
+ ✓ src/game/lift.test.ts > the bench press command > fires a command on bench and never on squat 36ms
+ ✓ src/lift/liftInput.test.ts > the discovery sees a press surface, and sees each half go missing > CONTROL: reads the good shape as good 12ms
+ ✓ src/lift/liftInput.test.ts > the discovery sees a press surface, and sees each half go missing > CONTROL: the context-menu guard going missing, and a same-spelled local shadowing it 5ms
+ ✓ src/lift/liftInput.test.ts > the discovery sees a press surface, and sees each half go missing > CONTROL: the four ways the fix goes missing are each seen 9ms
+ ✓ src/lift/liftInput.test.ts > the discovery sees a press surface, and sees each half go missing > CONTROL: the shapes a legitimate restructure produces still resolve 4ms
+ ✓ src/lift/liftInput.test.ts > the discovery sees a press surface, and sees each half go missing > CONTROL: what is NOT a press surface produces nothing 1ms
+ ✓ src/lift/liftInput.test.ts > the discovery sees a press surface, and sees each half go missing > CONTROL: the walk covers the whole repository, not just src/ 6ms
+ ✓ src/lift/liftInput.test.ts > every lift press surface in the repository carries the press guard > the census: how many surfaces there are, and what they are called 754ms
+ ✓ src/game/lift.test.ts > the bench press command > puts the command inside its declared range, and does not put it in the same place twice 106ms
+ ✓ src/game/lift.test.ts > the bench press command > is deterministic: the same seed pauses for exactly the same length 75ms
+ ✓ src/game/lift.test.ts > the bench press command > buys bar speed with the reaction — sharp off the chest beats slow 3ms
+ ✓ src/game/lift.test.ts > the bench press command > consumes the press on a false start, so mashing the pause is not a strategy 5ms
+ ✓ src/game/lift.test.ts > the bench press command > does NOT end the rep on a false start — the bar still leaves the chest 7ms
+ ✓ src/game/lift.test.ts > the bench press command > lets go of the bar if the command is ignored, rather than hanging on the chest 3ms
+ ✓ src/game/lift.test.ts > the bench press command > shows the command in the prompt, and only from the tick it fires 9ms
+ ✓ src/lift/liftInput.test.ts > every lift press surface in the repository carries the press guard > every stage sits inside something a finger can press 399ms
+ ✓ src/lift/liftInput.test.ts > every lift press surface in the repository carries the press guard > the pressed element declares the property that does NOT inherit [press-guard-on-every-played-surface] 315ms
+ ✓ src/game/lift.test.ts > the bench press command > draws no countdown ring before the command — a telegraphed reaction is not one 6ms
+ ✓ src/game/lift.test.ts > the bench press command > puts the ring on the target the instant the command fires, then closes 5ms
+ ✓ src/game/lift.test.ts > the press decides the lift > flips outcomes between a perfect reaction and none, across the sweep 844ms
+ ✓ src/lift/liftInput.test.ts > every lift press surface in the repository carries the press guard > an ancestor of every stage declares the two that DO inherit 335ms
+ ✓ src/game/lift.test.ts > the press decides the lift > turns a make into a miss at a limit when the command is ignored 2ms
+ ✓ src/game/lift.test.ts > the press decides the lift > leaves a warm-up alone — a light bar is not a reaction test 26ms
+ ✓ src/game/lift.test.ts > the press decides the lift > charges squat nothing for a press it never had 3ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > never enters DESCENT or HOLE, at any load or seed 139ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > starts with the bar on the floor, not racked overhead 0ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > refuses to be stepped in a phase it cannot reach, rather than absorbing it 1ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > refuses to answer for an eccentric quantity it does not have 0ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > records no depth timing, because there is no depth to time 4ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > is given its speed off the floor by the load alone, not by an input 113ms
+ ✓ src/lift/liftInput.test.ts > every lift press surface in the repository carries the press guard > an ancestor of every stage spreads the context-menu guard [context-menu-guard-on-every-played-surface] 386ms
+ ✓ src/lift/liftInput.test.ts > every lift press surface in the repository carries the press guard > NON-VACUITY: the three checks above walked a real list, and the count is exact 318ms
+ ✓ src/lift/liftInput.test.ts > the guard module holds exactly the three properties, split by inheritance > each object holds the keys its placement requires, and no others 0ms
+ ✓ src/lift/liftInput.test.ts > the guard module holds exactly the three properties, split by inheritance > the two are disjoint, so no property is declared in both places 0ms
+ ✓ src/lift/liftInput.test.ts > the guard module holds exactly the three properties, split by inheritance > every one of them is off, not merely present 0ms
+ ✓ src/lift/liftInput.test.ts > the guard module holds exactly the three properties, split by inheritance > the module says what it deliberately leaves out, so the omission is a decision 0ms
+ ✓ src/lift/liftInput.test.ts > the context-menu guard is exactly a preventDefault handler > holds exactly one key, and it is the DOM prop name 0ms
+ ✓ src/lift/liftInput.test.ts > the context-menu guard is exactly a preventDefault handler > calling it calls preventDefault on what it is given, once 0ms
+ ✓ src/lift/liftInput.test.ts > the context-menu guard is exactly a preventDefault handler > the module says why this is a prop and not a style, so the JSX shape is a decision 0ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > draws no countdown to the down command — a telegraphed hold is a timed one 23ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > says something true on the screen through the whole hold, and flips at the call 5ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > has an unguessable hold that is still a pure function of the seed 1ms
+ ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > flips outcomes between holding the lockout and letting go, across the sweep 634ms
+ ✓ src/lift/liftFrame.test.ts > liveStrain > stays in range for every state a rep can be in 45ms
+ ✓ src/lift/liftFrame.test.ts > liveStrain > draws a losing bar as more strained than a winning one 2ms
+ ✓ src/lift/liftFrame.test.ts > liveStrain > reaches a real deficit during an undriven limit attempt 3ms
+ ✓ src/lift/liftFrame.test.ts > liveStrain > rises with load at the same point in the rep 4ms
+ ✓ src/lift/liftFrame.test.ts > directionFor > answers for every phase, and turns around at the reversal 1ms
+ ✓ src/lift/liftFrame.test.ts > totalKgFor > never draws less than an empty bar 0ms
+ ✓ src/lift/liftFrame.test.ts > totalKgFor > rounds to a weight a platform could plausibly show 0ms
+ ✓ src/lift/liftFrame.test.ts > totalKgFor > is monotone in load 0ms
+ ✓ src/lift/liftFrame.test.ts > liftFrameSpec > lands on the authored depth steps, not on a continuum 13ms
+ ✓ src/lift/liftFrame.test.ts > liftFrameSpec > keeps every drawn field finite and inside the ranges the sprite allows 40ms
+ ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > turns a made pull into a dropped one at a heavy single 4ms
+ ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > costs the good lift to the player who keeps tapping instead of clamping 153ms
+ ✓ src/lift/liftFrame.test.ts > liftFrameSpec > draws a maximal grind uglier than a light rep 4ms
+ ✓ src/lift/liftFrame.test.ts > the braced body answers to the load, not only the bar > leaves the lifter as the ONLY thing that differs between the two braces 2ms
+ ✓ src/lift/liftFrame.test.ts > the braced body answers to the load, not only the bar > draws a light brace unstrained — the untouched authored pose 1ms
+ ✓ src/lift/liftFrame.test.ts > the braced body answers to the load, not only the bar > changes a counted number of BODY pixels between a light brace and a maximal one 28ms
+ ✓ src/lift/liftFrame.test.ts > the braced body answers to the load, not only the bar > does the same at the load the app actually opens on 13ms
+ ✓ src/lift/liftFrame.test.ts > the braced body answers to the load, not only the bar > never relaxes when the bar starts moving 10ms
+ ✓ src/lift/liftFrame.test.ts > the braced body answers to the load, not only the bar > measures the body and only the body, at the brace 15ms
+ ✓ src/lift/liftFrame.test.ts > frameKey > separates any two different drawings 3ms
+ ✓ src/lift/liftFrame.test.ts > frameKey > collapses a rep to far fewer drawings than it has ticks 2ms
+ ✓ src/lift/liftFrame.test.ts > bench frame adapter > tags a bench rep as bench and keys the concentric on height 0ms
+ ✓ src/lift/liftFrame.test.ts > bench frame adapter > draws that spec as a press, not as a squat 8ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > maps height to the panel, top to bottom, monotonically 8ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > puts a bar with no drift on the plumb line 0ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > keeps every point of a real rep inside the panel 21ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > caps the trace and keeps the most recent points 1ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > fades from the tuned floor up to full 0ms
+ ✓ src/lift/liftFrame.test.ts > the bar-path plot > drifts a maximal rep further off the plumb line than a light one 2ms
+ ✓ src/lift/liftFrame.test.ts > stage layout > fits the sprite and the plot inside the stage without overlapping 0ms
+ ✓ src/lift/liftFrame.test.ts > stage layout > keeps the cue ring on screen at its widest 0ms
+ ✓ src/lift/liftFrame.test.ts > motion driven by the rep > shakes the platform only while the bar is losing, and never off screen 8ms
+ ✓ src/lift/liftFrame.test.ts > motion driven by the rep > reverses the shake direction within a cycle, so it is a shake not a lean 1ms
+ ✓ src/lift/liftFrame.test.ts > motion driven by the rep > flashes on the tick an input lands and fades over the tuned window 3ms
+ ✓ src/lift/liftFrame.test.ts > motion driven by the rep > pulses the cue ring across the full 0..1 range, on its tuned period 2ms
+ ✓ src/lift/liftFrame.test.ts > cueRing > is absent when no cue is up 0ms
+ ✓ src/lift/liftFrame.test.ts > cueRing > meets its target ring at exactly the ideal moment 0ms
+ ✓ src/lift/liftFrame.test.ts > cueRing > shrinks from the outer radius to the inner one across the window 1ms
+ ✓ src/lift/liftFrame.test.ts > cueRing > marks the perfect band, and only the perfect band 0ms
+ ✓ src/lift/liftFrame.test.ts > a deadlift is drawn with the squat figure, on purpose > borrows the kind named in the tuning file, not a literal buried here 0ms
+ ✓ src/lift/liftFrame.test.ts > a deadlift is drawn with the squat figure, on purpose > folds the figure over at the floor and stands it up as the bar rises 5ms
+ ✓ src/lift/liftFrame.test.ts > a deadlift is drawn with the squat figure, on purpose > gives a deadlift a cache key that names the drawing it borrowed 0ms
+ ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > lets a slip be caught, and charges it a grind rather than the rep 111ms
+ ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > leaves a warm-up alone — a light pull is not a hold test (GDD §12.3) 55ms
+ ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > still needs the ascent driven at a limit pull, so the hold is not the only beat 37ms
+ ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > hands no fatigue number back on a deadlift either 6ms
+ ✓ src/game/lift.test.ts > gradeReaction > is 1 at the stimulus and 0 at the end of the window 0ms
+ ✓ src/game/lift.test.ts > gradeReaction > never rises as the reaction gets slower 1ms
+ ✓ src/game/lift.test.ts > gradeReaction > IS ASYMMETRIC — which is the whole difference from gradeTiming 0ms
+ ✓ src/game/lift.test.ts > gradeReaction > cannot ever return "early", and that is checked rather than asserted 0ms
+ ✓ src/game/lift.test.ts > gradeReaction > refuses nonsense rather than trusting its caller 0ms
+ ✓ src/game/lift.test.ts > the winning band at a limit attempt > is wider than the input path is imprecise 145ms
+ ✓ src/lift/liftReplay.test.ts > captureScript > makes the lift at every load the screen offers 17ms
+ ✓ src/lift/liftReplay.test.ts > captureScript > presses, releases and presses again — in that order, and never lets go 2ms
+ ✓ src/lift/liftReplay.test.ts > captureScript > releases and drives on the ticks the mechanic itself calls ideal 3ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > reaches every named moment at every load the screen offers 10ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > puts every frame in the phase its moment claims 13ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > never lands two moments on the same tick 8ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > hands each frame exactly the history that had happened by then 22ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > photographs the maximal attempt while it is losing, and the light one never losing 3ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > photographs the maximal attempt at the height the sprite draws a stall at 4ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > draws the maximal attempt more strained than the light one at the same beat 17ms
+ ✓ src/lift/liftReplay.test.ts > captureFrames > reports a moment a rep never reached as missing rather than substituting one 3ms
+ ✓ src/lift/liftReplay.test.ts > captureFrameFor > returns the frame a request names 2ms
+ ✓ src/lift/liftReplay.test.ts > captureFrameFor > is deterministic 4ms
+ ✓ src/lift/liftReplay.test.ts > replayProbe > gives every frame in a sequence a distinct readout 8ms
+ ✓ src/lift/liftReplay.test.ts > replayProbe > carries the phase, the prompt and the load the shot was taken at 3ms
+ ✓ src/lift/liftReplay.test.ts > replayProbe > carries the renderer cache key, so a stale frame is detectable 4ms
+ ✓ src/lift/liftReplay.test.ts > replayProbe > never leaks a fatigue number (GDD §3.4, §12.3) 10ms
+ ✓ src/lift/liftReplay.test.ts > replayRequestFrom > parses a well-formed request 0ms
+ ✓ src/lift/liftReplay.test.ts > replayRequestFrom > refuses anything it does not recognise 0ms
+ ✓ src/lift/liftReplay.test.ts > replayRequestFrom > refuses a load the mechanic would silently clamp 0ms
+ ✓ src/lift/liftReplay.test.ts > replayRequestFrom > accepts every moment the capture list names 0ms
+ ✓ src/game/lift.test.ts > the winning band at a limit attempt > is one contiguous band, not scattered ticks 151ms
+ ✓ src/game/lift.test.ts > the winning band at a limit attempt > is reachable from every release the depth cue asks for 134ms
  ✓ src/game/liftTuning.test.ts > shared facts > runs on the same clock as the sprite animation 2ms
  ✓ src/game/liftTuning.test.ts > shared facts > puts the mechanical sticking point where the sprite draws one, for squat 1ms
  ✓ src/game/liftTuning.test.ts > shared facts > draws a played rep from the same strain model as the canned one 1ms
  ✓ src/game/liftTuning.test.ts > shared facts > never draws the brace heavier than the top of the descent it leads into 0ms
  ✓ src/game/liftTuning.test.ts > shared facts > shares the load curve rather than restating it 2ms
- ✓ src/game/liftTuning.test.ts > immutability > freezes the tuning block and its nested tables 3ms
- ✓ src/game/liftTuning.test.ts > depth thresholds > leaves room between illegal, ideal and buried, for every playable kind 0ms
+ ✓ src/game/liftTuning.test.ts > immutability > freezes the tuning block and its nested tables 5ms
+ ✓ src/game/liftTuning.test.ts > depth thresholds > leaves room between illegal, ideal and buried, for every playable kind 1ms
  ✓ src/game/liftTuning.test.ts > depth thresholds > never lets the late edge of the depth window be an instant bury 0ms
- ✓ src/game/liftTuning.test.ts > depth thresholds > leaves at least a couple of ticks between legal depth and the ideal one 0ms
+ ✓ src/game/liftTuning.test.ts > depth thresholds > leaves at least a couple of ticks between legal depth and the ideal one 1ms
  ✓ src/game/liftTuning.test.ts > every lift the sport has is a lift the mechanic can play > pins PLAYABLE_LIFT_KINDS set-equal to LIFT_ORDER, in both directions 0ms
  ✓ src/game/liftTuning.test.ts > every lift the sport has is a lift the mechanic can play > makes the eccentric kinds exactly the lifts that have a way down 1ms
  ✓ src/game/liftTuning.test.ts > the lockout hold > cannot drop a warm-up or a light bar, however long the player lets go (GDD §12.3) 0ms
@@ -91,13 +244,13 @@ $ npx vitest run src/game/lift --reporter=verbose
  ✓ src/game/liftTuning.test.ts > windows > the drive window tightens toward MAXIMAL, and DEPTH stays a single number, for every playable kind 0ms
  ✓ src/game/liftTuning.test.ts > windows > offers at least one drive cue everywhere, and more only toward MAXIMAL, for every playable kind 0ms
  ✓ src/game/liftTuning.test.ts > windows > a maximal attempt fits its full cue sequence inside the ascent timeout, with room to spare, for every playable kind 0ms
- ✓ src/game/liftTuning.test.ts > haptics > has at least one beat per pattern, with a known style 1ms
- ✓ src/game/liftTuning.test.ts > haptics > orders the beats of each pattern forward in time 0ms
+ ✓ src/game/liftTuning.test.ts > haptics > has at least one beat per pattern, with a known style 2ms
+ ✓ src/game/liftTuning.test.ts > haptics > orders the beats of each pattern forward in time 1ms
  ✓ src/game/liftTuning.test.ts > haptics > gives a perfect drive a bigger pattern than a scruffy one 0ms
  ✓ src/game/liftTuning.test.ts > haptics > pulses the stall on a period the ear and hand can separate 0ms
  ✓ src/game/liftTuning.test.ts > presentation feel > has positive durations and a legible cue ring 0ms
  ✓ src/game/liftTuning.test.ts > presentation feel > keeps the sprite on an integer nearest-neighbour scale (GDD §7.1) 0ms
- ✓ src/game/liftTuning.test.ts > copy > says something for every prompt, for every playable kind where one applies 0ms
+ ✓ src/game/liftTuning.test.ts > copy > says something for every prompt, for every playable kind where one applies 1ms
  ✓ src/game/liftTuning.test.ts > copy > never puts a number in the copy the player reads 0ms
  ✓ src/game/liftTuning.test.ts > copy > tells the player to tap the drive cue, not to hold 0ms
  ✓ src/game/liftTuning.test.ts > copy > does not tell the player the drive is a single tap 0ms
@@ -105,94 +258,21 @@ $ npx vitest run src/game/lift --reporter=verbose
  ✓ src/game/liftTuning.test.ts > copy > does not tell a bench player to descend to depth 0ms
  ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > keeps the mechanic itself free of bare numbers 1ms
  ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > keeps every lift component and adapter free of bare numbers 4ms
- ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > has no dead knob: every tuning value is read by something 17ms
+ ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > has no dead knob: every tuning value is read by something 16ms
  ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > would call a knob dead if its only mention were a comment 0ms
  ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > keeps the base window widths out of the renderer (GDD §3.4, §12.3) 2ms
- ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > actually detects a bare number, so the scan is not vacuous 0ms
- ✓ src/game/lift.test.ts > vocabulary > lists every member of each enum exactly once 2ms
- ✓ src/game/lift.test.ts > vocabulary > has copy for every outcome, miss reason, grade and phase 1ms
- ✓ src/game/lift.test.ts > purity > has no clock and no global randomness in its source 1ms
- ✓ src/game/lift.test.ts > purity > does not mutate the state it is given 5ms
- ✓ src/game/lift.test.ts > purity > replays a rep identically from the same seed and script 7ms
- ✓ src/game/lift.test.ts > purity > actually uses the seed, so the determinism test above is not vacuous 3ms
- ✓ src/game/lift.test.ts > purity > always terminates, over randomised input scripts 165ms
- ✓ src/game/lift.test.ts > gradeTiming > is 1 at the ideal moment and 0 at the edge 0ms
- ✓ src/game/lift.test.ts > gradeTiming > never rises as the input gets further from the ideal moment 1ms
- ✓ src/game/lift.test.ts > gradeTiming > grades everything outside the window as missed 0ms
- ✓ src/game/lift.test.ts > gradeTiming > reaches every grade, and each one only on its own side 0ms
- ✓ src/game/lift.test.ts > ascentDemand > peaks where the sprite system puts the sticking point 1ms
- ✓ src/game/lift.test.ts > ascentDemand > rises with load everywhere in the range 3ms
- ✓ src/game/lift.test.ts > ascentDemand > makes being buried strictly harder 0ms
- ✓ src/game/lift.test.ts > ascentDemand > exceeds what the lifter has at a limit and not at a warm-up 0ms
- ✓ src/game/lift.test.ts > load-derived timings > descends slower, braces longer and holds longer under load 0ms
- ✓ src/game/lift.test.ts > load-derived timings > never returns a zero-length phase, even at absurd loads 0ms
- ✓ src/game/lift.test.ts > isGrind > is true past either threshold and false below both 0ms
- ✓ src/game/lift.test.ts > outcome space > produces all three outcomes across the load and timing space 205ms
- ✓ src/game/lift.test.ts > outcome space > reaches every miss reason 74ms
- ✓ src/game/lift.test.ts > outcome space > is decided by the drive input at a limit attempt 3ms
- ✓ src/game/lift.test.ts > outcome space > lets a light rep through however it is driven 33ms
- ✓ src/game/lift.test.ts > outcome space > gets harder as the bar gets heavier, measured as makes per sweep 103ms
- ✓ src/game/lift.test.ts > outcome space > rewards better drive timing with a faster ascent 3ms
- ✓ src/game/lift.test.ts > outcome space > punishes a drive thrown before the bar is anywhere near the stick 1ms
- ✓ src/game/lift.test.ts > outcome space > gives the drive boost regardless of whether the player keeps holding — a landed drive is a committed impulse 2ms
- ✓ src/game/lift.test.ts > outcome space > a release that never re-presses reaches the SAME peak as never releasing at all — the boost no longer cares 2ms
- ✓ src/game/lift.test.ts > outcome space > tolerates a real motor-timing gap — release after cue 0, then land the REAL cue 1 the release exists to reach 2ms
- ✓ src/game/lift.test.ts > outcome space > holds across a real spread of release timing and seeds — not one cherry-picked config 49ms
- ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > offers more than one drive cue at MAXIMAL, at or under the driveAttemptsFor(load) ceiling 3ms
- ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > each cue is genuinely a NEW window, not the first one read twice 3ms
- ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > a mistimed press between cues costs velocity, does not end the rep, and the next cue still arms 2ms
- ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > a new hit REPLACES the boost rather than stacking it 2ms
- ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > driveAttemptsFor is 1 at the true floor and LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL at the true ceiling 0ms
- ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > the drive window is narrower at MAXIMAL than at LIGHT, read back from a played cue 3ms
- ✓ src/game/lift.test.ts > the bench press command > fires a command on bench and never on squat 26ms
- ✓ src/game/lift.test.ts > the bench press command > puts the command inside its declared range, and does not put it in the same place twice 98ms
- ✓ src/game/lift.test.ts > the bench press command > is deterministic: the same seed pauses for exactly the same length 52ms
- ✓ src/game/lift.test.ts > the bench press command > buys bar speed with the reaction — sharp off the chest beats slow 5ms
- ✓ src/game/lift.test.ts > the bench press command > consumes the press on a false start, so mashing the pause is not a strategy 6ms
- ✓ src/game/lift.test.ts > the bench press command > does NOT end the rep on a false start — the bar still leaves the chest 2ms
- ✓ src/game/lift.test.ts > the bench press command > lets go of the bar if the command is ignored, rather than hanging on the chest 2ms
- ✓ src/game/lift.test.ts > the bench press command > shows the command in the prompt, and only from the tick it fires 4ms
- ✓ src/game/lift.test.ts > the bench press command > draws no countdown ring before the command — a telegraphed reaction is not one 4ms
- ✓ src/game/lift.test.ts > the bench press command > puts the ring on the target the instant the command fires, then closes 4ms
- ✓ src/game/lift.test.ts > the press decides the lift > flips outcomes between a perfect reaction and none, across the sweep 812ms
- ✓ src/game/lift.test.ts > the press decides the lift > turns a make into a miss at a limit when the command is ignored 3ms
- ✓ src/game/lift.test.ts > the press decides the lift > leaves a warm-up alone — a light bar is not a reaction test 26ms
- ✓ src/game/lift.test.ts > the press decides the lift > charges squat nothing for a press it never had 3ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > never enters DESCENT or HOLE, at any load or seed 133ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > starts with the bar on the floor, not racked overhead 0ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > refuses to be stepped in a phase it cannot reach, rather than absorbing it 1ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > refuses to answer for an eccentric quantity it does not have 0ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > records no depth timing, because there is no depth to time 4ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > is given its speed off the floor by the load alone, not by an input 134ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > draws no countdown to the down command — a telegraphed hold is a timed one 25ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > says something true on the screen through the whole hold, and flips at the call 5ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > has an unguessable hold that is still a pure function of the seed 1ms
- ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > flips outcomes between holding the lockout and letting go, across the sweep 676ms
- ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > turns a made pull into a dropped one at a heavy single 4ms
- ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > costs the good lift to the player who keeps tapping instead of clamping 155ms
- ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > lets a slip be caught, and charges it a grind rather than the rep 102ms
- ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > leaves a warm-up alone — a light pull is not a hold test (GDD §12.3) 49ms
- ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > still needs the ascent driven at a limit pull, so the hold is not the only beat 28ms
- ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > hands no fatigue number back on a deadlift either 4ms
- ✓ src/game/lift.test.ts > gradeReaction > is 1 at the stimulus and 0 at the end of the window 0ms
- ✓ src/game/lift.test.ts > gradeReaction > never rises as the reaction gets slower 1ms
- ✓ src/game/lift.test.ts > gradeReaction > IS ASYMMETRIC — which is the whole difference from gradeTiming 0ms
- ✓ src/game/lift.test.ts > gradeReaction > cannot ever return "early", and that is checked rather than asserted 0ms
- ✓ src/game/lift.test.ts > gradeReaction > refuses nonsense rather than trusting its caller 0ms
- ✓ src/game/lift.test.ts > the winning band at a limit attempt > is wider than the input path is imprecise 143ms
- ✓ src/game/lift.test.ts > the winning band at a limit attempt > is one contiguous band, not scattered ticks 152ms
- ✓ src/game/lift.test.ts > the winning band at a limit attempt > is reachable from every release the depth cue asks for 151ms
- ✓ src/game/lift.test.ts > the winning band at a limit attempt > is won often enough to be a skill test rather than a lottery 152ms
- ✓ src/game/lift.test.ts > the winning band at a limit attempt > keeps the drive boost alive long enough to reach the sticking point 2ms
+ ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > actually detects a bare number, so the scan is not vacuous 1ms
+ ✓ src/game/lift.test.ts > the winning band at a limit attempt > is won often enough to be a skill test rather than a lottery 125ms
+ ✓ src/game/lift.test.ts > the winning band at a limit attempt > keeps the drive boost alive long enough to reach the sticking point 1ms
  ✓ src/game/lift.test.ts > the load the screen opens on > is one of the loads the screen offers 0ms
  ✓ src/game/lift.test.ts > the load the screen opens on > has a sticking point at all 0ms
  ✓ src/game/lift.test.ts > the load the screen opens on > shows the grind even to a player who never presses the drive 1ms
- ✓ src/game/lift.test.ts > the load the screen opens on > is made by a player who obeys both cues, most of the time 135ms
- ✓ src/game/lift.test.ts > the load the screen opens on > leaves the limit attempt on the screen, and harder than the default 245ms
+ ✓ src/game/lift.test.ts > the load the screen opens on > is made by a player who obeys both cues, most of the time 131ms
+ ✓ src/game/lift.test.ts > the load the screen opens on > leaves the limit attempt on the screen, and harder than the default 279ms
  ✓ src/game/lift.test.ts > depth > calls a high squat, however well the bar was driven 1ms
  ✓ src/game/lift.test.ts > depth > passes a squat that reaches legal depth 1ms
  ✓ src/game/lift.test.ts > depth > buries a player who never lets go 0ms
- ✓ src/game/lift.test.ts > depth > never opens the depth cue above legal depth, at any load 4ms
+ ✓ src/game/lift.test.ts > depth > never opens the depth cue above legal depth, at any load 5ms
  ✓ src/game/lift.test.ts > depth > reports a depth window narrower than asked for only when it has to 0ms
  ✓ src/game/lift.test.ts > depth > makes a deeper reversal a harder ascent 2ms
  ✓ src/game/lift.test.ts > depth > does not make a high squat cheaper than a legal one 1ms
@@ -200,15 +280,15 @@ $ npx vitest run src/game/lift --reporter=verbose
  ✓ src/game/lift.test.ts > the sticking point > drifts the bar forward most where it stalls, and more under load 1ms
  ✓ src/game/lift.test.ts > the sticking point > shakes and tilts the bar only when the lifter is losing 1ms
  ✓ src/game/lift.test.ts > the sticking point > bows the bar harder under load 1ms
- ✓ src/game/lift.test.ts > fatigue integration > tightens both windows when fatigued and widens them when primed 1ms
+ ✓ src/game/lift.test.ts > fatigue integration > tightens both windows when fatigued and widens them when primed 2ms
  ✓ src/game/lift.test.ts > fatigue integration > tightens the window further deeper into a session 0ms
  ✓ src/game/lift.test.ts > fatigue integration > maps every bar-speed cue band to a capacity, worst band slowest 0ms
  ✓ src/game/lift.test.ts > fatigue integration > gives a primed lifter more output than a fatigued one 0ms
- ✓ src/game/lift.test.ts > fatigue integration > leaves a fatigued lifter a strictly narrower band of makes 101ms
+ ✓ src/game/lift.test.ts > fatigue integration > leaves a fatigued lifter a strictly narrower band of makes 94ms
  ✓ src/game/lift.test.ts > fatigue integration > never hands a fatigue number back to the caller 2ms
  ✓ src/game/lift.test.ts > fatigue integration > exports nothing whose name suggests a fatigue readout 1ms
  ✓ src/game/lift.test.ts > fatigue integration > does not resolve the rep against a random roll 1ms
- ✓ src/game/lift.test.ts > read models > emits every event kind it declares 10ms
+ ✓ src/game/lift.test.ts > read models > emits every event kind it declares 11ms
  ✓ src/game/lift.test.ts > read models > has a haptic pattern for every event that should be felt 1ms
  ✓ src/game/lift.test.ts > read models > feels a perfect drive differently from a scruffy one 0ms
  ✓ src/game/lift.test.ts > read models > reaches every phase across the reps a player can produce 1ms
@@ -223,11 +303,122 @@ $ npx vitest run src/game/lift --reporter=verbose
  ✓ src/game/lift.test.ts > createLift and stepLift > carries the resolution through to the final state 2ms
  ✓ src/game/lift.test.ts > createLift and stepLift > records one timing per cue the player answered 2ms
  ✓ src/game/lift.test.ts > createLift and stepLift > keeps every reported number finite and serialisable 16ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > renders at the committed internal resolution 4ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > never references an unallocated palette index 220ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > keeps the character out of the STAGE bank entirely 3ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > draws something substantial but does not fill the cell 3ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > leaves a transparent margin, so nothing is clipped by the cell 42ms
+ ✓ src/art/lifterSprite.test.ts > rendered frame integrity > is deterministic 4ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > compares the levels the animation actually produces, not the endpoints 0ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > changes a large, counted number of BODY pixels between a light rep and a maximal one 7ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > still clears the floor with the entire head masked out — it is not a face swap 7ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > holds that floor at every authored depth step, not just at the sticking point 108ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > gives every authored strain rung a body of its own 10ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > lets forward bar drift reach the pixels of a rep that is ALREADY at maximum strain 4ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > does the same on the maximal rep as it is actually built 3ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > measures the body and only the body 3ms
+ ✓ src/art/lifterSprite.test.ts > the LIFTER carries the load, not only the bar and the clock > deforms in the direction the model claims: hips up, knees in, elbows in 3ms
+ ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > changes pixels when the bar gets heavier at the same pose 3ms
+ ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > changes pixels when the sleeves bend 3ms
+ ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > changes pixels when the bar tilts 3ms
+ ✓ src/art/lifterSprite.test.ts > the drawing responds to load, not only the clock > does not render a mirror image of itself 3ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > holds more highlight pixels than the whole barbell does, at every load 62ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > reaches the top of the skin ramp over a real area, not a one-pixel sliver 6ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > carries that range BELOW the belt as well as above it 309ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > outlines the whole silhouette: no fill pixel touches open space 108ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > separates material from keyline by taking off the outline and nothing else 663ms
+ ✓ src/art/lifterSprite.test.ts > the lifter is the brightest thing in his own frame > carries no more black ink than the reference figure does, and no factor is involved 92ms
+ ✓ src/art/lifterSprite.test.ts > a biceps belly is not a lever: it cannot reach the silhouette > holds the grip wider than the elbow in all eleven drawings 1ms
+ ✓ src/art/lifterSprite.test.ts > a biceps belly is not a lever: it cannot reach the silhouette > draws the same pixels the silhouette probe predicts, capsule for capsule 1495ms
+ ✓ src/art/lifterSprite.test.ts > a biceps belly is not a lever: it cannot reach the silhouette > leaves the arm outline identical from the cone to a 3.8 biceps, row for row 2084ms
+ ✓ src/art/lifterSprite.test.ts > a biceps belly is not a lever: it cannot reach the silhouette > moves the outline by one px in 16 rows of 14,260 at a cartoon 4.0 biceps 761ms
+ ✓ src/art/lifterSprite.test.ts > a biceps belly is not a lever: it cannot reach the silhouette > never lets the upper arm out past the fist, even at the cartoon radius 4148ms
+ ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > SEES a real limb window shuffled, where every aggregate is blind to it 2ms
+ ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > puts a real number of pixels in every window, at every pose 171ms
+ ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > keeps no limb on the floor of its own ramp, at the rate the reference holds 78ms
+ ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > reaches the top of its ramp on every limb, as both of the wrestler’s arms do 21ms
+ ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > draws its ramp in bands rather than in speckle, at the reference’s own rate 2ms
+ ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > KNOWN GAP: an arm spends more of itself on the ramp floor than the reference ever does 442ms
+ ✓ src/art/lifterSprite.test.ts > every limb is measured as a limb, not inside an aggregate > holds its own line on black ink per limb — an OURS-ONLY ratchet, not a comparison 167ms
+ ✓ src/art/lifterSprite.test.ts > barbell values > keeps the collar a dim block with one specular pixel, not a bright block 2ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > opens the committed file and finds a native SNES frame 0ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > finds every material colour it claims to mask by, at an exact count 4ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > masks a figure, and the figure is where the box says it is 6ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > THE REFERENCE IS NOT KEYLINED AND WE ARE — measured, not assumed 95ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > shows WHY the colour-keyed mask could not have answered that question 3ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > tells sprite-ref-1 from the negative control on era craft alone 134ms
+stdout | src/art/lifterSprite.test.ts > the reference is measured, not remembered > states the reference figures it is comparing against, in one place
+sprite-ref-1 256x224, 94 colours, 100.00% on the SNES 5-bit lattice
+wrestler box 66,113 46x45 -> 967 px
+  mean luma            130.16
+  near-black           3.83%
+  interior keyline     2.79%
+  upper 430 px mean 137.99 near-black 1.40%
+  lower 537 px mean 123.89 near-black 5.77%
+  upper/lower mean     1.1138
+  keyline verdict      20.00% of 45 lit crossings -> keylined=false
+head box 84,115 -> 109 px, mean 121.87, interior keyline 3.67%
+REFERENCE-DERIVED BOUNDS — no multiplier, no percentile, no chosen box.
+  Whole figure, straight comparison against the numbers above:
+    interior keyline           < 2.79%
+    raw near-black             < 3.83%
+    upper/lower mean ratio     > 1 (his is 1.1138)
+  Per limb, against the worst patch of HIS SKIN of the same pixel count:
+    n   patches  minMeanPos  maxFloor  minMedian  meanBreak  meanIslet  medAtFloor
+    12     824   0.083      0.583       0       0.640      0.398      0.013
+    20     824   0.130      0.550       0       0.635      0.329      0.001
+    28     824   0.150      0.429       1       0.631      0.325      0.000
+    36     824   0.194      0.389       1       0.628      0.306      0.000
+    44     824   0.223      0.386       1       0.628      0.302      0.000
+    52     824   0.238      0.365       1       0.627      0.296      0.000
+    60     824   0.250      0.350       1       0.629      0.291      0.000
+    70     824   0.249      0.329       1       0.631      0.291      0.000
+  OURS, over the whole sweep, per window:
+    head        n 46-54  meanPos 0.473-0.660  floor 0.041-0.220  break 0.324-0.562  islet 0.000-0.122  median 1-2  floor vs ref -0.120 under
+    neck        n 12-42  meanPos 0.354-0.667  floor 0.000-0.250  break 0.227-0.632  islet 0.000-0.400  median 1-2  floor vs ref -0.167 under
+    left arm    n 24-64  meanPos 0.321-0.500  floor 0.095-0.407  break 0.327-0.553  islet 0.000-0.188  median 1-2  floor vs ref +0.017 OVER
+    right arm   n 35-70  meanPos 0.279-0.415  floor 0.200-0.405  break 0.288-0.451  islet 0.000-0.102  median 1-1  floor vs ref +0.040 OVER
+    left hand   n 29-34  meanPos 0.312-0.376  floor 0.258-0.379  break 0.327-0.574  islet 0.000-0.219  median 1-1  floor vs ref -0.059 under
+    right hand  n 30-34  meanPos 0.275-0.365  floor 0.212-0.382  break 0.354-0.480  islet 0.000-0.156  median 1-1  floor vs ref -0.029 under
+OURS-ONLY RATCHETS, not reference comparisons — we keep a keyline and it does not:
+  upper near-black           < 24.00%
+  lower near-black           < 32.00%
+  upper/lower mean ratio     < 1.45
 
- Test Files  2 passed (2)
-      Tests  165 passed (165)
-   Start at  05:13:11
-   Duration  4.80s (transform 727ms, setup 0ms, import 838ms, tests 4.24s, environment 0ms)
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > agrees with every reference figure any comment in the tree states 35ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > has no retired reference figure still in the tree 18ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > states the reference figures it is comparing against, in one place 8ms
+ ✓ src/art/lifterSprite.test.ts > the reference is measured, not remembered > reads the reference skin ramp in order, so every ramp-position bound points the right way 2ms
+ ✓ src/art/lifterSprite.test.ts > bar geometry > bends nothing at the centre and exactly the bend amount at the tip 0ms
+ ✓ src/art/lifterSprite.test.ts > bar geometry > keeps the shaft between the sleeves nearly flat 0ms
+ ✓ src/art/lifterSprite.test.ts > bar geometry > tilts linearly and antisymmetrically 0ms
+ ✓ src/art/lifterSprite.test.ts > bar geometry > spans a real competition bar 0ms
+ ✓ src/art/lifterSprite.test.ts > bar geometry > keeps the bar glued to the shoulders at every depth 8ms
+ ✓ src/art/lifterSprite.test.ts > bar geometry > drops the bar the distance a real squat drops it 3ms
+ ✓ src/art/lifterSprite.test.ts > depth is honest > puts the hip below the knee at the bottom, and above it standing 0ms
+ ✓ src/art/lifterSprite.test.ts > depth is honest > never moves the bar by one pixel at any strain or pitch level 255ms
+ ✓ src/art/lifterSprite.test.ts > depth is honest > never lets strain raise a hip that was below the knee back above it 2ms
+ ✓ src/art/lifterSprite.test.ts > depth is honest > never lets the knees cave inside the hips, at any strain 2ms
+ ✓ src/art/lifterSprite.test.ts > depth is honest > descends monotonically along both pose ladders 1ms
+ ✓ src/art/lifterSprite.test.ts > depth is honest > draws the way up differently from the way down at the same depth 3ms
+ ✓ src/art/lifterSprite.test.ts > scaling and colour conversion > upscales by exact pixel replication 1802ms
+ ✓ src/art/lifterSprite.test.ts > scaling and colour conversion > introduces no colour that is not in the palette 68ms
+ ✓ src/art/lifterSprite.test.ts > scaling and colour conversion > produces no partial alpha anywhere — there is no anti-aliasing 116ms
+ ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > finds a sleeve, a thigh and a shin to compare at every pose 601ms
+ ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > carries its authored band and hem, not just a shaded tube 16ms
+ ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > never out-values the bare leg it is worn on, by area, anywhere in the pose space 568ms
+ ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > keeps the bent leg lit by area, not only at lockout 552ms
+ ✓ src/art/lifterSprite.test.ts > a knee sleeve reads as a dark object on a lit leg > does not get darker when the leg bends 26ms
+ ✓ src/art/lifterSprite.test.ts > femur foreshortening > is zero standing and high everywhere below a quarter depth 1ms
+ ✓ src/art/lifterSprite.test.ts > femur foreshortening > clamps rather than inverting when the strain deform stretches the thigh 0ms
+ ✓ src/art/lifterSprite.test.ts > femur foreshortening > measures its reference length off the drawing rather than a typed number 0ms
+ ✓ src/art/lifterSprite.test.ts > inspection layers > fills the stage completely so a sprite always has a floor 1ms
+ ✓ src/art/lifterSprite.test.ts > inspection layers > grounds the lifter with a shadow that narrows as he descends 1ms
+
+ Test Files  6 passed (6)
+      Tests  318 passed (318)
+   Start at  05:25:10
+   Duration  21.16s (transform 1.82s, setup 0ms, import 7.32s, tests 22.80s, environment 1ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -240,13 +431,13 @@ $ npx vitest run
 
  RUN  v4.1.10 /home/user/three-white-lights/.claude/worktrees/agent-a17b5fc7cc599c6c9
 
- ❯ src/game/guaranteeTags.test.ts (15 tests | 1 failed) 1108ms
-     × states what fraction of the tree it actually covers, and the number is real 114ms
+ ❯ src/game/guaranteeTags.test.ts (15 tests | 1 failed) 1002ms
+     × states what fraction of the tree it actually covers, and the number is real 109ms
 
  Test Files  1 failed | 94 passed (95)
-      Tests  1 failed | 3664 passed (3665)
-   Start at  05:13:17
-   Duration  233.32s (transform 5.93s, setup 0ms, import 24.98s, tests 588.02s, environment 8ms)
+      Tests  1 failed | 3667 passed (3668)
+   Start at  05:25:32
+   Duration  230.82s (transform 5.88s, setup 0ms, import 25.10s, tests 586.69s, environment 8ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
