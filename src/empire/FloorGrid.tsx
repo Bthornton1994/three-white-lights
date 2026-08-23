@@ -279,6 +279,8 @@ interface AmbientMemberBodyProps {
  * The bounded version of that claim, in the shape CLAUDE.md's own "Form That
  * Survived" section asks for.
  *
+ * `@guarantee ambient-member-props-hold-no-channel`
+ *
  * WHAT THE MECHANISM GUARANTEES, in its own terms. `empireForbiddenOutput.
  * test.ts` reads this component's prop surface out of the TYPE CHECKER — the
  * interface's resolved type, via `getPropertiesOfType`, and not the member

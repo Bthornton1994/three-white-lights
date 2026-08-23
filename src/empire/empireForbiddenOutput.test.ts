@@ -17594,7 +17594,7 @@ const AMBIENT_PROP_CONTROL_CENSUS = Object.freeze({
 
 describe("AmbientMemberBody's prop surface has no dispatch/game-state channel", () => {
   it(
-    "pins AmbientMemberBodyProps's closed member set, and reddens on a planted dispatch/game-state member",
+    "[ambient-member-props-hold-no-channel] pins AmbientMemberBodyProps's closed member set, and reddens on a planted dispatch/game-state member",
     () => {
       // THREE MUTANTS, EACH PLANTED AND RUN, because the version of this test
       // that shipped last round was reddened by one of them and walked past the
