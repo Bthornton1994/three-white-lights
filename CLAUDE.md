@@ -169,11 +169,24 @@ harmless. The cost of the narrow one is a defect that no merge, no typecheck and
 no textual review would catch. Pay the first.
 
 One tree-wide registry scans `CLAUDE.md` and `docs/GDD.md` themselves and will
-see anything either session writes there: `REVIEWABLE_CITATIONS` in
-`src/licensing/realIp.ts` pins **exact occurrence counts** of every real name
-appearing in prose. Editing prose in those two documents is therefore a code
-change with a test behind it — `src/tuning/audit.test.ts` and
-`src/licensing/realIp.test.ts` are the pair to run after touching either.
+see anything either session writes there *if that name is already on its table*:
+`REVIEWABLE_CITATIONS` in `src/licensing/realIp.ts` pins **exact occurrence
+counts** of watchlisted real names in prose. It is not a detector of a new
+unlisted one. Session B measured this on the Playtest 4b write-up: three real
+product and company names added to GDD prose left `realIp.test.ts` green, then
+the probe was reverted byte-identical. The module's own header already says
+category (B) is "a tripwire on a reviewed inventory", not a scan for authors
+who cooperate. Treating the census as the thing that will catch a new
+unlicensed mark in these docs is the pattern §12.3 names as legal exposure
+that a patch cannot walk back after a store build. Pinning a newly arrived
+name is a row in `src/licensing/` (Session A's file); slipping one through
+because nothing listed it is not a pass.
+
+Editing prose in those two documents is therefore a code change with a test
+behind it for names the table already carries — `src/tuning/audit.test.ts` and
+`src/licensing/realIp.test.ts` are the pair to run after touching either. A
+name that is not on the table is a human search, the same one `realIp.ts`
+already says it cannot do.
 
 **THIS PARAGRAPH SAID "TWO REGISTRIES" AND NAMED `tools/evidence.mjs` AS THE
 SECOND, WHICH WAS BACKWARDS.** That file's `NOT_CODE` denylist contains
