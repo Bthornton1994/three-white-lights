@@ -2181,12 +2181,14 @@ this: the gate's own question — "does placing things feel good?" — was
 answered on a real phone, against the shipped build, and the answer was
 not "no," it was "close, then closed." **Phase 2 may proceed.**
 
-**PHASE 2 IS BUILT — AMBIENT MEMBERS, FROM REAL COUNT/TYPE DATA, WITH NO FEEL
-VERDICT YET.** This section's own Phase 2 gate is "does the gym read as
-populated and alive?", and that is a question for a human on a real device,
-the same standard Phase 1 was held to. Nothing below claims that bar is met —
-it records what was built and tested so the next human pass has something to
-judge.
+**PHASE 2 IS BUILT AND ITS GATE IS MET — AMBIENT MEMBERS, FROM REAL COUNT/TYPE
+DATA, JUDGED BY A HUMAN ON A REAL PHONE.** This section's own Phase 2 gate is
+"does the gym read as populated and alive?", and that is a question for a human
+on a real device, the same standard Phase 1 was held to. It was asked twice and
+answered on the second pass — PLAYTEST 4 found the first build unreadable as
+people and PLAYTEST 4b, after the fix, got a felt yes. Both are recorded at the
+end of this section, in the order they happened, because the first one is what
+makes the second one mean anything.
 
 Three new entries in `empireTuning.ts`, all provisional in the exact sense
 `FLOOR_GRID_SIZE`'s own comment already claims for itself — reasoned from
@@ -2290,18 +2292,73 @@ half-cycle duration, stagger lane count, stagger step) is a new named
 played, the same status every other rendering/timing knob in this section
 already carries.
 
-**What this closes, and what it does not claim.** The diagnosed defect —
+**What this round closed, written before the verdict existed.** The diagnosed
+defect —
 the colour-family collision on the single-type-on-empty-inventory state, the
 plain-circle shape, and the zero motion, all three named by the player — is
 fixed and verified: `tsc --noEmit` clean, the whole `src/empire` suite green,
 and `tools/verify-floor-reachability.mjs` still passes every one of its
 claims on a cold garage, including the three Phase 2 ambient-member claims
 (real non-zero bounding boxes, no fourth body drawn, the caption reporting
-the real count). **What is NOT claimed here is that Phase 2's own gate —
-"does the gym read as populated and alive?" — is now met.** That is a felt
-verdict for the next human phone pass, on the same opening-day state, to
-answer; this round closes the one concrete, diagnosed defect that made "yes"
-impossible to answer on the last one.
+the real count). This round closes the one concrete, diagnosed defect that made
+"yes" impossible to answer on the last pass. Whether it earns a "yes" was left
+to the next human phone pass — which is PLAYTEST 4b, below.
+
+**PLAYTEST 4b — PHASE 2's GATE IS MET. RULED, ON A FELT YES FROM A HUMAN ON A
+REAL PHONE.** Same player, same opening-day garage, after the contrast /
+silhouette / bob fix above. Reached the way this section already requires:
+cold launch, no query string, press GYM EMPIRE, scroll to the floor — a real
+phone in a mobile browser over a public tunnel, not a dev harness. State on
+screen matched opening day exactly: week 0, garage, 0 Gym Bucks, clock at
+zero, the three fixed furniture pieces labelled, and the caption reading
+3 member(s) around the gym.
+
+The gate was asked in the form that actually tests it — **with the caption
+covered**, so the tokens had to carry the read on their own rather than being
+explained by a line of text under them. The verbatim answer: *"Yes they read
+as people."*
+
+That is the same standard Phase 1 was held to: a felt yes on a real device
+against the shipped placeholder, not a suite pass. So the PLAYTEST 4 defect —
+teal-on-teal, plain circle, zero motion — is closed **in the thing the player
+actually saw**, which is a stronger claim than the unit tests alone could
+support and the only one that settles this gate. **Phase 3 may proceed.**
+
+Its gate, stated now so the next round is built against it rather than toward
+it: real pathing, queuing, equipment use, and visible reaction — and the
+question is *does watching the gym run feel like the reference, or like
+members-shaped set dressing?* Phase 4 stays gated on 1-3.
+
+**THREE THINGS THIS VERDICT IS NOT, and they bound it tightly.** It is not a
+Phase 3 verdict: no pathing, queuing, use or reaction was on that screen to
+judge. It is not a check of any rung above garage — storage-unit, strip-mall
+and warehouse counts (8 / 18 / 40) have still never been seen by a human. And
+it is not a claim that three same-colour tokens are the finished population
+mix; that sameness is the empty-inventory powerlifter bias diagnosed under
+PLAYTEST 4, correctly reproduced, not a new defect. The relaying session also
+ran neither the suite nor `verify-floor-reachability.mjs` against this pass —
+the verification those cover was done separately and is recorded above.
+
+**A SENTENCE THE PLAYER SAID BEFORE THE VERDICT, WHICH CONSTRAINS WHAT COMES
+NEXT MORE THAN THE VERDICT DOES.** They first asked, in their own words,
+whether this was wireframing rather than the graphics. They were told phases
+1-2 are placeholder shapes and the 16-bit pass is Phase 4, accepted that, and
+only then answered the people question. So the yes is a yes *about
+placeholders*, and reading it as permission to start drawing would ignore the
+question they asked first. Three consequences, recorded as rules rather than
+as advice:
+
+- **Phase 4 art does not start here.** This pass is not a request for sprites.
+- **Placeholder shapes stay through Phase 3** — head-and-body tokens, named-
+  colour furniture chips, grid lines. The reason is the one this section's
+  build order already gives: committing final art to a layout that may still
+  change spends budget on a moving target, and Phase 3 moves the layout by
+  construction, since bodies that path and queue do not stay where they were
+  placed.
+- **The bob, footprint and palette knobs are not retuned** until a later pass
+  names a feel problem in them. The player did not say too subtle or too
+  jittery. They said people. Tuning a knob that just passed its gate, on no
+  reported complaint, is how a passing value gets lost.
 ---
 
 ## 6. Meet Day
