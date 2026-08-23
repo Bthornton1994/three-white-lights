@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "lift-press-r1-2026-08-23T21-34-13-993Z-14986",
   "label": "lift-press-r1",
   "command": [
@@ -29,14 +29,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 4,
-    "okCount": 3,
+    "count": 5,
+    "okCount": 4,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T21:37:14.131Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-23T21:37:16.721Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-23T21:36:16.720Z"
-  }
+    "lastOkIso": "2026-08-23T21:37:16.720Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-23T21:37:15.008Z",
+  "elapsedSeconds": 181
 }
