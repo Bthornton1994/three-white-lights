@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "shell-route-r2-2026-08-23T21-21-38-501Z-8909",
   "label": "shell-route-r2",
   "command": [
@@ -31,14 +31,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 12,
-    "okCount": 11,
+    "count": 13,
+    "okCount": 12,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T21:32:38.943Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-23T21:33:14.860Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-23T21:31:41.284Z"
-  }
+    "lastOkIso": "2026-08-23T21:32:41.528Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-23T21:33:14.859Z",
+  "elapsedSeconds": 696.4
 }
