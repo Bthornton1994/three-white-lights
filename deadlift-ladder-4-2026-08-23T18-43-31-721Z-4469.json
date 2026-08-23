@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "deadlift-ladder-4-2026-08-23T18-43-31-721Z-4469",
+  "label": "deadlift-ladder-4",
+  "command": [
+    "node",
+    "tools/verify-lift-press.mjs",
+    "--url",
+    "http://localhost:8091",
+    "--arms",
+    "ladder"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-23T18:43:31.721Z",
+  "startedAtMs": 1787510611721,
+  "cwd": "/home/user/wt-deadlift",
+  "commit": "8ef61c93534502c4244a9d0887588c14e77d563c",
+  "branch": "claude/deadlift-browser-evidence",
+  "dirty": 6,
+  "dirtyPaths": [
+    ".gauntlet/shots/lift-press/press.json",
+    "tools/readTuning.mjs",
+    "tools/sessionDrive.mjs",
+    "tools/verify-lift-press.mjs",
+    "src/game/__scratch_day.test.ts",
+    "src/game/__scratch_deadlift.test.ts"
+  ],
+  "runner": {
+    "pid": 4469,
+    "startTick": "625410",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --label deadlift-ladder-4 -- node tools/verify-lift-press.mjs --url http://localhost:8091 --arms ladder",
+    "bootId": "fabf06d4-ff34-4c2a-84e5-869c226847d2",
+    "bootEpochSeconds": 1787504358,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-23T18:43:31.738Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
