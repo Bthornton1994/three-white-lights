@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "mut-m5-2026-08-23T20-02-52-797Z-9812",
   "label": "mut-M5",
   "command": [
@@ -37,12 +37,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 1,
-    "okCount": 0,
+    "count": 2,
+    "okCount": 1,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T20:02:52.818Z",
-    "lastReason": "start",
+    "lastAttemptIso": "2026-08-23T20:03:24.718Z",
+    "lastReason": "final",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm"
-  }
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": true,
+    "lastOkIso": "2026-08-23T20:02:55.233Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-23T20:03:24.717Z",
+  "elapsedSeconds": 31.9
 }
