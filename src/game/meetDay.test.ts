@@ -61,10 +61,13 @@ import {
   MEET_TUNING,
   type MeetDefinition,
 } from './meetTuning';
+import { LOAD_PRESETS } from './liftTuning';
+import type { LiftConfig } from './lift';
 import {
   MEET_MOMENTS,
   playMeet,
   playRep,
+  repScript,
   previewContext,
   previewStateFor,
   type RepStyle,
@@ -151,6 +154,111 @@ const ALL_GOOD = (): RepStyle => 'perfect';
 // stop exercising the miss branch on two lifts out of three.
 const MISS_FIRST = (_lift: LiftKind, attemptNumber: number): RepStyle =>
   attemptNumber === 1 ? 'dumped' : 'perfect';
+
+// ---------------------------------------------------------------------------
+// The scripted rep styles, on the lift whose beat is not built from depth
+// ---------------------------------------------------------------------------
+
+describe("the deadlift's scripted rep styles mean what they say", () => {
+  // -------------------------------------------------------------------------
+  // WHY THIS BLOCK EXISTS. `repScript` was written entirely around the depth
+  // cue, and a deadlift arms none — so before deadlift got its own arm, every
+  // deadlift attempt in every fixture in this file was an UNDRIVEN PULL no
+  // matter which style was asked for. Nothing said so. The tests failed later
+  // and elsewhere, as meets that should have been made coming back missed.
+  //
+  // Every style is played here against the real mechanic, so a style that stops
+  // meaning what its name says fails at the definition rather than in whatever
+  // fixture happens to depend on it.
+  // -------------------------------------------------------------------------
+  const heavy = (): LiftConfig => ({ kind: 'deadlift', loadRatio: 0.95, seed: 5 });
+
+  it('makes a perfect pull and loses a dumped one, at a meet load', () => {
+    expect(playRep(heavy(), 'perfect').outcome).not.toBe('miss');
+    const dumped = playRep(heavy(), 'dumped');
+    expect(dumped.outcome).toBe('miss');
+    // Called what it was. A deadlift put down early is not a bar that beat the
+    // lifter at the sticking point.
+    expect(dumped.missReason).toBe('dropped');
+  });
+
+  it('grades a marginal pull a make, and an ugly one', () => {
+    // The arguable make. It has to land past the grip grace (or the slip costs
+    // nothing and this is just 'perfect') and short of the drop (or it is
+    // 'dumped' under another name), which is what `DEADLIFT_SLIP_TICKS` is
+    // chosen between — pinned here by outcome rather than by reading the slip
+    // counter, because the counter moving is not evidence the rep changed.
+    const marginal = playRep(heavy(), 'marginal');
+    expect(marginal.outcome).toBe('grind');
+    expect(marginal.outcome).not.toBe('miss');
+  });
+
+  it('stalls an undriven pull at a limit load and lets it through at a light one', () => {
+    // Carried over from squat unchanged, and it must keep meaning the same
+    // thing: 'stalled' is a miss at the top of the range and a make at the
+    // bottom, which is the demand curve, not a bug.
+    expect(playRep({ kind: 'deadlift', loadRatio: 1.0, seed: 5 }, 'stalled').outcome).toBe('miss');
+    expect(
+      playRep({ kind: 'deadlift', loadRatio: LOAD_PRESETS.LIGHT, seed: 5 }, 'stalled').outcome,
+    ).not.toBe('miss');
+  });
+
+  it('cannot dump a warm-up deadlift, and that is GDD §12.3 rather than a gap', () => {
+    // `RepStyle`'s own docstring promises 'dumped' is "a miss AT ANY LOAD".
+    // THAT PROMISE IS FALSE ON A DEADLIFT and it is pinned false here rather
+    // than left for somebody to discover: a warm-up deadlift cannot be lost by
+    // any input, because §12.3 forbids punishing a player for showing up and
+    // `LOCKOUT_SAG_PER_TICK` is tuned so the bar cannot fall far enough.
+    //
+    // The fixtures in this file that bomb lifters out with 'dumped' still work
+    // because meet attempts are heavy by construction — but a caller reaching
+    // for 'dumped' at a warm-up load on a deadlift gets a MAKE, and this is
+    // where they find that out.
+    for (const load of [LOAD_PRESETS.WARMUP, LOAD_PRESETS.LIGHT]) {
+      expect(playRep({ kind: 'deadlift', loadRatio: load, seed: 5 }, 'dumped').outcome).not.toBe(
+        'miss',
+      );
+    }
+    // ...and the same style at the same loads on a squat IS a miss, which is
+    // what makes this a fact about the deadlift rather than about the style.
+    expect(playRep({ kind: 'squat', loadRatio: LOAD_PRESETS.WARMUP, seed: 5 }, 'dumped').outcome)
+      .toBe('miss');
+  });
+
+  it('leaves squat and bench scripts depth-shaped, not tap-shaped', () => {
+    // The deadlift arm is a new early return in a shared function, and this is
+    // the guard that it diverts only what it is meant to. The two shapes are
+    // structurally different and that is what gets asserted:
+    //
+    //   DEPTH-SHAPED   press, ONE release (the depth call), then at most one
+    //                  drive press. The release is always the second input.
+    //   TAP-SHAPED     press, then release/press PAIRS through the ascent, then
+    //                  possibly a final release at the lockout.
+    //
+    // A squat that came back tap-shaped would mean the deadlift branch had
+    // swallowed it. Pinned as a shape rather than as literal tick numbers so a
+    // squat retune does not redden a test about deadlift.
+    const styles = ['perfect', 'marginal', 'high', 'stalled', 'dumped'] as const;
+    for (const kind of ['squat', 'bench'] as const) {
+      for (const style of styles) {
+        const script = repScript({ kind, loadRatio: 0.9, seed: 5 }, style);
+        const releases = script.filter((input) => input.kind === 'release');
+        expect(releases.length, `${kind} ${style} releases`).toBe(1);
+        expect(script[0]?.kind, `${kind} ${style} opens on a press`).toBe('press');
+        expect(script[1]?.kind, `${kind} ${style} calls depth second`).toBe('release');
+        expect(script.length, `${kind} ${style} length`).toBeLessThanOrEqual(3);
+      }
+    }
+    // ...and the deadlift really is the other shape, or the contrast above is
+    // asserting nothing. 'perfect' taps a cue: a release and a press adjacent.
+    const pull = repScript({ kind: 'deadlift', loadRatio: 0.9, seed: 5 }, 'perfect');
+    expect(pull[0]?.kind).toBe('press');
+    expect(pull.filter((input) => input.kind === 'press').length).toBeGreaterThan(1);
+    // 'stalled' is the one deadlift style with no tap at all — one press, and
+    // the bar is on its own.
+    expect(repScript({ kind: 'deadlift', loadRatio: 0.9, seed: 5 }, 'stalled')).toHaveLength(1);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // GDD §6.1 — Pre-meet

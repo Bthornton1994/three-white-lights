@@ -1850,6 +1850,30 @@ export const MEET_COPY = Object.freeze({
 export const MEET_PREVIEW = Object.freeze({
   /** Day index the preview pins, so every number below it is stable. */
   DAY: 20320,
+  /**
+   * How many drive cues a scripted DEADLIFT chases before giving up.
+   *
+   * Squat and bench's scripted reps tap the first armed cue only, which is
+   * enough to make their attempts at meet loads. A deadlift's demand curve
+   * peaks high in the range (`STICK_HEIGHT_FRAC.deadlift`), so a single tap
+   * decays before the bar gets there and a "perfect" pull would stall.
+   *
+   * A CEILING ON A SEARCH, NOT A CUE COUNT. `DRIVE_ATTEMPTS_PER_REP` decides
+   * how many cues actually arm; this only stops the chase from looping forever
+   * if a future retune ever armed cues without consuming them. Comfortably
+   * above `DRIVE_ATTEMPTS_PER_REP.deadlift.MAXIMAL`.
+   */
+  DEADLIFT_CUES_CHASED: 8,
+  /**
+   * Ticks a 'marginal' scripted deadlift lets go of the lockout before catching
+   * it again — the arguable make, which grades a grind rather than a clean lift.
+   *
+   * Must land past `LOCKOUT_GRIP_GRACE_TICKS` (or the slip costs nothing) and
+   * short of the drop, or 'marginal' would be a miss and the style would lie.
+   * `meetDay.test.ts`'s "the deadlift's scripted rep styles mean what they say"
+   * plays every style rather than trusting this note.
+   */
+  DEADLIFT_SLIP_TICKS: 18,
   /** e1RM per lift the openers are suggested from. */
   E1RM_KG: Object.freeze({ squat: 232.5, bench: 152.5, deadlift: 272.5 } as const satisfies Record<LiftKind, number>),
   /** The lifter's best competition total before this meet, kg, or null. */

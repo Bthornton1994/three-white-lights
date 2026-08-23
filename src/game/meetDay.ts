@@ -161,7 +161,7 @@ import {
 import { nextRandom, seedState } from './prng';
 import { sessionFeel, type FatigueState, type LiftMoment, type SessionFeel } from './fatigue';
 import type { LiftConfig, LiftResolution, MissReason } from './lift';
-import { simKindFor, type HapticPattern } from './liftTuning';
+import { type HapticPattern } from './liftTuning';
 import type { MeetAttemptReport, MeetCardReport, MeetResultReport, MeetId } from './progression';
 import { asMeetId } from './progression';
 import {
@@ -1160,7 +1160,9 @@ export function attemptConfigFor(state: MeetDayState): LiftConfig {
     workSetsCompleted: state.attempts.length,
     repsCompletedInSet: 0,
   };
-  return { kind: simKindFor(live.lift), loadRatio: live.loadRatio, seed: live.seed, feel, moment };
+  // `live.lift` rather than `simKindFor(live.lift)`: every lift on the platform
+  // has its own phase model now, so a deadlift attempt runs deadlift's beat.
+  return { kind: live.lift, loadRatio: live.loadRatio, seed: live.seed, feel, moment };
 }
 
 // ---------------------------------------------------------------------------
