@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "clamp-1-2026-08-23T19-05-55-076Z-18444",
   "label": "clamp-1",
   "command": [
@@ -34,12 +34,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 1,
-    "okCount": 0,
+    "count": 2,
+    "okCount": 1,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T19:05:55.098Z",
-    "lastReason": "start",
+    "lastAttemptIso": "2026-08-23T19:06:28.393Z",
+    "lastReason": "final",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm"
-  }
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": true,
+    "lastOkIso": "2026-08-23T19:05:57.658Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-23T19:06:28.391Z",
+  "elapsedSeconds": 33.3
 }
