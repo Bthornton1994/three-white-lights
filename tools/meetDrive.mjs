@@ -385,6 +385,29 @@ export const MEET_DRIVE = Object.freeze({
    * reason, and a re-tune of the mechanic should expect to re-take them.
    * `git merge-base --is-ancestor c9443b8 HEAD` checks the stamp.
    *
+   * ===========================================================================
+   * WHERE THE SWEEP AND THE BROWSER STILL DISAGREE, AND WHY IT MATTERS TO
+   * WHOEVER RE-TUNES THIS
+   * ===========================================================================
+   * The sweep drove `createLift({ kind, loadRatio, seed })` and passed NO
+   * `feel` and NO `moment`. `attemptConfigFor` passes both: `sessionFeel(...)`
+   * narrows the timing window, and `moment.workSetsCompleted` is the meet's own
+   * attempt count, so the window narrows further with every attempt taken. So
+   * the reps the sweep scored ran against a WIDER drive window than a real meet
+   * attempt gets, and 768/768 is an upper bound rather than a prediction.
+   *
+   * The residue is visible in the shipped record and is not hidden here: across
+   * 27 attempts the misses are almost all `MEET_COPY.FEEDBACK_STALLED` ("The
+   * bar won that one."), which names the ascent, and one meet banked only 1 of
+   * 3 squats — one make away from a bomb-out, which ends the meet and takes
+   * §6.5's recap with it. THIS DRIVER IS NOT GUARANTEED TO FINISH A MEET, and a
+   * run that ends `'bombed'` is reported as exactly that rather than dressed as
+   * something else.
+   *
+   * Closing it means re-taking the sweep with `feel` and `moment` threaded, at
+   * the fatigue a meet actually reaches. That is a measurement somebody should
+   * make before moving these two numbers on a hunch.
+   *
    * `deadlift: null` IS THE LIFT, NOT AN OMISSION. There is no eccentric to
    * hold through, so there is no hold to start anywhere — the same `null` that
    * `LIFT_PROMPTS.deadlift.DESCENT` carries and for the same reason.
