@@ -818,8 +818,33 @@ const GUARANTEE_COVERAGE = {
    * outside `GUARANTEE_PROSE_FILES`, so the tag rule does not reach it, and
    * the evidence is the hand-run mutation set recorded in `lift.test.ts`'s
    * "the bench press command" block.
+   *
+   * 258 -> 275 with deadlift's phase model, the largest single move this
+   * number has ever made. Attributed per file the usual way — each touched
+   * file restored to its pre-change text and the count re-read — and then
+   * MEASURED A SECOND TIME BY A DIFFERENT PARTY: the builder reported
+   * `liftTuning.ts` 7, `lift.ts` 5, `lift.test.ts` 3, `liftTuning.test.ts` 2
+   * with the other eight touched files contributing zero, and the lead
+   * re-derived the same four files and the same four deltas independently
+   * before moving the pin. 258 + 17 = 275 exactly, from both readings.
+   *
+   * WHY SEVENTEEN AND NOT ONE OR TWO. Deadlift did not add prose to an
+   * existing mechanic; it added a third lift whose whole argument is about
+   * what CANNOT happen — a kind that cannot enter `DESCENT` or `HOLE`, a
+   * descent-shaped table that cannot be indexed by it, a beat whose correct
+   * play is no input at all. That argument is made in this codebase's
+   * capitalised house style because it is load-bearing, and the scoper is
+   * doing exactly what it was built to do by noticing.
+   *
+   * Untagged, on the same footing as the two entries above, and for the same
+   * reason: `lift.ts` and `liftTuning.ts` sit outside `GUARANTEE_PROSE_FILES`
+   * so the tag rule does not reach them. The evidence is the fifteen-mutant
+   * table the builder ran with collected totals checked on every run, and the
+   * swept outcome-flip counts pinned in `lift.test.ts`. That is weaker than a
+   * resolved tag by exactly the amount a scan would have checked, and saying
+   * so is the point of this comment rather than a hedge in it.
    */
-  TREE_WIDE: 258,
+  TREE_WIDE: 275,
 } as const;
 
 // ---------------------------------------------------------------------------
