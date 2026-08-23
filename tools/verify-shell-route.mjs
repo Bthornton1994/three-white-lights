@@ -5500,7 +5500,21 @@ const playedOut = { attempted: true };
   // for both lifters and proves nothing. Its non-vacuity control is what makes
   // that visible rather than assumed: it reddens, loudly, if this ever stops
   // producing a PR.
-  const opened = await openSessionToFirstSet(page, url, SESSION_DRIVE.BEST_CHECK_IN_TAPS);
+  //
+  // SQUAT, ASKED FOR BY NAME. See `capture-session.mjs`'s call for the whole
+  // reasoning; in short, `lift = null` follows `liftForDay`'s rotation while
+  // the brace line it validates against is squat's, so this leg would refuse
+  // on two days in three. `playSessionToCloseOut` below drives squat's
+  // grammar — hold to descend, release at depth, tap the drive cue — which a
+  // deadlift has no DESCENT for at all, so squat is what this leg means as
+  // well as what it needs.
+  const opened = await openSessionToFirstSet(
+    page,
+    url,
+    SESSION_DRIVE.BEST_CHECK_IN_TAPS,
+    undefined,
+    'squat',
+  );
   check(
     opened.reached,
     'a real session opens from `/` and reaches its first work set, played with a mouse',

@@ -152,7 +152,16 @@ for (const moment of MOMENTS) {
 
 if (has('live')) {
   // The played path: three taps, an RPE choice, and whatever the loop does.
-  const opened = await openSessionToFirstSet(page, url);
+  //
+  // SQUAT, ASKED FOR BY NAME, BECAUSE THE DEFAULT IS THE CALENDAR'S. `lift =
+  // null` takes whatever `liftForDay` rotates to and validates the brace line
+  // against `SESSION_PROMPTS.BRACE`, which is squat's — so on a bench or
+  // deadlift day this call returns `reached: false` and every frame below it
+  // goes uncaptured. Measured at 4e4ea8a: streak day 20688 is squat, 20689
+  // bench, 20690 deadlift, so the old call worked on one day in three and the
+  // two failures were a date apart. This tool's frames are squat's; pressing
+  // the chip makes that a decision rather than a coincidence of the date.
+  const opened = await openSessionToFirstSet(page, url, undefined, undefined, 'squat');
   if (!opened.reached) {
     console.log(`live               -> NOT REACHED: ${opened.why}`);
     notes.push({ moment: 'live', file: null, seen: null, why: opened.why });
