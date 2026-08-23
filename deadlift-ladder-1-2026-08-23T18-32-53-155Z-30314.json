@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "deadlift-ladder-1-2026-08-23T18-32-53-155Z-30314",
   "label": "deadlift-ladder-1",
   "command": [
@@ -37,19 +37,22 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 3,
-    "okCount": 1,
+    "count": 4,
+    "okCount": 2,
     "errors": [
       {
         "at": "2026-08-23T18:32:57.536Z",
         "why": "Command failed: git -C /home/user/wt-deadlift ls-remote --exit-code origin refs/heads/verify-markers/vm remote: session scope unavailable fatal: unable to access 'https://github.com/Bthornton1994/three-white-lights/': The requested URL returned error: 502 remote: session scope unavailable fatal: una"
       }
     ],
-    "lastAttemptIso": "2026-08-23T18:34:53.282Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-23T18:34:59.849Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-23T18:33:55.865Z"
-  }
+    "lastOkIso": "2026-08-23T18:34:55.850Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-23T18:34:59.847Z",
+  "elapsedSeconds": 126.7
 }
