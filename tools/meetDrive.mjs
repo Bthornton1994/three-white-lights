@@ -840,26 +840,46 @@ export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
     return { played: false, kind, why: `no prompt ladder for lift ${JSON.stringify(kind)}` };
   }
 
+  // ===========================================================================
+  // WAIT FOR *ANY* LIFT'S BRACE LINE, NOT FOR THIS LIFT'S — AND THE DIFFERENCE
+  // IS THE WHOLE DISAGREEMENT CHECK
+  // ===========================================================================
+  // This waited on `ladder.BRACE` alone, and under a planted `simKindFor`
+  // fallback (`attemptConfigFor` returning `kind: 'squat'` for every attempt)
+  // that wait TIMED OUT rather than reporting the mismatch: the bench attempt
+  // was drawing squat's line the whole time, `BRACE_TIMEOUT_TICKS` started the
+  // rep by itself ten seconds later, and by the time the wait gave up the screen
+  // had moved on — so the reading it reported was `prompt: null` and the branch
+  // written to name the mismatch was unreachable. MEASURED, not reasoned: the
+  // mutant's own failure text read "no bench brace to press — prompt was null,
+  // which matches no lift's brace line", which is the WRONG diagnosis of a
+  // defect this check exists to name.
+  //
+  // Waiting on any of the three closes it in one poll: the label says which lift
+  // the MEET thinks is on the platform and the brace line says which ladder the
+  // MECHANIC is walking, and a driver that stops at the first brace line it sees
+  // can compare them while both are still on screen.
   const braced = await untilMeet(
     page,
-    (s) => meetSaying(s, ladder.BRACE) || !s.attempt,
+    (s) => liftFromBracePrompt(s.prompt) !== null || !s.attempt,
     MEET_DRIVE.BRACE_TIMEOUT_MS,
   );
-  if (!braced.ok || !meetSaying(braced.state, ladder.BRACE)) {
-    // WHICH LADDER DID IT MATCH, IF ANY — the two causes need different fixes.
-    // A prompt that is ANOTHER lift's brace line means the meet's own label and
-    // the mechanic's phase model disagree about which lift is on the platform,
-    // which is the `simKindFor` fallback this repository shipped once. A prompt
-    // matching no ladder at all means the copy has moved under this driver.
-    const matched = liftFromBracePrompt(braced.state.prompt);
+  const bracedAs = liftFromBracePrompt(braced.state.prompt);
+  if (bracedAs !== kind) {
+    // THREE CAUSES, THREE DIFFERENT FIXES, so they are not one message.
+    // ANOTHER lift's brace line means the meet's own label and the mechanic's
+    // phase model disagree about which lift is on the platform — the
+    // `simKindFor` fallback this repository shipped once. No ladder's line at
+    // all means either the copy has moved under this driver or the screen went
+    // away before it could be read, and the reading says which.
     return {
       played: false,
       kind,
-      bracedAs: matched,
+      bracedAs,
       why:
-        matched === null
-          ? `no ${kind} brace to press — prompt was ${JSON.stringify(braced.state.prompt)}, which matches no lift's brace line in LIFT_PROMPTS`
-          : `the meet labelled this attempt ${JSON.stringify(attemptLabel)} and the mechanic is walking ${matched}'s ladder — prompt was ${JSON.stringify(braced.state.prompt)}, which is ${matched}'s brace line and not ${kind}'s`,
+        bracedAs !== null
+          ? `the meet labelled this attempt ${JSON.stringify(attemptLabel)} and the mechanic is walking ${bracedAs}'s ladder — prompt was ${JSON.stringify(braced.state.prompt)}, which is ${bracedAs}'s brace line and not ${kind}'s`
+          : `no ${kind} brace to press — prompt was ${JSON.stringify(braced.state.prompt)}, which matches no lift's brace line in LIFT_PROMPTS (the attempt screen was ${braced.state.attempt ? 'still up' : 'gone'})`,
     };
   }
 

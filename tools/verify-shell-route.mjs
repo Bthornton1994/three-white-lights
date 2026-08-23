@@ -216,6 +216,7 @@ import {
  */
 import {
   MEET_DRIVE,
+  MEET_LIFT_ORDER,
   MEET_WALKOUT_SAYS as MEET_TAIL_SAYS,
   ON_SCREEN_MIN_OPACITY,
   driveMeetToItsEnd,
@@ -4247,6 +4248,111 @@ let lastMeetDepthSearch = null;
 const MEETS_DRIVEN = [];
 
 /**
+ * EVERY ATTEMPT EVERY DRIVEN MEET PLAYED, flattened, with the lift it was on.
+ *
+ * The domain of the ladder check at the end of this file. Filled by
+ * `checkDrivenMeet` rather than derived, so a meet that ended early contributes
+ * exactly the attempts it really played and the counts below are over what
+ * happened rather than over what §6.2 says should have.
+ */
+const ATTEMPTS_PLAYED = [];
+
+/**
+ * ===========================================================================
+ * GDD §6.2'S THREE LADDERS, WALKED ON THE PLATFORM — AND WHY THIS EXISTS AT ALL
+ * ===========================================================================
+ * `meetDrive.mjs` reports five facts per attempt that this file was PRINTING
+ * into a note and comparing against nothing: which lift the attempt was on,
+ * whether it reached a DESCENT, whether it reached bench's PRESS command,
+ * whether it reached a lockout, and whether it saw the deadlift's DOWN command.
+ * CLAUDE.md files that shape under "measured, carried, displayed, never
+ * compared" and gives two ways out — "either compare it or stop printing it".
+ * This is the comparison.
+ *
+ * ===========================================================================
+ * WHAT IT ACTUALLY CLAIMS, WHICH IS THE PIECE'S OWN CLAIM
+ * ===========================================================================
+ * A meet runs squat, then bench, then deadlift (§6.2), and `attemptConfigFor`
+ * hands `useLiftLoop` `live.lift` — so each attempt walks THAT lift's phase
+ * path. The three paths differ in a way this instrument can see from outside:
+ *
+ *   squat     BRACE -> DESCENT ->        ASCENT -> LOCKOUT
+ *   bench     BRACE -> DESCENT -> HOLE (a COMMAND) -> ASCENT -> LOCKOUT
+ *   deadlift  BRACE ->                   ASCENT -> LOCKOUT (a DOWN command)
+ *
+ * So the zeroes below are structural, not incidental: a deadlift CANNOT reach a
+ * descent — `stepLift` refuses a (deadlift, DESCENT) state and
+ * `DEPTH_LEGAL.deadlift` does not compile — and only bench has a command off
+ * the chest. A build that ran every attempt on one lift's model (the shape
+ * `repConfigFor` shipped for a round as `simKindFor`) breaks these in both
+ * directions at once.
+ *
+ * ===========================================================================
+ * THE ZEROES HAVE NON-ZERO CONTROLS BESIDE THEM, FROM THE SAME RUN
+ * ===========================================================================
+ * "We drove a deadlift and saw no DESCENT" is the shape this repository refuses
+ * everywhere: a driver that never got past the brace reports the same zero. So
+ * the count of squat and bench attempts that DID reach a descent is asserted in
+ * the same breath, and it is pinned to the number of them that were played
+ * rather than bounded — `>= 0` is true of a probe that never fired.
+ *
+ * The two command counts are `> 0` rather than exact, and that is a real
+ * difference in strength stated rather than hidden: a bench attempt buried on
+ * the chest resolves before the command fires, and a deadlift attempt that
+ * never reaches lockout has no hold to be released from. Both are legal
+ * outcomes of a real rep, so the per-attempt claim is not available; what is
+ * available is that the beat happened at all, on the lift that has it and on
+ * neither of the other two.
+ */
+function checkTheThreeLaddersWereWalked(attempts) {
+  const played = attempts.filter((a) => a.played === true);
+  const of = (kind) => played.filter((a) => a.kind === kind);
+  const count = (kind, field) => of(kind).filter((a) => a[field] === true).length;
+  const census = MEET_LIFT_ORDER.map(
+    (kind) =>
+      `${kind} ${of(kind).length} played,` +
+      ` descent ${count(kind, 'reachedDescent')},` +
+      ` press-command ${count(kind, 'reachedCommand')},` +
+      ` lockout ${count(kind, 'reachedLockout')},` +
+      ` down-command ${count(kind, 'downCommandSeen')}`,
+  ).join('; ');
+
+  // ---- the domain, before anything is said about it ----------------------
+  check(
+    MEET_LIFT_ORDER.every((kind) => of(kind).length > 0),
+    'GDD §6.2’s THREE LIFTS WERE EACH PLAYED ON THE PLATFORM — squat, bench and deadlift, on meets a player opened',
+    `${played.length} attempt(s) played across ${MEETS_DRIVEN.length} meet(s): ${census}`,
+  );
+  if (played.length === 0) return;
+
+  // ---- the eccentric: exact both ways ------------------------------------
+  const eccentricPlayed = of('squat').length + of('bench').length;
+  const eccentricReached = count('squat', 'reachedDescent') + count('bench', 'reachedDescent');
+  check(
+    eccentricReached === eccentricPlayed && count('deadlift', 'reachedDescent') === 0,
+    'AND EACH WALKED ITS OWN LADDER — every squat and bench attempt reached its own DESCENT, and no deadlift attempt reached one, because a deadlift has no eccentric',
+    `${eccentricReached} of ${eccentricPlayed} squat/bench attempts reached a descent;` +
+      ` ${count('deadlift', 'reachedDescent')} of ${of('deadlift').length} deadlift attempts did. ${census}`,
+  );
+
+  // ---- the two commands: one lift each, with a control on the other two ---
+  check(
+    count('bench', 'reachedCommand') > 0 &&
+      count('squat', 'reachedCommand') === 0 &&
+      count('deadlift', 'reachedCommand') === 0,
+    'AND BENCH’S PRESS COMMAND FIRED OFF THE CHEST, on bench and on neither other lift — GDD §6.2’s "press-timing check off the chest"',
+    `bench ${count('bench', 'reachedCommand')} of ${of('bench').length}, squat ${count('squat', 'reachedCommand')}, deadlift ${count('deadlift', 'reachedCommand')}. ${census}`,
+  );
+  check(
+    count('deadlift', 'downCommandSeen') > 0 &&
+      count('squat', 'downCommandSeen') === 0 &&
+      count('bench', 'downCommandSeen') === 0,
+    'AND THE DEADLIFT WAS HELD TO ITS DOWN COMMAND, on the deadlift and on neither other lift — GDD §6.2’s "lockout grind"',
+    `deadlift ${count('deadlift', 'downCommandSeen')} of ${of('deadlift').length}, squat ${count('squat', 'downCommandSeen')}, bench ${count('bench', 'downCommandSeen')}. ${census}`,
+  );
+}
+
+/**
  * The whole of a driven meet, reported as checks.
  *
  * SHARED BY THE THREE MEETS ON PURPOSE, so each is measured with the same
@@ -4332,6 +4438,7 @@ async function checkDrivenMeet(tag, searchIn, expected, whatEnding, chooseOption
   note(`${tag}: §6.3 answered with ${JSON.stringify(drive.pressedOptions ?? [])}`);
   record.ended = drive.ended;
   record.liftsPlayed = drive.liftsPlayed ?? [];
+  for (const attempt of drive.attempts) ATTEMPTS_PLAYED.push({ meet: tag, ...attempt });
   lastMeetDepthSearch = drive.searches;
   return drive;
 }
@@ -7575,6 +7682,7 @@ await checkOnScreen(
 // section covers every played meet rather than one section per meet drifting
 // apart. See the block above `MEET_SELECT_SAYS`.
 checkAttemptSelectOnThePlayedArm(MEETS_DRIVEN);
+checkTheThreeLaddersWereWalked(ATTEMPTS_PLAYED);
 
 // ###########################################################################
 // ###  8c. GDD §6.5 — THE WORD BESIDE A LIFT, ON EVERY RECAP THIS RUN READ  #
