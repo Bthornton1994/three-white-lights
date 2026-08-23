@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "press-final3-2026-08-23T23-06-12-177Z-28372",
   "label": "press-final3",
   "command": [
@@ -36,14 +36,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 3,
-    "okCount": 2,
+    "count": 4,
+    "okCount": 3,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T23:08:12.263Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-23T23:09:07.334Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-23T23:07:14.673Z"
-  }
+    "lastOkIso": "2026-08-23T23:08:14.906Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-23T23:09:07.332Z",
+  "elapsedSeconds": 175.2
 }
