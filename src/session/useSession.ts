@@ -94,7 +94,16 @@ import {
   type CloseOutReadings,
   type SessionServerPort,
 } from '../game/sessionClient';
-import { asProposalId, rejectProposal, type ProgressionCache } from '../game/progression';
+import {
+  asProposalId,
+  readStreakState,
+  rejectProposal,
+  type ProgressionCache,
+} from '../game/progression';
+import {
+  firstRunDisclosuresFor,
+  type OnboardingDisclosure,
+} from '../game/onboardingDisclosure';
 import {
   civilDateFromStreakDay,
   streakDayFromLocalWallClock,
@@ -137,6 +146,11 @@ export interface SessionLoop {
   readonly ladderReady: boolean;
   /** True when the server would refuse another session today (GDD §3.2). */
   readonly alreadyTrainedToday: boolean;
+  /**
+   * GDD §4.2's first-run disclosures, for the check-in to render. Empty for
+   * every lifter who has trained, and on every lift but the first-run one.
+   */
+  readonly onboardingDisclosures: readonly OnboardingDisclosure[];
   readonly dispatch: (event: SessionEvent) => void;
   /** Starts a fresh session for whatever day it is now. */
   readonly restartDay: () => void;
@@ -319,12 +333,27 @@ export function useSession(
     [cache, state.closeOut],
   );
 
+  // GDD §4.2's two first-run disclosures. Read out of the cache through
+  // `readStreakState` for the same reason every other number on these screens
+  // is: the streak state the sentences are about is server truth, and a screen
+  // that decided this from anything else would be the second channel
+  // `sessionWiring.test.ts` exists to keep shut. The decision itself is
+  // `onboardingDisclosure.ts`'s — nothing is derived here.
+  const onboardingDisclosures = useMemo(() => {
+    const streak = readStreakState(cache);
+    return firstRunDisclosuresFor(
+      streak.kind === 'unknown' ? null : streak.value,
+      state.context.lift,
+    );
+  }, [cache, state.context.lift]);
+
   return {
     state,
     cache,
     closeOutReadings: readings,
     ladderReady: frozen || liveLadderReady,
     alreadyTrainedToday,
+    onboardingDisclosures,
     dispatch,
     restartDay,
     chooseLift,
