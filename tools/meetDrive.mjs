@@ -341,31 +341,69 @@ export const MEET_DRIVE = Object.freeze({
    * question: a squat hold converged near 1000 buries all three bench attempts
    * and bombs the lift, which ends the meet before the deadlift.
    *
+   * ===========================================================================
+   * THESE ARE SIM-TICK DURATIONS AT 60 Hz, AND THE DRIVER SCALES THEM BY THE
+   * FRAME RATE THE PAGE IS REALLY DELIVERING
+   * ===========================================================================
+   * `useLiftLoop` advances the sim on ANIMATION FRAMES, taking at most
+   * `FEEDBACK.MAX_CATCH_UP_TICKS` per frame — deliberately, so a hitch slows a
+   * rep down instead of fast-forwarding through the player's input. So a
+   * wall-clock millisecond does not buy a fixed amount of depth: it buys
+   * `fps / 60` of what a 60 Hz derivation predicts.
+   *
+   * MEASURED IN THIS ENVIRONMENT, on a live rep, at `c9443b8`: the page renders
+   * at **52.5 fps** with the sim running under swiftshader. A hold derived at
+   * 60 Hz therefore buys 12.5% less depth than it is written for, and bench's
+   * legal band is only ~147 ms wide — so the first real run of this driver lost
+   * a bench attempt to `no-depth` at 720 ms and then, once `adaptDepthSearch`
+   * had pushed it to 780, lost a whole lift to three `stalled` releases that
+   * were legal but too shallow to reverse from.
+   *
+   * `sessionDrive.mjs`'s `DEPTH_HOLD_MS` header already names this hazard and
+   * answers it by biasing above the ideal. That is a guess about the machine.
+   * `pageFrameRate` MEASURES it instead, during the brace wait this driver was
+   * already spending, and `scaledHoldMs` converts. The numbers below can then
+   * be read straight off a 60 Hz derivation, which is the only place anybody
+   * can derive them.
+   *
    * CHOSEN BY SWEEP, NOT BY MIDPOINT. Driven against the real `createLift` /
-   * `stepLift` at 24 seeds x {0.86, 0.90, 0.94, 0.97} x {33 ms, 133 ms, 267 ms}
-   * of round-trip observation lag, with the release timed from the press the
-   * way `playOneMeetAttempt` times it. The made/24 counts pick out the holds
-   * that survive EVERY ratio at the two realistic lags:
+   * `stepLift`, 32 seeds x {0.88, 0.90, 0.92, 0.94, 0.96, 0.97} x four
+   * observation lags, with the release timed from the press the way
+   * `playOneMeetAttempt` times it, at 60 Hz-normalised timing — which is what
+   * the scaling delivers. Out of 768 driven reps per hold:
    *
-   *   squat   760-900 make 24/24 everywhere; 1000 makes at 33 ms lag only at
-   *           r<=0.90 and fails 0/24 at 0.94 — NOT on depth but on
-   *           `miss:stalled`, because depth past `DEPTH_IDEAL` adds demand for
-   *           the whole ascent. 840 is the middle of the surviving band.
-   *   bench   720 is the ONLY value that makes 24/24 at all four ratios and
-   *           both lags. 680 fails at 0.97, 760 fails at 0.94 and 0.97 at the
-   *           low lag, 800 fails at 0.86.
+   *   squat   760-920 all make 768/768. 720 makes 384/768, losing every rep at
+   *           r>=0.94 to `no-depth`. 840 and 880 are pure `good-lift` with no
+   *           grinds. 840 is the middle of the perfect band.
+   *   bench   760 is the ONLY value that makes 768/768. 720 loses r=0.97
+   *           (640/768), 800 loses r=0.88 outright and part of 0.94/0.96
+   *           (576/768), 840 makes 320/768 and 880 makes 32/768 — buried.
    *
-   * MEASURED AT `b38980e`, off a throwaway harness that is NOT in this tree, so
+   * MEASURED AT `c9443b8`, off a throwaway harness that is NOT in this tree, so
    * nothing here goes red when `liftTuning.ts` moves underneath these numbers.
    * They are labelled measurements rather than guarantees for exactly that
    * reason, and a re-tune of the mechanic should expect to re-take them.
-   * `git merge-base --is-ancestor b38980e HEAD` checks the stamp.
+   * `git merge-base --is-ancestor c9443b8 HEAD` checks the stamp.
    *
    * `deadlift: null` IS THE LIFT, NOT AN OMISSION. There is no eccentric to
    * hold through, so there is no hold to start anywhere — the same `null` that
    * `LIFT_PROMPTS.deadlift.DESCENT` carries and for the same reason.
    */
-  START_HOLD_MS: Object.freeze({ squat: 840, bench: 720, deadlift: null }),
+  START_HOLD_MS: Object.freeze({ squat: 840, bench: 760, deadlift: null }),
+
+  /** The frame rate `START_HOLD_MS` and `ASCENT_TIMING` are derived at. */
+  DERIVED_AT_FPS: 60,
+  /**
+   * The band a measured frame rate is believed inside.
+   *
+   * NOT A TOLERANCE, A SANITY GUARD: a reading outside this is a broken
+   * measurement (a backgrounded tab, a paused rAF, a torn sample), not a slow
+   * machine, and the safe answer is to fall back to `DERIVED_AT_FPS` rather
+   * than to multiply a hold by an arbitrary number. The floor is well under the
+   * 52.5 fps this environment measures and the ceiling is one frame above the
+   * display's own rate.
+   */
+  FRAME_RATE_BAND: Object.freeze({ MIN: 20, MAX: 61 }),
 
   /**
    * HOW FAR `adaptDepthSearch` MOVES THE HOLD AFTER A MISTIMED RELEASE, PER
@@ -403,9 +441,16 @@ export const MEET_DRIVE = Object.freeze({
    * rep that actually gets played. `BRACE_TIMEOUT_TICKS` is 600 ticks (10 s), so
    * there is an order of magnitude of room to wait in.
    *
+   * SIZED FOR THE SLOWEST FRAME RATE RATHER THAN SCALED, and that is the one
+   * duration here that is not scaled by the measured rate — because it is the
+   * window the rate is MEASURED IN, so scaling it by its own result would be
+   * circular. 42 ticks at 45 fps is 933 ms; 1000 covers that with margin, and
+   * `BRACE_TIMEOUT_TICKS` (600 ticks, 10 s) leaves an order of magnitude of
+   * room to wait in.
+   *
    * A ROBOT'S PATIENCE, NOT GAME FEEL: the beat itself is `liftTuning.ts`'s.
    */
-  BRACE_ELAPSE_MS: 780,
+  BRACE_ELAPSE_MS: 1000,
 
   /**
    * DEADLIFT ONLY — a beat after the bar leaves the floor before the finger
@@ -460,12 +505,38 @@ export const MEET_DRIVE = Object.freeze({
     tapMs: 60,
     /** After a tap, before reading the state back. */
     settleMs: 100,
-    /** The floor below which a still-'DRIVE — TAP' display cannot be a NEW cue. */
+    /**
+     * The floor below which a still-'DRIVE — TAP' display cannot be a NEW cue.
+     *
+     * A SIM-TICK DURATION, SO IT IS SCALED WITH THE HOLDS. `driveSpacingTicks`
+     * is what it stands for, and that is counted in ticks: at 52 fps the real
+     * gap between two cues is 14% longer in wall clock than a 60 Hz derivation
+     * says, so an unscaled floor would start looking for the next cue before
+     * one could arm — which is the phantom-re-tap window this floor exists to
+     * close. Computed at meet loads: squat 167-233 ms, bench 233-300 ms,
+     * deadlift 200-267 ms at 60 Hz, so 280 is at the top of that range and the
+     * scaling keeps it there.
+     */
     minCueSpacingMs: 280,
     /** "The ascent has stopped advancing", not "the ascent was slow". */
     driveTimeoutMs: 5400,
-    /** How often the shared loop re-reads the attempt screen. */
-    pollMs: 25,
+    /**
+     * How often the shared loop re-reads the attempt screen.
+     *
+     * 15, NOT `MEET_DRIVE.POLL_MS`'s 25, AND THE DIFFERENCE IS MEASURED. A
+     * drive cue's whole window is a couple of hundred milliseconds wide and a
+     * tap outside it is graded a full window early — so on the ascent the
+     * poll's own interval is a systematic detection lag on the one beat that
+     * cannot absorb one. `FULL_CYCLE.AIM_FOR_CENTER_DELAY_MS` records the same
+     * choice on the session arm and credits 15 over 30 for exactly this.
+     *
+     * Measured in this environment at `c9443b8`, polling a live rep: the real
+     * poll-to-poll gap at `pollMs: 15` is p50 **27 ms**, p90 37 ms, max 41 ms —
+     * so the interval is roughly half the cost and the CDP round trip is the
+     * other half. At 25 the same gap would run ~10 ms longer on every poll.
+     * The beat-to-beat loop keeps 25: nothing there is decided in one frame.
+     */
+    pollMs: 15,
   }),
 
   /**
@@ -474,11 +545,26 @@ export const MEET_DRIVE = Object.freeze({
    * than its own tuning says is the app's business, not the harness's.
    */
   BRACE_TIMEOUT_MS: 15000,
+  /**
+   * How long a press has to produce a descent — or, on a deadlift, to take the
+   * bar off the floor, which is the same press and the same deadline.
+   */
   DESCENT_TIMEOUT_MS: 15000,
-  ASCENT_TIMEOUT_MS: 20000,
+  /**
+   * `ASCENT_TIMEOUT_MS` USED TO BE HERE AND IS DELETED WITH ITS ONE READER. The
+   * old ascent was a single held press waiting on `!s.attempt`; the ascent is
+   * `tapDriveCuesToLockout` now and its deadline is
+   * `ASCENT_TIMING.driveTimeoutMs`, above. A second answer to "the ascent has
+   * stopped advancing" is exactly the drift this module's header refuses.
+   */
   /** One whole beat-to-beat transition: bar load, walk-out, judges, cards. */
   BEAT_TIMEOUT_MS: 40000,
-  /** The whole meet. Nine attempts measured at ~112 s, so this is ~3x. */
+  /**
+   * The whole meet. Nine attempts measured at ~112 s when every one of them was
+   * a squat and the ascent was one held press; the per-lift drive adds
+   * `BRACE_ELAPSE_MS` and a tap sequence to each, so this is comfortably more
+   * than 3x what a driven meet now costs and still means "stopped advancing".
+   */
   MEET_TIMEOUT_MS: 360000,
   /**
    * A hard stop on the attempt loop. GDD §6.2 is three lifts x
@@ -570,6 +656,100 @@ export const meetSaying = (state, phrase) => state.prompt !== null && state.prom
 export const meetIsOver = (state) => state.recap || state.waiting || state.refused || state.bombed;
 
 /**
+ * ===========================================================================
+ * HOW FAST THE PAGE IS ACTUALLY DRAWING, MEASURED RATHER THAN ASSUMED
+ * ===========================================================================
+ * Every duration in `START_HOLD_MS` and `ASCENT_TIMING` is really a count of
+ * SIM TICKS, and `useLiftLoop` advances the sim on animation frames. So the
+ * wall-clock wait that buys a given depth is `ticks / fps` seconds, and this
+ * environment does not deliver 60: measured on a live rep at `c9443b8`, the
+ * page draws at **52.5 fps** under swiftshader, which makes every 60 Hz-derived
+ * hold 12.5% short.
+ *
+ * `sessionDrive.mjs`'s `DEPTH_HOLD_MS` header already names this and answers it
+ * by biasing the constant upward — a guess about the machine, baked into a
+ * number, that goes stale when the machine changes. This measures instead.
+ *
+ * ===========================================================================
+ * IT COSTS NOTHING, AND THAT IS WHY IT IS TAKEN WHERE IT IS TAKEN
+ * ===========================================================================
+ * The counter is read either side of `BRACE_ELAPSE_MS` — a wait the driver was
+ * already spending on every attempt, on the screen the rep is about to be drawn
+ * on, with the same hall and the same Skia canvas rendering. So the reading
+ * describes the frames the rep itself will get, not an idle page's.
+ *
+ * THE RAF LOOP IS INSTALLED ONCE PER PAGE AND NEVER TORN DOWN. A `goto` clears
+ * it and the guard reinstalls it; a second install is refused by the same guard.
+ * It increments one integer per frame and does nothing else, so it cannot be the
+ * reason the page is slow.
+ *
+ * A reading outside `FRAME_RATE_BAND` is reported and NOT used: see that
+ * constant for why a broken measurement must not become a multiplier.
+ */
+export async function armFrameRateCounter(page) {
+  await page
+    .evaluate(() => {
+      if (window.__meetDriveFrames !== undefined) return;
+      window.__meetDriveFrames = 0;
+      const bump = () => {
+        window.__meetDriveFrames += 1;
+        window.requestAnimationFrame(bump);
+      };
+      window.requestAnimationFrame(bump);
+    })
+    .catch(() => {});
+}
+
+const readFrameCounter = (page) =>
+  page
+    .evaluate(() => ({
+      frames: window.__meetDriveFrames ?? null,
+      at: window.performance.now(),
+    }))
+    .catch(() => ({ frames: null, at: 0 }));
+
+/**
+ * Frames per second across a wait of `duringMs`, or `null` if it could not be
+ * measured. Reported as `{ fps, frames, spanMs, usable }` so a caller can print
+ * what it saw rather than only what it concluded.
+ */
+export async function pageFrameRate(page, duringMs) {
+  await armFrameRateCounter(page);
+  const before = await readFrameCounter(page);
+  await page.waitForTimeout(duringMs);
+  const after = await readFrameCounter(page);
+  if (before.frames === null || after.frames === null || after.at <= before.at) {
+    return { fps: null, frames: null, spanMs: null, usable: false, why: 'the frame counter did not read back' };
+  }
+  const frames = after.frames - before.frames;
+  const spanMs = after.at - before.at;
+  const fps = (frames * 1000) / spanMs;
+  const usable = fps >= MEET_DRIVE.FRAME_RATE_BAND.MIN && fps <= MEET_DRIVE.FRAME_RATE_BAND.MAX;
+  return {
+    fps,
+    frames,
+    spanMs,
+    usable,
+    why: usable
+      ? null
+      : `${fps.toFixed(1)} fps is outside FRAME_RATE_BAND ${MEET_DRIVE.FRAME_RATE_BAND.MIN}-${MEET_DRIVE.FRAME_RATE_BAND.MAX}, so it is a broken reading rather than a slow machine`,
+  };
+}
+
+/**
+ * A 60 Hz-derived sim-tick duration, in the wall clock this page is running at.
+ *
+ * Falls back to the declared duration when the rate could not be measured, so a
+ * failed measurement leaves the driver exactly where it was rather than
+ * multiplying a hold by a number nobody checked.
+ */
+export function scaledForFrameRate(ms, rate) {
+  if (ms === null || ms === undefined) return ms;
+  if (rate === null || !rate.usable) return ms;
+  return Math.round((ms * MEET_DRIVE.DERIVED_AT_FPS) / rate.fps);
+}
+
+/**
  * The reading the shared ascent loop takes off a MEET attempt.
  *
  * `sessionDrive.mjs`'s `tapDriveCuesToLockout` reads `{ prompt }` and nothing
@@ -577,11 +757,21 @@ export const meetIsOver = (state) => state.recap || state.waiting || state.refus
  * `attempt-prompt`, which `AttemptView` fills from the same `promptFor` call —
  * same function, same three ladders, different testID. `attempt` rides along
  * because `meetHasLeftTheRep` needs it.
+ *
+ * TWO QUERIES, NOT `readMeetLoop`'S SEVENTEEN PLUS A WHOLE-DOCUMENT
+ * `querySelectorAll('[data-testid]')`. Measured in this environment at
+ * `c9443b8`, evaluating against a LIVE rep with the sim and Skia holding the
+ * main thread: the beat-to-beat read costs p50 2 ms but **max 81 ms**, and this
+ * one costs p50 2 ms, max 31 ms. The tail is what matters — a poll that lands
+ * 81 ms late on a cue window a couple of hundred milliseconds wide is how a tap
+ * gets graded early — and it is the tail this closes.
  */
-const readMeetAscent = async (page) => {
-  const state = await readMeetLoop(page);
-  return { prompt: state.prompt, attempt: state.attempt };
-};
+const readMeetAscent = (page) =>
+  page.evaluate(() => {
+    const stage = document.querySelector('[data-testid="meet-attempt"]');
+    const prompt = document.querySelector('[data-testid="attempt-prompt"]');
+    return { attempt: stage !== null, prompt: prompt === null ? null : prompt.textContent };
+  });
 
 /**
  * The rep's screen is gone — `hasLeft` for the shared ascent loop.
@@ -680,9 +870,15 @@ export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
   if (beforeFirstPress !== undefined) await beforeFirstPress(box, walkoutLine, attemptLabel);
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 
-  // The brace beat has to be over before the press means anything. See the
-  // block above, and `MEET_DRIVE.BRACE_ELAPSE_MS`.
-  await page.waitForTimeout(MEET_DRIVE.BRACE_ELAPSE_MS);
+  // THE BRACE BEAT HAS TO BE OVER BEFORE THE PRESS MEANS ANYTHING, and the
+  // frame rate is measured across exactly that wait — see `pageFrameRate`. One
+  // wait, two jobs, no extra time on the clock.
+  const rate = await pageFrameRate(page, MEET_DRIVE.BRACE_ELAPSE_MS);
+  const heldForMs = scaledForFrameRate(holdMs, rate);
+  const timing = {
+    ...MEET_DRIVE.ASCENT_TIMING,
+    minCueSpacingMs: scaledForFrameRate(MEET_DRIVE.ASCENT_TIMING.minCueSpacingMs, rate),
+  };
 
   let reachedDescent = false;
   let reachedCommand = false;
@@ -726,7 +922,7 @@ export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
       };
     }
     reachedDescent = true;
-    await page.waitForTimeout(Math.max(0, holdMs - (Date.now() - pressedAt)));
+    await page.waitForTimeout(Math.max(0, heldForMs - (Date.now() - pressedAt)));
     await page.mouse.up();
 
     if (ladder.COMMAND !== null) {
@@ -771,7 +967,7 @@ export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
   };
   const ascentArgs = {
     read: readMeetAscent,
-    timing: MEET_DRIVE.ASCENT_TIMING,
+    timing,
     lockoutPrompt: ladder.LOCKOUT,
     hasLeft: meetHasLeftTheRep,
   };
@@ -820,7 +1016,19 @@ export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
   return {
     played: true,
     kind,
+    /** The 60 Hz-derived hold this attempt was asked for. */
     holdMs,
+    /**
+     * ...and the wall-clock wait it became at this page's measured frame rate.
+     * BOTH are reported because they answer different questions: `holdMs` is
+     * what the search is converging on and what a re-tune moves, `heldForMs` is
+     * what the finger actually did. A reader comparing a miss reason against a
+     * hold wants the second.
+     */
+    heldForMs,
+    fps: rate.fps === null ? null : Number(rate.fps.toFixed(1)),
+    fpsUsable: rate.usable,
+    fpsWhy: rate.why,
     reachedDescent,
     reachedCommand,
     reachedLockout: drive.lockedOut,
@@ -843,6 +1051,28 @@ export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
  * off the meet's line and handed over in the shape the shared function reads.
  * Anything else the judges say — a stall, a grind, a clean lift — says nothing
  * about the release and must not move the hold.
+ *
+ * ===========================================================================
+ * A STALL IS NOT A DEPTH MISS, AND AT MEET LOADS IT CAN STILL BE THE HOLD'S
+ * FAULT — WHICH IS A LIMIT OF THIS FUNCTION, STATED RATHER THAN PATCHED
+ * ===========================================================================
+ * `MEET_COPY.FEEDBACK_STALLED` ('The bar won that one.') names the ascent, and
+ * this function correctly does not move the hold on it. But depth past
+ * `DEPTH_IDEAL` adds demand for the whole ascent (`lift.ts`), so a release that
+ * was LEGAL but deep can stall a rep at a meet's loads — measured on the real
+ * `stepLift` at `b38980e`: a squat at r=0.94 held 960ms grades `miss:stalled`
+ * at 24 of 24 seeds while the same seeds at 840ms grade a make. The judges' line
+ * says 'the ascent', the cause is the hold, and nothing here can tell them apart
+ * from one line of copy.
+ *
+ * WHY THAT IS NOT FIXED HERE. Guessing "a stall means go shallower" would move
+ * the hold on the one outcome that genuinely says nothing about depth — a rep
+ * the ascent lost at a perfectly good release — and this driver would then walk
+ * its way out of a band it was already inside. `MEET_DRIVE.START_HOLD_MS` is
+ * the answer instead: the starting points are swept to sit inside the band at
+ * every load a meet reaches, so the stall region is not entered in the first
+ * place. Recorded so a future reader knows the search has a blind spot rather
+ * than discovering it as a bombed lift.
  */
 export function adaptFromMeetFeedback(search, feedbackText) {
   const said = feedbackText ?? '';

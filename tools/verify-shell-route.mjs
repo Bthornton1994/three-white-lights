@@ -4320,7 +4320,8 @@ async function checkDrivenMeet(tag, searchIn, expected, whatEnding, chooseOption
     `${tag}: ${drive.attempts
       .map(
         (a) =>
-          `${a.attempt ?? '?'} @${a.holdMs === null || a.holdMs === undefined ? 'no eccentric' : `${a.holdMs}ms`}` +
+          `${a.attempt ?? '?'} @${a.holdMs === null || a.holdMs === undefined ? 'no eccentric' : `${a.holdMs}ms(60Hz)/${a.heldForMs}ms(held)`}` +
+          ` ${a.fps ?? '?'}fps${a.fpsUsable === false ? ` UNUSABLE: ${a.fpsWhy}` : ''}` +
           ` x${a.drivesTapped ?? 0} drive tap(s)${a.downCommandSeen === true ? ' + down command' : ''}` +
           ` -> ${JSON.stringify(a.feedback ?? a.why ?? null)}`,
       )
