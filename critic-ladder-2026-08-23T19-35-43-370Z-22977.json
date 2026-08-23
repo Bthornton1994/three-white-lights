@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "critic-ladder-2026-08-23T19-35-43-370Z-22977",
   "label": "critic-ladder",
   "command": [
@@ -33,12 +33,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 1,
-    "okCount": 0,
+    "count": 2,
+    "okCount": 1,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T19:35:43.388Z",
-    "lastReason": "start",
+    "lastAttemptIso": "2026-08-23T19:36:17.214Z",
+    "lastReason": "final",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm"
-  }
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": true,
+    "lastOkIso": "2026-08-23T19:35:45.982Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-23T19:36:17.213Z",
+  "elapsedSeconds": 33.8
 }
