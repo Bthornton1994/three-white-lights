@@ -216,6 +216,7 @@ import {
  */
 import {
   MEET_DRIVE,
+  MEET_LIFT_LABELS,
   MEET_LIFT_ORDER,
   MEET_WALKOUT_SAYS as MEET_TAIL_SAYS,
   ON_SCREEN_MIN_OPACITY,
@@ -3522,6 +3523,30 @@ async function checkMeetRestatementsMatchTuning() {
         meetText.includes(`${name}: '${mine}'`),
         `MEET_COPY.${name} is the line this tool ${name.startsWith('FEEDBACK') ? 'steers the meet driver by' : 'identifies §6.5’s recap by'}`,
         `looked for ${name}: '${mine}' in meetTuning.ts`,
+      );
+    }
+
+    // ---- THE THREE WORDS THE MEET DRIVER LEARNS THE LIFT FROM ---------------
+    //
+    // `AttemptView` builds `attempt-label` as `MEET_COPY.LIFT_LABEL[live.lift]`
+    // followed by the attempt number, and `meetDrive.mjs` splits that word back
+    // out to decide which of GDD §6.2's three ladders to steer by. So a copy
+    // edit to any of the three stops the driver identifying the lift at all: it
+    // would report "names none of SQUAT/BENCH/DEADLIFT" and every meet would end
+    // 'stuck' — a red, but one whose message is about a healthy app.
+    //
+    // `MEET_LIFT_LABELS`' own header says each caller cross-checks the entries it
+    // uses. THIS IS THAT CROSS-CHECK, and until it was written that sentence was
+    // a guarantee in prose with nothing behind it — the defect this repository
+    // keeps paying for, in the module that had just been rebuilt around it.
+    const labelBlock = /LIFT_LABEL:\s*Object\.freeze\(\{([^}]*)\}/.exec(meetText);
+    for (const [kind, word] of Object.entries(MEET_LIFT_LABELS)) {
+      check(
+        labelBlock !== null && new RegExp(`${kind}:\s*'${word}'`).test(labelBlock[1]),
+        `MEET_COPY.LIFT_LABEL.${kind} is the word meetDrive.mjs reads a ${kind} attempt's lift off`,
+        labelBlock === null
+          ? 'LIFT_LABEL was not found as an Object.freeze block in meetTuning.ts'
+          : `looked for ${kind}: '${word}' in meetTuning.ts's LIFT_LABEL block, which reads ${JSON.stringify(labelBlock[1].replace(/\s+/g, ' ').trim())}`,
       );
     }
     const staggerMs = numberInSource(meetText, 'RECAP_ROW_STAGGER_MS');
