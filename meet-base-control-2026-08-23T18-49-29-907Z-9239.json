@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "meet-base-control-2026-08-23T18-49-29-907Z-9239",
   "label": "meet-base-control",
   "command": [
@@ -31,14 +31,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 2,
-    "okCount": 1,
+    "count": 3,
+    "okCount": 2,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T18:50:30.003Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-23T18:51:06.611Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-23T18:49:32.572Z"
-  }
+    "lastOkIso": "2026-08-23T18:50:32.506Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-23T18:51:06.610Z",
+  "elapsedSeconds": 96.7
 }
