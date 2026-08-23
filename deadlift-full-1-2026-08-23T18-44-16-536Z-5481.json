@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "deadlift-full-1-2026-08-23T18-44-16-536Z-5481",
   "label": "deadlift-full-1",
   "command": [
@@ -34,14 +34,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 3,
-    "okCount": 2,
+    "count": 4,
+    "okCount": 3,
     "errors": [],
-    "lastAttemptIso": "2026-08-23T18:46:16.630Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-23T18:46:57.157Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-23T18:45:19.185Z"
-  }
+    "lastOkIso": "2026-08-23T18:46:19.063Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-23T18:46:57.156Z",
+  "elapsedSeconds": 160.6
 }
