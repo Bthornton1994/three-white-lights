@@ -201,9 +201,13 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 import {
+  ASCENT_PROMPTS,
+  ECCENTRIC_ONLY_PROMPTS,
+  LIFT_PROMPTS,
   SESSION_DRIVE,
   SESSION_PROMPTS,
   adaptDepthSearch,
+  checkInLiftTestId,
   freshDepthSearch,
   openSessionToFirstSet,
   readLoop,
@@ -217,6 +221,13 @@ import {
   waitUntilDrawn,
 } from './meetDrive.mjs';
 import { markerDirFor } from './verifyMarker.mjs';
+import { decodePng, diffPixels } from './png.mjs';
+import {
+  numberInBlock,
+  numberInDeclaration,
+  numberInSource,
+  parserSelfTest,
+} from './readTuning.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.resolve(HERE, '..');
@@ -1043,6 +1054,207 @@ const REAL_SUBTITLE_MIRROR =
  * it. See the check itself for the phase-name filter that makes this true.
  */
 const REAL_ASCENT_AFTER_CUE_MIRROR = 'RIDE IT';
+/**
+ * TAP EVERY ARMED DRIVE CUE UNTIL THE BAR LOCKS OUT — ONE IMPLEMENTATION,
+ * SHARED BY EVERY LIFT THAT HAS AN ASCENT, WHICH IS ALL THREE.
+ *
+ * ===========================================================================
+ * WHY THIS IS A FUNCTION AND NOT A SECOND COPY
+ * ===========================================================================
+ * CLAUDE.md: "A guard written for one hook — or one FIXTURE, or one ARM OF ONE
+ * `if` — must be applied to its sibling, mechanically… proximity is not
+ * protection, it is the RISK." This loop is where four separate real bugs were
+ * found and fixed (a phantom re-tap that burned one of only a few cue slots; an
+ * evidence snapshot eating the aim window's own margin; a win showing GRINDER
+ * filed as a miss; a miss reason read late enough to belong to the NEXT rep).
+ * A second, deadlift-shaped copy of it would be four bugs waiting to be
+ * re-introduced one at a time, and the copy that drifted would be the one
+ * nobody re-read.
+ *
+ * The body below is the SESSION arm's loop VERBATIM, with two things lifted
+ * out:
+ *
+ *   - the three evidence snapshots, which are callbacks now, so PROBE 3 keeps
+ *     its `attemptN-6-drive-tap-K-settled` phase labels exactly as they were
+ *     and the ladder probe can do something else entirely at the same three
+ *     instants — including, on a deadlift, CLAMPING DOWN at `onLockout`, which
+ *     is that lift's whole check;
+ *   - `'LOCK IT'`, which was hardcoded. IT IS SQUAT AND BENCH COPY —
+ *     `LIFT_COPY.PROMPT.LOCKOUT` is per kind and a deadlift's line is
+ *     "DON'T LET GO" — so on a deadlift the old literal could never match and
+ *     the loop could only ever exit through its outcome arm. Latent rather
+ *     than live, because nothing had ever driven a deadlift through here;
+ *     parameterised rather than left to be discovered by whoever did first.
+ */
+/**
+ * WAIT UNTIL A DRIVE CUE IS OPEN — `tapDriveCuesToLockout`'S PRECONDITION,
+ * EXTRACTED SO BOTH ITS CALLERS ACTUALLY HAVE IT.
+ *
+ * ===========================================================================
+ * WHY THIS IS A FUNCTION AND NOT A COMMENT ON THE LOOP
+ * ===========================================================================
+ * That loop TAPS AT THE TOP OF ITS FIRST ITERATION, deliberately and for a
+ * measured reason (see `AIM_FOR_CENTER_DELAY_MS`). So it is only correct when
+ * it is entered with a cue ALREADY open, and `probeFullRepCycle` satisfied that
+ * with an inline wait immediately above the call.
+ *
+ * THE SECOND CALLER DID NOT, AND THE RUN CAUGHT IT. `driveLadderRep` went
+ * straight from the deadlift's pull into the loop, so its first tap was
+ * dispatched blind — measured in the page's own pointer stream against its own
+ * frame stream: `pointerdown@2742` while the live prompt was "RIDE IT", with
+ * the first "DRIVE — TAP" frame not painted until 3253. `stepLift` grades a
+ * press with `activeCue === null` a full window early, so that tap was a
+ * `missed` timing, a velocity penalty, and one of only 3 drive slots the load
+ * offers — spent on nothing, on every rep, silently.
+ *
+ * That is CLAUDE.md's "a guard written for one hook must be applied to its
+ * sibling, mechanically" arriving as a PRECONDITION rather than as a guard, and
+ * the fix is the same shape: one function both callers call, rather than a
+ * sentence in a header the second caller did not read.
+ *
+ * `lockoutPrompt` is optional and defaults to null, which is
+ * `probeFullRepCycle`'s behaviour EXACTLY as it was — that caller must not
+ * break on its own 'LOCK IT', because a squat that reaches LOCKOUT resolves
+ * within `lockoutTicks` and the outcome is what its miss-handling arm reads. A
+ * deadlift's LOCKOUT is the opposite: it is a beat that lasts, and a rep that
+ * reached it without ever arming a cue must be recognised there rather than
+ * waited out to a timeout.
+ */
+async function awaitFirstDriveCue(page, lockoutPrompt = null) {
+  const ended = await untilLoop(
+    page,
+    (loop) =>
+      (loop.prompt !== null && loop.prompt.includes(SESSION_PROMPTS.DRIVE)) ||
+      (lockoutPrompt !== null && loop.prompt !== null && loop.prompt.includes(lockoutPrompt)) ||
+      SESSION_PROMPTS.OUTCOMES.includes(loop.prompt),
+    FULL_CYCLE.DRIVE_TIMEOUT_MS,
+  );
+  const said = (line) => ended !== null && ended.prompt !== null && line !== null && ended.prompt.includes(line);
+  return { cueOpen: said(SESSION_PROMPTS.DRIVE), lockedOut: said(lockoutPrompt), loop: ended };
+}
+
+async function tapDriveCuesToLockout(page, { lockoutPrompt, onTap, onSettled, onLockout }) {
+  let drivesTapped = 0;
+  let lockedOut = false;
+  let finalOutcome = null;
+  for (;;) {
+    // TAP AS SOON AS THIS LOOP SEES THE CUE — deliberately, not merely
+    // convenient. `promptFor` starts showing 'DRIVE — TAP' at
+    // `cue.openTick` (lift.ts), the window's LEADING edge, and at this
+    // arm's load that edge is ALREADY a winning point (measured via the
+    // pure sim; see AIM_FOR_CENTER_DELAY_MS's own header for the numbers
+    // and for why that was not true at the RPE this arm tried first).
+    // Waiting only spends margin toward the window's one losing edge.
+    await page.waitForTimeout(FULL_CYCLE.AIM_FOR_CENTER_DELAY_MS);
+    await page.mouse.down();
+    await page.waitForTimeout(FULL_CYCLE.DRIVE_TAP_MS);
+    await page.mouse.up();
+    drivesTapped += 1;
+    // This IS the "cue was open, a tap was dispatched" evidence — taken
+    // here, right after dispatch, rather than as a separate call before
+    // it. See the comment above this loop for why: a snapshot before the
+    // tap is not free, and its cost was eating the aim delay's own budget.
+    await onTap(drivesTapped);
+
+    // A beat for the state machine to land on whatever is next before this
+    // asks. RIDE IT between cues (ASCENT_AFTER_CUE) is exactly this window
+    // — `driveSpacingTicks` guarantees it is non-empty (measured: ~450ms at
+    // RPE_CHOICE_HEAVY's loadRatio, comfortably above this settle) — and
+    // asking immediately risks a snapshot mid-transition.
+    await page.waitForTimeout(FULL_CYCLE.BETWEEN_CUES_SETTLE_MS);
+    await onSettled(drivesTapped);
+
+    // DO NOT DECIDE WHETHER TO TAP AGAIN FROM THIS READING. Measured: a tap
+    // that landed cleanly can still show 'DRIVE — TAP' on screen for a beat
+    // after the sim has already accepted it and moved on — display lag, not
+    // an unconsumed cue. Acting on that reading re-taps into an
+    // ALREADY-RESOLVED cue: the press lands with `activeCue === null`,
+    // grades a full window early (a MISS), and silently burns one of
+    // `driveAttemptsFor`'s slots — 4 at this arm's load after the Finding
+    // 2 retune, so losing one to a phantom re-tap still costs a quarter of
+    // the whole ascent's cues.
+    // No cue can legitimately arm before `driveSpacingTicks` elapses
+    // (`lift.ts`), so waiting out that floor before reading again removes
+    // the window where a lingering display could be misread as a new cue.
+    // SPEND THE SPACING FLOOR WATCHING FOR LOCKOUT RATHER THAN SLEEPING
+    // THROUGH IT — and the reason is a measured 300 ms, not tidiness.
+    //
+    // This used to be a flat `waitForTimeout`. On a DEADLIFT the tick the bar
+    // locks out on is the tick the hold starts, and `LOCKOUT_GRIP_GRACE_TICKS`
+    // gives the finger 10 ticks (~167 ms) to come back down before the bar
+    // starts sagging. A bar that locked out early in this sleep was therefore
+    // not noticed for up to `BETWEEN_CUES_SETTLE_MS + spacingFloorRemaining` —
+    // 280 ms — and the clamp landed outside the grace. Measured across five
+    // real runs the re-grip came in at 2, 30, 31, 122 and 300 ms, and the
+    // 300 ms one cost its rep a clean lift.
+    //
+    // The obvious alternative was to widen the check that noticed, which
+    // CLAUDE.md refuses by name ("a threshold chosen to make a check stop
+    // failing is a threshold that will hide the next real failure at the same
+    // site"), so the sleep is what changed instead. Both spreads in this
+    // paragraph are browser measurements taken against `18ef5b7`.
+    //
+    // THE PHANTOM-RE-TAP GUARD THIS FLOOR EXISTS FOR IS UNTOUCHED. That guard
+    // is about not treating a LINGERING 'DRIVE — TAP' display as a fresh cue,
+    // and this wait still refuses to return early on a DRIVE prompt — it breaks
+    // only on the LOCKOUT line, which no lingering cue can produce. A timeout
+    // here returns null and is exactly the old sleep.
+    const spacingFloorRemaining = FULL_CYCLE.MIN_CUE_SPACING_MS - FULL_CYCLE.BETWEEN_CUES_SETTLE_MS;
+    if (spacingFloorRemaining > 0) {
+      await untilLoop(
+        page,
+        (loop) => lockoutPrompt !== null && loop.prompt !== null && loop.prompt.includes(lockoutPrompt),
+        spacingFloorRemaining,
+      );
+    }
+
+    const next = await untilLoop(
+      page,
+      (loop) =>
+        (loop.prompt !== null && (loop.prompt.includes(lockoutPrompt) || loop.prompt.includes(SESSION_PROMPTS.DRIVE))) ||
+        SESSION_PROMPTS.OUTCOMES.includes(loop.prompt),
+      FULL_CYCLE.DRIVE_TIMEOUT_MS,
+    );
+    // WON IS NOT ONLY THE LITERAL `lockoutPrompt` FRAME (squat/bench 'LOCK IT'). `SESSION_PROMPTS.OUTCOMES`
+    // is `['GOOD LIFT', 'GRINDER', 'NO LIFT']` — only the last is an actual
+    // miss. LOCKOUT_TICKS at this arm's load is short enough (~230ms) that
+    // this loop's own poll can land AFTER it, catching RESOLVED with
+    // 'GRINDER' or 'GOOD LIFT' already showing, having never separately
+    // observed the LOCKOUT line at all. Measured: a run recorded three
+    // "misses" whose outcome was 'GRINDER' — a rep that reached lockout and
+    // won, filed as a failure because this check required the one frame it
+    // happened to skip past. A won rep is the LOCKOUT line OR any OUTCOME that is
+    // not specifically 'NO LIFT', not the narrower of the two.
+    const wonOutright =
+      next !== null &&
+      next.prompt !== null &&
+      (next.prompt.includes(lockoutPrompt) || (SESSION_PROMPTS.OUTCOMES.includes(next.prompt) && next.prompt !== 'NO LIFT'));
+    if (wonOutright) {
+      lockedOut = true;
+      await onLockout(drivesTapped);
+      break;
+    }
+    if (next !== null && next.prompt !== null && next.prompt.includes(SESSION_PROMPTS.DRIVE)) {
+      continue; // the spacing floor has passed, so this is a genuinely new cue — tap it
+    }
+    // Resolved (as a real miss — 'NO LIFT') with no further cue, or this
+    // wait timed out — either way, CAPTURE THE READING THAT ENDED THE
+    // LOOP, right here, rather than reading again after the wait below.
+    // This is the same race the file header already names for the
+    // cue-detection wait above, in a spot this loop's own extra taps and
+    // settle waits newly reach: a FRESH readLoop() taken 150ms+ after a
+    // miss can land after the app's own automatic next-rep reset,
+    // returning the NEXT rep's BRACE prompt (or, measured once, a
+    // transitional null) as if it were this attempt's miss reason.
+    // Measured on this exact loop: outcome recorded as "TAP AND HOLD TO
+    // DESCEND" on one attempt and `null` on another, neither a real miss
+    // reason, both from re-reading late.
+    finalOutcome = next;
+    break;
+  }
+  return { drivesTapped, lockedOut, finalOutcome };
+}
+
 async function probeFullRepCycle(page, url) {
   // A FRESH, ISOLATED SESSION — NOT THE ONE PROBE 1/2 ALREADY PLAYED. See the
   // "WHY THIS ARM PICKS SESSION_DRIVE.RPE_CHOICE_HEAVY" section of this
@@ -1060,7 +1272,9 @@ async function probeFullRepCycle(page, url) {
   // top level) makes every `page.goto` a brand-new lifter, so this function
   // opening its OWN session gives it the full 5-set budget to itself, spent
   // on nothing but its own drive-tap retries.
-  const opened = await openSessionToFirstSet(page, url, undefined, SESSION_DRIVE.RPE_CHOICE_HEAVY);
+  // SQUAT BY NAME, for the reason `openArm` gives at its own call: the default
+  // is the calendar's rotation and every rep below is squat-shaped.
+  const opened = await openSessionToFirstSet(page, url, undefined, SESSION_DRIVE.RPE_CHOICE_HEAVY, 'squat');
   if (!opened.reached) {
     return {
       drove: false,
@@ -1182,12 +1396,10 @@ async function probeFullRepCycle(page, url) {
     // at all, and `adaptDepthSearch` silently no-opped on it. Measured on this
     // engine: attempt 2 recorded outcome `"TAP AND HOLD TO DESCEND"` and
     // attempt 3 held the exact same `holdMs` as attempt 2 as a result.
-    const ascentEnded = await untilLoop(
-      page,
-      (loop) => (loop.prompt !== null && loop.prompt.includes(SESSION_PROMPTS.DRIVE)) || SESSION_PROMPTS.OUTCOMES.includes(loop.prompt),
-      FULL_CYCLE.DRIVE_TIMEOUT_MS,
-    );
-    const driveOpen = ascentEnded !== null && ascentEnded.prompt !== null && ascentEnded.prompt.includes(SESSION_PROMPTS.DRIVE);
+    // `lockoutPrompt` deliberately left null here — see `awaitFirstDriveCue`.
+    // This is the same wait this block always did, moved into the function that
+    // owns the precondition it establishes.
+    const { cueOpen: driveOpen, loop: ascentEnded } = await awaitFirstDriveCue(page);
     if (!driveOpen) {
       await snapshot(`attempt${attempt}-5-ascent-before-drive(drive-cue-seen=${driveOpen})`);
       const outcome = ascentEnded ?? (await readLoop(page));
@@ -1228,95 +1440,13 @@ async function probeFullRepCycle(page, url) {
     // never had a first cue land to follow. This loop taps and releases for
     // each cue as it opens, the way a real finger does, and keeps going until
     // either lockout or the rep ends some other way.
-    let drivesTapped = 0;
-    let lockedOut = false;
-    let finalOutcome = null;
-    for (;;) {
-      // TAP AS SOON AS THIS LOOP SEES THE CUE — deliberately, not merely
-      // convenient. `promptFor` starts showing 'DRIVE — TAP' at
-      // `cue.openTick` (lift.ts), the window's LEADING edge, and at this
-      // arm's load that edge is ALREADY a winning point (measured via the
-      // pure sim; see AIM_FOR_CENTER_DELAY_MS's own header for the numbers
-      // and for why that was not true at the RPE this arm tried first).
-      // Waiting only spends margin toward the window's one losing edge.
-      await page.waitForTimeout(FULL_CYCLE.AIM_FOR_CENTER_DELAY_MS);
-      await page.mouse.down();
-      await page.waitForTimeout(FULL_CYCLE.DRIVE_TAP_MS);
-      await page.mouse.up();
-      drivesTapped += 1;
-      // This IS the "cue was open, a tap was dispatched" evidence — taken
-      // here, right after dispatch, rather than as a separate call before
-      // it. See the comment above this loop for why: a snapshot before the
-      // tap is not free, and its cost was eating the aim delay's own budget.
-      await snapshot(`attempt${attempt}-6-drive-tap-${drivesTapped}-released`);
-
-      // A beat for the state machine to land on whatever is next before this
-      // asks. RIDE IT between cues (ASCENT_AFTER_CUE) is exactly this window
-      // — `driveSpacingTicks` guarantees it is non-empty (measured: ~450ms at
-      // RPE_CHOICE_HEAVY's loadRatio, comfortably above this settle) — and
-      // asking immediately risks a snapshot mid-transition.
-      await page.waitForTimeout(FULL_CYCLE.BETWEEN_CUES_SETTLE_MS);
-      await snapshot(`attempt${attempt}-6-drive-tap-${drivesTapped}-settled`);
-
-      // DO NOT DECIDE WHETHER TO TAP AGAIN FROM THIS READING. Measured: a tap
-      // that landed cleanly can still show 'DRIVE — TAP' on screen for a beat
-      // after the sim has already accepted it and moved on — display lag, not
-      // an unconsumed cue. Acting on that reading re-taps into an
-      // ALREADY-RESOLVED cue: the press lands with `activeCue === null`,
-      // grades a full window early (a MISS), and silently burns one of
-      // `driveAttemptsFor`'s slots — 4 at this arm's load after the Finding
-      // 2 retune, so losing one to a phantom re-tap still costs a quarter of
-      // the whole ascent's cues.
-      // No cue can legitimately arm before `driveSpacingTicks` elapses
-      // (`lift.ts`), so waiting out that floor before reading again removes
-      // the window where a lingering display could be misread as a new cue.
-      const spacingFloorRemaining = FULL_CYCLE.MIN_CUE_SPACING_MS - FULL_CYCLE.BETWEEN_CUES_SETTLE_MS;
-      if (spacingFloorRemaining > 0) await page.waitForTimeout(spacingFloorRemaining);
-
-      const next = await untilLoop(
-        page,
-        (loop) =>
-          (loop.prompt !== null && (loop.prompt.includes('LOCK IT') || loop.prompt.includes(SESSION_PROMPTS.DRIVE))) ||
-          SESSION_PROMPTS.OUTCOMES.includes(loop.prompt),
-        FULL_CYCLE.DRIVE_TIMEOUT_MS,
-      );
-      // WON IS NOT ONLY THE LITERAL 'LOCK IT' FRAME. `SESSION_PROMPTS.OUTCOMES`
-      // is `['GOOD LIFT', 'GRINDER', 'NO LIFT']` — only the last is an actual
-      // miss. LOCKOUT_TICKS at this arm's load is short enough (~230ms) that
-      // this loop's own poll can land AFTER it, catching RESOLVED with
-      // 'GRINDER' or 'GOOD LIFT' already showing, having never separately
-      // observed 'LOCK IT' text at all. Measured: a run recorded three
-      // "misses" whose outcome was 'GRINDER' — a rep that reached lockout and
-      // won, filed as a failure because this check required the one frame it
-      // happened to skip past. A won rep is 'LOCK IT' OR any OUTCOME that is
-      // not specifically 'NO LIFT', not the narrower of the two.
-      const wonOutright =
-        next !== null &&
-        next.prompt !== null &&
-        (next.prompt.includes('LOCK IT') || (SESSION_PROMPTS.OUTCOMES.includes(next.prompt) && next.prompt !== 'NO LIFT'));
-      if (wonOutright) {
-        lockedOut = true;
-        await snapshot(`attempt${attempt}-7-lockout-after-${drivesTapped}-tap(s)`);
-        break;
-      }
-      if (next !== null && next.prompt !== null && next.prompt.includes(SESSION_PROMPTS.DRIVE)) {
-        continue; // the spacing floor has passed, so this is a genuinely new cue — tap it
-      }
-      // Resolved (as a real miss — 'NO LIFT') with no further cue, or this
-      // wait timed out — either way, CAPTURE THE READING THAT ENDED THE
-      // LOOP, right here, rather than reading again after the wait below.
-      // This is the same race the file header already names for the
-      // cue-detection wait above, in a spot this loop's own extra taps and
-      // settle waits newly reach: a FRESH readLoop() taken 150ms+ after a
-      // miss can land after the app's own automatic next-rep reset,
-      // returning the NEXT rep's BRACE prompt (or, measured once, a
-      // transitional null) as if it were this attempt's miss reason.
-      // Measured on this exact loop: outcome recorded as "TAP AND HOLD TO
-      // DESCEND" on one attempt and `null` on another, neither a real miss
-      // reason, both from re-reading late.
-      finalOutcome = next;
-      break;
-    }
+    const drive = await tapDriveCuesToLockout(page, {
+      lockoutPrompt: LIFT_PROMPTS.squat.LOCKOUT,
+      onTap: (n) => snapshot(`attempt${attempt}-6-drive-tap-${n}-released`),
+      onSettled: (n) => snapshot(`attempt${attempt}-6-drive-tap-${n}-settled`),
+      onLockout: (n) => snapshot(`attempt${attempt}-7-lockout-after-${n}-tap(s)`),
+    });
+    const { lockedOut, finalOutcome } = drive;
     drovePastLockout = drovePastLockout || lockedOut;
     await page.waitForTimeout(150);
     await snapshot(`attempt${attempt}-8-after-drive-sequence`);
@@ -1496,6 +1626,1211 @@ async function untilLoop(page, predicate, timeoutMs) {
 }
 
 // ---------------------------------------------------------------------------
+// THE PROMPT LADDER — WHICH LIFT DOES A PLAYER WHO TAPPED THE CHIP ACTUALLY GET?
+// ---------------------------------------------------------------------------
+/**
+ * ===========================================================================
+ * THE EVIDENCE GAP THIS CLOSES, MEASURED RATHER THAN ASSERTED
+ * ===========================================================================
+ * Everything above this line drives a SQUAT. `.gauntlet/shots/lift-press/press.json`
+ * stamped commit `ba1931c`, whose session arm recorded `loopPrompt`
+ * "TAP AND HOLD TO DESCEND" and `loopDetail` "...release at the bottom, tap
+ * every drive cue..." — squat grammar, both — and that record predates
+ * `9789da3` ("thread LiftKind into the tick sim"), so it describes a
+ * squat-only tree. Two of the game's three competition lifts had shipped phase
+ * models and NO browser evidence at all.
+ *
+ * CLAUDE.md: "A screen a player reaches needs a check that reaches it the way a
+ * player does." A deadlift is a screen a player reaches — `CheckInView.tsx`
+ * renders one chip per `SESSION_TUNING.LIFT_ROTATION` entry and a tap on
+ * `check-in-lift-deadlift` retargets the session (GDD §3.2) — so the rule
+ * applies in full and was unmet.
+ *
+ * ===========================================================================
+ * WHY THE PROMPT TEXT IS THE INSTRUMENT, AND WHAT MAKES THAT MORE THAN COPY
+ * ===========================================================================
+ * `vitest.config.ts` is `environment: node`, so nothing in the suite renders,
+ * and the browser cannot read `LiftState.phase` — it is a value inside a hook.
+ * What it CAN read is `session-prompt`, which `SetView.tsx` fills from
+ * `promptFor(loop.state)`, a pure function of `state.phase` and
+ * `state.config.kind`. So the prompt ladder is the phase ladder seen through
+ * one total function, and the strings are per-kind and mutually exclusive:
+ * "TAP TO PULL" is printable ONLY from (deadlift, BRACE), "DON'T LET GO" only
+ * from (deadlift, LOCKOUT) before the command, "DOWN" only from (deadlift,
+ * LOCKOUT) after it, and "RELEASE AT DEPTH" / "OUT OF THE HOLE" /
+ * "TOUCH THE CHEST" / "WAIT FOR IT" / "PRESS!" only from a DESCENT or a HOLE —
+ * phases `stepLift` REFUSES to a deadlift outright.
+ *
+ * `session-detail` is the second, independent read: `SetView` fills it from
+ * `LIFT_COPY.SUBTITLE[loop.state.config.kind]`, indexing the config's kind
+ * DIRECTLY rather than routing through a phase. So the subtitle says which
+ * lift the sim was configured for and the prompt ladder says which phase path
+ * it actually walked, and a fallback that moved one without the other shows up
+ * as the two disagreeing.
+ *
+ * ===========================================================================
+ * THE ZERO HAS TWO NON-ZERO CONTROLS BESIDE IT, TAKEN BY THE SAME INSTRUMENT
+ * ===========================================================================
+ * "We polled a deadlift and saw no DESCENT" is the shape CLAUDE.md refuses
+ * everywhere — a measurement at the horizons somebody happened to sweep,
+ * presented as a property. An empty domain (a recorder that samples nothing, a
+ * rep that never left BRACE) reports exactly the same zero as the property.
+ *
+ * So all three lifts are driven, by one function, in one run, and the counts
+ * are pinned EXACTLY rather than bounded: a squat's ladder contains exactly 2
+ * of the game's 5 eccentric-only lines, a bench's exactly 3, a deadlift's
+ * exactly 0. The two non-zero counts are what the zero is zero against, which
+ * is the arrangement `src/game/streak.test.ts` uses for the same reason.
+ *
+ * ===========================================================================
+ * WHAT THIS SECTION CANNOT SAY
+ * ===========================================================================
+ * - It cannot see the CUE RING. `cueProgress` returning null for the whole of
+ *   a deadlift LOCKOUT — the "nothing telegraphs the down command" guarantee —
+ *   is drawn into the Skia `<canvas>`, not into any element with a testID.
+ *   Reported as a NAMED SKIPPED check rather than folded into a green;
+ *   `lift.test.ts`'s no-countdown test is what actually keeps it true.
+ * - It cannot say the down command's delay is SEEDED rather than fixed. One
+ *   played rep is one draw, and a hardcoded delay inside the declared band
+ *   would satisfy the band check below. What that check catches is a delay
+ *   that has come loose from the table it is declared in, and a command that
+ *   never arrives at all. The seeding is `lift.test.ts`'s to hold.
+ * - It does not judge whether the hold FEELS like a hold (GDD §12.1).
+ */
+
+/**
+ * ===========================================================================
+ * WHERE THIS SECTION'S PURE-SIM NUMBERS CAME FROM — STAMPED, BECAUSE THEY ARE
+ * ONE-TIME MEASUREMENTS AND NOTHING IN THE TREE CAN WATCH THEM EXPIRE
+ * ===========================================================================
+ * Several constants and skip messages below cite sweeps over `lift.ts` — the
+ * RPE table in `RPE_CHOICE`, the depth bands in `START_HOLD_MS`, the
+ * `0 of 40` / `40 of 40` control figures, the `29 of 40` seed split. Those were
+ * taken by driving `createLift` / `stepLift` directly from a throwaway vitest
+ * file which is NOT in this tree, so they are anecdotes about an unnamed tree
+ * unless the tree is named.
+ *
+ * MEASURED AT `8ef61c9`. A reader can check that stamp without knowing what was
+ * measured — `git merge-base --is-ancestor 8ef61c9 HEAD` — which is the
+ * property CLAUDE.md's stamping rule exists for. Re-derivable only by
+ * re-writing that harness: the `@guarantee` scoper reaches `src/` and cannot
+ * see a `.mjs` tool, so NOTHING HERE GOES RED when `liftTuning.ts` moves
+ * underneath these numbers. They are labelled measurements rather than
+ * guarantees for exactly that reason, and a re-tune of the mechanic should
+ * expect to re-take them.
+ *
+ * The BROWSER numbers are different in kind and are stamped where they appear:
+ * the re-grip spread (90 / 114 / 121 ms) was measured against `18ef5b7`, after
+ * the spacing-floor fix that produced it.
+ */
+
+/**
+ * Every number the ladder probe moves on, in one place.
+ *
+ * NONE OF THESE ARE GAME FEEL — the game's are in `src/game/liftTuning.ts`.
+ * These are a robot's reaction times and its patience, kept here for the reason
+ * `PRESS_PROBE` and `FULL_CYCLE` keep theirs: one place to look when the robot
+ * stops keeping up with a re-tuned mechanic.
+ */
+const LIFT_LADDER = Object.freeze({
+  /**
+   * THE RPE THIS PROBE PRESSES — `SESSION_DRIVE.RPE_CHOICE`, `session-rpe-8`,
+   * one button on the ladder `BriefingView.tsx` renders for every player on
+   * every session. An ordinary ungated decision, not a debug entry point, and
+   * the same mid-ladder rung every capture tool in this directory photographs.
+   *
+   * ===========================================================================
+   * RPE 9 WAS TRIED FIRST AND WAS MEASURABLY THE WORSE CHOICE FOR THIS PIECE
+   * ===========================================================================
+   * `probeFullRepCycle` picks RPE 9 because it needs a SECOND drive cue to
+   * exist, which is a fact about squat's ascent. This probe's subject is the
+   * deadlift's LOCKOUT, and the two rungs differ there in a way that decides
+   * whether the control rep can discriminate at all.
+   *
+   * Measured in the pure sim at `8ef61c9` over 40 seeds at each rung, driving
+   * the ascent the way this probe does and varying how LATE each tap lands (0 to 45 ticks
+   * after the cue opens, which past ~20 means the window has already closed and
+   * the press is graded a full window early — the worst case a slow robot
+   * produces):
+   *
+   *              held to the down command        finger never returns
+   *     RPE 6    good-lift 40/40 at every lag    miss 25 / grind 15
+   *     RPE 7    good-lift 40/40 at every lag    miss 28 / grind 12
+   *     RPE 8    good-lift 40/40 at every lag    miss 29 / grind 11
+   *     RPE 9    good-lift to 12 ticks, then     miss 30 / grind 10
+   *              grind 40/40 past 20
+   *
+   * So at RPE 9 the held rep grades GRINDER whenever the robot is more than
+   * ~200 ms late on a tap — which is most of the time in this environment, and
+   * was the outcome of the first real browser run of this probe. Both halves of
+   * the control pair then read GRINDER and the pair says nothing. At RPE 8 the
+   * held rep is a clean GOOD LIFT at every tap lag and the un-held one never
+   * is, so the pair discriminates on every seed.
+   *
+   * AND THE COST OF RPE 8 IS STATED RATHER THAN HIDDEN: at that load a deadlift
+   * locks out 40/40 as a clean `good-lift` EVEN WITH NO DRIVE TAPS AT ALL, so
+   * the ascent's cues are not load-bearing there. This probe still taps every
+   * one of them and the ladder below still records them rendering — what it
+   * does NOT claim is that the taps were what made the rep. That is the shape
+   * `liftTuning.ts`'s `DEMO.DEFAULT_LOAD_INDEX` header already worries about
+   * for squat ("the drive input is decoration and the mechanic is a cutscene
+   * with a button on it"), and it is reported as a finding rather than fixed
+   * from here: this is a browser instrument, not a tuning pass.
+   */
+  RPE_CHOICE: SESSION_DRIVE.RPE_CHOICE,
+
+  /**
+   * How many reps this probe will spend trying to walk one kind's full ladder.
+   *
+   * `sessionDrive.mjs`'s adaptive depth search converges rather than making the
+   * first rep — see `DEPTH_HOLD_STEP_MS`. Bounded so a genuinely broken
+   * mechanic fails this probe instead of hanging it. `SESSION_TUNING.WORK_SETS`
+   * is 5 and a missed rep ends its set, so 4 is inside the budget of a session
+   * this probe opens for itself.
+   */
+  MAX_ATTEMPTS: 4,
+
+  /**
+   * WHERE THE DEPTH HOLD STARTS, PER LIFT — and squat's is NOT bench's, which
+   * is why this is a table rather than `SESSION_DRIVE.DEPTH_HOLD_MS` reused.
+   *
+   * Measured at `8ef61c9` from `descentRate` / `DEPTH_LEGAL` / `DEPTH_COLLAPSE`
+   * at this probe's own RPE 8 load (ratio 0.863):
+   *
+   *     squat    legal at  649 ms, ideal  811 ms, buried past 1054 ms
+   *     bench    legal at  610 ms, ideal  663 ms, buried past  762 ms
+   *
+   * So `DEPTH_HOLD_MS`'s 1000 is inside squat's band and 238 ms PAST the point
+   * a bench rep is buried — a shared constant would spend three of this
+   * probe's four attempts bisecting its way back down on every bench run.
+   *
+   * BIASED ABOVE THE IDEAL, NOT AT THE MIDDLE, for the reason `DEPTH_HOLD_MS`'s
+   * own header gives: `useLiftLoop` takes at most `FEEDBACK.MAX_CATCH_UP_TICKS`
+   * ticks per animation frame, so on a loaded software-rendered browser a
+   * wall-clock millisecond buys LESS depth than this arithmetic says and the
+   * legal band slides UP in wall-clock terms. Starting points, not fixed
+   * values — `adaptDepthSearch` moves them on the miss reason.
+   *
+   * `deadlift: null` is the lift, not an omission: there is no eccentric to
+   * hold through, so there is no hold to start anywhere.
+   */
+  START_HOLD_MS: Object.freeze({ squat: 1000, bench: 700, deadlift: null }),
+
+  /**
+   * How long to wait for a deadlift's brace to end after the pull press.
+   *
+   * NOT A TAP AT A GUESSED INSTANT. `stepLift`'s BRACE branch only leaves for
+   * ASCENT once `phaseTick >= braceTicks(load, kind)` — 32 ticks (~533 ms) at
+   * this probe's load — and a press EDGE dispatched before that is consumed
+   * with nothing to show for it, leaving the rep sitting until
+   * `BRACE_TIMEOUT_TICKS` fires ten seconds later. What the branch actually
+   * accepts is a finger ALREADY DOWN when the brace ends (`pressed || m.held`).
+   * So the robot presses, waits for the prompt to LEAVE "TAP TO PULL", and only
+   * then releases — which is also what a lifter does, and is why
+   * `LIFT_COPY.PROMPT.BRACE.deadlift` reads "TAP TO PULL" rather than a hold
+   * instruction: the finger's real job starts a beat later, on the drive cues.
+   *
+   * `braceTicks` at MAXIMAL is 42 ticks (700 ms); this deadline is comfortably
+   * past it and means "the app has stopped responding", not "the app was slow".
+   */
+  PULL_TIMEOUT_MS: 6000,
+  /** A beat after the bar leaves the floor before the finger comes off it. */
+  PULL_RELEASE_MS: 80,
+
+  /**
+   * BENCH'S REACTION TAP. `LIFT_COPY.PROMPT.HOLE_COMMANDED` is 'PRESS!' and
+   * `stepLift`'s HOLE branch reads a press EDGE, so the finger has to be up
+   * when the command fires — it is, because the depth release lifted it.
+   * `PRESS_TIMEOUT_TICKS` gives up on an ignored command; this deadline is past
+   * `PRESS_COMMAND_DELAY_TICKS`' whole range plus that.
+   */
+  COMMAND_TIMEOUT_MS: 6000,
+  PRESS_TAP_MS: 60,
+
+  /**
+   * How long to wait at a deadlift lockout for the down command.
+   *
+   * `DOWN_COMMAND_DELAY_TICKS.MAX` is 96 ticks (1600 ms); this is generously
+   * past it, so a timeout here means the command never came rather than that
+   * this probe was impatient. The BAND the measured hold is checked against is
+   * read from source (`DEADLIFT_LOCKOUT`), never from this number.
+   */
+  DOWN_TIMEOUT_MS: 8000,
+
+  /**
+   * HOW MUCH LATER THAN THE APP THIS INSTRUMENT CAN NOTICE A FRAME.
+   *
+   * The hold is measured from the page-side recorder's own timestamps, not from
+   * `Date.now()` either side of a CDP round trip, so the only error left is the
+   * recorder's own sampling grain: one animation frame (~17 ms at 60 Hz) or one
+   * `SAMPLE_MS` interval tick, at each of the two ends. 100 ms is past that
+   * pair doubled.
+   *
+   * NOT A TOLERANCE CHOSEN TO MAKE A CHECK STOP FAILING, which CLAUDE.md
+   * refuses by name — it is the instrument's resolution, it was written before
+   * the check was first run, and the band it widens is 1000 ms across.
+   */
+  FRAME_ALLOWANCE_MS: 100,
+
+  /** How often the page-side recorder samples, on top of every animation frame. */
+  SAMPLE_MS: 10,
+  /** A cap on the recorder's rows, so a long run cannot grow without bound. */
+  MAX_ROWS: 4000,
+  /**
+   * The elements the recorder watches.
+   *
+   * `session-set-label` USED TO BE HERE AND IS GONE, deliberately. It was
+   * sampled on every row of all nine ladders and serialised into `press.json`,
+   * and it reached no predicate anywhere — the third instance of CLAUDE.md's
+   * "measured, carried, displayed, never compared" in this section. That rule
+   * offers two ways out, "either compare it or stop printing it", and there is
+   * no comparison this instrument can honestly make of it: the only candidate
+   * is that the set index ADVANCES, which happens when a rep misses and not
+   * when one is made, so it is not deterministic on a run whose reps are
+   * supposed to be made. A number with no consequence is worse than an absent
+   * one, because absence prompts a question and a printed number answers one.
+   *
+   * `session-weight` STAYS, and it stays because it earned a predicate rather
+   * than because it is interesting: the three lifts are prescribed from three
+   * different `STARTING_E1RM` seeds, so the weight on the bar is what says the
+   * chip retargeted the PLAN and not merely the copy. See the cross-lift check
+   * at the end of the LADDER section.
+   */
+  WATCHED_IDS: Object.freeze(['session-prompt', 'session-detail', 'session-weight']),
+
+  /** Let a rep's result beat clear before the next rep is asked for. */
+  BETWEEN_REPS_MS: 400,
+  /** How long to wait for the next rep's brace after one resolves. */
+  NEXT_BRACE_MS: 12000,
+  /** How long a resolved rep's outcome has to appear. */
+  RESOLVE_TIMEOUT_MS: 12000,
+  /**
+   * How long a rep NOBODY TOUCHES gets to resolve itself.
+   *
+   * `BRACE_TIMEOUT_TICKS` is 600 ticks — ten seconds — after which `stepLift`
+   * starts the rep without a press; then the ascent, then at most
+   * `DOWN_COMMAND_DELAY_TICKS.MAX` plus `DOWN_COMMAND_SETTLE_TICKS` of lockout.
+   * Roughly fourteen seconds all told, so this is generous rather than tight:
+   * a timeout here means the rep never resolved at all.
+   */
+  NEVER_PRESS_TIMEOUT_MS: 40000,
+  /** Settle before a photograph, so the shutter is not inside a transition. */
+  SHOT_SETTLE_MS: 60,
+  /**
+   * WHERE THE PROMPT IS DRAWN IN THE FRAME, as fractions of the screenshot's
+   * own height, so it survives a device-scale change.
+   *
+   * `SetView`'s header stacks the set label, the weight, the rep pips and then
+   * the prompt above the stage. This band is wide enough to hold the prompt on
+   * a 390x844 viewport and is the region the two lockout frames are required to
+   * DISAGREE inside — a band that missed the text would make that check
+   * vacuous, so it is deliberately generous rather than tight.
+   */
+  PROMPT_BAND: Object.freeze({ TOP_FRACTION: 0.05, HEIGHT_FRACTION: 0.14 }),
+});
+
+/**
+ * THE TICK-DENOMINATED HALF OF THE DEADLIFT'S LOCKOUT, READ OUT OF SOURCE.
+ *
+ * `readTuning.mjs`'s rule, applied: a NAME a check identifies the app by stays
+ * transcribed in the tool (that is what `LIFT_PROMPTS` is), and a NUMBER a
+ * check COMPARES AGAINST is read from source. `tools/capture-cutin.mjs` held a
+ * hold duration by hand and went on asking "did the tap beat the hold?" against
+ * a number the app had stopped using; the band below is exactly that shape of
+ * comparison and gets exactly that treatment.
+ *
+ * A `null` from any reader is a FINDING here rather than a default — a null
+ * read as "not configured" is a check that has quietly stopped asking anything.
+ */
+function readDeadliftLockoutTuning() {
+  const liftTuning = readFileSync(path.join(SRC_ROOT, 'src/game/liftTuning.ts'), 'utf8');
+  const spriteTuning = readFileSync(path.join(SRC_ROOT, 'src/art/spriteTuning.ts'), 'utf8');
+  const read = {
+    downDelayMinTicks: numberInBlock(liftTuning, 'DOWN_COMMAND_DELAY_TICKS', 'MIN'),
+    downDelayMaxTicks: numberInBlock(liftTuning, 'DOWN_COMMAND_DELAY_TICKS', 'MAX'),
+    gripGraceTicks: numberInSource(liftTuning, 'LOCKOUT_GRIP_GRACE_TICKS'),
+    slipGrindTicks: numberInSource(liftTuning, 'LOCKOUT_SLIP_GRIND_TICKS'),
+    settleTicks: numberInSource(liftTuning, 'DOWN_COMMAND_SETTLE_TICKS'),
+    tickHz: numberInDeclaration(spriteTuning, 'TICK_HZ'),
+  };
+  const missing = Object.entries(read)
+    .filter(([, value]) => typeof value !== 'number' || !Number.isFinite(value))
+    .map(([key]) => key);
+  const tickMs = typeof read.tickHz === 'number' && read.tickHz > 0 ? 1000 / read.tickHz : null;
+  return {
+    ...read,
+    tickMs,
+    missing,
+    parserComplaints: parserSelfTest(),
+    /** The declared band, in wall-clock ms, widened by the instrument's own grain. */
+    holdFloorMs:
+      tickMs === null || missing.length > 0
+        ? null
+        : read.downDelayMinTicks * tickMs - LIFT_LADDER.FRAME_ALLOWANCE_MS,
+    holdCeilingMs:
+      tickMs === null || missing.length > 0
+        ? null
+        : read.downDelayMaxTicks * tickMs + LIFT_LADDER.FRAME_ALLOWANCE_MS,
+  };
+}
+const DEADLIFT_LOCKOUT = readDeadliftLockoutTuning();
+
+/**
+ * A PAGE-SIDE FRAME RECORDER, INSTALLED BEFORE THE APP'S OWN CODE RUNS.
+ *
+ * ===========================================================================
+ * WHY IN THE PAGE AND NOT IN THE DRIVER'S POLL LOOP
+ * ===========================================================================
+ * The two frames this whole section turns on are SHORT. "DOWN" is on screen for
+ * `DOWN_COMMAND_SETTLE_TICKS` — 20 ticks, ~333 ms — and 'DRIVE — TAP' for one
+ * cue window. A Node-side poll costs a CDP round trip per look, measured
+ * elsewhere in this file at 1-25 ms and considerably worse under load, and "the
+ * poll happened not to be looking" is indistinguishable in the output from "the
+ * frame never rendered". That is the empty-domain shape CLAUDE.md names,
+ * arriving through a sampling rate.
+ *
+ * In-page it samples on EVERY ANIMATION FRAME — the same clock `useLiftLoop`
+ * paints on, so a prompt that was painted at all is a prompt this saw — with a
+ * `setInterval` beside it as a second sampler in case rAF is throttled. Both
+ * counters are reported and both are asserted non-zero, because a recorder that
+ * stopped ticking returns the same empty ladder as a rep that never happened.
+ *
+ * It also counts POINTERDOWN / POINTERUP on the document, timestamped on the
+ * same clock. That is what makes "the correct play at a deadlift lockout is NO
+ * INPUT" checkable from outside the robot: the PAGE says how many pointer
+ * events it received between the frame that first said "DON'T LET GO" and the
+ * frame that first said "DOWN", rather than the driver asserting it sent none —
+ * which would be a check on its own control flow, self-referential in exactly
+ * the way this file's own vacuity rules refuse.
+ */
+function installLadderRecorder(context) {
+  return context.addInitScript(
+    ({ ids, intervalMs, maxRows }) => {
+      const rows = [];
+      const pointers = [];
+      const counts = { raf: 0, interval: 0, dropped: 0 };
+      const NOTHING_YET = 'nothing sampled yet';
+      let last = NOTHING_YET;
+      const sample = (via) => {
+        counts[via] += 1;
+        const row = { t: Math.round(performance.now()), via };
+        for (const id of ids) {
+          const node = document.querySelector('[data-testid="' + id + '"]');
+          row[id] = node === null ? null : node.textContent;
+        }
+        const key = ids.map((id) => String(row[id])).join(' | ');
+        if (key === last) return;
+        last = key;
+        if (rows.length >= maxRows) {
+          counts.dropped += 1;
+          return;
+        }
+        rows.push(row);
+      };
+      const onFrame = () => {
+        sample('raf');
+        requestAnimationFrame(onFrame);
+      };
+      requestAnimationFrame(onFrame);
+      setInterval(() => sample('interval'), intervalMs);
+      for (const kind of ['pointerdown', 'pointerup']) {
+        document.addEventListener(
+          kind,
+          (event) => {
+            const node = event.target;
+            const owner =
+              node !== null && typeof node.closest === 'function' ? node.closest('[data-testid]') : null;
+            pointers.push({
+              t: Math.round(performance.now()),
+              kind,
+              on: owner === null ? null : owner.getAttribute('data-testid'),
+            });
+          },
+          true,
+        );
+      }
+      window.__liftLadder = { rows, pointers, counts };
+      // RESETTING CLEARS `last` TOO. Without that the next sample would only
+      // push on a CHANGE, so whatever prompt is ALREADY on screen at the reset
+      // would never be recorded and every ladder would start one rung late.
+      window.__liftLadderReset = () => {
+        rows.length = 0;
+        pointers.length = 0;
+        counts.raf = 0;
+        counts.interval = 0;
+        counts.dropped = 0;
+        last = NOTHING_YET;
+      };
+    },
+    { ids: [...LIFT_LADDER.WATCHED_IDS], intervalMs: LIFT_LADDER.SAMPLE_MS, maxRows: LIFT_LADDER.MAX_ROWS },
+  );
+}
+
+/** Everything the recorder has seen since the last reset. */
+const readLadder = (page) =>
+  page.evaluate(() => {
+    const live = window.__liftLadder;
+    if (live === undefined) return null;
+    return { rows: live.rows.slice(), pointers: live.pointers.slice(), counts: { ...live.counts } };
+  });
+
+const resetLadder = (page) =>
+  page.evaluate(() => {
+    if (window.__liftLadderReset !== undefined) window.__liftLadderReset();
+  });
+
+/** The ordered distinct prompt strings the recorder saw, nulls dropped. */
+function promptRungs(ladder) {
+  const out = [];
+  for (const row of ladder?.rows ?? []) {
+    const text = row['session-prompt'];
+    if (text === null || text === undefined) continue;
+    if (out.length > 0 && out[out.length - 1].text === text) continue;
+    out.push({ text, t: row.t });
+  }
+  return out;
+}
+
+/** The first instant a given prompt was on screen, or null if it never was. */
+function firstAt(ladder, text) {
+  for (const row of ladder?.rows ?? []) {
+    if (row['session-prompt'] === text) return row.t;
+  }
+  return null;
+}
+
+/**
+ * Every value `session-weight` took while the recorder was running, distinct.
+ *
+ * THIS IS THE FIELD THAT SAYS THE CHIP RETARGETED THE PLAN AND NOT ONLY THE
+ * COPY. `SetView` renders `${totalKgFor(plan.loadRatio, plan.e1rmKg)} kg`, and
+ * `plan.e1rmKg` comes from the chosen lift's own `STARTING_E1RM` seed — three
+ * different numbers for the three lifts. The prompt ladder and the subtitle are
+ * both read out of `LIFT_COPY`; this one is read out of the arithmetic, so it
+ * is the one a copy-only change could not fake.
+ */
+function weightsIn(ladder) {
+  return [
+    ...new Set(
+      (ladder?.rows ?? [])
+        .map((row) => row['session-weight'])
+        .filter((text) => text !== null && text !== undefined && text !== ''),
+    ),
+  ];
+}
+
+/** Every subtitle the recorder saw, distinct. `SetView` fills it per kind. */
+function subtitlesSeen(ladder) {
+  return [...new Set((ladder?.rows ?? []).map((row) => row['session-detail']).filter((t) => t !== null && t !== undefined))];
+}
+
+/**
+ * PLAY ONE REP OF ONE LIFT, WITH THAT LIFT'S OWN INPUT GRAMMAR.
+ *
+ * ===========================================================================
+ * THREE GRAMMARS, NOT THREE TUNINGS, WHICH IS WHY THIS IS NOT `playOneRep`
+ * ===========================================================================
+ * `sessionDrive.mjs`'s `playOneRep` implements SQUAT'S grammar — hold to
+ * descend, release at the bottom, tap the drive cue — and says so in its own
+ * header. It cannot drive the other two, and the reason is structural rather
+ * than a matter of numbers (`lift.ts`, "THREE LIFTS, THREE PHASE PATHS, THREE
+ * FACULTIES"):
+ *
+ *   squat     hold to descend -> release AT DEPTH  -> tap the cues -> done
+ *   bench     hold to lower   -> release AT CHEST  -> WAIT for 'PRESS!' and
+ *                               press on it        -> tap the cues -> done
+ *   deadlift  hold through the brace, release once the bar leaves the floor ->
+ *             tap the cues -> CLAMP DOWN at lockout and DO NOTHING until the
+ *             down command
+ *
+ * A deadlift has no DESCENT and no HOLE at all, so there is no release to time;
+ * `playOneRep` would wait on 'RELEASE AT DEPTH' for `DESCENT_TIMEOUT_MS` and
+ * report "holding never started a descent" about a lift that cannot have one.
+ *
+ * ===========================================================================
+ * `holdAtLockout: false` IS THE CONTROL, AND IT IS THE WHOLE POINT OF THE BEAT
+ * ===========================================================================
+ * The deadlift is the only lift where the correct play at the decisive instant
+ * is to do nothing and keep doing it. A check that only ever HOLDS cannot tell
+ * that apart from a lockout that asks for nothing at all — it would pass
+ * identically on a build where `m.held` was forced true at the brace, which is
+ * a defect an independent critic actually planted in this repository once and
+ * which left the whole unit suite green (`lift.ts`'s deadlift BRACE branch
+ * carries the story).
+ *
+ * So the same rep is driven a second time with the finger deliberately kept
+ * off the bar at lockout, and the two outcomes are compared. Measured in the
+ * pure sim over 40 seeds at every rung of the RPE ladder: a rep that never
+ * re-grips is NEVER a clean `good-lift` — it is a `miss`/'dropped' when the sag
+ * reaches `LOCKOUT_DROP_HEIGHT_LOSS` before the command and a `grind`
+ * otherwise, and which of the two it is depends on the rep's seed. That
+ * `never a good-lift` is the invariant the check asserts, because it is the
+ * part that holds at every seed and every load; which branch fired is recorded
+ * beside it rather than asserted.
+ */
+async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots = null, neverPress = false } = {}) {
+  const L = LIFT_PROMPTS[kind];
+  const outcomeOf = (loop) =>
+    loop !== null && SESSION_PROMPTS.OUTCOMES.includes(loop.prompt) ? loop.prompt : null;
+  const bail = async (why) => ({
+    played: false,
+    kind,
+    holdAtLockout,
+    why,
+    ladder: await readLadder(page),
+  });
+
+  await resetLadder(page);
+
+  const braced = await untilLoopSaying(page, L.BRACE, LIFT_LADDER.NEXT_BRACE_MS);
+  if (!braced) {
+    const now = await readLoop(page);
+    return bail(
+      `the stage never showed ${kind}'s brace line ${JSON.stringify(L.BRACE)} — it was saying ${JSON.stringify(now.prompt)}`,
+    );
+  }
+
+  if (neverPress) {
+    // ===================================================================
+    // `NEVER_PRESS_SWEEP`, IN A BROWSER, FOR ONE REP.
+    // ===================================================================
+    // `lift.ts`'s deadlift BRACE branch carries a paragraph about an
+    // independent critic adding one line — `m.held = true;` — that gave a
+    // player who never touched the screen a CLEAN DEADLIFT at every load,
+    // 100 of 100, with the whole suite green. `lift.test.ts` covers it now.
+    //
+    // THE SLIP CONTROL ABOVE DOES NOT, AND THAT WAS MEASURED RATHER THAN
+    // ASSUMED: the mutant was replanted against this tool and it SURVIVED,
+    // 32 checks green. The reason is exact — that control still plays the
+    // pull and the drive cues, and its own `mouse.up()` clears the forced
+    // grip before the lockout ever arrives, so the flag it plants is gone by
+    // the time the beat it breaks begins. A rep that touches nothing at all
+    // is the only shape that keeps the flag set, which is why this arm
+    // exists and why it is not a duplicate of the one above it.
+    //
+    // Nothing is dispatched here. `BRACE_TIMEOUT_TICKS` starts the rep by
+    // itself after ten seconds and the sim plays it out; the page's own
+    // pointer count is what says no input was made, and the caller asserts
+    // that count is zero beside the verdict.
+    const resolvedAlone = await untilLoop(
+      page,
+      (loop) => SESSION_PROMPTS.OUTCOMES.includes(loop.prompt),
+      LIFT_LADDER.NEVER_PRESS_TIMEOUT_MS,
+    );
+    return {
+      played: true,
+      kind,
+      neverPress: true,
+      reachedLockout: null,
+      outcome: resolvedAlone === null ? null : resolvedAlone.prompt,
+      detail: resolvedAlone === null ? null : resolvedAlone.detail,
+      ladder: await readLadder(page),
+    };
+  }
+
+  const box = await page.getByTestId('session-touch').boundingBox().catch(() => null);
+  if (box === null) return bail('the set has no touch stage to press');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+
+  let reachedDescent = false;
+  let reachedCommand = false;
+
+  if (L.DESCENT === null) {
+    // ---- DEADLIFT: the pull. See `PULL_TIMEOUT_MS` for why this is a HOLD
+    // through the brace and not a tap at a guessed instant.
+    await page.mouse.down();
+    const offTheFloor = await untilLoop(
+      page,
+      (loop) => loop.prompt !== null && !loop.prompt.includes(L.BRACE),
+      LIFT_LADDER.PULL_TIMEOUT_MS,
+    );
+    await page.waitForTimeout(LIFT_LADDER.PULL_RELEASE_MS);
+    await page.mouse.up();
+    if (offTheFloor === null) return bail('the pull press never took the bar off the floor');
+    const straightToOutcome = outcomeOf(offTheFloor);
+    if (straightToOutcome !== null) {
+      return {
+        played: true,
+        kind,
+        holdAtLockout,
+        reachedLockout: false,
+        outcome: straightToOutcome,
+        detail: offTheFloor.detail,
+        ladder: await readLadder(page),
+      };
+    }
+  } else {
+    // ---- SQUAT AND BENCH: the eccentric. Identical to `playOneRep`'s hold,
+    // with this lift's own DESCENT line and this lift's own starting hold, and
+    // with the press-to-DESCENT detection lag subtracted live — see
+    // `probeFullRepCycle`'s own note on why a static offset cannot fit both a
+    // first attempt and a retry.
+    const pressAt = Date.now();
+    await page.mouse.down();
+    const descending = await untilLoopSaying(page, L.DESCENT, FULL_CYCLE.PHASE_TIMEOUT_MS);
+    if (!descending) {
+      await page.mouse.up();
+      return bail(`holding never started ${kind}'s descent (${JSON.stringify(L.DESCENT)})`);
+    }
+    reachedDescent = true;
+    await page.waitForTimeout(Math.max(0, holdMs - (Date.now() - pressAt)));
+    await page.mouse.up();
+
+    const afterRelease = await readLoop(page);
+    const releasedIntoOutcome = outcomeOf(afterRelease);
+    if (releasedIntoOutcome !== null) {
+      return {
+        played: true,
+        kind,
+        holdAtLockout,
+        reachedDescent,
+        reachedLockout: false,
+        outcome: releasedIntoOutcome,
+        detail: afterRelease.detail,
+        ladder: await readLadder(page),
+      };
+    }
+
+    if (L.COMMAND !== null) {
+      // ---- BENCH ONLY: the reaction. `stepLift`'s HOLE branch reads a press
+      // EDGE and consumes it whether or not the command has fired, so a robot
+      // that pressed early would false-start and be graded
+      // `PRESS_FALSE_START_QUALITY` — which is the mechanic behaving correctly.
+      // This waits for the command's own frame.
+      const commanded = await untilLoop(
+        page,
+        (loop) =>
+          (loop.prompt !== null && loop.prompt.includes(L.COMMAND)) ||
+          SESSION_PROMPTS.OUTCOMES.includes(loop.prompt) ||
+          (loop.prompt !== null && loop.prompt.includes(ASCENT_PROMPTS.RIDE)),
+        LIFT_LADDER.COMMAND_TIMEOUT_MS,
+      );
+      if (commanded !== null && commanded.prompt !== null && commanded.prompt.includes(L.COMMAND)) {
+        reachedCommand = true;
+        await page.mouse.down();
+        await page.waitForTimeout(LIFT_LADDER.PRESS_TAP_MS);
+        await page.mouse.up();
+      }
+      const missedOnTheChest = outcomeOf(commanded);
+      if (missedOnTheChest !== null) {
+        return {
+          played: true,
+          kind,
+          holdAtLockout,
+          reachedDescent,
+          reachedCommand,
+          reachedLockout: false,
+          outcome: missedOnTheChest,
+          detail: commanded.detail,
+          ladder: await readLadder(page),
+        };
+      }
+    }
+  }
+
+  // ---- THE ASCENT. One implementation, shared with PROBE 3, parameterised by
+  // this lift's own LOCKOUT line — see `tapDriveCuesToLockout`'s header.
+  let lockoutHeld = false;
+  const clampAtLockout = async () => {
+    // THE DEADLIFT'S CHECK, AND THE ONLY PLACE THIS PROBE PRESSES FOR A REASON
+    // THAT IS NOT A CUE. The bar is locked and the hold has started;
+    // `LOCKOUT_GRIP_GRACE_TICKS` (10 ticks, ~167 ms) is how long the finger has
+    // to get back on it, and the sag past that is what costs the rep.
+    if (kind === 'deadlift' && holdAtLockout) {
+      await page.mouse.down();
+      lockoutHeld = true;
+    }
+  };
+  // THE PRECONDITION, WHICH THIS FUNCTION WAS MISSING AND WHICH COST A DRIVE
+  // SLOT ON EVERY REP — see `awaitFirstDriveCue`'s header for the measurement.
+  const first = await awaitFirstDriveCue(page, L.LOCKOUT);
+  let drive = { drivesTapped: 0, lockedOut: false, finalOutcome: first.loop };
+  if (first.cueOpen) {
+    drive = await tapDriveCuesToLockout(page, {
+      lockoutPrompt: L.LOCKOUT,
+      onTap: async () => {},
+      onSettled: async () => {},
+      onLockout: clampAtLockout,
+    });
+  } else if (first.lockedOut) {
+    // The bar reached lockout without a cue ever arming. Legal — at a light
+    // enough load `ascentDemand` never beats capacity — and the hold below is
+    // still the beat under test, so it is driven rather than reported as a
+    // failure to find a cue.
+    drive = { drivesTapped: 0, lockedOut: true, finalOutcome: first.loop };
+    await clampAtLockout();
+  }
+
+  let downCommandSeen = false;
+  let shotsTaken = null;
+  if (kind === 'deadlift' && drive.lockedOut) {
+    if (shots !== null) shotsTaken = await photographTheHold(page, shots, L);
+    // WAIT OUT THE HOLD DOING NOTHING, which is the play. The recorder in the
+    // page is what times it; this loop only decides when to let go.
+    const downed = await untilLoop(
+      page,
+      (loop) =>
+        (loop.prompt !== null && loop.prompt.includes(L.DOWN)) ||
+        SESSION_PROMPTS.OUTCOMES.includes(loop.prompt),
+      LIFT_LADDER.DOWN_TIMEOUT_MS,
+    );
+    downCommandSeen = downed !== null && downed.prompt !== null && downed.prompt.includes(L.DOWN);
+    if (downCommandSeen && shotsTaken !== null) {
+      shotsTaken = { ...shotsTaken, ...(await photographTheDownCommand(page, shots, L)) };
+    }
+    if (lockoutHeld) {
+      await page.mouse.up();
+      lockoutHeld = false;
+    }
+  }
+  if (lockoutHeld) {
+    await page.mouse.up();
+  }
+
+  const resolved = await untilLoop(
+    page,
+    (loop) => SESSION_PROMPTS.OUTCOMES.includes(loop.prompt),
+    LIFT_LADDER.RESOLVE_TIMEOUT_MS,
+  );
+  const ladder = await readLadder(page);
+  return {
+    played: true,
+    kind,
+    holdAtLockout,
+    reachedDescent,
+    reachedCommand,
+    reachedLockout: drive.lockedOut,
+    drivesTapped: drive.drivesTapped,
+    downCommandSeen,
+    outcome: resolved === null ? null : resolved.prompt,
+    detail: resolved === null ? null : resolved.detail,
+    shots: shotsTaken,
+    ladder,
+  };
+}
+
+/**
+ * PHOTOGRAPH THE HOLD, AND READ THE SCREEN EITHER SIDE OF THE SHUTTER.
+ *
+ * CLAUDE.md's "Presence is not visibility": a committed screenshot in this
+ * repository once came out a flat dark rectangle filed beside a detailed record
+ * saying it was a bomb-out screen, and it was found by somebody opening the
+ * file. So the shutter's own instant is read from the DOM immediately before
+ * and immediately after it opens, both reads are recorded, and the check on
+ * this shot has a PREDICATE behind every number it prints rather than a caption.
+ *
+ * The frame-accurate evidence that these two beats rendered is the page-side
+ * recorder, not these PNGs. The PNGs are what a human opens.
+ */
+async function photographTheHold(page, shots, ladderCopy) {
+  await page.waitForTimeout(LIFT_LADDER.SHOT_SETTLE_MS);
+  const before = (await readLoop(page)).prompt;
+  await page.screenshot({ path: shots.hold }).catch(() => {});
+  const after = (await readLoop(page)).prompt;
+  return { holdShot: { path: shots.hold, before, after, wanted: ladderCopy.LOCKOUT } };
+}
+
+async function photographTheDownCommand(page, shots, ladderCopy) {
+  const before = (await readLoop(page)).prompt;
+  await page.screenshot({ path: shots.down }).catch(() => {});
+  const after = (await readLoop(page)).prompt;
+  return { downShot: { path: shots.down, before, after, wanted: ladderCopy.DOWN } };
+}
+
+/**
+ * OPEN A FRESH SESSION ON ONE LIFT AND WALK ITS LADDER.
+ *
+ * A FRESH SESSION PER LIFT, and that is a budget fact rather than tidiness:
+ * `armFreshLifterPerBoot` makes every `page.goto` a brand-new lifter, GDD §3.2
+ * allows one session a day, and `SESSION_TUNING.WORK_SETS` is 5 with a missed
+ * rep ending its set. Sharing one session across three lifts is not possible
+ * anyway — the lift is chosen once, on the check-in, before the session exists.
+ */
+async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false } = {}) {
+  const opened = await openSessionToFirstSet(
+    page,
+    url,
+    SESSION_DRIVE.CHECK_IN_TAPS,
+    LIFT_LADDER.RPE_CHOICE,
+    kind,
+  );
+  // WHICH LIFT THE SESSION ACTUALLY LANDED ON, WHICH IS NOT ALWAYS THE ONE THE
+  // CHIP ASKED FOR — AND THE DIFFERENCE IS THE DEFECT THIS SECTION EXISTS FOR.
+  //
+  // `openSessionToFirstSet` refuses when the first set's brace line is not the
+  // chosen lift's, and it says which lift's line it DID match. Returning there
+  // would leave every check below as a skip, so the one mutant that matters
+  // most — `repConfigFor` mapping a deadlift day onto squat's phase model,
+  // which this repository shipped for a round as `simKindFor` — would produce
+  // one red and a section of silence.
+  //
+  // So the rep is driven anyway, with the grammar of whatever lift is actually
+  // on screen, and every check below is still run AGAINST THE LIFT THAT WAS
+  // ASKED FOR. Under that mutant the subtitle check, the ladder-order check and
+  // the eccentric census all go red with the real reading in their detail,
+  // which is what a reader needs to see.
+  const landedOn = opened.reached
+    ? kind
+    : opened.matchedKinds !== undefined && opened.matchedKinds.length === 1
+      ? opened.matchedKinds[0]
+      : null;
+  if (landedOn === null) {
+    return { kind, reached: false, landedOn: null, why: opened.why, chip: checkInLiftTestId(kind) };
+  }
+  // THE ADDRESS BAR, AT THE MOMENT THE STAGE IS READ — CLAUDE.md asks for this
+  // by name so a played arm cannot silently fall back to a debug URL. There is
+  // no `?lift=` arm in `resolveEntry` to fall back TO, which makes the reading
+  // stronger than the assertion; taken anyway, because "there is no such route"
+  // is a claim about today's `shellRoute.ts` and this is a measurement.
+  const search = await queryString(page);
+  const stage = await waitForStage(page, 'session-touch');
+  if (!stage.ok) {
+    return { kind, reached: false, landedOn, why: 'the chosen lift never produced a pressable stage', queryString: search };
+  }
+
+  const attempts = [];
+  let best = null;
+  // THE CAMERA STAYS ARMED UNTIL IT HAS ACTUALLY TAKEN A FRAME, not until the
+  // first attempt is over. An earlier shape armed it only while `best` was
+  // null, which meant a first attempt that MISSED disarmed it permanently and
+  // no run whose opening rep fell short would ever have photographed anything —
+  // a silent gap that only shows up on the runs where the retry loop earns its
+  // keep.
+  let photographed = null;
+  const rungsWanted = requiredRungsFor(kind);
+  let depthSearch = {
+    holdMs: LIFT_LADDER.START_HOLD_MS[landedOn] ?? 0,
+    stepMs: SESSION_DRIVE.DEPTH_HOLD_STEP_MS,
+    lastDirection: 0,
+  };
+
+  for (let attempt = 1; attempt <= LIFT_LADDER.MAX_ATTEMPTS; attempt += 1) {
+    // DRIVEN WITH `landedOn`'S GRAMMAR — the lift on screen — because a driver
+    // waiting for a beat this lift does not have would time out rather than
+    // produce the reading the checks need to redden on.
+    const rep = await driveLadderRep(page, landedOn, depthSearch.holdMs, {
+      holdAtLockout: true,
+      shots: photographed === null ? shots : null,
+    });
+    if (rep.shots?.holdShot !== undefined) photographed = rep.shots;
+    const scored = { attempt, holdMs: depthSearch.holdMs, ...rep, matched: matchRungs(rep.ladder, rungsWanted) };
+    attempts.push(scored);
+    if (best === null || scoreOf(scored) > scoreOf(best)) best = scored;
+    // WHEN THIS LOOP IS ALLOWED TO STOP, and the deadlift's condition is
+    // stricter than the other two on purpose. Walking the ladder is enough for
+    // squat and bench, whose job here is to be non-zero controls for the
+    // eccentric census. The deadlift's control pair needs its HELD rep to be a
+    // clean GOOD LIFT, because the discrimination check below compares the two
+    // outcomes and a held rep that graded GRINDER — reachable when the robot's
+    // re-grip misses `LOCKOUT_GRIP_GRACE_TICKS` under load — makes the pair say
+    // nothing. Retrying costs a rep out of a 5-set budget this session has to
+    // itself, and a made rep does not even end its set.
+    const enough =
+      kind === 'deadlift' && landedOn === 'deadlift'
+        ? scored.matched.walkedInOrder && scored.outcome === 'GOOD LIFT'
+        : scored.matched.walkedInOrder;
+    if (enough) break;
+    if (!rep.played) break;
+    depthSearch = adaptDepthSearch(depthSearch, { detail: rep.detail ?? '' });
+    await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
+  }
+
+  // THE CONTROL REP — deadlift only, and only once a held rep has been seen, so
+  // the pair differs in exactly one thing. See `driveLadderRep`'s header.
+  let slip = null;
+  // `landedOn === kind` guards it: a control pair taken on a lift that is not
+  // the one under test would compare two reps of the wrong lift and could pass
+  // by accident, which is worse than not taking it.
+  let neverPressed = null;
+  if (alsoSlip && landedOn === kind && best !== null && best.reachedLockout === true) {
+    await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
+    slip = await driveLadderRep(page, kind, depthSearch.holdMs, { holdAtLockout: false });
+    await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
+    neverPressed = await driveLadderRep(page, kind, 0, { neverPress: true });
+  }
+
+  return {
+    kind,
+    landedOn,
+    reached: opened.reached,
+    // Carried even on the success path, so a run whose chip did NOT take has
+    // the refusal's own sentence in the check's detail rather than `undefined`.
+    why: opened.why ?? null,
+    chip: checkInLiftTestId(kind),
+    queryString: search,
+    rpeChoice: LIFT_LADDER.RPE_CHOICE,
+    attempts,
+    best,
+    shots: photographed,
+    slip,
+    neverPressed,
+  };
+}
+
+/**
+ * How good an attempt was, for picking which one every claim is read off.
+ *
+ * Rungs first, because a rep that walked further has more to say than one that
+ * graded better and stopped early; the verdict breaks the tie, so a run whose
+ * attempts all walked the whole ladder reports the best-graded of them. Written
+ * as one function rather than inline so the two comparisons cannot drift apart.
+ */
+function scoreOf(scored) {
+  return scored.matched.matchedCount * 10 + (OUTCOME_RANK[scored.outcome] ?? 0);
+}
+
+/**
+ * THE RUNGS ONE LIFT'S LADDER MUST WALK, IN ORDER.
+ *
+ * Built from `LIFT_PROMPTS` rather than typed out, so a lift whose copy changes
+ * cannot leave a stale expectation behind. The counts are per kind and EXACT —
+ * squat 4, bench 5, deadlift 4 — and they are what the "no eccentric line ever
+ * rendered" zero further down is zero AGAINST: a deadlift ladder that matched
+ * nothing would report the same zero as one that walked its own beats
+ * perfectly, and the difference between those two is this list.
+ *
+ * `RIDE IT` is on every list because every lift has an ascent, and it is
+ * deliberately NOT evidence about WHICH lift — `ASCENT_BEFORE_CUE` and
+ * `ASCENT_AFTER_CUE` are the same generic press language on all three. What
+ * carries the identity is the brace line, the eccentric lines' presence or
+ * absence, and (on deadlift) the two lockout lines.
+ */
+function requiredRungsFor(kind) {
+  const L = LIFT_PROMPTS[kind];
+  return [L.BRACE, L.DESCENT, L.HOLE, L.COMMAND, ASCENT_PROMPTS.RIDE, kind === 'deadlift' ? L.LOCKOUT : null, kind === 'deadlift' ? L.DOWN : null].filter(
+    (line) => line !== null,
+  );
+}
+
+/**
+ * Did this ladder show every wanted rung, each one after the last?
+ *
+ * ORDER, NOT MERE PRESENCE. CLAUDE.md's progression rule: a claim that
+ * something advances is three facts, and a set-membership check carries only
+ * the two a frozen value satisfies trivially. "BRACE happened, then DESCENT
+ * happened, then HOLE happened" is the third — it MOVED — and it is the one a
+ * screen stuck on one beat fails.
+ */
+function matchRungs(ladder, wanted) {
+  const rungs = promptRungs(ladder);
+  let cursor = 0;
+  const at = [];
+  for (const line of wanted) {
+    const found = rungs.findIndex((rung, index) => index >= cursor && rung.text === line);
+    if (found < 0) {
+      at.push({ line, at: null });
+      continue;
+    }
+    cursor = found + 1;
+    at.push({ line, at: rungs[found].t });
+  }
+  const matchedCount = at.filter((entry) => entry.at !== null).length;
+  return {
+    wanted,
+    at,
+    matchedCount,
+    walkedInOrder: matchedCount === wanted.length,
+    rungs: rungs.map((rung) => rung.text),
+  };
+}
+
+/** How many of the game's eccentric-only lines this ladder ever showed. */
+function eccentricLinesIn(ladder) {
+  const seen = new Set(promptRungs(ladder).map((rung) => rung.text));
+  return ECCENTRIC_ONLY_PROMPTS.filter((line) => seen.has(line));
+}
+
+/**
+ * THE THREE LIFTS THIS SECTION DRIVES, AND WHY IT IS ALL THREE.
+ *
+ * Deadlift is the one with no browser evidence and the one the piece is for.
+ * The other two are here as CONTROLS for its zero — see the section header —
+ * and bench closes the same evidence gap on the way past, since a bench session
+ * had never been driven in a browser either.
+ *
+ * Taken from `LIFT_PROMPTS` rather than typed out, so a lift added to the
+ * game's rotation without being added here is visible as a shorter run rather
+ * than as a silent omission.
+ */
+const LADDER_KINDS = Object.freeze(Object.keys(LIFT_PROMPTS));
+
+/**
+ * HOW MANY OF THE GAME'S FIVE DESCENT/HOLE-ONLY LINES EACH LIFT MAY EVER SHOW.
+ *
+ * Derived from `LIFT_PROMPTS` rather than pinned as three literals, because
+ * three literals would have to be re-derived by hand the moment a line moves —
+ * and a stale expectation that still passes is what this whole file is about.
+ * What the CHECK adds is that the derivation is compared against a real played
+ * rep on a real screen: deadlift's entry is 0 BECAUSE it has no eccentric
+ * copy, and the assertion is that a driven deadlift shows none of the other
+ * two lifts' either.
+ */
+const ECCENTRIC_LINE_COUNT = Object.freeze(
+  Object.fromEntries(
+    Object.entries(LIFT_PROMPTS).map(([kind, ladder]) => [
+      kind,
+      [ladder.DESCENT, ladder.HOLE, ladder.COMMAND].filter((line) => line !== null).length,
+    ]),
+  ),
+);
+
+/**
+ * `LIFT_COPY.MISS_REASON.dropped`, restated the way every other line in this
+ * tool is. DEADLIFT'S OWN: `lift.ts` gives the lockout drop its own
+ * `MissReason` precisely so a player is not handed "The bar beat you at the
+ * sticking point" about a bar that was locked out a moment ago.
+ */
+const DEADLIFT_DROPPED_REASON = 'Put it down before the call.';
+
+/**
+ * The three verdicts a rep can end on, ordered worst to best.
+ *
+ * `SESSION_PROMPTS.OUTCOMES` is the same three strings as a flat list and says
+ * nothing about which is better, which is right for a driver deciding whether a
+ * rep is over. A CONTROL comparing two reps needs the order, and it needs it
+ * written down once rather than inferred at a call site from a string
+ * comparison that would happen to sort GOOD LIFT above GRINDER by accident.
+ */
+const OUTCOME_RANK = Object.freeze({ 'NO LIFT': 0, GRINDER: 1, 'GOOD LIFT': 2 });
+
+/**
+ * GRADE THE TWO PHOTOGRAPHS — with a predicate behind every number printed.
+ *
+ * CLAUDE.md's "measured, carried, displayed, never compared": three tools in
+ * this repository shipped a quantity that reached a log line and never a
+ * predicate. A screenshot is the most convincing form of that — a reader
+ * supplies the comparison in their head — and this repository has already filed
+ * a 7 KB flat dark rectangle beside a detailed record saying it was a bomb-out
+ * screen.
+ *
+ * So three things are asserted rather than described:
+ *
+ *   - the DOM said the wanted line at the instant the shutter opened. Read
+ *     immediately before AND after, both recorded; the assertion is on the
+ *     before-read, which is the one that brackets the exposure's start.
+ *   - neither frame is blank, measured as more than one distinct colour inside
+ *     the prompt's own box rather than as a file size.
+ *   - the two frames are NOT the same frame, measured as differing pixels
+ *     inside that box. A shutter that fired twice on one beat would file two
+ *     convincing PNGs and this is what catches it.
+ */
+/**
+ * WHICH PROMPTS THE SCREEN MAY HAVE REACHED BY THE TIME EACH SHUTTER CLOSED.
+ *
+ * `after` was read, recorded and printed into both photograph checks and
+ * asserted in neither — only `before` was — so a shutter that straddled a
+ * transition would have shown it in the record and passed. That is CLAUDE.md's
+ * "measured, carried, displayed, never compared", inside a check written to
+ * avoid exactly it.
+ *
+ * The predicate is FORWARD-ONLY rather than equality, and that is the honest
+ * shape: a `DOWN` frame lasts `DOWN_COMMAND_SETTLE_TICKS` (~333 ms) and a
+ * `page.screenshot` on this machine takes a good fraction of that, so the
+ * screen legitimately reaching the verdict during the exposure is not a defect.
+ * What IS a defect is the screen having moved to a beat that belongs to a
+ * DIFFERENT rep — a brace, an ascent line, or nothing at all — which is what
+ * "the shutter photographed something else" looks like from here.
+ */
+const HOLD_SHOT_FORWARD = Object.freeze([
+  LIFT_PROMPTS.deadlift.LOCKOUT,
+  LIFT_PROMPTS.deadlift.DOWN,
+  ...SESSION_PROMPTS.OUTCOMES,
+]);
+const DOWN_SHOT_FORWARD = Object.freeze([LIFT_PROMPTS.deadlift.DOWN, ...SESSION_PROMPTS.OUTCOMES]);
+const shutterStayedForward = (after, allowed) => after !== null && allowed.includes(after);
+
+async function gradeTheLockoutPhotographs(shots) {
+  if (shots === null || shots.holdShot === undefined) {
+    skip(
+      'LADDER deadlift: the lockout hold and the down command, photographed',
+      'no rep reached a lockout with the camera armed, so there was nothing to photograph — not substituted with a frame from anywhere else',
+    );
+    return;
+  }
+  const { holdShot, downShot } = shots;
+  check(
+    holdShot.before === holdShot.wanted && shutterStayedForward(holdShot.after, HOLD_SHOT_FORWARD),
+    `LADDER deadlift: the shutter for ${path.basename(holdShot.path)} opened while ${JSON.stringify(holdShot.wanted)} was the live prompt, and the screen had not moved BACKWARD by the time it closed`,
+    `before=${JSON.stringify(holdShot.before)} after=${JSON.stringify(holdShot.after)}; an \`after\` outside ${JSON.stringify(HOLD_SHOT_FORWARD)} means the exposure straddled into a different rep`,
+  );
+  if (downShot === undefined) {
+    skip(
+      'LADDER deadlift: the down command, photographed',
+      'the down command never arrived on this rep, so no frame of it exists to photograph',
+    );
+    return;
+  }
+  check(
+    downShot.before === downShot.wanted && shutterStayedForward(downShot.after, DOWN_SHOT_FORWARD),
+    `LADDER deadlift: the shutter for ${path.basename(downShot.path)} opened while ${JSON.stringify(downShot.wanted)} was the live prompt, and the screen had not moved BACKWARD by the time it closed`,
+    `before=${JSON.stringify(downShot.before)} after=${JSON.stringify(downShot.after)}; an \`after\` outside ${JSON.stringify(DOWN_SHOT_FORWARD)} means the exposure straddled into a different rep`,
+  );
+
+  // THE PIXELS. `promptBox` is read off the live page after the fact, which is
+  // legitimate because the prompt element does not move between beats — only
+  // its text does — and it is the region both frames must disagree inside.
+  let pixels = null;
+  try {
+    const hold = decodePng(readFileSync(holdShot.path));
+    const down = decodePng(readFileSync(downShot.path));
+    const region = promptRegionIn(hold);
+    pixels = {
+      region,
+      differing: diffPixels(hold, down, region).differing,
+      total: region.w * region.h,
+      holdColours: distinctColoursIn(hold, region),
+      downColours: distinctColoursIn(down, region),
+    };
+  } catch (error) {
+    pixels = { error: String(error).slice(0, 200) };
+  }
+  check(
+    pixels.error === undefined && pixels.holdColours > 1 && pixels.downColours > 1,
+    'LADDER deadlift: neither photograph is a blank rectangle — both have drawn pixels inside the prompt band',
+    pixels.error !== undefined
+      ? pixels.error
+      : `${pixels.holdColours} distinct colour(s) in the hold frame, ${pixels.downColours} in the down frame, over ${pixels.total} px`,
+  );
+  check(
+    pixels.error === undefined && pixels.differing > 0,
+    'LADDER deadlift: the two photographs are two DIFFERENT frames — the prompt band disagrees between them, so the shutter did not fire twice on one beat',
+    pixels.error !== undefined ? pixels.error : `${pixels.differing} of ${pixels.total} px differ inside ${JSON.stringify(pixels.region)}`,
+  );
+}
+
+/**
+ * The band of the screenshot the prompt is drawn in.
+ *
+ * A FIXED FRACTION OF THE FRAME, not the element's measured box, and that is
+ * deliberate: the box would have to be read from the live page at the instant
+ * of the shot, which is a third CDP round trip inside a 333 ms window, and a
+ * box read afterwards can belong to a re-laid-out screen. The prompt sits in
+ * `SetView`'s header, under the set label, the weight and the rep pips; this
+ * band covers the top quarter of the stage and is checked to FIT the decoded
+ * image rather than assumed to.
+ */
+function promptRegionIn(image) {
+  const y = Math.round(image.height * LIFT_LADDER.PROMPT_BAND.TOP_FRACTION);
+  const h = Math.round(image.height * LIFT_LADDER.PROMPT_BAND.HEIGHT_FRACTION);
+  return { x: 0, y, w: image.width, h: Math.min(h, image.height - y) };
+}
+
+/** How many distinct RGBA values are drawn inside a region. Blank is 1. */
+function distinctColoursIn(image, region) {
+  const seen = new Set();
+  for (let y = region.y; y < region.y + region.h; y += 1) {
+    for (let x = region.x; x < region.x + region.w; x += 1) {
+      const i = (y * image.width + x) * 4;
+      seen.add(
+        (image.rgba[i] << 24) | (image.rgba[i + 1] << 16) | (image.rgba[i + 2] << 8) | image.rgba[i + 3],
+      );
+      if (seen.size > 64) return seen.size;
+    }
+  }
+  return seen.size;
+}
+
+// ---------------------------------------------------------------------------
 // Arm drivers
 // ---------------------------------------------------------------------------
 
@@ -1532,6 +2867,45 @@ const meetRun = {
 /** The lift an attempt label names — `SQUAT · ATTEMPT 1 OF 3` -> `SQUAT`. */
 const liftOf = (label) =>
   label === null ? null : String(label).split(MEET_PROBE.LABEL_SEPARATOR)[0].trim();
+
+/**
+ * THE ONLY LIFT `meetDrive.mjs` CAN DRIVE, AND WHY THAT IS A NAMED LIMIT RATHER
+ * THAN A RED.
+ *
+ * ===========================================================================
+ * MEASURED AT THE BASE COMMIT, WITH NONE OF THE LADDER WORK PRESENT
+ * ===========================================================================
+ * `playOneMeetAttempt` waits on `SESSION_PROMPTS.BRACE` and
+ * `SESSION_PROMPTS.DESCENT`, which are SQUAT'S lines — 'TAP AND HOLD TO
+ * DESCEND' and 'RELEASE AT DEPTH'. GDD §6.2 runs squat, then bench, then
+ * deadlift, and since `9789da3` those two have their own copy and their own
+ * phase paths: a bench attempt says 'TAP AND HOLD TO LOWER' and a deadlift says
+ * 'TAP TO PULL' and has no DESCENT at all. So the meet driver can hold squat's
+ * three attempts and nothing after them.
+ *
+ * `MEET_PROBE.PROBES_PER_LIFT_BEFORE_A_SECOND` then sends the instrument to
+ * bench for its second reading, `reachAttempt` waits on a line that will never
+ * render, `BRACE_TIMEOUT_TICKS` starts the rep on its own, and the arm reports
+ * "no attempt braced in 3 tries — prompt was null" about an app that was
+ * behaving correctly throughout.
+ *
+ * REPRODUCED AT `8ef61c9` IN A SEPARATE WORKTREE, byte-identical in its
+ * failure text and in `meetRun.drives` (`0, 2, 0, 0`), before this line was
+ * written — so it is a pre-existing limit of the instrument and not something
+ * the ladder work caused. It is recorded here as a NAMED SKIPPED check because
+ * CLAUDE.md asks for exactly that when an arm cannot be driven, and because a
+ * red that says "the meet is stuck" about a healthy meet is the crying-wolf
+ * shape this file refuses elsewhere.
+ *
+ * IT DOES NOT SWALLOW THE RED. The skip fires only when the attempt on screen
+ * is provably a lift this driver has no grammar for, read off `attempt-label`.
+ * Any other reason the stage does not come back is still a failure.
+ *
+ * CLOSING IT IS A DIFFERENT PIECE: `meetDrive.mjs` needs bench's wait-then-
+ * press beat and deadlift's lockout hold, which is the meet-day half of what
+ * the LADDER section below does for the daily session.
+ */
+const MEET_DRIVER_KNOWS_ONLY = 'SQUAT';
 
 /**
  * May this instrument spend THIS attempt on a pan?
@@ -1609,6 +2983,21 @@ async function reachAttempt(page) {
         };
       }
     }
+    // WHICH LIFT IS ON SCREEN, BEFORE WAITING ON A LINE IT MAY NEVER SAY.
+    // See `MEET_DRIVER_KNOWS_ONLY`: this driver's brace and descent lines are
+    // squat's, so an attempt on another lift cannot be handed over and the
+    // honest answer is to say which lift rather than to time out and report a
+    // null prompt about a healthy meet.
+    const onScreen = await readMeetLoop(page);
+    const liftOnScreen = onScreen.attempt ? liftOf(onScreen.attemptLabel) : null;
+    if (liftOnScreen !== null && liftOnScreen !== MEET_DRIVER_KNOWS_ONLY) {
+      return {
+        ok: false,
+        unsupportedLift: liftOnScreen,
+        label: onScreen.attemptLabel,
+        why: `the meet is on ${JSON.stringify(onScreen.attemptLabel)} and meetDrive.mjs only knows ${MEET_DRIVER_KNOWS_ONLY}'s input grammar — see MEET_DRIVER_KNOWS_ONLY${whys.length === 0 ? '' : ` (after ${whys.join('; ')})`}`,
+      };
+    }
     // The rep is pressable at the BRACE, not the instant the screen mounts.
     const braced = await untilMeet(
       page,
@@ -1633,6 +3022,199 @@ async function reachAttempt(page) {
     return { ok: true, label: braced.state.attemptLabel };
   }
   return { ok: false, why: `no attempt braced in ${MEET_PROBE.REACH_RETRIES} tries — ${whys.join('; ')}` };
+}
+
+/**
+ * THE MEET ARM'S BOOKKEEPING — CHECKED WHEN THE PANS WERE TAKEN, NAMED WHEN
+ * THEY WERE NOT.
+ *
+ * ===========================================================================
+ * WHY THIS IS A FUNCTION BOTH PATHS CALL
+ * ===========================================================================
+ * This block used to sit below a `continue` that a blocked arm took, so on the
+ * one kind of run where these gaps matter most they were not reported at all.
+ * Measured by set-differencing this record's `what` strings against
+ * `8ef61c9`'s: four entries that existed at base were absent, with no name
+ * anywhere. `blockedBy` is the whole difference between the two paths now, and
+ * it is a string (the reason) or null.
+ *
+ * WHAT STAYS A REAL CHECK ON A BLOCKED RUN, and it is not none of it: the
+ * driver-played count reads `meetRun.drives`, which a blocked run still fills
+ * (measured `0, 2, 0, 0` — two attempts really were played), and the quota's
+ * ORDERING half reads `meetRun.probedLabels`, which is whatever the instrument
+ * held before it stopped. Only the COMPLETENESS half — that every lift was
+ * reached — is unmeasurable on a run that never reached them, and only that
+ * half is skipped.
+ */
+function gradeMeetBookkeeping(arm, { panPlan, panSurfaces, blockedBy }) {
+  if (arm.id !== 'meet') return;
+  const panPlanLength = panPlan.length;
+
+  // ---- 1. FOUR PANS ON FOUR DIFFERENT ATTEMPTS ---------------------------
+  // A pan that silently re-used a screen would report the same cancel count
+  // under two names, which is the strongest-looking and emptiest thing this
+  // arm could do.
+  const spent = panPlan.map((step) => panSurfaces[step.name]);
+  const spentReal = spent.filter((label) => label !== undefined);
+  const whatDistinct = `ARM ${arm.id}: the ${panPlanLength} pans were spent on ${panPlanLength} DIFFERENT attempts, so no reading is a copy of another`;
+  if (blockedBy === null) {
+    check(
+      new Set(spent).size === panPlanLength,
+      whatDistinct,
+      `${new Set(spent).size} distinct of ${spent.length}: ${spent.join(' | ')}`,
+    );
+  } else {
+    skip(
+      whatDistinct,
+      `only ${spentReal.length} of ${panPlanLength} pans were spent, so there is no set of four to be distinct — ${blockedBy}. NOT re-pinned at the smaller number: a set-size check over a shorter list is a different claim wearing the same sentence`,
+    );
+  }
+
+  // ---- 2. THE QUOTA, IN ITS TWO HALVES -----------------------------------
+  // `MEET_PROBE.PROBES_PER_LIFT_BEFORE_A_SECOND` claims a rule: no lift takes a
+  // second instrument gesture until every lift has taken one. That is the whole
+  // reason the readings survive to be taken, and a rule with nothing behind it
+  // is the shape this repository keeps finding in prose.
+  const seenLifts = new Set();
+  const heldPerLift = new Map();
+  const tooEarly = [];
+  for (const label of meetRun.probedLabels) {
+    const lift = liftOf(label);
+    seenLifts.add(lift);
+    const held = (heldPerLift.get(lift) ?? 0) + 1;
+    heldPerLift.set(lift, held);
+    if (held > MEET_PROBE.PROBES_PER_LIFT_BEFORE_A_SECOND && seenLifts.size < MEET_DRIVE.SAFEST_OPTIONS.length) {
+      tooEarly.push(`${label} was this instrument's ${held}${'th'} on ${lift} while only ${seenLifts.size} lift(s) had been touched`);
+    }
+  }
+  const heldInOrder = `held in order: ${meetRun.probedLabels.join(' | ')}; per lift ${[...meetRun.probesByLift.entries()].map(([lift, n]) => `${lift}x${n}`).join(', ')}`;
+  const whatQuota = `ARM ${arm.id}: no lift took a second gesture from this instrument until all ${MEET_DRIVE.SAFEST_OPTIONS.length} lifts had taken one`;
+  if (blockedBy === null) {
+    check(
+      tooEarly.length === 0 && seenLifts.size === MEET_DRIVE.SAFEST_OPTIONS.length,
+      whatQuota,
+      heldInOrder + (tooEarly.length === 0 ? '' : `; VIOLATIONS: ${tooEarly.join('; ')}`),
+    );
+  } else {
+    skip(
+      whatQuota,
+      `the instrument held ${meetRun.probedLabels.length} attempt(s) on ${[...seenLifts].join('/') || 'nothing'} before it stopped, so the half of this rule that says every lift was REACHED cannot be measured on this run — ${blockedBy}. The ordering half is checked separately below rather than folded in, because folding them left the rule the skip above cites as its own cause with nothing asserting it`,
+    );
+    // THE ORDERING HALF, WHICH IS MEASURABLE ON WHAT WAS HELD — and which is
+    // reported as an EMPTY DOMAIN rather than a pass when there is not enough
+    // to bite on. The rule cannot fire below two held attempts: the violation
+    // test is `held > 1`, so one label can never produce one.
+    const enoughToBite = meetRun.probedLabels.length >= MEET_PROBE.PROBES_PER_LIFT_BEFORE_A_SECOND + 1;
+    const whatOrdering = `ARM ${arm.id}: the ordering half of that quota held over the attempts this instrument DID hold`;
+    if (enoughToBite) {
+      check(
+        tooEarly.length === 0,
+        whatOrdering,
+        heldInOrder + (tooEarly.length === 0 ? '' : `; VIOLATIONS: ${tooEarly.join('; ')}`),
+      );
+    } else {
+      skip(
+        whatOrdering,
+        `${meetRun.probedLabels.length} attempt(s) held, and a second gesture on one lift is what this rule forbids — below ${MEET_PROBE.PROBES_PER_LIFT_BEFORE_A_SECOND + 1} held there is no pair for it to be about. An empty domain, reported rather than passed`,
+      );
+    }
+  }
+
+  // ---- 3. THE DRIVER REALLY PLAYED THE ONES IN BETWEEN --------------------
+  // Checked on BOTH paths: `meetRun.drives` is filled by `driveMeetToItsEnd`
+  // whether or not a pan was ever spent, so "the meet was driven" is not four
+  // gestures and nothing else. A count, not a bound.
+  const drivenAttempts = meetRun.drives.reduce((total, drive) => total + drive.attempts, 0);
+  check(
+    drivenAttempts > 0,
+    `ARM ${arm.id}: the shared driver played the attempts this instrument did not`,
+    `${drivenAttempts} attempt(s) played by driveMeetToItsEnd against ${meetRun.probedLabels.length} held here; drives: ${JSON.stringify(meetRun.drives)}`,
+  );
+}
+
+/**
+ * PROBE 1's OTHER READING, WHICH IS NOT A CHECK, WITH ITS EVIDENCE.
+ *
+ * CLAUDE.md asks for a NAMED SKIPPED check rather than a quiet fallback that
+ * leaves the section looking complete. The stage's "no selection" reading is
+ * TRUE and is NOT EVIDENCE, and this is where that is said on every run —
+ * INCLUDING a run whose arm was blocked, which is the case the `continue` used
+ * to swallow. At `ba1931c` this gap was named on the meet arm; for one commit
+ * on this branch it was simply absent, which is a worse artifact than the red
+ * it replaced.
+ */
+function reportStageSelectionGap(arm, { readings, target, neutralised, blockedBy }) {
+  const stageNeutralised = readings['stage-neutralised-drift'];
+  const what = `ARM ${arm.id}: PROBE 1 on ${arm.touchTestId} itself — a press-and-hold on the STAGE leaves no selection`;
+  if (stageNeutralised !== undefined) {
+    skip(
+      what,
+      `DOMAIN DEAD, re-measured this run rather than cited: with user-select forced to ${JSON.stringify(stageNeutralised.forcedTo?.userSelect)} on the stage, the same gesture that selects ${JSON.stringify(neutralised.selection?.text)} on ${arm.textTestId} selects ${JSON.stringify(stageNeutralised.selection?.text)} here (rangeCount=${stageNeutralised.selection?.rangeCount}). caretRangeFromPoint at the probe point is ${JSON.stringify(target.caretAtCentre)}: the node under the finger is a Skia <canvas> with no text position in it, and Blink will not start a selection inside a replaced element. No value of the fix makes this red, so it is not counted either way.`,
+    );
+    return;
+  }
+  const why =
+    arm.id === 'meet'
+      ? `NOT TAKEN ON THIS ARM. A press-and-hold on the stage spends a meet attempt, GDD §6.2 has nine, and PROBE 1's screen plus the four pans plus the four the driver needs to keep a lift off three misses is all nine.`
+      : `NOT TAKEN THIS RUN — the gesture plan did not reach it${blockedBy === null ? '' : `: ${blockedBy}`}.`;
+  skip(
+    what,
+    `${why} What it measures is a fact about Blink and about \`LiftStage\`, which every arm mounts identically, and it is measured on whichever arms in this same run did reach it. caretRangeFromPoint at this arm's probe point still reads ${JSON.stringify(target.caretAtCentre)}, which is the same CANVAS node with no text position in it.`,
+  );
+}
+
+/**
+ * NAME EVERY PROBE 2 LINE A BLOCKED ARM DID NOT GET TO RUN — ONE SKIP PER LINE,
+ * WITH THE NAMES DERIVED AT RUN TIME RATHER THAN TRANSCRIBED.
+ *
+ * ===========================================================================
+ * WHY ONE AGGREGATE SKIP WAS NOT ENOUGH
+ * ===========================================================================
+ * A single skip reading "PROBE 2's four pans, and the count over them" is an
+ * honest sentence and it is not a NAME. A reviewer set-differencing this
+ * record's `what` strings against an older one — which is exactly how the gap
+ * this function closes was found — sees eight strings vanish and one unrelated
+ * string appear, and has to take on trust that the one stands for the eight.
+ * CLAUDE.md's bar is a NAMED skipped check, and the name a reviewer needs is
+ * the name the check would have had.
+ *
+ * ===========================================================================
+ * DERIVED FROM A SIBLING ARM, NOT TYPED OUT
+ * ===========================================================================
+ * A transcribed list of eight check names is a measurement with nobody
+ * responsible for re-taking it: rename a PROBE 2 check and the list goes stale
+ * silently, which is the failure this file keeps finding in prose. So the names
+ * are read out of `checks` — the lines an arm that DID run has already recorded
+ * in this same process — with only the arm id substituted. Rename a check and
+ * the derived name moves with it, because it IS that check's name.
+ *
+ * `ARM <id>: all N stage gestures…` is built locally instead, because `N` is
+ * this arm's own `GESTURE_PLAN.length` and the meet arm's plan is one shorter
+ * than the others' (the stage-selection reading costs an attempt it does not
+ * have). Substituting the id alone would have produced a name claiming five.
+ *
+ * If no sibling has run — `--arms meet` on its own — there is nothing to derive
+ * from, and that is reported as its own gap rather than papered over with a
+ * transcription.
+ */
+function reportUnrunGestureChecks(arm, { blockedBy, gestureCountWhat, gestureCountWhy }) {
+  skip(gestureCountWhat, gestureCountWhy);
+  const donor = ARMS.find(
+    (other) => other.id !== arm.id && checks.some((c) => c.what.startsWith(`ARM ${other.id}: PROBE 2`)),
+  );
+  if (donor === undefined) {
+    skip(
+      `ARM ${arm.id}: every PROBE 2 line individually`,
+      `no other arm has run in this process yet, so this run cannot derive their names from a sibling and will not transcribe them. Re-run with --arms all to get one named gap per line`,
+    );
+    return;
+  }
+  for (const c of checks.filter((entry) => entry.what.startsWith(`ARM ${donor.id}: PROBE 2`))) {
+    skip(
+      c.what.replace(`ARM ${donor.id}:`, `ARM ${arm.id}:`),
+      `not taken — ${blockedBy}. The name is this run's own ${donor.id}-arm line with the arm substituted, so it cannot drift from the check it stands for; the ${donor.id} arm's reading of it is NOT substituted for this arm's`,
+    );
+  }
 }
 
 async function openArm(page, arm) {
@@ -1673,7 +3255,15 @@ async function openArm(page, arm) {
   // consume comes out of the SAME budget `probeFullRepCycle`'s retry loop
   // needs. `probeFullRepCycle` opens its OWN fresh session at
   // RPE_CHOICE_HEAVY instead of sharing this one — see its header for why.
-  const opened = await openSessionToFirstSet(page, url);
+  //
+  // AND IT ASKS FOR SQUAT BY NAME, which is a fix rather than a preference.
+  // The default this used to take is `liftForDay(...)` — the rotation indexed
+  // by the REAL CALENDAR — while every rep this arm drives is squat-shaped, so
+  // this arm worked one day in three and reported a wall of timeouts on the
+  // other two. `check-in-lift-squat` is a chip on the check-in's first paint,
+  // one tap, a player control; asking for it costs nothing and makes the arm
+  // day-independent. See `openSessionToFirstSet`'s `lift` parameter.
+  const opened = await openSessionToFirstSet(page, url, undefined, undefined, 'squat');
   if (!opened.reached) return { reached: false, why: opened.why ?? 'the session never reached a work set' };
   const back = await waitForStage(page, arm.touchTestId);
   if (!back.ok) return { reached: false, why: `no ${arm.touchTestId} on the first work set` };
@@ -1691,7 +3281,7 @@ async function openArm(page, arm) {
 async function regainStage(page, arm) {
   if (arm.id !== 'meet') return waitForStage(page, arm.touchTestId);
   const attempt = await reachAttempt(page);
-  return { ok: attempt.ok, why: attempt.why, label: attempt.label };
+  return { ok: attempt.ok, why: attempt.why, label: attempt.label, unsupportedLift: attempt.unsupportedLift ?? null };
 }
 
 /**
@@ -1733,6 +3323,11 @@ const context = await browser.newContext({
 // Sprint 2: the server persists a lifter across boots. Every goto in this tool
 // means a FRESH one, so the boundary is armed rather than assumed.
 await armFreshLifterPerBoot(context);
+// The page-side frame recorder the LADDER section reads. Installed on the
+// CONTEXT rather than per navigation, so it is running before the app's own
+// code on every goto — a recorder attached after the set is on screen would
+// already have missed the brace.
+await installLadderRecorder(context);
 const page = await context.newPage();
 const cdp = await context.newCDPSession(page);
 const pageErrors = [];
@@ -1740,6 +3335,69 @@ page.on('pageerror', (e) => pageErrors.push(String(e.message)));
 
 const armsToRun = ARMS.filter((a) => armsWanted === 'all' || armsWanted === a.id);
 const results = [];
+
+// ---------------------------------------------------------------------------
+// WHAT THIS RUN COVERS, WRITTEN INTO THE RECORD AND SAID OUT LOUD
+// ---------------------------------------------------------------------------
+/**
+ * ===========================================================================
+ * A PARTIAL RECORD MUST SAY IT IS PARTIAL, AND THIS ONE COULD NOT
+ * ===========================================================================
+ * `--arms` predates this section and the section roughly tripled what it can
+ * silently omit. Demonstrated rather than described: an `--arms ladder` run
+ * writes `press.json` with the identical top-level key set, a valid
+ * `capturedFrom` (right commit, clean tree, matching instrument hashes),
+ * `arms: []`, and 34 checks — with nothing anywhere saying it is a third of a
+ * run. Pointed at the tracked path it overwrites 108 checks with 34, and
+ * `tools/evidence.mjs --verify` calls the result FRESH and green, because
+ * freshness asks "did code change" and not "does this record cover what its
+ * name implies".
+ *
+ * Two things close it, and the second is the one that bites:
+ *
+ *   - `capturedFrom.coverage` records the `--arms` value, which sections ran,
+ *     and a `complete` flag, so a reader (or a scan) can tell without counting
+ *     checks.
+ *   - every section that did NOT run emits a NAMED SKIPPED check. That is the
+ *     mechanism this file already uses for everything else it cannot say, and
+ *     it means a partial record carries its own gaps in the same array a
+ *     reviewer already reads — rather than in a field they would have to know
+ *     to look for.
+ */
+const LADDER_REQUESTED = armsWanted === 'all' || armsWanted === 'ladder';
+const CROSS_ARM_REQUESTED = armsWanted === 'all';
+const COVERAGE = Object.freeze({
+  argument: armsWanted,
+  pressArmsRequested: armsToRun.map((a) => a.id),
+  pressArmsSkipped: ARMS.filter((a) => !armsToRun.includes(a)).map((a) => a.id),
+  ladder: LADDER_REQUESTED,
+  crossArm: CROSS_ARM_REQUESTED,
+  complete: armsWanted === 'all',
+});
+if (!COVERAGE.complete) {
+  console.log(
+    `\n!! PARTIAL RUN: --arms ${armsWanted}. This record does NOT cover the whole tool. See capturedFrom.coverage and the named skips below.`,
+  );
+  for (const missing of COVERAGE.pressArmsSkipped) {
+    skip(
+      `ARM ${missing}: every check on this arm`,
+      `not run — this invocation was --arms ${armsWanted}, so this record covers a SUBSET of the tool. Nothing is substituted for these readings and no other arm's numbers stand in for them`,
+    );
+  }
+  if (!LADDER_REQUESTED) {
+    skip(
+      'LADDER: every check on all three lifts',
+      `not run — this invocation was --arms ${armsWanted}`,
+    );
+  }
+  if (!CROSS_ARM_REQUESTED) {
+    skip(
+      'CROSS-ARM: every comparison between the arms',
+      `not run — this invocation was --arms ${armsWanted}, and a comparison needs every arm to have produced a reading`,
+    );
+  }
+}
+capturedFrom.coverage = COVERAGE;
 
 for (const arm of armsToRun) {
   console.log(`\n=== ARM: ${arm.id} — ${arm.what} ===`);
@@ -1989,9 +3647,14 @@ for (const arm of armsToRun) {
   /** Which stage each gesture was spent on, so five readings is five. */
   const panSurfaces = {};
   let panBlocked = null;
+  /** Set only when the stage could not come back BECAUSE of a lift this driver
+   *  has no grammar for — see `MEET_DRIVER_KNOWS_ONLY`. Any other cause leaves
+   *  this null and the check below stays a red. */
+  let panBlockedByLift = null;
   for (const step of GESTURE_PLAN) {
     const back = await regainStage(page, arm);
     if (!back.ok) {
+      panBlockedByLift = back.unsupportedLift ?? null;
       panBlocked = `${step.name} was never taken — ${back.why ?? 'the stage did not come back'}`;
       break;
     }
@@ -2034,74 +3697,78 @@ for (const arm of armsToRun) {
   // check below would read `undefined === 0` as false — a red, but one whose
   // message would be about a cancel count rather than about the meet ending.
   const gesturesTaken = Object.keys(pans).length + (readings['stage-neutralised-drift'] === undefined ? 0 : 1);
-  check(
-    panBlocked === null && gesturesTaken === GESTURE_PLAN.length,
-    `ARM ${arm.id}: all ${GESTURE_PLAN.length} stage gestures were taken on a live stage`,
-    panBlocked === null
-      ? `${gesturesTaken} of ${GESTURE_PLAN.length}${arm.id === 'meet' ? `, on attempts ${JSON.stringify(panSurfaces)}` : ''}`
-      : panBlocked,
-  );
+  if (panBlockedByLift !== null) {
+    // A NAMED GAP, NOT A RED, AND ONLY FOR THIS ONE PROVEN CAUSE. See
+    // `MEET_DRIVER_KNOWS_ONLY` for the measurement and for why closing it is a
+    // different piece. Everything already taken on this arm above — the
+    // computed styles, PROBE 1 and its control, the contextmenu readings — was
+    // taken on a real played attempt and stands; what is missing is PROBE 2's
+    // pans and the count over them, and it is missing BY NAME.
+    reportUnrunGestureChecks(arm, {
+      blockedBy: panBlocked,
+      // THE SAME `what` THE CHECK ON THE OTHER PATH USES, so the entry keeps its
+      // name and a set-difference against an older record closes on it rather
+      // than reporting it as vanished.
+      gestureCountWhat: `ARM ${arm.id}: all ${GESTURE_PLAN.length} stage gestures were taken on a live stage`,
+      gestureCountWhy: `${panBlocked}. meetDrive.mjs drives ${MEET_DRIVER_KNOWS_ONLY}'s input grammar only, and MEET_PROBE.PROBES_PER_LIFT_BEFORE_A_SECOND sends the instrument to ${panBlockedByLift} for its second reading. ${gesturesTaken} of ${GESTURE_PLAN.length} gesture(s) were taken before that; NOT substituted from another arm and NOT re-taken on a lift this driver would mis-play`,
+    });
+  } else {
+    check(
+      panBlocked === null && gesturesTaken === GESTURE_PLAN.length,
+      `ARM ${arm.id}: all ${GESTURE_PLAN.length} stage gestures were taken on a live stage`,
+      panBlocked === null
+        ? `${gesturesTaken} of ${GESTURE_PLAN.length}${arm.id === 'meet' ? `, on attempts ${JSON.stringify(panSurfaces)}` : ''}`
+        : panBlocked,
+    );
+  }
   if (panBlocked !== null) {
-    results.push({ arm: arm.id, reached: true, queryString: search, target, text, readings, pans, panSurfaces, why: panBlocked });
+    // AND THE FOUR OTHER GAP-REPORTING SITES THIS `continue` USED TO JUMP.
+    //
+    // Measured by a critic set-differencing the `what` strings of this record
+    // against `8ef61c9`'s: 11 meet-arm CHECKS and 1 meet-arm SKIP present at
+    // base were absent here, and the skip above honestly covered only 7 of
+    // them. Four fell off the record with no name anywhere — the two pan
+    // bookkeeping checks, the driver-played count, and PROBE 1's stage reading,
+    // which was a NAMED gap at base and became an unreported one here.
+    //
+    // The sharpest of the four is the quota. The skip above explains itself by
+    // citing `MEET_PROBE.PROBES_PER_LIFT_BEFORE_A_SECOND` as the mechanism that
+    // sent the instrument to another lift — and that rule's only assertion in
+    // this file was one of the four this `continue` stopped running. A gap that
+    // is explained by a rule nothing checks is the shape this repository keeps
+    // paying for.
+    //
+    // So both sites are functions now and both paths call them, with
+    // `blockedBy` deciding check-or-skip per line. The `continue` stays where it
+    // is: the checks BELOW it read `pans['neutralised']` and friends directly
+    // and would fail on `undefined === 0` with a message about a cancel count.
+    gradeMeetBookkeeping(arm, { panPlan: PAN_PLAN, panSurfaces, blockedBy: panBlockedByLift ?? panBlocked });
+    reportStageSelectionGap(arm, { readings, target, neutralised, blockedBy: panBlockedByLift ?? panBlocked });
+    // `touchTestId` GOES IN EVEN ON THIS PATH, and it was missing. CROSS-ARM's
+    // "the 3 arms are 3 different elements" builds a Set over that field, so a
+    // blocked arm contributed `undefined` — which is distinct from the other
+    // two and made the check PASS on an arm that had reported no element at
+    // all. A set-size check whose domain includes `undefined` is one member
+    // short of vacuous, and it was passing for the wrong reason.
+    results.push({
+      arm: arm.id,
+      reached: true,
+      queryString: search,
+      touchTestId: arm.touchTestId,
+      textTestId: arm.textTestId,
+      target,
+      text,
+      readings,
+      pans,
+      panSurfaces,
+      blockedByLift: panBlockedByLift,
+      why: panBlocked,
+    });
     continue;
   }
 
-  // AND ON THE MEET ARM, THAT THE FOUR PANS WERE FOUR DIFFERENT ATTEMPTS. A pan
-  // that silently re-used a screen would report the same cancel count under two
-  // names, which is the strongest-looking and emptiest thing this arm could do.
-  if (arm.id === 'meet') {
-    const spent = PAN_PLAN.map((step) => panSurfaces[step.name]);
-    check(
-      new Set(spent).size === PAN_PLAN.length,
-      `ARM ${arm.id}: the ${PAN_PLAN.length} pans were spent on ${PAN_PLAN.length} DIFFERENT attempts, so no reading is a copy of another`,
-      `${new Set(spent).size} distinct of ${spent.length}: ${spent.join(' | ')}`,
-    );
-    // AND THE QUOTA ITSELF, ASSERTED RATHER THAN DESCRIBED.
-    //
-    // `MEET_PROBE.PROBES_PER_LIFT_BEFORE_A_SECOND` claims a rule: no lift takes
-    // a second instrument gesture until every lift has taken one. That is the
-    // whole reason the readings survive to be taken, and a rule with nothing
-    // behind it is the shape this repository keeps finding in prose. Walked in
-    // order over the attempts the instrument actually held.
-    const seenLifts = new Set();
-    const heldPerLift = new Map();
-    const tooEarly = [];
-    for (const label of meetRun.probedLabels) {
-      const lift = liftOf(label);
-      seenLifts.add(lift);
-      const held = (heldPerLift.get(lift) ?? 0) + 1;
-      heldPerLift.set(lift, held);
-      if (held > MEET_PROBE.PROBES_PER_LIFT_BEFORE_A_SECOND && seenLifts.size < MEET_DRIVE.SAFEST_OPTIONS.length) {
-        tooEarly.push(`${label} was this instrument's ${held}${'th'} on ${lift} while only ${seenLifts.size} lift(s) had been touched`);
-      }
-    }
-    check(
-      tooEarly.length === 0 && seenLifts.size === MEET_DRIVE.SAFEST_OPTIONS.length,
-      `ARM ${arm.id}: no lift took a second gesture from this instrument until all ${MEET_DRIVE.SAFEST_OPTIONS.length} lifts had taken one`,
-      `held in order: ${meetRun.probedLabels.join(' | ')}; per lift ${[...meetRun.probesByLift.entries()].map(([lift, n]) => `${lift}x${n}`).join(', ')}` +
-        (tooEarly.length === 0 ? '' : `; VIOLATIONS: ${tooEarly.join('; ')}`),
-    );
-    // ...and the driver really played the ones in between, so "the meet was
-    // driven" is not four gestures and nothing else. A count, not a bound.
-    const drivenAttempts = meetRun.drives.reduce((total, drive) => total + drive.attempts, 0);
-    check(
-      drivenAttempts > 0,
-      `ARM ${arm.id}: the shared driver played the attempts this instrument did not`,
-      `${drivenAttempts} attempt(s) played by driveMeetToItsEnd against ${meetRun.probedLabels.length} held here; drives: ${JSON.stringify(meetRun.drives)}`,
-    );
-  }
-
-  // ---- PROBE 1's OTHER READING, WHICH IS NOT A CHECK, WITH ITS EVIDENCE ---
-  // CLAUDE.md asks for a NAMED SKIPPED check rather than a quiet fallback that
-  // leaves the section looking complete. The stage's "no selection" reading is
-  // TRUE and is NOT EVIDENCE, and this is where that is said on every run.
-  const stageNeutralised = readings['stage-neutralised-drift'];
-  skip(
-    `ARM ${arm.id}: PROBE 1 on ${arm.touchTestId} itself — a press-and-hold on the STAGE leaves no selection`,
-    stageNeutralised === undefined
-      ? `NOT TAKEN ON THIS ARM. A press-and-hold on the stage spends a meet attempt, GDD §6.2 has nine, and PROBE 1's screen plus the four pans plus the four the driver needs to keep a lift off three misses is all nine. What it measures is a fact about Blink and about \`LiftStage\`, which every arm mounts identically, and it is measured on the session and debug arms in this same run. caretRangeFromPoint at this arm's probe point still reads ${JSON.stringify(target.caretAtCentre)}, which is the same CANVAS node with no text position in it.`
-      : `DOMAIN DEAD, re-measured this run rather than cited: with user-select forced to ${JSON.stringify(stageNeutralised.forcedTo?.userSelect)} on the stage, the same gesture that selects ${JSON.stringify(neutralised.selection?.text)} on ${arm.textTestId} selects ${JSON.stringify(stageNeutralised.selection?.text)} here (rangeCount=${stageNeutralised.selection?.rangeCount}). caretRangeFromPoint at the probe point is ${JSON.stringify(target.caretAtCentre)}: the node under the finger is a Skia <canvas> with no text position in it, and Blink will not start a selection inside a replaced element. No value of the fix makes this red, so it is not counted either way.`,
-  );
+  gradeMeetBookkeeping(arm, { panPlan: PAN_PLAN, panSurfaces, blockedBy: null });
+  reportStageSelectionGap(arm, { readings, target, neutralised, blockedBy: null });
 
   // ---- THE PROBE'S DOMAIN, DEMONSTRATED IN BOTH DIRECTIONS ---------------
   // Same element, same pan, only `touch-action` moved. Counts pinned exactly,
@@ -2334,7 +4001,7 @@ for (const arm of armsToRun) {
   });
 }
 
-if (armsWanted === 'all') {
+if (CROSS_ARM_REQUESTED) {
   // The meet arm's whole bookkeeping, in one place a reader can check the four
   // readings against. Reported, and then compared: the count is what says the
   // instrument spent four attempts rather than describing four.
@@ -2342,9 +4009,416 @@ if (armsWanted === 'all') {
 }
 
 // ---------------------------------------------------------------------------
+// THE LADDER SECTION — all three lifts, one instrument, one run
+// ---------------------------------------------------------------------------
+/**
+ * `--arms ladder` runs THIS ONLY, which is what makes it iterable while the
+ * three press arms above cost most of the tool's wall clock. `--arms all` runs
+ * both, and that is the combination the committed record is taken from.
+ */
+const ladderRuns = {};
+if (LADDER_REQUESTED) {
+  // THE PARSER, FIRST. Every band below is read out of `liftTuning.ts` by
+  // regex, and a regex that has stopped matching answers `null` — which read as
+  // "not configured" is a check that has quietly stopped asking anything. Both
+  // failures are checks rather than a thrown error, so the record still says
+  // which one happened.
+  check(
+    DEADLIFT_LOCKOUT.parserComplaints.length === 0,
+    'LADDER: readTuning.mjs still reads its own fixture, so the numbers below came from source',
+    DEADLIFT_LOCKOUT.parserComplaints.join('; ') || 'no complaints',
+  );
+  check(
+    DEADLIFT_LOCKOUT.missing.length === 0,
+    'LADDER: every tick-denominated deadlift lockout value resolved out of source',
+    DEADLIFT_LOCKOUT.missing.length === 0
+      ? `DOWN_COMMAND_DELAY_TICKS ${DEADLIFT_LOCKOUT.downDelayMinTicks}..${DEADLIFT_LOCKOUT.downDelayMaxTicks}, grace ${DEADLIFT_LOCKOUT.gripGraceTicks}, slip-grind ${DEADLIFT_LOCKOUT.slipGrindTicks}, settle ${DEADLIFT_LOCKOUT.settleTicks}, at ${DEADLIFT_LOCKOUT.tickHz} Hz`
+      : `unread: ${DEADLIFT_LOCKOUT.missing.join(', ')}`,
+  );
+
+  for (const kind of LADDER_KINDS) {
+    console.log(`\n=== LADDER: ${kind} — GDD §3.2's daily set, opened by pressing ${checkInLiftTestId(kind)} ===`);
+    const run = await probeLiftLadder(page, url, kind, {
+      shots: kind === 'deadlift' ? { hold: path.join(outDir, 'deadlift-lockout-hold.png'), down: path.join(outDir, 'deadlift-down-command.png') } : null,
+      alsoSlip: kind === 'deadlift',
+    });
+    ladderRuns[kind] = run;
+
+    // ---- 1. THE PLAYER'S OWN CONTROL, AND THE ADDRESS BAR -------------------
+    check(
+      run.reached && run.landedOn === kind,
+      `LADDER ${kind}: a work set was reached by pressing ${checkInLiftTestId(kind)} on the check-in and then playing in, and it is a ${kind} set`,
+      run.reached
+        ? `RPE choice ${run.rpeChoice}`
+        : `${run.why}${run.landedOn === null || run.landedOn === undefined ? '' : ` — driven with ${run.landedOn}'s grammar anyway so the checks below have a real reading to disagree with`}`,
+    );
+    if (run.landedOn === null || run.landedOn === undefined) {
+      skip(
+        `LADDER ${kind}: every check below it`,
+        `the ${kind} arm could not be driven at all — ${run.why}. NOT falling back to a debug URL: there is no ?lift= arm in resolveEntry to fall back to, and a section that looked complete here would be worse than a named gap`,
+      );
+      continue;
+    }
+    check(
+      run.queryString === '',
+      `LADDER ${kind}: the address bar carries NO query string at the moment the stage is read`,
+      JSON.stringify(run.queryString),
+    );
+
+    const best = run.best;
+    const ladder = best?.ladder ?? null;
+
+    // ---- 2. THE INSTRUMENT'S OWN DOMAIN -------------------------------------
+    // A recorder that stopped ticking returns the same empty ladder as a rep
+    // that never happened, and every claim below reads that ladder. Both
+    // samplers are asserted live, on the rep the claims are taken from.
+    const counts = ladder?.counts ?? { raf: 0, interval: 0, dropped: 0 };
+    // `counts.dropped` IS IN THE PREDICATE, not only in the message. It was
+    // incremented page-side when `MAX_ROWS` is reached, carried through
+    // `readLadder`, and printed here — and nowhere else. A recorder that
+    // truncated would have printed its own truncation count beside a green
+    // line, which is CLAUDE.md's "measured, carried, displayed, never
+    // compared" exactly: the number a reader supplies the comparison for in
+    // their head. Truncation matters because every claim below reads the row
+    // list, and a truncated list is missing rungs it never says it is missing.
+    check(
+      counts.raf > 0 && counts.interval > 0 && (ladder?.rows.length ?? 0) > 0 && counts.dropped === 0,
+      `LADDER ${kind} DOMAIN: the page-side frame recorder was live, and lost nothing, for the rep every claim below is read off`,
+      `${counts.raf} animation-frame sample(s), ${counts.interval} interval sample(s), ${ladder?.rows.length ?? 0} recorded change(s), ${counts.dropped} dropped against a ${LIFT_LADDER.MAX_ROWS}-row cap`,
+    );
+
+    // ---- 3. WHICH LIFT THE SIM WAS CONFIGURED FOR ---------------------------
+    // `SetView` fills `session-detail` from `LIFT_COPY.SUBTITLE[config.kind]`,
+    // indexing the CONFIG's kind directly rather than routing through a phase.
+    // So this is the read that says the chip retargeted the session, and it is
+    // independent of the phase ladder below.
+    const subtitles = subtitlesSeen(ladder);
+    check(
+      subtitles.includes(LIFT_PROMPTS[kind].SUBTITLE),
+      `LADDER ${kind}: session-detail carries ${kind}'s own LIFT_COPY.SUBTITLE verbatim, so the sim ran THAT lift's config`,
+      `saw ${JSON.stringify(subtitles)}`,
+    );
+
+    // ---- 4. THE PHASE LADDER, IN ORDER --------------------------------------
+    const matched = best?.matched ?? { matchedCount: 0, wanted: requiredRungsFor(kind), at: [], rungs: [] };
+    console.log(`  rungs seen: ${JSON.stringify(matched.rungs)}`);
+    check(
+      matched.matchedCount === matched.wanted.length,
+      `LADDER ${kind}: the prompt ladder walked all ${matched.wanted.length} of ${kind}'s own beats, each one after the last`,
+      `${matched.matchedCount} of ${matched.wanted.length}: ${matched.at.map((entry) => `${JSON.stringify(entry.line)}@${entry.at ?? 'never'}`).join(' -> ')}` +
+        ` (over ${run.attempts.length} attempt(s): ${run.attempts.map((a) => `#${a.attempt}@${a.holdMs}ms=${JSON.stringify(a.outcome ?? a.why ?? null)}`).join(', ')})`,
+    );
+
+    // ---- 5. THE ECCENTRIC CENSUS -------------------------------------------
+    // Counted for every lift so the deadlift's zero has this run's own non-zero
+    // readings beside it. Exact counts, not bounds.
+    const eccentric = eccentricLinesIn(ladder);
+    check(
+      eccentric.length === ECCENTRIC_LINE_COUNT[kind],
+      `LADDER ${kind}: exactly ${ECCENTRIC_LINE_COUNT[kind]} of the game's ${ECCENTRIC_ONLY_PROMPTS.length} DESCENT/HOLE-only lines rendered`,
+      `${eccentric.length}: ${JSON.stringify(eccentric)} — the ban list is ${JSON.stringify(ECCENTRIC_ONLY_PROMPTS)}`,
+    );
+
+    if (kind !== 'deadlift') continue;
+
+    // ---- 6. THE DEADLIFT'S OWN BEAT ----------------------------------------
+    check(
+      best?.reachedLockout === true,
+      `LADDER deadlift DOMAIN: a real rep was driven from the check-in to LOCKOUT, so the hold below has something to say`,
+      best === null
+        ? 'no rep was played at all'
+        : `reachedLockout=${best.reachedLockout}, ${best.drivesTapped ?? 0} drive tap(s), outcome ${JSON.stringify(best.outcome)}`,
+    );
+    check(
+      best?.downCommandSeen === true,
+      `LADDER deadlift: the down command arrived — ${JSON.stringify(LIFT_PROMPTS.deadlift.DOWN)} rendered on a real frame, which for a round it could not (DOWN_COMMAND_SETTLE_TICKS was 0 and the verdict replaced the screen on the command's own tick)`,
+      `downCommandSeen=${best?.downCommandSeen}, outcome ${JSON.stringify(best?.outcome)}`,
+    );
+
+    const lockoutAt = firstAt(ladder, LIFT_PROMPTS.deadlift.LOCKOUT);
+    const downAt = firstAt(ladder, LIFT_PROMPTS.deadlift.DOWN);
+    const holdMs = lockoutAt !== null && downAt !== null ? downAt - lockoutAt : null;
+    check(
+      holdMs !== null &&
+        DEADLIFT_LOCKOUT.holdFloorMs !== null &&
+        holdMs >= DEADLIFT_LOCKOUT.holdFloorMs &&
+        holdMs <= DEADLIFT_LOCKOUT.holdCeilingMs,
+      `LADDER deadlift: the hold ran inside DOWN_COMMAND_DELAY_TICKS' declared band, read out of liftTuning.ts rather than typed here`,
+      holdMs === null
+        ? `never measured — ${JSON.stringify(LIFT_PROMPTS.deadlift.LOCKOUT)} at ${lockoutAt}, ${JSON.stringify(LIFT_PROMPTS.deadlift.DOWN)} at ${downAt}`
+        : `${holdMs}ms against ${DEADLIFT_LOCKOUT.downDelayMinTicks}-${DEADLIFT_LOCKOUT.downDelayMaxTicks} ticks at ${DEADLIFT_LOCKOUT.tickHz}Hz = ${Math.round(DEADLIFT_LOCKOUT.downDelayMinTicks * DEADLIFT_LOCKOUT.tickMs)}-${Math.round(DEADLIFT_LOCKOUT.downDelayMaxTicks * DEADLIFT_LOCKOUT.tickMs)}ms, widened by this recorder's own ${LIFT_LADDER.FRAME_ALLOWANCE_MS}ms grain to ${Math.round(DEADLIFT_LOCKOUT.holdFloorMs)}-${Math.round(DEADLIFT_LOCKOUT.holdCeilingMs)}ms`,
+    );
+
+    // ---- THE "NO INPUT" HALF, COUNTED BY THE PAGE AND NOT BY THE DRIVER ----
+    //
+    // A driver asserting it sent nothing would be checking its own control
+    // flow, which is the self-referential vacuity shape this file refuses
+    // elsewhere. The PAGE counts every pointerdown/pointerup it received, on
+    // the same clock as the frames.
+    //
+    // THE SPAN STARTS AT THE RE-GRIP, NOT AT THE LOCKOUT FRAME — corrected
+    // after the first real run, where it was written as starting at the lockout
+    // frame and reddened on the robot's own clamp landing 122 ms inside it. The
+    // beat is not "do nothing from the instant the bar locks": the player
+    // arrives mid-tap-rhythm and `LOCKOUT_GRIP_GRACE_TICKS` exists precisely so
+    // that getting the finger back on the bar is a transition rather than a
+    // gotcha (`liftTuning.ts` says so in those words). What is asked for is
+    // "clamp, then do nothing and keep doing it", and the span that must be
+    // empty is the one after the clamp.
+    const pointers = ladder?.pointers ?? [];
+    const clamp =
+      lockoutAt === null ? undefined : pointers.find((event) => event.kind === 'pointerdown' && event.t >= lockoutAt);
+    const clampAt = clamp === undefined ? null : clamp.t;
+    const reGripMs = clampAt === null || lockoutAt === null ? null : clampAt - lockoutAt;
+    const noInputMs = clampAt === null || downAt === null ? null : downAt - clampAt;
+    const duringNoInput =
+      clampAt === null || downAt === null
+        ? []
+        : pointers.filter((event) => event.t > clampAt && event.t < downAt);
+    const graceMs = DEADLIFT_LOCKOUT.tickMs === null ? null : DEADLIFT_LOCKOUT.gripGraceTicks * DEADLIFT_LOCKOUT.tickMs;
+    // The floor the empty span must clear, derived from source and not chosen:
+    // the command cannot fire sooner than DOWN_COMMAND_DELAY_TICKS.MIN, and the
+    // most of that a legal re-grip may consume is the grace, so what is left is
+    // the shortest no-input span the mechanic can produce.
+    const noInputFloorMs =
+      DEADLIFT_LOCKOUT.tickMs === null || DEADLIFT_LOCKOUT.missing.length > 0
+        ? null
+        : (DEADLIFT_LOCKOUT.downDelayMinTicks - DEADLIFT_LOCKOUT.gripGraceTicks) * DEADLIFT_LOCKOUT.tickMs -
+          LIFT_LADDER.FRAME_ALLOWANCE_MS;
+    // DELETED HERE, AND THE DOMINATION RECORDED RATHER THAN THE CHECK KEPT:
+    // `the finger went back onto the bar at the lockout and was still on it
+    // when the command came`, which asserted
+    // `clampAt !== null && downAt !== null && clampAt < downAt`.
+    //
+    // It is STRICTLY DOMINATED by the zero-pointer-events check below.
+    // Symbolically, that check requires `noInputMs >= noInputFloorMs` (333 ms),
+    // and `noInputMs` is `downAt - clampAt` or null:
+    //
+    //     clampAt === null   -> noInputMs null  -> the check below is red
+    //     downAt  === null   -> noInputMs null  -> the check below is red
+    //     clampAt >= downAt  -> noInputMs <= 0  -> the check below is red
+    //
+    // Those are exactly the three states that reddened the deleted line, so no
+    // state of the subject made it red while the one below stayed green.
+    // Confirmed against a real mutant rather than only on paper: under
+    // `DOWN_COMMAND_SETTLE_TICKS: 0` BOTH went red together, which is what
+    // domination looks like from the outside and is why it survived a mutation
+    // pass that only asked whether each line could go red at all.
+    //
+    // CLAUDE.md: "If the new rule fires first in every reachable case, the old
+    // one is dead: delete it and record the domination." Nothing is lost —
+    // `clampAt !== null` is still required by the grace check immediately
+    // below (through `reGripMs`), and `clampAt !== null && downAt !== null` by
+    // the zero-pointer check (through `noInputMs`).
+    //
+    // The general lesson is this repository's own, one direction out: the
+    // domination analysis was run twenty lines further down, on
+    // `slip.outcome !== null`, and not on the branch immediately ABOVE it.
+    // THE RE-GRIP'S OWN LATENCY, COMPARED AND NOT MERELY PRINTED.
+    //
+    // CLAUDE.md's "measured, carried, displayed, never compared": three tools in
+    // this repository shipped a quantity that reached a log line and never a
+    // predicate. `reGripMs` appears in two details below it, so it gets one.
+    //
+    // WHAT A RED HERE MEANS, stated so it is not over-read: the held rep of the
+    // control pair ALSO slipped, so the pair no longer differs in exactly one
+    // thing and the discrimination check below it is comparing two slipped
+    // reps. It is a statement about this run's instrument, not about the app —
+    // and the instrument was fixed at the cause rather than fitted with a
+    // wider threshold when it first went out of range (see the spacing-floor
+    // wait in `tapDriveCuesToLockout`). Measured after that fix across three
+    // real runs against `18ef5b7`: 90, 114 and 121 ms against a 167 ms grace.
+    check(
+      reGripMs !== null && graceMs !== null && reGripMs <= graceMs,
+      'LADDER deadlift: the re-grip landed inside LOCKOUT_GRIP_GRACE_TICKS, so the held rep is a clean hold and the pair below differs in exactly one thing',
+      reGripMs === null
+        ? 'no re-grip was measured'
+        : `${reGripMs}ms against ${graceMs === null ? 'unread' : Math.round(graceMs)}ms (LOCKOUT_GRIP_GRACE_TICKS ${DEADLIFT_LOCKOUT.gripGraceTicks} at ${DEADLIFT_LOCKOUT.tickHz}Hz, read from liftTuning.ts)`,
+    );
+    check(
+      duringNoInput.length === 0 && noInputMs !== null && noInputFloorMs !== null && noInputMs >= noInputFloorMs,
+      'LADDER deadlift: the page received ZERO pointer events for the whole span between the re-grip and the down command — the one beat in this game where the correct play is no input, played that way and made',
+      noInputMs === null
+        ? 'the span was never measured, so this counted nothing'
+        : `${duringNoInput.length} event(s) in ${noInputMs}ms, against a floor of ${noInputFloorMs === null ? 'unread' : Math.round(noInputFloorMs)}ms derived from (DOWN_COMMAND_DELAY_TICKS.MIN ${DEADLIFT_LOCKOUT.downDelayMinTicks} - LOCKOUT_GRIP_GRACE_TICKS ${DEADLIFT_LOCKOUT.gripGraceTicks}) ticks less this recorder's ${LIFT_LADDER.FRAME_ALLOWANCE_MS}ms grain; the rep's whole pointer stream was ${JSON.stringify(pointers.map((e) => `${e.kind}@${e.t}`))}`,
+    );
+
+    // ---- 7. THE CONTROL: THE SAME BEAT, NOT HELD ---------------------------
+    const slip = run.slip;
+    if (slip === null || slip.reachedLockout !== true) {
+      skip(
+        'LADDER deadlift CONTROL: a rep whose finger never returns at lockout',
+        slip === null
+          ? 'no control rep was played — the held rep never reached a lockout to contrast with, so there was nothing to hold constant'
+          : `the control rep did not reach a lockout of its own (${JSON.stringify(slip.outcome ?? slip.why)}), so the pair would differ in more than the one thing`,
+      );
+    } else {
+      // ---- THE INVARIANT, WHICH HOLDS AT EVERY SEED AND EVERY LOAD ---------
+      // `LOCKOUT_GRIP_GRACE_TICKS` is 10 and `DOWN_COMMAND_DELAY_TICKS.MIN` is
+      // 36, so a finger that never comes back sags for at LEAST 26 ticks, which
+      // is past `LOCKOUT_SLIP_GRIND_TICKS` (6) whatever the load. Confirmed in
+      // the pure sim at `8ef61c9` over 40 seeds at every rung of the RPE
+      // ladder: 0 of 40 clean lifts at every one, against 40 of 40 held.
+      //
+      // `slip.outcome !== null` IS NOT BELT-AND-BRACES, IT IS WHAT KEEPS THIS
+      // CHECK ABLE TO FAIL ON ITS OWN. Without it a control rep that never
+      // resolved at all reads `null !== 'GOOD LIFT'` as TRUE here and ranks 0
+      // in the comparison below — green on both, over a rep that did not
+      // happen. It is also what stops this line being DOMINATED by that
+      // comparison: with the null admitted, every state that reddens this one
+      // reddens that one too, and CLAUDE.md requires a new rule to be checked
+      // against the thresholds of the ones beside it. With the null refused,
+      // an unresolved control reddens HERE and passes THERE, which is the
+      // independent failure this line is for.
+      // THE NAME SAYS "ANOTHER REP", NOT "THE SAME REP", AND THE CHANGE IS A
+      // CORRECTION RATHER THAN A REWORD. The old name claimed the two reps were
+      // "played identically except that the finger never returns", and the
+      // record shipping beside it contradicted that in its own fields:
+      // `drivesTapped` differs between them, and `repSeed(day, setIndex,
+      // repIndex)` and `liftMomentFor` differ per rep, which moves the seeded
+      // down-command delay and the cue window. CLAUDE.md rules a misdescribing
+      // IDENTIFIER worse than misdescribing prose, because nobody re-verifies a
+      // name. What IS held constant between them is the thing the claim needs —
+      // the lift, the RPE, and the prescribed load — and that is asserted
+      // directly in the discrimination check below rather than named here.
+      check(
+        slip.outcome !== null && slip.outcome !== 'GOOD LIFT',
+        'LADDER deadlift CONTROL: another rep of the same session, differing in that the finger never returns to the bar at lockout, resolved, and is never a clean GOOD LIFT',
+        `held rep: ${JSON.stringify(best?.outcome)} after ${best?.drivesTapped ?? 0} drive tap(s) — control rep: ${JSON.stringify(slip.outcome)} / ${JSON.stringify(slip.detail)} after ${slip.drivesTapped ?? 0}`,
+      );
+      // ---- AND THE DISCRIMINATION, WHICH IS THE POINT OF THE PAIR ----------
+      // The invariant above is one-sided: it would still pass on a build where
+      // the lockout asked for nothing and every deadlift graded GRINDER. What
+      // says the HOLD is what made the rep is that the two reps came out
+      // DIFFERENT, in the direction the beat claims, with the load, the RPE,
+      // the lift and the ascent all identical between them.
+      // THE LOAD IS NOW MEASURED RATHER THAN NAMED. The old name ruled the load
+      // out as the alternative explanation and never compared it — true,
+      // because `plan.loadRatio` is session-level and cannot move between reps,
+      // but ASSERTED rather than checked, which is the thing this file refuses
+      // when the reading is three fields away. `session-weight` is on both reps'
+      // ladders, so the constancy is a comparison now.
+      const heldWeights = weightsIn(best?.ladder);
+      const slipWeights = weightsIn(slip.ladder);
+      const sameBar =
+        heldWeights.length === 1 && slipWeights.length === 1 && heldWeights[0] === slipWeights[0];
+      check(
+        sameBar && OUTCOME_RANK[best?.outcome ?? 'NO LIFT'] > OUTCOME_RANK[slip.outcome ?? 'NO LIFT'],
+        'LADDER deadlift CONTROL: the two reps had the SAME weight on the bar, and the held one graded strictly better — so the hold is what made it and not the load',
+        `bar: held ${JSON.stringify(heldWeights)} vs un-held ${JSON.stringify(slipWeights)}; verdict: held ${JSON.stringify(best?.outcome)} (rank ${OUTCOME_RANK[best?.outcome ?? 'NO LIFT']}) against un-held ${JSON.stringify(slip.outcome)} (rank ${OUTCOME_RANK[slip.outcome ?? 'NO LIFT']}); the held rep re-gripped ${reGripMs}ms into a ${graceMs === null ? 'unread' : Math.round(graceMs)}ms grace, so a held rep that graded GRINDER here means the re-grip missed that window`,
+      );
+      // ---- THE DEADLIFT'S OWN MISS COPY, WHEN THE SAG GOT THAT FAR ---------
+      // Whether the un-held rep merely grinds or is lost outright depends on
+      // the sag rate against THIS rep's own seeded delay (measured: 29 of 40
+      // seeds lose it at RPE 8), so the losing branch is checked when it fires
+      // and named as a gap when it does not. There is deliberately no assertion
+      // on the other branch: 'it is a GRINDER' is exactly what the invariant
+      // above already says once GOOD LIFT is excluded, and a second check that
+      // no state of the subject can fail independently of the first is the
+      // domination this file is required to look for.
+      // ---- THE DEADLIFT'S OWN MISS COPY, FROM WHICHEVER CONTROL LOST IT ---
+      //
+      // IT READS BOTH CONTROLS, AND THAT IS A GAP BEING CLOSED RATHER THAN A
+      // WIDENING. This used to read the slip control alone; when that rep's
+      // seeded down command arrived before the sag reached
+      // `LOCKOUT_DROP_HEIGHT_LOSS` it graded GRINDER, the losing branch never
+      // rendered, and a named skip was filed — while the UNTOUCHED control in
+      // the same run had already graded `NO LIFT` carrying this exact string,
+      // and the tool printed it into a detail line and compared it to nothing.
+      // The one sentence that distinguishes a deadlift's loss from a squat's
+      // had zero browser assertions with the closing reading already in the
+      // record. Either loss will do — both are the deadlift losing its
+      // lockout — so the check takes whichever one happened.
+      const droppedControls = [
+        { name: 'the un-held rep', rep: slip },
+        { name: 'the untouched rep', rep: run.neverPressed },
+      ].filter((entry) => entry.rep !== null && entry.rep !== undefined && entry.rep.outcome === 'NO LIFT');
+      if (droppedControls.length > 0) {
+        const wrong = droppedControls.filter((entry) => entry.rep.detail !== DEADLIFT_DROPPED_REASON);
+        check(
+          wrong.length === 0,
+          `LADDER deadlift CONTROL: the miss carries deadlift's OWN reason, ${JSON.stringify(DEADLIFT_DROPPED_REASON)}, and not the sticking-point line a squat would be given`,
+          `${droppedControls.length} control(s) lost the bar: ${droppedControls.map((entry) => `${entry.name} -> ${JSON.stringify(entry.rep.detail)}`).join('; ')}`,
+        );
+      } else {
+        skip(
+          `LADDER deadlift CONTROL: the ${JSON.stringify(DEADLIFT_DROPPED_REASON)} miss copy`,
+          `neither control lost the bar outright this run — the un-held rep graded ${JSON.stringify(slip.outcome)} and the untouched rep ${JSON.stringify(run.neverPressed?.outcome)}, so the losing branch never rendered. Whether a control merely grinds or is lost depends on its own seeded down-command delay against the sag rate: measured in the pure sim at 8ef61c9, 29 of 40 seeds lose it at this load and 11 survive as a grind, so this is a fact about these reps' seeds and not about the build`,
+        );
+      }
+    }
+
+    // ---- 7b. THE SECOND CONTROL: A REP NOBODY TOUCHES AT ALL ---------------
+    // Not a duplicate of the pair above. See `driveLadderRep`'s `neverPress`
+    // arm for the mutant that survived the first control and is killed by this
+    // one, and for why the difference is the robot's own `mouse.up()`.
+    const untouched = run.neverPressed;
+    const untouchedPointers = (untouched?.ladder?.pointers ?? []).length;
+    if (untouched === null || untouched === undefined || untouched.outcome === null) {
+      skip(
+        'LADDER deadlift CONTROL: a rep nobody touches at all',
+        untouched === null || untouched === undefined
+          ? 'no untouched rep was played — the held rep never reached a lockout to contrast with'
+          : `the untouched rep never resolved inside ${LIFT_LADDER.NEVER_PRESS_TIMEOUT_MS}ms, so there is no verdict to read`,
+      );
+    } else {
+      check(
+        untouchedPointers === 0 && untouched.outcome !== 'GOOD LIFT',
+        'LADDER deadlift CONTROL: a rep the page received NOT ONE pointer event for — brace clock to verdict — is never a clean GOOD LIFT',
+        `${untouchedPointers} pointer event(s) reached the page across the whole rep; it graded ${JSON.stringify(untouched.outcome)} / ${JSON.stringify(untouched.detail)}. The zero is what makes the verdict evidence: a rep this instrument had quietly touched would grade like any other`,
+      );
+    }
+
+    // ---- 8. THE PHOTOGRAPHS ------------------------------------------------
+    await gradeTheLockoutPhotographs(run.shots ?? null);
+
+    // ---- 9. WHAT THIS INSTRUMENT CANNOT SEE --------------------------------
+    skip(
+      'LADDER deadlift: nothing counts the player down to the down command',
+      "`cueProgress` returns null for the whole of a deadlift LOCKOUT so no shrinking ring telegraphs the command — but a ring is drawn INTO the Skia <canvas>, which carries no testID and no text, so this instrument cannot read its absence. `lift.test.ts`'s no-countdown test is what keeps it true; this is a named gap rather than a green",
+    );
+  }
+
+  // ---- 10. THE BAR ITSELF, THE ONE READING A COPY CHANGE CANNOT FAKE -------
+  //
+  // Every other claim in this section reads a STRING out of `LIFT_COPY` — the
+  // brace lines, the eccentric census, the subtitle, the lockout pair. A build
+  // that renamed a lift's copy and left its arithmetic alone would move all of
+  // them together and none of them would notice.
+  //
+  // `session-weight` is different in kind: `SetView` renders
+  // `totalKgFor(plan.loadRatio, plan.e1rmKg)`, and `plan.e1rmKg` is the CHOSEN
+  // LIFT'S OWN `STARTING_E1RM` seed — three different numbers for three lifts.
+  // So three distinct weights is the reading that says the chip retargeted the
+  // PLAN and not merely the caption.
+  //
+  // It is also why that field is still in `WATCHED_IDS` while
+  // `session-set-label` came out of it: this is the predicate it was missing,
+  // and CLAUDE.md calls a watched value with no predicate worse than an absent
+  // one.
+  const ladderWeights = Object.fromEntries(
+    LADDER_KINDS.map((kind) => [kind, weightsIn(ladderRuns[kind]?.best?.ladder)]),
+  );
+  const oneWeightEach = LADDER_KINDS.filter((kind) => ladderWeights[kind].length === 1);
+  const distinctWeights = new Set(oneWeightEach.map((kind) => ladderWeights[kind][0]));
+  if (oneWeightEach.length === LADDER_KINDS.length) {
+    check(
+      distinctWeights.size === LADDER_KINDS.length,
+      `LADDER: the ${LADDER_KINDS.length} lifts were prescribed ${LADDER_KINDS.length} DIFFERENT weights, so the chip moved the PLAN and not only the copy`,
+      `${distinctWeights.size} distinct: ${LADDER_KINDS.map((kind) => `${kind}=${ladderWeights[kind][0]}`).join(', ')}`,
+    );
+  } else {
+    skip(
+      `LADDER: the ${LADDER_KINDS.length} lifts were prescribed ${LADDER_KINDS.length} DIFFERENT weights`,
+      `${oneWeightEach.length} of ${LADDER_KINDS.length} lifts reported exactly one weight on the bar this run (${LADDER_KINDS.map((kind) => `${kind}=${JSON.stringify(ladderWeights[kind])}`).join(', ')}), so there is no set of ${LADDER_KINDS.length} to be distinct. NOT re-pinned at the smaller number`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // CROSS-ARM: three different components, so one is not the others
 // ---------------------------------------------------------------------------
-if (armsWanted === 'all') {
+if (CROSS_ARM_REQUESTED) {
   const debug = results.find((r) => r.arm === 'debug');
   const played = PLAYED_ARMS.map((arm) => results.find((r) => r.arm === arm.id));
   const readable = (result) =>
@@ -2400,11 +4474,24 @@ if (armsWanted === 'all') {
       );
       // The behavioural consequence, stated as its own line so it is not read
       // off a style table by a human doing the inference.
-      check(
-        arm.pans?.['as-shipped']?.cancels === debug.pans?.['as-shipped']?.cancels,
-        `CROSS-ARM: a press behaves the same on the ${arm.arm} surface as on the replay harness`,
-        `${arm.arm} pointercancel=${arm.pans?.['as-shipped']?.cancels} vs debug pointercancel=${debug.pans?.['as-shipped']?.cancels}`,
-      );
+      //
+      // AND IT IS SKIPPED BY NAME RATHER THAN COMPARED AGAINST `undefined` when
+      // the arm never got its pan. `undefined === 0` is false, so this used to
+      // go RED with a message about a cancel count on an arm whose real problem
+      // was three screens earlier — a failure that names the wrong thing is the
+      // half-check this file's own header warns about.
+      if (arm.pans?.['as-shipped'] === undefined) {
+        skip(
+          `CROSS-ARM: a press behaves the same on the ${arm.arm} surface as on the replay harness`,
+          `the ${arm.arm} arm took no pan this run${arm.blockedByLift === null || arm.blockedByLift === undefined ? '' : ` (${arm.blockedByLift} — see MEET_DRIVER_KNOWS_ONLY)`}, so there is no reading to compare and nothing is substituted for one`,
+        );
+      } else {
+        check(
+          arm.pans['as-shipped'].cancels === debug.pans?.['as-shipped']?.cancels,
+          `CROSS-ARM: a press behaves the same on the ${arm.arm} surface as on the replay harness`,
+          `${arm.arm} pointercancel=${arm.pans['as-shipped'].cancels} vs debug pointercancel=${debug.pans?.['as-shipped']?.cancels}`,
+        );
+      }
     }
   }
 }
@@ -2424,6 +4511,17 @@ const record = {
   properties: PRESS_PROPERTIES,
   calloutUnsupported: CALLOUT_UNSUPPORTED,
   arms: results,
+  ladder: {
+    kinds: LADDER_KINDS,
+    prompts: LIFT_PROMPTS,
+    ascentPrompts: ASCENT_PROMPTS,
+    eccentricOnlyPrompts: ECCENTRIC_ONLY_PROMPTS,
+    eccentricLineCount: ECCENTRIC_LINE_COUNT,
+    droppedReason: DEADLIFT_DROPPED_REASON,
+    tuning: LIFT_LADDER,
+    lockoutTuning: DEADLIFT_LOCKOUT,
+    runs: ladderRuns,
+  },
   checks,
   skipped,
   failures: reds().map((c) => ({ what: c.what, detail: c.detail })),

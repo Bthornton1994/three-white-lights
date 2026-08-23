@@ -108,6 +108,29 @@ export function constStringInSource(source, name) {
 }
 
 /**
+ * The number a TOP-LEVEL `const NAME = <number>` DECLARATION is given, or
+ * `null`.
+ *
+ * `numberInSource` above reads a PROPERTY (`NAME: 12,`), which is the shape
+ * every tuning BLOCK is written in, and it answers `null` for a declaration.
+ * `TICK_HZ` is a declaration — `src/art/spriteTuning.ts` exports it as
+ * `export const TICK_HZ = 60;` — and it is the clock every tick-denominated
+ * tuning value in `liftTuning.ts` has to be converted through before a browser
+ * robot holding a wall-clock stopwatch can compare against one.
+ *
+ * Here rather than inline in one tool, per this file's own header: a fourth
+ * copy of a reader is how the third one stops matching without anybody
+ * noticing. Paired with a self-test row BELOW that points it at the property
+ * shape it must NOT answer, the same way the two string readers are.
+ */
+export function numberInDeclaration(source, name) {
+  const found = new RegExp(
+    `(?:^|[^A-Za-z0-9_$])const\\s+${name}\\s*(?::[^=]*)?=\\s*(-?[0-9]+(?:\\.[0-9]+)?)\\s*;`,
+  ).exec(source);
+  return found === null ? null : Number(found[1]);
+}
+
+/**
  * A source text the readers are KNOWN to handle, with the traps in it.
  *
  * `SUB_HOLD_MS` must not answer a question about `HOLD_MS`; `deadlift` has no
@@ -115,7 +138,8 @@ export function constStringInSource(source, name) {
  * cut-in allowance table is written in. `A_CHANNEL` is a DECLARATION and
  * `A_LINE` is a PROPERTY, so each string reader is also pointed at the shape it
  * must NOT answer — a reader that matched both would let a tool read a tuning
- * property when it asked for a channel name and never know.
+ * property when it asked for a channel name and never know. `A_RATE` is the
+ * numeric half of that same pair, for `numberInDeclaration`.
  */
 export const SELF_TEST_FIXTURE = `
   SUB_HOLD_MS: 99,
@@ -127,6 +151,7 @@ export const SELF_TEST_FIXTURE = `
   STARTING: Object.freeze({ squat: 180, deadlift: 220 }),
   A_LINE: 'High. The hips never got under.',
   export const A_CHANNEL = '__someGlobal';
+  export const A_RATE = 60;
 `;
 
 /**
@@ -157,6 +182,13 @@ export function parserSelfTest() {
     // handed a line of meet copy.
     ['stringInSource must not read a declaration', stringInSource(f, 'A_CHANNEL'), null],
     ['constStringInSource must not read a property', constStringInSource(f, 'A_LINE'), null],
+    ['numberInDeclaration A_RATE', numberInDeclaration(f, 'A_RATE'), 60],
+    ['numberInDeclaration on a name that is not there', numberInDeclaration(f, 'NOT_PRESENT'), null],
+    // ...AND IT MUST NOT ANSWER A PROPERTY, for the reason the pair above does
+    // not answer each other's shape: a tool asking for the clock would
+    // otherwise be handed whichever tuning property happened to be named the
+    // same, with no way to tell.
+    ['numberInDeclaration must not read a property', numberInDeclaration(f, 'HOLD_MS'), null],
   ];
   return want
     .filter(([, got, expected]) => got !== expected)
