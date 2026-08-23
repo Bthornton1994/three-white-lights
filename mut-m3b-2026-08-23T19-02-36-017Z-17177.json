@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "mut-m3b-2026-08-23T19-02-36-017Z-17177",
+  "label": "mut-M3b",
+  "command": [
+    "node",
+    "tools/verify-lift-press.mjs",
+    "--url",
+    "http://localhost:8091",
+    "--arms",
+    "ladder"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-23T19:02:36.017Z",
+  "startedAtMs": 1787511756017,
+  "cwd": "/home/user/wt-deadlift",
+  "commit": "e61c7dfeee804274d0397df0f8a4a1f569d4b0b1",
+  "branch": "claude/deadlift-browser-evidence",
+  "dirty": 3,
+  "dirtyPaths": [
+    ".gauntlet/shots/lift-press/press.json",
+    "src/game/lift.ts",
+    "tools/verify-lift-press.mjs"
+  ],
+  "runner": {
+    "pid": 17177,
+    "startTick": "739838",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --label mut-M3b -- node tools/verify-lift-press.mjs --url http://localhost:8091 --arms ladder",
+    "bootId": "fabf06d4-ff34-4c2a-84e5-869c226847d2",
+    "bootEpochSeconds": 1787504358,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-23T19:02:36.039Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
