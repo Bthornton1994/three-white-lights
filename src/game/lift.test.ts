@@ -48,7 +48,10 @@ import {
   cueWindowMs,
   depthWindowHalfTicks,
   descentRate,
+  downCommandDelayTicks,
   driveAttemptsFor,
+  eccentricKindOf,
+  lockoutHoldIsLive,
   gradeReaction,
   gradeTiming,
   hapticFor,
@@ -76,6 +79,7 @@ import {
   LOAD_RANGE,
   STICK_HEIGHT_FRAC,
   TICK_MS,
+  type EccentricLiftKind,
   type PlayableLiftKind,
 } from './liftTuning';
 import {
@@ -100,15 +104,19 @@ import { STICK } from '../art/spriteTuning';
  * rather than forcing every existing call site to spell out a kind that was
  * always implied.
  */
-const DEFAULT_KIND: PlayableLiftKind = 'squat';
+// SQUAT AND BENCH ONLY. `pressTickFor`/`releaseTickFor`/`play` describe a rep
+// that goes DOWN first, which is what `EccentricLiftKind` means — a deadlift
+// has no descent to compute a release tick for, and `descentRate` will not
+// accept one. Deadlift's harness is `deadliftRep` further down.
+const DEFAULT_KIND: EccentricLiftKind = 'squat';
 
 /** Tick the player presses to start the descent. */
-function pressTickFor(load: number, kind: PlayableLiftKind = DEFAULT_KIND): number {
+function pressTickFor(load: number, kind: EccentricLiftKind = DEFAULT_KIND): number {
   return braceTicks(load, kind) + 1;
 }
 
 /** Tick at which a hold started on `pressTick` reaches `depth`. */
-function releaseTickFor(load: number, depth: number, kind: PlayableLiftKind = DEFAULT_KIND): number {
+function releaseTickFor(load: number, depth: number, kind: EccentricLiftKind = DEFAULT_KIND): number {
   return pressTickFor(load, kind) + Math.round(depth / descentRate(load, kind));
 }
 
@@ -123,9 +131,12 @@ function releaseTickFor(load: number, depth: number, kind: PlayableLiftKind = DE
  */
 function driveIdealTick(config: LiftConfig, depth: number): number | null {
   const load = config.loadRatio;
+  // Eccentric-only helper: it scripts a descent. `eccentricKindOf` refuses a
+  // deadlift rather than quietly probing it as a squat.
+  const kind = eccentricKindOf(config.kind, 'a scripted descent');
   const probe = runLift(config, [
-    { tick: pressTickFor(load, config.kind), kind: 'press' },
-    { tick: releaseTickFor(load, depth, config.kind), kind: 'release' },
+    { tick: pressTickFor(load, kind), kind: 'press' },
+    { tick: releaseTickFor(load, depth, kind), kind: 'release' },
   ]);
   for (const state of probe.history) {
     if (state.events.some((e) => e.kind === 'drive-cue-open')) {
@@ -143,7 +154,7 @@ interface PlayOptions {
   readonly releaseAfterDriveTicks?: number;
   readonly seed?: number;
   readonly feel?: SessionFeel;
-  readonly kind?: PlayableLiftKind;
+  readonly kind?: EccentricLiftKind;
 }
 
 function play(loadRatio: number, options: PlayOptions = {}): LiftState {
@@ -203,7 +214,7 @@ function outcomeOf(state: LiftState): LiftOutcome {
 // moment, which is precisely the bug worth catching.
 // ---------------------------------------------------------------------------
 
-const BENCH: PlayableLiftKind = 'bench';
+const BENCH: EccentricLiftKind = 'bench';
 
 /** Press-and-release down to the chest. Everything before the pause. */
 function benchToChest(load: number, seed: number): { config: LiftConfig; script: ScriptedInput[] } {
@@ -582,6 +593,15 @@ describe('outcome space', () => {
         }
       }
     }
+    // DEADLIFT, for 'dropped'. Squat and bench cannot reach it — their LOCKOUT
+    // asks for nothing — so a squat-only sweep would report it unreachable, in
+    // exactly the way this guard caught the three press kinds when bench
+    // landed. The ASSERTION below is unchanged; what grew is the domain it is
+    // asserted over, which is the direction that strengthens a reachability
+    // check rather than weakening it.
+    reasons.add(
+      deadliftRep(0.9, 1, DEADLIFT_SWEEP.LET_GO_AFTER_TICKS).resolution?.missReason ?? '',
+    );
     for (const reason of MISS_REASONS) {
       expect(reasons.has(reason), `miss reason ${reason} is unreachable`).toBe(true);
     }
@@ -1012,12 +1032,14 @@ function driveCueSequence(
   missIndices: ReadonlySet<number> = new Set(),
 ): { readonly cues: readonly CueWindow[]; readonly script: ScriptedInput[]; readonly final: LiftState } {
   const load = config.loadRatio;
+  // Eccentric-only, same as `driveIdealTick`: it scripts a descent.
+  const kind = eccentricKindOf(config.kind, 'a scripted descent');
   const script: ScriptedInput[] = [
-    { tick: pressTickFor(load, config.kind), kind: 'press' },
-    { tick: releaseTickFor(load, depth, config.kind), kind: 'release' },
+    { tick: pressTickFor(load, kind), kind: 'press' },
+    { tick: releaseTickFor(load, depth, kind), kind: 'release' },
   ];
   const cues: CueWindow[] = [];
-  const attempts = driveAttemptsFor(load, config.kind);
+  const attempts = driveAttemptsFor(load, kind);
   for (let index = 0; index < attempts; index += 1) {
     const opened = latestDriveCue(config, script);
     const lastKnown = cues[cues.length - 1];
@@ -1501,6 +1523,511 @@ describe('the press decides the lift', () => {
     expect(ascent).toBeGreaterThan(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Deadlift harness (GDD §6.2's "lockout grind")
+//
+// THE LOCKOUT TICK AND EVERY DRIVE CUE ARE READ BACK OUT OF THE SIM, never
+// recomputed from the tuning file. Same discipline as `driveIdealTick` and
+// `commandTickFor` above, for the same reason: a test that derived the lockout
+// tick from the tuning constants would agree with a broken sim that reached
+// lockout at the wrong moment, which is precisely the bug worth catching.
+// ---------------------------------------------------------------------------
+
+const DEADLIFT: PlayableLiftKind = 'deadlift';
+
+/** Tick the player presses to break the bar off the floor. */
+function pullTickFor(load: number): number {
+  return braceTicks(load, DEADLIFT) + 1;
+}
+
+/**
+ * The ascent, driven: start the pull, then tap every drive cue the sim arms.
+ *
+ * A TAP IS A RELEASE THEN A PRESS, one tick apart, because that is what a tap
+ * is on a real device — `Pressable`'s `onPressIn` does not re-fire under a
+ * continuous hold. Scripting it as a bare press would let the test hold the
+ * finger down for the whole rep and still land every cue, which is exactly the
+ * fiction that hid the drive-boost hold-coupling defect until a phone playtest
+ * found it. It also matters here specifically: the state the finger is left in
+ * by the LAST tap is the state the lockout hold starts from.
+ */
+function deadliftAscent(config: LiftConfig): ScriptedInput[] {
+  let script: ScriptedInput[] = [{ tick: pullTickFor(config.loadRatio), kind: 'press' }];
+  for (let i = 0; i < DEADLIFT_SWEEP.MAX_CUES_PROBED; i += 1) {
+    const opens = runLift(config, script).history.filter((s) =>
+      s.events.some((e) => e.kind === 'drive-cue-open'),
+    );
+    const cue = opens[opens.length - 1]?.activeCue ?? null;
+    if (cue === null) break;
+    if (script.some((x) => x.tick === cue.idealTick)) break;
+    // STOP TAPPING ONCE THE BAR IS UP. At lighter loads the sim arms a cue and
+    // the bar reaches lockout before that cue's ideal tick — so a harness that
+    // blindly scripted every armed cue was throwing taps INTO the lockout hold,
+    // which is the beat under test. Measured at load 0.8: lockout on tick 90
+    // against a scripted release/press at 102/103, giving a 2-tick slip nobody
+    // asked for and a 'good-lift' where the test meant to produce a slip.
+    //
+    // Not a sim bug — the cue really was armed and the tap really was on time.
+    // It is a harness that did not model a player who can see the bar is
+    // already locked out.
+    const lockout = deadliftLockoutTick(config, script);
+    if (lockout !== null && cue.idealTick >= lockout) break;
+    script = [
+      ...script,
+      { tick: cue.idealTick - 1, kind: 'release' as const },
+      { tick: cue.idealTick, kind: 'press' as const },
+    ];
+  }
+  return script;
+}
+
+/** The tick the sim itself locked out on, or null if the rep never got there. */
+function deadliftLockoutTick(config: LiftConfig, script: readonly ScriptedInput[]): number | null {
+  for (const state of runLift(config, [...script]).history) {
+    if (state.events.some((e) => e.kind === 'lockout')) return state.tick;
+  }
+  return null;
+}
+
+/**
+ * A whole deadlift, driven up and then either held or let go of.
+ *
+ * `letGoAfterTicks` is ticks after the lockout tick at which the player
+ * releases and never re-presses. `null` never lets go — the finger stays down
+ * from the last drive tap through the down command, which is the correct play.
+ *
+ * THE TWO ARMS SHARE AN ASCENT EXACTLY. The release is scripted strictly after
+ * lockout, so both arms replay a byte-identical rep up to that tick and every
+ * difference in the outcome is the hold. Without that the sweep below would be
+ * measuring "two different reps disagreed", which is not a claim about the
+ * lockout beat at all.
+ */
+function deadliftRep(load: number, seed: number, letGoAfterTicks: number | null): LiftState {
+  const config: LiftConfig = { kind: DEADLIFT, loadRatio: load, seed };
+  const ascent = deadliftAscent(config);
+  if (letGoAfterTicks === null) return runLift(config, ascent).final;
+  const lockout = deadliftLockoutTick(config, ascent);
+  if (lockout === null) return runLift(config, ascent).final;
+  return runLift(config, [
+    ...ascent,
+    { tick: lockout + letGoAfterTicks, kind: 'release' },
+  ]).final;
+}
+
+/**
+ * Parameters of the deadlift sweep, named rather than inline.
+ *
+ * Same reason `PRESS_SWEEP` and `streakSweep.ts` exist: a measurement whose
+ * inputs are not written down is an anecdote.
+ */
+const DEADLIFT_SWEEP = {
+  SEEDS: 20,
+  LOADS: [0.7, 0.8, 0.85, 0.9, 0.95, 1.0] as const,
+  /** The bad arm lets go one tick after lockout and never comes back. */
+  LET_GO_AFTER_TICKS: 1,
+  /** The good arm never lets go at all. */
+  HELD: null,
+  /** How many cues the ascent harness will chase before giving up. */
+  MAX_CUES_PROBED: 8,
+  /** Measured at the shipped tuning. */
+  CASES: 120,
+  /** Cases where the two arms ended on different outcomes. */
+  FLIPS: 114,
+  /** Cases where holding made the lift and letting go lost it outright. */
+  MAKE_TO_MISS: 82,
+  /** Non-vacuity: cases where the rep reached LOCKOUT at all. */
+  REACHED_LOCKOUT: 120,
+  /** The habitual-tapper arm: loads and seeds, and its measured counts. */
+  TAPPER_LOADS: [0.85, 0.9, 0.95, 1.0] as const,
+  TAPPER_SEEDS: 10,
+  TAPPER_CASES: 40,
+  TAPPER_GOOD_LIFTS: 0,
+  CLAMPER_GOOD_LIFTS: 10,
+} as const;
+
+/** How long the habitual tapper keeps tapping into the lockout, in ticks. */
+const TAPPER_TICKS = 120;
+/** Ticks between the tapper's taps. */
+const TAPPER_PERIOD_TICKS = 7;
+/** Ticks the tapper's finger is off the glass per tap. */
+const TAPPER_FINGER_UP_TICKS = 2;
+/** Ticks past the grace period at which the slip test re-grips. */
+const REGRIP_AFTER_TICKS = 8;
+/**
+ * Measured: caught slips that graded a grind, across the slip sweep — and the
+ * whole sweep, so 'dropped' being 0 beside it is a statement about the same
+ * population rather than about an empty one.
+ */
+const CAUGHT_SLIP_GRINDS = 48;
+
+describe('the deadlift has no eccentric', () => {
+  // -------------------------------------------------------------------------
+  // THE STRUCTURAL HALF. These are what make deadlift a third lift rather than
+  // a squat with different numbers — if every test in this block passed on a
+  // retuned squat, the piece would have failed.
+  // -------------------------------------------------------------------------
+
+  it('never enters DESCENT or HOLE, at any load or seed', () => {
+    let reps = 0;
+    const phases = new Set<string>();
+    for (const load of DEADLIFT_SWEEP.LOADS) {
+      for (let seed = 1; seed <= 6; seed += 1) {
+        const config: LiftConfig = { kind: DEADLIFT, loadRatio: load, seed };
+        for (const state of runLift(config, deadliftAscent(config)).history) {
+          phases.add(state.phase);
+        }
+        reps += 1;
+      }
+    }
+    // Counts, not bounds — an empty sweep would otherwise pass this trivially.
+    expect(reps).toBe(DEADLIFT_SWEEP.LOADS.length * 6);
+    expect(phases.has('DESCENT'), 'a deadlift descended').toBe(false);
+    expect(phases.has('HOLE'), 'a deadlift reached the hole').toBe(false);
+    // ...and the phases it DOES visit, so this cannot pass on a rep that never
+    // started. All four, every time.
+    expect([...phases].sort()).toEqual(['ASCENT', 'BRACE', 'LOCKOUT', 'RESOLVED']);
+  });
+
+  it('starts with the bar on the floor, not racked overhead', () => {
+    const fresh = createLift({ kind: DEADLIFT, loadRatio: 0.9, seed: 1 });
+    expect(fresh.height).toBe(0);
+    expect(fresh.depth).toBe(1);
+    // The other two start standing, which is the contrast that makes this a
+    // fact about deadlift rather than about `createLift`.
+    expect(createLift({ kind: 'squat', loadRatio: 0.9, seed: 1 }).height).toBe(1);
+    expect(createLift({ kind: 'bench', loadRatio: 0.9, seed: 1 }).height).toBe(1);
+  });
+
+  it('refuses to be stepped in a phase it cannot reach, rather than absorbing it', () => {
+    // `stepLift`'s guard, driven. A silent fall-through here would leave the
+    // rep ticking forever in a phase with no branch — a hang, not a bug report.
+    const impossible: LiftState = {
+      ...createLift({ kind: DEADLIFT, loadRatio: 0.9, seed: 1 }),
+      phase: 'DESCENT',
+    };
+    expect(() => stepLift(impossible)).toThrow(/no eccentric/);
+    expect(() => stepLift({ ...impossible, phase: 'HOLE' })).toThrow(/no eccentric/);
+    // ...and the guard does not fire on the lifts that legitimately go there,
+    // or it would break squat and bench instead.
+    expect(() =>
+      stepLift({ ...createLift({ kind: 'squat', loadRatio: 0.9, seed: 1 }), phase: 'DESCENT' }),
+    ).not.toThrow();
+  });
+
+  it('refuses to answer for an eccentric quantity it does not have', () => {
+    // `eccentricKindOf`. A fallback to squat here is what `simKindFor` used to
+    // do for the whole lift, and its failure mode was being invisible.
+    expect(() => eccentricKindOf(DEADLIFT, 'the depth window')).toThrow(/no eccentric/);
+    expect(eccentricKindOf('squat', 'x')).toBe('squat');
+    expect(eccentricKindOf('bench', 'x')).toBe('bench');
+    expect(() => cueWindowMs('depth', { kind: DEADLIFT, loadRatio: 0.9, seed: 1 })).toThrow();
+  });
+
+  it('records no depth timing, because there is no depth to time', () => {
+    const rep = deadliftRep(0.9, 3, DEADLIFT_SWEEP.HELD);
+    expect(rep.timings.some((t) => t.cue === 'depth')).toBe(false);
+    expect(rep.timings.some((t) => t.cue === 'press')).toBe(false);
+    // The drive cue IS shared across all three lifts, so it must be there —
+    // otherwise this test would also pass on a rep that recorded nothing at all.
+    expect(rep.timings.some((t) => t.cue === 'drive')).toBe(true);
+    // And a deadlift is never failed for depth: `depthAchieved` starts true, so
+    // the LOCKOUT branch cannot reject it with a high-squat reason.
+    expect(rep.resolution?.depthAchieved).toBe(true);
+    expect(rep.resolution?.missReason).not.toBe('no-depth');
+  });
+
+  it('is given its speed off the floor by the load alone, not by an input', () => {
+    // The absence that defines the lift. Two players who play the ascent
+    // identically leave the floor identically, because there was no beat before
+    // this one to have played well — unlike squat's reversal and bench's press,
+    // where the previous beat's quality IS the starting velocity.
+    const first = runLift(
+      { kind: DEADLIFT, loadRatio: 0.9, seed: 1 },
+      [{ tick: pullTickFor(0.9), kind: 'press' }],
+    ).history.find((s) => s.phase === 'ASCENT');
+    const late = runLift(
+      { kind: DEADLIFT, loadRatio: 0.9, seed: 1 },
+      // A much later press: the brace waits, so the pull starts later.
+      [{ tick: pullTickFor(0.9) + 40, kind: 'press' }],
+    ).history.find((s) => s.phase === 'ASCENT');
+    expect(first).toBeDefined();
+    expect(late).toBeDefined();
+    expect(late?.velocity).toBe(first?.velocity);
+    // Heavier breaks the floor slower, which is the only thing that moves it.
+    const heavy = runLift(
+      { kind: DEADLIFT, loadRatio: 1.0, seed: 1 },
+      [{ tick: pullTickFor(1.0), kind: 'press' }],
+    ).history.find((s) => s.phase === 'ASCENT');
+    expect(heavy?.velocity ?? 1).toBeLessThan(first?.velocity ?? 0);
+  });
+
+  it('draws no countdown to the down command — a telegraphed hold is a timed one', () => {
+    // THE MIRROR OF BENCH'S "no countdown before the command" TEST, and the
+    // reason it matters is the same one wearing the opposite sign. `cueProgress`
+    // is what the ring is sized from. A number here would tell the player
+    // exactly how much longer they had to hold, which turns "keep holding" into
+    // "hold for 1.4 seconds" — an ANTICIPATION check, which is squat's faculty,
+    // not deadlift's.
+    let lockoutTicksSeen = 0;
+    for (const load of DEADLIFT_SWEEP.LOADS) {
+      const config: LiftConfig = { kind: DEADLIFT, loadRatio: load, seed: 4 };
+      for (const state of runLift(config, deadliftAscent(config)).history) {
+        if (state.phase !== 'LOCKOUT') continue;
+        lockoutTicksSeen += 1;
+        expect(cueProgress(state), `load ${load} tick ${state.tick}`).toBeNull();
+        expect(state.activeCue, `load ${load} tick ${state.tick}`).toBeNull();
+      }
+    }
+    // Non-vacuity: if no rep ever reached LOCKOUT this loop would assert
+    // nothing and pass, which is the empty-domain trap.
+    expect(lockoutTicksSeen, 'no deadlift lockout ticks to check').toBeGreaterThan(0);
+  });
+
+  it('says something true on the screen through the whole hold, and flips at the call', () => {
+    const config: LiftConfig = { kind: DEADLIFT, loadRatio: 0.9, seed: 4 };
+    const history = runLift(config, deadliftAscent(config)).history;
+    const lockout = history.filter((s) => s.phase === 'LOCKOUT');
+    expect(lockout.length, 'no lockout ticks').toBeGreaterThan(0);
+    // SEARCHED AMONG THE LOCKOUT-PHASE STATES ON PURPOSE, not the whole
+    // history. `promptFor` can only return the DOWN line from a state that is
+    // BOTH in LOCKOUT and past the command tick, so if the command fires on the
+    // same tick the rep resolves, that state's phase is 'RESOLVED' and the line
+    // is unreachable copy. That is exactly what the first version of this beat
+    // did, and this is the assertion that caught it — see
+    // `DOWN_COMMAND_SETTLE_TICKS`. Do not relax it to search `history`.
+    const command = lockout.find((s) => s.events.some((e) => e.kind === 'down-command'));
+    expect(command, 'the down command never fired inside LOCKOUT').toBeDefined();
+    if (command === undefined) return;
+    const holding = lockout.filter((s) => s.tick < command.tick);
+    expect(holding.length, 'no holding ticks').toBeGreaterThan(0);
+    for (const s of holding) {
+      expect(promptFor(s), `tick ${s.tick}`).toBe(LIFT_COPY.PROMPT.LOCKOUT.deadlift);
+      expect(lockoutHoldIsLive(s), `tick ${s.tick}`).toBe(true);
+    }
+    expect(promptFor(command)).toBe(LIFT_COPY.PROMPT.LOCKOUT_DOWN_COMMANDED);
+    expect(lockoutHoldIsLive(command)).toBe(false);
+    // The other two lifts keep their own line and never see the deadlift one.
+    const squat = play(0.85, { driveOffsetTicks: 0 });
+    expect(LIFT_COPY.PROMPT.LOCKOUT.squat).not.toBe(LIFT_COPY.PROMPT.LOCKOUT.deadlift);
+    expect(lockoutHoldIsLive(squat)).toBe(false);
+  });
+
+  it('has an unguessable hold that is still a pure function of the seed', () => {
+    // Both halves at once, because either alone is satisfiable by cheating:
+    // a constant delay is perfectly deterministic, and a `Math.random()` delay
+    // is perfectly unguessable.
+    const delays = new Set<number>();
+    for (let seed = 1; seed <= 40; seed += 1) delays.add(downCommandDelayTicks(seed));
+    expect(delays.size, 'the hold is effectively a fixed beat').toBeGreaterThan(8);
+    for (const d of delays) {
+      expect(d).toBeGreaterThanOrEqual(LIFT_TUNING.DOWN_COMMAND_DELAY_TICKS.MIN);
+      expect(d).toBeLessThanOrEqual(LIFT_TUNING.DOWN_COMMAND_DELAY_TICKS.MAX);
+    }
+    // Same seed, same hold — replayable, which `purity` depends on.
+    expect(downCommandDelayTicks(17)).toBe(downCommandDelayTicks(17));
+  });
+});
+
+describe('the lockout hold decides the deadlift', () => {
+  // -------------------------------------------------------------------------
+  // THE OUTCOME HALF, AND THE ONLY PART OF THIS FILE THAT IS EVIDENCE THE BEAT
+  // MATTERS.
+  //
+  // The bench press command shipped broken through exactly the gap these tests
+  // are shaped to close. Its first version set a velocity from the player's
+  // reaction; eight mutants were run and all eight passed, because every one of
+  // them asked whether a MECHANISM ran — is the delay seeded, is the press
+  // consumed, is the velocity written — and not one asked whether the REP
+  // CHANGED. The velocity was a transient that washed out in about ten ticks
+  // and the outcome was identical whatever the player did.
+  //
+  // So none of the assertions below reads an intermediate value. Every one of
+  // them compares `resolution.outcome` between a good hold and a bad one, and
+  // pins the count as a number rather than a bound.
+  // -------------------------------------------------------------------------
+
+  it('flips outcomes between holding the lockout and letting go, across the sweep', () => {
+    let flips = 0;
+    let makeToMiss = 0;
+    let cases = 0;
+    let reachedLockout = 0;
+    for (let seed = 1; seed <= DEADLIFT_SWEEP.SEEDS; seed += 1) {
+      for (const load of DEADLIFT_SWEEP.LOADS) {
+        const held = deadliftRep(load, seed, DEADLIFT_SWEEP.HELD);
+        const letGo = deadliftRep(load, seed, DEADLIFT_SWEEP.LET_GO_AFTER_TICKS);
+        cases += 1;
+        const config: LiftConfig = { kind: DEADLIFT, loadRatio: load, seed };
+        if (deadliftLockoutTick(config, deadliftAscent(config)) !== null) reachedLockout += 1;
+        const a = held.resolution?.outcome;
+        const b = letGo.resolution?.outcome;
+        if (a !== b) flips += 1;
+        if (a !== undefined && a !== 'miss' && b === 'miss') makeToMiss += 1;
+      }
+    }
+    // Counts, not bounds — an empty or collapsed domain reports itself.
+    expect(cases).toBe(DEADLIFT_SWEEP.CASES);
+    // THE NON-VACUITY GUARD THAT MATTERS MOST HERE. If the ascent were too hard
+    // the reps would miss before ever locking out, the two arms would agree on
+    // 'miss' everywhere, and a flip count of zero would look like "the hold does
+    // nothing" rather than "the hold never happened". That is not hypothetical:
+    // the first tuning pass of this piece measured 40 of 120 cases never
+    // reaching lockout, for exactly that reason.
+    expect(
+      reachedLockout,
+      `only ${reachedLockout} of ${cases} reps reached LOCKOUT`,
+    ).toBe(DEADLIFT_SWEEP.REACHED_LOCKOUT);
+    expect(
+      flips,
+      `the lockout hold changed the outcome in ${flips} of ${cases} cases`,
+    ).toBe(DEADLIFT_SWEEP.FLIPS);
+    expect(
+      makeToMiss,
+      `holding made the lift and letting go lost it in ${makeToMiss} of ${cases} cases`,
+    ).toBe(DEADLIFT_SWEEP.MAKE_TO_MISS);
+  });
+
+  it('turns a made pull into a dropped one at a heavy single', () => {
+    // One named case, so a failure reads as a case rather than a count. Same
+    // caveat the press block records about its own illustration: this is not
+    // the discriminator, the sweep above is.
+    const held = deadliftRep(0.9, 1, DEADLIFT_SWEEP.HELD);
+    const letGo = deadliftRep(0.9, 1, DEADLIFT_SWEEP.LET_GO_AFTER_TICKS);
+    expect(held.resolution?.outcome).not.toBe('miss');
+    expect(letGo.resolution?.outcome).toBe('miss');
+    // ...and it is called what it was, not what it was not. 'stalled' would be
+    // a true-sounding sentence about a bar that was locked out a moment ago.
+    expect(letGo.resolution?.missReason).toBe('dropped');
+    expect(letGo.resolution?.detail).toBe(LIFT_COPY.MISS_REASON.dropped);
+  });
+
+  it('costs the good lift to the player who keeps tapping instead of clamping', () => {
+    // THE TRANSITION THE BEAT IS ACTUALLY TESTING, and the answer to "why can
+    // the player not simply hold the button down the whole rep". The ascent
+    // asks for taps, a tap is a release and a re-press, so a heavy pull arrives
+    // at lockout with the finger mid-rhythm. What is being asked for is to STOP
+    // tapping. A player who does not stop keeps slipping a couple of ticks at a
+    // time and never gets a clean lift.
+    let tapperGood = 0;
+    let clamperGood = 0;
+    let cases = 0;
+    for (const load of DEADLIFT_SWEEP.TAPPER_LOADS) {
+      for (let seed = 1; seed <= DEADLIFT_SWEEP.TAPPER_SEEDS; seed += 1) {
+        const config: LiftConfig = { kind: DEADLIFT, loadRatio: load, seed };
+        const ascent = deadliftAscent(config);
+        const lockout = deadliftLockoutTick(config, ascent);
+        expect(lockout, `load ${load} seed ${seed} never locked out`).not.toBeNull();
+        if (lockout === null) continue;
+        const taps: ScriptedInput[] = [];
+        for (let t = lockout + 2; t < lockout + TAPPER_TICKS; t += TAPPER_PERIOD_TICKS) {
+          taps.push({ tick: t, kind: 'release' });
+          taps.push({ tick: t + TAPPER_FINGER_UP_TICKS, kind: 'press' });
+        }
+        if (runLift(config, [...ascent, ...taps]).final.resolution?.outcome === 'good-lift') {
+          tapperGood += 1;
+        }
+        if (runLift(config, ascent).final.resolution?.outcome === 'good-lift') clamperGood += 1;
+        cases += 1;
+      }
+    }
+    expect(cases).toBe(DEADLIFT_SWEEP.TAPPER_CASES);
+    expect(tapperGood, `the tapper got ${tapperGood} clean lifts`).toBe(
+      DEADLIFT_SWEEP.TAPPER_GOOD_LIFTS,
+    );
+    // The comparison is the claim. Without this the test above passes on a
+    // build where NOBODY can get a clean lift.
+    expect(clamperGood, `the clamper got ${clamperGood} clean lifts`).toBe(
+      DEADLIFT_SWEEP.CLAMPER_GOOD_LIFTS,
+    );
+    expect(clamperGood).toBeGreaterThan(tapperGood);
+  });
+
+  it('lets a slip be caught, and charges it a grind rather than the rep', () => {
+    // The middle outcome. "A MISSED TAP COSTS VELOCITY. IT NEVER ENDS THE REP
+    // ON ITS OWN" is the rule the drive cue already follows, and the lockout
+    // follows it too: a slip that is caught costs the clean lift, not the lift.
+    let caught = 0;
+    let dropped = 0;
+    for (const load of DEADLIFT_SWEEP.LOADS) {
+      for (let seed = 1; seed <= 8; seed += 1) {
+        const config: LiftConfig = { kind: DEADLIFT, loadRatio: load, seed };
+        const ascent = deadliftAscent(config);
+        const lockout = deadliftLockoutTick(config, ascent);
+        if (lockout === null) continue;
+        const rep = runLift(config, [
+          ...ascent,
+          { tick: lockout + 1, kind: 'release' },
+          {
+            tick: lockout + 1 + LIFT_TUNING.LOCKOUT_GRIP_GRACE_TICKS + REGRIP_AFTER_TICKS,
+            kind: 'press',
+          },
+        ]).final;
+        if (rep.resolution?.outcome === 'grind') caught += 1;
+        if (rep.resolution?.outcome === 'miss') dropped += 1;
+      }
+    }
+    expect(caught, 'no caught slip produced a grind').toBe(CAUGHT_SLIP_GRINDS);
+    expect(dropped, 'a caught slip still lost the bar').toBe(0);
+  });
+
+  it('leaves a warm-up alone — a light pull is not a hold test (GDD §12.3)', () => {
+    // THE DAILY-ENGAGEMENT RULE, PLAYED RATHER THAN DERIVED. `liftTuning.test.ts`
+    // asserts the arithmetic that makes this impossible; this asserts that the
+    // arithmetic is actually what the sim does. Both, because the arithmetic
+    // half was written wrong once already — it read the LIGHT endpoint instead
+    // of `byLoad` at the preset, and the true margin was half a tick.
+    //
+    // A player who lets go of the screen on a warm-up must not lose the rep. A
+    // grind is fine; a grind is a made lift.
+    let reps = 0;
+    for (const load of [LOAD_PRESETS.WARMUP, LOAD_PRESETS.LIGHT]) {
+      for (let seed = 1; seed <= 12; seed += 1) {
+        for (const letGo of [DEADLIFT_SWEEP.HELD, DEADLIFT_SWEEP.LET_GO_AFTER_TICKS]) {
+          const rep = deadliftRep(load, seed, letGo);
+          expect(
+            rep.resolution?.outcome,
+            `load ${load} seed ${seed} letGo ${String(letGo)}`,
+          ).not.toBe('miss');
+          reps += 1;
+        }
+      }
+    }
+    expect(reps, 'no warm-up reps were played').toBe(48);
+  });
+
+  it('still needs the ascent driven at a limit pull, so the hold is not the only beat', () => {
+    // The deadlift's ascent is shared machinery and must keep working. If an
+    // undriven limit pull made it, the drive cue would be decoration on this
+    // lift — and the lockout sweep above would be measuring a rep nobody had to
+    // play. Same invariant squat has, applied to the sibling.
+    for (let seed = 1; seed <= 8; seed += 1) {
+      const load = LOAD_PRESETS.MAXIMAL;
+      const bare = runLift({ kind: DEADLIFT, loadRatio: load, seed }, [
+        { tick: pullTickFor(load), kind: 'press' },
+      ]).final;
+      expect(bare.resolution?.outcome, `undriven seed ${seed}`).toBe('miss');
+      expect(deadliftRep(load, seed, DEADLIFT_SWEEP.HELD).resolution?.outcome, `driven seed ${seed}`)
+        .not.toBe('miss');
+    }
+  });
+
+  it('hands no fatigue number back on a deadlift either', () => {
+    // The sibling guard, applied mechanically rather than assumed to transfer.
+    // `lockoutSlipTicks` is a per-rep counter in the same category as
+    // `stallTicks`; it is exactly the kind of scalar that becomes a §3.4 meter
+    // if a component is allowed to bind to it, so it is named here the way
+    // `stallCapacityLoss` is named in squat's version of this test.
+    const state = deadliftRep(LOAD_PRESETS.MAXIMAL, 3, DEADLIFT_SWEEP.LET_GO_AFTER_TICKS);
+    const { config: _config, ...produced } = state;
+    const serialised = JSON.stringify({ produced, resolution: state.resolution }).toLowerCase();
+    for (const banned of ['fatigue', 'burden', 'residual', 'readiness', 'primed', 'meter']) {
+      expect(serialised, `leaked ${banned}`).not.toContain(banned);
+    }
+    expect(Object.keys(produced)).toContain('lockoutSlipTicks');
+    expect(Object.keys(state.resolution ?? {})).not.toContain('lockoutSlipTicks');
+  });
+});
+
 
 describe('gradeReaction', () => {
   const window = LIFT_TUNING.PRESS_REACTION_WINDOW_MS;
@@ -2013,6 +2540,21 @@ describe('read models', () => {
           ? script
           : [...script, { tick: Math.max(1, command + reaction), kind: 'press' as const }];
       for (const state of runLift(config, full).history) {
+        for (const e of state.events) seen.add(e.kind);
+      }
+    }
+    // DEADLIFT, for 'down-command' and 'lockout-slip'. Neither of the other two
+    // lifts can reach them, same as the press kinds above. Two arms: one that
+    // holds through to the command, one that lets go so the bar sags.
+    for (const letGo of [DEADLIFT_SWEEP.HELD, DEADLIFT_SWEEP.LET_GO_AFTER_TICKS]) {
+      const config: LiftConfig = { kind: DEADLIFT, loadRatio: 0.9, seed: 1 };
+      const ascent = deadliftAscent(config);
+      const lockout = deadliftLockoutTick(config, ascent);
+      const script =
+        letGo === null || lockout === null
+          ? ascent
+          : [...ascent, { tick: lockout + letGo, kind: 'release' as const }];
+      for (const state of runLift(config, script).history) {
         for (const e of state.events) seen.add(e.kind);
       }
     }

@@ -229,7 +229,13 @@ export function LiftStage({
 
   const kind = state.config.kind;
   const stickY = traceY(STICK_HEIGHT_FRAC[kind]);
-  const legalY = traceY(1 - LIFT_TUNING.DEPTH_LEGAL[kind]);
+  // NULL ON A DEADLIFT, AND THE GUIDE LINE IS NOT DRAWN AT ALL. Legal depth is
+  // an eccentric-lift idea — `LIFT_TUNING.DEPTH_LEGAL` has no `deadlift` row and
+  // does not type-check with one. Drawing the line anyway at some invented
+  // height would be a cue that lies: it would mark a threshold a deadlift is
+  // never judged against, on the one lift where the bar never goes below its
+  // starting point.
+  const legalY = kind === 'deadlift' ? null : traceY(1 - LIFT_TUNING.DEPTH_LEGAL[kind]);
   const barY = traceY(state.height);
   // Half-height of the sticking-point band, from the width the demand curve
   // actually uses, so the drawn band is the region the bar really slows in.
@@ -289,14 +295,17 @@ export function LiftStage({
           height={stickBandH * 2}
           color={LIFT_PALETTE.GUIDE_STICK}
         />
-        {/* Legal depth. Above this line is a red light. */}
-        <Rect
-          x={L.TRACE_X}
-          y={legalY}
-          width={L.TRACE_W}
-          height={L.TRACE_GUIDE_DASH / 2}
-          color={LIFT_PALETTE.GUIDE_DEPTH}
-        />
+        {/* Legal depth. Above this line is a red light. Absent on a deadlift,
+            which has no depth judgement — see `legalY`. */}
+        {legalY === null ? null : (
+          <Rect
+            x={L.TRACE_X}
+            y={legalY}
+            width={L.TRACE_W}
+            height={L.TRACE_GUIDE_DASH / 2}
+            color={LIFT_PALETTE.GUIDE_DEPTH}
+          />
+        )}
         {/* Plumb line: where the bar would travel with no drift at all. */}
         <Rect
           x={traceX(0)}

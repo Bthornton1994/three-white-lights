@@ -260,12 +260,98 @@ function armedCue(config: LiftConfig, script: readonly ScriptedInput[], cue: 'de
   return null;
 }
 
+/** The tick the mechanic locked the bar out on, or null if it never did. */
+function lockoutTick(config: LiftConfig, script: readonly ScriptedInput[]): number | null {
+  for (const state of runLift(config, [...script]).history) {
+    if (state.events.some((event) => event.kind === 'lockout')) return state.tick;
+  }
+  return null;
+}
+
+/**
+ * The deadlift's script (GDD §6.2, "lockout grind").
+ *
+ * ---------------------------------------------------------------------------
+ * A SEPARATE FUNCTION BECAUSE THE DEADLIFT HAS NO DEPTH CUE TO BUILD ONE FROM
+ * ---------------------------------------------------------------------------
+ * `repScript` below is written entirely around the depth cue: it finds the
+ * armed window and places a release inside, before or after it depending on the
+ * style. A deadlift arms no depth cue, so that function returned after its very
+ * first line for every deadlift attempt — which meant every deadlift in every
+ * meet fixture was an UNDRIVEN PULL regardless of the style asked for. At meet
+ * loads an undriven pull stalls, so 'perfect' deadlifts were missing.
+ *
+ * WHERE THE STYLE VOCABULARY DOES NOT MAP CLEANLY, said plainly rather than
+ * approximated. `RepStyle`'s members were named for a lift that is judged on
+ * depth, and two of them lose meaning here:
+ *
+ *   'high'      Has no deadlift meaning at all. There is no depth to come up
+ *               short of — the floor is the bottom. Scripted as 'dumped', so a
+ *               caller asking for an arguable miss gets an unanimous one rather
+ *               than a make. `judgingMargin` calls every non-'no-depth' miss
+ *               unanimous anyway, so nothing downstream is misled.
+ *   'dumped'    Its own docstring promises "a miss AT ANY LOAD". THAT PROMISE
+ *               DOES NOT HOLD ON A DEADLIFT AND MUST NOT BE MADE TO. A warm-up
+ *               deadlift cannot be lost by any input, because GDD §12.3 forbids
+ *               punishing a player for showing up and `LOCKOUT_SAG_PER_TICK` is
+ *               tuned so the bar cannot fall far enough at light loads. That is
+ *               the constraint working, not a gap. Meet attempts are heavy by
+ *               construction, which is why the fixtures built on this style
+ *               still bomb out — but a caller using 'dumped' at a warm-up load
+ *               on a deadlift will get a MAKE, and needs to know that.
+ *
+ * The other three carry over exactly: 'perfect' drives every cue and holds the
+ * lockout, 'stalled' pulls and never drives, and 'marginal' is the arguable
+ * make — here a grip that slipped at lockout and was caught, which grades a
+ * grind rather than a clean lift.
+ */
+function deadliftScript(config: LiftConfig, style: RepStyle): ScriptedInput[] {
+  const pull = braceTicks(config.loadRatio, config.kind) + 1;
+  let script: ScriptedInput[] = [{ tick: pull, kind: 'press' }];
+  // Never driven. Same meaning as squat's 'stalled': a miss at a limit load and
+  // a make at a light one, which is `lift.ts`'s demand curve, not a bug.
+  if (style === 'stalled') return script;
+
+  // Tap every cue the mechanic arms, chasing them one at a time — cue N's tick
+  // depends on when cue N-1 resolved, which is a runtime fact and not something
+  // this file may precompute. A tap is a release and a press one tick apart,
+  // because that is what a tap is on a device.
+  for (let i = 0; i < MEET_PREVIEW.DEADLIFT_CUES_CHASED; i += 1) {
+    const cue = armedCue(config, script, 'drive');
+    if (cue === null) break;
+    if (script.some((input) => input.tick === cue.idealTick)) break;
+    const locked = lockoutTick(config, script);
+    if (locked !== null && cue.idealTick >= locked) break;
+    script = [
+      ...script,
+      { tick: cue.idealTick - 1, kind: 'release' },
+      { tick: cue.idealTick, kind: 'press' },
+    ];
+  }
+
+  if (style === 'perfect') return script;
+
+  const locked = lockoutTick(config, script);
+  if (locked === null) return script;
+  if (style === 'marginal') {
+    // Slipped and caught it. A make, and an ugly one.
+    return [
+      ...script,
+      { tick: locked + 1, kind: 'release' },
+      { tick: locked + 1 + MEET_PREVIEW.DEADLIFT_SLIP_TICKS, kind: 'press' },
+    ];
+  }
+  // 'dumped' and 'high': put it down and leave it down.
+  return [...script, { tick: locked + 1, kind: 'release' }];
+}
+
 /**
  * The script for one styled rep, derived from the cues the mechanic armed.
  *
  * NOT A TICK NUMBER ANYWHERE. Every moment is asked of `lift.ts`.
  */
 export function repScript(config: LiftConfig, style: RepStyle): ScriptedInput[] {
+  if (config.kind === 'deadlift') return deadliftScript(config, style);
   const script: ScriptedInput[] = [
     { tick: braceTicks(config.loadRatio, config.kind) + 1, kind: 'press' },
   ];

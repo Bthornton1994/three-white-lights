@@ -26,6 +26,7 @@ import {
   LIFT_TUNING,
   LOAD_PRESETS,
   LOAD_RANGE,
+  ECCENTRIC_LIFT_KINDS,
   PLAYABLE_LIFT_KINDS,
   STICK_HEIGHT_FRAC,
   STICK_WIDTH,
@@ -37,6 +38,7 @@ import {
   type HapticStyle,
   type PlayableLiftKind,
 } from './liftTuning';
+import { LIFT_ORDER } from './meet';
 import {
   STICK,
   STRAIN,
@@ -133,9 +135,22 @@ describe('immutability', () => {
 // Orderings that keep states reachable
 // ---------------------------------------------------------------------------
 
+// EVERY LOOP IN THIS BLOCK WALKS `ECCENTRIC_LIFT_KINDS`, NOT
+// `PLAYABLE_LIFT_KINDS`, AND THE DOMAIN IS THE SAME TWO KINDS IT ALWAYS WAS.
+// The tables here — DEPTH_LEGAL / DEPTH_IDEAL / DEPTH_COLLAPSE /
+// DEPTH_WINDOW_MS / DESCENT_DEPTH_PER_TICK — are keyed by `PerEccentricKind`
+// because a deadlift has no way down (see `EccentricLiftKind`). Indexing them
+// with 'deadlift' does not compile, so this is not a narrowing anybody could
+// weaken by accident: it is the type telling the test what its domain is.
+//
+// Not a weakening in the other direction either. Nothing was removed from
+// squat's or bench's coverage — these assertions are unchanged and still run
+// against both — and the check that the eccentric domain has not silently
+// emptied out lives below in 'the eccentric domain is exactly the two lifts
+// that have a way down'.
 describe('depth thresholds', () => {
   it('leaves room between illegal, ideal and buried, for every playable kind', () => {
-    for (const kind of PLAYABLE_LIFT_KINDS) {
+    for (const kind of ECCENTRIC_LIFT_KINDS) {
       expect(LIFT_TUNING.DEPTH_LEGAL[kind], kind).toBeGreaterThan(0);
       expect(LIFT_TUNING.DEPTH_LEGAL[kind], kind).toBeLessThan(LIFT_TUNING.DEPTH_IDEAL[kind]);
       expect(LIFT_TUNING.DEPTH_IDEAL[kind], kind).toBeLessThan(LIFT_TUNING.DEPTH_COLLAPSE[kind]);
@@ -148,7 +163,7 @@ describe('depth thresholds', () => {
     // `lift.test.ts` that measures it. The LATE edge has no such clamp, so it
     // is checked here: releasing at the far end of the window must still leave
     // the lifter above the point of collapse.
-    for (const kind of PLAYABLE_LIFT_KINDS) {
+    for (const kind of ECCENTRIC_LIFT_KINDS) {
       for (const load of Object.values(LOAD_PRESETS)) {
         const rate = byLoad(LIFT_TUNING.DESCENT_DEPTH_PER_TICK[kind], clampLoadRatio(load));
         const halfWindowDepth = (LIFT_TUNING.DEPTH_WINDOW_MS[kind] / 2 / TICK_MS) * rate;
@@ -162,13 +177,185 @@ describe('depth thresholds', () => {
   it('leaves at least a couple of ticks between legal depth and the ideal one', () => {
     // If these were the same depth the window would collapse to nothing at
     // every load and the depth beat would become a single-frame check.
-    for (const kind of PLAYABLE_LIFT_KINDS) {
+    for (const kind of ECCENTRIC_LIFT_KINDS) {
       for (const load of Object.values(LOAD_PRESETS)) {
         const rate = byLoad(LIFT_TUNING.DESCENT_DEPTH_PER_TICK[kind], clampLoadRatio(load));
         const ticks = (LIFT_TUNING.DEPTH_IDEAL[kind] - LIFT_TUNING.DEPTH_LEGAL[kind]) / rate;
         expect(ticks, `${kind} load ${load}`).toBeGreaterThan(2);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The lift vocabulary itself — what replaced `simKindFor`
+// ---------------------------------------------------------------------------
+
+describe('every lift the sport has is a lift the mechanic can play', () => {
+  it('pins PLAYABLE_LIFT_KINDS set-equal to LIFT_ORDER, in both directions', () => {
+    // THIS IS THE GUARD THAT REPLACED THE `simKindFor` STOPGAP, and the reason
+    // it is set equality in BOTH directions rather than a length check.
+    //
+    // `simKindFor` mapped a deadlift day onto squat's numbers. It was correct
+    // TypeScript, it was documented, and it was invisible: every deadlift in
+    // the game played squat's beat and no test could go red about it, because
+    // "deadlift is simulated as squat" was the intended behaviour. A stopgap
+    // that cannot fail is a stopgap nobody removes.
+    //
+    // What bites now: a fourth `LiftKind` added to `meet.ts` reddens HERE until
+    // somebody gives it a mechanic, and a kind listed as playable that the
+    // sport does not have reddens the other way.
+    expect([...PLAYABLE_LIFT_KINDS].sort()).toEqual([...LIFT_ORDER].sort());
+  });
+
+  it('makes the eccentric kinds exactly the lifts that have a way down', () => {
+    // NON-VACUITY FOR EVERY `ECCENTRIC_LIFT_KINDS` LOOP IN THIS FILE. Several
+    // invariants above narrowed their domain from `PLAYABLE_LIFT_KINDS` to this
+    // list when deadlift arrived. If it ever emptied — or quietly lost bench —
+    // those loops would pass over nothing and report a clean bill of health on
+    // an empty domain, which is precisely the vacuity CLAUDE.md names.
+    expect([...ECCENTRIC_LIFT_KINDS].sort()).toEqual(['bench', 'squat']);
+    // ...and deadlift is deliberately absent, which is the design statement:
+    // the bar starts on the floor, so there is nothing to lower.
+    expect(ECCENTRIC_LIFT_KINDS).not.toContain('deadlift');
+    // The eccentric tables are keyed to match. A `deadlift` row appearing on
+    // one of them would not type-check, but a row could be REMOVED from one
+    // and only this notices.
+    for (const table of [
+      LIFT_TUNING.DEPTH_LEGAL,
+      LIFT_TUNING.DEPTH_IDEAL,
+      LIFT_TUNING.DEPTH_COLLAPSE,
+      LIFT_TUNING.DEPTH_WINDOW_MS,
+      LIFT_TUNING.DESCENT_DEPTH_PER_TICK,
+      LIFT_TUNING.HOLE_TICKS,
+      LIFT_TUNING.LOCKOUT_TICKS,
+    ] as readonly Readonly<Record<string, unknown>>[]) {
+      expect(Object.keys(table).sort()).toEqual(['bench', 'squat']);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The deadlift lockout hold (GDD §6.2, "Deadlift — lockout grind")
+// ---------------------------------------------------------------------------
+
+describe('the lockout hold', () => {
+  /** The most sag the sim can produce in one lockout, in ticks of not holding. */
+  const worstSagTicks =
+    LIFT_TUNING.DOWN_COMMAND_DELAY_TICKS.MAX - LIFT_TUNING.LOCKOUT_GRIP_GRACE_TICKS;
+
+  /** Ticks of not holding needed to lose the bar at this load. */
+  const ticksToDrop = (load: number): number =>
+    LIFT_TUNING.LOCKOUT_DROP_HEIGHT_LOSS /
+    byLoad(LIFT_TUNING.LOCKOUT_SAG_PER_TICK, clampLoadRatio(load));
+
+  it('cannot drop a warm-up or a light bar, however long the player lets go (GDD §12.3)', () => {
+    // "NEVER PUNISH DAILY ENGAGEMENT" AS ARITHMETIC RATHER THAN AS A SWEEP.
+    // A daily session opens with warm-ups; if those could be lost by letting go
+    // of the screen, showing up every day would be a tax. The guarantee is that
+    // the MOST sag the sim can produce at these loads — the longest possible
+    // beat, spent entirely not holding — is still short of the drop threshold.
+    //
+    // EVALUATED THROUGH `byLoad` AT THE PRESET, WHICH IS THE WHOLE POINT. The
+    // first draft of `LOCKOUT_SAG_PER_TICK`'s comment reasoned from the LIGHT
+    // ENDPOINT instead, claimed a comfortable margin, and the real margin at
+    // `LOAD_PRESETS.LIGHT` was half a tick. This file's header warns that
+    // endpoints are not presets; that warning is what this test enforces.
+    for (const preset of ['WARMUP', 'LIGHT'] as const) {
+      const load = LOAD_PRESETS[preset];
+      expect(
+        ticksToDrop(load),
+        `${preset} (${load}) drops after ${ticksToDrop(load).toFixed(1)} ticks, worst case ${worstSagTicks}`,
+      ).toBeGreaterThan(worstSagTicks);
+    }
+  });
+
+  it('does let a heavy bar be dropped, or the beat asks nothing', () => {
+    // THE OTHER HALF, AND WITHOUT IT THE TEST ABOVE IS SATISFIED BY SETTING THE
+    // SAG RATE TO ZERO. A mechanic that can never fire is decoration; a §12.3
+    // guarantee bought by deleting the mechanic is not a guarantee, it is a
+    // removal. So the same arithmetic has to come out the other way at the top
+    // of the load range.
+    for (const preset of ['MODERATE', 'HEAVY', 'MAXIMAL'] as const) {
+      const load = LOAD_PRESETS[preset];
+      expect(ticksToDrop(load), `${preset} (${load})`).toBeLessThan(worstSagTicks);
+    }
+  });
+
+  it('leaves a window in which letting go is actually charged', () => {
+    // If the grace period ever reached the shortest possible hold, a player
+    // could release the instant they locked out and the down command would
+    // always rescue them before any sag was counted. The beat would be a pause
+    // with a haptic on it.
+    expect(LIFT_TUNING.LOCKOUT_GRIP_GRACE_TICKS).toBeLessThan(
+      LIFT_TUNING.DOWN_COMMAND_DELAY_TICKS.MIN,
+    );
+    expect(LIFT_TUNING.LOCKOUT_GRIP_GRACE_TICKS).toBeGreaterThan(0);
+  });
+
+  it('keeps the hold unguessable rather than a fixed beat with noise on it', () => {
+    // A fixed hold is learnable in about three reps, and a learned hold is an
+    // ANTICIPATION check — squat's faculty under deadlift's name, which is the
+    // failure the whole beat exists to avoid. The spread has to be a real
+    // fraction of the beat, not a jitter.
+    const { MIN, MAX } = LIFT_TUNING.DOWN_COMMAND_DELAY_TICKS;
+    expect(MIN).toBeGreaterThan(0);
+    expect(MAX).toBeGreaterThan(MIN);
+    expect(MAX - MIN).toBeGreaterThan(MIN);
+  });
+
+  it('makes a slip recoverable faster than it is lost, at every load', () => {
+    // A slip that cannot be caught is a delayed miss the player watches happen.
+    // Recovery has to outrun the worst sag or re-gripping is theatre.
+    for (const load of Object.values(LOAD_PRESETS)) {
+      expect(
+        LIFT_TUNING.LOCKOUT_REGRIP_RECOVERY_PER_TICK,
+        `load ${load}`,
+      ).toBeGreaterThan(byLoad(LIFT_TUNING.LOCKOUT_SAG_PER_TICK, clampLoadRatio(load)));
+    }
+  });
+
+  it('leaves room for a grind between a clean hold and a dropped one', () => {
+    // Three outcomes, not two. A slip long enough to be called a grind must be
+    // reachable BEFORE the bar is lost, or the middle outcome is unreachable
+    // and every deadlift is pass/fail.
+    for (const load of Object.values(LOAD_PRESETS)) {
+      const toDrop = ticksToDrop(load);
+      if (toDrop > worstSagTicks) continue; // undroppable loads have no upper edge
+      expect(LIFT_TUNING.LOCKOUT_SLIP_GRIND_TICKS, `load ${load}`).toBeLessThan(toDrop);
+    }
+    expect(LIFT_TUNING.LOCKOUT_SLIP_GRIND_TICKS).toBeGreaterThan(0);
+  });
+
+  it('starts the deadlift slower off the floor than either lift starts out of the bottom', () => {
+    // THE ABSENCE THAT DEFINES THE LIFT. Squat's ascent velocity is bought by
+    // the depth release and bench's by the reaction; a deadlift's is a function
+    // of the weight alone, because there was no beat before it to play well.
+    // Pinned as an ordering rather than a value so a retune of any of the three
+    // keeps the relationship a reader was told about.
+    expect(LIFT_TUNING.FLOOR_BREAK_VELOCITY.MAXIMAL).toBeLessThan(
+      LIFT_TUNING.REVERSAL_VELOCITY.MAX,
+    );
+    expect(LIFT_TUNING.FLOOR_BREAK_VELOCITY.MAXIMAL).toBeLessThan(
+      LIFT_TUNING.PRESS_VELOCITY.MAX,
+    );
+    // ...and not zero, or a maximal pull spends its first ticks under
+    // GRIND_STALL_VELOCITY purely accelerating and is called a grind for a
+    // reason that has nothing to do with how it was played.
+    expect(LIFT_TUNING.FLOOR_BREAK_VELOCITY.MAXIMAL).toBeGreaterThan(0);
+    expect(LIFT_TUNING.FLOOR_BREAK_VELOCITY.LIGHT).toBeGreaterThan(
+      LIFT_TUNING.FLOOR_BREAK_VELOCITY.MAXIMAL,
+    );
+  });
+
+  it('puts the deadlift stick above both other lifts, and not by widening it', () => {
+    // GDD §6.2 says "lockout grind", so the stall belongs high in the range.
+    // The WIDTH is squat's, deliberately — a first pass widened it too and made
+    // a perfectly-driven maximal pull unwinnable (see `STICK_WIDTH`'s header).
+    // This pins both halves so the refuted guess cannot come back quietly.
+    expect(STICK_HEIGHT_FRAC.deadlift).toBeGreaterThan(STICK_HEIGHT_FRAC.squat);
+    expect(STICK_HEIGHT_FRAC.deadlift).toBeGreaterThan(STICK_HEIGHT_FRAC.bench);
+    expect(STICK_WIDTH.deadlift).toBeLessThanOrEqual(STICK_WIDTH.squat);
   });
 });
 
@@ -245,11 +432,15 @@ describe('the force balance', () => {
 
 describe('windows', () => {
   it('are positive and at least a few ticks wide, at both ends of the load range, for every playable kind', () => {
+    // The drive window is on all three lifts; the depth window is only on the
+    // two that have a way down, so it is gathered per kind rather than listed
+    // in one array. The assertion below is unchanged and now runs over MORE
+    // widths than it used to, not fewer — deadlift's drive pair is new domain.
     for (const kind of PLAYABLE_LIFT_KINDS) {
       const ms = [
-        LIFT_TUNING.DEPTH_WINDOW_MS[kind],
         LIFT_TUNING.DRIVE_WINDOW_MS[kind].LIGHT,
         LIFT_TUNING.DRIVE_WINDOW_MS[kind].MAXIMAL,
+        ...(kind === 'deadlift' ? [] : [LIFT_TUNING.DEPTH_WINDOW_MS[kind]]),
       ];
       for (const width of ms) {
         expect(width, kind).toBeGreaterThan(0);
@@ -288,6 +479,9 @@ describe('windows', () => {
       expect(LIFT_TUNING.DRIVE_WINDOW_MS[kind].MAXIMAL, kind).toBeLessThan(
         LIFT_TUNING.DRIVE_WINDOW_MS[kind].LIGHT,
       );
+    }
+    // The depth half, on the kinds that have one.
+    for (const kind of ECCENTRIC_LIFT_KINDS) {
       expect(typeof LIFT_TUNING.DEPTH_WINDOW_MS[kind], kind).toBe('number');
     }
   });
@@ -413,15 +607,34 @@ describe('presentation feel', () => {
 
 describe('copy', () => {
   it('says something for every prompt, for every playable kind where one applies', () => {
+    // "WHERE ONE APPLIES" IS NOW LOAD-BEARING RATHER THAN HEDGING, and it is
+    // read off the table itself instead of from a list somebody maintains: a
+    // per-kind prompt table is walked over exactly the keys it actually has, so
+    // DESCENT/HOLE (eccentric-only) are checked for two kinds and BRACE/LOCKOUT
+    // for three. A missing entry in either shape is still a failure, because
+    // the count is pinned below.
+    let checked = 0;
     for (const [key, value] of Object.entries(LIFT_COPY.PROMPT)) {
       if (typeof value === 'string') {
         expect(value.length, key).toBeGreaterThan(0);
+        checked += 1;
         continue;
       }
-      for (const kind of PLAYABLE_LIFT_KINDS) {
-        expect(value[kind].length, `${key}.${kind}`).toBeGreaterThan(0);
+      const kinds = Object.keys(value);
+      expect(kinds.length, `${key} has no kinds`).toBeGreaterThan(0);
+      const byKind = value as Readonly<Record<string, string>>;
+      for (const kind of kinds) {
+        expect(byKind[kind]?.length, `${key}.${kind}`).toBeGreaterThan(0);
+        checked += 1;
       }
     }
+    // A COUNT, NOT A BOUND — an emptied table would otherwise pass this loop
+    // silently, which is the "empty domain" vacuity CLAUDE.md names. Two
+    // eccentric-only tables at 2 kinds (DESCENT, HOLE) + two all-kind tables at
+    // 3 (BRACE, LOCKOUT) + four plain strings (HOLE_COMMANDED,
+    // ASCENT_BEFORE_CUE, ASCENT_CUE_OPEN, ASCENT_AFTER_CUE) + two more
+    // (LOCKOUT_DOWN_COMMANDED, RESOLVED) = 4 + 6 + 6 = 16.
+    expect(checked, 'prompt strings checked').toBe(16);
   });
 
   it('never puts a number in the copy the player reads', () => {

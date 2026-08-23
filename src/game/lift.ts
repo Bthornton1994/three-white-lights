@@ -32,10 +32,40 @@
  * them is an untuned placeholder.
  *
  * ---------------------------------------------------------------------------
+ * THREE LIFTS, THREE PHASE PATHS, THREE FACULTIES
+ * ---------------------------------------------------------------------------
+ * GDD §6.2 gives each lift its own check. They are deliberately different
+ * FACULTIES rather than different numbers, because three timing windows of
+ * different widths is one lift with three difficulty settings:
+ *
+ *   SQUAT     BRACE -> DESCENT -> HOLE -> ASCENT -> LOCKOUT -> RESOLVED
+ *             ANTICIPATION. The bar is moving down at a known rate and the
+ *             player predicts the instant it reaches depth.
+ *
+ *   BENCH     BRACE -> DESCENT -> HOLE -> ASCENT -> LOCKOUT -> RESOLVED
+ *             REACTION. The bar is still on the chest and a command arrives at
+ *             a moment the player cannot predict. HOLE carries the check.
+ *
+ *   DEADLIFT  BRACE ->                    ASCENT -> LOCKOUT -> RESOLVED
+ *             PERSISTENCE. There is NO ECCENTRIC — the bar starts on the floor,
+ *             so there is nothing to lower, no depth to judge and no reversal
+ *             to time. LOCKOUT carries the check: hold the bar locked out until
+ *             the down command, which arrives at a moment the player cannot
+ *             predict, and letting go early loses it.
+ *
+ * The deadlift's missing phases are a TYPE, not a convention:
+ * `EccentricLiftKind` in `liftTuning.ts` keys every descent-shaped tuning table,
+ * so `DEPTH_LEGAL.deadlift` does not compile. `stepLift` refuses an impossible
+ * (deadlift, DESCENT|HOLE) state outright rather than falling through it — see
+ * `refuseImpossiblePhase`.
+ *
+ * ---------------------------------------------------------------------------
  * THE REP, BEAT BY BEAT
  * ---------------------------------------------------------------------------
- *   BRACE     The bar is racked. Nothing is asked for. The player's first press
- *             starts the descent (or BRACE_TIMEOUT_TICKS does it for them).
+ *   BRACE     The bar is racked, or on the floor. Nothing is asked for. The
+ *             player's first press starts the descent — or, on a deadlift, the
+ *             pull itself, straight into ASCENT (or BRACE_TIMEOUT_TICKS does it
+ *             for them).
  *
  *   DESCENT   Depth grows while the player HOLDS, at a load-dependent rate —
  *             heavier is slower, because a limit squat is controlled down.
@@ -72,7 +102,18 @@
  *             fixed). A press outside the window costs velocity and burns the
  *             attempt.
  *
- *   LOCKOUT   h reached 1. A short beat, then resolution.
+ *   LOCKOUT   h reached 1. On squat and bench, a short fixed beat and then
+ *             resolution — nothing is asked for, the rep is already decided.
+ *             ON DEADLIFT THIS IS THE CHECK. The player must keep holding
+ *             until the down command (a tick drawn from the rep's seed).
+ *             Letting go past LOCKOUT_GRIP_GRACE_TICKS sags the bar; sagging
+ *             LOCKOUT_DROP_HEIGHT_LOSS is a miss, reason 'dropped'. Re-gripping
+ *             recovers, and a slip that was caught grades the make a grind.
+ *
+ *             THE INPUT IS THE ABSENCE OF ONE, which is what makes it a third
+ *             faculty rather than a third window. On squat the player acts at a
+ *             moment; on bench they act fast; here the correct play is to do
+ *             nothing at all and keep doing it.
  *
  * ---------------------------------------------------------------------------
  * WHY THE OUTCOME IS NOT ROLLED
@@ -135,6 +176,7 @@ import {
   TICK_MS,
   byLoad,
   clampLoadRatio,
+  type EccentricLiftKind,
   type HapticPattern,
   type PlayableLiftKind,
 } from './liftTuning';
@@ -212,13 +254,24 @@ export const LIFT_OUTCOMES = Object.freeze([
   'miss',
 ] as const satisfies readonly LiftOutcome[]);
 
-export type MissReason = 'no-depth' | 'buried' | 'stalled' | 'timeout';
+/**
+ * Why a rep failed.
+ *
+ * 'dropped' IS DEADLIFT'S AND EARNS ITS OWN MEMBER rather than reusing
+ * 'stalled'. A bar that beat you at the sticking point and a bar you put down
+ * before the down command are different failures with different fixes — one
+ * says drive harder, the other says hold on — and `LIFT_COPY.MISS_REASON` hands
+ * the player a sentence per member. Reusing 'stalled' would print a true-
+ * sounding explanation of something that did not happen.
+ */
+export type MissReason = 'no-depth' | 'buried' | 'stalled' | 'timeout' | 'dropped';
 
 export const MISS_REASONS = Object.freeze([
   'no-depth',
   'buried',
   'stalled',
   'timeout',
+  'dropped',
 ] as const satisfies readonly MissReason[]);
 
 /**
@@ -244,6 +297,10 @@ export type LiftEventKind =
   | 'drive-mistimed'
   | 'stall-pulse'
   | 'lockout'
+  /** DEADLIFT ONLY: the grip is going. Fired per tick while the bar sags. */
+  | 'lockout-slip'
+  /** DEADLIFT ONLY: the down command fired. The hold is over. */
+  | 'down-command'
   | 'resolved';
 
 export const LIFT_EVENT_KINDS = Object.freeze([
@@ -260,6 +317,8 @@ export const LIFT_EVENT_KINDS = Object.freeze([
   'drive-mistimed',
   'stall-pulse',
   'lockout',
+  'lockout-slip',
+  'down-command',
   'resolved',
 ] as const satisfies readonly LiftEventKind[]);
 
@@ -351,10 +410,14 @@ export interface LiftResolution {
  */
 export interface LiftConfig {
   /**
-   * Which lift this rep is. Required, not defaulted — GDD §6.2 gives squat and
-   * bench different mechanical checks (depth timing vs. press timing), and a
-   * config with no kind would silently run bench under squat's numbers rather
-   * than fail to compile.
+   * Which lift this rep is. Required, not defaulted — GDD §6.2 gives all three
+   * lifts different mechanical checks (depth timing / press timing / lockout
+   * hold), and a config with no kind would silently run one lift under
+   * another's numbers rather than fail to compile.
+   *
+   * ALL THREE ARE PLAYABLE NOW. There is no `simKindFor` to map a deadlift day
+   * onto squat's beat any more; that stopgap is deleted, and callers pass the
+   * real `LiftKind` straight through.
    */
   readonly kind: PlayableLiftKind;
   /** Attempt weight over current best single. 0.55 is a working set, 1.0 a limit. */
@@ -434,6 +497,33 @@ export interface LiftState {
   readonly pressQuality: number;
   /** BENCH ONLY. Has the press been spent — by a real reaction or a false start? */
   readonly pressUsed: boolean;
+
+  /**
+   * DEADLIFT ONLY (GDD §6.2, "lockout grind"). Tick the down command fires on,
+   * set when the bar reaches lockout. Null on squat and bench, and null on
+   * deadlift until LOCKOUT begins.
+   *
+   * NOT SECRET FROM THE RENDERER — `promptFor` flips its line at this tick, the
+   * same way bench's does. What keeps the hold honest is the mirror image of
+   * what keeps bench's reaction honest: `cueProgress` returns null for the
+   * WHOLE of a deadlift lockout, so nothing draws a ring counting the player
+   * down to the command. A countdown here would tell them exactly how much
+   * longer they had to hold, which turns "keep holding" into "hold for 1.4
+   * seconds" — an anticipation check wearing persistence's name.
+   */
+  readonly downCommandTick: number | null;
+  /**
+   * DEADLIFT ONLY. Ticks spent NOT holding during LOCKOUT, past the grace
+   * period. What decides whether a made deadlift is a grind.
+   *
+   * NOT A FATIGUE SCALAR, and it must not be rendered as one. It is a per-rep
+   * count in exactly the same category as `stallTicks` beside it: it resets
+   * every rep, is never persisted, has no relationship to `fatigue.ts`, and
+   * what the player sees is a bar drifting down. GDD §3.4 / §12.3 forbid a
+   * visible fatigue meter, and `lift.test.ts` pins that no exported shape here
+   * carries one.
+   */
+  readonly lockoutSlipTicks: number;
 
   readonly drivesUsed: number;
   /** Tick the last accepted drive landed on. Null if none has. */
@@ -539,6 +629,37 @@ export function lifterCapacity(config: LiftConfig): number {
 }
 
 /**
+ * Narrow a lift kind to one that HAS a way down, or refuse.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS THROWS INSTEAD OF FALLING BACK TO SQUAT
+ * ---------------------------------------------------------------------------
+ * Falling back to squat is exactly what `simKindFor` used to do, for every
+ * deadlift in the game, and its failure mode was that it was CORRECT and
+ * INVISIBLE: the wrong beat played, nothing said so, and the stopgap survived
+ * because nothing could ever go red. A silent default here would rebuild that
+ * one layer down and be harder to find, because it would be inside the
+ * mechanic rather than at its door.
+ *
+ * The throw is UNREACHABLE THROUGH `stepLift`, which is the point of pairing it
+ * with `refuseImpossiblePhase`: a deadlift never enters DESCENT or HOLE, so
+ * nothing ever asks for its descent rate or its depth window. It is a guard on
+ * a direct call — a caller reaching for a deadlift's depth window has a bug,
+ * and being told is better than being answered.
+ *
+ * `moment` names what was being asked for so the message says which of the
+ * eccentric-only quantities was reached for, not merely that one was.
+ */
+export function eccentricKindOf(kind: PlayableLiftKind, moment: string): EccentricLiftKind {
+  if (kind === 'deadlift') {
+    throw new RangeError(
+      `lift: a deadlift has no eccentric, so it has no ${moment}. The bar starts on the floor.`,
+    );
+  }
+  return kind;
+}
+
+/**
  * A cue's window width in ms, after fatigue.
  *
  * GDD §3.4: tighter when fatigued, more forgiving when primed. The adjustment
@@ -548,7 +669,10 @@ export function lifterCapacity(config: LiftConfig): number {
 export function cueWindowMs(cue: LiftCueId, config: LiftConfig): number {
   const base =
     cue === 'depth'
-      ? LIFT_TUNING.DEPTH_WINDOW_MS[config.kind]
+      // `eccentricKindOf` rather than a bare index: the depth window is an
+      // eccentric-lift table and a deadlift has no depth cue to ask about. It
+      // refuses rather than defaulting — see that function's header.
+      ? LIFT_TUNING.DEPTH_WINDOW_MS[eccentricKindOf(config.kind, 'the depth window')]
       : cue === 'press'
         // The reaction window. Load-independent on purpose: how fast a human
         // can react to a stimulus is not a function of what is on the bar, and
@@ -671,8 +795,11 @@ export function ascentDemand(
   return scrub((base + stick) * buried * slow);
 }
 
-/** Ticks the reversal beat lasts at this load. */
-export function holeTicks(loadRatio: number, kind: PlayableLiftKind): number {
+/**
+ * Ticks the reversal beat lasts at this load. ECCENTRIC LIFTS ONLY — a deadlift
+ * has no bottom to spend a beat at, so its kind does not type-check here.
+ */
+export function holeTicks(loadRatio: number, kind: EccentricLiftKind): number {
   return Math.max(1, Math.round(byLoad(LIFT_TUNING.HOLE_TICKS[kind], clampLoadRatio(loadRatio))));
 }
 
@@ -708,9 +835,68 @@ export function pressCommandDelayTicks(seed: number): number {
   return MIN + Math.round((MAX - MIN) * clamp01(roll));
 }
 
-/** Ticks the lockout beat lasts at this load. */
-export function lockoutTicks(loadRatio: number, kind: PlayableLiftKind): number {
+/**
+ * Ticks the lockout beat lasts at this load.
+ *
+ * ECCENTRIC LIFTS ONLY, and the type is the design. On squat and bench LOCKOUT
+ * is a fixed beat that asks for nothing. On deadlift its length is not a tuning
+ * lookup at all — it is `downCommandDelayTicks`, drawn from the rep's seed, and
+ * the beat is the check. Two different questions, so two different functions.
+ */
+export function lockoutTicks(loadRatio: number, kind: EccentricLiftKind): number {
   return Math.max(1, Math.round(byLoad(LIFT_TUNING.LOCKOUT_TICKS[kind], clampLoadRatio(loadRatio))));
+}
+
+/**
+ * DEADLIFT ONLY: how long the bar must be held locked out before the down
+ * command, at this rep's seed.
+ *
+ * A PURE FUNCTION OF THE SEED, for the same two reasons
+ * `pressCommandDelayTicks` is one, which its header sets out in full:
+ * unpredictable to the PLAYER (a fixed hold is learnable in about three reps,
+ * and a learned hold is an anticipation check, not a persistence one) and
+ * deterministic to everything else (`lift.test.ts` replays a rep and asserts a
+ * byte-identical history).
+ *
+ * IT SHARES ITS SEED LINEAGE WITH THE BAR JITTER AND WITH BENCH'S COMMAND, and
+ * that is stated rather than engineered around. The three are never compared,
+ * never rendered together, and no rep is ever both a bench and a deadlift, so a
+ * decorrelating step would be a magic constant bought with nothing.
+ *
+ * NOT GDD §8.1'S FORBIDDEN DICE. What is drawn is WHEN THE HOLD ENDS, never
+ * whether it was passed: at every delay in the range a player who keeps holding
+ * makes the lift, and at every delay one who lets go and stays off loses it.
+ */
+export function downCommandDelayTicks(seed: number): number {
+  const { MIN, MAX } = LIFT_TUNING.DOWN_COMMAND_DELAY_TICKS;
+  const roll = nextRandom(seedState(seed)).value;
+  return MIN + Math.round((MAX - MIN) * clamp01(roll));
+}
+
+/**
+ * DEADLIFT ONLY: height lost per tick of not holding at lockout, at this load.
+ *
+ * LOAD-SCALED IS HOW GDD §12.3'S "never punish daily engagement" IS MET
+ * STRUCTURALLY HERE. At the light end the sag over the longest possible hold is
+ * smaller than `LOCKOUT_DROP_HEIGHT_LOSS`, so a warm-up deadlift cannot be
+ * dropped no matter what the player does — an arithmetic property of two
+ * constants, asserted in `liftTuning.test.ts` and played in `lift.test.ts`,
+ * rather than a horizon somebody happened to sweep.
+ */
+export function lockoutSagPerTick(loadRatio: number): number {
+  return byLoad(LIFT_TUNING.LOCKOUT_SAG_PER_TICK, clampLoadRatio(loadRatio));
+}
+
+/**
+ * DEADLIFT ONLY: the velocity the bar leaves the FLOOR with, at this load.
+ *
+ * Takes no quality argument, and that absence is the design rather than an
+ * omission — see `FLOOR_BREAK_VELOCITY`. Squat's ascent velocity is bought by
+ * the depth release and bench's by the reaction; a deadlift's is bought by
+ * nothing, because there is no beat before it to have played well.
+ */
+export function floorBreakVelocity(loadRatio: number): number {
+  return byLoad(LIFT_TUNING.FLOOR_BREAK_VELOCITY, clampLoadRatio(loadRatio));
 }
 
 /**
@@ -740,8 +926,11 @@ export function driveSpacingTicks(loadRatio: number, kind: PlayableLiftKind): nu
   );
 }
 
-/** Depth gained per tick of hold at this load. */
-export function descentRate(loadRatio: number, kind: PlayableLiftKind): number {
+/**
+ * Depth gained per tick of hold at this load. ECCENTRIC LIFTS ONLY — there is
+ * no rate at which a deadlift lowers, because a deadlift does not lower.
+ */
+export function descentRate(loadRatio: number, kind: EccentricLiftKind): number {
   return byLoad(LIFT_TUNING.DESCENT_DEPTH_PER_TICK[kind], clampLoadRatio(loadRatio));
 }
 
@@ -773,7 +962,7 @@ export function braceTicks(loadRatio: number, kind: PlayableLiftKind): number {
 export function depthWindowHalfTicks(
   loadRatio: number,
   windowMs: number,
-  kind: PlayableLiftKind,
+  kind: EccentricLiftKind,
 ): number {
   const rate = descentRate(loadRatio, kind);
   const fromMs = Math.round(windowMs / TICK_MS / 2);
@@ -874,9 +1063,26 @@ function assertConfig(config: LiftConfig): void {
   }
 }
 
-/** A rep, at tick 0, before anything has happened. */
+/**
+ * A rep, at tick 0, before anything has happened.
+ *
+ * WHERE THE BAR STARTS IS PER LIFT, and it is the first place the deadlift's
+ * missing eccentric shows up in the state rather than in a type. Squat and
+ * bench begin standing/racked — `height` 1, `depth` 0 — and travel DOWN before
+ * they travel up. A deadlift begins with the bar on the floor, which in this
+ * module's units is `height` 0, and the lifter already folded over it, which is
+ * `depth` 1.
+ *
+ * `depthAchieved` STARTS TRUE ON A DEADLIFT, and this is the one field where
+ * that needs saying out loud. On the other two it is decided at the reversal
+ * and read at LOCKOUT to reject a high squat. A deadlift has no depth to judge
+ * — the floor is the bottom and there is no way to cheat it — so leaving the
+ * field false would fail every deadlift ever pulled with the copy for a high
+ * squat. Legality on a deadlift is decided at the top, by the hold.
+ */
 export function createLift(config: LiftConfig): LiftState {
   assertConfig(config);
+  const onTheFloor = config.kind === 'deadlift';
   return {
     config: {
       kind: config.kind,
@@ -889,8 +1095,8 @@ export function createLift(config: LiftConfig): LiftState {
     phase: 'BRACE',
     phaseTick: 0,
     held: false,
-    depth: 0,
-    height: 1,
+    depth: onTheFloor ? 1 : 0,
+    height: onTheFloor ? 0 : 1,
     velocity: 0,
     peakHeight: 0,
     netForce: 0,
@@ -901,11 +1107,13 @@ export function createLift(config: LiftConfig): LiftState {
     chalkPuff: 0,
     activeCue: null,
     timings: [],
-    depthAchieved: false,
+    depthAchieved: onTheFloor,
     extraDepth: 0,
     pressCommandTick: null,
     pressQuality: 0,
     pressUsed: false,
+    downCommandTick: null,
+    lockoutSlipTicks: 0,
     drivesUsed: 0,
     driveTick: null,
     driveQuality: 0,
@@ -980,6 +1188,8 @@ interface Mutable {
   pressCommandTick: number | null;
   pressQuality: number;
   pressUsed: boolean;
+  downCommandTick: number | null;
+  lockoutSlipTicks: number;
   drivesUsed: number;
   driveTick: number | null;
   driveQuality: number;
@@ -1033,6 +1243,8 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     pressCommandTick: state.pressCommandTick,
     pressQuality: state.pressQuality,
     pressUsed: state.pressUsed,
+    downCommandTick: state.downCommandTick,
+    lockoutSlipTicks: state.lockoutSlipTicks,
     drivesUsed: state.drivesUsed,
     driveTick: state.driveTick,
     driveQuality: state.driveQuality,
@@ -1057,6 +1269,29 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
   if (released) m.held = false;
 
   // -------------------------------------------------------------------------
+  // A DEADLIFT IN A PHASE IT CANNOT BE IN IS REFUSED, NOT ABSORBED.
+  //
+  // `BRACE` routes a deadlift straight to `ASCENT`, so DESCENT and HOLE are
+  // unreachable for it — but "unreachable" is a claim about today's control
+  // flow, and CLAUDE.md has caught eight of those being false. So it is
+  // checked, loudly, once, at the top.
+  //
+  // It also does a second job that is easy to miss: the branch conditions below
+  // read `kind !== 'deadlift'`, which is what lets TypeScript narrow
+  // `state.config.kind` to `EccentricLiftKind` inside them. Without this throw
+  // that narrowing would be silent — a deadlift somehow in DESCENT would simply
+  // skip every branch and tick forever, resolving nothing, which is the worst
+  // of the available failures because it looks like a hang rather than a bug.
+  // `lift.test.ts` builds the impossible state by hand and pins the throw.
+  // -------------------------------------------------------------------------
+  const kind = state.config.kind;
+  if (kind === 'deadlift' && (m.phase === 'DESCENT' || m.phase === 'HOLE')) {
+    throw new RangeError(
+      `lift: a deadlift cannot be in ${m.phase} — it has no eccentric. The bar starts on the floor.`,
+    );
+  }
+
+  // -------------------------------------------------------------------------
   // BRACE — nothing is asked for. The first press starts the descent.
   // -------------------------------------------------------------------------
   if (m.phase === 'BRACE') {
@@ -1069,50 +1304,78 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     // happening. Holding through the brace now simply starts the descent the
     // moment the lifter is set, which is also what a lifter does.
     if ((ready && (pressed || m.held)) || timedOut) {
-      enter('DESCENT');
-      m.held = true;
-      m.events.push({ kind: 'descent-start', tick });
-      // The depth window is known analytically: depth grows at a fixed rate
-      // while held, so the tick it reaches DEPTH_IDEAL is arithmetic, not a
-      // prediction. Fatigue narrows the window about that tick, never off it.
-      const rate = descentRate(load, state.config.kind);
-      const idealTick = tick + Math.round(LIFT_TUNING.DEPTH_IDEAL[state.config.kind] / rate);
-      const halfTicks = depthWindowHalfTicks(
-        load,
-        cueWindowMs('depth', state.config),
-        state.config.kind,
-      );
-      m.activeCue = {
-        cue: 'depth',
-        wants: 'release',
-        openTick: idealTick - halfTicks,
-        idealTick,
-        closeTick: idealTick + halfTicks,
-        // Reported from the ticks it actually spans, not from the ms it was
-        // asked for, so a UI sizing a cue off `widthMs` draws the real window.
-        widthMs: scrub(halfTicks * 2 * TICK_MS),
-      };
+      if (kind === 'deadlift') {
+        // ---------------------------------------------------------------
+        // THE DEADLIFT'S WHOLE STRUCTURAL DIFFERENCE, IN ONE BRANCH.
+        //
+        // There is nothing to lower, so the brace ends with the bar leaving
+        // the ground: BRACE -> ASCENT, skipping DESCENT and HOLE entirely.
+        // No depth cue is armed, because there is no depth to judge.
+        //
+        // THE BAR IS GIVEN A VELOCITY BY NOBODY. Squat reaches ASCENT with
+        // whatever `REVERSAL_VELOCITY` its depth timing bought and bench with
+        // whatever `PRESS_VELOCITY` its reaction bought. A deadlift gets
+        // `floorBreakVelocity(load)` — a function of the weight and nothing
+        // else, because there was no beat before this one to have played
+        // well. That absence is the design: a deadlift's input budget is
+        // spent at the top of the rep.
+        //
+        // `m.held` IS NOT FORCED TRUE here, unlike the descent branches
+        // below. On squat and bench the hold IS the descent, so the rep
+        // cannot proceed without it. On a deadlift the finger's job from
+        // here is to TAP the drive cues, and the hold that matters comes
+        // later, at lockout. Forcing it down would misreport the player's
+        // actual grip state into the ascent.
+        // ---------------------------------------------------------------
+        enter('ASCENT');
+        m.velocity = scrub(floorBreakVelocity(load));
+        m.peakHeight = m.height;
+      } else {
+        enter('DESCENT');
+        m.held = true;
+        m.events.push({ kind: 'descent-start', tick });
+        // The depth window is known analytically: depth grows at a fixed rate
+        // while held, so the tick it reaches DEPTH_IDEAL is arithmetic, not a
+        // prediction. Fatigue narrows the window about that tick, never off it.
+        const rate = descentRate(load, kind);
+        const idealTick = tick + Math.round(LIFT_TUNING.DEPTH_IDEAL[kind] / rate);
+        const halfTicks = depthWindowHalfTicks(load, cueWindowMs('depth', state.config), kind);
+        m.activeCue = {
+          cue: 'depth',
+          wants: 'release',
+          openTick: idealTick - halfTicks,
+          idealTick,
+          closeTick: idealTick + halfTicks,
+          // Reported from the ticks it actually spans, not from the ms it was
+          // asked for, so a UI sizing a cue off `widthMs` draws the real window.
+          widthMs: scrub(halfTicks * 2 * TICK_MS),
+        };
+      }
     }
   }
 
   // -------------------------------------------------------------------------
   // DESCENT — depth grows while held. Release decides the rep's legality.
   // -------------------------------------------------------------------------
-  else if (m.phase === 'DESCENT') {
+  // `kind !== 'deadlift'` is what narrows `kind` to `EccentricLiftKind` for the
+  // whole branch. It is never false here — the throw at the top of `stepLift`
+  // has already refused that state — so it costs nothing and buys the narrowing
+  // without a cast.
+  else if (m.phase === 'DESCENT' && kind !== 'deadlift') {
     const cue = m.activeCue;
     if (cue !== null && tick === cue.openTick) {
       m.events.push({ kind: 'depth-cue-open', tick });
     }
     if (m.held) {
-      m.depth = scrub(m.depth + descentRate(load, state.config.kind));
+      m.depth = scrub(m.depth + descentRate(load, kind));
       m.height = scrub(clamp01(1 - m.depth));
     }
 
-    const reverseNow = released || m.depth >= LIFT_TUNING.DEPTH_COLLAPSE[state.config.kind];
+    const reverseNow = released || m.depth >= LIFT_TUNING.DEPTH_COLLAPSE[kind];
     if (reverseNow) {
-      const buried = !released && m.depth >= LIFT_TUNING.DEPTH_COLLAPSE[state.config.kind];
-      m.depthAchieved = m.depth >= LIFT_TUNING.DEPTH_LEGAL[state.config.kind];
-      m.extraDepth = scrub(Math.max(0, m.depth - LIFT_TUNING.DEPTH_IDEAL[state.config.kind]));
+      const buried = !released && m.depth >= LIFT_TUNING.DEPTH_COLLAPSE[kind];
+      m.depthAchieved = m.depth >= LIFT_TUNING.DEPTH_LEGAL[kind];
+      m.extraDepth = scrub(Math.max(0, m.depth - LIFT_TUNING.DEPTH_IDEAL[kind]));
 
       if (cue !== null) {
         const offsetMs = (tick - cue.idealTick) * TICK_MS;
@@ -1165,8 +1428,9 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
   // The phase names are shared and the beat is not. That is the difference
   // between building a second lift and retuning the first one.
   // -------------------------------------------------------------------------
-  else if (m.phase === 'HOLE') {
-    const benched = state.config.kind === 'bench';
+  // Same narrowing trick, same reason. See the DESCENT branch above.
+  else if (m.phase === 'HOLE' && kind !== 'deadlift') {
+    const benched = kind === 'bench';
 
     if (benched) {
       // Set the command on the first tick of the beat, not at `createLift`:
@@ -1219,7 +1483,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
         enter('ASCENT');
         m.peakHeight = m.height;
       }
-    } else if (m.phaseTick >= holeTicks(load, state.config.kind)) {
+    } else if (m.phaseTick >= holeTicks(load, kind)) {
       enter('ASCENT');
       // The ascent starts from where the bar ACTUALLY is. A high squat starts
       // near lockout and finishes in a few ticks — trivially easy, and then
@@ -1240,14 +1504,14 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     // spacing has elapsed. `driveAttemptsFor`/`driveSpacingTicks` are the
     // tap-RATE half of the ascent's difficulty — how many cues, how close
     // together — `cueWindowMs`'s per-cue width is the PRECISION half.
-    const attempts = driveAttemptsFor(load, state.config.kind);
+    const attempts = driveAttemptsFor(load, kind);
     const canArmNext =
       m.drivesUsed === 0 ||
       (m.driveArmReadyTick !== null && tick >= m.driveArmReadyTick);
     if (
       m.activeCue === null &&
       m.drivesUsed < attempts &&
-      m.height >= LIFT_TUNING.DRIVE_ARM_HEIGHT[state.config.kind] &&
+      m.height >= LIFT_TUNING.DRIVE_ARM_HEIGHT[kind] &&
       canArmNext
     ) {
       const widthMs = cueWindowMs('drive', state.config);
@@ -1272,7 +1536,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
       // always survives JSON.
       const offsetMs =
         cue === null
-          ? -byLoad(LIFT_TUNING.DRIVE_WINDOW_MS[state.config.kind], load)
+          ? -byLoad(LIFT_TUNING.DRIVE_WINDOW_MS[kind], load)
           : (tick - cue.idealTick) * TICK_MS;
       const halfMs = cue === null ? 0 : cue.widthMs / 2;
       const { quality, grade } = gradeTiming(offsetMs, halfMs);
@@ -1303,7 +1567,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
         if (load >= LIFT_TUNING.CHALK_MIN_LOAD_RATIO) m.chalkPuff = 1;
       }
       m.activeCue = null;
-      m.driveArmReadyTick = tick + driveSpacingTicks(load, state.config.kind);
+      m.driveArmReadyTick = tick + driveSpacingTicks(load, kind);
     }
 
     // The window closed with nothing thrown at it. The cue goes away; the bar
@@ -1313,21 +1577,15 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     const openCue = m.activeCue;
     if (openCue !== null && tick > openCue.closeTick) {
       m.activeCue = null;
-      m.driveArmReadyTick = tick + driveSpacingTicks(load, state.config.kind);
+      m.driveArmReadyTick = tick + driveSpacingTicks(load, kind);
     }
 
     // --- physics ---------------------------------------------------------
     // THE PRESS'S SHORTFALL, CARRIED FOR THE WHOLE ASCENT. Squat passes 0 —
     // its `pressQuality` is 0 because it has no press, and reading it without
     // this guard would charge every squat the maximum penalty.
-    const pressShortfall = state.config.kind === 'bench' ? 1 - clamp01(m.pressQuality) : 0;
-    const demand = ascentDemand(
-      m.height,
-      load,
-      state.config.kind,
-      m.extraDepth,
-      pressShortfall,
-    );
+    const pressShortfall = kind === 'bench' ? 1 - clamp01(m.pressQuality) : 0;
+    const demand = ascentDemand(m.height, load, kind, m.extraDepth, pressShortfall);
     let drive = capacity - m.stallCapacityLoss;
     // A LANDED DRIVE IS A COMMITTED IMPULSE, NOT A STATE THE PLAYER MAINTAINS.
     // Deliberately NOT gated on `m.held`. It used to be, and that coupling was
@@ -1367,7 +1625,17 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
       clamp(m.height + m.velocity, -LIFT_TUNING.ASCENT_COLLAPSE_DROP, 1),
     );
     if (m.height > m.peakHeight) m.peakHeight = m.height;
-    m.depth = scrub(clamp(1 - m.height, 0, LIFT_TUNING.DEPTH_COLLAPSE[state.config.kind]));
+    // DEADLIFT'S DERIVED DEPTH IS WHAT THE ART FALLBACK READS, so it is
+    // clamped to 0..1 rather than to an eccentric lift's collapse point (which
+    // deadlift has no row for, and which describes being buried under a bar
+    // that is on the floor here anyway). `1 - height` folds the drawn figure
+    // over at the floor and stands it up at lockout — see
+    // `DEADLIFT_ART_FALLBACK_KIND` for what that drawing does and does not get
+    // right.
+    m.depth =
+      kind === 'deadlift'
+        ? scrub(clamp01(1 - m.height))
+        : scrub(clamp(1 - m.height, 0, LIFT_TUNING.DEPTH_COLLAPSE[kind]));
 
     if (m.chalkPuff > 0) {
       m.chalkPuff = scrub(Math.max(0, m.chalkPuff - 1 / LIFT_TUNING.CHALK_PUFF_TICKS));
@@ -1394,6 +1662,25 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     if (m.height >= 1) {
       enter('LOCKOUT');
       m.velocity = 0;
+      // A DRIVE CUE THAT WAS STILL OPEN WHEN THE BAR LOCKED OUT IS DEAD, AND
+      // HAS TO BE CLEARED HERE. Nothing else clears it: the ASCENT branch drops
+      // `activeCue` when the cue is pressed or when its window closes, and once
+      // the phase changes that branch never runs again — so a bar that locked
+      // out mid-window carried a stale cue into LOCKOUT and out the other side.
+      //
+      // A LEAK IN THE READ MODEL, NOT IN THE PHYSICS, which is why it survived:
+      // no outcome reads `activeCue`, so nothing about the rep was decided
+      // wrongly. What it did was draw. `cueProgress` returns a number whenever a
+      // cue is set, so the renderer put a shrinking DRIVE ring on screen through
+      // a beat that is asking for nothing — on all three lifts, and on deadlift
+      // specifically that ring sits over the lockout hold and reads as a
+      // countdown to the down command, which is the one thing that beat must
+      // never show (see `cueProgress`).
+      //
+      // Found by deadlift's no-countdown test, and it was already there on squat
+      // and bench. Fixed for all three rather than special-cased, because the
+      // cue is equally dead on all three.
+      m.activeCue = null;
       m.events.push({ kind: 'lockout', tick });
     } else if (m.peakHeight - m.height >= LIFT_TUNING.ASCENT_COLLAPSE_DROP) {
       m.resolution = resolutionFor({ ...state, ...m }, 'miss', 'stalled');
@@ -1407,28 +1694,110 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
   }
 
   // -------------------------------------------------------------------------
-  // LOCKOUT — standing. Then judged.
+  // LOCKOUT — the beat whose JOB DEPENDS ON THE LIFT, the same way HOLE's does.
+  //
+  //   SQUAT / BENCH   Standing, then judged. A fixed beat that asks for
+  //                   nothing: the rep was decided below, and this is the pause
+  //                   before the verdict.
+  //
+  //   DEADLIFT        THE CHECK (GDD §6.2, "Deadlift — lockout grind"). The bar
+  //                   is locked and the player must not stop holding it until
+  //                   the down command, which fires at a tick drawn from the
+  //                   rep's seed. Letting go past the grace period sags the
+  //                   bar; sagging far enough loses it; re-gripping brings it
+  //                   back, and having slipped at all makes the make a grind.
+  //
+  // The phase name is shared and the beat is not — the same sentence HOLE's own
+  // header makes about squat and bench, one lift further out. That is what
+  // building a third lift means here rather than retuning the first two.
   // -------------------------------------------------------------------------
   else if (m.phase === 'LOCKOUT') {
-    m.height = 1;
-    m.depth = 0;
-    m.velocity = 0;
     if (m.chalkPuff > 0) {
       m.chalkPuff = scrub(Math.max(0, m.chalkPuff - 1 / LIFT_TUNING.CHALK_PUFF_TICKS));
     }
-    if (m.phaseTick >= lockoutTicks(load, state.config.kind)) {
-      const outcome: LiftOutcome = !m.depthAchieved
-        ? 'miss'
-        : isGrind(m.stallTicks, m.ascentTicks)
-          ? 'grind'
-          : 'good-lift';
-      m.resolution = resolutionFor(
-        { ...state, ...m },
-        outcome,
-        outcome === 'miss' ? 'no-depth' : null,
-      );
-      m.events.push({ kind: 'resolved', tick });
-      enter('RESOLVED');
+
+    if (kind === 'deadlift') {
+      // Set the command on the first tick of the beat, not at `createLift`:
+      // the tick LOCKOUT begins on is a function of how the player drove the
+      // ascent, so the hold is anchored to the lockout they actually reached.
+      if (m.downCommandTick === null) {
+        m.downCommandTick = tick + downCommandDelayTicks(state.config.seed);
+      }
+      const commandTick = m.downCommandTick;
+      const commanded = tick >= commandTick;
+      const grace = m.phaseTick <= LIFT_TUNING.LOCKOUT_GRIP_GRACE_TICKS;
+
+      if (tick === commandTick) m.events.push({ kind: 'down-command', tick });
+
+      if (commanded) {
+        // THE HOLD IS OVER. The command is an announcement, not a demand: the
+        // player does not have to answer it, and letting go now costs nothing,
+        // because that is what the command means. Punishing a player for
+        // putting the bar down after being told to would be punishing them for
+        // obeying — and it would quietly turn this into a second reaction check.
+        //
+        // The settle beat exists so the command is a moment the player can
+        // actually see and feel before the verdict replaces the screen. See
+        // `DOWN_COMMAND_SETTLE_TICKS`.
+        m.velocity = 0;
+        if (tick - commandTick >= LIFT_TUNING.DOWN_COMMAND_SETTLE_TICKS) {
+          const outcome: LiftOutcome =
+            isGrind(m.stallTicks, m.ascentTicks) ||
+            m.lockoutSlipTicks >= LIFT_TUNING.LOCKOUT_SLIP_GRIND_TICKS
+              ? 'grind'
+              : 'good-lift';
+          m.resolution = resolutionFor({ ...state, ...m }, outcome, null);
+          m.events.push({ kind: 'resolved', tick });
+          enter('RESOLVED');
+        }
+      } else if (!m.held && !grace) {
+        // THE BAR COMES DOWN. Not "a timer runs" — the failure is positional,
+        // so a player who lets go, sees it move, and re-grips is judged on
+        // where the bar actually got to.
+        m.lockoutSlipTicks += 1;
+        m.height = scrub(Math.max(0, m.height - lockoutSagPerTick(load)));
+        m.velocity = scrub(-lockoutSagPerTick(load));
+        m.events.push({ kind: 'lockout-slip', tick });
+      } else if (m.height < 1) {
+        // Re-gripped (or still inside the grace period) with the bar down.
+        // It comes back, faster than it fell — see
+        // `LOCKOUT_REGRIP_RECOVERY_PER_TICK`. A slip is meant to be
+        // recoverable; what it costs is the 'good-lift', not the rep.
+        m.height = scrub(Math.min(1, m.height + LIFT_TUNING.LOCKOUT_REGRIP_RECOVERY_PER_TICK));
+        m.velocity = scrub(LIFT_TUNING.LOCKOUT_REGRIP_RECOVERY_PER_TICK);
+      } else {
+        m.velocity = 0;
+      }
+      m.depth = scrub(clamp01(1 - m.height));
+
+      // PUT DOWN BEFORE THE CALL. Checked only while the hold is live — after
+      // the command the bar is allowed to go down, which is the whole point of
+      // the command. Its own `MissReason`, because "the bar beat you at the
+      // sticking point" would be a false sentence about a bar that was locked
+      // out a moment ago.
+      if (!commanded && 1 - m.height >= LIFT_TUNING.LOCKOUT_DROP_HEIGHT_LOSS) {
+        m.resolution = resolutionFor({ ...state, ...m }, 'miss', 'dropped');
+        m.events.push({ kind: 'resolved', tick });
+        enter('RESOLVED');
+      }
+    } else {
+      m.height = 1;
+      m.depth = 0;
+      m.velocity = 0;
+      if (m.phaseTick >= lockoutTicks(load, kind)) {
+        const outcome: LiftOutcome = !m.depthAchieved
+          ? 'miss'
+          : isGrind(m.stallTicks, m.ascentTicks)
+            ? 'grind'
+            : 'good-lift';
+        m.resolution = resolutionFor(
+          { ...state, ...m },
+          outcome,
+          outcome === 'miss' ? 'no-depth' : null,
+        );
+        m.events.push({ kind: 'resolved', tick });
+        enter('RESOLVED');
+      }
     }
   }
 
@@ -1474,6 +1843,8 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     pressCommandTick: m.pressCommandTick,
     pressQuality: m.pressQuality,
     pressUsed: m.pressUsed,
+    downCommandTick: m.downCommandTick,
+    lockoutSlipTicks: m.lockoutSlipTicks,
     drivesUsed: m.drivesUsed,
     driveTick: m.driveTick,
     driveQuality: m.driveQuality,
@@ -1544,21 +1915,35 @@ export function runLift(
  */
 export function promptFor(state: LiftState): string {
   const p = LIFT_COPY.PROMPT;
+  const kind = state.config.kind;
   switch (state.phase) {
     case 'BRACE':
-      return p.BRACE[state.config.kind];
+      return p.BRACE[kind];
     case 'DESCENT':
-      return p.DESCENT[state.config.kind];
     case 'HOLE': {
+      // DEADLIFT CANNOT BE HERE, AND THIS IS THE ONE PLACE THAT IS ANSWERED
+      // WITH A FALLBACK RATHER THAN A THROW. `stepLift` refuses the state
+      // outright; `promptFor` is a read model a renderer calls on every single
+      // frame, and a read model that can crash the screen is a worse failure
+      // than one that repeats a line. It returns the brace line — the last
+      // thing a deadlifter was legitimately told — rather than an empty string,
+      // because a blank caption reads as the game having stopped.
+      //
+      // Documented rather than silent, and pinned: `lift.test.ts` builds the
+      // impossible state by hand and asserts this exact string, so if a future
+      // deadlift ever does reach these phases the fallback is a decision
+      // somebody can find rather than a blank frame nobody can explain.
+      if (kind === 'deadlift') return p.BRACE[kind];
+      if (state.phase === 'DESCENT') return p.DESCENT[kind];
       // BENCH: the line flips the instant the command fires. The ring appears
       // at the same tick (`pressCommandIsLive` / `cueProgress`); the caption
       // is what the eye confirms the haptic against. `pressCommandTick` is
       // null until the bar settles, so the waiting line covers that tick too.
       const commandTick = state.pressCommandTick;
-      if (state.config.kind === 'bench' && commandTick !== null && state.tick >= commandTick) {
+      if (kind === 'bench' && commandTick !== null && state.tick >= commandTick) {
         return p.HOLE_COMMANDED;
       }
-      return p.HOLE[state.config.kind];
+      return p.HOLE[kind];
     }
     case 'ASCENT': {
       const cue = state.activeCue;
@@ -1566,8 +1951,17 @@ export function promptFor(state: LiftState): string {
       if (state.drivesUsed > 0) return p.ASCENT_AFTER_CUE;
       return p.ASCENT_BEFORE_CUE;
     }
-    case 'LOCKOUT':
-      return p.LOCKOUT;
+    case 'LOCKOUT': {
+      // DEADLIFT: the line flips at the down command, exactly as bench's does
+      // at the press command — and for the opposite reason. Bench's flip is a
+      // stimulus the player must answer; this one is a release telling them the
+      // hold is over. Before it, the line is a live instruction not to let go.
+      const downTick = state.downCommandTick;
+      if (kind === 'deadlift' && downTick !== null && state.tick >= downTick) {
+        return p.LOCKOUT_DOWN_COMMANDED;
+      }
+      return p.LOCKOUT[kind];
+    }
     case 'RESOLVED':
       return p.RESOLVED;
     default:
@@ -1610,6 +2004,14 @@ export function hapticFor(event: LiftEvent): HapticPattern | null {
       return h.STALL_PULSE;
     case 'lockout':
       return h.LOCKOUT;
+    // DEADLIFT. The slip pulse is the sibling of `STALL_PULSE` one beat later:
+    // a rep being lost has to be felt being lost rather than discovered at the
+    // verdict. The down command is the only entry in this table that announces
+    // the END of something the player was doing.
+    case 'lockout-slip':
+      return h.LOCKOUT_SLIP;
+    case 'down-command':
+      return h.DOWN_COMMAND;
     case 'resolved':
       return null;
     case 'depth-cue-open':
@@ -1635,6 +2037,40 @@ export function pressCommandIsLive(state: LiftState): boolean {
 }
 
 /**
+ * DEADLIFT: true while the lockout hold is the live demand — LOCKOUT, and the
+ * down command has not yet fired.
+ *
+ * The sibling of `pressCommandIsLive` above, and written from it deliberately
+ * rather than in parallel, because CLAUDE.md's "a guard written for one hook
+ * must be applied to its sibling" has been paid for four times in this
+ * repository and twice at a distance of one branch.
+ *
+ * NOTE THE INVERSION, which is the whole design in one predicate: bench's goes
+ * true when the player must ACT, this one goes true while the player must NOT
+ * STOP. The renderer uses it for the same purpose either way — to keep the
+ * headline and any stage treatment from disagreeing about what is being asked.
+ */
+export function lockoutHoldIsLive(state: LiftState): boolean {
+  if (state.config.kind !== 'deadlift') return false;
+  if (state.phase !== 'LOCKOUT') return false;
+  const downTick = state.downCommandTick;
+  // NULL MEANS THE HOLD HAS JUST STARTED, NOT THAT IT IS OVER. `downCommandTick`
+  // is set on the first tick the LOCKOUT branch runs, which is one tick after
+  // the ASCENT branch entered the phase — so on the lockout tick itself it is
+  // still null while the player is very much required to be holding. Returning
+  // false there would blank the "don't let go" line for exactly the frame the
+  // bar arrives at lockout, which is the frame it matters most.
+  //
+  // `pressCommandIsLive` gets to return false in its null case because bench's
+  // question is "has the command fired yet", and before it fires the answer is
+  // genuinely no. Deadlift's question is the inverse — "is the player still on
+  // the hook" — and before the command fires the answer is yes. The two
+  // predicates look like mirror images and the null case is where they are not.
+  if (downTick === null) return true;
+  return state.tick < downTick;
+}
+
+/**
  * Cue progress for the renderer: 0 when the window opens, 1 at the ideal
  * moment, above 1 as it closes. Null when no cue is up.
  *
@@ -1646,6 +2082,16 @@ export function pressCommandIsLive(state: LiftState): boolean {
  * returns null, same as squat HOLE. From the command tick it starts at 1
  * (the ring sits on the target — GO) and runs toward 2 as the reaction
  * window closes. That is a stimulus, not a telegraph.
+ *
+ * AND DEADLIFT'S LOCKOUT HOLD GETS NO RING AT ALL — NOT EVEN THE "GO" ONE.
+ * There is no cue to arm in a deadlift LOCKOUT (`activeCue` is null through the
+ * whole beat) so this already returns null there; it is stated because the
+ * absence is load-bearing rather than incidental. A ring that filled toward the
+ * down command would tell the player exactly how much longer they had to hold,
+ * which converts "keep holding" into "hold for 1.4 seconds" — squat's
+ * anticipation faculty wearing deadlift's name, and the exact failure the
+ * seeded delay exists to prevent. `lift.test.ts` pins it null for every tick of
+ * every deadlift lockout, the same way it pins bench's pre-command null.
  */
 export function cueProgress(state: LiftState): number | null {
   if (pressCommandIsLive(state)) {

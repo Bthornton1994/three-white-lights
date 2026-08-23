@@ -103,37 +103,68 @@ export { LOAD_PRESETS, LOAD_RANGE, TICK_HZ, TICK_MS, byLoad, clampLoadRatio, loa
 export type { LoadEndpoints };
 
 /**
- * `LiftKind` has three members (`meet.ts`); this build only has one lift's
- * mechanic playable. Deliberately narrower than `LiftKind` rather than a
- * `Partial<Record<LiftKind, ...>>` with a runtime check for the missing
- * third: TypeScript enforces every per-kind table below is complete for
- * every kind this module can actually be asked to simulate, and a call site
- * passing `'deadlift'` is a compile error rather than an unhandled case
- * discovered at runtime. Widens to the full `LiftKind` when deadlift's own
- * phase-model piece lands — one type edit, plus that lift's own table rows.
+ * Every lift the mechanic can simulate. ALL THREE, as of deadlift's phase
+ * model — this type is now exactly `LiftKind` and the narrowing it used to do
+ * is gone.
+ *
+ * IT IS KEPT AS A NAME RATHER THAN DELETED, and `liftTuning.test.ts` pins it
+ * set-equal to `meet.ts`'s `LIFT_ORDER` in BOTH directions. That pin is what
+ * replaces the `simKindFor` stopgap this piece deleted: a fourth `LiftKind`
+ * added to `meet.ts` reddens a test here until it has been given a mechanic,
+ * instead of being quietly mapped onto squat's numbers by a helper nobody
+ * re-reads. The old helper's failure mode was that it was CORRECT and
+ * INVISIBLE — every deadlift in the game ran squat's beat and nothing said so
+ * at the call site.
  */
-export type PlayableLiftKind = Extract<LiftKind, 'squat' | 'bench'>;
+export type PlayableLiftKind = LiftKind;
 
-export const PLAYABLE_LIFT_KINDS = Object.freeze(['squat', 'bench'] as const satisfies readonly PlayableLiftKind[]);
+export const PLAYABLE_LIFT_KINDS = Object.freeze([
+  'squat',
+  'bench',
+  'deadlift',
+] as const satisfies readonly PlayableLiftKind[]);
 
 /**
- * Which playable kind a real `LiftKind` day or attempt should be simulated as.
+ * The lifts that LOWER THE BAR FIRST, and so run through `DESCENT` and `HOLE`.
  *
- * CLAUDE.md's Sprint 3 ruling: deadlift's phase model is a serial follow-up,
- * not a parallel build, because it has no eccentric phase and cannot run
- * through squat's BRACE -> DESCENT -> HOLE -> ASCENT shape. `LIFT_ROTATION`
- * and every meet already cycle through deadlift regardless, so until that
- * piece lands, a deadlift rep plays on squat's numbers — the same placeholder
- * fidelity every kind had before `LiftConfig.kind` was required, now written
- * down in one place instead of left for each caller to decide separately.
- * Not a claim that deadlift feels like a squat.
+ * ---------------------------------------------------------------------------
+ * THIS TYPE IS THE STRUCTURAL FACT THAT MAKES DEADLIFT A THIRD LIFT
+ * ---------------------------------------------------------------------------
+ * A deadlift has no eccentric. The bar starts on the floor, so there is
+ * nothing to lower, no depth to judge, and no reversal to time. Its phases are
+ * `BRACE -> ASCENT -> LOCKOUT -> RESOLVED`.
+ *
+ * Every table below that describes the way down is keyed by THIS type rather
+ * than by `PlayableLiftKind`, which means `LIFT_TUNING.DEPTH_LEGAL.deadlift`
+ * is a COMPILE ERROR rather than a value somebody has to remember is never
+ * read. That is the difference between writing the ruling down in a comment
+ * and writing it into the type system: a future builder cannot give deadlift a
+ * descent by accident, and cannot give it one on purpose without deleting this
+ * type.
+ *
+ * It also keeps the eccentric tables honest in the other direction. Adding a
+ * `deadlift:` row of plausible-looking depth numbers would satisfy every
+ * `PerKind` loop in `liftTuning.test.ts` while being read by nothing — an
+ * invariant asserted over an unreachable domain, which is the vacuity
+ * CLAUDE.md's "An Assertion Is Vacuous If It Cannot Fail" section is about.
  */
-export function simKindFor(lift: LiftKind): PlayableLiftKind {
-  return lift === 'deadlift' ? 'squat' : lift;
-}
+export type EccentricLiftKind = Exclude<PlayableLiftKind, 'deadlift'>;
 
-/** A `{LIGHT, MAXIMAL}` pair, one per playable lift kind. */
+export const ECCENTRIC_LIFT_KINDS = Object.freeze([
+  'squat',
+  'bench',
+] as const satisfies readonly EccentricLiftKind[]);
+
+/** One value per lift the mechanic can simulate. All three. */
 type PerKind<T> = Readonly<Record<PlayableLiftKind, T>>;
+
+/**
+ * One value per lift that HAS a way down. Two.
+ *
+ * See `EccentricLiftKind`. A table typed this way cannot be indexed with
+ * `'deadlift'`, which is the point.
+ */
+type PerEccentricKind<T> = Readonly<Record<EccentricLiftKind, T>>;
 
 /**
  * WHERE THE STICKING POINT IS, and how wide it is — per lift kind.
@@ -151,14 +182,49 @@ type PerKind<T> = Readonly<Record<PlayableLiftKind, T>>;
  * a sharper, shorter-lived event than a squat's more sustained mid-range
  * fight. Neither number has been played. GDD §10's ~30-iteration expectation
  * applies here exactly as it does to every squat value in this file.
+ *
+ * DEADLIFT'S NUMBERS, AND WHY THEY ARE EXPLICITLY *NOT* THE THING THAT MAKES
+ * IT A THIRD LIFT. GDD §6.2 gives deadlift one line, "lockout grind", so the
+ * stall is placed high in the range — 0.62, above squat's 0.34 and well above
+ * bench's 0.20. The WIDTH is squat's, unchanged, and that is a correction
+ * rather than a default: see below.
+ *
+ * READ THE POSITION AS FLAVOUR, NOT AS THE MECHANIC. Moving a gaussian up the
+ * range is a retune, and a retune is exactly what this piece was told not to
+ * build. What makes deadlift a third lift is structural and lives elsewhere:
+ * it has no `EccentricLiftKind` row at all (no descent, no depth judgement, no
+ * reversal), it is given no velocity by any input off the floor
+ * (`FLOOR_BREAK_VELOCITY`), and its `LOCKOUT` asks a question the other two
+ * lifts' `LOCKOUT` does not ask (`DOWN_COMMAND_DELAY_TICKS` and the sag
+ * constants under it). Delete this row and deadlift is still a third lift;
+ * delete those and it is a squat.
+ *
+ * A GUESS THAT WAS MEASURED AND REFUTED, KEPT BECAUSE THE MEASUREMENT IS WORTH
+ * MORE THAN THE TIDY VERSION. The first pass set the width to 0.18 — wider than
+ * squat's 0.14 — reasoning that "a deadlift that dies near lockout dies slowly
+ * rather than snapping back". That sentence is probably true about deadlifts and
+ * was false about this model. Width compounds with the stick's POSITION: a wide
+ * gaussian centred at 0.62 keeps demand above ~0.98 from h≈0.45 to h≈0.85,
+ * roughly three times the span of squat's notch, and the bar is fighting for so
+ * much of the range that `STALL_CAPACITY_DECAY` finishes it off. Measured at the
+ * first pass: a maximal deadlift driven with every cue landed perfectly still
+ * MISSED — 166 ascent ticks against a 170-tick timeout, 73 of them stalled — and
+ * 40 of 120 swept cases never reached lockout at all, so the beat this whole
+ * piece is about was unreachable at the top of the load range.
+ *
+ * That is the degenerate outcome space this file's own header names as the one
+ * property a placeholder must have. Two lifts' worth of comments describing a
+ * plausible curve did not catch it; playing the rep did.
  */
 export const STICK_HEIGHT_FRAC: PerKind<number> = Object.freeze({
   squat: STICK.HEIGHT_FRAC,
   bench: 0.2,
+  deadlift: 0.62,
 });
 export const STICK_WIDTH: PerKind<number> = Object.freeze({
   squat: STICK.WIDTH,
   bench: 0.12,
+  deadlift: 0.14,
 });
 
 /** One haptic beat. `style` is mapped to the platform API by the UI layer. */
@@ -227,11 +293,15 @@ export const LIFT_TUNING = Object.freeze({
    * 1.08 s. bench's pair is a placeholder chosen faster than squat's — a
    * bench eccentric is a shorter range of motion — not measured: MAXIMAL
    * takes 1/0.019 ≈ 53 ticks ≈ 0.88 s. Not played; GDD §10 applies.
+   *
+   * NO DEADLIFT ROW, AND THAT IS THE TYPE DOING ITS JOB. A deadlift's bar
+   * starts on the floor; there is no descent to set a rate for. See
+   * `EccentricLiftKind`.
    */
   DESCENT_DEPTH_PER_TICK: {
     squat: { LIGHT: 0.0278, MAXIMAL: 0.0155 },
     bench: { LIGHT: 0.034, MAXIMAL: 0.019 },
-  } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
+  } satisfies PerEccentricKind<{ LIGHT: number; MAXIMAL: number }>,
 
   /**
    * The brace beat before the descent starts, per lift kind. The player's
@@ -239,17 +309,29 @@ export const LIFT_TUNING = Object.freeze({
    * shown before input is accepted, so a mashed press does not immediately
    * start the rep. bench's pair is shorter than squat's — unracking is
    * quicker than a squat's brace-and-walkout — a placeholder, not measured.
+   *
+   * DEADLIFT BRACES LONGEST of the three, and it is the one lift where the
+   * brace is the whole setup rather than a pause inside a movement: the bar is
+   * already loaded on the floor and the lifter has to get down to it, set the
+   * back, and take the slack out. On squat and bench this beat ends with a
+   * DESCENT; on deadlift the next thing that happens is the bar leaving the
+   * ground. A placeholder, not measured.
    */
   BRACE_TICKS: {
     squat: { LIGHT: 14, MAXIMAL: 34 },
     bench: { LIGHT: 10, MAXIMAL: 26 },
+    deadlift: { LIGHT: 18, MAXIMAL: 42 },
   } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
   /** Longest the brace will wait for a press before starting the descent itself. */
   BRACE_TIMEOUT_TICKS: 600,
 
   // -------------------------------------------------------------------------
-  // Depth — GDD §6.2: "Squat — depth timing check in the hole", "Bench —
+  // Depth — ECCENTRIC LIFTS ONLY. Every table in this section is keyed by
+  // `PerEccentricKind`, so `.deadlift` on any of them does not type-check.
+  // A deadlift is judged at lockout, not at a depth.
+  //
+  // GDD §6.2: "Squat — depth timing check in the hole", "Bench —
   // press-timing / bar-speed check off the chest". Same field names, one
   // reading per kind: for squat this is hip-crease depth in the hole; for
   // bench it is how far the bar has travelled toward the chest, and the
@@ -267,10 +349,10 @@ export const LIFT_TUNING = Object.freeze({
    * legitimate room to be "close enough". A placeholder reasoned from that,
    * not measured — GDD §10 applies.
    */
-  DEPTH_LEGAL: { squat: 0.8, bench: 0.92 } satisfies PerKind<number>,
+  DEPTH_LEGAL: { squat: 0.8, bench: 0.92 } satisfies PerEccentricKind<number>,
 
   /** The depth the timing window is centred on, per kind. Where a good rep reverses. Same for both. */
-  DEPTH_IDEAL: { squat: 1.0, bench: 1.0 } satisfies PerKind<number>,
+  DEPTH_IDEAL: { squat: 1.0, bench: 1.0 } satisfies PerEccentricKind<number>,
 
   /**
    * Past this the lifter is buried and the rep is over — miss, reason
@@ -282,7 +364,7 @@ export const LIFT_TUNING = Object.freeze({
    * so bouncing/sinking into the chest reaches its own foul sooner. Not
    * measured; a placeholder reasoned the same way as DEPTH_LEGAL above.
    */
-  DEPTH_COLLAPSE: { squat: 1.3, bench: 1.15 } satisfies PerKind<number>,
+  DEPTH_COLLAPSE: { squat: 1.3, bench: 1.15 } satisfies PerEccentricKind<number>,
 
   /**
    * Full width of the depth window, ms, per kind. The player must release
@@ -311,7 +393,7 @@ export const LIFT_TUNING = Object.freeze({
    * independently plausible-sounding. Still a placeholder, not measured by
    * play — GDD §10 applies — but now one that cannot draw a cue that lies.
    */
-  DEPTH_WINDOW_MS: { squat: 300, bench: 120 } satisfies PerKind<number>,
+  DEPTH_WINDOW_MS: { squat: 300, bench: 120 } satisfies PerEccentricKind<number>,
 
   /**
    * Extra demand per unit of depth past DEPTH_IDEAL. Being buried makes the
@@ -327,11 +409,14 @@ export const LIFT_TUNING = Object.freeze({
    * Ticks spent at the bottom before the ascent begins, per kind. bench's
    * pair is slightly longer than squat's — the sport requires a visible
    * command pause at the chest — a placeholder, not measured.
+   *
+   * NO DEADLIFT ROW. There is no bottom to spend ticks at: the bar is already
+   * there, and it is on the floor rather than under a braced lifter.
    */
   HOLE_TICKS: {
     squat: { LIGHT: 4, MAXIMAL: 12 },
     bench: { LIGHT: 5, MAXIMAL: 14 },
-  } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
+  } satisfies PerEccentricKind<{ LIGHT: number; MAXIMAL: number }>,
 
   // -------------------------------------------------------------------------
   // THE PRESS COMMAND — BENCH ONLY (GDD §6.2, "Bench — press-timing /
@@ -546,10 +631,28 @@ export const LIFT_TUNING = Object.freeze({
    * INTO THE STICK GAIN BELOW — reasoned rather than measured: a bench grind
    * is commonly described as fine everywhere except right off the chest,
    * more so than a squat's more evenly-distributed grind. GDD §10 applies.
+   *
+   * DEADLIFT SET LOWEST OF THE THREE (0.84), AND THAT IS THE OPPOSITE OF THE
+   * FIRST GUESS. The first pass set it HIGHEST (0.90), reasoning that deadlift
+   * is the only lift whose ascent starts from a dead stop with no momentum
+   * bought by an input, so it should fight the base term from tick one.
+   *
+   * That double-charged the same idea. The dead start is ALREADY expressed, by
+   * `FLOOR_BREAK_VELOCITY` being the lowest starting speed of the three — and
+   * raising the base as well is two knobs turning together to look like one,
+   * which is the exact antipattern `DRIVE_WINDOW_MS`'s own header warns about a
+   * few entries down. Combined with the first pass's over-wide stick it made a
+   * perfectly-driven maximal deadlift unwinnable (see `STICK_WIDTH`).
+   *
+   * So the base is now BELOW squat's 0.86: the deadlift's difficulty is
+   * concentrated in a high, narrow stick and a dead start, not spread over the
+   * whole pull. The LIGHT endpoint is squat's 0.42 unchanged. Reasoned, then
+   * corrected against played reps; still a placeholder, GDD §10 applies.
    */
   DEMAND_BASE: {
     squat: { LIGHT: 0.42, MAXIMAL: 0.86 },
     bench: { LIGHT: 0.38, MAXIMAL: 0.8 },
+    deadlift: { LIGHT: 0.42, MAXIMAL: 0.84 },
   } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
   /**
@@ -567,10 +670,22 @@ export const LIFT_TUNING = Object.freeze({
    * DEMAND_BASE above: bench's MAXIMAL peak is 0.80 + 0.55 = 1.35, a
    * comparable margin above capacity to squat's, reached by a sharper stick
    * rather than a higher base. Reasoned, not measured.
+   *
+   * DEADLIFT'S GAIN IS THE LARGEST (0.46) ON TOP OF THE SMALLEST BASE — peak
+   * 0.84 + 0.46 = 1.30 at the endpoint, a comparable margin above capacity to
+   * the other two, reached by a taller notch on an easier run-up rather than a
+   * higher floor. Measured at LOAD_PRESETS.MAXIMAL the three peaks are squat
+   * 1.238, deadlift 1.202, bench's own; what differs is WHERE the peak sits
+   * (0.62 against squat's 0.34), not how bad it is.
+   *
+   * Also the reverse of the first guess (0.42 gain on a 0.90 base), and for the
+   * same reason recorded under `DEMAND_BASE`: difficulty spread across the whole
+   * pull plus a wide stick left no winnable line at the top load.
    */
   DEMAND_STICK_GAIN: {
     squat: { LIGHT: 0.06, MAXIMAL: 0.48 },
     bench: { LIGHT: 0.05, MAXIMAL: 0.55 },
+    deadlift: { LIGHT: 0.05, MAXIMAL: 0.46 },
   } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
   // -------------------------------------------------------------------------
@@ -590,8 +705,20 @@ export const LIFT_TUNING = Object.freeze({
    * 0.16, against STICK_HEIGHT_FRAC 0.20 vs squat's 0.34) — proportionally
    * similar lead-in gap to squat's, scaled to bench's shorter run-up to the
    * stick. Not measured.
+   *
+   * DEADLIFT ARMS LATEST (0.45), because its stick is highest (0.62). The gap
+   * is 0.17 of the range against a stick width of 0.14 — 1.2 widths, matching
+   * squat's 0.18 gap against its own 0.14 — so the cue appears the same
+   * distance out from the fight on all three lifts rather than a fixed number
+   * of height units before it. A first pass used 0.38 (1.7 widths), which armed
+   * the cue so early that the boost had begun decaying before the bar reached
+   * the stick.
    */
-  DRIVE_ARM_HEIGHT: { squat: 0.16, bench: 0.1 } satisfies PerKind<number>,
+  DRIVE_ARM_HEIGHT: {
+    squat: 0.16,
+    bench: 0.1,
+    deadlift: 0.45,
+  } satisfies PerKind<number>,
 
   /**
    * Ms after arming at which the drive is perfectly timed. The window is
@@ -631,6 +758,11 @@ export const LIFT_TUNING = Object.freeze({
   DRIVE_WINDOW_MS: {
     squat: { LIGHT: 380, MAXIMAL: 260 },
     bench: { LIGHT: 380, MAXIMAL: 260 },
+    // DEADLIFT REUSES THE SAME PAIR, for the same reason bench does: squat's
+    // is the only pair in this file with human signal behind it, and this
+    // piece adds no evidence about deadlift's precision axis. Explicitly not
+    // a claim that the three lifts want the same window.
+    deadlift: { LIGHT: 380, MAXIMAL: 260 },
   } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
   /**
@@ -748,6 +880,15 @@ export const LIFT_TUNING = Object.freeze({
   DRIVE_ATTEMPTS_PER_REP: {
     squat: { LIGHT: 1, MAXIMAL: 6 },
     bench: { LIGHT: 1, MAXIMAL: 3 },
+    // DEADLIFT'S MAXIMAL IS 4, BETWEEN THE OTHER TWO, AND IT IS DELIBERATELY
+    // NOT SQUAT'S 6. Deadlift's decisive input is at the TOP of the rep, not
+    // in the ascent — a player who spends six taps getting to lockout arrives
+    // with their finger mid-rhythm and has to clamp it down, which is the
+    // transition the lockout hold is actually testing. Fewer ascent cues
+    // leaves that transition legible instead of burying it in a tap run.
+    // An untested placeholder, and the one deadlift number most likely to
+    // move once the hold is played.
+    deadlift: { LIGHT: 1, MAXIMAL: 4 },
   } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
   /**
@@ -783,6 +924,10 @@ export const LIFT_TUNING = Object.freeze({
   DRIVE_ATTEMPTS_SPACING_MS: {
     squat: { LIGHT: 600, MAXIMAL: 60 },
     bench: { LIGHT: 600, MAXIMAL: 150 },
+    // Between the other two, matching deadlift's cue count sitting between
+    // them. Worst case at 4 cues and 110ms is well inside the ascent budget;
+    // `liftTuning.test.ts`'s span check covers it for every kind.
+    deadlift: { LIGHT: 600, MAXIMAL: 110 },
   } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
   /**
@@ -841,11 +986,273 @@ export const LIFT_TUNING = Object.freeze({
    * Ticks standing at lockout before the rep resolves, per kind. bench
    * reuses squat's pair unchanged — no reasoned basis to differ found while
    * building bench's other constants, so kept equal rather than invented.
+   *
+   * ECCENTRIC LIFTS ONLY, AND THAT IS THE POINT OF THE RETYPE. On squat and
+   * bench `LOCKOUT` is a fixed beat that asks the player for nothing — the
+   * rep is already decided and this is the pause before the verdict. On
+   * deadlift it is the whole check, and its length is
+   * `DOWN_COMMAND_DELAY_TICKS` instead. A `deadlift:` row here would be a
+   * number the sim never reads.
    */
   LOCKOUT_TICKS: {
     squat: { LIGHT: 8, MAXIMAL: 16 },
     bench: { LIGHT: 8, MAXIMAL: 16 },
-  } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
+  } satisfies PerEccentricKind<{ LIGHT: number; MAXIMAL: number }>,
+
+  // -------------------------------------------------------------------------
+  // THE LOCKOUT HOLD — DEADLIFT ONLY (GDD §6.2, "Deadlift — lockout grind")
+  //
+  // WHAT MAKES DEADLIFT A THIRD LIFT AND NOT A RETUNED SQUAT. The three checks
+  // are three FACULTIES, not three sets of numbers:
+  //
+  //   SQUAT     ANTICIPATION. The bar is moving down at a known rate and the
+  //             player predicts the instant it reaches depth. Failing it means
+  //             predicting badly.
+  //   BENCH     REACTION. The bar is still, a command arrives at a moment that
+  //             cannot be predicted, and the player answers it as fast as they
+  //             can. Failing it means being slow.
+  //   DEADLIFT  PERSISTENCE. The bar is locked out and the player must simply
+  //             not stop holding it, for a length of time they cannot know in
+  //             advance, until the down command comes. Failing it means
+  //             stopping early.
+  //
+  // The three are hard to confuse: one asks you to act at a moment, one asks
+  // you to act fast, and one asks you to keep doing nothing. Deadlift is the
+  // only one where the correct play at the decisive instant is to make NO
+  // input at all, and the only one whose decisive beat is at the TOP of the
+  // rep rather than the bottom.
+  //
+  // WHY THE PLAYER CANNOT JUST HOLD THE BUTTON DOWN THE WHOLE REP, which is
+  // the obvious objection and the thing that would make this beat free. The
+  // ascent asks for up to `DRIVE_ATTEMPTS_PER_REP.deadlift.MAXIMAL` taps, and
+  // a tap on a real device is a release and a re-press — `Pressable`'s
+  // `onPressIn` does not re-fire under a continuous hold, measured and
+  // recorded in `DRIVE_BOOST_FORCE_MAX`'s own header. So a heavy pull arrives
+  // at lockout with the player's finger in the middle of a tap rhythm, and
+  // what is asked for is to STOP tapping and clamp. That transition is the
+  // check. `LOCKOUT_GRIP_GRACE_TICKS` is what keeps it a transition rather
+  // than a gotcha.
+  //
+  // WHY THE DOWN COMMAND'S TIMING IS DRAWN FROM THE SEED, and why that is not
+  // GDD §8.1's forbidden dice. Identical argument to
+  // `PRESS_COMMAND_DELAY_TICKS` one section up, with the sign flipped: what is
+  // drawn is WHEN THE TEST ENDS, never whether it is passed. At every delay in
+  // the range a player who keeps holding makes the lift, and at every delay a
+  // player who lets go and stays off long enough does not. A fixed delay would
+  // be learnable in about three reps, and the hold would silently become an
+  // anticipation check — squat's faculty wearing deadlift's name, which is the
+  // exact failure this beat exists to avoid.
+  //
+  // AND NOTHING TELEGRAPHS IT. `cueProgress` returns null for the whole of a
+  // deadlift `LOCKOUT` — see `lift.ts` — so there is no shrinking ring
+  // counting the player down to the command. A ring here would tell them
+  // exactly how long they had left to hold, which is the same defect as a
+  // countdown to bench's press command, and `lift.test.ts` pins it the same
+  // way.
+  //
+  // Every value below is deadlift's only. Squat and bench read none of them.
+  // -------------------------------------------------------------------------
+
+  /**
+   * How long the bar must be held locked out before the down command, ticks.
+   * Drawn from the rep's seed, uniformly between MIN and MAX.
+   *
+   * MIN is a real hold rather than a formality: at 60 Hz, 36 ticks is 600 ms,
+   * long enough that a finger already lifting off a drive tap has to come back
+   * down deliberately. MAX is 96 ticks, 1.6 s — long enough that the player
+   * cannot count it out, short enough that it is not dead air on every rep of
+   * every set. The SPREAD is what makes it unguessable; a narrow spread would
+   * be a fixed delay with noise on it.
+   *
+   * MAX IS ALSO HALF OF A §12.3 GUARANTEE, which is why it is not free to
+   * raise. The longest possible beat is the longest a player can be off the bar
+   * without the down command rescuing them, so `MAX - LOCKOUT_GRIP_GRACE_TICKS`
+   * is the worst-case sag budget that `LOCKOUT_SAG_PER_TICK` has to stay under
+   * at warm-up loads. It came down from a first-pass 132 partly to buy that
+   * margin honestly instead of by shaving the sag rate until a light rep only
+   * just survived. `liftTuning.test.ts` asserts the inequality directly.
+   *
+   * Not played. GDD §10's ~30-iteration expectation applies to both numbers,
+   * and this pair is the likeliest in the block to be wrong: how long a player
+   * will tolerate holding still is exactly the sort of question only a thumb on
+   * a phone can answer.
+   */
+  DOWN_COMMAND_DELAY_TICKS: { MIN: 36, MAX: 96 },
+
+  /**
+   * Ticks between the down command firing and the rep resolving.
+   *
+   * WITHOUT THIS THE COMMAND IS NOT AN EVENT, IT IS A CUT, and the copy written
+   * for it is unreachable. The first version resolved on the command tick
+   * itself, which meant the state carrying `phase: 'LOCKOUT'` and
+   * `tick >= downCommandTick` — the only state `promptFor` can return
+   * `LOCKOUT_DOWN_COMMANDED` from — never existed. `DOWN` was a string in the
+   * copy table that no frame could ever show, and the haptic fired on the same
+   * tick the verdict replaced the screen.
+   *
+   * Found by a test looking for the command among the LOCKOUT-phase states and
+   * finding none. Recorded because it is the shape this codebase keeps paying
+   * for: the mechanism worked perfectly — the event fired, the delay was
+   * seeded, the outcome was right — and the thing it was FOR did not happen.
+   *
+   * 20 ticks is a third of a second: long enough to read one word and feel the
+   * two-beat haptic land, short enough that it is not a pause on a rep the
+   * player has already won. Squat and bench spend a comparable beat here
+   * (`LOCKOUT_TICKS`, 8-16 by load) doing the same job. Unplayed placeholder.
+   *
+   * THE HOLD IS OVER DURING IT. Letting go after the command costs nothing —
+   * that is what the command MEANS — so the sag rules stop applying. A player
+   * punished for putting the bar down after being told to would be being
+   * punished for obeying.
+   */
+  DOWN_COMMAND_SETTLE_TICKS: 20,
+
+  /**
+   * Ticks at the start of a deadlift `LOCKOUT` during which letting go costs
+   * nothing.
+   *
+   * THIS IS WHAT KEEPS THE HOLD A TRANSITION RATHER THAN A GOTCHA. The player
+   * reaches lockout in the middle of a tap rhythm (see the section header), so
+   * without a grace period whether the rep survived would be decided by which
+   * half of a tap the bar happened to lock out on — a coin flip dressed as a
+   * skill check, and one the player could not see coming.
+   *
+   * 10 ticks is ~167 ms, comfortably longer than the gap in a fast tap rhythm
+   * and far shorter than `DOWN_COMMAND_DELAY_TICKS.MIN`. That second inequality
+   * is load-bearing and is asserted in `liftTuning.test.ts`: if the grace ever
+   * reached the minimum delay, a player could let go the instant they locked
+   * out and never be charged for it, and the whole beat would be decoration.
+   */
+  LOCKOUT_GRIP_GRACE_TICKS: 10,
+
+  /**
+   * Height lost per tick that the player is NOT holding during a deadlift
+   * lockout, past the grace period.
+   *
+   * LOAD-SCALED, AND THAT IS HOW GDD §12.3'S "NEVER PUNISH DAILY ENGAGEMENT"
+   * IS MET STRUCTURALLY RATHER THAN BY HOPING. A warm-up deadlift CANNOT be
+   * dropped however the player behaves, because the most sag the sim can
+   * possibly produce at that load is less than the drop threshold:
+   *
+   *     byLoad(SAG, load) x (DOWN_COMMAND_DELAY_TICKS.MAX - LOCKOUT_GRIP_GRACE_TICKS)
+   *         <  LOCKOUT_DROP_HEIGHT_LOSS
+   *
+   * MEASURED THROUGH `byLoad` AT THE PRESETS, NOT COMPUTED FROM THE ENDPOINTS,
+   * because these are endpoints and this file's own header warns that reading
+   * them as presets is the trap that catches everybody. The first draft of this
+   * paragraph fell into exactly that trap: it quoted the LIGHT endpoint
+   * (0.00018) as if a light rep saw it, concluded there was a 2x margin, and
+   * the real margin at `LOAD_PRESETS.LIGHT` was HALF A TICK — 122.5 ticks to
+   * drop against a 122-tick worst case. A guarantee with half a tick of margin
+   * is not a guarantee, it is a coincidence that survived one sweep.
+   *
+   * The shipped numbers, measured through `byLoad`, with 86 ticks as the worst
+   * case (96 - 10):
+   *
+   *     WARMUP   (0.40)  sag 0.000072  -> 695 ticks to drop   NOT DROPPABLE
+   *     LIGHT    (0.55)  sag 0.000282  -> 177 ticks to drop   NOT DROPPABLE
+   *     MODERATE (0.75)  sag 0.000803  ->  62 ticks to drop   droppable
+   *     HEAVY    (0.88)  sag 0.001265  ->  40 ticks to drop   droppable
+   *     MAXIMAL  (1.00)  sag 0.001769  ->  28 ticks (470 ms)  droppable
+   *
+   * MODERATE AND UP BEING DROPPABLE IS THE MECHANIC, NOT A BREACH. §12.3 is
+   * about never punishing a player for showing up; a working set at 75% having
+   * a real lockout check is the beat doing its job. What the rule buys is that
+   * the warm-ups a daily session opens with are never a test.
+   * `liftTuning.test.ts` asserts the inequality at WARMUP and LIGHT, and
+   * `lift.test.ts` plays reps at both and pins the miss count at zero — the
+   * arithmetic and the played rep, because either alone has been wrong here.
+   * Placeholders; GDD §10 applies.
+   */
+  LOCKOUT_SAG_PER_TICK: { LIGHT: 0.00005, MAXIMAL: 0.002 },
+
+  /**
+   * How far the bar may sag below lockout before the rep is a miss, reason
+   * 'dropped'.
+   *
+   * 0.05 of the range. Small, because this is not a second sticking point — the
+   * bar is locked out and the only thing lowering it is the player having
+   * stopped. Expressed as a height loss rather than as a tick count so that a
+   * player who lets go, notices, and re-grips is judged on where the bar
+   * ACTUALLY IS, which is what `LOCKOUT_REGRIP_RECOVERY_PER_TICK` makes
+   * recoverable.
+   */
+  LOCKOUT_DROP_HEIGHT_LOSS: 0.05,
+
+  /**
+   * Height regained per tick once the player re-grips, until the bar is back at
+   * lockout.
+   *
+   * DELIBERATELY FASTER THAN THE WORST SAG (0.004 against MAXIMAL's 0.0021), so
+   * a slip is genuinely recoverable rather than a slow death the player watches
+   * happen. A caught slip still costs — it is what `LOCKOUT_SLIP_GRIND_TICKS`
+   * reads to call the make a grind — but it does not doom the rep, which is the
+   * same rule the drive cue already follows: "A MISSED TAP COSTS VELOCITY. IT
+   * NEVER ENDS THE REP ON ITS OWN."
+   */
+  LOCKOUT_REGRIP_RECOVERY_PER_TICK: 0.004,
+
+  /**
+   * Ticks of slipping (not holding, past the grace) at or above which a made
+   * deadlift is called a grind rather than a good lift.
+   *
+   * THE MIDDLE OF THE THREE OUTCOMES, WITHOUT WHICH THE BEAT IS BINARY. Held
+   * throughout: good lift. Let go, caught it, held the rest: grinder. Let go
+   * and stayed off: no lift. 6 ticks (100 ms) is the same order as
+   * `GRIND_STALL_TICKS`, which plays the identical role on the ascent side —
+   * kept equal to it rather than invented separately, because "how much wobble
+   * before it stops being clean" is one judgement, and two different answers to
+   * it in one file would be a knob nobody could tune.
+   */
+  LOCKOUT_SLIP_GRIND_TICKS: 6,
+
+  /**
+   * Velocity the bar leaves the FLOOR with, light end and maximal end.
+   *
+   * THE ONE PLACE DEADLIFT IS DEFINED BY WHAT IT DOES *NOT* ASK FOR. Squat's
+   * ascent velocity is bought by the depth release (`REVERSAL_VELOCITY`) and
+   * bench's by the reaction (`PRESS_VELOCITY`). Deadlift's is bought by
+   * nothing: it is a function of the load and the load alone, because there is
+   * no preceding beat to have played well. A dead lift starts dead.
+   *
+   * That is a design statement rather than an oversight, and it is why this is
+   * a `{LIGHT, MAXIMAL}` pair and not a `{MIN, MAX}` quality range like the
+   * other two — there is no input quality to interpolate on. A deadlift's input
+   * budget is spent at the top of the rep, not the bottom.
+   *
+   * MAXIMAL IS NOT ZERO, AND THE REASON IS WORTH STATING SO NOBODY "TIDIES" IT.
+   * A maximal deadlift starting at literally zero spends several ticks under
+   * `GRIND_STALL_VELOCITY` purely accelerating, and would be called a grind on
+   * every single rep for a reason that has nothing to do with how it was
+   * played. 0.0016 is above `GRIND_STALL_VELOCITY`'s neighbourhood by enough to
+   * avoid that; `lift.test.ts` measures that a cleanly played maximal deadlift
+   * can still come back 'good-lift'. LIGHT (0.011) snaps off the floor.
+   * Placeholders; GDD §10 applies.
+   */
+  FLOOR_BREAK_VELOCITY: { LIGHT: 0.011, MAXIMAL: 0.0016 },
+
+  /**
+   * The drawing a deadlift borrows, because there is no deadlift sprite.
+   *
+   * AN EXPLICIT FALLBACK, DECLARED HERE SO IT CANNOT BE SILENT.
+   * `LifterFrameSpec` in `src/art/lifterSprite.ts` draws two figures — a
+   * front-on back squat and a side-on bench press — and building a third was
+   * out of this piece's scope. A deadlift therefore renders as the SQUAT
+   * figure.
+   *
+   * WHAT THAT LOOKS LIKE, STATED PLAINLY RATHER THAN LEFT TO BE DISCOVERED: the
+   * pose tracks the bar correctly, because `lift.ts` derives `depth` as
+   * `1 - height` through a deadlift's ascent, so the figure is folded over at
+   * the floor and stands up as the bar rises — the right silhouette. But the
+   * bar is drawn ON THE LIFTER'S BACK rather than in their hands. It is wrong,
+   * it is known to be wrong, and it is tracked debt for an art piece, not a
+   * claim that a deadlift is drawn.
+   *
+   * `liftFrame.ts` reads this constant rather than hardcoding `'squat'`, so the
+   * day a deadlift figure exists there is one line to change and a test that
+   * names it.
+   */
+  DEADLIFT_ART_FALLBACK_KIND: 'squat',
 
   // -------------------------------------------------------------------------
   // Grind classification — a make that was ugly
@@ -1048,6 +1455,30 @@ export const LIFT_TUNING = Object.freeze({
 
     /** BENCH ONLY: pressed before the command. */
     PRESS_FALSE_START: pattern({ style: 'warning', delayMs: 0 }),
+
+    /**
+     * DEADLIFT ONLY: the grip is going. Fired repeatedly while the bar sags.
+     *
+     * DELIBERATELY THE SAME SHAPE AS `STALL_PULSE` AND FOR THE SAME REASON —
+     * a rep that is being lost has to be FELT being lost, not discovered at the
+     * verdict. `soft` rather than `rigid` so the two are not confused: a stall
+     * is the bar fighting back, a slip is the lifter letting go, and they are
+     * different failures with different fixes.
+     */
+    LOCKOUT_SLIP: pattern({ style: 'soft', delayMs: 0 }),
+
+    /**
+     * DEADLIFT ONLY: the down command. The end of the hold.
+     *
+     * NOT A STIMULUS THE PLAYER MUST ANSWER, unlike `PRESS_COMMAND`, and the
+     * pattern says so. Bench's command is one sharp edge because every
+     * millisecond of it comes out of a reaction window. This one asks for
+     * nothing — the rep is already over when it fires — so it is allowed to be
+     * a two-beat release rather than a single edge. It is a full stop, not a
+     * starter's pistol.
+     */
+    DOWN_COMMAND: pattern({ style: 'medium', delayMs: 0 }, { style: 'soft', delayMs: 90 }),
+
     /** Drive landed in the window. */
     DRIVE_PERFECT: pattern(
       { style: 'heavy', delayMs: 0 },
@@ -1255,14 +1686,26 @@ export const LIFT_TUNING = Object.freeze({
  */
 export const LIFT_COPY = Object.freeze({
   PROMPT: Object.freeze({
+    // DEADLIFT'S BRACE LINE DOES NOT SAY "HOLD", AND THAT IS DELIBERATE. The
+    // other two lifts ask for a hold here because holding is what lowers the
+    // bar. A deadlift's brace ends with the bar leaving the floor, and the
+    // player's finger has to be free again almost immediately to tap the
+    // ascent's drive cues — so the instruction is a pull, not a hold, or the
+    // first thing the game teaches a deadlifter is the wrong grip habit for
+    // the beat that decides the rep.
     BRACE: {
       squat: 'TAP AND HOLD TO DESCEND',
       bench: 'TAP AND HOLD TO LOWER',
+      deadlift: 'TAP TO PULL',
     } satisfies PerKind<string>,
+    // ECCENTRIC LIFTS ONLY — `PerEccentricKind`, not `PerKind`. A deadlift
+    // never enters `DESCENT` or `HOLE`, so a `deadlift:` line here would be
+    // copy nothing can render. `promptFor` documents what it does if it is
+    // somehow handed the impossible state.
     DESCENT: {
       squat: 'RELEASE AT DEPTH',
       bench: 'TOUCH THE CHEST',
-    } satisfies PerKind<string>,
+    } satisfies PerEccentricKind<string>,
     // Per kind: "OUT OF THE HOLE" is squat/deadlift jargon for the bottom
     // position and reads as nonsense on a bench rep, which has no hole — it
     // has a chest. BRACE and DESCENT are per-kind for the same reason: "DESCEND"
@@ -1275,7 +1718,7 @@ export const LIFT_COPY = Object.freeze({
     // WAIT — so this line has to read as an instruction to hold still, or a
     // player reads "OFF THE CHEST" as "go now" and false-starts every rep. The
     // command itself is `HOLE_COMMANDED` below.
-    HOLE: { squat: 'OUT OF THE HOLE', bench: 'WAIT FOR IT' } satisfies PerKind<string>,
+    HOLE: { squat: 'OUT OF THE HOLE', bench: 'WAIT FOR IT' } satisfies PerEccentricKind<string>,
     /**
      * BENCH ONLY: the press command, shown from the tick it fires.
      *
@@ -1290,7 +1733,33 @@ export const LIFT_COPY = Object.freeze({
     ASCENT_BEFORE_CUE: 'RIDE IT',
     ASCENT_CUE_OPEN: 'DRIVE — TAP',
     ASCENT_AFTER_CUE: 'RIDE IT',
-    LOCKOUT: 'LOCK IT',
+    /**
+     * PER KIND, BECAUSE ON ONE OF THE THREE THIS BEAT IS AN INSTRUCTION AND ON
+     * THE OTHER TWO IT IS AN ANNOUNCEMENT.
+     *
+     * Squat and bench have already resolved by the time they reach `LOCKOUT`;
+     * "LOCK IT" is flavour over a fixed beat and asks for nothing. On deadlift
+     * this beat is the check, and the line has to be a live instruction the
+     * player acts on — "DON'T LET GO" rather than "LOCK IT", because a player
+     * who reads "LOCK IT" as "you have locked it" takes their finger off, which
+     * is precisely the losing play.
+     */
+    LOCKOUT: {
+      squat: 'LOCK IT',
+      bench: 'LOCK IT',
+      deadlift: "DON'T LET GO",
+    } satisfies PerKind<string>,
+    /**
+     * DEADLIFT ONLY: the down command, shown from the tick it fires.
+     *
+     * THE OPPOSITE OF `HOLE_COMMANDED` IN EVERY WAY THAT MATTERS, and the
+     * contrast is the point. Bench's is a starter's pistol that has to be read
+     * in peripheral vision because the reaction window is running. This one
+     * arrives when the rep is already over and asks for nothing at all — so it
+     * is permitted to be a word the player reads at leisure, and it is a
+     * release rather than a demand.
+     */
+    LOCKOUT_DOWN_COMMANDED: 'DOWN',
     RESOLVED: 'TAP TO LIFT AGAIN',
   }),
   /**
@@ -1308,6 +1777,12 @@ export const LIFT_COPY = Object.freeze({
   SUBTITLE: {
     squat: 'Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.',
     bench: 'Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.',
+    // DEADLIFT'S LINE HAS TO TEACH THE HOLD, because the hold is the only
+    // moment in this game where the correct input is no input, and a player
+    // who has learned squat and bench has learned the opposite twice. It names
+    // the down command explicitly so the wait has a stated end — a hold with
+    // no announced finish reads as the game having frozen.
+    deadlift: 'No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.',
   } satisfies PerKind<string>,
 
   OUTCOME: Object.freeze({
@@ -1320,6 +1795,15 @@ export const LIFT_COPY = Object.freeze({
     buried: 'Buried it. Never got the reversal.',
     stalled: 'The bar beat you at the sticking point.',
     timeout: 'Ran out of air.',
+    // DEADLIFT ONLY, AND IT EARNS ITS OWN REASON RATHER THAN REUSING
+    // 'stalled'. A dropped lockout and a lost sticking point are different
+    // failures with different fixes — one says hold on, the other says drive
+    // harder — and handing a player the wrong one of those two sentences is
+    // worse than handing them nothing. `lift.ts`'s `MissReason` union is where
+    // this is enforced; `meetDay.ts`'s `judgingMargin` already treats every
+    // reason but 'no-depth' as unanimous, which is right here: everyone in the
+    // room sees a bar go down early.
+    dropped: 'Put it down before the call.',
   }),
   GRADE: Object.freeze({
     perfect: 'PERFECT',

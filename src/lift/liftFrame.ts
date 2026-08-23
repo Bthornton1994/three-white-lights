@@ -119,6 +119,39 @@ export function directionFor(phase: LiftPhase): 'DESCENT' | 'ASCENT' {
     : 'ASCENT';
 }
 
+/**
+ * Which of the two authored figures this rep is drawn with.
+ *
+ * ---------------------------------------------------------------------------
+ * A DEADLIFT IS DRAWN AS A SQUAT, AND THIS FUNCTION EXISTS SO THAT IS A
+ * DECISION RATHER THAN A COINCIDENCE
+ * ---------------------------------------------------------------------------
+ * `renderLifterFrame` draws two figures: a front-on back squat and a side-on
+ * bench press. There is no deadlift figure, and building one was out of scope
+ * for the piece that made deadlift playable — so a deadlift borrows the squat
+ * drawing.
+ *
+ * WHAT IS AND IS NOT RIGHT ABOUT THE BORROWED DRAWING, stated here rather than
+ * left for somebody to find on a phone:
+ *
+ *   RIGHT   The silhouette tracks the bar. `lift.ts` derives `depth` as
+ *           `1 - height` through a deadlift's ascent and lockout, so the figure
+ *           is folded over when the bar is on the floor and stands up as it
+ *           rises. Strain, chalk, bar bend and the plate stack are all real.
+ *   WRONG   The bar is on the lifter's BACK, not in their hands. A deadlift
+ *           drawn this way reads as a squat that started at the bottom.
+ *
+ * That is tracked debt for an art piece, not a claim that a deadlift is drawn.
+ * The fallback target is `LIFT_TUNING.DEADLIFT_ART_FALLBACK_KIND` rather than a
+ * literal `'squat'` here, so the day a third figure exists there is one
+ * constant to change and a test that names it — and so that a reader grepping
+ * for what deadlift borrows finds a declaration instead of an anonymous string.
+ */
+export function drawnKindFor(state: LiftState): 'squat' | 'bench' {
+  const kind = state.config.kind;
+  return kind === 'deadlift' ? LIFT_TUNING.DEADLIFT_ART_FALLBACK_KIND : kind;
+}
+
 /** Total on the bar for a load ratio, rounded to something loadable-looking. */
 export function totalKgFor(loadRatio: number, bestSingleKg: number): number {
   const step = LIFT_TUNING.DEMO.ROUND_TO_KG;
@@ -138,7 +171,7 @@ export function liftFrameSpec(state: LiftState, totalKg: number): LifterFrameSpe
   const depthSteps = QUANTISE.DEPTH_STEPS;
   const heightSteps = BENCH_PRESS.HEIGHT_STEPS;
   return {
-    kind: state.config.kind,
+    kind: drawnKindFor(state),
     depth: Math.round(clamp01(state.depth) * depthSteps) / depthSteps,
     height: Math.round(clamp01(state.height) * heightSteps) / heightSteps,
     direction: directionFor(state.phase),
