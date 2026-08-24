@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "suite-after-meetdrive-2026-08-24T00-05-37-835Z-25970",
+  "label": "suite-after-meetdrive",
+  "command": [
+    "npx",
+    "vitest",
+    "run"
+  ],
+  "budgetSeconds": 1800,
+  "startedAtIso": "2026-08-24T00:05:37.835Z",
+  "startedAtMs": 1787529937835,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "a6decec5e1c86dc9ed98ef0b54e32ff35162aafc",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 25970,
+    "startTick": "2558019",
+    "cmdline": "node tools/watchdog.mjs --budget 1800 --label suite-after-meetdrive -- npx vitest run",
+    "bootId": "fabf06d4-ff34-4c2a-84e5-869c226847d2",
+    "bootEpochSeconds": 1787504358,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-24T00:05:37.866Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
