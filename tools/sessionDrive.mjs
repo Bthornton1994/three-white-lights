@@ -886,3 +886,303 @@ export async function pressCloseOutAction(page) {
       : 'check-in';
   return { landedOn, state: landed.state };
 }
+
+/**
+ * ===========================================================================
+ * THE ASCENT — ONE IMPLEMENTATION, THREE LIFTS, TWO SCREENS
+ * ===========================================================================
+ * The two functions below were `tools/verify-lift-press.mjs`'s and are MOVED
+ * here rather than copied, for the reason that file's own header gives about
+ * them: this loop is where four separate real bugs were found and fixed, and a
+ * second copy of it would be four bugs waiting to be re-introduced one at a
+ * time. `tools/meetDrive.mjs` needs the identical beat on meet day — GDD §6.2's
+ * attempt is `AttemptView` mounting the same `useLiftLoop` `SetView` does — so
+ * the choice was one shared function or a fifth instance of the defect
+ * CLAUDE.md names ("a guard written for one hook must be applied to its
+ * sibling, mechanically").
+ *
+ * TWO THINGS ARE THE CALLER'S, AND BOTH ARE THE REASON THIS IS PARAMETERISED
+ * RATHER THAN GLOBAL:
+ *
+ *   `read`    which testIDs the beat is read off. A training set says
+ *             `session-prompt`; a meet attempt says `attempt-prompt`. Same
+ *             `promptFor`, two screens.
+ *   `timing`  A ROBOT'S REACTION TIMES, which are NOT transferable between the
+ *             two arms and must not be pretended to be. `verify-lift-press.mjs`
+ *             derived `FULL_CYCLE`'s four numbers against the SESSION's loads
+ *             (RPE 9 and RPE 10 ladder rungs), in a header that runs to eighty
+ *             lines of measurement; a meet attempt runs at ~0.90-0.97 of e1RM
+ *             off `OPENER_FRACTION_OF_1RM` and its own jump table. Hoisting one
+ *             arm's constants into a shared module would make one set of
+ *             measurements silently claim to describe both. So the SHAPE is
+ *             shared and the NUMBERS stay where they were measured.
+ */
+
+/**
+ * The default `hasLeft`: the screen the rep is on never goes away mid-rep.
+ *
+ * TRUE OF THE SESSION and false of meet day — see `hasLeft` in the block below.
+ * Named rather than written inline as `() => false` at two call sites, so the
+ * two defaults cannot drift apart.
+ */
+const NEVER_LEFT = () => false;
+
+/** The reaction times `tapDriveCuesToLockout` moves on. All four are required. */
+/**
+ * @typedef {object} AscentTiming
+ * @property {number} aimDelayMs        after a cue is seen open, before the tap
+ * @property {number} tapMs             how long each tap's mouse.down is held
+ * @property {number} settleMs          after a tap, before reading the state
+ * @property {number} minCueSpacingMs   the floor below which a still-open cue
+ *                                      display cannot be a NEW cue
+ * @property {number} driveTimeoutMs    "the ascent has stopped advancing"
+ * @property {number} pollMs            how often `read` is re-run
+ */
+
+/**
+ * Poll `read(page)` until `predicate` holds, returning the reading that
+ * satisfied it, or `null` on the deadline.
+ *
+ * The generic twin of `until` above: that one is hard-wired to `readLoop` and
+ * to `done(state)` over the session's own fields; this one takes the reader,
+ * because the meet's screen is a different set of testIDs saying the same
+ * things. Both return the reading rather than a boolean, for the reason
+ * `verify-lift-press.mjs` records: waiting on a cue and then reading state
+ * separately races the app's own automatic next-rep reset, and the second read
+ * can already belong to a different rep.
+ */
+export async function untilRead(page, read, predicate, timeoutMs, pollMs) {
+  const started = Date.now();
+  for (;;) {
+    const reading = await read(page);
+    if (predicate(reading)) return reading;
+    if (Date.now() - started >= timeoutMs) return null;
+    await page.waitForTimeout(pollMs);
+  }
+}
+
+/**
+ * TAP EVERY ARMED DRIVE CUE UNTIL THE BAR LOCKS OUT — ONE IMPLEMENTATION,
+ * SHARED BY EVERY LIFT THAT HAS AN ASCENT, WHICH IS ALL THREE.
+ *
+ * ===========================================================================
+ * WHY THIS IS A FUNCTION AND NOT A SECOND COPY
+ * ===========================================================================
+ * CLAUDE.md: "A guard written for one hook — or one FIXTURE, or one ARM OF ONE
+ * `if` — must be applied to its sibling, mechanically… proximity is not
+ * protection, it is the RISK." This loop is where four separate real bugs were
+ * found and fixed (a phantom re-tap that burned one of only a few cue slots; an
+ * evidence snapshot eating the aim window's own margin; a win showing GRINDER
+ * filed as a miss; a miss reason read late enough to belong to the NEXT rep).
+ * A second, deadlift-shaped copy of it would be four bugs waiting to be
+ * re-introduced one at a time, and the copy that drifted would be the one
+ * nobody re-read.
+ *
+ * The body below is the SESSION arm's loop VERBATIM, with two things lifted
+ * out:
+ *
+ *   - the three evidence snapshots, which are callbacks now, so PROBE 3 keeps
+ *     its `attemptN-6-drive-tap-K-settled` phase labels exactly as they were
+ *     and the ladder probe can do something else entirely at the same three
+ *     instants — including, on a deadlift, CLAMPING DOWN at `onLockout`, which
+ *     is that lift's whole check;
+ *   - `'LOCK IT'`, which was hardcoded. IT IS SQUAT AND BENCH COPY —
+ *     `LIFT_COPY.PROMPT.LOCKOUT` is per kind and a deadlift's line is
+ *     "DON'T LET GO" — so on a deadlift the old literal could never match and
+ *     the loop could only ever exit through its outcome arm. Latent rather
+ *     than live, because nothing had ever driven a deadlift through here;
+ *     parameterised rather than left to be discovered by whoever did first.
+ */
+/**
+ * WAIT UNTIL A DRIVE CUE IS OPEN — `tapDriveCuesToLockout`'S PRECONDITION,
+ * EXTRACTED SO BOTH ITS CALLERS ACTUALLY HAVE IT.
+ *
+ * ===========================================================================
+ * WHY THIS IS A FUNCTION AND NOT A COMMENT ON THE LOOP
+ * ===========================================================================
+ * That loop TAPS AT THE TOP OF ITS FIRST ITERATION, deliberately and for a
+ * measured reason (see `AIM_FOR_CENTER_DELAY_MS`). So it is only correct when
+ * it is entered with a cue ALREADY open, and `probeFullRepCycle` satisfied that
+ * with an inline wait immediately above the call.
+ *
+ * THE SECOND CALLER DID NOT, AND THE RUN CAUGHT IT. `driveLadderRep` went
+ * straight from the deadlift's pull into the loop, so its first tap was
+ * dispatched blind — measured in the page's own pointer stream against its own
+ * frame stream: `pointerdown@2742` while the live prompt was "RIDE IT", with
+ * the first "DRIVE — TAP" frame not painted until 3253. `stepLift` grades a
+ * press with `activeCue === null` a full window early, so that tap was a
+ * `missed` timing, a velocity penalty, and one of only 3 drive slots the load
+ * offers — spent on nothing, on every rep, silently.
+ *
+ * That is CLAUDE.md's "a guard written for one hook must be applied to its
+ * sibling, mechanically" arriving as a PRECONDITION rather than as a guard, and
+ * the fix is the same shape: one function both callers call, rather than a
+ * sentence in a header the second caller did not read.
+ *
+ *
+ * `hasLeft` IS THE MEET'S, AND IT IS A PARAMETER RATHER THAN A SHARED
+ * ASSUMPTION BECAUSE THE TWO SCREENS GENUINELY DIFFER. A training set holds its
+ * outcome on screen for `SESSION_TUNING.REP_RESULT_HOLD_MS`, so a poll that
+ * arrives late still reads 'GOOD LIFT'. `AttemptView` hands the resolution
+ * straight to the judges in the effect that fires the tick it resolves (GDD
+ * §6.2 step 4 — "the silence before the lights is the verdict screen's"), so
+ * `meet-attempt` can be gone before this loop's next poll and every reading
+ * after that is `prompt: null`. Without this the loop would sit out its whole
+ * `driveTimeoutMs` on EVERY made attempt and report `finalOutcome: null` about
+ * a rep that was won. It defaults to a predicate that is never true, so the
+ * session arm's behaviour is byte-for-byte what it was.
+ *
+ * `lockoutPrompt` is optional and defaults to null, which is
+ * `probeFullRepCycle`'s behaviour EXACTLY as it was — that caller must not
+ * break on its own 'LOCK IT', because a squat that reaches LOCKOUT resolves
+ * within `lockoutTicks` and the outcome is what its miss-handling arm reads. A
+ * deadlift's LOCKOUT is the opposite: it is a beat that lasts, and a rep that
+ * reached it without ever arming a cue must be recognised there rather than
+ * waited out to a timeout.
+ */
+export async function awaitFirstDriveCue(page, { read, timing, lockoutPrompt = null, hasLeft = NEVER_LEFT }) {
+  const ended = await untilRead(
+    page,
+    read,
+    (loop) =>
+      hasLeft(loop) ||
+      (loop.prompt !== null && loop.prompt.includes(SESSION_PROMPTS.DRIVE)) ||
+      (lockoutPrompt !== null && loop.prompt !== null && loop.prompt.includes(lockoutPrompt)) ||
+      SESSION_PROMPTS.OUTCOMES.includes(loop.prompt),
+    timing.driveTimeoutMs,
+    timing.pollMs,
+  );
+  const said = (line) => ended !== null && ended.prompt !== null && line !== null && ended.prompt.includes(line);
+  const left = ended !== null && hasLeft(ended);
+  return { cueOpen: !left && said(SESSION_PROMPTS.DRIVE), lockedOut: !left && said(lockoutPrompt), left, loop: ended };
+}
+
+export async function tapDriveCuesToLockout(page, { read, timing, lockoutPrompt, onTap, onSettled, onLockout, hasLeft = NEVER_LEFT }) {
+  let drivesTapped = 0;
+  let lockedOut = false;
+  let finalOutcome = null;
+  let left = false;
+  for (;;) {
+    // TAP AS SOON AS THIS LOOP SEES THE CUE — deliberately, not merely
+    // convenient. `promptFor` starts showing 'DRIVE — TAP' at
+    // `cue.openTick` (lift.ts), the window's LEADING edge, and at this
+    // arm's load that edge is ALREADY a winning point (measured via the
+    // pure sim; see AIM_FOR_CENTER_DELAY_MS's own header for the numbers
+    // and for why that was not true at the RPE this arm tried first).
+    // Waiting only spends margin toward the window's one losing edge.
+    await page.waitForTimeout(timing.aimDelayMs);
+    await page.mouse.down();
+    await page.waitForTimeout(timing.tapMs);
+    await page.mouse.up();
+    drivesTapped += 1;
+    // This IS the "cue was open, a tap was dispatched" evidence — taken
+    // here, right after dispatch, rather than as a separate call before
+    // it. See the comment above this loop for why: a snapshot before the
+    // tap is not free, and its cost was eating the aim delay's own budget.
+    await onTap(drivesTapped);
+
+    // A beat for the state machine to land on whatever is next before this
+    // asks. RIDE IT between cues (ASCENT_AFTER_CUE) is exactly this window
+    // — `driveSpacingTicks` guarantees it is non-empty (measured: ~450ms at
+    // RPE_CHOICE_HEAVY's loadRatio, comfortably above this settle) — and
+    // asking immediately risks a snapshot mid-transition.
+    await page.waitForTimeout(timing.settleMs);
+    await onSettled(drivesTapped);
+
+    // DO NOT DECIDE WHETHER TO TAP AGAIN FROM THIS READING. Measured: a tap
+    // that landed cleanly can still show 'DRIVE — TAP' on screen for a beat
+    // after the sim has already accepted it and moved on — display lag, not
+    // an unconsumed cue. Acting on that reading re-taps into an
+    // ALREADY-RESOLVED cue: the press lands with `activeCue === null`,
+    // grades a full window early (a MISS), and silently burns one of
+    // `driveAttemptsFor`'s slots — 4 at this arm's load after the Finding
+    // 2 retune, so losing one to a phantom re-tap still costs a quarter of
+    // the whole ascent's cues.
+    // No cue can legitimately arm before `driveSpacingTicks` elapses
+    // (`lift.ts`), so waiting out that floor before reading again removes
+    // the window where a lingering display could be misread as a new cue.
+    // SPEND THE SPACING FLOOR WATCHING FOR LOCKOUT RATHER THAN SLEEPING
+    // THROUGH IT — and the reason is a measured 300 ms, not tidiness.
+    //
+    // This used to be a flat `waitForTimeout`. On a DEADLIFT the tick the bar
+    // locks out on is the tick the hold starts, and `LOCKOUT_GRIP_GRACE_TICKS`
+    // gives the finger 10 ticks (~167 ms) to come back down before the bar
+    // starts sagging. A bar that locked out early in this sleep was therefore
+    // not noticed for up to `BETWEEN_CUES_SETTLE_MS + spacingFloorRemaining` —
+    // 280 ms — and the clamp landed outside the grace. Measured across five
+    // real runs the re-grip came in at 2, 30, 31, 122 and 300 ms, and the
+    // 300 ms one cost its rep a clean lift.
+    //
+    // The obvious alternative was to widen the check that noticed, which
+    // CLAUDE.md refuses by name ("a threshold chosen to make a check stop
+    // failing is a threshold that will hide the next real failure at the same
+    // site"), so the sleep is what changed instead. Both spreads in this
+    // paragraph are browser measurements taken against `18ef5b7`.
+    //
+    // THE PHANTOM-RE-TAP GUARD THIS FLOOR EXISTS FOR IS UNTOUCHED. That guard
+    // is about not treating a LINGERING 'DRIVE — TAP' display as a fresh cue,
+    // and this wait still refuses to return early on a DRIVE prompt — it breaks
+    // only on the LOCKOUT line, which no lingering cue can produce. A timeout
+    // here returns null and is exactly the old sleep.
+    const spacingFloorRemaining = timing.minCueSpacingMs - timing.settleMs;
+    if (spacingFloorRemaining > 0) {
+      await untilRead(
+        page,
+        read,
+        (loop) => lockoutPrompt !== null && loop.prompt !== null && loop.prompt.includes(lockoutPrompt),
+        spacingFloorRemaining,
+        timing.pollMs,
+      );
+    }
+
+    const next = await untilRead(
+      page,
+      read,
+      (loop) =>
+        hasLeft(loop) ||
+        (loop.prompt !== null && (loop.prompt.includes(lockoutPrompt) || loop.prompt.includes(SESSION_PROMPTS.DRIVE))) ||
+        SESSION_PROMPTS.OUTCOMES.includes(loop.prompt),
+      timing.driveTimeoutMs,
+      timing.pollMs,
+    );
+    // WON IS NOT ONLY THE LITERAL `lockoutPrompt` FRAME (squat/bench 'LOCK IT'). `SESSION_PROMPTS.OUTCOMES`
+    // is `['GOOD LIFT', 'GRINDER', 'NO LIFT']` — only the last is an actual
+    // miss. LOCKOUT_TICKS at this arm's load is short enough (~230ms) that
+    // this loop's own poll can land AFTER it, catching RESOLVED with
+    // 'GRINDER' or 'GOOD LIFT' already showing, having never separately
+    // observed the LOCKOUT line at all. Measured: a run recorded three
+    // "misses" whose outcome was 'GRINDER' — a rep that reached lockout and
+    // won, filed as a failure because this check required the one frame it
+    // happened to skip past. A won rep is the LOCKOUT line OR any OUTCOME that is
+    // not specifically 'NO LIFT', not the narrower of the two.
+    left = next !== null && hasLeft(next);
+    const wonOutright =
+      !left &&
+      next !== null &&
+      next.prompt !== null &&
+      (next.prompt.includes(lockoutPrompt) || (SESSION_PROMPTS.OUTCOMES.includes(next.prompt) && next.prompt !== 'NO LIFT'));
+    if (wonOutright) {
+      lockedOut = true;
+      await onLockout(drivesTapped);
+      break;
+    }
+    if (!left && next !== null && next.prompt !== null && next.prompt.includes(SESSION_PROMPTS.DRIVE)) {
+      continue; // the spacing floor has passed, so this is a genuinely new cue — tap it
+    }
+    // Resolved (as a real miss — 'NO LIFT') with no further cue, or this
+    // wait timed out — either way, CAPTURE THE READING THAT ENDED THE
+    // LOOP, right here, rather than reading again after the wait below.
+    // This is the same race the file header already names for the
+    // cue-detection wait above, in a spot this loop's own extra taps and
+    // settle waits newly reach: a FRESH readLoop() taken 150ms+ after a
+    // miss can land after the app's own automatic next-rep reset,
+    // returning the NEXT rep's BRACE prompt (or, measured once, a
+    // transitional null) as if it were this attempt's miss reason.
+    // Measured on this exact loop: outcome recorded as "TAP AND HOLD TO
+    // DESCEND" on one attempt and `null` on another, neither a real miss
+    // reason, both from re-reading late.
+    finalOutcome = next;
+    break;
+  }
+  return { drivesTapped, lockedOut, left, finalOutcome };
+}
