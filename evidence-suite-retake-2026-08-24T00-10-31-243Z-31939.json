@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "evidence-suite-retake-2026-08-24T00-10-31-243Z-31939",
   "label": "evidence-suite-retake",
   "command": [
@@ -28,14 +28,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 9,
-    "okCount": 8,
+    "count": 10,
+    "okCount": 9,
     "errors": [],
-    "lastAttemptIso": "2026-08-24T00:18:31.586Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-24T00:19:31.158Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-24T00:17:34.097Z"
-  }
+    "lastOkIso": "2026-08-24T00:18:34.043Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-24T00:19:31.154Z",
+  "elapsedSeconds": 539.9
 }
