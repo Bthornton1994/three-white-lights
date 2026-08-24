@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "cutincap-m3-2026-08-24T00-52-47-398Z-6666",
+  "label": "cutincap-M3",
+  "command": [
+    "node",
+    "tools/verify-cutin-cap.mjs",
+    "--url",
+    "http://localhost:8094"
+  ],
+  "budgetSeconds": 1800,
+  "startedAtIso": "2026-08-24T00:52:47.398Z",
+  "startedAtMs": 1787532767398,
+  "cwd": "/home/user/wt-cutincap",
+  "commit": "7f92eea26a3b8c12c2139be5aabdf6b4b663e1aa",
+  "branch": "claude/cutincap-three-lifts",
+  "dirty": 7,
+  "dirtyPaths": [
+    ".gauntlet/shots/cutin-cap/cap.json",
+    ".gauntlet/shots/cutin-cap/cut-in-leg-2.png",
+    ".gauntlet/shots/cutin-cap/leg-1-recap.png",
+    ".gauntlet/shots/cutin-cap/leg-2-bombed.png",
+    ".gauntlet/shots/cutin-cap/leg-3-bombed.png",
+    "tools/meetDrive.mjs",
+    "tools/verify-cutin-cap.mjs"
+  ],
+  "runner": {
+    "pid": 6666,
+    "startTick": "2840975",
+    "cmdline": "node tools/watchdog.mjs --budget 1800 --label cutincap-M3 -- node tools/verify-cutin-cap.mjs --url http://localhost:8094",
+    "bootId": "fabf06d4-ff34-4c2a-84e5-869c226847d2",
+    "bootEpochSeconds": 1787504358,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-24T00:52:47.420Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
