@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "suite-after-meetdrive-2026-08-24T00-05-37-835Z-25970",
   "label": "suite-after-meetdrive",
   "command": [
@@ -28,14 +28,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 5,
-    "okCount": 4,
+    "count": 6,
+    "okCount": 5,
     "errors": [],
-    "lastAttemptIso": "2026-08-24T00:09:37.985Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-24T00:10:01.535Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-24T00:08:40.579Z"
-  }
+    "lastOkIso": "2026-08-24T00:09:40.633Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-24T00:10:01.533Z",
+  "elapsedSeconds": 263.7
 }
