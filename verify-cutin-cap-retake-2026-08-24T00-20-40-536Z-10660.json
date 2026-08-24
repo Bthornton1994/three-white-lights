@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "verify-cutin-cap-retake-2026-08-24T00-20-40-536Z-10660",
   "label": "verify-cutin-cap-retake",
   "command": [
@@ -29,14 +29,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 2,
-    "okCount": 1,
+    "count": 3,
+    "okCount": 2,
     "errors": [],
-    "lastAttemptIso": "2026-08-24T00:21:40.591Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-24T00:21:47.029Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-24T00:20:44.047Z"
-  }
+    "lastOkIso": "2026-08-24T00:21:43.220Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-24T00:21:47.027Z",
+  "elapsedSeconds": 66.5
 }
