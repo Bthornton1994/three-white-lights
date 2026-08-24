@@ -52,7 +52,7 @@
  * carries one.
  *
  * ===========================================================================
- * WHY THE MEET IS DELIBERATELY BOMBED, TWICE
+ * WHY THE MEET IS DELIBERATELY BOMBED
  * ===========================================================================
  * The count has to be a fact about the GATE and not about today's dice.
  * `CUT_IN_TUNING.SESSION_ALLOWANCE` is rolled from `cutInSessionSeed('meet',
@@ -66,20 +66,69 @@
  * day, by construction. That is the one moment this tool can lean on, and it
  * leans on it twice:
  *
- *   LEG 1  a meet played to make its attempts — nine walk-outs and the recap,
- *          which is GDD §7.2's "one whole meet is one sitting" as the app
- *          composes it. Fires 0 or 1 depending on the day's roll.
+ *   LEG 1  a meet played to MAKE its attempts — GDD §6.2's three lifts, nine
+ *          walk-outs and the recap, which is §7.2's "one whole meet is one
+ *          sitting" as the app composes it. Fires 0 or 1 on the day's roll.
  *   LEG 2  leave, re-enter the SAME sitting, and bomb the squat. The bomb-out
  *          beat qualifies and is allowed. A host that re-opened its session
  *          would fire here.
- *   LEG 3  the same again. Two guaranteed-qualifying legs rather than one,
- *          because with only one the mutant's count would be 0 + 1 = 1 on the
- *          third of days leg 1 fires nothing, and the check would pass on the
- *          defect it exists for.
+ *
+ * THIS BLOCK SAID "TWICE" AND DESCRIBED A LEG 3 SPRINT 1c HAD ALREADY DELETED.
+ * `LEGS` has carried two rows, and its own reasoning for two, since that
+ * sprint; this paragraph went on describing three, which is the stale-prose
+ * shape CLAUDE.md keeps a section for. The argument for a second miss leg and
+ * what is lost without it lives in `LEGS`' comment, where the count is.
  *
  * The premise is READ FROM SOURCE (`readTuning.mjs`), not typed here. The day a
  * playtester turns the bomb-out rate down, this tool goes red saying its own
  * premise has gone, rather than going quietly vacuous.
+ *
+ * ===========================================================================
+ * IT NO LONGER CARRIES ITS OWN MEET DRIVER, AND THAT WAS THE THIRD INSTANCE OF
+ * ONE DEFECT
+ * ===========================================================================
+ * GDD §6.2 runs squat, then bench, then deadlift, and each walks its own prompt
+ * ladder. THREE drivers in this repository waited on SQUAT's lines and called
+ * that the game: `sessionDrive.mjs`'s `openSessionToFirstSet` (fixed at
+ * `b38980e`), `meetDrive.mjs` (fixed at `a6decec`), and this file — which
+ * imported neither and held six `SESSION_PROMPTS.` references of its own.
+ *
+ * MEASURED AT `575c5d3` AGAINST A REAL SERVER, not inferred: 28 checks / 6
+ * FAILURES, every one of them cascading from `leg 1: the meet reached an ENDING
+ * SCREEN … it ended 'stuck'`. Leg 2 never ran at all, so the deliberately-
+ * bombed leg this tool exists to grade was never reached — and THREE checks
+ * stopped being EMITTED, which is why 31 became 28 rather than 31 with 6 reds.
+ * A check that is not emitted is invisible in a pass/fail count.
+ *
+ * The fix is not a fourth copy of the grammar. `tools/meetDrive.mjs` already
+ * reads the lift off `attempt-label`, cross-checks it against the brace line the
+ * mechanic actually draws, carries ONE DEPTH SEARCH PER LIFT (squat's legal band
+ * at meet loads is 683-1103 ms and bench's is 650-797, so one shared hold buries
+ * every bench attempt), and skips a deadlift's `null` DESCENT rather than
+ * waiting on a state `stepLift` refuses to enter. This file drives with it.
+ * CLAUDE.md: "a twin guard must READ the sibling's list, not copy it."
+ *
+ * WHAT THIS TOOL STILL DOES ITSELF, AND WHY IT IS TWO HOOKS RATHER THAN A
+ * SECOND LOOP. A cut-in is a full-screen `Pressable` the shell draws no chrome
+ * under, so a robot pressing through one is fighting the feature it is
+ * measuring; and the ONE cut-in a sitting is allowed can arrive in the middle of
+ * a walk-out, which is INSIDE the drive. Both are `driveMeetToItsEnd` hooks:
+ *
+ *   onWalkoutSeen     watch the walk-out out with the shutter running, so a
+ *                     cut-in that fires there is photographed rather than
+ *                     merely counted by the in-page recorder.
+ *   beforeFirstPress  wait until nothing is interrupting before the finger
+ *                     touches the stage.
+ *
+ * Nothing else inside a meet can offer a cut-in: `useOfferCutIn` is called by
+ * `WalkoutView`, `RecapView` and `BombOutView` and by no other meet screen, and
+ * the recap and the bomb-out are both on the FAR SIDE of the drive, where this
+ * file's own `until` and `settleWatching` already carry the shutter.
+ *
+ * `MEET_DRIVE.START_HOLD_MS` was swept to MAKE a lift, which is the wrong thing
+ * for a leg that has to miss, so the miss leg hands in a search of its own — see
+ * `CAP_DRIVE.MISS_HOLD_MS`, whose fixed-point property is asserted below against
+ * the real shared function rather than argued for in a comment.
  *
  * ===========================================================================
  * IT COUNTS THE REFUSAL, NOT ONLY THE SCREEN — AND THAT WAS THE HOLE
@@ -216,6 +265,14 @@ import {
   stringInSource,
 } from './readTuning.mjs';
 import { SESSION_DRIVE, SESSION_PROMPTS, adaptDepthSearch, freshDepthSearch } from './sessionDrive.mjs';
+import {
+  MEET_DRIVE,
+  MEET_LIFT_LABELS,
+  MEET_LIFT_ORDER,
+  driveMeetToItsEnd,
+  freshMeetSearches,
+  holdsIn,
+} from './meetDrive.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -308,30 +365,48 @@ const CAP_DRIVE = Object.freeze({
   RECORDER_POLL_MS: 16,
   /** First paint, on a cold Metro bundle. */
   BOOT_TIMEOUT_MS: 120000,
-  /** One beat-to-beat transition: bar load, walk-out, judges, cards. */
-  BEAT_TIMEOUT_MS: 40000,
-  BRACE_TIMEOUT_MS: 20000,
-  ASCENT_TIMEOUT_MS: 25000,
-  /** One whole meet. Nine attempts have been measured at ~112 s elsewhere. */
-  MEET_TIMEOUT_MS: 360000,
-  /** GDD §6.2: three lifts x three attempts. Past this the loop is stuck. */
-  MAX_ATTEMPTS: 9,
   /**
-   * How long the finger stays down on a DELIBERATE MISS.
+   * One beat-to-beat transition: bar load, walk-out, judges, cards.
    *
-   * Long enough that the press is seen, far too short to reach legal depth — so
-   * the bar reverses at the top, the ascent is trivial, and `stepLift` calls it
-   * `no-depth` at lockout. Three of these on one lift is GDD §6.3's bomb-out.
-   * This is the robot being deliberately bad, and it is the only reason this
-   * tool can promise a qualifying beat on any day.
+   * THE MEET'S OWN DEADLINES ARE `MEET_DRIVE`'S NOW and are not restated here —
+   * a brace timeout, an ascent timeout, a whole-meet deadline and an attempt cap
+   * all left this table with the driver that read them. This one stays because
+   * the beats OUTSIDE the drive still wait on it: the calendar press, the way
+   * out of a finished meet, and the hooks below.
    */
-  MISS_RELEASE_MS: 80,
-  /** After a deliberate miss: same weight again, so the lift bombs on three. */
-  MISS_OPTIONS: Object.freeze(['repeat', 'small', 'big']),
-  /** Playing to MAKE: the lightest legal call every time. */
-  SAFEST_OPTIONS: Object.freeze(['repeat', 'small', 'big']),
-  /** How long the finger stays down after the drive press, through lockout. */
-  DRIVE_HOLD_EXTRA_MS: SESSION_DRIVE.DRIVE_HOLD_EXTRA_MS,
+  BEAT_TIMEOUT_MS: 40000,
+  /**
+   * ===========================================================================
+   * THE HOLD A DELIBERATE MISS RELEASES AT, AND WHY IT IS NOT SIMPLY "SHORT"
+   * ===========================================================================
+   * Leg 2 has to bomb a lift on purpose: three misses on one lift is GDD §6.3's
+   * bomb-out, and that beat is the only qualifying moment this tool can promise
+   * on every day. A miss is bought by releasing ABOVE depth, so the hold has to
+   * sit below the shallow edge of the legal band — 683 ms for a squat and 650 ms
+   * for a bench at the loads a meet reaches (`MEET_DRIVE.START_HOLD_MS`'s
+   * table).
+   *
+   * IT ALSO HAS TO BE A FIXED POINT OF `adaptDepthSearch`, WHICH IS THE PART A
+   * BARE "release at 80 ms" GETS WRONG. `driveMeetToItsEnd` adapts the search
+   * after every attempt, and `adaptDepthSearch` CLAMPS the result up to
+   * `SESSION_DRIVE.DEPTH_HOLD_MIN_MS`. A declared miss hold of 80 ms would
+   * therefore be 80 on the first attempt of a lift and 480 on the next two — a
+   * named constant that misdescribes two thirds of what it names, which
+   * CLAUDE.md calls worse in an identifier than in a comment.
+   *
+   * So the value IS the clamp, and the step is zero, which makes the adaptation
+   * a fixed point rather than something to reason around. That property is
+   * ASSERTED below against the real shared function, not argued for here.
+   */
+  MISS_HOLD_MS: SESSION_DRIVE.DEPTH_HOLD_MIN_MS,
+  /**
+   * Zero, so a miss leg's search never moves.
+   *
+   * Not a tuning choice: missing is the whole point of the leg, and a search
+   * that walked its way into the legal band would end it on a recap and take
+   * §6.3's bomb-out — the one beat allowed on every day — with it.
+   */
+  MISS_STEP_MS: 0,
   /**
    * How long the bomb-out screen gets to draw its own way out.
    *
@@ -346,8 +421,27 @@ const CAP_DRIVE = Object.freeze({
    *
    * The overlay is a full-screen `Pressable` and the shell draws no chrome
    * while it is up (`shellAffordanceFor`), so a robot that pressed through one
-   * would either dismiss it or miss its target. Every press below waits for the
-   * screen to be clear first.
+   * would either dismiss it or miss its target.
+   *
+   * WHICH PRESSES THIS COVERS, NOW THAT THE MEET IS DRIVEN FROM ANOTHER FILE.
+   * The sentence here read "every press below waits for the screen to be clear
+   * first", which was true while every press was in this file and is not any
+   * more. Three kinds now, and only two of them wait on this:
+   *
+   *   pressWhenClear      the shell's own controls — the way out of a meet.
+   *                       Waits, because the shell draws no chrome under an
+   *                       overlay and the press would land on nothing.
+   *   beforeFirstPress    `playOneMeetAttempt`'s raw `page.mouse.down()` on the
+   *                       stage. Waits, because a raw mouse event has no
+   *                       actionability check to save it.
+   *   the driver's own    `weigh-in-action`, `openers-action`,
+   *   `click()`s         `attempt-option-*`. These do NOT wait on this value:
+   *                       Playwright refuses to click an element another node is
+   *                       covering and retries until its own timeout, so an
+   *                       overlay delays them rather than defeating them. None
+   *                       of those three beats can carry a cut-in anyway —
+   *                       `useOfferCutIn` is called by the walk-out, the recap
+   *                       and the bomb-out and by no other meet screen.
    */
   CUT_IN_CLEAR_SLACK_MS: 3000,
   /** A beat to let a surface settle after a navigation press. */
@@ -449,9 +543,18 @@ const capturedFrom = (() => {
    * bomb-out allowance and the hold through it: a regression in that parser
    * takes the guards with it, and the tool's own self-test is the only thing
    * standing there.
+   *
+   * `meetDrive.mjs` IS IN THE LIST BECAUSE THIS TOOL NO LONGER DRIVES ITS OWN
+   * MEET. It is the thing that decides which ladder each attempt is steered by
+   * and which hold it is released at, so it decides how many attempts a leg
+   * reaches and therefore how many walk-out beats the gate is ever offered.
+   * `tools/evidence.mjs` reports a record stale when a tool in THIS map moves
+   * and ignores every `tools/` file that is not — so a driver missing from here
+   * is a driver that can change what the browser played with the record still
+   * reading current.
    */
   record.instrument = Object.fromEntries(
-    ['verify-cutin-cap.mjs', 'sessionDrive.mjs', 'readTuning.mjs', 'enterMeetFromCalendar.mjs'].map((name) => {
+    ['verify-cutin-cap.mjs', 'sessionDrive.mjs', 'meetDrive.mjs', 'readTuning.mjs', 'enterMeetFromCalendar.mjs'].map((name) => {
       const file = path.join(path.dirname(fileURLToPath(import.meta.url)), name);
       try {
         return [name, createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16)];
@@ -475,6 +578,14 @@ const meetTuningText = await readFile(path.join(srcRoot, 'src', 'game', 'meetTun
 const sessionTuningText = await readFile(path.join(srcRoot, 'src', 'game', 'sessionTuning.ts'), 'utf8');
 const observerText = await readFile(path.join(srcRoot, 'src', 'cutin', 'cutInObserver.ts'), 'utf8');
 const bombOutViewText = await readFile(path.join(srcRoot, 'src', 'meet', 'BombOutView.tsx'), 'utf8');
+/**
+ * THE DRIVER'S OWN SOURCE, because the endings below are READ out of it.
+ *
+ * Everything else this tool reads from source is the APP; this one is the other
+ * harness. Same reason in both cases: a list copied out of a module drifts from
+ * it silently, and the drift is invisible in a green run.
+ */
+const meetDriveText = await readFile(path.join(srcRoot, 'tools', 'meetDrive.mjs'), 'utf8');
 
 /**
  * THE NAME THE GATE'S OWN LOG TAKES ON `globalThis`, READ FROM THE APP.
@@ -553,10 +664,99 @@ const readEverything =
   enterMs !== null && holdMs !== null && latencyMs !== null && feedbackHigh !== null && feedbackBuried !== null;
 check(
   readEverything,
-  'CONTROL: the four values this tool steers and waits by came out of the app, not out of this file',
+  'CONTROL: the five values this tool waits by, and cross-checks the meet driver against, came out of the app and not out of this file',
   `ENTER_MS ${enterMs}, HOLD_MS ${holdMs}, LOCAL_SERVER_LATENCY_MS ${latencyMs}, ` +
-    `FEEDBACK_DEPTH_HIGH ${JSON.stringify(feedbackHigh)}, FEEDBACK_BURIED ${JSON.stringify(feedbackBuried)}`,
+    `FEEDBACK_DEPTH_HIGH ${JSON.stringify(feedbackHigh)}, FEEDBACK_BURIED ${JSON.stringify(feedbackBuried)}. ` +
+    'It said FOUR and read five, and it said "steers by" of the two judges\' lines after this file stopped ' +
+    'driving its own meet: they are what the meetDrive.mjs cross-check below compares against now, which is a ' +
+    'use rather than a leftover, and the count was wrong before that.',
 );
+/**
+ * ===========================================================================
+ * THE COPY `meetDrive.mjs` RESTATES, CROSS-CHECKED BY ITS NEW CALLER
+ * ===========================================================================
+ * `MEET_LIFT_LABELS`' own header says "each caller cross-checks the entries it
+ * uses against `meetTuning.ts`" — a guarantee in prose, and this file became a
+ * caller this round. `verify-shell-route.mjs` discharges the same sentence for
+ * itself; a guard written for one caller and not its sibling is the pattern
+ * CLAUDE.md has now paid for five times.
+ *
+ * WHAT GOES WRONG WITHOUT IT, precisely: `AttemptView` prints `attempt-label` as
+ * `MEET_COPY.LIFT_LABEL[live.lift]`, and `liftFromAttemptLabel` splits that word
+ * back out to choose which of GDD §6.2's three ladders to steer by. A copy edit
+ * to any of the three makes every attempt report "names none of
+ * SQUAT/BENCH/DEADLIFT", every meet end 'stuck', and this tool go red with a
+ * message about a healthy app.
+ */
+const labelBlock = /LIFT_LABEL:\s*Object\.freeze\(\{([^}]*)\}/.exec(meetTuningText);
+const labelText = labelBlock === null ? '' : labelBlock[1].replace(/\s+/g, ' ').trim();
+const labelMisses = Object.entries(MEET_LIFT_LABELS)
+  .filter(([kind, word]) => !labelText.includes(`${kind}: '${word}'`))
+  .map(([kind, word]) => `${kind}: '${word}'`);
+check(
+  labelBlock !== null && labelMisses.length === 0,
+  "CONTROL: MEET_COPY.LIFT_LABEL's three words are the ones meetDrive.mjs reads an attempt's lift off",
+  labelBlock === null
+    ? 'LIFT_LABEL was not found as an Object.freeze block in meetTuning.ts, so nothing was compared'
+    : `meetTuning.ts's LIFT_LABEL block reads ${JSON.stringify(labelText)}; ` +
+      `${labelMisses.length === 0 ? 'all three restatements are in it' : `MISSING: ${labelMisses.join(', ')}`}`,
+);
+
+/**
+ * ...AND THE TWO JUDGES' LINES THE DEPTH SEARCH STEERS BY.
+ *
+ * `adaptFromMeetFeedback` reads the direction of a mistimed release off
+ * `MEET_DRIVE.FEEDBACK_HIGH` / `FEEDBACK_BURIED`, which are restated in
+ * `meetDrive.mjs`. This file already reads the same two out of `meetTuning.ts`
+ * for the control above, so the comparison costs no new parsing. Without it a
+ * copy edit stops the search adapting, every driven meet starts bombing out, and
+ * the failure reads as "the app broke".
+ */
+check(
+  MEET_DRIVE.FEEDBACK_HIGH === feedbackHigh && MEET_DRIVE.FEEDBACK_BURIED === feedbackBuried,
+  "CONTROL: the two judges' lines meetDrive.mjs steers the depth search by are meetTuning.ts's own",
+  `FEEDBACK_DEPTH_HIGH: meetTuning.ts ${JSON.stringify(feedbackHigh)} vs meetDrive.mjs ${JSON.stringify(MEET_DRIVE.FEEDBACK_HIGH)}; ` +
+    `FEEDBACK_BURIED: meetTuning.ts ${JSON.stringify(feedbackBuried)} vs meetDrive.mjs ${JSON.stringify(MEET_DRIVE.FEEDBACK_BURIED)}`,
+);
+
+/**
+ * ===========================================================================
+ * THE DELIBERATE MISS IS A FIXED POINT OF THE SHARED SEARCH — ASSERTED, NOT
+ * ARGUED
+ * ===========================================================================
+ * `CAP_DRIVE.MISS_HOLD_MS`'s block claims two things and this is both of them,
+ * driven against the real `adaptDepthSearch` rather than restated:
+ *
+ *   1. NEITHER JUDGES' VERDICT MOVES IT. `driveMeetToItsEnd` adapts after every
+ *      attempt, and `adaptDepthSearch` clamps up to `DEPTH_HOLD_MIN_MS` — so a
+ *      hold declared below that clamp is one number on a lift's first attempt
+ *      and a different one on its second and third, while the constant's name
+ *      goes on claiming the first. Both verdict directions are driven, because
+ *      a fixed point that only holds in one of them is not one.
+ *   2. IT IS SHALLOWER THAN ANY HOLD SWEPT TO MAKE A LIFT.
+ *      `MEET_DRIVE.START_HOLD_MS` was chosen by sweep to sit INSIDE each lift's
+ *      legal band, so a miss hold at or above the shallowest of them cannot be
+ *      relied on to miss. NECESSARY, NOT SUFFICIENT, and said here rather than
+ *      implied: what the release actually graded is decided by the app, and the
+ *      check that the leg REACHED §6.3's bomb-out screen is where that is read.
+ */
+const missSearch = () => ({ ...freshDepthSearch(), holdMs: CAP_DRIVE.MISS_HOLD_MS, stepMs: CAP_DRIVE.MISS_STEP_MS });
+const missAfterHigh = adaptDepthSearch(missSearch(), { detail: SESSION_PROMPTS.MISS_TOO_HIGH });
+const missAfterBuried = adaptDepthSearch(missSearch(), { detail: SESSION_PROMPTS.MISS_BURIED });
+const shallowestMakingHold = Math.min(
+  ...MEET_LIFT_ORDER.map((kind) => MEET_DRIVE.START_HOLD_MS[kind]).filter((hold) => hold !== null),
+);
+check(
+  missAfterHigh.holdMs === CAP_DRIVE.MISS_HOLD_MS &&
+    missAfterBuried.holdMs === CAP_DRIVE.MISS_HOLD_MS &&
+    CAP_DRIVE.MISS_HOLD_MS < shallowestMakingHold,
+  'CONTROL: the deliberate-miss hold is a FIXED POINT of the shared depth search, and is shallower than any hold swept to MAKE a lift',
+  `MISS_HOLD_MS ${CAP_DRIVE.MISS_HOLD_MS}ms (step ${CAP_DRIVE.MISS_STEP_MS}ms) -> ${missAfterHigh.holdMs}ms after ` +
+    `${JSON.stringify(SESSION_PROMPTS.MISS_TOO_HIGH)} and ${missAfterBuried.holdMs}ms after ${JSON.stringify(SESSION_PROMPTS.MISS_BURIED)}; ` +
+    `against MEET_DRIVE.START_HOLD_MS's shallowest making hold of ${shallowestMakingHold}ms. ` +
+    `adaptDepthSearch clamps to SESSION_DRIVE.DEPTH_HOLD_MIN_MS (${SESSION_DRIVE.DEPTH_HOLD_MIN_MS}ms), which is what a smaller declared value would silently become.`,
+);
+
 check(
   observerGlobal !== null,
   "CONTROL: the gate's own decision log has a name, and it was READ from src/cutin/cutInObserver.ts",
@@ -866,11 +1066,19 @@ async function until(done, timeoutMs) {
   }
 }
 
+/**
+ * The meet is over, whichever of the four ways it ended.
+ *
+ * `meetDrive.mjs` exports the same predicate over ITS reading of the screen;
+ * this one is over `read()`'s, which is this file's own and carries the cut-in
+ * and the shell's controls beside the meet's beats. Same four testIDs on both
+ * sides, so the two cannot disagree about the fact — they disagree about what
+ * else is in the object.
+ */
 const meetIsOver = (s) => s.recap || s.waiting || s.refused || s.bombed;
-const saying = (s, phrase) => s.prompt !== null && s.prompt.includes(phrase);
 
 /**
- * EVERY WAY `driveMeet` CAN COME BACK, AS A CLOSED SET.
+ * EVERY WAY `driveMeetToItsEnd` CAN COME BACK, AS A CLOSED SET.
  *
  * It used to return bare string literals and the "is the ending DRAWN" check
  * below handled two of them with an `if / else if`. FOR EVERY OTHER ONE it
@@ -889,11 +1097,13 @@ const saying = (s, phrase) => s.prompt !== null && s.prompt.includes(phrase);
  * without a probe is the green-on-nothing failure this table was built
  * against, however unlikely the ending.
  *
- * So the endings are a frozen object, `driveMeet` may only return one of its
- * values, and `ENDING_PROBE` is keyed by the same values with a control below
- * pinning the two key sets equal. A new ending cannot ship without a probe,
- * which is the structural version of the rule that a guard must be applied to
- * its sibling mechanically rather than by whoever remembers.
+ * So the endings are a frozen object, `ENDING_PROBE` is keyed by the same
+ * values, and a control below pins BOTH key sets against the words read out of
+ * `tools/meetDrive.mjs` itself. A new ending cannot ship without a probe, which
+ * is the structural version of the rule that a guard must be applied to its
+ * sibling mechanically rather than by whoever remembers — and since the driver
+ * moved to another file, "read it" rather than "copy it" is what makes that
+ * true instead of merely intended.
  */
 const MEET_ENDING = Object.freeze({
   BOMBED: 'bombed',
@@ -903,6 +1113,17 @@ const MEET_ENDING = Object.freeze({
   TIMEOUT: 'timeout',
   OVERRUN: 'overrun',
   STUCK: 'stuck',
+  /**
+   * THE EIGHTH, WHICH ARRIVED WITH THE SHARED DRIVER AND IS UNREACHABLE HERE.
+   *
+   * `driveMeetToItsEnd` returns `'stopped'` when a caller's `shouldStop` asked
+   * to leave early. This file passes no `shouldStop`, so nothing can produce it
+   * — and it still gets a row, because the control below pins the probe table
+   * against what the DRIVER can return rather than against what this tool
+   * expects to see. An ending with no row is the fall-through that once printed
+   * "effective opacity 1.000 after 0ms" about a probe that never ran.
+   */
+  STOPPED: 'stopped',
 });
 
 /**
@@ -925,129 +1146,75 @@ async function pressWhenClear(testId, timeoutMs) {
 }
 
 /**
- * Play one attempt.
+ * ===========================================================================
+ * DRIVE THE MEET ON SCREEN WITH THE SHARED DRIVER, WITH THIS TOOL'S TWO HOOKS
+ * ON IT
+ * ===========================================================================
+ * `tools/meetDrive.mjs` owns GDD §6.2's grammar for all three lifts — see this
+ * file's header for what its own copy got wrong and what that measured. What is
+ * left here is the two things a CUT-IN tool needs that a meet driver has no
+ * business knowing about, and both are hooks rather than a second loop.
  *
- * `intent: 'make'` runs `sessionDrive.mjs`'s depth search — the same bisection
- * the session harness uses, imported rather than copied.
- * `intent: 'miss'` releases at the top on purpose. See `MISS_RELEASE_MS`.
+ * `intent` is the leg's, not the driver's: `'make'` takes the swept starting
+ * holds, `'miss'` takes `CAP_DRIVE.MISS_HOLD_MS` on every lift that has an
+ * eccentric and never moves it. A deadlift keeps `null` — there is no descent to
+ * release early, so a deadlift cannot be missed this way at all, and the leg
+ * never reaches one because three missed squats end the meet first.
+ *
+ * NOTHING IS ASSERTED IN HERE. `driveMeetToItsEnd` returns which of its endings
+ * the meet reached and the caller decides whether that was acceptable, which is
+ * the contract both shared drivers keep and the reason `ENDING_PROBE` below is a
+ * closed table rather than an `if / else if`.
  */
-async function playOneAttempt(intent, holdMsIn) {
-  const braced = await until((s) => saying(s, SESSION_PROMPTS.BRACE) || !s.attempt, CAP_DRIVE.BRACE_TIMEOUT_MS);
-  if (!braced.ok || !saying(braced.state, SESSION_PROMPTS.BRACE)) {
-    return { played: false, why: `no brace to press — prompt was ${JSON.stringify(braced.state.prompt)}` };
-  }
-  const box = await page.getByTestId('attempt-touch').boundingBox().catch(() => null);
-  if (box === null) return { played: false, why: 'the attempt has no touch stage' };
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-
-  await page.mouse.down();
-  await page.waitForTimeout(intent === 'miss' ? CAP_DRIVE.MISS_RELEASE_MS : holdMsIn);
-  await page.mouse.up();
-
-  const drive = await until((s) => saying(s, SESSION_PROMPTS.DRIVE) || !s.attempt, CAP_DRIVE.ASCENT_TIMEOUT_MS);
-  if (saying(drive.state, SESSION_PROMPTS.DRIVE)) {
-    await page.mouse.down();
-    await until((s) => !s.attempt, CAP_DRIVE.ASCENT_TIMEOUT_MS);
-    await page.waitForTimeout(CAP_DRIVE.DRIVE_HOLD_EXTRA_MS);
-    await page.mouse.up();
-  }
-
-  const judged = await until((s) => s.feedback !== null || s.select || meetIsOver(s), CAP_DRIVE.BEAT_TIMEOUT_MS);
-  return { played: true, intent, holdMs: intent === 'miss' ? CAP_DRIVE.MISS_RELEASE_MS : holdMsIn, feedback: judged.state.feedback };
-}
-
-/** The depth search, steered by the judges' line, using the shared bisection. */
-function adaptFromMeet(search, feedbackText) {
-  const said = feedbackText ?? '';
-  const detail = said.includes(feedbackHigh)
-    ? SESSION_PROMPTS.MISS_TOO_HIGH
-    : said.includes(feedbackBuried)
-      ? SESSION_PROMPTS.MISS_BURIED
-      : '';
-  return adaptDepthSearch(search, { detail });
-}
-
-/**
- * Drive whatever meet is on screen to whatever it ends on. NEVER TOUCHES THE
- * URL — the caller got here with a finger and so does everything below.
- */
-async function driveMeet(intent, searchIn) {
-  const startedAt = Date.now();
-  const attempts = [];
-  let search = searchIn;
-  for (;;) {
-    const state = await read();
-
-    if (meetIsOver(state)) {
-      const settled = await until((s) => s.recap || s.refused || s.bombed, RECAP_SETTLE_MS);
-      const end = settled.state;
-      return {
-        ended: end.bombed
-          ? MEET_ENDING.BOMBED
-          : end.recap
-            ? MEET_ENDING.RECAP
-            : end.refused
-              ? MEET_ENDING.REFUSED
-              : MEET_ENDING.WAITING,
-        attempts,
-        search,
-        ms: Date.now() - startedAt,
-      };
-    }
-    if (Date.now() - startedAt >= CAP_DRIVE.MEET_TIMEOUT_MS) {
-      return { ended: MEET_ENDING.TIMEOUT, attempts, search, ms: Date.now() - startedAt, why: 'the meet ran past its deadline' };
-    }
-    if (attempts.length > CAP_DRIVE.MAX_ATTEMPTS) {
-      return { ended: MEET_ENDING.OVERRUN, attempts, search, ms: Date.now() - startedAt, why: `played ${attempts.length} attempts` };
-    }
-
-    if (state.weighIn) {
-      const pressed = await pressWhenClear('weigh-in-action', CAP_DRIVE.BEAT_TIMEOUT_MS);
-      if (!pressed.pressed) return { ended: MEET_ENDING.STUCK, attempts, search, ms: Date.now() - startedAt, why: pressed.why };
-      await until((s) => !s.weighIn, CAP_DRIVE.BEAT_TIMEOUT_MS);
-      continue;
-    }
-    if (state.openers) {
-      const pressed = await pressWhenClear('openers-action', CAP_DRIVE.BEAT_TIMEOUT_MS);
-      if (!pressed.pressed) return { ended: MEET_ENDING.STUCK, attempts, search, ms: Date.now() - startedAt, why: pressed.why };
-      await until((s) => !s.openers, CAP_DRIVE.BEAT_TIMEOUT_MS);
-      continue;
-    }
-    if (state.select) {
-      const offered = await until((s) => !s.select || s.options.length > 0, CAP_DRIVE.BEAT_TIMEOUT_MS);
-      if (!offered.state.select) continue;
-      const order = intent === 'miss' ? CAP_DRIVE.MISS_OPTIONS : CAP_DRIVE.SAFEST_OPTIONS;
-      const want = order.find((id) => offered.state.options.includes(`attempt-option-${id}`));
-      if (want === undefined) {
-        return {
-          ended: MEET_ENDING.STUCK,
-          attempts,
-          search,
-          ms: Date.now() - startedAt,
-          why: `the attempt choice offered none of ${order.join('/')} — on screen: ${JSON.stringify(offered.state.options)}`,
-        };
-      }
-      const pressed = await pressWhenClear(`attempt-option-${want}`, CAP_DRIVE.BEAT_TIMEOUT_MS);
-      if (!pressed.pressed) return { ended: MEET_ENDING.STUCK, attempts, search, ms: Date.now() - startedAt, why: pressed.why };
-      await until((s) => !s.select, CAP_DRIVE.BEAT_TIMEOUT_MS);
-      continue;
-    }
-    if (state.walkout || state.deliberation || state.verdict) {
-      // Three TIMED beats that run themselves out. The walk-out is also where
-      // GDD §7.2's first firing moment is offered, so nothing is pressed here.
-      const moved = await until((s) => s.attempt || s.select || meetIsOver(s), CAP_DRIVE.BEAT_TIMEOUT_MS);
-      if (!moved.ok) return { ended: MEET_ENDING.STUCK, attempts, search, ms: Date.now() - startedAt, why: 'a timed beat never handed on' };
-      continue;
-    }
-    if (state.attempt) {
-      const rep = await playOneAttempt(intent, search.holdMs);
-      attempts.push({ attempt: state.attemptLabel, ...rep });
-      if (!rep.played) return { ended: MEET_ENDING.STUCK, attempts, search, ms: Date.now() - startedAt, why: rep.why };
-      if (intent === 'make') search = adaptFromMeet(search, rep.feedback);
-      continue;
-    }
-    await page.waitForTimeout(CAP_DRIVE.POLL_MS);
-  }
+async function driveLeg(intent) {
+  const searches =
+    intent === 'miss'
+      ? Object.fromEntries(
+          MEET_LIFT_ORDER.map((kind) => [
+            kind,
+            // `null` IS THE LIFT, NOT AN UNSET FIELD — `freshMeetSearches`'
+            // header says so about the same entry. A deadlift has no eccentric,
+            // so there is no hold to shorten and no search to carry.
+            MEET_DRIVE.START_HOLD_MS[kind] === null
+              ? null
+              : { ...freshDepthSearch(), holdMs: CAP_DRIVE.MISS_HOLD_MS, stepMs: CAP_DRIVE.MISS_STEP_MS },
+          ]),
+        )
+      : freshMeetSearches();
+  return driveMeetToItsEnd(page, {
+    searches,
+    recapSettleMs: RECAP_SETTLE_MS,
+    /**
+     * THE WALK-OUT IS THE ONE BEAT INSIDE THE DRIVE A CUT-IN CAN ARRIVE ON.
+     *
+     * `WalkoutView` offers on mount and the overlay is up for one whole beat, so
+     * an interrupt that fires there begins and ENDS while the driver is inside
+     * its own `untilMeet` wait for the beat to hand on. This hook spends that
+     * same wait in THIS file's `until`, which runs the shutter on every poll —
+     * so the driver's wait finds the beat already handed on and returns on its
+     * first poll rather than waiting twice.
+     *
+     * The predicate is the driver's own ("the walk-out handed on to a rep, a
+     * choice, or the end of the meet"), which is why nothing is pressed here:
+     * §7.2's first firing moment is offered on this beat and a press would
+     * dismiss it.
+     */
+    onWalkoutSeen: async () => {
+      await until((s) => s.attempt || s.select || meetIsOver(s), CAP_DRIVE.BEAT_TIMEOUT_MS);
+    },
+    /**
+     * ...AND NOTHING INTERRUPTING WHEN THE FINGER GOES DOWN.
+     *
+     * `playOneMeetAttempt` presses with a raw `page.mouse.down()` at the stage's
+     * centre, which has no actionability check to save it: a cut-in is a
+     * full-screen `Pressable`, so a press landing on one dismisses the interrupt
+     * and never reaches the rep. This is `pressWhenClear`'s discipline applied
+     * to the one press in the meet that is not a `click()`.
+     */
+    beforeFirstPress: async () => {
+      await until((s) => !s.cutIn, WHOLE_BEAT_MS + CAP_DRIVE.CUT_IN_CLEAR_SLACK_MS);
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1092,13 +1259,14 @@ const LEGS = Object.freeze([
  * t≈50 ms of a 1240 ms assembly beside a green line saying "effective opacity
  * 1.000".
  *
- * `kind: 'not-an-ending'` is `driveMeet` reporting that it never got there. The
+ * `kind: 'not-an-ending'` is the driver reporting that it never got there. The
  * check is RED, and it says which, because the alternative — the one this table
  * replaces — was a green line describing a probe that never happened.
  *
- * `waiting` is in the second group deliberately: `driveMeet` only reports it
- * after its own `RECAP_SETTLE_MS` settle has timed out waiting for the recap, so
- * it is the round trip failing rather than a screen the meet finished on.
+ * `waiting` is in the second group deliberately: the driver only reports it
+ * after the `recapSettleMs` this file hands it has timed out waiting for the
+ * recap, so it is the round trip failing rather than a screen the meet finished
+ * on.
  */
 const ENDING_PROBE = Object.freeze({
   [MEET_ENDING.BOMBED]: Object.freeze({
@@ -1139,11 +1307,11 @@ const ENDING_PROBE = Object.freeze({
   }),
   [MEET_ENDING.WAITING]: Object.freeze({
     kind: 'not-an-ending',
-    why: "the recap's round trip never completed — `driveMeet` reports this only after RECAP_SETTLE_MS of waiting for one of recap / refused / bombed",
+    why: "the recap's round trip never completed — driveMeetToItsEnd reports this only after the RECAP_SETTLE_MS this file hands it has gone by with none of recap / refused / bombed on screen",
   }),
   [MEET_ENDING.TIMEOUT]: Object.freeze({
     kind: 'not-an-ending',
-    why: 'the meet ran past MEET_TIMEOUT_MS without ending',
+    why: "the meet ran past meetDrive.mjs's own MEET_DRIVE.MEET_TIMEOUT_MS without ending",
   }),
   [MEET_ENDING.OVERRUN]: Object.freeze({
     kind: 'not-an-ending',
@@ -1153,16 +1321,52 @@ const ENDING_PROBE = Object.freeze({
     kind: 'not-an-ending',
     why: 'a control did not take a press, or a timed beat never handed on',
   }),
+  [MEET_ENDING.STOPPED]: Object.freeze({
+    kind: 'not-an-ending',
+    why:
+      "a caller asked driveMeetToItsEnd to leave the meet early through `shouldStop` — this tool passes none, " +
+      'so seeing it means the driver stopped for a reason this file does not know about',
+  }),
 });
 
+/**
+ * EVERY WORD `driveMeetToItsEnd` CAN PUT IN `ended`, READ OUT OF ITS SOURCE.
+ *
+ * The list used to be safe to type here because the driver was in this file. It
+ * is not any more, and a hand-copied list of another module's return values is
+ * exactly the sibling-drift this whole round is about: it would agree with a
+ * driver that grew a ninth ending, and the new ending would arrive with no probe
+ * and no complaint.
+ *
+ * HOW IT READS THEM. Every return in that function is an object literal shaped
+ * `{ ended: <expr>, attempts, ... }`, so the words are the quoted strings
+ * between `ended:` and the `attempts,` that follows it. That covers the four-way
+ * ternary the four APP endings are written as, which a plain `ended: '...'`
+ * pattern would miss entirely — and missing them is the direction that reads
+ * green, so the check below also fails on an EMPTY scan rather than on a
+ * mismatch alone.
+ */
+function meetEndingsInSource(text) {
+  const at = text.indexOf('export async function driveMeetToItsEnd');
+  if (at === -1) return [];
+  const found = new Set();
+  for (const ret of text.slice(at).matchAll(/ended:([\s\S]*?)attempts,/g)) {
+    for (const word of ret[1].matchAll(/'([a-z-]+)'/g)) found.add(word[1]);
+  }
+  return [...found].sort();
+}
+
+const endingsInDriver = meetEndingsInSource(meetDriveText);
 const endingsDeclared = [...Object.values(MEET_ENDING)].sort();
 const endingsProbed = [...Object.keys(ENDING_PROBE)].sort();
+const sameWords = (a, b) => a.length === b.length && a.every((word, i) => word === b[i]);
 check(
-  endingsDeclared.length === endingsProbed.length &&
-    endingsDeclared.every((e, i) => e === endingsProbed[i]),
-  `CONTROL: every one of the ${endingsDeclared.length} endings driveMeet can return has a row in ENDING_PROBE`,
-  `declared ${JSON.stringify(endingsDeclared)}; probed ${JSON.stringify(endingsProbed)}. ` +
-    'A new ending with no row is the shape that emitted "the \'placeholder\' screen is DRAWN … probed (none)".',
+  endingsInDriver.length > 0 && sameWords(endingsDeclared, endingsProbed) && sameWords(endingsDeclared, endingsInDriver),
+  'CONTROL: every ending driveMeetToItsEnd can return — READ from tools/meetDrive.mjs, not copied — has a row in ENDING_PROBE',
+  `the driver returns ${JSON.stringify(endingsInDriver)}; this file names ${JSON.stringify(endingsDeclared)}; ` +
+    `probed ${JSON.stringify(endingsProbed)}. An empty scan is red on its own: the pattern going quiet would ` +
+    'otherwise leave the table pinned against nothing. A new ending with no row is the shape that emitted ' +
+    '"the \'placeholder\' screen is DRAWN … probed (none)".',
 );
 
 const legRecords = [];
@@ -1174,7 +1378,6 @@ const booted = await until((s) => s.checkIn, CAP_DRIVE.BOOT_TIMEOUT_MS);
 check(booted.ok, "the app opens on GDD §3.2's daily session with no query string", `search=${JSON.stringify(booted.state.search)} after ${booted.ms}ms`);
 check(booted.state.search === '', 'CONTROL: the address bar carries no query string — this is the played arm, not a debug frame', JSON.stringify(booted.state.search));
 
-let search = freshDepthSearch();
 if (booted.ok) {
   for (const leg of LEGS) {
     // BOTH SIDES OF THE SAME FACT. The page stamps the leg onto what IT records
@@ -1225,19 +1428,31 @@ if (booted.ok) {
     check(onMeet.ok, `leg ${leg.n}: meet day was reached with a finger, not a URL — ${leg.why}`, `search=${JSON.stringify(onMeet.state.search)}`);
     if (!onMeet.ok) break;
 
-    drive = await driveMeet(leg.intent, search);
-    search = drive.search;
+    drive = await driveLeg(leg.intent);
     legRecords.push({
       n: leg.n,
       intent: leg.intent,
       whatItIsFor: leg.why,
       ended: drive.ended,
+      /**
+       * WHICH OF GDD §6.2'S THREE LIFTS THIS LEG ACTUALLY REACHED, in order.
+       *
+       * The attempt COUNT cannot say this — three misses on the squat is three
+       * attempts and one lift, and nine attempts is not necessarily three
+       * lifts either. It is the fact the check below reads, and it is the fact
+       * the defect this round repaired was invisible in: a driver that knew
+       * only squat's grammar played one lift's worth of attempts and stalled.
+       */
+      liftsPlayed: drive.liftsPlayed,
+      /** Where each lift's depth search finished, as `holdsIn` phrases it. */
+      holds: holdsIn(drive.searches),
       attempts: drive.attempts,
       ms: drive.ms,
       stuckBecause: drive.why ?? null,
     });
     console.log(
-      `leg ${leg.n} (${leg.intent})  ${drive.attempts.length} attempts in ${drive.ms}ms -> '${drive.ended}'` +
+      `leg ${leg.n} (${leg.intent})  ${drive.attempts.length} attempts on ${JSON.stringify(drive.liftsPlayed)} ` +
+        `in ${drive.ms}ms -> '${drive.ended}'  [${holdsIn(drive.searches)}]` +
         (drive.why === undefined ? '' : `  (${drive.why})`),
     );
     /**
@@ -1249,7 +1464,7 @@ if (booted.ok) {
      * recording because each looked sufficient:
      *
      *   1. "The shutter fires before the view mounts." It does not. `bombExit`
-     *      is in the DOM 2ms after `driveMeet` returns. Waiting on presence
+     *      is in the DOM 2ms after the drive returns. Waiting on presence
      *      changed nothing and produced a byte-identical blank frame, now with
      *      a GREEN CHECK claiming the photograph was of something — a check
      *      asserting a falsehood is worse than no check.
@@ -1306,7 +1521,7 @@ if (booted.ok) {
       check(
         false,
         `leg ${leg.n}: the meet reached an ENDING SCREEN, so there is something to photograph`,
-        `it ended '${drive.ended}' — ${probe.why}${drive.why === undefined ? '' : `; driveMeet said: ${drive.why}`}`,
+        `it ended '${drive.ended}' — ${probe.why}${drive.why === undefined ? '' : `; driveMeetToItsEnd said: ${drive.why}`}`,
       );
       break;
     } else {
@@ -1373,6 +1588,47 @@ check(
   `CONTROL: the host was torn down between legs — exactly ${LEGS.length - 1} times`,
   `saw ${teardowns}; a run where the surface never went away would not have exercised the remount at all`,
 );
+/**
+ * GDD §6.2 IS THREE LIFTS, AND THIS IS THE CHECK THE THIRD INSTANCE OF THE
+ * DEFECT WOULD HAVE FAILED.
+ *
+ * A driver that knows only squat's prompt ladder plays squat's three attempts
+ * and then waits for a brace line bench never says. That is what `575c5d3`
+ * measured here and what `b38980e` measured in `verify-shell-route.mjs`, and in
+ * both cases the LOUD symptom was a stalled meet several checks downstream.
+ *
+ * WHAT THIS SAYS THAT NOTHING ELSE IN THIS FILE DOES, worked out against the
+ * neighbours rather than assumed:
+ *
+ *   - the ending probe accepts `bombed` as an ending screen, so a leg that
+ *     bombed the squat passes it while never having drawn a bench;
+ *   - THE ASK, LEG 1 pins one walk-out offer per attempt PLAYED, so a
+ *     three-attempt leg satisfies it with three offers;
+ *   - the grant, refusal and overlay counts are about the gate and say nothing
+ *     about how far the meet got.
+ *
+ * So this is not dominated by any of them, and none of them is dominated by it:
+ * a meet can reach all three lifts and still fail every one of the above.
+ *
+ * It reads `liftsPlayed` — the driver's record of FIRST SIGHTING per lift — and
+ * not the attempt count, for the reason `legRecords`' own field comment gives.
+ */
+const makeLegs = legRecords.filter((l) => l.intent === 'make');
+const legsShortOfThreeLifts = makeLegs.filter(
+  (l) => !MEET_LIFT_ORDER.every((kind) => (l.liftsPlayed ?? []).includes(kind)),
+);
+check(
+  makeLegs.length > 0 && legsShortOfThreeLifts.length === 0,
+  "GDD §6.2: the leg played to MAKE lifted on ALL THREE of squat, bench and deadlift — not one lift's worth of attempts",
+  makeLegs.length === 0
+    ? 'no leg played to make, so there was nothing to measure — the run did not get that far'
+    : `${makeLegs
+        .map((l) => `leg ${l.n}: ${l.attempts.length} attempt(s) across ${JSON.stringify(l.liftsPlayed ?? [])}`)
+        .join('; ')} against GDD §6.2's ${JSON.stringify(MEET_LIFT_ORDER)}. ` +
+      'A driver steering every attempt by squat\'s prompt ladder reaches one lift and then stalls, which is ' +
+      'what this tool measured at 575c5d3 before it started driving with tools/meetDrive.mjs.',
+);
+
 const bombedLegs = legRecords.filter((l) => l.intent === 'miss' && l.ended === MEET_ENDING.BOMBED).length;
 const wantBombed = LEGS.filter((l) => l.intent === 'miss').length;
 const missLegNumbers = LEGS.filter((l) => l.intent === 'miss').map((l) => l.n);
