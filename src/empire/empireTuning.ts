@@ -1643,7 +1643,8 @@ export const EMPIRE_TUNING = Object.freeze({
 
   // -------------------------------------------------------------------------
   // §5.13 presentation Phase 3 — the floor simulation: "real pathing, queuing,
-  // use, and visible reaction." Read by `floorSim.ts` only.
+  // use, and visible reaction." Read by `floorSim.ts` only — the render
+  // half's own knobs are a separate block at the end of this record.
   //
   // PROVISIONAL, in exactly the sense `FLOOR_GRID_SIZE` and
   // `AMBIENT_MEMBER_COUNT_BY_RUNG` already claim for themselves: every number
@@ -1800,6 +1801,127 @@ export const EMPIRE_TUNING = Object.freeze({
    * quietly runs for a minute is worse than one that refuses.
    */
   FLOOR_SIM_MAX_RUN_TICKS: 20000,
+
+  // -------------------------------------------------------------------------
+  // §5.13 presentation Phase 3 — the RENDER half of the floor simulation.
+  // Read by `FloorGrid.tsx` only; `floorSim.ts` reads none of them, and that
+  // split is the point. The block above is denominated in SIM TICKS and knows
+  // nothing about wall time or pixels; this block is what turns a tick into a
+  // millisecond and a tile into a pixel, which is the renderer's decision and
+  // not the machine's.
+  //
+  // PROVISIONAL, in exactly the sense the two blocks above claim for
+  // themselves: every number here is a first-pass proposal reasoned from an
+  // intuition about how a gym floor reads, and NONE of it has been tuned or
+  // played. Phase 3's gate is a human watching the gym run.
+  // -------------------------------------------------------------------------
+
+  /**
+   * How long, in milliseconds, one sim tick lasts on screen — the rate
+   * `FloorGrid.tsx` calls `stepFloorSim` at.
+   *
+   * THIS IS THE KNOB A TUNER MOVES FIRST, because every `_TICKS` entry in the
+   * block above is denominated in it: at 120 ms a member crosses a tile in
+   * about a third of a second (`FLOOR_SIM_STEP_PROGRESS_PER_TICK` is 0.34, so
+   * three ticks a tile), a bodybuilder's 42-tick set runs about five seconds,
+   * and the interrupted beat's 8 ticks reads as just under a second. Halving
+   * this speeds the whole gym up without changing any behaviour.
+   */
+  FLOOR_SIM_TICK_INTERVAL_MS: 120,
+
+  /**
+   * How long, in milliseconds, the renderer takes to slide a member from the
+   * position one tick put it at to the position the next tick puts it at.
+   *
+   * At the shipped value this equals `FLOOR_SIM_TICK_INTERVAL_MS`, which is
+   * what makes a walk continuous rather than a sequence of hops — the tween
+   * for tick N is still running when tick N+1 replaces it. A tuner who wants
+   * a snappier, more stepped read shortens this WITHOUT touching the tick
+   * rate; a value above the tick interval makes a member permanently lag the
+   * cell the sim thinks it is on, which is a look rather than a bug but is
+   * worth knowing before turning it up.
+   */
+  FLOOR_SIM_MOVE_TWEEN_MS: 120,
+
+  /**
+   * The seed `FloorGrid.tsx` opens its sim with.
+   *
+   * `floorSim.ts` is deterministic and takes every choice from this seed, so
+   * this number is what decides which member walks where on a given floor.
+   * It is a knob rather than a structural constant because turning it is how
+   * a playtester asks "is this floor boring or is this seed boring" — and it
+   * is a fixed value rather than a clock read because a screen that reshuffles
+   * its gym on every launch cannot be reported as a repeatable defect.
+   */
+  FLOOR_SIM_RENDER_SEED: 1,
+
+  /**
+   * The diameter of a member's state cue — the bubble drawn above its head —
+   * as a fraction of the smaller of its footprint's two rendered dimensions,
+   * the same way `AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION` is measured.
+   */
+  FLOOR_SIM_CUE_DIAMETER_FRACTION: 0.5,
+
+  /** The gap, in pixels, between the top of a member's head and the bottom of its state cue. */
+  FLOOR_SIM_CUE_GAP_PIXELS: 2,
+
+  /**
+   * How much larger the cue is drawn while a member is `interrupted`, as a
+   * multiple of the resting diameter above.
+   *
+   * GDD §5.13's own pathing-interruption ruling asks for "a visible reaction
+   * cue (RCT's thought-bubble pattern)", and a reaction that is the same size
+   * as the four resting cues is a colour change rather than a reaction. This
+   * is the knob that decides how loud the beat is.
+   */
+  FLOOR_SIM_INTERRUPTED_CUE_SCALE: 1.6,
+
+  /**
+   * The opacity a member is drawn at while it is `leaving` — stepping away
+   * from a machine it has finished with. Below 1 so "done here" reads as a
+   * fade rather than needing its own colour; well above 0 so a leaving member
+   * is still a body on the floor and not a disappearance.
+   */
+  FLOOR_SIM_LEAVING_OPACITY: 0.55,
+
+  /**
+   * The height, in pixels, of the extra bob a member does while it is
+   * `using` — the placeholder register's version of working a set.
+   *
+   * SEPARATE FROM `AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS` AND ADDITIVE ON TOP
+   * OF IT, deliberately: a human passed Phase 2's gate on the idle bob's own
+   * values, so this piece adds a second motion rather than retuning one that
+   * has already been judged.
+   */
+  FLOOR_SIM_USING_PULSE_AMPLITUDE_PIXELS: 3,
+
+  /**
+   * Half a rep, in milliseconds — the duration of one leg of the `using`
+   * pulse above. Much shorter than `AMBIENT_MEMBER_BOB_HALF_CYCLE_MS` on
+   * purpose: a member on a machine should read as working faster than a
+   * member standing around breathing.
+   */
+  FLOOR_SIM_USING_PULSE_HALF_CYCLE_MS: 260,
+
+  /**
+   * The border width, in pixels, of the two outlines this layer draws over
+   * things rather than as things: a station being walked to or used, and the
+   * ring held around a member that is stranded with no route to any station.
+   * Thicker than `FLOOR_ITEM_BORDER_WIDTH_PIXELS` so a highlight reads as a
+   * highlight and not as the chip's own resting edge.
+   */
+  FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS: 3,
+
+  /**
+   * The stacking order a member is drawn at. Above the placed-equipment chips
+   * (which draw at 1) so a member walking past a machine is not swallowed by
+   * it, and below `FLOOR_DRAGGING_Z_INDEX` so a chip being dragged still
+   * passes over everything.
+   */
+  FLOOR_SIM_MEMBER_Z_INDEX: 3,
+
+  /** The stacking order a station highlight is drawn at — over the chip it outlines, under the members. */
+  FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX: 2,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -1954,4 +2076,17 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_SIM_WANDER_HOLD_TICKS: 'knob',
   FLOOR_SIM_ROUTE_VISIT_BUDGET: 'budget',
   FLOOR_SIM_MAX_RUN_TICKS: 'budget',
+
+  FLOOR_SIM_TICK_INTERVAL_MS: 'knob',
+  FLOOR_SIM_MOVE_TWEEN_MS: 'knob',
+  FLOOR_SIM_RENDER_SEED: 'knob',
+  FLOOR_SIM_CUE_DIAMETER_FRACTION: 'knob',
+  FLOOR_SIM_CUE_GAP_PIXELS: 'knob',
+  FLOOR_SIM_INTERRUPTED_CUE_SCALE: 'knob',
+  FLOOR_SIM_LEAVING_OPACITY: 'knob',
+  FLOOR_SIM_USING_PULSE_AMPLITUDE_PIXELS: 'knob',
+  FLOOR_SIM_USING_PULSE_HALF_CYCLE_MS: 'knob',
+  FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS: 'knob',
+  FLOOR_SIM_MEMBER_Z_INDEX: 'knob',
+  FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX: 'knob',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

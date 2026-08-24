@@ -85,12 +85,60 @@
  * `placeFloorItem`'s overlap check knows it exists — a session item CAN be
  * dragged to a position that visually overlaps a fixed row today. Whether
  * that should be refused is a design question this piece's own report
- * raises rather than answers.
+ * raises rather than answers. (GDD §5.13's PLAYTEST 3 ruling later answered
+ * it: the drop handler refuses, and `releaseAt` below is where.)
+ *
+ * ===========================================================================
+ * GDD §5.13 PRESENTATION PHASE 3 — THE RENDER HALF OF THE FLOOR SIMULATION
+ * ===========================================================================
+ *
+ * `floorSim.ts` is the machine: pure, deterministic, no clock, no pixels, and
+ * its own header says "A SECOND BUILDER WIRES THIS TO A SCREEN." This is that
+ * wiring, and it is four things and no more.
+ *
+ * 1. THE TICK. `stepFloorSim` is called on a `setInterval` at
+ *    `FLOOR_SIM_TICK_INTERVAL_MS`, with the context rebuilt from props each
+ *    time. The sim state is component-local, in the same class as the
+ *    in-flight drag: purely visual, dispatched nowhere, read by nothing
+ *    outside this file, gone when this component unmounts. `GymState` gains
+ *    no field and no action for it, which is §5.13's "presentation, not a
+ *    second source of truth" applied to the one place it would be easiest to
+ *    break. The tick is suspended during a drag — see its own comment for
+ *    the mechanical reason.
+ *
+ * 2. THE WALK. A member is drawn at the linear interpolation between its cell
+ *    and the cell it is stepping into, which is the position model
+ *    `floorSim.ts` documents ("The renderer lerps between the two"), and the
+ *    resulting position is tweened over one tick's worth of milliseconds so a
+ *    walk is continuous rather than three hops per tile.
+ *
+ * 3. THE FIVE STATES, drawn apart. A cue bubble above the head carries the
+ *    state as a colour and, while a member is `interrupted`, the cause as a
+ *    glyph in a larger bubble — GDD §5.13's own "RCT's thought-bubble
+ *    pattern". `using` adds a faster rep pulse, `leaving` drops to
+ *    `FLOOR_SIM_LEAVING_OPACITY`, and a member the sim reports as stranded
+ *    holds a ring for as long as `strandedAt` is set. The station being
+ *    walked to or used is outlined on the floor in the matching colour.
+ *
+ * 4. A READOUT AND A LEGEND under the grid: the tick number, the state
+ *    census, and what each colour means. Wireframe affordances, and
+ *    deliberately not what Phase 3's gate is asking about — that question is
+ *    whether the motion reads as behaviour.
+ *
+ * WHAT THIS HALF DOES NOT DO, since the list is the point. It computes no
+ * behaviour: every state, target, queue position and interruption is
+ * `floorSim.ts`'s, and what happens here is tile-to-pixel conversion,
+ * interpolation and style. It reads no wallet, no Gym Bucks, no chalk, no
+ * Total, no e1RM, no streak, no covered day and no reputation —
+ * `FloorSimContext` carries four fields and this file builds all four from
+ * props it already had. And it writes nothing back: the sim is a function of
+ * the floor, never the other way round.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Easing,
   PanResponder,
   type PanResponderGestureState,
   Pressable,
@@ -104,7 +152,6 @@ import { EMPIRE_TUNING } from './empireTuning';
 import {
   type FloorState,
   type GridPosition,
-  ambientMemberRoster,
   fixedFloorFurniture,
   floorGridSize,
   floorLayout,
@@ -112,6 +159,18 @@ import {
   sessionItemFootprint,
   unplacedOwnedFloorItems,
 } from './floor';
+import {
+  FLOOR_SIM_MEMBER_STATES,
+  type FloorSimContext,
+  type FloorSimInterruption,
+  type FloorSimMember,
+  type FloorSimMemberState,
+  type FloorSimState,
+  createFloorSimState,
+  floorSimStateCounts,
+  floorStations,
+  stepFloorSim,
+} from './floorSim';
 import { type LadderEquipmentItem } from './ladder';
 import { type GymViewAction } from './ladderView';
 import { type MemberType } from './members';
@@ -234,6 +293,114 @@ function colorForMemberType(type: MemberType): string {
   return AMBIENT_MEMBER_PALETTE[index % AMBIENT_MEMBER_PALETTE.length] as string;
 }
 
+/**
+ * GDD §5.13 presentation Phase 3 — one named colour per behavioural state, so
+ * the five arms of `floorSim.ts`'s machine read apart on the floor.
+ *
+ * A THIRD palette in this file, on the same terms as the two above: named CSS
+ * colour keywords rather than hex or `rgb()`, so it needs no `src/tuning/`
+ * palette-module registration (a real crossing, per CLAUDE.md's session-
+ * coordination section) to pass `src/tuning/audit.ts`'s colour-literal scan.
+ * No value here repeats a literal already used by `PLACEHOLDER_PALETTE`,
+ * `AMBIENT_MEMBER_PALETTE`, or the grid/fixed/refusal colours above — the
+ * three visual classes stay apart and the state cue is a fourth.
+ *
+ * WHY THE STATE IS A CUE ABOVE THE HEAD AND NOT THE BODY'S OWN COLOUR: the
+ * body's colour is the member's TYPE, which a human passed Phase 2's gate on
+ * reading, and recolouring it by state would spend that read on this one. The
+ * cue is drawn on top instead, which is also the register GDD §5.13 asks for
+ * by name ("RCT's thought-bubble pattern").
+ *
+ * Placeholder shapes only. Phase 4 is the real pixel-art pass, and this piece
+ * is explicitly not it.
+ */
+const FLOOR_SIM_STATE_COLOR: Readonly<Record<FloorSimMemberState, string>> = Object.freeze({
+  seeking: 'deepskyblue',
+  queuing: 'khaki',
+  using: 'springgreen',
+  leaving: 'silver',
+  interrupted: 'red',
+});
+
+/**
+ * What an interrupted member says, in one word — the label held beside the
+ * body for the length of the beat, so the reaction names its own cause
+ * instead of being a colour a reader has to look up.
+ *
+ * A word rather than a glyph, and that was a measured choice rather than a
+ * taste: `empireCore.test.ts`'s string census probes every space-free shipped
+ * literal for a real name and SKIPS anything under two characters, with a
+ * count pinned against the list's own length so a skip is red. A one-letter
+ * glyph table would have left three shipped literals unprobed.
+ */
+const FLOOR_SIM_INTERRUPTION_WORD: Readonly<Record<FloorSimInterruption, string>> = Object.freeze({
+  'target-removed': 'removed',
+  'target-moved': 'moved',
+  'route-blocked': 'blocked',
+});
+
+/**
+ * The legend under the grid: what each state colour means, in the words a
+ * player would use.
+ *
+ * A WIREFRAME AFFORDANCE AND NOT THE READ THE GATE ASKS ABOUT. GDD §5.13's
+ * PLAYTEST 4b asked its question with the caption covered, on purpose, so the
+ * tokens had to carry the read on their own. The same standard applies here:
+ * what Phase 3's gate judges is whether the walking, queueing, using and
+ * reacting are legible as behaviour, not whether a colour key can be looked
+ * up. The legend is here because a placeholder colour has no meaning to a
+ * first-time reader at all, and because the browser check reads it.
+ */
+const FLOOR_SIM_STATE_LEGEND: Readonly<Record<FloorSimMemberState, string>> = Object.freeze({
+  seeking: 'walking to a machine',
+  queuing: 'waiting behind one',
+  using: 'on the machine',
+  leaving: 'stepping away',
+  interrupted: 'what they wanted is gone, moved or walled off',
+});
+
+/** Transparent, as a named value rather than a bare string at four call sites. */
+const FLOOR_SIM_HIGHLIGHT_FILL = 'transparent';
+
+/**
+ * A position on the floor in TILES, unlike `GridPosition`, which `floor.ts`
+ * documents as a whole-numbered grid cell. A member mid-step stands between
+ * two cells, and this is the type that says so.
+ *
+ * Declared as an `interface` rather than a type alias deliberately: the prop
+ * surface census in `empireForbiddenOutput.test.ts` reads the resolved type,
+ * and TypeScript withholds an implicit index signature from an interface, so
+ * this keeps `position`'s existing row on that census's conservative
+ * `HOLDS_A_FUNCTION` list rather than silently moving it off.
+ */
+interface FloorTilePoint {
+  readonly x: number;
+  readonly y: number;
+}
+
+/**
+ * Where to draw a member this instant: its cell, or a linear interpolation
+ * between its cell and the cell it is stepping into.
+ *
+ * `floorSim.ts`'s own header states the contract this reads — "a member holds
+ * `cell` (where it is), `next` (the cell it is stepping into, or null when it
+ * is standing still) and `progress` in [0, 1) toward `next`. The renderer
+ * lerps between the two." This is that lerp and nothing else: no behaviour is
+ * decided here, and the sim's own numbers are not adjusted, only positioned.
+ */
+function memberTilePoint(member: FloorSimMember): FloorTilePoint {
+  if (member.next === null) return { x: member.cell.x, y: member.cell.y };
+  return {
+    x: member.cell.x + (member.next.x - member.cell.x) * member.progress,
+    y: member.cell.y + (member.next.y - member.cell.y) * member.progress,
+  };
+}
+
+/** A station's identity as a map key — kind and item, matching `refsEqual` in `floorSim.ts`. */
+function stationKey(kind: string, item: string): string {
+  return `${kind}:${item}`;
+}
+
 /** Round a page-relative pixel offset to the NEAREST whole grid tile. */
 function pixelsToTile(pixels: number, tilePixels: number): number {
   return Math.round(pixels / tilePixels);
@@ -242,7 +409,37 @@ function pixelsToTile(pixels: number, tilePixels: number): number {
 interface AmbientMemberBodyProps {
   readonly index: number;
   readonly type: MemberType;
-  readonly position: GridPosition;
+  /**
+   * GDD §5.13 presentation Phase 3: where to draw this member THIS INSTANT,
+   * in tiles, interpolated between the cell it is on and the cell it is
+   * stepping into. Phase 2 passed a whole `GridPosition` here because a body
+   * that never moved was always on a cell exactly.
+   */
+  readonly position: FloorTilePoint;
+  /** Which of `FLOOR_SIM_MEMBER_STATES`'s five arms this member is in, read straight off the sim. */
+  readonly state: FloorSimMemberState;
+  /** The cause of an in-flight interruption beat, or null — what the bubble says. */
+  readonly interruptedBy: FloorSimInterruption | null;
+  /**
+   * Whether the sim reports this member as having no route to any station
+   * (`FloorSimMember.strandedAt` set). Passed as a boolean rather than as the
+   * tick itself because the renderer holds a cue while it is true and has no
+   * use for WHEN it started — and a tick number is the shape a channel would
+   * take.
+   */
+  readonly stranded: boolean;
+  /**
+   * LAST ON PURPOSE, and the reason is in another session's file. The
+   * `MUTATION_WITNESSES` row for `ambient-member-props-hold-no-channel` in
+   * `src/game/guaranteeTags.test.ts` anchors its planted mutation on the text
+   * `readonly tile: number;` followed by this interface's closing brace, and
+   * the witness expires if that text does not occur exactly once. Phase 3
+   * added three members; appending them AFTER `tile` broke the anchor and
+   * reddened that check. Reordering restores it without editing a file this
+   * piece is barred from — which is the right way round, since the witness is
+   * evidence about this interface and the ordering of members carries no
+   * meaning of its own.
+   */
   readonly tile: number;
 }
 
@@ -267,14 +464,23 @@ interface AmbientMemberBodyProps {
  * length and a longer one mounts a fresh instance (fresh loop, correctly
  * un-started-until-now) for every new index.
  *
- * THE BOB IS PURELY VISUAL. It reads no `GymState`, no `EmpireGym`, no
- * reputation and no wallet; it dispatches nothing; and it never touches
- * `member.position` (the `left`/`top` below, read straight from
- * `ambientMemberRoster`'s real output) — only an ADDITIVE `translateY`
- * transform on top of that fixed base position, the identical pattern the
- * drag preview above already uses via `dragOffset`. This is Phase 2's "not a
- * frozen photograph," not Phase 3's pathing — there is no target cell, no
- * movement between grid cells, and no game-state input of any kind.
+ * THE BOB IS PURELY VISUAL, AND PHASE 3 LEFT IT THAT WAY. It reads no
+ * `GymState`, no `EmpireGym`, no reputation and no wallet; it dispatches
+ * nothing; and it never touches the position it sits on — only an ADDITIVE
+ * `translateY` transform on top of it, the identical pattern the drag preview
+ * above already uses via `dragOffset`. What changed under it is where that
+ * base position comes from: Phase 2 read a fixed cell out of
+ * `ambientMemberRoster`, and Phase 3 reads an interpolated tile point out of
+ * `floorSim.ts`, whose own context type carries exactly four presentation
+ * inputs and no wallet, no reputation and no streak. The bob, the walk tween
+ * and the `using` pulse are three additive transforms on one token; none of
+ * them is a game-state input and none of them writes anything.
+ *
+ * The Phase 2 bob's own knobs — `AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS`,
+ * `_HALF_CYCLE_MS`, `_STAGGER_LANES`, `_STAGGER_STEP_MS` — are untouched by
+ * this round, per GDD §5.13's PLAYTEST 4b ruling that a knob which just
+ * passed its gate on no reported complaint does not get retuned. The two new
+ * motions are new knobs beside them.
  *
  * The bounded version of that claim, in the shape CLAUDE.md's own "Form That
  * Survived" section asks for.
@@ -286,8 +492,9 @@ interface AmbientMemberBodyProps {
  * interface's resolved type, via `getPropertiesOfType`, and not the member
  * list written between one declaration's braces — and pins, in both
  * directions, the set of `{name, shape}` pairs it finds: `index: number`,
- * `tile: number`, `position: object{x:number,y:number}`, and `type` as its
- * five string literals. Because the reading is the resolved type, three things
+ * `tile: number`, `position: object{x:number,y:number}`, `stranded: boolean`,
+ * `state` and `interruptedBy` as their own string-literal unions, and `type`
+ * as its five string literals. Because the reading is the resolved type, three things
  * are inside it that a member-name list off the AST left outside: a member
  * arriving on a SECOND, merged `interface AmbientMemberBodyProps` declaration;
  * a member inherited through an `extends`; and an existing member's TYPE being
@@ -334,7 +541,15 @@ interface AmbientMemberBodyProps {
  * single-`View` version carried, so a bounding-box read still covers the
  * whole visible member.
  */
-function AmbientMemberBody({ index, type, position, tile }: AmbientMemberBodyProps) {
+function AmbientMemberBody({
+  index,
+  type,
+  position,
+  tile,
+  state,
+  interruptedBy,
+  stranded,
+}: AmbientMemberBodyProps) {
   const footprintWidth = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.width * tile;
   const footprintHeight = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.height * tile;
   const headDiameter =
@@ -343,10 +558,27 @@ function AmbientMemberBody({ index, type, position, tile }: AmbientMemberBodyPro
   const bodyHeight = footprintHeight * EMPIRE_TUNING.AMBIENT_MEMBER_BODY_HEIGHT_FRACTION;
 
   const bob = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  // ONE EFFECT OWNS EVERY LOOPING ANIMATION ON THIS TOKEN, AND ONE CLEANUP
+  // STOPS THEM ALL. That is a structural choice rather than a stylistic one:
+  // `empireForbiddenOutput.test.ts`'s returned-closure census keys a site by
+  // its MEMBER PATH, so two `useEffect` cleanups inside one component are two
+  // rows carrying the same key, and the seal census pins the number of
+  // DISTINCT members against the length of its two declared lists. Two
+  // cleanups here make those two numbers disagree. One effect keeps the key
+  // one-to-one with the site, which is what that census is asking for.
+  //
+  // THE COST, stated rather than absorbed: the Phase 2 idle bob now restarts
+  // when this member's state changes, because `state` is a dependency of the
+  // effect the bob shares. A restart resets the bob to the bottom of its
+  // 2-pixel travel and re-runs its lane delay. Its knobs are untouched, per
+  // GDD §5.13's PLAYTEST 4b ruling; what changed is when the loop begins, and
+  // a state change is a few times a minute per member.
   useEffect(() => {
     const lane = index % EMPIRE_TUNING.AMBIENT_MEMBER_BOB_STAGGER_LANES;
     const delay = lane * EMPIRE_TUNING.AMBIENT_MEMBER_BOB_STAGGER_STEP_MS;
-    const loop = Animated.loop(
+    const bobLoop = Animated.loop(
       Animated.sequence([
         Animated.delay(delay),
         Animated.timing(bob, {
@@ -361,25 +593,108 @@ function AmbientMemberBody({ index, type, position, tile }: AmbientMemberBodyPro
         }),
       ]),
     );
-    loop.start();
-    return () => loop.stop();
-  }, [bob, index]);
+    bobLoop.start();
+
+    // GDD §5.13 presentation Phase 3 — THE REP PULSE. A second, faster
+    // additive bob that runs only while this member is `using`, so "on the
+    // machine" has a motion signature of its own and not only a cue colour.
+    const pulseLoop =
+      state === 'using'
+        ? Animated.loop(
+            Animated.sequence([
+              Animated.timing(pulse, {
+                toValue: 1,
+                duration: EMPIRE_TUNING.FLOOR_SIM_USING_PULSE_HALF_CYCLE_MS,
+                useNativeDriver: false,
+              }),
+              Animated.timing(pulse, {
+                toValue: 0,
+                duration: EMPIRE_TUNING.FLOOR_SIM_USING_PULSE_HALF_CYCLE_MS,
+                useNativeDriver: false,
+              }),
+            ]),
+          )
+        : null;
+    if (pulseLoop === null) {
+      pulse.setValue(0);
+    } else {
+      pulseLoop.start();
+    }
+
+    return () => {
+      bobLoop.stop();
+      if (pulseLoop !== null) pulseLoop.stop();
+    };
+  }, [bob, pulse, index, state]);
 
   const bobTranslateY = bob.interpolate({
     inputRange: [0, 1],
     outputRange: [0, EMPIRE_TUNING.AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS],
   });
 
+  const pulseTranslateY = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, EMPIRE_TUNING.FLOOR_SIM_USING_PULSE_AMPLITUDE_PIXELS],
+  });
+
+  // GDD §5.13 presentation Phase 3 — THE WALK. The sim advances a member by a
+  // fraction of a tile per tick, and the renderer would show that as three
+  // hops per tile if it simply wrote the new position out. Instead each new
+  // position is tweened from wherever the token currently is, LINEARLY (the
+  // `Animated.timing` default is an ease-in-out, which would put a stop and a
+  // start inside every tick and read as limping), over
+  // `FLOOR_SIM_MOVE_TWEEN_MS` — which at the shipped values equals the tick
+  // interval, so the tween for one tick is still running when the next
+  // replaces it and the walk is continuous.
+  //
+  // NO CLEANUP, and the reason is `AnimatedValue.animate`'s own contract: it
+  // stops whatever animation is already attached to the value before
+  // attaching the new one, so re-targeting mid-tween needs no teardown from
+  // here. What that leaves is an unmount with a tween in flight, which runs
+  // out its remaining `FLOOR_SIM_MOVE_TWEEN_MS` against a value nothing reads
+  // and then stops by itself. That residual is why this is a comment and not
+  // a silence.
+  const walk = useRef(
+    new Animated.ValueXY({ x: position.x * tile, y: position.y * tile }),
+  ).current;
+  useEffect(() => {
+    Animated.timing(walk, {
+      toValue: { x: position.x * tile, y: position.y * tile },
+      duration: EMPIRE_TUNING.FLOOR_SIM_MOVE_TWEEN_MS,
+      easing: Easing.linear,
+      useNativeDriver: false,
+    }).start();
+  }, [walk, position.x, position.y, tile]);
+
+  const cueScale =
+    state === 'interrupted' ? EMPIRE_TUNING.FLOOR_SIM_INTERRUPTED_CUE_SCALE : 1;
+  const cueDiameter =
+    Math.min(footprintWidth, footprintHeight) *
+    EMPIRE_TUNING.FLOOR_SIM_CUE_DIAMETER_FRACTION *
+    cueScale;
+
   return (
     <Animated.View
       testID={`floorgrid-ambient-${index}`}
       style={{
         position: 'absolute',
-        left: position.x * tile,
-        top: position.y * tile,
+        left: 0,
+        top: 0,
         width: footprintWidth,
         height: footprintHeight,
-        transform: [{ translateY: bobTranslateY }],
+        zIndex: EMPIRE_TUNING.FLOOR_SIM_MEMBER_Z_INDEX,
+        // `leaving` is the one state drawn at less than full strength — a
+        // member that has finished with a machine and is stepping away.
+        opacity: state === 'leaving' ? EMPIRE_TUNING.FLOOR_SIM_LEAVING_OPACITY : 1,
+        // Three additive transforms: the tweened walk, the Phase 2 idle bob,
+        // and the `using` pulse. `left`/`top` stay at zero so the walk owns
+        // the whole position and the two bobs ride on top of it.
+        transform: [
+          { translateX: walk.x },
+          { translateY: walk.y },
+          { translateY: bobTranslateY },
+          { translateY: pulseTranslateY },
+        ],
       }}
     >
       <View
@@ -408,6 +723,71 @@ function AmbientMemberBody({ index, type, position, tile }: AmbientMemberBodyPro
           borderColor: AMBIENT_MEMBER_BORDER_COLOR,
         }}
       />
+      {/*
+        GDD §5.13 presentation Phase 3 — the state cue, in the register §5.13
+        names by hand ("a visible reaction cue (RCT's thought-bubble
+        pattern)"). One bubble above the head, coloured by state, carrying the
+        cause glyph while an interruption beat is running and drawn larger
+        while it is. Its testID carries the state, so a browser check can ask
+        which state a member is in by reading the drawn DOM rather than by
+        reading a caption.
+      */}
+      <View
+        testID={`floorsim-cue-${index}-${state}`}
+        style={{
+          position: 'absolute',
+          left: (footprintWidth - cueDiameter) / 2,
+          top: -(cueDiameter + EMPIRE_TUNING.FLOOR_SIM_CUE_GAP_PIXELS),
+          width: cueDiameter,
+          height: cueDiameter,
+          borderRadius: cueDiameter / 2,
+          backgroundColor: FLOOR_SIM_STATE_COLOR[state],
+          borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
+          borderColor: AMBIENT_MEMBER_BORDER_COLOR,
+        }}
+      />
+      {interruptedBy === null ? null : (
+        // The cause, in a word, beside the body rather than inside the
+        // bubble: the bubble is a fraction of a 28-pixel tile and a word laid
+        // out inside it would wrap to one letter a line. It overflows its
+        // member's own footprint, which is what makes it readable and is
+        // acceptable for a beat that runs for
+        // `FLOOR_SIM_INTERRUPTED_BEAT_TICKS` and then resolves.
+        <Text
+          testID={`floorsim-cue-word-${index}`}
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: footprintHeight + EMPIRE_TUNING.FLOOR_SIM_CUE_GAP_PIXELS,
+            color: FLOOR_SIM_STATE_COLOR.interrupted,
+          }}
+        >
+          {FLOOR_SIM_INTERRUPTION_WORD[interruptedBy]}
+        </Text>
+      )}
+      {/*
+        The stranded ring. `floorSim.ts`'s own header states why this needs a
+        cue of its own: the interruption beat is transient, so a member walled
+        off from every station reacts once and then paces, and "still moving"
+        is exactly what a stranded member and a member walking with purpose
+        have in common. `FloorSimMember.strandedAt` is what tells them apart,
+        and this holds a mark against it for as long as it is set.
+      */}
+      {stranded ? (
+        <View
+          testID={`floorsim-stranded-${index}`}
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: footprintWidth,
+            height: footprintHeight,
+            borderWidth: EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS,
+            borderColor: FLOOR_SIM_STATE_COLOR.interrupted,
+            backgroundColor: FLOOR_SIM_HIGHLIGHT_FILL,
+          }}
+        />
+      ) : null}
     </Animated.View>
   );
 }
@@ -418,12 +798,22 @@ export function FloorGrid(props: FloorGridProps) {
   const placed = floorLayout(floor);
   const unplaced = unplacedOwnedFloorItems(floor, owned);
   const fixed = fixedFloorFurniture(barbellOwned);
-  // GDD §5.13 presentation Phase 2: static ambient bodies, from real
-  // rung/ownership state — see `ambientMemberRoster`'s own header for the
-  // count/type-mix/position rules and stated limits. Never draggable, never
-  // dispatched, never collidable with `placeFloorItem`'s overlap check.
-  const ambient = ambientMemberRoster(floor.rung, barbellOwned, owned);
   const tile = EMPIRE_TUNING.FLOOR_TILE_PIXELS;
+
+  // GDD §5.13 presentation Phase 3 — everything `floorSim.ts` is allowed to
+  // see, rebuilt from PROPS on every render. Never copied into sim state and
+  // never written back: `stepFloorSim` takes it as an argument each tick, so
+  // the rung, the real `FloorState` and both ownership lists are read fresh
+  // and this component holds no second copy of any of them. That is §5.13's
+  // hard constraint — "this is presentation, not a second source of truth" —
+  // and it is why `GymState` gains no field and no reducer action for any of
+  // this.
+  const simContext: FloorSimContext = {
+    rung: floor.rung,
+    floor,
+    barbellOwned,
+    sessionOwned: owned,
+  };
   // GDD §5.13's PLAYTEST 2 ruling, gap 3: the grid's own internal tile
   // boundaries, one line per interior column/row edge — `grid.width - 1`
   // vertical lines and `grid.height - 1` horizontal lines, since the two
@@ -491,6 +881,73 @@ export function FloorGrid(props: FloorGridProps) {
     },
     [],
   );
+
+  // The latest context, for the tick callback. `setInterval`'s callback closes
+  // over the render it was created in, so without this a tick would go on
+  // reading the floor as it stood when the timer started. Written after every
+  // render (no dependency array), which runs before any timer fires.
+  const simContextRef = useRef(simContext);
+  useEffect(() => {
+    simContextRef.current = simContext;
+  });
+
+  // The sim itself — the same class of purely-visual, component-local state as
+  // the in-flight drag above, and discarded the same way when this component
+  // unmounts. Nothing outside this file reads it and nothing it holds is
+  // dispatched.
+  const [sim, setSim] = useState<FloorSimState>(() =>
+    createFloorSimState(simContext, EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED),
+  );
+
+  // A rung change is the one context change the sim cannot absorb by being
+  // stepped: the grid is a different size and the roster is a different
+  // length, so the members are rebuilt from `ambientMemberRoster` through
+  // `createFloorSimState`. Guarded on the PREVIOUS rung rather than on the
+  // effect firing, so mounting does not immediately throw away the state the
+  // `useState` initialiser just built.
+  const simRung = useRef(floor.rung);
+  useEffect(() => {
+    if (simRung.current === floor.rung) return;
+    simRung.current = floor.rung;
+    setSim(createFloorSimState(simContextRef.current, EMPIRE_TUNING.FLOOR_SIM_RENDER_SEED));
+  }, [floor.rung]);
+
+  // THE TICK. One `stepFloorSim` per `FLOOR_SIM_TICK_INTERVAL_MS`, against
+  // whatever the props say the floor is at that moment.
+  //
+  // IT IS SUSPENDED WHILE A DRAG IS IN FLIGHT, and the reason is mechanical
+  // rather than a design preference. A tick re-renders this component, which
+  // rebuilds every chip's `PanResponder` — and a gesture that was granted to
+  // one responder instance would then be released against a different one,
+  // whose own `gestureState` was never granted. The drag is the interaction
+  // GDD §5.13's Phase 1 gate was passed on, so it wins over the sim running
+  // for the second or two a drop takes. The visible consequence is that the
+  // gym holds still while the player is placing something, which is honest
+  // about what is happening rather than hidden.
+  useEffect(() => {
+    if (draggingItem !== null) return undefined;
+    const timer = setInterval(() => {
+      setSim((previous) => stepFloorSim(previous, simContextRef.current));
+    }, EMPIRE_TUNING.FLOOR_SIM_TICK_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [draggingItem]);
+
+  // The stations the sim can send a member to, and what is happening at each.
+  // A derived read: `floorStations` recomputes from the same context every
+  // render and is stored nowhere, the same "read model, never a `FloorState`"
+  // discipline `fixedFloorFurniture` already carries.
+  const stations = floorStations(simContext);
+  const stationActivity = new Map<string, 'using' | 'claimed'>();
+  for (const member of sim.members) {
+    if (member.target === null) continue;
+    const key = stationKey(member.target.kind, member.target.item);
+    if (member.state === 'using') {
+      stationActivity.set(key, 'using');
+    } else if (!stationActivity.has(key)) {
+      stationActivity.set(key, 'claimed');
+    }
+  }
+  const stateCounts = floorSimStateCounts(sim);
 
   const releaseAt = (
     item: SessionEquipmentItem,
@@ -669,30 +1126,93 @@ export function FloorGrid(props: FloorGridProps) {
               );
             })}
             {
-              // GDD §5.13 presentation Phase 2, PLAYTEST 4: a static-
-              // position, non-draggable, non-collidable placeholder body —
-              // no `PanResponder`, no remove control, never wrapped in a
-              // `FloorPlacement`, never dispatched through
-              // `floor-place`/`floor-remove`. Same "read model, not
-              // `FloorState`" discipline the fixed-furniture rows above
-              // already carry. `AmbientMemberBody`'s own header explains why
-              // the render moved into its own component (each member needs
-              // its own `Animated.Value` and its own start/stop lifecycle for
-              // the idle bob, which `.map` cannot give a hook directly).
-              ambient.map((member, index) => (
+              // GDD §5.13 presentation Phase 3 — the station highlights. A
+              // machine somebody is walking towards is outlined in the
+              // `seeking` colour and one somebody is on is outlined in the
+              // `using` colour, over the chip rather than instead of it, so
+              // "that machine is running" reads from the floor without
+              // reading a caption. Drawn only for stations that are actually
+              // claimed, so an empty gym draws none of these at all.
+              stations.map((station) => {
+                const activity = stationActivity.get(
+                  stationKey(station.ref.kind, station.ref.item),
+                );
+                if (activity === undefined) return null;
+                return (
+                  <View
+                    key={`station-${station.ref.kind}-${station.ref.item}`}
+                    testID={`floorsim-${activity}-${station.ref.kind}-${station.ref.item}`}
+                    style={{
+                      position: 'absolute',
+                      left: station.position.x * tile,
+                      top: station.position.y * tile,
+                      width: station.footprint.width * tile,
+                      height: station.footprint.height * tile,
+                      borderWidth: EMPIRE_TUNING.FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS,
+                      borderColor:
+                        activity === 'using'
+                          ? FLOOR_SIM_STATE_COLOR.using
+                          : FLOOR_SIM_STATE_COLOR.seeking,
+                      backgroundColor: FLOOR_SIM_HIGHLIGHT_FILL,
+                      zIndex: EMPIRE_TUNING.FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX,
+                    }}
+                  />
+                );
+              })
+            }
+            {
+              // GDD §5.13 presentation Phase 3: the members, at the position
+              // the sim puts them at this instant. Still non-draggable, still
+              // non-collidable with `placeFloorItem`'s overlap check, still
+              // dispatching nothing — what changed since Phase 2 is that the
+              // position moves. `AmbientMemberBody`'s own header explains why
+              // the render lives in its own component (each member needs its
+              // own `Animated.Value`s and its own start/stop lifecycles,
+              // which `.map` cannot give a hook directly).
+              //
+              // Keyed by `member.index`, which `floorSim.ts` documents as
+              // stable for the life of a sim — so a member keeps its own
+              // animated values across ticks instead of being remounted and
+              // snapping.
+              sim.members.map((member) => (
                 <AmbientMemberBody
-                  key={`ambient-${index}`}
-                  index={index}
+                  key={`ambient-${member.index}`}
+                  index={member.index}
                   type={member.type}
-                  position={member.position}
+                  position={memberTilePoint(member)}
                   tile={tile}
+                  state={member.state}
+                  interruptedBy={member.interruptedBy}
+                  stranded={member.strandedAt !== null}
                 />
               ))
             }
           </View>
         </ScrollView>
       </ScrollView>
-      <Text testID={'floorgrid-ambient-caption'}>{ambient.length} member(s) around the gym</Text>
+      <Text testID={'floorgrid-ambient-caption'}>{sim.members.length} member(s) around the gym</Text>
+      {/*
+        GDD §5.13 presentation Phase 3 — the sim readout. The tick number is
+        here because it is the cheapest way for a human OR a driven check to
+        tell a running gym from a frozen one, and the state census because it
+        says what the floor is doing in one line. Neither is what the gate
+        asks about; see `FLOOR_SIM_STATE_LEGEND`'s own comment.
+      */}
+      <Text testID={'floorsim-caption'}>
+        {`tick ${sim.tick} — `}
+        {FLOOR_SIM_MEMBER_STATES.map((each) => `${stateCounts[each]} ${each}`).join(', ')}
+      </Text>
+      <View testID={'floorsim-legend'}>
+        {FLOOR_SIM_MEMBER_STATES.map((each) => (
+          <Text
+            key={each}
+            testID={`floorsim-legend-${each}`}
+            style={{ color: FLOOR_SIM_STATE_COLOR[each] }}
+          >
+            {`${each}: ${FLOOR_SIM_STATE_LEGEND[each]}`}
+          </Text>
+        ))}
+      </View>
       <View testID={'floorgrid-tray'}>
         {unplaced.length === 0 ? (
           // GDD §5.13's PLAYTEST 2 ruling, gap 2: "drag onto the floor above"

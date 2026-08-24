@@ -2568,7 +2568,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // empireTuning, floor, ladder, members, sessions) and one running back,
     // `empireTuning.ts`'s new FLOOR_SIM block saying "Read by `floorSim.ts`
     // only", which is what keeps the new module off the orphan list above.
-    expect(pairs).toBe(98);
+    // 98 -> 99: Phase 3's RENDER half. One new pair, `FloorGrid.tsx` ->
+    // `floorSim.ts`, from the import that drives the sim. Nothing runs back
+    // the other way — `floorSim.ts`'s header names no screen file, only "A
+    // SECOND BUILDER WIRES THIS TO A SCREEN" — and `empireTuning.ts` already
+    // named `FloorGrid.tsx` before this round, so neither is a new pair.
+    // Measured by running this assertion and reading its failure value.
+    expect(pairs).toBe(99);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3370,7 +3376,20 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // single-quoted value; `FLOOR_SIM_INTERRUPTIBLE_STATES`'s three tokens are
     // already in this set as member states. Measured by running this assertion
     // and reading its failure value.
-    expect(singleQuoted.size).toBe(355);
+    // 355 -> 372: Phase 3's RENDER half. Seventeen new distinct
+    // single-quoted values, measured by running this assertion and reading
+    // its failure value: the './floorSim' import specifier; six colours
+    // ('deepskyblue', 'khaki', 'springgreen', 'silver', 'red' for the five
+    // state cues, and 'transparent' for the highlight fill — 'khaki' counts
+    // as new because PLAYTEST 4 removed it from `AMBIENT_MEMBER_PALETTE` and
+    // it survives only inside a comment, which this scan strips); the three
+    // interruption words ('removed', 'moved', 'blocked'); 'claimed', the
+    // station-activity token that is not already a member state; the two
+    // untemplated testIDs 'floorsim-caption' and 'floorsim-legend'; and the
+    // five legend sentences. The five `FLOOR_SIM_MEMBER_STATES` tokens the
+    // legend and the cue key off are already in this set, which is why the
+    // delta is seventeen and not larger.
+    expect(singleQuoted.size).toBe(372);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3399,7 +3418,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // cell refusal, the seed refusal, the run-length refusal, the run-budget
     // refusal) and the pass-order refusal that names a member index. Measured
     // by running this assertion and reading its failure value.
-    expect(templateChunks.size).toBe(228);
+    // 228 -> 238: Phase 3's RENDER half. This set holds the CHUNKS between a
+    // template's substitutions rather than whole templates, so the six new
+    // templated testIDs contribute their prefixes and separators rather than
+    // six entries: 'floorsim-', 'floorsim-cue-', 'floorsim-cue-glyph-',
+    // 'floorsim-stranded-', 'floorsim-legend-', 'station-' and the bare '-'
+    // that separates a cue's index from its state, plus ':' from the
+    // station-key join and 'tick ' / ' — ' from the sim readout. Ten new
+    // chunks, measured by running this assertion and reading its failure
+    // value.
+    expect(templateChunks.size).toBe(238);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3417,6 +3445,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './empireTuning',
       './expansion',
       './floor',
+      './floorSim',
       './ladder',
       './ladderView',
       './members',
@@ -3451,6 +3480,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'bench',
       'bike',
       'black',
+      'blocked',
       'bodybuilder',
       'bought',
       'budget',
@@ -3468,6 +3498,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'chartreuse',
       'cheapest-affordable-first',
       'check-in-upkeep',
+      'claimed',
       'club',
       'coach',
       'coach-staff-level',
@@ -3486,6 +3517,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'darkslategray',
       'darkturquoise',
       'deadlift',
+      'deepskyblue',
       'dimgray',
       'display-name',
       'displayName',
@@ -3511,6 +3543,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorgrid-tray',
       'floorgrid-tray-empty',
       'floorgrid-tray-scroll',
+      'floorsim-caption',
+      'floorsim-legend',
       'foam-rollers',
       'friend',
       'friend-encouragement',
@@ -3582,6 +3616,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'injury-risk',
       'injuryDaysSaved',
       'interrupted',
+      'khaki',
       'knob',
       'ladder-accrual',
       'ladder-clock',
@@ -3634,10 +3669,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'react-native',
       'reason',
       'recovery',
+      'red',
       'refusal',
       'refused',
       'regional',
       'relative',
+      'removed',
       'reputation',
       'reputation-below-threshold',
       'reputation-milestone',
@@ -3671,6 +3708,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'settledAxes',
       'settledTenureDays',
       'shipped',
+      'silver',
       'single-purse',
       'single-wall-clock-purse',
       'skippedSeconds',
@@ -3683,6 +3721,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'spend-once-per-calendar-day',
       'sponsorship',
       'spotter',
+      'springgreen',
       'squat',
       'squat-rack',
       'steelblue',
@@ -3705,6 +3744,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'training-pace',
       'trainingIq',
       'trainingIqPerDay',
+      'transparent',
       'treadmill',
       'unaccelerated-seconds',
       'unacceleratedSeconds',
@@ -3754,7 +3794,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // assertion's own failure value.
     // 582 -> 583: the `route-blocked` interruption cause. Read from this
     // assertion's own failure value.
-    expect(stringsChecked).toBe(583);
+    // 583 -> 610: singleQuoted (355 -> 372) and templateChunks (228 -> 238),
+    // Phase 3's RENDER half. Read from this assertion's own failure value.
+    expect(stringsChecked).toBe(610);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3810,7 +3852,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // two-letter guard below. Measured by running this assertion.
     // 301 -> 302: the `route-blocked` cause, which clears the two-letter guard
     // like the rest. Measured by running this assertion.
-    expect(probes).toBe(302);
+    // 302 -> 314: Phase 3's RENDER half's twelve new space-free entries
+    // ('./floorSim', 'deepskyblue', 'khaki', 'springgreen', 'silver', 'red',
+    // 'transparent', 'removed', 'blocked', 'claimed', 'floorsim-caption',
+    // 'floorsim-legend' — 'moved' is already in this set, which is why the
+    // list gained twelve rows and the interruption table's three words only
+    // two of them). All twelve clear the two-letter guard below, which is why
+    // this number stays equal to the list's own length; the interruption cue
+    // says a WORD rather than a glyph precisely so that stays true. Measured
+    // by running this assertion.
+    expect(probes).toBe(314);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -4061,6 +4112,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'FloorGrid.tsx': [
         './empireTuning',
         './floor',
+        './floorSim',
         './ladder',
         './ladderView',
         './members',
@@ -4186,7 +4238,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // (`MemberType`). Read from this assertion's own failure value.
     // 58 -> 64: GDD §5.13 presentation Phase 3 adds floorSim.ts's six
     // intra-directory edges. Read from this assertion's own failure value.
-    expect(specifiers).toBe(64);
+    // 64 -> 65: Phase 3's RENDER half adds FloorGrid.tsx's own ./floorSim
+    // edge — the one arrow this round draws. Read from this assertion's own
+    // failure value.
+    expect(specifiers).toBe(65);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -4342,7 +4397,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // seventeen numeric leaves between them (twelve scalars plus
     // FLOOR_SIM_USE_TICKS_BY_TYPE's five). Read from this assertion's own
     // failure value.
-    ).toBe(256);
+    // 256 -> 267: Phase 3's RENDER half adds twelve scalar knobs and ELEVEN
+    // findings — `FLOOR_SIM_RENDER_SEED: 1` is the twelfth entry and the
+    // audit does not report a bare 1, which is worth writing down because a
+    // reader hand-summing the entries would expect 268 and find the
+    // instrument disagreeing. Read from this assertion's own failure value.
+    ).toBe(267);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

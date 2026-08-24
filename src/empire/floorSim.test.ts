@@ -736,9 +736,48 @@ describe('the Phase 3 tuning block is shaped the way `floorSim.ts` reads it', ()
 
   it('classifies the two guards apart from the eleven knobs', () => {
     const block = Object.keys(T).filter((key) => key.startsWith('FLOOR_SIM_'));
-    expect(block.length).toBe(13);
+    // 13 -> 25: the `FLOOR_SIM_` prefix is TWO blocks since Phase 3's render
+    // half landed — thirteen entries this module reads, denominated in sim
+    // ticks and grid tiles, and twelve the renderer reads, denominated in
+    // milliseconds and pixels. `empireTuning.ts` says exactly that in the two
+    // block comments ("Read by `floorSim.ts` only", "Read by `FloorGrid.tsx`
+    // only"), and the partition below is what holds that sentence to it
+    // rather than leaving it as prose.
+    expect(block.length).toBe(25);
     const guards = block.filter((key) => key.endsWith('BUDGET') || key.endsWith('MAX_RUN_TICKS'));
     expect(guards.sort()).toEqual(['FLOOR_SIM_MAX_RUN_TICKS', 'FLOOR_SIM_ROUTE_VISIT_BUDGET']);
+    // And both guards are on the sim's side of the split, which is what makes
+    // the sentence above about them rather than about a knob that happens to
+    // be spelled like one.
+    for (const guard of guards) expect(readByTheSim).toContain(guard);
+  });
+
+  it('splits the FLOOR_SIM_ prefix into the sim block and the renderer block, in both directions', () => {
+    // WHAT THIS ADDS OVER THE COUNT ABOVE. A count of 25 is satisfied by any
+    // 25 keys, including a renderer knob the sim started reading — which is
+    // precisely the widening `empireTuning.ts`'s block comments promise cannot
+    // happen. This reads BOTH modules' source and asserts the prefix
+    // partitions exactly: every entry is read by one of the two and never by
+    // both, with each side's count pinned.
+    //
+    // Its limit, stated because the mechanism does not reach past it: this is
+    // a dotted-source scan of two files, so an alias or a computed access
+    // reads keys it cannot see. That route already has a catcher on the sim's
+    // side — the alias-count and bracket-access bans in `reads exactly the
+    // fifteen tuning entries it declares` below — and none on the renderer's,
+    // which is stated here rather than implied away.
+    const block = Object.keys(T).filter((key) => key.startsWith('FLOOR_SIM_'));
+    const readByTheRenderer = block.filter((key) => namedIn(FLOOR_GRID_SOURCE).has(key));
+    expect(readByTheSim.length).toBe(13);
+    expect(readByTheRenderer.length).toBe(12);
+    expect([...readByTheSim, ...readByTheRenderer].sort()).toEqual([...block].sort());
+    for (const key of readByTheSim) {
+      expect(readByTheRenderer, `${key} is read by both modules`).not.toContain(key);
+    }
+    // The empty-domain guard: a scan that had stopped matching anything would
+    // make both lists empty and the disjointness above vacuous.
+    expect(namedIn(FLOOR_GRID_SOURCE).size).toBeGreaterThan(0);
+    expect(namedIn(FLOOR_SIM_SOURCE).size).toBeGreaterThan(0);
   });
 });
 
@@ -1881,6 +1920,27 @@ const TUNING_READS: readonly string[] = Object.freeze([
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const FLOOR_SIM_SOURCE = readFileSync(path.join(HERE, 'floorSim.ts'), 'utf8');
+const FLOOR_GRID_SOURCE = readFileSync(path.join(HERE, 'FloorGrid.tsx'), 'utf8');
+
+/**
+ * Which `EMPIRE_TUNING` entries a body of source actually reads, comments
+ * stripped first — the same reading `reads exactly the fifteen tuning entries
+ * it declares` does, lifted out so the sim's source and the renderer's are
+ * scanned by one function rather than two copies of one.
+ */
+function namedIn(source: string): ReadonlySet<string> {
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  const named = new Set<string>();
+  for (const match of code.matchAll(/EMPIRE_TUNING\.([A-Z][A-Z0-9_]*)/g)) {
+    named.add(match[1] as string);
+  }
+  return named;
+}
+
+/** The `FLOOR_SIM_` entries `floorSim.ts` itself reads. */
+const readByTheSim: readonly string[] = Object.keys(T)
+  .filter((key) => key.startsWith('FLOOR_SIM_'))
+  .filter((key) => namedIn(FLOOR_SIM_SOURCE).has(key));
 const EMPIRE_TUNING_SOURCE = readFileSync(path.join(HERE, 'empireTuning.ts'), 'utf8');
 
 describe('the sim reads presentation inputs and nothing economic', () => {

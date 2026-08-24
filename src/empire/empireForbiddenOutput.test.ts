@@ -1491,7 +1491,10 @@ const SURFACE_CENSUS = Object.freeze({
   // union at every position it reaches, and FLOOR_SIM_INTERRUPTIBLE_STATES
   // arrives as a new closed union of its own. Read from this pin's own failure
   // value.
-  LITERAL_POSITIONS: 2390,
+  // 2390 -> 2402: Phase 3's RENDER half. Read from this pin's own failure
+  // value: the twelve new tuning keys each add a literal position wherever the
+  // walk reaches EMPIRE_TUNING's own key union.
+  LITERAL_POSITIONS: 2402,
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -2582,7 +2585,11 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // this exact assertion rather than hand-counted.
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // GDD §5.13 Phase 3, the route-blocked round: read from this pin's own failure value.
-  CALLS_EXAMINED: 1914,
+  // 1914 -> 1958: Phase 3's RENDER half's new call expressions in
+  // FloorGrid.tsx (the walk tween, the pulse loop, the interval, the sim
+  // reads and the two new `.map` renders). Read from this pin's own failure
+  // value.
+  CALLS_EXAMINED: 1956,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3885,6 +3892,62 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     'FLOOR_SIM_MAX_RUN_TICKS',
     'A GUARD CEILING, in sim ticks, compared against `runFloorSim`\'s own `ticks` argument. That argument IS caller-supplied, which is why this row says so rather than claiming otherwise — and it is a horizon a test harness picks, not an economic quantity, so no domain in this file is denominated in it. `floorSim.test.ts` drives both sides of the comparison, at the budget and one past it.',
   ),
+  // GDD §5.13 presentation Phase 3's RENDER half — twelve entries in the same
+  // class as the rendering rows above (FLOOR_TILE_PIXELS and its neighbours):
+  // wall-clock durations, pixel dimensions, opacities and stacking orders that
+  // `FloorGrid.tsx` writes into a style object or hands to a timer. None of
+  // them is compared against a caller-supplied value anywhere in this
+  // directory, because `floorSim.ts` — the only module here that compares
+  // anything — reads none of them; `empireCore.test.ts`'s per-file import
+  // fence and `empireTuning.ts`'s own block comment both say so.
+  ...exemptTable(
+    'FLOOR_SIM_TICK_INTERVAL_MS',
+    'A WALL-CLOCK PERIOD, in milliseconds, handed to `setInterval` by `FloorGrid.tsx`. It is the exchange rate between a sim tick and a second, and the sim itself holds no clock, so nothing in this directory compares a value against it. Same class as FLOOR_OVERLAP_REFUSAL_FLASH_MS and AMBIENT_MEMBER_BOB_HALF_CYCLE_MS above.',
+  ),
+  ...exemptTable(
+    'FLOOR_SIM_MOVE_TWEEN_MS',
+    'A RENDERING/TIMING DURATION — `FloorGrid.tsx` passes it straight to `Animated.timing`\'s `duration` for the walk tween, exactly as AMBIENT_MEMBER_BOB_HALF_CYCLE_MS is passed for the idle bob. Drawn, never compared.',
+  ),
+  ...exemptTable(
+    'FLOOR_SIM_RENDER_SEED',
+    'A SEED, handed whole to `createFloorSimState`. `floorSim.ts` mixes it into a hash and never compares it against anything, and this directory has no axis denominated in seeds. Its value is 1, which is a shape point every domain here carries anyway.',
+  ),
+  ...exemptTable(
+    'FLOOR_SIM_CUE_DIAMETER_FRACTION',
+    'A RENDERING FRACTION, the same class as AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION above — a member\'s footprint multiplied down to the size of its state cue. Drawn, never compared against a caller-supplied value.',
+  ),
+  ...exemptTable(
+    'FLOOR_SIM_CUE_GAP_PIXELS',
+    'A RENDERING DIMENSION — the pixel gap between a member and its cue, applied as a style offset. Drawn, never compared, the same class as the border-width rows above.',
+  ),
+  ...exemptTable(
+    'FLOOR_SIM_INTERRUPTED_CUE_SCALE',
+    'A RENDERING MULTIPLIER — how much larger the cue is drawn during an interruption beat. It multiplies FLOOR_SIM_CUE_DIAMETER_FRACTION\'s own output and is compared with nothing.',
+  ),
+  ...exemptTable(
+    'FLOOR_SIM_LEAVING_OPACITY',
+    'A RENDERING OPACITY, in [0, 1], written into a style object for a member that is stepping away from a machine. Drawn, never compared against a caller-supplied value.',
+  ),
+  ...exemptTable(
+    'FLOOR_SIM_USING_PULSE_AMPLITUDE_PIXELS',
+    'A RENDERING DIMENSION — the top of the `using` pulse\'s interpolation range, applied as an additive `translateY`. The same class as AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS above, and additive on top of it.',
+  ),
+  ...exemptTable(
+    'FLOOR_SIM_USING_PULSE_HALF_CYCLE_MS',
+    'A RENDERING/TIMING DURATION, the sibling of FLOOR_SIM_MOVE_TWEEN_MS above applied to the `using` pulse instead of the walk tween, listed under this file\'s own rule about arms of one decision.',
+  ),
+  ...exemptTable(
+    'FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS',
+    'A RENDERING DIMENSION, the same class as FLOOR_ITEM_BORDER_WIDTH_PIXELS above — the border width of a station highlight and of the ring held around a stranded member. Drawn, never compared.',
+  ),
+  ...exemptTable(
+    'FLOOR_SIM_MEMBER_Z_INDEX',
+    'A RENDERING STACK ORDER, the same class as FLOOR_DRAGGING_Z_INDEX above. Applied as a style value; nothing in this directory branches on whether a z-index is above or below it.',
+  ),
+  ...exemptTable(
+    'FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX',
+    'A RENDERING STACK ORDER, the sibling of the row above applied to a station highlight instead of a member — it draws over the equipment chip it outlines and under the members walking past it. Applied as a style value, compared with nothing.',
+  ),
 ]);
 
 /**
@@ -4428,7 +4491,9 @@ const FIXTURE_LISTS: readonly FixtureList[] = Object.freeze([
     // 219 -> 230: GDD §5.13 presentation Phase 3's seventeen new exempt
     // leaves widened the SECONDS domain by eleven points, measured by running
     // the assertion below.
-    size: 230,
+    // 230 -> 233: Phase 3's RENDER half's twelve new exempt leaves widened it
+    // by three more, measured the same way.
+    size: 233,
     why: 'One clock per point of the seconds domain, at a fixed skip. Derived, so the seconds domain losing its ceiling this round widened this list without anybody touching it.',
   }),
   Object.freeze({
@@ -4618,6 +4683,12 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   // ceiling is low enough that a dwell measured in sim ticks sits above it,
   // which says the two are denominated in different things rather than that
   // anything is wrong.
+  // Phase 3's RENDER half: three millisecond durations above ROSTER_SHAPE's
+  // ceiling and below DAY's and COUNT's, which is why they appear here once
+  // rather than three times each.
+  'ROSTER_SHAPE/FLOOR_SIM_MOVE_TWEEN_MS=120',
+  'ROSTER_SHAPE/FLOOR_SIM_TICK_INTERVAL_MS=120',
+  'ROSTER_SHAPE/FLOOR_SIM_USING_PULSE_HALF_CYCLE_MS=260',
   'ROSTER_SHAPE/FLOOR_SIM_MAX_RUN_TICKS=20000',
   'ROSTER_SHAPE/FLOOR_SIM_ROUTE_VISIT_BUDGET=4096',
   'ROSTER_SHAPE/FLOOR_SIM_USE_TICKS_BY_TYPE.athlete=22',
@@ -4701,8 +4772,11 @@ const DOMAIN_CENSUS = Object.freeze({
   // (FLOOR_SIM_USE_TICKS_BY_TYPE x5 plus twelve scalars), every one an
   // `exemptTable` row with its own reason above. Measured by running the
   // assertion below.
+  // 210 -> 222: Phase 3's RENDER half's twelve new scalar knobs, every one an
+  // `exemptTable` row with its own reason above. Measured by running the
+  // assertion below.
   /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
-  EXEMPT: 210,
+  EXEMPT: 222,
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
   // 264 -> 266: the same 2 new leaves.
   // 266 -> 273: the same 7 new leaves.
@@ -4710,7 +4784,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // assertion below.
   // 281 -> 298: the same 17 new leaves, measured by running the assertion
   // below.
-  TUNING_NUMERIC_LEAVES: 298,
+  // 298 -> 310: the same 12 new leaves, measured by running the assertion
+  // below.
+  TUNING_NUMERIC_LEAVES: 310,
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -4725,8 +4801,11 @@ const DOMAIN_CENSUS = Object.freeze({
   // 283 -> 300: the same 17 new exempt leaves (FILED unchanged at 88, the 2
   // derived seconds entries unchanged), measured by running the assertion
   // below.
+  // 300 -> 312: Phase 3's RENDER half's twelve new exempt leaves (FILED
+  // unchanged at 88, the 2 derived seconds entries unchanged), measured by
+  // running the assertion below.
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
-  BRANCH_POINTS: 300,
+  BRANCH_POINTS: 312,
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -4742,7 +4821,9 @@ const DOMAIN_CENSUS = Object.freeze({
   // 1432 -> 1476: PLAYTEST 4's eight new exempt tuning leaves, same shape,
   // measured by running the assertion below.
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
-  CONTAINMENT_CHECKS: 1567,
+  // Phase 3's RENDER half (1567 -> 1636): the same shape, read from this
+  // pin's own failure value.
+  CONTAINMENT_CHECKS: 1636,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -4773,7 +4854,14 @@ const DOMAIN_CENSUS = Object.freeze({
     // 96 -> 98: PLAYTEST 4's AMBIENT_MEMBER_BOB_HALF_CYCLE_MS=900 and
     // AMBIENT_MEMBER_BOB_STAGGER_STEP_MS=150, both above ROSTER_SHAPE's
     // ceiling. The other six new knobs are not.
-    ROSTER_SHAPE: 105,
+    // 105 -> 108: Phase 3's RENDER half's three millisecond durations
+    // (FLOOR_SIM_TICK_INTERVAL_MS=120, FLOOR_SIM_MOVE_TWEEN_MS=120,
+    // FLOOR_SIM_USING_PULSE_HALF_CYCLE_MS=260) sit above ROSTER_SHAPE's
+    // ceiling; none of them is above DAY's or COUNT's, which is why those two
+    // do not move. The nine other new leaves are pixel sizes, fractions, a
+    // seed and two z-indices, all small. Measured by running the assertion
+    // below.
+    ROSTER_SHAPE: 108,
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -4813,11 +4901,14 @@ const DOMAIN_CENSUS = Object.freeze({
   // rather than derived: NUMBER_CONTAINMENT_CHECKS 867 -> 882, NUMBER_POINTS
   // 284 -> 287, SECONDS_POINTS 216 -> 219.
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
-  NUMBER_CONTAINMENT_CHECKS: 924,
+  // Phase 3's RENDER half: 924 -> 939, read the same way.
+  NUMBER_CONTAINMENT_CHECKS: 939,
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
-  NUMBER_POINTS: 297,
+  // Phase 3's RENDER half: 297 -> 300, read the same way.
+  NUMBER_POINTS: 300,
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
-  SECONDS_POINTS: 230,
+  // Phase 3's RENDER half: 230 -> 233, read the same way.
+  SECONDS_POINTS: 233,
   // 74 -> 76: GDD §5.13 presentation Phase 2's exempt tuning leaves widened
   // the COUNT domain by two points, cross-checked directly against
   // `NUMERIC_DOMAINS.COUNT.points.length` by running the assertion below.
@@ -4829,11 +4920,14 @@ const DOMAIN_CENSUS = Object.freeze({
   // land on a fixed per-domain delta (some straddle points coincide with
   // values already in the domain).
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
-  DAY_POINTS: 80,
+  // Phase 3's RENDER half: 80 -> 83, read the same way.
+  DAY_POINTS: 83,
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
-  COUNT_POINTS: 84,
+  // Phase 3's RENDER half: 84 -> 87, read the same way.
+  COUNT_POINTS: 87,
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
-  LEVEL_POINTS: 216,
+  // Phase 3's RENDER half: 216 -> 219, read the same way.
+  LEVEL_POINTS: 219,
   ROSTER_SHAPE_POINTS: 17,
 });
 
@@ -7538,16 +7632,13 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
 // point sets further, moving every row here again: COUNT 752 -> 782,
 // DAY 12030 -> 12537, ROSTER_SHAPE 87601 -> 88519. Measured by running the
 // assertion below rather than derived.
+// Phase 3's RENDER half's twelve new exempt leaves widened them again:
+// COUNT 832 -> 862, DAY 13382 -> 13889, ROSTER_SHAPE 91630 -> 92548. Measured
+// by running the assertion below rather than derived.
 const MAIN_DRIVE_ROWS_BY_AXIS: Readonly<Record<string, number>> = Object.freeze({
-  // GDD §5.13 presentation Phase 3: re-measured by running this assertion
-  // and reading its failure value.
-  COUNT: 832,
-  // GDD §5.13 presentation Phase 3: re-measured by running this assertion
-  // and reading its failure value.
-  DAY: 13382,
-  // GDD §5.13 presentation Phase 3: re-measured by running this assertion
-  // and reading its failure value.
-  ROSTER_SHAPE: 91630,
+  COUNT: 862,
+  DAY: 13889,
+  ROSTER_SHAPE: 92548,
 });
 
 /**
@@ -7975,14 +8066,19 @@ const OVERFLOW_CENSUS = Object.freeze({
   // and AMBIENT_MEMBER_BOB_STAGGER_STEP_MS, both above their ceilings).
   // GDD §5.13 presentation Phase 3: re-measured by running this assertion
   // and reading its failure value.
-  POINTS: 233,
+  // Phase 3's RENDER half: OMITTED_ABOVE_CEILING's sum moved 233 -> 236
+  // (ROSTER_SHAPE 105 -> 108, the three millisecond durations above its
+  // ceiling). Re-measured by running this assertion.
+  POINTS: 236,
   /** Of those, how many at least one subject was driven at. */
   // Tracks POINTS 1:1 again (218), confirmed by running the assertion below
   // rather than assumed. PLAYTEST 4: tracks POINTS 1:1 again (222), confirmed
   // by running this exact assertion.
   // GDD §5.13 presentation Phase 3: re-measured by running this assertion
   // and reading its failure value.
-  POINTS_DRIVEN: 233,
+  // Phase 3's RENDER half: tracks POINTS 1:1 again (236), confirmed by
+  // running this exact assertion.
+  POINTS_DRIVEN: 236,
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -8007,7 +8103,8 @@ const OVERFLOW_CENSUS = Object.freeze({
   // left at a sentinel to be corrected from the next run's real failure.
   // GDD §5.13 presentation Phase 3: PAIRS_DRIVEN re-measured (3371 -> 3562),
   // a real failure value this round's own run produced.
-  PAIRS_DRIVEN: 3562,
+  // Phase 3's RENDER half: re-measured (3562 -> 3631).
+  PAIRS_DRIVEN: 3631,
   // GDD §5.13 presentation Phase 3: PAIRS_SKIPPED re-measured (495 -> 517),
   // a real failure value this round's own run produced.
   PAIRS_SKIPPED: 517,
@@ -8071,16 +8168,21 @@ const OVERFLOW_CENSUS = Object.freeze({
   // field on OVERFLOW_CENSUS for this round.
   // GDD §5.13 presentation Phase 3: re-measured by running this assertion
   // and reading its failure value.
-  ROWS: 4394,
+  // Phase 3's RENDER half: re-measured (4394 -> 4463) by running this
+  // assertion and reading its failure value.
+  ROWS: 4463,
   // GDD §5.13 presentation Phase 3: re-measured (942486 -> 947983), a real
   // failure value this round's own run produced.
-  NODES: 947983,
+  // Phase 3's RENDER half: re-measured (947983 -> 960248).
+  NODES: 960248,
   // GDD §5.13 presentation Phase 3: re-measured (6413124 -> 6446099), a real
   // failure value this round's own run produced.
-  STRINGS: 6446099,
+  // Phase 3's RENDER half: re-measured (6446099 -> 6540148).
+  STRINGS: 6540148,
   // GDD §5.13 presentation Phase 3: re-measured (4366 -> 4378), a real
   // failure value this round's own run produced.
-  DISTINCT_STRINGS: 4378,
+  // Phase 3's RENDER half: re-measured (4378 -> 4381).
+  DISTINCT_STRINGS: 4381,
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
   /**
@@ -8135,7 +8237,10 @@ const OVERFLOW_CENSUS = Object.freeze({
   // assertion below rather than derived.
   // GDD §5.13 presentation Phase 3: re-measured (424 -> 464), a real
   // failure value this round's own run produced.
-  CLOSURES_DECLINED: 464,
+  // Phase 3's RENDER half: re-measured (464 -> 488). The overflow pass sees
+  // FloorGrid's new render closures at every dropped point it drives, and
+  // declines them for the same reason it declined the others.
+  CLOSURES_DECLINED: 488,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -8175,7 +8280,7 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // 98 -> 105: GDD §5.13 presentation Phase 3's seven more dropped
   // ROSTER_SHAPE points (the two FLOOR_SIM guards and the five per-type use
   // durations), refused the same way. Measured by running this assertion.
-  ['beginRecruitment#refused', 105],
+  ['beginRecruitment#refused', 108],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -8491,7 +8596,9 @@ const DRIVE_CENSUS = Object.freeze({
   // GDD §5.13 Phase 3, the route-blocked round: 349374 -> 349375, the one new
   // driven export (FLOOR_SIM_INTERRUPTIBLE_STATES). Read from this pin's own
   // failure value.
-  ROWS: 349375,
+  // Phase 3's RENDER half: re-measured (349375 -> 355132) by running this
+  // assertion and reading its failure value.
+  ROWS: 355132,
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -8515,7 +8622,8 @@ const DRIVE_CENSUS = Object.freeze({
   // GDD §5.13 presentation Phase 3: NODES re-measured (3557756 -> 3675964),
   // a real failure value this round's own run produced.
   // GDD §5.13 Phase 3, the route-blocked round: read from this pin's own failure value.
-  NODES: 3675966,
+  // Phase 3's RENDER half: re-measured (3675966 -> 3783596).
+  NODES: 3783596,
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -8531,7 +8639,8 @@ const DRIVE_CENSUS = Object.freeze({
   // failure value this round's own run produced.
   // GDD §5.13 Phase 3, the route-blocked round: re-measured (16899790 ->
   // 16900230), a real failure value this round's own run produced.
-  STRINGS: 16900230,
+  // Phase 3's RENDER half: re-measured (16900230 -> 17409837).
+  STRINGS: 17409837,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -8543,7 +8652,8 @@ const DRIVE_CENSUS = Object.freeze({
   // GDD §5.13 presentation Phase 3: re-measured (2592 -> 2693), a real
   // failure value this round's own run produced.
   // GDD §5.13 Phase 3, the route-blocked round: read from this pin's own failure value.
-  DISTINCT_STRINGS: 2695,
+  // Phase 3's RENDER half: re-measured (2695 -> 2725).
+  DISTINCT_STRINGS: 2725,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -8632,7 +8742,8 @@ const DRIVE_CENSUS = Object.freeze({
   // functions, the same shape as the two entries above.
   // GDD §5.13 presentation Phase 3: re-measured (4408 -> 4530), a real
   // failure value this round's own run produced.
-  STACKS: 4530,
+  // Phase 3's RENDER half: re-measured (4530 -> 4569).
+  STACKS: 4569,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -9292,7 +9403,11 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   // GDD §5.13 presentation Phase 3's 17 new exempt tuning leaves widened the
   // NUMBER/COUNT/DAY/LEVEL/SECONDS domains again, moving six of these arms —
   // every one re-measured by running this exact assertion rather than derived.
-  ['buyLadderEquipment#bought', 3624],
+  // Phase 3's RENDER half widened the ROSTER_SHAPE/SECONDS domains by three
+  // millisecond points, so five arm counts rose with the domain rather than
+  // with any change to the functions themselves. Each was re-measured by
+  // running this assertion and reading its failure value.
+  ['buyLadderEquipment#bought', 3636],
   // The ROSTER_SHAPE domain widened by members.ts's five new distinct dues
   // values (§5.11 stage 3) independently of GDD §5.13 presentation Phase 1's
   // 42 new exempt tuning leaves widening it again — every arm count driven
@@ -9305,15 +9420,15 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   // PLAYTEST 4's eight new exempt tuning leaves widened the domains again,
   // moving four of these arms further — measured by running this exact
   // assertion rather than derived.
-  ['buyLadderEquipment#refused', 10632],
+  ['buyLadderEquipment#refused', 10764],
   ['buySessionEquipment#bought', 76],
   ['buySessionEquipment#refused', 260],
   ['moveUpLadder#moved', 759],
-  ['moveUpLadder#refused', 2805],
+  ['moveUpLadder#refused', 2841],
   ['placeFloorItem#placed', 2],
   ['placeFloorItem#refused', 3],
-  ['recordFriendVisit#refused', 482],
-  ['recordFriendVisit#visited', 158],
+  ['recordFriendVisit#refused', 500],
+  ['recordFriendVisit#visited', 164],
 ]);
 
 /**
@@ -12353,11 +12468,23 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // so it could compute `isRefusalTarget` first.
       // 6 -> 8: GDD §5.13 presentation Phase 2 — `colorForMemberType`'s own
       // `return`, plus the `ambient.map` callback's block-body `return`.
-      // 8 -> 9: PLAYTEST 4 — `AmbientMemberBody`'s own JSX `return`. Its
-      // `useEffect` cleanup (`return () => loop.stop();`) does NOT count
-      // here — it returns a closure, so the census classifies it under
-      // `returned-closure` instead, below.
-      'FloorGrid.tsx': 9,
+      // 8 -> 9: PLAYTEST 4 — `AmbientMemberBody`'s own JSX `return`.
+      //
+      // THAT ENTRY USED TO SAY the `useEffect` cleanup (`return () =>
+      // loop.stop();`) does not count here because the census files it under
+      // `returned-closure` instead. Measured while adding the row below, that
+      // is not what the census does: a returned arrow is counted on BOTH
+      // rows. At HEAD this file held nine `return` statements including that
+      // cleanup, and this row read nine while `returned-closure` read one. The
+      // sentence is corrected rather than deleted because the arithmetic below
+      // only adds up under the corrected reading.
+      //
+      // 9 -> 17: Phase 3's RENDER half's eight new `return` statements —
+      // `memberTilePoint`'s two, `stationKey`'s one, the sim tick's cleanup
+      // (also on the `returned-closure` row), the two early returns guarding
+      // the rung rebuild and the tick, and the station-highlight `.map`
+      // callback's two. Read from this table's own failure value.
+      'FloorGrid.tsx': 17,
       // CROSSING 6: GymScreen.tsx's own two helper functions
       // (`allocationOptions`, `describeSlotOutcome`, the latter with three
       // return statements across its three arms) plus the component's own
@@ -12458,8 +12585,15 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
      * `useEffect` cleanup, `return () => loop.stop();` — literally an arrow,
      * the same shape as the two above. Also named in
      * `DECLARED_RETURNED_CLOSURE_SITES`.
+     *
+     * Phase 3's RENDER half adds a fourth overall, in the same module and the
+     * same shape: `FloorGrid`'s own sim-tick teardown, `return () =>
+     * clearInterval(timer);`. It is named in
+     * `DECLARED_RETURNED_CLOSURE_SITES` like the others, which is a set
+     * equality in both directions, so a fifth is red before it is ever
+     * called.
      */
-    'returned-closure': Object.freeze({ 'FloorGrid.tsx': 1, 'empireInvariant.ts': 2 }),
+    'returned-closure': Object.freeze({ 'FloorGrid.tsx': 2, 'empireInvariant.ts': 2 }),
     'deferred-completion': Object.freeze({}),
   });
 
@@ -12612,6 +12746,15 @@ const DECLARED_RETURNED_CLOSURE_SITES: readonly string[] = Object.freeze([
   // `return () => loop.stop();` — a literal arrow, the same shape as the two
   // `rosterRatesAt` sites below, in a new module.
   'FloorGrid.tsx#AmbientMemberBody#closure:return',
+  // Phase 3's RENDER half: one more, `FloorGrid`'s own sim-tick teardown,
+  // `return () => clearInterval(timer);`. `AmbientMemberBody` stays at one
+  // because this census keys a site by MEMBER PATH — two cleanups in one
+  // component would be one key twice, and the seal check pins DISTINCT
+  // members against these lists' length. That is why the walk tween, the idle
+  // bob and the `using` pulse share one effect with one cleanup between them
+  // rather than taking an effect each; the constraint is written at the site
+  // too.
+  'FloorGrid.tsx#FloorGrid#closure:return',
   'empireInvariant.ts#rosterRatesAt#closure:.gymBucksPerHour',
   'empireInvariant.ts#rosterRatesAt#closure:.trainingIqPerDay',
 ]);
@@ -12705,9 +12848,15 @@ const RETURNED_CLOSURE_SEAL = Object.freeze({
  * directions, to the channel census's whole `returned-closure` list. A
  * fourth arrival of either shape is red until it is filed on the correct
  * side of this split.
+ *
+ * Phase 3's RENDER half brings one more of exactly that shape and it is filed
+ * here for exactly that reason: `FloorGrid`'s own sim-tick teardown,
+ * `() => clearInterval(timer)`. It has no member name, composes no rate label,
+ * and its whole body stops something this file started.
  */
 const DECLARED_UNSEALED_RETURNED_CLOSURE_SITES: readonly string[] = Object.freeze([
   'FloorGrid.tsx#AmbientMemberBody#closure:return',
+  'FloorGrid.tsx#FloorGrid#closure:return',
 ]);
 
 interface ReturnedClosureSealReading {
@@ -13063,14 +13212,22 @@ const SCREEN_AGREEMENT = Object.freeze({
 const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze({
   parameter: 4,
   'module-variable': 53,
-  local: 5,
+  // 5 -> 7: Phase 3's RENDER half's two calls through a local binding in
+  // `AmbientMemberBody`'s single animation effect (`bobLoop.start()`,
+  // `pulseLoop.stop()`). Read from this table's own failure value.
+  local: 7,
   // GDD §5.13 presentation Phase 3: function 827 -> 918, member 810 -> 889,
   // member-of-parameter 21 -> 27, all floorSim.ts's own call targets. Read
   // from this table's own failure value.
-  function: 918,
+  // 918 -> 936: Phase 3's RENDER half's own new call targets in FloorGrid.tsx
+  // (the sim reads, the walk tween, the station derivation, the two new
+  // renders). Read from this table's own failure value.
+  function: 936,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
-  member: 901,
+  // 901 -> 923: Phase 3's RENDER half's new member expressions in
+  // FloorGrid.tsx. Read from this pin's own failure value.
+  member: 923,
   'member-callback': 12,
   'member-of-parameter': 21,
   fresh: 0,
@@ -13108,7 +13265,11 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // hand-counted.
   // GDD §5.13 Phase 3, the route-blocked round: 197 -> 200, floorSim.ts's own
   // new local writes. Read from this pin's own failure value.
-  local: 200,
+  // 200 -> 204: Phase 3's RENDER half's own local writes in FloorGrid.tsx.
+  // `parameter` and `module-variable` stay at zero, which is the half of this
+  // table that matters: this round opened no `argument-mutation` and no
+  // `module-mutable-state` channel. Read from this pin's own failure value.
+  local: 204,
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -13159,7 +13320,10 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // sites and 2 exported-binding sites. Read from this pin's own failure
   // value.
   // GDD §5.13 Phase 3, the route-blocked round: read from this pin's own failure value.
-  SITES: 545,
+  // Phase 3's RENDER half: 545 -> 554, the eight new `return` statements and
+  // the one new returned closure in FloorGrid.tsx. Read from this pin's own
+  // failure value.
+  SITES: 554,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -13191,7 +13355,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 37_662 -> 42_276: GDD §5.13 presentation Phase 3's floorSim.ts. Measured
   // by running the assertion below rather than hand-counted.
   // GDD §5.13 Phase 3, the route-blocked round: read from this pin's own failure value.
-  NODES_EXAMINED: 42_470,
+  // Phase 3's RENDER half: re-measured (42_470 -> 43_765), FloorGrid.tsx's own
+  // new AST nodes. Read from this pin's own failure value.
+  NODES_EXAMINED: 43_765,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -14640,9 +14806,13 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // LEVEL/SECONDS/ROSTER_SHAPE, so every subject below driven over one of
   // those domains moved. Every count re-measured by running the assertion
   // below rather than derived.
+  // Phase 3's RENDER half: twelve more exempt leaves, the same widening, and
+  // every number below moved again. Re-measured the same way — NUMBER
+  // 297 -> 300, the engagement domain 129 -> 132, ROSTER_SHAPE 84 -> 85, and
+  // each subject's call/record counts with them.
   'FloorGrid.tsx#FloorGrid#props#owned': Object.freeze({
-    points: 297,
-    refusedPoints: 297,
+    points: 300,
+    refusedPoints: 300,
     calls: 0,
     recorded: 0,
   }),
@@ -14651,46 +14821,46 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // constant callsAt (does not vary with the point), so the same domain
   // produces the same points/calls/recorded on the ported screen.
   'GymScreen.tsx#GymScreen#props.dispatch#gymBucks': Object.freeze({
-    points: 297,
+    points: 300,
     refusedPoints: 0,
-    calls: 10395,
-    recorded: 10395,
+    calls: 10500,
+    recorded: 10500,
   }),
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
-    points: 129,
+    points: 132,
     refusedPoints: 1,
-    calls: 1125524,
-    recorded: 1125524,
+    calls: 1126304,
+    recorded: 1126304,
   }),
   'engagement.ts#historyFrom#attended#trainedDays': Object.freeze({
-    points: 129,
+    points: 132,
     refusedPoints: 0,
-    calls: 387,
-    recorded: 387,
+    calls: 396,
+    recorded: 396,
   }),
   'ladderView.tsx#GymView#props.dispatch#gymBucks': Object.freeze({
-    points: 297,
+    points: 300,
     refusedPoints: 0,
-    calls: 10395,
-    recorded: 10395,
+    calls: 10500,
+    recorded: 10500,
   }),
   'ladderView.tsx#LadderView#props.dispatch#gymBucks': Object.freeze({
-    points: 297,
+    points: 300,
     refusedPoints: 0,
-    calls: 1485,
-    recorded: 1485,
+    calls: 1500,
+    recorded: 1500,
   }),
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize': Object.freeze({
-    points: 84,
+    points: 85,
     refusedPoints: 0,
-    calls: 1117619,
-    recorded: 2235238,
+    calls: 1117879,
+    recorded: 2235758,
   }),
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize': Object.freeze({
-    points: 84,
+    points: 85,
     refusedPoints: 0,
-    calls: 1117619,
-    recorded: 2235238,
+    calls: 1117879,
+    recorded: 2235758,
   }),
 });
 
@@ -14746,16 +14916,20 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // over the now-measured `DECLARED_CALLBACK_AXES` entries.
   // GDD §5.13 presentation Phase 3: re-measured (1552 -> 1614), a real
   // failure value this round's own run produced.
-  POINTS: 1614,
+  // Phase 3's RENDER half: re-measured (1614 -> 1634).
+  POINTS: 1634,
   // GDD §5.13 presentation Phase 3: re-measured (288 -> 298), a real
   // failure value this round's own run produced.
-  REFUSED_POINTS: 298,
+  // Phase 3's RENDER half: re-measured (298 -> 301).
+  REFUSED_POINTS: 301,
   // GDD §5.13 presentation Phase 3: re-measured (3310026 -> 3383424), a real
   // failure value this round's own run produced.
-  CALLS: 3383424,
+  // Phase 3's RENDER half: re-measured (3383424 -> 3384958).
+  CALLS: 3384958,
   // GDD §5.13 presentation Phase 3: re-measured (5496920 -> 5618662), a real
   // failure value this round's own run produced.
-  RECORDED: 5618662,
+  // Phase 3's RENDER half: re-measured (5618662 -> 5620716).
+  RECORDED: 5620716,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
@@ -17253,7 +17427,8 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 183 -> 184: PLAYTEST 4's `AmbientMemberBodyProps` (FloorGrid.tsx).
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // GDD §5.13 Phase 3, the route-blocked round: read from this pin's own failure value.
-  DECLARATIONS: 194,
+  // 194 -> 195: Phase 3's RENDER half adds `FloorTilePoint` in FloorGrid.tsx.
+  DECLARATIONS: 195,
   /** Those carrying type parameters. An instantiation depth needs one. */
   GENERIC: 12,
   /**
@@ -17723,9 +17898,10 @@ function ambientMemberBodyPropSurface(): AmbientPropSurface {
 }
 
 /**
- * The closed prop surface `AmbientMemberBody`'s own header claims — four
- * members, and the TYPE of each. Set-equal in both directions, so a member
- * removed is red the same as one added, and a member RETYPED is red as well.
+ * The closed prop surface `AmbientMemberBody`'s own header claims — seven
+ * members since Phase 3's RENDER half (four before it), and the TYPE of each.
+ * Set-equal in both directions, so a member removed is red the same as one
+ * added, and a member RETYPED is red as well.
  *
  * WHAT EACH SHAPE SAYS, since the strings carry the round's actual content.
  * `number` is a primitive the render stops at rather than descending into (see
@@ -17755,7 +17931,23 @@ function ambientMemberBodyPropSurface(): AmbientPropSurface {
  */
 const DECLARED_AMBIENT_MEMBER_BODY_PROPS: readonly AmbientPropReading[] = Object.freeze([
   Object.freeze({ name: 'index', shape: 'number' }),
+  // Phase 3's RENDER half's three new members, each read off the sim and each
+  // a closed literal union or a boolean — no bare number that could carry a
+  // balance, no object that could hold a callable, and nothing an economic
+  // value could arrive in. `state` renders `FLOOR_SIM_MEMBER_STATES`'s five
+  // arms and `interruptedBy` renders `FLOOR_SIM_INTERRUPTIONS`'s three plus
+  // null, so widening either vocabulary in `floorSim.ts` reddens here too —
+  // the same maintenance cost `type` already carries, for the same reason.
+  Object.freeze({
+    name: 'interruptedBy',
+    shape: 'union["route-blocked"|"target-moved"|"target-removed"|null]',
+  }),
   Object.freeze({ name: 'position', shape: 'object{x:number,y:number}' }),
+  Object.freeze({
+    name: 'state',
+    shape: 'union["interrupted"|"leaving"|"queuing"|"seeking"|"using"]',
+  }),
+  Object.freeze({ name: 'stranded', shape: 'union[false|true]' }),
   Object.freeze({ name: 'tile', shape: 'number' }),
   Object.freeze({
     name: 'type',
@@ -17823,8 +18015,8 @@ const PROP_SURFACE_CENSUS = Object.freeze({
  * The control: an interface built to carry a channel at every position this
  * round is about, served from memory and never written to disk.
  *
- * WHY IT IS HERE AT ALL. The shipped reading's whole output is four data
- * members, an empty `holdAFunction` list and two zeros — every number it pins
+ * WHY IT IS HERE AT ALL. The shipped reading's whole output is seven data
+ * members, a one-row `holdAFunction` list and two zeros — every number it pins
  * is the boring answer, and a walk that had quietly stopped walking would
  * produce the identical boring answer. This battery is the domain the zeros are
  * zero against, in the shape `src/game/streakSweep.ts` sets for a sweep in this

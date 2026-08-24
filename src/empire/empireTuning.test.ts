@@ -617,14 +617,21 @@ describe('§5.5 social', () => {
     // Measured by running this assertion and reading its failure value.
     // 120 -> 133: GDD §5.13 presentation Phase 3's thirteen FLOOR_SIM entries.
     // Measured by running this assertion and reading its failure value.
-    expect(examined).toBe(133);
+    // 133 -> 145: Phase 3's RENDER half adds twelve more FLOOR_SIM entries —
+    // the tick interval, the move tween, the render seed, the cue's diameter
+    // fraction / gap / interrupted scale, the leaving opacity, the using
+    // pulse's amplitude and half-cycle, the highlight border width, and the
+    // two z-indices. Measured by running this assertion and reading its
+    // failure value, not computed by hand.
+    expect(examined).toBe(145);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
     // 435 -> 525 -> 535 -> 545 -> 560 -> 600 (120 keys x 5 banned units,
     // PLAYTEST 4's eight new tuning entries).
     // 600 -> 665 (133 keys x 5 banned units).
-    expect(probed).toBe(665);
+    // 665 -> 725 (145 keys x 5 banned units).
+    expect(probed).toBe(725);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {
