@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "cutincap-run1-2026-08-24T00-41-39-953Z-2491",
+  "label": "cutincap-run1",
+  "command": [
+    "node",
+    "tools/verify-cutin-cap.mjs",
+    "--url",
+    "http://localhost:8094"
+  ],
+  "budgetSeconds": 1800,
+  "startedAtIso": "2026-08-24T00:41:39.953Z",
+  "startedAtMs": 1787532099953,
+  "cwd": "/home/user/wt-cutincap",
+  "commit": "7f92eea26a3b8c12c2139be5aabdf6b4b663e1aa",
+  "branch": "claude/cutincap-three-lifts",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 2491,
+    "startTick": "2774232",
+    "cmdline": "node tools/watchdog.mjs --budget 1800 --label cutincap-run1 -- node tools/verify-cutin-cap.mjs --url http://localhost:8094",
+    "bootId": "fabf06d4-ff34-4c2a-84e5-869c226847d2",
+    "bootEpochSeconds": 1787504358,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-24T00:41:39.974Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
