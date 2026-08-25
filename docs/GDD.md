@@ -2049,6 +2049,23 @@ off"* — and the ruling replaces the identity rather than retuning the numbers.
   faculties, which is the same bar every other per-lift difference in this
   design is held to: three timing windows of different widths would be one lift
   with three difficulty settings.
+- **What counts as caught depends on what is on the bar, and that is the
+  difference between a check and a rhythm.** A heavier bar must arrive
+  genuinely slower to be controlled, and is allowed longer to get there. So the
+  RELEASE that achieves a good touch is at a different moment at every load,
+  and a player has to read the bar rather than repeat a remembered pattern.
+
+  **This is written down because the first build of the beat got it wrong in a
+  way that looked right.** That version scaled the bar's gravity and braking
+  with load, which genuinely scales difficulty — the window of good releases
+  narrowed from sixteen ticks wide at a warm-up to four at a limit. What it did
+  not do is MOVE that window: its centre shifted by two ticks across the whole
+  ladder while its width shrank by twelve, so every load's window contained the
+  same handful of ticks. An independent critic searched the whole space of
+  fixed hold-release rhythms — no perception of the bar at all — and found
+  twenty-four that scored a perfect touch at every load. Two numbers, memorised
+  once, won the beat. **Scaling how wrong a player may be is not the same as
+  moving what is right, and only the second one asks anything of them.**
 - **A press that never touches the chest is a miss with its own reason.** It is
   three red lights in the real sport, and it is the only thing a player who
   stops feeding the bar and never starts again can get.
@@ -2067,10 +2084,11 @@ off"* — and the ruling replaces the identity rather than retuning the numbers.
   fatal. That is the same rule the drive cue already states: a mistimed tap
   costs velocity and never ends the rep on its own.
 - **A crash costs the ascent, not the rep.** The bar sinks into the chest and
-  the whole press is harder; it is never called at the chest. A warm-up bar
-  cannot be crashed at all — it runs out of descent before it runs out of
-  control — which is an arithmetic consequence of two constants rather than a
-  horizon somebody swept.
+  the whole press is harder; it is never called at the chest. A warm-up bar and
+  a light working bar cannot be crashed at all — they run out of descent before
+  they run out of control — which is an arithmetic consequence of the constants
+  rather than a horizon somebody swept. Every load a meet attempt is taken at
+  can be.
 
 **None of the numbers has been played (§12.1), and §12.1 stays open on this
 beat until a human replays it on a phone.** What is measured is that the beats
@@ -2079,6 +2097,15 @@ outcome in 120 and turns a make into a miss in 40, and the touch changes it in
 80. That is the bar the first version of the press command failed — it set the
 bar's opening velocity, which washes out in about ten ticks, and the outcome
 was identical whether the player answered the command or not.
+
+**And that the descent asks anything at all is measured the same way**, because
+"non trivial" is a word in the ruling and was not a check for a round: the
+whole nine-hundred-pattern fixed-rhythm space is swept in the test suite, the
+count that wins at every load is pinned at **zero**, and the per-load counts
+sit beside it as the controls that say the beat is winnable — just not twice
+the same way. What is still open is whether it is winnable *in the hand*: the
+window at the top of the ladder is narrow, deliberately, and only a phone can
+say whether it is too narrow.
 3. Sim-mode readiness/fatigue silently adjusts the timing window width
 4. Three-light judging call (red/white), with a brief "judges deliberating" beat
    on close calls

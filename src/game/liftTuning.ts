@@ -511,9 +511,27 @@ export const LIFT_TUNING = Object.freeze({
    * Depth-rate lost per tick the finger is UP, by load. The lifter resisting.
    *
    * LIGHT IS THE BIGGER NUMBER — a warm-up bar is easy to stop, a limit bar is
-   * not. Together with the pair above this is the whole difficulty curve of
-   * the beat: at MAXIMAL you get twice the acceleration and two-thirds of the
-   * brake. Unplayed placeholders.
+   * not. Together with the pair above this is the difficulty curve of the
+   * beat: at MAXIMAL you get roughly three times the acceleration and a third
+   * of the brake.
+   *
+   * THE MAXIMAL END IS LOAD-BEARING FOR THE OPEN-LOOP PROPERTY, MEASURED. A
+   * trial that raised it from 0.00045 to 0.0007 — a plausible-looking softening
+   * of a number nobody has played — put THREE fixed duty-cycle patterns back
+   * into "wins at every load" (hold 13 / release 28, 29 and 30), because a
+   * stronger brake shortens the coast and pulls the limit bar's answer back up
+   * toward the warm-up bar's. `lift.test.ts`'s `OPEN_LOOP_SEARCH` caught it and
+   * the trial was reverted. A tuner turning this knob should re-run that
+   * search rather than trust the feel of one rep.
+   *
+   * WHAT IT COSTS, STATED RATHER THAN SMOOTHED OVER: with the brake this weak,
+   * a single committed hold has a PERFECT window only TWO ticks wide at
+   * `LOAD_PRESETS.MAXIMAL` (holds 9 and 10, measured), sitting immediately
+   * above the holds that stall the bar short. That is 33ms and it may well be
+   * too sharp in the hand. It is not the only way in — the same search finds
+   * 33 open-loop rhythms that work at that load alone — but a tuner should
+   * treat this pair and the `BENCH_TOUCH_*` curves as one dial with two ends,
+   * because widening the window re-merges the bands. Unplayed placeholders.
    */
   BENCH_DESCENT_BRAKE: { LIGHT: 0.0014, MAXIMAL: 0.00045 },
 
@@ -526,22 +544,50 @@ export const LIFT_TUNING = Object.freeze({
 
   /**
    * At or below this rate at the chest, the touch is fully controlled —
-   * quality 1. Roughly a bar covering `1/0.020` = 50 ticks of travel, which is
-   * slower than any load starts down at, so arriving here always means the
-   * player braked.
+   * quality 1. Slower than the load starts down at, at both ends, so arriving
+   * here always means the player braked.
+   *
+   * ---------------------------------------------------------------------------
+   * LOAD-SCALED, AND THAT IS WHAT MOVES THE ANSWER RATHER THAN THE TOLERANCE
+   * ---------------------------------------------------------------------------
+   * It was a single number. A critic searched all 900 fixed duty-cycle
+   * patterns — hold `on` ticks, release `off`, repeat, with no perception of
+   * the bar, the load or the seed — over 8 loads and found **24 of them
+   * grading PERFECT on every cell**. The best, hold 13 / release 25, was
+   * perfect at every load in the ladder. Two numbers, memorised once, won the
+   * whole beat, which is not what "non trivial" means.
+   *
+   * The cause was precise and it was NOT the gravity/brake spread, which does
+   * scale difficulty: the PERFECT band narrowed with load (16 holds wide at the
+   * light end, 4 at the top) and barely MOVED (centre 10 to 12), so all eight
+   * bands overlapped and one memorised number sat inside every one of them.
+   * The load-dependence lived entirely in the tolerance.
+   *
+   * A scaled threshold is the half that was missing: a heavy bar has to arrive
+   * genuinely slower to count as controlled, so the RELEASE that achieves it is
+   * at a different tick — and a rhythm learned on a warm-up bar puts a limit
+   * bar on the chest far too fast. `lift.test.ts`'s `OPEN_LOOP_SEARCH` runs the
+   * critic's search in the tree and pins the count at zero, with the per-load
+   * counts beside it as the non-zero controls.
    */
-  BENCH_TOUCH_SOFT_RATE: 0.020,
+  BENCH_TOUCH_SOFT_RATE: { LIGHT: 0.030, MAXIMAL: 0.010 },
 
   /**
    * At or above this rate at the chest, the touch is a crash — quality 0.
    *
+   * LOAD-SCALED FOR THE REASON `BENCH_TOUCH_SOFT_RATE` ABOVE IS, and kept a
+   * fixed multiple of it at both ends so the graded band between "caught" and
+   * "dropped" is the same SHAPE at every load while sitting at a different
+   * SPEED. What changes with load is where a controlled touch lives, not how
+   * finely it is graded.
+   *
    * IT HAS TO BE REACHABLE AND IT HAS TO NOT BE THE DEFAULT, which is the same
    * two-sided requirement `DEPTH_WINDOW_MS`'s bench row failed on its first
-   * pass. `liftTuning.test.ts` checks the arithmetic (a player who never lets
-   * go crosses it at MAXIMAL and a controlled descent stays under it at every
-   * load) and `lift.test.ts` plays it.
+   * pass. `liftTuning.test.ts` checks the arithmetic — a player who never lets
+   * go crosses it from `LOAD_PRESETS.LIGHT` upward, and the lightest bar in the
+   * game cannot reach it at all — and `lift.test.ts` plays it.
    */
-  BENCH_TOUCH_CRASH_RATE: 0.045,
+  BENCH_TOUCH_CRASH_RATE: { LIGHT: 0.060, MAXIMAL: 0.020 },
 
   /**
    * How much harder a crashed touch makes the WHOLE bench ascent, at touch
@@ -573,13 +619,14 @@ export const LIFT_TUNING = Object.freeze({
    * through `BURIED_DEMAND_PER_DEPTH`, which is the double-count a reader
    * should check for and `lift.test.ts` pins.
    *
-   * Chosen against `DEPTH_COLLAPSE.bench`: a touch at
-   * `BENCH_TOUCH_CRASH_RATE` sinks 0.045 × 2.4 = 0.108, landing at 1.108
+   * Chosen against `DEPTH_COLLAPSE.bench` at the WORST load, which is the
+   * light end now that the crash rate is load-scaled: a touch at
+   * `BENCH_TOUCH_CRASH_RATE.LIGHT` sinks 0.060 x 2.0 = 0.120, landing at 1.120
    * against a 1.15 clamp, so the clamp is a backstop for a bar that arrives
    * even hotter rather than the usual case. `liftTuning.test.ts` asserts that
-   * relationship rather than trusting this sentence.
+   * relationship at both ends rather than trusting this sentence.
    */
-  BENCH_TOUCH_SINK_GAIN: 2.4,
+  BENCH_TOUCH_SINK_GAIN: 2.0,
 
   /**
    * Ticks a bench descent may run before it starts costing control.
@@ -605,24 +652,38 @@ export const LIFT_TUNING = Object.freeze({
    * linearly from 1 to 0 over `BENCH_DESCENT_DAWDLE_SPAN_TICKS` once a descent
    * has run this long, and multiplies the speed grading.
    *
-   * 60 ticks is one second: comfortably longer than any well-judged descent
-   * (measured 25-45 ticks across the load range), so a player who commits
-   * pays nothing, and short enough that a full feather-in from a stall lands
-   * inside the decay. `lift.test.ts` measures both.
+   * LOAD-SCALED, AND IT IS THE SECOND HALF OF THE FIX THE OPEN-LOOP SEARCH
+   * FORCED. A single budget could not distinguish loads by construction: it is
+   * the same number of ticks whatever is on the bar, so a rhythm that finished
+   * inside it at one load finished inside it at all of them. Scaling it lets a
+   * limit bar be lowered deliberately — which is what a limit bar IS — while a
+   * warm-up that takes just as long is dawdling.
+   *
+   * The pair is set against each load's own committed descent rather than
+   * against the clock: `liftTuning.test.ts` asserts a fed bar reaches the chest
+   * inside the budget at every load, and `lift.test.ts` measures that a
+   * feathered descent lands outside it. Placeholders, GDD §10.
    */
-  BENCH_DESCENT_PATIENCE_TICKS: 60,
+  BENCH_DESCENT_PATIENCE_TICKS: { LIGHT: 42, MAXIMAL: 78 },
 
   /**
    * Ticks over which a slow descent's control decays from 1 to 0, once
    * `BENCH_DESCENT_PATIENCE_TICKS` has passed.
    *
    * A SLOPE, NOT A CLIFF, deliberately. A hard cutoff would make the beat a
-   * second timing check — hit the chest before tick 60 — and this file already
+   * second timing check — hit the chest before tick N — and this file already
    * has one lift whose whole identity is a timing check. What this asks for is
    * a preference: quick and soft beats slow and soft, and both beat fast and
-   * hard. 120 ticks is two seconds. Unplayed placeholder.
+   * hard.
+   *
+   * 120 -> 60 WITH THE OPEN-LOOP FIX, and the reason is a threshold
+   * interaction rather than a feel judgement. A grade of PERFECT starts at
+   * `QUALITY_GRADE_BANDS.PERFECT`, so a decay this shallow left a creeping
+   * descent 24 ticks past its budget still grading perfect — the penalty
+   * existed and did not reach the grade the search was counting. 60 ticks
+   * makes the same overshoot land in 'good'. Unplayed placeholder.
    */
-  BENCH_DESCENT_DAWDLE_SPAN_TICKS: 120,
+  BENCH_DESCENT_DAWDLE_SPAN_TICKS: 60,
 
   /**
    * Ticks a bench descent may run without reaching the chest before the rep is

@@ -197,16 +197,44 @@ describe('depth thresholds', () => {
   });
 });
 
+/**
+ * How far past its patience budget a descent may run before the penalty has to
+ * have cost it the PERFECT grade.
+ *
+ * A THIRD OF A SECOND. Named because it is the quantity the span/grade
+ * inequality below is asserted at, and a bare 20 inside that comparison would
+ * be exactly the magic number this file's own scan bans everywhere else.
+ */
+const DAWDLE_OVERSHOOT_THAT_MUST_COST_TICKS = 20;
+
 describe('the bench descent (GDD §6.2; ruled 2026-08-25)', () => {
   const loads = Object.values(LOAD_PRESETS);
+  const soft = (load: number): number =>
+    byLoad(LIFT_TUNING.BENCH_TOUCH_SOFT_RATE, clampLoadRatio(load));
+  const crash = (load: number): number =>
+    byLoad(LIFT_TUNING.BENCH_TOUCH_CRASH_RATE, clampLoadRatio(load));
+  const start = (load: number): number =>
+    byLoad(LIFT_TUNING.DESCENT_DEPTH_PER_TICK.bench, clampLoadRatio(load));
+  const gravity = (load: number): number =>
+    byLoad(LIFT_TUNING.BENCH_DESCENT_GRAVITY, clampLoadRatio(load));
+  const patience = (load: number): number =>
+    byLoad(LIFT_TUNING.BENCH_DESCENT_PATIENCE_TICKS, clampLoadRatio(load));
+  /** Ticks a bar fed the whole way takes to reach the chest, in closed form. */
+  const fedTicks = (load: number): number =>
+    (-start(load) + Math.sqrt(start(load) ** 2 + 2 * gravity(load) * LIFT_TUNING.DEPTH_IDEAL.bench)) /
+    gravity(load);
+  /** Depth covered by the time a fed bar's rate reaches the crash threshold. */
+  const depthWhenCrashing = (load: number): number => {
+    const ticks = (crash(load) - start(load)) / gravity(load);
+    return start(load) * ticks + (gravity(load) * ticks * ticks) / 2;
+  };
 
   it('makes a heavier bar gather speed faster and stop harder', () => {
-    // THE WHOLE DIFFICULTY CURVE OF THE BEAT, as two constants pulling in
-    // opposite directions — and it is the one place in the descent where
-    // heavier means faster. `DESCENT_DEPTH_PER_TICK` stays SLOWER at MAXIMAL
-    // on purpose (a limit attempt is controlled down), so if these two ever
-    // flipped, a heavy bench would be the EASY one to catch and nothing else
-    // in the file would notice.
+    // THE DIFFICULTY CURVE OF THE BEAT, as two constants pulling in opposite
+    // directions — and it is the one place in the descent where heavier means
+    // faster. `DESCENT_DEPTH_PER_TICK` stays SLOWER at MAXIMAL on purpose (a
+    // limit attempt is controlled down), so if these two ever flipped, a heavy
+    // bench would be the EASY one to catch and nothing else would notice.
     expect(LIFT_TUNING.BENCH_DESCENT_GRAVITY.MAXIMAL).toBeGreaterThan(
       LIFT_TUNING.BENCH_DESCENT_GRAVITY.LIGHT,
     );
@@ -218,76 +246,165 @@ describe('the bench descent (GDD §6.2; ruled 2026-08-25)', () => {
     );
   });
 
+  it('MOVES the answer with load, not only the tolerance', () => {
+    // ---------------------------------------------------------------------
+    // THE ARITHMETIC HALF OF THE OPEN-LOOP FINDING, and it is a separate
+    // claim from the one above rather than a restatement of it.
+    //
+    // The pair above scales how WRONG a player may be. It was in place, it
+    // worked, and the beat was still solvable by two memorised numbers,
+    // because scaling the tolerance leaves the correct ANSWER where it was:
+    // the PERFECT band narrowed from 16 holds to 4 across the ladder while its
+    // centre moved 10 to 12, so every band contained 11..14 and one rhythm sat
+    // inside all of them.
+    //
+    // What makes the answer move is that the thresholds themselves are load
+    // curves. `lift.test.ts`'s `OPEN_LOOP_SEARCH` plays the search; this is
+    // the closed form underneath it, and it is here because a swept count
+    // says a population moved and this says WHY.
+    // ---------------------------------------------------------------------
+    // NOT MERELY ORDERED — SEPARATED. A curve that sloped the right way by a
+    // hair would re-merge every band. What the answer moving requires is that
+    // a limit bar's whole graded window sits BELOW a light bar's, with no
+    // overlap: the speed a warm-up is caught at is a crash on a limit bar.
+    //
+    // DOMINATION, RECORDED RATHER THAN LEFT AS TWO DEAD LINES. This assertion
+    // was written under two weaker ones — `soft(MAXIMAL) < soft(LIGHT)` and
+    // `crash(MAXIMAL) < crash(LIGHT)` — and it implies both, given
+    // `soft(load) < crash(load)` which the reachability test below asserts at
+    // every load: soft(MAX) < crash(MAX) < soft(LIGHT) < crash(LIGHT). No
+    // state of the tuning reddens either of the two while this one passes, so
+    // they were deleted rather than kept as reassurance. CLAUDE.md: a
+    // dominated check is vacuous by the definition, and it arrives without
+    // anyone editing it.
+    expect(crash(LOAD_PRESETS.MAXIMAL)).toBeLessThan(soft(LOAD_PRESETS.LIGHT));
+
+    // The patience budget is a different quantity and nothing above reaches
+    // it, so this is not dominated.
+    expect(patience(LOAD_PRESETS.MAXIMAL)).toBeGreaterThan(patience(LOAD_PRESETS.LIGHT));
+
+    // ...and the schedule moves with it. A fed limit bar takes strictly longer
+    // to reach the chest than a fed warm-up, so the tick a release has to land
+    // on is not the same tick.
+    expect(fedTicks(LOAD_PRESETS.MAXIMAL)).toBeGreaterThan(fedTicks(LOAD_PRESETS.LIGHT));
+  });
+
   it('leaves the crash threshold reachable and not the default', () => {
     // THE TWO-SIDED REQUIREMENT `DEPTH_WINDOW_MS`'s bench row failed on its
     // first pass, applied to its replacement. A crash nobody can reach is a
     // penalty that never fires; a crash the bar reaches by starting to move is
     // a beat that always punishes.
     for (const load of loads) {
-      const start = byLoad(LIFT_TUNING.DESCENT_DEPTH_PER_TICK.bench, clampLoadRatio(load));
       // The bar never STARTS in a crash — that would make the descent lost
       // before the player has done anything.
-      expect(start, `load ${load}`).toBeLessThan(LIFT_TUNING.BENCH_TOUCH_CRASH_RATE);
+      expect(start(load), `load ${load}`).toBeLessThan(crash(load));
       // ...and the soft threshold is under the start rate, so arriving soft
       // always means the player braked rather than merely not accelerating.
-      expect(LIFT_TUNING.BENCH_TOUCH_SOFT_RATE, `load ${load}`).toBeLessThan(start);
+      expect(soft(load), `load ${load}`).toBeLessThan(start(load));
     }
     expect(loads.length, 'no loads were checked').toBeGreaterThan(2);
 
     // A bar fed all the way down passes the crash rate before it reaches the
-    // chest, from LIGHT upward. Closed form: the rate after `n` held ticks is
-    // `start + n * gravity`, so the depth it has covered by the time the rate
-    // hits the crash threshold is the integral of that.
-    const depthWhenCrashing = (load: number): number => {
-      const start = byLoad(LIFT_TUNING.DESCENT_DEPTH_PER_TICK.bench, clampLoadRatio(load));
-      const gravity = byLoad(LIFT_TUNING.BENCH_DESCENT_GRAVITY, clampLoadRatio(load));
-      const ticks = (LIFT_TUNING.BENCH_TOUCH_CRASH_RATE - start) / gravity;
-      return start * ticks + (gravity * ticks * ticks) / 2;
-    };
-    for (const load of [LOAD_PRESETS.LIGHT, LOAD_PRESETS.MODERATE, LOAD_PRESETS.HEAVY, LOAD_PRESETS.MAXIMAL]) {
+    // chest FROM A MODERATE WORKING WEIGHT UPWARD — which is every load a meet
+    // attempt is taken at, and is where the penalty has to be able to fire.
+    for (const load of [LOAD_PRESETS.MODERATE, LOAD_PRESETS.HEAVY, LOAD_PRESETS.MAXIMAL]) {
       expect(depthWhenCrashing(load), `load ${load}`).toBeLessThan(LIFT_TUNING.DEPTH_IDEAL.bench);
     }
 
-    // AND THE LIGHTEST BAR IN THE GAME CANNOT BE CRASHED AT ALL, WHICH IS A
-    // §12.3 PROPERTY RATHER THAN A GAP. `LOAD_PRESETS.WARMUP` runs out of
-    // descent before it runs out of control: fed the whole way it still
-    // arrives under the crash rate, so a warm-up bench cannot be lost to the
-    // descent however carelessly it is brought down. Same structural shape
-    // `LOCKOUT_SAG_PER_TICK` uses to promise a warm-up deadlift cannot be
-    // dropped — an arithmetic consequence of two constants rather than a
-    // horizon somebody happened to sweep. It is measured here rather than
-    // asserted in prose, and it goes red if the gravity curve grows.
-    expect(depthWhenCrashing(LOAD_PRESETS.WARMUP)).toBeGreaterThan(LIFT_TUNING.DEPTH_IDEAL.bench);
+    // AND THE TWO LIGHTEST BARS IN THE GAME CANNOT BE CRASHED AT ALL, WHICH IS
+    // A §12.3 PROPERTY RATHER THAN A GAP — AND IT IS A WIDER ONE THAN THE
+    // BEAT SHIPPED WITH. On the single-threshold tuning only `WARMUP` was
+    // safe; once the crash rate became a load curve, `LIGHT` came under the
+    // same protection, because the bar runs out of descent before it runs out
+    // of control. So a warm-up and a light bench cannot be LOST to the descent
+    // however carelessly they are brought down — they can only be graded down,
+    // and a light bar fed the whole way still arrives around 0.4 quality
+    // rather than 0.
+    //
+    // Same structural shape `LOCKOUT_SAG_PER_TICK` uses to promise a warm-up
+    // deadlift cannot be dropped: an arithmetic consequence of the constants
+    // rather than a horizon somebody happened to sweep. Both directions are
+    // asserted, so a gravity curve that grew until a light bar COULD be
+    // crashed reddens here rather than shipping.
+    for (const load of [LOAD_PRESETS.WARMUP, LOAD_PRESETS.LIGHT]) {
+      expect(depthWhenCrashing(load), `load ${load}`).toBeGreaterThan(
+        LIFT_TUNING.DEPTH_IDEAL.bench,
+      );
+    }
   });
 
   it('keeps the worst sink inside what a chest can compress', () => {
-    // `BENCH_TOUCH_SINK_GAIN` is chosen against `DEPTH_COLLAPSE.bench`: the
-    // clamp is a backstop for a bar arriving hotter than the crash rate, not
-    // the usual case, so a touch AT the crash rate must land strictly under
-    // it. Without this the sink would be pinned at the clamp for every crash
-    // and the drawing would stop distinguishing them.
-    const worst =
-      LIFT_TUNING.DEPTH_IDEAL.bench +
-      LIFT_TUNING.BENCH_TOUCH_SINK_GAIN * LIFT_TUNING.BENCH_TOUCH_CRASH_RATE;
-    expect(worst).toBeLessThan(LIFT_TUNING.DEPTH_COLLAPSE.bench);
-    expect(worst).toBeGreaterThan(LIFT_TUNING.DEPTH_IDEAL.bench);
+    // `BENCH_TOUCH_SINK_GAIN` is chosen against `DEPTH_COLLAPSE.bench` at the
+    // WORST load, which is the light end now that the crash rate is a curve:
+    // the clamp is a backstop for a bar arriving hotter than the crash rate,
+    // not the usual case, so a touch AT the crash rate must land strictly
+    // under it. Without this the sink would be pinned at the clamp for every
+    // crash and the drawing would stop distinguishing them.
+    //
+    // KEPT AS A SWEEP THOUGH ONE CASE BINDS, and the reason is the direction
+    // this file's own domination analysis has to be careful about. `crash` is
+    // monotone DECREASING in load today, so the lightest load produces the
+    // largest sink and dominates every other case — checking only WARMUP would
+    // be equivalent. It is swept anyway because that domination is a property
+    // of the curve's SHAPE rather than of the assertion: a crash curve that
+    // stopped being monotone would move the binding case, and only the sweep
+    // says which load broke.
+    for (const load of loads) {
+      const worst = LIFT_TUNING.DEPTH_IDEAL.bench + LIFT_TUNING.BENCH_TOUCH_SINK_GAIN * crash(load);
+      expect(worst, `load ${load}`).toBeLessThan(LIFT_TUNING.DEPTH_COLLAPSE.bench);
+      expect(worst, `load ${load}`).toBeGreaterThan(LIFT_TUNING.DEPTH_IDEAL.bench);
+    }
   });
 
-  it('gives a committed descent all its patience and a dawdled one none', () => {
+  it('gives a committed descent all its patience, at every load', () => {
     // The free window has to be longer than any descent a player who commits
-    // can produce, or committing is charged for nothing. Closed form again:
-    // fed the whole way, `depth = start*n + gravity*n^2/2` reaches the chest.
+    // can produce, AT THAT LOAD, or committing is charged for nothing. This is
+    // the pair-wise version of the check: a single patience number could only
+    // be right for one load, which is half of why one rhythm won everywhere.
     for (const load of loads) {
-      const start = byLoad(LIFT_TUNING.DESCENT_DEPTH_PER_TICK.bench, clampLoadRatio(load));
-      const gravity = byLoad(LIFT_TUNING.BENCH_DESCENT_GRAVITY, clampLoadRatio(load));
-      const ticks =
-        (-start + Math.sqrt(start * start + 2 * gravity * LIFT_TUNING.DEPTH_IDEAL.bench)) / gravity;
-      expect(ticks, `load ${load}`).toBeLessThan(LIFT_TUNING.BENCH_DESCENT_PATIENCE_TICKS);
+      expect(fedTicks(load), `load ${load}`).toBeLessThan(patience(load));
     }
-    // ...and the timeout is far past the point patience has run out, so a
-    // no-touch is a decision the player made rather than a clock they raced.
-    expect(LIFT_TUNING.CHEST_TOUCH_TIMEOUT_TICKS).toBeGreaterThan(
-      LIFT_TUNING.BENCH_DESCENT_PATIENCE_TICKS + LIFT_TUNING.BENCH_DESCENT_DAWDLE_SPAN_TICKS,
+    // ...and the timeout is far past the point patience has run out at every
+    // load, so a no-touch is a decision the player made rather than a clock
+    // they raced.
+    for (const load of loads) {
+      expect(LIFT_TUNING.CHEST_TOUCH_TIMEOUT_TICKS, `load ${load}`).toBeGreaterThan(
+        patience(load) + LIFT_TUNING.BENCH_DESCENT_DAWDLE_SPAN_TICKS,
+      );
+    }
+  });
+
+  it('makes the dawdle penalty reach the grade it is meant to cost', () => {
+    // A THRESHOLD INTERACTION BETWEEN TWO CONSTANTS IN DIFFERENT BLOCKS, and
+    // the reason the span halved from 120. `QUALITY_GRADE_BANDS.PERFECT` is
+    // where a touch stops reading as caught. `descentPatience` decays
+    // `1 - over/span`. So a descent `over` ticks past its budget still grades
+    // PERFECT from a flawless arrival unless
+    //
+    //     1 - over/span < PERFECT   <=>   span < over / (1 - PERFECT)
+    //
+    // At span 120 and PERFECT 0.8 that needed a 24-tick overshoot before the
+    // penalty reached the grade — so a creeping descent well past its budget
+    // graded exactly like a caught one, which is what the open-loop search was
+    // counting when it found a rhythm that won at every load.
+    //
+    // THE FIRST VERSION OF THIS CHECK WAS VACUOUS AND IS RECORDED AS SUCH: it
+    // computed `1 - span/span` and asserted it was 0, and asserted `1/2 <
+    // PERFECT`. Both are arithmetic about literals — the span cancels — so no
+    // state of the tuning could redden either. Deleted for the comparison
+    // below, which names the overshoot it cares about and therefore does move.
+    //
+    // A SECOND DOMINATION, RECORDED. This was written twice — once as
+    // `span < over / (1 - PERFECT)` and once as `1 - over/span < PERFECT` —
+    // and for `span > 0` and `PERFECT < 1` those rearrange into each other, so
+    // one of them could never speak. The forward form is the one kept, because
+    // its failure message prints the GRADE a dawdled touch would get rather
+    // than a bound on a span, and a check that fails uselessly is half a check.
+    const over = DAWDLE_OVERSHOOT_THAT_MUST_COST_TICKS;
+    expect(LIFT_TUNING.QUALITY_GRADE_BANDS.PERFECT).toBeLessThan(1);
+    expect(LIFT_TUNING.BENCH_DESCENT_DAWDLE_SPAN_TICKS).toBeGreaterThan(0);
+    expect(1 - over / LIFT_TUNING.BENCH_DESCENT_DAWDLE_SPAN_TICKS).toBeLessThan(
+      LIFT_TUNING.QUALITY_GRADE_BANDS.PERFECT,
     );
   });
 });

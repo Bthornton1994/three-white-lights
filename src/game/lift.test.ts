@@ -88,6 +88,8 @@ import {
   LOAD_RANGE,
   STICK_HEIGHT_FRAC,
   TICK_MS,
+  byLoad,
+  clampLoadRatio,
   type DepthTimedLiftKind,
   type EccentricLiftKind,
   type PlayableLiftKind,
@@ -1414,7 +1416,7 @@ const TOUCH_SWEEP = {
   /** Measured: arrivals compared down the hold ladder, all loads together. */
   LADDER_COMPARISONS: 48,
   /** Measured: of those, how many were STRICTLY hotter than the hold before. */
-  LADDER_STRICT_DROPS: 30,
+  LADDER_STRICT_DROPS: 22,
   /**
    * Measured: (hold, adjacent-load) pairs where BOTH loads reached the chest.
    * Holds below a load's stall point produce no arrival, so this is well under
@@ -1423,13 +1425,122 @@ const TOUCH_SWEEP = {
   LOAD_COMPARISONS: 39,
   /** Measured: of those, how many were strictly hotter under the heavier load. */
   LOAD_HOTTER_UNDER_LOAD: 22,
-  /** Measured: hold-through touches that arrived at quality 0, over all pairs. */
-  HOLD_THROUGH_CRASHES: 36,
+  /**
+   * Measured: hold-through touches that arrived at quality 0, over all pairs.
+   *
+   * 36 -> 24 WHEN THE CRASH RATE BECAME A LOAD CURVE, and the new number is
+   * not a softening — it is the same §12.3 protection the deadlift's sag rate
+   * already gives, reaching one rung further down the ladder. 24 is 4 of this
+   * sweep's 6 loads at 6 seeds each: `0.8`, `0.85`, `0.95` and `1.0` can be
+   * crashed outright, and `0.55` and `0.7` cannot be — they run out of descent
+   * before they run out of control, so the worst a careless warm-up gets is a
+   * degraded touch rather than a lost rep.
+   *
+   * IT AGREES WITH THE CLOSED FORM IN `liftTuning.test.ts` — "leaves the crash
+   * threshold reachable and not the default" derives the same boundary from
+   * the constants without playing anything, and lands on the same two loads.
+   * Two instruments, one answer, neither reading the other.
+   */
+  HOLD_THROUGH_CRASHES: 24,
   /** Measured: outcome flips between a controlled touch and a crashed one. */
   SOFT_VS_CRASH_FLIPS: 80,
   /** Cases the flip count above is taken over. */
   OUTCOME_CASES: 240,
 } as const;
+
+/**
+ * ---------------------------------------------------------------------------
+ * THE OPEN-LOOP SEARCH — "NON TRIVIAL", MADE INTO A NUMBER
+ * ---------------------------------------------------------------------------
+ * The 2026-08-25 ruling's word for this beat is "non trivial". That is not a
+ * property any single played rep can show, and the first version of this file
+ * tried to cover it with one hand-written control — the feathered descent in
+ * "charges a dawdled descent". That control was real and it BIT (a critic
+ * softened `BENCH_TOUCH_SOFT_RATE` and watched three tests redden), and it
+ * closed exactly one strategy: the one its author happened to think of, at one
+ * load, on one seed. It could not search for another.
+ *
+ * A fresh critic did search. Over all `ON_TICKS x OFF_TICKS` fixed duty-cycle
+ * patterns — hold `on` ticks, release `off`, repeat, forever, with NO
+ * perception of the bar, the load or the seed — **24 of 900 graded PERFECT on
+ * every one of 40 cells**. The best of them, hold 13 / release 25, was perfect
+ * at every load in the ladder. Two numbers, memorised once, won the whole
+ * beat. Squat costs one input, so bench was costing two and asking for
+ * nothing.
+ *
+ * THE CAUSE WAS NOT THE DIFFICULTY CURVE, WHICH IS WHY IT SURVIVED A ROUND.
+ * The gravity/brake spread does scale difficulty and the measurement showed
+ * it: the PERFECT band narrowed from 16 holds wide at the light end to 4 at
+ * the top. What it did not do is MOVE — the band's centre went from 10 to 12
+ * across the whole ladder, swamped by its own width, so all eight bands
+ * overlapped and one memorised number sat inside every one of them. The
+ * load-dependence lived entirely in the tolerance and never in the answer.
+ *
+ * SO THE SEARCH LIVES HERE NOW, IN THE SHAPE `streakSweep.ts` USES: the count
+ * of patterns that win everywhere is pinned at ZERO, and the per-load counts
+ * sit beside it as the non-zero controls that say the zero is a fact about the
+ * beat rather than about an empty domain. A tuning change that re-merges the
+ * bands reddens the zero; a tuning change that makes the beat unwinnable
+ * reddens the controls.
+ *
+ * THE SEED AXIS IS A CONTROL, NOT A DOMAIN, and it is worth saying why it is
+ * swept at all. The descent reads no random draw — `pressCommandDelayTicks` is
+ * the rep's only use of the seed and it fires after the touch — so every cell
+ * at a given load must come back IDENTICAL. That is asserted rather than
+ * assumed: a seeded descent would be a dice roll on the outcome, which GDD
+ * §8.1 refuses, and it would also make this search's zero unreproducible.
+ */
+const OPEN_LOOP_SEARCH = {
+  /** `on` ticks the pattern holds for. 1..this. */
+  ON_TICKS: 30,
+  /** `off` ticks it releases for. 1..this. */
+  OFF_TICKS: 30,
+  /** Patterns walked: `ON_TICKS * OFF_TICKS`. */
+  PATTERNS: 900,
+  /** The ladder the pattern has to win on. */
+  LOADS: [0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 1.0] as const,
+  /** Seeds each pattern is replayed at, as the seed-independence control. */
+  SEEDS: [1, 2, 3, 5, 7] as const,
+  /** Ticks a swept rep is allowed, and how far the pattern is written out. */
+  MAX_TICKS: 1200,
+  SCRIPT_TICKS: 700,
+  /**
+   * THE BAR. Fixed patterns that grade PERFECT at every load. Zero.
+   *
+   * It read 24 before the thresholds and the patience budget became load
+   * curves. Do not weaken this into a bound — a bound lets the defect grow
+   * back quietly, which is what CLAUDE.md says about the streak counts this
+   * shape is borrowed from.
+   */
+  WINS_EVERYWHERE: 0,
+  /**
+   * ...and the per-load counts, which are what the zero is zero AGAINST. Every
+   * one is non-zero: the beat is winnable at every load, by many rhythms — you
+   * just cannot use the same one twice. Measured at the shipped tuning.
+   */
+  WINS_PER_LOAD: [320, 282, 226, 160, 127, 85, 55, 33] as const,
+} as const;
+
+/** One fixed duty-cycle pattern, written out far enough to reach any chest. */
+function dutyCycleScript(load: number, onTicks: number, offTicks: number): ScriptedInput[] {
+  const press = pressTickFor(load, BENCH);
+  const script: ScriptedInput[] = [];
+  for (let tick = press; tick < press + OPEN_LOOP_SEARCH.SCRIPT_TICKS; tick += onTicks + offTicks) {
+    script.push({ tick, kind: 'press' });
+    script.push({ tick: tick + onTicks, kind: 'release' });
+  }
+  return script;
+}
+
+/** What a fixed pattern's touch graded at this load and seed. -1 if it never touched. */
+function dutyCycleTouchQuality(load: number, seed: number, onTicks: number, offTicks: number): number {
+  const touched = runLift(
+    { kind: BENCH, loadRatio: load, seed },
+    dutyCycleScript(load, onTicks, offTicks),
+    OPEN_LOOP_SEARCH.MAX_TICKS,
+  ).history.find((state) => state.events.some((e) => e.kind === 'chest-touch'));
+  return touched?.touchQuality ?? -1;
+}
 
 describe('the descent to the chest (GDD §6.2; ruled 2026-08-25)', () => {
   it('grades HOW the bar arrives, not WHEN the finger came up', () => {
@@ -1650,6 +1761,82 @@ describe('the descent to the chest (GDD §6.2; ruled 2026-08-25)', () => {
     // that never overshot and says nothing.
     expect(crash.depth).toBeGreaterThan(LIFT_TUNING.DEPTH_IDEAL.bench);
     expect(crash.depth).toBeLessThanOrEqual(LIFT_TUNING.DEPTH_COLLAPSE.bench);
+  });
+
+  it('cannot be won by one memorised rhythm, over the whole fixed-pattern space [the-descent-cannot-be-played-open-loop]', () => {
+    // THE BAR IS ZERO, WITH THE PER-LOAD COUNTS BESIDE IT AS THE CONTROLS.
+    // See `OPEN_LOOP_SEARCH`'s header for the finding this replaced a
+    // hand-written single-strategy control with.
+    const perfect = LIFT_TUNING.QUALITY_GRADE_BANDS.PERFECT;
+    let winsEverywhere = 0;
+    const winsPerLoad = OPEN_LOOP_SEARCH.LOADS.map(() => 0);
+    const winners: string[] = [];
+    let patterns = 0;
+    for (let onTicks = 1; onTicks <= OPEN_LOOP_SEARCH.ON_TICKS; onTicks += 1) {
+      for (let offTicks = 1; offTicks <= OPEN_LOOP_SEARCH.OFF_TICKS; offTicks += 1) {
+        patterns += 1;
+        let everywhere = true;
+        for (let i = 0; i < OPEN_LOOP_SEARCH.LOADS.length; i += 1) {
+          const load = OPEN_LOOP_SEARCH.LOADS[i] ?? 0;
+          if (dutyCycleTouchQuality(load, 1, onTicks, offTicks) >= perfect) {
+            winsPerLoad[i] = (winsPerLoad[i] ?? 0) + 1;
+          } else {
+            everywhere = false;
+          }
+        }
+        if (everywhere) {
+          winsEverywhere += 1;
+          if (winners.length < 8) winners.push(`hold ${onTicks} / release ${offTicks}`);
+        }
+      }
+    }
+    expect(OPEN_LOOP_SEARCH.PATTERNS, 'the domain this count is taken over').toBe(900);
+    expect(patterns, 'no patterns were walked').toBe(OPEN_LOOP_SEARCH.PATTERNS);
+    expect(
+      winsEverywhere,
+      `${winsEverywhere} fixed rhythms grade PERFECT at every load: ${winners.join(', ')}`,
+    ).toBe(OPEN_LOOP_SEARCH.WINS_EVERYWHERE);
+    // THE CONTROLS. Counts, not bounds — a beat nobody can win at some load
+    // would drive the zero above to zero for the wrong reason entirely, and
+    // only these say which of the two happened.
+    //
+    // DOMINATION, RECORDED. A `for (const count of winsPerLoad) expect(count)
+    // .toBeGreaterThan(0)` loop was written under this equality and deleted:
+    // every pinned value is non-zero, so the equality implies the loop and no
+    // state of the mechanic reddens the loop while the equality passes. What
+    // the loop was FOR — "the zero above is not an empty domain" — is carried
+    // by the pinned array itself, whose numbers a reader can see are non-zero.
+    expect(winsPerLoad, 'open-loop rhythms that win at each load alone').toEqual([
+      ...OPEN_LOOP_SEARCH.WINS_PER_LOAD,
+    ]);
+  }, 240_000);
+
+  it('reads no random draw, so the search above is reproducible and the outcome is not rolled', () => {
+    // THE SEED AXIS OF THE SEARCH, ASSERTED RATHER THAN ASSUMED. GDD §8.1:
+    // meet-day performance is skill-driven, and a descent that graded
+    // differently on different seeds would be a dice roll on the rep. It is
+    // also what lets the search above sweep one seed instead of five.
+    let compared = 0;
+    for (const load of OPEN_LOOP_SEARCH.LOADS) {
+      const reference = dutyCycleTouchQuality(load, OPEN_LOOP_SEARCH.SEEDS[0] ?? 1, 13, 25);
+      for (const seed of OPEN_LOOP_SEARCH.SEEDS) {
+        expect(dutyCycleTouchQuality(load, seed, 13, 25), `load ${load} seed ${seed}`).toBe(
+          reference,
+        );
+        compared += 1;
+      }
+    }
+    expect(compared, 'no cells were compared').toBe(
+      OPEN_LOOP_SEARCH.LOADS.length * OPEN_LOOP_SEARCH.SEEDS.length,
+    );
+    // ...and the sweep is not vacuous: the same pattern really does grade
+    // DIFFERENTLY across loads, or every cell above is the same number and the
+    // equality is about nothing. Hold 13 / release 25 was the critic's best
+    // open-loop rhythm; it is now perfect at some loads and not at others.
+    const graded = new Set(
+      OPEN_LOOP_SEARCH.LOADS.map((load) => dutyCycleTouchQuality(load, 1, 13, 25)),
+    );
+    expect(graded.size, 'the probe pattern grades identically at every load').toBeGreaterThan(3);
   });
 
   it('reports how the bar is coming in, and only while it is coming in', () => {
@@ -3631,53 +3818,122 @@ describe('the lockout hold decides the deadlift', () => {
 
 
 describe('touchSpeedQuality and descentPatience', () => {
+  const softAt = (load: number): number =>
+    byLoad(LIFT_TUNING.BENCH_TOUCH_SOFT_RATE, clampLoadRatio(load));
+  const crashAt = (load: number): number =>
+    byLoad(LIFT_TUNING.BENCH_TOUCH_CRASH_RATE, clampLoadRatio(load));
+  const freeAt = (load: number): number =>
+    byLoad(LIFT_TUNING.BENCH_DESCENT_PATIENCE_TICKS, clampLoadRatio(load));
+
   it('is 1 at a caught bar, 0 at a dropped one, and never rises with speed', () => {
-    const soft = LIFT_TUNING.BENCH_TOUCH_SOFT_RATE;
-    const crash = LIFT_TUNING.BENCH_TOUCH_CRASH_RATE;
-    expect(touchSpeedQuality(soft)).toBe(1);
-    expect(touchSpeedQuality(soft / 2)).toBe(1);
-    expect(touchSpeedQuality(crash)).toBe(0);
-    expect(touchSpeedQuality(crash * 2)).toBe(0);
-    let previous = Number.POSITIVE_INFINITY;
-    const distinct = new Set<number>();
-    for (let rate = 0; rate <= crash * 1.5; rate += crash / 60) {
-      const quality = touchSpeedQuality(rate);
-      expect(quality, `rate ${rate}`).toBeLessThanOrEqual(previous);
-      previous = quality;
-      distinct.add(quality);
+    for (const load of TOUCH_SWEEP.LOADS) {
+      const soft = softAt(load);
+      const crash = crashAt(load);
+      expect(touchSpeedQuality(soft, load), `load ${load}`).toBe(1);
+      expect(touchSpeedQuality(soft / 2, load), `load ${load}`).toBe(1);
+      expect(touchSpeedQuality(crash, load), `load ${load}`).toBe(0);
+      expect(touchSpeedQuality(crash * 2, load), `load ${load}`).toBe(0);
+      let previous = Number.POSITIVE_INFINITY;
+      const distinct = new Set<number>();
+      for (let rate = 0; rate <= crash * 1.5; rate += crash / 60) {
+        const quality = touchSpeedQuality(rate, load);
+        expect(quality, `load ${load} rate ${rate}`).toBeLessThanOrEqual(previous);
+        previous = quality;
+        distinct.add(quality);
+      }
+      // It MOVES, not merely stays in range — fact 3 of the progression rule.
+      expect(distinct.size, `load ${load}: ${distinct.size} distinct qualities`).toBeGreaterThan(20);
     }
-    // It MOVES, not merely stays in range — fact 3 of the progression rule.
-    expect(distinct.size, `${distinct.size} distinct qualities`).toBeGreaterThan(20);
+  });
+
+  it('grades the same arrival speed differently under a heavier bar', () => {
+    // THE HALF OF THE OPEN-LOOP FIX THAT LIVES IN THIS FUNCTION. Both
+    // thresholds are load curves now, so one speed is not one grade. Without
+    // this the answer sits at the same tick at every load and one memorised
+    // rhythm wins the beat — measured at 24 of 900 patterns before the fix.
+    const probe = softAt(LOAD_PRESETS.LIGHT);
+    expect(touchSpeedQuality(probe, LOAD_PRESETS.LIGHT)).toBe(1);
+    // The speed a warm-up is CAUGHT at is a crash on a limit bar. Not merely
+    // lower — 0, which is the strongest form of "the answer moved".
+    expect(touchSpeedQuality(probe, LOAD_PRESETS.MAXIMAL)).toBe(0);
+    // ...and it falls monotonically in between, so the curve is a ramp rather
+    // than a step somebody could sit on either side of.
+    let previous = Number.POSITIVE_INFINITY;
+    for (const load of TOUCH_SWEEP.LOADS) {
+      const graded = touchSpeedQuality(probe, load);
+      expect(graded, `load ${load}`).toBeLessThanOrEqual(previous);
+      previous = graded;
+    }
   });
 
   it('leaves a committed descent alone and charges an interminable one', () => {
-    const free = LIFT_TUNING.BENCH_DESCENT_PATIENCE_TICKS;
     const span = LIFT_TUNING.BENCH_DESCENT_DAWDLE_SPAN_TICKS;
-    expect(descentPatience(0)).toBe(1);
-    expect(descentPatience(free)).toBe(1);
-    expect(descentPatience(free + span)).toBe(0);
-    expect(descentPatience(free + span * 2)).toBe(0);
-    // Halfway down the slope, and it is a SLOPE rather than a cliff — a hard
-    // cutoff would make the beat a second timing check.
-    expect(descentPatience(free + span / 2)).toBeCloseTo(0.5, 6);
-    let previous = Number.POSITIVE_INFINITY;
-    for (let ticks = 0; ticks <= free + span * 2; ticks += 5) {
-      const kept = descentPatience(ticks);
-      expect(kept, `ticks ${ticks}`).toBeLessThanOrEqual(previous);
-      previous = kept;
+    for (const load of TOUCH_SWEEP.LOADS) {
+      const free = freeAt(load);
+      expect(descentPatience(0, load), `load ${load}`).toBe(1);
+      expect(descentPatience(free, load), `load ${load}`).toBe(1);
+      expect(descentPatience(free + span, load), `load ${load}`).toBe(0);
+      expect(descentPatience(free + span * 2, load), `load ${load}`).toBe(0);
+      // Halfway down the slope, and it is a SLOPE rather than a cliff — a hard
+      // cutoff would make the beat a second timing check.
+      expect(descentPatience(free + span / 2, load), `load ${load}`).toBeCloseTo(0.5, 6);
+      let previous = Number.POSITIVE_INFINITY;
+      for (let ticks = 0; ticks <= free + span * 2; ticks += 5) {
+        const kept = descentPatience(ticks, load);
+        expect(kept, `load ${load} ticks ${ticks}`).toBeLessThanOrEqual(previous);
+        previous = kept;
+      }
+    }
+  });
+
+  it('gives a heavier bar a longer budget before it calls the descent slow', () => {
+    // The other half of the open-loop fix. A budget in ticks is the same
+    // budget whatever is on the bar, so a rhythm that finished inside it at
+    // one load finished inside it at every load. A limit bar is ALLOWED to be
+    // lowered deliberately; a warm-up taking just as long is dawdling, and
+    // this is the tick count where those two part company.
+    //
+    // DOMINATION, RECORDED. A closing `expect(freeAt(MAXIMAL)).toBeGreaterThan
+    // (freeAt(LIGHT))` was written here as "fact 3, it MOVES" and deleted: the
+    // two grade reads below already force it. `slow` is one tick past LIGHT's
+    // budget, so a full grade at MAXIMAL means `freeAt(MAXIMAL) >= freeAt
+    // (LIGHT) + 1`, which is strictly greater. The deleted line could not
+    // redden while these two passed.
+    //
+    // These two are kept in preference to it because they are about the
+    // FUNCTION rather than about the constants — they would still bite if
+    // `descentPatience` stopped reading its load argument, which is the
+    // mutation that actually threatens this property and which a comparison
+    // between two table entries would sail straight past.
+    const slow = freeAt(LOAD_PRESETS.LIGHT) + 1;
+    expect(descentPatience(slow, LOAD_PRESETS.LIGHT)).toBeLessThan(1);
+    expect(descentPatience(slow, LOAD_PRESETS.MAXIMAL)).toBe(1);
+    // The curve never falls in between, which neither read above covers.
+    let previous = -1;
+    for (const load of TOUCH_SWEEP.LOADS) {
+      const free = freeAt(load);
+      expect(free, `load ${load}`).toBeGreaterThanOrEqual(previous);
+      previous = free;
     }
   });
 
   it('multiplies into one grade, so a rep bad on both counts is worse than either', () => {
-    const free = LIFT_TUNING.BENCH_DESCENT_PATIENCE_TICKS;
     const span = LIFT_TUNING.BENCH_DESCENT_DAWDLE_SPAN_TICKS;
-    const soft = LIFT_TUNING.BENCH_TOUCH_SOFT_RATE;
-    const middling = (soft + LIFT_TUNING.BENCH_TOUCH_CRASH_RATE) / 2;
+    const load = LOAD_PRESETS.HEAVY;
+    const free = freeAt(load);
+    const soft = softAt(load);
+    const middling = (soft + crashAt(load)) / 2;
     const slow = free + span / 2;
-    expect(touchQualityFor(soft, 0)).toBe(1);
-    expect(touchQualityFor(middling, 0)).toBeGreaterThan(touchQualityFor(middling, slow));
-    expect(touchQualityFor(soft, slow)).toBeGreaterThan(touchQualityFor(middling, slow));
-    expect(touchQualityFor(middling, slow)).toBeLessThan(touchQualityFor(middling, 0));
+    expect(touchQualityFor(soft, 0, load)).toBe(1);
+    expect(touchQualityFor(middling, 0, load)).toBeGreaterThan(
+      touchQualityFor(middling, slow, load),
+    );
+    expect(touchQualityFor(soft, slow, load)).toBeGreaterThan(
+      touchQualityFor(middling, slow, load),
+    );
+    expect(touchQualityFor(middling, slow, load)).toBeLessThan(
+      touchQualityFor(middling, 0, load),
+    );
   });
 
   it('refuses a lift that is not graded on a release tick, rather than defaulting', () => {

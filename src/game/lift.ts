@@ -969,10 +969,19 @@ export function qualityGrade(quality: number): TimingGrade {
  *
  * HALF THE GRADE, NOT THE GRADE. `descentPatience` is the other half, and on
  * its own this one has a free perfect answer — see that function.
+ *
+ * LOAD-SCALED, WHICH IS WHERE THE ANSWER MOVES. Both thresholds come off a
+ * load curve, so a heavy bar has to arrive genuinely slower to be caught and
+ * the release that achieves it is at a different tick — which is what stops
+ * one memorised rhythm from winning the beat at every load. Scaling only the
+ * width of the band, which is what the first version did, leaves the correct
+ * answer where it was and cannot do this.
+ * `@guarantee the-descent-cannot-be-played-open-loop`
  */
-export function touchSpeedQuality(rate: number): number {
-  const soft = LIFT_TUNING.BENCH_TOUCH_SOFT_RATE;
-  const crash = LIFT_TUNING.BENCH_TOUCH_CRASH_RATE;
+export function touchSpeedQuality(rate: number, loadRatio: number): number {
+  const load = clampLoadRatio(loadRatio);
+  const soft = byLoad(LIFT_TUNING.BENCH_TOUCH_SOFT_RATE, load);
+  const crash = byLoad(LIFT_TUNING.BENCH_TOUCH_CRASH_RATE, load);
   if (!Number.isFinite(rate)) return 0;
   if (crash <= soft) return rate <= soft ? 1 : 0;
   return scrub(clamp01((crash - rate) / (crash - soft)));
@@ -998,9 +1007,16 @@ export function touchSpeedQuality(rate: number): number {
  * Time under a loaded bar is what charges for it, which is also what charges
  * for it in the sport. `lift.test.ts` measures the feathered strategy against
  * the committed one rather than asserting which wins.
+ *
+ * LOAD-SCALED FOR THE SECOND REASON, WHICH IS THE OPEN-LOOP ONE. A budget in
+ * ticks is the same budget whatever is on the bar, so a rhythm that finished
+ * inside it at one load finished inside it at every load — and a fixed rhythm
+ * winning everywhere is the finding that sent this beat back. A limit bar is
+ * ALLOWED to be lowered deliberately; a warm-up taking just as long is
+ * dawdling. See `BENCH_DESCENT_PATIENCE_TICKS`.
  */
-export function descentPatience(descentTicks: number): number {
-  const free = LIFT_TUNING.BENCH_DESCENT_PATIENCE_TICKS;
+export function descentPatience(descentTicks: number, loadRatio: number): number {
+  const free = byLoad(LIFT_TUNING.BENCH_DESCENT_PATIENCE_TICKS, clampLoadRatio(loadRatio));
   const span = LIFT_TUNING.BENCH_DESCENT_DAWDLE_SPAN_TICKS;
   if (!Number.isFinite(descentTicks) || descentTicks <= free) return 1;
   if (span <= 0) return 0;
@@ -1017,8 +1033,8 @@ export function descentPatience(descentTicks: number): number {
  * end of an interminable one are both bad reps, and a rep that is bad on both
  * counts should be worse than either.
  */
-export function touchQualityFor(rate: number, descentTicks: number): number {
-  return scrub(touchSpeedQuality(rate) * descentPatience(descentTicks));
+export function touchQualityFor(rate: number, descentTicks: number, loadRatio: number): number {
+  return scrub(touchSpeedQuality(rate, loadRatio) * descentPatience(descentTicks, loadRatio));
 }
 
 /**
@@ -1771,7 +1787,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
         m.depthAchieved = true;
         // `m.phaseTick` is how long this DESCENT has run — the quantity
         // `descentPatience` charges for, read at the instant of contact.
-        m.touchQuality = touchQualityFor(rate, m.phaseTick);
+        m.touchQuality = touchQualityFor(rate, m.phaseTick, load);
         // The bar sinks into the chest by what it was carrying. DRAWING AND
         // FLAVOUR ONLY: `extraDepth` stays 0 on bench on purpose, so the sink
         // is not charged a second time through `BURIED_DEMAND_PER_DEPTH` on
@@ -1904,11 +1920,18 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
       if (tick === commandTick) {
         m.events.push({ kind: 'press-command', tick });
         // THE WINDOW'S LENGTH IS DECIDED HERE, ONCE, and it is the same for
-        // everybody. What a false start costs is the CEILING (see
-        // `burstTapCeiling`), never the clock — a shortened window and a
-        // lowered ceiling look similar and are not: shortening the window
-        // would punish a slow tapper twice for one mistake, because they were
+        // everybody. What a false start costs is TAPS (see
+        // `burstCountedTaps`), never the clock — shortening the window would
+        // punish a slow tapper twice for one mistake, because they were
         // already going to run out of taps before they ran out of window.
+        //
+        // THIS COMMENT SAID "THE CEILING (see `burstTapCeiling`)" FOR THREE
+        // COMMITS, naming a function that had been deleted and a mechanism
+        // that `burstCountedTaps`'s own header documents REJECTING as false
+        // for every player below a mash. It is this repository's oldest defect
+        // class — a sentence written while the code was true, keeping its
+        // confident tone after the code moved — living inside the mechanic
+        // that had just been redesigned to close it.
         m.burstEndTick =
           tick + Math.max(1, Math.round(msToTicks(cueWindowMs('press', state.config))));
       }
@@ -2615,7 +2638,12 @@ export function chestApproach(state: LiftState): number | null {
   // taken, which the stage has no business drawing as heat on the bar — a bar
   // creeping down slowly is not coming in hot, it is just slow, and colouring
   // it as a crash would be a cue that lies.
-  return scrub(1 - touchSpeedQuality(rate));
+  //
+  // IT READS THE REP'S OWN LOAD, so the same speed draws hotter under a heavier
+  // bar — which is the whole of the fix that moved the answer with load. A
+  // renderer that scaled this against a fixed pair would draw a limit bar as
+  // controlled while the mechanic was calling it a crash.
+  return scrub(1 - touchSpeedQuality(rate, state.config.loadRatio));
 }
 
 /** What the burst has bought so far, for the stage to draw. */
