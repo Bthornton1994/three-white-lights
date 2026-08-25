@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "bench-ladder-2-2026-08-25T18-36-23-279Z-2548",
+  "label": "bench-ladder-2",
+  "command": [
+    "node",
+    "tools/verify-lift-press.mjs",
+    "--url",
+    "http://localhost:8095",
+    "--arms",
+    "ladder",
+    "--out",
+    "/tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/press2"
+  ],
+  "budgetSeconds": 1800,
+  "startedAtIso": "2026-08-25T18:36:23.279Z",
+  "startedAtMs": 1787682983279,
+  "cwd": "/home/user/wt-bench-stage",
+  "commit": "49dbc7872f2a7f39b41c0b67f2395d8d5072b48d",
+  "branch": "claude/bench-stage-drivers",
+  "dirty": 2,
+  "dirtyPaths": [
+    "tools/sessionDrive.mjs",
+    "tools/verify-lift-press.mjs"
+  ],
+  "runner": {
+    "pid": 2548,
+    "startTick": "1406641",
+    "cmdline": "node tools/watchdog.mjs --budget 1800 --label bench-ladder-2 -- node tools/verify-lift-press.mjs --url http://localhost:8095 --arms ladder --out /tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1",
+    "bootId": "90b40f2b-00aa-4576-a4a2-45d31601d3d7",
+    "bootEpochSeconds": 1787668917,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-25T18:36:23.299Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
