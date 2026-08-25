@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "suite-bench-stage-2026-08-25T20-02-27-065Z-13872",
+  "label": "suite-bench-stage",
+  "command": [
+    "npx",
+    "vitest",
+    "run"
+  ],
+  "budgetSeconds": 1800,
+  "startedAtIso": "2026-08-25T20:02:27.065Z",
+  "startedAtMs": 1787688147065,
+  "cwd": "/home/user/wt-bench-stage",
+  "commit": "30ed24eb39acf2d4d68e768bfa985235b222ede8",
+  "branch": "claude/bench-stage-drivers",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 13872,
+    "startTick": "124988",
+    "cmdline": "node tools/watchdog.mjs --budget 1800 --label suite-bench-stage -- npx vitest run",
+    "bootId": "08766f0d-19e7-495f-880c-c0965fc21158",
+    "bootEpochSeconds": 1787686897,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-25T20:02:27.084Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
