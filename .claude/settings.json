@@ -3,5 +3,13 @@
     "deny": [
       "Read(.claude/worktrees/**)"
     ]
+  },
+  "extraKnownMarketplaces": {
+    "grok-build-plugin-cc": {
+      "source": {
+        "source": "github",
+        "repo": "xai-org/grok-build-plugin-cc"
+      }
+    }
   }
 }
