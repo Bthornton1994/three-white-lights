@@ -1899,7 +1899,7 @@ No open design questions remain. This spec is ready to move to implementation
 scoping.
 
 ### 5.13 Presentation layer (RCT-style floor sim) — PHASES 1, 2 AND 3 BUILT
-### AND GATED IN ON A REAL PHONE. PHASE 4 IS UNLOCKED AND HAS NOT STARTED.
+### AND GATED IN ON A REAL PHONE. PHASE 4 (16-BIT ART) IS IN BUILD.
 
 Submitted in response to the 5.11 ruling above: a spatial floor the player
 builds into, populated by NPCs with visible state, in the direction of
@@ -2442,6 +2442,22 @@ somebody actually calls for it, not automatically because the phase before it
 closed. Until then the floor keeps head-and-body tokens, named-colour furniture
 chips and grid lines, and the bob, footprint, palette and affinity knobs stay
 where they are, because no pass has named a feel problem in any of them.
+
+**PHASE 4 WAS THEN CALLED FOR BY THE HUMAN, AND IS IN BUILD.** One structural
+decision, recorded before the work rather than discovered in a diff: the floor's
+sprites land **self-contained in `src/empire/`**, following `src/art/`'s
+conventions by reading them — the index-grid rasteriser discipline, one key
+light, no pillow shading, hand-placed marks over an underpainting — but not by
+importing that directory. Two reasons. `src/empire/`'s import fence ("imports
+nothing outside this directory except its own tuning") is the pinned property
+that makes the two-session split safe, and the other session is actively
+working in `src/art/` right now, so a live import edge would couple this
+screen's render to files changing under it. The cost is a smaller duplicated
+rasteriser rather than a shared one; the identity requirement is that the floor
+reads as the same game as the lift screen, which is a style question the next
+phone pass judges, not a code-sharing question. The gate for this phase is the
+build order's own: the art is done when the floor reads as the finished game's
+floor, judged by a human on a real phone, same as every gate before it.
 ---
 
 ## 6. Meet Day
