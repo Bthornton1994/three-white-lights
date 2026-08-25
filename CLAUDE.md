@@ -442,6 +442,45 @@ piece (the burst decides the launch, the ascent keeps its own layer — one
 mechanic changes per phone replay, and whether two tap layers over-tax a
 thumb is exactly what the replay can say).
 
+### PHONE REPLAY OF THE BENCH REDESIGN, 2026-08-25 — DIRECTION CONFIRMED, TWO STEERS
+
+Verbatim, phone over a tunnel at `1ccac1b`: *"Right idea, it just needs fine
+tuning. The press command should allow you to continuously tap to grind
+through. The descent should be less of a question on how far to go down, that
+should be automated almost in a sense."* Not a rejection of
+descent → command → tap-rate. §12.1 stays open — steering, not a fun verdict.
+
+**Steer 1 — the burst becomes a continuous grind.** The ~850ms
+`PRESS_BURST_WINDOW_MS` capped at 14 taps, handing off to separate ascent
+`DRIVE — TAP` cues, is replaced by taps that keep mattering through the press
+and the grind until the rep resolves or stalls. **This answers the question
+the previous entry deliberately left to the replay, and REVERSES the recorded
+resolution "ascent DRIVE — TAP cues STAY":** the replay points at one
+continuous grind layer, not burst + cues. That resolution was provisional on
+exactly this evidence and is now settled the other way for bench. Squat's cue
+model is untouched; deadlift's ascent cues are untouched.
+
+**Steer 2 — the descent de-skills to near-automatic.** Hold-to-lower carries
+the bar to the chest; rate-steering stops being the skill. Contact quality may
+survive only as a light touch (release timing at the end, soft vs crash), not
+as steering all the way down. Copy stops teaching "feed the bar down". The
+open-loop search (`OPEN_LOOP_SEARCH`, pinned 0 universal rhythms) loses most
+of its subject when the beat loses its choices — it must be re-scoped or
+retired HONESTLY with the domain deletion recorded, not left sweeping a beat
+that no longer asks anything, per the vacuity rules above.
+
+**Still binding:** seeded command delay stays; wait/command visible on web;
+squat/deadlift histories byte-identical; GDD §6.2 + code in one commit if the
+meaning shifts; no §12.1 claim until another phone replay. Session C mints the
+next tunnel from the playtest worktree (Session A's egress blocks the
+tunnel-mint API — measured, 403).
+
+Build plan: same two serialized pieces as the last round — mechanic first
+(this file's entry above explains why), then instruments + evidence. The
+`cutincap-three-lifts` re-take stays queued behind the instruments piece — a
+third grammar change would have rewritten it a third time; the hold was
+right.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
