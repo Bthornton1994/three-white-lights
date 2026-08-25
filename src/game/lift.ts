@@ -2715,20 +2715,23 @@ export function pressCommandIsLive(state: LiftState): boolean {
 
 /**
  * BENCH: true while taps are doing something — from the press command until
- * the rep resolves. The continuous grind, as a predicate.
+ * the bar locks out or the rep is lost. The continuous grind, as a predicate.
  *
  * THE 2026-08-25 REPLAY STEER IN ONE FUNCTION. "The press command should allow
  * you to continuously tap to grind through": that is HOLE-after-the-command
- * plus the whole of ASCENT plus LOCKOUT's settle beat — everything from the
- * call to the verdict — rather than one 850ms window on the chest.
+ * plus the whole of ASCENT — the bar's entire journey — rather than one 850ms
+ * window on the chest.
  *
- * LOCKOUT IS INCLUDED AND IT IS NOT AN OVERSIGHT. On bench LOCKOUT is a fixed
- * beat that asks for nothing, and a readout that vanished the instant the bar
- * locked out would blink off mid-rep for a player who is still tapping. What
- * the grind can no longer CHANGE there is the outcome, because the ASCENT
- * branch is the only one that reads `grindForce` into the physics — so this is
- * a drawing claim, not a mechanical one, and `lift.test.ts` pins that a tap
- * thrown in LOCKOUT moves no number the resolution reads.
+ * LOCKOUT IS EXCLUDED, AND THE FIRST VERSION OF THIS FUNCTION INCLUDED IT.
+ * That version argued the readout should not blink off while a player was
+ * still tapping. It was wrong on a fact rather than on taste: `advanceGrind`
+ * is called from the HOLE and ASCENT branches only, so in LOCKOUT no tap is
+ * counted AND the charge does not decay — the row would have frozen at
+ * whatever it read when the bar locked out and sat there, which is a readout
+ * that has stopped reading. Caught by the test written to pin the claim (a
+ * tap in LOCKOUT changed nothing, so the "it draws but does not decide"
+ * assertion had no subject); recorded here rather than quietly corrected,
+ * because the reasoning sounded right and the mechanism said otherwise.
  *
  * FALSE ON SQUAT AND DEADLIFT, both of which keep the discrete drive cue. The
  * sibling predicate for deadlift's opposite demand is `lockoutHoldIsLive`.
@@ -2736,9 +2739,8 @@ export function pressCommandIsLive(state: LiftState): boolean {
 export function grindIsLive(state: LiftState): boolean {
   if (state.config.kind !== 'bench') return false;
   if (state.pressCommandTick === null) return false;
-  if (state.phase === 'RESOLVED') return false;
   if (state.phase === 'HOLE') return state.tick >= state.pressCommandTick;
-  return state.phase === 'ASCENT' || state.phase === 'LOCKOUT';
+  return state.phase === 'ASCENT';
 }
 
 /**

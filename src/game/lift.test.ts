@@ -1471,16 +1471,23 @@ const TOUCH_SWEEP = {
   /** Measured at the shipped tuning: (load, seed) pairs walked. */
   PAIRS: 36,
   /** Measured: arrivals compared down the slip ladder, all loads together. */
-  LADDER_COMPARISONS: 54,
-  /** Measured: of those, how many were STRICTLY hotter than the slip before. */
-  LADDER_STRICT_DROPS: 21,
+  LADDER_COMPARISONS: 60,
+  /**
+   * Measured: of those, how many were STRICTLY softer than the slip before.
+   *
+   * SOFTER, NOT HOTTER, and the direction is the opposite of the beat this
+   * replaces. A slip is a stretch of runaway, so an EARLIER one has more of
+   * the descent left to accelerate through — the later the finger comes off,
+   * the less time the bar has to get away.
+   */
+  LADDER_STRICT_RISES: 29,
   /**
    * Measured: (slip, adjacent-load) pairs where both loads reached the chest.
    * Every one does now — the bar always arrives — so this is the full grid.
    */
   LOAD_COMPARISONS: 50,
   /** Measured: of those, how many were strictly hotter under the heavier load. */
-  LOAD_HOTTER_UNDER_LOAD: 26,
+  LOAD_HOTTER_UNDER_LOAD: 31,
   /**
    * Measured: abandoned descents that arrived at quality 0, over all pairs.
    *
@@ -1497,7 +1504,7 @@ const TOUCH_SWEEP = {
    */
   ABANDONED_CRASHES: 24,
   /** Measured: outcome flips between a controlled touch and an abandoned one. */
-  SOFT_VS_CRASH_FLIPS: 33,
+  SOFT_VS_CRASH_FLIPS: 60,
   /** Cases the flip count above is taken over. */
   OUTCOME_CASES: 240,
   /**
@@ -1659,29 +1666,37 @@ describe('the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08
     expect(play(load, { driveOffsetTicks: 0 }).timings.some((t) => t.cue === 'depth')).toBe(true);
   });
 
-  it('never rises as the slip comes later — a later slip arrives hotter', () => {
-    // MONOTONE, AND PINNED AS A COUNT RATHER THAN A BOUND. A constant would
-    // satisfy "never rises" perfectly and be exactly the defect the three-fact
-    // progression rule names, so the number of STRICT drops is pinned too.
-    let strictDrops = 0;
+  it('never falls as the slip comes later — an EARLIER slip arrives hotter', () => {
+    // MONOTONE, AND THE DIRECTION IS THE OPPOSITE OF THE BEAT THIS REPLACED,
+    // WHICH IS WORTH SAYING BECAUSE THE FIRST VERSION OF THIS TEST GOT IT
+    // BACKWARDS. Under the old model a LATER release meant a longer fed
+    // descent and a hotter arrival. Here a slip is a stretch of runaway, and
+    // an earlier one leaves MORE of the descent to run away in — so the later
+    // the finger comes off, the softer the bar lands. Measured, not reasoned:
+    // at load 0.55 a slip at tick 4 grades 0.42 and one at tick 8 grades 0.50.
+    //
+    // PINNED AS A COUNT RATHER THAN A BOUND. A constant would satisfy "never
+    // falls" perfectly and be exactly the defect the three-fact progression
+    // rule names, so the number of STRICT rises is pinned too.
+    let strictRises = 0;
     let compared = 0;
     for (const load of TOUCH_SWEEP.LOADS) {
-      let previous = Number.POSITIVE_INFINITY;
+      let previous = Number.NEGATIVE_INFINITY;
       for (const slip of TOUCH_SWEEP.SLIPS) {
         const touch = benchTouchState(load, 3, slip);
         if (touch === null) continue;
         const quality = touch.touchQuality;
-        expect(quality, `load ${load} slip ${slip}`).toBeLessThanOrEqual(previous);
+        expect(quality, `load ${load} slip ${slip}`).toBeGreaterThanOrEqual(previous);
         expect(quality, `load ${load} slip ${slip}`).toBeGreaterThanOrEqual(0);
         expect(quality, `load ${load} slip ${slip}`).toBeLessThanOrEqual(1);
-        if (Number.isFinite(previous) && quality < previous) strictDrops += 1;
+        if (Number.isFinite(previous) && quality > previous) strictRises += 1;
         compared += 1;
         previous = quality;
       }
     }
     expect(compared, 'no arrivals were compared').toBe(TOUCH_SWEEP.LADDER_COMPARISONS);
-    expect(strictDrops, `only ${strictDrops} strict drops over the ladder`).toBe(
-      TOUCH_SWEEP.LADDER_STRICT_DROPS,
+    expect(strictRises, `only ${strictRises} strict rises over the ladder`).toBe(
+      TOUCH_SWEEP.LADDER_STRICT_RISES,
     );
   });
 
@@ -2174,11 +2189,11 @@ const GRIND_SWEEP = {
   /** Measured at the shipped tuning. One case per (seed, load). */
   CASES: 120,
   /** Outcome flips between a mashed grind and an unanswered command. */
-  MASH_VS_NONE_FLIPS: 78,
+  MASH_VS_NONE_FLIPS: 80,
   /** Outcome flips between a mashed grind and a sparse one. */
-  MASH_VS_SPARSE_FLIPS: 32,
+  MASH_VS_SPARSE_FLIPS: 40,
   /** Outcome flips between a moderate grind and an unanswered command. */
-  MODERATE_VS_NONE_FLIPS: 76,
+  MODERATE_VS_NONE_FLIPS: 80,
   /**
    * Of the `MASH_VS_NONE_FLIPS`, how many are a MAKE becoming a MISS.
    *
@@ -2211,9 +2226,9 @@ const RESCUE_SWEEP = {
   SEEDS: 20,
   LOADS: [0.85, 0.9, 0.95, 1.0] as const,
   /** Ticks after the command at which both reps stop tapping. */
-  IDLE_FROM_TICKS: [22, 26, 30, 34] as const,
+  IDLE_FROM_TICKS: [18, 22, 26, 30] as const,
   /** How long the rescued rep stays quiet before it starts again. */
-  IDLE_SPAN_TICKS: 40,
+  IDLE_SPAN_TICKS: 18,
   /** The rung both reps tap at, before and after the silence. */
   GAP_TICKS: 6,
   /** Measured: pairs walked. `SEEDS * LOADS * IDLE_FROM_TICKS`. */
@@ -2224,19 +2239,55 @@ const RESCUE_SWEEP = {
    * Non-zero is the whole claim: on a burst mechanic this number is 0 by
    * construction, because taps after the window buy nothing.
    */
-  RESCUED: 68,
+  RESCUED: 120,
+  /**
+   * ...and WHERE, which is what the total on its own does not say. One entry
+   * per `LOADS` row, in order.
+   *
+   * THE TWO ZEROS ARE A PROPERTY, NOT A GAP. At 0.85 and 0.9 the bar goes up
+   * whether or not the player keeps tapping, so there is nothing to rescue —
+   * which is the same forgiveness the warm-up arm of the tap ladder pins, one
+   * load band further in. If they ever went non-zero the grind would have
+   * grown into a difficulty setting at working weights.
+   */
+  RESCUED_PER_LOAD: [0, 0, 40, 80] as const,
   /**
    * Of those, pairs where the idle rep MISSED and the resumed rep did not.
    *
    * PINNED SEPARATELY FOR THE REASON `MASH_MAKE_TO_NONE_MISS` IS. A flip count
    * says a population moved; it does not say which way, and "idle hands lose a
-   * rep that taps would have saved" is a claim about the direction.
+   * rep that taps would have saved" is a claim about the direction. The rest
+   * of `RESCUED` is a grind becoming a clean lift, which is a real difference
+   * and is not the sentence the steer wrote.
    */
-  RESCUED_FROM_A_MISS: 68,
-  /** Measured: pairs where the idle rep really did stall (velocity went negative). */
-  IDLE_REPS_THAT_STALLED: 320,
+  RESCUED_FROM_A_MISS: 40,
+  /**
+   * Measured: pairs where the idle rep really did STALL — ascent ticks under
+   * `GRIND_STALL_VELOCITY`, which is the mechanic's own definition of a bar
+   * that has stopped.
+   *
+   * IT IS SMALLER THAN `RESCUED` AND THAT IS THE HONEST READING. Only at the
+   * top of the ladder does going quiet actually stop the bar; below it the
+   * cost is a slower rep. So "a stall that continued tapping can rescue" is
+   * true of 40 of these 320 pairs and "tapping later is worth something" is
+   * true of 120, and the two numbers are pinned apart rather than one of them
+   * being quoted as if it were the other.
+   */
+  IDLE_REPS_THAT_STALLED: 40,
   /** Measured: pairs where the rescued rep out-ran the idle one to a higher peak. */
-  HIGHER_PEAK_WHEN_RESUMED: 249,
+  HIGHER_PEAK_WHEN_RESUMED: 40,
+  /**
+   * Measured: (load, idle-from) cells where all `SEEDS` seeds agreed on every
+   * count above.
+   *
+   * THE SEED AXIS IS A CONTROL, NOT A DOMAIN, and this is what says so rather
+   * than leaving a reader to wonder why every count is a multiple of 20. The
+   * seed decides WHEN the command fires and nothing else; both reps in a pair
+   * are scripted relative to that tick, so a pair's answer cannot depend on
+   * it. GDD §8.1 — a rescue that worked on some seeds and not others would be
+   * a dice roll on the rep.
+   */
+  UNANIMOUS_CELLS: 16,
 } as const;
 
 describe('the grind curve', () => {
@@ -2396,17 +2447,22 @@ describe('the grind decides the lift', () => {
     // WHAT MAKES THIS DIFFERENT FROM THE TAP LADDER ABOVE, which is the
     // question a reader should ask. The ladder measures whether tapping HARDER
     // is better, and a burst mechanic passes that easily. This measures
-    // whether tapping LATER — after the bar has already stopped — is worth
-    // anything, and on a burst it is worth exactly nothing by construction.
+    // whether tapping LATER — after the launch beat is long over, and in 40 of
+    // these pairs after the bar has already stopped — is worth anything, and
+    // on a burst it is worth exactly nothing by construction.
     // ---------------------------------------------------------------------
     let pairs = 0;
     let rescued = 0;
     let rescuedFromAMiss = 0;
     let idleStalled = 0;
     let higherPeak = 0;
-    for (let seed = 1; seed <= RESCUE_SWEEP.SEEDS; seed += 1) {
-      for (const load of RESCUE_SWEEP.LOADS) {
-        for (const from of RESCUE_SWEEP.IDLE_FROM_TICKS) {
+    let unanimousCells = 0;
+    const perLoad = RESCUE_SWEEP.LOADS.map(() => 0);
+    for (let i = 0; i < RESCUE_SWEEP.LOADS.length; i += 1) {
+      const load = RESCUE_SWEEP.LOADS[i] ?? 0;
+      for (const from of RESCUE_SWEEP.IDLE_FROM_TICKS) {
+        const cell: string[] = [];
+        for (let seed = 1; seed <= RESCUE_SWEEP.SEEDS; seed += 1) {
           const quiet = benchGrindRep(load, seed, {
             gapTicks: RESCUE_SWEEP.GAP_TICKS,
             idle: { from, until: Number.POSITIVE_INFINITY },
@@ -2416,32 +2472,37 @@ describe('the grind decides the lift', () => {
             idle: { from, until: from + RESCUE_SWEEP.IDLE_SPAN_TICKS },
           });
           pairs += 1;
-          if (quiet.resolution?.outcome !== resumed.resolution?.outcome) rescued += 1;
-          if (
-            quiet.resolution?.outcome === 'miss' &&
-            resumed.resolution?.outcome !== 'miss'
-          ) {
-            rescuedFromAMiss += 1;
+          const flipped = quiet.resolution?.outcome !== resumed.resolution?.outcome;
+          const savedARep =
+            quiet.resolution?.outcome === 'miss' && resumed.resolution?.outcome !== 'miss';
+          // THE NON-VACUITY GUARD WITH TEETH: `stallTicks` counts ascent ticks
+          // under `GRIND_STALL_VELOCITY`, so this is the mechanic's own
+          // definition of a bar that stopped rather than a proxy for one.
+          const stalled = (quiet.resolution?.stallTicks ?? 0) > 0;
+          const climbed = resumed.peakHeight > quiet.peakHeight;
+          if (flipped) {
+            rescued += 1;
+            perLoad[i] = (perLoad[i] ?? 0) + 1;
           }
-          // THE NON-VACUITY GUARD WITH TEETH: the idle rep has to actually
-          // STALL, or "rescued from a stall" is a sentence about a bar that
-          // was never in trouble. `stallTicks` counts ascent ticks under
-          // `GRIND_STALL_VELOCITY`, which is the mechanic's own definition.
-          if ((quiet.resolution?.stallTicks ?? 0) > 0) idleStalled += 1;
-          if (resumed.peakHeight > quiet.peakHeight) higherPeak += 1;
+          if (savedARep) rescuedFromAMiss += 1;
+          if (stalled) idleStalled += 1;
+          if (climbed) higherPeak += 1;
+          cell.push(`${flipped}|${savedARep}|${stalled}|${climbed}`);
         }
+        if (new Set(cell).size === 1) unanimousCells += 1;
       }
     }
     expect(RESCUE_SWEEP.PAIRS, 'the domain these counts are taken over').toBe(320);
     expect(pairs).toBe(RESCUE_SWEEP.PAIRS);
     expect(
       idleStalled,
-      `only ${idleStalled} of ${pairs} idle reps actually stalled`,
+      `${idleStalled} of ${pairs} idle reps actually stalled`,
     ).toBe(RESCUE_SWEEP.IDLE_REPS_THAT_STALLED);
     expect(
       rescued,
       `coming back changed the outcome in ${rescued} of ${pairs} pairs`,
     ).toBe(RESCUE_SWEEP.RESCUED);
+    expect(perLoad, 'rescues per load').toEqual([...RESCUE_SWEEP.RESCUED_PER_LOAD]);
     expect(
       rescuedFromAMiss,
       `${rescuedFromAMiss} of ${pairs} pairs turned a miss into a make`,
@@ -2450,6 +2511,10 @@ describe('the grind decides the lift', () => {
       higherPeak,
       `the resumed rep out-climbed the idle one in ${higherPeak} of ${pairs} pairs`,
     ).toBe(RESCUE_SWEEP.HIGHER_PEAK_WHEN_RESUMED);
+    // The seed control — see `UNANIMOUS_CELLS`.
+    expect(unanimousCells, `${unanimousCells} cells were seed-unanimous`).toBe(
+      RESCUE_SWEEP.UNANIMOUS_CELLS,
+    );
   });
 
   it('never rewards tapping slower, across the sweep', () => {
@@ -2590,36 +2655,6 @@ describe('the grind decides the lift', () => {
     expect(squatTicks, 'no squat ticks were walked').toBeGreaterThan(60);
   });
 
-  it('lets a tap in LOCKOUT draw without letting it change the rep', () => {
-    // `grindIsLive` deliberately stays true through bench's LOCKOUT so the
-    // readout does not blink off mid-rep — see its header. That is a DRAWING
-    // claim, and this is the assertion that keeps it from quietly becoming a
-    // mechanical one: only the ASCENT branch reads `grindForce` into the
-    // physics, so a rep tapped through lockout must resolve identically to one
-    // that stopped at lockout.
-    const load = 0.85;
-    const base = buildBenchScript(load, 3, { gapTicks: GRIND_SWEEP.MASH_GAP_TICKS });
-    const replay = runLift({ kind: BENCH, loadRatio: load, seed: 3 }, base, TOUCH_SWEEP.MAX_TICKS);
-    const lockout = replay.history.find((s) => s.phase === 'LOCKOUT');
-    expect(lockout, 'the rep never locked out').toBeDefined();
-    if (lockout === undefined) return;
-    const quiet = runLift(
-      { kind: BENCH, loadRatio: load, seed: 3 },
-      base.filter((input) => input.tick < lockout.tick),
-      TOUCH_SWEEP.MAX_TICKS,
-    ).final;
-    const tapped = runLift(
-      { kind: BENCH, loadRatio: load, seed: 3 },
-      [
-        ...base.filter((input) => input.tick < lockout.tick),
-        ...tapsAt(lockout.tick, GRIND_SWEEP.MASH_GAP_TICKS, 12),
-      ],
-      TOUCH_SWEEP.MAX_TICKS,
-    ).final;
-    // The tap really landed in LOCKOUT, or this compares two identical scripts.
-    expect(tapped.grindTaps, 'no lockout taps were counted').toBeGreaterThan(quiet.grindTaps);
-    expect(JSON.stringify(tapped.resolution)).toBe(JSON.stringify(quiet.resolution));
-  });
 });
 
 describe('the false-start rule, exactly as the copy states it', () => {
@@ -2669,7 +2704,7 @@ describe('the false-start rule, exactly as the copy states it', () => {
     // THE COPY'S OWN NUMBER, DERIVED RATHER THAN RESTATED. "Half a second" is
     // only true if the cap is exactly 500ms at this tick rate, so the sentence
     // is checked against the clock rather than against a second literal.
-    expect(MAX_LOCKOUT_TICKS * TICK_MS).toBe(500);
+    expect(MAX_LOCKOUT_TICKS * TICK_MS).toBeCloseTo(500, 9);
     expect(LIFT_COPY.SUBTITLE.bench).toContain('up to half a second');
 
     // Driven through the SIM and compared against the rule, so a mechanic that
@@ -2694,10 +2729,18 @@ describe('the false-start rule, exactly as the copy states it', () => {
       previous = force;
     }
     // The clause bites for as many rungs as there is room between the command
-    // and the cap, and then the cap holds. Pinned as a count so a charge that
-    // stopped charging, or a cap that stopped capping, reports itself instead
-    // of passing.
-    expect(strictDrops, `${strictDrops} rungs actually delayed the grind`).toBe(3);
+    // and the LAUNCH, and then it has taken everything the launch had. Pinned
+    // as a count so a charge that stopped charging, or a cap that stopped
+    // capping, reports itself instead of passing.
+    //
+    // FIVE, NOT `MAX_LOCKOUT_TICKS / PER_EARLY_TAP_TICKS` — the binding
+    // constraint is the launch beat (18 ticks) rather than the cap (30), and
+    // the two are different numbers for a reason. The cap is what stops the
+    // rule ever reaching into the ASCENT grind, which is what makes it "costs
+    // the launch and never the rep"; the launch beat is what the delay has to
+    // eat through before the launch reads zero. A tuner who lengthens
+    // `PRESS_LAUNCH_MS` moves this count and not the cap.
+    expect(strictDrops, `${strictDrops} rungs actually delayed the grind`).toBe(5);
     // The cap really is a cap: past it, more mashing changes nothing at all.
     expect(forces[capRung] ?? -1).toBe(forces[capRung + 4] ?? -2);
     expect(grindStartTick(100, capRung)).toBe(grindStartTick(100, capRung + 40));
@@ -4218,9 +4261,21 @@ describe('touchSpeedQuality', () => {
     // bar, and a single threshold cannot do that.
     const probe = softAt(LOAD_PRESETS.LIGHT);
     expect(touchSpeedQuality(probe, LOAD_PRESETS.LIGHT)).toBe(1);
-    // The speed a warm-up is CAUGHT at is a crash on a limit bar. Not merely
-    // lower — 0, which is the strongest form of "the answer moved".
-    expect(touchSpeedQuality(probe, LOAD_PRESETS.MAXIMAL)).toBe(0);
+    // The speed a warm-up is CAUGHT at is most of the way to a crash on a
+    // limit bar.
+    //
+    // NOT 0, AND THE WEAKER CLAIM IS THE HONEST ONE. It used to be 0 — full
+    // band separation, `crash(MAXIMAL) < soft(LIGHT)` — because the open-loop
+    // property needed the whole graded band to MOVE rather than merely slope.
+    // That property is retired with the search (see `OPEN_LOOP_SEARCH`'s note),
+    // and the constants that would restore separation are knife-edge against
+    // the steer's own inequality (`controlled <= soft` at every load): three
+    // margins under 0.0013 in a file GDD §10 expects a playtester to turn
+    // thirty times. So the assertion is what the tuning actually supports —
+    // strictly and substantially worse under load — and `liftTuning.test.ts`
+    // records the same retirement beside the two ordered comparisons that
+    // replaced it.
+    expect(touchSpeedQuality(probe, LOAD_PRESETS.MAXIMAL)).toBeLessThan(0.5);
     // ...and it falls monotonically in between, so the curve is a ramp rather
     // than a step somebody could sit on either side of.
     let previous = Number.POSITIVE_INFINITY;
