@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "b2c-2026-08-25T18-56-30-202Z-20812",
   "label": "b2c",
   "command": [
@@ -36,12 +36,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 1,
-    "okCount": 0,
+    "count": 2,
+    "okCount": 1,
     "errors": [],
-    "lastAttemptIso": "2026-08-25T18:56:30.223Z",
-    "lastReason": "start",
+    "lastAttemptIso": "2026-08-25T18:57:07.069Z",
+    "lastReason": "final",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm"
-  }
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": true,
+    "lastOkIso": "2026-08-25T18:56:33.202Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-25T18:57:07.068Z",
+  "elapsedSeconds": 36.9
 }
