@@ -84,6 +84,39 @@ export function numberInBlock(source, blockName, key) {
   return null;
 }
 
+/**
+ * The braces of the named block, verbatim, or `null`.
+ *
+ * WHAT IT IS FOR, AND IT IS THE ONE SHAPE `numberInBlock` CANNOT REACH: a block
+ * nested inside another whose key is a common word. `DESCENT_DEPTH_PER_TICK`
+ * holds a `bench` sub-block, and `bench` occurs dozens of times in
+ * `liftTuning.ts` — as a per-kind copy key, as a prompt row, in prose — so
+ * `numberInBlock(source, 'bench', 'LIGHT')` answers about whichever one comes
+ * first in the file, confidently and wrongly. Slicing the outer block first and
+ * asking inside the slice is the fix, and it belongs here rather than inline in
+ * a tool for this file's own stated reason: a fourth copy of a reader is how the
+ * third one stops matching without anybody noticing.
+ *
+ * The brace walk is `numberInBlock`'s own, which is why this is beside it: the
+ * two are one traversal asked for two different things, and a second copy of
+ * the depth counter is exactly the drift this module exists to prevent.
+ */
+export function blockInSource(source, blockName) {
+  const at = source.search(new RegExp(`(?:^|[^A-Za-z0-9_$])${blockName}\\s*[:=]`, 'm'));
+  if (at < 0) return null;
+  const open = source.indexOf('{', at);
+  if (open < 0) return null;
+  let depth = 0;
+  for (let i = open; i < source.length; i += 1) {
+    if (source[i] === '{') depth += 1;
+    else if (source[i] === '}') {
+      depth -= 1;
+      if (depth === 0) return source.slice(open, i + 1);
+    }
+  }
+  return null;
+}
+
 /** The single-quoted string a `NAME: '<text>',` property is given, or `null`. */
 export function stringInSource(source, name) {
   const found = new RegExp(`(?:^|[^A-Za-z0-9_$])${name}\\s*:\\s*'((?:[^'\\\\]|\\\\.)*)'`).exec(source);
@@ -149,6 +182,11 @@ export const SELF_TEST_FIXTURE = `
     'bomb-out': 1,
   }),
   STARTING: Object.freeze({ squat: 180, deadlift: 220 }),
+  PER_TICK: {
+    squat: { LIGHT: 0.0278, MAXIMAL: 0.0155 },
+    bench: { LIGHT: 0.034, MAXIMAL: 0.019 },
+  },
+  BENCH_ELSEWHERE: { LIGHT: 999, MAXIMAL: 999 },
   A_LINE: 'High. The hips never got under.',
   export const A_CHANNEL = '__someGlobal';
   export const A_RATE = 60;
@@ -189,6 +227,18 @@ export function parserSelfTest() {
     // otherwise be handed whichever tuning property happened to be named the
     // same, with no way to tell.
     ['numberInDeclaration must not read a property', numberInDeclaration(f, 'HOLD_MS'), null],
+    // ...AND THE NESTED-BLOCK READER, POINTED AT THE TRAP IT EXISTS FOR. The
+    // fixture holds `bench` twice: once inside `PER_TICK` and once at the top
+    // level, EARLIER in neither case by accident — `BENCH_ELSEWHERE` is after
+    // `PER_TICK`, so a reader that slices correctly and a reader that grabs the
+    // first `bench` in the file would agree, and the check would be vacuous.
+    // So the assertion is on the SLICE: `blockInSource` must return the outer
+    // block's own text, and `numberInBlock` inside that slice must answer 0.034
+    // where the same call over the whole fixture answers about `STARTING`.
+    ['blockInSource PER_TICK contains its own bench row', (blockInSource(f, 'PER_TICK') ?? '').includes("bench: { LIGHT: 0.034"), true],
+    ['blockInSource PER_TICK excludes the sibling block', (blockInSource(f, 'PER_TICK') ?? '').includes('BENCH_ELSEWHERE'), false],
+    ['numberInBlock inside the slice', numberInBlock(blockInSource(f, 'PER_TICK') ?? '', 'bench', 'LIGHT'), 0.034],
+    ['blockInSource on a name that is not there', blockInSource(f, 'NOT_PRESENT'), null],
   ];
   return want
     .filter(([, got, expected]) => got !== expected)

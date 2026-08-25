@@ -85,11 +85,15 @@
 
 import {
   ASCENT_PROMPTS,
+  BENCH_BEAT,
   LIFT_PROMPTS,
   SESSION_DRIVE,
   SESSION_PROMPTS,
   adaptDepthSearch,
   awaitFirstDriveCue,
+  burstTapTheCommand,
+  feedBenchToTheChest,
+  freshBenchDescent,
   freshDepthSearch,
   tapDriveCuesToLockout,
 } from './sessionDrive.mjs';
@@ -418,8 +422,28 @@ export const MEET_DRIVE = Object.freeze({
    * `deadlift: null` IS THE LIFT, NOT AN OMISSION. There is no eccentric to
    * hold through, so there is no hold to start anywhere — the same `null` that
    * `LIFT_PROMPTS.deadlift.DESCENT` carries and for the same reason.
+   *
+   * ===========================================================================
+   * AND `bench: null` IS NOW THE SAME KIND OF NULL — RULED 2026-08-25
+   * ===========================================================================
+   * EVERY BENCH NUMBER ABOVE DESCRIBES A BEAT THE GAME NO LONGER HAS, and they
+   * are kept rather than deleted because they are the record of what this row
+   * used to mean and of the sweep that chose it. The ruling replaced bench's
+   * descent outright: the bar is fed down while the finger is held and resisted
+   * while it is lifted, contact happens wherever it reaches the chest, and the
+   * graded quantity is the RATE it arrives at rather than the tick a release
+   * landed on. There is no legal band, no buried point and no release to
+   * bisect, so 760 is not a smaller or larger version of the right answer — the
+   * question it answers is gone.
+   *
+   * What steers bench here now is `sessionDrive.mjs`'s `BENCH_BEAT`, whose duty
+   * cycle is SEARCHED out of `liftTuning.ts`'s own descent constants on module
+   * load rather than swept once and typed. That is the same trade this block
+   * already asks for in its own words — "a re-tune of the mechanic should expect
+   * to re-take them" — made automatic for the one lift whose constants the
+   * ruling says a tuner is about to move.
    */
-  START_HOLD_MS: Object.freeze({ squat: 840, bench: 760, deadlift: null }),
+  START_HOLD_MS: Object.freeze({ squat: 840, bench: null, deadlift: null }),
 
   /**
    * THE FRAME RATE BELOW WHICH THE SIM GENUINELY FALLS BEHIND THE CLOCK.
@@ -450,8 +474,13 @@ export const MEET_DRIVE = Object.freeze({
    *
    * Squat keeps the shared 180: its band is 420 ms wide and a smaller step
    * would spend attempts crawling.
+   *
+   * BENCH IS `null` FOR THE REASON ITS START HOLD IS — there is no band to step
+   * inside. `adaptBenchDescent` moves a FEED PHASE against a miss reason
+   * instead, and it lives with the rest of the bench beat in
+   * `sessionDrive.mjs`.
    */
-  DEPTH_STEP_MS: Object.freeze({ squat: SESSION_DRIVE.DEPTH_HOLD_STEP_MS, bench: 60, deadlift: null }),
+  DEPTH_STEP_MS: Object.freeze({ squat: SESSION_DRIVE.DEPTH_HOLD_STEP_MS, bench: null, deadlift: null }),
 
   /**
    * ===========================================================================
@@ -493,14 +522,19 @@ export const MEET_DRIVE = Object.freeze({
   PULL_RELEASE_MS: 80,
 
   /**
-   * BENCH ONLY — how long to wait at the chest for `PRESS!`.
-   * `PRESS_COMMAND_DELAY_TICKS`' whole range plus `PRESS_TIMEOUT_TICKS`, so a
+   * BENCH ONLY — how long to wait at the chest for the press command.
+   * `PRESS_COMMAND_DELAY_TICKS`' whole range plus the beat after it, so a
    * timeout here means the command never came rather than that the driver was
    * impatient.
+   *
+   * `PRESS_TAP_MS` USED TO SIT BESIDE THIS AND IS GONE RATHER THAN RETUNED. It
+   * was how long a single reaction tap's `mouse.down` was held, and the
+   * 2026-08-25 ruling replaced one press with a burst: the length of one tap
+   * decides nothing now, and how many counted taps land inside the window
+   * decides the launch. `sessionDrive.mjs`'s `burstTapTheCommand` owns that
+   * loop and derives its cadence from `PRESS_BURST_TAP_REFRACTORY_TICKS`.
    */
   COMMAND_TIMEOUT_MS: 6000,
-  /** BENCH ONLY — how long the reaction tap's mouse.down is held. */
-  PRESS_TAP_MS: 60,
 
   /**
    * DEADLIFT ONLY — how long to hold a lockout waiting for the down command.
@@ -819,8 +853,9 @@ const meetHasLeftTheRep = (reading) => reading.attempt === false;
  * `LIFT_PROMPTS[kind]` is the table to steer by:
  *
  *   squat     hold to descend  -> release AT DEPTH -> tap the cues -> lockout
- *   bench     hold to lower    -> release AT THE CHEST -> WAIT for 'PRESS!' and
- *                                 press on it -> tap the cues -> lockout
+ *   bench     FEED the bar down in a duty cycle -> it arrives at the chest by
+ *             itself -> WAIT for the press command -> BURST of taps inside its
+ *             window -> tap the cues -> lockout
  *   deadlift  hold through the brace, release once the bar leaves the floor ->
  *             tap the cues -> CLAMP DOWN at lockout and DO NOTHING until the
  *             down command
@@ -857,7 +892,7 @@ const meetHasLeftTheRep = (reading) => reading.attempt === false;
  * see `liftFromBracePrompt`.
  */
 export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
-  const { walkoutLine = null, attemptLabel = null, beforeFirstPress } = hooks;
+  const { walkoutLine = null, attemptLabel = null, beforeFirstPress, benchPlan = null } = hooks;
   const ladder = LIFT_PROMPTS[kind];
   if (ladder === undefined) {
     return { played: false, kind, why: `no prompt ladder for lift ${JSON.stringify(kind)}` };
@@ -920,6 +955,8 @@ export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
 
   let reachedDescent = false;
   let reachedCommand = false;
+  let benchDescent = null;
+  let burst = null;
   const pressedAt = Date.now();
   await page.mouse.down();
 
@@ -960,8 +997,20 @@ export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
       };
     }
     reachedDescent = true;
-    await page.waitForTimeout(Math.max(0, holdMs - (Date.now() - pressedAt)));
-    await page.mouse.up();
+    if (kind === 'bench') {
+      // ---- BENCH: THE FED DESCENT (GDD §6.2, ruled 2026-08-25), NOT A HOLD.
+      // Shared with the session ladder probe rather than written twice — see
+      // `feedBenchToTheChest`'s header. `holdMs` is null on this path and the
+      // whole block above `MEET_DRIVE.START_HOLD_MS` records why.
+      benchDescent = await feedBenchToTheChest(page, {
+        read: readMeetAscent,
+        plan: benchPlan ?? freshBenchDescent(),
+        hasLeft: meetHasLeftTheRep,
+      });
+    } else {
+      await page.waitForTimeout(Math.max(0, holdMs - (Date.now() - pressedAt)));
+      await page.mouse.up();
+    }
 
     if (ladder.COMMAND !== null) {
       // ---- BENCH ONLY: THE REACTION. `stepLift`'s HOLE branch reads a press
@@ -981,9 +1030,14 @@ export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
       );
       if (meetSaying(commanded.state, ladder.COMMAND)) {
         reachedCommand = true;
-        await page.mouse.down();
-        await page.waitForTimeout(MEET_DRIVE.PRESS_TAP_MS);
-        await page.mouse.up();
+        // ---- THE BURST, NOT A PRESS. One tap answered the old command; the
+        // ruling made the answer a run of taps inside a window. Shared with the
+        // session arm, and it stops on the command line leaving the screen
+        // rather than on a stopwatch — see `burstTapTheCommand`.
+        burst = await burstTapTheCommand(page, {
+          read: readMeetAscent,
+          hasLeft: meetHasLeftTheRep,
+        });
       }
     }
   }
@@ -1067,6 +1121,9 @@ export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
     fpsWhy: rate.why,
     reachedDescent,
     reachedCommand,
+    /** BENCH ONLY: how the fed descent and the tap burst actually ran. */
+    benchDescent,
+    burst,
     reachedLockout: drive.lockedOut,
     drivesTapped: drive.drivesTapped,
     downCommandSeen,
@@ -1142,7 +1199,26 @@ export function freshMeetSearches() {
           holdMs: MEET_DRIVE.START_HOLD_MS[kind],
           stepMs: MEET_DRIVE.DEPTH_STEP_MS[kind],
         };
-  return { squat: forLift('squat'), bench: forLift('bench'), deadlift: forLift('deadlift') };
+  return {
+    squat: forLift('squat'),
+    // BENCH CARRIES A DUTY CYCLE, NOT A HOLD, AND IT IS NOT ADAPTED HERE.
+    //
+    // Two reasons and the second is the one worth reading. The first is shape:
+    // there is no release tick to bisect any more, so `holdMs` has nothing to
+    // hold. The second is that THE MEET'S FEEDBACK CANNOT TELL THIS DRIVER
+    // WHICH WAY TO MOVE. `feedbackTextFor` maps every miss reason that is not
+    // 'no-depth', 'buried' or 'timeout' onto one line — `FEEDBACK_STALLED`,
+    // "The bar won that one." — so a bench rep that CRASHED the bar and one
+    // that never reached the chest print the same sentence, and the two want
+    // opposite corrections. `adaptFromMeetFeedback`'s own header already
+    // refuses to move a squat's hold on that line for exactly this reason, and
+    // the same refusal applies here rather than a guess.
+    //
+    // The session arm is where bench's cycle adapts: `adaptBenchDescent` reads
+    // `LIFT_COPY.MISS_REASON` directly, where 'no-touch' has its own sentence.
+    bench: freshBenchDescent(),
+    deadlift: forLift('deadlift'),
+  };
 }
 
 /**
@@ -1154,8 +1230,16 @@ export function freshMeetSearches() {
  */
 export function holdsIn(searches) {
   return MEET_LIFT_ORDER.map((kind) => {
-    const hold = searches?.[kind]?.holdMs;
-    return `${kind} ${hold === undefined || hold === null ? 'no eccentric' : `${hold}ms`}`;
+    const search = searches?.[kind] ?? null;
+    // THREE SHAPES, THREE SENTENCES, AND NONE OF THEM A NUMBER STANDING IN FOR
+    // ANOTHER KIND OF NUMBER. `no eccentric` rather than `0ms` for the deadlift
+    // is this function's own oldest note — printing a zero there reads as a
+    // hold of zero and invites a comparison with the other two. Bench's duty
+    // cycle gets the same treatment for the same reason: `760ms` and
+    // `183/433ms` are not two values of one quantity.
+    if (search === null) return `${kind} no eccentric`;
+    if (search.feedMs !== undefined) return `${kind} feed ${search.feedMs}ms / ease ${search.easeMs}ms`;
+    return `${kind} ${search.holdMs === null || search.holdMs === undefined ? 'no eccentric' : `${search.holdMs}ms`}`;
   }).join(', ');
 }
 
@@ -1387,10 +1471,11 @@ export async function driveMeetToItsEnd(page, options = {}) {
       }
       if (!liftsPlayed.includes(kind)) liftsPlayed.push(kind);
       const search = searches[kind];
-      const rep = await playOneMeetAttempt(page, kind, search === null ? null : search.holdMs, {
+      const rep = await playOneMeetAttempt(page, kind, search === null ? null : (search.holdMs ?? null), {
         walkoutLine: lastWalkoutLine,
         attemptLabel: label,
         beforeFirstPress,
+        benchPlan: kind === 'bench' ? search : null,
       });
       attempts.push({ attempt: label, ...rep });
       if (!rep.played) {
@@ -1399,7 +1484,11 @@ export async function driveMeetToItsEnd(page, options = {}) {
       // ONLY THIS LIFT'S SEARCH MOVES. A deadlift has none — its two miss
       // reasons ('no-depth', 'buried') come from a DESCENT it cannot have — so
       // the feedback is not offered to a search that does not exist.
-      if (search !== null) {
+      // ...AND BENCH'S IS NOT ONE OF THEM. Its plan carries a duty cycle rather
+      // than a hold, and the judges' one line cannot say which way to move it —
+      // see `freshMeetSearches`. Tested on the SHAPE rather than on the kind so
+      // the two cannot disagree about which lifts have a hold.
+      if (search !== null && search.holdMs !== undefined && search.holdMs !== null) {
         searches = { ...searches, [kind]: adaptFromMeetFeedback(search, rep.feedback) };
       }
       continue;

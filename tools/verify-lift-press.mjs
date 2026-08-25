@@ -202,13 +202,19 @@ import path from 'node:path';
 
 import {
   ASCENT_PROMPTS,
+  BENCH_BEAT,
+  BENCH_DRIVE,
   ECCENTRIC_ONLY_PROMPTS,
   LIFT_PROMPTS,
   SESSION_DRIVE,
   SESSION_PROMPTS,
+  adaptBenchDescent,
   adaptDepthSearch,
+  burstTapTheCommand,
   checkInLiftTestId,
   awaitFirstDriveCue,
+  feedBenchToTheChest,
+  freshBenchDescent,
   freshDepthSearch,
   openSessionToFirstSet,
   readLoop,
@@ -229,10 +235,12 @@ import {
 import { markerDirFor } from './verifyMarker.mjs';
 import { decodePng, diffPixels } from './png.mjs';
 import {
+  blockInSource,
   numberInBlock,
   numberInDeclaration,
   numberInSource,
   parserSelfTest,
+  stringInSource,
 } from './readTuning.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1509,7 +1517,8 @@ async function untilLoop(page, predicate, timeoutMs) {
  * "TAP TO PULL" is printable ONLY from (deadlift, BRACE), "DON'T LET GO" only
  * from (deadlift, LOCKOUT) before the command, "DOWN" only from (deadlift,
  * LOCKOUT) after it, and "RELEASE AT DEPTH" / "OUT OF THE HOLE" /
- * "TOUCH THE CHEST" / "WAIT FOR IT" / "PRESS!" only from a DESCENT or a HOLE —
+ * "EASE IT DOWN" / "WAIT FOR IT" / "PRESS — TAP FAST" only from a DESCENT or a
+ * HOLE —
  * phases `stepLift` REFUSES to a deadlift outright.
  *
  * `session-detail` is the second, independent read: `SetView` fills it from
@@ -1655,6 +1664,15 @@ const LIFT_LADDER = Object.freeze({
    * a bench rep is buried — a shared constant would spend three of this
    * probe's four attempts bisecting its way back down on every bench run.
    *
+   * `bench: null` IS THE 2026-08-25 RULING, NOT AN OMISSION. Bench's descent
+   * stopped being a hold: the bar is fed down and resisted, contact happens
+   * wherever it reaches the chest, and what is graded is the RATE it arrives
+   * at. There is no release tick to bisect, so there is no starting hold to
+   * put here. The 610/663/762 figures above are the OLD beat's and are kept as
+   * the record of what this row used to mean. What steers bench now is
+   * `sessionDrive.mjs`'s `BENCH_BEAT`, whose duty cycle is searched out of the
+   * mechanic's own constants rather than measured once and typed.
+   *
    * BIASED ABOVE THE IDEAL, NOT AT THE MIDDLE, for the reason `DEPTH_HOLD_MS`'s
    * own header gives: `useLiftLoop` takes at most `FEEDBACK.MAX_CATCH_UP_TICKS`
    * ticks per animation frame, so on a loaded software-rendered browser a
@@ -1665,7 +1683,7 @@ const LIFT_LADDER = Object.freeze({
    * `deadlift: null` is the lift, not an omission: there is no eccentric to
    * hold through, so there is no hold to start anywhere.
    */
-  START_HOLD_MS: Object.freeze({ squat: 1000, bench: 700, deadlift: null }),
+  START_HOLD_MS: Object.freeze({ squat: 1000, bench: null, deadlift: null }),
 
   /**
    * How long to wait for a deadlift's brace to end after the pull press.
@@ -1689,14 +1707,20 @@ const LIFT_LADDER = Object.freeze({
   PULL_RELEASE_MS: 80,
 
   /**
-   * BENCH'S REACTION TAP. `LIFT_COPY.PROMPT.HOLE_COMMANDED` is 'PRESS!' and
-   * `stepLift`'s HOLE branch reads a press EDGE, so the finger has to be up
-   * when the command fires — it is, because the depth release lifted it.
-   * `PRESS_TIMEOUT_TICKS` gives up on an ignored command; this deadline is past
-   * `PRESS_COMMAND_DELAY_TICKS`' whole range plus that.
+   * HOW LONG TO WAIT AT THE CHEST FOR THE PRESS COMMAND.
+   *
+   * Past `PRESS_COMMAND_DELAY_TICKS`' whole declared range plus the beat that
+   * follows it, so a timeout here means the command never came rather than that
+   * this probe was impatient.
+   *
+   * WHAT USED TO SIT BESIDE THIS WAS `PRESS_TAP_MS`, A SINGLE REACTION TAP, and
+   * it is gone rather than retuned. The 2026-08-25 ruling replaced one press
+   * with a burst: how long ONE tap is held decides nothing now, and how many
+   * counted taps land inside the window decides the launch. `sessionDrive.mjs`'s
+   * `burstTapTheCommand` owns that loop and derives its cadence from
+   * `PRESS_BURST_TAP_REFRACTORY_TICKS` rather than from a number here.
    */
   COMMAND_TIMEOUT_MS: 6000,
-  PRESS_TAP_MS: 60,
 
   /**
    * How long to wait at a deadlift lockout for the down command.
@@ -1827,6 +1851,150 @@ function readDeadliftLockoutTuning() {
 const DEADLIFT_LOCKOUT = readDeadliftLockoutTuning();
 
 /**
+ * ===========================================================================
+ * THE STAGE PIXEL SAMPLER — THE CHECK THAT WOULD HAVE CAUGHT "PIXEL-STATIC
+ * ACROSS THE COMMAND"
+ * ===========================================================================
+ * Phone playtest 4 measured the press command drawing NOTHING: the renderer's
+ * own `frameKey` was byte-identical at command minus 2, minus 1, the command
+ * tick, plus 1, plus 3 and plus 6. Every check in this file was green through
+ * that, and none of them could have been anything else — they read testIDs, and
+ * the whole beat is inside a Skia `<canvas>` that has none. This section's own
+ * header already says so about the cue ring, as a NAMED SKIPPED check.
+ *
+ * So the sampler reads the canvas. In the page, on the same animation frames
+ * `useLiftLoop` paints on, through `gl.readPixels` — the app renders through
+ * WebGL here and a Node-side screenshot costs a CDP round trip per look, which
+ * is far too coarse for a 260 ms wash and is exactly the sampling-rate blindness
+ * the frame recorder above was written to avoid.
+ *
+ * TWO NUMBERS PER FRAME, AND EACH ONE ANSWERS A DIFFERENT QUESTION:
+ *
+ *   `d`    how many sampled pixels differ from the previous frame. This is the
+ *          "did anything draw" measurement, and the command's answer has to be
+ *          bigger than every frame of the wait it follows.
+ *   `lit`  how many pixels INSIDE THE BURST TRAY match the lit-pip colour. The
+ *          tray is a dark plate the readout draws itself on, and the pips are
+ *          on top of the command wash rather than under it, so this is a count
+ *          of the readout and not of whatever the room happens to be doing.
+ *
+ * WHAT IT CANNOT SAY, stated rather than left to be assumed: it cannot say the
+ * beat LOOKS right, or that a player would notice it (GDD §12.1 — that is a
+ * human on a phone). It says pixels moved, how many, and where.
+ */
+const STAGE_BEAT = Object.freeze({
+  /**
+   * How different one channel has to be before two frames count as different.
+   *
+   * `verify-shell-route.mjs`'s number and its reason: a software-rasterised
+   * canvas is not bit-reproducible, and this must stay far below what an
+   * authored change makes. A full-stage wash moves every dark pixel by tens of
+   * levels; this is 12.
+   */
+  SAME_PICTURE_TOLERANCE: 12,
+  /**
+   * Sample every Nth pixel in each axis for the whole-stage delta.
+   *
+   * The wash is a full-stage effect, so a quarter of the pixels answers the
+   * same question a quarter as expensively — and the sampler runs on the app's
+   * own main thread, where the cost comes out of the rep it is measuring.
+   * The tray count below is taken at FULL resolution, because it is small and
+   * because a stride could straddle a pip.
+   */
+  DELTA_STRIDE: 2,
+  /** How close a pixel has to be to the lit-pip colour to be counted as one. */
+  PIP_COLOUR_TOLERANCE: 30,
+  /**
+   * The counts the two windows must contain before either is evidence.
+   *
+   * A wait with no frames in it and a command with no frames in it both report
+   * a delta of zero, which is the empty-domain shape this file refuses
+   * everywhere else. Floors rather than pins because the wait's length is
+   * SEEDED (`PRESS_COMMAND_DELAY_TICKS` spans 24-96 ticks) — a pin would be a
+   * claim about which draw this rep got.
+   */
+  MIN_WAIT_FRAMES: 8,
+  MIN_COMMAND_FRAMES: 3,
+  /**
+   * How much of the sampled stage the command hit must move.
+   *
+   * A STRUCTURAL FLOOR, NOT A TOLERANCE PICKED TO MAKE A CHECK PASS, and the
+   * difference is what it would redden on. The ruling asks for a stimulus a
+   * player cannot miss, and what the build answers with is a wash over the WHOLE
+   * stage: at any peak alpha that moves a dark backdrop pixel past
+   * `SAME_PICTURE_TOLERANCE` at all, essentially every sampled pixel moves. So
+   * a run that came in under half the stage would mean the hit had become a
+   * local effect somewhere — a corner glow, a ring on its own — which is the
+   * thing playtest 4's "I did not see it" says is not enough. It is deliberately
+   * far below what the shipped wash measures; the measured figure is printed
+   * beside it on every run.
+   */
+  MIN_COMMAND_DELTA_FRACTION: 0.5,
+  /** A cap on the sampler's rows, so a long run cannot grow without bound. */
+  MAX_ROWS: 3000,
+});
+
+/**
+ * THE STAGE BEAT'S OWN GEOMETRY AND COLOUR, READ OUT OF SOURCE.
+ *
+ * Same rule as `readDeadliftLockoutTuning` above and the same reason: the tray
+ * rectangle and the lit-pip colour are numbers this check STEERS BY. Typed here
+ * a second time they would go stale the first time a playtester moved the row,
+ * and the check would then count lit pixels in a rectangle the readout no longer
+ * occupies — reporting zero, honestly, about the wrong part of the screen.
+ *
+ * The pip row's geometry is derived here the way `burstReadout` derives it, from
+ * the same five constants, rather than read as a finished rectangle: there is no
+ * rectangle in the source to read.
+ */
+function readStageBeatTuning() {
+  const liftTuning = readFileSync(path.join(SRC_ROOT, 'src/game/liftTuning.ts'), 'utf8');
+  const palette = readFileSync(path.join(SRC_ROOT, 'src/lift/liftPalette.ts'), 'utf8');
+  const stage = blockInSource(liftTuning, 'STAGE_COMMAND') ?? '';
+  const layout = blockInSource(liftTuning, 'LAYOUT') ?? '';
+  const read = {
+    stageW: numberInSource(layout, 'STAGE_W'),
+    stageH: numberInSource(layout, 'STAGE_H'),
+    cueX: numberInSource(layout, 'CUE_X'),
+    pipW: numberInSource(stage, 'BURST_PIP_W'),
+    pipH: numberInSource(stage, 'BURST_PIP_H'),
+    pipGap: numberInSource(stage, 'BURST_PIP_GAP'),
+    pipsY: numberInSource(stage, 'BURST_PIPS_Y'),
+    trayPad: numberInSource(stage, 'BURST_TRAY_PAD'),
+    pressFlashMs: numberInBlock(stage, 'FLASH_MS', 'press'),
+    downFlashMs: numberInBlock(stage, 'FLASH_MS', 'down'),
+  };
+  const missing = Object.entries(read)
+    .filter(([, value]) => typeof value !== 'number' || !Number.isFinite(value))
+    .map(([key]) => key);
+  const litColour = stringInSource(palette, 'BURST_PIP_LIT');
+  if (litColour === null) missing.push('BURST_PIP_LIT');
+  const taps = BENCH_BEAT.maxCountedTaps;
+  if (missing.length > 0 || typeof taps !== 'number') {
+    return { ...read, litColour, missing, tray: null, pipArea: null };
+  }
+  const pitch = read.pipW + read.pipGap;
+  const rowW = taps * pitch - read.pipGap;
+  const left = read.cueX - rowW / 2;
+  return {
+    ...read,
+    litColour,
+    missing,
+    /** In STAGE POINTS, top-left origin — the units `liftFrame.ts` works in. */
+    tray: {
+      x: left - read.trayPad,
+      y: read.pipsY - read.trayPad,
+      w: rowW + read.trayPad * 2,
+      h: read.pipH + read.trayPad * 2,
+    },
+    /** One pip's area in stage points, so a lit-pixel count reads back as pips. */
+    pipArea: read.pipW * read.pipH,
+    pips: taps,
+  };
+}
+const STAGE_BEAT_TUNING = readStageBeatTuning();
+
+/**
  * A PAGE-SIDE FRAME RECORDER, INSTALLED BEFORE THE APP'S OWN CODE RUNS.
  *
  * ===========================================================================
@@ -1856,7 +2024,7 @@ const DEADLIFT_LOCKOUT = readDeadliftLockoutTuning();
  */
 function installLadderRecorder(context) {
   return context.addInitScript(
-    ({ ids, intervalMs, maxRows }) => {
+    ({ ids, intervalMs, maxRows, stage }) => {
       const rows = [];
       const pointers = [];
       const counts = { raf: 0, interval: 0, dropped: 0 };
@@ -1900,6 +2068,117 @@ function installLadderRecorder(context) {
           true,
         );
       }
+      // ---------------------------------------------------------------
+      // THE STAGE PIXEL SAMPLER. Same rAF clock, its own rows, and OFF
+      // until a probe arms it: the read is a full-canvas `readPixels` and
+      // a loop over it, on the app's own main thread, so leaving it
+      // running through the three press arms would be spending the rep's
+      // frame budget on measuring reps nobody is measuring.
+      // ---------------------------------------------------------------
+      const pix = {
+        armed: false,
+        rows: [],
+        counts: { frames: 0, dropped: 0 },
+        err: null,
+        mode: null,
+        sampled: 0,
+        canvas: null,
+        scale: null,
+      };
+      const lit = (() => {
+        const hex = stage.litColour.replace('#', '');
+        return [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+      })();
+      let gl = null;
+      let buf = null;
+      let previous = null;
+      const pixFrame = () => {
+        requestAnimationFrame(pixFrame);
+        if (!pix.armed) return;
+        const node = document.querySelector('[data-testid="' + stage.stageTestId + '"] canvas');
+        if (node === null) return;
+        try {
+          if (gl === null || pix.canvas !== node) {
+            gl = node.getContext('webgl2') ?? node.getContext('webgl');
+            pix.canvas = node;
+            pix.mode = gl === null ? 'no-webgl-context' : 'webgl';
+            buf = gl === null ? null : new Uint8Array(node.width * node.height * 4);
+            previous = null;
+            pix.scale = node.width / stage.stageW;
+          }
+          if (gl === null || buf === null) return;
+          const w = node.width;
+          const h = node.height;
+          gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+          // WHOLE-STAGE DELTA, strided.
+          const step = stage.stride;
+          let changed = 0;
+          let sampled = 0;
+          for (let y = 0; y < h; y += step) {
+            for (let x = 0; x < w; x += step) {
+              const i = (y * w + x) * 4;
+              sampled += 1;
+              if (previous === null) continue;
+              if (
+                Math.abs(buf[i] - previous[i]) > stage.tolerance ||
+                Math.abs(buf[i + 1] - previous[i + 1]) > stage.tolerance ||
+                Math.abs(buf[i + 2] - previous[i + 2]) > stage.tolerance
+              ) {
+                changed += 1;
+              }
+            }
+          }
+          pix.sampled = sampled;
+          // LIT PIPS, inside the tray only, at full resolution. `readPixels`
+          // is bottom-up, so the tray's rows are counted from the far end.
+          const sc = pix.scale;
+          const x0 = Math.max(0, Math.round(stage.tray.x * sc));
+          const x1 = Math.min(w, Math.round((stage.tray.x + stage.tray.w) * sc));
+          const yTop = Math.round(stage.tray.y * sc);
+          const yBot = Math.round((stage.tray.y + stage.tray.h) * sc);
+          const g0 = Math.max(0, h - yBot);
+          const g1 = Math.min(h, h - yTop);
+          let litPx = 0;
+          for (let y = g0; y < g1; y += 1) {
+            for (let x = x0; x < x1; x += 1) {
+              const i = (y * w + x) * 4;
+              if (
+                Math.abs(buf[i] - stage.lit[0]) <= stage.pipTolerance &&
+                Math.abs(buf[i + 1] - stage.lit[1]) <= stage.pipTolerance &&
+                Math.abs(buf[i + 2] - stage.lit[2]) <= stage.pipTolerance
+              ) {
+                litPx += 1;
+              }
+            }
+          }
+          const promptNode = document.querySelector('[data-testid="session-prompt"]');
+          const row = {
+            t: Math.round(performance.now()),
+            d: previous === null ? null : changed,
+            lit: litPx,
+            prompt: promptNode === null ? null : promptNode.textContent,
+          };
+          previous = buf.slice();
+          pix.counts.frames += 1;
+          if (pix.rows.length >= stage.maxRows) pix.counts.dropped += 1;
+          else pix.rows.push(row);
+        } catch (error) {
+          pix.err = String(error).slice(0, 200);
+        }
+      };
+      // `lit` is resolved once, above, and handed to the loop through the same
+      // object every other number arrives in, so the loop reads one source.
+      stage.lit = lit;
+      requestAnimationFrame(pixFrame);
+      window.__stagePix = pix;
+      window.__stagePixArm = (on) => {
+        pix.armed = on === true;
+        pix.rows.length = 0;
+        pix.counts.frames = 0;
+        pix.counts.dropped = 0;
+        previous = null;
+      };
+
       window.__liftLadder = { rows, pointers, counts };
       // RESETTING CLEARS `last` TOO. Without that the next sample would only
       // push on a CHANGE, so whatever prompt is ALREADY on screen at the reset
@@ -1913,9 +2192,48 @@ function installLadderRecorder(context) {
         last = NOTHING_YET;
       };
     },
-    { ids: [...LIFT_LADDER.WATCHED_IDS], intervalMs: LIFT_LADDER.SAMPLE_MS, maxRows: LIFT_LADDER.MAX_ROWS },
+    {
+      ids: [...LIFT_LADDER.WATCHED_IDS],
+      intervalMs: LIFT_LADDER.SAMPLE_MS,
+      maxRows: LIFT_LADDER.MAX_ROWS,
+      // EVERY NUMBER THE PIXEL SAMPLER USES, READ OUT OF `src/` ON THE NODE
+      // SIDE AND CARRIED IN. The page cannot read the repository, and a second
+      // hand-typed copy of the tray rectangle would go stale the first time a
+      // playtester moved the row — see `readStageBeatTuning`.
+      stage: {
+        stageTestId: 'session-touch',
+        stageW: STAGE_BEAT_TUNING.stageW,
+        tray: STAGE_BEAT_TUNING.tray,
+        litColour: STAGE_BEAT_TUNING.litColour,
+        tolerance: STAGE_BEAT.SAME_PICTURE_TOLERANCE,
+        pipTolerance: STAGE_BEAT.PIP_COLOUR_TOLERANCE,
+        stride: STAGE_BEAT.DELTA_STRIDE,
+        maxRows: STAGE_BEAT.MAX_ROWS,
+      },
+    },
   );
 }
+
+/** Arm or disarm the stage pixel sampler, clearing whatever it had. */
+const armStagePixels = (page, on) =>
+  page.evaluate((flag) => {
+    if (window.__stagePixArm !== undefined) window.__stagePixArm(flag);
+  }, on);
+
+/** Everything the pixel sampler has seen since it was armed. */
+const readStagePixels = (page) =>
+  page.evaluate(() => {
+    const live = window.__stagePix;
+    if (live === undefined) return null;
+    return {
+      rows: live.rows.slice(),
+      counts: { ...live.counts },
+      err: live.err,
+      mode: live.mode,
+      sampled: live.sampled,
+      scale: live.scale,
+    };
+  });
 
 /** Everything the recorder has seen since the last reset. */
 const readLadder = (page) =>
@@ -1988,8 +2306,9 @@ function subtitlesSeen(ladder) {
  * FACULTIES"):
  *
  *   squat     hold to descend -> release AT DEPTH  -> tap the cues -> done
- *   bench     hold to lower   -> release AT CHEST  -> WAIT for 'PRESS!' and
- *                               press on it        -> tap the cues -> done
+ *   bench     FEED the bar down in a duty cycle -> it arrives at the chest by
+ *             itself -> WAIT for the press command -> BURST of taps inside its
+ *             window -> tap the cues -> done
  *   deadlift  hold through the brace, release once the bar leaves the floor ->
  *             tap the cues -> CLAMP DOWN at lockout and DO NOTHING until the
  *             down command
@@ -2019,7 +2338,7 @@ function subtitlesSeen(ladder) {
  * part that holds at every seed and every load; which branch fired is recorded
  * beside it rather than asserted.
  */
-async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots = null, neverPress = false } = {}) {
+async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots = null, neverPress = false, benchPlan = null } = {}) {
   const L = LIFT_PROMPTS[kind];
   const outcomeOf = (loop) =>
     loop !== null && SESSION_PROMPTS.OUTCOMES.includes(loop.prompt) ? loop.prompt : null;
@@ -2032,6 +2351,11 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
   });
 
   await resetLadder(page);
+  // ARMED PER REP, so `pix` describes THIS rep and nothing before it — the same
+  // property `resetLadder` gives the prompt ladder, and for the same reason: a
+  // sampler that carried the previous attempt's frames would let a command from
+  // a rep that is over stand in for one that never drew.
+  await armStagePixels(page, true);
 
   const braced = await untilLoopSaying(page, L.BRACE, LIFT_LADDER.NEXT_BRACE_MS);
   if (!braced) {
@@ -2076,6 +2400,7 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
       outcome: resolvedAlone === null ? null : resolvedAlone.prompt,
       detail: resolvedAlone === null ? null : resolvedAlone.detail,
       ladder: await readLadder(page),
+      pix: await readStagePixels(page),
     };
   }
 
@@ -2085,6 +2410,8 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
 
   let reachedDescent = false;
   let reachedCommand = false;
+  let benchDescent = null;
+  let burst = null;
 
   if (L.DESCENT === null) {
     // ---- DEADLIFT: the pull. See `PULL_TIMEOUT_MS` for why this is a HOLD
@@ -2108,6 +2435,7 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
         outcome: straightToOutcome,
         detail: offTheFloor.detail,
         ladder: await readLadder(page),
+        pix: await readStagePixels(page),
       };
     }
   } else {
@@ -2124,8 +2452,16 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
       return bail(`holding never started ${kind}'s descent (${JSON.stringify(L.DESCENT)})`);
     }
     reachedDescent = true;
-    await page.waitForTimeout(Math.max(0, holdMs - (Date.now() - pressAt)));
-    await page.mouse.up();
+    if (kind === 'bench') {
+      // ---- BENCH: THE FED DESCENT (GDD §6.2, ruled 2026-08-25). Not a hold.
+      // The duty cycle and the failsafe are `sessionDrive.mjs`'s and are shared
+      // with the meet arm; `holdMs` is not bench's unit any more, which is why
+      // `benchPlan` is threaded through instead.
+      benchDescent = await feedBenchToTheChest(page, { read: readLoop, plan: benchPlan });
+    } else {
+      await page.waitForTimeout(Math.max(0, holdMs - (Date.now() - pressAt)));
+      await page.mouse.up();
+    }
 
     const afterRelease = await readLoop(page);
     const releasedIntoOutcome = outcomeOf(afterRelease);
@@ -2135,10 +2471,13 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
         kind,
         holdAtLockout,
         reachedDescent,
+        benchDescent,
+        burst,
         reachedLockout: false,
         outcome: releasedIntoOutcome,
         detail: afterRelease.detail,
         ladder: await readLadder(page),
+        pix: await readStagePixels(page),
       };
     }
 
@@ -2158,9 +2497,12 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
       );
       if (commanded !== null && commanded.prompt !== null && commanded.prompt.includes(L.COMMAND)) {
         reachedCommand = true;
-        await page.mouse.down();
-        await page.waitForTimeout(LIFT_LADDER.PRESS_TAP_MS);
-        await page.mouse.up();
+        // ---- THE BURST, NOT A PRESS. One tap was the whole answer under the
+        // old beat; under the ruling the answer is as many counted taps as the
+        // window holds. `burstTapTheCommand` stops on the command line leaving
+        // the screen rather than on a stopwatch — see its header for why a
+        // wall-clock deadline both under- and over-runs on this machine.
+        burst = await burstTapTheCommand(page, { read: readLoop });
       }
       const missedOnTheChest = outcomeOf(commanded);
       if (missedOnTheChest !== null) {
@@ -2170,10 +2512,13 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
           holdAtLockout,
           reachedDescent,
           reachedCommand,
+          benchDescent,
+          burst,
           reachedLockout: false,
           outcome: missedOnTheChest,
           detail: commanded.detail,
           ladder: await readLadder(page),
+          pix: await readStagePixels(page),
         };
       }
     }
@@ -2250,12 +2595,17 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
     LIFT_LADDER.RESOLVE_TIMEOUT_MS,
   );
   const ladder = await readLadder(page);
+  const pix = await readStagePixels(page);
+  await armStagePixels(page, false);
   return {
     played: true,
+    pix,
     kind,
     holdAtLockout,
     reachedDescent,
     reachedCommand,
+    benchDescent,
+    burst,
     reachedLockout: drive.lockedOut,
     drivesTapped: drive.drivesTapped,
     downCommandSeen,
@@ -2360,6 +2710,14 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
     stepMs: SESSION_DRIVE.DEPTH_HOLD_STEP_MS,
     lastDirection: 0,
   };
+  // BENCH CARRIES ITS OWN SEARCH, BECAUSE ITS DESCENT IS NOT A HOLD ANY MORE.
+  // `depthSearch` above bisects a release TICK against a depth band, which is
+  // squat's beat; bench's is a duty cycle against an arrival RATE, and the two
+  // adapt on different miss reasons in different directions. Kept side by side
+  // rather than folded together so neither's arithmetic can quietly move the
+  // other's — the sibling-drift shape this file's own ascent loop was extracted
+  // to prevent, one beat earlier.
+  let benchPlan = freshBenchDescent();
 
   for (let attempt = 1; attempt <= LIFT_LADDER.MAX_ATTEMPTS; attempt += 1) {
     // DRIVEN WITH `landedOn`'S GRAMMAR — the lift on screen — because a driver
@@ -2368,6 +2726,7 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
     const rep = await driveLadderRep(page, landedOn, depthSearch.holdMs, {
       holdAtLockout: true,
       shots: photographed === null ? shots : null,
+      benchPlan,
     });
     if (rep.shots?.holdShot !== undefined) photographed = rep.shots;
     const scored = { attempt, holdMs: depthSearch.holdMs, ...rep, matched: matchRungs(rep.ladder, rungsWanted) };
@@ -2389,6 +2748,7 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
     if (enough) break;
     if (!rep.played) break;
     depthSearch = adaptDepthSearch(depthSearch, { detail: rep.detail ?? '' });
+    benchPlan = adaptBenchDescent(benchPlan, { detail: rep.detail ?? '' });
     await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
   }
 
@@ -2401,7 +2761,7 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
   let neverPressed = null;
   if (alsoSlip && landedOn === kind && best !== null && best.reachedLockout === true) {
     await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
-    slip = await driveLadderRep(page, kind, depthSearch.holdMs, { holdAtLockout: false });
+    slip = await driveLadderRep(page, kind, depthSearch.holdMs, { holdAtLockout: false, benchPlan });
     await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
     neverPressed = await driveLadderRep(page, kind, 0, { neverPress: true });
   }
@@ -2416,6 +2776,7 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
     chip: checkInLiftTestId(kind),
     queryString: search,
     rpeChoice: LIFT_LADDER.RPE_CHOICE,
+    benchPlan,
     attempts,
     best,
     shots: photographed,
@@ -2432,6 +2793,156 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
  * attempts all walked the whole ladder reports the best-graded of them. Written
  * as one function rather than inline so the two comparisons cannot drift apart.
  */
+/**
+ * ===========================================================================
+ * GRADE THE COMMAND BEAT FROM THE CANVAS — THE CHECK PHONE PLAYTEST 4's
+ * MEASUREMENT WOULD HAVE FAILED
+ * ===========================================================================
+ * At `575c5d3` the press command drew nothing at all: `frameKey` byte-identical
+ * at command minus 2 through plus 6, on an obeyed rep. Every check in this file
+ * was green through that and none of them COULD have been anything else — they
+ * read testIDs, and the beat is inside a Skia `<canvas>` that has none.
+ *
+ * WHAT EACH CLAIM IS COMPARED AGAINST, because a number with no comparison is
+ * decoration however convincing it looks in a log line:
+ *
+ *   THE HIT      the biggest inter-frame delta inside the flash's own declared
+ *                duration, against the biggest one anywhere in the WAIT that
+ *                preceded it on the same rep. Strictly greater, plus a
+ *                structural floor (`MIN_COMMAND_DELTA_FRACTION`) that says the
+ *                hit is a full-stage event rather than a corner. Both windows
+ *                carry a frame-count floor, or an empty one would report the
+ *                same zero as a stage that draws nothing.
+ *   THE CONTROL  the same instrument on a SQUAT, which has no command at all
+ *                (`commandHit` returns null for it by construction). Its
+ *                biggest delta anywhere in the rep must stay under the floor,
+ *                so the floor is a statement about a command and not about
+ *                anything a moving sprite does.
+ *   THE READOUT  lit pixels inside the burst tray, quantised back to pips.
+ *                Three facts, because CLAUDE.md's progression rule says a claim
+ *                that something advances IS three and a constant satisfies two:
+ *                it never regresses, it is never out of range, AND IT MOVES.
+ *
+ * WHAT IT CANNOT SAY: whether the beat reads in the hand. That is GDD §12.1 and
+ * it is a human on a phone.
+ */
+function gradeStageBeat(kind, run) {
+  const best = run.best ?? null;
+  const pix = best?.pix ?? null;
+
+  // ---- THE INSTRUMENT'S OWN DOMAIN ----------------------------------------
+  const rows = pix?.rows ?? [];
+  const moved = rows.filter((row) => row.d !== null && row.d > 0).length;
+  check(
+    pix !== null &&
+      pix.err === null &&
+      pix.mode === 'webgl' &&
+      pix.counts.dropped === 0 &&
+      pix.sampled > 0 &&
+      rows.length > 0 &&
+      moved > 0,
+    `LADDER ${kind} STAGE DOMAIN: the canvas sampler read real, MOVING frames off the stage for the rep every pixel claim below is taken from`,
+    pix === null
+      ? 'the sampler was never installed'
+      : `mode=${JSON.stringify(pix.mode)}, ${rows.length} frame(s) kept, ${moved} of them moved, ${pix.sampled} px sampled per frame at stride ${STAGE_BEAT.DELTA_STRIDE}, canvas scale ${pix.scale}, ${pix.counts.dropped} dropped against a ${STAGE_BEAT.MAX_ROWS}-row cap, err=${JSON.stringify(pix.err)}`,
+  );
+  check(
+    STAGE_BEAT_TUNING.missing.length === 0,
+    `LADDER ${kind} STAGE DOMAIN: the tray rectangle and the lit-pip colour resolved out of source rather than being typed here`,
+    STAGE_BEAT_TUNING.missing.length === 0
+      ? `tray ${JSON.stringify(STAGE_BEAT_TUNING.tray)} in stage points, ${STAGE_BEAT_TUNING.pips} pips of ${STAGE_BEAT_TUNING.pipArea}pt each, lit ${JSON.stringify(STAGE_BEAT_TUNING.litColour)}, flash ${STAGE_BEAT_TUNING.pressFlashMs}/${STAGE_BEAT_TUNING.downFlashMs}ms`
+      : `unread: ${STAGE_BEAT_TUNING.missing.join(', ')}`,
+  );
+  if (pix === null || STAGE_BEAT_TUNING.missing.length > 0) {
+    skip(
+      `LADDER ${kind}: every stage-pixel claim below it`,
+      'the sampler or its geometry did not resolve, and a section that looked complete here would be worse than a named gap',
+    );
+    return;
+  }
+  const floorPx = pix.sampled * STAGE_BEAT.MIN_COMMAND_DELTA_FRACTION;
+
+  // ---- THE SQUAT CONTROL: a lift with no command --------------------------
+  if (kind === 'squat') {
+    const biggest = rows.reduce((most, row) => Math.max(most, row.d ?? 0), 0);
+    check(
+      rows.length > 0 && biggest < floorPx,
+      `LADDER squat STAGE CONTROL: no frame of a lift that HAS no command ever moves a command-sized share of the stage`,
+      `biggest inter-frame delta over the whole rep was ${biggest} px of ${pix.sampled} sampled (${((biggest / pix.sampled) * 100).toFixed(1)}%), against the ${Math.round(floorPx)} px floor a command has to clear`,
+    );
+    return;
+  }
+
+  // ---- THE HIT ------------------------------------------------------------
+  const commandLine = kind === 'bench' ? LIFT_PROMPTS.bench.COMMAND : LIFT_PROMPTS.deadlift.DOWN;
+  const waitLine = kind === 'bench' ? LIFT_PROMPTS.bench.HOLE : LIFT_PROMPTS.deadlift.LOCKOUT;
+  const flashMs = kind === 'bench' ? STAGE_BEAT_TUNING.pressFlashMs : STAGE_BEAT_TUNING.downFlashMs;
+  const says = (row, line) => row.prompt !== null && row.prompt.includes(line);
+  const commandRow = rows.find((row) => says(row, commandLine)) ?? null;
+  const commandT = commandRow === null ? null : commandRow.t;
+  const wait =
+    commandT === null ? [] : rows.filter((row) => row.d !== null && row.t < commandT && says(row, waitLine));
+  const hit =
+    commandT === null
+      ? []
+      : rows.filter((row) => row.d !== null && row.t >= commandT && row.t <= commandT + flashMs);
+  const maxWait = wait.reduce((most, row) => Math.max(most, row.d), 0);
+  const maxHit = hit.reduce((most, row) => Math.max(most, row.d), 0);
+  check(
+    commandT !== null &&
+      wait.length >= STAGE_BEAT.MIN_WAIT_FRAMES &&
+      hit.length >= STAGE_BEAT.MIN_COMMAND_FRAMES &&
+      maxHit > maxWait &&
+      maxHit >= floorPx,
+    `LADDER ${kind} STAGE HIT: the ${JSON.stringify(commandLine)} command PAINTS the stage, and paints it harder than any frame of the wait it follows`,
+    commandT === null
+      ? `the sampler never saw ${JSON.stringify(commandLine)} on a frame — the command's own line never rendered while the canvas was being read`
+      : `command frame at ${commandT}ms; over the ${flashMs}ms flash the biggest delta was ${maxHit} px of ${pix.sampled} sampled (${((maxHit / pix.sampled) * 100).toFixed(1)}%, floor ${Math.round(floorPx)}), against ${maxWait} px (${((maxWait / pix.sampled) * 100).toFixed(1)}%) as the biggest of the ${wait.length} wait frame(s) before it; ${hit.length} flash frame(s) read`,
+  );
+
+  if (kind !== 'bench') return;
+
+  // ---- THE READOUT --------------------------------------------------------
+  const scale = pix.scale ?? 1;
+  const pipAreaPx = STAGE_BEAT_TUNING.pipArea * scale * scale;
+  const burst = commandT === null ? [] : rows.filter((row) => says(row, commandLine));
+  const pipsAt = (row) => Math.round(row.lit / pipAreaPx);
+  const series = burst.map(pipsAt);
+  const regressions = series.filter((n, i) => i > 0 && n < series[i - 1]).length;
+  const invalid = series.filter((n) => n < 0 || n > STAGE_BEAT_TUNING.pips).length;
+  const distinct = new Set(series).size;
+  const first = series[0] ?? null;
+  const last = series[series.length - 1] ?? null;
+  check(
+    burst.length >= STAGE_BEAT.MIN_COMMAND_FRAMES &&
+      regressions === 0 &&
+      invalid === 0 &&
+      distinct >= 2 &&
+      last !== null &&
+      first !== null &&
+      last > first,
+    `LADDER bench STAGE READOUT: the burst row is drawn, never regresses, is never out of range, and MOVES — the third fact a hardcoded row cannot satisfy`,
+    `${burst.length} frame(s) of the burst; pips lit ${JSON.stringify(series)} (${distinct} distinct, ${regressions} regression(s), ${invalid} out of 0..${STAGE_BEAT_TUNING.pips}); raw lit pixels ${burst[0]?.lit ?? 'n/a'} -> ${burst[burst.length - 1]?.lit ?? 'n/a'} against ${Math.round(pipAreaPx)} px per pip at canvas scale ${scale}`,
+  );
+
+  // ---- AND THE OUTCOME THE WHOLE CHAIN IS FOR -----------------------------
+  // OUTCOME, NOT MECHANISM. What is asserted is that a rep driven through the
+  // new chain — fed descent, wait, burst — finished; the pip count beside it is
+  // what says the taps were COUNTED rather than merely dispatched, which the
+  // driver cannot know about itself (`burstTapTheCommand` returns
+  // `countedTaps: null` and says why).
+  check(
+    best?.reachedDescent === true &&
+      best?.reachedCommand === true &&
+      (best?.burst?.dispatched ?? 0) > 0 &&
+      (last ?? 0) > 0 &&
+      best?.reachedLockout === true &&
+      best?.outcome !== 'NO LIFT',
+    'LADDER bench: a rep driven through the WHOLE new chain — fed descent, wait, tap burst — reached LOCKOUT',
+    `descent ${JSON.stringify(best?.benchDescent === null || best?.benchDescent === undefined ? null : { cycles: best.benchDescent.cycles, committed: best.benchDescent.committed, ms: best.benchDescent.ms, feedMs: best.benchDescent.feedMs, easeMs: best.benchDescent.easeMs })}; burst ${JSON.stringify(best?.burst ?? null)}; ${last ?? 0} pip(s) lit at the end of it; lockout=${best?.reachedLockout}, outcome ${JSON.stringify(best?.outcome)} ${JSON.stringify(best?.detail ?? null)}`,
+  );
+}
+
 function scoreOf(scored) {
   return scored.matched.matchedCount * 10 + (OUTCOME_RANK[scored.outcome] ?? 0);
 }
@@ -3830,6 +4341,37 @@ if (LADDER_REQUESTED) {
     'LADDER: readTuning.mjs still reads its own fixture, so the numbers below came from source',
     DEADLIFT_LOCKOUT.parserComplaints.join('; ') || 'no complaints',
   );
+  // BENCH'S BEAT IS STEERED BY THE SAME KIND OF READ AND GETS THE SAME KIND OF
+  // CHECK. A `null` from any of these would leave the driver playing a duty
+  // cycle derived from nothing, and it would report the resulting misses as the
+  // app's fault — which is the exact shape `readTuning.mjs`'s header warns
+  // about, arriving through a driver instead of through a comparison.
+  check(
+    BENCH_BEAT.missing.length === 0 &&
+      BENCH_BEAT.parserComplaints.length === 0 &&
+      BENCH_BEAT.cycle !== null,
+    "LADDER: bench's descent cycle and burst cadence were DERIVED from liftTuning.ts, not typed into this tool",
+    BENCH_BEAT.missing.length > 0 || BENCH_BEAT.parserComplaints.length > 0
+      ? `unread: ${BENCH_BEAT.missing.join(', ')}; parser: ${BENCH_BEAT.parserComplaints.join('; ')}`
+      : `feed ${BENCH_BEAT.cycle.feedTicks} ticks / ease ${BENCH_BEAT.cycle.easeTicks} ticks = ${BENCH_BEAT.feedMs}ms / ${BENCH_BEAT.easeMs}ms, worst touch ${BENCH_BEAT.worstTouch.toFixed(3)} across ${BENCH_BEAT.cycle.runs.length} loads (mean ${BENCH_BEAT.cycle.mean.toFixed(3)}); burst up to ${BENCH_BEAT.maxCountedTaps} counted taps at ${Math.round(BENCH_BEAT.refractoryMs * BENCH_DRIVE.BURST_TAP_PERIOD_FRACTION)}ms against a ${BENCH_BEAT.refractoryMs}ms refractory, inside a ${BENCH_BEAT.burstWindowMs}ms window`,
+  );
+  // ...AND THE SEARCH IT CAME OUT OF IS NOT VACUOUS. A duty cycle that graded
+  // zero everywhere would be indistinguishable in the line above from one that
+  // graded well: both print a pair of numbers. What separates them is the
+  // CONTROL taken by the same simulation — a single committed hold, which is
+  // what the old driver did and what a driver written without reading the
+  // ruling would do. Both figures are printed and the comparison is the
+  // predicate, not the reader's head.
+  check(
+    BENCH_BEAT.cycle !== null &&
+      BENCH_BEAT.committedWorstTouch !== null &&
+      BENCH_BEAT.worstTouch > BENCH_BEAT.committedWorstTouch,
+    "LADDER: the derived cycle is a REAL play — it beats a committed hold at its worst load, measured on the same simulation",
+    BENCH_BEAT.cycle === null
+      ? 'no cycle was derived'
+      : `cycle's worst touch ${BENCH_BEAT.worstTouch.toFixed(3)} against a committed hold's ${BENCH_BEAT.committedWorstTouch.toFixed(3)}, over ${BENCH_BEAT.cycle.runs.length} loads`,
+  );
+
   check(
     DEADLIFT_LOCKOUT.missing.length === 0,
     'LADDER: every tick-denominated deadlift lockout value resolved out of source',
@@ -3920,6 +4462,9 @@ if (LADDER_REQUESTED) {
       `LADDER ${kind}: exactly ${ECCENTRIC_LINE_COUNT[kind]} of the game's ${ECCENTRIC_ONLY_PROMPTS.length} DESCENT/HOLE-only lines rendered`,
       `${eccentric.length}: ${JSON.stringify(eccentric)} — the ban list is ${JSON.stringify(ECCENTRIC_ONLY_PROMPTS)}`,
     );
+
+    // ---- 5a. THE COMMAND BEAT, IN PIXELS -----------------------------------
+    gradeStageBeat(kind, run);
 
     if (kind !== 'deadlift') continue;
 
