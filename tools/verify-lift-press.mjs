@@ -2965,16 +2965,45 @@ function gradeStageBeat(kind, run) {
   const distinct = new Set(series).size;
   const first = series[0] ?? null;
   const last = series[series.length - 1] ?? null;
+  // THE BIGGEST SINGLE JUMP, WHICH IS WHAT "IT MOVES" ACTUALLY HAS TO MEAN
+  // HERE — AND THE FIRST VERSION OF THIS CHECK DID NOT SAY IT, MEASURED.
+  //
+  // What stood here required `distinct >= 2` and `last > first`, which is the
+  // three-facts shape CLAUDE.md asks for and is NOT ENOUGH FOR THIS SUBJECT.
+  // The mutant it was written to catch — `lit: i < progress.taps` replaced by
+  // `lit: true`, a row that ignores the burst entirely — was run against this
+  // tool and SURVIVED, 48 of 48 green: a hardcoded row still reads 0 for the
+  // frames before the tray is first painted and then 14 for every frame after,
+  // which is two distinct values climbing. The check passed on a readout that
+  // was reading nothing.
+  //
+  // A row that reports the burst fills ONE PIP PER COUNTED TAP, so it climbs in
+  // many small steps; a row that ignores it can only step once, from whatever
+  // it was before it existed to whatever it is hardcoded at. So the biggest
+  // single increase must be SMALLER THAN THE WHOLE CLIMB. That is rank-based
+  // rather than a threshold somebody chose — nothing here is tuned to make a
+  // number pass — and on the shipped build it reads 1 against a climb of 11.
+  //
+  // `distinct >= 2` IS DELETED RATHER THAN KEPT BESIDE IT, and the domination
+  // is recorded per CLAUDE.md's rule instead of leaving two checks where one
+  // can never speak: reaching `last` from `first` in steps no larger than
+  // `maxIncrease < last - first` takes at least two steps, so at least three
+  // distinct values, so no state of the subject makes the old bound red while
+  // this one passes.
+  const increases = series
+    .map((n, i) => (i === 0 ? 0 : n - series[i - 1]))
+    .filter((step) => step > 0);
+  const maxIncrease = increases.length === 0 ? 0 : Math.max(...increases);
   check(
     burst.length >= STAGE_BEAT.MIN_COMMAND_FRAMES &&
       regressions === 0 &&
       invalid === 0 &&
-      distinct >= 2 &&
       last !== null &&
       first !== null &&
-      last > first,
-    `LADDER bench STAGE READOUT: the burst row is drawn, never regresses, is never out of range, and MOVES — the third fact a hardcoded row cannot satisfy`,
-    `${burst.length} frame(s) of the burst; pips lit ${JSON.stringify(series)} (${distinct} distinct, ${regressions} regression(s), ${invalid} out of 0..${STAGE_BEAT_TUNING.pips}); raw lit pixels ${burst[0]?.lit ?? 'n/a'} -> ${burst[burst.length - 1]?.lit ?? 'n/a'} against ${Math.round(pipAreaPx)} px per pip at canvas scale ${scale}`,
+      last > first &&
+      maxIncrease < last - first,
+    `LADDER bench STAGE READOUT: the burst row is drawn, never regresses, is never out of range, and FILLS ONE PIP AT A TIME — which a row that ignores the burst cannot do`,
+    `${burst.length} frame(s) of the burst; pips lit ${JSON.stringify(series)} (${distinct} distinct, ${increases.length} increase(s), biggest ${maxIncrease} against a whole climb of ${last === null || first === null ? 'n/a' : last - first}, ${regressions} regression(s), ${invalid} out of 0..${STAGE_BEAT_TUNING.pips}); raw lit pixels ${burst[0]?.lit ?? 'n/a'} -> ${burst[burst.length - 1]?.lit ?? 'n/a'} against ${Math.round(pipAreaPx)} px per pip at canvas scale ${scale}`,
   );
 
   // ---- AND THE OUTCOME THE WHOLE CHAIN IS FOR -----------------------------
