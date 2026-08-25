@@ -1599,7 +1599,7 @@ describe('the descent to the chest (GDD §6.2; ruled 2026-08-25)', () => {
     );
   });
 
-  it('flips outcomes between a controlled touch and a crashed one, across the sweep', () => {
+  it('flips outcomes between a controlled touch and a crashed one, across the sweep [bench-touch-decides-the-rep]', () => {
     // THE DESCENT MOVES `resolution.outcome`, which is the bar this repository
     // holds a mechanic to and the one the press beat failed on its first pass.
     // A crash that only changed the bar's opening velocity would wash out in
@@ -1624,6 +1624,11 @@ describe('the descent to the chest (GDD §6.2; ruled 2026-08-25)', () => {
         }
       }
     }
+    // THE DOMAIN, AS A LITERAL. The line above pins the count against the
+    // named constant, which moves when the sweep does; this pins the constant
+    // itself, so a sweep quietly narrowed to a third of its loads reddens here
+    // rather than re-pinning itself silently.
+    expect(TOUCH_SWEEP.OUTCOME_CASES, 'the domain this count is taken over').toBe(240);
     expect(cases).toBe(TOUCH_SWEEP.OUTCOME_CASES);
     expect(
       flips,
@@ -1938,7 +1943,7 @@ describe('the burst curve', () => {
 });
 
 describe('the burst decides the lift', () => {
-  it('flips outcomes across the tap ladder, across the sweep', () => {
+  it('flips outcomes across the tap ladder, across the sweep [bench-burst-decides-the-rep]', () => {
     let cases = 0;
     let mashVsNone = 0;
     let mashVsSparse = 0;
@@ -1970,7 +1975,10 @@ describe('the burst decides the lift', () => {
         }
       }
     }
-    // Counts, not bounds — an empty or collapsed domain reports itself.
+    // Counts, not bounds — an empty or collapsed domain reports itself. The
+    // literal pins the domain the counts below are taken OVER, so a sweep
+    // narrowed to fewer loads or seeds reddens rather than re-pinning itself.
+    expect(BURST_SWEEP.CASES, 'the domain these counts are taken over').toBe(240);
     expect(cases).toBe(BURST_SWEEP.CASES);
     expect(
       mashVsNone,
@@ -2169,7 +2177,7 @@ describe('the false-start rule, exactly as the copy states it', () => {
     expect(previous).toBe(burstForce(FALSE_START_FLOOR_TAPS));
   });
 
-  it('cannot hand taps to a player who never answered the command', () => {
+  it('cannot hand taps to a player who never answered the command [a-false-start-can-never-pay]', () => {
     // THE FLOOR IS A FLOOR ON THE CHARGE, NOT A GIFT, and the difference is
     // one `min` in `burstCountedTaps`. Without it, mashing the pause and then
     // ignoring the command entirely would launch at the floor's force — a
@@ -2472,7 +2480,7 @@ const BASELINE_DIGESTS: Readonly<Record<string, string>> = {
 };
 
 describe('squat and deadlift are untouched by the bench redesign', () => {
-  it('replays every baseline rep to the same history it had before the ruling', () => {
+  it('replays every baseline rep to the same history it had before the ruling [the-bench-redesign-left-the-other-two-lifts-alone]', () => {
     let checked = 0;
     const differences: string[] = [];
     for (const load of BASELINE_SWEEP.LOADS) {
@@ -2522,6 +2530,7 @@ describe('squat and deadlift are untouched by the bench redesign', () => {
     // A COUNT FIRST, so an emptied sweep reports itself rather than passing on
     // zero comparisons — and the table has to be exactly as big as the sweep,
     // in both directions, so a stale row cannot sit there unread.
+    expect(BASELINE_SWEEP.CASES, 'the domain this count is taken over').toBe(85);
     expect(checked, 'no baseline reps were played').toBe(BASELINE_SWEEP.CASES);
     expect(Object.keys(BASELINE_DIGESTS).length).toBe(BASELINE_SWEEP.CASES);
     // Every digest carries its tick count, so a rep that resolved at a

@@ -923,6 +923,7 @@ export function burstForce(taps: number): number {
  * keeps a player who never answered the command at zero: a burst of no taps
  * stays a burst of no taps however much they mashed the pause, because the
  * floor cannot hand out taps nobody threw.
+ * `@guarantee a-false-start-can-never-pay`
  */
 export function burstCountedTaps(taps: number, earlyTaps: number): number {
   const { FALSE_START_FLOOR_TAPS } = LIFT_TUNING.PRESS_BURST_FORCE;
@@ -1808,6 +1809,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
       // cast. UNCHANGED FROM THE PRE-RULING MECHANIC, byte for byte, and
       // `lift.test.ts` pins squat's played histories against digests measured
       // before the bench work landed.
+      // `@guarantee the-bench-redesign-left-the-other-two-lifts-alone`
       // ---------------------------------------------------------------------
       const cue = m.activeCue;
       if (cue !== null && tick === cue.openTick) {

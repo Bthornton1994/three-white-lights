@@ -553,12 +553,14 @@ export const LIFT_TUNING = Object.freeze({
    * the one thing about this beat that is not a guess. The press command's own
    * first version set only the bar's velocity off the chest, and velocity
    * chases net force — an initial value washes out in about
-   * `1/VELOCITY_RESPONSE` ticks. Measured then: 40 of 240 outcomes moved, in a
-   * pattern spread unpredictably across loads and seeds, which is worse than
-   * nothing for a player trying to learn a mechanic because it is
-   * indistinguishable from noise. See `PRESS_WEAK_DEMAND_PENALTY`'s header for
-   * the full account. The descent gets the same treatment on the first pass
-   * rather than the second.
+   * `1/VELOCITY_RESPONSE` ticks, so what looked like a decisive input decided
+   * a scattering of reps in a pattern indistinguishable from noise. The full
+   * account, with its counts, is in `PRESS_WEAK_DEMAND_PENALTY`'s header; they
+   * are not restated here, because a number repeated in two places is a
+   * number that can go stale in one of them. The descent gets that lesson
+   * applied on its first pass rather than its second, and what says so is a
+   * swept count of reps whose OUTCOME the touch changed — not a velocity
+   * written into the state. `@guarantee bench-touch-decides-the-rep`
    */
   BENCH_TOUCH_DEMAND_PENALTY: 0.22,
 
@@ -835,6 +837,7 @@ export const LIFT_TUNING = Object.freeze({
    * whether the rep CHANGED. The fix for the tests is the same shape as the
    * fix for the code: assert the outcome moves, not that a number was written.
    * `lift.test.ts`'s `BURST_SWEEP` is the burst's version of that assertion.
+   * `@guarantee bench-burst-decides-the-rep`
    *
    * The value is a placeholder like everything else here and is NOT played.
    * What it is chosen against is a swept measurement: it has to leave a band
