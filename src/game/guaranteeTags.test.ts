@@ -882,7 +882,18 @@ const GUARANTEE_COVERAGE = {
    * different lift. Both are exactly the sentence class that has been wrong
    * eight times in this repository.
    */
-  TREE_WIDE: 286,
+  //
+  // 286 -> 287 with the press-delay fix. Attributed the usual way, each
+  // touched file restored to its pre-change text and this count re-read:
+  // `liftTuning.ts` **1** — the paragraph saying the 50 ms press delay is not
+  // only the robot's problem, because `PressResponder` applies it on the
+  // responder-grant path a TOUCH takes as much as a mouse. `pressGuard.ts`,
+  // `liftInput.test.ts`, `liftFrame.ts`, `LiftStage.tsx`, `SetView.tsx`,
+  // `AttemptView.tsx` and `LiftScreen.tsx` contributed **0** between them:
+  // they gained a great deal of prose and no capitalised absolute, which is
+  // the scoper's declared lower-case blind spot working exactly as documented
+  // rather than a surprise.
+  TREE_WIDE: 287,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1229,7 +1240,7 @@ const NUMBER_COVERAGE = {
   // information, something counts what happened) and the numbers behind them
   // live in `LIFT_TUNING.FEEDBACK.STAGE_COMMAND` where the tests read them from
   // rather than in the prose.
-  TAGGED_PARAGRAPHS: 81,
+  TAGGED_PARAGRAPHS: 82,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
@@ -1289,7 +1300,7 @@ const NUMBER_COVERAGE = {
   //
   // 69 -> 72 with the command beat's three tags, whose named tests are the
   // three new bodies.
-  NAMED_BODIES: 72,
+  NAMED_BODIES: 73,
   // 53 -> 55 with the command beat's three tag-named bodies; two of the three
   // state a bare 0 (the wash before the call, the pip row's first frame) and
   // the third does not.
@@ -1619,7 +1630,11 @@ const TRANSCRIPT_BAR = {
   // runs at this tree and ALL THREE QUOTE A BARE SCALAR — `expected 0 to be
   // greater than 0`, a pair of pulse alphas, and `expected 14 to be +0` — so
   // `WITH_A_MEASURED_NUMBER` moves by three as well.
-  GRADED: 40,
+  //
+  // 40 -> 41 on the press-delay witness. Its transcript quotes no bare scalar
+  // — the reddened assertion names a FILE — so `WITH_A_MEASURED_NUMBER` stays
+  // where it is.
+  GRADED: 41,
   /** ...and rows excused because their transcript predates it. */
   // 37 -> 36 when the placeholder's witness retired with its subject
   // (Sprint 1c): its transcript predated the rule, so the excused count is
@@ -1831,10 +1846,14 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // MUTATED tree — a zeroed wash alpha, a pulse alpha taken off a countdown
   // that does not exist here, a row of fourteen pips that only lights because
   // the mutant lit it — and no assertion in the shipped body pins any of them.
-  rows: 68,
-  flagged: 55,
-  numerals: 263,
-  unresolved: 155,
+  // 68/55/263/155 -> 69/56/267/159 on the press-delay witness. Flagged, like
+  // almost every row here, and for the same reason: its transcript's numerals
+  // are the MUTATED tree's reading (one bad surface of three, 2 failed of 20)
+  // and no assertion in the shipped body pins any of them.
+  rows: 69,
+  flagged: 56,
+  numerals: 267,
+  unresolved: 159,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -2202,7 +2221,8 @@ const REPLACEMENT_BAR = {
   //
   // 25 -> 28 on the three command-beat witnesses, every one of which records
   // both halves: what it removed and what it put there.
-  REPRODUCIBLE: 28,
+  // 28 -> 29 on the press-delay witness, which records both halves.
+  REPRODUCIBLE: 29,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2575,6 +2595,37 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + 'AssertionError: expected 14 to be +0 // Object.is equality\n'
       + 'Tests  1 failed | 53 passed (54)',
     measuredOver: "    expect(open.length, 'the burst never opened').toBeGreaterThan(10);",
+  },
+  // -------------------------------------------------------------------------
+  // THE FOURTH PRESS GUARD, AND THE ONE THAT WAS SWALLOWING WHOLE INPUTS.
+  //
+  // THE MUTANT IS THE STATE THAT SHIPPED. React Native Web delays `onPressIn`
+  // by 50 ms and drops a press released before that timer entirely, so on the
+  // beat the 2026-08-25 ruling makes "rapid tapping" the faster a player
+  // tapped the fewer taps existed. Measured in a browser on the played session
+  // surface, one bench rep driven to the command and tapped five times with
+  // only the contact duration varied: 40 ms taps counted ZERO, 120 ms counted
+  // four, 250 ms counted three and the rep locked out.
+  //
+  // Deleting the spread from `SetView.tsx` puts that state back, and the
+  // named check names the file rather than reporting a count — which is what a
+  // reader needs, because the failure is per screen.
+  {
+    guarantee: 'no-press-surface-swallows-a-fast-tap',
+    mutatedFile: 'src/session/SetView.tsx',
+    mutated: '        testID="session-touch"\n        {...PRESS_WITHOUT_DELAY}\n',
+    mutatedTo: '        testID="session-touch"\n',
+    testFile: 'src/lift/liftInput.test.ts',
+    redAssertion: "      expect(bare, bare.join('\\n')).toEqual([]);",
+    observed:
+      'FAIL  src/lift/liftInput.test.ts > every lift press surface in the repository carries the '
+      + 'press guard > every press target spreads the no-press-delay guard, so a fast tap is an '
+      + 'input [no-press-surface-swallows-a-fast-tap]\n'
+      + 'AssertionError: src/session/SetView.tsx presses <LiftStage> through an element that does '
+      + 'not spread PRESS_WITHOUT_DELAY from src/lift/pressGuard.ts, so React Native Web drops any '
+      + 'tap released inside its own press delay — on a beat whose answer is rapid tapping: '
+      + 'expected [ Array(1) ] to deeply equal []\n'
+      + 'Tests  2 failed | 18 passed (20)',
   },
   // -------------------------------------------------------------------------
   // The lift press guard — the fix a human playtest asked for, on the screens a

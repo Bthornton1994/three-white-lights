@@ -1967,6 +1967,49 @@ export const LIFT_TUNING = Object.freeze({
     SPRITE_SCALE: 3,
 
     /**
+     * =========================================================================
+     * HOW LONG A FINGER MUST BE DOWN BEFORE THE GAME HEARS IT AT ALL
+     * =========================================================================
+     * ZERO, AND THAT IS A FIX RATHER THAN A DEFAULT. React Native Web's
+     * `Pressable` delays `onPressIn` by `DEFAULT_PRESS_DELAY_MS` — 50 ms — and
+     * a press RELEASED before that delay elapses produces NO `onPressIn` at
+     * all. Not a late input: no input.
+     *
+     * MEASURED IN A REAL BROWSER, ON THE PLAYED SESSION SURFACE, DRIVING A
+     * BENCH REP TO THE COMMAND AND THEN TAPPING FIVE TIMES:
+     *
+     *     press held  40 ms  ->  burstTaps 0
+     *     press held 120 ms  ->  burstTaps 4
+     *     press held 250 ms  ->  burstTaps 3 (and the rep reached LOCKOUT)
+     *
+     * The rep, the load and the cadence were otherwise identical; the only
+     * thing that moved was how long each tap's contact lasted.
+     *
+     * WHY IT IS A DEFECT AGAINST THE 2026-08-25 RULING AND NOT A TUNING
+     * PREFERENCE. The ruling's own words are that the press command "requires
+     * rapid tapping to exert as much force as possible", and
+     * `PRESS_BURST_TAP_REFRACTORY_TICKS` sets the mechanic's own floor at 3
+     * ticks — 50 ms BETWEEN counted taps, which a player reaches with contacts
+     * far shorter than 50 ms each. So the beat as shipped asked for a tap rate
+     * the screen was structurally unable to hear, and the faster a player
+     * mashed the more of their taps vanished. That is the opposite of the
+     * mechanic's own saturating curve, which is designed so mashing CAPS
+     * rather than fails.
+     *
+     * IT IS NOT ONLY THE ROBOT'S PROBLEM. `PressResponder`'s delay is applied
+     * on `onResponderGrant`, which is the path a TOUCH takes as well as a
+     * mouse — the only caller that skips it is the keyboard one. So a thumb on
+     * a phone loses the same taps a driver does.
+     *
+     * HERE RATHER THAN IN `pressGuard.ts` because it is a duration a
+     * playtester might want to move — the other three guards are structural
+     * declarations with no number in them, and that file says so about itself.
+     * `pressGuard.ts` reads this and spreads it; `liftInput.test.ts` requires
+     * the spread on every press surface the repository has.
+     */
+    PRESS_IN_DELAY_MS: 0,
+
+    /**
      * Most sim ticks the render loop will run in one frame.
      *
      * A hitch — a backgrounded tab, a garbage-collection pause — leaves a large

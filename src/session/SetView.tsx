@@ -38,7 +38,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LiftStage } from '../lift/LiftStage';
 import { useLiftLoop } from '../lift/useLiftLoop';
 import { totalKgFor } from '../lift/liftFrame';
-import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN, SUPPRESS_CONTEXT_MENU } from '../lift/pressGuard';
+import {
+  PRESS_NOT_SELECT,
+  PRESS_NOT_TAKEN,
+  PRESS_WITHOUT_DELAY,
+  SUPPRESS_CONTEXT_MENU,
+} from '../lift/pressGuard';
 import { pressCommandIsLive, promptFor, type LiftOutcome } from '../game/lift';
 import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
 import { SESSION_COPY, SESSION_LAYOUT, SESSION_TUNING } from '../game/sessionTuning';
@@ -182,6 +187,7 @@ export function SetView({ state, onRepResolved }: SetViewProps): React.ReactElem
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         testID="session-touch"
+        {...PRESS_WITHOUT_DELAY}
       >
         <LiftStage state={loop.state} history={loop.history} totalKg={totalKg} />
       </Pressable>

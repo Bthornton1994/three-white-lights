@@ -1609,19 +1609,25 @@ export async function feedBenchToTheChest(page, { read, plan, hasLeft = NEVER_LE
   const startedAt = Date.now();
   const commitAt = startedAt + BENCH_BEAT.chestTimeoutMs * BENCH_DRIVE.DESCENT_COMMIT_FRACTION;
   let down = true;
-  let cycles = 0;
+  // FEEDS AND EASES COUNTED SEPARATELY, because a descent that arrives during
+  // the first ease — which is what the search says should happen at the loads
+  // this drives — has completed ZERO whole cycles, and a single `cycles: 0`
+  // reads as "the loop never ran".
+  let feeds = 0;
+  let eases = 0;
   let ended = { left: false };
   for (;;) {
     ended = await waitOutOrLeave(page, { read, line, hasLeft, ms: plan.feedMs });
+    feeds += 1;
     if (ended.left) break;
     await page.mouse.up();
     down = false;
     if (Date.now() >= commitAt) break;
     ended = await waitOutOrLeave(page, { read, line, hasLeft, ms: plan.easeMs });
+    eases += 1;
     if (ended.left) break;
     await page.mouse.down();
     down = true;
-    cycles += 1;
     if (Date.now() >= commitAt) break;
   }
   // THE COMMIT ARM. Reached only when the cycle has spent half the no-touch
@@ -1643,7 +1649,8 @@ export async function feedBenchToTheChest(page, { read, plan, hasLeft = NEVER_LE
   }
   if (down) await page.mouse.up();
   return {
-    cycles,
+    feeds,
+    eases,
     committed,
     ms: Date.now() - startedAt,
     feedMs: plan.feedMs,

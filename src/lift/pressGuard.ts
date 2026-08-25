@@ -77,9 +77,13 @@
  * globally. Adding it would be a declaration with no state of the app behind
  * it — decoration wearing the costume of a fix.
  *
- * There are no numbers here, so nothing here is a game-feel value to tune. The
- * mechanic's timings live in `src/game/liftTuning.ts`. This is the difference
- * between the input arriving and not arriving.
+ * THREE OF THE FOUR GUARDS HERE HOLD NO NUMBER, and the fourth holds one it
+ * reads out of `LIFT_TUNING.FEEDBACK` rather than declaring. This paragraph
+ * used to say "there are no numbers here" and that stopped being true when
+ * `PRESS_WITHOUT_DELAY` landed, so it is corrected rather than left standing.
+ * Every timing this module touches is still the mechanic's, in
+ * `src/game/liftTuning.ts`. What this file is about is the difference between
+ * the input arriving and not arriving.
  *
  * NATIVE IS UNAFFECTED. These are web CSS properties; React Native Web passes
  * them through to the DOM and the native renderers ignore them. They are
@@ -88,6 +92,8 @@
  * turn the guard into a claim about the test environment rather than about the
  * shipped screen.
  */
+
+import { LIFT_TUNING } from '../game/liftTuning';
 
 /**
  * The two INHERITED properties, for the root of a screen that has a lift stage
@@ -200,4 +206,53 @@ export const SUPPRESS_CONTEXT_MENU = {
  */
 export const PRESS_NOT_TAKEN = {
   touchAction: 'none',
+} as const;
+
+/**
+ * THE FOURTH GUARD, AND THE ONE THAT WAS SWALLOWING WHOLE INPUTS RATHER THAN
+ * DECORATING THEM.
+ *
+ * React Native Web's `Pressable` schedules `onPressIn` behind
+ * `PressResponder`'s `DEFAULT_PRESS_DELAY_MS` — 50 ms — and a press released
+ * before that timer fires produces NO `onPressIn` AT ALL. Measured on the
+ * played session surface, driving a real bench rep to the press command and
+ * then tapping five times at the same cadence with only the contact duration
+ * varied: 40 ms taps counted ZERO, 120 ms taps counted four, 250 ms taps
+ * counted three and the rep locked out. The mechanic was fine throughout —
+ * `lift.test.ts` counts a tap the instant it arrives — and the screen was
+ * never handing it one.
+ *
+ * WHY IT MATTERS MORE THAN THE OTHER THREE HERE. The 2026-08-25 ruling makes
+ * bench's answer "rapid tapping to exert as much force as possible", and
+ * `PRESS_BURST_TAP_REFRACTORY_TICKS` puts the mechanic's own floor at 50 ms
+ * BETWEEN counted taps — a rate a player reaches with contacts far shorter
+ * than 50 ms each. So the harder somebody mashed, the more of their taps the
+ * screen threw away, which inverts the whole point of a saturating force curve
+ * (mashing is supposed to CAP, not to fail).
+ *
+ * NOT A ROBOT-ONLY PROBLEM, and that is why it is fixed rather than worked
+ * around in the driver. `PressResponder` applies the delay in
+ * `onResponderGrant`, which is the path a TOUCH takes as much as a mouse; the
+ * only caller that skips it is the keyboard one. A thumb loses the same taps.
+ *
+ * THE VALUE IS `LIFT_TUNING.FEEDBACK.PRESS_IN_DELAY_MS` and not a literal here,
+ * because it is a duration and this module's own header says it holds none —
+ * the other three guards are structural declarations. That header is corrected
+ * above rather than left standing.
+ *
+ * SPREAD, NOT WRITTEN AS A JSX ATTRIBUTE, for exactly the reason
+ * `SUPPRESS_CONTEXT_MENU` is: `delayPressIn` is a React Native Web prop that
+ * this project's borrowed React Native types do not declare (`PressableProps`
+ * has `unstable_pressDelay` and no `delayPressIn`), so a literal attribute is a
+ * `tsc` error while a spread of a separately-typed object is not. React Native
+ * Web's `Pressable` reads `delayPressIn` and hands it to `PressResponder` as
+ * `delayPressStart`; the gap is in the types, not in what ships.
+ *
+ * ON THE PRESS TARGET, NOT ON AN ANCESTOR. It is a prop of the `Pressable`
+ * whose responder is being configured — it neither inherits nor bubbles, so it
+ * sits where `PRESS_NOT_TAKEN` sits and not where `PRESS_NOT_SELECT` does.
+ * `@guarantee no-press-surface-swallows-a-fast-tap`
+ */
+export const PRESS_WITHOUT_DELAY = {
+  delayPressIn: LIFT_TUNING.FEEDBACK.PRESS_IN_DELAY_MS,
 } as const;

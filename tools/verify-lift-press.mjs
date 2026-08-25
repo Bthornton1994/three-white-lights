@@ -2075,8 +2075,47 @@ function installLadderRecorder(context) {
       // running through the three press arms would be spending the rep's
       // frame budget on measuring reps nobody is measuring.
       // ---------------------------------------------------------------
+      // ===============================================================
+      // ONE INTERVENTION ON THE APP, DISCLOSED RATHER THAN BURIED:
+      // `preserveDrawingBuffer`.
+      // ===============================================================
+      // A WebGL drawing buffer is CLEARED after it is composited unless the
+      // context was created with `preserveDrawingBuffer: true`, so a
+      // `readPixels` taken from anywhere other than inside the app's own draw
+      // call returns transparent black. Measured, not assumed: without this
+      // patch the sampler read 186 frames of a live bench rep and reported
+      // ZERO changed pixels on every one of them — the shipped stage beat
+      // looked exactly as dead as the beat playtest 4 measured, for a reason
+      // that had nothing to do with the app.
+      //
+      // WHAT IT CHANGES AND WHAT IT DOES NOT. It changes one context
+      // attribute: whether the back buffer survives compositing. It does not
+      // change a draw call, a colour, a size or an order, so the pixels this
+      // reads are the pixels that were shown. What it can change is
+      // PERFORMANCE — a retained buffer is a real cost — which is why the
+      // sampler is armed per rep rather than left running, and why the frame
+      // recorder's own `raf` count sits beside every claim taken from it.
+      //
+      // THE HONEST LIMIT: this makes the instrument's subject one context
+      // attribute away from the shipped one. There is no way to read a WebGL
+      // canvas from outside its own draw call without it, and a Node-side
+      // screenshot is a CDP round trip per look — far too coarse for a 260 ms
+      // wash and exactly the sampling blindness the frame recorder above
+      // exists to avoid. Recorded here so nobody has to rediscover the trade.
+      const realGetContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function patchedGetContext(type, attributes) {
+        if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') {
+          return realGetContext.call(this, type, {
+            ...(attributes ?? {}),
+            preserveDrawingBuffer: true,
+          });
+        }
+        return realGetContext.call(this, type, attributes);
+      };
+
       const pix = {
         armed: false,
+        preserveDrawingBufferForced: true,
         rows: [],
         counts: { frames: 0, dropped: 0 },
         err: null,
@@ -2102,6 +2141,8 @@ function installLadderRecorder(context) {
             gl = node.getContext('webgl2') ?? node.getContext('webgl');
             pix.canvas = node;
             pix.mode = gl === null ? 'no-webgl-context' : 'webgl';
+            pix.preserveDrawingBuffer =
+              gl === null ? null : gl.getContextAttributes().preserveDrawingBuffer === true;
             buf = gl === null ? null : new Uint8Array(node.width * node.height * 4);
             previous = null;
             pix.scale = node.width / stage.stageW;
@@ -2232,6 +2273,16 @@ const readStagePixels = (page) =>
       mode: live.mode,
       sampled: live.sampled,
       scale: live.scale,
+      preserveDrawingBufferForced: live.preserveDrawingBufferForced === true,
+      /**
+       * WHAT THE CONTEXT ACTUALLY CAME BACK WITH, read off the context rather
+       * than assumed from the patch. A patch that stopped being applied — a
+       * context created before the init script, a browser that ignores the
+       * attribute — would leave every delta at zero and every claim below
+       * green-by-emptiness, which is why this is reported and checked rather
+       * than described in the comment above.
+       */
+      preserveDrawingBuffer: live.preserveDrawingBuffer,
     };
   });
 
@@ -2837,6 +2888,7 @@ function gradeStageBeat(kind, run) {
     pix !== null &&
       pix.err === null &&
       pix.mode === 'webgl' &&
+      pix.preserveDrawingBuffer === true &&
       pix.counts.dropped === 0 &&
       pix.sampled > 0 &&
       rows.length > 0 &&
@@ -2844,7 +2896,7 @@ function gradeStageBeat(kind, run) {
     `LADDER ${kind} STAGE DOMAIN: the canvas sampler read real, MOVING frames off the stage for the rep every pixel claim below is taken from`,
     pix === null
       ? 'the sampler was never installed'
-      : `mode=${JSON.stringify(pix.mode)}, ${rows.length} frame(s) kept, ${moved} of them moved, ${pix.sampled} px sampled per frame at stride ${STAGE_BEAT.DELTA_STRIDE}, canvas scale ${pix.scale}, ${pix.counts.dropped} dropped against a ${STAGE_BEAT.MAX_ROWS}-row cap, err=${JSON.stringify(pix.err)}`,
+      : `mode=${JSON.stringify(pix.mode)}, preserveDrawingBuffer=${pix.preserveDrawingBuffer} (forced by this instrument: ${pix.preserveDrawingBufferForced}), ${rows.length} frame(s) kept, ${moved} of them moved, ${pix.sampled} px sampled per frame at stride ${STAGE_BEAT.DELTA_STRIDE}, canvas scale ${pix.scale}, ${pix.counts.dropped} dropped against a ${STAGE_BEAT.MAX_ROWS}-row cap, err=${JSON.stringify(pix.err)}`,
   );
   check(
     STAGE_BEAT_TUNING.missing.length === 0,
@@ -2939,7 +2991,7 @@ function gradeStageBeat(kind, run) {
       best?.reachedLockout === true &&
       best?.outcome !== 'NO LIFT',
     'LADDER bench: a rep driven through the WHOLE new chain — fed descent, wait, tap burst — reached LOCKOUT',
-    `descent ${JSON.stringify(best?.benchDescent === null || best?.benchDescent === undefined ? null : { cycles: best.benchDescent.cycles, committed: best.benchDescent.committed, ms: best.benchDescent.ms, feedMs: best.benchDescent.feedMs, easeMs: best.benchDescent.easeMs })}; burst ${JSON.stringify(best?.burst ?? null)}; ${last ?? 0} pip(s) lit at the end of it; lockout=${best?.reachedLockout}, outcome ${JSON.stringify(best?.outcome)} ${JSON.stringify(best?.detail ?? null)}`,
+    `descent ${JSON.stringify(best?.benchDescent === null || best?.benchDescent === undefined ? null : { feeds: best.benchDescent.feeds, eases: best.benchDescent.eases, committed: best.benchDescent.committed, ms: best.benchDescent.ms, feedMs: best.benchDescent.feedMs, easeMs: best.benchDescent.easeMs })}; burst ${JSON.stringify(best?.burst ?? null)}; ${last ?? 0} pip(s) lit at the end of it; lockout=${best?.reachedLockout}, outcome ${JSON.stringify(best?.outcome)} ${JSON.stringify(best?.detail ?? null)}`,
   );
 }
 
