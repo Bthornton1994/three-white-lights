@@ -225,31 +225,69 @@ describe("the deadlift's scripted rep styles mean what they say", () => {
       .toBe('miss');
   });
 
-  it('leaves squat and bench scripts depth-shaped, not tap-shaped', () => {
-    // The deadlift arm is a new early return in a shared function, and this is
-    // the guard that it diverts only what it is meant to. The two shapes are
+  it('gives each lift its own script shape, and does not divert one into another', () => {
+    // Three kinds, three per-kind branches in a shared function, and this is
+    // the guard that each diverts only what it is meant to. The shapes are
     // structurally different and that is what gets asserted:
     //
-    //   DEPTH-SHAPED   press, ONE release (the depth call), then at most one
-    //                  drive press. The release is always the second input.
-    //   TAP-SHAPED     press, then release/press PAIRS through the ascent, then
-    //                  possibly a final release at the lockout.
+    //   DEPTH-SHAPED   squat. press, ONE release (the depth call), then at
+    //                  most one drive press. The release is always second.
+    //   BURST-SHAPED   bench, since the 2026-08-25 ruling. press, then a
+    //                  release that is a BRAKE rather than a depth call, then
+    //                  a RUN of presses — the burst and the drive cues.
+    //                  'marginal' has no release at all: it is the bar fed
+    //                  straight onto the chest.
+    //   TAP-SHAPED     deadlift. press, then release/press PAIRS through the
+    //                  ascent, then possibly a final release at the lockout.
     //
-    // A squat that came back tap-shaped would mean the deadlift branch had
-    // swallowed it. Pinned as a shape rather than as literal tick numbers so a
-    // squat retune does not redden a test about deadlift.
+    // 'BENCH USED TO BE ON THE FIRST LINE OF THIS TEST, and moving it is the
+    // point rather than an accommodation: a bench script that still came back
+    // depth-shaped would mean the ruling had not reached the fixtures, which
+    // is exactly the state that put 23 failures across five files into the
+    // suite when the mechanic landed ahead of them. Pinned as shapes rather
+    // than as literal tick numbers so a retune of any one lift does not redden
+    // a test about another.
     const styles = ['perfect', 'marginal', 'high', 'stalled', 'dumped'] as const;
-    for (const kind of ['squat', 'bench'] as const) {
-      for (const style of styles) {
-        const script = repScript({ kind, loadRatio: 0.9, seed: 5 }, style);
-        const releases = script.filter((input) => input.kind === 'release');
-        expect(releases.length, `${kind} ${style} releases`).toBe(1);
-        expect(script[0]?.kind, `${kind} ${style} opens on a press`).toBe('press');
-        expect(script[1]?.kind, `${kind} ${style} calls depth second`).toBe('release');
-        expect(script.length, `${kind} ${style} length`).toBeLessThanOrEqual(3);
+    for (const style of styles) {
+      const script = repScript({ kind: 'squat', loadRatio: 0.9, seed: 5 }, style);
+      const releases = script.filter((input) => input.kind === 'release');
+      expect(releases.length, `squat ${style} releases`).toBe(1);
+      expect(script[0]?.kind, `squat ${style} opens on a press`).toBe('press');
+      expect(script[1]?.kind, `squat ${style} calls depth second`).toBe('release');
+      expect(script.length, `squat ${style} length`).toBeLessThanOrEqual(3);
+    }
+
+    // BENCH. Every style opens on a press; the two that answer the command
+    // carry a run of them afterwards, and the three that do not are two inputs
+    // long. 'marginal' is the one style with no release — the bar is fed all
+    // the way onto the chest, which is what makes it the arguable make.
+    const benchPresses: Record<string, number> = {};
+    for (const style of styles) {
+      const script = repScript({ kind: 'bench', loadRatio: 0.9, seed: 5 }, style);
+      expect(script[0]?.kind, `bench ${style} opens on a press`).toBe('press');
+      const releases = script.filter((input) => input.kind === 'release').length;
+      expect(releases, `bench ${style} releases`).toBe(style === 'marginal' ? 0 : 1);
+      benchPresses[style] = script.filter((input) => input.kind === 'press').length;
+      // Ticks strictly increase, or the script is not a script — a bench
+      // script is now built by three passes over the mechanic and an
+      // out-of-order tick would be silently dropped by `runLift`'s map.
+      for (let i = 1; i < script.length; i += 1) {
+        expect(
+          script[i]?.tick ?? 0,
+          `bench ${style} input ${i} is not after input ${i - 1}`,
+        ).toBeGreaterThan(script[i - 1]?.tick ?? 0);
       }
     }
-    // ...and the deadlift really is the other shape, or the contrast above is
+    // The two that answer the command are a RUN of presses; the three that do
+    // not are the single opening one. Counts rather than bounds, so a burst
+    // that stopped being written reports itself.
+    expect(benchPresses['perfect'] ?? 0, 'bench perfect presses').toBeGreaterThan(4);
+    expect(benchPresses['marginal'] ?? 0, 'bench marginal presses').toBeGreaterThan(4);
+    expect(benchPresses['high'] ?? 0, 'bench high presses').toBe(1);
+    expect(benchPresses['dumped'] ?? 0, 'bench dumped presses').toBe(1);
+    expect(benchPresses['stalled'] ?? 0, 'bench stalled presses').toBe(1);
+
+    // ...and the deadlift really is the third shape, or the contrast above is
     // asserting nothing. 'perfect' taps a cue: a release and a press adjacent.
     const pull = repScript({ kind: 'deadlift', loadRatio: 0.9, seed: 5 }, 'perfect');
     expect(pull[0]?.kind).toBe('press');

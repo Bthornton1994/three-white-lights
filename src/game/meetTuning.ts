@@ -1874,6 +1874,38 @@ export const MEET_PREVIEW = Object.freeze({
    * plays every style rather than trusting this note.
    */
   DEADLIFT_SLIP_TICKS: 18,
+  /**
+   * Longest bench descent hold a scripted rep will consider, in ticks, when it
+   * searches for the release that arrives at the chest most softly.
+   *
+   * A CEILING ON A SEARCH, NOT A HOLD. Since the 2026-08-25 ruling a bench
+   * descent is graded on the SPEED THE BAR ARRIVES AT, and there is no cue to
+   * read a release tick off — `lift.ts` arms none, deliberately, because a
+   * ring counting the player down to the chest would turn a control check into
+   * squat's anticipation check. So the script asks the mechanic the only way
+   * left: it plays the descent at every hold and keeps the one that arrived
+   * best. Comfortably past the tick a fed bar reaches the chest at every load,
+   * which `liftTuning.test.ts` pins against
+   * `BENCH_DESCENT_PATIENCE_TICKS`.
+   */
+  BENCH_HOLD_SCAN_MAX: 60,
+  /**
+   * Ticks between the taps a scripted bench burst throws.
+   *
+   * `PRESS_BURST_TAP_REFRACTORY_TICKS` is the floor the mechanic will count, so
+   * this is a scripted player tapping as fast as the sim will believe — which
+   * is what 'perfect' means on a beat whose input is a rate.
+   */
+  BENCH_BURST_TAP_GAP_TICKS: 3,
+  /**
+   * How many taps a scripted burst writes.
+   *
+   * A CEILING ON A SCRIPT, NOT A TAP COUNT. `PRESS_BURST_FORCE.MAX_COUNTED_TAPS`
+   * decides how many the mechanic counts, and the burst closes on its own once
+   * it is reached; this only has to be comfortably above it so the script never
+   * runs out before the mechanic does.
+   */
+  BENCH_BURST_TAPS_SCRIPTED: 24,
   /** e1RM per lift the openers are suggested from. */
   E1RM_KG: Object.freeze({ squat: 232.5, bench: 152.5, deadlift: 272.5 } as const satisfies Record<LiftKind, number>),
   /** The lifter's best competition total before this meet, kg, or null. */

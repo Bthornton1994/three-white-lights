@@ -167,6 +167,41 @@ type PerKind<T> = Readonly<Record<PlayableLiftKind, T>>;
 type PerEccentricKind<T> = Readonly<Record<EccentricLiftKind, T>>;
 
 /**
+ * The lifts whose descent is graded on WHEN THE PLAYER RELEASES. One: squat.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS TYPE EXISTS, AND WHY IT IS NOT A SYNONYM FOR `EccentricLiftKind`
+ * ---------------------------------------------------------------------------
+ * Bench lowers the bar, so it is eccentric. It is no longer DEPTH-TIMED. The
+ * 2026-08-25 ruling replaced bench's release-at-a-moment check with a control
+ * check — the bar is graded on HOW IT ARRIVES at the chest, not on the tick
+ * the finger came up — so the two tables that describe a release window
+ * (`DEPTH_LEGAL`, `DEPTH_WINDOW_MS`) have nothing to say about a bench rep any
+ * more.
+ *
+ * The rows were DELETED rather than left in place with a comment saying they
+ * are squat's, which is the same decision `EccentricLiftKind` made about
+ * deadlift one lift out: a value that is read by nothing is worse than a magic
+ * number, because a playtester turns it and nothing happens. Indexing either
+ * table with `'bench'` is now a compile error, and `depthTimedKindOf` in
+ * `lift.ts` refuses the kind at runtime for a caller that reaches one
+ * dynamically.
+ *
+ * WHAT BENCH KEEPS, so this reads as a narrowing rather than a deletion:
+ * `DEPTH_IDEAL.bench` is where the chest is, `DEPTH_COLLAPSE.bench` is how far
+ * a crashed bar may sink into it, `DESCENT_DEPTH_PER_TICK.bench` is the speed
+ * it STARTS down at, and the whole `BENCH_DESCENT_*` block below is the rest.
+ */
+export type DepthTimedLiftKind = Extract<PlayableLiftKind, 'squat'>;
+
+export const DEPTH_TIMED_LIFT_KINDS = Object.freeze([
+  'squat',
+] as const satisfies readonly DepthTimedLiftKind[]);
+
+/** One value per lift graded on the tick it releases at. One. */
+type PerDepthTimedKind<T> = Readonly<Record<DepthTimedLiftKind, T>>;
+
+/**
  * WHERE THE STICKING POINT IS, and how wide it is — per lift kind.
  *
  * squat's pair is re-exported from the sprite system rather than restated, so
@@ -290,9 +325,18 @@ export const LIFT_TUNING = Object.freeze({
    * bar that fell faster under load would read as weightless.
    *
    * squat, at the MAXIMAL endpoint: 1.0 depth takes 1/0.0155 = 65 ticks =
-   * 1.08 s. bench's pair is a placeholder chosen faster than squat's — a
-   * bench eccentric is a shorter range of motion — not measured: MAXIMAL
-   * takes 1/0.019 ≈ 53 ticks ≈ 0.88 s. Not played; GDD §10 applies.
+   * 1.08 s.
+   *
+   * BENCH'S ROW IS THE SPEED THE BAR STARTS DOWN AT, NOT THE SPEED IT KEEPS.
+   * Squat's descent is a constant rate — the bar comes down at one speed and
+   * the player picks the tick to reverse. Bench's is not, since the 2026-08-25
+   * ruling: the bar ACCELERATES while the finger is down
+   * (`BENCH_DESCENT_GRAVITY`) and DECELERATES while it is up
+   * (`BENCH_DESCENT_BRAKE`), and what is graded is the speed it carries into
+   * the chest. So this number is only the first tick's rate for bench, and the
+   * name is true of both rows read as "the depth this lift's descent covers in
+   * its first tick". MAXIMAL starts at 1/0.019 ≈ 53 ticks of travel if nothing
+   * accelerated it, which nothing does not. Not played; GDD §10 applies.
    *
    * NO DEADLIFT ROW, AND THAT IS THE TYPE DOING ITS JOB. A deadlift's bar
    * starts on the floor; there is no descent to set a rate for. See
@@ -339,19 +383,25 @@ export const LIFT_TUNING = Object.freeze({
   // -------------------------------------------------------------------------
 
   /**
-   * Depth at which the lift is legal, per kind. Releasing above this misses
-   * with reason 'no-depth' — a high squat for squat, an incomplete chest
-   * touch for bench. Not a difficulty knob so much as the rule.
+   * Depth at which the lift is legal. Releasing above this misses with reason
+   * 'no-depth' — a high squat. Not a difficulty knob so much as the rule.
    *
-   * BENCH SET STRICTER THAN SQUAT'S (0.92 vs 0.8, both against the same
-   * IDEAL=1.0): a partial bench press is a more binary, more strictly judged
-   * foul in the real sport than squat's depth standard, which has more
-   * legitimate room to be "close enough". A placeholder reasoned from that,
-   * not measured — GDD §10 applies.
+   * SQUAT ONLY, AND THE BENCH ROW WAS DELETED RATHER THAN LEFT UNREAD. Bench
+   * had 0.92 here while its descent was graded on the tick the finger came up.
+   * Since the 2026-08-25 ruling a bench rep is not released at a depth at all
+   * — the bar is fed down and caught, and what decides the rep is the speed it
+   * arrives at the chest with. Bench's legality is `depthAchieved`, set by the
+   * touch itself: touch the chest and it is legal, run out of descent without
+   * touching and it is a miss with its own reason ('no-touch'). There is no
+   * depth between those two for this number to name.
    */
-  DEPTH_LEGAL: { squat: 0.8, bench: 0.92 } satisfies PerEccentricKind<number>,
+  DEPTH_LEGAL: { squat: 0.8 } satisfies PerDepthTimedKind<number>,
 
-  /** The depth the timing window is centred on, per kind. Where a good rep reverses. Same for both. */
+  /**
+   * The depth a good rep reaches, per kind. Same number for both, and it means
+   * two different things: for squat it is the centre of the release window,
+   * for bench it is WHERE THE CHEST IS — the depth the bar makes contact at.
+   */
   DEPTH_IDEAL: { squat: 1.0, bench: 1.0 } satisfies PerEccentricKind<number>,
 
   /**
@@ -360,15 +410,19 @@ export const LIFT_TUNING = Object.freeze({
    * the point: doing nothing is a distinct failure with its own texture.
    *
    * BENCH'S MARGIN ABOVE IDEAL IS SMALLER THAN SQUAT'S (1.15 vs 1.3): a chest
-   * does not compress nearly as far as a hip can sink into a squat's bottom,
-   * so bouncing/sinking into the chest reaches its own foul sooner. Not
-   * measured; a placeholder reasoned the same way as DEPTH_LEGAL above.
+   * does not compress nearly as far as a hip can sink into a squat's bottom.
+   * Since the 2026-08-25 ruling it is not a foul line on bench, it is HOW FAR
+   * A CRASHED BAR MAY SINK: `BENCH_TOUCH_SINK_GAIN` turns the speed at contact
+   * into an overshoot past the chest, and this clamps it, because a chest
+   * stops compressing. A bench rep is never resolved 'buried' — the crash is
+   * charged to the ascent through `BENCH_TOUCH_DEMAND_PENALTY` instead, which
+   * is a cost rather than a cliff. Not measured; a placeholder.
    */
   DEPTH_COLLAPSE: { squat: 1.3, bench: 1.15 } satisfies PerEccentricKind<number>,
 
   /**
-   * Full width of the depth window, ms, per kind. The player must release
-   * inside `ideal ± width/2`. Outside it but still between DEPTH_LEGAL and
+   * Full width of the depth window, ms. The player must release inside
+   * `ideal ± width/2`. Outside it but still between DEPTH_LEGAL and
    * DEPTH_COLLAPSE is legal-but-sloppy: it grades 'missed' and costs reversal
    * speed, it does not end the rep.
    *
@@ -376,24 +430,277 @@ export const LIFT_TUNING = Object.freeze({
    * not move when it does — the window shrinks symmetrically about it — so a
    * fatigued player is asked for the same moment, more precisely.
    *
-   * BENCH FAR NARROWER THAN SQUAT'S (120ms vs 300ms) — NOT AN INDEPENDENT
-   * CHOICE. A first pass set this at 260ms, reasoned only from "a chest touch
-   * is more discrete than a squat's hole" in isolation from bench's other two
-   * numbers. `liftTuning.test.ts`'s "never lets the late edge of the depth
-   * window be an instant bury" caught the interaction: bench's collapse
-   * margin above IDEAL is deliberately small (0.15, vs squat's 0.3, because a
-   * chest does not compress as far as a hip) and bench's descent is
-   * deliberately fast (DESCENT_DEPTH_PER_TICK), so at 260ms the window's late
-   * edge already landed past DEPTH_COLLAPSE at the light end of the load
-   * range (measured 1.264 depth against a 1.15 collapse point) — releasing
-   * inside the window the game itself drew would have been an instant bury.
-   * 120ms keeps the same proportion of the (smaller) collapse budget squat's
-   * 300ms uses of its own (~83% at the worst-case load, both measured), which
-   * is what makes the two numbers consistent with each other rather than
-   * independently plausible-sounding. Still a placeholder, not measured by
-   * play — GDD §10 applies — but now one that cannot draw a cue that lies.
+   * SQUAT ONLY SINCE THE 2026-08-25 RULING, and the bench row's history is
+   * worth keeping because it is an argument that stopped applying rather than
+   * one that was wrong. It read 120ms, and that number was not chosen
+   * independently: a first pass set 260ms from "a chest touch is more discrete
+   * than a squat's hole", and `liftTuning.test.ts`'s "never lets the late edge
+   * of the depth window be an instant bury" caught the interaction with
+   * bench's small collapse margin — at the light end the window's late edge
+   * landed past DEPTH_COLLAPSE, so releasing inside the cue the game drew was
+   * an instant bury. 120ms fixed it. The ruling then deleted the beat that
+   * window described: bench no longer asks for a release at a depth, so there
+   * is no window to size. The row is gone rather than frozen at 120, and the
+   * lesson it earned — a per-lift number is only consistent WITH THAT LIFT'S
+   * OTHER NUMBERS — is what `BENCH_TOUCH_CRASH_RATE` is checked against now.
    */
-  DEPTH_WINDOW_MS: { squat: 300, bench: 120 } satisfies PerEccentricKind<number>,
+  DEPTH_WINDOW_MS: { squat: 300 } satisfies PerDepthTimedKind<number>,
+
+  // -------------------------------------------------------------------------
+  // THE DESCENT TO THE CHEST — BENCH ONLY (GDD §6.2; ruled 2026-08-25)
+  //
+  // WHAT THE RULING CHANGED, IN ONE SENTENCE: squat grades WHEN you release,
+  // bench grades HOW THE BAR ARRIVES. Those are different faculties, which is
+  // the same bar every other per-lift difference in this file is held to — a
+  // third window width would be one lift with three difficulty settings.
+  //
+  // Phone playtest 4 (2026-08-24) rejected the shipped chain outright:
+  // "confusing from descent to what i am waiting for to press and then
+  // pressing, everything feels off". The descent was the first third of that
+  // complaint and it was hold-and-wait — the player pressed once, watched, and
+  // released at a depth. Nothing was asked of them between those two moments.
+  //
+  // THE MODEL. The bar is fed down by the finger and resisted by taking the
+  // finger off:
+  //
+  //     held      rate += BENCH_DESCENT_GRAVITY[load]     (capped at MAX_RATE)
+  //     released  rate -= BENCH_DESCENT_BRAKE[load]       (floored at 0)
+  //     always    depth += rate
+  //
+  // starting from `DESCENT_DEPTH_PER_TICK.bench`. Contact happens when depth
+  // reaches `DEPTH_IDEAL.bench` — the chest — and what is graded is the RATE
+  // the bar is carrying at that instant, between `BENCH_TOUCH_SOFT_RATE` (a
+  // controlled touch, quality 1) and `BENCH_TOUCH_CRASH_RATE` (a bar dropped
+  // onto the chest, quality 0).
+  //
+  // WHY THIS IS NOT A SECOND ANTICIPATION CHECK, which is the obvious
+  // objection since the player still chooses a tick to lift their finger on.
+  // Squat's release is graded against a moment the sim picked and drew a ring
+  // around: a tick early and a tick late score the same, and there is nothing
+  // to do afterwards. Here the release is not the answer, it is one input to a
+  // continuous quantity — a player who lets go too early does not fail, the
+  // bar simply slows, stops short of the chest, and has to be fed again. The
+  // failure is a bar that is still moving fast when it lands, and there are
+  // many ways to arrive slow.
+  //
+  // LOAD-DEPENDENCE IS AN OUTCOME HERE, NOT A DECLARATION. A heavier bar
+  // starts down SLOWER (`DESCENT_DEPTH_PER_TICK` — a limit attempt is
+  // controlled down, and that is unchanged) but gathers speed faster and is
+  // harder to stop, which is what a heavy bar does. Whether that actually
+  // makes a heavy touch harder to control is measured in `lift.test.ts`'s
+  // `TOUCH_SWEEP` rather than asserted here.
+  //
+  // Every value below is bench's only. Squat reads none of them and its
+  // DESCENT branch is untouched; `lift.test.ts` pins squat's and deadlift's
+  // played histories against digests taken before this ruling landed.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Depth-rate gained per tick the finger is DOWN, by load. Gravity, in this
+   * model's units.
+   *
+   * MAXIMAL IS THE BIGGER NUMBER, and it is the only place in the descent
+   * where heavier means faster. The bar leaves the rack slower under load and
+   * then runs away harder — which is the thing a heavy bench actually does to
+   * a lifter, and it is what makes the control check harder at the top of the
+   * ladder without a single width being narrowed. Unplayed placeholders.
+   */
+  BENCH_DESCENT_GRAVITY: { LIGHT: 0.0004, MAXIMAL: 0.0013 },
+
+  /**
+   * Depth-rate lost per tick the finger is UP, by load. The lifter resisting.
+   *
+   * LIGHT IS THE BIGGER NUMBER — a warm-up bar is easy to stop, a limit bar is
+   * not. Together with the pair above this is the difficulty curve of the
+   * beat: at MAXIMAL you get roughly three times the acceleration and a third
+   * of the brake.
+   *
+   * THE MAXIMAL END IS LOAD-BEARING FOR THE OPEN-LOOP PROPERTY, MEASURED. A
+   * trial that raised it from 0.00045 to 0.0007 — a plausible-looking softening
+   * of a number nobody has played — put THREE fixed duty-cycle patterns back
+   * into "wins at every load" (hold 13 / release 28, 29 and 30), because a
+   * stronger brake shortens the coast and pulls the limit bar's answer back up
+   * toward the warm-up bar's. `lift.test.ts`'s `OPEN_LOOP_SEARCH` caught it and
+   * the trial was reverted. A tuner turning this knob should re-run that
+   * search rather than trust the feel of one rep.
+   *
+   * WHAT IT COSTS, STATED RATHER THAN SMOOTHED OVER: with the brake this weak,
+   * a single committed hold has a PERFECT window only TWO ticks wide at
+   * `LOAD_PRESETS.MAXIMAL` (holds 9 and 10, measured), sitting immediately
+   * above the holds that stall the bar short. That is 33ms and it may well be
+   * too sharp in the hand. It is not the only way in — the same search finds
+   * 33 open-loop rhythms that work at that load alone — but a tuner should
+   * treat this pair and the `BENCH_TOUCH_*` curves as one dial with two ends,
+   * because widening the window re-merges the bands. Unplayed placeholders.
+   */
+  BENCH_DESCENT_BRAKE: { LIGHT: 0.0014, MAXIMAL: 0.00045 },
+
+  /**
+   * Terminal descent rate. A bar cannot gather speed forever, and without a
+   * cap a player who never lets go at a maximal load arrives at a rate the
+   * grading curve has no room left to describe.
+   */
+  BENCH_DESCENT_MAX_RATE: 0.075,
+
+  /**
+   * At or below this rate at the chest, the touch is fully controlled —
+   * quality 1. Slower than the load starts down at, at both ends, so arriving
+   * here always means the player braked.
+   *
+   * ---------------------------------------------------------------------------
+   * LOAD-SCALED, AND THAT IS WHAT MOVES THE ANSWER RATHER THAN THE TOLERANCE
+   * ---------------------------------------------------------------------------
+   * It was a single number. A critic searched all 900 fixed duty-cycle
+   * patterns — hold `on` ticks, release `off`, repeat, with no perception of
+   * the bar, the load or the seed — over 8 loads and found **24 of them
+   * grading PERFECT on every cell**. The best, hold 13 / release 25, was
+   * perfect at every load in the ladder. Two numbers, memorised once, won the
+   * whole beat, which is not what "non trivial" means.
+   *
+   * The cause was precise and it was NOT the gravity/brake spread, which does
+   * scale difficulty: the PERFECT band narrowed with load (16 holds wide at the
+   * light end, 4 at the top) and barely MOVED (centre 10 to 12), so all eight
+   * bands overlapped and one memorised number sat inside every one of them.
+   * The load-dependence lived entirely in the tolerance.
+   *
+   * A scaled threshold is the half that was missing: a heavy bar has to arrive
+   * genuinely slower to count as controlled, so the RELEASE that achieves it is
+   * at a different tick — and a rhythm learned on a warm-up bar puts a limit
+   * bar on the chest far too fast. `lift.test.ts`'s `OPEN_LOOP_SEARCH` runs the
+   * critic's search in the tree and pins the count at zero, with the per-load
+   * counts beside it as the non-zero controls.
+   */
+  BENCH_TOUCH_SOFT_RATE: { LIGHT: 0.030, MAXIMAL: 0.010 },
+
+  /**
+   * At or above this rate at the chest, the touch is a crash — quality 0.
+   *
+   * LOAD-SCALED FOR THE REASON `BENCH_TOUCH_SOFT_RATE` ABOVE IS, and kept a
+   * fixed multiple of it at both ends so the graded band between "caught" and
+   * "dropped" is the same SHAPE at every load while sitting at a different
+   * SPEED. What changes with load is where a controlled touch lives, not how
+   * finely it is graded.
+   *
+   * IT HAS TO BE REACHABLE AND IT HAS TO NOT BE THE DEFAULT, which is the same
+   * two-sided requirement `DEPTH_WINDOW_MS`'s bench row failed on its first
+   * pass. `liftTuning.test.ts` checks the arithmetic — a player who never lets
+   * go crosses it from `LOAD_PRESETS.LIGHT` upward, and the lightest bar in the
+   * game cannot reach it at all — and `lift.test.ts` plays it.
+   */
+  BENCH_TOUCH_CRASH_RATE: { LIGHT: 0.060, MAXIMAL: 0.020 },
+
+  /**
+   * How much harder a crashed touch makes the WHOLE bench ascent, at touch
+   * quality 0. Scales the demand curve, exactly as `BURIED_DEMAND_PER_DEPTH`
+   * does for a buried squat and `PRESS_WEAK_DEMAND_PENALTY` does for a limp
+   * burst.
+   *
+   * A CONSEQUENCE THAT LASTS THE WHOLE ASCENT, NOT A TRANSIENT, and that is
+   * the one thing about this beat that is not a guess. The press command's own
+   * first version set only the bar's velocity off the chest, and velocity
+   * chases net force — an initial value washes out in about
+   * `1/VELOCITY_RESPONSE` ticks, so what looked like a decisive input decided
+   * a scattering of reps in a pattern indistinguishable from noise. The full
+   * account, with its counts, is in `PRESS_WEAK_DEMAND_PENALTY`'s header; they
+   * are not restated here, because a number repeated in two places is a
+   * number that can go stale in one of them. The descent gets that lesson
+   * applied on its first pass rather than its second, and what says so is a
+   * swept count of reps whose OUTCOME the touch changed — not a velocity
+   * written into the state. `@guarantee bench-touch-decides-the-rep`
+   */
+  BENCH_TOUCH_DEMAND_PENALTY: 0.22,
+
+  /**
+   * Depth past the chest a crashed bar sinks, per unit of contact rate.
+   *
+   * DRAWING AND FLAVOUR, NOT A SECOND PENALTY. `BENCH_TOUCH_DEMAND_PENALTY`
+   * above is what a crash costs; this is what it looks like. `extraDepth`
+   * stays 0 on bench precisely so the sink is not charged a second time
+   * through `BURIED_DEMAND_PER_DEPTH`, which is the double-count a reader
+   * should check for and `lift.test.ts` pins.
+   *
+   * Chosen against `DEPTH_COLLAPSE.bench` at the WORST load, which is the
+   * light end now that the crash rate is load-scaled: a touch at
+   * `BENCH_TOUCH_CRASH_RATE.LIGHT` sinks 0.060 x 2.0 = 0.120, landing at 1.120
+   * against a 1.15 clamp, so the clamp is a backstop for a bar that arrives
+   * even hotter rather than the usual case. `liftTuning.test.ts` asserts that
+   * relationship at both ends rather than trusting this sentence.
+   */
+  BENCH_TOUCH_SINK_GAIN: 2.0,
+
+  /**
+   * Ticks a bench descent may run before it starts costing control.
+   *
+   * ---------------------------------------------------------------------------
+   * WITHOUT THIS THE BEAT HAS A FREE PERFECT ANSWER, AND IT WAS MEASURED
+   * ---------------------------------------------------------------------------
+   * The speed grading alone rewards braking early. Brake early enough and the
+   * bar stops short of the chest — and a player who then feathers it in with
+   * short taps arrives at a rate near zero, which is quality 1 by definition.
+   * So "release almost immediately, then nudge" scored a perfect touch on
+   * every rep at every load, and the whole control check had a dominant
+   * strategy that cost nothing.
+   *
+   * Measured on the first tuning, holding to a fixed release tick and never
+   * re-pressing: releases at 4, 8 and 12 ticks stalled the bar short at every
+   * load, and a re-press from there arrives soft by construction. Nothing in
+   * the model charged for the time.
+   *
+   * THE FIX IS THAT TIME UNDER A LOADED BAR IS ITSELF THE COST, which is also
+   * what it is in the sport — a slow eccentric on a limit bench is not free,
+   * it is the thing that empties the lifter before the press. Control decays
+   * linearly from 1 to 0 over `BENCH_DESCENT_DAWDLE_SPAN_TICKS` once a descent
+   * has run this long, and multiplies the speed grading.
+   *
+   * LOAD-SCALED, AND IT IS THE SECOND HALF OF THE FIX THE OPEN-LOOP SEARCH
+   * FORCED. A single budget could not distinguish loads by construction: it is
+   * the same number of ticks whatever is on the bar, so a rhythm that finished
+   * inside it at one load finished inside it at all of them. Scaling it lets a
+   * limit bar be lowered deliberately — which is what a limit bar IS — while a
+   * warm-up that takes just as long is dawdling.
+   *
+   * The pair is set against each load's own committed descent rather than
+   * against the clock: `liftTuning.test.ts` asserts a fed bar reaches the chest
+   * inside the budget at every load, and `lift.test.ts` measures that a
+   * feathered descent lands outside it. Placeholders, GDD §10.
+   */
+  BENCH_DESCENT_PATIENCE_TICKS: { LIGHT: 42, MAXIMAL: 78 },
+
+  /**
+   * Ticks over which a slow descent's control decays from 1 to 0, once
+   * `BENCH_DESCENT_PATIENCE_TICKS` has passed.
+   *
+   * A SLOPE, NOT A CLIFF, deliberately. A hard cutoff would make the beat a
+   * second timing check — hit the chest before tick N — and this file already
+   * has one lift whose whole identity is a timing check. What this asks for is
+   * a preference: quick and soft beats slow and soft, and both beat fast and
+   * hard.
+   *
+   * 120 -> 60 WITH THE OPEN-LOOP FIX, and the reason is a threshold
+   * interaction rather than a feel judgement. A grade of PERFECT starts at
+   * `QUALITY_GRADE_BANDS.PERFECT`, so a decay this shallow left a creeping
+   * descent 24 ticks past its budget still grading perfect — the penalty
+   * existed and did not reach the grade the search was counting. 60 ticks
+   * makes the same overshoot land in 'good'. Unplayed placeholder.
+   */
+  BENCH_DESCENT_DAWDLE_SPAN_TICKS: 60,
+
+  /**
+   * Ticks a bench descent may run without reaching the chest before the rep is
+   * called a miss, reason 'no-touch'.
+   *
+   * THIS IS THE REAL RULE OF THE SPORT, NOT A TIMER FOR ITS OWN SAKE. A press
+   * that never touches the chest is three red lights. The only way to get here
+   * is to stop feeding the bar and never feed it again, so it is the failure
+   * that answers "what if I just let go" — and it costs a rep rather than
+   * hanging the screen, which is what a descent with no floor would do.
+   *
+   * 360 ticks is six seconds. Deliberately far longer than any played descent:
+   * a controlled one is well under two, so this is not a pace demand, and a
+   * player who feathers the bar down cautiously can take three times as long
+   * as an aggressive one without meeting it. Unplayed placeholder.
+   */
+  CHEST_TOUCH_TIMEOUT_TICKS: 360,
 
   /**
    * Extra demand per unit of depth past DEPTH_IDEAL. Being buried makes the
@@ -419,38 +726,56 @@ export const LIFT_TUNING = Object.freeze({
   } satisfies PerEccentricKind<{ LIGHT: number; MAXIMAL: number }>,
 
   // -------------------------------------------------------------------------
-  // THE PRESS COMMAND — BENCH ONLY (GDD §6.2, "Bench — press-timing /
-  // bar-speed check off the chest")
+  // THE PRESS COMMAND AND THE TAP BURST — BENCH ONLY (GDD §6.2; ruled
+  // 2026-08-25: "a descent to chest, non trivial, and then press command which
+  // requires rapid tapping to exert as much force as possible")
   //
-  // WHAT MAKES BENCH A DIFFERENT LIFT AND NOT A RETUNED SQUAT. Squat's decisive
-  // input is an ANTICIPATION check: the bar is moving, the player predicts the
-  // moment it reaches depth, and releases. Bench's is a REACTION check: the bar
-  // is motionless on the chest and a command arrives at a moment the player
-  // cannot predict. Those are different faculties, not different numbers, and
-  // it is why `HOLE` — a beat that asks for nothing on squat, by design — is
-  // where bench's whole lift is decided.
+  // WHAT MAKES BENCH A DIFFERENT LIFT AND NOT A RETUNED SQUAT. The three
+  // checks are three FACULTIES:
   //
-  // Every value below is bench's only. Squat reads none of them and its HOLE
-  // branch is untouched; `lift.test.ts` pins squat's histories byte-identical
-  // across this change.
+  //   SQUAT     ANTICIPATION. The bar is moving down at a known rate and the
+  //             player predicts the instant it reaches depth.
+  //   BENCH     CONTROL, then EXERTION. The bar is fed to the chest under
+  //             control, a command arrives at a moment that cannot be
+  //             predicted, and the player answers it by tapping as fast as
+  //             they can for as long as the burst window is open.
+  //   DEADLIFT  PERSISTENCE. The bar is locked out and the player must not
+  //             stop holding it until the down command.
+  //
+  // WHAT THE RULING REPLACED. Until 2026-08-25 the command was answered by ONE
+  // press, graded as a reaction on an asymmetric window (`gradeReaction`,
+  // `PRESS_REACTION_WINDOW_MS`, `PRESS_FALSE_START_QUALITY`, and a
+  // `PRESS_TIMEOUT_TICKS` for a press that never came). All four are deleted
+  // rather than left standing beside the burst — two grading paths where one
+  // is unreachable is the shape this repository has paid for before.
+  //
+  // THE SEEDED DELAY SURVIVED THE REDESIGN, and that was a decision rather
+  // than an omission (recorded in CLAUDE.md's 2026-08-25 entry). Bench keeps
+  // the reaction identity: nothing counts a player down to the command, so
+  // when it comes is unguessable, and a burst that starts late is a burst with
+  // fewer taps in it. That is the whole blend — reaction is not graded as a
+  // separate term, it is folded into the count, because a beat that scores the
+  // first tap AND the rate is two checks wearing one prompt.
+  //
+  // Every value below is bench's only. Squat and deadlift read none of them.
   // -------------------------------------------------------------------------
 
   /**
    * How long the bar sits motionless on the chest before the command, in ticks.
    *
    * DRAWN FROM THE REP'S SEED, NOT FROM A CLOCK AND NOT FROM `Math.random`. The
-   * delay has to be unpredictable or the reaction check degrades into a second
-   * anticipation check — a fixed pause is learnable in about three reps, and a
-   * learnable pause is squat's mechanic wearing bench's name. Seeded means
-   * unpredictable to the PLAYER while a rep stays a pure function of
-   * (config, seed, inputs), which `lift.test.ts` pins.
+   * delay has to be unpredictable or the burst degrades into an anticipation
+   * check — a fixed pause is learnable in about three reps, and a learnable
+   * pause is squat's mechanic wearing bench's name. Seeded means unpredictable
+   * to the PLAYER while a rep stays a pure function of (config, seed, inputs),
+   * which `lift.test.ts` pins.
    *
    * THIS IS NOT THE ROLLED OUTCOME `lift.ts`'s header refuses, and the
    * distinction is worth stating because a reader will reasonably ask. What is
    * rolled is WHEN THE TEST STARTS, never whether it is passed: at every delay
-   * in this range a player who reacts well gets the same quality and the same
-   * bar speed. GDD §8.1's "100% skill- and consistency-driven" is about the
-   * OUTCOME, and the outcome here is decided entirely by the reaction. A
+   * in this range a player who taps hard gets the same force and the same bar
+   * speed. GDD §8.1's "100% skill- and consistency-driven" is about the
+   * OUTCOME, and the outcome here is decided entirely by the burst. A
    * starter's pistol that fires at an unpredictable moment is not a dice roll
    * on the race.
    *
@@ -460,116 +785,188 @@ export const LIFT_TUNING = Object.freeze({
   PRESS_COMMAND_DELAY_TICKS: { MIN: 24, MAX: 96 },
 
   /**
-   * How long the reaction window stays open after the command, ms.
+   * How long the burst window stays open after the command, ms.
    *
-   * Graded ASYMMETRICALLY, unlike every other window in this file — see
-   * `gradeReaction` in `lift.ts`. Quality runs from 1 at the command tick down
-   * to 0 at the end of this window; there is no early half, because a press
-   * before the stimulus is not an early reaction, it is a false start.
+   * This is what `cueWindowMs('press', config)` returns, so `fatigue.ts`
+   * narrows it exactly as it narrows the depth and drive windows (GDD §3.4,
+   * tighter when fatigued). It is the ONLY channel fatigue reaches bench's
+   * decisive beat through — the tap curve itself is load- and
+   * fatigue-independent, because how fast a thumb moves is a fact about the
+   * player and not about the bar.
    *
-   * 420ms is chosen above human visual reaction time (~250ms) with room for a
-   * phone's touch latency, so a player who genuinely reacts lands inside it and
-   * the grading separates sharp from slow rather than separating "reacted" from
-   * "did not". Not measured by play; GDD §10 applies.
+   * 850ms at 60Hz is 51 ticks. Against `PRESS_BURST_TAP_REFRACTORY_TICKS` that
+   * is room for 17 taps, comfortably more than `MAX_COUNTED_TAPS`, so the
+   * ceiling a fast player runs into is the force curve's and not the clock's —
+   * which is what "mashing physics-caps" means and what
+   * `liftTuning.test.ts` checks. A player tapping at a realistic 8/s lands 6 or
+   * 7. Not measured by play; GDD §10 applies, and this is the likeliest number
+   * in the block to be wrong, because how long a thumb can sustain a burst is
+   * exactly the question only a phone can answer.
    */
-  PRESS_REACTION_WINDOW_MS: 420,
+  PRESS_BURST_WINDOW_MS: 850,
 
   /**
-   * How much harder a slow press makes the WHOLE bench ascent, at reaction
-   * quality 0. Scales the demand curve, exactly as `BURIED_DEMAND_PER_DEPTH`
-   * does for a squat buried past ideal depth.
+   * Ticks that must pass between two counted taps.
+   *
+   * A FLOOR ON THE RATE THE SIM WILL BELIEVE, not a punishment. `stepLift`
+   * accepts one input per tick, so without this a scripted or synthetic player
+   * could throw 60 taps a second and reach the cap in a quarter of the window
+   * — and the mechanic would be measuring the harness rather than the hand. 3
+   * ticks is 50ms, or 20 taps a second: above anything a thumb does, so a real
+   * player never meets it.
+   */
+  PRESS_BURST_TAP_REFRACTORY_TICKS: 3,
+
+  /**
+   * The tap-count-to-force curve, and the false-start floor that lives on it.
+   *
+   * `burstForce(n) = sat(min(n, MAX_COUNTED_TAPS)) / sat(MAX_COUNTED_TAPS)`,
+   * where `sat(x) = x / (x + HALF_SATURATION_TAPS)`.
+   *
+   * DIMINISHING RETURNS ARE THE SHAPE OF THE CURVE, NOT A CAP BOLTED ON TOP.
+   * The first tap is worth about a quarter of the whole burst and the
+   * fourteenth about a sixtieth of it, so a player who cannot mash still gets
+   * most of the value of trying, and a player who can does not get to convert
+   * thumb speed into unbounded force. `lift.test.ts` asserts the marginal gain
+   * FALLS at every rung rather than checking two endpoints, and pins the ratio
+   * between the first rung's gain and the last one's.
+   *
+   * MAX_COUNTED_TAPS IS ALSO A LAUNCH TRIGGER: reaching it closes the burst
+   * early and the bar leaves the chest, so tapping FASTER is worth something
+   * beyond tapping MORE. That is the rate half of the ruling's words, and it
+   * is why the count is not simply read at the end of the window.
+   *
+   * FALSE_START_FLOOR_TAPS is the floor a false start can never charge a
+   * player below — see `LIFT_COPY.SUBTITLE.bench`, which names it in words,
+   * and `burstCountedTaps`, which is the rule. It is the whole of "must not
+   * silently kill the rep": after any number of early taps a player who then
+   * taps three times still launches at `burstForce(3)` ≈ 0.55, which makes the
+   * lift at most loads. It is a floor on the CHARGE and not a gift — a player
+   * who never answered the command still launches at 0.
+   */
+  PRESS_BURST_FORCE: { HALF_SATURATION_TAPS: 4, MAX_COUNTED_TAPS: 14, FALSE_START_FLOOR_TAPS: 3 },
+
+  /**
+   * Thresholds a 0..1 QUALITY — not an offset — is turned into a `TimingGrade`
+   * at. Both of bench's beats are read off this: the burst's force and the
+   * touch's control.
+   *
+   * IT IS ONE TABLE ON PURPOSE, AND THE NAME IS THE SECOND VERSION OF IT. The
+   * first was `PRESS_BURST_GRADE`, and the touch was graded against it — an
+   * identifier claiming to be about the burst while deciding what a chest
+   * touch reads as, which is the failure CLAUDE.md calls worse in a name than
+   * in a comment, because nobody re-verifies a name the way they second-guess
+   * a docstring. Renamed rather than duplicated: 'perfect' has to mean the
+   * same fraction on both beats or the word stops meaning anything inside one
+   * rep, and two knobs that must be turned together are one knob with a bug
+   * waiting in it. A tuner who wants them apart should split this, and should
+   * split the word with it.
+   *
+   * REUSING THE TIMING VOCABULARY FOR THINGS THAT ARE NOT TIMING, deliberately
+   * and with two of its five members left unreachable. 'early' and 'late' name
+   * directions neither a burst nor an arrival has — both are amounts, not
+   * moments — and a grade that read 'late' for a weak burst would be an
+   * identifier asserting something the code does not measure. So both grade
+   * 'perfect', 'good', or 'missed', the last meaning the command went
+   * unanswered or the bar was dropped, and `lift.test.ts` pins the two
+   * unreachable members unreachable rather than leaving that as a claim.
+   */
+  QUALITY_GRADE_BANDS: { PERFECT: 0.8, GOOD: 0.5 },
+
+  /**
+   * How much harder a limp burst makes the WHOLE bench ascent, at burst force
+   * 0. Scales the demand curve, exactly as `BURIED_DEMAND_PER_DEPTH` does for
+   * a squat buried past ideal depth.
    *
    * ---------------------------------------------------------------------------
-   * THIS EXISTS BECAUSE THE REACTION WAS DECORATIVE, AND THAT WAS MEASURED
+   * THIS EXISTS BECAUSE THE PRESS WAS DECORATIVE, AND THAT WAS MEASURED
    * ---------------------------------------------------------------------------
+   * Renamed from `PRESS_SLOW_DEMAND_PENALTY` when the single reaction became a
+   * burst: what it charges for is now a weak burst rather than a slow press,
+   * and a name that describes the beat it replaced is the quiet kind of stale
+   * claim CLAUDE.md warns is worse in an identifier than in prose. The value
+   * and the mechanism are unchanged.
+   *
    * The first version of this beat set only the bar's velocity off the chest
-   * from `pressQuality`. That is real for about ten ticks and then gone:
-   * `velocity` chases `netForce * VELOCITY_PER_NET_FORCE` at `VELOCITY_RESPONSE`
-   * per tick, so an initial velocity washes out over roughly
-   * `1/VELOCITY_RESPONSE` ticks — which `REVERSAL_VELOCITY`'s own comment
-   * already says about the depth reversal, and which nobody applied to this.
+   * from the press quality. That is real for about ten ticks and then gone:
+   * `velocity` chases `netForce * VELOCITY_PER_NET_FORCE` at
+   * `VELOCITY_RESPONSE` per tick, so an initial velocity washes out over
+   * roughly `1/VELOCITY_RESPONSE` ticks — which `REVERSAL_VELOCITY`'s own
+   * comment already says about the depth reversal, and which nobody applied to
+   * this.
    *
    * MEASURED at seed 7, no drive thrown, perfect reaction vs never pressing at
    * all: velocity at ascent tick 1 was 0.01900 against 0.00040 — a 47x spread,
    * which is what the first tests read and passed on — and by tick 10 it was
-   * 0.01478 against 0.00989. Across the thirty cases first sampled the OUTCOME
-   * was identical every time: good-lift at 0.85 whatever the player did, miss
-   * at 1.00 whatever the player did, and with a drive thrown every reaction
-   * from perfect to absent made the lift.
-   *
-   * THE FIRST WORD FOR THAT WAS "DECORATIVE" AND IT WAS TOO STRONG — corrected
-   * here rather than left standing, because the wider sweep says something
-   * more useful. Over the full 240-case sweep the transient alone flips 40
-   * outcomes; with this penalty it is 160. So the reaction was never worth
-   * NOTHING, it was worth about a sixth of the cases in a pattern spread
+   * 0.01478 against 0.00989. Over the full 240-case sweep the transient alone
+   * flipped 40 outcomes; with this penalty it was 160. So the press was never
+   * worth NOTHING, it was worth about a sixth of the cases in a pattern spread
    * unpredictably across loads and seeds — which is worse than nothing for a
    * player trying to learn a mechanic, because it is indistinguishable from
-   * noise. The thirty-case probe reported zero only because it happened to
-   * sample loads where the transient decided none of them. A measurement that
-   * small can be honestly taken and still be the wrong shape.
-   *
-   * So a player could ignore the command and mostly never find out. That is
-   * also the honest explanation of the phone report that the command was
-   * "too easy to miss": missing it cost nothing, so nothing taught them it was
-   * there. A more visible cue on a consequence-free input is a louder button
-   * that still does nothing.
+   * noise.
    *
    * The lesson is CLAUDE.md's "verifying a mechanism is not verifying what
-   * follows from it", committed in the module that documents it. Eight mutants
-   * were run on the first version and all eight passed, because every one of
-   * them tested a mechanism — is the delay seeded, is the press consumed, is
-   * the velocity set — and not one asked whether the rep CHANGED. The fix for
-   * the tests is the same shape as the fix for the code: assert the outcome
-   * moves, not that a number was written.
+   * follows from it". Eight mutants were run on the first version and all
+   * eight passed, because every one of them tested a mechanism — is the delay
+   * seeded, is the press consumed, is the velocity set — and not one asked
+   * whether the rep CHANGED. The fix for the tests is the same shape as the
+   * fix for the code: assert the outcome moves, not that a number was written.
+   * `lift.test.ts`'s `BURST_SWEEP` is the burst's version of that assertion.
+   * `@guarantee bench-burst-decides-the-rep`
    *
    * The value is a placeholder like everything else here and is NOT played.
-   * What it was chosen against is a swept measurement recorded in
-   * `lift.test.ts`'s "the press decides the lift" block: it has to leave a
-   * band where the reaction flips make into miss, without making a missed
-   * command an automatic loss at every load — GDD §12.3 forbids the second,
-   * and a beat that always kills you is a cutscene with a fine.
+   * What it is chosen against is a swept measurement: it has to leave a band
+   * where the burst flips make into miss, without making an unanswered command
+   * an automatic loss at every load — GDD §12.3 forbids the second, and a beat
+   * that always kills you is a cutscene with a fine.
    */
-  PRESS_SLOW_DEMAND_PENALTY: 0.16,
+  PRESS_WEAK_DEMAND_PENALTY: 0.16,
 
   /**
-   * Velocity the bar leaves the chest with, at reaction quality 0 and 1.
+   * Force the burst puts INTO the bar off the chest, at burst force 1, in
+   * capacity units — and how long it takes to decay to nothing.
    *
-   * THIS IS THE "BAR-SPEED CHECK OFF THE CHEST" HALF OF §6.2's LINE, and it is
-   * why one input covers both halves: the press is the timing check, and what
-   * the timing BUYS is bar speed. On bench this replaces the depth-release
-   * quality as the thing that sets ascent velocity — the chest touch still
-   * decides legality, the reaction decides speed.
+   * ---------------------------------------------------------------------------
+   * THE HALF THAT MAKES "AS MUCH FORCE AS POSSIBLE" MEAN FORCE
+   * ---------------------------------------------------------------------------
+   * `PRESS_VELOCITY` gives the bar SPEED and `PRESS_WEAK_DEMAND_PENALTY` makes
+   * a weak burst's whole ascent harder. Neither of them is the lifter PUSHING,
+   * and without one the burst could not decide a lift at the top of the load
+   * range on its own: measured while building this beat, at load 0.9 the
+   * sticking point demands 1.0406 against a capacity of 1, so a bar with no
+   * force behind it stalls there whatever speed it left the chest with — the
+   * mash and the ignored command both missed, and the only thing separating
+   * them was how far up the bar got before it stopped.
    *
-   * MIN is deliberately below `REVERSAL_VELOCITY.MIN`: a bench pressed late off
-   * the chest is slower off the bottom than a scruffy squat reversal, which is
-   * the whole texture of a missed bench.
+   * The shape is deliberately `DRIVE_BOOST_FORCE_MAX`'s, one beat earlier: a
+   * committed impulse that pays out over `PRESS_BURST_BOOST_TICKS` and decays,
+   * rather than a state the player maintains. A press is a discrete effort
+   * that pays once thrown.
+   *
+   * SMALLER THAN THE DRIVE'S 0.62 ON PURPOSE. The drive cue is the ascent's
+   * own mechanic and the sticking point is where a rep is won; this is the
+   * launch. Sized so a full burst carries a heavy bench through its stick
+   * unaided and a MAXIMAL one still needs the ascent driven — which is what
+   * `lift.test.ts`'s ladder measures rather than what this sentence promises.
+   * Unplayed placeholders, GDD §10.
+   */
+  PRESS_BURST_BOOST_FORCE_MAX: 0.22,
+  PRESS_BURST_BOOST_TICKS: 34,
+
+  /**
+   * Velocity the bar leaves the chest with, at burst force 0 and 1.
+   *
+   * THIS IS THE "BAR-SPEED CHECK OFF THE CHEST" HALF OF §6.2's LINE, and the
+   * burst is what buys it: more force off the chest is a faster bar off the
+   * chest. It replaces the depth-release quality as the thing that sets ascent
+   * velocity on bench — the touch decides how hard the ascent is, the burst
+   * decides how fast it starts.
+   *
+   * MIN is deliberately below `REVERSAL_VELOCITY.MIN`: a bench that leaves the
+   * chest on an unanswered command is slower off the bottom than a scruffy
+   * squat reversal, which is the whole texture of a missed bench.
    */
   PRESS_VELOCITY: { MIN: 0.0004, MAX: 0.019 },
-
-  /**
-   * What a false start costs — a press thrown before the command lands.
-   *
-   * IT DOES NOT END THE REP, deliberately and consistently with the rule
-   * `stepLift`'s drive branch already states in capitals: "A MISSED TAP COSTS
-   * VELOCITY. IT NEVER ENDS THE REP ON ITS OWN." A competition bench would red
-   * light this outright, and that is left on the table rather than taken: a
-   * hard fail on a reaction test the player cannot see coming is the shape that
-   * reads as the game cheating, and it is exactly the judgement GDD §12.1 puts
-   * with a human on a phone. What it costs instead is the reaction: the false
-   * start CONSUMES the press, so mashing through the pause is punished with the
-   * worst bar speed rather than rewarded with a lucky hit.
-   */
-  PRESS_FALSE_START_QUALITY: 0,
-
-  /**
-   * Ticks after the command before an unpressed bar gives up and rises anyway.
-   *
-   * Not a miss — the rep proceeds at reaction quality 0, which at bench's
-   * demand curve is usually a stall and a 'stalled' miss on its own merits.
-   * Failing it HERE instead would invent a fifth `MissReason` for something the
-   * existing physics already calls correctly.
-   */
-  PRESS_TIMEOUT_TICKS: 90,
 
   /**
    * Velocity the bar leaves the hole with, at depth timing quality 0 and 1.
@@ -1433,27 +1830,60 @@ export const LIFT_TUNING = Object.freeze({
     REVERSAL: pattern({ style: 'heavy', delayMs: 0 }),
 
     /**
+     * BENCH ONLY: the bar arrived on the chest under control.
+     *
+     * The descent's payoff beat. Two soft edges rather than `REVERSAL`'s single
+     * heavy one, because a controlled bench touch is a settle and a squat's
+     * reversal out of the hole is an impact — the hand should be able to tell
+     * the two apart without looking.
+     */
+    CHEST_TOUCH_SOFT: pattern({ style: 'soft', delayMs: 0 }, { style: 'light', delayMs: 70 }),
+
+    /** BENCH ONLY: the bar was dropped onto the chest. Heavy, and one edge. */
+    CHEST_TOUCH_CRASH: pattern({ style: 'heavy', delayMs: 0 }),
+
+    /**
      * BENCH ONLY: the press command.
      *
-     * THE STIMULUS ITSELF, not decoration on it. A reaction check on a phone is
-     * won or lost on how fast the command registers, and a thumb resting on
-     * glass feels a haptic sooner than an eye reads a word — so this is the
-     * channel the mechanic actually runs through, and `LIFT_COPY.PROMPT
-     * .HOLE_COMMANDED` is the confirmation rather than the other way round.
+     * A STIMULUS, NOT DECORATION ON ONE. A thumb resting on glass feels a
+     * haptic sooner than an eye reads a word, so on a device that has a motor
+     * this is the channel the mechanic runs through and
+     * `LIFT_COPY.PROMPT.HOLE_COMMANDED` is the confirmation rather than the
+     * other way round.
      *
-     * `rigid` and alone: a single sharp edge is what a reaction wants. Every
+     * IT IS ALSO ABSENT ON THE PLATFORM THE BETA SHIPS TO, and that is written
+     * here rather than left to be discovered: `haptics.ts` returns without
+     * doing anything on web, because there is no motor behind a browser tab,
+     * and GDD §10.0 scopes the beta to web/PWA. Phone playtest 4 was played
+     * through a browser, so the command it rejected had no haptic at all. The
+     * on-stage stimulus that has to carry the beat on that platform is piece
+     * 2's, and it is not this constant.
+     *
+     * `rigid` and alone: a single sharp edge is what starts a burst. Every
      * multi-beat pattern in this table takes tens of ms to resolve into
      * something recognisable, which would be spent out of the player's window.
      */
     PRESS_COMMAND: pattern({ style: 'rigid', delayMs: 0 }),
 
-    /** BENCH ONLY: a sharp press off the chest. Distinguishable from a slow one. */
+    /**
+     * BENCH ONLY: one counted tap of the burst.
+     *
+     * THE LIGHTEST PATTERN IN THE TABLE, AND IT HAS TO BE. This fires up to
+     * `PRESS_BURST_FORCE.MAX_COUNTED_TAPS` times inside
+     * `PRESS_BURST_WINDOW_MS` — the only entry here that repeats faster than
+     * `STALL_PULSE` — so anything with a second beat in it would overlap
+     * itself and smear into a buzz. A burst should feel like a run of taps,
+     * which is what the drive cues were retuned to feel like in Sprint 3.
+     */
+    PRESS_BURST_TAP: pattern({ style: 'light', delayMs: 0 }),
+
+    /** BENCH ONLY: a burst that produced real force off the chest. */
     PRESS_SHARP: pattern({ style: 'heavy', delayMs: 0 }, { style: 'light', delayMs: 70 }),
 
-    /** BENCH ONLY: the bar moved, but late. */
+    /** BENCH ONLY: the bar moved, and not by much. */
     PRESS_SLOW: pattern({ style: 'medium', delayMs: 0 }),
 
-    /** BENCH ONLY: pressed before the command. */
+    /** BENCH ONLY: tapped before the command. */
     PRESS_FALSE_START: pattern({ style: 'warning', delayMs: 0 }),
 
     /**
@@ -1702,9 +2132,14 @@ export const LIFT_COPY = Object.freeze({
     // never enters `DESCENT` or `HOLE`, so a `deadlift:` line here would be
     // copy nothing can render. `promptFor` documents what it does if it is
     // somehow handed the impossible state.
+    // BENCH'S LINE TEACHES A CONTROL INPUT, NOT A MOMENT. "TOUCH THE CHEST"
+    // described the old beat, where the player held and released at a depth;
+    // under the 2026-08-25 ruling the bar is fed down and CAUGHT, and the only
+    // thing the player can do about how it lands is take the finger off early
+    // enough. "EASE IT DOWN" says the verb; `SUBTITLE.bench` says the rule.
     DESCENT: {
       squat: 'RELEASE AT DEPTH',
-      bench: 'TOUCH THE CHEST',
+      bench: 'EASE IT DOWN',
     } satisfies PerEccentricKind<string>,
     // Per kind: "OUT OF THE HOLE" is squat/deadlift jargon for the bottom
     // position and reads as nonsense on a bench rep, which has no hole — it
@@ -1720,16 +2155,32 @@ export const LIFT_COPY = Object.freeze({
     // command itself is `HOLE_COMMANDED` below.
     HOLE: { squat: 'OUT OF THE HOLE', bench: 'WAIT FOR IT' } satisfies PerEccentricKind<string>,
     /**
+     * BENCH ONLY: shown in place of `HOLE.bench` once the player has tapped
+     * before the command.
+     *
+     * THE ONE PROMPT IN THIS TABLE THAT EXISTS TO TEACH A RULE AT THE MOMENT
+     * IT IS BROKEN. A false start costs a tap off the burst's ceiling, and a
+     * player who never learns why their bursts are weak will read that cost as
+     * the game being arbitrary. `SUBTITLE.bench` states the rule up front;
+     * this says it happened.
+     */
+    HOLE_FALSE_START: 'TOO SOON — WAIT FOR THE CALL',
+    /**
      * BENCH ONLY: the press command, shown from the tick it fires.
      *
-     * Deliberately the shortest line in the table and the only one that ends in
-     * a mark. It is a starter's pistol rendered as text — every millisecond a
-     * player spends parsing it comes out of their reaction, so it has to be one
-     * word they can read in peripheral vision. The haptic
-     * (`HAPTICS.PRESS_COMMAND`) is the real stimulus on a phone; this is what
-     * the eye confirms it against.
+     * IT NAMES THE ACTION THE BEAT ACTUALLY WANTS, which "PRESS!" stopped
+     * doing on 2026-08-25. One press is no longer the answer — the answer is
+     * as many taps as the player can throw before the window closes — and a
+     * line that says PRESS to a player whose job is to tap is the copy half of
+     * the defect a phone playtest already caught once on the drive cue
+     * ("DRIVE — HOLD IT" over a mechanic that wanted taps).
+     *
+     * Still short, still readable in peripheral vision, and it borrows the
+     * em-dash shape `ASCENT_CUE_OPEN` already uses for the same reason: the
+     * word before the dash is what is happening, the words after it are what
+     * to do about it.
      */
-    HOLE_COMMANDED: 'PRESS!',
+    HOLE_COMMANDED: 'PRESS — TAP FAST',
     ASCENT_BEFORE_CUE: 'RIDE IT',
     ASCENT_CUE_OPEN: 'DRIVE — TAP',
     ASCENT_AFTER_CUE: 'RIDE IT',
@@ -1776,7 +2227,14 @@ export const LIFT_COPY = Object.freeze({
    */
   SUBTITLE: {
     squat: 'Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.',
-    bench: 'Touch the chest, wait for the call, then press the instant it comes. Tap every drive cue on the way up.',
+    // BENCH'S LINE IS THE ONLY ONE CARRYING A PENALTY RULE, and it carries it
+    // because the penalty is otherwise invisible: a burst ceiling lowered by
+    // taps thrown thirty ticks earlier is not something a player can see
+    // happening. The second sentence is the false-start rule verbatim, and
+    // `lift.test.ts` drives the sim against exactly what it says — early taps
+    // add nothing to the force, each one takes a tap off the ceiling, and the
+    // ceiling never falls below the floor the sentence names in words.
+    bench: 'Ease the bar to the chest under control, wait for the call, then tap as fast as you can to press it. Taps before the call count for nothing, and each one costs a tap off your burst — down to a floor of three.',
     // DEADLIFT'S LINE HAS TO TEACH THE HOLD, because the hold is the only
     // moment in this game where the correct input is no input, and a player
     // who has learned squat and bench has learned the opposite twice. It names
@@ -1792,6 +2250,13 @@ export const LIFT_COPY = Object.freeze({
   }),
   MISS_REASON: Object.freeze({
     'no-depth': 'Came up short of depth.',
+    // BENCH ONLY, AND IT EARNS ITS OWN REASON RATHER THAN REUSING 'no-depth'.
+    // A press that never touches the chest is three red lights in the real
+    // sport, and it is a different mistake from a squat that came up short: it
+    // means the player stopped feeding the bar and never fed it again, so the
+    // sentence has to say the bar never arrived rather than that it did not go
+    // far enough. `lift.ts`'s `MissReason` union is where this is enforced.
+    'no-touch': 'Never touched the chest.',
     buried: 'Buried it. Never got the reversal.',
     stalled: 'The bar beat you at the sticking point.',
     timeout: 'Ran out of air.',

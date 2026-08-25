@@ -843,8 +843,46 @@ const GUARANTEE_COVERAGE = {
    * swept outcome-flip counts pinned in `lift.test.ts`. That is weaker than a
    * resolved tag by exactly the amount a scan would have checked, and saying
    * so is the point of this comment rather than a hedge in it.
+   *
+   * 275 -> 285 with the 2026-08-25 bench redesign — descent to the chest, the
+   * command, the tap burst. Attributed per file the usual way, each touched
+   * file restored to its pre-ruling text with everything else new and this
+   * count re-read: `lift.ts` **7**, `liftTuning.ts` **1**, `lift.test.ts`
+   * **1**, `liftTuning.test.ts` **1**, `LiftStage.tsx` **0**. 275 + 10 = 285
+   * exactly, so nothing is unaccounted for.
+   *
+   * THE SHAPE OF THE SEVEN IS WORTH RECORDING because it is not the shape the
+   * last two bench entries had. Those moved by one paragraph each and the
+   * builder's prose measured FLAT — the declared lower-case blind spot. This
+   * one moved by seven in one module, and every one of the seven is a
+   * paragraph arguing that a beat is a DIFFERENT FACULTY rather than a
+   * retuned number: why the descent is not a second anticipation check, why
+   * the burst's curve is not a line with a cap, why the floor is a floor on
+   * the charge and not a gift, why `pressCommandIsLive` lost an arm. A ruling
+   * that replaces an identity produces load-bearing prose at a rate a retune
+   * does not, and the scoper reads that rate correctly.
+   *
+   * Untagged, on the same footing as the entries above: `lift.ts` and
+   * `liftTuning.ts` are outside `GUARANTEE_PROSE_FILES`. The evidence is the
+   * mutation set recorded in this file's `MUTATION_WITNESSES` and in the
+   * branch's merge commit, plus the swept outcome-flip counts pinned in
+   * `lift.test.ts`'s `TOUCH_SWEEP` and `BURST_SWEEP`.
+   *
+   * 285 -> 286 when the same ruling reached the meet fixtures a commit later.
+   * Attributed the same way: `meetPreview.ts` **1** — `benchScript`'s header,
+   * which argues that the style vocabulary does NOT map cleanly onto a lift
+   * with no depth to come up short of, and says which two members lose their
+   * meaning. `meetTuning.ts` **0** and `meetDay.test.ts` **0**, both of which
+   * gained prose without gaining a capitalised absolute.
+   *
+   * THE ONE THAT MOVED IS THE ONE MAKING A CLAIM ABOUT A DOMAIN, which is the
+   * scoper reading its own rule correctly twice in two commits: the four
+   * paragraphs it caught in `lift.ts` argue that a beat is a different
+   * faculty, and this one argues that a style means something different on a
+   * different lift. Both are exactly the sentence class that has been wrong
+   * eight times in this repository.
    */
-  TREE_WIDE: 275,
+  TREE_WIDE: 286,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -956,14 +994,17 @@ type ExclusionCensus = Record<NumberExclusion, number>;
  *     `4a`, `§4c`. A unit suffix from `UNIT_SUFFIXES` does not count as a
  *     letter, so `180ms` is a claim and `e1RM` is not.
  *   - `quoted-code` — inside a backticked span that holds more than the numeral
- *     itself, e.g. `max(0, len - grace)`.
+ *     itself, e.g. `max(0, len - grace)`. 1 -> 2 with the bench redesign's
+ *     `bench-touch-decides-the-rep`, whose paragraph cites
+ *     `1/VELOCITY_RESPONSE` — the name of a decay length rather than a
+ *     measurement of one.
  *   - `list-ordinal` — `N. ` opening a line, which is this codebase's numbered
  *     section style and not a quantity.
  */
 const NUMBER_EXCLUSIONS: Readonly<ExclusionCensus> = {
   'section-coordinate': 16,
   'inside-an-identifier': 3,
-  'quoted-code': 1,
+  'quoted-code': 2,
   'list-ordinal': 1,
 };
 
@@ -1155,8 +1196,32 @@ const NUMBER_COVERAGE = {
    * (`context-menu-guard-on-every-played-surface`), added against the Sprint 3
    * gate's phone-playtest finding. No numeral in the paragraph, so `CLAIMED`
    * stood still.
+   *
+   * 73 -> 77 with the 2026-08-25 bench redesign's four tags: two in
+   * `liftTuning.ts` (`bench-touch-decides-the-rep` on the crash penalty,
+   * `bench-burst-decides-the-rep` on the weak-burst penalty) and two in
+   * `lift.ts` (`a-false-start-can-never-pay` on `burstCountedTaps`'s floor,
+   * `the-bench-redesign-left-the-other-two-lifts-alone` on the squat arm of
+   * the DESCENT branch).
+   *
+   * ONE OF THE FOUR MOVED ITS OWN PARAGRAPH TO SATISFY THIS RULE, which is the
+   * rule earning its keep rather than being worked around. The crash penalty's
+   * paragraph restated the press beat's "40 of 240 outcomes moved" measurement
+   * as background, and those two numerals live in a DIFFERENT test's body — so
+   * the tag would have cited numbers its own named test does not carry. The
+   * duplication was deleted and the paragraph now points at
+   * `PRESS_WEAK_DEMAND_PENALTY`'s header for them, which is where they were
+   * measured. A number repeated in two places is a number that can go stale in
+   * one of them, and that is exactly what this rule is for.
+   *
+   * No numeral remains as prose in any of the four, so `CLAIMED` did not move.
+   *
+   * 77 -> 78 with `the-descent-cannot-be-played-open-loop` in `lift.ts`, on
+   * `touchSpeedQuality`'s load-scaling paragraph. It states no numeral either
+   * — the counts it is about live in `OPEN_LOOP_SEARCH` and in the witness
+   * transcript, deliberately, so the paragraph cannot go stale against them.
    */
-  TAGGED_PARAGRAPHS: 73,
+  TAGGED_PARAGRAPHS: 78,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
@@ -1201,9 +1266,21 @@ const NUMBER_COVERAGE = {
   // 63 -> 64 with the context-menu guard's tag. Its named body states no
   // numeral at all — it walks a discovered list and compares it to an empty
   // array — so neither weakness count below moved with it.
-  NAMED_BODIES: 64,
-  NAMED_BODIES_HOLDING_ZERO: 48,
-  NAMED_BODIES_HOLDING_ONE: 47,
+  //
+  // 68 -> 69 with the open-loop search's tag. Its named body holds a bare 0
+  // (the per-load counter's initialiser and the `winsPerLoad[i] ?? 0` reads)
+  // and a bare 1 (the loop steps and the `<= ON_TICKS` walk), so both weakness
+  // counts move with it.
+  //
+  // 64 -> 68 with the 2026-08-25 bench redesign's four tags. All four named
+  // bodies hold a bare 0 and a bare 1 — the two sweeps compare `!== 'miss'`
+  // against pinned counts and index `LOADS[i - 1]`, the false-start body pins
+  // `burstCountedTaps(0, 12)` and `burstCountedTaps(1, 12)` directly, and the
+  // baseline body slices `played.slice(1)` and reads `played[0]` — so both
+  // weakness counts moved by four with them.
+  NAMED_BODIES: 69,
+  NAMED_BODIES_HOLDING_ZERO: 53,
+  NAMED_BODIES_HOLDING_ONE: 52,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -1506,8 +1583,21 @@ const TRANSCRIPT_BAR = {
    * real red run. It quotes no bare scalar — the reddened assertion's message
    * is a structural sentence, not a count — so `WITH_A_MEASURED_NUMBER` stays
    * where it was.
+   *
+   * 32 -> 36 on the 2026-08-25 bench redesign's four witnesses, every
+   * transcript pasted from a real red run at this tree. THREE OF THE FOUR
+   * QUOTE A BARE SCALAR and owe an anchor — `0 of 240`, `80 of 240`, `61 of
+   * 85` — so `WITH_A_MEASURED_NUMBER` moves by three rather than four. The
+   * fourth is the false-start floor, whose reddened assertion prints
+   * `expected 0.55102 to be +0`; that IS a bare scalar, so it owes an anchor
+   * too, and it has one — its named test pins the twelve early taps it threw.
+   *
+   * 36 -> 37 on the open-loop witness, added when a critic measured that the
+   * redesigned descent was still winnable by two memorised numbers. Its
+   * transcript quotes a bare scalar (the rhythms that came back), so
+   * `WITH_A_MEASURED_NUMBER` moves with it.
    */
-  GRADED: 32,
+  GRADED: 37,
   /** ...and rows excused because their transcript predates it. */
   // 37 -> 36 when the placeholder's witness retired with its subject
   // (Sprint 1c): its transcript predated the rule, so the excused count is
@@ -1519,7 +1609,7 @@ const TRANSCRIPT_BAR = {
    * the two above are counts: a required set that drained to nothing would
    * leave the domain rule below green and checking nobody.
    */
-  WITH_A_MEASURED_NUMBER: 16,
+  WITH_A_MEASURED_NUMBER: 20,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1691,10 +1781,31 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // does not resolve in the named test's body (the test's own source contains
   // no digit at all), so the row is flagged and its one numeral lands in
   // `unresolved`.
-  rows: 60,
-  flagged: 47,
-  numerals: 191,
-  unresolved: 101,
+  //
+  // 60/47/191/101 -> 64/51/223/121 on the 2026-08-25 bench redesign's four
+  // witnesses. All four transcripts are numeral-dense in the way a swept
+  // outcome count is — `0 of 240`, `80 of 240 … expected 80 to be 120`,
+  // `61 of 85 … 186:e35d9544 -> 178:06cb281c`, `expected 0.55102 to be +0` —
+  // and each also carries the `1 failed | 136 skipped (137)` line this table's
+  // own rule demands. THIRTY-TWO NUMERALS ACROSS FOUR ROWS, TWENTY OF THEM
+  // UNRESOLVED, and the unresolved ones are exactly the class this census
+  // exists to make visible rather than to forbid: a vitest skip count, a
+  // baseline digest's hex, and the §-pointer in a test's own title are not
+  // measurements the named body could be expected to state. The four
+  // MEASUREMENTS in them — the sweep sizes — resolve, which is what
+  // `measuredOver` is for and is checked separately above.
+  //
+  // 64/51/223/121 -> 65/52/248/144 on the open-loop witness. Its
+  // transcript is the most numeral-dense row in the table by some way: the
+  // count that came back, the eight rhythms it names as `hold N / release M`
+  // pairs, and the skip line. The rhythms are the reason the transcript is
+  // worth its length — a reader who sees `hold 12 / release 23` can go and
+  // play the exploit — and they are also, correctly, unresolved: they are
+  // coordinates in a search space, not measurements the named body states.
+  rows: 65,
+  flagged: 52,
+  numerals: 248,
+  unresolved: 144,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -2047,8 +2158,19 @@ const REPLACEMENT_BAR = {
    * 19 -> 20 on the context-menu guard's witness: `mutatedTo` records the
    * screen root's opening tag with the spread deleted, the exact line the
    * mutant ran as.
+   *
+   * 20 -> 24 on the 2026-08-25 bench redesign's four witnesses, each
+   * `mutatedTo` recorded in the exact form it was run — including the one that
+   * was run TWICE, because the first form of it left `tsc` reporting an
+   * unreachable comparison and a mutant a typechecker would have caught is a
+   * weaker witness than one it would not. The row carries the type-clean form
+   * and its own comment says which one it is.
+   *
+   * 24 -> 25 on the open-loop witness: `mutatedTo` records the flattened
+   * threshold curve exactly as it was run, which is the tuning the beat was
+   * graded on and sent back for rather than an invented edit.
    */
-  REPRODUCIBLE: 20,
+  REPRODUCIBLE: 25,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2192,6 +2314,170 @@ const SECTION_4A_KILL_LIST = {
 } as const;
 
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
+  // -------------------------------------------------------------------------
+  // "NON TRIVIAL", WHICH IS A WORD IN THE RULING AND WAS NOT A CHECK.
+  //
+  // The mutant flattens both arrival-threshold curves back to the single
+  // numbers the beat shipped with — the state a tuner reaches by deciding two
+  // endpoints look like one knob too many. It is not an invented edit: it is
+  // the tuning this piece was graded on and sent back for, and it puts 22
+  // fixed duty-cycle rhythms back into "wins at every load".
+  //
+  // THE ASSERTION THAT REDDENS PRINTS THE RHYTHMS, not just the count, which
+  // matters more here than in most rows: a reader who sees `hold 12 / release
+  // 23` in the failure can go and play it. A count alone would say the beat
+  // regressed and not what the exploit is.
+  {
+    guarantee: 'the-descent-cannot-be-played-open-loop',
+    mutatedFile: 'src/game/liftTuning.ts',
+    mutated:
+      '  BENCH_TOUCH_SOFT_RATE: { LIGHT: 0.030, MAXIMAL: 0.010 },',
+    mutatedTo: '  BENCH_TOUCH_SOFT_RATE: { LIGHT: 0.020, MAXIMAL: 0.020 },',
+    testFile: 'src/game/lift.test.ts',
+    redAssertion:
+      '    expect(\n'
+      + '      winsEverywhere,\n'
+      + '      `${winsEverywhere} fixed rhythms grade PERFECT at every load: ${winners.join(\', \')}`,\n'
+      + '    ).toBe(OPEN_LOOP_SEARCH.WINS_EVERYWHERE);',
+    observed:
+      'FAIL  src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25) > '
+      + 'cannot be won by one memorised rhythm, over the whole fixed-pattern space '
+      + '[the-descent-cannot-be-played-open-loop]\n'
+      + 'AssertionError: 22 fixed rhythms grade PERFECT at every load: hold 12 / release 23, hold '
+      + '12 / release 24, hold 12 / release 25, hold 12 / release 26, hold 13 / release 23, hold '
+      + '13 / release 24, hold 13 / release 25, hold 13 / release 26: expected 22 to be +0 '
+      + '// Object.is equality\n'
+      + 'Tests  1 failed | 140 skipped (141)',
+    measuredOver:
+      "    expect(OPEN_LOOP_SEARCH.PATTERNS, 'the domain this count is taken over').toBe(900);",
+  },
+  // -------------------------------------------------------------------------
+  // THE 2026-08-25 BENCH REDESIGN — four witnesses, one per beat plus the one
+  // that says the other two lifts did not move.
+  //
+  // WHY ALL FOUR ARE OUTCOME MUTANTS AND NOT MECHANISM MUTANTS. The press
+  // command this redesign replaced shipped with EIGHT mutants run against it
+  // and all eight passed: every one asked whether the delay was seeded,
+  // whether the press was consumed, whether the velocity was written — and
+  // not one asked whether the REP CHANGED. It shipped decorative and a human
+  // on a phone found it. So each mutant below removes a CONSEQUENCE and the
+  // assertion that reddens is a swept count of reps whose `resolution.outcome`
+  // moved, never a state field.
+  {
+    guarantee: 'bench-touch-decides-the-rep',
+    mutatedFile: 'src/game/lift.ts',
+    mutated: "    const touchShortfall = kind === 'bench' ? 1 - clamp01(m.touchQuality) : 0;",
+    mutatedTo: '    const touchShortfall = 0;',
+    testFile: 'src/game/lift.test.ts',
+    redAssertion:
+      '    expect(\n'
+      + '      flips,\n'
+      + '      `the touch changed the outcome in ${flips} of ${cases} cases`,\n'
+      + '    ).toBe(TOUCH_SWEEP.SOFT_VS_CRASH_FLIPS);',
+    observed:
+      'FAIL  src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25) > '
+      + 'flips outcomes between a controlled touch and a crashed one, across the sweep '
+      + '[bench-touch-decides-the-rep]\n'
+      + 'AssertionError: the touch changed the outcome in 0 of 240 cases: expected +0 to be 80 '
+      + '// Object.is equality\n'
+      + 'Tests  1 failed | 136 skipped (137)',
+    measuredOver:
+      "    expect(TOUCH_SWEEP.OUTCOME_CASES, 'the domain this count is taken over').toBe(240);",
+  },
+  {
+    guarantee: 'bench-burst-decides-the-rep',
+    mutatedFile: 'src/game/liftTuning.ts',
+    mutated: '  PRESS_WEAK_DEMAND_PENALTY: 0.16,',
+    mutatedTo: '  PRESS_WEAK_DEMAND_PENALTY: 0,',
+    testFile: 'src/game/lift.test.ts',
+    redAssertion:
+      '    expect(\n'
+      + '      mashVsNone,\n'
+      + '      `mashing changed the outcome in ${mashVsNone} of ${cases} cases`,\n'
+      + '    ).toBe(BURST_SWEEP.MASH_VS_NONE_FLIPS);',
+    observed:
+      'FAIL  src/game/lift.test.ts > the burst decides the lift > flips outcomes across the tap '
+      + 'ladder, across the sweep [bench-burst-decides-the-rep]\n'
+      + 'AssertionError: mashing changed the outcome in 80 of 240 cases: expected 80 to be 120 '
+      + '// Object.is equality\n'
+      + 'Tests  1 failed | 136 skipped (137)',
+    measuredOver:
+      "    expect(BURST_SWEEP.CASES, 'the domain these counts are taken over').toBe(240);",
+  },
+  // THE MUTANT IS ONE `Math.min` AND IT INVERTS THE RULE'S SIGN. Without it the
+  // floor stops being a floor on the CHARGE and becomes a floor on the FORCE:
+  // a player who mashes the whole pause and then ignores the command entirely
+  // launches at `burstForce(3)` instead of at 0, so a false start PAYS. That
+  // is the exact strategy the rule exists to make worthless, and the mutant
+  // reaches it without touching a single number in `liftTuning.ts`.
+  {
+    guarantee: 'a-false-start-can-never-pay',
+    mutatedFile: 'src/game/lift.ts',
+    mutated: '  return Math.max(Math.min(landed, FALSE_START_FLOOR_TAPS), landed - early);',
+    mutatedTo: '  return Math.max(FALSE_START_FLOOR_TAPS, landed - early);',
+    testFile: 'src/game/lift.test.ts',
+    redAssertion: '    expect(ignored.burstForce).toBe(0);',
+    measuredOver: "    expect(ignored.burstEarlyTaps, 'no false start was thrown').toBe(12);",
+    observed:
+      'FAIL  src/game/lift.test.ts > the false-start rule, exactly as the copy states it > '
+      + 'cannot hand taps to a player who never answered the command '
+      + '[a-false-start-can-never-pay]\n'
+      + 'AssertionError: expected 0.55102 to be +0 // Object.is equality\n'
+      + 'Tests  1 failed | 136 skipped (137)',
+  },
+  // THE MUTANT IS THE FAILURE THIS REDESIGN WAS MOST LIKELY TO SHIP, and it is
+  // one word: the DESCENT branch's bench arm run for squat as well. It
+  // compiles and `tsc` is clean beside it.
+  //
+  // THIS COMMENT USED TO SAY "every shape-level assertion about squat stays
+  // green… Only the digests notice", AND THAT WAS FALSE — measured by a critic
+  // and re-measured here before rewriting it. Applying the mutant reddens
+  // TWELVE tests in `lift.test.ts` (`12 failed | 129 passed (141)`), four of
+  // them squat shape assertions: "calls a high squat, however well the bar was
+  // driven", "buries a player who never lets go", "makes a deeper reversal a
+  // harder ascent", and "does not make a high squat cheaper than a legal one".
+  //
+  // The correction is worth more than the apology, because the sentence was
+  // making the digests sound like the ONLY thing standing between squat and a
+  // silent regression, and they are not — they are the thing that catches a
+  // regression too SMALL for the shape assertions, which is a narrower and
+  // more honest claim. This mutant is not that case; it is a large one, and
+  // the file notices it loudly from several directions. A subtler edit — a
+  // rounding change inside squat's own branch — is the case the digests are
+  // for, and no mutant recorded here demonstrates that, which is a limit of
+  // this row rather than of the digests.
+  //
+  // A first attempt at the same mutant (`kind !== 'deadlift'`) reddened too
+  // and is NOT the row recorded here, because it left `tsc` reporting an
+  // unreachable comparison: a mutant that does not typecheck is a weaker
+  // witness than one that does, since a reviewer would have caught it without
+  // the test.
+  {
+    guarantee: 'the-bench-redesign-left-the-other-two-lifts-alone',
+    mutatedFile: 'src/game/lift.ts',
+    mutated:
+      "  else if (m.phase === 'DESCENT' && kind !== 'deadlift') {\n"
+      + "    if (kind === 'bench') {",
+    mutatedTo:
+      "  else if (m.phase === 'DESCENT' && kind !== 'deadlift') {\n"
+      + "    if (kind === 'bench' || kind === 'squat') {",
+    testFile: 'src/game/lift.test.ts',
+    redAssertion:
+      '    expect(\n'
+      + '      differences,\n'
+      + '      `${differences.length} of ${checked} baseline reps moved since ${BASELINE_COMMIT}`,\n'
+      + '    ).toEqual([]);',
+    observed:
+      'FAIL  src/game/lift.test.ts > squat and deadlift are untouched by the bench redesign > '
+      + 'replays every baseline rep to the same history it had before the ruling '
+      + '[the-bench-redesign-left-the-other-two-lifts-alone]\n'
+      + 'AssertionError: 61 of 85 baseline reps moved since 2d4ba0c: expected [ …(61) ] to deeply '
+      + 'equal []\n'
+      + '+   "squat|1|1|ideal: 186:e35d9544 -> 178:06cb281c",\n'
+      + 'Tests  1 failed | 136 skipped (137)',
+    measuredOver:
+      "    expect(BASELINE_SWEEP.CASES, 'the domain this count is taken over').toBe(85);",
+  },
   // -------------------------------------------------------------------------
   // The lift press guard — the fix a human playtest asked for, on the screens a
   // player can actually press.
@@ -4506,6 +4792,10 @@ describe('the guarantee-tag convention', () => {
       // The numeric half of the tag witnesses itself: the mutant is in this
       // file, and so is the test it reddens.
       'src/game/guaranteeTags.test.ts',
+      // The 2026-08-25 bench redesign: the descent's control grade, the
+      // burst's force, the false-start floor, and the digests that say squat
+      // and deadlift did not move with any of them.
+      'src/game/lift.test.ts',
       'src/game/meetClient.test.ts',
       'src/game/meetDay.test.ts',
       'src/game/progression.test.ts',

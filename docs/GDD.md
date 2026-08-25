@@ -2026,8 +2026,86 @@ Per attempt:
 2. Lift resolves through the **Arcade bar-path mechanic**, with lift-specific
    checks:
    - **Squat** — depth timing check in the hole
-   - **Bench** — press-timing / bar-speed check off the chest
+   - **Bench** — a controlled descent to the chest, then a press command
+     answered by a burst of taps. See below.
    - **Deadlift** — lockout grind
+
+**BENCH IS THREE BEATS, NOT ONE — RULED 2026-08-25.** Verbatim: *"It should be
+a descent to chest, non trivial, and then press command which requires rapid
+tapping to exert as much force as possible."* This line used to read
+"press-timing / bar-speed check off the chest", and what shipped under it was a
+descent the player held through, a wait, and one timed press. **Phone playtest
+4 rejected that chain as played** — *"The bench mechanic is confusing from
+descent to what i am waiting for to press and then pressing, everything feels
+off"* — and the ruling replaces the identity rather than retuning the numbers.
+
+- **The descent is a control check, and it is where bench stops being a
+  squat.** The bar is fed down while the finger is held and resisted while it
+  is lifted; contact happens when the bar reaches the chest, whatever the
+  player is doing at that instant. What is graded is the SPEED IT ARRIVES AT —
+  caught, or dropped — reduced by how long the descent took, so that braking
+  early and nudging the bar in is a real option and a worse one. **Squat grades
+  WHEN you release; bench grades HOW THE BAR ARRIVES.** Those are different
+  faculties, which is the same bar every other per-lift difference in this
+  design is held to: three timing windows of different widths would be one lift
+  with three difficulty settings.
+- **What counts as caught depends on what is on the bar, and that is the
+  difference between a check and a rhythm.** A heavier bar must arrive
+  genuinely slower to be controlled, and is allowed longer to get there. So the
+  RELEASE that achieves a good touch is at a different moment at every load,
+  and a player has to read the bar rather than repeat a remembered pattern.
+
+  **This is written down because the first build of the beat got it wrong in a
+  way that looked right.** That version scaled the bar's gravity and braking
+  with load, which genuinely scales difficulty — the window of good releases
+  narrowed from sixteen ticks wide at a warm-up to four at a limit. What it did
+  not do is MOVE that window: its centre shifted by two ticks across the whole
+  ladder while its width shrank by twelve, so every load's window contained the
+  same handful of ticks. An independent critic searched the whole space of
+  fixed hold-release rhythms — no perception of the bar at all — and found
+  twenty-four that scored a perfect touch at every load. Two numbers, memorised
+  once, won the beat. **Scaling how wrong a player may be is not the same as
+  moving what is right, and only the second one asks anything of them.**
+- **A press that never touches the chest is a miss with its own reason.** It is
+  three red lights in the real sport, and it is the only thing a player who
+  stops feeding the bar and never starts again can get.
+- **The command keeps the seeded delay**, so nothing counts the player down to
+  it and bench keeps the reaction identity. What it does NOT keep is a single
+  press as the answer.
+- **The burst is the answer, and it is rate for force.** Every tap inside the
+  burst window counts, on a saturating curve — the first tap is worth about a
+  quarter of the whole burst and the last one about a sixtieth, so **mashing
+  caps rather than scaling** and a player who cannot mash still gets most of
+  the value of trying. The force buys the bar's speed off the chest, a decaying
+  push behind it, and a demand multiplier for the whole ascent.
+- **Jumping the call costs the burst and never the rep.** Taps before the
+  command count for nothing and each one costs a tap off the burst, down to a
+  floor — so mashing the pause is strictly worse than waiting and is never
+  fatal. That is the same rule the drive cue already states: a mistimed tap
+  costs velocity and never ends the rep on its own.
+- **A crash costs the ascent, not the rep.** The bar sinks into the chest and
+  the whole press is harder; it is never called at the chest. A warm-up bar and
+  a light working bar cannot be crashed at all — they run out of descent before
+  they run out of control — which is an arithmetic consequence of the constants
+  rather than a horizon somebody swept. Every load a meet attempt is taken at
+  can be.
+
+**None of the numbers has been played (§12.1), and §12.1 stays open on this
+beat until a human replays it on a phone.** What is measured is that the beats
+DECIDE reps rather than decorate them: across 240 cases the burst changes the
+outcome in 120 and turns a make into a miss in 40, and the touch changes it in
+80. That is the bar the first version of the press command failed — it set the
+bar's opening velocity, which washes out in about ten ticks, and the outcome
+was identical whether the player answered the command or not.
+
+**And that the descent asks anything at all is measured the same way**, because
+"non trivial" is a word in the ruling and was not a check for a round: the
+whole nine-hundred-pattern fixed-rhythm space is swept in the test suite, the
+count that wins at every load is pinned at **zero**, and the per-load counts
+sit beside it as the controls that say the beat is winnable — just not twice
+the same way. What is still open is whether it is winnable *in the hand*: the
+window at the top of the ladder is narrow, deliberately, and only a phone can
+say whether it is too narrow.
 3. Sim-mode readiness/fatigue silently adjusts the timing window width
 4. Three-light judging call (red/white), with a brief "judges deliberating" beat
    on close calls
