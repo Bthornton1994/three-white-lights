@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "route-retake-2026-08-25T19-04-14-446Z-27299",
   "label": "route-retake",
   "command": [
@@ -31,14 +31,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 12,
-    "okCount": 11,
+    "count": 13,
+    "okCount": 12,
     "errors": [],
-    "lastAttemptIso": "2026-08-25T19:15:14.801Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-25T19:15:19.040Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-25T19:14:17.874Z"
-  }
+    "lastOkIso": "2026-08-25T19:15:19.039Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-25T19:15:15.174Z",
+  "elapsedSeconds": 660.7
 }
