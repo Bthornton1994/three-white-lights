@@ -1898,8 +1898,8 @@ All open items from the prior draft are settled:
 No open design questions remain. This spec is ready to move to implementation
 scoping.
 
-### 5.13 Presentation layer (RCT-style floor sim) — PHASES 1 AND 2 BUILT AND
-### GATED IN ON A REAL PHONE, PHASE 3 IN BUILD, PHASE 4 STILL DESIGN-ONLY
+### 5.13 Presentation layer (RCT-style floor sim) — PHASES 1, 2 AND 3 BUILT
+### AND GATED IN ON A REAL PHONE. PHASE 4 IS UNLOCKED AND HAS NOT STARTED.
 
 Submitted in response to the 5.11 ruling above: a spatial floor the player
 builds into, populated by NPCs with visible state, in the direction of
@@ -2359,6 +2359,89 @@ as advice:
   names a feel problem in them. The player did not say too subtle or too
   jittery. They said people. Tuning a knob that just passed its gate, on no
   reported complaint, is how a passing value gets lost.
+
+**PHASE 3 IS BUILT — THE SIM AND ITS RENDER, IN TWO SEPARATELY GRADED HALVES.**
+`floorSim.ts` is the machine: a deterministic reducer over §5.13's own
+`seeking → queuing → using → leaving` with the transient `interrupted`, pure,
+pixel-ignorant, no clock and no dice. It was graded by a critic that had not
+seen its builder's report, and that pass found a branch which had not merely
+escaped the arm census but **had no subject** — the route-lost transition wrote
+`seeking` onto a member already seeking, so a census keyed on state *change*
+could not see it, and instrumenting it directly measured it at 0 of 66,240
+observations. Its sibling was the real defect: a member sealed away from every
+station wandered forever inside four tiles while both liveness instruments
+stayed green, because `longestStill` stays low precisely *because* the member
+keeps moving. A player makes that pocket by dragging two items. `route-blocked`
+is now a third interruption cause carrying a visible reaction, evidenced by a
+sealed-pocket sweep against an unsealed control differing by one row: 720
+stranded observations against 0, 8 reactions against 0, 0 claims against 20.
+Four further gaps closed in the same round, including a queue cell that could
+be another station's *use* cell — 18 collisions across 92 stations, two bodies
+on one tile, in the phase whose entire gate is legibility.
+
+`FloorGrid.tsx` is the render half, built by a different builder so the sim's
+author did not grade its own renderer. It steps the reducer on a tunable
+interval, lerps `cell → next` by `progress` and tweens the result so a walk is
+continuous rather than three hops per tile, and gives the five states distinct
+cues with the machine in use outlined on the floor. **The sim is byte-identical
+to its reviewed state** — a render round quietly changing sim behaviour is how
+a reviewed piece stops being the reviewed piece.
+
+The motion claims are stated against a real non-advancing control rather than
+against an argument about one, because a check that a member is *drawn* at a
+position is true of a freeze-frame. The control is a player action, not a test
+hook: holding a drag open suspends the tick. Running read `[3, 4, 1]` distinct
+horizontal positions over 40 ticks; the control read `[1, 1, 1]` over 0. The
+control's *vertical* reading is `[3, 3, 3]` and is kept beside it, because
+Phase 2's idle bob keeps running while the sim does not — which is exactly why
+the horizontal axis is the asserted one. Two of the harness's own checks were
+found wrong by that control failing rather than by anyone reading code, and one
+of them was vacuous: it passed on a frozen mutant because it, too, was
+measuring the bob.
+
+**PLAYTEST 5 — PHASE 3's GATE IS MET. RULED, ON A FELT YES FROM A HUMAN ON A
+REAL PHONE.** Same player, same opening-day garage, reached the way this
+section requires: cold launch, no query string, press GYM EMPIRE, scroll to the
+floor, on a real phone in a mobile browser over a public tunnel. On screen at
+tick 120: the garage 8x6, three fixed pieces, three members, and the chrome
+reading `1 seeking, 0 queuing, 2 using, 0 leaving` with the machines in use
+outlined and the seeking copy reading "walking to a machine". Placeholders
+throughout, as ruled.
+
+The verbatim answer: *"The people move around and the queueing works."*
+
+That is a felt yes on a real device against the shipped placeholder — the same
+standard Playtest 3 set for placement and Playtest 4b for people, and the only
+standard that settles this gate. Two details are worth keeping. The walking is
+**across the grid**, not the Phase 2 idle bob, which is the distinction the
+whole render half was built to make legible. And **the queuing verdict came
+from the play, not from the freeze-frame**: the readout quoted above happens to
+show 0 in queue at that instant, and the player watched queuing happen anyway.
+A section that spends this many words on why presence is not motion should not
+then read its own gate off a single frame.
+
+**Phase 4 may proceed. It has not started, and nothing here starts it.**
+
+**FOUR THINGS THIS VERDICT IS NOT.** It is not a request for sprites — the
+player had already asked whether this was wireframing and been told the 16-bit
+pass is Phase 4; that is still true and this sitting did not ask for it. It is
+not a pass on any rung above garage: storage-unit, strip-mall and warehouse
+have still never been watched by a human, and the sim's behaviour at 40 members
+on a warehouse floor is unjudged. It is not a verdict on the interruption cue,
+the stranded ring, or the `route-blocked` copy — the player named none of them
+as a problem *or* as a yes, so none of them is gated by this line and none may
+be recorded as blessed by it. And it is not a suite result: 34 browser claims
+and 812 unit tests are the reason the thing was watchable, and a human watching
+it is the reason the gate is met.
+
+**PLACEHOLDERS STAY FOR NOW, AND THIS IS THE SENTENCE THAT SAYS SO RATHER THAN
+LETTING SILENCE IMPLY OTHERWISE.** Phase 4 being unlocked is not Phase 4 being
+started. The build order gates art on 1-3 having proven the system worth
+finishing; they now have, so the gate is open — but the 16-bit pass begins when
+somebody actually calls for it, not automatically because the phase before it
+closed. Until then the floor keeps head-and-body tokens, named-colour furniture
+chips and grid lines, and the bob, footprint, palette and affinity knobs stay
+where they are, because no pass has named a feel problem in any of them.
 ---
 
 ## 6. Meet Day
