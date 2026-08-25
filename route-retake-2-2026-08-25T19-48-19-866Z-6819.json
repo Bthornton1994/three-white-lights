@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "route-retake-2-2026-08-25T19-48-19-866Z-6819",
+  "label": "route-retake-2",
+  "command": [
+    "node",
+    "tools/verify-shell-route.mjs",
+    "--url",
+    "http://localhost:8095",
+    "--out",
+    ".gauntlet/shots/shell"
+  ],
+  "budgetSeconds": 2400,
+  "startedAtIso": "2026-08-25T19:48:19.866Z",
+  "startedAtMs": 1787687299866,
+  "cwd": "/home/user/wt-bench-stage",
+  "commit": "0ca3540f4d394a8751ed9cdb3efe08278ef05efc",
+  "branch": "claude/bench-stage-drivers",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 6819,
+    "startTick": "40268",
+    "cmdline": "node tools/watchdog.mjs --budget 2400 --label route-retake-2 -- node tools/verify-shell-route.mjs --url http://localhost:8095 --out .gauntlet/shots/shell",
+    "bootId": "08766f0d-19e7-495f-880c-c0965fc21158",
+    "bootEpochSeconds": 1787686897,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-25T19:48:19.883Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
