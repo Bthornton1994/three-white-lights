@@ -2289,9 +2289,18 @@ describe('the false-start rule, exactly as the copy states it', () => {
   //    your burst — down to a floor of three."
   //
   // EACH CLAUSE IS DRIVEN SEPARATELY THROUGH THE SIM. A test that only checked
-  // `burstTapCeiling`'s arithmetic would be checking the same expression the
+  // `burstCountedTaps`'s arithmetic would be checking the same expression the
   // copy was written from, and the copy and the mechanic could drift apart
   // without anything going red.
+  //
+  // THIS COMMENT NAMED `burstTapCeiling` UNTIL A CRITIC FOUND IT — the second
+  // of two references to a function deleted three commits earlier, and the
+  // second half of the same defect the mechanic's own header records. Worth
+  // recording rather than quietly correcting, because it says something about
+  // where this class hides: the first stale name was inside the code it lied
+  // about and the second was inside the TEST written to keep that code honest.
+  // Renaming a function does not walk its prose, and nothing in this tree
+  // scans for a backticked identifier that no longer resolves.
   const load = LOAD_PRESETS.MAXIMAL;
 
   it('counts an early tap for nothing, AT EVERY TAP RATE', () => {
