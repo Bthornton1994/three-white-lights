@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-25T23-24-40-626Z-26072",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/licensing/realIp.test.ts",
+    "src/tuning/audit.test.ts",
+    "tools/claudeIndex.test.ts"
+  ],
+  "budgetSeconds": 300,
+  "startedAtIso": "2026-08-25T23:24:40.626Z",
+  "startedAtMs": 1787700280626,
+  "cwd": "/home/user/wt-bench-grind",
+  "commit": "8428939ad5a273b19da1bcb964284771f59960ef",
+  "branch": "claude/bench-grind",
+  "dirty": 2,
+  "dirtyPaths": [
+    "docs/GDD.md",
+    "src/game/lift.test.ts"
+  ],
+  "runner": {
+    "pid": 26072,
+    "startTick": "1338345",
+    "cmdline": "node tools/watchdog.mjs --budget 300 -- npx vitest run src/licensing/realIp.test.ts src/tuning/audit.test.ts tools/claudeIndex.test.ts",
+    "bootId": "08766f0d-19e7-495f-880c-c0965fc21158",
+    "bootEpochSeconds": 1787686897,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-25T23:24:40.648Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
