@@ -350,6 +350,68 @@ axis and visual-cue proposals from the first pass are retired along with the
 finding — the sparsity fix alone was sufficient, so neither is needed on top
 of it. Nothing further pending on this thread.
 
+### SPRINT 3, PHONE PLAYTEST 4 — THE BENCH CHAIN ITSELF REJECTED, FILED 2026-08-24
+
+Verbatim: *"I dont like this. The bench mechanic is confusing from descent to
+what i am waiting for to press and then pressing, everything feels off."*
+Phone browser over a tunnel, player-reachable session, BENCH chosen on
+check-in, no debug URL, tree `575c5d3`. This is not the first bench pass
+("still a squat" — closed by per-kind copy) and not the second (command "too
+easy to miss" — closed by `PRESS_SLOW_DEMAND_PENALTY`). It is a rejection of
+the descent → wait → press chain as played, and it is the first phone play of
+that penalty.
+
+**The stimulus inventory at the PRESS! instant was measured before anything
+was concluded, all at `575c5d3`, and it is one-channel:**
+
+- **Haptic — specified as the primary stimulus, never fires on this path.**
+  `liftTuning.ts:1448` declares `HAPTICS.PRESS_COMMAND` (rigid);
+  `lift.ts:2044` maps the event to it; the doc comment at `liftTuning.ts:1729`
+  says in as many words that the haptic *"is the real stimulus on a phone;
+  this is what the eye confirms it against."* `haptics.ts:59` returns without
+  doing anything when the platform is web — correctly, there is no vibration
+  motor behind a browser tab, and the phone-browser path is where this
+  playtest happened.
+- **Stage — pixel-static across the command.** Measured with the renderer's
+  own cache key on an obeyed rep (press at brace end, release on the depth
+  cue's ideal tick): `frameKey` is byte-identical at command−2, command−1,
+  the command tick, +1, +3 and +6. `pressCommandIsLive` has exactly one
+  consumer in the tree — `LiftScreen.tsx:249`, a colour change on the header
+  prompt text. Same shape as the deadlift's DOWN call, which was measured at
+  0 changed lifter pixels the day before.
+- **Audio — the channel does not exist.** No sound is wired into the rep loop
+  at all.
+- **What remains is the header text swap** — the channel the spec itself
+  designates as confirmation, not stimulus — after 400–1600ms of seeded
+  motionless silence (`PRESS_COMMAND_DELAY_TICKS` 24–96 at 60Hz), with a
+  420ms window and a false-start trap behind it.
+
+**The collision that makes this more than a playtest artifact: the ruled beta
+target is the platform where the specified stimulus cannot exist.** GDD §10.0
+scopes the beta to web/PWA. On that target the primary channel is
+structurally absent — not mistuned, absent — so the design as specified
+cannot reach the player the beta ships to. The discriminating experiment is
+the human's own proposal and stands as the gate: **same human, same sets,
+native pass (haptics present) versus phone-browser pass (haptics absent).**
+If it still feels wrong with a motor, the chain is the design and that is a
+design ruling. If it only feels wrong in the browser, the web no-op is
+carrying a mechanic specified for a channel the beta's own platform never
+has — which is a design ruling too, just a different one.
+
+**Deliberately not done, per the report's own guardrails:** no retune, no
+redesign, no second squat, no louder PRESS! on its own (measured false
+already — that is what `PRESS_SLOW_DEMAND_PENALTY`'s header records), and no
+§12.1 claim in either direction. Feel is a human on a phone.
+
+**A process note that belongs here because it happened while reading this
+very report:** the first attempt to check these citations "refuted" them —
+`HAPTICS.PRESS_COMMAND` grepped as absent from the tree. The tree was wrong,
+not the report: a rewind had landed mid-turn and the checkout was reading
+code from before the bench phase model existed. The task list reverting and
+two empty greps in a row were the tell. Every number above was re-measured
+after `git reset --hard` to origin's tip, which is what the measured-at stamp
+is for.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
