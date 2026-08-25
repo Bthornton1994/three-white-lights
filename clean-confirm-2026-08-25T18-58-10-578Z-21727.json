@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "clean-confirm-2026-08-25T18-58-10-578Z-21727",
   "label": "clean-confirm",
   "command": [
@@ -35,12 +35,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 1,
-    "okCount": 0,
+    "count": 2,
+    "okCount": 1,
     "errors": [],
-    "lastAttemptIso": "2026-08-25T18:58:10.598Z",
-    "lastReason": "start",
+    "lastAttemptIso": "2026-08-25T18:58:47.497Z",
+    "lastReason": "final",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm"
-  }
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": true,
+    "lastOkIso": "2026-08-25T18:58:18.812Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-25T18:58:47.495Z",
+  "elapsedSeconds": 36.9
 }
