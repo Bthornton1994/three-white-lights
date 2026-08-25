@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "route-retake-2-2026-08-25T19-48-19-866Z-6819",
   "label": "route-retake-2",
   "command": [
@@ -31,19 +31,22 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 12,
-    "okCount": 10,
+    "count": 13,
+    "okCount": 11,
     "errors": [
       {
         "at": "2026-08-25T19:50:39.975Z",
         "why": "Command failed: git -C /home/user/wt-bench-stage ls-remote --exit-code origin refs/heads/verify-markers/vm"
       }
     ],
-    "lastAttemptIso": "2026-08-25T19:59:20.241Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-25T20:00:04.297Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-25T19:58:22.781Z"
-  }
+    "lastOkIso": "2026-08-25T19:59:22.753Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-25T20:00:04.296Z",
+  "elapsedSeconds": 704.4
 }
