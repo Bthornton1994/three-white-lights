@@ -894,28 +894,37 @@ const GUARANTEE_COVERAGE = {
   // the scoper's declared lower-case blind spot working exactly as documented
   // rather than a surprise.
   //
-  // 287 -> 293 with the 2026-08-25 bench REPLAY steer. Attributed the usual
+  // 287 -> 292 with the 2026-08-25 bench REPLAY steer. Attributed the usual
   // way — each touched file restored to its pre-change text from `98e78bc`,
   // this count re-read, the file put back:
   //
-  //   `src/game/lift.ts`        290, so **+3**
-  //   `src/game/liftTuning.ts`  290, so **+3**
-  //   `src/lift/liftFrame.ts`   292, so **+1**
-  //   `src/game/meetPreview.ts` 294, so **-1**
+  //   `src/game/lift.ts`        290, so **+2**
+  //   `src/game/liftTuning.ts`  289, so **+3**
+  //   `src/lift/liftFrame.ts`   291, so **+1**
+  //   `src/game/meetPreview.ts` 293, so **-1**
   //
   // A NEGATIVE CONTRIBUTION IS THE INTERESTING ONE and it is why this is
   // measured rather than reasoned: `benchScript`'s rewrite REMOVED a
   // triggering paragraph — the header's old style-mapping block — while adding
   // more prose than it deleted. A reader summing "six files gained comments"
-  // would have got 294 and been wrong in the direction that looks right.
+  // would have got a bigger number and been wrong in the direction that looks
+  // right.
+  //
+  // THE FIRST VERSION OF THIS ATTRIBUTION READ 3 / 3 / 1 / -1 AND WAS WRONG BY
+  // ONE, in the file it was most confident about. It was taken before two
+  // later comment edits in `lift.ts` and `lift.test.ts` — a stale-identifier
+  // fix and a corrected grep claim — each of which happened to remove a
+  // capitalised run. Re-measured rather than adjusted: an attribution derived
+  // from a diff instead of from the scan is the thing this census exists to
+  // stop.
   //
   // The other six touched files contributed **0** between them —
   // `lift.test.ts`, `liftTuning.test.ts`, `liftFrame.test.ts`,
   // `meetTuning.ts`, `meetDay.test.ts` and this file — despite gaining a great
   // deal of prose, which is the scoper's declared lower-case blind spot
-  // working as documented rather than a surprise. 3 + 3 + 1 - 1 = 6 and
-  // 287 + 6 = 293, so the attribution closes rather than nearly closing.
-  TREE_WIDE: 293,
+  // working as documented rather than a surprise. 2 + 3 + 1 - 1 = 5 and
+  // 287 + 5 = 292, so the attribution closes rather than nearly closing.
+  TREE_WIDE: 292,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1250,9 +1259,15 @@ const NUMBER_COVERAGE = {
    * No numeral remains as prose in any of the four, so `CLAIMED` did not move.
    *
    * 77 -> 78 with `the-descent-cannot-be-played-open-loop` in `lift.ts`, on
-   * `touchSpeedQuality`'s load-scaling paragraph. It states no numeral either
-   * — the counts it is about live in `OPEN_LOOP_SEARCH` and in the witness
-   * transcript, deliberately, so the paragraph cannot go stale against them.
+   * `touchSpeedQuality`'s load-scaling paragraph. It stated no numeral either
+   * — the counts it was about lived in a sweep and in the witness transcript,
+   * deliberately, so the paragraph could not go stale against them.
+   *
+   * THAT TAG IS RETIRED BY THE 2026-08-25 REPLAY STEER and its paragraph is
+   * gone with it, and the entry stays here rather than being edited out
+   * because this list is a history of how the census moved. `lift.test.ts`
+   * carries the retirement and the domination analysis; the net effect on the
+   * counts below is recorded in their own dated notes.
    */
   //
   // 78 -> 81 on the three tags the command beat declares in `liftFrame.ts`.

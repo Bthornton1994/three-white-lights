@@ -2751,8 +2751,8 @@ export function grindIsLive(state: LiftState): boolean {
  * THE READ MODEL THE STAGE NEEDS AND CANNOT DERIVE. `depth` says where the bar
  * is; it does not say whether it is being caught or dropped, and those are the
  * two reps this beat exists to tell apart. Deliberately the INVERSE of
- * `touchQualityFor` — hot is 1 — because what a renderer wants to scale is the
- * alarm, not the calm.
+ * `touchSpeedQuality` — hot is 1 — because what a renderer wants to scale is
+ * the alarm, not the calm.
  *
  * NOT A FATIGUE METER, and the distinction is the same one `stallCapacityLoss`
  * and `lockoutSlipTicks` already make: it is the bar's speed this tick, it
@@ -2766,10 +2766,12 @@ export function chestApproach(state: LiftState): number | null {
   if (state.phase !== 'DESCENT') return null;
   const rate = state.chestRate;
   if (rate === null) return null;
-  // THE SPEED HALF ONLY. `descentPatience` is about how long the descent has
-  // taken, which the stage has no business drawing as heat on the bar — a bar
-  // creeping down slowly is not coming in hot, it is just slow, and colouring
-  // it as a crash would be a cue that lies.
+  // THE WHOLE GRADE, WHICH IT WAS NOT BEFORE THE 2026-08-25 REPLAY STEER. It
+  // used to be the speed half only, with `descentPatience` beside it holding
+  // the time half — deliberately not drawn, because a bar creeping down slowly
+  // is not coming in hot and colouring it as a crash would be a cue that lies.
+  // That half is deleted with the dawdling it charged for, so this now shows
+  // exactly what the mechanic grades and there is nothing left to omit.
   //
   // IT READS THE REP'S OWN LOAD, so the same speed draws hotter under a heavier
   // bar — which is the whole of the fix that moved the answer with load. A

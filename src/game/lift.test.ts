@@ -1584,8 +1584,11 @@ const TOUCH_SWEEP = {
  *   GDD §6.2's "non trivial" paragraph and the pattern-space measurement in
  *       it. Rewritten in the same commit, per CLAUDE.md.
  *
- * NOTHING ELSE READ IT. `grep -n OPEN_LOOP` over `src/` returns this comment
- * and the deleted block's own lines and nothing more.
+ * NOTHING ELSE READ ITS VALUES. `grep -rn OPEN_LOOP src/` returns only PROSE
+ * after this deletion — this note, `touchSpeedQuality`'s header in `lift.ts`,
+ * and the one test below that kept its seed control — and no expression. The
+ * distinction matters because the grep is not empty and a reader who ran it
+ * expecting silence would reasonably think the retirement was incomplete.
  */
 
 describe('the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25)', () => {
