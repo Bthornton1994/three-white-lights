@@ -1978,6 +1978,140 @@ export const LIFT_TUNING = Object.freeze({
      * 4 ticks is 67 ms of catch-up per frame.
      */
     MAX_CATCH_UP_TICKS: 4,
+
+    /**
+     * =========================================================================
+     * THE COMMAND BEAT, ON STAGE — EVERY KNOB IN ONE BLOCK
+     * =========================================================================
+     * PHONE PLAYTEST 4 (2026-08-24) MEASURED THIS BEAT'S WHOLE STIMULUS
+     * INVENTORY AND FOUND ONE CHANNEL. At the press command: the haptic
+     * `HAPTICS.PRESS_COMMAND` never fires on web (`haptics.ts` returns without
+     * doing anything when the platform is web, and GDD §10.0 scopes the beta to
+     * web/PWA); the stage was pixel-static across the command, measured with
+     * the renderer's own `frameKey` at command minus 2, minus 1, the command
+     * tick, plus 1, plus 3 and plus 6; no audio is wired into the rep loop at
+     * all. What was left was a header text COLOUR — the channel this file's own
+     * `HAPTICS.PRESS_COMMAND` doc calls the confirmation rather than the
+     * stimulus. The 2026-08-25 ruling requires a clear, unmistakable PRESS
+     * stimulus on web, not header colour alone.
+     *
+     * DEADLIFT'S DOWN CALL HAS THE SAME MEASURED GAP — 0 changed lifter pixels
+     * — so it is in this block rather than in a second one. The two are the
+     * same event shape (a command fires at a tick drawn from the rep's seed)
+     * and `commandHit` in `liftFrame.ts` reads them through one predicate, so
+     * the beat covers both by construction and cannot drift apart. What they do
+     * NOT share is intensity: bench's is a starter's pistol answered inside a
+     * reaction window, deadlift's is a full stop on a rep that is already over,
+     * so each carries its own duration and peak.
+     *
+     * NONE OF THESE HAS BEEN PLAYED (GDD §12.1). They are placeholders shaped
+     * so a tuner has one place to turn, and the phone replay is the gate.
+     */
+    STAGE_COMMAND: Object.freeze({
+      /**
+       * How long the hit is on screen, per command, in ms.
+       *
+       * BENCH'S IS SHORTER THAN THE BURST WINDOW ON PURPOSE.
+       * `PRESS_BURST_WINDOW_MS` is 850; a wash that lasted the whole window
+       * would sit on top of the burst readout for the entire beat the readout
+       * exists to report. The hit announces; the readout reports.
+       */
+      FLASH_MS: Object.freeze({ press: 260, down: 200 }),
+      /**
+       * Peak alpha of the full-stage wash, per command, at the command tick.
+       *
+       * A WASH RATHER THAN A LOCAL GLOW BECAUSE THE FAILURE WAS "I DID NOT SEE
+       * IT", NOT "I SAW IT LATE". A local effect has to be looked at; a wash
+       * reaches peripheral vision, which is where a player watching the bar
+       * reads from. Kept well below 1 so the plate colours and the lifter stay
+       * legible through it.
+       */
+      FLASH_PEAK_ALPHA: Object.freeze({ press: 0.34, down: 0.2 }),
+      /**
+       * The shock ring: it starts here and expands to `RING_MAX_R` as the wash
+       * decays, centred on `LAYOUT.CUE_X` / `CUE_Y` — over the lifter, which is
+       * where the eye is during the wait.
+       *
+       * IT EXPANDS WHERE `cueRing` CONTRACTS, and the opposition is the point:
+       * a contracting ring is an anticipation cue (squat's, and bench's own
+       * burst ring), and an expanding one is a thing that has just HAPPENED.
+       */
+      RING_MIN_R: 22,
+      RING_MAX_R: 196,
+      RING_STROKE: 6,
+
+      /**
+       * =====================================================================
+       * THE WAIT, WHICH IS ARMED AND IS NOT A COUNTDOWN
+       * =====================================================================
+       * The seeded delay stays (`PRESS_COMMAND_DELAY_TICKS`) and nothing counts
+       * the player down to it — that is the reaction identity, resolved inside
+       * the 2026-08-25 ruling. What the ruling does not permit is the wait
+       * being a DEAD channel, which is what phone playtest 4 measured it as.
+       *
+       * So the wait gets a ring at ONE radius that breathes on ONE period, and
+       * both are constants here. `stageArmed` reads the tick and the phase and
+       * nothing else — in particular it reads `pressCommandTick` and
+       * `downCommandTick` only through "has it fired yet", so no amount of
+       * watching it tells a player when the command is due.
+       * `liftFrame.test.ts` pins that by building two states that differ only
+       * in the scheduled command tick and asserting the armed value is
+       * identical.
+       */
+      ARMED_RING_R: 62,
+      ARMED_RING_STROKE: 2,
+      ARMED_PULSE_MS: 780,
+      ARMED_MIN_ALPHA: 0.16,
+      ARMED_MAX_ALPHA: 0.66,
+
+      /**
+       * =====================================================================
+       * THE BURST READOUT — ONE PIP PER COUNTED TAP
+       * =====================================================================
+       * COUNTS, NOT A RATIO, AND THAT IS THE §12.3 ARGUMENT AS WELL AS THE
+       * LEGIBILITY ONE. `burstProgress` deliberately does not carry the burst
+       * window's full width, because `ticksLeft` over `PRESS_BURST_WINDOW_MS`
+       * is a 0..1 number one width style away from the meter §12.3 refuses. A
+       * row of `PRESS_BURST_FORCE.MAX_COUNTED_TAPS` pips lighting one per
+       * counted tap says how the burst is going without ever constructing that
+       * ratio, and it is countable at phone scale in a way a filling bar is
+       * not.
+       *
+       * THE TRAY IS NOT DECORATION. The pips sit over the gym room, which is a
+       * rendered scene with its own colours; a dark plate behind them is what
+       * makes a lit pip a lit pip against every room the stage can draw, and it
+       * is what lets `verify-lift-press.mjs` count lit pixels inside a known
+       * rectangle rather than hunting a hue across the whole canvas.
+       */
+      BURST_PIP_W: 10,
+      BURST_PIP_H: 16,
+      BURST_PIP_GAP: 4,
+      /**
+       * Top of the pip row, in stage points.
+       *
+       * Above the sprite cell (`LAYOUT.SPRITE_Y` is 292) and below the top of
+       * the stage, so the readout is in the same glance as the lifter without
+       * covering him. Left of `LAYOUT.TRACE_X` by construction: the row is
+       * centred on `LAYOUT.CUE_X` and `liftFrame.test.ts` asserts it clears the
+       * bar-path panel rather than trusting the arithmetic here.
+       */
+      BURST_PIPS_Y: 258,
+      BURST_TRAY_PAD: 5,
+
+      /**
+       * Where `chestApproach` stops being calm and starts being a crash, for
+       * the bar glyph's colour only.
+       *
+       * BANDS ON A DRAWING, NOT A SECOND GRADING CURVE. The mechanic grades the
+       * touch through `touchQualityFor`; these two numbers decide which of
+       * three colours the bar is drawn in on the way down, and moving them
+       * cannot change a single outcome. `liftFrame.test.ts` pins that
+       * separation by driving a whole rep with each band edge moved to either
+       * extreme and asserting the resolution is byte-identical.
+       */
+      BAR_WARM_AT: 0.34,
+      BAR_HOT_AT: 0.67,
+    }),
   }),
 
   /**

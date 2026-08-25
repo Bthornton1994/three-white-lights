@@ -55,7 +55,15 @@ import { pitchLevelForDriftPx, strainLevel } from '../art/rig';
 import { BAR_AND_COLLARS_KG } from '../art/plates';
 import type { LifterFrameSpec } from '../art/lifterSprite';
 import { LIFT_TUNING, TICK_MS } from '../game/liftTuning';
-import type { LiftPhase, LiftState } from '../game/lift';
+import {
+  burstProgress,
+  chestApproach,
+  lockoutHoldIsLive,
+  pressCommandIsLive,
+  type LiftPhase,
+  type LiftState,
+} from '../game/lift';
+import { LIFT_PALETTE } from './liftPalette';
 
 function clamp(value: number, min: number, max: number): number {
   if (value < min) return min;
@@ -332,10 +340,232 @@ export function hitFlash(state: LiftState): number {
   return clamp01(1 - elapsedMs / LIFT_TUNING.FEEDBACK.HIT_FLASH_MS);
 }
 
+/**
+ * A 0..1 breathing pulse at a given period.
+ *
+ * Extracted from `cuePulse` when the armed wait needed the same shape at its
+ * own period, rather than written twice — CLAUDE.md's "a guard written for one
+ * hook must be applied to its sibling" applied to a curve: two sine
+ * calculations a few lines apart are two places for a phase convention to
+ * drift, and the two are drawn on the same canvas at the same time.
+ */
+function pulseAt(tick: number, periodMs: number): number {
+  const periodTicks = periodMs / TICK_MS;
+  if (periodTicks <= 0) return 1;
+  return (Math.sin((Math.PI * 2 * tick) / periodTicks) + 1) / 2;
+}
+
 /** A 0..1 breathing pulse for the cue ring, so an open window reads as live. */
 export function cuePulse(tick: number): number {
-  const periodTicks = LIFT_TUNING.FEEDBACK.CUE_PULSE_MS / TICK_MS;
-  return (Math.sin((Math.PI * 2 * tick) / periodTicks) + 1) / 2;
+  return pulseAt(tick, LIFT_TUNING.FEEDBACK.CUE_PULSE_MS);
+}
+
+// ---------------------------------------------------------------------------
+// THE COMMAND BEAT ON STAGE (GDD §6.2, ruled 2026-08-25)
+//
+// Phone playtest 4 measured the press command's whole stimulus inventory on the
+// platform GDD §10.0 ships the beta to and found ONE live channel: a header
+// text colour. The haptic the spec designates as the real stimulus is a web
+// no-op; the stage was pixel-static across the command; there is no audio in
+// the rep loop. Everything in this section is the stage half of the replacement
+// and every number behind it is in `LIFT_TUNING.FEEDBACK.STAGE_COMMAND`.
+//
+// PURE FUNCTIONS OF `LiftState`, like `stageShake` and `hitFlash` above, and
+// for the reason that block's header gives: the sim is the clock, so a hit
+// cannot drift out of step with the command that caused it, and a replayed rep
+// flashes identically.
+// ---------------------------------------------------------------------------
+
+/** Which command a stage hit belongs to. Bench presses; deadlift is told to stop. */
+export type StageCommandKind = 'press' | 'down';
+
+export interface CommandHit {
+  /** Which command fired. Squat has neither and never produces a hit. */
+  readonly command: StageCommandKind;
+  /** 1 on the tick it fired, falling to 0 over that command's `FLASH_MS`. */
+  readonly amount: number;
+  /** Alpha of the full-stage wash this tick. */
+  readonly washAlpha: number;
+  /** The shock ring's radius this tick — it EXPANDS as the wash decays. */
+  readonly ringRadius: number;
+}
+
+/**
+ * ONE PREDICATE FOR BOTH COMMANDS, WHICH IS WHY DEADLIFT'S DOWN CALL IS COVERED
+ * WITHOUT A SECOND FUNCTION.
+ *
+ * Bench's `pressCommandTick` and deadlift's `downCommandTick` are both a tick
+ * scheduled in the FUTURE at the first tick of their beat, and both mean "the
+ * command has fired" once `state.tick` reaches them. Writing this as two
+ * functions is the sibling-drift shape CLAUDE.md has recorded four times in
+ * this repository, twice at a distance of one branch — and the second one is
+ * the one nobody re-reads. So a lift with a command tick gets the hit, and a
+ * lift without one (squat) gets null, by construction rather than by a case
+ * somebody remembered to add.
+ *
+ * IT OUTLIVES ITS PHASE ON PURPOSE. The bench command fires in HOLE and the
+ * burst can end on the physics cap a few ticks later, taking the rep into
+ * ASCENT while the wash is still decaying; a hit scoped to HOLE would be cut
+ * off mid-decay at exactly the moment the bar leaves the chest. Ticks only go
+ * forward, so the decay reaches zero and stays there.
+ */
+function commandTickOf(state: LiftState): { command: StageCommandKind; tick: number } | null {
+  const kind = state.config.kind;
+  if (kind === 'bench') {
+    const at = state.pressCommandTick;
+    return at === null || state.tick < at ? null : { command: 'press', tick: at };
+  }
+  if (kind === 'deadlift') {
+    const at = state.downCommandTick;
+    return at === null || state.tick < at ? null : { command: 'down', tick: at };
+  }
+  return null;
+}
+
+/**
+ * The stage hit for a command that has just fired, or null.
+ *
+ * @guarantee the-command-is-not-a-dead-channel-on-stage
+ * A command that has fired within its own `FLASH_MS` returns a NON-ZERO
+ * `washAlpha`, so the stage cannot be pixel-static across the tick a command
+ * lands on. `liftFrame.test.ts`'s "the press command paints" drives a real
+ * bench rep and asserts a non-zero wash on the command tick and a zero one on
+ * the tick before it.
+ */
+export function commandHit(state: LiftState): CommandHit | null {
+  const fired = commandTickOf(state);
+  if (fired === null) return null;
+  const c = LIFT_TUNING.FEEDBACK.STAGE_COMMAND;
+  const elapsedMs = (state.tick - fired.tick) * TICK_MS;
+  const holdMs = c.FLASH_MS[fired.command];
+  if (holdMs <= 0 || elapsedMs >= holdMs) return null;
+  const amount = clamp01(1 - elapsedMs / holdMs);
+  return {
+    command: fired.command,
+    amount,
+    washAlpha: amount * c.FLASH_PEAK_ALPHA[fired.command],
+    // Expanding: 1 - amount runs 0 -> 1 as the wash fades out.
+    ringRadius: c.RING_MIN_R + (c.RING_MAX_R - c.RING_MIN_R) * (1 - amount),
+  };
+}
+
+/**
+ * The armed treatment for a beat that is WAITING on a command, 0..1 alpha, or
+ * null when nothing is waiting.
+ *
+ * @guarantee the-armed-wait-tells-nobody-when-the-command-is-due
+ * The returned alpha is a function of `state.tick` and of WHETHER the command
+ * has fired — never of WHEN it is scheduled. Two states differing only in a
+ * still-future `pressCommandTick` (or `downCommandTick`) return the identical
+ * number, so a player who studies this ring learns nothing a countdown would
+ * tell them. `liftFrame.test.ts`'s "the armed wait carries no information about
+ * the command's tick" builds exactly that pair.
+ *
+ * WHY THE WAIT NEEDED ANYTHING AT ALL. GDD §6.2 keeps the seeded delay, so
+ * bench keeps its reaction identity — but phone playtest 4 measured that wait
+ * as 400-1600 ms of motionless silence with a false-start trap behind it, and
+ * rejected the chain. "Nothing telegraphs the command" and "nothing is on
+ * screen" are different requirements and only the first is the design.
+ *
+ * BOTH LIFTS THAT WAIT, THROUGH THEIR OWN SHIPPED PREDICATES rather than a
+ * third copy of the phase test: bench's HOLE before the command is
+ * `!pressCommandIsLive` inside HOLE, and deadlift's lockout hold IS
+ * `lockoutHoldIsLive`, which `lift.ts` wrote as bench's deliberate mirror.
+ */
+export function stageArmed(state: LiftState): number | null {
+  const kind = state.config.kind;
+  const waiting =
+    kind === 'bench'
+      ? state.phase === 'HOLE' && !pressCommandIsLive(state)
+      : kind === 'deadlift'
+        ? lockoutHoldIsLive(state)
+        : false;
+  if (!waiting) return null;
+  const c = LIFT_TUNING.FEEDBACK.STAGE_COMMAND;
+  return c.ARMED_MIN_ALPHA + (c.ARMED_MAX_ALPHA - c.ARMED_MIN_ALPHA) * pulseAt(state.tick, c.ARMED_PULSE_MS);
+}
+
+export interface BurstPip {
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+  readonly lit: boolean;
+}
+
+export interface BurstReadout {
+  /** The dark plate the pips are drawn on. See `BURST_TRAY_PAD`. */
+  readonly tray: { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
+  readonly pips: readonly BurstPip[];
+  /** How many are lit. Carried so a caller does not have to count the array. */
+  readonly lit: number;
+}
+
+/**
+ * The burst readout for the tick, or null when no burst is open.
+ *
+ * ONE PIP PER COUNTED TAP THE PHYSICS CAP ALLOWS, lit up to `taps`. The total
+ * is `PRESS_BURST_FORCE.MAX_COUNTED_TAPS` read from tuning rather than from the
+ * length of anything here, so a tuner who raises the cap gets a longer row
+ * without touching this file.
+ *
+ * @guarantee the-burst-readout-moves-with-the-taps
+ * `lit` equals the burst's counted tap total, so the row is a function of what
+ * the player did rather than a decoration that happens to be on screen while
+ * they do it. `liftFrame.test.ts`'s "the burst readout counts the taps that
+ * landed" drives a real burst and asserts `lit` rises with each counted tap and
+ * never past the row's length.
+ */
+export function burstReadout(state: LiftState): BurstReadout | null {
+  const progress = burstProgress(state);
+  if (progress === null) return null;
+  const c = LIFT_TUNING.FEEDBACK.STAGE_COMMAND;
+  const total = LIFT_TUNING.PRESS_BURST_FORCE.MAX_COUNTED_TAPS;
+  const pitch = c.BURST_PIP_W + c.BURST_PIP_GAP;
+  const rowW = total * pitch - c.BURST_PIP_GAP;
+  const left = L.CUE_X - rowW / 2;
+  const pips: BurstPip[] = [];
+  for (let i = 0; i < total; i += 1) {
+    pips.push({
+      x: left + i * pitch,
+      y: c.BURST_PIPS_Y,
+      w: c.BURST_PIP_W,
+      h: c.BURST_PIP_H,
+      lit: i < progress.taps,
+    });
+  }
+  return {
+    tray: {
+      x: left - c.BURST_TRAY_PAD,
+      y: c.BURST_PIPS_Y - c.BURST_TRAY_PAD,
+      w: rowW + c.BURST_TRAY_PAD * 2,
+      h: c.BURST_PIP_H + c.BURST_TRAY_PAD * 2,
+    },
+    pips,
+    lit: progress.taps,
+  };
+}
+
+/**
+ * What colour the bar glyph is drawn in on the bar-path plot.
+ *
+ * Steel unless a bench bar is coming down, in which case it is one of three
+ * bands of `chestApproach` — GDD §6.2: "What the player watches is the BAR: it
+ * is visibly speeding up or slowing down." The read model is `lift.ts`'s and
+ * this is the drawing of it.
+ *
+ * A COLOUR CHOICE LIVES HERE RATHER THAN IN THE COMPONENT because a chain of
+ * comparisons inside a `.tsx` file is the "computing a modifier inside a
+ * component" CLAUDE.md forbids, one category over — and because it is testable
+ * here and is not testable there (`vitest.config.ts` is `environment: node`).
+ */
+export function barGlyphColour(state: LiftState): string {
+  const heat = chestApproach(state);
+  if (heat === null) return LIFT_PALETTE.BAR_STEEL;
+  const c = LIFT_TUNING.FEEDBACK.STAGE_COMMAND;
+  if (heat >= c.BAR_HOT_AT) return LIFT_PALETTE.BAR_APPROACH_HOT;
+  if (heat >= c.BAR_WARM_AT) return LIFT_PALETTE.BAR_APPROACH_WARM;
+  return LIFT_PALETTE.BAR_APPROACH_CALM;
 }
 
 /**
