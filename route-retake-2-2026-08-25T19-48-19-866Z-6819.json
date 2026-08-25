@@ -31,19 +31,19 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 8,
-    "okCount": 6,
+    "count": 9,
+    "okCount": 7,
     "errors": [
       {
         "at": "2026-08-25T19:50:39.975Z",
         "why": "Command failed: git -C /home/user/wt-bench-stage ls-remote --exit-code origin refs/heads/verify-markers/vm"
       }
     ],
-    "lastAttemptIso": "2026-08-25T19:55:20.145Z",
+    "lastAttemptIso": "2026-08-25T19:56:20.184Z",
     "lastReason": "heartbeat",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-25T19:54:23.675Z"
+    "lastOkIso": "2026-08-25T19:55:22.839Z"
   }
 }
