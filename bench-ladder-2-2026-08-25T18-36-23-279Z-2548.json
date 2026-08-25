@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "bench-ladder-2-2026-08-25T18-36-23-279Z-2548",
   "label": "bench-ladder-2",
   "command": [
@@ -36,12 +36,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 1,
-    "okCount": 0,
+    "count": 2,
+    "okCount": 1,
     "errors": [],
-    "lastAttemptIso": "2026-08-25T18:36:23.299Z",
-    "lastReason": "start",
+    "lastAttemptIso": "2026-08-25T18:37:00.713Z",
+    "lastReason": "final",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm"
-  }
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": true,
+    "lastOkIso": "2026-08-25T18:36:27.084Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-25T18:37:00.711Z",
+  "elapsedSeconds": 37.4
 }
