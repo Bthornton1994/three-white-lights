@@ -28,6 +28,16 @@
  *      is the literal shape a lifter would recognise from a bar-path app.
  *   3. THE CUE RING, which shrinks onto its target ring at the exact tick the
  *      input would grade 'perfect'.
+ *   4. THE COMMAND BEAT (GDD §6.2, ruled 2026-08-25) — the armed wait, the hit
+ *      at the command tick, and the burst readout. This layer exists because
+ *      phone playtest 4 measured the press command's entire stimulus inventory
+ *      on the platform the beta ships to (GDD §10.0, web/PWA) and found ONE
+ *      live channel: a header text colour. The haptic the spec designates as
+ *      the real stimulus does not exist behind a browser tab, and the stage was
+ *      pixel-static across the command — `frameKey` byte-identical at command
+ *      minus 2 through plus 6. It covers the deadlift's down call by
+ *      construction, through the same `commandHit` predicate, because that beat
+ *      was measured with the same gap (0 changed lifter pixels).
  *
  * NO MECHANIC LOGIC. Every geometry decision comes from `liftFrame.ts` and
  * every number from `LIFT_TUNING`. `liftTuning.test.ts` scans this file for
@@ -58,11 +68,15 @@ import { cueProgress, type LiftState } from '../game/lift';
 import { LIFT_PALETTE } from './liftPalette';
 import {
   SPRITE_BOX,
+  barGlyphColour,
+  burstReadout,
+  commandHit,
   cuePulse,
   cueRing,
   frameKey,
   hitFlash,
   liftFrameSpec,
+  stageArmed,
   stageShake,
   traceAlpha,
   traceX,
@@ -207,6 +221,11 @@ export function LiftStage({
   const flash = hitFlash(state);
   const pulse = cuePulse(state.tick);
   const lastTiming = state.timings[state.timings.length - 1];
+  // THE COMMAND BEAT (GDD §6.2, ruled 2026-08-25). All three are pure functions
+  // of the rep in `liftFrame.ts`; nothing about the beat is decided here.
+  const hit = commandHit(state);
+  const armed = stageArmed(state);
+  const burst = burstReadout(state);
 
   // The trace is drawn as a few segments of increasing alpha rather than one
   // path per point: a Skia path per tick would be two hundred draw calls a
@@ -326,13 +345,15 @@ export function LiftStage({
             opacity={segment.alpha}
           />
         ))}
-        {/* The bar itself, on the plot. */}
+        {/* The bar itself, on the plot — coloured by how it is ARRIVING while a
+            bench bar is coming down (`chestApproach`, GDD §6.2), steel
+            otherwise. `barGlyphColour` makes that choice; this file draws it. */}
         <Rect
           x={traceX(state.barForwardPx) - L.TRACE_BAR_HALF_W}
           y={barY - 1}
           width={L.TRACE_BAR_HALF_W * 2}
           height={F.TRACE_WIDTH}
-          color={LIFT_PALETTE.BAR_STEEL}
+          color={barGlyphColour(state)}
         />
       </Group>
 
@@ -348,6 +369,54 @@ export function LiftStage({
           sampling={{ filter: FilterMode.Nearest, mipmap: MipmapMode.None }}
         />
       </Group>
+
+      {/* --- THE COMMAND HIT ------------------------------------------
+          A full-stage wash and a ring that EXPANDS out of the lifter, at the
+          tick a command fires. Bench's press call and the deadlift's down call
+          both come through `commandHit`; squat has neither and draws nothing.
+
+          DRAWN OVER THE ROOM AND THE LIFTER AND UNDER THE READOUT, and the
+          order is load-bearing in both directions. Under the lifter it would be
+          a background flicker rather than a hit on the thing being watched;
+          over the burst readout it would tint the pips for most of the window
+          the pips exist to report, which is the one measurement
+          `verify-lift-press.mjs` counts. */}
+      {hit === null ? null : (
+        <Group>
+          <Rect
+            x={0}
+            y={0}
+            width={L.STAGE_W}
+            height={L.STAGE_H}
+            color={LIFT_PALETTE.COMMAND_FLASH}
+            opacity={hit.washAlpha}
+          />
+          <Circle
+            cx={L.CUE_X}
+            cy={L.CUE_Y}
+            r={hit.ringRadius}
+            color={LIFT_PALETTE.COMMAND_RING}
+            style="stroke"
+            strokeWidth={F.STAGE_COMMAND.RING_STROKE}
+            opacity={hit.amount}
+          />
+        </Group>
+      )}
+
+      {/* --- THE ARMED WAIT -------------------------------------------
+          One radius, one period, no countdown — see `stageArmed`. The lifter is
+          set and the stage is live; nothing here says when the call comes. */}
+      {armed === null ? null : (
+        <Circle
+          cx={L.CUE_X}
+          cy={L.CUE_Y}
+          r={F.STAGE_COMMAND.ARMED_RING_R}
+          color={LIFT_PALETTE.ARMED}
+          style="stroke"
+          strokeWidth={F.STAGE_COMMAND.ARMED_RING_STROKE}
+          opacity={armed}
+        />
+      )}
 
       {/* --- cue ring -------------------------------------------------- */}
       {ring === null ? null : (
@@ -385,6 +454,42 @@ export function LiftStage({
           strokeWidth={F.CUE_RING_STROKE}
           opacity={flash}
         />
+      )}
+
+      {/* --- THE BURST READOUT, DRAWN LAST ----------------------------
+          One pip per counted tap the physics cap allows, lit as they land. It
+          is on top of everything — including the command wash — so what a
+          player sees, and what a pixel check counts inside `tray`, is the pips
+          and not the pips seen through a flash. */}
+      {burst === null ? null : (
+        <Group>
+          <Rect
+            x={burst.tray.x}
+            y={burst.tray.y}
+            width={burst.tray.w}
+            height={burst.tray.h}
+            color={LIFT_PALETTE.BURST_TRAY}
+          />
+          <Rect
+            x={burst.tray.x}
+            y={burst.tray.y}
+            width={burst.tray.w}
+            height={burst.tray.h}
+            color={LIFT_PALETTE.BURST_TRAY_EDGE}
+            style="stroke"
+            strokeWidth={1}
+          />
+          {burst.pips.map((pip) => (
+            <Rect
+              key={pip.x}
+              x={pip.x}
+              y={pip.y}
+              width={pip.w}
+              height={pip.h}
+              color={pip.lit ? LIFT_PALETTE.BURST_PIP_LIT : LIFT_PALETTE.BURST_PIP_DIM}
+            />
+          ))}
+        </Group>
       )}
     </Canvas>
   );

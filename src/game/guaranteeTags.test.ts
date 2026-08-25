@@ -882,7 +882,18 @@ const GUARANTEE_COVERAGE = {
    * different lift. Both are exactly the sentence class that has been wrong
    * eight times in this repository.
    */
-  TREE_WIDE: 286,
+  //
+  // 286 -> 287 with the press-delay fix. Attributed the usual way, each
+  // touched file restored to its pre-change text and this count re-read:
+  // `liftTuning.ts` **1** — the paragraph saying the 50 ms press delay is not
+  // only the robot's problem, because `PressResponder` applies it on the
+  // responder-grant path a TOUCH takes as much as a mouse. `pressGuard.ts`,
+  // `liftInput.test.ts`, `liftFrame.ts`, `LiftStage.tsx`, `SetView.tsx`,
+  // `AttemptView.tsx` and `LiftScreen.tsx` contributed **0** between them:
+  // they gained a great deal of prose and no capitalised absolute, which is
+  // the scoper's declared lower-case blind spot working exactly as documented
+  // rather than a surprise.
+  TREE_WIDE: 287,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1221,7 +1232,15 @@ const NUMBER_COVERAGE = {
    * — the counts it is about live in `OPEN_LOOP_SEARCH` and in the witness
    * transcript, deliberately, so the paragraph cannot go stale against them.
    */
-  TAGGED_PARAGRAPHS: 78,
+  //
+  // 78 -> 81 on the three tags the command beat declares in `liftFrame.ts`.
+  // None of the three paragraphs states a numeral, so `CITED_NUMBERS` does not
+  // move with them — which is the honest reading rather than a coincidence: all
+  // three claims are about SHAPE (something is drawn, something carries no
+  // information, something counts what happened) and the numbers behind them
+  // live in `LIFT_TUNING.FEEDBACK.STAGE_COMMAND` where the tests read them from
+  // rather than in the prose.
+  TAGGED_PARAGRAPHS: 82,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
@@ -1278,9 +1297,17 @@ const NUMBER_COVERAGE = {
   // `burstCountedTaps(0, 12)` and `burstCountedTaps(1, 12)` directly, and the
   // baseline body slices `played.slice(1)` and reads `played[0]` — so both
   // weakness counts moved by four with them.
-  NAMED_BODIES: 69,
-  NAMED_BODIES_HOLDING_ZERO: 53,
-  NAMED_BODIES_HOLDING_ONE: 52,
+  //
+  // 69 -> 72 with the command beat's three tags, whose named tests are the
+  // three new bodies.
+  NAMED_BODIES: 73,
+  // 53 -> 55 with the command beat's three tag-named bodies; two of the three
+  // state a bare 0 (the wash before the call, the pip row's first frame) and
+  // the third does not.
+  NAMED_BODIES_HOLDING_ZERO: 55,
+  // 52 -> 54 with the command beat's three tag-named bodies, two of which
+  // state a bare 1.
+  NAMED_BODIES_HOLDING_ONE: 54,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -1597,7 +1624,17 @@ const TRANSCRIPT_BAR = {
    * transcript quotes a bare scalar (the rhythms that came back), so
    * `WITH_A_MEASURED_NUMBER` moves with it.
    */
-  GRADED: 37,
+  //
+  // 37 -> 40 on the three command-beat witnesses (the stage half of the
+  // 2026-08-25 bench ruling). All three transcripts were pasted from real red
+  // runs at this tree and ALL THREE QUOTE A BARE SCALAR — `expected 0 to be
+  // greater than 0`, a pair of pulse alphas, and `expected 14 to be +0` — so
+  // `WITH_A_MEASURED_NUMBER` moves by three as well.
+  //
+  // 40 -> 41 on the press-delay witness. Its transcript quotes no bare scalar
+  // — the reddened assertion names a FILE — so `WITH_A_MEASURED_NUMBER` stays
+  // where it is.
+  GRADED: 41,
   /** ...and rows excused because their transcript predates it. */
   // 37 -> 36 when the placeholder's witness retired with its subject
   // (Sprint 1c): its transcript predated the rule, so the excused count is
@@ -1609,7 +1646,7 @@ const TRANSCRIPT_BAR = {
    * the two above are counts: a required set that drained to nothing would
    * leave the domain rule below green and checking nobody.
    */
-  WITH_A_MEASURED_NUMBER: 20,
+  WITH_A_MEASURED_NUMBER: 23,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1802,10 +1839,21 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // worth its length — a reader who sees `hold 12 / release 23` can go and
   // play the exploit — and they are also, correctly, unresolved: they are
   // coordinates in a search space, not measurements the named body states.
-  rows: 65,
-  flagged: 52,
-  numerals: 248,
-  unresolved: 144,
+  //
+  // 65/52/248/144 -> 68/55/263/155 on the three command-beat witnesses. All
+  // three are flagged, and all three for the reason this constant exists to
+  // keep demonstrating: the numbers in their transcripts are readings of the
+  // MUTATED tree — a zeroed wash alpha, a pulse alpha taken off a countdown
+  // that does not exist here, a row of fourteen pips that only lights because
+  // the mutant lit it — and no assertion in the shipped body pins any of them.
+  // 68/55/263/155 -> 69/56/267/159 on the press-delay witness. Flagged, like
+  // almost every row here, and for the same reason: its transcript's numerals
+  // are the MUTATED tree's reading (one bad surface of three, 2 failed of 20)
+  // and no assertion in the shipped body pins any of them.
+  rows: 69,
+  flagged: 56,
+  numerals: 267,
+  unresolved: 159,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -2170,7 +2218,11 @@ const REPLACEMENT_BAR = {
    * threshold curve exactly as it was run, which is the tuning the beat was
    * graded on and sent back for rather than an invented edit.
    */
-  REPRODUCIBLE: 25,
+  //
+  // 25 -> 28 on the three command-beat witnesses, every one of which records
+  // both halves: what it removed and what it put there.
+  // 28 -> 29 on the press-delay witness, which records both halves.
+  REPRODUCIBLE: 29,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2477,6 +2529,103 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + 'Tests  1 failed | 136 skipped (137)',
     measuredOver:
       "    expect(BASELINE_SWEEP.CASES, 'the domain this count is taken over').toBe(85);",
+  },
+  // -------------------------------------------------------------------------
+  // THE COMMAND BEAT ON STAGE — the second half of the 2026-08-25 bench ruling,
+  // and the one phone playtest 4 actually rejected.
+  //
+  // THE MUTANTS ARE THE STATE THAT SHIPPED, not invented ones, which is what
+  // makes this set worth more than a mechanism sweep. At `575c5d3` the press
+  // command's whole on-stage contribution WAS the first mutant: the stage drew
+  // nothing at the command tick, measured with the renderer's own `frameKey`
+  // at command minus 2 through plus 6 and found byte-identical. The second is
+  // the shape the ruling explicitly forbids — a wait that leaks the seeded
+  // delay — and the third is the shape CLAUDE.md's progression rule names, a
+  // readout that is on screen and is not reading anything.
+  //
+  // ALL THREE COLLECTED 54 OF 54 ON THE MUTATED TREE, checked on every run:
+  // none of them reddens by preventing the file from being collected, which is
+  // the failure mode this file records for `recruitmentRefusals` — a mutant
+  // that stops the test running looks identical to one the test caught if you
+  // only read the colour.
+  {
+    guarantee: 'the-command-is-not-a-dead-channel-on-stage',
+    mutatedFile: 'src/lift/liftFrame.ts',
+    mutated: '    washAlpha: amount * c.FLASH_PEAK_ALPHA[fired.command],',
+    mutatedTo: '    washAlpha: 0,',
+    testFile: 'src/lift/liftFrame.test.ts',
+    redAssertion: '    expect(hit.washAlpha).toBeGreaterThan(0);',
+    observed:
+      'FAIL  src/lift/liftFrame.test.ts > the command hit > paints the stage on the tick the '
+      + 'press command fires [the-command-is-not-a-dead-channel-on-stage]\n'
+      + 'AssertionError: expected 0 to be greater than 0\n'
+      + 'Tests  3 failed | 51 passed (54)',
+    measuredOver:
+      "    expect(history.length, 'ticks of played bench rep behind this reading').toBeGreaterThan(120);",
+  },
+  {
+    guarantee: 'the-armed-wait-tells-nobody-when-the-command-is-due',
+    mutatedFile: 'src/lift/liftFrame.ts',
+    mutated:
+      '  return c.ARMED_MIN_ALPHA + (c.ARMED_MAX_ALPHA - c.ARMED_MIN_ALPHA) * pulseAt(state.tick, c.ARMED_PULSE_MS);',
+    mutatedTo:
+      '  const due = state.pressCommandTick ?? state.downCommandTick ?? state.tick;\n'
+      + '  return c.ARMED_MIN_ALPHA + (c.ARMED_MAX_ALPHA - c.ARMED_MIN_ALPHA) * pulseAt(due - state.tick, c.ARMED_PULSE_MS);',
+    testFile: 'src/lift/liftFrame.test.ts',
+    redAssertion: '    expect(stageArmed(soon)).toBe(stageArmed(late));',
+    observed:
+      'FAIL  src/lift/liftFrame.test.ts > the armed wait > carries no information about when the '
+      + 'command is due [the-armed-wait-tells-nobody-when-the-command-is-due]\n'
+      + 'AssertionError: expected 0.565497286709676 to be 0.29381920698905784 '
+      + '// Object.is equality\n'
+      + 'Tests  1 failed | 53 passed (54)',
+    measuredOver:
+      "    expect(wait.length, 'wait ticks this pair is drawn from').toBeGreaterThan(24);",
+  },
+  {
+    guarantee: 'the-burst-readout-moves-with-the-taps',
+    mutatedFile: 'src/lift/liftFrame.ts',
+    mutated: '      lit: i < progress.taps,',
+    mutatedTo: '      lit: true,',
+    testFile: 'src/lift/liftFrame.test.ts',
+    redAssertion: '      expect(readout.pips.filter((p) => p.lit).length).toBe(readout.lit);',
+    observed:
+      'FAIL  src/lift/liftFrame.test.ts > the burst readout > counts the taps that landed and '
+      + 'never more than the row holds [the-burst-readout-moves-with-the-taps]\n'
+      + 'AssertionError: expected 14 to be +0 // Object.is equality\n'
+      + 'Tests  1 failed | 53 passed (54)',
+    measuredOver: "    expect(open.length, 'the burst never opened').toBeGreaterThan(10);",
+  },
+  // -------------------------------------------------------------------------
+  // THE FOURTH PRESS GUARD, AND THE ONE THAT WAS SWALLOWING WHOLE INPUTS.
+  //
+  // THE MUTANT IS THE STATE THAT SHIPPED. React Native Web delays `onPressIn`
+  // by 50 ms and drops a press released before that timer entirely, so on the
+  // beat the 2026-08-25 ruling makes "rapid tapping" the faster a player
+  // tapped the fewer taps existed. Measured in a browser on the played session
+  // surface, one bench rep driven to the command and tapped five times with
+  // only the contact duration varied: 40 ms taps counted ZERO, 120 ms counted
+  // four, 250 ms counted three and the rep locked out.
+  //
+  // Deleting the spread from `SetView.tsx` puts that state back, and the
+  // named check names the file rather than reporting a count — which is what a
+  // reader needs, because the failure is per screen.
+  {
+    guarantee: 'no-press-surface-swallows-a-fast-tap',
+    mutatedFile: 'src/session/SetView.tsx',
+    mutated: '        testID="session-touch"\n        {...PRESS_WITHOUT_DELAY}\n',
+    mutatedTo: '        testID="session-touch"\n',
+    testFile: 'src/lift/liftInput.test.ts',
+    redAssertion: "      expect(bare, bare.join('\\n')).toEqual([]);",
+    observed:
+      'FAIL  src/lift/liftInput.test.ts > every lift press surface in the repository carries the '
+      + 'press guard > every press target spreads the no-press-delay guard, so a fast tap is an '
+      + 'input [no-press-surface-swallows-a-fast-tap]\n'
+      + 'AssertionError: src/session/SetView.tsx presses <LiftStage> through an element that does '
+      + 'not spread PRESS_WITHOUT_DELAY from src/lift/pressGuard.ts, so React Native Web drops any '
+      + 'tap released inside its own press delay — on a beat whose answer is rapid tapping: '
+      + 'expected [ Array(1) ] to deeply equal []\n'
+      + 'Tests  2 failed | 18 passed (20)',
   },
   // -------------------------------------------------------------------------
   // The lift press guard — the fix a human playtest asked for, on the screens a
@@ -4802,6 +4951,11 @@ describe('the guarantee-tag convention', () => {
       'src/game/sessionServer.test.ts',
       'src/game/streak.test.ts',
       'src/game/streakEntitlement.test.ts',
+      // The 2026-08-25 ruling's SECOND half — the command beat on stage. Phone
+      // playtest 4 measured the press command drawing nothing at all on the
+      // platform GDD §10.0 ships the beta to, so the first of these three
+      // mutants is literally the state that shipped.
+      'src/lift/liftFrame.test.ts',
       // The lift press guard. Its subject list is DISCOVERED from the tree, and
       // the mutant that witnesses it is the state that shipped: the fix present
       // on the replay harness and absent from the two screens a player presses.

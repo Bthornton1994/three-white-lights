@@ -69,7 +69,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LiftStage } from '../lift/LiftStage';
 import { useLiftLoop } from '../lift/useLiftLoop';
-import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN, SUPPRESS_CONTEXT_MENU } from '../lift/pressGuard';
+import {
+  PRESS_NOT_SELECT,
+  PRESS_NOT_TAKEN,
+  PRESS_WITHOUT_DELAY,
+  SUPPRESS_CONTEXT_MENU,
+} from '../lift/pressGuard';
 import { pressCommandIsLive, promptFor, type LiftResolution } from '../game/lift';
 import { LIFT_COPY, LIFT_TUNING } from '../game/liftTuning';
 import { ATTEMPTS_PER_LIFT } from '../game/meet';
@@ -187,6 +192,7 @@ export function AttemptView({
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         testID="attempt-touch"
+        {...PRESS_WITHOUT_DELAY}
       >
         <LiftStage
           state={loop.state}

@@ -48,7 +48,12 @@ import { pressCommandIsLive, promptFor, type LiftOutcome, type LiftState } from 
 import { LIFT_PALETTE } from './liftPalette';
 import { LiftStage } from './LiftStage';
 import { totalKgFor } from './liftFrame';
-import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN, SUPPRESS_CONTEXT_MENU } from './pressGuard';
+import {
+  PRESS_NOT_SELECT,
+  PRESS_NOT_TAKEN,
+  PRESS_WITHOUT_DELAY,
+  SUPPRESS_CONTEXT_MENU,
+} from './pressGuard';
 import {
   captureFrameFor,
   replayProbeJson,
@@ -275,6 +280,7 @@ export function LiftScreen({ replay }: LiftScreenProps = {}): React.ReactElement
         onPressIn={handlePressIn}
         onPressOut={onPressOut}
         testID="lift-touch"
+        {...PRESS_WITHOUT_DELAY}
       >
         <LiftStage state={state} history={history} totalKg={totalKg} />
       </Pressable>

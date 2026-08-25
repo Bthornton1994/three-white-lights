@@ -78,7 +78,12 @@ import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-import { PRESS_NOT_SELECT, PRESS_NOT_TAKEN, SUPPRESS_CONTEXT_MENU } from './pressGuard';
+import {
+  PRESS_NOT_SELECT,
+  PRESS_NOT_TAKEN,
+  PRESS_WITHOUT_DELAY,
+  SUPPRESS_CONTEXT_MENU,
+} from './pressGuard';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -109,6 +114,15 @@ const PRESS_SURFACES = Object.freeze({
    * it stands in for can originate from the stage or from the copy beside it.
    */
   CONTEXT_MENU: 'SUPPRESS_CONTEXT_MENU',
+  /**
+   * The fourth export, also a PROP and also spread onto the element — but onto
+   * the PRESS TARGET rather than an ancestor, because `delayPressIn` neither
+   * inherits nor bubbles: it configures the responder of the one `Pressable`
+   * it is written on. Without it React Native Web drops a press released
+   * inside `DEFAULT_PRESS_DELAY_MS` entirely, which on a beat whose answer is
+   * rapid tapping means the faster a player taps the fewer taps exist.
+   */
+  NO_PRESS_DELAY: 'PRESS_WITHOUT_DELAY',
 
   /**
    * How many `<LiftStage>` press surfaces the repository has today.
@@ -386,8 +400,14 @@ function attributesOf(
 }
 
 /**
- * Does this JSX element spread `SUPPRESS_CONTEXT_MENU` among its attributes,
+ * Does this JSX element spread the named guard PROP among its attributes,
  * bound to the guard module rather than to a same-named local?
+ *
+ * PARAMETERISED BY NAME RATHER THAN COPIED WHEN THE SECOND PROP GUARD ARRIVED.
+ * `PRESS_WITHOUT_DELAY` asks the identical question about a different
+ * identifier on a different element, and a second copy of this walk is the
+ * sibling-drift shape this whole file exists to close — the copy that drifted
+ * would be the one nobody re-read.
  *
  * A separate walk from `spreadsIn` because the two live in different JSX
  * positions: `style={...}` spreads a STYLE OBJECT, this looks at the
@@ -397,15 +417,16 @@ function attributesOf(
  * hole it closes for the two style objects is the same hole a same-spelled
  * local `SUPPRESS_CONTEXT_MENU` would open here.
  */
-function hasContextMenuGuard(
+function spreadsGuardProp(
   element: ts.JsxOpeningLikeElement,
+  name: string,
   module: Module,
   loader: Loader,
 ): boolean {
   for (const attribute of element.attributes.properties) {
     if (!ts.isJsxSpreadAttribute(attribute)) continue;
     const expr = attribute.expression;
-    if (!ts.isIdentifier(expr) || expr.text !== PRESS_SURFACES.CONTEXT_MENU) continue;
+    if (!ts.isIdentifier(expr) || expr.text !== name) continue;
     if (bindsToGuardModule(expr.text, module, loader)) return true;
   }
   return false;
@@ -428,6 +449,17 @@ interface PressSurface {
   readonly notSelectOn: string | null;
   /** Does ANY ancestor of the stage spread the context-menu guard? */
   readonly ancestorHasContextMenuGuard: boolean;
+  /**
+   * Does the pressed element itself spread the no-press-delay guard?
+   *
+   * THE TARGET AND NOT AN ANCESTOR, which is the whole placement question this
+   * file keeps having to answer per property: `user-select` inherits and
+   * `contextmenu` bubbles, so those two are satisfied from above.
+   * `delayPressIn` does neither — it is read off the props of the one
+   * `Pressable` whose responder it configures — so it sits exactly where
+   * `touch-action` sits.
+   */
+  readonly targetHasNoPressDelay: boolean;
 }
 
 /**
@@ -466,7 +498,7 @@ function pressSurfacesIn(module: Module, loader: Loader): readonly PressSurface[
           ),
         );
         const withContextMenuGuard = enclosing.find((element) =>
-          hasContextMenuGuard(element, module, loader),
+          spreadsGuardProp(element, PRESS_SURFACES.CONTEXT_MENU, module, loader),
         );
         out.push({
           file: module.file,
@@ -481,6 +513,9 @@ function pressSurfacesIn(module: Module, loader: Loader): readonly PressSurface[
           notSelectOn:
             withNotSelect === undefined ? null : withNotSelect.tagName.getText(module.ast),
           ancestorHasContextMenuGuard: withContextMenuGuard !== undefined,
+          targetHasNoPressDelay:
+            target !== undefined &&
+            spreadsGuardProp(target, PRESS_SURFACES.NO_PRESS_DELAY, module, loader),
         });
       }
       chain.push(opening);
@@ -799,7 +834,34 @@ describe('every lift press surface in the repository carries the press guard', (
     },
   );
 
-  it('NON-VACUITY: the three checks above walked a real list, and the count is exact', () => {
+  it(
+    'every press target spreads the no-press-delay guard, so a fast tap is an input [no-press-surface-swallows-a-fast-tap]',
+    () => {
+      // THE DEFECT THIS ROW EXISTS FOR, MEASURED IN A BROWSER RATHER THAN
+      // REASONED ABOUT. React Native Web's `PressResponder` schedules
+      // `onPressIn` behind `DEFAULT_PRESS_DELAY_MS` (50), and a press released
+      // before that timer produces no `onPressIn` at all. Driving a real bench
+      // rep to the press command and tapping five times with only the contact
+      // duration varied: 40 ms taps counted ZERO, 120 ms counted four, 250 ms
+      // counted three and the rep locked out.
+      //
+      // It is on the TARGET rather than an ancestor because the prop
+      // configures one `Pressable`'s own responder — the same placement
+      // argument `PRESS_NOT_TAKEN` makes about a property that does not
+      // inherit, and the opposite of the two that are satisfied from above.
+      const bare = repositoryPressSurfaces()
+        .filter((surface) => !surface.targetHasNoPressDelay)
+        .map(
+          (surface) =>
+            `${surface.file} presses <${PRESS_SURFACES.STAGE}> through an element that does not spread ` +
+            `${PRESS_SURFACES.NO_PRESS_DELAY} from ${PRESS_SURFACES.GUARD_MODULE}, so React Native Web ` +
+            'drops any tap released inside its own press delay — on a beat whose answer is rapid tapping',
+        );
+      expect(bare, bare.join('\n')).toEqual([]);
+    },
+  );
+
+  it('NON-VACUITY: the four checks above walked a real list, and the count is exact', () => {
     // All three filters are empty when the domain is empty, which is precisely
     // how a discovery that stopped working would look. Counts, not bounds.
     const surfaces = repositoryPressSurfaces();
@@ -810,6 +872,10 @@ describe('every lift press surface in the repository carries the press guard', (
     expect(
       surfaces.filter((surface) => surface.ancestorHasNotSelect).length,
       'no press surface has an ancestor carrying the inheriting pair, so the check above walked an empty list',
+    ).toBe(PRESS_SURFACES.COUNT);
+    expect(
+      surfaces.filter((surface) => surface.targetHasNoPressDelay).length,
+      'no press surface carries the no-press-delay guard at all, so the check above walked an empty list',
     ).toBe(PRESS_SURFACES.COUNT);
     expect(
       surfaces.filter((surface) => surface.ancestorHasContextMenuGuard).length,

@@ -17,6 +17,10 @@
  * needs rendered pixels and a person.
  */
 
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -40,9 +44,13 @@ import {
 } from '../art/lifterSprite';
 import {
   SPRITE_BOX,
+  barGlyphColour,
+  burstReadout,
+  commandHit,
   cuePulse,
   cueRing,
   hitFlash,
+  stageArmed,
   stageShake,
   directionFor,
   drawnKindFor,
@@ -55,7 +63,9 @@ import {
   traceX,
   traceY,
 } from './liftFrame';
+import { LIFT_PALETTE } from './liftPalette';
 
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 const L = LIFT_TUNING.LAYOUT;
 const DEMO_KG = LIFT_TUNING.DEMO.BEST_SINGLE_KG;
 
@@ -713,5 +723,365 @@ describe('a deadlift is drawn with the squat figure, on purpose', () => {
     // something the renderer cannot draw.
     const spec = liftFrameSpec(createLift({ kind: 'deadlift', loadRatio: 0.9, seed: 4 }), DEMO_KG);
     expect(frameKey(spec).startsWith(`${LIFT_TUNING.DEADLIFT_ART_FALLBACK_KIND}|`)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE COMMAND BEAT ON STAGE (GDD §6.2, ruled 2026-08-25)
+//
+// Phone playtest 4 measured the press command's whole stimulus inventory on the
+// platform the beta ships to and found one live channel — a header text colour
+// — with the stage pixel-static across the command. These are the checks on the
+// stage half of the replacement. What they CANNOT say is whether any of it
+// reads in the hand; that is a human on a phone, and it is the gate.
+// ---------------------------------------------------------------------------
+
+const SC = LIFT_TUNING.FEEDBACK.STAGE_COMMAND;
+
+/**
+ * A DRIVEN BENCH REP, THREE PASSES, BECAUSE NEITHER BEAT'S TICK IS KNOWABLE IN
+ * ADVANCE.
+ *
+ * The chest arrives when the fed bar gets there, and the command fires at a
+ * tick drawn from the rep's seed on the first tick of HOLE — which is itself a
+ * function of how the descent was played. So the script is built by running the
+ * real mechanic and reading the ticks off it, the same two-pass idiom
+ * `scriptFor` and `deadliftHistory` already use for drive cues.
+ *
+ * `taps` are dispatched one press EDGE per counted tap, spaced by the
+ * refractory the mechanic itself declares, so a tap this harness sends is a tap
+ * the mechanic can count. Fewer than `MAX_COUNTED_TAPS` on purpose in most
+ * cases: a row that fills completely cannot show a partial state.
+ */
+function benchHistory(
+  load: number,
+  { taps = 0, feed = 11, ease = 26, seed = 4 } = {},
+): readonly LiftState[] {
+  const config = { kind: 'bench' as const, loadRatio: load, seed };
+  const start = braceTicks(load, 'bench') + 1;
+  const feeding: ScriptedInput[] = [{ tick: start, kind: 'press' }];
+  let t = start;
+  for (let i = 0; i < 12; i += 1) {
+    t += feed;
+    feeding.push({ tick: t, kind: 'release' });
+    t += ease;
+    feeding.push({ tick: t, kind: 'press' });
+  }
+  // Pass 1 — where does the bar reach the chest? Everything scheduled after
+  // that would land inside HOLE, where a press is a burst tap rather than a
+  // feed, so the descent script is truncated there.
+  const touched = runLift(config, feeding).history.find((s) => s.phase === 'HOLE');
+  const holeAt = touched?.tick ?? Infinity;
+  const descent = feeding.filter((input) => input.tick < holeAt);
+  // The finger comes off at the touch, so every tap below is a real EDGE.
+  const settled: ScriptedInput[] =
+    holeAt === Infinity ? descent : [...descent, { tick: holeAt, kind: 'release' }];
+  if (taps <= 0) return runLift(config, settled).history;
+
+  // Pass 2 — when does the command fire? It is scheduled on the first tick of
+  // HOLE from the seed, so it is only readable once the descent is fixed.
+  const commanded = runLift(config, settled).history.find((s) => s.pressCommandTick !== null);
+  const commandAt = commanded?.pressCommandTick ?? null;
+  if (commandAt === null) return runLift(config, settled).history;
+  const script = [...settled];
+  const spacing = LIFT_TUNING.PRESS_BURST_TAP_REFRACTORY_TICKS;
+  // THE FIRST TAP IS ONE TICK AFTER THE CALL, NOT ON IT. A tap dispatched on
+  // the command's own tick is counted by the same `stepLift` call that fires
+  // the command, so the readout's very first frame would already show one pip
+  // and the row would have no zero state to move away from. No human reacts
+  // inside one tick either.
+  for (let i = 0; i < taps; i += 1) {
+    const at = commandAt + 1 + i * spacing;
+    script.push({ tick: at, kind: 'press' });
+    script.push({ tick: at + 1, kind: 'release' });
+  }
+  return runLift(config, script).history;
+}
+
+/** The deadlift harness above, lifted out so the down command can be reached. */
+function deadliftToTheDownCall(load: number): readonly LiftState[] {
+  const config = { kind: 'deadlift' as const, loadRatio: load, seed: 4 };
+  let script: ScriptedInput[] = [{ tick: braceTicks(load, 'deadlift') + 1, kind: 'press' }];
+  for (let i = 0; i < 8; i += 1) {
+    const opens = runLift(config, script).history.filter((state) =>
+      state.events.some((event) => event.kind === 'drive-cue-open'),
+    );
+    const cue = opens[opens.length - 1]?.activeCue ?? null;
+    if (cue === null) break;
+    if (script.some((input) => input.tick === cue.idealTick)) break;
+    script = [
+      ...script,
+      { tick: cue.idealTick - 1, kind: 'release' },
+      { tick: cue.idealTick, kind: 'press' },
+    ];
+  }
+  return runLift(config, script).history;
+}
+
+describe('the command hit', () => {
+  it('paints the stage on the tick the press command fires [the-command-is-not-a-dead-channel-on-stage]', () => {
+    const history = benchHistory(LOAD_PRESETS.HEAVY, { taps: 6 });
+    // THE DOMAIN THIS READING IS TAKEN OVER, pinned as a count. A hand-built
+    // state would show a wash just as happily as a played one; what makes the
+    // two ticks below comparable to phone playtest 4's is that they come out of
+    // a rep that braced, fed a bar to the chest, waited and was tapped.
+    expect(history.length, 'ticks of played bench rep behind this reading').toBeGreaterThan(120);
+    const commanded = history.find((s) => s.pressCommandTick !== null);
+    expect(commanded, 'the rep never reached the chest').toBeDefined();
+    const at = commanded?.pressCommandTick ?? null;
+    expect(at, 'no command was ever scheduled').not.toBeNull();
+    if (at === null) return;
+
+    const before = history.find((s) => s.tick === at - 1);
+    const on = history.find((s) => s.tick === at);
+    expect(before, 'no state one tick before the command').toBeDefined();
+    expect(on, 'no state on the command tick').toBeDefined();
+    if (before === undefined || on === undefined) return;
+
+    // THE MEASUREMENT PHONE PLAYTEST 4 TOOK, INVERTED. It read the renderer's
+    // own cache key at command minus 1 and the command tick and found them
+    // byte-identical. This reads the stage layer at the same two ticks and
+    // requires them to differ, in the direction of something being drawn.
+    expect(commandHit(before), 'the wash starts before the command').toBeNull();
+    const hit = commandHit(on);
+    expect(hit, 'the command tick draws nothing').not.toBeNull();
+    if (hit === null) return;
+    expect(hit.command).toBe('press');
+    expect(hit.washAlpha).toBeGreaterThan(0);
+    expect(hit.washAlpha).toBe(SC.FLASH_PEAK_ALPHA.press);
+    expect(hit.ringRadius).toBe(SC.RING_MIN_R);
+  });
+
+  it('holds for its declared duration and then stops, counts pinned', () => {
+    const history = benchHistory(LOAD_PRESETS.HEAVY, { taps: 6 });
+    const at = history.find((s) => s.pressCommandTick !== null)?.pressCommandTick ?? null;
+    expect(at).not.toBeNull();
+    if (at === null) return;
+    const lit = history.filter((s) => s.tick >= at && commandHit(s) !== null);
+    // EXACT, NOT A BOUND. The wash lives for `FLASH_MS` and the sim is
+    // `TICK_MS` per tick, so the number of ticks it covers is arithmetic. A
+    // bound would be satisfied by a hit that never went out.
+    const wanted = Math.ceil(SC.FLASH_MS.press / TICK_MS);
+    expect(lit.length).toBe(wanted);
+    // ...and it is a DECAY rather than a step: the ring is further out and the
+    // wash is fainter at the end of it than at the start.
+    const first = commandHit(lit[0] as LiftState);
+    const last = commandHit(lit[lit.length - 1] as LiftState);
+    expect(first).not.toBeNull();
+    expect(last).not.toBeNull();
+    if (first === null || last === null) return;
+    expect(last.washAlpha).toBeLessThan(first.washAlpha);
+    expect(last.ringRadius).toBeGreaterThan(first.ringRadius);
+  });
+
+  it('covers the deadlift down call through the same predicate', () => {
+    // THE SECOND MEASURED GAP, AND IT IS CLOSED BY CONSTRUCTION RATHER THAN BY
+    // A SECOND FUNCTION. `commandHit` reads whichever command tick the lift
+    // has, so a deadlift that reaches its down call gets the same treatment
+    // without a deadlift-shaped branch anybody could forget to add.
+    const history = deadliftToTheDownCall(0.9);
+    const at = history.find((s) => s.downCommandTick !== null)?.downCommandTick ?? null;
+    expect(at, 'the pull never reached a lockout').not.toBeNull();
+    if (at === null) return;
+    const before = history.find((s) => s.tick === at - 1);
+    const on = history.find((s) => s.tick === at);
+    expect(commandHit(before as LiftState)).toBeNull();
+    const hit = commandHit(on as LiftState);
+    expect(hit).not.toBeNull();
+    expect(hit?.command).toBe('down');
+    expect(hit?.washAlpha).toBe(SC.FLASH_PEAK_ALPHA.down);
+  });
+
+  it('never paints on a squat, which has no command at all', () => {
+    // THE ZERO'S NON-ZERO CONTROLS ARE THE THREE TESTS ABOVE, taken by the same
+    // function in the same file. A `commandHit` that always returned null would
+    // pass this and fail those.
+    const history = rep(0.9);
+    expect(history.length, 'no squat history to check').toBeGreaterThan(60);
+    const painted = history.filter((s) => commandHit(s) !== null);
+    expect(painted.length).toBe(0);
+  });
+});
+
+describe('the armed wait', () => {
+  it('carries no information about when the command is due [the-armed-wait-tells-nobody-when-the-command-is-due]', () => {
+    const history = benchHistory(LOAD_PRESETS.HEAVY);
+    // THE DOMAIN, pinned as a count: the wait this pair is drawn out of is a
+    // real seeded pause of real length, not one tick somebody constructed.
+    const wait = history.filter((s) => s.phase === 'HOLE');
+    expect(wait.length, 'wait ticks this pair is drawn from').toBeGreaterThan(24);
+    const waiting = history.find((s) => s.phase === 'HOLE' && stageArmed(s) !== null);
+    expect(waiting, 'the rep never reached a wait').toBeDefined();
+    if (waiting === undefined) return;
+
+    // TWO STATES DIFFERING IN EXACTLY ONE FIELD, both with the command still in
+    // the future. If the armed treatment ever grew a term in the scheduled
+    // tick — a ring that filled toward the call, a pulse that quickened — these
+    // two would stop agreeing. That is the whole no-countdown identity, and it
+    // is the one thing about this layer a scan can hold.
+    const soon: LiftState = { ...waiting, pressCommandTick: waiting.tick + 5 };
+    const late: LiftState = { ...waiting, pressCommandTick: waiting.tick + 90 };
+    expect(stageArmed(soon)).not.toBeNull();
+    expect(stageArmed(soon)).toBe(stageArmed(late));
+    // ...and the SEED cannot reach it either, which is the same claim by the
+    // route the delay is actually drawn through.
+    const otherSeed: LiftState = { ...waiting, config: { ...waiting.config, seed: 99 } };
+    expect(stageArmed(otherSeed)).toBe(stageArmed(waiting));
+  });
+
+  it('is live through the whole wait and out the moment the call lands', () => {
+    const history = benchHistory(LOAD_PRESETS.HEAVY, { taps: 6 });
+    const at = history.find((s) => s.pressCommandTick !== null)?.pressCommandTick ?? null;
+    expect(at).not.toBeNull();
+    if (at === null) return;
+    const hole = history.filter((s) => s.phase === 'HOLE');
+    const armedBefore = hole.filter((s) => s.tick < at && stageArmed(s) !== null);
+    const armedAfter = hole.filter((s) => s.tick >= at && stageArmed(s) !== null);
+    // Counts, not bounds: an empty wait would satisfy "nothing was armed after
+    // the call" trivially, so the before-count is pinned as the domain.
+    expect(armedBefore.length).toBe(hole.filter((s) => s.tick < at).length);
+    expect(armedBefore.length).toBeGreaterThan(10);
+    expect(armedAfter.length).toBe(0);
+    // It breathes rather than sitting at one value — the wait is the thing
+    // playtest 4 measured as motionless.
+    const alphas = new Set(armedBefore.map((s) => stageArmed(s)));
+    expect(alphas.size).toBeGreaterThan(5);
+    for (const alpha of alphas) {
+      expect(alpha).toBeGreaterThanOrEqual(SC.ARMED_MIN_ALPHA);
+      expect(alpha).toBeLessThanOrEqual(SC.ARMED_MAX_ALPHA);
+    }
+  });
+
+  it('arms the deadlift lockout hold and nothing on a squat', () => {
+    const deadlift = deadliftToTheDownCall(0.9);
+    const at = deadlift.find((s) => s.downCommandTick !== null)?.downCommandTick ?? null;
+    expect(at).not.toBeNull();
+    if (at === null) return;
+    const held = deadlift.filter((s) => s.phase === 'LOCKOUT' && s.tick < at);
+    expect(held.length, 'no hold to check').toBeGreaterThan(10);
+    expect(held.every((s) => stageArmed(s) !== null)).toBe(true);
+    expect(deadlift.filter((s) => s.tick >= at && stageArmed(s) !== null).length).toBe(0);
+    expect(rep(0.9).filter((s) => stageArmed(s) !== null).length).toBe(0);
+  });
+});
+
+describe('the burst readout', () => {
+  it('counts the taps that landed and never more than the row holds [the-burst-readout-moves-with-the-taps]', () => {
+    const total = LIFT_TUNING.PRESS_BURST_FORCE.MAX_COUNTED_TAPS;
+    const asked = 5;
+    const history = benchHistory(LOAD_PRESETS.HEAVY, { taps: asked });
+    const open = history.map((s) => burstReadout(s)).filter((r) => r !== null);
+    expect(open.length, 'the burst never opened').toBeGreaterThan(10);
+
+    // FACT 1 — it never regresses.
+    let previous = -1;
+    for (const readout of open) {
+      expect(readout.lit).toBeGreaterThanOrEqual(previous);
+      previous = readout.lit;
+    }
+    // FACT 2 — it is never invalid: the row is the physics cap long, and the
+    // lit count is inside it and agrees with the pips actually drawn.
+    for (const readout of open) {
+      expect(readout.pips.length).toBe(total);
+      expect(readout.lit).toBeGreaterThanOrEqual(0);
+      expect(readout.lit).toBeLessThanOrEqual(total);
+      expect(readout.pips.filter((p) => p.lit).length).toBe(readout.lit);
+    }
+    // FACT 3 — IT MOVES, which is the one a hardcoded row satisfies neither
+    // way. CLAUDE.md: a claim that a value progresses is three facts and a
+    // constant passes the first two.
+    expect(open[0]?.lit).toBe(0);
+    expect(previous).toBe(asked);
+    expect(new Set(open.map((r) => r.lit)).size).toBe(asked + 1);
+  });
+
+  it('stops one short of the physics cap, because the cap IS the launch', () => {
+    // MEASURED, AND IT IS A REAL LIMIT OF THE READOUT RATHER THAN A TEST
+    // WRITTEN TO PASS. `stepLift` ends the burst on the same tick the counted
+    // taps reach `MAX_COUNTED_TAPS` — the bar leaves the chest the instant
+    // there is nothing left to add — so the state that would show the last pip
+    // lit is already in ASCENT and `burstProgress` is null for it. A player who
+    // mashes to the cap therefore sees the row one pip short and then the bar
+    // launch, and that is what this pins rather than a tidier number.
+    const total = LIFT_TUNING.PRESS_BURST_FORCE.MAX_COUNTED_TAPS;
+    const history = benchHistory(LOAD_PRESETS.HEAVY, { taps: total * 2 });
+    const open = history.map((s) => burstReadout(s)).filter((r) => r !== null);
+    expect(open.length).toBeGreaterThan(0);
+    expect(Math.max(...open.map((r) => r.lit))).toBe(total - 1);
+    // ...and the cap really was reached, or the line above would be a
+    // statement about a burst that simply ran out of window.
+    const launched = history.find((s) => s.phase === 'ASCENT');
+    expect(launched?.burstTaps).toBe(total);
+  });
+
+  it('draws nothing before the command and nothing on the other two lifts', () => {
+    const history = benchHistory(LOAD_PRESETS.HEAVY, { taps: 5 });
+    const at = history.find((s) => s.pressCommandTick !== null)?.pressCommandTick ?? null;
+    expect(at).not.toBeNull();
+    if (at === null) return;
+    expect(history.filter((s) => s.tick < at && burstReadout(s) !== null).length).toBe(0);
+    expect(rep(0.9).filter((s) => burstReadout(s) !== null).length).toBe(0);
+    expect(deadliftToTheDownCall(0.9).filter((s) => burstReadout(s) !== null).length).toBe(0);
+  });
+
+  it('keeps the row on the stage and clear of the bar-path panel', () => {
+    const history = benchHistory(LOAD_PRESETS.HEAVY, { taps: 3 });
+    const readout = history.map((s) => burstReadout(s)).find((r) => r !== null);
+    expect(readout, 'no readout to measure').toBeDefined();
+    if (readout === undefined) return;
+    expect(readout.tray.x).toBeGreaterThan(0);
+    expect(readout.tray.y).toBeGreaterThan(0);
+    expect(readout.tray.x + readout.tray.w).toBeLessThan(L.TRACE_X);
+    expect(readout.tray.y + readout.tray.h).toBeLessThan(L.SPRITE_Y);
+    // Every pip is inside its own tray, so the plate really is what a pixel
+    // count inside `tray` is counting against.
+    for (const pip of readout.pips) {
+      expect(pip.x).toBeGreaterThanOrEqual(readout.tray.x);
+      expect(pip.x + pip.w).toBeLessThanOrEqual(readout.tray.x + readout.tray.w);
+      expect(pip.y).toBeGreaterThanOrEqual(readout.tray.y);
+      expect(pip.y + pip.h).toBeLessThanOrEqual(readout.tray.y + readout.tray.h);
+    }
+  });
+});
+
+describe('the bar glyph reads how the bar is arriving', () => {
+  it('is steel on the two lifts with no chest to arrive at', () => {
+    expect(rep(0.9).every((s) => barGlyphColour(s) === LIFT_PALETTE.BAR_STEEL)).toBe(true);
+    expect(
+      deadliftToTheDownCall(0.9).every((s) => barGlyphColour(s) === LIFT_PALETTE.BAR_STEEL),
+    ).toBe(true);
+  });
+
+  it('moves across its bands within one bench descent', () => {
+    // THE THIRD FACT AGAIN. A glyph pinned to one colour would satisfy "it is
+    // one of the three approach colours" at every tick; what says the read
+    // model reaches the drawing is that the colour CHANGES as the bar is fed
+    // and braked, inside a single rep.
+    const descent = benchHistory(LOAD_PRESETS.HEAVY).filter((s) => s.phase === 'DESCENT');
+    expect(descent.length, 'no descent to read').toBeGreaterThan(20);
+    const colours = new Set(descent.map((s) => barGlyphColour(s)));
+    expect(colours.has(LIFT_PALETTE.BAR_STEEL)).toBe(false);
+    // ALL THREE BANDS INSIDE ONE FED-AND-BRAKED DESCENT, which is the strongest
+    // form of "it moves" available here: a fed bar runs hot, the brake brings
+    // it back to calm, and the drawing follows. Pinned at three rather than
+    // "more than one" so a band that stopped being reachable is red.
+    expect(colours.size).toBe(3);
+    expect(colours.has(LIFT_PALETTE.BAR_APPROACH_HOT)).toBe(true);
+    expect(colours.has(LIFT_PALETTE.BAR_APPROACH_WARM)).toBe(true);
+    expect(colours.has(LIFT_PALETTE.BAR_APPROACH_CALM)).toBe(true);
+  });
+
+  it('cannot reach the mechanic, so its bands decide a colour and never an outcome', () => {
+    // THE SEPARATION, AS A STRUCTURAL FACT RATHER THAN A SWEEP. The two band
+    // edges live in the FEEDBACK block and the drawing reads them; if `lift.ts`
+    // ever read either name, a colour choice would have become a grading input
+    // and this goes red. Names, not values — a value could coincide.
+    const mechanic = readFileSync(path.join(HERE, '..', 'game', 'lift.ts'), 'utf8');
+    for (const name of ['BAR_WARM_AT', 'BAR_HOT_AT', 'barGlyphColour']) {
+      expect(mechanic.includes(name), `lift.ts reads ${name}`).toBe(false);
+    }
+    // ...and the scan is pointed at a file it really opened.
+    expect(mechanic.length).toBeGreaterThan(1000);
+    expect(mechanic.includes('touchQualityFor')).toBe(true);
   });
 });
