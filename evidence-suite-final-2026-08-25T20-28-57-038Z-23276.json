@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "evidence-suite-final-2026-08-25T20-28-57-038Z-23276",
   "label": "evidence-suite-final",
   "command": [
@@ -28,14 +28,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 10,
-    "okCount": 9,
+    "count": 11,
+    "okCount": 10,
     "errors": [],
-    "lastAttemptIso": "2026-08-25T20:37:57.420Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-25T20:38:52.930Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-25T20:37:00.916Z"
-  }
+    "lastOkIso": "2026-08-25T20:38:00.184Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-25T20:38:52.928Z",
+  "elapsedSeconds": 595.9
 }
