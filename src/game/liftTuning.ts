@@ -786,17 +786,31 @@ export const LIFT_TUNING = Object.freeze({
   PRESS_BURST_FORCE: { HALF_SATURATION_TAPS: 4, MAX_COUNTED_TAPS: 14, FALSE_START_FLOOR_TAPS: 3 },
 
   /**
-   * Force thresholds the burst's `TimingGrade` is read off.
+   * Thresholds a 0..1 QUALITY — not an offset — is turned into a `TimingGrade`
+   * at. Both of bench's beats are read off this: the burst's force and the
+   * touch's control.
    *
-   * REUSING THE TIMING VOCABULARY FOR A THING THAT IS NOT TIMING, deliberately
+   * IT IS ONE TABLE ON PURPOSE, AND THE NAME IS THE SECOND VERSION OF IT. The
+   * first was `PRESS_BURST_GRADE`, and the touch was graded against it — an
+   * identifier claiming to be about the burst while deciding what a chest
+   * touch reads as, which is the failure CLAUDE.md calls worse in a name than
+   * in a comment, because nobody re-verifies a name the way they second-guess
+   * a docstring. Renamed rather than duplicated: 'perfect' has to mean the
+   * same fraction on both beats or the word stops meaning anything inside one
+   * rep, and two knobs that must be turned together are one knob with a bug
+   * waiting in it. A tuner who wants them apart should split this, and should
+   * split the word with it.
+   *
+   * REUSING THE TIMING VOCABULARY FOR THINGS THAT ARE NOT TIMING, deliberately
    * and with two of its five members left unreachable. 'early' and 'late' name
-   * directions a burst does not have, and a grade that read 'late' for a weak
-   * burst would be an identifier asserting something the code does not
-   * measure. So a burst grades 'perfect', 'good', or 'missed' — the last one
-   * meaning the command went unanswered — and `lift.test.ts` pins the two
+   * directions neither a burst nor an arrival has — both are amounts, not
+   * moments — and a grade that read 'late' for a weak burst would be an
+   * identifier asserting something the code does not measure. So both grade
+   * 'perfect', 'good', or 'missed', the last meaning the command went
+   * unanswered or the bar was dropped, and `lift.test.ts` pins the two
    * unreachable members unreachable rather than leaving that as a claim.
    */
-  PRESS_BURST_GRADE: { PERFECT: 0.8, GOOD: 0.5 },
+  QUALITY_GRADE_BANDS: { PERFECT: 0.8, GOOD: 0.5 },
 
   /**
    * How much harder a limp burst makes the WHOLE bench ascent, at burst force

@@ -319,8 +319,8 @@ describe('the press burst (GDD §6.2; ruled 2026-08-25)', () => {
     expect(HALF_SATURATION_TAPS).toBeLessThan(MAX_COUNTED_TAPS);
   });
 
-  it('grades a burst on bands that are ordered and inside the curve', () => {
-    const { PERFECT, GOOD } = LIFT_TUNING.PRESS_BURST_GRADE;
+  it('grades a quality on bands that are ordered and inside the curve', () => {
+    const { PERFECT, GOOD } = LIFT_TUNING.QUALITY_GRADE_BANDS;
     expect(GOOD).toBeGreaterThan(0);
     expect(PERFECT).toBeGreaterThan(GOOD);
     expect(PERFECT).toBeLessThan(1);

@@ -933,21 +933,28 @@ export function burstCountedTaps(taps: number, earlyTaps: number): number {
 }
 
 /**
- * BENCH ONLY: the `TimingGrade` a burst force reads as.
+ * BENCH ONLY: the `TimingGrade` a 0..1 quality reads as. Both of bench's beats
+ * go through it — the burst's force and the touch's control.
+ *
+ * NOT `burstGrade`, WHICH IS WHAT IT WAS CALLED WHILE THE CHEST TOUCH WAS
+ * ALREADY BEING GRADED AGAINST THE SAME TABLE INLINE. A name saying "burst"
+ * over a call site deciding what an ARRIVAL reads as is the stale-claim hazard
+ * living in the symbol table, where no scan for capitalised absolutes will
+ * ever find it and where nobody re-verifies it the way they second-guess a
+ * docstring. One function, one table, one word per band across the whole rep.
  *
  * 'early' AND 'late' ARE UNREACHABLE HERE BY CONSTRUCTION, and that is the
- * design rather than an oversight. A burst has no direction to be wrong in —
- * it is an amount, not a moment — and a grade reading 'late' for a weak burst
- * would be a name asserting something the code never measured. 'missed' is
- * reserved for a command that went unanswered, which is the only case where
- * the player did not act at all. `lift.test.ts` pins the two unreachable
- * members unreachable.
+ * design rather than an oversight. Neither a burst nor an arrival has a
+ * direction to be wrong in — both are amounts, not moments — and a grade
+ * reading 'late' for a weak burst would be a name asserting something the code
+ * never measured. 'missed' is the player not acting at all, or the bar being
+ * dropped. `lift.test.ts` pins the two unreachable members unreachable.
  */
-export function burstGrade(force: number): TimingGrade {
-  if (!Number.isFinite(force) || force <= 0) return 'missed';
-  const { PERFECT, GOOD } = LIFT_TUNING.PRESS_BURST_GRADE;
-  if (force >= PERFECT) return 'perfect';
-  if (force >= GOOD) return 'good';
+export function qualityGrade(quality: number): TimingGrade {
+  if (!Number.isFinite(quality) || quality <= 0) return 'missed';
+  const { PERFECT, GOOD } = LIFT_TUNING.QUALITY_GRADE_BANDS;
+  if (quality >= PERFECT) return 'perfect';
+  if (quality >= GOOD) return 'good';
   return 'missed';
 }
 
@@ -1778,13 +1785,12 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
         m.height = scrub(clamp01(1 - m.depth));
         m.extraDepth = 0;
         m.chestRate = 0;
-        const grade: TimingGrade =
-          m.touchQuality >= LIFT_TUNING.PRESS_BURST_GRADE.PERFECT
-            ? 'perfect'
-            : m.touchQuality >= LIFT_TUNING.PRESS_BURST_GRADE.GOOD
-              ? 'good'
-              : 'missed';
-        m.events.push({ kind: 'chest-touch', tick, grade, quality: m.touchQuality });
+        m.events.push({
+          kind: 'chest-touch',
+          tick,
+          grade: qualityGrade(m.touchQuality),
+          quality: m.touchQuality,
+        });
         enter('HOLE');
       } else if (m.phaseTick >= LIFT_TUNING.CHEST_TOUCH_TIMEOUT_TICKS) {
         // THE BAR NEVER ARRIVED. Only reachable by stopping the feed and never
@@ -1958,7 +1964,7 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
         // closed early on the cap would otherwise leave the boost reading a
         // future tick and holding at full strength until it arrived.
         m.burstEndTick = tick;
-        const grade = burstGrade(m.burstForce);
+        const grade = qualityGrade(m.burstForce);
         // The reaction, RECORDED BUT NOT SEPARATELY GRADED — see the section
         // header in `liftTuning.ts`. `offsetMs` is ms from the command to the
         // first counted tap, or the whole window if none ever came, so a

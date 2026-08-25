@@ -53,7 +53,7 @@ import {
   eccentricKindOf,
   lockoutHoldIsLive,
   burstForce,
-  burstGrade,
+  qualityGrade,
   burstProgress,
   burstCountedTaps,
   chestApproach,
@@ -1928,11 +1928,14 @@ describe('the burst curve', () => {
     expect(burstForce(-4)).toBe(0);
   });
 
-  it('cannot grade a burst "early" or "late", and that is checked rather than asserted', () => {
+  it('cannot grade a quality "early" or "late", and that is checked rather than asserted', () => {
     // A comment claiming a grade is unreachable is exactly the sentence
-    // CLAUDE.md has caught being false eight times. Swept instead.
+    // CLAUDE.md has caught being false eight times. Swept instead, over BOTH
+    // beats' graders — which are the same function, and that is the point:
+    // when the touch was graded by an inline ternary against the burst's
+    // table, this sweep covered one of the two and read as covering both.
     const seen = new Set<string>();
-    for (let step = -10; step <= 110; step += 1) seen.add(burstGrade(step / 100));
+    for (let step = -10; step <= 110; step += 1) seen.add(qualityGrade(step / 100));
     expect(seen.has('early')).toBe(false);
     expect(seen.has('late')).toBe(false);
     // ...and the sweep is not vacuous: it reaches the other three.
