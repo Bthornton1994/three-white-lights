@@ -1523,14 +1523,18 @@ const TOUCH_SWEEP = {
  * ---------------------------------------------------------------------------
  * `OPEN_LOOP_SEARCH` WAS HERE AND IS RETIRED. THE DOMAIN IS GONE, NOT THE BAR.
  * ---------------------------------------------------------------------------
- * WHAT IT WAS. All 900 fixed duty-cycle patterns — hold `on` ticks, release
- * `off`, repeat, forever, with no perception of the bar, the load or the seed
- * — played at 8 loads. The count of patterns that graded PERFECT at EVERY load
- * was pinned at **0**, with per-load counts `[320, 282, 226, 160, 127, 85, 55,
- * 33]` beside it as the non-zero controls. It existed because a critic found
- * **24 of 900** winning everywhere on the beat's first tuning, and the fix —
- * making the touch thresholds and the patience budget load curves — was
- * measured by that search rather than argued.
+ * WHAT IT WAS. Every fixed duty-cycle pattern in a square hold-by-release
+ * space — hold `on` ticks, release `off`, repeat, forever, with no perception
+ * of the bar, the load or the seed — played across the load ladder. The count
+ * of patterns that graded PERFECT at EVERY load
+ * was pinned at zero, with per-load counts beside it as the non-zero controls.
+ * It existed because a critic found two dozen of those patterns winning
+ * everywhere on the beat's first tuning, and the fix — making the touch
+ * thresholds and the patience budget load curves — was measured by that search
+ * rather than argued. The exact figures are in this file's history at
+ * `98e78bc`; they are written as words here because a retirement note is not a
+ * live measurement and this file's own number rule would resolve them against
+ * a test that no longer exists.
  *
  * WHY IT IS RETIRED RATHER THAN RE-PINNED, AND THE HONEST VERSION IS THAT ITS
  * PREMISE IS NOW FALSE BY DESIGN. The search asked "can one memorised rhythm
@@ -1571,12 +1575,14 @@ const TOUCH_SWEEP = {
  *       is independent of the search. Rewritten below against the slip ladder,
  *       so it keeps a live subject instead of pointing at a deleted one.
  *   `OPEN_LOOP_SEARCH.MAX_TICKS` / `SCRIPT_TICKS`  Read only by those helpers.
- *   `@guarantee the-descent-cannot-be-played-open-loop`  Its tag, on
+ *   Its `@guarantee` tag (id `the-descent-cannot-be-played-open-loop`), on
  *       `touchSpeedQuality` in `lift.ts`. Deleted with the claim, and its
  *       `MUTATION_WITNESSES` row with it — a witness naming a test that no
- *       longer exists is worse than an absent one.
- *   GDD §6.2's "non trivial" paragraph and its 900-pattern measurement.
- *       Rewritten in the same commit, per CLAUDE.md.
+ *       longer exists is worse than an absent one. Written as an id in prose
+ *       rather than as a live tag, because `guaranteeTags.test.ts` scans for
+ *       the tag sequence and would resolve this sentence as a declaration.
+ *   GDD §6.2's "non trivial" paragraph and the pattern-space measurement in
+ *       it. Rewritten in the same commit, per CLAUDE.md.
  *
  * NOTHING ELSE READ IT. `grep -n OPEN_LOOP` over `src/` returns this comment
  * and the deleted block's own lines and nothing more.
@@ -1602,7 +1608,7 @@ describe('the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08
     expect(checked, 'no held descents were played').toBe(TOUCH_SWEEP.PAIRS);
   });
 
-  it('always reaches the chest, and inside the bound the constants give', () => {
+  it('always reaches the chest, and inside the bound the constants give [a-bench-descent-always-reaches-the-chest]', () => {
     // THE ARITHMETIC THAT DELETED 'no-touch' AND `CHEST_TOUCH_TIMEOUT_TICKS`,
     // played rather than asserted. `benchDescentRate` floors the rate at the
     // controlled rate, so depth rises by at least that much every tick — which
@@ -1631,6 +1637,9 @@ describe('the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08
         checked += 1;
       }
     }
+    // THE DOMAIN, AS A LITERAL, so a slip ladder quietly trimmed to three
+    // entries reddens here rather than re-pinning itself.
+    expect(TOUCH_SWEEP.SLIPS.length, 'the slip ladder this bound is walked over').toBe(10);
     expect(checked, 'no descents were timed').toBe(
       TOUCH_SWEEP.LOADS.length * (TOUCH_SWEEP.SLIPS.length + 1),
     );
@@ -2492,12 +2501,17 @@ describe('the grind decides the lift', () => {
         if (new Set(cell).size === 1) unanimousCells += 1;
       }
     }
+    // THE ORDER IS BAR FIRST AND GUARD SECOND, WHICH IS THE OPPOSITE OF THIS
+    // FILE'S USUAL SHAPE AND IS DELIBERATE. Elsewhere a non-vacuity guard goes
+    // first, because its job is to explain a zero. Here a real mutant moves
+    // BOTH — turning the grind back into a burst makes idle reps stall MORE as
+    // well as making them unrescuable — so a guard-first order would record a
+    // `MUTATION_WITNESSES` transcript whose reddened assertion was the guard.
+    // CLAUDE.md: a pin on a fact adjacent to the claim reads exactly like a pin
+    // on the claim, and a witness is the one place that distinction is load
+    // bearing. The guard still bites, two lines down.
     expect(RESCUE_SWEEP.PAIRS, 'the domain these counts are taken over').toBe(320);
     expect(pairs).toBe(RESCUE_SWEEP.PAIRS);
-    expect(
-      idleStalled,
-      `${idleStalled} of ${pairs} idle reps actually stalled`,
-    ).toBe(RESCUE_SWEEP.IDLE_REPS_THAT_STALLED);
     expect(
       rescued,
       `coming back changed the outcome in ${rescued} of ${pairs} pairs`,
@@ -2507,6 +2521,10 @@ describe('the grind decides the lift', () => {
       rescuedFromAMiss,
       `${rescuedFromAMiss} of ${pairs} pairs turned a miss into a make`,
     ).toBe(RESCUE_SWEEP.RESCUED_FROM_A_MISS);
+    expect(
+      idleStalled,
+      `${idleStalled} of ${pairs} idle reps actually stalled`,
+    ).toBe(RESCUE_SWEEP.IDLE_REPS_THAT_STALLED);
     expect(
       higherPeak,
       `the resumed rep out-climbed the idle one in ${higherPeak} of ${pairs} pairs`,

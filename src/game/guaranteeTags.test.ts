@@ -893,7 +893,29 @@ const GUARANTEE_COVERAGE = {
   // they gained a great deal of prose and no capitalised absolute, which is
   // the scoper's declared lower-case blind spot working exactly as documented
   // rather than a surprise.
-  TREE_WIDE: 287,
+  //
+  // 287 -> 293 with the 2026-08-25 bench REPLAY steer. Attributed the usual
+  // way — each touched file restored to its pre-change text from `98e78bc`,
+  // this count re-read, the file put back:
+  //
+  //   `src/game/lift.ts`        290, so **+3**
+  //   `src/game/liftTuning.ts`  290, so **+3**
+  //   `src/lift/liftFrame.ts`   292, so **+1**
+  //   `src/game/meetPreview.ts` 294, so **-1**
+  //
+  // A NEGATIVE CONTRIBUTION IS THE INTERESTING ONE and it is why this is
+  // measured rather than reasoned: `benchScript`'s rewrite REMOVED a
+  // triggering paragraph — the header's old style-mapping block — while adding
+  // more prose than it deleted. A reader summing "six files gained comments"
+  // would have got 294 and been wrong in the direction that looks right.
+  //
+  // The other six touched files contributed **0** between them —
+  // `lift.test.ts`, `liftTuning.test.ts`, `liftFrame.test.ts`,
+  // `meetTuning.ts`, `meetDay.test.ts` and this file — despite gaining a great
+  // deal of prose, which is the scoper's declared lower-case blind spot
+  // working as documented rather than a surprise. 3 + 3 + 1 - 1 = 6 and
+  // 287 + 6 = 293, so the attribution closes rather than nearly closing.
+  TREE_WIDE: 293,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1013,7 +1035,7 @@ type ExclusionCensus = Record<NumberExclusion, number>;
  *     section style and not a quantity.
  */
 const NUMBER_EXCLUSIONS: Readonly<ExclusionCensus> = {
-  'section-coordinate': 16,
+  'section-coordinate': 17,
   'inside-an-identifier': 3,
   'quoted-code': 2,
   'list-ordinal': 1,
@@ -1240,7 +1262,7 @@ const NUMBER_COVERAGE = {
   // information, something counts what happened) and the numbers behind them
   // live in `LIFT_TUNING.FEEDBACK.STAGE_COMMAND` where the tests read them from
   // rather than in the prose.
-  TAGGED_PARAGRAPHS: 82,
+  TAGGED_PARAGRAPHS: 83,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
@@ -1300,14 +1322,14 @@ const NUMBER_COVERAGE = {
   //
   // 69 -> 72 with the command beat's three tags, whose named tests are the
   // three new bodies.
-  NAMED_BODIES: 73,
+  NAMED_BODIES: 74,
   // 53 -> 55 with the command beat's three tag-named bodies; two of the three
   // state a bare 0 (the wash before the call, the pip row's first frame) and
   // the third does not.
-  NAMED_BODIES_HOLDING_ZERO: 55,
+  NAMED_BODIES_HOLDING_ZERO: 56,
   // 52 -> 54 with the command beat's three tag-named bodies, two of which
   // state a bare 1.
-  NAMED_BODIES_HOLDING_ONE: 54,
+  NAMED_BODIES_HOLDING_ONE: 55,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -1315,7 +1337,7 @@ const NUMBER_COVERAGE = {
    * 27 -> 28 with Sprint 1c: `careerMeet.ts`'s id paragraph is in both scopes;
    * its rules paragraph is tagged only.
    */
-  TAGGED_AND_TRIGGERING: 28,
+  TAGGED_AND_TRIGGERING: 29,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1634,7 +1656,7 @@ const TRANSCRIPT_BAR = {
   // 40 -> 41 on the press-delay witness. Its transcript quotes no bare scalar
   // — the reddened assertion names a FILE — so `WITH_A_MEASURED_NUMBER` stays
   // where it is.
-  GRADED: 41,
+  GRADED: 42,
   /** ...and rows excused because their transcript predates it. */
   // 37 -> 36 when the placeholder's witness retired with its subject
   // (Sprint 1c): its transcript predated the rule, so the excused count is
@@ -1850,10 +1872,10 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // almost every row here, and for the same reason: its transcript's numerals
   // are the MUTATED tree's reading (one bad surface of three, 2 failed of 20)
   // and no assertion in the shipped body pins any of them.
-  rows: 69,
-  flagged: 56,
-  numerals: 267,
-  unresolved: 159,
+  rows: 70,
+  flagged: 57,
+  numerals: 263,
+  unresolved: 151,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -2222,7 +2244,7 @@ const REPLACEMENT_BAR = {
   // 25 -> 28 on the three command-beat witnesses, every one of which records
   // both halves: what it removed and what it put there.
   // 28 -> 29 on the press-delay witness, which records both halves.
-  REPRODUCIBLE: 29,
+  REPRODUCIBLE: 30,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2375,34 +2397,18 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
   // the tuning this piece was graded on and sent back for, and it puts 22
   // fixed duty-cycle rhythms back into "wins at every load".
   //
-  // THE ASSERTION THAT REDDENS PRINTS THE RHYTHMS, not just the count, which
-  // matters more here than in most rows: a reader who sees `hold 12 / release
-  // 23` in the failure can go and play it. A count alone would say the beat
-  // regressed and not what the exploit is.
-  {
-    guarantee: 'the-descent-cannot-be-played-open-loop',
-    mutatedFile: 'src/game/liftTuning.ts',
-    mutated:
-      '  BENCH_TOUCH_SOFT_RATE: { LIGHT: 0.030, MAXIMAL: 0.010 },',
-    mutatedTo: '  BENCH_TOUCH_SOFT_RATE: { LIGHT: 0.020, MAXIMAL: 0.020 },',
-    testFile: 'src/game/lift.test.ts',
-    redAssertion:
-      '    expect(\n'
-      + '      winsEverywhere,\n'
-      + '      `${winsEverywhere} fixed rhythms grade PERFECT at every load: ${winners.join(\', \')}`,\n'
-      + '    ).toBe(OPEN_LOOP_SEARCH.WINS_EVERYWHERE);',
-    observed:
-      'FAIL  src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25) > '
-      + 'cannot be won by one memorised rhythm, over the whole fixed-pattern space '
-      + '[the-descent-cannot-be-played-open-loop]\n'
-      + 'AssertionError: 22 fixed rhythms grade PERFECT at every load: hold 12 / release 23, hold '
-      + '12 / release 24, hold 12 / release 25, hold 12 / release 26, hold 13 / release 23, hold '
-      + '13 / release 24, hold 13 / release 25, hold 13 / release 26: expected 22 to be +0 '
-      + '// Object.is equality\n'
-      + 'Tests  1 failed | 140 skipped (141)',
-    measuredOver:
-      "    expect(OPEN_LOOP_SEARCH.PATTERNS, 'the domain this count is taken over').toBe(900);",
-  },
+  // -------------------------------------------------------------------------
+  // THE OPEN-LOOP WITNESS WAS HERE AND IS DELETED WITH ITS TAG.
+  //
+  // `the-descent-cannot-be-played-open-loop` graded a search over the whole
+  // fixed duty-cycle pattern space, and the 2026-08-25 REPLAY steer retired
+  // that search: an automatic descent is WON by a single constant strategy on
+  // purpose, so the count the witness watched go from 0 to 22 is a count of
+  // the thing the design now asks for. `lift.test.ts` carries the retirement
+  // note and the domination analysis; the row is deleted rather than left
+  // pointing at a test that no longer exists, because a witness that cannot
+  // expire when its subject is edited away is worse than an honest gap.
+  //
   // -------------------------------------------------------------------------
   // THE 2026-08-25 BENCH REDESIGN — four witnesses, one per beat plus the one
   // that says the other two lifts did not move.
@@ -2427,55 +2433,122 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + '      `the touch changed the outcome in ${flips} of ${cases} cases`,\n'
       + '    ).toBe(TOUCH_SWEEP.SOFT_VS_CRASH_FLIPS);',
     observed:
-      'FAIL  src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25) > '
-      + 'flips outcomes between a controlled touch and a crashed one, across the sweep '
-      + '[bench-touch-decides-the-rep]\n'
-      + 'AssertionError: the touch changed the outcome in 0 of 240 cases: expected +0 to be 80 '
+      'FAIL  src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, '
+      + 'steered 2026-08-25) > flips outcomes between a controlled touch and a crashed one, '
+      + 'across the sweep [bench-touch-decides-the-rep]\n'
+      + 'AssertionError: the touch changed the outcome in 0 of 240 cases: expected +0 to be 60 '
       + '// Object.is equality\n'
-      + 'Tests  1 failed | 136 skipped (137)',
+      + 'Tests  1 failed | 144 skipped (145)',
     measuredOver:
       "    expect(TOUCH_SWEEP.OUTCOME_CASES, 'the domain this count is taken over').toBe(240);",
   },
+  // THE MUTANT IS THE BEAT THE REPLAY STEER REPLACED, EXPRESSED IN ONE WORD.
+  // Reading `launchForce` instead of `grindForce` in the ascent's boost turns
+  // the continuous grind back into a burst: the bar carries whatever the first
+  // 300ms bought and nothing the player does afterwards reaches the physics.
+  // It compiles, `tsc` is clean beside it, and every state field still moves —
+  // which is exactly the shape the first press beat shipped in.
   {
-    guarantee: 'bench-burst-decides-the-rep',
-    mutatedFile: 'src/game/liftTuning.ts',
-    mutated: '  PRESS_WEAK_DEMAND_PENALTY: 0.16,',
-    mutatedTo: '  PRESS_WEAK_DEMAND_PENALTY: 0,',
+    guarantee: 'bench-grind-decides-the-rep',
+    mutatedFile: 'src/game/lift.ts',
+    mutated: '      drive += LIFT_TUNING.GRIND_BOOST_FORCE_MAX * m.grindForce;',
+    mutatedTo: '      drive += LIFT_TUNING.GRIND_BOOST_FORCE_MAX * m.launchForce;',
     testFile: 'src/game/lift.test.ts',
     redAssertion:
       '    expect(\n'
-      + '      mashVsNone,\n'
-      + '      `mashing changed the outcome in ${mashVsNone} of ${cases} cases`,\n'
-      + '    ).toBe(BURST_SWEEP.MASH_VS_NONE_FLIPS);',
+      + '      mashVsSparse,\n'
+      + '      `mashing beat a sparse grind in ${mashVsSparse} of ${cases} cases`,\n'
+      + '    ).toBe(GRIND_SWEEP.MASH_VS_SPARSE_FLIPS);',
     observed:
-      'FAIL  src/game/lift.test.ts > the burst decides the lift > flips outcomes across the tap '
-      + 'ladder, across the sweep [bench-burst-decides-the-rep]\n'
-      + 'AssertionError: mashing changed the outcome in 80 of 240 cases: expected 80 to be 120 '
+      'FAIL  src/game/lift.test.ts > the grind decides the lift > flips outcomes across the tap '
+      + 'ladder, across the sweep [bench-grind-decides-the-rep]\n'
+      + 'AssertionError: mashing beat a sparse grind in 60 of 120 cases: expected 60 to be 40 '
       + '// Object.is equality\n'
-      + 'Tests  1 failed | 136 skipped (137)',
+      + 'Tests  1 failed | 144 skipped (145)',
     measuredOver:
-      "    expect(BURST_SWEEP.CASES, 'the domain these counts are taken over').toBe(240);",
+      "    expect(GRIND_SWEEP.CASES, 'the domain these counts are taken over').toBe(120);",
   },
-  // THE MUTANT IS ONE `Math.min` AND IT INVERTS THE RULE'S SIGN. Without it the
-  // floor stops being a floor on the CHARGE and becomes a floor on the FORCE:
-  // a player who mashes the whole pause and then ignores the command entirely
-  // launches at `burstForce(3)` instead of at 0, so a false start PAYS. That
-  // is the exact strategy the rule exists to make worthless, and the mutant
-  // reaches it without touching a single number in `liftTuning.ts`.
+  // THE RESCUE, AND ITS MUTANT IS THE BURST SEEN FROM THE OTHER SIDE. Gating
+  // the tap counter on `m.phase === 'HOLE'` means taps land on the chest and
+  // nowhere else, while the charge still decays — so an idle rep still stalls
+  // (it stalls MORE: 80 of 320 against 40) and a rep that starts tapping again
+  // cannot do anything about it. That is the one property a continuous grind
+  // has that a burst cannot have, isolated.
+  //
+  // THE ASSERTION ORDER IN THE NAMED TEST WAS CHANGED FOR THIS ROW, and it is
+  // recorded rather than done quietly: the non-vacuity guard used to be first
+  // and reddened first, which would have made this transcript evidence about
+  // the guard rather than about the rescue.
+  {
+    guarantee: 'a-stalled-bench-can-be-ground-through',
+    mutatedFile: 'src/game/lift.ts',
+    mutated: '      pressed &&\n      grindOpen() &&',
+    mutatedTo: "      pressed &&\n      m.phase === 'HOLE' &&\n      grindOpen() &&",
+    testFile: 'src/game/lift.test.ts',
+    redAssertion:
+      '    expect(\n'
+      + '      rescued,\n'
+      + '      `coming back changed the outcome in ${rescued} of ${pairs} pairs`,\n'
+      + '    ).toBe(RESCUE_SWEEP.RESCUED);',
+    observed:
+      'FAIL  src/game/lift.test.ts > the grind decides the lift > rescues a stalled bar when the '
+      + 'player keeps tapping, across the sweep [a-stalled-bench-can-be-ground-through]\n'
+      + 'AssertionError: coming back changed the outcome in 0 of 320 pairs: expected +0 to be 120 '
+      + '// Object.is equality\n'
+      + 'Tests  1 failed | 144 skipped (145)',
+    measuredOver:
+      "    expect(RESCUE_SWEEP.PAIRS, 'the domain these counts are taken over').toBe(320);",
+  },
+  // THE DESCENT'S ARITHMETIC BOUND, AND THE MUTANT IS THE FLOOR THAT MAKES IT.
+  // Restoring the 0 floor `benchDescentRate` used to have — the beat before the
+  // replay steer, where a released bar could be brought to a stop — makes the
+  // held descent stop dead at the controlled rate's own subtraction and never
+  // arrive. Every bench rep in the sweep hangs at its first load.
+  {
+    guarantee: 'a-bench-descent-always-reaches-the-chest',
+    mutatedFile: 'src/game/lift.ts',
+    mutated:
+      '      Math.max(controlled, rate - byLoad(LIFT_TUNING.BENCH_DESCENT_RECOVER_PER_TICK, load)),',
+    mutatedTo:
+      '      Math.max(0, rate - byLoad(LIFT_TUNING.BENCH_DESCENT_RECOVER_PER_TICK, load)),',
+    testFile: 'src/game/lift.test.ts',
+    redAssertion:
+      "        expect(touch, `load ${load} slip ${slip} never reached the chest`).not.toBeNull();",
+    observed:
+      'FAIL  src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, '
+      + 'steered 2026-08-25) > always reaches the chest, and inside the bound the constants give '
+      + '[a-bench-descent-always-reaches-the-chest]\n'
+      + 'AssertionError: load 0.55 slip null never reached the chest: expected null not to be null\n'
+      + 'Tests  1 failed | 144 skipped (145)',
+    measuredOver:
+      "    expect(TOUCH_SWEEP.SLIPS.length, 'the slip ladder this bound is walked over').toBe(10);",
+  },
+  // THE MUTANT IS ONE SIGN AND IT INVERTS THE RULE. `+` becomes `-`, so every
+  // tap thrown before the call moves the grind's start EARLIER than the
+  // command instead of later — a false start that PAYS, which is the exact
+  // strategy the rule exists to make worthless. It reaches that without
+  // touching a single number in `liftTuning.ts`.
+  //
+  // THE PREVIOUS ROW MUTATED A `Math.min` AND IS GONE WITH THE ARITHMETIC IT
+  // GUARDED. Under the burst the rule subtracted early taps from a tap COUNT
+  // and needed a floor under the subtraction; the continuous grind has no
+  // count, so the rule is a delay with a cap and the direction it has to be
+  // guarded in is the sign rather than the floor.
   {
     guarantee: 'a-false-start-can-never-pay',
     mutatedFile: 'src/game/lift.ts',
-    mutated: '  return Math.max(Math.min(landed, FALSE_START_FLOOR_TAPS), landed - early);',
-    mutatedTo: '  return Math.max(FALSE_START_FLOOR_TAPS, landed - early);',
+    mutated: '  return command + Math.min(MAX_LOCKOUT_TICKS, early * PER_EARLY_TAP_TICKS);',
+    mutatedTo: '  return command - Math.min(MAX_LOCKOUT_TICKS, early * PER_EARLY_TAP_TICKS);',
     testFile: 'src/game/lift.test.ts',
-    redAssertion: '    expect(ignored.burstForce).toBe(0);',
-    measuredOver: "    expect(ignored.burstEarlyTaps, 'no false start was thrown').toBe(12);",
+    redAssertion:
+      '      expect(grindStartTick(command, early), `early ${early}`).toBeGreaterThanOrEqual(command);',
+    measuredOver: "    expect(ignored.grindEarlyTaps, 'no false start was thrown').toBe(12);",
     observed:
       'FAIL  src/game/lift.test.ts > the false-start rule, exactly as the copy states it > '
-      + 'cannot hand taps to a player who never answered the command '
+      + 'cannot hand a player who mashed the pause an earlier start '
       + '[a-false-start-can-never-pay]\n'
-      + 'AssertionError: expected 0.55102 to be +0 // Object.is equality\n'
-      + 'Tests  1 failed | 136 skipped (137)',
+      + 'AssertionError: early 1: expected 96 to be greater than or equal to 100\n'
+      + 'Tests  1 failed | 144 skipped (145)',
   },
   // THE MUTANT IS THE FAILURE THIS REDESIGN WAS MOST LIKELY TO SHIP, and it is
   // one word: the DESCENT branch's bench arm run for squat as well. It
@@ -2526,7 +2599,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + 'AssertionError: 61 of 85 baseline reps moved since 2d4ba0c: expected [ …(61) ] to deeply '
       + 'equal []\n'
       + '+   "squat|1|1|ideal: 186:e35d9544 -> 178:06cb281c",\n'
-      + 'Tests  1 failed | 136 skipped (137)',
+      + 'Tests  1 failed | 144 skipped (145)',
     measuredOver:
       "    expect(BASELINE_SWEEP.CASES, 'the domain this count is taken over').toBe(85);",
   },
@@ -2582,19 +2655,25 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     measuredOver:
       "    expect(wait.length, 'wait ticks this pair is drawn from').toBeGreaterThan(24);",
   },
+  // THE MUTANT IS THE READOUT THE REPLAY STEER REPLACED, and it is one field
+  // name. `progress.taps` is the rep's running tap TOTAL and `progress.lit` is
+  // what the current RATE is worth; a row keyed to the total fills up and then
+  // stays full while the player quietly stops tapping, which is a readout on
+  // screen reading nothing. It compiles, both fields are real, and every
+  // "the row never exceeds its length" assertion stays green.
   {
-    guarantee: 'the-burst-readout-moves-with-the-taps',
+    guarantee: 'the-grind-readout-moves-with-the-rate',
     mutatedFile: 'src/lift/liftFrame.ts',
-    mutated: '      lit: i < progress.taps,',
-    mutatedTo: '      lit: true,',
+    mutated: '      lit: i < progress.lit,',
+    mutatedTo: '      lit: i < progress.taps,',
     testFile: 'src/lift/liftFrame.test.ts',
     redAssertion: '      expect(readout.pips.filter((p) => p.lit).length).toBe(readout.lit);',
     observed:
-      'FAIL  src/lift/liftFrame.test.ts > the burst readout > counts the taps that landed and '
-      + 'never more than the row holds [the-burst-readout-moves-with-the-taps]\n'
-      + 'AssertionError: expected 14 to be +0 // Object.is equality\n'
-      + 'Tests  1 failed | 53 passed (54)',
-    measuredOver: "    expect(open.length, 'the burst never opened').toBeGreaterThan(10);",
+      'FAIL  src/lift/liftFrame.test.ts > the grind readout > follows the tap rate up and back '
+      + 'down, never past the row [the-grind-readout-moves-with-the-rate]\n'
+      + 'AssertionError: expected 1 to be 7 // Object.is equality\n'
+      + 'Tests  1 failed | 53 skipped (54)',
+    measuredOver: "    expect(open.length, 'the grind never went live').toBeGreaterThan(10);",
   },
   // -------------------------------------------------------------------------
   // THE FOURTH PRESS GUARD, AND THE ONE THAT WAS SWALLOWING WHOLE INPUTS.

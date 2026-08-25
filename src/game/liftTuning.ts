@@ -616,10 +616,11 @@ export const LIFT_TUNING = Object.freeze({
    * changed — not a velocity written into the state.
    *
    * IT IS THE WHOLE OF WHAT THE DESCENT COSTS NOW, and it carries more weight
-   * for it: the 2026-08-25 replay steer deleted the dawdle charge and the
-   * no-touch miss, so a crashed arrival is the only thing a bench descent can
-   * be punished for. Raised 0.22 -> 0.30 to keep the touch deciding reps at
-   * the rate it did when it was one of three penalties. Unplayed placeholder.
+   * for it: the replay steer deleted the dawdle charge and the no-touch miss,
+   * so a crashed arrival is the only thing a bench descent can be punished
+   * for. Retuned alongside the demand curve to keep the touch deciding reps at
+   * a rate the sweep can see without making a dropped limit bar unmakeable.
+   * Unplayed placeholder.
    * `@guarantee bench-touch-decides-the-rep`
    */
   BENCH_TOUCH_DEMAND_PENALTY: 0.15,
@@ -827,11 +828,17 @@ export const LIFT_TUNING = Object.freeze({
    * 0.9439 is a half-life of 12 ticks (200ms) — `0.5 ** (1/12)`, written out
    * as the decimal rather than computed so the file has no arithmetic in it. A
    * SHORTER half-life makes the grind twitchier and compresses the spread
-   * between a mash and a jog (measured while choosing it: at a half-life of 8
-   * the steady charges for 3/6/8/12/20-tick gaps are 4.37/2.47/2.00/1.55/1.22,
-   * against 6.29/3.41/2.70/2.00/1.46 at 12) — so it is a spread dial as much
-   * as a responsiveness dial, and the two pull in opposite directions.
-   * Unplayed placeholder.
+   * between a mash and a jog — so it is a spread dial as much as a
+   * responsiveness dial, and the two pull in opposite directions. Unplayed
+   * placeholder.
+   *
+   * IT IS WHAT MAKES A STALL RESCUABLE, WHICH IS THE STEER'S OWN SENTENCE.
+   * Force falls away when the player stops and comes back when they start
+   * again, so a bar that has already stopped can be moved again — which is
+   * impossible on an impulse mechanic by construction, because there is
+   * nothing left to apply. `lift.test.ts`'s `RESCUE_SWEEP` measures it as
+   * paired reps that differ only in whether the tapping resumed.
+   * `@guarantee a-stalled-bench-can-be-ground-through`
    */
   GRIND_CHARGE_DECAY_PER_TICK: 0.9439,
 
@@ -965,8 +972,8 @@ export const LIFT_TUNING = Object.freeze({
    * impulse pays once for a thing you did; this pays continuously for a thing
    * you are doing, and only the second one can be sustained through a stick.
    *
-   * SIZED AGAINST THE STICKING POINT RATHER THAN AGAINST THE DRIVE'S 0.62.
-   * At `LOAD_PRESETS.MAXIMAL` bench's peak demand is above the lifter's
+   * SIZED AGAINST THE STICKING POINT RATHER THAN AGAINST THE DRIVE CUE'S OWN
+   * BOOST. At `LOAD_PRESETS.MAXIMAL` bench's peak demand is above the lifter's
    * capacity, so an untapped bar stops there; this has to be enough that a
    * sustained grind clears it and a jog does not. What says whether it is is
    * `lift.test.ts`'s `GRIND_SWEEP` and `RESCUE_SWEEP`, not this sentence.
