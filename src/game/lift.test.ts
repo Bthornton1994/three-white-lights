@@ -2873,11 +2873,25 @@ describe('the false-start rule, exactly as the copy states it', () => {
  * were `0` and `false` on every tick of every rep, and a hash over them would
  * have been a hash over two constants.
  *
- * MEASURED AT `2d4ba0c` — the commit this branch is based on, and the last one
- * before any bench work. Re-taking these numbers means checking out that
- * commit and running the same projection; a stamp is checkable in a way a
- * sentence is not (CLAUDE.md, "a measurement that leaves this session carries
- * the commit it was taken at").
+ * MEASURED AT `2d4ba0c` — the last commit before any bench work. Re-taking
+ * these numbers means checking out that commit and running the same
+ * projection; a stamp is checkable in a way a sentence is not (CLAUDE.md, "a
+ * measurement that leaves this session carries the commit it was taken at").
+ *
+ * AND RE-AFFIRMED AT `98e78bc`, WHICH IS A SECOND MEASUREMENT RATHER THAN A
+ * SECOND SENTENCE. That commit is the base of the 2026-08-25 REPLAY steer —
+ * the tip after the first bench redesign landed and before the second one
+ * started. This block was checked out there and run: `Tests 1 passed | 140
+ * skipped (141)`, every digest holding. So the chain is closed by measurement
+ * at both ends rather than by transitivity: squat and deadlift are byte-
+ * identical from `2d4ba0c` through `98e78bc` to here, across two whole
+ * redesigns of the third lift.
+ *
+ * WHY THE DIGESTS ARE NOT RE-TAKEN AT `98e78bc` AND RE-PINNED THERE. They
+ * would be the same numbers — that is what the run above says — and moving the
+ * stamp forward would quietly shorten the window the check covers. The value
+ * of a digest is the distance between the commit it was taken at and the tree
+ * it is compared against, so the older stamp is the stronger one.
  *
  * A DIGEST FAILS USELESSLY ON ITS OWN, so the test reports the case name and
  * the tick count beside it — the count is the first half of every digest for
