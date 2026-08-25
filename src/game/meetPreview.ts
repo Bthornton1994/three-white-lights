@@ -346,12 +346,146 @@ function deadliftScript(config: LiftConfig, style: RepStyle): ScriptedInput[] {
 }
 
 /**
+ * The bench's script (GDD §6.2, ruled 2026-08-25).
+ *
+ * ---------------------------------------------------------------------------
+ * A SEPARATE FUNCTION FOR THE SAME REASON THE DEADLIFT HAS ONE: THE CUE IT
+ * USED TO BE BUILT FROM IS GONE
+ * ---------------------------------------------------------------------------
+ * `repScript` below builds a squat from the depth cue the mechanic arms —
+ * release at its ideal tick, at its close, before it opens. A bench arms no
+ * depth cue at all any more. The 2026-08-25 ruling replaced the release-at-a-
+ * moment check with a control check: the bar is fed down, and what is graded
+ * is the SPEED IT ARRIVES AT THE CHEST WITH. There is no window to read a
+ * release tick off, deliberately, because a ring counting the player down to
+ * the chest is squat's anticipation check wearing bench's name.
+ *
+ * SO THE SCRIPT ASKS THE MECHANIC THE ONLY WAY LEFT: it plays the descent at
+ * every hold up to `MEET_PREVIEW.BENCH_HOLD_SCAN_MAX` and keeps the one whose
+ * `touchQuality` came back highest. That is still "every moment is asked of
+ * `lift.ts`" — it is a search rather than a lookup, and a search that reads
+ * the mechanic's own grade cannot agree with a broken descent the way a
+ * recomputed tick could.
+ *
+ * WHAT WOULD HAVE HAPPENED WITHOUT THIS, MEASURED RATHER THAN GUESSED. The
+ * squat script releases at the depth cue's ideal tick and then taps the drive.
+ * On the new bench that release lands in HOLE (the bar has already arrived),
+ * the press command goes unanswered, the burst produces zero force, and every
+ * bench attempt in every meet fixture misses. The full suite reported 23
+ * failures across five files — recaps reading `DQ` where they expected a
+ * placing, openers with no options to choose — all of them one unanswered
+ * command. This is the same shape the deadlift's own header records, one lift
+ * over.
+ *
+ * WHERE THE STYLE VOCABULARY DOES NOT MAP CLEANLY, said plainly rather than
+ * approximated, exactly as `deadliftScript` does:
+ *
+ *   'high'      Has no bench meaning as written. There is no depth to come up
+ *               short of — the chest is the bottom and touching it is what
+ *               makes the press legal. Its bench analogue is the press that
+ *               NEVER TOUCHES, which is three red lights in the real sport and
+ *               a miss with its own reason ('no-touch'). Scripted as 'dumped'
+ *               for that reason. Note the referees do not argue about it:
+ *               `judgingMargin` calls every non-'no-depth' miss unanimous, so
+ *               a caller asking for an ARGUABLE miss gets an unanimous one.
+ *   'dumped'    Its promise — "a miss AT ANY LOAD" — DOES hold here, unlike on
+ *               a deadlift. A bar braked at once and never fed again never
+ *               reaches the chest at any load, because the descent stops and
+ *               `CHEST_TOUCH_TIMEOUT_TICKS` ends the rep. No load enters that
+ *               at all, so the promise is structural rather than swept.
+ *   'stalled'   "Depth hit, then never driven" becomes "the bar reached the
+ *               chest and NOTHING ELSE WAS ANSWERED" — no burst, no drive.
+ *               The same caveat its own docstring carries applies with the
+ *               same force: at light loads an unanswered bench still goes up,
+ *               which is `lift.ts`'s design and not a bug.
+ *
+ * The other two carry over: 'perfect' catches the bar, mashes the burst and
+ * drives every cue; 'marginal' is the arguable make — here the bar dropped
+ * onto the chest and then pressed hard, which costs the whole ascent through
+ * `BENCH_TOUCH_DEMAND_PENALTY` and grades a grind rather than a clean lift
+ * where it still makes.
+ */
+function benchScript(config: LiftConfig, style: RepStyle): ScriptedInput[] {
+  const press = braceTicks(config.loadRatio, config.kind) + 1;
+
+  // 'high' and 'dumped': brake at once and never feed the bar again. It stops
+  // short of the chest and the rep ends 'no-touch'.
+  if (style === 'high' || style === 'dumped') {
+    return [
+      { tick: press, kind: 'press' },
+      { tick: press + 1, kind: 'release' },
+    ];
+  }
+
+  // The hold that arrives best, searched by playing the descent rather than
+  // computed from the gravity and brake curves. 'marginal' skips the search
+  // and never lets go, which is the bar dropped onto the chest.
+  let script: ScriptedInput[] = [{ tick: press, kind: 'press' }];
+  if (style !== 'marginal') {
+    let bestHold: number = MEET_PREVIEW.BENCH_HOLD_SCAN_MAX;
+    let bestQuality = -1;
+    for (let hold = 1; hold <= MEET_PREVIEW.BENCH_HOLD_SCAN_MAX; hold += 1) {
+      const probe: ScriptedInput[] = [
+        { tick: press, kind: 'press' },
+        { tick: press + hold, kind: 'release' },
+      ];
+      const touched = runLift(config, probe).history.find((state) =>
+        state.events.some((event) => event.kind === 'chest-touch'),
+      );
+      const quality = touched?.touchQuality ?? -1;
+      if (quality > bestQuality) {
+        bestQuality = quality;
+        bestHold = hold;
+      }
+    }
+    script = [...script, { tick: press + bestHold, kind: 'release' }];
+  }
+
+  // 'stalled' answers nothing after the touch: no burst, no drive.
+  if (style === 'stalled') return script;
+
+  const command = commandTick(config, script);
+  if (command === null) return script;
+  for (let i = 0; i < MEET_PREVIEW.BENCH_BURST_TAPS_SCRIPTED; i += 1) {
+    script = [...script, { tick: command + i * MEET_PREVIEW.BENCH_BURST_TAP_GAP_TICKS, kind: 'press' }];
+  }
+
+  // Then the ascent, chased cue by cue the way the deadlift's is: cue N's tick
+  // is a function of when cue N-1 resolved, which is a runtime fact.
+  for (let i = 0; i < MEET_PREVIEW.DEADLIFT_CUES_CHASED; i += 1) {
+    const cue = lastArmedDrive(config, script);
+    if (cue === null || script.some((input) => input.tick === cue.idealTick)) break;
+    script = [...script, { tick: cue.idealTick, kind: 'press' }];
+  }
+  return script;
+}
+
+/** The tick the mechanic fired the bench press command on, or null. */
+function commandTick(config: LiftConfig, script: readonly ScriptedInput[]): number | null {
+  for (const state of runLift(config, script).history) {
+    if (state.events.some((event) => event.kind === 'press-command')) return state.tick;
+  }
+  return null;
+}
+
+/** The LAST drive cue the mechanic has armed under this script, or null. */
+function lastArmedDrive(config: LiftConfig, script: readonly ScriptedInput[]): CueWindow | null {
+  let latest: CueWindow | null = null;
+  for (const state of runLift(config, script).history) {
+    const active = state.activeCue;
+    if (active !== null && active.cue === 'drive') latest = active;
+  }
+  return latest;
+}
+
+/**
  * The script for one styled rep, derived from the cues the mechanic armed.
  *
  * NOT A TICK NUMBER ANYWHERE. Every moment is asked of `lift.ts`.
  */
 export function repScript(config: LiftConfig, style: RepStyle): ScriptedInput[] {
   if (config.kind === 'deadlift') return deadliftScript(config, style);
+  if (config.kind === 'bench') return benchScript(config, style);
   const script: ScriptedInput[] = [
     { tick: braceTicks(config.loadRatio, config.kind) + 1, kind: 'press' },
   ];
