@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "sound-retake-2026-08-25T20-00-26-605Z-10093",
   "label": "sound-retake",
   "command": [
@@ -48,14 +48,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 2,
-    "okCount": 1,
+    "count": 3,
+    "okCount": 2,
     "errors": [],
-    "lastAttemptIso": "2026-08-25T20:01:26.643Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-25T20:01:44.840Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-25T20:00:29.397Z"
-  }
+    "lastOkIso": "2026-08-25T20:01:31.459Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-25T20:01:44.839Z",
+  "elapsedSeconds": 78.2
 }
