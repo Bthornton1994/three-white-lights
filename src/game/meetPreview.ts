@@ -346,7 +346,7 @@ function deadliftScript(config: LiftConfig, style: RepStyle): ScriptedInput[] {
 }
 
 /**
- * The bench's script (GDD §6.2, ruled 2026-08-25).
+ * The bench's script (GDD §6.2, ruled 2026-08-25, steered 2026-08-25).
  *
  * ---------------------------------------------------------------------------
  * A SEPARATE FUNCTION FOR THE SAME REASON THE DEADLIFT HAS ONE: THE CUE IT
@@ -354,108 +354,82 @@ function deadliftScript(config: LiftConfig, style: RepStyle): ScriptedInput[] {
  * ---------------------------------------------------------------------------
  * `repScript` below builds a squat from the depth cue the mechanic arms —
  * release at its ideal tick, at its close, before it opens. A bench arms no
- * depth cue at all any more. The 2026-08-25 ruling replaced the release-at-a-
- * moment check with a control check: the bar is fed down, and what is graded
- * is the SPEED IT ARRIVES AT THE CHEST WITH. There is no window to read a
- * release tick off, deliberately, because a ring counting the player down to
- * the chest is squat's anticipation check wearing bench's name.
+ * depth cue at all, and since the replay steer it arms no DRIVE cue either.
+ * There is no window anywhere in a bench rep to read a tick off.
  *
- * SO THE SCRIPT ASKS THE MECHANIC THE ONLY WAY LEFT: it plays the descent at
- * every hold up to `MEET_PREVIEW.BENCH_HOLD_SCAN_MAX` and keeps the one whose
- * `touchQuality` came back highest. That is still "every moment is asked of
- * `lift.ts`" — it is a search rather than a lookup, and a search that reads
- * the mechanic's own grade cannot agree with a broken descent the way a
- * recomputed tick could.
+ * SO THE SCRIPT DOES THE TWO THINGS THE MECHANIC ACTUALLY TAKES: it holds the
+ * bar all the way down, and it taps from the command until the rep resolves.
  *
- * WHAT WOULD HAVE HAPPENED WITHOUT THIS, MEASURED RATHER THAN GUESSED. The
- * squat script releases at the depth cue's ideal tick and then taps the drive.
- * On the new bench that release lands in HOLE (the bar has already arrived),
- * the press command goes unanswered, the burst produces zero force, and every
- * bench attempt in every meet fixture misses. The full suite reported 23
- * failures across five files — recaps reading `DQ` where they expected a
- * placing, openers with no options to choose — all of them one unanswered
- * command. This is the same shape the deadlift's own header records, one lift
- * over.
+ * WHAT THE REPLAY STEER DELETED FROM THIS FUNCTION, so a reader does not go
+ * looking for it. It used to search every hold up to `BENCH_HOLD_SCAN_MAX`,
+ * playing the descent at each one and keeping whichever arrived softest,
+ * because the best arrival was bought by letting go at the right moment. The
+ * steer made "never let go" the answer at every load — the search's result was
+ * a constant — so the search and its ceiling are both gone. It also chased the
+ * ascent's drive cues; bench arms none, so that loop is gone too.
  *
  * WHERE THE STYLE VOCABULARY DOES NOT MAP CLEANLY, said plainly rather than
  * approximated, exactly as `deadliftScript` does:
  *
  *   'high'      Has no bench meaning as written. There is no depth to come up
  *               short of — the chest is the bottom and touching it is what
- *               makes the press legal. Its bench analogue is the press that
- *               NEVER TOUCHES, which is three red lights in the real sport and
- *               a miss with its own reason ('no-touch'). Scripted as 'dumped'
- *               for that reason. Note the referees do not argue about it:
- *               `judgingMargin` calls every non-'no-depth' miss unanimous, so
- *               a caller asking for an ARGUABLE miss gets an unanimous one.
- *   'dumped'    Its promise — "a miss AT ANY LOAD" — DOES hold here, unlike on
- *               a deadlift. A bar braked at once and never fed again never
- *               reaches the chest at any load, because the descent stops and
- *               `CHEST_TOUCH_TIMEOUT_TICKS` ends the rep. No load enters that
- *               at all, so the promise is structural rather than swept.
- *   'stalled'   "Depth hit, then never driven" becomes "the bar reached the
- *               chest and NOTHING ELSE WAS ANSWERED" — no burst, no drive.
- *               The same caveat its own docstring carries applies with the
- *               same force: at light loads an unanswered bench still goes up,
- *               which is `lift.ts`'s design and not a bug.
+ *               makes the press legal — AND SINCE THE REPLAY STEER THERE IS NO
+ *               'no-touch' EITHER. The bar's descent rate is floored above
+ *               zero, so it always arrives, and the miss reason that used to
+ *               carry this style was deleted with the beat that produced it.
+ *               Its bench analogue is the worst rep the mechanic can still
+ *               produce: the bar dropped onto the chest AND the press never
+ *               answered.
  *
- * The other two carry over: 'perfect' catches the bar, mashes the burst and
- * drives every cue; 'marginal' is the arguable make — here the bar dropped
- * onto the chest and then pressed hard, which costs the whole ascent through
- * `BENCH_TOUCH_DEMAND_PENALTY` and grades a grind rather than a clean lift
- * where it still makes.
+ *               THE PROMISE THIS COSTS, STATED RATHER THAN QUIETLY DROPPED. As
+ *               'dumped' it was "a miss AT ANY LOAD", structurally, because
+ *               `CHEST_TOUCH_TIMEOUT_TICKS` did not care what was on the bar.
+ *               It is now a miss from a working weight upward and NOT at a
+ *               warm-up, where an unanswered bench still goes up — which is
+ *               `lift.ts`'s design and GDD §12.3's warm-up protection rather
+ *               than a gap. A caller asking for a guaranteed bench miss at any
+ *               load no longer has one, and that is a real narrowing of this
+ *               file's vocabulary rather than a rename.
+ *   'dumped'    The same rep as 'high', for the same reason: braking the bar
+ *               no longer stops it, so there is nothing left to distinguish
+ *               "never touched" from "dropped it and gave up".
+ *   'stalled'   "Depth hit, then never driven" becomes "the bar was lowered
+ *               CLEANLY and then NOTHING WAS ANSWERED" — no taps at all, and
+ *               it is the milder of the two failures for that reason. The
+ *               caveat its own docstring carries applies with the same force:
+ *               at light loads an unanswered bench still goes up.
+ *
+ * The other two carry over: 'perfect' holds the bar down and mashes the grind;
+ * 'marginal' is the arguable make — here the finger comes off at
+ * `BENCH_SLIP_AT_TICKS` so the bar runs away onto the chest, which costs the
+ * whole ascent through `BENCH_TOUCH_DEMAND_PENALTY` and grades a grind rather
+ * than a clean lift where it still makes.
  */
 function benchScript(config: LiftConfig, style: RepStyle): ScriptedInput[] {
   const press = braceTicks(config.loadRatio, config.kind) + 1;
-
-  // 'high' and 'dumped': brake at once and never feed the bar again. It stops
-  // short of the chest and the rep ends 'no-touch'.
-  if (style === 'high' || style === 'dumped') {
-    return [
-      { tick: press, kind: 'press' },
-      { tick: press + 1, kind: 'release' },
-    ];
-  }
-
-  // The hold that arrives best, searched by playing the descent rather than
-  // computed from the gravity and brake curves. 'marginal' skips the search
-  // and never lets go, which is the bar dropped onto the chest.
   let script: ScriptedInput[] = [{ tick: press, kind: 'press' }];
-  if (style !== 'marginal') {
-    let bestHold: number = MEET_PREVIEW.BENCH_HOLD_SCAN_MAX;
-    let bestQuality = -1;
-    for (let hold = 1; hold <= MEET_PREVIEW.BENCH_HOLD_SCAN_MAX; hold += 1) {
-      const probe: ScriptedInput[] = [
-        { tick: press, kind: 'press' },
-        { tick: press + hold, kind: 'release' },
-      ];
-      const touched = runLift(config, probe).history.find((state) =>
-        state.events.some((event) => event.kind === 'chest-touch'),
-      );
-      const quality = touched?.touchQuality ?? -1;
-      if (quality > bestQuality) {
-        bestQuality = quality;
-        bestHold = hold;
-      }
-    }
-    script = [...script, { tick: press + bestHold, kind: 'release' }];
+
+  // Three styles let the bar go at once and never catch it, so it arrives hot:
+  // 'marginal' (which then presses hard and grinds it out) and 'high' /
+  // 'dumped' (which then answer nothing at all).
+  if (style === 'marginal' || style === 'high' || style === 'dumped') {
+    script = [...script, { tick: press + MEET_PREVIEW.BENCH_SLIP_AT_TICKS, kind: 'release' }];
   }
 
-  // 'stalled' answers nothing after the touch: no burst, no drive.
-  if (style === 'stalled') return script;
+  // 'stalled' holds the bar down cleanly and then answers nothing; 'high' and
+  // 'dumped' drop it AND answer nothing, which is the worst rep this mechanic
+  // can produce. See the header for what that costs the styles' promises.
+  if (style === 'stalled' || style === 'high' || style === 'dumped') return script;
 
   const command = commandTick(config, script);
   if (command === null) return script;
   for (let i = 0; i < MEET_PREVIEW.BENCH_BURST_TAPS_SCRIPTED; i += 1) {
-    script = [...script, { tick: command + i * MEET_PREVIEW.BENCH_BURST_TAP_GAP_TICKS, kind: 'press' }];
-  }
-
-  // Then the ascent, chased cue by cue the way the deadlift's is: cue N's tick
-  // is a function of when cue N-1 resolved, which is a runtime fact.
-  for (let i = 0; i < MEET_PREVIEW.DEADLIFT_CUES_CHASED; i += 1) {
-    const cue = lastArmedDrive(config, script);
-    if (cue === null || script.some((input) => input.tick === cue.idealTick)) break;
-    script = [...script, { tick: cue.idealTick, kind: 'press' }];
+    const at = command + i * MEET_PREVIEW.BENCH_BURST_TAP_GAP_TICKS;
+    // ONE PRESS EDGE PER TAP, WITH ITS RELEASE. `stepLift` latches `m.held`, so
+    // a script of bare presses leaves the finger down after the first and the
+    // rest are swallowed by the refractory gap — which on a rate mechanic
+    // means a "perfect" bench scripted here would grind at one tap a rep.
+    script = [...script, { tick: at, kind: 'press' }, { tick: at + 1, kind: 'release' }];
   }
   return script;
 }
