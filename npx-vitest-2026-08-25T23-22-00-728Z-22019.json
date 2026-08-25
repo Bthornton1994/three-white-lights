@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-25T23-22-00-728Z-22019",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/game/guaranteeTags.test.ts"
+  ],
+  "budgetSeconds": 300,
+  "startedAtIso": "2026-08-25T23:22:00.728Z",
+  "startedAtMs": 1787700120728,
+  "cwd": "/home/user/wt-bench-grind",
+  "commit": "d61298c19b154e8553c9c6037e5434d12bb2cee4",
+  "branch": "claude/bench-grind",
+  "dirty": 3,
+  "dirtyPaths": [
+    "src/game/guaranteeTags.test.ts",
+    "src/game/lift.test.ts",
+    "src/game/liftTuning.ts"
+  ],
+  "runner": {
+    "pid": 22019,
+    "startTick": "1322355",
+    "cmdline": "node tools/watchdog.mjs --budget 300 -- npx vitest run src/game/guaranteeTags.test.ts",
+    "bootId": "08766f0d-19e7-495f-880c-c0965fc21158",
+    "bootEpochSeconds": 1787686897,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-25T23:22:00.745Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
