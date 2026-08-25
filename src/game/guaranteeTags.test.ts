@@ -867,8 +867,22 @@ const GUARANTEE_COVERAGE = {
    * mutation set recorded in this file's `MUTATION_WITNESSES` and in the
    * branch's merge commit, plus the swept outcome-flip counts pinned in
    * `lift.test.ts`'s `TOUCH_SWEEP` and `BURST_SWEEP`.
+   *
+   * 285 -> 286 when the same ruling reached the meet fixtures a commit later.
+   * Attributed the same way: `meetPreview.ts` **1** — `benchScript`'s header,
+   * which argues that the style vocabulary does NOT map cleanly onto a lift
+   * with no depth to come up short of, and says which two members lose their
+   * meaning. `meetTuning.ts` **0** and `meetDay.test.ts` **0**, both of which
+   * gained prose without gaining a capitalised absolute.
+   *
+   * THE ONE THAT MOVED IS THE ONE MAKING A CLAIM ABOUT A DOMAIN, which is the
+   * scoper reading its own rule correctly twice in two commits: the four
+   * paragraphs it caught in `lift.ts` argue that a beat is a different
+   * faculty, and this one argues that a style means something different on a
+   * different lift. Both are exactly the sentence class that has been wrong
+   * eight times in this repository.
    */
-  TREE_WIDE: 285,
+  TREE_WIDE: 286,
 } as const;
 
 // ---------------------------------------------------------------------------
