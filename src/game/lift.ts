@@ -43,8 +43,12 @@
  *             player predicts the instant it reaches depth.
  *
  *   BENCH     BRACE -> DESCENT -> HOLE -> ASCENT -> LOCKOUT -> RESOLVED
- *             REACTION. The bar is still on the chest and a command arrives at
- *             a moment the player cannot predict. HOLE carries the check.
+ *             CONTROL, THEN EXERTION. Two beats, ruled 2026-08-25. DESCENT is
+ *             a controlled lowering — the bar accelerates while the finger is
+ *             down and slows while it is up, and what is graded is the speed
+ *             it carries into the chest, not the tick the finger came up on.
+ *             HOLE is the pause and the command, answered by a BURST of taps
+ *             whose count buys force off the chest with diminishing returns.
  *
  *   DEADLIFT  BRACE ->                    ASCENT -> LOCKOUT -> RESOLVED
  *             PERSISTENCE. There is NO ECCENTRIC — the bar starts on the floor,
@@ -67,8 +71,9 @@
  *             pull itself, straight into ASCENT (or BRACE_TIMEOUT_TICKS does it
  *             for them).
  *
- *   DESCENT   Depth grows while the player HOLDS, at a load-dependent rate —
- *             heavier is slower, because a limit squat is controlled down.
+ *   DESCENT   ON SQUAT: depth grows while the player HOLDS, at a load-dependent
+ *             rate — heavier is slower, because a limit squat is controlled
+ *             down.
  *             The DEPTH cue window is centred on the tick depth reaches
  *             DEPTH_IDEAL. Releasing:
  *               above DEPTH_LEGAL     -> a high squat. The rep continues and
@@ -83,8 +88,31 @@
  *               never                 -> depth passes DEPTH_COLLAPSE and the
  *                                        rep ends buried
  *
- *   HOLE      A fixed reversal beat. The bar leaves it at a velocity set by the
- *             depth timing quality. A good release is not points, it is speed.
+ *             ON BENCH: none of the above. The bar is fed down by the finger
+ *             and resisted by lifting it — `BENCH_DESCENT_GRAVITY` while held,
+ *             `BENCH_DESCENT_BRAKE` while not — and contact happens when depth
+ *             reaches the chest, whatever the player is doing at that instant.
+ *             What is graded is the RATE at contact, between
+ *             BENCH_TOUCH_SOFT_RATE and BENCH_TOUCH_CRASH_RATE, and a crashed
+ *             touch makes the whole ascent harder. Stop feeding the bar and
+ *             never feed it again and it never arrives: CHEST_TOUCH_TIMEOUT_TICKS
+ *             ends the rep as a miss, reason 'no-touch', which is what a press
+ *             that never touched the chest is in the real sport.
+ *
+ *   HOLE      ON SQUAT: a fixed reversal beat. The bar leaves it at a velocity
+ *             set by the depth timing quality. A good release is not points,
+ *             it is speed.
+ *
+ *             ON BENCH THIS IS THE PAUSE AND THE COMMAND. The bar sits on the
+ *             chest; a command fires at a tick drawn from the rep's seed; from
+ *             that tick a burst window is open for PRESS_BURST_WINDOW_MS, and
+ *             every tap inside it that clears the refractory gap counts. The
+ *             count buys force through `burstForce` — a saturating curve, so
+ *             mashing caps rather than scaling — and the force sets both the
+ *             velocity off the chest and a demand multiplier for the whole
+ *             ascent. Taps thrown BEFORE the command count for nothing and
+ *             each one takes a tap off the burst's ceiling, down to
+ *             PRESS_BURST_FORCE.FALSE_START_FLOOR_TAPS.
  *
  *   ASCENT    The bar rises against a demand curve peaked at the sticking point
  *             (STICK_HEIGHT_FRAC, shared with the sprite system so the stall is
@@ -176,6 +204,7 @@ import {
   TICK_MS,
   byLoad,
   clampLoadRatio,
+  type DepthTimedLiftKind,
   type EccentricLiftKind,
   type HapticPattern,
   type PlayableLiftKind,
@@ -212,10 +241,12 @@ export const LIFT_PHASES = Object.freeze([
 /**
  * The moments a rep asks the player for.
  *
- * 'depth' and 'drive' are on every lift. 'press' is BENCH ONLY — GDD §6.2's
- * "press-timing / bar-speed check off the chest" — and is the one cue in this
- * module graded as a REACTION rather than as an anticipation: see
- * `gradeReaction`.
+ * 'drive' is on every lift. 'depth' is SQUAT ONLY — bench's descent stopped
+ * being a release-at-a-moment check on 2026-08-25 and arms no cue at all, and
+ * a deadlift has no descent. 'press' is BENCH ONLY — GDD §6.2's "press-timing
+ * / bar-speed check off the chest" — and it is the one cue in this module that
+ * is not graded on WHEN a single input landed: it is a BURST, graded on how
+ * many taps arrived inside its window. See `burstForce`.
  */
 export type LiftCueId = 'depth' | 'drive' | 'press';
 
@@ -264,10 +295,17 @@ export const LIFT_OUTCOMES = Object.freeze([
  * the player a sentence per member. Reusing 'stalled' would print a true-
  * sounding explanation of something that did not happen.
  */
-export type MissReason = 'no-depth' | 'buried' | 'stalled' | 'timeout' | 'dropped';
+export type MissReason =
+  | 'no-depth'
+  | 'no-touch'
+  | 'buried'
+  | 'stalled'
+  | 'timeout'
+  | 'dropped';
 
 export const MISS_REASONS = Object.freeze([
   'no-depth',
+  'no-touch',
   'buried',
   'stalled',
   'timeout',
@@ -286,11 +324,15 @@ export type LiftEventKind =
   | 'depth-hit'
   | 'depth-high'
   | 'reversal'
-  /** BENCH ONLY: the press command fired. The stimulus of the reaction check. */
+  /** BENCH ONLY: the bar reached the chest. Carries the control grade. */
+  | 'chest-touch'
+  /** BENCH ONLY: the press command fired. The burst window is open. */
   | 'press-command'
-  /** BENCH ONLY: pressed after the command. Carries the reaction grade. */
+  /** BENCH ONLY: one counted tap of the burst. Carries the force so far. */
+  | 'press-burst-tap'
+  /** BENCH ONLY: the burst closed. Carries the force it produced. */
   | 'press-hit'
-  /** BENCH ONLY: pressed before the command. */
+  /** BENCH ONLY: tapped before the command. */
   | 'press-false-start'
   | 'drive-cue-open'
   | 'drive-hit'
@@ -309,7 +351,9 @@ export const LIFT_EVENT_KINDS = Object.freeze([
   'depth-hit',
   'depth-high',
   'reversal',
+  'chest-touch',
   'press-command',
+  'press-burst-tap',
   'press-hit',
   'press-false-start',
   'drive-cue-open',
@@ -325,9 +369,13 @@ export const LIFT_EVENT_KINDS = Object.freeze([
 export interface LiftEvent {
   readonly kind: LiftEventKind;
   readonly tick: number;
-  /** Present on 'depth-hit' and 'drive-hit'. */
+  /** Present on 'depth-hit', 'drive-hit', 'chest-touch' and 'press-hit'. */
   readonly grade?: TimingGrade;
-  /** Present on 'depth-hit' and 'drive-hit'. 0..1. */
+  /**
+   * 0..1. Present on 'depth-hit' and 'drive-hit' (timing quality), on
+   * 'chest-touch' (control at contact) and on 'press-burst-tap'/'press-hit'
+   * (the burst's force so far, and its final force).
+   */
   readonly quality?: number;
 }
 
@@ -476,13 +524,40 @@ export interface LiftState {
   readonly extraDepth: number;
 
   /**
+   * BENCH ONLY. The bar's current descent speed, depth units per tick. Null on
+   * squat and deadlift, and null on bench outside DESCENT.
+   *
+   * THE QUANTITY THE WHOLE DESCENT BEAT IS ABOUT, exposed because the stage
+   * has to draw it: a bar coming in hot and a bar being caught look different,
+   * and the renderer cannot tell them apart from `depth` alone. `chestApproach`
+   * is the normalised read model built on it.
+   *
+   * NOT A FATIGUE SCALAR. It is the bar's speed this tick, it resets every
+   * rep, it is never persisted, and nothing in `fatigue.ts` reaches it — the
+   * descent's constants are load-keyed and fatigue-free. GDD §3.4 / §12.3
+   * forbid a visible fatigue meter; this is in the same category as
+   * `velocity` directly above it.
+   */
+  readonly chestRate: number | null;
+  /**
+   * BENCH ONLY. How controlled the touch was, 0..1 — 1 at or under
+   * `BENCH_TOUCH_SOFT_RATE`, 0 at or over `BENCH_TOUCH_CRASH_RATE`. 0 until
+   * the bar reaches the chest.
+   *
+   * WHAT IT BUYS IS THE WHOLE ASCENT, not a moment of it: `1 - touchQuality`
+   * scales the demand curve through `BENCH_TOUCH_DEMAND_PENALTY` for every
+   * tick the bar is going up. See that constant's header for why a transient
+   * would have been decorative.
+   */
+  readonly touchQuality: number;
+  /**
    * BENCH ONLY (GDD §6.2). Tick the press command fires on, set when the bar
    * settles on the chest. Null on squat, and null on bench until HOLE begins.
    *
    * NOT SECRET FROM THE RENDERER. `promptFor` switches the line, and
    * `cueProgress` draws the GO ring from the tick the command fires — progress
-   * 1 at the stimulus, rising toward 2 as the window closes. What keeps the
-   * reaction honest is that nothing draws a COUNTDOWN to it: before the
+   * 1 at the stimulus, rising toward 2 as the burst window closes. What keeps
+   * the command honest is that nothing draws a COUNTDOWN to it: before the
    * command tick `cueProgress` is still null, so the shrinking ring that
    * telegraphs depth and drive cannot show the player the command coming.
    * A ring that opened before the command would defeat the mechanic; a ring
@@ -490,13 +565,39 @@ export interface LiftState {
    */
   readonly pressCommandTick: number | null;
   /**
-   * BENCH ONLY. How well the press off the chest landed, 0..1. This is what
-   * buys bar speed — see `PRESS_VELOCITY`. 0 until pressed, and 0 forever on a
-   * false start.
+   * BENCH ONLY. While the burst is open, the tick it is SCHEDULED to close on.
+   * Once it has closed, the tick it ACTUALLY closed on. Null on squat and
+   * deadlift, and null on bench before the command.
+   *
+   * THE TWO MEANINGS ARE THE SAME QUANTITY SEEN FROM EITHER SIDE OF THE EVENT,
+   * and the rewrite at close is deliberate rather than a reuse: a burst that
+   * hits the physics cap early leaves the chest before its scheduled end, and
+   * the ascent's boost decays from THE LAUNCH. Left as the schedule, a mashed
+   * burst's boost would sit at full strength until a tick in the future
+   * arrived. `cueProgress` and `burstProgress` only ever read it while the
+   * burst is open, which is the half where it is the schedule.
    */
-  readonly pressQuality: number;
-  /** BENCH ONLY. Has the press been spent — by a real reaction or a false start? */
-  readonly pressUsed: boolean;
+  readonly burstEndTick: number | null;
+  /** BENCH ONLY. Counted taps of the burst so far. */
+  readonly burstTaps: number;
+  /**
+   * BENCH ONLY. Taps thrown at the pause, before the command.
+   *
+   * They buy nothing and each one costs a tap off the burst's ceiling. That is
+   * the whole false-start rule and it is stated to the player in
+   * `LIFT_COPY.SUBTITLE.bench`.
+   */
+  readonly burstEarlyTaps: number;
+  /** BENCH ONLY. Tick of the last counted tap, for the refractory gap. Null before the first. */
+  readonly burstLastTapTick: number | null;
+  /** BENCH ONLY. Tick of the FIRST counted tap — the reaction, recorded. Null before it. */
+  readonly burstFirstTapTick: number | null;
+  /**
+   * BENCH ONLY. What the burst produced, 0..1. This is what buys bar speed
+   * (`PRESS_VELOCITY`) and what the ascent's demand multiplier is read from
+   * (`PRESS_WEAK_DEMAND_PENALTY`). 0 until the burst closes.
+   */
+  readonly burstForce: number;
 
   /**
    * DEADLIFT ONLY (GDD §6.2, "lockout grind"). Tick the down command fires on,
@@ -660,6 +761,33 @@ export function eccentricKindOf(kind: PlayableLiftKind, moment: string): Eccentr
 }
 
 /**
+ * Narrow a lift kind to one whose DESCENT IS GRADED ON A RELEASE TICK, or
+ * refuse.
+ *
+ * THE SIBLING OF `eccentricKindOf`, WRITTEN FROM IT DELIBERATELY, because
+ * CLAUDE.md's "a guard written for one hook must be applied to its sibling"
+ * has been paid for four times in this repository. Same shape, same throw,
+ * same reason for throwing rather than defaulting: a silent fallback to squat
+ * is what `simKindFor` did for every deadlift in the game, and its failure
+ * mode was that it was CORRECT and INVISIBLE.
+ *
+ * WHAT IT REFUSES THAT `eccentricKindOf` DOES NOT: bench. A bench rep lowers
+ * the bar, so it passes the eccentric narrowing, and since 2026-08-25 it has
+ * no release window — the descent is graded on the speed the bar arrives at
+ * the chest with. Reaching for `DEPTH_WINDOW_MS.bench` or `DEPTH_LEGAL.bench`
+ * is a compile error now, and this is the runtime half for a caller that gets
+ * there through a `PlayableLiftKind` variable.
+ */
+export function depthTimedKindOf(kind: PlayableLiftKind, moment: string): DepthTimedLiftKind {
+  if (kind !== 'squat') {
+    throw new RangeError(
+      `lift: a ${kind} is not graded on a release tick, so it has no ${moment}.`,
+    );
+  }
+  return kind;
+}
+
+/**
  * A cue's window width in ms, after fatigue.
  *
  * GDD §3.4: tighter when fatigued, more forgiving when primed. The adjustment
@@ -669,17 +797,18 @@ export function eccentricKindOf(kind: PlayableLiftKind, moment: string): Eccentr
 export function cueWindowMs(cue: LiftCueId, config: LiftConfig): number {
   const base =
     cue === 'depth'
-      // `eccentricKindOf` rather than a bare index: the depth window is an
-      // eccentric-lift table and a deadlift has no depth cue to ask about. It
-      // refuses rather than defaulting — see that function's header.
-      ? LIFT_TUNING.DEPTH_WINDOW_MS[eccentricKindOf(config.kind, 'the depth window')]
+      // `depthTimedKindOf` rather than a bare index: the depth window is a
+      // squat table now, and neither a bench nor a deadlift has a depth cue to
+      // ask about. It refuses rather than defaulting — see that function.
+      ? LIFT_TUNING.DEPTH_WINDOW_MS[depthTimedKindOf(config.kind, 'the depth window')]
       : cue === 'press'
-        // The reaction window. Load-independent on purpose: how fast a human
-        // can react to a stimulus is not a function of what is on the bar, and
-        // scaling it would be modelling the player rather than the lift.
-        // Fatigue still narrows it below, which is GDD §3.4's channel and is
-        // about the lifter, not the bar.
-        ? LIFT_TUNING.PRESS_REACTION_WINDOW_MS
+        // The burst window. Load-independent on purpose: how many taps a human
+        // can throw is not a function of what is on the bar, and scaling it
+        // would be modelling the player rather than the lift. Fatigue still
+        // narrows it below, which is GDD §3.4's channel and is about the
+        // lifter, not the bar — and it is the ONLY channel fatigue reaches
+        // bench's decisive beat through.
+        ? LIFT_TUNING.PRESS_BURST_WINDOW_MS
         : byLoad(LIFT_TUNING.DRIVE_WINDOW_MS[config.kind], clampLoadRatio(config.loadRatio));
   const feel = config.feel;
   if (feel === undefined) return base;
@@ -717,47 +846,193 @@ export function gradeTiming(offsetMs: number, halfWindowMs: number): {
 }
 
 /**
- * Grade a REACTION — bench's press off the chest (GDD §6.2).
+ * BENCH ONLY: what a burst of `taps` is worth, 0..1.
  *
  * ---------------------------------------------------------------------------
- * WHY THIS IS NOT `gradeTiming`, WHICH IS THE WHOLE POINT OF THE BENCH BEAT
+ * WHY A SATURATING CURVE AND NOT A LINE WITH A CAP ON IT
  * ---------------------------------------------------------------------------
- * `gradeTiming` grades |offset| about an ideal moment, so -100ms and +100ms
- * score identically. That is CORRECT for an anticipation check: the player is
- * predicting a moment they can see coming, and missing it in either direction
- * is the same error. It is WRONG for a reaction, because the two directions are
- * not the same event. A press 100ms after the command is a sharp reaction. A
- * press 100ms BEFORE it is not an early reaction — it is a press thrown at a
- * stimulus that had not happened yet, which is a guess.
+ * The ruling asks for "rapid tapping to exert as much force as possible", and
+ * the honest reading of that is a curve that pays a lot for the first taps and
+ * progressively less for the ones after. A line with a cap has the same
+ * endpoints and is a different game: every tap up to the cap is worth exactly
+ * as much as the first, so the only strategy is to reach the cap, and a player
+ * who cannot mash gets a proportional share of nothing. Here the first tap is
+ * worth about a quarter of the whole burst.
  *
- * So quality falls one way only: 1 on the command tick, 0 at the end of the
- * window, and there is no early half to fall through. Anything before the
- * command never reaches this function — `stepLift` routes it to the false-start
- * branch — and `elapsedMs < 0` is refused here as well rather than trusted,
- * because a grader that silently accepts an impossible input is how the caller's
- * bug becomes the grader's answer.
+ *     sat(x) = x / (x + HALF_SATURATION_TAPS)
+ *     force  = sat(min(taps, MAX_COUNTED_TAPS)) / sat(MAX_COUNTED_TAPS)
  *
- * The grade vocabulary is reused rather than grown: 'perfect' for the central
- * band, 'good' next, then 'late' — and never 'early', which is unreachable by
- * construction. `lift.test.ts` pins that unreachability rather than leaving it
- * as a claim, because "this grade cannot happen" is exactly the sort of sentence
- * CLAUDE.md has caught being false eight times.
+ * The normalisation by `sat(MAX_COUNTED_TAPS)` is what makes the top of the
+ * curve exactly 1 rather than an asymptote nobody reaches, so `PRESS_VELOCITY`
+ * and `PRESS_WEAK_DEMAND_PENALTY` both have a real endpoint to interpolate
+ * against. Past the cap the curve is flat — that is the physics cap, and it is
+ * asserted rather than described in `lift.test.ts`.
+ *
+ * PURE IN THE TAP COUNT ALONE. Not the load, not the seed, not fatigue: how
+ * fast a thumb moves is a fact about the player, and scaling this by load
+ * would be modelling the player rather than the lift. Fatigue reaches the
+ * burst through the WINDOW's width (`cueWindowMs('press', config)`), which is
+ * GDD §3.4's own channel, and through nothing else.
  */
-export function gradeReaction(elapsedMs: number, windowMs: number): {
-  readonly quality: number;
-  readonly grade: TimingGrade;
-} {
-  if (!Number.isFinite(elapsedMs) || !Number.isFinite(windowMs) || windowMs <= 0) {
-    return { quality: 0, grade: 'missed' };
+export function burstForce(taps: number): number {
+  const { HALF_SATURATION_TAPS, MAX_COUNTED_TAPS } = LIFT_TUNING.PRESS_BURST_FORCE;
+  if (!Number.isFinite(taps) || taps <= 0) return 0;
+  const counted = Math.min(Math.floor(taps), MAX_COUNTED_TAPS);
+  const sat = (x: number): number => x / (x + HALF_SATURATION_TAPS);
+  const ceiling = sat(MAX_COUNTED_TAPS);
+  if (ceiling <= 0) return 0;
+  return scrub(clamp01(sat(counted) / ceiling));
+}
+
+/**
+ * BENCH ONLY: how many of `taps` actually count, after `earlyTaps` false
+ * starts have been charged against them.
+ *
+ * THE WHOLE FALSE-START RULE, AND IT IS ONE LINE BECAUSE THE SENTENCE THE
+ * PLAYER IS GIVEN IS ONE LINE. `LIFT_COPY.SUBTITLE.bench` says "Taps before
+ * the call count for nothing, and each one costs a tap off your burst — down
+ * to a floor of three", and this is that, with `FALSE_START_FLOOR_TAPS` as the
+ * three. `lift.test.ts` drives the sim against each clause of the sentence
+ * separately rather than against this function, so the copy and the mechanic
+ * cannot drift apart quietly.
+ *
+ * ---------------------------------------------------------------------------
+ * IT CHARGES THE TAPS AND NOT THE CEILING, AND THE DIFFERENCE WAS MEASURED
+ * ---------------------------------------------------------------------------
+ * The first version lowered the burst's CEILING by one per early tap. That
+ * makes the sentence false for most players: a ceiling of 12 against a player
+ * who was only ever going to land 7 taps costs them nothing, so two false
+ * starts were free at every tap rate below a mash. Measured — a moderate
+ * burst landed 7 taps with and without two early ones, and the test asserting
+ * the jumped rep was weaker read `expected 7 to be less than 7`.
+ *
+ * A rule whose stated cost only applies to the fastest players is the kind of
+ * copy CLAUDE.md keeps catching: true of the code somebody had in mind, false
+ * of the code that shipped. Charging the taps themselves makes it true of
+ * everybody.
+ *
+ * IT COSTS THE BURST AND NEVER THE REP. The floor is what makes that true at
+ * every number of early taps rather than at the ones somebody swept: a player
+ * who mashes the entire pause and then taps three times still launches at
+ * `burstForce(FALSE_START_FLOOR_TAPS)`, which is well clear of the unanswered
+ * command's 0. Mashing is strictly worse than waiting and it is never fatal,
+ * which is the shape the drive branch already states in capitals — "A MISSED
+ * TAP COSTS VELOCITY. IT NEVER ENDS THE REP ON ITS OWN."
+ *
+ * THE FLOOR IS A FLOOR ON THE CHARGE, NOT A GIFT. `min(taps, FLOOR)` is what
+ * keeps a player who never answered the command at zero: a burst of no taps
+ * stays a burst of no taps however much they mashed the pause, because the
+ * floor cannot hand out taps nobody threw.
+ */
+export function burstCountedTaps(taps: number, earlyTaps: number): number {
+  const { FALSE_START_FLOOR_TAPS } = LIFT_TUNING.PRESS_BURST_FORCE;
+  const landed = Number.isFinite(taps) ? Math.max(0, Math.floor(taps)) : 0;
+  const early = Number.isFinite(earlyTaps) ? Math.max(0, Math.floor(earlyTaps)) : 0;
+  return Math.max(Math.min(landed, FALSE_START_FLOOR_TAPS), landed - early);
+}
+
+/**
+ * BENCH ONLY: the `TimingGrade` a burst force reads as.
+ *
+ * 'early' AND 'late' ARE UNREACHABLE HERE BY CONSTRUCTION, and that is the
+ * design rather than an oversight. A burst has no direction to be wrong in —
+ * it is an amount, not a moment — and a grade reading 'late' for a weak burst
+ * would be a name asserting something the code never measured. 'missed' is
+ * reserved for a command that went unanswered, which is the only case where
+ * the player did not act at all. `lift.test.ts` pins the two unreachable
+ * members unreachable.
+ */
+export function burstGrade(force: number): TimingGrade {
+  if (!Number.isFinite(force) || force <= 0) return 'missed';
+  const { PERFECT, GOOD } = LIFT_TUNING.PRESS_BURST_GRADE;
+  if (force >= PERFECT) return 'perfect';
+  if (force >= GOOD) return 'good';
+  return 'missed';
+}
+
+/**
+ * BENCH ONLY: how softly a touch arriving at `rate` landed, 0..1.
+ *
+ * Linear between `BENCH_TOUCH_SOFT_RATE` (1 — the bar was caught) and
+ * `BENCH_TOUCH_CRASH_RATE` (0 — it was dropped). Nothing about the player's
+ * timing enters it, which is the point of the 2026-08-25 ruling: squat grades
+ * WHEN you release and bench grades HOW THE BAR ARRIVES, and those are two
+ * faculties rather than two window widths.
+ *
+ * HALF THE GRADE, NOT THE GRADE. `descentPatience` is the other half, and on
+ * its own this one has a free perfect answer — see that function.
+ */
+export function touchSpeedQuality(rate: number): number {
+  const soft = LIFT_TUNING.BENCH_TOUCH_SOFT_RATE;
+  const crash = LIFT_TUNING.BENCH_TOUCH_CRASH_RATE;
+  if (!Number.isFinite(rate)) return 0;
+  if (crash <= soft) return rate <= soft ? 1 : 0;
+  return scrub(clamp01((crash - rate) / (crash - soft)));
+}
+
+/**
+ * BENCH ONLY: what a descent that took `descentTicks` keeps of its control
+ * grade, 0..1.
+ *
+ * 1 up to `BENCH_DESCENT_PATIENCE_TICKS`, then falling linearly to 0 over
+ * `BENCH_DESCENT_DAWDLE_SPAN_TICKS`.
+ *
+ * ---------------------------------------------------------------------------
+ * IT EXISTS BECAUSE THE SPEED GRADE ALONE HAD A DOMINANT STRATEGY
+ * ---------------------------------------------------------------------------
+ * Arriving slowly is quality 1 by definition, and the cheapest way to arrive
+ * slowly is to stop feeding the bar almost immediately, let it stall short of
+ * the chest, and nudge it the rest of the way. Measured on the first tuning of
+ * this beat: releases at 4, 8 and 12 ticks stalled the bar at every load, and
+ * a re-press from a stall lands at a rate near zero. So the beat had a free
+ * perfect answer and no reason to ever commit to the descent.
+ *
+ * Time under a loaded bar is what charges for it, which is also what charges
+ * for it in the sport. `lift.test.ts` measures the feathered strategy against
+ * the committed one rather than asserting which wins.
+ */
+export function descentPatience(descentTicks: number): number {
+  const free = LIFT_TUNING.BENCH_DESCENT_PATIENCE_TICKS;
+  const span = LIFT_TUNING.BENCH_DESCENT_DAWDLE_SPAN_TICKS;
+  if (!Number.isFinite(descentTicks) || descentTicks <= free) return 1;
+  if (span <= 0) return 0;
+  return scrub(clamp01(1 - (descentTicks - free) / span));
+}
+
+/**
+ * BENCH ONLY: the whole control grade for a touch — how softly it landed,
+ * times what a slow descent left of it.
+ *
+ * ONE PLAYER-FACING QUANTITY BUILT FROM TWO, and the product rather than a
+ * minimum or a sum because both halves are already 0..1 fractions of the same
+ * thing: a crashed bar at the end of a patient descent and a soft bar at the
+ * end of an interminable one are both bad reps, and a rep that is bad on both
+ * counts should be worse than either.
+ */
+export function touchQualityFor(rate: number, descentTicks: number): number {
+  return scrub(touchSpeedQuality(rate) * descentPatience(descentTicks));
+}
+
+/**
+ * BENCH ONLY: the descent rate one tick on, given whether the finger is down.
+ *
+ * Held feeds the bar (`BENCH_DESCENT_GRAVITY`, capped at
+ * `BENCH_DESCENT_MAX_RATE`); released resists it (`BENCH_DESCENT_BRAKE`,
+ * floored at 0 — a bar the lifter has stopped is stopped, not rising). Both
+ * are load curves, and MAXIMAL is the bigger gravity and the smaller brake,
+ * which is where the beat's difficulty under load comes from.
+ */
+export function benchDescentRate(rate: number, held: boolean, loadRatio: number): number {
+  const load = clampLoadRatio(loadRatio);
+  if (held) {
+    return scrub(
+      Math.min(
+        LIFT_TUNING.BENCH_DESCENT_MAX_RATE,
+        rate + byLoad(LIFT_TUNING.BENCH_DESCENT_GRAVITY, load),
+      ),
+    );
   }
-  // Before the stimulus is not this function's case. See the header.
-  if (elapsedMs < 0 || elapsedMs > windowMs) return { quality: 0, grade: 'missed' };
-  const quality = scrub(1 - elapsedMs / windowMs);
-  const perfectBand = windowMs * LIFT_TUNING.PERFECT_BAND_FRACTION;
-  if (elapsedMs <= perfectBand) return { quality, grade: 'perfect' };
-  const goodBand = perfectBand + (windowMs - perfectBand) / 2;
-  if (elapsedMs <= goodBand) return { quality, grade: 'good' };
-  return { quality, grade: 'late' };
+  return scrub(Math.max(0, rate - byLoad(LIFT_TUNING.BENCH_DESCENT_BRAKE, load)));
 }
 
 // ---------------------------------------------------------------------------
@@ -773,13 +1048,21 @@ export function gradeReaction(elapsedMs: number, windowMs: number): {
  *
  * `extraDepth` is how far past DEPTH_IDEAL the lifter was buried; it scales the
  * whole curve, so being buried is harder rather than merely longer.
+ *
+ * THE TWO BENCH SHORTFALLS ARE SEPARATE TERMS BECAUSE THEY ARE SEPARATE
+ * BEATS. `launchShortfall` is `1 - burstForce` — what the taps did not buy —
+ * and `touchShortfall` is `1 - touchQuality` — how badly the bar arrived. A
+ * player can crash the bar and still tap hard, or catch it perfectly and then
+ * fail to answer the command, and the ascent has to be able to tell those two
+ * reps apart. Both default to 0, which is what squat and deadlift pass.
  */
 export function ascentDemand(
   h: number,
   loadRatio: number,
   kind: PlayableLiftKind,
   extraDepth: number = 0,
-  pressShortfall: number = 0,
+  launchShortfall: number = 0,
+  touchShortfall: number = 0,
 ): number {
   const load = clampLoadRatio(loadRatio);
   const base = byLoad(LIFT_TUNING.DEMAND_BASE[kind], load);
@@ -787,12 +1070,15 @@ export function ascentDemand(
     byLoad(LIFT_TUNING.DEMAND_STICK_GAIN[kind], load) *
     gauss(h, STICK_HEIGHT_FRAC[kind], STICK_WIDTH[kind]);
   const buried = 1 + LIFT_TUNING.BURIED_DEMAND_PER_DEPTH * Math.max(0, extraDepth);
-  // BENCH: what a slow press off the chest actually COSTS. See
-  // `PRESS_SLOW_DEMAND_PENALTY` — this scales the whole curve for the whole
+  // BENCH: what a limp burst off the chest actually COSTS. See
+  // `PRESS_WEAK_DEMAND_PENALTY` — this scales the whole curve for the whole
   // ascent, exactly as `buried` does, because a transient does not survive
   // long enough to decide anything.
-  const slow = 1 + LIFT_TUNING.PRESS_SLOW_DEMAND_PENALTY * clamp01(pressShortfall);
-  return scrub((base + stick) * buried * slow);
+  const weak = 1 + LIFT_TUNING.PRESS_WEAK_DEMAND_PENALTY * clamp01(launchShortfall);
+  // BENCH: what a bar dropped onto the chest costs, on the same terms and for
+  // the same reason. See `BENCH_TOUCH_DEMAND_PENALTY`.
+  const crashed = 1 + LIFT_TUNING.BENCH_TOUCH_DEMAND_PENALTY * clamp01(touchShortfall);
+  return scrub((base + stick) * buried * weak * crashed);
 }
 
 /**
@@ -805,6 +1091,7 @@ export function holeTicks(loadRatio: number, kind: EccentricLiftKind): number {
 
 /**
  * BENCH ONLY: how long the bar waits on the chest before the press command.
+ *
  *
  * A PURE FUNCTION OF THE REP'S SEED, computed once when the bar settles rather
  * than drawn from the per-tick generator. Two properties have to hold at once
@@ -993,7 +1280,7 @@ export function braceTicks(loadRatio: number, kind: PlayableLiftKind): number {
 export function depthWindowHalfTicks(
   loadRatio: number,
   windowMs: number,
-  kind: EccentricLiftKind,
+  kind: DepthTimedLiftKind,
 ): number {
   const rate = descentRate(loadRatio, kind);
   const fromMs = Math.round(windowMs / TICK_MS / 2);
@@ -1140,9 +1427,15 @@ export function createLift(config: LiftConfig): LiftState {
     timings: [],
     depthAchieved: onTheFloor,
     extraDepth: 0,
+    chestRate: null,
+    touchQuality: 0,
     pressCommandTick: null,
-    pressQuality: 0,
-    pressUsed: false,
+    burstEndTick: null,
+    burstTaps: 0,
+    burstEarlyTaps: 0,
+    burstLastTapTick: null,
+    burstFirstTapTick: null,
+    burstForce: 0,
     downCommandTick: null,
     lockoutSlipTicks: 0,
     drivesUsed: 0,
@@ -1216,9 +1509,15 @@ interface Mutable {
   timings: InputTiming[];
   depthAchieved: boolean;
   extraDepth: number;
+  chestRate: number | null;
+  touchQuality: number;
   pressCommandTick: number | null;
-  pressQuality: number;
-  pressUsed: boolean;
+  burstEndTick: number | null;
+  burstTaps: number;
+  burstEarlyTaps: number;
+  burstLastTapTick: number | null;
+  burstFirstTapTick: number | null;
+  burstForce: number;
   downCommandTick: number | null;
   lockoutSlipTicks: number;
   drivesUsed: number;
@@ -1271,9 +1570,15 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     timings: state.timings.map((t) => ({ ...t })),
     depthAchieved: state.depthAchieved,
     extraDepth: state.extraDepth,
+    chestRate: state.chestRate,
+    touchQuality: state.touchQuality,
     pressCommandTick: state.pressCommandTick,
-    pressQuality: state.pressQuality,
-    pressUsed: state.pressUsed,
+    burstEndTick: state.burstEndTick,
+    burstTaps: state.burstTaps,
+    burstEarlyTaps: state.burstEarlyTaps,
+    burstLastTapTick: state.burstLastTapTick,
+    burstFirstTapTick: state.burstFirstTapTick,
+    burstForce: state.burstForce,
     downCommandTick: state.downCommandTick,
     lockoutSlipTicks: state.lockoutSlipTicks,
     drivesUsed: state.drivesUsed,
@@ -1381,6 +1686,25 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
         enter('ASCENT');
         m.velocity = scrub(floorBreakVelocity(load));
         m.peakHeight = m.height;
+      } else if (kind === 'bench') {
+        // ---------------------------------------------------------------
+        // BENCH ARMS NO CUE HERE, AND THE ABSENCE IS THE MECHANIC.
+        //
+        // A ring counting the player down to the chest would tell them the
+        // exact tick to lift their finger on, which converts a control check
+        // into squat's anticipation check wearing bench's name — the same
+        // failure `cueProgress` refuses for deadlift's lockout hold, one beat
+        // earlier. What the player watches is the BAR: it is visibly speeding
+        // up or slowing down, and `chestApproach` is the read model the stage
+        // draws that from.
+        //
+        // The bar starts down at `DESCENT_DEPTH_PER_TICK.bench` and is fed or
+        // resisted from there, one tick at a time, in the DESCENT branch.
+        // ---------------------------------------------------------------
+        enter('DESCENT');
+        m.held = true;
+        m.chestRate = scrub(descentRate(load, kind));
+        m.events.push({ kind: 'descent-start', tick });
       } else {
         enter('DESCENT');
         m.held = true;
@@ -1413,51 +1737,124 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
   // has already refused that state — so it costs nothing and buys the narrowing
   // without a cast.
   else if (m.phase === 'DESCENT' && kind !== 'deadlift') {
-    const cue = m.activeCue;
-    if (cue !== null && tick === cue.openTick) {
-      m.events.push({ kind: 'depth-cue-open', tick });
-    }
-    if (m.held) {
-      m.depth = scrub(m.depth + descentRate(load, kind));
+    if (kind === 'bench') {
+      // ---------------------------------------------------------------------
+      // BENCH: THE CONTROLLED LOWERING (GDD §6.2; ruled 2026-08-25).
+      //
+      // The finger feeds the bar and lifting it resists. Contact happens when
+      // the bar reaches the chest, whatever the player is doing at that
+      // instant, and the graded quantity is the RATE it is carrying there.
+      //
+      // NOTHING HERE READS A CUE, A WINDOW OR A RELEASE TICK. That is the
+      // difference between this beat and squat's, and it is why the two are
+      // separate branches rather than one branch with a per-kind table: a
+      // shared branch with a `kind === 'bench'` inside it would have made
+      // "bench is not a squat" a runtime condition instead of a structure.
+      // ---------------------------------------------------------------------
+      const rate = benchDescentRate(m.chestRate ?? descentRate(load, kind), m.held, load);
+      m.chestRate = rate;
+      m.depth = scrub(m.depth + rate);
       m.height = scrub(clamp01(1 - m.depth));
-    }
 
-    const reverseNow = released || m.depth >= LIFT_TUNING.DEPTH_COLLAPSE[kind];
-    if (reverseNow) {
-      const buried = !released && m.depth >= LIFT_TUNING.DEPTH_COLLAPSE[kind];
-      m.depthAchieved = m.depth >= LIFT_TUNING.DEPTH_LEGAL[kind];
-      m.extraDepth = scrub(Math.max(0, m.depth - LIFT_TUNING.DEPTH_IDEAL[kind]));
-
-      if (cue !== null) {
-        const offsetMs = (tick - cue.idealTick) * TICK_MS;
-        const { quality, grade } = gradeTiming(offsetMs, (cue.widthMs / 2));
-        m.timings.push({ cue: 'depth', tick, offsetMs: scrub(offsetMs), quality, grade });
-        m.events.push({
-          kind: m.depthAchieved ? 'depth-hit' : 'depth-high',
-          tick,
-          grade,
-          quality,
-        });
-        m.velocity = scrub(
-          LIFT_TUNING.REVERSAL_VELOCITY.MIN +
-            (LIFT_TUNING.REVERSAL_VELOCITY.MAX - LIFT_TUNING.REVERSAL_VELOCITY.MIN) * quality,
+      if (m.depth >= LIFT_TUNING.DEPTH_IDEAL[kind]) {
+        // THE TOUCH. Legality on a bench is the touch itself — a press that
+        // never reaches the chest is three red lights, and one that does is
+        // legal however ugly it looked.
+        m.depthAchieved = true;
+        // `m.phaseTick` is how long this DESCENT has run — the quantity
+        // `descentPatience` charges for, read at the instant of contact.
+        m.touchQuality = touchQualityFor(rate, m.phaseTick);
+        // The bar sinks into the chest by what it was carrying. DRAWING AND
+        // FLAVOUR ONLY: `extraDepth` stays 0 on bench on purpose, so the sink
+        // is not charged a second time through `BURIED_DEMAND_PER_DEPTH` on
+        // top of `BENCH_TOUCH_DEMAND_PENALTY`. `lift.test.ts` pins that.
+        m.depth = scrub(
+          Math.min(
+            LIFT_TUNING.DEPTH_COLLAPSE[kind],
+            LIFT_TUNING.DEPTH_IDEAL[kind] + LIFT_TUNING.BENCH_TOUCH_SINK_GAIN * rate,
+          ),
         );
-      }
-
-      if (buried) {
+        m.height = scrub(clamp01(1 - m.depth));
+        m.extraDepth = 0;
+        m.chestRate = 0;
+        const grade: TimingGrade =
+          m.touchQuality >= LIFT_TUNING.PRESS_BURST_GRADE.PERFECT
+            ? 'perfect'
+            : m.touchQuality >= LIFT_TUNING.PRESS_BURST_GRADE.GOOD
+              ? 'good'
+              : 'missed';
+        m.events.push({ kind: 'chest-touch', tick, grade, quality: m.touchQuality });
+        enter('HOLE');
+      } else if (m.phaseTick >= LIFT_TUNING.CHEST_TOUCH_TIMEOUT_TICKS) {
+        // THE BAR NEVER ARRIVED. Only reachable by stopping the feed and never
+        // restarting it — see `CHEST_TOUCH_TIMEOUT_TICKS`. `peakHeight` is 0
+        // because nothing was pressed: the rep never left the chest, because
+        // it never got there.
         m.resolution = resolutionFor(
           { ...state, ...m, timings: m.timings, peakHeight: 0 },
           'miss',
-          'buried',
+          'no-touch',
         );
         m.events.push({ kind: 'resolved', tick });
         enter('RESOLVED');
-      } else {
-        m.height = clamp01(1 - m.depth);
-        enter('HOLE');
-        m.events.push({ kind: 'reversal', tick });
       }
-      m.activeCue = null;
+    } else {
+      // ---------------------------------------------------------------------
+      // SQUAT: depth grows while held. Release decides the rep's legality.
+      //
+      // `kind !== 'deadlift'` above and `kind === 'bench'` on the branch above
+      // this one leave `kind` narrowed to `'squat'`, which is what lets the
+      // depth tables — squat-only since the ruling — be indexed without a
+      // cast. UNCHANGED FROM THE PRE-RULING MECHANIC, byte for byte, and
+      // `lift.test.ts` pins squat's played histories against digests measured
+      // before the bench work landed.
+      // ---------------------------------------------------------------------
+      const cue = m.activeCue;
+      if (cue !== null && tick === cue.openTick) {
+        m.events.push({ kind: 'depth-cue-open', tick });
+      }
+      if (m.held) {
+        m.depth = scrub(m.depth + descentRate(load, kind));
+        m.height = scrub(clamp01(1 - m.depth));
+      }
+
+      const reverseNow = released || m.depth >= LIFT_TUNING.DEPTH_COLLAPSE[kind];
+      if (reverseNow) {
+        const buried = !released && m.depth >= LIFT_TUNING.DEPTH_COLLAPSE[kind];
+        m.depthAchieved = m.depth >= LIFT_TUNING.DEPTH_LEGAL[kind];
+        m.extraDepth = scrub(Math.max(0, m.depth - LIFT_TUNING.DEPTH_IDEAL[kind]));
+
+        if (cue !== null) {
+          const offsetMs = (tick - cue.idealTick) * TICK_MS;
+          const { quality, grade } = gradeTiming(offsetMs, (cue.widthMs / 2));
+          m.timings.push({ cue: 'depth', tick, offsetMs: scrub(offsetMs), quality, grade });
+          m.events.push({
+            kind: m.depthAchieved ? 'depth-hit' : 'depth-high',
+            tick,
+            grade,
+            quality,
+          });
+          m.velocity = scrub(
+            LIFT_TUNING.REVERSAL_VELOCITY.MIN +
+              (LIFT_TUNING.REVERSAL_VELOCITY.MAX - LIFT_TUNING.REVERSAL_VELOCITY.MIN) * quality,
+          );
+        }
+
+        if (buried) {
+          m.resolution = resolutionFor(
+            { ...state, ...m, timings: m.timings, peakHeight: 0 },
+            'miss',
+            'buried',
+          );
+          m.events.push({ kind: 'resolved', tick });
+          enter('RESOLVED');
+        } else {
+          m.height = clamp01(1 - m.depth);
+          enter('HOLE');
+          m.events.push({ kind: 'reversal', tick });
+        }
+        m.activeCue = null;
+      }
     }
   }
 
@@ -1484,53 +1881,102 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     const benched = kind === 'bench';
 
     if (benched) {
+      // ---------------------------------------------------------------------
+      // BENCH: THE PAUSE, THE COMMAND, AND THE BURST (ruled 2026-08-25).
+      //
       // Set the command on the first tick of the beat, not at `createLift`:
-      // the tick HOLE begins on is a function of when the player released, so
-      // the delay is anchored to the pause the player actually sees.
+      // the tick HOLE begins on is a function of how the player brought the
+      // bar down, so the delay is anchored to the pause they actually see.
+      // ---------------------------------------------------------------------
       if (m.pressCommandTick === null) {
         m.pressCommandTick = tick + pressCommandDelayTicks(state.config.seed);
       }
       const commandTick = m.pressCommandTick;
       const commanded = tick >= commandTick;
-      if (tick === commandTick) m.events.push({ kind: 'press-command', tick });
+      if (tick === commandTick) {
+        m.events.push({ kind: 'press-command', tick });
+        // THE WINDOW'S LENGTH IS DECIDED HERE, ONCE, and it is the same for
+        // everybody. What a false start costs is the CEILING (see
+        // `burstTapCeiling`), never the clock — a shortened window and a
+        // lowered ceiling look similar and are not: shortening the window
+        // would punish a slow tapper twice for one mistake, because they were
+        // already going to run out of taps before they ran out of window.
+        m.burstEndTick =
+          tick + Math.max(1, Math.round(msToTicks(cueWindowMs('press', state.config))));
+      }
 
-      if (pressed && !m.pressUsed) {
-        m.pressUsed = true;
+      if (pressed) {
         if (!commanded) {
-          // A FALSE START CONSUMES THE PRESS. Without this, mashing through the
-          // pause would eventually land on the command by luck and be rewarded
-          // for it, which would make the reaction check optional. It costs the
-          // reaction rather than the rep — see `PRESS_FALSE_START_QUALITY`.
-          m.pressQuality = LIFT_TUNING.PRESS_FALSE_START_QUALITY;
-          m.timings.push({
-            cue: 'press',
-            tick,
-            offsetMs: scrub((tick - commandTick) * TICK_MS),
-            quality: m.pressQuality,
-            grade: 'missed',
-          });
+          // A FALSE START BUYS NOTHING AND COSTS A TAP OFF THE CEILING. It
+          // does NOT end the rep, consistently with the rule the drive branch
+          // already states in capitals — "A MISSED TAP COSTS VELOCITY. IT
+          // NEVER ENDS THE REP ON ITS OWN." A competition bench would red
+          // light a press before the call outright, and that is left on the
+          // table rather than taken: a hard fail on a stimulus the player
+          // cannot see coming reads as the game cheating, and it is exactly
+          // the judgement GDD §12.1 puts with a human on a phone.
+          m.burstEarlyTaps += 1;
           m.events.push({ kind: 'press-false-start', tick, grade: 'missed', quality: 0 });
-        } else {
-          const elapsedMs = (tick - commandTick) * TICK_MS;
-          const windowMs = cueWindowMs('press', state.config);
-          const { quality, grade } = gradeReaction(elapsedMs, windowMs);
-          m.pressQuality = quality;
-          m.timings.push({ cue: 'press', tick, offsetMs: scrub(elapsedMs), quality, grade });
-          m.events.push({ kind: 'press-hit', tick, grade, quality });
+        } else if (
+          m.burstTaps < LIFT_TUNING.PRESS_BURST_FORCE.MAX_COUNTED_TAPS &&
+          (m.burstLastTapTick === null ||
+            tick - m.burstLastTapTick >= LIFT_TUNING.PRESS_BURST_TAP_REFRACTORY_TICKS)
+        ) {
+          m.burstTaps += 1;
+          m.burstLastTapTick = tick;
+          if (m.burstFirstTapTick === null) m.burstFirstTapTick = tick;
+          m.events.push({
+            kind: 'press-burst-tap',
+            tick,
+            quality: burstForce(burstCountedTaps(m.burstTaps, m.burstEarlyTaps)),
+          });
         }
       }
 
-      // The bar leaves the chest once the press is spent, or once the command
-      // has been ignored for long enough. NOT `holeTicks` — that is squat's
-      // fixed reversal beat, and on bench the beat's length is the player's.
-      const gaveUp = commanded && tick - commandTick >= LIFT_TUNING.PRESS_TIMEOUT_TICKS;
-      if (m.pressUsed || gaveUp) {
-        // THE BAR-SPEED HALF OF §6.2's LINE. This OVERWRITES the velocity the
-        // depth release set: on bench the chest touch decides legality and the
-        // reaction decides speed, which is what makes one input cover both
-        // halves of "press-timing / bar-speed check".
+      // The bar leaves the chest when the window closes, or the instant the
+      // physics cap is reached.
+      //
+      // WHERE THE "RATE" IN THE RULING ACTUALLY LIVES, said plainly because
+      // the second arm looks like it and is not. The window is a FIXED length,
+      // so the only way to land more taps is to land them faster — rate
+      // becomes count, and count becomes force. The cap arm is not a second
+      // reward for speed; it is the bar leaving the chest once there is
+      // nothing left to add, so a player who has maxed out is not held there
+      // watching a window run down.
+      const endTick = m.burstEndTick;
+      const burstOver =
+        commanded &&
+        endTick !== null &&
+        (tick >= endTick || m.burstTaps >= LIFT_TUNING.PRESS_BURST_FORCE.MAX_COUNTED_TAPS);
+      if (burstOver) {
+        m.burstForce = burstForce(burstCountedTaps(m.burstTaps, m.burstEarlyTaps));
+        // THE FIELD BECOMES THE LAUNCH TICK HERE, which is what its name says
+        // and what the ascent's boost decays from. Until this tick it is the
+        // SCHEDULED end — what the ring is sized against — and a burst that
+        // closed early on the cap would otherwise leave the boost reading a
+        // future tick and holding at full strength until it arrived.
+        m.burstEndTick = tick;
+        const grade = burstGrade(m.burstForce);
+        // The reaction, RECORDED BUT NOT SEPARATELY GRADED — see the section
+        // header in `liftTuning.ts`. `offsetMs` is ms from the command to the
+        // first counted tap, or the whole window if none ever came, so a
+        // replay can show how long the player took without the mechanic
+        // scoring it twice.
+        const firstTap = m.burstFirstTapTick;
+        const offsetMs =
+          firstTap === null ? (tick - commandTick) * TICK_MS : (firstTap - commandTick) * TICK_MS;
+        m.timings.push({
+          cue: 'press',
+          tick,
+          offsetMs: scrub(offsetMs),
+          quality: m.burstForce,
+          grade,
+        });
+        m.events.push({ kind: 'press-hit', tick, grade, quality: m.burstForce });
+        // THE BAR-SPEED HALF OF §6.2's LINE. On bench the chest touch decides
+        // how hard the ascent is and the burst decides how fast it starts.
         const { MIN, MAX } = LIFT_TUNING.PRESS_VELOCITY;
-        m.velocity = scrub(MIN + (MAX - MIN) * clamp01(m.pressQuality));
+        m.velocity = scrub(MIN + (MAX - MIN) * clamp01(m.burstForce));
         enter('ASCENT');
         m.peakHeight = m.height;
       }
@@ -1632,11 +2078,20 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     }
 
     // --- physics ---------------------------------------------------------
-    // THE PRESS'S SHORTFALL, CARRIED FOR THE WHOLE ASCENT. Squat passes 0 —
-    // its `pressQuality` is 0 because it has no press, and reading it without
-    // this guard would charge every squat the maximum penalty.
-    const pressShortfall = kind === 'bench' ? 1 - clamp01(m.pressQuality) : 0;
-    const demand = ascentDemand(m.height, load, kind, m.extraDepth, pressShortfall);
+    // BENCH'S TWO SHORTFALLS, CARRIED FOR THE WHOLE ASCENT. Squat and deadlift
+    // pass 0 for both — their `burstForce` and `touchQuality` are 0 because
+    // they have neither beat, and reading either without this guard would
+    // charge every squat and every deadlift the maximum penalty on both.
+    const launchShortfall = kind === 'bench' ? 1 - clamp01(m.burstForce) : 0;
+    const touchShortfall = kind === 'bench' ? 1 - clamp01(m.touchQuality) : 0;
+    const demand = ascentDemand(
+      m.height,
+      load,
+      kind,
+      m.extraDepth,
+      launchShortfall,
+      touchShortfall,
+    );
     let drive = capacity - m.stallCapacityLoss;
     // A LANDED DRIVE IS A COMMITTED IMPULSE, NOT A STATE THE PLAYER MAINTAINS.
     // Deliberately NOT gated on `m.held`. It used to be, and that coupling was
@@ -1659,6 +2114,18 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
       const elapsed = tick - m.driveTick;
       const decay = clamp01(1 - elapsed / LIFT_TUNING.DRIVE_BOOST_TICKS);
       drive += LIFT_TUNING.DRIVE_BOOST_FORCE_MAX * m.driveQuality * decay;
+    }
+    // BENCH: THE BURST'S OWN BOOST, on exactly the shape above and for exactly
+    // the same reason — a committed impulse that pays out and decays, not a
+    // state the player maintains. This is what "exert as much force as
+    // possible" produces: `PRESS_VELOCITY` is speed and
+    // `PRESS_WEAK_DEMAND_PENALTY` is a handicap; neither of them is the lifter
+    // pushing. `burstEndTick` is when the burst closed, which is the tick the
+    // bar left the chest, so the decay is measured from the launch.
+    if (kind === 'bench' && m.burstEndTick !== null && m.burstForce > 0) {
+      const elapsed = tick - m.burstEndTick;
+      const decay = clamp01(1 - elapsed / LIFT_TUNING.PRESS_BURST_BOOST_TICKS);
+      drive += LIFT_TUNING.PRESS_BURST_BOOST_FORCE_MAX * m.burstForce * decay;
     }
     m.netForce = scrub(drive - demand);
     const targetVelocity = m.netForce * LIFT_TUNING.VELOCITY_PER_NET_FORCE;
@@ -1891,9 +2358,15 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     timings: m.timings,
     depthAchieved: m.depthAchieved,
     extraDepth: m.extraDepth,
+    chestRate: m.chestRate,
+    touchQuality: m.touchQuality,
     pressCommandTick: m.pressCommandTick,
-    pressQuality: m.pressQuality,
-    pressUsed: m.pressUsed,
+    burstEndTick: m.burstEndTick,
+    burstTaps: m.burstTaps,
+    burstEarlyTaps: m.burstEarlyTaps,
+    burstLastTapTick: m.burstLastTapTick,
+    burstFirstTapTick: m.burstFirstTapTick,
+    burstForce: m.burstForce,
     downCommandTick: m.downCommandTick,
     lockoutSlipTicks: m.lockoutSlipTicks,
     drivesUsed: m.drivesUsed,
@@ -1994,6 +2467,11 @@ export function promptFor(state: LiftState): string {
       if (kind === 'bench' && commandTick !== null && state.tick >= commandTick) {
         return p.HOLE_COMMANDED;
       }
+      // BENCH, BEFORE THE COMMAND, HAVING ALREADY JUMPED IT. The rule the
+      // player just broke is invisible otherwise — the cost lands on a burst
+      // that has not started yet — so it is said here, at the moment it is
+      // broken, as well as up front in `SUBTITLE.bench`.
+      if (kind === 'bench' && state.burstEarlyTaps > 0) return p.HOLE_FALSE_START;
       return p.HOLE[kind];
     }
     case 'ASCENT': {
@@ -2043,10 +2521,17 @@ export function hapticFor(event: LiftEvent): HapticPattern | null {
     // player rather than answering them.
     case 'press-command':
       return h.PRESS_COMMAND;
+    case 'press-burst-tap':
+      return h.PRESS_BURST_TAP;
     case 'press-hit':
       return event.grade === 'perfect' ? h.PRESS_SHARP : h.PRESS_SLOW;
     case 'press-false-start':
       return h.PRESS_FALSE_START;
+    // BENCH. The touch is the descent's payoff and the hand has to be able to
+    // tell a catch from a drop without reading anything — a crashed bar is the
+    // one the ascent is about to charge for.
+    case 'chest-touch':
+      return event.grade === 'missed' ? h.CHEST_TOUCH_CRASH : h.CHEST_TOUCH_SOFT;
     case 'drive-hit':
       return event.grade === 'perfect' ? h.DRIVE_PERFECT : h.DRIVE_LOOSE;
     case 'drive-mistimed':
@@ -2074,17 +2559,94 @@ export function hapticFor(event: LiftEvent): HapticPattern | null {
 }
 
 /**
- * True while the bench press command is the live stimulus — HOLE, command
- * has fired, press not yet spent. The ring and the headline both key off this
- * so they cannot disagree about whether the player is being asked to press.
+ * True while the bench burst is live — HOLE, and the command has fired. The
+ * ring and the headline both key off this so they cannot disagree about
+ * whether the player is being asked to tap.
+ *
+ * NO `pressUsed` ARM ANY MORE, AND ITS ABSENCE IS NOT A LOOSENING. Under the
+ * single-reaction beat one press ended the answer, so "the press has been
+ * spent" was a real state the command could still be showing through. A burst
+ * is not spent by a tap — it is spent when the window closes or the ceiling is
+ * reached, and `stepLift` leaves HOLE on that same tick. So every HOLE state
+ * with the command fired is a state the player should be tapping in, and there
+ * is no case left for the old arm to exclude. `lift.test.ts` pins the last
+ * live tick and the first dead one rather than leaving that as an argument.
  */
 export function pressCommandIsLive(state: LiftState): boolean {
   if (state.config.kind !== 'bench') return false;
   if (state.phase !== 'HOLE') return false;
-  if (state.pressUsed) return false;
   const commandTick = state.pressCommandTick;
   if (commandTick === null) return false;
   return state.tick >= commandTick;
+}
+
+/**
+ * BENCH: how the bar is coming in, 0..1 — 0 fully controlled, 1 crashing.
+ *
+ * Null on squat, on deadlift, and on any bench state outside DESCENT.
+ *
+ * THE READ MODEL THE STAGE NEEDS AND CANNOT DERIVE. `depth` says where the bar
+ * is; it does not say whether it is being caught or dropped, and those are the
+ * two reps this beat exists to tell apart. Deliberately the INVERSE of
+ * `touchQualityFor` — hot is 1 — because what a renderer wants to scale is the
+ * alarm, not the calm.
+ *
+ * NOT A FATIGUE METER, and the distinction is the same one `stallCapacityLoss`
+ * and `lockoutSlipTicks` already make: it is the bar's speed this tick, it
+ * resets every rep, it is never persisted, and no constant behind it comes
+ * from `fatigue.ts`. Fatigue does not reach bench's descent at all — it
+ * reaches the burst, through the window's width, which is GDD §3.4's own
+ * channel.
+ */
+export function chestApproach(state: LiftState): number | null {
+  if (state.config.kind !== 'bench') return null;
+  if (state.phase !== 'DESCENT') return null;
+  const rate = state.chestRate;
+  if (rate === null) return null;
+  // THE SPEED HALF ONLY. `descentPatience` is about how long the descent has
+  // taken, which the stage has no business drawing as heat on the bar — a bar
+  // creeping down slowly is not coming in hot, it is just slow, and colouring
+  // it as a crash would be a cue that lies.
+  return scrub(1 - touchSpeedQuality(rate));
+}
+
+/** What the burst has bought so far, for the stage to draw. */
+export interface BurstProgress {
+  /** Taps landed. Not what they are worth — a false start is charged below. */
+  readonly taps: number;
+  /** Taps still available before the physics cap closes the burst. Never below 0. */
+  readonly tapsLeft: number;
+  /** What those taps are worth right now, 0..1. */
+  readonly force: number;
+  /** Ticks left before the window closes. Never below 0. */
+  readonly ticksLeft: number;
+}
+
+/**
+ * BENCH: the live burst, or null when one is not open.
+ *
+ * PIECE 2 DRAWS THIS; PIECE 1 ONLY HAS TO MAKE IT TRUE. It is here rather than
+ * in a component because "how much force have my taps bought" is a fact about
+ * the mechanic, and CLAUDE.md forbids deriving mechanic state inside a `.tsx`
+ * file.
+ *
+ * WHAT IT DELIBERATELY DOES NOT CARRY IS THE WINDOW'S FULL WIDTH. `ticksLeft`
+ * over the base `PRESS_BURST_WINDOW_MS` would be a 0..1 fatigue ratio, and a
+ * 0..1 ratio is one `<View style={{width}}>` away from the meter §12.3
+ * refuses — the same back door `CueWindow.widthMs` already documents. So the
+ * denominator stays out of `src/lift/`, and `liftTuning.test.ts` enforces
+ * that by name for this constant as well as for the other two.
+ */
+export function burstProgress(state: LiftState): BurstProgress | null {
+  if (!pressCommandIsLive(state)) return null;
+  const endTick = state.burstEndTick;
+  const cap = LIFT_TUNING.PRESS_BURST_FORCE.MAX_COUNTED_TAPS;
+  return {
+    taps: state.burstTaps,
+    tapsLeft: Math.max(0, cap - state.burstTaps),
+    force: burstForce(burstCountedTaps(state.burstTaps, state.burstEarlyTaps)),
+    ticksLeft: endTick === null ? 0 : Math.max(0, endTick - state.tick),
+  };
 }
 
 /**
@@ -2147,11 +2709,11 @@ export function lockoutHoldIsLive(state: LiftState): boolean {
 export function cueProgress(state: LiftState): number | null {
   if (pressCommandIsLive(state)) {
     const commandTick = state.pressCommandTick;
-    if (commandTick === null) return null;
-    const elapsedMs = (state.tick - commandTick) * TICK_MS;
-    const windowMs = cueWindowMs('press', state.config);
-    if (windowMs <= 0) return null;
-    return scrub(1 + elapsedMs / windowMs);
+    const endTick = state.burstEndTick;
+    if (commandTick === null || endTick === null) return null;
+    const span = endTick - commandTick;
+    if (span <= 0) return null;
+    return scrub(1 + (state.tick - commandTick) / span);
   }
   const cue = state.activeCue;
   if (cue === null) return null;

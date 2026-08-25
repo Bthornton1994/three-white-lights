@@ -52,7 +52,15 @@ import {
   driveAttemptsFor,
   eccentricKindOf,
   lockoutHoldIsLive,
-  gradeReaction,
+  burstForce,
+  burstGrade,
+  burstProgress,
+  burstCountedTaps,
+  chestApproach,
+  depthTimedKindOf,
+  descentPatience,
+  touchQualityFor,
+  touchSpeedQuality,
   gradeTiming,
   hapticFor,
   holeTicks,
@@ -80,6 +88,7 @@ import {
   LOAD_RANGE,
   STICK_HEIGHT_FRAC,
   TICK_MS,
+  type DepthTimedLiftKind,
   type EccentricLiftKind,
   type PlayableLiftKind,
 } from './liftTuning';
@@ -109,7 +118,7 @@ import { STICK } from '../art/spriteTuning';
 // that goes DOWN first, which is what `EccentricLiftKind` means — a deadlift
 // has no descent to compute a release tick for, and `descentRate` will not
 // accept one. Deadlift's harness is `deadliftRep` further down.
-const DEFAULT_KIND: EccentricLiftKind = 'squat';
+const DEFAULT_KIND: DepthTimedLiftKind = 'squat';
 
 /** Tick the player presses to start the descent. */
 function pressTickFor(load: number, kind: EccentricLiftKind = DEFAULT_KIND): number {
@@ -204,8 +213,24 @@ function play(loadRatio: number, options: PlayOptions = {}): LiftState {
  * standing between an eccentric lockout and deadlift's "don't let go" line.
  */
 function eccentricLockoutStates(kind: EccentricLiftKind, loadRatio: number): LiftState[] {
-  const depth = LIFT_TUNING.DEPTH_IDEAL[kind];
   const config: LiftConfig = { kind, loadRatio, seed: ECCENTRIC_LOCKOUT_SEED };
+  if (kind === 'bench') {
+    // BENCH NEEDS ITS BURST TO GET HERE AT ALL SINCE THE RULING. A bench rep
+    // that ignores the command launches at `PRESS_VELOCITY.MIN` against a
+    // demand curve `PRESS_WEAK_DEMAND_PENALTY` has just raised, which at a
+    // heavy load is a stall and never reaches LOCKOUT — so the old script
+    // would have handed this fixture an empty list, which is the exact
+    // failure it was written to repair.
+    return runLift(
+      config,
+      buildBenchScript(loadRatio, ECCENTRIC_LOCKOUT_SEED, {
+        gapTicks: BURST_SWEEP.MASH_GAP_TICKS,
+        throwDrives: true,
+      }),
+      1200,
+    ).history.filter((s) => s.phase === 'LOCKOUT');
+  }
+  const depth = LIFT_TUNING.DEPTH_IDEAL[kind];
   const script: ScriptedInput[] = [
     { tick: pressTickFor(loadRatio, kind), kind: 'press' },
     { tick: releaseTickFor(loadRatio, depth, kind), kind: 'release' },
@@ -258,53 +283,161 @@ function outcomeOf(state: LiftState): LiftOutcome {
 
 const BENCH: EccentricLiftKind = 'bench';
 
-/** Press-and-release down to the chest. Everything before the pause. */
-function benchToChest(load: number, seed: number): { config: LiftConfig; script: ScriptedInput[] } {
-  return {
-    config: { kind: BENCH, loadRatio: load, seed },
-    script: [
-      { tick: pressTickFor(load, BENCH), kind: 'press' },
-      { tick: releaseTickFor(load, LIFT_TUNING.DEPTH_IDEAL[BENCH], BENCH), kind: 'release' },
-    ],
-  };
+/**
+ * The hold, in ticks from the descent's first press, that produces the BEST
+ * touch the sim will give at this load and seed — found by playing the rep at
+ * every hold and reading `touchQuality` back out.
+ *
+ * SEARCHED RATHER THAN DERIVED, for the reason `driveIdealTick` and
+ * `commandTickFor` are: a test that computed the ideal hold from
+ * `BENCH_DESCENT_GRAVITY` and `BENCH_DESCENT_BRAKE` would agree with a broken
+ * sim that integrated them wrongly, which is precisely the bug worth catching.
+ * It also means the fixture survives a retune, which is what
+ * `GDD §10`'s thirty iterations are going to do to every number in that block.
+ *
+ * Ties go to the SHORTEST hold, so "the best touch" is also the most committed
+ * descent that achieves it — which matters now that `descentPatience` charges
+ * for time.
+ */
+const bestHoldCache = new Map<string, number>();
+function bestHoldTicks(load: number, seed: number): number {
+  const key = `${load}|${seed}`;
+  const cached = bestHoldCache.get(key);
+  if (cached !== undefined) return cached;
+  let best: number = TOUCH_SWEEP.HOLD_SCAN_MAX;
+  let bestQuality = -1;
+  for (let hold = 1; hold <= TOUCH_SWEEP.HOLD_SCAN_MAX; hold += 1) {
+    const touch = benchTouchState(load, seed, hold);
+    const quality = touch?.touchQuality ?? -1;
+    if (quality > bestQuality) {
+      bestQuality = quality;
+      best = hold;
+    }
+  }
+  bestHoldCache.set(key, best);
+  return best;
 }
 
-/** The tick the sim itself fired the press command on, or null if it never did. */
-function commandTickFor(load: number, seed: number): number | null {
-  const { config, script } = benchToChest(load, seed);
-  for (const state of runLift(config, script).history) {
+/**
+ * Press-and-lower toward the chest, letting go after `holdTicks`. Everything
+ * before the pause.
+ *
+ * `holdTicks` null NEVER LETS GO, which is the crash arm: the bar is fed all
+ * the way in and arrives at whatever `BENCH_DESCENT_MAX_RATE` and the load's
+ * gravity got it to.
+ */
+function benchToChest(
+  load: number,
+  seed: number,
+  holdTicks: number | null = null,
+): { config: LiftConfig; script: ScriptedInput[] } {
+  const press = pressTickFor(load, BENCH);
+  const script: ScriptedInput[] = [{ tick: press, kind: 'press' }];
+  if (holdTicks !== null) script.push({ tick: press + holdTicks, kind: 'release' });
+  return { config: { kind: BENCH, loadRatio: load, seed }, script };
+}
+
+/** The state on the tick the sim itself recorded the chest touch, or null. */
+function benchTouchState(load: number, seed: number, holdTicks: number | null): LiftState | null {
+  const { config, script } = benchToChest(load, seed, holdTicks);
+  const replay = runLift(config, script, TOUCH_SWEEP.MAX_TICKS);
+  return replay.history.find((s) => s.events.some((e) => e.kind === 'chest-touch')) ?? null;
+}
+
+/**
+ * The tick the sim itself fired the press command on, or null if it never did.
+ *
+ * READ BACK OUT OF THE SIM, never recomputed from `PRESS_COMMAND_DELAY_TICKS`.
+ * Same discipline as `driveIdealTick` above and for the same reason: a test
+ * that derived the command tick from the tuning file would agree with a broken
+ * sim that fired the command at the wrong moment.
+ */
+function commandTickFor(load: number, seed: number, holdTicks: number | null = null): number | null {
+  const { config, script } = benchToChest(load, seed, holdTicks);
+  for (const state of runLift(config, script, TOUCH_SWEEP.MAX_TICKS).history) {
     if (state.events.some((e) => e.kind === 'press-command')) return state.tick;
   }
   return null;
 }
 
+/** One rung of the tap ladder, as a script of presses. */
+function tapsAt(fromTick: number, gapTicks: number | null, count: number): ScriptedInput[] {
+  if (gapTicks === null) return [];
+  const out: ScriptedInput[] = [];
+  for (let i = 0; i < count; i += 1) out.push({ tick: fromTick + i * gapTicks, kind: 'press' });
+  return out;
+}
+
 /**
- * A whole bench rep, pressing `reactionTicks` after the command the sim armed.
+ * A whole bench rep: lower with `holdTicks`, tap the burst every `gapTicks`
+ * from the command, optionally throw every drive cue the ascent arms.
  *
- * A negative value is a false start — a press thrown that many ticks BEFORE the
- * command lands. `null` never presses at all, which is what exercises the
- * give-up path.
+ * `gapTicks` null never taps at all, which is what exercises an unanswered
+ * command. `earlyTaps` throws that many taps at the pause BEFORE the command,
+ * which is the false-start arm.
  */
-function benchRep(
+function benchBurstRep(
   load: number,
   seed: number,
-  reactionTicks: number | null,
-  driveOffsetTicks: number | null = 0,
+  options: {
+    hold?: number | null;
+    gapTicks?: number | null;
+    earlyTaps?: number;
+    throwDrives?: boolean;
+  } = {},
 ): LiftState {
-  const { config, script } = benchToChest(load, seed);
-  const command = commandTickFor(load, seed);
-  const full = [...script];
-  if (command !== null && reactionTicks !== null) {
-    full.push({ tick: Math.max(1, command + reactionTicks), kind: 'press' });
+  return runLift(
+    { kind: BENCH, loadRatio: load, seed },
+    buildBenchScript(load, seed, options),
+    TOUCH_SWEEP.MAX_TICKS,
+  ).final;
+}
+
+/** The script `benchBurstRep` plays, so a fixture can reuse it without the run. */
+function buildBenchScript(
+  load: number,
+  seed: number,
+  options: {
+    hold?: number | null;
+    gapTicks?: number | null;
+    earlyTaps?: number;
+    throwDrives?: boolean;
+  } = {},
+): ScriptedInput[] {
+  const hold = options.hold === undefined ? bestHoldTicks(load, seed) : options.hold;
+  const { config, script } = benchToChest(load, seed, hold);
+  const command = commandTickFor(load, seed, hold);
+  let full = [...script];
+  if (command !== null && (options.earlyTaps ?? 0) > 0) {
+    // BACKWARDS FROM THE COMMAND, ONE TICK APART. Spacing them wider walked
+    // the earliest ones out of the pause and into the DESCENT, where a press
+    // is not a false start at all — measured, asking for 16 landed 15. The
+    // pause is only `PRESS_COMMAND_DELAY_TICKS.MIN` ticks long at its
+    // shortest, so one tick apart is what fits a long false-start arm inside
+    // the shortest pause the seed can draw. `stepLift` takes one input per
+    // tick, so consecutive ticks are the densest a script can be.
+    const early = options.earlyTaps ?? 0;
+    for (let i = 0; i < early; i += 1) {
+      const tick = command - 1 - i * BURST_SWEEP.EARLY_TAP_GAP_TICKS;
+      if (tick > 0) full.push({ tick, kind: 'press' });
+    }
   }
-  if (driveOffsetTicks !== null) {
-    // The drive cue's own ideal tick, again read back rather than derived.
-    const probe = runLift(config, full);
-    const opens = probe.history.filter((s) => s.events.some((e) => e.kind === 'drive-cue-open'));
-    const cue = opens[opens.length - 1]?.activeCue ?? null;
-    if (cue !== null) full.push({ tick: cue.idealTick + driveOffsetTicks, kind: 'press' });
+  if (command !== null) {
+    full = [...full, ...tapsAt(command, options.gapTicks ?? null, BURST_SWEEP.MAX_SCRIPTED_TAPS)];
   }
-  return runLift(config, full).final;
+  if (options.throwDrives === true) {
+    // Iteratively, reading each cue back from the sim — cue N's tick depends
+    // on when cue N-1 resolved, which is a runtime fact.
+    for (let i = 0; i < BURST_SWEEP.MAX_DRIVE_CUES_PROBED; i += 1) {
+      const opens = runLift(config, full, TOUCH_SWEEP.MAX_TICKS).history.filter((state) =>
+        state.events.some((e) => e.kind === 'drive-cue-open'),
+      );
+      const cue = opens[opens.length - 1]?.activeCue ?? null;
+      if (cue === null || full.some((x) => x.tick === cue.idealTick)) break;
+      full = [...full, { tick: cue.idealTick, kind: 'press' as const }];
+    }
+  }
+  return full;
 }
 
 /** Every outcome produced across a fine offset sweep at one load. */
@@ -643,6 +776,13 @@ describe('outcome space', () => {
     // check rather than weakening it.
     reasons.add(
       deadliftRep(0.9, 1, DEADLIFT_SWEEP.LET_GO_AFTER_TICKS).resolution?.missReason ?? '',
+    );
+    // BENCH, for 'no-touch'. Neither of the other two lifts can reach it —
+    // squat reverses on the release and a deadlift has no descent — so a
+    // squat-and-deadlift sweep would report it unreachable, exactly the way
+    // this guard caught the press kinds when bench landed.
+    reasons.add(
+      benchBurstRep(0.9, 3, { hold: 1, gapTicks: null }).resolution?.missReason ?? '',
     );
     for (const reason of MISS_REASONS) {
       expect(reasons.has(reason), `miss reason ${reason} is unreachable`).toBe(true);
@@ -1253,11 +1393,298 @@ describe('the drive tap-rate mechanic (Sprint 3 gate)', () => {
 // nothing about whether it feels good; GDD §12.1 puts that with a human.
 // ---------------------------------------------------------------------------
 
+/**
+ * Parameters of the descent sweep, named rather than inline.
+ *
+ * Same reason `streakSweep.ts` exists: a measurement whose inputs are not
+ * written down is an anecdote. Every count in the `describe` below is taken
+ * over exactly this domain.
+ */
+const TOUCH_SWEEP = {
+  SEEDS: 6,
+  LOADS: [0.55, 0.7, 0.8, 0.85, 0.95, 1.0] as const,
+  /** Holds, in ticks from the descent's first press, walked in order. */
+  HOLDS: [8, 10, 12, 14, 16, 18, 20, 24, 28, 32] as const,
+  /** Longest hold `bestHoldTicks` will consider. Past every load's full descent. */
+  HOLD_SCAN_MAX: 60,
+  /** Ticks a swept rep is allowed. Past `CHEST_TOUCH_TIMEOUT_TICKS` plus a brace. */
+  MAX_TICKS: 1200,
+  /** Measured at the shipped tuning: (load, seed) pairs walked. */
+  PAIRS: 36,
+  /** Measured: arrivals compared down the hold ladder, all loads together. */
+  LADDER_COMPARISONS: 48,
+  /** Measured: of those, how many were STRICTLY hotter than the hold before. */
+  LADDER_STRICT_DROPS: 30,
+  /**
+   * Measured: (hold, adjacent-load) pairs where BOTH loads reached the chest.
+   * Holds below a load's stall point produce no arrival, so this is well under
+   * `HOLDS.length * (LOADS.length - 1)`.
+   */
+  LOAD_COMPARISONS: 39,
+  /** Measured: of those, how many were strictly hotter under the heavier load. */
+  LOAD_HOTTER_UNDER_LOAD: 22,
+  /** Measured: hold-through touches that arrived at quality 0, over all pairs. */
+  HOLD_THROUGH_CRASHES: 36,
+  /** Measured: outcome flips between a controlled touch and a crashed one. */
+  SOFT_VS_CRASH_FLIPS: 80,
+  /** Cases the flip count above is taken over. */
+  OUTCOME_CASES: 240,
+} as const;
+
+describe('the descent to the chest (GDD §6.2; ruled 2026-08-25)', () => {
+  it('grades HOW the bar arrives, not WHEN the finger came up', () => {
+    // THE DISCRIMINATOR AGAINST THE BEAT THIS REPLACED. Under the old model
+    // the release tick was scored against a window and the bar reversed on it.
+    // Now the release is one input to a continuous quantity: two different
+    // release ticks that produce the SAME arrival speed score the same, and
+    // the same release tick at two loads does not.
+    const load = LOAD_PRESETS.MAXIMAL;
+    const touched = TOUCH_SWEEP.HOLDS.map((hold) => benchTouchState(load, 3, hold));
+    const arrived = touched.filter((state) => state !== null) as LiftState[];
+    expect(arrived.length, 'no hold in the ladder reached the chest').toBeGreaterThan(4);
+
+    // No depth timing was recorded, at any hold. There is no depth cue on a
+    // bench any more and nothing may quietly re-arm one.
+    for (const state of arrived) {
+      expect(state.timings.some((t) => t.cue === 'depth'), `hold reached ${state.tick}`).toBe(false);
+      expect(state.activeCue).toBeNull();
+    }
+    // ...and squat still records one, so the assertion above is about bench
+    // rather than about the depth cue having been deleted outright.
+    expect(play(load, { driveOffsetTicks: 0 }).timings.some((t) => t.cue === 'depth')).toBe(true);
+  });
+
+  it('never rises as the bar is fed for longer — a later release arrives hotter', () => {
+    // MONOTONE, AND PINNED AS A COUNT RATHER THAN A BOUND. A constant would
+    // satisfy "never rises" perfectly and be exactly the defect the three-fact
+    // progression rule names, so the number of STRICT drops is pinned too.
+    let strictDrops = 0;
+    let compared = 0;
+    for (const load of TOUCH_SWEEP.LOADS) {
+      let previous = Number.POSITIVE_INFINITY;
+      for (const hold of TOUCH_SWEEP.HOLDS) {
+        const touch = benchTouchState(load, 3, hold);
+        if (touch === null) continue;
+        const quality = touch.touchQuality;
+        expect(quality, `load ${load} hold ${hold}`).toBeLessThanOrEqual(previous);
+        expect(quality, `load ${load} hold ${hold}`).toBeGreaterThanOrEqual(0);
+        expect(quality, `load ${load} hold ${hold}`).toBeLessThanOrEqual(1);
+        if (Number.isFinite(previous) && quality < previous) strictDrops += 1;
+        compared += 1;
+        previous = quality;
+      }
+    }
+    expect(compared, 'no arrivals were compared').toBe(TOUCH_SWEEP.LADDER_COMPARISONS);
+    expect(strictDrops, `only ${strictDrops} strict drops over the ladder`).toBe(
+      TOUCH_SWEEP.LADDER_STRICT_DROPS,
+    );
+  });
+
+  it('is harder to control under load, measured rather than asserted', () => {
+    // THE LOAD-DEPENDENCE THE BRIEF ASKED TO BE VERIFIED RATHER THAN CLAIMED,
+    // and the direction is not the one the shipped descent-rate curve
+    // suggests: `DESCENT_DEPTH_PER_TICK` is SLOWER at MAXIMAL, deliberately,
+    // because a limit attempt is controlled down. What makes a heavy bar
+    // harder here is the pair below it — more gravity, less brake — so at the
+    // SAME hold a heavier bar arrives hotter.
+    let hotterUnderLoad = 0;
+    let comparisons = 0;
+    for (const hold of TOUCH_SWEEP.HOLDS) {
+      for (let i = 1; i < TOUCH_SWEEP.LOADS.length; i += 1) {
+        const lighter = benchTouchState(TOUCH_SWEEP.LOADS[i - 1] ?? 0, 3, hold);
+        const heavier = benchTouchState(TOUCH_SWEEP.LOADS[i] ?? 0, 3, hold);
+        if (lighter === null || heavier === null) continue;
+        comparisons += 1;
+        if (heavier.touchQuality < lighter.touchQuality) hotterUnderLoad += 1;
+        // Never the wrong way round: a heavier bar at the same hold may tie,
+        // and may not arrive SOFTER.
+        expect(
+          heavier.touchQuality,
+          `hold ${hold}: ${TOUCH_SWEEP.LOADS[i]} arrived softer than ${TOUCH_SWEEP.LOADS[i - 1]}`,
+        ).toBeLessThanOrEqual(lighter.touchQuality);
+      }
+    }
+    expect(comparisons, 'no adjacent loads were compared').toBe(TOUCH_SWEEP.LOAD_COMPARISONS);
+    expect(
+      hotterUnderLoad,
+      `${hotterUnderLoad} of ${comparisons} comparisons were strictly hotter under load`,
+    ).toBe(TOUCH_SWEEP.LOAD_HOTTER_UNDER_LOAD);
+  });
+
+  it('ends the rep as a no-touch miss when the bar is stopped and abandoned', () => {
+    // "Released too high" has a real miss reason, because a press that never
+    // touches the chest is three red lights in the real sport. Reachable only
+    // by braking early and never feeding the bar again.
+    let reached = 0;
+    for (const load of TOUCH_SWEEP.LOADS) {
+      const rep = benchBurstRep(load, 3, { hold: 1, gapTicks: null });
+      expect(rep.resolution?.outcome, `load ${load}`).toBe('miss');
+      expect(rep.resolution?.missReason, `load ${load}`).toBe('no-touch');
+      expect(rep.resolution?.depthAchieved, `load ${load}`).toBe(false);
+      expect(rep.resolution?.peakHeight, `load ${load}`).toBe(0);
+      reached += 1;
+    }
+    expect(reached, 'no loads produced a no-touch').toBe(TOUCH_SWEEP.LOADS.length);
+  });
+
+  it('lets a stalled bar be fed again rather than stranding the rep', () => {
+    // The other side of the test above, and the reason the no-touch is a
+    // player's decision rather than a trap: a bar braked to a stop is not
+    // lost, it is waiting. This one presses again and the rep proceeds.
+    const load = LOAD_PRESETS.MAXIMAL;
+    const press = pressTickFor(load, BENCH);
+    const rescued = runLift(
+      { kind: BENCH, loadRatio: load, seed: 3 },
+      [
+        { tick: press, kind: 'press' },
+        { tick: press + 1, kind: 'release' },
+        { tick: press + 40, kind: 'press' },
+      ],
+      TOUCH_SWEEP.MAX_TICKS,
+    );
+    const touch = rescued.history.find((state) =>
+      state.events.some((e) => e.kind === 'chest-touch'),
+    );
+    expect(touch, 'the re-fed bar never reached the chest').toBeDefined();
+    expect(rescued.final.resolution?.missReason).not.toBe('no-touch');
+  });
+
+  it('charges a dawdled descent, so feathering is not a free perfect touch', () => {
+    // THE DOMINANT STRATEGY THIS BEAT HAD ON ITS FIRST TUNING, closed and then
+    // measured rather than reasoned about. Arriving slowly is quality 1 by
+    // definition, so "brake immediately, then nudge it in" scored perfectly at
+    // every load and there was no reason to ever commit to the descent.
+    // `descentPatience` is what charges for the time it takes.
+    const load = LOAD_PRESETS.MAXIMAL;
+    const press = pressTickFor(load, BENCH);
+    const feathered: ScriptedInput[] = [
+      { tick: press, kind: 'press' },
+      { tick: press + 4, kind: 'release' },
+    ];
+    for (let i = 0; i < 30; i += 1) {
+      feathered.push({ tick: press + 20 + i * 14, kind: 'press' });
+      feathered.push({ tick: press + 26 + i * 14, kind: 'release' });
+    }
+    const featherTouch = runLift(
+      { kind: BENCH, loadRatio: load, seed: 3 },
+      feathered,
+      TOUCH_SWEEP.MAX_TICKS,
+    ).history.find((state) => state.events.some((e) => e.kind === 'chest-touch'));
+    const committed = benchTouchState(load, 3, bestHoldTicks(load, 3));
+
+    expect(featherTouch, 'the feathered descent never reached the chest').toBeDefined();
+    expect(committed, 'the committed descent never reached the chest').toBeDefined();
+    if (featherTouch === undefined || committed === null) return;
+    // It is not worthless — the beat must not punish caution outright — and it
+    // is strictly worse than committing, which is the whole point.
+    expect(featherTouch.touchQuality).toBeGreaterThan(0);
+    expect(featherTouch.touchQuality).toBeLessThan(committed.touchQuality);
+  });
+
+  it('makes the crash cost the ascent rather than the rep', () => {
+    // The brief's requirement and GDD §12.3's: a crash degrades the press,
+    // it does not kill the rep at the chest. Bench is never resolved 'buried'.
+    let crashed = 0;
+    for (const load of TOUCH_SWEEP.LOADS) {
+      for (let seed = 1; seed <= TOUCH_SWEEP.SEEDS; seed += 1) {
+        const rep = benchBurstRep(load, seed, { hold: null, gapTicks: null });
+        expect(rep.resolution?.missReason, `load ${load} seed ${seed}`).not.toBe('buried');
+        const touch = benchTouchState(load, seed, null);
+        expect(touch, `load ${load} seed ${seed}`).not.toBeNull();
+        if (touch !== null && touch.touchQuality === 0) crashed += 1;
+      }
+    }
+    expect(crashed, `${crashed} of ${TOUCH_SWEEP.PAIRS} hold-through touches crashed`).toBe(
+      TOUCH_SWEEP.HOLD_THROUGH_CRASHES,
+    );
+  });
+
+  it('flips outcomes between a controlled touch and a crashed one, across the sweep', () => {
+    // THE DESCENT MOVES `resolution.outcome`, which is the bar this repository
+    // holds a mechanic to and the one the press beat failed on its first pass.
+    // A crash that only changed the bar's opening velocity would wash out in
+    // about `1/VELOCITY_RESPONSE` ticks and decide nothing; this is charged to
+    // the demand curve for the whole ascent, and the count is what says so.
+    let cases = 0;
+    let flips = 0;
+    for (let seed = 1; seed <= BURST_SWEEP.SEEDS; seed += 1) {
+      for (const load of BURST_SWEEP.LOADS) {
+        for (const throwDrives of [true, false]) {
+          const soft = benchBurstRep(load, seed, {
+            gapTicks: BURST_SWEEP.MASH_GAP_TICKS,
+            throwDrives,
+          });
+          const crashed = benchBurstRep(load, seed, {
+            hold: null,
+            gapTicks: BURST_SWEEP.MASH_GAP_TICKS,
+            throwDrives,
+          });
+          cases += 1;
+          if (soft.resolution?.outcome !== crashed.resolution?.outcome) flips += 1;
+        }
+      }
+    }
+    expect(cases).toBe(TOUCH_SWEEP.OUTCOME_CASES);
+    expect(
+      flips,
+      `the touch changed the outcome in ${flips} of ${cases} cases`,
+    ).toBe(TOUCH_SWEEP.SOFT_VS_CRASH_FLIPS);
+  });
+
+  it('does not charge the sink twice — extraDepth stays 0 on a bench', () => {
+    // The sink past the chest is drawing and flavour. If it were written into
+    // `extraDepth` the crash would be paid for once through
+    // `BENCH_TOUCH_DEMAND_PENALTY` and again through `BURIED_DEMAND_PER_DEPTH`,
+    // which is a double-count no assertion in the file above would notice.
+    const load = LOAD_PRESETS.MAXIMAL;
+    const crash = benchTouchState(load, 3, null);
+    expect(crash, 'the hold-through rep never reached the chest').not.toBeNull();
+    if (crash === null) return;
+    expect(crash.extraDepth).toBe(0);
+    // ...and the sink really happened, or the assertion above is about a rep
+    // that never overshot and says nothing.
+    expect(crash.depth).toBeGreaterThan(LIFT_TUNING.DEPTH_IDEAL.bench);
+    expect(crash.depth).toBeLessThanOrEqual(LIFT_TUNING.DEPTH_COLLAPSE.bench);
+  });
+
+  it('reports how the bar is coming in, and only while it is coming in', () => {
+    // `chestApproach` is what piece 2 draws. It is the SPEED half only — a bar
+    // creeping down slowly is not coming in hot, and colouring it as a crash
+    // would be a cue that lies.
+    const load = LOAD_PRESETS.MAXIMAL;
+    const { config, script } = benchToChest(load, 3, null);
+    const history = runLift(config, script, TOUCH_SWEEP.MAX_TICKS).history;
+    const descending = history.filter((state) => state.phase === 'DESCENT');
+    expect(descending.length, 'no descent ticks').toBeGreaterThan(4);
+    let previous = -1;
+    for (const state of descending) {
+      const heat = chestApproach(state);
+      expect(heat, `tick ${state.tick}`).not.toBeNull();
+      expect(heat ?? -1).toBeGreaterThanOrEqual(previous);
+      previous = heat ?? -1;
+    }
+    // It MOVES — fact 3 of the progression rule. A constant would pass every
+    // bound above.
+    expect(previous).toBeGreaterThan(0);
+    for (const state of history) {
+      if (state.phase === 'DESCENT') continue;
+      expect(chestApproach(state), `phase ${state.phase}`).toBeNull();
+    }
+    // ...and never on the other two lifts.
+    for (const state of runLift(
+      { kind: DEFAULT_KIND, loadRatio: load, seed: 3 },
+      [{ tick: pressTickFor(load), kind: 'press' }],
+    ).history) {
+      expect(chestApproach(state)).toBeNull();
+    }
+  });
+});
+
 describe('the bench press command', () => {
   const load = LOAD_PRESETS.MAXIMAL;
 
   it('fires a command on bench and never on squat', () => {
-    const benched = benchRep(load, 3, 2);
+    const benched = benchBurstRep(load, 3, { gapTicks: BURST_SWEEP.MODERATE_GAP_TICKS });
     expect(benched.timings.some((t) => t.cue === 'press')).toBe(true);
 
     // The discriminator. Squat's HOLE is a fixed reversal beat that asks for
@@ -1272,15 +1699,15 @@ describe('the bench press command', () => {
   it('puts the command inside its declared range, and does not put it in the same place twice', () => {
     // FACT 3 OF THE PROGRESSION RULE, applied to a delay: a constant would
     // satisfy "inside the range" perfectly and be exactly the defect — a
-    // learnable pause is an anticipation check wearing a reaction's name.
+    // learnable pause is an anticipation check wearing a burst's name.
     const { MIN, MAX } = LIFT_TUNING.PRESS_COMMAND_DELAY_TICKS;
     const delays = new Set<number>();
     for (let seed = 1; seed <= 40; seed += 1) {
-      const holeEntry = runLift(
-        benchToChest(load, seed).config,
-        benchToChest(load, seed).script,
-      ).history.find((s) => s.phase === 'HOLE');
-      const command = commandTickFor(load, seed);
+      const { config, script } = benchToChest(load, seed, null);
+      const holeEntry = runLift(config, script, TOUCH_SWEEP.MAX_TICKS).history.find(
+        (state) => state.phase === 'HOLE',
+      );
+      const command = commandTickFor(load, seed, null);
       expect(holeEntry, `seed ${seed}`).toBeDefined();
       expect(command, `seed ${seed}`).not.toBeNull();
       if (holeEntry === undefined || command === null) continue;
@@ -1298,271 +1725,846 @@ describe('the bench press command', () => {
     // The other half of unpredictability. Unpredictable to the player, and
     // byte-identical on replay, or the recorded-attempt guarantee dies.
     for (let seed = 1; seed <= 6; seed += 1) {
-      expect(commandTickFor(load, seed), `seed ${seed}`).toBe(commandTickFor(load, seed));
-      expect(JSON.stringify(benchRep(load, seed, 3))).toBe(JSON.stringify(benchRep(load, seed, 3)));
+      expect(commandTickFor(load, seed, null), `seed ${seed}`).toBe(commandTickFor(load, seed, null));
+      const once = benchBurstRep(load, seed, { gapTicks: BURST_SWEEP.MODERATE_GAP_TICKS });
+      const twice = benchBurstRep(load, seed, { gapTicks: BURST_SWEEP.MODERATE_GAP_TICKS });
+      expect(JSON.stringify(once)).toBe(JSON.stringify(twice));
     }
   });
 
-  it('buys bar speed with the reaction — sharp off the chest beats slow', () => {
-    // "bar-speed check off the chest", measured on the bar rather than on the
-    // grade. The velocity entering the ascent must fall as the reaction slows.
-    const speedAt = (reactionTicks: number): number => {
-      const { config, script } = benchToChest(load, 7);
-      const command = commandTickFor(load, 7);
-      if (command === null) throw new Error('no command');
-      const full = [...script, { tick: command + reactionTicks, kind: 'press' as const }];
-      const ascent = runLift(config, full).history.find((s) => s.phase === 'ASCENT');
-      if (ascent === undefined) throw new Error('never reached the ascent');
-      return ascent.velocity;
-    };
-    const sharp = speedAt(0);
-    const middling = speedAt(9);
-    const slow = speedAt(20);
-    expect(sharp).toBeGreaterThan(middling);
-    expect(middling).toBeGreaterThan(slow);
-  });
-
-  it('consumes the press on a false start, so mashing the pause is not a strategy', () => {
-    // The reason the false start costs the reaction rather than the rep. If a
-    // false start were merely ignored, holding the button down through the
-    // pause would land on the command by construction and the whole check
-    // would be optional.
-    const jumped = benchRep(load, 11, -8);
-    const pressTiming = jumped.timings.find((t) => t.cue === 'press');
-    expect(pressTiming).toBeDefined();
-    expect(pressTiming?.grade).toBe('missed');
-    expect(jumped.pressQuality).toBe(LIFT_TUNING.PRESS_FALSE_START_QUALITY);
-    expect(jumped.pressUsed).toBe(true);
-
-    // And it is strictly worse off the chest than reacting properly.
-    const reacted = benchRep(load, 11, 1);
-    expect(jumped.pressQuality).toBeLessThan(reacted.pressQuality);
-  });
-
-  it('does NOT end the rep on a false start — the bar still leaves the chest', () => {
-    // `PRESS_FALSE_START_QUALITY`'s comment says in capitals that a false start
-    // "DOES NOT END THE REP", consistent with the drive branch's own rule. That
-    // sentence had nothing behind it until this test: the guarantee-tag census
-    // flagged the paragraph as newly triggering, and checking what actually
-    // backed it turned up nothing. Prose is not a check.
-    const { config, script } = benchToChest(load, 11);
-    const command = commandTickFor(load, 11);
-    expect(command).not.toBeNull();
-    if (command === null) return;
-    const jumpedScript = [...script, { tick: command - 8, kind: 'press' as const }];
-    const replay = runLift(config, jumpedScript);
-
-    // The false start really happened — otherwise everything below is true of
-    // a rep that simply never pressed, and the test is about nothing.
-    const pressTiming = replay.final.timings.find((t) => t.cue === 'press');
-    expect(pressTiming?.grade, 'no false start was actually thrown').toBe('missed');
-    expect(pressTiming?.offsetMs ?? 0).toBeLessThan(0);
-
-    // And the rep outlived it: the bar left the chest and the ascent ran.
-    expect(replay.history.some((s) => s.phase === 'ASCENT')).toBe(true);
-    expect(replay.final.ascentTicks).toBeGreaterThan(0);
-    // Resolved on the physics' own terms, never 'buried' — the reason a rep
-    // killed at the chest would carry.
-    expect(replay.final.resolution?.missReason).not.toBe('buried');
-  });
-
-  it('lets go of the bar if the command is ignored, rather than hanging on the chest', () => {
-    const ignored = benchRep(load, 5, null, null);
-    expect(ignored.phase).toBe('RESOLVED');
-    expect(ignored.resolution).not.toBeNull();
-    // At quality 0 the bar leaves the chest at PRESS_VELOCITY.MIN, which at a
-    // limit load is a stall — called on its own merits by the existing physics
-    // rather than by a fifth MissReason invented for it.
-    expect(ignored.resolution?.outcome).toBe('miss');
-  });
-
   it('shows the command in the prompt, and only from the tick it fires', () => {
-    const { config, script } = benchToChest(load, 3);
-    const command = commandTickFor(load, 3);
+    const { config, script } = benchToChest(load, 3, null);
+    const command = commandTickFor(load, 3, null);
     expect(command).not.toBeNull();
     if (command === null) return;
-    const hole = runLift(config, script).history.filter((s) => s.phase === 'HOLE');
-    const waiting = hole.filter((s) => s.tick < command);
-    const commanded = hole.filter((s) => s.tick >= command);
+    const hole = runLift(config, script, TOUCH_SWEEP.MAX_TICKS).history.filter(
+      (state) => state.phase === 'HOLE',
+    );
+    const waiting = hole.filter((state) => state.tick < command);
+    const commanded = hole.filter((state) => state.tick >= command);
     expect(waiting.length, 'no waiting ticks to check').toBeGreaterThan(0);
     expect(commanded.length, 'no commanded ticks to check').toBeGreaterThan(0);
-    for (const s of waiting) expect(promptFor(s)).toBe(LIFT_COPY.PROMPT.HOLE.bench);
-    for (const s of commanded) expect(promptFor(s)).toBe(LIFT_COPY.PROMPT.HOLE_COMMANDED);
+    for (const state of waiting) expect(promptFor(state)).toBe(LIFT_COPY.PROMPT.HOLE.bench);
+    for (const state of commanded) expect(promptFor(state)).toBe(LIFT_COPY.PROMPT.HOLE_COMMANDED);
   });
 
-  it('draws no countdown ring before the command — a telegraphed reaction is not one', () => {
+  it('draws no countdown ring before the command — a telegraphed burst is a timed one', () => {
     // `cueProgress` is what the ring is sized from. A number HERE would let
-    // the player see the command coming and the reaction check would silently
-    // become an anticipation check. The GO ring starts at the command tick,
-    // which is the next test.
-    const { config, script } = benchToChest(load, 3);
-    const command = commandTickFor(load, 3);
+    // the player see the command coming and the beat would silently become an
+    // anticipation check. The GO ring starts at the command tick.
+    const { config, script } = benchToChest(load, 3, null);
+    const command = commandTickFor(load, 3, null);
     expect(command).not.toBeNull();
     if (command === null) return;
-    for (const s of runLift(config, script).history) {
-      if (s.phase !== 'HOLE') continue;
-      if (s.tick >= command) continue;
-      expect(cueProgress(s), `tick ${s.tick}`).toBeNull();
-      expect(pressCommandIsLive(s), `tick ${s.tick}`).toBe(false);
+    for (const state of runLift(config, script, TOUCH_SWEEP.MAX_TICKS).history) {
+      if (state.phase !== 'HOLE') continue;
+      if (state.tick >= command) continue;
+      expect(cueProgress(state), `tick ${state.tick}`).toBeNull();
+      expect(pressCommandIsLive(state), `tick ${state.tick}`).toBe(false);
+      expect(burstProgress(state), `tick ${state.tick}`).toBeNull();
     }
   });
 
   it('puts the ring on the target the instant the command fires, then closes', () => {
     // Progress 1 is the target radius — GO, not a countdown. Progress then
-    // runs toward 2 as the reaction window closes, so a late press is a
-    // shrinking ring the same way a late drive is.
-    const { config, script } = benchToChest(load, 3);
-    const command = commandTickFor(load, 3);
+    // runs toward 2 as the burst window closes.
+    const { config, script } = benchToChest(load, 3, null);
+    const command = commandTickFor(load, 3, null);
     expect(command).not.toBeNull();
     if (command === null) return;
-    const hole = runLift(config, script).history.filter((s) => s.phase === 'HOLE');
-    const atFire = hole.find((s) => s.tick === command);
+    const hole = runLift(config, script, TOUCH_SWEEP.MAX_TICKS).history.filter(
+      (state) => state.phase === 'HOLE',
+    );
+    const atFire = hole.find((state) => state.tick === command);
     expect(atFire, 'command tick was not in HOLE').toBeDefined();
     if (atFire === undefined) return;
     expect(pressCommandIsLive(atFire)).toBe(true);
     expect(cueProgress(atFire)).toBe(1);
 
-    const later = hole.filter((s) => s.tick > command && pressCommandIsLive(s));
+    const later = hole.filter((state) => state.tick > command && pressCommandIsLive(state));
     expect(later.length, 'no post-command HOLE ticks').toBeGreaterThan(0);
-    for (const s of later) {
-      const progress = cueProgress(s);
-      expect(progress, `tick ${s.tick}`).not.toBeNull();
-      expect(progress ?? 0, `tick ${s.tick}`).toBeGreaterThan(1);
+    for (const state of later) {
+      const progress = cueProgress(state);
+      expect(progress, `tick ${state.tick}`).not.toBeNull();
+      expect(progress ?? 0, `tick ${state.tick}`).toBeGreaterThan(1);
+    }
+  });
+
+  it('is live for every commanded HOLE tick and dead the instant the bar leaves', () => {
+    // THE ARM THAT WAS DELETED WHEN THE BURST LANDED, pinned rather than
+    // argued. `pressCommandIsLive` used to also refuse once the single press
+    // had been spent; a burst is spent by the window closing, and `stepLift`
+    // leaves HOLE on that same tick, so there is no state left for the old arm
+    // to exclude. If one ever appears — a burst that ends without the phase
+    // changing — this goes red.
+    const { config, script } = benchToChest(load, 3, null);
+    const command = commandTickFor(load, 3, null);
+    expect(command).not.toBeNull();
+    if (command === null) return;
+    const history = runLift(
+      config,
+      [...script, ...tapsAt(command, BURST_SWEEP.MASH_GAP_TICKS, BURST_SWEEP.MAX_SCRIPTED_TAPS)],
+      TOUCH_SWEEP.MAX_TICKS,
+    ).history;
+    const commandedHole = history.filter(
+      (state) => state.phase === 'HOLE' && state.tick >= command,
+    );
+    expect(commandedHole.length, 'no commanded HOLE ticks').toBeGreaterThan(0);
+    for (const state of commandedHole) expect(pressCommandIsLive(state), `tick ${state.tick}`).toBe(true);
+    for (const state of history) {
+      if (state.phase === 'HOLE') continue;
+      expect(pressCommandIsLive(state), `phase ${state.phase}`).toBe(false);
     }
   });
 });
 
 /**
- * Parameters of the press sweep, named rather than inline.
+ * Parameters of the burst sweep, named rather than inline.
  *
- * Same reason `streakSweep.ts` exists: the first version of this measurement
- * would have been unreproducible, and a measurement whose inputs are not
- * written down is an anecdote.
+ * Same reason `streakSweep.ts` exists: the first version of the press
+ * measurement would have been unreproducible, and a measurement whose inputs
+ * are not written down is an anecdote.
  */
-const PRESS_SWEEP = {
+const BURST_SWEEP = {
   SEEDS: 20,
   LOADS: [0.7, 0.8, 0.85, 0.9, 0.95, 1.0] as const,
-  /** Reaction offsets in ticks. `null` never presses at all. */
-  PERFECT: 0,
-  NEVER: null,
+  /** The tap ladder, in ticks between taps. `null` never taps at all. */
+  NONE: null,
+  SPARSE_GAP_TICKS: 20,
+  MODERATE_GAP_TICKS: 8,
+  MASH_GAP_TICKS: 3,
+  /** Ticks between the early taps a false-start arm throws at the pause. */
+  EARLY_TAP_GAP_TICKS: 1,
+  /** How many taps a script writes. Past what any window can accept. */
+  MAX_SCRIPTED_TAPS: 40,
+  /** How many drive cues the driven arm probes for. */
+  MAX_DRIVE_CUES_PROBED: 6,
   /** Measured at the shipped tuning. Both arms of the drive question. */
-  FLIPS: 160,
   CASES: 240,
+  /** Outcome flips between a mashed burst and an unanswered command. */
+  MASH_VS_NONE_FLIPS: 120,
+  /** Outcome flips between a mashed burst and a sparse one. */
+  MASH_VS_SPARSE_FLIPS: 80,
+  /** Outcome flips between a moderate burst and an unanswered command. */
+  MODERATE_VS_NONE_FLIPS: 100,
+  /**
+   * Of the `MASH_VS_NONE_FLIPS`, how many are a MAKE becoming a MISS.
+   *
+   * PINNED SEPARATELY BECAUSE A FLIP COUNT DOES NOT SAY WHAT MOVED. A beat
+   * that only ever separated 'good-lift' from 'grind' would satisfy every flip
+   * pin above while never deciding whether the bar went up, which is the
+   * weaker claim a reader would take from those counts.
+   */
+  MASH_MAKE_TO_NONE_MISS: 40,
 } as const;
 
-/** A bench rep that also throws every drive cue the sim arms, perfectly. */
-function benchRepDriven(
-  load: number,
-  seed: number,
-  reactionTicks: number | null,
-  throwDrives: boolean,
-): LiftState {
-  const { config, script } = benchToChest(load, seed);
-  const command = commandTickFor(load, seed);
-  let full =
-    command === null || reactionTicks === null
-      ? script
-      : [...script, { tick: Math.max(1, command + reactionTicks), kind: 'press' as const }];
-  if (throwDrives) {
-    // Iteratively, reading each cue back from the sim — cue N's tick depends
-    // on when cue N-1 resolved, which is a runtime fact.
-    for (let i = 0; i < 4; i += 1) {
-      const opens = runLift(config, full).history.filter((s) =>
-        s.events.some((e) => e.kind === 'drive-cue-open'),
-      );
-      const cue = opens[opens.length - 1]?.activeCue ?? null;
-      if (cue === null || full.some((x) => x.tick === cue.idealTick)) break;
-      full = [...full, { tick: cue.idealTick, kind: 'press' as const }];
-    }
-  }
-  return runLift(config, full).final;
-}
-
-describe('the press decides the lift', () => {
+describe('the burst curve', () => {
   // ---------------------------------------------------------------------------
-  // THE TEST THE FIRST VERSION OF THIS BEAT DID NOT HAVE, AND THE REASON IT
-  // SHIPPED BROKEN.
+  // THE TESTS THE FIRST VERSION OF THE PRESS BEAT DID NOT HAVE, AND THE REASON
+  // IT SHIPPED BROKEN.
   //
   // The original block asserted that the reaction set the bar's velocity off
   // the chest. It did — 0.019 against 0.0004 at ascent tick 1 — and it meant
   // nothing, because velocity chases net force and an initial value washes out
-  // in about `1/VELOCITY_RESPONSE` ticks. Measured then: the OUTCOME was
-  // identical whether the player reacted perfectly or never pressed at all, at
-  // every load, with and without drives. Thirty cases, zero differences.
-  //
-  // Eight mutants passed on that version. Every one tested a mechanism — is
-  // the delay seeded, is the press consumed, is the velocity written — and not
-  // one asked whether the REP CHANGED. So these assert outcomes.
+  // in about `1/VELOCITY_RESPONSE` ticks. Eight mutants passed on that version.
+  // Every one tested a mechanism and not one asked whether the REP CHANGED.
+  // So the sweep below asserts outcomes.
   // ---------------------------------------------------------------------------
 
-  it('flips outcomes between a perfect reaction and none, across the sweep', () => {
-    let flips = 0;
+  it('never falls as taps are added, stays inside 0..1, and MOVES', () => {
+    // ALL THREE FACTS OF THE PROGRESSION RULE, named. A constant satisfies the
+    // first two trivially and is exactly the defect: more samples of a
+    // constant is still a constant.
+    const { MAX_COUNTED_TAPS } = LIFT_TUNING.PRESS_BURST_FORCE;
+    let previous = -1;
+    const distinct = new Set<number>();
+    for (let taps = 0; taps <= MAX_COUNTED_TAPS + 6; taps += 1) {
+      const force = burstForce(taps);
+      expect(force, `taps ${taps}`).toBeGreaterThanOrEqual(previous);
+      expect(force, `taps ${taps}`).toBeGreaterThanOrEqual(0);
+      expect(force, `taps ${taps}`).toBeLessThanOrEqual(1);
+      previous = force;
+      distinct.add(force);
+    }
+    // Fact 3. One value per counted tap, plus 0, and the flat top collapses
+    // the six over-cap rungs onto one — so the count is the cap plus one.
+    expect(distinct.size, `${distinct.size} distinct forces`).toBe(MAX_COUNTED_TAPS + 1);
+    expect(burstForce(0)).toBe(0);
+    expect(burstForce(MAX_COUNTED_TAPS)).toBe(1);
+  });
+
+  it('has a knee: the marginal tap is worth strictly less every rung', () => {
+    // DIMINISHING RETURNS AS A PROPERTY OF EVERY RUNG, not of two endpoints.
+    // A line with a cap has the same endpoints and no knee, and it is the
+    // shape the ruling's "as much force as possible" is not asking for.
+    const { MAX_COUNTED_TAPS } = LIFT_TUNING.PRESS_BURST_FORCE;
+    const gains: number[] = [];
+    for (let taps = 1; taps <= MAX_COUNTED_TAPS; taps += 1) {
+      gains.push(burstForce(taps) - burstForce(taps - 1));
+    }
+    for (let i = 1; i < gains.length; i += 1) {
+      expect(gains[i] ?? 0, `gain at tap ${i + 1}`).toBeLessThan(gains[i - 1] ?? 0);
+    }
+    // ...and the knee is steep enough to be a knee rather than a slope. Pinned
+    // as a ratio so a retune that flattens the curve into a line reddens here
+    // rather than passing the monotonicity check above.
+    const first = gains[0] ?? 0;
+    const last = gains[gains.length - 1] ?? 1;
+    expect(first / last, `first gain / last gain = ${first / last}`).toBeGreaterThan(8);
+  });
+
+  it('caps: taps past the ceiling buy nothing at all', () => {
+    const { MAX_COUNTED_TAPS } = LIFT_TUNING.PRESS_BURST_FORCE;
+    for (let extra = 1; extra <= 40; extra += 1) {
+      expect(burstForce(MAX_COUNTED_TAPS + extra), `+${extra}`).toBe(1);
+    }
+    // ...and it refuses nonsense rather than trusting its caller.
+    expect(burstForce(Number.NaN)).toBe(0);
+    expect(burstForce(-4)).toBe(0);
+  });
+
+  it('cannot grade a burst "early" or "late", and that is checked rather than asserted', () => {
+    // A comment claiming a grade is unreachable is exactly the sentence
+    // CLAUDE.md has caught being false eight times. Swept instead.
+    const seen = new Set<string>();
+    for (let step = -10; step <= 110; step += 1) seen.add(burstGrade(step / 100));
+    expect(seen.has('early')).toBe(false);
+    expect(seen.has('late')).toBe(false);
+    // ...and the sweep is not vacuous: it reaches the other three.
+    for (const grade of ['perfect', 'good', 'missed']) {
+      expect(seen.has(grade), `grade ${grade} unreachable in the sweep`).toBe(true);
+    }
+  });
+});
+
+describe('the burst decides the lift', () => {
+  it('flips outcomes across the tap ladder, across the sweep', () => {
     let cases = 0;
-    for (let seed = 1; seed <= PRESS_SWEEP.SEEDS; seed += 1) {
-      for (const load of PRESS_SWEEP.LOADS) {
+    let mashVsNone = 0;
+    let mashVsSparse = 0;
+    let moderateVsNone = 0;
+    let makeToMiss = 0;
+    for (let seed = 1; seed <= BURST_SWEEP.SEEDS; seed += 1) {
+      for (const load of BURST_SWEEP.LOADS) {
         for (const throwDrives of [true, false]) {
-          const good = benchRepDriven(load, seed, PRESS_SWEEP.PERFECT, throwDrives);
-          const bad = benchRepDriven(load, seed, PRESS_SWEEP.NEVER, throwDrives);
+          const mash = benchBurstRep(load, seed, {
+            gapTicks: BURST_SWEEP.MASH_GAP_TICKS,
+            throwDrives,
+          });
+          const moderate = benchBurstRep(load, seed, {
+            gapTicks: BURST_SWEEP.MODERATE_GAP_TICKS,
+            throwDrives,
+          });
+          const sparse = benchBurstRep(load, seed, {
+            gapTicks: BURST_SWEEP.SPARSE_GAP_TICKS,
+            throwDrives,
+          });
+          const none = benchBurstRep(load, seed, { gapTicks: BURST_SWEEP.NONE, throwDrives });
           cases += 1;
-          if (good.resolution?.outcome !== bad.resolution?.outcome) flips += 1;
+          if (mash.resolution?.outcome !== none.resolution?.outcome) mashVsNone += 1;
+          if (mash.resolution?.outcome !== sparse.resolution?.outcome) mashVsSparse += 1;
+          if (moderate.resolution?.outcome !== none.resolution?.outcome) moderateVsNone += 1;
+          if (mash.resolution?.outcome !== 'miss' && none.resolution?.outcome === 'miss') {
+            makeToMiss += 1;
+          }
         }
       }
     }
     // Counts, not bounds — an empty or collapsed domain reports itself.
-    expect(cases).toBe(PRESS_SWEEP.CASES);
+    expect(cases).toBe(BURST_SWEEP.CASES);
     expect(
-      flips,
-      `the reaction changed the outcome in ${flips} of ${cases} cases`,
-    ).toBe(PRESS_SWEEP.FLIPS);
+      mashVsNone,
+      `mashing changed the outcome in ${mashVsNone} of ${cases} cases`,
+    ).toBe(BURST_SWEEP.MASH_VS_NONE_FLIPS);
+    expect(
+      mashVsSparse,
+      `mashing beat a sparse burst in ${mashVsSparse} of ${cases} cases`,
+    ).toBe(BURST_SWEEP.MASH_VS_SPARSE_FLIPS);
+    expect(
+      moderateVsNone,
+      `a moderate burst changed the outcome in ${moderateVsNone} of ${cases} cases`,
+    ).toBe(BURST_SWEEP.MODERATE_VS_NONE_FLIPS);
+    expect(
+      makeToMiss,
+      `${makeToMiss} of ${cases} flips are a make becoming a miss`,
+    ).toBe(BURST_SWEEP.MASH_MAKE_TO_NONE_MISS);
+  });
+
+  it('never rewards tapping slower, across the sweep', () => {
+    // THE DIRECTION THE FLIP COUNTS DO NOT CARRY. A count says a population
+    // moved; it does not say which way. A rung that tapped faster and landed
+    // LESS force would satisfy every flip pin above.
+    let compared = 0;
+    for (let seed = 1; seed <= BURST_SWEEP.SEEDS; seed += 1) {
+      for (const load of BURST_SWEEP.LOADS) {
+        const ladder = [
+          BURST_SWEEP.NONE,
+          BURST_SWEEP.SPARSE_GAP_TICKS,
+          BURST_SWEEP.MODERATE_GAP_TICKS,
+          BURST_SWEEP.MASH_GAP_TICKS,
+        ];
+        let previous = -1;
+        for (const gap of ladder) {
+          const rep = benchBurstRep(load, seed, { gapTicks: gap });
+          expect(rep.burstForce, `load ${load} seed ${seed} gap ${gap}`).toBeGreaterThanOrEqual(
+            previous,
+          );
+          previous = rep.burstForce;
+          compared += 1;
+        }
+        // ...and the ladder really spans the curve at this pair, or the
+        // monotonicity above is a claim about four identical numbers.
+        expect(previous, `load ${load} seed ${seed}`).toBe(1);
+      }
+    }
+    expect(compared, 'no ladder rungs were compared').toBe(480);
   });
 
   it('turns a make into a miss at a limit when the command is ignored', () => {
-    // One named case, so a failure reads as a case rather than a count.
-    //
-    // IT IS AN ILLUSTRATION, NOT THE DISCRIMINATOR, and that is measured
-    // rather than assumed: a mutant passing 0 for the shortfall — removing
-    // this whole mechanism — leaves THIS test green, because at 0.9 with no
-    // drive the old velocity transient flips the outcome on its own. The
-    // sweep above is what catches that mutant (40 of 240 against 160).
-    //
-    // Kept anyway, because a count says a population moved and this says which
-    // rep did. Do not read it as evidence for the penalty on its own.
-    const made = benchRepDriven(0.9, 7, PRESS_SWEEP.PERFECT, false);
-    const ignored = benchRepDriven(0.9, 7, PRESS_SWEEP.NEVER, false);
+    // One named case, so a failure reads as a case rather than a count. IT IS
+    // AN ILLUSTRATION, NOT THE DISCRIMINATOR — the sweep above is what catches
+    // a mutant that removes the demand penalty and leaves the velocity
+    // transient behind.
+    const made = benchBurstRep(0.9, 7, { gapTicks: BURST_SWEEP.MASH_GAP_TICKS, throwDrives: false });
+    const ignored = benchBurstRep(0.9, 7, { gapTicks: BURST_SWEEP.NONE, throwDrives: false });
     expect(made.resolution?.outcome).toBe('good-lift');
     expect(ignored.resolution?.outcome).toBe('miss');
+    // AND THE TOP OF THE LADDER STILL NEEDS THE ASCENT DRIVEN, which is what
+    // keeps the burst a launch rather than a replacement for the drive cue:
+    // at MAXIMAL an undriven bar misses however hard the burst was thrown.
+    expect(
+      benchBurstRep(LOAD_PRESETS.MAXIMAL, 7, {
+        gapTicks: BURST_SWEEP.MASH_GAP_TICKS,
+        throwDrives: false,
+      }).resolution?.outcome,
+    ).toBe('miss');
   });
 
-  it('leaves a warm-up alone — a light bar is not a reaction test', () => {
-    // GDD §12.3 and the daily loop: a warm-up must not punish. The penalty
-    // scales demand, and at a light load demand is far under capacity, so
-    // ignoring the command costs time and not the rep. If this ever fails the
-    // penalty has grown into a difficulty setting.
+  it('leaves a warm-up alone — a light bar is not a burst test', () => {
+    // GDD §12.3 and the daily loop: a warm-up must not punish. The penalties
+    // scale demand, and at a light load demand is far under capacity, so
+    // ignoring the command AND crashing the bar costs time and not the rep. If
+    // this ever fails the two penalties have grown into a difficulty setting.
     for (let seed = 1; seed <= 8; seed += 1) {
-      for (const rt of [PRESS_SWEEP.PERFECT, PRESS_SWEEP.NEVER]) {
-        const rep = benchRepDriven(LOAD_PRESETS.LIGHT, seed, rt, true);
-        expect(rep.resolution?.outcome, `seed ${seed} reaction ${rt}`).not.toBe('miss');
+      for (const gap of [BURST_SWEEP.MASH_GAP_TICKS, BURST_SWEEP.NONE]) {
+        const rep = benchBurstRep(LOAD_PRESETS.LIGHT, seed, {
+          hold: null,
+          gapTicks: gap,
+          throwDrives: true,
+        });
+        expect(rep.resolution?.outcome, `seed ${seed} gap ${gap}`).not.toBe('miss');
       }
     }
   });
 
-  it('charges squat nothing for a press it never had', () => {
-    // `pressQuality` is 0 on squat because squat has no press. Read without a
-    // kind guard that is the MAXIMUM penalty on every squat rep in the game —
-    // the sharpest way this fix could have broken the lift that already works.
+  it('charges squat and deadlift nothing for beats they never had', () => {
+    // `burstForce` and `touchQuality` are 0 on squat and deadlift because
+    // neither lift has either beat. Read without a kind guard that is the
+    // MAXIMUM penalty on both counts on every squat and every deadlift rep in
+    // the game — the sharpest way this redesign could have broken the two
+    // lifts that already work.
     for (const load of [0.7, 0.85, 1.0]) {
-      const withPress = ascentDemand(0.34, load, 'squat', 0, 1);
-      const without = ascentDemand(0.34, load, 'squat', 0, 0);
-      // The parameter still applies if passed — the guard is at the call site,
-      // and that is what the played-rep check below actually exercises.
-      expect(withPress).toBeGreaterThan(without);
-      const rep = play(load, { driveOffsetTicks: 0 });
-      expect(rep.resolution).not.toBeNull();
+      const bothPenalties = ascentDemand(0.34, load, 'squat', 0, 1, 1);
+      const neither = ascentDemand(0.34, load, 'squat', 0, 0, 0);
+      // The parameters still apply if passed — the guard is at the call site.
+      expect(bothPenalties).toBeGreaterThan(neither);
+      // ...and each one alone is between the two, so neither is dead.
+      expect(ascentDemand(0.34, load, 'squat', 0, 1, 0)).toBeGreaterThan(neither);
+      expect(ascentDemand(0.34, load, 'squat', 0, 0, 1)).toBeGreaterThan(neither);
     }
-    // The real guard: a played squat's demand is the unpenalised curve.
+    // The real guard: a played squat and a played deadlift carry neither.
     const squat = play(0.88, { driveOffsetTicks: 0 });
-    const ascent = squat.timings.length;
-    expect(ascent).toBeGreaterThan(0);
+    expect(squat.burstForce).toBe(0);
+    expect(squat.touchQuality).toBe(0);
+    expect(squat.chestRate).toBeNull();
+    const pull = deadliftRep(0.9, 3, DEADLIFT_SWEEP.HELD);
+    expect(pull.burstForce).toBe(0);
+    expect(pull.touchQuality).toBe(0);
+    expect(pull.chestRate).toBeNull();
+  });
+});
+
+describe('the false-start rule, exactly as the copy states it', () => {
+  // The sentence, verbatim, from `LIFT_COPY.SUBTITLE.bench`:
+  //
+  //   "Taps before the call count for nothing, and each one costs a tap off
+  //    your burst — down to a floor of three."
+  //
+  // EACH CLAUSE IS DRIVEN SEPARATELY THROUGH THE SIM. A test that only checked
+  // `burstTapCeiling`'s arithmetic would be checking the same expression the
+  // copy was written from, and the copy and the mechanic could drift apart
+  // without anything going red.
+  const load = LOAD_PRESETS.MAXIMAL;
+
+  it('counts an early tap for nothing, AT EVERY TAP RATE', () => {
+    // "AT EVERY TAP RATE" IS THE WHOLE POINT AND IT IS WHERE THE FIRST VERSION
+    // OF THIS RULE WAS FALSE. It lowered the burst's CEILING per early tap,
+    // which costs nothing to anybody who was not going to reach the ceiling —
+    // measured, a moderate burst landed 7 taps with and without two early
+    // ones, and this test read `expected 7 to be less than 7`. So the rung
+    // that broke it is swept rather than the one that happened to pass.
+    const floor = LIFT_TUNING.PRESS_BURST_FORCE.FALSE_START_FLOOR_TAPS;
+    let charged = 0;
+    let atTheFloor = 0;
+    for (const gap of [
+      BURST_SWEEP.SPARSE_GAP_TICKS,
+      BURST_SWEEP.MODERATE_GAP_TICKS,
+      BURST_SWEEP.MASH_GAP_TICKS,
+    ]) {
+      const clean = benchBurstRep(load, 5, { gapTicks: gap });
+      const jumped = benchBurstRep(load, 5, { gapTicks: gap, earlyTaps: 2 });
+      expect(jumped.burstEarlyTaps, `gap ${gap}`).toBe(2);
+      // Never stronger for jumping — the thing that would make mashing the
+      // pause a strategy — at any rate.
+      expect(jumped.burstForce, `gap ${gap}`).toBeLessThanOrEqual(clean.burstForce);
+      if (clean.burstTaps > floor) {
+        expect(jumped.burstForce, `gap ${gap}`).toBeLessThan(clean.burstForce);
+        charged += 1;
+      } else {
+        // AND THE RUNG WHERE IT DOES NOT CHARGE IS THE ONE THE SENTENCE
+        // ALREADY EXCEPTS. "down to a floor of three": a player landing three
+        // taps or fewer is already at the floor, so there is nothing to take.
+        // Counted rather than skipped, so a tuning change that pushed every
+        // rung above the floor would report the exception had emptied.
+        expect(jumped.burstForce, `gap ${gap}`).toBe(clean.burstForce);
+        atTheFloor += 1;
+      }
+    }
+    expect(charged, `${charged} rungs were charged`).toBe(2);
+    expect(atTheFloor, `${atTheFloor} rungs were already at the floor`).toBe(1);
+  });
+
+  it('costs a tap off the burst per early tap, down to the floor the copy names', () => {
+    const { MAX_COUNTED_TAPS, FALSE_START_FLOOR_TAPS } = LIFT_TUNING.PRESS_BURST_FORCE;
+    // Driven through the SIM and compared against the rule, so a mechanic that
+    // stopped charging would redden even though `burstCountedTaps` still
+    // returned the right number.
+    const forces: number[] = [];
+    for (let early = 0; early <= MAX_COUNTED_TAPS + 4; early += 1) {
+      const rep = benchBurstRep(load, 5, {
+        gapTicks: BURST_SWEEP.MASH_GAP_TICKS,
+        earlyTaps: early,
+      });
+      expect(rep.burstEarlyTaps, `early ${early}`).toBe(early);
+      const counted = burstCountedTaps(rep.burstTaps, rep.burstEarlyTaps);
+      expect(rep.burstForce, `early ${early}`).toBe(burstForce(counted));
+      expect(counted, `early ${early}`).toBeGreaterThanOrEqual(FALSE_START_FLOOR_TAPS);
+      forces.push(rep.burstForce);
+    }
+    let strictDrops = 0;
+    let previous = forces[0] ?? 0;
+    for (let i = 1; i < forces.length; i += 1) {
+      const force = forces[i] ?? 0;
+      expect(force, `early ${i}`).toBeLessThanOrEqual(previous);
+      if (force < previous) strictDrops += 1;
+      previous = force;
+    }
+    // The clause bites for exactly as many rungs as there is room between the
+    // taps a mash lands and the floor, and then the floor holds. Pinned as a
+    // count so a charge that stopped charging, or a floor that stopped
+    // holding, reports itself instead of passing.
+    expect(strictDrops, `${strictDrops} rungs actually cost a tap`).toBe(
+      MAX_COUNTED_TAPS - FALSE_START_FLOOR_TAPS,
+    );
+    expect(previous).toBe(burstForce(FALSE_START_FLOOR_TAPS));
+  });
+
+  it('cannot hand taps to a player who never answered the command', () => {
+    // THE FLOOR IS A FLOOR ON THE CHARGE, NOT A GIFT, and the difference is
+    // one `min` in `burstCountedTaps`. Without it, mashing the pause and then
+    // ignoring the command entirely would launch at the floor's force — a
+    // false start that PAID, which is the exact strategy the rule exists to
+    // make worthless.
+    const ignored = benchBurstRep(load, 5, { gapTicks: BURST_SWEEP.NONE, earlyTaps: 12 });
+    expect(ignored.burstEarlyTaps, 'no false start was thrown').toBe(12);
+    expect(ignored.burstTaps).toBe(0);
+    expect(ignored.burstForce).toBe(0);
+    expect(burstCountedTaps(0, 12)).toBe(0);
+    expect(burstCountedTaps(1, 12)).toBe(1);
+    expect(burstCountedTaps(2, 12)).toBe(2);
+  });
+
+  it('never kills the rep, however long the pause is mashed', () => {
+    // "COSTS A TAP OFF YOUR BURST" AND NOT "ENDS THE REP", consistent with the
+    // rule the drive branch already states in capitals. A competition bench
+    // would red light a press before the call outright; that is left on the
+    // table deliberately, because a hard fail on a stimulus the player cannot
+    // see coming reads as the game cheating.
+    for (const sweepLoad of BURST_SWEEP.LOADS) {
+      const mashed = benchBurstRep(sweepLoad, 5, {
+        gapTicks: BURST_SWEEP.MASH_GAP_TICKS,
+        earlyTaps: 30,
+        throwDrives: true,
+      });
+      expect(mashed.resolution, `load ${sweepLoad}`).not.toBeNull();
+      // The bar left the chest and the ascent ran: the false start did not
+      // resolve the rep where it was thrown.
+      expect(mashed.ascentTicks, `load ${sweepLoad}`).toBeGreaterThan(0);
+      expect(mashed.resolution?.missReason, `load ${sweepLoad}`).not.toBe('buried');
+      expect(mashed.resolution?.missReason, `load ${sweepLoad}`).not.toBe('no-touch');
+      // And it launched with real force behind it — the floor, not nothing.
+      expect(mashed.burstForce, `load ${sweepLoad}`).toBe(
+        burstForce(LIFT_TUNING.PRESS_BURST_FORCE.FALSE_START_FLOOR_TAPS),
+      );
+      expect(mashed.burstForce, `load ${sweepLoad}`).toBeGreaterThan(0);
+    }
+  });
+
+  it('says so on the screen, at the moment it happens', () => {
+    // The rule is otherwise invisible: the cost lands on a burst that has not
+    // started yet. `promptFor` flips the waiting line the tick the first early
+    // tap is thrown, and flips back to the command when it fires.
+    const { config, script } = benchToChest(load, 5, null);
+    const command = commandTickFor(load, 5, null);
+    expect(command).not.toBeNull();
+    if (command === null) return;
+    const jumpTick = command - 6;
+    const history = runLift(
+      config,
+      [...script, { tick: jumpTick, kind: 'press' }],
+      TOUCH_SWEEP.MAX_TICKS,
+    ).history;
+    const before = history.filter((s) => s.phase === 'HOLE' && s.tick < jumpTick);
+    const after = history.filter(
+      (s) => s.phase === 'HOLE' && s.tick >= jumpTick && s.tick < command,
+    );
+    const commanded = history.filter((s) => s.phase === 'HOLE' && s.tick >= command);
+    expect(before.length, 'no pre-jump HOLE ticks').toBeGreaterThan(0);
+    expect(after.length, 'no post-jump HOLE ticks').toBeGreaterThan(0);
+    expect(commanded.length, 'no commanded HOLE ticks').toBeGreaterThan(0);
+    for (const state of before) expect(promptFor(state)).toBe(LIFT_COPY.PROMPT.HOLE.bench);
+    for (const state of after) expect(promptFor(state)).toBe(LIFT_COPY.PROMPT.HOLE_FALSE_START);
+    for (const state of commanded) expect(promptFor(state)).toBe(LIFT_COPY.PROMPT.HOLE_COMMANDED);
+  });
+});
+
+/**
+ * ---------------------------------------------------------------------------
+ * SQUAT AND DEADLIFT DID NOT MOVE — MEASURED AGAINST THE TREE BEFORE THE BENCH
+ * REDESIGN, NOT ARGUED FROM THE DIFF
+ * ---------------------------------------------------------------------------
+ *
+ * The 2026-08-25 ruling rewrote bench's DESCENT and HOLE branches, added six
+ * state fields, added a `MissReason`, added two event kinds and gave
+ * `ascentDemand` a sixth parameter. Every one of those is a place squat or
+ * deadlift could have moved by accident, and none of them would fail to
+ * compile. `tsc` is clean either way; the whole suite is green either way,
+ * because a physics change shifts every number together and the assertions
+ * about squat are about SHAPES.
+ *
+ * So this pins the shape a diff cannot see: play a representative set of squat
+ * and deadlift reps and hash the whole history, field by field, tick by tick.
+ *
+ * WHAT IS HASHED, AND WHY IT IS A LIST AND NOT `JSON.stringify(state)`. The
+ * list is exactly the `LiftState` fields that existed at the baseline commit,
+ * MINUS the two the redesign deleted (`pressQuality`, `pressUsed`). It cannot
+ * include the new fields — they did not exist to be measured — and it must not
+ * be `Object.keys`, because that would silently start including them and the
+ * digest would be about a different thing than the one it was taken from.
+ *
+ * THE TWO DELETED FIELDS ARE COVERED BY A STRUCTURAL ARGUMENT RATHER THAN BY
+ * THE DIGEST, and it is written down rather than assumed: at the baseline they
+ * were written in exactly one place, the bench arm of the HOLE branch, which
+ * squat cannot enter (its HOLE takes the `else`) and deadlift cannot reach at
+ * all (`stepLift` throws on a deadlift in HOLE). So on these two kinds they
+ * were `0` and `false` on every tick of every rep, and a hash over them would
+ * have been a hash over two constants.
+ *
+ * MEASURED AT `2d4ba0c` — the commit this branch is based on, and the last one
+ * before any bench work. Re-taking these numbers means checking out that
+ * commit and running the same projection; a stamp is checkable in a way a
+ * sentence is not (CLAUDE.md, "a measurement that leaves this session carries
+ * the commit it was taken at").
+ *
+ * A DIGEST FAILS USELESSLY ON ITS OWN, so the test reports the case name and
+ * the tick count beside it — the count is the first half of every digest for
+ * exactly that reason, and a rep that resolved at a different tick says so in
+ * the message rather than only in the hash.
+ */
+const BASELINE_COMMIT = '2d4ba0c';
+
+/**
+ * The `LiftState` fields that existed at `BASELINE_COMMIT`, minus the two the
+ * bench redesign deleted. Written out rather than derived — see the block
+ * above for why `Object.keys` would defeat the whole check.
+ */
+const BASELINE_FIELDS = [
+  'tick', 'phase', 'phaseTick', 'held', 'depth', 'height', 'velocity', 'peakHeight', 'netForce',
+  'barForwardPx', 'barLateralPx', 'barTiltDeg', 'barBendPx', 'chalkPuff', 'activeCue', 'timings',
+  'depthAchieved', 'extraDepth', 'pressCommandTick', 'downCommandTick', 'lockoutSlipTicks',
+  'drivesUsed', 'driveTick', 'driveQuality', 'driveArmReadyTick', 'ascentTicks', 'stallTicks',
+  'stallCapacityLoss', 'lastStallPulseTick', 'resolution', 'events', 'rngState',
+] as const;
+
+/** Parameters of the baseline sweep. Named, so the digests can be re-taken. */
+const BASELINE_SWEEP = {
+  LOADS: [0.55, 0.7, 0.85, 1.0] as const,
+  SEEDS: [1, 7, 20260801] as const,
+  SQUAT_STYLES: ['ideal', 'nodrive', 'high', 'buried', 'early'] as const,
+  DEADLIFT_STYLES: ['held', 'letgo'] as const,
+  /** Depth a 'high' squat releases at. Above `DEPTH_LEGAL.squat`. */
+  HIGH_DEPTH: 0.6,
+  /** Ticks before a scripted 'early' drive. Well outside any window. */
+  EARLY_DRIVE_TICKS: 9,
+  /** Ticks a baseline rep is allowed. */
+  MAX_TICKS: 1200,
+  /** How many drive cues the deadlift script probes for. */
+  MAX_DEADLIFT_CUES: 8,
+  /** The hand-stepped control's load, seed, tick count and press tick. */
+  STEPPED: { LOAD: 0.9, SEED: 3, TICKS: 40, PRESS_AT: 20 },
+  /** Digests measured. Both kinds, all styles, plus the stepped control. */
+  CASES: 85,
+} as const;
+
+function baselineDigest(history: readonly LiftState[]): string {
+  const text = history
+    .map((state) => {
+      const row = state as unknown as Record<string, unknown>;
+      return BASELINE_FIELDS.map((field) => JSON.stringify(row[field] ?? null)).join('|');
+    })
+    .join('\n');
+  // FNV-1a, written out rather than imported: this file may not reach for a
+  // hash the tree could change underneath it, or the pins below would expire
+  // for a reason that has nothing to do with the lift.
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `${history.length}:${hash.toString(16).padStart(8, '0')}`;
+}
+
+function baselineSquatScript(config: LiftConfig, style: string): ScriptedInput[] {
+  const load = config.loadRatio;
+  const press = braceTicks(load, 'squat') + 1;
+  if (style === 'buried') return [{ tick: press, kind: 'press' }];
+  const depth = style === 'high' ? BASELINE_SWEEP.HIGH_DEPTH : LIFT_TUNING.DEPTH_IDEAL.squat;
+  const release = press + Math.round(depth / descentRate(load, 'squat'));
+  const base: ScriptedInput[] = [
+    { tick: press, kind: 'press' },
+    { tick: release, kind: 'release' },
+  ];
+  if (style === 'nodrive') return base;
+  const probe = runLift(config, base);
+  const open = probe.history.find((state) => state.events.some((e) => e.kind === 'drive-cue-open'));
+  const ideal = open?.activeCue?.idealTick ?? null;
+  if (ideal === null) return base;
+  return [
+    ...base,
+    { tick: ideal + (style === 'early' ? -BASELINE_SWEEP.EARLY_DRIVE_TICKS : 0), kind: 'press' },
+  ];
+}
+
+function baselineDeadliftScript(config: LiftConfig, style: string): ScriptedInput[] {
+  const load = config.loadRatio;
+  let script: ScriptedInput[] = [{ tick: braceTicks(load, 'deadlift') + 1, kind: 'press' }];
+  for (let i = 0; i < BASELINE_SWEEP.MAX_DEADLIFT_CUES; i += 1) {
+    const probe = runLift(config, script, BASELINE_SWEEP.MAX_TICKS);
+    const opens = probe.history.filter((state) =>
+      state.events.some((e) => e.kind === 'drive-cue-open'),
+    );
+    const cue = opens[opens.length - 1]?.activeCue ?? null;
+    if (cue === null || script.some((x) => x.tick === cue.idealTick)) break;
+    script = [
+      ...script,
+      { tick: cue.idealTick - 1, kind: 'release' },
+      { tick: cue.idealTick, kind: 'press' },
+    ];
+  }
+  if (style === 'letgo') {
+    const probe = runLift(config, script, BASELINE_SWEEP.MAX_TICKS);
+    const lock = probe.history.find((state) => state.events.some((e) => e.kind === 'lockout'));
+    if (lock !== undefined) script = [...script, { tick: lock.tick + 1, kind: 'release' }];
+  }
+  return script;
+}
+
+/**
+ * Every digest, measured at `BASELINE_COMMIT` by running this file's own
+ * projection against that tree.
+ */
+const BASELINE_DIGESTS: Readonly<Record<string, string>> = {
+  'squat|0.55|1|ideal': '106:45dea612',
+  'squat|0.55|1|nodrive': '107:cf89a101',
+  'squat|0.55|1|high': '82:0579d09f',
+  'squat|0.55|1|buried': '67:8c5fe3d6',
+  'squat|0.55|1|early': '106:28e05d88',
+  'deadlift|0.55|1|held': '158:bbf61dbf',
+  'deadlift|0.55|1|letgo': '158:f00bdf10',
+  'squat|0.55|7|ideal': '106:ecd8317b',
+  'squat|0.55|7|nodrive': '107:629764d8',
+  'squat|0.55|7|high': '82:a27412ef',
+  'squat|0.55|7|buried': '67:a2604512',
+  'squat|0.55|7|early': '106:407b708d',
+  'deadlift|0.55|7|held': '121:1e15c8ea',
+  'deadlift|0.55|7|letgo': '121:a0498175',
+  'squat|0.55|20260801|ideal': '106:3c1d022b',
+  'squat|0.55|20260801|nodrive': '107:80cdb8b9',
+  'squat|0.55|20260801|high': '82:45dc4991',
+  'squat|0.55|20260801|buried': '67:733504fa',
+  'squat|0.55|20260801|early': '106:618ec87b',
+  'deadlift|0.55|20260801|held': '135:e585a16a',
+  'deadlift|0.55|20260801|letgo': '135:9972273f',
+  'squat|0.7|1|ideal': '120:4b9a0c37',
+  'squat|0.7|1|nodrive': '125:4592bf93',
+  'squat|0.7|1|high': '92:4ce1cff3',
+  'squat|0.7|1|buried': '76:78737435',
+  'squat|0.7|1|early': '122:2db39c3f',
+  'deadlift|0.7|1|held': '168:482a1162',
+  'deadlift|0.7|1|letgo': '168:ff32ec8f',
+  'squat|0.7|7|ideal': '120:82ffc6b1',
+  'squat|0.7|7|nodrive': '125:3ce0032c',
+  'squat|0.7|7|high': '92:faede64b',
+  'squat|0.7|7|buried': '76:320974c5',
+  'squat|0.7|7|early': '122:125bc3f2',
+  'deadlift|0.7|7|held': '131:8d9f7cc3',
+  'deadlift|0.7|7|letgo': '131:d339f0c1',
+  'squat|0.7|20260801|ideal': '120:21cbd9cc',
+  'squat|0.7|20260801|nodrive': '125:a78d895b',
+  'squat|0.7|20260801|high': '92:8b90ca4a',
+  'squat|0.7|20260801|buried': '76:aeced104',
+  'squat|0.7|20260801|early': '122:597e6dbf',
+  'deadlift|0.7|20260801|held': '145:5c21411e',
+  'deadlift|0.7|20260801|letgo': '145:b42df87f',
+  'squat|0.85|1|ideal': '143:c30acdc3',
+  'squat|0.85|1|nodrive': '167:59fcbb36',
+  'squat|0.85|1|high': '112:89031a76',
+  'squat|0.85|1|buried': '89:e6809daa',
+  'squat|0.85|1|early': '163:e8de0ee5',
+  'deadlift|0.85|1|held': '200:42bdaf3d',
+  'deadlift|0.85|1|letgo': '200:42bdaf3d',
+  'squat|0.85|7|ideal': '143:a47bacfc',
+  'squat|0.85|7|nodrive': '167:1461107d',
+  'squat|0.85|7|high': '112:64ff2108',
+  'squat|0.85|7|buried': '89:9f0dd6d9',
+  'squat|0.85|7|early': '163:bb5ada9c',
+  'deadlift|0.85|7|held': '163:20656d0b',
+  'deadlift|0.85|7|letgo': '163:20656d0b',
+  'squat|0.85|20260801|ideal': '143:589373a0',
+  'squat|0.85|20260801|nodrive': '167:e06af169',
+  'squat|0.85|20260801|high': '112:a4fc7e8b',
+  'squat|0.85|20260801|buried': '89:275ed5b5',
+  'squat|0.85|20260801|early': '163:af2015bb',
+  'deadlift|0.85|20260801|held': '177:161d3510',
+  'deadlift|0.85|20260801|letgo': '177:161d3510',
+  'squat|1|1|ideal': '186:e35d9544',
+  'squat|1|1|nodrive': '181:dc9b4243',
+  'squat|1|1|high': '158:af4e4aab',
+  'squat|1|1|buried': '110:ad3b82e8',
+  'squat|1|1|early': '187:f7b0b9a6',
+  'deadlift|1|1|held': '257:23e29e61',
+  'deadlift|1|1|letgo': '201:4716804a',
+  'squat|1|7|ideal': '186:69807d9f',
+  'squat|1|7|nodrive': '181:6cdc91af',
+  'squat|1|7|high': '158:4687dc50',
+  'squat|1|7|buried': '110:c79dd89b',
+  'squat|1|7|early': '187:e8fde677',
+  'deadlift|1|7|held': '220:e88c2f4a',
+  'deadlift|1|7|letgo': '220:9fb5763f',
+  'squat|1|20260801|ideal': '186:676909a5',
+  'squat|1|20260801|nodrive': '181:82d54048',
+  'squat|1|20260801|high': '158:e349efac',
+  'squat|1|20260801|buried': '110:e0b02940',
+  'squat|1|20260801|early': '187:37b989f0',
+  'deadlift|1|20260801|held': '234:8836faf3',
+  'deadlift|1|20260801|letgo': '201:dcbe8893',
+  'stepped|0.9|3|manual': '40:0b49d921',
+};
+
+describe('squat and deadlift are untouched by the bench redesign', () => {
+  it('replays every baseline rep to the same history it had before the ruling', () => {
+    let checked = 0;
+    const differences: string[] = [];
+    for (const load of BASELINE_SWEEP.LOADS) {
+      for (const seed of BASELINE_SWEEP.SEEDS) {
+        for (const style of BASELINE_SWEEP.SQUAT_STYLES) {
+          const config: LiftConfig = { kind: 'squat', loadRatio: load, seed };
+          const key = `squat|${load}|${seed}|${style}`;
+          const played = baselineDigest(
+            runLift(config, baselineSquatScript(config, style), BASELINE_SWEEP.MAX_TICKS).history,
+          );
+          checked += 1;
+          if (played !== BASELINE_DIGESTS[key]) {
+            differences.push(`${key}: ${BASELINE_DIGESTS[key] ?? 'MISSING'} -> ${played}`);
+          }
+        }
+        for (const style of BASELINE_SWEEP.DEADLIFT_STYLES) {
+          const config: LiftConfig = { kind: 'deadlift', loadRatio: load, seed };
+          const key = `deadlift|${load}|${seed}|${style}`;
+          const played = baselineDigest(
+            runLift(config, baselineDeadliftScript(config, style), BASELINE_SWEEP.MAX_TICKS)
+              .history,
+          );
+          checked += 1;
+          if (played !== BASELINE_DIGESTS[key]) {
+            differences.push(`${key}: ${BASELINE_DIGESTS[key] ?? 'MISSING'} -> ${played}`);
+          }
+        }
+      }
+    }
+    // The hand-stepped control, for `stepLift`'s own return shape rather than
+    // `runLift`'s: a rep that never presses at all and is stepped past the
+    // brace by hand.
+    const { LOAD, SEED, TICKS, PRESS_AT } = BASELINE_SWEEP.STEPPED;
+    let stepped = createLift({ kind: 'squat', loadRatio: LOAD, seed: SEED });
+    const steppedHistory: LiftState[] = [];
+    for (let i = 0; i < TICKS; i += 1) {
+      stepped = stepLift(stepped, i === PRESS_AT ? { kind: 'press' } : null);
+      steppedHistory.push(stepped);
+    }
+    const steppedKey = `stepped|${LOAD}|${SEED}|manual`;
+    const steppedDigest = baselineDigest(steppedHistory);
+    checked += 1;
+    if (steppedDigest !== BASELINE_DIGESTS[steppedKey]) {
+      differences.push(`${steppedKey}: ${BASELINE_DIGESTS[steppedKey] ?? 'MISSING'} -> ${steppedDigest}`);
+    }
+
+    // A COUNT FIRST, so an emptied sweep reports itself rather than passing on
+    // zero comparisons — and the table has to be exactly as big as the sweep,
+    // in both directions, so a stale row cannot sit there unread.
+    expect(checked, 'no baseline reps were played').toBe(BASELINE_SWEEP.CASES);
+    expect(Object.keys(BASELINE_DIGESTS).length).toBe(BASELINE_SWEEP.CASES);
+    // Every digest carries its tick count, so a rep that resolved at a
+    // different tick says so in this message rather than only in the hash.
+    expect(
+      differences,
+      `${differences.length} of ${checked} baseline reps moved since ${BASELINE_COMMIT}`,
+    ).toEqual([]);
+  });
+
+  it('would notice a change, so the digests are not decoration', () => {
+    // NON-VACUITY FOR THE WHOLE BLOCK ABOVE. A hash over a projection is
+    // exactly the kind of check that can be pointing at nothing — a projection
+    // that read no fields, or a hash that ignored its input, would produce
+    // stable digests forever and match every pin. So: two reps that differ by
+    // one input must hash differently, and the same rep must hash the same.
+    const config: LiftConfig = { kind: 'squat', loadRatio: 0.85, seed: 7 };
+    const ideal = baselineDigest(
+      runLift(config, baselineSquatScript(config, 'ideal'), BASELINE_SWEEP.MAX_TICKS).history,
+    );
+    const nodrive = baselineDigest(
+      runLift(config, baselineSquatScript(config, 'nodrive'), BASELINE_SWEEP.MAX_TICKS).history,
+    );
+    expect(ideal).not.toBe(nodrive);
+    expect(ideal).toBe(
+      baselineDigest(
+        runLift(config, baselineSquatScript(config, 'ideal'), BASELINE_SWEEP.MAX_TICKS).history,
+      ),
+    );
+    // ...and the projection really reads the fields it lists, rather than
+    // hashing a row of `null`s: a state with one field changed must hash
+    // differently from the untouched one.
+    const played = runLift(config, baselineSquatScript(config, 'ideal'), BASELINE_SWEEP.MAX_TICKS)
+      .history;
+    const first = played[0];
+    expect(first, 'no history to perturb').toBeDefined();
+    if (first === undefined) return;
+    for (const field of BASELINE_FIELDS) {
+      const perturbed = [{ ...first, [field]: 'PERTURBED' } as unknown as LiftState, ...played.slice(1)];
+      expect(baselineDigest(perturbed), `field ${field} is not read by the projection`).not.toBe(
+        baselineDigest(played),
+      );
+    }
   });
 });
 
@@ -2616,51 +3618,68 @@ describe('the lockout hold decides the deadlift', () => {
 });
 
 
-describe('gradeReaction', () => {
-  const window = LIFT_TUNING.PRESS_REACTION_WINDOW_MS;
-
-  it('is 1 at the stimulus and 0 at the end of the window', () => {
-    expect(gradeReaction(0, window).quality).toBe(1);
-    expect(gradeReaction(window, window).quality).toBe(0);
-    expect(gradeReaction(window + 1, window).grade).toBe('missed');
-  });
-
-  it('never rises as the reaction gets slower', () => {
+describe('touchSpeedQuality and descentPatience', () => {
+  it('is 1 at a caught bar, 0 at a dropped one, and never rises with speed', () => {
+    const soft = LIFT_TUNING.BENCH_TOUCH_SOFT_RATE;
+    const crash = LIFT_TUNING.BENCH_TOUCH_CRASH_RATE;
+    expect(touchSpeedQuality(soft)).toBe(1);
+    expect(touchSpeedQuality(soft / 2)).toBe(1);
+    expect(touchSpeedQuality(crash)).toBe(0);
+    expect(touchSpeedQuality(crash * 2)).toBe(0);
     let previous = Number.POSITIVE_INFINITY;
-    for (let ms = 0; ms <= window; ms += 10) {
-      const q = gradeReaction(ms, window).quality;
-      expect(q).toBeLessThanOrEqual(previous);
-      previous = q;
+    const distinct = new Set<number>();
+    for (let rate = 0; rate <= crash * 1.5; rate += crash / 60) {
+      const quality = touchSpeedQuality(rate);
+      expect(quality, `rate ${rate}`).toBeLessThanOrEqual(previous);
+      previous = quality;
+      distinct.add(quality);
+    }
+    // It MOVES, not merely stays in range — fact 3 of the progression rule.
+    expect(distinct.size, `${distinct.size} distinct qualities`).toBeGreaterThan(20);
+  });
+
+  it('leaves a committed descent alone and charges an interminable one', () => {
+    const free = LIFT_TUNING.BENCH_DESCENT_PATIENCE_TICKS;
+    const span = LIFT_TUNING.BENCH_DESCENT_DAWDLE_SPAN_TICKS;
+    expect(descentPatience(0)).toBe(1);
+    expect(descentPatience(free)).toBe(1);
+    expect(descentPatience(free + span)).toBe(0);
+    expect(descentPatience(free + span * 2)).toBe(0);
+    // Halfway down the slope, and it is a SLOPE rather than a cliff — a hard
+    // cutoff would make the beat a second timing check.
+    expect(descentPatience(free + span / 2)).toBeCloseTo(0.5, 6);
+    let previous = Number.POSITIVE_INFINITY;
+    for (let ticks = 0; ticks <= free + span * 2; ticks += 5) {
+      const kept = descentPatience(ticks);
+      expect(kept, `ticks ${ticks}`).toBeLessThanOrEqual(previous);
+      previous = kept;
     }
   });
 
-  it('IS ASYMMETRIC — which is the whole difference from gradeTiming', () => {
-    // The claim the bench beat rests on. `gradeTiming` scores -100/+100 the
-    // same; a reaction cannot, because you cannot react before the stimulus.
-    expect(gradeTiming(-100, window).quality).toBe(gradeTiming(100, window).quality);
-    expect(gradeReaction(-100, window).quality).not.toBe(gradeReaction(100, window).quality);
-    expect(gradeReaction(-100, window).grade).toBe('missed');
+  it('multiplies into one grade, so a rep bad on both counts is worse than either', () => {
+    const free = LIFT_TUNING.BENCH_DESCENT_PATIENCE_TICKS;
+    const span = LIFT_TUNING.BENCH_DESCENT_DAWDLE_SPAN_TICKS;
+    const soft = LIFT_TUNING.BENCH_TOUCH_SOFT_RATE;
+    const middling = (soft + LIFT_TUNING.BENCH_TOUCH_CRASH_RATE) / 2;
+    const slow = free + span / 2;
+    expect(touchQualityFor(soft, 0)).toBe(1);
+    expect(touchQualityFor(middling, 0)).toBeGreaterThan(touchQualityFor(middling, slow));
+    expect(touchQualityFor(soft, slow)).toBeGreaterThan(touchQualityFor(middling, slow));
+    expect(touchQualityFor(middling, slow)).toBeLessThan(touchQualityFor(middling, 0));
   });
 
-  it('cannot ever return "early", and that is checked rather than asserted', () => {
-    // A comment claiming a grade is unreachable is exactly the sentence
-    // CLAUDE.md has caught being false eight times. Swept instead.
-    const seen = new Set<string>();
-    for (let ms = -window; ms <= window * 2; ms += 1) seen.add(gradeReaction(ms, window).grade);
-    expect(seen.has('early')).toBe(false);
-    // ...and the sweep is not vacuous: it reaches the other four.
-    for (const grade of ['perfect', 'good', 'late', 'missed']) {
-      expect(seen.has(grade), `grade ${grade} unreachable in the sweep`).toBe(true);
-    }
-  });
-
-  it('refuses nonsense rather than trusting its caller', () => {
-    expect(gradeReaction(Number.NaN, window).grade).toBe('missed');
-    expect(gradeReaction(0, 0).grade).toBe('missed');
-    expect(gradeReaction(0, -1).grade).toBe('missed');
+  it('refuses a lift that is not graded on a release tick, rather than defaulting', () => {
+    // `depthTimedKindOf`'s sibling guard. `eccentricKindOf` accepts bench —
+    // a bench lowers the bar — and this one must not, because a bench has no
+    // release window since the ruling.
+    expect(depthTimedKindOf('squat', 'the depth window')).toBe('squat');
+    expect(() => depthTimedKindOf('bench', 'the depth window')).toThrow(/bench/);
+    expect(() => depthTimedKindOf('deadlift', 'the depth window')).toThrow(/deadlift/);
+    // ...and its sibling still accepts what it always did, or the pair has
+    // silently collapsed into one guard.
+    expect(eccentricKindOf('bench', 'a scripted descent')).toBe('bench');
   });
 });
-
 describe('the winning band at a limit attempt', () => {
   const limit = LOAD_PRESETS.MAXIMAL;
 
@@ -3113,20 +4132,32 @@ describe('read models', () => {
     // A drive thrown before the cue armed, for drive-mistimed.
     const mistimed = runLift({ kind: DEFAULT_KIND, loadRatio: 0.88, seed: 3 }, earlyDriveScript(0.88));
     for (const state of mistimed.history) for (const e of state.events) seen.add(e.kind);
-    // BENCH, for the three press kinds. Squat cannot reach them — its HOLE
-    // asks for nothing — so a squat-only sweep would report them unreachable,
-    // which is exactly what this guard caught when the press beat landed.
-    for (const [seed, reaction] of [
-      [3, 2],
-      [3, -6],
+    // BENCH, for the five bench-only kinds. Squat cannot reach them — its
+    // HOLE asks for nothing and its descent reverses on the release — so a
+    // squat-only sweep would report them unreachable, which is exactly what
+    // this guard caught when the press beat landed. Three arms: a controlled
+    // touch, a crashed one, and a mashed pause for the false start.
+    for (const [hold, early] of [
+      [BURST_SWEEP.MODERATE_GAP_TICKS, 0],
+      [null, 0],
+      [null, 3],
     ] as const) {
-      const { config, script } = benchToChest(LOAD_PRESETS.MAXIMAL, seed);
-      const command = commandTickFor(LOAD_PRESETS.MAXIMAL, seed);
-      const full =
-        command === null
-          ? script
-          : [...script, { tick: Math.max(1, command + reaction), kind: 'press' as const }];
-      for (const state of runLift(config, full).history) {
+      const seed = 3;
+      const load = LOAD_PRESETS.MAXIMAL;
+      const { config, script } = benchToChest(load, seed, hold);
+      const command = commandTickFor(load, seed, hold);
+      let full = [...script];
+      if (command !== null) {
+        for (let i = 0; i < early; i += 1) {
+          const tick = command - 1 - i * BURST_SWEEP.EARLY_TAP_GAP_TICKS;
+          if (tick > 0) full.push({ tick, kind: 'press' as const });
+        }
+        full = [
+          ...full,
+          ...tapsAt(command, BURST_SWEEP.MODERATE_GAP_TICKS, BURST_SWEEP.MAX_SCRIPTED_TAPS),
+        ];
+      }
+      for (const state of runLift(config, full, TOUCH_SWEEP.MAX_TICKS).history) {
         for (const e of state.events) seen.add(e.kind);
       }
     }
