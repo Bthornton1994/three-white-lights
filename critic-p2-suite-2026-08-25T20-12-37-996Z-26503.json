@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "critic-p2-suite-2026-08-25T20-12-37-996Z-26503",
   "label": "critic-p2-suite",
   "command": [
@@ -28,14 +28,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 5,
-    "okCount": 4,
+    "count": 6,
+    "okCount": 5,
     "errors": [],
-    "lastAttemptIso": "2026-08-25T20:16:38.172Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-25T20:17:37.156Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-25T20:15:40.951Z"
-  }
+    "lastOkIso": "2026-08-25T20:16:41.073Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-25T20:17:37.155Z",
+  "elapsedSeconds": 299.2
 }
