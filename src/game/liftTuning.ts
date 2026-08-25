@@ -259,7 +259,7 @@ export const STICK_HEIGHT_FRAC: PerKind<number> = Object.freeze({
 });
 export const STICK_WIDTH: PerKind<number> = Object.freeze({
   squat: STICK.WIDTH,
-  bench: 0.12,
+  bench: 0.22,
   deadlift: 0.14,
 });
 
@@ -622,7 +622,7 @@ export const LIFT_TUNING = Object.freeze({
    * the rate it did when it was one of three penalties. Unplayed placeholder.
    * `@guarantee bench-touch-decides-the-rep`
    */
-  BENCH_TOUCH_DEMAND_PENALTY: 0.3,
+  BENCH_TOUCH_DEMAND_PENALTY: 0.15,
 
   /**
    * Depth past the chest a crashed bar sinks, per unit of contact rate.
@@ -973,7 +973,7 @@ export const LIFT_TUNING = Object.freeze({
    * Unplayed placeholder, GDD §10.
    * `@guarantee bench-grind-decides-the-rep`
    */
-  GRIND_BOOST_FORCE_MAX: 0.55,
+  GRIND_BOOST_FORCE_MAX: 0.34,
 
   /**
    * Velocity the bar leaves the chest with, at grind force 0 and 1.
@@ -1074,7 +1074,7 @@ export const LIFT_TUNING = Object.freeze({
    */
   DEMAND_BASE: {
     squat: { LIGHT: 0.42, MAXIMAL: 0.86 },
-    bench: { LIGHT: 0.38, MAXIMAL: 0.8 },
+    bench: { LIGHT: 0.38, MAXIMAL: 0.95 },
     deadlift: { LIGHT: 0.42, MAXIMAL: 0.84 },
   } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
@@ -1107,7 +1107,7 @@ export const LIFT_TUNING = Object.freeze({
    */
   DEMAND_STICK_GAIN: {
     squat: { LIGHT: 0.06, MAXIMAL: 0.48 },
-    bench: { LIGHT: 0.05, MAXIMAL: 0.55 },
+    bench: { LIGHT: 0.05, MAXIMAL: 0.3 },
     deadlift: { LIGHT: 0.05, MAXIMAL: 0.46 },
   } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
