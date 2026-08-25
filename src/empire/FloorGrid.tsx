@@ -139,6 +139,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
+  Image,
   PanResponder,
   type PanResponderGestureState,
   Pressable,
@@ -149,6 +150,12 @@ import {
 } from 'react-native';
 
 import { EMPIRE_TUNING } from './empireTuning';
+import {
+  type FixedFurnitureItem,
+  type FloorSpriteFacing,
+  type FloorSpritePose,
+  FLOOR_SPRITE_URIS,
+} from './floorSprites';
 import {
   type FloorState,
   type GridPosition,
@@ -186,6 +193,21 @@ import { type SessionEquipmentItem } from './sessions';
  */
 type WebSelectableViewStyle = ViewStyle & { readonly userSelect?: 'none' };
 
+/**
+ * GDD §5.13 presentation Phase 4: `imageRendering` is a real react-native-web
+ * style pass-through (it maps straight to the CSS property, which is
+ * INHERITED, so setting it once on the grid and once on the tray covers every
+ * sprite image drawn inside them) that the core `react-native` types do not
+ * declare. Without it a browser smooths every scaled sprite back into the
+ * blur this whole phase exists to avoid — nearest-neighbour or nothing is the
+ * same rule `src/art/`'s own view layer states for the lift screen. On a
+ * native renderer the property is unknown and inert; the sprites there are
+ * pre-upscaled to their drawn size, so only the device-pixel-ratio scale is
+ * outside this file's control. Same widening pattern as
+ * `WebSelectableViewStyle` above.
+ */
+type PixelSnappedViewStyle = ViewStyle & { readonly imageRendering?: 'pixelated' };
+
 export interface FloorGridProps {
   readonly owned: readonly SessionEquipmentItem[];
   /**
@@ -201,97 +223,31 @@ export interface FloorGridProps {
   readonly dispatch: (action: GymViewAction) => void;
 }
 
-/**
- * A stable, legible colour per item — cycling a small fixed palette by the
- * item's own position in `SESSION_EQUIPMENT_ITEMS`, so the same item is
- * always the same colour across a whole session and no lookup table needs
- * maintaining as items are added. Placeholder shapes only, per GDD §5.13's
- * own build order: "Phases 1-2 build against placeholder shapes; committing
- * final art to a layout system that might still change shape wastes budget
- * on a moving target."
- *
- * Named CSS colour keywords, not hex or `rgb()` — deliberately, so this
- * table does not need a `src/tuning/` palette-module registration (a real
- * crossing, per CLAUDE.md's session-coordination section) to pass
- * `src/tuning/audit.ts`'s colour-literal scan, which matches only `#...` and
- * `rgba?(...)` and does not reach a bare colour name.
- */
-const PLACEHOLDER_PALETTE: readonly string[] = Object.freeze([
-  'firebrick',
-  'steelblue',
-  'seagreen',
-  'goldenrod',
-  'mediumpurple',
-  'mediumvioletred',
-  'darkturquoise',
-]);
-
 const FLOOR_BACKGROUND_COLOR = 'darkslategray';
 const FLOOR_GRID_BORDER_COLOR = 'gray';
 const FLOOR_ITEM_BORDER_COLOR = 'black';
 /** GDD §5.13's PLAYTEST 2 ruling, gap 3: the internal tile-boundary lines. Same shade as the outer frame, for one consistent "this is a grid" read. */
 const FLOOR_GRID_LINE_COLOR = FLOOR_GRID_BORDER_COLOR;
-/** GDD §5.13's PLAYTEST 2 ruling, gap 1: fixed-furniture chips get their own colour, distinct from `PLACEHOLDER_PALETTE`, so "fixed" reads as one visual class rather than cycling like draggable equipment does. */
-const FLOOR_FIXED_FURNITURE_COLOR = 'dimgray';
 /** GDD §5.13's PLAYTEST 3 ruling: the outline a fixed-furniture cell draws while it is the target of a just-refused drop — distinct from `FLOOR_ITEM_BORDER_COLOR` so a refusal reads as a warning, not a resting state. */
 const FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR = 'crimson';
-
-function colorFor(item: SessionEquipmentItem): string {
-  const index = EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS.indexOf(item);
-  return PLACEHOLDER_PALETTE[index % PLACEHOLDER_PALETTE.length] as string;
-}
-
 /**
- * GDD §5.13 presentation Phase 2's ambient-member placeholder colours — a
- * separate small named-colour palette from `PLACEHOLDER_PALETTE` above (same
- * reasoning: named CSS colour keywords, not hex/`rgb()`, so this table needs
- * no `src/tuning/` palette-module registration) so a member body reads as
- * its own visual class rather than being mistaken for draggable equipment or
- * fixed furniture. Placeholder shapes only, per this piece's own build
- * order — Phase 4 is the real pixel-art pass.
- *
- * PLAYTEST 4's replacement, and why. The original five
- * (`'coral'`/`'khaki'`/`'lightseagreen'`/`'plum'`/`'tan'`) were reasoned about
- * only as a set distinct FROM EACH OTHER and from the other two palettes in
- * this file — nobody checked them against `FLOOR_BACKGROUND_COLOR`
- * (`'darkslategray'`). On the one real device playtest that matters most, the
- * opening-day one, `equipmentBiasedMemberTypes([])` returns exactly one type
- * (`'powerlifter'`, verified by hand from `MEMBER_TYPE_BARBELL_AFFINITY`/
- * `MEMBER_TYPE_ITEM_AFFINITY` at the empty-equipment baseline — nothing else
- * clears `MEMBER_EQUIPMENT_BIAS_TIE_TOLERANCE` of its score), so every member
- * in the roster gets the SAME colour — and `'lightseagreen'`, the colour that
- * index lands on, is itself a dark cyan/teal, the same hue family as the
- * floor it sits on. Every new gym's opening frame showed three teal chips on
- * a teal grid. This replacement palette is chosen to fail that reading even
- * in the worst case (a single repeated colour): every one of the five is a
- * warm, saturated hue with no teal/cyan/dark-slate-gray component at all, so
- * it reads against `'darkslategray'` regardless of which single type an empty
- * inventory biases toward. None repeats a literal string value already used
- * elsewhere in this file (`PLACEHOLDER_PALETTE`, the fixed/refusal/grid/
- * background colours above). A felt palette choice, not tuned or played — the
- * next human phone pass is what actually judges it.
+ * GDD §5.13 presentation Phase 4: the item/fixed labels now sit over pixel
+ * art rather than over a flat mid-grey chip, so they carry an explicit light
+ * colour instead of the platform default (near-black text on a dark sprite
+ * was unreadable). Named CSS colour keywords throughout this file,
+ * deliberately, so no `src/tuning/` palette-module registration (a real
+ * crossing) is needed to pass the colour-literal scan — the sprite colours
+ * themselves are numeric components in `EMPIRE_TUNING`, which is registered.
  */
-const AMBIENT_MEMBER_PALETTE: readonly string[] = Object.freeze([
-  'orange',
-  'gold',
-  'hotpink',
-  'chartreuse',
-  'tomato',
-]);
+const FLOOR_LABEL_COLOR = 'white';
+/** The caption style every sprite label shares — colour above, size from the registered knob. */
+const FLOOR_LABEL_STYLE = Object.freeze({
+  color: FLOOR_LABEL_COLOR,
+  fontSize: EMPIRE_TUNING.FLOOR_SPRITE_LABEL_FONT_SIZE,
+});
+/** The tray chip's backing — a quiet dark slate the sprites read against, one class for every item now that the sprite carries the identity the old colour cycle used to. */
+const FLOOR_TRAY_CHIP_COLOR = 'darkslateblue';
 const AMBIENT_MEMBER_BORDER_COLOR = 'black';
-/**
- * PLAYTEST 4: the placeholder body's "head" piece is a fixed neutral shade
- * rather than cycling `AMBIENT_MEMBER_PALETTE` a second time — one colour
- * reads as a head regardless of the type-coloured "body" beneath it, and
- * keeps the two-part silhouette legible at Phase 2's placeholder (1 tile)
- * scale instead of needing a second hue pairing per type.
- */
-const AMBIENT_MEMBER_HEAD_COLOR = 'white';
-
-function colorForMemberType(type: MemberType): string {
-  const index = EMPIRE_TUNING.MEMBER_TYPES.indexOf(type);
-  return AMBIENT_MEMBER_PALETTE[index % AMBIENT_MEMBER_PALETTE.length] as string;
-}
 
 /**
  * GDD §5.13 presentation Phase 3 — one named colour per behavioural state, so
@@ -396,6 +352,46 @@ function memberTilePoint(member: FloorSimMember): FloorTilePoint {
   };
 }
 
+/**
+ * GDD §5.13 presentation Phase 4: which sprite pose a sim member is drawn in
+ * this instant. Working stance while `using`; the two-frame walk while a step
+ * is in flight, alternated from the sim's own tick (offset by the member's
+ * index so a crowd does not march in lockstep) — deterministic, no clock and
+ * no dice, per the directory's own rules; standing otherwise. The five sim
+ * states keep their distinct cue bubbles regardless of pose.
+ */
+function memberPose(member: FloorSimMember, tick: number): FloorSpritePose {
+  if (member.state === 'using') return 'using';
+  if (member.next === null) return 'stand';
+  const frame = Math.floor(tick / EMPIRE_TUNING.FLOOR_SPRITE_WALK_FRAME_TICKS) + member.index;
+  return frame % 2 === 0 ? 'step-a' : 'step-b';
+}
+
+/**
+ * Phase 4: sprite facing, from the step in flight alone. A member stepping
+ * leftward mirrors; everything else (standing, vertical steps) faces right.
+ * Stateless on purpose — deriving a persistent facing would mean this file
+ * keeping sim-adjacent state of its own, which the Phase 3 wiring rules out.
+ * The cost is that a member snaps back to right-facing when it stops, which
+ * is a felt nuance for the phone pass to judge.
+ */
+function memberFacing(member: FloorSimMember): FloorSpriteFacing {
+  if (member.next !== null && member.next.x < member.cell.x) return 'left';
+  return 'right';
+}
+
+/**
+ * Phase 4: the fixed-furniture sprite for a Barbell-baseline item, or null
+ * for a ladder item the fixed-sprite table does not draw. `fixedFloorFurniture`
+ * only ever emits the three baseline rows today, so the null arm is a guard
+ * for a future ladder item arriving, not a path anything reaches now.
+ */
+function fixedSpriteUriFor(item: LadderEquipmentItem): string | null {
+  return Object.prototype.hasOwnProperty.call(FLOOR_SPRITE_URIS.fixed, item)
+    ? FLOOR_SPRITE_URIS.fixed[item as FixedFurnitureItem]
+    : null;
+}
+
 /** A station's identity as a map key — kind and item, matching `refsEqual` in `floorSim.ts`. */
 function stationKey(kind: string, item: string): string {
   return `${kind}:${item}`;
@@ -429,6 +425,15 @@ interface AmbientMemberBodyProps {
    */
   readonly stranded: boolean;
   /**
+   * GDD §5.13 presentation Phase 4: which of the four sprite poses to draw —
+   * computed by `FloorGrid` from the sim member (working stance while
+   * `using`, the two-frame walk cycle while a step is in flight, standing
+   * otherwise), so this component stays a pure renderer of what it is told.
+   */
+  readonly pose: FloorSpritePose;
+  /** Phase 4: which way the sprite faces — the mirror is baked into the sprite table, not computed here. */
+  readonly facing: FloorSpriteFacing;
+  /**
    * LAST ON PURPOSE, and the reason is in another session's file. The
    * `MUTATION_WITNESSES` row for `ambient-member-props-hold-no-channel` in
    * `src/game/guaranteeTags.test.ts` anchors its planted mutation on the text
@@ -444,11 +449,13 @@ interface AmbientMemberBodyProps {
 }
 
 /**
- * GDD §5.13 presentation Phase 2, PLAYTEST 4: one ambient member, drawn as a
- * two-part placeholder silhouette (a circular "head" over a rounded-rect
- * "body") instead of the single plain circle this piece shipped with, plus a
- * small, purely-visual, staggered idle bob — the player's own three-item
- * menu for "does not read as a person," all three built together.
+ * One ambient member. Phase 2 (PLAYTEST 4) drew it as a two-part placeholder
+ * silhouette — a circular "head" over a rounded-rect "body" — plus a small,
+ * purely-visual, staggered idle bob; GDD §5.13 presentation Phase 4 replaces
+ * the silhouette with the member's real sprite from `floorSprites.ts` (one
+ * pre-upscaled indexed PNG per type, pose and facing) while the bob, the walk
+ * tween, the cue bubble, the interruption word and the stranded ring all
+ * survive unchanged on top of it.
  *
  * WHY A SEPARATE COMPONENT, rather than the bob's `Animated.Value` living in
  * `FloorGrid` and being indexed by array position: React's rules of hooks
@@ -493,8 +500,8 @@ interface AmbientMemberBodyProps {
  * list written between one declaration's braces — and pins, in both
  * directions, the set of `{name, shape}` pairs it finds: `index: number`,
  * `tile: number`, `position: object{x:number,y:number}`, `stranded: boolean`,
- * `state` and `interruptedBy` as their own string-literal unions, and `type`
- * as its five string literals. Because the reading is the resolved type, three things
+ * `state`, `interruptedBy`, and (since Phase 4) `pose` and `facing` as their
+ * own string-literal unions, and `type` as its five string literals. Because the reading is the resolved type, three things
  * are inside it that a member-name list off the AST left outside: a member
  * arriving on a SECOND, merged `interface AmbientMemberBodyProps` declaration;
  * a member inherited through an `extends`; and an existing member's TYPE being
@@ -549,13 +556,11 @@ function AmbientMemberBody({
   state,
   interruptedBy,
   stranded,
+  pose,
+  facing,
 }: AmbientMemberBodyProps) {
   const footprintWidth = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.width * tile;
   const footprintHeight = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.height * tile;
-  const headDiameter =
-    Math.min(footprintWidth, footprintHeight) * EMPIRE_TUNING.AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION;
-  const bodyWidth = footprintWidth * EMPIRE_TUNING.AMBIENT_MEMBER_BODY_WIDTH_FRACTION;
-  const bodyHeight = footprintHeight * EMPIRE_TUNING.AMBIENT_MEMBER_BODY_HEIGHT_FRACTION;
 
   const bob = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
@@ -697,30 +702,26 @@ function AmbientMemberBody({
         ],
       }}
     >
-      <View
+      {/*
+        GDD §5.13 presentation Phase 4: the member is the sprite now — one
+        pre-upscaled indexed PNG per (type, pose, facing), drawn at the same
+        footprint box the Phase 2 head-and-body placeholder occupied, so the
+        outer element's bounding box (what the browser check reads) is
+        unchanged. Type identity is the sprite's own outfit palette; the
+        Phase 2 fraction/corner-radius knobs stay registered in
+        `EMPIRE_TUNING` for the placeholder they describe but are no longer
+        read here.
+      */}
+      <Image
+        testID={`floorgrid-member-sprite-${index}`}
+        source={{ uri: FLOOR_SPRITE_URIS.member[type][pose][facing] }}
+        resizeMode={'stretch'}
         style={{
           position: 'absolute',
-          left: (footprintWidth - headDiameter) / 2,
+          left: 0,
           top: 0,
-          width: headDiameter,
-          height: headDiameter,
-          borderRadius: headDiameter / 2,
-          backgroundColor: AMBIENT_MEMBER_HEAD_COLOR,
-          borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
-          borderColor: AMBIENT_MEMBER_BORDER_COLOR,
-        }}
-      />
-      <View
-        style={{
-          position: 'absolute',
-          left: (footprintWidth - bodyWidth) / 2,
-          top: headDiameter,
-          width: bodyWidth,
-          height: bodyHeight,
-          borderRadius: EMPIRE_TUNING.AMBIENT_MEMBER_BODY_CORNER_RADIUS_PIXELS,
-          backgroundColor: colorForMemberType(type),
-          borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
-          borderColor: AMBIENT_MEMBER_BORDER_COLOR,
+          width: footprintWidth,
+          height: footprintHeight,
         }}
       />
       {/*
@@ -1011,6 +1012,10 @@ export function FloorGrid(props: FloorGridProps) {
               backgroundColor: FLOOR_BACKGROUND_COLOR,
               borderWidth: EMPIRE_TUNING.FLOOR_GRID_BORDER_WIDTH_PIXELS,
               borderColor: FLOOR_GRID_BORDER_COLOR,
+              // GDD §5.13 presentation Phase 4: every sprite under this
+              // container inherits crisp nearest-neighbour scaling on the
+              // web renderer. See `PixelSnappedViewStyle`.
+              imageRendering: 'pixelated',
               // Explicit, rather than relying on a platform default: every
               // placed item below is `position: 'absolute'`, and CSS
               // resolves that against the nearest ANCESTOR that is itself
@@ -1022,8 +1027,29 @@ export function FloorGrid(props: FloorGridProps) {
               // 440 to 532 after a single placement, with nothing else on
               // screen changing shape.
               position: 'relative',
-            }}
+            } as PixelSnappedViewStyle}
           >
+            {/*
+              GDD §5.13 presentation Phase 4: the floor itself. One indexed
+              PNG per rung at the sprite-native resolution, drawn stretched
+              to the grid's full pixel size (an integer scale by
+              construction — both sides are the same tile count). It sits
+              first in the container so everything else paints over it; the
+              flat background colour above stays as the fallback a failed
+              image load would reveal.
+            */}
+            <Image
+              testID={'floorgrid-floor-texture'}
+              source={{ uri: FLOOR_SPRITE_URIS.floor[floor.rung] }}
+              resizeMode={'stretch'}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: grid.width * tile,
+                height: grid.height * tile,
+              }}
+            />
             {verticalLines.map((i) => (
               <View
                 key={`v${i}`}
@@ -1064,16 +1090,33 @@ export function FloorGrid(props: FloorGridProps) {
                     top: row.position.y * tile,
                     width: row.footprint.width * tile,
                     height: row.footprint.height * tile,
-                    backgroundColor: FLOOR_FIXED_FURNITURE_COLOR,
+                    // Phase 4: the sprite is the body of the chip; the
+                    // refusal outline still draws over it, and no border in
+                    // the resting state so the sprite's own baked outline is
+                    // the edge — which is also what makes fixed furniture
+                    // read as part of the floor rather than as a draggable
+                    // chip (those keep their black chip border below).
                     borderWidth: isRefusalTarget
                       ? EMPIRE_TUNING.FLOOR_OVERLAP_REFUSAL_OUTLINE_WIDTH_PIXELS
-                      : EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
-                    borderColor: isRefusalTarget
-                      ? FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR
-                      : FLOOR_ITEM_BORDER_COLOR,
+                      : 0,
+                    borderColor: FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR,
                   }}
                 >
-                  <Text>{row.item} (fixed)</Text>
+                  {fixedSpriteUriFor(row.item) === null ? null : (
+                    <Image
+                      testID={`floorgrid-fixed-sprite-${row.item}`}
+                      source={{ uri: fixedSpriteUriFor(row.item) as string }}
+                      resizeMode={'stretch'}
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        width: row.footprint.width * tile,
+                        height: row.footprint.height * tile,
+                      }}
+                    />
+                  )}
+                  <Text style={FLOOR_LABEL_STYLE}>{row.item} (fixed)</Text>
                   {isRefusalTarget ? (
                     // GDD §5.13's PLAYTEST 3 ruling: a clear "can't place
                     // here" signal on the cell a drop was just refused for,
@@ -1099,7 +1142,11 @@ export function FloorGrid(props: FloorGridProps) {
                     top: row.position.y * tile,
                     width: row.footprint.width * tile,
                     height: row.footprint.height * tile,
-                    backgroundColor: colorFor(row.item),
+                    // Phase 4: transparent chip over the sprite below — the
+                    // floor texture shows through the sprite's own
+                    // transparent pixels. The black chip border stays, as
+                    // the affordance that separates a draggable session item
+                    // from the borderless fixed furniture.
                     borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
                     borderColor: FLOOR_ITEM_BORDER_COLOR,
                     transform: isDragging
@@ -1115,12 +1162,24 @@ export function FloorGrid(props: FloorGridProps) {
                     userSelect: 'none',
                   } as WebSelectableViewStyle}
                 >
-                  <Text>{row.item}</Text>
+                  <Image
+                    testID={`floorgrid-placed-sprite-${row.item}`}
+                    source={{ uri: FLOOR_SPRITE_URIS.session[row.item] }}
+                    resizeMode={'stretch'}
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      width: row.footprint.width * tile,
+                      height: row.footprint.height * tile,
+                    }}
+                  />
+                  <Text style={FLOOR_LABEL_STYLE}>{row.item}</Text>
                   <Pressable
                     testID={`floorgrid-remove-${row.item}`}
                     onPress={() => dispatch({ kind: 'floor-remove', item: row.item })}
                   >
-                    <Text>x</Text>
+                    <Text style={FLOOR_LABEL_STYLE}>x</Text>
                   </Pressable>
                 </Animated.View>
               );
@@ -1184,6 +1243,8 @@ export function FloorGrid(props: FloorGridProps) {
                   state={member.state}
                   interruptedBy={member.interruptedBy}
                   stranded={member.strandedAt !== null}
+                  pose={memberPose(member, sim.tick)}
+                  facing={memberFacing(member)}
                 />
               ))
             }
@@ -1245,15 +1306,19 @@ export function FloorGrid(props: FloorGridProps) {
             const isDragging = draggingItem === item;
             const responder = panResponderFor(item);
             const footprint = sessionItemFootprint(item);
+            const chipWidth =
+              Math.max(footprint.width, EMPIRE_TUNING.FLOOR_TRAY_ITEM_MIN_TILES) * tile;
+            const chipHeight =
+              Math.max(footprint.height, EMPIRE_TUNING.FLOOR_TRAY_ITEM_MIN_TILES) * tile;
             return (
               <Animated.View
                 key={item}
                 testID={`floorgrid-tray-item-${item}`}
                 {...responder.panHandlers}
                 style={{
-                  width: Math.max(footprint.width, EMPIRE_TUNING.FLOOR_TRAY_ITEM_MIN_TILES) * tile,
-                  height: Math.max(footprint.height, EMPIRE_TUNING.FLOOR_TRAY_ITEM_MIN_TILES) * tile,
-                  backgroundColor: colorFor(item),
+                  width: chipWidth,
+                  height: chipHeight,
+                  backgroundColor: FLOOR_TRAY_CHIP_COLOR,
                   borderWidth: EMPIRE_TUNING.FLOOR_ITEM_BORDER_WIDTH_PIXELS,
                   borderColor: FLOOR_ITEM_BORDER_COLOR,
                   margin: EMPIRE_TUNING.FLOOR_TRAY_ITEM_MARGIN_PIXELS,
@@ -1263,9 +1328,23 @@ export function FloorGrid(props: FloorGridProps) {
                   zIndex: isDragging ? EMPIRE_TUNING.FLOOR_DRAGGING_Z_INDEX : 1,
                   // See the placed-chip style above: web-only, load-bearing.
                   userSelect: 'none',
-                } as WebSelectableViewStyle}
+                  imageRendering: 'pixelated',
+                } as WebSelectableViewStyle & PixelSnappedViewStyle}
               >
-                <Text>{item}</Text>
+                {/* Phase 4: the item's own sprite, centred at its true drawn size, over the neutral chip backing. */}
+                <Image
+                  testID={`floorgrid-tray-sprite-${item}`}
+                  source={{ uri: FLOOR_SPRITE_URIS.session[item] }}
+                  resizeMode={'stretch'}
+                  style={{
+                    position: 'absolute',
+                    left: (chipWidth - footprint.width * tile) / 2,
+                    top: (chipHeight - footprint.height * tile) / 2,
+                    width: footprint.width * tile,
+                    height: footprint.height * tile,
+                  }}
+                />
+                <Text style={FLOOR_LABEL_STYLE}>{item}</Text>
               </Animated.View>
             );
           })}

@@ -403,6 +403,73 @@ async function pollForInterruptedCue(budgetMs) {
   return null;
 }
 
+/**
+ * GDD §5.13 PRESENTATION PHASE 4 — helpers that read PIXEL ART off the drawn
+ * DOM rather than presence. The web renderer draws an RN `Image` as a div
+ * whose child carries a CSS `background-image`; these walk a testID's own
+ * subtree for the first element backed by a PNG data URI and read the
+ * `image-rendering` the browser resolved for it. Each claim built on them is
+ * one the old placeholder floor (flat `backgroundColor` chips, no images
+ * anywhere) fails outright — that is the discrimination test every Phase 4
+ * claim below was chosen against.
+ */
+async function pngBackedElementIn(id) {
+  return page
+    .getByTestId(id)
+    .evaluate((node) => {
+      const all = [node, ...node.querySelectorAll('*')];
+      for (const el of all) {
+        const style = getComputedStyle(el);
+        if (style.backgroundImage && style.backgroundImage.includes('data:image/png')) {
+          // A whole-string hash rather than a prefix: two frames of one
+          // sprite share their PNG header, palette AND byte length (same
+          // dimensions, same stored-block sizes), so the first version of
+          // this — length plus a 120-char head — read every frame as the
+          // same image and failed the animation claim against a working
+          // build. The instrument was measuring the header, not the frame.
+          let hash = 0;
+          for (let i = 0; i < style.backgroundImage.length; i += 1) {
+            hash = (hash * 33 + style.backgroundImage.charCodeAt(i)) >>> 0;
+          }
+          return {
+            uriHash: hash,
+            uriLength: style.backgroundImage.length,
+            imageRendering: style.imageRendering,
+          };
+        }
+      }
+      return null;
+    })
+    .catch(() => null);
+}
+
+/**
+ * Every non-cue descendant of a member token that still paints a flat
+ * background colour — the Phase 2 placeholder's whole rendering, which Phase 4
+ * replaces with a sprite. The cue bubble keeps its state colour on purpose
+ * (GDD §5.13's own thought-bubble register), so anything inside a
+ * `floorsim-cue-*` element is excluded from the reading.
+ */
+async function flatColourBodyPartsIn(id) {
+  return page
+    .getByTestId(id)
+    .evaluate((node) => {
+      const offenders = [];
+      for (const el of node.querySelectorAll('*')) {
+        const cueAncestor = el.closest('[data-testid^="floorsim-cue"]');
+        if (cueAncestor !== null) continue;
+        const bg = getComputedStyle(el).backgroundColor;
+        if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') offenders.push(bg);
+      }
+      return offenders;
+    })
+    .catch(() => null);
+}
+
+/** How many Phase 4 sprite frames the members showed across a sampling window. */
+const SPRITE_FRAME_SAMPLES = 16;
+const SPRITE_FRAME_SAMPLE_INTERVAL_MS = 250;
+
 /** A real drag: mouse down at `from`'s centre, several intermediate moves, up at `to`. */
 async function dragBox(fromBox, toX, toY) {
   const startX = fromBox.x + fromBox.width / 2;
@@ -668,6 +735,105 @@ try {
     fail(`Phase 3 (8e): the sim readout did not advance — "${captionBefore}" then "${captionAfter}". A frozen gym fails exactly here.`);
   }
 
+  // -------------------------------------------------------------------------
+  // 1d. GDD §5.13 PRESENTATION PHASE 4 — THE 16-BIT ART PASS, on the same cold
+  // garage. Every claim here is one the OLD placeholder floor fails: it drew
+  // flat named-colour rectangles and circles, and had no image anywhere on the
+  // grid. Each reads real computed style off the drawn DOM, not presence.
+  // -------------------------------------------------------------------------
+
+  // The floor texture: a real PNG-backed element covering the grid, drawn
+  // crisp (image-rendering resolves to `pixelated`, the property the whole
+  // scale-without-smoothing scheme rests on). The old floor fails on the
+  // element not existing at all.
+  const textureBox = await boxOf('floorgrid-floor-texture');
+  const texturePng = await pngBackedElementIn('floorgrid-floor-texture');
+  const gridBoxForTexture = await boxOf('floorgrid-grid');
+  if (
+    textureBox !== null &&
+    texturePng !== null &&
+    gridBoxForTexture !== null &&
+    textureBox.width >= gridBoxForTexture.width - FLOOR_TILE_PIXELS &&
+    textureBox.height >= gridBoxForTexture.height - FLOOR_TILE_PIXELS
+  ) {
+    ok(
+      `Phase 4: the floor is a drawn PNG texture covering the grid — ${Math.round(textureBox.width)}x${Math.round(textureBox.height)} box, uri ${texturePng.uriLength} chars`,
+    );
+  } else {
+    fail(
+      `Phase 4: no PNG floor texture covers the grid (box=${JSON.stringify(textureBox)}, png=${texturePng !== null}, grid=${JSON.stringify(gridBoxForTexture)})`,
+    );
+  }
+  if (texturePng !== null && texturePng.imageRendering === 'pixelated') {
+    ok('Phase 4: the floor texture resolves image-rendering: pixelated — the sprites scale crisp, not smoothed');
+  } else {
+    fail(
+      `Phase 4: expected image-rendering "pixelated" on the floor texture, got "${texturePng?.imageRendering}" — scaled pixel art will be smoothed into blur`,
+    );
+  }
+
+  // The members: each of the three garage bodies is drawn AS A SPRITE — a
+  // real PNG-backed element with a real box — and no non-cue part of the
+  // token paints a flat background colour any more (the head-and-body
+  // placeholder was exactly two flat-colour views, so the old floor fails
+  // both halves of this).
+  for (let index = 0; index < GARAGE_AMBIENT_MEMBER_COUNT; index += 1) {
+    const spriteBox = await boxOf(`floorgrid-member-sprite-${index}`);
+    const spritePng = await pngBackedElementIn(`floorgrid-member-sprite-${index}`);
+    if (spriteBox !== null && spriteBox.width > 0 && spriteBox.height > 0 && spritePng !== null) {
+      ok(
+        `Phase 4: member ${index} is drawn as a sprite — floorgrid-member-sprite-${index} at ${Math.round(spriteBox.width)}x${Math.round(spriteBox.height)} with a PNG background`,
+      );
+    } else {
+      fail(
+        `Phase 4: member ${index} is not drawn as a sprite (box=${JSON.stringify(spriteBox)}, png=${spritePng !== null})`,
+      );
+    }
+    const flat = await flatColourBodyPartsIn(`floorgrid-ambient-${index}`);
+    if (flat !== null && flat.length === 0) {
+      ok(`Phase 4: member ${index} carries no flat-colour placeholder body part outside its cue`);
+    } else {
+      fail(
+        `Phase 4: member ${index} still paints flat placeholder colours outside its cue: ${JSON.stringify(flat)}`,
+      );
+    }
+  }
+
+  // The fixed furniture: all three Barbell-baseline pieces draw sprites.
+  for (const item of FIXED_FURNITURE_ITEMS) {
+    const fixedSpriteBox = await boxOf(`floorgrid-fixed-sprite-${item}`);
+    const fixedSpritePng = await pngBackedElementIn(`floorgrid-fixed-sprite-${item}`);
+    if (fixedSpriteBox !== null && fixedSpriteBox.width > 0 && fixedSpritePng !== null) {
+      ok(`Phase 4: floorgrid-fixed-sprite-${item} draws a PNG sprite at a real ${Math.round(fixedSpriteBox.width)}x${Math.round(fixedSpriteBox.height)} box`);
+    } else {
+      fail(`Phase 4: floorgrid-fixed-sprite-${item} has no drawn PNG sprite (box=${JSON.stringify(fixedSpriteBox)}, png=${fixedSpritePng !== null})`);
+    }
+  }
+
+  // The animation: across a sampling window on a RUNNING gym, the member
+  // sprites show more than one distinct frame — the two-frame walk cycle
+  // and the pose changes are real image swaps, not one static picture per
+  // member forever. The old floor fails on having no sprite elements to
+  // sample; a build that shipped a single static sprite per member fails on
+  // the count.
+  {
+    const frames = new Set();
+    for (let sample = 0; sample < SPRITE_FRAME_SAMPLES; sample += 1) {
+      for (let index = 0; index < GARAGE_AMBIENT_MEMBER_COUNT; index += 1) {
+        const png = await pngBackedElementIn(`floorgrid-member-sprite-${index}`);
+        if (png !== null) frames.add(`${png.uriLength}:${png.uriHash}`);
+      }
+      await page.waitForTimeout(SPRITE_FRAME_SAMPLE_INTERVAL_MS);
+    }
+    if (frames.size >= 2) {
+      ok(`Phase 4: the member sprites animate — ${frames.size} distinct sprite images observed across ${SPRITE_FRAME_SAMPLES} samples`);
+    } else {
+      fail(
+        `Phase 4: only ${frames.size} distinct member sprite image(s) observed across ${SPRITE_FRAME_SAMPLES} samples — a walking member must alternate its step frames`,
+      );
+    }
+  }
+
   // Gap 4: the floor section is above the shop/allocator sections in render
   // order — a relative DOM position, not merely that both exist.
   const floorBox = await boxOf('gymscreen-floor');
@@ -732,6 +898,15 @@ try {
   } else {
     fail(`floorgrid-tray-item-mats never drawn after buying mats — ${trayItemDrawn.why}`);
     throw new Error('unreachable');
+  }
+
+  // Phase 4: the tray chip carries the item's own sprite, not a flat colour.
+  // The old placeholder tray fails on the element not existing.
+  const traySpritePng = await pngBackedElementIn('floorgrid-tray-sprite-mats');
+  if (traySpritePng !== null) {
+    ok('Phase 4: the tray chip draws the mats sprite (PNG-backed element inside floorgrid-tray-item-mats)');
+  } else {
+    fail('Phase 4: floorgrid-tray-sprite-mats has no PNG-backed element — the tray chip is still a flat placeholder');
   }
 
   // -------------------------------------------------------------------------
@@ -811,6 +986,15 @@ try {
     ok(`dragging mats from the tray onto the grid places it (floorgrid-placed-mats drawn, ${placedDrawn.why})`);
   } else {
     fail(`dragging mats onto the grid did not place it — floorgrid-placed-mats never drawn (${placedDrawn.why})`);
+  }
+
+  // Phase 4: the placed chip is the item's sprite over the floor texture.
+  // The old placeholder floor fails on the element not existing.
+  const placedSpritePng = await pngBackedElementIn('floorgrid-placed-sprite-mats');
+  if (placedSpritePng !== null) {
+    ok('Phase 4: the placed chip draws the mats sprite (PNG-backed element inside floorgrid-placed-mats)');
+  } else {
+    fail('Phase 4: floorgrid-placed-sprite-mats has no PNG-backed element — the placed chip is still a flat placeholder');
   }
 
   const placedBoxAfterFirstDrag = await boxOf('floorgrid-placed-mats');

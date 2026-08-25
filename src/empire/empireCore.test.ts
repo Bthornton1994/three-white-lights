@@ -2460,6 +2460,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'expansion.ts',
       'floor.ts',
       'floorSim.ts',
+      // GDD §5.13 presentation Phase 4: the floor's sprite data — index
+      // grids, palettes resolved from EMPIRE_TUNING, and the indexed-PNG
+      // encoding FloorGrid.tsx draws.
+      'floorSprites.ts',
       'ladder.ts',
       'ladderView.tsx',
       'members.ts',
@@ -2574,7 +2578,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // SECOND BUILDER WIRES THIS TO A SCREEN" — and `empireTuning.ts` already
     // named `FloorGrid.tsx` before this round, so neither is a new pair.
     // Measured by running this assertion and reading its failure value.
-    expect(pairs).toBe(99);
+    // 99 -> 106: GDD §5.13 presentation Phase 4's `floorSprites.ts`. Seven
+    // new pairs, measured by running this exact assertion: five outward from
+    // its own imports and header prose (`./empireTuning`, `./ladder`,
+    // `./members`, `./sessions`, plus naming `floorSprites.test.ts`'s
+    // decode-and-compare battery and `FloorGrid.tsx` as its consumer), and
+    // two running back — `FloorGrid.tsx`'s `./floorSprites` import and
+    // `empireTuning.ts`'s FLOOR_SPRITE block naming its reader.
+    // 106 -> 107: floorSprites.ts's parseMap comment names floorSim.ts's
+    // precedent in the member-call census — one more mention pair.
+    expect(pairs).toBe(107);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3389,7 +3402,18 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // five legend sentences. The five `FLOOR_SIM_MEMBER_STATES` tokens the
     // legend and the cue key off are already in this set, which is why the
     // delta is seventeen and not larger.
-    expect(singleQuoted.size).toBe(372);
+    // 372 -> 390: GDD §5.13 presentation Phase 4. floorSprites.ts's new
+    // vocabulary (its import specifiers, the pose/facing tokens, the legend
+    // and base64 alphabet strings, the PNG chunk names and URI prefix) and
+    // FloorGrid.tsx's new testIDs/label colours, LESS the placeholder
+    // colour vocabulary the sprite pass retired (PLACEHOLDER_PALETTE's
+    // seven colours, the five AMBIENT_MEMBER_PALETTE colours and 'white'/
+    // 'dimgray'). Measured by running this assertion and reading its
+    // failure value.
+    // 390 -> 394: the paint-ops refactor's four op-kind tokens ('fill',
+    // 'hatch', 'disc', 'dot'), the shape that replaced parameter-mutating
+    // raster helpers. Measured by running this assertion.
+    expect(singleQuoted.size).toBe(394);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3427,7 +3451,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // station-key join and 'tick ' / ' — ' from the sim readout. Ten new
     // chunks, measured by running this assertion and reading its failure
     // value.
-    expect(templateChunks.size).toBe(238);
+    // 238 -> 261: Phase 4. floorSprites.ts's template chunks are its sprite
+    // MAPS — each hand-authored torso/leg map is one multi-line template
+    // literal, which is why the census moves here rather than gaining rows
+    // of quoted pixel strings — plus the data-URI assembly's prefix chunk.
+    // FloorGrid.tsx adds its three new sprite testID templates
+    // (`floorgrid-member-sprite-`, `floorgrid-fixed-sprite-`,
+    // `floorgrid-placed-sprite-`, `floorgrid-tray-sprite-` prefixes).
+    // Measured by running this assertion and reading its failure value.
+    expect(templateChunks.size).toBe(261);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3446,6 +3478,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './expansion',
       './floor',
       './floorSim',
+      './floorSprites',
       './ladder',
       './ladderView',
       './members',
@@ -3455,6 +3488,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './reputation',
       './sessions',
       './social',
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
+      'IDAT',
+      'IEND',
+      'IHDR',
+      'KSTHJDPZBWLMERQUVONCGFAXY',
+      'PLTE',
       'Placeholder',
       'absolute',
       'accelerated',
@@ -3483,6 +3522,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'blocked',
       'bodybuilder',
       'bought',
+      'brace',
       'budget',
       'buy',
       'buy-ladder',
@@ -3495,7 +3535,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'ceiling-growth-per-week',
       'chalk',
       'chance-draw',
-      'chartreuse',
       'cheapest-affordable-first',
       'check-in-upkeep',
       'claimed',
@@ -3514,28 +3553,35 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'crimson',
       'currency-purchase',
       'daily-allowance-spent',
+      'darkslateblue',
       'darkslategray',
-      'darkturquoise',
+      'data:image/png;base64,',
       'deadlift',
       'deepskyblue',
-      'dimgray',
+      'disc',
       'display-name',
       'displayName',
+      'dot',
       'dumbbells',
       'e1rm',
       'elapsedSeconds',
       'equipment',
       'fault-message',
       'faultMessage',
-      'firebrick',
+      'fill',
       'fixed',
       'fixed-order-no-rotation',
+      'fixedGrids',
+      'fixedUris',
       'flat-bench',
       'floor-place',
       'floor-remove',
+      'floorGrids',
+      'floorUris',
       'floorgrid-ambient-caption',
       'floorgrid-caption',
       'floorgrid-drop-refused',
+      'floorgrid-floor-texture',
       'floorgrid-grid',
       'floorgrid-root',
       'floorgrid-scroll-x',
@@ -3551,8 +3597,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'friend-visit-allowance-reset',
       'garage',
       'global',
-      'gold',
-      'goldenrod',
       'gray',
       'gym-accelerated-bucks',
       'gym-accrual',
@@ -3604,8 +3648,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-week',
       'gymscreen-week-log',
       'gymscreen-week-preview',
+      'hatch',
       'hoard',
-      'hotpink',
       'hypertrophy',
       'idle-clock',
       'idle-only',
@@ -3631,12 +3675,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'ladder-view',
       'leaderboard-placement',
       'leaving',
+      'left',
       'legendary',
       'level',
       'machines',
       'mats',
-      'mediumpurple',
-      'mediumvioletred',
+      'memberGrids',
+      'memberUris',
       'monolift',
       'move',
       'move-up',
@@ -3652,7 +3697,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'npc-id',
       'npcId',
       'number',
-      'orange',
       'other-recovery',
       'out-of-bounds',
       'overlaps',
@@ -3660,6 +3704,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'paid-pull',
       'physio',
       'physio-days-saved',
+      'pixelated',
       'placed',
       'power-bar',
       'powerlifter',
@@ -3683,6 +3728,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'rest',
       'rested',
       'rewarded-ad-timer-skip',
+      'right',
       'rival',
       'rival-period-close',
       'rival-week',
@@ -3697,10 +3743,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'rung-too-low',
       'sauna',
       'save-for-physio-first',
-      'seagreen',
       'seeking',
       'serious-lifter',
       'session',
+      'sessionGrids',
+      'sessionUris',
       'set-allocation-slot',
       'settled-level',
       'settled-purse-wired-control',
@@ -3714,6 +3761,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'skippedSeconds',
       'sled',
       'sleeves',
+      'slim',
       'slots',
       'space',
       'space-level',
@@ -3724,20 +3772,25 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'springgreen',
       'squat',
       'squat-rack',
-      'steelblue',
+      'stand',
+      'step-a',
+      'step-b',
+      'stepA',
+      'stepB',
       'storage-unit',
       'store-purchase',
+      'stretch',
       'stretching-yoga',
       'string',
       'strip-mall-unit',
       'structural',
       'support',
+      'tRNS',
       'target-moved',
       'target-removed',
       'technique-quality',
       'technique-quality-bonus',
       'thrownMessage',
-      'tomato',
       'trained',
       'trained-day-upkeep',
       'training-iq',
@@ -3755,6 +3808,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'wall-clock-earned',
       'warehouse',
       'white',
+      'wide',
       'wrist-wraps',
     ]);
 
@@ -3796,7 +3850,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // assertion's own failure value.
     // 583 -> 610: singleQuoted (355 -> 372) and templateChunks (228 -> 238),
     // Phase 3's RENDER half. Read from this assertion's own failure value.
-    expect(stringsChecked).toBe(610);
+    // 610 -> 651: singleQuoted (372 -> 390) and templateChunks (238 -> 261),
+    // Phase 4. Read from this assertion's own failure value.
+    // 651 -> 655: the four op-kind tokens above.
+    expect(stringsChecked).toBe(655);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3861,7 +3918,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // this number stays equal to the list's own length; the interruption cue
     // says a WORD rather than a glyph precisely so that stays true. Measured
     // by running this assertion.
-    expect(probes).toBe(314);
+    // 314 -> 332: Phase 4's net movement of the spaceFree list — thirty-one
+    // new entries (floorSprites.ts's vocabulary, the sprite testIDs, the
+    // pose/facing/build tokens) against thirteen retired placeholder
+    // colours. Every entry clears the two-letter guard below, including the
+    // legend and base64-alphabet strings, whose letters-only forms are long.
+    // Measured by running this assertion and reading its failure value.
+    // 332 -> 336: the four op-kind tokens, all clearing the two-letter guard.
+    expect(probes).toBe(336);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -4113,6 +4177,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './empireTuning',
         './floor',
         './floorSim',
+        // GDD §5.13 presentation Phase 4: the sprite tables the floor draws.
+        './floorSprites',
         './ladder',
         './ladderView',
         './members',
@@ -4120,6 +4186,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         'react',
         'react-native',
       ],
+      // Phase 4: pure sprite data. Tuning for every colour and scale knob,
+      // and the three vocabulary types its tables are keyed by.
+      'floorSprites.ts': ['./empireTuning', './ladder', './members', './sessions'],
       'GymScreen.tsx': [
         './empireTuning',
         './FloorGrid',
@@ -4153,7 +4222,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 15 -> 17: GDD §5.13 presentation Phase 1's floor.ts and FloorGrid.tsx.
     // 17 -> 18: GDD §5.13 presentation Phase 3's floorSim.ts. Read from this
     // assertion's own failure value.
-    expect(fenced).toBe(18);
+    // 18 -> 19: Phase 4's floorSprites.ts.
+    expect(fenced).toBe(19);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -4241,7 +4311,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 64 -> 65: Phase 3's RENDER half adds FloorGrid.tsx's own ./floorSim
     // edge — the one arrow this round draws. Read from this assertion's own
     // failure value.
-    expect(specifiers).toBe(65);
+    // 65 -> 70: GDD §5.13 presentation Phase 4 — floorSprites.ts's four
+    // intra-directory edges (./empireTuning, ./ladder, ./members,
+    // ./sessions) and FloorGrid.tsx's one new ./floorSprites edge. Read from
+    // this assertion's own failure value.
+    expect(specifiers).toBe(70);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -4402,7 +4476,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // audit does not report a bare 1, which is worth writing down because a
     // reader hand-summing the entries would expect 268 and find the
     // instrument disagreeing. Read from this assertion's own failure value.
-    ).toBe(267);
+    // 267 -> 365: GDD §5.13 presentation Phase 4. +102 from the seven
+    // FLOOR_SPRITE entries (mostly RGB components: 8 body colours, 5 outfit
+    // pairs, 11 gear colours and 4 floor tones at three components each,
+    // less the components the audit's 0/1/2 idioms absorb, plus the two
+    // scalar knobs and the fleck stride), -4 from retiring PLAYTEST 4's
+    // placeholder-body sizing knobs with the placeholder itself. Read from
+    // this assertion's own failure value, not hand-summed.
+    // 365 -> 366: the label-size knob (FLOOR_SPRITE_LABEL_FONT_SIZE).
+    ).toBe(366);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

@@ -87,6 +87,13 @@ describe('the block is frozen and every entry is classified', () => {
       'FLOOR_FIXED_FURNITURE_LAYOUT',
       'FLOOR_GRID_SIZE',
       'FLOOR_SIM_USE_TICKS_BY_TYPE',
+      // GDD §5.13 presentation Phase 4 — the four sprite palettes, RGB
+      // components as plain numbers so `floorSprites.ts` stays numerically
+      // clean under the audit.
+      'FLOOR_SPRITE_BODY_PALETTE',
+      'FLOOR_SPRITE_FLOOR_PALETTE',
+      'FLOOR_SPRITE_GEAR_PALETTE',
+      'FLOOR_SPRITE_OUTFIT_PALETTE',
       'LADDER_DEV_TIME_STEPS_SECONDS',
       'LADDER_EQUIPMENT_COST_GYM_BUCKS',
       'LADDER_EQUIPMENT_ITEMS',
@@ -623,7 +630,16 @@ describe('§5.5 social', () => {
     // pulse's amplitude and half-cycle, the highlight border width, and the
     // two z-indices. Measured by running this assertion and reading its
     // failure value, not computed by hand.
-    expect(examined).toBe(145);
+    // 145 -> 148: GDD §5.13 presentation Phase 4 adds seven FLOOR_SPRITE
+    // entries (native pixels per tile, walk-frame ticks, four palettes and
+    // the fleck stride) and retires the four placeholder-body sizing knobs
+    // PLAYTEST 4 added, whose subject — the head-and-body placeholder — the
+    // sprite replaced. Measured by running this assertion and reading its
+    // failure value.
+    // 148 -> 149: the label-size knob (FLOOR_SPRITE_LABEL_FONT_SIZE), added
+    // when the first composed screenshot showed default-size captions
+    // burying the sprites.
+    expect(examined).toBe(149);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -631,7 +647,9 @@ describe('§5.5 social', () => {
     // PLAYTEST 4's eight new tuning entries).
     // 600 -> 665 (133 keys x 5 banned units).
     // 665 -> 725 (145 keys x 5 banned units).
-    expect(probed).toBe(725);
+    // 725 -> 740 (148 keys x 5 banned units, Phase 4's net +3 entries).
+    // 740 -> 745 (149 keys x 5 banned units).
+    expect(probed).toBe(745);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

@@ -1579,34 +1579,13 @@ export const EMPIRE_TUNING = Object.freeze({
   // sizing/timing constants the second and third need — first-pass
   // proposals, not tuned or played, the same status every other knob in this
   // block already carries. Read by `FloorGrid.tsx` only.
+  //
+  // Phase 4 note: the head/body sizing knobs this ruling added were retired
+  // with the placeholder body itself — the member is a sprite from
+  // `floorSprites.ts` now, and its proportions are pixel data rather than
+  // fractions. The bob knobs below survive unchanged; the bob rides on top of
+  // the sprite exactly as it rode on top of the placeholder.
   // -------------------------------------------------------------------------
-
-  /**
-   * The placeholder body's "head" diameter, as a fraction of
-   * `AMBIENT_MEMBER_FOOTPRINT_TILES`'s smaller rendered dimension (so it
-   * stays circular and inside the footprint on a non-square footprint too).
-   * Paired with `AMBIENT_MEMBER_BODY_HEIGHT_FRACTION` below — the two sum to
-   * exactly 1 so a head-then-body stack fills the footprint's height with no
-   * gap and no overflow.
-   */
-  AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION: 0.45,
-
-  /**
-   * The placeholder body's "body" width, as a fraction of the footprint's
-   * rendered width — narrower than the full tile so the body silhouette
-   * reads apart from a session-equipment chip's own full-width rectangle.
-   */
-  AMBIENT_MEMBER_BODY_WIDTH_FRACTION: 0.8,
-
-  /**
-   * The placeholder body's "body" height, as a fraction of the footprint's
-   * rendered height. See `AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION` above for
-   * why this and that fraction sum to 1.
-   */
-  AMBIENT_MEMBER_BODY_HEIGHT_FRACTION: 0.55,
-
-  /** Corner radius, in pixels, of the placeholder body's "body" rectangle — rounded rather than square so it reads as a torso, not a tile. Small relative to `FLOOR_TILE_PIXELS` on purpose, at Phase 2's placeholder scale. */
-  AMBIENT_MEMBER_BODY_CORNER_RADIUS_PIXELS: 3,
 
   /**
    * How far, in pixels, an ambient member's idle bob displaces it vertically
@@ -1857,8 +1836,7 @@ export const EMPIRE_TUNING = Object.freeze({
 
   /**
    * The diameter of a member's state cue — the bubble drawn above its head —
-   * as a fraction of the smaller of its footprint's two rendered dimensions,
-   * the same way `AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION` is measured.
+   * as a fraction of the smaller of its footprint's two rendered dimensions.
    */
   FLOOR_SIM_CUE_DIAMETER_FRACTION: 0.5,
 
@@ -1922,6 +1900,121 @@ export const EMPIRE_TUNING = Object.freeze({
 
   /** The stacking order a station highlight is drawn at — over the chip it outlines, under the members. */
   FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX: 2,
+
+  // -------------------------------------------------------------------------
+  // GDD §5.13 presentation Phase 4 — the 16-bit art pass. Read by
+  // `floorSprites.ts` (the index-grid sprite data and its palette resolution)
+  // and `FloorGrid.tsx` (frame selection). Every entry here is provisional in
+  // exactly the sense the FLOOR_* block above claims for itself: reasoned, not
+  // tuned, not played — colours especially, since the gate for this phase is a
+  // human on a real phone judging whether the floor reads as the same game as
+  // the lift screen.
+  // -------------------------------------------------------------------------
+
+  /**
+   * The native pixel grid one floor tile is drawn at. Sprites are authored at
+   * this resolution and integer-upscaled to `FLOOR_TILE_PIXELS` before they
+   * are encoded, so the drawn image is byte-exact pixels rather than a
+   * browser's smoothing of a smaller one. `floorSprites.test.ts` drives the
+   * divisibility claim (`FLOOR_TILE_PIXELS` is a whole multiple of this)
+   * rather than trusting this comment.
+   */
+  FLOOR_SPRITE_NATIVE_PIXELS_PER_TILE: 14,
+
+  /**
+   * How many sim ticks one walk frame is held before the two-frame cycle
+   * flips. At the shipped `FLOOR_SIM_TICK_INTERVAL_MS` of 120 this is a step
+   * cadence of roughly four frames a second, the register a small walking
+   * figure of this era animates at. A frame-duration feel value, named here
+   * per CLAUDE.md's tunability rule.
+   */
+  FLOOR_SPRITE_WALK_FRAME_TICKS: 2,
+
+  /**
+   * The shared body colours every member sprite resolves through, as plain
+   * RGB components. One key light, upper-left, is baked into the sprite maps
+   * themselves (lit columns left, shade columns right); these are the paint.
+   * SKIN_SHADE is a hue-shifted step of SKIN rather than a darkened copy of
+   * it, the discipline the lift screen's own palette sets.
+   */
+  FLOOR_SPRITE_BODY_PALETTE: Object.freeze({
+    OUTLINE: Object.freeze([24, 20, 28]),
+    SKIN: Object.freeze([222, 166, 128]),
+    SKIN_SHADE: Object.freeze([173, 111, 84]),
+    HAIR: Object.freeze([58, 42, 38]),
+    PANTS: Object.freeze([64, 60, 78]),
+    PANTS_SHADE: Object.freeze([46, 43, 58]),
+    SHOE: Object.freeze([40, 36, 44]),
+    ACCENT: Object.freeze([232, 228, 216]),
+  }),
+
+  /**
+   * Each member type's outfit, as RGB components — the top's lit colour and
+   * its shade step. The type mix being readable is a Phase 2 guarantee, so
+   * these five are chosen apart in hue (orange tee, magenta tank, red
+   * singlet, gold vest, violet hoodie) and none is in the floor's own
+   * blue-grey family. `floorSprites.test.ts` drives the pairwise-distinctness
+   * claim on the rendered sprites rather than trusting this list.
+   */
+  FLOOR_SPRITE_OUTFIT_PALETTE: Object.freeze({
+    casual: Object.freeze({ top: Object.freeze([226, 128, 60]), shade: Object.freeze([178, 90, 40]) }),
+    bodybuilder: Object.freeze({ top: Object.freeze([206, 66, 118]), shade: Object.freeze([156, 42, 88]) }),
+    powerlifter: Object.freeze({ top: Object.freeze([200, 60, 52]), shade: Object.freeze([148, 38, 36]) }),
+    athlete: Object.freeze({ top: Object.freeze([232, 190, 70]), shade: Object.freeze([180, 140, 44]) }),
+    'serious-lifter': Object.freeze({ top: Object.freeze([140, 96, 196]), shade: Object.freeze([100, 64, 150]) }),
+  }),
+
+  /**
+   * The equipment colours, as RGB components: a three-step steel ramp, a
+   * two-step rubber, red competition-plate paint, bench upholstery and a
+   * wood ramp for the platform pieces. Ramps are short on purpose — a chip a
+   * few tiles across carries two or three values and an outline, not a
+   * gradient.
+   */
+  FLOOR_SPRITE_GEAR_PALETTE: Object.freeze({
+    STEEL_LIGHT: Object.freeze([176, 182, 198]),
+    STEEL_MID: Object.freeze([120, 126, 144]),
+    STEEL_DARK: Object.freeze([70, 74, 90]),
+    RUBBER: Object.freeze([56, 52, 60]),
+    RUBBER_DARK: Object.freeze([38, 34, 44]),
+    PAD: Object.freeze([168, 60, 66]),
+    PAD_SHADE: Object.freeze([120, 40, 48]),
+    WOOD: Object.freeze([180, 140, 92]),
+    WOOD_SHADE: Object.freeze([138, 102, 64]),
+    PLATE: Object.freeze([178, 56, 48]),
+    PLATE_SHADE: Object.freeze([128, 38, 34]),
+  }),
+
+  /**
+   * The floor texture's own four tones, as RGB components: a base, a slightly
+   * different alternate so tiles read in a checker, a darker seam drawn along
+   * each tile's far edges, and a sparse lighter fleck. All four sit close
+   * together and low in value on purpose — the bodies are the read, and the
+   * lift screen's environment palette holds its floor down the same way.
+   */
+  FLOOR_SPRITE_FLOOR_PALETTE: Object.freeze({
+    BASE: Object.freeze([58, 64, 66]),
+    ALT: Object.freeze([53, 58, 61]),
+    SEAM: Object.freeze([44, 49, 52]),
+    FLECK: Object.freeze([67, 74, 75]),
+  }),
+
+  /**
+   * Font size, in pixels, of the small identifying labels drawn over the
+   * floor's sprites — the fixed-furniture "(fixed)" captions, a placed
+   * item's name and remove control, and the tray chips' names. The platform
+   * default (~14px) buried the sprites under their own captions on the first
+   * composed screenshot; this holds the words to a caption register while
+   * the pixels carry the read. Provisional, like every knob in this block.
+   */
+  FLOOR_SPRITE_LABEL_FONT_SIZE: 8,
+
+  /**
+   * Every how-many-th tile of the floor texture carries a fleck mark — a
+   * sparseness divisor in the same class as `AMBIENT_MEMBER_PLACEMENT_STRIDE`.
+   * Small is busy, large is flat.
+   */
+  FLOOR_SPRITE_FLECK_STRIDE: 3,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -2054,10 +2147,6 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   AMBIENT_MEMBER_COUNT_BY_RUNG: 'knob',
   AMBIENT_MEMBER_FOOTPRINT_TILES: 'knob',
   AMBIENT_MEMBER_PLACEMENT_STRIDE: 'knob',
-  AMBIENT_MEMBER_HEAD_DIAMETER_FRACTION: 'knob',
-  AMBIENT_MEMBER_BODY_WIDTH_FRACTION: 'knob',
-  AMBIENT_MEMBER_BODY_HEIGHT_FRACTION: 'knob',
-  AMBIENT_MEMBER_BODY_CORNER_RADIUS_PIXELS: 'knob',
   AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS: 'knob',
   AMBIENT_MEMBER_BOB_HALF_CYCLE_MS: 'knob',
   AMBIENT_MEMBER_BOB_STAGGER_LANES: 'knob',
@@ -2089,4 +2178,13 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS: 'knob',
   FLOOR_SIM_MEMBER_Z_INDEX: 'knob',
   FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX: 'knob',
+
+  FLOOR_SPRITE_NATIVE_PIXELS_PER_TILE: 'knob',
+  FLOOR_SPRITE_WALK_FRAME_TICKS: 'knob',
+  FLOOR_SPRITE_BODY_PALETTE: 'knob',
+  FLOOR_SPRITE_OUTFIT_PALETTE: 'knob',
+  FLOOR_SPRITE_GEAR_PALETTE: 'knob',
+  FLOOR_SPRITE_FLOOR_PALETTE: 'knob',
+  FLOOR_SPRITE_LABEL_FONT_SIZE: 'knob',
+  FLOOR_SPRITE_FLECK_STRIDE: 'knob',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);
