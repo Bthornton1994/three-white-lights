@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "critic-bench-suite-2026-08-25T16-54-40-506Z-3867",
   "label": "critic-bench-suite",
   "command": [
@@ -29,14 +29,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 5,
-    "okCount": 4,
+    "count": 6,
+    "okCount": 5,
     "errors": [],
-    "lastAttemptIso": "2026-08-25T16:58:40.681Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-25T16:59:19.123Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-25T16:57:44.360Z"
-  }
+    "lastOkIso": "2026-08-25T16:58:43.362Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-25T16:59:19.117Z",
+  "elapsedSeconds": 278.6
 }
