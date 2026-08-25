@@ -412,6 +412,36 @@ two empty greps in a row were the tell. Every number above was re-measured
 after `git reset --hard` to origin's tip, which is what the measured-at stamp
 is for.
 
+### RULED 2026-08-25: BENCH IS REDESIGNED — DESCENT TO CHEST, COMMAND, TAP-RATE FOR FORCE
+
+Verbatim: *"It should be a descent to chest, non trivial, and then press
+command which requires rapid tapping to exert as much force as possible."*
+This answers Playtest 4's rejection of the shipped chain and replaces bench's
+single-reaction-tap identity. Design direction, not a retune.
+
+**Binding constraints carried into the build:** the command stimulus must be
+on-stage and legible in a web browser (GDD §10.0's beta target has no haptic
+channel — text confirms, it does not carry); bench does not become a second
+squat; §12.1 stays open until a human replays on a phone; GDD §6.2's bench
+line changes meaning, so GDD and code move in one commit.
+
+**Session A's build plan, two serialized pieces:** (1) the pure mechanic —
+descent quality graded at the chest, the command, the tap burst with
+diminishing returns, a fresh false-start rule, copy, GDD §6.2, outcome-moving
+sweeps, squat/deadlift histories byte-identical; then (2) the render and the
+instruments — the on-stage command stimulus, driver grammar in
+`tools/sessionDrive.mjs`/`meetDrive.mjs`, evidence re-takes. Split because the
+drivers can only be written against the final grammar. The half-landed
+`claude/cutincap-three-lifts` re-take is sequenced after (2) for the same
+reason — its bench arm would otherwise be rewritten twice.
+
+Resolved by Session A within the ruling's open items: the seeded command
+delay STAYS (no countdown — bench keeps the reaction identity) but its wait
+must not be a dead channel on stage; ascent DRIVE — TAP cues STAY for this
+piece (the burst decides the launch, the ascent keeps its own layer — one
+mechanic changes per phone replay, and whether two tap layers over-tax a
+thumb is exactly what the replay can say).
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
