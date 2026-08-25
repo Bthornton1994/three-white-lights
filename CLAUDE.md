@@ -46,6 +46,15 @@ second builder, and the independent judgment the method depends on disappears.
 Each critic is spawned fresh. It receives the goal, the bar, the refusal
 conditions, and the artifact — never the builder's transcript.
 
+Git worktrees keep parallel builders from colliding on writes, but they do not
+by themselves stop a critic from reading a sibling builder's in-progress work —
+worktrees are just directories on the same filesystem. Independence is enforced
+by the `Read` deny rule in `.claude/settings.json` (see Working Style below).
+Do not remove or narrow that rule without re-verifying critic independence the
+same way BUILD_PROMPT_CLAUDE.md's preflight step 5 describes: spawn two
+builders each writing a random token to a scratch file, then spawn a critic and
+confirm it can retrieve neither.
+
 ## Game Feel Values Must Be Tunable
 
 Timing windows, animation curves, haptic patterns, and difficulty thresholds are
@@ -128,6 +137,16 @@ physiology.
 - Do not create documentation files unless asked.
 - Commit early, commit often, small scopes.
 - Use git worktrees for parallel builders so concurrent work does not collide.
+  Worktrees only isolate writes. Critic read-isolation from sibling builder
+  worktrees is enforced separately by the `permissions.deny` rule for
+  `Read(.claude/worktrees/**)` in `.claude/settings.json` — this blocks a
+  critic (run unisolated, its normal mode) from reading into any builder's
+  worktree, while leaving each builder free to read its own, because the
+  pattern is evaluated relative to each agent's own worktree root. Keep
+  critics unisolated (no `isolation: "worktree"` on the critic itself) — an
+  isolated critic's own root becomes a worktree path too, and reads that walk
+  back out to a sibling worktree are not reliably covered by this same
+  project-relative rule.
 - For human-paced follow-up sessions after the run: one vertical slice at a time,
   working state at the end of each.
 
