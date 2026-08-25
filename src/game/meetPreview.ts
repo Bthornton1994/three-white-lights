@@ -423,8 +423,8 @@ function benchScript(config: LiftConfig, style: RepStyle): ScriptedInput[] {
 
   const command = commandTick(config, script);
   if (command === null) return script;
-  for (let i = 0; i < MEET_PREVIEW.BENCH_BURST_TAPS_SCRIPTED; i += 1) {
-    const at = command + i * MEET_PREVIEW.BENCH_BURST_TAP_GAP_TICKS;
+  for (let i = 0; i < MEET_PREVIEW.BENCH_GRIND_TAPS_SCRIPTED; i += 1) {
+    const at = command + i * MEET_PREVIEW.BENCH_GRIND_TAP_GAP_TICKS;
     // ONE PRESS EDGE PER TAP, WITH ITS RELEASE. `stepLift` latches `m.held`, so
     // a script of bare presses leaves the finger down after the first and the
     // rest are swallowed by the refractory gap — which on a rate mechanic

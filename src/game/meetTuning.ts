@@ -1899,19 +1899,30 @@ export const MEET_PREVIEW = Object.freeze({
    * `GRIND_TAP_REFRACTORY_TICKS` is the floor the mechanic will count, so this
    * is a scripted player tapping as fast as the sim will believe — which is
    * what 'perfect' means on a beat whose input is a rate.
+   *
+   * RENAMED FROM `BENCH_BURST_TAP_GAP_TICKS` with the beat. Same value, same
+   * mechanism, and a name that describes the beat it belongs to rather than
+   * the one it replaced.
    */
-  BENCH_BURST_TAP_GAP_TICKS: 3,
+  BENCH_GRIND_TAP_GAP_TICKS: 3,
   /**
    * How many taps a scripted grind writes.
    *
    * A CEILING ON A SCRIPT, NOT A TAP COUNT. There is no per-rep tap cap since
    * the 2026-08-25 replay steer — taps count until the rep resolves — so this
-   * only has to outlast the longest bench rep the mechanic can produce. At
-   * `BENCH_BURST_TAP_GAP_TICKS` that is 24 x 3 = 72 ticks, which was enough
-   * for a burst and is NOT enough for a grind: an undriven maximal ascent runs
-   * to `ASCENT_TIMEOUT_TICKS`. Raised to 120, which is 360 ticks of tapping.
+   * only has to outlast the longest bench rep the mechanic can produce, which
+   * is an undriven maximal ascent running to `ASCENT_TIMEOUT_TICKS`. At
+   * `BENCH_GRIND_TAP_GAP_TICKS` this is 360 ticks of tapping, comfortably past
+   * it.
+   *
+   * THE VALUE IT REPLACES WOULD HAVE SHIPPED A SILENTLY SHORT GRIND. It was
+   * sized against an 850ms burst window and covered 72 ticks, so a scripted
+   * "perfect" bench would have tapped for the first fifth of its ascent and
+   * then gone quiet — a fixture answering the beat it was written for and not
+   * the beat it now runs against. Nothing in the type system notices a script
+   * that stops early.
    */
-  BENCH_BURST_TAPS_SCRIPTED: 120,
+  BENCH_GRIND_TAPS_SCRIPTED: 120,
   /** e1RM per lift the openers are suggested from. */
   E1RM_KG: Object.freeze({ squat: 232.5, bench: 152.5, deadlift: 272.5 } as const satisfies Record<LiftKind, number>),
   /** The lifter's best competition total before this meet, kg, or null. */

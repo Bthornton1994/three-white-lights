@@ -519,6 +519,18 @@ export interface BurstReadout {
  * as they slow down. The mechanic-side selector is `grindProgress` in
  * `lift.ts`; this is the geometry of it and nothing more.
  *
+ * THE NAME IS STALE AND IS NOT RENAMED HERE, WHICH IS A DECISION RATHER THAN
+ * AN OVERSIGHT. `burstReadout`, `BurstReadout`, `BurstPip`, the `BURST_PIP_*`
+ * and `BURST_TRAY_*` tuning keys and the `BURST_*` palette entries all name a
+ * burst that no longer exists. CLAUDE.md is right that a misdescribing name is
+ * worse than misdescribing prose, and the honest reason they survive is scope:
+ * every one of them is read by `LiftStage.tsx` or `liftPalette.ts` or
+ * `tools/verify-lift-press.mjs`, which are the render piece's surface and not
+ * this one's, and a rename that reaches three files nobody is holding is a
+ * merge conflict rather than a clarification. They are named here, in the one
+ * function a reader arrives at, so the debt is visible where it is owed rather
+ * than discovered later.
+ *
  * @guarantee the-grind-readout-moves-with-the-rate
  * `lit` equals the grind's live lit-unit count, so the row is a function of
  * what the player is doing NOW rather than a decoration that happens to be on
