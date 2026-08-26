@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "bash-c-2026-08-26T19-34-47-476Z-20469",
   "label": null,
   "command": [
@@ -28,14 +28,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 2,
-    "okCount": 1,
+    "count": 3,
+    "okCount": 2,
     "errors": [],
-    "lastAttemptIso": "2026-08-26T19:35:47.541Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-26T19:36:35.551Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-26T19:34:51.117Z"
-  }
+    "lastOkIso": "2026-08-26T19:35:50.753Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-26T19:36:35.549Z",
+  "elapsedSeconds": 108.1
 }
