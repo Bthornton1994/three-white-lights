@@ -508,6 +508,23 @@ export const BENCH_DRIVE = Object.freeze({
    */
   GRIND_FORCE_FLOOR: 0.7,
   /**
+   * The slowest achieved cadence the RESCUE PAIR's measurement holds over.
+   *
+   * A SECOND, STRICTER FLOOR FOR ONE CLAIM, and it is stricter because the pair
+   * asks more of the cadence than "the grind was real". `GRIND_FORCE_FLOOR`
+   * above is about a rep making it at all; the pair is about a rep RECOVERING
+   * from a stall, and the sim sweep in `grindTapToResolution`'s header measures
+   * the recovery failing at 6 ticks between taps (100 ms) while the abandoned
+   * control keeps missing — which would redden the pair for the driver's
+   * cadence and read as the app's failure.
+   *
+   * 83 ms is 5 ticks at 60 Hz, the slowest column the sweep measured the pair
+   * discriminating at. The browser's achieved means across the runs so far were
+   * 44-73 ms, so this is a guard against a slower machine rather than a bar the
+   * current one is scraping.
+   */
+  GRIND_PAIR_MAX_GAP_MS: 83,
+  /**
    * A hang guard on the grind loop, as a multiple of the longest a grind can
    * legitimately run.
    *
@@ -1724,17 +1741,44 @@ export async function holdBenchToTheChest(page, { read, hasLeft = NEVER_LEFT }) 
  * again and it comes back and the bar can be rescued." That is the sentence the
  * whole continuous grind exists for, and nothing in this repository had ever
  * driven it through a browser. `pause` makes the driver stop for a stated
- * number of milliseconds after a stated number of taps and then resume, and the
- * two callbacks mark the window in the PAGE'S clock so a pixel check can slice
- * its frames on it — the driver's own `Date.now()` is a different clock and
- * cannot be compared with the recorder's.
+ * number of milliseconds at a stated INSTANT and then resume, and the two
+ * callbacks mark the window in the PAGE'S clock so a pixel check can slice its
+ * frames on it — the driver's own `Date.now()` is a different clock and cannot
+ * be compared with the recorder's.
+ *
+ * THE INSTANT IS MILLISECONDS FROM THE COMMAND AND IT USED TO BE A TAP COUNT,
+ * AND THAT WAS A REAL DEFECT RATHER THAN A TIDY-UP. A tap count does not say
+ * WHERE THE BAR IS: the browser's achieved cadence varied 44-73 ms between runs
+ * of the same probe, so "after 8 taps" opened the hole 416 ms into one rep and
+ * 584 ms into the next — ten ticks of bar travel apart, on a beat whose whole
+ * question is whether the bar has cleared the sticking point yet. The pair the
+ * hole exists to make therefore was not CONTROLLED: its two reps could stop at
+ * two different points in the lift.
+ *
+ * Measured in the pure sim on the probe's own cell, 40 seeds at each of four
+ * cadences, sweeping the instant (`rescued made / abandoned made`, out of 40):
+ *
+ *     instant   gap 3t     gap 4t     gap 5t     gap 6t
+ *      18t      40 / 0      0 / 0      0 / 0      0 / 0
+ *      24t      40 / 0     40 / 0     40 / 0      0 / 0
+ *      30t      40 / 40    40 / 40    40 / 0     40 / 0
+ *      36t      40 / 40    40 / 40    40 / 40    40 / 0
+ *
+ * 24 ticks (400 ms) is the only instant where the pair discriminates across a
+ * BAND of cadences rather than at one of them: earlier and the hole opens on
+ * the launch beat itself, so even the rescued rep dies; later and the bar has
+ * cleared the stick before the taps stop, so the abandoned rep coasts to
+ * lockout — which is exactly what the browser measured on the run that sent
+ * this back. The band it holds over is 3-5 ticks between taps; at 6 the rescued
+ * rep cannot recover either, which is why callers assert their achieved cadence
+ * against `BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS` rather than assuming it.
  *
  * IT IS AN ARM AND NOT THE DEFAULT. A paused rep is a rep the player is
  * deliberately playing badly; the ordinary reps this driver plays elsewhere
  * have to keep tapping, or every check behind them measures a stall the harness
  * caused.
  *
- * `abandonAfterTaps` IS THE OTHER HALF OF THAT PAIR AND IT IS WHAT MAKES THE
+ * `abandonAtMs` IS THE OTHER HALF OF THAT PAIR AND IT IS WHAT MAKES THE
  * RESCUE A CLAIM. A rep that pauses and then locks out proves the rep locked
  * out; it does not prove that COMING BACK is what saved it, and there is a real
  * mutant that walks through the difference — an ascent boost that read the
@@ -1763,7 +1807,7 @@ export async function holdBenchToTheChest(page, { read, hasLeft = NEVER_LEFT }) 
  */
 export async function grindTapToResolution(
   page,
-  { read, hasLeft = NEVER_LEFT, pause = null, abandonAfterTaps = null, onPauseStart, onPauseEnd },
+  { read, hasLeft = NEVER_LEFT, pause = null, abandonAtMs = null, onPauseStart, onPauseEnd },
 ) {
   const commandLine = LIFT_PROMPTS.bench.COMMAND;
   const grindLine = LIFT_PROMPTS.bench.GRIND;
@@ -1782,6 +1826,7 @@ export async function grindTapToResolution(
   let sawFalseStart = false;
   let paused = null;
   let abandonedAfter = null;
+  let abandonedAtMs = null;
   let endedOn = null;
   let stoppedBecause = 'the dispatch budget ran out';
 
@@ -1817,9 +1862,11 @@ export async function grindTapToResolution(
     }
 
     // THE DELIBERATE ABANDONMENT. Stop dispatching and watch the rep out — the
-    // control the rescue is a rescue AGAINST.
-    if (abandonAfterTaps !== null && dispatched >= abandonAfterTaps) {
+    // control the rescue is a rescue AGAINST. Keyed to the same instant the
+    // pause is, so the pair really differs in one thing.
+    if (abandonAtMs !== null && Date.now() - startedAt >= abandonAtMs) {
       abandonedAfter = dispatched;
+      abandonedAtMs = Date.now() - startedAt;
       stoppedBecause = 'the driver abandoned the grind and watched the rep out';
       const watched = await untilRead(
         page,
@@ -1838,12 +1885,19 @@ export async function grindTapToResolution(
     // THE DELIBERATE PAUSE. After it the loop simply carries on tapping, which
     // is what makes this a RESCUE rather than a give-up: the same rep, the same
     // cadence, with a hole in the middle of it.
-    if (pause !== null && paused === null && dispatched >= pause.afterTaps) {
+    if (pause !== null && paused === null && Date.now() - startedAt >= pause.atMs) {
       if (onPauseStart !== undefined) await onPauseStart(dispatched);
       const pausedFrom = Date.now();
+      const openedAtMs = pausedFrom - startedAt;
       await page.waitForTimeout(pause.ms);
       if (onPauseEnd !== undefined) await onPauseEnd(dispatched);
-      paused = { afterTaps: dispatched, askedMs: pause.ms, realMs: Date.now() - pausedFrom };
+      paused = {
+        askedAtMs: pause.atMs,
+        openedAtMs,
+        afterTaps: dispatched,
+        askedMs: pause.ms,
+        realMs: Date.now() - pausedFrom,
+      };
       // The gap the pause creates is NOT a cadence measurement — it is the
       // thing being driven — so the next tap starts a fresh interval rather
       // than recording a gap the size of the pause.
@@ -1888,6 +1942,13 @@ export async function grindTapToResolution(
     paused,
     /** Non-null on the control arm: how many taps were thrown before giving up. */
     abandonedAfter,
+    /**
+     * ...AND WHEN, WHICH IS THE FIELD THE PAIR IS CONTROLLED ON. The tap count
+     * is a diagnosis; the instant is the thing that has to match the rescued
+     * rep's, because it is what says the two reps stopped at the same point in
+     * the lift rather than at the same point in the driver's own loop.
+     */
+    abandonedAtMs,
     endedOn,
     stoppedBecause,
     /**

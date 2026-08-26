@@ -1735,11 +1735,16 @@ const LIFT_LADDER = Object.freeze({
    * take. Placeholders against a mechanic GDD §12.1 leaves open; if a browser
    * run shows no stall, these are the two numbers to move.
    *
-   * `GRIND_PAUSE_AFTER_TAPS` puts the hole INSIDE THE ASCENT rather than at the
-   * launch. `PRESS_LAUNCH_MS` is 300 ms and a browser tap costs two CDP round
-   * trips, so the first handful of taps land while the bar is still on the
-   * chest — pausing there gives a bar that never got going rather than one that
-   * stalled, and "never got going" is not the beat the steer is about.
+   * `GRIND_HOLE_AT_MS` PUTS THE HOLE AT AN INSTANT AND NOT AFTER A TAP COUNT,
+   * and that distinction cost this check a red run. A tap count does not say
+   * where the BAR is: the browser's achieved cadence varied 44-73 ms between
+   * runs, so "after 8 taps" opened the hole 416 ms into one rep and 584 ms into
+   * the next, and the second one had already cleared the sticking point — the
+   * abandoned control locked out and the pair said nothing.
+   * `grindTapToResolution`'s own header carries the sim sweep that chose 400 ms
+   * (24 ticks): it is the only instant where the pair discriminates across a
+   * BAND of cadences rather than at one of them. Earlier is the launch beat
+   * itself, where even the rescued rep dies; later is past the stick.
    *
    * `GRIND_PAUSE_MS` IS FIVE TIMES THE 18-TICK (300 ms) HOLE `lift.test.ts`'s
    * `REACHABLE_RESCUE` SWEEPS WITH, AND THAT IS A MEASUREMENT RATHER THAN
@@ -1769,7 +1774,7 @@ const LIFT_LADDER = Object.freeze({
    * which is the other half of why it is acceptable: this is a rep played
    * badly, not a rep played by a machine that stopped existing.
    */
-  GRIND_PAUSE_AFTER_TAPS: 8,
+  GRIND_HOLE_AT_MS: 400,
   GRIND_PAUSE_MS: 1667,
 
   /**
@@ -2099,6 +2104,19 @@ const STAGE_BEAT = Object.freeze({
    * figure is printed beside it on every run.
    */
   MIN_STALL_EDGE_FRACTION: 0.5,
+  /**
+   * How far apart the rescued rep's hole and the abandoned rep's may open and
+   * still be "the same instant".
+   *
+   * THE INSTRUMENT'S OWN RESOLUTION, not a tolerance chosen to make anything
+   * pass. Both holes are opened by the same loop against the same
+   * `Date.now() - startedAt`, and the grain is one tap period: the loop can only
+   * notice the instant has arrived after the tap it is in the middle of, and a
+   * tap is two CDP round trips. 60 ms is comfortably past that and is a third
+   * of the 100 ms window the sim sweep says the pair survives inside (24 ticks
+   * ± 6 before the discrimination starts to go).
+   */
+  PAIRED_HOLE_TOLERANCE_MS: 60,
   /** A cap on the sampler's rows, so a long run cannot grow without bound. */
   MAX_ROWS: 3000,
 });
@@ -2833,7 +2851,7 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
         grind = await grindTapToResolution(page, {
           read: readLoop,
           pause: grindPause,
-          abandonAfterTaps: grindAbandon,
+          abandonAtMs: grindAbandon,
           onPauseStart: () => markStagePixels(page, 'pause-start'),
           onPauseEnd: () => markStagePixels(page, 'pause-end'),
         });
@@ -3108,7 +3126,7 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
   // off them — so folding a deliberate hole into them would measure a stall the
   // harness caused in every claim above. This one rep is the only rep in the
   // run that stops tapping, and it stops at a stated instant for a stated
-  // length (`GRIND_PAUSE_AFTER_TAPS`, `GRIND_PAUSE_MS`).
+  // length (`GRIND_HOLE_AT_MS`, `GRIND_PAUSE_MS`).
   //
   // AND THE CONTROL IT IS A RESCUE AGAINST, DRIVEN SECOND. A rep that pauses
   // and locks out proves the rep locked out; it does not prove that COMING BACK
@@ -3129,14 +3147,14 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
     rescued = await driveLadderRep(page, kind, depthSearch.holdMs, {
       holdAtLockout: true,
       grindPause: {
-        afterTaps: LIFT_LADDER.GRIND_PAUSE_AFTER_TAPS,
+        atMs: LIFT_LADDER.GRIND_HOLE_AT_MS,
         ms: LIFT_LADDER.GRIND_PAUSE_MS,
       },
     });
     await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
     abandoned = await driveLadderRep(page, kind, depthSearch.holdMs, {
       holdAtLockout: true,
-      grindAbandon: LIFT_LADDER.GRIND_PAUSE_AFTER_TAPS,
+      grindAbandon: LIFT_LADDER.GRIND_HOLE_AT_MS,
     });
   }
 
@@ -3482,19 +3500,37 @@ function gradeStageBeat(kind, run) {
   // launch snapshot instead of the live charge). Measured in the pure sim at
   // this cell and this schedule, 40 seeds: resumed makes 40/40, abandoned
   // misses 40/40 on 'timeout'.
+  //
+  // TWO THINGS ARE ASSERTED ABOUT THE DRIVER AND NOT ABOUT THE APP, and they
+  // are here because without them a red on this line reads as the app's
+  // failure when it is the robot's. The two holes must have opened at the SAME
+  // INSTANT within one poll of each other — that is what makes the pair a pair
+  // — and both cadences must clear `GRIND_PAIR_MAX_GAP_MS`, which is stricter
+  // than `GRIND_FORCE_FLOOR` because recovering from a stall asks more of a
+  // cadence than making a rep does. Both bands are measured; see
+  // `grindTapToResolution`'s header.
+  const holeAt = rescueGrind?.paused?.openedAtMs ?? null;
+  const controlAt = givenUpGrind?.abandonedAtMs ?? null;
+  const holesAgree =
+    holeAt !== null &&
+    controlAt !== null &&
+    Math.abs(holeAt - controlAt) <= STAGE_BEAT.PAIRED_HOLE_TOLERANCE_MS;
+  const cadenceHolds =
+    (rescueGrind?.gaps?.meanMs ?? Infinity) <= BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS &&
+    (givenUpGrind?.gaps?.meanMs ?? Infinity) <= BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS;
   check(
     givenUp !== null &&
       givenUp.played === true &&
       givenUp.reachedCommand === true &&
       givenUpGrind !== null &&
-      givenUpGrind.abandonedAfter !== null &&
-      givenUpGrind.abandonedAfter === (rescueGrind?.paused?.afterTaps ?? null) &&
+      holesAgree &&
+      cadenceHolds &&
       givenUp.reachedLockout === false &&
       paused?.reachedLockout === true,
     'LADDER bench RESCUE CONTROL: the SAME rep with the tapping stopped at the SAME instant and never resumed does NOT reach lockout — so coming back is what saved the one above',
     givenUp === null
       ? 'no abandoned rep was driven'
-      : `abandoned after ${givenUpGrind?.abandonedAfter} tap(s) against the rescued rep's hole at ${rescueGrind?.paused?.afterTaps}; lockout=${givenUp.reachedLockout} against the rescued rep's ${paused?.reachedLockout}; outcome ${JSON.stringify(givenUp.outcome)} ${JSON.stringify(givenUp.detail ?? null)}, stopped because ${JSON.stringify(givenUpGrind?.stoppedBecause ?? null)} on ${JSON.stringify(givenUpGrind?.endedOn ?? null)}`,
+      : `holes opened at ${holeAt}ms (rescued, asked ${rescueGrind?.paused?.askedAtMs}) and ${controlAt}ms (abandoned) — agree within ${STAGE_BEAT.PAIRED_HOLE_TOLERANCE_MS}ms: ${holesAgree}; cadences ${rescueGrind?.gaps?.meanMs}ms and ${givenUpGrind?.gaps?.meanMs}ms against a ${BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS}ms pair ceiling: ${cadenceHolds}; lockout=${givenUp.reachedLockout} against the rescued rep's ${paused?.reachedLockout}; outcome ${JSON.stringify(givenUp.outcome)} ${JSON.stringify(givenUp.detail ?? null)}, stopped because ${JSON.stringify(givenUpGrind?.stoppedBecause ?? null)} on ${JSON.stringify(givenUpGrind?.endedOn ?? null)}`,
   );
 
   // ---- AND THE OUTCOME THE WHOLE CHAIN IS FOR -----------------------------
