@@ -56,6 +56,7 @@ import { BAR_AND_COLLARS_KG } from '../art/plates';
 import type { LifterFrameSpec } from '../art/lifterSprite';
 import { LIFT_TUNING, TICK_MS } from '../game/liftTuning';
 import {
+  grindIsLive,
   grindProgress,
   chestApproach,
   lockoutHoldIsLive,
@@ -404,10 +405,10 @@ export interface CommandHit {
  * somebody remembered to add.
  *
  * IT OUTLIVES ITS PHASE ON PURPOSE. The bench command fires in HOLE and the
- * burst can end on the physics cap a few ticks later, taking the rep into
- * ASCENT while the wash is still decaying; a hit scoped to HOLE would be cut
- * off mid-decay at exactly the moment the bar leaves the chest. Ticks only go
- * forward, so the decay reaches zero and stays there.
+ * launch beat ends a few ticks later, taking the rep into ASCENT while the wash
+ * is still decaying; a hit scoped to HOLE would be cut off mid-decay at exactly
+ * the moment the bar leaves the chest. Ticks only go forward, so the decay
+ * reaches zero and stays there.
  */
 function commandTickOf(state: LiftState): { command: StageCommandKind; tick: number } | null {
   const kind = state.config.kind;
@@ -485,51 +486,77 @@ export function stageArmed(state: LiftState): number | null {
   return c.ARMED_MIN_ALPHA + (c.ARMED_MAX_ALPHA - c.ARMED_MIN_ALPHA) * pulseAt(state.tick, c.ARMED_PULSE_MS);
 }
 
-export interface BurstPip {
+export interface Box {
   readonly x: number;
   readonly y: number;
   readonly w: number;
   readonly h: number;
+}
+
+export interface GrindPip extends Box {
   readonly lit: boolean;
 }
 
-export interface BurstReadout {
-  /** The dark plate the pips are drawn on. See `BURST_TRAY_PAD`. */
-  readonly tray: { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
-  readonly pips: readonly BurstPip[];
+export interface GrindReadout {
+  /** The dark plate the pips are drawn on. See `GRIND_TRAY_PAD`. */
+  readonly tray: Box;
+  readonly pips: readonly GrindPip[];
   /** How many are lit. Carried so a caller does not have to count the array. */
   readonly lit: number;
+  /**
+   * 1 on the tick a tap was COUNTED, falling to 0 over `GRIND_KICK_MS`.
+   *
+   * The rate channel the pip row cannot carry: a row that fills to the right
+   * reads as a counter whatever number is behind it, and what a counter cannot
+   * show is that a tap just landed. Reads `grindLastTapTick`, which only
+   * `advanceGrind` writes and only for taps that cleared the refractory — so
+   * this flashes at the COUNTED rate rather than at the dispatched one.
+   */
+  readonly kick: number;
+  /** Where that flash is drawn. Outside `tray` — see `GRIND_KICK_GAP`. */
+  readonly rail: Box;
 }
 
 /**
  * The grind readout for the tick, or null when the grind is not live.
  *
  * ---------------------------------------------------------------------------
- * THE SELECTOR CONTRACT FORCED THIS FILE TO CHANGE, AND ONLY THIS FUNCTION
+ * THE SELECTOR CONTRACT FORCED THIS FILE TO CHANGE, AND THE NAMES FOLLOWED IT
  * ---------------------------------------------------------------------------
- * The row used to be one pip per counted tap out of
- * `PRESS_BURST_FORCE.MAX_COUNTED_TAPS`, lit up to `progress.taps`. The
- * 2026-08-25 replay steer deleted both ends of that: there is no per-rep tap
- * cap to be a row length, and a running tap total on a continuous grind rises
- * forever, so a row keyed to it would fill up and then stay full while the
- * player quietly stopped tapping — on screen, and reading nothing.
+ * The row used to be one pip per counted tap out of a per-rep tap cap, lit up
+ * to `progress.taps`. The 2026-08-25 replay steer deleted both ends of that:
+ * there is no cap to be a row length, and a running tap total on a continuous
+ * grind rises forever, so a row keyed to it would fill up and then stay full
+ * while the player quietly stopped tapping — on screen, and reading nothing.
  *
  * So the row reads `progress.lit`, which is what the player's CURRENT tap rate
  * is worth scaled onto `progress.units`. It fills as they speed up and empties
  * as they slow down. The mechanic-side selector is `grindProgress` in
  * `lift.ts`; this is the geometry of it and nothing more.
  *
- * THE NAME IS STALE AND IS NOT RENAMED HERE, WHICH IS A DECISION RATHER THAN
- * AN OVERSIGHT. `burstReadout`, `BurstReadout`, `BurstPip`, the `BURST_PIP_*`
- * and `BURST_TRAY_*` tuning keys and the `BURST_*` palette entries all name a
- * burst that no longer exists. CLAUDE.md is right that a misdescribing name is
- * worse than misdescribing prose, and the honest reason they survive is scope:
- * every one of them is read by `LiftStage.tsx` or `liftPalette.ts` or
- * `tools/verify-lift-press.mjs`, which are the render piece's surface and not
- * this one's, and a rename that reaches three files nobody is holding is a
- * merge conflict rather than a clarification. They are named here, in the one
- * function a reader arrives at, so the debt is visible where it is owed rather
- * than discovered later.
+ * THE `burst` NAMES THIS FILE'S HEADER DECLARED AS DEBT ARE GONE, and the
+ * whole surface moved in one commit: `burstReadout`/`BurstReadout`/`BurstPip`,
+ * the `BURST_PIP_*` and `BURST_TRAY_*` tuning keys, the `BURST_*` palette
+ * entries, `LiftStage.tsx` and `tools/verify-lift-press.mjs`'s readers. The
+ * reason the debt was declared rather than paid at the time was scope, and the
+ * reason it could not be left is CLAUDE.md's: nobody re-verifies a name.
+ *
+ * ---------------------------------------------------------------------------
+ * AND A ROW THAT ONLY FILLS STILL READS AS A COUNTER, WHICH IS WHY `kick` EXISTS
+ * ---------------------------------------------------------------------------
+ * `lit` is honest — it rises and falls with the rate — and it is not, on its
+ * own, legible AS a rate. A horizontal row filling to the right is the shape of
+ * a progress bar, and a player reading one asks "how far along am I" rather
+ * than "how hard am I going". What separates the two is evidence that
+ * individual taps are LANDING, which a level cannot show and a flash can. So
+ * every counted tap flashes the rail under the tray for `GRIND_KICK_MS`.
+ *
+ * IT READS THE COUNTED TAP AND NOT THE DISPATCHED ONE. `grindLastTapTick` is
+ * written by `advanceGrind` only when the press cleared
+ * `GRIND_TAP_REFRACTORY_TICKS`, so a player mashing past the mechanic's floor
+ * sees the rail flash at the rate the mechanic BELIEVES rather than at the rate
+ * their thumb is moving. That is the honest one: it is the rate the charge is
+ * actually being fed at.
  *
  * @guarantee the-grind-readout-moves-with-the-rate
  * `lit` equals the grind's live lit-unit count, so the row is a function of
@@ -539,33 +566,112 @@ export interface BurstReadout {
  * taps land and FALLS once they stop, and asserts it never exceeds the row's
  * length.
  */
-export function burstReadout(state: LiftState): BurstReadout | null {
+export function grindReadout(state: LiftState): GrindReadout | null {
   const progress = grindProgress(state);
   if (progress === null) return null;
   const c = LIFT_TUNING.FEEDBACK.STAGE_COMMAND;
   const total = progress.units;
-  const pitch = c.BURST_PIP_W + c.BURST_PIP_GAP;
-  const rowW = total * pitch - c.BURST_PIP_GAP;
+  const pitch = c.GRIND_PIP_W + c.GRIND_PIP_GAP;
+  const rowW = total * pitch - c.GRIND_PIP_GAP;
   const left = L.CUE_X - rowW / 2;
-  const pips: BurstPip[] = [];
+  const pips: GrindPip[] = [];
   for (let i = 0; i < total; i += 1) {
     pips.push({
       x: left + i * pitch,
-      y: c.BURST_PIPS_Y,
-      w: c.BURST_PIP_W,
-      h: c.BURST_PIP_H,
+      y: c.GRIND_PIPS_Y,
+      w: c.GRIND_PIP_W,
+      h: c.GRIND_PIP_H,
       lit: i < progress.lit,
     });
   }
+  const trayX = left - c.GRIND_TRAY_PAD;
+  const trayY = c.GRIND_PIPS_Y - c.GRIND_TRAY_PAD;
+  const trayW = rowW + c.GRIND_TRAY_PAD * 2;
+  const trayH = c.GRIND_PIP_H + c.GRIND_TRAY_PAD * 2;
+  const lastTap = state.grindLastTapTick;
+  const sinceTapMs = lastTap === null ? Infinity : (state.tick - lastTap) * TICK_MS;
   return {
-    tray: {
-      x: left - c.BURST_TRAY_PAD,
-      y: c.BURST_PIPS_Y - c.BURST_TRAY_PAD,
-      w: rowW + c.BURST_TRAY_PAD * 2,
-      h: c.BURST_PIP_H + c.BURST_TRAY_PAD * 2,
-    },
+    tray: { x: trayX, y: trayY, w: trayW, h: trayH },
     pips,
     lit: progress.lit,
+    kick: sinceTapMs < 0 ? 0 : clamp01(1 - sinceTapMs / c.GRIND_KICK_MS),
+    rail: {
+      x: trayX,
+      y: trayY + trayH + c.GRIND_KICK_GAP,
+      w: trayW,
+      h: c.GRIND_KICK_H,
+    },
+  };
+}
+
+/**
+ * The stall band for the tick, or null when the bar is not stalled.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY BENCH NEEDS ITS OWN URGENT BEAT WHEN `stageShake` ALREADY EXISTS
+ * ---------------------------------------------------------------------------
+ * `stageShake` fires on every lift whenever `netForce` is negative, and it says
+ * "the lifter is losing". It does not say the thing bench's mechanic turns on,
+ * which is that TAPPING NOW WOULD FIX IT. GDD §6.2's headline property is
+ * "stop tapping and the bar stalls; start again and it comes back", and a
+ * rescue the player cannot see the need for is a rescue they will not attempt.
+ *
+ * WHAT IT KEYS ON, AND WHY THAT EXACT PREDICATE. `grindIsLive` is the
+ * mechanic's own answer to "do taps do anything right now"; `phase === 'ASCENT'`
+ * excludes the launch beat, where the bar is motionless BY DESIGN and a stall
+ * cue would be a lie; and `velocity < GRIND_STALL_VELOCITY` is character for
+ * character the test `stepLift` increments `stallTicks` on. So the band is on
+ * exactly while the mechanic is counting a stalled tick, and it goes off the
+ * tick the bar starts moving again — which is what makes the rescue readable as
+ * a rescue.
+ *
+ * IT DELIBERATELY DOES NOT READ `stallTicks` OR `stallCapacityLoss`. Both are
+ * per-rep accumulators that only ever rise, so a band keyed to either would
+ * come on at the first stalled tick and stay on through the rescue and the
+ * lockout — a cue that has stopped reading, and (for `stallCapacityLoss`) GDD
+ * §3.4's meter with the numerals filed off. `depth` below is `netForce`, the
+ * same instantaneous quantity `stageShake` and `liveStrain` normalise, and it
+ * is scaled rather than thresholded so a bar that is barely losing draws a
+ * quieter band than one that is being buried.
+ *
+ * @guarantee the-stall-band-is-live-and-not-an-accumulator
+ * Two states differing only in `velocity` — one under `GRIND_STALL_VELOCITY`
+ * and one over it — return a band and null respectively, at identical
+ * `stallTicks` and identical `stallCapacityLoss`. `liftFrame.test.ts`'s "the
+ * stall band goes out the tick the bar moves again" builds that pair from a
+ * real rep and asserts both directions.
+ */
+export interface StallBand {
+  /** 0..1 how far the bar is losing this tick. `stageShake`'s normalisation. */
+  readonly depth: number;
+  /** Alpha of the band this tick. Never 0 while the bar is stalled. */
+  readonly alpha: number;
+  /** The band, as a stroked rectangle inset by half its own width. */
+  readonly band: Box & { readonly strokeWidth: number };
+}
+
+export function stallBand(state: LiftState): StallBand | null {
+  if (!grindIsLive(state)) return null;
+  if (state.phase !== 'ASCENT') return null;
+  if (state.velocity >= LIFT_TUNING.GRIND_STALL_VELOCITY) return null;
+  const c = LIFT_TUNING.FEEDBACK.STAGE_COMMAND;
+  const depth =
+    state.netForce >= 0 ? 0 : clamp01(-state.netForce / LIFT_TUNING.STRUGGLE_FULL_DEFICIT);
+  const base = c.STALL_MIN_ALPHA + (c.STALL_MAX_ALPHA - c.STALL_MIN_ALPHA) * depth;
+  const pulse = pulseAt(state.tick, c.STALL_PULSE_MS);
+  const half = c.STALL_BAND_PX / 2;
+  return {
+    depth,
+    // FLOORED RATHER THAN MULTIPLIED STRAIGHT BY THE PULSE, so the band cannot
+    // blink fully off while the bar is losing. See `STALL_PULSE_FLOOR`.
+    alpha: base * (c.STALL_PULSE_FLOOR + (1 - c.STALL_PULSE_FLOOR) * pulse),
+    band: {
+      x: half,
+      y: half,
+      w: L.STAGE_W - c.STALL_BAND_PX,
+      h: L.STAGE_H - c.STALL_BAND_PX,
+      strokeWidth: c.STALL_BAND_PX,
+    },
   };
 }
 
@@ -577,6 +683,15 @@ export function burstReadout(state: LiftState): BurstReadout | null {
  * is visibly speeding up or slowing down." The read model is `lift.ts`'s and
  * this is the drawing of it.
  *
+ * THE BANDS SAY CONTROL, NOT PROXIMITY, AND THE NAMES NOW SAY SO. Under the
+ * beat the 2026-08-25 replay steer replaced, the player steered the bar's rate
+ * the whole way down, so calling the ramp an "approach" was fair. Under
+ * hold-to-lower there is nothing to steer: holding is correct at every load and
+ * arrives at quality 1, so `chestApproach`'s number can only ever be non-zero
+ * for a bar the player LET GO OF. Approach itself is drawn — it is the glyph's
+ * HEIGHT on this plot, which is the literal thing a bar-path trace is — so the
+ * colour is free to carry the other fact and is named for it.
+ *
  * A COLOUR CHOICE LIVES HERE RATHER THAN IN THE COMPONENT because a chain of
  * comparisons inside a `.tsx` file is the "computing a modifier inside a
  * component" CLAUDE.md forbids, one category over — and because it is testable
@@ -586,9 +701,9 @@ export function barGlyphColour(state: LiftState): string {
   const heat = chestApproach(state);
   if (heat === null) return LIFT_PALETTE.BAR_STEEL;
   const c = LIFT_TUNING.FEEDBACK.STAGE_COMMAND;
-  if (heat >= c.BAR_HOT_AT) return LIFT_PALETTE.BAR_APPROACH_HOT;
-  if (heat >= c.BAR_WARM_AT) return LIFT_PALETTE.BAR_APPROACH_WARM;
-  return LIFT_PALETTE.BAR_APPROACH_CALM;
+  if (heat >= c.BAR_CRASH_AT) return LIFT_PALETTE.BAR_CRASHING;
+  if (heat >= c.BAR_RUNAWAY_AT) return LIFT_PALETTE.BAR_RUNNING_AWAY;
+  return LIFT_PALETTE.BAR_UNDER_CONTROL;
 }
 
 /**

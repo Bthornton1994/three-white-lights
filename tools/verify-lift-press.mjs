@@ -1956,19 +1956,19 @@ function readStageBeatTuning() {
     stageW: numberInSource(layout, 'STAGE_W'),
     stageH: numberInSource(layout, 'STAGE_H'),
     cueX: numberInSource(layout, 'CUE_X'),
-    pipW: numberInSource(stage, 'BURST_PIP_W'),
-    pipH: numberInSource(stage, 'BURST_PIP_H'),
-    pipGap: numberInSource(stage, 'BURST_PIP_GAP'),
-    pipsY: numberInSource(stage, 'BURST_PIPS_Y'),
-    trayPad: numberInSource(stage, 'BURST_TRAY_PAD'),
+    pipW: numberInSource(stage, 'GRIND_PIP_W'),
+    pipH: numberInSource(stage, 'GRIND_PIP_H'),
+    pipGap: numberInSource(stage, 'GRIND_PIP_GAP'),
+    pipsY: numberInSource(stage, 'GRIND_PIPS_Y'),
+    trayPad: numberInSource(stage, 'GRIND_TRAY_PAD'),
     pressFlashMs: numberInBlock(stage, 'FLASH_MS', 'press'),
     downFlashMs: numberInBlock(stage, 'FLASH_MS', 'down'),
   };
   const missing = Object.entries(read)
     .filter(([, value]) => typeof value !== 'number' || !Number.isFinite(value))
     .map(([key]) => key);
-  const litColour = stringInSource(palette, 'BURST_PIP_LIT');
-  if (litColour === null) missing.push('BURST_PIP_LIT');
+  const litColour = stringInSource(palette, 'GRIND_PIP_LIT');
+  if (litColour === null) missing.push('GRIND_PIP_LIT');
   const taps = BENCH_BEAT.maxCountedTaps;
   if (missing.length > 0 || typeof taps !== 'number') {
     return { ...read, litColour, missing, tray: null, pipArea: null };

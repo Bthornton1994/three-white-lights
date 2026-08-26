@@ -45,8 +45,9 @@ import {
 import {
   SPRITE_BOX,
   barGlyphColour,
-  burstReadout,
   commandHit,
+  grindReadout,
+  stallBand,
   cuePulse,
   cueRing,
   hitFlash,
@@ -1003,7 +1004,7 @@ describe('the grind readout', () => {
     const units = LIFT_TUNING.FEEDBACK.STAGE_COMMAND.GRIND_READOUT_UNITS;
     const asked = 6;
     const history = benchHistory(LOAD_PRESETS.HEAVY, { taps: asked });
-    const open = history.map((s) => burstReadout(s)).filter((r) => r !== null);
+    const open = history.map((s) => grindReadout(s)).filter((r) => r !== null);
     expect(open.length, 'the grind never went live').toBeGreaterThan(10);
 
     // FACT 2 — it is never invalid: the row is `GRIND_READOUT_UNITS` long, and
@@ -1035,10 +1036,10 @@ describe('the grind readout', () => {
     // and fell on a timer rather than on the player's rate would satisfy every
     // assertion above, so the discriminator is two rates on the same rep.
     const fast = benchHistory(LOAD_PRESETS.HEAVY, { taps: 10 })
-      .map((s) => burstReadout(s))
+      .map((s) => grindReadout(s))
       .filter((r) => r !== null);
     const slow = benchHistory(LOAD_PRESETS.HEAVY, { taps: 10, spacingTicks: 14 })
-      .map((s) => burstReadout(s))
+      .map((s) => grindReadout(s))
       .filter((r) => r !== null);
     expect(fast.length, 'the fast rep never went live').toBeGreaterThan(10);
     expect(slow.length, 'the slow rep never went live').toBeGreaterThan(10);
@@ -1052,14 +1053,14 @@ describe('the grind readout', () => {
     const at = history.find((s) => s.pressCommandTick !== null)?.pressCommandTick ?? null;
     expect(at).not.toBeNull();
     if (at === null) return;
-    expect(history.filter((s) => s.tick < at && burstReadout(s) !== null).length).toBe(0);
-    expect(rep(0.9).filter((s) => burstReadout(s) !== null).length).toBe(0);
-    expect(deadliftToTheDownCall(0.9).filter((s) => burstReadout(s) !== null).length).toBe(0);
+    expect(history.filter((s) => s.tick < at && grindReadout(s) !== null).length).toBe(0);
+    expect(rep(0.9).filter((s) => grindReadout(s) !== null).length).toBe(0);
+    expect(deadliftToTheDownCall(0.9).filter((s) => grindReadout(s) !== null).length).toBe(0);
   });
 
   it('keeps the row on the stage and clear of the bar-path panel', () => {
     const history = benchHistory(LOAD_PRESETS.HEAVY, { taps: 3 });
-    const readout = history.map((s) => burstReadout(s)).find((r) => r !== null);
+    const readout = history.map((s) => grindReadout(s)).find((r) => r !== null);
     expect(readout, 'no readout to measure').toBeDefined();
     if (readout === undefined) return;
     expect(readout.tray.x).toBeGreaterThan(0);
@@ -1074,6 +1075,148 @@ describe('the grind readout', () => {
       expect(pip.y).toBeGreaterThanOrEqual(readout.tray.y);
       expect(pip.y + pip.h).toBeLessThanOrEqual(readout.tray.y + readout.tray.h);
     }
+  });
+
+  it('flashes the rail once per COUNTED tap and nowhere near the tray', () => {
+    // -----------------------------------------------------------------------
+    // THE RATE CHANNEL THE PIP ROW CANNOT CARRY, AND THE ONE MEASUREMENT
+    // CONSTRAINT ON IT.
+    //
+    // `lit` is a LEVEL: it rises and falls honestly and it still draws as a bar
+    // filling to the right, which is the grammar of a counter. `kick` is the
+    // evidence that a tap LANDED, so the visible flashing rate is the tap rate.
+    // What this pins is that it is keyed to the counted tap and that it is
+    // drawn where `verify-lift-press.mjs`'s lit-pip count cannot see it.
+    // -----------------------------------------------------------------------
+    const spacing = 9;
+    const history = benchHistory(LOAD_PRESETS.HEAVY, { taps: 6, spacingTicks: spacing });
+    const live = history.map((s) => grindReadout(s)).filter((r) => r !== null);
+    expect(live.length, 'the grind never went live').toBeGreaterThan(10);
+
+    // GEOMETRY: outside the tray, off the sprite cell, clear of the plot.
+    const first = live[0];
+    expect(first, 'no readout to measure').toBeDefined();
+    if (first === undefined) return;
+    expect(first.rail.y, 'the rail overlaps the tray the pip count is taken in')
+      .toBeGreaterThanOrEqual(first.tray.y + first.tray.h);
+    expect(first.rail.y + first.rail.h).toBeLessThan(L.SPRITE_Y);
+    expect(first.rail.x + first.rail.w).toBeLessThan(L.TRACE_X);
+    expect(first.rail.x).toBe(first.tray.x);
+
+    // FACT 3: it moves, and it moves at the TAP rate rather than on a timer.
+    // A kick that decayed from one event, or one hardcoded on, would give a
+    // single peak; six taps `spacing` ticks apart give six.
+    const kicks = live.map((r) => r.kick);
+    const peaks = kicks.filter((k, i) => k === 1).length;
+    expect(peaks, `full-strength kicks over ${live.length} live frames`).toBe(6);
+    expect(Math.min(...kicks), 'the rail never went dark between taps').toBe(0);
+    // ...and it is the COUNTED tap, not the dispatched one: a rep tapped inside
+    // the refractory floor lands more presses and cannot land more kicks.
+    const mashed = benchHistory(LOAD_PRESETS.HEAVY, { taps: 6, spacingTicks: 1 })
+      .map((s) => grindReadout(s))
+      .filter((r) => r !== null);
+    const mashedPeaks = mashed.filter((r) => r.kick === 1).length;
+    expect(mashedPeaks, 'six presses one tick apart were all counted').toBeLessThan(6);
+  });
+});
+
+describe('the stall band', () => {
+  /**
+   * A bench rep that stops tapping mid-ascent, at a load its own reachable-cell
+   * table says can stall. Deliberately `LOAD_PRESETS.MAXIMAL`: the sweep in
+   * `lift.test.ts` pins that the lighter rungs do NOT stall, and a band with no
+   * stall behind it is a test with an empty domain.
+   */
+  const stalledRep = (): readonly LiftState[] =>
+    benchHistory(LOAD_PRESETS.MAXIMAL, { taps: 3, spacingTicks: 4 });
+
+  it('draws while the bar is losing and on no other lift', () => {
+    const history = stalledRep();
+    const banded = history.filter((s) => stallBand(s) !== null);
+    expect(banded.length, 'the bar never stalled, so this test has no subject')
+      .toBeGreaterThan(3);
+    // Every banded frame is an ASCENT frame of a bench rep, and every one of
+    // them is a frame the MECHANIC is counting as stalled.
+    for (const state of banded) {
+      expect(state.phase).toBe('ASCENT');
+      expect(state.velocity).toBeLessThan(LIFT_TUNING.GRIND_STALL_VELOCITY);
+    }
+    // ...and it never draws on the beat where the bar is motionless BY DESIGN.
+    expect(history.filter((s) => s.phase === 'HOLE' && stallBand(s) !== null).length).toBe(0);
+    // The other two lifts have no grind to rescue, so they never get a band —
+    // both of them stall in the ordinary way and neither draws one.
+    expect(rep(0.9).filter((s) => stallBand(s) !== null).length).toBe(0);
+    expect(deadliftToTheDownCall(0.9).filter((s) => stallBand(s) !== null).length).toBe(0);
+  });
+
+  it('goes out the tick the bar moves again, at an unchanged stall total [the-stall-band-is-live-and-not-an-accumulator]', () => {
+    // -----------------------------------------------------------------------
+    // THE WITNESS'S OWN PAIR. `stallTicks` and `stallCapacityLoss` only ever
+    // RISE, so a band keyed to either would come on at the first stalled tick
+    // and stay on through the rescue and the lockout — a cue that has stopped
+    // reading. These two states differ in `velocity` and in nothing else.
+    // -----------------------------------------------------------------------
+    const history = stalledRep();
+    // THE DOMAIN, PINNED AS A COUNT: this pair is drawn out of a real stall of
+    // real length, on a rep that really stopped, rather than out of one tick
+    // somebody constructed. A stall this rep did not have would leave the pair
+    // below comparing two states of a bar that was never losing.
+    const stalledFrames = history.filter((s) => stallBand(s) !== null);
+    expect(stalledFrames.length, 'stalled frames this pair is drawn from').toBeGreaterThan(6);
+    const stalledAt = stalledFrames[0];
+    expect(stalledAt, 'the bar never stalled').toBeDefined();
+    if (stalledAt === undefined) return;
+    expect(stalledAt.stallTicks, 'no stalled ticks to hold fixed').toBeGreaterThan(0);
+    const moving: LiftState = {
+      ...stalledAt,
+      velocity: LIFT_TUNING.GRIND_STALL_VELOCITY,
+    };
+    expect(moving.stallTicks).toBe(stalledAt.stallTicks);
+    expect(moving.stallCapacityLoss).toBe(stalledAt.stallCapacityLoss);
+    expect(stallBand(stalledAt)).not.toBeNull();
+    expect(stallBand(moving), 'the band survived the bar moving again').toBeNull();
+  });
+
+  it('never blinks fully off, and pulses rather than sitting at one alpha', () => {
+    const bands = stalledRep()
+      .map((s) => stallBand(s))
+      .filter((b) => b !== null);
+    expect(bands.length, 'no band to measure').toBeGreaterThan(3);
+    const alphas = bands.map((b) => b.alpha);
+    // A floor, because a frame at alpha 0 is indistinguishable from a stage
+    // that draws no stall at all — which is what the browser check reads.
+    const floor =
+      SC.STALL_MIN_ALPHA * SC.STALL_PULSE_FLOOR;
+    for (const alpha of alphas) {
+      expect(alpha).toBeGreaterThanOrEqual(floor);
+      expect(alpha).toBeLessThanOrEqual(SC.STALL_MAX_ALPHA);
+    }
+    expect(new Set(alphas).size, 'the band sat at one alpha').toBeGreaterThan(2);
+  });
+
+  it('is drawn at the stage edges and cannot reach the pip tray', () => {
+    // WHY THIS IS PINNED RATHER THAN LEFT TO THE DRAWING. The browser check
+    // reads the stall out of the stage's TOP STRIP and the readout out of the
+    // TRAY, and if those two regions overlapped each measurement would be
+    // reading the other's subject.
+    const band = stalledRep()
+      .map((s) => stallBand(s))
+      .find((b) => b !== null);
+    const readout = benchHistory(LOAD_PRESETS.HEAVY, { taps: 3 })
+      .map((s) => grindReadout(s))
+      .find((r) => r !== null);
+    expect(band, 'no band to measure').toBeDefined();
+    expect(readout, 'no readout to measure').toBeDefined();
+    if (band === undefined || readout === undefined) return;
+    const depth = band.band.strokeWidth;
+    expect(band.band.x).toBe(depth / 2);
+    expect(band.band.x + band.band.w).toBe(L.STAGE_W - depth / 2);
+    expect(band.band.y + band.band.h).toBe(L.STAGE_H - depth / 2);
+    // The tray sits inside every edge of the band by a real margin.
+    expect(readout.tray.y, 'the top edge band reaches the tray').toBeGreaterThan(depth);
+    expect(readout.tray.x).toBeGreaterThan(depth);
+    expect(readout.tray.x + readout.tray.w).toBeLessThan(L.STAGE_W - depth);
+    expect(readout.rail.y + readout.rail.h).toBeLessThan(L.STAGE_H - depth);
   });
 });
 
@@ -1099,9 +1242,9 @@ describe('the bar glyph reads how the bar is arriving', () => {
     // it back to calm, and the drawing follows. Pinned at three rather than
     // "more than one" so a band that stopped being reachable is red.
     expect(colours.size).toBe(3);
-    expect(colours.has(LIFT_PALETTE.BAR_APPROACH_HOT)).toBe(true);
-    expect(colours.has(LIFT_PALETTE.BAR_APPROACH_WARM)).toBe(true);
-    expect(colours.has(LIFT_PALETTE.BAR_APPROACH_CALM)).toBe(true);
+    expect(colours.has(LIFT_PALETTE.BAR_CRASHING)).toBe(true);
+    expect(colours.has(LIFT_PALETTE.BAR_RUNNING_AWAY)).toBe(true);
+    expect(colours.has(LIFT_PALETTE.BAR_UNDER_CONTROL)).toBe(true);
   });
 
   it('cannot reach the mechanic, so its bands decide a colour and never an outcome', () => {
@@ -1110,7 +1253,7 @@ describe('the bar glyph reads how the bar is arriving', () => {
     // ever read either name, a colour choice would have become a grading input
     // and this goes red. Names, not values — a value could coincide.
     const mechanic = readFileSync(path.join(HERE, '..', 'game', 'lift.ts'), 'utf8');
-    for (const name of ['BAR_WARM_AT', 'BAR_HOT_AT', 'barGlyphColour']) {
+    for (const name of ['BAR_RUNAWAY_AT', 'BAR_CRASH_AT', 'barGlyphColour']) {
       expect(mechanic.includes(name), `lift.ts reads ${name}`).toBe(false);
     }
     // ...and the scan is pointed at a file it really opened.
