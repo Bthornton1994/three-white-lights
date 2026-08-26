@@ -514,6 +514,14 @@ const P4B_REP_MEMBER_ATTEMPTS = 3;
  */
 const P4B_CLASS_SAMPLES = 30;
 const P4B_CLASS_SAMPLE_INTERVAL_MS = 700;
+/**
+ * P4c's occupied-swap window. Sized against the measured usage trace at the
+ * shipped seed (power-bar's in-use runs recur every few seconds for the
+ * first ~31s after mount, then in bursts separated by free stretches up to
+ * ~76s): 25s covers the early alternation this claim runs during, and a run
+ * that lands in a long free stretch reports a named SKIP, not a flake.
+ */
+const P4C_OCCUPIED_SWAP_POLL_MS = 25000;
 
 /**
  * Which use class each station draws, keyed `<kind>-<item>` — DERIVED from
@@ -849,6 +857,72 @@ try {
     }
   } else {
     fail(`Phase 3 (8c): no member ever showed a 'queuing' cue within ${cueBudgetMs}ms — the shipped sim queues member 1 behind member 0 at flat-bench on tick 1`);
+  }
+
+  // -------------------------------------------------------------------------
+  // P4c: THE OCCUPIED SWAP. While `fixed:power-bar` is in use, its chip draws
+  // a DIFFERENT sprite than while it is free — the double-bar fix (the
+  // resting sprite is a loaded bar seen from above, the bar-class member pose
+  // draws its own loaded bar, and before this fix a using member composited
+  // two crossed barbells on one cell; `floorSprites.test.ts` pins the pixel
+  // half, that the occupied variant holds zero bar/plate paint).
+  //
+  // WHY THIS IS A POLL FOR TWO MOMENTS AND NOT ONE READING. Both states
+  // recur on the shipped seed — measured by stepping `floorSim.ts` directly,
+  // power-bar is in use on ticks 1-30, 44-80, 94-127, 141-173, 232-262, then
+  // in shorter runs (512-543, 880-912, ...) separated by free stretches up
+  // to ~76s long. This claim runs early (right after 8c, minutes before the
+  // drag sections), so on a typical run both moments occur inside the
+  // budget; if the sim happens to be deep in a free stretch, the occupied
+  // moment is reported as a named SKIP rather than flaked, the same policy
+  // as the stranded ring. Each sample re-reads the highlight AFTER reading
+  // the sprite, so a tick boundary landing between the two reads discards
+  // the sample instead of attributing a frame to the wrong state.
+  // -------------------------------------------------------------------------
+  {
+    const readPowerBarSample = async () => {
+      const before = await boxOf('floorsim-using-fixed-power-bar');
+      const png = await pngBackedElementIn('floorgrid-fixed-sprite-power-bar');
+      const after = await boxOf('floorsim-using-fixed-power-bar');
+      const beforeInUse = before !== null && before.width > 0;
+      const afterInUse = after !== null && after.width > 0;
+      if (beforeInUse !== afterInUse || png === null) return null;
+      return { inUse: beforeInUse, uriHash: png.uriHash, uriLength: png.uriLength };
+    };
+    const swapDeadline = Date.now() + P4C_OCCUPIED_SWAP_POLL_MS;
+    let freeSample = null;
+    let occupiedSample = null;
+    while (Date.now() < swapDeadline && (freeSample === null || occupiedSample === null)) {
+      const sample = await readPowerBarSample();
+      if (sample !== null) {
+        if (sample.inUse) occupiedSample = occupiedSample ?? sample;
+        else freeSample = freeSample ?? sample;
+      }
+      await page.waitForTimeout(REACTION_POLL_INTERVAL_MS);
+    }
+    if (freeSample !== null && occupiedSample !== null) {
+      if (occupiedSample.uriHash !== freeSample.uriHash) {
+        ok(
+          `P4c: power-bar swaps its sprite while in use — free uri hash ${freeSample.uriHash} (${freeSample.uriLength} chars) vs occupied ${occupiedSample.uriHash} (${occupiedSample.uriLength} chars)`,
+        );
+      } else {
+        fail(
+          `P4c: power-bar draws the SAME sprite in use as free (uri hash ${occupiedSample.uriHash} both ways) — the occupied swap is not wired, so a using member composites a second loaded bar over the station's own`,
+        );
+      }
+    } else if (freeSample !== null) {
+      skip(
+        `P4c: power-bar was never observed in use within ${P4C_OCCUPIED_SWAP_POLL_MS}ms (free sprite read, hash ${freeSample.uriHash}) — the sim is in one of its measured long free stretches; the swap claim did not arise this run`,
+      );
+    } else if (occupiedSample !== null) {
+      skip(
+        `P4c: power-bar was never observed free within ${P4C_OCCUPIED_SWAP_POLL_MS}ms (occupied sprite read, hash ${occupiedSample.uriHash}) — the swap claim's other half did not arise this run`,
+      );
+    } else {
+      fail(
+        `P4c: no clean sample of the power-bar chip's sprite was ever taken within ${P4C_OCCUPIED_SWAP_POLL_MS}ms — the chip's PNG element is missing, which is a render gap rather than a sim choice`,
+      );
+    }
   }
 
   // 8e: the legend names every state the machine can be in, and the readout's

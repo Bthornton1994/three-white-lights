@@ -1098,11 +1098,12 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
   Object.freeze({
     field: 'FLOOR_SPRITE_URIS — one PNG data URI per sprite, GDD §5.13 Phase 4',
     why:
-      'A base64 image payload is free-form text by construction, so there is no closed union to narrow these to, and a brand would add a constructor without adding a check that means anything (the payload cannot be validated as art by a type). What holds the line instead is the shape of the module: floorSprites.ts exports frozen CONSTANTS and no functions, so these one hundred and eleven positions have no branch point, no caller-supplied input and no domain — instrument B reads the finished values on every run and containment-scans every byte of every URI against the ban list unconditionally. A forbidden name cannot be conditionally present in a static string. The colocated floorSprites.test.ts additionally decodes every URI and pins it byte-for-byte to its source index grid, so the strings cannot drift from the art they claim to be.',
+      'A base64 image payload is free-form text by construction, so there is no closed union to narrow these to, and a brand would add a constructor without adding a check that means anything (the payload cannot be validated as art by a type). What holds the line instead is the shape of the module: floorSprites.ts exports frozen CONSTANTS and no functions, so these one hundred and twelve positions have no branch point, no caller-supplied input and no domain — instrument B reads the finished values on every run and containment-scans every byte of every URI against the ban list unconditionally. A forbidden name cannot be conditionally present in a static string. The colocated floorSprites.test.ts additionally decodes every URI and pins it byte-for-byte to its source index grid, so the strings cannot drift from the art they claim to be.',
     positions: Object.freeze([
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.fixed.comp-plates',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.fixed.flat-bench',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.fixed.power-bar',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.fixedOccupied.power-bar',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.floor.garage',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.floor.storage-unit',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.floor.strip-mall-unit',
@@ -1575,8 +1576,12 @@ const SURFACE_CENSUS = Object.freeze({
   // floorSprites.test.ts).
   // 65 -> 115: P4b replaced the one `using` pose with six station-class rep
   // poses, so the member table grew from 40 URI leaves to 90 — same group,
-  // same reasoning, fifty more static frozen strings.
-  BARE_POSITIONS: 115,
+  // same reasoning, fifty more static frozen strings. 115 -> 116: P4c's
+  // occupied power-bar URI — one more static frozen string, and exactly one,
+  // because the occupied table's type is a closed record over its own keys
+  // rather than a Partial over every fixed item (see FIXED_OCCUPIED_PAINTERS
+  // in floorSprites.ts for why the census forced that shape).
+  BARE_POSITIONS: 116,
   BARE_FIELDS: 2,
   BRANDED_POSITIONS: 34,
   /**
@@ -2750,7 +2755,16 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // grew from 12 fill/push pairs to 15 (+3 `fill` calls, +3 `ops.push`
   // calls). Read from this pin's own failure value, then attributed by
   // hand-count against the diff.
-  CALLS_EXAMINED: 2426,
+  // 2426 -> 2457: P4c. Attributed against the diff: the bar-pose repaint
+  // (+8: two `dot` and one `under` op with their pushes in frame a, two
+  // hand fills with pushes in frame b, minus the plain bar fill `under`
+  // replaced), `opsPowerBarOccupied` (+10: five fills, five pushes), the
+  // occupied build loop (+6: keys, painter, render, frozenGrid, upscaled,
+  // gridToPngUri), two `Object.freeze` on the new table returns, one on
+  // `FIXED_OCCUPIED_PAINTERS`, and FloorGrid's occupied branch (+3ish:
+  // `hasOwnProperty.call`, `stationActivity.get`, `stationKey`). Read from
+  // this pin's own failure value.
+  CALLS_EXAMINED: 2457,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -2962,7 +2976,7 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     const uriGroup = DECLARED_BARE_STRING_FIELDS.find((group) =>
       group.field.includes('FLOOR_SPRITE_URIS'),
     );
-    expect(uriGroup?.positions.length).toBe(111); // 61 -> 111: P4b, measured.
+    expect(uriGroup?.positions.length).toBe(112); // 61 -> 111: P4b; 112: P4c's occupied power-bar. Measured.
     const reopened = CLOSED_BARE_STRING_FIELDS.flatMap((group) => [...group.positions]).filter(
       (position) => DECLARED_BARE_STRING_FIELDS.some((group) => group.positions.includes(position)),
     );
@@ -9016,7 +9030,9 @@ const DRIVE_CENSUS = Object.freeze({
   // Phase 3's RENDER half: re-measured (3675966 -> 3783596).
   // Phase 4: the wider domains multiply the walk, and the sprite tables'
   // sixty-one grids are read node by node. Read from this pin's own failure.
-  NODES: 6411086, // 6522285 -> 6411086: P4b, measured off this assertion.
+  // P4c: the occupied power-bar grid and URI join the walk. Read from this
+  // pin's own failure value.
+  NODES: 6411094, // 6411086 -> 6411094: P4c, measured off this assertion.
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -9034,7 +9050,9 @@ const DRIVE_CENSUS = Object.freeze({
   // 16900230), a real failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (16900230 -> 17409837).
   // Phase 4: read from this pin's own failure value.
-  STRINGS: 29598067, // P4b, measured off this assertion.
+  // P4c: the occupied URI and its table keys. Read from this pin's own
+  // failure value.
+  STRINGS: 29598083, // 29598067 -> 29598083: P4c, measured off this assertion.
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -9051,7 +9069,11 @@ const DRIVE_CENSUS = Object.freeze({
   // lead, from this pin's own failure value — the builder that authored the
   // sprite pass was killed mid-cascade by a session limit and this pin lagged
   // its final edit by one distinct string.
-  DISTINCT_STRINGS: 3504, // 3464 -> 3504: P4b, measured off this assertion.
+  // P4c: two new distinct strings — the occupied power-bar URI is certainly
+  // one; the other is most plausibly the new `fixedOccupied` table key, but
+  // that half is an attribution, not a measurement. Read from this pin's
+  // own failure value.
+  DISTINCT_STRINGS: 3506, // 3504 -> 3506: P4c, measured off this assertion.
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -12901,7 +12923,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // 21 -> 28: P4b — stationUseClassFor's two returns, stationAnchor's
       // one, memberDrawPoint's two, memberFacing's third arm, and the member
       // .map callback converted to a block body with an explicit return.
-      'FloorGrid.tsx': 28,
+      // 28 -> 29: P4c — fixedSpriteUriFor's occupied-variant early return.
+      'FloorGrid.tsx': 29,
       // CROSSING 6: GymScreen.tsx's own two helper functions
       // (`allocationOptions`, `describeSlotOutcome`, the latter with three
       // return statements across its three arms) plus the component's own
@@ -12934,7 +12957,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // this table's own failure value.
       // 43 -> 50: P4b — three using-pose ops builders, usingBaseGrid, and
       // memberGrid's three new early returns. Read off this table's failure.
-      'floorSprites.ts': 50,
+      // 50 -> 52: P4c — the `under` op helper and opsPowerBarOccupied.
+      'floorSprites.ts': 52,
       'ladder.ts': 25,
       // members.ts's 13 return statements (§5.11 stage 3).
       'members.ts': 13,
@@ -13481,10 +13505,22 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // :1043 -> :1080: the bench pose rotated along the slab — `opsUsingBench`'s
   // longer draw program and its orientation comment sit above the arrow.
   // Re-measured, per this list's own rule.
-  'floorSprites.ts:1080 callee=fresh:ArrowFunction',
-  'floorSprites.ts:318 receiver=NewExpression',
-  'floorSprites.ts:371 receiver=NewExpression',
-  'floorSprites.ts:384 receiver=NewExpression',
+  // :1080 -> :1174 and :318/:371/:384 -> :339/:398/:411: P4c — the `under`
+  // op and its interpreter arm sit above the three `new Array` sites, and
+  // the occupied painter, its table and the sled repark's audit-clean
+  // arithmetic comment sit above the arrow. Re-measured, per this list's
+  // own rule.
+  // :1174 -> :1207 and :339/:398/:411 -> :363/:422/:435: P4c's critic
+  // round — comments only, no code moved. The `under` op's named-catcher
+  // paragraph and the class table's 1x1-accessory doubt sit above the three
+  // `new Array` sites (+24); those plus the occupied variant's honest-form
+  // rewrite and the sled residual's sharpened pointer sit above the arrow
+  // (+33). Re-measured from this assertion's own failure value, per this
+  // list's own rule.
+  'floorSprites.ts:1207 callee=fresh:ArrowFunction',
+  'floorSprites.ts:363 receiver=NewExpression',
+  'floorSprites.ts:422 receiver=NewExpression',
+  'floorSprites.ts:435 receiver=NewExpression',
   'ladder.ts:333 receiver=ArrayLiteralExpression',
   'ladderView.tsx:115 returned=unfollowable:state',
   'ladderView.tsx:123 returned=unfollowable:state',
@@ -13657,7 +13693,9 @@ const SCREEN_AGREEMENT = Object.freeze({
 // than hand-counted.
 const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze({
   parameter: 4,
-  'module-variable': 53,
+  // 53 -> 54: P4c — FloorGrid.tsx's `hasOwnProperty.call` in the occupied
+  // branch of `fixedSpriteUriFor`. Read from this pin's own failure value.
+  'module-variable': 54,
   // 5 -> 7: Phase 3's RENDER half's two calls through a local binding in
   // `AmbientMemberBody`'s single animation effect (`bobLoop.start()`,
   // `pulseLoop.stop()`). Read from this table's own failure value.
@@ -13675,7 +13713,11 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1160 -> 1163: the bench pose rotated along the slab — `opsUsingBench`'s
   // three extra `fill` calls (12 -> 15). Read from this pin's own failure
   // value, then attributed by hand-count against the diff.
-  function: 1163,
+  // 1163 -> 1178: P4c — the bar-pose repaint's extra op-constructor calls,
+  // opsPowerBarOccupied's five fills, and the occupied build loop's helper
+  // calls. Read from this pin's own failure value, attributed against the
+  // diff.
+  function: 1178,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -13690,7 +13732,11 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1162 -> 1165: the bench pose rotated along the slab — `opsUsingBench`'s
   // three extra `ops.push` calls (12 -> 15). Read from this pin's own
   // failure value, then attributed by hand-count against the diff.
-  member: 1165,
+  // 1165 -> 1180: P4c — the matching `ops.push` calls for the repaint and
+  // the occupied painter, plus `Object.freeze`/`Object.keys` and
+  // `stationActivity.get` at the occupied call sites. Read from this pin's
+  // own failure value.
+  member: 1180,
   'member-callback': 12,
   'member-of-parameter': 21,
   // Phase 4: FLOOR_SPRITE_PALETTES' construction calls a fresh arrow (the
@@ -13745,7 +13791,11 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 359 -> 362: the bench pose rotated along the slab — three more
   // `ops.push` mutating calls on `opsUsingBench`'s own local (12 -> 15).
   // Read from this pin's own failure value, then attributed by hand-count.
-  local: 362,
+  // 362 -> 373: P4c — the repaint's extra `ops.push` calls on the two bar
+  // frames' own local, opsPowerBarOccupied's five, and the occupied build
+  // loop's writes into its two fresh tables. Read from this pin's own
+  // failure value.
+  local: 373,
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -13804,7 +13854,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
     // member-call rows. Read from this pin's own failure value.
     // 606 -> 622: P4b — FloorGrid.tsx +7 returns, floorSprites.ts +7
   // returns and +2 fresh sites, per the byModule rows above. Measured.
-  SITES: 622,
+  // 622 -> 625: P4c — FloorGrid.tsx +1 return, floorSprites.ts +2 returns,
+  // per the byModule rows above. Measured.
+  SITES: 625,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -13851,7 +13903,11 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 52_002 -> 52_058: the bench pose rotated along the slab —
   // `opsUsingBench`'s three extra fill/push pairs and one more local
   // (`bodyX`) are 56 AST nodes. Read from this pin's own failure value.
-  NODES_EXAMINED: 52_058,
+  // 52_058 -> 52_649: P4c — the `under` op arm and helper, the bar-pose
+  // repaint, opsPowerBarOccupied, the occupied build loop, FloorGrid's
+  // occupied branch, and the sled repark's audit-clean arithmetic. Read
+  // from this pin's own failure value.
+  NODES_EXAMINED: 52_649,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

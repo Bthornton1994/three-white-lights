@@ -1875,6 +1875,17 @@ export const EMPIRE_TUNING = Object.freeze({
    * ON the bench); bar stops just short of centre (under the bar, not
    * swallowed by it); generic leans into the machine face. Provisional feel
    * values, like everything in this block — a phone pass judges them.
+   *
+   * A recorded residual, pointed at from `opsSled` in `floorSprites.ts`:
+   * the sled sprite parks its sled body at the native row where the `bar`
+   * bias above puts a TOP-approach using member, so that composite reads as
+   * hands on a loaded sled. A side approach lands the member lower on the
+   * track, where it clips the push posts rather than the sled body —
+   * accepted rather than chased with per-approach art. Two consequences for
+   * whoever tunes here: retuning `bar` moves the drawn member while the
+   * sled's park row stays authored against the current value, so re-check
+   * the sled composite after a change; and the side-approach read has not
+   * been judged on a device.
    */
   FLOOR_SIM_USING_ANCHOR_BIAS: Object.freeze({
     bench: 1,
@@ -1944,6 +1955,16 @@ export const EMPIRE_TUNING = Object.freeze({
    * walk cycle's cadence ratio, 3 halves it again — and no component
    * arithmetic needs touching. Deterministic from the sim tick and the
    * member index, like the walk cycle — no clock, no dice.
+   *
+   * P4c held this at 1 after inspecting the frames rather than the device,
+   * and left the doubt open with numbers on it. Measured a/b frame
+   * difference per class on the shipped maps: bench 52 native pixels, bar
+   * 32-36, generic 7. The generic pair's 7 are one contiguous arm (a
+   * two-pixel reach retraction plus its hand cap), which is a small coherent
+   * pump rather than scattered toggling — so the frame inspection produced
+   * no concrete flicker finding, and retuning on none would be a guess. For
+   * the next phone pass: if usage still reads frantic, generic is the class
+   * to watch, and 2 is the first value to try.
    */
   FLOOR_SPRITE_REP_FRAME_TICKS: 1,
 
@@ -1972,6 +1993,17 @@ export const EMPIRE_TUNING = Object.freeze({
    * singlet, gold vest, violet hoodie) and none is in the floor's own
    * blue-grey family. `floorSprites.test.ts` drives the pairwise-distinctness
    * claim on the rendered sprites rather than trusting this list.
+   *
+   * A doubt recorded rather than resolved: the powerlifter's red
+   * ([200, 60, 52]) and the gear palette's competition-plate red below
+   * ([178, 56, 48], with its [128, 38, 34] shade) are a near-collision —
+   * deliberately both red, since a red singlet and red discs are the sport's
+   * own colours, and separated in the composite by nothing but the one-pixel
+   * outline ring. Legible in the desk-scale composites this was checked in;
+   * whether a powerlifter benching under red plates smears into one red mass
+   * at phone scale is unjudged, and per §5.13's stanza the last device
+   * pass's silence about it is not a yes. The tuning fix, if a phone pass
+   * asks for it, is nudging either hue here — both are knobs.
    */
   FLOOR_SPRITE_OUTFIT_PALETTE: Object.freeze({
     casual: Object.freeze({ top: Object.freeze([226, 128, 60]), shade: Object.freeze([178, 90, 40]) }),

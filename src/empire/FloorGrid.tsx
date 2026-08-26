@@ -485,8 +485,19 @@ function memberFacing(member: FloorSimMember, station: FloorStation | undefined)
  * for a ladder item the fixed-sprite table does not draw. `fixedFloorFurniture`
  * only ever emits the three baseline rows today, so the null arm is a guard
  * for a future ladder item arriving, not a path anything reaches now.
+ *
+ * P4c: while the station is `using` (per the same `stationActivity` read the
+ * highlights draw from), an item with an occupied variant draws that
+ * instead. Today that is only `power-bar` — its resting sprite is a loaded
+ * bar, the bar-class member pose draws its own loaded bar, and the two
+ * composited as crossed barbells on one cell. The occupied sprite is the
+ * bar's resting marks with no bar in them: the bar is in the member's
+ * hands. Renderer only, like every P4b/P4c change — the sim never sees it.
  */
-function fixedSpriteUriFor(item: LadderEquipmentItem): string | null {
+function fixedSpriteUriFor(item: LadderEquipmentItem, occupied: boolean): string | null {
+  if (occupied && Object.prototype.hasOwnProperty.call(FLOOR_SPRITE_URIS.fixedOccupied, item)) {
+    return FLOOR_SPRITE_URIS.fixedOccupied[item as keyof typeof FLOOR_SPRITE_URIS.fixedOccupied];
+  }
   return Object.prototype.hasOwnProperty.call(FLOOR_SPRITE_URIS.fixed, item)
     ? FLOOR_SPRITE_URIS.fixed[item as FixedFurnitureItem]
     : null;
@@ -1157,6 +1168,8 @@ export function FloorGrid(props: FloorGridProps) {
             ))}
             {fixed.map((row) => {
               const isRefusalTarget = overlapRefusalItem === row.item;
+              const isOccupied =
+                stationActivity.get(stationKey('fixed', row.item)) === 'using';
               return (
                 <View
                   key={row.item}
@@ -1179,10 +1192,10 @@ export function FloorGrid(props: FloorGridProps) {
                     borderColor: FLOOR_OVERLAP_REFUSAL_OUTLINE_COLOR,
                   }}
                 >
-                  {fixedSpriteUriFor(row.item) === null ? null : (
+                  {fixedSpriteUriFor(row.item, isOccupied) === null ? null : (
                     <Image
                       testID={`floorgrid-fixed-sprite-${row.item}`}
-                      source={{ uri: fixedSpriteUriFor(row.item) as string }}
+                      source={{ uri: fixedSpriteUriFor(row.item, isOccupied) as string }}
                       resizeMode={'stretch'}
                       style={{
                         position: 'absolute',

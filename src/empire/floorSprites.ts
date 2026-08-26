@@ -104,11 +104,29 @@ export type FixedFurnitureItem = keyof typeof EMPIRE_TUNING.FLOOR_FIXED_FURNITUR
  * The judgement per row, briefly: `bench` is only the flat bench — the one
  * station a body lies on. `bar` is anything worked by gripping a bar at or
  * above shoulder height: the loaded power bar, the cable tower (hands up on
- * the handle), the racked specialty bars, and the sled (hands on its push
- * posts). Everything else — cardio seats, the plate stack, mats, the sauna,
- * the small accessories — is `generic`, an engaged stance facing the
- * station. Stick-figure simplicity is the brief FROM THE HUMAN; per-item
- * fidelity is explicitly out.
+ * the handle), and the sled (hands on its push posts). Everything else —
+ * cardio seats, the plate stack, mats, the sauna, the small accessories —
+ * is `generic`, an engaged stance facing the station. Stick-figure
+ * simplicity is the brief FROM THE HUMAN; per-item fidelity is explicitly
+ * out.
+ *
+ * `specialty-bars` moved bar -> generic in P4c, off a composite rather than
+ * off taste: the station is a 1-wide solid rack chassis drawing its own
+ * racked bars, and the bar-class pose composited a second, plated, wall-to-
+ * wall barbell inside it — a body shut in a cabinet pressing a bar, the
+ * double-apparatus read the P4c round was opened to remove. The generic
+ * stance at the rack reads as working at the rack (taking a bar down),
+ * which is what using that station is.
+ *
+ * A doubt recorded rather than resolved, for the four 1x1 floor-pile
+ * accessories (`foam-rollers`, `wrist-wraps`, `belts`, `sleeves`): the
+ * generic class's pumping reach is drawn at shoulder height, and these
+ * items are drawn as small piles at floor height, so the composite is a
+ * member pumping air above the pile rather than reaching anything. The fix
+ * that would fit — a crouch — is a new pose, which is beyond P4c's
+ * fine-tune scope, not a knob this round can turn. Whether the air-pump
+ * reads acceptably at phone scale is unjudged; the last device pass did not
+ * name it, and per §5.13's stanza silence is not a yes.
  */
 export const FLOOR_STATION_USE_CLASS = Object.freeze({
   fixed: Object.freeze({
@@ -130,7 +148,7 @@ export const FLOOR_STATION_USE_CLASS = Object.freeze({
     'wrist-wraps': 'generic',
     belts: 'generic',
     sleeves: 'generic',
-    'specialty-bars': 'bar',
+    'specialty-bars': 'generic',
   } as const satisfies Record<SessionEquipmentItem, FloorStationUseClass>),
 });
 
@@ -279,12 +297,39 @@ function parseMap(map: string, width: number): FloorSpriteGrid {
  */
 type PaintOp =
   | { readonly kind: 'fill'; readonly x: number; readonly y: number; readonly w: number; readonly h: number; readonly px: number }
+  | { readonly kind: 'under'; readonly x: number; readonly y: number; readonly w: number; readonly h: number; readonly px: number }
   | { readonly kind: 'hatch'; readonly x: number; readonly y: number; readonly w: number; readonly h: number; readonly gap: number; readonly px: number }
   | { readonly kind: 'disc'; readonly cx: number; readonly cy: number; readonly r: number; readonly px: number }
   | { readonly kind: 'dot'; readonly x: number; readonly y: number; readonly px: number };
 
 function fill(x: number, y: number, w: number, h: number, px: number): PaintOp {
   return { kind: 'fill', x, y, w, h, px };
+}
+/**
+ * A fill that paints only where the canvas is still transparent — "behind"
+ * everything already there. P4c added it for one job: the bar-class lockout
+ * bar has to cross the head's rows (a 14px box has no empty row above a
+ * 6-row head), and a plain fill there painted steel through the hair — the
+ * defect the P4c composites named at every bar-class station. An under-fill
+ * lets the bar pass BEHIND the head for every type (hood, headband and bare
+ * hair alike) with one op and no per-type arithmetic.
+ *
+ * What that guarantees, in the interpreter's own terms: the `under` arm in
+ * `render` writes a pixel only when `data[y * w + x] === 0`, so an op of
+ * this kind can never replace paint an earlier op or the base grid put down.
+ * The route past it: swap this op's one call site (`opsUsingBar`'s lockout
+ * bar) back to `fill`, which is a one-word edit that reintroduces the exact
+ * defect above — and which, measured this round, left every prior assertion
+ * in `floorSprites.test.ts` green (15/15), because extra steel only ever
+ * ADDS pixels to floors that check for presence. The named catcher: that
+ * file's `the lockout bar passes behind the head — under-paint, never
+ * through it`, which derives each type's head span from its own stand
+ * sprite and reddens on that swap naming the type and column ("casual
+ * using-bar-a: bar steel through the head at x=4"). Run against the mutant,
+ * not assumed.
+ */
+function under(x: number, y: number, w: number, h: number, px: number): PaintOp {
+  return { kind: 'under', x, y, w, h, px };
 }
 function hatch(x: number, y: number, w: number, h: number, gap: number, px: number): PaintOp {
   return { kind: 'hatch', x, y, w, h, gap, px };
@@ -331,6 +376,12 @@ function render(
     if (op.kind === 'fill') {
       for (let y = op.y; y < op.y + op.h; y += 1)
         for (let x = op.x; x < op.x + op.w; x += 1) put(x, y, op.px);
+    } else if (op.kind === 'under') {
+      for (let y = op.y; y < op.y + op.h; y += 1)
+        for (let x = op.x; x < op.x + op.w; x += 1) {
+          if (x < 0 || y < 0 || x >= w || y >= h) continue;
+          if (data[y * w + x] === 0) put(x, y, op.px);
+        }
     } else if (op.kind === 'hatch') {
       for (let y = op.y; y < op.y + op.h; y += op.gap)
         for (let x = op.x; x < op.x + op.w; x += 1) put(x, y, op.px);
@@ -597,17 +648,22 @@ const LEG_BUILD: Readonly<Record<MemberType, LegBuild>> = {
 
 /**
  * The bar-class overlay, painted OVER the type's own lift torso and brace
- * legs so build, headgear and outfit identity all survive: two raised-arm
- * columns (lit skin left, shade skin right, outlined by hand — the base is
- * already outlined, so the automatic pass is not re-run) up to a loaded bar.
- * Frame `a` holds the bar overhead at full extension; frame `b` pulls it
- * down to the collarbone, with the base's own side arms standing in for the
- * bend. A doubt left open rather than asserted away: because frame `b`
- * draws no arm columns of its own, the a-to-b change at the drawn 28px may
- * read mostly as the bar line jumping rather than as arms moving — whether
- * the base arms carry the bend at phone scale has not been judged on a
- * device, and if they do not, the fix is more painted arm in frame `b`, not
- * a knob.
+ * legs so build, headgear and outfit identity all survive. Frame `a` is the
+ * lockout — arm columns extended up to the bar with a hand on it; frame `b`
+ * pulls the bar to the collarbone with painted hands gripping it and the
+ * base's side arms as the bend below. P4b shipped frame `b` with no painted
+ * arm of its own and left the doubt on record ("the fix if so is painted
+ * arm, not a knob"); P4c's composites confirmed the a-to-b change read as a
+ * bar line jumping past a static body, and the hands/forearms below are
+ * that recorded fix.
+ *
+ * The lockout bar is an `under` fill on purpose: it crosses the head's own
+ * rows (nothing above a 6-row head fits in a 14px box), and the P4c
+ * composites showed the previous plain fill painting steel through the hair
+ * at every bar-class station. Behind the head, the bar reads as held at
+ * crown height with the face in front of it, for every headgear variant,
+ * and row 0 stays clear of both top corners (the open-corner pin in
+ * floorSprites.test.ts).
  */
 function opsUsingBar(lockout: boolean): PaintOp[] {
   const ops: PaintOp[] = [];
@@ -619,16 +675,25 @@ function opsUsingBar(lockout: boolean): PaintOp[] {
     ops.push(fill(HALF + QUARTER, 2, 1, QUARTER, PX_OUTLINE));
     ops.push(fill(NATIVE - QUARTER, 2, 1, QUARTER, PX_SKIN_SHADE));
     ops.push(fill(NATIVE - 2, 2, 1, QUARTER, PX_OUTLINE));
-    // The bar overhead, plates at its ends. Row 0 stays clear of both top
-    // corners (the open-corner pin in floorSprites.test.ts).
-    ops.push(fill(2, 1, NATIVE - INSET, 1, PX_STEEL_LIGHT));
+    // The bar at crown height, BEHIND the head (see the header), plates at
+    // its ends, and a hand on the bar at the top of each arm column.
+    ops.push(under(2, 1, NATIVE - INSET, 1, PX_STEEL_LIGHT));
     ops.push(fill(1, 0, 1, QUARTER, PX_PLATE));
     ops.push(fill(NATIVE - 2, 0, 1, QUARTER, PX_PLATE_SHADE));
+    ops.push(dot(2, 1, PX_SKIN));
+    ops.push(dot(NATIVE - QUARTER, 1, PX_SKIN_SHADE));
   } else {
-    // The bar pulled to the collarbone; the base's side arms are the bend.
+    // The bar pulled to the collarbone, held in front of the body — a plain
+    // fill, because in front is where a bar at the collarbone is.
     ops.push(fill(2, QUARTER + 2, NATIVE - INSET, 1, PX_STEEL_LIGHT));
     ops.push(fill(1, INSET, 1, QUARTER, PX_PLATE));
     ops.push(fill(NATIVE - 2, INSET, 1, QUARTER, PX_PLATE_SHADE));
+    // The painted bend: two-pixel hands gripping the bar just inside the
+    // plates, lit left and shaded right, sitting directly above the base's
+    // own side arms so the elbow line connects. This is what makes a-to-b
+    // read as arms extending and folding rather than as the bar teleporting.
+    ops.push(fill(2, QUARTER + 2, 2, 1, PX_SKIN));
+    ops.push(fill(NATIVE - INSET, QUARTER + 2, 2, 1, PX_SKIN_SHADE));
   }
   return ops;
 }
@@ -821,18 +886,35 @@ function opsRower(w: number, h: number): PaintOp[] {
 
 function opsSled(w: number, h: number): PaintOp[] {
   const ops: PaintOp[] = [];
-  // A push track: two long rails, crossbars, the sled itself parked at the top
-  // with a red plate loaded on its post.
+  // A push track: two long rails, crossbars, and the sled itself parked
+  // where the body that pushes it is actually drawn.
+  //
+  // WHERE THE SLED IS PARKED IS DERIVED FROM THE USING MEMBER'S DRAWN BAND,
+  // not from taste. P4c's composite of the real sim geometry (top approach
+  // cell, `FLOOR_SIM_USING_ANCHOR_BIAS.bar` toward the 3x12 box's centre)
+  // put the using member's box at rows ~50-63 native — and the first version
+  // of this sprite parked the sled at the track's top, rows 3-16, so the
+  // composite read as a body pumping a bar over bare track, four tiles from
+  // the sled it was supposedly pushing. Parking the body of the sled at
+  // `QUARTER + NATIVE * 3` (native row 45) puts it under the drawn member
+  // for the dominant top-approach case, so the composite reads as hands on
+  // a loaded sled. Side approaches land the member lower and only clip the
+  // push posts — recorded as a residual in `FLOOR_SIM_USING_ANCHOR_BIAS`'s
+  // own doc comment (the knob whose `bar` bias this row is derived against)
+  // rather than chased with per-approach art.
   const railL = QUARTER;
   const railR = w - QUARTER - 2;
+  // Three tiles down, spelled as NATIVE * 2 + NATIVE because this file's
+  // audit discipline admits 0/1/2 as bare coordinate steps and nothing above.
+  const parkY = QUARTER + NATIVE * 2 + NATIVE;
   ops.push(fill(railL, 2, 2, h - INSET, PX_STEEL_DARK));
   ops.push(fill(railR, 2, 2, h - INSET, PX_STEEL_DARK));
   ops.push(hatch(railL, NATIVE, railR - railL + 2, h - NATIVE * 2, NATIVE + HALF, PX_RUBBER_DARK));
-  ops.push(fill(railL + 2, QUARTER, railR - railL - 2, NATIVE, PX_STEEL_MID)); // sled body
-  ops.push(disc(w >> 1, QUARTER + HALF, QUARTER + 1, PX_PLATE)); // loaded plate
-  ops.push(disc(w >> 1, QUARTER + HALF, 1, PX_PLATE_SHADE));
-  ops.push(fill(railL + 2, QUARTER + NATIVE, 2, HALF, PX_STEEL_LIGHT)); // push post left
-  ops.push(fill(railR - 2, QUARTER + NATIVE, 2, HALF, PX_STEEL_LIGHT)); // push post right
+  ops.push(fill(railL + 2, parkY, railR - railL - 2, NATIVE, PX_STEEL_MID)); // sled body
+  ops.push(disc(w >> 1, parkY + HALF, QUARTER + 1, PX_PLATE)); // loaded plate
+  ops.push(disc(w >> 1, parkY + HALF, 1, PX_PLATE_SHADE));
+  ops.push(fill(railL + 2, parkY + NATIVE, 2, HALF, PX_STEEL_LIGHT)); // push post left
+  ops.push(fill(railR - 2, parkY + NATIVE, 2, HALF, PX_STEEL_LIGHT)); // push post right
   return ops;
 }
 
@@ -993,6 +1075,51 @@ function opsPowerBar(w: number, h: number): PaintOp[] {
   ops.push(fill(midX - QUARTER, h - HALF + QUARTER - 1, HALF, 1, PX_PLATE_SHADE));
   return ops;
 }
+
+/**
+ * The power bar's OCCUPIED variant — what the station draws while a member
+ * is using it. P4c's fix for the double-bar defect its composites named:
+ * the resting sprite is a loaded bar seen from above, and the bar-class
+ * member overlay draws its own loaded bar, so a using member composited two
+ * crossed barbells on one cell. The intent: while the sim says `using`, the
+ * bar is meant to read as in the member's hands, so this grid draws only a
+ * thin shadow line down the shaft's resting position and a rest mark where
+ * each disc sits. No plate paint and no bar steel in this grid at all —
+ * floorSprites.test.ts pins that as the checkable half of "one bar at a
+ * time", and `FloorGrid.tsx` swaps to this URI exactly while the sim says
+ * `using`.
+ *
+ * The felt half stays open, and it is this round's own: whether an emptied
+ * cell at phone scale reads as "the member picked the bar up" or as "the
+ * bar vanished" has not been judged on a device — the swap shipped after
+ * the last phone pass, so per §5.13's stanza its absence from that
+ * verdict is not a yes. The pixel arithmetic above is checkable; the read
+ * is not, and this comment does not claim it.
+ */
+function opsPowerBarOccupied(w: number, h: number): PaintOp[] {
+  const ops: PaintOp[] = [];
+  const midX = w >> 1;
+  ops.push(fill(midX, 1, 1, h - 2, PX_RUBBER_DARK)); // shaft shadow line
+  ops.push(fill(midX - QUARTER, QUARTER, HALF, 1, PX_RUBBER_DARK)); // top disc rest
+  ops.push(fill(midX - QUARTER, QUARTER + QUARTER, HALF, 1, PX_RUBBER_DARK));
+  ops.push(fill(midX - QUARTER, h - HALF, HALF, 1, PX_RUBBER_DARK)); // low disc rest
+  ops.push(fill(midX - QUARTER, h - HALF + QUARTER - 1, HALF, 1, PX_RUBBER_DARK));
+  return ops;
+}
+
+/**
+ * Occupied-variant painters, keyed by the fixed items that HAVE one — a
+ * CLOSED record on purpose, not a Partial over every fixed item. The
+ * directory's surface census reads exported tables through the resolved
+ * TYPE, so a Partial here would enumerate a string position for every fixed
+ * item whether or not a variant exists; keying the type by exactly this
+ * table's own keys keeps the census's positions equal to the real values.
+ * The flat bench draws no bar (the lying pose brings its own) and the plate
+ * stack clashes with nothing, so neither has a variant to list.
+ */
+const FIXED_OCCUPIED_PAINTERS = Object.freeze({
+  'power-bar': opsPowerBarOccupied,
+} as const satisfies Partial<Record<FixedFurnitureItem, EquipmentPainter>>);
 
 function opsCompPlates(w: number, h: number): PaintOp[] {
   const ops: PaintOp[] = [];
@@ -1191,6 +1318,8 @@ interface SpriteTables {
   readonly sessionUris: Readonly<Record<SessionEquipmentItem, string>>;
   readonly fixedGrids: Readonly<Record<FixedFurnitureItem, FloorSpriteGrid>>;
   readonly fixedUris: Readonly<Record<FixedFurnitureItem, string>>;
+  readonly fixedOccupiedGrids: Readonly<Record<keyof typeof FIXED_OCCUPIED_PAINTERS, FloorSpriteGrid>>;
+  readonly fixedOccupiedUris: Readonly<Record<keyof typeof FIXED_OCCUPIED_PAINTERS, string>>;
   readonly floorGrids: Readonly<Record<LadderRung, FloorSpriteGrid>>;
   readonly floorUris: Readonly<Record<LadderRung, string>>;
 }
@@ -1238,6 +1367,18 @@ function buildTables(): SpriteTables {
     fixedUris[item] = gridToPngUri(upscaled(grid, SCALE), gearPalette);
   }
 
+  const fixedOccupiedGrids: Record<string, FloorSpriteGrid> = {};
+  const fixedOccupiedUris: Record<string, string> = {};
+  for (const item of Object.keys(FIXED_OCCUPIED_PAINTERS) as (keyof typeof FIXED_OCCUPIED_PAINTERS)[]) {
+    const painter = FIXED_OCCUPIED_PAINTERS[item];
+    const footprint = EMPIRE_TUNING.FLOOR_FIXED_FURNITURE_LAYOUT[item].footprint;
+    const w = footprint.width * NATIVE;
+    const h = footprint.height * NATIVE;
+    const grid = render(w, h, painter(w, h), true);
+    fixedOccupiedGrids[item] = frozenGrid(grid);
+    fixedOccupiedUris[item] = gridToPngUri(upscaled(grid, SCALE), gearPalette);
+  }
+
   const floorGrids: Record<string, FloorSpriteGrid> = {};
   const floorUris: Record<string, string> = {};
   for (const rung of EMPIRE_TUNING.LADDER_RUNGS) {
@@ -1254,6 +1395,8 @@ function buildTables(): SpriteTables {
     sessionUris: Object.freeze(sessionUris) as SpriteTables['sessionUris'],
     fixedGrids: Object.freeze(fixedGrids) as SpriteTables['fixedGrids'],
     fixedUris: Object.freeze(fixedUris) as SpriteTables['fixedUris'],
+    fixedOccupiedGrids: Object.freeze(fixedOccupiedGrids) as SpriteTables['fixedOccupiedGrids'],
+    fixedOccupiedUris: Object.freeze(fixedOccupiedUris) as SpriteTables['fixedOccupiedUris'],
     floorGrids: Object.freeze(floorGrids) as SpriteTables['floorGrids'],
     floorUris: Object.freeze(floorUris) as SpriteTables['floorUris'],
   };
@@ -1266,6 +1409,7 @@ export const FLOOR_SPRITE_GRIDS = Object.freeze({
   member: TABLES.memberGrids,
   session: TABLES.sessionGrids,
   fixed: TABLES.fixedGrids,
+  fixedOccupied: TABLES.fixedOccupiedGrids,
   floor: TABLES.floorGrids,
 });
 
@@ -1274,6 +1418,7 @@ export const FLOOR_SPRITE_URIS = Object.freeze({
   member: TABLES.memberUris,
   session: TABLES.sessionUris,
   fixed: TABLES.fixedUris,
+  fixedOccupied: TABLES.fixedOccupiedUris,
   floor: TABLES.floorUris,
 });
 

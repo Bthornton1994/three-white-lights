@@ -3417,7 +3417,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 'generic' ('bench' was already an equipment word; the rep frames are
     // booleans, so no one-character literal arrives). Measured by running
     // this assertion and reading its failure value.
-    expect(singleQuoted.size).toBe(402);
+    // 402 -> 405: P4c — the 'under' paint-op kind, and the two indexed-access
+    // type spellings 'fixedOccupiedGrids'/'fixedOccupiedUris' in
+    // floorSprites.ts's table builder ('power-bar' and FloorGrid's 'fixed'
+    // were already in the set). Attributed by re-running the collector on
+    // each changed file against HEAD, not guessed.
+    expect(singleQuoted.size).toBe(405);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3581,6 +3586,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'fixed',
       'fixed-order-no-rotation',
       'fixedGrids',
+      // P4c: the two indexed-access type spellings for the occupied tables.
+      'fixedOccupiedGrids',
+      'fixedOccupiedUris',
       'fixedUris',
       'flat-bench',
       'floor-place',
@@ -3812,6 +3820,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'treadmill',
       'unaccelerated-seconds',
       'unacceleratedSeconds',
+      // P4c: the paint-behind op kind (the lockout bar passes behind the head).
+      'under',
       'unequipped',
       'using',
       // P4b: the six station-class rep poses.
@@ -3873,7 +3883,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 651 -> 655: the four op-kind tokens above.
     // 655 -> 663: P4b's eight new single-quoted tokens (the six using
     // poses, 'bar', 'generic'). Read from this assertion's failure value.
-    expect(stringsChecked).toBe(663);
+    // 663 -> 666: P4c's three new single-quoted tokens ('under',
+    // 'fixedOccupiedGrids', 'fixedOccupiedUris'). Read from this assertion's
+    // failure value.
+    expect(stringsChecked).toBe(666);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3948,7 +3961,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 336 -> 344: P4b's eight new tokens (six poses, 'bar', 'generic'), all
     // clearing the guard — the rep frames are booleans so nothing here is
     // skippable. Measured by running this assertion.
-    expect(probes).toBe(344);
+    // 344 -> 347: P4c's three new tokens ('under', 'fixedOccupiedGrids',
+    // 'fixedOccupiedUris'), all clearing the guard. Measured by running this
+    // assertion.
+    expect(probes).toBe(347);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);

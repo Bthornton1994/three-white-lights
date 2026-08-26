@@ -292,11 +292,17 @@ describe('the vocabularies and dimensions agree with the registered tables', () 
     for (const item of T.SESSION_EQUIPMENT_ITEMS) everyGrid.push(FLOOR_SPRITE_GRIDS.session[item]);
     for (const item of Object.keys(T.FLOOR_FIXED_FURNITURE_LAYOUT) as FixedFurnitureItem[])
       everyGrid.push(FLOOR_SPRITE_GRIDS.fixed[item]);
+    for (const item of Object.keys(
+      FLOOR_SPRITE_GRIDS.fixedOccupied,
+    ) as (keyof typeof FLOOR_SPRITE_GRIDS.fixedOccupied)[]) {
+      everyGrid.push(FLOOR_SPRITE_GRIDS.fixedOccupied[item]);
+    }
     for (const rung of T.LADDER_RUNGS) everyGrid.push(FLOOR_SPRITE_GRIDS.floor[rung]);
     // 90 member grids (5 types x 9 poses x 2 facings, P4b's six using poses
-    // included) + 14 session + 3 fixed + 4 floors. Pinned so an empty walk
-    // cannot make the loop below a pass over nothing. 61 -> 111 with P4b.
-    expect(everyGrid.length).toBe(111);
+    // included) + 14 session + 3 fixed + 1 occupied variant + 4 floors.
+    // Pinned so an empty walk cannot make the loop below a pass over
+    // nothing. 61 -> 111 with P4b, 111 -> 112 with P4c's occupied power-bar.
+    expect(everyGrid.length).toBe(112);
     let inspected = 0;
     for (const grid of everyGrid) {
       for (const index of grid.data) {
@@ -377,8 +383,9 @@ describe('the members read as drawn figures, apart from each other, and animate'
         repPairs += 1;
       }
       // The three classes read apart from each other, frame a against frame
-      // a (measured 33-151 per pair) — a bench body is not a bar body is not
-      // a machine-face body, which is the whole point of P4b's templates.
+      // a (measured 25-150 per pair; re-measured for P4c's bar-pose repaint
+      // — 33-151 before it) — a bench body is not a bar body is not a
+      // machine-face body, which is the whole point of P4b's templates.
       const benchA = FLOOR_SPRITE_GRIDS.member[type]['using-bench-a'].right;
       const barA = FLOOR_SPRITE_GRIDS.member[type]['using-bar-a'].right;
       const genericA = FLOOR_SPRITE_GRIDS.member[type]['using-generic-a'].right;
@@ -401,6 +408,81 @@ describe('the members read as drawn figures, apart from each other, and animate'
     // against a vertical pad, with nothing to say so).
     const footprint = T.FLOOR_FIXED_FURNITURE_LAYOUT['flat-bench'].footprint;
     expect(footprint.height).toBeGreaterThan(footprint.width);
+  });
+
+  it('P4c: the lockout bar passes behind the head — under-paint, never through it', () => {
+    // The named catcher for the `under` paint-op's one job (`opsUsingBar`'s
+    // frame-a lockout bar, which crosses the head's own rows and must paint
+    // only where the base figure left the canvas transparent). Built against
+    // a measured survival, not a feared one: the mutant — the op's only call
+    // site, verbatim
+    //   `ops.push(under(2, 1, NATIVE - INSET, 1, PX_STEEL_LIGHT));`
+    // swapped to
+    //   `ops.push(fill(2, 1, NATIVE - INSET, 1, PX_STEEL_LIGHT));`
+    // — is exactly the steel-through-the-hair defect P4c opened to remove,
+    // and with it planted this file ran 15/15 GREEN (measured this round):
+    // the decode test moves in lockstep with the grids it re-encodes, every
+    // distinctness floor GAINS pixels under the mutant, and the corner pin
+    // sits outside the bar's span. With this test present the same mutant
+    // reddens on the steel-through-the-head assertion below, naming the type
+    // and the column (first failure: `casual using-bar-a: bar steel through
+    // the head at x=4`), for every one of the five types.
+    //
+    // The head span is DERIVED, not hand-listed: row 1 of the type's own
+    // `stand` sprite is head paint alone (crown outline plus hair, hood or
+    // headband — the normal and lift torsos share their six head rows), and
+    // nothing the bar overlay legitimately paints may touch those columns:
+    // the under-fill defers to occupied pixels, and the hand dots and end
+    // plates all sit outside every head span. So on the bar row the
+    // using-bar-a pixel must EQUAL the stand pixel at every head column —
+    // steel there is the defect, and any other overwrite is an erased head.
+    const legend = FLOOR_SPRITE_PALETTES.legend;
+    const steel = ['L', 'M', 'E'].map((ch) => legend.indexOf(ch) + 1);
+    for (const index of steel) expect(index).toBeGreaterThan(0);
+    const barRow = 1; // opsUsingBar's lockout bar row: under(2, 1, ...)
+    let headColumnsChecked = 0;
+    const typesWithBarSteelBesideHead: string[] = [];
+    for (const type of TYPES) {
+      const barA = FLOOR_SPRITE_GRIDS.member[type]['using-bar-a'].right;
+      const stand = FLOOR_SPRITE_GRIDS.member[type].stand.right;
+      const headXs: number[] = [];
+      for (let x = 0; x < stand.w; x += 1) {
+        if ((stand.data[barRow * stand.w + x] ?? 0) !== 0) headXs.push(x);
+      }
+      // Non-vacuity: the head really crosses the bar row for every type.
+      // Measured spans on the shipped maps: 7 columns for the four
+      // bare/banded heads, 8 for the hood; the floor catches an empty walk.
+      expect(headXs.length, `${type}: no head paint on the bar row`).toBeGreaterThanOrEqual(4);
+      for (const x of headXs) {
+        const pixel = barA.data[barRow * barA.w + x] ?? 0;
+        expect(
+          steel.includes(pixel),
+          `${type} using-bar-a: bar steel through the head at x=${x} — the lockout bar must pass BEHIND the head`,
+        ).toBe(false);
+        expect(
+          pixel,
+          `${type} using-bar-a: head pixel overwritten on the bar row at x=${x}`,
+        ).toBe(stand.data[barRow * stand.w + x]);
+        headColumnsChecked += 1;
+      }
+      let steelBesideHead = false;
+      for (let x = 0; x < barA.w; x += 1) {
+        const pixel = barA.data[barRow * barA.w + x] ?? 0;
+        if (!steel.includes(pixel)) continue;
+        expect(headXs.includes(x), `${type}: steel inside the head span at x=${x}`).toBe(false);
+        steelBesideHead = true;
+      }
+      if (steelBesideHead) typesWithBarSteelBesideHead.push(type);
+    }
+    // Measured: 36 head columns over the five types; a floor rather than a
+    // pin, per this file's header, so a head retouch is not a census edit.
+    expect(headColumnsChecked).toBeGreaterThanOrEqual(TYPES.length * 4);
+    // Four of the five types show bar steel beside the head on the shipped
+    // maps (all but `serious-lifter`, whose hood spans the whole under-fill
+    // range, so its bar reads through the end plates and hands alone —
+    // recorded rather than asserted away). The floor of one catches the bar
+    // op being deleted outright, which no equality above would notice.
+    expect(typesWithBarSteelBesideHead.length).toBeGreaterThanOrEqual(1);
   });
 
   it('maps every station to a use class, totally and in both directions, and uses all three classes', () => {
@@ -489,6 +571,43 @@ describe('the equipment and the floor', () => {
     }
   });
 
+  it('P4c: the occupied power-bar variant exists, differs from the resting sprite, and holds no bar paint', () => {
+    // The named catcher for the double-bar fix. The resting power-bar sprite
+    // is a loaded bar seen from above; the bar-class member pose draws its
+    // own loaded bar; `FloorGrid.tsx` swaps the station to this variant
+    // while the sim says `using`, so exactly one bar is ever drawn on that
+    // cell. The checkable half here: the variant is keyed for exactly the
+    // items that have one, drawn to the real footprint, visibly different
+    // from the resting sprite, and contains ZERO pixels of bar steel or
+    // plate paint — the four indices the resting sprite's apparatus is made
+    // of, derived from the legend rather than restated as numbers.
+    expect(Object.keys(FLOOR_SPRITE_GRIDS.fixedOccupied).sort()).toEqual(['power-bar']);
+    expect(Object.keys(FLOOR_SPRITE_URIS.fixedOccupied).sort()).toEqual(['power-bar']);
+    const occupied = FLOOR_SPRITE_GRIDS.fixedOccupied['power-bar'];
+    const footprint = T.FLOOR_FIXED_FURNITURE_LAYOUT['power-bar'].footprint;
+    expect(occupied.w).toBe(footprint.width * NATIVE);
+    expect(occupied.h).toBe(footprint.height * NATIVE);
+    const distinct = new Set(occupied.data.filter((index) => index !== 0));
+    // Outline plus the rest-mark tone — a drawn ghost, not an empty grid.
+    expect(distinct.has(1)).toBe(true);
+    expect(distinct.size).toBeGreaterThanOrEqual(2);
+    const legend = FLOOR_SPRITE_PALETTES.legend;
+    const barPaint = ['L', 'M', 'C', 'G'].map((ch) => legend.indexOf(ch) + 1);
+    for (const index of barPaint) {
+      expect(index).toBeGreaterThan(0);
+      expect(distinct.has(index), `occupied power-bar paints bar/plate index ${index}`).toBe(false);
+    }
+    // Visibly different from the resting sprite (measured 152 differing
+    // pixels; the floor catches the swap collapsing into a copy).
+    expect(differingPixels(occupied, FLOOR_SPRITE_GRIDS.fixed['power-bar'])).toBeGreaterThanOrEqual(
+      40,
+    );
+    // And the resting sprite really does carry the apparatus this variant
+    // removes — the control that keeps the zero above meaning something.
+    const restingDistinct = new Set(FLOOR_SPRITE_GRIDS.fixed['power-bar'].data);
+    expect(barPaint.some((index) => restingDistinct.has(index))).toBe(true);
+  });
+
   it('paints the floor fully opaque, from exactly the four floor tones', () => {
     // The floor palette occupies the last four legend slots by construction.
     const paletteSize = FLOOR_SPRITE_PALETTES.base.length;
@@ -554,6 +673,19 @@ describe('the PNGs are exactly the grids', () => {
         h: grid.h * SCALE,
       });
     }
+    for (const item of Object.keys(
+      FLOOR_SPRITE_GRIDS.fixedOccupied,
+    ) as (keyof typeof FLOOR_SPRITE_GRIDS.fixedOccupied)[]) {
+      const grid = FLOOR_SPRITE_GRIDS.fixedOccupied[item];
+      const uri = FLOOR_SPRITE_URIS.fixedOccupied[item];
+      cases.push({
+        name: `fixed-occupied ${item}`,
+        uri,
+        expected: upscaledData(grid, SCALE),
+        w: grid.w * SCALE,
+        h: grid.h * SCALE,
+      });
+    }
     for (const rung of T.LADDER_RUNGS) {
       const grid = FLOOR_SPRITE_GRIDS.floor[rung];
       cases.push({
@@ -564,8 +696,9 @@ describe('the PNGs are exactly the grids', () => {
         h: grid.h,
       });
     }
-    // 61 -> 111 with P4b's six using poses (90 member sprites now).
-    expect(cases.length).toBe(111);
+    // 61 -> 111 with P4b's six using poses (90 member sprites now);
+    // 111 -> 112 with P4c's occupied power-bar variant.
+    expect(cases.length).toBe(112);
 
     for (const each of cases) {
       const decoded = decodePngUri(each.uri);
