@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "critic-gsd-suite-2026-08-26T06-16-55-444Z-9615",
+  "label": "critic-gsd-suite",
+  "command": [
+    "npx",
+    "vitest",
+    "run"
+  ],
+  "budgetSeconds": 1500,
+  "startedAtIso": "2026-08-26T06:16:55.444Z",
+  "startedAtMs": 1787725015444,
+  "cwd": "/home/user/wt-grind-stage",
+  "commit": "33a8adae4ba313116c243b85828e8cd6ff8b5fae",
+  "branch": "claude/grind-stage-drivers",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 9615,
+    "startTick": "282059",
+    "cmdline": "node tools/watchdog.mjs --budget 1500 --label critic-gsd-suite -- npx vitest run",
+    "bootId": "96fef63f-e4d8-4aa9-9654-48737ca6b5b1",
+    "bootEpochSeconds": 1787722195,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-26T06:16:55.466Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
