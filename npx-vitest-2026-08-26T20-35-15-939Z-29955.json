@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-26T20-35-15-939Z-29955",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/game/guaranteeTags.test.ts",
+    "src/game/liftTuning.test.ts"
+  ],
+  "budgetSeconds": 600,
+  "startedAtIso": "2026-08-26T20:35:15.939Z",
+  "startedAtMs": 1787776515939,
+  "cwd": "/home/user/wt-bench-difficulty",
+  "commit": "015cc331dd73397de2e798344fd3f4a3d6318ef8",
+  "branch": "claude/bench-difficulty",
+  "dirty": 1,
+  "dirtyPaths": [
+    "src/game/liftTuning.ts"
+  ],
+  "runner": {
+    "pid": 29955,
+    "startTick": "2344100",
+    "cmdline": "node tools/watchdog.mjs --budget 600 -- npx vitest run src/game/guaranteeTags.test.ts src/game/liftTuning.test.ts",
+    "bootId": "4629c418-2124-4105-88fa-7f9ea23105ae",
+    "bootEpochSeconds": 1787753075,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-26T20:35:15.963Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
