@@ -2458,6 +2458,51 @@ reads as the same game as the lift screen, which is a style question the next
 phone pass judges, not a code-sharing question. The gate for this phase is the
 build order's own: the art is done when the floor reads as the finished game's
 floor, judged by a human on a real phone, same as every gate before it.
+
+**PHASE 4's FIRST ITERATION SHIPPED, AND A HUMAN LOOKED AT IT — A DIRECTION
+PASS WITH A NAMED GAP, NOT A GATE PASS.** What shipped: every placeholder
+replaced by real pixels — members, fixed furniture, all fourteen session items
+to their real footprints, tray and placed chips, and a drawn floor texture —
+as indexed-colour PNGs whose pixel bytes are the palette indices themselves,
+built by a pure module with no renderer library taken, and decode-tested back
+against the authored grids. The sim stayed byte-identical throughout. The
+build's own history is part of the record: the builder that authored it and
+the small builder sent after its two named polish edits each died mid-round
+(a session limit; then a hang whose transcript kept a moving mtime over a
+frozen byte count — the looks-alive shape the liveness rules warn about), and
+both trees were recovered by measurement rather than assumption: two lagging
+census pins read off their own failure values, one flaky test budget widened
+120s to 300s with its 62s solo timing recorded, and one of the two owed
+polish edits discovered to be already done. The mats sprite's contrast fix —
+a two-tone checker whose values straddle the floor's luminance from both
+sides — is the other, and it shipped.
+
+The human's verdict on a real phone, verbatim: *"Really cool. We want to see
+them actually using the machines, interacting with the machines almost
+stickfigure RPG style in a sense of simplicity."*
+
+The first sentence is a direction pass on the sprites and the motion. The
+second names the gap precisely, and the screenshot behind it (garage, tick 88,
+one member per state, flat-bench green-highlighted) shows why: the logic runs,
+but the read is **people near equipment, not people on equipment**. A `using`
+member differs from a standing one by a pinned pixel count and a highlight and
+a bob — none of which is a body engaged with a machine. That is the next
+round's scope, and it is presentation only: per-station-class using poses at
+stick-figure simplicity (a bench-class, a bar/rack-class, a generic — two or
+three templates beat one generic torso), a renderer-side draw bias toward the
+station anchor while `using` so the body meets the furniture instead of
+floating beside a green box, and a short rep-cycle animation in `using`,
+faster than the walk, replacing the pulse bob as the "working a set" read.
+`floorSim.ts` stays byte-identical by construction — the sim's use-cell model
+does not move — so every Phase 3 sweep and history is untouched. Explicitly
+out, from the verdict's own register: importing `src/art/`'s rig, or any
+fidelity chase — the whole point of "stickfigure RPG style" is that
+simplicity is what reads.
+
+The check for the next phone pass, written down now so it is asked rather
+than reconstructed: **place a bench centrally, watch a member path → queue →
+use — does it read as interaction, not occupancy?** Until that pass, Phase 4
+remains in build and no gate is claimed.
 ---
 
 ## 6. Meet Day
