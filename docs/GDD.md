@@ -2504,6 +2504,27 @@ The check for the next phone pass, written down now so it is asked rather
 than reconstructed: **place a bench centrally, watch a member path → queue →
 use — does it read as interaction, not occupancy?** Until that pass, Phase 4
 remains in build and no gate is claimed.
+
+**P4b's PHONE FINDING — THE HEADLINE CHECK IS ANSWERED, AND THE REMAINDER IS
+USAGE TUNING.** Same player, real phone, P4b at `d626a00`, verbatim: *"This
+works, the equipment usage needs to be fine tuned but the concept is there and
+works!"* The check above was asked as written — bench central, path → queue →
+use — and the answer is interaction, not occupancy. Classification, so a later
+reader takes exactly what was given: a direction pass on P4b's job (bodies on
+machines, three pose classes, station coupling), with the named remainder
+being how the usage READS — feel and readability in the stick-figure register
+— not the sim loop, not the coupling, and not a request for `src/art/`'s rig
+or a fidelity chase. **The Phase 4 art gate is NOT closed by this line**; that
+close is the human's to say, later, in their own words.
+
+The player did not separately name the rep cadence, the bar frame-b arm read,
+the mats checker, or the walk-to-new-machine behaviour. **Silence is not a yes
+on any of them** — they stay recorded builder doubts at their sites, not this
+sitting's findings. The fine-tune round (P4c) works the usage read: pose ↔
+furniture fit per class (silhouette, overlap with pad and bar, feet against
+the slab), cadence only through its named knob, and per-class distinctness
+preserved — with `floorSim.ts` byte-identical and Phase 3's walking/queueing
+untouched, same as every presentation round before it.
 ---
 
 ## 6. Meet Day
