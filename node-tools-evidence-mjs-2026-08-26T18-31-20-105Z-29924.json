@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "node-tools-evidence-mjs-2026-08-26T18-31-20-105Z-29924",
   "label": null,
   "command": [
@@ -28,8 +28,8 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 9,
-    "okCount": 6,
+    "count": 10,
+    "okCount": 7,
     "errors": [
       {
         "at": "2026-08-26T18:34:40.266Z",
@@ -40,11 +40,14 @@
         "why": "Command failed: git -C /home/user/wt-bench-difficulty ls-remote --exit-code origin refs/heads/verify-markers/vm"
       }
     ],
-    "lastAttemptIso": "2026-08-26T18:39:20.428Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-26T18:40:02.387Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-26T18:38:26.212Z"
-  }
+    "lastOkIso": "2026-08-26T18:39:24.108Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-26T18:40:02.384Z",
+  "elapsedSeconds": 522.3
 }
