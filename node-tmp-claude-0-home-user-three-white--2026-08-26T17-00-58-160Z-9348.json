@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tmp-claude-0-home-user-three-white--2026-08-26T17-00-58-160Z-9348",
+  "label": null,
+  "command": [
+    "node",
+    "/tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/probe/compare.mjs"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-26T17:00:58.160Z",
+  "startedAtMs": 1787763658160,
+  "cwd": "/home/user/wt-bench-difficulty",
+  "commit": "f8735aa6c753d57da2bf563b44f7ac1ccffe0a83",
+  "branch": "claude/bench-difficulty",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 9348,
+    "startTick": "1058321",
+    "cmdline": "node tools/watchdog.mjs --budget 900 -- node /tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/probe/compare.mjs",
+    "bootId": "4629c418-2124-4105-88fa-7f9ea23105ae",
+    "bootEpochSeconds": 1787753075,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-26T17:00:58.181Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
