@@ -2554,6 +2554,40 @@ the screen chrome in the player's own screenshot still read "no members, no
 final art yet" over three members training on finished sprites — flagged
 stale by the Playtest 4 pass, false twice over by this one. The caption now
 says what the screen shows. Everything else holds at `9ccd405`'s state.
+
+**§5.11 STAGE 4 IS UNPAUSED — RULED BY THE HUMAN, FILED BEFORE THE WORK, AND
+NARROWER THAN THE PAUSED LIST.** The scope, in the ruling's own words:
+staffing, maintenance, equipment condition, recoverable failure — the settled
+design of §5.6/§5.7, still absent from the tree. **Portfolio is not in the
+ruling's enumeration and stays paused.** That boundary is recorded here
+because the stage-4 list this section paused was "portfolio, staffing,
+maintenance, failure", and an unpause that names four things and omits one is
+a decision, not an oversight. The consequence for staffing on a single-gym
+ladder: a manager is an OPTIONAL hire for the gym you run — the §5.7
+good-manager function, routine repairs handled autonomously for a wage — and
+the Home Gym never *needs* one, exactly as §5.7 states. Staffing's full
+subject (locations run unattended) arrives with portfolio, later, if ruled.
+
+Build shape, same as every §5 piece: **pure logic first in `src/empire/`**,
+then the minimal surfacing that makes it playable on the garage floor —
+condition visible where the equipment is, the repair decision offerable, the
+cost shown before it is declined. `floorSim.ts` stays byte-identical unless a
+named presentation hook is genuinely required, and that hook is named in this
+section before it is taken. No wallet/Total/e1RM/streak writes. No Phase 4
+art polish, no retuning of sprites, cadence, poses, or the six unjudged
+look-fors — the "fine for now" hold on presentation stands; stage 4 surfacing
+is new information on the screen, not refinement of what is there.
+
+The constraint that shapes everything here is §5.7's own, and it gets the
+house's standard of proof: **failure accrues only from active in-session
+decisions the player was shown the cost of, never from elapsed time.**
+Condition decay is keyed to the gym's own advanced time — the clock the
+player advances — never to wall-clock absence. The check is the transfer this
+section promised when v2 landed: two histories identical except that one has
+MORE absence must never differ in condition, in income deducted, or in
+failure progression, swept in `streakSweep.ts`'s shape with counts pinned at
+zero and the non-zero control kept runnable. Gate when built: a phone pass on
+the garage floor, relayed as always.
 ---
 
 ## 6. Meet Day
