@@ -2910,18 +2910,17 @@ const REACHABLE_WARMUP = {
    * against 40 flips; at 0.02, still 270 lost against **zero** flips; and only
    * at 0.00 — the descent deleted — does the list go empty. The trade was
    * measured across the whole range before the sentence was reworded.
+   *
+   * HOW MANY OF THESE ARE ZERO IS A LITERAL IN THE BODY AND HAS NO CONSTANT
+   * HERE, ON PURPOSE. It had one, and that version was DOMINATED by the equality
+   * against this array: given the array matches, the number of zeros in it is
+   * already decided, so no state of the lift engine could redden the count while
+   * leaving the array green. A literal survives a wholesale RE-PIN of the array
+   * — a future round pasting in a new vector with three zeros passes the
+   * equality and fails the literal — which is the one failure an equality cannot
+   * notice about itself. Same idiom as `TOUCH_SWEEP.OUTCOME_CASES`, same reason.
    */
   LOST_WITH_THE_FINGER_OFF: [222, 0, 594, 576, 594, 672, 192, 1170, 1116, 1098] as const,
-  /**
-   * Measured: cells above whose count is ZERO — the lightest load RPE 6 can
-   * prescribe at a neutral check-in, and only that one.
-   *
-   * IT IS THE SAME CELL `CELLS_WHERE_NOTHING_MOVES` names, which is worth more
-   * than either number alone: the gentlest rep the ladder can hand out is the
-   * one that survives both mistakes, and it is the floor the other nine are
-   * measured down from.
-   */
-  CELLS_CLEAN_WITH_THE_FINGER_OFF: 1,
   /**
    * Measured: warm-up cells where SOME entry in `SLIP_TICKS` lands the bar at
    * touch quality exactly 0 — fully crashed, not merely degraded.
@@ -3535,13 +3534,23 @@ describe('the grind decides the lift', () => {
         .map((c, i) => `${c.label}=${slipLost[i]}`)
         .join(' | ')}`,
     ).toEqual([...REACHABLE_WARMUP.LOST_WITH_THE_FINGER_OFF]);
-    // The clean cell is named as a count so a table re-pinned wholesale still
-    // has to say how many cells escaped, and the one that does is the same
-    // cell `CELLS_WHERE_NOTHING_MOVES` names.
+    // THE ZERO COUNT AS A LITERAL, AND THE LITERAL IS THE WHOLE POINT — an
+    // earlier draft of this line read `.toBe(REACHABLE_WARMUP.
+    // CELLS_CLEAN_WITH_THE_FINGER_OFF)` and that version was DOMINATED by the
+    // equality directly above it. Given the array matches, the number of zeros
+    // in it is decided, so no change to the lift engine could redden the
+    // constant form while leaving the array green. Against a wholesale re-pin
+    // the literal still bites: a future round that pastes in a new vector with
+    // three zeros passes the equality and fails here, which is the one thing
+    // the equality cannot check about itself. Same idiom as
+    // `TOUCH_SWEEP.OUTCOME_CASES` two hundred lines up, for the same reason.
     expect(
       slipLost.filter((n) => n === 0).length,
       'warm-up cells that survive a slip as well as a stop',
-    ).toBe(REACHABLE_WARMUP.CELLS_CLEAN_WITH_THE_FINGER_OFF);
+    ).toBe(1);
+    // ...and WHICH cell, which the equality genuinely does not pin: it fixes
+    // counts to positions and says nothing about the labels at those positions.
+    // It is the same cell `CELLS_WHERE_NOTHING_MOVES` names.
     expect(
       cells[slipLost.findIndex((n) => n === 0)]?.label,
       'the cell that survives both mistakes',
