@@ -75,6 +75,7 @@ import {
   type CueWindow,
   type LiftConfig,
   type LiftEventKind,
+  type LiftInput,
   type LiftOutcome,
   type GrindProgress,
   type LiftPhase,
@@ -103,6 +104,12 @@ import {
   sessionFeel,
   type SessionFeel,
 } from './fatigue';
+// THE TWO PRODUCERS OF `loadRatio`, IMPORTED SO THE SWEEP'S DOMAIN IS DERIVED
+// RATHER THAN LISTED. See `REACHABLE`: a preset is not a domain, and a sweep
+// over `LOAD_PRESETS` reported a property this mechanic did not have.
+import { prescribeSession } from './session';
+import { SESSION_TUNING } from './sessionTuning';
+import { ATTEMPT_JUMP_FRACTION, OPENER_FRACTION_OF_1RM } from './meet';
 import { STICK } from '../art/spriteTuning';
 
 // ---------------------------------------------------------------------------
@@ -1459,6 +1466,19 @@ describe('the drive tap-rate mechanic (Sprint 3 gate)', () => {
  */
 const TOUCH_SWEEP = {
   SEEDS: 6,
+  /**
+   * WHAT THIS ONE KEEPS ITS PRESETS FOR, deliberately, where `GRIND_SWEEP`
+   * gave its up. The descent's claims are about the LOAD CURVE's shape —
+   * "a held bar arrives under control at every load", "the two lightest
+   * presets cannot be crashed" — and those are claims about the tuning tables
+   * across their whole declared range, including the warm-up end no session
+   * prescribes and the maximal end no meet calls. A curve checked only where
+   * play lands is a curve nobody notices going wrong at its ends.
+   *
+   * The RESCUE and the tap ladder are the opposite case: they are claims about
+   * what happens to a PLAYER, so they are swept over what a player can reach.
+   * The two sweeps disagree on purpose and this note is why.
+   */
   LOADS: [0.55, 0.7, 0.8, 0.85, 0.95, 1.0] as const,
   /**
    * Slips, in ticks from the descent's first press, walked in order. Each one
@@ -1504,7 +1524,7 @@ const TOUCH_SWEEP = {
    */
   ABANDONED_CRASHES: 24,
   /** Measured: outcome flips between a controlled touch and an abandoned one. */
-  SOFT_VS_CRASH_FLIPS: 60,
+  SOFT_VS_CRASH_FLIPS: 120,
   /** Cases the flip count above is taken over. */
   OUTCOME_CASES: 240,
   /**
@@ -2179,7 +2199,24 @@ describe('the bench press command', () => {
  */
 const GRIND_SWEEP = {
   SEEDS: 20,
-  LOADS: [0.7, 0.8, 0.85, 0.9, 0.95, 1.0] as const,
+  /**
+   * THE LOADS A PLAYER CAN ACTUALLY BE HANDED, not `LOAD_PRESETS`.
+   *
+   * RE-SCOPED AFTER A CRITIC MEASURED THE PRESET VERSION AND FOUND IT
+   * REPORTING A PROPERTY THE MECHANIC DID NOT HAVE. It read
+   * `[0.7, 0.8, 0.85, 0.9, 0.95, 1.0]`, and `1.0` — the row carrying most of
+   * what the flip counts were made of — is `LOAD_PRESETS.MAXIMAL`, a point for
+   * reading tuning curves at that no producer emits. See `REACHABLE`'s header
+   * for the full account.
+   *
+   * These six are the distinct session rungs the RPE ladder reaches at its top
+   * four choices, plus the two meet ceilings (standard and aggressive attempt
+   * three). `REACHABLE`'s own test derives them from the producers; they are
+   * written out here because this sweep is a LADDER over load and needs them
+   * in order, and `lift.test.ts` asserts the top of this list against
+   * `REACHABLE.MEET_LOAD_CEILING` so the two cannot drift apart.
+   */
+  LOADS: [0.8, 0.85, 0.875, 0.9, 0.9456, 0.97344] as const,
   /** The tap ladder, in ticks between taps. `null` never taps at all. */
   NONE: null,
   SPARSE_GAP_TICKS: 20,
@@ -2200,12 +2237,30 @@ const GRIND_SWEEP = {
   MAX_SCRIPTED_TAPS: 300,
   /** Measured at the shipped tuning. One case per (seed, load). */
   CASES: 120,
+  /**
+   * The load `LOADS` ends on, which must be the meet's own ceiling.
+   *
+   * Pinned so a sweep that quietly stopped short of what a meet can call — the
+   * exact failure the preset version shipped, one direction over — reddens
+   * rather than re-pinning itself.
+   */
+  TOP_LOAD: 0.97344,
   /** Outcome flips between a mashed grind and an unanswered command. */
-  MASH_VS_NONE_FLIPS: 80,
+  /**
+   * Outcome flips between a mashed grind and an unanswered command.
+   *
+   * SATURATED AT THE DOMAIN SIZE, AND THAT IS STATED RATHER THAN LEFT TO BE
+   * NOTICED: 120 of 120 means answering the command changes the outcome at
+   * EVERY load a player can be handed, so this pin can only ever move DOWN. It
+   * is a one-sided guard for that reason, and the two counts under it —
+   * `MASH_VS_SPARSE_FLIPS` and `MASH_MAKE_TO_NONE_MISS` — are the ones that
+   * can move in both directions.
+   */
+  MASH_VS_NONE_FLIPS: 120,
   /** Outcome flips between a mashed grind and a sparse one. */
-  MASH_VS_SPARSE_FLIPS: 40,
+  MASH_VS_SPARSE_FLIPS: 80,
   /** Outcome flips between a moderate grind and an unanswered command. */
-  MODERATE_VS_NONE_FLIPS: 80,
+  MODERATE_VS_NONE_FLIPS: 120,
   /**
    * Of the `MASH_VS_NONE_FLIPS`, how many are a MAKE becoming a MISS.
    *
@@ -2214,92 +2269,394 @@ const GRIND_SWEEP = {
    * pin above while never deciding whether the bar went up, which is the
    * weaker claim a reader would take from those counts.
    */
-  MASH_MAKE_TO_NONE_MISS: 60,
+  MASH_MAKE_TO_NONE_MISS: 100,
 } as const;
 
 /**
- * Parameters of the rescue sweep — the steer's own words, made into a number.
+ * ---------------------------------------------------------------------------
+ * THE REACHABLE DOMAIN — EVERY `loadRatio` THE GAME CAN ACTUALLY HAND A PLAYER
+ * ---------------------------------------------------------------------------
+ * WHY THIS EXISTS, AND IT IS A BAR FAILURE THAT PUT IT HERE. The first version
+ * of the rescue sweep was taken over `LOAD_PRESETS` — 0.85, 0.9, 0.95, 1.0 —
+ * and pinned `RESCUED_FROM_A_MISS: 40` and `IDLE_REPS_THAT_STALLED: 40` as
+ * TOTALS. An independent critic re-derived the same sweep over the loads the
+ * PRODUCERS emit and measured **0 stalls and 0 miss-rescues in every training
+ * rep the game can prescribe**: both totals were 100% concentrated at
+ * `LOAD_PRESETS.MAXIMAL = 1`, which is a test preset no play state produces.
+ * The headline claim — "stop tapping and the bar stalls; start again and it
+ * comes back" — was true of one meet attempt under one jump strategy and of
+ * nothing a session can reach.
  *
- * "Grind through" means a stall that continued tapping can rescue, and idle
- * hands losing a rep that taps would have saved. That is a claim about two
- * reps that are IDENTICAL up to a moment and differ only in whether the player
- * kept tapping after it, so the sweep is built as pairs rather than as a
- * ladder: same load, same seed, same descent, same rung, same launch — one
- * goes quiet at `IDLE_FROM_TICKS` after the command and stays quiet, the other
- * goes quiet at the same tick and comes back `IDLE_SPAN_TICKS` later.
+ * A PRESET IS NOT A DOMAIN, and that is the transferable half. `LOAD_PRESETS`
+ * is a set of named points for reading tuning curves at; it is not a claim
+ * about what a player meets. Sweeping it and reporting a total reads exactly
+ * like sweeping the game, which is why the failure survived a round.
  *
- * THE PAIRING IS WHAT MAKES THE COUNT MEAN ANYTHING. A sweep that compared a
- * mash against silence would measure the tap ladder again, which
- * `GRIND_SWEEP` already does; what this measures is the thing only a
- * CONTINUOUS grind has — that force applied AFTER the bar has stopped is worth
- * something.
+ * SO THE CELLS ARE DERIVED FROM THE TWO PRODUCERS RATHER THAN LISTED.
+ * `loadRatio` has exactly two of them in this tree:
+ *
+ *   `session.ts`'s `prescribeSession`  weight/e1RM from the RPE the player
+ *                                      taps and the check-in they answered.
+ *   `meetDay.ts`'s attempt builder     weight/e1RM from `OPENER_FRACTION_OF_1RM`
+ *                                      and `ATTEMPT_JUMP_FRACTION`.
+ *
+ * Both are walked exhaustively below. If a third producer appears, or either
+ * of these changes what it emits, the cell list moves and `REACHABLE_RESCUE`
+ * goes red as a set — which is the point of pinning it in both directions
+ * rather than pinning the counts alone.
+ *
+ * THE FEEL IS PART OF THE CELL, NOT A NUISANCE PARAMETER. The check-in moves
+ * BOTH the prescribed load (`readiness.loadAdjustmentPercent`) and the
+ * lifter's capacity (`capacityScaleForBarSpeed`), and the second is the larger
+ * effect — so a cell is `(loadRatio, barSpeed)` and the two axes are not
+ * independent. See `REACHABLE_COUPLING` for what that does, measured and
+ * pinned deliberately rather than left to be discovered.
  */
-const RESCUE_SWEEP = {
+const REACHABLE = {
+  /**
+   * e1RM the session cells are derived at, kg.
+   *
+   * ANY VALUE WOULD DO AND THAT IS WORTH SAYING: `loadRatio` is
+   * `weightKg / e1rmKg`, so the ratio is scale-free — except through
+   * `roundLoad`, which snaps to the shipped plate grid and therefore quantises
+   * the ratio differently at different e1RMs. 100 kg is chosen so the snapped
+   * ratios are readable (0.8250, 0.8750) rather than to make them come out
+   * well. `session.test.ts` owns the rounding rule; this only reads it.
+   */
+  E1RM_KG: 100,
+  /** Work sets asked of `prescribeSession`. It does not reach `loadRatio`. */
+  WORK_SETS: 3,
+  /** Reps per set, which DOES reach it — it is half the RPE chart's key. */
+  REPS_PER_SET: 3,
+  /** Seeds per cell. The seed decides the command delay and nothing else. */
   SEEDS: 20,
-  LOADS: [0.85, 0.9, 0.95, 1.0] as const,
-  /** Ticks after the command at which both reps stop tapping. */
+  /** Ticks after the command at which both reps of a pair stop tapping. */
   IDLE_FROM_TICKS: [18, 22, 26, 30] as const,
   /** How long the rescued rep stays quiet before it starts again. */
   IDLE_SPAN_TICKS: 18,
   /** The rung both reps tap at, before and after the silence. */
   GAP_TICKS: 6,
-  /** Measured: pairs walked. `SEEDS * LOADS * IDLE_FROM_TICKS`. */
-  PAIRS: 320,
+  /** Pairs per cell: `IDLE_FROM_TICKS.length * SEEDS`. */
+  PAIRS_PER_CELL: 80,
+  /** Measured: distinct (loadRatio, barSpeed) cells the session can produce. */
+  SESSION_CELLS: 22,
+  /** Meet cells: 3 strategies x 3 attempts x 2 check-ins. Not deduped — see below. */
+  MEET_CELLS: 18,
+  /** Measured: the highest `loadRatio` a session set can prescribe. */
+  SESSION_LOAD_CEILING: 0.95,
+  /** Measured: the highest `loadRatio` a meet attempt can call. */
+  MEET_LOAD_CEILING: 0.97344,
+} as const;
+
+/** One cell of the reachable domain: a load a producer emits, and the feel it comes with. */
+interface ReachableCell {
+  readonly label: string;
+  readonly loadRatio: number;
+  readonly feel: SessionFeel;
+}
+
+/**
+ * Every distinct (loadRatio, barSpeed) a SESSION can hand the mechanic.
+ *
+ * Walks all five RPE choices against all 27 check-ins and dedupes, because the
+ * check-in's effect on both axes is coarse: 135 combinations collapse to 22
+ * distinct cells. Deduping is what makes the pinned table readable; the count
+ * is pinned so a collapse to fewer cells reports itself.
+ */
+function reachableSessionCells(): ReachableCell[] {
+  const sleeps = ['poor', 'ok', 'good'] as const;
+  const sorenesses = ['sore', 'normal', 'fresh'] as const;
+  const motivations = ['flat', 'steady', 'fired-up'] as const;
+  const seen = new Set<string>();
+  const cells: ReachableCell[] = [];
+  for (const targetRpe of SESSION_TUNING.RPE_CHOICES) {
+    for (const sleep of sleeps) {
+      for (const soreness of sorenesses) {
+        for (const motivation of motivations) {
+          const feel = sessionFeel(EMPTY_FATIGUE_STATE, REACHABLE.WORK_SETS + 2, {
+            sleep,
+            soreness,
+            motivation,
+          });
+          const plan = prescribeSession(
+            REACHABLE.E1RM_KG,
+            BENCH,
+            targetRpe,
+            feel.readiness,
+            REACHABLE.WORK_SETS,
+            REACHABLE.REPS_PER_SET,
+          );
+          const key = `${plan.loadRatio}|${feel.barSpeed}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          // THE LOAD IS IN THE LABEL AND IT HAS TO BE. A first version keyed
+          // on `rpe/barSpeed` alone and TWO CELLS COLLIDED — RPE 6 reaches
+          // `as-expected` at both 0.7500 and 0.8000, because several check-ins
+          // share a bar-speed cue while carrying different load nudges. The
+          // record silently kept the second and the table read 38 rows for 40
+          // cells, which is the "an input that is silently absent" vacuity
+          // this file's own notes name. The count assertion below is what
+          // catches it now.
+          cells.push({
+            label: `session/rpe${targetRpe}/${plan.loadRatio.toFixed(4)}/${feel.barSpeed}`,
+            loadRatio: plan.loadRatio,
+            feel,
+          });
+        }
+      }
+    }
+  }
+  return cells;
+}
+
+/**
+ * Every (loadRatio, barSpeed) a MEET attempt can call, walking the jump ladder
+ * the way `meetDay.ts` does: an opener at `OPENER_FRACTION_OF_1RM`, then two
+ * jumps at the chosen strategy's fraction.
+ *
+ * NOT DEDUPED, DELIBERATELY, though attempt 1 is the same load under all three
+ * strategies. The three identical rows are a control the table carries for
+ * free: same load, same feel, same answer three times over, so a table where
+ * they disagreed would be reporting something other than the load.
+ *
+ * TWO CHECK-INS RATHER THAN 27. Meet day does not ask the readiness questions
+ * — `meetDay.ts` builds its own feel — so the axis here is the two ends of the
+ * bar-speed range a meet can arrive in, which is what actually reaches the
+ * mechanic.
+ */
+function reachableMeetCells(): ReachableCell[] {
+  const rested = sessionFeel(EMPTY_FATIGUE_STATE, REACHABLE.WORK_SETS + 2);
+  const wrecked = sessionFeel(EMPTY_FATIGUE_STATE, REACHABLE.WORK_SETS + 2, {
+    sleep: 'poor',
+    soreness: 'sore',
+    motivation: 'flat',
+  });
+  const cells: ReachableCell[] = [];
+  for (const [feelLabel, feel] of [['rested', rested], ['wrecked', wrecked]] as const) {
+    for (const strategy of ['conservative', 'standard', 'aggressive'] as const) {
+      const jump = ATTEMPT_JUMP_FRACTION[BENCH][strategy];
+      let loadRatio = OPENER_FRACTION_OF_1RM[BENCH];
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        if (attempt > 1) loadRatio = scrubProbe(loadRatio * (1 + jump));
+        cells.push({ label: `meet/${strategy}/att${attempt}/${feelLabel}`, loadRatio, feel });
+      }
+    }
+  }
+  return cells;
+}
+
+/** Six decimals, matching `lift.ts`'s own `scrub`, so a label is stable. */
+function scrubProbe(value: number): number {
+  return Number(value.toFixed(6));
+}
+
+/**
+ * A bench rep driven REACTIVELY rather than from a pre-written script.
+ *
+ * WHY THIS AND NOT `buildBenchScript`. That helper reads the command tick back
+ * out of a probe run and writes an absolute script, which is right when the
+ * config is fixed. Here the config carries a `SessionFeel`, and fatigue moves
+ * the launch beat's length — so a schedule computed from one probe and applied
+ * to another cell would be tapping at the wrong offsets. This one watches the
+ * state and taps against the command tick the run itself produces, which is
+ * also what a player does.
+ */
+function driveGrind(
+  config: LiftConfig,
+  gapTicks: number,
+  idleFromTicks: number,
+  idleSpanTicks: number,
+): LiftState {
+  let state = createLift(config);
+  let commandTick: number | null = null;
+  let nextTapTick: number | null = null;
+  let releaseNext = false;
+  for (let i = 0; i < TOUCH_SWEEP.MAX_TICKS; i += 1) {
+    const tick = state.tick + 1;
+    let input: LiftInput | null = null;
+    if (commandTick === null) {
+      // Hold the bar down through the whole descent — the correct play since
+      // the 2026-08-25 replay steer, and the one this sweep is not about.
+      if (tick === 1) input = { kind: 'press' };
+    } else if (releaseNext) {
+      input = { kind: 'release' };
+      releaseNext = false;
+    } else if (nextTapTick !== null && tick >= nextTapTick) {
+      const offset = tick - commandTick;
+      const idle = offset >= idleFromTicks && offset < idleFromTicks + idleSpanTicks;
+      if (!idle) {
+        input = { kind: 'press' };
+        releaseNext = true;
+      }
+      nextTapTick = tick + gapTicks;
+    }
+    state = stepLift(state, input);
+    if (commandTick === null && state.pressCommandTick !== null) {
+      commandTick = state.pressCommandTick;
+      nextTapTick = commandTick;
+    }
+    if (state.phase === 'RESOLVED') break;
+  }
+  return state;
+}
+
+/** What one cell of the reachable sweep measured: `[rescued, fromMiss, stalled]`. */
+type RescueRow = readonly [number, number, number];
+
+/**
+ * ---------------------------------------------------------------------------
+ * THE REACHABLE-DOMAIN RESCUE TABLE, PER CELL, PINNED IN BOTH DIRECTIONS
+ * ---------------------------------------------------------------------------
+ * Each row is `[rescued, fromMiss, stalled]` out of `PAIRS_PER_CELL` pairs.
+ * `rescued` counts pairs whose OUTCOME changed when the player started tapping
+ * again; `fromMiss` counts the subset where a MISS became a make; `stalled`
+ * counts pairs where the idle rep measurably stopped (`stallTicks > 0`).
+ *
+ * THE ZEROS ARE THE FINDING AND THEY ARE PINNED PER ROW, which is the whole
+ * repair. A total says a population moved; only a row says WHERE, and the
+ * previous version's totals hid the fact that every one of them came from a
+ * load no player reaches. Read down the `session/` rows and the ladder is
+ * legible without running anything: nothing at RPE 6 and 7, outcome flips
+ * without stalls from RPE 8, and stalls with real lost reps at 9 and 10.
+ *
+ * WHERE STALL-ABILITY BEGINS, IN THE TERMS A PLAYER WOULD USE:
+ *
+ *   RPE 6, 7            nothing moves. Tapping decides the rep's SPEED.
+ *   RPE 8               outcome flips (clean lift vs grind), no stalls, no
+ *                       lost reps. The default rung stays winnable by anyone.
+ *   RPE 9               stalls and lost reps arrive, at the neutral check-in
+ *                       first.
+ *   RPE 10              stalls and lost reps at every check-in.
+ *   meet, attempt 1     already stalling: an opener is 90% of e1RM.
+ *   meet, attempts 2-3  stalls and lost reps under EVERY jump strategy,
+ *                       including conservative.
+ *
+ * A CELL WITH `fromMiss > 0` AND `stalled === 0` IS NOT A CONTRADICTION. A rep
+ * can be lost by running out of `ASCENT_TIMEOUT_TICKS` while still creeping
+ * upward — never slow enough to trip `GRIND_STALL_VELOCITY`, never fast enough
+ * to finish. That is a bar the player did not press hard enough rather than a
+ * bar that beat them, and the two counts being separate is what shows it.
+ */
+const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
+  // --- SESSION: `prescribeSession`, all 5 RPE choices x all 27 check-ins,
+  //     deduped to the distinct (loadRatio, barSpeed) it can emit. ---------
+  'session/rpe6/0.7500/slower-than-expected': [0, 0, 0],
+  'session/rpe6/0.7500/as-expected': [0, 0, 0],
+  'session/rpe6/0.8000/as-expected': [0, 0, 0],
+  'session/rpe6/0.8250/crisp': [0, 0, 0],
+  'session/rpe6/0.8500/popping': [0, 0, 0],
+  'session/rpe7/0.7750/slower-than-expected': [0, 0, 0],
+  'session/rpe7/0.7750/as-expected': [0, 0, 0],
+  'session/rpe7/0.8250/as-expected': [20, 0, 0],
+  'session/rpe7/0.8500/crisp': [20, 0, 0],
+  'session/rpe7/0.8750/popping': [0, 0, 0],
+  'session/rpe8/0.8000/slower-than-expected': [20, 0, 0],
+  'session/rpe8/0.8500/as-expected': [40, 0, 0],
+  'session/rpe8/0.8750/crisp': [20, 0, 0],
+  'session/rpe8/0.9000/popping': [20, 0, 0],
+  // STALL-ABILITY ARRIVES HERE, at RPE 9 with a neutral check-in, and it is
+  // the boundary row of the whole table: 0.8750 is the same load RPE 8 reaches
+  // at `crisp`, and that row is clean because a `crisp` lifter carries 6% more
+  // capacity. The rung and the check-in decide it together — see
+  // `REACHABLE_COUPLING`.
+  'session/rpe9/0.8250/slower-than-expected': [80, 0, 0],
+  'session/rpe9/0.8750/as-expected': [80, 20, 20],
+  'session/rpe9/0.9000/crisp': [80, 20, 0],
+  'session/rpe9/0.9250/popping': [80, 0, 0],
+  'session/rpe10/0.8750/slower-than-expected': [80, 80, 80],
+  'session/rpe10/0.9000/as-expected': [80, 80, 40],
+  'session/rpe10/0.9250/crisp': [80, 40, 40],
+  'session/rpe10/0.9500/popping': [80, 40, 20],
+  // --- MEET: the opener fraction and the three jump ladders, at both ends of
+  //     the bar-speed range. Attempt 1 is the same load under all three
+  //     strategies and answers the same three times, which is the control. ---
+  'meet/conservative/att1/rested': [80, 80, 40],
+  'meet/conservative/att2/rested': [80, 80, 80],
+  'meet/conservative/att3/rested': [80, 80, 80],
+  'meet/standard/att1/rested': [80, 80, 40],
+  'meet/standard/att2/rested': [80, 80, 80],
+  'meet/standard/att3/rested': [80, 80, 80],
+  'meet/aggressive/att1/rested': [80, 80, 40],
+  'meet/aggressive/att2/rested': [80, 80, 80],
+  'meet/aggressive/att3/rested': [80, 80, 80],
+  'meet/conservative/att1/wrecked': [80, 80, 80],
+  'meet/conservative/att2/wrecked': [80, 80, 80],
+  'meet/conservative/att3/wrecked': [80, 80, 80],
+  'meet/standard/att1/wrecked': [80, 80, 80],
+  'meet/standard/att2/wrecked': [80, 80, 80],
+  'meet/standard/att3/wrecked': [80, 80, 80],
+  'meet/aggressive/att1/wrecked': [80, 80, 80],
+  'meet/aggressive/att2/wrecked': [80, 80, 80],
+  // THE CEILING CELL, AND THE ONE ROW WHERE COMING BACK DOES NOT HELP. The
+  // heaviest attempt the game can call, taken by a lifter whose bar speed is
+  // the worst it reads: 80 of 80 idle reps stall and NONE of them is rescued,
+  // because 18 ticks of silence at that load is past recovering from. Pinned
+  // rather than tuned away — a mechanic where every mistake is recoverable at
+  // every load has no top end.
+  'meet/aggressive/att3/wrecked': [0, 0, 80],
+};
+
+/**
+ * WHAT THE CHECK-IN ACTUALLY DOES TO THE REP, PINNED DELIBERATELY BECAUSE IT
+ * IS NOT WHAT A READER EXPECTS.
+ *
+ * A better check-in raises the prescribed load (`loadAdjustmentPercent`) AND
+ * the lifter's capacity (`capacityScaleForBarSpeed`), and the second is the
+ * larger effect at every rung — so **a primed player's set is EASIER than a
+ * steady player's at the same RPE**, not harder. `popping` carries +12% of
+ * capacity against roughly +5% of load.
+ *
+ * IT IS NOT THIS PIECE'S TO FIX AND IT IS NOT AN ACCIDENT OF THE RETUNE. Both
+ * halves live in `fatigue.ts` and `session.ts`, the coupling predates the
+ * bench work entirely, and it is arguably the right design — a player who
+ * shows up primed should have a better day, and GDD §12.3 refuses anything
+ * that punishes showing up. What would be wrong is leaving it as a thing a
+ * future tuner discovers by accident, so the ORDERING is measured and pinned
+ * here: at every RPE choice, the margin by which peak demand exceeds capacity
+ * falls monotonically as the check-in improves.
+ */
+/**
+ * WHERE STALL-ABILITY BEGINS, AS COUNTS AND AS NAMES.
+ *
+ * Derived from `REACHABLE_RESCUE` rather than measured separately, so the two
+ * cannot disagree — but pinned, because a table read for a shape is a table
+ * nobody checks the shape of. The NAMES are the part that matters: a count
+ * alone is satisfied by the same number of stalling cells at the wrong end of
+ * the ladder, which is exactly the failure this whole block repairs.
+ */
+const REACHABLE_LADDER = {
+  /** Measured: session cells where an idle rep measurably stops. 5 of 22. */
+  SESSION_CELLS_THAT_STALL: 5,
+  /** Measured: meet cells where an idle rep measurably stops. 18 of 18. */
+  MEET_CELLS_THAT_STALL: 18,
+  /** Measured: the RPE rungs those session cells sit at, sorted. */
+  RUNGS_THAT_STALL: ['rpe10', 'rpe9'] as readonly string[],
+} as const;
+
+const REACHABLE_COUPLING = {
+  /** The three cues that share a rung's upper half, in improving order. */
+  IMPROVING_CUES: ['as-expected', 'crisp', 'popping'] as const,
   /**
-   * THE BAR. Pairs where going quiet and coming back CHANGED THE OUTCOME.
-   *
-   * Non-zero is the whole claim: on a burst mechanic this number is 0 by
-   * construction, because taps after the window buy nothing.
+   * Measured: RPE rungs where the margin FALLS strictly from the hardest
+   * `as-expected` cell through `crisp` to `popping`. All five.
    */
-  RESCUED: 120,
+  RUNGS_WHERE_A_BETTER_CHECK_IN_IS_EASIER: 5,
   /**
-   * ...and WHERE, which is what the total on its own does not say. One entry
-   * per `LOADS` row, in order.
-   *
-   * THE TWO ZEROS ARE A PROPERTY, NOT A GAP. At 0.85 and 0.9 the bar goes up
-   * whether or not the player keeps tapping, so there is nothing to rescue —
-   * which is the same forgiveness the warm-up arm of the tap ladder pins, one
-   * load band further in. If they ever went non-zero the grind would have
-   * grown into a difficulty setting at working weights.
+   * Measured: RPE rungs where `popping` — the best check-in there is — is the
+   * HARDEST cell of the rung. None.
    */
-  RESCUED_PER_LOAD: [0, 0, 40, 80] as const,
+  RUNGS_WHERE_PRIMED_IS_HARDEST: 0,
   /**
-   * Of those, pairs where the idle rep MISSED and the resumed rep did not.
+   * Measured: RPE rungs where `slower-than-expected` is the hardest cell.
    *
-   * PINNED SEPARATELY FOR THE REASON `MASH_MAKE_TO_NONE_MISS` IS. A flip count
-   * says a population moved; it does not say which way, and "idle hands lose a
-   * rep that taps would have saved" is a claim about the direction. The rest
-   * of `RESCUED` is a grind becoming a clean lift, which is a real difference
-   * and is not the sentence the steer wrote.
+   * ONE, AND IT IS THE TOP ONE, which is the half of the coupling that is not
+   * a straight line. A poor check-in cuts the prescribed load AND the lifter's
+   * capacity; below RPE 10 the load cut is the bigger of the two, so a poor
+   * day is an EASIER rep than a neutral one, and the hardest cell on the rung
+   * is `as-expected`. At RPE 10 the ladder's own rounding puts the poor cell
+   * at 0.8750 against a capacity of 0.940 and it becomes the hardest.
    */
-  RESCUED_FROM_A_MISS: 40,
-  /**
-   * Measured: pairs where the idle rep really did STALL — ascent ticks under
-   * `GRIND_STALL_VELOCITY`, which is the mechanic's own definition of a bar
-   * that has stopped.
-   *
-   * IT IS SMALLER THAN `RESCUED` AND THAT IS THE HONEST READING. Only at the
-   * top of the ladder does going quiet actually stop the bar; below it the
-   * cost is a slower rep. So "a stall that continued tapping can rescue" is
-   * true of 40 of these 320 pairs and "tapping later is worth something" is
-   * true of 120, and the two numbers are pinned apart rather than one of them
-   * being quoted as if it were the other.
-   */
-  IDLE_REPS_THAT_STALLED: 40,
-  /** Measured: pairs where the rescued rep out-ran the idle one to a higher peak. */
-  HIGHER_PEAK_WHEN_RESUMED: 40,
-  /**
-   * Measured: (load, idle-from) cells where all `SEEDS` seeds agreed on every
-   * count above.
-   *
-   * THE SEED AXIS IS A CONTROL, NOT A DOMAIN, and this is what says so rather
-   * than leaving a reader to wonder why every count is a multiple of 20. The
-   * seed decides WHEN the command fires and nothing else; both reps in a pair
-   * are scripted relative to that tick, so a pair's answer cannot depend on
-   * it. GDD §8.1 — a rescue that worked on some seeds and not others would be
-   * a dice roll on the rep.
-   */
-  UNANIMOUS_CELLS: 16,
+  RUNGS_WHERE_A_POOR_CHECK_IN_IS_HARDEST: 1,
 } as const;
 
 describe('the grind curve', () => {
@@ -2384,7 +2741,7 @@ describe('the grind curve', () => {
     // Three half-lives, so this is arithmetic about the declared constant
     // rather than a second copy of it — and it is pinned as a count so a decay
     // that stopped decaying reports itself.
-    expect(ticks, `${ticks} ticks to fall to an eighth`).toBe(37);
+    expect(ticks, `${ticks} ticks to fall to an eighth`).toBe(21);
     expect(grindChargeNext(0, false)).toBe(0);
   });
 
@@ -2432,6 +2789,10 @@ describe('the grind decides the lift', () => {
     // narrowed to fewer loads or seeds reddens rather than re-pinning itself.
     expect(GRIND_SWEEP.CASES, 'the domain these counts are taken over').toBe(120);
     expect(cases).toBe(GRIND_SWEEP.CASES);
+    // ...and the ladder really does run to what a meet can call, rather than
+    // stopping inside the band or running past it into a preset.
+    expect(GRIND_SWEEP.LOADS[GRIND_SWEEP.LOADS.length - 1]).toBe(GRIND_SWEEP.TOP_LOAD);
+    expect(GRIND_SWEEP.TOP_LOAD).toBe(REACHABLE.MEET_LOAD_CEILING);
     expect(
       mashVsNone,
       `mashing changed the outcome in ${mashVsNone} of ${cases} cases`,
@@ -2450,91 +2811,220 @@ describe('the grind decides the lift', () => {
     ).toBe(GRIND_SWEEP.MASH_MAKE_TO_NONE_MISS);
   });
 
-  it('rescues a stalled bar when the player keeps tapping, across the sweep [a-stalled-bench-can-be-ground-through]', () => {
+  it('rescues a stalled bar across every load the game can prescribe [a-stalled-bench-can-be-ground-through]', () => {
     // ---------------------------------------------------------------------
-    // THE STEER'S OWN SENTENCE, AS A PAIRED COUNT. "Grind through" means a
-    // stall that continued tapping can rescue, and idle hands losing a rep
-    // that taps would have saved.
+    // THE STEER'S OWN SENTENCE, AS A PAIRED COUNT PER REACHABLE CELL.
+    // "Grind through" means a stall that continued tapping can rescue, and
+    // idle hands losing a rep that taps would have saved.
     //
-    // WHAT MAKES THIS DIFFERENT FROM THE TAP LADDER ABOVE, which is the
-    // question a reader should ask. The ladder measures whether tapping HARDER
-    // is better, and a burst mechanic passes that easily. This measures
-    // whether tapping LATER — after the launch beat is long over, and in 40 of
-    // these pairs after the bar has already stopped — is worth anything, and
-    // on a burst it is worth exactly nothing by construction.
+    // WHAT MAKES THIS DIFFERENT FROM THE TAP LADDER ABOVE. The ladder measures
+    // whether tapping HARDER is better, and a burst mechanic passes that
+    // easily. This measures whether tapping LATER — after the launch beat is
+    // long over, and in the heavy rows after the bar has already stopped — is
+    // worth anything, which on a burst is worth exactly nothing.
+    //
+    // AND WHAT MAKES IT DIFFERENT FROM ITS OWN FIRST VERSION: the cells come
+    // from `prescribeSession` and the meet's jump ladder rather than from
+    // `LOAD_PRESETS`. See `REACHABLE`'s header for the measurement that put
+    // them there.
     // ---------------------------------------------------------------------
-    let pairs = 0;
-    let rescued = 0;
-    let rescuedFromAMiss = 0;
-    let idleStalled = 0;
-    let higherPeak = 0;
+    const cells = [...reachableSessionCells(), ...reachableMeetCells()];
+    expect(
+      cells.filter((c) => c.label.startsWith('session/')).length,
+      'distinct session cells',
+    ).toBe(REACHABLE.SESSION_CELLS);
+    expect(
+      cells.filter((c) => c.label.startsWith('meet/')).length,
+      'meet cells',
+    ).toBe(REACHABLE.MEET_CELLS);
+
+    const measured: Record<string, RescueRow> = {};
     let unanimousCells = 0;
-    const perLoad = RESCUE_SWEEP.LOADS.map(() => 0);
-    for (let i = 0; i < RESCUE_SWEEP.LOADS.length; i += 1) {
-      const load = RESCUE_SWEEP.LOADS[i] ?? 0;
-      for (const from of RESCUE_SWEEP.IDLE_FROM_TICKS) {
-        const cell: string[] = [];
-        for (let seed = 1; seed <= RESCUE_SWEEP.SEEDS; seed += 1) {
-          const quiet = benchGrindRep(load, seed, {
-            gapTicks: RESCUE_SWEEP.GAP_TICKS,
-            idle: { from, until: Number.POSITIVE_INFINITY },
-          });
-          const resumed = benchGrindRep(load, seed, {
-            gapTicks: RESCUE_SWEEP.GAP_TICKS,
-            idle: { from, until: from + RESCUE_SWEEP.IDLE_SPAN_TICKS },
-          });
-          pairs += 1;
+    for (const cell of cells) {
+      let rescued = 0;
+      let fromMiss = 0;
+      let stalled = 0;
+      const answers = new Set<string>();
+      for (const from of REACHABLE.IDLE_FROM_TICKS) {
+        const perFrom: string[] = [];
+        for (let seed = 1; seed <= REACHABLE.SEEDS; seed += 1) {
+          const config: LiftConfig = {
+            kind: BENCH,
+            loadRatio: cell.loadRatio,
+            seed,
+            feel: cell.feel,
+          };
+          const quiet = driveGrind(
+            config,
+            REACHABLE.GAP_TICKS,
+            from,
+            Number.POSITIVE_INFINITY,
+          );
+          const resumed = driveGrind(
+            config,
+            REACHABLE.GAP_TICKS,
+            from,
+            REACHABLE.IDLE_SPAN_TICKS,
+          );
           const flipped = quiet.resolution?.outcome !== resumed.resolution?.outcome;
           const savedARep =
             quiet.resolution?.outcome === 'miss' && resumed.resolution?.outcome !== 'miss';
           // THE NON-VACUITY GUARD WITH TEETH: `stallTicks` counts ascent ticks
           // under `GRIND_STALL_VELOCITY`, so this is the mechanic's own
           // definition of a bar that stopped rather than a proxy for one.
-          const stalled = (quiet.resolution?.stallTicks ?? 0) > 0;
-          const climbed = resumed.peakHeight > quiet.peakHeight;
-          if (flipped) {
-            rescued += 1;
-            perLoad[i] = (perLoad[i] ?? 0) + 1;
-          }
-          if (savedARep) rescuedFromAMiss += 1;
-          if (stalled) idleStalled += 1;
-          if (climbed) higherPeak += 1;
-          cell.push(`${flipped}|${savedARep}|${stalled}|${climbed}`);
+          const reallyStalled = quiet.resolution !== null && quiet.resolution.stallTicks > 0;
+          if (flipped) rescued += 1;
+          if (savedARep) fromMiss += 1;
+          if (reallyStalled) stalled += 1;
+          perFrom.push(`${flipped}|${savedARep}|${reallyStalled}`);
         }
-        if (new Set(cell).size === 1) unanimousCells += 1;
+        answers.add(perFrom.join(','));
       }
+      // THE SEED AXIS IS A CONTROL, NOT A DOMAIN. The seed decides WHEN the
+      // command fires and nothing else; both reps of a pair are driven against
+      // that tick, so a pair's answer cannot depend on it. GDD §8.1 — a rescue
+      // that worked on some seeds and not others would be a dice roll on the
+      // rep. Counted per cell, so a cell that started depending on the seed
+      // says which one.
+      if (new Set([...answers].map((a) => new Set(a.split(',')).size)).size === 1) {
+        unanimousCells += 1;
+      }
+      measured[cell.label] = [rescued, fromMiss, stalled];
     }
-    // THE ORDER IS BAR FIRST AND GUARD SECOND, WHICH IS THE OPPOSITE OF THIS
-    // FILE'S USUAL SHAPE AND IS DELIBERATE. Elsewhere a non-vacuity guard goes
-    // first, because its job is to explain a zero. Here a real mutant moves
-    // BOTH — turning the grind back into a burst makes idle reps stall MORE as
-    // well as making them unrescuable — so a guard-first order would record a
-    // `MUTATION_WITNESSES` transcript whose reddened assertion was the guard.
-    // CLAUDE.md: a pin on a fact adjacent to the claim reads exactly like a pin
-    // on the claim, and a witness is the one place that distinction is load
-    // bearing. The guard still bites, two lines down.
-    expect(RESCUE_SWEEP.PAIRS, 'the domain these counts are taken over').toBe(320);
-    expect(pairs).toBe(RESCUE_SWEEP.PAIRS);
+
+    // THE DOMAIN, AS A LITERAL, so a producer that stopped producing cells
+    // reddens here rather than re-pinning itself silently.
+    expect(cells.length, 'the domain these counts are taken over').toBe(40);
+    expect(REACHABLE.PAIRS_PER_CELL).toBe(
+      REACHABLE.IDLE_FROM_TICKS.length * REACHABLE.SEEDS,
+    );
+    // ...and the table is set-equal to the cells in BOTH directions, so a cell
+    // that appeared or disappeared is a red test rather than a silent gap.
+    // A COLLISION GUARD BEFORE THE SET EQUALITY, because a record keyed on a
+    // label that is not unique loses rows quietly and the set equality below
+    // would then compare two equally-wrong lists.
+    expect(Object.keys(measured).length, 'cells that reached the table').toBe(cells.length);
+    expect(Object.keys(measured).sort()).toEqual(Object.keys(REACHABLE_RESCUE).sort());
+    expect(measured, 'per-cell [rescued, fromMiss, stalled] over the reachable domain')
+      .toEqual(REACHABLE_RESCUE);
+    expect(unanimousCells, 'cells where the seed changed nothing').toBe(cells.length);
+  }, 240_000);
+
+  it('puts the load ceilings where the producers put them, and stalls inside them', () => {
+    // THE OTHER HALF OF "A PRESET IS NOT A DOMAIN": what the producers can
+    // actually emit. Pinned as values rather than bounds, because the finding
+    // this repairs was a claim that held only ABOVE the ceiling — and a bound
+    // would have been satisfied by that world too.
+    const session = reachableSessionCells();
+    const meet = reachableMeetCells();
+    const sessionCeiling = Math.max(...session.map((c) => c.loadRatio));
+    const meetCeiling = Math.max(...meet.map((c) => c.loadRatio));
+    expect(sessionCeiling, 'the heaviest set a session can prescribe').toBe(
+      REACHABLE.SESSION_LOAD_CEILING,
+    );
+    expect(meetCeiling, 'the heaviest attempt a meet can call').toBe(
+      REACHABLE.MEET_LOAD_CEILING,
+    );
+    // BOTH CEILINGS ARE BELOW `LOAD_PRESETS.MAXIMAL`, which is the sentence the
+    // first version of this sweep needed and did not have. The preset is a
+    // point for reading tuning curves at; no play state produces it.
+    expect(sessionCeiling).toBeLessThan(LOAD_PRESETS.MAXIMAL);
+    expect(meetCeiling).toBeLessThan(LOAD_PRESETS.MAXIMAL);
+
+    // ...and stall-ability arrives INSIDE the band rather than past its far
+    // side. Counted from the pinned table so the two cannot drift apart.
+    const rows = Object.entries(REACHABLE_RESCUE);
+    const stallingSessionCells = rows.filter(
+      ([label, row]) => label.startsWith('session/') && row[2] > 0,
+    );
+    const stallingMeetCells = rows.filter(
+      ([label, row]) => label.startsWith('meet/') && row[2] > 0,
+    );
+    expect(stallingSessionCells.length, 'session cells where an idle rep stalls')
+      .toBe(REACHABLE_LADDER.SESSION_CELLS_THAT_STALL);
+    expect(stallingMeetCells.length, 'meet cells where an idle rep stalls')
+      .toBe(REACHABLE_LADDER.MEET_CELLS_THAT_STALL);
+    // The rung it begins at, by name rather than by count — the count alone
+    // would be satisfied by the same number of cells at the wrong end.
     expect(
-      rescued,
-      `coming back changed the outcome in ${rescued} of ${pairs} pairs`,
-    ).toBe(RESCUE_SWEEP.RESCUED);
-    expect(perLoad, 'rescues per load').toEqual([...RESCUE_SWEEP.RESCUED_PER_LOAD]);
-    expect(
-      rescuedFromAMiss,
-      `${rescuedFromAMiss} of ${pairs} pairs turned a miss into a make`,
-    ).toBe(RESCUE_SWEEP.RESCUED_FROM_A_MISS);
-    expect(
-      idleStalled,
-      `${idleStalled} of ${pairs} idle reps actually stalled`,
-    ).toBe(RESCUE_SWEEP.IDLE_REPS_THAT_STALLED);
-    expect(
-      higherPeak,
-      `the resumed rep out-climbed the idle one in ${higherPeak} of ${pairs} pairs`,
-    ).toBe(RESCUE_SWEEP.HIGHER_PEAK_WHEN_RESUMED);
-    // The seed control — see `UNANIMOUS_CELLS`.
-    expect(unanimousCells, `${unanimousCells} cells were seed-unanimous`).toBe(
-      RESCUE_SWEEP.UNANIMOUS_CELLS,
+      [...new Set(stallingSessionCells.map(([label]) => label.split('/')[1]))].sort(),
+      'the RPE rungs a session set can stall at',
+    ).toEqual([...REACHABLE_LADDER.RUNGS_THAT_STALL]);
+    // Every rung BELOW them is clean on all three counts, which is the control
+    // the zeros are zero against: a grind on a warm-up would be its own failure.
+    for (const [label, row] of rows) {
+      if (!label.startsWith('session/')) continue;
+      const rung = label.split('/')[1] ?? '';
+      if ((REACHABLE_LADDER.RUNGS_THAT_STALL as readonly string[]).includes(rung)) continue;
+      expect(row[1], `${label} lost a rep`).toBe(0);
+      expect(row[2], `${label} stalled`).toBe(0);
+    }
+    // ...and the meet stalls under STANDARD jumps and not only aggressive ones.
+    expect(REACHABLE_RESCUE['meet/standard/att3/rested']?.[2] ?? 0, 'standard att3 stalls')
+      .toBeGreaterThan(0);
+    expect(REACHABLE_RESCUE['meet/standard/att3/rested']?.[1] ?? 0, 'standard att3 loses reps')
+      .toBeGreaterThan(0);
+  });
+
+  it('makes a better check-in an EASIER rep, which is deliberate and is not this piece to fix', () => {
+    // See `REACHABLE_COUPLING`. The check-in moves the prescribed load and the
+    // lifter's capacity together and capacity moves further, so the ordering
+    // runs the way a reader does not expect. Pinned rather than left to be
+    // discovered: it is the reason the `crisp` and `popping` rows of the table
+    // above are not the hardest ones at their rung, and a future tuner who
+    // changes either half needs to see this go red rather than find it by
+    // playing.
+    //
+    // BOTH HALVES LIVE OUTSIDE THIS PIECE — `fatigue.ts`'s
+    // `capacityScaleForBarSpeed` and `session.ts`'s `loadAdjustmentPercent` —
+    // and the coupling predates the bench work entirely. What is asserted here
+    // is what it DOES to a bench rep, measured, not a judgement about whether
+    // it should.
+    const cells = reachableSessionCells();
+    const marginOf = (cell: ReachableCell): number =>
+      ascentDemand(STICK_HEIGHT_FRAC.bench, cell.loadRatio, BENCH) -
+      lifterCapacity({ kind: BENCH, loadRatio: cell.loadRatio, seed: 1, feel: cell.feel });
+
+    let fallingRungs = 0;
+    let primedHardestRungs = 0;
+    let poorHardestRungs = 0;
+    for (const targetRpe of SESSION_TUNING.RPE_CHOICES) {
+      const rung = cells.filter((c) => c.label.startsWith(`session/rpe${targetRpe}/`));
+      expect(rung.length, `rpe ${targetRpe} cells`).toBeGreaterThan(3);
+      const hardest = [...rung].sort((a, b) => marginOf(b) - marginOf(a))[0];
+      if (hardest !== undefined && hardest.label.endsWith('/popping')) primedHardestRungs += 1;
+      if (hardest !== undefined && hardest.label.endsWith('/slower-than-expected')) {
+        poorHardestRungs += 1;
+      }
+      // THE HARDEST `as-expected` CELL, NOT THE FIRST ONE. A rung can reach the
+      // same bar-speed cue at two loads — RPE 6 reaches `as-expected` at both
+      // 0.7500 and 0.8000 — and picking whichever came first would compare a
+      // different cell at different rungs. This is the same collision the
+      // table's own labels had to be widened for.
+      const ladder = REACHABLE_COUPLING.IMPROVING_CUES.map((cue) => {
+        const matching = rung.filter((c) => c.label.endsWith(`/${cue}`));
+        return matching.length === 0
+          ? null
+          : Math.max(...matching.map((c) => marginOf(c)));
+      });
+      const present = ladder.filter((m): m is number => m !== null);
+      expect(present.length, `rpe ${targetRpe} improving cues`).toBe(
+        REACHABLE_COUPLING.IMPROVING_CUES.length,
+      );
+      let falling = true;
+      for (let i = 1; i < present.length; i += 1) {
+        if ((present[i] ?? 0) >= (present[i - 1] ?? 0)) falling = false;
+      }
+      if (falling) fallingRungs += 1;
+    }
+    expect(fallingRungs, 'rungs where a better check-in is a smaller margin').toBe(
+      REACHABLE_COUPLING.RUNGS_WHERE_A_BETTER_CHECK_IN_IS_EASIER,
+    );
+    expect(primedHardestRungs, 'rungs where the best check-in is the hardest cell').toBe(
+      REACHABLE_COUPLING.RUNGS_WHERE_PRIMED_IS_HARDEST,
+    );
+    expect(poorHardestRungs, 'rungs where the worst check-in is the hardest cell').toBe(
+      REACHABLE_COUPLING.RUNGS_WHERE_A_POOR_CHECK_IN_IS_HARDEST,
     );
   });
 
@@ -2754,14 +3244,17 @@ describe('the false-start rule, exactly as the copy states it', () => {
     // as a count so a charge that stopped charging, or a cap that stopped
     // capping, reports itself instead of passing.
     //
-    // FIVE, NOT `MAX_LOCKOUT_TICKS / PER_EARLY_TAP_TICKS` — the binding
-    // constraint is the launch beat (18 ticks) rather than the cap (30), and
-    // the two are different numbers for a reason. The cap is what stops the
-    // rule ever reaching into the ASCENT grind, which is what makes it "costs
-    // the launch and never the rep"; the launch beat is what the delay has to
-    // eat through before the launch reads zero. A tuner who lengthens
-    // `PRESS_LAUNCH_MS` moves this count and not the cap.
-    expect(strictDrops, `${strictDrops} rungs actually delayed the grind`).toBe(5);
+    // FOUR, AND NOT `MAX_LOCKOUT_TICKS / PER_EARLY_TAP_TICKS`. The binding
+    // constraint is the launch beat (18 ticks) rather than the cap (30 ticks),
+    // and the two are different numbers for a reason: the cap is what stops
+    // the rule ever reaching into the ASCENT grind, which is what makes it
+    // "costs the launch and never the rep", while the launch beat is what the
+    // delay has to eat through before the launch reads zero. It is FOUR rather
+    // than the launch beat's own 18/4 = 5 because the charge decays while the
+    // delay runs (`GRIND_CHARGE_DECAY_PER_TICK`), so the last rung before the
+    // beat is exhausted has already been pushed to zero. A tuner who lengthens
+    // `PRESS_LAUNCH_MS` or slows the decay moves this count and not the cap.
+    expect(strictDrops, `${strictDrops} rungs actually delayed the grind`).toBe(4);
     // The cap really is a cap: past it, more mashing changes nothing at all.
     expect(forces[capRung] ?? -1).toBe(forces[capRung + 4] ?? -2);
     expect(grindStartTick(100, capRung)).toBe(grindStartTick(100, capRung + 40));

@@ -866,7 +866,8 @@ const GUARANTEE_COVERAGE = {
    * `liftTuning.ts` are outside `GUARANTEE_PROSE_FILES`. The evidence is the
    * mutation set recorded in this file's `MUTATION_WITNESSES` and in the
    * branch's merge commit, plus the swept outcome-flip counts pinned in
-   * `lift.test.ts`'s `TOUCH_SWEEP` and `BURST_SWEEP`.
+   * `lift.test.ts`'s `TOUCH_SWEEP` and `GRIND_SWEEP` (`BURST_SWEEP` until the
+   * 2026-08-25 replay steer renamed it with the beat).
    *
    * 285 -> 286 when the same ruling reached the meet fixtures a commit later.
    * Attributed the same way: `meetPreview.ts` **1** — `benchScript`'s header,
@@ -2401,6 +2402,22 @@ const SECTION_4A_KILL_LIST = {
   /** Rows below carrying one of the two tags — three mutants move both series. */
   ROWS: 11,
 } as const;
+
+/**
+ * How many witness rows are recorded. An EXACT count, checked below.
+ *
+ * A DELETION USED TO WALK THROUGH THIS CHECK. It was
+ * `expect(MUTATION_WITNESSES.length).toBeGreaterThan(2)`, and the 2026-08-25
+ * bench replay steer removed two rows — one for a guarantee it retired, one
+ * for a mechanic it replaced — without reddening anything. A bound that a
+ * deletion satisfies is the "weaken the pins into bounds" move CLAUDE.md
+ * refuses, seen from the evidence side rather than the defect side.
+ *
+ * DECLARED HERE RATHER THAN READ FROM THE ARRAY, which would make it vacuous
+ * by construction. It moves with every row added or removed, and updating it
+ * is part of recording a witness.
+ */
+const WITNESS_ROWS = 78;
 
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
   // -------------------------------------------------------------------------
@@ -5070,7 +5087,19 @@ describe('the guarantee-tag convention', () => {
     // guard is the pair of set equalities — an empty table would force every tag
     // onto the legacy list, which is an explicit diff with a comment next to it —
     // but a bare count catches the emptiest version outright.
-    expect(MUTATION_WITNESSES.length, 'no witnesses recorded').toBeGreaterThan(2);
+    // AN EXACT COUNT, NOT A BOUND, AND THE REASON IS A DELETION THAT WALKED
+    // THROUGH THE BOUND. This read `toBeGreaterThan(2)` and the 2026-08-25
+    // replay steer removed two witness rows — one whose guarantee was retired,
+    // one whose mechanic was replaced — and the bound stayed green through
+    // both. CLAUDE.md: do not weaken a pin into a bound, because a bound lets
+    // the defect grow back quietly; here it let the evidence shrink quietly,
+    // which is the same move in the other direction.
+    //
+    // IT MOVES WITH EVERY WITNESS ADDED OR REMOVED, deliberately. A future
+    // builder who records a new witness updates this number in the same commit
+    // and a reviewer sees the count change beside the row — which is the whole
+    // point, and is why it is not derived from the array's own length.
+    expect(MUTATION_WITNESSES.length, 'witness rows recorded').toBe(WITNESS_ROWS);
     // And the bar is measured rather than asserted: it covers the tags added
     // since it existed, which is a minority, and says so.
     expect(witnessed.size + legacy.size).toBe(tags.size);

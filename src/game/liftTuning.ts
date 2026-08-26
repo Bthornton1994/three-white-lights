@@ -840,7 +840,7 @@ export const LIFT_TUNING = Object.freeze({
    * paired reps that differ only in whether the tapping resumed.
    * `@guarantee a-stalled-bench-can-be-ground-through`
    */
-  GRIND_CHARGE_DECAY_PER_TICK: 0.9439,
+  GRIND_CHARGE_DECAY_PER_TICK: 0.9057,
 
   /**
    * The charge-to-force curve.
@@ -868,7 +868,7 @@ export const LIFT_TUNING = Object.freeze({
    * count to take from, so the rule was re-expressed as a delay with a cap,
    * and the cap is the floor's replacement.
    */
-  GRIND_CHARGE: { HALF_SATURATION: 1.5, CEILING: 4.5 },
+  GRIND_CHARGE: { HALF_SATURATION: 1.1, CEILING: 2.9 },
 
   /**
    * The false-start rule, as the continuous grind expresses it.
@@ -980,7 +980,7 @@ export const LIFT_TUNING = Object.freeze({
    * Unplayed placeholder, GDD §10.
    * `@guarantee bench-grind-decides-the-rep`
    */
-  GRIND_BOOST_FORCE_MAX: 0.34,
+  GRIND_BOOST_FORCE_MAX: 0.42,
 
   /**
    * Velocity the bar leaves the chest with, at grind force 0 and 1.
@@ -1057,10 +1057,32 @@ export const LIFT_TUNING = Object.freeze({
    * per kind. squat's MAXIMAL is 0.86, so even the easy part of a limit squat
    * is most of what the lifter has.
    *
-   * BENCH SET SLIGHTLY LOWER (0.80), WITH MORE OF THE LIFT'S DIFFICULTY MOVED
-   * INTO THE STICK GAIN BELOW — reasoned rather than measured: a bench grind
-   * is commonly described as fine everywhere except right off the chest,
-   * more so than a squat's more evenly-distributed grind. GDD §10 applies.
+   * ---------------------------------------------------------------------------
+   * BENCH SET HIGHEST OF THE THREE (1.25), AND THAT IS THE EXACT REVERSE OF
+   * WHAT THIS PARAGRAPH SAID UNTIL A CRITIC MEASURED IT
+   * ---------------------------------------------------------------------------
+   * It read "BENCH SET SLIGHTLY LOWER (0.80), WITH MORE OF THE LIFT'S
+   * DIFFICULTY MOVED INTO THE STICK GAIN BELOW", and by the time it was read
+   * the shipped value was 0.95 and the gain had moved DOWN, not up. A tuner
+   * following it would have turned both knobs the wrong way — which is why
+   * this is corrected rather than trimmed: this is the file GDD §10 expects
+   * thirty hand passes over.
+   *
+   * WHY THE DIFFICULTY LIVES IN THE BASE ON BENCH, MEASURED RATHER THAN
+   * REASONED. The 2026-08-25 replay steer made bench's input a SUSTAINED tap
+   * rate rather than an impulse at a moment, and a rate can only be asked for
+   * over a span. With the difficulty concentrated in a narrow stick, a player
+   * who stopped tapping coasted out of the hard region on the charge they had
+   * already banked and the bar never stalled anywhere a real session or meet
+   * can reach. Moving it into the base makes the WHOLE press work, so stopping
+   * costs ground everywhere — which is the only shape "continuously tap to
+   * grind through" can have.
+   *
+   * Bench's base at `LOAD_PRESETS.MAXIMAL` is 1.147, above the lifter's
+   * capacity on its own: a limit bench that is not being pressed does not
+   * merely slow down, it does not move. Squat's is 0.808 and deadlift's 0.792
+   * at the same preset, because both of those keep their difficulty in a
+   * notch. Unplayed placeholder, GDD §10.
    *
    * DEADLIFT SET LOWEST OF THE THREE (0.84), AND THAT IS THE OPPOSITE OF THE
    * FIRST GUESS. The first pass set it HIGHEST (0.90), reasoning that deadlift
@@ -1081,7 +1103,7 @@ export const LIFT_TUNING = Object.freeze({
    */
   DEMAND_BASE: {
     squat: { LIGHT: 0.42, MAXIMAL: 0.86 },
-    bench: { LIGHT: 0.38, MAXIMAL: 0.95 },
+    bench: { LIGHT: 0.38, MAXIMAL: 1.25 },
     deadlift: { LIGHT: 0.42, MAXIMAL: 0.84 },
   } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
@@ -1096,17 +1118,38 @@ export const LIFT_TUNING = Object.freeze({
    * `liftTuning.test.ts` fails if that happens, for every kind in
    * `PLAYABLE_LIFT_KINDS`, not only squat.
    *
-   * BENCH'S GAIN IS LARGER THAN SQUAT'S (0.55 vs 0.48) — the flip side of
-   * DEMAND_BASE above: bench's MAXIMAL peak is 0.80 + 0.55 = 1.35, a
-   * comparable margin above capacity to squat's, reached by a sharper stick
-   * rather than a higher base. Reasoned, not measured.
+   * ---------------------------------------------------------------------------
+   * BENCH'S GAIN IS THE SMALLEST OF THE THREE (0.15), AND THIS PARAGRAPH SAID
+   * THE OPPOSITE UNTIL A CRITIC MEASURED IT
+   * ---------------------------------------------------------------------------
+   * It read "BENCH'S GAIN IS LARGER THAN SQUAT'S (0.55 vs 0.48) … bench's
+   * MAXIMAL peak is 0.80 + 0.55 = 1.35, a comparable margin above capacity to
+   * squat's, reached by a sharper stick rather than a higher base." Every
+   * clause of that was false of the shipped tuning by the time it was read,
+   * including the "comparable margin" — measured at `LOAD_PRESETS.MAXIMAL`,
+   * bench's peak was 1.153 against squat's 1.238 and deadlift's 1.202, the
+   * LOWEST rather than a comparable one.
+   *
+   * WHAT IS TRUE NOW, MEASURED AT `LOAD_PRESETS.MAXIMAL`: squat 1.238,
+   * deadlift 1.202, bench 1.285. Bench's is the largest margin above capacity
+   * of the three, and it is reached the opposite way round from the other two
+   * — a high floor with a shallow notch on it (endpoint 1.25 + 0.15) rather
+   * than an easy run-up into a tall one.
+   *
+   * THE ASYMMETRY IS THE MECHANIC'S, NOT A DIFFICULTY SETTING. Squat and
+   * deadlift are driven by `DRIVE_BOOST_FORCE_MAX` (0.62), an impulse thrown
+   * at a cue and decaying from it, so it has to be big enough to carry a bar
+   * through a notch on its own. Bench is driven by `GRIND_BOOST_FORCE_MAX`
+   * (0.42), smaller but applied EVERY tick the player keeps tapping — so it
+   * can hold a bar against a high floor for a whole ascent, which is what the
+   * higher peak is asking it to do. Neither number has been played.
    *
    * DEADLIFT'S GAIN IS THE LARGEST (0.46) ON TOP OF THE SMALLEST BASE — peak
    * 0.84 + 0.46 = 1.30 at the endpoint, a comparable margin above capacity to
    * the other two, reached by a taller notch on an easier run-up rather than a
    * higher floor. Measured at LOAD_PRESETS.MAXIMAL the three peaks are squat
-   * 1.238, deadlift 1.202, bench's own; what differs is WHERE the peak sits
-   * (0.62 against squat's 0.34), not how bad it is.
+   * 1.238, deadlift 1.202, bench 1.285; against the other two what differs is
+   * WHERE the peak sits (0.62 against squat's 0.34), not how bad it is.
    *
    * Also the reverse of the first guess (0.42 gain on a 0.90 base), and for the
    * same reason recorded under `DEMAND_BASE`: difficulty spread across the whole
@@ -1114,7 +1157,7 @@ export const LIFT_TUNING = Object.freeze({
    */
   DEMAND_STICK_GAIN: {
     squat: { LIGHT: 0.06, MAXIMAL: 0.48 },
-    bench: { LIGHT: 0.05, MAXIMAL: 0.3 },
+    bench: { LIGHT: 0.05, MAXIMAL: 0.15 },
     deadlift: { LIGHT: 0.05, MAXIMAL: 0.46 },
   } satisfies PerKind<{ LIGHT: number; MAXIMAL: number }>,
 
