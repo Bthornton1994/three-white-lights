@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-meet-sound-mjs-2026-08-26T18-58-16-561Z-9806",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-meet-sound.mjs",
+    "--url",
+    "http://localhost:8097"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-26T18:58:16.561Z",
+  "startedAtMs": 1787770696561,
+  "cwd": "/home/user/wt-bench-difficulty",
+  "commit": "115ac0169302836111a9612167ed3de1b71f1857",
+  "branch": "claude/bench-difficulty",
+  "dirty": 1,
+  "dirtyPaths": [
+    ".gauntlet/shots/lift-press/press.json"
+  ],
+  "runner": {
+    "pid": 9806,
+    "startTick": "1762162",
+    "cmdline": "node tools/watchdog.mjs --budget 900 -- node tools/verify-meet-sound.mjs --url http://localhost:8097",
+    "bootId": "4629c418-2124-4105-88fa-7f9ea23105ae",
+    "bootEpochSeconds": 1787753075,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-26T18:58:16.582Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
