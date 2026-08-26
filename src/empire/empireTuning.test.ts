@@ -109,6 +109,12 @@ describe('the block is frozen and every entry is classified', () => {
       'LADDER_STARTING_EQUIPMENT',
       'LEADERBOARD_BRACKET_SIZE',
       'LEADERBOARD_SCOPES',
+      // §5.11 stage 4's four per-tier manager tables and the tier ladder
+      // itself. Read from this pin's own failure value.
+      'MANAGER_AUTO_REPAIR_CONDITION',
+      'MANAGER_HIRE_COST_GYM_BUCKS',
+      'MANAGER_TIERS',
+      'MANAGER_WAGE_GYM_BUCKS_PER_BANKED_HOUR',
       'MEMBER_DUES_GYM_BUCKS_PER_DAY',
       'MEMBER_TYPES',
       'MEMBER_TYPE_BARBELL_AFFINITY',
@@ -642,7 +648,15 @@ describe('§5.5 social', () => {
     // 148 -> 149: the label-size knob (FLOOR_SPRITE_LABEL_FONT_SIZE), added
     // when the first composed screenshot showed default-size captions
     // burying the sprites.
-    expect(examined).toBe(149);
+    // 149 -> 163: §5.11 stage 4's fourteen entries — the manager tier ladder
+    // and its three per-tier tables, the wear rate, the condition income
+    // floor, the repair rate, the dormancy crawl, the maintenance-prompt line
+    // and its free allowance, the diligent policy's repair line, the two
+    // strike thresholds and the recovery minimum. Note it is fourteen and not
+    // fifteen: the dormancy entry slump that shipped with the first draft was
+    // measured as a never-punish breach and removed, so no knob arrived for
+    // it. Measured by running this assertion and reading its failure value.
+    expect(examined).toBe(163);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -652,7 +666,8 @@ describe('§5.5 social', () => {
     // 665 -> 725 (145 keys x 5 banned units).
     // 725 -> 740 (148 keys x 5 banned units, Phase 4's net +3 entries).
     // 740 -> 745 (149 keys x 5 banned units).
-    expect(probed).toBe(745);
+    // 745 -> 815 (163 keys x 5 banned units).
+    expect(probed).toBe(815);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

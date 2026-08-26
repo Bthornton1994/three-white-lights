@@ -158,7 +158,10 @@ export const DIRECTORY_WALK = Object.freeze({
   // queuing and use simulation. Read from this pin's own failure value.
   // 18 -> 19: GDD §5.13 presentation Phase 4's `floorSprites.ts` — the
   // floor's index-grid sprite data and its indexed-PNG encoding, one module.
-  SHIPPED_MODULES: 19,
+  // 19 -> 20: §5.11 stage 4's `management.ts` — staffing, maintenance,
+  // equipment condition and recoverable failure. Read from this pin's own
+  // failure value.
+  SHIPPED_MODULES: 20,
   /**
    * Files the shared walk hands the censuses today, tests included.
    *
@@ -173,7 +176,8 @@ export const DIRECTORY_WALK = Object.freeze({
   // 36 -> 38: GDD §5.13 presentation Phase 3's floorSim.ts and
   // floorSim.test.ts. Read from this pin's own failure value.
   // 38 -> 40: Phase 4's `floorSprites.ts` and `floorSprites.test.ts`.
-  DIRECTORY_FILES: 40,
+  // 40 -> 42: stage 4's `management.ts` and `management.test.ts`.
+  DIRECTORY_FILES: 42,
   /** Directories under `src/empire/` today. */
   SUBDIRECTORIES: 0,
   /**
@@ -946,6 +950,7 @@ describe('the directory walk every census in src/empire/ shares', () => {
       'floorSprites.ts',
       'ladder.ts',
       'ladderView.tsx',
+      'management.ts',
       'members.ts',
       'npc.ts',
       'production.ts',

@@ -2064,6 +2064,165 @@ export const EMPIRE_TUNING = Object.freeze({
    * Small is busy, large is flat.
    */
   FLOOR_SPRITE_FLECK_STRIDE: 3,
+
+  // -------------------------------------------------------------------------
+  // §5.11 stage 4 — staffing, maintenance, equipment condition, recoverable
+  // failure (§5.6/§5.7, unpaused by the ruling recorded in docs/GDD.md §5.13).
+  // Read by `management.ts` and nothing else. Every value here is provisional
+  // in exactly the sense this file's own header claims: legible and
+  // self-consistent, judged by nobody. `management.test.ts` re-derives the
+  // consistency inequalities from these values rather than restating them.
+  // -------------------------------------------------------------------------
+
+  /**
+   * The manager quality ladder, worst first — §5.7's quality axis as a closed
+   * vocabulary, deterministic like every hire in this directory (no draw, no
+   * pull, no rarity: GDD §12.3's no-gacha rule applied to staffing). 'novice'
+   * deliberately reuses the NPC tier token so the census carries one row.
+   */
+  MANAGER_TIERS: Object.freeze(['novice', 'steady', 'veteran'] as const),
+
+  /**
+   * Flat published hire cost per tier, in Gym Bucks, quoted before the
+   * decision — §5.7's staffing tradeoff priced: the cheap manager is cheap.
+   */
+  MANAGER_HIRE_COST_GYM_BUCKS: Object.freeze({
+    novice: 150,
+    steady: 600,
+    veteran: 2000,
+  }),
+
+  /**
+   * Ongoing wage per tier, in Gym Bucks per banked hour of gym operation.
+   * Keyed to banked seconds — the same capped quantity income accrues on — so
+   * absence beyond the offline horizon costs no wage, exactly as it earns no
+   * income. A wage on wall-clock hours would charge the player for being
+   * away, which the §5.13 stage-4 ruling forbids.
+   */
+  MANAGER_WAGE_GYM_BUCKS_PER_BANKED_HOUR: Object.freeze({
+    novice: 2,
+    steady: 5,
+    veteran: 9,
+  }),
+
+  /**
+   * The condition below which a manager of each tier repairs an item on its
+   * own at a check-in, billing the gym the published repair cost — §5.7's
+   * "a good manager can handle routine repairs autonomously; a bad one
+   * won't". The novice's zero is that sentence's second half: no condition
+   * is ever below zero, so the cheapest manager repairs nothing, which is
+   * how "the cheap manager is cheap, and it costs you later" gets its later.
+   */
+  MANAGER_AUTO_REPAIR_CONDITION: Object.freeze({
+    novice: 0,
+    steady: 0.35,
+    veteran: 0.75,
+  }),
+
+  /**
+   * Condition lost per banked hour of gym operation, per item. Wear is keyed
+   * to banked seconds — the clock the player's own check-ins advance and the
+   * cap discards absence out of — so time away beyond the offline horizon
+   * wears nothing, and the same seconds that pay income are the seconds that
+   * wear the equipment. At 0.002 an unrepaired item runs from new to fully
+   * worn in 500 banked hours, about six weeks of daily 12-hour banking.
+   */
+  EQUIPMENT_WEAR_PER_BANKED_HOUR: 0.002,
+
+  /**
+   * The floor of the condition income multiplier, so a fully worn gym still
+   * earns — §5.7's auto-deduction bounded away from a dead loop. A budget
+   * with a measured lower bound, not a free knob: an extra banked hour pays
+   * at least `rate x fraction x floor` and costs at most its own wear bill,
+   * the top wage, and a tail of depressed future income bounded by
+   * `rate x fraction x (1 - floor)` — the multiplier gap is at most
+   * `(1 - floor) x wear` per extra hour and lasts at most `1 / wear` hours,
+   * so the wear rate cancels out of the tail. Below the bound the tail
+   * outweighs the hour and a player who checks in more can end poorer:
+   * measured at 0.4, the engagement sweep reads 130 net-lower readings, the
+   * exact shape CLAUDE.md's never-punish rule refuses. `management.test.ts`
+   * pins the inequality; at 0.75 it holds with margin and the sweep is zero.
+   */
+  CONDITION_INCOME_MULTIPLIER_FLOOR: 0.75,
+
+  /**
+   * Gym Bucks to restore one full point of one item's condition, so a repair
+   * cost is computable before the decision — §5.7's failure rule depends on
+   * the cost having been shown. Cost of a repair = (1 - condition) times
+   * this, scrubbed.
+   */
+  REPAIR_COST_GYM_BUCKS_PER_CONDITION_POINT: 400,
+
+  /**
+   * The fraction of the raw accrual a dormant (failed) gym still earns.
+   * §5.7 says a failed location's income stops, and it also says failure is
+   * recoverable rather than a permanent loss; on the single-gym ladder — the
+   * stage-4 scope, portfolio excluded — those two sentences collide, because
+   * the ladder is the one money source and a dormant gym with literally zero
+   * income and an empty purse could not fund the recovery repairs from any
+   * state, ever. This value resolves the collision in recoverability's
+   * favour: dormancy collapses income to a crawl instead of a hard zero, so
+   * the recovery quote is reachable from every state. Strictly above zero
+   * (the recoverability rail) and strictly below the condition multiplier's
+   * floor (dormancy is worse than the worst live gym) — both derived in
+   * `management.test.ts`. Flagged in the module header as a derivation the
+   * GDD's own §5.7 wording underdetermines, for a human to re-rule.
+   */
+  DORMANT_INCOME_MULTIPLIER: 0.1,
+
+  /**
+   * The condition below which a check-in offers the in-session maintenance
+   * prompt, with the worst item's repair cost shown. Also the visible warning
+   * sign the cheapest-hire strike is keyed on.
+   */
+  MAINTENANCE_PROMPT_CONDITION: 0.5,
+
+  /**
+   * The condition below which the 'diligent' simulated-player policy repairs
+   * an item when it can afford to. A model-of-a-player parameter the module
+   * branches on, named here so the sweep's policies carry no bare number.
+   * Deliberately below `MAINTENANCE_PROMPT_CONDITION`: the diligent model
+   * lets condition reach the prompt line before its own sweep-up threshold,
+   * so the prompt's repair arm is produced by a run rather than only by a
+   * hand-built fixture.
+   */
+  REPAIR_POLICY_CONDITION: 0.45,
+
+  /**
+   * Prompt dismissals that do not count toward failure — §5.7's "ignoring an
+   * in-session maintenance prompt more than once" as a value: the first
+   * dismissal is free, every one after it is a counted decision.
+   */
+  MAINTENANCE_PROMPT_FREE_DISMISSALS: 1,
+
+  /**
+   * Counted bad decisions at which the warning state becomes visible — the
+   * phase a screen must show before failure, so no failure arrives unwarned.
+   */
+  FAILURE_WARNING_STRIKES: 2,
+
+  /**
+   * Counted bad decisions at which the gym fails and goes dormant. Strictly
+   * above the warning threshold, which `management.test.ts` derives.
+   */
+  FAILURE_STRIKES: 4,
+
+  /**
+   * There is deliberately NO dormancy entry slump here. It shipped at 0.25
+   * for one round and the never-punish sweep measured it: a condition cliff
+   * at the failure boundary is a money cost whose arrival time engagement
+   * moves, so a gym that banked more operation paid it earlier. The
+   * derivation, the counts and the control that keeps the removed mechanism
+   * runnable are in `management.ts`'s header §4 — do not re-add a value here
+   * without reading it.
+   */
+
+  /**
+   * The condition every item must be restored to before a dormant gym can
+   * come back online — §5.7's "a real repair investment" as a value the
+   * recovery quote is computed from.
+   */
+  RECOVERY_CONDITION_MIN: 0.8,
 } satisfies EmpireTuningRecord);
 
 /**
@@ -2236,4 +2395,19 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_SPRITE_FLOOR_PALETTE: 'knob',
   FLOOR_SPRITE_LABEL_FONT_SIZE: 'knob',
   FLOOR_SPRITE_FLECK_STRIDE: 'knob',
+
+  MANAGER_TIERS: 'structural',
+  MANAGER_HIRE_COST_GYM_BUCKS: 'knob',
+  MANAGER_WAGE_GYM_BUCKS_PER_BANKED_HOUR: 'knob',
+  MANAGER_AUTO_REPAIR_CONDITION: 'knob',
+  EQUIPMENT_WEAR_PER_BANKED_HOUR: 'knob',
+  CONDITION_INCOME_MULTIPLIER_FLOOR: 'budget',
+  REPAIR_COST_GYM_BUCKS_PER_CONDITION_POINT: 'knob',
+  DORMANT_INCOME_MULTIPLIER: 'budget',
+  MAINTENANCE_PROMPT_CONDITION: 'knob',
+  REPAIR_POLICY_CONDITION: 'knob',
+  MAINTENANCE_PROMPT_FREE_DISMISSALS: 'budget',
+  FAILURE_WARNING_STRIKES: 'budget',
+  FAILURE_STRIKES: 'budget',
+  RECOVERY_CONDITION_MIN: 'budget',
 } as const satisfies Readonly<Record<keyof typeof EMPIRE_TUNING, EmpireTuningClass>>);

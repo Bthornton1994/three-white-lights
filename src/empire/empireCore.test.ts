@@ -2466,6 +2466,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'floorSprites.ts',
       'ladder.ts',
       'ladderView.tsx',
+      // §5.11 stage 4: staffing, maintenance, equipment condition and
+      // recoverable failure.
+      'management.ts',
       'members.ts',
       'npc.ts',
       'production.ts',
@@ -2587,7 +2590,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `empireTuning.ts`'s FLOOR_SPRITE block naming its reader.
     // 106 -> 107: floorSprites.ts's parseMap comment names floorSim.ts's
     // precedent in the member-call census — one more mention pair.
-    expect(pairs).toBe(107);
+    // 107 -> 115: §5.11 stage 4's `management.ts`. Measured by running this
+    // exact assertion and reading its failure value.
+    expect(pairs).toBe(115);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -2600,7 +2605,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // rewritten limit paragraph.
     // 14 -> 15: `floorSim.ts` imports `refuseWith` from `./empireCore` and
     // names `empireCore.test.ts`'s import fence in its header §5.
-    expect(mentionersOf('empireCore.ts').length).toBe(15);
+    // 15 -> 16: `management.ts` imports `refuseWith` from `./empireCore` and
+    // names the file in its own header.
+    expect(mentionersOf('empireCore.ts').length).toBe(16);
   });
 
   it('reads no clock, rolls no dice and touches no host API', () => {
@@ -3426,7 +3433,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // floorSprites.ts's table builder ('power-bar' and FloorGrid's 'fixed'
     // were already in the set). Attributed by re-running the collector on
     // each changed file against HEAD, not guessed.
-    expect(singleQuoted.size).toBe(405);
+    // 405 -> 452: §5.11 stage 4's `management.ts`. Its import specifiers, the
+    // three manager tiers, the three counted-decision tokens, the three
+    // failure phases, the five wiring keys, the six policy names, the nine
+    // decision-event kinds, the discriminated-return `kind` and `reason`
+    // tokens across eight result types, and the two wear bases. Measured by
+    // running this assertion and reading its failure value.
+    expect(singleQuoted.size).toBe(452);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3472,7 +3485,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // (`floorgrid-member-sprite-`, `floorgrid-fixed-sprite-`,
     // `floorgrid-placed-sprite-`, `floorgrid-tray-sprite-` prefixes).
     // Measured by running this assertion and reading its failure value.
-    expect(templateChunks.size).toBe(261);
+    // 261 -> 282: §5.11 stage 4. `management.ts`'s refusal messages are
+    // template literals, one per named refusal, and each contributes its
+    // fixed chunks. Measured by running this assertion and reading its
+    // failure value.
+    expect(templateChunks.size).toBe(282);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3483,6 +3500,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     expect(chunks.filter((chunk) => chunk.includes('duplicate lifter id')).length).toBe(1);
 
     const spaceFree = [...singleQuoted].filter((literal) => !literal.includes(' ')).sort();
+    // 347 -> 394 entries this round: §5.11 stage 4's whole vocabulary — three
+    // manager tiers, three counted decisions, three failure phases, five
+    // wiring keys, six policy names, nine decision-event kinds, two wear
+    // bases, and the `kind`/`reason` tokens of eight discriminated returns.
+    // Forty-seven added and NONE removed, attributed by diffing the collected
+    // set against the previous pin rather than by hand. Every one of them is a
+    // generic noun or a mechanism name; no manufacturer, athlete or brand.
     expect(spaceFree).toEqual([
       './FloorGrid',
       './empireCore',
@@ -3508,6 +3532,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'KSTHJDPZBWLMERQUVONCGFAXY',
       'PLTE',
       'Placeholder',
+      'absence-strike-control',
       'absolute',
       'accelerated',
       'accelerated-purse',
@@ -3521,15 +3546,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'ahead',
       'already-building',
       'already-owned',
+      'already-sound',
+      'already-staffed',
       'already-visited-today',
       'at-ceiling',
       'at-the-top',
       'athlete',
       'axes',
-      // P4b: two of the three station-use classes ('bench' was already here
-      // as an equipment word; the rep frames are booleans precisely so no
-      // one-character literal joins this set — see floorSprites.ts's own
-      // never-spell-a-one-character-string rule).
+      'banked-operation',
       'bar',
       'bare-bar',
       'behind',
@@ -3554,6 +3578,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'chalk',
       'chance-draw',
       'cheapest-affordable-first',
+      'cheapest-hire-under-warning',
+      'cheapskate',
       'check-in-upkeep',
       'claimed',
       'club',
@@ -3575,8 +3601,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'darkslategray',
       'data:image/png;base64,',
       'deadlift',
+      'decline-repair',
+      'declined',
       'deepskyblue',
+      'delegating',
+      'diligent',
       'disc',
+      'dismiss',
+      'dismiss-manager',
+      'dismissed',
       'display-name',
       'displayName',
       'dot',
@@ -3584,13 +3617,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'e1rm',
       'elapsedSeconds',
       'equipment',
+      'equipment-below-recovery-minimum',
+      'failed',
+      'failure-slump-control',
       'fault-message',
       'faultMessage',
       'fill',
       'fixed',
       'fixed-order-no-rotation',
       'fixedGrids',
-      // P4c: the two indexed-access type spellings for the occupied tables.
       'fixedOccupiedGrids',
       'fixedOccupiedUris',
       'fixedUris',
@@ -3617,7 +3652,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'friend-encouragement',
       'friend-visit-allowance-reset',
       'garage',
-      // P4b: the third station-use class.
       'generic',
       'global',
       'gray',
@@ -3671,7 +3705,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-week',
       'gymscreen-week-log',
       'gymscreen-week-preview',
+      'hands-off',
       'hatch',
+      'hire-novice',
+      'hire-steady',
+      'hire-veteran',
+      'hired',
       'hoard',
       'hypertrophy',
       'idle-clock',
@@ -3702,6 +3741,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'legendary',
       'level',
       'machines',
+      'manager-hired-under-warning',
       'mats',
       'memberGrids',
       'memberUris',
@@ -3710,16 +3750,22 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'move-up',
       'moved',
       'national',
+      'negligent',
+      'no-manager',
+      'no-prompt',
       'none',
       'not-a-friend-gym',
+      'not-dormant',
       'not-enough-gym-bucks',
       'not-enough-reputation',
       'not-enough-wall-clock-earnings',
+      'not-offered',
       'not-owned',
       'novice',
       'npc-id',
       'npcId',
       'number',
+      'offered',
       'other-recovery',
       'out-of-bounds',
       'overlaps',
@@ -3732,17 +3778,29 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'power-bar',
       'powerlifter',
       'progression-reaching',
+      'prompt-dismiss',
+      'prompt-dismissed-again',
+      'prompt-repair',
       'queuing',
+      'quiet',
       'react',
       'react-native',
+      'ready',
       'reason',
+      'recover',
+      'recovered',
       'recovery',
       'red',
+      'redemptive',
       'refusal',
       'refused',
       'regional',
       'relative',
       'removed',
+      'repair',
+      'repair-declined',
+      'repair-refused',
+      'repaired',
       'reputation',
       'reputation-below-threshold',
       'reputation-milestone',
@@ -3758,9 +3816,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'roster-at-capacity',
       'roster-slot',
       'rotate-greedy-per-check-in',
-      // GDD §5.13 presentation Phase 3's third interruption cause, added this
-      // round: a target still standing on the floor with the route to it walled
-      // off, or a member with nothing on the floor it can reach.
       'route-blocked',
       'rower',
       'rung-too-low',
@@ -3786,6 +3841,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'sleeves',
       'slim',
       'slots',
+      'sound',
       'space',
       'space-level',
       'specialty-bars',
@@ -3796,6 +3852,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'squat',
       'squat-rack',
       'stand',
+      'steady',
       'step-a',
       'step-b',
       'stepA',
@@ -3824,21 +3881,24 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'treadmill',
       'unaccelerated-seconds',
       'unacceleratedSeconds',
-      // P4c: the paint-behind op kind (the lockout bar passes behind the head).
       'under',
       'unequipped',
       'using',
-      // P4b: the six station-class rep poses.
       'using-bar-a',
       'using-bar-b',
       'using-bench-a',
       'using-bench-b',
       'using-generic-a',
       'using-generic-b',
+      'veteran',
+      'visit-fee-control',
       'visited',
       'wall-clock',
       'wall-clock-earned',
+      'wall-clock-elapsed',
+      'wall-clock-wear-control',
       'warehouse',
+      'warned',
       'white',
       'wide',
       'wrist-wraps',
@@ -3890,7 +3950,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 663 -> 666: P4c's three new single-quoted tokens ('under',
     // 'fixedOccupiedGrids', 'fixedOccupiedUris'). Read from this assertion's
     // failure value.
-    expect(stringsChecked).toBe(666);
+    // 666 -> 734: §5.11 stage 4's `management.ts` — singleQuoted (405 -> 452)
+    // and templateChunks (261 -> 282). Read from this assertion's own failure
+    // value.
+    expect(stringsChecked).toBe(734);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3968,7 +4031,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 344 -> 347: P4c's three new tokens ('under', 'fixedOccupiedGrids',
     // 'fixedOccupiedUris'), all clearing the guard. Measured by running this
     // assertion.
-    expect(probes).toBe(347);
+    // 347 -> 394: §5.11 stage 4's forty-seven new tokens, all clearing the
+    // two-letter guard. Measured by running this assertion.
+    expect(probes).toBe(394);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -4242,6 +4307,17 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       ],
       'ladder.ts': ['./empireCore', './empireTuning', './production'],
       'ladderView.tsx': ['./empireTuning', './floor', './ladder', './sessions'],
+      // §5.11 stage 4. Five edges: the throw gate, the tuning block, the
+      // equipment vocabulary and accrual type from stage 1, `scrubPrecision`,
+      // and stage 2's composed gym state — composed whole rather than
+      // re-implemented.
+      'management.ts': [
+        './empireCore',
+        './empireTuning',
+        './ladder',
+        './production',
+        './sessions',
+      ],
       'members.ts': ['./empireCore', './empireTuning', './production', './sessions'],
       'npc.ts': ['./empireCore', './empireTuning'],
       'production.ts': ['./empireCore', './empireTuning'],
@@ -4266,7 +4342,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 17 -> 18: GDD §5.13 presentation Phase 3's floorSim.ts. Read from this
     // assertion's own failure value.
     // 18 -> 19: Phase 4's floorSprites.ts.
-    expect(fenced).toBe(19);
+    expect(fenced).toBe(20);
     expect(Object.keys(EXPECTED).sort()).toEqual([...SHIPPED_MODULES].sort());
 
     // And the fence is a property, not just a list: every RELATIVE specifier
@@ -4358,7 +4434,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // intra-directory edges (./empireTuning, ./ladder, ./members,
     // ./sessions) and FloorGrid.tsx's one new ./floorSprites edge. Read from
     // this assertion's own failure value.
-    expect(specifiers).toBe(70);
+    // 70 -> 75: §5.11 stage 4's `management.ts` — five intra-directory edges
+    // (./empireCore, ./empireTuning, ./ladder, ./production, ./sessions).
+    // Read from this assertion's own failure value.
+    expect(specifiers).toBe(75);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
@@ -4527,7 +4606,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // placeholder-body sizing knobs with the placeholder itself. Read from
     // this assertion's own failure value, not hand-summed.
     // 365 -> 366: the label-size knob (FLOOR_SPRITE_LABEL_FONT_SIZE).
-    ).toBe(366);
+    // 366 -> 383: §5.11 stage 4's fourteen entries, whose nested per-tier
+    // tables carry three leaves each rather than one. Read from this
+    // assertion's own failure value, not hand-summed.
+    ).toBe(383);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });
