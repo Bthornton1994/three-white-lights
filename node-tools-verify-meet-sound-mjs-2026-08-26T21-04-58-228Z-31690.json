@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "node-tools-verify-meet-sound-mjs-2026-08-26T21-04-58-228Z-31690",
   "label": null,
   "command": [
@@ -31,14 +31,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 2,
-    "okCount": 1,
+    "count": 3,
+    "okCount": 2,
     "errors": [],
-    "lastAttemptIso": "2026-08-26T21:05:58.282Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-26T21:06:16.178Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-26T21:05:01.271Z"
-  }
+    "lastOkIso": "2026-08-26T21:06:01.568Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-26T21:06:16.177Z",
+  "elapsedSeconds": 77.9
 }
