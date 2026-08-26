@@ -298,7 +298,17 @@ const PINNED = Object.freeze({
    * run after the commit. The census reads tracked files, so "the suite was
    * green before I committed" is not evidence about it.
    */
-  SCANNED_FILES: 306,
+  /**
+   * 306 -> 307 with `tools/liftLadders.test.ts`, which is a test with no module
+   * half: its subject is `sessionDrive.mjs`'s prompt table, which already
+   * exists. TRACED rather than re-measured and bumped, the way the two pairs
+   * above were: `git status` names exactly that one added file.
+   *
+   * The note above about untracked files applies and was paid here too — the
+   * new test was written, run green, and only reddened this census once it was
+   * `git add`ed, which is the census reading the tracked tree as designed.
+   */
+  SCANNED_FILES: 307,
 
   /**
    * Tracked `*.test.ts` files — the set every reference must land in.
@@ -327,7 +337,13 @@ const PINNED = Object.freeze({
    * `SCANNED_FILES` alone leaves this one red on the next run, so both halves
    * of an added module/test pair have to move together.
    */
-  TEST_FILES: 96,
+  /**
+   * 96 -> 97 with `tools/liftLadders.test.ts`. It moves BOTH pins on its own
+   * rather than one — it is a test with no module beside it — so the masking
+   * hazard the entry above records does not arise here, and both were bumped
+   * together anyway because that is what the census asks for.
+   */
+  TEST_FILES: 97,
 });
 
 /**

@@ -2808,7 +2808,7 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
         page,
         (loop) =>
           (loop.prompt !== null && loop.prompt.includes(L.COMMAND)) ||
-          (loop.prompt !== null && L.GRIND !== null && loop.prompt.includes(L.GRIND)) ||
+          (loop.prompt !== null && (L.GRIND ?? null) !== null && loop.prompt.includes(L.GRIND)) ||
           SESSION_PROMPTS.OUTCOMES.includes(loop.prompt) ||
           (loop.prompt !== null && loop.prompt.includes(ASCENT_PROMPTS.RIDE)),
         LIFT_LADDER.COMMAND_TIMEOUT_MS,
@@ -2817,7 +2817,7 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
         commanded !== null &&
         commanded.prompt !== null &&
         (commanded.prompt.includes(L.COMMAND) ||
-          (L.GRIND !== null && commanded.prompt.includes(L.GRIND)));
+          ((L.GRIND ?? null) !== null && commanded.prompt.includes(L.GRIND)));
       if (onACommandBeat) {
         reachedCommand = true;
         // ---- THE GRIND, WHICH RUNS TO THE END OF THE REP. One tap was the
@@ -2880,7 +2880,7 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
   // armed. `grindTapToResolution` has already tapped this rep to its end; what
   // is left is to read where it ended.
   let drive = { drivesTapped: 0, lockedOut: false, finalOutcome: null };
-  if (L.GRIND !== null) {
+  if ((L.GRIND ?? null) !== null) {
     drive = {
       drivesTapped: 0,
       lockedOut: grind !== null && grind.endedOn !== null && grind.endedOn.includes(L.LOCKOUT),

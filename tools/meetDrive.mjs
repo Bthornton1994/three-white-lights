@@ -1080,7 +1080,7 @@ export async function playOneMeetAttempt(page, kind, holdMs, hooks = {}) {
     hasLeft: meetHasLeftTheRep,
   };
   let drive = { drivesTapped: 0, lockedOut: false, finalOutcome: null };
-  if (ladder.GRIND !== null) {
+  if ((ladder.GRIND ?? null) !== null) {
     // ---- BENCH SKIPS THE CUE LOOP ENTIRELY, AND THAT IS THE DELETION HALF OF
     // THE 2026-08-25 REPLAY STEER RATHER THAN AN OPTIMISATION. Bench arms NO
     // DRIVE CUE at any load (`lift.ts`'s ASCENT branch shuts the drive

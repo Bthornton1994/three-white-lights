@@ -131,6 +131,26 @@ export const LIFT_PROMPTS = Object.freeze({
     HOLE: 'OUT OF THE HOLE',
     /** BENCH ONLY — the press command. Squat's HOLE beat asks for nothing. */
     COMMAND: null,
+    /**
+     * BENCH ONLY — the continuous grind's one ascent line.
+     *
+     * THIS KEY WAS MISSING FROM THIS LADDER FOR ONE COMMIT AND IT COST THREE
+     * MEETS, which is worth the sentence because it is this repository's own
+     * recorded shape: a guard written for one hook applied to two of its three
+     * siblings. Bench and deadlift got the key; squat did not, so
+     * `ladder.GRIND !== null` was TRUE for a squat — `undefined` is not `null` —
+     * and both drivers took the bench branch and skipped the drive-cue loop
+     * entirely. Squat then played every attempt with ZERO drive taps: the press
+     * tool's squat ladder stayed green (its checks are about rungs, not
+     * outcomes) and `verify-shell-route.mjs` bombed two whole meets out on
+     * three squat misses apiece, "x0 drive tap(s)" in its own note.
+     *
+     * Every ladder declares every key, `null` where the lift has no such beat.
+     * That is this table's stated convention, it is what makes a missing key a
+     * fault rather than a falsy value somebody's `!==` walks past, and
+     * `tools/liftLadders.test.ts` is what holds it.
+     */
+    GRIND: null,
     LOCKOUT: 'LOCK IT',
     /** DEADLIFT ONLY — the down command. */
     DOWN: null,
