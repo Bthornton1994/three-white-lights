@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "press-pair-fix2-2026-08-26T03-21-46-844Z-15870",
   "label": "press-pair-fix2",
   "command": [
@@ -36,14 +36,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 2,
-    "okCount": 1,
+    "count": 3,
+    "okCount": 2,
     "errors": [],
-    "lastAttemptIso": "2026-08-26T03:22:46.912Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-26T03:22:49.567Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-26T03:21:49.574Z"
-  }
+    "lastOkIso": "2026-08-26T03:22:49.566Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-26T03:22:47.677Z",
+  "elapsedSeconds": 60.8
 }
