@@ -4494,7 +4494,19 @@ async function checkDrivenMeet(tag, searchIn, expected, whatEnding, chooseOption
         (a) =>
           `${a.attempt ?? '?'} @${a.holdMs === null || a.holdMs === undefined ? 'no eccentric' : `${a.holdMs}ms`}` +
           ` ${a.fps ?? '?'}fps${a.fpsKeepsUp === false ? ` BELOW THE SIM'S CATCH-UP FLOOR: ${a.fpsWhy}` : ''}` +
-          ` x${a.drivesTapped ?? 0} drive tap(s)${a.downCommandSeen === true ? ' + down command' : ''}` +
+          // A BENCH ATTEMPT'S TAPS ARE NOT DRIVE TAPS, AND `x0 drive tap(s)`
+          // BESIDE ONE READS AS "NOTHING WAS PRESSED". Since the 2026-08-25
+          // replay steer bench arms no drive cue at all — its whole ascent is
+          // the continuous grind — so `drivesTapped` is 0 on every bench
+          // attempt BY CONSTRUCTION and the number that describes what the
+          // driver actually did is the grind's dispatch count. Printing only
+          // the first would be a true number carrying a false impression,
+          // which is this repository's own misdescribing-measurement hazard
+          // seen from the output side.
+          (a.grind === null || a.grind === undefined
+            ? ` x${a.drivesTapped ?? 0} drive tap(s)`
+            : ` x${a.grind.dispatched ?? 0} grind tap(s) at ${a.grind.gaps?.meanMs ?? '?'}ms (implying grind force ${a.grind.impliedForce === null || a.grind.impliedForce === undefined ? '?' : a.grind.impliedForce.toFixed(2)})`) +
+          `${a.downCommandSeen === true ? ' + down command' : ''}` +
           ` -> ${JSON.stringify(a.feedback ?? a.why ?? null)}`,
       )
       .join(' | ')}`,

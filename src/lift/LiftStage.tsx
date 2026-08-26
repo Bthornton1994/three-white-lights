@@ -28,8 +28,9 @@
  *      is the literal shape a lifter would recognise from a bar-path app.
  *   3. THE CUE RING, which shrinks onto its target ring at the exact tick the
  *      input would grade 'perfect'.
- *   4. THE COMMAND BEAT (GDD §6.2, ruled 2026-08-25) — the armed wait, the hit
- *      at the command tick, and the burst readout. This layer exists because
+ *   4. THE COMMAND BEAT AND THE GRIND (GDD §6.2, ruled 2026-08-25 and steered
+ *      the same day) — the armed wait, the hit at the command tick, the grind
+ *      readout and the stall band. This layer exists because
  *      phone playtest 4 measured the press command's entire stimulus inventory
  *      on the platform the beta ships to (GDD §10.0, web/PWA) and found ONE
  *      live channel: a header text colour. The haptic the spec designates as
@@ -69,15 +70,16 @@ import { LIFT_PALETTE } from './liftPalette';
 import {
   SPRITE_BOX,
   barGlyphColour,
-  burstReadout,
   commandHit,
   cuePulse,
   cueRing,
   frameKey,
+  grindReadout,
   hitFlash,
   liftFrameSpec,
   stageArmed,
   stageShake,
+  stallBand,
   traceAlpha,
   traceX,
   traceY,
@@ -221,11 +223,13 @@ export function LiftStage({
   const flash = hitFlash(state);
   const pulse = cuePulse(state.tick);
   const lastTiming = state.timings[state.timings.length - 1];
-  // THE COMMAND BEAT (GDD §6.2, ruled 2026-08-25). All three are pure functions
-  // of the rep in `liftFrame.ts`; nothing about the beat is decided here.
+  // THE COMMAND BEAT AND THE GRIND (GDD §6.2, ruled and steered 2026-08-25).
+  // All four are pure functions of the rep in `liftFrame.ts`; nothing about
+  // either beat is decided here.
   const hit = commandHit(state);
   const armed = stageArmed(state);
-  const burst = burstReadout(state);
+  const grind = grindReadout(state);
+  const stall = stallBand(state);
 
   // The trace is drawn as a few segments of increasing alpha rather than one
   // path per point: a Skia path per tick would be two hundred draw calls a
@@ -456,39 +460,80 @@ export function LiftStage({
         />
       )}
 
-      {/* --- THE BURST READOUT, DRAWN LAST ----------------------------
-          One pip per counted tap the physics cap allows, lit as they land. It
-          is on top of everything — including the command wash — so what a
-          player sees, and what a pixel check counts inside `tray`, is the pips
-          and not the pips seen through a flash. */}
-      {burst === null ? null : (
+      {/* --- THE STALL BAND -------------------------------------------
+          BENCH ONLY, and only while the bar is stalled and taps would rescue
+          it (`stallBand`). A cold band at the stage's EDGES that pulses for as
+          long as the bar is losing, against the command's warm wash over the
+          MIDDLE that decays once — three channels apart so the two urgent
+          treatments cannot read as one event.
+
+          DRAWN UNDER THE READOUT AND OVER EVERYTHING ELSE. Over the lifter,
+          because a vignette behind him would be a background flicker; under
+          the pips, because the pips are what the player has to read to know
+          what to do about it, and because `verify-lift-press.mjs` counts lit
+          pixels inside the tray. It cannot reach the tray anyway — the band is
+          `STALL_BAND_PX` deep at the edges and `liftFrame.test.ts` pins the
+          separation — so the order is belt and braces rather than load-bearing.
+      */}
+      {stall === null ? null : (
+        <Rect
+          x={stall.band.x}
+          y={stall.band.y}
+          width={stall.band.w}
+          height={stall.band.h}
+          color={LIFT_PALETTE.GRIND_STALL}
+          style="stroke"
+          strokeWidth={stall.band.strokeWidth}
+          opacity={stall.alpha}
+        />
+      )}
+
+      {/* --- THE GRIND READOUT, DRAWN LAST ----------------------------
+          A row of pips lit by the player's LIVE tap rate — it fills as they
+          speed up and empties as they slow down — with a rail under it that
+          flashes once per COUNTED tap. It is on top of everything, including
+          the command wash and the stall band, so what a player sees, and what
+          a pixel check counts inside `tray`, is the pips and not the pips seen
+          through something else. The rail sits OUTSIDE `tray` deliberately;
+          see `GRIND_KICK_GAP`. */}
+      {grind === null ? null : (
         <Group>
           <Rect
-            x={burst.tray.x}
-            y={burst.tray.y}
-            width={burst.tray.w}
-            height={burst.tray.h}
-            color={LIFT_PALETTE.BURST_TRAY}
+            x={grind.tray.x}
+            y={grind.tray.y}
+            width={grind.tray.w}
+            height={grind.tray.h}
+            color={LIFT_PALETTE.GRIND_TRAY}
           />
           <Rect
-            x={burst.tray.x}
-            y={burst.tray.y}
-            width={burst.tray.w}
-            height={burst.tray.h}
-            color={LIFT_PALETTE.BURST_TRAY_EDGE}
+            x={grind.tray.x}
+            y={grind.tray.y}
+            width={grind.tray.w}
+            height={grind.tray.h}
+            color={LIFT_PALETTE.GRIND_TRAY_EDGE}
             style="stroke"
             strokeWidth={1}
           />
-          {burst.pips.map((pip) => (
+          {grind.pips.map((pip) => (
             <Rect
               key={pip.x}
               x={pip.x}
               y={pip.y}
               width={pip.w}
               height={pip.h}
-              color={pip.lit ? LIFT_PALETTE.BURST_PIP_LIT : LIFT_PALETTE.BURST_PIP_DIM}
+              color={pip.lit ? LIFT_PALETTE.GRIND_PIP_LIT : LIFT_PALETTE.GRIND_PIP_DIM}
             />
           ))}
+          {grind.kick <= 0 ? null : (
+            <Rect
+              x={grind.rail.x}
+              y={grind.rail.y}
+              width={grind.rail.w}
+              height={grind.rail.h}
+              color={LIFT_PALETTE.GRIND_KICK}
+              opacity={grind.kick}
+            />
+          )}
         </Group>
       )}
     </Canvas>

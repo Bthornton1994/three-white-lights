@@ -208,13 +208,11 @@ import {
   LIFT_PROMPTS,
   SESSION_DRIVE,
   SESSION_PROMPTS,
-  adaptBenchDescent,
   adaptDepthSearch,
-  burstTapTheCommand,
   checkInLiftTestId,
   awaitFirstDriveCue,
-  feedBenchToTheChest,
-  freshBenchDescent,
+  grindTapToResolution,
+  holdBenchToTheChest,
   freshDepthSearch,
   openSessionToFirstSet,
   readLoop,
@@ -1640,6 +1638,157 @@ const LIFT_LADDER = Object.freeze({
   RPE_CHOICE: SESSION_DRIVE.RPE_CHOICE,
 
   /**
+   * ===========================================================================
+   * ...EXCEPT ON BENCH, WHICH TAKES THE TOP OF THE LADDER, AND THE REASON IS A
+   * PINNED TABLE RATHER THAN A PREFERENCE
+   * ===========================================================================
+   * The 2026-08-25 replay steer's headline property is "stop tapping and the
+   * bar stalls; start again and it comes back", and this probe now drives that
+   * on the stage: a rep with a deliberate hole in its grind, a stall cue that
+   * has to draw during the hole, and a lockout on the other side of it. THAT
+   * CHECK NEEDS A LOAD THAT CAN ACTUALLY STALL, and at RPE 8 nothing can:
+   * `lift.test.ts`'s `REACHABLE_RESCUE` walks every load `prescribeSession`
+   * emits and pins `session/rpe8/0.8500/as-expected` at `[40, 0, 0]` — the
+   * outcome moves, but ZERO of 80 paired reps stall and ZERO lose a rep. A
+   * stall check driven there has an empty domain, which is the vacuity this
+   * repository refuses by name.
+   *
+   * The same table gives the two rungs that do stall at the check-in this probe
+   * answers (`SESSION_DRIVE.CHECK_IN_TAPS`, which reaches `as-expected`):
+   *
+   *     session/rpe9/0.8750/as-expected    [80, 20, 20]
+   *     session/rpe10/0.9000/as-expected   [80, 80, 40]
+   *
+   * as `[rescued, fromMiss, stalled]` out of 80 pairs. RPE 10 is chosen because
+   * both columns this probe depends on are stronger there: FOUR TIMES as many
+   * of its pairs stall, and every one of its 80 pairs turns a MISS into a make
+   * when the tapping resumes — so the rescue is load-bearing rather than
+   * cosmetic, which is what makes "pause -> stall -> resume -> LOCKOUT" a claim
+   * about the mechanic instead of a claim about a rep that was going to make
+   * anyway.
+   *
+   * AND THE COST IS STATED RATHER THAN HIDDEN, in the shape this block's own
+   * RPE-8 note already uses: RPE 10 is the hardest rung the ladder offers, so a
+   * bench rep here is genuinely losable by a robot whose cadence is poor. That
+   * is why `grindTapToResolution` MEASURES its achieved inter-tap gap and this
+   * file compares the implied grind force against
+   * `BENCH_DRIVE.GRIND_FORCE_FLOOR` — a missed rep with a poor cadence behind
+   * it is the driver's failure and must not be read as the app's.
+   *
+   * A REAL PLAYER DECISION, NOT A DEBUG OVERRIDE. `session-rpe-10` is one
+   * button on the ladder `BriefingView.tsx` renders for every player on every
+   * session, and `SESSION_TUNING.RPE_CHOICES` is `[6, 7, 8, 9, 10]`.
+   */
+  RPE_CHOICE_FOR: Object.freeze({
+    squat: SESSION_DRIVE.RPE_CHOICE,
+    bench: 'session-rpe-10',
+    deadlift: SESSION_DRIVE.RPE_CHOICE,
+  }),
+
+  /**
+   * ===========================================================================
+   * ...AND BENCH ANSWERS THE CHECK-IN AT ITS WORST, WHICH IS THE HARDEST REP AN
+   * ORDINARY PLAYER CAN REACH AND NOT THE EASIEST
+   * ===========================================================================
+   * THE FIRST RUN OF THE STALL CHECK MEASURED ZERO, AND THE CAUSE WAS THE CELL
+   * RATHER THAN THE STAGE. Driven at the mid check-in, RPE 10, the bar did not
+   * stall — the rescue rep reached lockout as a clean GOOD LIFT with no stalled
+   * tick in it, so the band the check was looking for was correctly absent and
+   * the check was correctly red about a rep that had nothing to say.
+   *
+   * Structural elimination before any re-run, in the pure sim over the REAL
+   * cells (`sessionFeel` + `prescribeSession`, driven with this probe's own
+   * schedule: taps every 3 ticks, hole after 8 taps), 20 seeds per cell,
+   * measured@66c2415:
+   *
+   *     cell                              pause  stalled  made
+   *     mid/as-expected   rpe10  0.9000    18t    0/20    20/20
+   *     mid/as-expected   rpe10  0.9000    80t    0/20    20/20
+   *     best/popping      rpe10  0.9500    80t    0/20    20/20
+   *     poor/slower...    rpe10  0.8750    60t    0/20    20/20
+   *     poor/slower...    rpe10  0.8750    80t   20/20    20/20
+   *
+   * A HIGHER LOAD IS NOT A HARDER REP HERE, and that is what makes this a table
+   * rather than an intuition: `lift.test.ts`'s `REACHABLE_COUPLING` pins that a
+   * better check-in raises the lifter's capacity MORE than it raises the load,
+   * at every rung — and that RPE 10 is the one rung where the POOR check-in is
+   * the hardest cell. So the hardest bench rep the ladder can offer is the top
+   * of the RPE ladder answered at the bottom of the check-in, which is what
+   * these three press.
+   *
+   * The other two lifts keep `SESSION_DRIVE.CHECK_IN_TAPS`: the deadlift arm's
+   * whole control pair is calibrated at the mid answers (see `RPE_CHOICE`), and
+   * squat is a control for the eccentric census rather than a difficulty test.
+   */
+  CHECK_IN_FOR: Object.freeze({
+    squat: SESSION_DRIVE.CHECK_IN_TAPS,
+    bench: SESSION_DRIVE.WORST_CHECK_IN_TAPS,
+    deadlift: SESSION_DRIVE.CHECK_IN_TAPS,
+  }),
+
+  /**
+   * ===========================================================================
+   * THE DELIBERATE HOLE IN THE GRIND — WHERE IT GOES AND HOW LONG IT LASTS
+   * ===========================================================================
+   * BOTH ARE ROBOT KNOBS AND NEITHER IS GAME FEEL, and both are here rather
+   * than inline because the run they steer is the one this piece exists to
+   * take. Placeholders against a mechanic GDD §12.1 leaves open; if a browser
+   * run shows no stall, these are the two numbers to move.
+   *
+   * `GRIND_HOLE_AT_MS` PUTS THE HOLE AT AN INSTANT AND NOT AFTER A TAP COUNT,
+   * and that distinction cost this check a red run. A tap count does not say
+   * where the BAR is: the browser's achieved cadence varied 44-73 ms between
+   * runs, so "after 8 taps" opened the hole 416 ms into one rep and 584 ms into
+   * the next, and the second one had already cleared the sticking point — the
+   * abandoned control locked out and the pair said nothing.
+   *
+   * ===========================================================================
+   * WHERE THE JOINT WINDOW IS, MEASURED — AND IT IS EARLY
+   * ===========================================================================
+   * The pair needs BOTH arms at once: the abandoned rep must miss AND the
+   * rescued rep must make, across the band of cadences a browser produces. The
+   * abandoned arm never resumes, so the hole's LENGTH cannot reach it and its
+   * column is a function of the instant alone; the rescued arm depends on both.
+   * Swept in the pure sim on this probe's own cell, 40 seeds at each of three
+   * cadences (3/4/5 ticks between taps), measured@6124931 — `abandoned made`
+   * out of 40, and the WORST-CASE stalled ticks the hole produces:
+   *
+   *     instant   abandoned made   worst banded ticks   rescued made
+   *               (any hole)       (hole 55t)           (hole 55t)
+   *      10t      0 / 0 / 0        28 / 37 / 37         40 / 40 / 40
+   *      12t      0 / 0 / 0        32 / 37 / 40         40 / 40 / 40
+   *      14t      0 / 0 / 0        21 / 34 / 40         40 / 40 / 40
+   *      18t      0 / 0 / 0         8 / 16 / 31         40 / 40 / 40
+   *      21t      0 / 0 / 0         0 /  0 / 11         40 / 40 / 40
+   *      27t     40 / 0 / 0         —                    —
+   *
+   * 12 ticks (200 ms) is taken because it is the widest point in BOTH
+   * directions: nine ticks of slack before the abandoned rep starts making at
+   * 27t, and the largest stall the hole produces, which is what the stage's
+   * stall check has to see. Past 18t the stall collapses toward zero — the bar
+   * is far enough up that stopping no longer stops it — and the earlier run's
+   * 400 ms target sat right on that edge, which is why the pair came back 50/50
+   * in a browser while reading 40/40 in the sim.
+   *
+   * THE HOLE THEREFORE OPENS WHILE THE BAR IS STILL ON THE CHEST, and this
+   * block says so rather than letting the check's title imply otherwise.
+   * `PRESS_LAUNCH_MS` is 300 ms, so 200 ms is inside the launch beat: the
+   * player stops tapping just before the bar leaves, and the STALL that follows
+   * is on the ascent, where `stallBand` is the only place it can be. The beat
+   * being driven is still GDD §6.2's own sentence — "stop tapping and the force
+   * falls away and the bar stalls; start again and it comes back" — because the
+   * grind starts at the command and not at the launch. It is not "mid-ascent",
+   * so neither check says that any more.
+   *
+   * `GRIND_PAUSE_MS` IS 55 TICKS, from the same sweep's other axis: at 45 ticks
+   * the worst-case stall drops to 16 and at 65 the rescued arm starts failing
+   * at the slower cadences (40 / 0 / 0 at 12t). 55 is the middle of the only
+   * column where both arms hold at every cadence measured.
+   */
+  GRIND_HOLE_AT_MS: 200,
+  GRIND_PAUSE_MS: 917,
+
+  /**
    * How many reps this probe will spend trying to walk one kind's full ladder.
    *
    * `sessionDrive.mjs`'s adaptive depth search converges rather than making the
@@ -1715,10 +1864,12 @@ const LIFT_LADDER = Object.freeze({
    *
    * WHAT USED TO SIT BESIDE THIS WAS `PRESS_TAP_MS`, A SINGLE REACTION TAP, and
    * it is gone rather than retuned. The 2026-08-25 ruling replaced one press
-   * with a burst: how long ONE tap is held decides nothing now, and how many
-   * counted taps land inside the window decides the launch. `sessionDrive.mjs`'s
-   * `burstTapTheCommand` owns that loop and derives its cadence from
-   * `PRESS_BURST_TAP_REFRACTORY_TICKS` rather than from a number here.
+   * with a windowed burst, and the phone replay that followed replaced the
+   * burst with a grind that runs to the end of the rep — so how long ONE tap is
+   * held decides nothing and there is no window to fill.
+   * `sessionDrive.mjs`'s `grindTapToResolution` owns that loop and derives its
+   * cadence from `GRIND_TAP_REFRACTORY_TICKS` and `GRIND_CHARGE` rather than
+   * from a number here.
    */
   COMMAND_TIMEOUT_MS: 6000,
 
@@ -1873,10 +2024,15 @@ const DEADLIFT_LOCKOUT = readDeadliftLockoutTuning();
  *   `d`    how many sampled pixels differ from the previous frame. This is the
  *          "did anything draw" measurement, and the command's answer has to be
  *          bigger than every frame of the wait it follows.
- *   `lit`  how many pixels INSIDE THE BURST TRAY match the lit-pip colour. The
+ *   `lit`  how many pixels INSIDE THE GRIND TRAY match the lit-pip colour. The
  *          tray is a dark plate the readout draws itself on, and the pips are
  *          on top of the command wash rather than under it, so this is a count
  *          of the readout and not of whatever the room happens to be doing.
+ *   `e`    how many pixels in the stage's TOP STRIP differ from a baseline
+ *          taken before the stall band could exist. That strip is the one edge
+ *          of the stage nothing else animates, and the band pulses too slowly
+ *          for an inter-frame delta to see it — both reasons are argued where
+ *          the loop computes it.
  *
  * WHAT IT CANNOT SAY, stated rather than left to be assumed: it cannot say the
  * beat LOOKS right, or that a player would notice it (GDD §12.1 — that is a
@@ -1930,6 +2086,55 @@ const STAGE_BEAT = Object.freeze({
    * beside it on every run.
    */
   MIN_COMMAND_DELTA_FRACTION: 0.5,
+  /**
+   * How long the driven hole has to be open before its frames count as "the
+   * player has stopped".
+   *
+   * DERIVED FROM THE MECHANIC, NOT CHOSEN: `GRIND_CHARGE_DECAY_PER_TICK` is
+   * 0.9057, a half-life of about seven ticks (117 ms), so at 200 ms the charge
+   * behind the row is down to roughly a third of what it was and the row has
+   * visibly moved. Below one half-life the reading would be of a row still on
+   * its way down rather than of a player who has stopped, and the check would
+   * be about the sampler's timing instead of about the mechanic. The hole
+   * itself is `LIFT_LADDER.GRIND_PAUSE_MS`, several times this.
+   */
+  GRIND_SETTLE_MS: 200,
+  /**
+   * How much of the TOP STRIP the stall band must move, as a fraction of the
+   * pixels sampled in it.
+   *
+   * A STRUCTURAL FLOOR, NOT A TOLERANCE PICKED TO MAKE A CHECK PASS, and the
+   * same argument `MIN_COMMAND_DELTA_FRACTION` makes one beat earlier. The band
+   * is drawn as a stroke `STALL_BAND_PX` deep along every edge of the stage, so
+   * it covers the WHOLE strip this reads: at any alpha that moves a pixel past
+   * `SAME_PICTURE_TOLERANCE` at all, essentially every sampled pixel in the
+   * strip moves. A run that came in under half the strip would mean the cue had
+   * become something local — a corner, a line — which is what playtest 4's "I
+   * did not see it" says is not enough for a stimulus a player is meant to
+   * answer. Deliberately far below what the shipped band measures; the measured
+   * figure is printed beside it on every run.
+   */
+  MIN_STALL_EDGE_FRACTION: 0.5,
+  /**
+   * How far apart the rescued rep's hole and the abandoned rep's may open and
+   * still be "the same instant".
+   *
+   * THE INSTRUMENT'S OWN RESOLUTION, not a tolerance chosen to make anything
+   * pass — and the difference was tested rather than asserted. ITS FIRST
+   * VERSION WAS A GRAIN AND THIS CHECK WENT RED ON IT: the loop noticed the
+   * instant once per tap, so a 56 ms cadence opened its hole at 471 ms and a
+   * 45 ms one opened at 406 ms, 65 ms apart. Widening this to 80 would have
+   * made it green and is the move CLAUDE.md refuses by name.
+   * `grindTapToResolution` splits the inter-tap gap AT the instant now, so the
+   * grain is one loop's overhead rather than one tap period.
+   *
+   * 60 ms is therefore generous against the mechanism as it stands, and it is a
+   * third of the 100 ms window the sim sweep says the pair's discrimination
+   * survives inside (24 ticks ± 6). It stays at 60 rather than being
+   * tightened to whatever the fixed loop achieves, because what it is FOR is
+   * catching a pair that has stopped being a pair — not measuring the loop.
+   */
+  PAIRED_HOLE_TOLERANCE_MS: 60,
   /** A cap on the sampler's rows, so a long run cannot grow without bound. */
   MAX_ROWS: 3000,
 });
@@ -1943,7 +2148,7 @@ const STAGE_BEAT = Object.freeze({
  * and the check would then count lit pixels in a rectangle the readout no longer
  * occupies — reporting zero, honestly, about the wrong part of the screen.
  *
- * The pip row's geometry is derived here the way `burstReadout` derives it, from
+ * The pip row's geometry is derived here the way `grindReadout` derives it, from
  * the same five constants, rather than read as a finished rectangle: there is no
  * rectangle in the source to read.
  */
@@ -1956,25 +2161,41 @@ function readStageBeatTuning() {
     stageW: numberInSource(layout, 'STAGE_W'),
     stageH: numberInSource(layout, 'STAGE_H'),
     cueX: numberInSource(layout, 'CUE_X'),
-    pipW: numberInSource(stage, 'BURST_PIP_W'),
-    pipH: numberInSource(stage, 'BURST_PIP_H'),
-    pipGap: numberInSource(stage, 'BURST_PIP_GAP'),
-    pipsY: numberInSource(stage, 'BURST_PIPS_Y'),
-    trayPad: numberInSource(stage, 'BURST_TRAY_PAD'),
+    /**
+     * THE ROW'S LENGTH IS `GRIND_READOUT_UNITS` NOW, AND IT USED TO BE
+     * `BENCH_BEAT.maxCountedTaps`. Under the burst the row was one pip per
+     * counted tap out of a per-rep cap, so the mechanic's cap WAS the row
+     * length; the 2026-08-25 replay steer deleted the cap and the row became a
+     * level of its own declared length. Reading the old constant would now be
+     * reading a number the mechanic no longer has.
+     */
+    units: numberInSource(stage, 'GRIND_READOUT_UNITS'),
+    pipW: numberInSource(stage, 'GRIND_PIP_W'),
+    pipH: numberInSource(stage, 'GRIND_PIP_H'),
+    pipGap: numberInSource(stage, 'GRIND_PIP_GAP'),
+    pipsY: numberInSource(stage, 'GRIND_PIPS_Y'),
+    trayPad: numberInSource(stage, 'GRIND_TRAY_PAD'),
     pressFlashMs: numberInBlock(stage, 'FLASH_MS', 'press'),
     downFlashMs: numberInBlock(stage, 'FLASH_MS', 'down'),
+    /**
+     * The stall band's depth at the stage edges, which is the region the stall
+     * check reads. Same rule as the tray: a rectangle typed here a second time
+     * would go stale the first time a playtester moved it, and the check would
+     * then measure a strip the band no longer occupies — reporting zero,
+     * honestly, about the wrong part of the screen.
+     */
+    stallBandPx: numberInSource(stage, 'STALL_BAND_PX'),
   };
   const missing = Object.entries(read)
     .filter(([, value]) => typeof value !== 'number' || !Number.isFinite(value))
     .map(([key]) => key);
-  const litColour = stringInSource(palette, 'BURST_PIP_LIT');
-  if (litColour === null) missing.push('BURST_PIP_LIT');
-  const taps = BENCH_BEAT.maxCountedTaps;
-  if (missing.length > 0 || typeof taps !== 'number') {
+  const litColour = stringInSource(palette, 'GRIND_PIP_LIT');
+  if (litColour === null) missing.push('GRIND_PIP_LIT');
+  if (missing.length > 0) {
     return { ...read, litColour, missing, tray: null, pipArea: null };
   }
   const pitch = read.pipW + read.pipGap;
-  const rowW = taps * pitch - read.pipGap;
+  const rowW = read.units * pitch - read.pipGap;
   const left = read.cueX - rowW / 2;
   return {
     ...read,
@@ -1989,7 +2210,7 @@ function readStageBeatTuning() {
     },
     /** One pip's area in stage points, so a lit-pixel count reads back as pips. */
     pipArea: read.pipW * read.pipH,
-    pips: taps,
+    pips: read.units,
   };
 }
 const STAGE_BEAT_TUNING = readStageBeatTuning();
@@ -2117,10 +2338,12 @@ function installLadderRecorder(context) {
         armed: false,
         preserveDrawingBufferForced: true,
         rows: [],
+        marks: [],
         counts: { frames: 0, dropped: 0 },
         err: null,
         mode: null,
         sampled: 0,
+        edgeSampled: 0,
         canvas: null,
         scale: null,
       };
@@ -2131,6 +2354,7 @@ function installLadderRecorder(context) {
       let gl = null;
       let buf = null;
       let previous = null;
+      let edgeBase = null;
       const pixFrame = () => {
         requestAnimationFrame(pixFrame);
         if (!pix.armed) return;
@@ -2145,6 +2369,7 @@ function installLadderRecorder(context) {
               gl === null ? null : gl.getContextAttributes().preserveDrawingBuffer === true;
             buf = gl === null ? null : new Uint8Array(node.width * node.height * 4);
             previous = null;
+            edgeBase = null;
             pix.scale = node.width / stage.stageW;
           }
           if (gl === null || buf === null) return;
@@ -2192,13 +2417,58 @@ function installLadderRecorder(context) {
               }
             }
           }
+          // ---------------------------------------------------------------
+          // THE STALL BAND, READ OUT OF THE STAGE'S TOP STRIP AGAINST A FIXED
+          // BASELINE RATHER THAN AGAINST THE PREVIOUS FRAME.
+          // ---------------------------------------------------------------
+          // WHY A BASELINE AND NOT A DELTA, DERIVED FROM THE CONSTANTS RATHER
+          // THAN PREFERRED: the band PULSES on `STALL_PULSE_MS` (300 ms), so at
+          // 60 fps the steepest frame-to-frame change in its alpha is a few
+          // hundredths — a few levels on a channel — which is well under
+          // `SAME_PICTURE_TOLERANCE`'s 12 and would read as ZERO on an
+          // inter-frame delta. Against a frame from before the band existed the
+          // difference is the band's whole alpha, which is tens of levels.
+          //
+          // WHY THE TOP STRIP AND NOT THE WHOLE BAND: it is the one edge of the
+          // stage nothing else animates. The sprite sits at `SPRITE_Y` 292 and
+          // the shake moves only it; the bar-path plot's own glyph cannot rise
+          // above y~39 (`traceY(1)`), and the panel behind it is a static fill.
+          // The left and bottom edges of the band cross the sprite cell, so a
+          // reading taken there would be measuring the lifter.
+          //
+          // The baseline is the FIRST frame after arming, which is a braced rep
+          // on a drawn room. If it were ever garbage — a canvas read before it
+          // painted — every frame would differ from it, INCLUDING the wait
+          // frames the grader uses as its control, so that control is what says
+          // this reading is real rather than a comment claiming it is.
+          let edgePx = 0;
+          let edgeSampled = 0;
+          const bandPx = Math.round(stage.stallBandPx * sc);
+          const bandFrom = Math.max(0, h - bandPx);
+          for (let y = bandFrom; y < h; y += step) {
+            for (let x = 0; x < w; x += step) {
+              const i = (y * w + x) * 4;
+              edgeSampled += 1;
+              if (edgeBase === null) continue;
+              if (
+                Math.abs(buf[i] - edgeBase[i]) > stage.tolerance ||
+                Math.abs(buf[i + 1] - edgeBase[i + 1]) > stage.tolerance ||
+                Math.abs(buf[i + 2] - edgeBase[i + 2]) > stage.tolerance
+              ) {
+                edgePx += 1;
+              }
+            }
+          }
+          pix.edgeSampled = edgeSampled;
           const promptNode = document.querySelector('[data-testid="session-prompt"]');
           const row = {
             t: Math.round(performance.now()),
             d: previous === null ? null : changed,
             lit: litPx,
+            e: edgeBase === null ? null : edgePx,
             prompt: promptNode === null ? null : promptNode.textContent,
           };
+          if (edgeBase === null) edgeBase = buf.slice();
           previous = buf.slice();
           pix.counts.frames += 1;
           if (pix.rows.length >= stage.maxRows) pix.counts.dropped += 1;
@@ -2215,9 +2485,23 @@ function installLadderRecorder(context) {
       window.__stagePixArm = (on) => {
         pix.armed = on === true;
         pix.rows.length = 0;
+        pix.marks.length = 0;
         pix.counts.frames = 0;
         pix.counts.dropped = 0;
         previous = null;
+        edgeBase = null;
+      };
+      /**
+       * PUT A LABELLED INSTANT INTO THE SAMPLER'S OWN CLOCK.
+       *
+       * The driver's `Date.now()` and the recorder's `performance.now()` are
+       * different clocks, and a window sliced with one and read with the other
+       * is a window in the wrong place. The driver marks the pause it drives
+       * from inside the page, so both ends of every comparison sit on the same
+       * clock as the frames.
+       */
+      window.__stagePixMark = (label) => {
+        pix.marks.push({ t: Math.round(performance.now()), label });
       };
 
       window.__liftLadder = { rows, pointers, counts };
@@ -2246,6 +2530,7 @@ function installLadderRecorder(context) {
         stageW: STAGE_BEAT_TUNING.stageW,
         tray: STAGE_BEAT_TUNING.tray,
         litColour: STAGE_BEAT_TUNING.litColour,
+        stallBandPx: STAGE_BEAT_TUNING.stallBandPx,
         tolerance: STAGE_BEAT.SAME_PICTURE_TOLERANCE,
         pipTolerance: STAGE_BEAT.PIP_COLOUR_TOLERANCE,
         stride: STAGE_BEAT.DELTA_STRIDE,
@@ -2261,6 +2546,12 @@ const armStagePixels = (page, on) =>
     if (window.__stagePixArm !== undefined) window.__stagePixArm(flag);
   }, on);
 
+/** Put a labelled instant into the sampler's own clock. See `__stagePixMark`. */
+const markStagePixels = (page, label) =>
+  page.evaluate((text) => {
+    if (window.__stagePixMark !== undefined) window.__stagePixMark(text);
+  }, label);
+
 /** Everything the pixel sampler has seen since it was armed. */
 const readStagePixels = (page) =>
   page.evaluate(() => {
@@ -2268,10 +2559,12 @@ const readStagePixels = (page) =>
     if (live === undefined) return null;
     return {
       rows: live.rows.slice(),
+      marks: live.marks.slice(),
       counts: { ...live.counts },
       err: live.err,
       mode: live.mode,
       sampled: live.sampled,
+      edgeSampled: live.edgeSampled,
       scale: live.scale,
       preserveDrawingBufferForced: live.preserveDrawingBufferForced === true,
       /**
@@ -2357,9 +2650,9 @@ function subtitlesSeen(ladder) {
  * FACULTIES"):
  *
  *   squat     hold to descend -> release AT DEPTH  -> tap the cues -> done
- *   bench     FEED the bar down in a duty cycle -> it arrives at the chest by
- *             itself -> WAIT for the press command -> BURST of taps inside its
- *             window -> tap the cues -> done
+ *   bench     HOLD the bar all the way down -> it arrives at the chest under
+ *             control -> WAIT for the press command -> TAP CONTINUOUSLY from
+ *             there until the rep resolves. NO drive cues at all.
  *   deadlift  hold through the brace, release once the bar leaves the floor ->
  *             tap the cues -> CLAMP DOWN at lockout and DO NOTHING until the
  *             down command
@@ -2389,7 +2682,7 @@ function subtitlesSeen(ladder) {
  * part that holds at every seed and every load; which branch fired is recorded
  * beside it rather than asserted.
  */
-async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots = null, neverPress = false, benchPlan = null } = {}) {
+async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots = null, neverPress = false, grindPause = null, grindAbandon = null } = {}) {
   const L = LIFT_PROMPTS[kind];
   const outcomeOf = (loop) =>
     loop !== null && SESSION_PROMPTS.OUTCOMES.includes(loop.prompt) ? loop.prompt : null;
@@ -2462,7 +2755,7 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
   let reachedDescent = false;
   let reachedCommand = false;
   let benchDescent = null;
-  let burst = null;
+  let grind = null;
 
   if (L.DESCENT === null) {
     // ---- DEADLIFT: the pull. See `PULL_TIMEOUT_MS` for why this is a HOLD
@@ -2504,11 +2797,13 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
     }
     reachedDescent = true;
     if (kind === 'bench') {
-      // ---- BENCH: THE FED DESCENT (GDD §6.2, ruled 2026-08-25). Not a hold.
-      // The duty cycle and the failsafe are `sessionDrive.mjs`'s and are shared
-      // with the meet arm; `holdMs` is not bench's unit any more, which is why
-      // `benchPlan` is threaded through instead.
-      benchDescent = await feedBenchToTheChest(page, { read: readLoop, plan: benchPlan });
+      // ---- BENCH: HOLD IT ALL THE WAY DOWN (GDD §6.2, steered 2026-08-25).
+      // Not a duty cycle and not a timed release. `holdMs` is not bench's unit
+      // and there is no plan to thread through any more: holding is correct at
+      // every load, so the whole play is one instruction and the finger comes
+      // off ON THE TOUCH. Shared with the meet arm — see
+      // `holdBenchToTheChest`'s header for what it replaced and why.
+      benchDescent = await holdBenchToTheChest(page, { read: readLoop });
     } else {
       await page.waitForTimeout(Math.max(0, holdMs - (Date.now() - pressAt)));
       await page.mouse.up();
@@ -2523,7 +2818,7 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
         holdAtLockout,
         reachedDescent,
         benchDescent,
-        burst,
+        grind,
         reachedLockout: false,
         outcome: releasedIntoOutcome,
         detail: afterRelease.detail,
@@ -2538,22 +2833,46 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
       // that pressed early would false-start and be graded
       // `PRESS_FALSE_START_QUALITY` — which is the mechanic behaving correctly.
       // This waits for the command's own frame.
+      //
+      // IT WAITS ON THE GRIND LINE TOO. Bench's ascent line is its own
+      // ('GRIND — KEEP TAPPING') since the steer, and a poll that lands a beat
+      // late would otherwise see it and conclude the command never came.
+      // `ASCENT_PROMPTS.RIDE` stays in the list for the opposite reason: bench
+      // arms no drive cue any more, so a bench rep showing another lift's
+      // ascent copy is a reading the caller needs rather than a timeout.
       const commanded = await untilLoop(
         page,
         (loop) =>
           (loop.prompt !== null && loop.prompt.includes(L.COMMAND)) ||
+          (loop.prompt !== null && (L.GRIND ?? null) !== null && loop.prompt.includes(L.GRIND)) ||
           SESSION_PROMPTS.OUTCOMES.includes(loop.prompt) ||
           (loop.prompt !== null && loop.prompt.includes(ASCENT_PROMPTS.RIDE)),
         LIFT_LADDER.COMMAND_TIMEOUT_MS,
       );
-      if (commanded !== null && commanded.prompt !== null && commanded.prompt.includes(L.COMMAND)) {
+      const onACommandBeat =
+        commanded !== null &&
+        commanded.prompt !== null &&
+        (commanded.prompt.includes(L.COMMAND) ||
+          ((L.GRIND ?? null) !== null && commanded.prompt.includes(L.GRIND)));
+      if (onACommandBeat) {
         reachedCommand = true;
-        // ---- THE BURST, NOT A PRESS. One tap was the whole answer under the
-        // old beat; under the ruling the answer is as many counted taps as the
-        // window holds. `burstTapTheCommand` stops on the command line leaving
-        // the screen rather than on a stopwatch — see its header for why a
-        // wall-clock deadline both under- and over-runs on this machine.
-        burst = await burstTapTheCommand(page, { read: readLoop });
+        // ---- THE GRIND, WHICH RUNS TO THE END OF THE REP. One tap was the
+        // whole answer under the original beat and a windowed burst under the
+        // one after it; the 2026-08-25 replay steer makes taps count from here
+        // until the rep resolves or the bar beats you.
+        // `grindTapToResolution` stops when the prompt stops asking for taps
+        // rather than on a stopwatch — see its header.
+        //
+        // `grindPause` IS THE RESCUE, DRIVEN. The marks go into the sampler's
+        // own clock so the pixel grader can slice its frames on the hole this
+        // driver really left; the driver's `Date.now()` is a different clock.
+        grind = await grindTapToResolution(page, {
+          read: readLoop,
+          pause: grindPause,
+          abandonAtMs: grindAbandon,
+          onPauseStart: () => markStagePixels(page, 'pause-start'),
+          onPauseEnd: () => markStagePixels(page, 'pause-end'),
+        });
       }
       const missedOnTheChest = outcomeOf(commanded);
       if (missedOnTheChest !== null) {
@@ -2564,7 +2883,7 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
           reachedDescent,
           reachedCommand,
           benchDescent,
-          burst,
+          grind,
           reachedLockout: false,
           outcome: missedOnTheChest,
           detail: commanded.detail,
@@ -2588,14 +2907,28 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
       lockoutHeld = true;
     }
   };
-  // THE PRECONDITION, WHICH THIS FUNCTION WAS MISSING AND WHICH COST A DRIVE
-  // SLOT ON EVERY REP — see `awaitFirstDriveCue`'s header for the measurement.
+  // BENCH SKIPS THE CUE LOOP ENTIRELY, AND THAT IS THE DELETION HALF OF THE
+  // 2026-08-25 REPLAY STEER RATHER THAN AN OPTIMISATION. `lift.ts`'s ASCENT
+  // branch shuts the drive machinery off for bench BY CONSTRUCTION — not by
+  // `driveAttemptsFor` happening to return something small — so
+  // `awaitFirstDriveCue` on a bench rep can only wait out its whole
+  // `driveTimeoutMs`, and every tap it then dispatched would land with nothing
+  // armed. `grindTapToResolution` has already tapped this rep to its end; what
+  // is left is to read where it ended.
+  let drive = { drivesTapped: 0, lockedOut: false, finalOutcome: null };
+  if ((L.GRIND ?? null) !== null) {
+    drive = {
+      drivesTapped: 0,
+      lockedOut: grind !== null && grind.endedOn !== null && grind.endedOn.includes(L.LOCKOUT),
+      finalOutcome: grind === null ? null : { prompt: grind.endedOn },
+    };
+  } else {
   const first = await awaitFirstDriveCue(page, {
     read: readLoop,
     timing: FULL_CYCLE_ASCENT_TIMING,
     lockoutPrompt: L.LOCKOUT,
   });
-  let drive = { drivesTapped: 0, lockedOut: false, finalOutcome: first.loop };
+  drive = { drivesTapped: 0, lockedOut: false, finalOutcome: first.loop };
   if (first.cueOpen) {
     drive = await tapDriveCuesToLockout(page, {
       read: readLoop,
@@ -2612,6 +2945,7 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
     // failure to find a cue.
     drive = { drivesTapped: 0, lockedOut: true, finalOutcome: first.loop };
     await clampAtLockout();
+  }
   }
 
   let downCommandSeen = false;
@@ -2656,7 +2990,7 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
     reachedDescent,
     reachedCommand,
     benchDescent,
-    burst,
+    grind,
     reachedLockout: drive.lockedOut,
     drivesTapped: drive.drivesTapped,
     downCommandSeen,
@@ -2705,13 +3039,9 @@ async function photographTheDownCommand(page, shots, ladderCopy) {
  * anyway — the lift is chosen once, on the check-in, before the session exists.
  */
 async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false } = {}) {
-  const opened = await openSessionToFirstSet(
-    page,
-    url,
-    SESSION_DRIVE.CHECK_IN_TAPS,
-    LIFT_LADDER.RPE_CHOICE,
-    kind,
-  );
+  const rpeChoice = LIFT_LADDER.RPE_CHOICE_FOR[kind] ?? LIFT_LADDER.RPE_CHOICE;
+  const checkIn = LIFT_LADDER.CHECK_IN_FOR[kind] ?? SESSION_DRIVE.CHECK_IN_TAPS;
+  const opened = await openSessionToFirstSet(page, url, checkIn, rpeChoice, kind);
   // WHICH LIFT THE SESSION ACTUALLY LANDED ON, WHICH IS NOT ALWAYS THE ONE THE
   // CHIP ASKED FOR — AND THE DIFFERENCE IS THE DEFECT THIS SECTION EXISTS FOR.
   //
@@ -2761,14 +3091,11 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
     stepMs: SESSION_DRIVE.DEPTH_HOLD_STEP_MS,
     lastDirection: 0,
   };
-  // BENCH CARRIES ITS OWN SEARCH, BECAUSE ITS DESCENT IS NOT A HOLD ANY MORE.
-  // `depthSearch` above bisects a release TICK against a depth band, which is
-  // squat's beat; bench's is a duty cycle against an arrival RATE, and the two
-  // adapt on different miss reasons in different directions. Kept side by side
-  // rather than folded together so neither's arithmetic can quietly move the
-  // other's — the sibling-drift shape this file's own ascent loop was extracted
-  // to prevent, one beat earlier.
-  let benchPlan = freshBenchDescent();
+  // BENCH CARRIED ITS OWN SEARCH FOR ONE ROUND AND CARRIES NOTHING NOW. That
+  // search bisected a duty cycle against an arrival RATE; the 2026-08-25 replay
+  // steer left the descent with no parameter at all, so there is no plan to
+  // thread and no `adaptBenchDescent` to move it. `depthSearch` above is squat's
+  // and is untouched.
 
   for (let attempt = 1; attempt <= LIFT_LADDER.MAX_ATTEMPTS; attempt += 1) {
     // DRIVEN WITH `landedOn`'S GRAMMAR — the lift on screen — because a driver
@@ -2777,7 +3104,6 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
     const rep = await driveLadderRep(page, landedOn, depthSearch.holdMs, {
       holdAtLockout: true,
       shots: photographed === null ? shots : null,
-      benchPlan,
     });
     if (rep.shots?.holdShot !== undefined) photographed = rep.shots;
     const scored = { attempt, holdMs: depthSearch.holdMs, ...rep, matched: matchRungs(rep.ladder, rungsWanted) };
@@ -2799,8 +3125,55 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
     if (enough) break;
     if (!rep.played) break;
     depthSearch = adaptDepthSearch(depthSearch, { detail: rep.detail ?? '' });
-    benchPlan = adaptBenchDescent(benchPlan, { detail: rep.detail ?? '' });
     await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
+  }
+
+  // =========================================================================
+  // BENCH ONLY: THE RESCUE, DRIVEN THROUGH THE APP'S OWN CONTROLS
+  // =========================================================================
+  // GDD §6.2's headline property is the one sentence in the whole steer that a
+  // burst mechanic cannot express: "stop tapping and the force falls away and
+  // the bar stalls; start again and it comes back and the bar can be rescued."
+  // `lift.test.ts` measures it in the pure sim over every reachable load. It
+  // had never been PLAYED, and until this rep nothing on the stage even drew
+  // the stall.
+  //
+  // A SEPARATE REP FROM THE LADDER WALK ABOVE, on purpose and at a cost of one
+  // set out of the five this session has to itself. The ladder reps have to
+  // grind continuously — every readout claim and the whole-chain claim are read
+  // off them — so folding a deliberate hole into them would measure a stall the
+  // harness caused in every claim above. This one rep is the only rep in the
+  // run that stops tapping, and it stops at a stated instant for a stated
+  // length (`GRIND_HOLE_AT_MS`, `GRIND_PAUSE_MS`).
+  //
+  // AND THE CONTROL IT IS A RESCUE AGAINST, DRIVEN SECOND. A rep that pauses
+  // and locks out proves the rep locked out; it does not prove that COMING BACK
+  // is what saved it, and a real mutant walks through the difference — an
+  // ascent boost reading the LAUNCH snapshot rather than the live charge would
+  // carry a paused rep to lockout on a frozen force, turning the continuous
+  // grind back into the burst the steer replaced with every "it reached
+  // lockout" check still green. So the abandoned rep stops tapping at the SAME
+  // instant and never starts again, and the pair differs in exactly one thing.
+  //
+  // IT IS DRIVEN LAST, on purpose: it is meant to be a miss, and a missed rep
+  // ends its set (`SESSION_TUNING`), so putting it anywhere else would cost the
+  // reps above it a set they are budgeted for.
+  let rescued = null;
+  let abandoned = null;
+  if (landedOn === 'bench' && kind === 'bench') {
+    await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
+    rescued = await driveLadderRep(page, kind, depthSearch.holdMs, {
+      holdAtLockout: true,
+      grindPause: {
+        atMs: LIFT_LADDER.GRIND_HOLE_AT_MS,
+        ms: LIFT_LADDER.GRIND_PAUSE_MS,
+      },
+    });
+    await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
+    abandoned = await driveLadderRep(page, kind, depthSearch.holdMs, {
+      holdAtLockout: true,
+      grindAbandon: LIFT_LADDER.GRIND_HOLE_AT_MS,
+    });
   }
 
   // THE CONTROL REP — deadlift only, and only once a held rep has been seen, so
@@ -2812,7 +3185,7 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
   let neverPressed = null;
   if (alsoSlip && landedOn === kind && best !== null && best.reachedLockout === true) {
     await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
-    slip = await driveLadderRep(page, kind, depthSearch.holdMs, { holdAtLockout: false, benchPlan });
+    slip = await driveLadderRep(page, kind, depthSearch.holdMs, { holdAtLockout: false });
     await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
     neverPressed = await driveLadderRep(page, kind, 0, { neverPress: true });
   }
@@ -2826,10 +3199,12 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
     why: opened.why ?? null,
     chip: checkInLiftTestId(kind),
     queryString: search,
-    rpeChoice: LIFT_LADDER.RPE_CHOICE,
-    benchPlan,
+    rpeChoice,
+    checkIn,
     attempts,
     best,
+    rescued,
+    abandoned,
     shots: photographed,
     slip,
     neverPressed,
@@ -2869,10 +3244,19 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
  *                biggest delta anywhere in the rep must stay under the floor,
  *                so the floor is a statement about a command and not about
  *                anything a moving sprite does.
- *   THE READOUT  lit pixels inside the burst tray, quantised back to pips.
- *                Three facts, because CLAUDE.md's progression rule says a claim
- *                that something advances IS three and a constant satisfies two:
- *                it never regresses, it is never out of range, AND IT MOVES.
+ *   THE READOUT  lit pixels inside the grind tray, quantised back to pips, on
+ *                the rep that carries the driven hole. Read in three windows of
+ *                ONE rep — grinding, paused, grinding again — because the row's
+ *                claim since the steer is that it moves BOTH WAYS with the live
+ *                rate, and a window that only rises cannot say that.
+ *   THE STALL    pixels in the stage's TOP STRIP that differ from a baseline
+ *                taken before the band could exist, inside the same driven
+ *                hole, against the same strip during the WAIT on the chest.
+ *                The wait is the control that cannot be confounded: `stallBand`
+ *                returns null outside ASCENT by construction, so a non-zero
+ *                reading there would mean the baseline itself was wrong.
+ *   THE RESCUE   that the same rep — paused, stalled, resumed — reached
+ *                LOCKOUT, through the app's own controls with no query string.
  *
  * WHAT IT CANNOT SAY: whether the beat reads in the hand. That is GDD §12.1 and
  * it is a human on a phone.
@@ -2954,73 +3338,272 @@ function gradeStageBeat(kind, run) {
 
   if (kind !== 'bench') return;
 
-  // ---- THE READOUT --------------------------------------------------------
+  // ---- THE READOUT, AND THE STALL, ON THE REP WITH THE DRIVEN HOLE --------
+  //
+  // ==========================================================================
+  // WHAT THIS REPLACED, AND WHY THE OLD CHECK COULD NOT SURVIVE THE STEER
+  // ==========================================================================
+  // The check that stood here asserted `regressions === 0` — the pip row never
+  // goes down — plus `last > first` and `maxIncrease < last - first`. It was
+  // written against a burst: one pip per counted tap out of a per-rep cap, so a
+  // row that fell was a row that was broken.
+  //
+  // SINCE THE 2026-08-25 REPLAY STEER THAT ASSERTION IS FALSE OF A CORRECT ROW.
+  // `lit` is `grindForce` scaled onto the row and `grindForce` decays every
+  // tick the player is not tapping, so a row that CANNOT regress is exactly the
+  // row the steer deleted — a level that fills up and stays full while the
+  // player quietly stops. The old check and the new mechanic cannot both be
+  // right, and the mechanic is the one a human ruled on.
+  //
+  // NOT DOMINATION, THEN, BUT CONTRADICTION, and the replacement is not a
+  // weakening: `regressions === 0` is satisfied by a hardcoded full row (the
+  // mutant that survived the previous version of this check, recorded below),
+  // and "it falls during a driven hole and comes back after it" is not.
+  // `invalid === 0` survives from the old check because it is orthogonal — the
+  // row's length is still its length — and it is pinned as a ZERO with the
+  // frame count beside it as the population.
   const scale = pix.scale ?? 1;
   const pipAreaPx = STAGE_BEAT_TUNING.pipArea * scale * scale;
-  const burst = commandT === null ? [] : rows.filter((row) => says(row, commandLine));
   const pipsAt = (row) => Math.round(row.lit / pipAreaPx);
-  const series = burst.map(pipsAt);
-  const regressions = series.filter((n, i) => i > 0 && n < series[i - 1]).length;
-  const invalid = series.filter((n) => n < 0 || n > STAGE_BEAT_TUNING.pips).length;
-  const distinct = new Set(series).size;
-  const first = series[0] ?? null;
-  const last = series[series.length - 1] ?? null;
-  // THE BIGGEST SINGLE JUMP, WHICH IS WHAT "IT MOVES" ACTUALLY HAS TO MEAN
-  // HERE — AND THE FIRST VERSION OF THIS CHECK DID NOT SAY IT, MEASURED.
+
+  // THE THREE WINDOWS ARE SLICED ON THE DRIVER'S OWN MARKS, which are stamped
+  // inside the page on the sampler's clock. Slicing on `Date.now()` would put
+  // them somewhere else entirely — see `__stagePixMark`.
+  const paused = run.rescued ?? null;
+  const pausePix = paused?.pix ?? null;
+  const pauseRows = pausePix?.rows ?? [];
+  const marks = pausePix?.marks ?? [];
+  const markAt = (label) => marks.find((mark) => mark.label === label)?.t ?? null;
+  const pauseFrom = markAt('pause-start');
+  const pauseTo = markAt('pause-end');
+  const pauseCommandRow = pauseRows.find((row) => says(row, commandLine)) ?? null;
+  const pauseCommandT = pauseCommandRow === null ? null : pauseCommandRow.t;
+
+  // GRINDING: after the command's own flash has decayed (so the wash is not
+  // being read as the readout) and before the hole opens.
+  // HELD: the hole, given `GRIND_SETTLE_MS` for the charge to fall — the
+  // half-life is about 117 ms at the shipped decay and the hole is 700.
+  // RESUMED: everything after the hole closes.
+  const inWindow = (row, from, to) =>
+    from !== null && to !== null && row.t >= from && row.t <= to;
+  // THE HIGH WINDOW STARTS AT THE COMMAND FRAME AND NOT PAST THE FLASH, and
+  // that is a fact about the drawing order rather than a relaxation. The tray
+  // is opaque and the pips are drawn ON TOP of the command wash
+  // (`LiftStage.tsx` draws the readout last, and says why), so `lit` — a count
+  // of lit-pip pixels inside the tray — cannot see the wash at all. The
+  // `+flashMs` offset belongs to the measurements that read the WHOLE STAGE,
+  // and the stall control below still carries it for exactly that reason.
   //
-  // What stood here required `distinct >= 2` and `last > first`, which is the
-  // three-facts shape CLAUDE.md asks for and is NOT ENOUGH FOR THIS SUBJECT.
-  // The mutant it was written to catch — `lit: i < progress.taps` replaced by
-  // `lit: true`, a row that ignores the burst entirely — was run against this
-  // tool and SURVIVED, 48 of 48 green: a hardcoded row still reads 0 for the
-  // frames before the tray is first painted and then 14 for every frame after,
-  // which is two distinct values climbing. The check passed on a readout that
-  // was reading nothing.
-  //
-  // A row that reports the burst fills ONE PIP PER COUNTED TAP, so it climbs in
-  // many small steps; a row that ignores it can only step once, from whatever
-  // it was before it existed to whatever it is hardcoded at. So the biggest
-  // single increase must be SMALLER THAN THE WHOLE CLIMB. That is rank-based
-  // rather than a threshold somebody chose — nothing here is tuned to make a
-  // number pass — and on the shipped build it reads 1 against a climb of 11.
-  //
-  // `distinct >= 2` IS DELETED RATHER THAN KEPT BESIDE IT, and the domination
-  // is recorded per CLAUDE.md's rule instead of leaving two checks where one
-  // can never speak: reaching `last` from `first` in steps no larger than
-  // `maxIncrease < last - first` takes at least two steps, so at least three
-  // distinct values, so no state of the subject makes the old bound red while
-  // this one passes.
-  const increases = series
-    .map((n, i) => (i === 0 ? 0 : n - series[i - 1]))
-    .filter((step) => step > 0);
-  const maxIncrease = increases.length === 0 ? 0 : Math.max(...increases);
+  // It also has to start there now: the hole opens at `GRIND_HOLE_AT_MS`, which
+  // is inside the launch beat and therefore inside the flash, so a window that
+  // began after the flash would be EMPTY — the frame-count floor below would
+  // catch that, but a check that can only be satisfied by moving a tuning knob
+  // is not the check anybody wanted.
+  const grinding =
+    pauseCommandT === null
+      ? []
+      : pauseRows.filter((row) => inWindow(row, pauseCommandT, pauseFrom));
+  const held =
+    pauseFrom === null
+      ? []
+      : pauseRows.filter((row) => inWindow(row, pauseFrom + STAGE_BEAT.GRIND_SETTLE_MS, pauseTo));
+  const resumed = pauseTo === null ? [] : pauseRows.filter((row) => row.t > pauseTo);
+
+  const grindingPips = grinding.map(pipsAt);
+  const heldPips = held.map(pipsAt);
+  const resumedPips = resumed.map(pipsAt);
+  const peakGrinding = grindingPips.length === 0 ? null : Math.max(...grindingPips);
+  const floorHeld = heldPips.length === 0 ? null : Math.min(...heldPips);
+  const peakResumed = resumedPips.length === 0 ? null : Math.max(...resumedPips);
+  const invalid = [...grindingPips, ...heldPips, ...resumedPips].filter(
+    (n) => n < 0 || n > STAGE_BEAT_TUNING.pips,
+  ).length;
+
   check(
-    burst.length >= STAGE_BEAT.MIN_COMMAND_FRAMES &&
-      regressions === 0 &&
+    grinding.length >= STAGE_BEAT.MIN_COMMAND_FRAMES &&
+      held.length >= STAGE_BEAT.MIN_COMMAND_FRAMES &&
+      resumed.length >= STAGE_BEAT.MIN_COMMAND_FRAMES &&
       invalid === 0 &&
-      last !== null &&
-      first !== null &&
-      last > first &&
-      maxIncrease < last - first,
-    `LADDER bench STAGE READOUT: the burst row is drawn, never regresses, is never out of range, and FILLS ONE PIP AT A TIME — which a row that ignores the burst cannot do`,
-    `${burst.length} frame(s) of the burst; pips lit ${JSON.stringify(series)} (${distinct} distinct, ${increases.length} increase(s), biggest ${maxIncrease} against a whole climb of ${last === null || first === null ? 'n/a' : last - first}, ${regressions} regression(s), ${invalid} out of 0..${STAGE_BEAT_TUNING.pips}); raw lit pixels ${burst[0]?.lit ?? 'n/a'} -> ${burst[burst.length - 1]?.lit ?? 'n/a'} against ${Math.round(pipAreaPx)} px per pip at canvas scale ${scale}`,
+      peakGrinding !== null &&
+      floorHeld !== null &&
+      peakResumed !== null &&
+      peakGrinding > 0 &&
+      floorHeld < peakGrinding &&
+      peakResumed > floorHeld,
+    'LADDER bench STAGE READOUT: the grind row FALLS while the driven hole is open and COMES BACK when the tapping resumes — which neither a hardcoded row nor a running tap total can do',
+    pausePix === null
+      ? 'no paused rep was driven, so the readout has no hole to be read across'
+      : `windows: grinding ${grinding.length} frame(s) peak ${peakGrinding} pip(s), held ${held.length} frame(s) floor ${floorHeld}, resumed ${resumed.length} frame(s) peak ${peakResumed}; ${invalid} reading(s) out of 0..${STAGE_BEAT_TUNING.pips}; pips ${JSON.stringify(grindingPips)} | ${JSON.stringify(heldPips)} | ${JSON.stringify(resumedPips)}; raw lit px over the whole paused rep ${Math.min(...pauseRows.map((row) => row.lit), Infinity)}..${Math.max(...pauseRows.map((row) => row.lit), -Infinity)} across ${pauseRows.length} frame(s); marks ${JSON.stringify(marks)}, command frame ${pauseCommandT}ms, ${Math.round(pipAreaPx)} px per pip at canvas scale ${scale}`,
+  );
+
+  // ---- THE STALL ----------------------------------------------------------
+  //
+  // The band is only drawn while `grindIsLive` AND the phase is ASCENT AND the
+  // bar's velocity is under `GRIND_STALL_VELOCITY` (`stallBand`, liftFrame.ts).
+  // So the WAIT on the chest is a control that cannot be confounded: it is a
+  // HOLE-phase beat, the predicate is false there by construction, and a
+  // non-zero reading in it would mean the baseline this measurement is taken
+  // against was itself wrong rather than that the app drew something.
+  const pauseWait =
+    pauseCommandT === null
+      ? []
+      : pauseRows.filter((row) => row.e !== null && row.t < pauseCommandT && says(row, waitLine));
+  const edgeFloorPx = (pausePix?.edgeSampled ?? 0) * STAGE_BEAT.MIN_STALL_EDGE_FRACTION;
+  // THE POSITIVE CONTROL ON THE INSTRUMENT ITSELF, AND IT IS NOT OPTIONAL.
+  // The two readings the check below compares are a ZERO and a non-zero, and a
+  // strip measurement that could not see anything AT ALL would report exactly
+  // the same zero for the control and then fail the finding — which reads as
+  // "the app drew nothing" when the truth is "this instrument is blind".
+  //
+  // The command wash is what settles it: it is a FULL-STAGE effect
+  // (`FLASH_PEAK_ALPHA`), so it necessarily crosses this strip, and it is drawn
+  // on a rep this grader has already proven painted (the STAGE HIT check, on
+  // the same rows). If the strip cannot see the wash, nothing it says about the
+  // band is worth anything.
+  const pauseWash =
+    pauseCommandT === null
+      ? []
+      : pauseRows.filter(
+          (row) => row.e !== null && row.t >= pauseCommandT && row.t <= pauseCommandT + flashMs,
+        );
+  const peakWashEdge = pauseWash.length === 0 ? null : Math.max(...pauseWash.map((row) => row.e));
+  check(
+    pauseWash.length >= STAGE_BEAT.MIN_COMMAND_FRAMES &&
+      peakWashEdge !== null &&
+      peakWashEdge >= edgeFloorPx,
+    'LADDER bench STAGE STALL CONTROL: the top strip CAN see a full-stage effect — the command wash moves it',
+    pausePix === null
+      ? 'no paused rep was driven'
+      : `${pauseWash.length} wash frame(s), biggest ${peakWashEdge} px of ${pausePix.edgeSampled} sampled in the top ${STAGE_BEAT_TUNING.stallBandPx}pt strip, against the same ${Math.round(edgeFloorPx)} px floor the stall band must clear`,
+  );
+  const heldEdge = held.filter((row) => row.e !== null).map((row) => row.e);
+  const waitEdge = pauseWait.map((row) => row.e);
+  const peakHeldEdge = heldEdge.length === 0 ? null : Math.max(...heldEdge);
+  const peakWaitEdge = waitEdge.length === 0 ? null : Math.max(...waitEdge);
+  check(
+    heldEdge.length >= STAGE_BEAT.MIN_COMMAND_FRAMES &&
+      peakHeldEdge !== null &&
+      peakHeldEdge >= edgeFloorPx,
+    'LADDER bench STAGE STALL: the stage goes URGENT inside the driven hole',
+    pausePix === null
+      ? 'no paused rep was driven, so the stall band has no hole to be read across'
+      : `held: ${heldEdge.length} frame(s), biggest ${peakHeldEdge} px of ${pausePix.edgeSampled} sampled in the top ${STAGE_BEAT_TUNING.stallBandPx}pt strip (floor ${Math.round(edgeFloorPx)}); edges ${JSON.stringify(heldEdge)}`,
+  );
+  // THE WAIT READING IS AN INSTRUMENT BASELINE, AND ITS TITLE SAYS SO NOW.
+  // The first title bundled it into the app claim as "draws NOTHING there
+  // through the wait", which reads as a discriminator on `stallBand` — and no
+  // edit to `stallBand`'s body can redden it: `grindIsLive` is false through
+  // the whole wait BY CONSTRUCTION (`pressCommandTick` is null until the
+  // command fires, upstream of everything the band computes), so a zero here
+  // is a fact about the strip and the baseline frame, not about a decision the
+  // app made. CLAUDE.md's misdescribing-identifier rule applies to a check's
+  // title identically. What the zero DOES pin — and the reason it stays a
+  // check rather than being deleted — is the instrument's noise floor: a
+  // baseline frame captured mid-paint, or a strip that drifts without an
+  // authored change, reports here as a non-zero wait and takes the held
+  // reading's meaning with it.
+  check(
+    pauseWait.length >= STAGE_BEAT.MIN_WAIT_FRAMES && peakWaitEdge === 0,
+    "LADDER bench STAGE STALL BASELINE: the sampler reads ZERO through the wait — a beat where stallBand is null BY CONSTRUCTION — so the strip's noise floor, not an app decision, is what this pins",
+    pausePix === null
+      ? 'no paused rep was driven'
+      : `wait: ${pauseWait.length} frame(s), biggest ${peakWaitEdge} px of ${pausePix.edgeSampled} sampled; edges ${JSON.stringify(waitEdge)}`,
+  );
+
+  // ---- THE RESCUE, AND THE CADENCE THAT HAS TO BE BEHIND IT ---------------
+  //
+  // OUTCOME, NOT MECHANISM. What is asserted is that the rep with the hole in
+  // it reached LOCKOUT anyway — pause, stall, resume, lockout — and that the
+  // driver's own achieved cadence was good enough for a full grind, so a miss
+  // could not have been quietly blamed on the app. `impliedForce` is the
+  // measured inter-tap gap turned into the grind force it settles at; it is
+  // compared here rather than only printed.
+  const rescueGrind = paused?.grind ?? null;
+  const givenUp = run.abandoned ?? null;
+  const givenUpGrind = givenUp?.grind ?? null;
+  check(
+    paused !== null &&
+      paused.played === true &&
+      paused.reachedDescent === true &&
+      paused.reachedCommand === true &&
+      rescueGrind !== null &&
+      rescueGrind.paused !== null &&
+      rescueGrind.sawGrindLine === true &&
+      rescueGrind.impliedForce !== null &&
+      rescueGrind.impliedForce >= BENCH_DRIVE.GRIND_FORCE_FLOOR &&
+      paused.reachedLockout === true &&
+      paused.outcome !== 'NO LIFT',
+    'LADDER bench RESCUE: a rep whose grind was deliberately STOPPED and then RESUMED stalled on the way up and reached LOCKOUT anyway, through the app’s own controls',
+    paused === null
+      ? 'no paused rep was driven'
+      : `hole ${JSON.stringify(rescueGrind?.paused ?? null)} after ${rescueGrind?.dispatched ?? 0} dispatched tap(s); cadence ${JSON.stringify(rescueGrind?.gaps ?? null)} implying grind force ${rescueGrind?.impliedForce === null || rescueGrind?.impliedForce === undefined ? 'n/a' : rescueGrind.impliedForce.toFixed(3)} against a ${BENCH_DRIVE.GRIND_FORCE_FLOOR} floor; grind line seen=${rescueGrind?.sawGrindLine}; stopped because ${JSON.stringify(rescueGrind?.stoppedBecause ?? null)} on ${JSON.stringify(rescueGrind?.endedOn ?? null)}; lockout=${paused.reachedLockout}, outcome ${JSON.stringify(paused.outcome)} ${JSON.stringify(paused.detail ?? null)}`,
+  );
+
+  // ---- THE PAIR, WHICH IS WHAT MAKES THE LINE ABOVE A CLAIM ---------------
+  //
+  // Two reps of the same lift at the same load, driven identically up to the
+  // same instant, differing ONLY in whether the tapping came back. If a bar
+  // that is never tapped again reaches lockout too, then "the rescue rescued
+  // it" is a sentence about a rep that was going to make anyway — and there is
+  // a real mutant with exactly that signature (an ascent boost read off the
+  // launch snapshot instead of the live charge). Measured in the pure sim at
+  // this cell and this schedule, 40 seeds: resumed makes 40/40, abandoned
+  // misses 40/40 on 'timeout'.
+  //
+  // TWO THINGS ARE ASSERTED ABOUT THE DRIVER AND NOT ABOUT THE APP, and they
+  // are here because without them a red on this line reads as the app's
+  // failure when it is the robot's. The two holes must have opened at the SAME
+  // INSTANT within one poll of each other — that is what makes the pair a pair
+  // — and both cadences must clear `GRIND_PAIR_MAX_GAP_MS`, which is stricter
+  // than `GRIND_FORCE_FLOOR` because recovering from a stall asks more of a
+  // cadence than making a rep does. Both bands are measured; see
+  // `grindTapToResolution`'s header.
+  const holeAt = rescueGrind?.paused?.openedAtMs ?? null;
+  const controlAt = givenUpGrind?.abandonedAtMs ?? null;
+  const holesAgree =
+    holeAt !== null &&
+    controlAt !== null &&
+    Math.abs(holeAt - controlAt) <= STAGE_BEAT.PAIRED_HOLE_TOLERANCE_MS;
+  const cadenceHolds =
+    (rescueGrind?.gaps?.meanMs ?? Infinity) <= BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS &&
+    (givenUpGrind?.gaps?.meanMs ?? Infinity) <= BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS;
+  check(
+    givenUp !== null &&
+      givenUp.played === true &&
+      givenUp.reachedCommand === true &&
+      givenUpGrind !== null &&
+      holesAgree &&
+      cadenceHolds &&
+      givenUp.reachedLockout === false &&
+      paused?.reachedLockout === true,
+    'LADDER bench RESCUE CONTROL: the SAME rep with the grind stopped at the SAME instant and never resumed does NOT reach lockout — so coming back is what saved the one above',
+    givenUp === null
+      ? 'no abandoned rep was driven'
+      : `holes opened at ${holeAt}ms (rescued, asked ${rescueGrind?.paused?.askedAtMs}) and ${controlAt}ms (abandoned) — agree within ${STAGE_BEAT.PAIRED_HOLE_TOLERANCE_MS}ms: ${holesAgree}; cadences ${rescueGrind?.gaps?.meanMs}ms and ${givenUpGrind?.gaps?.meanMs}ms against a ${BENCH_DRIVE.GRIND_PAIR_MAX_GAP_MS}ms pair ceiling: ${cadenceHolds}; lockout=${givenUp.reachedLockout} against the rescued rep's ${paused?.reachedLockout}; outcome ${JSON.stringify(givenUp.outcome)} ${JSON.stringify(givenUp.detail ?? null)}, stopped because ${JSON.stringify(givenUpGrind?.stoppedBecause ?? null)} on ${JSON.stringify(givenUpGrind?.endedOn ?? null)}`,
   );
 
   // ---- AND THE OUTCOME THE WHOLE CHAIN IS FOR -----------------------------
-  // OUTCOME, NOT MECHANISM. What is asserted is that a rep driven through the
-  // new chain — fed descent, wait, burst — finished; the pip count beside it is
-  // what says the taps were COUNTED rather than merely dispatched, which the
-  // driver cannot know about itself (`burstTapTheCommand` returns
-  // `countedTaps: null` and says why).
+  // The UNINTERRUPTED rep, which is the ordinary play: held descent, wait,
+  // continuous grind, lockout. The pip count beside it is what says the taps
+  // were COUNTED rather than merely dispatched, which the driver cannot know
+  // about itself (`grindTapToResolution` returns `countedTaps: null` and says
+  // why).
+  const bestGrind = best?.grind ?? null;
+  const bestRows = commandT === null ? [] : rows.filter((row) => says(row, commandLine));
+  const bestPips = bestRows.map(pipsAt);
+  const bestPeak = bestPips.length === 0 ? 0 : Math.max(...bestPips);
   check(
     best?.reachedDescent === true &&
       best?.reachedCommand === true &&
-      (best?.burst?.dispatched ?? 0) > 0 &&
-      (last ?? 0) > 0 &&
+      (bestGrind?.dispatched ?? 0) > 0 &&
+      bestGrind?.sawGrindLine === true &&
+      bestGrind?.impliedForce !== null &&
+      (bestGrind?.impliedForce ?? 0) >= BENCH_DRIVE.GRIND_FORCE_FLOOR &&
+      bestPeak > 0 &&
       best?.reachedLockout === true &&
       best?.outcome !== 'NO LIFT',
-    'LADDER bench: a rep driven through the WHOLE new chain — fed descent, wait, tap burst — reached LOCKOUT',
-    `descent ${JSON.stringify(best?.benchDescent === null || best?.benchDescent === undefined ? null : { feeds: best.benchDescent.feeds, eases: best.benchDescent.eases, committed: best.benchDescent.committed, ms: best.benchDescent.ms, feedMs: best.benchDescent.feedMs, easeMs: best.benchDescent.easeMs })}; burst ${JSON.stringify(best?.burst ?? null)}; ${last ?? 0} pip(s) lit at the end of it; lockout=${best?.reachedLockout}, outcome ${JSON.stringify(best?.outcome)} ${JSON.stringify(best?.detail ?? null)}`,
+    'LADDER bench: a rep driven through the WHOLE new chain — held descent, wait, CONTINUOUS grind — reached LOCKOUT',
+    `descent ${JSON.stringify(best?.benchDescent === null || best?.benchDescent === undefined ? null : { heldMs: best.benchDescent.heldMs, deadlineMs: best.benchDescent.deadlineMs, leftBecause: best.benchDescent.leftBecause })}; grind ${JSON.stringify(bestGrind === null ? null : { dispatched: bestGrind.dispatched, ms: bestGrind.ms, gaps: bestGrind.gaps, impliedForce: bestGrind.impliedForce, sawCommandLine: bestGrind.sawCommandLine, sawGrindLine: bestGrind.sawGrindLine, sawFalseStart: bestGrind.sawFalseStart, stoppedBecause: bestGrind.stoppedBecause, endedOn: bestGrind.endedOn })}; ${bestPeak} pip(s) at the row's peak over ${bestRows.length} command frame(s); lockout=${best?.reachedLockout}, outcome ${JSON.stringify(best?.outcome)} ${JSON.stringify(best?.detail ?? null)}`,
   );
 }
 
@@ -3046,7 +3629,16 @@ function scoreOf(scored) {
  */
 function requiredRungsFor(kind) {
   const L = LIFT_PROMPTS[kind];
-  return [L.BRACE, L.DESCENT, L.HOLE, L.COMMAND, ASCENT_PROMPTS.RIDE, kind === 'deadlift' ? L.LOCKOUT : null, kind === 'deadlift' ? L.DOWN : null].filter(
+  // THE ASCENT RUNG IS PER LIFT NOW, AND ASSUMING IT WAS 'RIDE IT' FOR ALL
+  // THREE WAS A REAL STALE EXPECTATION THIS RUN CAUGHT. Squat and deadlift flip
+  // between 'RIDE IT' and 'DRIVE — TAP' across their ascents; bench shows ONE
+  // line for the whole grind (`LIFT_COPY.PROMPT.ASCENT_GRINDING`) because it
+  // arms no cue. Measured against a real driven bench rep before this was
+  // changed: the ladder walked 4 of 5 with `"RIDE IT"@never`, on a rep that had
+  // in fact rendered every beat it has — a check reporting the tool's stale
+  // idea of the mechanic as the app's failure.
+  const ascent = L.GRIND ?? ASCENT_PROMPTS.RIDE;
+  return [L.BRACE, L.DESCENT, L.HOLE, L.COMMAND, ascent, kind === 'deadlift' ? L.LOCKOUT : null, kind === 'deadlift' ? L.DOWN : null].filter(
     (line) => line !== null,
   );
 }
@@ -4423,34 +5015,47 @@ if (LADDER_REQUESTED) {
     DEADLIFT_LOCKOUT.parserComplaints.join('; ') || 'no complaints',
   );
   // BENCH'S BEAT IS STEERED BY THE SAME KIND OF READ AND GETS THE SAME KIND OF
-  // CHECK. A `null` from any of these would leave the driver playing a duty
-  // cycle derived from nothing, and it would report the resulting misses as the
-  // app's fault — which is the exact shape `readTuning.mjs`'s header warns
-  // about, arriving through a driver instead of through a comparison.
+  // CHECK. A `null` from any of these would leave the driver tapping at a
+  // cadence derived from nothing, and it would report the resulting weak grinds
+  // as the app's fault — which is the exact shape `readTuning.mjs`'s header
+  // warns about, arriving through a driver instead of through a comparison.
   check(
-    BENCH_BEAT.missing.length === 0 &&
-      BENCH_BEAT.parserComplaints.length === 0 &&
-      BENCH_BEAT.cycle !== null,
-    "LADDER: bench's descent cycle and burst cadence were DERIVED from liftTuning.ts, not typed into this tool",
+    BENCH_BEAT.missing.length === 0 && BENCH_BEAT.parserComplaints.length === 0,
+    "LADDER: bench's descent deadline and grind cadence were DERIVED from liftTuning.ts, not typed into this tool",
     BENCH_BEAT.missing.length > 0 || BENCH_BEAT.parserComplaints.length > 0
       ? `unread: ${BENCH_BEAT.missing.join(', ')}; parser: ${BENCH_BEAT.parserComplaints.join('; ')}`
-      : `feed ${BENCH_BEAT.cycle.feedTicks} ticks / ease ${BENCH_BEAT.cycle.easeTicks} ticks = ${BENCH_BEAT.feedMs}ms / ${BENCH_BEAT.easeMs}ms, worst touch ${BENCH_BEAT.worstTouch.toFixed(3)} across ${BENCH_BEAT.cycle.runs.length} loads (mean ${BENCH_BEAT.cycle.mean.toFixed(3)}); burst up to ${BENCH_BEAT.maxCountedTaps} counted taps at ${Math.round(BENCH_BEAT.refractoryMs * BENCH_DRIVE.BURST_TAP_PERIOD_FRACTION)}ms against a ${BENCH_BEAT.refractoryMs}ms refractory, inside a ${BENCH_BEAT.burstWindowMs}ms window`,
+      : `tap period ${Math.round(BENCH_BEAT.refractoryMs * BENCH_DRIVE.TAP_PERIOD_FRACTION)}ms against a ${BENCH_BEAT.refractoryMs}ms refractory; charge decays ${BENCH_BEAT.chargeDecay}/tick toward a ceiling of ${BENCH_BEAT.chargeCeiling} at half-saturation ${BENCH_BEAT.chargeHalf}; a held descent takes ${BENCH_BEAT.heldDescentMs}ms at the heaviest load and the longest legal grind is ${BENCH_BEAT.longestGrindMs}ms`,
   );
-  // ...AND THE SEARCH IT CAME OUT OF IS NOT VACUOUS. A duty cycle that graded
-  // zero everywhere would be indistinguishable in the line above from one that
-  // graded well: both print a pair of numbers. What separates them is the
-  // CONTROL taken by the same simulation — a single committed hold, which is
-  // what the old driver did and what a driver written without reading the
-  // ruling would do. Both figures are printed and the comparison is the
-  // predicate, not the reader's head.
+  // ...AND THE CADENCE IT CHOSE CAN ACTUALLY REACH A FULL GRIND.
+  //
+  // WHAT THIS REPLACED, AND THE ANALYSIS. Until the 2026-08-25 replay steer this
+  // slot held a non-vacuity control on a SEARCHED DUTY CYCLE — "the derived
+  // cycle beats a committed hold at its worst load" — because a cycle that
+  // graded zero everywhere printed the same shape of numbers as one that graded
+  // well. Both halves of that are gone: there is no cycle, and a committed hold
+  // is now the CORRECT play at every load rather than the losing one, so the
+  // control's two sides had swapped. Re-pinning it the other way round would
+  // have meant this tool re-deriving, through a second implementation of the
+  // game's own descent recurrence, a property `liftTuning.test.ts` already
+  // asserts in closed form from the constants — a check the suite dominates
+  // outright. Deleted, with the domination recorded here and in
+  // `sessionDrive.mjs`'s own block, rather than left as two checks where one
+  // can never speak.
+  //
+  // WHAT STANDS IN ITS PLACE IS A COMPARISON THIS TOOL IS THE RIGHT PLACE FOR,
+  // because it is about the ROBOT: at the mechanic's own refractory floor the
+  // settled charge is the most any player can hold, so the force it implies is
+  // 1 whenever `GRIND_CHARGE.CEILING` is reachable at all. A tuner who raises
+  // that ceiling past what the floor can settle at makes the fastest legal
+  // human unable to reach a full grind, and this goes red saying so.
   check(
-    BENCH_BEAT.cycle !== null &&
-      BENCH_BEAT.committedWorstTouch !== null &&
-      BENCH_BEAT.worstTouch > BENCH_BEAT.committedWorstTouch,
-    "LADDER: the derived cycle is a REAL play — it beats a committed hold at its worst load, measured on the same simulation",
-    BENCH_BEAT.cycle === null
-      ? 'no cycle was derived'
-      : `cycle's worst touch ${BENCH_BEAT.worstTouch.toFixed(3)} against a committed hold's ${BENCH_BEAT.committedWorstTouch.toFixed(3)}, over ${BENCH_BEAT.cycle.runs.length} loads`,
+    BENCH_BEAT.saturatedForce !== undefined &&
+      BENCH_BEAT.saturatedForce !== null &&
+      BENCH_BEAT.saturatedForce >= 1,
+    "LADDER: the mechanic's own tap floor still settles at a FULL grind, so the driver's cadence has a ceiling to aim at",
+    BENCH_BEAT.saturatedForce === undefined || BENCH_BEAT.saturatedForce === null
+      ? 'the grind curve did not resolve'
+      : `tapping every ${BENCH_BEAT.refractoryTicks} tick(s) settles at charge ${BENCH_BEAT.saturatedCharge.toFixed(3)} against a ceiling of ${BENCH_BEAT.chargeCeiling}, worth grind force ${BENCH_BEAT.saturatedForce.toFixed(3)}; the driver aims at ${Math.round(BENCH_BEAT.refractoryMs * BENCH_DRIVE.TAP_PERIOD_FRACTION)}ms and must clear ${BENCH_DRIVE.GRIND_FORCE_FLOOR} on what it achieves`,
   );
 
   check(
@@ -4474,7 +5079,7 @@ if (LADDER_REQUESTED) {
       run.reached && run.landedOn === kind,
       `LADDER ${kind}: a work set was reached by pressing ${checkInLiftTestId(kind)} on the check-in and then playing in, and it is a ${kind} set`,
       run.reached
-        ? `RPE choice ${run.rpeChoice}`
+        ? `RPE choice ${run.rpeChoice}, check-in ${JSON.stringify(run.checkIn)}`
         : `${run.why}${run.landedOn === null || run.landedOn === undefined ? '' : ` — driven with ${run.landedOn}'s grammar anyway so the checks below have a real reading to disagree with`}`,
     );
     if (run.landedOn === null || run.landedOn === undefined) {

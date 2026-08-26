@@ -2203,13 +2203,18 @@ export const LIFT_TUNING = Object.freeze({
        * THE GRIND READOUT — A ROW OF PIPS LIT BY THE TAP RATE
        * =====================================================================
        * WHAT THE 2026-08-25 REPLAY STEER CHANGED HERE. The row used to be one
-       * pip per counted tap out of `PRESS_BURST_FORCE.MAX_COUNTED_TAPS`, and
-       * both halves of that are gone: there is no per-rep tap cap to be a
-       * denominator, and a running total would rise forever on a continuous
-       * grind. `GRIND_READOUT_UNITS` pips light in proportion to `grindForce`,
-       * so the row says HOW HARD YOU ARE GRINDING RIGHT NOW and falls back
-       * when the player slows down. That is the honest reading of a rolling
-       * rate, and it is what makes the row move both ways.
+       * pip per counted tap out of a per-rep tap cap, and both halves of that
+       * are gone: there is no cap to be a denominator, and a running total
+       * would rise forever on a continuous grind. `GRIND_READOUT_UNITS` pips
+       * light in proportion to `grindForce`, so the row says HOW HARD YOU ARE
+       * GRINDING RIGHT NOW and falls back when the player slows down. That is
+       * the honest reading of a rolling rate, and it is what makes the row
+       * move both ways.
+       *
+       * EVERY NAME IN THIS SUB-BLOCK SAID `BURST_` UNTIL THE RENDER PIECE, and
+       * they named a beat that had already been deleted. `liftFrame.ts`'s
+       * header carried that as declared debt with the reason (the names reach
+       * three files the mechanic piece was scoped out of); this is it paid.
        *
        * STILL NOT A RATIO OF A FATIGUE-ADJUSTED QUANTITY, which is the §12.3
        * argument and is unchanged in substance. `grindProgress` carries no
@@ -2224,9 +2229,9 @@ export const LIFT_TUNING = Object.freeze({
        * rectangle rather than hunting a hue across the whole canvas.
        */
       GRIND_READOUT_UNITS: 14,
-      BURST_PIP_W: 10,
-      BURST_PIP_H: 16,
-      BURST_PIP_GAP: 4,
+      GRIND_PIP_W: 10,
+      GRIND_PIP_H: 16,
+      GRIND_PIP_GAP: 4,
       /**
        * Top of the pip row, in stage points.
        *
@@ -2236,22 +2241,118 @@ export const LIFT_TUNING = Object.freeze({
        * centred on `LAYOUT.CUE_X` and `liftFrame.test.ts` asserts it clears the
        * bar-path panel rather than trusting the arithmetic here.
        */
-      BURST_PIPS_Y: 258,
-      BURST_TRAY_PAD: 5,
+      GRIND_PIPS_Y: 258,
+      GRIND_TRAY_PAD: 5,
 
       /**
-       * Where `chestApproach` stops being calm and starts being a crash, for
-       * the bar glyph's colour only.
+       * =====================================================================
+       * THE TAP RAIL — ONE FLASH PER COUNTED TAP, WHICH IS WHAT MAKES THE ROW
+       * READ AS A RATE RATHER THAN AS A PROGRESS BAR
+       * =====================================================================
+       * A row of pips that fills toward a full row reads as a COUNTER toward a
+       * cap, which is the exact thing the steer deleted — and it reads that way
+       * whatever the number behind it means. What a bar filling to the right
+       * cannot show is the one fact the grind is made of: that a tap just
+       * LANDED. So a thin rail under the tray flashes on every counted tap and
+       * decays over `GRIND_KICK_MS`, and the visible rate of that flashing IS
+       * the player's tap rate.
+       *
+       * IT IS DRAWN OUTSIDE THE TRAY, WHICH IS A MEASUREMENT CONSTRAINT AND NOT
+       * A LAYOUT PREFERENCE. `verify-lift-press.mjs` counts lit-pip pixels
+       * inside the tray rectangle; a flash drawn on top of the pips would move
+       * that count and the tool would read the kick as pips.
+       * `liftFrame.test.ts` asserts the rail clears the tray, the sprite cell
+       * and the bar-path panel rather than trusting this sentence.
+       *
+       * `GRIND_KICK_MS` IS SHORTER THAN THE REFRACTORY GAP ON PURPOSE — 110ms
+       * against `GRIND_TAP_REFRACTORY_TICKS`' 50ms floor is a little over two
+       * taps' worth at the fastest legal rate, so a fast player's rail is a
+       * bright continuous bar and a jogging player's is a visible blink. A
+       * value at or below the refractory would blink at every rate and carry no
+       * rate information; a value several times it would saturate at every rate
+       * and carry none either. Unplayed placeholder, GDD §12.1.
+       */
+      GRIND_KICK_MS: 110,
+      GRIND_KICK_GAP: 3,
+      GRIND_KICK_H: 4,
+
+      /**
+       * =====================================================================
+       * THE STALL BAND — BENCH'S URGENT BEAT, AND THE ONE THE MECHANIC'S
+       * HEADLINE PROPERTY DEPENDS ON BEING LEGIBLE
+       * =====================================================================
+       * "Stop tapping and the bar stalls; start again and it comes back" is the
+       * sentence the whole continuous grind exists for (GDD §6.2), and a rescue
+       * a player cannot see the need for is a rescue they will not attempt. The
+       * mechanic already counts the stall — `GRIND_STALL_VELOCITY` is the same
+       * threshold `stepLift` increments `stallTicks` on — and until this block
+       * nothing on the stage said so on a bench rep. What playtest 4 measured
+       * about the command was that one channel is not enough; this is the same
+       * lesson applied one beat later.
+       *
+       * A FULL-STAGE EDGE BAND RATHER THAN A LOCAL GLOW, for the reason
+       * `FLASH_PEAK_ALPHA` gives about the command: a local effect has to be
+       * looked at, and the player is watching the bar. An edge band reaches
+       * peripheral vision from wherever the eye happens to be.
+       *
+       * DISTINCT FROM THE COMMAND'S OWN BEAT IN ALL THREE CHANNELS, which is
+       * deliberate and is what keeps two urgent treatments from reading as one
+       * event: the command is a WARM full-stage wash that DECAYS ONCE with a
+       * ring EXPANDING out of the lifter; this is a COLD band at the stage's
+       * EDGES that PULSES for as long as the bar is losing. One is news, the
+       * other is a condition.
+       *
+       * NOT A FATIGUE METER (§12.3). It is on or off by the bar's velocity this
+       * tick, it resets every rep, it is never persisted, and no constant
+       * behind it comes from `fatigue.ts` — the same argument `chestApproach`
+       * and `stallCapacityLoss` already make, restated where the drawing is.
+       * `stallCapacityLoss` in particular is NOT what this reads: that scalar
+       * is a per-rep accumulator and drawing it would be the meter with the
+       * numerals filed off.
+       *
+       * `STALL_PULSE_FLOOR` KEEPS THE BAND FROM EVER REACHING ZERO ALPHA while
+       * the bar is stalled, which is a legibility choice and also what gives
+       * `verify-lift-press.mjs` a subject: a band that blinked fully off would
+       * have frames indistinguishable from a stage that draws no stall at all.
+       * None of these five has been played. GDD §12.1.
+       */
+      STALL_BAND_PX: 26,
+      STALL_MIN_ALPHA: 0.24,
+      STALL_MAX_ALPHA: 0.6,
+      STALL_PULSE_MS: 300,
+      STALL_PULSE_FLOOR: 0.5,
+
+      /**
+       * Where the bar glyph stops being drawn as controlled and starts being
+       * drawn as running away, for the glyph's colour only.
+       *
+       * RENAMED FROM `BAR_WARM_AT` / `BAR_HOT_AT` WITH THE PALETTE ENTRIES THEY
+       * PICK, and the rename is the honest half of the 2026-08-25 steer landing
+       * on the drawing. The quantity behind them is `chestApproach`, which is
+       * `1 - touchSpeedQuality` — the RATE the bar is carrying, not how near the
+       * chest it is. Under the beat this replaced, "approach" was a fair word
+       * for it because the player was steering that rate all the way down.
+       * Under hold-to-lower they are not: holding is correct at every load and
+       * arrives at quality 1, so the only thing these thresholds can ever
+       * describe is a bar somebody LET GO OF. A name that reads as proximity
+       * over a number that measures runaway is the identifier-misdescribes-its-
+       * measurement failure CLAUDE.md rates above the same error in prose.
        *
        * BANDS ON A DRAWING, NOT A SECOND GRADING CURVE. The mechanic grades the
        * touch through `touchSpeedQuality`; these two numbers decide which of
        * three colours the bar is drawn in on the way down, and moving them
-       * cannot change a single outcome. `liftFrame.test.ts` pins that
-       * separation by driving a whole rep with each band edge moved to either
-       * extreme and asserting the resolution is byte-identical.
+       * cannot change a single outcome. What holds that is STRUCTURAL, and
+       * this sentence used to overstate it: it described a driven-rep check —
+       * "each band edge moved to either extreme, resolution byte-identical" —
+       * that has never existed. The real check is `liftFrame.test.ts`'s
+       * source scan: `lift.ts` may not contain `BAR_RUNAWAY_AT`, `BAR_CRASH_AT`
+       * or `barGlyphColour` by name, so the mechanic has no path to these
+       * values at all — a stronger separation than a two-point sweep, and the
+       * one the test can actually redden. (An inherited sentence, corrected
+       * under the touch-the-module rule when the constants were renamed.)
        */
-      BAR_WARM_AT: 0.34,
-      BAR_HOT_AT: 0.67,
+      BAR_RUNAWAY_AT: 0.34,
+      BAR_CRASH_AT: 0.67,
     }),
   }),
 

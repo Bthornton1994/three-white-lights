@@ -928,7 +928,16 @@ const GUARANTEE_COVERAGE = {
   // scoper's declared lower-case blind spot working as documented rather than
   // a surprise. 2 + 3 + 1 + 1 - 1 = 6 and 287 + 6 = 293, so the attribution
   // closes rather than nearly closing.
-  TREE_WIDE: 293,
+  //
+  // 293 -> 294 ON THE RENDER-SIDE GRIND PIECE, AND THE ATTRIBUTION IS ONE FILE.
+  // Measured the same way — the census printed per file on the tree before the
+  // piece and on the tree after it, and diffed — rather than reasoned from the
+  // diff: `src/lift/liftFrame.test.ts` 0 -> 1, and every other file in the
+  // piece unchanged. The one paragraph is the stall band's own pair test.
+  // `liftFrame.ts`, `liftPalette.ts`, `LiftStage.tsx` and `liftTuning.ts` all
+  // gained substantial prose in the same commit and contributed **0** between
+  // them, which is again the declared blind spot rather than a surprise.
+  TREE_WIDE: 294,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1281,7 +1290,14 @@ const NUMBER_COVERAGE = {
   // information, something counts what happened) and the numbers behind them
   // live in `LIFT_TUNING.FEEDBACK.STAGE_COMMAND` where the tests read them from
   // rather than in the prose.
-  TAGGED_PARAGRAPHS: 83,
+  //
+  // 83 -> 84 on the render-side grind piece's one new tag,
+  // `the-stall-band-is-live-and-not-an-accumulator` in `liftFrame.ts`. Its
+  // paragraph states no numeral either, so `CITED_NUMBERS` again does not move
+  // with it: the claim is about SHAPE (the band reads the live velocity and
+  // not the per-rep accumulator beside it) and the thresholds behind it live in
+  // `LIFT_TUNING` where the test reads them from.
+  TAGGED_PARAGRAPHS: 84,
   /** ...of which this many state a number as prose. */
   PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
   /** Numerals the rule actually demands something of. */
@@ -1341,11 +1357,11 @@ const NUMBER_COVERAGE = {
   //
   // 69 -> 72 with the command beat's three tags, whose named tests are the
   // three new bodies.
-  NAMED_BODIES: 74,
+  NAMED_BODIES: 75,
   // 53 -> 55 with the command beat's three tag-named bodies; two of the three
   // state a bare 0 (the wash before the call, the pip row's first frame) and
   // the third does not.
-  NAMED_BODIES_HOLDING_ZERO: 56,
+  NAMED_BODIES_HOLDING_ZERO: 57,
   // 52 -> 54 with the command beat's three tag-named bodies, two of which
   // state a bare 1.
   NAMED_BODIES_HOLDING_ONE: 55,
@@ -1675,7 +1691,7 @@ const TRANSCRIPT_BAR = {
   // 40 -> 41 on the press-delay witness. Its transcript quotes no bare scalar
   // — the reddened assertion names a FILE — so `WITH_A_MEASURED_NUMBER` stays
   // where it is.
-  GRADED: 42,
+  GRADED: 43,
   /** ...and rows excused because their transcript predates it. */
   // 37 -> 36 when the placeholder's witness retired with its subject
   // (Sprint 1c): its transcript predated the rule, so the excused count is
@@ -1900,10 +1916,20 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // almost every row here, and for the same reason: its transcript's numerals
   // are the MUTATED tree's reading (one bad surface of three, 2 failed of 20)
   // and no assertion in the shipped body pins any of them.
-  rows: 70,
-  flagged: 57,
-  numerals: 263,
-  unresolved: 151,
+  //
+  // 70/57/263/151 -> 71/58/268/156 on the render-side grind piece's stall-band
+  // witness. FIVE NUMERALS, ALL FIVE UNRESOLVED, and the row is flagged for the
+  // reason every row here is: they are readings of the MUTATED tree. Four of
+  // them are the depth the band came back with on a tree where it could not go
+  // out (`0.7774066666666667`) and the `1 failed | 58 passed (59)` line this
+  // table's own rule demands; none of them is a quantity the shipped body could
+  // be expected to state, and the one MEASUREMENT the row rests on — the count
+  // of stalled frames the pair is drawn from — is in `measuredOver`, which is
+  // checked separately above.
+  rows: 71,
+  flagged: 58,
+  numerals: 268,
+  unresolved: 156,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -2272,7 +2298,7 @@ const REPLACEMENT_BAR = {
   // 25 -> 28 on the three command-beat witnesses, every one of which records
   // both halves: what it removed and what it put there.
   // 28 -> 29 on the press-delay witness, which records both halves.
-  REPRODUCIBLE: 30,
+  REPRODUCIBLE: 31,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2429,7 +2455,7 @@ const SECTION_4A_KILL_LIST = {
  * by construction. It moves with every row added or removed, and updating it
  * is part of recording a witness.
  */
-const WITNESS_ROWS = 78;
+const WITNESS_ROWS = 79;
 
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
   // -------------------------------------------------------------------------
@@ -2730,6 +2756,37 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + 'AssertionError: expected 1 to be 9 // Object.is equality\n'
       + 'Tests  1 failed | 53 skipped (54)',
     measuredOver: "    expect(open.length, 'the grind never went live').toBeGreaterThan(10);",
+  },
+  // THE MUTANT IS THE OBVIOUS WAY TO WRITE THE STALL BAND, AND IT IS THE WRONG
+  // ONE. `state.stallTicks` is right there, it is named for exactly this, it
+  // compiles, and every "the band draws while the bar is stalled" assertion
+  // stays green under it — because it IS non-zero while the bar is stalled.
+  // What it also is, is non-zero for the whole rest of the rep: the counter
+  // only rises, so a band keyed to it comes on at the first stalled tick and
+  // never goes out again, through the rescue and through the lockout. A cue
+  // that cannot go off cannot say a rescue worked, and the rescue is the
+  // headline property of the whole continuous grind (GDD §6.2).
+  //
+  // COLLECTED 59 OF 59 ON THE MUTATED TREE, checked rather than assumed: this
+  // mutant reddens by failing an assertion, not by stopping the file from being
+  // collected — the failure mode this file records for `recruitmentRefusals`.
+  {
+    guarantee: 'the-stall-band-is-live-and-not-an-accumulator',
+    mutatedFile: 'src/lift/liftFrame.ts',
+    mutated: '  if (state.velocity >= LIFT_TUNING.GRIND_STALL_VELOCITY) return null;',
+    mutatedTo: '  if (state.stallTicks <= 0) return null;',
+    testFile: 'src/lift/liftFrame.test.ts',
+    redAssertion:
+      "    expect(stallBand(moving), 'the band survived the bar moving again').toBeNull();",
+    observed:
+      'FAIL  src/lift/liftFrame.test.ts > the stall band > goes out the tick the bar moves '
+      + 'again, at an unchanged stall total '
+      + '[the-stall-band-is-live-and-not-an-accumulator]\n'
+      + 'AssertionError: the band survived the bar moving again: expected '
+      + '{ depth: 0.7774066666666667, …(2) } to be null\n'
+      + 'Tests  1 failed | 58 passed (59)',
+    measuredOver:
+      "    expect(stalledFrames.length, 'stalled frames this pair is drawn from').toBe(18);",
   },
   // -------------------------------------------------------------------------
   // THE FOURTH PRESS GUARD, AND THE ONE THAT WAS SWALLOWING WHOLE INPUTS.
