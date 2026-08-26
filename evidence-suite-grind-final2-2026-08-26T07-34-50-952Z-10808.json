@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "evidence-suite-grind-final2-2026-08-26T07-34-50-952Z-10808",
   "label": "evidence-suite-grind-final2",
   "command": [
@@ -30,14 +30,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 11,
-    "okCount": 10,
+    "count": 12,
+    "okCount": 11,
     "errors": [],
-    "lastAttemptIso": "2026-08-26T07:44:51.329Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-26T07:45:07.323Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-26T07:43:53.931Z"
-  }
+    "lastOkIso": "2026-08-26T07:44:54.035Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-26T07:45:07.322Z",
+  "elapsedSeconds": 616.4
 }
