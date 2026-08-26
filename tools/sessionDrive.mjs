@@ -1830,6 +1830,57 @@ export async function grindTapToResolution(
   let endedOn = null;
   let stoppedBecause = 'the dispatch budget ran out';
 
+  /**
+   * WHERE THE HOLE'S INSTANT LIVES, AND WHY IT IS ONE CLOSURE AND NOT TWO
+   * BLOCKS. The loop asks twice per iteration — once straight after the tap and
+   * once when the gap before the next tap turns out to straddle the instant —
+   * and CLAUDE.md has paid four times for the shape where two arms of one
+   * decision get written as two pieces of code and the second one drifts. Both
+   * asks go through these.
+   */
+  const holeAtMsFor = () => (pause !== null && paused === null ? pause.atMs : abandonAtMs);
+  const holeHasArrived = () => {
+    const at = holeAtMsFor();
+    return at !== null && Date.now() - startedAt >= at;
+  };
+  /** Open it, and say whether the caller should `break` or `continue`. */
+  const openTheHole = async () => {
+    if (pause !== null && paused === null) {
+      if (onPauseStart !== undefined) await onPauseStart(dispatched);
+      const pausedFrom = Date.now();
+      const openedAtMs = pausedFrom - startedAt;
+      await page.waitForTimeout(pause.ms);
+      if (onPauseEnd !== undefined) await onPauseEnd(dispatched);
+      paused = {
+        askedAtMs: pause.atMs,
+        openedAtMs,
+        afterTaps: dispatched,
+        askedMs: pause.ms,
+        realMs: Date.now() - pausedFrom,
+      };
+      // The gap the pause creates is NOT a cadence measurement — it is the
+      // thing being driven — so the next tap starts a fresh interval rather
+      // than recording a gap the size of the pause.
+      lastTapAt = null;
+      return 'continue';
+    }
+    abandonedAfter = dispatched;
+    abandonedAtMs = Date.now() - startedAt;
+    stoppedBecause = 'the driver abandoned the grind and watched the rep out';
+    const watched = await untilRead(
+      page,
+      read,
+      (loop) =>
+        hasLeft(loop) ||
+        loop.prompt === null ||
+        !(loop.prompt.includes(commandLine) || loop.prompt.includes(grindLine)),
+      Math.max(0, deadline - Date.now()),
+      Math.round(periodMs),
+    );
+    endedOn = watched === null ? endedOn : (watched.prompt ?? null);
+    return 'break';
+  };
+
   while (dispatched < attempts) {
     const tapAt = Date.now();
     if (lastTapAt !== null) gaps.push(tapAt - lastTapAt);
@@ -1837,6 +1888,23 @@ export async function grindTapToResolution(
     await page.mouse.down();
     await page.mouse.up();
     dispatched += 1;
+
+    // THE HOLE'S INSTANT IS CHECKED HERE, BEFORE THE READ, and the ordering is
+    // the whole point: `read` is a CDP round trip and is the single biggest
+    // term in this loop's overhead — measured at 30-50 ms against a 40 ms tap
+    // period on this machine. Noticing the instant AFTER it would put the
+    // read's latency straight into how late the hole opens, and how late it
+    // opens is what the pair is controlled on.
+    //
+    // The gap-splitting further down handles the other half: an instant that
+    // falls INSIDE the wait between two taps. Between them the grain is a loop
+    // iteration's overhead rather than a whole tap period, which is what took
+    // the two arms from 65 ms apart to inside the tolerance.
+    if (holeHasArrived()) {
+      const done = await openTheHole();
+      if (done === 'break') break;
+      continue;
+    }
 
     const loop = await read(page);
     endedOn = loop.prompt ?? null;
@@ -1861,52 +1929,41 @@ export async function grindTapToResolution(
       break;
     }
 
-    // THE DELIBERATE ABANDONMENT. Stop dispatching and watch the rep out — the
-    // control the rescue is a rescue AGAINST. Keyed to the same instant the
-    // pause is, so the pair really differs in one thing.
-    if (abandonAtMs !== null && Date.now() - startedAt >= abandonAtMs) {
-      abandonedAfter = dispatched;
-      abandonedAtMs = Date.now() - startedAt;
-      stoppedBecause = 'the driver abandoned the grind and watched the rep out';
-      const watched = await untilRead(
-        page,
-        read,
-        (loop) =>
-          hasLeft(loop) ||
-          loop.prompt === null ||
-          !(loop.prompt.includes(commandLine) || loop.prompt.includes(grindLine)),
-        Math.max(0, deadline - Date.now()),
-        Math.round(periodMs),
-      );
-      endedOn = watched === null ? endedOn : (watched.prompt ?? null);
-      break;
-    }
-
-    // THE DELIBERATE PAUSE. After it the loop simply carries on tapping, which
-    // is what makes this a RESCUE rather than a give-up: the same rep, the same
-    // cadence, with a hole in the middle of it.
-    if (pause !== null && paused === null && Date.now() - startedAt >= pause.atMs) {
-      if (onPauseStart !== undefined) await onPauseStart(dispatched);
-      const pausedFrom = Date.now();
-      const openedAtMs = pausedFrom - startedAt;
-      await page.waitForTimeout(pause.ms);
-      if (onPauseEnd !== undefined) await onPauseEnd(dispatched);
-      paused = {
-        askedAtMs: pause.atMs,
-        openedAtMs,
-        afterTaps: dispatched,
-        askedMs: pause.ms,
-        realMs: Date.now() - pausedFrom,
-      };
-      // The gap the pause creates is NOT a cadence measurement — it is the
-      // thing being driven — so the next tap starts a fresh interval rather
-      // than recording a gap the size of the pause.
-      lastTapAt = null;
-      continue;
-    }
-
+    // ============================================================
+    // WAIT OUT ONLY THE PART OF THE GAP THAT COMES BEFORE THE HOLE'S INSTANT,
+    // SO THE HOLE OPENS AT IT RATHER THAN AT THE NEXT TAP BOUNDARY.
+    // ============================================================
+    // THE SECOND VERSION OF THIS CHECKED THE INSTANT ONCE PER TAP, WHICH MADE
+    // THE GRAIN ONE TAP PERIOD AND PUT THE PAIR BACK WHERE IT STARTED — one
+    // step less badly. Measured in a browser: with a 400 ms instant, the
+    // rescued arm's 56 ms cadence opened its hole at 471 ms and the abandoned
+    // arm's 45 ms cadence opened its at 406 ms, 65 ms apart, because each arm
+    // could only notice at whichever tap boundary came after the instant.
+    //
+    // WIDENING THE AGREEMENT TOLERANCE WOULD HAVE MADE THAT CHECK GO GREEN AND
+    // IS THE MOVE CLAUDE.md REFUSES BY NAME — a threshold chosen to stop a
+    // check failing hides the next real failure at the same site. So the
+    // MECHANISM changed instead, in two places: the check above runs before the
+    // read rather than after it, and this one splits the remainder of the gap
+    // at the instant. Together the grain is a loop's overhead rather than a
+    // whole tap period.
     const gap = periodMs - (Date.now() - tapAt);
-    if (gap > 0) await page.waitForTimeout(gap);
+    const holeAtMs = holeAtMsFor();
+    if (holeAtMs !== null) {
+      const untilHole = holeAtMs - (Date.now() - startedAt);
+      if (untilHole <= Math.max(0, gap)) {
+        if (untilHole > 0) await page.waitForTimeout(untilHole);
+        const done = await openTheHole();
+        if (done === 'break') break;
+        continue;
+      }
+    }
+
+    // WHATEVER IS LEFT OF THE GAP. When the hole's instant fell inside it the
+    // wait above already spent the part before the instant, so this is the
+    // remainder; when it did not, this is the whole gap.
+    const remaining = periodMs - (Date.now() - tapAt);
+    if (remaining > 0) await page.waitForTimeout(remaining);
   }
 
   const meanGapMs = gaps.length === 0 ? null : gaps.reduce((a, b) => a + b, 0) / gaps.length;
