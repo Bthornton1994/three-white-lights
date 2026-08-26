@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "press-pair-fix3-2026-08-26T03-27-03-211Z-18726",
+  "label": "press-pair-fix3",
+  "command": [
+    "node",
+    "tools/verify-lift-press.mjs",
+    "--url",
+    "http://localhost:8096",
+    "--arms",
+    "ladder",
+    "--out",
+    "/tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/mut"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-26T03:27:03.211Z",
+  "startedAtMs": 1787714823211,
+  "cwd": "/home/user/wt-grind-stage",
+  "commit": "6124931ae2d7288901c01f1533a8f42393cc2497",
+  "branch": "claude/grind-stage-drivers",
+  "dirty": 2,
+  "dirtyPaths": [
+    "tools/sessionDrive.mjs",
+    "tools/verify-lift-press.mjs"
+  ],
+  "runner": {
+    "pid": 18726,
+    "startTick": "2792603",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --label press-pair-fix3 -- node tools/verify-lift-press.mjs --url http://localhost:8096 --arms ladder --out /tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1",
+    "bootId": "08766f0d-19e7-495f-880c-c0965fc21158",
+    "bootEpochSeconds": 1787686897,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-26T03:27:03.231Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
