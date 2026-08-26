@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-26T20-31-05-673Z-29228",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "src/game/lift.test.ts",
+    "src/game/liftTuning.test.ts",
+    "src/game/guaranteeTags.test.ts",
+    "src/lift/liftFrame.test.ts"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-26T20:31:05.673Z",
+  "startedAtMs": 1787776265673,
+  "cwd": "/home/user/wt-bench-difficulty",
+  "commit": "fad085bb2af1f0fd2727b1c0f09872094c3af22e",
+  "branch": "claude/bench-difficulty",
+  "dirty": 3,
+  "dirtyPaths": [
+    "docs/GDD.md",
+    "src/game/lift.test.ts",
+    "src/game/liftTuning.ts"
+  ],
+  "runner": {
+    "pid": 29228,
+    "startTick": "2319074",
+    "cmdline": "node tools/watchdog.mjs --budget 900 -- npx vitest run src/game/lift.test.ts src/game/liftTuning.test.ts src/game/guaranteeTags.test.ts src/lift/liftFrame.test.ts",
+    "bootId": "4629c418-2124-4105-88fa-7f9ea23105ae",
+    "bootEpochSeconds": 1787753075,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-26T20:31:05.694Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
