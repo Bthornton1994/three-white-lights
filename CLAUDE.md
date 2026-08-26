@@ -481,6 +481,34 @@ Build plan: same two serialized pieces as the last round — mechanic first
 third grammar change would have rewritten it a third time; the hold was
 right.
 
+### PHONE REPLAY OF THE GRIND, 2026-08-26 — MECHANIC CONFIRMED, DIFFICULTY UP ACROSS THE BOARD
+
+Verbatim, phone at `b0441d8`: *"I like the mechanics now, rpe 8 is just too
+easy, theres no difficulty there, i would retweak difficulty across the board
+other than that i think it works great."* Mechanic YES — descent → command →
+continuous grind is settled, the piece-2 readout is playable, and none of it
+reopens. Difficulty NO: too soft, named at RPE 8, asked across the board.
+
+**THIS SUPERSEDES SESSION C'S EARLIER "FAIRNESS" MEMO, WHICH MUST NOT BE
+IMPLEMENTED.** That memo proposed thickening RPE 8's no-stall cushion and
+walking back the quiet meet opener — both directly rejected by this play
+("more difficulty", not less). Recorded here so no session acts on the stale
+steer.
+
+**The retune's shape, bounded by the ruling:** warm-ups stay warm-ups (RPE
+6–7 all-zero cells untouched; a grind on every warm-up is the GDD's own named
+failure). RPE 8 must ask for real work — stalls and/or lost reps for lazy
+tapping, make/grinder for honest grinding — while staying easier than 9/10.
+The whole 8 → 9 → 10 → meet curve rises together so each step is harder than
+the one below; openers rise with it. The GDD's "RPE 8, the default rung — no
+stalls, no lost reps" sentence changes meaning, so GDD and code move in one
+commit. Re-derive the 40-cell reachable table, per-cell pins, set-equality
+both ways; flattening the retune must still redden.
+
+**§12.1:** direction positive, tuning open. The next phone question is only:
+does 8 feel like work, and does 8 < 9 < 10 still read? Session C mints the
+next tunnel when the retune lands with fresh pins and evidence.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
