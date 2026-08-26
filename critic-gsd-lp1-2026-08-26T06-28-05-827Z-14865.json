@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "critic-gsd-lp1-2026-08-26T06-28-05-827Z-14865",
+  "label": "critic-gsd-lp1",
+  "command": [
+    "node",
+    "tools/verify-lift-press.mjs",
+    "--url",
+    "http://localhost:8096",
+    "--arms",
+    "ladder",
+    "--out",
+    "/tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad/lp1"
+  ],
+  "budgetSeconds": 500,
+  "startedAtIso": "2026-08-26T06:28:05.827Z",
+  "startedAtMs": 1787725685827,
+  "cwd": "/home/user/wt-grind-stage",
+  "commit": "33a8adae4ba313116c243b85828e8cd6ff8b5fae",
+  "branch": "claude/grind-stage-drivers",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 14865,
+    "startTick": "349097",
+    "cmdline": "node tools/watchdog.mjs --budget 500 --label critic-gsd-lp1 -- node tools/verify-lift-press.mjs --url http://localhost:8096 --arms ladder --out /tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d",
+    "bootId": "96fef63f-e4d8-4aa9-9654-48737ca6b5b1",
+    "bootEpochSeconds": 1787722195,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-26T06:28:05.849Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
