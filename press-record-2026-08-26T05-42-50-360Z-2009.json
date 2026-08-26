@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "press-record-2026-08-26T05-42-50-360Z-2009",
+  "label": "press-record",
+  "command": [
+    "node",
+    "tools/verify-lift-press.mjs",
+    "--url",
+    "http://localhost:8096",
+    "--out",
+    ".gauntlet/shots/lift-press"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-26T05:42:50.360Z",
+  "startedAtMs": 1787722970360,
+  "cwd": "/home/user/wt-grind-stage",
+  "commit": "a2f97cf28c53ea637d0682ee7c0be8f6d1678bef",
+  "branch": "claude/grind-stage-drivers",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 2009,
+    "startTick": "77551",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --label press-record -- node tools/verify-lift-press.mjs --url http://localhost:8096 --out .gauntlet/shots/lift-press",
+    "bootId": "96fef63f-e4d8-4aa9-9654-48737ca6b5b1",
+    "bootEpochSeconds": 1787722195,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-26T05:42:50.380Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
