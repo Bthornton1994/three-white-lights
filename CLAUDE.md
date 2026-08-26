@@ -2697,6 +2697,17 @@ physiology.
   | `tools/verify-meet-sound.mjs` | ~90s |
   | `tools/capture-cutin.mjs` | ~25s |
 
+  **MEASURED 2026-08-26: `verify-shell-route.mjs` took 681s under load, past the
+  ~560s row above — and THIS ENVIRONMENT'S COMMAND WRAPPER CAPS AT 10 MINUTES,
+  so it was SIGKILLed from outside at nine.** Two things follow that the table
+  alone does not say. Wrapping it in `watchdog --budget` does NOT save it: the
+  kill arrives from outside the watchdog, so the budget never fires and the
+  silence is indistinguishable from a hang — the exact ambiguity the marker
+  mechanism exists to remove, arriving through the one channel it cannot see.
+  What works is starting the run in the BACKGROUND rather than foreground, so
+  no wrapper deadline applies. It bit twice in one piece before the cause was
+  found.
+
   These move as the tools grow — `verify-shell-route.mjs` was ~430s before the
   return leg was added. Re-measure rather than trusting this table if a run comes
   in near its budget.
