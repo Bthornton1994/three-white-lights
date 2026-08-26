@@ -1646,26 +1646,35 @@ const LIFT_LADDER = Object.freeze({
    * bar stalls; start again and it comes back", and this probe now drives that
    * on the stage: a rep with a deliberate hole in its grind, a stall cue that
    * has to draw during the hole, and a lockout on the other side of it. THAT
-   * CHECK NEEDS A LOAD THAT CAN ACTUALLY STALL, and at RPE 8 nothing can:
-   * `lift.test.ts`'s `REACHABLE_RESCUE` walks every load `prescribeSession`
-   * emits and pins `session/rpe8/0.8500/as-expected` at `[40, 0, 0]` — the
-   * outcome moves, but ZERO of 80 paired reps stall and ZERO lose a rep. A
-   * stall check driven there has an empty domain, which is the vacuity this
-   * repository refuses by name.
+   * CHECK NEEDS A LOAD THAT CAN ACTUALLY STALL.
    *
-   * The same table gives the two rungs that do stall at the check-in this probe
-   * answers (`SESSION_DRIVE.CHECK_IN_TAPS`, which reaches `as-expected`):
+   * ===========================================================================
+   * THE REASON THIS BLOCK GAVE FOR RPE 10 WAS TRUE AND IS NOT ANY MORE, AND IT
+   * IS CORRECTED RATHER THAN LEFT STANDING BEHIND A DECISION IT NO LONGER
+   * SUPPORTS
+   * ===========================================================================
+   * It read: "at RPE 8 nothing can [stall] — `REACHABLE_RESCUE` pins
+   * `session/rpe8/0.8500/as-expected` at `[40, 0, 0]`, the outcome moves but
+   * ZERO of 80 paired reps stall and ZERO lose a rep. A stall check driven
+   * there has an empty domain." That was accurate, and it is the exact
+   * complaint a phone replay made about RPE 8 on 2026-08-26; the difficulty
+   * retune it produced is what closed it. The same three rows now read:
    *
-   *     session/rpe9/0.8750/as-expected    [80, 20, 20]
-   *     session/rpe10/0.9000/as-expected   [80, 80, 40]
+   *     session/rpe8/0.8500/as-expected    [80, 20, 20]   (was [40,  0,  0])
+   *     session/rpe9/0.8750/as-expected    [80, 80, 80]   (was [80, 20, 20])
+   *     session/rpe10/0.9000/as-expected   [80, 80, 80]   (was [80, 80, 40])
    *
-   * as `[rescued, fromMiss, stalled]` out of 80 pairs. RPE 10 is chosen because
-   * both columns this probe depends on are stronger there: FOUR TIMES as many
-   * of its pairs stall, and every one of its 80 pairs turns a MISS into a make
-   * when the tapping resumes — so the rescue is load-bearing rather than
-   * cosmetic, which is what makes "pause -> stall -> resume -> LOCKOUT" a claim
-   * about the mechanic instead of a claim about a rep that was going to make
-   * anyway.
+   * as `[rescued, fromMiss, stalled]` out of 80 pairs. So RPE 8 CAN stall now
+   * and the old argument's empty-domain premise is gone with it.
+   *
+   * RPE 10 STAYS, ON THE WEAKER REASON THAT IS STILL TRUE. It is the hardest
+   * rung the ladder offers, so the stall it produces is the largest and the
+   * abandoned control is the least likely to sneak a make: every one of its 80
+   * pairs stalls AND turns a miss into a make when the tapping resumes, which
+   * is what makes "pause -> stall -> resume -> LOCKOUT" a claim about the
+   * mechanic rather than about a rep that was going to make anyway. RPE 9 would
+   * now satisfy the same two conditions, and that is written down so nobody
+   * re-derives this choice as FORCED when it is only the strongest.
    *
    * AND THE COST IS STATED RATHER THAN HIDDEN, in the shape this block's own
    * RPE-8 note already uses: RPE 10 is the hardest rung the ladder offers, so a
@@ -1715,6 +1724,32 @@ const LIFT_LADDER = Object.freeze({
    * the hardest cell. So the hardest bench rep the ladder can offer is the top
    * of the RPE ladder answered at the bottom of the check-in, which is what
    * these three press.
+   *
+   * ===========================================================================
+   * RE-TAKEN AFTER THE 2026-08-26 DIFFICULTY RETUNE: THE WORST CHECK-IN IS NO
+   * LONGER REQUIRED, AND IT IS KEPT ANYWAY
+   * ===========================================================================
+   * The table above is the OLD curve's and is kept as the record of why this
+   * row was written. Re-run on the shipped curve at this probe's own schedule
+   * and its own hole (taps every 3 ticks, hole at 12t, pause 45t), 20 seeds:
+   *
+   *     cell                              pause  stalled  rescued  abandoned
+   *     mid/as-expected   rpe10  0.9000    42t   20/20    20/20      0/20
+   *     mid/as-expected   rpe10  0.9000    55t   20/20     0/20      0/20
+   *     best/popping      rpe10  0.9500    42t   20/20    20/20      0/20
+   *     poor/slower...    rpe10  0.8750    42t   20/20    20/20      0/20
+   *     poor/slower...    rpe10  0.8750    55t   20/20     0/20      0/20
+   *
+   * The `0/20` in the mid row's `stalled` column — the whole reason this arm
+   * takes the worst answers — is now `20/20`. Every check-in stalls at RPE 10.
+   *
+   * IT STAYS AT THE WORST ANSWERS, and the reason is that it is still the
+   * hardest cell (`REACHABLE_COUPLING`'s pin that RPE 10 is the one rung where
+   * a poor check-in is hardest is unchanged, because a uniform demand shift
+   * preserves differences) and that changing which cell a browser instrument
+   * presses is a change to what the evidence is OF. The row is corrected, not
+   * re-chosen. A future piece that wants the mid answers here now can have
+   * them; this one is a tuning pass and does not get to move the subject.
    *
    * The other two lifts keep `SESSION_DRIVE.CHECK_IN_TAPS`: the deadlift arm's
    * whole control pair is calibrated at the mid answers (see `RPE_CHOICE`), and
@@ -1784,9 +1819,48 @@ const LIFT_LADDER = Object.freeze({
    * the worst-case stall drops to 16 and at 65 the rescued arm starts failing
    * at the slower cadences (40 / 0 / 0 at 12t). 55 is the middle of the only
    * column where both arms hold at every cadence measured.
+   *
+   * ===========================================================================
+   * BOTH SWEPT TABLES ABOVE ARE THE OLD CURVE'S, AND 55 TICKS WENT PAST THE
+   * RESCUE CLIFF WHEN THE 2026-08-26 DIFFICULTY RETUNE LANDED
+   * ===========================================================================
+   * THIS IS THE FAILURE THIS RE-SWEEP EXISTS TO CATCH, and it was caught before
+   * a browser run rather than by one. Re-run on the shipped curve, same sim,
+   * same cell, same three cadences, 40 seeds each, at the shipped instant of
+   * 12t: the RESCUED arm reads `0 / 0 / 0` made at a 55-tick pause. The
+   * instrument's own control pair had stopped being a pair — the rep it was
+   * driving to lockout no longer reaches lockout — and the check would have
+   * come back red about the app.
+   *
+   * RE-SWEPT, and the pause axis at instant 12t is where the cliff is (worst
+   * banded ticks and `rescued made`, per cadence 3/4/5 ticks):
+   *
+   *     pause   worst banded ticks   rescued made
+   *      30t     2 / 11 / 12         40 / 40 / 40
+   *      38t    16 / 23 / 19         40 / 40 / 40
+   *      42t    20 / 28 / 27         40 / 40 / 40
+   *      45t    24 / 33 / 33         40 / 40 / 40
+   *      48t    28 / 33 / 33         40 / 40 / 40
+   *      52t    36 / 32 / 32         40 /  0 /  0
+   *      55t    30 / 30 / 30          0 /  0 /  0
+   *
+   * 45 ticks (750 ms) is taken: the largest pause that still rescues at EVERY
+   * cadence with a whole column of margin above it, and the one that leaves the
+   * biggest stall for the stage check to photograph. Seven ticks (117 ms) of
+   * slack to the cliff at 52t, which is what `page.waitForTimeout` overshoot has
+   * to fit inside; under-ticking on a loaded browser makes the real hole SHORTER
+   * than 45 and is therefore the safe direction for the rescue, costing only
+   * stall depth (16-23 banded ticks even at 38t).
+   *
+   * THE INSTANT DID NOT MOVE, AND IT GAINED SLACK. On the same re-sweep at a
+   * 45-tick pause the abandoned arm is `0 / 0 / 0` made at every instant from
+   * 10t through 33t and only starts making at 40t — the retune pushed that edge
+   * out from 27t. The worst banded ticks still peak early (24/33/33 at 12t,
+   * falling to 3/9/19 by 27t), so 12t remains the widest point in both
+   * directions and stays.
    */
   GRIND_HOLE_AT_MS: 200,
-  GRIND_PAUSE_MS: 917,
+  GRIND_PAUSE_MS: 750,
 
   /**
    * How many reps this probe will spend trying to walk one kind's full ladder.
