@@ -937,7 +937,28 @@ const GUARANTEE_COVERAGE = {
   // `liftFrame.ts`, `liftPalette.ts`, `LiftStage.tsx` and `liftTuning.ts` all
   // gained substantial prose in the same commit and contributed **0** between
   // them, which is again the declared blind spot rather than a surprise.
-  TREE_WIDE: 294,
+  //
+  // 294 -> 296 ON THE 2026-08-26 BENCH DIFFICULTY RETUNE, AND THE ATTRIBUTION IS
+  // TWO FILES AND TWO PARAGRAPHS. Measured the same way and named exactly,
+  // because this file's own history says attributing from the diff is what goes
+  // wrong here:
+  //
+  //   `src/game/lift.test.ts`   6 -> 7    the new row comment on
+  //                                       `meet/standard/att3/wrecked`, the one
+  //                                       cell where coming back helps on some
+  //                                       pairs and not on others
+  //   `src/game/liftTuning.ts`  13 -> 14  `STICK_WIDTH`'s new
+  //                                       width-to-boundary paragraph
+  //
+  // AND THE PART THAT MAKES THE BLIND SPOT CONCRETE RATHER THAN A DISCLAIMER:
+  // that retune added roughly two hundred lines of prose across those two files
+  // and this one — a rewritten `DEMAND_BASE` header, a rewritten
+  // `GRIND_BOOST_FORCE_MAX` header, four corrected stale-number paragraphs, a
+  // re-taken `MUTATION_WITNESSES` row, and the RPE 8 block in the rescue table —
+  // and all of that contributed **0**. The census moved by two. A reader who
+  // expects this number to track how much prose was written will misread it
+  // every time: it tracks one capitalised-run shape and nothing else.
+  TREE_WIDE: 296,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1057,7 +1078,14 @@ type ExclusionCensus = Record<NumberExclusion, number>;
  *     section style and not a quantity.
  */
 const NUMBER_EXCLUSIONS: Readonly<ExclusionCensus> = {
-  'section-coordinate': 17,
+  // 17 -> 16 on the 2026-08-26 bench difficulty retune, and it is one paragraph
+  // rather than an edit to this rule. `bench-grind-decides-the-rep`'s tag moved
+  // to the end of a rewritten final paragraph in `GRIND_BOOST_FORCE_MAX`'s
+  // header; the paragraph it used to terminate ended "Unplayed placeholder, GDD
+  // §10" and the new one carries no section coordinate. The excluded numeral did
+  // not go anywhere — that sentence is still in the file, one paragraph up, and
+  // is simply no longer inside a tagged paragraph for this census to exclude.
+  'section-coordinate': 16,
   'inside-an-identifier': 3,
   'quoted-code': 2,
   'list-ordinal': 1,
@@ -1297,18 +1325,43 @@ const NUMBER_COVERAGE = {
   // with it: the claim is about SHAPE (the band reads the live velocity and
   // not the per-rep accumulator beside it) and the thresholds behind it live in
   // `LIFT_TUNING` where the test reads them from.
+  // 84 unchanged on the 2026-08-26 bench difficulty retune — no tag was added
+  // or removed — but the one below MOVED, which is the interesting direction.
   TAGGED_PARAGRAPHS: 84,
-  /** ...of which this many state a number as prose. */
-  PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 11,
-  /** Numerals the rule actually demands something of. */
-  CLAIMED: 46,
+  /**
+   * ...of which this many state a number as prose.
+   *
+   * 11 -> 12 ON THE 2026-08-26 BENCH DIFFICULTY RETUNE, AND THE PARAGRAPH THAT
+   * CROSSED IS `bench-grind-decides-the-rep`'s. Its tagged paragraph used to
+   * state no numeral at all; it now cites `120`, the size of the tap-ladder
+   * sweep's domain, which resolves in the named body against
+   * `expect(GRIND_SWEEP.CASES, ...).toBe(120)`. It crossed because the retune
+   * put a long measurement block under that constant, and rather than let the
+   * tag reach numbers its own test has no business pinning — 0.0091, 0.0627 and
+   * the false-start tick counts, all of which live in `STICK_WIDTH.bench`'s
+   * table instead — the tagged paragraph was rewritten to say which body
+   * measures the guarantee and over how many cases. That is one number more in
+   * this census and seven fewer entries that would have gone on
+   * `UNPINNED_PROSE_NUMBERS`.
+   */
+  PARAGRAPHS_WITH_A_CLAIMED_NUMBER: 12,
+  /**
+   * Numerals the rule actually demands something of.
+   *
+   * 46 -> 47 on the 2026-08-26 bench difficulty retune: the one `120` described
+   * under `PARAGRAPHS_WITH_A_CLAIMED_NUMBER` above. `RESOLVING` and
+   * `RESOLVING_IN_CODE` move with it by one each, because it resolves against a
+   * real `toBe(120)` in the named body rather than against a comment — which is
+   * the whole reason that number was the one left in the paragraph.
+   */
+  CLAIMED: 47,
   /** ...of which this many are found in the named test's body. */
-  RESOLVING: 37,
+  RESOLVING: 38,
   /**
    * ...and this many survive blanking the body's COMMENTS, which is the
    * stronger reading. The gap is the weakness declared above, as a number.
    */
-  RESOLVING_IN_CODE: 33,
+  RESOLVING_IN_CODE: 34,
   /** ...and this many are excused by name, in `UNPINNED_PROSE_NUMBERS`. */
   EXCUSED: 9,
   /** The entries doing that excusing. Fewer than the occurrences: a phrase may span two. */
@@ -1926,10 +1979,22 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // be expected to state, and the one MEASUREMENT the row rests on — the count
   // of stalled frames the pair is drawn from — is in `measuredOver`, which is
   // checked separately above.
+  //
+  // 71/58/268/156 -> 71/58/273/157 ON THE 2026-08-26 BENCH DIFFICULTY RETUNE,
+  // AND NO ROW WAS ADDED — the row count and the flagged count do not move at
+  // all. What moved is one existing transcript: `a-stalled-bench-can-be-ground-
+  // through`'s was re-taken because its mutant's anchor left the tree, and the
+  // new one quotes the whole `session/rpe8/0.8500/as-expected` row going
+  // `[80,20,20] -> [40,0,0]` rather than the old one's bare `- 80 / + 0`. Five
+  // more numerals for a transcript that says WHICH cell moved and by how much,
+  // which is the difference between evidence a reader can act on and a diff
+  // fragment they cannot locate. Only ONE of the five is newly unresolved, and
+  // that is not a virtue of the transcript: `80`, `20` and `40` were already in
+  // the flagged pool from the old one.
   rows: 71,
   flagged: 58,
-  numerals: 268,
-  unresolved: 156,
+  numerals: 273,
+  unresolved: 157,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -2532,30 +2597,45 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     observed:
       'FAIL  src/game/lift.test.ts > the grind decides the lift > flips outcomes across the tap '
       + 'ladder, across the sweep [bench-grind-decides-the-rep]\n'
-      + 'AssertionError: mashing beat a sparse grind in 100 of 120 cases: expected 100 to be 80 '
+      + 'AssertionError: mashing beat a sparse grind in 120 of 120 cases: expected 120 to be 100 '
       + '// Object.is equality\n'
       + 'Tests  1 failed | 146 skipped (147)',
     measuredOver:
       "    expect(GRIND_SWEEP.CASES, 'the domain these counts are taken over').toBe(120);",
   },
-  // THE RESCUE, AND THE MUTANT IS THE RETUNE PUT BACK. Restoring
-  // `DEMAND_BASE.bench.MAXIMAL` to the 0.95 it shipped with for one round is
-  // what a critic's finding was about: at that value the whole reachable band
-  // — every load `prescribeSession` and the meet's jump ladder can emit —
-  // measures ZERO stalls and ZERO lost reps, and the property survived only at
-  // `LOAD_PRESETS.MAXIMAL`, which no producer emits. It is a one-number edit
-  // to a tuning table, it compiles, and every other bench test stays green.
+  // THE RESCUE, AND THE MUTANT IS THE RETUNE PUT BACK.
   //
-  // A SECOND MUTANT WAS RUN AND IS NOT THE ROW, because the schema holds one.
-  // Gating the tap counter on `m.phase === 'HOLE'` turns the grind back into a
-  // burst — taps land on the chest and nowhere else while the charge still
-  // decays — and reddens the same assertion:
-  //   'AssertionError: coming back changed the outcome in 0 of 320 pairs'
-  // on the sweep's previous, preset-scoped shape. It is recorded here rather
-  // than dropped because the two mutants attack different halves: the burst
-  // one says the MECHANISM is what rescues, this one says the TUNING is what
-  // puts the rescue where a player can meet it, and the finding this piece was
-  // sent back for was the second half passing on the first half's evidence.
+  // RE-TAKEN 2026-08-26 AGAINST A DIFFERENT RETUNE, AND THE OLD ROW IS WORTH A
+  // SENTENCE BEFORE THE NEW ONE. It reverted `DEMAND_BASE.bench.MAXIMAL` to the
+  // 0.95 it shipped with for one round, which was a critic's finding: at that
+  // value the whole reachable band measured ZERO stalls and ZERO lost reps and
+  // the property survived only at `LOAD_PRESETS.MAXIMAL`, which no producer
+  // emits. That mutant is no longer AN EDIT TO THIS TREE — the constant it
+  // named has moved twice since — and a witness whose anchor has gone is
+  // exactly what this file's freshness check is for. It expired, loudly, on the
+  // commit that moved the constant.
+  //
+  // THE MUTANT NOW IS THE 2026-08-26 DIFFICULTY RETUNE PUT BACK: one line of
+  // `DEMAND_BASE.bench` returned to the `{ 0.38, 1.25 }` a phone replay called
+  // "just too easy". It is a one-line edit to a tuning table, it compiles, and
+  // what it takes away is the whole point of that retune — the four RPE 8 rows
+  // fall from `[80,20,0] [80,20,20] [80,20,20] [80,20,20]` to
+  // `[20,0,0] [40,0,0] [20,0,0] [20,0,0]`, which is stopping the grind costing
+  // the rep at the default working rung, gone.
+  //
+  // TWO OTHER MUTANTS WERE RUN AND NEITHER IS THE ROW, because the schema holds
+  // one:
+  //   - `STICK_WIDTH.bench` 0.32 -> 0.22, the retune's OTHER knob, reddens the
+  //     same assertion on its own: `Tests  1 failed | 146 passed (147)` over
+  //     the whole file. Recorded because a reader would reasonably ask whether
+  //     the width is load-bearing or decoration, and it is load-bearing.
+  //   - Gating the tap counter on `m.phase === 'HOLE'` turns the grind back
+  //     into a burst — taps land on the chest and nowhere else while the charge
+  //     still decays — and reddened the same assertion at
+  //     'coming back changed the outcome in 0 of 320 pairs' on the sweep's
+  //     older, preset-scoped shape. The three attack different halves: the
+  //     burst one says the MECHANISM is what rescues, the two tuning ones say
+  //     the TUNING is what puts the rescue where a player can meet it.
   //
   // THE ASSERTION ORDER IN THE NAMED TEST WAS CHANGED FOR THIS ROW, and it is
   // recorded rather than done quietly: the non-vacuity guard used to be first
@@ -2564,8 +2644,8 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
   {
     guarantee: 'a-stalled-bench-can-be-ground-through',
     mutatedFile: 'src/game/liftTuning.ts',
-    mutated: '    bench: { LIGHT: 0.38, MAXIMAL: 1.25 },',
-    mutatedTo: '    bench: { LIGHT: 0.38, MAXIMAL: 0.95 },',
+    mutated: '    bench: { LIGHT: 0.44, MAXIMAL: 1.31 },',
+    mutatedTo: '    bench: { LIGHT: 0.38, MAXIMAL: 1.25 },',
     testFile: 'src/game/lift.test.ts',
     redAssertion:
       "    expect(measured, 'per-cell [rescued, fromMiss, stalled] over the reachable domain')\n"
@@ -2575,8 +2655,14 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + 'every load the game can prescribe [a-stalled-bench-can-be-ground-through]\n'
       + 'AssertionError: per-cell [rescued, fromMiss, stalled] over the reachable domain: '
       + 'expected { …(40) } to deeply equal { …(40) }\n'
+      + '    "session/rpe8/0.8500/as-expected": [\n'
       + '-     80,\n'
+      + '-     20,\n'
+      + '-     20,\n'
+      + '+     40,\n'
       + '+     0,\n'
+      + '+     0,\n'
+      + '    ],\n'
       + 'Tests  1 failed | 146 skipped (147)',
     measuredOver:
       "    expect(cells.length, 'the domain these counts are taken over').toBe(40);",
@@ -2786,7 +2872,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + '{ depth: 0.7774066666666667, …(2) } to be null\n'
       + 'Tests  1 failed | 58 passed (59)',
     measuredOver:
-      "    expect(stalledFrames.length, 'stalled frames this pair is drawn from').toBe(18);",
+      "    expect(stalledFrames.length, 'stalled frames this pair is drawn from').toBe(15);",
   },
   // -------------------------------------------------------------------------
   // THE FOURTH PRESS GUARD, AND THE ONE THAT WAS SWALLOWING WHOLE INPUTS.
@@ -5939,6 +6025,12 @@ describe('the guarantee-tag convention', () => {
       'src/career/eligibility.test.ts',
       'src/empire/empireInvariant.test.ts',
       'src/empire/engagement.test.ts',
+      // ADDED BY THE 2026-08-26 BENCH DIFFICULTY RETUNE, and it is the one-line
+      // diff the paragraph above says this is. `bench-grind-decides-the-rep`'s
+      // tagged paragraph now cites `120` — the size of the tap-ladder sweep's
+      // domain — so this ledger reaches `lift.test.ts` for the first time and
+      // that file's scoper premise is checked by the loop above from now on.
+      'src/game/lift.test.ts',
       'src/game/streak.test.ts',
       'src/game/streakEntitlement.test.ts',
     ]);

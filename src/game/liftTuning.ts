@@ -1121,15 +1121,24 @@ export const LIFT_TUNING = Object.freeze({
    * tuning left 52 ticks of headroom; the demand and width changes spend all of
    * it and more, and 0.50 buys back 43.
    *
-   * WHY IT DOES NOT SIMPLY UNDO THE DIFFICULTY — THE OBVIOUS OBJECTION, AND IT
-   * IS ANSWERED BY READING THE TWO COLUMNS ABOVE AGAINST EACH OTHER RATHER THAN
-   * BY ARGUMENT. Going 0.42 -> 0.50 moves the grind boundary up by 0.0091, which
-   * IS a softening. The demand rise moved every reachable cell up by 0.06, which
-   * is six times more. Net: RPE 8's lightest reachable cell went from 0.0627
-   * BELOW that boundary to 0.0069 ABOVE it, so the whole rung crossed. The pair
-   * is raisable together precisely because the columns move at different rates —
-   * this knob buys false-start ticks about as fast as demand spends them, while
-   * costing only a sixth as much on the axis that decides which rung grinds.
+   * AND WHY IT DOES NOT SIMPLY UNDO THE DIFFICULTY — THE OBVIOUS OBJECTION, AND
+   * IT IS ANSWERED BY READING THE TWO COLUMNS ABOVE AGAINST EACH OTHER RATHER
+   * THAN BY ARGUMENT. Going 0.42 -> 0.50 moves the right-hand column up by
+   * 0.0091, which IS a softening. `DEMAND_BASE.bench` moved every reachable cell
+   * up by 0.06 in the same pass, which is six times as far the other way, and
+   * the net is that RPE 8's lightest cell went from 0.0627 BELOW that boundary
+   * to 0.0069 ABOVE it: the whole rung crossed. The pair is raisable together
+   * precisely because the columns move at different rates.
+   *
+   * THE GUARANTEE THIS CONSTANT CARRIES IS THE ONE ABOVE THE RETUNE NOTE, NOT
+   * THE NOTE. `bench-grind-decides-the-rep` is the claim that the tap rate
+   * decides the outcome rather than decorating it, and `lift.test.ts`'s tap
+   * ladder is what measures it, over 120 cases. The retune figures in this
+   * block are measured elsewhere — in `STICK_WIDTH.bench`'s table and in the
+   * commit that took them — and are deliberately outside the tagged paragraph
+   * rather than excused on `UNPINNED_PROSE_NUMBERS`, because a tag whose numbers
+   * must appear in one named body should not be made to reach numbers that body
+   * has no business measuring.
    * `@guarantee bench-grind-decides-the-rep`
    */
   GRIND_BOOST_FORCE_MAX: 0.5,
