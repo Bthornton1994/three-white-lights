@@ -634,14 +634,35 @@ function opsMachines(w: number, h: number): PaintOp[] {
 
 function opsMats(w: number, h: number): PaintOp[] {
   const ops: PaintOp[] = [];
-  // Interlocked rubber mats: a dark field with seam lines both ways. The
-  // whole top and left edges take the lit steel step — the first composed
-  // screenshot showed a dark mat vanishing into a dark tray chip and a dark
-  // floor, and a lit leading edge is what separates a drawn object from a
-  // hole. Key light upper-left, same as everything else in this file.
-  ops.push(fill(1, 1, w - 2, h - 2, PX_RUBBER));
-  ops.push(hatch(1, NATIVE, w - 2, h - NATIVE - 2, NATIVE, PX_RUBBER_DARK));
-  for (let x = NATIVE; x < w - 2; x += NATIVE) ops.push(fill(x, 1, 1, h - 2, PX_RUBBER_DARK));
+  // Interlocked rubber mats, drawn as a TWO-TONE CHECKER at mat-square pitch
+  // (one square per floor tile) — the contrast touch the sprite pass's own
+  // report named as still owed. The first pass gave this sprite a lit leading
+  // edge after a composed screenshot showed it vanishing, but the field
+  // itself stayed GEAR.RUBBER, which sits within ~10 relative luminance of
+  // the floor's BASE tone, so at chip scale the mat still read as a hole in
+  // the floor wearing a rim. The checker alternates the slate step
+  // (PX_STEEL_DARK, ~74 luminance — a plausible blue foam-mat tone, and the
+  // ramp this sprite already borrows for its lit edges) with near-black
+  // rubber (PX_RUBBER_DARK, ~36), which straddles the floor's ~58-63 from
+  // both sides, and every square boundary is marked by the value jump itself,
+  // so the old one-pixel seam lines are redundant and gone. The shared
+  // GEAR palette numbers are deliberately untouched: RUBBER/RUBBER_DARK
+  // paint six other sprites, and this is a mats-only read problem. The lit
+  // top and left edges and the corner break stay — key light upper-left,
+  // no pillow shading, same as everything else in this file.
+  ops.push(fill(1, 1, w - 2, h - 2, PX_STEEL_DARK));
+  for (let sy = 0; sy * NATIVE < h - 2; sy += 1) {
+    for (let sx = 0; sx * NATIVE < w - 2; sx += 1) {
+      if ((sx + sy) % 2 === 0) continue;
+      // Clamped to the one-pixel transparent ring the outline pass paints
+      // into, so a dark square at the sprite's own edge cannot erase it.
+      const x0 = Math.max(sx * NATIVE, 1);
+      const y0 = Math.max(sy * NATIVE, 1);
+      const x1 = Math.min(sx * NATIVE + NATIVE, w - 1);
+      const y1 = Math.min(sy * NATIVE + NATIVE, h - 1);
+      ops.push(fill(x0, y0, x1 - x0, y1 - y0, PX_RUBBER_DARK));
+    }
+  }
   ops.push(fill(1, 1, w - 2, 1, PX_STEEL_MID)); // lit top edge, full width
   ops.push(fill(1, 1, 1, h - 2, PX_STEEL_MID)); // lit left edge, full height
   ops.push(fill(2, 2, HALF, 1, PX_STEEL_LIGHT)); // highlight break at the corner

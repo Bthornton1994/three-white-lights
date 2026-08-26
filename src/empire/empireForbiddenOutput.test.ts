@@ -2682,7 +2682,11 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // reads and the two new `.map` renders). Read from this pin's own failure
   // value.
   // Phase 4: floorSprites.ts's call expressions join the walk.
-  CALLS_EXAMINED: 2340,
+  // 2340 -> 2342: the mats contrast touch. opsMats swapped its flat field,
+  // seam hatch and seam loop (6 push + 5 fill + 1 hatch = 12 calls) for a
+  // two-tone checker (5 push + 5 fill + 2 Math.max + 2 Math.min = 14).
+  // Read from this pin's own failure value, then attributed by hand-count.
+  CALLS_EXAMINED: 2342,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -13373,7 +13377,9 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'floorSprites.ts:242 receiver=NewExpression',
   'floorSprites.ts:288 receiver=NewExpression',
   'floorSprites.ts:301 receiver=NewExpression',
-  'floorSprites.ts:812 callee=fresh:ArrowFunction',
+  // :812 -> :833 — the mats contrast touch (the opsMats checker) added 21
+  // lines above the CRC-table arrow. Re-measured, per this list's own rule.
+  'floorSprites.ts:833 callee=fresh:ArrowFunction',
   'ladder.ts:333 receiver=ArrayLiteralExpression',
   'ladderView.tsx:115 returned=unfollowable:state',
   'ladderView.tsx:123 returned=unfollowable:state',
@@ -13557,7 +13563,10 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 918 -> 936: Phase 3's RENDER half's own new call targets in FloorGrid.tsx
   // (the sim reads, the walk tween, the station derivation, the two new
   // renders). Read from this table's own failure value.
-  function: 1116,
+  // 1116 -> 1115: the mats contrast touch — opsMats dropped its `hatch` call
+  // (6 fill/hatch calls to module functions became 5 fill). Read from this
+  // pin's own failure value, then attributed by hand-count.
+  function: 1115,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -13565,7 +13574,11 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // Phase 4: floorSprites.ts's own member calls (array push/indexOf/charAt,
   // string charCodeAt, Object.freeze/fromEntries and the rest). Read from
   // this pin's own failure value, like the rows above.
-  member: 1126,
+  // 1126 -> 1129: the mats contrast touch — one fewer `ops.push` (6 -> 5)
+  // and four new `Math.max`/`Math.min` calls clamping the checker squares to
+  // the outline ring. Read from this pin's own failure value, then
+  // attributed by hand-count.
+  member: 1129,
   'member-callback': 12,
   'member-of-parameter': 21,
   // Phase 4: FLOOR_SPRITE_PALETTES' construction calls a fresh arrow (the
@@ -13609,7 +13622,13 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // `parameter` and `module-variable` stay at zero, which is the half of this
   // table that matters: this round opened no `argument-mutation` and no
   // `module-mutable-state` channel. Read from this pin's own failure value.
-  local: 329,
+  // 329 -> 328: the mats contrast touch. This table counts MUTATING METHOD
+  // CALLS by receiver owner, and opsMats now has five `ops.push` sites where
+  // it had six; its new loop counters (`sy += 1`) are bare-identifier writes,
+  // which `writtenMember` never counts. `parameter` and `module-variable`
+  // stay at zero, same as every round. Read from this pin's own failure
+  // value, then attributed by hand-count.
+  local: 328,
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -13705,7 +13724,10 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // Phase 4, re-measured 50_737 -> 50_766 by the recovering lead: the builder
   // was killed mid-cascade by a session limit and this pin lagged its final
   // FloorGrid.tsx edits. Read from this pin's own failure value.
-  NODES_EXAMINED: 50_766,
+  // 50_766 -> 50_848: the mats contrast touch — opsMats's checker loops are
+  // 82 AST nodes the flat field and seam hatch were not. Read from this
+  // pin's own failure value.
+  NODES_EXAMINED: 50_848,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
