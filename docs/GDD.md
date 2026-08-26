@@ -2110,9 +2110,14 @@ moved, and both are inversions rather than retunes.
   separates bench from squat is now the grind alone.
 - **Mashing caps rather than scaling, and the cap is on the RATE.** The charge
   is turned into force by a saturating curve — the marginal unit of charge is
-  worth sixteen times more at the bottom of it than at the top — and the ceiling
-  is set at a tap rate a fast human reaches rather than one only a machine
-  could. There is no budget that runs down: a hidden one would make a player
+  worth about twelve times more at the bottom of it than at the top — and the
+  ceiling is set at a tap rate a fast human reaches (14 a second) rather than
+  one only a machine could. *This sentence said "sixteen times" until 2026-08-26
+  and had never been true of the shipped curve: sixteen is what
+  `CEILING + HALF_SATURATION` squares to, and the measured ratio is 11.8 per
+  charge rung or 13.2 as a derivative. Three sibling numbers in
+  `liftTuning.ts` were stale the same way and are corrected in the same commit.*
+  There is no budget that runs down: a hidden one would make a player
   weaker for reasons the screen never showed them, and it would make "grind
   through" false, because a stall arriving after the budget was spent could not
   be rescued at all. What makes a long grind harder is the ascent's own stalled-
@@ -2137,24 +2142,67 @@ moved, and both are inversions rather than retunes.
   rather than a horizon somebody swept. Every load a meet attempt is taken at
   can be, and at the very top a crashed bar needs a full grind to make at all.
 
+**THE DIFFICULTY CURVE WAS RETUNED ON 2026-08-26, AND THE RUNG THIS SECTION USED
+TO CALL "WINNABLE BY ANYONE" IS THE REASON.** A phone replay confirmed the
+mechanic and rejected the numbers: *"I like the mechanics now, rpe 8 is just too
+easy, theres no difficulty there, i would retweak difficulty across the board
+other than that i think it works great."* What that sentence names is measurable
+and was measured. At RPE 8 — the default working rung — a player who tapped and
+then STOPPED lost nothing: zero lost reps and zero stalls at all four cells the
+rung can reach, at every one of the 80 paired reps per cell. The outcome flipped
+between a clean lift and a grinder and that was the whole of it.
+
+**The retune is two constants and a repair.** `DEMAND_BASE.bench` rose by a
+uniform 0.06 of capacity at every load, which moves every rung's margin equally
+and so raises the whole ladder without re-ordering it; `STICK_WIDTH.bench` went
+0.22 to 0.32, which does not touch the peak at all and instead lengthens the
+stretch the bar has to fight through. The repair is `GRIND_BOOST_FORCE_MAX`
+0.42 to 0.50, and it is a repair rather than a softening: the first two changes
+took a maximally false-started press at the heaviest attempt a meet can call
+from 118 of its 170 available ascent ticks to a timeout, which would have made
+the "never fatal" sentence above FALSE. Restoring it costs a sixth as much on
+the axis that decides which rung grinds as it buys on the axis that decides
+whether a false start is survivable.
+
+**WHAT THE RETUNE COULD NOT DO, RECORDED BECAUSE IT IS A REAL LIMIT AND A FUTURE
+TUNER WILL OTHERWISE TRY IT.** RPE 8 cannot be made to demand a fast tap RATE.
+Its hardest cell and RPE 7's are 0.047 apart in the load curve's own parameter
+while the meet's heaviest attempt is 0.26 further out, so any change big enough
+to make RPE 8 need a real rate either drags RPE 7 with it — a grind on a warm-up,
+which §12.3 refuses — or puts the top attempt past what a maximal grind can
+lift. The window between the two rungs is 0.016 of margin wide and cannot be
+widened by any knob. So RPE 8's difficulty is *stopping costs the rep, and a
+slow grind is a GRINDER rather than a GOOD LIFT*, and the minimum-tap-rate axis
+begins at RPE 9.
+
 **None of the numbers has been played (§12.1), and §12.1 stays open on this beat
-until a human replays it on a phone.** What is measured is that the beats DECIDE
-reps rather than decorate them, and the sharpest of those measurements is the
-one only a continuous grind can pass — now taken over the loads the game's two
-`loadRatio` producers actually emit rather than over tuning presets. Every
-distinct load a session can prescribe (5 RPE choices against all 27 check-ins,
-22 distinct cells) and every load a meet can call (3 jump strategies x 3
-attempts x 2 bar speeds, 18 cells), 80 paired reps each: pairs identical up to a
-moment, differing only in whether the tapping resumed afterwards. Coming back
-changes the outcome in **31** of those 40 cells, turns a miss into a make in
-**23**, and in **23** the idle rep has measurably stalled first. **8** cells
-show none of the three, and they are the light rungs — pinned at zero as the
-control, because a grind on every warm-up would be its own failure. On a burst
-mechanic every one of those numbers is zero by construction, because taps after
-the window buy nothing.
+until a human replays it on a phone.** The open question is exactly two things:
+does RPE 8 feel like work now, and does 8 < 9 < 10 still read. What is measured
+is that the beats DECIDE reps rather than decorate them, and the sharpest of
+those measurements is the one only a continuous grind can pass — taken over the
+loads the game's two `loadRatio` producers actually emit rather than over tuning
+presets. Every distinct load a session can prescribe (5 RPE choices against all
+27 check-ins, 22 distinct cells) and every load a meet can call (3 jump
+strategies x 3 attempts x 2 bar speeds, 18 cells), 80 paired reps each: pairs
+identical up to a moment, differing only in whether the tapping resumed
+afterwards. Coming back changes the outcome in **37** of those 40 cells, turns a
+miss into a make in **29**, and in **29** the idle rep has measurably stalled
+first. **2** cells show none of the three — the lightest load RPE 6 and RPE 7 can
+each prescribe at a neutral check-in — and they are pinned as the control,
+because a grind on every warm-up would be its own failure. Before the retune
+those four counts were 31 / 23 / 23 / 8. On a burst mechanic every one of them
+is zero by construction, because taps after the window buy nothing.
+
+**And the warm-up protection is the two zero COLUMNS, not the first one**, which
+is the sentence most likely to be misread now that only two cells are fully
+still. Every RPE 6 and RPE 7 cell reads `[flips, 0, 0]`: stopping the grind can
+change a GOOD LIFT into a GRINDER there and can never take the rep away or stop
+the bar. What changed at those rungs is that the grade moved, not the outcome.
 
 Beside it, across the same reachable ladder: the tap rate changes the outcome in
-120 of 120 cases and turns a make into a miss in 100, and the chest touch
+120 of 120 cases and turns a make into a miss in 120 — both saturated at the
+domain size, so both can now only move down — a 3-a-second grind reaches a
+different outcome from a 20-a-second one in 100 of 120, and the chest touch
 changes it in 120 of 240.
 
 **And that the descent asks LESS than it did is the point rather than a

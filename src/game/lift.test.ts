@@ -2257,8 +2257,19 @@ const GRIND_SWEEP = {
    * can move in both directions.
    */
   MASH_VS_NONE_FLIPS: 120,
-  /** Outcome flips between a mashed grind and a sparse one. */
-  MASH_VS_SPARSE_FLIPS: 80,
+  /**
+   * Outcome flips between a mashed grind and a sparse one (a tap every 20
+   * ticks, 3 a second).
+   *
+   * 80 -> 100 IN THE 2026-08-26 DIFFICULTY RETUNE, AND IT IS THE ONE COUNT IN
+   * THIS BLOCK THAT MEASURES THE TAP-RATE AXIS RATHER THAN THE ANSWERED-AT-ALL
+   * AXIS. The other three compare a grind against silence and were already
+   * saturated; this one compares two rates a real thumb can hold, so it is
+   * where "a lazy grind is worse than a real one" has to show up. At the old
+   * tuning a 3-a-second grind reached the same outcome as a 20-a-second one at
+   * a third of the reachable ladder; now it does at a sixth.
+   */
+  MASH_VS_SPARSE_FLIPS: 100,
   /** Outcome flips between a moderate grind and an unanswered command. */
   MODERATE_VS_NONE_FLIPS: 120,
   /**
@@ -2268,8 +2279,18 @@ const GRIND_SWEEP = {
    * that only ever separated 'good-lift' from 'grind' would satisfy every flip
    * pin above while never deciding whether the bar went up, which is the
    * weaker claim a reader would take from those counts.
+   *
+   * 100 -> 120 IN THE RETUNE, AND IT IS NOW SATURATED, which changes what it is
+   * worth and is said here rather than left to be noticed. At every load in
+   * `LOADS` — the lightest of which, 0.8, is an RPE 8 set at a poor check-in —
+   * an unanswered command is now a MISS. So like `MASH_VS_NONE_FLIPS` above
+   * this pin can only move DOWN, and the count that still moves in both
+   * directions is `MASH_VS_SPARSE_FLIPS`. Note `LOADS` starts at 0.8 and the
+   * reachable ladder starts at 0.75: warm-up loads are NOT in this sweep, and
+   * the claim "an unanswered command is a miss" is true of these six loads and
+   * false below them. `REACHABLE_RESCUE` is where that boundary is measured.
    */
-  MASH_MAKE_TO_NONE_MISS: 100,
+  MASH_MAKE_TO_NONE_MISS: 120,
 } as const;
 
 /**
@@ -2516,67 +2537,96 @@ type RescueRow = readonly [number, number, number];
  * repair. A total says a population moved; only a row says WHERE, and the
  * previous version's totals hid the fact that every one of them came from a
  * load no player reaches. Read down the `session/` rows and the ladder is
- * legible without running anything: nothing at RPE 6 and 7, outcome flips
- * without stalls from RPE 8, and stalls with real lost reps at 9 and 10.
+ * legible without running anything: nothing lost at RPE 6 and 7, stopping
+ * costing the rep from RPE 8, and more of every column at 9, 10 and the meet.
  *
- * WHERE STALL-ABILITY BEGINS, IN THE TERMS A PLAYER WOULD USE:
+ * ---------------------------------------------------------------------------
+ * RE-DERIVED 2026-08-26 AFTER THE DIFFICULTY RETUNE — AND THE RPE 8 ROWS ARE
+ * THE REASON THE RETUNE HAPPENED
+ * ---------------------------------------------------------------------------
+ * A phone replay said "rpe 8 is just too easy, theres no difficulty there".
+ * The four RPE 8 rows below used to read `[20,0,0] [40,0,0] [20,0,0] [20,0,0]`
+ * — the outcome flipped between a clean lift and a grinder, and stopping
+ * tapping cost NOTHING: zero lost reps and zero stalls, at every cell the rung
+ * can reach. `DEMAND_BASE.bench` and `STICK_WIDTH.bench` moved together (their
+ * headers hold the two knobs and the window they had to fit inside), and RPE 8
+ * now loses a rep in all four cells and stalls in three of them.
  *
- *   RPE 6, 7            nothing moves. Tapping decides the rep's SPEED.
- *   RPE 8               outcome flips (clean lift vs grind), no stalls, no
- *                       lost reps. The default rung stays winnable by anyone.
- *   RPE 9               stalls and lost reps arrive, at the neutral check-in
- *                       first.
- *   RPE 10              stalls and lost reps at every check-in.
- *   meet, attempt 1     already stalling: an opener is 90% of e1RM.
- *   meet, attempts 2-3  stalls and lost reps under EVERY jump strategy,
- *                       including conservative.
+ * WHERE THE GRIND BEGINS, IN THE TERMS A PLAYER WOULD USE:
+ *
+ *   RPE 6, 7            stopping costs nothing. Tapping decides the rep's
+ *                       SPEED and its grade, never the rep itself. The warm-up
+ *                       protection, and the control the rest is read against.
+ *   RPE 8               STOPPING COSTS THE REP. All four cells lose reps and
+ *                       three stall on the way. A slow grind still makes it —
+ *                       as a GRINDER rather than a GOOD LIFT.
+ *   RPE 9               more of both: every cell stalls and loses reps, two of
+ *                       the four on all 80 pairs.
+ *   RPE 10              80 of 80 on all three counts, at every check-in.
+ *   meet, attempt 1     already 80 of 80: an opener is 90% of e1RM.
+ *   meet, attempts 2-3  the same under EVERY jump strategy, including
+ *                       conservative, and the top attempt is unrescuable.
  *
  * A CELL WITH `fromMiss > 0` AND `stalled === 0` IS NOT A CONTRADICTION. A rep
  * can be lost by running out of `ASCENT_TIMEOUT_TICKS` while still creeping
  * upward — never slow enough to trip `GRIND_STALL_VELOCITY`, never fast enough
  * to finish. That is a bar the player did not press hard enough rather than a
  * bar that beat them, and the two counts being separate is what shows it.
+ * `session/rpe8/0.8000/slower-than-expected` is exactly that case.
  */
 const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
   // --- SESSION: `prescribeSession`, all 5 RPE choices x all 27 check-ins,
   //     deduped to the distinct (loadRatio, barSpeed) it can emit. ---------
-  'session/rpe6/0.7500/slower-than-expected': [0, 0, 0],
+  // THE RPE 6 AND 7 BLOCK IS THE CONTROL, AND IT IS THE ONE THING THE RETUNE
+  // WAS NOT ALLOWED TO MOVE. Every row is `[flips, 0, 0]`: the outcome can
+  // change between a clean lift and a grinder when the player stops, the rep is
+  // never lost, and the bar never stalls. GDD §12.3's warm-up protection reads
+  // in the two zero columns and not in the first one — a rung where tapping
+  // decided nothing at all would be a rung with no mechanic on it.
+  'session/rpe6/0.7500/slower-than-expected': [20, 0, 0],
   'session/rpe6/0.7500/as-expected': [0, 0, 0],
-  'session/rpe6/0.8000/as-expected': [0, 0, 0],
-  'session/rpe6/0.8250/crisp': [0, 0, 0],
-  'session/rpe6/0.8500/popping': [0, 0, 0],
-  'session/rpe7/0.7750/slower-than-expected': [0, 0, 0],
+  'session/rpe6/0.8000/as-expected': [20, 0, 0],
+  'session/rpe6/0.8250/crisp': [20, 0, 0],
+  'session/rpe6/0.8500/popping': [20, 0, 0],
+  'session/rpe7/0.7750/slower-than-expected': [40, 0, 0],
   'session/rpe7/0.7750/as-expected': [0, 0, 0],
-  'session/rpe7/0.8250/as-expected': [20, 0, 0],
-  'session/rpe7/0.8500/crisp': [20, 0, 0],
-  'session/rpe7/0.8750/popping': [0, 0, 0],
-  'session/rpe8/0.8000/slower-than-expected': [20, 0, 0],
-  'session/rpe8/0.8500/as-expected': [40, 0, 0],
-  'session/rpe8/0.8750/crisp': [20, 0, 0],
-  'session/rpe8/0.9000/popping': [20, 0, 0],
-  // STALL-ABILITY ARRIVES HERE, at RPE 9 with a neutral check-in, and it is
-  // the boundary row of the whole table: 0.8750 is the same load RPE 8 reaches
-  // at `crisp`, and that row is clean because a `crisp` lifter carries 6% more
-  // capacity. The rung and the check-in decide it together — see
-  // `REACHABLE_COUPLING`.
-  'session/rpe9/0.8250/slower-than-expected': [80, 0, 0],
-  'session/rpe9/0.8750/as-expected': [80, 20, 20],
-  'session/rpe9/0.9000/crisp': [80, 20, 0],
-  'session/rpe9/0.9250/popping': [80, 0, 0],
+  'session/rpe7/0.8250/as-expected': [40, 0, 0],
+  'session/rpe7/0.8500/crisp': [40, 0, 0],
+  'session/rpe7/0.8750/popping': [40, 0, 0],
+  // THE GRIND BEGINS HERE, AND THESE FOUR ROWS ARE THE BOUNDARY OF THE WHOLE
+  // TABLE. The hardest RPE 7 cell above sits at a demand-minus-capacity margin
+  // of -0.0083 and the lightest RPE 8 cell here at +0.0077; the retune put the
+  // "a quiet rep loses this" boundary at +0.0008, as near the middle of that
+  // 0.016-wide window as the reachable loads allow. `DEMAND_BASE.bench`'s
+  // header holds the measurement and why the window cannot be widened.
+  'session/rpe8/0.8000/slower-than-expected': [80, 20, 0],
+  'session/rpe8/0.8500/as-expected': [80, 20, 20],
+  'session/rpe8/0.8750/crisp': [80, 20, 20],
+  'session/rpe8/0.9000/popping': [80, 20, 20],
+  'session/rpe9/0.8250/slower-than-expected': [80, 40, 40],
+  'session/rpe9/0.8750/as-expected': [80, 80, 80],
+  'session/rpe9/0.9000/crisp': [80, 80, 80],
+  'session/rpe9/0.9250/popping': [80, 40, 40],
   'session/rpe10/0.8750/slower-than-expected': [80, 80, 80],
-  'session/rpe10/0.9000/as-expected': [80, 80, 40],
-  'session/rpe10/0.9250/crisp': [80, 40, 40],
-  'session/rpe10/0.9500/popping': [80, 40, 20],
+  'session/rpe10/0.9000/as-expected': [80, 80, 80],
+  'session/rpe10/0.9250/crisp': [80, 80, 80],
+  'session/rpe10/0.9500/popping': [80, 80, 80],
   // --- MEET: the opener fraction and the three jump ladders, at both ends of
   //     the bar-speed range. Attempt 1 is the same load under all three
   //     strategies and answers the same three times, which is the control. ---
-  'meet/conservative/att1/rested': [80, 80, 40],
+  //
+  // THE OPENERS ROSE WITH THE REST, WHICH THE RULING ASKED FOR IN SO MANY
+  // WORDS. Every rested opener read `[80, 80, 40]` before the retune — half its
+  // idle reps stalling — and reads 80 now. Measured beside it: the slowest tap
+  // rate that still avoids a miss at a rested opener moved from a tap every 30
+  // ticks to one every 20.
+  'meet/conservative/att1/rested': [80, 80, 80],
   'meet/conservative/att2/rested': [80, 80, 80],
   'meet/conservative/att3/rested': [80, 80, 80],
-  'meet/standard/att1/rested': [80, 80, 40],
+  'meet/standard/att1/rested': [80, 80, 80],
   'meet/standard/att2/rested': [80, 80, 80],
   'meet/standard/att3/rested': [80, 80, 80],
-  'meet/aggressive/att1/rested': [80, 80, 40],
+  'meet/aggressive/att1/rested': [80, 80, 80],
   'meet/aggressive/att2/rested': [80, 80, 80],
   'meet/aggressive/att3/rested': [80, 80, 80],
   'meet/conservative/att1/wrecked': [80, 80, 80],
@@ -2584,15 +2634,21 @@ const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
   'meet/conservative/att3/wrecked': [80, 80, 80],
   'meet/standard/att1/wrecked': [80, 80, 80],
   'meet/standard/att2/wrecked': [80, 80, 80],
-  'meet/standard/att3/wrecked': [80, 80, 80],
+  // THE SECOND-HEAVIEST CELL, AND THE ONLY ROW IN THE TABLE WHERE COMING BACK
+  // HELPS ON SOME PAIRS AND NOT OTHERS. 40 of 80 rather than 80 or 0: the
+  // silence is recoverable at two of the four `IDLE_FROM_TICKS` offsets and too
+  // late at the other two. It is the transition between the rows above it and
+  // the ceiling row below, and it arrived with the retune — this cell used to
+  // read [80, 80, 80].
+  'meet/standard/att3/wrecked': [40, 40, 80],
   'meet/aggressive/att1/wrecked': [80, 80, 80],
   'meet/aggressive/att2/wrecked': [80, 80, 80],
-  // THE CEILING CELL, AND THE ONE ROW WHERE COMING BACK DOES NOT HELP. The
-  // heaviest attempt the game can call, taken by a lifter whose bar speed is
-  // the worst it reads: 80 of 80 idle reps stall and NONE of them is rescued,
-  // because 18 ticks of silence at that load is past recovering from. Pinned
-  // rather than tuned away — a mechanic where every mistake is recoverable at
-  // every load has no top end.
+  // THE CEILING CELL, AND THE ONE ROW WHERE COMING BACK DOES NOT HELP AT ALL.
+  // The heaviest attempt the game can call, taken by a lifter whose bar speed
+  // is the worst it reads: 80 of 80 idle reps stall and NONE of them is
+  // rescued, because 18 ticks of silence at that load is past recovering from.
+  // Pinned rather than tuned away — a mechanic where every mistake is
+  // recoverable at every load has no top end.
   'meet/aggressive/att3/wrecked': [0, 0, 80],
 };
 
@@ -2625,12 +2681,29 @@ const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
  * the ladder, which is exactly the failure this whole block repairs.
  */
 const REACHABLE_LADDER = {
-  /** Measured: session cells where an idle rep measurably stops. 5 of 22. */
-  SESSION_CELLS_THAT_STALL: 5,
+  /**
+   * Measured: session cells where an idle rep measurably stops. 11 of 22.
+   *
+   * WAS 5 BEFORE THE 2026-08-26 DIFFICULTY RETUNE, and the six that arrived are
+   * three RPE 8 cells and the two RPE 9 and one RPE 10 cell that used to creep
+   * through their sticking point without ever dipping below
+   * `GRIND_STALL_VELOCITY`. `RUNGS_THAT_STALL` below is what says the six
+   * landed at the right end of the ladder; this count on its own would be
+   * satisfied by six new stalling warm-ups.
+   */
+  SESSION_CELLS_THAT_STALL: 11,
   /** Measured: meet cells where an idle rep measurably stops. 18 of 18. */
   MEET_CELLS_THAT_STALL: 18,
-  /** Measured: the RPE rungs those session cells sit at, sorted. */
-  RUNGS_THAT_STALL: ['rpe10', 'rpe9'] as readonly string[],
+  /**
+   * Measured: the RPE rungs those session cells sit at, sorted.
+   *
+   * RPE 8 JOINED THIS LIST IN THE 2026-08-26 RETUNE AND THAT IS THE HEADLINE OF
+   * THE WHOLE ROUND. The phone replay's complaint was that RPE 8 had no
+   * difficulty in it; the rung is now the one where stopping the grind first
+   * stops the bar. RPE 6 and 7 are still absent and the loop below is what
+   * keeps them absent.
+   */
+  RUNGS_THAT_STALL: ['rpe10', 'rpe8', 'rpe9'] as readonly string[],
   /**
    * The three cell counts GDD §6.2 quotes, of 40.
    *
@@ -2639,12 +2712,25 @@ const REACHABLE_LADDER = {
    * one level out — and the first draft of that §6.2 paragraph got two of
    * these three wrong by reading them off the table by eye. They are counted
    * from `REACHABLE_RESCUE` so the document and the measurement cannot drift.
+   *
+   * All four moved in the 2026-08-26 retune: 31 -> 37, 23 -> 29, 23 -> 29, and
+   * the control 8 -> 2.
    */
-  CELLS_WHERE_COMING_BACK_HELPS: 31,
-  CELLS_WHERE_A_REP_IS_SAVED: 23,
-  CELLS_WHERE_THE_IDLE_REP_STALLS: 23,
-  /** ...and the cells where none of the three happens: the light rungs. */
-  CELLS_WHERE_NOTHING_MOVES: 8,
+  CELLS_WHERE_COMING_BACK_HELPS: 37,
+  CELLS_WHERE_A_REP_IS_SAVED: 29,
+  CELLS_WHERE_THE_IDLE_REP_STALLS: 29,
+  /**
+   * ...and the cells where none of the three happens.
+   *
+   * DOWN FROM 8 TO 2, AND WHAT THE TWO ARE IS THE PART WORTH READING: both are
+   * `as-expected` cells at the LIGHTEST load their rung can prescribe
+   * (rpe6/0.7500 and rpe7/0.7750). They are the only two places left where
+   * tapping decides literally nothing. The other six that used to be here have
+   * not started stalling or losing reps — every RPE 6 and 7 row is still
+   * `[flips, 0, 0]` — they have started flipping between a GOOD LIFT and a
+   * GRINDER, which is a grade changing and not a rep being taken away.
+   */
+  CELLS_WHERE_NOTHING_MOVES: 2,
 } as const;
 
 const REACHABLE_COUPLING = {
