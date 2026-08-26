@@ -34,6 +34,8 @@ import {
   FLOOR_SPRITE_PALETTES,
   FLOOR_SPRITE_POSES,
   FLOOR_SPRITE_URIS,
+  FLOOR_STATION_USE_CLASS,
+  FLOOR_STATION_USE_CLASSES,
   type FixedFurnitureItem,
   type FloorSpriteGrid,
 } from './floorSprites';
@@ -291,9 +293,10 @@ describe('the vocabularies and dimensions agree with the registered tables', () 
     for (const item of Object.keys(T.FLOOR_FIXED_FURNITURE_LAYOUT) as FixedFurnitureItem[])
       everyGrid.push(FLOOR_SPRITE_GRIDS.fixed[item]);
     for (const rung of T.LADDER_RUNGS) everyGrid.push(FLOOR_SPRITE_GRIDS.floor[rung]);
-    // 40 member grids + 14 session + 3 fixed + 4 floors. Pinned so an empty
-    // walk cannot make the loop below a pass over nothing.
-    expect(everyGrid.length).toBe(61);
+    // 90 member grids (5 types x 9 poses x 2 facings, P4b's six using poses
+    // included) + 14 session + 3 fixed + 4 floors. Pinned so an empty walk
+    // cannot make the loop below a pass over nothing. 61 -> 111 with P4b.
+    expect(everyGrid.length).toBe(111);
     let inspected = 0;
     for (const grid of everyGrid) {
       for (const index of grid.data) {
@@ -317,8 +320,10 @@ describe('the members read as drawn figures, apart from each other, and animate'
         // A figure, not a blob: at least outline + skin + top + one more.
         expect(distinct.size, `${type} ${pose}`).toBeGreaterThanOrEqual(4);
         const opaque = grid.data.filter((index) => index !== 0).length;
-        // Measured 84-101 opaque pixels across the shipped maps; the floor
-        // catches a map going missing, not a retouch.
+        // Measured 103-149 opaque pixels across the shipped maps (re-measured
+        // when the bench pose was rotated along the slab; the range recorded
+        // before that, 84-101, was stale even for poses that round did not
+        // touch). The floor catches a map going missing, not a retouch.
         expect(opaque, `${type} ${pose}`).toBeGreaterThanOrEqual(60);
         // Both top corners open, so the sprite sits on the floor texture
         // rather than stamping a card over it. The bottom corners are not
@@ -347,18 +352,79 @@ describe('the members read as drawn figures, apart from each other, and animate'
     expect(checked).toBe(TYPES.length * FLOOR_SPRITE_POSES.length);
   });
 
-  it('animates: the two walk frames differ, and the working stance differs from standing', () => {
+  it('animates: the walk frames differ, every rep cycle pumps, and the three using classes read apart', () => {
+    // P4b's checkable half, per class and per type. Every floor is 4 — the
+    // collapse catch this file's header explains — with the measured values
+    // recorded beside the loop rather than pinned, per the same header.
+    let repPairs = 0;
     for (const type of TYPES) {
       const stand = FLOOR_SPRITE_GRIDS.member[type].stand.right;
       const stepA = FLOOR_SPRITE_GRIDS.member[type]['step-a'].right;
       const stepB = FLOOR_SPRITE_GRIDS.member[type]['step-b'].right;
-      const using = FLOOR_SPRITE_GRIDS.member[type].using.right;
-      // Measured 8-24 differing pixels per pair on the shipped maps; the
-      // floor of 4 catches two frames collapsing into one.
+      // Measured 22-32 differing pixels per pair on the shipped maps
+      // (re-measured with the along-slab bench pose; 8-24 before that was
+      // stale); the floor of 4 catches two frames collapsing into one.
       expect(differingPixels(stepA, stepB), `${type} walk`).toBeGreaterThanOrEqual(4);
       expect(differingPixels(stand, stepA), `${type} stand/step`).toBeGreaterThanOrEqual(4);
-      expect(differingPixels(stand, using), `${type} stand/using`).toBeGreaterThanOrEqual(4);
+      for (const useClass of FLOOR_STATION_USE_CLASSES) {
+        const frameA = FLOOR_SPRITE_GRIDS.member[type][`using-${useClass}-a`].right;
+        const frameB = FLOOR_SPRITE_GRIDS.member[type][`using-${useClass}-b`].right;
+        // The rep cycle: the two frames of one class differ (measured 7-52
+        // per pair on the shipped maps, the 52 being the rotated bench), and
+        // the working body differs from standing (measured 31-134).
+        expect(differingPixels(frameA, frameB), `${type} ${useClass} rep`).toBeGreaterThanOrEqual(4);
+        expect(differingPixels(stand, frameA), `${type} stand/${useClass}`).toBeGreaterThanOrEqual(4);
+        repPairs += 1;
+      }
+      // The three classes read apart from each other, frame a against frame
+      // a (measured 33-151 per pair) — a bench body is not a bar body is not
+      // a machine-face body, which is the whole point of P4b's templates.
+      const benchA = FLOOR_SPRITE_GRIDS.member[type]['using-bench-a'].right;
+      const barA = FLOOR_SPRITE_GRIDS.member[type]['using-bar-a'].right;
+      const genericA = FLOOR_SPRITE_GRIDS.member[type]['using-generic-a'].right;
+      expect(differingPixels(benchA, barA), `${type} bench/bar`).toBeGreaterThanOrEqual(4);
+      expect(differingPixels(benchA, genericA), `${type} bench/generic`).toBeGreaterThanOrEqual(4);
+      expect(differingPixels(barA, genericA), `${type} bar/generic`).toBeGreaterThanOrEqual(4);
     }
+    // Counts, not bounds: every (type, class) rep pair really was compared.
+    expect(repPairs).toBe(TYPES.length * FLOOR_STATION_USE_CLASSES.length);
+  });
+
+  it('lies the bench-class pose along the slab: the shipped flat bench is taller than it is wide', () => {
+    // The named catcher for `opsUsingBench`'s orientation decision. The bench
+    // figure is authored head-up, feet-down, along a pad `opsFlatBench` draws
+    // running vertically — a choice derived from the shipped 2x4 footprint,
+    // not from anything the pose can see at render time. A future flat bench
+    // turned wider than tall reddens here, so the pose gets a rotated variant
+    // instead of the crosswise-lying read coming back silently (which is
+    // exactly how the first version of the pose shipped: authored horizontal
+    // against a vertical pad, with nothing to say so).
+    const footprint = T.FLOOR_FIXED_FURNITURE_LAYOUT['flat-bench'].footprint;
+    expect(footprint.height).toBeGreaterThan(footprint.width);
+  });
+
+  it('maps every station to a use class, totally and in both directions, and uses all three classes', () => {
+    expect(Object.keys(FLOOR_STATION_USE_CLASS.session).sort()).toEqual(
+      [...T.SESSION_EQUIPMENT_ITEMS].sort(),
+    );
+    expect(Object.keys(FLOOR_STATION_USE_CLASS.fixed).sort()).toEqual(
+      Object.keys(T.FLOOR_FIXED_FURNITURE_LAYOUT).sort(),
+    );
+    const assigned = new Set<string>([
+      ...Object.values(FLOOR_STATION_USE_CLASS.session),
+      ...Object.values(FLOOR_STATION_USE_CLASS.fixed),
+    ]);
+    for (const value of assigned) {
+      expect([...FLOOR_STATION_USE_CLASSES]).toContain(value);
+    }
+    // The cold garage's three fixed stations alone span all three classes —
+    // bench (flat-bench), bar (power-bar) and generic (comp-plates) — so the
+    // very first floor a player sees already shows three different bodies at
+    // work. Pinned as a set equality so a re-mapping that collapses the cold
+    // floor to two classes is red here rather than discovered on a phone.
+    expect([...new Set(Object.values(FLOOR_STATION_USE_CLASS.fixed))].sort()).toEqual(
+      [...FLOOR_STATION_USE_CLASSES].sort(),
+    );
   });
 
   it('renders the five types pairwise-differently in real colour, in every pose', () => {
@@ -378,7 +444,13 @@ describe('the members read as drawn figures, apart from each other, and animate'
             FLOOR_SPRITE_GRIDS.member[typeB][pose].right,
             FLOOR_SPRITE_PALETTES.byType[typeB],
           );
-          // Measured 24-96 on the shipped maps; the floor catches collapse.
+          // Measured 17-101 on the shipped maps. The 17 is every type pair
+          // at the two bench poses, and it is structural rather than a thin
+          // margin: the bench grid is one map shared by all five types, so
+          // the only pixels that can differ are the outfit-slot ones (17 of
+          // them), which is exactly the "type identity rides the outfit
+          // palette" trade `opsUsingBench`'s own comment states. The floor
+          // catches collapse.
           expect(moved, `${typeA} vs ${typeB} at ${pose}`).toBeGreaterThanOrEqual(12);
           pairs += 1;
         }
@@ -492,7 +564,8 @@ describe('the PNGs are exactly the grids', () => {
         h: grid.h,
       });
     }
-    expect(cases.length).toBe(61);
+    // 61 -> 111 with P4b's six using poses (90 member sprites now).
+    expect(cases.length).toBe(111);
 
     for (const each of cases) {
       const decoded = decodePngUri(each.uri);

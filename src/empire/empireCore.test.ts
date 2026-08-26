@@ -3413,7 +3413,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 390 -> 394: the paint-ops refactor's four op-kind tokens ('fill',
     // 'hatch', 'disc', 'dot'), the shape that replaced parameter-mutating
     // raster helpers. Measured by running this assertion.
-    expect(singleQuoted.size).toBe(394);
+    // 394 -> 402: GDD §5.13 P4b — the six using-pose tokens plus 'bar' and
+    // 'generic' ('bench' was already an equipment word; the rep frames are
+    // booleans, so no one-character literal arrives). Measured by running
+    // this assertion and reading its failure value.
+    expect(singleQuoted.size).toBe(402);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3513,6 +3517,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'at-the-top',
       'athlete',
       'axes',
+      // P4b: two of the three station-use classes ('bench' was already here
+      // as an equipment word; the rep frames are booleans precisely so no
+      // one-character literal joins this set — see floorSprites.ts's own
+      // never-spell-a-one-character-string rule).
+      'bar',
       'bare-bar',
       'behind',
       'belts',
@@ -3596,6 +3605,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'friend-encouragement',
       'friend-visit-allowance-reset',
       'garage',
+      // P4b: the third station-use class.
+      'generic',
       'global',
       'gray',
       'gym-accelerated-bucks',
@@ -3803,6 +3814,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'unacceleratedSeconds',
       'unequipped',
       'using',
+      // P4b: the six station-class rep poses.
+      'using-bar-a',
+      'using-bar-b',
+      'using-bench-a',
+      'using-bench-b',
+      'using-generic-a',
+      'using-generic-b',
       'visited',
       'wall-clock',
       'wall-clock-earned',
@@ -3853,7 +3871,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 610 -> 651: singleQuoted (372 -> 390) and templateChunks (238 -> 261),
     // Phase 4. Read from this assertion's own failure value.
     // 651 -> 655: the four op-kind tokens above.
-    expect(stringsChecked).toBe(655);
+    // 655 -> 663: P4b's eight new single-quoted tokens (the six using
+    // poses, 'bar', 'generic'). Read from this assertion's failure value.
+    expect(stringsChecked).toBe(663);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -3925,7 +3945,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // legend and base64-alphabet strings, whose letters-only forms are long.
     // Measured by running this assertion and reading its failure value.
     // 332 -> 336: the four op-kind tokens, all clearing the two-letter guard.
-    expect(probes).toBe(336);
+    // 336 -> 344: P4b's eight new tokens (six poses, 'bar', 'generic'), all
+    // clearing the guard — the rep frames are booleans so nothing here is
+    // skippable. Measured by running this assertion.
+    expect(probes).toBe(344);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);

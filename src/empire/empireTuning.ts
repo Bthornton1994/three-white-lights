@@ -1863,23 +1863,24 @@ export const EMPIRE_TUNING = Object.freeze({
   FLOOR_SIM_LEAVING_OPACITY: 0.55,
 
   /**
-   * The height, in pixels, of the extra bob a member does while it is
-   * `using` — the placeholder register's version of working a set.
-   *
-   * SEPARATE FROM `AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS` AND ADDITIVE ON TOP
-   * OF IT, deliberately: a human passed Phase 2's gate on the idle bob's own
-   * values, so this piece adds a second motion rather than retuning one that
-   * has already been judged.
+   * GDD §5.13's P4b ruling ("actually using the machines"): how far a
+   * `using` member's DRAWN position is pulled from its sim use cell toward
+   * its station's own anchor (the station box's centre, adjusted for the
+   * member's footprint), as a fraction per station-use class. 0 draws the
+   * member on its use cell exactly (the pre-P4b read the human called
+   * "people near equipment"); 1 draws it centred on the station. RENDERER
+   * ONLY — `floorSim.ts`'s use-cell model is untouched and the sim never
+   * sees these numbers; `FloorGrid.tsx` applies them the way the walk tween
+   * is applied, as a pure draw offset. Bench is full centring (the body lies
+   * ON the bench); bar stops just short of centre (under the bar, not
+   * swallowed by it); generic leans into the machine face. Provisional feel
+   * values, like everything in this block — a phone pass judges them.
    */
-  FLOOR_SIM_USING_PULSE_AMPLITUDE_PIXELS: 3,
-
-  /**
-   * Half a rep, in milliseconds — the duration of one leg of the `using`
-   * pulse above. Much shorter than `AMBIENT_MEMBER_BOB_HALF_CYCLE_MS` on
-   * purpose: a member on a machine should read as working faster than a
-   * member standing around breathing.
-   */
-  FLOOR_SIM_USING_PULSE_HALF_CYCLE_MS: 260,
+  FLOOR_SIM_USING_ANCHOR_BIAS: Object.freeze({
+    bench: 1,
+    bar: 0.7,
+    generic: 0.55,
+  }),
 
   /**
    * The border width, in pixels, of the two outlines this layer draws over
@@ -1929,6 +1930,22 @@ export const EMPIRE_TUNING = Object.freeze({
    * per CLAUDE.md's tunability rule.
    */
   FLOOR_SPRITE_WALK_FRAME_TICKS: 2,
+
+  /**
+   * How many sim ticks one rep-cycle frame is held before a `using` member's
+   * two-frame working animation flips. GDD §5.13's P4b ruling asks for a rep
+   * cycle FASTER than the walk, so this sits below
+   * `FLOOR_SPRITE_WALK_FRAME_TICKS` — at the shipped tick interval of 120ms
+   * this is a frame flip every 120ms. The honest half, stated rather than
+   * asserted away: whether that reads as a stick figure vigorously working a
+   * set or as a 28px body vibrating has not been judged on a phone, and a
+   * flip this fast is exactly the kind of value that can land either way.
+   * This knob is the single thing a tuner moves to find out — 2 restores the
+   * walk cycle's cadence ratio, 3 halves it again — and no component
+   * arithmetic needs touching. Deterministic from the sim tick and the
+   * member index, like the walk cycle — no clock, no dice.
+   */
+  FLOOR_SPRITE_REP_FRAME_TICKS: 1,
 
   /**
    * The shared body colours every member sprite resolves through, as plain
@@ -2173,14 +2190,14 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   FLOOR_SIM_CUE_GAP_PIXELS: 'knob',
   FLOOR_SIM_INTERRUPTED_CUE_SCALE: 'knob',
   FLOOR_SIM_LEAVING_OPACITY: 'knob',
-  FLOOR_SIM_USING_PULSE_AMPLITUDE_PIXELS: 'knob',
-  FLOOR_SIM_USING_PULSE_HALF_CYCLE_MS: 'knob',
+  FLOOR_SIM_USING_ANCHOR_BIAS: 'knob',
   FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS: 'knob',
   FLOOR_SIM_MEMBER_Z_INDEX: 'knob',
   FLOOR_SIM_STATION_HIGHLIGHT_Z_INDEX: 'knob',
 
   FLOOR_SPRITE_NATIVE_PIXELS_PER_TILE: 'knob',
   FLOOR_SPRITE_WALK_FRAME_TICKS: 'knob',
+  FLOOR_SPRITE_REP_FRAME_TICKS: 'knob',
   FLOOR_SPRITE_BODY_PALETTE: 'knob',
   FLOOR_SPRITE_OUTFIT_PALETTE: 'knob',
   FLOOR_SPRITE_GEAR_PALETTE: 'knob',

@@ -54,21 +54,85 @@ import { type SessionEquipmentItem } from './sessions';
 // ---------------------------------------------------------------------------
 
 /**
- * The four poses a member sprite ships in. `stand` covers every standing sim
+ * The nine poses a member sprite ships in. `stand` covers every standing sim
  * state (queuing, leaving, interrupted, idle seeking); `step-a`/`step-b` are
- * the two-frame walk cycle; `using` is the working stance. The five sim
- * states stay visually distinct through the cue system `FloorGrid.tsx`
- * already draws — the pose channel is body language on top of it, not a
- * replacement for it.
+ * the two-frame walk cycle; the six `using-*` poses are GDD §5.13's P4b
+ * ruling ("actually using the machines, interacting with the machines almost
+ * stickfigure RPG style") — one two-frame rep cycle per station-use class,
+ * replacing the single generic working stance the human read as "people near
+ * equipment, not people on equipment". `bench` lies the body on the bench,
+ * bar overhead; `bar` raises the arms onto a loaded bar; `generic` works the
+ * machine face with a pumping reach. The five sim states stay visually
+ * distinct through the cue system `FloorGrid.tsx` already draws — the pose
+ * channel is body language on top of it, not a replacement for it.
  */
-export const FLOOR_SPRITE_POSES = ['stand', 'step-a', 'step-b', 'using'] as const;
+export const FLOOR_SPRITE_POSES = [
+  'stand',
+  'step-a',
+  'step-b',
+  'using-bench-a',
+  'using-bench-b',
+  'using-bar-a',
+  'using-bar-b',
+  'using-generic-a',
+  'using-generic-b',
+] as const;
 export type FloorSpritePose = (typeof FLOOR_SPRITE_POSES)[number];
+
+/**
+ * The three station-use classes — which body the renderer draws on a member
+ * while it is using a given station. Three templates rather than one generic
+ * torso and rather than per-item fidelity, which is the scope GDD §5.13's
+ * P4b stanza locks ("two or three templates beat one generic torso").
+ */
+export const FLOOR_STATION_USE_CLASSES = ['bench', 'bar', 'generic'] as const;
+export type FloorStationUseClass = (typeof FLOOR_STATION_USE_CLASSES)[number];
 
 /** Horizontal facing. `left` is an exact mirror of the authored `right`. */
 export const FLOOR_SPRITE_FACINGS = ['right', 'left'] as const;
 export type FloorSpriteFacing = (typeof FLOOR_SPRITE_FACINGS)[number];
 
 export type FixedFurnitureItem = keyof typeof EMPIRE_TUNING.FLOOR_FIXED_FURNITURE_LAYOUT;
+
+/**
+ * Which use class every station on the floor draws — the whole mapping, both
+ * station kinds, total over each registered vocabulary (`satisfies` makes a
+ * missing row a compile error, and `floorSprites.test.ts` pins the key sets
+ * in both directions). Classification, not a tuned number, which is why it
+ * lives here beside the poses it selects rather than in `EMPIRE_TUNING`.
+ *
+ * The judgement per row, briefly: `bench` is only the flat bench — the one
+ * station a body lies on. `bar` is anything worked by gripping a bar at or
+ * above shoulder height: the loaded power bar, the cable tower (hands up on
+ * the handle), the racked specialty bars, and the sled (hands on its push
+ * posts). Everything else — cardio seats, the plate stack, mats, the sauna,
+ * the small accessories — is `generic`, an engaged stance facing the
+ * station. Stick-figure simplicity is the brief FROM THE HUMAN; per-item
+ * fidelity is explicitly out.
+ */
+export const FLOOR_STATION_USE_CLASS = Object.freeze({
+  fixed: Object.freeze({
+    'power-bar': 'bar',
+    'comp-plates': 'generic',
+    'flat-bench': 'bench',
+  } as const satisfies Record<FixedFurnitureItem, FloorStationUseClass>),
+  session: Object.freeze({
+    bike: 'generic',
+    treadmill: 'generic',
+    rower: 'generic',
+    sled: 'bar',
+    dumbbells: 'generic',
+    cables: 'bar',
+    machines: 'generic',
+    mats: 'generic',
+    'foam-rollers': 'generic',
+    sauna: 'generic',
+    'wrist-wraps': 'generic',
+    belts: 'generic',
+    sleeves: 'generic',
+    'specialty-bars': 'bar',
+  } as const satisfies Record<SessionEquipmentItem, FloorStationUseClass>),
+});
 
 /** An index grid: width, height, and one palette index per pixel, row-major. Index zero is transparent. */
 export interface FloorSpriteGrid {
@@ -237,9 +301,28 @@ function dot(x: number, y: number, px: number): PaintOp {
  * one-pixel outline outside the painted silhouette afterwards — outside, the
  * way the reference discipline outlines, so interior paint survives at small
  * sizes. The floor textures pass false; they have no silhouette.
+ *
+ * `over`, when given, seeds the fresh local array from an existing grid's
+ * pixels before the ops run — how the P4b using poses paint arms and a bar
+ * over a parsed base figure. Still ops-not-mutation per the paragraph above:
+ * the base grid is only READ, and the array being written is this call's own
+ * local, exactly as before.
  */
-function render(w: number, h: number, ops: readonly PaintOp[], outlined: boolean): FloorSpriteGrid {
+function render(
+  w: number,
+  h: number,
+  ops: readonly PaintOp[],
+  outlined: boolean,
+  over?: FloorSpriteGrid,
+): FloorSpriteGrid {
   const data: number[] = new Array<number>(w * h).fill(0);
+  if (over !== undefined) {
+    for (let y = 0; y < h; y += 1) {
+      for (let x = 0; x < w; x += 1) {
+        data[y * w + x] = getPx(over, x, y);
+      }
+    }
+  }
   const put = (x: number, y: number, px: number): void => {
     if (x < 0 || y < 0 || x >= w || y >= h) return;
     data[y * w + x] = px;
@@ -504,17 +587,181 @@ const LEG_BUILD: Readonly<Record<MemberType, LegBuild>> = {
   'serious-lifter': 'slim',
 };
 
+// ---------------------------------------------------------------------------
+// The P4b using poses. Geometry constants shared with the equipment painters
+// below (HALF/QUARTER/INSET are declared there); every coordinate is derived
+// from them or is 0/1/2, the same discipline the painters keep. Facing is
+// authored `right` throughout — the machine is to the sprite's right — and
+// the shared mirror produces `left`.
+// ---------------------------------------------------------------------------
+
+/**
+ * The bar-class overlay, painted OVER the type's own lift torso and brace
+ * legs so build, headgear and outfit identity all survive: two raised-arm
+ * columns (lit skin left, shade skin right, outlined by hand — the base is
+ * already outlined, so the automatic pass is not re-run) up to a loaded bar.
+ * Frame `a` holds the bar overhead at full extension; frame `b` pulls it
+ * down to the collarbone, with the base's own side arms standing in for the
+ * bend. A doubt left open rather than asserted away: because frame `b`
+ * draws no arm columns of its own, the a-to-b change at the drawn 28px may
+ * read mostly as the bar line jumping rather than as arms moving — whether
+ * the base arms carry the bend at phone scale has not been judged on a
+ * device, and if they do not, the fix is more painted arm in frame `b`, not
+ * a knob.
+ */
+function opsUsingBar(lockout: boolean): PaintOp[] {
+  const ops: PaintOp[] = [];
+  if (lockout) {
+    // Arms extended: outline-skin-outline columns rising beside the head.
+    ops.push(fill(1, 2, 1, QUARTER, PX_OUTLINE));
+    ops.push(fill(2, 2, 1, QUARTER, PX_SKIN));
+    ops.push(fill(QUARTER, 2, 1, QUARTER, PX_OUTLINE));
+    ops.push(fill(HALF + QUARTER, 2, 1, QUARTER, PX_OUTLINE));
+    ops.push(fill(NATIVE - QUARTER, 2, 1, QUARTER, PX_SKIN_SHADE));
+    ops.push(fill(NATIVE - 2, 2, 1, QUARTER, PX_OUTLINE));
+    // The bar overhead, plates at its ends. Row 0 stays clear of both top
+    // corners (the open-corner pin in floorSprites.test.ts).
+    ops.push(fill(2, 1, NATIVE - INSET, 1, PX_STEEL_LIGHT));
+    ops.push(fill(1, 0, 1, QUARTER, PX_PLATE));
+    ops.push(fill(NATIVE - 2, 0, 1, QUARTER, PX_PLATE_SHADE));
+  } else {
+    // The bar pulled to the collarbone; the base's side arms are the bend.
+    ops.push(fill(2, QUARTER + 2, NATIVE - INSET, 1, PX_STEEL_LIGHT));
+    ops.push(fill(1, INSET, 1, QUARTER, PX_PLATE));
+    ops.push(fill(NATIVE - 2, INSET, 1, QUARTER, PX_PLATE_SHADE));
+  }
+  return ops;
+}
+
+/**
+ * The generic-class overlay, painted over the same lift-torso base: a
+ * pumping forward reach at shoulder height, toward the facing side (the
+ * renderer faces the sprite at its station, so the reach meets the machine).
+ * The base's own raised side arm on the reaching side is cleared first —
+ * `PX_CLEAR` is index zero, so a fill with it erases back to transparent —
+ * and the reach is drawn in its place. Frame `a` is full extension with a
+ * hand cap; frame `b` pulls the arm almost all the way in, which is the
+ * pump.
+ */
+const PX_CLEAR = 0;
+
+function opsUsingGeneric(extended: boolean): PaintOp[] {
+  const ops: PaintOp[] = [];
+  ops.push(fill(HALF + 2, HALF - 1, HALF - 1, QUARTER, PX_CLEAR));
+  const reach = extended ? QUARTER : 1;
+  ops.push(fill(HALF + 2, HALF - 1, reach, 1, PX_OUTLINE));
+  ops.push(fill(HALF + 2, HALF, reach, 1, PX_SKIN));
+  ops.push(fill(HALF + 2, HALF + 1, reach, 1, PX_OUTLINE));
+  // The hand cap closes the arm's silhouette at its end.
+  ops.push(fill(HALF + 2 + reach, HALF - 1, 1, QUARTER, PX_OUTLINE));
+  return ops;
+}
+
+/**
+ * The bench-class pose — GDD §5.13 P4b's "actually using the machines" read
+ * applied to the one station a body lies on. A whole drawn figure rather
+ * than an overlay, because nothing of the standing silhouette survives lying
+ * down. One grid for all five types — at this scale a lying body has no room
+ * for build or headgear, so type identity rides the outfit palette (the J/D
+ * slots resolve per type exactly as everywhere else). Outlined by the
+ * automatic pass, like the equipment.
+ *
+ * Orientation is along the slab, derived from the shipped furniture rather
+ * than chosen freely: `FLOOR_FIXED_FURNITURE_LAYOUT` gives the flat bench a
+ * 2-wide-by-4-tall footprint and `opsFlatBench` draws its pad running
+ * vertically, while `FLOOR_SIM_USING_ANCHOR_BIAS.bench: 1` centres this
+ * figure on that slab — so the first version of this function, which
+ * authored the body horizontal, drew the lifter perpendicular to the pad,
+ * lying crosswise over the bench on the exact station the GDD's
+ * next-phone-pass check names. The figure here runs head-up, feet-down:
+ * head at the bench's own head end (the lit top foot in `opsFlatBench`),
+ * torso down the pad, and the bar drawn across the body with a plate at
+ * each side, which is a bench press seen from above. Authored vertical-only
+ * rather than picked from the station's footprint aspect at render time,
+ * because pose selection is keyed by pose name alone and the shipped bench
+ * is the only bench-class station; `floorSprites.test.ts`'s orientation pin
+ * (the flat-bench footprint is taller than it is wide) reddens if that
+ * stops being true, instead of this sentence going quietly stale.
+ *
+ * A doubt this round leaves open rather than papering over: whether the
+ * along-slab figure reads as "lying on the bench" at the drawn 28px, or as
+ * a smudge of torso band and bar line, is a phone-pass question. The pixel
+ * arithmetic here is checkable; the read is not, and it has not been
+ * judged on a device.
+ *
+ * Frame `a` locks the bar out; frame `b` brings it to the chest. Seen from
+ * above that is drawn as the bar line moving down the body toward the
+ * chest, with the plates and the gripping hands following by derivation —
+ * the same one-quantity-moves scheme the bar-class frames use.
+ */
+function opsUsingBench(lockout: boolean): PaintOp[] {
+  const ops: PaintOp[] = [];
+  const bodyX = HALF - 2;
+  const barY = lockout ? QUARTER + 1 : HALF - 1;
+  // The plates hang from one row above the bar and the gripping hands sit
+  // one row below it, so both follow the bar between frames by derivation.
+  const plateY = barY - 1;
+  const armY = barY + 1;
+  const armH = lockout ? 2 : 1;
+  // The head at the top — the bench's head end — hair at the crown.
+  ops.push(fill(bodyX, 0, QUARTER, 1, PX_HAIR));
+  ops.push(fill(bodyX, 1, QUARTER, 2, PX_SKIN));
+  // Shoulders and torso band in the outfit's own slots, shade column right
+  // (key light upper-left, same as every map in this file).
+  ops.push(fill(bodyX - 1, QUARTER, QUARTER + 2, 1, PX_TOP));
+  ops.push(fill(bodyX, QUARTER + 1, 2, HALF - 2, PX_TOP));
+  ops.push(fill(HALF, QUARTER + 1, 1, HALF - 2, PX_TOP_SHADE));
+  // Hips and legs running down the pad, feet at the bottom end.
+  ops.push(fill(bodyX, HALF + 2, QUARTER, 2, PX_PANTS));
+  ops.push(fill(bodyX, NATIVE - QUARTER, 1, 1, PX_PANTS_SHADE));
+  ops.push(fill(HALF, NATIVE - QUARTER, 1, 1, PX_PANTS_SHADE));
+  ops.push(fill(bodyX, NATIVE - 2, 1, 2, PX_SHOE));
+  ops.push(fill(HALF, NATIVE - 2, 1, 2, PX_SHOE));
+  // The bar across the chest, a plate at each end, hands gripping just
+  // inside them — lit left, shade right.
+  ops.push(fill(2, barY, NATIVE - INSET, 1, PX_STEEL_LIGHT));
+  ops.push(fill(1, plateY, 1, QUARTER, PX_PLATE));
+  ops.push(fill(NATIVE - 2, plateY, 1, QUARTER, PX_PLATE_SHADE));
+  ops.push(fill(QUARTER + 1, armY, 1, armH, PX_SKIN));
+  ops.push(fill(HALF + 1, armY, 1, armH, PX_SKIN_SHADE));
+  return ops;
+}
+
+/** The type's lift torso over its brace legs — the base every overlay pose paints onto. */
+function usingBaseGrid(type: MemberType): FloorSpriteGrid {
+  return parseMap(TORSO[type].lift + LEGS[LEG_BUILD[type]].brace, NATIVE);
+}
+
 function memberGrid(type: MemberType, pose: FloorSpritePose): FloorSpriteGrid {
-  const torso = pose === 'using' ? TORSO[type].lift : TORSO[type].normal;
+  if (pose === 'using-bench-a' || pose === 'using-bench-b') {
+    return render(NATIVE, NATIVE, opsUsingBench(pose === 'using-bench-a'), true);
+  }
+  if (pose === 'using-bar-a' || pose === 'using-bar-b') {
+    return render(
+      NATIVE,
+      NATIVE,
+      opsUsingBar(pose === 'using-bar-a'),
+      false,
+      usingBaseGrid(type),
+    );
+  }
+  if (pose === 'using-generic-a' || pose === 'using-generic-b') {
+    return render(
+      NATIVE,
+      NATIVE,
+      opsUsingGeneric(pose === 'using-generic-a'),
+      false,
+      usingBaseGrid(type),
+    );
+  }
+  const torso = TORSO[type].normal;
   const build = LEG_BUILD[type];
   const legs =
-    pose === 'using'
-      ? LEGS[build].brace
-      : pose === 'step-a'
-        ? LEGS[build].stepA
-        : pose === 'step-b'
-          ? LEGS[build].stepB
-          : LEGS[build].stand;
+    pose === 'step-a'
+      ? LEGS[build].stepA
+      : pose === 'step-b'
+        ? LEGS[build].stepB
+        : LEGS[build].stand;
   return parseMap(torso + legs, NATIVE);
 }
 

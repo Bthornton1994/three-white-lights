@@ -2487,7 +2487,8 @@ one member per state, flat-bench green-highlighted) shows why: the logic runs,
 but the read is **people near equipment, not people on equipment**. A `using`
 member differs from a standing one by a pinned pixel count and a highlight and
 a bob — none of which is a body engaged with a machine. That is the next
-round's scope, and it is presentation only: per-station-class using poses at
+round's scope — the round is named **P4b**, which is how code and tool comments
+cite it — and it is presentation only: per-station-class using poses at
 stick-figure simplicity (a bench-class, a bar/rack-class, a generic — two or
 three templates beat one generic torso), a renderer-side draw bias toward the
 station anchor while `using` so the body meets the furniture instead of

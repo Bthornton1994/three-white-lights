@@ -146,6 +146,10 @@
  * either way.
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { chromium } from 'playwright';
 
 import { waitUntilDrawn } from './meetDrive.mjs';
@@ -314,11 +318,13 @@ async function memberPositionsNow(count) {
  * readout's tick advanced across the window.
  *
  * WHY THE X AXIS IS THE ONE WITH AN EXACT CONTROL, and this took two wrong
- * answers to get to. A member's drawn position is the sum of three transforms:
- * the walk (both axes, written only when the sim steps), the GDD §5.13 Phase 2
- * idle bob, and the `using` pulse. The last two are `translateY` ONLY and they
- * never stop — so on a render whose sim is not stepping, Y still moves a
- * couple of pixels forever and X cannot move at all.
+ * answers to get to. A member's drawn position is the sum of two transforms:
+ * the walk (both axes, written only when the sim steps) and the GDD §5.13
+ * Phase 2 idle bob, which is `translateY` ONLY and never stops. (P4b retired
+ * the third — the `using` pulse — in favour of the sprite-level rep cycle,
+ * which swaps sprite IMAGES and moves no transform at all, so it changes
+ * nothing about this reading.) On a render whose sim is not stepping, Y
+ * still moves a couple of pixels forever and X cannot move at all.
  *
  * The first version of this counted whole positions, and its control came back
  * at 5, 3 and 5 rather than 1 — it was measuring the bob. The second version
@@ -469,6 +475,146 @@ async function flatColourBodyPartsIn(id) {
 /** How many Phase 4 sprite frames the members showed across a sampling window. */
 const SPRITE_FRAME_SAMPLES = 16;
 const SPRITE_FRAME_SAMPLE_INTERVAL_MS = 250;
+
+/**
+ * GDD §5.13 P4b's sampling parameters — the "body on the machine" round.
+ *
+ * The coupling claim polls for a `using` member whose drawn box overlaps its
+ * station's own `floorsim-using-*` highlight box by more than
+ * `P4B_OVERLAP_MIN_PIXELS` on BOTH axes. The pre-P4b floor draws a using
+ * member on the use cell ADJACENT to its station, so the two boxes share at
+ * most an edge (zero overlap area) and the poll runs out — that is the exact
+ * "people near equipment, not people on equipment" read the human named, made
+ * a failing claim. The minimum is 3px rather than 1 so a rounding half-pixel
+ * on a shared edge cannot pass it.
+ *
+ * The rep-cycle claim samples one continuously-`using` member's sprite image
+ * and requires at least two distinct frames across the window. At the shipped
+ * `FLOOR_SPRITE_REP_FRAME_TICKS` of 1 the frame flips every sim tick (120ms),
+ * so a 90ms sampling cadence cannot alias onto one parity for long; the
+ * in-state sample count is reported so a thin window reads as thin rather
+ * than as a pass. The pre-P4b floor ships exactly one `using` sprite per
+ * (type, facing), so its distinct-frame count is 1 whatever the window.
+ */
+const P4B_COUPLING_POLL_MS = 12000;
+const P4B_OVERLAP_MIN_PIXELS = 3;
+const P4B_REP_SAMPLES = 24;
+const P4B_REP_SAMPLE_INTERVAL_MS = 90;
+const P4B_REP_MIN_IN_STATE_SAMPLES = 8;
+const P4B_REP_MEMBER_ATTEMPTS = 3;
+/**
+ * The class-distinctness window: attribute each using member to its station
+ * by box overlap, look up the station's use class in the table derived below
+ * (the three fixed stations of a cold garage deliberately span all three
+ * classes), and collect sprite frames per (member, class). Opportunistic by
+ * design — whether one member uses two different-class stations inside the
+ * window is the sim's choice, so the claim SKIPs by name when the condition
+ * never arises rather than flaking; the always-checkable halves of the same
+ * property are the unit pins in floorSprites.test.ts.
+ */
+const P4B_CLASS_SAMPLES = 30;
+const P4B_CLASS_SAMPLE_INTERVAL_MS = 700;
+
+/**
+ * Which use class each station draws, keyed `<kind>-<item>` — DERIVED from
+ * `src/empire/floorSprites.ts`'s own `FLOOR_STATION_USE_CLASS` source text
+ * rather than hand-copied. The first version of this was a four-row hand
+ * mirror that nothing reconciled, which is the copied-fence shape CLAUDE.md
+ * records four times: a re-mapping in the real table would have left this
+ * tool silently attributing frames to the wrong class. An .mjs cannot import
+ * a TS module, so the table is read the way this tool already reads
+ * `FLOOR_TILE_PIXELS`' rationale — from source — but parsed rather than
+ * transcribed, and the parse REFUSES loudly (throws before the browser ever
+ * launches) instead of degrading to a stale or truncated mapping.
+ */
+const P4B_STATION_USE_CLASS = (() => {
+  const sourcePath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'src',
+    'empire',
+    'floorSprites.ts',
+  );
+  const source = readFileSync(sourcePath, 'utf8');
+  const block = /export const FLOOR_STATION_USE_CLASS = Object\.freeze\(\{([\s\S]*?)\n\}\);/.exec(
+    source,
+  );
+  if (block === null) {
+    throw new Error(
+      `could not find FLOOR_STATION_USE_CLASS in ${sourcePath} — the real table this tool derives its station classes from has moved or been renamed; refusing to run on a guess`,
+    );
+  }
+  const halves = block[1].split(/session:\s*Object\.freeze\(\{/);
+  if (halves.length !== 2) {
+    throw new Error(
+      `FLOOR_STATION_USE_CLASS in ${sourcePath} no longer splits into a fixed and a session group — refusing to run on a guess`,
+    );
+  }
+  const table = {};
+  const rowCounts = { fixed: 0, session: 0 };
+  const knownClasses = ['bar', 'bench', 'generic'];
+  for (const [kind, text] of [
+    ['fixed', halves[0]],
+    ['session', halves[1]],
+  ]) {
+    for (const row of text.matchAll(/(?:'([\w-]+)'|\b([A-Za-z]\w*)\b):\s*'([a-z]+)'/g)) {
+      const item = row[1] ?? row[2];
+      const useClass = row[3];
+      if (!knownClasses.includes(useClass)) {
+        throw new Error(
+          `parsed an unknown use class "${useClass}" for ${kind} station "${item}" out of ${sourcePath} — the class vocabulary has changed and this tool's parse has not`,
+        );
+      }
+      table[`${kind}-${item}`] = useClass;
+      rowCounts[kind] += 1;
+    }
+  }
+  // Non-vacuity for the parse itself: the stations this run can actually put
+  // a member on must all have resolved, and the fixed group must be whole.
+  // A truncated parse would otherwise degrade the class-distinctness claim
+  // into a silent SKIP rather than an error anybody sees.
+  const required = ['fixed-power-bar', 'fixed-comp-plates', 'fixed-flat-bench', 'session-mats'];
+  const missing = required.filter((key) => table[key] === undefined);
+  if (missing.length > 0 || rowCounts.fixed !== 3) {
+    throw new Error(
+      `the FLOOR_STATION_USE_CLASS parse came back incomplete (missing: ${missing.join(', ') || 'none'}; fixed rows: ${rowCounts.fixed}, session rows: ${rowCounts.session}) — refusing to run on a partial table`,
+    );
+  }
+  return Object.freeze(table);
+})();
+
+/**
+ * GDD §5.13 P4b — every (using member, using-highlighted station) box pair
+ * this instant, with the overlap measured on both axes. The member indices
+ * come off the drawn cue testIDs and the station identity off the drawn
+ * highlight testIDs, so both halves of a pair are read from the DOM the way
+ * a player sees them rather than from sim state this tool cannot see.
+ */
+async function usingPairsNow() {
+  const cues = await testIdsStartingWith('floorsim-cue-');
+  const usingIndices = cues
+    .filter((id) => id.endsWith('-using'))
+    .map((id) => Number.parseInt(id.replace('floorsim-cue-', ''), 10))
+    .filter((index) => Number.isInteger(index));
+  const highlights = await testIdsStartingWith('floorsim-using-');
+  const pairs = [];
+  for (const highlightId of highlights) {
+    const stationBox = await boxOf(highlightId);
+    if (stationBox === null) continue;
+    for (const index of usingIndices) {
+      const memberBox = await boxOf(`floorgrid-ambient-${index}`);
+      if (memberBox === null) continue;
+      const overlapW =
+        Math.min(memberBox.x + memberBox.width, stationBox.x + stationBox.width) -
+        Math.max(memberBox.x, stationBox.x);
+      const overlapH =
+        Math.min(memberBox.y + memberBox.height, stationBox.y + stationBox.height) -
+        Math.max(memberBox.y, stationBox.y);
+      pairs.push({ highlightId, index, overlapW, overlapH });
+    }
+  }
+  return pairs;
+}
 
 /** A real drag: mouse down at `from`'s centre, several intermediate moves, up at `to`. */
 async function dragBox(fromBox, toX, toY) {
@@ -831,6 +977,161 @@ try {
       fail(
         `Phase 4: only ${frames.size} distinct member sprite image(s) observed across ${SPRITE_FRAME_SAMPLES} samples — a walking member must alternate its step frames`,
       );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 1e. GDD §5.13 P4b — BODIES ON MACHINES, on the same cold garage. The
+  // human's verdict on the first Phase 4 pass named this gap exactly:
+  // "people near equipment, not people on equipment". Every claim in this
+  // section is one the pre-P4b floor FAILS — checked against that build's
+  // own geometry (a using member centred on the use cell ADJACENT to its
+  // station, one static using sprite per type) rather than asserted.
+  // -------------------------------------------------------------------------
+
+  // P4b COUPLING: a using member's drawn body meets its machine — some
+  // (using member, using-highlighted station) pair overlaps by more than
+  // P4B_OVERLAP_MIN_PIXELS on both axes. The pre-P4b floor fails: adjacent
+  // boxes share an edge, and an edge has zero overlap area.
+  {
+    const couplingDeadline = Date.now() + P4B_COUPLING_POLL_MS;
+    let coupled = null;
+    let bestSeen = null;
+    let pairsExamined = 0;
+    while (Date.now() < couplingDeadline && coupled === null) {
+      const pairs = await usingPairsNow();
+      pairsExamined += pairs.length;
+      for (const pair of pairs) {
+        if (bestSeen === null || Math.min(pair.overlapW, pair.overlapH) > Math.min(bestSeen.overlapW, bestSeen.overlapH)) {
+          bestSeen = pair;
+        }
+        if (pair.overlapW > P4B_OVERLAP_MIN_PIXELS && pair.overlapH > P4B_OVERLAP_MIN_PIXELS) {
+          coupled = pair;
+          break;
+        }
+      }
+      if (coupled === null) await page.waitForTimeout(REACTION_POLL_INTERVAL_MS);
+    }
+    if (coupled !== null) {
+      ok(
+        `P4b: a using member's body meets its machine — member ${coupled.index} overlaps ${coupled.highlightId} by ${Math.round(coupled.overlapW)}x${Math.round(coupled.overlapH)}px (${pairsExamined} pair(s) examined)`,
+      );
+    } else {
+      fail(
+        `P4b: no using member's box ever overlapped its station's highlight by more than ${P4B_OVERLAP_MIN_PIXELS}px on both axes within ${P4B_COUPLING_POLL_MS}ms — the body stands beside the machine instead of on it. Best pair seen: ${JSON.stringify(bestSeen)}, ${pairsExamined} pair(s) examined.`,
+      );
+    }
+  }
+
+  // P4b REP CYCLE: a member that stays `using` shows MORE THAN ONE sprite
+  // frame — the working animation is real image swaps while the state does
+  // not change, which separates it from the walk-cycle swaps the existing
+  // animation claim already covers. Samples where the member's cue is no
+  // longer `-using` are discarded, so a pose change on a state transition
+  // cannot fake a rep. The pre-P4b floor ships exactly one using sprite per
+  // (type, facing) and fails on the count.
+  {
+    let repVerdict = null;
+    for (let attempt = 0; attempt < P4B_REP_MEMBER_ATTEMPTS && repVerdict === null; attempt += 1) {
+      const cues = await testIdsStartingWith('floorsim-cue-');
+      const usingIds = cues.filter((id) => id.endsWith('-using'));
+      const pick = usingIds[attempt % Math.max(usingIds.length, 1)];
+      if (pick === undefined) {
+        await page.waitForTimeout(REACTION_POLL_INTERVAL_MS * 10);
+        continue;
+      }
+      const index = Number.parseInt(pick.replace('floorsim-cue-', ''), 10);
+      const frames = new Set();
+      let inStateSamples = 0;
+      for (let sample = 0; sample < P4B_REP_SAMPLES; sample += 1) {
+        const cuesNow = await testIdsStartingWith(`floorsim-cue-${index}-`);
+        const stillUsing = cuesNow.some((id) => id.endsWith('-using'));
+        if (stillUsing) {
+          const png = await pngBackedElementIn(`floorgrid-member-sprite-${index}`);
+          if (png !== null) {
+            frames.add(`${png.uriLength}:${png.uriHash}`);
+            inStateSamples += 1;
+          }
+        }
+        await page.waitForTimeout(P4B_REP_SAMPLE_INTERVAL_MS);
+      }
+      if (inStateSamples < P4B_REP_MIN_IN_STATE_SAMPLES) {
+        // The member left the machine too early for this window to carry the
+        // claim either way — try another rather than passing or failing thin.
+        continue;
+      }
+      repVerdict = { index, frames: frames.size, inStateSamples };
+    }
+    if (repVerdict === null) {
+      fail(
+        `P4b: no member stayed 'using' for ${P4B_REP_MIN_IN_STATE_SAMPLES} samples across ${P4B_REP_MEMBER_ATTEMPTS} attempts — on a cold garage the shipped sim holds members on machines for 18-42 ticks, so a window this thin is a render or sampling defect, not luck`,
+      );
+    } else if (repVerdict.frames >= 2) {
+      ok(
+        `P4b: the rep cycle is real — member ${repVerdict.index} showed ${repVerdict.frames} distinct sprite frames across ${repVerdict.inStateSamples} samples taken while its cue stayed 'using'`,
+      );
+    } else {
+      fail(
+        `P4b: member ${repVerdict.index} stayed 'using' for ${repVerdict.inStateSamples} samples and showed only ${repVerdict.frames} distinct sprite frame(s) — a static working pose, not a rep cycle`,
+      );
+    }
+  }
+
+  // P4b CLASS DISTINCTNESS, opportunistic: when one member is seen using
+  // stations of two different use classes inside the window (attributed by
+  // the same box overlap the coupling claim drives, classes from the mirror
+  // table above), the sprite frames it showed at the two must not share a
+  // single image. Whether the condition arises is the sim's own choice, so
+  // its absence is a named SKIP — the always-checkable version of the same
+  // property is pinned per grid in floorSprites.test.ts.
+  {
+    const framesByMemberClass = new Map();
+    for (let sample = 0; sample < P4B_CLASS_SAMPLES; sample += 1) {
+      const pairs = await usingPairsNow();
+      for (const pair of pairs) {
+        if (pair.overlapW <= P4B_OVERLAP_MIN_PIXELS || pair.overlapH <= P4B_OVERLAP_MIN_PIXELS) continue;
+        const stationKey = pair.highlightId.replace('floorsim-using-', '');
+        const useClass = P4B_STATION_USE_CLASS[stationKey];
+        if (useClass === undefined) continue;
+        const png = await pngBackedElementIn(`floorgrid-member-sprite-${pair.index}`);
+        if (png === null) continue;
+        const byClass = framesByMemberClass.get(pair.index) ?? new Map();
+        const set = byClass.get(useClass) ?? new Set();
+        set.add(`${png.uriLength}:${png.uriHash}`);
+        byClass.set(useClass, set);
+        framesByMemberClass.set(pair.index, byClass);
+      }
+      await page.waitForTimeout(P4B_CLASS_SAMPLE_INTERVAL_MS);
+    }
+    let witness = null;
+    for (const [index, byClass] of framesByMemberClass) {
+      const classes = [...byClass.keys()];
+      if (classes.length >= 2) {
+        witness = { index, classes, byClass };
+        break;
+      }
+    }
+    if (witness === null) {
+      const seen = [...framesByMemberClass.entries()].map(
+        ([index, byClass]) => `${index}:${[...byClass.keys()].join('+')}`,
+      );
+      skip(
+        `P4b: the cross-class sprite claim — no member was seen using stations of two different use classes inside the ${P4B_CLASS_SAMPLES}-sample window (observed ${seen.join(', ') || 'none'}); which stations a member visits is the sim's own seeded choice, and the per-class grid distinctness is pinned unconditionally in floorSprites.test.ts`,
+      );
+    } else {
+      const [classA, classB] = witness.classes;
+      const framesA = witness.byClass.get(classA);
+      const framesB = witness.byClass.get(classB);
+      const shared = [...framesA].filter((frame) => framesB.has(frame));
+      if (shared.length === 0) {
+        ok(
+          `P4b: the same member wears a different body per station class — member ${witness.index} showed ${framesA.size} frame(s) at ${classA} and ${framesB.size} at ${classB}, sharing none`,
+        );
+      } else {
+        fail(
+          `P4b: member ${witness.index} showed the SAME sprite image at a ${classA} station and a ${classB} station (${shared.length} shared frame(s)) — the station classes have collapsed into one working pose`,
+        );
+      }
     }
   }
 

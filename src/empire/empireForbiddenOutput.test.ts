@@ -1098,7 +1098,7 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
   Object.freeze({
     field: 'FLOOR_SPRITE_URIS — one PNG data URI per sprite, GDD §5.13 Phase 4',
     why:
-      'A base64 image payload is free-form text by construction, so there is no closed union to narrow these to, and a brand would add a constructor without adding a check that means anything (the payload cannot be validated as art by a type). What holds the line instead is the shape of the module: floorSprites.ts exports frozen CONSTANTS and no functions, so these sixty-one positions have no branch point, no caller-supplied input and no domain — instrument B reads the finished values on every run and containment-scans every byte of every URI against the ban list unconditionally. A forbidden name cannot be conditionally present in a static string. The colocated floorSprites.test.ts additionally decodes every URI and pins it byte-for-byte to its source index grid, so the strings cannot drift from the art they claim to be.',
+      'A base64 image payload is free-form text by construction, so there is no closed union to narrow these to, and a brand would add a constructor without adding a check that means anything (the payload cannot be validated as art by a type). What holds the line instead is the shape of the module: floorSprites.ts exports frozen CONSTANTS and no functions, so these one hundred and eleven positions have no branch point, no caller-supplied input and no domain — instrument B reads the finished values on every run and containment-scans every byte of every URI against the ban list unconditionally. A forbidden name cannot be conditionally present in a static string. The colocated floorSprites.test.ts additionally decodes every URI and pins it byte-for-byte to its source index grid, so the strings cannot drift from the art they claim to be.',
     positions: Object.freeze([
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.fixed.comp-plates',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.fixed.flat-bench',
@@ -1113,40 +1113,90 @@ const DECLARED_BARE_STRING_FIELDS: readonly {
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.step-a.right',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.step-b.left',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.step-b.right',
-      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.using.left',
-      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.using.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.using-bar-a.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.using-bar-a.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.using-bar-b.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.using-bar-b.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.using-bench-a.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.using-bench-a.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.using-bench-b.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.using-bench-b.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.using-generic-a.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.using-generic-a.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.using-generic-b.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.athlete.using-generic-b.right',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.stand.left',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.stand.right',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.step-a.left',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.step-a.right',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.step-b.left',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.step-b.right',
-      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.using.left',
-      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.using.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.using-bar-a.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.using-bar-a.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.using-bar-b.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.using-bar-b.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.using-bench-a.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.using-bench-a.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.using-bench-b.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.using-bench-b.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.using-generic-a.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.using-generic-a.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.using-generic-b.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.bodybuilder.using-generic-b.right',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.stand.left',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.stand.right',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.step-a.left',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.step-a.right',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.step-b.left',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.step-b.right',
-      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.using.left',
-      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.using.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.using-bar-a.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.using-bar-a.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.using-bar-b.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.using-bar-b.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.using-bench-a.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.using-bench-a.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.using-bench-b.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.using-bench-b.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.using-generic-a.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.using-generic-a.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.using-generic-b.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.casual.using-generic-b.right',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.stand.left',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.stand.right',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.step-a.left',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.step-a.right',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.step-b.left',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.step-b.right',
-      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.using.left',
-      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.using.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.using-bar-a.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.using-bar-a.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.using-bar-b.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.using-bar-b.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.using-bench-a.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.using-bench-a.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.using-bench-b.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.using-bench-b.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.using-generic-a.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.using-generic-a.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.using-generic-b.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.powerlifter.using-generic-b.right',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.stand.left',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.stand.right',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.step-a.left',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.step-a.right',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.step-b.left',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.step-b.right',
-      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.using.left',
-      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.using.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.using-bar-a.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.using-bar-a.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.using-bar-b.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.using-bar-b.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.using-bench-a.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.using-bench-a.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.using-bench-b.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.using-bench-b.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.using-generic-a.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.using-generic-a.right',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.using-generic-b.left',
+      'floorSprites.ts#FLOOR_SPRITE_URIS#value.member.serious-lifter.using-generic-b.right',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.session.belts',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.session.bike',
       'floorSprites.ts#FLOOR_SPRITE_URIS#value.session.cables',
@@ -1511,7 +1561,11 @@ const SURFACE_CENSUS = Object.freeze({
   // FLOOR_SPRITE_PALETTES. Its type exports (FloorSpritePose,
   // FloorSpriteFacing, FixedFurnitureItem, FloorSpriteGrid) do not count as
   // runtime exports, the same rule stated above for GymView's.
-  EXPORTS: 316,
+  // 316 -> 318: P4b's two runtime exports — FLOOR_STATION_USE_CLASSES (the
+  // three-class vocabulary) and FLOOR_STATION_USE_CLASS (the total
+  // station-to-class mapping, both kinds). Its type export
+  // (FloorStationUseClass) does not count, same rule.
+  EXPORTS: 318,
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1519,7 +1573,10 @@ const SURFACE_CENSUS = Object.freeze({
   // group itself (static frozen data, read and containment-scanned by
   // instrument B on every run, pinned byte-for-byte to the grids by
   // floorSprites.test.ts).
-  BARE_POSITIONS: 65,
+  // 65 -> 115: P4b replaced the one `using` pose with six station-class rep
+  // poses, so the member table grew from 40 URI leaves to 90 — same group,
+  // same reasoning, fifty more static frozen strings.
+  BARE_POSITIONS: 115,
   BARE_FIELDS: 2,
   BRANDED_POSITIONS: 34,
   /**
@@ -1584,7 +1641,7 @@ const SURFACE_CENSUS = Object.freeze({
   // unions at floorSprites.ts's exported positions, and the legend /
   // URI-prefix constants resolve as single-literal types. Read from this
   // pin's own failure value.
-LITERAL_POSITIONS: 2413,
+LITERAL_POSITIONS: 2438, // 2413 -> 2438: P4b, measured off this assertion.
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -1602,7 +1659,9 @@ LITERAL_POSITIONS: 2413,
   // only the new cause moves this. Read from this pin's own failure value.
   // Phase 4: 162 -> 168 — 'stand', 'step-a', 'step-b', 'left', 'right' and
   // the legend/prefix single-literal values. Read from the pin's own failure.
-  DISTINCT_LITERAL_MEMBERS: 168,
+  // 168 -> 176: P4b — six pose literals plus bar/generic (bench already
+  // counted as an equipment word). Measured off this assertion.
+  DISTINCT_LITERAL_MEMBERS: 176,
   DEPTH_CUTS: 0,
 });
 
@@ -2686,7 +2745,12 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // seam hatch and seam loop (6 push + 5 fill + 1 hatch = 12 calls) for a
   // two-tone checker (5 push + 5 fill + 2 Math.max + 2 Math.min = 14).
   // Read from this pin's own failure value, then attributed by hand-count.
-  CALLS_EXAMINED: 2342,
+  // 2342 -> 2420: P4b, measured off this assertion.
+  // 2420 -> 2426: the bench pose rotated along the slab. `opsUsingBench`
+  // grew from 12 fill/push pairs to 15 (+3 `fill` calls, +3 `ops.push`
+  // calls). Read from this pin's own failure value, then attributed by
+  // hand-count against the diff.
+  CALLS_EXAMINED: 2426,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -2898,7 +2962,7 @@ describe('instrument C — a raw string becomes a brand in a countable number of
     const uriGroup = DECLARED_BARE_STRING_FIELDS.find((group) =>
       group.field.includes('FLOOR_SPRITE_URIS'),
     );
-    expect(uriGroup?.positions.length).toBe(61);
+    expect(uriGroup?.positions.length).toBe(111); // 61 -> 111: P4b, measured.
     const reopened = CLOSED_BARE_STRING_FIELDS.flatMap((group) => [...group.positions]).filter(
       (position) => DECLARED_BARE_STRING_FIELDS.some((group) => group.positions.includes(position)),
     );
@@ -4064,13 +4128,17 @@ const NOT_A_BRANCH_POINT: readonly ExemptLeaf[] = Object.freeze([
     'FLOOR_SIM_LEAVING_OPACITY',
     'A RENDERING OPACITY, in [0, 1], written into a style object for a member that is stepping away from a machine. Drawn, never compared against a caller-supplied value.',
   ),
+  // GDD §5.13 P4b retired the two `using`-pulse knobs (amplitude and
+  // half-cycle) with the pulse itself — the sprite-level rep cycle is the
+  // working read now — so their exempt rows go with them, the same way Phase
+  // 4 retired the placeholder-body sizing rows.
   ...exemptTable(
-    'FLOOR_SIM_USING_PULSE_AMPLITUDE_PIXELS',
-    'A RENDERING DIMENSION — the top of the `using` pulse\'s interpolation range, applied as an additive `translateY`. The same class as AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS above, and additive on top of it.',
+    'FLOOR_SIM_USING_ANCHOR_BIAS',
+    'THREE RENDERING FRACTIONS, one per station-use class, in [0, 1] — how far a `using` member\'s DRAWN position is interpolated from its sim use cell toward its station\'s anchor. Multiplied into a draw offset by `FloorGrid.tsx` and compared against nothing; the sim\'s own positions are untouched, per the P4b stanza\'s "renderer only" rule.',
   ),
   ...exemptTable(
-    'FLOOR_SIM_USING_PULSE_HALF_CYCLE_MS',
-    'A RENDERING/TIMING DURATION, the sibling of FLOOR_SIM_MOVE_TWEEN_MS above applied to the `using` pulse instead of the walk tween, listed under this file\'s own rule about arms of one decision.',
+    'FLOOR_SPRITE_REP_FRAME_TICKS',
+    'A SPACING DIVISOR, the sibling of FLOOR_SPRITE_WALK_FRAME_TICKS above applied to the `using` rep cycle instead of the walk — the sim tick divided by it picks a rep frame by parity. Nothing gates an input on it.',
   ),
   ...exemptTable(
     'FLOOR_SIM_HIGHLIGHT_BORDER_WIDTH_PIXELS',
@@ -4635,7 +4703,9 @@ const FIXTURE_LISTS: readonly FixtureList[] = Object.freeze([
     // 233 -> 344: Phase 4's exempt palette leaves widened the SECONDS domain
     // the way this row's own `why` predicts. Measured by running the size
     // assertion.
-    size: 344,
+    // 344 -> 341: P4b's retired pulse half-cycle took its straddle points
+    // with it. Measured the same way.
+    size: 341,
     why: 'One clock per point of the seconds domain, at a fixed skip. Derived, so the seconds domain losing its ceiling this round widened this list without anybody touching it.',
   }),
   Object.freeze({
@@ -4825,12 +4895,12 @@ const EXEMPT_LEAVES_ABOVE_A_CEILING: readonly string[] = Object.freeze([
   // ceiling is low enough that a dwell measured in sim ticks sits above it,
   // which says the two are denominated in different things rather than that
   // anything is wrong.
-  // Phase 3's RENDER half: three millisecond durations above ROSTER_SHAPE's
+  // Phase 3's RENDER half: two millisecond durations above ROSTER_SHAPE's
   // ceiling and below DAY's and COUNT's, which is why they appear here once
-  // rather than three times each.
+  // rather than three times each. (A third, the `using` pulse's 260ms
+  // half-cycle, left this list when P4b retired the pulse.)
   'ROSTER_SHAPE/FLOOR_SIM_MOVE_TWEEN_MS=120',
   'ROSTER_SHAPE/FLOOR_SIM_TICK_INTERVAL_MS=120',
-  'ROSTER_SHAPE/FLOOR_SIM_USING_PULSE_HALF_CYCLE_MS=260',
   'ROSTER_SHAPE/FLOOR_SIM_MAX_RUN_TICKS=20000',
   'ROSTER_SHAPE/FLOOR_SIM_ROUTE_VISIT_BUDGET=4096',
   'ROSTER_SHAPE/FLOOR_SIM_USE_TICKS_BY_TYPE.athlete=22',
@@ -5019,7 +5089,9 @@ const DOMAIN_CENSUS = Object.freeze({
   /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
   // 222 -> 320: the same Phase 4 movement — 102 new exempt leaves less the
   // four retired ones. Measured by running the assertion below.
-  EXEMPT: 321,
+  // 321 -> 323: P4b — four new exempt leaves (rep-frame divisor, three
+  // anchor-bias fractions) minus the two retired pulse leaves. Measured.
+  EXEMPT: 323,
   // 154 -> 196: the same 42 new leaves. 251 -> 264: the same 13 new leaves.
   // 264 -> 266: the same 2 new leaves.
   // 266 -> 273: the same 7 new leaves.
@@ -5036,7 +5108,8 @@ const DOMAIN_CENSUS = Object.freeze({
   // an `exemptTable` row (paint and fixed art scales, drawn and never
   // compared against a caller-supplied value). Measured by running the
   // assertion below.
-  TUNING_NUMERIC_LEAVES: 409,
+  // 409 -> 411: P4b, same net +2 as EXEMPT above. Measured.
+  TUNING_NUMERIC_LEAVES: 411,
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -5057,7 +5130,8 @@ const DOMAIN_CENSUS = Object.freeze({
   /** Distinct labels in `EVERY_BRANCH_POINT`: filed plus derived plus exempt. */
   // 312 -> 410: the same Phase 4 movement, measured by running the
   // assertion below.
-  BRANCH_POINTS: 411,
+  // 411 -> 413: P4b, measured off this assertion.
+  BRANCH_POINTS: 413,
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -5078,7 +5152,7 @@ const DOMAIN_CENSUS = Object.freeze({
   // Phase 4 (1636 -> 2125): the same shape — every new exempt leaf is a new
   // `required` obligation in whichever domains do not already carry it.
   // Read from this pin's own failure value.
-CONTAINMENT_CHECKS: 2131,
+CONTAINMENT_CHECKS: 2144, // 2131 -> 2144: P4b, measured off this assertion.
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -5119,7 +5193,11 @@ CONTAINMENT_CHECKS: 2131,
     // 108 -> 207: GDD §5.13 presentation Phase 4's 99 palette components,
     // every one at or above 20 and so above ROSTER_SHAPE's ceiling. Measured
     // by running the assertion.
-    ROSTER_SHAPE: 207,
+    // 207 -> 206: P4b retired the `using` pulse and its 260ms half-cycle
+    // with it; its four new leaves (a rep-frame divisor of 1 and three
+    // anchor-bias fractions at or below 1) all sit below every ceiling.
+    // Measured by running the assertion and reading its failure value.
+    ROSTER_SHAPE: 206,
   }),
   /**
    * Module-level `readonly number[]` declarations in this file.
@@ -5163,15 +5241,17 @@ CONTAINMENT_CHECKS: 2131,
   // Phase 4: 939 -> 1491, read the same way — the RGB components are mostly
   // new distinct values, which is why this grows faster here than in earlier
   // rounds of single scalars.
-  NUMBER_CONTAINMENT_CHECKS: 1491,
+  // 1491 -> 1476: P4b — the retired 260ms leaf took its straddle points
+  // with it and the new fractions mostly landed on existing points. Measured.
+  NUMBER_CONTAINMENT_CHECKS: 1476,
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 297 -> 300, read the same way.
   // Phase 4: 300 -> 405, read the same way.
-  NUMBER_POINTS: 405,
+  NUMBER_POINTS: 402, // 405 -> 402: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 230 -> 233, read the same way.
   // Phase 4: 233 -> 344, read from this pin's own failure value.
-  SECONDS_POINTS: 344,
+  SECONDS_POINTS: 341, // 344 -> 341: P4b, measured off this assertion.
   // 74 -> 76: GDD §5.13 presentation Phase 2's exempt tuning leaves widened
   // the COUNT domain by two points, cross-checked directly against
   // `NUMERIC_DOMAINS.COUNT.points.length` by running the assertion below.
@@ -5185,16 +5265,16 @@ CONTAINMENT_CHECKS: 2131,
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 80 -> 83, read the same way.
   // Phase 4: 83 -> 196, read from this pin's own failure value.
-  DAY_POINTS: 196,
+  DAY_POINTS: 193, // 196 -> 193: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 84 -> 87, read the same way.
   // Phase 4: 87 -> 197, read from this pin's own failure value — the RGB
   // components are mostly distinct new values at or under COUNT's ceiling.
-  COUNT_POINTS: 197,
+  COUNT_POINTS: 194, // 197 -> 194: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3 (floorSim.ts): read from this pin's own failure value.
   // Phase 3's RENDER half: 216 -> 219, read the same way.
   // Phase 4: 219 -> 331, read from this pin's own failure value.
-  LEVEL_POINTS: 331,
+  LEVEL_POINTS: 328, // 331 -> 328: P4b, measured off this assertion.
   // Phase 4: 17 -> 18 — FLOOR_SPRITE_NATIVE_PIXELS_PER_TILE=14 arrives as a
   // foreign point under the roster ceiling. Read from this pin's own failure.
   ROSTER_SHAPE_POINTS: 18,
@@ -6807,6 +6887,12 @@ function driveEverything(): readonly DrivenRow[] {
   {
     drive('FLOOR_SPRITE_POSES', 'value', () => floorSpritesModule.FLOOR_SPRITE_POSES);
     drive('FLOOR_SPRITE_FACINGS', 'value', () => floorSpritesModule.FLOOR_SPRITE_FACINGS);
+    drive(
+      'FLOOR_STATION_USE_CLASSES',
+      'value',
+      () => floorSpritesModule.FLOOR_STATION_USE_CLASSES,
+    );
+    drive('FLOOR_STATION_USE_CLASS', 'value', () => floorSpritesModule.FLOOR_STATION_USE_CLASS);
     drive('FLOOR_SPRITE_GRIDS', 'value', () => floorSpritesModule.FLOOR_SPRITE_GRIDS);
     drive('FLOOR_SPRITE_URIS', 'value', () => floorSpritesModule.FLOOR_SPRITE_URIS);
     drive('FLOOR_SPRITE_PALETTES', 'value', () => floorSpritesModule.FLOOR_SPRITE_PALETTES);
@@ -7922,10 +8008,13 @@ const OVERFLOW_SUBJECTS: readonly OverflowSubject[] = Object.freeze([
 // Phase 3's RENDER half's twelve new exempt leaves widened them again:
 // COUNT 832 -> 862, DAY 13382 -> 13889, ROSTER_SHAPE 91630 -> 92548. Measured
 // by running the assertion below rather than derived.
+// P4b moved every row again (retired pulse leaves, new sub-ceiling knobs):
+// COUNT 1962 -> 1932, DAY 32986 -> 32479, ROSTER_SHAPE 132336 -> 131364.
+// Measured by running the assertion below rather than derived.
 const MAIN_DRIVE_ROWS_BY_AXIS: Readonly<Record<string, number>> = Object.freeze({
-  COUNT: 1962,
-  DAY: 32986,
-  ROSTER_SHAPE: 132336,
+  COUNT: 1932,
+  DAY: 32479,
+  ROSTER_SHAPE: 131364,
 });
 
 /**
@@ -8358,7 +8447,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // ceiling). Re-measured by running this assertion.
   // Phase 4: 236 -> 335, the 99 dropped palette components. Read from this
   // pin's own failure value.
-  POINTS: 335,
+  POINTS: 334, // 335 -> 334: P4b retired the 260ms overflow point. Measured.
   /** Of those, how many at least one subject was driven at. */
   // Tracks POINTS 1:1 again (218), confirmed by running the assertion below
   // rather than assumed. PLAYTEST 4: tracks POINTS 1:1 again (222), confirmed
@@ -8368,7 +8457,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // Phase 3's RENDER half: tracks POINTS 1:1 again (236), confirmed by
   // running this exact assertion.
   // Phase 4: 236 -> 335, the palette components above the ceilings.
-  POINTS_DRIVEN: 335,
+  POINTS_DRIVEN: 334, // 335 -> 334: P4b, with POINTS above. Measured.
   SUBJECTS: 49,
   FLAT_SUBJECTS: 11,
   ARGUMENT_HEAVY_SUBJECTS: 23,
@@ -8395,7 +8484,7 @@ const OVERFLOW_CENSUS = Object.freeze({
   // a real failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (3562 -> 3631).
   // Phase 4: read from this pin's own failure value.
-  PAIRS_DRIVEN: 5908,
+  PAIRS_DRIVEN: 5885, // 5908 -> 5885: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3: PAIRS_SKIPPED re-measured (495 -> 517),
   // a real failure value this round's own run produced.
   PAIRS_SKIPPED: 517,
@@ -8463,19 +8552,19 @@ const OVERFLOW_CENSUS = Object.freeze({
   // assertion and reading its failure value.
   // Phase 4: the ceilings drop 99 more points (the palette components), each
   // driven here. Read from this pin's own failure value.
-  ROWS: 6740,
+  ROWS: 6717, // 6740 -> 6717: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3: re-measured (942486 -> 947983), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (947983 -> 960248).
-  NODES: 1207627,
+  NODES: 1201392, // 1207627 -> 1201392: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3: re-measured (6413124 -> 6446099), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (6446099 -> 6540148).
-  STRINGS: 8384837,
+  STRINGS: 8336314, // 8384837 -> 8336314: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3: re-measured (4366 -> 4378), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (4378 -> 4381).
-  DISTINCT_STRINGS: 4537,
+  DISTINCT_STRINGS: 4534, // 4537 -> 4534: P4b, measured off this assertion.
   DEPTH_CUTS: 0,
   GETTER_THROWS: 0,
   /**
@@ -8533,7 +8622,9 @@ const OVERFLOW_CENSUS = Object.freeze({
   // Phase 3's RENDER half: re-measured (464 -> 488). The overflow pass sees
   // FloorGrid's new render closures at every dropped point it drives, and
   // declines them for the same reason it declined the others.
-  CLOSURES_DECLINED: 1280,
+  // P4b: re-measured (1280 -> 1272), one dropped point fewer (the retired
+  // pulse half-cycle) at the same per-point closure count.
+  CLOSURES_DECLINED: 1272,
   /** The zero this pass exists for, and the tripwire below is what it is zero against. */
   BANNED_EQUAL: 0,
   BANNED_CONTAINED: 0,
@@ -8573,7 +8664,9 @@ const OVERFLOW_ARM_CENSUS: readonly (readonly [string, number])[] = Object.freez
   // 98 -> 105: GDD §5.13 presentation Phase 3's seven more dropped
   // ROSTER_SHAPE points (the two FLOOR_SIM guards and the five per-type use
   // durations), refused the same way. Measured by running this assertion.
-  ['beginRecruitment#refused', 207],
+  // 207 -> 206: P4b's registry-domain shift (one fewer overflow point).
+  // Measured off this assertion.
+  ['beginRecruitment#refused', 206],
   // Six of the eight visit rows per day are refused by construction: the
   // player's own gym, a gym that is not a friend, and a friend already visited
   // on the day being driven. The other two are the arm that matters.
@@ -8894,7 +8987,7 @@ const DRIVE_CENSUS = Object.freeze({
   // Phase 4: the registry-derived domains widened (405 NUMBER points against
   // 300), so every numeric axis drives more rows, and the five floorSprites
   // constants add five read rows. Read from this pin's own failure value.
-  ROWS: 588919,
+  ROWS: 581852, // 588919 -> 581852: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -8903,7 +8996,8 @@ const DRIVE_CENSUS = Object.freeze({
   // SURFACE_CENSUS.EXPORTS 1:1 again (310 -> 311,
   // FLOOR_SIM_INTERRUPTIBLE_STATES).
   // Phase 4: +5, the five floorSprites.ts constants read above.
-  EXPORTS_DRIVEN: 316,
+  // 316 -> 318: P4b's two new floorSprites exports, driven above. Measured.
+  EXPORTS_DRIVEN: 318,
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -8922,7 +9016,7 @@ const DRIVE_CENSUS = Object.freeze({
   // Phase 3's RENDER half: re-measured (3675966 -> 3783596).
   // Phase 4: the wider domains multiply the walk, and the sprite tables'
   // sixty-one grids are read node by node. Read from this pin's own failure.
-  NODES: 6522285,
+  NODES: 6411086, // 6522285 -> 6411086: P4b, measured off this assertion.
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -8940,7 +9034,7 @@ const DRIVE_CENSUS = Object.freeze({
   // 16900230), a real failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (16900230 -> 17409837).
   // Phase 4: read from this pin's own failure value.
-  STRINGS: 30120956,
+  STRINGS: 29598067, // P4b, measured off this assertion.
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -8957,7 +9051,7 @@ const DRIVE_CENSUS = Object.freeze({
   // lead, from this pin's own failure value — the builder that authored the
   // sprite pass was killed mid-cascade by a session limit and this pin lagged
   // its final edit by one distinct string.
-  DISTINCT_STRINGS: 3464,
+  DISTINCT_STRINGS: 3504, // 3464 -> 3504: P4b, measured off this assertion.
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -9049,7 +9143,7 @@ const DRIVE_CENSUS = Object.freeze({
   // Phase 3's RENDER half: re-measured (4530 -> 4569).
   // Phase 4: the wider domains produce more met stacks. Read from this
   // pin's own failure value.
-  STACKS: 5954,
+  STACKS: 5915, // 5954 -> 5915: P4b, measured off this assertion.
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -9716,7 +9810,7 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   // millisecond points, so five arm counts rose with the domain rather than
   // with any change to the functions themselves. Each was re-measured by
   // running this assertion and reading its failure value.
-  ['buyLadderEquipment#bought', 3636],
+  ['buyLadderEquipment#bought', 3624],
   // The ROSTER_SHAPE domain widened by members.ts's five new distinct dues
   // values (§5.11 stage 3) independently of GDD §5.13 presentation Phase 1's
   // 42 new exempt tuning leaves widening it again — every arm count driven
@@ -9729,15 +9823,15 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   // PLAYTEST 4's eight new exempt tuning leaves widened the domains again,
   // moving four of these arms further — measured by running this exact
   // assertion rather than derived.
-  ['buyLadderEquipment#refused', 15804],
+  ['buyLadderEquipment#refused', 15672],
   ['buySessionEquipment#bought', 76],
   ['buySessionEquipment#refused', 260],
   ['moveUpLadder#moved', 759],
-  ['moveUpLadder#refused', 4101],
+  ['moveUpLadder#refused', 4065],
   ['placeFloorItem#placed', 2],
   ['placeFloorItem#refused', 3],
-  ['recordFriendVisit#refused', 1178],
-  ['recordFriendVisit#visited', 390],
+  ['recordFriendVisit#refused', 1160],
+  ['recordFriendVisit#visited', 384],
 ]);
 
 /**
@@ -12804,7 +12898,10 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // `memberPose`'s two arms and one fall-through, and `memberFacing`'s
       // two (with `fixedSpriteUriFor`'s single return read off this table's
       // own failure value alongside them).
-      'FloorGrid.tsx': 21,
+      // 21 -> 28: P4b — stationUseClassFor's two returns, stationAnchor's
+      // one, memberDrawPoint's two, memberFacing's third arm, and the member
+      // .map callback converted to a block body with an explicit return.
+      'FloorGrid.tsx': 28,
       // CROSSING 6: GymScreen.tsx's own two helper functions
       // (`allocationOptions`, `describeSlotOutcome`, the latter with three
       // return statements across its three arms) plus the component's own
@@ -12835,7 +12932,9 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // statements across its parse/render/mirror/upscale/encode helpers,
       // the seventeen ops builders and the table construction. Read from
       // this table's own failure value.
-      'floorSprites.ts': 43,
+      // 43 -> 50: P4b — three using-pose ops builders, usingBaseGrid, and
+      // memberGrid's three new early returns. Read off this table's failure.
+      'floorSprites.ts': 50,
       'ladder.ts': 25,
       // members.ts's 13 return statements (§5.11 stage 3).
       'members.ts': 13,
@@ -12874,7 +12973,8 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // GDD §5.13 presentation Phase 4: floorSprites.ts's five exported
       // const bindings — the pose/facing vocabularies and the three frozen
       // sprite tables.
-      'floorSprites.ts': 5,
+      // 5 -> 7: P4b, read off this table's own failure value.
+      'floorSprites.ts': 7,
       'ladder.ts': 1,
       'production.ts': 1,
       'recruitment.ts': 2,
@@ -13374,12 +13474,17 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // fresh at every call by construction. Line-number keyed, like every row
   // here, so an edit that moves the file reshapes these rows and this list
   // is re-measured rather than hand-shifted.
-  'floorSprites.ts:242 receiver=NewExpression',
-  'floorSprites.ts:288 receiver=NewExpression',
-  'floorSprites.ts:301 receiver=NewExpression',
-  // :812 -> :833 — the mats contrast touch (the opsMats checker) added 21
-  // lines above the CRC-table arrow. Re-measured, per this list's own rule.
-  'floorSprites.ts:833 callee=fresh:ArrowFunction',
+  // :242/:288/:301 -> :318/:371/:384, and :833 -> :1043 — P4b's pose
+  // vocabulary, class table and using-pose draw programs sit above all four
+  // sites. Re-measured, per this list's own rule. (The sort is lexical,
+  // which is why the four-digit row files before :318.)
+  // :1043 -> :1080: the bench pose rotated along the slab — `opsUsingBench`'s
+  // longer draw program and its orientation comment sit above the arrow.
+  // Re-measured, per this list's own rule.
+  'floorSprites.ts:1080 callee=fresh:ArrowFunction',
+  'floorSprites.ts:318 receiver=NewExpression',
+  'floorSprites.ts:371 receiver=NewExpression',
+  'floorSprites.ts:384 receiver=NewExpression',
   'ladder.ts:333 receiver=ArrayLiteralExpression',
   'ladderView.tsx:115 returned=unfollowable:state',
   'ladderView.tsx:123 returned=unfollowable:state',
@@ -13566,7 +13671,11 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 1116 -> 1115: the mats contrast touch — opsMats dropped its `hatch` call
   // (6 fill/hatch calls to module functions became 5 fill). Read from this
   // pin's own failure value, then attributed by hand-count.
-  function: 1115,
+  // 1115 -> 1160 / 1129 -> 1162: P4b, measured off this assertion.
+  // 1160 -> 1163: the bench pose rotated along the slab — `opsUsingBench`'s
+  // three extra `fill` calls (12 -> 15). Read from this pin's own failure
+  // value, then attributed by hand-count against the diff.
+  function: 1163,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -13578,7 +13687,10 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // and four new `Math.max`/`Math.min` calls clamping the checker squares to
   // the outline ring. Read from this pin's own failure value, then
   // attributed by hand-count.
-  member: 1129,
+  // 1162 -> 1165: the bench pose rotated along the slab — `opsUsingBench`'s
+  // three extra `ops.push` calls (12 -> 15). Read from this pin's own
+  // failure value, then attributed by hand-count against the diff.
+  member: 1165,
   'member-callback': 12,
   'member-of-parameter': 21,
   // Phase 4: FLOOR_SPRITE_PALETTES' construction calls a fresh arrow (the
@@ -13628,7 +13740,12 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // which `writtenMember` never counts. `parameter` and `module-variable`
   // stay at zero, same as every round. Read from this pin's own failure
   // value, then attributed by hand-count.
-  local: 328,
+  // 328 -> 359: P4b's using-pose draw programs and the FloorGrid station
+  // lookup are new locals. Measured off this assertion.
+  // 359 -> 362: the bench pose rotated along the slab — three more
+  // `ops.push` mutating calls on `opsUsingBench`'s own local (12 -> 15).
+  // Read from this pin's own failure value, then attributed by hand-count.
+  local: 362,
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -13685,7 +13802,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // failure value.
   // Phase 4: floorSprites.ts's sites across the return/exported-binding/
     // member-call rows. Read from this pin's own failure value.
-    SITES: 606,
+    // 606 -> 622: P4b — FloorGrid.tsx +7 returns, floorSprites.ts +7
+  // returns and +2 fresh sites, per the byModule rows above. Measured.
+  SITES: 622,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -13727,7 +13846,12 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 50_766 -> 50_848: the mats contrast touch — opsMats's checker loops are
   // 82 AST nodes the flat field and seam hatch were not. Read from this
   // pin's own failure value.
-  NODES_EXAMINED: 50_848,
+  // 50_848 -> 52_002: P4b, measured off this assertion (re-measured after
+  // the rep-frame parameters became booleans).
+  // 52_002 -> 52_058: the bench pose rotated along the slab —
+  // `opsUsingBench`'s three extra fill/push pairs and one more local
+  // (`bodyX`) are 56 AST nodes. Read from this pin's own failure value.
+  NODES_EXAMINED: 52_058,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -13807,7 +13931,7 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // GDD §5.13 Phase 3, the route-blocked round: read from this pin's own failure value.
   // Phase 4: floorSprites.ts's nine exported positions (five values, read
   // through their structural types). Read from this pin's own failure value.
-  POSITIONS: 750,
+  POSITIONS: 753, // 750 -> 753: P4b, measured off this assertion.
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -15187,9 +15311,12 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // domain 132 -> 242, ROSTER_SHAPE 85 -> 138 — and every subject's
   // call/record counts with them. Re-measured by running the assertion
   // below, not derived.
+  // P4b: the retired pulse leaves narrowed them slightly — NUMBER 405 -> 402,
+  // the engagement domain 242 -> 239, ROSTER_SHAPE 138 -> 137 — and every
+  // count below moved with them. Re-measured the same way.
   'FloorGrid.tsx#FloorGrid#props#owned': Object.freeze({
-    points: 405,
-    refusedPoints: 405,
+    points: 402,
+    refusedPoints: 402,
     calls: 0,
     recorded: 0,
   }),
@@ -15198,46 +15325,46 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   // constant callsAt (does not vary with the point), so the same domain
   // produces the same points/calls/recorded on the ported screen.
   'GymScreen.tsx#GymScreen#props.dispatch#gymBucks': Object.freeze({
-    points: 405,
+    points: 402,
     refusedPoints: 0,
-    calls: 14175,
-    recorded: 14175,
+    calls: 14070,
+    recorded: 14070,
   }),
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
-    points: 242,
+    points: 239,
     refusedPoints: 1,
-    calls: 1140386,
-    recorded: 1140386,
+    calls: 1139606,
+    recorded: 1139606,
   }),
   'engagement.ts#historyFrom#attended#trainedDays': Object.freeze({
-    points: 242,
+    points: 239,
     refusedPoints: 0,
-    calls: 726,
-    recorded: 726,
+    calls: 717,
+    recorded: 717,
   }),
   'ladderView.tsx#GymView#props.dispatch#gymBucks': Object.freeze({
-    points: 405,
+    points: 402,
     refusedPoints: 0,
-    calls: 14175,
-    recorded: 14175,
+    calls: 14070,
+    recorded: 14070,
   }),
   'ladderView.tsx#LadderView#props.dispatch#gymBucks': Object.freeze({
-    points: 405,
+    points: 402,
     refusedPoints: 0,
-    calls: 2025,
-    recorded: 2025,
+    calls: 2010,
+    recorded: 2010,
   }),
   'production.ts#gymBucksRatePerHour#roster.gymBucksPerHour#rosterSize': Object.freeze({
-    points: 138,
+    points: 137,
     refusedPoints: 0,
-    calls: 1123913,
-    recorded: 2247826,
+    calls: 1123653,
+    recorded: 2247306,
   }),
   'production.ts#trainingIqRatePerDay#roster.trainingIqPerDay#rosterSize': Object.freeze({
-    points: 138,
+    points: 137,
     refusedPoints: 0,
-    calls: 1123913,
-    recorded: 2247826,
+    calls: 1123653,
+    recorded: 2247306,
   }),
 });
 
@@ -15295,21 +15422,21 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (1614 -> 1634).
   // Phase 4: re-measured (1634 -> 2380), read from this pin's own failure.
-  POINTS: 2380,
+  POINTS: 2360, // 2380 -> 2360: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3: re-measured (288 -> 298), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (298 -> 301).
   // Phase 4: re-measured (301 -> 406), read from this pin's own failure.
-  REFUSED_POINTS: 406,
+  REFUSED_POINTS: 403, // 406 -> 403: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3: re-measured (3310026 -> 3383424), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (3383424 -> 3384958).
   // Phase 4: read from this pin's own failure value.
-      CALLS: 3419313,
+      CALLS: 3417779, // 3419313 -> 3417779: P4b, measured off this assertion.
   // GDD §5.13 presentation Phase 3: re-measured (5496920 -> 5618662), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (5618662 -> 5620716).
-  RECORDED: 5667139,
+  RECORDED: 5665085, // P4b, measured off this assertion.
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,
@@ -17809,7 +17936,8 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // GDD §5.13 Phase 3, the route-blocked round: read from this pin's own failure value.
   // 194 -> 195: Phase 3's RENDER half adds `FloorTilePoint` in FloorGrid.tsx.
   // Phase 4: floorSprites.ts's type declarations join the walk.
-  DECLARATIONS: 206,
+  // 206 -> 207: P4b's FloorStationUseClass declaration. Measured.
+  DECLARATIONS: 207,
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,
@@ -18336,7 +18464,14 @@ const DECLARED_AMBIENT_MEMBER_BODY_PROPS: readonly AmbientPropReading[] = Object
     name: 'interruptedBy',
     shape: 'union["route-blocked"|"target-moved"|"target-removed"|null]',
   }),
-  Object.freeze({ name: 'pose', shape: 'union["stand"|"step-a"|"step-b"|"using"]' }),
+  // P4b: the pose union carries the six station-class rep frames in place of
+  // the one generic `using` — nine literals, still a closed vocabulary, still
+  // no bare number, object or callable.
+  Object.freeze({
+    name: 'pose',
+    shape:
+      'union["stand"|"step-a"|"step-b"|"using-bar-a"|"using-bar-b"|"using-bench-a"|"using-bench-b"|"using-generic-a"|"using-generic-b"]',
+  }),
   Object.freeze({ name: 'position', shape: 'object{x:number,y:number}' }),
   Object.freeze({
     name: 'state',

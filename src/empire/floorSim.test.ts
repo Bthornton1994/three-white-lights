@@ -738,12 +738,14 @@ describe('the Phase 3 tuning block is shaped the way `floorSim.ts` reads it', ()
     const block = Object.keys(T).filter((key) => key.startsWith('FLOOR_SIM_'));
     // 13 -> 25: the `FLOOR_SIM_` prefix is TWO blocks since Phase 3's render
     // half landed — thirteen entries this module reads, denominated in sim
-    // ticks and grid tiles, and twelve the renderer reads, denominated in
-    // milliseconds and pixels. `empireTuning.ts` says exactly that in the two
-    // block comments ("Read by `floorSim.ts` only", "Read by `FloorGrid.tsx`
-    // only"), and the partition below is what holds that sentence to it
-    // rather than leaving it as prose.
-    expect(block.length).toBe(25);
+    // ticks and grid tiles, and the rest the renderer reads, denominated in
+    // milliseconds, pixels and draw fractions. `empireTuning.ts` says exactly
+    // that in the two block comments ("Read by `floorSim.ts` only", "Read by
+    // `FloorGrid.tsx` only"), and the partition below is what holds that
+    // sentence to it rather than leaving it as prose.
+    // 25 -> 24: P4b retired the two `using`-pulse knobs and added the
+    // renderer-side FLOOR_SIM_USING_ANCHOR_BIAS. Measured off this assertion.
+    expect(block.length).toBe(24);
     const guards = block.filter((key) => key.endsWith('BUDGET') || key.endsWith('MAX_RUN_TICKS'));
     expect(guards.sort()).toEqual(['FLOOR_SIM_MAX_RUN_TICKS', 'FLOOR_SIM_ROUTE_VISIT_BUDGET']);
     // And both guards are on the sim's side of the split, which is what makes
@@ -769,7 +771,9 @@ describe('the Phase 3 tuning block is shaped the way `floorSim.ts` reads it', ()
     const block = Object.keys(T).filter((key) => key.startsWith('FLOOR_SIM_'));
     const readByTheRenderer = block.filter((key) => namedIn(FLOOR_GRID_SOURCE).has(key));
     expect(readByTheSim.length).toBe(13);
-    expect(readByTheRenderer.length).toBe(12);
+    // 12 -> 11: P4b — the two pulse knobs left the renderer block and the
+    // anchor-bias table joined it. Measured off this assertion.
+    expect(readByTheRenderer.length).toBe(11);
     expect([...readByTheSim, ...readByTheRenderer].sort()).toEqual([...block].sort());
     for (const key of readByTheSim) {
       expect(readByTheRenderer, `${key} is read by both modules`).not.toContain(key);

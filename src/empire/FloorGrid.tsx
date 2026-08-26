@@ -115,7 +115,9 @@
  * 3. THE FIVE STATES, drawn apart. A cue bubble above the head carries the
  *    state as a colour and, while a member is `interrupted`, the cause as a
  *    glyph in a larger bubble — GDD §5.13's own "RCT's thought-bubble
- *    pattern". `using` adds a faster rep pulse, `leaving` drops to
+ *    pattern". `using` swaps the body to a station-class working pose with a
+ *    two-frame rep cycle and pulls the drawn position onto the station's own
+ *    anchor (P4b), `leaving` drops to
  *    `FLOOR_SIM_LEAVING_OPACITY`, and a member the sim reports as stranded
  *    holds a ring for as long as `strandedAt` is set. The station being
  *    walked to or used is outlined on the floor in the matching colour.
@@ -154,7 +156,9 @@ import {
   type FixedFurnitureItem,
   type FloorSpriteFacing,
   type FloorSpritePose,
+  type FloorStationUseClass,
   FLOOR_SPRITE_URIS,
+  FLOOR_STATION_USE_CLASS,
 } from './floorSprites';
 import {
   type FloorState,
@@ -173,6 +177,8 @@ import {
   type FloorSimMember,
   type FloorSimMemberState,
   type FloorSimState,
+  type FloorStation,
+  type FloorStationRef,
   createFloorSimState,
   floorSimStateCounts,
   floorStations,
@@ -353,29 +359,123 @@ function memberTilePoint(member: FloorSimMember): FloorTilePoint {
 }
 
 /**
- * GDD §5.13 presentation Phase 4: which sprite pose a sim member is drawn in
- * this instant. Working stance while `using`; the two-frame walk while a step
- * is in flight, alternated from the sim's own tick (offset by the member's
- * index so a crowd does not march in lockstep) — deterministic, no clock and
- * no dice, per the directory's own rules; standing otherwise. The five sim
- * states keep their distinct cue bubbles regardless of pose.
+ * GDD §5.13 P4b: which use class a station draws on the member working it.
+ * Read from `floorSprites.ts`'s own total tables; the `hasOwnProperty` guard
+ * on the fixed arm mirrors `fixedSpriteUriFor` below — a future ladder item
+ * with no row falls back to the engaged generic stance rather than throwing.
+ */
+function stationUseClassFor(ref: FloorStationRef): FloorStationUseClass {
+  if (ref.kind === 'session') return FLOOR_STATION_USE_CLASS.session[ref.item];
+  return Object.prototype.hasOwnProperty.call(FLOOR_STATION_USE_CLASS.fixed, ref.item)
+    ? FLOOR_STATION_USE_CLASS.fixed[ref.item as FixedFurnitureItem]
+    : 'generic';
+}
+
+/** The two rep-cycle frames of each use class, as pose names the sprite table is keyed by. */
+const USING_POSE: Readonly<
+  Record<FloorStationUseClass, { readonly a: FloorSpritePose; readonly b: FloorSpritePose }>
+> = Object.freeze({
+  bench: Object.freeze({ a: 'using-bench-a', b: 'using-bench-b' }),
+  bar: Object.freeze({ a: 'using-bar-a', b: 'using-bar-b' }),
+  generic: Object.freeze({ a: 'using-generic-a', b: 'using-generic-b' }),
+});
+
+/**
+ * GDD §5.13 presentation Phase 4 (extended by P4b): which sprite pose a sim
+ * member is drawn in this instant. While `using`, the station's own use
+ * class picks the body (bench / bar / generic) and the two-frame rep cycle
+ * alternates from the sim's own tick at `FLOOR_SPRITE_REP_FRAME_TICKS` —
+ * faster than the walk cycle's `FLOOR_SPRITE_WALK_FRAME_TICKS`, which is the
+ * "working a set" read the P4b ruling asks for. The walk alternates the two
+ * step frames while a step is in flight; standing otherwise. Everything is
+ * offset by the member's index so a crowd does not march or rep in lockstep,
+ * and everything is deterministic from the tick — no clock and no dice, per
+ * the directory's own rules. The five sim states keep their distinct cue
+ * bubbles regardless of pose.
  */
 function memberPose(member: FloorSimMember, tick: number): FloorSpritePose {
-  if (member.state === 'using') return 'using';
+  if (member.state === 'using' && member.target !== null) {
+    const poses = USING_POSE[stationUseClassFor(member.target)];
+    const rep = Math.floor(tick / EMPIRE_TUNING.FLOOR_SPRITE_REP_FRAME_TICKS) + member.index;
+    return rep % 2 === 0 ? poses.a : poses.b;
+  }
   if (member.next === null) return 'stand';
   const frame = Math.floor(tick / EMPIRE_TUNING.FLOOR_SPRITE_WALK_FRAME_TICKS) + member.index;
   return frame % 2 === 0 ? 'step-a' : 'step-b';
 }
 
 /**
- * Phase 4: sprite facing, from the step in flight alone. A member stepping
- * leftward mirrors; everything else (standing, vertical steps) faces right.
+ * Where the middle of a member's own drawn footprint would sit if it were
+ * centred on `station`'s box, in tiles — the anchor the P4b coupling pulls a
+ * `using` member toward.
+ *
+ * What the mechanism actually guarantees, in its own terms: within one
+ * render, the `station` argument arrives through `stationByRefKey`, which is
+ * rebuilt each render from the same `floorStations(simContext)` call the sim
+ * is stepped against, and this function derives the anchor from that
+ * station's own `position`/`footprint` plus two registered constants — so in
+ * the code as written there is no cached or copied station table for the
+ * drawn anchor to disagree with. The route past it: a future edit that
+ * stores stations across renders (a `useRef`/`useState` cache, a
+ * module-level memo) or hands `memberDrawPoint` a station from anywhere
+ * else would decouple the anchor from the sim's truth without a type
+ * changing. No test reddens on that edit as such; the nearest instrument is
+ * `tools/verify-floor-reachability.mjs`'s coupling claim (a using member's
+ * box must overlap its station's highlight), which fails on a driven run
+ * where the drift exceeds the overlap threshold and is silent on drift
+ * smaller than that. So the sentence above is bounded to the current
+ * derivation, not enforced against future ones.
+ */
+function stationAnchor(station: FloorStation): FloorTilePoint {
+  return {
+    x:
+      station.position.x +
+      (station.footprint.width - EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.width) / 2,
+    y:
+      station.position.y +
+      (station.footprint.height - EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.height) / 2,
+  };
+}
+
+/**
+ * GDD §5.13 P4b: where to DRAW a member this instant. For everything except
+ * `using` it is the sim's own interpolated tile point, exactly as Phase 3
+ * wired it. While `using`, the drawn position is pulled from the sim's use
+ * cell toward the station's anchor by the class's
+ * `FLOOR_SIM_USING_ANCHOR_BIAS` fraction, so the body meets the furniture
+ * (on the bench, under the bar, at the machine face) instead of standing on
+ * the adjacent cell beside a green box. RENDERER ONLY, the same additive
+ * register as the walk tween: the sim's `cell` is never touched, no state is
+ * kept, and the offset exists only while the sim says `using` — the instant
+ * the state changes, the walk tween carries the body back from the anchor to
+ * wherever the sim says it really is.
+ */
+function memberDrawPoint(member: FloorSimMember, station: FloorStation | undefined): FloorTilePoint {
+  const base = memberTilePoint(member);
+  if (member.state !== 'using' || member.target === null || station === undefined) return base;
+  const bias = EMPIRE_TUNING.FLOOR_SIM_USING_ANCHOR_BIAS[stationUseClassFor(member.target)];
+  const anchor = stationAnchor(station);
+  return {
+    x: base.x + (anchor.x - base.x) * bias,
+    y: base.y + (anchor.y - base.y) * bias,
+  };
+}
+
+/**
+ * Phase 4: sprite facing. While `using`, the member faces its station — the
+ * pose is a body working a machine, so it orients toward the anchor it is
+ * drawn against (strictly-left mirrors; ties and everything else keep the
+ * authored right facing). Otherwise, from the step in flight alone: a member
+ * stepping leftward mirrors; standing and vertical steps face right.
  * Stateless on purpose — deriving a persistent facing would mean this file
  * keeping sim-adjacent state of its own, which the Phase 3 wiring rules out.
  * The cost is that a member snaps back to right-facing when it stops, which
  * is a felt nuance for the phone pass to judge.
  */
-function memberFacing(member: FloorSimMember): FloorSpriteFacing {
+function memberFacing(member: FloorSimMember, station: FloorStation | undefined): FloorSpriteFacing {
+  if (member.state === 'using' && station !== undefined) {
+    return stationAnchor(station).x < member.cell.x ? 'left' : 'right';
+  }
   if (member.next !== null && member.next.x < member.cell.x) return 'left';
   return 'right';
 }
@@ -425,10 +525,11 @@ interface AmbientMemberBodyProps {
    */
   readonly stranded: boolean;
   /**
-   * GDD §5.13 presentation Phase 4: which of the four sprite poses to draw —
-   * computed by `FloorGrid` from the sim member (working stance while
-   * `using`, the two-frame walk cycle while a step is in flight, standing
-   * otherwise), so this component stays a pure renderer of what it is told.
+   * GDD §5.13 presentation Phase 4 (P4b): which of the nine sprite poses to
+   * draw — computed by `FloorGrid` from the sim member (a station-class rep
+   * frame while `using`, the two-frame walk cycle while a step is in flight,
+   * standing otherwise), so this component stays a pure renderer of what it
+   * is told.
    */
   readonly pose: FloorSpritePose;
   /** Phase 4: which way the sprite faces — the mirror is baked into the sprite table, not computed here. */
@@ -479,15 +580,17 @@ interface AmbientMemberBodyProps {
  * base position comes from: Phase 2 read a fixed cell out of
  * `ambientMemberRoster`, and Phase 3 reads an interpolated tile point out of
  * `floorSim.ts`, whose own context type carries exactly four presentation
- * inputs and no wallet, no reputation and no streak. The bob, the walk tween
- * and the `using` pulse are three additive transforms on one token; none of
- * them is a game-state input and none of them writes anything.
+ * inputs and no wallet, no reputation and no streak. The bob and the walk
+ * tween are two additive transforms on one token; neither is a game-state
+ * input and neither writes anything. (P4b retired the third — the `using`
+ * pulse — in favour of the sprite-level rep cycle, and the P4b anchor bias
+ * arrives inside `position` itself, computed by `memberDrawPoint` before
+ * this component ever sees it, so the prop surface is unchanged.)
  *
  * The Phase 2 bob's own knobs — `AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS`,
  * `_HALF_CYCLE_MS`, `_STAGGER_LANES`, `_STAGGER_STEP_MS` — are untouched by
  * this round, per GDD §5.13's PLAYTEST 4b ruling that a knob which just
- * passed its gate on no reported complaint does not get retuned. The two new
- * motions are new knobs beside them.
+ * passed its gate on no reported complaint does not get retuned.
  *
  * The bounded version of that claim, in the shape CLAUDE.md's own "Form That
  * Survived" section asks for.
@@ -563,10 +666,9 @@ function AmbientMemberBody({
   const footprintHeight = EMPIRE_TUNING.AMBIENT_MEMBER_FOOTPRINT_TILES.height * tile;
 
   const bob = useRef(new Animated.Value(0)).current;
-  const pulse = useRef(new Animated.Value(0)).current;
 
-  // ONE EFFECT OWNS EVERY LOOPING ANIMATION ON THIS TOKEN, AND ONE CLEANUP
-  // STOPS THEM ALL. That is a structural choice rather than a stylistic one:
+  // ONE EFFECT OWNS THE LOOPING ANIMATION ON THIS TOKEN, AND ONE CLEANUP
+  // STOPS IT. That is a structural choice rather than a stylistic one:
   // `empireForbiddenOutput.test.ts`'s returned-closure census keys a site by
   // its MEMBER PATH, so two `useEffect` cleanups inside one component are two
   // rows carrying the same key, and the seal census pins the number of
@@ -574,12 +676,12 @@ function AmbientMemberBody({
   // cleanups here make those two numbers disagree. One effect keeps the key
   // one-to-one with the site, which is what that census is asking for.
   //
-  // THE COST, stated rather than absorbed: the Phase 2 idle bob now restarts
-  // when this member's state changes, because `state` is a dependency of the
-  // effect the bob shares. A restart resets the bob to the bottom of its
-  // 2-pixel travel and re-runs its lane delay. Its knobs are untouched, per
-  // GDD §5.13's PLAYTEST 4b ruling; what changed is when the loop begins, and
-  // a state change is a few times a minute per member.
+  // THE `using` PULSE THAT USED TO SHARE THIS EFFECT IS GONE, AND ITS TWO
+  // KNOBS RETIRED WITH IT — GDD §5.13's P4b ruling replaces the pulse bob
+  // with the sprite-level rep cycle (`FLOOR_SPRITE_REP_FRAME_TICKS`) as the
+  // "working a set" read. The Phase 2 idle bob stays for every state,
+  // untouched per PLAYTEST 4b's ruling, and no longer restarts on a state
+  // change: with the pulse gone, `state` is no longer a dependency here.
   useEffect(() => {
     const lane = index % EMPIRE_TUNING.AMBIENT_MEMBER_BOB_STAGGER_LANES;
     const delay = lane * EMPIRE_TUNING.AMBIENT_MEMBER_BOB_STAGGER_STEP_MS;
@@ -600,46 +702,14 @@ function AmbientMemberBody({
     );
     bobLoop.start();
 
-    // GDD §5.13 presentation Phase 3 — THE REP PULSE. A second, faster
-    // additive bob that runs only while this member is `using`, so "on the
-    // machine" has a motion signature of its own and not only a cue colour.
-    const pulseLoop =
-      state === 'using'
-        ? Animated.loop(
-            Animated.sequence([
-              Animated.timing(pulse, {
-                toValue: 1,
-                duration: EMPIRE_TUNING.FLOOR_SIM_USING_PULSE_HALF_CYCLE_MS,
-                useNativeDriver: false,
-              }),
-              Animated.timing(pulse, {
-                toValue: 0,
-                duration: EMPIRE_TUNING.FLOOR_SIM_USING_PULSE_HALF_CYCLE_MS,
-                useNativeDriver: false,
-              }),
-            ]),
-          )
-        : null;
-    if (pulseLoop === null) {
-      pulse.setValue(0);
-    } else {
-      pulseLoop.start();
-    }
-
     return () => {
       bobLoop.stop();
-      if (pulseLoop !== null) pulseLoop.stop();
     };
-  }, [bob, pulse, index, state]);
+  }, [bob, index]);
 
   const bobTranslateY = bob.interpolate({
     inputRange: [0, 1],
     outputRange: [0, EMPIRE_TUNING.AMBIENT_MEMBER_BOB_AMPLITUDE_PIXELS],
-  });
-
-  const pulseTranslateY = pulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, EMPIRE_TUNING.FLOOR_SIM_USING_PULSE_AMPLITUDE_PIXELS],
   });
 
   // GDD §5.13 presentation Phase 3 — THE WALK. The sim advances a member by a
@@ -691,14 +761,14 @@ function AmbientMemberBody({
         // `leaving` is the one state drawn at less than full strength — a
         // member that has finished with a machine and is stepping away.
         opacity: state === 'leaving' ? EMPIRE_TUNING.FLOOR_SIM_LEAVING_OPACITY : 1,
-        // Three additive transforms: the tweened walk, the Phase 2 idle bob,
-        // and the `using` pulse. `left`/`top` stay at zero so the walk owns
-        // the whole position and the two bobs ride on top of it.
+        // Two additive transforms: the tweened walk and the Phase 2 idle
+        // bob. `left`/`top` stay at zero so the walk owns the whole position
+        // and the bob rides on top of it. (P4b: the `using` pulse transform
+        // is gone — the rep-cycle sprite frames are the working read now.)
         transform: [
           { translateX: walk.x },
           { translateY: walk.y },
           { translateY: bobTranslateY },
-          { translateY: pulseTranslateY },
         ],
       }}
     >
@@ -938,6 +1008,13 @@ export function FloorGrid(props: FloorGridProps) {
   // render and is stored nowhere, the same "read model, never a `FloorState`"
   // discipline `fixedFloorFurniture` already carries.
   const stations = floorStations(simContext);
+  // GDD §5.13 P4b: the same read model keyed for lookup, so a `using`
+  // member's draw bias and facing resolve against the identical stations the
+  // sim was stepped with this render — one derivation, no second copy.
+  const stationByRefKey = new Map<string, FloorStation>();
+  for (const station of stations) {
+    stationByRefKey.set(stationKey(station.ref.kind, station.ref.item), station);
+  }
   const stationActivity = new Map<string, 'using' | 'claimed'>();
   for (const member of sim.members) {
     if (member.target === null) continue;
@@ -1233,20 +1310,28 @@ export function FloorGrid(props: FloorGridProps) {
               // stable for the life of a sim — so a member keeps its own
               // animated values across ticks instead of being remounted and
               // snapping.
-              sim.members.map((member) => (
-                <AmbientMemberBody
-                  key={`ambient-${member.index}`}
-                  index={member.index}
-                  type={member.type}
-                  position={memberTilePoint(member)}
-                  tile={tile}
-                  state={member.state}
-                  interruptedBy={member.interruptedBy}
-                  stranded={member.strandedAt !== null}
-                  pose={memberPose(member, sim.tick)}
-                  facing={memberFacing(member)}
-                />
-              ))
+              sim.members.map((member) => {
+                // P4b: the member's own station, when it has one — what the
+                // using-pose class, the draw bias and the facing all key on.
+                const station =
+                  member.target === null
+                    ? undefined
+                    : stationByRefKey.get(stationKey(member.target.kind, member.target.item));
+                return (
+                  <AmbientMemberBody
+                    key={`ambient-${member.index}`}
+                    index={member.index}
+                    type={member.type}
+                    position={memberDrawPoint(member, station)}
+                    tile={tile}
+                    state={member.state}
+                    interruptedBy={member.interruptedBy}
+                    stranded={member.strandedAt !== null}
+                    pose={memberPose(member, sim.tick)}
+                    facing={memberFacing(member, station)}
+                  />
+                );
+              })
             }
           </View>
         </ScrollView>

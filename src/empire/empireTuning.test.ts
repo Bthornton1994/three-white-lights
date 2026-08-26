@@ -87,6 +87,9 @@ describe('the block is frozen and every entry is classified', () => {
       'FLOOR_FIXED_FURNITURE_LAYOUT',
       'FLOOR_GRID_SIZE',
       'FLOOR_SIM_USE_TICKS_BY_TYPE',
+      // GDD §5.13 P4b — the per-use-class draw bias a `using` member is
+      // pulled toward its station's anchor by.
+      'FLOOR_SIM_USING_ANCHOR_BIAS',
       // GDD §5.13 presentation Phase 4 — the four sprite palettes, RGB
       // components as plain numbers so `floorSprites.ts` stays numerically
       // clean under the audit.
