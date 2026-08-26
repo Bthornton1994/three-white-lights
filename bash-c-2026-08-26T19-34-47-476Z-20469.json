@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "bash-c-2026-08-26T19-34-47-476Z-20469",
+  "label": null,
+  "command": [
+    "bash",
+    "-c",
+    "\nSP=/tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad\necho \"--- the DEMAND_BASE table rows, at the SHIPPED width/boost ---\"\n$SP/run-wall2.sh 0.42 1.29 0.22 0.42\n$SP/run-wall2.sh 0.44 1.31 0.22 0.42\necho \"--- the +0.06 row as it was ACTUALLY shipped for one commit (width 0.32, boost 0.50) ---\"\n$SP/run-wall2.sh 0.44 1.31 0.32 0.5\necho \"--- STICK_WIDTH table rows ---\"\n$SP/run-wall2.sh 0.4 1.27 0.32 0.42\n$SP/run-wall2.sh 0.4 1.27 0.26 0.42\n$SP/run-wall2.sh 0.42 1.29 0.16 0.42\n"
+  ],
+  "budgetSeconds": 2400,
+  "startedAtIso": "2026-08-26T19:34:47.476Z",
+  "startedAtMs": 1787772887476,
+  "cwd": "/home/user/wt-bench-difficulty",
+  "commit": "0fe2eaf918addda43328c3758402e0549fbb4203",
+  "branch": "claude/bench-difficulty",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 20469,
+    "startTick": "1981251",
+    "cmdline": "node tools/watchdog.mjs --budget 2400 -- bash -c \nSP=/tmp/claude-0/-home-user-three-white-lights/2b4a8271-b1d0-5a80-85e8-1760cc3e16b5/scratchpad\necho \"--- the DEMAND_BASE table rows, at the SHIPPED wi",
+    "bootId": "4629c418-2124-4105-88fa-7f9ea23105ae",
+    "bootEpochSeconds": 1787753075,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-26T19:34:47.501Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
