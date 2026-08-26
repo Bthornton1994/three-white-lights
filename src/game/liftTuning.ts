@@ -1093,23 +1093,53 @@ export const LIFT_TUNING = Object.freeze({
    * THE SWEEP IS KEPT BECAUSE IT MEASURES SOMETHING NO OTHER KNOB DOES. This is
    * the one bench constant that raises the tap rate every rung demands WITHOUT
    * touching the warm-up boundary — a player who quits has no charge either
-   * way, so `REACHABLE_WARMUP` reads 0 lost at every value below. Measured at
-   * the shipped demand curve: RPE 10's floors, the worst meet cell's floor, and
-   * the false start's ascent ticks at the reachable ceiling.
+   * way, so `REACHABLE_WARMUP` reads 0 lost of 16200 at EVERY value below.
    *
-   *     boost   rpe10 floors        worst meet   false start   warm-ups lost
-   *     0.50    2.5 / 2 / 2 / 2       10/s        100/170          0
-   *     0.42    3 / 2.5 / 2.5 / 2.5   10/s        138/170          0   <- shipped
-   *     0.40    3 / 2.5 / 2.5 / 2.5   10/s        154/170          0
-   *     0.38    3 / 3 / 2.5 / 2.5     12/s        170 MISS         0
-   *     0.35    3.75 / 3 / 3 / 2.5    15/s        170 MISS         0
-   *     0.30    3.75 x3 / 3           unmakeable  170 MISS         0
+   * ---------------------------------------------------------------------------
+   * AND IT WAS THEN ASKED THE ONLY QUESTION THAT MATTERED — DOES IT RAISE RPE 8
+   * — AND THE ANSWER IS ESSENTIALLY NO
+   * ---------------------------------------------------------------------------
+   * `DEMAND_BASE.bench`'s wall leaves RPE 8's tap floor low, and this was the
+   * remaining candidate for lifting it. Measured at the shipped demand curve,
+   * RPE 8's four cells, make floor and GOOD-LIFT floor:
    *
-   * LOWER IS HARDER AND 0.38 IS ALREADY PAST THE WALL. The false-start
-   * guarantee is what stops this going further down, and it does so between
-   * 0.40 and 0.38 — so 0.42 keeps 32 ticks of slack rather than 16. A tuner who
-   * wants bench harder without touching warm-ups should look here first and
-   * should check the false-start column in the same breath.
+   *     boost   rpe8 make floors             rpe8 clean floors
+   *     0.42    0.50 / 1.00 / 0.80 / 0.67    3.00 / 3.00 / 3.00 / 2.50  <- shipped
+   *     0.41    0.50 / 1.00 / 0.80 / 0.67    3.00 / 3.33 / 3.00 / 3.00
+   *     0.40    0.67 / 1.00 / 0.80 / 0.67    3.00 / 3.33 / 3.00 / 3.00
+   *
+   * Three of the four make floors do not move at all across that range; the
+   * fourth moves ONE rung, from 0.50/s to 0.67/s, which is a tap every two
+   * seconds becoming a tap every second and a half. Two clean floors move one
+   * rung. AND `REACHABLE_RESCUE`'s RPE 8 ROWS ARE BYTE-IDENTICAL AT ALL THREE
+   * VALUES — `[120,40,40] [160,60,60] [120,60,60] [120,40,40]` — so the axis on
+   * which RPE 8 actually changed in this round does not respond to this knob at
+   * all.
+   *
+   * WHAT IT COSTS, on the same three values: the false start at the reachable
+   * ceiling uses 138 / 145 / 154 of its 170 ascent ticks. Going to 0.40 spends
+   * HALF the remaining margin on GDD §6.2's "never fatal" guarantee to move one
+   * cell one rung. The wider sweep says where the wall is:
+   *
+   *     boost   worst meet floor   false start at the ceiling   warm-ups lost
+   *     0.50    10/s               100/170                          0
+   *     0.42    10/s               138/170                          0  <- shipped
+   *     0.41    10/s               145/170                          0
+   *     0.40    10/s               154/170                          0
+   *     0.38    12/s               170 MISS                         0
+   *     0.35    15/s               170 MISS                         0
+   *     0.30    unmakeable         170 MISS                         0
+   *
+   * (The `worst meet floor` column below 0.42 was taken on a coarser tap ladder
+   * than the RPE 8 tables above; those three rows are disqualified by the
+   * false-start column whatever their floors, so they were not re-taken.)
+   *
+   * SO 0.42 STAYS, AND THE HONEST READING IS THAT THE HEADROOM THIS CONSTANT
+   * OFFERS IS NOT HEADROOM FOR RPE 8. It is real headroom for RPE 9 and 10 —
+   * which do not need it — and for the meet, which is already at 10/s. The
+   * sentence "the one knob that raises the tap rate without touching warm-ups"
+   * is true and was worth finding; what it does NOT say, and this paragraph
+   * does, is that the rung the ruling named is the one rung it barely moves.
    *
    * THE GUARANTEE THIS CONSTANT CARRIES IS THE TAP RATE DECIDING THE OUTCOME
    * RATHER THAN DECORATING IT, and `lift.test.ts`'s tap ladder is what measures
@@ -1281,19 +1311,38 @@ export const LIFT_TUNING = Object.freeze({
    * the rungs happen to place closest — and every one of the knobs above moves
    * BOTH ends of it together.
    *
-   * WHAT THE RETUNE THEREFORE BOUGHT, STATED SO NOBODY OVERSELLS IT. On the
-   * slowest sustained tap rate that never misses: RPE 8 went 0.67/s at all four
-   * cells to 0.67 / 1 / 1 / 0.67, RPE 9 went 1-1.43/s to 1.43-2/s, RPE 10 went
-   * 2-2.5/s to 2.5-3/s. On `REACHABLE_RESCUE`: RPE 8 went from two of four
-   * cells losing reps to four of four. That is a real rise at every rung and it
-   * is a third of what the +0.06 pass claimed, because two thirds of that claim
-   * was taken out of the warm-ups.
+   * WHAT THE RETUNE THEREFORE BOUGHT, STATED SO NOBODY OVERSELLS IT, on the
+   * slowest sustained tap rate that never misses — before against after:
+   *
+   *     rpe8   0.50 / 0.67 / 0.50 / 0.50   ->   0.50 / 1.00 / 0.80 / 0.67
+   *     rpe9   1.00 / 1.43 / 1.20 / 1.00   ->   1.20 / 1.67 / 1.43 / 1.20
+   *     rpe10  2.31 / 2.00 / 2.00 / 2.00   ->   3.00 / 2.50 / 2.31 / 2.31
+   *
+   * and on the rate at which every seed is a GOOD LIFT rather than a GRINDER,
+   * RPE 8 went 2.31 / 3.00 / 2.50 / 2.31 to 3.00 / 3.00 / 3.00 / 2.50. On
+   * `REACHABLE_RESCUE`, RPE 8 went from two of four cells losing reps to four
+   * of four. Three of the four cells rise on each axis; the lightest one does
+   * not move on the make floor.
+   *
+   * THESE NUMBERS REPLACE A COARSER SET THAT WAS WRONG IN THE DETAIL. The first
+   * write-up read "RPE 8 went 0.67/s at all four cells to 0.67 / 1 / 1 / 0.67",
+   * measured on a tap ladder whose slow end stepped 0.67 -> 1.00 -> 1.43 with
+   * nothing between. Rates of 0.50/s and 0.80/s were not on it, so cells sitting
+   * there were reported at the nearest rung it had. The direction survived and
+   * the detail did not, which is the ordinary way a measurement misleads: not by
+   * being false, by being taken at a grain that cannot see the thing it is
+   * about. The ladder now steps 0.50 / 0.67 / 0.80 / 1.00 / 1.20 / 1.43 at the
+   * bottom.
    *
    * AND WHAT IT COULD NOT BUY. RPE 8 cannot be made to demand a FAST tap rate.
-   * Its floor is 1/s at two cells and 0.67/s at the other two, and pushing it
-   * further is what the wall above refuses. RPE 8's difficulty is "stopping
-   * costs the rep, and a slow grind is a GRINDER rather than a GOOD LIFT"; the
-   * minimum-tap-rate axis begins at RPE 9.
+   * Its floor is 1.00/s at its hardest cell and 0.50/s at its lightest, and
+   * pushing it further is what the wall above refuses. Lowering
+   * `GRIND_BOOST_FORCE_MAX` was measured as the one remaining way to raise it
+   * without touching warm-ups, and its own header records the answer: it moves
+   * ONE of the four cells by ONE rung and leaves `REACHABLE_RESCUE` byte-
+   * identical, for half the false-start margin. So RPE 8's difficulty is
+   * "stopping costs the rep, and a slow grind is a GRINDER rather than a GOOD
+   * LIFT"; the minimum-tap-rate axis begins at RPE 9.
    *
    * ONE RESIDUE, MEASURED AND NOT HIDDEN. At the shipped +0.02 exactly one of
    * the ten warm-up cells — `session/rpe7/0.8250/as-expected`, the heaviest

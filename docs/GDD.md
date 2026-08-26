@@ -2168,10 +2168,29 @@ guarantee breaks. Widening the sticking point moves that wall the wrong way,
 narrowing it does not move it back, and the grind's force ceiling does not touch
 it at all — a player who quits has no charge whichever way it is set. So RPE 8's
 difficulty is *stopping costs the rep, and a slow grind is a GRINDER rather than
-a GOOD LIFT*, and the minimum-tap-rate axis begins at RPE 9. What the rise did
-buy, on the slowest sustained rate that never misses: RPE 8 from 0.67/s at all
-four cells to 0.67 / 1 / 1 / 0.67, RPE 9 from 1-1.43/s to 1.43-2/s, RPE 10 from
-2-2.5/s to 2.5-3/s.
+a GOOD LIFT*, and the minimum-tap-rate axis begins at RPE 9.
+
+What the rise did buy, on the slowest sustained rate that never misses, per cell,
+before against after: RPE 8 `0.50 / 0.67 / 0.50 / 0.50` → `0.50 / 1.00 / 0.80 /
+0.67`, RPE 9 `1.00 / 1.43 / 1.20 / 1.00` → `1.20 / 1.67 / 1.43 / 1.20`, RPE 10
+`2.31 / 2.00 / 2.00 / 2.00` → `3.00 / 2.50 / 2.31 / 2.31`. On the rate at which
+every seed is a GOOD LIFT rather than a GRINDER, RPE 8 went `2.31 / 3.00 / 2.50 /
+2.31` → `3.00 / 3.00 / 3.00 / 2.50`.
+
+*An earlier version of this paragraph read "RPE 8 from 0.67/s at all four cells to
+0.67 / 1 / 1 / 0.67". That was measured on a tap ladder whose slow end stepped
+0.67 → 1.00 → 1.43 with nothing between, so cells sitting at 0.50/s and 0.80/s
+were reported at the nearest rung it had. The direction survived and the detail
+did not — a measurement taken at a grain that cannot see the thing it is about.*
+
+**The one remaining way to raise RPE 8's rate was measured and rejected.** The
+grind's force ceiling is the only knob that lifts the required tap rate without
+touching warm-ups. Swept at 0.42 / 0.41 / 0.40 it moves three of RPE 8's four
+make floors not at all and the fourth by one rung, leaves the rescue table
+byte-identical, and spends half the remaining margin on the "never fatal"
+guarantee above (138 → 154 of 170 ascent ticks) to do it. It stays at 0.42. The
+headroom that knob offers is real and is not headroom for the rung the ruling
+named.
 
 **None of the numbers has been played (§12.1), and §12.1 stays open on this beat
 until a human replays it on a phone.** The open question is exactly two things:

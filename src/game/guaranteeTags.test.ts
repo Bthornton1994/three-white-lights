@@ -958,7 +958,17 @@ const GUARANTEE_COVERAGE = {
   // and all of that contributed **0**. The census moved by two. A reader who
   // expects this number to track how much prose was written will misread it
   // every time: it tracks one capitalised-run shape and nothing else.
-  TREE_WIDE: 294,
+  //
+  // 296 -> 294 -> 295 ACROSS THAT RETUNE'S OWN WALK-BACK AND ITS FOLLOW-UP,
+  // measured per file each time rather than reasoned from the diff. The
+  // walk-back reverted `STICK_WIDTH.bench` and removed the paragraph that had
+  // been written about widening it (`liftTuning.ts` 14 -> 13) and dropped a row
+  // comment from the rescue table (`lift.test.ts` 7 -> 6). The follow-up round
+  // that measured `GRIND_BOOST_FORCE_MAX` against RPE 8 put one back
+  // (`liftTuning.ts` 13 -> 14): the block recording that the knob does NOT lift
+  // the rung the ruling named. Every other file in both passes contributed 0,
+  // including `docs/GDD.md`, which this scan does not read at all.
+  TREE_WIDE: 295,
 } as const;
 
 // ---------------------------------------------------------------------------
