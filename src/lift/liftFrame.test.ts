@@ -1133,13 +1133,48 @@ describe('the stall band', () => {
   it('draws while the bar is losing and on no other lift', () => {
     const history = stalledRep();
     const banded = history.filter((s) => stallBand(s) !== null);
-    expect(banded.length, 'the bar never stalled, so this test has no subject')
-      .toBeGreaterThan(3);
-    // Every banded frame is an ASCENT frame of a bench rep, and every one of
-    // them is a frame the MECHANIC is counting as stalled.
+    // -----------------------------------------------------------------------
+    // THE ORACLE HERE IS RANKS AND COUNTS, NOT THE MECHANIC'S OWN CONSTANT —
+    // AND ITS FIRST VERSION WAS SELF-REFERENTIAL, MEASURED RATHER THAN
+    // SUSPECTED. It asserted `state.velocity < LIFT_TUNING.GRIND_STALL_VELOCITY`
+    // per banded frame: the exact comparison `stallBand` makes, against the
+    // exact constant it makes it with, so the two could only ever move
+    // together. An independent critic drove the vacuity: `GRIND_STALL_VELOCITY
+    // -> 1000` bands EVERY ascent frame — a permanently-lit urgency cue, the
+    // §3.4 meter shape — and this test stayed green; only the witness pair one
+    // test down caught it. That is the "oracle that mirrors its subject" row
+    // of CLAUDE.md's vacuity table, one comparison at a time.
+    //
+    // What replaces it reads the DRIVEN HISTORY and never the constant:
+    //   - both populations are exact-pinned, so a band that never draws AND a
+    //     band that always draws are both red (a rep is a pure function of
+    //     (config, seed, inputs), so exact pins are safe);
+    //   - the fastest-moving ascent frames must be UNBANDED, by rank — a bar
+    //     demonstrably moving is not stalled whatever the threshold is;
+    //   - and every banded velocity sits strictly below every unbanded one, so
+    //     the band keys on being SLOW rather than on some other fact that
+    //     happens to correlate on this seed.
+    // Re-driven against the measured mutant while writing this: every ascent
+    // frame bands (24 of 24), the exact pins redden first, and the file reads
+    // 3 failed | 56 passed (59) — with this test among the three, which is the
+    // whole repair.
+    // -----------------------------------------------------------------------
+    const ascent = history.filter((s) => s.phase === 'ASCENT');
+    const unbanded = ascent.filter((s) => stallBand(s) === null);
+    expect(banded.length, 'banded frames of the driven rep').toBe(18);
+    expect(unbanded.length, 'moving ascent frames of the driven rep').toBe(6);
+    const fastestFirst = [...ascent].sort((a, b) => b.velocity - a.velocity);
+    const topQuartile = fastestFirst.slice(0, Math.floor(ascent.length / 4));
+    expect(
+      topQuartile.filter((s) => stallBand(s) !== null).length,
+      'banded frames among the ascent frames that are demonstrably MOVING fastest',
+    ).toBe(0);
+    expect(Math.max(...banded.map((s) => s.velocity))).toBeLessThan(
+      Math.min(...unbanded.map((s) => s.velocity)),
+    );
+    // Every banded frame is an ASCENT frame of a bench rep...
     for (const state of banded) {
       expect(state.phase).toBe('ASCENT');
-      expect(state.velocity).toBeLessThan(LIFT_TUNING.GRIND_STALL_VELOCITY);
     }
     // ...and it never draws on the beat where the bar is motionless BY DESIGN.
     expect(history.filter((s) => s.phase === 'HOLE' && stallBand(s) !== null).length).toBe(0);
@@ -1162,7 +1197,10 @@ describe('the stall band', () => {
     // somebody constructed. A stall this rep did not have would leave the pair
     // below comparing two states of a bar that was never losing.
     const stalledFrames = history.filter((s) => stallBand(s) !== null);
-    expect(stalledFrames.length, 'stalled frames this pair is drawn from').toBeGreaterThan(6);
+    // AN EXACT COUNT, NOT A BOUND — the rep is a pure function of its inputs,
+    // and a bound is what let the first version of the test above stay green
+    // while its subject changed shape underneath it.
+    expect(stalledFrames.length, 'stalled frames this pair is drawn from').toBe(18);
     const stalledAt = stalledFrames[0];
     expect(stalledAt, 'the bar never stalled').toBeDefined();
     if (stalledAt === undefined) return;
@@ -1181,7 +1219,8 @@ describe('the stall band', () => {
     const bands = stalledRep()
       .map((s) => stallBand(s))
       .filter((b) => b !== null);
-    expect(bands.length, 'no band to measure').toBeGreaterThan(3);
+    // Exact for the reason the pair test's count is: a bound is not a domain.
+    expect(bands.length, 'no band to measure').toBe(18);
     const alphas = bands.map((b) => b.alpha);
     // A floor, because a frame at alpha 0 is indistinguishable from a stage
     // that draws no stall at all — which is what the browser check reads.

@@ -2786,7 +2786,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + '{ depth: 0.7774066666666667, …(2) } to be null\n'
       + 'Tests  1 failed | 58 passed (59)',
     measuredOver:
-      "    expect(stalledFrames.length, 'stalled frames this pair is drawn from').toBeGreaterThan(6);",
+      "    expect(stalledFrames.length, 'stalled frames this pair is drawn from').toBe(18);",
   },
   // -------------------------------------------------------------------------
   // THE FOURTH PRESS GUARD, AND THE ONE THAT WAS SWALLOWING WHOLE INPUTS.

@@ -3481,15 +3481,33 @@ function gradeStageBeat(kind, run) {
   const peakHeldEdge = heldEdge.length === 0 ? null : Math.max(...heldEdge);
   const peakWaitEdge = waitEdge.length === 0 ? null : Math.max(...waitEdge);
   check(
-    pauseWait.length >= STAGE_BEAT.MIN_WAIT_FRAMES &&
-      heldEdge.length >= STAGE_BEAT.MIN_COMMAND_FRAMES &&
-      peakWaitEdge === 0 &&
+    heldEdge.length >= STAGE_BEAT.MIN_COMMAND_FRAMES &&
       peakHeldEdge !== null &&
       peakHeldEdge >= edgeFloorPx,
-    'LADDER bench STAGE STALL: the stage goes URGENT inside the driven hole, and draws NOTHING there through the wait on the chest',
+    'LADDER bench STAGE STALL: the stage goes URGENT inside the driven hole',
     pausePix === null
       ? 'no paused rep was driven, so the stall band has no hole to be read across'
-      : `held: ${heldEdge.length} frame(s), biggest ${peakHeldEdge} px of ${pausePix.edgeSampled} sampled in the top ${STAGE_BEAT_TUNING.stallBandPx}pt strip (floor ${Math.round(edgeFloorPx)}); wait: ${pauseWait.length} frame(s), biggest ${peakWaitEdge} px — pinned at zero as the control; edges held ${JSON.stringify(heldEdge)} | wait ${JSON.stringify(waitEdge)}`,
+      : `held: ${heldEdge.length} frame(s), biggest ${peakHeldEdge} px of ${pausePix.edgeSampled} sampled in the top ${STAGE_BEAT_TUNING.stallBandPx}pt strip (floor ${Math.round(edgeFloorPx)}); edges ${JSON.stringify(heldEdge)}`,
+  );
+  // THE WAIT READING IS AN INSTRUMENT BASELINE, AND ITS TITLE SAYS SO NOW.
+  // The first title bundled it into the app claim as "draws NOTHING there
+  // through the wait", which reads as a discriminator on `stallBand` — and no
+  // edit to `stallBand`'s body can redden it: `grindIsLive` is false through
+  // the whole wait BY CONSTRUCTION (`pressCommandTick` is null until the
+  // command fires, upstream of everything the band computes), so a zero here
+  // is a fact about the strip and the baseline frame, not about a decision the
+  // app made. CLAUDE.md's misdescribing-identifier rule applies to a check's
+  // title identically. What the zero DOES pin — and the reason it stays a
+  // check rather than being deleted — is the instrument's noise floor: a
+  // baseline frame captured mid-paint, or a strip that drifts without an
+  // authored change, reports here as a non-zero wait and takes the held
+  // reading's meaning with it.
+  check(
+    pauseWait.length >= STAGE_BEAT.MIN_WAIT_FRAMES && peakWaitEdge === 0,
+    "LADDER bench STAGE STALL BASELINE: the sampler reads ZERO through the wait — a beat where stallBand is null BY CONSTRUCTION — so the strip's noise floor, not an app decision, is what this pins",
+    pausePix === null
+      ? 'no paused rep was driven'
+      : `wait: ${pauseWait.length} frame(s), biggest ${peakWaitEdge} px of ${pausePix.edgeSampled} sampled; edges ${JSON.stringify(waitEdge)}`,
   );
 
   // ---- THE RESCUE, AND THE CADENCE THAT HAS TO BE BEHIND IT ---------------

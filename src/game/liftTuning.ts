@@ -2341,9 +2341,15 @@ export const LIFT_TUNING = Object.freeze({
        * BANDS ON A DRAWING, NOT A SECOND GRADING CURVE. The mechanic grades the
        * touch through `touchSpeedQuality`; these two numbers decide which of
        * three colours the bar is drawn in on the way down, and moving them
-       * cannot change a single outcome. `liftFrame.test.ts` pins that
-       * separation by driving a whole rep with each band edge moved to either
-       * extreme and asserting the resolution is byte-identical.
+       * cannot change a single outcome. What holds that is STRUCTURAL, and
+       * this sentence used to overstate it: it described a driven-rep check —
+       * "each band edge moved to either extreme, resolution byte-identical" —
+       * that has never existed. The real check is `liftFrame.test.ts`'s
+       * source scan: `lift.ts` may not contain `BAR_RUNAWAY_AT`, `BAR_CRASH_AT`
+       * or `barGlyphColour` by name, so the mechanic has no path to these
+       * values at all — a stronger separation than a two-point sweep, and the
+       * one the test can actually redden. (An inherited sentence, corrected
+       * under the touch-the-module rule when the constants were renamed.)
        */
       BAR_RUNAWAY_AT: 0.34,
       BAR_CRASH_AT: 0.67,
