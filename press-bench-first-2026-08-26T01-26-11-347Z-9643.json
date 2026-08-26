@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "press-bench-first-2026-08-26T01-26-11-347Z-9643",
   "label": "press-bench-first",
   "command": [
@@ -32,13 +32,18 @@
     "procAvailable": true
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-26T01:26:12.218Z",
+  "elapsedSeconds": 0.9,
   "sync": {
-    "count": 1,
-    "okCount": 0,
+    "count": 2,
+    "okCount": 1,
     "errors": [],
-    "lastAttemptIso": "2026-08-26T01:26:11.381Z",
-    "lastReason": "start",
+    "lastAttemptIso": "2026-08-26T01:26:13.913Z",
+    "lastReason": "final",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm"
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": true,
+    "lastOkIso": "2026-08-26T01:26:13.912Z"
   }
 }
