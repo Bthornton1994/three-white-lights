@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "sound-record-2026-08-26T05-46-21-712Z-2772",
+  "label": "sound-record",
+  "command": [
+    "node",
+    "tools/verify-meet-sound.mjs",
+    "--url",
+    "http://localhost:8096"
+  ],
+  "budgetSeconds": 900,
+  "startedAtIso": "2026-08-26T05:46:21.712Z",
+  "startedAtMs": 1787723181712,
+  "cwd": "/home/user/wt-grind-stage",
+  "commit": "a2f97cf28c53ea637d0682ee7c0be8f6d1678bef",
+  "branch": "claude/grind-stage-drivers",
+  "dirty": 1,
+  "dirtyPaths": [
+    ".gauntlet/shots/lift-press/press.json"
+  ],
+  "runner": {
+    "pid": 2772,
+    "startTick": "98687",
+    "cmdline": "node tools/watchdog.mjs --budget 900 --label sound-record -- node tools/verify-meet-sound.mjs --url http://localhost:8096",
+    "bootId": "96fef63f-e4d8-4aa9-9654-48737ca6b5b1",
+    "bootEpochSeconds": 1787722195,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-26T05:46:21.729Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
