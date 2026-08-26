@@ -1714,6 +1714,19 @@ export async function holdBenchToTheChest(page, { read, hasLeft = NEVER_LEFT }) 
  * have to keep tapping, or every check behind them measures a stall the harness
  * caused.
  *
+ * `abandonAfterTaps` IS THE OTHER HALF OF THAT PAIR AND IT IS WHAT MAKES THE
+ * RESCUE A CLAIM. A rep that pauses and then locks out proves the rep locked
+ * out; it does not prove that COMING BACK is what saved it, and there is a real
+ * mutant that walks through the difference — an ascent boost that read the
+ * LAUNCH snapshot instead of the live charge would freeze a high force at the
+ * chest and carry a paused rep to lockout on it, turning the continuous grind
+ * back into the burst the steer replaced while every "it reached lockout" check
+ * stayed green. So the same rep is driven a second time with the tapping
+ * stopped at the same instant AND NEVER RESUMED, and the two outcomes are
+ * compared. Measured in the pure sim at this probe's own cell and schedule, 40
+ * seeds: a rep that resumes after 100 ticks makes 40/40, and one that never
+ * resumes misses 40/40 on 'timeout'.
+ *
  * ===========================================================================
  * THE CADENCE IS THE MECHANIC'S OWN REFRACTORY, READ FROM SOURCE, AND THE
  * ACHIEVED ONE IS MEASURED RATHER THAN ASSUMED
@@ -1730,7 +1743,7 @@ export async function holdBenchToTheChest(page, { read, hasLeft = NEVER_LEFT }) 
  */
 export async function grindTapToResolution(
   page,
-  { read, hasLeft = NEVER_LEFT, pause = null, onPauseStart, onPauseEnd },
+  { read, hasLeft = NEVER_LEFT, pause = null, abandonAfterTaps = null, onPauseStart, onPauseEnd },
 ) {
   const commandLine = LIFT_PROMPTS.bench.COMMAND;
   const grindLine = LIFT_PROMPTS.bench.GRIND;
@@ -1748,6 +1761,7 @@ export async function grindTapToResolution(
   let sawGrindLine = false;
   let sawFalseStart = false;
   let paused = null;
+  let abandonedAfter = null;
   let endedOn = null;
   let stoppedBecause = 'the dispatch budget ran out';
 
@@ -1779,6 +1793,25 @@ export async function grindTapToResolution(
     }
     if (Date.now() >= deadline) {
       stoppedBecause = 'the hang guard fired — the grind line never left';
+      break;
+    }
+
+    // THE DELIBERATE ABANDONMENT. Stop dispatching and watch the rep out — the
+    // control the rescue is a rescue AGAINST.
+    if (abandonAfterTaps !== null && dispatched >= abandonAfterTaps) {
+      abandonedAfter = dispatched;
+      stoppedBecause = 'the driver abandoned the grind and watched the rep out';
+      const watched = await untilRead(
+        page,
+        read,
+        (loop) =>
+          hasLeft(loop) ||
+          loop.prompt === null ||
+          !(loop.prompt.includes(commandLine) || loop.prompt.includes(grindLine)),
+        Math.max(0, deadline - Date.now()),
+        Math.round(periodMs),
+      );
+      endedOn = watched === null ? endedOn : (watched.prompt ?? null);
       break;
     }
 
@@ -1833,6 +1866,8 @@ export async function grindTapToResolution(
     /** Whether the robot jumped its own call. A diagnosis, not a failure. */
     sawFalseStart,
     paused,
+    /** Non-null on the control arm: how many taps were thrown before giving up. */
+    abandonedAfter,
     endedOn,
     stoppedBecause,
     /**

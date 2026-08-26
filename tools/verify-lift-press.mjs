@@ -2646,7 +2646,7 @@ function subtitlesSeen(ladder) {
  * part that holds at every seed and every load; which branch fired is recorded
  * beside it rather than asserted.
  */
-async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots = null, neverPress = false, grindPause = null } = {}) {
+async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots = null, neverPress = false, grindPause = null, grindAbandon = null } = {}) {
   const L = LIFT_PROMPTS[kind];
   const outcomeOf = (loop) =>
     loop !== null && SESSION_PROMPTS.OUTCOMES.includes(loop.prompt) ? loop.prompt : null;
@@ -2833,6 +2833,7 @@ async function driveLadderRep(page, kind, holdMs, { holdAtLockout = true, shots 
         grind = await grindTapToResolution(page, {
           read: readLoop,
           pause: grindPause,
+          abandonAfterTaps: grindAbandon,
           onPauseStart: () => markStagePixels(page, 'pause-start'),
           onPauseEnd: () => markStagePixels(page, 'pause-end'),
         });
@@ -3108,7 +3109,21 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
   // harness caused in every claim above. This one rep is the only rep in the
   // run that stops tapping, and it stops at a stated instant for a stated
   // length (`GRIND_PAUSE_AFTER_TAPS`, `GRIND_PAUSE_MS`).
+  //
+  // AND THE CONTROL IT IS A RESCUE AGAINST, DRIVEN SECOND. A rep that pauses
+  // and locks out proves the rep locked out; it does not prove that COMING BACK
+  // is what saved it, and a real mutant walks through the difference — an
+  // ascent boost reading the LAUNCH snapshot rather than the live charge would
+  // carry a paused rep to lockout on a frozen force, turning the continuous
+  // grind back into the burst the steer replaced with every "it reached
+  // lockout" check still green. So the abandoned rep stops tapping at the SAME
+  // instant and never starts again, and the pair differs in exactly one thing.
+  //
+  // IT IS DRIVEN LAST, on purpose: it is meant to be a miss, and a missed rep
+  // ends its set (`SESSION_TUNING`), so putting it anywhere else would cost the
+  // reps above it a set they are budgeted for.
   let rescued = null;
+  let abandoned = null;
   if (landedOn === 'bench' && kind === 'bench') {
     await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
     rescued = await driveLadderRep(page, kind, depthSearch.holdMs, {
@@ -3117,6 +3132,11 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
         afterTaps: LIFT_LADDER.GRIND_PAUSE_AFTER_TAPS,
         ms: LIFT_LADDER.GRIND_PAUSE_MS,
       },
+    });
+    await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
+    abandoned = await driveLadderRep(page, kind, depthSearch.holdMs, {
+      holdAtLockout: true,
+      grindAbandon: LIFT_LADDER.GRIND_PAUSE_AFTER_TAPS,
     });
   }
 
@@ -3148,6 +3168,7 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
     attempts,
     best,
     rescued,
+    abandoned,
     shots: photographed,
     slip,
     neverPressed,
@@ -3431,6 +3452,8 @@ function gradeStageBeat(kind, run) {
   // measured inter-tap gap turned into the grind force it settles at; it is
   // compared here rather than only printed.
   const rescueGrind = paused?.grind ?? null;
+  const givenUp = run.abandoned ?? null;
+  const givenUpGrind = givenUp?.grind ?? null;
   check(
     paused !== null &&
       paused.played === true &&
@@ -3447,6 +3470,31 @@ function gradeStageBeat(kind, run) {
     paused === null
       ? 'no paused rep was driven'
       : `hole ${JSON.stringify(rescueGrind?.paused ?? null)} after ${rescueGrind?.dispatched ?? 0} dispatched tap(s); cadence ${JSON.stringify(rescueGrind?.gaps ?? null)} implying grind force ${rescueGrind?.impliedForce === null || rescueGrind?.impliedForce === undefined ? 'n/a' : rescueGrind.impliedForce.toFixed(3)} against a ${BENCH_DRIVE.GRIND_FORCE_FLOOR} floor; grind line seen=${rescueGrind?.sawGrindLine}; stopped because ${JSON.stringify(rescueGrind?.stoppedBecause ?? null)} on ${JSON.stringify(rescueGrind?.endedOn ?? null)}; lockout=${paused.reachedLockout}, outcome ${JSON.stringify(paused.outcome)} ${JSON.stringify(paused.detail ?? null)}`,
+  );
+
+  // ---- THE PAIR, WHICH IS WHAT MAKES THE LINE ABOVE A CLAIM ---------------
+  //
+  // Two reps of the same lift at the same load, driven identically up to the
+  // same instant, differing ONLY in whether the tapping came back. If a bar
+  // that is never tapped again reaches lockout too, then "the rescue rescued
+  // it" is a sentence about a rep that was going to make anyway — and there is
+  // a real mutant with exactly that signature (an ascent boost read off the
+  // launch snapshot instead of the live charge). Measured in the pure sim at
+  // this cell and this schedule, 40 seeds: resumed makes 40/40, abandoned
+  // misses 40/40 on 'timeout'.
+  check(
+    givenUp !== null &&
+      givenUp.played === true &&
+      givenUp.reachedCommand === true &&
+      givenUpGrind !== null &&
+      givenUpGrind.abandonedAfter !== null &&
+      givenUpGrind.abandonedAfter === (rescueGrind?.paused?.afterTaps ?? null) &&
+      givenUp.reachedLockout === false &&
+      paused?.reachedLockout === true,
+    'LADDER bench RESCUE CONTROL: the SAME rep with the tapping stopped at the SAME instant and never resumed does NOT reach lockout — so coming back is what saved the one above',
+    givenUp === null
+      ? 'no abandoned rep was driven'
+      : `abandoned after ${givenUpGrind?.abandonedAfter} tap(s) against the rescued rep's hole at ${rescueGrind?.paused?.afterTaps}; lockout=${givenUp.reachedLockout} against the rescued rep's ${paused?.reachedLockout}; outcome ${JSON.stringify(givenUp.outcome)} ${JSON.stringify(givenUp.detail ?? null)}, stopped because ${JSON.stringify(givenUpGrind?.stoppedBecause ?? null)} on ${JSON.stringify(givenUpGrind?.endedOn ?? null)}`,
   );
 
   // ---- AND THE OUTCOME THE WHOLE CHAIN IS FOR -----------------------------
