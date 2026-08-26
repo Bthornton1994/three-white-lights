@@ -1352,6 +1352,20 @@ export const LIFT_TUNING = Object.freeze({
    *
    *     rpe6 -0.0923   rpe7 -0.0483   rpe8 -0.0025   rpe9 0.0448   rpe10 0.1048
    *
+   * ALL FIVE RE-DERIVED 2026-08-26 AT THE SAME CONFIGURATION AS THE TABLE ABOVE
+   * and all five reproduce exactly, which is worth a line because the rows above
+   * them did not — a stale number beside a fresh one is the shape this file
+   * keeps recording, and "the neighbouring paragraph was wrong" is not evidence
+   * either way about this one.
+   *
+   * WHAT THE RE-DERIVATION DID CATCH IS ONE ROW UP. The old wall paragraph
+   * closed "+0.02 ... with about 0.0025 of margin on the hardest warm-up cell",
+   * and `-0.0025` is RPE 8's margin on this line, not a warm-up's — the warm-up
+   * rungs are `-0.0923` and `-0.0483`, forty times further out. A number was
+   * read off the wrong column of a table twelve lines away and given a
+   * confident sentence to live in. It is deleted rather than repaired, because
+   * the margin it was trying to describe is the one the table already states.
+   *
    * The grind begins where a quiet rep starts losing the rep, and that boundary
    * has to sit ABOVE every RPE 7 cell and BELOW every RPE 8 one. The window
    * between the hardest RPE 7 cell and the lightest RPE 8 cell is 0.046 wide
