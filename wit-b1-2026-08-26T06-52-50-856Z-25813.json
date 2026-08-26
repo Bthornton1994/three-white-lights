@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "wit-b1-2026-08-26T06-52-50-856Z-25813",
   "label": "wit-b1",
   "command": [
@@ -35,14 +35,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 2,
-    "okCount": 1,
+    "count": 3,
+    "okCount": 2,
     "errors": [],
-    "lastAttemptIso": "2026-08-26T06:53:50.916Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-26T06:53:53.488Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-26T06:52:53.494Z"
-  }
+    "lastOkIso": "2026-08-26T06:53:53.487Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-26T06:53:51.953Z",
+  "elapsedSeconds": 61.1
 }
