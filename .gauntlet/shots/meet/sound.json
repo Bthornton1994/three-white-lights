@@ -1,8 +1,8 @@
 {
   "capturedFrom": {
-    "capturedAt": "2026-08-26T15:56:08.067Z",
+    "capturedAt": "2026-08-26T18:17:31.358Z",
     "url": "http://localhost:8097",
-    "commit": "5e03f43a",
+    "commit": "21eb7c7a",
     "branch": "claude/bench-difficulty",
     "workingTree": "clean",
     "dirtyPaths": [
@@ -28,12 +28,12 @@
           "file": "bar-rattle.wav",
           "plays": 4,
           "durationMs": 180,
-          "depth": 2,
+          "depth": 3,
           "starts": [
-            917,
-            1098,
-            1199,
-            1283
+            993,
+            1190,
+            1277,
+            1361
           ]
         },
         {
@@ -42,7 +42,7 @@
           "durationMs": 1400,
           "depth": 1,
           "starts": [
-            1339
+            1414
           ]
         }
       ],
@@ -53,7 +53,7 @@
       "played": [
         {
           "file": "bar-rattle.wav",
-          "atMs": 917,
+          "atMs": 993,
           "search": "?meet=walkout",
           "screens": [
             "meet-walkout"
@@ -63,7 +63,7 @@
         },
         {
           "file": "bar-rattle.wav",
-          "atMs": 1098,
+          "atMs": 1190,
           "search": "?meet=walkout",
           "screens": [
             "meet-walkout"
@@ -73,7 +73,7 @@
         },
         {
           "file": "bar-rattle.wav",
-          "atMs": 1199,
+          "atMs": 1277,
           "search": "?meet=walkout",
           "screens": [
             "meet-walkout"
@@ -83,7 +83,7 @@
         },
         {
           "file": "bar-rattle.wav",
-          "atMs": 1283,
+          "atMs": 1361,
           "search": "?meet=walkout",
           "screens": [
             "meet-walkout"
@@ -93,7 +93,7 @@
         },
         {
           "file": "crowd-swell.wav",
-          "atMs": 1339,
+          "atMs": 1414,
           "search": "?meet=walkout",
           "screens": [
             "meet-walkout"
@@ -230,11 +230,11 @@
           "durationMs": 180,
           "depth": 3,
           "starts": [
-            644,
-            765,
-            832,
-            931,
-            1015
+            671,
+            789,
+            858,
+            958,
+            1042
           ]
         },
         {
@@ -243,8 +243,8 @@
           "durationMs": 2100,
           "depth": 2,
           "starts": [
-            1065,
-            2285
+            1096,
+            2313
           ]
         }
       ],
@@ -255,7 +255,7 @@
       "played": [
         {
           "file": "bar-rattle.wav",
-          "atMs": 644,
+          "atMs": 671,
           "search": "?meet=walkout-third",
           "screens": [
             "meet-walkout"
@@ -265,7 +265,7 @@
         },
         {
           "file": "bar-rattle.wav",
-          "atMs": 765,
+          "atMs": 789,
           "search": "?meet=walkout-third",
           "screens": [
             "meet-walkout"
@@ -275,7 +275,7 @@
         },
         {
           "file": "bar-rattle.wav",
-          "atMs": 832,
+          "atMs": 858,
           "search": "?meet=walkout-third",
           "screens": [
             "meet-walkout"
@@ -285,7 +285,7 @@
         },
         {
           "file": "bar-rattle.wav",
-          "atMs": 931,
+          "atMs": 958,
           "search": "?meet=walkout-third",
           "screens": [
             "meet-walkout"
@@ -295,7 +295,7 @@
         },
         {
           "file": "bar-rattle.wav",
-          "atMs": 1015,
+          "atMs": 1042,
           "search": "?meet=walkout-third",
           "screens": [
             "meet-walkout"
@@ -305,7 +305,7 @@
         },
         {
           "file": "crowd-swell-big.wav",
-          "atMs": 1065,
+          "atMs": 1096,
           "search": "?meet=walkout-third",
           "screens": [
             "meet-walkout"
@@ -315,7 +315,7 @@
         },
         {
           "file": "crowd-swell-big.wav",
-          "atMs": 2285,
+          "atMs": 2313,
           "search": "?meet=walkout-third",
           "screens": [
             "meet-walkout"
@@ -452,9 +452,9 @@
           "durationMs": 120,
           "depth": 1,
           "starts": [
-            868,
-            1189,
-            1509
+            902,
+            1223,
+            1543
           ]
         },
         {
@@ -463,7 +463,7 @@
           "durationMs": 1700,
           "depth": 1,
           "starts": [
-            1930
+            1964
           ]
         }
       ],
@@ -474,7 +474,7 @@
       "played": [
         {
           "file": "light-clack-white.wav",
-          "atMs": 868,
+          "atMs": 902,
           "search": "?meet=verdict-good",
           "screens": [
             "meet-verdict"
@@ -484,7 +484,7 @@
         },
         {
           "file": "light-clack-white.wav",
-          "atMs": 1189,
+          "atMs": 1223,
           "search": "?meet=verdict-good",
           "screens": [
             "meet-verdict"
@@ -494,7 +494,7 @@
         },
         {
           "file": "light-clack-white.wav",
-          "atMs": 1509,
+          "atMs": 1543,
           "search": "?meet=verdict-good",
           "screens": [
             "meet-verdict"
@@ -504,7 +504,7 @@
         },
         {
           "file": "crowd-cheer.wav",
-          "atMs": 1930,
+          "atMs": 1964,
           "search": "?meet=verdict-good",
           "screens": [
             "meet-verdict"
@@ -641,9 +641,9 @@
           "durationMs": 150,
           "depth": 1,
           "starts": [
-            919,
-            1239,
-            1560
+            870,
+            1191,
+            1511
           ]
         }
       ],
@@ -654,7 +654,7 @@
       "played": [
         {
           "file": "light-clack-red.wav",
-          "atMs": 919,
+          "atMs": 870,
           "search": "?meet=verdict-no-lift",
           "screens": [
             "meet-verdict"
@@ -664,7 +664,7 @@
         },
         {
           "file": "light-clack-red.wav",
-          "atMs": 1239,
+          "atMs": 1191,
           "search": "?meet=verdict-no-lift",
           "screens": [
             "meet-verdict"
@@ -674,7 +674,7 @@
         },
         {
           "file": "light-clack-red.wav",
-          "atMs": 1560,
+          "atMs": 1511,
           "search": "?meet=verdict-no-lift",
           "screens": [
             "meet-verdict"
@@ -811,8 +811,8 @@
           "durationMs": 120,
           "depth": 1,
           "starts": [
-            800,
-            1121
+            851,
+            1171
           ]
         },
         {
@@ -821,7 +821,7 @@
           "durationMs": 150,
           "depth": 1,
           "starts": [
-            1441
+            1492
           ]
         },
         {
@@ -830,7 +830,7 @@
           "durationMs": 1700,
           "depth": 1,
           "starts": [
-            1862
+            1912
           ]
         }
       ],
@@ -841,7 +841,7 @@
       "played": [
         {
           "file": "light-clack-white.wav",
-          "atMs": 800,
+          "atMs": 851,
           "search": "?meet=verdict-split",
           "screens": [
             "meet-verdict"
@@ -851,7 +851,7 @@
         },
         {
           "file": "light-clack-white.wav",
-          "atMs": 1121,
+          "atMs": 1171,
           "search": "?meet=verdict-split",
           "screens": [
             "meet-verdict"
@@ -861,7 +861,7 @@
         },
         {
           "file": "light-clack-red.wav",
-          "atMs": 1441,
+          "atMs": 1492,
           "search": "?meet=verdict-split",
           "screens": [
             "meet-verdict"
@@ -871,7 +871,7 @@
         },
         {
           "file": "crowd-cheer.wav",
-          "atMs": 1862,
+          "atMs": 1912,
           "search": "?meet=verdict-split",
           "screens": [
             "meet-verdict"
@@ -1133,7 +1133,7 @@
           "durationMs": 2400,
           "depth": 1,
           "starts": [
-            2123
+            2127
           ]
         }
       ],
@@ -1144,7 +1144,7 @@
       "played": [
         {
           "file": "bomb-tone.wav",
-          "atMs": 2123,
+          "atMs": 2127,
           "search": "?meet=bombed",
           "screens": [
             "meet-bombed"
@@ -1304,14 +1304,14 @@
     "drive": {
       "ended": "stopped",
       "why": "the caller asked to leave here",
-      "ms": 24612,
+      "ms": 24647,
       "attempts": [
         {
           "attempt": "SQUAT · ATTEMPT 1 OF 3",
           "played": true,
           "kind": "squat",
           "holdMs": 840,
-          "fps": 59.8,
+          "fps": 59.7,
           "fpsKeepsUp": true,
           "fpsWhy": null,
           "reachedDescent": true,
@@ -1377,7 +1377,7 @@
         "plays": [
           {
             "file": "bar-rattle.wav",
-            "atMs": 2081,
+            "atMs": 2058,
             "search": "",
             "screens": [
               "meet-walkout"
@@ -1387,7 +1387,7 @@
           },
           {
             "file": "bar-rattle.wav",
-            "atMs": 2201,
+            "atMs": 2192,
             "search": "",
             "screens": [
               "meet-walkout"
@@ -1397,7 +1397,7 @@
           },
           {
             "file": "bar-rattle.wav",
-            "atMs": 2347,
+            "atMs": 2321,
             "search": "",
             "screens": [
               "meet-walkout"
@@ -1407,7 +1407,7 @@
           },
           {
             "file": "crowd-swell.wav",
-            "atMs": 2504,
+            "atMs": 2480,
             "search": "",
             "screens": [
               "meet-walkout"
@@ -1423,9 +1423,9 @@
             "durationMs": 180,
             "depth": 2,
             "starts": [
-              2081,
-              2201,
-              2347
+              2058,
+              2192,
+              2321
             ]
           },
           {
@@ -1434,7 +1434,7 @@
             "durationMs": 1400,
             "depth": 1,
             "starts": [
-              2504
+              2480
             ]
           }
         ],
@@ -1461,7 +1461,7 @@
         "plays": [
           {
             "file": "bar-rattle.wav",
-            "atMs": 12292,
+            "atMs": 12252,
             "search": "",
             "screens": [
               "meet-walkout"
@@ -1471,7 +1471,7 @@
           },
           {
             "file": "bar-rattle.wav",
-            "atMs": 12394,
+            "atMs": 12355,
             "search": "",
             "screens": [
               "meet-walkout"
@@ -1481,7 +1481,7 @@
           },
           {
             "file": "bar-rattle.wav",
-            "atMs": 12478,
+            "atMs": 12437,
             "search": "",
             "screens": [
               "meet-walkout"
@@ -1491,7 +1491,7 @@
           },
           {
             "file": "crowd-swell.wav",
-            "atMs": 12713,
+            "atMs": 12673,
             "search": "",
             "screens": [
               "meet-walkout"
@@ -1507,9 +1507,9 @@
             "durationMs": 180,
             "depth": 2,
             "starts": [
-              12292,
-              12394,
-              12478
+              12252,
+              12355,
+              12437
             ]
           },
           {
@@ -1518,7 +1518,7 @@
             "durationMs": 1400,
             "depth": 1,
             "starts": [
-              12713
+              12673
             ]
           }
         ],
@@ -1545,7 +1545,7 @@
         "plays": [
           {
             "file": "bar-rattle.wav",
-            "atMs": 23157,
+            "atMs": 23169,
             "search": "",
             "screens": [
               "meet-walkout"
@@ -1555,7 +1555,7 @@
           },
           {
             "file": "bar-rattle.wav",
-            "atMs": 23322,
+            "atMs": 23345,
             "search": "",
             "screens": [
               "meet-walkout"
@@ -1565,7 +1565,7 @@
           },
           {
             "file": "bar-rattle.wav",
-            "atMs": 23444,
+            "atMs": 23453,
             "search": "",
             "screens": [
               "meet-walkout"
@@ -1575,7 +1575,7 @@
           },
           {
             "file": "crowd-swell-big.wav",
-            "atMs": 23578,
+            "atMs": 23590,
             "search": "",
             "screens": [
               "meet-walkout"
@@ -1585,7 +1585,7 @@
           },
           {
             "file": "crowd-swell-big.wav",
-            "atMs": 23999,
+            "atMs": 24010,
             "search": "",
             "screens": [
               "meet-walkout"
@@ -1601,9 +1601,9 @@
             "durationMs": 180,
             "depth": 2,
             "starts": [
-              23157,
-              23322,
-              23444
+              23169,
+              23345,
+              23453
             ]
           },
           {
@@ -1612,8 +1612,8 @@
             "durationMs": 2100,
             "depth": 2,
             "starts": [
-              23578,
-              23999
+              23590,
+              24010
             ]
           }
         ],
@@ -1630,7 +1630,7 @@
     "playsElsewhere": [
       {
         "file": "light-clack-white.wav",
-        "atMs": 9129,
+        "atMs": 9088,
         "search": "",
         "screens": [
           "meet-verdict"
@@ -1640,7 +1640,7 @@
       },
       {
         "file": "light-clack-white.wav",
-        "atMs": 9449,
+        "atMs": 9408,
         "search": "",
         "screens": [
           "meet-verdict"
@@ -1650,7 +1650,7 @@
       },
       {
         "file": "light-clack-white.wav",
-        "atMs": 9769,
+        "atMs": 9729,
         "search": "",
         "screens": [
           "meet-verdict"
@@ -1660,7 +1660,7 @@
       },
       {
         "file": "crowd-cheer.wav",
-        "atMs": 10190,
+        "atMs": 10149,
         "search": "",
         "screens": [
           "meet-verdict"
@@ -1670,7 +1670,7 @@
       },
       {
         "file": "light-clack-white.wav",
-        "atMs": 20018,
+        "atMs": 20006,
         "search": "",
         "screens": [
           "meet-verdict"
@@ -1680,7 +1680,7 @@
       },
       {
         "file": "light-clack-white.wav",
-        "atMs": 20338,
+        "atMs": 20326,
         "search": "",
         "screens": [
           "meet-verdict"
@@ -1690,7 +1690,7 @@
       },
       {
         "file": "light-clack-white.wav",
-        "atMs": 20658,
+        "atMs": 20646,
         "search": "",
         "screens": [
           "meet-verdict"
@@ -1700,7 +1700,7 @@
       },
       {
         "file": "crowd-cheer.wav",
-        "atMs": 21078,
+        "atMs": 21067,
         "search": "",
         "screens": [
           "meet-verdict"
@@ -1864,27 +1864,27 @@
     {
       "ok": true,
       "what": "walkout — cues reached the audio layer, none stacked past the pool of 3",
-      "detail": "bar-rattle.wav@917ms bar-rattle.wav@1098ms bar-rattle.wav@1199ms bar-rattle.wav@1283ms crowd-swell.wav@1339ms; retriggers: bar-rattle.wav x4 depth 2"
+      "detail": "bar-rattle.wav@993ms bar-rattle.wav@1190ms bar-rattle.wav@1277ms bar-rattle.wav@1361ms crowd-swell.wav@1414ms; retriggers: bar-rattle.wav x4 depth 3"
     },
     {
       "ok": true,
       "what": "walkout-third — cues reached the audio layer, none stacked past the pool of 3",
-      "detail": "bar-rattle.wav@644ms bar-rattle.wav@765ms bar-rattle.wav@832ms bar-rattle.wav@931ms bar-rattle.wav@1015ms crowd-swell-big.wav@1065ms crowd-swell-big.wav@2285ms; retriggers: bar-rattle.wav x5 depth 3, crowd-swell-big.wav x2 depth 2"
+      "detail": "bar-rattle.wav@671ms bar-rattle.wav@789ms bar-rattle.wav@858ms bar-rattle.wav@958ms bar-rattle.wav@1042ms crowd-swell-big.wav@1096ms crowd-swell-big.wav@2313ms; retriggers: bar-rattle.wav x5 depth 3, crowd-swell-big.wav x2 depth 2"
     },
     {
       "ok": true,
       "what": "verdict-good — cues reached the audio layer, none stacked past the pool of 3",
-      "detail": "light-clack-white.wav@868ms light-clack-white.wav@1189ms light-clack-white.wav@1509ms crowd-cheer.wav@1930ms; retriggers: light-clack-white.wav x3 depth 1"
+      "detail": "light-clack-white.wav@902ms light-clack-white.wav@1223ms light-clack-white.wav@1543ms crowd-cheer.wav@1964ms; retriggers: light-clack-white.wav x3 depth 1"
     },
     {
       "ok": true,
       "what": "verdict-no-lift — cues reached the audio layer, none stacked past the pool of 3",
-      "detail": "light-clack-red.wav@919ms light-clack-red.wav@1239ms light-clack-red.wav@1560ms; retriggers: light-clack-red.wav x3 depth 1"
+      "detail": "light-clack-red.wav@870ms light-clack-red.wav@1191ms light-clack-red.wav@1511ms; retriggers: light-clack-red.wav x3 depth 1"
     },
     {
       "ok": true,
       "what": "verdict-split — cues reached the audio layer, none stacked past the pool of 3",
-      "detail": "light-clack-white.wav@800ms light-clack-white.wav@1121ms light-clack-red.wav@1441ms crowd-cheer.wav@1862ms; retriggers: light-clack-white.wav x2 depth 1"
+      "detail": "light-clack-white.wav@851ms light-clack-white.wav@1171ms light-clack-red.wav@1492ms crowd-cheer.wav@1912ms; retriggers: light-clack-white.wav x2 depth 1"
     },
     {
       "ok": true,
@@ -1894,7 +1894,7 @@
     {
       "ok": true,
       "what": "bombed — cues reached the audio layer, none stacked past the pool of 3",
-      "detail": "bomb-tone.wav@2123ms"
+      "detail": "bomb-tone.wav@2127ms"
     },
     {
       "ok": true,
@@ -1914,17 +1914,17 @@
     {
       "ok": true,
       "what": "PLAYED ARM — SQUAT · ATTEMPT 1 OF 3 (calm): the walk-out’s cues, on a meet opened with a mouse",
-      "detail": "line \"WALK IT OUT\"; 4 play(s): bar-rattle.wav@2081ms bar-rattle.wav@2201ms bar-rattle.wav@2347ms crowd-swell.wav@2504ms; retriggers: bar-rattle.wav x3 depth 2"
+      "detail": "line \"WALK IT OUT\"; 4 play(s): bar-rattle.wav@2058ms bar-rattle.wav@2192ms bar-rattle.wav@2321ms crowd-swell.wav@2480ms; retriggers: bar-rattle.wav x3 depth 2"
     },
     {
       "ok": true,
       "what": "PLAYED ARM — SQUAT · ATTEMPT 2 OF 3 (calm): the walk-out’s cues, on a meet opened with a mouse",
-      "detail": "line \"WALK IT OUT\"; 4 play(s): bar-rattle.wav@12292ms bar-rattle.wav@12394ms bar-rattle.wav@12478ms crowd-swell.wav@12713ms; retriggers: bar-rattle.wav x3 depth 2"
+      "detail": "line \"WALK IT OUT\"; 4 play(s): bar-rattle.wav@12252ms bar-rattle.wav@12355ms bar-rattle.wav@12437ms crowd-swell.wav@12673ms; retriggers: bar-rattle.wav x3 depth 2"
     },
     {
       "ok": true,
       "what": "PLAYED ARM — SQUAT · ATTEMPT 3 OF 3 (urgent): the walk-out’s cues, on a meet opened with a mouse",
-      "detail": "line \"LAST ONE\"; 5 play(s): bar-rattle.wav@23157ms bar-rattle.wav@23322ms bar-rattle.wav@23444ms crowd-swell-big.wav@23578ms crowd-swell-big.wav@23999ms; retriggers: bar-rattle.wav x3 depth 2, crowd-swell-big.wav x2 depth 2"
+      "detail": "line \"LAST ONE\"; 5 play(s): bar-rattle.wav@23169ms bar-rattle.wav@23345ms bar-rattle.wav@23453ms crowd-swell-big.wav@23590ms crowd-swell-big.wav@24010ms; retriggers: bar-rattle.wav x3 depth 2, crowd-swell-big.wav x2 depth 2"
     },
     {
       "ok": true,
