@@ -138,16 +138,33 @@ export const LIFT_PROMPTS = Object.freeze({
       'Two moments, not two motions: release at the bottom, tap every drive cue. Catch the beat.',
   }),
   /**
-   * RE-TRANSCRIBED FOR THE 2026-08-25 RULING, WHICH REPLACED BENCH'S IDENTITY
-   * RATHER THAN ITS NUMBERS.
+   * RE-TRANSCRIBED A SECOND TIME, FOR THE 2026-08-25 PHONE REPLAY STEER.
    *
-   * Three of these five lines moved and the mechanic behind them moved further:
-   * `DESCENT` used to say TOUCH THE CHEST, which described a beat where the
-   * player held and released at a depth. The bar is now fed down and CAUGHT,
-   * `COMMAND` asks for a burst of taps rather than one press, and the subtitle
-   * carries the false-start rule that pays for it. A driver holding the old
-   * three would time out on the first and the third and press once at the
-   * second, which is why this table is the thing that had to change first.
+   * The first re-transcription was for the ruling that replaced bench's
+   * identity; this one is for the steer that replaced the ruling's own two
+   * halves. Three lines moved again and one is NEW:
+   *
+   *   DESCENT   'EASE IT DOWN' -> 'STAY TIGHT'. The beat stopped being a rate
+   *             the player steers. Holding is correct at every load; the only
+   *             mistake left is letting go.
+   *   COMMAND   unchanged text, changed meaning. It no longer opens an 850 ms
+   *             window with a fourteen-tap ceiling — taps count from here until
+   *             the rep resolves.
+   *   GRIND     NEW, and it is the line the old driver could not have known
+   *             about. Bench's ASCENT used to flip between 'RIDE IT' and
+   *             'DRIVE — TAP' like the other two lifts; it now shows ONE line
+   *             for the whole ascent because bench arms no drive cue at all.
+   *             A driver that waited for 'DRIVE — TAP' on a bench rep is
+   *             waiting for a beat the mechanic deleted.
+   *   SUBTITLE  rewritten whole. The old one described a burst with a tap
+   *             count and a floor of three, and the false-start rule is now a
+   *             DELAY of up to half a second.
+   *
+   * `GRIND` IS NOT IN `ECCENTRIC_ONLY_PROMPTS`, and that is load-bearing rather
+   * than an omission: that list is built from DESCENT/HOLE/COMMAND, which are
+   * the lines only an eccentric lift can print. `GRIND` is an ASCENT line, so a
+   * deadlift showing it would mean something different from a deadlift showing
+   * 'STAY TIGHT' and the two must not be counted together.
    *
    * STILL TRANSCRIBED AND STILL NOT IMPORTED, per this block's own header: a
    * driver that read its copy out of the app would drive a broken app in
@@ -156,13 +173,15 @@ export const LIFT_PROMPTS = Object.freeze({
    */
   bench: Object.freeze({
     BRACE: 'TAP AND HOLD TO LOWER',
-    DESCENT: 'EASE IT DOWN',
+    DESCENT: 'STAY TIGHT',
     HOLE: 'WAIT FOR IT',
     COMMAND: 'PRESS — TAP FAST',
+    /** BENCH ONLY — the whole ascent, because bench arms no drive cue. */
+    GRIND: 'GRIND — KEEP TAPPING',
     LOCKOUT: 'LOCK IT',
     DOWN: null,
     SUBTITLE:
-      'Ease the bar to the chest under control, wait for the call, then tap as fast as you can to press it. Taps before the call count for nothing, and each one costs a tap off your burst — down to a floor of three.',
+      'Hold all the way down and the bar reaches your chest under control; let go and it drops on you. Wait for the call, then tap fast and keep tapping — your tap rate is your press for as long as the bar is moving. Taps before the call count for nothing, and each one holds your press back, up to half a second.',
   }),
   deadlift: Object.freeze({
     BRACE: 'TAP TO PULL',
@@ -170,12 +189,32 @@ export const LIFT_PROMPTS = Object.freeze({
     DESCENT: null,
     HOLE: null,
     COMMAND: null,
+    /** SQUAT AND DEADLIFT KEEP THE DRIVE CUE, so neither has a grind line. */
+    GRIND: null,
     LOCKOUT: "DON'T LET GO",
     DOWN: 'DOWN',
     SUBTITLE:
       'No way down: pull off the floor, tap every drive cue, then hold the lockout until the down call.',
   }),
 });
+
+/**
+ * BENCH ONLY — what the mechanic says to a player who jumped the call.
+ *
+ * `LIFT_COPY.PROMPT.HOLE_FALSE_START`, restated. It is HELD OUT OF THE LADDER
+ * ABOVE ON PURPOSE rather than added as a sixth rung: `ECCENTRIC_ONLY_PROMPTS`
+ * and `verify-lift-press.mjs`'s `ECCENTRIC_LINE_COUNT` are both derived from
+ * DESCENT/HOLE/COMMAND, and both are compared against what a REAL DRIVEN REP
+ * showed. This line only renders when the player makes a mistake, so folding it
+ * into that derivation would raise bench's expected count to a rung no
+ * correctly driven rep can produce — a check that reddens on the driver playing
+ * well.
+ *
+ * What it is for is diagnosis: a driver whose taps arrive before the command
+ * sees this instead of 'WAIT FOR IT', and being able to say so is the
+ * difference between "the command never came" and "we jumped it".
+ */
+export const BENCH_FALSE_START_PROMPT = 'TOO SOON — WAIT FOR THE CALL';
 
 /** The ascent lines, which are generic press language shared by all three. */
 export const ASCENT_PROMPTS = Object.freeze({
@@ -226,128 +265,99 @@ export function checkInLiftTestId(kind) {
  * visible edit. A NUMBER a driver STEERS BY is the same fact typed twice, and
  * the second copy stops being true silently.
  *
- * Bench's numbers are going to move. `liftTuning.ts` says so about its own
- * descent pair in as many words — "a tuner turning this knob should re-run
- * that search rather than trust the feel of one rep" — and GDD §12.1 is open
- * on every one of them pending a phone replay. A driver holding `hold 183ms,
- * then release 433ms` as literals would keep driving a beat the game had
- * stopped having, and would report the resulting misses as the app's fault.
+ * Bench's numbers are going to move. GDD §12.1 is open on every one of them
+ * pending a phone replay, and the replay before this one moved most of them. A
+ * driver holding a tap period as a literal would keep tapping at a cadence the
+ * mechanic had stopped counting, and would report the resulting weak grinds as
+ * the app's fault.
  *
  * ===========================================================================
- * WHAT IT COMPUTES, AND WHY A SEARCH RATHER THAN A FORMULA
+ * WHAT THE 2026-08-25 REPLAY STEER DELETED FROM HERE, AND THE ANALYSIS
  * ===========================================================================
- * The descent has no closed form worth writing: rate is fed by gravity while
- * the finger is down, resisted by the brake while it is up, capped, and the
- * graded quantity is the rate at the instant depth crosses the chest, multiplied
- * by what a slow descent has left of it. So the duty cycle is chosen by
- * simulating the real recurrence — `benchDescentRate`'s, restated here — over
- * every (feed, ease) pair inside `SEARCH` and keeping the one whose WORST touch
- * across a spread of loads is best.
+ * This block used to hold a SEARCH: `BENCH_SEARCH`, `simulateTouch`,
+ * `bestDutyCycle` and an `interpolate` restating `spriteTuning.ts`'s `byLoad`,
+ * simulating the descent recurrence over every (feed, ease) pair and keeping
+ * the cycle whose WORST touch across a spread of loads was best. Roughly two
+ * hundred lines. It is gone, and so are `freshBenchDescent`, `adaptBenchDescent`
+ * and `BENCH_DRIVE`'s five `FEED_*` knobs.
  *
- * WORST-CASE AND NOT AVERAGE, BECAUSE THE DRIVER CANNOT SEE THE LOAD. Nothing
- * in the DOM says what fraction of e1RM this rep is at; the ladder probe knows
- * its RPE and the meet's opener arithmetic is a different table again. A cycle
- * that is excellent at 0.86 and crashes at 1.0 would work in one arm and fail
- * in the other, so the objective is the minimum.
+ * IT IS RETIRED RATHER THAN RETUNED, because its subject is gone rather than
+ * moved. The search existed because the descent was a rate the player steered:
+ * the finger FED the bar down and lifting it BRAKED, so there was a duty cycle
+ * to choose and a wrong answer to avoid. Under the steer the sign is inverted
+ * and the choice is deleted — holding is correct at every load, the bar cannot
+ * be slowed below the controlled rate, and `benchDescentRate` floors that rate
+ * above zero so the bar always arrives. There is no cycle left to search over.
  *
- * AND IT WILL NOT BE PERFECT ANYWHERE, BY DESIGN. GDD §6.2 records that an
- * independent critic searched this exact space and that the number of fixed
- * rhythms grading PERFECT at every load is pinned at zero — that is the point
- * of the beat. What the search buys is a rhythm that is CONTROLLED enough
- * everywhere to get a rep to lockout, which is what a driver needs; the
- * measured worst case is carried in `worstTouch` so a caller can report it
- * rather than assume it.
+ * WHAT WAS DOMINATING WHAT, stated rather than implied, because the search
+ * carried this directory's only non-vacuity control on the descent:
+ *
+ *   `committedWorstTouch` was the control — "a single committed hold arrives at
+ *   quality ZERO at every load from 0.8 up" — and the check beside it was
+ *   `worstTouch > committedWorstTouch`. Under the steer a single committed hold
+ *   is the CORRECT play and arrives at quality 1 at every load, so that check
+ *   does not merely stop being interesting: its two sides swap. Re-pinning it
+ *   the other way round would be a tool re-deriving, in a second
+ *   implementation of the game's own recurrence, a property `liftTuning.test.ts`
+ *   already asserts in closed form from the constants
+ *   (`DESCENT_DEPTH_PER_TICK.bench <= BENCH_TOUCH_SOFT_RATE` at both ends).
+ *   That is a check the suite dominates outright — no state of the descent
+ *   makes the tool's version red while the suite's version passes — so it is
+ *   deleted and the domination is recorded here rather than left as two checks
+ *   where one can never speak.
+ *
+ *   `adaptBenchDescent` moved a feed phase on three miss reasons. One of them,
+ *   `'no-touch'`, NO LONGER EXISTS — the mechanic deleted the `MissReason` and
+ *   its timeout together, because a floored descent rate makes the miss
+ *   unreachable. The other two ('stalled', 'timeout') were explicitly
+ *   circumstantial evidence about the descent, and there is now no descent
+ *   parameter for them to move. Its whole domain is empty, which is the
+ *   definition this repository uses for a vacuous check, so it goes with the
+ *   search.
+ *
+ * ===========================================================================
+ * WHAT REPLACES IT: A CADENCE, AND A CHECK ON THE CADENCE
+ * ===========================================================================
+ * The driver's descent play is now one instruction — hold — so there is nothing
+ * to derive for it beyond a deadline. What DOES need deriving is the grind's
+ * tap cadence, and unlike the old duty cycle it comes with a comparison the
+ * tool can actually make against the mechanic:
+ *
+ *   `GRIND_TAP_REFRACTORY_TICKS` is the floor on the rate `stepLift` will
+ *   believe. A press inside it is IGNORED rather than penalised, so tapping a
+ *   little fast costs nothing and tapping slow costs charge.
+ *   `GRIND_CHARGE_DECAY_PER_TICK` and `GRIND_CHARGE` turn a tap period into a
+ *   settled charge and that charge into a force, in closed form:
+ *
+ *       steadyCharge(gap) = 1 / (1 - decay ** gap)      // ticks between taps
+ *       force(c)          = sat(min(c, CEILING)) / sat(CEILING),
+ *                           sat(x) = x / (x + HALF_SATURATION)
+ *
+ * So a MEASURED inter-tap gap has an implied grind force, and `grindTapToResolution`
+ * reports the one it actually achieved. That is a number with a predicate
+ * behind it rather than a number in a log line: the callers compare it against
+ * `BENCH_DRIVE.GRIND_FORCE_FLOOR` and say so.
+ *
+ * THIS IS NOT A SECOND IMPLEMENTATION OF GAME MATH USED AS AN ORACLE. Nothing
+ * here grades the app. `steadyCharge`/`grindForceOf` describe what the ROBOT'S
+ * OWN CADENCE is worth, which is a fact about the robot; if they are wrong the
+ * driver reports a worse implied force and the callers say the robot could not
+ * keep up, which is the failure mode that shows rather than the one that hides.
  */
 const HERE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.resolve(HERE_DIR, '..');
 
-/**
- * The search's own bounds and sample points. Not game feel — these are the
- * robot's, in the shape `SESSION_DRIVE` keeps its own.
- */
-const BENCH_SEARCH = Object.freeze({
-  /** Feed and ease phases, in sim ticks, are searched over these ranges. */
-  MAX_FEED_TICKS: 24,
-  MAX_EASE_TICKS: 48,
-  /**
-   * The loads the worst case is taken over.
-   *
-   * SPANS BOTH ARMS THIS MODULE DRIVES rather than sampling evenly: the ladder
-   * probe's RPE 8 rung sits near 0.86 and a meet attempt runs at roughly
-   * 0.90-0.97 of e1RM off `OPENER_FRACTION_OF_1RM` and its jump table, and the
-   * warm-up end is here because the session's first sets are lighter than
-   * either. A grid that missed the top would choose a rhythm that crashes
-   * exactly where the meet plays.
-   */
-  LOADS: Object.freeze([0.4, 0.55, 0.7, 0.8, 0.863, 0.9, 0.95, 1.0]),
-  /** Give the sim this many ticks to reach the chest before a pair is rejected. */
-  MAX_TICKS: 400,
-});
-
-/** Restated from `spriteTuning.ts`'s `byLoad`/`loadT`, over values read from it. */
-function interpolate(pair, load, range, exponent) {
-  const clamped = Math.min(range.max, Math.max(range.min, load));
-  const linear = (clamped - range.min) / (range.max - range.min);
-  const t = Math.pow(linear, exponent);
-  return pair.light + (pair.maximal - pair.light) * t;
+/** Charge a periodic tapper settles at, tapping once every `gapTicks`. */
+function steadyCharge(decay, gapTicks) {
+  const retained = Math.pow(decay, gapTicks);
+  if (retained >= 1) return Infinity;
+  return 1 / (1 - retained);
 }
 
-/**
- * Simulate one descent at one load with one duty cycle.
- *
- * THE RECURRENCE IS `benchDescentRate`'S AND `stepLift`'S, RESTATED. That is a
- * second implementation of game math in a tool, which this repository normally
- * refuses — and it is the exception `readTuning.mjs` names, because what comes
- * out is an INPUT the robot moves on rather than an expectation it compares
- * against. Nothing here grades the app: if this simulation is wrong the driver
- * plays a worse rep and the checks that read the app report a worse outcome,
- * which is the failure mode that shows up rather than the one that hides.
- */
-function simulateTouch(t, load, feedTicks, easeTicks) {
-  const gravity = interpolate(t.gravity, load, t.loadRange, t.loadExponent);
-  const brake = interpolate(t.brake, load, t.loadRange, t.loadExponent);
-  const soft = interpolate(t.soft, load, t.loadRange, t.loadExponent);
-  const crash = interpolate(t.crash, load, t.loadRange, t.loadExponent);
-  const patience = interpolate(t.patience, load, t.loadRange, t.loadExponent);
-  let rate = interpolate(t.startRate, load, t.loadRange, t.loadExponent);
-  let depth = 0;
-  let held = true;
-  let inPhase = 0;
-  let ticks = 0;
-  for (; ticks < BENCH_SEARCH.MAX_TICKS; ticks += 1) {
-    rate = held ? Math.min(t.maxRate, rate + gravity) : Math.max(0, rate - brake);
-    depth += rate;
-    inPhase += 1;
-    if (depth >= t.idealDepth) break;
-    if (inPhase >= (held ? feedTicks : easeTicks)) {
-      held = !held;
-      inPhase = 0;
-    }
-  }
-  if (depth < t.idealDepth) return null;
-  const speed = crash <= soft ? (rate <= soft ? 1 : 0) : Math.max(0, Math.min(1, (crash - rate) / (crash - soft)));
-  const kept =
-    ticks + 1 <= patience
-      ? 1
-      : Math.max(0, Math.min(1, 1 - (ticks + 1 - patience) / t.dawdleSpan));
-  return { quality: speed * kept, ticks: ticks + 1, rate };
-}
-
-/** The (feed, ease) pair whose WORST touch across `LOADS` is best. */
-function bestDutyCycle(t) {
-  let best = null;
-  for (let feed = 1; feed <= BENCH_SEARCH.MAX_FEED_TICKS; feed += 1) {
-    for (let ease = 1; ease <= BENCH_SEARCH.MAX_EASE_TICKS; ease += 1) {
-      const runs = BENCH_SEARCH.LOADS.map((load) => simulateTouch(t, load, feed, ease));
-      if (runs.some((run) => run === null)) continue;
-      const worst = Math.min(...runs.map((run) => run.quality));
-      const mean = runs.reduce((sum, run) => sum + run.quality, 0) / runs.length;
-      if (best === null || worst > best.worst || (worst === best.worst && mean > best.mean)) {
-        best = { feedTicks: feed, easeTicks: ease, worst, mean, runs };
-      }
-    }
-  }
-  return best;
+/** `grindForce` from `lift.ts`, restated over constants read from source. */
+function grindForceOf(charge, half, ceiling) {
+  const sat = (x) => x / (x + half);
+  return sat(Math.min(charge, ceiling)) / sat(ceiling);
 }
 
 /**
@@ -361,35 +371,25 @@ function bestDutyCycle(t) {
 function readBenchBeatTuning() {
   const liftTuning = readFileSync(path.join(SRC_ROOT, 'src/game/liftTuning.ts'), 'utf8');
   const spriteTuning = readFileSync(path.join(SRC_ROOT, 'src/art/spriteTuning.ts'), 'utf8');
-  const benchStart = blockInSource(liftTuning, 'DESCENT_DEPTH_PER_TICK') ?? '';
+  // SLICED FIRST, BECAUSE `bench` IS NOT A UNIQUE KEY. It is a per-kind copy
+  // row, a prompt row and a prose word all over `liftTuning.ts`, so asking the
+  // whole file for it answers about whichever comes first. See `blockInSource`.
+  const descentBlock = blockInSource(liftTuning, 'DESCENT_DEPTH_PER_TICK') ?? '';
   const read = {
     tickHz: numberInDeclaration(spriteTuning, 'TICK_HZ'),
-    loadMin: numberInBlock(spriteTuning, 'LOAD_RANGE', 'MIN'),
-    loadMax: numberInBlock(spriteTuning, 'LOAD_RANGE', 'MAX'),
-    loadExponent: numberInSource(spriteTuning, 'LOAD_CURVE_EXPONENT'),
-    gravityLight: numberInBlock(liftTuning, 'BENCH_DESCENT_GRAVITY', 'LIGHT'),
-    gravityMaximal: numberInBlock(liftTuning, 'BENCH_DESCENT_GRAVITY', 'MAXIMAL'),
-    brakeLight: numberInBlock(liftTuning, 'BENCH_DESCENT_BRAKE', 'LIGHT'),
-    brakeMaximal: numberInBlock(liftTuning, 'BENCH_DESCENT_BRAKE', 'MAXIMAL'),
-    maxRate: numberInSource(liftTuning, 'BENCH_DESCENT_MAX_RATE'),
-    // SLICED FIRST, BECAUSE `bench` IS NOT A UNIQUE KEY. It is a per-kind copy
-    // row, a prompt row and a prose word all over `liftTuning.ts`, so asking
-    // the whole file for it answers about whichever comes first. See
-    // `blockInSource`.
-    startLight: numberInBlock(benchStart, 'bench', 'LIGHT'),
-    startMaximal: numberInBlock(benchStart, 'bench', 'MAXIMAL'),
+    /** The grind's own three constants — the cadence comes off these. */
+    refractoryTicks: numberInSource(liftTuning, 'GRIND_TAP_REFRACTORY_TICKS'),
+    chargeDecay: numberInSource(liftTuning, 'GRIND_CHARGE_DECAY_PER_TICK'),
+    chargeHalf: numberInBlock(liftTuning, 'GRIND_CHARGE', 'HALF_SATURATION'),
+    chargeCeiling: numberInBlock(liftTuning, 'GRIND_CHARGE', 'CEILING'),
+    /** The launch beat, and the seeded wait in front of it. */
+    launchMs: numberInSource(liftTuning, 'PRESS_LAUNCH_MS'),
+    commandDelayMaxTicks: numberInBlock(liftTuning, 'PRESS_COMMAND_DELAY_TICKS', 'MAX'),
+    /** How long the ascent may run before `stepLift` calls it out of air. */
+    ascentTimeoutTicks: numberInSource(liftTuning, 'ASCENT_TIMEOUT_TICKS'),
+    /** The descent's slowest possible rate, which sets the hold's deadline. */
     idealDepth: numberInBlock(liftTuning, 'DEPTH_IDEAL', 'bench'),
-    softLight: numberInBlock(liftTuning, 'BENCH_TOUCH_SOFT_RATE', 'LIGHT'),
-    softMaximal: numberInBlock(liftTuning, 'BENCH_TOUCH_SOFT_RATE', 'MAXIMAL'),
-    crashLight: numberInBlock(liftTuning, 'BENCH_TOUCH_CRASH_RATE', 'LIGHT'),
-    crashMaximal: numberInBlock(liftTuning, 'BENCH_TOUCH_CRASH_RATE', 'MAXIMAL'),
-    patienceLight: numberInBlock(liftTuning, 'BENCH_DESCENT_PATIENCE_TICKS', 'LIGHT'),
-    patienceMaximal: numberInBlock(liftTuning, 'BENCH_DESCENT_PATIENCE_TICKS', 'MAXIMAL'),
-    dawdleSpan: numberInSource(liftTuning, 'BENCH_DESCENT_DAWDLE_SPAN_TICKS'),
-    chestTimeoutTicks: numberInSource(liftTuning, 'CHEST_TOUCH_TIMEOUT_TICKS'),
-    burstWindowMs: numberInSource(liftTuning, 'PRESS_BURST_WINDOW_MS'),
-    refractoryTicks: numberInSource(liftTuning, 'PRESS_BURST_TAP_REFRACTORY_TICKS'),
-    maxCountedTaps: numberInBlock(liftTuning, 'PRESS_BURST_FORCE', 'MAX_COUNTED_TAPS'),
+    slowestDescentPerTick: numberInBlock(descentBlock, 'bench', 'MAXIMAL'),
   };
   const missing = Object.entries(read)
     .filter(([, value]) => typeof value !== 'number' || !Number.isFinite(value))
@@ -397,120 +397,119 @@ function readBenchBeatTuning() {
   const parserComplaints = parserSelfTest();
   const tickMs = typeof read.tickHz === 'number' && read.tickHz > 0 ? 1000 / read.tickHz : null;
   if (missing.length > 0 || parserComplaints.length > 0 || tickMs === null) {
-    return { ...read, tickMs, missing, parserComplaints, cycle: null };
+    return { ...read, tickMs, missing, parserComplaints, refractoryMs: null };
   }
-  const t = {
-    gravity: { light: read.gravityLight, maximal: read.gravityMaximal },
-    brake: { light: read.brakeLight, maximal: read.brakeMaximal },
-    startRate: { light: read.startLight, maximal: read.startMaximal },
-    soft: { light: read.softLight, maximal: read.softMaximal },
-    crash: { light: read.crashLight, maximal: read.crashMaximal },
-    patience: { light: read.patienceLight, maximal: read.patienceMaximal },
-    loadRange: { min: read.loadMin, max: read.loadMax },
-    loadExponent: read.loadExponent,
-    maxRate: read.maxRate,
-    idealDepth: read.idealDepth,
-    dawdleSpan: read.dawdleSpan,
-  };
-  const cycle = bestDutyCycle(t);
-  // THE CONTROL THE CHOSEN CYCLE IS CHOSEN AGAINST, taken by the same
-  // simulation in the same call: a SINGLE COMMITTED HOLD, which is what the old
-  // driver did and what a driver written without reading the ruling would do.
-  // Without it, "the search picked feed 11 / ease 26" is a pair of numbers with
-  // nothing behind it — the measured-carried-displayed-never-compared shape.
-  const committed = BENCH_SEARCH.LOADS.map((load) =>
-    simulateTouch(t, load, BENCH_SEARCH.MAX_TICKS, 1),
-  );
-  const committedWorst = committed.some((run) => run === null)
-    ? null
-    : Math.min(...committed.map((run) => run.quality));
+  /**
+   * What the mechanic's OWN floor is worth, if a robot could hit it exactly.
+   *
+   * The control the cadence check compares against: at a tap every
+   * `refractoryTicks` the settled charge is the most any player can hold, so
+   * `saturatedForce` is 1 by construction whenever the ceiling is reachable.
+   * If a tuner raises `GRIND_CHARGE.CEILING` past what the refractory floor can
+   * settle at, this drops below 1 and the callers' cadence check reports that
+   * the fastest legal human cannot reach a full grind — which is a finding
+   * about the tuning, not about the robot.
+   */
+  const flooredCharge = steadyCharge(read.chargeDecay, read.refractoryTicks);
   return {
     ...read,
     tickMs,
     missing,
     parserComplaints,
-    cycle,
-    /** What a single committed hold grades at its worst, over the same loads. */
-    committedWorstTouch: committedWorst,
-    /** The duty cycle, in wall clock, which is the unit a mouse moves in. */
-    feedMs: cycle === null ? null : Math.round(cycle.feedTicks * tickMs),
-    easeMs: cycle === null ? null : Math.round(cycle.easeTicks * tickMs),
-    /** What the search says the worst touch across `LOADS` grades, 0..1. */
-    worstTouch: cycle === null ? null : cycle.worst,
-    /**
-     * How long a descent may run before `stepLift` calls it 'no-touch'. The
-     * driver clamps down and commits well inside this rather than discovering
-     * it — see `BENCH_DRIVE.DESCENT_COMMIT_FRACTION`.
-     */
-    chestTimeoutMs: Math.round(read.chestTimeoutTicks * tickMs),
     /**
      * The floor a tap has to clear to be COUNTED, in wall clock.
      *
-     * `stepLift` ignores a press inside `PRESS_BURST_TAP_REFRACTORY_TICKS` of
-     * the last counted one — it does not penalise it, it simply does not count
-     * it — so tapping faster than this wastes dispatches and costs nothing,
-     * and tapping slower than it wastes WINDOW, which is the expensive
-     * mistake. The driver aims just inside it (`BURST_TAP_PERIOD_FRACTION`) so
-     * a sim running below 60 Hz — which `FEEDBACK.MAX_CATCH_UP_TICKS` makes
-     * routine on a software-rendered browser — still gets one counted tap per
-     * refractory rather than one per one-and-a-bit.
+     * `stepLift` ignores a press inside `GRIND_TAP_REFRACTORY_TICKS` of the last
+     * counted one — it does not penalise it, it simply does not count it — so
+     * tapping faster than this wastes dispatches and costs nothing, and tapping
+     * slower than it costs charge, which is the expensive mistake. The driver
+     * aims just inside it (`TAP_PERIOD_FRACTION`) so a sim running below 60 Hz —
+     * which `FEEDBACK.MAX_CATCH_UP_TICKS` makes routine on a software-rendered
+     * browser — still gets one counted tap per refractory rather than one per
+     * one-and-a-bit.
      */
     refractoryMs: read.refractoryTicks * tickMs,
+    saturatedCharge: flooredCharge,
+    saturatedForce: grindForceOf(flooredCharge, read.chargeHalf, read.chargeCeiling),
+    /**
+     * How long a HELD descent takes at the SLOWEST load the game can prescribe.
+     *
+     * A heavier bar comes down slower (`DESCENT_DEPTH_PER_TICK` — a limit
+     * attempt is controlled down), so the maximal end is the long one and is
+     * what a deadline has to clear. `holdBenchToTheChest` multiplies it by
+     * `DESCENT_DEADLINE_MULTIPLE`; the result is "the app has stopped
+     * responding", not "the app was slow".
+     */
+    heldDescentMs: Math.round((read.idealDepth / read.slowestDescentPerTick) * tickMs),
+    /**
+     * The longest a grind can legitimately run: the whole seeded wait, the
+     * launch beat, and an ascent that runs out of air rather than locking out.
+     */
+    longestGrindMs: Math.round(
+      read.commandDelayMaxTicks * tickMs + read.launchMs + read.ascentTimeoutTicks * tickMs,
+    ),
   };
 }
 
 export const BENCH_BEAT = readBenchBeatTuning();
+
+/** What a measured inter-tap gap in ms is worth as grind force, 0..1 or null. */
+export function impliedGrindForce(gapMs) {
+  if (BENCH_BEAT.tickMs === null || BENCH_BEAT.missing.length > 0) return null;
+  if (!Number.isFinite(gapMs) || gapMs <= 0) return null;
+  const charge = steadyCharge(BENCH_BEAT.chargeDecay, gapMs / BENCH_BEAT.tickMs);
+  if (!Number.isFinite(charge)) return 1;
+  return grindForceOf(charge, BENCH_BEAT.chargeHalf, BENCH_BEAT.chargeCeiling);
+}
 
 /** Every number the bench driver moves on that is NOT read from the game. */
 export const BENCH_DRIVE = Object.freeze({
   /**
    * Aim this fraction of the refractory between taps.
    *
-   * Below 1 on purpose — see `refractoryMs`. A wasted tap is free and a wasted
-   * window tick is not, so the error is taken on the safe side.
+   * Below 1 on purpose — see `refractoryMs`. A wasted dispatch is free and a
+   * wasted tick is not, so the error is taken on the safe side. The real gaps a
+   * browser produces are wider than this whatever it is set to (a tap is two
+   * CDP round trips), which is exactly why the achieved gap is MEASURED and
+   * compared rather than assumed.
    */
-  BURST_TAP_PERIOD_FRACTION: 0.8,
+  TAP_PERIOD_FRACTION: 0.8,
   /**
-   * How many dispatches the burst may spend to land `maxCountedTaps` counted
-   * ones. Above 1 because a dispatch inside the refractory does not count, and
-   * a browser under load does not hit a 40 ms period exactly.
-   */
-  BURST_TAP_ATTEMPT_MULTIPLE: 3,
-  /**
-   * A hang guard on the burst loop, as a multiple of the declared window.
+   * The implied grind force a run's achieved cadence must clear.
    *
-   * NOT A TIMING TARGET. The loop stops on the command line leaving the screen,
-   * which is the real end of the burst; this is "the app has stopped
-   * responding", and it is a multiple rather than a constant because the
-   * window is declared in ms and consumed in TICKS, so a sim running slow makes
-   * the real window longer in wall clock.
+   * NOT A GAME-FEEL VALUE AND NOT A TOLERANCE PICKED TO MAKE A CHECK PASS: it
+   * is a statement about the ROBOT, and it is set well under 1 because a
+   * browser cannot hit a 40 ms period and is not required to. What it forbids
+   * is a run whose taps were so sparse that a weak grind is the driver's fault
+   * rather than the app's — which is the reading a caller would otherwise take
+   * from a missed rep. The curve is steep at the bottom and flat at the top
+   * (`GRIND_CHARGE`'s own header: sixteen times steeper at the bottom), so 0.7
+   * is a long way down the achievable range rather than a hair under it.
    */
-  BURST_DEADLINE_MULTIPLE: 4,
+  GRIND_FORCE_FLOOR: 0.7,
   /**
-   * Commit — hold the finger down and drive the bar in — once the descent has
-   * spent this much of its `no-touch` budget.
+   * A hang guard on the grind loop, as a multiple of the longest a grind can
+   * legitimately run.
    *
-   * A FAILSAFE, NOT THE PLAY. A duty cycle whose ease phase has taken the rate
-   * to zero at a load the search did not model would otherwise creep to the
-   * timeout and take a 'no-touch' miss, which is the one descent failure that
-   * costs the whole rep. Committing arrives fast and grades badly, which is a
-   * worse rep and not a lost one.
+   * NOT A TIMING TARGET. The loop stops when the prompt stops asking for taps,
+   * which is the real end of the grind; this is "the app has stopped
+   * responding", and it is a multiple rather than a constant because every
+   * duration behind `longestGrindMs` is declared in ms or ticks and consumed in
+   * TICKS, so a sim running slow makes the real beat longer in wall clock.
    */
-  DESCENT_COMMIT_FRACTION: 0.5,
+  GRIND_DEADLINE_MULTIPLE: 3,
   /**
-   * How much the descent search moves the feed after a miss it can attribute.
-   *
-   * Same shape as `adaptDepthSearch` above and for the same reason: the sim
-   * does not run at wall-clock speed on a loaded machine, so a cycle derived
-   * in TICKS lands somewhere else in MS and the driver has to be able to walk
-   * back to it. Halves on a reversal, for the reason `DEPTH_HOLD_STEP_MS`
-   * records: a fixed step overshoots.
+   * A cap on dispatches, so a mechanic that never resolves cannot spin forever
+   * even if the prompt keeps asking. Derived at the call site from
+   * `longestGrindMs` and the tap period rather than typed as a count.
    */
-  FEED_STEP_MS: 40,
-  FEED_STEP_MIN_MS: 10,
-  FEED_MIN_MS: 40,
-  FEED_MAX_MS: 700,
-  /** How often the descent loop re-reads whether the bar has reached the chest. */
+  GRIND_ATTEMPT_MULTIPLE: 2,
+  /**
+   * How long the driver waits, past the descent's own arithmetic, before
+   * calling the hold a failure. See `heldDescentMs`.
+   */
+  DESCENT_DEADLINE_MULTIPLE: 4,
+  /** How often the hold loop re-reads whether the bar has reached the chest. */
   POLL_MS: 20,
 });
 
@@ -535,27 +534,28 @@ export const SESSION_PROMPTS = Object.freeze({
    * The two miss reasons that say a SQUAT'S RELEASE was mistimed, and in which
    * direction. Restated from `LIFT_COPY.MISS_REASON`.
    *
-   * THE SENTENCE THAT USED TO FOLLOW THIS WAS TRUE OF SQUAT AND IS NOT TRUE OF
-   * BENCH, so it is corrected rather than left standing. It said the other two
-   * reasons "say the depth was fine and the ascent lost, so they are not
-   * adapted on". On a squat that holds. On a bench there is no depth to be
-   * fine: the descent's mistake is a bar that arrived too fast, which charges
-   * `BENCH_TOUCH_DEMAND_PENALTY` against the ascent and shows up as the ascent
-   * losing. So `adaptBenchDescent` DOES read them, in the other direction, and
-   * says in its own header that the evidence is circumstantial rather than
-   * naming the beat the way 'no-touch' does.
+   * THEY ARE SQUAT'S ALONE NOW, AND THE PARAGRAPH THAT USED TO QUALIFY THAT IS
+   * DELETED RATHER THAN REWORDED. It said bench read these two in the other
+   * direction, because a crashed arrival charges the ascent — true while
+   * `adaptBenchDescent` existed to read them. The 2026-08-25 replay steer left
+   * bench's descent with no parameter to move at all (holding is correct at
+   * every load), so nothing adapts on them any more and the sentence would have
+   * been describing a function that is gone.
    */
   MISS_TOO_HIGH: 'short of depth',
   MISS_BURIED: 'Buried it',
   /**
-   * BENCH ONLY, AND IT IS THE ONE MISS THE DESCENT CAN PRODUCE ON ITS OWN.
-   * `LIFT_COPY.MISS_REASON['no-touch']` — the bar never reached the chest,
-   * which needs the feed to stop and never restart. Three red lights in the
-   * real sport, and the only failure a bench descent has that is not paid for
-   * through the ascent.
+   * `MISS_NO_TOUCH` WAS HERE AND IS DELETED, NOT RENAMED. It restated
+   * `LIFT_COPY.MISS_REASON['no-touch']`, and that `MissReason` no longer
+   * exists: `benchDescentRate` floors the descent rate above zero, so depth
+   * strictly increases every tick and the chest is always reached, which made
+   * the miss unreachable and the mechanic deleted it with its timeout. A driver
+   * still watching for a sentence the game can never print is a check with an
+   * empty domain — and one that reads as coverage.
+   *
+   * The two below stay, because both are still reachable: they are what the
+   * ASCENT loses, and a bench ascent is now the whole grind.
    */
-  MISS_NO_TOUCH: 'Never touched the chest.',
-  /** The two the ascent loses, which bench's descent can CAUSE without naming. */
   MISS_STALLED: 'The bar beat you at the sticking point.',
   MISS_TIMEOUT: 'Ran out of air.',
 });
@@ -1572,211 +1572,248 @@ async function waitOutOrLeave(page, { read, line, hasLeft, ms }) {
 }
 
 /**
- * FEED THE BAR TO THE CHEST — bench's eccentric under the 2026-08-25 ruling.
+ * HOLD THE BAR TO THE CHEST — bench's eccentric under the 2026-08-25 replay
+ * steer.
  *
  * PRECONDITION: the finger is DOWN and the prompt is saying bench's DESCENT
  * line. Both callers establish that; it is stated here rather than assumed
  * because `awaitFirstDriveCue`'s header records what a missing precondition cost
  * the ascent loop one beat later.
  *
- * POSTCONDITION: the finger is UP. That matters and is not tidiness — the burst
+ * POSTCONDITION: the finger is UP. That matters and is not tidiness — the grind
  * counts press EDGES, so a finger left down through the touch would make the
- * first tap of the burst a no-op and cost the player a tap they think they
+ * first tap of the grind a no-op and cost the player a tap they think they
  * threw.
  *
  * ===========================================================================
- * WHY A DUTY CYCLE AND NOT A HOLD
+ * WHY A HOLD AND NOT A DUTY CYCLE — WHICH IS THE STEER, INVERTED FROM WHAT
+ * THIS FUNCTION USED TO SAY
  * ===========================================================================
- * Under the old beat the descent was one hold and one release at a depth, and
- * `DEPTH_HOLD_MS` was the whole play. It is not a depth check any more: the bar
- * accelerates while the finger is down and decelerates while it is up, contact
- * happens wherever the bar reaches the chest, and what is graded is the RATE it
- * arrives at. Measured through the search in `BENCH_BEAT`: a single committed
- * hold arrives at quality ZERO at every load from 0.8 up — a crash on every
- * working set and every meet attempt — while the chosen cycle's worst case
- * across the same loads is `BENCH_BEAT.worstTouch`. So a driver that held would
- * reach the chest and would be playing the beat's losing line every time, and
- * every ascent behind it would be charged the full `BENCH_TOUCH_DEMAND_PENALTY`.
+ * Its predecessor `feedBenchToTheChest` cycled a searched (feed, ease) pair,
+ * and its header argued at length that A DRIVER THAT HELD WOULD BE PLAYING THE
+ * BEAT'S LOSING LINE EVERY TIME. That was true of the beat it was written for
+ * and is now exactly backwards: under the steer, holding is the CORRECT play at
+ * every load and arrives at quality 1. `liftTuning.ts`'s descent block says so
+ * in as many words and `liftTuning.test.ts` asserts the arithmetic behind it
+ * (`DESCENT_DEPTH_PER_TICK.bench <= BENCH_TOUCH_SOFT_RATE` at both ends), so
+ * this driver does not re-derive it — it just holds.
  *
- * IT COMMITS RATHER THAN CREEPING PAST THE TIMEOUT. The one descent failure that
- * costs the whole rep is 'no-touch', which needs the feed to stop and never
- * restart; `DESCENT_COMMIT_FRACTION` of `CHEST_TOUCH_TIMEOUT_TICKS` is where the
- * driver stops cycling and drives the bar in. A crashed touch is a worse rep; a
- * no-touch is no rep.
+ * THE ONE MISTAKE LEFT IS TAKING THE FINGER OFF, and the timing of that matters
+ * to a driver more than it looks: the obvious place to lift it is early, to get
+ * ready to tap, which is the exact mistake the grind invites and the exact
+ * mistake this beat charges for. So the finger comes off ON THE TOUCH — when
+ * the prompt stops saying the descent line — and not a poll before it.
+ *
+ * THERE IS NO COMMIT ARM ANY MORE. `feedBenchToTheChest` had one, because a
+ * cycle whose ease phase took the rate to zero could creep to
+ * `CHEST_TOUCH_TIMEOUT_TICKS` and take a `'no-touch'` miss. Both are deleted in
+ * the mechanic: the descent rate is floored above zero, so depth strictly
+ * increases every tick and the chest is reached within a bounded number of
+ * ticks whatever the player does. `deadlineMs` here is a hang guard on the APP,
+ * not a failsafe on the play, and a run that trips it is a finding.
  */
-export async function feedBenchToTheChest(page, { read, plan, hasLeft = NEVER_LEFT }) {
+export async function holdBenchToTheChest(page, { read, hasLeft = NEVER_LEFT }) {
   const line = LIFT_PROMPTS.bench.DESCENT;
   const startedAt = Date.now();
-  const commitAt = startedAt + BENCH_BEAT.chestTimeoutMs * BENCH_DRIVE.DESCENT_COMMIT_FRACTION;
-  let down = true;
-  // FEEDS AND EASES COUNTED SEPARATELY, because a descent that arrives during
-  // the first ease — which is what the search says should happen at the loads
-  // this drives — has completed ZERO whole cycles, and a single `cycles: 0`
-  // reads as "the loop never ran".
-  let feeds = 0;
-  let eases = 0;
-  let ended = { left: false };
-  for (;;) {
-    ended = await waitOutOrLeave(page, { read, line, hasLeft, ms: plan.feedMs });
-    feeds += 1;
-    if (ended.left) break;
-    await page.mouse.up();
-    down = false;
-    if (Date.now() >= commitAt) break;
-    ended = await waitOutOrLeave(page, { read, line, hasLeft, ms: plan.easeMs });
-    eases += 1;
-    if (ended.left) break;
-    await page.mouse.down();
-    down = true;
-    if (Date.now() >= commitAt) break;
-  }
-  // THE COMMIT ARM. Reached only when the cycle has spent half the no-touch
-  // budget without the bar arriving, which the search says should not happen at
-  // any load it models — so this being taken at all is a finding, and the
-  // caller gets `committed` to report rather than a silently different rep.
-  const committed = !ended.left;
-  if (committed) {
-    if (!down) {
-      await page.mouse.down();
-      down = true;
-    }
-    ended = await waitOutOrLeave(page, {
-      read,
-      line,
-      hasLeft,
-      ms: BENCH_BEAT.chestTimeoutMs - (Date.now() - startedAt),
-    });
-  }
-  if (down) await page.mouse.up();
+  const deadlineMs =
+    BENCH_BEAT.heldDescentMs === undefined || BENCH_BEAT.heldDescentMs === null
+      ? null
+      : BENCH_BEAT.heldDescentMs * BENCH_DRIVE.DESCENT_DEADLINE_MULTIPLE;
+  const ended =
+    deadlineMs === null
+      ? { left: false }
+      : await waitOutOrLeave(page, { read, line, hasLeft, ms: deadlineMs });
+  await page.mouse.up();
   return {
-    feeds,
-    eases,
-    committed,
-    ms: Date.now() - startedAt,
-    feedMs: plan.feedMs,
-    easeMs: plan.easeMs,
+    heldMs: Date.now() - startedAt,
+    deadlineMs,
+    /**
+     * WHY IT STOPPED HOLDING, and the three answers mean different things:
+     * 'beat' is the bar reaching the chest, which is the whole play; 'screen'
+     * is a meet attempt going away mid-rep; 'never left the descent' is the
+     * hang guard, and it is a finding rather than a slow machine.
+     */
     leftBecause: ended.left ? ended.why : 'never left the descent',
     loop: ended.loop ?? null,
   };
 }
 
 /**
- * TAP THROUGH THE BURST WINDOW — bench's answer to the press command.
+ * TAP THROUGH THE WHOLE GRIND — bench's answer to the press command, and to
+ * everything after it, under the 2026-08-25 replay steer.
  *
  * PRECONDITION: the command line is on screen and the finger is UP.
  *
  * ===========================================================================
- * IT STOPS ON THE PROMPT, NOT ON A STOPWATCH, AND THAT IS THE WHOLE DESIGN
+ * IT RUNS TO THE END OF THE REP, NOT TO THE END OF A WINDOW
  * ===========================================================================
- * `PRESS_BURST_WINDOW_MS` is declared in milliseconds and CONSUMED IN TICKS —
- * `stepLift` converts it once at the command and counts down in ticks from
- * there. `useLiftLoop` takes at most `FEEDBACK.MAX_CATCH_UP_TICKS` ticks per
- * animation frame, so on a software-rendered browser under load the window is
- * genuinely LONGER in wall clock than the number it is declared as. A loop that
- * stopped at 850 ms would leave real taps on the table on exactly the machines
- * this runs on.
+ * Its predecessor `burstTapTheCommand` stopped the moment the command line left
+ * the screen, and that was right for a beat where taps counted inside an 850 ms
+ * window and bought nothing after it — overrunning was actively expensive,
+ * because a press in ASCENT with no armed cue graded a full window early and
+ * burned one of a few drive slots.
  *
- * AND OVERRUNNING IS WORSE THAN UNDERRUNNING, WHICH IS WHY IT DOES NOT SIMPLY
- * TAP LONGER. Past the burst the rep is in ASCENT, where a press with no armed
- * cue grades a full window early: a `missed` timing, a velocity penalty, and one
- * of only a few `driveAttemptsFor` slots spent on nothing. That is the phantom
- * re-tap `tapDriveCuesToLockout`'s header records costing a quarter of an
- * ascent's cues. So the loop reads the prompt after every tap and stops the
- * moment the command line is gone, and `BURST_DEADLINE_MULTIPLE` is a hang guard
- * behind that rather than the thing it steers by.
+ * BOTH HALVES OF THAT ARE GONE. Taps count from `grindStartTick` until the rep
+ * resolves, and bench arms NO DRIVE CUE AT ALL, so there is no window to
+ * overrun and no slot to burn. What a driver that stopped at the command line
+ * would now do is stop tapping at the exact moment the bar starts moving, which
+ * is the moment the grind decides the rep — it would drive every bench rep to
+ * the losing line and report the misses as the app's.
  *
- * THE CADENCE IS THE MECHANIC'S OWN REFRACTORY, READ FROM SOURCE. A press inside
- * `PRESS_BURST_TAP_REFRACTORY_TICKS` of the last counted one is ignored — not
- * penalised, ignored — so tapping a little fast costs nothing and tapping slow
- * costs window. `BURST_TAP_PERIOD_FRACTION` puts the aim just inside the floor.
+ * So the loop taps for as long as the prompt is asking for taps, which is
+ * bench's COMMAND line on the chest and its GRIND line through the ascent, and
+ * it stops on anything else: the lockout line, an outcome, or the screen going
+ * away. `GRIND_DEADLINE_MULTIPLE` is a hang guard behind that rather than the
+ * thing it steers by, because every duration in `longestGrindMs` is consumed in
+ * TICKS and a sim running slow makes the real beat longer in wall clock.
+ *
+ * ===========================================================================
+ * THE PAUSE ARM IS THE MECHANIC'S HEADLINE, DRIVEN FOR REAL
+ * ===========================================================================
+ * GDD §6.2: "Stop tapping and the force falls away and the bar stalls; start
+ * again and it comes back and the bar can be rescued." That is the sentence the
+ * whole continuous grind exists for, and nothing in this repository had ever
+ * driven it through a browser. `pause` makes the driver stop for a stated
+ * number of milliseconds after a stated number of taps and then resume, and the
+ * two callbacks mark the window in the PAGE'S clock so a pixel check can slice
+ * its frames on it — the driver's own `Date.now()` is a different clock and
+ * cannot be compared with the recorder's.
+ *
+ * IT IS AN ARM AND NOT THE DEFAULT. A paused rep is a rep the player is
+ * deliberately playing badly; the ordinary reps this driver plays elsewhere
+ * have to keep tapping, or every check behind them measures a stall the harness
+ * caused.
+ *
+ * ===========================================================================
+ * THE CADENCE IS THE MECHANIC'S OWN REFRACTORY, READ FROM SOURCE, AND THE
+ * ACHIEVED ONE IS MEASURED RATHER THAN ASSUMED
+ * ===========================================================================
+ * A press inside `GRIND_TAP_REFRACTORY_TICKS` of the last counted one is
+ * ignored — not penalised, ignored — so tapping a little fast costs nothing and
+ * tapping slow costs charge. `TAP_PERIOD_FRACTION` puts the aim just inside the
+ * floor. What a browser actually achieves is wider than that whatever it is set
+ * to, because one tap is two CDP round trips, so the real inter-tap gaps are
+ * recorded and turned into the grind force they imply (`impliedGrindForce`).
+ * That number has a predicate behind it at every call site rather than a log
+ * line: a run whose cadence could not have produced a full grind is the
+ * driver's failure and must not be read as the app's.
  */
-export async function burstTapTheCommand(page, { read, hasLeft = NEVER_LEFT }) {
-  const line = LIFT_PROMPTS.bench.COMMAND;
-  const periodMs = BENCH_BEAT.refractoryMs * BENCH_DRIVE.BURST_TAP_PERIOD_FRACTION;
-  const attempts = BENCH_BEAT.maxCountedTaps * BENCH_DRIVE.BURST_TAP_ATTEMPT_MULTIPLE;
-  const deadline = Date.now() + BENCH_BEAT.burstWindowMs * BENCH_DRIVE.BURST_DEADLINE_MULTIPLE;
+export async function grindTapToResolution(
+  page,
+  { read, hasLeft = NEVER_LEFT, pause = null, onPauseStart, onPauseEnd },
+) {
+  const commandLine = LIFT_PROMPTS.bench.COMMAND;
+  const grindLine = LIFT_PROMPTS.bench.GRIND;
+  const periodMs = BENCH_BEAT.refractoryMs * BENCH_DRIVE.TAP_PERIOD_FRACTION;
+  const budgetMs = BENCH_BEAT.longestGrindMs * BENCH_DRIVE.GRIND_DEADLINE_MULTIPLE;
+  const attempts = Math.ceil(
+    (BENCH_BEAT.longestGrindMs / periodMs) * BENCH_DRIVE.GRIND_ATTEMPT_MULTIPLE,
+  );
+  const deadline = Date.now() + budgetMs;
   const startedAt = Date.now();
+  const gaps = [];
   let dispatched = 0;
+  let lastTapAt = null;
+  let sawCommandLine = false;
+  let sawGrindLine = false;
+  let sawFalseStart = false;
+  let paused = null;
+  let endedOn = null;
   let stoppedBecause = 'the dispatch budget ran out';
+
   while (dispatched < attempts) {
     const tapAt = Date.now();
+    if (lastTapAt !== null) gaps.push(tapAt - lastTapAt);
+    lastTapAt = tapAt;
     await page.mouse.down();
     await page.mouse.up();
     dispatched += 1;
+
     const loop = await read(page);
+    endedOn = loop.prompt ?? null;
     if (hasLeft(loop)) {
-      stoppedBecause = 'the screen left mid-burst';
+      stoppedBecause = 'the screen left mid-grind';
       break;
     }
-    if (loop.prompt === null || !loop.prompt.includes(line)) {
-      stoppedBecause = 'the burst closed';
+    const asking =
+      loop.prompt !== null &&
+      (loop.prompt.includes(commandLine) || loop.prompt.includes(grindLine));
+    if (loop.prompt !== null && loop.prompt.includes(commandLine)) sawCommandLine = true;
+    if (loop.prompt !== null && loop.prompt.includes(grindLine)) sawGrindLine = true;
+    if (loop.prompt !== null && loop.prompt.includes(BENCH_FALSE_START_PROMPT)) {
+      sawFalseStart = true;
+    }
+    if (!asking) {
+      stoppedBecause = 'the rep stopped asking for taps';
       break;
     }
     if (Date.now() >= deadline) {
-      stoppedBecause = 'the hang guard fired — the command line never left';
+      stoppedBecause = 'the hang guard fired — the grind line never left';
       break;
     }
+
+    // THE DELIBERATE PAUSE. After it the loop simply carries on tapping, which
+    // is what makes this a RESCUE rather than a give-up: the same rep, the same
+    // cadence, with a hole in the middle of it.
+    if (pause !== null && paused === null && dispatched >= pause.afterTaps) {
+      if (onPauseStart !== undefined) await onPauseStart(dispatched);
+      const pausedFrom = Date.now();
+      await page.waitForTimeout(pause.ms);
+      if (onPauseEnd !== undefined) await onPauseEnd(dispatched);
+      paused = { afterTaps: dispatched, askedMs: pause.ms, realMs: Date.now() - pausedFrom };
+      // The gap the pause creates is NOT a cadence measurement — it is the
+      // thing being driven — so the next tap starts a fresh interval rather
+      // than recording a gap the size of the pause.
+      lastTapAt = null;
+      continue;
+    }
+
     const gap = periodMs - (Date.now() - tapAt);
     if (gap > 0) await page.waitForTimeout(gap);
   }
+
+  const meanGapMs = gaps.length === 0 ? null : gaps.reduce((a, b) => a + b, 0) / gaps.length;
   return {
     dispatched,
     ms: Date.now() - startedAt,
     periodMs,
+    budgetMs,
+    attempts,
+    /**
+     * THE ACHIEVED CADENCE, AND WHAT IT IS WORTH. `meanGapMs` on its own is the
+     * measured-carried-displayed-never-compared shape CLAUDE.md names; every
+     * caller compares `impliedForce` against `BENCH_DRIVE.GRIND_FORCE_FLOOR`
+     * and prints both.
+     */
+    gaps: {
+      n: gaps.length,
+      meanMs: meanGapMs === null ? null : Math.round(meanGapMs),
+      minMs: gaps.length === 0 ? null : Math.min(...gaps),
+      maxMs: gaps.length === 0 ? null : Math.max(...gaps),
+    },
+    impliedForce: meanGapMs === null ? null : impliedGrindForce(meanGapMs),
+    /**
+     * The two lines this loop tapped through, observed rather than assumed.
+     * `sawGrindLine` is the one a pre-steer driver could not have produced: it
+     * is bench's ascent line, and seeing it means the taps really did carry on
+     * past the chest.
+     */
+    sawCommandLine,
+    sawGrindLine,
+    /** Whether the robot jumped its own call. A diagnosis, not a failure. */
+    sawFalseStart,
+    paused,
+    endedOn,
     stoppedBecause,
     /**
      * HOW MANY OF THOSE WERE COUNTED IS NOT KNOWABLE FROM HERE, and saying so is
-     * the point. Nothing in the DOM reports `burstTaps`; the on-stage pip row is
-     * what carries it, and reading that is a PIXEL question, which is
-     * `verify-lift-press.mjs`'s. A driver that reported a counted-tap figure it
-     * had inferred from its own dispatches would be reporting its own control
-     * flow — the self-referential shape this repository's vacuity rules refuse.
+     * the point. Nothing in the DOM reports `grindTaps`; the on-stage pip row
+     * and its tap rail are what carry it, and reading those is a PIXEL question,
+     * which is `verify-lift-press.mjs`'s. A driver that reported a counted-tap
+     * figure it had inferred from its own dispatches would be reporting its own
+     * control flow — the self-referential shape this repository's vacuity rules
+     * refuse.
      */
     countedTaps: null,
   };
-}
-
-/** The bench descent search's whole state: where the cycle is and which way last. */
-export function freshBenchDescent() {
-  return {
-    feedMs: BENCH_BEAT.feedMs,
-    easeMs: BENCH_BEAT.easeMs,
-    stepMs: BENCH_DRIVE.FEED_STEP_MS,
-    lastDirection: 0,
-  };
-}
-
-/**
- * The descent plan for the NEXT rep, given how this one ended.
- *
- * PURE, like `adaptDepthSearch` above, and it moves on the same two kinds of
- * evidence: a miss reason that names the DESCENT, and nothing else. A rep the
- * ascent lost tells you nothing about the touch — except that it might have been
- * crashed, which is why 'stalled' nudges the other way — and a made rep tells
- * you to leave it alone.
- *
- * TWO DIRECTIONS, AND THEY ARE NOT SYMMETRIC IN WHAT THEY MEAN. 'Never touched
- * the chest.' is unambiguous: the feed was too small for the machine's real tick
- * rate, so feed more. A stall or a timeout on the ascent is CIRCUMSTANTIAL —
- * a crashed touch charges `BENCH_TOUCH_DEMAND_PENALTY` and is a common cause,
- * but a weak burst is another — so it moves the cycle toward a softer arrival by
- * the same step and the caller keeps its own count of attempts.
- */
-export function adaptBenchDescent(plan, rep) {
-  const detail = rep.detail ?? '';
-  const direction = detail.includes(SESSION_PROMPTS.MISS_NO_TOUCH)
-    ? 1
-    : detail.includes(SESSION_PROMPTS.MISS_STALLED) || detail.includes(SESSION_PROMPTS.MISS_TIMEOUT)
-      ? -1
-      : 0;
-  if (direction === 0) return plan;
-  const reversed = plan.lastDirection !== 0 && direction !== plan.lastDirection;
-  const stepMs = reversed
-    ? Math.max(BENCH_DRIVE.FEED_STEP_MIN_MS, Math.round(plan.stepMs / 2))
-    : plan.stepMs;
-  const feedMs = Math.min(
-    BENCH_DRIVE.FEED_MAX_MS,
-    Math.max(BENCH_DRIVE.FEED_MIN_MS, plan.feedMs + direction * stepMs),
-  );
-  return { feedMs, easeMs: plan.easeMs, stepMs, lastDirection: direction };
 }
