@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "press-mutant-b3-2026-08-26T01-44-52-957Z-22233",
   "label": "press-mutant-b3",
   "command": [
@@ -37,14 +37,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 2,
-    "okCount": 1,
+    "count": 3,
+    "okCount": 2,
     "errors": [],
-    "lastAttemptIso": "2026-08-26T01:45:53.014Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-26T01:46:06.332Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-26T01:44:55.541Z"
-  }
+    "lastOkIso": "2026-08-26T01:45:55.539Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-26T01:46:06.331Z",
+  "elapsedSeconds": 73.4
 }
