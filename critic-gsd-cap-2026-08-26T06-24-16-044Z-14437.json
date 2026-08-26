@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "critic-gsd-cap-2026-08-26T06-24-16-044Z-14437",
   "label": "critic-gsd-cap",
   "command": [
@@ -31,12 +31,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 1,
-    "okCount": 0,
+    "count": 2,
+    "okCount": 1,
     "errors": [],
-    "lastAttemptIso": "2026-08-26T06:24:16.063Z",
-    "lastReason": "start",
+    "lastAttemptIso": "2026-08-26T06:25:13.581Z",
+    "lastReason": "final",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm"
-  }
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": true,
+    "lastOkIso": "2026-08-26T06:24:18.764Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-26T06:25:13.580Z",
+  "elapsedSeconds": 57.5
 }
