@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "critic-gsd-lp1-2026-08-26T06-28-05-827Z-14865",
   "label": "critic-gsd-lp1",
   "command": [
@@ -33,12 +33,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 1,
-    "okCount": 0,
+    "count": 2,
+    "okCount": 1,
     "errors": [],
-    "lastAttemptIso": "2026-08-26T06:28:05.849Z",
-    "lastReason": "start",
+    "lastAttemptIso": "2026-08-26T06:28:53.453Z",
+    "lastReason": "final",
     "remote": "origin",
-    "ref": "refs/heads/verify-markers/vm"
-  }
+    "ref": "refs/heads/verify-markers/vm",
+    "ok": true,
+    "lastOkIso": "2026-08-26T06:28:08.507Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-26T06:28:53.452Z",
+  "elapsedSeconds": 47.6
 }
