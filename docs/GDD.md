@@ -2152,28 +2152,26 @@ then STOPPED lost nothing: zero lost reps and zero stalls at all four cells the
 rung can reach, at every one of the 80 paired reps per cell. The outcome flipped
 between a clean lift and a grinder and that was the whole of it.
 
-**The retune is two constants and a repair.** `DEMAND_BASE.bench` rose by a
-uniform 0.06 of capacity at every load, which moves every rung's margin equally
-and so raises the whole ladder without re-ordering it; `STICK_WIDTH.bench` went
-0.22 to 0.32, which does not touch the peak at all and instead lengthens the
-stretch the bar has to fight through. The repair is `GRIND_BOOST_FORCE_MAX`
-0.42 to 0.50, and it is a repair rather than a softening: the first two changes
-took a maximally false-started press at the heaviest attempt a meet can call
-from 118 of its 170 available ascent ticks to a timeout, which would have made
-the "never fatal" sentence above FALSE. Restoring it costs a sixth as much on
-the axis that decides which rung grinds as it buys on the axis that decides
-whether a false start is survivable.
+**The retune is one constant.** `DEMAND_BASE.bench` rose by a uniform 0.02 of
+capacity at every load, which moves every rung's margin equally and so raises
+the whole ladder without re-ordering it. Two other constants were moved with it
+in a first pass and put back: `STICK_WIDTH.bench` 0.22 to 0.32, and
+`GRIND_BOOST_FORCE_MAX` 0.42 to 0.50 to repair a false-start guarantee the
+first two had broken. Their headers keep the measurements, because the reason
+they were reverted is the finding below rather than a change of mind.
 
 **WHAT THE RETUNE COULD NOT DO, RECORDED BECAUSE IT IS A REAL LIMIT AND A FUTURE
 TUNER WILL OTHERWISE TRY IT.** RPE 8 cannot be made to demand a fast tap RATE.
-Its hardest cell and RPE 7's are 0.047 apart in the load curve's own parameter
-while the meet's heaviest attempt is 0.26 further out, so any change big enough
-to make RPE 8 need a real rate either drags RPE 7 with it — a grind on a warm-up,
-which §12.3 refuses — or puts the top attempt past what a maximal grind can
-lift. The window between the two rungs is 0.016 of margin wide and cannot be
-widened by any knob. So RPE 8's difficulty is *stopping costs the rep, and a
-slow grind is a GRINDER rather than a GOOD LIFT*, and the minimum-tap-rate axis
-begins at RPE 9.
+The wall is GDD §12.3's warm-up protection, and it is measured: a uniform demand
+rise of +0.025 starts costing RPE 7 reps, so +0.02 is the last step before a
+guarantee breaks. Widening the sticking point moves that wall the wrong way,
+narrowing it does not move it back, and the grind's force ceiling does not touch
+it at all — a player who quits has no charge whichever way it is set. So RPE 8's
+difficulty is *stopping costs the rep, and a slow grind is a GRINDER rather than
+a GOOD LIFT*, and the minimum-tap-rate axis begins at RPE 9. What the rise did
+buy, on the slowest sustained rate that never misses: RPE 8 from 0.67/s at all
+four cells to 0.67 / 1 / 1 / 0.67, RPE 9 from 1-1.43/s to 1.43-2/s, RPE 10 from
+2-2.5/s to 2.5-3/s.
 
 **None of the numbers has been played (§12.1), and §12.1 stays open on this beat
 until a human replays it on a phone.** The open question is exactly two things:
@@ -2185,25 +2183,51 @@ presets. Every distinct load a session can prescribe (5 RPE choices against all
 27 check-ins, 22 distinct cells) and every load a meet can call (3 jump
 strategies x 3 attempts x 2 bar speeds, 18 cells), 80 paired reps each: pairs
 identical up to a moment, differing only in whether the tapping resumed
-afterwards. Coming back changes the outcome in **37** of those 40 cells, turns a
-miss into a make in **29**, and in **29** the idle rep has measurably stalled
-first. **2** cells show none of the three — the lightest load RPE 6 and RPE 7 can
-each prescribe at a neutral check-in — and they are pinned as the control,
-because a grind on every warm-up would be its own failure. Before the retune
-those four counts were 31 / 23 / 23 / 8. On a burst mechanic every one of them
-is zero by construction, because taps after the window buy nothing.
+afterwards. Coming back changes the outcome in **38** of those 40 cells, turns a
+miss into a make in **29**, and in **30** the idle rep has measurably stalled
+first. **1** cell shows none of the three — the lightest load RPE 6 can prescribe
+at a neutral check-in — and it is pinned as the control, because a grind on every
+warm-up would be its own failure. Before the retune those four counts were
+31 / 23 / 23 / 8, but they are not comparable cell for cell: the sampling grid
+was widened in the same pass, from four quit instants per cell to eight. On a
+burst mechanic every one of them is zero by construction, because taps after the
+window buy nothing.
 
 **And the warm-up protection is the two zero COLUMNS, not the first one**, which
-is the sentence most likely to be misread now that only two cells are fully
-still. Every RPE 6 and RPE 7 cell reads `[flips, 0, 0]`: stopping the grind can
-change a GOOD LIFT into a GRINDER there and can never take the rep away or stop
-the bar. What changed at those rungs is that the grade moved, not the outcome.
+is the sentence most likely to be misread now that only one cell is fully still.
+Every RPE 6 and RPE 7 cell reads `[flips, 0, 0]`: stopping the grind can change a
+GOOD LIFT into a GRINDER there, and a rep the player answered at all — one tap is
+enough — can never be taken away by stopping. What changed at those rungs is that
+the grade moved, not the outcome.
 
-Beside it, across the same reachable ladder: the tap rate changes the outcome in
-120 of 120 cases and turns a make into a miss in 120 — both saturated at the
-domain size, so both can now only move down — a 3-a-second grind reaches a
-different outcome from a 20-a-second one in 100 of 120, and the chest touch
-changes it in 120 of 240.
+**THAT SENTENCE WAS FALSE FOR ONE COMMIT AND THE REASON IS WORTH MORE THAN THE
+CORRECTION.** The first version of this retune raised the demand curve three
+times as far, and at RPE 7 a player who tapped twice and stopped lost the rep —
+in five of the ten cells the two light rungs can prescribe. It shipped with this
+paragraph asserting the opposite, and the table it was read off agreed, because
+that table sampled the quit instant no earlier than 18 ticks after the command
+while every newly-lost rep was at offsets 1-12. One constant was the whole
+difference between a green control block and five broken warm-ups. The grid is
+wider now, and beside it `lift.test.ts` sweeps the quit instant WHOLE and pins
+the losses at zero — a grid is not a domain, which is the same lesson this
+section's own load sweep was rebuilt for one round earlier.
+
+**One residue, measured rather than hidden.** At the shipped curve exactly one
+warm-up cell — the heaviest load RPE 7 can prescribe, at a neutral check-in —
+misses if the player never touches the screen at all after the command. One tap
+saves it. Restoring even that costs the whole retune: the largest demand step
+that keeps it is a quarter of the shipped one, and at that step RPE 8's required
+tap rate is back where it started. The trade is recorded in
+`liftTuning.ts`'s `DEMAND_BASE` so it can be taken as a decision rather than
+found as a surprise.
+
+Beside it, across a hand-written load ladder over the top of the range: the tap
+rate changes the outcome in 120 of 120 cases and turns a make into a miss in 100,
+a 3-a-second grind reaches a different outcome from a 20-a-second one in 80 of
+120, and the chest touch changes it in 120 of 240. None of those four moved in
+this retune, and that is expected rather than disappointing — that ladder starts
+at 0.8 and steps to the meet ceiling, so it cannot see a change whose whole
+subject is where the warm-up rungs end and RPE 8 begins.
 
 **And that the descent asks LESS than it did is the point rather than a
 regression**, which is the one sentence in this section a future reader is most

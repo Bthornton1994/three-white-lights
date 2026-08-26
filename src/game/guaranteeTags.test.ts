@@ -958,7 +958,7 @@ const GUARANTEE_COVERAGE = {
   // and all of that contributed **0**. The census moved by two. A reader who
   // expects this number to track how much prose was written will misread it
   // every time: it tracks one capitalised-run shape and nothing else.
-  TREE_WIDE: 296,
+  TREE_WIDE: 294,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1078,14 +1078,14 @@ type ExclusionCensus = Record<NumberExclusion, number>;
  *     section style and not a quantity.
  */
 const NUMBER_EXCLUSIONS: Readonly<ExclusionCensus> = {
-  // 17 -> 16 on the 2026-08-26 bench difficulty retune, and it is one paragraph
-  // rather than an edit to this rule. `bench-grind-decides-the-rep`'s tag moved
-  // to the end of a rewritten final paragraph in `GRIND_BOOST_FORCE_MAX`'s
-  // header; the paragraph it used to terminate ended "Unplayed placeholder, GDD
-  // §10" and the new one carries no section coordinate. The excluded numeral did
-  // not go anywhere — that sentence is still in the file, one paragraph up, and
-  // is simply no longer inside a tagged paragraph for this census to exclude.
-  'section-coordinate': 16,
+  // 17 -> 16 and back to 17 across the 2026-08-26 retune and its re-fix, and
+  // both moves were one paragraph rather than an edit to this rule.
+  // `bench-grind-decides-the-rep`'s tag moved off a paragraph ending "Unplayed
+  // placeholder, GDD §10" and onto a rewritten one that carried no section
+  // coordinate; the re-fix's new tagged paragraph carries §12.3, which puts the
+  // count back. Worth reading as a reminder that this census tracks where TAGS
+  // sit, not what the file says — the sentences either side never moved.
+  'section-coordinate': 17,
   'inside-an-identifier': 3,
   'quoted-code': 2,
   'list-ordinal': 1,
@@ -1325,9 +1325,12 @@ const NUMBER_COVERAGE = {
   // with it: the claim is about SHAPE (the band reads the live velocity and
   // not the per-rep accumulator beside it) and the thresholds behind it live in
   // `LIFT_TUNING` where the test reads them from.
-  // 84 unchanged on the 2026-08-26 bench difficulty retune — no tag was added
-  // or removed — but the one below MOVED, which is the interesting direction.
-  TAGGED_PARAGRAPHS: 84,
+  // 84 -> 85 on the 2026-08-26 re-fix: `a-warm-up-survives-being-abandoned`,
+  // declared on `REACHABLE_WARMUP`'s header. It is the tag the round needed and
+  // did not have — the sweep it names is what catches a difficulty pass that
+  // costs a warm-up its rep, which is the regression this whole re-fix exists
+  // for. The count below moved too, and its own note says why.
+  TAGGED_PARAGRAPHS: 85,
   /**
    * ...of which this many state a number as prose.
    *
@@ -1408,16 +1411,20 @@ const NUMBER_COVERAGE = {
   // baseline body slices `played.slice(1)` and reads `played[0]` — so both
   // weakness counts moved by four with them.
   //
+  // 75 -> 76 with the warm-up sweep's tag on the 2026-08-26 re-fix. Its named
+  // body holds a bare 0 (the pinned zero the whole guard is about) and a bare 1
+  // (its loop steps), so both weakness counts below move with it.
+  //
   // 69 -> 72 with the command beat's three tags, whose named tests are the
   // three new bodies.
-  NAMED_BODIES: 75,
+  NAMED_BODIES: 76,
   // 53 -> 55 with the command beat's three tag-named bodies; two of the three
   // state a bare 0 (the wash before the call, the pip row's first frame) and
   // the third does not.
-  NAMED_BODIES_HOLDING_ZERO: 57,
+  NAMED_BODIES_HOLDING_ZERO: 58,
   // 52 -> 54 with the command beat's three tag-named bodies, two of which
   // state a bare 1.
-  NAMED_BODIES_HOLDING_ONE: 55,
+  NAMED_BODIES_HOLDING_ONE: 56,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -1744,7 +1751,7 @@ const TRANSCRIPT_BAR = {
   // 40 -> 41 on the press-delay witness. Its transcript quotes no bare scalar
   // — the reddened assertion names a FILE — so `WITH_A_MEASURED_NUMBER` stays
   // where it is.
-  GRADED: 43,
+  GRADED: 44,
   /** ...and rows excused because their transcript predates it. */
   // 37 -> 36 when the placeholder's witness retired with its subject
   // (Sprint 1c): its transcript predated the rule, so the excused count is
@@ -1765,7 +1772,7 @@ const TRANSCRIPT_BAR = {
    * both directions, which is a stronger statement than an anchored scalar
    * and is why the row is not being pushed back into this set artificially.
    */
-  WITH_A_MEASURED_NUMBER: 22,
+  WITH_A_MEASURED_NUMBER: 23,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1991,10 +1998,17 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // fragment they cannot locate. Only ONE of the five is newly unresolved, and
   // that is not a virtue of the transcript: `80`, `20` and `40` were already in
   // the flagged pool from the old one.
-  rows: 71,
-  flagged: 58,
-  numerals: 273,
-  unresolved: 157,
+  //
+  // 71/58/273/157 -> 72/59/283/168 with the warm-up witness added on the
+  // 2026-08-26 re-fix. FLAGGED, like almost every row here, and for the reason
+  // this constant exists to keep demonstrating: its transcript's numerals are
+  // readings of the MUTATED tree — the four cells that broke and how many reps
+  // each lost — and no assertion in the shipped body pins any of them, because
+  // the shipped body's whole claim is that the number is zero.
+  rows: 72,
+  flagged: 59,
+  numerals: 283,
+  unresolved: 168,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -2363,7 +2377,7 @@ const REPLACEMENT_BAR = {
   // 25 -> 28 on the three command-beat witnesses, every one of which records
   // both halves: what it removed and what it put there.
   // 28 -> 29 on the press-delay witness, which records both halves.
-  REPRODUCIBLE: 31,
+  REPRODUCIBLE: 32,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2520,7 +2534,7 @@ const SECTION_4A_KILL_LIST = {
  * by construction. It moves with every row added or removed, and updating it
  * is part of recording a witness.
  */
-const WITNESS_ROWS = 79;
+const WITNESS_ROWS = 80;
 
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
   // -------------------------------------------------------------------------
@@ -2597,7 +2611,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
     observed:
       'FAIL  src/game/lift.test.ts > the grind decides the lift > flips outcomes across the tap '
       + 'ladder, across the sweep [bench-grind-decides-the-rep]\n'
-      + 'AssertionError: mashing beat a sparse grind in 120 of 120 cases: expected 120 to be 100 '
+      + 'AssertionError: mashing beat a sparse grind in 120 of 120 cases: expected 120 to be 80 '
       + '// Object.is equality\n'
       + 'Tests  1 failed | 146 skipped (147)',
     measuredOver:
@@ -2618,10 +2632,15 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
   // THE MUTANT NOW IS THE 2026-08-26 DIFFICULTY RETUNE PUT BACK: one line of
   // `DEMAND_BASE.bench` returned to the `{ 0.38, 1.25 }` a phone replay called
   // "just too easy". It is a one-line edit to a tuning table, it compiles, and
-  // what it takes away is the whole point of that retune — the four RPE 8 rows
-  // fall from `[80,20,0] [80,20,20] [80,20,20] [80,20,20]` to
-  // `[20,0,0] [40,0,0] [20,0,0] [20,0,0]`, which is stopping the grind costing
-  // the rep at the default working rung, gone.
+  // what it takes away is the point of that retune — RPE 8 falls from four of
+  // four cells losing reps to two of four, and every count in the block drops.
+  //
+  // IT REDDENS A SECOND TEST TOO, AND THAT IS WORTH THE LINE. Reverting the
+  // retune also reddens `a-warm-up-survives-being-abandoned`'s NON-VACUITY arm
+  // — 'the same abandonment at RPE 8 cost nothing either: expected 6 to be 12'
+  // — because the pre-retune curve loses only half as many RPE 8 reps to the
+  // same abandonment. Whole-file collected total under this mutant:
+  // `Tests  2 failed | 146 passed (148)`.
   //
   // TWO OTHER MUTANTS WERE RUN AND NEITHER IS THE ROW, because the schema holds
   // one:
@@ -2644,7 +2663,7 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
   {
     guarantee: 'a-stalled-bench-can-be-ground-through',
     mutatedFile: 'src/game/liftTuning.ts',
-    mutated: '    bench: { LIGHT: 0.44, MAXIMAL: 1.31 },',
+    mutated: '    bench: { LIGHT: 0.4, MAXIMAL: 1.27 },',
     mutatedTo: '    bench: { LIGHT: 0.38, MAXIMAL: 1.25 },',
     testFile: 'src/game/lift.test.ts',
     redAssertion:
@@ -2656,16 +2675,44 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + 'AssertionError: per-cell [rescued, fromMiss, stalled] over the reachable domain: '
       + 'expected { …(40) } to deeply equal { …(40) }\n'
       + '    "session/rpe8/0.8500/as-expected": [\n'
-      + '-     80,\n'
-      + '-     20,\n'
-      + '-     20,\n'
-      + '+     40,\n'
-      + '+     0,\n'
-      + '+     0,\n'
+      + '-     160,\n'
+      + '-     60,\n'
+      + '-     60,\n'
       + '    ],\n'
-      + 'Tests  1 failed | 146 skipped (147)',
+      + 'Tests  1 failed | 147 skipped (148)',
     measuredOver:
       "    expect(cells.length, 'the domain these counts are taken over').toBe(40);",
+  },
+  // THE WARM-UP PROTECTION, AND THE MUTANT IS THE RETUNE THAT BROKE IT — which
+  // is not a hypothetical: `{ 0.44, 1.31 }` is the value this constant SHIPPED
+  // at for one commit on 2026-08-26, and a fresh critic found that under it a
+  // player who tapped twice at RPE 7 and stopped lost the rep. It went out
+  // green, because the pinned table it should have reddened sampled the quit
+  // instant no earlier than the launch beat's end and every newly-lost rep was
+  // in front of that.
+  //
+  // SO THE MUTANT IS A REAL PAST TREE, and the assertion it reddens is the one
+  // that did not exist then: a sweep over EVERY quit instant rather than eight
+  // of them. It names the four offending cells and their counts, which is what
+  // makes the transcript a repro rather than a colour.
+  {
+    guarantee: 'a-warm-up-survives-being-abandoned',
+    mutatedFile: 'src/game/liftTuning.ts',
+    mutated: '    bench: { LIGHT: 0.4, MAXIMAL: 1.27 },',
+    mutatedTo: '    bench: { LIGHT: 0.44, MAXIMAL: 1.31 },',
+    testFile: 'src/game/lift.test.ts',
+    redAssertion:
+      "    expect(lost, `warm-up reps lost by quitting: ${offenders.join(' | ')}`).toBe(0);",
+    observed:
+      'FAIL  src/game/lift.test.ts > the grind decides the lift > never loses a warm-up rep to a '
+      + 'player who answered and then stopped [a-warm-up-survives-being-abandoned]\n'
+      + 'AssertionError: warm-up reps lost by quitting: '
+      + 'session/rpe7/0.7750/slower-than-expected lost 60 | '
+      + 'session/rpe7/0.8250/as-expected lost 120 | session/rpe7/0.8500/crisp lost 90 | '
+      + 'session/rpe7/0.8750/popping lost 60: expected 330 to be +0 // Object.is equality\n'
+      + 'Tests  1 failed | 147 skipped (148)',
+    measuredOver:
+      "    expect(driven, 'warm-up reps driven').toBe(16200);",
   },
   // THE DESCENT'S ARITHMETIC BOUND, AND THE MUTANT IS THE FLOOR THAT MAKES IT.
   // Restoring the 0 floor `benchDescentRate` used to have — the beat before the
