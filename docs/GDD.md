@@ -1757,6 +1757,22 @@ choices you made and were told the consequences of.
 **Confirmed.** Active decisions only, never elapsed time — this is settled
 design, not a proposal.
 
+**THE TWO SENTENCES ABOVE ARE SEPARATE MECHANISMS, AND CONFLATING THEM WAS A
+MEASURED DEFECT.** Condition decays with operation; failure accrues from
+decisions. The first implementation chained them — low condition gated the
+maintenance prompt, the prompt was where strikes arrived, so wear fed failure
+— and because wear was keyed to banked operation, absence and check-in
+frequency both leaked into failure progression through that chain. Measured
+inside the catch-up horizon on a six-policy sweep: 1022 failure-progression
+mismatches, 155 of them on runs whose decision traces were identical. Ruled:
+**low condition may SHOW a repair prompt; it may not advance a strike or
+dormancy.** A strike comes only from a decision the player was shown and made
+— a declined or ignored repair, the cheapest-manager pattern, the other named
+shapes — and two histories differing only in how often the player checked in
+must produce the same strikes on the same calendar. Condition and income
+still move with operation, because a gym that ran wore its equipment and a
+gym that idled did not; that is one clock, not a second one.
+
 **Failure is recoverable.** A failed location goes dormant — income stops,
 condition keeps degrading, members leave — but the asset itself isn't gone. A
 sufficient recovery effort (staffing turnaround, a real repair investment)
@@ -2588,6 +2604,42 @@ MORE absence must never differ in condition, in income deducted, or in
 failure progression, swept in `streakSweep.ts`'s shape with counts pinned at
 zero and the non-zero control kept runnable. Gate when built: a phone pass on
 the garage floor, relayed as always.
+
+**THE WEAR-BASIS RULING, TAKEN ON THE MEASUREMENTS AND NOT ON AN ARGUMENT.**
+Stage 4's logic shipped at `5db6aa7` with its sweep honestly reporting that
+beyond the horizon everything is zero and inside it all three GDD nouns
+differ. Four options went to a human — keep banked wear, key to check-ins,
+key to decisions only, or scope "absence" to beyond-horizon. **The ruling
+rejects the cheap ones by name:** the 890 is not to be pinned, and scoping
+"absence" to beyond-horizon is not an acceptable substitute for a fix. Keying
+wear to check-in count is refused too — it would make wear a per-visit
+charge, the exact shape the visit-fee control is pinned punishing — and so is
+deleting continuous decay. Instead the ruling splits §5.7's two sentences
+(see §5.7's own clarification, added in the same commit):
+
+- **Condition and income stay operation-keyed.** Banked hours, or better,
+  member-use / `crowdingLoad` — the same idea either way: the gym running
+  wears things, and idling the clock without operation does not invent a
+  second clock. Offline earnings still mean the gym ran. If the key moves
+  from banked hours to usage, the GDD and the code change together.
+- **Failure breaks its chain to condition.** Low condition may show a repair
+  prompt; it may not advance a strike or dormancy because the player was away
+  or because they checked in more often. Within-horizon failure progression
+  goes to **zero** on the six-policy sweep, matched-trace included, with the
+  unfixed non-zero kept runnable as the control — the shape `engagement.ts`'s
+  own repair already uses.
+- **Income deducted must not punish showing up.** A diligent player may not
+  finish poorer for more visits once repair timing is fair. The 297 readings
+  explained by neither the per-check-in nor the accumulated crawl are to be
+  **isolated, not shipped as an argument**.
+
+All three GDD nouns get re-pinned across all six policies, with attribution
+that computes magnitude rather than co-occurrence, and controls that actually
+punish. **S4b — the garage-floor surfacing — waits until the failure sweep
+reads zeros and no income reading punishes engagement.** A prompt on the
+floor implementing the chain just forbidden would ship the defect into the
+one surface a player touches. Presentation hold unchanged; portfolio still
+paused.
 ---
 
 ## 6. Meet Day
