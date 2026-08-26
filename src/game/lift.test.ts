@@ -2631,6 +2631,20 @@ const REACHABLE_LADDER = {
   MEET_CELLS_THAT_STALL: 18,
   /** Measured: the RPE rungs those session cells sit at, sorted. */
   RUNGS_THAT_STALL: ['rpe10', 'rpe9'] as readonly string[],
+  /**
+   * The three cell counts GDD §6.2 quotes, of 40.
+   *
+   * PINNED HERE BECAUSE THE GDD QUOTES THEM. A number in the design document
+   * with nothing behind it is the defect this whole round was sent back for,
+   * one level out — and the first draft of that §6.2 paragraph got two of
+   * these three wrong by reading them off the table by eye. They are counted
+   * from `REACHABLE_RESCUE` so the document and the measurement cannot drift.
+   */
+  CELLS_WHERE_COMING_BACK_HELPS: 31,
+  CELLS_WHERE_A_REP_IS_SAVED: 23,
+  CELLS_WHERE_THE_IDLE_REP_STALLS: 23,
+  /** ...and the cells where none of the three happens: the light rungs. */
+  CELLS_WHERE_NOTHING_MOVES: 8,
 } as const;
 
 const REACHABLE_COUPLING = {
@@ -2932,7 +2946,22 @@ describe('the grind decides the lift', () => {
     expect(meetCeiling).toBeLessThan(LOAD_PRESETS.MAXIMAL);
 
     // ...and stall-ability arrives INSIDE the band rather than past its far
-    // side. Counted from the pinned table so the two cannot drift apart.
+    // side.
+    //
+    // THIS HALF READS THE PINNED TABLE AND THEREFORE CANNOT REDDEN ON A TUNING
+    // CHANGE, WHICH IS SAID HERE BECAUSE IT WAS ALMOST SHIPPED AS A TAG. A
+    // `@guarantee` was declared on `DEMAND_BASE.bench` naming this test, and
+    // the mutant for it — flattening that constant back to its pre-retune
+    // value — left this test GREEN: the loop below compares two constants,
+    // and `REACHABLE_RESCUE` is a constant. The tag was deleted rather than
+    // kept, because a tag pointing at a check that cannot fail is the exact
+    // defect CLAUDE.md records the tag mechanism itself failing on.
+    //
+    // What it IS worth: the ceilings above are live (they run the producers),
+    // and this loop is a shape check on the table — a reader can see that the
+    // rows the table calls stalling are the top of the ladder rather than
+    // scattered. The MECHANIC-side guard is the rescue test above, which
+    // measures every cell and does redden when the retune is flattened.
     const rows = Object.entries(REACHABLE_RESCUE);
     const stallingSessionCells = rows.filter(
       ([label, row]) => label.startsWith('session/') && row[2] > 0,
@@ -2942,6 +2971,19 @@ describe('the grind decides the lift', () => {
     );
     expect(stallingSessionCells.length, 'session cells where an idle rep stalls')
       .toBe(REACHABLE_LADDER.SESSION_CELLS_THAT_STALL);
+    // THE THREE NUMBERS GDD §6.2 QUOTES, counted here so the document has
+    // something behind it. Plus the cells where nothing moves at all, which is
+    // the control the other three are non-zero against.
+    expect(rows.filter(([, row]) => row[0] > 0).length, 'cells where coming back helps')
+      .toBe(REACHABLE_LADDER.CELLS_WHERE_COMING_BACK_HELPS);
+    expect(rows.filter(([, row]) => row[1] > 0).length, 'cells where a rep is saved')
+      .toBe(REACHABLE_LADDER.CELLS_WHERE_A_REP_IS_SAVED);
+    expect(rows.filter(([, row]) => row[2] > 0).length, 'cells where the idle rep stalls')
+      .toBe(REACHABLE_LADDER.CELLS_WHERE_THE_IDLE_REP_STALLS);
+    expect(
+      rows.filter(([, row]) => row[0] === 0 && row[1] === 0 && row[2] === 0).length,
+      'cells where nothing moves at all',
+    ).toBe(REACHABLE_LADDER.CELLS_WHERE_NOTHING_MOVES);
     expect(stallingMeetCells.length, 'meet cells where an idle rep stalls')
       .toBe(REACHABLE_LADDER.MEET_CELLS_THAT_STALL);
     // The rung it begins at, by name rather than by count — the count alone

@@ -1084,6 +1084,21 @@ export const LIFT_TUNING = Object.freeze({
    * at the same preset, because both of those keep their difficulty in a
    * notch. Unplayed placeholder, GDD §10.
    *
+   * WHAT THIS NUMBER IS ACCOUNTABLE FOR, AND IT IS NOT A PRESET. The value it
+   * replaced (0.95) put every stall and every lost rep at
+   * `LOAD_PRESETS.MAXIMAL` — a point no producer emits — and left zero of both
+   * in every training rep the game can prescribe. `lift.test.ts`'s
+   * `REACHABLE_RESCUE` walks the loads `prescribeSession` and the meet's jump
+   * ladder actually emit and pins where the grind bites per cell; restoring
+   * 0.95 here reddens that table, which is the mutation recorded against
+   * `a-stalled-bench-can-be-ground-through`.
+   *
+   * NO SEPARATE TAG, AND THE ATTEMPT IS RECORDED. One was declared here and
+   * pointed at the ceilings test beside that table; the flattening mutant left
+   * that test green, because its stall-location half compares two constants.
+   * The tag was deleted rather than re-aimed at a test another tag already
+   * names.
+   *
    * DEADLIFT SET LOWEST OF THE THREE (0.84), AND THAT IS THE OPPOSITE OF THE
    * FIRST GUESS. The first pass set it HIGHEST (0.90), reasoning that deadlift
    * is the only lift whose ascent starts from a dead stop with no momentum

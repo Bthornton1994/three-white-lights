@@ -2140,13 +2140,22 @@ moved, and both are inversions rather than retunes.
 **None of the numbers has been played (§12.1), and §12.1 stays open on this beat
 until a human replays it on a phone.** What is measured is that the beats DECIDE
 reps rather than decorate them, and the sharpest of those measurements is the
-one only a continuous grind can pass: across 320 paired reps that are identical
-up to a moment and differ only in whether the tapping resumed afterwards, coming
-back changes the outcome in 120 and turns a miss into a make in 40 — and in 40
-of them the idle rep has measurably stalled first. On a burst mechanic that
-number is zero by construction, because taps after the window buy nothing.
-Beside it: across 120 cases the tap rate changes the outcome in 80 and turns a
-make into a miss in 60, and across 240 the chest touch changes it in 60.
+one only a continuous grind can pass — now taken over the loads the game's two
+`loadRatio` producers actually emit rather than over tuning presets. Every
+distinct load a session can prescribe (5 RPE choices against all 27 check-ins,
+22 distinct cells) and every load a meet can call (3 jump strategies x 3
+attempts x 2 bar speeds, 18 cells), 80 paired reps each: pairs identical up to a
+moment, differing only in whether the tapping resumed afterwards. Coming back
+changes the outcome in **31** of those 40 cells, turns a miss into a make in
+**23**, and in **23** the idle rep has measurably stalled first. **8** cells
+show none of the three, and they are the light rungs — pinned at zero as the
+control, because a grind on every warm-up would be its own failure. On a burst
+mechanic every one of those numbers is zero by construction, because taps after
+the window buy nothing.
+
+Beside it, across the same reachable ladder: the tap rate changes the outcome in
+120 of 120 cases and turns a make into a miss in 100, and the chest touch
+changes it in 120 of 240.
 
 **And that the descent asks LESS than it did is the point rather than a
 regression**, which is the one sentence in this section a future reader is most
