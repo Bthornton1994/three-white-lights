@@ -611,6 +611,36 @@ export const SESSION_DRIVE = Object.freeze({
     'check-in-soreness-fresh',
     'check-in-motivation-fired-up',
   ]),
+  /**
+   * ===========================================================================
+   * THE SAME CHECK-IN, ANSWERED AT ITS WORST — AND THE REASON IS THE OPPOSITE
+   * OF WHAT A READER WILL ASSUME
+   * ===========================================================================
+   * A caller that needs the HARDEST rep an ordinary player can reach has to use
+   * these, and not `BEST_CHECK_IN_TAPS`. THE CHECK-IN'S TWO EFFECTS PULL
+   * AGAINST EACH OTHER and the capacity one is the larger: a better answer
+   * raises the prescribed load (`readiness.loadAdjustmentPercent`) AND the
+   * lifter's own output (`capacityScaleForBarSpeed`), so a primed player's set
+   * is EASIER than a steady player's at the same RPE. `lift.test.ts`'s
+   * `REACHABLE_COUPLING` measures and pins that in both directions — 5 of 5
+   * rungs get easier as the check-in improves, and 0 of 5 have `popping` as
+   * their hardest cell.
+   *
+   * SO THESE THREE ARE HOW A CALLER REACHES THE TOP OF THE DIFFICULTY LADDER,
+   * and `REACHABLE_COUPLING` pins that RPE 10 is the ONE rung where the poor
+   * check-in is the hardest cell — below it the load cut outweighs the capacity
+   * cut and a poor day is an easier rep. So `WORST_CHECK_IN_TAPS` is only the
+   * hardest thing available in combination with the top of the RPE ladder.
+   *
+   * NOT MADE THE DEFAULT, for the reason the other two are not: the mid answers
+   * are what an ordinary player's ordinary day looks like, and they are what
+   * the capture tools should go on photographing.
+   */
+  WORST_CHECK_IN_TAPS: Object.freeze([
+    'check-in-sleep-poor',
+    'check-in-soreness-sore',
+    'check-in-motivation-flat',
+  ]),
   /** The RPE the driver picks. Mid-ladder: heavy enough to be a real session. */
   RPE_CHOICE: 'session-rpe-8',
   /**

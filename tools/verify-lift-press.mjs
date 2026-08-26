@@ -1687,6 +1687,47 @@ const LIFT_LADDER = Object.freeze({
 
   /**
    * ===========================================================================
+   * ...AND BENCH ANSWERS THE CHECK-IN AT ITS WORST, WHICH IS THE HARDEST REP AN
+   * ORDINARY PLAYER CAN REACH AND NOT THE EASIEST
+   * ===========================================================================
+   * THE FIRST RUN OF THE STALL CHECK MEASURED ZERO, AND THE CAUSE WAS THE CELL
+   * RATHER THAN THE STAGE. Driven at the mid check-in, RPE 10, the bar did not
+   * stall — the rescue rep reached lockout as a clean GOOD LIFT with no stalled
+   * tick in it, so the band the check was looking for was correctly absent and
+   * the check was correctly red about a rep that had nothing to say.
+   *
+   * Structural elimination before any re-run, in the pure sim over the REAL
+   * cells (`sessionFeel` + `prescribeSession`, driven with this probe's own
+   * schedule: taps every 3 ticks, hole after 8 taps), 20 seeds per cell,
+   * measured@66c2415:
+   *
+   *     cell                              pause  stalled  made
+   *     mid/as-expected   rpe10  0.9000    18t    0/20    20/20
+   *     mid/as-expected   rpe10  0.9000    80t    0/20    20/20
+   *     best/popping      rpe10  0.9500    80t    0/20    20/20
+   *     poor/slower...    rpe10  0.8750    60t    0/20    20/20
+   *     poor/slower...    rpe10  0.8750    80t   20/20    20/20
+   *
+   * A HIGHER LOAD IS NOT A HARDER REP HERE, and that is what makes this a table
+   * rather than an intuition: `lift.test.ts`'s `REACHABLE_COUPLING` pins that a
+   * better check-in raises the lifter's capacity MORE than it raises the load,
+   * at every rung — and that RPE 10 is the one rung where the POOR check-in is
+   * the hardest cell. So the hardest bench rep the ladder can offer is the top
+   * of the RPE ladder answered at the bottom of the check-in, which is what
+   * these three press.
+   *
+   * The other two lifts keep `SESSION_DRIVE.CHECK_IN_TAPS`: the deadlift arm's
+   * whole control pair is calibrated at the mid answers (see `RPE_CHOICE`), and
+   * squat is a control for the eccentric census rather than a difficulty test.
+   */
+  CHECK_IN_FOR: Object.freeze({
+    squat: SESSION_DRIVE.CHECK_IN_TAPS,
+    bench: SESSION_DRIVE.WORST_CHECK_IN_TAPS,
+    deadlift: SESSION_DRIVE.CHECK_IN_TAPS,
+  }),
+
+  /**
+   * ===========================================================================
    * THE DELIBERATE HOLE IN THE GRIND — WHERE IT GOES AND HOW LONG IT LASTS
    * ===========================================================================
    * BOTH ARE ROBOT KNOBS AND NEITHER IS GAME FEEL, and both are here rather
@@ -1700,15 +1741,36 @@ const LIFT_LADDER = Object.freeze({
    * chest — pausing there gives a bar that never got going rather than one that
    * stalled, and "never got going" is not the beat the steer is about.
    *
-   * `GRIND_PAUSE_MS` is comfortably longer than the 18-tick (300 ms) hole
-   * `lift.test.ts`'s `REACHABLE_RESCUE` sweeps with, on purpose: that sweep
-   * measures a PERFECT sim tapper either side of the hole and this one has a
-   * browser's cadence either side of it. `ASCENT_TIMEOUT_TICKS` is 170 ticks
-   * (2833 ms), so a 700 ms hole eight taps in leaves the rescue most of the
-   * ascent to happen in.
+   * `GRIND_PAUSE_MS` IS FIVE TIMES THE 18-TICK (300 ms) HOLE `lift.test.ts`'s
+   * `REACHABLE_RESCUE` SWEEPS WITH, AND THAT IS A MEASUREMENT RATHER THAN
+   * CAUTION. That sweep taps every 6 ticks either side of its hole; this driver
+   * achieves every 3 (measured in the browser: 47 ms mean against a 50 ms
+   * refractory), so it arrives at the hole with a fuller charge and recovers
+   * from it faster — a rep that is HARDER TO STALL than the swept one at the
+   * same load. Driven in the pure sim on this probe's own cell and its own
+   * schedule, 40 seeds each, measured@66c2415:
+   *
+   *     hole   stalled  worst-case stalled ticks   made
+   *      70t    40/40     4                        40/40
+   *      80t    40/40    13                        40/40
+   *     100t    40/40    34                        40/40
+   *     120t    40/40    55                        40/40
+   *
+   * 100 ticks is 1667 ms and is taken over 80 for the stalled-tick column, not
+   * for the stalled column: at 80 ticks the stall is real and lasts ~13 ticks
+   * (~217 ms), which at the frame rate this browser samples at is a handful of
+   * frames against the check's own `MIN_COMMAND_FRAMES` floor. 34 ticks is
+   * ~567 ms and several times that floor. It is NOT taken further because the
+   * ascent has to survive it: `ASCENT_TIMEOUT_TICKS` is 170 and the hole opens
+   * about 8 ticks into the ascent, so past ~120 the rescue starts running out
+   * of rep rather than out of force.
+   *
+   * A 1667 ms hesitation inside a ~2.8 s ascent is a real thing a player does,
+   * which is the other half of why it is acceptable: this is a rep played
+   * badly, not a rep played by a machine that stopped existing.
    */
   GRIND_PAUSE_AFTER_TAPS: 8,
-  GRIND_PAUSE_MS: 700,
+  GRIND_PAUSE_MS: 1667,
 
   /**
    * How many reps this probe will spend trying to walk one kind's full ladder.
@@ -2941,13 +3003,8 @@ async function photographTheDownCommand(page, shots, ladderCopy) {
  */
 async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false } = {}) {
   const rpeChoice = LIFT_LADDER.RPE_CHOICE_FOR[kind] ?? LIFT_LADDER.RPE_CHOICE;
-  const opened = await openSessionToFirstSet(
-    page,
-    url,
-    SESSION_DRIVE.CHECK_IN_TAPS,
-    rpeChoice,
-    kind,
-  );
+  const checkIn = LIFT_LADDER.CHECK_IN_FOR[kind] ?? SESSION_DRIVE.CHECK_IN_TAPS;
+  const opened = await openSessionToFirstSet(page, url, checkIn, rpeChoice, kind);
   // WHICH LIFT THE SESSION ACTUALLY LANDED ON, WHICH IS NOT ALWAYS THE ONE THE
   // CHIP ASKED FOR — AND THE DIFFERENCE IS THE DEFECT THIS SECTION EXISTS FOR.
   //
@@ -3072,7 +3129,7 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
   let neverPressed = null;
   if (alsoSlip && landedOn === kind && best !== null && best.reachedLockout === true) {
     await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
-    slip = await driveLadderRep(page, kind, depthSearch.holdMs, { holdAtLockout: false, benchPlan });
+    slip = await driveLadderRep(page, kind, depthSearch.holdMs, { holdAtLockout: false });
     await page.waitForTimeout(LIFT_LADDER.BETWEEN_REPS_MS);
     neverPressed = await driveLadderRep(page, kind, 0, { neverPress: true });
   }
@@ -3087,6 +3144,7 @@ async function probeLiftLadder(page, url, kind, { shots = null, alsoSlip = false
     chip: checkInLiftTestId(kind),
     queryString: search,
     rpeChoice,
+    checkIn,
     attempts,
     best,
     rescued,
@@ -3305,7 +3363,7 @@ function gradeStageBeat(kind, run) {
     'LADDER bench STAGE READOUT: the grind row FALLS while the driven hole is open and COMES BACK when the tapping resumes — which neither a hardcoded row nor a running tap total can do',
     pausePix === null
       ? 'no paused rep was driven, so the readout has no hole to be read across'
-      : `windows: grinding ${grinding.length} frame(s) peak ${peakGrinding} pip(s), held ${held.length} frame(s) floor ${floorHeld}, resumed ${resumed.length} frame(s) peak ${peakResumed}; ${invalid} reading(s) out of 0..${STAGE_BEAT_TUNING.pips}; pips ${JSON.stringify(grindingPips)} | ${JSON.stringify(heldPips)} | ${JSON.stringify(resumedPips)}; marks ${JSON.stringify(marks)}, command frame ${pauseCommandT}ms, ${Math.round(pipAreaPx)} px per pip at canvas scale ${scale}`,
+      : `windows: grinding ${grinding.length} frame(s) peak ${peakGrinding} pip(s), held ${held.length} frame(s) floor ${floorHeld}, resumed ${resumed.length} frame(s) peak ${peakResumed}; ${invalid} reading(s) out of 0..${STAGE_BEAT_TUNING.pips}; pips ${JSON.stringify(grindingPips)} | ${JSON.stringify(heldPips)} | ${JSON.stringify(resumedPips)}; raw lit px over the whole paused rep ${Math.min(...pauseRows.map((row) => row.lit), Infinity)}..${Math.max(...pauseRows.map((row) => row.lit), -Infinity)} across ${pauseRows.length} frame(s); marks ${JSON.stringify(marks)}, command frame ${pauseCommandT}ms, ${Math.round(pipAreaPx)} px per pip at canvas scale ${scale}`,
   );
 
   // ---- THE STALL ----------------------------------------------------------
@@ -3321,6 +3379,33 @@ function gradeStageBeat(kind, run) {
       ? []
       : pauseRows.filter((row) => row.e !== null && row.t < pauseCommandT && says(row, waitLine));
   const edgeFloorPx = (pausePix?.edgeSampled ?? 0) * STAGE_BEAT.MIN_STALL_EDGE_FRACTION;
+  // THE POSITIVE CONTROL ON THE INSTRUMENT ITSELF, AND IT IS NOT OPTIONAL.
+  // The two readings the check below compares are a ZERO and a non-zero, and a
+  // strip measurement that could not see anything AT ALL would report exactly
+  // the same zero for the control and then fail the finding — which reads as
+  // "the app drew nothing" when the truth is "this instrument is blind".
+  //
+  // The command wash is what settles it: it is a FULL-STAGE effect
+  // (`FLASH_PEAK_ALPHA`), so it necessarily crosses this strip, and it is drawn
+  // on a rep this grader has already proven painted (the STAGE HIT check, on
+  // the same rows). If the strip cannot see the wash, nothing it says about the
+  // band is worth anything.
+  const pauseWash =
+    pauseCommandT === null
+      ? []
+      : pauseRows.filter(
+          (row) => row.e !== null && row.t >= pauseCommandT && row.t <= pauseCommandT + flashMs,
+        );
+  const peakWashEdge = pauseWash.length === 0 ? null : Math.max(...pauseWash.map((row) => row.e));
+  check(
+    pauseWash.length >= STAGE_BEAT.MIN_COMMAND_FRAMES &&
+      peakWashEdge !== null &&
+      peakWashEdge >= edgeFloorPx,
+    'LADDER bench STAGE STALL CONTROL: the top strip CAN see a full-stage effect — the command wash moves it',
+    pausePix === null
+      ? 'no paused rep was driven'
+      : `${pauseWash.length} wash frame(s), biggest ${peakWashEdge} px of ${pausePix.edgeSampled} sampled in the top ${STAGE_BEAT_TUNING.stallBandPx}pt strip, against the same ${Math.round(edgeFloorPx)} px floor the stall band must clear`,
+  );
   const heldEdge = held.filter((row) => row.e !== null).map((row) => row.e);
   const waitEdge = pauseWait.map((row) => row.e);
   const peakHeldEdge = heldEdge.length === 0 ? null : Math.max(...heldEdge);
@@ -3411,7 +3496,16 @@ function scoreOf(scored) {
  */
 function requiredRungsFor(kind) {
   const L = LIFT_PROMPTS[kind];
-  return [L.BRACE, L.DESCENT, L.HOLE, L.COMMAND, ASCENT_PROMPTS.RIDE, kind === 'deadlift' ? L.LOCKOUT : null, kind === 'deadlift' ? L.DOWN : null].filter(
+  // THE ASCENT RUNG IS PER LIFT NOW, AND ASSUMING IT WAS 'RIDE IT' FOR ALL
+  // THREE WAS A REAL STALE EXPECTATION THIS RUN CAUGHT. Squat and deadlift flip
+  // between 'RIDE IT' and 'DRIVE — TAP' across their ascents; bench shows ONE
+  // line for the whole grind (`LIFT_COPY.PROMPT.ASCENT_GRINDING`) because it
+  // arms no cue. Measured against a real driven bench rep before this was
+  // changed: the ladder walked 4 of 5 with `"RIDE IT"@never`, on a rep that had
+  // in fact rendered every beat it has — a check reporting the tool's stale
+  // idea of the mechanic as the app's failure.
+  const ascent = L.GRIND ?? ASCENT_PROMPTS.RIDE;
+  return [L.BRACE, L.DESCENT, L.HOLE, L.COMMAND, ascent, kind === 'deadlift' ? L.LOCKOUT : null, kind === 'deadlift' ? L.DOWN : null].filter(
     (line) => line !== null,
   );
 }
@@ -4852,7 +4946,7 @@ if (LADDER_REQUESTED) {
       run.reached && run.landedOn === kind,
       `LADDER ${kind}: a work set was reached by pressing ${checkInLiftTestId(kind)} on the check-in and then playing in, and it is a ${kind} set`,
       run.reached
-        ? `RPE choice ${run.rpeChoice}`
+        ? `RPE choice ${run.rpeChoice}, check-in ${JSON.stringify(run.checkIn)}`
         : `${run.why}${run.landedOn === null || run.landedOn === undefined ? '' : ` — driven with ${run.landedOn}'s grammar anyway so the checks below have a real reading to disagree with`}`,
     );
     if (run.landedOn === null || run.landedOn === undefined) {
