@@ -5335,6 +5335,37 @@ if (LADDER_REQUESTED) {
     // wider threshold when it first went out of range (see the spacing-floor
     // wait in `tapDriveCuesToLockout`). Measured after that fix across three
     // real runs against `18ef5b7`: 90, 114 and 121 ms against a 167 ms grace.
+    //
+    // ===========================================================================
+    // AND IT WENT OUT OF RANGE AGAIN ON 2026-08-26 — 218 ms, ON A RUN WHOSE
+    // RE-RUN READ 42 ms. THE CAUSE IS OPEN.
+    // ===========================================================================
+    // BOTH NUMBERS ARE HERE BECAUSE ONLY ONE OF THEM MAKES IT INTO A GREEN
+    // RECORD, and a reader who sees only the green one learns to re-run until
+    // the check agrees with them. That is the crying-wolf failure this
+    // repository has already paid for on three instruments, arriving through
+    // non-determinism instead of noise. The spread across five real runs of the
+    // bench difficulty round is now 42 / 90 / 114 / 121 / 218 ms against the
+    // same 167 ms grace — one reading past the wall and one at a quarter of it,
+    // which is not a rounding artefact.
+    //
+    // THE MERGE WAS RULED OUT STRUCTURALLY BEFORE THE RE-RUN, and the prediction
+    // was written down while the red result was still the only evidence:
+    // `LOCKOUT_GRIP_GRACE_TICKS` was unchanged; every constant that round moved
+    // is bench-only (`DEMAND_BASE.bench` and `STICK_WIDTH.bench` are `PerKind`
+    // tables read at `[kind]`, and `GRIND_BOOST_FORCE_MAX` is gated on
+    // `kind === 'bench'` in `lift.ts`'s ascent branch); and all 85 of
+    // `lift.test.ts`'s `BASELINE_DIGESTS` — every squat and deadlift rep in that
+    // sweep — were byte-identical. So the app's deadlift did not move and the
+    // reading is the robot's own dispatch latency.
+    //
+    // WHAT WAS NOT ESTABLISHED IS WHY IT VARIES BY A FACTOR OF FIVE. The
+    // threshold is deliberately NOT widened to cover 218 — a threshold chosen to
+    // stop a check failing hides the next real failure at the same site — so
+    // this stays strict and the flake stays recorded. A future round that wants
+    // it closed should instrument the gap the way `AIM_FOR_CENTER_DELAY_MS`'s
+    // own header describes: measure the press-to-observation lag per attempt and
+    // subtract it live, rather than assuming a fixed cost.
     check(
       reGripMs !== null && graceMs !== null && reGripMs <= graceMs,
       'LADDER deadlift: the re-grip landed inside LOCKOUT_GRIP_GRACE_TICKS, so the held rep is a clean hold and the pair below differs in exactly one thing',
