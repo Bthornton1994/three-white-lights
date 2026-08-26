@@ -1277,24 +1277,72 @@ export const LIFT_TUNING = Object.freeze({
    * 1-12. `REACHABLE.IDLE_FROM_TICKS` carries that finding; this constant
    * carries what it costs.
    *
-   * Measured on `REACHABLE_WARMUP`'s sweep — every RPE 6/7 cell, every quit
-   * instant 1..180, three cadences, 12600 reps — as warm-up reps LOST:
+   * ---------------------------------------------------------------------------
+   * THE TABLE, RE-DERIVED 2026-08-26 AT ONE STATED CONFIGURATION — WHICH IS THE
+   * CORRECTION, NOT THE DIGITS
+   * ---------------------------------------------------------------------------
+   * `STICK_WIDTH.bench = 0.22`, `GRIND_BOOST_FORCE_MAX = 0.42`, the shipped
+   * pair. Every row below comes from that one configuration and from one run.
+   * The version this replaces had rows taken at DIFFERENT widths and boosts
+   * without saying so — its `+0.040` read `120` and its `+0.060` read `456`
+   * against `132` and `330` here — so it was a column of numbers that could not
+   * be reproduced by any single tuning and read as though it could. A tuner
+   * comparing two rows of it was comparing three variables.
    *
-   *     +0.000   0 lost      (the pre-retune curve)
-   *     +0.015   0 lost
-   *     +0.020   0 lost      <- shipped
-   *     +0.025   60 lost
-   *     +0.030   60 lost
-   *     +0.040   120 lost
-   *     +0.060   456 lost    <- shipped for one commit, wrong
+   * Domain: `REACHABLE_WARMUP`'s held sweep — every RPE 6/7 cell, every quit
+   * instant 1..180, three cadences, three seeds, **16200 reps**. It said 12600,
+   * which was the domain before `MAX_QUIT_TICK` went from 140 to 180. Both
+   * domains were run for this table and every row is identical across them, so
+   * the stale label cost nothing here — it was not the cause of the bad rows,
+   * and saying so is the point of having measured it rather than assumed it.
    *
-   * THE WALL IS AT ABOUT +0.022 AND IT IS NOT NEGOTIABLE BY ANY OTHER KNOB.
-   * Widening `STICK_WIDTH.bench` moves it DOWN rather than up (that header has
-   * the table); narrowing it does not move it up either; and
-   * `GRIND_BOOST_FORCE_MAX` does not touch it at all, because a player who
-   * quits has no charge whichever way it is set. So +0.02 is not a preference,
-   * it is the last step before a guarantee breaks, with about 0.0025 of margin
-   * on the hardest warm-up cell.
+   *     rise     lost (held)   lost (finger off at descent tick 1)
+   *     +0.000       0                1542        (the pre-retune curve)
+   *     +0.015       0                1974
+   *     +0.020       0                2154        <- shipped
+   *     +0.025      60                2274
+   *     +0.030      60                2508
+   *     +0.040     132                2838
+   *     +0.060     330                3654        <- shipped for one commit
+   *
+   * THE SECOND COLUMN IS NEW AND IT IS THE ONE THAT CHANGES WHAT THIS BLOCK
+   * MEANS. It is never zero — not even at the pre-retune curve — so the "wall"
+   * this table locates is a property of the HELD descent only. See
+   * `REACHABLE_WARMUP.SLIP_TICKS` for why that column exists and what it is
+   * pinned at.
+   *
+   * THE HELD WALL IS BETWEEN +0.020 AND +0.025, which is where it was measured
+   * rather than the "+0.022" this block used to interpolate to. Widening
+   * `STICK_WIDTH.bench` moves it DOWN rather than up (that header has the
+   * table); narrowing it does not move it up either.
+   *
+   * ---------------------------------------------------------------------------
+   * AND `GRIND_BOOST_FORCE_MAX` DOES MOVE IT. THE OLD SENTENCE SAID IT "DOES
+   * NOT TOUCH IT AT ALL", WHICH WAS TRUE AT THE ONE POINT IT WAS MEASURED AND
+   * FALSE AS THE PROPERTY IT WAS WRITTEN AS
+   * ---------------------------------------------------------------------------
+   * Swept at `STICK_WIDTH.bench = 0.22`, both columns, boost 0.30/0.42/0.50:
+   *
+   *     rise     held                 finger off
+   *     +0.025   60 /  60 /  60       3228 / 2274 / 1974
+   *     +0.060  402 / 330 / 312       5412 / 3654 / 3084
+   *
+   * So it is flat in the immediate neighbourhood of the wall, which is where
+   * somebody checked, and it swings the held count by a fifth two steps out and
+   * the released count by nearly two fifths everywhere.
+   *
+   * THE REASON GIVEN WAS THE PART THAT WAS ACTUALLY WRONG, and it is why the
+   * claim generalised: "a player who quits has no charge whichever way it is
+   * set." Every quit instant in this sweep is at or after the first tap, so
+   * every one of these players HAS charge — what they stop doing is adding to
+   * it. A mechanism stated confidently is what carried a one-point measurement
+   * into a general claim; the measurement was fine and the sentence around it
+   * was not.
+   *
+   * So +0.02 is the last step before the HELD guarantee breaks, at the shipped
+   * width and boost, and it is not the last step before every guarantee breaks
+   * — `REACHABLE_WARMUP.NO_ANSWER_KEPT_ON_A_HELD_DESCENT` turns between +0.005
+   * and +0.010 on a player who never answers at all.
    *
    * WHY THE WALL IS THERE, WHICH IS THE PART THAT GENERALISES. The rungs are
    * stacked 0.044-0.060 apart in margin, because the bar-speed cue is worth
@@ -1449,9 +1497,17 @@ export const LIFT_TUNING = Object.freeze({
    * DEADLIFT'S GAIN IS THE LARGEST (0.46) ON TOP OF THE SMALLEST BASE — peak
    * 0.84 + 0.46 = 1.30 at the endpoint, a comparable margin above capacity to
    * the other two, reached by a taller notch on an easier run-up rather than a
-   * higher floor. Measured at LOAD_PRESETS.MAXIMAL the three peaks are squat
-   * 1.238, deadlift 1.202, bench 1.285; against the other two what differs is
-   * WHERE the peak sits (0.62 against squat's 0.34), not how bad it is.
+   * higher floor. What differs against the other two is WHERE the peak sits
+   * (0.62 against squat's 0.34), not how bad it is; the three peaks themselves
+   * are stated once, above.
+   *
+   * "STATED ONCE, ABOVE" IS THE FIX AND THE DIGIT WAS ONLY THE SYMPTOM. This
+   * paragraph used to carry its own copy of the three peaks, ending "bench
+   * 1.285" — thirty-four lines under a paragraph in the SAME docstring saying
+   * `bench 1.305`. One docstring, one quantity, two numbers, and the retune
+   * that re-measured the first copy had no reason to look at the second.
+   * Correcting the digit would have left two copies for the next retune to
+   * desynchronise, so the second copy is gone instead of fixed.
    *
    * Also the reverse of the first guess (0.42 gain on a 0.90 base), and for the
    * same reason recorded under `DEMAND_BASE`: difficulty spread across the whole

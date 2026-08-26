@@ -2609,9 +2609,18 @@ type RescueRow = readonly [number, number, number];
  * The four RPE 8 rows below used to read `[20,0,0] [40,0,0] [20,0,0] [20,0,0]`
  * — the outcome flipped between a clean lift and a grinder, and stopping
  * tapping cost NOTHING: zero lost reps and zero stalls, at every cell the rung
- * can reach. `DEMAND_BASE.bench` and `STICK_WIDTH.bench` moved together (their
- * headers hold the two knobs and the window they had to fit inside), and RPE 8
- * now loses a rep in all four cells and stalls in three of them.
+ * can reach. `DEMAND_BASE.bench` moved and `STICK_WIDTH.bench` did not, and RPE
+ * 8 now loses a rep in all four cells and stalls in all four of them.
+ *
+ * BOTH HALVES OF THAT SENTENCE WERE STALE AND BOTH WERE STALE THE SAME WAY —
+ * WRITTEN WHEN THEY WERE TRUE AND LEFT ALONE WHEN THE CODE MOVED. It read
+ * "`DEMAND_BASE.bench` and `STICK_WIDTH.bench` moved together", which described
+ * the first pass; the width was reverted to `0.22` in the walk-back and the
+ * retune is one constant. And it read "stalls in three of them", which the four
+ * rows directly below it contradict — the third column is non-zero in every
+ * one. A summary sentence sitting on top of the table it summarises is the
+ * cheapest possible thing to check and was checked by nobody, including the
+ * pass that rewrote the rows underneath it.
  *
  * WHERE THE GRIND BEGINS, IN THE TERMS A PLAYER WOULD USE:
  *
@@ -2622,7 +2631,7 @@ type RescueRow = readonly [number, number, number];
  *                       a single cell that misses on literally NO input, is
  *                       measured under `DEMAND_BASE.bench`.
  *   RPE 8               STOPPING COSTS THE REP. All four cells lose reps and
- *                       three stall on the way. A slow grind still makes it —
+ *                       all four stall on the way. A slow grind still makes it —
  *                       as a GRINDER rather than a GOOD LIFT.
  *   RPE 9               more of both: every cell stalls and loses reps, two of
  *                       the four on all 80 pairs.

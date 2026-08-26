@@ -969,17 +969,20 @@ const GUARANTEE_COVERAGE = {
   // the rung the ruling named. Every other file in both passes contributed 0,
   // including `docs/GDD.md`, which this scan does not read at all.
   //
-  // 295 -> 296 ON THE DESCENT-AXIS ROUND, AND THE NET IS THE INTERESTING PART.
-  // That round rewrote `REACHABLE_WARMUP`'s tagged header, added five constants
-  // with headers of their own, replaced the false consequence on
+  // 295 -> 296 -> 297 ON THE DESCENT-AXIS ROUND, AND THE NET IS THE INTERESTING
+  // PART. Its first half rewrote `REACHABLE_WARMUP`'s tagged header, added five
+  // constants with headers of their own, replaced the false consequence on
   // `ABANDONED_CRASHES`, and retargeted `leaves a warm-up alone` off
-  // `LOAD_PRESETS.LIGHT` — well over a dozen capitalised runs written, against
-  // a census that moved by ONE, because several of them replaced runs that were
-  // already there. This is the same warning the paragraph above gives, with a
-  // second measurement behind it: the number is a shape count, not a volume
-  // gauge, and a reader reconciling it against a diff will conclude the scan is
-  // broken when it is doing exactly what it says.
-  TREE_WIDE: 296,
+  // `LOAD_PRESETS.LIGHT`; its second re-derived `DEMAND_BASE.bench`'s whole wall
+  // table at one configuration, deleted a duplicated peak figure from
+  // `DEMAND_STICK_GAIN`'s header, and corrected two stale summary sentences over
+  // the rescue table. Two dozen capitalised runs written across the two, against
+  // a census that moved by ONE each time, because most of them REPLACED runs
+  // that were already there. This is the same warning the paragraph above gives,
+  // with two more measurements behind it: the number is a shape count, not a
+  // volume gauge, and a reader reconciling it against a diff will conclude the
+  // scan is broken when it is doing exactly what it says.
+  TREE_WIDE: 297,
 } as const;
 
 // ---------------------------------------------------------------------------

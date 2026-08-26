@@ -2205,11 +2205,23 @@ rep for any reason" it is not, and the fix is to back the rise down to +0.005,
 which returns most of the difficulty this retune was asked for. It is recorded
 with the number in front of it rather than settled by whoever noticed it.
 
-Widening the sticking point moves that wall the wrong way,
-narrowing it does not move it back, and the grind's force ceiling does not touch
-it at all — a player who quits has no charge whichever way it is set. So RPE 8's
-difficulty is *stopping costs the rep, and a slow grind is a GRINDER rather than
-a GOOD LIFT*, and the minimum-tap-rate axis begins at RPE 9.
+Widening the sticking point moves that wall the wrong way, and
+narrowing it does not move it back.
+
+**The grind's force ceiling was recorded here as not touching the wall "at all",
+and that was true at the one rise it was measured at and false as a property.**
+Swept at the shipped sticking width, as warm-up reps lost of 16200 at boost
+0.30 / 0.42 / 0.50: at a +0.025 rise the held count is `60 / 60 / 60`, flat —
+which is the neighbourhood somebody checked. At +0.060 it is `402 / 330 / 312`,
+and on a released descent it is `3228 / 2274 / 1974` at +0.025 and
+`5412 / 3654 / 3084` at +0.060. **The reason given was the part that was really
+wrong** — "a player who quits has no charge whichever way it is set" — because
+every quit instant in that sweep falls at or after the first tap, so those
+players all have charge and are merely no longer adding to it. A confidently
+stated mechanism is what carried a single measurement into a general claim.
+
+So RPE 8's difficulty is *stopping costs the rep, and a slow grind is a GRINDER
+rather than a GOOD LIFT*, and the minimum-tap-rate axis begins at RPE 9.
 
 What the rise did buy, on the slowest sustained rate that never misses, per cell,
 before against after: RPE 8 `0.50 / 0.67 / 0.50 / 0.50` → `0.50 / 1.00 / 0.80 /
