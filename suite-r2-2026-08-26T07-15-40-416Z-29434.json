@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "suite-r2-2026-08-26T07-15-40-416Z-29434",
+  "label": "suite-r2",
+  "command": [
+    "npx",
+    "vitest",
+    "run"
+  ],
+  "budgetSeconds": 1500,
+  "startedAtIso": "2026-08-26T07:15:40.416Z",
+  "startedAtMs": 1787728540416,
+  "cwd": "/home/user/wt-grind-stage",
+  "commit": "16dd7e6878c778df8197e6ad2ff8f2b0fdd9f8fa",
+  "branch": "claude/grind-stage-drivers",
+  "dirty": 7,
+  "dirtyPaths": [
+    ".gauntlet/shots/lift-press/press.json",
+    ".gauntlet/shots/meet/sound.json",
+    ".gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+    ".gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+    ".gauntlet/shots/shell/12-openers-follow-the-session.png",
+    ".gauntlet/shots/shell/13-recap-before-the-return-leg.png",
+    ".gauntlet/shots/shell/route.json"
+  ],
+  "runner": {
+    "pid": 29434,
+    "startTick": "634557",
+    "cmdline": "node tools/watchdog.mjs --budget 1500 --label suite-r2 -- npx vitest run",
+    "bootId": "96fef63f-e4d8-4aa9-9654-48737ca6b5b1",
+    "bootEpochSeconds": 1787722195,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-26T07:15:40.446Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
