@@ -3219,7 +3219,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // above the shop/allocator text. The AST-order census reads that move
       // exactly: same string, new position, nothing about the text itself
       // changed.
-      'the floor — grid and placement, no members, no final art yet',
+      // Reworded after the P4c phone pass: the old chunk ("no members, no
+      // final art yet") was flagged stale by the Playtest 4 player and by the
+      // P4c pass's own screenshot was false twice over — three members
+      // training on finished sprites, under a caption denying both.
+      'the floor — your gym, live: place equipment, watch members train',
       'costs',
       'gym bucks, fits from',
       'buy',

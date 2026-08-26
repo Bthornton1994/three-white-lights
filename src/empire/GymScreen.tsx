@@ -173,7 +173,7 @@ export function GymScreen(props: GymViewProps) {
         <Text testID={'gymscreen-refusal'}>refused: {lastRefusal}</Text>
       )}
       <View testID={'gymscreen-floor'}>
-        <Text>the floor — grid and placement, no members, no final art yet</Text>
+        <Text>the floor — your gym, live: place equipment, watch members train</Text>
         <FloorGrid
           owned={gym.sessionEquipment}
           barbellOwned={gym.ladder.equipment}

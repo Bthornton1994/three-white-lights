@@ -2525,6 +2525,35 @@ furniture fit per class (silhouette, overlap with pad and bar, feet against
 the slab), cadence only through its named knob, and per-class distinctness
 preserved — with `floorSim.ts` byte-identical and Phase 3's walking/queueing
 untouched, same as every presentation round before it.
+
+**P4c's PHONE VERDICT, AND §5.13's PRESENTATION WORK HOLDS HERE.** Same
+player, real phone, P4c at `9ccd405` — the composite-driven round: the
+double-bar fix with the occupied-sprite swap, the sled repark, the painted
+bar-frame arms, the `under` op with its executed-mutant catcher. On a screen
+showing two members using machines (bench occupied, the lying figure along
+the pad; power-bar occupied) and one queuing, the verdict, verbatim: *"this
+is fine for now."*
+
+Classified so a later reader takes exactly what was given. It is an
+acceptance of the current state — not a defect report, and none of the six
+recorded look-fors (the picked-up-vs-vanished read, sled side-approach,
+bench figure scale, the generic 7px pump, powerlifter-red-on-plate-red, the
+hooded bar read) was named a problem. It is also **not the Phase 4 art gate
+closing**: "for now" reserves exactly the refinement it declines to ask for
+today, and the standing rule is that the gate closes in the human's own
+words, later, if they choose. The six look-fors stay recorded doubts at
+their sites, unjudged individually; silence is not a yes on any of them.
+
+**What "fine for now" means operationally: §5.13 stops here until a human
+names the next thing.** No further polish rounds, no knob tuning, no new
+poses — the failure mode this section's own history warns about is an agent
+continuing to improve the familiar surface because it is well-guarded, and a
+"for now" from the person who owns the gate is the signal to hold, not a gap
+to fill. One truthfulness fix rode out with this record rather than waiting:
+the screen chrome in the player's own screenshot still read "no members, no
+final art yet" over three members training on finished sprites — flagged
+stale by the Playtest 4 pass, false twice over by this one. The caption now
+says what the screen shows. Everything else holds at `9ccd405`'s state.
 ---
 
 ## 6. Meet Day
