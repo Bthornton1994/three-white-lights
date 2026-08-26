@@ -748,14 +748,36 @@ const SC = LIFT_TUNING.FEEDBACK.STAGE_COMMAND;
  * real mechanic and reading the ticks off it, the same two-pass idiom
  * `scriptFor` and `deadliftHistory` already use for drive cues.
  *
- * `taps` are dispatched one press EDGE per counted tap, spaced by the
- * refractory the mechanic itself declares, so a tap this harness sends is a tap
- * the mechanic can count. Fewer than `MAX_COUNTED_TAPS` on purpose in most
- * cases: a row that fills completely cannot show a partial state.
+ * `taps` are dispatched one press EDGE per counted tap, spaced by
+ * `spacingTicks` — the refractory the mechanic itself declares, by default, so
+ * a tap this harness sends is a tap the mechanic can count. `spacingTicks` is
+ * an argument since the 2026-08-25 replay steer because the readout is a RATE
+ * readout now: two reps with the same number of taps and different spacings
+ * have to light the row to different heights, and there is no way to ask that
+ * question with a fixed gap.
+ *
+ * THE DESCENT SCRIPT STILL FEEDS AND EASES, and after the replay steer that is
+ * a SLIP-AND-CATCH pattern rather than a lowering technique — the finger comes
+ * off, the bar runs away, the finger comes back. Kept as it is: what these
+ * tests need is a bench rep that reaches the chest and a bar whose approach
+ * heat MOVES, and a slipped descent gives both where a held one gives a
+ * constant. `lift.test.ts` is where the descent itself is graded.
  */
 function benchHistory(
   load: number,
-  { taps = 0, feed = 11, ease = 26, seed = 4 } = {},
+  {
+    taps = 0,
+    feed = 11,
+    ease = 26,
+    seed = 4,
+    spacingTicks = LIFT_TUNING.GRIND_TAP_REFRACTORY_TICKS as number,
+  }: {
+    taps?: number;
+    feed?: number;
+    ease?: number;
+    seed?: number;
+    spacingTicks?: number;
+  } = {},
 ): readonly LiftState[] {
   const config = { kind: 'bench' as const, loadRatio: load, seed };
   const start = braceTicks(load, 'bench') + 1;
@@ -768,8 +790,8 @@ function benchHistory(
     feeding.push({ tick: t, kind: 'press' });
   }
   // Pass 1 — where does the bar reach the chest? Everything scheduled after
-  // that would land inside HOLE, where a press is a burst tap rather than a
-  // feed, so the descent script is truncated there.
+  // that would land inside HOLE, where a press is a grind tap rather than a
+  // hold, so the descent script is truncated there.
   const touched = runLift(config, feeding).history.find((s) => s.phase === 'HOLE');
   const holeAt = touched?.tick ?? Infinity;
   const descent = feeding.filter((input) => input.tick < holeAt);
@@ -784,7 +806,7 @@ function benchHistory(
   const commandAt = commanded?.pressCommandTick ?? null;
   if (commandAt === null) return runLift(config, settled).history;
   const script = [...settled];
-  const spacing = LIFT_TUNING.PRESS_BURST_TAP_REFRACTORY_TICKS;
+  const spacing = spacingTicks;
   // THE FIRST TAP IS ONE TICK AFTER THE CALL, NOT ON IT. A tap dispatched on
   // the command's own tick is counted by the same `stepLift` call that fires
   // the command, so the readout's very first frame would already show one pip
@@ -965,53 +987,64 @@ describe('the armed wait', () => {
   });
 });
 
-describe('the burst readout', () => {
-  it('counts the taps that landed and never more than the row holds [the-burst-readout-moves-with-the-taps]', () => {
-    const total = LIFT_TUNING.PRESS_BURST_FORCE.MAX_COUNTED_TAPS;
-    const asked = 5;
+describe('the grind readout', () => {
+  it('follows the tap rate up and back down, never past the row [the-grind-readout-moves-with-the-rate]', () => {
+    // ---------------------------------------------------------------------
+    // FACT 3 OF THE PROGRESSION RULE IS THE WHOLE TEST HERE, AND THE 2026-08-25
+    // REPLAY STEER IS WHY IT HAD TO BE REWRITTEN.
+    //
+    // The row used to be one pip per counted tap out of a per-rep cap, so
+    // "it moves" meant "it rises". A continuous grind has no cap and a running
+    // tap total rises forever — a row keyed to one would fill up and STAY
+    // full while the player quietly stopped tapping, which is a readout on
+    // screen reading nothing. So the assertion is not "it rises": it is that
+    // it rises while taps land AND falls once they stop.
+    // ---------------------------------------------------------------------
+    const units = LIFT_TUNING.FEEDBACK.STAGE_COMMAND.GRIND_READOUT_UNITS;
+    const asked = 6;
     const history = benchHistory(LOAD_PRESETS.HEAVY, { taps: asked });
     const open = history.map((s) => burstReadout(s)).filter((r) => r !== null);
-    expect(open.length, 'the burst never opened').toBeGreaterThan(10);
+    expect(open.length, 'the grind never went live').toBeGreaterThan(10);
 
-    // FACT 1 — it never regresses.
-    let previous = -1;
+    // FACT 2 — it is never invalid: the row is `GRIND_READOUT_UNITS` long, and
+    // the lit count is inside it and agrees with the pips actually drawn.
     for (const readout of open) {
-      expect(readout.lit).toBeGreaterThanOrEqual(previous);
-      previous = readout.lit;
-    }
-    // FACT 2 — it is never invalid: the row is the physics cap long, and the
-    // lit count is inside it and agrees with the pips actually drawn.
-    for (const readout of open) {
-      expect(readout.pips.length).toBe(total);
+      expect(readout.pips.length).toBe(units);
       expect(readout.lit).toBeGreaterThanOrEqual(0);
-      expect(readout.lit).toBeLessThanOrEqual(total);
+      expect(readout.lit).toBeLessThanOrEqual(units);
       expect(readout.pips.filter((p) => p.lit).length).toBe(readout.lit);
     }
-    // FACT 3 — IT MOVES, which is the one a hardcoded row satisfies neither
-    // way. CLAUDE.md: a claim that a value progresses is three facts and a
-    // constant passes the first two.
-    expect(open[0]?.lit).toBe(0);
-    expect(previous).toBe(asked);
-    expect(new Set(open.map((r) => r.lit)).size).toBe(asked + 1);
+
+    // FACT 3 — IT MOVES, BOTH WAYS. A hardcoded row satisfies neither, and a
+    // row keyed to a running total satisfies only the first half.
+    const lit = open.map((r) => r.lit);
+    const peak = Math.max(...lit);
+    const peakAt = lit.indexOf(peak);
+    expect(lit[0], 'the row started lit').toBe(0);
+    expect(peak, 'the row never lit at all').toBeGreaterThan(1);
+    expect(peakAt, 'the row peaked on its first frame').toBeGreaterThan(0);
+    const after = lit.slice(peakAt);
+    expect(Math.min(...after), `the row never fell from its peak of ${peak}`).toBeLessThan(peak);
+    // ...and it really did fall because the TAPS stopped, not because the row
+    // was truncated: the tap total is still rising at the peak and flat after.
+    expect(new Set(lit).size, `only ${new Set(lit).size} distinct row states`).toBeGreaterThan(3);
   });
 
-  it('stops one short of the physics cap, because the cap IS the launch', () => {
-    // MEASURED, AND IT IS A REAL LIMIT OF THE READOUT RATHER THAN A TEST
-    // WRITTEN TO PASS. `stepLift` ends the burst on the same tick the counted
-    // taps reach `MAX_COUNTED_TAPS` — the bar leaves the chest the instant
-    // there is nothing left to add — so the state that would show the last pip
-    // lit is already in ASCENT and `burstProgress` is null for it. A player who
-    // mashes to the cap therefore sees the row one pip short and then the bar
-    // launch, and that is what this pins rather than a tidier number.
-    const total = LIFT_TUNING.PRESS_BURST_FORCE.MAX_COUNTED_TAPS;
-    const history = benchHistory(LOAD_PRESETS.HEAVY, { taps: total * 2 });
-    const open = history.map((s) => burstReadout(s)).filter((r) => r !== null);
-    expect(open.length).toBeGreaterThan(0);
-    expect(Math.max(...open.map((r) => r.lit))).toBe(total - 1);
-    // ...and the cap really was reached, or the line above would be a
-    // statement about a burst that simply ran out of window.
-    const launched = history.find((s) => s.phase === 'ASCENT');
-    expect(launched?.burstTaps).toBe(total);
+  it('rises higher for a faster rate than for a slower one', () => {
+    // THE DIRECTION THE MOVEMENT TEST ABOVE DOES NOT CARRY. A row that rose
+    // and fell on a timer rather than on the player's rate would satisfy every
+    // assertion above, so the discriminator is two rates on the same rep.
+    const fast = benchHistory(LOAD_PRESETS.HEAVY, { taps: 10 })
+      .map((s) => burstReadout(s))
+      .filter((r) => r !== null);
+    const slow = benchHistory(LOAD_PRESETS.HEAVY, { taps: 10, spacingTicks: 14 })
+      .map((s) => burstReadout(s))
+      .filter((r) => r !== null);
+    expect(fast.length, 'the fast rep never went live').toBeGreaterThan(10);
+    expect(slow.length, 'the slow rep never went live').toBeGreaterThan(10);
+    expect(Math.max(...fast.map((r) => r.lit))).toBeGreaterThan(
+      Math.max(...slow.map((r) => r.lit)),
+    );
   });
 
   it('draws nothing before the command and nothing on the other two lifts', () => {

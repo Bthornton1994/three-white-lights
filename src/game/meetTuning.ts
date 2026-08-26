@@ -1875,37 +1875,54 @@ export const MEET_PREVIEW = Object.freeze({
    */
   DEADLIFT_SLIP_TICKS: 18,
   /**
-   * Longest bench descent hold a scripted rep will consider, in ticks, when it
-   * searches for the release that arrives at the chest most softly.
+   * Ticks a scripted bench rep lets the bar go for, when it is scripting the
+   * one mistake a bench descent still has.
    *
-   * A CEILING ON A SEARCH, NOT A HOLD. Since the 2026-08-25 ruling a bench
-   * descent is graded on the SPEED THE BAR ARRIVES AT, and there is no cue to
-   * read a release tick off — `lift.ts` arms none, deliberately, because a
-   * ring counting the player down to the chest would turn a control check into
-   * squat's anticipation check. So the script asks the mechanic the only way
-   * left: it plays the descent at every hold and keeps the one that arrived
-   * best. Comfortably past the tick a fed bar reaches the chest at every load,
-   * which `liftTuning.test.ts` pins against
-   * `BENCH_DESCENT_PATIENCE_TICKS`.
+   * `BENCH_HOLD_SCAN_MAX` WAS HERE AND IS DELETED WITH THE SEARCH IT CAPPED.
+   * The script used to play the descent at every hold from 1 to 60 and keep
+   * whichever arrived softest, because under the beat before the 2026-08-25
+   * REPLAY steer the best arrival was bought by letting go at the right
+   * moment. The steer made the answer "never let go" at every load — a search
+   * whose result is a constant — so the script holds, and this is what the
+   * 'marginal' style lets go for instead.
+   *
+   * ONE TICK, WHICH IS THE WHOLE MISTAKE. The finger comes off immediately
+   * after the descent starts and never comes back, so the bar runs away for
+   * the entire descent and arrives as hot as this mechanic can make it. That
+   * is what 'marginal' asks for on a bench: a rep that made it and should not
+   * have. `meetDay.test.ts` plays every style rather than trusting this note.
    */
-  BENCH_HOLD_SCAN_MAX: 60,
+  BENCH_SLIP_AT_TICKS: 1,
   /**
-   * Ticks between the taps a scripted bench burst throws.
+   * Ticks between the taps a scripted bench grind throws.
    *
-   * `PRESS_BURST_TAP_REFRACTORY_TICKS` is the floor the mechanic will count, so
-   * this is a scripted player tapping as fast as the sim will believe — which
-   * is what 'perfect' means on a beat whose input is a rate.
+   * `GRIND_TAP_REFRACTORY_TICKS` is the floor the mechanic will count, so this
+   * is a scripted player tapping as fast as the sim will believe — which is
+   * what 'perfect' means on a beat whose input is a rate.
+   *
+   * RENAMED FROM `BENCH_BURST_TAP_GAP_TICKS` with the beat. Same value, same
+   * mechanism, and a name that describes the beat it belongs to rather than
+   * the one it replaced.
    */
-  BENCH_BURST_TAP_GAP_TICKS: 3,
+  BENCH_GRIND_TAP_GAP_TICKS: 3,
   /**
-   * How many taps a scripted burst writes.
+   * How many taps a scripted grind writes.
    *
-   * A CEILING ON A SCRIPT, NOT A TAP COUNT. `PRESS_BURST_FORCE.MAX_COUNTED_TAPS`
-   * decides how many the mechanic counts, and the burst closes on its own once
-   * it is reached; this only has to be comfortably above it so the script never
-   * runs out before the mechanic does.
+   * A CEILING ON A SCRIPT, NOT A TAP COUNT. There is no per-rep tap cap since
+   * the 2026-08-25 replay steer — taps count until the rep resolves — so this
+   * only has to outlast the longest bench rep the mechanic can produce, which
+   * is an undriven maximal ascent running to `ASCENT_TIMEOUT_TICKS`. At
+   * `BENCH_GRIND_TAP_GAP_TICKS` this is 360 ticks of tapping, comfortably past
+   * it.
+   *
+   * THE VALUE IT REPLACES WOULD HAVE SHIPPED A SILENTLY SHORT GRIND. It was
+   * sized against an 850ms burst window and covered 72 ticks, so a scripted
+   * "perfect" bench would have tapped for the first fifth of its ascent and
+   * then gone quiet — a fixture answering the beat it was written for and not
+   * the beat it now runs against. Nothing in the type system notices a script
+   * that stops early.
    */
-  BENCH_BURST_TAPS_SCRIPTED: 24,
+  BENCH_GRIND_TAPS_SCRIPTED: 120,
   /** e1RM per lift the openers are suggested from. */
   E1RM_KG: Object.freeze({ squat: 232.5, bench: 152.5, deadlift: 272.5 } as const satisfies Record<LiftKind, number>),
   /** The lifter's best competition total before this meet, kg, or null. */

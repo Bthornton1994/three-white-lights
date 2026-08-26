@@ -232,11 +232,21 @@ describe("the deadlift's scripted rep styles mean what they say", () => {
     //
     //   DEPTH-SHAPED   squat. press, ONE release (the depth call), then at
     //                  most one drive press. The release is always second.
-    //   BURST-SHAPED   bench, since the 2026-08-25 ruling. press, then a
-    //                  release that is a BRAKE rather than a depth call, then
-    //                  a RUN of presses — the burst and the drive cues.
-    //                  'marginal' has no release at all: it is the bar fed
-    //                  straight onto the chest.
+    //   GRIND-SHAPED   bench, since the 2026-08-25 replay steer. press, and
+    //                  then — for the styles that answer the call — a RUN of
+    //                  press/release PAIRS from the command to the end of the
+    //                  rep. Three styles carry ONE EXTRA release, early: that
+    //                  is the finger coming off the descent so the bar runs
+    //                  away onto the chest. 'marginal' then grinds it out;
+    //                  'high' and 'dumped' answer nothing after it.
+    //
+    //                  THE RELEASE COUNT FLIPPED WITH THE STEER, WHICH IS THE
+    //                  SHAPE CHANGE WORTH NAMING. Before it, the descent's
+    //                  release was the brake and 'marginal' was the style with
+    //                  NO release. Now holding is the correct descent and
+    //                  releasing is the mistake, so 'marginal' is the style
+    //                  with an EXTRA one — and every tap carries its own,
+    //                  because a rate mechanic needs press EDGES.
     //   TAP-SHAPED     deadlift. press, then release/press PAIRS through the
     //                  ascent, then possibly a final release at the lockout.
     //
@@ -258,16 +268,22 @@ describe("the deadlift's scripted rep styles mean what they say", () => {
     }
 
     // BENCH. Every style opens on a press; the two that answer the command
-    // carry a run of them afterwards, and the three that do not are two inputs
-    // long. 'marginal' is the one style with no release — the bar is fed all
-    // the way onto the chest, which is what makes it the arguable make.
+    // carry a run of press/release pairs afterwards, and the three that do not
+    // are one or two inputs long. 'marginal' is the arguable make: it drops
+    // the bar and then grinds it up anyway.
     const benchPresses: Record<string, number> = {};
     for (const style of styles) {
       const script = repScript({ kind: 'bench', loadRatio: 0.9, seed: 5 }, style);
       expect(script[0]?.kind, `bench ${style} opens on a press`).toBe('press');
+      const presses = script.filter((input) => input.kind === 'press').length;
       const releases = script.filter((input) => input.kind === 'release').length;
-      expect(releases, `bench ${style} releases`).toBe(style === 'marginal' ? 0 : 1);
-      benchPresses[style] = script.filter((input) => input.kind === 'press').length;
+      // One release per tap, plus the descent slip on the three styles that
+      // let the bar go. Pinned as arithmetic against the press count rather
+      // than as a literal, so a longer scripted grind does not redden a test
+      // about SHAPE.
+      const slips = style === 'perfect' || style === 'stalled' ? 0 : 1;
+      expect(releases, `bench ${style} releases`).toBe(presses - 1 + slips);
+      benchPresses[style] = presses;
       // Ticks strictly increase, or the script is not a script — a bench
       // script is now built by three passes over the mechanic and an
       // out-of-order tick would be silently dropped by `runLift`'s map.
@@ -286,6 +302,12 @@ describe("the deadlift's scripted rep styles mean what they say", () => {
     expect(benchPresses['high'] ?? 0, 'bench high presses').toBe(1);
     expect(benchPresses['dumped'] ?? 0, 'bench dumped presses').toBe(1);
     expect(benchPresses['stalled'] ?? 0, 'bench stalled presses').toBe(1);
+    // ...and 'stalled' is the milder of the two failures, structurally: it is
+    // the only unanswered style that does NOT let the bar go, so a reader can
+    // tell "lowered it cleanly and gave up" from "dropped it and gave up"
+    // without playing either.
+    const stalledScript = repScript({ kind: 'bench', loadRatio: 0.9, seed: 5 }, 'stalled');
+    expect(stalledScript.filter((i) => i.kind === 'release').length, 'bench stalled slips').toBe(0);
 
     // ...and the deadlift really is the third shape, or the contrast above is
     // asserting nothing. 'perfect' taps a cue: a release and a press adjacent.

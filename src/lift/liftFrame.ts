@@ -56,7 +56,7 @@ import { BAR_AND_COLLARS_KG } from '../art/plates';
 import type { LifterFrameSpec } from '../art/lifterSprite';
 import { LIFT_TUNING, TICK_MS } from '../game/liftTuning';
 import {
-  burstProgress,
+  grindProgress,
   chestApproach,
   lockoutHoldIsLive,
   pressCommandIsLive,
@@ -502,25 +502,48 @@ export interface BurstReadout {
 }
 
 /**
- * The burst readout for the tick, or null when no burst is open.
+ * The grind readout for the tick, or null when the grind is not live.
  *
- * ONE PIP PER COUNTED TAP THE PHYSICS CAP ALLOWS, lit up to `taps`. The total
- * is `PRESS_BURST_FORCE.MAX_COUNTED_TAPS` read from tuning rather than from the
- * length of anything here, so a tuner who raises the cap gets a longer row
- * without touching this file.
+ * ---------------------------------------------------------------------------
+ * THE SELECTOR CONTRACT FORCED THIS FILE TO CHANGE, AND ONLY THIS FUNCTION
+ * ---------------------------------------------------------------------------
+ * The row used to be one pip per counted tap out of
+ * `PRESS_BURST_FORCE.MAX_COUNTED_TAPS`, lit up to `progress.taps`. The
+ * 2026-08-25 replay steer deleted both ends of that: there is no per-rep tap
+ * cap to be a row length, and a running tap total on a continuous grind rises
+ * forever, so a row keyed to it would fill up and then stay full while the
+ * player quietly stopped tapping — on screen, and reading nothing.
  *
- * @guarantee the-burst-readout-moves-with-the-taps
- * `lit` equals the burst's counted tap total, so the row is a function of what
- * the player did rather than a decoration that happens to be on screen while
- * they do it. `liftFrame.test.ts`'s "the burst readout counts the taps that
- * landed" drives a real burst and asserts `lit` rises with each counted tap and
- * never past the row's length.
+ * So the row reads `progress.lit`, which is what the player's CURRENT tap rate
+ * is worth scaled onto `progress.units`. It fills as they speed up and empties
+ * as they slow down. The mechanic-side selector is `grindProgress` in
+ * `lift.ts`; this is the geometry of it and nothing more.
+ *
+ * THE NAME IS STALE AND IS NOT RENAMED HERE, WHICH IS A DECISION RATHER THAN
+ * AN OVERSIGHT. `burstReadout`, `BurstReadout`, `BurstPip`, the `BURST_PIP_*`
+ * and `BURST_TRAY_*` tuning keys and the `BURST_*` palette entries all name a
+ * burst that no longer exists. CLAUDE.md is right that a misdescribing name is
+ * worse than misdescribing prose, and the honest reason they survive is scope:
+ * every one of them is read by `LiftStage.tsx` or `liftPalette.ts` or
+ * `tools/verify-lift-press.mjs`, which are the render piece's surface and not
+ * this one's, and a rename that reaches three files nobody is holding is a
+ * merge conflict rather than a clarification. They are named here, in the one
+ * function a reader arrives at, so the debt is visible where it is owed rather
+ * than discovered later.
+ *
+ * @guarantee the-grind-readout-moves-with-the-rate
+ * `lit` equals the grind's live lit-unit count, so the row is a function of
+ * what the player is doing NOW rather than a decoration that happens to be on
+ * screen while they do it. `liftFrame.test.ts`'s "the grind readout follows the
+ * tap rate up and back down" drives a real rep, asserts the row rises while
+ * taps land and FALLS once they stop, and asserts it never exceeds the row's
+ * length.
  */
 export function burstReadout(state: LiftState): BurstReadout | null {
-  const progress = burstProgress(state);
+  const progress = grindProgress(state);
   if (progress === null) return null;
   const c = LIFT_TUNING.FEEDBACK.STAGE_COMMAND;
-  const total = LIFT_TUNING.PRESS_BURST_FORCE.MAX_COUNTED_TAPS;
+  const total = progress.units;
   const pitch = c.BURST_PIP_W + c.BURST_PIP_GAP;
   const rowW = total * pitch - c.BURST_PIP_GAP;
   const left = L.CUE_X - rowW / 2;
@@ -531,7 +554,7 @@ export function burstReadout(state: LiftState): BurstReadout | null {
       y: c.BURST_PIPS_Y,
       w: c.BURST_PIP_W,
       h: c.BURST_PIP_H,
-      lit: i < progress.taps,
+      lit: i < progress.lit,
     });
   }
   return {
@@ -542,7 +565,7 @@ export function burstReadout(state: LiftState): BurstReadout | null {
       h: c.BURST_PIP_H + c.BURST_TRAY_PAD * 2,
     },
     pips,
-    lit: progress.taps,
+    lit: progress.lit,
   };
 }
 

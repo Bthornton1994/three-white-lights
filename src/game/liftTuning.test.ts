@@ -197,114 +197,142 @@ describe('depth thresholds', () => {
   });
 });
 
-/**
- * How far past its patience budget a descent may run before the penalty has to
- * have cost it the PERFECT grade.
- *
- * A THIRD OF A SECOND. Named because it is the quantity the span/grade
- * inequality below is asserted at, and a bare 20 inside that comparison would
- * be exactly the magic number this file's own scan bans everywhere else.
- */
-const DAWDLE_OVERSHOOT_THAT_MUST_COST_TICKS = 20;
-
-describe('the bench descent (GDD §6.2; ruled 2026-08-25)', () => {
+describe('the bench descent (GDD §6.2; ruled 2026-08-25, steered 2026-08-25)', () => {
   const loads = Object.values(LOAD_PRESETS);
   const soft = (load: number): number =>
     byLoad(LIFT_TUNING.BENCH_TOUCH_SOFT_RATE, clampLoadRatio(load));
   const crash = (load: number): number =>
     byLoad(LIFT_TUNING.BENCH_TOUCH_CRASH_RATE, clampLoadRatio(load));
-  const start = (load: number): number =>
+  /** The rate a bar nobody let go of comes down at, and never leaves. */
+  const controlled = (load: number): number =>
     byLoad(LIFT_TUNING.DESCENT_DEPTH_PER_TICK.bench, clampLoadRatio(load));
-  const gravity = (load: number): number =>
-    byLoad(LIFT_TUNING.BENCH_DESCENT_GRAVITY, clampLoadRatio(load));
-  const patience = (load: number): number =>
-    byLoad(LIFT_TUNING.BENCH_DESCENT_PATIENCE_TICKS, clampLoadRatio(load));
-  /** Ticks a bar fed the whole way takes to reach the chest, in closed form. */
-  const fedTicks = (load: number): number =>
-    (-start(load) + Math.sqrt(start(load) ** 2 + 2 * gravity(load) * LIFT_TUNING.DEPTH_IDEAL.bench)) /
-    gravity(load);
-  /** Depth covered by the time a fed bar's rate reaches the crash threshold. */
+  const runaway = (load: number): number =>
+    byLoad(LIFT_TUNING.BENCH_DESCENT_RUNAWAY_PER_TICK, clampLoadRatio(load));
+  const recover = (load: number): number =>
+    byLoad(LIFT_TUNING.BENCH_DESCENT_RECOVER_PER_TICK, clampLoadRatio(load));
+  /** Ticks a held bar takes to reach the chest, in closed form. */
+  const heldTicks = (load: number): number => LIFT_TUNING.DEPTH_IDEAL.bench / controlled(load);
+  /**
+   * Depth covered by the time a bar let go of at the top reaches the crash
+   * threshold. Constant-acceleration integration of the runaway branch.
+   */
   const depthWhenCrashing = (load: number): number => {
-    const ticks = (crash(load) - start(load)) / gravity(load);
-    return start(load) * ticks + (gravity(load) * ticks * ticks) / 2;
+    const ticks = (crash(load) - controlled(load)) / runaway(load);
+    return controlled(load) * ticks + (runaway(load) * ticks * ticks) / 2;
   };
 
-  it('makes a heavier bar gather speed faster and stop harder', () => {
-    // THE DIFFICULTY CURVE OF THE BEAT, as two constants pulling in opposite
-    // directions — and it is the one place in the descent where heavier means
-    // faster. `DESCENT_DEPTH_PER_TICK` stays SLOWER at MAXIMAL on purpose (a
-    // limit attempt is controlled down), so if these two ever flipped, a heavy
-    // bench would be the EASY one to catch and nothing else would notice.
-    expect(LIFT_TUNING.BENCH_DESCENT_GRAVITY.MAXIMAL).toBeGreaterThan(
-      LIFT_TUNING.BENCH_DESCENT_GRAVITY.LIGHT,
+  it('makes a heavier bar run away faster and come back slower', () => {
+    // THE DIFFICULTY CURVE OF WHAT IS LEFT OF THE BEAT, as two constants
+    // pulling in opposite directions. `DESCENT_DEPTH_PER_TICK` stays SLOWER at
+    // MAXIMAL on purpose (a limit attempt is controlled down), so if these two
+    // ever flipped, a heavy bench would be the EASY one to catch and nothing
+    // else would notice.
+    expect(LIFT_TUNING.BENCH_DESCENT_RUNAWAY_PER_TICK.MAXIMAL).toBeGreaterThan(
+      LIFT_TUNING.BENCH_DESCENT_RUNAWAY_PER_TICK.LIGHT,
     );
-    expect(LIFT_TUNING.BENCH_DESCENT_BRAKE.MAXIMAL).toBeLessThan(
-      LIFT_TUNING.BENCH_DESCENT_BRAKE.LIGHT,
+    expect(LIFT_TUNING.BENCH_DESCENT_RECOVER_PER_TICK.MAXIMAL).toBeLessThan(
+      LIFT_TUNING.BENCH_DESCENT_RECOVER_PER_TICK.LIGHT,
     );
     expect(LIFT_TUNING.DESCENT_DEPTH_PER_TICK.bench.MAXIMAL).toBeLessThan(
       LIFT_TUNING.DESCENT_DEPTH_PER_TICK.bench.LIGHT,
     );
   });
 
-  it('MOVES the answer with load, not only the tolerance', () => {
+  it('grades a bar nobody let go of as caught, at every load', () => {
     // ---------------------------------------------------------------------
-    // THE ARITHMETIC HALF OF THE OPEN-LOOP FINDING, and it is a separate
-    // claim from the one above rather than a restatement of it.
+    // THE INEQUALITY THE 2026-08-25 REPLAY STEER RESTS ON, IN CLOSED FORM.
     //
-    // The pair above scales how WRONG a player may be. It was in place, it
-    // worked, and the beat was still solvable by two memorised numbers,
-    // because scaling the tolerance leaves the correct ANSWER where it was:
-    // the PERFECT band narrowed from 16 holds to 4 across the ladder while its
-    // centre moved 10 to 12, so every band contained 11..14 and one rhythm sat
-    // inside all of them.
+    // "The descent should be less of a question on how far to go down, that
+    // should be automated almost in a sense." A held bar never leaves the
+    // controlled rate, so if that rate were above `BENCH_TOUCH_SOFT_RATE` at
+    // any load, holding — the obvious play, the one the copy teaches — would
+    // be a graded-down arrival at that load and the beat would be asking a
+    // question again without anybody deciding to ask one.
     //
-    // What makes the answer move is that the thresholds themselves are load
-    // curves. `lift.test.ts`'s `OPEN_LOOP_SEARCH` plays the search; this is
-    // the closed form underneath it, and it is here because a swept count
-    // says a population moved and this says WHY.
+    // IT IS THE EXACT INVERSION OF WHAT THIS FILE USED TO ASSERT. The previous
+    // beat checked `soft(load) < start(load)` — arriving soft always meant the
+    // player had braked. Both sentences are one line and they are opposites,
+    // which is why this one is spelled out rather than edited in place.
     // ---------------------------------------------------------------------
-    // NOT MERELY ORDERED — SEPARATED. A curve that sloped the right way by a
-    // hair would re-merge every band. What the answer moving requires is that
-    // a limit bar's whole graded window sits BELOW a light bar's, with no
-    // overlap: the speed a warm-up is caught at is a crash on a limit bar.
+    for (const load of loads) {
+      expect(controlled(load), `load ${load}`).toBeLessThanOrEqual(soft(load));
+    }
+    expect(loads.length, 'no loads were checked').toBeGreaterThan(2);
+  });
+
+  it('always reaches the chest, in a bounded number of ticks at every load', () => {
+    // THE ARITHMETIC THAT DELETED `CHEST_TOUCH_TIMEOUT_TICKS` AND THE
+    // 'no-touch' MISS. `benchDescentRate` floors the rate at `controlled`, so
+    // depth rises by at least that much every tick whatever the player does —
+    // which bounds the descent above by `DEPTH_IDEAL / controlled` at every
+    // load, for every input pattern, rather than for the ones somebody swept.
     //
-    // DOMINATION, RECORDED RATHER THAN LEFT AS TWO DEAD LINES. This assertion
-    // was written under two weaker ones — `soft(MAXIMAL) < soft(LIGHT)` and
-    // `crash(MAXIMAL) < crash(LIGHT)` — and it implies both, given
-    // `soft(load) < crash(load)` which the reachability test below asserts at
-    // every load: soft(MAX) < crash(MAX) < soft(LIGHT) < crash(LIGHT). No
-    // state of the tuning reddens either of the two while this one passes, so
-    // they were deleted rather than kept as reassurance. CLAUDE.md: a
-    // dominated check is vacuous by the definition, and it arrives without
-    // anyone editing it.
-    expect(crash(LOAD_PRESETS.MAXIMAL)).toBeLessThan(soft(LOAD_PRESETS.LIGHT));
+    // A BOUND IS NOT A MEASUREMENT, so `lift.test.ts` plays the same claim and
+    // pins the longest descent it actually produces. This is the half that
+    // says no OTHER input pattern can beat it; that is the half that says the
+    // shipped one does not.
+    for (const load of loads) {
+      const bound = heldTicks(load);
+      expect(Number.isFinite(bound), `load ${load}`).toBe(true);
+      expect(bound, `load ${load}`).toBeGreaterThan(0);
+      // Short enough to be a beat rather than a wait: under two seconds at
+      // every load, which is what a real limit eccentric looks like.
+      expect(bound * TICK_MS, `load ${load} takes ${(bound * TICK_MS).toFixed(0)}ms`)
+        .toBeLessThan(2000);
+    }
+    // ...and a limit bar really is lowered more slowly than a warm-up, which
+    // is the flavour half and is what makes the bound move with load at all.
+    expect(heldTicks(LOAD_PRESETS.MAXIMAL)).toBeGreaterThan(heldTicks(LOAD_PRESETS.LIGHT));
+  });
 
-    // The patience budget is a different quantity and nothing above reaches
-    // it, so this is not dominated.
-    expect(patience(LOAD_PRESETS.MAXIMAL)).toBeGreaterThan(patience(LOAD_PRESETS.LIGHT));
+  it('MOVES the cost of a slip with load, not only the tolerance', () => {
+    // ---------------------------------------------------------------------
+    // THE STRONGER FORM OF THIS CHECK WAS `crash(MAXIMAL) < soft(LIGHT)` —
+    // FULL BAND SEPARATION — AND IT IS RETIRED WITH THE PROPERTY IT SERVED.
+    //
+    // It existed for the open-loop search: if the whole graded band moves with
+    // load then a rhythm learned on a warm-up puts a limit bar on the chest
+    // too fast, and no memorised pattern wins everywhere. The 2026-08-25
+    // replay steer retired that search (see `lift.test.ts`'s note), so the
+    // separation is no longer serving anything — and it is no longer nearly
+    // free either. The steer's own inequality (`controlled <= soft` at every
+    // load) raises the maximal end of the soft curve, and the arithmetic works
+    // out to `soft.MAXIMAL < 0.39 * soft.LIGHT` with `controlled.MAXIMAL`
+    // pinned under it: three margins below 0.0013 in a file GDD §10 expects a
+    // playtester to turn thirty times.
+    //
+    // SO THE TWO WEAKER COMPARISONS ARE RESTORED RATHER THAN LEFT DELETED, and
+    // this is not a domination reversal made quietly — they were deleted as
+    // dominated by the strong form, and with the strong form gone nothing
+    // implies them. What they claim is what the tuning now supports: the same
+    // arrival speed grades strictly worse under a heavier bar.
+    // ---------------------------------------------------------------------
+    expect(soft(LOAD_PRESETS.MAXIMAL)).toBeLessThan(soft(LOAD_PRESETS.LIGHT));
+    expect(crash(LOAD_PRESETS.MAXIMAL)).toBeLessThan(crash(LOAD_PRESETS.LIGHT));
 
-    // ...and the schedule moves with it. A fed limit bar takes strictly longer
-    // to reach the chest than a fed warm-up, so the tick a release has to land
-    // on is not the same tick.
-    expect(fedTicks(LOAD_PRESETS.MAXIMAL)).toBeGreaterThan(fedTicks(LOAD_PRESETS.LIGHT));
+    // The recovery budget is a different quantity and nothing above reaches
+    // it, so this is not dominated: a slip at a limit load takes strictly more
+    // ticks to catch than the same slip at a warm-up.
+    expect(recover(LOAD_PRESETS.MAXIMAL)).toBeLessThan(recover(LOAD_PRESETS.LIGHT));
   });
 
   it('leaves the crash threshold reachable and not the default', () => {
-    // THE TWO-SIDED REQUIREMENT `DEPTH_WINDOW_MS`'s bench row failed on its
-    // first pass, applied to its replacement. A crash nobody can reach is a
-    // penalty that never fires; a crash the bar reaches by starting to move is
-    // a beat that always punishes.
+    // THE TWO-SIDED REQUIREMENT, AND ITS DEFAULT SIDE IS NOW THE OPPOSITE ONE.
+    // Under the beat this replaces, the DEFAULT was a crash — a player who
+    // never let go arrived hot — and the check had to prove a crash was not
+    // automatic. Since the replay steer the default is a perfect catch, so
+    // what has to be proved is that a crash is REACHABLE AT ALL by the one
+    // mistake the beat still has.
     for (const load of loads) {
-      // The bar never STARTS in a crash — that would make the descent lost
-      // before the player has done anything.
-      expect(start(load), `load ${load}`).toBeLessThan(crash(load));
-      // ...and the soft threshold is under the start rate, so arriving soft
-      // always means the player braked rather than merely not accelerating.
-      expect(soft(load), `load ${load}`).toBeLessThan(start(load));
+      // A held bar never starts, and never ends, in a crash.
+      expect(controlled(load), `load ${load}`).toBeLessThan(crash(load));
+      // ...and the two thresholds are ordered, which the domination note above
+      // depends on.
+      expect(soft(load), `load ${load}`).toBeLessThan(crash(load));
     }
     expect(loads.length, 'no loads were checked').toBeGreaterThan(2);
 
-    // A bar fed all the way down passes the crash rate before it reaches the
+    // A bar let go of at the top passes the crash rate before it reaches the
     // chest FROM A MODERATE WORKING WEIGHT UPWARD — which is every load a meet
     // attempt is taken at, and is where the penalty has to be able to fire.
     for (const load of [LOAD_PRESETS.MODERATE, LOAD_PRESETS.HEAVY, LOAD_PRESETS.MAXIMAL]) {
@@ -312,19 +340,15 @@ describe('the bench descent (GDD §6.2; ruled 2026-08-25)', () => {
     }
 
     // AND THE TWO LIGHTEST BARS IN THE GAME CANNOT BE CRASHED AT ALL, WHICH IS
-    // A §12.3 PROPERTY RATHER THAN A GAP — AND IT IS A WIDER ONE THAN THE
-    // BEAT SHIPPED WITH. On the single-threshold tuning only `WARMUP` was
-    // safe; once the crash rate became a load curve, `LIGHT` came under the
-    // same protection, because the bar runs out of descent before it runs out
-    // of control. So a warm-up and a light bench cannot be LOST to the descent
-    // however carelessly they are brought down — they can only be graded down,
-    // and a light bar fed the whole way still arrives around 0.4 quality
-    // rather than 0.
+    // A §12.3 PROPERTY RATHER THAN A GAP. The bar runs out of descent before it
+    // runs out of control, so a warm-up and a light bench cannot be LOST to the
+    // descent however carelessly they are brought down — they can only be
+    // graded down.
     //
     // Same structural shape `LOCKOUT_SAG_PER_TICK` uses to promise a warm-up
     // deadlift cannot be dropped: an arithmetic consequence of the constants
     // rather than a horizon somebody happened to sweep. Both directions are
-    // asserted, so a gravity curve that grew until a light bar COULD be
+    // asserted, so a runaway curve that grew until a light bar COULD be
     // crashed reddens here rather than shipping.
     for (const load of [LOAD_PRESETS.WARMUP, LOAD_PRESETS.LIGHT]) {
       expect(depthWhenCrashing(load), `load ${load}`).toBeGreaterThan(
@@ -335,9 +359,9 @@ describe('the bench descent (GDD §6.2; ruled 2026-08-25)', () => {
 
   it('keeps the worst sink inside what a chest can compress', () => {
     // `BENCH_TOUCH_SINK_GAIN` is chosen against `DEPTH_COLLAPSE.bench` at the
-    // WORST load, which is the light end now that the crash rate is a curve:
-    // the clamp is a backstop for a bar arriving hotter than the crash rate,
-    // not the usual case, so a touch AT the crash rate must land strictly
+    // WORST load, which is the light end because the crash rate is a load
+    // curve: the clamp is a backstop for a bar arriving hotter than the crash
+    // rate, not the usual case, so a touch AT the crash rate must land strictly
     // under it. Without this the sink would be pinned at the clamp for every
     // crash and the drawing would stop distinguishing them.
     //
@@ -356,84 +380,121 @@ describe('the bench descent (GDD §6.2; ruled 2026-08-25)', () => {
     }
   });
 
-  it('gives a committed descent all its patience, at every load', () => {
-    // The free window has to be longer than any descent a player who commits
-    // can produce, AT THAT LOAD, or committing is charged for nothing. This is
-    // the pair-wise version of the check: a single patience number could only
-    // be right for one load, which is half of why one rhythm won everywhere.
+  it('lets a slip be caught in time at every load, and not caught from the bottom', () => {
+    // THE ONE DECISION THE DESCENT STILL ASKS FOR, SIZED IN CLOSED FORM. A
+    // finger that comes back has to be able to pull the bar back onto the
+    // controlled rate before the chest, or "keep holding" would be a rule with
+    // no forgiveness in it and one twitch would grade the rep. A finger that
+    // comes back at the last moment must NOT, or the runaway costs nothing and
+    // the beat is decoration.
+    //
+    // The recovery from a slip of `n` ticks takes `n * runaway / recover`
+    // ticks, and what it has to fit inside is what is left of the descent.
+    const slip = 8;
+    const catchUp = (load: number): number => (slip * runaway(load)) / recover(load);
     for (const load of loads) {
-      expect(fedTicks(load), `load ${load}`).toBeLessThan(patience(load));
+      // Early is recoverable AT EVERY LOAD: the whole recovery fits in the
+      // descent twice over, so one twitch near the top never grades a rep.
+      expect(catchUp(load) * 2, `load ${load} needs ${catchUp(load).toFixed(1)} ticks to catch up`)
+        .toBeLessThan(heldTicks(load));
     }
-    // ...and the timeout is far past the point patience has run out at every
-    // load, so a no-touch is a decision the player made rather than a clock
-    // they raced.
+    // ...AND IT IS FREE AT THE BOTTOM OF THE LADDER AND NOT AT THE TOP, which
+    // is the asymmetry rather than a gap. A warm-up comes back faster than it
+    // ran away (2.5 ticks of catching up per 8 ticks of slip), so flicking the
+    // finger off a light bar costs nothing — which is the same forgiveness
+    // §12.3 asks for everywhere else in the warm-up band. A limit bar does
+    // not: it takes nearly twice the slip to catch, so the mistake is real
+    // exactly where the rep is.
+    //
+    // A FIRST DRAFT ASSERTED `catchUp > slip` AT EVERY LOAD AND WAS FALSE at
+    // WARMUP by a factor of three. Recorded rather than corrected silently:
+    // the sentence sounded like a property of the model and was a property of
+    // the top of the load curve only.
+    expect(catchUp(LOAD_PRESETS.WARMUP), 'a warm-up slip is not free').toBeLessThan(slip);
+    expect(catchUp(LOAD_PRESETS.MAXIMAL), 'a limit slip is free').toBeGreaterThan(slip);
+    // ...and it rises monotonically in between, so there is a band rather than
+    // two special cases.
+    let previous = -1;
     for (const load of loads) {
-      expect(LIFT_TUNING.CHEST_TOUCH_TIMEOUT_TICKS, `load ${load}`).toBeGreaterThan(
-        patience(load) + LIFT_TUNING.BENCH_DESCENT_DAWDLE_SPAN_TICKS,
-      );
+      expect(catchUp(load), `load ${load}`).toBeGreaterThan(previous);
+      previous = catchUp(load);
     }
-  });
-
-  it('makes the dawdle penalty reach the grade it is meant to cost', () => {
-    // A THRESHOLD INTERACTION BETWEEN TWO CONSTANTS IN DIFFERENT BLOCKS, and
-    // the reason the span halved from 120. `QUALITY_GRADE_BANDS.PERFECT` is
-    // where a touch stops reading as caught. `descentPatience` decays
-    // `1 - over/span`. So a descent `over` ticks past its budget still grades
-    // PERFECT from a flawless arrival unless
-    //
-    //     1 - over/span < PERFECT   <=>   span < over / (1 - PERFECT)
-    //
-    // At span 120 and PERFECT 0.8 that needed a 24-tick overshoot before the
-    // penalty reached the grade — so a creeping descent well past its budget
-    // graded exactly like a caught one, which is what the open-loop search was
-    // counting when it found a rhythm that won at every load.
-    //
-    // THE FIRST VERSION OF THIS CHECK WAS VACUOUS AND IS RECORDED AS SUCH: it
-    // computed `1 - span/span` and asserted it was 0, and asserted `1/2 <
-    // PERFECT`. Both are arithmetic about literals — the span cancels — so no
-    // state of the tuning could redden either. Deleted for the comparison
-    // below, which names the overshoot it cares about and therefore does move.
-    //
-    // A SECOND DOMINATION, RECORDED. This was written twice — once as
-    // `span < over / (1 - PERFECT)` and once as `1 - over/span < PERFECT` —
-    // and for `span > 0` and `PERFECT < 1` those rearrange into each other, so
-    // one of them could never speak. The forward form is the one kept, because
-    // its failure message prints the GRADE a dawdled touch would get rather
-    // than a bound on a span, and a check that fails uselessly is half a check.
-    const over = DAWDLE_OVERSHOOT_THAT_MUST_COST_TICKS;
-    expect(LIFT_TUNING.QUALITY_GRADE_BANDS.PERFECT).toBeLessThan(1);
-    expect(LIFT_TUNING.BENCH_DESCENT_DAWDLE_SPAN_TICKS).toBeGreaterThan(0);
-    expect(1 - over / LIFT_TUNING.BENCH_DESCENT_DAWDLE_SPAN_TICKS).toBeLessThan(
-      LIFT_TUNING.QUALITY_GRADE_BANDS.PERFECT,
-    );
   });
 });
 
-describe('the press burst (GDD §6.2; ruled 2026-08-25)', () => {
-  it('leaves room in the window for more taps than the curve will count', () => {
-    // "MASHING PHYSICS-CAPS RATHER THAN GROWING LINEARLY" made arithmetic. If
-    // the window were the binding constraint instead of the curve, the beat
-    // would be measuring the clock and a faster thumb would keep paying.
-    const windowTicks = LIFT_TUNING.PRESS_BURST_WINDOW_MS / TICK_MS;
-    const roomForTaps = Math.floor(windowTicks / LIFT_TUNING.PRESS_BURST_TAP_REFRACTORY_TICKS);
-    expect(roomForTaps).toBeGreaterThan(LIFT_TUNING.PRESS_BURST_FORCE.MAX_COUNTED_TAPS);
+describe('the press command and the grind (GDD §6.2; ruled 2026-08-25, steered 2026-08-25)', () => {
+  it('leaves room in the launch beat for several taps', () => {
+    // The launch beat is not a scoring window — taps land after it too — but
+    // it has to hold enough taps to separate a fast answer from a slow one, or
+    // `PRESS_VELOCITY` would be reading the same charge for everybody.
+    const beatTicks = LIFT_TUNING.PRESS_LAUNCH_MS / TICK_MS;
+    const roomForTaps = Math.floor(beatTicks / LIFT_TUNING.GRIND_TAP_REFRACTORY_TICKS);
+    expect(roomForTaps).toBeGreaterThan(3);
+    // ...and it is short enough to be a launch rather than a second window.
+    // The burst it replaces was 850ms; anything near that is the old beat.
+    expect(LIFT_TUNING.PRESS_LAUNCH_MS).toBeLessThan(500);
   });
 
   it('keeps the refractory gap above anything a thumb does', () => {
     // A floor on the rate the sim will believe, not a punishment. If it grew
     // past a real tapping rate it would start capping human players, and the
     // beat would silently become "tap at exactly this speed".
-    const tapsPerSecond = 1000 / (LIFT_TUNING.PRESS_BURST_TAP_REFRACTORY_TICKS * TICK_MS);
+    const tapsPerSecond = 1000 / (LIFT_TUNING.GRIND_TAP_REFRACTORY_TICKS * TICK_MS);
     expect(tapsPerSecond).toBeGreaterThan(12);
   });
 
-  it('leaves the false-start floor a real burst rather than a formality', () => {
-    const { MAX_COUNTED_TAPS, FALSE_START_FLOOR_TAPS, HALF_SATURATION_TAPS } =
-      LIFT_TUNING.PRESS_BURST_FORCE;
-    expect(FALSE_START_FLOOR_TAPS).toBeGreaterThan(0);
-    expect(FALSE_START_FLOOR_TAPS).toBeLessThan(MAX_COUNTED_TAPS);
-    expect(HALF_SATURATION_TAPS).toBeGreaterThan(0);
-    expect(HALF_SATURATION_TAPS).toBeLessThan(MAX_COUNTED_TAPS);
+  it('puts the charge ceiling at a rate a real thumb can reach', () => {
+    // ---------------------------------------------------------------------
+    // "MASHING CAPS RATHER THAN SCALING" MADE ARITHMETIC, and it is a
+    // two-sided requirement like the crash threshold's.
+    //
+    // A ceiling only a machine could reach would put every real player on the
+    // steep part of the curve forever, and "mashing caps" would be a sentence
+    // about a region nobody visits. A ceiling a jog reaches would make the
+    // curve's whole knee unreachable in the other direction.
+    //
+    // The steady-state charge for a tap every `gap` ticks is
+    // `1 / (1 - decay ** gap)` — a geometric series, so this is derived from
+    // the shipped decay rather than restated beside it.
+    // ---------------------------------------------------------------------
+    const decay = LIFT_TUNING.GRIND_CHARGE_DECAY_PER_TICK;
+    const steady = (gapTicks: number): number => 1 / (1 - decay ** gapTicks);
+    const { CEILING, HALF_SATURATION } = LIFT_TUNING.GRIND_CHARGE;
+    // A fast human — a tap every 4 ticks, 15 a second — reaches the ceiling.
+    expect(steady(4)).toBeGreaterThan(CEILING);
+    // A moderate one — a tap every 8 ticks, 7.5 a second — does not.
+    expect(steady(8)).toBeLessThan(CEILING);
+    // The half-saturation sits inside the curve, so the knee is reachable
+    // rather than sitting past the ceiling where nothing can climb it.
+    expect(HALF_SATURATION).toBeGreaterThan(0);
+    expect(HALF_SATURATION).toBeLessThan(CEILING);
+  });
+
+  it('decays the charge fast enough that stopping is felt, and slowly enough to be a rate', () => {
+    // THE CONSTANT THAT MAKES THE GRIND CONTINUOUS RATHER THAN CUMULATIVE, and
+    // both bounds are real. Too fast and a tap is an impulse — the beat this
+    // replaces, one level down. Too slow and stopping costs nothing for a
+    // second, which is most of a bench ascent.
+    const decay = LIFT_TUNING.GRIND_CHARGE_DECAY_PER_TICK;
+    expect(decay).toBeGreaterThan(0);
+    expect(decay).toBeLessThan(1);
+    const halfLifeTicks = Math.log(0.5) / Math.log(decay);
+    expect(halfLifeTicks * TICK_MS, 'the charge half-life').toBeGreaterThan(100);
+    expect(halfLifeTicks * TICK_MS, 'the charge half-life').toBeLessThan(400);
+  });
+
+  it('leaves the false-start delay a real cost that the cap really caps', () => {
+    const { PER_EARLY_TAP_TICKS, MAX_LOCKOUT_TICKS } = LIFT_TUNING.GRIND_FALSE_START;
+    expect(PER_EARLY_TAP_TICKS).toBeGreaterThan(0);
+    expect(MAX_LOCKOUT_TICKS).toBeGreaterThan(PER_EARLY_TAP_TICKS);
+    // THE COPY'S OWN NUMBER. `LIFT_COPY.SUBTITLE.bench` says the delay runs
+    // "up to half a second", which is only true if the cap is exactly 500ms at
+    // this tick rate. Changing the constant means changing the sentence, and
+    // this is what makes that a red test rather than a hope.
+    expect(MAX_LOCKOUT_TICKS * TICK_MS).toBeCloseTo(500, 9);
+    // The cap has to be reachable by a plausible number of early taps, or the
+    // rule's second clause describes a case nobody meets.
+    expect(MAX_LOCKOUT_TICKS / PER_EARLY_TAP_TICKS).toBeLessThan(12);
   });
 
   it('grades a quality on bands that are ordered and inside the curve', () => {
@@ -702,17 +763,24 @@ describe('the force balance', () => {
 
 describe('windows', () => {
   it('are positive and at least a few ticks wide, at both ends of the load range, for every playable kind', () => {
-    // The drive window is on all three lifts; the depth window is only on the
-    // one that is graded on a release tick, and bench's BURST window replaces
-    // the depth window it used to have. All three are gathered per kind rather
-    // than listed in one array so the domain is the type's rather than a
-    // list somebody maintains.
+    // The drive window is queried for all three lifts; the depth window is
+    // only on the one graded on a release tick, and bench's LAUNCH BEAT
+    // replaces the depth window it used to have. All three are gathered per
+    // kind rather than listed in one array so the domain is the type's rather
+    // than a list somebody maintains.
+    //
+    // BENCH'S DRIVE ROW IS STILL CHECKED THOUGH NO BENCH REP ARMS A CUE, and
+    // that is deliberate: `cueWindowMs('drive', config)` is total over
+    // `PlayableLiftKind` because `session.ts` queries the window per kind for
+    // GDD §3.4's fatigue channel, so a bench row that went to zero would break
+    // a real caller. `lift.test.ts` pins that no bench rep arms a cue; this
+    // pins that the row a query can still reach is sane.
     for (const kind of PLAYABLE_LIFT_KINDS) {
       const ms = [
         LIFT_TUNING.DRIVE_WINDOW_MS[kind].LIGHT,
         LIFT_TUNING.DRIVE_WINDOW_MS[kind].MAXIMAL,
         ...(kind === 'squat' ? [LIFT_TUNING.DEPTH_WINDOW_MS[kind]] : []),
-        ...(kind === 'bench' ? [LIFT_TUNING.PRESS_BURST_WINDOW_MS] : []),
+        ...(kind === 'bench' ? [LIFT_TUNING.PRESS_LAUNCH_MS] : []),
       ];
       for (const width of ms) {
         expect(width, kind).toBeGreaterThan(0);
@@ -757,8 +825,8 @@ describe('windows', () => {
       expect(typeof LIFT_TUNING.DEPTH_WINDOW_MS[kind], kind).toBe('number');
     }
     // ...and bench's replacement for it, which is a single number for the same
-    // reason: how many taps a thumb throws is not a function of the load.
-    expect(typeof LIFT_TUNING.PRESS_BURST_WINDOW_MS).toBe('number');
+    // reason: how fast a thumb answers a call is not a function of the load.
+    expect(typeof LIFT_TUNING.PRESS_LAUNCH_MS).toBe('number');
   });
 
   it('offers at least one drive cue everywhere, and more only toward MAXIMAL, for every playable kind', () => {
@@ -928,11 +996,18 @@ describe('copy', () => {
     // eccentric-only tables at 2 kinds (DESCENT, HOLE) + two all-kind tables at
     // 3 (BRACE, LOCKOUT) + FIVE plain strings (HOLE_FALSE_START,
     // HOLE_COMMANDED, ASCENT_BEFORE_CUE, ASCENT_CUE_OPEN, ASCENT_AFTER_CUE) +
-    // two more (LOCKOUT_DOWN_COMMANDED, RESOLVED) = 4 + 6 + 7 = 17.
+    // two eccentric-only tables at 2 kinds (DESCENT, HOLE) + two all-kind
+    // tables at 3 (BRACE, LOCKOUT) + SIX plain strings (HOLE_FALSE_START,
+    // HOLE_COMMANDED, ASCENT_BEFORE_CUE, ASCENT_CUE_OPEN, ASCENT_AFTER_CUE,
+    // ASCENT_GRINDING) + two more (LOCKOUT_DOWN_COMMANDED, RESOLVED)
+    // = 4 + 6 + 8 = 18.
     //
     // 16 -> 17 when the 2026-08-25 ruling added `HOLE_FALSE_START`, the line a
-    // bench player is shown at the moment they jump the call.
-    expect(checked, 'prompt strings checked').toBe(17);
+    // bench player is shown at the moment they jump the call. 17 -> 18 when
+    // that day's replay steer added `ASCENT_GRINDING`, bench's single ascent
+    // line — the three `ASCENT_*_CUE` entries stay because squat and deadlift
+    // still flip between them.
+    expect(checked, 'prompt strings checked').toBe(18);
   });
 
   it('never puts a number in the copy the player reads', () => {
@@ -999,22 +1074,26 @@ describe('copy', () => {
     expect(bench.toLowerCase()).not.toMatch(/\bat the bottom\b/);
   });
 
-  it('states the false-start rule, floor included, in the words the sim enforces', () => {
+  it('states the false-start rule, cap included, in the words the sim enforces', () => {
     // THE COPY AND THE MECHANIC ARE ONE CLAIM HERE, and this is the half that
     // keeps the sentence honest. `lift.test.ts` drives each clause through the
     // sim; this pins that the sentence still SAYS each clause, including the
-    // floor — which is the part a rewrite would drop first, because it reads
+    // cap — which is the part a rewrite would drop first, because it reads
     // like a detail and is the whole of "must not silently kill the rep".
+    //
+    // THE CLAUSE IT CHECKS CHANGED WITH THE MECHANIC, 2026-08-25 replay steer.
+    // "costs a tap off your burst — down to a floor of three" was arithmetic
+    // over a tap count that no longer exists; the rule is now a delay with a
+    // cap, and the sentence was re-derived rather than reworded.
     const bench = LIFT_COPY.SUBTITLE.bench.toLowerCase();
     expect(bench).toMatch(/before the call/);
     expect(bench).toMatch(/count for nothing/);
-    expect(bench).toMatch(/costs a tap/);
-    // The floor, spelled out — the copy carries no digits (the test above pins
-    // that), so the number is a word and the word has to match the constant.
-    expect(NUMBER_WORDS[LIFT_TUNING.PRESS_BURST_FORCE.FALSE_START_FLOOR_TAPS]).toBeDefined();
-    expect(bench).toMatch(
-      new RegExp(`floor of ${NUMBER_WORDS[LIFT_TUNING.PRESS_BURST_FORCE.FALSE_START_FLOOR_TAPS]}`),
-    );
+    expect(bench).toMatch(/holds your press back/);
+    // The cap, spelled out — the copy carries no digits (the test above pins
+    // that), so the duration is words and the words have to be true of the
+    // constant. 30 ticks at 60Hz is exactly 500ms.
+    expect(LIFT_TUNING.GRIND_FALSE_START.MAX_LOCKOUT_TICKS * TICK_MS).toBeCloseTo(500, 9);
+    expect(bench).toMatch(/up to half a second/);
     // ...and the prompt that says it happened is a real line, distinct from
     // the waiting line it replaces.
     expect(LIFT_COPY.PROMPT.HOLE_FALSE_START).not.toBe(LIFT_COPY.PROMPT.HOLE.bench);
@@ -1044,13 +1123,17 @@ describe('copy', () => {
     expect(LIFT_COPY.PROMPT.DESCENT.bench).not.toBe(LIFT_COPY.PROMPT.DESCENT.squat);
     expect(LIFT_COPY.PROMPT.BRACE.bench).not.toMatch(/descend/i);
     expect(LIFT_COPY.PROMPT.DESCENT.bench).not.toMatch(/depth/i);
-    // AND IT NAMES A CONTROL INPUT RATHER THAN A DESTINATION. 'TOUCH THE
-    // CHEST' described the beat this replaced — hold, then release at a depth
-    // — and the bar arrives at the chest by itself now, so a line telling the
-    // player to touch it is an instruction to do nothing. What they can act on
-    // is how it gets there.
-    expect(LIFT_COPY.PROMPT.DESCENT.bench).toBe('EASE IT DOWN');
+    // AND IT NAMES THE ONE THING THE PLAYER MUST NOT DO, WHICH IS ALL THE
+    // DESCENT ASKS OF THEM SINCE THE 2026-08-25 REPLAY STEER. Two previous
+    // lines are pinned OUT rather than merely replaced, because each was true
+    // of a beat that no longer exists and each would read as instructions:
+    // 'TOUCH THE CHEST' told the player to reach a depth, which the bar now
+    // reaches by itself; 'EASE IT DOWN' told them to steer a rate, which the
+    // steer deleted. A line asking for an input the mechanic does not take is
+    // the copy half of this repository's oldest defect class.
+    expect(LIFT_COPY.PROMPT.DESCENT.bench).toBe('STAY TIGHT');
     expect(LIFT_COPY.PROMPT.DESCENT.bench).not.toBe('TOUCH THE CHEST');
+    expect(LIFT_COPY.PROMPT.DESCENT.bench).not.toBe('EASE IT DOWN');
   });
 });
 
