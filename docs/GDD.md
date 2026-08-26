@@ -2135,12 +2135,27 @@ moved, and both are inversions rather than retunes.
   rolling charge has no count to subtract from. A sentence reworded to fit a
   mechanic it was not derived from is the defect class this document keeps
   recording.
-- **A crash costs the ascent, not the rep.** The bar sinks into the chest and
-  the whole press is harder; it is never called at the chest. A warm-up bar and
-  a light working bar cannot be crashed at all — they run out of descent before
-  they run out of control — which is an arithmetic consequence of the constants
-  rather than a horizon somebody swept. Every load a meet attempt is taken at
-  can be, and at the very top a crashed bar needs a full grind to make at all.
+- **A crash costs the ascent, not the rep — at the chest.** The bar sinks in
+  and the whole press is harder; it is never *called* at the chest. What that
+  harder press then costs is a separate question, and at nine of the ten loads
+  a warm-up can be prescribed at, the answer includes the rep.
+
+  **The second sentence of this bullet used to read "a warm-up bar and a light
+  working bar cannot be crashed at all", and it was false at every load a
+  session prescribes.** It was derived honestly, from the crash sweep's own
+  loads — but two of those, `0.55` and `0.7`, are fixture values below anything
+  `prescribeSession` emits. The lightest warm-up the ladder hands out is
+  `0.75`, on the far side of that boundary. Asked over the reachable cells
+  instead: **all 10** can be crashed outright by taking the finger off on the
+  way down, and **9** of them then lose reps to it. Only the lightest — RPE 6
+  at a neutral check-in — is crashed and survives anyway, which is the single
+  cell the old sentence described correctly.
+
+  **A late slip is not the same mistake as an early one**, and no cell is
+  crashed at every rung of the slip ladder: the later the finger comes off, the
+  less descent the bar has left to accelerate through. Every load a meet
+  attempt is taken at can be crashed, and at the very top a crashed bar needs a
+  full grind to make at all.
 
 **THE DIFFICULTY CURVE WAS RETUNED ON 2026-08-26, AND THE RUNG THIS SECTION USED
 TO CALL "WINNABLE BY ANYONE" IS THE REASON.** A phone replay confirmed the
@@ -2163,8 +2178,34 @@ they were reverted is the finding below rather than a change of mind.
 **WHAT THE RETUNE COULD NOT DO, RECORDED BECAUSE IT IS A REAL LIMIT AND A FUTURE
 TUNER WILL OTHERWISE TRY IT.** RPE 8 cannot be made to demand a fast tap RATE.
 The wall is GDD §12.3's warm-up protection, and it is measured: a uniform demand
-rise of +0.025 starts costing RPE 7 reps, so +0.02 is the last step before a
-guarantee breaks. Widening the sticking point moves that wall the wrong way,
+rise of +0.025 starts costing RPE 7 reps *a player who answers once and stops*,
+so +0.02 is the last step before that guarantee breaks.
+
+**THE ITALICS NAME AN AXIS, AND THE WALL IS IN A DIFFERENT PLACE ON EVERY ONE OF
+THEM — WHICH THE SENTENCE ABOVE DID NOT SAY WHEN IT WAS FIRST WRITTEN.** Asked of
+a player who never answers the command at all, on a descent they carried down
+properly, the same sweep turns four steps earlier:
+
+| uniform rise | warm-ups kept, held descent, never answered, of 80 |
+|---|---|
+| +0.000 | **80** |
+| +0.005 | **80** |
+| +0.010 | 72 |
+| +0.015 | 72 |
+| **+0.020 — shipped** | **72** |
+
+The eight are one cell, `rpe7/0.8250/as-expected`, at every seed — a load over
+the line rather than a boundary a seed straddles, which is why the cell count is
+pinned beside the rep count in `lift.test.ts`. **Whether that is a §12.3 breach
+turns on a reading this document leaves open**: the warm-up protection is stated
+here conditioned on the player answering — "a rep the player answered at all, one
+tap is enough" — and a player who presses nothing after the command has not
+played the rep. Under that reading it is legal. Under "a warm-up never takes a
+rep for any reason" it is not, and the fix is to back the rise down to +0.005,
+which returns most of the difficulty this retune was asked for. It is recorded
+with the number in front of it rather than settled by whoever noticed it.
+
+Widening the sticking point moves that wall the wrong way,
 narrowing it does not move it back, and the grind's force ceiling does not touch
 it at all — a player who quits has no charge whichever way it is set. So RPE 8's
 difficulty is *stopping costs the rep, and a slow grind is a GRINDER rather than
@@ -2216,8 +2257,42 @@ window buy nothing.
 is the sentence most likely to be misread now that only one cell is fully still.
 Every RPE 6 and RPE 7 cell reads `[flips, 0, 0]`: stopping the grind can change a
 GOOD LIFT into a GRINDER there, and a rep the player answered at all — one tap is
-enough — can never be taken away by stopping. What changed at those rungs is that
-the grade moved, not the outcome.
+enough — can never be taken away *by stopping*. What changed at those rungs is
+that the grade moved, not the outcome.
+
+**THE ITALICS ON "BY STOPPING" ARE LOAD-BEARING AND WERE ADDED AFTER THE
+SENTENCE WAS CAUGHT BEING READ AS MORE.** Stopping is one mistake and the
+descent is another. Every rep behind the zeros above carries the bar down with
+the finger held, which is the correct play and was also, for a round, the only
+play the sweep contained. Take the finger off on the way down and the warm-up
+rungs lose **6234** reps of 64800 across **9** of their **10** cells — pinned
+per cell in `lift.test.ts`'s `LOST_WITH_THE_FINGER_OFF`, beside the held arm's
+unchanged **0** of 16200. A player who does both things wrong is not covered by
+a protection written about one of them.
+
+**No retune closes that, and the range was swept before the sentence was
+reworded rather than after.** The descent is charged through exactly one
+constant, and against it sits `bench-touch-decides-the-rep`'s count of outcomes
+the descent moves, out of 240:
+
+| `BENCH_TOUCH_DEMAND_PENALTY` | warm-up reps lost, of 4860 | outcomes the descent moves, of 240 |
+|---|---|---|
+| **0.15 — shipped** | 1926 | **120** |
+| 0.10 | 1389 | 100 |
+| 0.05 | 675 | 40 |
+| 0.02 | 270 | **0** |
+| 0.00 | **0** | **0** |
+
+*(Warm-up losses in this table are taken on a coarser slip ladder than the
+64800-rep pin above — six release instants against four, one quit ladder rather
+than the whole sweep — because it is a comparison across five tunings rather
+than the shipped measurement. The shipped row's own number on the pinned
+domain is 6234.)*
+
+The descent stops deciding anything at `0.02`, where warm-ups are still losing
+reps. The only value that empties the left column is the one that deletes the
+mechanic the 2026-08-25 replay steer explicitly kept. So the honest statement is
+the narrow one, and it is what both the guarantee and this paragraph now say.
 
 **THAT SENTENCE WAS FALSE FOR ONE COMMIT AND THE REASON IS WORTH MORE THAN THE
 CORRECTION.** The first version of this retune raised the demand curve three
