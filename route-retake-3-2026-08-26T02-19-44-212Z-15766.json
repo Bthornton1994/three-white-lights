@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "route-retake-3-2026-08-26T02-19-44-212Z-15766",
+  "label": "route-retake-3",
+  "command": [
+    "node",
+    "tools/verify-shell-route.mjs",
+    "--url",
+    "http://localhost:8096"
+  ],
+  "budgetSeconds": 1500,
+  "startedAtIso": "2026-08-26T02:19:44.212Z",
+  "startedAtMs": 1787710784212,
+  "cwd": "/home/user/wt-grind-stage",
+  "commit": "f8a365a3ba687edbb450aa2bfbb837adf5e58792",
+  "branch": "claude/grind-stage-drivers",
+  "dirty": 5,
+  "dirtyPaths": [
+    ".gauntlet/shots/shell/04a-live-recap-with-way-back.png",
+    ".gauntlet/shots/shell/04b-second-meet-real-recap.png",
+    ".gauntlet/shots/shell/05b-check-in-after-the-second-meet.png",
+    ".gauntlet/shots/shell/09-bombed-keeps-its-own-exit.png",
+    ".gauntlet/shots/shell/13-recap-before-the-return-leg.png"
+  ],
+  "runner": {
+    "pid": 15766,
+    "startTick": "2388703",
+    "cmdline": "node tools/watchdog.mjs --budget 1500 --label route-retake-3 -- node tools/verify-shell-route.mjs --url http://localhost:8096",
+    "bootId": "08766f0d-19e7-495f-880c-c0965fc21158",
+    "bootEpochSeconds": 1787686897,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-26T02:19:44.234Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
