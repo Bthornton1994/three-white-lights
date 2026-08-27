@@ -1967,6 +1967,20 @@ export const LIFT_TUNING = Object.freeze({
    * there; a retune that closes it means the floor can no longer separate
    * warm-up from working rung and the mechanism needs rethinking, not renumbering.
    *
+   * THAT SENTENCE WAS FALSE FROM THE DAY IT WAS WRITTEN UNTIL 2026-08-27, AND
+   * IT IS CORRECTED RATHER THAN QUIETLY MADE TRUE. No test anywhere in `src/`
+   * mentioned -0.0483 or -0.0323, and nothing compared this constant to
+   * anything except the other floor constant — so a retune that closed the gap
+   * would have reddened nothing at all. `FLOOR_EDGES` in `lift.test.ts` is the
+   * pin now, and it drives the producers rather than restating these digits.
+   *
+   * THE SECOND USE OF THIS SAME LINE, ADDED 2026-08-27. It now decides two
+   * things rather than one: which clock the ascent runs on, and whether the
+   * bar carries `BENCH_WORKING_RUNG_DEMAND_ONSET`. `benchWorkingExcess` is
+   * `max(0, margin - this)`, so the two readings cannot disagree about a rep
+   * by construction, and `lift.test.ts` drives that over all 40 reachable
+   * cells rather than trusting the construction.
+   *
    * PLACEHOLDER, like every feel value here. Nobody has played it.
    */
   BENCH_WARMUP_FLOOR_MARGIN: -0.04,
@@ -1990,21 +2004,44 @@ export const LIFT_TUNING = Object.freeze({
    *     rpe6  87..129     rpe7 103..**193** | rpe8 **247**, 256, and two that
    *     never make it at all (they collapse at 0.119 and 0.178)
    *
-   * THE MEASUREMENT, STATED AS THE TWO EDGES IT RESTS ON:
+   * THE MEASUREMENT AS IT STOOD, STATED AS THE TWO EDGES IT RESTS ON:
    *
    *     slowest RPE 6/7 unaided ascent        193 ticks
    *     fastest working-rung completion       247 ticks
    *     the gap between them                   54 ticks
    *     this clock, its midpoint              220 ticks
    *
-   * TWO SEPARATORS THAT WERE NOT DERIVED FROM EACH OTHER AND AGREE. The margin
-   * above is a force balance read before the rep starts; this is a duration
-   * read from playing the rep out. Either one alone would partition the rungs;
-   * that both do, at values neither borrowed from the other, is what says the
-   * partition is a property of the ladder rather than of one instrument.
+   * -------------------------------------------------------------------------
+   * THE WORKING SIDE OF THAT PAIR NO LONGER EXISTS, AND SAYING SO IS THE POINT
+   * -------------------------------------------------------------------------
+   * The 2026-08-27 working-rung lever puts every working cell's peak demand
+   * above the lifter's capacity, so an unaided working rep goes BACKWARDS
+   * instead of creeping. Re-measured by the same method — both clocks lifted
+   * out of the way — the working side reaches lockout at NONE of its twelve
+   * cells, where it used to reach it at two. So "fastest working-rung
+   * completion 247 ticks" is now a sentence about a rep that does not happen,
+   * and the separation is not 54 ticks wide any more: it is the difference
+   * between a rung that always finishes and a rung that never does.
    *
-   * Both edges are pinned in `lift.test.ts`; a retune that closes the gap
-   * reddens there rather than silently letting the floor reach RPE 8.
+   * THE GAP WIDENED RATHER THAN CLOSING, which is the condition the 2026-08-27
+   * ruling attached to this lever ("if the change closes either gap, that means
+   * the floor can no longer separate warm-up from working rung"). The warm-up
+   * side is byte-identical, 87..193, because the lever adds those cells exactly
+   * nothing — see `BENCH_WORKING_RUNG_DEMAND_ONSET`.
+   *
+   * WHAT IS HONESTLY WEAKER FOR IT: this used to be a SECOND, INDEPENDENT
+   * separator agreeing with the margin one at a value it had not borrowed, and
+   * that was the strongest thing about the pair. A categorical separator
+   * ("finishes" against "never finishes") is easier to satisfy than a numeric
+   * one, so it is now confirmation rather than corroboration. The margin edges
+   * are what carry the claim, and they are unchanged because the lever reads
+   * the base curve and does not write it.
+   *
+   * BOTH EDGES ARE PINNED IN `lift.test.ts` NOW, WHICH THEY WERE NOT WHEN THIS
+   * SENTENCE FIRST CLAIMED THEY WERE. `FLOOR_EDGES` and its test are the pin;
+   * before 2026-08-27 no test in `src/` mentioned 193, 247, -0.0483 or -0.0323
+   * at all, and the only thing either floor constant was compared against was
+   * the other one.
    *
    * AND `ASCENT_TIMEOUT_TICKS`'s OWN HEADER ALREADY CARRIED THIS DEFECT. It
    * records "successful ascents ran to a maximum of 201 ticks" and then caps at
@@ -2017,6 +2054,111 @@ export const LIFT_TUNING = Object.freeze({
    * PLACEHOLDER. Nobody has felt 3.67 s of concentric on a warm-up.
    */
   BENCH_WARMUP_FLOOR_ASCENT_TICKS: 220,
+
+  /**
+   * -------------------------------------------------------------------------
+   * THE WORKING-RUNG LEVER, PART 1 OF 2: WHAT A BENCH BAR COSTS FOR BEING A
+   * WORKING BAR RATHER THAN A WARM-UP, IN CAPACITY UNITS
+   * -------------------------------------------------------------------------
+   * PLACEHOLDER. Nobody has played it — GDD §12.1, and this file's own rule.
+   *
+   * Added to the demand curve for every bench rep whose base margin
+   * (`peakDemand - capacity`, both fixed before the rep starts) sits ABOVE
+   * `BENCH_WARMUP_FLOOR_MARGIN`, and added to nothing else. A warm-up gets
+   * exactly zero of it, structurally: `benchWorkingExcess` is
+   * `max(0, margin - BENCH_WARMUP_FLOOR_MARGIN)`, so it is non-zero exactly
+   * where `benchClearsTheClock` is false. One classification, two effects — the
+   * longer clock below the line, this above it.
+   *
+   * -------------------------------------------------------------------------
+   * WHY THIS EXISTS: THE UNIFORM LEVER IS SPENT, MEASURED
+   * -------------------------------------------------------------------------
+   * `DEMAND_BASE.bench` was raised a uniform +0.02 on 2026-08-26 and a phone
+   * replay rejected it a second time — "Still way too easy for RPE 8, overall
+   * difficulty needs to be higher". The remaining uniform headroom is +0.005:
+   * at +0.030 the held warm-up wall costs 60 reps of 16200 and at +0.025 it
+   * costs 0. Those two readings are the RULING's, quoted from it rather than
+   * re-taken here — the round that produced them is recorded in CLAUDE.md
+   * under "PHONE REPLAY 2". A uniform rise moves every rung equally, so RPE 8
+   * cannot be made to ask for a tap RATE without RPE 7 paying for it.
+   *
+   * -------------------------------------------------------------------------
+   * THE SHAPE CHANGE IS THE STEP AT THE LINE, AND IT IS THE ONLY ONE. A RAMP
+   * WAS SHIPPED HERE FOR ONE ROUND AND IS DELETED, WITH THE MEASUREMENT THAT
+   * REFUTED IT
+   * -------------------------------------------------------------------------
+   * What makes this not `DEMAND_BASE` with an `if` in front of it is NOT a
+   * slope. It is that the demand curve is no longer a single continuous
+   * function of load: it has a DISCONTINUITY at a place `loadRatio` cannot even
+   * locate, because the rungs overlap in load (see below). No value of
+   * `DEMAND_BASE` produces that, and no value of it can add 0.045 to a working
+   * bar and 0.000 to a warm-up. Inside the working band this lever IS uniform,
+   * deliberately, and the ladder still compresses there — a fixed demand
+   * addition costs more taps at a heavy load than a light one, because the
+   * margin-to-tap-rate curve is convex.
+   *
+   * THE VERSION BEFORE THIS ONE CLAIMED THE COMPRESSION WAS A RAMP'S DOING, IN
+   * THREE FILES, AND A CRITIC MEASURED IT THE OTHER WAY. Two more constants
+   * stood here — `BENCH_WORKING_RUNG_DEMAND_SPAN: 0.018` and
+   * `BENCH_WORKING_RUNG_DEMAND_HALF_MARGIN: 0.03` — making the addition
+   * `ONSET + SPAN * excess / (excess + HALF)`, so it ran 0.0397 at the lightest
+   * working cell to 0.0521 at the heaviest. Holding the MAGNITUDE constant and
+   * removing only the ramp, as the spread of the twelve working cells' tap
+   * floors (slowest / fastest):
+   *
+   *     no lever at all                       5.391
+   *     step 0.036 + the ramp (shipped then)  3.471
+   *     step 0.045 alone (this)               3.294
+   *
+   * The flat step compresses the ladder MORE. The ramp's net contribution to
+   * the shape was -0.177 of spread — it un-compressed. Its own mutation test
+   * was real and confounded: zeroing `SPAN` also removed up to 30% of the
+   * addition, so the floors moved for a reason that was not shape.
+   *
+   * AND IT GAVE THE RUNG THE RULING NAMED THE LEAST HELP, which the deleted
+   * comment defending it got backwards by confusing slope with magnitude. The
+   * span's share of the total addition was 9-22% at RPE 8, 29% at RPE 10, and
+   * 0% at two top meet cells, where the ceiling clipped below the onset.
+   *
+   * Deleted rather than re-justified: two placeholder knobs a human has to hand
+   * tune across roughly thirty passes, worth at most 3 ticks on one cell, in
+   * service of a property they measurably did not have.
+   *
+   * -------------------------------------------------------------------------
+   * WHAT THIS BUYS, ON THE SLOWEST SUSTAINED TAP RATE THAT STILL MAKES THE REP
+   * AT EVERY SEED — `WORKING_FLOOR` in `lift.test.ts`, which drives it
+   * -------------------------------------------------------------------------
+   * Per cell in `reachableSessionCells()` order, taps a second, before the
+   * 2026-08-27 lever against after:
+   *
+   *     RPE 8    0.48 0.86 0.67 0.53  ->  1.07 1.58 1.36 1.07
+   *     RPE 9    1.05 1.62 1.40 1.18  ->  1.82 2.31 2.07 1.94
+   *     RPE 10   2.61 2.40 2.14 2.07  ->  3.53 3.33 3.00 2.86
+   *     RPE 6, 7   no cadence makes any difference, before or after: the rep
+   *                goes up on zero taps at every one of the ten cells.
+   *
+   * The ordering survives with room: RPE 8's hardest cell asks 1.58 a second
+   * against RPE 9's easiest at 1.82, and RPE 9's hardest 2.31 against RPE 10's
+   * easiest 2.86.
+   *
+   * A LOAD THRESHOLD WAS THE OBVIOUS MECHANISM AND IT IS IMPOSSIBLE HERE, WHICH
+   * IS WHY THE GATE IS A MARGIN. The rungs OVERLAP in `loadRatio`: RPE 7 reaches
+   * 0.8750 (`popping`) and RPE 8 starts at 0.8000, and 0.8750 is a cell on BOTH
+   * rungs. No cut in load separates them. They are separated in
+   * `peakDemand - capacity` — every RPE 6/7 cell at or below -0.0483, every
+   * working cell at or above -0.0323 — because the check-in that raises the
+   * prescribed load raises capacity further. That gap is the gate, it is the
+   * same gap `BENCH_WARMUP_FLOOR_MARGIN` sits in the middle of, and
+   * `lift.test.ts` pins both its edges.
+   *
+   * SIZED TO HOLD THE FLOORS THE RAMPED VERSION WAS GRADED ON rather than
+   * chosen round: 0.045 is the magnitude the ramped lever averaged across the
+   * working band, so the RPE 8 row above moves by at most one tick per cell
+   * against the version a critic measured.
+   */
+  BENCH_WORKING_RUNG_DEMAND_ONSET: 0.045,
+
+  BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING: 0.27,
 
   /**
    * Ticks standing at lockout before the rep resolves, per kind. bench

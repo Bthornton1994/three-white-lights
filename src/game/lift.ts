@@ -812,9 +812,124 @@ export function lifterCapacity(config: LiftConfig): number {
  * reaches the timeout is byte-identical with the floor and without it.
  */
 export function benchClearsTheClock(config: LiftConfig): boolean {
-  if (config.kind !== 'bench') return false;
+  const margin = benchBaseMargin(config);
+  return margin !== null && margin <= LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN;
+}
+
+/**
+ * BENCH ONLY: `peakDemand - capacity` on the BASE curve, or null for a lift
+ * that has no such line drawn through it.
+ *
+ * ONE MARGIN, TWO CONSUMERS, AND THAT IS THE POINT RATHER THAN TIDINESS.
+ * `benchClearsTheClock` reads it to decide which clock the ascent runs on;
+ * `benchWorkingExcess` reads it to decide what the bar costs on top of the base
+ * curve. Writing the subtraction twice is how the two would drift into
+ * classifying the same rep differently — a bar that is a warm-up for the clock
+ * and a working set for the demand curve, which is exactly the hole GDD §12.3's
+ * warm-up protection lives in. Sharing the expression makes
+ * `benchWorkingExcess(c) > 0` and `benchClearsTheClock(c)` exact complements by
+ * construction, and `lift.test.ts` drives that over every reachable cell rather
+ * than trusting this paragraph.
+ *
+ * ON THE BASE CURVE, DELIBERATELY. `ascentDemand`'s working-rung term is left
+ * at its zero here, so the quantity this returns is a fact about the bar and
+ * the lifter and NOT about the lever it feeds. Reading the levered peak instead
+ * would make the classification depend on its own output, and the two edges the
+ * floor rests on (-0.0483 against -0.0323) would move every time the lever was
+ * retuned — so the gap that separates the rungs could be closed by a knob that
+ * is supposed to be scoped by it.
+ */
+function benchBaseMargin(config: LiftConfig): number | null {
+  if (config.kind !== 'bench') return null;
   const peak = ascentDemand(STICK_HEIGHT_FRAC.bench, config.loadRatio, 'bench', 0, 0);
-  return peak - lifterCapacity(config) <= LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN;
+  return peak - lifterCapacity(config);
+}
+
+/**
+ * ---------------------------------------------------------------------------
+ * BENCH ONLY: how far past the warm-up line this bar sits, in capacity units.
+ * Zero at and below it, for every rep, on every other lift.
+ * ---------------------------------------------------------------------------
+ * The input to `benchWorkingRungDemand`. Like `benchClearsTheClock` it is fixed
+ * before the rep starts and cannot be played into or out of: no tap, no
+ * descent, no depth and no crash moves it.
+ *
+ * WHY THE LEVER IS KEYED HERE AND NOT ON `loadRatio`, WHICH WAS THE OBVIOUS
+ * GUESS AND IS IMPOSSIBLE. The rungs OVERLAP in load — RPE 7 reaches 0.8750 at
+ * a `popping` check-in and RPE 8's cells are 0.8000 to 0.9000, so 0.8750 is a
+ * cell on both rungs — and no cut in `loadRatio` separates a warm-up from a
+ * working set. They are cleanly separated in this quantity, because the
+ * check-in that raises the prescribed load raises the lifter's capacity by
+ * more (see `REACHABLE_COUPLING` in `lift.test.ts`). That is the same fact
+ * `BENCH_WARMUP_FLOOR_MARGIN` was chosen from, used a second time.
+ * `@guarantee the-working-lever-cannot-reach-a-warm-up`
+ */
+export function benchWorkingExcess(config: LiftConfig): number {
+  const margin = benchBaseMargin(config);
+  if (margin === null) return 0;
+  return scrub(Math.max(0, margin - LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN));
+}
+
+/**
+ * ---------------------------------------------------------------------------
+ * BENCH ONLY: what a WORKING bar costs on top of the base demand curve.
+ * ---------------------------------------------------------------------------
+ *
+ *     working(excess) = min(ONSET, max(0, MARGIN_CEILING - baseMargin))
+ *
+ * for `excess > 0`, and exactly 0 otherwise. See
+ * `BENCH_WORKING_RUNG_DEMAND_ONSET` for the measurement that forced it: the
+ * uniform `DEMAND_BASE.bench` lever is spent at +0.005, and a second phone
+ * replay still called RPE 8 "way too easy".
+ *
+ * NOT `DEMAND_BASE` WITH AN `if` IN FRONT OF IT, AND THE DIFFERENCE IS THE STEP
+ * AT THE LINE RATHER THAN ANY SLOPE. A uniform rise adds the same number at
+ * every load INCLUDING the warm-up rungs, and the warm-up rungs are where it is
+ * spent. This adds `ONSET` above the line and exactly nothing below it, so the
+ * demand curve stops being a continuous function of load — and the place it
+ * breaks is one `loadRatio` cannot locate, because the rungs overlap in load.
+ * Inside the working band the addition is uniform on purpose.
+ *
+ * A RAMP STOOD HERE FOR ONE ROUND AND IS DELETED. `ONSET + SPAN * excess /
+ * (excess + HALF)` was justified as being what compressed the ladder, and a
+ * magnitude-matched control measured the opposite: the flat step compresses the
+ * twelve working cells' tap floors to a spread of 3.294 against the ramped
+ * version's 3.471, from 5.391 with no lever at all. Two constants and a
+ * confounded mutation test, in service of a property they did not have. The
+ * full reading is in `BENCH_WORKING_RUNG_DEMAND_ONSET`'s header.
+ *
+ * THE KIND GUARD IS NOT DEFENSIVE, IT IS THE `launchShortfall` LESSON. That
+ * parameter was deleted from `ascentDemand` partly because its default made it
+ * invisible at every squat and deadlift call site — which is how a channel goes
+ * stale without anything going red. This one is a defaulted parameter too, so
+ * the guard is inside the function rather than at the call sites, and
+ * `lift.test.ts` drives a non-zero excess into a squat and a deadlift curve and
+ * asserts both are byte-identical to the undriven ones.
+ */
+export function benchWorkingRungDemand(kind: PlayableLiftKind, workingExcess: number): number {
+  if (kind !== 'bench') return 0;
+  if (!Number.isFinite(workingExcess) || workingExcess <= 0) return 0;
+  // THE CEILING, AND IT IS NOT A SAFETY CLAMP — IT IS THE PLACE ANOTHER RULE
+  // IN THIS FILE STOPS HOLDING. See
+  // `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`: past an effective margin of
+  // 0.2826 a rep that ate the false-start rule's own capped lockout can no
+  // longer be ground back, so the copy's "holds your press back" would become
+  // "ends the rep". The lever raises a bar TOWARD that line and never past it,
+  // and adds exactly nothing to a bar already beyond it — so a cell the
+  // shipped tree already puts past the line is byte-identical with this lever
+  // and without it.
+  //
+  // IT IS ALSO THE ONLY PLACE THE ADDITION DEPENDS ON THE LOAD AT ALL, since
+  // the ramp was deleted. That is the whole use `workingExcess` has left here:
+  // `workingExcess + BENCH_WARMUP_FLOOR_MARGIN` reconstructs the base margin
+  // rather than taking it as a second parameter, because for a positive excess
+  // the two are the same number by `benchWorkingExcess`'s own definition and a
+  // second parameter is a second thing that can be passed wrong.
+  const baseMargin = workingExcess + LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN;
+  const headroom = LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING - baseMargin;
+  return scrub(
+    Math.min(LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_ONSET, Math.max(0, headroom)),
+  );
 }
 
 /** The ascent clock this rep runs on. See `benchClearsTheClock`. */
@@ -1186,19 +1301,29 @@ export function ascentDemand(
   kind: PlayableLiftKind,
   extraDepth: number = 0,
   touchShortfall: number = 0,
+  workingExcess: number = 0,
 ): number {
   const load = clampLoadRatio(loadRatio);
   const base = byLoad(LIFT_TUNING.DEMAND_BASE[kind], load);
   const stick =
     byLoad(LIFT_TUNING.DEMAND_STICK_GAIN[kind], load) *
     gauss(h, STICK_HEIGHT_FRAC[kind], STICK_WIDTH[kind]);
+  // BENCH: what the bar costs for being a WORKING bar rather than a warm-up.
+  // Zero at and below `BENCH_WARMUP_FLOOR_MARGIN` and on every other kind, so
+  // a default of 0 here is the base curve and not a silent half-measure. Added
+  // FLAT IN HEIGHT, alongside `base`, rather than into the sticking bump: the
+  // 2026-08-26 retune's own header records why difficulty went into
+  // `DEMAND_BASE` rather than `DEMAND_STICK_GAIN`, and putting this one in the
+  // notch instead would change the curve's shape in TWO dimensions at once —
+  // load and height — when only the load one is what the ruling asked for.
+  const working = benchWorkingRungDemand(kind, workingExcess);
   const buried = 1 + LIFT_TUNING.BURIED_DEMAND_PER_DEPTH * Math.max(0, extraDepth);
   // BENCH: what a bar dropped onto the chest costs. See
   // `BENCH_TOUCH_DEMAND_PENALTY` — this scales the whole curve for the whole
   // ascent, exactly as `buried` does, because a transient does not survive
   // long enough to decide anything.
   const crashed = 1 + LIFT_TUNING.BENCH_TOUCH_DEMAND_PENALTY * clamp01(touchShortfall);
-  return scrub((base + stick) * buried * crashed);
+  return scrub((base + stick + working) * buried * crashed);
 }
 
 /**
@@ -2246,7 +2371,18 @@ export function stepLift(state: LiftState, input: LiftInput | null = null): Lift
     // THERE WERE TWO UNTIL THE 2026-08-25 REPLAY STEER. `launchShortfall` is
     // deleted with `PRESS_WEAK_DEMAND_PENALTY` — see `ascentDemand`.
     const touchShortfall = kind === 'bench' ? 1 - clamp01(m.touchQuality) : 0;
-    const demand = ascentDemand(m.height, load, kind, m.extraDepth, touchShortfall);
+    // THE WORKING-RUNG TERM'S ONE CALL SITE. Read from the config rather than
+    // carried in `Mutable`, because it is fixed before the rep starts by the
+    // same two quantities `benchClearsTheClock` reads and nothing the player
+    // does can move it — a field would be a copy that could go stale.
+    const demand = ascentDemand(
+      m.height,
+      load,
+      kind,
+      m.extraDepth,
+      touchShortfall,
+      benchWorkingExcess(state.config),
+    );
     let drive = capacity - m.stallCapacityLoss;
     // A LANDED DRIVE IS A COMMITTED IMPULSE, NOT A STATE THE PLAYER MAINTAINS.
     // Deliberately NOT gated on `m.held`. It used to be, and that coupling was
