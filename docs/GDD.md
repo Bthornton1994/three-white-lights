@@ -2249,11 +2249,25 @@ the rungs on opposite sides of both numbers:
 | | every RPE 6/7 cell | nearest RPE 8 cell | the floor sits at |
 |---|---|---|---|
 | margin (`peak − capacity`) | ≤ **−0.0483** | ≥ **−0.0323** | **−0.040** |
-| unaided ascent, ticks | ≤ **193** | **247** | **220** |
+| unaided ascent, ticks | ≤ **193** | **247** → *never* | **220** |
 
-Both are midpoints of measured gaps rather than thresholds tuned until the
-tests passed, and `lift.test.ts` pins both edges so a retune that closes either
-gap reddens instead of letting the floor spread into the grind.
+Both were midpoints of measured gaps rather than thresholds tuned until the
+tests passed.
+
+**Two corrections to that sentence, both landed 2026-08-27.** First, "`lift.test.ts`
+pins both edges so a retune that closes either gap reddens" **was false from the
+day it was written until that date**: no test anywhere in `src/` mentioned
+−0.0483, −0.0323, 193 or 247, and the only thing either floor constant was
+compared against was the other one. `FLOOR_EDGES` in `lift.test.ts` is the pin
+now, and it drives the two producers rather than restating the digits. Second,
+the second row's working-rung side no longer exists: with the working-rung lever
+below, an unaided working rep goes backwards instead of creeping, so it reaches
+lockout at **none** of the twelve working cells where it used to reach it at two.
+The gap widened rather than closing — the warm-up side is byte-identical at
+87–193 — but it stopped being a *number*, so that row is now confirmation rather
+than the second independent corroboration it was chosen as. The margin row is
+what carries the claim, and it is unchanged because the lever reads the base
+curve and does not write it.
 
 **A single global clock was tried first and is refused, measured.** At 220 for
 every lift the reachable rescue table moves and RPE 8's own non-vacuity control
@@ -2279,6 +2293,15 @@ stated mechanism is what carried a single measurement into a general claim.
 So RPE 8's difficulty is *stopping costs the rep, and a slow grind is a GRINDER
 rather than a GOOD LIFT*, and the minimum-tap-rate axis begins at RPE 9.
 
+**AND A SECOND PHONE REPLAY REJECTED THAT ANSWER ON 2026-08-27, WHICH IS WHY
+EVERYTHING FROM HERE TO THE NEXT HEADING IS HISTORY.** Verbatim: *"Still way too
+easy for RPE 8, overall difficulty needs to be higher."* The sentence directly
+above is what the tree did between 2026-08-26 and 2026-08-27, and it is kept
+because the wall it records is real and a future tuner will otherwise walk into
+it again. What replaced it is
+**[the working-rung lever](#the-working-rung-lever)** further down this section:
+the minimum-tap-rate axis now begins at RPE 8.
+
 What the rise did buy, on the slowest sustained rate that never misses, per cell,
 before against after: RPE 8 `0.50 / 0.67 / 0.50 / 0.50` → `0.50 / 1.00 / 0.80 /
 0.67`, RPE 9 `1.00 / 1.43 / 1.20 / 1.00` → `1.20 / 1.67 / 1.43 / 1.20`, RPE 10
@@ -2286,11 +2309,129 @@ before against after: RPE 8 `0.50 / 0.67 / 0.50 / 0.50` → `0.50 / 1.00 / 0.80 
 every seed is a GOOD LIFT rather than a GRINDER, RPE 8 went `2.31 / 3.00 / 2.50 /
 2.31` → `3.00 / 3.00 / 3.00 / 2.50`.
 
+*Those "after" figures were re-taken on 2026-08-27 on a ladder of every whole
+tick rather than the hand-picked one they were first read off, and the RPE 8 row
+is `0.48 / 0.86 / 0.67 / 0.53` — the same shape, one rung finer, and the row the
+second replay was rejecting. The re-take is in `WORKING_FLOOR` in
+`lift.test.ts`, which drives it rather than quoting it.*
+
 *An earlier version of this paragraph read "RPE 8 from 0.67/s at all four cells to
 0.67 / 1 / 1 / 0.67". That was measured on a tap ladder whose slow end stepped
 0.67 → 1.00 → 1.43 with nothing between, so cells sitting at 0.50/s and 0.80/s
 were reported at the nearest rung it had. The direction survived and the detail
 did not — a measurement taken at a grain that cannot see the thing it is about.*
+
+#### The working-rung lever
+
+**RULED 2026-08-27, ON THE SECOND REJECTION OF THE SAME COMPLAINT.** Verbatim,
+phone: *"Still way too easy for RPE 8, overall difficulty needs to be higher."*
+The 2026-08-26 answer above — a uniform `DEMAND_BASE.bench` rise of +0.02 — is
+what that sentence is about. Everything above this heading is the record of that
+round and stays as history; this is what the tree does now.
+
+**THE UNIFORM LEVER IS SPENT, AND THAT IS A MEASUREMENT RATHER THAN A
+PREFERENCE.** On the floored tree the held warm-up wall reads 0 lost of 16200 at
+a +0.025 rise and 60 lost at +0.030, so the whole remaining uniform headroom is
+one more step of +0.005 — shipping that after "+0.020 is too easy" would not be
+a difficulty increase. A uniform rise moves every rung by the same amount by
+construction, so it cannot ask RPE 8 for more without RPE 7 paying for it.
+
+**AND THE OBVIOUS SCOPED MECHANISM — "extra demand above some `loadRatio`" — IS
+IMPOSSIBLE HERE, WHICH IS THE FIRST THING WORTH WRITING DOWN.** The rungs
+**overlap in load**: RPE 7 reaches `0.8750` at a `popping` check-in and RPE 8's
+four cells are `0.8000`, `0.8500`, `0.8750`, `0.9000`. `0.8750` is a cell on both
+rungs, so no cut in load separates a warm-up from a working set. They are cleanly
+separated in `peakDemand − capacity`, because a better check-in raises the
+prescribed load *and* raises the lifter's capacity by more — the coupling §6.2
+already pins as deliberate. That is the same quantity `BENCH_WARMUP_FLOOR_MARGIN`
+was chosen from, used a second time.
+
+**So the lever is keyed on the warm-up floor's own line, and it is the same
+line.** For a bench rep whose base margin sits above `BENCH_WARMUP_FLOOR_MARGIN`
+by `excess`:
+
+```
+working demand = ONSET + SPAN × excess / (excess + HALF_MARGIN)
+                 capped so the effective margin never passes MARGIN_CEILING
+```
+
+and exactly **zero** at or below the line, on every rung the session calls a
+warm-up, and on squat and deadlift. One classification decides two things — the
+longer ascent clock below the line, this above it — so a bar cannot be a warm-up
+for the clock and a working set for the demand curve.
+
+**IT IS NOT `DEMAND_BASE` WITH AN `if` IN FRONT OF IT, AND THE SPAN IS THE
+DIFFERENCE.** A uniform rise changes the curve's *level* and not its *slope*;
+a flat working-rung addition would fix the warm-up half and leave the working
+rungs' spacing exactly as the replay found it. The span puts a real slope above
+the line and none below it — `d(working)/d(excess)` is 0 below, **0.380** at
+RPE 8's lightest cell, 0.119 at its heaviest, and 0.004 at the top meet attempt —
+and the demand it adds runs 0.0397 to 0.0521 across the ladder, a 31% spread.
+Setting the span to zero and keeping the step is a one-token mutant, and it moves
+every working floor: RPE 8's four go 59/37/44/58 ticks to 61/42/53/62.
+
+**WHAT IT BUYS, on the slowest sustained tap rate that still makes the rep at
+every seed, measured on a ladder of every whole tick, 20 seeds a cell**
+(`WORKING_FLOOR` in `lift.test.ts` drives this — the table is not quoted):
+
+| rung | before | after |
+|---|---|---|
+| RPE 6, 7 | no cadence costs the rep | **unchanged** — no cadence costs the rep |
+| RPE 8 | 0.48 / 0.86 / 0.67 / 0.53 /s | **1.02 / 1.62 / 1.36 / 1.03 /s** |
+| RPE 9 | 1.05 / 1.62 / 1.40 / 1.18 /s | 1.82 / 2.40 / 2.14 / 2.00 /s |
+| RPE 10 | 2.61 / 2.40 / 2.14 / 2.07 /s | 3.53 / 3.33 / 3.16 / 3.00 /s |
+| meet, openers | 2.40 /s | 3.33 /s |
+| meet, the ceiling attempt | 10.00 /s | **10.00 /s — untouched** |
+
+A tap every 1.2 to 2.1 seconds used to make an RPE 8 rep, which is why the rung
+read as nothing to a thumb. It is a tap every 0.6 to 1.0 seconds now, sustained,
+and **8 < 9 < 10 still reads with room**: RPE 8's hardest cell asks 1.62 a second
+against RPE 9's easiest at 1.82, and RPE 9's hardest 2.40 against RPE 10's
+easiest 3.00.
+
+**AND THE RUNG CHANGED CHARACTER, NOT ONLY ITS NUMBER.** At RPE 8 the unaided
+bar used to creep upward and lose on the clock; its peak demand now sits above
+the lifter's capacity, so it stops and comes back down. That is the difference
+between "I ran out of time" and "the bar beat me", and it is the half a tap-rate
+figure does not say.
+
+**THE CEILING IS NOT A SAFETY CLAMP — IT IS WHERE ANOTHER RULE IN THIS SECTION
+STOPS HOLDING.** The false-start rule's own sentence, on screen, is *"each one
+holds your press back, up to half a second"* — never the rep. Driven at the meet
+ceiling load, 20 seeds, mashed at the refractory limit, that stops being true
+between an effective margin of **0.2816** (0 of 20 lost) and **0.2826** (20 of
+20 lost, at 10 early taps). The edge is one thousandth wide. `MARGIN_CEILING` is
+**0.27**, about twelve edge-widths under it, and it is a ceiling on where the bar
+*ends up* rather than a cap on the lever's output — so a bar the base curve
+already puts past the line gets exactly zero. Without it an early pass took
+`meet/aggressive/att3/wrecked` from 10.00 taps a second to **20.00**, which is
+`60 / GRIND_TAP_REFRACTORY_TICKS` — the hardest attempt in the game winnable only
+by a literally perfect mash with no headroom at all.
+
+**A PRE-EXISTING HOLE THIS FOUND AND DID NOT FIX, RECORDED BECAUSE IT NEEDS A
+HUMAN'S RULING.** That same cell — `meet/aggressive/att3/wrecked`, base margin
+0.3066 — **already breaks the false-start rule on the shipped tree**, with this
+lever set to zero: 20 of 20 lost at 10 early taps. The test that guards the rule
+drives its load ladder at the default capacity only, and the reachable domain
+reaches that margin through a *wrecked check-in*, which no load in that ladder
+produces. So the rule and its guard disagree about a cell a player can be handed.
+The two ways out are both design calls — lower the meet ceiling, which this
+replay asked against, or exempt the top attempt from the false-start rule, which
+makes the on-screen sentence false a different way — so neither was taken here.
+The lever does not make it worse: the ceiling adds that cell nothing, and
+`FLOOR_EDGES.CELLS_ALREADY_PAST_THE_CEILING` names it.
+
+**WHAT IT COSTS, stated rather than discovered later.** Three meet cells are
+clipped to the ceiling and share one effective margin
+(`aggressive/att2/wrecked`, `aggressive/att3/rested`, `standard/att3/wrecked`);
+they still differ in capacity, so their floors differ, but the extra spread the
+lever would have added is gone. And two of §6.2's own counts fell — see the
+paragraph on 38 → 35 above — because at the very top of a meet a pause is no
+longer something you can come back from.
+
+**§12.1 STAYS OPEN. Nobody has played any of this.** All four constants are
+placeholders. The next phone question is the same two it was: does RPE 8 feel
+like work, and does 8 < 9 < 10 still read.
 
 **The one remaining way to raise RPE 8's rate was measured and rejected.** The
 grind's force ceiling is the only knob that lifts the required tap rate without
@@ -2311,15 +2452,27 @@ presets. Every distinct load a session can prescribe (5 RPE choices against all
 27 check-ins, 22 distinct cells) and every load a meet can call (3 jump
 strategies x 3 attempts x 2 bar speeds, 18 cells), 80 paired reps each: pairs
 identical up to a moment, differing only in whether the tapping resumed
-afterwards. Coming back changes the outcome in **38** of those 40 cells, turns a
-miss into a make in **29**, and in **30** the idle rep has measurably stalled
+afterwards. Coming back changes the outcome in **35** of those 40 cells, turns a
+miss into a make in **26**, and in **30** the idle rep has measurably stalled
 first. **1** cell shows none of the three — the lightest load RPE 6 can prescribe
 at a neutral check-in — and it is pinned as the control, because a grind on every
-warm-up would be its own failure. Before the retune those four counts were
-31 / 23 / 23 / 8, but they are not comparable cell for cell: the sampling grid
-was widened in the same pass, from four quit instants per cell to eight. On a
-burst mechanic every one of them is zero by construction, because taps after the
-window buy nothing.
+warm-up would be its own failure. Before the 2026-08-26 retune those four counts
+were 31 / 23 / 23 / 8, but they are not comparable cell for cell: the sampling
+grid was widened in the same pass, from four quit instants per cell to eight. On
+a burst mechanic every one of them is zero by construction, because taps after
+the window buy nothing.
+
+**THE FIRST TWO WENT DOWN — 38 → 35 AND 29 → 26 — ON THE 2026-08-27
+WORKING-RUNG LEVER, AND A FALLING COUNT HERE IS THE HARD DIRECTION, NOT THE SOFT
+ONE.** These count cells where stopping and then *starting again* changes the
+outcome. A cell drops out when the pause stops being survivable at all: the idle
+rep still stalls, and coming back no longer saves it. Four meet cells crossed
+that line and they are the top of the ladder — `conservative/att3/wrecked`,
+`standard/att3/wrecked`, `aggressive/att2/wrecked`, and
+`aggressive/att3/wrecked`, which was already there. The number to read beside
+them is the third one, which did **not** move: **30** of 40, exactly the 30
+non-warm-up cells, still stall. `REACHABLE_LADDER` in `lift.test.ts` counts all
+four from the driven table, so this paragraph cannot drift from it.
 
 **And the warm-up protection is the two zero COLUMNS, not the first one**, which
 is the sentence most likely to be misread now that only one cell is fully still.

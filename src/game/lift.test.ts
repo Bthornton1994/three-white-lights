@@ -4642,6 +4642,35 @@ describe('the false-start rule, exactly as the copy states it', () => {
     // Under the burst a maximally false-started player had a weaker burst and
     // nothing after it; here the grind is available for the whole ascent, so a
     // lost launch is a slower rep rather than a lost one.
+    //
+    // -----------------------------------------------------------------------
+    // WHAT THIS DOMAIN REACHES, AND THE CELL IT DOES NOT — MEASURED 2026-08-27,
+    // AND THE RULE IS ALREADY FALSE THERE ON THE SHIPPED TREE
+    // -----------------------------------------------------------------------
+    // `GRIND_SWEEP.LOADS` is driven at the DEFAULT capacity, because
+    // `benchGrindRep` takes no `feel`. So the hardest bar this loop ever asks
+    // about sits at a margin of 0.2466, while the reachable domain reaches
+    // 0.3066 — `meet/aggressive/att3/wrecked`, where a wrecked check-in cuts
+    // capacity by 6% under a load no ladder in this sweep produces.
+    //
+    // Driven by hand at that cell, 20 seeds, mashed at the refractory limit,
+    // with the 2026-08-27 working-rung lever set to ZERO so the reading is of
+    // the tree as it shipped: 10 early taps lose the rep at 20 of 20 seeds, and
+    // so do 30. The rule this test states, and the sentence
+    // `LIFT_COPY.SUBTITLE.bench` puts on the screen — "each one holds your
+    // press back, up to half a second" — is not true of that cell and has not
+    // been.
+    //
+    // NOT WIDENED HERE, AND NOT PINNED EITHER, ON PURPOSE. Widening the domain
+    // ships this file red; pinning the exception writes "the copy is false at
+    // one cell" into the tree as though that were a decision somebody took. It
+    // is a human's ruling and the two ways out are both design calls: lower the
+    // meet ceiling, which the 2026-08-27 phone replay asked AGAINST, or exempt
+    // the top attempt from the false-start rule, which makes the on-screen
+    // sentence false in a different way. What IS enforced is that the
+    // working-rung lever does not make it worse:
+    // `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` adds that cell exactly zero,
+    // and `FLOOR_EDGES.CELLS_ALREADY_PAST_THE_CEILING` names it.
     for (const sweepLoad of GRIND_SWEEP.LOADS) {
       const mashed = benchGrindRep(sweepLoad, 5, {
         gapTicks: GRIND_SWEEP.MASH_GAP_TICKS,

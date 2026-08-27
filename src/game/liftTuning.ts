@@ -1967,6 +1967,20 @@ export const LIFT_TUNING = Object.freeze({
    * there; a retune that closes it means the floor can no longer separate
    * warm-up from working rung and the mechanism needs rethinking, not renumbering.
    *
+   * THAT SENTENCE WAS FALSE FROM THE DAY IT WAS WRITTEN UNTIL 2026-08-27, AND
+   * IT IS CORRECTED RATHER THAN QUIETLY MADE TRUE. No test anywhere in `src/`
+   * mentioned -0.0483 or -0.0323, and nothing compared this constant to
+   * anything except the other floor constant — so a retune that closed the gap
+   * would have reddened nothing at all. `FLOOR_EDGES` in `lift.test.ts` is the
+   * pin now, and it drives the producers rather than restating these digits.
+   *
+   * THE SECOND USE OF THIS SAME LINE, ADDED 2026-08-27. It now decides two
+   * things rather than one: which clock the ascent runs on, and whether the
+   * bar carries `BENCH_WORKING_RUNG_DEMAND_ONSET`. `benchWorkingExcess` is
+   * `max(0, margin - this)`, so the two readings cannot disagree about a rep
+   * by construction, and `lift.test.ts` drives that over all 40 reachable
+   * cells rather than trusting the construction.
+   *
    * PLACEHOLDER, like every feel value here. Nobody has played it.
    */
   BENCH_WARMUP_FLOOR_MARGIN: -0.04,
@@ -1990,21 +2004,44 @@ export const LIFT_TUNING = Object.freeze({
    *     rpe6  87..129     rpe7 103..**193** | rpe8 **247**, 256, and two that
    *     never make it at all (they collapse at 0.119 and 0.178)
    *
-   * THE MEASUREMENT, STATED AS THE TWO EDGES IT RESTS ON:
+   * THE MEASUREMENT AS IT STOOD, STATED AS THE TWO EDGES IT RESTS ON:
    *
    *     slowest RPE 6/7 unaided ascent        193 ticks
    *     fastest working-rung completion       247 ticks
    *     the gap between them                   54 ticks
    *     this clock, its midpoint              220 ticks
    *
-   * TWO SEPARATORS THAT WERE NOT DERIVED FROM EACH OTHER AND AGREE. The margin
-   * above is a force balance read before the rep starts; this is a duration
-   * read from playing the rep out. Either one alone would partition the rungs;
-   * that both do, at values neither borrowed from the other, is what says the
-   * partition is a property of the ladder rather than of one instrument.
+   * -------------------------------------------------------------------------
+   * THE WORKING SIDE OF THAT PAIR NO LONGER EXISTS, AND SAYING SO IS THE POINT
+   * -------------------------------------------------------------------------
+   * The 2026-08-27 working-rung lever puts every working cell's peak demand
+   * above the lifter's capacity, so an unaided working rep goes BACKWARDS
+   * instead of creeping. Re-measured by the same method — both clocks lifted
+   * out of the way — the working side reaches lockout at NONE of its twelve
+   * cells, where it used to reach it at two. So "fastest working-rung
+   * completion 247 ticks" is now a sentence about a rep that does not happen,
+   * and the separation is not 54 ticks wide any more: it is the difference
+   * between a rung that always finishes and a rung that never does.
    *
-   * Both edges are pinned in `lift.test.ts`; a retune that closes the gap
-   * reddens there rather than silently letting the floor reach RPE 8.
+   * THE GAP WIDENED RATHER THAN CLOSING, which is the condition the 2026-08-27
+   * ruling attached to this lever ("if the change closes either gap, that means
+   * the floor can no longer separate warm-up from working rung"). The warm-up
+   * side is byte-identical, 87..193, because the lever adds those cells exactly
+   * nothing — see `BENCH_WORKING_RUNG_DEMAND_ONSET`.
+   *
+   * WHAT IS HONESTLY WEAKER FOR IT: this used to be a SECOND, INDEPENDENT
+   * separator agreeing with the margin one at a value it had not borrowed, and
+   * that was the strongest thing about the pair. A categorical separator
+   * ("finishes" against "never finishes") is easier to satisfy than a numeric
+   * one, so it is now confirmation rather than corroboration. The margin edges
+   * are what carry the claim, and they are unchanged because the lever reads
+   * the base curve and does not write it.
+   *
+   * BOTH EDGES ARE PINNED IN `lift.test.ts` NOW, WHICH THEY WERE NOT WHEN THIS
+   * SENTENCE FIRST CLAIMED THEY WERE. `FLOOR_EDGES` and its test are the pin;
+   * before 2026-08-27 no test in `src/` mentioned 193, 247, -0.0483 or -0.0323
+   * at all, and the only thing either floor constant was compared against was
+   * the other one.
    *
    * AND `ASCENT_TIMEOUT_TICKS`'s OWN HEADER ALREADY CARRIED THIS DEFECT. It
    * records "successful ascents ran to a maximum of 201 ticks" and then caps at
