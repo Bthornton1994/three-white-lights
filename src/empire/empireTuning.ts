@@ -2171,11 +2171,47 @@ export const EMPIRE_TUNING = Object.freeze({
   DORMANT_INCOME_MULTIPLIER: 0.1,
 
   /**
-   * The condition below which a check-in offers the in-session maintenance
-   * prompt, with the worst item's repair cost shown. Also the visible warning
-   * sign the cheapest-hire strike is keyed on.
+   * The condition that decides WHICH item a maintenance review names — the
+   * worst-conditioned one — and the line `wornItems` and `warningSignsVisible`
+   * read for the display surface. It no longer decides WHETHER a review is
+   * raised; the two ordinal knobs below do that. See `management.ts` header
+   * §3a for the §5.13/§5.7 ruling that split those two questions apart.
    */
   MAINTENANCE_PROMPT_CONDITION: 0.5,
+
+  /**
+   * The check-in index at which the gym raises its FIRST standing repair
+   * order, counted in `ManagedGym.checkInsTaken`.
+   *
+   * PROVISIONAL — a game-feel value, to be tuned by hand (CLAUDE.md, "Game
+   * Feel Values Must Be Tunable"). Nothing has playtested it. At 4, with the
+   * garage banking a 12-hour horizon a day, the first review lands on a gym
+   * at roughly 0.90 condition and quotes a repair of about 40 Gym Bucks —
+   * cheap enough that declining it is a choice rather than a wall.
+   *
+   * It must be at or above 1: at 0 a freshly created gym would show a repair
+   * order on equipment that has never been used, and `repairEquipment` would
+   * refuse it as `already-sound`. `management.test.ts` pins that floor.
+   */
+  MAINTENANCE_ORDER_FIRST_CHECK_IN: 4,
+
+  /**
+   * Check-ins between one standing repair order and the next — the review
+   * cadence. Orders open at `MAINTENANCE_ORDER_FIRST_CHECK_IN`, then every
+   * `MAINTENANCE_ORDER_STRIDE` check-ins after it, and at no other check-in.
+   *
+   * PROVISIONAL, same as the knob above, and the reason it is an ORDINAL
+   * rather than a condition is a ruling and a measurement rather than taste:
+   * §5.7's clarification says low condition may SHOW a repair prompt and may
+   * not advance a strike, and a review whose arrival is keyed to the check-in
+   * INDEX cannot carry a wear difference into the strike ledger, because
+   * enlarging a gap changes gap lengths and never the number of check-ins.
+   * `management.ts` header §3a has the derivation and §3b the measurement.
+   *
+   * Must be at or above 1 — at 0 the cadence has no period and the modulo
+   * that reads it is undefined. `management.test.ts` pins that floor too.
+   */
+  MAINTENANCE_ORDER_STRIDE: 4,
 
   /**
    * The condition below which the 'diligent' simulated-player policy repairs
@@ -2204,8 +2240,32 @@ export const EMPIRE_TUNING = Object.freeze({
   /**
    * Counted bad decisions at which the gym fails and goes dormant. Strictly
    * above the warning threshold, which `management.test.ts` derives.
+   *
+   * Provisional, and it moved with the §5.13 wear-basis ruling. The failure
+   * ledger used to be unbounded — every refusal of a standing repair order
+   * counted again — so any threshold was reachable by waiting. Under the
+   * per-order ledger (`management.ts` header §3) a gym that never repairs can
+   * refuse at most one order per owned item, which is
+   * `LADDER_STARTING_EQUIPMENT.length` = 3 at the garage. A threshold of 4
+   * would put pure neglect structurally out of reach of failure, which
+   * contradicts §5.7's own list of failure drivers.
+   *
+   * THAT SENTENCE USED TO END "`management.test.ts` pins the relation rather
+   * than the number", AND IT WAS FALSE — kept as a correction rather than
+   * deleted, because the failure mode is this codebase's most repeated one.
+   * The only relation asserted anywhere was `FAILURE_STRIKES >
+   * FAILURE_WARNING_STRIKES`. A threshold of 4 would have reddened the suite,
+   * but by accident, in a fixture indexing `items[FAILURE_STRIKES - 1]` —
+   * which is a different check noticing, not this claim being checked.
+   *
+   * It is pinned now, in `management.test.ts`'s `pure neglect can reach
+   * failure`, in both halves: the arithmetic relation against
+   * `ownedItemsOf`'s real length, and the behaviour the relation exists for —
+   * refusing every owned item's standing order once reaches `'failed'`, and
+   * restating all of them adds nothing, so the item count really is the
+   * ceiling.
    */
-  FAILURE_STRIKES: 4,
+  FAILURE_STRIKES: 3,
 
   /**
    * There is deliberately NO dormancy entry slump here. It shipped at 0.25
@@ -2405,6 +2465,8 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   REPAIR_COST_GYM_BUCKS_PER_CONDITION_POINT: 'knob',
   DORMANT_INCOME_MULTIPLIER: 'budget',
   MAINTENANCE_PROMPT_CONDITION: 'knob',
+  MAINTENANCE_ORDER_FIRST_CHECK_IN: 'knob',
+  MAINTENANCE_ORDER_STRIDE: 'knob',
   REPAIR_POLICY_CONDITION: 'knob',
   MAINTENANCE_PROMPT_FREE_DISMISSALS: 'budget',
   FAILURE_WARNING_STRIKES: 'budget',

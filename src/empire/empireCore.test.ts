@@ -3439,7 +3439,22 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // decision-event kinds, the discriminated-return `kind` and `reason`
     // tokens across eight result types, and the two wear bases. Measured by
     // running this assertion and reading its failure value.
-    expect(singleQuoted.size).toBe(452);
+    // 452 -> 455: the §5.13 wear-basis ruling's chain break in
+    // `management.ts`. Three new tokens: the `'repeat-strike-control'` wiring
+    // key, and the two strike-ledger names `'per-order'` and `'per-refusal'`.
+    // `'already-refused'`, `'neglected'` and the rest are not literals in the
+    // module — they are property names and type members. Measured by running
+    // this assertion and reading its failure value, not guessed.
+    // 455 -> 459: the §5.7 chain-break round keys the maintenance review to
+    // the check-in ordinal. Four new tokens in `management.ts`: the two new
+    // wiring keys `'condition-gated-prompt-control'` and
+    // `'eager-turnaround-control'`, the two review gates `'ordinal'` and
+    // `'condition'`. The new `'already-sound'` prompt-refusal reason is NOT
+    // one of them — `repairEquipment` already shipped that literal, so the
+    // set is unchanged by it, which is the kind of thing a hand-sum gets
+    // wrong. Measured by running this assertion and reading its failure
+    // value.
+    expect(singleQuoted.size).toBe(459);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3489,7 +3504,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // template literals, one per named refusal, and each contributes its
     // fixed chunks. Measured by running this assertion and reading its
     // failure value.
-    expect(templateChunks.size).toBe(282);
+    // 282 -> 284: the §5.13 wear-basis ruling's two new `refuseWith` template
+    // messages in `management.ts` — the refusal for an item that carries a
+    // refused repair order and is not owned, and the one for an item carrying
+    // two. Measured by running this assertion and reading its failure value.
+    // 284 -> 285: one new `refuseWith` template chunk in `management.ts` —
+    // `requireManagedGym`'s check-ins-taken validation, added with the ordinal
+    // the review cadence is read off. Measured by running this assertion and
+    // reading its failure value.
+    expect(templateChunks.size).toBe(285);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3589,6 +3612,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'comp-plates',
       'competition-total',
       'composed-gym',
+      // The §5.7 chain-break round's four new tokens: the two review gates
+      // (`'ordinal'` ships, `'condition'` is the control's) and the two
+      // control wiring keys they are reachable through.
+      'condition',
+      'condition-gated-prompt-control',
       'conditioning',
       'cosmetic-unlock',
       'cosmetics',
@@ -3615,6 +3643,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'dot',
       'dumbbells',
       'e1rm',
+      'eager-turnaround-control',
       'elapsedSeconds',
       'equipment',
       'equipment-below-recovery-minimum',
@@ -3766,11 +3795,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'npcId',
       'number',
       'offered',
+      'ordinal',
       'other-recovery',
       'out-of-bounds',
       'overlaps',
       'own-gym',
       'paid-pull',
+      'per-order',
+      'per-refusal',
       'physio',
       'physio-days-saved',
       'pixelated',
@@ -3801,6 +3833,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'repair-declined',
       'repair-refused',
       'repaired',
+      'repeat-strike-control',
       'reputation',
       'reputation-below-threshold',
       'reputation-milestone',
@@ -3953,7 +3986,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 666 -> 734: §5.11 stage 4's `management.ts` — singleQuoted (405 -> 452)
     // and templateChunks (261 -> 282). Read from this assertion's own failure
     // value.
-    expect(stringsChecked).toBe(734);
+    // 734 -> 739: the §5.13 wear-basis ruling — three single-quoted tokens and
+    // two template chunks, exactly the increments the two counts above carry.
+    // Read from this assertion's own failure value.
+    // 739 -> 744: the §5.7 chain-break round's four new literals and one new
+    // template chunk, exactly the increments the two counts above record.
+    // Read from this assertion's own failure value.
+    expect(stringsChecked).toBe(744);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4033,7 +4072,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // assertion.
     // 347 -> 394: §5.11 stage 4's forty-seven new tokens, all clearing the
     // two-letter guard. Measured by running this assertion.
-    expect(probes).toBe(394);
+    // 394 -> 397: the wear-basis ruling's three new single-quoted tokens, all
+    // clearing the two-letter guard. Measured by running this assertion.
+    // 397 -> 401: the §5.7 chain-break round's four new single-quoted tokens,
+    // all clearing the two-letter guard. Measured by running this assertion
+    // and reading its failure value.
+    expect(probes).toBe(401);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -4609,7 +4653,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 366 -> 383: §5.11 stage 4's fourteen entries, whose nested per-tier
     // tables carry three leaves each rather than one. Read from this
     // assertion's own failure value, not hand-summed.
-    ).toBe(383);
+    // 383 -> 385: the two ordinal review knobs
+    // (MAINTENANCE_ORDER_FIRST_CHECK_IN, MAINTENANCE_ORDER_STRIDE), one
+    // numeric leaf each. Read from this assertion's own failure value.
+    ).toBe(385);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

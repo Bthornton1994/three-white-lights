@@ -656,7 +656,30 @@ describe('§5.5 social', () => {
     // fifteen: the dormancy entry slump that shipped with the first draft was
     // measured as a never-punish breach and removed, so no knob arrived for
     // it. Measured by running this assertion and reading its failure value.
-    expect(examined).toBe(163);
+    // 163 -> 165: the two ordinal review knobs the §5.7 chain-break round
+    // added — MAINTENANCE_ORDER_FIRST_CHECK_IN and MAINTENANCE_ORDER_STRIDE.
+    // Both are counted in CHECK-INS, and this test is the one that has to be
+    // read carefully about that: a check-in is something the player does, so a
+    // reader could take these for exactly the shape the banned-unit list
+    // forbids. They are not. The list bans a CADENCE denominated in a unit
+    // training moves — per session, per streak day — because such a cadence
+    // makes an OUTCOME arrive sooner for a player who trains more. These two
+    // do the opposite: they take the review OFF a wear clock that absence and
+    // check-in frequency both moved, and put it on the one quantity an
+    // enlarged gap provably cannot change. The measurement is
+    // `management.test.ts`'s `withinHorizon` family at 0 / 0 / 0 against the
+    // condition-gated control's 310 / 186 / 124.
+    //
+    // The price is stated rather than hidden, because it is real and it is on
+    // this test's own subject: an ordinal cadence IS check-in-keyed, so the
+    // engagement family's failure counters are non-zero (909 / 524) and the
+    // reviews arrive sooner in wall-clock for a player who checks in more.
+    // `management.ts` header §3b states that as an open conflict with §5.7's
+    // second sentence and routes it to a human. What keeps it out of THIS
+    // ban is that no name here is a per-session or per-streak-day rate, and
+    // the never-punish reading the ban exists for — money — is measured at
+    // zero on every engagement policy.
+    expect(examined).toBe(165);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -667,7 +690,8 @@ describe('§5.5 social', () => {
     // 725 -> 740 (148 keys x 5 banned units, Phase 4's net +3 entries).
     // 740 -> 745 (149 keys x 5 banned units).
     // 745 -> 815 (163 keys x 5 banned units).
-    expect(probed).toBe(815);
+    // 815 -> 825 (165 keys x 5 banned units).
+    expect(probed).toBe(825);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {

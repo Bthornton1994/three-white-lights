@@ -1773,6 +1773,40 @@ must produce the same strikes on the same calendar. Condition and income
 still move with operation, because a gym that ran wore its equipment and a
 gym that idled did not; that is one clock, not a second one.
 
+**WHAT THE MAINTENANCE PROMPT ACTUALLY IS, AFTER THE CHAIN BREAK — a design
+detail that changed, recorded here rather than left in the code.** The prompt
+is no longer a low-condition alarm. It is a **scheduled maintenance review**:
+the gym raises one standing repair order every N check-ins, whatever the
+equipment's condition, and condition decides only **which** item the review
+names and what the repair costs. That is what "low condition may show a
+prompt, and may not advance a strike" turned into once the strike path had to
+be free of wear: an alarm that fires when wear crosses a line is a wear
+crossing on the path to every counted decision, and no ledger rule removes it.
+A player who answers the review keeps a sound gym and never accrues a strike;
+a player who refuses one accrues exactly one, per order, until the item is
+repaired. `src/empire/management.ts` header §3a has the derivation and the
+measurement.
+
+**THE SECOND SENTENCE OF THIS CLARIFICATION IS NOT MET, AND IT MAY NOT BE
+MEETABLE ALONGSIDE THE FIRST — a human ruling is needed.** "Two histories
+differing only in how often the player checked in must produce the same
+strikes on the same calendar" is measured at **909 failure-progression
+mismatches and 524 phase-worse readings** on the engagement sweep. Those
+numbers **fell** from the condition-gated model's 1187 and 730, so the review
+ordinal improved them rather than costing them — but they have never been
+zero, and the reason looks structural rather than unfinished: a counted
+decision needs a check-in to take it, so at any shared second a player who
+checked in more has had at least as many chances to answer or refuse. A
+schedule keyed to the calendar does not escape it either, because the strike
+still lands at whichever run's next check-in comes first. Meanwhile the two
+comparators pull opposite ways: within the catch-up horizon the more-absent
+run is later at every check-in index, and on the engagement grid the more-
+engaged run has more check-ins by every second. **The money reading the
+never-punish rule is actually about is zero** on every engagement policy, and
+that is enforced. What is open is whether the strike-count sentence should be
+narrowed to money and phase-at-end, dropped, or paid for by removing counted
+decisions from the loop entirely — and that is a design call, not a builder's.
+
 **Failure is recoverable.** A failed location goes dormant — income stops,
 condition keeps degrading, members leave — but the asset itself isn't gone. A
 sufficient recovery effort (staffing turnaround, a real repair investment)
@@ -2640,6 +2674,43 @@ reads zeros and no income reading punishes engagement.** A prompt on the
 floor implementing the chain just forbidden would ship the defect into the
 one surface a player touches. Presentation hold unchanged; portfolio still
 paused.
+
+**THE WEAR-BASIS RULING'S FAILURE BULLET IS MET, AND THE ROUTE WAS NOT THE ONE
+THE PREVIOUS ROUND ARGUED WAS AVAILABLE.** Within-horizon failure progression
+reads **0 / 0 / 0** — symmetric mismatches, phase-worse readings and
+matched-trace mismatches — on the family and on each of the six policies. The
+unfixed non-zero is kept runnable exactly as this ruling asks: the removed
+condition-gated review runs as a control over the same 864 pairs and reproduces
+the previous round's shipped row exactly, **310 / 186 / 124**, with 923
+net-lower money readings.
+
+The route is the one the previous round's module header had enumerated and
+then closed the search past: **the standing repair order is raised on the
+check-in ORDINAL** rather than on equipment condition. Enlarging a gap changes
+gap lengths and never the number of check-ins, so the review lands on the same
+indices in both runs of a within-horizon pair — driven over 160 enlargements up
+to a year long, byte-identical every time, against 15 of the same 160 that move
+it under the control gate. §5.7's clarification above records what that made
+the prompt into, and the half of that clarification it does not close.
+
+**Three prices, all measured and none of them hidden.** Within-horizon money
+fell 923 → 421 and collapsed onto one player model, carried entirely by the
+manager's wage, the manager's autonomous repairs and the standing repair bill
+— all operation-keyed spends this ruling's first bullet keeps operation-keyed
+on purpose. The `repeat-strike` and `failure-slump` controls now measure
+nothing on the within-horizon domain, because both of the differences they
+used to expose came from the crossing that moved; their engagement halves
+still bite, and the dead halves are pinned as equalities so a change that
+revives them is read rather than silently absorbed. And the ordinal made a
+player model's unrequired manager dismissal into an engagement charge — 36
+net-lower readings where there had been zero — which was fixed on the model
+side, with the old model kept runnable as a control pinned at 36.
+
+**S4b is still not unblocked by this**, and that is a judgement rather than a
+formality: the failure sweep reads zeros within the horizon and no income
+reading punishes engagement, which is what the sentence above asks for, but
+the engagement strike counters are non-zero and the paragraph in §5.7 says a
+human has to rule on whether that matters before a prompt lands on the floor.
 ---
 
 ## 6. Meet Day

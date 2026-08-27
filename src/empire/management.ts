@@ -45,15 +45,68 @@
  * condition, income deducted and failure progression, pinned at zero
  * mismatches against a wall-clock-wear control pinned non-zero.
  *
- * The limit now has a size as well as a name, which it did not for a round.
- * `EXPECTED_SWEEP.withinHorizon` pins what "wears more" costs on the swept
- * domain: of 34560 compared readings, 20822 have the more-absent run at
- * strictly lower mean condition, 25132 have it ahead on cumulative income
- * deducted, and 890 have it net-lower in money. The paragraph above is the
- * DESIGN ARGUMENT for the wear basis; those four numbers are its price, and
- * whether the price is acceptable is a design ruling this module does not
- * make. It is written here rather than only in the test because a limit
- * stated without its magnitude reads smaller than it is.
+ * The limit has a size as well as a name.
+ * `EXPECTED_SWEEP.families.withinHorizon.all` pins what "wears more" costs on
+ * the swept domain: of 34560 compared readings, 14860 have the more-absent run
+ * at strictly lower mean condition, 25839 have it ahead on cumulative income
+ * deducted, and 421 have it net-lower in money. The paragraph above is the
+ * DESIGN ARGUMENT for the wear basis; those numbers are its price, and header
+ * §3c decomposes the 421 into the reported terms it is made of.
+ *
+ * THE WEAR BASIS WAS RE-RULED AND IT DID NOT MOVE. `docs/GDD.md` §5.13's
+ * wear-basis ruling kept condition and income OPERATION-keyed and named
+ * member-use / `crowdingLoad` as a better key than banked hours, with the GDD
+ * and the code to change together if the key moved. It has not moved, and the
+ * reason is a measurement rather than a preference:
+ *
+ *   - `ManagedGym` holds no member roster. `members.ts`'s `crowdingLoad` takes
+ *     a caller-supplied roster and an equipment count and returns a
+ *     DIMENSIONLESS RATIO — a weighted headcount over an equipment count. It
+ *     is a rate multiplier, not a clock. Nothing in stage 4 composes stage 3,
+ *     and `runManagedGym` never buys equipment, so a roster would have to be
+ *     invented for this module rather than read from it.
+ *   - With a fixed roster and a fixed equipment count — which is what this
+ *     module's own domain has — usage-keyed wear is
+ *     `WEAR_PER_BANKED_HOUR x bankedHours x crowdingLoad(roster, items)`, and
+ *     `crowdingLoad` is then a CONSTANT. That is the same clock with a
+ *     different name and a constant in front of it, so the KEY does not
+ *     change: wear stays proportional to banked hours either way, and the
+ *     GDD sentence a rename would satisfy is satisfied already.
+ *
+ * THE SENTENCE THAT USED TO FINISH THAT BULLET WAS FALSE, AND IT IS CORRECTED
+ * HERE RATHER THAN DELETED. It read: "every family in `management.test.ts`
+ * would report the same structure, because a positive constant multiplier
+ * changes no comparison the sweep makes." A constant multiplier preserves the
+ * ORDERING of two runs' condition at each index. It does not preserve a
+ * THRESHOLD CROSSING, and most of what the sweep counts is crossings —
+ * `MANAGER_AUTO_REPAIR_CONDITION`, `REPAIR_POLICY_CONDITION`,
+ * `RECOVERY_CONDITION_MIN`, and the income multiplier that rescales the whole
+ * purse.
+ *
+ * Measured rather than argued, by doubling `EQUIPMENT_WEAR_PER_BANKED_HOUR`
+ * from 0.002 to 0.004 and re-running the whole battery:
+ *
+ *   - on `withinHorizonConditionGatedControl` — the sweep as it stood when
+ *     that sentence was written — `failureMismatches` goes 310 -> 615,
+ *     `variantPhaseWorse` 186 -> 321, `matchedTraceFailureMismatches`
+ *     124 -> 179 and `variantNetLower` 923 -> 1416;
+ *   - on the shipped `withinHorizon` family the three failure counters stay
+ *     at zero, because the ordinal review's index-invariance is structural
+ *     and has nothing to do with the wear rate — but `conditionMismatches`
+ *     goes 15070 -> 13080 and `variantNetLower` 421 -> 53.
+ *
+ * So the multiplier moves five of the fourteen counters on the shipped family
+ * and every failure counter on the control. What survives of the argument is
+ * the narrower claim above — a constant factor does not change the wear KEY —
+ * and that is all it ever supported.
+ *
+ * So a usage key here would be a GDD edit and a rename for no change of key.
+ * What would make it a real difference is a roster that MOVES with the
+ * schedule, which is stage 3's `memberSatisfaction` wired into stage 4 — a
+ * piece that does not exist and is not this round's. Recorded as the reason
+ * rather than as a preference, and stated with its own limit: this argument is
+ * about the domain this module has today, and it stops being true the moment a
+ * live roster arrives.
  *
  * ===========================================================================
  * 2. Where the income deduction applies, and which multiplier moment
@@ -85,7 +138,7 @@
  * wear's full repair cost, at the lowest rung's income rate.
  *
  * ===========================================================================
- * 3. Failure reads the decision ledger and nothing else
+ * 3. Failure reads the decision ledger, and a refusal is counted ONCE
  * ===========================================================================
  *
  * §5.7, confirmed as settled design: failure is driven by accumulated bad
@@ -104,57 +157,207 @@
  * failure arrives unwarned; every strike record carries the cost or warning
  * that was on screen when the decision was taken.
  *
- * The limit, and its catchers, stated in the mechanism's own terms because
- * this one has a measured residual rather than a zero. Prompts are offered
- * when condition is low, so which check-in a decision OPPORTUNITY arrives at
- * tracks banked operation, and a run that operated more meets the failing
- * decision sooner. Two consequences, and they are pinned differently:
+ * ---------------------------------------------------------------------------
+ * 3a. The standing repair order — what the §5.13 wear-basis ruling changed
+ * ---------------------------------------------------------------------------
  *
- *   - Beyond the offline horizon nothing moves at all, so extra ABSENCE
- *     changes no opportunity and no outcome. `management.test.ts`'s
- *     pure-absence family is byte-identical on every counter it keeps —
- *     `EXPECTED_SWEEP.pureAbsence` carries the pair and reading counts —
- *     against a wall-clock-wear control and an absence-strike control
- *     (elapsed time fabricating a counted record — §5.7 broken by
- *     construction), both pinned non-zero.
- *   - Inside the horizon the extra time is PAID OPERATION, so it moves banked
- *     seconds, wear and the decision opportunity with them. Every counter of
- *     that family is pinned exactly in `EXPECTED_SWEEP.withinHorizon`, and
- *     none of them is zero. The money residual is priced reading by reading
- *     by `prices every within-horizon net-lower reading against the crawl
- *     arithmetic the header names, and counts what it does not cover`.
+ * The first implementation counted a strike PER REFUSAL. Low condition gated
+ * the maintenance prompt, the prompt was where refusals were taken, and every
+ * firing of it was a fresh chance to accrue a strike — so a player who checked
+ * in more often was asked more often and struck more often, and §5.13's ruling
+ * named that the defect however the strike itself was gated.
  *
- *     THIS PARAGRAPH SAID SOMETHING STRONGER FOR A ROUND AND THE MEASUREMENT
- *     DID NOT SUPPORT IT. It said that where the two runs' realized decisions
- *     match, the more-absent one is never net-worse and failure progression
- *     is byte-identical, citing `matchedTraceNetLower: 0` and
- *     `matchedTraceFailureMismatches: 0`. Those two zeros were taken over
- *     three of the six policies — the sweep read a constant named for what it
- *     asserted rather than for the subjects it covered — and over all six
- *     they read 337 and 155. The sentence is withdrawn rather than rescoped,
- *     because "on hands-off, diligent and negligent" is a fact about three
- *     player models and not the property the sentence was claiming.
+ * The ledger is keyed to the ORDER now, not to the asking. Each owned item
+ * carries one standing repair order. Refusing it — by declining the shown
+ * repair, or by ignoring the prompt past the free allowance — appends exactly
+ * one strike and puts the item in `ManagedGym.neglected`. Every later refusal
+ * of that same order is the same standing decision restated: `declineRepair`
+ * still returns `'declined'`, the prompt is still SHOWN (§5.7's clarification
+ * allows condition exactly that), and nothing is appended. The order closes
+ * when the item is REPAIRED — by the player, by the prompt, by the manager, or
+ * by a recovery investment — and the next refusal of the fresh order is a new
+ * decision, because the player did something constructive in between.
  *
- *     What the priced attribution then shows, stated as counts because that
- *     is all it is: of 890 net-lower readings, 82 are covered by the crawl
- *     loss at that same check-in, a further 511 by the crawl loss
- *     accumulated to that check-in, and 297 by neither. The crawl arriving
- *     early is therefore A cause and not THE cause, which is a weaker claim
- *     than this header used to make and is the one the numbers carry. 67
- *     readings sit on a strictly larger repair bill in the more-absent run —
- *     the wear basis in §1 showing up as money — with a largest gap of 9.6
- *     Gym Bucks against a largest deficit of 104.22.
+ * `countedWarningVisible` is the other half. The cheap-hire strike used to be
+ * gated on `warningSignsVisible`, which reads worn equipment; that put a
+ * condition term on the strike path. It reads the failure phase now, which is
+ * a pure function of the ledger. `warningSignsVisible` survives as the DISPLAY
+ * read and as a player model's trigger.
  *
- *     WHAT TO DO ABOUT ANY OF THAT IS NOT SETTLED HERE. It turns on what
- *     equipment wear should be keyed to, which is a design question §5.13
- *     does not answer and a builder may not; this module's job was to make
- *     the numbers visible, and the wear basis, the comparator and every
- *     tuning value are unchanged by the round that measured them.
+ * `FAILURE_STRIKES` moved 4 -> 3 with this, and the reason is arithmetic
+ * rather than taste: a gym that never repairs can refuse at most one order
+ * per owned item, which is three at the garage, so a threshold of four would
+ * put pure neglect structurally out of reach of failure.
+ * `management.test.ts`'s `pure neglect can reach failure` pins both the
+ * relation and the behaviour behind it.
  *
- * The ENGAGEMENT direction — CLAUDE.md's §12.3 rule, one extra check-in on a
- * fixed grid — is zero including divergent traces, because an extra check-in
- * banks a whole extra horizon of income at the same wall clock and that
- * covers every discrete cost it can pull forward on the swept domain.
+ * AND THE ORDER IS RAISED ON THE CHECK-IN ORDINAL, WHICH IS WHAT THIS ROUND
+ * CHANGED. The per-order ledger above decided what a refusal is WORTH. It left
+ * WHEN a refusal is possible keyed to equipment condition — `maintenancePrompt`
+ * returned `'quiet'` until something was worn below
+ * `MAINTENANCE_PROMPT_CONDITION`, and `declineRepair` refused as
+ * `'not-offered'` above the same line — so a run that banked more operation
+ * inside the offline horizon crossed that line at an EARLIER CHECK-IN and its
+ * player met the decision sooner. That was the whole of the remaining
+ * within-horizon residual, and §5.7's clarification forbids it in as many
+ * words: low condition may SHOW a repair prompt; it may not advance a strike.
+ *
+ * The gym raises a standing repair order at check-in
+ * `MAINTENANCE_ORDER_FIRST_CHECK_IN` and every `MAINTENANCE_ORDER_STRIDE`
+ * check-ins after it, and at no other check-in. `orderOpensAt` is a pure
+ * function of `ManagedGym.checkInsTaken` and those two knobs. Condition still
+ * chooses WHICH item the review names — the worst-conditioned one whose order
+ * is unanswered — because naming an item is not advancing a strike, and
+ * `promptOver` is the one place that choice is made.
+ *
+ * Why an ordinal closes it, in the mechanism's own terms rather than as a
+ * claim about every edit: the within-horizon family enlarges a GAP. Enlarging
+ * a gap changes when check-ins happen and never how many have happened, so
+ * `checkInsTaken` at index `i` is `i + 1` in both runs of every pair, and the
+ * review lands on the same indices. That is measured rather than asserted —
+ * `the review series is byte-identical under ANY enlargement of a gap` drives
+ * 160 enlargements up to a year long and compares the reported `reviewOffered`
+ * series, and 15 of the same 160 move it under the control gate.
+ *
+ * ---------------------------------------------------------------------------
+ * 3b. What that closed, what it cost, and the half of §5.7 it does NOT close
+ * ---------------------------------------------------------------------------
+ *
+ * MEASURED, and stated against the bar rather than against a summary. §5.13
+ * asked for within-horizon failure progression to read ZERO on the six-policy
+ * sweep, matched-trace included. IT NOW DOES. The numbers, all from
+ * `management.test.ts`:
+ *
+ *   - within horizon, per index: `failureMismatches` 0, `variantPhaseWorse`
+ *     0, `matchedTraceFailureMismatches` 0 — on the family and on each of the
+ *     six `byPolicy` rows. The number those zeros are zeros against is
+ *     `withinHorizonConditionGatedControl`: the removed condition gate driven
+ *     over the same 864 pairs, the same six policies and the same comparator,
+ *     reading 310 / 186 / 124. That control reproduces the previous round's
+ *     shipped row exactly, which is what says it is the removed code path
+ *     rather than a sketch of it, and the test asserts those four numbers.
+ *   - the matched-trace clause is not satisfied by an empty population: 848 of
+ *     the 864 pairs realize byte-identical decision traces. The 16 that do not
+ *     are enumerated rather than left as a remainder — `hire-veteran` and
+ *     `prompt-repair`, both `'delegating'`, both PURSE-timed, neither able to
+ *     append a strike.
+ *   - within-horizon money fell 923 -> 421, and header §3c decomposes all 421.
+ *
+ * WHAT IT COST, AND THE PREDICTION IT REFUTED. The round that specified this
+ * change predicted `engagement.variantPhaseWorse` would RISE from 730 as the
+ * price. It FELL, to 524, and `failureMismatches` fell 1187 -> 909, both read
+ * against `engagementConditionGatedControl` on the same grids. Recorded
+ * because it was not the predicted direction and a builder's prediction is not
+ * evidence about a measurement.
+ *
+ * THE HALF OF §5.7'S CLARIFICATION THIS DOES NOT CLOSE, stated plainly because
+ * it is a live conflict with the design document rather than a residual.
+ * §5.7's clarification has two sentences. The first — low condition may not
+ * advance a strike — is closed. The second says "two histories differing only
+ * in how often the player checked in must produce the same strikes on the same
+ * calendar", and the engagement family measures exactly that at 909 and 524.
+ * It was 1187 and 730 before this round and has never been zero.
+ *
+ * Why it is not merely unfinished, in the mechanism's own terms: a counted
+ * decision requires a check-in to take it. At any shared second the more
+ * engaged run has taken at least as many check-ins as the base, so on any
+ * schedule that makes a decision available at a rate tied to check-ins it is
+ * at-or-ahead on decisions taken, and on any schedule tied to the calendar it
+ * still answers the standing decision at its own first check-in past the
+ * calendar mark, which is at-or-earlier. The two comparators pull opposite
+ * ways: the within-horizon family compares PER INDEX and the more-absent run
+ * is later at every index; the engagement family compares AT SHARED TIMES and
+ * the more-engaged run has more check-ins.
+ *
+ * That is an argument, not a proof, and it is not offered as one — this file
+ * has recorded what an impossibility claim is worth. What IS measured is that
+ * both gates that have been built are non-zero here, that the ordinal is the
+ * smaller of the two, and that the split is almost total: `review` pins 908 of
+ * the 909 mismatches and all 524 phase-worse readings on pairs whose review
+ * counts diverged, with the single remaining pair named. A ruling that wants
+ * this half closed is choosing between the two sentences, and it is a human's
+ * choice rather than a builder's.
+ *
+ * ---------------------------------------------------------------------------
+ * 3d. The money route into the ledger, and the ONE thing it moved
+ * ---------------------------------------------------------------------------
+ *
+ * The ordinal closes the wear route into the strike ledger. It does not close
+ * the PURSE route, and that is worth naming because the purse still differs
+ * between two runs at the same index: `hireManager` refuses on insufficient
+ * funds, `repairEquipment` returns `not-enough-gym-bucks` so a review answered
+ * with `'repair'` comes back `repair-refused` and leaves the order open, and
+ * `'redemptive'`'s recovery repairs are purse-gated.
+ *
+ * Measured, on the within-horizon domain: the route moves DECISIONS on 16 of
+ * 864 pairs and STRIKES on none. On the engagement domain it moves strikes on
+ * exactly one pair — the single `review`-matched offender, whose traces match
+ * and whose failure mismatch is 1. So the route is real, it is instrumented,
+ * and its size is one reading in 29520.
+ *
+ * IT DID MOVE ONE THING, AND THE FIX IS A MODEL CHANGE RATHER THAN AN ENGINE
+ * ONE. Keying the review to the ordinal makes a run that checks in more often
+ * go round the failure/recovery cycle more often per unit of calendar. The
+ * `'redemptive'` model used to shed ANY manager on the way back from dormancy;
+ * `recoveryRequirement` only ever blocks on a manager whose hire was a counted
+ * cheap hire, so that dismissal was unrequired — and an unrequired dismissal
+ * destroys the hire's whole asset value with no refund while the comeback pays
+ * for a fresh one. Under the ordinal that unrequired spend became an
+ * engagement charge: `engagement.variantNetLower` measured 36 readings across
+ * 15 pairs where the more-engaged player was poorer, against 0 before, and 15
+ * of those were still poorer at the end of the run.
+ *
+ * The model now sheds exactly the manager the engine blocks recovery on, and
+ * `engagement.variantNetLower` is 0 on all six policies again. The attribution
+ * is a measurement and not an argument: the counterfactual was run, and the
+ * entire 36 was carried by the `decisionSpend` term on `'redemptive'` alone.
+ * The old model is kept runnable as the `'eager-turnaround-control'` wiring
+ * and pinned at 36 — the number the shipped zero is a zero against — and
+ * `management.test.ts` asserts that the control varies that ONE axis, by
+ * pinning its failure, review and condition counters equal to the shipped
+ * row's.
+ *
+ * Its own limit, stated because the fix is on the model side of the line: this
+ * says the shipped `'redemptive'` model does not lose money to engagement. It
+ * does NOT say no player model could. A model that spends on a cycle the
+ * ordinal accelerates would measure the same way, and the named catcher for
+ * that is this family plus `hiringNet`, both of which read `netPosition`
+ * rather than any particular model's intentions.
+ *
+ * ---------------------------------------------------------------------------
+ * 3c. The money residual, decomposed into reported terms
+ * ---------------------------------------------------------------------------
+ *
+ * The round before last priced the within-horizon money residual against ONE
+ * hypothesis — the dormancy crawl arriving early — and reported 297 readings
+ * that hypothesis did not cover as "unexplained". §5.13 ruled that unexplained
+ * is not a landing state. It is not one: `decomposes every within-horizon
+ * net-lower reading into its reported terms` splits each deficit into the six
+ * reported quantities it is algebraically made of and pins the identity's
+ * closing error at ZERO, so nothing is absorbed.
+ *
+ * The residual is 421 readings on 13 pairs now, down from 923 on 87, and the
+ * interesting part is not the size but that it collapsed onto ONE player
+ * model. Every one of the 421 is `'delegating'`, and the carriers are:
+ *
+ *   - 196 the manager's AUTONOMOUS REPAIRS. A veteran repairs below 0.75, the
+ *     run that banked more operation wore past that line more often, so it
+ *     was billed for more repairs;
+ *   - 195 the WAGE. `MANAGER_WAGE_GYM_BUCKS_PER_BANKED_HOUR` is charged per
+ *     BANKED hour, so a run that banked more paid its manager strictly more;
+ *   - 30 the standing REPAIR BILL itself;
+ *   - ZERO the income, decision-spend and manager-asset terms.
+ *
+ * All three carriers are operation-keyed spends, which is exactly what
+ * `docs/GDD.md` §5.13's first bullet keeps operation-keyed: the gym ran, so it
+ * wore, so it cost. The four models that used to contribute — `negligent` 281,
+ * `cheapskate` 289, `redemptive` 56, all downstream of a review arriving a
+ * check-in early, and `delegating`'s own 297 wage readings — are now either
+ * zero or the wage term above.
+ *
+ * Every one of those numbers is a magnitude comparison rather than a
+ * co-occurrence: the carrier is the largest of six signed terms that sum to
+ * the deficit exactly, and `maxDeficitGymBucks` is 105.32.
  *
  * ===========================================================================
  * 4. Dormancy: income collapses, and what "keeps degrading" is read to mean
@@ -199,14 +402,31 @@
  *     measured it: a slump is a discrete money cliff (slump x items x
  *     `REPAIR_COST_GYM_BUCKS_PER_CONDITION_POINT`) whose ARRIVAL TIME is
  *     engagement-sensitive, because a run that banked more operation reaches
- *     the failing decision a check-in earlier. Re-measured on the widened
- *     within-horizon domain rather than carried over: at 0.25 the engagement
- *     family reads 130 net-lower readings against a shipped 0, and the
- *     within-horizon family 983 against a shipped 890 with its
- *     matched-trace count going 337 -> 368. The `295` this paragraph used to
- *     quote is still exactly right for 'negligent' alone, which is what the
- *     family covered when it was taken; the fuller mutation table is in
- *     `management.test.ts`'s `EXPECTED_SWEEP.failureSlumpControl`.
+ *     the failing decision a check-in earlier. Measured on THIS tree by the
+ *     live control rather than carried over from a mutation taken under the
+ *     old ledger: at 0.25 the `engagementSlumpControl` family reads 238
+ *     net-lower readings against the shipped engagement family's 0. Both
+ *     tallies are pinned in full in `management.test.ts`'s
+ *     `EXPECTED_SWEEP.families`, per policy as well as in total.
+ *
+ *     ITS WITHIN-HORIZON HALF NOW MEASURES NOTHING, and that is declared
+ *     rather than left as a control quietly agreeing with the ship.
+ *     `withinHorizonSlumpControl` reads 421 net-lower readings, which is the
+ *     shipped family's number exactly. Under the ordinal review both runs of
+ *     a within-horizon pair cross the failure line at the same INDEX, so the
+ *     slump fires at the same index on both and cancels out of a per-index
+ *     comparison. It used to read 1016 against a shipped 923, and it did so
+ *     because the crossing itself moved with wear — the mechanism header §3a
+ *     removed. The engagement half is where that control still bites, and
+ *     `management.test.ts` asserts the EQUALITY on the within-horizon half
+ *     rather than a bound, so a change that makes the slump matter there
+ *     again reddens and gets read.
+ *
+ *     The earlier mutation figures — 130 against 0 on engagement, 983 against
+ *     890 within horizon, matched-trace 337 -> 368 — were taken with the
+ *     per-refusal ledger and `FAILURE_STRIKES: 4`. They are HISTORY and cannot
+ *     be re-derived from this tree; the live control above is what a reader
+ *     should read the shipped rows against.
  *
  *     Why the repair is removal and not a smaller number, stated in the
  *     mechanism's own terms rather than as a claim about every edit: the
@@ -220,24 +440,24 @@
  *     matters" shape, which is why the shipped value is not "just under the
  *     measured boundary".
  *
- *     THAT SWEEP OF SMALLER SLUMPS HAS NOT BEEN RE-TAKEN ON THE WIDENED
- *     DOMAIN, and its verb is past tense for that reason. It ran when the
- *     within-horizon family covered three policies of six, and the shipped
- *     within-horizon family is not zero on all six, so "the same families
- *     read zero" is a statement about the engagement family and about three
- *     player models — not about the whole battery as it now stands. The
- *     conclusion it supports (removal rather than a smaller number) does not
- *     rest on it, because the FIXED-cost-versus-PROPORTIONAL-income argument
- *     above is arithmetic and not a sample. Recorded as an untaken
- *     measurement rather than deleted.
+ *     THAT SWEEP OF SMALLER SLUMPS HAS NOT BEEN RE-TAKEN, and its verb is past
+ *     tense for that reason. It ran when the within-horizon family covered
+ *     three policies of six and the ledger counted every refusal, so "the same
+ *     families read zero" is a statement about a battery that no longer
+ *     exists. The conclusion it supports (removal rather than a smaller
+ *     number) does not rest on it, because the FIXED-cost-versus-PROPORTIONAL-
+ *     income argument above is arithmetic and not a sample. Recorded as an
+ *     untaken measurement rather than deleted.
  *
  * So dormancy costs the income crawl and the recovery bar
  * (`RECOVERY_CONDITION_MIN`, well above the maintenance-prompt line, so a
  * comeback buys repairs the player would not otherwise owe yet) and nothing
  * else. The removed mechanism is kept runnable as the
  * `'failure-slump-control'` wiring, whose counts `management.test.ts` pins
- * NON-ZERO — the number the shipped engagement zero is a zero against, and
- * the number the shipped within-horizon figures are smaller than. If a human wants
+ * NON-ZERO on both domains — the number the shipped engagement zero is a zero
+ * against, and the number the shipped within-horizon figure is smaller than.
+ * The §5.13 ruling's other removed mechanism, the per-refusal strike ledger,
+ * is kept runnable the same way as `'repeat-strike-control'`. If a human wants
  * dormant rot back, it needs a key that is neither wall-clock, nor
  * check-in-keyed, nor a discrete cliff at a decision boundary, and no such
  * key exists in this machinery — flagged for re-ruling rather than silently
@@ -312,8 +532,36 @@ export interface ManagedGym {
   readonly manager: ManagerState | null;
   /** The active failure ledger. Cleared by recovery, counted by `failurePhase`. */
   readonly strikes: readonly CountedDecisionRecord[];
+  /**
+   * The items whose STANDING REPAIR ORDER has already been answered with a
+   * refusal — header §3's ledger. An item enters this list when a decline or
+   * an ignore is counted against it, and leaves it when the item is repaired
+   * (by the player, the prompt, the manager, or a recovery investment) or when
+   * recovery clears the ledger. A refusal of an item already in this list is
+   * the same standing decision restated, not a new one, so it counts nothing.
+   */
+  readonly neglected: readonly ManagedEquipmentItem[];
   /** Prompt dismissals taken so far, against the free allowance. */
   readonly promptDismissals: number;
+  /**
+   * Check-ins this gym has taken, ever — the ORDINAL the standing repair
+   * order's cadence is read off (`orderOpensAt`). Header §3a.
+   *
+   * What the code guarantees, in the mechanism's own terms: `checkInsTaken`
+   * is incremented in exactly one expression, in `checkInWithWearBasis`, and
+   * every other function in this module carries it forward through an object
+   * spread. So a decision cannot advance the review cadence, and `recoverGym`
+   * — which resets `promptDismissals` — does not reset this.
+   *
+   * Its limit, stated because no type reaches past it: `ManagedGym` is a
+   * plain interface and a caller can build one with any value it likes, which
+   * is what `management.test.ts`'s fixtures do on purpose.
+   * `requireManagedGym` refuses a non-integer or a negative one and nothing
+   * more. The named catcher for the guarantee above is
+   * `only a check-in advances the review ordinal`, which drives every
+   * non-check-in export on this module and reads the field back.
+   */
+  readonly checkInsTaken: number;
   /** Recoveries completed — reported, so a comeback is visible in the state. */
   readonly recoveries: number;
 }
@@ -470,35 +718,153 @@ export function wornItems(state: ManagedGym): readonly ManagedEquipmentItem[] {
   );
 }
 
+/**
+ * True when `item`'s standing repair order has already been refused.
+ *
+ * An index loop and not `state.neglected.includes(item)`, deliberately, and
+ * for the reason `runManagedGym`'s own loop gives: a member call on a
+ * caller-supplied array is an enumerated site `empireForbiddenOutput.test.ts`
+ * has to drive or declare undriven, and this directory's precedent is that a
+ * smaller enumerated surface is worth more than another driver. The same
+ * applies to the two writers below.
+ */
+export function isNeglected(state: ManagedGym, item: ManagedEquipmentItem): boolean {
+  for (let at = 0; at < state.neglected.length; at += 1) {
+    if (state.neglected[at] === item) return true;
+  }
+  return false;
+}
+
+/**
+ * Worn items whose standing repair order has NOT yet been refused.
+ *
+ * Its consumer moved with the ordinal review: the SHIPPED gate picks its pool
+ * from the owned items, not the worn ones, so this function is now read only
+ * by the `'condition'` control gate and by a screen that wants the display
+ * list. It is kept exported for the second of those, and because it is what
+ * `management.test.ts` reads to assert a fixture really has every order
+ * refused — but a reader should not take it for the shipped review's pool.
+ */
+export function unansweredItems(state: ManagedGym): readonly ManagedEquipmentItem[] {
+  return Object.freeze(wornItems(state).filter((item) => !isNeglected(state, item)));
+}
+
 /** The in-session maintenance prompt, or quiet. Reported before it is decided. */
 export type MaintenancePrompt =
   | { readonly kind: 'quiet' }
   | {
       readonly kind: 'offered';
-      /** The worst-conditioned worn item; ties keep the earlier item in order. */
+      /** The worst-conditioned owned item; ties keep the earlier item in order. */
       readonly item: ManagedEquipmentItem;
       readonly repairCostGymBucks: number;
       /** Whether dismissing this prompt would be a counted decision. */
       readonly dismissalWouldCount: boolean;
+      /**
+       * Whether this item's standing repair order has already been refused —
+       * the prompt is still SHOWN (§5.7: low condition may show a prompt), and
+       * refusing it again adds nothing to the ledger.
+       */
+      readonly alreadyRefused: boolean;
     };
 
 /**
- * What this check-in's maintenance prompt says, with the cost shown — the
+ * The check-in index at or after `state.checkInsTaken` at which a standing
+ * repair order is open — the review cadence, read off the ORDINAL and off
+ * nothing else.
+ *
+ * Orders open at `MAINTENANCE_ORDER_FIRST_CHECK_IN` and then every
+ * `MAINTENANCE_ORDER_STRIDE` check-ins. So `checkInsTaken < orderOpensAt(state)`
+ * is the quiet predicate: it is false exactly at a check-in the cadence lands
+ * on, and true at every other.
+ *
+ * A pure function of `state.checkInsTaken` and two tuning knobs. It reads no
+ * condition, no purse, no clock and no strike, which is header §3a's whole
+ * point — and a reader can check that by looking at this body rather than by
+ * trusting the sentence.
+ */
+export function orderOpensAt(state: ManagedGym): number {
+  const first = EMPIRE_TUNING.MAINTENANCE_ORDER_FIRST_CHECK_IN;
+  const stride = EMPIRE_TUNING.MAINTENANCE_ORDER_STRIDE;
+  const taken = state.checkInsTaken;
+  if (taken <= first) return first;
+  return first + Math.ceil((taken - first) / stride) * stride;
+}
+
+/**
+ * What this check-in's maintenance review says, with the cost shown — the
  * §5.7 requirement that a failure-feeding decision had its cost on screen.
+ *
+ * WHETHER a review is raised is the ordinal above and nothing else. WHICH item
+ * it names is condition: the worst-conditioned owned item whose standing
+ * repair order is still unanswered, and when every order has been refused, the
+ * worst owned item anyway, with `alreadyRefused` and `dismissalWouldCount`
+ * both false. The review keeps SHOWING either way, which is what §5.7's
+ * clarification allows condition to do.
+ *
+ * That split is the §5.13 wear-basis ruling applied to this function. The
+ * previous implementation returned `'quiet'` when nothing was worn, which put
+ * a condition crossing on the path to every counted decision; header §3a has
+ * the measurement.
  */
 export function maintenancePrompt(state: ManagedGym): MaintenancePrompt {
-  const worn = wornItems(state);
-  if (worn.length === 0) return Object.freeze({ kind: 'quiet' });
-  let worst = worn[0] as ManagedEquipmentItem;
-  for (const item of worn) {
+  return maintenancePromptUnder(state, SHIPPED_REVIEW_GATE);
+}
+
+/**
+ * The gates a maintenance review can be raised under. Only the first ships.
+ *
+ * `'condition'` is the mechanism this round REPLACED — a review raised when
+ * an item fell below `MAINTENANCE_PROMPT_CONDITION`, which put a wear
+ * crossing on the path to every counted decision. It is kept runnable as the
+ * `'condition-gated-prompt-control'` wiring, and `management.test.ts` pins its
+ * within-horizon failure counters non-zero beside the shipped zeros — the
+ * numbers the zeros are zeros against, in `src/game/streak.test.ts`'s shape.
+ */
+type ReviewGate = 'ordinal' | 'condition';
+
+/** The gate the game ships. `runManagedGym`'s control is the only other reader. */
+const SHIPPED_REVIEW_GATE: ReviewGate = 'ordinal';
+
+function maintenancePromptUnder(state: ManagedGym, gate: ReviewGate): MaintenancePrompt {
+  if (gate === 'condition') {
+    const worn = wornItems(state);
+    if (worn.length === 0) return Object.freeze({ kind: 'quiet' });
+    return promptOver(state, worn, unansweredItems(state));
+  }
+  if (state.checkInsTaken < orderOpensAt(state)) return Object.freeze({ kind: 'quiet' });
+  const owned = ownedItemsOf(state.gym);
+  if (owned.length === 0) return Object.freeze({ kind: 'quiet' });
+  return promptOver(
+    state,
+    owned,
+    owned.filter((item) => !isNeglected(state, item)),
+  );
+}
+
+/**
+ * Name the worst-conditioned item of `unanswered`, or of `all` when every
+ * standing order has already been refused. The one place condition decides
+ * WHICH item a review names, shared by both gates so they cannot drift.
+ */
+function promptOver(
+  state: ManagedGym,
+  all: readonly ManagedEquipmentItem[],
+  unanswered: readonly ManagedEquipmentItem[],
+): MaintenancePrompt {
+  const pool = unanswered.length > 0 ? unanswered : all;
+  let worst = pool[0] as ManagedEquipmentItem;
+  for (const item of pool) {
     if (itemCondition(state, item) < itemCondition(state, worst)) worst = item;
   }
+  const alreadyRefused = isNeglected(state, worst);
   return Object.freeze({
     kind: 'offered',
     item: worst,
     repairCostGymBucks: repairCostGymBucks(state, worst),
     dismissalWouldCount:
+      !alreadyRefused &&
       state.promptDismissals >= EMPIRE_TUNING.MAINTENANCE_PROMPT_FREE_DISMISSALS,
+    alreadyRefused,
   });
 }
 
@@ -520,9 +886,29 @@ export function warningSigns(state: ManagedGym): WarningSigns {
   });
 }
 
-/** Whether the warning signs the cheap-hire strike is keyed on are showing. */
+/**
+ * Whether any warning surface is showing at all — worn equipment or a
+ * non-sound phase. This is a DISPLAY read and a player model's trigger; it is
+ * NOT what the cheap-hire strike is keyed on. `countedWarningVisible` below is.
+ */
 export function warningSignsVisible(state: ManagedGym): boolean {
   return failurePhase(state) !== 'sound' || wornItems(state).length > 0;
+}
+
+/**
+ * The warning the cheap-hire strike is keyed on: the failure ledger's own
+ * phase, and nothing about condition.
+ *
+ * The §5.13 wear-basis ruling and §5.7's clarification say low condition may
+ * SHOW a repair prompt and may not advance a strike. Worn equipment is a
+ * condition read, so keying the counted hire on `warningSignsVisible` put a
+ * condition term on the strike path: a run that banked more operation crossed
+ * the prompt line at an earlier check-in and had its cheap hire counted there.
+ * The phase is a pure function of the strike ledger (`failurePhase`), so this
+ * predicate reads decisions only.
+ */
+export function countedWarningVisible(state: ManagedGym): boolean {
+  return failurePhase(state) !== 'sound';
 }
 
 /** What recovery needs right now, with the remaining repair cost quoted. */
@@ -572,7 +958,9 @@ export function createManagedGym(): ManagedGym {
     condition: fullConditionFor(gym),
     manager: null,
     strikes: Object.freeze([]),
+    neglected: Object.freeze([]),
     promptDismissals: 0,
+    checkInsTaken: 0,
     recoveries: 0,
   });
 }
@@ -597,9 +985,24 @@ export function requireManagedGym(state: ManagedGym): ManagedGym {
     }
   }
   if (state.manager !== null) requireManagerTier(state.manager.tier);
+  const seenNeglected = new Set<string>();
+  for (const item of state.neglected) {
+    if (state.condition[item] === undefined) {
+      refuseWith(`${String(item)} carries a refused repair order and is not owned`);
+    }
+    if (seenNeglected.has(item)) {
+      refuseWith(`${String(item)} carries two refused repair orders`);
+    }
+    seenNeglected.add(item);
+  }
   if (!Number.isInteger(state.promptDismissals) || state.promptDismissals < 0) {
     refuseWith(
       `prompt dismissals must be a whole number at or above zero, received ${state.promptDismissals}`,
+    );
+  }
+  if (!Number.isInteger(state.checkInsTaken) || state.checkInsTaken < 0) {
+    refuseWith(
+      `check-ins taken must be a whole number at or above zero, received ${state.checkInsTaken}`,
     );
   }
   if (!Number.isInteger(state.recoveries) || state.recoveries < 0) {
@@ -673,6 +1076,40 @@ function countDecision(
 }
 
 /**
+ * The strike ledgers the composed run can be driven under. Only the first
+ * ships. `'per-refusal'` is the pre-ruling behaviour kept runnable as the
+ * `'repeat-strike-control'` wiring — every refusal of an already-refused
+ * standing order counted again, so a prompt that fired more often because the
+ * player visited more often piled more strikes. Header §3 has the numbers.
+ */
+type StrikeLedger = 'per-order' | 'per-refusal';
+
+/** The shipped ledger. `runManagedGym`'s control is the only other reader. */
+const SHIPPED_STRIKE_LEDGER: StrikeLedger = 'per-order';
+
+/** Record `item`'s standing repair order as refused. Idempotent by construction. */
+function withOrderRefused(state: ManagedGym, item: ManagedEquipmentItem): ManagedGym {
+  if (isNeglected(state, item)) return state;
+  return Object.freeze({ ...state, neglected: Object.freeze([...state.neglected, item]) });
+}
+
+/**
+ * Close `item`'s standing repair order — the item was actually repaired, so a
+ * later refusal of the NEXT order on it is a new decision rather than the same
+ * one restated. The one place a refused order ever leaves the ledger outside
+ * `recoverGym`'s clear.
+ */
+function withOrderClosed(state: ManagedGym, item: ManagedEquipmentItem): ManagedGym {
+  if (!isNeglected(state, item)) return state;
+  const kept: ManagedEquipmentItem[] = [];
+  for (let at = 0; at < state.neglected.length; at += 1) {
+    const held = state.neglected[at] as ManagedEquipmentItem;
+    if (held !== item) kept.push(held);
+  }
+  return Object.freeze({ ...state, neglected: Object.freeze(kept) });
+}
+
+/**
  * The removed entry slump, kept as the control's instrument only: every item
  * loses `slumpCondition`, clamped at zero. Reachable through
  * `runManagedGym`'s `'failure-slump-control'` wiring and through nothing a
@@ -713,6 +1150,8 @@ export interface ManagedCheckIn {
   /** Wage due that the purse did not cover. Reported, not silently forgiven. */
   readonly wageShortfallGymBucks: number;
   readonly autoRepairs: readonly AutoRepairReport[];
+  /** What the autonomous repairs above cost in total. Reported, never silent. */
+  readonly autoRepairSpendGymBucks: number;
 }
 
 /** A purse write on the composed state, through the ladder it composes. */
@@ -764,7 +1203,13 @@ function checkInWithWearBasis(
   const dormant = failurePhase(state) === 'failed';
   const checkedIn = gymCheckIn(state.gym, atSeconds);
   const accrual = checkedIn.accrual;
-  let next: ManagedGym = Object.freeze({ ...state, gym: checkedIn.state });
+  // The ordinal advances here and nowhere else — one writer, so header §3a's
+  // "keyed to the check-in index" is a code path rather than a convention.
+  let next: ManagedGym = Object.freeze({
+    ...state,
+    gym: checkedIn.state,
+    checkInsTaken: state.checkInsTaken + 1,
+  });
 
   // Wear first — §2 of the header says why the multiplier reads after it.
   // Dormancy applies no wear at all; §4 of the header is the derivation.
@@ -811,6 +1256,9 @@ function checkInWithWearBasis(
         ...next,
         condition: Object.freeze({ ...next.condition, [item]: 1 }),
       });
+      // A manager's repair closes the standing order exactly as the player's
+      // own does — the order is answered by the repair, not by who paid.
+      next = withOrderClosed(next, item);
       autoRepairs.push(Object.freeze({ item, costGymBucks: cost }));
     }
   }
@@ -825,6 +1273,9 @@ function checkInWithWearBasis(
     wagePaidGymBucks: wagePaid,
     wageShortfallGymBucks: wageShortfall,
     autoRepairs: Object.freeze(autoRepairs),
+    autoRepairSpendGymBucks: scrubPrecision(
+      autoRepairs.reduce((sum, report) => sum + report.costGymBucks, 0),
+    ),
   });
 }
 
@@ -866,12 +1317,15 @@ export function repairEquipment(state: ManagedGym, item: ManagedEquipmentItem): 
     return Object.freeze({ kind: 'refused', state, item, cost, reason: 'not-enough-gym-bucks' });
   }
   const paid = withPurse(state, state.gym.ladder.gymBucks - cost);
+  const restored: ManagedGym = Object.freeze({
+    ...paid,
+    condition: Object.freeze({ ...paid.condition, [item]: 1 }),
+  });
   return Object.freeze({
     kind: 'repaired',
-    state: Object.freeze({
-      ...paid,
-      condition: Object.freeze({ ...paid.condition, [item]: 1 }),
-    }),
+    // The repair closes the standing order, so the NEXT refusal of this item is
+    // a new decision rather than the same one restated — header §3.
+    state: withOrderClosed(restored, item),
     item,
     cost,
   });
@@ -884,6 +1338,8 @@ export type DeclineRepairResult =
       readonly state: ManagedGym;
       readonly item: ManagedEquipmentItem;
       readonly shownCost: number;
+      /** Whether this decline appended a strike — false when it restates one. */
+      readonly counted: boolean;
     }
   | {
       readonly kind: 'refused';
@@ -903,19 +1359,48 @@ export function declineRepair(
   item: ManagedEquipmentItem,
   atSeconds: number,
 ): DeclineRepairResult {
+  return declineRepairUnder(state, item, atSeconds, SHIPPED_STRIKE_LEDGER, SHIPPED_REVIEW_GATE);
+}
+
+function declineRepairUnder(
+  state: ManagedGym,
+  item: ManagedEquipmentItem,
+  atSeconds: number,
+  ledger: StrikeLedger,
+  gate: ReviewGate,
+): DeclineRepairResult {
   requireManagedGym(state);
   if (state.condition[item] === undefined) {
     return Object.freeze({ kind: 'refused', state, item, reason: 'not-owned' });
   }
-  if (itemCondition(state, item) >= EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION) {
+  // The same ORDINAL gate `maintenancePrompt` reads, and for the same reason:
+  // a decline is meaningful when a standing repair order is open, and whether
+  // one is open is a function of the check-in index. This used to compare the
+  // item's condition against `MAINTENANCE_PROMPT_CONDITION`, which is the
+  // condition-to-strike chain §5.7's clarification forbids — header §3a. The
+  // old comparison is the control gate, run by nothing a screen would call.
+  const closed =
+    gate === 'condition'
+      ? itemCondition(state, item) >= EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION
+      : state.checkInsTaken < orderOpensAt(state);
+  if (closed) {
     return Object.freeze({ kind: 'refused', state, item, reason: 'not-offered' });
   }
   const shownCost = repairCostGymBucks(state, item);
+  // Header §3: a decline of an order that has already been refused is the same
+  // standing decision restated. The prompt is still shown and the decline is
+  // still allowed; it appends nothing.
+  const counted = ledger === 'per-refusal' || !isNeglected(state, item);
+  if (!counted) {
+    return Object.freeze({ kind: 'declined', state, item, shownCost, counted: false });
+  }
+  const struck = countDecision(state, 'repair-declined', atSeconds, shownCost);
   return Object.freeze({
     kind: 'declined',
-    state: countDecision(state, 'repair-declined', atSeconds, shownCost),
+    state: withOrderRefused(struck, item),
     item,
     shownCost,
+    counted: true,
   });
 }
 
@@ -935,7 +1420,15 @@ export type PromptResult =
       readonly state: ManagedGym;
       readonly item: ManagedEquipmentItem;
       readonly cost: number;
-      readonly reason: 'not-enough-gym-bucks';
+      /**
+       * `'already-sound'` is reachable because the review is raised on the
+       * ORDINAL rather than on wear: a state whose named item is at full
+       * condition has nothing to buy. Every composed run reaches the first
+       * review after at least one check-in has banked operation, so the arm
+       * belongs to hand-built states — `management.test.ts` drives it there
+       * and the arm census counts it.
+       */
+      readonly reason: 'not-enough-gym-bucks' | 'already-sound';
     }
   | {
       readonly kind: 'dismissed';
@@ -956,8 +1449,24 @@ export function respondToPrompt(
   response: PromptResponse,
   atSeconds: number,
 ): PromptResult {
+  return respondToPromptUnder(
+    state,
+    response,
+    atSeconds,
+    SHIPPED_STRIKE_LEDGER,
+    SHIPPED_REVIEW_GATE,
+  );
+}
+
+function respondToPromptUnder(
+  state: ManagedGym,
+  response: PromptResponse,
+  atSeconds: number,
+  ledger: StrikeLedger,
+  gate: ReviewGate,
+): PromptResult {
   requireManagedGym(state);
-  const prompt = maintenancePrompt(state);
+  const prompt = maintenancePromptUnder(state, gate);
   if (prompt.kind === 'quiet') return Object.freeze({ kind: 'no-prompt', state });
   if (response === 'repair') {
     const outcome = repairEquipment(state, prompt.item);
@@ -974,10 +1483,13 @@ export function respondToPrompt(
       state,
       item: prompt.item,
       cost: prompt.repairCostGymBucks,
-      reason: 'not-enough-gym-bucks',
+      reason: outcome.reason === 'already-sound' ? 'already-sound' : 'not-enough-gym-bucks',
     });
   }
-  const counted = prompt.dismissalWouldCount;
+  const counted =
+    ledger === 'per-refusal'
+      ? state.promptDismissals >= EMPIRE_TUNING.MAINTENANCE_PROMPT_FREE_DISMISSALS
+      : prompt.dismissalWouldCount;
   const dismissed: ManagedGym = Object.freeze({
     ...state,
     promptDismissals: state.promptDismissals + 1,
@@ -985,7 +1497,10 @@ export function respondToPrompt(
   return Object.freeze({
     kind: 'dismissed',
     state: counted
-      ? countDecision(dismissed, 'prompt-dismissed-again', atSeconds, prompt.repairCostGymBucks)
+      ? withOrderRefused(
+          countDecision(dismissed, 'prompt-dismissed-again', atSeconds, prompt.repairCostGymBucks),
+          prompt.item,
+        )
       : dismissed,
     item: prompt.item,
     shownCost: prompt.repairCostGymBucks,
@@ -1026,7 +1541,7 @@ export function hireManager(state: ManagedGym, tier: ManagerTier, atSeconds: num
     return Object.freeze({ kind: 'refused', state, tier, cost, reason: 'not-enough-gym-bucks' });
   }
   const cheapestTier = EMPIRE_TUNING.MANAGER_TIERS[0];
-  const countedAsStrike = tier === cheapestTier && warningSignsVisible(state);
+  const countedAsStrike = tier === cheapestTier && countedWarningVisible(state);
   let next = withPurse(state, state.gym.ladder.gymBucks - cost);
   next = Object.freeze({
     ...next,
@@ -1093,6 +1608,7 @@ export function recoverGym(state: ManagedGym): RecoveryResult {
     state: Object.freeze({
       ...state,
       strikes: Object.freeze([]),
+      neglected: Object.freeze([]),
       promptDismissals: 0,
       recoveries: state.recoveries + 1,
     }),
@@ -1123,7 +1639,7 @@ export type ManagementPolicy = (typeof MANAGEMENT_POLICIES)[number];
 
 /**
  * The wirings the run can be driven under. `'shipped'` is the engine; the
- * three controls are what the sweep's zeros are zeros against, reachable
+ * seven controls are what the sweep's zeros are zeros against, reachable
  * through `runManagedGym`'s wiring argument and through nothing a screen
  * would call:
  *
@@ -1137,6 +1653,50 @@ export type ManagementPolicy = (typeof MANAGEMENT_POLICIES)[number];
  *   - `'failure-slump-control'` applies the removed dormancy entry slump at
  *     the check-in whose decisions cross the failure line — the discrete
  *     money cliff header §4 measured and took out.
+ *   - `'repeat-strike-control'` counts EVERY refusal instead of every standing
+ *     repair order — the pre-ruling chain, where a prompt that fired more
+ *     often because the player visited more often piled more strikes. This is
+ *     the mechanism header §3a took out, kept runnable, and its counters are
+ *     what the shipped rows are read against.
+ *     It varies ONE axis and says so. The control still marks orders as
+ *     refused, so `maintenancePrompt` picks the same item on both wirings and
+ *     the only thing that differs is whether a refusal appends a strike. That
+ *     is deliberate: a control that also changed which item was prompted would
+ *     leave a difference attributable to either. Its limit, stated because the
+ *     type does not carry it: it is a re-implementation of the removed rule
+ *     rather than the removed code path, so it is evidence about the SHAPE.
+ *     The direct evidence that the shipped path carries the per-order rule is
+ *     the `decline:declined:restated` arm and
+ *     `management.test.ts`'s `the failure crossing moves no condition`, both
+ *     of which call the shipped `declineRepair` and read `counted`.
+ *
+ *     ITS WITHIN-HORIZON HALF NOW MEASURES NOTHING. Under the ordinal review
+ *     both runs of a within-horizon pair take the same decisions at the same
+ *     indices, so they carry the same strikes under either ledger. The
+ *     engagement half still bites (1811 against the shipped 909), and the
+ *     dead half is pinned as an EQUALITY rather than dropped, so a change
+ *     that revives it is read.
+ *   - `'condition-gated-prompt-control'` raises the maintenance review off
+ *     equipment CONDITION instead of the check-in ordinal — the mechanism
+ *     header §3a replaced, and the one the §5.13 ruling's within-horizon
+ *     zeros are zeros against. Unlike the two above it is the removed CODE
+ *     PATH rather than a re-implementation of it: `maintenancePromptUnder`
+ *     and `declineRepairUnder` both take the gate, `promptOver` is shared, so
+ *     the control differs from the ship in exactly the two comparisons that
+ *     changed. The evidence it reproduces the removed mechanism rather than
+ *     approximating it is that it returns the previous round's shipped
+ *     within-horizon row exactly — 310 / 186 / 124, and 923 net-lower money
+ *     readings — which `management.test.ts` asserts as four equalities.
+ *   - `'eager-turnaround-control'` restores the `'redemptive'` model's blanket
+ *     manager dismissal: shedding whoever presided over the failure even when
+ *     `recoveryRequirement` does not ask for it. That is a MODEL control
+ *     rather than an engine one — no shipped function changes under it — and
+ *     it is here because the ordinal review cadence turned the model's
+ *     unrequired spend into an engagement charge. Header §3d has the
+ *     measurement, and `management.test.ts` pins its `variantNetLower`
+ *     non-zero beside the shipped zero, along with three counters it must
+ *     leave EQUAL to the shipped row so the one axis it varies is the one it
+ *     claims.
  */
 export const MANAGEMENT_WIRINGS = Object.freeze([
   'shipped',
@@ -1144,6 +1704,9 @@ export const MANAGEMENT_WIRINGS = Object.freeze([
   'absence-strike-control',
   'visit-fee-control',
   'failure-slump-control',
+  'repeat-strike-control',
+  'eager-turnaround-control',
+  'condition-gated-prompt-control',
 ] as const);
 
 export type ManagementWiringKey = (typeof MANAGEMENT_WIRINGS)[number];
@@ -1163,6 +1726,23 @@ export interface ManagementWiring {
   readonly controlSlumpCondition: number;
 }
 
+/**
+ * True for the wiring that keys wear to elapsed seconds instead of banked
+ * ones — the decay-while-away model §5.13 forbids.
+ */
+export function wearsOnWallClock(key: ManagementWiringKey): boolean {
+  return key === 'wall-clock-wear-control';
+}
+
+/**
+ * True for the wiring that fabricates a counted record per whole day the
+ * offline cap discarded — elapsed time feeding failure, §5.7 broken by
+ * construction.
+ */
+export function fabricatesAbsenceStrikes(key: ManagementWiringKey): boolean {
+  return key === 'absence-strike-control';
+}
+
 /** True for the wiring that charges the purse per check-in. */
 export function chargesVisitFee(key: ManagementWiringKey): boolean {
   return key === 'visit-fee-control';
@@ -1171,6 +1751,38 @@ export function chargesVisitFee(key: ManagementWiringKey): boolean {
 /** True for the wiring that applies the removed dormancy entry slump. */
 export function slumpsOnFailure(key: ManagementWiringKey): boolean {
   return key === 'failure-slump-control';
+}
+
+/** True for the wiring that counts every refusal rather than every order. */
+export function repeatsStrikes(key: ManagementWiringKey): boolean {
+  return key === 'repeat-strike-control';
+}
+
+/**
+ * True for the wiring under which the `'redemptive'` model sheds ANY manager
+ * on the way back from dormancy, rather than only the one
+ * `recoveryRequirement` blocks on. Header §3d.
+ */
+export function shedsAnyManager(key: ManagementWiringKey): boolean {
+  return key === 'eager-turnaround-control';
+}
+
+/**
+ * True for the wiring that raises a maintenance review off equipment CONDITION
+ * instead of the check-in ordinal — the mechanism header §3a replaced.
+ */
+export function gatesReviewOnCondition(key: ManagementWiringKey): boolean {
+  return key === 'condition-gated-prompt-control';
+}
+
+/** The strike ledger a wiring drives the run under. */
+function ledgerOf(key: ManagementWiringKey): StrikeLedger {
+  return repeatsStrikes(key) ? 'per-refusal' : SHIPPED_STRIKE_LEDGER;
+}
+
+/** The review gate a wiring drives the run under. */
+function gateOf(key: ManagementWiringKey): ReviewGate {
+  return gatesReviewOnCondition(key) ? 'condition' : SHIPPED_REVIEW_GATE;
 }
 
 /** Build a wiring, refusing a dial on a wiring that has nothing to turn. */
@@ -1244,6 +1856,28 @@ export interface ManagedReading {
   readonly incomePaid: number;
   readonly incomeDeducted: number;
   readonly wagePaid: number;
+  /** Gym Bucks the manager's autonomous repairs billed at this check-in. */
+  readonly autoRepairSpend: number;
+  /** Gym Bucks the policy's own decisions spent at this check-in. */
+  readonly decisionSpend: number;
+  /** Gym Bucks a control charged at this check-in. Zero on the shipped wiring. */
+  readonly controlSpend: number;
+  /**
+   * Whether a standing repair order was OPEN at this check-in — the review
+   * `maintenancePrompt` would have raised, read at the moment the check-in's
+   * accrual settled and before this check-in's decisions.
+   *
+   * Reported rather than derived by a sweep from the cadence arithmetic,
+   * because a sweep that recomputed the cadence would be grading the engine
+   * against a copy of itself. `management.test.ts`'s `reviewsOfferedMismatches`
+   * counter compares this field and nothing else.
+   *
+   * The one moment it is read at is stated because it matters: the
+   * `'cheapskate'` model may hire between here and the point its policy block
+   * reads the prompt, and a hire moves neither condition nor `checkInsTaken`,
+   * so the two reads agree. Nothing else runs in between.
+   */
+  readonly reviewOffered: boolean;
   /**
    * The settled purse itself — `netPosition`'s first term, reported so the
    * decomposition can be read out of a reading rather than re-derived.
@@ -1281,11 +1915,20 @@ export interface ManagedReading {
 export interface ManagedRunCensus {
   readonly checkIns: number;
   readonly promptsOffered: number;
+  /**
+   * Prompts offered on an item whose standing order had already been refused
+   * — the shown-but-uncountable case header §3 introduces. Non-zero is what
+   * says the per-order ledger is actually suppressing repeat refusals rather
+   * than the domain never producing one.
+   */
+  readonly promptsAlreadyRefused: number;
   readonly promptRepairs: number;
   readonly promptDismissals: number;
   readonly countedDismissals: number;
   readonly repairs: number;
   readonly declines: number;
+  /** Declines that appended no strike because the order was already refused. */
+  readonly uncountedDeclines: number;
   readonly autoRepairs: number;
   readonly hires: number;
   readonly managerDismissals: number;
@@ -1296,6 +1939,12 @@ export interface ManagedRunCensus {
   readonly controlCharges: number;
   readonly controlStrikes: number;
   readonly controlSlumps: number;
+  /**
+   * Refusals the repeat-strike control counted that the shipped per-order
+   * ledger suppresses — the control's own effect size, so a control that
+   * stopped biting reports itself instead of passing quietly.
+   */
+  readonly controlRepeatStrikes: number;
   /** The first reading index at which the gym was failed, or null. */
   readonly failedAtCheckIn: number | null;
 }
@@ -1344,6 +1993,8 @@ export function runManagedGym(
   let countedDismissals = 0;
   let repairs = 0;
   let declines = 0;
+  let uncountedDeclines = 0;
+  let promptsAlreadyRefused = 0;
   let autoRepairCount = 0;
   let hires = 0;
   let managerDismissals = 0;
@@ -1353,6 +2004,9 @@ export function runManagedGym(
   let controlCharges = 0;
   let controlStrikes = 0;
   let controlSlumps = 0;
+  let controlRepeatStrikes = 0;
+  const ledger = ledgerOf(wiring.key);
+  const gate = gateOf(wiring.key);
   let failedAtCheckIn: number | null = null;
   let previous = -1;
 
@@ -1369,21 +2023,28 @@ export function runManagedGym(
     previous = at;
 
     const basis: WearBasis =
-      wiring.key === 'wall-clock-wear-control' ? 'wall-clock-elapsed' : 'banked-operation';
+      wearsOnWallClock(wiring.key) ? 'wall-clock-elapsed' : 'banked-operation';
     const outcome = checkInWithWearBasis(state, at, basis);
     state = outcome.state;
     autoRepairCount += outcome.autoRepairs.length;
     if (outcome.wageShortfallGymBucks > 0) wageShortfalls += 1;
 
+    let controlSpend = 0;
     if (chargesVisitFee(wiring.key)) {
       const charge = Math.min(state.gym.ladder.gymBucks, wiring.controlChargeGymBucks);
       if (charge > 0) {
         state = withPurse(state, state.gym.ladder.gymBucks - charge);
         controlCharges += 1;
+        controlSpend = scrubPrecision(charge);
       }
     }
+    // The purse mark the decision spend is measured from — everything the
+    // check-in itself did has landed by here, so the difference across the
+    // policy block below is exactly what the policy's decisions cost.
+    const purseBeforeDecisions = state.gym.ladder.gymBucks;
+    const reviewOffered = maintenancePromptUnder(state, gate).kind === 'offered';
 
-    if (wiring.key === 'absence-strike-control') {
+    if (fabricatesAbsenceStrikes(wiring.key)) {
       // The control fabricates counted records off elapsed time — one per
       // whole day the offline cap discarded, so pure absence beyond the
       // horizon feeds failure directly. A decision the player did not take,
@@ -1412,9 +2073,20 @@ export function runManagedGym(
             decisions.push(Object.freeze({ kind: 'repair', checkIn, counted: false }));
           }
         }
-        // The staffing turnaround sheds whoever presided over the failure —
-        // required for a counted-cheap hire, chosen here for any manager.
-        if (state.manager !== null) {
+        // The staffing turnaround sheds exactly the manager the ENGINE blocks
+        // recovery on — `recoveryRequirement`'s `manager-hired-under-warning`
+        // arm, which is §5.7's turnaround requirement and nothing more.
+        //
+        // It used to shed ANY manager, and header §3d has the measurement that
+        // changed it: an unrequired dismissal destroys the hire's whole asset
+        // value with no refund, the comeback pays for a fresh one, and under
+        // the ordinal review cadence a run that checked in more went round
+        // that cycle more often per unit of calendar. The old model is kept
+        // runnable as `'eager-turnaround-control'` rather than deleted.
+        const shedManager =
+          state.manager !== null &&
+          (shedsAnyManager(wiring.key) || state.manager.hiredUnderWarning);
+        if (shedManager) {
           const dismissed = dismissManager(state);
           if (dismissed.kind === 'dismissed') {
             state = dismissed.state;
@@ -1490,11 +2162,12 @@ export function runManagedGym(
           }
         }
 
-        const prompt = maintenancePrompt(state);
+        const prompt = maintenancePromptUnder(state, gate);
         if (prompt.kind === 'offered') {
           promptsOffered += 1;
+          if (prompt.alreadyRefused) promptsAlreadyRefused += 1;
           if (policy === 'diligent' || policy === 'delegating') {
-            const answered = respondToPrompt(state, 'repair', at);
+            const answered = respondToPromptUnder(state, 'repair', at, ledger, gate);
             if (answered.kind === 'repaired') {
               state = answered.state;
               promptRepairs += 1;
@@ -1504,20 +2177,33 @@ export function runManagedGym(
             // The active decline — §5.7's third shape, produced rather than
             // merely possible: the cheapskate is shown the worst item's cost
             // and turns it down, every prompted check-in.
-            const turnedDown = declineRepair(state, prompt.item, at);
+            const suppressed = ledger === 'per-refusal' && isNeglected(state, prompt.item);
+            const turnedDown = declineRepairUnder(state, prompt.item, at, ledger, gate);
             if (turnedDown.kind === 'declined') {
               state = turnedDown.state;
               declines += 1;
+              if (!turnedDown.counted) uncountedDeclines += 1;
+              if (suppressed) controlRepeatStrikes += 1;
               decisions.push(
-                Object.freeze({ kind: 'decline-repair', checkIn, counted: true }),
+                Object.freeze({
+                  kind: 'decline-repair',
+                  checkIn,
+                  counted: turnedDown.counted,
+                }),
               );
             }
           } else {
-            const answered = respondToPrompt(state, 'dismiss', at);
+            const beforeDismiss = state;
+            const answered = respondToPromptUnder(state, 'dismiss', at, ledger, gate);
             if (answered.kind === 'dismissed') {
+              const suppressed =
+                ledger === 'per-refusal' &&
+                answered.counted &&
+                isNeglected(beforeDismiss, answered.item);
               state = answered.state;
               promptDismissalCount += 1;
               if (answered.counted) countedDismissals += 1;
+              if (suppressed) controlRepeatStrikes += 1;
               decisions.push(
                 Object.freeze({ kind: 'prompt-dismiss', checkIn, counted: answered.counted }),
               );
@@ -1563,6 +2249,10 @@ export function runManagedGym(
         incomePaid: outcome.incomePaidGymBucks,
         incomeDeducted: outcome.incomeDeductedGymBucks,
         wagePaid: outcome.wagePaidGymBucks,
+        autoRepairSpend: outcome.autoRepairSpendGymBucks,
+        decisionSpend: scrubPrecision(purseBeforeDecisions - state.gym.ladder.gymBucks),
+        controlSpend,
+        reviewOffered,
         settledGymBucks: state.gym.ladder.gymBucks,
         fullRepairCost: fullRepairCostGymBucks(state),
         netPosition: scrubPrecision(
@@ -1586,11 +2276,13 @@ export function runManagedGym(
     census: Object.freeze({
       checkIns: checkInsSeconds.length,
       promptsOffered,
+      promptsAlreadyRefused,
       promptRepairs,
       promptDismissals: promptDismissalCount,
       countedDismissals,
       repairs,
       declines,
+      uncountedDeclines,
       autoRepairs: autoRepairCount,
       hires,
       managerDismissals,
@@ -1600,6 +2292,7 @@ export function runManagedGym(
       controlCharges,
       controlStrikes,
       controlSlumps,
+      controlRepeatStrikes,
       failedAtCheckIn,
     }),
   });

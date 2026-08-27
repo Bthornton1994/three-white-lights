@@ -1575,7 +1575,16 @@ const SURFACE_CENSUS = Object.freeze({
   // (FloorStationUseClass) does not count, same rule.
   // 318 -> 357: §5.11 stage 4's thirty-nine runtime exports. Read from this
   // pin's own failure value.
-  EXPORTS: 357,
+  // 357 -> 361: the §5.13 wear-basis ruling's chain break in management.ts —
+  // `isNeglected`, `unansweredItems`, `countedWarningVisible`, `repeatsStrikes`.
+  // 361 -> 366: the §5.7 chain-break round's five — `orderOpensAt` (the review
+  // cadence itself) and the four wiring predicates `wearsOnWallClock`,
+  // `fabricatesAbsenceStrikes`, `gatesReviewOnCondition`, `shedsAnyManager`.
+  // The first two of those four are not new behaviour: they replace inline
+  // `wiring.key === ...` comparisons in `runManagedGym`, so every control is
+  // now identified by a named predicate and `management.test.ts` can assert
+  // the seven controls partition. Read from this pin's own failure value.
+  EXPORTS: 366,
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -1659,7 +1668,11 @@ const SURFACE_CENSUS = Object.freeze({
 // returns plus the tier / policy / wiring / decision-kind / phase unions, and
 // every one of them is a closed literal union at every exported position the
 // walk reaches. Read from this pin's own failure value.
-LITERAL_POSITIONS: 3313,
+// 3678 -> 3691: the §5.7 chain-break round's new closed-union positions in
+// management.ts — the two new wiring keys inside ManagementWiringKey and every
+// signature that takes one, plus the ReviewGate union. Read from this pin's
+// own failure value.
+LITERAL_POSITIONS: 3691,
   // 143 -> 147: FloorPlaceResult's own closed union contributes four new
   // distinct members ('not-owned', 'out-of-bounds', 'overlaps', 'placed') not
   // already present among the directory's other closed literal unions.
@@ -1681,7 +1694,10 @@ LITERAL_POSITIONS: 3313,
   // counted as an equipment word). Measured off this assertion.
   // 176 -> ?: stage 4's tokens that are not already members of some other
   // closed union here. Read from this pin's own failure value.
-  DISTINCT_LITERAL_MEMBERS: 221,
+  // 222 -> 224: the two new wiring keys. The two `ReviewGate` members
+  // contribute nothing — `'condition'` and `'ordinal'` sit on a module-private
+  // type and reach no exported position.
+  DISTINCT_LITERAL_MEMBERS: 224,
   DEPTH_CUTS: 0,
 });
 
@@ -2787,7 +2803,9 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // `fullRepairCostGymBucks(state)` in `runManagedGym`'s reading, which
   // reports `netPosition`'s second term so the decomposition can be pinned.
   // Read from this pin's own failure value.
-  CALLS_EXAMINED: 2740,
+  // 2778 -> 2797: the chain-break round's new call expressions in
+  // management.ts. Read from this pin's own failure value.
+  CALLS_EXAMINED: 2797,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -3682,6 +3700,14 @@ const UNIT_THRESHOLDS: Readonly<Record<AxisUnit, Readonly<Record<string, number>
     ...tuningTable('MAINTENANCE_PROMPT_FREE_DISMISSALS'),
     ...tuningTable('FAILURE_WARNING_STRIKES'),
     ...tuningTable('FAILURE_STRIKES'),
+    // The §5.7 chain-break round's two ordinal review knobs. `orderOpensAt`
+    // compares `ManagedGym.checkInsTaken` against the first and takes a
+    // modulo by the second, which is a count-axis branch point exactly — the
+    // same shape as the three above and NOT a rate in a unit training moves
+    // (see `empireTuning.test.ts`'s `names no cadence` for why the
+    // distinction matters and where it is argued).
+    ...tuningTable('MAINTENANCE_ORDER_FIRST_CHECK_IN'),
+    ...tuningTable('MAINTENANCE_ORDER_STRIDE'),
   }),
   reputation: Object.freeze({
     ...tuningTable('REPUTATION_MAX'),
@@ -5155,10 +5181,12 @@ const DOMAIN_CENSUS = Object.freeze({
   /** Labels in `UNIT_THRESHOLDS`, including the two derived seconds entries. */
   // 90 -> 102: stage 4's twelve filed leaves — six condition lines, three
   // hire prices, three counted ladders. Measured off this assertion.
-  THRESHOLDS: 102,
+  // 102 -> 104: the two ordinal review knobs, filed under `count`.
+  THRESHOLDS: 104,
   /** Numeric leaves of EMPIRE_TUNING filed under a unit. */
   // 88 -> 100: the same twelve. Measured off this assertion.
-  FILED: 100,
+  // 100 -> 102: the two ordinal review knobs, filed under `count`.
+  FILED: 102,
   // 66 -> 121: members.ts's nine tables (§5.11 stage 3), 55 numeric leaves,
   // all exempt (RATE/MULTIPLIER, none compared against a live value).
   /** Numeric leaves on `NOT_A_BRANCH_POINT`. */
@@ -5225,7 +5253,8 @@ const DOMAIN_CENSUS = Object.freeze({
   // 409 -> 411: P4b, same net +2 as EXEMPT above. Measured.
   // 411 -> 430: stage 4's nineteen numeric leaves (12 filed + 7 exempt).
   // Read from this pin's own failure value.
-  TUNING_NUMERIC_LEAVES: 430,
+  // 430 -> 432: the two ordinal review knobs, one numeric leaf each.
+  TUNING_NUMERIC_LEAVES: 432,
   // floor.ts/FloorGrid.tsx add no new string leaves (99 -> 99, unchanged); the
   // whole delta above is members.ts's five.
   // 156 -> 198: FILED (88, unchanged) + EXEMPT (66 -> 108) + the 2 derived
@@ -5248,7 +5277,8 @@ const DOMAIN_CENSUS = Object.freeze({
   // assertion below.
   // 411 -> 413: P4b, measured off this assertion.
   // 413 -> 432: the same nineteen. Measured off this assertion.
-  BRANCH_POINTS: 432,
+  // 432 -> 434: the two ordinal review knobs.
+  BRANCH_POINTS: 434,
   DOMAINS: 6,
   // 732 -> 980: GDD §5.13 presentation Phase 1's 42 new exempt tuning leaves,
   // each a new `required` obligation in whichever domains do not already
@@ -5272,7 +5302,9 @@ const DOMAIN_CENSUS = Object.freeze({
 // 2144 -> ?: stage 4's nineteen new branch points, each a new `required`
 // obligation in whichever domains do not already carry it. Read from this
 // pin's own failure value.
-CONTAINMENT_CHECKS: 2252,
+// 2252 -> 2264: the two new count-axis thresholds, straddled in every domain
+// that carries the count unit. Read from this pin's own failure value.
+CONTAINMENT_CHECKS: 2264,
   /** Per domain, branch points above its ceiling and outside its units. */
   OMITTED_ABOVE_CEILING: Object.freeze({
     NUMBER: 0,
@@ -7022,12 +7054,21 @@ function driveEverything(): readonly DrivenRow[] {
   // which branches ran". So: a fresh gym (every refusal that needs a sound
   // item), a worn-and-rich gym (every repair and hire that lands), a
   // worn-and-broke gym (the two not-enough-gym-bucks refusals), and a dormant
-  // gym built by four real declined repairs (every recovery arm, including
-  // the one blocked on a manager hired under warning).
+  // gym built by refusing every owned item's standing repair order (every
+  // recovery arm, including the one blocked on a manager hired under warning).
+  //
+  // ONE REFUSAL PER ITEM AND NOT `FAILURE_STRIKES` ON ONE ITEM, since the
+  // §5.13 wear-basis ruling: `management.ts` charges a strike once per
+  // STANDING REPAIR ORDER, so refusing the same item again restates the same
+  // decision and appends nothing. The old loop still ran and still produced
+  // `declineRepair#declined`, so `tsc` was clean and instrument B was clean —
+  // what caught it was the ARM census, which lost `recoverGym#recovered`,
+  // `recoveryRequirement#ready` and `recoveryRequirement#blocked` because the
+  // fixture never reached dormancy. A fixture that satisfies a signature and
+  // not a guard is exactly what that census exists to report.
   {
     const freshGym = managementModule.createManagedGym();
     const managedItems = managementModule.ownedItemsOf(freshGym.gym);
-    const firstItem = managedItems[0] as managementModule.ManagedEquipmentItem;
     const gymAtCondition = (
       condition: number,
       gymBucks: number,
@@ -7041,15 +7082,34 @@ function driveEverything(): readonly DrivenRow[] {
           Object.freeze({ ...freshGym.gym.ladder, gymBucks }),
         ),
         condition: Object.freeze(worn) as managementModule.ManagedGym['condition'],
+        // A STANDING REPAIR ORDER IS OPEN ON THIS FIXTURE, since the §5.7
+        // chain-break round: the review is raised on the check-in ordinal
+        // rather than on wear, so a hand-built gym that has never checked in
+        // has no order raised and every refusal arm becomes unreachable.
+        // The arm census is what said so — it lost eight arms
+        // (`declineRepair#declined`, `maintenancePrompt#offered`,
+        // `recoverGym#recovered`, both populated `recoveryRequirement` arms
+        // and three `respondToPrompt` arms) while `tsc` stayed clean and
+        // instrument B stayed clean. That is the same fixture-satisfies-a-
+        // signature-not-a-guard shape the paragraph above records, one round
+        // later and one axis over, which is why it is written here rather
+        // than only fixed.
+        checkInsTaken: EMPIRE_TUNING.MAINTENANCE_ORDER_FIRST_CHECK_IN,
       });
     };
     const wornRich = gymAtCondition(0.3, 100000);
     const wornBroke = gymAtCondition(0.3, 0);
-    let dormantRich: managementModule.ManagedGym = wornRich;
-    for (let strike = 0; strike < EMPIRE_TUNING.FAILURE_STRIKES; strike += 1) {
-      const declined = managementModule.declineRepair(dormantRich, firstItem, strike);
-      if (declined.kind === 'declined') dormantRich = declined.state;
-    }
+    const refuseEveryOrder = (
+      from: managementModule.ManagedGym,
+    ): managementModule.ManagedGym => {
+      let refused = from;
+      for (const [at, item] of managedItems.entries()) {
+        const declined = managementModule.declineRepair(refused, item, at);
+        if (declined.kind === 'declined') refused = declined.state;
+      }
+      return refused;
+    };
+    const dormantRich: managementModule.ManagedGym = refuseEveryOrder(wornRich);
     let dormantRepaired: managementModule.ManagedGym = dormantRich;
     for (const item of managedItems) {
       const repaired = managementModule.repairEquipment(dormantRepaired, item);
@@ -7058,17 +7118,17 @@ function driveEverything(): readonly DrivenRow[] {
     // The manager-blocked recovery arm: a cheap hire taken while the warning
     // signs were up, then struck into dormancy, then repaired.
     let dormantStaffed: managementModule.ManagedGym = dormantRepaired;
+    // The hire is taken on a gym that has ALREADY refused its orders, because
+    // `countedWarningVisible` reads the failure phase and not worn equipment
+    // since the §5.13 ruling — a worn-but-unstruck gym hires the cheapest tier
+    // for free and the arm this fixture is for would never be produced.
     const cheapHire = managementModule.hireManager(
-      gymAtCondition(0.3, 100000),
+      refuseEveryOrder(gymAtCondition(0.3, 100000)),
       EMPIRE_TUNING.MANAGER_TIERS[0],
-      0,
+      managedItems.length,
     );
     if (cheapHire.kind === 'hired') {
       let struck = cheapHire.state;
-      for (let strike = 0; strike < EMPIRE_TUNING.FAILURE_STRIKES; strike += 1) {
-        const declined = managementModule.declineRepair(struck, firstItem, strike);
-        if (declined.kind === 'declined') struck = declined.state;
-      }
       for (const item of managedItems) {
         const repaired = managementModule.repairEquipment(struck, item);
         if (repaired.kind === 'repaired') struck = repaired.state;
@@ -7103,6 +7163,19 @@ function driveEverything(): readonly DrivenRow[] {
     for (const key of managementModule.MANAGEMENT_WIRINGS) {
       drive('chargesVisitFee', key, () => managementModule.chargesVisitFee(key));
       drive('slumpsOnFailure', key, () => managementModule.slumpsOnFailure(key));
+      drive('repeatsStrikes', key, () => managementModule.repeatsStrikes(key));
+      // The §5.7 chain-break round's four wiring predicates, driven the same
+      // way as the three above rather than by a hand-written list — the loop
+      // is over `MANAGEMENT_WIRINGS`, so a wiring added later is driven
+      // against all seven without anyone remembering to.
+      drive('wearsOnWallClock', key, () => managementModule.wearsOnWallClock(key));
+      drive('fabricatesAbsenceStrikes', key, () =>
+        managementModule.fabricatesAbsenceStrikes(key),
+      );
+      drive('gatesReviewOnCondition', key, () =>
+        managementModule.gatesReviewOnCondition(key),
+      );
+      drive('shedsAnyManager', key, () => managementModule.shedsAnyManager(key));
       drive('managementWiring', key, () =>
         managementModule.managementWiring(
           key,
@@ -7136,7 +7209,14 @@ function driveEverything(): readonly DrivenRow[] {
       drive('warningSignsVisible', label, () =>
         managementModule.warningSignsVisible(state), [state],
       );
+      drive('countedWarningVisible', label, () =>
+        managementModule.countedWarningVisible(state), [state],
+      );
+      drive('unansweredItems', label, () =>
+        managementModule.unansweredItems(state), [state],
+      );
       drive('maintenancePrompt', label, () => managementModule.maintenancePrompt(state), [state]);
+      drive('orderOpensAt', label, () => managementModule.orderOpensAt(state), [state]);
       drive('recoveryRequirement', label, () =>
         managementModule.recoveryRequirement(state), [state],
       );
@@ -7151,6 +7231,9 @@ function driveEverything(): readonly DrivenRow[] {
       for (const item of managedItems) {
         drive('itemCondition', `${label}/${item}`, () =>
           managementModule.itemCondition(state, item), [state],
+        );
+        drive('isNeglected', `${label}/${item}`, () =>
+          managementModule.isNeglected(state, item), [state],
         );
         drive('repairCostGymBucks', `${label}/${item}`, () =>
           managementModule.repairCostGymBucks(state, item), [state],
@@ -9363,7 +9446,14 @@ const DRIVE_CENSUS = Object.freeze({
   // Stage 4: read from this pin's own failure value — the management drive's
   // own rows, plus the widened NUMBER domain the three hire prices add points
   // to, which multiplies out across every loop keyed on it.
-  ROWS: 582120,
+  // The §5.7 chain-break round: re-measured (582160 -> 582170) by running
+  // this assertion and reading its failure value — five new driven exports,
+  // four of them over the eight wiring keys and one over the managed-state
+  // fixtures, and two new tuning leaves widening the COUNT domain.
+  // 582170 -> 582208: the two ordinal knobs joined the COUNT domain (they
+  // were exempt-less and unfiled in the run before this one), which widens
+  // every loop keyed on it. Read from this pin's own failure value.
+  ROWS: 582208,
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -9375,7 +9465,9 @@ const DRIVE_CENSUS = Object.freeze({
   // 316 -> 318: P4b's two new floorSprites exports, driven above. Measured.
   // 318 -> 357: tracks SURFACE_CENSUS.EXPORTS 1:1, as it has every round —
   // every one of stage 4's exports is driven below.
-  EXPORTS_DRIVEN: 357,
+  // 361 -> 366: tracks SURFACE_CENSUS.EXPORTS 1:1 again — the chain-break
+  // round's five exports are all driven above.
+  EXPORTS_DRIVEN: 366,
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -9397,7 +9489,9 @@ const DRIVE_CENSUS = Object.freeze({
   // P4c: the occupied power-bar grid and URI join the walk. Read from this
   // pin's own failure value.
   // Stage 4: read from this pin's own failure value.
-  NODES: 6415572,
+  // 6416062 -> 6416250: the widened COUNT domain and the five new driven
+  // exports. Read from this pin's own failure value.
+  NODES: 6416250,
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -9418,13 +9512,18 @@ const DRIVE_CENSUS = Object.freeze({
   // P4c: the occupied URI and its table keys. Read from this pin's own
   // failure value.
   // Stage 4: read from this pin's own failure value.
+  // 29616770 -> 29619268: the wear-basis ruling put three more reported terms
+  // on `ManagedReading` and four more exports on the drive. Read from this
+  // pin's own failure value.
   // 29615890 -> 29616770: the stage-4 measurement round put two more reported
   // terms on `ManagedReading`. The walk counts a driven object's KEYS, so two
   // keys across the 440 driven readings is +880 exactly. Read from this pin's
   // own failure value; the +880 was then attributed by hand rather than
   // assumed, because two numeric fields adding strings is the sort of move
   // that should be explained rather than accepted.
-  STRINGS: 29616770,
+  // 29_619_268 -> 29_621_792: the widened COUNT domain and the five new
+  // driven exports. Read from this pin's own failure value.
+  STRINGS: 29_621_792,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -9451,7 +9550,9 @@ const DRIVE_CENSUS = Object.freeze({
   // the total moved +880 (two keys x 440 driven readings) and the DISTINCT
   // count moved +1, so one of the two names already appeared somewhere in the
   // driven output. Both read from this pin's own failure value.
-  DISTINCT_STRINGS: 3616,
+  // 3626 -> 3632: the drive's new distinct literals. Read from this pin's own
+  // failure value.
+  DISTINCT_STRINGS: 3632,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -10234,14 +10335,21 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   // dormant-staffed trio reaches every recovery arm including the one blocked
   // on a manager hired under warning. Counts read from this assertion's own
   // failure value.
-  ['declineRepair#declined', 9],
-  ['declineRepair#refused', 15],
+  // The §5.7 chain-break round moved six of these nineteen and lost none. The
+  // order is raised on the check-in ORDINAL now, so the six fixtures — which
+  // all carry an open order — reach the refusal arms more often and the quiet
+  // arm less. `maintenancePrompt#quiet` falling from 3 to 1 is the one to read
+  // twice: only the fresh gym is quiet now, and one is still not zero, so the
+  // arm is produced rather than lost. Every count re-measured by running this
+  // assertion and reading its failure value.
+  ['declineRepair#declined', 15],
+  ['declineRepair#refused', 9],
   ['dismissManager#dismissed', 2],
   ['dismissManager#refused', 5],
   ['hireManager#hired', 9],
   ['hireManager#refused', 10],
-  ['maintenancePrompt#offered', 3],
-  ['maintenancePrompt#quiet', 3],
+  ['maintenancePrompt#offered', 5],
+  ['maintenancePrompt#quiet', 1],
   ['moveUpLadder#moved', 759],
   ['moveUpLadder#refused', 4065],
   ['placeFloorItem#placed', 2],
@@ -10255,9 +10363,9 @@ const KINDED_RETURN_CENSUS: readonly (readonly [string, number])[] = Object.free
   ['recoveryRequirement#ready', 1],
   ['repairEquipment#refused', 18],
   ['repairEquipment#repaired', 6],
-  ['respondToPrompt#dismissed', 3],
-  ['respondToPrompt#no-prompt', 6],
-  ['respondToPrompt#repair-refused', 1],
+  ['respondToPrompt#dismissed', 5],
+  ['respondToPrompt#no-prompt', 2],
+  ['respondToPrompt#repair-refused', 3],
   ['respondToPrompt#repaired', 2],
 ]);
 
@@ -13372,7 +13480,7 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       'ladderView.tsx': 20,
       // §5.11 stage 4's sixty-four `return` sites — eight discriminated
       // results with two to four arms each, plus the read models.
-      'management.ts': 64,
+      'management.ts': 89,
       'npc.ts': 12,
       'production.ts': 11,
       'recruitment.ts': 9,
@@ -13515,7 +13623,9 @@ const WRAP_CALL_COUNTS: Readonly<Record<string, number>> = Object.freeze({
   // §5.11 stage 4. Twenty-three named refusals: the tier and wiring
   // vocabularies, the published-table reads, the state validator's eight
   // arms, the schedule and policy guards, and the two wiring dials.
-  'management.ts': 23,
+  // 25 -> 26: the §5.7 chain-break round adds `requireManagedGym`'s
+  // check-ins-taken refusal.
+  'management.ts': 26,
   'members.ts': 9,
   'production.ts': 9,
   'recruitment.ts': 1,
@@ -13948,7 +14058,7 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // §5.11 stage 4: `withWear`'s condition map is built in a loop and returned
   // through a fresh object the screen cannot follow into, the same shape as
   // every other row here.
-  'management.ts:669 returned=unfollowable:state',
+  'management.ts:1072 returned=unfollowable:state',
   'recruitment.ts:388 returned=unfollowable:state',
   'sessions.ts:562 receiver=ArrayLiteralExpression',
   'sessions.ts:655 returned=unfollowable:state',
@@ -14029,21 +14139,29 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   // census found changed. Recorded here because a pin keyed on a line number
   // reddens on a comment, which is a real cost of this list's shape and is
   // worth a reader knowing before they go looking for a behaviour change.
-  'management.ts:1374 ManagedGym asked=true walked=false',
-  'management.ts:1410 ManagedGym asked=true walked=false',
-  'management.ts:1420 ManagedGym asked=true walked=false',
-  'management.ts:1427 ManagedGym asked=true walked=false',
-  'management.ts:1437 ManagedGym asked=true walked=false',
-  'management.ts:1463 ManagedGym asked=true walked=false',
-  'management.ts:1481 ManagedGym asked=true walked=false',
-  'management.ts:1499 ManagedGym asked=true walked=false',
-  'management.ts:1509 ManagedGym asked=true walked=false',
-  'management.ts:1518 ManagedGym asked=true walked=false',
-  'management.ts:1533 ManagedGym asked=true walked=false',
-  'management.ts:669 readonly CountedDecisionRecord[] asked=true walked=false',
-  'management.ts:766 LadderAccrual asked=true walked=false',
-  'management.ts:767 GymState asked=true walked=false',
-  'management.ts:967 ManagedGym asked=true walked=false',
+  // AND ALL FIFTEEN MOVED AGAIN IN THE §5.7 CHAIN-BREAK ROUND, for the same
+  // reason and to the same effect: another +200 lines of module header and
+  // doc comment, no change to what the census found, fifteen entries
+  // rewritten. Twice in two rounds is the cost this list's shape carries, and
+  // it is left in that shape deliberately — a line number is what makes an
+  // entry expire when its subject moves, which is the property the list is
+  // for. A reader who sees these numbers move should check the diff for prose
+  // before looking for a behaviour change.
+  'management.ts:1072 readonly CountedDecisionRecord[] asked=true walked=false',
+  'management.ts:1205 LadderAccrual asked=true walked=false',
+  'management.ts:1210 GymState asked=true walked=false',
+  'management.ts:1476 ManagedGym asked=true walked=false',
+  'management.ts:2028 ManagedGym asked=true walked=false',
+  'management.ts:2071 ManagedGym asked=true walked=false',
+  'management.ts:2092 ManagedGym asked=true walked=false',
+  'management.ts:2099 ManagedGym asked=true walked=false',
+  'management.ts:2109 ManagedGym asked=true walked=false',
+  'management.ts:2135 ManagedGym asked=true walked=false',
+  'management.ts:2153 ManagedGym asked=true walked=false',
+  'management.ts:2172 ManagedGym asked=true walked=false',
+  'management.ts:2183 ManagedGym asked=true walked=false',
+  'management.ts:2203 ManagedGym asked=true walked=false',
+  'management.ts:2219 ManagedGym asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
   'sessions.ts:655 LadderState asked=true walked=false',
   'sessions.ts:689 LadderState asked=true walked=false',
@@ -14143,7 +14261,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // 54 -> 64: stage 4's calls through module-level bindings — `refuseWith`,
   // `scrubPrecision`, `Object.freeze` on the module's own helpers, and the
   // composed run's calls into this module's own exported functions.
-  'module-variable': 64,
+  'module-variable': 66,
   // 5 -> 7: Phase 3's RENDER half's two calls through a local binding in
   // `AmbientMemberBody`'s single animation effect (`bobLoop.start()`,
   // `pulseLoop.stop()`). Read from this table's own failure value.
@@ -14167,7 +14285,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // diff.
   // 1178 -> 1334: stage 4's call targets join the walk.
   // 1334 -> 1335: the same one call as `CALLS_EXAMINED` above.
-  function: 1335,
+  function: 1372,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -14187,7 +14305,7 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // `stationActivity.get` at the occupied call sites. Read from this pin's
   // own failure value.
   // 1180 -> 1296: the same.
-  member: 1296,
+  member: 1314,
   'member-callback': 12,
   // Unchanged at 21: the schedule's `.entries()` member call was the one
   // stage-4 site here, and it is an index loop now.
@@ -14249,7 +14367,7 @@ const DECLARED_WRITE_OWNERS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // loop's writes into its two fresh tables. Read from this pin's own
   // failure value.
   // 373 -> 389: stage 4's sixteen local bindings the write scan owns.
-  local: 389,
+  local: 391,
   function: 0,
   member: 0,
   'member-callback': 0,
@@ -14313,7 +14431,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // per the byModule rows above. Measured.
   // 625 -> 695: §5.11 stage 4's seventy escape sites — 64 returns and 6
   // exported bindings. Measured off this assertion.
-  SITES: 695,
+  // 708 -> 720: the §5.7 chain-break round's new escape sites in
+  // management.ts. Read from this pin's own failure value.
+  SITES: 720,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -14368,7 +14488,9 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // 58_086 -> 58_108: +22 AST nodes, the stage-4 measurement round's added
   // source in `management.ts` (two interface members and the two reading
   // terms that populate them). Read from this pin's own failure value.
-  NODES_EXAMINED: 58_108,
+  // 58_838 -> 59_240: management.ts's new source. Read from this pin's own
+  // failure value.
+  NODES_EXAMINED: 59_240,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -14381,7 +14503,8 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // `refuseWith` calls.
   /** Calls to the throw wrap, summed over `WRAP_CALL_COUNTS`. */
   // 122 -> 145: management.ts's twenty-three `refuseWith` calls.
-  WRAP_CALLS: 145,
+  // 147 -> 148: `requireManagedGym`'s check-ins-taken refusal.
+  WRAP_CALLS: 148,
   CHANNELS: 11,
   /** Channels with at least one site. The other five are open routes nobody uses. */
   CHANNELS_IN_USE: 6,
@@ -14451,7 +14574,10 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // through their structural types). Read from this pin's own failure value.
   // 753 -> 853: stage 4's exported positions. Read from this pin's own
   // failure value.
-  POSITIONS: 853,
+  // 861 -> 871: the §5.7 chain-break round's five new exported functions and
+  // the widened `PromptResult` reason union. Read from this pin's own failure
+  // value.
+  POSITIONS: 871,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -18459,7 +18585,8 @@ const CYCLIC_DECLARATION_CENSUS = Object.freeze({
   // 206 -> 207: P4b's FloorStationUseClass declaration. Measured.
   // 207 -> 236: stage 4's type declarations join the walk. Read from this
   // pin's own failure value.
-  DECLARATIONS: 236,
+  // 237 -> 238: the §5.7 chain-break round's `ReviewGate` type alias.
+  DECLARATIONS: 238,
   /** Those carrying type parameters. An instantiation depth needs one. */
   // Phase 4: `MemberTable<Leaf>` in floorSprites.ts.
   GENERIC: 13,
@@ -25198,8 +25325,12 @@ const DECLARED_DISPATCH_CHAINS: readonly DeclaredChain[] = Object.freeze([
   // the strike/repair loops that build the dormant states, and two on the
   // cheap-hire and veteran-hire results the recovery and already-staffed arms
   // are driven off.
-  Object.freeze({ at: 'empireForbiddenOutput.test.ts#driveEverything#declined', arms: 1, dispatch: false, terminal: 'loop' }),
-  Object.freeze({ at: 'empireForbiddenOutput.test.ts#driveEverything#declined#2', arms: 1, dispatch: false, terminal: 'loop' }),
+  // 105 -> 104: the §5.13 wear-basis ruling. The drive block's two
+  // `declineRepair` guard ladders — one per dormant fixture — became one,
+  // because both fixtures now call the shared `refuseEveryOrder` helper
+  // instead of each running its own `FAILURE_STRIKES` loop. Read from this
+  // census's own failure value, not hand-counted.
+  Object.freeze({ at: 'empireForbiddenOutput.test.ts#refuseEveryOrder<driveEverything#declined', arms: 1, dispatch: false, terminal: 'loop' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#driveEverything#repaired', arms: 1, dispatch: false, terminal: 'loop' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#driveEverything#repaired#2', arms: 1, dispatch: false, terminal: 'loop' }),
   Object.freeze({ at: 'empireForbiddenOutput.test.ts#driveEverything#cheapHire', arms: 1, dispatch: false, terminal: 'next-statement' }),
@@ -25496,7 +25627,10 @@ const CHAIN_CENSUS = Object.freeze({
   // ladders. Read from this assertion's own failure value.
   // 98 -> 99: GDD §5.13 presentation Phase 3's own drive-block guard, above.
   // 99 -> 105: stage 4's six drive-block guards above.
-  CHAINS: 105,
+  // 105 -> 104: the wear-basis ruling folded the drive block's two dormant
+  // fixtures onto one shared `refuseEveryOrder` helper, so its two
+  // `declineRepair` guard ladders became one.
+  CHAINS: 104,
   // 60 -> 61: PLAYTEST 4's rework, net. The replaced reader row was
   // `dispatch: true` and the two `renderPropShape` ladders both are, so one
   // dispatching row left and two arrived. Read from this assertion's failure.
@@ -25508,7 +25642,8 @@ const CHAIN_CENSUS = Object.freeze({
     // 74 -> 76: the two stage-4 hire guards.
     'next-statement': 76,
     // 14 -> 18: the four stage-4 strike/repair loop guards.
-    loop: 18,
+    // 18 -> 17: one of those four folded away with `refuseEveryOrder`.
+    loop: 17,
     // 2 -> 3: the same new row.
     enclosing: 3,
     /**
