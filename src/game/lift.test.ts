@@ -4250,6 +4250,10 @@ describe('the grind decides the lift', () => {
     expect(warmups.length, 'warm-up cells').toBe(REACHABLE_WARMUP.CELLS);
     expect(working.length, 'working-rung cells').toBe(REACHABLE_WARMUP.WORKING_CELLS);
     expect(meet.length, 'meet cells').toBe(REACHABLE.MEET_CELLS);
+    // THE DOMAIN, AS A LITERAL, so a producer that stopped producing cells
+    // reddens here rather than leaving this scoping claim asserted over
+    // nothing. Same idiom as the rescue table's own domain pin.
+    expect(session.length + meet.length, 'the cells this scoping covers').toBe(40);
 
     const configOf = (cell: ReachableCell): LiftConfig => ({
       kind: BENCH,
