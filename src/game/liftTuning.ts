@@ -2177,8 +2177,9 @@ export const LIFT_TUNING = Object.freeze({
    * roughly 0.26 a bar that ate the capped false-start lockout can no longer be
    * ground back, so raising this pushes cells INTO the ceiling rather than past
    * it, and every cell it pushes in loses the spread the lever was adding. At
-   * 0.100 seven meet cells sit on the ceiling; at 0.145 twenty-six do and the
-   * meet's attempt ladder is flat.
+   * 0.100 eight meet cells sit on the ceiling and at 0.145 fourteen do, which is
+   * every meet cell except the three rested openers and the one already past it.
+   * `MAX_EFFORT_WALLS.CELLS_THE_CEILING_REDUCES` pins the shipped count.
    *
    * -------------------------------------------------------------------------
    * WHAT IT DOES NOT BUY, MEASURED, AND IT IS THE THING THE RULING ASKED FOR

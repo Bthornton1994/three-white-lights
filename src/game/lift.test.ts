@@ -3342,7 +3342,8 @@ const WORKING_FLOOR = {
    * THE SESSION ONE, WHICH IS WHY IT IS SPELLED OUT. Raising `ONSET` pushes
    * cells INTO the ceiling, and a cell on the ceiling shares an effective
    * margin with every other cell on it. At `ONSET` 0.045 three meet cells were
-   * clipped; at 0.100 seven are, and the vector shows it — the wrecked half now
+   * clipped; at 0.100 eight are — pinned in
+   * `MAX_EFFORT_WALLS.CELLS_THE_CEILING_REDUCES` — and the vector shows it — the wrecked half now
    * reads `9, 8, 8` under all three jump strategies, so a wrecked lifter's
    * second and third attempts ask the same cadence. Attempt 2 and attempt 3
    * still differ in what is on the bar; they no longer differ in what the
@@ -3639,6 +3640,16 @@ const MAX_EFFORT_WALLS = {
    * `meet/aggressive/att3/wrecked`, which the lever adds nothing to.
    */
   HIGHEST_REACHABLE_MARGIN: 0.3066,
+  /**
+   * Measured: reachable cells whose addition the ceiling REDUCES without
+   * zeroing — the cells that pay for the `ONSET` step, all of them meet cells.
+   *
+   * THREE AT `ONSET` 0.045 AND EIGHT AT 0.100, WHICH IS THE COST THIS ROUND
+   * TOOK. It is pinned here rather than described because the first draft of the
+   * prose about it said seven and said twenty-six of a candidate that measured
+   * fourteen — a count somebody read off a table by eye, twice, wrongly.
+   */
+  CELLS_THE_CEILING_REDUCES: 8,
 } as const;
 
 const REACHABLE_COUPLING = {
@@ -5182,23 +5193,40 @@ describe('the grind decides the lift', () => {
     ]);
 
     // THE CLIPPED CELLS ARE A NON-EMPTY SET, or the claim above is about a
-    // ceiling that clips nothing. Named rather than counted for the same reason.
-    const clipped = cells
-      .filter((cell) => {
-        const config: LiftConfig = {
+    // ceiling that clips nothing.
+    //
+    // TWO KINDS OF CLIP AND THEY ARE COUNTED SEPARATELY, because conflating them
+    // is how the count in this round's first draft of the prose came out wrong.
+    // A cell the ceiling REDUCES still gets some of the onset; a cell the base
+    // curve already puts past the ceiling gets none of it and is a different
+    // claim — `FLOOR_EDGES.CELLS_ALREADY_PAST_THE_CEILING`. `lever > 0` is what
+    // separates them.
+    const leverAt = (cell: ReachableCell): number =>
+      benchWorkingRungDemand(
+        BENCH,
+        benchWorkingExcess({
           kind: BENCH,
           loadRatio: cell.loadRatio,
           seed: 1,
           feel: cell.feel,
-        };
-        const excess = benchWorkingExcess(config);
-        return (
-          excess > 0 &&
-          benchWorkingRungDemand(BENCH, excess) < LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_ONSET
-        );
-      })
+        }),
+      );
+    const reduced = cells
+      .filter(
+        (cell) =>
+          leverAt(cell) > 0 && leverAt(cell) < LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_ONSET,
+      )
       .map((cell) => cell.label);
-    expect(clipped.length, `cells the ceiling clips: ${clipped.join(', ')}`).toBeGreaterThan(0);
+    // PINNED AS A COUNT AND QUOTED IN `MEET_FLOOR_GAP_TICKS`' HEADER AND IN GDD
+    // §6.2, so the prose about what this round cost the meet cannot drift from
+    // the tree. It was `ONSET` 0.045's three before this round.
+    expect(reduced.length, `cells the ceiling reduces: ${reduced.join(', ')}`).toBe(
+      MAX_EFFORT_WALLS.CELLS_THE_CEILING_REDUCES,
+    );
+    // ...and every one of them is a meet cell, which is the shape of the cost:
+    // no session rung has been flattened onto the ceiling.
+    expect(reduced.filter((label) => !label.startsWith('meet/')), 'session cells on the ceiling')
+      .toEqual([]);
     // NO DECLARED BUDGET — measured at 1988 ms. See the note on the sweep above.
   });
 

@@ -2478,12 +2478,13 @@ addition is zero either way, and
 
 **WHAT IT COSTS, stated rather than discovered later.** Raising `ONSET` pushes
 cells INTO the ceiling, and every cell on the ceiling shares one effective
-margin. Three meet cells were clipped at `ONSET` 0.045; **seven** are at 0.100,
+margin. Three meet cells were clipped at `ONSET` 0.045; **eight** are at 0.100,
 and the wrecked half of the meet now reads `9, 8, 8` ticks between taps under all
 three jump strategies — a wrecked lifter's second and third attempts ask the same
 cadence, though they still differ in what is on the bar. That is the trade this
-round took and it is the reason `ONSET` is not larger: at 0.145 twenty-six cells
-are clipped and the meet's attempt ladder is flat. Every other working cell gets
+round took and it is the reason `ONSET` is not larger: at 0.145 **fourteen**
+cells are clipped — every meet cell but the three rested openers and the one
+already past the ceiling — and the meet's attempt ladder is flat. Every other working cell gets
 the onset whole, so the ceiling is the lever's **only** load-dependent term — and
 unlike the deleted ramp it is load-dependent for a measured reason rather than a
 shape somebody wanted. Two of §6.2's own counts fell again, 36 → 35 and 27 → 26,
