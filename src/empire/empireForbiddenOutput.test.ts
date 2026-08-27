@@ -1451,6 +1451,17 @@ const DECLARED_MEMBER_CALLS_ON_PARAMETERS: readonly string[] = Object.freeze([
   // `ladderView.tsx#GymView` already has below, ported the same way the
   // rest of the render tree was.
   'GymScreen.tsx#GymScreen#props.map x1',
+  // S4b: two more `.map()` reads of caller-supplied state on the SAME key,
+  // both destructured straight off `props.state` the way `weekLog` is —
+  // `managed.strikes.map(...)` (the failure ledger, one row per counted
+  // decision) and `lastManagementReport.autoRepairs.map(...)` (what the
+  // manager repaired at the last check-in). Three rows share this key now,
+  // which is why the assertion that reads it compares sorted LISTS rather
+  // than a set: a `Set` would collapse them, the same hazard
+  // `social.ts#visitRefusals#context.some x1` already carries a pinned count
+  // for.
+  'GymScreen.tsx#GymScreen#props.map x1',
+  'GymScreen.tsx#GymScreen#props.map x1',
   'GymScreen.tsx#GymScreen#week.map x1',
   'empireCore.ts#idleLedger#ledger.filter x1',
   'empireCore.ts#progressionLedger#ledger.filter x1',
@@ -9569,7 +9580,9 @@ const DRIVE_CENSUS = Object.freeze({
   // 29_621_792 -> 29_621_813: the knob-margin round put one more reported term
   // on `ManagedCheckIn` (`autoRepairsReopeningRefusedOrders`), and the walk
   // counts a driven object's KEYS. Read from this pin's own failure value.
-  STRINGS: 29_621_813,
+  // 29_621_813 -> 29_626_118: S4b's larger element tree, the same reason
+  // `NODES` above moved. Read from this pin's own failure value.
+  STRINGS: 29_626_118,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -14543,7 +14556,11 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // exported bindings. Measured off this assertion.
   // 708 -> 720: the §5.7 chain-break round's new escape sites in
   // management.ts. Read from this pin's own failure value.
-  SITES: 720,
+  // 720 -> 726: S4b's six new `return` statements in `ladderView.tsx`, one
+  // per §5.11 stage-4 reducer arm — the same six the per-module table above
+  // records, so this total and that row move together or one of them is
+  // wrong. Read from this pin's own failure value.
+  SITES: 726,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -16224,7 +16241,13 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (3383424 -> 3384958).
   // Phase 4: read from this pin's own failure value.
-      CALLS: 3417779, // 3419313 -> 3417779: P4b, measured off this assertion.
+      // 3419313 -> 3417779: P4b, measured off this assertion.
+      // 3417779 -> 3420593: S4b. Exactly 402 x 7 = 2814 more, which is the
+      // NUMBER domain's 402 points times the seven controls `GYM_SCREEN_CONTROLS`
+      // adds over `GYM_VIEW_CONTROLS`. Checked as that product rather than only
+      // read off the failure value, so a total that moved for some other reason
+      // would not have matched.
+      CALLS: 3420593,
   // GDD §5.13 presentation Phase 3: re-measured (5496920 -> 5618662), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (5618662 -> 5620716).
@@ -22251,6 +22274,61 @@ const MEMBER_CALL_SUBJECTS: readonly MemberCallSubject[] = Object.freeze([
       });
     },
   }),
+  // S4b: the two §5.11 stage-4 `.map()` sites on the same screen, driven with
+  // the same isolation shape — an instrumented array handed in as the caller-
+  // supplied state, and nothing else about the fixture changed.
+  Object.freeze({
+    site: 'GymScreen.tsx#GymScreen#props.map x1',
+    run: (record: MemberCallRecord): void => {
+      const opening = memberCallGymViewState([]);
+      const strikes = recordOn(
+        [
+          Object.freeze({
+            decision: 'repair-declined' as const,
+            atSeconds: 0,
+            shownCostGymBucks: 0,
+          }),
+        ],
+        'map',
+        record,
+      );
+      gymScreenModule.GymScreen({
+        state: Object.freeze({
+          ...opening,
+          managed: Object.freeze({ ...opening.managed, strikes }),
+        }),
+        dispatch: MEMBER_CALL_SILENT_DISPATCH,
+      });
+    },
+  }),
+  Object.freeze({
+    site: 'GymScreen.tsx#GymScreen#props.map x1',
+    run: (record: MemberCallRecord): void => {
+      const opening = memberCallGymViewState([]);
+      const autoRepairs = recordOn(
+        [Object.freeze({ item: 'power-bar' as const, costGymBucks: 0 })],
+        'map',
+        record,
+      );
+      gymScreenModule.GymScreen({
+        state: Object.freeze({
+          ...opening,
+          lastManagementReport: Object.freeze({
+            incomeMultiplier: 1,
+            incomePaidGymBucks: 0,
+            incomeDeductedGymBucks: 0,
+            meanConditionWear: 0,
+            wagePaidGymBucks: 0,
+            wageShortfallGymBucks: 0,
+            autoRepairs,
+            autoRepairSpendGymBucks: 0,
+            autoRepairsReopeningRefusedOrders: 0,
+          }),
+        }),
+        dispatch: MEMBER_CALL_SILENT_DISPATCH,
+      });
+    },
+  }),
   // members.ts (§5.11 stage 3): both sites sum a caller-supplied
   // `MemberRoster` with `.reduce`, so the same array is watched twice, once
   // per function. `reduce`'s own callback receives no argument this pass's
@@ -22369,9 +22447,14 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // call), 49 -> 50 callback calls (one `.some` predicate invocation — the
   // one row overlaps, so `.some` short-circuits true on its first element).
   // All three measured by running the assertions below rather than guessed.
-  SUBJECTS: 21,
+  // S4b: 21 -> 23 subjects. Two more §5.11 stage-4 `.map()` sites on
+  // `GymScreen`, both on the `props.map` key that already had one, each with
+  // one call and one callback invocation (a one-element instrumented array).
+  // Every number in this block re-measured by running the assertions below.
+  SUBJECTS: 23,
   /** One call of the instrumented method per subject, two at the ladder site. */
-  CALLS: 22,
+  // 22 -> 24: S4b's two new subjects, one call each.
+  CALLS: 24,
   /**
    * Callback invocations across every subject: 4 + 33, the second number being
    * E23's ten sites. Per site — and per ARM, which is the half a total cannot
@@ -22382,7 +22465,9 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // 41 -> 45: GymScreen's own two sites, the identical +1 and +3.
   // 45 -> 49: members.ts's own two sites, +2 and +2 (one roster.reduce
   // callback per roster row, two rows, on each of the two sites).
-  CALLBACK_CALLS: 50,
+  // 49 -> 50 above; 50 -> 52: S4b's two new sites, one callback invocation
+  // each (a one-element array per site).
+  CALLBACK_CALLS: 52,
   /**
    * Strings reachable from the non-function arguments.
    *
@@ -22409,7 +22494,10 @@ const MEMBER_CALL_PASS_CENSUS = Object.freeze({
   // element, deep-scanned) and 3 (describeSlotOutcome's three strings).
   // 79 -> 111: GymScreen's own two sites, +29 (measured, one less than
   // GymView's +30 — see the site observation's own comment) and +3.
-  RETURNED: 111,
+  // 111 -> 159: S4b's two stage-4 sites, +24 each — measured, and the two
+  // agreeing at 24 is a coincidence of the two rendered rows rather than a
+  // shared derivation.
+  RETURNED: 159,
   FINDINGS: 0,
   TRIPWIRE_SUBJECTS: 2,
   TRIPWIRE_FINDINGS: 2,
@@ -22498,6 +22586,21 @@ const MEMBER_CALL_SITE_OBSERVATIONS: readonly string[] = Object.freeze([
   // separately-scanned text nodes.
   'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=29 verdicts=objectx1',
   'GymScreen.tsx#GymScreen#week.map x1 calls=1 callbacks=3 handed=0 returned=3 verdicts=stringx3',
+  // S4b's two stage-4 sites, in `MEMBER_CALL_SUBJECTS` order: the strike
+  // ledger's `.map` and the auto-repair report's. `returned=24` on each,
+  // measured — the returned element is one `<Text>` row and the deep scan
+  // finds twenty-four strings inside it.
+  //
+  // THESE TWO ROWS ARE BYTE-IDENTICAL TO EACH OTHER, and that is a stated
+  // weakness rather than an accident: this list is keyed by site, the two
+  // sites share a key, and their observations happen to agree, so the list
+  // cannot tell which of the two moved if one of them does. It is the same
+  // shape `social.ts#visitRefusals#context.some x1` already carries twice
+  // above, and the mitigation is the same one that row got — the COUNT of
+  // this key among the driven subjects is pinned separately, so a driver
+  // silently dropping to one is red rather than merely smaller.
+  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=24 verdicts=objectx1',
+  'GymScreen.tsx#GymScreen#props.map x1 calls=1 callbacks=1 handed=0 returned=24 verdicts=objectx1',
   // members.ts (§5.11 stage 3): `.reduce(callback, 0)` is one call, with the
   // callback invoked once per roster row (two rows in both fixtures). The
   // callback returns a plain number (a running sum), never a string, so
@@ -22594,6 +22697,11 @@ describe('the member-call pass — what a caller-supplied method is actually han
     // key is pinned rather than its presence — the shape this file already
     // demands of a source scan whose pattern has more than one witness.
     expect(driven.filter((site) => site === 'social.ts#visitRefusals#context.some x1').length).toBe(2);
+    // S4b: three sites share `GymScreen.tsx#GymScreen#props.map x1` now — the
+    // week log, the strike ledger and the auto-repair report — and the two
+    // stage-4 ones produce byte-identical observation rows, so this count is
+    // the only thing that reddens if a driver is dropped.
+    expect(driven.filter((site) => site === 'GymScreen.tsx#GymScreen#props.map x1').length).toBe(3);
   });
 });
 
