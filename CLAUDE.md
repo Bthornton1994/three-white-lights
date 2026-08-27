@@ -509,6 +509,45 @@ both ways; flattening the retune must still redden.
 does 8 feel like work, and does 8 < 9 < 10 still read? Session C mints the
 next tunnel when the retune lands with fresh pins and evidence.
 
+### RULED 2026-08-26: WARM-UP PROTECTION IS RUNG-SCOPED, AND THE STEP STAYS
+
+Verbatim: *"Never answering PRESS! on a held descent must still make every RPE
+6 and RPE 7 cell, including rpe7/0.8250. That is §12.3 warm-up protection, not
+a nicety. +0.02 stays on RPE 8 / 9 / 10 and meet. Do not undo the phone
+difficulty pass to save one light cell."*
+
+**The axis, named exactly:** a legal HELD descent followed by zero taps after
+the command — "I lowered it and never pressed". On RPE <= 7 that must still go
+up (make or grind, never miss). On RPE 8+ and meet, unanswered MAY lose — that
+is the grind the phone replay asked to make real.
+
+**Both cheap escapes are refused, and the reasoning binds future cases.**
+Backing `DEMAND_BASE.bench` down to +0.005 restores the easy curve the replay
+rejected; one RPE 7 cell is not worth that. And letting the cell cost the rep
+"because it is the heaviest RPE 7" is *calling a warm-up a working set so a
+global step size can stay dumb* — the same shape as pinning a small §12.3 hole
+and declaring it disclosed, which this file has now refused four times.
+
+**Mechanism is Session A's, outcome is not.** A rung-scoped unanswered floor;
+if it needs a second constant, name it in `liftTuning.ts` rather than
+pretending one step size is "the last safe step" on an axis nobody swept.
+
+**GDD, same commit as the floor:** the "+0.02 is the last safe step" sentence
+must name WHICH axis it was measured on, and the warm-up lines carry both
+conditions — a warm-up cannot be lost by stopping if the descent was
+controlled, and cannot be lost by never answering the command.
+
+**Not reopened by this ruling, still on the critic:** the descent hole is
+inherited (1638 -> 1926, no clean->dirty cell) and must be reproduced
+independently; the crash penalty is not the warm-up lever (0.02 still loses
+270, 0.00 deletes the mechanic); the `sed`-corruption audit and the three
+labelled released-arm totals (1926/4860, 6234/64800, 2154/16200) are checked,
+not taken on the builder's word.
+
+**Merge and mint only after** the critic is green on those, an unanswered
+RPE <= 7 never misses on that axis, and +0.02 still moves RPE 8+/meet the way
+the reachable table requires.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
