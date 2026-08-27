@@ -2057,7 +2057,7 @@ export const LIFT_TUNING = Object.freeze({
 
   /**
    * -------------------------------------------------------------------------
-   * THE WORKING-RUNG LEVER, PART 1 OF 3: WHAT A BENCH BAR PICKS UP THE INSTANT
+   * THE WORKING-RUNG LEVER, PART 1 OF 4: WHAT A BENCH BAR PICKS UP THE INSTANT
    * IT STOPS BEING A WARM-UP, IN CAPACITY UNITS
    * -------------------------------------------------------------------------
    * PLACEHOLDER. Nobody has played it — GDD §12.1, and this file's own rule.
@@ -2077,8 +2077,10 @@ export const LIFT_TUNING = Object.freeze({
    * replay rejected it a second time — "Still way too easy for RPE 8, overall
    * difficulty needs to be higher". The remaining uniform headroom is +0.005:
    * at +0.030 the held warm-up wall costs 60 reps of 16200 and at +0.025 it
-   * costs 0. A uniform rise moves every rung equally, so RPE 8 cannot be made
-   * to ask for a tap RATE without RPE 7 paying for it.
+   * costs 0. Those two readings are the RULING's, quoted from it rather than
+   * re-taken here — the round that produced them is recorded in CLAUDE.md
+   * under "PHONE REPLAY 2". A uniform rise moves every rung equally, so RPE 8
+   * cannot be made to ask for a tap RATE without RPE 7 paying for it.
    *
    * WHAT THIS BUYS, ON THE SLOWEST SUSTAINED TAP RATE THAT STILL MAKES THE REP
    * AT EVERY SEED — `WORKING_FLOOR` in `lift.test.ts`, which drives it. Per
@@ -2107,12 +2109,13 @@ export const LIFT_TUNING = Object.freeze({
   BENCH_WORKING_RUNG_DEMAND_ONSET: 0.036,
 
   /**
-   * THE WORKING-RUNG LEVER, PART 2 OF 3: how much MORE than the onset the far
+   * THE WORKING-RUNG LEVER, PART 2 OF 4: how much MORE than the onset the far
    * end of the ladder pays, in capacity units. PLACEHOLDER.
    *
    * The lever is `ONSET + SPAN * sat(excess)`, so it runs from `ONSET` at the
-   * warm-up line to `ONSET + SPAN` at an unreachable infinity, and the ladder's
-   * top meet attempt reaches about 85% of the span.
+   * warm-up line to `ONSET + SPAN` at an unreachable infinity, and the heaviest
+   * bar the game can call reaches 92% of the span BEFORE the ceiling below
+   * clips it — which for that particular bar it does, all the way to zero.
    *
    * THE SPAN IS WHAT MAKES THIS A SHAPE CHANGE RATHER THAN A SECOND UNIFORM
    * STEP. A flat working-rung addition would raise RPE 8, 9, 10 and the meet by
@@ -2121,10 +2124,13 @@ export const LIFT_TUNING = Object.freeze({
    * for this round said not to build. The span puts a real slope above the
    * line: `d(working)/d(excess)` is `SPAN * HALF / (excess + HALF)^2`, so
    *
+   * in `reachableSessionCells()` order, the same order as the floors table
+   * under `BENCH_WORKING_RUNG_DEMAND_ONSET`:
+   *
    *     below the line               0
-   *     RPE 8, its four cells        0.380  0.282  0.180  0.119
-   *     RPE 9, its four cells        0.087  0.063  0.052  0.045
-   *     RPE 10, its four cells       0.024  0.021  0.019  0.017
+   *     RPE 8, its four cells        0.380  0.119  0.180  0.281
+   *     RPE 9, its four cells        0.081  0.041  0.050  0.061
+   *     RPE 10, its four cells       0.018  0.020  0.023  0.025
    *     the top meet attempt         0.004
    *     above the ceiling            0 again — see the CEILING below
    *
@@ -2134,7 +2140,7 @@ export const LIFT_TUNING = Object.freeze({
   BENCH_WORKING_RUNG_DEMAND_SPAN: 0.018,
 
   /**
-   * THE WORKING-RUNG LEVER, PART 3 OF 3: the working excess at which HALF the
+   * THE WORKING-RUNG LEVER, PART 3 OF 4: the working excess at which HALF the
    * span has been paid, in capacity units. PLACEHOLDER.
    *
    * `sat(x) = x / (x + this)`, the same saturating idiom as `grindForce`'s
@@ -2145,10 +2151,13 @@ export const LIFT_TUNING = Object.freeze({
    * SIZED AGAINST THE LADDER IT HAS TO SPAN, not chosen round. The reachable
    * working excesses run 0.0077 (`session/rpe8/0.8000/slower-than-expected`,
    * the cell nearest the warm-up line) to 0.3466 (`meet/aggressive/att3/
-   * wrecked`, the ceiling). At 0.06 the knee sits between RPE 9 and RPE 10, so
-   * the four RPE 8 cells are on the steep part — which is where the phone
-   * replay's complaint is — and the meet ceiling is on the flat part, where a
-   * further rise would push a 10-taps-a-second floor past what a thumb can do.
+   * wrecked`, the ceiling). At 0.03 the knee sits inside RPE 8's own four
+   * cells, which is where the phone replay's complaint is: the curve has paid
+   * 20% of the span at the lightest of them and 56% at the heaviest, so the
+   * rung the ruling named is the one the ramp is steepest across. Across RPE 10
+   * it has paid 80% to 83%, and at the meet ceiling 92%, so the top is on
+   * the flat part where a further rise would push a 10-taps-a-second floor past
+   * what a thumb can do.
    *
    * WHY THE TOP MATTERS, AND WHAT ACTUALLY PROTECTS IT. A first pass at this
    * lever used a bigger onset and span with no ceiling and took
