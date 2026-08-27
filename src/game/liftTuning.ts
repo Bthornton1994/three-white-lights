@@ -2057,8 +2057,8 @@ export const LIFT_TUNING = Object.freeze({
 
   /**
    * -------------------------------------------------------------------------
-   * THE WORKING-RUNG LEVER, PART 1 OF 4: WHAT A BENCH BAR PICKS UP THE INSTANT
-   * IT STOPS BEING A WARM-UP, IN CAPACITY UNITS
+   * THE WORKING-RUNG LEVER, PART 1 OF 2: WHAT A BENCH BAR COSTS FOR BEING A
+   * WORKING BAR RATHER THAN A WARM-UP, IN CAPACITY UNITS
    * -------------------------------------------------------------------------
    * PLACEHOLDER. Nobody has played it — GDD §12.1, and this file's own rule.
    *
@@ -2082,19 +2082,64 @@ export const LIFT_TUNING = Object.freeze({
    * under "PHONE REPLAY 2". A uniform rise moves every rung equally, so RPE 8
    * cannot be made to ask for a tap RATE without RPE 7 paying for it.
    *
-   * WHAT THIS BUYS, ON THE SLOWEST SUSTAINED TAP RATE THAT STILL MAKES THE REP
-   * AT EVERY SEED — `WORKING_FLOOR` in `lift.test.ts`, which drives it. Per
-   * cell in `reachableSessionCells()` order, taps a second, before -> after:
+   * -------------------------------------------------------------------------
+   * THE SHAPE CHANGE IS THE STEP AT THE LINE, AND IT IS THE ONLY ONE. A RAMP
+   * WAS SHIPPED HERE FOR ONE ROUND AND IS DELETED, WITH THE MEASUREMENT THAT
+   * REFUTED IT
+   * -------------------------------------------------------------------------
+   * What makes this not `DEMAND_BASE` with an `if` in front of it is NOT a
+   * slope. It is that the demand curve is no longer a single continuous
+   * function of load: it has a DISCONTINUITY at a place `loadRatio` cannot even
+   * locate, because the rungs overlap in load (see below). No value of
+   * `DEMAND_BASE` produces that, and no value of it can add 0.045 to a working
+   * bar and 0.000 to a warm-up. Inside the working band this lever IS uniform,
+   * deliberately, and the ladder still compresses there — a fixed demand
+   * addition costs more taps at a heavy load than a light one, because the
+   * margin-to-tap-rate curve is convex.
    *
-   *     RPE 8    0.48 0.86 0.67 0.53  ->  1.02 1.62 1.36 1.03
-   *     RPE 9    1.05 1.62 1.40 1.18  ->  1.82 2.40 2.14 2.00
-   *     RPE 10   2.61 2.40 2.14 2.07  ->  3.53 3.33 3.16 3.00
+   * THE VERSION BEFORE THIS ONE CLAIMED THE COMPRESSION WAS A RAMP'S DOING, IN
+   * THREE FILES, AND A CRITIC MEASURED IT THE OTHER WAY. Two more constants
+   * stood here — `BENCH_WORKING_RUNG_DEMAND_SPAN: 0.018` and
+   * `BENCH_WORKING_RUNG_DEMAND_HALF_MARGIN: 0.03` — making the addition
+   * `ONSET + SPAN * excess / (excess + HALF)`, so it ran 0.0397 at the lightest
+   * working cell to 0.0521 at the heaviest. Holding the MAGNITUDE constant and
+   * removing only the ramp, as the spread of the twelve working cells' tap
+   * floors (slowest / fastest):
+   *
+   *     no lever at all                       5.391
+   *     step 0.036 + the ramp (shipped then)  3.471
+   *     step 0.045 alone (this)               3.294
+   *
+   * The flat step compresses the ladder MORE. The ramp's net contribution to
+   * the shape was -0.177 of spread — it un-compressed. Its own mutation test
+   * was real and confounded: zeroing `SPAN` also removed up to 30% of the
+   * addition, so the floors moved for a reason that was not shape.
+   *
+   * AND IT GAVE THE RUNG THE RULING NAMED THE LEAST HELP, which the deleted
+   * comment defending it got backwards by confusing slope with magnitude. The
+   * span's share of the total addition was 9-22% at RPE 8, 29% at RPE 10, and
+   * 0% at two top meet cells, where the ceiling clipped below the onset.
+   *
+   * Deleted rather than re-justified: two placeholder knobs a human has to hand
+   * tune across roughly thirty passes, worth at most 3 ticks on one cell, in
+   * service of a property they measurably did not have.
+   *
+   * -------------------------------------------------------------------------
+   * WHAT THIS BUYS, ON THE SLOWEST SUSTAINED TAP RATE THAT STILL MAKES THE REP
+   * AT EVERY SEED — `WORKING_FLOOR` in `lift.test.ts`, which drives it
+   * -------------------------------------------------------------------------
+   * Per cell in `reachableSessionCells()` order, taps a second, before the
+   * 2026-08-27 lever against after:
+   *
+   *     RPE 8    0.48 0.86 0.67 0.53  ->  1.07 1.58 1.36 1.07
+   *     RPE 9    1.05 1.62 1.40 1.18  ->  1.82 2.31 2.07 1.94
+   *     RPE 10   2.61 2.40 2.14 2.07  ->  3.53 3.33 3.00 2.86
    *     RPE 6, 7   no cadence makes any difference, before or after: the rep
    *                goes up on zero taps at every one of the ten cells.
    *
-   * The ordering survives with room: RPE 8's hardest cell asks 1.62 a second
-   * against RPE 9's easiest at 1.82, and RPE 9's hardest 2.40 against RPE 10's
-   * easiest 3.00.
+   * The ordering survives with room: RPE 8's hardest cell asks 1.58 a second
+   * against RPE 9's easiest at 1.82, and RPE 9's hardest 2.31 against RPE 10's
+   * easiest 2.86.
    *
    * A LOAD THRESHOLD WAS THE OBVIOUS MECHANISM AND IT IS IMPOSSIBLE HERE, WHICH
    * IS WHY THE GATE IS A MARGIN. The rungs OVERLAP in `loadRatio`: RPE 7 reaches
@@ -2105,122 +2150,14 @@ export const LIFT_TUNING = Object.freeze({
    * prescribed load raises capacity further. That gap is the gate, it is the
    * same gap `BENCH_WARMUP_FLOOR_MARGIN` sits in the middle of, and
    * `lift.test.ts` pins both its edges.
+   *
+   * SIZED TO HOLD THE FLOORS THE RAMPED VERSION WAS GRADED ON rather than
+   * chosen round: 0.045 is the magnitude the ramped lever averaged across the
+   * working band, so the RPE 8 row above moves by at most one tick per cell
+   * against the version a critic measured.
    */
-  BENCH_WORKING_RUNG_DEMAND_ONSET: 0.036,
+  BENCH_WORKING_RUNG_DEMAND_ONSET: 0.045,
 
-  /**
-   * THE WORKING-RUNG LEVER, PART 2 OF 4: how much MORE than the onset the far
-   * end of the ladder pays, in capacity units. PLACEHOLDER.
-   *
-   * The lever is `ONSET + SPAN * sat(excess)`, so it runs from `ONSET` at the
-   * warm-up line to `ONSET + SPAN` at an unreachable infinity, and the heaviest
-   * bar the game can call reaches 92% of the span BEFORE the ceiling below
-   * clips it — which for that particular bar it does, all the way to zero.
-   *
-   * THE SPAN IS WHAT MAKES THIS A SHAPE CHANGE RATHER THAN A SECOND UNIFORM
-   * STEP. A flat working-rung addition would raise RPE 8, 9, 10 and the meet by
-   * the SAME amount and leave their spacing exactly as the phone replay found
-   * it — a `DEMAND_BASE` rise with a gate in front, which is what the brief
-   * for this round said not to build. The span puts a real slope above the
-   * line: `d(working)/d(excess)` is `SPAN * HALF / (excess + HALF)^2`, so
-   *
-   * in `reachableSessionCells()` order, the same order as the floors table
-   * under `BENCH_WORKING_RUNG_DEMAND_ONSET`:
-   *
-   *     below the line               0
-   *     RPE 8, its four cells        0.380  0.119  0.180  0.281
-   *     RPE 9, its four cells        0.081  0.041  0.050  0.061
-   *     RPE 10, its four cells       0.018  0.020  0.023  0.025
-   *     the top meet attempt         0.004
-   *     above the ceiling            0 again — see the CEILING below
-   *
-   * and the demand it actually adds runs 0.0397 at the lightest working cell to
-   * 0.0521 at the heaviest unclipped one, a 31% spread across the ladder.
-   */
-  BENCH_WORKING_RUNG_DEMAND_SPAN: 0.018,
-
-  /**
-   * THE WORKING-RUNG LEVER, PART 3 OF 4: the working excess at which HALF the
-   * span has been paid, in capacity units. PLACEHOLDER.
-   *
-   * `sat(x) = x / (x + this)`, the same saturating idiom as `grindForce`'s
-   * `GRIND_CHARGE.HALF_SATURATION` and for the same reason: a line with a cap
-   * on it has a corner, and the corner would sit somewhere on the reachable
-   * ladder and read as a rung that suddenly stopped getting harder.
-   *
-   * SIZED AGAINST THE LADDER IT HAS TO SPAN, not chosen round. The reachable
-   * working excesses run 0.0077 (`session/rpe8/0.8000/slower-than-expected`,
-   * the cell nearest the warm-up line) to 0.3466 (`meet/aggressive/att3/
-   * wrecked`, the ceiling). At 0.03 the knee sits inside RPE 8's own four
-   * cells, which is where the phone replay's complaint is: the curve has paid
-   * 20% of the span at the lightest of them and 56% at the heaviest, so the
-   * rung the ruling named is the one the ramp is steepest across. Across RPE 10
-   * it has paid 80% to 83%, and at the meet ceiling 92%, so the top is on
-   * the flat part where a further rise would push a 10-taps-a-second floor past
-   * what a thumb can do.
-   *
-   * WHY THE TOP MATTERS, AND WHAT ACTUALLY PROTECTS IT. A first pass at this
-   * lever used a bigger onset and span with no ceiling and took
-   * `meet/aggressive/att3/wrecked` from 10.00 taps a second to 20.00 — which is
-   * `60 / GRIND_TAP_REFRACTORY_TICKS`, the physical ceiling of the input, so
-   * the hardest attempt in the game became winnable only by a literally perfect
-   * mash with no headroom at all. This half-saturation keeps the top on the
-   * flat part of the curve, and `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING` is
-   * what makes that structural rather than a tuning coincidence: at the shipped
-   * four values the ceiling clips that cell's addition to exactly zero and it
-   * is byte-identical with this lever and without it, still 10.00.
-   */
-  BENCH_WORKING_RUNG_DEMAND_HALF_MARGIN: 0.03,
-
-  /**
-   * -------------------------------------------------------------------------
-   * THE WORKING-RUNG LEVER, PART 4 OF 4: THE EFFECTIVE MARGIN THE LEVER WILL
-   * NOT CARRY A BAR PAST, AND WILL NOT TOUCH A BAR ALREADY PAST
-   * -------------------------------------------------------------------------
-   * PLACEHOLDER, like the other three — but the LINE it sits under is measured
-   * and is not a taste question, which is why this constant exists at all.
-   *
-   * WHAT FORCED IT. The false-start rule's own sentence — `LIFT_COPY.SUBTITLE
-   * .bench`'s "each one holds your press back, up to half a second", pinned by
-   * `lift.test.ts`'s "never kills the rep, however long the pause is mashed" —
-   * stops being true above a measurable effective margin. Driven at
-   * `GRIND_SWEEP.TOP_LOAD` (0.97344) at the default capacity, 20 seeds, a
-   * maximally false-started rep mashed at the refractory limit:
-   *
-   *     effective margin 0.2816   0 of 20 lost   the last value that holds
-   *     effective margin 0.2826   20 of 20 lost  every seed, at 10 early taps
-   *
-   * The edge is ONE THOUSANDTH wide, which is why this is a constant with a
-   * measurement under it rather than a number somebody rounded. This ceiling is
-   * 0.2700 — 0.0116 under the last passing value, about twelve edge-widths.
-   *
-   * WHY IT IS A CEILING ON THE MARGIN AND NOT A CAP ON THE LEVER. A cap on the
-   * lever's own output still pushes the hardest bars past the line, because
-   * what breaks the false-start rule is where the bar ENDS UP, not how much was
-   * added to it. `min(raw, max(0, CEILING - baseMargin))` gives both halves at
-   * once: no bar is raised past the line, and a bar the base curve already puts
-   * past it gets exactly zero — so `meet/aggressive/att3/wrecked`, whose base
-   * margin is 0.3066, is byte-identical with this lever and without it.
-   *
-   * A PRE-EXISTING DEFECT THIS CEILING DOES NOT FIX, RECORDED RATHER THAN
-   * QUIETLY INHERITED. That same cell ALREADY breaks the false-start rule on
-   * the shipped tree — measured at this file's own tuning with the lever set to
-   * zero: 20 of 20 lost at 10 early taps. The test that guards the rule drives
-   * `GRIND_SWEEP.LOADS` at the DEFAULT capacity only, and the reachable domain
-   * reaches 0.3066 of margin through a wrecked check-in, which no load in that
-   * ladder can produce. The rule and its guard disagree about a cell a player
-   * can be handed, and that is a human's ruling to make, not a builder's: the
-   * two ways out are lowering the meet ceiling (which the 2026-08-27 phone
-   * replay asked AGAINST) or exempting the top attempt from the false-start
-   * rule (which makes the on-screen copy false).
-   *
-   * WHAT IT COSTS, STATED SO IT IS NOT DISCOVERED LATER. Three reachable meet
-   * cells are clipped to this value and therefore share one effective margin:
-   * `meet/aggressive/att2/wrecked`, `meet/aggressive/att3/rested` and
-   * `meet/standard/att3/wrecked`. They still differ in capacity, so their
-   * measured tap floors differ; what is gone is the part of their spread the
-   * lever would otherwise have added.
-   */
   BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING: 0.27,
 
   /**

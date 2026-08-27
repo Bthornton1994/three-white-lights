@@ -875,21 +875,28 @@ export function benchWorkingExcess(config: LiftConfig): number {
  * BENCH ONLY: what a WORKING bar costs on top of the base demand curve.
  * ---------------------------------------------------------------------------
  *
- *     working(excess) = ONSET + SPAN * excess / (excess + HALF_MARGIN)
+ *     working(excess) = min(ONSET, max(0, MARGIN_CEILING - baseMargin))
  *
  * for `excess > 0`, and exactly 0 otherwise. See
  * `BENCH_WORKING_RUNG_DEMAND_ONSET` for the measurement that forced it: the
  * uniform `DEMAND_BASE.bench` lever is spent at +0.005, and a second phone
  * replay still called RPE 8 "way too easy".
  *
- * NOT `DEMAND_BASE` WITH AN `if` IN FRONT OF IT, AND THE DIFFERENCE IS THE
- * SPAN. A uniform rise adds the same number at every load, so it changes the
- * curve's LEVEL and not its SLOPE, and the reason it is spent is that the level
- * it raises includes the warm-up rungs. A flat working-rung addition would fix
- * the warm-up half and still leave the working rungs' spacing exactly as the
- * replay found it. This has a step AND a ramp: the step is what a bar costs for
- * being a working bar at all, the ramp is what it costs for being far past the
- * lifter, and the ramp's derivative is 0 below the line and 0.59 just above it.
+ * NOT `DEMAND_BASE` WITH AN `if` IN FRONT OF IT, AND THE DIFFERENCE IS THE STEP
+ * AT THE LINE RATHER THAN ANY SLOPE. A uniform rise adds the same number at
+ * every load INCLUDING the warm-up rungs, and the warm-up rungs are where it is
+ * spent. This adds `ONSET` above the line and exactly nothing below it, so the
+ * demand curve stops being a continuous function of load — and the place it
+ * breaks is one `loadRatio` cannot locate, because the rungs overlap in load.
+ * Inside the working band the addition is uniform on purpose.
+ *
+ * A RAMP STOOD HERE FOR ONE ROUND AND IS DELETED. `ONSET + SPAN * excess /
+ * (excess + HALF)` was justified as being what compressed the ladder, and a
+ * magnitude-matched control measured the opposite: the flat step compresses the
+ * twelve working cells' tap floors to a spread of 3.294 against the ramped
+ * version's 3.471, from 5.391 with no lever at all. Two constants and a
+ * confounded mutation test, in service of a property they did not have. The
+ * full reading is in `BENCH_WORKING_RUNG_DEMAND_ONSET`'s header.
  *
  * THE KIND GUARD IS NOT DEFENSIVE, IT IS THE `launchShortfall` LESSON. That
  * parameter was deleted from `ascentDemand` partly because its default made it
@@ -902,10 +909,6 @@ export function benchWorkingExcess(config: LiftConfig): number {
 export function benchWorkingRungDemand(kind: PlayableLiftKind, workingExcess: number): number {
   if (kind !== 'bench') return 0;
   if (!Number.isFinite(workingExcess) || workingExcess <= 0) return 0;
-  const onset = LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_ONSET;
-  const span = LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_SPAN;
-  const half = LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_HALF_MARGIN;
-  const raw = onset + span * (workingExcess / (workingExcess + half));
   // THE CEILING, AND IT IS NOT A SAFETY CLAMP — IT IS THE PLACE ANOTHER RULE
   // IN THIS FILE STOPS HOLDING. See
   // `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`: past an effective margin of
@@ -916,13 +919,17 @@ export function benchWorkingRungDemand(kind: PlayableLiftKind, workingExcess: nu
   // shipped tree already puts past the line is byte-identical with this lever
   // and without it.
   //
+  // IT IS ALSO THE ONLY PLACE THE ADDITION DEPENDS ON THE LOAD AT ALL, since
+  // the ramp was deleted. That is the whole use `workingExcess` has left here:
   // `workingExcess + BENCH_WARMUP_FLOOR_MARGIN` reconstructs the base margin
   // rather than taking it as a second parameter, because for a positive excess
   // the two are the same number by `benchWorkingExcess`'s own definition and a
   // second parameter is a second thing that can be passed wrong.
   const baseMargin = workingExcess + LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN;
   const headroom = LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING - baseMargin;
-  return scrub(Math.min(raw, Math.max(0, headroom)));
+  return scrub(
+    Math.min(LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_ONSET, Math.max(0, headroom)),
+  );
 }
 
 /** The ascent clock this rep runs on. See `benchClearsTheClock`. */

@@ -2721,9 +2721,9 @@ const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
   'meet/aggressive/att3/rested': [40, 40, 160],
   'meet/conservative/att1/wrecked': [160, 160, 160],
   'meet/conservative/att2/wrecked': [160, 160, 160],
-  'meet/conservative/att3/wrecked': [0, 0, 160],
+  'meet/conservative/att3/wrecked': [60, 60, 160],
   'meet/standard/att1/wrecked': [160, 160, 160],
-  'meet/standard/att2/wrecked': [60, 60, 160],
+  'meet/standard/att2/wrecked': [100, 100, 160],
   'meet/standard/att3/wrecked': [0, 0, 160],
   'meet/aggressive/att1/wrecked': [160, 160, 160],
   'meet/aggressive/att2/wrecked': [0, 0, 160],
@@ -2823,11 +2823,17 @@ const REACHABLE_LADDER = {
    * A cell drops out of them when the pause stops being survivable at all —
    * the idle rep still stalls, and coming back no longer saves it. Four meet
    * cells crossed that line, and they are the top of the ladder:
-   * `meet/conservative/att3/wrecked`, `meet/standard/att3/wrecked`,
-   * `meet/aggressive/att2/wrecked` and (already there before this lever)
-   * `meet/aggressive/att3/wrecked`. `meet/aggressive/att3/rested` and
-   * `meet/standard/att2/wrecked` are the two that only partly crossed it, at
-   * 40 and 60 of 160.
+   * `meet/standard/att3/wrecked`, `meet/aggressive/att2/wrecked` and (already
+   * there before this lever) `meet/aggressive/att3/wrecked`.
+   * `meet/aggressive/att3/rested`, `meet/standard/att2/wrecked` and
+   * `meet/conservative/att3/wrecked` are the three that only partly crossed it,
+   * at 40, 100 and 60 of 160.
+   *
+   * 35 AND 26 FOR ONE ROUND, WHILE THE RAMP WAS SHIPPED. Deleting it gave the
+   * two heaviest wrecked meet cells 0.045 of demand where the ramp had given
+   * them about 0.052, and `meet/conservative/att3/wrecked` came back off the
+   * floor — [0, 0, 160] to [60, 60, 160]. Two rows of forty moved and neither
+   * is a warm-up; the third count did not move at all.
    *
    * SO THE NUMBER TO READ BESIDE THESE IS `CELLS_WHERE_THE_IDLE_REP_STALLS`,
    * WHICH DID NOT MOVE: 30, exactly the 30 non-warm-up cells. A reader who saw
@@ -2837,8 +2843,8 @@ const REACHABLE_LADDER = {
    * 2026-08-27 replay asked for and it is a real cost, so it is written down
    * rather than being left as a number that got smaller.
    */
-  CELLS_WHERE_COMING_BACK_HELPS: 35,
-  CELLS_WHERE_A_REP_IS_SAVED: 26,
+  CELLS_WHERE_COMING_BACK_HELPS: 36,
+  CELLS_WHERE_A_REP_IS_SAVED: 27,
   CELLS_WHERE_THE_IDLE_REP_STALLS: 30,
   /**
    * ...and the cells where none of the three happens.
@@ -3168,16 +3174,22 @@ const WORKING_FLOOR = {
    * As taps a second (`60 / gap`), before the 2026-08-27 working-rung lever
    * against after:
    *
-   *     rpe8/0.8000/slower-than-expected   0.48  ->  1.02
-   *     rpe8/0.8500/as-expected            0.86  ->  1.62
+   *     rpe8/0.8000/slower-than-expected   0.48  ->  1.07
+   *     rpe8/0.8500/as-expected            0.86  ->  1.58
    *     rpe8/0.8750/crisp                  0.67  ->  1.36
-   *     rpe8/0.9000/popping                0.53  ->  1.03
-   *     rpe9,  the four cells              1.05 0.. ->  1.82 2.40 2.14 2.00
-   *     rpe10, the four cells              2.61 ..  ->  3.53 3.33 3.16 3.00
+   *     rpe8/0.9000/popping                0.53  ->  1.07
+   *     rpe9,  the four cells    1.05 1.62 1.40 1.18 -> 1.82 2.31 2.07 1.94
+   *     rpe10, the four cells    2.61 2.40 2.14 2.07 -> 3.53 3.33 3.00 2.86
    *
    * A phone replay called RPE 8 "way too easy" twice; a tap every 1.2 to 2.1
-   * seconds still made the rep, which is why. It is now a tap every 0.6 to 1.0
-   * seconds, sustained, and the rungs above moved with it.
+   * seconds still made the rep, which is why. It is now a tap every 0.63 to
+   * 0.93 seconds, sustained, and the rungs above moved with it.
+   *
+   * RE-DERIVED 2026-08-27 WHEN THE RAMP WAS DELETED, not carried across it. The
+   * ramped lever read 1.02 / 1.62 / 1.36 / 1.03 at RPE 8; the flat step that
+   * replaced it reads 1.07 / 1.58 / 1.36 / 1.07 — at most one tick of cadence
+   * per cell, which is the whole measured difference the two deleted constants
+   * were buying. See `BENCH_WORKING_RUNG_DEMAND_ONSET`'s header.
    *
    * PINNED AS THE WHOLE VECTOR RATHER THAN AS A MINIMUM. A bound is satisfied
    * by a ladder that collapsed at one end, and this table's whole job is to say
@@ -3187,9 +3199,9 @@ const WORKING_FLOOR = {
   SESSION_FLOOR_GAP_TICKS: [
     240, 240, 240, 240, 240,
     240, 240, 240, 240, 240,
-    59, 37, 44, 58,
-    33, 25, 28, 30,
-    17, 18, 19, 20,
+    56, 38, 44, 56,
+    33, 26, 29, 31,
+    17, 18, 20, 21,
   ] as const,
   /**
    * Measured: the same, for the 18 meet cells in `reachableMeetCells()` order.
@@ -3201,10 +3213,13 @@ const WORKING_FLOOR = {
    * exactly nothing. An earlier pass without that ceiling took it to 3 ticks,
    * which is `GRIND_TAP_REFRACTORY_TICKS` itself: the hardest attempt in the
    * game winnable only by a perfect mash with no headroom at all.
+   *
+   * Re-derived when the ramp was deleted. Four of the eighteen moved by one
+   * tick and the ceiling cell did not move at all.
    */
   MEET_FLOOR_GAP_TICKS: [
-    18, 16, 13, 18, 14, 10, 18, 11, 8,
-    12, 10, 8, 12, 9, 8, 12, 8, 6,
+    18, 17, 13, 18, 14, 10, 18, 12, 8,
+    13, 10, 9, 13, 9, 8, 13, 8, 6,
   ] as const,
   /**
    * -------------------------------------------------------------------------
@@ -4425,25 +4440,24 @@ describe('the grind decides the lift', () => {
     // reaches lockout unaided, inside the floor's own clock; no working cell
     // reaches it at all. See `FLOOR_EDGES` for what this used to read and why
     // it stopped being two numbers.
-    const unaided = (cell: ReachableCell): { lockout: boolean; ticks: number } => {
-      const state = driveGrind(
+    // NO `lockout` FIELD. It was computed here and read by the two assertions
+    // deleted as dominated above, and once those went it was a value carried,
+    // returned and never compared — the "measured, carried, displayed, never
+    // compared" shape CLAUDE.md names by category. Removed rather than left
+    // looking like evidence.
+    const unaidedAscentTicks = (cell: ReachableCell): number =>
+      driveGrind(
         { kind: BENCH, loadRatio: cell.loadRatio, seed: 1, feel: cell.feel },
         REACHABLE.GAP_TICKS,
         0,
         Number.POSITIVE_INFINITY,
-      );
-      return {
-        lockout: state.resolution?.outcome !== 'miss',
-        ticks: state.ascentTicks,
-      };
-    };
+      ).ascentTicks;
     // Same domination on this side: that every warm-up cell DOES lock out
     // unaided is what "leaves a warm-up alone — nobody answers at all" asserts,
     // at eight seeds against this one. The tick count is what that check cannot
     // see and is the edge this test exists for.
-    const warmupAscents = warmups.map(unaided);
     expect(
-      Math.max(...warmupAscents.map((a) => a.ticks)),
+      Math.max(...warmups.map(unaidedAscentTicks)),
       'the slowest unaided warm-up ascent',
     ).toBe(FLOOR_EDGES.WARMUP_SLOWEST_UNAIDED_ASCENT_TICKS);
     expect(FLOOR_EDGES.WARMUP_SLOWEST_UNAIDED_ASCENT_TICKS).toBeLessThan(
