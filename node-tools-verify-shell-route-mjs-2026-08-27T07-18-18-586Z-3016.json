@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-verify-shell-route-mjs-2026-08-27T07-18-18-586Z-3016",
+  "label": null,
+  "command": [
+    "node",
+    "tools/verify-shell-route.mjs",
+    "--url",
+    "http://localhost:8097"
+  ],
+  "budgetSeconds": 1500,
+  "startedAtIso": "2026-08-27T07:18:18.586Z",
+  "startedAtMs": 1787815098586,
+  "cwd": "/home/user/wt-bench-docs",
+  "commit": "ba11e232d6d21ed3a9f0166c9480566f66d8b8ef",
+  "branch": "claude/bench-difficulty",
+  "dirty": 1,
+  "dirtyPaths": [
+    ".gauntlet/shots/meet/sound.json"
+  ],
+  "runner": {
+    "pid": 3016,
+    "startTick": "955070",
+    "cmdline": "node tools/watchdog.mjs --budget 1500 -- node tools/verify-shell-route.mjs --url http://localhost:8097",
+    "bootId": "6b9555b0-c9e0-4be0-8304-50832877994e",
+    "bootEpochSeconds": 1787805548,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-27T07:18:18.617Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
