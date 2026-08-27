@@ -1768,10 +1768,10 @@ mismatches, 155 of them on runs whose decision traces were identical. Ruled:
 **low condition may SHOW a repair prompt; it may not advance a strike or
 dormancy.** A strike comes only from a decision the player was shown and made
 — a declined or ignored repair, the cheapest-manager pattern, the other named
-shapes — and two histories differing only in how often the player checked in
-must produce the same strikes on the same calendar. Condition and income
-still move with operation, because a gym that ran wore its equipment and a
-gym that idled did not; that is one clock, not a second one.
+shapes — taken while the player was present. Failure is never a background
+clock and never "you did not open the app". Condition and income still move
+with operation, because a gym that ran wore its equipment and a gym that
+idled did not; that is one clock, not a second one.
 
 **WHAT THE MAINTENANCE PROMPT ACTUALLY IS, AFTER THE CHAIN BREAK — a design
 detail that changed, recorded here rather than left in the code.** The prompt
@@ -1787,25 +1787,51 @@ a player who refuses one accrues exactly one, per order, until the item is
 repaired. `src/empire/management.ts` header §3a has the derivation and the
 measurement.
 
-**THE SECOND SENTENCE OF THIS CLARIFICATION IS NOT MET, AND IT MAY NOT BE
-MEETABLE ALONGSIDE THE FIRST — a human ruling is needed.** "Two histories
-differing only in how often the player checked in must produce the same
-strikes on the same calendar" is measured at **909 failure-progression
-mismatches and 524 phase-worse readings** on the engagement sweep. Those
-numbers **fell** from the condition-gated model's 1187 and 730, so the review
-ordinal improved them rather than costing them — but they have never been
-zero, and the reason looks structural rather than unfinished: a counted
-decision needs a check-in to take it, so at any shared second a player who
-checked in more has had at least as many chances to answer or refuse. A
-schedule keyed to the calendar does not escape it either, because the strike
-still lands at whichever run's next check-in comes first. Meanwhile the two
-comparators pull opposite ways: within the catch-up horizon the more-absent
-run is later at every check-in index, and on the engagement grid the more-
-engaged run has more check-ins by every second. **The money reading the
-never-punish rule is actually about is zero** on every engagement policy, and
-that is enforced. What is open is whether the strike-count sentence should be
-narrowed to money and phase-at-end, dropped, or paid for by removing counted
-decisions from the loop entirely — and that is a design call, not a builder's.
+**THE EQUAL-STRIKE SENTENCE IS WITHDRAWN, BY HUMAN RULING. The first
+sentence stands and is met; the second was never implied by it and pulled
+against it.** An earlier draft of this clarification also asked that "two
+histories differing only in how often the player checked in must produce the
+same strikes on the same calendar". That is deleted rather than deferred, and
+the reasoning is recorded because the numbers it generated are still in the
+tree.
+
+*What is actually required, and is met.* Failure is counted decisions taken
+while the player is present — never a background clock, never absence.
+Measured inside the catch-up horizon on the six-policy sweep: **0 / 0 / 0**,
+matched-trace included, against the condition-gated model's **310 / 186 /
+124** kept runnable as `condition-gated-prompt-control`. Ranking inside the
+maintenance pool does not leak wear into whether a refusal counts, because
+countability reads `unanswered.length > 0` — a count, not a condition.
+
+*Why equal strikes does not follow from it, and fights it.* A strike needs a
+check-in to take it, so more visits means more chances to answer or refuse;
+that is the definition of a counted decision, not a defect in one. Forcing
+the two totals equal buys it exactly two ways, and both are worse: phantom
+strikes accruing while the player is away, which breaks the first sentence
+outright, or extra refusals that are shown and then do not count, which
+changes what a review costs and makes the shown price a lie. **A cheapskate
+who checks in more, refuses more, and collects more strikes is the mechanic
+working. An idle gym failing because the clock ran is the thing that is
+forbidden.** Those are different, and this document is not to flatten them
+again.
+
+*The 909 and 524 are kept as what the withdrawn sentence WOULD have measured,
+and are not a shipped violation.* The engagement family reads 909
+failure-progression mismatches and 524 phase-worse readings. They fell from
+the condition-gated model's 1187 and 730 — the review ordinal improved them
+rather than costing them, which was not the direction the round that
+specified it predicted.
+
+*§12.3 still applies, and it is the bar that was met rather than a softer
+one.* The player who shows up more must not end **worse** — phase, failure,
+money or condition — under a fair policy. The catcher is
+`engagementEagerTurnaroundControl`: the player model this build removed, kept
+runnable, differing from the shipped model on one axis. Thirteen of its
+fifteen counters are byte-identical to the shipped family; only the two money
+counters move, and they are pinned at **36** (`variantNetLower`) and **21**
+(`matchedTraceNetLower`) as the unfixed-path numbers the shipped zeros are
+zero against. Do not upgrade "same strike count" back into a refusal
+condition.
 
 **Failure is recoverable.** A failed location goes dormant — income stops,
 condition keeps degrading, members leave — but the asset itself isn't gone. A

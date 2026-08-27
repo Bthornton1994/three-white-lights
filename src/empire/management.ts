@@ -299,33 +299,52 @@
  * because it was not the predicted direction and a builder's prediction is not
  * evidence about a measurement.
  *
- * THE HALF OF §5.7'S CLARIFICATION THIS DOES NOT CLOSE, stated plainly because
- * it is a live conflict with the design document rather than a residual.
- * §5.7's clarification has two sentences. The first — low condition may not
- * advance a strike — is closed. The second says "two histories differing only
- * in how often the player checked in must produce the same strikes on the same
- * calendar", and the engagement family measures exactly that at 909 and 524.
- * It was 1187 and 730 before this round and has never been zero.
+ * THE HALF OF §5.7'S CLARIFICATION THAT WAS WITHDRAWN RATHER THAN CLOSED.
+ * This block used to route an open conflict to a human. The ruling came back
+ * and it went the other way from the shape a builder would have guessed: the
+ * sentence was DELETED from the design document, not the code changed to meet
+ * it. Recorded in full because the numbers it generated are still measured
+ * here and a reader who finds them needs to know what they are evidence of.
  *
- * Why it is not merely unfinished, in the mechanism's own terms: a counted
- * decision requires a check-in to take it. At any shared second the more
- * engaged run has taken at least as many check-ins as the base, so on any
- * schedule that makes a decision available at a rate tied to check-ins it is
- * at-or-ahead on decisions taken, and on any schedule tied to the calendar it
- * still answers the standing decision at its own first check-in past the
- * calendar mark, which is at-or-earlier. The two comparators pull opposite
- * ways: the within-horizon family compares PER INDEX and the more-absent run
- * is later at every index; the engagement family compares AT SHARED TIMES and
- * the more-engaged run has more check-ins.
+ * §5.7's clarification used to have two sentences. The first — low condition
+ * may not advance a strike — is closed, and `withinHorizon` reads 0 / 0 / 0
+ * against the condition-gated control's 310 / 186 / 124. The second asked for
+ * "the same strikes on the same calendar" for two histories differing only in
+ * check-in frequency, and the engagement family measures exactly that at 909
+ * and 524. It was 1187 and 730 before this round and has never been zero.
  *
- * That is an argument, not a proof, and it is not offered as one — this file
- * has recorded what an impossibility claim is worth. What IS measured is that
- * both gates that have been built are non-zero here, that the ordinal is the
- * smaller of the two, and that the split is almost total: `review` pins 908 of
- * the 909 mismatches and all 524 phase-worse readings on pairs whose review
- * counts diverged, with the single remaining pair named. A ruling that wants
- * this half closed is choosing between the two sentences, and it is a human's
- * choice rather than a builder's.
+ * THE RULING: THE SECOND SENTENCE DOES NOT FOLLOW FROM THE FIRST AND FIGHTS
+ * IT. A counted decision requires a check-in to take it, so more visits means
+ * more chances to answer or refuse — which is what a counted decision IS. The
+ * two ways to force the totals equal are both worse than the gap: strikes
+ * accruing while the player is away, which breaks the first sentence outright,
+ * or shown refusals that do not count, which changes what a review costs and
+ * makes the displayed price untrue. A model that checks in more, refuses more
+ * and collects more strikes is the mechanic working; a gym that fails because
+ * the clock ran is the forbidden thing. They are not the same reading and the
+ * document no longer asks for them to be flattened together.
+ *
+ * SO 909 AND 524 ARE WHAT THE WITHDRAWN SENTENCE WOULD HAVE MEASURED, AND NOT
+ * A SHIPPED VIOLATION. They stay measured, because a number that stops being
+ * a bar is still the cheapest way to notice the mechanism moving.
+ *
+ * What §12.3 asks instead, and what enforces it: the player who shows up more
+ * must not end WORSE on phase, failure, money or condition under a fair
+ * policy. The catcher is `engagementEagerTurnaroundControl` — the player model
+ * this build removed, kept runnable, differing on one axis. Thirteen of its
+ * fifteen counters are byte-identical to the shipped family; the two that move
+ * are money, pinned at 36 and 21 as the numbers the shipped zeros are zero
+ * against. `management.test.ts`'s `the withdrawn equal-strike sentence's
+ * numbers are kept as measurements, and §12.3's actual bar has its catcher`
+ * is where both halves are asserted.
+ *
+ * The mechanism note that used to carry this block's argument is kept, because
+ * it is why the ruling went this way: the two comparators pull opposite ways —
+ * the within-horizon family compares PER INDEX and the more-absent run is
+ * later at every index; the engagement family compares AT SHARED TIMES and the
+ * more-engaged run has more check-ins. The split is almost total: `review`
+ * pins 908 of the 909 mismatches and all 524 phase-worse readings on pairs
+ * whose review counts diverged, with the single remaining pair named.
  *
  * ---------------------------------------------------------------------------
  * 3d. The money route into the ledger, and the ONE thing it moved

@@ -674,11 +674,13 @@ describe('§5.5 social', () => {
     // this test's own subject: an ordinal cadence IS check-in-keyed, so the
     // engagement family's failure counters are non-zero (909 / 524) and the
     // reviews arrive sooner in wall-clock for a player who checks in more.
-    // `management.ts` header §3b states that as an open conflict with §5.7's
-    // second sentence and routes it to a human. What keeps it out of THIS
-    // ban is that no name here is a per-session or per-streak-day rate, and
-    // the never-punish reading the ban exists for — money — is measured at
-    // zero on every engagement policy.
+    // That WAS routed to a human as an open conflict with §5.7's second
+    // sentence; the ruling withdrew the sentence rather than the cadence, so
+    // 909 / 524 are now what a deleted bar would have measured. `management.ts`
+    // header §3b has it. What keeps the cadence out of THIS ban is unchanged
+    // and is the load-bearing part: no name here is a per-session or
+    // per-streak-day rate, and the never-punish reading the ban exists for —
+    // money — is measured at zero on every engagement policy.
     expect(examined).toBe(165);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.

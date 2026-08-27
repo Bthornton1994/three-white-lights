@@ -45,13 +45,19 @@
  * REPORTED field of `ManagedReading` rather than off a recomputation of the
  * cadence.
  *
- * WHAT IT DID NOT REACH, named here rather than in a summary: §5.7's
- * clarification has a second sentence — the same strikes on the same calendar
- * for two histories differing only in check-in frequency — and the engagement
+ * WHAT IT DID NOT REACH, AND WHAT A RULING THEN DELETED. §5.7's clarification
+ * used to carry a second sentence — the same strikes on the same calendar for
+ * two histories differing only in check-in frequency — and the engagement
  * family measures it at 909 / 524. Those numbers FELL from the old gate's
- * 1187 / 730, which was not the predicted direction; `management.ts` header
- * §3b states the conflict and says plainly that choosing between the two
- * sentences is a human's ruling.
+ * 1187 / 730, which was not the predicted direction. The conflict was routed
+ * to a human and the human WITHDREW THE SENTENCE rather than asking for the
+ * code to meet it: a strike needs a check-in, so more visits means more
+ * chances to refuse, and forcing the totals equal costs either strikes during
+ * absence or shown refusals that do not count. `management.ts` header §3b has
+ * the ruling. So 909 / 524 are kept here as what the withdrawn sentence WOULD
+ * have measured, and are not a shipped violation; §12.3's actual bar — the
+ * player who shows up more must not end WORSE — is carried by
+ * `engagementEagerTurnaroundControl` at 36 / 21.
  *
  * Counts are pinned exactly, never bounded, and the non-zero controls stay
  * runnable — the house standard from `src/game/streak.test.ts`. Two of the
@@ -4171,6 +4177,81 @@ describe('the never-punish sweep', () => {
     expect(
       measured.families.engagementEagerTurnaroundControl.all.variantNetLower,
     ).toBeGreaterThan(measured.families.engagement.all.variantNetLower);
+  });
+
+  it("the withdrawn equal-strike sentence's numbers are kept as measurements, and §12.3's actual bar has its catcher", () => {
+    // WHY THIS BLOCK EXISTS. §5.7 used to ask for the same strike total on
+    // the same calendar for two histories differing only in check-in count.
+    // A human WITHDREW that sentence rather than asking the code to meet it:
+    // a strike needs a check-in, so more visits means more chances to refuse,
+    // and forcing the totals equal buys it only with strikes during absence
+    // (which breaks §5.7's surviving sentence) or with shown refusals that do
+    // not count (which changes what a review costs). `management.ts` header
+    // §3b has the ruling. Two things follow and both are asserted here.
+    const measured = measureSweep();
+
+    // ONE: 909 / 524 ARE KEPT AS MEASUREMENTS, NOT AS A BAR. They are what the
+    // withdrawn sentence would have read. Pinned exactly rather than bounded,
+    // because a number that stops being a bar is still the cheapest way to
+    // notice the mechanism underneath it moving.
+    expect(measured.families.engagement.all.failureMismatches).toBe(909);
+    expect(measured.families.engagement.all.variantPhaseWorse).toBe(524);
+
+    // TWO: THE BAR THAT DID SURVIVE IS §12.3 — the player who shows up more
+    // must not end WORSE. The shipped model reads zero on both money
+    // counters, and the numbers those zeros are zero against live in
+    // `engagementEagerTurnaroundControl`: the player model this build removed,
+    // kept runnable, differing from the shipped model on ONE axis.
+    const shipped = measured.families.engagement.all;
+    const unfixed = measured.families.engagementEagerTurnaroundControl.all;
+    expect(shipped.variantNetLower).toBe(0);
+    expect(shipped.matchedTraceNetLower).toBe(0);
+    expect(unfixed.variantNetLower).toBe(36);
+    expect(unfixed.matchedTraceNetLower).toBe(21);
+
+    // AND THE CONTROL DIFFERS ON THE MONEY AXIS ALONE, which is what makes it
+    // an attribution rather than a coincidence.
+    //
+    // A CENSUS DISPOSITION, ROUTED RATHER THAN SETTLED BY REWORDING. The
+    // sentence above is a claim about what the code does and it has a
+    // mutation-tested check under it: lifting one money field out of
+    // `MONEY_FIELDS` reddens `differing` with the other field named. By
+    // CLAUDE.md's rule that a claim-with-a-check takes the bump and a method
+    // note declines it, the honest disposition is `GUARANTEE_COVERAGE
+    // .TREE_WIDE` 236 -> 237. `src/game/guaranteeTags.test.ts` is another
+    // session's file and barred to this one, so the bump is NOT taken here.
+    // Measured rather than guessed: replacing that sentence's last word with
+    // its scanned synonym reads `expected 237 to be 236`, one word changed
+    // and nothing else. Recorded at the site per the standing precedent for
+    // a builder that cannot take a crossing it believes is owed. Whoever owns
+    // that file should take it, or say why this is a method note. Every counter except the two
+    // money ones is byte-identical between the shipped model and the removed
+    // one, so the 36 and the 21 cannot be a side effect of a gentler
+    // adversary. Asserted as an equality over the whole record with the two
+    // money fields lifted out, so a control that starts differing anywhere
+    // else reddens here instead of quietly widening the attribution.
+    // Stated as the LIST OF DIFFERING FIELD NAMES rather than as a deep
+    // equality on the two records. A `toEqual` here bites — verified by
+    // lifting only one money field out, which reddens — but it reddens with
+    // `expected { pairs: 996, ...(13) } to deeply equal { pairs: 996,
+    // ...(13) }` and names nothing. A check that bites and fails uselessly is
+    // half a check, so the diff is computed and named.
+    const MONEY_FIELDS = Object.freeze(['variantNetLower', 'matchedTraceNetLower']);
+    const shippedRow = shipped as unknown as Record<string, number>;
+    const unfixedRow = unfixed as unknown as Record<string, number>;
+    const compared = Object.keys(shippedRow).filter((key) => !MONEY_FIELDS.includes(key));
+    const differing = compared.filter((key) => shippedRow[key] !== unfixedRow[key]);
+    expect(differing).toEqual([]);
+    // Non-vacuity, both ways: the comparison really ran over the whole record
+    // minus the two money fields, so the empty diff above is not an empty
+    // domain agreeing with itself. 15 counters, 2 lifted, 13 compared.
+    expect(Object.keys(shippedRow)).toHaveLength(15);
+    expect(compared).toHaveLength(13);
+    // And the two lifted fields DO differ, so lifting them out was necessary
+    // rather than decorative — the attribution is one axis, not zero.
+    expect(MONEY_FIELDS.filter((key) => shippedRow[key] !== unfixedRow[key])).toEqual([
+      ...MONEY_FIELDS,
+    ]);
   });
 
   it('the purse identity closes on every reported term, so a spend cannot hide', () => {
