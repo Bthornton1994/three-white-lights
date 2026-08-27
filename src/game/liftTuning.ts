@@ -2245,6 +2245,11 @@ export const LIFT_TUNING = Object.freeze({
    * sits at 0.3066 on the BASE curve, above 0.27 and above 0.26 alike, so its
    * addition is zero either way and the disclosed defect there is neither fixed
    * nor worsened by this change.
+   *
+   * EVERY CELL THIS CLIPS SURVIVES A CAPPED FALSE START, and the only reachable
+   * cell that does not is the one the base curve already puts past this line,
+   * which the lever adds nothing to.
+   * `@guarantee the-ceiling-keeps-the-false-start-rule`
    */
   BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING: 0.26,
 

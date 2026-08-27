@@ -4889,15 +4889,20 @@ describe('the grind decides the lift', () => {
       feel: cell.feel,
     });
 
+    // TWO LISTS, NOT ONE, AND THE FIRST DRAFT SHARED ONE. A single list made
+    // the perfect arm's failure message name realistic draws, which is the
+    // "identifier misdescribes its measurement" hazard living in an assertion's
+    // message — the place CLAUDE.md says a reader trusts by default.
     let perfectLost = 0;
     let realisticLost = 0;
-    const lostAt: string[] = [];
+    const perfectAt: string[] = [];
+    const realisticAt: string[] = [];
     for (const cell of cells) {
       for (let seed = 1; seed <= MAX_EFFORT.SEEDS; seed += 1) {
         const rep = maxEffortRep(configOf(cell, seed), perfectCadence);
         if (rep.resolution?.outcome === 'miss') {
           perfectLost += 1;
-          lostAt.push(`${cell.label} perfect seed ${seed}`);
+          perfectAt.push(`${cell.label} seed ${seed}`);
         }
       }
       for (let draw = 0; draw < MAX_EFFORT.DRAWS; draw += 1) {
@@ -4907,14 +4912,14 @@ describe('the grind decides the lift', () => {
         );
         if (rep.resolution?.outcome === 'miss') {
           realisticLost += 1;
-          lostAt.push(`${cell.label} realistic draw ${draw}`);
+          realisticAt.push(`${cell.label} draw ${draw}`);
         }
       }
     }
-    expect(perfectLost, `perfect cadence lost: ${lostAt.slice(0, 6).join(', ')}`).toBe(
+    expect(perfectLost, `perfect cadence lost: ${perfectAt.slice(0, 6).join(', ')}`).toBe(
       MAX_EFFORT.PERFECT_LOST,
     );
-    expect(realisticLost, `realistic cadence lost: ${lostAt.slice(0, 6).join(', ')}`).toBe(
+    expect(realisticLost, `realistic cadence lost: ${realisticAt.slice(0, 6).join(', ')}`).toBe(
       MAX_EFFORT.REALISTIC_LOST,
     );
 
@@ -5093,7 +5098,7 @@ describe('the grind decides the lift', () => {
     expect(highest, 'a reachable cell reached the max-effort wall').toBeLessThan(maxEffortWall);
   }, 900_000);
 
-  it('keeps every cell the ceiling clips inside the false-start rule', () => {
+  it('keeps every cell the ceiling clips inside the false-start rule [the-ceiling-keeps-the-false-start-rule]', () => {
     // ------------------------------------------------------------------
     // THE REGRESSION THE 0.27 CEILING SHIPPED, AND THE REPAIR. See
     // `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`: the previous round's note said
@@ -5106,6 +5111,7 @@ describe('the grind decides the lift', () => {
     // ladder runs at the default capacity and cannot reach a wrecked check-in.
     // ------------------------------------------------------------------
     const cells = [...reachableSessionCells(), ...reachableMeetCells()];
+    expect(cells.length, 'the cells this sweep covers').toBe(40);
     // THE COUNT THAT SATURATES THE LOCKOUT, DERIVED RATHER THAN WRITTEN DOWN.
     // Past `ceil(MAX_LOCKOUT_TICKS / PER_EARLY_TAP_TICKS)` taps the delay is at
     // its cap and more mashing buys the same rep, which is what makes the two

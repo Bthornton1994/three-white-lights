@@ -1007,7 +1007,10 @@ const GUARANTEE_COVERAGE = {
   //
   // 304 -> 306 on deleting the lever's ramp: the refutation is longer than the
   // thing it refutes, which is the trade this file's own doctrine asks for.
-  TREE_WIDE: 306,
+  // +1 ON THE 2026-08-27 MAX-EFFORT ROUND: `the-ceiling-keeps-the-false-start-rule`, whose mutant is the ceiling
+  // value that shipped one round earlier, 0.27, and which reproduces the
+  // regression that value carried at four reachable meet cells.
+  TREE_WIDE: 309,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1382,7 +1385,10 @@ const NUMBER_COVERAGE = {
   // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
   // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
   // is therefore the tree as it stood before the 2026-08-26 ruling.
-  TAGGED_PARAGRAPHS: 87,
+  // +1 ON THE 2026-08-27 MAX-EFFORT ROUND: `the-ceiling-keeps-the-false-start-rule`, whose mutant is the ceiling
+  // value that shipped one round earlier, 0.27, and which reproduces the
+  // regression that value carried at four reachable meet cells.
+  TAGGED_PARAGRAPHS: 88,
   /**
    * ...of which this many state a number as prose.
    *
@@ -1469,20 +1475,29 @@ const NUMBER_COVERAGE = {
   //
   // 69 -> 72 with the command beat's three tags, whose named tests are the
   // three new bodies.
-  NAMED_BODIES: 78,
+  // +1 ON THE 2026-08-27 MAX-EFFORT ROUND: `the-ceiling-keeps-the-false-start-rule`, whose mutant is the ceiling
+  // value that shipped one round earlier, 0.27, and which reproduces the
+  // regression that value carried at four reachable meet cells.
+  NAMED_BODIES: 79,
   // 53 -> 55 with the command beat's three tag-named bodies; two of the three
   // state a bare 0 (the wash before the call, the pip row's first frame) and
   // the third does not.
   // 58 -> 59: the warm-up floor's own body, whose central assertion IS a zero
   // — `warm-up reps lost unanswered` — so it joins this population by saying
   // exactly the thing this count is about.
-  NAMED_BODIES_HOLDING_ZERO: 60,
+  // +1 ON THE 2026-08-27 MAX-EFFORT ROUND: `the-ceiling-keeps-the-false-start-rule`, whose mutant is the ceiling
+  // value that shipped one round earlier, 0.27, and which reproduces the
+  // regression that value carried at four reachable meet cells.
+  NAMED_BODIES_HOLDING_ZERO: 61,
   // 52 -> 54 with the command beat's three tag-named bodies, two of which
   // state a bare 1.
   // 56 -> 57, same body as the zero above: it holds a bare 1 in the slip-arm
   // count `1 + REACHABLE_WARMUP.SLIP_TICKS.length`. Both censuses move together
   // when a body arrives holding both, and neither is evidence about the other.
-  NAMED_BODIES_HOLDING_ONE: 58,
+  // +1 ON THE 2026-08-27 MAX-EFFORT ROUND: `the-ceiling-keeps-the-false-start-rule`, whose mutant is the ceiling
+  // value that shipped one round earlier, 0.27, and which reproduces the
+  // regression that value carried at four reachable meet cells.
+  NAMED_BODIES_HOLDING_ONE: 59,
   /**
    * Tagged paragraphs that ALSO trip the trigger scan. The overlap of the two
    * scopes, pinned because the sentence above about them was wrong once.
@@ -1816,7 +1831,10 @@ const TRANSCRIPT_BAR = {
   // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
   // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
   // is therefore the tree as it stood before the 2026-08-26 ruling.
-  GRADED: 46,
+  // +1 ON THE 2026-08-27 MAX-EFFORT ROUND: `the-ceiling-keeps-the-false-start-rule`, whose mutant is the ceiling
+  // value that shipped one round earlier, 0.27, and which reproduces the
+  // regression that value carried at four reachable meet cells.
+  GRADED: 47,
   /** ...and rows excused because their transcript predates it. */
   // 37 -> 36 when the placeholder's witness retired with its subject
   // (Sprint 1c): its transcript predated the rule, so the excused count is
@@ -2078,10 +2096,10 @@ const TRANSPLANTED_NUMERIC_RULE = {
   // new row's transcript names `rpe7/0.8250/as-expected` and eight seeds, all
   // readings of the MUTATED tree, and the shipped body pins none of them
   // because its whole claim is that the count is zero.
-  rows: 74,
-  flagged: 61,
-  numerals: 309,
-  unresolved: 183,
+  rows: 75,
+  flagged: 62,
+  numerals: 314,
+  unresolved: 186,
 } as const;
 
 /** Whether an anchor states a population rather than a property's 0 or 1. */
@@ -2453,7 +2471,10 @@ const REPLACEMENT_BAR = {
   // +1 ON THE WARM-UP FLOOR ROUND: `a-warm-up-makes-it-unanswered`, whose
   // mutant reverts one comparison in `lift.ts` to the shared ascent clock and
   // is therefore the tree as it stood before the 2026-08-26 ruling.
-  REPRODUCIBLE: 34,
+  // +1 ON THE 2026-08-27 MAX-EFFORT ROUND: `the-ceiling-keeps-the-false-start-rule`, whose mutant is the ceiling
+  // value that shipped one round earlier, 0.27, and which reproduces the
+  // regression that value carried at four reachable meet cells.
+  REPRODUCIBLE: 35,
   /**
    * ...of those, the ones whose mutant edits the very file their red assertion
    * lives in, which is the second arm's live domain. At zero that arm would be
@@ -2617,7 +2638,11 @@ const SECTION_4A_KILL_LIST = {
 // that tag's paragraph states the six loads that make a `loadRatio` threshold
 // impossible, and its named test pins all six as real assertions rather than
 // as prose. Nothing moved onto UNPINNED_PROSE_NUMBERS.
-const WITNESS_ROWS = 82;
+//
+// 82 -> 83 ON THE 2026-08-27 MAX-EFFORT ROUND, with
+// `the-ceiling-keeps-the-false-start-rule`. Its tagged paragraph carries no
+// numeral at all, so nothing moved onto UNPINNED_PROSE_NUMBERS there either.
+const WITNESS_ROWS = 83;
 
 const MUTATION_WITNESSES: readonly MutationWitness[] = [
   // -------------------------------------------------------------------------
@@ -2668,9 +2693,9 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       'FAIL  src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, '
       + 'steered 2026-08-25) > flips outcomes between a controlled touch and a crashed one, '
       + 'across the sweep [bench-touch-decides-the-rep]\n'
-      + 'AssertionError: the touch changed the outcome in 0 of 240 cases: expected +0 to be 160 '
+      + 'AssertionError: the touch changed the outcome in 0 of 240 cases: expected +0 to be 180 '
       + '// Object.is equality\n'
-      + 'Tests  1 failed | 151 skipped (152)',
+      + 'Tests  1 failed | 154 skipped (155)',
     measuredOver:
       "    expect(TOUCH_SWEEP.OUTCOME_CASES, 'the domain this count is taken over').toBe(240);",
   },
@@ -2731,6 +2756,38 @@ const MUTATION_WITNESSES: readonly MutationWitness[] = [
       + 'Tests  1 failed | 151 skipped (152)',
     measuredOver:
       "    expect(session.length + meet.length, 'the cells this scoping covers').toBe(40);",
+  },
+  // -------------------------------------------------------------------------
+  // THE 2026-08-27 CEILING REPAIR, AND THE MUTANT IS THE VALUE THAT SHIPPED
+  // BROKEN — PUT BACK.
+  //
+  // This is not an invented edit and it is not a hundredth chosen to be
+  // convenient: 0.27 is the number the previous round shipped, under a note
+  // saying "the lever does not make it worse". Driven over all 40 reachable
+  // cells it makes it worse at four of them, because a ceiling CLIPS a bar UP
+  // to itself and 0.27 is on the far side of the wall that a capped false start
+  // has to survive. The mutant is therefore the regression, reproduced, and the
+  // set that comes back names every cell it costs.
+  {
+    guarantee: 'the-ceiling-keeps-the-false-start-rule',
+    mutatedFile: 'src/game/liftTuning.ts',
+    mutated: '  BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING: 0.26,',
+    mutatedTo: '  BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING: 0.27,',
+    testFile: 'src/game/lift.test.ts',
+    redAssertion:
+      "    expect(brokenAt(MAX_EFFORT_WALLS.FALSE_START_TAPS), 'cells a 10-tap false start costs').toEqual(\n"
+      + '      [...FLOOR_EDGES.CELLS_ALREADY_PAST_THE_CEILING],\n'
+      + '    );',
+    observed:
+      'FAIL  src/game/lift.test.ts > the grind decides the lift > keeps every cell the ceiling '
+      + 'clips inside the false-start rule [the-ceiling-keeps-the-false-start-rule]\n'
+      + 'AssertionError: cells a 10-tap false start costs: expected [ \u2026(5) ] to deeply equal '
+      + "[ 'meet/aggressive/att3/wrecked' ]\n"
+      + 'Tests  1 failed | 154 skipped (155)\n'
+      + 'The four that joined it: meet/conservative/att2/wrecked, '
+      + 'meet/conservative/att3/wrecked, meet/standard/att2/wrecked, '
+      + 'meet/aggressive/att2/wrecked',
+    measuredOver: "    expect(cells.length, 'the cells this sweep covers').toBe(40);",
   },
   // THE RESCUE, AND THE MUTANT IS THE RETUNE PUT BACK.
   //
