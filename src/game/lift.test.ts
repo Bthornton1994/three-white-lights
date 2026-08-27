@@ -3590,6 +3590,16 @@ const MAX_EFFORT = {
  * as the lever, and this comment is not arguing with it — it is recording which
  * number the arithmetic points at, so the next round starts from the wall
  * rather than from another step of `ONSET`.
+ *
+ * THE TWELVE UNPOWERED TICKS ARE THE CHEAPER HALF, AND THAT HALF IS MEASURED.
+ * `GRIND_FALSE_START.MAX_LOCKOUT_TICKS` is 30 and the launch beat is 18, so a
+ * maximally false-started rep leaves the chest with the grind still shut.
+ * Dropping the cap to 12 — at or under the beat — moves the false-start wall
+ * this test drives from 0.2777 to 0.3990, PAST the max-effort wall, and the two
+ * walls change places. It is a design call rather than a tuning one, because
+ * the sentence on the screen says "up to half a second" and 12 ticks is 200 ms.
+ * Written down because it is the one edit measured to open the band at all, not
+ * because this round proposes it.
  */
 const MAX_EFFORT_WALLS = {
   /** The check-in the synthetic ladder runs at: the weakest one a meet can carry. */

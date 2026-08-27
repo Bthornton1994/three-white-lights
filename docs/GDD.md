@@ -2547,10 +2547,20 @@ RPE 8 cell to 0.3066 at the meet's ceiling attempt, so the rungs consume most of
 that budget before the lever adds anything, and the band in which cadence decides
 anything at all is about 0.03 wide. Four ordered rungs do not fit in it. Two
 changes are large enough to matter and both are design calls a human has to take:
-**raise the force budget and the demand ladder together**, which widens the band
-in proportion; or **shorten the false-start lockout to at most the launch beat**,
-which removes the unpowered ascent ticks and lifts the lower wall — at the cost
-of the on-screen "up to half a second", which would become three tenths.
+
+- **Shorten the false-start lockout to at most the launch beat.** This one is
+  MEASURED rather than proposed: dropping `GRIND_FALSE_START.MAX_LOCKOUT_TICKS`
+  from 30 to 12 takes the false-start wall from **0.2777 to 0.3990** — past the
+  max-effort wall at 0.3764, so the ordering of the two walls inverts and the
+  band opens. It costs the on-screen sentence "up to half a second", which would
+  have to become three tenths, and it does not by itself make the band wide
+  enough to hold four ordered rungs.
+- **Raise the force budget and the demand ladder together.**
+  `GRIND_BOOST_FORCE_MAX` sets where both walls sit and how much a slower
+  cadence is worth, so scaling it and the demand curve in proportion widens the
+  band rather than moving the ladder inside it. Not measured here, because the
+  2026-08-27 ruling refuses that constant as a lever and this round did not
+  spend a change on arguing with it.
 
 **NEITHER IS TAKEN HERE.** The 2026-08-27 ruling refuses `GRIND_BOOST_FORCE_MAX`
 as this lever, and the false-start copy is outside this round's scope. What this
