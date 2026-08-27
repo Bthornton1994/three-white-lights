@@ -548,6 +548,35 @@ not taken on the builder's word.
 RPE <= 7 never misses on that axis, and +0.02 still moves RPE 8+/meet the way
 the reachable table requires.
 
+### RULED 2026-08-26: THE WARM-UP LOSS WAS A CLOCK-OUT, NOT A CURVE FIGHT
+
+The four retune rounds that traded warm-ups against working rungs were the
+wrong tool, and the reason is worth more than the fix. At
+`rpe7/0.8250/as-expected` the lifter cleared the bar's peak demand by **0.048**
+and the bar was **80.8%** of the way up when the rep was called. It did not
+fail; it ran out of `ASCENT_TIMEOUT_TICKS`.
+
+**THE DEFECT WAS LIVING INSIDE A SELF-CONTRADICTING DOCSTRING, WHICH IS THIS
+FILE'S MOST-DOCUMENTED FAILURE CLASS.** That constant's own prose records
+*"successful ascents ran to a maximum of 201 ticks"* and then warns that
+dropping the cap *"starts cutting off grinds that were going to make it, which
+is the worse failure"* — above a cap of **170**. The number and the reasoning
+sat in one comment disagreeing, and nothing could redden.
+
+**Ruled: keep the crashed-warm-up side effect.** A crashed warm-up gets the
+same floor. Verbatim: *"The floor keys on bar and lifter before the rep, not on
+extra depth. A crash that can switch the floor off is a path back to losing
+warm-ups, which this ruling forbade. Crash already taxes the ascent (harder
+press). Clock is 'ran out of air', not the crash penalty. Don't make timeout do
+both jobs."* If a crashed unanswered RPE 7 later reads as a free make of a
+dump, that is a phone note — not a reason to re-bind the floor to play.
+
+**Also ruled:** the re-taken crash-penalty row (270 -> 0 at 0.02) stays; stale
+sweep numbers are never copied forward. The 170-vs-201 docstring is fixed in
+the same commit as the constants; both floors are named as midpoints of
+measured gaps (margin -0.048 vs -0.032; unaided ascent 193 vs 247); and
+"+0.02 is the last safe step" comes out of the GDD wherever it survives.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
