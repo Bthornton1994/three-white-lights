@@ -2351,8 +2351,7 @@ line.** For a bench rep whose base margin sits above `BENCH_WARMUP_FLOOR_MARGIN`
 by `excess`:
 
 ```
-working demand = ONSET + SPAN × excess / (excess + HALF_MARGIN)
-                 capped so the effective margin never passes MARGIN_CEILING
+working demand = ONSET, capped so the effective margin never passes MARGIN_CEILING
 ```
 
 and exactly **zero** at or below the line, on every rung the session calls a
@@ -2360,15 +2359,33 @@ warm-up, and on squat and deadlift. One classification decides two things — th
 longer ascent clock below the line, this above it — so a bar cannot be a warm-up
 for the clock and a working set for the demand curve.
 
-**IT IS NOT `DEMAND_BASE` WITH AN `if` IN FRONT OF IT, AND THE SPAN IS THE
-DIFFERENCE.** A uniform rise changes the curve's *level* and not its *slope*;
-a flat working-rung addition would fix the warm-up half and leave the working
-rungs' spacing exactly as the replay found it. The span puts a real slope above
-the line and none below it — `d(working)/d(excess)` is 0 below, **0.380** at
-RPE 8's lightest cell, 0.119 at its heaviest, and 0.004 at the top meet attempt —
-and the demand it adds runs 0.0397 to 0.0521 across the ladder, a 31% spread.
-Setting the span to zero and keeping the step is a one-token mutant, and it moves
-every working floor: RPE 8's four go 59/37/44/58 ticks to 61/42/53/62.
+**IT IS NOT `DEMAND_BASE` WITH AN `if` IN FRONT OF IT, AND THE DIFFERENCE IS THE
+STEP AT THE LINE RATHER THAN ANY SLOPE.** A uniform rise adds the same number at
+every load *including the warm-up rungs*, and the warm-up rungs are where it is
+spent — `+0.030` costs 60 reps of 16200. This adds `0.045` above the line and
+exactly `0.000` below it, so the demand curve stops being a continuous function
+of load, and the place it breaks is one `loadRatio` cannot locate. No value of
+`DEMAND_BASE` produces that. Inside the working band the addition is uniform, on
+purpose: the ruling asked for the working band to be harder, not for its internal
+spacing to change. It compresses there anyway — the twelve working cells' tap
+floors go from a spread of **5.391** (slowest ÷ fastest, no lever) to **3.294** —
+because a fixed demand addition costs more taps at a heavy load than a light one.
+
+**A RAMP SHIPPED HERE FOR ONE ROUND ON A CONFOUNDED MEASUREMENT, AND THE
+REFUTATION IS WORTH MORE THAN THE DELETION.** Two more constants made the
+addition `ONSET + SPAN × excess / (excess + HALF)`, running 0.0397 to 0.0521
+across the ladder, and this section claimed the span was what compressed it. The
+mutation test behind that claim — set `SPAN` to 0, watch the floors move — is
+real and proves nothing about shape, because zeroing the span also removes up to
+30% of the *magnitude*. Held at matched magnitude, the flat step compresses
+**more**: spread 3.294 against the ramped version's 3.471. The ramp's net
+contribution was −0.177 of spread; it un-compressed. It also gave the ruling's
+own named rung the least help — the span's share of the addition was 9–22% at
+RPE 8 against 29% at RPE 10, and 0% at two top meet cells where the ceiling
+clipped below the onset — and the sentence defending that confused *slope* with
+*magnitude*: steepest slope across RPE 8 means RPE 8 gets the smallest addition.
+Deleted rather than re-justified. Two placeholder knobs a human hand-tunes across
+roughly thirty passes, worth at most one tick of cadence per cell.
 
 **WHAT IT BUYS, on the slowest sustained tap rate that still makes the rep at
 every seed, measured on a ladder of every whole tick, 20 seeds a cell**
@@ -2377,17 +2394,22 @@ every seed, measured on a ladder of every whole tick, 20 seeds a cell**
 | rung | before | after |
 |---|---|---|
 | RPE 6, 7 | no cadence costs the rep | **unchanged** — no cadence costs the rep |
-| RPE 8 | 0.48 / 0.86 / 0.67 / 0.53 /s | **1.02 / 1.62 / 1.36 / 1.03 /s** |
-| RPE 9 | 1.05 / 1.62 / 1.40 / 1.18 /s | 1.82 / 2.40 / 2.14 / 2.00 /s |
-| RPE 10 | 2.61 / 2.40 / 2.14 / 2.07 /s | 3.53 / 3.33 / 3.16 / 3.00 /s |
+| RPE 8 | 0.48 / 0.86 / 0.67 / 0.53 /s | **1.07 / 1.58 / 1.36 / 1.07 /s** |
+| RPE 9 | 1.05 / 1.62 / 1.40 / 1.18 /s | 1.82 / 2.31 / 2.07 / 1.94 /s |
+| RPE 10 | 2.61 / 2.40 / 2.14 / 2.07 /s | 3.53 / 3.33 / 3.00 / 2.86 /s |
 | meet, openers | 2.40 /s | 3.33 /s |
 | meet, the ceiling attempt | 10.00 /s | **10.00 /s — untouched** |
 
 A tap every 1.2 to 2.1 seconds used to make an RPE 8 rep, which is why the rung
-read as nothing to a thumb. It is a tap every 0.6 to 1.0 seconds now, sustained,
-and **8 < 9 < 10 still reads with room**: RPE 8's hardest cell asks 1.62 a second
-against RPE 9's easiest at 1.82, and RPE 9's hardest 2.40 against RPE 10's
-easiest 3.00.
+read as nothing to a thumb. It is a tap every 0.63 to 0.93 seconds now,
+sustained, and **8 < 9 < 10 still reads with room**: RPE 8's hardest cell asks
+1.58 a second against RPE 9's easiest at 1.82, and RPE 9's hardest 2.31 against
+RPE 10's easiest 2.86.
+
+*This row was re-derived when the ramp was deleted rather than carried across
+it. The ramped lever read 1.02 / 1.62 / 1.36 / 1.03 at RPE 8, which is at most
+one tick of cadence per cell from the flat step's — the whole measured
+difference the two deleted constants were buying.*
 
 **AND THE RUNG CHANGED CHARACTER, NOT ONLY ITS NUMBER.** At RPE 8 the unaided
 bar used to creep upward and lose on the clock; its peak demand now sits above
@@ -2423,11 +2445,14 @@ The lever does not make it worse: the ceiling adds that cell nothing, and
 
 **WHAT IT COSTS, stated rather than discovered later.** Three meet cells are
 clipped to the ceiling and share one effective margin
-(`aggressive/att2/wrecked`, `aggressive/att3/rested`, `standard/att3/wrecked`);
-they still differ in capacity, so their floors differ, but the extra spread the
-lever would have added is gone. And two of §6.2's own counts fell — see the
-paragraph on 38 → 35 above — because at the very top of a meet a pause is no
-longer something you can come back from.
+(`aggressive/att2/wrecked` keeps 0.0430 of the onset's 0.045,
+`aggressive/att3/rested` 0.0234, `standard/att3/wrecked` 0.0230); they still
+differ in capacity, so their floors differ, but the extra spread the lever would
+have added is gone. Every other working cell gets the onset whole, so the ceiling
+is now the lever's **only** load-dependent term — and unlike the deleted ramp it
+is load-dependent for a measured reason rather than a shape somebody wanted. And
+two of §6.2's own counts fell — see the paragraph on 38 → 36 above — because at
+the very top of a meet a pause is no longer something you can come back from.
 
 **§12.1 STAYS OPEN. Nobody has played any of this.** All four constants are
 placeholders. The next phone question is the same two it was: does RPE 8 feel
@@ -2452,8 +2477,8 @@ presets. Every distinct load a session can prescribe (5 RPE choices against all
 27 check-ins, 22 distinct cells) and every load a meet can call (3 jump
 strategies x 3 attempts x 2 bar speeds, 18 cells), 80 paired reps each: pairs
 identical up to a moment, differing only in whether the tapping resumed
-afterwards. Coming back changes the outcome in **35** of those 40 cells, turns a
-miss into a make in **26**, and in **30** the idle rep has measurably stalled
+afterwards. Coming back changes the outcome in **36** of those 40 cells, turns a
+miss into a make in **27**, and in **30** the idle rep has measurably stalled
 first. **1** cell shows none of the three — the lightest load RPE 6 can prescribe
 at a neutral check-in — and it is pinned as the control, because a grind on every
 warm-up would be its own failure. Before the 2026-08-26 retune those four counts
@@ -2462,16 +2487,18 @@ grid was widened in the same pass, from four quit instants per cell to eight. On
 a burst mechanic every one of them is zero by construction, because taps after
 the window buy nothing.
 
-**THE FIRST TWO WENT DOWN — 38 → 35 AND 29 → 26 — ON THE 2026-08-27
+**THE FIRST TWO WENT DOWN — 38 → 36 AND 29 → 27 — ON THE 2026-08-27
 WORKING-RUNG LEVER, AND A FALLING COUNT HERE IS THE HARD DIRECTION, NOT THE SOFT
 ONE.** These count cells where stopping and then *starting again* changes the
 outcome. A cell drops out when the pause stops being survivable at all: the idle
-rep still stalls, and coming back no longer saves it. Four meet cells crossed
-that line and they are the top of the ladder — `conservative/att3/wrecked`,
-`standard/att3/wrecked`, `aggressive/att2/wrecked`, and
-`aggressive/att3/wrecked`, which was already there. The number to read beside
-them is the third one, which did **not** move: **30** of 40, exactly the 30
-non-warm-up cells, still stall. `REACHABLE_LADDER` in `lift.test.ts` counts all
+rep still stalls, and coming back no longer saves it. Three meet cells crossed
+that line and they are the top of the ladder — `standard/att3/wrecked`,
+`aggressive/att2/wrecked`, and `aggressive/att3/wrecked`, which was already
+there. The number to read beside them is the third one, which did **not** move:
+**30** of 40, exactly the 30 non-warm-up cells, still stall. (They read 35 and 26
+for one round, while the ramp was shipped; deleting it gave the two heaviest
+wrecked meet cells slightly less demand and `conservative/att3/wrecked` came back
+off the floor.) `REACHABLE_LADDER` in `lift.test.ts` counts all
 four from the driven table, so this paragraph cannot drift from it.
 
 **And the warm-up protection is the two zero COLUMNS, not the first one**, which

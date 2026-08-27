@@ -1004,7 +1004,10 @@ const GUARANTEE_COVERAGE = {
   // obviously touched (`lift.test.ts`) and not the one it actually moved. The
   // suite went red on origin for one commit. CLAUDE.md's "a prose edit can
   // change the suite's result" paragraph names exactly this pair of files.
-  TREE_WIDE: 304,
+  //
+  // 304 -> 306 on deleting the lever's ramp: the refutation is longer than the
+  // thing it refutes, which is the trade this file's own doctrine asks for.
+  TREE_WIDE: 306,
 } as const;
 
 // ---------------------------------------------------------------------------
