@@ -3207,15 +3207,23 @@ const WORKING_FLOOR = {
     12, 10, 8, 12, 9, 8, 12, 8, 6,
   ] as const,
   /**
-   * Measured: session cells whose floor is `SLOWEST_GAP_TICKS` — no cadence the
-   * ladder reaches ever costs them the rep. Exactly the ten warm-up cells.
+   * -------------------------------------------------------------------------
+   * `CELLS_NO_CADENCE_COSTS: 10` WAS HERE AND IS DELETED AS DOMINATED
+   * -------------------------------------------------------------------------
+   * It counted session cells whose measured floor is `SLOWEST_GAP_TICKS`. The
+   * test also asserts that the LABELS of those cells are exactly the ten
+   * warm-up labels, and a set equality decides the length — so no state of the
+   * engine reddens the count while leaving the set green.
    *
-   * THE NON-VACUITY GUARD FOR THE VECTOR ABOVE, and it is a set equality in
-   * disguise: 10 of 22, and the test names WHICH ten. A count alone is
-   * satisfied by ten working cells going quiet, which is the failure the
-   * whole round is scoped against.
+   * THE ONE THING THE SET EQUALITY CANNOT NOTICE ABOUT ITSELF is a wholesale
+   * RE-PIN of `SESSION_FLOOR_GAP_TICKS`: paste in a vector with eleven 240s and
+   * the measurement moves with it, so both the equality and a named count taken
+   * from the measurement pass together. What catches that is a literal counted
+   * off the PINNED VECTOR rather than off the measured one, which is the same
+   * idiom and the same reason as `REACHABLE_WARMUP.LOST_WITH_THE_FINGER_OFF`'s
+   * zero-count, and it lives in the test body for the same reason: as a
+   * constant here it would be one more thing the re-pin edits.
    */
-  CELLS_NO_CADENCE_COSTS: 10,
 } as const;
 
 /**
@@ -3269,8 +3277,30 @@ const FLOOR_EDGES = {
    * no longer completes, and that side is asserted as a category below.
    */
   WARMUP_SLOWEST_UNAIDED_ASCENT_TICKS: 193,
-  /** Measured: working-rung cells whose unaided rep reaches lockout. None. */
-  WORKING_CELLS_THAT_COMPLETE_UNAIDED: 0,
+  /**
+   * -------------------------------------------------------------------------
+   * `WORKING_CELLS_THAT_COMPLETE_UNAIDED: 0` WAS HERE AND IS DELETED AS
+   * DOMINATED, WITH THE ANALYSIS RATHER THAN THE CONSTANT
+   * -------------------------------------------------------------------------
+   * It counted working cells whose unaided rep reaches lockout, at seed 1, over
+   * the twelve session cells. "Leaves a warm-up alone — nobody answers at all"
+   * already asserts `workingLost === WORKING_CELLS * NO_ANSWER_SEEDS` over the
+   * same twelve cells at EIGHT seeds, driven the same way — `driveGrind` with
+   * `idleFrom` 0 and an infinite span throws no taps at all, so the gap it is
+   * handed is irrelevant and the two calls produce the same rep.
+   *
+   * SYMBOLICALLY: mine red implies theirs red (seed 1 is one of their eight, so
+   * a cell that completed would take their count off 96), and theirs red does
+   * NOT imply mine red (a cell completing at seed 5 only leaves mine green). A
+   * strictly weaker check on the same subject is one no state of the engine can
+   * redden alone, which is the definition this file uses.
+   *
+   * WHAT IS KEPT IS THE HALF THAT IS NOT DOMINATED: those reps STALL AND SINK
+   * BACK, which says they are beaten on force rather than on the clock — the
+   * fact that makes the floor's second separator categorical rather than the
+   * 54-tick gap it was chosen from. `workingLost` says the rep was lost and
+   * says nothing about which of the two ended it.
+   */
   /**
    * Measured: reachable cells the BASE demand curve already puts at or past
    * `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`, so the working-rung lever adds
@@ -4407,11 +4437,11 @@ describe('the grind decides the lift', () => {
         ticks: state.ascentTicks,
       };
     };
+    // Same domination on this side: that every warm-up cell DOES lock out
+    // unaided is what "leaves a warm-up alone — nobody answers at all" asserts,
+    // at eight seeds against this one. The tick count is what that check cannot
+    // see and is the edge this test exists for.
     const warmupAscents = warmups.map(unaided);
-    expect(
-      warmupAscents.filter((a) => !a.lockout).length,
-      'warm-up cells that failed to lock out unaided',
-    ).toBe(0);
     expect(
       Math.max(...warmupAscents.map((a) => a.ticks)),
       'the slowest unaided warm-up ascent',
@@ -4419,12 +4449,13 @@ describe('the grind decides the lift', () => {
     expect(FLOOR_EDGES.WARMUP_SLOWEST_UNAIDED_ASCENT_TICKS).toBeLessThan(
       LIFT_TUNING.BENCH_WARMUP_FLOOR_ASCENT_TICKS,
     );
-    const completing = working.filter((c) => unaided(c).lockout).map((c) => c.label);
-    expect(
-      completing.length,
-      `working cells that still lock out unaided: ${completing.join(', ')}`,
-    ).toBe(FLOOR_EDGES.WORKING_CELLS_THAT_COMPLETE_UNAIDED);
-    // ...AND THEY ARE BEATEN ON FORCE, NOT ON THE CLOCK, which is the half a
+    // THE "NO WORKING CELL COMPLETES UNAIDED" COUNT IS NOT ASSERTED HERE. It is
+    // dominated by "leaves a warm-up alone — nobody answers at all", which
+    // drives the same reps at eight seeds instead of one — see `FLOOR_EDGES`
+    // for the symbolic argument. What is asserted instead is the part that
+    // check cannot see:
+    //
+    // ...THEY ARE BEATEN ON FORCE, NOT ON THE CLOCK, which is the half a
     // tick count cannot say. The bar reaches a high point and then goes
     // backwards, so no clock however long would change the answer — that is
     // what makes the separation wider than the 54 ticks the floor was chosen
@@ -4487,9 +4518,17 @@ describe('the grind decides the lift', () => {
     const noCadenceCosts = session
       .filter((cell, i) => sessionFloors[i] === WORKING_FLOOR.SLOWEST_GAP_TICKS)
       .map((cell) => cell.label);
-    expect(noCadenceCosts.length, 'cells no cadence ever costs').toBe(
-      WORKING_FLOOR.CELLS_NO_CADENCE_COSTS,
-    );
+    // A LITERAL COUNTED OFF THE PINNED VECTOR, NOT OFF THE MEASUREMENT, and it
+    // is the one thing the set equality below cannot notice about itself: a
+    // wholesale re-pin of `SESSION_FLOOR_GAP_TICKS` moves the measurement and
+    // the equality together, and this stays where it was. See that constant's
+    // header for the domination analysis this replaced.
+    expect(
+      WORKING_FLOOR.SESSION_FLOOR_GAP_TICKS.filter(
+        (gap) => gap === WORKING_FLOOR.SLOWEST_GAP_TICKS,
+      ).length,
+      'rows of the pinned vector that no cadence costs',
+    ).toBe(10);
     expect(noCadenceCosts.sort()).toEqual(
       session
         .filter((c) => /^session\/rpe[67]\//.test(c.label))
