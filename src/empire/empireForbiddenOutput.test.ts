@@ -1595,7 +1595,7 @@ const SURFACE_CENSUS = Object.freeze({
   // `wiring.key === ...` comparisons in `runManagedGym`, so every control is
   // now identified by a named predicate and `management.test.ts` can assert
   // the seven controls partition. Read from this pin's own failure value.
-  EXPORTS: 366,
+  EXPORTS: 367,
   // 2 -> 3: GymScreen.tsx#GymScreen#return.key joins the same closed group.
   // 3 -> 4: FloorGrid.tsx#FloorGrid#return.key joins it too.
   // 4 -> 65: Phase 4's FLOOR_SPRITE_URIS — sixty-one data-URI leaves, one
@@ -2830,7 +2830,15 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // screen's per-item and per-tier reads. Read from this pin's own failure
   // value. The set of CONSTRUCTORS below is unchanged, which is the half of
   // this instrument that is about brands rather than about volume.
-  CALLS_EXAMINED: 2848,
+  // 2848 -> 2871: the player check-in round. `GymScreen.tsx` gained the
+  // gating that replaced every control which could only refuse, and each gate
+  // is the shipped predicate's own inputs read a second time at the branch
+  // (`repairCostGymBucks`, `managerHireCostGymBucks`, `ladderRungIndex`,
+  // `ladderEquipmentCost`, `sessionEquipmentCost`, `ladderMoveCost`), plus
+  // `orderOpensAt` at the new control's note. Read from this pin's own failure
+  // value. The set of CONSTRUCTORS below is unchanged, which is the half of
+  // this instrument that is about brands rather than about volume.
+  CALLS_EXAMINED: 2871,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -6476,6 +6484,12 @@ function driveEverything(): readonly DrivenRow[] {
   // so its element tree (copy included) passes through the same string scan
   // as every other returned value.
   drive('ladderDevTimeSteps', 'zero-arg', () => ladderModule.ladderDevTimeSteps());
+  // The player's own check-in span — the one `GymScreen.tsx`'s "open up"
+  // control feeds to the shipped accrual. Zero-arg, like the dev step table
+  // beside it, and driven for the same reason: instrument B's census is a set
+  // equality in both directions, so an export nobody drives is a red line
+  // rather than a silence.
+  drive('playerCheckInGapSeconds', 'zero-arg', () => ladderModule.playerCheckInGapSeconds());
   for (const seconds of SECONDS_DOMAIN) {
     drive('describeLadderClock', String(seconds), () => ladderModule.describeLadderClock(seconds));
     drive('ladderCheckInAfter', String(seconds), () =>
@@ -9520,7 +9534,10 @@ const DRIVE_CENSUS = Object.freeze({
   // 582170 -> 582208: the two ordinal knobs joined the COUNT domain (they
   // were exempt-less and unfiled in the run before this one), which widens
   // every loop keyed on it. Read from this pin's own failure value.
-  ROWS: 582208,
+  // 582208 -> 582209: one more driven row, the new zero-arg
+  // `playerCheckInGapSeconds` — the span the player's own check-in feeds to
+  // the shipped accrual.
+  ROWS: 582209,
   // GDD §5.13 presentation Phase 2: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
   // EXPORTS 1:1 again (302 -> 303, the new `ambientMemberRoster` row).
   // GDD §5.13 presentation Phase 3: EXPORTS_DRIVEN tracks SURFACE_CENSUS.
@@ -9534,7 +9551,7 @@ const DRIVE_CENSUS = Object.freeze({
   // every one of stage 4's exports is driven below.
   // 361 -> 366: tracks SURFACE_CENSUS.EXPORTS 1:1 again — the chain-break
   // round's five exports are all driven above.
-  EXPORTS_DRIVEN: 366,
+  EXPORTS_DRIVEN: 367,
   // 3458073 -> 3458119: re-measured by running the assertion below.
   // 3458119 -> 3458141: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: NODES re-measured (3458143 -> 3482640),
@@ -9573,7 +9590,13 @@ const DRIVE_CENSUS = Object.freeze({
   // bound was declining to look at DO carry strings, which is the whole reason
   // a truncating walk is dangerous — and reading a pin as unchanged because
   // its assertion never ran is the same mistake one level out.
-  NODES: 6417438,
+  // 6417438 -> 6417204: the player check-in round, and the number went DOWN
+  // even though a driven export was added. That is the gating: the driven
+  // `GymScreen` renders draw fewer controls on the poor states the drive
+  // builds, so the element trees this walk scans are smaller — a screen that
+  // stopped offering presses it could not honour has fewer nodes on it. Read
+  // from this pin's own failure value.
+  NODES: 6417204,
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
   // 16040187), a real failure value this round's own run produced.
@@ -9623,7 +9646,12 @@ const DRIVE_CENSUS = Object.freeze({
   // strings, at each of this drive's three `GymScreen` points, 3 x 4 = 12.
   // The three stakes sentences changed their TEXT and not their count, so
   // they contribute nothing here and show up in `DISTINCT_STRINGS` instead.
-  STRINGS: 29_626_391,
+  // 29_626_391 -> 29_625_423: the same gating that moved `NODES` above, seen
+  // on the string axis — a control that is not drawn takes its label with it,
+  // so the driven `GymScreen` trees carry fewer strings on the poor states the
+  // drive builds. Down rather than up, for the same reason. Read from this
+  // pin's own failure value.
+  STRINGS: 29_625_423,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -9672,7 +9700,11 @@ const DRIVE_CENSUS = Object.freeze({
   // is 0 and nothing is neglected, so both take the free-dismissal branch —
   // and one distinct sentence left as one distinct sentence arrived. The
   // `{' '}` separators the new line adds are a value the drive already held.
-  DISTINCT_STRINGS: 3710,
+  // 3710 -> 3728: the eighteen distinct new strings the player check-in round
+  // put on the driven screen — the check-in control and its note, and the
+  // reason drawn where each gated control used to be. Read from this pin's
+  // own failure value.
+  DISTINCT_STRINGS: 3728,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -9734,7 +9766,12 @@ const DRIVE_CENSUS = Object.freeze({
   // controls times three driven screens) gives 21 and the measurement is 27,
   // so a decomposition written from the obvious arithmetic would have been a
   // confident wrong sentence. What the extra six are was not established.
-  CLOSURES_INVOKED: 252,
+  // 252 -> 192: the player check-in round's gating. A control that is not
+  // drawn takes its `onPress` closure with it, so the driven `GymScreen`
+  // element trees carry sixty fewer invocable closure positions on the poor
+  // states the drive builds — the same direction, and the same cause, as the
+  // NODES and STRINGS pins above. Read from this pin's own failure value.
+  CLOSURES_INVOKED: 192,
   CLOSURE_THROWS: 0,
   // 2046 -> 2052: GDD §5.13 presentation Phase 1's two new declined closures
   // (FloorGrid's `type` and `dispatch`, embedded in GymScreen's own return),
@@ -9783,7 +9820,12 @@ const DRIVE_CENSUS = Object.freeze({
   // Error-shaped `stack` own-properties of the react dev-mode kind, and the
   // deeper walk reaches more of them. `STACK_FINDINGS` stays at zero, which
   // is the half of this pair that is about a name rather than about volume.
-  STACKS: 6056,
+  // 6056 -> 5999: the player check-in round's gating, on the stack axis — the
+  // fourth reading of the same cause, alongside NODES, STRINGS and
+  // CLOSURES_INVOKED. A control that is not drawn contributes no element and
+  // no closure for the walk to descend into. Read from this pin's own failure
+  // value.
+  STACKS: 5999,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
@@ -9979,8 +10021,19 @@ const DECLINED_CLOSURE_POSITIONS: readonly string[] = Object.freeze([
   // sections), so `<FloorGrid .../>`'s own child index moved with it. Same
   // component, same embed, new position — read from a driven run rather
   // than hand-counted.
-  'GymScreen#return.props.children.6.props.children.1.props.dispatch/1',
-  'GymScreen#return.props.children.6.props.children.1.type/1',
+  // children.6 -> children.7: the player's own check-in control was inserted
+  // above the floor section (directly under the money it produces), so
+  // `<FloorGrid .../>`'s own child index moved by one. Same component, same
+  // embed, one position later — verified as a pure shift by enumerating the
+  // root's own children rather than by matching a count. Before: 0 week,
+  // 1 rung/rate, 2 purse/clock, 3 lifts, 4 accrual, 5 refusal, 6 floor. After:
+  // the new control takes 3 and everything below it moves one, so index 6 is
+  // now the `lastRefusal` ternary and index 7 is the same `gymscreen-floor`
+  // View it always was. (A first draft of this comment said index 6 was the
+  // `lifts unlocked` line, which is off by one and is left recorded rather
+  // than silently corrected — the enumeration is what settled it.)
+  'GymScreen#return.props.children.7.props.children.1.props.dispatch/1',
+  'GymScreen#return.props.children.7.props.children.1.type/1',
   'accrueProduction#argument.1.gymBucksPerHour/1',
   'accrueProduction#argument.1.trainingIqPerDay/1',
   'gymBucksRatePerHour#argument.1.gymBucksPerHour/1',
@@ -13610,7 +13663,9 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // memberGrid's three new early returns. Read off this table's failure.
       // 50 -> 52: P4c — the `under` op helper and opsPowerBarOccupied.
       'floorSprites.ts': 52,
-      'ladder.ts': 25,
+      // 25 -> 26: `playerCheckInGapSeconds`'s own `return` — the span the
+      // player's "open up" control feeds to the shipped accrual.
+      'ladder.ts': 26,
       // members.ts's 13 return statements (§5.11 stage 3).
       'members.ts': 13,
       // 18 -> 20: `GymView`'s reducer gained the two new arms
@@ -13620,7 +13675,10 @@ const CHANNEL_SITE_COUNTS: Readonly<Record<ChannelId, Readonly<Record<string, nu
       // `dismiss-manager`, `recover-gym`), each ending in exactly one
       // `return`, the same one-call-per-arm shape the arms above have. Read
       // from this table's own failure value.
-      'ladderView.tsx': 26,
+      // 26 -> 27: `gymViewReduce`'s new `'open-up'` arm — the player's own
+      // check-in, ending in the same `advanceGymClock` return the dev arm
+      // beside it ends in.
+      'ladderView.tsx': 27,
       // §5.11 stage 4's sixty-four `return` sites — eight discriminated
       // results with two to four arms each, plus the read models.
       'management.ts': 89,
@@ -14190,8 +14248,8 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   'floorSprites.ts:422 receiver=NewExpression',
   'floorSprites.ts:435 receiver=NewExpression',
   'ladder.ts:333 receiver=ArrayLiteralExpression',
-  'ladderView.tsx:115 returned=unfollowable:state',
-  'ladderView.tsx:123 returned=unfollowable:state',
+  'ladderView.tsx:116 returned=unfollowable:state',
+  'ladderView.tsx:124 returned=unfollowable:state',
   // :370 -> :394/:421/:465: the `floor` field's addition shifted the one
   // existing site down, and the reducer's two new arms (`floor-place`,
   // `floor-remove`) each return an unfollowable `FloorState`.
@@ -14210,9 +14268,9 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // freshly assembled object. All three then shifted +18 with the ten rows in
   // `SHIPPED_SCREEN_DISAGREEMENTS` below, for the same reason and re-read the
   // same way.
-  'ladderView.tsx:506 returned=unfollowable:state',
-  'ladderView.tsx:534 returned=unfollowable:state',
-  'ladderView.tsx:589 returned=unfollowable:state',
+  'ladderView.tsx:520 returned=unfollowable:state',
+  'ladderView.tsx:548 returned=unfollowable:state',
+  'ladderView.tsx:612 returned=unfollowable:state',
   // §5.11 stage 4: `withWear`'s condition map is built in a loop and returned
   // through a fresh object the screen cannot follow into, the same shape as
   // every other row here.
@@ -14271,12 +14329,12 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   'ladder.ts:594 LadderState asked=true walked=false',
   'ladder.ts:605 LadderState asked=true walked=false',
   'ladder.ts:611 LadderState asked=true walked=false',
-  'ladderView.tsx:106 LadderState asked=true walked=false',
-  'ladderView.tsx:107 LadderAccrual asked=true walked=false',
-  'ladderView.tsx:114 LadderState asked=true walked=false',
-  'ladderView.tsx:115 LadderAccrual | null asked=true walked=false',
-  'ladderView.tsx:122 LadderState asked=true walked=false',
-  'ladderView.tsx:123 LadderAccrual | null asked=true walked=false',
+  'ladderView.tsx:107 LadderState asked=true walked=false',
+  'ladderView.tsx:108 LadderAccrual asked=true walked=false',
+  'ladderView.tsx:115 LadderState asked=true walked=false',
+  'ladderView.tsx:116 LadderAccrual | null asked=true walked=false',
+  'ladderView.tsx:123 LadderState asked=true walked=false',
+  'ladderView.tsx:124 LadderAccrual | null asked=true walked=false',
   // Renumbered by the `floor` field's addition, and widened by it: two new
   // `GymState`/`FloorState` reads for the `floor-place`/`floor-remove` arms
   // (:412/:413 unchanged in kind, :421/:448/:465/:477 new).
@@ -14319,16 +14377,16 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   // rather than ten sequential replaces — a sequential pass had already
   // produced a collision in this list when a new line number equalled an old
   // one still waiting to be rewritten.
-  'ladderView.tsx:506 readonly GymWeekReport[] asked=true walked=false',
-  'ladderView.tsx:534 FloorState asked=true walked=false',
-  'ladderView.tsx:589 FloorState asked=true walked=false',
-  'ladderView.tsx:601 FloorState asked=true walked=false',
-  'ladderView.tsx:634 ManagedGym asked=true walked=false',
-  'ladderView.tsx:647 ManagedGym asked=true walked=false',
-  'ladderView.tsx:661 ManagedGym asked=true walked=false',
-  'ladderView.tsx:671 ManagedGym asked=true walked=false',
-  'ladderView.tsx:679 ManagedGym asked=true walked=false',
-  'ladderView.tsx:687 ManagedGym asked=true walked=false',
+  'ladderView.tsx:520 readonly GymWeekReport[] asked=true walked=false',
+  'ladderView.tsx:548 FloorState asked=true walked=false',
+  'ladderView.tsx:612 FloorState asked=true walked=false',
+  'ladderView.tsx:624 FloorState asked=true walked=false',
+  'ladderView.tsx:657 ManagedGym asked=true walked=false',
+  'ladderView.tsx:670 ManagedGym asked=true walked=false',
+  'ladderView.tsx:684 ManagedGym asked=true walked=false',
+  'ladderView.tsx:694 ManagedGym asked=true walked=false',
+  'ladderView.tsx:702 ManagedGym asked=true walked=false',
+  'ladderView.tsx:710 ManagedGym asked=true walked=false',
   // §5.11 stage 4's fifteen rows, every one the same shape as the rows above:
   // the screen asks about a named state type and the control declines to walk
   // into it, so the census over-approximates rather than going quiet.
@@ -14495,7 +14553,20 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // `GymScreen.tsx`'s eighteen `management.ts` reads (several of them once
   // per owned item and once per manager tier) and `ladderView.tsx`'s nine.
   // Read from this pin's own failure value.
-  function: 1410,
+  // 1410 -> 1433: the player check-in round. `GymScreen.tsx` gained the
+  // gating that replaced every control which could only refuse, and each gate
+  // calls the shipped read a second time at the branch; this file's own
+  // `gymScreenControlsAt` oracle is in the scanned set too and contributes the
+  // rest.
+  //
+  // MEASURED TWICE, BECAUSE THE FIRST MEASUREMENT WAS TAKEN OVER A MUTANT AND
+  // WAS WRONG BY EXACTLY THE MUTANT. A run that overlapped a planted
+  // `case 'open-up': return state;` in `ladderView.tsx` reported 1431 — two
+  // fewer, which is that arm's `advanceGymClock` and `playerCheckInGapSeconds`
+  // calls. This census reads the source at test time, so a mutation live in
+  // the tree while it runs is inside its subject. Recorded because the wrong
+  // number was plausible and the difference was two.
+  function: 1433,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -14654,7 +14725,11 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // per §5.11 stage-4 reducer arm — the same six the per-module table above
   // records, so this total and that row move together or one of them is
   // wrong. Read from this pin's own failure value.
-  SITES: 726,
+  // 726 -> 728: two more escape sites, one per module — `ladder.ts`'s
+  // `playerCheckInGapSeconds` return and `ladderView.tsx`'s `'open-up'` arm
+  // return. Both are counted in `CHANNEL_SITE_COUNTS` above, which is the
+  // check that says WHICH module they arrived in.
+  SITES: 728,
   /**
    * Nodes the walk examined. A truncated walk would report a clean directory.
    * 21_885 until E41's value grammar landed in `empireTuning.ts`: the two
@@ -14726,7 +14801,13 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // and the rewritten stakes sentences. A file-changed counter again, in the
   // class this file's own verdict log already names. Read from this pin's own
   // failure value.
-  NODES_EXAMINED: 61_008,
+  // 61_008 -> 61_584: the shipped source grew — `ladder.ts`'s
+  // `playerCheckInGapSeconds`, `ladderView.tsx`'s `'open-up'` arm, and
+  // `GymScreen.tsx`'s gating expressions. Read from this pin's own failure
+  // value. Note this moves in the OPPOSITE direction to `DRIVE_CENSUS.NODES`
+  // above and for a different reason: this counts AST nodes in the source,
+  // that counts nodes in the values the drive produced.
+  NODES_EXAMINED: 61_584,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.
@@ -14818,7 +14899,11 @@ const SHIPPED_TYPE_DEPTH = Object.freeze({
   // The six new action arms and the five new refusal members add no exported
   // POSITION — they widen unions that already had one. Read from this pin's
   // own failure value.
-  POSITIONS: 872,
+  // 872 -> 874: the player check-in round's two new exported positions —
+  // `ladder.ts#playerCheckInGapSeconds()`'s return, and the widened
+  // `GymViewAction` reached through `gymViewReduce`'s parameter. Read from
+  // this pin's own failure value.
+  POSITIONS: 874,
   /** Positions at the maximum, named rather than counted. */
   DEEPEST_AT: Object.freeze([
     'empireInvariant.ts#runEmpire()',
@@ -15754,11 +15839,78 @@ const GYM_VIEW_CONTROLS =
  * — there is no manager to let go. Both are driven on the played path by
  * `GymScreen.test.ts` and by `tools/verify-floor-reachability.mjs` instead.
  */
-const GYM_SCREEN_CONTROLS =
-  GYM_VIEW_CONTROLS +
-  EMPIRE_TUNING.LADDER_STARTING_EQUIPMENT.length +
-  EMPIRE_TUNING.MANAGER_TIERS.length +
-  1; // reopen the gym
+/**
+ * `GymScreen`'s control count AT A GIVEN GYM, and it is a function now rather
+ * than a constant. That change is the measurement, not an accommodation of
+ * one.
+ *
+ * WHY IT STOPPED BEING A CONSTANT. A human dumped the opening frame on a real
+ * phone and found a wall of controls that could only refuse: three
+ * "repair for 0" buttons on a gym with nothing worn, a "reopen the gym"
+ * control under the words "open for business", three hire tiers priced
+ * 150 / 600 / 2000 against a purse of 0, and seventeen shop rows nearly all
+ * of which were out of reach. Every one of those is drawn only where its own
+ * shipped transition does not refuse now, so the number of controls on the
+ * screen MOVES WITH THE PURSE — which is exactly what the axis below sweeps.
+ * A constant would have had to be wrong at every point but one.
+ *
+ * AND IT IS AN ORACLE OVER THE ENGINE RATHER THAN A COPY OF THE SCREEN'S
+ * BRANCH. Every gate below asks the shipped transition — `repairEquipment`,
+ * `hireManager`, `recoverGym`, `buyLadderEquipment`, `buySessionEquipment`,
+ * `moveUpLadder`, `respondToPrompt` — whether it refuses, and counts the
+ * control iff it does not. Rewriting the screen's predicate here instead
+ * (cost against purse) would be an oracle restating its subject: no state of
+ * `GymScreen.tsx` could then make the two disagree, which is the shape this
+ * file records as vacuous. As written, a gate that drifts from its own
+ * transition's refusal order is red here.
+ *
+ * The ungated four, named so the split is legible: the three dev steps, the
+ * week-boundary jump, the player's own check-in (`'open-up'`, always offered
+ * — it is the control that made the stage-4 loop reachable without the dev
+ * row), and every flexible-slot option button.
+ */
+function gymScreenControlsAt(managed: managementModule.ManagedGym): number {
+  const gym = managed.gym;
+  const at = gym.ladder.collectedAt;
+  // Written as expressions rather than as `if`/`for` statements ON PURPOSE:
+  // the dispatch-chain census below scans this file, and a helper written in
+  // the obvious imperative shape adds eight rows to `DECLARED_DISPATCH_CHAINS`
+  // and two to `CONTINUATIONS_BLIND_TO_THE_SUBJECT` for a counting helper that
+  // dispatches on nothing. Measured, not assumed — that is what the first
+  // draft of this function did.
+  const offered = (refused: boolean): number => (refused ? 0 : 1);
+  const prompt = managementModule.maintenancePrompt(managed);
+  return (
+    EMPIRE_TUNING.LADDER_DEV_TIME_STEPS_SECONDS.length +
+    1 + // the week-boundary jump
+    1 + // the player's own check-in
+    EMPIRE_TUNING.FLEXIBLE_SESSIONS_PER_WEEK * (EMPIRE_TUNING.FLEXIBLE_ACTIVITIES.length + 1) +
+    EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.filter(
+      (item) => ladderModule.buyLadderEquipment(gym.ladder, item).kind !== 'refused',
+    ).length +
+    EMPIRE_TUNING.SESSION_EQUIPMENT_ITEMS.filter(
+      (item) => sessionsModule.buySessionEquipment(gym, item).kind !== 'refused',
+    ).length +
+    offered(ladderModule.moveUpLadder(gym.ladder).kind === 'refused') +
+    managementModule
+      .ownedItemsOf(gym)
+      .filter((item) => managementModule.repairEquipment(managed, item).kind !== 'refused').length +
+    (managed.manager === null
+      ? EMPIRE_TUNING.MANAGER_TIERS.filter(
+          (tier) => managementModule.hireManager(managed, tier, at).kind !== 'refused',
+        ).length
+      : 1) + // let them go — ungated, dismissal is free
+    offered(managementModule.recoverGym(managed).kind === 'refused') +
+    (prompt.kind === 'quiet'
+      ? 0
+      : // "not now" and "decline the repair", neither gated, plus the review's
+        // own repair answer where `respondToPrompt` would not refuse it.
+        2 +
+        offered(
+          managementModule.respondToPrompt(managed, 'repair', at).kind === 'repair-refused',
+        ))
+  );
+}
 
 /**
  * Every onClick OR onPress in an element tree, pressed in tree order.
@@ -15851,7 +16003,7 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
             }),
           );
         },
-        callsAt: (): number => GYM_SCREEN_CONTROLS,
+        callsAt: (point: number): number => gymScreenControlsAt(managedGymAtPurse(point)),
         argumentsPerCall: 1,
       }),
     ]),
@@ -16236,12 +16388,23 @@ const DECLARED_CALLBACK_AXES: Readonly<Record<string, CallbackAxisCensus>> = Obj
   'GymScreen.tsx#GymScreen#props.dispatch#gymBucks': Object.freeze({
     points: 402,
     refusedPoints: 0,
-    // 14070 -> 16884: S4b. Seven more controls per point (three repair, three
-    // hire, one reopen), 402 points, 402 x 7 = 2814. This is no longer equal
-    // to the `GymView` row below, and that inequality is the measurement that
-    // says stage 4 is on one screen and not the other.
-    calls: 16884,
-    recorded: 16884,
+    // 16884 -> 9309: THE PLAYER CHECK-IN ROUND'S GATING, AND THE SHAPE OF THE
+    // NUMBER IS THE FINDING RATHER THAN ITS SIZE. 16884 is exactly 402 x 42 —
+    // a constant control count at every point of the purse axis, which is what
+    // a screen that draws every control whatever the balance produces. 9309 is
+    // NOT divisible by 402 (it is 23.16 controls per point on average), and it
+    // cannot be, because the control set now moves with the purse: a poor gym
+    // is offered almost nothing and a rich one is offered nearly everything.
+    // A gating that had been added and then keyed on something other than the
+    // purse would have come back divisible again.
+    //
+    // The oracle beside it is `gymScreenControlsAt`, which asks each shipped
+    // transition whether it refuses at that purse rather than restating the
+    // screen's own predicate — see its header for why that distinction is the
+    // whole value of this row. Read from this pin's own failure value and
+    // cross-checked against the divisibility above.
+    calls: 9309,
+    recorded: 9309,
   }),
   'engagement.ts#historyFrom#attended#slots': Object.freeze({
     points: 239,
@@ -16351,14 +16514,22 @@ const CALLBACK_PASS_CENSUS = Object.freeze({
       // adds over `GYM_VIEW_CONTROLS`. Checked as that product rather than only
       // read off the failure value, so a total that moved for some other reason
       // would not have matched.
-      CALLS: 3420593,
+      // 3420593 -> 3413018: the player check-in round. The whole move is the
+      // `GymScreen` dispatch axis alone (16884 -> 9309, exactly -7575), which
+      // is the gating: a control is drawn only where its own shipped
+      // transition does not refuse, so the number pressed at a point now moves
+      // with that point's purse. Checked as that difference rather than only
+      // read off the failure value.
+      CALLS: 3413018,
   // GDD §5.13 presentation Phase 3: re-measured (5496920 -> 5618662), a real
   // failure value this round's own run produced.
   // Phase 3's RENDER half: re-measured (5618662 -> 5620716).
   // P4b, measured off this assertion.
   // 5665085 -> 5667899: S4b. The same 402 x 7 = 2814 the `CALLS` pin above
   // moves by, which is what says the pass recorded every call it made.
-  RECORDED: 5667899,
+  // 5667899 -> 5660324, the same -7575 the CALLS pin above moves by, which is
+  // what says the pass recorded every call it made.
+  RECORDED: 5660324,
   FINDINGS: 0,
   /** The tripwire's own numbers, which are what the zeros above are zero against. */
   TRIPWIRE_CALLS: 6,

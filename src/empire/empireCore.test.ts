@@ -2602,7 +2602,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // them), and `ladderView.tsx -> GymScreen.tsx`, from the new paragraph in
     // `GymViewState`'s header saying which of the two views renders stage 4.
     // Nothing was removed.
-    expect(pairs).toBe(118);
+    // 118 -> 119: the player's own check-in. ONE new pair, and it was
+    // enumerated the same way the three above were — the whole pair list was
+    // diffed against the previous commit rather than the total being read off
+    // this assertion's failure value, because a re-pin that only matches a
+    // total absorbs a pair arriving while another leaves. The one:
+    // `ladder.ts -> GymScreen.tsx`, from `playerCheckInGapSeconds`'s header
+    // naming the screen whose "open up" control feeds it. Nothing was
+    // removed.
+    expect(pairs).toBe(119);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3222,6 +3230,20 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gym bucks:',
       'accelerated:',
       'clock:',
+      // THE PLAYER'S OWN CHECK-IN — five chunks, and the reason they are here
+      // is the whole of this round. A human on a real phone reported that they
+      // could not open a maintenance review, and that was structural:
+      // `checkInsTaken` had one writer reached from one arm dispatched from
+      // one place, the dev row this screen labels "not part of the game". This
+      // control takes a check-in in the game's own voice. What a reviewer is
+      // signing on these five: they name no person, no brand and no company,
+      // and they say nothing about being away costing anything — the sentence
+      // is about a shift the player chose to run.
+      'open up for the day',
+      'run the gym for a',
+      '-hour shift and collect what it earned.',
+      'shift(s) opened so far —',
+      '.',
       'lifts unlocked:',
       'last advance banked',
       's of',
@@ -3281,6 +3303,17 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       ': condition',
       ', repairing it costs',
       'gym bucks',
+      // THE REASON IN PLACE OF A DEAD CONTROL, and these are the sentences the
+      // human's report was about: a cold gym drew three "repair for 0" buttons
+      // whose only possible outcome was `repairEquipment`'s own
+      // `'already-sound'` refusal. The control is gated on that refusal now
+      // and these three chunks are what a player reads instead — the first is
+      // the already-sound arm, the second and third the not-enough arm.
+      // Neither tells a player that being away cost them anything; both are
+      // statements about the gym's condition and their own purse.
+      'as new — nothing to repair',
+      'needs',
+      'gym bucks — you have',
       'repair for',
       'no maintenance review open —',
       'check-in(s) taken, the next review is raised at check-in',
@@ -3288,6 +3321,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'is at condition',
       'and repairing it costs',
       'gym bucks',
+      // The same gate on the REVIEW's own repair answer. `respondToPrompt`
+      // refuses `'already-sound'` and `'not-enough-gym-bucks'`, and the review
+      // is raised on the ordinal rather than on wear, so a review naming an
+      // item at full condition is reachable and used to draw "repair for 0".
+      'this one is already as new — there is nothing to pay for',
+      'needs',
+      'gym bucks — you have',
       'repair for',
       'not now',
       'decline the repair',
@@ -3298,6 +3338,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       ':',
       'gym bucks to hire,',
       'per banked hour, repairs on their own below condition',
+      // The third of the human's three: 150 / 600 / 2000 against a purse of 0.
+      // `hireManager`'s `'not-enough-gym-bucks'` arm, drawn rather than left
+      // for a press to discover.
+      'needs',
+      'gym bucks — you have',
       'hire',
       'a repair threshold of 0 means that manager repairs nothing on their own. hiring the cheapest one while the ledger already shows a warning is itself a counted decision.',
       'manager:',
@@ -3308,9 +3353,16 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'dormant — everything reopening asks for is done',
       'dormant — still needed:',
       'reopening would cost',
-      'gym bucks in repairs, and this gym has reopened',
-      'time(s)',
+      // THE ONE THE HUMAN CALLED WRONG RATHER THAN USELESS. This block drew a
+      // reopening price and a "reopen the gym" control directly under "open
+      // for business — sound". The price is quoted only for a gym that is
+      // actually shut, the control is offered only where `recoverGym` does
+      // not refuse, and the reopen COUNT — history rather than an offer — is
+      // its own sentence now, drawn once there is one.
+      'gym bucks in repairs',
       'reopen the gym',
+      'this gym has reopened',
+      'time(s)',
       'last check-in: condition took',
       'gym bucks off the accrual and paid',
       'at',
@@ -3324,10 +3376,27 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gym bucks',
       'costs',
       'gym bucks, fits from',
+      // BOTH SHOPS' BUY CONTROLS ARE GATED ON THEIR OWN TRANSITION'S REFUSAL
+      // NOW, so the four chunks under each row are the two reasons a buy
+      // would have been refused — `'rung-too-low'` and
+      // `'not-enough-gym-bucks'`, in `buyLadderEquipment`'s and
+      // `buySessionEquipment`'s own order. On the state a new player actually
+      // opens in (garage, 0 gym bucks) that is seventeen rows of which every
+      // buy control was a refusal waiting to happen. The rows still state the
+      // price and the rung; the eight chunks here are what stands where the
+      // press used to be. None of them is about being away.
+      'not here yet — fits from',
+      'and this gym is a',
+      'needs',
+      'gym bucks — you have',
       'buy',
       '(',
       ') costs',
       'gym bucks, fits from',
+      'not here yet — fits from',
+      'and this gym is a',
+      'needs',
+      'gym bucks — you have',
       'buy',
       // S4b: this sentence used to say the portfolio arrives with stage
       // four. Stage 4 is on the screen above it now and the portfolio is
@@ -3338,6 +3407,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'next:',
       'for',
       'gym bucks',
+      // `moveUpLadder`'s own `'not-enough-gym-bucks'` arm — a cold gym holds 0
+      // against a 2500 move, so the relocate control was the first dead
+      // press on the screen and is now the price it cannot meet.
+      'needs',
+      'gym bucks — you have',
       'relocate',
       'available now:',
       'slot',
@@ -3573,7 +3647,21 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // already ships both as `MANAGED_DECISION_KINDS` members, so the two new
     // reducer arms named after them add nothing to this set. That is exactly
     // the kind of thing a hand-sum gets wrong, which is why the diff was run.
-    expect(singleQuoted.size).toBe(498);
+    // 498 -> 506: the player's own check-in, plus the gating that replaced
+    // every control which could only refuse. EIGHT new literals, ENUMERATED by
+    // diffing this exact collector against the previous commit rather than
+    // read off a failure count — `'open-up'` (the new reducer arm, spelled
+    // once in `ladderView.tsx` and once at the dispatch site, one literal),
+    // `'gymscreen-open-up'`, `'gymscreen-open-up-press'`,
+    // `'gymscreen-open-up-note'`, the note's own review-is-open sentence
+    // (`'a maintenance review is waiting for you further down this screen'`),
+    // and three testIDs for the reason drawn where a dead control used to be:
+    // `'gymscreen-prompt-repair-unavailable'`, `'gymscreen-recovery-history'`
+    // and `'gymscreen-move-up-unavailable'`. Nothing was removed. The four
+    // per-item versions of that last group are TEMPLATE literals and land in
+    // the count below instead, which is the kind of split a hand-sum gets
+    // wrong.
+    expect(singleQuoted.size).toBe(506);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3639,7 +3727,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // bare ` - ` separator, and the one player-facing fragment
     // `equipment back to condition ` from the recovery requirement. Nothing
     // was removed.
-    expect(templateChunks.size).toBe(293);
+    // 293 -> 298: five new templates, enumerated by the same diff as the
+    // single-quoted count above — the open-up note's next-review sentence
+    // (`your next maintenance review comes up at shift ${...}`) and the four
+    // `-unavailable` testIDs whose subject is per-item or per-tier
+    // (`gymscreen-repair-${item}-unavailable`,
+    // `gymscreen-hire-${tier}-unavailable`,
+    // `gymscreen-buy-ladder-${item}-unavailable`,
+    // `gymscreen-buy-session-${item}-unavailable`). Nothing was removed.
+    expect(templateChunks.size).toBe(298);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3868,17 +3964,31 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-manager-state',
       'gymscreen-move',
       'gymscreen-move-up',
+      // The reason drawn where a control that could only refuse used to be.
+      // Six of these arrived in one round: the relocate control here, the
+      // review's own repair answer below, and — as templates rather than
+      // plain literals, so they are counted in `templateChunks` instead of
+      // here — the per-item repair, the per-tier hire, and both shops' buys.
+      'gymscreen-move-up-unavailable',
+      // The player's own check-in, the control this round exists for.
+      'gymscreen-open-up',
+      'gymscreen-open-up-note',
+      'gymscreen-open-up-press',
       'gymscreen-phase',
       'gymscreen-prompt',
       'gymscreen-prompt-decline',
       'gymscreen-prompt-dismiss',
       'gymscreen-prompt-item',
       'gymscreen-prompt-repair',
+      'gymscreen-prompt-repair-unavailable',
       'gymscreen-prompt-stakes',
       'gymscreen-rate',
       'gymscreen-recover',
       'gymscreen-recovery',
       'gymscreen-recovery-cost',
+      // The reopen COUNT, split out of the cost line: history rather than an
+      // offer, so it survives on an open gym where the price does not.
+      'gymscreen-recovery-history',
       'gymscreen-recovery-state',
       'gymscreen-refusal',
       'gymscreen-root',
@@ -3954,6 +4064,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'npcId',
       'number',
       'offered',
+      // The new reducer arm — the player's own check-in. A vocabulary word,
+      // not a name: it is an action kind, spelled the same way every other
+      // arm on that union is.
+      'open-up',
       'ordinal',
       'other-recovery',
       'out-of-bounds',
@@ -4158,7 +4272,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // (285 -> 293), exactly the two increments those pins above carry, 39 + 8.
     // Read from this assertion's own failure value and cross-checked against
     // the two enumerated diffs rather than only against this total.
-    expect(stringsChecked).toBe(791);
+    // 791 -> 804: 8 single-quoted + 5 template, the two enumerated diffs
+    // above, summed here rather than re-read — a total that agrees with two
+    // enumerations is worth more than a total read off a failure value, which
+    // is what the note above this line asks for.
+    expect(stringsChecked).toBe(804);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4245,7 +4363,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // and reading its failure value.
     // 401 -> 432: S4b's thirty-one new tokens, all clearing the two-letter
     // guard. Measured by running this assertion and reading its failure value.
-    expect(probes).toBe(432);
+    // 432 -> 439: the player check-in round's own tokens, from the thirteen
+    // new literals enumerated above. Measured by running this assertion and
+    // reading its failure value; the gap between 13 literals and 7 probes is
+    // the two-letter guard and the dedupe, which is why this number is not a
+    // sum of the two above.
+    expect(probes).toBe(439);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);

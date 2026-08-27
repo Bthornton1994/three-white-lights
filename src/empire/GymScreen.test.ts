@@ -72,6 +72,7 @@ import {
 import {
   type SlotOutcome,
   availableActivities,
+  buySessionEquipment,
   createRestAllocation,
   resolveWeek,
   sessionEquipmentCost,
@@ -80,15 +81,24 @@ import {
   trainingWeekShape,
   weeklyAttributeEffects,
 } from './sessions';
-import { ladderDevTimeSteps, ladderIncomeRatePerHour } from './ladder';
+import {
+  buyLadderEquipment,
+  ladderDevTimeSteps,
+  ladderIncomeRatePerHour,
+  moveUpLadder,
+  nextLadderRung,
+  playerCheckInGapSeconds,
+} from './ladder';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
   type CountedDecisionRecord,
   type ManagedEquipmentItem,
+  type ManagerTier,
   conditionIncomeMultiplier,
   declineRepair,
   failurePhase,
   fullRepairCostGymBucks,
+  hireManager,
   itemCondition,
   maintenancePrompt,
   managerAutoRepairCondition,
@@ -97,9 +107,11 @@ import {
   meanCondition,
   orderOpensAt,
   ownedItemsOf,
+  recoverGym,
   recoveryRepairCostGymBucks,
   recoveryRequirement,
   repairCostGymBucks,
+  repairEquipment,
   respondToPrompt,
   unansweredItems,
   warningSigns,
@@ -160,6 +172,13 @@ function findByTestId(root: unknown, id: string): Rendered {
   return found[0] as Rendered;
 }
 
+/** Every `testID` anywhere under `node` (node included), in tree order. */
+function testIdsUnder(node: unknown): readonly string[] {
+  if (!isRendered(node)) return [];
+  const own = typeof node.props['testID'] === 'string' ? [node.props['testID'] as string] : [];
+  return [...own, ...childrenOf(node).flatMap(testIdsUnder)];
+}
+
 /** Press the element's onPress, which `DispatchButton` wires to dispatch. */
 function press(element: Rendered): void {
   const handler = element.props['onPress'];
@@ -182,6 +201,29 @@ function dispatchThrough(state: GymViewState, action: GymViewAction): GymViewSta
   return gymViewReduce(state, action);
 }
 
+/**
+ * The same state with enough gym bucks to afford `target`, reached by taking
+ * the PLAYER'S OWN check-in over and over rather than by hand-building a
+ * purse.
+ *
+ * Every control this file gates is gated on the shipped transition's own
+ * refusal, so a test that wants to press one has to reach a state where the
+ * transition succeeds — and the honest way to reach it is the way a player
+ * would. `'open-up'` is that way, which is a second reason it exists: before
+ * it, the only route to a funded gym anywhere in this repository ran through
+ * a control the screen labels "not part of the game".
+ */
+function fundedEnoughFor(state: GymViewState, target: number): GymViewState {
+  let funded = state;
+  let guard = 0;
+  while (funded.managed.gym.ladder.gymBucks < target) {
+    funded = dispatchThrough(funded, { kind: 'open-up' });
+    guard += 1;
+    expect(guard, 'opening the gym must eventually afford the target').toBeLessThan(2000);
+  }
+  return funded;
+}
+
 /** The words `describeSlotOutcome` must produce, checked without importing it. */
 function expectOutcomeInText(text: string, outcome: SlotOutcome): void {
   if (outcome.kind === 'rested') {
@@ -190,6 +232,48 @@ function expectOutcomeInText(text: string, outcome: SlotOutcome): void {
   }
   expect(text).toContain(outcome.activity);
   if (outcome.kind === 'unequipped') expect(text).toContain(outcome.requires);
+}
+
+/**
+ * A CONTROL IS DRAWN EXACTLY WHEN PRESSING IT WOULD DO SOMETHING (the plain
+ * wording is deliberate — see `GymScreen.tsx`'s header), AND WHAT
+ * DECIDES "WOULD" IS THE SHIPPED TRANSITION RATHER THAN THE SCREEN'S OWN
+ * BRANCH.
+ *
+ * The gating this grades was added because a human on a phone dumped the
+ * opening frame and found a wall of controls that could only refuse: three
+ * "repair for 0" buttons on a gym with nothing worn, a "reopen the gym"
+ * control under the words "open for business", three hire tiers priced
+ * 150 / 600 / 2000 against a purse of 0.
+ *
+ * The obvious oracle for that — assert the button is absent when the cost
+ * exceeds the purse — is the screen's own predicate written a second time,
+ * and no state of `GymScreen.tsx` could make the two disagree. So `canAct` is
+ * not a predicate at all here: every call site below RUNS the real transition
+ * on the same state and asks whether it refused. A gate that drifts from
+ * `repairEquipment`/`hireManager`/`recoverGym`/`buySessionEquipment`/
+ * `buyLadderEquipment`/`moveUpLadder`'s own refusal order reddens on
+ * whichever direction it drifted in, because both directions are asserted:
+ * the control is present exactly when the transition succeeds, and the
+ * reason-in-its-place is present exactly when it does not.
+ *
+ * Its limit, stated because no assertion here reaches past it: this grades
+ * WHETHER a control is offered, not what its replacement sentence SAYS. A
+ * reason line that named the wrong number would pass this; the copy is graded
+ * separately, by the tests that read each line's text.
+ */
+function expectGatedControl(
+  root: Rendered,
+  id: string,
+  refused: boolean,
+  why: string,
+): number {
+  expect(findAllByTestId(root, id).length, `${id} drawn (${why})`).toBe(refused ? 0 : 1);
+  expect(
+    findAllByTestId(root, `${id}-unavailable`).length,
+    `${id}-unavailable drawn (${why})`,
+  ).toBe(refused ? 1 : 0);
+  return 2;
 }
 
 /** Every displayed-quantity comparison for one `GymViewState`, counted. */
@@ -220,8 +304,20 @@ function expectScreenMatchesState(root: Rendered, state: GymViewState): number {
   const ownedLadder = new Set<string>(gym.ladder.equipment);
   for (const item of T.LADDER_EQUIPMENT_ITEMS) {
     expect(ladderShopText).toContain(`${item} costs`);
-    const buyButtons = findAllByTestId(root, `gymscreen-buy-ladder-${item}`);
-    expect(buyButtons.length, item).toBe(ownedLadder.has(item) ? 0 : 1);
+    if (ownedLadder.has(item)) {
+      // An owned item offers neither a control nor a reason — the row says
+      // "- owned" and that is the whole story.
+      expect(findAllByTestId(root, `gymscreen-buy-ladder-${item}`).length, item).toBe(0);
+      expect(findAllByTestId(root, `gymscreen-buy-ladder-${item}-unavailable`).length, item).toBe(0);
+      compared += 2;
+    } else {
+      compared += expectGatedControl(
+        root,
+        `gymscreen-buy-ladder-${item}`,
+        buyLadderEquipment(gym.ladder, item).kind === 'refused',
+        `buyLadderEquipment ${item}`,
+      );
+    }
     compared += 1;
   }
   // The stage-2 shop: cost, group, min rung and the buy control, per item.
@@ -231,8 +327,18 @@ function expectScreenMatchesState(root: Rendered, state: GymViewState): number {
     expect(sessionShopText).toContain(
       `${item} (${sessionEquipmentGroup(item)}) costs ${sessionEquipmentCost(item)} gym bucks, fits from ${sessionEquipmentMinRung(item)}`,
     );
-    const buyButtons = findAllByTestId(root, `gymscreen-buy-session-${item}`);
-    expect(buyButtons.length, item).toBe(ownedSession.has(item) ? 0 : 1);
+    if (ownedSession.has(item)) {
+      expect(findAllByTestId(root, `gymscreen-buy-session-${item}`).length, item).toBe(0);
+      expect(findAllByTestId(root, `gymscreen-buy-session-${item}-unavailable`).length, item).toBe(0);
+      compared += 2;
+    } else {
+      compared += expectGatedControl(
+        root,
+        `gymscreen-buy-session-${item}`,
+        buySessionEquipment(gym, item).kind === 'refused',
+        `buySessionEquipment ${item}`,
+      );
+    }
     compared += 1;
   }
   // The allocation section: each slot's chosen value, its resolved (preview)
@@ -315,7 +421,12 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
     expect(textOf(findByTestId(root, `gymscreen-condition-${item}`))).toBe(
       `${item}: condition ${itemCondition(managed, item)}, repairing it costs ${repairCostGymBucks(managed, item)} gym bucks`,
     );
-    expect(findAllByTestId(root, `gymscreen-repair-${item}`).length, item).toBe(1);
+    compared += expectGatedControl(
+      root,
+      `gymscreen-repair-${item}`,
+      repairEquipment(managed, item).kind === 'refused',
+      `repairEquipment ${item}`,
+    );
     compared += 3;
   }
   // The screen shows a condition row for exactly what the gym owns.
@@ -336,12 +447,22 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
       `no maintenance review open — ${managed.checkInsTaken} check-in(s) taken, the next review is raised at check-in ${orderOpensAt(managed)}`,
     );
     for (const id of answerControls) expect(findAllByTestId(root, id).length, id).toBe(0);
-    compared += 5;
+    expect(findAllByTestId(root, 'gymscreen-prompt-repair-unavailable').length).toBe(0);
+    compared += 6;
   } else {
     expect(textOf(findByTestId(root, 'gymscreen-prompt-item'))).toBe(
       `maintenance review: ${prompt.item} is at condition ${itemCondition(managed, prompt.item)} and repairing it costs ${prompt.repairCostGymBucks} gym bucks`,
     );
-    for (const id of answerControls) expect(findAllByTestId(root, id).length, id).toBe(1);
+    for (const id of answerControls.slice(1)) expect(findAllByTestId(root, id).length, id).toBe(1);
+    // The review's own repair control is gated on the same transition answering
+    // it would take, so an order the purse cannot cover shows the price it
+    // cannot meet rather than a button that would refuse.
+    compared += expectGatedControl(
+      root,
+      'gymscreen-prompt-repair',
+      respondToPrompt(managed, 'repair', managed.gym.ladder.collectedAt).kind === 'repair-refused',
+      'respondToPrompt repair',
+    );
     // §5.7's "told the cost of": what the screen says a refusal is worth has
     // to be what the engine says it is worth, in both directions.
     //
@@ -398,7 +519,12 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
       expect(textOf(findByTestId(root, `gymscreen-manager-tier-${tier}`))).toBe(
         `${tier}: ${managerHireCostGymBucks(tier)} gym bucks to hire, ${managerWageRatePerBankedHour(tier)} per banked hour, repairs on their own below condition ${managerAutoRepairCondition(tier)}`,
       );
-      expect(findAllByTestId(root, `gymscreen-hire-${tier}`).length, tier).toBe(1);
+      compared += expectGatedControl(
+        root,
+        `gymscreen-hire-${tier}`,
+        hireManager(managed, tier, managed.gym.ladder.collectedAt).kind === 'refused',
+        `hireManager ${tier}`,
+      );
       compared += 4;
     }
     expect(findAllByTestId(root, 'gymscreen-dismiss-manager').length).toBe(0);
@@ -415,7 +541,8 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
     expect(findAllByTestId(root, 'gymscreen-dismiss-manager').length).toBe(1);
     for (const other of EMPIRE_TUNING.MANAGER_TIERS) {
       expect(findAllByTestId(root, `gymscreen-hire-${other}`).length, other).toBe(0);
-      compared += 1;
+      expect(findAllByTestId(root, `gymscreen-hire-${other}-unavailable`).length, other).toBe(0);
+      compared += 2;
     }
     compared += 3;
   }
@@ -434,11 +561,32 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
       expect(recoveryText).toContain('manager hired under warning let go');
     }
   }
-  expect(textOf(findByTestId(root, 'gymscreen-recovery-cost'))).toBe(
-    `reopening would cost ${recoveryRepairCostGymBucks(managed)} gym bucks in repairs, and this gym has reopened ${managed.recoveries} time(s)`,
+  // The reopening PRICE and the reopen CONTROL are two separate gates, and
+  // the human's report was about both being drawn on a gym that was open:
+  // a price is quoted only for a gym that is actually shut, and the control
+  // is offered only where `recoverGym` does not refuse.
+  expect(findAllByTestId(root, 'gymscreen-recovery-cost').length).toBe(
+    recovery.kind === 'not-dormant' ? 0 : 1,
   );
-  expect(findAllByTestId(root, 'gymscreen-recover').length).toBe(1);
-  compared += 4;
+  if (recovery.kind !== 'not-dormant') {
+    expect(textOf(findByTestId(root, 'gymscreen-recovery-cost'))).toBe(
+      `reopening would cost ${recoveryRepairCostGymBucks(managed)} gym bucks in repairs`,
+    );
+  }
+  expect(findAllByTestId(root, 'gymscreen-recover').length).toBe(
+    recoverGym(managed).kind === 'refused' ? 0 : 1,
+  );
+  // The reopen count is history rather than an offer, so it is drawn once
+  // there is any, and not before.
+  expect(findAllByTestId(root, 'gymscreen-recovery-history').length).toBe(
+    managed.recoveries === 0 ? 0 : 1,
+  );
+  if (managed.recoveries !== 0) {
+    expect(textOf(findByTestId(root, 'gymscreen-recovery-history'))).toBe(
+      `this gym has reopened ${managed.recoveries} time(s)`,
+    );
+  }
+  compared += 6;
   // What the last check-in COST, reported rather than silent.
   const report = state.lastManagementReport;
   if (report === null) {
@@ -482,7 +630,18 @@ describe('the opening screen displays ladder.ts / sessions.ts on every displayed
       expect(findAllByTestId(root, `gymscreen-advance-${step.seconds}`).length).toBe(1);
     }
     expect(findAllByTestId(root, 'gymscreen-advance-next-week').length).toBe(1);
-    expect(findAllByTestId(root, 'gymscreen-move-up').length).toBe(1);
+    // THE OPENING FRAME'S OWN CLAIM, and the one this round changed. A cold
+    // gym holds 0 gym bucks against a 2500 relocation, so the relocate
+    // control is not offered and the price it could not meet is drawn in its
+    // place — `moveUpLadder` refuses this exact state and the screen says so
+    // instead of waiting to be pressed.
+    expectGatedControl(root, 'gymscreen-move-up', true, 'a cold gym cannot afford a move');
+    expect(moveUpLadder(state.managed.gym.ladder).kind).toBe('refused');
+    // The player's own check-in, on the other hand, IS offered from the first
+    // frame — it is the control whose absence made every stage-4 beat
+    // unreachable without touching the dev row.
+    expect(findAllByTestId(root, 'gymscreen-open-up-press').length).toBe(1);
+    expect(findAllByTestId(root, 'gymscreen-open-up-press-unavailable').length).toBe(0);
   });
 });
 
@@ -495,13 +654,18 @@ describe('every control dispatches exactly the action it names', () => {
       press(findByTestId(root, `gymscreen-advance-${step.seconds}`));
     }
     press(findByTestId(root, 'gymscreen-advance-next-week'));
-    press(findByTestId(root, 'gymscreen-buy-session-mats'));
     press(findByTestId(root, 'gymscreen-slot-0-set-cardio'));
+    // The buy control is gated on `buySessionEquipment`'s own refusal now, so
+    // a cold gym does not draw one — the press below is taken on a state that
+    // can actually afford mats, which is the only state where a player could
+    // have taken it either.
+    const funded = fundedEnoughFor(state, sessionEquipmentCost('mats'));
+    press(findByTestId(render(funded, dispatched), 'gymscreen-buy-session-mats'));
     expect(dispatched).toEqual([
       ...ladderDevTimeSteps().map((step) => ({ kind: 'advance-clock', gapSeconds: step.seconds })),
       { kind: 'advance-to-next-week' },
-      { kind: 'buy-session', item: 'mats' },
       { kind: 'set-allocation-slot', slotIndex: 0, slot: 'cardio' },
+      { kind: 'buy-session', item: 'mats' },
     ]);
     expect(dispatched.length).toBe(ladderDevTimeSteps().length + 3);
   });
@@ -509,9 +673,17 @@ describe('every control dispatches exactly the action it names', () => {
   it('the move-up control dispatches move-up, and refused presses change nothing displayed', () => {
     const state = createGymViewState();
     const dispatched: GymViewAction[] = [];
-    const root = render(state, dispatched);
-    press(findByTestId(root, 'gymscreen-move-up'));
+    const destination = nextLadderRung(state.managed.gym.ladder.rung);
+    expect(destination).not.toBeNull();
+    const funded = fundedEnoughFor(state, T.LADDER_MOVE_COST_GYM_BUCKS['storage-unit']);
+    press(findByTestId(render(funded, dispatched), 'gymscreen-move-up'));
     expect(dispatched).toEqual([{ kind: 'move-up' }]);
+    // THE REFUSAL BANNER IS STILL A REAL DISPLAY AND IS NO LONGER REACHABLE
+    // FROM THIS CONTROL, which is the point of gating it: the reducer arm
+    // still refuses and still reports, and the screen no longer offers the
+    // press that would have produced it. Both halves are asserted, because
+    // deleting the banner's producer without noticing is exactly how a
+    // display goes dead.
     const refused = dispatchThrough(state, { kind: 'move-up' });
     expect(refused.lastRefusal).toBe('not-enough-gym-bucks');
     const refusedRoot = render(refused, []);
@@ -519,6 +691,7 @@ describe('every control dispatches exactly the action it names', () => {
       'refused: not-enough-gym-bucks',
     );
     expect(refused.managed.gym).toEqual(state.managed.gym);
+    expect(findAllByTestId(refusedRoot, 'gymscreen-move-up').length).toBe(0);
   });
 });
 
@@ -596,18 +769,35 @@ function advanceTimes(state: GymViewState, times: number): GymViewState {
 }
 
 describe('stage 4: every new control dispatches exactly the action it names', () => {
-  it('drives repair, hire and recover off the opening screen', () => {
-    const state = createGymViewState();
+  it('drives repair and hire on a state where each one would actually go through', () => {
+    // THIS TEST USED TO PRESS ALL OF THESE ON THE OPENING SCREEN, which is
+    // exactly the state the human's report was about: nothing worn, nothing
+    // in the purse, nothing shut, and every one of these controls drawn
+    // anyway. They are gated on their own transition's refusal now, so the
+    // state that offers them is the state a player could have pressed them
+    // in — reached here by taking check-ins, not by hand-building a gym.
+    const worn = fundedEnoughFor(
+      advanceTimes(createGymViewState(), 1),
+      managerHireCostGymBucks(
+        EMPIRE_TUNING.MANAGER_TIERS[EMPIRE_TUNING.MANAGER_TIERS.length - 1] as ManagerTier,
+      ),
+    );
     const dispatched: GymViewAction[] = [];
-    const root = render(state, dispatched);
-    const owned = ownedItemsOf(state.managed.gym);
-    for (const item of owned) press(findByTestId(root, `gymscreen-repair-${item}`));
-    for (const tier of EMPIRE_TUNING.MANAGER_TIERS) press(findByTestId(root, `gymscreen-hire-${tier}`));
-    press(findByTestId(root, 'gymscreen-recover'));
+    const root = render(worn, dispatched);
+    const owned = ownedItemsOf(worn.managed.gym);
+    for (const item of owned) {
+      expect(repairEquipment(worn.managed, item).kind, item).toBe('repaired');
+      press(findByTestId(root, `gymscreen-repair-${item}`));
+    }
+    for (const tier of EMPIRE_TUNING.MANAGER_TIERS) {
+      expect(hireManager(worn.managed, tier, worn.managed.gym.ladder.collectedAt).kind, tier).toBe(
+        'hired',
+      );
+      press(findByTestId(root, `gymscreen-hire-${tier}`));
+    }
     expect(dispatched).toEqual([
       ...owned.map((item) => ({ kind: 'repair-item', item })),
       ...EMPIRE_TUNING.MANAGER_TIERS.map((tier) => ({ kind: 'hire-manager', tier })),
-      { kind: 'recover-gym' },
     ]);
   });
 
@@ -1002,6 +1192,13 @@ describe('stage 4: dormancy is reached by refusals and left by a repair investme
     }
     expect(scrubPrecision(purseBefore - played.managed.gym.ladder.gymBucks)).toBe(quoted);
     expect(recoveryRequirement(played.managed).kind).toBe('ready');
+    // The reopen control is offered exactly here — on a dormant gym whose
+    // requirements are met — and this is the press that proves it dispatches
+    // what it names. It is drawn nowhere else, which is the whole change:
+    // it used to sit on the opening screen under "open for business".
+    const reopenPresses: GymViewAction[] = [];
+    press(findByTestId(render(played, reopenPresses), 'gymscreen-recover'));
+    expect(reopenPresses).toEqual([{ kind: 'recover-gym' }]);
     const reopened = dispatchThrough(played, { kind: 'recover-gym' });
     expect(reopened.lastRefusal).toBeNull();
     expect(reopened.managed.strikes).toEqual([]);
@@ -1009,10 +1206,141 @@ describe('stage 4: dormancy is reached by refusals and left by a repair investme
     expect(failurePhase(reopened.managed)).toBe('sound');
     const back = render(reopened, []);
     expect(textOf(findByTestId(back, 'gymscreen-recovery-state'))).toBe('open for business — sound');
-    expect(textOf(findByTestId(back, 'gymscreen-recovery-cost'))).toContain('reopened 1 time(s)');
+    // A reopened gym is open, so it quotes no reopening price — what it keeps
+    // is the count, which is history rather than an offer.
+    expect(findAllByTestId(back, 'gymscreen-recovery-cost').length).toBe(0);
+    expect(textOf(findByTestId(back, 'gymscreen-recovery-history'))).toBe(
+      'this gym has reopened 1 time(s)',
+    );
     expectManagementMatchesState(back, reopened);
     // Reopening a gym that is not dormant is refused, not silent.
     expect(dispatchThrough(reopened, { kind: 'recover-gym' }).lastRefusal).toBe('not-dormant');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// THE PLAYER'S OWN CHECK-IN — the control this round exists for.
+//
+// A human played this screen on a real phone and said, in their own words,
+// that they could not open a review. That was structural rather than a matter
+// of taste: `ManagedGym.checkInsTaken` had exactly one writer, reached from
+// exactly one reducer arm, dispatched from exactly one shipped place — the
+// dev clock-skip row this screen labels "not part of the game". Every §5.11
+// stage-4 beat hangs off that counter, so a player who touched no debug
+// control could reach none of them.
+//
+// The tests below are written so that a regression to that state reddens
+// them. The load-bearing one is `reaches a maintenance review without ever
+// touching a control in the dev row`, which collects every testID inside
+// `gymscreen-dev-controls` and asserts the ids it pressed are disjoint from
+// it — so a "fix" that quietly routed the player control back through a dev
+// button, or a future round that deleted the player control and left the
+// screen reachable only through the dev row, fails here rather than passing
+// on the strength of the review opening.
+// ---------------------------------------------------------------------------
+
+describe("the player's own check-in reaches the stage-4 loop without the dev row", () => {
+  it('opens for a shift, and the shift is the whole offline window rather than a second knob', () => {
+    // `bankableOfflineSeconds` discards everything past the cap, so a control
+    // that advanced further would quietly throw part of what it earned away.
+    // The relation is asserted rather than assumed — this is what keeps a
+    // retune of the cap from silently making the player's own opening lossy.
+    expect(playerCheckInGapSeconds()).toBe(
+      T.OFFLINE_EARNINGS_CAP_HOURS * T.SECONDS_PER_HOUR,
+    );
+    const opened = dispatchThrough(createGymViewState(), { kind: 'open-up' });
+    const accrual = opened.lastAccrual;
+    expect(accrual).not.toBeNull();
+    expect((accrual as NonNullable<typeof accrual>).secondsElapsed).toBe(playerCheckInGapSeconds());
+    expect((accrual as NonNullable<typeof accrual>).secondsDiscarded).toBe(0);
+    expect((accrual as NonNullable<typeof accrual>).secondsBanked).toBe(playerCheckInGapSeconds());
+    expect((accrual as NonNullable<typeof accrual>).gymBucks).toBeGreaterThan(0);
+  });
+
+  it('the control dispatches open-up, and it is not in the dev row', () => {
+    const state = createGymViewState();
+    const dispatched: GymViewAction[] = [];
+    const root = render(state, dispatched);
+    press(findByTestId(root, 'gymscreen-open-up-press'));
+    expect(dispatched).toEqual([{ kind: 'open-up' }]);
+    const devIds = testIdsUnder(findByTestId(root, 'gymscreen-dev-controls'));
+    expect(devIds.length).toBeGreaterThan(0);
+    expect(devIds).not.toContain('gymscreen-open-up-press');
+    // And the dev row is still there, still labelled for what it is — this
+    // round did not delete an instrument, it stopped the instrument being the
+    // only way in.
+    for (const step of ladderDevTimeSteps()) {
+      expect(devIds).toContain(`gymscreen-advance-${step.seconds}`);
+    }
+  });
+
+  it('reaches a maintenance review without ever touching a control in the dev row', () => {
+    let played = createGymViewState();
+    // The cadence is UNCHANGED by this round, and that is asserted first: the
+    // fix is that a player can take check-ins, not that the first one is
+    // special.
+    expect(maintenancePrompt(played.managed).kind).toBe('quiet');
+    expect(played.managed.checkInsTaken).toBe(0);
+
+    const pressedIds: string[] = [];
+    const devIdsAtStart = testIdsUnder(findByTestId(render(played, []), 'gymscreen-dev-controls'));
+    for (let shift = 0; shift < T.MAINTENANCE_ORDER_FIRST_CHECK_IN; shift += 1) {
+      const dispatched: GymViewAction[] = [];
+      const root = render(played, dispatched);
+      press(findByTestId(root, 'gymscreen-open-up-press'));
+      pressedIds.push('gymscreen-open-up-press');
+      expect(dispatched.length).toBe(1);
+      played = dispatchThrough(played, dispatched[0] as GymViewAction);
+    }
+
+    expect(played.managed.checkInsTaken).toBe(T.MAINTENANCE_ORDER_FIRST_CHECK_IN);
+    const prompt = maintenancePrompt(played.managed);
+    expect(prompt.kind).toBe('offered');
+    // Not just the model — the review is DRAWN, naming its item and quoting
+    // its price, with all three answers offered.
+    const reviewed = render(played, []);
+    expect(textOf(findByTestId(reviewed, 'gymscreen-prompt-item'))).toContain('maintenance review:');
+    expect(findAllByTestId(reviewed, 'gymscreen-prompt-dismiss').length).toBe(1);
+    expect(findAllByTestId(reviewed, 'gymscreen-prompt-decline').length).toBe(1);
+    // The disjointness that makes this claim about the PLAYER path: nothing
+    // pressed here is a control the dev row draws.
+    expect(devIdsAtStart.length).toBeGreaterThan(0);
+    for (const id of pressedIds) expect(devIdsAtStart).not.toContain(id);
+    expect(new Set(pressedIds).size).toBe(1);
+  });
+
+  it('opening the gym moves condition and money and never the failure ledger', () => {
+    // The §5.7 claim, on the new arm. It holds for the same reason it holds
+    // for the dev arm — both end in the same `managedCheckIn` — and it is
+    // asserted on THIS arm rather than inherited by argument, because a
+    // player-reachable check-in is the one that would matter if it stopped
+    // holding.
+    let played = createGymViewState();
+    const before = meanCondition(played.managed);
+    for (let shift = 0; shift < T.MAINTENANCE_ORDER_FIRST_CHECK_IN * 3; shift += 1) {
+      played = dispatchThrough(played, { kind: 'open-up' });
+      expect(played.lastRefusal).toBeNull();
+      expect(played.managed.strikes).toEqual([]);
+      expect(failurePhase(played.managed)).toBe('sound');
+    }
+    expect(meanCondition(played.managed)).toBeLessThan(before);
+    expect(played.managed.gym.ladder.gymBucks).toBeGreaterThan(0);
+    expect(played.managed.checkInsTaken).toBe(T.MAINTENANCE_ORDER_FIRST_CHECK_IN * 3);
+  });
+
+  it('the note over the control reports the real check-in count and the real next review', () => {
+    let played = createGymViewState();
+    for (let shift = 0; shift <= T.MAINTENANCE_ORDER_FIRST_CHECK_IN; shift += 1) {
+      const note = textOf(findByTestId(render(played, []), 'gymscreen-open-up-note'));
+      expect(note).toContain(`${played.managed.checkInsTaken} shift(s) opened so far`);
+      if (maintenancePrompt(played.managed).kind === 'quiet') {
+        expect(note).toContain(`comes up at shift ${orderOpensAt(played.managed)}`);
+      } else {
+        expect(note).toContain('a maintenance review is waiting for you');
+      }
+      played = dispatchThrough(played, { kind: 'open-up' });
+    }
   });
 });
 

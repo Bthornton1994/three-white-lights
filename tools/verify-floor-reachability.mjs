@@ -202,6 +202,78 @@
  *          repair investment is made item by item and the reopen control
  *          brings the gym back with the ledger cleared.
  *
+ *  10. THE PLAYER PATH TO A MAINTENANCE REVIEW — and it is the only block in
+ *      this file whose state was reached without pressing a control the
+ *      screen labels "not part of the game". It is driven FIRST, on a
+ *      genuinely cold gym, and then the page is reloaded so sections 1-9 run
+ *      on the cold garage they have always run on.
+ *
+ *      WHY IT EXISTS. A human played this screen on a real phone and reported
+ *      that they could not open a review. That was true and nothing here
+ *      could have said so: `ManagedGym.checkInsTaken` had one writer, reached
+ *      from one reducer arm, dispatched from the dev clock-skip row — so the
+ *      standing review, and every strike, dormancy and recovery downstream of
+ *      it, was unreachable by a player. Section 9 drove all of it and passed,
+ *      because section 9 presses the dev row.
+ *
+ *      10a. The player's check-in control is drawn on a cold gym with a real
+ *           non-zero box, and the ids the dev row actually draws are read out
+ *           of the DOM and asserted not to include it.
+ *      10b. A cold gym has taken 0 shifts and has no review open, and the
+ *           control's note states which shift the next review comes up at.
+ *           That number is the drive's budget — read off the screen, not
+ *           transcribed from `MAINTENANCE_ORDER_FIRST_CHECK_IN` — so a
+ *           cadence retune moves the check instead of breaking it.
+ *      10c. Pressing it that many times advances the drawn check-in count by
+ *           exactly one per press, read back after every press.
+ *      10d. A review is then OPEN, naming its item and quoting its price with
+ *           both refusal answers drawn — and every id this section pressed is
+ *           disjoint from the dev row's own. A future round that deleted the
+ *           player control and left the loop reachable only through the dev
+ *           row fails here rather than passing on the strength of a review
+ *           opening.
+ *
+ *      THE TWO MUTANTS THAT PRODUCED THIS BLOCK'S EVIDENCE, recorded here
+ *      because `MUTATION_WITNESSES` has no shape that can hold a browser
+ *      check (CLAUDE.md says so, and says to record the witness beside the
+ *      check instead). Both were planted, run, and reverted, and the tree was
+ *      confirmed byte-identical afterwards by hash:
+ *
+ *        M1 — `ladderView.tsx`'s `case 'open-up':` body replaced with
+ *        `return state;` (the control dispatches, the reducer ignores it).
+ *        Run: `FAIL — 3 failing claim(s) of 72`, with 10c reading
+ *        `the check-in count did not advance one per press — read
+ *        0 -> 0 -> 0 -> 0 -> 0 against a budget of 4` and 10d reading
+ *        `no review reachable by the player control — review line "null"`.
+ *        (The third failure was 8d's stranded ring, which polls; that run
+ *        shared a machine with a full vitest pass and it is not attributed to
+ *        the mutant.)
+ *
+ *        M2 — `GymScreen.tsx`'s `gymscreen-open-up` block moved inside the
+ *        `gymscreen-dev-controls` View, changing nothing else. Run:
+ *        `FAIL — 2 failing claim(s) of 72`, with 10a reading `the dev row drew
+ *        7 control(s) (gymscreen-open-up, gymscreen-open-up-press,
+ *        gymscreen-open-up-note, gymscreen-advance-3600, ...)` and 10d's
+ *        disjointness conjunct reading `disjoint-from-dev-row=false` while
+ *        10c stayed green. That is the point of splitting the two: a control
+ *        that works but sits in the dev row is not a player path, and the
+ *        claim that says so fires on its own.
+ *
+ *      THE DOMAIN THE TWO WITNESSES RANGE OVER, stated because a witness says
+ *      what one mutant does and nothing about what the check enumerates: the
+ *      dev-row set is read from the LIVE DOM subtree of
+ *      `gymscreen-dev-controls` at run time, so it covers any control that row
+ *      draws, including one added later. It does NOT cover a debug control
+ *      placed outside that View — a second dev row under a different testID is
+ *      invisible to this and would read as a player path.
+ *
+ *      WHAT IT DOES NOT SAY, and it is the gap this file cannot close: this
+ *      runs under CHROMIUM. The report that produced it came from iOS Safari,
+ *      the control it adds is a `Pressable` in a long `ScrollView` exactly
+ *      like every other control on this screen, and no WebKit build is
+ *      installed in this environment. If a press in this position is being
+ *      swallowed on that browser, nothing here would see it.
+ *
  * USAGE. Start the web build first (`npx expo start --web`), then:
  *
  *     node tools/verify-floor-reachability.mjs [--url http://localhost:8081]
@@ -309,6 +381,19 @@ const MATS_CLAIM_POLL_MS = 20000;
  * `FAILURE_STRIKES` is 3, one refusal per standing order, so three rounds is
  * the floor and the slack is for a review that names an already-refused item.
  */
+/**
+ * SECTION 10's OWN PARAMETERS — the player path to a maintenance review.
+ *
+ * `PLAYER_PATH_MAX_PRESSES` is a SAFETY BOUND and not the budget. The budget
+ * is read off the drawn screen (the control's own note says which shift the
+ * next review comes up at), so a cadence retune moves the drive rather than
+ * breaking it; this constant only stops a screen that reports an absurd shift
+ * number from turning the run into a grind. It is deliberately several times
+ * the shipped cadence.
+ */
+const PLAYER_PATH_MAX_PRESSES = 24;
+/** How long to let a player-taken check-in settle before reading the screen back. */
+const PLAYER_PATH_PRESS_SETTLE_MS = 200;
 const S4B_MAX_CLOCK_PRESSES = 12;
 const S4B_MAX_REVIEW_ROUNDS = 10;
 /**
@@ -428,6 +513,22 @@ async function boxOf(id) {
 }
 
 const skip = (text) => log.push(`  SKIP  ${text}`);
+
+/**
+ * The first capture group of `pattern` in `text`, as a number, or null.
+ *
+ * Section 9 has a `numberIn` of its own, declared inside the `try` block and
+ * therefore not in scope for section 10, which runs before it. Rather than
+ * hoist section 9's — which would move a chunk of a heavily-driven block for
+ * a reason that has nothing to do with it — this is the same two lines at
+ * module scope for the new section. Stated rather than left as an apparent
+ * duplication somebody later "tidies" into one.
+ */
+function numberInText(text, pattern) {
+  if (text === null || text === undefined) return null;
+  const found = text.match(pattern);
+  return found === null ? null : Number.parseFloat(found[1]);
+}
 
 /**
  * Every drawn testID starting with `prefix`, as an array of ids. Used where the
@@ -793,10 +894,18 @@ async function dragBox(fromBox, toX, toY) {
   await page.mouse.up();
 }
 
-try {
-  // -------------------------------------------------------------------------
-  // 0. Reach the gym screen — CROSSING 6's own path, reused verbatim.
-  // -------------------------------------------------------------------------
+/**
+ * Reach the gym screen the way a player does — cold launch, no query string,
+ * press the real GYM EMPIRE pill. Factored out of section 0 so section 10 can
+ * take it once on a genuinely cold gym and hand the rest of the run another
+ * cold one, rather than section 10 leaving four check-ins of wear and money on
+ * the state every later claim is calibrated against.
+ *
+ * `report` is false for the second call: the claim that this path works is
+ * section 0's and printing it twice would inflate the claim count with a
+ * repeat rather than a measurement.
+ */
+async function reachGymScreen(report) {
   await page.goto(url, { waitUntil: 'load' });
   await page.getByTestId('session-check-in').waitFor({ state: 'visible', timeout: BEAT_TIMEOUT_MS }).catch(() => {});
   await page.waitForTimeout(PILL_FADE_BUDGET_MS + SETTLE_MS);
@@ -812,13 +921,165 @@ try {
     .waitFor({ state: 'attached', timeout: BEAT_TIMEOUT_MS })
     .then(() => true)
     .catch(() => false);
-  if (gymRoot) {
-    ok('pressing GYM EMPIRE reaches the gym screen (gymscreen-root attached)');
-  } else {
+  if (!gymRoot) {
     fail('pressing GYM EMPIRE did not reach the gym screen');
     throw new Error('unreachable');
   }
+  if (report) ok('pressing GYM EMPIRE reaches the gym screen (gymscreen-root attached)');
+}
+
+try {
+  // -------------------------------------------------------------------------
+  // 0. Reach the gym screen — CROSSING 6's own path, reused verbatim.
+  // -------------------------------------------------------------------------
+  await reachGymScreen(true);
   readAddress('0: the gym screen, immediately after pressing GYM EMPIRE');
+
+  // -------------------------------------------------------------------------
+  // 10. THE PLAYER PATH TO A MAINTENANCE REVIEW, AND IT IS DRIVEN FIRST
+  //     BECAUSE IT IS THE ONLY CLAIM IN THIS FILE THAT IS ABOUT A GYM NOBODY
+  //     HAS TOUCHED A DEV CONTROL ON.
+  //
+  // WHY IT EXISTS. A human played this screen on a real phone and reported, in
+  // their own words, that they could not open a review. That was true, and no
+  // check in this file could have said so: every claim below reaches its state
+  // through `gymscreen-advance-259200`, a control the screen itself labels
+  // "not part of the game". `ManagedGym.checkInsTaken` had exactly one writer,
+  // reached from exactly one reducer arm, dispatched from exactly that row —
+  // so the standing maintenance review, and every strike, dormancy and
+  // recovery downstream of it, was unreachable by a player. Section 9 drove
+  // all of it and passed, because section 9 presses the dev row.
+  //
+  // WHAT MAKES THIS A PLAYER-PATH CLAIM RATHER THAN A SECOND SECTION 9. The
+  // ids this section presses are collected as it goes, and the ids the dev row
+  // actually draws are read out of the DOM — `[data-testid=
+  // "gymscreen-dev-controls"] [data-testid]`, the real subtree, not a list
+  // transcribed here — and the two are asserted DISJOINT. So a future round
+  // that deletes the player control and leaves the loop reachable only through
+  // the dev row fails here rather than passing on the strength of a review
+  // opening.
+  //
+  // THE PRESS BUDGET IS READ OFF THE SCREEN, not transcribed from
+  // `MAINTENANCE_ORDER_FIRST_CHECK_IN`. The control's own note says which
+  // shift the next review comes up at; this section parses that number and
+  // presses exactly that many times. A cadence change retunes the check
+  // instead of breaking it, and a note that lies about its own cadence fails
+  // it.
+  //
+  // THEN THE PAGE IS RELOADED, so sections 1-9 below run on the cold garage
+  // they have always run on. Four openings of wear and money would move every
+  // condition reading section 9 is calibrated against.
+  // -------------------------------------------------------------------------
+  readAddress('10: the player path, on a gym no dev control has been pressed on');
+  const playerPressedIds = [];
+  const devControlIds = await page
+    .locator('[data-testid="gymscreen-dev-controls"] [data-testid]')
+    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')));
+
+  // 10a. The control is DRAWN — a real box, not merely attached — and it is
+  // not one of the dev row's own.
+  await page.getByTestId('gymscreen-open-up').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
+  const openUpDrawn = await waitUntilDrawn(page, 'gymscreen-open-up-press', BEAT_TIMEOUT_MS);
+  const openUpBox = await boxOf('gymscreen-open-up-press');
+  if (openUpDrawn.drawn && openUpBox !== null && openUpBox.width > 0 && openUpBox.height > 0) {
+    ok(
+      `player path (10a): the check-in control is drawn on a cold gym at a real ${Math.round(openUpBox.width)}x${Math.round(openUpBox.height)} box (${openUpDrawn.why})`,
+    );
+  } else {
+    fail(
+      `player path (10a): gymscreen-open-up-press is not drawn with a real box on a cold gym (${openUpDrawn.why}, box=${JSON.stringify(openUpBox)})`,
+    );
+    throw new Error('unreachable');
+  }
+  if (devControlIds.length > 0 && !devControlIds.includes('gymscreen-open-up-press')) {
+    ok(
+      `player path (10a): the control is outside the dev row — that row draws ${devControlIds.length} control(s) (${devControlIds.join(', ')}) and this is none of them`,
+    );
+  } else {
+    fail(
+      `player path (10a): the dev row drew ${devControlIds.length} control(s) (${devControlIds.join(', ')}) — either it drew none, so this disjointness claim is vacuous, or the player control is one of them`,
+    );
+  }
+
+  // 10b. Before any press: no review is open, and the note says which shift
+  // the next one comes up at. The budget below is that number.
+  const openUpNoteBefore = await textOf('gymscreen-open-up-note');
+  const promptBefore = await textOf('gymscreen-prompt');
+  const reviewShift = numberInText(openUpNoteBefore, /comes up at shift (\d+)/);
+  const shiftsBefore = numberInText(openUpNoteBefore, /(\d+) shift\(s\) opened so far/);
+  const promptItemBefore = await page.getByTestId('gymscreen-prompt-item').count();
+  if (
+    reviewShift !== null &&
+    shiftsBefore === 0 &&
+    promptItemBefore === 0 &&
+    promptBefore !== null &&
+    promptBefore.includes('no maintenance review open')
+  ) {
+    ok(
+      `player path (10b): a cold gym has taken 0 shifts, has no review open ("${promptBefore}"), and says the next one comes up at shift ${reviewShift}`,
+    );
+  } else {
+    fail(
+      `player path (10b): expected a cold gym with 0 shifts, no review and a stated next-review shift — note "${openUpNoteBefore}", prompt "${promptBefore}", ${promptItemBefore} prompt-item element(s)`,
+    );
+    throw new Error('unreachable');
+  }
+
+  // 10c. Press the player control exactly that many times, reading the shift
+  // count back off the screen after each one. A control that dispatches
+  // nothing leaves the count at 0 and fails here rather than at the review.
+  const shiftsSeen = [shiftsBefore];
+  for (let press = 0; press < Math.min(reviewShift, PLAYER_PATH_MAX_PRESSES); press += 1) {
+    const control = page.getByTestId('gymscreen-open-up-press');
+    await control.scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
+    await control.click({ timeout: 10000 });
+    playerPressedIds.push('gymscreen-open-up-press');
+    await page.waitForTimeout(PLAYER_PATH_PRESS_SETTLE_MS);
+    shiftsSeen.push(numberInText(await textOf('gymscreen-open-up-note'), /(\d+) shift\(s\) opened so far/));
+  }
+  const advancesEveryPress = shiftsSeen.every((seen, index) => seen === index);
+  if (advancesEveryPress && shiftsSeen[shiftsSeen.length - 1] === reviewShift) {
+    ok(
+      `player path (10c): ${playerPressedIds.length} press(es) of the player control took the check-in count ${shiftsSeen.join(' -> ')}, read off the drawn screen after every one`,
+    );
+  } else {
+    fail(
+      `player path (10c): the check-in count did not advance one per press — read ${shiftsSeen.join(' -> ')} against a budget of ${reviewShift}`,
+    );
+  }
+
+  // 10d. THE CLAIM THIS SECTION EXISTS FOR: a review is open, it names its
+  // item and quotes its price, and all three answers are on screen — reached
+  // without a single press on a control the dev row draws.
+  const reviewItemText = await textOf('gymscreen-prompt-item');
+  const reviewStakes = await textOf('gymscreen-prompt-stakes');
+  const answerIds = ['gymscreen-prompt-dismiss', 'gymscreen-prompt-decline'];
+  const answersDrawn = [];
+  for (const id of answerIds) {
+    const box = await boxOf(id);
+    answersDrawn.push(box !== null && box.width > 0 && box.height > 0);
+  }
+  const disjoint = playerPressedIds.every((id) => !devControlIds.includes(id));
+  if (
+    reviewItemText !== null &&
+    /maintenance review: \S+ is at condition [\d.]+ and repairing it costs [\d.]+ gym bucks/.test(reviewItemText) &&
+    answersDrawn.every(Boolean) &&
+    disjoint &&
+    playerPressedIds.length > 0
+  ) {
+    ok(
+      `player path (10d): a maintenance review is OPEN on the played path — "${reviewItemText}" with "${reviewStakes}" and both refusal answers drawn, after ${playerPressedIds.length} press(es) none of which is a dev control`,
+    );
+  } else {
+    fail(
+      `player path (10d): no review reachable by the player control — review line "${reviewItemText}", answers drawn ${JSON.stringify(answersDrawn)}, ${playerPressedIds.length} press(es), disjoint-from-dev-row=${disjoint}`,
+    );
+  }
+  readAddress('10: the player path, with the review open');
+
+  // Back to a cold gym for everything below.
+  await reachGymScreen(false);
+  readAddress('10: back on a cold gym, for sections 1-9');
 
   // -------------------------------------------------------------------------
   // 1. Scroll to the floor section and confirm it is really there, drawn.
@@ -2203,12 +2464,28 @@ try {
     const item = rowId.replace('gymscreen-condition-', '');
     const at = numberIn(await textOf(rowId), /condition ([\d.]+)/);
     if (at === null || at >= 1) continue;
+    // The repair control is gated on `repairEquipment`'s own refusal now, so
+    // a worn item with an unaffordable repair draws the reason instead of the
+    // button. That is a real state and this loop would otherwise time out
+    // inside a click with nothing said about why.
+    const repairDrawn = await page.getByTestId(`gymscreen-repair-${item}`).count();
+    if (repairDrawn === 0) {
+      fail(
+        `S4b (9g): ${item} is at condition ${at} and its repair control is not offered — the screen says "${await textOf(`gymscreen-repair-${item}-unavailable`)}"`,
+      );
+      continue;
+    }
     await pressById(`gymscreen-repair-${item}`);
   }
   const purseAfterRecovery = await purseNow();
   await pressById('gymscreen-recover');
   const reopenedState = await textOf('gymscreen-recovery-state');
-  const reopenedCount = await textOf('gymscreen-recovery-cost');
+  // The reopen COUNT moved out of the cost line. A gym that is open quotes no
+  // reopening price at all — that was the human's own "reopening would cost 0
+  // ... while it reads open for business" — so what carries the count now is
+  // `gymscreen-recovery-history`, drawn once there is any history to report.
+  const reopenedCount = await textOf('gymscreen-recovery-history');
+  const reopenedPriceDrawn = await page.getByTestId('gymscreen-recovery-cost').count();
   const phaseAfterRecovery = await phaseNow();
   const strikeRowsAfter = await testIdsStartingWith('gymscreen-strike-');
   if (
@@ -2216,14 +2493,15 @@ try {
     phaseAfterRecovery === 'sound' &&
     strikeRowsAfter.length === 0 &&
     reopenedCount !== null &&
-    reopenedCount.includes('reopened 1 time(s)')
+    reopenedCount.includes('reopened 1 time(s)') &&
+    reopenedPriceDrawn === 0
   ) {
     ok(
-      `S4b (9g): the repair investment (${purseBeforeRecovery} -> ${purseAfterRecovery} gym bucks) plus the reopen control brings the gym back — "${reopenedState}", ledger cleared to 0 rows, "${reopenedCount}"`,
+      `S4b (9g): the repair investment (${purseBeforeRecovery} -> ${purseAfterRecovery} gym bucks) plus the reopen control brings the gym back — "${reopenedState}", ledger cleared to 0 rows, "${reopenedCount}", and the reopened gym quotes no reopening price`,
     );
   } else {
     fail(
-      `S4b (9g): the gym did not reopen — recovery state "${reopenedState}", phase "${phaseAfterRecovery}", ${strikeRowsAfter.length} strike row(s) still drawn, cost line "${reopenedCount}"`,
+      `S4b (9g): the gym did not reopen cleanly — recovery state "${reopenedState}", phase "${phaseAfterRecovery}", ${strikeRowsAfter.length} strike row(s) still drawn, history line "${reopenedCount}", ${reopenedPriceDrawn} reopening-price line(s) still drawn on an open gym`,
     );
   }
 

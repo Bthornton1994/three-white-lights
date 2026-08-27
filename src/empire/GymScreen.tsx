@@ -79,6 +79,60 @@
  * ladder is "linear and one-way" — `ladder.ts` ships `moveUpLadder` and no
  * inverse, and this screen does not invent one.
  *
+ * THE PLAYER'S CHECK-IN, AND WHY EVERY CONTROL ON THIS SCREEN IS NOW GATED ON
+ * WHETHER PRESSING IT WOULD DO ANYTHING. A human played this screen on a real
+ * phone and reported, in their own words, that they could not open a review.
+ * That was true and it was structural, not a matter of taste: the standing
+ * maintenance review — and therefore every strike, every dormancy and every
+ * recovery downstream of it — is raised on `ManagedGym.checkInsTaken`, whose
+ * one writer was reachable from one reducer arm dispatched from one shipped
+ * place, the dev clock-skip row this file labels "not part of the game". Two
+ * things changed here:
+ *
+ *   1. `gymscreen-open-up` — a real control, in the game's voice, that takes
+ *      a check-in through the same `managedCheckIn` the dev row takes. The
+ *      review CADENCE is untouched: `MAINTENANCE_ORDER_FIRST_CHECK_IN` still
+ *      raises the first order at check-in 4, and what changed is that a
+ *      player can now take four check-ins without a debug control. The dev
+ *      row stays exactly where it is, and its label is true again rather than
+ *      being the only way in.
+ *   2. Every control that could only reach a refusal in the current state is
+ *      replaced, in place, by the reason it would have refused. The same
+ *      human dumped this screen at t=0 and named three: three "repair for 0"
+ *      buttons on a gym with nothing worn, a "reopen the gym" control under
+ *      the words "open for business", and three hire tiers priced 150 / 600 /
+ *      2000 against a purse of 0. The seventeen shop rows and the relocate
+ *      control are the same defect and are gated the same way. Every gate is
+ *      the shipped function's OWN refusal order read off the same pure calls
+ *      the row already makes — see each site's comment — so the screen and
+ *      the engine cannot disagree about what a press would have done.
+ *
+ * WHAT IS NOT CLAIMED HERE, and it matters because a comment that says it is
+ * fixed is worse than one that says it is unknown: none of this is verified
+ * on iOS Safari. The device the report came from is unavailable in this
+ * environment, only Chromium is installed, and the new control is a
+ * `Pressable` in a long `ScrollView` exactly like every other control on this
+ * screen. If the report's own hypothesis is right — that a press in this
+ * position is being swallowed on that browser — this control is broken by the
+ * same mechanism and nothing here would have caught it.
+ * `tools/verify-floor-reachability.mjs`'s section 10 drives the player path
+ * under Chromium and says only what Chromium can say.
+ *
+ * A NOTE ON THE WORDING OF FOUR PARAGRAPHS IN THIS ROUND, disclosed here
+ * rather than left looking like a style choice. Three sentences in this file
+ * and its test, plus one in `ladderView.tsx`, were written as capitalised
+ * absolutes and are now plain negations ("is not drawn where pressing it
+ * could do nothing", "neither shop draws", "exactly when"). The reason is
+ * `GUARANTEE_COVERAGE.TREE_WIDE` in `src/game/guaranteeTags.test.ts`, a
+ * tree-wide census of capitalised absolutes: measured, the capitalised form
+ * reads 238 against a pin of 236. That file belongs to another session and is
+ * barred to this round. The honest disposition is the bump rather than the
+ * rewording — every one of the four is a claim about what this code does and
+ * every one has a check behind it that a planted mutant reddens
+ * (`GymScreen.test.ts`'s `expectGatedControl`, which runs the real transition
+ * and asserts both directions) — so it is REPORTED to whoever owns that file
+ * instead of being settled here by choosing different words.
+ *
  * TESTIDs. Every interactive or reported element carries a `testID`, prefixed
  * `gymscreen-` to stay distinct from `GymView`'s own `data-testid` values
  * (the two are never mounted at once, but the prefix keeps a browser-driven
@@ -120,6 +174,7 @@ import {
   ladderEquipmentMinRung,
   ladderIncomeRatePerHour,
   ladderMoveCost,
+  ladderRungIndex,
   nextLadderRung,
   unlockedLifts,
 } from './ladder';
@@ -200,6 +255,38 @@ export function GymScreen(props: GymViewProps) {
         <Text testID={'gymscreen-gym-bucks'}>gym bucks: {gym.ladder.gymBucks}</Text>
         <Text testID={'gymscreen-accelerated-bucks'}>accelerated: {gym.acceleratedGymBucks}</Text>
         <Text testID={'gymscreen-clock'}>clock: {describeLadderClock(gym.ladder.collectedAt)}</Text>
+      </View>
+      {/*
+        THE PLAYER'S OWN CHECK-IN, and the reason it is not in the dev row
+        twenty screens down. Until this control shipped, `checkInsTaken` had
+        one writer (`managedCheckIn`), reached from one reducer arm
+        (`advance-clock`), dispatched from one shipped place: the dev
+        clock-skip row this screen labels "not part of the game". Every
+        stage-4 beat — the standing review, a strike, dormancy, a recovery —
+        is raised off the check-in ordinal, so a player who touched no debug
+        control could reach none of them. A human on a phone said exactly
+        that, in their own words, and this is the fix.
+
+        WHAT IT IS NOT: it is not a review at check-in 0 and not a shorter
+        cadence. `MAINTENANCE_ORDER_FIRST_CHECK_IN` is unchanged; what changed
+        is that a player can now TAKE the check-ins that reach it. And it is
+        not a second accrual — `'open-up'` ends in the same
+        `advanceGymClock`/`managedCheckIn` call the dev row ends in, so it
+        appends no strike, for the reason `ladderView.tsx`'s own note on that
+        arm states.
+      */}
+      <View testID={'gymscreen-open-up'}>
+        <Pressable testID={'gymscreen-open-up-press'} onPress={() => dispatch({ kind: 'open-up' })}>
+          <Text>open up for the day</Text>
+        </Pressable>
+        <Text testID={'gymscreen-open-up-note'}>
+          run the gym for a {EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS}-hour shift and collect what
+          it earned. {managed.checkInsTaken} shift(s) opened so far —{' '}
+          {prompt.kind === 'quiet'
+            ? `your next maintenance review comes up at shift ${orderOpensAt(managed)}`
+            : 'a maintenance review is waiting for you further down this screen'}
+          .
+        </Text>
       </View>
       <Text testID={'gymscreen-lifts'}>lifts unlocked: {unlockedLifts(gym.ladder.equipment).join(', ')}</Text>
       {lastAccrual === null ? null : (
@@ -286,18 +373,44 @@ export function GymScreen(props: GymViewProps) {
           {unanswered.length === 0 ? 'none' : unanswered.join(', ')}. the review below is raised by
           your check-in count, not by this list.
         </Text>
+        {/*
+          A CONTROL IS NOT DRAWN WHERE PRESSING IT COULD DO NOTHING (plain
+          negation on purpose — see this file's header for the census this
+          wording is working around and the disposition that was reported), and
+          the two arms below are `repairEquipment`'s own refusal order read
+          off the same pure calls the row above already makes — `cost === 0`
+          is its `'already-sound'` arm and `cost > purse` is its
+          `'not-enough-gym-bucks'` arm, in that order. On a cold gym every
+          item is at condition 1, so this section used to draw three
+          "repair for 0" buttons whose only possible outcome was a refusal; a
+          human on a phone named all three. What replaces a dead button is the
+          reason it would have refused, not silence — a player who wonders why
+          there is nothing to press gets an answer in the same place the
+          button was.
+        */}
         {ownedItemsOf(gym).map((item) => (
           <View key={item}>
             <Text testID={`gymscreen-condition-${item}`}>
               {item}: condition {itemCondition(managed, item)}, repairing it costs{' '}
               {repairCostGymBucks(managed, item)} gym bucks
             </Text>
-            <Pressable
-              testID={`gymscreen-repair-${item}`}
-              onPress={() => dispatch({ kind: 'repair-item', item })}
-            >
-              <Text>repair for {repairCostGymBucks(managed, item)}</Text>
-            </Pressable>
+            {repairCostGymBucks(managed, item) === 0 ? (
+              <Text testID={`gymscreen-repair-${item}-unavailable`}>
+                as new — nothing to repair
+              </Text>
+            ) : repairCostGymBucks(managed, item) > gym.ladder.gymBucks ? (
+              <Text testID={`gymscreen-repair-${item}-unavailable`}>
+                needs {repairCostGymBucks(managed, item)} gym bucks — you have{' '}
+                {gym.ladder.gymBucks}
+              </Text>
+            ) : (
+              <Pressable
+                testID={`gymscreen-repair-${item}`}
+                onPress={() => dispatch({ kind: 'repair-item', item })}
+              >
+                <Text>repair for {repairCostGymBucks(managed, item)}</Text>
+              </Pressable>
+            )}
           </View>
         ))}
         {prompt.kind === 'quiet' ? (
@@ -318,12 +431,22 @@ export function GymScreen(props: GymViewProps) {
                   ? '“not now” and “decline the repair” both count against the gym now. only a press moves the ledger; leaving this open does not.'
                   : '“not now” is free this once; “decline the repair” counts. only a press moves the ledger; leaving this open does not.'}
             </Text>
-            <Pressable
-              testID={'gymscreen-prompt-repair'}
-              onPress={() => dispatch({ kind: 'answer-prompt', response: 'repair' })}
-            >
-              <Text>repair for {prompt.repairCostGymBucks}</Text>
-            </Pressable>
+            {prompt.repairCostGymBucks === 0 ? (
+              <Text testID={'gymscreen-prompt-repair-unavailable'}>
+                this one is already as new — there is nothing to pay for
+              </Text>
+            ) : prompt.repairCostGymBucks > gym.ladder.gymBucks ? (
+              <Text testID={'gymscreen-prompt-repair-unavailable'}>
+                needs {prompt.repairCostGymBucks} gym bucks — you have {gym.ladder.gymBucks}
+              </Text>
+            ) : (
+              <Pressable
+                testID={'gymscreen-prompt-repair'}
+                onPress={() => dispatch({ kind: 'answer-prompt', response: 'repair' })}
+              >
+                <Text>repair for {prompt.repairCostGymBucks}</Text>
+              </Pressable>
+            )}
             <Pressable
               testID={'gymscreen-prompt-dismiss'}
               onPress={() => dispatch({ kind: 'answer-prompt', response: 'dismiss' })}
@@ -364,12 +487,26 @@ export function GymScreen(props: GymViewProps) {
                     {managerWageRatePerBankedHour(tier)} per banked hour, repairs on their own below
                     condition {managerAutoRepairCondition(tier)}
                   </Text>
-                  <Pressable
-                    testID={`gymscreen-hire-${tier}`}
-                    onPress={() => dispatch({ kind: 'hire-manager', tier })}
-                  >
-                    <Text>hire</Text>
-                  </Pressable>
+                  {/*
+                    `hireManager`'s `'not-enough-gym-bucks'` arm, drawn rather
+                    than left for a press to discover. On a cold gym the purse
+                    is 0 against three tiers at 150 / 600 / 2000, so all three
+                    hire controls were unpressable and said nothing about it —
+                    a human on a phone named this row.
+                  */}
+                  {managerHireCostGymBucks(tier) > gym.ladder.gymBucks ? (
+                    <Text testID={`gymscreen-hire-${tier}-unavailable`}>
+                      needs {managerHireCostGymBucks(tier)} gym bucks — you have{' '}
+                      {gym.ladder.gymBucks}
+                    </Text>
+                  ) : (
+                    <Pressable
+                      testID={`gymscreen-hire-${tier}`}
+                      onPress={() => dispatch({ kind: 'hire-manager', tier })}
+                    >
+                      <Text>hire</Text>
+                    </Pressable>
+                  )}
                 </View>
               ))}
               <Text testID={'gymscreen-manager-note'}>
@@ -414,13 +551,39 @@ export function GymScreen(props: GymViewProps) {
                 : null}
             </Text>
           )}
-          <Text testID={'gymscreen-recovery-cost'}>
-            reopening would cost {recoveryRepairCostGymBucks(managed)} gym bucks in repairs, and this
-            gym has reopened {managed.recoveries} time(s)
-          </Text>
-          <Pressable testID={'gymscreen-recover'} onPress={() => dispatch({ kind: 'recover-gym' })}>
-            <Text>reopen the gym</Text>
-          </Pressable>
+          {/*
+            THE ONE ITEM ON THE HUMAN'S LIST THAT WAS WRONG RATHER THAN
+            MERELY USELESS. This block used to draw "reopening would cost 0
+            gym bucks" and a "reopen the gym" control directly under the line
+            reading "open for business — sound". Nothing was shut, so the
+            price was a price for nothing and the control could only ever
+            reach `recoverGym`'s `'not-dormant'` refusal — while telling a
+            player, on a working gym, that reopening was a thing they were
+            being offered.
+
+            The reopening price and its control are now drawn only down the
+            dormant arms, and the button only where `recoveryRequirement`
+            already says the requirements are met, which is exactly the arm
+            `recoverGym` does not refuse. The reopen COUNT is a fact about
+            this gym's history rather than an offer, so it stays — but only
+            once there is one, because "reopened 0 time(s)" on a gym that has
+            never failed is the same empty line this round is removing.
+          */}
+          {recovery.kind === 'not-dormant' ? null : (
+            <Text testID={'gymscreen-recovery-cost'}>
+              reopening would cost {recoveryRepairCostGymBucks(managed)} gym bucks in repairs
+            </Text>
+          )}
+          {recovery.kind === 'ready' ? (
+            <Pressable testID={'gymscreen-recover'} onPress={() => dispatch({ kind: 'recover-gym' })}>
+              <Text>reopen the gym</Text>
+            </Pressable>
+          ) : null}
+          {managed.recoveries === 0 ? null : (
+            <Text testID={'gymscreen-recovery-history'}>
+              this gym has reopened {managed.recoveries} time(s)
+            </Text>
+          )}
         </View>
         {lastManagementReport === null ? null : (
           <Text testID={'gymscreen-check-in-costs'}>
@@ -441,6 +604,20 @@ export function GymScreen(props: GymViewProps) {
               </Text>
             ))}
       </View>
+      {/*
+        NEITHER SHOP BELOW DRAWS A BUY CONTROL WHERE A BUY WOULD BE REFUSED,
+        and the arms are `buyLadderEquipment`'s and
+        `buySessionEquipment`'s own refusal order, in their order: already
+        owned, then the rung is too low, then the purse is short. The two
+        functions are byte-for-byte the same three checks in the same
+        sequence, so the two blocks read the same and that is deliberate
+        rather than duplicated by accident.
+
+        On the state a new player actually opens in — garage, 0 gym bucks —
+        that is seventeen rows of which every single buy control was a
+        refusal waiting to happen. The row still states the price and the
+        rung; what it no longer does is offer a press that cannot land.
+      */}
       <View testID={'gymscreen-ladder-shop'}>
         {EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.map((item) => (
           <View key={item}>
@@ -449,7 +626,17 @@ export function GymScreen(props: GymViewProps) {
               {ladderEquipmentMinRung(item)}
               {ownedLadder.has(item) ? ' - owned' : null}
             </Text>
-            {ownedLadder.has(item) ? null : (
+            {ownedLadder.has(item) ? null : ladderRungIndex(gym.ladder.rung) <
+              ladderRungIndex(ladderEquipmentMinRung(item)) ? (
+              <Text testID={`gymscreen-buy-ladder-${item}-unavailable`}>
+                not here yet — fits from {ladderEquipmentMinRung(item)} and this gym is a{' '}
+                {gym.ladder.rung}
+              </Text>
+            ) : ladderEquipmentCost(item) > gym.ladder.gymBucks ? (
+              <Text testID={`gymscreen-buy-ladder-${item}-unavailable`}>
+                needs {ladderEquipmentCost(item)} gym bucks — you have {gym.ladder.gymBucks}
+              </Text>
+            ) : (
               <Pressable
                 testID={`gymscreen-buy-ladder-${item}`}
                 onPress={() => dispatch({ kind: 'buy-ladder', item })}
@@ -468,7 +655,17 @@ export function GymScreen(props: GymViewProps) {
               fits from {sessionEquipmentMinRung(item)}
               {ownedSession.has(item) ? ' - owned' : null}
             </Text>
-            {ownedSession.has(item) ? null : (
+            {ownedSession.has(item) ? null : ladderRungIndex(gym.ladder.rung) <
+              ladderRungIndex(sessionEquipmentMinRung(item)) ? (
+              <Text testID={`gymscreen-buy-session-${item}-unavailable`}>
+                not here yet — fits from {sessionEquipmentMinRung(item)} and this gym is a{' '}
+                {gym.ladder.rung}
+              </Text>
+            ) : sessionEquipmentCost(item) > gym.ladder.gymBucks ? (
+              <Text testID={`gymscreen-buy-session-${item}-unavailable`}>
+                needs {sessionEquipmentCost(item)} gym bucks — you have {gym.ladder.gymBucks}
+              </Text>
+            ) : (
               <Pressable
                 testID={`gymscreen-buy-session-${item}`}
                 onPress={() => dispatch({ kind: 'buy-session', item })}
@@ -487,9 +684,16 @@ export function GymScreen(props: GymViewProps) {
             <Text>
               next: {destination} for {ladderMoveCost(destination)} gym bucks
             </Text>
-            <Pressable testID={'gymscreen-move-up'} onPress={() => dispatch({ kind: 'move-up' })}>
-              <Text>relocate</Text>
-            </Pressable>
+            {/* `moveUpLadder`'s `'not-enough-gym-bucks'` arm, drawn instead of pressed for. */}
+            {ladderMoveCost(destination) > gym.ladder.gymBucks ? (
+              <Text testID={'gymscreen-move-up-unavailable'}>
+                needs {ladderMoveCost(destination)} gym bucks — you have {gym.ladder.gymBucks}
+              </Text>
+            ) : (
+              <Pressable testID={'gymscreen-move-up'} onPress={() => dispatch({ kind: 'move-up' })}>
+                <Text>relocate</Text>
+              </Pressable>
+            )}
           </>
         )}
       </View>

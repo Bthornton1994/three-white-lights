@@ -56,6 +56,7 @@ import {
   ladderRungIndex,
   moveUpLadder,
   nextLadderRung,
+  playerCheckInGapSeconds,
   requireLadderState,
   runLadder,
   unlockedLifts,
@@ -925,6 +926,32 @@ describe('the view-facing helpers compute what the view will only render', () =>
     expect(advanced.collectedAt).toBe(
       T.LADDER_DEV_TIME_STEPS_SECONDS.reduce((sum, seconds) => sum + seconds, 0),
     );
+  });
+
+  it('an opening banks its whole span — the player check-in gap loses nothing to the cap', () => {
+    // THE RELATION, ASSERTED RATHER THAN COMMENTED. `playerCheckInGapSeconds`
+    // is the span `GymScreen.tsx`'s "open up" control feeds to the shipped
+    // accrual, and the reason it is derived from the offline cap rather than
+    // being its own knob is that anything longer is silently discarded by
+    // `bankableOfflineSeconds`. A tuning pass that moved one without the
+    // other would make a player's own check-in lossy, quietly; this is the
+    // line that goes red instead.
+    const gap = playerCheckInGapSeconds();
+    expect(Number.isInteger(gap)).toBe(true);
+    expect(gap).toBeGreaterThan(0);
+    expect(gap % T.TICK_SECONDS).toBe(0);
+    expect(gap).toBe(offlineBankingHorizonSeconds());
+    const accrual = ladderCheckInAfter(createLadderState(), gap).accrual;
+    expect(accrual.secondsElapsed).toBe(gap);
+    expect(accrual.secondsDiscarded).toBe(0);
+    expect(accrual.secondsBanked).toBe(gap);
+    expect(accrual.gymBucks).toBeGreaterThan(0);
+    // One tick further and the cap really does start throwing seconds away —
+    // so the equality above is a boundary this sits exactly on, not a bound
+    // it happens to be under.
+    expect(
+      ladderCheckInAfter(createLadderState(), gap + T.TICK_SECONDS).accrual.secondsDiscarded,
+    ).toBeGreaterThan(0);
   });
 
   it('advances by a gap exactly as the absolute-time check-in would', () => {

@@ -670,6 +670,39 @@ export function ladderDevTimeSteps(): readonly LadderDevTimeStep[] {
   );
 }
 
+/**
+ * HOW FAR ONE PLAYER-TAKEN OPENING ADVANCES THE GYM, in seconds.
+ *
+ * WHY THIS EXISTS AT ALL. Until this function shipped, the ONLY thing in the
+ * repository that could raise `ManagedGym.checkInsTaken` was the dev
+ * clock-skip row — a control the screen itself labels "not part of the game".
+ * The standing maintenance review is raised on the check-in ordinal
+ * (`MAINTENANCE_ORDER_FIRST_CHECK_IN`, then every `MAINTENANCE_ORDER_STRIDE`),
+ * so a player who never pressed a debug control could not reach a review, a
+ * strike, dormancy or a recovery at all. `GymScreen.tsx`'s "open up" control
+ * dispatches `'open-up'`, `ladderView.tsx`'s reducer feeds this span to the
+ * same `managedCheckIn` the dev row already fed, and the loop is reachable.
+ *
+ * WHY IT IS THE OFFLINE CAP AND NOT A NEW KNOB. GDD §5.1's offline window is
+ * how much operation one absence may bank; `bankableOfflineSeconds` discards
+ * everything past `OFFLINE_EARNINGS_CAP_HOURS`. Opening up for exactly that
+ * window is the largest span a player can take without the accrual throwing
+ * part of it away, so nothing this control earns is silently discarded — the
+ * quantity a second knob would have to be kept in step with by hand is read
+ * from the knob itself instead. A designer who retunes the cap retunes this
+ * with it, which is the relation `ladder.test.ts`'s
+ * `an opening banks its whole span` asserts rather than assumes.
+ *
+ * WHAT THIS IS NOT: it is not a claim that real wall-clock time passed. This
+ * build has no background clock and no persistence, so "the gym ran for a
+ * shift" is the mode's fiction and the copy at the control says so in the
+ * player's own words. What is real is that the span goes through the shipped
+ * accrual whole — the same call, the same cap, the same wear.
+ */
+export function playerCheckInGapSeconds(): number {
+  return EMPIRE_TUNING.OFFLINE_EARNINGS_CAP_HOURS * EMPIRE_TUNING.SECONDS_PER_HOUR;
+}
+
 /** The clock readout's shape: whole days, hours, leftover seconds. */
 export type LadderClockText = `${number}d ${number}h ${number}s`;
 
