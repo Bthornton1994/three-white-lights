@@ -632,6 +632,77 @@ new.
 **`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
 crossing.
 
+### PHONE REPLAY 3, 2026-08-27: "NO CHALLENGE EVEN FOR AN RPE 9" — THE FLOOR WAS THE WRONG METRIC
+
+Verbatim, phone at `108e1f37`/`ab684e3b`: *"this doesnt feel harder at all,
+there is no challenge even for an rpe 9."* Third rejection. Mechanic and
+grammar stay confirmed and closed. `BENCH_WORKING_RUNG_DEMAND_ONSET: 0.045`
+registered as measured numbers and did not register as feel, and RPE 9 — not
+just RPE 8 — is now named in the complaint.
+
+**The diagnosis this round changes, and it is measured from source, not
+guessed.** `grindForce` saturates at exactly 1.0 once `charge` reaches
+`GRIND_CHARGE.CEILING` (2.9). Tapping at the sim's own countable-tap floor
+(`GRIND_TAP_REFRACTORY_TICKS`, 50ms) drives charge past that ceiling within
+about five taps — roughly 250ms into the grind. The prior round's own browser
+captures measured real achieved cadences of 57–81ms, already at or above the
+rate that saturates force. **A player going flat-out reaches maximum
+available force almost immediately and holds it for the rest of the rep.**
+
+Every round so far has measured `WORKING_FLOOR` — the SLOWEST sustained tap
+rate that still succeeds. That metric is real and correctly moved, but it is
+the wrong subject for this complaint. *"The subject is a human who taps as
+fast as they like, not `WORKING_FLOOR`'s slowest success."* Raising the floor
+raises the bar for someone tapping lazily; it does nothing for someone already
+mashing, because mashing was never close to the ceiling the floor measures
+against. There is a dead zone between "minimum rate that clears" and "maximum
+rate the sim can even register" in which the demand curve has never been
+tested, and that dead zone is where "no challenge at max effort" lives.
+
+**Required this round, in addition to `WORKING_FLOOR`: a max-effort metric.**
+For each working rung (8/9/10/meet), measure whether a player tapping at the
+sim's real achievable ceiling — not the theoretical 50ms refractory floor, the
+realistic captured range (57–81ms) plus some jitter — can still lose or stall
+the rep, on a real fraction of seeds, not zero and not certainty. RPE 9 is
+named explicitly: *"RPE 9 has to be able to lose someone who is actually
+trying."* RPE 8 has to feel like work, which the floor already helps with,
+but is not exempt from the new metric either.
+
+**Refused explicitly, all repeated from before because they keep getting
+reached for first:** another small bump to `ONSET` alone ("do not ship
+another +0.01"); a uniform `DEMAND_BASE` lift; lengthening the global
+`ASCENT_TIMEOUT_TICKS`; using `GRIND_BOOST_FORCE_MAX` as the 8/9 lever (it
+sets the ceiling on available force, which is exactly the thing that needs
+to stay reachable by demand, not the knob that moves demand).
+
+**Still binding, unchanged:** the warm-up floor (`BENCH_WARMUP_FLOOR_MARGIN
+-0.04`, `BENCH_WARMUP_FLOOR_ASCENT_TICKS 220`) stays; RPE ≤ 7 unanswered on a
+held descent must still make, zero taps, every cell, every seed; RPE 8+
+unanswered must still lose; if the new lever closes either floor-edge gap
+(margin −0.0483/−0.0323, ascent 193/247), **stop and report — do not renumber
+the floor.** `MARGIN_CEILING` (0.27) already clips some wrecked meet cells to
+zero addition; if a bigger lever changes that clipping or flattens RPE 9 into
+RPE 10, report it rather than silently re-deriving the ordering around it.
+
+**On the shape question the last round settled, restated so it is not
+re-litigated by accident:** the prior ramp was killed because its own
+justification was confounded — a magnitude-matched flat step reproduced
+~101% of its claimed effect, and the ramp gave the ruling's own named rung the
+LEAST help. That finding stands. If a per-rung-differentiated shape is needed
+again this round to hit the max-effort target, it must be justified against a
+magnitude-matched flat control the same way, this time on the max-effort
+metric specifically — not re-argued on the floor-ladder shape that was already
+shown not to be the load-bearing part.
+
+**Bar before a URL:** RPE ≤ 7 unanswered held, 0 lost, unchanged. RPE 8+
+unanswered, still all lost. `WORKING_FLOOR` pinned old beside new. The new
+max-effort metric pinned per working rung, old (effectively "never fails" if
+that is what today's build measures) beside new, with RPE 9 showing a real,
+non-zero, non-total failure rate for a realistic max-effort player.
+
+**`lift.ts`/`liftTuning.ts` stay Session A's.** This entry is the brief, not a
+crossing.
+
 ### If scope shifts
 
 Session A treats `src/empire/**` as off-limits from now on and will not open a
