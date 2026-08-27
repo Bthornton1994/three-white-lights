@@ -2755,11 +2755,59 @@ past that line gets a red line naming the relation instead of a silently broken
 GDD bullet. **The bullet is met at the shipped tuning, and it is a tuning
 statement rather than a structural one.**
 
-**S4b is still not unblocked by this**, and that is a judgement rather than a
-formality: the failure sweep reads zeros within the horizon and no income
-reading punishes engagement, which is what the sentence above asks for, but
-the engagement strike counters are non-zero and the paragraph in §5.7 says a
-human has to rule on whether that matters before a prompt lands on the floor.
+**S4b WAS THEN UNBLOCKED BY A HUMAN, AND IT IS BUILT.** The paragraph that used
+to sit here said S4b stayed blocked because the engagement strike counters are
+non-zero and §5.7 wanted a human to rule on whether that mattered. The ruling is
+the one recorded in §5.7's own clarification above, landed in the same commit
+this paragraph outlived: the equal-strike sentence is **withdrawn**, so non-zero
+engagement strike counters are the mechanic working rather than a bar being
+missed, and the condition that was actually holding S4b — the failure sweep
+reading zeros within the horizon, and no income reading punishing engagement —
+was already met. A human then ruled S4b unblocked directly. Recorded here rather
+than left as a stale "not unblocked", because a document that says a piece is
+blocked while the piece ships is the same defect as a comment that outlives its
+code.
+
+**What S4b surfaced, and where.** `src/empire/GymScreen.tsx` — the real React
+Native screen already reachable from the shell's `GYM EMPIRE` pill — gained one
+`gymscreen-management` section directly under the floor, because that is where
+the equipment is. It shows the failure phase and the counted-decision ledger
+(every strike drawn with the price that was on screen when it was taken), mean
+and per-item equipment condition with the income multiplier beside it, the
+standing repair order with its named item and its quoted cost, three answers to
+it (repair, leave it, decline), the three manager tiers with hire cost, wage and
+auto-repair threshold, hire and dismiss, and the dormant readout with its costed
+way back out. `GymViewState.gym` became `GymViewState.managed`, a `ManagedGym`,
+so there is one `GymState` on the screen and repairs spend the purse the ladder
+fills. Every number is a call into `management.ts`; the screen computes nothing.
+
+**Two costs, measured rather than absorbed.** The condition income multiplier now
+applies on the played path, so the garage's first relocation is affordable at the
+**eighth** `+3d` dev check-in rather than the seventh — 2459.52 Gym Bucks at the
+seventh against a 2500 move. That is §5.7's auto-deduction doing its job and it
+is pinned in `ladderView.test.ts` rather than tuned away. And the whole
+decline → dormancy → repair → reopen arc is now reachable by pressing controls,
+which means a player can put their own gym into a failure state; the way out is
+quoted before any of it is spent.
+
+**The constraint this round was most at risk of breaking, and the check that
+covers it.** §5.7's clarification forbids the reverse chain — absence, elapsed
+time, or low condition, by itself, advancing a strike or dormancy. The screen
+shows a review whenever the check-in ordinal raises one and never advances
+anything by showing it. `tools/verify-floor-reachability.mjs`'s claim 9c drives
+the clock control repeatedly with no decision and reads phase, counted-decision
+count, drawn strike-row count and the ledger's lead sentence back off the DOM,
+with 9b (condition really moves under the same presses) and 9g (the ledger
+really can move, three declines put three rows on it) as the non-vacuity on
+either side of it. It was mutation-tested: a planted low-condition-appends-a-
+strike chain turns 9c red naming `phase sound -> failed, strikes 0 -> 10`. Its
+limit, stated because the check samples: 9c drives one dev step at the garage
+rung, so a strike path needing a higher rung, a manager on staff, or more
+check-ins than its bound is outside what it can see.
+
+**Gate: unrun.** No human has played S4b on a phone. Everything above is a
+suite result and a driven browser check, which §5.11's own standing rule says is
+not the same thing as a gate pass.
 ---
 
 ## 6. Meet Day
