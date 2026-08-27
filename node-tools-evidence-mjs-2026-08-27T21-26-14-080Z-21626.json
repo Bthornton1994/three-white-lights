@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-evidence-mjs-2026-08-27T21-26-14-080Z-21626",
+  "label": null,
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "bench-max-effort",
+    "src/game/lift"
+  ],
+  "budgetSeconds": 3000,
+  "startedAtIso": "2026-08-27T21:26:14.080Z",
+  "startedAtMs": 1787865974080,
+  "cwd": "/home/user/wt-bench-maxeffort",
+  "commit": "e394e9c4d6caa0063e5e2f645891c0a13fbd9882",
+  "branch": "claude/bench-max-effort",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 21626,
+    "startTick": "1398859",
+    "cmdline": "node tools/watchdog.mjs --budget 3000 -- node tools/evidence.mjs bench-max-effort src/game/lift",
+    "bootId": "0ea1bac6-cfc2-4139-b180-9a706152a24b",
+    "bootEpochSeconds": 1787851985,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-27T21:26:14.100Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
