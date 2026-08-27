@@ -91,14 +91,63 @@
  *     `variantPhaseWorse` 186 -> 321, `matchedTraceFailureMismatches`
  *     124 -> 179 and `variantNetLower` 923 -> 1416;
  *   - on the shipped `withinHorizon` family the three failure counters stay
- *     at zero, because the ordinal review's index-invariance is structural
- *     and has nothing to do with the wear rate — but `conditionMismatches`
- *     goes 15070 -> 13080 and `variantNetLower` 421 -> 53.
+ *     at zero at 0.004 — but `conditionMismatches` goes 15070 -> 13080 and
+ *     `variantNetLower` 421 -> 53.
  *
  * So the multiplier moves five of the fourteen counters on the shipped family
  * and every failure counter on the control. What survives of the argument is
  * the narrower claim above — a constant factor does not change the wear KEY —
  * and that is all it ever supported.
+ *
+ * THE SENTENCE THAT USED TO EXPLAIN THAT SECOND BULLET WAS FALSE, AND THE
+ * PROBE THAT PRODUCED IT HAD STOPPED SHORT OF THE REGION WHERE IT BREAKS. It
+ * read: "the three failure counters stay at zero, because the ordinal review's
+ * index-invariance is structural and has nothing to do with the wear rate."
+ * The measurement in front of it is a reading at one point on the knob axis;
+ * the clause after "because" is a claim about the whole axis, and 0.004 is
+ * short of where the axis turns — 7 x 12 x 0.004 = 0.336, leaving condition at
+ * 0.664 and the maintenance-prompt line of 0.5 uncrossed.
+ *
+ * Re-run past it, every number below measured on this tree at the same
+ * battery, `withinHorizon.all`:
+ *
+ *     wear    failureMismatches   phaseWorse   matchedTrace   netLower
+ *     0.002                   0            0              0        421
+ *     0.004                   0            0              0         53
+ *     0.0045                  0            0              0         62
+ *     0.005                   0            0              0        319
+ *     0.0055                 32            0              0        471
+ *     0.006                 128            0              0        435
+ *     0.007                 256            0              0        561
+ *     0.008                   0            0              0        879
+ *     0.010                   0            0              0        902
+ *     0.020                   0            0              0       2312
+ *
+ * So `failureMismatches` leaves zero between 0.005 and 0.0055, peaks, and
+ * returns to zero by 0.008 — a threshold crossing rather than a trend, which
+ * is why a single doubling found nothing and read as structure. Every non-zero
+ * reading is `'cheapskate'` and no other policy, on every row.
+ *
+ * WHAT IS ACTUALLY STRUCTURAL, stated in the mechanism's own terms and no
+ * wider. `reviewsOfferedMismatches` is 0 at every wear rate in that table.
+ * Header §3a's derivation is about `orderOpensAt`, and it holds exactly as
+ * written: enlarging a gap changes gap lengths and not the number of check-ins
+ * taken, so the review series is index-invariant whatever the wear rate. What
+ * the deleted sentence did was generalise that from the REVIEW CADENCE to the
+ * whole failure path, and the failure path has a second entrance the cadence
+ * says nothing about: `'cheapskate'`'s hire is gated on `warningSignsVisible`,
+ * whose second disjunct reads worn equipment.
+ *
+ * Attributed by a counterfactual rather than by co-occurrence: at 0.006, with
+ * that model's gate swapped to `countedWarningVisible` and nothing else
+ * changed, `withinHorizon.failureMismatches` goes 128 -> 0.
+ *
+ * The named catcher for the knob is `management.test.ts`'s `STRIKE_PATH_MARGIN`
+ * and the two checks that read it — `keeps the worn disjunct off the strike
+ * path by a derived margin, and states its size`, and the directed drive beside
+ * it. Header §3e has the inequality and its size. It is a derived bound rather
+ * than a re-measurement, so it is conservative on purpose: it reddens at
+ * 0.00463 while the sweep above first moves between 0.005 and 0.0055.
  *
  * So a usage key here would be a GDD edit and a rename for no change of key.
  * What would make it a real difference is a roster that MOVES with the
@@ -358,6 +407,133 @@
  * Every one of those numbers is a magnitude comparison rather than a
  * co-occurrence: the carrier is the largest of six signed terms that sum to
  * the deficit exactly, and `maxDeficitGymBucks` is 105.32.
+ *
+ * ---------------------------------------------------------------------------
+ * 3e. The two condition reads still on the strike path, and what holds them off
+ * ---------------------------------------------------------------------------
+ *
+ * §3a took the review cadence off condition and §3d priced the purse route.
+ * Neither of those is the whole of the path a strike travels, and two
+ * condition reads survive on it. Both are inert at the shipped tuning by a
+ * MARGIN rather than by construction, which is a weaker thing than the rest of
+ * this header claims and is why they get their own section with their own
+ * catchers. Each is written in CLAUDE.md's three parts: what the mechanism
+ * gives, the route past it named concretely, and the check that covers that
+ * route named specifically enough to run.
+ *
+ * FIRST: `'cheapskate'`'s hire gate.
+ *
+ * WHAT THE MECHANISM GIVES. `countedWarningVisible` decides whether a cheap
+ * hire COUNTS, and it reads the strike ledger's phase and nothing else. That is
+ * the guarantee §3a's `countedWarningVisible` paragraph states, and it is
+ * exactly as strong as it says.
+ *
+ * THE ROUTE PAST IT. `countedWarningVisible` does not decide WHEN the hire
+ * happens. `runManagedGym`'s `'cheapskate'` model still triggers on
+ * `warningSignsVisible`, whose second disjunct is `wornItems(state).length > 0`
+ * — a condition read, sitting one step upstream of a decision that appends a
+ * strike. The route is a wear rate large enough to cross
+ * `MAINTENANCE_PROMPT_CONDITION` before the ledger reaches
+ * `FAILURE_WARNING_STRIKES`; §1's table has it measured, at 128
+ * `withinHorizon.failureMismatches` at 0.006 and 0 with the gate swapped.
+ *
+ * THE CHECK THAT COVERS IT, and the size of the margin it holds.
+ * `management.test.ts`'s `STRIKE_PATH_MARGIN` derives, from five knobs and
+ * `offlineBankingHorizonSeconds`, the least condition any item can be at the
+ * first check-in whose hire read can see a warning phase. A counted refusal is
+ * possible at a review and nowhere else, so the earliest a run reaches the
+ * warning phase one refusal at a time is the review numbered
+ * `FAILURE_WARNING_STRIKES` — check-in 8 at the shipped ordinal knobs — and the
+ * hire block reads its predicate before that check-in's refusal is taken, so
+ * check-in 9 is the first read that can see it. A check-in wears at most
+ * `EQUIPMENT_WEAR_PER_BANKED_HOUR` times the offline horizon, which is 0.024,
+ * so no item is below 0.784 there: 0.284 above the 0.5 prompt line, and the
+ * margin closes at a wear rate of 0.00463 against a shipped 0.002.
+ *
+ * ITS LIMIT, stated because the arithmetic is one-directional. The inequality
+ * is SUFFICIENT for the disjunct ordering on the strike-producing path. It is
+ * not a proof that the sweep's failure counters stay at zero for every knob
+ * setting, and it says nothing about the purse route of §3d or about the
+ * second read below. A knob move can redden the sweep with the inequality
+ * comfortably satisfied — and, in the other direction, the bound is
+ * conservative: it reddens at 0.00463 where the sweep first moves between
+ * 0.005 and 0.0055.
+ *
+ * SECOND: the manager's autonomous repair re-arming a refused order.
+ *
+ * WHAT THE MECHANISM GIVES. A refusal is charged once per standing repair
+ * order (§3a), and an order closes when the item is repaired.
+ *
+ * THE ROUTE PAST IT. One of the four things that can repair an item is the
+ * manager's autonomous routine repair in `checkInWithWearBasis`, and that loop
+ * is gated on `itemCondition(next, item) < threshold` and on the purse. It
+ * calls `withOrderClosed`, so a condition comparison decides whether the item's
+ * next refusal is a fresh counted decision or a restatement that appends
+ * nothing. That is a condition read deciding COUNTABILITY, and §3a's derivation
+ * does not reach it: that derivation is about `orderOpensAt`, which is a pure
+ * function of the check-in ordinal, while this is a comparison against a worn
+ * value.
+ *
+ * THE CHECK THAT COVERS IT. `ManagedCheckIn.autoRepairsReopeningRefusedOrders`
+ * counts the route being taken, `ManagedRunCensus` totals it per run, and the
+ * sweep's domain census pins it in two forms: 182 across the whole battery and
+ * 0 on the shipped wiring. The 182 is what says the counter is not measuring an
+ * empty domain, and where it sits is the useful part — every one of the 182 is
+ * `'wall-clock-wear-control'`, the wiring that wears on elapsed time and
+ * therefore wears fastest. So this route's entrance is wear-rate-sensitive in
+ * the same way the first one is, and the two are one finding seen twice.
+ *
+ * ITS LIMIT. Those two numbers are a statement about THIS domain — three seeds,
+ * that gap menu, that grid, these six models of a player — and not a structural
+ * absolute. A seventh model that repairs some items and refuses others keeps a
+ * gym alive past the check-in at which pure refusal takes it dormant, and wear
+ * continues while it does, so a steady manager's 0.35 threshold becomes
+ * reachable. Nothing here forbids that; what is here is a count that moves off
+ * zero when it happens, in a census a reader signs.
+ *
+ * ---------------------------------------------------------------------------
+ * 3f. RETRACTED: an escape probe reported at 6 / 6 / 0 that reproduces at
+ * 0 / 0 / 0, filed rather than deleted
+ * ---------------------------------------------------------------------------
+ *
+ * A round before this one reported, in this header, that raising
+ * `MAINTENANCE_PROMPT_CONDITION` to 0.999 — an escape probe of the shipped
+ * ordinal path, asking whether the failure counters really are independent of
+ * where the prompt line sits — moved the within-horizon failure counters to
+ * 6 / 6 / 0. The next round re-ran it, measured 0 / 0 / 0, could not account
+ * for the difference, and DELETED the sentence. That left no record anywhere
+ * in the tree of either the claim or the failed reproduction.
+ *
+ * Deletion is the wrong disposition and this module already knows it: §4 keeps
+ * a superseded slump figure as history with its verb in the past tense, and
+ * `management.test.ts` keeps the reasoning for a constant it removed. A number
+ * that was published and will not reproduce is worth more written down than
+ * gone, because gone reads as never claimed.
+ *
+ * Re-taken here, on this tree, at the same probe value:
+ * `MAINTENANCE_PROMPT_CONDITION` at 0.999, everything else at the shipped
+ * tuning, `withinHorizon.all` reads `failureMismatches` 0,
+ * `variantPhaseWorse` 0, `matchedTraceFailureMismatches` 0, and 0 on each of
+ * the six policies. `withinHorizonConditionGatedControl` reads 0 / 0 / 0 too,
+ * which is its own reading rather than a copy: at 0.999 the condition gate is
+ * open at every check-in, so it stops discriminating and both runs of a pair
+ * get a review at every index.
+ *
+ * HOW TO RE-TAKE IT, because nothing in the suite holds this. Neither this
+ * probe nor §1's wear-rate table is a wiring: both are source edits to
+ * `empireTuning.ts` followed by a re-run of the sweep, so no test goes red if
+ * either drifts. The one part of §1's table that IS held is the knob margin,
+ * by `management.test.ts`'s `STRIKE_PATH_MARGIN` — and it is held as an
+ * inequality over the knobs rather than as a re-measurement, which is a
+ * different claim and is described as one at §3e's first half.
+ *
+ * WHAT THE RETRACTION DOES AND DOES NOT SAY. It says the 6 / 6 / 0 does not
+ * reproduce against this tree at the probe value it names, twice, by two
+ * different rounds. It does not say the original measurement was fabricated or
+ * that it was wrong when taken — the ledger, the review gate and the strike
+ * threshold all moved between then and now, so the engine it was taken against
+ * is no longer here to re-run. The figure has no standing as evidence and is
+ * kept as the record of a claim, which is a different thing from a result.
  *
  * ===========================================================================
  * 4. Dormancy: income collapses, and what "keeps degrading" is read to mean
@@ -890,6 +1066,13 @@ export function warningSigns(state: ManagedGym): WarningSigns {
  * Whether any warning surface is showing at all — worn equipment or a
  * non-sound phase. This is a DISPLAY read and a player model's trigger; it is
  * NOT what the cheap-hire strike is keyed on. `countedWarningVisible` below is.
+ *
+ * Being a model's trigger is not free, and header §3e is the reckoning: the
+ * `'cheapskate'` model triggers its strike-producing hire on this predicate,
+ * so the `wornItems` disjunct sits one step upstream of a counted decision. It
+ * is inert at the shipped tuning by a derived margin — 0.284 condition points,
+ * closing at a wear rate of 0.00463 — and `management.test.ts`'s
+ * `STRIKE_PATH_MARGIN` is the check that holds it there.
  */
 export function warningSignsVisible(state: ManagedGym): boolean {
   return failurePhase(state) !== 'sound' || wornItems(state).length > 0;
@@ -1152,6 +1335,14 @@ export interface ManagedCheckIn {
   readonly autoRepairs: readonly AutoRepairReport[];
   /** What the autonomous repairs above cost in total. Reported, never silent. */
   readonly autoRepairSpendGymBucks: number;
+  /**
+   * How many of the autonomous repairs above closed a standing order that had
+   * already been REFUSED — the count header §3e is about, reported so its size
+   * is a measured number rather than an argument. See that section: this is a
+   * condition read on the countability path that §3a's ordinal derivation does
+   * not cover, and this field is what the sweep's domain census pins.
+   */
+  readonly autoRepairsReopeningRefusedOrders: number;
 }
 
 /** A purse write on the composed state, through the ladder it composes. */
@@ -1245,6 +1436,7 @@ function checkInWithWearBasis(
   // The manager's autonomous routine repairs — §5.7's good-manager function,
   // billed to the gym at the published rate, item order fixed.
   const autoRepairs: AutoRepairReport[] = [];
+  let autoRepairsReopening = 0;
   if (next.manager !== null && !dormant) {
     const threshold = managerAutoRepairCondition(next.manager.tier);
     for (const item of ownedItemsOf(next.gym)) {
@@ -1258,6 +1450,12 @@ function checkInWithWearBasis(
       });
       // A manager's repair closes the standing order exactly as the player's
       // own does — the order is answered by the repair, not by who paid.
+      //
+      // Counted before the close, because after it the fact is gone: this is
+      // the one place a CONDITION comparison decides whether a later refusal
+      // is countable, and header §3e states its limit and names this count as
+      // the catcher.
+      if (isNeglected(next, item)) autoRepairsReopening += 1;
       next = withOrderClosed(next, item);
       autoRepairs.push(Object.freeze({ item, costGymBucks: cost }));
     }
@@ -1276,6 +1474,7 @@ function checkInWithWearBasis(
     autoRepairSpendGymBucks: scrubPrecision(
       autoRepairs.reduce((sum, report) => sum + report.costGymBucks, 0),
     ),
+    autoRepairsReopeningRefusedOrders: autoRepairsReopening,
   });
 }
 
@@ -1930,6 +2129,12 @@ export interface ManagedRunCensus {
   /** Declines that appended no strike because the order was already refused. */
   readonly uncountedDeclines: number;
   readonly autoRepairs: number;
+  /**
+   * Autonomous repairs that closed a standing order the player had already
+   * REFUSED, so the next refusal of that item is countable again. Header §3e:
+   * a condition read on the countability path, sized rather than argued.
+   */
+  readonly autoRepairsReopeningRefusedOrders: number;
   readonly hires: number;
   readonly managerDismissals: number;
   readonly recoveries: number;
@@ -1996,6 +2201,7 @@ export function runManagedGym(
   let uncountedDeclines = 0;
   let promptsAlreadyRefused = 0;
   let autoRepairCount = 0;
+  let autoRepairsReopeningRefusedOrders = 0;
   let hires = 0;
   let managerDismissals = 0;
   let recoveries = 0;
@@ -2027,6 +2233,7 @@ export function runManagedGym(
     const outcome = checkInWithWearBasis(state, at, basis);
     state = outcome.state;
     autoRepairCount += outcome.autoRepairs.length;
+    autoRepairsReopeningRefusedOrders += outcome.autoRepairsReopeningRefusedOrders;
     if (outcome.wageShortfallGymBucks > 0) wageShortfalls += 1;
 
     let controlSpend = 0;
@@ -2147,6 +2354,13 @@ export function runManagedGym(
         if (policy === 'cheapskate' && state.manager === null && warningSignsVisible(state)) {
           // The cheapskate reacts to visible trouble by hiring the cheapest
           // tier — §5.7's first counted shape, produced rather than possible.
+          //
+          // THE PREDICATE HERE IS THE DISPLAY READ, WHICH IS A CONDITION READ
+          // ONE STEP UPSTREAM OF A STRIKE. It is deliberate — a player model
+          // reacts to what a screen shows — and it is the reason header §3e
+          // exists. `management.test.ts`'s `STRIKE_PATH_MARGIN` is the check
+          // that keeps the worn disjunct from firing before the phase one, and
+          // §1's table is what happens when the wear rate closes that margin.
           const cheapest = EMPIRE_TUNING.MANAGER_TIERS[0];
           const hired = hireManager(state, cheapest, at);
           if (hired.kind === 'hired') {
@@ -2284,6 +2498,7 @@ export function runManagedGym(
       declines,
       uncountedDeclines,
       autoRepairs: autoRepairCount,
+      autoRepairsReopeningRefusedOrders,
       hires,
       managerDismissals,
       recoveries,

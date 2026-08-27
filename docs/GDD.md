@@ -2706,6 +2706,29 @@ player model's unrequired manager dismissal into an engagement charge — 36
 net-lower readings where there had been zero — which was fixed on the model
 side, with the old model kept runnable as a control pinned at 36.
 
+**AND THE ZEROS HOLD BY A KNOB MARGIN, WHICH THE PARAGRAPH ABOVE DID NOT SAY.**
+Recorded because "within-horizon failure progression reads 0 / 0 / 0" reads as a
+structural result and is one only in part. The review cadence's index-invariance
+is structural — the review series is byte-identical under every enlargement at
+every wear rate tried. The failure *counters* are not: the `'cheapskate'` model
+triggers its strike-producing hire on the display predicate, whose second
+disjunct reads worn equipment, so a fast enough wear rate puts a condition
+crossing back in front of the ledger's own. Measured on the shipped battery by
+moving `EQUIPMENT_WEAR_PER_BANKED_HOUR` alone: `withinHorizon.failureMismatches`
+is 0 at 0.002, 0.004, 0.0045 and 0.005; **32 at 0.0055, 128 at 0.006, 256 at
+0.007**; and 0 again at 0.008, 0.01 and 0.02, where both runs of a pair cross on
+the same index. Every non-zero reading is `'cheapskate'`, and swapping that
+model's gate to the ledger-only predicate at 0.006 takes the 128 to 0.
+
+The shipped wear rate is 0.002 and the margin closes at **0.00463** — a factor
+of 2.3. That relation is now asserted rather than assumed:
+`management.test.ts`'s `STRIKE_PATH_MARGIN` derives it from the wear rate, the
+offline horizon, the two ordinal knobs, the warning threshold and the prompt
+condition, and reddens before the sweep does. A tuning pass that raises wear
+past that line gets a red line naming the relation instead of a silently broken
+GDD bullet. **The bullet is met at the shipped tuning, and it is a tuning
+statement rather than a structural one.**
+
 **S4b is still not unblocked by this**, and that is a judgement rather than a
 formality: the failure sweep reads zeros within the horizon and no income
 reading punishes engagement, which is what the sentence above asks for, but

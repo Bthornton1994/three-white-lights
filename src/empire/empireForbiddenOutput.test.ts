@@ -2805,7 +2805,11 @@ const CONSTRUCTOR_CENSUS = Object.freeze({
   // Read from this pin's own failure value.
   // 2778 -> 2797: the chain-break round's new call expressions in
   // management.ts. Read from this pin's own failure value.
-  CALLS_EXAMINED: 2797,
+  // 2797 -> 2798: the knob-margin round's one new call expression —
+  // `isNeglected(next, item)` in the manager's autonomous repair loop, which
+  // counts the re-armed standing orders `management.ts` header §3e is about.
+  // Read from this pin's own failure value.
+  CALLS_EXAMINED: 2798,
   /**
    * Exported functions returning a read-only array of branded strings.
    *
@@ -9523,7 +9527,10 @@ const DRIVE_CENSUS = Object.freeze({
   // that should be explained rather than accepted.
   // 29_619_268 -> 29_621_792: the widened COUNT domain and the five new
   // driven exports. Read from this pin's own failure value.
-  STRINGS: 29_621_792,
+  // 29_621_792 -> 29_621_813: the knob-margin round put one more reported term
+  // on `ManagedCheckIn` (`autoRepairsReopeningRefusedOrders`), and the walk
+  // counts a driven object's KEYS. Read from this pin's own failure value.
+  STRINGS: 29_621_813,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -9552,7 +9559,10 @@ const DRIVE_CENSUS = Object.freeze({
   // driven output. Both read from this pin's own failure value.
   // 3626 -> 3632: the drive's new distinct literals. Read from this pin's own
   // failure value.
-  DISTINCT_STRINGS: 3632,
+  // 3632 -> 3633: the knob-margin round's one new reported key on
+  // `ManagedCheckIn`, `autoRepairsReopeningRefusedOrders`, is a string the
+  // walk had not seen before. Read from this pin's own failure value.
+  DISTINCT_STRINGS: 3633,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -14058,7 +14068,7 @@ const DECLARED_FRESH_RECEIVERS: readonly string[] = Object.freeze([
   // §5.11 stage 4: `withWear`'s condition map is built in a loop and returned
   // through a fresh object the screen cannot follow into, the same shape as
   // every other row here.
-  'management.ts:1072 returned=unfollowable:state',
+  'management.ts:1255 returned=unfollowable:state',
   'recruitment.ts:388 returned=unfollowable:state',
   'sessions.ts:562 receiver=ArrayLiteralExpression',
   'sessions.ts:655 returned=unfollowable:state',
@@ -14147,21 +14157,21 @@ const SHIPPED_SCREEN_DISAGREEMENTS: readonly string[] = Object.freeze([
   // entry expire when its subject moves, which is the property the list is
   // for. A reader who sees these numbers move should check the diff for prose
   // before looking for a behaviour change.
-  'management.ts:1072 readonly CountedDecisionRecord[] asked=true walked=false',
-  'management.ts:1205 LadderAccrual asked=true walked=false',
-  'management.ts:1210 GymState asked=true walked=false',
-  'management.ts:1476 ManagedGym asked=true walked=false',
-  'management.ts:2028 ManagedGym asked=true walked=false',
-  'management.ts:2071 ManagedGym asked=true walked=false',
-  'management.ts:2092 ManagedGym asked=true walked=false',
-  'management.ts:2099 ManagedGym asked=true walked=false',
-  'management.ts:2109 ManagedGym asked=true walked=false',
-  'management.ts:2135 ManagedGym asked=true walked=false',
-  'management.ts:2153 ManagedGym asked=true walked=false',
-  'management.ts:2172 ManagedGym asked=true walked=false',
-  'management.ts:2183 ManagedGym asked=true walked=false',
-  'management.ts:2203 ManagedGym asked=true walked=false',
-  'management.ts:2219 ManagedGym asked=true walked=false',
+  'management.ts:1255 readonly CountedDecisionRecord[] asked=true walked=false',
+  'management.ts:1396 LadderAccrual asked=true walked=false',
+  'management.ts:1401 GymState asked=true walked=false',
+  'management.ts:1675 ManagedGym asked=true walked=false',
+  'management.ts:2234 ManagedGym asked=true walked=false',
+  'management.ts:2278 ManagedGym asked=true walked=false',
+  'management.ts:2299 ManagedGym asked=true walked=false',
+  'management.ts:2306 ManagedGym asked=true walked=false',
+  'management.ts:2316 ManagedGym asked=true walked=false',
+  'management.ts:2342 ManagedGym asked=true walked=false',
+  'management.ts:2367 ManagedGym asked=true walked=false',
+  'management.ts:2386 ManagedGym asked=true walked=false',
+  'management.ts:2397 ManagedGym asked=true walked=false',
+  'management.ts:2417 ManagedGym asked=true walked=false',
+  'management.ts:2433 ManagedGym asked=true walked=false',
   'recruitment.ts:388 readonly NpcLifter[] asked=true walked=false',
   'sessions.ts:655 LadderState asked=true walked=false',
   'sessions.ts:689 LadderState asked=true walked=false',
@@ -14285,7 +14295,9 @@ const DECLARED_CALL_TARGETS: Readonly<Record<OwnerKind, number>> = Object.freeze
   // diff.
   // 1178 -> 1334: stage 4's call targets join the walk.
   // 1334 -> 1335: the same one call as `CALLS_EXAMINED` above.
-  function: 1372,
+  // 1372 -> 1373: the knob-margin round's `isNeglected(next, item)` in the
+  // autonomous repair loop — the same one call as `CALLS_EXAMINED` above.
+  function: 1373,
   // GDD §5.13 Phase 3, the route-blocked round: 896 -> 901. Read from this
   // pin's own failure value.
   // 901 -> 923: Phase 3's RENDER half's new member expressions in
@@ -14490,7 +14502,12 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // terms that populate them). Read from this pin's own failure value.
   // 58_838 -> 59_240: management.ts's new source. Read from this pin's own
   // failure value.
-  NODES_EXAMINED: 59_240,
+  // 59_240 -> 59_280: the knob-margin round's edits to `management.ts` — the
+  // re-arm counter, its `isNeglected` guard, and header §3e's prose — add AST
+  // nodes to a file the channel walk scans whole. A file-changed counter, in
+  // the class this file's own verdict log already names. Read from this pin's
+  // own failure value.
+  NODES_EXAMINED: 59_280,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

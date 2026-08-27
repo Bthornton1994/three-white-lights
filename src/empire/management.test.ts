@@ -58,6 +58,16 @@
  * controls are mechanisms this build took OUT of the shipped model, so the
  * zeros are zeros against something that was really tried.
  *
+ * WHAT THIS ROUND ADDED, since the sentence above is about the round before
+ * it. Three checks on the knob relation the zeros above rest on:
+ * `STRIKE_PATH_MARGIN` derives, from five knobs and the offline horizon, that
+ * the display predicate's worn disjunct cannot fire before the ledger's phase
+ * disjunct; a directed drive on the fastest-wearing schedule reads WHICH
+ * disjunct fired and pins the strike ledger it built; and the domain census
+ * gained `autoRepairsReopeningRefusedOrders`, the second condition read on the
+ * countability path. `management.ts` header §3e has both derivations and both
+ * limits, and §1 has the wear-rate table the first one is a bound on.
+ *
  * WHAT THIS FILE DOES NOT COVER. The sweep's domain is three seeds, a
  * five-entry gap menu straddling the horizon, and a 24-day two-slot grid at
  * 0.6 attendance. It says nothing about gap sizes off that menu, about
@@ -147,6 +157,14 @@ export const MANAGEMENT_SWEEP = Object.freeze({
 
   /** Check-ins per action schedule. */
   CHECK_INS_PER_SCHEDULE: 40,
+
+  /**
+   * Check-ins in the directed cheapskate drive that reads WHICH disjunct of
+   * `warningSignsVisible` fired. Long enough to pass the review that takes a
+   * refusing garage dormant, with room after it, so the drive shows what
+   * happens once wear stops as well as before.
+   */
+  CHEAPSKATE_DRIVE_CHECK_INS: 16,
 
   /**
    * The gap menu a schedule's gaps are drawn from, in seconds: 4 h and 8 h
@@ -256,13 +274,31 @@ export const MANAGEMENT_SWEEP = Object.freeze({
 
   /**
    * A directed long run, folded into the sweep so the arm census sees it and
-   * the domain census counts it. It exists for one declared arm the seeded
-   * schedules do not reach: `dismiss-manager`, which needs a gym that fails,
-   * recovers, takes on the manager the comeback hires, and then fails a
-   * SECOND time while still staffed. The seeded schedules are 40 and ~29
-   * check-ins long and the second failure lands past the end of both — an arm
-   * that is reachable and unreached, which is a fixture gap and not a
-   * modelling one, so the fixture is what changes.
+   * the domain census counts it.
+   *
+   * WHAT IT WAS ADDED FOR, AND THE FACT THAT IT STOPPED DOING IT. It was added
+   * for one declared arm the seeded schedules did not reach —
+   * `dismiss-manager`, which needed a gym that fails, recovers, takes on the
+   * manager the comeback hires, and then fails a SECOND time while still
+   * staffed. Under the shipped `'redemptive'` model that stopped happening:
+   * the model sheds exactly the manager `recoveryRequirement` blocks on, the
+   * comeback hires `MANAGER_TIERS[1]`, and `hireManager` counts a hire as a
+   * strike at `MANAGER_TIERS[0]` and no other tier — so a redemptive run never
+   * holds a manager with `hiredUnderWarning`, and this run reaches
+   * `dismiss-manager` zero times. Measured, not inferred: driving the whole
+   * battery with this run removed leaves every `run:` and `run-phase:` arm
+   * non-zero, and every one of the 41 `dismiss-manager` events comes from the
+   * `'eager-turnaround-control'` wiring on the `'redemptive'` policy.
+   *
+   * WHAT IT COVERS NOW, so it is kept for a reason that is true rather than
+   * for the one it was written for. It is the battery's only 200-check-in
+   * schedule against 40 for the seeded ones and ~29 for the grids, so it is
+   * what makes the header's "says nothing about schedules longer than 200
+   * check-ins" a statement with a number in it. Its measured contribution is
+   * to counts and not to coverage: removing it moves `run-phase:sound` by 140,
+   * `run:prompt-dismiss` by 50, `run-phase:warned` by 48, `run:repair` by 36,
+   * `run-phase:failed` and `run:recover` by 12 each, `run:hire-steady` by 1,
+   * and every other arm by nothing.
    */
   DIRECTED_RUN_CHECK_INS: 200,
   DIRECTED_RUN_GAP_SECONDS: 86400,
@@ -354,6 +390,104 @@ const FAILURE_CLEAN_POLICIES: readonly ManagementPolicy[] = Object.freeze([
  * exactly; that agreement is what says the control reproduces the mechanism
  * rather than approximating it, and it is asserted rather than admired.
  */
+
+// ---------------------------------------------------------------------------
+// The knob margin the strike path's last condition read rests on
+// ---------------------------------------------------------------------------
+
+/**
+ * The value of `ManagedGym.checkInsTaken` at which the `n`th standing repair
+ * order is raised, read off the two ordinal knobs.
+ *
+ * `orderOpensAt`'s cadence is `MAINTENANCE_ORDER_FIRST_CHECK_IN`, then every
+ * `MAINTENANCE_ORDER_STRIDE` check-ins, so review `n` lands at
+ * `first + (n - 1) * stride`. This is a second expression of that arithmetic
+ * and would be worth nothing on its own — a sweep grading the engine against a
+ * copy of itself is the shape this file already refuses — so
+ * `the cadence this margin is derived from is the cadence orderOpensAt
+ * implements` drives the real function over a whole range of `checkInsTaken`
+ * and asserts the two agree as SETS before any margin below is believed.
+ */
+function reviewCheckInCount(nth: number): number {
+  return (
+    EMPIRE_TUNING.MAINTENANCE_ORDER_FIRST_CHECK_IN +
+    (nth - 1) * EMPIRE_TUNING.MAINTENANCE_ORDER_STRIDE
+  );
+}
+
+/** Round to a millionth, the grain `scrubPrecision` keeps. Float dust only. */
+function atMillionth(value: number): number {
+  return Math.round(value * 1e6) / 1e6;
+}
+
+/**
+ * The arithmetic behind `management.ts` header §3e's first half, derived from
+ * the five knobs it is a function of and from `offlineBankingHorizonSeconds`.
+ *
+ * WHAT IT IS FOR. `'cheapskate'`'s strike-producing hire is gated on
+ * `warningSignsVisible`, which is `failurePhase(state) !== 'sound' ||
+ * wornItems(state).length > 0`. The second disjunct is a CONDITION read, and it
+ * sits on the path to a counted decision — the thing §5.7's clarification and
+ * the §5.13 wear-basis ruling take off that path. It is inert at the shipped
+ * tuning because the first disjunct fires first, and "fires first" is an
+ * inequality between knobs that nothing asserted until this block.
+ *
+ * THE TERMS.
+ *
+ *   - `wearPerCheckIn` is the MOST an item can lose at one check-in:
+ *     `withWear` charges `EQUIPMENT_WEAR_PER_BANKED_HOUR` per banked hour and
+ *     `bankableOfflineSeconds` caps a gap's banked seconds at the offline
+ *     horizon, so no schedule wears faster than this per check-in. Note the
+ *     horizon is `Math.max(OFFLINE_EARNINGS_CAP_HOURS,
+ *     OFFLINE_EARNINGS_NO_PUNISH_HOURS)` rather than the cap alone — read from
+ *     `offlineBankingHorizonSeconds` so a tuner who drops the cap below the
+ *     floor gets the term the code actually uses.
+ *   - `checkInsBeforeWarningIsReadable` is `reviewCheckInCount(
+ *     FAILURE_WARNING_STRIKES) + 1`. A counted refusal is possible at a review
+ *     and nowhere else (`declineRepair` and `respondToPrompt` both refuse away
+ *     from the cadence), so the earliest a run reaches the warning phase by
+ *     answering one review at a time is the review numbered
+ *     `FAILURE_WARNING_STRIKES`. The `+ 1` is `runManagedGym`'s fixed order
+ *     within a check-in: the hire block reads the predicate BEFORE the prompt
+ *     block takes that check-in's refusal, so the first hire read that can see
+ *     the new phase is the following check-in.
+ *   - `floorCondition` is the least any item can be at that check-in, and the
+ *     margin is its distance above `MAINTENANCE_PROMPT_CONDITION`.
+ *
+ * WHAT IT IS NOT, stated because the bound is one-directional. This is a
+ * SUFFICIENT condition for the disjunct ordering on the strike-producing path,
+ * not a proof that the sweep's failure counters stay at zero for every knob
+ * setting. Other wear-sensitive routes into the ledger exist and are named
+ * where they live: the purse route (header §3d) and the manager's autonomous
+ * repair re-arming a refused order (header §3e's second half). A knob move can
+ * redden the sweep with this inequality still comfortably satisfied.
+ */
+const STRIKE_PATH_MARGIN = (() => {
+  const horizonHours = offlineBankingHorizonSeconds() / EMPIRE_TUNING.SECONDS_PER_HOUR;
+  const wearPerCheckIn = EMPIRE_TUNING.EQUIPMENT_WEAR_PER_BANKED_HOUR * horizonHours;
+  const checkInsBeforeWarningIsReadable =
+    reviewCheckInCount(EMPIRE_TUNING.FAILURE_WARNING_STRIKES) + 1;
+  const floorCondition = 1 - checkInsBeforeWarningIsReadable * wearPerCheckIn;
+  return Object.freeze({
+    horizonHours,
+    wearPerCheckIn: atMillionth(wearPerCheckIn),
+    checkInsBeforeWarningIsReadable,
+    floorCondition: atMillionth(floorCondition),
+    marginOverPromptCondition: atMillionth(
+      floorCondition - EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION,
+    ),
+    /**
+     * The wear rate at which the margin closes, holding every other knob: the
+     * largest `EQUIPMENT_WEAR_PER_BANKED_HOUR` for which the worn disjunct
+     * still cannot fire first. Reported so a playtester reading this block
+     * knows how far the knob may travel before the check reddens.
+     */
+    crossingWearRatePerBankedHour: atMillionth(
+      (1 - EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION) /
+        (checkInsBeforeWarningIsReadable * horizonHours),
+    ),
+  });
+})();
 
 /** Round a Gym Buck magnitude to `MAGNITUDE_GRAIN`. Deterministic. */
 function atGrain(value: number): number {
@@ -709,13 +843,38 @@ const FAMILY_KEYS = Object.freeze([
 
 type FamilyKey = (typeof FAMILY_KEYS)[number];
 
-/** The wiring each family is driven under. One row, no inference. */
+/**
+ * The wiring each family is driven under. One row, no inference.
+ *
+ * THREE OF THESE ROWS MUST NOT BE DELETED, and the reason is written here
+ * rather than left to be rediscovered. The §5.13 chain break moved coverage
+ * off the shipped path and onto controls, so three of them are now the sole
+ * carriers of something the pins depend on. A tidy-up round that reads a
+ * control as redundant because its row agrees with the shipped row would be
+ * deleting exactly the thing that agreement is evidence of.
+ *
+ *   - `engagementEagerTurnaroundControl` is the SOLE producer of the
+ *     `dismiss-manager` decision kind. Measured: 41 of 41 events come from
+ *     this wiring on the `'redemptive'` policy, and no other pair produces
+ *     the arm. Deleting it takes `EXPECTED_RUN_ARMS['run:dismiss-manager']`
+ *     to zero and reddens the arm census's set equality.
+ *   - `withinHorizonRepeatStrikeControl` and `withinHorizonSlumpControl` each
+ *     read IDENTICAL to `withinHorizon` on every counter on this domain, and
+ *     that equality is the measurement rather than a redundancy —
+ *     `management.ts` header §4 has the derivation of why both removed
+ *     mechanisms stopped biting here once the crossing moved. The rows are
+ *     asserted as equalities on purpose, so a change that revives either
+ *     mechanism within the horizon is read instead of silently absorbed.
+ *     Delete them and there is nothing left to notice the revival.
+ */
 const FAMILY_WIRING: Readonly<Record<FamilyKey, ManagementWiringKey>> = Object.freeze({
   pureAbsence: 'shipped',
   pureAbsenceWallClockControl: 'wall-clock-wear-control',
   pureAbsenceStrikeControl: 'absence-strike-control',
   withinHorizon: 'shipped',
+  // MUST NOT DELETE — see the equality argument above.
   withinHorizonRepeatStrikeControl: 'repeat-strike-control',
+  // MUST NOT DELETE — see the equality argument above.
   withinHorizonSlumpControl: 'failure-slump-control',
   withinHorizonConditionGatedControl: 'condition-gated-prompt-control',
   engagement: 'shipped',
@@ -723,6 +882,7 @@ const FAMILY_WIRING: Readonly<Record<FamilyKey, ManagementWiringKey>> = Object.f
   engagementVisitFeeControl: 'visit-fee-control',
   engagementSlumpControl: 'failure-slump-control',
   engagementConditionGatedControl: 'condition-gated-prompt-control',
+  // MUST NOT DELETE — sole producer of the `dismiss-manager` decision kind.
   engagementEagerTurnaroundControl: 'eager-turnaround-control',
 });
 
@@ -877,6 +1037,8 @@ interface SweepMeasurement {
     runsThatFailed: number;
     runsThatRecovered: number;
     autoRepairs: number;
+    autoRepairsReopeningRefusedOrders: number;
+    autoRepairsReopeningRefusedOrdersOnShipped: number;
     hires: number;
     declines: number;
     uncountedDeclines: number;
@@ -906,6 +1068,12 @@ function recordRun(run: ManagedRun, measurement: SweepMeasurement): void {
   if (run.census.failedAtCheckIn !== null) measurement.domain.runsThatFailed += 1;
   if (run.census.recoveries > 0) measurement.domain.runsThatRecovered += 1;
   measurement.domain.autoRepairs += run.census.autoRepairs;
+  measurement.domain.autoRepairsReopeningRefusedOrders +=
+    run.census.autoRepairsReopeningRefusedOrders;
+  if (run.wiring.key === SHIPPED_MANAGEMENT_WIRING) {
+    measurement.domain.autoRepairsReopeningRefusedOrdersOnShipped +=
+      run.census.autoRepairsReopeningRefusedOrders;
+  }
   measurement.domain.hires += run.census.hires;
   measurement.domain.declines += run.census.declines;
   measurement.domain.uncountedDeclines += run.census.uncountedDeclines;
@@ -961,6 +1129,8 @@ function measureSweep(): SweepMeasurement {
       runsThatFailed: 0,
       runsThatRecovered: 0,
       autoRepairs: 0,
+      autoRepairsReopeningRefusedOrders: 0,
+      autoRepairsReopeningRefusedOrdersOnShipped: 0,
       hires: 0,
       declines: 0,
       uncountedDeclines: 0,
@@ -2383,6 +2553,8 @@ const EXPECTED_SWEEP = Object.freeze({
     runsThatFailed: 7260,
     runsThatRecovered: 2072,
     autoRepairs: 6849,
+    autoRepairsReopeningRefusedOrders: 182,
+    autoRepairsReopeningRefusedOrdersOnShipped: 0,
     hires: 6184,
     declines: 20912,
     uncountedDeclines: 12179,
@@ -2729,16 +2901,28 @@ const EXPECTED_RUN_ARMS: Readonly<Record<string, number>> = Object.freeze({
   'run:hire-novice': 2072,
   'run:hire-steady': 2113,
   'run:hire-veteran': 1999,
-  // 638 -> 41, and the drop is the point rather than a regression. Under the
-  // ORDINAL review the `'redemptive'` model sheds only the manager
-  // `recoveryRequirement` actually blocks on, so a comeback keeps the steady
-  // manager it hired and stops paying for a replacement — the change
-  // `management.ts` header §3d measures. Every one of the 41 now comes from
-  // the `'eager-turnaround-control'` wiring, which is the removed model kept
-  // runnable, so the arm is still produced by a RUN rather than only by a
-  // fixture. If that control were ever deleted this row would go to zero and
-  // the set equality would redden, which is the coverage the control is
-  // carrying on this arm's behalf.
+  // 638 -> 41, and TWO THINGS CHANGED AT ONCE, so the ratio is not an effect
+  // size. The first is the model: under the ORDINAL review the `'redemptive'`
+  // model sheds only the manager `recoveryRequirement` actually blocks on, so
+  // a comeback keeps the steady manager it hired and stops paying for a
+  // replacement — the change `management.ts` header §3d measures. On the
+  // shipped path that change is total rather than partial: the shipped
+  // `'redemptive'` model produces ZERO dismissals over 497 shipped runs.
+  //
+  // The second is the POPULATION, which the earlier wording of this comment
+  // left out. The 638 was the old model running wherever `'redemptive'` runs —
+  // every wiring on every family, 2257 runs in this battery. The 41 is one
+  // control wiring on one family, 184 of those 2257 runs, so the denominator
+  // shrank by a factor of about twelve at the same moment the numerator did.
+  // Measured on this tree: every one of the 41 is
+  // `'eager-turnaround-control'` x `'redemptive'`, and no other pair of wiring
+  // and policy produces the arm at all.
+  //
+  // MUST NOT DELETE — `engagementEagerTurnaroundControl` is the sole producer
+  // of a `ManagedDecisionKind`. Deleting that family, or its wiring, takes
+  // this row to zero and reddens the set equality below. That is the coverage
+  // the control is carrying on the shipped path's behalf, and it is written
+  // here as well as at the family so a tidy-up round reads it from either end.
   'run:dismiss-manager': 41,
   'run:recover': 3860,
   'run-phase:sound': 329020,
@@ -3506,6 +3690,166 @@ describe('tuning self-consistency, derived rather than restated', () => {
     expect(EMPIRE_TUNING.MAINTENANCE_ORDER_STRIDE).toBeGreaterThanOrEqual(1);
   });
 
+  it('the cadence this margin is derived from is the cadence orderOpensAt implements', () => {
+    // FIRST, so nothing below is a copy grading itself. `reviewCheckInCount`
+    // is a second expression of `orderOpensAt`'s arithmetic; this drives the
+    // real function over every `checkInsTaken` the drive below reaches and
+    // compares the two as SETS, in both directions.
+    const fresh = createManagedGym();
+    const span = reviewCheckInCount(EMPIRE_TUNING.FAILURE_STRIKES + 2);
+    const openFromEngine: number[] = [];
+    for (let taken = 0; taken <= span; taken += 1) {
+      const at = Object.freeze({ ...fresh, checkInsTaken: taken });
+      if (taken >= orderOpensAt(at)) openFromEngine.push(taken);
+    }
+    const openFromArithmetic: number[] = [];
+    for (let nth = 1; reviewCheckInCount(nth) <= span; nth += 1) {
+      openFromArithmetic.push(reviewCheckInCount(nth));
+    }
+    expect(openFromEngine).toEqual(openFromArithmetic);
+    // Non-vacuity: the span really contains several reviews, so the equality
+    // is not two empty lists agreeing.
+    expect(openFromArithmetic.length).toBeGreaterThanOrEqual(
+      EMPIRE_TUNING.FAILURE_STRIKES,
+    );
+  });
+
+  it('keeps the worn disjunct off the strike path by a derived margin, and states its size', () => {
+    // THE RELATION NOTHING ASSERTED. `'cheapskate'`'s strike-producing hire is
+    // gated on `warningSignsVisible`, whose second disjunct reads condition.
+    // `STRIKE_PATH_MARGIN`'s comment has the derivation and its limit; this is
+    // the inequality itself, over five knobs and the offline horizon, none of
+    // them transcribed.
+    expect(STRIKE_PATH_MARGIN.floorCondition).toBeGreaterThan(
+      EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION,
+    );
+
+    // The size, pinned rather than bounded, so a tuning pass that eats the
+    // margin without closing it still moves a number somebody signs. At the
+    // shipped tuning: the offline horizon is 12 h, a check-in wears at most
+    // 0.024, the warning phase is readable at the 9th check-in, and the least
+    // any item can be there is 0.784 — 0.284 above the 0.5 prompt line.
+    expect(STRIKE_PATH_MARGIN.horizonHours).toBe(12);
+    expect(STRIKE_PATH_MARGIN.wearPerCheckIn).toBe(0.024);
+    expect(STRIKE_PATH_MARGIN.checkInsBeforeWarningIsReadable).toBe(9);
+    expect(STRIKE_PATH_MARGIN.floorCondition).toBe(0.784);
+    expect(STRIKE_PATH_MARGIN.marginOverPromptCondition).toBe(0.284);
+
+    // AND THE DISTANCE IN THE KNOB'S OWN UNITS, which is what a playtester
+    // turning the dial actually needs: the margin closes at 0.00463 Gym
+    // condition per banked hour, so the shipped 0.002 has 2.3x of headroom.
+    // Measured beside it rather than argued — the sweep's own
+    // `withinHorizon.failureMismatches` is 0 at 0.002, 0.0045 and 0.005, 32 at
+    // 0.0055, 128 at 0.006 and 256 at 0.007, all of it `'cheapskate'`, and 0
+    // again at 0.01 and 0.02 where both runs of a pair cross on the same
+    // index. So this bound is CONSERVATIVE by construction and by measurement:
+    // it reddens at 0.00463, below the 0.005-to-0.0055 band where the sweep
+    // first moves. A guard that reddens before the behaviour does is the way
+    // round this should be wrong.
+    expect(STRIKE_PATH_MARGIN.crossingWearRatePerBankedHour).toBe(0.00463);
+    expect(EMPIRE_TUNING.EQUIPMENT_WEAR_PER_BANKED_HOUR).toBeLessThan(
+      STRIKE_PATH_MARGIN.crossingWearRatePerBankedHour,
+    );
+  });
+
+  it('drives the cheapskate on the fastest-wearing schedule and reads which disjunct fired', () => {
+    // THE ARITHMETIC ABOVE COVERS EVERY SCHEDULE; THIS DRIVES THE EXTREMAL ONE.
+    // Every gap here is past the offline horizon, so every check-in banks the
+    // full horizon and wears the most a check-in can — the schedule on which
+    // the worn disjunct fires at the earliest INDEX it can fire at. Any other
+    // schedule wears no faster per check-in and the review cadence is an
+    // ordinal, so no other schedule moves the crossing earlier. That is why
+    // one schedule is enough here and is not the "domain sampled only at the
+    // extremes" shape: the extreme is the worst case, and the general claim is
+    // carried by the inequality rather than by this sample.
+    //
+    // The decision order is `runManagedGym`'s, read off that function: the
+    // predicate, then the hire, then the review. Not composed through
+    // `runManagedGym` itself because that function reports no predicate
+    // reading, and a sweep cannot see which disjunct fired.
+    const gap = offlineBankingHorizonSeconds() * 2;
+    const rows: {
+      readonly checkInsTaken: number;
+      readonly display: boolean;
+      readonly counted: boolean;
+      readonly worn: number;
+      readonly minCondition: number;
+    }[] = [];
+    let state = createManagedGym();
+    const cheapest = EMPIRE_TUNING.MANAGER_TIERS[0] as ManagerTier;
+    for (let index = 0; index < MANAGEMENT_SWEEP.CHEAPSKATE_DRIVE_CHECK_INS; index += 1) {
+      const at = (index + 1) * gap;
+      state = managedCheckIn(state, at).state;
+      rows.push({
+        checkInsTaken: state.checkInsTaken,
+        display: warningSignsVisible(state),
+        counted: countedWarningVisible(state),
+        worn: wornItems(state).length,
+        minCondition: Math.min(
+          ...ownedItemsOf(state.gym).map((item) => itemCondition(state, item)),
+        ),
+      });
+      if (warningSignsVisible(state) && state.manager === null) {
+        const hired = hireManager(state, cheapest, at);
+        if (hired.kind === 'hired') state = hired.state;
+      }
+      const prompt = maintenancePrompt(state);
+      if (prompt.kind === 'offered') {
+        const declined = declineRepair(state, prompt.item, at);
+        if (declined.kind === 'declined') state = declined.state;
+      }
+    }
+
+    // NON-VACUITY FIRST: the drive really reaches a check-in where the gate
+    // opens, so everything below is about a population of one or more rather
+    // than about an empty one.
+    const firstOpen = rows.findIndex((row) => row.display);
+    expect(firstOpen).toBeGreaterThanOrEqual(0);
+
+    // The gate opened on the FAILURE LEDGER and not on condition: at that
+    // check-in the phase read is already true and no item is worn.
+    expect(rows[firstOpen]?.counted).toBe(true);
+    expect(rows[firstOpen]?.worn).toBe(0);
+    // ...and up to that point the display read and the counted read agree at
+    // every check-in, so swapping `warningSignsVisible` for
+    // `countedWarningVisible` in the model changes nothing on this schedule.
+    for (const [index, row] of rows.entries()) {
+      if (index > firstOpen) break;
+      expect(row.display, `check-in ${row.checkInsTaken}`).toBe(row.counted);
+    }
+
+    // The index it opened at, pinned, and its agreement with the arithmetic
+    // above — this is what joins the drive to the inequality rather than
+    // leaving them two separate claims about the same tuning.
+    expect(rows[firstOpen]?.checkInsTaken).toBe(
+      STRIKE_PATH_MARGIN.checkInsBeforeWarningIsReadable,
+    );
+    expect(atMillionth(rows[firstOpen]?.minCondition ?? 0)).toBe(
+      STRIKE_PATH_MARGIN.floorCondition,
+    );
+
+    // And what the rest of the drive did, pinned so a change anywhere in it is
+    // read rather than absorbed: this schedule never wears an item below the
+    // prompt line at all, because three refusals take the gym dormant at the
+    // third review and dormancy applies no wear (header §4).
+    expect(rows.filter((row) => row.worn > 0)).toEqual([]);
+    expect(rows.filter((row) => row.display).length).toBe(
+      MANAGEMENT_SWEEP.CHEAPSKATE_DRIVE_CHECK_INS - STRIKE_PATH_MARGIN.checkInsBeforeWarningIsReadable + 1,
+    );
+    expect(failurePhase(state)).toBe('failed');
+    // The ledger this drive built, pinned by decision and by the check-in it
+    // was taken at. The third row is the point of the whole block: the counted
+    // CHEAP HIRE is itself a strike, and it is the decision whose gate carries
+    // the condition read — so this is not a hypothetical path to a strike, it
+    // is a strike, standing on the margin above.
+    expect(state.strikes.map((strike) => [strike.decision, strike.atSeconds / gap])).toEqual([
+      ['repair-declined', 4],
+      ['repair-declined', 8],
+      ['cheapest-hire-under-warning', 9],
+      ['repair-declined', 12],
+    ]);
+  });
+
   it('pure neglect can reach failure: the strike threshold against the orders a garage can refuse', () => {
     // WHAT `empireTuning.ts` SAYS `FAILURE_STRIKES` IS FOR, checked rather
     // than described. Its comment argued that a threshold above
@@ -4224,6 +4568,61 @@ describe('the never-punish sweep', () => {
     // domain in which the suppression never fired.
     expect(EXPECTED_SWEEP.domain.promptsAlreadyRefused).toBeGreaterThan(0);
     expect(EXPECTED_SWEEP.domain.uncountedDeclines).toBeGreaterThan(0);
+    // The second condition read header §3e is about, read off the census
+    // rather than argued. The whole-battery count is non-zero, so the counter
+    // is not measuring an empty domain; the shipped-wiring count is zero, so
+    // on this domain no shipped run has a manager's autonomous repair re-arm a
+    // refused standing order. Both are pinned above as counts; these two
+    // assertions state which way round each is meant to be, so a re-pin that
+    // swapped them reddens here.
+    expect(EXPECTED_SWEEP.domain.autoRepairsReopeningRefusedOrders).toBeGreaterThan(0);
+    expect(EXPECTED_SWEEP.domain.autoRepairsReopeningRefusedOrdersOnShipped).toBe(0);
+  });
+
+  it('names the only wiring that produces dismiss-manager, so deleting it is red', () => {
+    // THE MUST-NOT-DELETE ON `engagementEagerTurnaroundControl`, MADE A CHECK
+    // RATHER THAN A COMMENT. `FAMILY_WIRING`'s note says that control is the
+    // sole producer of a `ManagedDecisionKind`; prose is not a check, so here
+    // is the measurement it claims.
+    measureSweep();
+    const byWiring = new Map<ManagementWiringKey, number>();
+    let total = 0;
+    for (const run of runMemo.values()) {
+      for (const event of run.decisions) {
+        if (event.kind !== 'dismiss-manager') continue;
+        byWiring.set(run.wiring.key, (byWiring.get(run.wiring.key) ?? 0) + 1);
+        total += 1;
+      }
+    }
+    expect([...byWiring.keys()]).toEqual(['eager-turnaround-control']);
+    expect(total).toBe(EXPECTED_RUN_ARMS['run:dismiss-manager']);
+    // ...and the shipped wiring contributes none of them, which is the other
+    // half of the sentence: the model change is total on the shipped path, not
+    // a reduction. Read as a lookup rather than as an absence, so an empty map
+    // could not satisfy it on its own — the equality above already refuses
+    // that.
+    expect(byWiring.get(SHIPPED_MANAGEMENT_WIRING) ?? 0).toBe(0);
+  });
+
+  it('names where the re-armed standing orders sit, so header 3e is measured and not described', () => {
+    // `management.ts` header §3e's second half says every one of the re-arm
+    // events is `'wall-clock-wear-control'` — the wiring that wears on elapsed
+    // time and therefore wears fastest — and that the shipped wiring
+    // contributes none. Prose is not a check; this is the measurement.
+    measureSweep();
+    const byWiring = new Map<ManagementWiringKey, number>();
+    let total = 0;
+    for (const run of runMemo.values()) {
+      const reopened = run.census.autoRepairsReopeningRefusedOrders;
+      if (reopened === 0) continue;
+      byWiring.set(run.wiring.key, (byWiring.get(run.wiring.key) ?? 0) + reopened);
+      total += reopened;
+    }
+    expect([...byWiring.keys()]).toEqual(['wall-clock-wear-control']);
+    expect(total).toBe(EXPECTED_SWEEP.domain.autoRepairsReopeningRefusedOrders);
+    expect(byWiring.get(SHIPPED_MANAGEMENT_WIRING) ?? 0).toBe(
+      EXPECTED_SWEEP.domain.autoRepairsReopeningRefusedOrdersOnShipped,
+    );
   });
 });
 
