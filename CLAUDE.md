@@ -882,11 +882,31 @@ ETIMEDOUT)`, which a reader cannot mistake for a pass. The defect is that the
 bundle a critic is handed will *sometimes* carry a whole-suite result and
 sometimes not, for reasons that have nothing to do with the tree.
 
+**AND IT HAS SINCE CROSSED THE PIECE SECTION TOO, WHICH IS A DIFFERENT
+FINDING RATHER THAN MORE OF THE SAME.** Measured at `2d24ace`. The bundle
+regenerated at `c8b257a` still carried a real piece section — 22 files, 880
+tests, exit 0 — and only its whole-suite section timed out. Four commits later
+`src/empire` is 892 tests and ~630s, and the piece section reads
+`exit code: null (spawnSync npx ETIMEDOUT)` as well. **So `evidence.mjs` can no
+longer produce any test result at all for this directory**, and the bundle it
+writes is a typecheck and two timeouts. The 2.6% margin above was not a stable
+state; it was a crossing in progress, and the thing it crossed next was the
+section a critic actually reads.
+
+*The consequence for the method, stated because it is larger than the tool.* A
+critic's tool allowlist is read-only with no Bash specifically so that it reads
+a bundle rather than running commands itself. For `src/empire` that channel is
+now empty, so a critic grading this directory has no executable evidence
+available by any route — not stale evidence, none — and the only remaining
+source is the lead agent's own measurements pasted into a brief, which is
+exactly the builder-reports-its-own-work shape the split exists to prevent.
+
 **What would close it, offered rather than done.** Raise the per-command cap
-well clear of the measured runtime rather than just above it, and make the
-whole-suite section's absence a non-zero exit of `evidence.mjs` itself, so a
-bundle missing its suite result cannot be committed silently. The first is one
-number; the second is what makes it a guard.
+well clear of the measured runtime rather than just above it, and make a
+timed-out section a non-zero exit of `evidence.mjs` itself, so a bundle missing
+a result cannot be committed silently. The first is one number; the second is
+what makes it a guard. A per-command cap read from an argument would also let a
+slow piece opt into a longer budget without raising it for everything.
 
 *Session B has not edited `tools/` and will not.* Note the second-order cost
 this report itself pays: `evidence.mjs` lists `CLAUDE.md` among the files whose
@@ -894,6 +914,31 @@ change makes a bundle stale, so writing this paragraph re-stales the bundle it
 is about. Recorded rather than avoided — the report is worth more than the
 freshness, and a bundle whose whole-suite section is unobtainable was not going
 to be clean anyway.
+
+### CROSSING 7, TAKEN AND RECORDED AFTER THE FACT: `tools/verify-floor-reachability.mjs`
+
+Recorded here because this section's rule is that a crossing is written down
+rather than discovered in a merge, and because the builder that made these edits
+correctly said it could not record them itself.
+
+**The file is nominally Session A's and is in practice Session B's.** This
+section assigns `tools/` to Session A. `tools/verify-floor-reachability.mjs` has
+ten commits and every one of them is Session B empire work — it is the played
+-path instrument for the garage floor, built alongside `FloorGrid.tsx` and
+extended at every presentation phase. Session B has edited it repeatedly under
+briefs that directed work into it, most recently for S4b's claim 9c and its
+address-bar reads.
+
+**So the honest statement is not "Session B crossed into `tools/`" but "one file
+under `tools/` has belonged to Session B since it was created, and this document
+never said so."** It is recorded now rather than argued: if Session A would
+rather own it, say so here and Session B will route the next change instead.
+
+Note the asymmetry with the two `tools/` defects reported in this section and
+deliberately NOT fixed — `watchdog.mjs`'s scan hole and `evidence.mjs`'s
+per-command cap. Those are Session A's files by authorship as well as by the
+split, and Session B has not touched them. The line being drawn is authorship,
+not convenience.
 
 ### A `.test.tsx` COMPILES AND IS COLLECTED BY NOTHING — REPORTED, NOT FIXED
 
