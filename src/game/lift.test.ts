@@ -41,6 +41,9 @@ import {
   MISS_REASONS,
   TIMING_GRADES,
   ascentDemand,
+  benchClearsTheClock,
+  benchWorkingExcess,
+  benchWorkingRungDemand,
   braceTicks,
   capacityScaleForBarSpeed,
   createLift,
@@ -3121,6 +3124,169 @@ const PENALTY_DOMAIN = {
   SHIPPED_LOST: 1785,
 } as const;
 
+/**
+ * ---------------------------------------------------------------------------
+ * THE WORKING-RUNG LEVER'S OWN SWEEP PARAMETERS, IN ONE PLACE
+ * ---------------------------------------------------------------------------
+ * `streakSweep.ts`'s shape and `REACHABLE_WARMUP`'s reason: the tap floors this
+ * round exists to move were reported once before at a grain too coarse to see
+ * them — GDD §6.2 records that correction — and a measurement whose inputs are
+ * not written down is an anecdote.
+ *
+ * WHAT A "FLOOR" IS HERE, EXACTLY. The largest tap GAP (slowest cadence) at
+ * which every seed still makes the rep, walking gaps upward from
+ * `FASTEST_GAP_TICKS` and stopping at the first gap where any seed misses. So
+ * it is the slowest sustained rate that never misses, and the ladder is every
+ * whole tick rather than a hand-picked list: at the slow end that is a
+ * resolution of about 0.004 taps a second, and at the fast end it is the
+ * finest the input can express at all, because `GRIND_TAP_REFRACTORY_TICKS`
+ * quantises a cadence to whole ticks.
+ *
+ * `FASTEST_GAP_TICKS` IS THE REFRACTORY PERIOD AND NOT A ROUND NUMBER: a gap
+ * below it is a cadence the engine cannot count, so the ladder would be
+ * measuring the harness. `SLOWEST_GAP_TICKS` is past the longest ascent any
+ * bench rep can have, so a cell that never misses runs off the end of the
+ * domain rather than stopping inside it.
+ */
+const WORKING_FLOOR = {
+  /** Seeds per (cell, cadence). The seed moves the command tick and nothing else. */
+  SEEDS: 20,
+  /** The fastest cadence the input can express: `GRIND_TAP_REFRACTORY_TICKS`. */
+  FASTEST_GAP_TICKS: 3,
+  /** Past any reachable ascent, so "never misses" runs off the end. */
+  SLOWEST_GAP_TICKS: 240,
+  /**
+   * Measured: the floor at each of the 22 session cells, in TICKS BETWEEN TAPS,
+   * in `reachableSessionCells()` order. `SLOWEST_GAP_TICKS` means the cell
+   * never missed at any cadence the ladder reached — which is every RPE 6 and
+   * RPE 7 cell, before this lever and after it.
+   *
+   * -------------------------------------------------------------------------
+   * THE ROW THIS ROUND IS ABOUT IS THE RPE 8 ONE, AND IT IS PINNED BESIDE WHAT
+   * IT REPLACED
+   * -------------------------------------------------------------------------
+   * As taps a second (`60 / gap`), before the 2026-08-27 working-rung lever
+   * against after:
+   *
+   *     rpe8/0.8000/slower-than-expected   0.48  ->  1.02
+   *     rpe8/0.8500/as-expected            0.86  ->  1.62
+   *     rpe8/0.8750/crisp                  0.67  ->  1.36
+   *     rpe8/0.9000/popping                0.53  ->  1.03
+   *     rpe9,  the four cells              1.05 0.. ->  1.82 2.40 2.14 2.00
+   *     rpe10, the four cells              2.61 ..  ->  3.53 3.33 3.16 3.00
+   *
+   * A phone replay called RPE 8 "way too easy" twice; a tap every 1.2 to 2.1
+   * seconds still made the rep, which is why. It is now a tap every 0.6 to 1.0
+   * seconds, sustained, and the rungs above moved with it.
+   *
+   * PINNED AS THE WHOLE VECTOR RATHER THAN AS A MINIMUM. A bound is satisfied
+   * by a ladder that collapsed at one end, and this table's whole job is to say
+   * the rungs are still ordered — which the test asserts separately, from this
+   * vector, so the ordering cannot be true of a table nobody drove.
+   */
+  SESSION_FLOOR_GAP_TICKS: [
+    240, 240, 240, 240, 240,
+    240, 240, 240, 240, 240,
+    59, 37, 44, 58,
+    33, 25, 28, 30,
+    17, 18, 19, 20,
+  ] as const,
+  /**
+   * Measured: the same, for the 18 meet cells in `reachableMeetCells()` order.
+   *
+   * THE CEILING CELL IS THE LAST ONE AND IT DID NOT MOVE, WHICH IS THE POINT OF
+   * `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`. `meet/aggressive/att3/wrecked`
+   * reads 6 ticks — 10.00 taps a second — with this lever and without it,
+   * because its base margin is already past the ceiling and the lever adds it
+   * exactly nothing. An earlier pass without that ceiling took it to 3 ticks,
+   * which is `GRIND_TAP_REFRACTORY_TICKS` itself: the hardest attempt in the
+   * game winnable only by a perfect mash with no headroom at all.
+   */
+  MEET_FLOOR_GAP_TICKS: [
+    18, 16, 13, 18, 14, 10, 18, 11, 8,
+    12, 10, 8, 12, 9, 8, 12, 8, 6,
+  ] as const,
+  /**
+   * Measured: session cells whose floor is `SLOWEST_GAP_TICKS` — no cadence the
+   * ladder reaches ever costs them the rep. Exactly the ten warm-up cells.
+   *
+   * THE NON-VACUITY GUARD FOR THE VECTOR ABOVE, and it is a set equality in
+   * disguise: 10 of 22, and the test names WHICH ten. A count alone is
+   * satisfied by ten working cells going quiet, which is the failure the
+   * whole round is scoped against.
+   */
+  CELLS_NO_CADENCE_COSTS: 10,
+} as const;
+
+/**
+ * ---------------------------------------------------------------------------
+ * THE TWO EDGES THE BENCH WARM-UP FLOOR RESTS ON, WHICH WERE CLAIMED AS PINNED
+ * AND WERE NOT
+ * ---------------------------------------------------------------------------
+ * `BENCH_WARMUP_FLOOR_MARGIN` and `BENCH_WARMUP_FLOOR_ASCENT_TICKS` both say in
+ * their own docstrings that "`lift.test.ts` pins BOTH EDGES" and that "a retune
+ * that closes the gap reddens there". IT DID NOT. Before this round no test in
+ * this file — or anywhere in `src/` — mentioned -0.0483, -0.0323, 193 or 247,
+ * and the only margin either constant was compared against was the other one.
+ * That is CLAUDE.md's most-recorded failure class landing on the pair of
+ * constants whose whole justification is "a gap somebody measured", and the
+ * 2026-08-27 ruling asked for both edges to be re-pinned against the new curve,
+ * which is only possible if they are pinned at all.
+ *
+ * THE SECOND EDGE CHANGED CHARACTER AND IS NOT A DURATION ANY MORE. Measured
+ * with both clocks lifted out of the way — the method
+ * `BENCH_WARMUP_FLOOR_ASCENT_TICKS` names — an unaided bench rep at the shipped
+ * tuning used to reach lockout at two of the twelve working cells, at 247 and
+ * 256 ticks, against 87..193 for the warm-ups. With the working-rung lever the
+ * working side reaches lockout at NONE of the twelve: those reps are beaten on
+ * force rather than on the clock, so they go backwards instead of creeping.
+ * The gap did not close; it stopped being finite on one side. That is a wider
+ * separation than the one the constant was chosen from, and it is written down
+ * as a change of kind rather than a bigger number, because the docstring's
+ * "fastest working-rung completion 247 ticks" is now a sentence about a rep
+ * that does not exist.
+ */
+const FLOOR_EDGES = {
+  /**
+   * Measured: the LEAST negative `peakDemand - capacity` any RPE 6 or RPE 7
+   * cell reaches, on the BASE curve. `session/rpe7/0.8250/as-expected`.
+   */
+  WARMUP_HARDEST_MARGIN: -0.0483,
+  /**
+   * Measured: the MOST negative that any working-rung or meet cell reaches, on
+   * the same curve. `session/rpe8/0.8000/slower-than-expected`.
+   */
+  WORKING_EASIEST_MARGIN: -0.0323,
+  /**
+   * Measured: the longest unaided ascent, in ticks to lockout, at any warm-up
+   * cell with the clock lifted. `session/rpe7/0.8250/as-expected` again, which
+   * is the cell the whole 2026-08-26 ruling was about.
+   *
+   * DRIVEN UNDER THE SHIPPED FLOOR CLOCK RATHER THAN A LIFTED ONE, because 193
+   * is under 220 and the two runs are therefore the same rep — the floor's own
+   * docstring says a rep that reaches lockout on its own is byte-identical with
+   * the floor and without it. Lifting the clock is only needed on the side that
+   * no longer completes, and that side is asserted as a category below.
+   */
+  WARMUP_SLOWEST_UNAIDED_ASCENT_TICKS: 193,
+  /** Measured: working-rung cells whose unaided rep reaches lockout. None. */
+  WORKING_CELLS_THAT_COMPLETE_UNAIDED: 0,
+  /**
+   * Measured: reachable cells the BASE demand curve already puts at or past
+   * `BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING`, so the working-rung lever adds
+   * them nothing and they are byte-identical with it and without it.
+   *
+   * ONE, AND WHICH ONE IS THE WHOLE VALUE OF THIS ENTRY. `meet/aggressive/
+   * att3/wrecked` is the ceiling of the game — GDD §6.2 calls it "the one row
+   * where coming back does not help at all" — and it is the cell where the
+   * false-start rule ALREADY fails on the shipped tree, before this lever
+   * existed. Pinning the list rather than a count is what stops a future
+   * retune quietly pushing a second cell past the ceiling and reading the
+   * unchanged count as evidence that nothing moved.
+   */
+  CELLS_ALREADY_PAST_THE_CEILING: ['meet/aggressive/att3/wrecked'] as readonly string[],
+} as const;
+
 const REACHABLE_COUPLING = {
   /** The three cues that share a rung's upper half, in improving order. */
   IMPROVING_CUES: ['as-expected', 'crisp', 'popping'] as const,
@@ -4069,6 +4235,284 @@ describe('the grind decides the lift', () => {
     }
     expect(squatTicks, 'no squat ticks were walked').toBeGreaterThan(60);
   });
+
+  it('adds nothing at all to a warm-up, at every reachable cell [the-working-lever-cannot-reach-a-warm-up]', () => {
+    // ------------------------------------------------------------------
+    // THE STRUCTURAL HALF OF GDD §12.3's WARM-UP PROTECTION FOR THIS LEVER.
+    // The sweeps below measure what the lever DOES; this measures what it
+    // cannot reach, which is the claim the 2026-08-27 ruling made binding:
+    // "Do not buy RPE 8's difficulty out of RPE 7's floor."
+    // ------------------------------------------------------------------
+    const session = reachableSessionCells();
+    const meet = reachableMeetCells();
+    const warmups = session.filter((c) => /^session\/rpe[67]\//.test(c.label));
+    const working = session.filter((c) => /^session\/rpe(8|9|10)\//.test(c.label));
+    expect(warmups.length, 'warm-up cells').toBe(REACHABLE_WARMUP.CELLS);
+    expect(working.length, 'working-rung cells').toBe(REACHABLE_WARMUP.WORKING_CELLS);
+    expect(meet.length, 'meet cells').toBe(REACHABLE.MEET_CELLS);
+
+    const configOf = (cell: ReachableCell): LiftConfig => ({
+      kind: BENCH,
+      loadRatio: cell.loadRatio,
+      seed: 1,
+      feel: cell.feel,
+    });
+    const leverOn = (cell: ReachableCell): number =>
+      benchWorkingRungDemand(BENCH, benchWorkingExcess(configOf(cell)));
+
+    // ZERO, NOT "SMALL". A warm-up's demand curve is the same object it was.
+    const touched = warmups.filter((c) => leverOn(c) !== 0).map((c) => c.label);
+    expect(touched, `the lever reached a warm-up: ${touched.join(', ')}`).toEqual([]);
+    // ...and it reaches every cell above the line, or the zero above is a fact
+    // about a lever that is switched off rather than one that is scoped.
+    //
+    // WITH ONE NAMED EXCEPTION, PINNED AS A SET IN BOTH DIRECTIONS RATHER THAN
+    // ALLOWED FOR BY A LOOSER ASSERTION. `BENCH_WORKING_RUNG_DEMAND_MARGIN_
+    // CEILING` adds nothing to a bar the BASE curve already puts past the
+    // ceiling, which is the property that keeps the false-start rule true and
+    // keeps the meet's own ceiling cell byte-identical. The exception is
+    // therefore a consequence of a constant, and the equality below is what
+    // says the two agree — a cell that fell out of the lever's reach for any
+    // OTHER reason reddens here.
+    const missed = [...working, ...meet].filter((c) => leverOn(c) <= 0).map((c) => c.label);
+    const pastTheCeiling = [...working, ...meet]
+      .filter(
+        (c) =>
+          benchWorkingExcess(configOf(c)) + LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN >=
+          LIFT_TUNING.BENCH_WORKING_RUNG_DEMAND_MARGIN_CEILING,
+      )
+      .map((c) => c.label);
+    expect(missed.sort(), `the lever failed to reach: ${missed.join(', ')}`).toEqual(
+      pastTheCeiling.sort(),
+    );
+    expect(missed, 'cells the base curve already puts past the ceiling').toEqual([
+      ...FLOOR_EDGES.CELLS_ALREADY_PAST_THE_CEILING,
+    ]);
+
+    // THE COMPLEMENTARITY, DRIVEN. `benchWorkingExcess` and
+    // `benchClearsTheClock` read one shared margin, so a rep is a warm-up for
+    // BOTH the clock and the demand curve or for neither. Written as an
+    // exclusive-or count so a cell that classified two ways names itself.
+    const disagreements = [...session, ...meet].filter(
+      (c) => benchClearsTheClock(configOf(c)) === benchWorkingExcess(configOf(c)) > 0,
+    ).map((c) => c.label);
+    expect(
+      disagreements,
+      `clock and lever classified differently: ${disagreements.join(', ')}`,
+    ).toEqual([]);
+
+    // ------------------------------------------------------------------
+    // WHY THE GATE IS A MARGIN AND NOT A LOAD, AS AN ASSERTION RATHER THAN AS
+    // A SENTENCE. The obvious mechanism — "extra demand above some loadRatio"
+    // — cannot exist, because the rungs overlap in load. RPE 7 reaches 0.8750
+    // and RPE 8 spans 0.8000 to 0.9000, so 0.8750 is a cell on both rungs and
+    // no cut in load separates them. If a future producer change ever DID
+    // separate them, this goes red and the simpler mechanism becomes
+    // available — which is the opposite of a comment nobody re-checks.
+    // ------------------------------------------------------------------
+    const warmupLoads = warmups.map((c) => c.loadRatio);
+    const workingLoads = working.map((c) => c.loadRatio);
+    expect(Math.max(...warmupLoads), 'the heaviest warm-up load').toBe(0.8750);
+    expect(Math.min(...workingLoads), 'the lightest working load').toBe(0.8000);
+    expect(Math.max(...workingLoads), 'the heaviest RPE 8-to-10 load').toBe(0.9500);
+    expect(
+      workingLoads.filter((l) => l === 0.8750).length,
+      'RPE 8 also reaches 0.8750, which is why no load threshold works',
+    ).toBeGreaterThan(0);
+    expect(
+      working.filter((c) => c.label.startsWith('session/rpe8/')).map((c) => c.loadRatio),
+      'the four loads RPE 8 can prescribe',
+    ).toEqual([0.8000, 0.8500, 0.8750, 0.9000]);
+
+    // ...AND THE CURVE PARAMETER CANNOT REACH SQUAT OR DEADLIFT EVEN WHEN IT IS
+    // HANDED ONE. `ascentDemand`'s sixth parameter defaults to 0, and CLAUDE.md
+    // records `launchShortfall` going stale behind exactly that default, so the
+    // guard is inside the function and this is what says so.
+    // The excess used here is one the CEILING does not clip — see
+    // `FLOOR_EDGES.CELLS_ALREADY_PAST_THE_CEILING`. A big one would be clipped
+    // to zero on bench too, and the contrast below would then be an equality
+    // that held for the wrong reason on all three kinds at once.
+    const liveExcess = 0.02;
+    for (const kind of ['squat', 'deadlift'] as const) {
+      expect(benchWorkingRungDemand(kind, liveExcess), kind).toBe(0);
+      for (const h of [0, 0.2, 0.34, 0.62, 1]) {
+        for (const l of [0.75, 0.88, 1]) {
+          expect(ascentDemand(h, l, kind, 0, 0, liveExcess), `${kind} ${h} ${l}`).toBe(
+            ascentDemand(h, l, kind, 0, 0),
+          );
+        }
+      }
+    }
+    // ...and it DOES move a bench curve, or the equality above is about a
+    // parameter nothing reads.
+    expect(benchWorkingRungDemand(BENCH, liveExcess), 'the lever at a live excess')
+      .toBeGreaterThan(0);
+    expect(ascentDemand(STICK_HEIGHT_FRAC.bench, 0.9, BENCH, 0, 0, liveExcess)).toBeGreaterThan(
+      ascentDemand(STICK_HEIGHT_FRAC.bench, 0.9, BENCH, 0, 0),
+    );
+  });
+
+  it('re-pins the two edges the bench warm-up floor rests on', () => {
+    // See `FLOOR_EDGES`: both constants CLAIMED to be pinned here and neither
+    // was. The 2026-08-27 ruling made re-pinning them a condition of the
+    // working-rung lever — "if the change closes either gap, that means the
+    // floor can no longer separate warm-up from working rung, and the answer is
+    // to rethink the lever, not renumber the floor."
+    const session = reachableSessionCells();
+    const warmups = session.filter((c) => /^session\/rpe[67]\//.test(c.label));
+    const working = session.filter((c) => /^session\/rpe(8|9|10)\//.test(c.label));
+    const marginOf = (cell: ReachableCell): number =>
+      ascentDemand(STICK_HEIGHT_FRAC.bench, cell.loadRatio, BENCH) -
+      lifterCapacity({ kind: BENCH, loadRatio: cell.loadRatio, seed: 1, feel: cell.feel });
+
+    // EDGE 1 — THE FORCE BALANCE, ON THE BASE CURVE. The lever reads this
+    // quantity and does not write it, which is why it cannot close this gap:
+    // `benchBaseMargin` calls `ascentDemand` with the working term at zero.
+    const warmupHardest = Math.max(...warmups.map(marginOf));
+    const workingEasiest = Math.min(...[...working, ...reachableMeetCells()].map(marginOf));
+    expect(Number(warmupHardest.toFixed(4)), 'the hardest warm-up cell').toBe(
+      FLOOR_EDGES.WARMUP_HARDEST_MARGIN,
+    );
+    expect(Number(workingEasiest.toFixed(4)), 'the easiest working cell').toBe(
+      FLOOR_EDGES.WORKING_EASIEST_MARGIN,
+    );
+    // ...and the floor sits STRICTLY INSIDE the gap, from both sides. This is
+    // the assertion the two docstrings promise: it reddens when the gap
+    // narrows onto the floor from either end, and it cannot be satisfied by a
+    // floor that has drifted past one of them.
+    expect(FLOOR_EDGES.WARMUP_HARDEST_MARGIN).toBeLessThan(
+      LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN,
+    );
+    expect(FLOOR_EDGES.WORKING_EASIEST_MARGIN).toBeGreaterThan(
+      LIFT_TUNING.BENCH_WARMUP_FLOOR_MARGIN,
+    );
+
+    // EDGE 2 — THE DURATION, WHICH IS NOW CATEGORICAL. Every warm-up cell
+    // reaches lockout unaided, inside the floor's own clock; no working cell
+    // reaches it at all. See `FLOOR_EDGES` for what this used to read and why
+    // it stopped being two numbers.
+    const unaided = (cell: ReachableCell): { lockout: boolean; ticks: number } => {
+      const state = driveGrind(
+        { kind: BENCH, loadRatio: cell.loadRatio, seed: 1, feel: cell.feel },
+        REACHABLE.GAP_TICKS,
+        0,
+        Number.POSITIVE_INFINITY,
+      );
+      return {
+        lockout: state.resolution?.outcome !== 'miss',
+        ticks: state.ascentTicks,
+      };
+    };
+    const warmupAscents = warmups.map(unaided);
+    expect(
+      warmupAscents.filter((a) => !a.lockout).length,
+      'warm-up cells that failed to lock out unaided',
+    ).toBe(0);
+    expect(
+      Math.max(...warmupAscents.map((a) => a.ticks)),
+      'the slowest unaided warm-up ascent',
+    ).toBe(FLOOR_EDGES.WARMUP_SLOWEST_UNAIDED_ASCENT_TICKS);
+    expect(FLOOR_EDGES.WARMUP_SLOWEST_UNAIDED_ASCENT_TICKS).toBeLessThan(
+      LIFT_TUNING.BENCH_WARMUP_FLOOR_ASCENT_TICKS,
+    );
+    const completing = working.filter((c) => unaided(c).lockout).map((c) => c.label);
+    expect(
+      completing.length,
+      `working cells that still lock out unaided: ${completing.join(', ')}`,
+    ).toBe(FLOOR_EDGES.WORKING_CELLS_THAT_COMPLETE_UNAIDED);
+    // ...AND THEY ARE BEATEN ON FORCE, NOT ON THE CLOCK, which is the half a
+    // tick count cannot say. The bar reaches a high point and then goes
+    // backwards, so no clock however long would change the answer — that is
+    // what makes the separation wider than the 54 ticks the floor was chosen
+    // from rather than merely different.
+    for (const cell of working) {
+      const state = driveGrind(
+        { kind: BENCH, loadRatio: cell.loadRatio, seed: 1, feel: cell.feel },
+        REACHABLE.GAP_TICKS,
+        0,
+        Number.POSITIVE_INFINITY,
+      );
+      expect(state.resolution?.stallTicks ?? 0, `${cell.label} never stalled`).toBeGreaterThan(0);
+      expect(state.height, `${cell.label} did not sink back`).toBeLessThan(state.peakHeight);
+    }
+  });
+
+  it('moves the working rungs\' tap floors and leaves the warm-ups without one', () => {
+    // ------------------------------------------------------------------
+    // THE MEASUREMENT THE 2026-08-27 RULING ASKED FOR: "At least one RPE 8
+    // make floor moves UP in taps/second." All four do. See `WORKING_FLOOR`
+    // for what a floor is here, why the ladder is every whole tick, and the
+    // before-against-after row.
+    // ------------------------------------------------------------------
+    const floorOf = (cell: ReachableCell): number => {
+      let floor: number = WORKING_FLOOR.SLOWEST_GAP_TICKS;
+      for (
+        let gap = WORKING_FLOOR.FASTEST_GAP_TICKS;
+        gap <= WORKING_FLOOR.SLOWEST_GAP_TICKS;
+        gap += 1
+      ) {
+        let made = 0;
+        for (let seed = 1; seed <= WORKING_FLOOR.SEEDS; seed += 1) {
+          const rep = driveGrind(
+            { kind: BENCH, loadRatio: cell.loadRatio, seed, feel: cell.feel },
+            gap,
+            Number.POSITIVE_INFINITY,
+            0,
+          );
+          if (rep.resolution?.outcome !== 'miss') made += 1;
+        }
+        if (made < WORKING_FLOOR.SEEDS) return gap - 1;
+        floor = gap;
+      }
+      return floor;
+    };
+    const session = reachableSessionCells();
+    const meet = reachableMeetCells();
+    const sessionFloors = session.map(floorOf);
+    const meetFloors = meet.map(floorOf);
+    expect(sessionFloors, 'the session tap floors, in ticks between taps').toEqual([
+      ...WORKING_FLOOR.SESSION_FLOOR_GAP_TICKS,
+    ]);
+    expect(meetFloors, 'the meet tap floors, in ticks between taps').toEqual([
+      ...WORKING_FLOOR.MEET_FLOOR_GAP_TICKS,
+    ]);
+
+    // THE WARM-UP HALF, AS A NAMED SET AND NOT A COUNT. A count of ten is
+    // satisfied by ten working cells going quiet, which is precisely the
+    // failure this round is scoped against.
+    const noCadenceCosts = session
+      .filter((cell, i) => sessionFloors[i] === WORKING_FLOOR.SLOWEST_GAP_TICKS)
+      .map((cell) => cell.label);
+    expect(noCadenceCosts.length, 'cells no cadence ever costs').toBe(
+      WORKING_FLOOR.CELLS_NO_CADENCE_COSTS,
+    );
+    expect(noCadenceCosts.sort()).toEqual(
+      session
+        .filter((c) => /^session\/rpe[67]\//.test(c.label))
+        .map((c) => c.label)
+        .sort(),
+    );
+
+    // THE LADDER IS STILL ORDERED, read off the vector above rather than
+    // asserted separately, so it cannot be true of a table nobody drove. Every
+    // RPE 8 cell asks a slower cadence than every RPE 9 cell, and every RPE 9
+    // than every RPE 10 — 8 < 9 < 10, as the ruling requires.
+    const rungFloors = (rpe: string): number[] =>
+      session.filter((c) => c.label.startsWith(`session/${rpe}/`)).map((c, i, arr) => {
+        void i;
+        void arr;
+        return sessionFloors[session.indexOf(c)] ?? 0;
+      });
+    const eight = rungFloors('rpe8');
+    const nine = rungFloors('rpe9');
+    const ten = rungFloors('rpe10');
+    expect(eight.length, 'RPE 8 cells').toBe(4);
+    expect(Math.min(...eight), 'RPE 8 fastest floor').toBeGreaterThan(Math.max(...nine));
+    expect(Math.min(...nine), 'RPE 9 fastest floor').toBeGreaterThan(Math.max(...ten));
+    // ...and the meet rides the top: its hardest cell asks more than anything a
+    // session can prescribe.
+    expect(Math.min(...meetFloors), 'the meet ceiling').toBeLessThan(Math.min(...ten));
+  }, 300_000);
 
 });
 
