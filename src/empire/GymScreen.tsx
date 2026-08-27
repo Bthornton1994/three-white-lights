@@ -23,9 +23,19 @@
  * with, so porting it is not a duplication of anything this repository asks
  * to live in one place. The only new code in this file is the render
  * function `GymScreen` itself — no new types, no new reducer arm, no new
- * arithmetic. Every displayed quantity is read directly from a `ladder.ts` or
- * `sessions.ts` pure function call, the same discipline `GymView`'s own
- * header states and the render test below drives.
+ * arithmetic. Every displayed quantity is read directly from a `ladder.ts`,
+ * `sessions.ts` or `management.ts` pure function call, the same discipline
+ * `GymView`'s own header states and the render test below drives.
+ *
+ * WHAT THIS SCREEN SHOWS THAT `GymView` DOES NOT: §5.11 stage 4. GDD §5.7's
+ * staffing, maintenance, equipment condition and recoverable failure are
+ * surfaced here and nowhere else — `GymView` is the closed stage-2 DOM dev
+ * harness and renders none of it, even though the state it is handed now
+ * carries it. The section's own inline comment states the constraint the copy
+ * is written under, which is the one thing in this file worth reading before
+ * editing it: condition and income move with OPERATION, failure moves only on
+ * a decision a thumb took here, and no sentence on this screen may tell a
+ * player that being away cost them anything.
  *
  * NO HELPER SUB-COMPONENT FOR ANYTHING THIS FILE COULD WRITE INLINE, ON
  * PURPOSE. An earlier version of this file factored the repeated "Pressable
@@ -85,6 +95,25 @@ import { EMPIRE_TUNING } from './empireTuning';
 import { FloorGrid } from './FloorGrid';
 import { type GymViewAction, type GymViewProps } from './ladderView';
 import {
+  conditionIncomeMultiplier,
+  failurePhase,
+  fullRepairCostGymBucks,
+  itemCondition,
+  managerAutoRepairCondition,
+  managerHireCostGymBucks,
+  managerWageRatePerBankedHour,
+  maintenancePrompt,
+  meanCondition,
+  orderOpensAt,
+  ownedItemsOf,
+  recoveryRepairCostGymBucks,
+  recoveryRequirement,
+  repairCostGymBucks,
+  unansweredItems,
+  warningSigns,
+  wornItems,
+} from './management';
+import {
   describeLadderClock,
   ladderDevTimeSteps,
   ladderEquipmentCost,
@@ -119,14 +148,15 @@ function describeSlotOutcome(outcome: GymWeekReport['slots'][number]): string {
 }
 
 /**
- * The native stage-1+2 screen. Prop-taking on purpose, the same reason
+ * The native stage-1+2+4 screen. Prop-taking on purpose, the same reason
  * `GymView` gives: a pure function of its props, so a render test can invoke
  * it directly, and so the one stateful hook stays outside `src/empire/`.
  */
 export function GymScreen(props: GymViewProps) {
   const {
-    gym,
+    managed,
     lastAccrual,
+    lastManagementReport,
     lastRefusal,
     weekIndex,
     allocation,
@@ -134,6 +164,15 @@ export function GymScreen(props: GymViewProps) {
     weekLog,
     floor,
   } = props.state;
+  // Stage 1/2's own `GymState`, read out of the managed state that holds it.
+  // There is one `GymState` in this screen's props (`ladderView.tsx`'s
+  // `GymViewState` header says why), and this is the read of it.
+  const gym = managed.gym;
+  const signs = warningSigns(managed);
+  const prompt = maintenancePrompt(managed);
+  const recovery = recoveryRequirement(managed);
+  const worn = wornItems(managed);
+  const unanswered = unansweredItems(managed);
   const destination = nextLadderRung(gym.ladder.rung);
   const ownedLadder = new Set<string>(gym.ladder.equipment);
   const ownedSession = new Set<string>(gym.sessionEquipment);
@@ -181,6 +220,183 @@ export function GymScreen(props: GymViewProps) {
           dispatch={dispatch}
         />
       </View>
+      {/*
+        §5.11 stage 4 on the garage floor — GDD §5.7's staffing, maintenance,
+        equipment condition and recoverable failure, placed directly under the
+        floor because that is where the equipment is.
+
+        WHAT THE COPY IN HERE IS ALLOWED TO SAY, and this is the whole risk of
+        this section. §5.7's clarification splits two mechanisms that an
+        earlier build chained together: condition and income move with
+        OPERATION — the gym ran, so it wore, so it cost — while failure moves
+        only on a decision the player took here, was shown the price of, and
+        made. So nothing below tells a player that being away cost them
+        anything, because nothing here charges them for it: `managedCheckIn`
+        reads no strike and writes no strike, and the only three things that
+        can append one are the three controls in this section that a thumb has
+        to press. `management.ts` header §3 is the derivation and
+        `management.test.ts`'s absence family is the measurement.
+      */}
+      <View testID={'gymscreen-management'}>
+        <Text testID={'gymscreen-phase'}>
+          gym status: {signs.phase} — {signs.strikeCount} counted decision(s) on the ledger,{' '}
+          {signs.strikesUntilFailure} more would close it
+        </Text>
+        <Text testID={'gymscreen-condition'}>
+          equipment condition {meanCondition(managed)} — income paid at{' '}
+          {conditionIncomeMultiplier(managed)} of the rate. condition falls with the hours your gym
+          runs, which are the same hours that pay you.
+        </Text>
+        <Text testID={'gymscreen-full-repair'}>
+          everything back to new: {fullRepairCostGymBucks(managed)} gym bucks
+        </Text>
+        <Text testID={'gymscreen-worn'}>
+          worn past the review line: {worn.length === 0 ? 'nothing' : worn.join(', ')} — repair
+          orders still unanswered: {unanswered.length === 0 ? 'none' : unanswered.join(', ')}
+        </Text>
+        {ownedItemsOf(gym).map((item) => (
+          <View key={item}>
+            <Text testID={`gymscreen-condition-${item}`}>
+              {item}: condition {itemCondition(managed, item)}, repairing it costs{' '}
+              {repairCostGymBucks(managed, item)} gym bucks
+            </Text>
+            <Pressable
+              testID={`gymscreen-repair-${item}`}
+              onPress={() => dispatch({ kind: 'repair-item', item })}
+            >
+              <Text>repair for {repairCostGymBucks(managed, item)}</Text>
+            </Pressable>
+          </View>
+        ))}
+        {prompt.kind === 'quiet' ? (
+          <Text testID={'gymscreen-prompt'}>
+            no maintenance review open — {managed.checkInsTaken} check-in(s) taken, the next review
+            is raised at check-in {orderOpensAt(managed)}
+          </Text>
+        ) : (
+          <View testID={'gymscreen-prompt'}>
+            <Text testID={'gymscreen-prompt-item'}>
+              maintenance review: {prompt.item} is at condition {itemCondition(managed, prompt.item)}{' '}
+              and repairing it costs {prompt.repairCostGymBucks} gym bucks
+            </Text>
+            <Text testID={'gymscreen-prompt-stakes'}>
+              {prompt.alreadyRefused
+                ? 'you already refused this order — refusing it again adds nothing to the ledger'
+                : prompt.dismissalWouldCount
+                  ? 'leaving this one unanswered counts against the gym'
+                  : 'you can leave this one unanswered for free; the next one counts'}
+            </Text>
+            <Pressable
+              testID={'gymscreen-prompt-repair'}
+              onPress={() => dispatch({ kind: 'answer-prompt', response: 'repair' })}
+            >
+              <Text>repair for {prompt.repairCostGymBucks}</Text>
+            </Pressable>
+            <Pressable
+              testID={'gymscreen-prompt-dismiss'}
+              onPress={() => dispatch({ kind: 'answer-prompt', response: 'dismiss' })}
+            >
+              <Text>not now</Text>
+            </Pressable>
+            <Pressable
+              testID={'gymscreen-prompt-decline'}
+              onPress={() => dispatch({ kind: 'decline-repair', item: prompt.item })}
+            >
+              <Text>decline the repair</Text>
+            </Pressable>
+          </View>
+        )}
+        <View testID={'gymscreen-strikes'}>
+          <Text testID={'gymscreen-strikes-lead'}>
+            {managed.strikes.length === 0
+              ? 'nothing counted against this gym yet — a decision you take here is the only thing that can'
+              : 'counted decisions, each with the price that was on screen when you took it:'}
+          </Text>
+          {managed.strikes.map((record, index) => (
+            <Text testID={`gymscreen-strike-${index}`} key={`${record.decision}-${index}`}>
+              {record.decision} at {record.atSeconds}s, price shown {record.shownCostGymBucks} gym
+              bucks
+            </Text>
+          ))}
+        </View>
+        <View testID={'gymscreen-manager'}>
+          {managed.manager === null ? (
+            <>
+              <Text testID={'gymscreen-manager-state'}>
+                no manager — you run this gym yourself, which the home gym never needs staff for
+              </Text>
+              {EMPIRE_TUNING.MANAGER_TIERS.map((tier) => (
+                <View key={tier}>
+                  <Text testID={`gymscreen-manager-tier-${tier}`}>
+                    {tier}: {managerHireCostGymBucks(tier)} gym bucks to hire,{' '}
+                    {managerWageRatePerBankedHour(tier)} per banked hour, repairs on their own below
+                    condition {managerAutoRepairCondition(tier)}
+                  </Text>
+                  <Pressable
+                    testID={`gymscreen-hire-${tier}`}
+                    onPress={() => dispatch({ kind: 'hire-manager', tier })}
+                  >
+                    <Text>hire</Text>
+                  </Pressable>
+                </View>
+              ))}
+              <Text testID={'gymscreen-manager-note'}>
+                a repair threshold of 0 means that manager repairs nothing on their own. hiring the
+                cheapest one while the ledger already shows a warning is itself a counted decision.
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text testID={'gymscreen-manager-state'}>
+                manager: {managed.manager.tier} — {managerWageRatePerBankedHour(managed.manager.tier)}{' '}
+                gym bucks per banked hour, repairs on their own below condition{' '}
+                {managerAutoRepairCondition(managed.manager.tier)}
+                {managed.manager.hiredUnderWarning ? ' — hired while the gym was already warned' : ''}
+              </Text>
+              <Pressable
+                testID={'gymscreen-dismiss-manager'}
+                onPress={() => dispatch({ kind: 'dismiss-manager' })}
+              >
+                <Text>let them go</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+        <View testID={'gymscreen-recovery'}>
+          <Text testID={'gymscreen-recovery-state'}>
+            {recovery.kind === 'not-dormant'
+              ? `open for business — ${failurePhase(managed)}`
+              : recovery.kind === 'ready'
+                ? 'dormant — everything reopening asks for is done'
+                : `dormant — still needed: ${recovery.equipmentBelowMinimum ? `equipment back to condition ${EMPIRE_TUNING.RECOVERY_CONDITION_MIN}` : 'no repairs'}${recovery.managerHiredUnderWarning ? ', and the manager hired under warning let go' : ''}`}
+          </Text>
+          <Text testID={'gymscreen-recovery-cost'}>
+            reopening would cost {recoveryRepairCostGymBucks(managed)} gym bucks in repairs, and this
+            gym has reopened {managed.recoveries} time(s)
+          </Text>
+          <Pressable testID={'gymscreen-recover'} onPress={() => dispatch({ kind: 'recover-gym' })}>
+            <Text>reopen the gym</Text>
+          </Pressable>
+        </View>
+        {lastManagementReport === null ? null : (
+          <Text testID={'gymscreen-check-in-costs'}>
+            last check-in: condition took {lastManagementReport.incomeDeductedGymBucks} gym bucks off
+            the accrual and paid {lastManagementReport.incomePaidGymBucks} at{' '}
+            {lastManagementReport.incomeMultiplier}, wore the gym down by{' '}
+            {lastManagementReport.meanConditionWear}, paid {lastManagementReport.wagePaidGymBucks} in
+            wages (unpaid {lastManagementReport.wageShortfallGymBucks}), and the manager repaired{' '}
+            {lastManagementReport.autoRepairs.length} item(s) for{' '}
+            {lastManagementReport.autoRepairSpendGymBucks}
+          </Text>
+        )}
+        {lastManagementReport === null
+          ? null
+          : lastManagementReport.autoRepairs.map((repair) => (
+              <Text testID={`gymscreen-auto-repair-${repair.item}`} key={repair.item}>
+                your manager repaired {repair.item} for {repair.costGymBucks} gym bucks
+              </Text>
+            ))}
+      </View>
       <View testID={'gymscreen-ladder-shop'}>
         {EMPIRE_TUNING.LADDER_EQUIPMENT_ITEMS.map((item) => (
           <View key={item}>
@@ -221,7 +437,7 @@ export function GymScreen(props: GymViewProps) {
       </View>
       <View testID={'gymscreen-move'}>
         {destination === null ? (
-          <Text>top of the ladder - the portfolio arrives with stage four</Text>
+          <Text>top of the ladder - staffing, maintenance and the failure state are above; the portfolio stays paused</Text>
         ) : (
           <>
             <Text>

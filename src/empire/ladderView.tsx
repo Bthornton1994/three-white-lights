@@ -289,6 +289,28 @@ import {
   removeFloorItem,
 } from './floor';
 import {
+  type DeclineRepairResult,
+  type DismissManagerResult,
+  type HireResult,
+  type ManagedCheckIn,
+  type ManagedEquipmentItem,
+  type ManagedGym,
+  type ManagerTier,
+  type PromptResponse,
+  type PromptResult,
+  type RecoveryResult,
+  type RepairResult,
+  createManagedGym,
+  declineRepair,
+  dismissManager,
+  hireManager,
+  managedCheckIn,
+  recoverGym,
+  repairEquipment,
+  respondToPrompt,
+  withUpdatedGym,
+} from './management';
+import {
   type FlexibleSlot,
   type GymState,
   type GymWeekReport,
@@ -312,22 +334,45 @@ import {
 } from './sessions';
 
 /**
- * What the full-loop screen holds: the composed gym, the last transition's
- * own report (accrual or refusal — header rule, same as `LadderViewState`),
+ * What one managed check-in COST, without the state it produced.
+ *
+ * `ManagedCheckIn` carries the `ManagedGym` it made and the ladder accrual it
+ * composed; `GymViewState` already holds both of those (`managed` and
+ * `lastAccrual`), so keeping the whole record would be a second, immediately
+ * stale copy of the gym. This alias is the remainder — the reported costs of
+ * the last check-in and nothing else — and the reducer fills it by rest
+ * destructuring `managedCheckIn`'s own return, so no field is restated and no
+ * number is recomputed.
+ */
+export type ManagedCheckInReport = Omit<ManagedCheckIn, 'state' | 'accrual'>;
+
+/**
+ * What the full-loop screen holds: the composed gym (stage 2's `GymState`
+ * inside stage 4's `ManagedGym` — equipment condition, the manager, the
+ * failure ledger), the last transition's own report (accrual, the check-in's
+ * stage-4 costs, or a refusal — header rule, same as `LadderViewState`),
  * which training week is current, the standing allocation plan (sticky
  * across weeks until a slot is edited — header rule), whether that plan has
  * been touched since the current week began, the log of weeks that have
  * actually completed, and — GDD §5.13 Phase 1 — the floor layout for the
  * gym's current rung.
  *
- * `floor` is a VIEW composed on top of `gym.sessionEquipment`, never a second
- * copy of it (`floor.ts`'s own header states the same claim about its own
- * functions). Nothing here stores which items are owned a second time — only
- * where the owned ones currently sit.
+ * `managed` REPLACED a bare `gym: GymState` field when §5.11 stage 4 reached
+ * the screen, rather than sitting beside it. `management.ts`'s repair, hire
+ * and recovery instruments all write the purse through `ManagedGym.gym`, so a
+ * second `GymState` here would diverge from it on the first repair. Every
+ * stage-1/stage-2 read in this file and in `GymScreen.tsx` goes through
+ * `state.managed.gym`, and there is one `GymState` in this state.
+ *
+ * `floor` is a VIEW composed on top of `managed.gym.sessionEquipment`, never a
+ * second copy of it (`floor.ts`'s own header states the same claim about its
+ * own functions). Nothing here stores which items are owned a second time —
+ * only where the owned ones currently sit.
  */
 export interface GymViewState {
-  readonly gym: GymState;
+  readonly managed: ManagedGym;
   readonly lastAccrual: LadderAccrual | null;
+  readonly lastManagementReport: ManagedCheckInReport | null;
   readonly lastRefusal: GymViewRefusal | null;
   readonly weekIndex: number;
   readonly allocation: WeekAllocation;
@@ -337,17 +382,41 @@ export interface GymViewState {
 }
 
 /**
- * Every reason a spend can be refused across the whole loop, derived from
- * the four result types rather than restated — a closed union, so the
- * position census reads this field as vocabulary and not as an open string.
+ * Every reason an action can be refused across the whole loop, derived from
+ * the result types rather than restated — a closed union, so the position
+ * census reads this field as vocabulary and not as an open string.
+ *
+ * `PromptResult` contributes twice and neither entry is a hand-typed literal:
+ * its `'repair-refused'` arm carries a `reason`, and its `'no-prompt'` arm
+ * carries only a `kind`, which is the honest thing to show a player who
+ * pressed an answer control on a check-in with no review open.
  */
 export type GymViewRefusal =
   | Extract<LadderBuyResult, { readonly kind: 'refused' }>['reason']
   | Extract<LadderMoveResult, { readonly kind: 'refused' }>['reason']
   | Extract<SessionBuyResult, { readonly kind: 'refused' }>['reason']
-  | Extract<FloorPlaceResult, { readonly kind: 'refused' }>['reason'];
+  | Extract<FloorPlaceResult, { readonly kind: 'refused' }>['reason']
+  | Extract<RepairResult, { readonly kind: 'refused' }>['reason']
+  | Extract<DeclineRepairResult, { readonly kind: 'refused' }>['reason']
+  | Extract<HireResult, { readonly kind: 'refused' }>['reason']
+  | Extract<DismissManagerResult, { readonly kind: 'refused' }>['reason']
+  | Extract<RecoveryResult, { readonly kind: 'refused' }>['reason']
+  | Extract<PromptResult, { readonly kind: 'repair-refused' }>['reason']
+  | Extract<PromptResult, { readonly kind: 'no-prompt' }>['kind'];
 
-/** The eight things a player can do on this screen — six from stage 1/2, and GDD §5.13 Phase 1's place/remove. */
+/**
+ * The fourteen things a player can do on this screen — six from stage 1/2,
+ * GDD §5.13 Phase 1's place/remove, and §5.11 stage 4's six: answer the
+ * standing maintenance review, repair an item outright, decline a shown
+ * repair, hire a manager, let one go, and bring a dormant gym back.
+ *
+ * Every stage-4 arm is a decision the player TAKES, which is §5.7's whole
+ * shape: the three that can append a strike (`answer-prompt` with
+ * `'dismiss'`, `decline-repair`, `hire-manager`) are dispatched by a press
+ * and by nothing else. No arm here is reachable from elapsed time, and
+ * `advance-clock` — the one arm time drives — appends no strike, because
+ * `managedCheckIn` writes none.
+ */
 export type GymViewAction =
   | { readonly kind: 'advance-clock'; readonly gapSeconds: number }
   | { readonly kind: 'advance-to-next-week' }
@@ -364,20 +433,27 @@ export type GymViewAction =
       readonly item: SessionEquipmentItem;
       readonly position: GridPosition;
     }
-  | { readonly kind: 'floor-remove'; readonly item: SessionEquipmentItem };
+  | { readonly kind: 'floor-remove'; readonly item: SessionEquipmentItem }
+  | { readonly kind: 'answer-prompt'; readonly response: PromptResponse }
+  | { readonly kind: 'repair-item'; readonly item: ManagedEquipmentItem }
+  | { readonly kind: 'decline-repair'; readonly item: ManagedEquipmentItem }
+  | { readonly kind: 'hire-manager'; readonly tier: ManagerTier }
+  | { readonly kind: 'dismiss-manager' }
+  | { readonly kind: 'recover-gym' };
 
-/** The opening screen: a fresh gym, an all-rest plan, an empty floor, nothing yet to report. */
+/** The opening screen: a fresh managed gym, an all-rest plan, an empty floor, nothing yet to report. */
 export function createGymViewState(): GymViewState {
-  const gym = createGymState();
+  const managed = createManagedGym();
   return Object.freeze({
-    gym,
+    managed,
     lastAccrual: null,
+    lastManagementReport: null,
     lastRefusal: null,
-    weekIndex: trainingWeekIndexAt(gym.ladder.collectedAt),
+    weekIndex: trainingWeekIndexAt(managed.gym.ladder.collectedAt),
     allocation: createRestAllocation(),
     allocationSetThisWeek: false,
     weekLog: Object.freeze([]),
-    floor: createFloorState(gym.ladder.rung),
+    floor: createFloorState(managed.gym.ladder.rung),
   });
 }
 
@@ -385,12 +461,33 @@ export function createGymViewState(): GymViewState {
  * The shared body of the two clock-advancing arms — header note above: this
  * is the one arm allowed more than one `sessions.ts` call, because a single
  * advance can complete more than one training week.
+ *
+ * §5.11 stage 4 moved the check-in itself from `gymCheckInAfter` to
+ * `managedCheckIn`, which COMPOSES `gymCheckIn` whole (its own header states
+ * that) and then applies the gap's wear, the condition income multiplier, the
+ * manager's wage and the manager's autonomous repairs. The mark is computed
+ * here rather than by `gymCheckInAfter`, because `managedCheckIn` takes an
+ * absolute mark; a gap that is negative, non-finite or off-tick is still
+ * refused loudly, by `ladderCheckIn`'s own guard at the bottom of the same
+ * call, and `ladderView.test.ts` drives that refusal.
+ *
+ * WHAT THIS ARM DOES NOT DO, because §5.7's clarification and `docs/GDD.md`
+ * §5.13's wear-basis ruling both turn on it: it appends no strike and moves
+ * no failure phase. `managedCheckIn` reads no strike and writes no strike, so
+ * pressing a clock control can lower condition and lower income — the gym
+ * ran — and cannot advance the gym toward dormancy. The named catcher is
+ * `management.test.ts`'s absence family and, on the played screen,
+ * `tools/verify-floor-reachability.mjs`'s stage-4 clock-only claim.
  */
 function advanceGymClock(state: GymViewState, gapSeconds: number): GymViewState {
-  const before = state.gym;
-  const checkedIn = gymCheckInAfter(before, gapSeconds);
-  const previousWeekIndex = trainingWeekIndexAt(before.ladder.collectedAt);
-  const newWeekIndex = trainingWeekIndexAt(checkedIn.state.ladder.collectedAt);
+  const before = state.managed;
+  const {
+    state: checkedInManaged,
+    accrual,
+    ...report
+  } = managedCheckIn(before, before.gym.ladder.collectedAt + gapSeconds);
+  const previousWeekIndex = trainingWeekIndexAt(before.gym.ladder.collectedAt);
+  const newWeekIndex = trainingWeekIndexAt(checkedInManaged.gym.ladder.collectedAt);
   let weekLog = state.weekLog;
   let allocationSetThisWeek = state.allocationSetThisWeek;
   if (newWeekIndex > previousWeekIndex) {
@@ -400,8 +497,8 @@ function advanceGymClock(state: GymViewState, gapSeconds: number): GymViewState 
         Object.freeze({
           weekIndex,
           allocation: state.allocation,
-          slots: resolveWeek(state.allocation, before.sessionEquipment),
-          effects: weeklyAttributeEffects(state.allocation, before.sessionEquipment),
+          slots: resolveWeek(state.allocation, before.gym.sessionEquipment),
+          effects: weeklyAttributeEffects(state.allocation, before.gym.sessionEquipment),
         }),
       );
     }
@@ -409,8 +506,9 @@ function advanceGymClock(state: GymViewState, gapSeconds: number): GymViewState 
     allocationSetThisWeek = false;
   }
   return Object.freeze({
-    gym: checkedIn.state,
-    lastAccrual: checkedIn.accrual,
+    managed: checkedInManaged,
+    lastAccrual: accrual,
+    lastManagementReport: Object.freeze(report),
     lastRefusal: null,
     weekIndex: newWeekIndex,
     allocation: state.allocation,
@@ -425,40 +523,51 @@ function advanceGymClock(state: GymViewState, gapSeconds: number): GymViewState 
 /**
  * The reducer the dev mount hands to React for the full loop. The colocated
  * test drives every arm and compares every carried quantity against the same
- * `sessions.ts` / `ladder.ts` calls made directly.
+ * `management.ts` / `sessions.ts` / `ladder.ts` calls made directly.
+ *
+ * The three arms that change what the gym OWNS (`buy-ladder`, `buy-session`,
+ * `move-up`) re-seat the managed state through `withUpdatedGym`, which is the
+ * seam `management.ts` declares for exactly this: a newly bought item arrives
+ * at condition 1 and a known item keeps its condition. A relocation carries
+ * the equipment with it (GDD §5.1's stage-1 ruling, recorded at the flag in
+ * `ladder.ts`), so nothing is ever un-owned and that function's refusal arm is
+ * unreachable from this reducer.
  */
 export function gymViewReduce(state: GymViewState, action: GymViewAction): GymViewState {
   switch (action.kind) {
     case 'advance-clock':
       return advanceGymClock(state, action.gapSeconds);
     case 'advance-to-next-week':
-      return advanceGymClock(state, secondsUntilNextWeekBoundary(state.gym.ladder.collectedAt));
+      return advanceGymClock(
+        state,
+        secondsUntilNextWeekBoundary(state.managed.gym.ladder.collectedAt),
+      );
     case 'buy-ladder': {
-      const outcome = buyLadderEquipment(state.gym.ladder, action.item);
+      const outcome = buyLadderEquipment(state.managed.gym.ladder, action.item);
       return Object.freeze({
         ...state,
-        gym: withLadder(state.gym, outcome.state),
+        managed: withUpdatedGym(state.managed, withLadder(state.managed.gym, outcome.state)),
         lastRefusal: outcome.kind === 'refused' ? outcome.reason : null,
       });
     }
     case 'buy-session': {
-      const outcome = buySessionEquipment(state.gym, action.item);
+      const outcome = buySessionEquipment(state.managed.gym, action.item);
       return Object.freeze({
         ...state,
-        gym: outcome.state,
+        managed: withUpdatedGym(state.managed, outcome.state),
         lastRefusal: outcome.kind === 'refused' ? outcome.reason : null,
       });
     }
     case 'move-up': {
-      const outcome = moveUpLadder(state.gym.ladder);
+      const outcome = moveUpLadder(state.managed.gym.ladder);
       return Object.freeze({
         ...state,
-        gym: withLadder(state.gym, outcome.state),
+        managed: withUpdatedGym(state.managed, withLadder(state.managed.gym, outcome.state)),
         lastRefusal: outcome.kind === 'refused' ? outcome.reason : null,
         // GDD §5.1: a relocation is a full move, "you leave the old place
         // behind" — `floor.ts`'s `relocateFloorState` header explains why a
         // position on the old grid has no reading on the new one. A refused
-        // move leaves `outcome.state` byte-identical to `state.gym.ladder`
+        // move leaves `outcome.state` byte-identical to `state.managed.gym.ladder`
         // (`ladder.ts`'s own contract), so reading the POST-outcome rung here
         // is a no-op on refusal and a real reset only when the move landed.
         floor:
@@ -468,7 +577,7 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
     case 'floor-place': {
       const outcome = placeFloorItem(
         state.floor,
-        state.gym.sessionEquipment,
+        state.managed.gym.sessionEquipment,
         action.item,
         action.position,
       );
@@ -493,6 +602,75 @@ export function gymViewReduce(state: GymViewState, action: GymViewAction): GymVi
         allocation: Object.freeze(next) as WeekAllocation,
         allocationSetThisWeek: true,
         lastRefusal: null,
+      });
+    }
+    case 'answer-prompt': {
+      // §5.7's second counted shape. The mark stamped on any strike this
+      // raises is the gym clock's own current mark, which is what
+      // `respondToPrompt`'s header asks the caller to pass — never a
+      // wall-clock reading, which this directory has no access to anyway.
+      const outcome = respondToPrompt(
+        state.managed,
+        action.response,
+        state.managed.gym.ladder.collectedAt,
+      );
+      return Object.freeze({
+        ...state,
+        managed: outcome.state,
+        lastRefusal:
+          outcome.kind === 'no-prompt'
+            ? outcome.kind
+            : outcome.kind === 'repair-refused'
+              ? outcome.reason
+              : null,
+      });
+    }
+    case 'repair-item': {
+      const outcome = repairEquipment(state.managed, action.item);
+      return Object.freeze({
+        ...state,
+        managed: outcome.state,
+        lastRefusal: outcome.kind === 'refused' ? outcome.reason : null,
+      });
+    }
+    case 'decline-repair': {
+      // §5.7's third counted shape: the repair whose cost was on screen,
+      // actively refused.
+      const outcome = declineRepair(
+        state.managed,
+        action.item,
+        state.managed.gym.ladder.collectedAt,
+      );
+      return Object.freeze({
+        ...state,
+        managed: outcome.state,
+        lastRefusal: outcome.kind === 'refused' ? outcome.reason : null,
+      });
+    }
+    case 'hire-manager': {
+      // §5.7's first counted shape lives inside this call: hiring the
+      // cheapest tier while the ledger already shows a warning.
+      const outcome = hireManager(state.managed, action.tier, state.managed.gym.ladder.collectedAt);
+      return Object.freeze({
+        ...state,
+        managed: outcome.state,
+        lastRefusal: outcome.kind === 'refused' ? outcome.reason : null,
+      });
+    }
+    case 'dismiss-manager': {
+      const outcome = dismissManager(state.managed);
+      return Object.freeze({
+        ...state,
+        managed: outcome.state,
+        lastRefusal: outcome.kind === 'refused' ? outcome.reason : null,
+      });
+    }
+    case 'recover-gym': {
+      const outcome = recoverGym(state.managed);
+      return Object.freeze({
+        ...state,
+        managed: outcome.state,
+        lastRefusal: outcome.kind === 'refused' ? outcome.reason : null,
       });
     }
   }
@@ -521,8 +699,13 @@ function describeSlotOutcome(outcome: GymWeekReport['slots'][number]): string {
  * invoke it directly and walk the returned element tree without a renderer.
  */
 export function GymView(props: GymViewProps) {
-  const { gym, lastAccrual, lastRefusal, weekIndex, allocation, allocationSetThisWeek, weekLog } =
+  const { managed, lastAccrual, lastRefusal, weekIndex, allocation, allocationSetThisWeek, weekLog } =
     props.state;
+  // Stage 1/2's own `GymState`, read through the managed state that now holds
+  // it. This component is the CLOSED stage-2 dev harness and deliberately
+  // renders nothing of stage 4 — condition, staffing and the failure ledger
+  // are surfaced on `GymScreen.tsx`, the screen a player actually reaches.
+  const gym = managed.gym;
   const destination = nextLadderRung(gym.ladder.rung);
   const ownedLadder = new Set<string>(gym.ladder.equipment);
   const ownedSession = new Set<string>(gym.sessionEquipment);

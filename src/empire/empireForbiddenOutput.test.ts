@@ -6056,6 +6056,29 @@ function ladderStateAt(
 }
 
 /**
+ * An opening `ManagedGym` holding `gymBucks` — the fixture the two
+ * `pressEveryControl` axes below need since §5.11 stage 4 replaced
+ * `GymViewState.gym` with `GymViewState.managed`. Built through
+ * `withUpdatedGym`, which is `management.ts`'s declared seam for re-seating a
+ * managed state on an updated `GymState`, so the condition map stays keyed to
+ * exactly the owned items rather than being hand-written here.
+ */
+function managedGymAtPurse(gymBucks: number): managementModule.ManagedGym {
+  const opening = managementModule.createManagedGym();
+  return managementModule.withUpdatedGym(
+    opening,
+    Object.freeze({
+      ...opening.gym,
+      ladder: ladderStateAt(
+        EMPIRE_TUNING.LADDER_RUNGS[0],
+        gymBucks,
+        ladderModule.createLadderState().equipment,
+      ),
+    }),
+  );
+}
+
+/**
  * Composed-run schedules: twelve-hour slots, with slot counts derived from
  * the rival week so a run long enough to relocate and buy the rack is in the
  * domain — the arms `runLadder` composes are produced, not merely possible.
@@ -6526,14 +6549,17 @@ function driveEverything(): readonly DrivenRow[] {
     }
     const gymRich = Object.freeze({
       ...gymAfterWeek,
-      gym: Object.freeze({
-        ...gymAfterWeek.gym,
-        ladder: ladderStateAt(
-          EMPIRE_TUNING.LADDER_RUNGS[0],
-          EMPIRE_TUNING.LADDER_MOVE_COST_GYM_BUCKS['storage-unit'],
-          ladderModule.createLadderState().equipment,
-        ),
-      }),
+      managed: managementModule.withUpdatedGym(
+        gymAfterWeek.managed,
+        Object.freeze({
+          ...gymAfterWeek.managed.gym,
+          ladder: ladderStateAt(
+            EMPIRE_TUNING.LADDER_RUNGS[0],
+            EMPIRE_TUNING.LADDER_MOVE_COST_GYM_BUCKS['storage-unit'],
+            ladderModule.createLadderState().equipment,
+          ),
+        }),
+      ),
     });
     drive('gymViewReduce', 'move-up/moved', () =>
       ladderViewModule.gymViewReduce(gymRich, { kind: 'move-up' }), [gymRich],
@@ -15579,16 +15605,9 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
           pressEveryControl(
             gymScreenModule.GymScreen({
               state: Object.freeze({
-                gym: Object.freeze({
-                  ladder: ladderStateAt(
-                    EMPIRE_TUNING.LADDER_RUNGS[0],
-                    point,
-                    ladderModule.createLadderState().equipment,
-                  ),
-                  acceleratedGymBucks: 0,
-                  sessionEquipment: Object.freeze([]),
-                }),
+                managed: managedGymAtPurse(point),
                 lastAccrual: null,
+                lastManagementReport: null,
                 lastRefusal: null,
                 weekIndex: 0,
                 allocation: sessionsModule.createRestAllocation(),
@@ -15660,16 +15679,9 @@ const CALLBACK_SUBJECTS: readonly CallbackSubject[] = Object.freeze([
           pressEveryControl(
             ladderViewModule.GymView({
               state: Object.freeze({
-                gym: Object.freeze({
-                  ladder: ladderStateAt(
-                    EMPIRE_TUNING.LADDER_RUNGS[0],
-                    point,
-                    ladderModule.createLadderState().equipment,
-                  ),
-                  acceleratedGymBucks: 0,
-                  sessionEquipment: Object.freeze([]),
-                }),
+                managed: managedGymAtPurse(point),
                 lastAccrual: null,
+                lastManagementReport: null,
                 lastRefusal: null,
                 weekIndex: 0,
                 allocation: sessionsModule.createRestAllocation(),
@@ -21896,12 +21908,9 @@ function memberCallWeekReport(): GymWeekReport {
 /** A `GymViewState` around the given week log; the rest is a fresh gym. */
 function memberCallGymViewState(weekLog: readonly GymWeekReport[]): ladderViewModule.GymViewState {
   return Object.freeze({
-    gym: Object.freeze({
-      ladder: ladderModule.createLadderState(),
-      acceleratedGymBucks: 0,
-      sessionEquipment: Object.freeze([]),
-    }),
+    managed: managementModule.createManagedGym(),
     lastAccrual: null,
+    lastManagementReport: null,
     lastRefusal: null,
     weekIndex: weekLog.length,
     allocation: sessionsModule.createRestAllocation(),

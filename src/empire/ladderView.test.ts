@@ -67,6 +67,14 @@ import {
 } from './sessions';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
+  createManagedGym,
+  failurePhase,
+  itemCondition,
+  managedCheckIn,
+  meanCondition,
+  withUpdatedGym,
+} from './management';
+import {
   createFloorState,
   placeFloorItem,
   relocateFloorState,
@@ -426,7 +434,8 @@ function expectOutcomeInText(text: string, outcome: SlotOutcome): void {
 /** Every displayed-quantity comparison for one `GymViewState`, counted. */
 function expectGymScreenMatchesState(root: Rendered, state: GymViewState): number {
   let compared = 0;
-  const { gym, weekIndex, allocation, allocationSetThisWeek, weekLog } = state;
+  const { managed, weekIndex, allocation, allocationSetThisWeek, weekLog } = state;
+  const gym = managed.gym;
   const shape = trainingWeekShape();
   const weekText = textOf(findByTestId(root, 'gym-week'));
   expect(weekText).toContain(String(weekIndex));
@@ -505,7 +514,7 @@ function expectGymScreenMatchesState(root: Rendered, state: GymViewState): numbe
 describe('GymView: the opening screen displays sessions.ts on every displayed quantity', () => {
   it('matches sessions.ts on every displayed quantity of the opening state', () => {
     const state = createGymViewState();
-    expect(state.gym).toEqual(createGymState());
+    expect(state.managed.gym).toEqual(createGymState());
     expect(state.weekIndex).toBe(0);
     expect(state.allocation).toEqual(createRestAllocation());
     expect(state.allocationSetThisWeek).toBe(false);
@@ -552,21 +561,21 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
     // buy-ladder, refused: the rack does not fit a garage.
     const refusedLadderBuy = dispatchGymThrough(opened, { kind: 'buy-ladder', item: 'squat-rack' });
     expect(refusedLadderBuy.lastRefusal).toBe('rung-too-low');
-    expect(refusedLadderBuy.gym).toEqual(opened.gym);
+    expect(refusedLadderBuy.managed.gym).toEqual(opened.managed.gym);
 
     // buy-session, refused: mats fit a garage but nothing is affordable yet
     // is not the case (mats are cheap) — refuse on an item needing a higher
     // rung instead, so the reason lines up with what a fresh garage can hit.
     const refusedSessionBuy = dispatchGymThrough(opened, { kind: 'buy-session', item: 'bike' });
-    const directRefusedSessionBuy = buySessionEquipment(opened.gym, 'bike');
+    const directRefusedSessionBuy = buySessionEquipment(opened.managed.gym, 'bike');
     expect(directRefusedSessionBuy.kind).toBe('refused');
-    expect(refusedSessionBuy.gym).toEqual(directRefusedSessionBuy.state);
+    expect(refusedSessionBuy.managed.gym).toEqual(directRefusedSessionBuy.state);
     expect(refusedSessionBuy.lastRefusal).toBe('rung-too-low');
 
     // move-up, refused: no money yet.
     const refusedMove = dispatchGymThrough(opened, { kind: 'move-up' });
     expect(refusedMove.lastRefusal).toBe('not-enough-gym-bucks');
-    expect(refusedMove.gym).toEqual(opened.gym);
+    expect(refusedMove.managed.gym).toEqual(opened.managed.gym);
 
     // set-allocation-slot: one call, one slot changed, the others untouched.
     const edited = dispatchGymThrough(opened, {
@@ -576,7 +585,7 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
     });
     expect(edited.allocation).toEqual(['rest', 'hypertrophy', 'rest']);
     expect(edited.allocationSetThisWeek).toBe(true);
-    expect(edited.gym).toEqual(opened.gym);
+    expect(edited.managed.gym).toEqual(opened.managed.gym);
     expect(edited.weekIndex).toBe(opened.weekIndex);
     expect(edited.weekLog).toEqual(opened.weekLog);
 
@@ -584,42 +593,68 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
     // move arms below can be driven on their GRANTED (not refused) outcome.
     const rich: GymViewState = Object.freeze({
       ...opened,
-      gym: Object.freeze({
-        ...opened.gym,
-        ladder: Object.freeze({
-          ...opened.gym.ladder,
-          gymBucks:
-            T.LADDER_MOVE_COST_GYM_BUCKS['storage-unit'] +
-            T.LADDER_EQUIPMENT_COST_GYM_BUCKS['squat-rack'] +
-            T.SESSION_EQUIPMENT_COST_GYM_BUCKS['bike'],
+      managed: withUpdatedGym(
+        opened.managed,
+        Object.freeze({
+          ...opened.managed.gym,
+          ladder: Object.freeze({
+            ...opened.managed.gym.ladder,
+            gymBucks:
+              T.LADDER_MOVE_COST_GYM_BUCKS['storage-unit'] +
+              T.LADDER_EQUIPMENT_COST_GYM_BUCKS['squat-rack'] +
+              T.SESSION_EQUIPMENT_COST_GYM_BUCKS['bike'],
+          }),
         }),
-      }),
+      ),
     });
 
     const moved = dispatchGymThrough(rich, { kind: 'move-up' });
-    const directMove = moveUpLadder(rich.gym.ladder);
+    const directMove = moveUpLadder(rich.managed.gym.ladder);
     expect(directMove.kind).toBe('moved');
-    expect(moved.gym).toEqual(withLadder(rich.gym, directMove.state));
+    expect(moved.managed.gym).toEqual(withLadder(rich.managed.gym, directMove.state));
     expect(moved.lastRefusal).toBeNull();
 
     const bought = dispatchGymThrough(moved, { kind: 'buy-session', item: 'bike' });
-    const directBought = buySessionEquipment(moved.gym, 'bike');
+    const directBought = buySessionEquipment(moved.managed.gym, 'bike');
     expect(directBought.kind).toBe('bought');
-    expect(bought.gym).toEqual(directBought.state);
+    expect(bought.managed.gym).toEqual(directBought.state);
     expect(bought.lastRefusal).toBeNull();
 
     const rackBought = dispatchGymThrough(bought, { kind: 'buy-ladder', item: 'squat-rack' });
-    expect(rackBought.gym.ladder.equipment).toContain('squat-rack');
+    expect(rackBought.managed.gym.ladder.equipment).toContain('squat-rack');
     expect(rackBought.lastRefusal).toBeNull();
   });
 
-  it('advance-clock reports the direct gymCheckInAfter accrual, with no week crossed', () => {
+  it('advance-clock reports the direct managedCheckIn, with no week crossed', () => {
     const opened = createGymViewState();
     const gap = ladderDevTimeSteps()[0]?.seconds as number;
     const advanced = dispatchGymThrough(opened, { kind: 'advance-clock', gapSeconds: gap });
-    const direct = gymCheckInAfter(opened.gym, gap);
-    expect(advanced.gym).toEqual(direct.state);
+    // §5.11 stage 4: the arm calls `managedCheckIn`, which COMPOSES
+    // `gymCheckIn` and then applies wear, the condition income multiplier,
+    // the wage and the manager's autonomous repairs. Compared against the
+    // same call made directly, quantity for quantity, including the reported
+    // stage-4 costs — and the ladder-only reading is kept beside it as the
+    // number the deduction is a deduction FROM, so a build that quietly
+    // stopped deducting would be red here rather than merely different.
+    const direct = managedCheckIn(opened.managed, opened.managed.gym.ladder.collectedAt + gap);
+    expect(advanced.managed).toEqual(direct.state);
     expect(advanced.lastAccrual).toEqual(direct.accrual);
+    expect(advanced.lastManagementReport).toEqual({
+      incomeMultiplier: direct.incomeMultiplier,
+      incomePaidGymBucks: direct.incomePaidGymBucks,
+      incomeDeductedGymBucks: direct.incomeDeductedGymBucks,
+      meanConditionWear: direct.meanConditionWear,
+      wagePaidGymBucks: direct.wagePaidGymBucks,
+      wageShortfallGymBucks: direct.wageShortfallGymBucks,
+      autoRepairs: direct.autoRepairs,
+      autoRepairSpendGymBucks: direct.autoRepairSpendGymBucks,
+      autoRepairsReopeningRefusedOrders: direct.autoRepairsReopeningRefusedOrders,
+    });
+    const ladderOnly = gymCheckInAfter(opened.managed.gym, gap);
+    expect(direct.incomeDeductedGymBucks).toBeGreaterThan(0);
+    expect(advanced.managed.gym.ladder.gymBucks).toBe(
+      ladderOnly.state.ladder.gymBucks - direct.incomeDeductedGymBucks,
+    );
     expect(advanced.weekIndex).toBe(0);
     expect(advanced.weekLog).toEqual([]);
     expect(advanced.allocationSetThisWeek).toBe(false);
@@ -641,7 +676,7 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
       item: 'mats',
       position: { x: 0, y: 0 },
     });
-    const directRefused = placeFloorItem(opened.floor, opened.gym.sessionEquipment, 'mats', {
+    const directRefused = placeFloorItem(opened.floor, opened.managed.gym.sessionEquipment, 'mats', {
       x: 0,
       y: 0,
     });
@@ -649,24 +684,27 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
     expect(refused.floor).toEqual(directRefused.state);
     expect(refused.lastRefusal).toBe('not-owned');
     // A floor refusal never touches the gym itself.
-    expect(refused.gym).toEqual(opened.gym);
+    expect(refused.managed.gym).toEqual(opened.managed.gym);
 
     // A rich state, granted directly, owning mats — so the placed arm below
     // is driven on its GRANTED (not refused) outcome, the same pattern the
     // buy/move tests above use.
     const withMats: GymViewState = Object.freeze({
       ...opened,
-      gym: Object.freeze({
-        ...opened.gym,
-        sessionEquipment: Object.freeze(['mats'] as const),
-      }),
+      managed: withUpdatedGym(
+        opened.managed,
+        Object.freeze({
+          ...opened.managed.gym,
+          sessionEquipment: Object.freeze(['mats'] as const),
+        }),
+      ),
     });
     const placed = dispatchGymThrough(withMats, {
       kind: 'floor-place',
       item: 'mats',
       position: { x: 0, y: 0 },
     });
-    const directPlaced = placeFloorItem(withMats.floor, withMats.gym.sessionEquipment, 'mats', {
+    const directPlaced = placeFloorItem(withMats.floor, withMats.managed.gym.sessionEquipment, 'mats', {
       x: 0,
       y: 0,
     });
@@ -681,7 +719,7 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
       item: 'mats',
       position: { x: 1, y: 1 },
     });
-    const directMoved = placeFloorItem(placed.floor, withMats.gym.sessionEquipment, 'mats', {
+    const directMoved = placeFloorItem(placed.floor, withMats.managed.gym.sessionEquipment, 'mats', {
       x: 1,
       y: 1,
     });
@@ -694,10 +732,13 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
     const opened = createGymViewState();
     const withMats: GymViewState = Object.freeze({
       ...opened,
-      gym: Object.freeze({ ...opened.gym, sessionEquipment: Object.freeze(['mats'] as const) }),
+      managed: withUpdatedGym(
+        opened.managed,
+        Object.freeze({ ...opened.managed.gym, sessionEquipment: Object.freeze(['mats'] as const) }),
+      ),
       lastRefusal: 'not-enough-gym-bucks',
     });
-    const placeResult = placeFloorItem(withMats.floor, withMats.gym.sessionEquipment, 'mats', {
+    const placeResult = placeFloorItem(withMats.floor, withMats.managed.gym.sessionEquipment, 'mats', {
       x: 0,
       y: 0,
     });
@@ -719,9 +760,12 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
     const opened = createGymViewState();
     const withMats: GymViewState = Object.freeze({
       ...opened,
-      gym: Object.freeze({ ...opened.gym, sessionEquipment: Object.freeze(['mats'] as const) }),
+      managed: withUpdatedGym(
+        opened.managed,
+        Object.freeze({ ...opened.managed.gym, sessionEquipment: Object.freeze(['mats'] as const) }),
+      ),
     });
-    const placeResult = placeFloorItem(withMats.floor, withMats.gym.sessionEquipment, 'mats', {
+    const placeResult = placeFloorItem(withMats.floor, withMats.managed.gym.sessionEquipment, 'mats', {
       x: 0,
       y: 0,
     });
@@ -738,31 +782,34 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
     // at the destination rung, matching relocateFloorState called directly.
     const rich: GymViewState = Object.freeze({
       ...withPlacedFloor,
-      gym: Object.freeze({
-        ...withPlacedFloor.gym,
-        ladder: Object.freeze({
-          ...withPlacedFloor.gym.ladder,
-          gymBucks: T.LADDER_MOVE_COST_GYM_BUCKS['storage-unit'],
+      managed: withUpdatedGym(
+        withPlacedFloor.managed,
+        Object.freeze({
+          ...withPlacedFloor.managed.gym,
+          ladder: Object.freeze({
+            ...withPlacedFloor.managed.gym.ladder,
+            gymBucks: T.LADDER_MOVE_COST_GYM_BUCKS['storage-unit'],
+          }),
         }),
-      }),
+      ),
     });
     const moved = dispatchGymThrough(rich, { kind: 'move-up' });
     expect(moved.lastRefusal).toBeNull();
-    expect(moved.gym.ladder.rung).toBe('storage-unit');
+    expect(moved.managed.gym.ladder.rung).toBe('storage-unit');
     expect(moved.floor).toEqual(relocateFloorState('storage-unit'));
     // Ownership is untouched by the reset — only where things SIT resets.
-    expect(moved.gym.sessionEquipment).toEqual(rich.gym.sessionEquipment);
+    expect(moved.managed.gym.sessionEquipment).toEqual(rich.managed.gym.sessionEquipment);
   });
 });
 
 describe('GymView: advance-to-next-week always lands on the boundary sessions.ts computes', () => {
-  it('feeds gymCheckInAfter exactly secondsUntilNextWeekBoundary', () => {
+  it('feeds managedCheckIn exactly secondsUntilNextWeekBoundary', () => {
     const opened = createGymViewState();
-    const gap = secondsUntilNextWeekBoundary(opened.gym.ladder.collectedAt);
+    const gap = secondsUntilNextWeekBoundary(opened.managed.gym.ladder.collectedAt);
     const jumped = dispatchGymThrough(opened, { kind: 'advance-to-next-week' });
-    const direct = gymCheckInAfter(opened.gym, gap);
-    expect(jumped.gym).toEqual(direct.state);
-    expect(jumped.gym.ladder.collectedAt).toBe(T.DAYS_PER_TRAINING_WEEK * T.SECONDS_PER_DAY);
+    const direct = managedCheckIn(opened.managed, opened.managed.gym.ladder.collectedAt + gap);
+    expect(jumped.managed).toEqual(direct.state);
+    expect(jumped.managed.gym.ladder.collectedAt).toBe(T.DAYS_PER_TRAINING_WEEK * T.SECONDS_PER_DAY);
     expect(jumped.weekIndex).toBe(1);
     // Exactly one week completed, all-rest, and reported against the equipment
     // held before the jump (none) — compared to the direct calls, not restated.
@@ -770,8 +817,8 @@ describe('GymView: advance-to-next-week always lands on the boundary sessions.ts
       Object.freeze({
         weekIndex: 0,
         allocation: createRestAllocation(),
-        slots: resolveWeek(createRestAllocation(), opened.gym.sessionEquipment),
-        effects: weeklyAttributeEffects(createRestAllocation(), opened.gym.sessionEquipment),
+        slots: resolveWeek(createRestAllocation(), opened.managed.gym.sessionEquipment),
+        effects: weeklyAttributeEffects(createRestAllocation(), opened.managed.gym.sessionEquipment),
       }),
     ]);
   });
@@ -793,8 +840,8 @@ describe('GymView: a single advance can complete more than one training week', (
     expect(threeWeeks.weekIndex).toBe(3);
     expect(threeWeeks.weekLog.length).toBe(3);
     expect(threeWeeks.allocationSetThisWeek).toBe(false);
-    const expectedOutcomes = resolveWeek(edited.allocation, edited.gym.sessionEquipment);
-    const expectedEffects = weeklyAttributeEffects(edited.allocation, edited.gym.sessionEquipment);
+    const expectedOutcomes = resolveWeek(edited.allocation, edited.managed.gym.sessionEquipment);
+    const expectedEffects = weeklyAttributeEffects(edited.allocation, edited.managed.gym.sessionEquipment);
     for (const [index, week] of threeWeeks.weekLog.entries()) {
       expect(week.weekIndex).toBe(index);
       expect(week.allocation).toEqual(edited.allocation);
@@ -813,7 +860,7 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
     // never through gymViewReduce — so every screen below is graded against
     // the pure functions and not against the reducer under test.
     let view = createGymViewState();
-    let pureGym: GymState = createGymState();
+    let pureManaged = createManagedGym();
     let pureWeekIndex = 0;
     let pureAllocation: WeekAllocation = createRestAllocation();
     let pureAllocationSetThisWeek = false;
@@ -824,10 +871,10 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
     expect(threeDays).toBe(259200);
 
     const pureAdvance = (gapSeconds: number): void => {
-      const before = pureGym;
-      const direct = gymCheckInAfter(before, gapSeconds);
-      const previousWeek = trainingWeekIndexAt(before.ladder.collectedAt);
-      const newWeek = trainingWeekIndexAt(direct.state.ladder.collectedAt);
+      const before = pureManaged;
+      const direct = managedCheckIn(before, before.gym.ladder.collectedAt + gapSeconds);
+      const previousWeek = trainingWeekIndexAt(before.gym.ladder.collectedAt);
+      const newWeek = trainingWeekIndexAt(direct.state.gym.ladder.collectedAt);
       if (newWeek > previousWeek) {
         for (let weekIndex = previousWeek; weekIndex < newWeek; weekIndex += 1) {
           pureWeekLog = [
@@ -835,14 +882,14 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
             {
               weekIndex,
               allocation: pureAllocation,
-              slots: resolveWeek(pureAllocation, before.sessionEquipment),
-              effects: weeklyAttributeEffects(pureAllocation, before.sessionEquipment),
+              slots: resolveWeek(pureAllocation, before.gym.sessionEquipment),
+              effects: weeklyAttributeEffects(pureAllocation, before.gym.sessionEquipment),
             },
           ];
         }
         pureAllocationSetThisWeek = false;
       }
-      pureGym = direct.state;
+      pureManaged = direct.state;
       pureWeekIndex = newWeek;
     };
 
@@ -854,7 +901,7 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
       view = dispatchGymThrough(view, dispatched[0] as GymViewAction);
       pureAdvance(threeDays);
       const after = renderGym(view, []);
-      expect(view.gym).toEqual(pureGym);
+      expect(view.managed).toEqual(pureManaged);
       expect(view.weekIndex).toBe(pureWeekIndex);
       expect(view.weekLog).toEqual(pureWeekLog);
       expect(view.allocationSetThisWeek).toBe(pureAllocationSetThisWeek);
@@ -862,12 +909,28 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
       screensGraded += 1;
     };
 
-    // Seven +3d advances: proven S1 cadence, 360 gym bucks per capped gap at
-    // the garage rate, so the 2500 relocation is first affordable at the
-    // seventh. (Three training weeks complete along the way, opportunistically,
-    // all-rest — graded exactly like any other screen, above.)
-    for (let i = 0; i < 7; i += 1) playAdvance();
-    expect(pureGym.ladder.gymBucks).toBeGreaterThanOrEqual(T.LADDER_MOVE_COST_GYM_BUCKS['storage-unit']);
+    // Eight +3d advances. It was SEVEN before §5.11 stage 4 reached this
+    // screen, at 360 gym bucks per capped gap at the garage rate; stage 4's
+    // condition income multiplier now deducts a little more of each gap as
+    // the equipment wears, so the seventh lands at 2459.52 and the 2500
+    // relocation is first affordable at the eighth. Recorded as the price
+    // rather than silently re-tuned: the multiplier IS §5.7's auto-deduction
+    // and slowing the ladder down is what it is for. (Training weeks complete
+    // along the way, opportunistically, all-rest — graded exactly like any
+    // other screen, above.)
+    for (let i = 0; i < 8; i += 1) playAdvance();
+    expect(pureManaged.gym.ladder.gymBucks).toBeGreaterThanOrEqual(
+      T.LADDER_MOVE_COST_GYM_BUCKS['storage-unit'],
+    );
+    // The never-punish half of the same sequence, driven rather than argued:
+    // eight clock presses and no decision have moved condition and income and
+    // have moved NOTHING on the failure ledger. §5.7's clarification and
+    // `docs/GDD.md` §5.13's wear-basis ruling both turn on that split.
+    expect(pureManaged.gym.ladder.gymBucks).toBeLessThan(8 * 360);
+    expect(meanCondition(pureManaged)).toBeLessThan(1);
+    expect(pureManaged.strikes).toEqual([]);
+    expect(failurePhase(pureManaged)).toBe('sound');
+    expect(view.managed.strikes).toEqual([]);
 
     // Relocate.
     {
@@ -875,9 +938,9 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
       const root = renderGym(view, dispatched);
       press(findByTestId(root, 'gym-move-up'));
       view = dispatchGymThrough(view, dispatched[0] as GymViewAction);
-      const direct = moveUpLadder(pureGym.ladder);
+      const direct = moveUpLadder(pureManaged.gym.ladder);
       expect(direct.kind).toBe('moved');
-      pureGym = withLadder(pureGym, direct.state);
+      pureManaged = withUpdatedGym(pureManaged, withLadder(pureManaged.gym, direct.state));
       const after = renderGym(view, []);
       expect(textOf(findByTestId(after, 'gym-rung'))).toBe('storage-unit');
       quantitiesCompared += expectGymScreenMatchesState(after, view);
@@ -903,7 +966,9 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
     // Two more advances to afford the bike (1440/gap at storage-unit rate).
     playAdvance();
     playAdvance();
-    expect(pureGym.ladder.gymBucks).toBeGreaterThanOrEqual(T.SESSION_EQUIPMENT_COST_GYM_BUCKS['bike']);
+    expect(pureManaged.gym.ladder.gymBucks).toBeGreaterThanOrEqual(
+      T.SESSION_EQUIPMENT_COST_GYM_BUCKS['bike'],
+    );
 
     // Buy the bike: cardio is now equipped.
     {
@@ -911,9 +976,12 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
       const root = renderGym(view, dispatched);
       press(findByTestId(root, 'gym-buy-session-bike'));
       view = dispatchGymThrough(view, dispatched[0] as GymViewAction);
-      const direct = buySessionEquipment(pureGym, 'bike');
+      const direct = buySessionEquipment(pureManaged.gym, 'bike');
       expect(direct.kind).toBe('bought');
-      pureGym = direct.state;
+      pureManaged = withUpdatedGym(pureManaged, direct.state);
+      // The seam `withUpdatedGym` exists for: a newly bought item arrives at
+      // full condition rather than at whatever the rest of the gym is worn to.
+      expect(itemCondition(pureManaged, 'bike')).toBe(1);
       const after = renderGym(view, []);
       expect(textOf(findByTestId(after, `gym-slot-0`))).toContain('trained: cardio');
       quantitiesCompared += expectGymScreenMatchesState(after, view);
@@ -925,14 +993,14 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
     // pure functions directly — the unequipped arm from two weeks back
     // stays in the log unchanged.
     const weekBeforeJump = view.weekIndex;
-    const equipmentAtThisWeekStart = view.gym.sessionEquipment;
+    const equipmentAtThisWeekStart = view.managed.gym.sessionEquipment;
     const allocationThisWeek = view.allocation;
     {
       const dispatched: GymViewAction[] = [];
       const root = renderGym(view, dispatched);
       press(findByTestId(root, 'gym-advance-next-week'));
       view = dispatchGymThrough(view, dispatched[0] as GymViewAction);
-      const gap = secondsUntilNextWeekBoundary(pureGym.ladder.collectedAt);
+      const gap = secondsUntilNextWeekBoundary(pureManaged.gym.ladder.collectedAt);
       pureAdvance(gap);
       const after = renderGym(view, []);
       const resolved = view.weekLog.find((week) => week.weekIndex === weekBeforeJump) as GymWeekReport;
@@ -956,6 +1024,6 @@ describe('GymView: a played run — Barbell and stage-2 equipment, relocation, a
     expect(refusedView.lastRefusal).toBe('already-owned');
     const refusedRoot = renderGym(refusedView, dispatched);
     expect(textOf(findByTestId(refusedRoot, 'gym-refusal'))).toBe('refused: already-owned');
-    expect(refusedView.gym).toEqual(view.gym);
+    expect(refusedView.managed.gym).toEqual(view.managed.gym);
   });
 });
