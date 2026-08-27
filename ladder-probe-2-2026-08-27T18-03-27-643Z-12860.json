@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "FAIL",
   "id": "ladder-probe-2-2026-08-27T18-03-27-643Z-12860",
   "label": "ladder-probe-2",
   "command": [
@@ -33,14 +33,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 3,
-    "okCount": 2,
+    "count": 4,
+    "okCount": 3,
     "errors": [],
-    "lastAttemptIso": "2026-08-27T18:05:27.751Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-27T18:05:32.481Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-27T18:04:30.398Z"
-  }
+    "lastOkIso": "2026-08-27T18:05:32.479Z"
+  },
+  "exitCode": 1,
+  "finishedAtIso": "2026-08-27T18:05:29.593Z",
+  "elapsedSeconds": 122
 }
