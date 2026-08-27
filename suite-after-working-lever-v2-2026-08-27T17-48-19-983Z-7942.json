@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "suite-after-working-lever-v2-2026-08-27T17-48-19-983Z-7942",
   "label": "suite-after-working-lever-v2",
   "command": [
@@ -28,19 +28,22 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 6,
-    "okCount": 4,
+    "count": 7,
+    "okCount": 5,
     "errors": [
       {
         "at": "2026-08-27T17:52:40.180Z",
         "why": "Command failed: git -C /home/user/three-white-lights ls-remote --exit-code origin refs/heads/verify-markers/vm"
       }
     ],
-    "lastAttemptIso": "2026-08-27T17:53:20.199Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-27T17:54:07.837Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
-    "ok": false,
-    "lastOkIso": "2026-08-27T17:51:24.096Z"
-  }
+    "ok": true,
+    "lastOkIso": "2026-08-27T17:53:26.330Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-27T17:54:07.836Z",
+  "elapsedSeconds": 347.9
 }
