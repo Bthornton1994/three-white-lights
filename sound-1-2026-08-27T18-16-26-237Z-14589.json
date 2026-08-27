@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "sound-1-2026-08-27T18-16-26-237Z-14589",
   "label": "sound-1",
   "command": [
@@ -31,14 +31,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 2,
-    "okCount": 1,
+    "count": 3,
+    "okCount": 2,
     "errors": [],
-    "lastAttemptIso": "2026-08-27T18:17:26.299Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-27T18:17:43.007Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-27T18:16:31.249Z"
-  }
+    "lastOkIso": "2026-08-27T18:17:31.151Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-27T18:17:43.005Z",
+  "elapsedSeconds": 76.8
 }
