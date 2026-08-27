@@ -1893,9 +1893,9 @@ const LIFT_LADDER = Object.freeze({
    * WRONG — THE CORRECTION IS THE NEXT SECTION AND IT COST THIS FILE A VALUE.
    * At 12t the first pause that drops a column is 49t. That is a fact about one
    * instant the browser essentially never produces, because the hole opens LATE:
-   * `openedAtMs` reads 215-282 ms against an asked 200 across every committed
-   * capture, which is 13t to 17t. Swept over THAT band the answer is different
-   * and worse, and it is below.
+   * `openedAtMs` reads 211-311 ms against an asked 200 across every capture this
+   * file has taken, which is 13t to 19t. Swept over THAT band the answer is
+   * different and worse, and it is below.
    *
    * WHAT DOES CARRY FROM THIS TABLE is the direction-of-error correction, which
    * the 2026-08-26 paragraph has backwards. It says under-ticking makes the real
@@ -1963,6 +1963,41 @@ const LIFT_LADDER = Object.freeze({
    * abandoned arm is `0` made at every instant from 10t through 40t and first
    * makes at 50t — the edge the 2026-08-26 sweep put at 40t. Nothing about the
    * shorter pause moves that arm, which never resumes.
+   *
+   * ---------------------------------------------------------------------------
+   * THE OBSERVED `openedAtMs` BAND IS WIDER THAN 13t-17t. FIVE RUNS AT THE NEW
+   * VALUE READ 211, 218, 223, 295 AND 311 ms
+   * ---------------------------------------------------------------------------
+   * 311 ms is 18.7t, past the 12t-18t grid the table above was swept on, so the
+   * grid was extended rather than the reading rounded down: at a 42t pause the
+   * rescued arm reads 40/40/40 at EVERY instant from 17t to 26t (band falling
+   * 19 -> 3 as the bar climbs past the stick). A late hole is therefore a
+   * shallower stall, not a lost rescue, and 200 ms stays.
+   *
+   * ---------------------------------------------------------------------------
+   * ONE RUN OF FIVE AT THIS VALUE WENT RED IN A WAY NEITHER AXIS EXPLAINS, AND
+   * IT IS RECORDED RATHER THAN RE-RUN AWAY
+   * ---------------------------------------------------------------------------
+   * `press-full-3`: hole opened at 295 ms, ran 711 ms, and the rescued rep
+   * dispatched **6 taps in total** — 3 after resuming — then resolved NO LIFT.
+   * Both arms lost the rep. Every other run at this value dispatched 29-34 and
+   * locked out.
+   *
+   * BOTH MEASUREMENTS ARE KEPT BESIDE EACH OTHER because a threshold moved to
+   * make it stop failing would hide the next real failure at the same site. The
+   * pause was NOT lengthened back, and the 60 ms arms-agreement tolerance was
+   * NOT widened. What can be said structurally is only that the pause is not the
+   * cause: the sim is monotone in it — a shorter hole rescues wherever a longer
+   * one does, checked at every (instant 12..26t, cadence 3/4/5) — so no state of
+   * this constant makes 42t fail where 45t made. What is left is the class this
+   * file already records under the 2026-08-21 lockout work: real browser
+   * dispatch timing, which the pure sim does not model at all.
+   *
+   * THE SEPARATE, MILDER FLAKE, ALSO NOT PAPERED OVER: the pair's comparability
+   * precondition (the two holes agreeing within 60 ms) failed once in five, at
+   * 311 ms against 247 ms. That run's rescued rep DID lock out and its abandoned
+   * rep did not — the pair's subject was fine and its precondition was not,
+   * which is the check reporting honestly rather than a finding about the app.
    */
   GRIND_HOLE_AT_MS: 200,
   GRIND_PAUSE_MS: 700,
