@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "node-tools-evidence-mjs-2026-08-27T21-40-56-057Z-26040",
+  "label": null,
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "suite"
+  ],
+  "budgetSeconds": 3000,
+  "startedAtIso": "2026-08-27T21:40:56.057Z",
+  "startedAtMs": 1787866856057,
+  "cwd": "/home/user/wt-bench-maxeffort",
+  "commit": "71cc776e776268fe7ab96e12409a120bf3134a28",
+  "branch": "claude/bench-max-effort",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 26040,
+    "startTick": "1487057",
+    "cmdline": "node tools/watchdog.mjs --budget 3000 -- node tools/evidence.mjs suite",
+    "bootId": "0ea1bac6-cfc2-4139-b180-9a706152a24b",
+    "bootEpochSeconds": 1787851985,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-27T21:40:56.076Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
