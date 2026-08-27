@@ -14,9 +14,10 @@
  * `tools/verify-gym-reachability.mjs` is CROSSING 6's own check: cold launch,
  * no query string, press GYM EMPIRE, read the drawn screen. This tool reuses
  * that exact reachability shape (same viewport, same `waitUntilDrawn`
- * instrument, same "no query string at any point" assertion) to get from the
- * check-in beat to the gym screen, and then goes one screen further: buy a
- * cheap piece of equipment (mats, 200 Gym Bucks, fits a garage — no
+ * instrument, and a per-read address-bar assertion — see `readAddress`, which
+ * replaced a single end-of-run reading that an early throw skipped) to get
+ * from the check-in beat to the gym screen, and then goes one screen further:
+ * buy a cheap piece of equipment (mats, 200 Gym Bucks, fits a garage — no
  * relocation needed), find it in the unplaced tray, and DRAG it onto the
  * floor grid with a real `page.mouse` down/move/move/up sequence.
  *
@@ -160,6 +161,33 @@
  *          same presses), and 9g is the evidence that the ledger can move at
  *          all (three declines put three rows on it, on this same run). The
  *          zero here sits between two non-zeros taken on the same screen.
+ *
+ *          AND THAT WAS NOT ENOUGH, WHICH IS WORTH READING BEFORE TRUSTING
+ *          ANY OF IT. For a round this claim reused `S4B_MAX_CLOCK_PRESSES`,
+ *          a bound derived from the REVIEW CADENCE, and covered condition
+ *          ~0.96 down to ~0.67 against a `MAINTENANCE_PROMPT_CONDITION` of
+ *          0.5. Every condition-keyed threshold in the failure machinery sat
+ *          outside that band, so `wornItems()` was empty at every point of
+ *          it. Measured rather than argued: a strike appended on
+ *          `wornItems(next).length > 0` inside the check-in — low condition
+ *          alone, keyed at the game's own line — left that version of this
+ *          block reading "0 counted decisions" and the whole run PASSING at
+ *          exit 0, 0 failing of 66, while the app was implementing the exact
+ *          chain §5.7 forbids. The press budget is derived from the crossing
+ *          now (`S4B_LEDGER_PRESS_MARGIN`), and a second claim asserts off
+ *          the drawn watch-list line that the crossing really happened. Under
+ *          the same mutant the rewritten block reads
+ *          `phase sound -> failed, strikes 0 -> 4` and the run exits 1.
+ *
+ *          Its DOMAIN, stated in the currency that decides rather than in
+ *          check-ins: 9c covers the condition band from wherever 9b left the
+ *          gym down to `S4B_LEDGER_PRESS_MARGIN` presses past
+ *          `MAINTENANCE_PROMPT_CONDITION` — measured at 0.958 -> 0.43 on the
+ *          shipped tuning, with the 0.5 line inside it. What it therefore
+ *          does NOT cover: a strike path keyed below that floor (a condition
+ *          this run never reaches), one needing a higher rung, one needing a
+ *          manager on staff (9f hires after this block, not before), and one
+ *          keyed on a check-in index past the budget this crossing implies.
  *      9d. A standing maintenance review NAMES its item and QUOTES its price
  *          before anything is decided, and says what refusing it is worth.
  *      9e. Pressing repair charges exactly the price already on screen — the
@@ -283,6 +311,35 @@ const MATS_CLAIM_POLL_MS = 20000;
  */
 const S4B_MAX_CLOCK_PRESSES = 12;
 const S4B_MAX_REVIEW_ROUNDS = 10;
+/**
+ * 9c's OWN press budget, and it is NOT `S4B_MAX_CLOCK_PRESSES`.
+ *
+ * The constant above is derived from the review cadence, which is what 9d and
+ * 9g walk to. 9c is about something else: it has to put the screen into the
+ * state a build with the forbidden chain in it would have charged for, and
+ * that state is keyed on EQUIPMENT CONDITION, not on the check-in index. It
+ * reused the cadence bound for a round, and the arithmetic says what that
+ * bought: twelve `+3d` presses wear the garage by 0.024 each, so 9c covered
+ * roughly 0.96 down to 0.67 and `MAINTENANCE_PROMPT_CONDITION` is 0.5. Every
+ * threshold on the condition side of the failure machinery sat outside the
+ * band 9c sampled, `wornItems()` was empty at every point of it, and a mutant
+ * keyed at the game's own line would have fired zero times inside it.
+ *
+ * The budget is derived here the way `GymScreen.test.ts`'s
+ * `only a press moves the failure ledger` derives its own — from the crossing
+ * itself — except that both inputs are READ OFF THE DRAWN SCREEN rather than
+ * transcribed from the tuning module, so a wear-rate or threshold change
+ * retunes this check instead of silently shrinking its domain: the per-press
+ * wear comes from the check-in cost line ("wore the gym down by X") and the
+ * threshold from the condition watch-list line ("under X condition:").
+ *
+ * `S4B_LEDGER_PRESS_MARGIN` is the overshoot past the crossing, in presses.
+ * `S4B_LEDGER_PRESS_CEILING` bounds a run whose numbers come back nonsense
+ * (a near-zero wear rate would otherwise ask for a press budget no run
+ * finishes); hitting it is a failure rather than a quiet truncation.
+ */
+const S4B_LEDGER_PRESS_MARGIN = 2;
+const S4B_LEDGER_PRESS_CEILING = 60;
 /** How long to let the screen re-render after a stage-4 press. */
 const S4B_PRESS_SETTLE_MS = 200;
 /**
@@ -321,6 +378,42 @@ const context = await browser.newContext({
 const page = await context.newPage();
 const pageErrors = [];
 page.on('pageerror', (e) => pageErrors.push(String(e.message)));
+
+/**
+ * EVERY ADDRESS-BAR READING THIS RUN TOOK, AND WHERE IT TOOK IT.
+ *
+ * CLAUDE.md's rule is that the address bar carries no query string AT THE
+ * MOMENT THE SCREEN IS READ, so that a silent fallback to a debug URL cannot
+ * happen inside a section that still looks complete. This used to be one
+ * reading, at the very end of the `try` block — which measured the address at
+ * one instant out of a run several minutes long, and was skipped entirely if
+ * any earlier claim threw `'unreachable'`, so the run that most needed the
+ * assertion was the run that did not make it.
+ *
+ * `readAddress` is called at the head of each numbered section and at each
+ * S4b sub-claim; a dirty reading fails on its own line naming the point, and
+ * the summary below the `try` block is a function of what was actually read
+ * rather than a sentence printed unconditionally. On an early throw the
+ * summary still runs, over the shorter list, and says how many points it
+ * covered — which is the difference between a partial measurement and a
+ * missing one.
+ */
+const addressReadings = [];
+function readAddress(where) {
+  let search = null;
+  try {
+    search = new URL(page.url()).search;
+  } catch {
+    search = null;
+  }
+  addressReadings.push({ where, search });
+  if (search !== '') {
+    fail(
+      `the address bar carries a query string (${search === null ? 'unreadable' : search}) at "${where}" — this reading is not of the played path`,
+    );
+  }
+  return search;
+}
 
 async function textOf(id) {
   return page.getByTestId(id).innerText({ timeout: 5000 }).catch(() => null);
@@ -725,10 +818,12 @@ try {
     fail('pressing GYM EMPIRE did not reach the gym screen');
     throw new Error('unreachable');
   }
+  readAddress('0: the gym screen, immediately after pressing GYM EMPIRE');
 
   // -------------------------------------------------------------------------
   // 1. Scroll to the floor section and confirm it is really there, drawn.
   // -------------------------------------------------------------------------
+  readAddress('1: the floor section');
   await page.getByTestId('gymscreen-floor').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
   const floorDrawn = await waitUntilDrawn(page, 'floorgrid-root', BEAT_TIMEOUT_MS);
   if (floorDrawn.drawn) {
@@ -744,6 +839,7 @@ try {
   // the drawn DOM (CLAUDE.md's "presence is not visibility"), not presence
   // alone.
   // -------------------------------------------------------------------------
+  readAddress('1a: PLAYTEST 2 gaps, cold floor');
 
   // Gap 1: the Barbell-group starting baseline drawn as fixed furniture,
   // from the very first frame — a garage never opens visually empty.
@@ -821,6 +917,7 @@ try {
   // below reads a real, non-zero bounding box, not merely that the testID is
   // attached.
   // -------------------------------------------------------------------------
+  readAddress('1b: Phase 2 ambient members');
   const GARAGE_AMBIENT_MEMBER_COUNT = 3;
   let ambientBoxesOk = true;
   for (let index = 0; index < GARAGE_AMBIENT_MEMBER_COUNT; index += 1) {
@@ -865,6 +962,7 @@ try {
   // tick 37. So `using` and `queuing` are there from the first frame and the
   // poll below is a wait for the browser to catch up, not a wait for luck.
   // -------------------------------------------------------------------------
+  readAddress('1c: Phase 3 member states');
   const cueBudgetMs = BEAT_TIMEOUT_MS;
   const cueDeadline = Date.now() + cueBudgetMs;
   let usingCueId = null;
@@ -1022,6 +1120,7 @@ try {
   // flat named-colour rectangles and circles, and had no image anywhere on the
   // grid. Each reads real computed style off the drawn DOM, not presence.
   // -------------------------------------------------------------------------
+  readAddress('1d: Phase 4 art pass');
 
   // The floor texture: a real PNG-backed element covering the grid, drawn
   // crisp (image-rendering resolves to `pixelated`, the property the whole
@@ -1123,6 +1222,7 @@ try {
   // own geometry (a using member centred on the use cell ADJACENT to its
   // station, one static using sprite per type) rather than asserted.
   // -------------------------------------------------------------------------
+  readAddress('1e: P4b bodies on machines');
 
   // P4b COUPLING: a using member's drawn body meets its machine — some
   // (using member, using-highlighted station) pair overlaps by more than
@@ -1296,6 +1396,7 @@ try {
   // 2. Earn enough to buy mats (200 Gym Bucks, fits a garage — no relocation
   //    needed), then buy it, then confirm it shows up in the unplaced tray.
   // -------------------------------------------------------------------------
+  readAddress('2: earning and buying mats');
   const advanceId = 'gymscreen-advance-259200'; // +3d, LADDER_DEV_TIME_STEPS_SECONDS[2]
   const advanceButton = page.getByTestId(advanceId);
   const advanceExists = await advanceButton.count().then((n) => n > 0).catch(() => false);
@@ -1352,6 +1453,7 @@ try {
   //     is still the only thing drawn at that cell, and the refusal signal
   //     (floorgrid-drop-refused) shows.
   // -------------------------------------------------------------------------
+  readAddress('2b: the overlap refusal');
   const gridBoxBefore = await boxOf('floorgrid-grid');
   const trayBoxBeforeRefusal = await boxOf('floorgrid-tray-item-mats');
   if (gridBoxBefore === null || trayBoxBeforeRefusal === null) {
@@ -1398,6 +1500,7 @@ try {
   //    comp-plates (1,0)-(3,2), flat-bench (3,0)-(5,4) all end at x<=5) —
   //    (0,0) is no longer usable here now that gap 6 refuses it.
   // -------------------------------------------------------------------------
+  readAddress('3: the drag onto the grid');
   const trayBox = await boxOf('floorgrid-tray-item-mats');
   if (trayBox === null) {
     fail('could not read a bounding box for the tray chip after the refusal drag');
@@ -1473,6 +1576,7 @@ try {
   //    comp-plates both end at y<=2, flat-bench ends at y=4 but only for
   //    x in [3,5), and mats' footprint at x=0 misses that entirely).
   // -------------------------------------------------------------------------
+  readAddress('4: the second drag');
   if (placedBoxAfterFirstDrag !== null && gridBoxBefore !== null) {
     const secondTargetX = gridBoxBefore.x + FLOOR_TILE_PIXELS * 0.25;
     const secondTargetY = gridBoxBefore.y + FLOOR_TILE_PIXELS * 3.25;
@@ -1518,6 +1622,7 @@ try {
   // nothing, and the check would be asserting a cue the sim has no reason to
   // raise.
   // -------------------------------------------------------------------------
+  readAddress('4b: 8d, the claimed station');
   const gridBoxForCell = await boxOf('floorgrid-grid');
   const placedBoxForCell = await boxOf('floorgrid-placed-mats');
   const matsCell =
@@ -1565,6 +1670,7 @@ try {
   // claimer had finished its set and re-targeted by the time remove was
   // pressed, and the readout said "0 interrupted" while the check waited for a
   // cue that the sim had no reason to raise. They are adjacent now.
+  readAddress('5: remove');
   const claimDeadline = Date.now() + MATS_CLAIM_POLL_MS;
   let matsHighlightId = null;
   while (Date.now() < claimDeadline && matsHighlightId === null) {
@@ -1685,6 +1791,7 @@ try {
   // asserted to beat. A presence check cannot tell those two builds apart;
   // this can.
   // -------------------------------------------------------------------------
+  readAddress('6: 8a, motion and the frozen control');
   const MEMBER_COUNT = GARAGE_AMBIENT_MEMBER_COUNT;
   await page.getByTestId('floorgrid-grid').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
   await page.waitForTimeout(MOTION_SETTLE_MS);
@@ -1781,6 +1888,7 @@ try {
   //    Every reading below is real DOM text taken before and after a press,
   //    not presence of a testID.
   // -------------------------------------------------------------------------
+  readAddress('9: the stage-4 block');
   const numberIn = (text, pattern) => {
     if (text === null) return null;
     const found = text.match(pattern);
@@ -1806,6 +1914,7 @@ try {
 
   // 9a. The section is reachable within the existing gym surface, by scrolling
   // — no new route, no query string, same screen the floor is on.
+  readAddress('9a: the stage-4 section');
   await page.getByTestId('gymscreen-management').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
   const managementDrawn = await waitUntilDrawn(page, 'gymscreen-management', BEAT_TIMEOUT_MS);
   if (managementDrawn.drawn) {
@@ -1819,6 +1928,7 @@ try {
   // Read the mean and one item's own row before and after a single clock
   // press; both must fall, and the per-item row must be a real number rather
   // than a label.
+  readAddress('9b: condition is live state');
   const conditionBefore = await meanConditionNow();
   const powerBarBefore = numberIn(
     await textOf('gymscreen-condition-power-bar'),
@@ -1854,17 +1964,53 @@ try {
   // decision the player was shown the cost of and took. So a run of clock
   // presses with no decision must move condition and move NOTHING on the
   // ledger. Both halves are read off the same screen.
+  //
+  // THE DOMAIN IS THE CLAIM HERE, not the press count. What makes the zero
+  // below worth reading is that the presses carry the gym ACROSS
+  // `MAINTENANCE_PROMPT_CONDITION` — the line every condition-keyed read in
+  // the failure machinery branches on — so a build that advanced a strike on
+  // low condition would have advanced one inside this window. The budget is
+  // derived from that crossing, using the per-press wear and the threshold
+  // read off the drawn screen, and the crossing is then ASSERTED off the
+  // screen afterwards rather than assumed from the arithmetic.
+  readAddress('9c: the ledger under clock presses');
+  const wearPerPress = numberIn(
+    await textOf('gymscreen-check-in-costs'),
+    /wore the gym down by ([\d.]+)/,
+  );
+  const promptCondition = numberIn(await textOf('gymscreen-worn'), /under ([\d.]+) condition:/);
   const ledgerPhaseBefore = await phaseNow();
   const ledgerStrikesBefore = await strikeCountNow();
   const ledgerConditionBefore = await meanConditionNow();
   const ledgerLeadBefore = await textOf('gymscreen-strikes-lead');
-  for (let press = 0; press < S4B_MAX_CLOCK_PRESSES; press += 1) await pressById(advanceId);
+  let ledgerPresses = null;
+  if (
+    wearPerPress === null ||
+    !(wearPerPress > 0) ||
+    promptCondition === null ||
+    ledgerConditionBefore === null
+  ) {
+    fail(
+      `S4b (9c): could not derive the press budget from the screen — per-press wear ${wearPerPress}, watch-list threshold ${promptCondition}, condition now ${ledgerConditionBefore}`,
+    );
+  } else {
+    ledgerPresses =
+      Math.ceil((ledgerConditionBefore - promptCondition) / wearPerPress) + S4B_LEDGER_PRESS_MARGIN;
+    if (ledgerPresses > S4B_LEDGER_PRESS_CEILING) {
+      fail(
+        `S4b (9c): crossing ${promptCondition} from ${ledgerConditionBefore} at ${wearPerPress}/press needs ${ledgerPresses} presses, past the ${S4B_LEDGER_PRESS_CEILING} this tool will drive — the domain would have been truncated rather than reported`,
+      );
+      ledgerPresses = S4B_LEDGER_PRESS_CEILING;
+    }
+    for (let press = 0; press < ledgerPresses; press += 1) await pressById(advanceId);
+  }
   const ledgerPhaseAfter = await phaseNow();
   const ledgerStrikesAfter = await strikeCountNow();
   const ledgerConditionAfter = await meanConditionNow();
   const ledgerLeadAfter = await textOf('gymscreen-strikes-lead');
   const anyStrikeRowDrawn = (await testIdsStartingWith('gymscreen-strike-')).length;
   if (
+    ledgerPresses !== null &&
     ledgerConditionAfter !== null &&
     ledgerConditionBefore !== null &&
     ledgerConditionAfter < ledgerConditionBefore &&
@@ -1876,17 +2022,34 @@ try {
     ledgerLeadBefore === ledgerLeadAfter
   ) {
     ok(
-      `S4b (9c): ${S4B_MAX_CLOCK_PRESSES} clock presses with no decision took condition ${ledgerConditionBefore} -> ${ledgerConditionAfter} and left the failure ledger byte-identical — phase "${ledgerPhaseAfter}", 0 counted decisions, 0 strike rows drawn, same lead sentence. Absence and elapsed time move no strike on the screen a player touches.`,
+      `S4b (9c): ${ledgerPresses} clock presses with no decision took condition ${ledgerConditionBefore} -> ${ledgerConditionAfter}, across the ${promptCondition} watch line, and left the failure ledger byte-identical — phase "${ledgerPhaseAfter}", 0 counted decisions, 0 strike rows drawn, same lead sentence. Absence and elapsed time move no strike on the screen a player touches.`,
     );
   } else {
     fail(
-      `S4b (9c): the ledger moved on clock presses alone, or condition did not — phase ${ledgerPhaseBefore} -> ${ledgerPhaseAfter}, strikes ${ledgerStrikesBefore} -> ${ledgerStrikesAfter}, condition ${ledgerConditionBefore} -> ${ledgerConditionAfter}, strike rows drawn ${anyStrikeRowDrawn}, lead "${ledgerLeadBefore}" -> "${ledgerLeadAfter}"`,
+      `S4b (9c): the ledger moved on clock presses alone, or condition did not — phase ${ledgerPhaseBefore} -> ${ledgerPhaseAfter}, strikes ${ledgerStrikesBefore} -> ${ledgerStrikesAfter}, condition ${ledgerConditionBefore} -> ${ledgerConditionAfter} over ${ledgerPresses} press(es), strike rows drawn ${anyStrikeRowDrawn}, lead "${ledgerLeadBefore}" -> "${ledgerLeadAfter}"`,
+    );
+  }
+  // THE NON-VACUITY, AND IT IS READ OFF THE SCREEN RATHER THAN COMPUTED. The
+  // watch-list line names every item under the threshold; if it still says
+  // "nothing" then the presses above never reached the region the failure
+  // machinery's condition reads branch on, and the zero is a zero taken
+  // somewhere the mutant could not have fired.
+  const watchListAfter = await textOf('gymscreen-worn');
+  const watchListed = watchListAfter === null ? null : watchListAfter.match(/under [\d.]+ condition: (.+?) —/);
+  if (watchListed !== null && watchListed[1].trim() !== 'nothing') {
+    ok(
+      `S4b (9c) DOMAIN: the presses really carried the gym past the ${promptCondition} watch line — the screen now lists "${watchListed[1].trim()}" under it, so the zero above was read in the band a condition-keyed strike would have fired in`,
+    );
+  } else {
+    fail(
+      `S4b (9c) DOMAIN: after the presses the watch-list line still reads "${watchListAfter}" — nothing crossed ${promptCondition}, so the ledger zero above was taken outside the band the failure machinery's condition reads branch on`,
     );
   }
 
   // 9d/9e. The standing maintenance review: reach one by pressing the clock,
   // read the item it names and the price it quotes off the DOM, then press
   // repair and check the purse moved by exactly the quoted price.
+  readAddress('9d/9e: the standing review');
   let reviewText = null;
   let reviewPresses = 0;
   while (reviewPresses < S4B_MAX_CLOCK_PRESSES) {
@@ -1942,6 +2105,7 @@ try {
 
   // 9f. Staffing: hire, read the wage and the auto-repair threshold the tier
   // carries, then let them go — all through the real controls.
+  readAddress('9f: staffing');
   const managerBefore = await textOf('gymscreen-manager-state');
   const tierRow = await textOf('gymscreen-manager-tier-novice');
   const hireQuote = numberIn(tierRow, /([\d.]+) gym bucks to hire/);
@@ -1978,6 +2142,7 @@ try {
   // 9g. Dormancy, reached ONLY by refusing shown repairs, and the way back out.
   // Each round: press the clock until a review is raised, read what it quotes,
   // press decline, and read the ledger row it wrote.
+  readAddress('9g: dormancy and recovery');
   let rounds = 0;
   const declined = [];
   while (rounds < S4B_MAX_REVIEW_ROUNDS && (await phaseNow()) !== 'failed') {
@@ -2062,24 +2227,35 @@ try {
     );
   }
 
-  if (pageErrors.length > 0) {
-    fail(`the page threw ${pageErrors.length} error(s) — ${pageErrors.slice(0, 5).join(' | ')}`);
-  } else {
-    ok('no page error at any point in this run');
-  }
-
-  const addressThroughout = new URL(page.url()).search;
-  if (addressThroughout !== '') {
-    fail(`the address bar carries a query string (${addressThroughout}) — this run is not measuring the played path`);
-  } else {
-    ok('no query string appeared anywhere in this run — reachability is by press and drag only');
-  }
+  readAddress('the end of the run');
 } catch (e) {
   if (e.message !== 'unreachable') {
     fail(`unexpected error: ${e.message}`);
   }
 } finally {
   await browser.close();
+}
+
+// BOTH VERDICTS BELOW USED TO SIT INSIDE THE `try` BLOCK, so an early
+// `'unreachable'` threw past them and the run said nothing about either. They
+// read arrays that outlive the throw, so they belong out here: a run that
+// bailed early still reports what its shorter list saw, and says how much of
+// the run that list covers.
+if (pageErrors.length > 0) {
+  fail(`the page threw ${pageErrors.length} error(s) — ${pageErrors.slice(0, 5).join(' | ')}`);
+} else {
+  ok('no page error at any point in this run');
+}
+
+const dirtyAddresses = addressReadings.filter((reading) => reading.search !== '');
+if (addressReadings.length === 0) {
+  fail(
+    'the address bar was never read — this run checked NOTHING about the played path, which is a vacuous pass rather than a clean one',
+  );
+} else if (dirtyAddresses.length === 0) {
+  ok(
+    `no query string at any of the ${addressReadings.length} points the screen was read (first "${addressReadings[0].where}", last "${addressReadings[addressReadings.length - 1].where}") — reachability is by press and drag only`,
+  );
 }
 
 console.log(log.join('\n'));

@@ -9614,7 +9614,16 @@ const DRIVE_CENSUS = Object.freeze({
   // 16 -> 24) reaches 261 more strings. Read from this pin's own failure
   // value, on a run where the `NODES` line above was already green — see that
   // comment for why the first reading of this number was wrong.
-  STRINGS: 29_626_379,
+  // 29_626_379 -> 29_626_391: the S4b copy round rewrote `GymScreen.tsx`'s
+  // condition watch-list line. Read from this pin's own failure value, and
+  // then ATTRIBUTED rather than accepted, because +12 on a census this size
+  // is exactly the size of move that gets waved through: that one `<Text>`
+  // went from four children (two JsxText chunks, two expressions) to nine, of
+  // which eight are strings and one is the threshold NUMBER — a net +4
+  // strings, at each of this drive's three `GymScreen` points, 3 x 4 = 12.
+  // The three stakes sentences changed their TEXT and not their count, so
+  // they contribute nothing here and show up in `DISTINCT_STRINGS` instead.
+  STRINGS: 29_626_391,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -9652,7 +9661,18 @@ const DRIVE_CENSUS = Object.freeze({
   // the walk stopped truncating on that tree. Nine DISTINCT strings that no
   // instrument in this file could see while the bound was 16, which is the
   // concrete size of what the depth cut was hiding.
-  DISTINCT_STRINGS: 3708,
+  // 3708 -> 3710: the S4b copy round. Read from this pin's own failure value
+  // and then attributed, because +2 is small enough to wave through and the
+  // interesting part is which half of the round it came from. The condition
+  // watch-list line traded two JsxText chunks for four, so it is the whole of
+  // the +2. The three stakes sentences contribute ZERO: `orderOpensAt` is 4
+  // and `gymAfterWeek` has taken exactly four check-ins (three dev steps plus
+  // the week boundary, which also checks in), so two of this drive's three
+  // `GymScreen` points draw a review, both on the same arm — `promptDismissals`
+  // is 0 and nothing is neglected, so both take the free-dismissal branch —
+  // and one distinct sentence left as one distinct sentence arrived. The
+  // `{' '}` separators the new line adds are a value the drive already held.
+  DISTINCT_STRINGS: 3710,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -14701,7 +14721,12 @@ const CHANNEL_CENSUS_TOTALS = Object.freeze({
   // import specifiers the same round removed from `ladderView.tsx`. Read from
   // this pin's own failure value AFTER that removal — an earlier reading of
   // 61_001, taken before it, is what this correction is.
-  NODES_EXAMINED: 60_995,
+  // 60_995 -> 61_008: the S4b copy round's edits to `GymScreen.tsx` — the
+  // rewritten watch-list line's extra JSX children and expression containers,
+  // and the rewritten stakes sentences. A file-changed counter again, in the
+  // class this file's own verdict log already names. Read from this pin's own
+  // failure value.
+  NODES_EXAMINED: 61_008,
   // 99 -> 108: members.ts's nine refuseWith calls.
   // 99 -> 104: floor.ts's own five `refuseWith` calls, independently.
   // Combined: 99 -> 113.

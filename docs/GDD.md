@@ -2790,6 +2790,30 @@ decline → dormancy → repair → reopen arc is now reachable by pressing cont
 which means a player can put their own gym into a failure state; the way out is
 quoted before any of it is spent.
 
+**AND THE COPY BROKE IT WHILE THE CODE DID NOT, WHICH IS THE ONE FAILURE MODE
+THIS SECTION'S OWN CHECKS ARE BLIND TO.** For a round the line over the
+standing review read *"leaving this one unanswered counts against the gym"* and
+*"you can leave this one unanswered for free; the next one counts"*. Leaving a
+review unanswered writes nothing: `promptDismissals` moves in exactly one
+expression, on a non-repair response to `respondToPrompt`, so the counter those
+two sentences were about advances on a press of "not now" and on nothing else.
+The screen was therefore telling a player that inaction is punished — this
+section's forbidden reverse chain, asserted in prose, on the one surface a
+player touches, while every behavioural sweep behind it read zero. The lines
+name the press now ("not now" is free once, "decline the repair" counts, and
+"only a press moves the ledger; leaving this open does not"), and the check
+behind them was replaced: it used to compare the drawn branch against
+`prompt.dismissalWouldCount`, the same flag the screen branched on, which is an
+oracle restating its subject. `GymScreen.test.ts`'s
+`the review's own sentence is true of the mechanic` drives the three forks
+instead — walk the clock past three reviews unanswered (ledger stays empty),
+press "not now" (free once, counted after), press "decline the repair" (counted
+at once) — and reads the ledger back. A second line under the equipment
+condition readout had the same shape: it labelled two condition-keyed lists as
+the review's own pool and drew "nothing"/"none" directly above an open review
+naming an item at condition ~0.9. It now names what the lists are and says
+plainly that the review is raised by the check-in count rather than by them.
+
 **The constraint this round was most at risk of breaking, and the check that
 covers it.** §5.7's clarification forbids the reverse chain — absence, elapsed
 time, or low condition, by itself, advancing a strike or dormancy. The screen
@@ -2799,11 +2823,52 @@ the clock control repeatedly with no decision and reads phase, counted-decision
 count, drawn strike-row count and the ledger's lead sentence back off the DOM,
 with 9b (condition really moves under the same presses) and 9g (the ledger
 really can move, three declines put three rows on it) as the non-vacuity on
-either side of it. It was mutation-tested: a planted low-condition-appends-a-
-strike chain turns 9c red naming `phase sound -> failed, strikes 0 -> 10`. Its
-limit, stated because the check samples: 9c drives one dev step at the garage
-rung, so a strike path needing a higher rung, a manager on staff, or more
-check-ins than its bound is outside what it can see.
+either side of it.
+
+**AND THE FIRST VERSION OF THAT CHECK WAS MUTATION-TESTED AGAINST A THRESHOLD
+TUNED TO ITS OWN DOMAIN, WHICH IS THE DEFECT ONE LEVEL OUT FROM THE ONE IT WAS
+WATCHING FOR.** Recorded rather than replaced, because the witness the
+paragraph used to carry — `phase sound -> failed, strikes 0 -> 10` — resolved
+perfectly and said nothing about the region the game's own machinery branches
+in. 9c reused `S4B_MAX_CLOCK_PRESSES`, a bound its own comment derives from the
+review cadence, and covered equipment condition ~0.958 down to ~0.67. Every
+condition-keyed read on the failure path compares against
+`MAINTENANCE_PROMPT_CONDITION`, which is **0.5**, so `wornItems()` was empty at
+every point of that band and a mutant keyed at the game's line could not fire
+inside it. Measured on the shipped tree rather than argued: a strike appended
+on `wornItems(next).length > 0` inside `checkInWithWearBasis` — low condition
+alone, the exact chain this section forbids — left that version of the tool
+**PASSING at exit 0, 0 failing claims of 66**, with 9c reporting "0 counted
+decisions" while the app implemented the forbidden chain. The same mutant
+against the rewritten check reads `phase sound -> failed, strikes 0 -> 4` and
+exits 1.
+
+*The re-recorded witness, with its domain.* 9c derives its press budget from
+the crossing rather than from the cadence, reading the per-press wear off the
+check-in cost line ("wore the gym down by 0.024") and the threshold off the
+condition watch-list line ("under 0.5 condition:"), both from the drawn DOM
+rather than transcribed from `empireTuning.ts`. Measured on the shipped tuning
+it drives **22 presses**, taking condition **0.958 -> 0.43** — the 0.5 line
+inside the band, not above it — and a second claim reads the watch-list line
+back and fails unless the list has really stopped saying "nothing" (it names
+`power-bar, comp-plates, flat-bench, mats`). So the domain is **a condition
+band containing `MAINTENANCE_PROMPT_CONDITION`**, and the limit belongs in the
+same currency: a strike path keyed **below 0.43**, or on a rung this run never
+reaches, or on a manager on staff (9f hires after this block rather than
+before), or on a check-in index past the budget the crossing implies, is still
+outside what 9c can see.
+
+*A separate claim, checked and refuted rather than carried forward.* A critic
+derived that flipping `SHIPPED_REVIEW_GATE` from `'ordinal'` back to
+`'condition'` — restoring the mechanism this section names as the measured
+defect — would leave **all** of section 9 green. Run: it does not. The flip
+turns **three 9g claims red and the run exits 1**, because the condition gate
+never raises a third countable order inside `S4B_MAX_REVIEW_ROUNDS` and the gym
+never reaches dormancy. What the critic was right about is narrower and is the
+part above: **9c itself is byte-identical under the flip**, reporting the same
+`0.958 -> 0.67` and the same zeros, and 9g's failure message names a
+throughput problem rather than the gate — a different check noticing by
+accident is not that check working.
 
 **Gate: unrun.** No human has played S4b on a phone. Everything above is a
 suite result and a driven browser check, which §5.11's own standing rule says is

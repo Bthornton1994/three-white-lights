@@ -86,6 +86,7 @@ import {
   type CountedDecisionRecord,
   type ManagedEquipmentItem,
   conditionIncomeMultiplier,
+  declineRepair,
   failurePhase,
   fullRepairCostGymBucks,
   itemCondition,
@@ -99,6 +100,7 @@ import {
   recoveryRepairCostGymBucks,
   recoveryRequirement,
   repairCostGymBucks,
+  respondToPrompt,
   unansweredItems,
   warningSigns,
   withUpdatedGym,
@@ -305,7 +307,7 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
   const worn = wornItems(managed);
   const unanswered = unansweredItems(managed);
   expect(textOf(findByTestId(root, 'gymscreen-worn'))).toBe(
-    `worn past the review line: ${worn.length === 0 ? 'nothing' : worn.join(', ')} — repair orders still unanswered: ${unanswered.length === 0 ? 'none' : unanswered.join(', ')}`,
+    `under ${EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION} condition: ${worn.length === 0 ? 'nothing' : worn.join(', ')} — of those, not yet refused: ${unanswered.length === 0 ? 'none' : unanswered.join(', ')}. the review below is raised by your check-in count, not by this list.`,
   );
   compared += 2;
   const owned = ownedItemsOf(managed.gym);
@@ -342,11 +344,42 @@ function expectManagementMatchesState(root: Rendered, state: GymViewState): numb
     for (const id of answerControls) expect(findAllByTestId(root, id).length, id).toBe(1);
     // §5.7's "told the cost of": what the screen says a refusal is worth has
     // to be what the engine says it is worth, in both directions.
+    //
+    // THIS USED TO COMPARE THE DRAWN BRANCH AGAINST `prompt.dismissalWouldCount`
+    // — the same flag `GymScreen.tsx` branched on — which is an oracle
+    // restating its subject: no value of that flag could make the screen and
+    // this check disagree. It reads the OUTCOME now: dismiss and decline are
+    // each driven on this exact state through the shipped transitions, and
+    // the sentence is graded against whether the ledger actually grew. A
+    // `dismissalWouldCount` that stopped agreeing with `respondToPrompt`
+    // reddens here; under the old form it could not.
+    const wouldCountOnDismiss =
+      respondToPrompt(managed, 'dismiss', managed.gym.ladder.collectedAt).state.strikes.length >
+      managed.strikes.length;
+    const declineOutcome = declineRepair(managed, prompt.item, managed.gym.ladder.collectedAt);
+    const wouldCountOnDecline = declineOutcome.state.strikes.length > managed.strikes.length;
+    // Three of the four outcome pairs are reachable and each owns one
+    // sentence; the fourth (dismiss counts, decline does not) is refused by
+    // the engine's own arithmetic — `dismissalWouldCount` is
+    // `!alreadyRefused && …` and a decline is counted on `!isNeglected`, so
+    // a counting dismiss implies a counting decline. It is asserted rather
+    // than assumed, so a change that makes it reachable is red here.
+    expect(wouldCountOnDismiss && !wouldCountOnDecline, 'dismiss counts while decline does not').toBe(
+      false,
+    );
     const stakes = textOf(findByTestId(root, 'gymscreen-prompt-stakes'));
-    if (prompt.alreadyRefused) expect(stakes).toContain('adds nothing to the ledger');
-    else if (prompt.dismissalWouldCount) expect(stakes).toContain('counts against the gym');
-    else expect(stakes).toContain('for free');
-    compared += 7;
+    if (!wouldCountOnDismiss && !wouldCountOnDecline) {
+      expect(stakes).toContain('refusing it again adds nothing');
+    } else if (!wouldCountOnDismiss) {
+      expect(stakes).toContain('is free this once');
+      expect(stakes).toContain('“decline the repair” counts');
+    } else {
+      expect(stakes).toContain('both count against the gym now');
+    }
+    // The half of the sentence that is true of every state, and the half the
+    // old copy got backwards: the ledger moves on a press and on nothing else.
+    expect(stakes).toContain('only a press moves the ledger; leaving this open does not.');
+    compared += 10;
   }
   // The failure ledger, record for record — every strike carries the price
   // that was on screen when the decision was taken, and the screen shows it.
@@ -670,6 +703,143 @@ describe('stage 4: only a press moves the failure ledger', () => {
     // allows condition to do, and all it allows it to do.
     expect(findAllByTestId(root, 'gymscreen-prompt-repair').length).toBe(1);
     expectManagementMatchesState(root, advanced);
+  });
+});
+
+/** Press `id` on the drawn screen and apply exactly the action it dispatched. */
+function pressThrough(state: GymViewState, id: string): GymViewState {
+  const dispatched: GymViewAction[] = [];
+  press(findByTestId(render(state, dispatched), id));
+  expect(dispatched.length, `pressing ${id} dispatched ${dispatched.length} action(s)`).toBe(1);
+  return dispatchThrough(state, dispatched[0] as GymViewAction);
+}
+
+/**
+ * Advance the clock `presses` times, counting how many of the states passed
+ * through had a standing review on screen. The count is what makes a zero
+ * ledger reading worth something: it says reviews really were drawn and
+ * really were left alone, rather than the walk having crossed none.
+ */
+function walkPastReviews(
+  state: GymViewState,
+  presses: number,
+): { readonly state: GymViewState; readonly reviewsSeen: number } {
+  let next = state;
+  let reviewsSeen = 0;
+  for (let at = 0; at < presses; at += 1) {
+    if (maintenancePrompt(next.managed).kind === 'offered') reviewsSeen += 1;
+    next = advanceTimes(next, 1);
+  }
+  if (maintenancePrompt(next.managed).kind === 'offered') reviewsSeen += 1;
+  return { state: next, reviewsSeen };
+}
+
+describe('stage 4: the sentence drawn over a standing review', () => {
+  // The copy this test grades used to read "leaving this one unanswered counts
+  // against the gym" and "you can leave this one unanswered for free; the next
+  // one counts". Both were false of the engine: `promptDismissals` is written
+  // in one expression, inside `respondToPromptUnder`, so what the counter
+  // tracks is presses of "not now" — leaving a review alone writes nothing at
+  // all. The check that stood behind those sentences asserted only that the
+  // drawn branch matched `prompt.dismissalWouldCount`, which is the flag the
+  // screen branched on, so it could not disagree with the screen whatever
+  // either of them said. This one drives the forks instead.
+  it("the review's own sentence is true of the mechanic", () => {
+    const FIRST = EMPIRE_TUNING.MAINTENANCE_ORDER_FIRST_CHECK_IN;
+    const STRIDE = EMPIRE_TUNING.MAINTENANCE_ORDER_STRIDE;
+    // One free dismissal is what the "free this once" half of the sentence is
+    // about; if that knob moves, this test's shape is wrong rather than its
+    // numbers, so it says so here instead of quietly re-deriving.
+    expect(EMPIRE_TUNING.MAINTENANCE_PROMPT_FREE_DISMISSALS).toBe(1);
+
+    // The fork point: the first standing review the cadence raises, reached by
+    // pressing the real clock control, with an empty ledger behind it.
+    const atFirstReview = advanceTimes(createGymViewState(), FIRST);
+    expect(maintenancePrompt(atFirstReview.managed).kind).toBe('offered');
+    expect(atFirstReview.managed.strikes).toEqual([]);
+    expect(atFirstReview.managed.promptDismissals).toBe(0);
+    const firstStakes = textOf(
+      findByTestId(render(atFirstReview, []), 'gymscreen-prompt-stakes'),
+    );
+    expect(firstStakes).toContain('“not now” is free this once');
+    expect(firstStakes).toContain('“decline the repair” counts');
+    expect(firstStakes).toContain('only a press moves the ledger; leaving this open does not.');
+
+    // CLAIM 1, and the one the old copy inverted: leaving it open writes
+    // nothing. Nine more clock presses from check-in FIRST cross the review
+    // ordinal three times — the count is asserted, so a cadence change that
+    // stopped the walk crossing any review turns this red rather than leaving
+    // a zero nobody could read.
+    const walked = walkPastReviews(atFirstReview, STRIDE * 2 + 1);
+    expect(walked.reviewsSeen).toBe(3);
+    expect(walked.state.managed.checkInsTaken).toBe(FIRST + STRIDE * 2 + 1);
+    expect(
+      walked.state.managed.strikes.map((record) => record.decision),
+      'a clock press with the review left unanswered wrote to the failure ledger',
+    ).toEqual([]);
+    expect(walked.state.managed.neglected).toEqual([]);
+    expect(walked.state.managed.promptDismissals).toBe(0);
+    expect(failurePhase(walked.state.managed)).toBe('sound');
+    // The presses were not inert — the gym really ran while the ledger did not
+    // move, which is the whole shape §5.7's clarification asks for.
+    expect(meanCondition(walked.state.managed)).toBeLessThan(
+      meanCondition(atFirstReview.managed),
+    );
+
+    // CLAIM 2: "not now" is free this once. Same fork state, one press.
+    const dismissedOnce = pressThrough(atFirstReview, 'gymscreen-prompt-dismiss');
+    expect(dismissedOnce.managed.promptDismissals).toBe(1);
+    expect(dismissedOnce.managed.strikes).toEqual([]);
+
+    // CLAIM 3: "decline the repair" counts, from that same untouched fork.
+    const declinedCold = pressThrough(atFirstReview, 'gymscreen-prompt-decline');
+    expect(declinedCold.managed.strikes.length).toBe(1);
+    expect(declinedCold.managed.strikes[0]?.decision).toBe('repair-declined');
+
+    // The second sentence, and the pair the brief for this round asked for:
+    // two gyms identical up to this point, one that advances the clock and one
+    // that presses. The screen now says both refusals count.
+    const secondStakes = textOf(
+      findByTestId(render(dismissedOnce, []), 'gymscreen-prompt-stakes'),
+    );
+    expect(secondStakes).toContain('both count against the gym now');
+    expect(secondStakes).toContain('only a press moves the ledger; leaving this open does not.');
+    const walkedAfterDismiss = walkPastReviews(dismissedOnce, STRIDE * 2 + 1);
+    expect(walkedAfterDismiss.reviewsSeen).toBe(3);
+    expect(
+      walkedAfterDismiss.state.managed.strikes.map((record) => record.decision),
+      'walking past a review whose next refusal WOULD count still wrote to the ledger',
+    ).toEqual([]);
+    expect(walkedAfterDismiss.state.managed.promptDismissals).toBe(1);
+    expect(failurePhase(walkedAfterDismiss.state.managed)).toBe('sound');
+    const dismissedTwice = pressThrough(dismissedOnce, 'gymscreen-prompt-dismiss');
+    expect(dismissedTwice.managed.strikes.length).toBe(1);
+    expect(dismissedTwice.managed.strikes[0]?.decision).toBe('prompt-dismissed-again');
+    const declinedAfterDismiss = pressThrough(dismissedOnce, 'gymscreen-prompt-decline');
+    expect(declinedAfterDismiss.managed.strikes.length).toBe(1);
+    expect(declinedAfterDismiss.managed.strikes[0]?.decision).toBe('repair-declined');
+
+    // The third sentence: once every standing order has been refused, the
+    // review keeps showing and neither refusal writes anything.
+    const ownedAtFork = ownedItemsOf(atFirstReview.managed.gym);
+    expect(ownedAtFork.length).toBe(3);
+    let allRefused = atFirstReview;
+    for (let at = 0; at < ownedAtFork.length; at += 1) {
+      allRefused = pressThrough(allRefused, 'gymscreen-prompt-decline');
+    }
+    const refusedPrompt = maintenancePrompt(allRefused.managed);
+    expect(refusedPrompt.kind).toBe('offered');
+    expect(refusedPrompt.kind === 'offered' && refusedPrompt.alreadyRefused).toBe(true);
+    expect(allRefused.managed.strikes.length).toBe(ownedAtFork.length);
+    const thirdStakes = textOf(findByTestId(render(allRefused, []), 'gymscreen-prompt-stakes'));
+    expect(thirdStakes).toContain('refusing it again adds nothing');
+    expect(thirdStakes).toContain('only a press moves the ledger; leaving this open does not.');
+    expect(pressThrough(allRefused, 'gymscreen-prompt-decline').managed.strikes.length).toBe(
+      ownedAtFork.length,
+    );
+    expect(pressThrough(allRefused, 'gymscreen-prompt-dismiss').managed.strikes.length).toBe(
+      ownedAtFork.length,
+    );
   });
 });
 

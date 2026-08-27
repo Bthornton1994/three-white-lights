@@ -236,6 +236,23 @@ export function GymScreen(props: GymViewProps) {
         can append one are the three controls in this section that a thumb has
         to press. `management.ts` header §3 is the derivation and
         `management.test.ts`'s absence family is the measurement.
+
+        AND THE SENTENCE ABOVE WAS FALSE OF TWO LINES IN THIS SECTION FOR A
+        ROUND, WHICH IS WHY IT IS WORTH WRITING DOWN RATHER THAN DELETING.
+        `gymscreen-prompt-stakes` read "leaving this one unanswered counts
+        against the gym" and "you can leave this one unanswered for free; the
+        next one counts". Leaving a review unanswered writes nothing at all:
+        `promptDismissals` moves in exactly one expression
+        (`respondToPromptUnder`, on a non-repair response), so the counter
+        those two sentences were about advances on a PRESS of "not now" and on
+        nothing else. The copy was stating the reverse chain §5.7's
+        clarification forbids while the code did not implement it — prose is
+        not a mechanism, and it reached a player either way. The rewritten
+        lines name the press, and `GymScreen.test.ts`'s
+        `the review's own sentence is true of the mechanic` drives the three
+        forks (walk past it / "not now" / "decline the repair") and reads the
+        ledger back, rather than comparing the branch to the flag it branched
+        on.
       */}
       <View testID={'gymscreen-management'}>
         <Text testID={'gymscreen-phase'}>
@@ -250,9 +267,24 @@ export function GymScreen(props: GymViewProps) {
         <Text testID={'gymscreen-full-repair'}>
           everything back to new: {fullRepairCostGymBucks(managed)} gym bucks
         </Text>
+        {/*
+          This line and the maintenance review below it read DIFFERENT pools,
+          and saying so on the screen is the fix rather than a footnote.
+          `wornItems` is condition-keyed (`MAINTENANCE_PROMPT_CONDITION`) and
+          `unansweredItems` is that list minus the orders already refused —
+          `unansweredItems`'s own docstring says a reader must not take it for
+          the shipped review's pool, because the review is raised on the
+          check-in ordinal and picks its item from everything the gym owns.
+          The old wording ("worn past the review line", "repair orders still
+          unanswered") claimed both were the review's, and drew "nothing" and
+          "none" directly above an open review naming an item and a price at
+          condition ~0.9 — measured on the played path, not argued.
+        */}
         <Text testID={'gymscreen-worn'}>
-          worn past the review line: {worn.length === 0 ? 'nothing' : worn.join(', ')} — repair
-          orders still unanswered: {unanswered.length === 0 ? 'none' : unanswered.join(', ')}
+          under {EMPIRE_TUNING.MAINTENANCE_PROMPT_CONDITION} condition:{' '}
+          {worn.length === 0 ? 'nothing' : worn.join(', ')} — of those, not yet refused:{' '}
+          {unanswered.length === 0 ? 'none' : unanswered.join(', ')}. the review below is raised by
+          your check-in count, not by this list.
         </Text>
         {ownedItemsOf(gym).map((item) => (
           <View key={item}>
@@ -281,10 +313,10 @@ export function GymScreen(props: GymViewProps) {
             </Text>
             <Text testID={'gymscreen-prompt-stakes'}>
               {prompt.alreadyRefused
-                ? 'you already refused this order — refusing it again adds nothing to the ledger'
+                ? 'you already refused this order — refusing it again adds nothing. only a press moves the ledger; leaving this open does not.'
                 : prompt.dismissalWouldCount
-                  ? 'leaving this one unanswered counts against the gym'
-                  : 'you can leave this one unanswered for free; the next one counts'}
+                  ? '“not now” and “decline the repair” both count against the gym now. only a press moves the ledger; leaving this open does not.'
+                  : '“not now” is free this once; “decline the repair” counts. only a press moves the ledger; leaving this open does not.'}
             </Text>
             <Pressable
               testID={'gymscreen-prompt-repair'}

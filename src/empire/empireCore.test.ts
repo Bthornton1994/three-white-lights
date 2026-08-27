@@ -3264,8 +3264,20 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'of the rate. condition falls with the hours your gym runs, which are the same hours that pay you.',
       'everything back to new:',
       'gym bucks',
-      'worn past the review line:',
-      '— repair orders still unanswered:',
+      // S4b's second pass: these two chunks used to read 'worn past the
+      // review line:' and '— repair orders still unanswered:'. Both named the
+      // shipped review, and neither list is the shipped review's — it is
+      // raised on the check-in ordinal and picks from everything the gym
+      // owns, while these two are condition-keyed (`wornItems`, and that list
+      // minus the orders already refused). On the played path the old wording
+      // drew "nothing" and "none" directly above an open review naming an
+      // item and quoting a price. Four chunks now instead of two, because the
+      // threshold is drawn as an expression and the disclaimer is a sentence
+      // of its own. Transcribed from a driven run of this census.
+      'under',
+      'condition:',
+      '— of those, not yet refused:',
+      '. the review below is raised by your check-in count, not by this list.',
       ': condition',
       ', repairing it costs',
       'gym bucks',
