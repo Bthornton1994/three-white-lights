@@ -351,7 +351,7 @@ export function GymScreen(props: GymViewProps) {
                 manager: {managed.manager.tier} — {managerWageRatePerBankedHour(managed.manager.tier)}{' '}
                 gym bucks per banked hour, repairs on their own below condition{' '}
                 {managerAutoRepairCondition(managed.manager.tier)}
-                {managed.manager.hiredUnderWarning ? ' — hired while the gym was already warned' : ''}
+                {managed.manager.hiredUnderWarning ? ' — hired while the gym was already warned' : null}
               </Text>
               <Pressable
                 testID={'gymscreen-dismiss-manager'}
@@ -363,13 +363,25 @@ export function GymScreen(props: GymViewProps) {
           )}
         </View>
         <View testID={'gymscreen-recovery'}>
-          <Text testID={'gymscreen-recovery-state'}>
-            {recovery.kind === 'not-dormant'
-              ? `open for business — ${failurePhase(managed)}`
-              : recovery.kind === 'ready'
-                ? 'dormant — everything reopening asks for is done'
-                : `dormant — still needed: ${recovery.equipmentBelowMinimum ? `equipment back to condition ${EMPIRE_TUNING.RECOVERY_CONDITION_MIN}` : 'no repairs'}${recovery.managerHiredUnderWarning ? ', and the manager hired under warning let go' : ''}`}
-          </Text>
+          {recovery.kind === 'not-dormant' ? (
+            <Text testID={'gymscreen-recovery-state'}>
+              open for business — {failurePhase(managed)}
+            </Text>
+          ) : recovery.kind === 'ready' ? (
+            <Text testID={'gymscreen-recovery-state'}>
+              dormant — everything reopening asks for is done
+            </Text>
+          ) : (
+            <Text testID={'gymscreen-recovery-state'}>
+              dormant — still needed:{' '}
+              {recovery.equipmentBelowMinimum
+                ? `equipment back to condition ${EMPIRE_TUNING.RECOVERY_CONDITION_MIN}`
+                : 'no repairs'}
+              {recovery.managerHiredUnderWarning
+                ? ', and the manager hired under warning let go'
+                : null}
+            </Text>
+          )}
           <Text testID={'gymscreen-recovery-cost'}>
             reopening would cost {recoveryRepairCostGymBucks(managed)} gym bucks in repairs, and this
             gym has reopened {managed.recoveries} time(s)

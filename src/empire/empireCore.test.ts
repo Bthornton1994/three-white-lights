@@ -2592,7 +2592,17 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // precedent in the member-call census — one more mention pair.
     // 107 -> 115: §5.11 stage 4's `management.ts`. Measured by running this
     // exact assertion and reading its failure value.
-    expect(pairs).toBe(115);
+    // 115 -> 118: S4b, stage 4 reaching the screen a player presses. Three new
+    // pairs, and they were ENUMERATED rather than read off the failure count —
+    // the whole pair list was diffed against the previous commit, because a
+    // re-pin that only matches a total can absorb a pair arriving while
+    // another one leaves. The three: `GymScreen.tsx -> management.ts` and
+    // `ladderView.tsx -> management.ts` (both files now import `./management`,
+    // the screen to read condition/staffing/failure and the reducer to write
+    // them), and `ladderView.tsx -> GymScreen.tsx`, from the new paragraph in
+    // `GymViewState`'s header saying which of the two views renders stage 4.
+    // Nothing was removed.
+    expect(pairs).toBe(118);
     // And the finder can report: a name no module contains comes back with no
     // mentioners, so the empty `orphans` above is an empty answer to a question
     // that has a non-empty one available.
@@ -3231,6 +3241,75 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // P4c pass's own screenshot was false twice over — three members
       // training on finished sprites, under a caption denying both.
       'the floor — your gym, live: place equipment, watch members train',
+      // S4b — §5.11 stage 4 on the garage floor. Fifty-two new chunks, all
+      // in `GymScreen.tsx`'s new management section, transcribed from a driven
+      // run of this exact census rather than typed against the source, the
+      // same discipline every other entry in this list carries.
+      //
+      // WHAT A REVIEWER IS SIGNING HERE, since this is the list that makes the
+      // adjudication happen: player-facing sentences about equipment
+      // condition, the standing repair order and its price, the three answers
+      // to it, the failure ledger, the three manager tiers and their wages,
+      // dormancy and the way back out of it. None of them names a person, a
+      // brand or a company, and none of them tells a player that being away
+      // cost them anything — `docs/GDD.md` §5.7's clarification forbids the
+      // second, and this list is where a sentence that broke it would have to
+      // arrive in the open.
+      'gym status:',
+      '—',
+      'counted decision(s) on the ledger,',
+      'more would close it',
+      'equipment condition',
+      '— income paid at',
+      'of the rate. condition falls with the hours your gym runs, which are the same hours that pay you.',
+      'everything back to new:',
+      'gym bucks',
+      'worn past the review line:',
+      '— repair orders still unanswered:',
+      ': condition',
+      ', repairing it costs',
+      'gym bucks',
+      'repair for',
+      'no maintenance review open —',
+      'check-in(s) taken, the next review is raised at check-in',
+      'maintenance review:',
+      'is at condition',
+      'and repairing it costs',
+      'gym bucks',
+      'repair for',
+      'not now',
+      'decline the repair',
+      'at',
+      's, price shown',
+      'gym bucks',
+      'no manager — you run this gym yourself, which the home gym never needs staff for',
+      ':',
+      'gym bucks to hire,',
+      'per banked hour, repairs on their own below condition',
+      'hire',
+      'a repair threshold of 0 means that manager repairs nothing on their own. hiring the cheapest one while the ledger already shows a warning is itself a counted decision.',
+      'manager:',
+      '—',
+      'gym bucks per banked hour, repairs on their own below condition',
+      'let them go',
+      'open for business —',
+      'dormant — everything reopening asks for is done',
+      'dormant — still needed:',
+      'reopening would cost',
+      'gym bucks in repairs, and this gym has reopened',
+      'time(s)',
+      'reopen the gym',
+      'last check-in: condition took',
+      'gym bucks off the accrual and paid',
+      'at',
+      ', wore the gym down by',
+      ', paid',
+      'in wages (unpaid',
+      '), and the manager repaired',
+      'item(s) for',
+      'your manager repaired',
+      'for',
+      'gym bucks',
       'costs',
       'gym bucks, fits from',
       'buy',
@@ -3238,7 +3317,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       ') costs',
       'gym bucks, fits from',
       'buy',
-      'top of the ladder - the portfolio arrives with stage four',
+      // S4b: this sentence used to say the portfolio arrives with stage
+      // four. Stage 4 is on the screen above it now and the portfolio is
+      // still paused, so it said the wrong thing in a new way. Only
+      // `GymScreen.tsx`'s copy changed; `LadderView` and `GymView` are the
+      // closed stage-1/stage-2 dev harnesses and keep theirs, below.
+      'top of the ladder - staffing, maintenance and the failure state are above; the portfolio stays paused',
       'next:',
       'for',
       'gym bucks',
@@ -3454,7 +3538,30 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // set is unchanged by it, which is the kind of thing a hand-sum gets
     // wrong. Measured by running this assertion and reading its failure
     // value.
-    expect(singleQuoted.size).toBe(459);
+    // 459 -> 498: S4b, §5.11 stage 4 on the garage floor. Thirty-nine new
+    // literals, ENUMERATED against the previous commit rather than read off
+    // this pin's failure value — a total that only has to match can absorb a
+    // literal arriving while another one leaves, and this set is the one a
+    // reviewer is meant to read name by name. Nothing was removed. They are,
+    // in four groups:
+    //   - `GymScreen.tsx`'s new `'./management'` import specifier;
+    //   - twenty new `'gymscreen-*'` testIDs, all of them addresses for the
+    //     browser check rather than anything a player sees;
+    //   - five new dispatch tags (`'repair-item'`, `'answer-prompt'`,
+    //     `'hire-manager'`, `'recover-gym'`, and the `'nothing'`/`'no repairs'`
+    //     empty-state words), plus six player-facing sentences about what a
+    //     refusal is worth, what the ledger holds, and what reopening needs;
+    //   - three type-level property names in `ladderView.tsx` — `'state'` and
+    //     `'accrual'` from `Omit<ManagedCheckIn, 'state' | 'accrual'>`, and
+    //     `'kind'` from the `Extract<PromptResult, { kind: 'no-prompt' }>`
+    //     that derives the last member of `GymViewRefusal`. Not vocabulary a
+    //     player can ever see; the collector cannot tell a type position from
+    //     a value one, and that is stated rather than filtered.
+    // `'decline-repair'` and `'dismiss-manager'` are NOT new: `management.ts`
+    // already ships both as `MANAGED_DECISION_KINDS` members, so the two new
+    // reducer arms named after them add nothing to this set. That is exactly
+    // the kind of thing a hand-sum gets wrong, which is why the diff was run.
+    expect(singleQuoted.size).toBe(498);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3512,7 +3619,15 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // `requireManagedGym`'s check-ins-taken validation, added with the ordinal
     // the review cadence is read off. Measured by running this assertion and
     // reading its failure value.
-    expect(templateChunks.size).toBe(285);
+    // 285 -> 293: S4b. Eight new chunks, all in `GymScreen.tsx` and all
+    // enumerated against the previous commit rather than read off this pin's
+    // failure value: six testID prefixes (`gymscreen-condition-`,
+    // `gymscreen-repair-`, `gymscreen-strike-`, `gymscreen-manager-tier-`,
+    // `gymscreen-hire-`, `gymscreen-auto-repair-`), the strike-record key's
+    // bare ` - ` separator, and the one player-facing fragment
+    // `equipment back to condition ` from the recovery requirement. Nothing
+    // was removed.
+    expect(templateChunks.size).toBe(293);
     // And the template collector really reaches the messages, named from the
     // real source in both directions: these counts drop to zero if the
     // collector stops reading templates AND if the module stops writing the
@@ -3530,6 +3645,13 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // Forty-seven added and NONE removed, attributed by diffing the collected
     // set against the previous pin rather than by hand. Every one of them is a
     // generic noun or a mechanism name; no manufacturer, athlete or brand.
+    // 401 -> 432 with S4b: thirty-one added and NONE removed, attributed the
+    // same way. Twenty are `gymscreen-*` testIDs, five are dispatch tags
+    // (`answer-prompt`, `repair-item`, `hire-manager`, `recover-gym`, and
+    // `nothing` as an empty-state word), one is the `./management` import
+    // specifier, and three (`state`, `accrual`, `kind`) are type-level
+    // property names from `Omit`/`Extract` in `ladderView.tsx`. No
+    // manufacturer, athlete or brand.
     expect(spaceFree).toEqual([
       './FloorGrid',
       './empireCore',
@@ -3541,6 +3663,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       './floorSprites',
       './ladder',
       './ladderView',
+      './management',
       './members',
       './npc',
       './production',
@@ -3563,6 +3686,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'acceleratedSeconds',
       'accepted',
       'accessory',
+      'accrual',
       'advance-clock',
       'advance-to-next-week',
       'advanced-recovery',
@@ -3572,6 +3696,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'already-sound',
       'already-staffed',
       'already-visited-today',
+      'answer-prompt',
       'at-ceiling',
       'at-the-top',
       'athlete',
@@ -3612,9 +3737,6 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'comp-plates',
       'competition-total',
       'composed-gym',
-      // The §5.7 chain-break round's four new tokens: the two review gates
-      // (`'ordinal'` ships, `'condition'` is the control's) and the two
-      // control wiring keys they are reachable through.
       'condition',
       'condition-gated-prompt-control',
       'conditioning',
@@ -3718,24 +3840,47 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gymscreen-advance-next-week',
       'gymscreen-allocation',
       'gymscreen-available-now',
+      'gymscreen-check-in-costs',
       'gymscreen-clock',
+      'gymscreen-condition',
       'gymscreen-dev-controls',
+      'gymscreen-dismiss-manager',
       'gymscreen-floor',
+      'gymscreen-full-repair',
       'gymscreen-gym-bucks',
       'gymscreen-ladder-shop',
       'gymscreen-lifts',
+      'gymscreen-management',
+      'gymscreen-manager',
+      'gymscreen-manager-note',
+      'gymscreen-manager-state',
       'gymscreen-move',
       'gymscreen-move-up',
+      'gymscreen-phase',
+      'gymscreen-prompt',
+      'gymscreen-prompt-decline',
+      'gymscreen-prompt-dismiss',
+      'gymscreen-prompt-item',
+      'gymscreen-prompt-repair',
+      'gymscreen-prompt-stakes',
       'gymscreen-rate',
+      'gymscreen-recover',
+      'gymscreen-recovery',
+      'gymscreen-recovery-cost',
+      'gymscreen-recovery-state',
       'gymscreen-refusal',
       'gymscreen-root',
       'gymscreen-rung',
       'gymscreen-session-shop',
+      'gymscreen-strikes',
+      'gymscreen-strikes-lead',
       'gymscreen-week',
       'gymscreen-week-log',
       'gymscreen-week-preview',
+      'gymscreen-worn',
       'hands-off',
       'hatch',
+      'hire-manager',
       'hire-novice',
       'hire-steady',
       'hire-veteran',
@@ -3752,6 +3897,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'injuryDaysSaved',
       'interrupted',
       'khaki',
+      'kind',
       'knob',
       'ladder-accrual',
       'ladder-clock',
@@ -3790,6 +3936,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'not-enough-wall-clock-earnings',
       'not-offered',
       'not-owned',
+      'nothing',
       'novice',
       'npc-id',
       'npcId',
@@ -3820,6 +3967,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'ready',
       'reason',
       'recover',
+      'recover-gym',
       'recovered',
       'recovery',
       'red',
@@ -3831,6 +3979,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'removed',
       'repair',
       'repair-declined',
+      'repair-item',
       'repair-refused',
       'repaired',
       'repeat-strike-control',
@@ -3885,6 +4034,7 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'squat',
       'squat-rack',
       'stand',
+      'state',
       'steady',
       'step-a',
       'step-b',
@@ -3992,7 +4142,11 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 739 -> 744: the §5.7 chain-break round's four new literals and one new
     // template chunk, exactly the increments the two counts above record.
     // Read from this assertion's own failure value.
-    expect(stringsChecked).toBe(744);
+    // 744 -> 791: S4b — singleQuoted (459 -> 498) and templateChunks
+    // (285 -> 293), exactly the two increments those pins above carry, 39 + 8.
+    // Read from this assertion's own failure value and cross-checked against
+    // the two enumerated diffs rather than only against this total.
+    expect(stringsChecked).toBe(791);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4077,7 +4231,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 397 -> 401: the §5.7 chain-break round's four new single-quoted tokens,
     // all clearing the two-letter guard. Measured by running this assertion
     // and reading its failure value.
-    expect(probes).toBe(401);
+    // 401 -> 432: S4b's thirty-one new tokens, all clearing the two-letter
+    // guard. Measured by running this assertion and reading its failure value.
+    expect(probes).toBe(432);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -4346,11 +4502,18 @@ describe('the directory is pure, numerically clean and free of dice', () => {
         './FloorGrid',
         './ladder',
         './ladderView',
+        // S4b: §5.11 stage 4 reaching the screen. Every condition, cost,
+        // staffing and dormancy quantity this screen draws is a call into
+        // `management.ts`; nothing about stage 4 is recomputed here.
+        './management',
         './sessions',
         'react-native',
       ],
       'ladder.ts': ['./empireCore', './empireTuning', './production'],
-      'ladderView.tsx': ['./empireTuning', './floor', './ladder', './sessions'],
+      // S4b: `./management` joined the reducer's edges — `GymViewState.managed`
+      // is a `ManagedGym` now, and every stage-4 arm is one call into that
+      // module, the same one-call-per-arm shape the stage-1/2 arms already had.
+      'ladderView.tsx': ['./empireTuning', './floor', './ladder', './management', './sessions'],
       // §5.11 stage 4. Five edges: the throw gate, the tuning block, the
       // equipment vocabulary and accrual type from stage 1, `scrubPrecision`,
       // and stage 2's composed gym state — composed whole rather than
@@ -4481,7 +4644,12 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 70 -> 75: §5.11 stage 4's `management.ts` — five intra-directory edges
     // (./empireCore, ./empireTuning, ./ladder, ./production, ./sessions).
     // Read from this assertion's own failure value.
-    expect(specifiers).toBe(75);
+    // 75 -> 77: S4b — the two new `./management` edges, one from
+    // `GymScreen.tsx` (the screen reads condition, staffing and dormancy) and
+    // one from `ladderView.tsx` (the reducer writes them). Both are named in
+    // `EXPECTED` above, which is the per-file assertion this total is only the
+    // sum of; the total moving alone would be caught there first.
+    expect(specifiers).toBe(77);
     // Non-vacuous in both directions: a real edge exists that only the `.tsx`
     // alternate resolves (GymScreen.tsx -> ladderView.tsx), and the allow-list
     // really is being read rather than defaulting open — an unlisted external
