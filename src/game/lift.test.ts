@@ -1546,14 +1546,14 @@ const TOUCH_SWEEP = {
   /**
    * Measured: outcome flips between a controlled touch and an abandoned one.
    *
-   * 120 BEFORE THE 2026-08-27 WORKING-RUNG LEVER AND 160 AFTER, RE-DERIVED
-   * RATHER THAN CARRIED. `LOADS` starts at 0.8, so every load in this sweep is
-   * a working bar and every one of them now carries
+   * 120 WITH NO LEVER, 160 AT `ONSET` 0.045 AND 180 AT 0.100, RE-DERIVED AT
+   * EACH STEP RATHER THAN CARRIED. `LOADS` starts at 0.8, so every load in this
+   * sweep is a working bar and every one of them carries
    * `BENCH_WORKING_RUNG_DEMAND_ONSET` on top of the base curve. A crash
    * multiplies the WHOLE curve through `BENCH_TOUCH_DEMAND_PENALTY`, so a
-   * bigger curve means a bigger crash penalty in absolute terms, and forty more
-   * of the 240 cases change outcome because of it. Nothing here reaches a
-   * warm-up: this sweep contains none.
+   * bigger curve means a bigger crash penalty in absolute terms and more of the
+   * 240 cases change outcome because of it. Nothing here reaches a warm-up:
+   * this sweep contains none.
    */
   SOFT_VS_CRASH_FLIPS: 180,
   /** Cases the flip count above is taken over. */
@@ -2758,22 +2758,39 @@ type RescueRow = readonly [number, number, number];
  *                       instant whole and pins that at zero; the one residue,
  *                       a single cell that misses on literally NO input, is
  *                       measured under `DEMAND_BASE.bench`.
- *   RPE 8               STOPPING COSTS THE REP. All four cells lose reps and
- *                       all four stall on the way. A slow grind still makes it —
- *                       as a GRINDER rather than a GOOD LIFT.
- *   RPE 9               more of both: every cell stalls and loses reps, two of
- *                       the four on all 80 pairs.
- *   RPE 10              80 of 80 on all three counts, at every check-in.
- *   meet, attempt 1     already 80 of 80: an opener is 90% of e1RM.
- *   meet, attempts 2-3  the same under EVERY jump strategy, including
- *                       conservative, and the top attempt is unrescuable.
+ *   RPE 8               STOPPING COSTS THE REP, at every one of the 160 pairs
+ *                       in three of the four cells and 120 of 160 in the
+ *                       fourth. A slow grind still makes it — as a GRINDER
+ *                       rather than a GOOD LIFT.
+ *   RPE 9, RPE 10       160 of 160 on all three counts, at every check-in.
+ *   meet, attempt 1     160 of 160 rested; the WRECKED openers drop to 60,
+ *                       which is the direction below.
+ *   meet, the top       the heavy end of the meet is where COMING BACK STOPS
+ *                       WORKING, and the third column stays at 160 while the
+ *                       first two fall to 0. The idle rep still stalls; it is
+ *                       simply past saving by then.
+ *
+ * -------------------------------------------------------------------------
+ * THE FIRST TWO COLUMNS FELL AT THE MEET IN THE 2026-08-27 `ONSET` STEP, AND
+ * A FALLING COUNT HERE IS THE HARD DIRECTION
+ * -------------------------------------------------------------------------
+ * `CELLS_WHERE_COMING_BACK_HELPS` went 36 -> 35 and
+ * `CELLS_WHERE_A_REP_IS_SAVED` 27 -> 26, while
+ * `CELLS_WHERE_THE_IDLE_REP_STALLS` did not move. A cell leaves the first two
+ * counts when a pause stops being survivable at all — it did not get easier,
+ * it got past rescuing — and the third column staying put is what says so.
+ * Six wrecked meet cells crossed that line this round and the four RPE 8 cells
+ * went the other way, from partial columns to full ones.
  *
  * A CELL WITH `fromMiss > 0` AND `stalled === 0` IS NOT A CONTRADICTION. A rep
  * can be lost by running out of `ASCENT_TIMEOUT_TICKS` while still creeping
  * upward — never slow enough to trip `GRIND_STALL_VELOCITY`, never fast enough
  * to finish. That is a bar the player did not press hard enough rather than a
  * bar that beat them, and the two counts being separate is what shows it.
- * `session/rpe8/0.8000/slower-than-expected` is exactly that case.
+ * NO REACHABLE CELL IS IN THAT STATE ON THIS TREE — the sentence is kept
+ * because the distinction is what the two columns are FOR, and it was true of
+ * `session/rpe8/0.8000/slower-than-expected` until the `ONSET` step took that
+ * cell's third column to 160.
  */
 const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
   // THE RPE 6 AND 7 BLOCK IS THE CONTROL, AND THE 2026-08-26 REGRESSION LIVED
@@ -2923,24 +2940,27 @@ const REACHABLE_LADDER = {
    * reader to assume otherwise.
    *
    * -------------------------------------------------------------------------
-   * TWO OF THEM WENT DOWN IN THE 2026-08-27 WORKING-RUNG LEVER, 38 -> 35 AND
-   * 29 -> 26, AND A FALLING COUNT HERE IS THE HARD DIRECTION SHOWING UP
+   * TWO OF THEM HAVE NOW GONE DOWN TWICE, 38 -> 36 -> 35 AND 29 -> 27 -> 26,
+   * AND A FALLING COUNT HERE IS THE HARD DIRECTION SHOWING UP
    * -------------------------------------------------------------------------
    * These count cells where STOPPING AND STARTING AGAIN changes the outcome.
    * A cell drops out of them when the pause stops being survivable at all —
-   * the idle rep still stalls, and coming back no longer saves it. Four meet
-   * cells crossed that line, and they are the top of the ladder:
-   * `meet/standard/att3/wrecked`, `meet/aggressive/att2/wrecked` and (already
-   * there before this lever) `meet/aggressive/att3/wrecked`.
-   * `meet/aggressive/att3/rested`, `meet/standard/att2/wrecked` and
-   * `meet/conservative/att3/wrecked` are the three that only partly crossed it,
-   * at 40, 100 and 60 of 160.
+   * the idle rep still stalls, and coming back no longer saves it.
    *
-   * 35 AND 26 FOR ONE ROUND, WHILE THE RAMP WAS SHIPPED. Deleting it gave the
-   * two heaviest wrecked meet cells 0.045 of demand where the ramp had given
-   * them about 0.052, and `meet/conservative/att3/wrecked` came back off the
-   * floor — [0, 0, 160] to [60, 60, 160]. Two rows of forty moved and neither
-   * is a warm-up; the third count did not move at all.
+   * THE 2026-08-27 `ONSET` STEP (0.045 -> 0.100) MOVED THEM AGAIN, AND IT MOVED
+   * BOTH ENDS OF THE LADDER IN OPPOSITE DIRECTIONS, WHICH IS WHY A NET OF ONE
+   * IS MISLEADING ON ITS OWN. At the top, `meet/conservative/att2/wrecked`,
+   * `meet/conservative/att3/wrecked` and `meet/standard/att2/wrecked` went to
+   * [0, 0, 160] — past rescuing — while `meet/standard/att3/wrecked` and
+   * `meet/aggressive/att2/wrecked` came UP off zero to [40, 40, 160], because
+   * the ceiling dropping from 0.27 to 0.26 gave those two slightly less demand.
+   * At the bottom the four RPE 8 cells went from partial columns
+   * ([160, 100, 60] and its neighbours) to full ones. Net one cell; six rows
+   * moved.
+   *
+   * 35 AND 26 ALSO READ FOR ONE ROUND WHILE THE RAMP WAS SHIPPED, at a
+   * different set of cells. That coincidence is why the SET matters more than
+   * the count and why the rows are pinned individually.
    *
    * SO THE NUMBER TO READ BESIDE THESE IS `CELLS_WHERE_THE_IDLE_REP_STALLS`,
    * WHICH DID NOT MOVE: 30, exactly the 30 non-warm-up cells. A reader who saw
@@ -3275,28 +3295,25 @@ const WORKING_FLOOR = {
    * RPE 7 cell, before this lever and after it.
    *
    * -------------------------------------------------------------------------
-   * THE ROW THIS ROUND IS ABOUT IS THE RPE 8 ONE, AND IT IS PINNED BESIDE WHAT
-   * IT REPLACED
+   * THREE ROUNDS OF THIS ROW, EACH PINNED BESIDE THE ONE IT REPLACED — AND THE
+   * THIRD REPLAY SAYS THE COLUMN IS NOT WHAT THE COMPLAINT IS ABOUT
    * -------------------------------------------------------------------------
-   * As taps a second (`60 / gap`), before the 2026-08-27 working-rung lever
-   * against after:
+   * As taps a second (`60 / gap`), at `ONSET` 0.045 against 0.100 — the
+   * previous round's pinned vector against this one's, both driven here:
    *
-   *     rpe8/0.8000/slower-than-expected   0.48  ->  1.07
-   *     rpe8/0.8500/as-expected            0.86  ->  1.58
-   *     rpe8/0.8750/crisp                  0.67  ->  1.36
-   *     rpe8/0.9000/popping                0.53  ->  1.07
-   *     rpe9,  the four cells    1.05 1.62 1.40 1.18 -> 1.82 2.31 2.07 1.94
-   *     rpe10, the four cells    2.61 2.40 2.14 2.07 -> 3.53 3.33 3.00 2.86
+   *     rpe8/0.8000/slower-than-expected   1.07  ->  2.00
+   *     rpe8/0.8500/as-expected            1.58  ->  2.50
+   *     rpe8/0.8750/crisp                  1.36  ->  2.22
+   *     rpe8/0.9000/popping                1.07  ->  2.00
+   *     rpe9,  the four cells    1.82 2.31 2.07 1.94  ->  2.73 3.33 3.16 2.86
+   *     rpe10, the four cells    3.53 3.33 3.00 2.86  ->  5.00 4.62 4.29 4.00
    *
-   * A phone replay called RPE 8 "way too easy" twice; a tap every 1.2 to 2.1
-   * seconds still made the rep, which is why. It is now a tap every 0.63 to
-   * 0.93 seconds, sustained, and the rungs above moved with it.
-   *
-   * RE-DERIVED 2026-08-27 WHEN THE RAMP WAS DELETED, not carried across it. The
-   * ramped lever read 1.02 / 1.62 / 1.36 / 1.03 at RPE 8; the flat step that
-   * replaced it reads 1.07 / 1.58 / 1.36 / 1.07 — at most one tick of cadence
-   * per cell, which is the whole measured difference the two deleted constants
-   * were buying. See `BENCH_WORKING_RUNG_DEMAND_ONSET`'s header.
+   * A tap every 1.2 to 2.1 seconds used to make an RPE 8 rep and a tap every
+   * 0.63 to 0.93 seconds did after the last round; it is a tap every 0.4 to 0.5
+   * seconds now, sustained. THE PHONE SAID THIS COLUMN IS THE WRONG SUBJECT —
+   * *"there is no challenge even for an rpe 9"* arrived after the middle column
+   * shipped — so read this beside `MAX_EFFORT`, which measures the other end of
+   * the same axis and reads zero at every value of `ONSET` there is.
    *
    * PINNED AS THE WHOLE VECTOR RATHER THAN AS A MINIMUM. A bound is satisfied
    * by a ladder that collapsed at one end, and this table's whole job is to say
@@ -3321,8 +3338,19 @@ const WORKING_FLOOR = {
    * which is `GRIND_TAP_REFRACTORY_TICKS` itself: the hardest attempt in the
    * game winnable only by a perfect mash with no headroom at all.
    *
-   * Re-derived when the ramp was deleted. Four of the eighteen moved by one
-   * tick and the ceiling cell did not move at all.
+   * AND THE COST OF THE 2026-08-27 ONSET STEP IS IN THIS VECTOR RATHER THAN IN
+   * THE SESSION ONE, WHICH IS WHY IT IS SPELLED OUT. Raising `ONSET` pushes
+   * cells INTO the ceiling, and a cell on the ceiling shares an effective
+   * margin with every other cell on it. At `ONSET` 0.045 three meet cells were
+   * clipped; at 0.100 seven are, and the vector shows it — the wrecked half now
+   * reads `9, 8, 8` under all three jump strategies, so a wrecked lifter's
+   * second and third attempts ask the same cadence. Attempt 2 and attempt 3
+   * still differ in what is on the bar; they no longer differ in what the
+   * mechanic asks. That is the trade this round took and it is the reason
+   * `ONSET` is not larger.
+   *
+   * Re-derived at every change rather than carried across one. The ceiling cell
+   * has not moved through any of the three rounds.
    */
   MEET_FLOOR_GAP_TICKS: [
     13, 11, 9, 13, 10, 9, 13, 9, 9,

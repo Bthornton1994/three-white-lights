@@ -2362,14 +2362,15 @@ for the clock and a working set for the demand curve.
 **IT IS NOT `DEMAND_BASE` WITH AN `if` IN FRONT OF IT, AND THE DIFFERENCE IS THE
 STEP AT THE LINE RATHER THAN ANY SLOPE.** A uniform rise adds the same number at
 every load *including the warm-up rungs*, and the warm-up rungs are where it is
-spent — `+0.030` costs 60 reps of 16200. This adds `0.045` above the line and
+spent — `+0.030` costs 60 reps of 16200. This adds `ONSET` above the line and
 exactly `0.000` below it, so the demand curve stops being a continuous function
 of load, and the place it breaks is one `loadRatio` cannot locate. No value of
 `DEMAND_BASE` produces that. Inside the working band the addition is uniform, on
 purpose: the ruling asked for the working band to be harder, not for its internal
 spacing to change. It compresses there anyway — the twelve working cells' tap
-floors go from a spread of **5.391** (slowest ÷ fastest, no lever) to **3.294** —
-because a fixed demand addition costs more taps at a heavy load than a light one.
+floors go from a spread of **5.391** (slowest ÷ fastest, no lever) to **3.294**
+at `ONSET` 0.045 and **2.50** at 0.100 — because a fixed demand addition costs
+more taps at a heavy load than a light one.
 
 **A RAMP SHIPPED HERE FOR ONE ROUND ON A CONFOUNDED MEASUREMENT, AND THE
 REFUTATION IS WORTH MORE THAN THE DELETION.** Two more constants made the
@@ -2389,27 +2390,35 @@ roughly thirty passes, worth at most one tick of cadence per cell.
 
 **WHAT IT BUYS, on the slowest sustained tap rate that still makes the rep at
 every seed, measured on a ladder of every whole tick, 20 seeds a cell**
-(`WORKING_FLOOR` in `lift.test.ts` drives this — the table is not quoted):
+(`WORKING_FLOOR` in `lift.test.ts` drives this — the table is not quoted). The
+`ONSET` column is `0.045` at the second rejection and `0.100` after the third:
 
-| rung | before | after |
-|---|---|---|
-| RPE 6, 7 | no cadence costs the rep | **unchanged** — no cadence costs the rep |
-| RPE 8 | 0.48 / 0.86 / 0.67 / 0.53 /s | **1.07 / 1.58 / 1.36 / 1.07 /s** |
-| RPE 9 | 1.05 / 1.62 / 1.40 / 1.18 /s | 1.82 / 2.31 / 2.07 / 1.94 /s |
-| RPE 10 | 2.61 / 2.40 / 2.14 / 2.07 /s | 3.53 / 3.33 / 3.00 / 2.86 /s |
-| meet, openers | 2.40 /s | 3.33 /s |
-| meet, the ceiling attempt | 10.00 /s | **10.00 /s — untouched** |
+| rung | no lever | ONSET 0.045 | ONSET 0.100 |
+|---|---|---|---|
+| RPE 6, 7 | no cadence costs the rep | **unchanged** | **unchanged** |
+| RPE 8 | 0.48 / 0.86 / 0.67 / 0.53 /s | 1.07 / 1.58 / 1.36 / 1.07 /s | **2.00 / 2.50 / 2.22 / 2.00 /s** |
+| RPE 9 | 1.05 / 1.62 / 1.40 / 1.18 /s | 1.82 / 2.31 / 2.07 / 1.94 /s | 2.73 / 3.33 / 3.16 / 2.86 /s |
+| RPE 10 | 2.61 / 2.40 / 2.14 / 2.07 /s | 3.53 / 3.33 / 3.00 / 2.86 /s | 5.00 / 4.62 / 4.29 / 4.00 /s |
+| meet, openers | 2.40 /s | 3.33 /s | 4.62 /s rested, 6.67 /s wrecked |
+| meet, the ceiling attempt | 10.00 /s | 10.00 /s | **10.00 /s — untouched at all three** |
 
-A tap every 1.2 to 2.1 seconds used to make an RPE 8 rep, which is why the rung
-read as nothing to a thumb. It is a tap every 0.63 to 0.93 seconds now,
-sustained, and **8 < 9 < 10 still reads with room**: RPE 8's hardest cell asks
-1.58 a second against RPE 9's easiest at 1.82, and RPE 9's hardest 2.31 against
-RPE 10's easiest 2.86.
+A tap every 1.2 to 2.1 seconds used to make an RPE 8 rep, a tap every 0.63 to
+0.93 seconds did after the second round, and it is a tap every 0.40 to 0.50
+seconds now. **8 < 9 < 10 still reads with room**: RPE 8's hardest cell asks
+2.50 a second against RPE 9's easiest at 2.73, and RPE 9's hardest 3.33 against
+RPE 10's easiest 4.00.
 
-*This row was re-derived when the ramp was deleted rather than carried across
-it. The ramped lever read 1.02 / 1.62 / 1.36 / 1.03 at RPE 8, which is at most
-one tick of cadence per cell from the flat step's — the whole measured
-difference the two deleted constants were buying.*
+*This row was re-derived at each step rather than carried across one. The ramped
+lever read 1.02 / 1.62 / 1.36 / 1.03 at RPE 8, which is at most one tick of
+cadence per cell from the flat step's — the whole measured difference the two
+deleted constants were buying.*
+
+**AND THE THIRD PHONE REPLAY SAYS THIS TABLE IS NOT WHAT THE COMPLAINT IS
+ABOUT.** *"this doesnt feel harder at all, there is no challenge even for an rpe
+9"* arrived after the middle column shipped. The subsection
+**[The max-effort wall](#the-max-effort-wall)** below is the measurement that
+answers why, and the short version is that this table is about the SLOWEST
+cadence that works and the sentence is about the FASTEST one.
 
 **AND THE RUNG CHANGED CHARACTER, NOT ONLY ITS NUMBER.** At RPE 8 the unaided
 bar used to creep upward and lose on the clock; its peak demand now sits above
@@ -2419,44 +2428,140 @@ figure does not say.
 
 **THE CEILING IS NOT A SAFETY CLAMP — IT IS WHERE ANOTHER RULE IN THIS SECTION
 STOPS HOLDING.** The false-start rule's own sentence, on screen, is *"each one
-holds your press back, up to half a second"* — never the rep. Driven at the meet
-ceiling load, 20 seeds, mashed at the refractory limit, that stops being true
-between an effective margin of **0.2816** (0 of 20 lost) and **0.2826** (20 of
-20 lost, at 10 early taps). The edge is one thousandth wide. `MARGIN_CEILING` is
-**0.27**, about twelve edge-widths under it, and it is a ceiling on where the bar
-*ends up* rather than a cap on the lever's output — so a bar the base curve
-already puts past the line gets exactly zero. Without it an early pass took
-`meet/aggressive/att3/wrecked` from 10.00 taps a second to **20.00**, which is
-`60 / GRIND_TAP_REFRACTORY_TICKS` — the hardest attempt in the game winnable only
-by a literally perfect mash with no headroom at all.
+holds your press back, up to half a second"* — never the rep. The lockout cap is
+30 ticks and the launch beat is 18, so a maximally false-started rep spends its
+first twelve ascent ticks with the grind still shut, on the lifter's capacity
+alone. Past some effective margin those twelve ticks start the stall spiral and
+the copy becomes false. `MARGIN_CEILING` is where the lever stops raising a bar
+toward that line; it is a ceiling on where the bar *ends up* rather than a cap on
+the lever's output, so a bar the base curve already puts past the line gets
+exactly zero. Without it an early pass took `meet/aggressive/att3/wrecked` from
+10.00 taps a second to **20.00**, which is `60 / GRIND_TAP_REFRACTORY_TICKS` —
+the hardest attempt in the game winnable only by a literally perfect mash with no
+headroom at all.
+
+**IT WAS 0.27 FOR ONE ROUND, 0.27 WAS ABOVE THE WALL, AND THE PARAGRAPH THAT
+SAID OTHERWISE WAS FALSE WHEN IT WAS WRITTEN.** That paragraph read *"The lever
+does not make it worse"*, and it is corrected here rather than edited away. The
+0.2816/0.2826 edge it rested on was driven at the meet ceiling **load** at the
+default capacity; the wall is cell-dependent and lower on a *wrecked* check-in,
+which is the axis that reading could not see. Driven over all 40 reachable cells
+with a real 10-tap false start, counting cells that lose the rep:
+
+| tuning | cells the false-start rule fails at |
+|---|---|
+| lever off | **1** — `meet/aggressive/att3/wrecked` |
+| `ONSET` 0.045, ceiling 0.27 | **2** — `meet/aggressive/att2/wrecked` joins it |
+| `ONSET` 0.100, ceiling 0.27 | **4** |
+| **`ONSET` 0.100, ceiling 0.26 — shipped** | **1** — back to the inherited cell alone |
+
+`meet/aggressive/att2/wrecked` sits at 0.2270 on the base curve and the old
+ceiling *lifted* it to 0.2700, onto the far side of the wall. So the previous
+round's lever did break the rule at a second cell, the sentence denying it was
+never checked against the reachable domain, and the repair is the ceiling coming
+down to **0.26**. `lift.test.ts`'s "keeps every cell the ceiling clips inside the
+false-start rule" drives all 40 cells now and pins the failing set as a set.
 
 **A PRE-EXISTING HOLE THIS FOUND AND DID NOT FIX, RECORDED BECAUSE IT NEEDS A
-HUMAN'S RULING.** That same cell — `meet/aggressive/att3/wrecked`, base margin
-0.3066 — **already breaks the false-start rule on the shipped tree**, with this
-lever set to zero: 20 of 20 lost at 10 early taps. The test that guards the rule
-drives its load ladder at the default capacity only, and the reachable domain
-reaches that margin through a *wrecked check-in*, which no load in that ladder
-produces. So the rule and its guard disagree about a cell a player can be handed.
-The two ways out are both design calls — lower the meet ceiling, which this
-replay asked against, or exempt the top attempt from the false-start rule, which
-makes the on-screen sentence false a different way — so neither was taken here.
-The lever does not make it worse: the ceiling adds that cell nothing, and
-`FLOOR_EDGES.CELLS_ALREADY_PAST_THE_CEILING` names it.
+HUMAN'S RULING.** `meet/aggressive/att3/wrecked`, base margin 0.3066, **already
+breaks the false-start rule with the lever set to zero**: 20 of 20 lost at 10
+early taps. The test that guards the rule drives its load ladder at the default
+capacity only, and the reachable domain reaches that margin through a *wrecked
+check-in*, which no load in that ladder produces. So the rule and its guard
+disagree about a cell a player can be handed. The two ways out are both design
+calls — lower the meet ceiling, which the phone asked against, or exempt the top
+attempt from the false-start rule, which makes the on-screen sentence false a
+different way — so neither is taken here. Lowering the ceiling to 0.26 neither
+fixes nor worsens it: 0.3066 is above 0.27 and above 0.26 alike, so that cell's
+addition is zero either way, and
+`FLOOR_EDGES.CELLS_ALREADY_PAST_THE_CEILING` still names exactly it.
 
-**WHAT IT COSTS, stated rather than discovered later.** Three meet cells are
-clipped to the ceiling and share one effective margin
-(`aggressive/att2/wrecked` keeps 0.0430 of the onset's 0.045,
-`aggressive/att3/rested` 0.0234, `standard/att3/wrecked` 0.0230); they still
-differ in capacity, so their floors differ, but the extra spread the lever would
-have added is gone. Every other working cell gets the onset whole, so the ceiling
-is now the lever's **only** load-dependent term — and unlike the deleted ramp it
-is load-dependent for a measured reason rather than a shape somebody wanted. And
-two of §6.2's own counts fell — see the paragraph on 38 → 36 above — because at
-the very top of a meet a pause is no longer something you can come back from.
+**WHAT IT COSTS, stated rather than discovered later.** Raising `ONSET` pushes
+cells INTO the ceiling, and every cell on the ceiling shares one effective
+margin. Three meet cells were clipped at `ONSET` 0.045; **seven** are at 0.100,
+and the wrecked half of the meet now reads `9, 8, 8` ticks between taps under all
+three jump strategies — a wrecked lifter's second and third attempts ask the same
+cadence, though they still differ in what is on the bar. That is the trade this
+round took and it is the reason `ONSET` is not larger: at 0.145 twenty-six cells
+are clipped and the meet's attempt ladder is flat. Every other working cell gets
+the onset whole, so the ceiling is the lever's **only** load-dependent term — and
+unlike the deleted ramp it is load-dependent for a measured reason rather than a
+shape somebody wanted. Two of §6.2's own counts fell again, 36 → 35 and 27 → 26,
+because at the top of a meet a pause is no longer something you can come back
+from; the third count did not move, which is what says those cells got harder
+rather than quieter.
 
-**§12.1 STAYS OPEN. Nobody has played any of this.** All four constants are
+**§12.1 STAYS OPEN. Nobody has played any of this.** Both constants are
 placeholders. The next phone question is the same two it was: does RPE 8 feel
 like work, and does 8 < 9 < 10 still read.
+
+#### The max-effort wall
+
+**RULED 2026-08-27, ON THE THIRD REJECTION OF THE SAME COMPLAINT.** Verbatim,
+phone: *"this doesnt feel harder at all, there is no challenge even for an rpe
+9."* Two rounds had moved the tap FLOOR — the slowest sustained cadence that
+still makes the rep — and the complaint did not move with it. This subsection is
+why, and it ends in a wall rather than in a tuning value.
+
+**THE FLOOR AND THE COMPLAINT ARE ABOUT OPPOSITE ENDS OF THE SAME AXIS.**
+`grindForce` saturates at exactly 1 once the rolling charge reaches
+`GRIND_CHARGE.CEILING`, and tapping at the engine's own countable floor settles
+the charge above that within about five taps. So a player going flat out reaches
+the maximum force tapping can buy roughly a quarter of a second into the grind
+and holds it for the whole rest of the rep. Everything between "the slowest rate
+that works" and "the fastest rate the engine can count" is dead space the demand
+curve had never been measured in, and *"no challenge even for an rpe 9"* is a
+sentence about that space.
+
+**SO THERE IS A SECOND METRIC NOW, AND IT IS DRIVEN.** `MAX_EFFORT` in
+`lift.test.ts` plays every one of the 40 reachable cells at two cadences: a
+metronome at the refractory floor, and a realistic human drawing each inter-tap
+interval uniformly from **57–81 ms**, which is the range the previous round's own
+phone captures produced. **Both read zero lost reps, at every cell, at `ONSET`
+0.045 and at 0.100 alike.** A player who mashes cannot lose a bench rep anywhere
+in this game.
+
+**AND THAT CANNOT BE TUNED AWAY, WHICH IS THE FINDING.** `MAX_EFFORT_WALLS`
+drives two searches over one synthetic load ladder:
+
+| wall | effective margin | what it means |
+|---|---|---|
+| a realistic max-effort player first loses | **0.3764** | below this, no human cadence ever costs the rep |
+| a 10-tap false start first loses | **0.2777** | above this, "holds your press back, never the rep" is false |
+
+**The false-start wall is the lower of the two, by roughly 0.10 of capacity —
+about a quarter of the grind's entire force budget.** There is no effective
+margin at which a rep can both honour the false-start sentence on the screen and
+be losable by someone tapping flat out. The hardest bar the game can hand a
+player, `meet/aggressive/att3/wrecked` at **0.3066**, is still under the
+max-effort wall. So *"RPE 9 has to be able to lose someone who is actually
+trying"* is not a value this lever has not found yet — it is outside the range
+the mechanic has.
+
+**WHAT WOULD MOVE IT, recorded so the next round does not spend itself on
+another step of `ONSET`.** Both walls are set by `GRIND_BOOST_FORCE_MAX`, which
+is the whole budget of what tapping is worth: the max-effort wall sits just under
+it and the false-start wall sits where twelve unpowered ascent ticks turn fatal.
+The reachable ladder already spans 0.34 of margin, from −0.0323 at the lightest
+RPE 8 cell to 0.3066 at the meet's ceiling attempt, so the rungs consume most of
+that budget before the lever adds anything, and the band in which cadence decides
+anything at all is about 0.03 wide. Four ordered rungs do not fit in it. Two
+changes are large enough to matter and both are design calls a human has to take:
+**raise the force budget and the demand ladder together**, which widens the band
+in proportion; or **shorten the false-start lockout to at most the launch beat**,
+which removes the unpowered ascent ticks and lifts the lower wall — at the cost
+of the on-screen "up to half a second", which would become three tenths.
+
+**NEITHER IS TAKEN HERE.** The 2026-08-27 ruling refuses `GRIND_BOOST_FORCE_MAX`
+as this lever, and the false-start copy is outside this round's scope. What this
+round ships instead is the largest `ONSET` step the ceiling allows, the ceiling
+repair above, and the metric — so that the next round starts from the wall rather
+than from another guess at the floor.
+
+**§12.1 STAYS OPEN AND THE BAR IS NOT CLAIMED MET.** The ruling asked for a
+non-zero, non-total max-effort failure rate at RPE 9. This tree measures zero,
+and the two tables above are the argument that zero is structural rather than
+under-tuned.
 
 **The one remaining way to raise RPE 8's rate was measured and rejected.** The
 grind's force ceiling is the only knob that lifts the required tap rate without

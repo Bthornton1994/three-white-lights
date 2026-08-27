@@ -2166,7 +2166,7 @@ export const LIFT_TUNING = Object.freeze({
    * `WORKING_FLOOR` domain, taps a second, 0.045 against 0.100:
    *
    *     RPE 8    1.07 1.58 1.36 1.07  ->  2.00 2.50 2.22 2.00
-   *     RPE 9    1.82 2.31 2.07 1.94  ->  2.73 3.53 3.16 2.86
+   *     RPE 9    1.82 2.31 2.07 1.94  ->  2.73 3.33 3.16 2.86
    *     RPE 10   3.53 3.33 3.00 2.86  ->  5.00 4.62 4.29 4.00
    *     RPE 6, 7   no cadence costs the rep, before or after. Zero addition.
    *
