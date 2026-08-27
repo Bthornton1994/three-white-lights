@@ -1,7 +1,7 @@
 EVIDENCE BUNDLE — piece bench-max-effort
-generated 2026-08-27T21:26:14.164Z
+generated 2026-08-27T21:59:39.983Z
 repo /home/user/wt-bench-maxeffort
-commit e394e9c4d6caa0063e5e2f645891c0a13fbd9882
+commit de25325da9d5c6a92898009c3ab17a5bee032041
 working tree clean (ignoring only this script's own output and .gauntlet/state.json)
 
 This file is raw, unedited output of the commands shown. It is produced by
@@ -62,8 +62,8 @@ $ npx vitest run src/game/lift --reporter=verbose
  ✓ src/game/liftTuning.test.ts > shared facts > puts the mechanical sticking point where the sprite draws one, for squat 1ms
  ✓ src/game/liftTuning.test.ts > shared facts > draws a played rep from the same strain model as the canned one 1ms
  ✓ src/game/liftTuning.test.ts > shared facts > never draws the brace heavier than the top of the descent it leads into 0ms
- ✓ src/game/liftTuning.test.ts > shared facts > shares the load curve rather than restating it 3ms
- ✓ src/game/liftTuning.test.ts > immutability > freezes the tuning block and its nested tables 1ms
+ ✓ src/game/liftTuning.test.ts > shared facts > shares the load curve rather than restating it 2ms
+ ✓ src/game/liftTuning.test.ts > immutability > freezes the tuning block and its nested tables 3ms
  ✓ src/game/liftTuning.test.ts > depth thresholds > leaves room between illegal, ideal and buried, for the lift that is depth-timed 0ms
  ✓ src/game/liftTuning.test.ts > depth thresholds > never lets the late edge of the depth window be an instant bury 0ms
  ✓ src/game/liftTuning.test.ts > depth thresholds > leaves at least a couple of ticks between legal depth and the ideal one 1ms
@@ -111,17 +111,17 @@ $ npx vitest run src/game/lift --reporter=verbose
  ✓ src/game/liftTuning.test.ts > presentation feel > has positive durations and a legible cue ring 0ms
  ✓ src/game/liftTuning.test.ts > presentation feel > keeps the sprite on an integer nearest-neighbour scale (GDD §7.1) 0ms
  ✓ src/game/liftTuning.test.ts > copy > says something for every prompt, for every playable kind where one applies 1ms
- ✓ src/game/liftTuning.test.ts > copy > never puts a number in the copy the player reads 0ms
- ✓ src/game/liftTuning.test.ts > copy > tells the player to tap the drive cue, not to hold 2ms
+ ✓ src/game/liftTuning.test.ts > copy > never puts a number in the copy the player reads 5ms
+ ✓ src/game/liftTuning.test.ts > copy > tells the player to tap the drive cue, not to hold 0ms
  ✓ src/game/liftTuning.test.ts > copy > does not tell the player the drive is a single tap 1ms
- ✓ src/game/liftTuning.test.ts > copy > gives bench instructions that describe bench, not squat 0ms
+ ✓ src/game/liftTuning.test.ts > copy > gives bench instructions that describe bench, not squat 1ms
  ✓ src/game/liftTuning.test.ts > copy > states the false-start rule, cap included, in the words the sim enforces 0ms
  ✓ src/game/liftTuning.test.ts > copy > tells the bench player to tap the command, not to press it once 0ms
  ✓ src/game/liftTuning.test.ts > copy > does not tell a bench player to descend to depth 0ms
  ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > keeps the mechanic itself free of bare numbers 2ms
- ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > keeps every lift component and adapter free of bare numbers 2ms
- ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > has no dead knob: every tuning value is read by something 32ms
- ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > would call a knob dead if its only mention were a comment 0ms
+ ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > keeps every lift component and adapter free of bare numbers 8ms
+ ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > has no dead knob: every tuning value is read by something 21ms
+ ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > would call a knob dead if its only mention were a comment 1ms
  ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > keeps the base window widths out of the renderer (GDD §3.4, §12.3) 3ms
  ✓ src/game/liftTuning.test.ts > no feel value lives outside this file > actually detects a bare number, so the scan is not vacuous 1ms
  ✓ src/game/liftTuning.test.ts > the ascent clock and the demand ceiling it is safe against > pins all three DEMAND_BASE ceilings, because ASCENT_TIMEOUT_TICKS is only safe against these 0ms
@@ -129,130 +129,130 @@ $ npx vitest run src/game/lift --reporter=verbose
  ✓ src/game/lift.test.ts > vocabulary > has copy for every outcome, miss reason, grade and phase 1ms
  ✓ src/game/lift.test.ts > purity > has no clock and no global randomness in its source 2ms
  ✓ src/game/lift.test.ts > purity > does not mutate the state it is given 8ms
- ✓ src/game/lift.test.ts > purity > replays a rep identically from the same seed and script 11ms
+ ✓ src/game/lift.test.ts > purity > replays a rep identically from the same seed and script 9ms
  ✓ src/game/lift.test.ts > purity > actually uses the seed, so the determinism test above is not vacuous 6ms
- ✓ src/game/lift.test.ts > purity > always terminates, over randomised input scripts 248ms
+ ✓ src/game/lift.test.ts > purity > always terminates, over randomised input scripts 253ms
  ✓ src/game/lift.test.ts > gradeTiming > is 1 at the ideal moment and 0 at the edge 0ms
  ✓ src/game/lift.test.ts > gradeTiming > never rises as the input gets further from the ideal moment 2ms
  ✓ src/game/lift.test.ts > gradeTiming > grades everything outside the window as missed 0ms
  ✓ src/game/lift.test.ts > gradeTiming > reaches every grade, and each one only on its own side 1ms
  ✓ src/game/lift.test.ts > ascentDemand > peaks where the sprite system puts the sticking point 1ms
- ✓ src/game/lift.test.ts > ascentDemand > rises with load everywhere in the range 6ms
+ ✓ src/game/lift.test.ts > ascentDemand > rises with load everywhere in the range 5ms
  ✓ src/game/lift.test.ts > ascentDemand > makes being buried strictly harder 0ms
  ✓ src/game/lift.test.ts > ascentDemand > exceeds what the lifter has at a limit and not at a warm-up 0ms
  ✓ src/game/lift.test.ts > load-derived timings > descends slower, braces longer and holds longer under load 0ms
- ✓ src/game/lift.test.ts > load-derived timings > never returns a zero-length phase, even at absurd loads 1ms
+ ✓ src/game/lift.test.ts > load-derived timings > never returns a zero-length phase, even at absurd loads 0ms
  ✓ src/game/lift.test.ts > isGrind > is true past either threshold and false below both 0ms
- ✓ src/game/lift.test.ts > outcome space > produces all three outcomes across the load and timing space 255ms
- ✓ src/game/lift.test.ts > outcome space > reaches every miss reason 111ms
+ ✓ src/game/lift.test.ts > outcome space > produces all three outcomes across the load and timing space 253ms
+ ✓ src/game/lift.test.ts > outcome space > reaches every miss reason 114ms
  ✓ src/game/lift.test.ts > outcome space > is decided by the drive input at a limit attempt 4ms
- ✓ src/game/lift.test.ts > outcome space > lets a light rep through however it is driven 44ms
- ✓ src/game/lift.test.ts > outcome space > gets harder as the bar gets heavier, measured as makes per sweep 146ms
+ ✓ src/game/lift.test.ts > outcome space > lets a light rep through however it is driven 45ms
+ ✓ src/game/lift.test.ts > outcome space > gets harder as the bar gets heavier, measured as makes per sweep 153ms
  ✓ src/game/lift.test.ts > outcome space > rewards better drive timing with a faster ascent 3ms
  ✓ src/game/lift.test.ts > outcome space > punishes a drive thrown before the bar is anywhere near the stick 1ms
  ✓ src/game/lift.test.ts > outcome space > gives the drive boost regardless of whether the player keeps holding — a landed drive is a committed impulse 2ms
  ✓ src/game/lift.test.ts > outcome space > a release that never re-presses reaches the SAME peak as never releasing at all — the boost no longer cares 2ms
  ✓ src/game/lift.test.ts > outcome space > tolerates a real motor-timing gap — release after cue 0, then land the REAL cue 1 the release exists to reach 2ms
- ✓ src/game/lift.test.ts > outcome space > holds across a real spread of release timing and seeds — not one cherry-picked config 55ms
+ ✓ src/game/lift.test.ts > outcome space > holds across a real spread of release timing and seeds — not one cherry-picked config 57ms
  ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > offers more than one drive cue at MAXIMAL, at or under the driveAttemptsFor(load) ceiling 4ms
  ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > each cue is genuinely a NEW window, not the first one read twice 3ms
  ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > a mistimed press between cues costs velocity, does not end the rep, and the next cue still arms 3ms
  ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > a new hit REPLACES the boost rather than stacking it 3ms
  ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > driveAttemptsFor is 1 at the true floor and LIFT_TUNING.DRIVE_ATTEMPTS_PER_REP.MAXIMAL at the true ceiling 0ms
  ✓ src/game/lift.test.ts > the drive tap-rate mechanic (Sprint 3 gate) > the drive window is narrower at MAXIMAL than at LIGHT, read back from a played cue 3ms
- ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > arrives under control at every load when the bar is never let go 47ms
+ ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > arrives under control at every load when the bar is never let go 53ms
  ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > always reaches the chest, and inside the bound the constants give [a-bench-descent-always-reaches-the-chest] 82ms
  ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > grades HOW the bar arrives, and arms no cue to time it against 12ms
- ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > never falls as the slip comes later — an EARLIER slip arrives hotter 76ms
- ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > is harder to control under load, measured rather than asserted 92ms
+ ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > never falls as the slip comes later — an EARLIER slip arrives hotter 74ms
+ ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > is harder to control under load, measured rather than asserted 95ms
  ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > forgives a slip the player catches, and charges one they do not 1ms
- ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > makes the crash cost the ascent rather than the rep 61ms
- ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > flips outcomes between a controlled touch and a crashed one, across the sweep [bench-touch-decides-the-rep] 663ms
+ ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > makes the crash cost the ascent rather than the rep 60ms
+ ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > flips outcomes between a controlled touch and a crashed one, across the sweep [bench-touch-decides-the-rep] 698ms
  ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > does not charge the sink twice — extraDepth stays 0 on a bench 1ms
- ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > reads no random draw, so the descent is not a dice roll on the rep 216ms
+ ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > reads no random draw, so the descent is not a dice roll on the rep 220ms
  ✓ src/game/lift.test.ts > the descent to the chest (GDD §6.2; ruled 2026-08-25, steered 2026-08-25) > reports how the bar is coming in, and only while it is coming in 5ms
  ✓ src/game/lift.test.ts > the bench press command > fires a command on bench and never on squat 18ms
- ✓ src/game/lift.test.ts > the bench press command > puts the command inside its declared range, and does not put it in the same place twice 41ms
- ✓ src/game/lift.test.ts > the bench press command > is deterministic: the same seed pauses for exactly the same length 26ms
+ ✓ src/game/lift.test.ts > the bench press command > puts the command inside its declared range, and does not put it in the same place twice 46ms
+ ✓ src/game/lift.test.ts > the bench press command > is deterministic: the same seed pauses for exactly the same length 29ms
  ✓ src/game/lift.test.ts > the bench press command > shows the command in the prompt, and only from the tick it fires 3ms
- ✓ src/game/lift.test.ts > the bench press command > draws no countdown ring before the command — a telegraphed grind is a timed one 5ms
+ ✓ src/game/lift.test.ts > the bench press command > draws no countdown ring before the command — a telegraphed grind is a timed one 6ms
  ✓ src/game/lift.test.ts > the bench press command > puts the ring on the target the instant the command fires, then closes it at the launch 2ms
  ✓ src/game/lift.test.ts > the bench press command > leaves the chest on the launch beat, whatever the player did 5ms
  ✓ src/game/lift.test.ts > the bench press command > is live for every commanded HOLE tick and dead the instant the bar leaves 5ms
- ✓ src/game/lift.test.ts > the bench press command > keeps the grind live from the command until the rep resolves 16ms
+ ✓ src/game/lift.test.ts > the bench press command > keeps the grind live from the command until the rep resolves 17ms
  ✓ src/game/lift.test.ts > the bench press command > shows one ascent line on bench and never a drive cue prompt 7ms
- ✓ src/game/lift.test.ts > the bench press command > arms no drive cue on a bench rep, at any load or tap rate 182ms
+ ✓ src/game/lift.test.ts > the bench press command > arms no drive cue on a bench rep, at any load or tap rate 178ms
  ✓ src/game/lift.test.ts > the grind curve > never falls as charge is added, stays inside 0..1, and MOVES 2ms
  ✓ src/game/lift.test.ts > the grind curve > has a knee: the marginal unit of charge is worth strictly less every rung 1ms
  ✓ src/game/lift.test.ts > the grind curve > caps: charge past the ceiling buys nothing at all 1ms
  ✓ src/game/lift.test.ts > the grind curve > decays toward nothing when no tap lands, and rises when one does 0ms
  ✓ src/game/lift.test.ts > the grind curve > cannot grade a quality "early" or "late", and that is checked rather than asserted 0ms
- ✓ src/game/lift.test.ts > the grind decides the lift > flips outcomes across the tap ladder, across the sweep [bench-grind-decides-the-rep] 688ms
- ✓ src/game/lift.test.ts > the grind decides the lift > rescues a stalled bar across every load the game can prescribe [a-stalled-bench-can-be-ground-through] 12056ms
+ ✓ src/game/lift.test.ts > the grind decides the lift > flips outcomes across the tap ladder, across the sweep [bench-grind-decides-the-rep] 715ms
+ ✓ src/game/lift.test.ts > the grind decides the lift > rescues a stalled bar across every load the game can prescribe [a-stalled-bench-can-be-ground-through] 12589ms
  ✓ src/game/lift.test.ts > the grind decides the lift > puts the load ceilings where the producers put them, and stalls inside them 2ms
- ✓ src/game/lift.test.ts > the grind decides the lift > never loses a warm-up rep to a player who answered and then stopped [a-warm-up-survives-being-abandoned] 65169ms
+ ✓ src/game/lift.test.ts > the grind decides the lift > never loses a warm-up rep to a player who answered and then stopped [a-warm-up-survives-being-abandoned] 66792ms
  ✓ src/game/lift.test.ts > the grind decides the lift > makes a better check-in an EASIER rep, which is deliberate and is not this piece to fix 2ms
- ✓ src/game/lift.test.ts > the grind decides the lift > never rewards tapping slower, across the sweep 664ms
+ ✓ src/game/lift.test.ts > the grind decides the lift > never rewards tapping slower, across the sweep 715ms
  ✓ src/game/lift.test.ts > the grind decides the lift > turns a make into a miss at a limit when the command is ignored 4ms
- ✓ src/game/lift.test.ts > the grind decides the lift > re-derives the crash-penalty comparison’s shipped row on its own named domain 4569ms
- ✓ src/game/lift.test.ts > the grind decides the lift > leaves a warm-up alone — nobody answers at all [a-warm-up-makes-it-unanswered] 631ms
- ✓ src/game/lift.test.ts > the grind decides the lift > charges squat and deadlift nothing for a beat they never had 6ms
+ ✓ src/game/lift.test.ts > the grind decides the lift > re-derives the crash-penalty comparison’s shipped row on its own named domain 4818ms
+ ✓ src/game/lift.test.ts > the grind decides the lift > leaves a warm-up alone — nobody answers at all [a-warm-up-makes-it-unanswered] 648ms
+ ✓ src/game/lift.test.ts > the grind decides the lift > charges squat and deadlift nothing for a beat they never had 5ms
  ✓ src/game/lift.test.ts > the grind decides the lift > reports the grind for the stage, and the row moves both ways 12ms
  ✓ src/game/lift.test.ts > the grind decides the lift > adds nothing at all to a warm-up, at every reachable cell [the-working-lever-cannot-reach-a-warm-up] 2ms
  ✓ src/game/lift.test.ts > the grind decides the lift > re-pins the two edges the bench warm-up floor rests on 39ms
- ✓ src/game/lift.test.ts > the grind decides the lift > moves the working rungs' tap floors and leaves the warm-ups without one 61552ms
- ✓ src/game/lift.test.ts > the grind decides the lift > never costs a rep to a player at the sim's own tap ceiling 4135ms
- ✓ src/game/lift.test.ts > the grind decides the lift > cannot put a rep above the max-effort wall without breaking the false-start rule 1740ms
- ✓ src/game/lift.test.ts > the grind decides the lift > keeps every cell the ceiling clips inside the false-start rule [the-ceiling-keeps-the-false-start-rule] 1886ms
- ✓ src/game/lift.test.ts > the false-start rule, exactly as the copy states it > counts an early tap for nothing, AT EVERY TAP RATE 9ms
- ✓ src/game/lift.test.ts > the false-start rule, exactly as the copy states it > holds the press back per early tap, up to the half second the copy names 26ms
+ ✓ src/game/lift.test.ts > the grind decides the lift > moves the working rungs' tap floors and leaves the warm-ups without one 60708ms
+ ✓ src/game/lift.test.ts > the grind decides the lift > never costs a rep to a player at the sim's own tap ceiling 4144ms
+ ✓ src/game/lift.test.ts > the grind decides the lift > cannot put a rep above the max-effort wall without breaking the false-start rule 1725ms
+ ✓ src/game/lift.test.ts > the grind decides the lift > keeps every cell the ceiling clips inside the false-start rule [the-ceiling-keeps-the-false-start-rule] 1875ms
+ ✓ src/game/lift.test.ts > the false-start rule, exactly as the copy states it > counts an early tap for nothing, AT EVERY TAP RATE 10ms
+ ✓ src/game/lift.test.ts > the false-start rule, exactly as the copy states it > holds the press back per early tap, up to the half second the copy names 25ms
  ✓ src/game/lift.test.ts > the false-start rule, exactly as the copy states it > cannot hand a player who mashed the pause an earlier start [a-false-start-can-never-pay] 2ms
- ✓ src/game/lift.test.ts > the false-start rule, exactly as the copy states it > never kills the rep, however long the pause is mashed 12ms
+ ✓ src/game/lift.test.ts > the false-start rule, exactly as the copy states it > never kills the rep, however long the pause is mashed 11ms
  ✓ src/game/lift.test.ts > the false-start rule, exactly as the copy states it > says so on the screen, at the moment it happens 3ms
- ✓ src/game/lift.test.ts > squat and deadlift are untouched by the bench redesign > replays every baseline rep to the same history it had before the ruling [the-bench-redesign-left-the-other-two-lifts-alone] 215ms
- ✓ src/game/lift.test.ts > squat and deadlift are untouched by the bench redesign > would notice a change, so the digests are not decoration 61ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > never enters DESCENT or HOLE, at any load or seed 123ms
+ ✓ src/game/lift.test.ts > squat and deadlift are untouched by the bench redesign > replays every baseline rep to the same history it had before the ruling [the-bench-redesign-left-the-other-two-lifts-alone] 201ms
+ ✓ src/game/lift.test.ts > squat and deadlift are untouched by the bench redesign > would notice a change, so the digests are not decoration 63ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > never enters DESCENT or HOLE, at any load or seed 125ms
  ✓ src/game/lift.test.ts > the deadlift has no eccentric > starts with the bar on the floor, not racked overhead 0ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > leaves the grip where the player left it when the brace ends — the descent branch does not 25ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > derives a depth track for the drawing that actually moves down the ascent 112ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > leaves the grip where the player left it when the brace ends — the descent branch does not 28ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > derives a depth track for the drawing that actually moves down the ascent 120ms
  ✓ src/game/lift.test.ts > the deadlift has no eccentric > refuses to be stepped in a phase it cannot reach, rather than absorbing it 2ms
  ✓ src/game/lift.test.ts > the deadlift has no eccentric > refuses to answer for an eccentric quantity it does not have 0ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > records no depth timing, because there is no depth to time 5ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > is given its speed off the floor by the load alone, not by an input 175ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > draws no countdown to the down command — a telegraphed hold is a timed one 40ms
- ✓ src/game/lift.test.ts > the deadlift has no eccentric > says something true on the screen through the whole hold, and flips at the call 9ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > records no depth timing, because there is no depth to time 6ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > is given its speed off the floor by the load alone, not by an input 164ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > draws no countdown to the down command — a telegraphed hold is a timed one 31ms
+ ✓ src/game/lift.test.ts > the deadlift has no eccentric > says something true on the screen through the whole hold, and flips at the call 5ms
  ✓ src/game/lift.test.ts > the deadlift has no eccentric > is not live on a squat or a bench that is genuinely standing in LOCKOUT 7ms
  ✓ src/game/lift.test.ts > the deadlift has no eccentric > has an unguessable hold that is still a pure function of the seed 1ms
- ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > flips outcomes between holding the lockout and letting go, across the sweep 989ms
- ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > never hands a clean lift to a player who never touches the screen 274ms
- ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > never rewards letting go, and loses the bar exactly when the sag arithmetic says so 3929ms
+ ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > flips outcomes between holding the lockout and letting go, across the sweep 957ms
+ ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > never hands a clean lift to a player who never touches the screen 265ms
+ ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > never rewards letting go, and loses the bar exactly when the sag arithmetic says so 4005ms
  ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > turns a made pull into a dropped one at a heavy single 6ms
- ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > costs the good lift to the player who keeps tapping instead of clamping 206ms
- ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > lets a slip be caught, and charges it a grind rather than the rep 160ms
- ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > leaves a warm-up alone — a light pull is not a hold test (GDD §12.3) 81ms
- ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > still needs the ascent driven at a limit pull, so the hold is not the only beat 42ms
+ ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > costs the good lift to the player who keeps tapping instead of clamping 212ms
+ ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > lets a slip be caught, and charges it a grind rather than the rep 151ms
+ ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > leaves a warm-up alone — a light pull is not a hold test (GDD §12.3) 72ms
+ ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > still needs the ascent driven at a limit pull, so the hold is not the only beat 39ms
  ✓ src/game/lift.test.ts > the lockout hold decides the deadlift > hands no fatigue number back on a deadlift either 6ms
- ✓ src/game/lift.test.ts > touchSpeedQuality > is 1 at a caught bar, 0 at a dropped one, and never rises with speed 8ms
+ ✓ src/game/lift.test.ts > touchSpeedQuality > is 1 at a caught bar, 0 at a dropped one, and never rises with speed 7ms
  ✓ src/game/lift.test.ts > touchSpeedQuality > grades the same arrival speed differently under a heavier bar 0ms
  ✓ src/game/lift.test.ts > touchSpeedQuality > grades a bar nobody let go of as caught, at every load 0ms
  ✓ src/game/lift.test.ts > touchSpeedQuality > refuses a lift that is not graded on a release tick, rather than defaulting 1ms
- ✓ src/game/lift.test.ts > the winning band at a limit attempt > is wider than the input path is imprecise 234ms
- ✓ src/game/lift.test.ts > the winning band at a limit attempt > is one contiguous band, not scattered ticks 232ms
- ✓ src/game/lift.test.ts > the winning band at a limit attempt > is reachable from every release the depth cue asks for 240ms
- ✓ src/game/lift.test.ts > the winning band at a limit attempt > is won often enough to be a skill test rather than a lottery 266ms
- ✓ src/game/lift.test.ts > the winning band at a limit attempt > keeps the drive boost alive long enough to reach the sticking point 4ms
+ ✓ src/game/lift.test.ts > the winning band at a limit attempt > is wider than the input path is imprecise 214ms
+ ✓ src/game/lift.test.ts > the winning band at a limit attempt > is one contiguous band, not scattered ticks 211ms
+ ✓ src/game/lift.test.ts > the winning band at a limit attempt > is reachable from every release the depth cue asks for 210ms
+ ✓ src/game/lift.test.ts > the winning band at a limit attempt > is won often enough to be a skill test rather than a lottery 214ms
+ ✓ src/game/lift.test.ts > the winning band at a limit attempt > keeps the drive boost alive long enough to reach the sticking point 3ms
  ✓ src/game/lift.test.ts > the load the screen opens on > is one of the loads the screen offers 0ms
  ✓ src/game/lift.test.ts > the load the screen opens on > has a sticking point at all 0ms
- ✓ src/game/lift.test.ts > the load the screen opens on > shows the grind even to a player who never presses the drive 2ms
- ✓ src/game/lift.test.ts > the load the screen opens on > is made by a player who obeys both cues, most of the time 234ms
- ✓ src/game/lift.test.ts > the load the screen opens on > leaves the limit attempt on the screen, and harder than the default 478ms
+ ✓ src/game/lift.test.ts > the load the screen opens on > shows the grind even to a player who never presses the drive 1ms
+ ✓ src/game/lift.test.ts > the load the screen opens on > is made by a player who obeys both cues, most of the time 202ms
+ ✓ src/game/lift.test.ts > the load the screen opens on > leaves the limit attempt on the screen, and harder than the default 409ms
  ✓ src/game/lift.test.ts > depth > calls a high squat, however well the bar was driven 1ms
  ✓ src/game/lift.test.ts > depth > passes a squat that reaches legal depth 1ms
  ✓ src/game/lift.test.ts > depth > buries a player who never lets go 0ms
- ✓ src/game/lift.test.ts > depth > never opens the depth cue above legal depth, at any load 8ms
+ ✓ src/game/lift.test.ts > depth > never opens the depth cue above legal depth, at any load 7ms
  ✓ src/game/lift.test.ts > depth > reports a depth window narrower than asked for only when it has to 0ms
  ✓ src/game/lift.test.ts > depth > makes a deeper reversal a harder ascent 3ms
- ✓ src/game/lift.test.ts > depth > does not make a high squat cheaper than a legal one 2ms
+ ✓ src/game/lift.test.ts > depth > does not make a high squat cheaper than a legal one 1ms
  ✓ src/game/lift.test.ts > the sticking point > is where a real rep actually stalls 1ms
  ✓ src/game/lift.test.ts > the sticking point > drifts the bar forward most where it stalls, and more under load 1ms
  ✓ src/game/lift.test.ts > the sticking point > shakes and tilts the bar only when the lifter is losing 1ms
@@ -261,11 +261,11 @@ $ npx vitest run src/game/lift --reporter=verbose
  ✓ src/game/lift.test.ts > fatigue integration > tightens the window further deeper into a session 0ms
  ✓ src/game/lift.test.ts > fatigue integration > maps every bar-speed cue band to a capacity, worst band slowest 0ms
  ✓ src/game/lift.test.ts > fatigue integration > gives a primed lifter more output than a fatigued one 0ms
- ✓ src/game/lift.test.ts > fatigue integration > leaves a fatigued lifter a strictly narrower band of makes 102ms
+ ✓ src/game/lift.test.ts > fatigue integration > leaves a fatigued lifter a strictly narrower band of makes 91ms
  ✓ src/game/lift.test.ts > fatigue integration > never hands a fatigue number back to the caller 2ms
  ✓ src/game/lift.test.ts > fatigue integration > exports nothing whose name suggests a fatigue readout 1ms
- ✓ src/game/lift.test.ts > fatigue integration > does not resolve the rep against a random roll 2ms
- ✓ src/game/lift.test.ts > read models > emits every event kind it declares 17ms
+ ✓ src/game/lift.test.ts > fatigue integration > does not resolve the rep against a random roll 1ms
+ ✓ src/game/lift.test.ts > read models > emits every event kind it declares 15ms
  ✓ src/game/lift.test.ts > read models > has a haptic pattern for every event that should be felt 1ms
  ✓ src/game/lift.test.ts > read models > feels a perfect drive differently from a scruffy one 0ms
  ✓ src/game/lift.test.ts > read models > reaches every phase across the reps a player can produce 1ms
@@ -276,15 +276,15 @@ $ npx vitest run src/game/lift --reporter=verbose
  ✓ src/game/lift.test.ts > createLift and stepLift > starts standing, braced and untouched 0ms
  ✓ src/game/lift.test.ts > createLift and stepLift > refuses a nonsense config 0ms
  ✓ src/game/lift.test.ts > createLift and stepLift > stops advancing once resolved, and stops re-emitting events 1ms
- ✓ src/game/lift.test.ts > createLift and stepLift > starts the descent on its own if the player never presses 3ms
- ✓ src/game/lift.test.ts > createLift and stepLift > carries the resolution through to the final state 3ms
+ ✓ src/game/lift.test.ts > createLift and stepLift > starts the descent on its own if the player never presses 2ms
+ ✓ src/game/lift.test.ts > createLift and stepLift > carries the resolution through to the final state 2ms
  ✓ src/game/lift.test.ts > createLift and stepLift > records one timing per cue the player answered 2ms
- ✓ src/game/lift.test.ts > createLift and stepLift > keeps every reported number finite and serialisable 22ms
+ ✓ src/game/lift.test.ts > createLift and stepLift > keeps every reported number finite and serialisable 21ms
 
  Test Files  2 passed (2)
       Tests  222 passed (222)
-   Start at  21:26:15
-   Duration  165.15s (transform 1.43s, setup 0ms, import 1.56s, tests 164.14s, environment 0ms)
+   Start at  21:59:40
+   Duration  166.64s (transform 1.43s, setup 0ms, import 1.56s, tests 165.60s, environment 0ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
@@ -292,51 +292,20 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
 ======================================================================
 $ npx vitest run
-[whole suite] exit code: 1
+[whole suite] exit code: 0
 ======================================================================
 
  RUN  v4.1.10 /home/user/wt-bench-maxeffort
 
- ❯ tools/testBudget.test.ts (7 tests | 1 failed) 448ms
-     × names every file that declares a budget, exactly, and counts the declarations 33ms
 
- Test Files  1 failed | 96 passed (97)
-      Tests  1 failed | 3778 passed (3779)
-   Start at  21:29:01
-   Duration  343.60s (transform 7.60s, setup 0ms, import 32.59s, tests 981.27s, environment 11ms)
+ Test Files  97 passed (97)
+      Tests  3779 passed (3779)
+   Start at  22:02:28
+   Duration  346.61s (transform 7.28s, setup 0ms, import 32.24s, tests 990.73s, environment 11ms)
 
 (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
 Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
-
-⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
-
- FAIL  tools/testBudget.test.ts > the grader that re-takes the measurements > names every file that declares a budget, exactly, and counts the declarations
-AssertionError: expected [ Array(8) ] to deeply equal [ Array(7) ]
-
-- Expected
-+ Received
-
-  [
-    "src/art/lifterSprite.test.ts",
-    "src/career/eligibility.test.ts",
-    "src/cutin/cutInWiring.test.ts",
-    "src/empire/engagement.test.ts",
-+   "src/game/lift.test.ts",
-    "src/game/progression.test.ts",
-    "src/game/streak.test.ts",
-    "src/game/streakEntitlement.test.ts",
-  ]
-
- ❯ tools/testBudget.test.ts:341:37
-    339|     // saying so, and add a sixth file without listing it here and thi…
-    340|     // that too.
-    341|     expect(filesDeclaringBudgets()).toEqual([
-       |                                     ^
-    342|       'src/art/lifterSprite.test.ts',
-    343|       // GDD §2.1's career spine. Its two attendance sweeps used to ru…
-
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
 
 ======================================================================
 $ npx tsc --noEmit
