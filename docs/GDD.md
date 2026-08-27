@@ -1840,6 +1840,123 @@ brings it back online. This keeps the stakes real without creating a
 permanent, un-appealable loss from what could still be a single bad stretch of
 decisions.
 
+### 5.7A The loop is genuinely idle: real wall-clock time, one clock, no mint — REWRITE, BY HUMAN RULING, SUPERSEDING PART OF §5.7 ABOVE AS WRITTEN
+
+**This section replaces the "open up for the day" mechanism §5.7 above was
+written against.** A human played the shipped build and named the defect
+directly: *"Why are there taps? ... 'open up for the day' causes a 12-hour
+shift. That is the bug."* The design direction that followed, also verbatim in
+substance: Gym Empire takes direct inspiration from and mimics
+**Idle Fitness Gym Tycoon** — a real, published mobile game, named here as a structural
+citation to the mechanic being borrowed (wall-clock idle accrual with an
+offline cap, no purchasable bypass of that cap, no gacha, no forced ads) and
+not as an endorsement, a license, or a claim about that game's specific
+numbers, art, or copy, none of which this build reproduces. Differences by
+design: this build renders in the sprite-based Nintendo-nostalgia style
+already set for the lift screen and meet-day cut-ins (§7), and the subject is
+powerlifting, not general fitness. This citation names the source rather than
+dressing it up, in the same structural register `src/career/flight.ts`'s
+header uses for the real federation rulebook it implements — see that file's
+own citation for the house style. **This name is never shown to a player.**
+Every string a player can read in `src/empire/` is grepped for it as part of
+this round's own verification, and the grep returns nothing.
+
+**The mechanism, restated so it cannot be read as three coincidentally
+agreeing systems.** Before this ruling, the only thing that ever advanced the
+gym's clock was a tap — "open up for the day" — and every tap minted a flat,
+fixed block of hours regardless of how much real time had actually passed.
+That is a check-in-to-earn shape, and it is exactly what a human player
+correctly called a bug. **There is now exactly one mechanism**: the gym's
+clock advances only by genuinely elapsed real wall-clock time, capped and
+fractioned precisely as this document's existing offline-earnings rules
+always specified (§5.10's aggregate cap, unchanged in its own arithmetic —
+this is not a new economic model, it is the existing one finally driven
+honestly rather than by a mint). That one real-time reading is then reused
+for three things that used to be described as separate:
+
+- **Money** — production accrues on real elapsed time, capped at the offline
+  horizon exactly as §5.10 states.
+- **Equipment wear** — condition decays with the same real elapsed operation
+  that paid the income, which is what makes "the gym ran, so it wore, so it
+  cost" a single sentence about a single clock rather than two rules that
+  happen to move together.
+- **The maintenance-review cadence** (§5.7's "standing repair order") — WHEN
+  the review is next raised is now also read off the same real elapsed time,
+  not off how many times a player happened to tap a button.
+
+**What this costs, disclosed here because the design doc is the place a
+disagreement with an engineering trade-off gets ruled on, not buried in a
+code comment.** Making the review cadence real-time-keyed necessarily makes
+it sensitive to how long a real gap between two check-ins was — and that is
+new tension with §5.7's own sentence, a few paragraphs above, that failure
+must never move "by elapsed time or by the player simply not opening the
+app." Measured (`src/empire/management.ts`'s header §3g, `management.test.ts`'s
+`EXPECTED_SWEEP.families`): a genuinely long absence — a gap already at or
+past the offline cap, made longer — still cannot move a review, a strike, or
+a failure phase by any amount, on any player-behaviour model; that half of
+the never-punish sentence holds without qualification. What changed is
+narrower and still real: a SHORT gap, still under the offline cap, enlarged
+by a few hours, can now shift which check-in the review lands on, because
+real seconds bank in full below the cap — the same thing money and wear
+already did. That reopened a failure-progression channel a prior round had
+closed to exactly zero (`withinHorizon.all.failureMismatches` moved from 0 to
+1401 across the swept battery). **This is recorded as an open engineering
+trade-off this round did not have the authority to resolve on its own**, not
+as a defect quietly accepted: cadence keyed to real time is what "one clock"
+requires, and the sentence above is what it costs. A future round revisiting
+this needs to either accept the trade-off explicitly, or find a mechanism
+that keys cadence to real elapsed time without letting short-gap size affect
+where a review lands — neither is a small change, and this document should
+not claim more than what is currently true.
+
+**Taps that remain, restated as a closed list.** Buy equipment. Place it on
+the floor. Repair an item. Hire or dismiss a manager. Answer a maintenance
+review (repair it, or decline it — both are real decisions with a shown
+cost). Recover a dormant gym. Relocate up the ladder. Every one of these is a
+decision the player takes and is shown the consequence of before taking it,
+per §5.7's own "told the cost of" standard.
+
+**Taps that are gone, restated as a closed list of one:** anything that mints
+or advances the clock. There is no control anywhere in Gym Empire whose only
+effect is to make time pass faster or to credit a block of banked operation
+on press. **Watching the floor is the game** — GDD §5.13's floor simulation,
+already built, is the primary experience of an open gym: equipment in use,
+members moving, condition and money changing in front of the player without
+a tap, exactly as the reference genre plays. The taps above are the economic
+layer built on top of that floor, not a replacement for watching it run.
+
+**§5.7's failure rule is now trivially true in one direction it was not
+provably true in before.** Since no tap anywhere mints or advances the clock,
+no tap can trigger the failure machinery except the three named decision
+shapes §5.7 already lists (a declined repair, a repeated dismissal, a
+cheap-hire-under-warning) — there is no fourth kind of press left that could
+smuggle in a clock advance disguised as something else.
+
+**Explicit refusal conditions, naming the specific route rather than trusting
+the general rule to cover it by implication — every one of these is CLAUDE.md's
+existing Hard Design Constraints, restated here for this subsystem because
+the check-in-to-earn genre this build now resembles is exactly where these
+constraints are most commonly violated in the wild, and a reader of this
+section should not have to infer the coverage:**
+
+- **No purchasable extension or bypass of the offline-earnings cap, ever.**
+  Nothing purchasable may lengthen the offline-banking horizon, multiply
+  earnings past what real elapsed time already produced, or otherwise let
+  money buy a faster or bigger accrual than the real clock alone would give.
+  This is "nothing purchasable may affect training pace" (CLAUDE.md, no
+  pay-to-win) read to already forbid the single most common monetisation
+  pattern in this exact genre — an IAP that removes or extends the offline
+  cap — and it is written explicitly here so it is never treated as an
+  open question by a later round.
+- **No gacha, restated for this subsystem.** NPC and manager recruitment stay
+  deterministic — flat cost or a reputation threshold — with no random pull
+  and no rarity tier behind currency, exactly as CLAUDE.md's existing rule
+  already requires tree-wide.
+- **No forced ads, restated for this subsystem.** Any ad path this loop ever
+  grows is rewarded-only, per CLAUDE.md's existing rule, and specifically:
+  no ad may be the only way to clear the offline cap or to unlock a tap this
+  section lists as gone.
+
 ### 5.8 Sponsorships
 
 Reputation unlocks equipment-manufacturer sponsorships. A sponsor provides

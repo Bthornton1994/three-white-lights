@@ -202,77 +202,41 @@
  *          repair investment is made item by item and the reopen control
  *          brings the gym back with the ledger cleared.
  *
- *  10. THE PLAYER PATH TO A MAINTENANCE REVIEW — and it is the only block in
- *      this file whose state was reached without pressing a control the
- *      screen labels "not part of the game". It is driven FIRST, on a
- *      genuinely cold gym, and then the page is reloaded so sections 1-9 run
- *      on the cold garage they have always run on.
+ *  10. THE REAL WALL-CLOCK LOOP, REPLACING THE OLD "PLAYER PATH TO A
+ *      MAINTENANCE REVIEW" BLOCK — "kill the mint" ROUND. That block proved
+ *      `'open-up'`, a control that minted a flat `OFFLINE_EARNINGS_CAP_HOURS`
+ *      block on every press. A human playing the shipped build named that
+ *      mint as the bug, verbatim, and it is gone: no tap anywhere on this
+ *      screen advances the clock any more (`GymScreen.tsx`'s own header).
+ *      `AppShell.tsx`'s `GymHost` now drives the clock itself, from genuine
+ *      elapsed real time. This block proves THAT mechanism, on the phone-
+ *      proof bar the ruling states directly: "open gym, no presses, bucks/
+ *      clock have moved."
  *
- *      WHY IT EXISTS. A human played this screen on a real phone and reported
- *      that they could not open a review. That was true and nothing here
- *      could have said so: `ManagedGym.checkInsTaken` had one writer, reached
- *      from one reducer arm, dispatched from the dev clock-skip row — so the
- *      standing review, and every strike, dormancy and recovery downstream of
- *      it, was unreachable by a player. Section 9 drove all of it and passed,
- *      because section 9 presses the dev row.
+ *      10a. Reach the gym screen, read the drawn purse and clock, take NO
+ *           action of any kind, wait a real multiple of
+ *           `EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS` (read off
+ *           `empireTuning.ts` as text, not transcribed), and read both again.
+ *           Both must have moved, with zero presses of anything, dev row
+ *           included — the literal claim in the ruling's own words.
+ *      10b. Leave the gym for the session surface via the real
+ *           `shell-leave-gym` pill, wait a further real span, then return via
+ *           `shell-open-gym`. The gym's reducer state is never destroyed (it
+ *           is always mounted; see `GymHost`'s own header), so this drives
+ *           "the gym runs while open and away": the purse and clock read back
+ *           must reflect the WHOLE real span, absence included, not merely
+ *           the span 10a already measured.
+ *      10c. The address bar carries no query string at every point either
+ *           claim reads the screen — the standing rule this file already
+ *           applies to every other section, read here through `readAddress`.
  *
- *      10a. The player's check-in control is drawn on a cold gym with a real
- *           non-zero box, and the ids the dev row actually draws are read out
- *           of the DOM and asserted not to include it.
- *      10b. A cold gym has taken 0 shifts and has no review open, and the
- *           control's note states which shift the next review comes up at.
- *           That number is the drive's budget — read off the screen, not
- *           transcribed from `MAINTENANCE_ORDER_FIRST_CHECK_IN` — so a
- *           cadence retune moves the check instead of breaking it.
- *      10c. Pressing it that many times advances the drawn check-in count by
- *           exactly one per press, read back after every press.
- *      10d. A review is then OPEN, naming its item and quoting its price with
- *           both refusal answers drawn — and every id this section pressed is
- *           disjoint from the dev row's own. A future round that deleted the
- *           player control and left the loop reachable only through the dev
- *           row fails here rather than passing on the strength of a review
- *           opening.
- *
- *      THE TWO MUTANTS THAT PRODUCED THIS BLOCK'S EVIDENCE, recorded here
- *      because `MUTATION_WITNESSES` has no shape that can hold a browser
- *      check (CLAUDE.md says so, and says to record the witness beside the
- *      check instead). Both were planted, run, and reverted, and the tree was
- *      confirmed byte-identical afterwards by hash:
- *
- *        M1 — `ladderView.tsx`'s `case 'open-up':` body replaced with
- *        `return state;` (the control dispatches, the reducer ignores it).
- *        Run: `FAIL — 3 failing claim(s) of 72`, with 10c reading
- *        `the check-in count did not advance one per press — read
- *        0 -> 0 -> 0 -> 0 -> 0 against a budget of 4` and 10d reading
- *        `no review reachable by the player control — review line "null"`.
- *        (The third failure was 8d's stranded ring, which polls; that run
- *        shared a machine with a full vitest pass and it is not attributed to
- *        the mutant.)
- *
- *        M2 — `GymScreen.tsx`'s `gymscreen-open-up` block moved inside the
- *        `gymscreen-dev-controls` View, changing nothing else. Run:
- *        `FAIL — 2 failing claim(s) of 72`, with 10a reading `the dev row drew
- *        7 control(s) (gymscreen-open-up, gymscreen-open-up-press,
- *        gymscreen-open-up-note, gymscreen-advance-3600, ...)` and 10d's
- *        disjointness conjunct reading `disjoint-from-dev-row=false` while
- *        10c stayed green. That is the point of splitting the two: a control
- *        that works but sits in the dev row is not a player path, and the
- *        claim that says so fires on its own.
- *
- *      THE DOMAIN THE TWO WITNESSES RANGE OVER, stated because a witness says
- *      what one mutant does and nothing about what the check enumerates: the
- *      dev-row set is read from the LIVE DOM subtree of
- *      `gymscreen-dev-controls` at run time, so it covers any control that row
- *      draws, including one added later. It does NOT cover a debug control
- *      placed outside that View — a second dev row under a different testID is
- *      invisible to this and would read as a player path.
- *
- *      WHAT IT DOES NOT SAY, and it is the gap this file cannot close: this
- *      runs under CHROMIUM. The report that produced it came from iOS Safari,
- *      the control it adds is a `Pressable` in a long `ScrollView` exactly
- *      like every other control on this screen, and no WebKit build is
- *      installed in this environment. If a press in this position is being
- *      swallowed on that browser, nothing here would see it.
+ *      WHY THIS IS A GENUINE WALL-CLOCK WAIT AND NOT A FABRICATED ONE.
+ *      Playwright's `page.waitForTimeout` blocks real wall-clock milliseconds
+ *      — there is no fake-timer machinery in this tool at all, so a real
+ *      `Date.now()` gap is what `GymHost`'s own catch-up reads on the other
+ *      side. The cost is stated rather than hidden: this section's own real
+ *      wait is measured wall-clock time on the tool's own reported runtime,
+ *      not a bound guessed in advance.
  *
  * USAGE. Start the web build first (`npx expo start --web`), then:
  *
@@ -382,18 +346,43 @@ const MATS_CLAIM_POLL_MS = 20000;
  * the floor and the slack is for a review that names an already-refused item.
  */
 /**
- * SECTION 10's OWN PARAMETERS — the player path to a maintenance review.
+ * SECTION 10's OWN PARAMETERS — the real wall-clock loop, "kill the mint"
+ * round.
  *
- * `PLAYER_PATH_MAX_PRESSES` is a SAFETY BOUND and not the budget. The budget
- * is read off the drawn screen (the control's own note says which shift the
- * next review comes up at), so a cadence retune moves the drive rather than
- * breaking it; this constant only stops a screen that reports an absurd shift
- * number from turning the run into a grind. It is deliberately several times
- * the shipped cadence.
+ * `WALL_CLOCK_TICK_INTERVAL_SECONDS` is DERIVED, not transcribed — parsed out
+ * of `empireTuning.ts`'s own source text below, the same discipline
+ * `P4B_STATION_USE_CLASS` already uses for a table this file cannot import.
+ * `WALL_CLOCK_WAIT_TICKS` is how many of those intervals section 10a waits
+ * for with zero presses — plural, so one slow tick firing late cannot read as
+ * a failure — and `WALL_CLOCK_AWAY_TICKS` is the further real span section
+ * 10b waits while off the gym surface. Both are stated as a REAL wall-clock
+ * cost in the header above rather than guessed at: this section alone adds
+ * roughly `(WALL_CLOCK_WAIT_TICKS + WALL_CLOCK_AWAY_TICKS) *
+ * WALL_CLOCK_TICK_INTERVAL_SECONDS` real seconds to this tool's own runtime.
  */
-const PLAYER_PATH_MAX_PRESSES = 24;
-/** How long to let a player-taken check-in settle before reading the screen back. */
-const PLAYER_PATH_PRESS_SETTLE_MS = 200;
+const WALL_CLOCK_TICK_INTERVAL_SECONDS = (() => {
+  const sourcePath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'src',
+    'empire',
+    'empireTuning.ts',
+  );
+  const source = readFileSync(sourcePath, 'utf8');
+  const match = /WALL_CLOCK_TICK_INTERVAL_SECONDS:\s*(\d+(?:\.\d+)?)/.exec(source);
+  if (match === null) {
+    throw new Error(
+      `could not find WALL_CLOCK_TICK_INTERVAL_SECONDS in ${sourcePath} — the real knob this tool's wait is derived from has moved or been renamed; refusing to run on a guess`,
+    );
+  }
+  return Number.parseFloat(match[1]);
+})();
+const WALL_CLOCK_WAIT_TICKS = 3;
+const WALL_CLOCK_AWAY_TICKS = 2;
+/** Settle budget after a real wait, before reading the screen back — render/RN-bridge latency, not part of the measured wall-clock span itself. */
+const WALL_CLOCK_READ_SETTLE_MS = 300;
+/** How long to let a nav pill press settle before the destination screen is read. */
+const WALL_CLOCK_NAV_SETTLE_MS = PILL_FADE_BUDGET_MS + 300;
 const S4B_MAX_CLOCK_PRESSES = 12;
 const S4B_MAX_REVIEW_ROUNDS = 10;
 /**
@@ -936,148 +925,90 @@ try {
   readAddress('0: the gym screen, immediately after pressing GYM EMPIRE');
 
   // -------------------------------------------------------------------------
-  // 10. THE PLAYER PATH TO A MAINTENANCE REVIEW, AND IT IS DRIVEN FIRST
-  //     BECAUSE IT IS THE ONLY CLAIM IN THIS FILE THAT IS ABOUT A GYM NOBODY
-  //     HAS TOUCHED A DEV CONTROL ON.
-  //
-  // WHY IT EXISTS. A human played this screen on a real phone and reported, in
-  // their own words, that they could not open a review. That was true, and no
-  // check in this file could have said so: every claim below reaches its state
-  // through `gymscreen-advance-259200`, a control the screen itself labels
-  // "not part of the game". `ManagedGym.checkInsTaken` had exactly one writer,
-  // reached from exactly one reducer arm, dispatched from exactly that row —
-  // so the standing maintenance review, and every strike, dormancy and
-  // recovery downstream of it, was unreachable by a player. Section 9 drove
-  // all of it and passed, because section 9 presses the dev row.
-  //
-  // WHAT MAKES THIS A PLAYER-PATH CLAIM RATHER THAN A SECOND SECTION 9. The
-  // ids this section presses are collected as it goes, and the ids the dev row
-  // actually draws are read out of the DOM — `[data-testid=
-  // "gymscreen-dev-controls"] [data-testid]`, the real subtree, not a list
-  // transcribed here — and the two are asserted DISJOINT. So a future round
-  // that deletes the player control and leaves the loop reachable only through
-  // the dev row fails here rather than passing on the strength of a review
-  // opening.
-  //
-  // THE PRESS BUDGET IS READ OFF THE SCREEN, not transcribed from
-  // `MAINTENANCE_ORDER_FIRST_CHECK_IN`. The control's own note says which
-  // shift the next review comes up at; this section parses that number and
-  // presses exactly that many times. A cadence change retunes the check
-  // instead of breaking it, and a note that lies about its own cadence fails
-  // it.
-  //
-  // THEN THE PAGE IS RELOADED, so sections 1-9 below run on the cold garage
-  // they have always run on. Four openings of wear and money would move every
-  // condition reading section 9 is calibrated against.
+  // 10. THE REAL WALL-CLOCK LOOP — "kill the mint" round. See the file header
+  //     for the full derivation; this is the drive.
   // -------------------------------------------------------------------------
-  readAddress('10: the player path, on a gym no dev control has been pressed on');
-  const playerPressedIds = [];
-  const devControlIds = await page
-    .locator('[data-testid="gymscreen-dev-controls"] [data-testid]')
-    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')));
+  readAddress('10: the gym screen, before any real wait');
 
-  // 10a. The control is DRAWN — a real box, not merely attached — and it is
-  // not one of the dev row's own.
-  await page.getByTestId('gymscreen-open-up').scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
-  const openUpDrawn = await waitUntilDrawn(page, 'gymscreen-open-up-press', BEAT_TIMEOUT_MS);
-  const openUpBox = await boxOf('gymscreen-open-up-press');
-  if (openUpDrawn.drawn && openUpBox !== null && openUpBox.width > 0 && openUpBox.height > 0) {
-    ok(
-      `player path (10a): the check-in control is drawn on a cold gym at a real ${Math.round(openUpBox.width)}x${Math.round(openUpBox.height)} box (${openUpDrawn.why})`,
-    );
-  } else {
-    fail(
-      `player path (10a): gymscreen-open-up-press is not drawn with a real box on a cold gym (${openUpDrawn.why}, box=${JSON.stringify(openUpBox)})`,
-    );
-    throw new Error('unreachable');
-  }
-  if (devControlIds.length > 0 && !devControlIds.includes('gymscreen-open-up-press')) {
-    ok(
-      `player path (10a): the control is outside the dev row — that row draws ${devControlIds.length} control(s) (${devControlIds.join(', ')}) and this is none of them`,
-    );
-  } else {
-    fail(
-      `player path (10a): the dev row drew ${devControlIds.length} control(s) (${devControlIds.join(', ')}) — either it drew none, so this disjointness claim is vacuous, or the player control is one of them`,
-    );
-  }
-
-  // 10b. Before any press: no review is open, and the note says which shift
-  // the next one comes up at. The budget below is that number.
-  const openUpNoteBefore = await textOf('gymscreen-open-up-note');
-  const promptBefore = await textOf('gymscreen-prompt');
-  const reviewShift = numberInText(openUpNoteBefore, /comes up at shift (\d+)/);
-  const shiftsBefore = numberInText(openUpNoteBefore, /(\d+) shift\(s\) opened so far/);
-  const promptItemBefore = await page.getByTestId('gymscreen-prompt-item').count();
+  // 10a. OPEN GYM, NO PRESSES, BUCKS/CLOCK HAVE MOVED — the phone-proof bar,
+  // in the ruling's own words. Read the drawn purse and clock, take no action
+  // of any kind for a real multiple of `WALL_CLOCK_TICK_INTERVAL_SECONDS`,
+  // and read both again.
+  const gymBucksOf = (text) => numberInText(text, /gym bucks: ([\d.]+)/);
+  const clockOf = (text) => text;
+  const purseAt10a0 = gymBucksOf(await textOf('gymscreen-gym-bucks'));
+  const clockAt10a0 = clockOf(await textOf('gymscreen-clock'));
+  const waitMs10a = WALL_CLOCK_WAIT_TICKS * WALL_CLOCK_TICK_INTERVAL_SECONDS * 1000;
+  await page.waitForTimeout(waitMs10a + WALL_CLOCK_READ_SETTLE_MS);
+  const purseAt10a1 = gymBucksOf(await textOf('gymscreen-gym-bucks'));
+  const clockAt10a1 = clockOf(await textOf('gymscreen-clock'));
+  readAddress('10a: after a real wait, zero presses');
   if (
-    reviewShift !== null &&
-    shiftsBefore === 0 &&
-    promptItemBefore === 0 &&
-    promptBefore !== null &&
-    promptBefore.includes('no maintenance review open')
+    purseAt10a0 !== null &&
+    purseAt10a1 !== null &&
+    purseAt10a1 > purseAt10a0 &&
+    clockAt10a0 !== null &&
+    clockAt10a1 !== null &&
+    clockAt10a1 !== clockAt10a0
   ) {
     ok(
-      `player path (10b): a cold gym has taken 0 shifts, has no review open ("${promptBefore}"), and says the next one comes up at shift ${reviewShift}`,
+      `wall clock (10a): open gym, no presses, ${(waitMs10a / 1000).toFixed(1)}s real wait — gym bucks ${purseAt10a0} -> ${purseAt10a1}, clock "${clockAt10a0}" -> "${clockAt10a1}"`,
     );
   } else {
     fail(
-      `player path (10b): expected a cold gym with 0 shifts, no review and a stated next-review shift — note "${openUpNoteBefore}", prompt "${promptBefore}", ${promptItemBefore} prompt-item element(s)`,
+      `wall clock (10a): expected the purse and the clock to both move after a real ${(waitMs10a / 1000).toFixed(1)}s wait with zero presses — gym bucks ${purseAt10a0} -> ${purseAt10a1}, clock "${clockAt10a0}" -> "${clockAt10a1}"`,
     );
-    throw new Error('unreachable');
   }
 
-  // 10c. Press the player control exactly that many times, reading the shift
-  // count back off the screen after each one. A control that dispatches
-  // nothing leaves the count at 0 and fails here rather than at the review.
-  const shiftsSeen = [shiftsBefore];
-  for (let press = 0; press < Math.min(reviewShift, PLAYER_PATH_MAX_PRESSES); press += 1) {
-    const control = page.getByTestId('gymscreen-open-up-press');
-    await control.scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
-    await control.click({ timeout: 10000 });
-    playerPressedIds.push('gymscreen-open-up-press');
-    await page.waitForTimeout(PLAYER_PATH_PRESS_SETTLE_MS);
-    shiftsSeen.push(numberInText(await textOf('gymscreen-open-up-note'), /(\d+) shift\(s\) opened so far/));
-  }
-  const advancesEveryPress = shiftsSeen.every((seen, index) => seen === index);
-  if (advancesEveryPress && shiftsSeen[shiftsSeen.length - 1] === reviewShift) {
-    ok(
-      `player path (10c): ${playerPressedIds.length} press(es) of the player control took the check-in count ${shiftsSeen.join(' -> ')}, read off the drawn screen after every one`,
-    );
+  // 10b. THE GYM RUNS WHILE OPEN AND AWAY. Leave via the real `shell-leave-
+  // gym` pill, wait a further real span off the gym surface entirely, then
+  // return via `shell-open-gym`. `GymHost` is always mounted now (see its own
+  // header), so the reducer state persists; the read immediately on return
+  // must reflect the WHOLE real span since 10a's last read, absence
+  // included, not merely whatever a still-running interval would have banked
+  // had the surface stayed visible for that same span (it would not have —
+  // the interval is cleared while `visible` is false; see `GymHost`).
+  const leaveGymDrawn = await waitUntilDrawn(page, 'shell-leave-gym', BEAT_TIMEOUT_MS);
+  if (!leaveGymDrawn.drawn) {
+    fail(`wall clock (10b): shell-leave-gym never drawn (${leaveGymDrawn.why}) — cannot leave the gym surface`);
   } else {
-    fail(
-      `player path (10c): the check-in count did not advance one per press — read ${shiftsSeen.join(' -> ')} against a budget of ${reviewShift}`,
-    );
+    await page.getByTestId('shell-leave-gym').click({ timeout: 10000 });
+    await page.waitForTimeout(WALL_CLOCK_NAV_SETTLE_MS);
+    readAddress('10b: left the gym for the session surface');
+    const awayStartMs = Date.now();
+    const waitMs10b = WALL_CLOCK_AWAY_TICKS * WALL_CLOCK_TICK_INTERVAL_SECONDS * 1000;
+    await page.waitForTimeout(waitMs10b);
+    const openGymDrawnAgain = await waitUntilDrawn(page, 'shell-open-gym', BEAT_TIMEOUT_MS);
+    if (!openGymDrawnAgain.drawn) {
+      fail(`wall clock (10b): shell-open-gym never drawn again (${openGymDrawnAgain.why}) — cannot return to the gym surface`);
+    } else {
+      await page.getByTestId('shell-open-gym').click({ timeout: 10000 });
+      await page.waitForTimeout(WALL_CLOCK_NAV_SETTLE_MS + WALL_CLOCK_READ_SETTLE_MS);
+      const realAwaySeconds = (Date.now() - awayStartMs) / 1000;
+      const purseAt10b = gymBucksOf(await textOf('gymscreen-gym-bucks'));
+      const clockAt10b = clockOf(await textOf('gymscreen-clock'));
+      readAddress('10b: back on the gym surface, after a real absence');
+      // The absence-only span must itself have banked real seconds — a
+      // strictly greater purse than 10a's SECOND reading, even though no
+      // interval ran while the surface was hidden, because `GymHost`
+      // computes the catch-up from the real gap on return rather than
+      // needing a tick to have fired while away.
+      if (purseAt10a1 !== null && purseAt10b !== null && purseAt10b > purseAt10a1) {
+        ok(
+          `wall clock (10b): left the gym for a real ${realAwaySeconds.toFixed(1)}s (target ${(waitMs10b / 1000).toFixed(1)}s) and returned — gym bucks ${purseAt10a1} -> ${purseAt10b}, clock "${clockAt10a1}" -> "${clockAt10b}", caught up on the whole absence with zero background tick`,
+        );
+      } else {
+        fail(
+          `wall clock (10b): expected the purse to have moved further after a real ${realAwaySeconds.toFixed(1)}s absence from the gym surface — gym bucks ${purseAt10a1} -> ${purseAt10b}`,
+        );
+      }
+    }
   }
+  readAddress('10: the wall-clock loop, done');
 
-  // 10d. THE CLAIM THIS SECTION EXISTS FOR: a review is open, it names its
-  // item and quotes its price, and all three answers are on screen — reached
-  // without a single press on a control the dev row draws.
-  const reviewItemText = await textOf('gymscreen-prompt-item');
-  const reviewStakes = await textOf('gymscreen-prompt-stakes');
-  const answerIds = ['gymscreen-prompt-dismiss', 'gymscreen-prompt-decline'];
-  const answersDrawn = [];
-  for (const id of answerIds) {
-    const box = await boxOf(id);
-    answersDrawn.push(box !== null && box.width > 0 && box.height > 0);
-  }
-  const disjoint = playerPressedIds.every((id) => !devControlIds.includes(id));
-  if (
-    reviewItemText !== null &&
-    /maintenance review: \S+ is at condition [\d.]+ and repairing it costs [\d.]+ gym bucks/.test(reviewItemText) &&
-    answersDrawn.every(Boolean) &&
-    disjoint &&
-    playerPressedIds.length > 0
-  ) {
-    ok(
-      `player path (10d): a maintenance review is OPEN on the played path — "${reviewItemText}" with "${reviewStakes}" and both refusal answers drawn, after ${playerPressedIds.length} press(es) none of which is a dev control`,
-    );
-  } else {
-    fail(
-      `player path (10d): no review reachable by the player control — review line "${reviewItemText}", answers drawn ${JSON.stringify(answersDrawn)}, ${playerPressedIds.length} press(es), disjoint-from-dev-row=${disjoint}`,
-    );
-  }
-  readAddress('10: the player path, with the review open');
-
-  // Back to a cold gym for everything below.
+  // Back to a cold gym for everything below — a fresh reload, not a
+  // continuation of the state 10a/10b just aged, because sections 1-9 are
+  // calibrated against a cold garage.
   await reachGymScreen(false);
   readAddress('10: back on a cold gym, for sections 1-9');
 
@@ -1665,11 +1596,21 @@ try {
     fail(`the +3d dev check-in control (${advanceId}) is not on screen — cannot earn Gym Bucks`);
     throw new Error('unreachable');
   }
+  // THE NUMBER MUST BE PARSED AS A FLOAT, NOT DIGIT-STRIPPED. This used to
+  // read `bucksText.replace(/[^\d]/g, '')` and `Number.parseInt` it, which
+  // silently deleted the decimal point — harmless while every press minted a
+  // whole-number block, and wrong now that `GymHost`'s real wall-clock tick
+  // (this round's own change) has usually already credited a small
+  // FRACTIONAL amount by the time this section runs, since the gym has been
+  // the visible surface, accruing real time, through every section above.
+  // "0.300002" digit-stripped to "0300002" reads as 300002 and the loop
+  // below would never fire. `numberInText` (module scope, already used by
+  // section 10) parses it correctly.
   let bucksText = await textOf('gymscreen-gym-bucks');
   let presses = 0;
   while (
     bucksText !== null &&
-    Number.parseInt(bucksText.replace(/[^\d]/g, ''), 10) < 400 &&
+    (numberInText(bucksText, /gym bucks: ([\d.]+)/) ?? 0) < 400 &&
     presses < MAX_CHECK_INS
   ) {
     await advanceButton.click({ timeout: 10000 });

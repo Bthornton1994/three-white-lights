@@ -34,7 +34,6 @@ import {
   ladderMoveCost,
   moveUpLadder,
   nextLadderRung,
-  playerCheckInGapSeconds,
   unlockedLifts,
 } from './ladder';
 import {
@@ -804,52 +803,76 @@ describe('GymView: the reducer is sessions.ts/ladder.ts, arm for arm', () => {
   });
 });
 
-describe("GymView: 'open-up' is the player's own check-in, and it is the same transition", () => {
-  it('feeds managedCheckIn exactly playerCheckInGapSeconds, and appends no strike', () => {
-    // THE ARM THIS ROUND ADDED, AND WHY IT IS GRADED AGAINST THE DEV ARM
-    // RATHER THAN ON ITS OWN. Before it, `ManagedGym.checkInsTaken` had one
-    // writer reachable from one arm dispatched from one shipped place — the
-    // dev clock-skip row the screen labels "not part of the game" — so no
-    // player could reach a maintenance review, a strike, dormancy or a
-    // recovery. `'open-up'` is the same `advanceGymClock` call with the span
-    // taken from `ladder.ts`; what is asserted here is that it really is the
-    // same call, byte for byte, and not a second accrual path.
+describe('GymView: advance-clock is now the ONLY way the review ordinal moves, and it is keyed to real banked seconds', () => {
+  // 'open-up' — a control that minted a flat OFFLINE_EARNINGS_CAP_HOURS block
+  // on every press — is gone, by human ruling: Gym Empire mimics an idle
+  // game now, and the gym runs on genuine elapsed wall-clock time computed by
+  // `AppShell.tsx`'s `GymHost`, never minted by a tap in this reducer.
+  // `advance-clock` still ends in `advanceGymClock`, which still appends no
+  // strike (see that function's own header note).
+  it('appends no strike, whatever gap it is fed', () => {
     const opened = createGymViewState();
-    const played = dispatchGymThrough(opened, { kind: 'open-up' });
-    const direct = managedCheckIn(
-      opened.managed,
-      opened.managed.gym.ladder.collectedAt + playerCheckInGapSeconds(),
-    );
+    const gap = T.OFFLINE_EARNINGS_CAP_HOURS * T.SECONDS_PER_HOUR;
+    const played = dispatchGymThrough(opened, { kind: 'advance-clock', gapSeconds: gap });
+    const direct = managedCheckIn(opened.managed, opened.managed.gym.ladder.collectedAt + gap);
     expect(played.managed).toEqual(direct.state);
     expect(played.lastAccrual).toEqual(direct.accrual);
     expect(played.lastRefusal).toBeNull();
-    // Byte-identical to the dev arm handed the same span, which is what makes
-    // "the same transition" a measurement rather than a reading of the source.
-    expect(played).toEqual(
-      dispatchGymThrough(opened, { kind: 'advance-clock', gapSeconds: playerCheckInGapSeconds() }),
-    );
-    // §5.7: the arm the player drives appends nothing to the failure ledger.
     expect(played.managed.strikes).toEqual([]);
-    expect(played.managed.checkInsTaken).toBe(opened.managed.checkInsTaken + 1);
   });
 
-  it('raises the standing review on the cadence, counting only player check-ins', () => {
+  it('raises the standing review on the shipped cadence when each advance banks a whole window', () => {
     let played = createGymViewState();
+    const oneWindowSeconds = T.OFFLINE_EARNINGS_CAP_HOURS * T.SECONDS_PER_HOUR;
     const raisedAt: number[] = [];
     for (let shift = 0; shift < T.MAINTENANCE_ORDER_FIRST_CHECK_IN * 2; shift += 1) {
-      played = dispatchGymThrough(played, { kind: 'open-up' });
+      played = dispatchGymThrough(played, { kind: 'advance-clock', gapSeconds: oneWindowSeconds });
       if (maintenancePrompt(played.managed).kind === 'offered') {
         raisedAt.push(played.managed.checkInsTaken);
       }
     }
-    // The cadence is untouched by this round: the first order is at
-    // MAINTENANCE_ORDER_FIRST_CHECK_IN and the next is a stride later, and
-    // nothing about a player-taken check-in makes the first one earlier.
+    // The cadence's OWN shape is untouched by the re-keying: the first order
+    // is at MAINTENANCE_ORDER_FIRST_CHECK_IN and the next is a stride later.
+    // What changed is what "one check-in" now MEANS — a whole banked window
+    // of real time, not a dispatched call — so this test drives exactly that
+    // shape to reach it.
     expect(raisedAt[0]).toBe(T.MAINTENANCE_ORDER_FIRST_CHECK_IN);
     expect(raisedAt).toContain(
       T.MAINTENANCE_ORDER_FIRST_CHECK_IN + T.MAINTENANCE_ORDER_STRIDE,
     );
     expect(played.managed.strikes).toEqual([]);
+  });
+
+  it('THE NON-MASH PROPERTY: the same total real time reaches the same review point whether each window arrives in one advance or in many small ones', () => {
+    // This is the guarantee `ManagedGym.checkInsTaken`'s docstring names —
+    // proven here rather than merely asserted at the `management.ts` layer,
+    // because this is the reducer a mashing burst would actually be fired
+    // through (the wall-clock tick firing repeatedly, or a player rapidly
+    // leaving and returning to the gym surface).
+    //
+    // Both runs are driven WINDOW BY WINDOW rather than as one giant gap,
+    // because a single catch-up event is itself capped at one window by
+    // `bankableOfflineSeconds` — feeding a multi-window gap to one dispatch
+    // would measure the offline cap, not the non-mash property. What is
+    // varied here is how many EVENTS deliver each window's worth of real
+    // time, never how large any one event's own gap is.
+    const oneWindowSeconds = T.OFFLINE_EARNINGS_CAP_HOURS * T.SECONDS_PER_HOUR;
+    let whole = createGymViewState();
+    for (let window = 0; window < T.MAINTENANCE_ORDER_FIRST_CHECK_IN; window += 1) {
+      whole = dispatchGymThrough(whole, { kind: 'advance-clock', gapSeconds: oneWindowSeconds });
+    }
+    const slicesPerWindow = 100;
+    const perSlice = oneWindowSeconds / slicesPerWindow;
+    expect(Number.isInteger(perSlice)).toBe(true);
+    let split = createGymViewState();
+    for (let window = 0; window < T.MAINTENANCE_ORDER_FIRST_CHECK_IN; window += 1) {
+      for (let slice = 0; slice < slicesPerWindow; slice += 1) {
+        split = dispatchGymThrough(split, { kind: 'advance-clock', gapSeconds: perSlice });
+      }
+    }
+    expect(split.managed.bankedOperationSeconds).toBe(whole.managed.bankedOperationSeconds);
+    expect(split.managed.checkInsTaken).toBe(whole.managed.checkInsTaken);
+    expect(split.managed.checkInsTaken).toBe(T.MAINTENANCE_ORDER_FIRST_CHECK_IN);
   });
 });
 

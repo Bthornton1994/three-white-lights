@@ -3230,20 +3230,17 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'gym bucks:',
       'accelerated:',
       'clock:',
-      // THE PLAYER'S OWN CHECK-IN — five chunks, and the reason they are here
-      // is the whole of this round. A human on a real phone reported that they
-      // could not open a maintenance review, and that was structural:
-      // `checkInsTaken` had one writer reached from one arm dispatched from
-      // one place, the dev row this screen labels "not part of the game". This
-      // control takes a check-in in the game's own voice. What a reviewer is
-      // signing on these five: they name no person, no brand and no company,
-      // and they say nothing about being away costing anything — the sentence
-      // is about a shift the player chose to run.
-      'open up for the day',
-      'run the gym for a',
-      '-hour shift and collect what it earned.',
-      'shift(s) opened so far —',
-      '.',
+      // THE PLAYER'S OWN CHECK-IN used to be five chunks here, and the reason
+      // they existed was the round before this one: a human on a real phone
+      // reported that they could not open a maintenance review, and that was
+      // structural — `checkInsTaken` had one writer reached from one arm
+      // dispatched from one place, the dev row this screen labels "not part
+      // of the game". "KILL THE MINT" ROUND: those five chunks are gone. A
+      // later, more specific human ruling named the control itself as the
+      // bug — a tap-to-earn mint — and removed it outright; no tap anywhere
+      // on this screen advances the clock any more. `AppShell.tsx`'s
+      // `GymHost` reaches the same stage-4 loop from genuine elapsed real
+      // time instead, off-screen from every string this census can see.
       'lifts unlocked:',
       'last advance banked',
       's of',
@@ -3661,7 +3658,14 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // per-item versions of that last group are TEMPLATE literals and land in
     // the count below instead, which is the kind of split a hand-sum gets
     // wrong.
-    expect(singleQuoted.size).toBe(506);
+    // 506 -> 501: "KILL THE MINT" ROUND. FIVE literals removed, ENUMERATED
+    // the same way the eight above arrived — `'open-up'` (the reducer arm,
+    // one literal for both spellings), `'gymscreen-open-up'`,
+    // `'gymscreen-open-up-press'`, `'gymscreen-open-up-note'`, and the note's
+    // own review-is-open sentence
+    // (`'a maintenance review is waiting for you further down this screen'`).
+    // Nothing was added.
+    expect(singleQuoted.size).toBe(501);
     expect(doubleQuoted.size).toBe(0);
     // 177 -> 188: sessions.ts's new refuseWith template messages and
     // ladderView.tsx's new testid template literals.
@@ -3970,10 +3974,8 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       // plain literals, so they are counted in `templateChunks` instead of
       // here — the per-item repair, the per-tier hire, and both shops' buys.
       'gymscreen-move-up-unavailable',
-      // The player's own check-in, the control this round exists for.
-      'gymscreen-open-up',
-      'gymscreen-open-up-note',
-      'gymscreen-open-up-press',
+      // 'gymscreen-open-up' / '-note' / '-press' — the player's own check-in
+      // control — are gone, by human ruling ("kill the mint").
       'gymscreen-phase',
       'gymscreen-prompt',
       'gymscreen-prompt-decline',
@@ -4064,10 +4066,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
       'npcId',
       'number',
       'offered',
-      // The new reducer arm — the player's own check-in. A vocabulary word,
-      // not a name: it is an action kind, spelled the same way every other
-      // arm on that union is.
-      'open-up',
+      // 'open-up' — the reducer arm for the player's own check-in — is gone,
+      // by human ruling ("kill the mint"): no tap anywhere on this screen
+      // advances the clock any more.
       'ordinal',
       'other-recovery',
       'out-of-bounds',
@@ -4276,7 +4277,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // above, summed here rather than re-read — a total that agrees with two
     // enumerations is worth more than a total read off a failure value, which
     // is what the note above this line asks for.
-    expect(stringsChecked).toBe(804);
+    // 804 -> 799: "kill the mint" removes exactly 5 single-quoted literals
+    // (enumerated above) and 0 templates.
+    expect(stringsChecked).toBe(799);
 
     // The pattern is not a dead letter, and the probe is DERIVED from the
     // shipped vocabulary. The two lines here were
@@ -4368,7 +4371,9 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // reading its failure value; the gap between 13 literals and 7 probes is
     // the two-letter guard and the dedupe, which is why this number is not a
     // sum of the two above.
-    expect(probes).toBe(439);
+    // 439 -> 435: "kill the mint" removes exactly four `spaceFree` tokens
+    // ('open-up', 'gymscreen-open-up', '-note', '-press'), each a probe.
+    expect(probes).toBe(435);
     // Nothing was silently skipped by the `< 2` guard above — a one-letter
     // token would leave a shipped literal unprobed and this is what says so.
     expect(probes).toBe(spaceFree.length);
@@ -4959,7 +4964,10 @@ describe('the directory is pure, numerically clean and free of dice', () => {
     // 383 -> 385: the two ordinal review knobs
     // (MAINTENANCE_ORDER_FIRST_CHECK_IN, MAINTENANCE_ORDER_STRIDE), one
     // numeric leaf each. Read from this assertion's own failure value.
-    ).toBe(385);
+    // 385 -> 386: "kill the mint" adds one numeric leaf,
+    // WALL_CLOCK_TICK_INTERVAL_SECONDS. Read from this assertion's own
+    // failure value.
+    ).toBe(386);
     // And the instrument is live on a file it has never seen, in both worlds.
     expect(auditSource('src/empire/probe.ts', 'export const RATE = 42;\n').length).toBe(1);
   });

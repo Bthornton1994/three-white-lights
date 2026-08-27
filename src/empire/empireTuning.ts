@@ -297,6 +297,24 @@ export const EMPIRE_TUNING = Object.freeze({
    */
   OFFLINE_EARNINGS_FRACTION: 0.5,
 
+  /**
+   * How often, in real seconds, the gym surface re-reads the wall clock while
+   * it is the one on screen — the interval `AppShell.tsx`'s `GymHost`
+   * dispatches a real-elapsed-time catch-up on, in addition to the one
+   * dispatched on mount and on every transition back onto the surface.
+   *
+   * A GAME-FEEL VALUE (CLAUDE.md's "Game Feel Values Must Be Tunable"), tuned
+   * here as a single named knob rather than scattered as a magic number at
+   * the `setInterval` call site. Picked short enough that a real Playwright
+   * wait of a few real seconds can observe the purse and clock move without
+   * pressing anything — `tools/verify-floor-reachability.mjs`'s
+   * "open gym, no presses, bucks/clock have moved" claim needs a real wait on
+   * the order of this constant, not the offline cap — and long enough that it
+   * is not a busy-poll. Not validated by playtest; say so rather than assert
+   * the value is right, per CLAUDE.md's own rule for exactly this situation.
+   */
+  WALL_CLOCK_TICK_INTERVAL_SECONDS: 5,
+
   // -------------------------------------------------------------------------
   // §5.2 Production
   //
@@ -2303,6 +2321,7 @@ export const EMPIRE_TUNING_CLASSIFICATION = Object.freeze({
   OFFLINE_EARNINGS_NO_PUNISH_HOURS: 'budget',
   OFFLINE_EARNINGS_CAP_HOURS: 'knob',
   OFFLINE_EARNINGS_FRACTION: 'knob',
+  WALL_CLOCK_TICK_INTERVAL_SECONDS: 'knob',
 
   GYM_BUCKS_BASE_PER_HOUR: 'knob',
   NPC_GYM_BUCKS_PER_HOUR_BASE: 'knob',

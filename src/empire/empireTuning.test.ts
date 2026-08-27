@@ -664,24 +664,38 @@ describe('§5.5 social', () => {
     // forbids. They are not. The list bans a CADENCE denominated in a unit
     // training moves — per session, per streak day — because such a cadence
     // makes an OUTCOME arrive sooner for a player who trains more. These two
-    // do the opposite: they take the review OFF a wear clock that absence and
-    // check-in frequency both moved, and put it on the one quantity an
-    // enlarged gap provably cannot change. The measurement is
-    // `management.test.ts`'s `withinHorizon` family at 0 / 0 / 0 against the
-    // condition-gated control's 310 / 186 / 124.
+    // did the opposite when they were added: they took the review OFF a wear
+    // clock that absence and check-in frequency both moved, and put it on a
+    // check-in COUNT that an enlarged gap could not change AT THE TIME. A
+    // later, more specific human ruling re-keyed the ordinal itself, FROM that
+    // check-in count TO real banked seconds — the same one-clock mechanism
+    // money and wear already used (`management.ts` header §3g has the
+    // derivation). That re-keying reopened exactly the channel these two
+    // knobs' names describe: `management.test.ts`'s `withinHorizon` family
+    // now reads 1401 / 582 / 224, GREATER than the condition-gated control's
+    // 310 / 186 / 124 rather than zero against it — a measured regression,
+    // not a claim this test can catch (these two knobs still name no unit a
+    // player's training moves; what moved is what the ORDINAL they gate on is
+    // computed FROM, which is a different file's concern and is disclosed
+    // there rather than here).
     //
-    // The price is stated rather than hidden, because it is real and it is on
-    // this test's own subject: an ordinal cadence IS check-in-keyed, so the
-    // engagement family's failure counters are non-zero (909 / 524) and the
-    // reviews arrive sooner in wall-clock for a player who checks in more.
-    // That WAS routed to a human as an open conflict with §5.7's second
-    // sentence; the ruling withdrew the sentence rather than the cadence, so
-    // 909 / 524 are now what a deleted bar would have measured. `management.ts`
-    // header §3b has it. What keeps the cadence out of THIS ban is unchanged
-    // and is the load-bearing part: no name here is a per-session or
-    // per-streak-day rate, and the never-punish reading the ban exists for —
-    // money — is measured at zero on every engagement policy.
-    expect(examined).toBe(165);
+    // The other price was already stated rather than hidden, because it is
+    // real and it is on this test's own subject: an ordinal cadence IS
+    // check-in-keyed, so the engagement family's failure counters are
+    // non-zero (909 / 524) and the reviews arrive sooner in wall-clock for a
+    // player who checks in more. That WAS routed to a human as an open
+    // conflict with §5.7's second sentence; the ruling withdrew the sentence
+    // rather than the cadence, so 909 / 524 are now what a deleted bar would
+    // have measured. `management.ts` header §3b has it. What keeps the
+    // cadence out of THIS ban is unchanged and is the load-bearing part: no
+    // name here is a per-session or per-streak-day rate, and the never-punish
+    // reading the ban exists for — money — is measured at zero on every
+    // engagement policy.
+    //
+    // 165 -> 166: `WALL_CLOCK_TICK_INTERVAL_SECONDS`, the "kill the mint"
+    // round's one new knob — a real-seconds polling interval, not a cadence
+    // denominated in any unit training moves.
+    expect(examined).toBe(166);
     // And how many (key, unit) pairs were actually driven, so a shortened unit
     // list is red on a count as well as on the membership pin above.
     expect(probed).toBe(examined * bannedUnits.length);
@@ -693,7 +707,8 @@ describe('§5.5 social', () => {
     // 740 -> 745 (149 keys x 5 banned units).
     // 745 -> 815 (163 keys x 5 banned units).
     // 815 -> 825 (165 keys x 5 banned units).
-    expect(probed).toBe(825);
+    // 825 -> 830 (166 keys x 5 banned units).
+    expect(probed).toBe(830);
   });
 
   it('pays the §5.5 rewards in Gym Bucks and pays something', () => {
@@ -723,6 +738,15 @@ describe('§5.5 social', () => {
 const AWAITING_CONSUMER: readonly string[] = [
   'CHECK_IN_TARGET_SECONDS_MAX',
   'CHECK_IN_TARGET_SECONDS_MIN',
+  // NOT actually unconsumed — this is the scan's own declared blind spot,
+  // read literally rather than assumed away. `WALL_CLOCK_TICK_INTERVAL_SECONDS`
+  // is read by `src/shell/AppShell.tsx`'s `GymHost` (Crossing 6's seam: "the
+  // only thing in `src/shell/` that reads `src/empire/`"), which is outside
+  // `shippedModuleNames()`'s reach — that walk covers this directory only, by
+  // its own header's design ("an unseen consumer makes a key look UNCONSUMED,
+  // which puts it on `AWAITING_CONSUMER` where it reads as honest
+  // bookkeeping"). Listed here for that reason, not because nothing reads it.
+  'WALL_CLOCK_TICK_INTERVAL_SECONDS',
 ];
 
 /**

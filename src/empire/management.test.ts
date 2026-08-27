@@ -1443,18 +1443,18 @@ const EXPECTED_SWEEP = Object.freeze({
         pairs: 864,
         comparedReadings: 34560,
         bankedMismatches: 0,
-        conditionMismatches: 19172,
-        moneyMismatches: 32438,
-        failureMismatches: 1920,
+        conditionMismatches: 19031,
+        moneyMismatches: 32556,
+        failureMismatches: 1623,
         reviewsOfferedMismatches: 0,
-        variantConditionLower: 17607,
-        variantDeductedMore: 29566,
+        variantConditionLower: 17668,
+        variantDeductedMore: 30364,
         variantPhaseWorse: 0,
-        variantNetLower: 32143,
+        variantNetLower: 32217,
         matchedTraceFailureMismatches: 0,
-        matchedTraceNetLower: 23509,
-        matchedTracePairs: 628,
-        divergentTracePairs: 236,
+        matchedTraceNetLower: 23185,
+        matchedTracePairs: 617,
+        divergentTracePairs: 247,
       }),
       byPolicy: Object.freeze({
         'hands-off': Object.freeze({
@@ -1468,18 +1468,18 @@ const EXPECTED_SWEEP = Object.freeze({
           variantNetLower: 5426,
         }),
         diligent: Object.freeze({
-          conditionMismatches: 2196,
-          variantConditionLower: 1328,
-          variantDeductedMore: 4463,
+          conditionMismatches: 2152,
+          variantConditionLower: 1340,
+          variantDeductedMore: 4477,
           failureMismatches: 0,
           variantPhaseWorse: 0,
           matchedTraceFailureMismatches: 0,
           reviewsOfferedMismatches: 0,
-          variantNetLower: 5413,
+          variantNetLower: 5403,
         }),
         negligent: Object.freeze({
-          conditionMismatches: 4772,
-          variantConditionLower: 4772,
+          conditionMismatches: 4676,
+          variantConditionLower: 4676,
           variantDeductedMore: 5426,
           failureMismatches: 0,
           variantPhaseWorse: 0,
@@ -1488,28 +1488,28 @@ const EXPECTED_SWEEP = Object.freeze({
           variantNetLower: 5426,
         }),
         cheapskate: Object.freeze({
-          conditionMismatches: 5128,
-          variantConditionLower: 5128,
-          variantDeductedMore: 3469,
-          failureMismatches: 1920,
+          conditionMismatches: 5246,
+          variantConditionLower: 5246,
+          variantDeductedMore: 4226,
+          failureMismatches: 1623,
           variantPhaseWorse: 0,
           matchedTraceFailureMismatches: 0,
           reviewsOfferedMismatches: 0,
-          variantNetLower: 5218,
+          variantNetLower: 5174,
         }),
         delegating: Object.freeze({
-          conditionMismatches: 2488,
-          variantConditionLower: 1791,
-          variantDeductedMore: 5356,
+          conditionMismatches: 2261,
+          variantConditionLower: 1710,
+          variantDeductedMore: 5383,
           failureMismatches: 0,
           variantPhaseWorse: 0,
           matchedTraceFailureMismatches: 0,
           reviewsOfferedMismatches: 0,
-          variantNetLower: 5234,
+          variantNetLower: 5362,
         }),
         redemptive: Object.freeze({
-          conditionMismatches: 1892,
-          variantConditionLower: 1892,
+          conditionMismatches: 2000,
+          variantConditionLower: 2000,
           variantDeductedMore: 5426,
           failureMismatches: 0,
           variantPhaseWorse: 0,
@@ -1524,18 +1524,18 @@ const EXPECTED_SWEEP = Object.freeze({
         pairs: 864,
         comparedReadings: 34560,
         bankedMismatches: 0,
-        conditionMismatches: 16361,
-        moneyMismatches: 22778,
-        failureMismatches: 29307,
+        conditionMismatches: 16499,
+        moneyMismatches: 23013,
+        failureMismatches: 29384,
         reviewsOfferedMismatches: 0,
-        variantConditionLower: 1130,
-        variantDeductedMore: 19381,
-        variantPhaseWorse: 3758,
-        variantNetLower: 20487,
-        matchedTraceFailureMismatches: 18026,
-        matchedTraceNetLower: 10023,
-        matchedTracePairs: 505,
-        divergentTracePairs: 359,
+        variantConditionLower: 1062,
+        variantDeductedMore: 19572,
+        variantPhaseWorse: 3923,
+        variantNetLower: 20896,
+        matchedTraceFailureMismatches: 18848,
+        matchedTraceNetLower: 10908,
+        matchedTracePairs: 525,
+        divergentTracePairs: 339,
       }),
       byPolicy: Object.freeze({
         'hands-off': Object.freeze({
@@ -1549,54 +1549,54 @@ const EXPECTED_SWEEP = Object.freeze({
           variantNetLower: 4283,
         }),
         diligent: Object.freeze({
-          conditionMismatches: 1833,
+          conditionMismatches: 1815,
           variantConditionLower: 0,
           variantDeductedMore: 4283,
           failureMismatches: 5426,
           variantPhaseWorse: 779,
-          matchedTraceFailureMismatches: 1670,
+          matchedTraceFailureMismatches: 2109,
           reviewsOfferedMismatches: 0,
           variantNetLower: 4283,
         }),
         negligent: Object.freeze({
-          conditionMismatches: 3814,
+          conditionMismatches: 3973,
           variantConditionLower: 0,
-          variantDeductedMore: 3814,
+          variantDeductedMore: 3973,
           failureMismatches: 5426,
-          variantPhaseWorse: 475,
+          variantPhaseWorse: 580,
           matchedTraceFailureMismatches: 5426,
           reviewsOfferedMismatches: 0,
-          variantNetLower: 3814,
+          variantNetLower: 3973,
         }),
         cheapskate: Object.freeze({
-          conditionMismatches: 1988,
+          conditionMismatches: 2002,
           variantConditionLower: 0,
-          variantDeductedMore: 1988,
+          variantDeductedMore: 2002,
           failureMismatches: 5426,
-          variantPhaseWorse: 228,
-          matchedTraceFailureMismatches: 3947,
+          variantPhaseWorse: 225,
+          matchedTraceFailureMismatches: 4092,
           reviewsOfferedMismatches: 0,
-          variantNetLower: 1988,
+          variantNetLower: 2002,
         }),
         delegating: Object.freeze({
-          conditionMismatches: 1833,
-          variantConditionLower: 16,
+          conditionMismatches: 1801,
+          variantConditionLower: 44,
           variantDeductedMore: 4283,
           failureMismatches: 5426,
           variantPhaseWorse: 779,
-          matchedTraceFailureMismatches: 1440,
+          matchedTraceFailureMismatches: 1715,
           reviewsOfferedMismatches: 0,
           variantNetLower: 4283,
         }),
         redemptive: Object.freeze({
-          conditionMismatches: 2610,
-          variantConditionLower: 1114,
-          variantDeductedMore: 730,
-          failureMismatches: 2177,
-          variantPhaseWorse: 718,
-          matchedTraceFailureMismatches: 117,
+          conditionMismatches: 2625,
+          variantConditionLower: 1018,
+          variantDeductedMore: 748,
+          failureMismatches: 2254,
+          variantPhaseWorse: 781,
+          matchedTraceFailureMismatches: 80,
           reviewsOfferedMismatches: 0,
-          variantNetLower: 1836,
+          variantNetLower: 2072,
         }),
       }),
     }),
@@ -1605,18 +1605,18 @@ const EXPECTED_SWEEP = Object.freeze({
         pairs: 864,
         comparedReadings: 34560,
         bankedMismatches: 864,
-        conditionMismatches: 15070,
+        conditionMismatches: 18756,
         moneyMismatches: 26028,
-        failureMismatches: 0,
-        reviewsOfferedMismatches: 0,
-        variantConditionLower: 14860,
-        variantDeductedMore: 25839,
-        variantPhaseWorse: 0,
-        variantNetLower: 421,
-        matchedTraceFailureMismatches: 0,
-        matchedTraceNetLower: 165,
-        matchedTracePairs: 848,
-        divergentTracePairs: 16,
+        failureMismatches: 1401,
+        reviewsOfferedMismatches: 7662,
+        variantConditionLower: 15946,
+        variantDeductedMore: 23745,
+        variantPhaseWorse: 582,
+        variantNetLower: 1301,
+        matchedTraceFailureMismatches: 224,
+        matchedTraceNetLower: 175,
+        matchedTracePairs: 598,
+        divergentTracePairs: 266,
       }),
       byPolicy: Object.freeze({
         'hands-off': Object.freeze({
@@ -1626,58 +1626,58 @@ const EXPECTED_SWEEP = Object.freeze({
           failureMismatches: 0,
           variantPhaseWorse: 0,
           matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
+          reviewsOfferedMismatches: 1277,
           variantNetLower: 0,
         }),
         diligent: Object.freeze({
-          conditionMismatches: 1372,
-          variantConditionLower: 1372,
-          variantDeductedMore: 4338,
+          conditionMismatches: 2714,
+          variantConditionLower: 2060,
+          variantDeductedMore: 3683,
           failureMismatches: 0,
           variantPhaseWorse: 0,
           matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
+          reviewsOfferedMismatches: 1277,
           variantNetLower: 0,
         }),
         negligent: Object.freeze({
-          conditionMismatches: 3816,
-          variantConditionLower: 3816,
-          variantDeductedMore: 4338,
-          failureMismatches: 0,
-          variantPhaseWorse: 0,
-          matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
-          variantNetLower: 0,
+          conditionMismatches: 3766,
+          variantConditionLower: 3188,
+          variantDeductedMore: 4002,
+          failureMismatches: 228,
+          variantPhaseWorse: 124,
+          matchedTraceFailureMismatches: 32,
+          reviewsOfferedMismatches: 1277,
+          variantNetLower: 578,
         }),
         cheapskate: Object.freeze({
-          conditionMismatches: 2562,
-          variantConditionLower: 2562,
-          variantDeductedMore: 4338,
-          failureMismatches: 0,
-          variantPhaseWorse: 0,
-          matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
-          variantNetLower: 0,
+          conditionMismatches: 2662,
+          variantConditionLower: 2197,
+          variantDeductedMore: 4240,
+          failureMismatches: 127,
+          variantPhaseWorse: 55,
+          matchedTraceFailureMismatches: 14,
+          reviewsOfferedMismatches: 1277,
+          variantNetLower: 465,
         }),
         delegating: Object.freeze({
-          conditionMismatches: 1604,
-          variantConditionLower: 1394,
-          variantDeductedMore: 4149,
+          conditionMismatches: 2605,
+          variantConditionLower: 1940,
+          variantDeductedMore: 3749,
           failureMismatches: 0,
           variantPhaseWorse: 0,
           matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
-          variantNetLower: 421,
+          reviewsOfferedMismatches: 1277,
+          variantNetLower: 2,
         }),
         redemptive: Object.freeze({
-          conditionMismatches: 1378,
-          variantConditionLower: 1378,
-          variantDeductedMore: 4338,
-          failureMismatches: 0,
-          variantPhaseWorse: 0,
-          matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
-          variantNetLower: 0,
+          conditionMismatches: 2671,
+          variantConditionLower: 2223,
+          variantDeductedMore: 3733,
+          failureMismatches: 1046,
+          variantPhaseWorse: 403,
+          matchedTraceFailureMismatches: 178,
+          reviewsOfferedMismatches: 1277,
+          variantNetLower: 256,
         }),
       }),
     }),
@@ -1686,18 +1686,18 @@ const EXPECTED_SWEEP = Object.freeze({
         pairs: 864,
         comparedReadings: 34560,
         bankedMismatches: 864,
-        conditionMismatches: 15070,
+        conditionMismatches: 18756,
         moneyMismatches: 26028,
-        failureMismatches: 0,
-        reviewsOfferedMismatches: 0,
-        variantConditionLower: 14860,
-        variantDeductedMore: 25839,
-        variantPhaseWorse: 0,
-        variantNetLower: 421,
-        matchedTraceFailureMismatches: 0,
-        matchedTraceNetLower: 165,
-        matchedTracePairs: 848,
-        divergentTracePairs: 16,
+        failureMismatches: 3600,
+        reviewsOfferedMismatches: 7662,
+        variantConditionLower: 15946,
+        variantDeductedMore: 23745,
+        variantPhaseWorse: 582,
+        variantNetLower: 1301,
+        matchedTraceFailureMismatches: 633,
+        matchedTraceNetLower: 175,
+        matchedTracePairs: 598,
+        divergentTracePairs: 266,
       }),
       byPolicy: Object.freeze({
         'hands-off': Object.freeze({
@@ -1707,58 +1707,58 @@ const EXPECTED_SWEEP = Object.freeze({
           failureMismatches: 0,
           variantPhaseWorse: 0,
           matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
+          reviewsOfferedMismatches: 1277,
           variantNetLower: 0,
         }),
         diligent: Object.freeze({
-          conditionMismatches: 1372,
-          variantConditionLower: 1372,
-          variantDeductedMore: 4338,
+          conditionMismatches: 2714,
+          variantConditionLower: 2060,
+          variantDeductedMore: 3683,
           failureMismatches: 0,
           variantPhaseWorse: 0,
           matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
+          reviewsOfferedMismatches: 1277,
           variantNetLower: 0,
         }),
         negligent: Object.freeze({
-          conditionMismatches: 3816,
-          variantConditionLower: 3816,
-          variantDeductedMore: 4338,
-          failureMismatches: 0,
-          variantPhaseWorse: 0,
-          matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
-          variantNetLower: 0,
+          conditionMismatches: 3766,
+          variantConditionLower: 3188,
+          variantDeductedMore: 4002,
+          failureMismatches: 1268,
+          variantPhaseWorse: 124,
+          matchedTraceFailureMismatches: 226,
+          reviewsOfferedMismatches: 1277,
+          variantNetLower: 578,
         }),
         cheapskate: Object.freeze({
-          conditionMismatches: 2562,
-          variantConditionLower: 2562,
-          variantDeductedMore: 4338,
-          failureMismatches: 0,
-          variantPhaseWorse: 0,
-          matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
-          variantNetLower: 0,
+          conditionMismatches: 2662,
+          variantConditionLower: 2197,
+          variantDeductedMore: 4240,
+          failureMismatches: 1286,
+          variantPhaseWorse: 55,
+          matchedTraceFailureMismatches: 229,
+          reviewsOfferedMismatches: 1277,
+          variantNetLower: 465,
         }),
         delegating: Object.freeze({
-          conditionMismatches: 1604,
-          variantConditionLower: 1394,
-          variantDeductedMore: 4149,
+          conditionMismatches: 2605,
+          variantConditionLower: 1940,
+          variantDeductedMore: 3749,
           failureMismatches: 0,
           variantPhaseWorse: 0,
           matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
-          variantNetLower: 421,
+          reviewsOfferedMismatches: 1277,
+          variantNetLower: 2,
         }),
         redemptive: Object.freeze({
-          conditionMismatches: 1378,
-          variantConditionLower: 1378,
-          variantDeductedMore: 4338,
-          failureMismatches: 0,
-          variantPhaseWorse: 0,
-          matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
-          variantNetLower: 0,
+          conditionMismatches: 2671,
+          variantConditionLower: 2223,
+          variantDeductedMore: 3733,
+          failureMismatches: 1046,
+          variantPhaseWorse: 403,
+          matchedTraceFailureMismatches: 178,
+          reviewsOfferedMismatches: 1277,
+          variantNetLower: 256,
         }),
       }),
     }),
@@ -1767,18 +1767,18 @@ const EXPECTED_SWEEP = Object.freeze({
         pairs: 864,
         comparedReadings: 34560,
         bankedMismatches: 864,
-        conditionMismatches: 15070,
+        conditionMismatches: 18767,
         moneyMismatches: 26028,
-        failureMismatches: 0,
-        reviewsOfferedMismatches: 0,
-        variantConditionLower: 14860,
-        variantDeductedMore: 25839,
-        variantPhaseWorse: 0,
-        variantNetLower: 421,
-        matchedTraceFailureMismatches: 0,
-        matchedTraceNetLower: 165,
-        matchedTracePairs: 848,
-        divergentTracePairs: 16,
+        failureMismatches: 1401,
+        reviewsOfferedMismatches: 7662,
+        variantConditionLower: 15937,
+        variantDeductedMore: 23745,
+        variantPhaseWorse: 582,
+        variantNetLower: 1460,
+        matchedTraceFailureMismatches: 224,
+        matchedTraceNetLower: 196,
+        matchedTracePairs: 598,
+        divergentTracePairs: 266,
       }),
       byPolicy: Object.freeze({
         'hands-off': Object.freeze({
@@ -1788,58 +1788,58 @@ const EXPECTED_SWEEP = Object.freeze({
           failureMismatches: 0,
           variantPhaseWorse: 0,
           matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
+          reviewsOfferedMismatches: 1277,
           variantNetLower: 0,
         }),
         diligent: Object.freeze({
-          conditionMismatches: 1372,
-          variantConditionLower: 1372,
-          variantDeductedMore: 4338,
+          conditionMismatches: 2714,
+          variantConditionLower: 2060,
+          variantDeductedMore: 3683,
           failureMismatches: 0,
           variantPhaseWorse: 0,
           matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
+          reviewsOfferedMismatches: 1277,
           variantNetLower: 0,
         }),
         negligent: Object.freeze({
-          conditionMismatches: 3816,
-          variantConditionLower: 3816,
-          variantDeductedMore: 4338,
-          failureMismatches: 0,
-          variantPhaseWorse: 0,
-          matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
-          variantNetLower: 0,
+          conditionMismatches: 3766,
+          variantConditionLower: 3187,
+          variantDeductedMore: 4002,
+          failureMismatches: 228,
+          variantPhaseWorse: 124,
+          matchedTraceFailureMismatches: 32,
+          reviewsOfferedMismatches: 1277,
+          variantNetLower: 609,
         }),
         cheapskate: Object.freeze({
-          conditionMismatches: 2562,
-          variantConditionLower: 2562,
-          variantDeductedMore: 4338,
-          failureMismatches: 0,
-          variantPhaseWorse: 0,
-          matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
-          variantNetLower: 0,
+          conditionMismatches: 2662,
+          variantConditionLower: 2196,
+          variantDeductedMore: 4240,
+          failureMismatches: 127,
+          variantPhaseWorse: 55,
+          matchedTraceFailureMismatches: 14,
+          reviewsOfferedMismatches: 1277,
+          variantNetLower: 488,
         }),
         delegating: Object.freeze({
-          conditionMismatches: 1604,
-          variantConditionLower: 1394,
-          variantDeductedMore: 4149,
+          conditionMismatches: 2605,
+          variantConditionLower: 1940,
+          variantDeductedMore: 3749,
           failureMismatches: 0,
           variantPhaseWorse: 0,
           matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
-          variantNetLower: 421,
+          reviewsOfferedMismatches: 1277,
+          variantNetLower: 2,
         }),
         redemptive: Object.freeze({
-          conditionMismatches: 1378,
-          variantConditionLower: 1378,
-          variantDeductedMore: 4338,
-          failureMismatches: 0,
-          variantPhaseWorse: 0,
-          matchedTraceFailureMismatches: 0,
-          reviewsOfferedMismatches: 0,
-          variantNetLower: 0,
+          conditionMismatches: 2682,
+          variantConditionLower: 2216,
+          variantDeductedMore: 3733,
+          failureMismatches: 1046,
+          variantPhaseWorse: 403,
+          matchedTraceFailureMismatches: 178,
+          reviewsOfferedMismatches: 1277,
+          variantNetLower: 361,
         }),
       }),
     }),
@@ -2427,40 +2427,41 @@ const EXPECTED_SWEEP = Object.freeze({
    * it is algebraically made of, with the identity's closing error pinned at
    * zero so nothing is absorbed.
    *
-   * It fell 923 -> 421 with the review ordinal, and — this is the part worth
-   * reading — it collapsed onto ONE player model. Every one of the 421
-   * readings is `'delegating'`, the model that hires the top-tier manager and
-   * answers every review with a repair, and the three terms that carry it are
-   * the manager's autonomous repairs (196), the manager's wage (195) and the
-   * standing repair bill (30).
-   *
-   * All three are OPERATION-keyed spends, which is what `docs/GDD.md` §5.13's
-   * first bullet keeps operation-keyed on purpose: the wage is charged per
-   * BANKED hour and the auto-repairs follow the wear those same banked hours
-   * caused, so a run that banked more paid more. That is the price of the
-   * wear basis, not a leak through the failure ledger, and the four models
-   * that used to contribute here — `negligent` 281, `cheapskate` 289 and
-   * `redemptive` 56, all of them downstream of a review arriving a check-in
-   * early — now read exactly zero.
+   * RE-DERIVED RATHER THAN RE-PINNED BY GUESS, AND IT GREW — 421 -> 1301 —
+   * BECAUSE THE ORDINAL IS NO LONGER BLIND TO WHICH RUN BANKED MORE.
+   * `management.ts` header §3a's "RE-KEYED, BY HUMAN RULING" replaced a
+   * dispatch-count ordinal with a real-banked-seconds one, so a within-horizon
+   * gap enlargement (this whole family's domain — see `withinHorizonPairKeys`)
+   * now genuinely can move the review onto a different check-in index, not
+   * only the money the review's ANSWER spends. `largestTermIncome` carrying
+   * 1049 of the 1301 readings — a term that used to read zero here — is that
+   * channel showing up directly: a review opening on a different index changes
+   * which check-ins are even OFFERED a repair to accept, which moves paid
+   * income before any decision is taken. The remaining carriers are
+   * `decisionSpend` (183, `'redemptive'`) and `wage` (69, `'delegating'`),
+   * both still real but each now a minority of the total rather than the
+   * whole of it, and `autoRepair`/`repairBill`/`managerAsset` all now read
+   * zero — this residual moved to a different shape of carrier along with
+   * the different size.
    */
   withinHorizonAttribution: Object.freeze({
-    netLowerReadings: 421,
-    netLowerPairs: 13,
-    largestTermIncome: 0,
-    largestTermWage: 195,
-    largestTermAutoRepair: 196,
-    largestTermDecisionSpend: 0,
-    largestTermRepairBill: 30,
+    netLowerReadings: 1301,
+    netLowerPairs: 86,
+    largestTermIncome: 1049,
+    largestTermWage: 69,
+    largestTermAutoRepair: 0,
+    largestTermDecisionSpend: 183,
+    largestTermRepairBill: 0,
     largestTermManagerAsset: 0,
-    maxDeficitGymBucks: 105.32,
+    maxDeficitGymBucks: 1139.82,
     identityErrorGymBucks: 0,
     byPolicy: Object.freeze({
       'hands-off': 0,
       diligent: 0,
-      negligent: 0,
-      cheapskate: 0,
-      delegating: 421,
-      redemptive: 0,
+      negligent: 578,
+      cheapskate: 465,
+      delegating: 2,
+      redemptive: 256,
     }),
     carriersByPolicy: Object.freeze({
       'hands-off': Object.freeze({
@@ -2480,7 +2481,7 @@ const EXPECTED_SWEEP = Object.freeze({
         managerAsset: 0,
       }),
       negligent: Object.freeze({
-        income: 0,
+        income: 578,
         wage: 0,
         autoRepair: 0,
         decisionSpend: 0,
@@ -2488,7 +2489,7 @@ const EXPECTED_SWEEP = Object.freeze({
         managerAsset: 0,
       }),
       cheapskate: Object.freeze({
-        income: 0,
+        income: 465,
         wage: 0,
         autoRepair: 0,
         decisionSpend: 0,
@@ -2497,44 +2498,48 @@ const EXPECTED_SWEEP = Object.freeze({
       }),
       delegating: Object.freeze({
         income: 0,
-        wage: 195,
-        autoRepair: 196,
+        wage: 2,
+        autoRepair: 0,
         decisionSpend: 0,
-        repairBill: 30,
+        repairBill: 0,
         managerAsset: 0,
       }),
       redemptive: Object.freeze({
-        income: 0,
-        wage: 0,
+        income: 6,
+        wage: 67,
         autoRepair: 0,
-        decisionSpend: 0,
+        decisionSpend: 183,
         repairBill: 0,
         managerAsset: 0,
       }),
     }),
   }),
   /**
-   * THE SPLIT THAT SAYS WHY THE WITHIN-HORIZON ZERO IS ZERO, and where the
-   * engagement residual lives. Every pair is bucketed by its own
-   * `reviewsOfferedMismatches` — a REPORTED field of `ManagedReading`, not a
-   * recomputation of the cadence — and the failure counters are tallied on
-   * each side.
+   * THE SPLIT THAT USED TO SAY WHY THE WITHIN-HORIZON ZERO WAS ZERO. It no
+   * longer is zero — see `management.ts` header §3a's retraction and
+   * §3f-equivalent note below. RE-DERIVED, NOT RE-PINNED BY GUESS: every
+   * number here was regenerated by re-running this exact walk after the
+   * ordinal's re-keying, not adjusted to make a stale claim read true.
    *
-   * `withinHorizonShiftedPairs` is 0 and that is the point rather than an
-   * empty domain: the same walk over the same 864 pairs puts 155 of them on
-   * the shifted side under `condition-gated-prompt-control`, which is the
-   * mechanism this round replaced. So the bucket is reachable, it is measured
-   * to be reachable on this tree, and the shipped gate empties it.
+   * `withinHorizonShiftedPairs` is now 420 of 864 (up from 0): a within-
+   * horizon gap enlargement can now move the review onto a different index,
+   * because the ordinal reads genuinely accumulated real banked seconds
+   * rather than a dispatch count, and enlarging a within-horizon gap adds to
+   * that total in full. `controlPairs`/`controlShiftedPairs` — the removed
+   * `condition-gated-prompt-control` comparison — are UNCHANGED at 864/155,
+   * because that gate never read `checkInsTaken` and this round did not touch
+   * it. So the shipped gate no longer empties the shifted bucket the way it
+   * used to; it now sits closer to the control's own shape than to zero.
    */
   review: Object.freeze({
     withinHorizonPairs: 864,
-    withinHorizonMatchedPairs: 864,
-    withinHorizonShiftedPairs: 0,
+    withinHorizonMatchedPairs: 444,
+    withinHorizonShiftedPairs: 420,
     withinHorizonFailureMismatchesOnMatched: 0,
-    withinHorizonFailureMismatchesOnShifted: 0,
+    withinHorizonFailureMismatchesOnShifted: 1401,
     withinHorizonPhaseWorseOnMatched: 0,
-    withinHorizonPhaseWorseOnShifted: 0,
-    withinHorizonMatchedTracePairs: 848,
+    withinHorizonPhaseWorseOnShifted: 582,
+    withinHorizonMatchedTracePairs: 598,
     controlPairs: 864,
     controlMatchedPairs: 709,
     controlShiftedPairs: 155,
@@ -2550,25 +2555,34 @@ const EXPECTED_SWEEP = Object.freeze({
     engagementPhaseWorseOnMatched: 0,
     engagementPhaseWorseOnShifted: 524,
   }),
+  // RE-DERIVED, NOT RE-PINNED BY GUESS, after `checkInsTaken` was re-keyed to
+  // real banked seconds (`management.ts` header §3a) — regenerated by
+  // re-running the sweep, not adjusted by hand. `runs` and `hires` are
+  // unchanged (neither reads the ordinal); `controlStrikes`/`controlCharges`
+  // are also unchanged (the visit-fee and repeat-strike CONTROL wirings they
+  // measure do not gate on `checkInsTaken` either); `controlSlumps` and
+  // `controlRepeatStrikes` moved slightly because those two controls still
+  // wrap the shipped ordinal-gated review underneath their own added
+  // mechanism, so a shift in when a review opens shifts them a little too.
   domain: Object.freeze({
     runs: 13537,
     checkIns: 479324,
-    promptsOffered: 93215,
-    promptsAlreadyRefused: 26032,
-    strikesRecorded: 38491,
-    runsThatFailed: 7260,
+    promptsOffered: 90014,
+    promptsAlreadyRefused: 24900,
+    strikesRecorded: 38067,
+    runsThatFailed: 7240,
     runsThatRecovered: 2072,
-    autoRepairs: 6849,
-    autoRepairsReopeningRefusedOrders: 182,
+    autoRepairs: 7470,
+    autoRepairsReopeningRefusedOrders: 161,
     autoRepairsReopeningRefusedOrdersOnShipped: 0,
     hires: 6184,
-    declines: 20912,
-    uncountedDeclines: 12179,
-    countedDismissals: 20217,
+    declines: 20346,
+    uncountedDeclines: 11695,
+    countedDismissals: 19565,
     controlStrikes: 20424,
     controlCharges: 33774,
-    controlSlumps: 1321,
-    controlRepeatStrikes: 3578,
+    controlSlumps: 1323,
+    controlRepeatStrikes: 3414,
   }),
   safety: Object.freeze({
     negativePurses: 0,
@@ -2607,6 +2621,14 @@ function gymAt(
     // `no-prompt` arms below are driven from, and the third argument is for a
     // fixture that wants the order to open on its OWN next check-in.
     checkInsTaken,
+    // Kept consistent with `checkInsTaken`, at the exact window boundary that
+    // ordinal represents — `checkInWithWearBasis` now derives `checkInsTaken`
+    // FROM this field (`management.ts` header §3a), so a fixture that set one
+    // without the other would desync the instant a check-in was fed to it: a
+    // hand-set `checkInsTaken` of N with `bankedOperationSeconds` left at the
+    // `createManagedGym()` default of 0 would make the NEXT check-in compute
+    // its ordinal from 0 banked seconds, not from N windows' worth.
+    bankedOperationSeconds: checkInsTaken * HORIZON_SECONDS,
   });
 }
 
@@ -2899,11 +2921,19 @@ const EXPECTED_ARMS: Readonly<Record<string, number>> = Object.freeze({
  * whole battery — measured off the sweep and pinned, so a policy change
  * moves a number a reader signs rather than a coverage nobody re-reads.
  */
+// RE-DERIVED, NOT RE-PINNED BY GUESS: every number below (except the two
+// noted as unchanged) was regenerated by re-running `armCensus()` over the
+// whole battery after `checkInsTaken` was re-keyed to real banked seconds
+// (`management.ts` header §3a's "RE-KEYED, BY HUMAN RULING"). The re-keying
+// changes WHEN a review opens relative to a run's own check-in count, so it
+// moves which decisions a scripted player model takes and when — these
+// counts are a direct, expected consequence, not a sign of a broken sweep.
 const EXPECTED_RUN_ARMS: Readonly<Record<string, number>> = Object.freeze({
-  'run:repair': 12037,
-  'run:prompt-repair': 29171,
-  'run:prompt-dismiss': 38157,
-  'run:decline-repair': 20912,
+  'run:repair': 11804,
+  'run:prompt-repair': 28168,
+  'run:prompt-dismiss': 36654,
+  'run:decline-repair': 20346,
+  // Unchanged by the re-keying: neither hire count reads `checkInsTaken`.
   'run:hire-novice': 2072,
   'run:hire-steady': 2113,
   'run:hire-veteran': 1999,
@@ -2929,11 +2959,13 @@ const EXPECTED_RUN_ARMS: Readonly<Record<string, number>> = Object.freeze({
   // this row to zero and reddens the set equality below. That is the coverage
   // the control is carrying on the shipped path's behalf, and it is written
   // here as well as at the family so a tidy-up round reads it from either end.
+  // Also unchanged: no wiring or family reads `checkInsTaken` to decide a
+  // dismissal, so the re-keying does not touch this one either.
   'run:dismiss-manager': 41,
-  'run:recover': 3860,
-  'run-phase:sound': 329020,
-  'run-phase:warned': 25806,
-  'run-phase:failed': 124498,
+  'run:recover': 3753,
+  'run-phase:sound': 331072,
+  'run-phase:warned': 25603,
+  'run-phase:failed': 122649,
 });
 
 // ---------------------------------------------------------------------------
@@ -3542,17 +3574,30 @@ describe('wirings and the composed run', () => {
     expect(recovered.state.checkInsTaken).toBe(dismissedTwice.checkInsTaken);
   });
 
-  it('the review series is byte-identical under ANY enlargement of a gap, and is not under the control', () => {
-    // THE STRUCTURAL FACT THE WITHIN-HORIZON ZERO RESTS ON, driven directly
-    // and at a magnitude the sweep's own gap menu does not reach: a schedule
-    // and the same schedule with one gap enlarged by a day, a week or a year
-    // have the same NUMBER of check-ins, so the ordinal lands on the same
-    // indices and the reported `reviewOffered` series is byte-identical.
+  it('RETRACTED CLAIM, KEPT AS A MEASUREMENT: the review series used to be byte-identical under any enlargement of a within-horizon gap, and is not any more', () => {
+    // WHAT THIS TEST USED TO ASSERT, AND WHY IT NO LONGER CAN — read this
+    // before touching the numbers below. Before the human ruling that keys
+    // the review cadence to real banked seconds rather than to a dispatched
+    // check-in count (`management.ts` header §3a, "RE-KEYED, BY HUMAN
+    // RULING"), `checkInsTaken` was `+1` per call and could not see how long
+    // any individual gap was — so enlarging one gap (this test's whole
+    // domain: the gap stays under the offline cap, so nothing is quantised
+    // away) could never change which check-in INDEX the review opened at,
+    // and the reported `reviewOffered` series was provably invariant.
     //
-    // The control half is what stops this being a tautology about a field
-    // nothing writes: the same comparison under
-    // `condition-gated-prompt-control` — where the review is raised by wear —
-    // differs, and is asserted to differ.
+    // That argument no longer holds. `checkInsTaken` is now
+    // `Math.floor(bankedOperationSeconds / REVIEW_ORDINAL_WINDOW_SECONDS)`,
+    // and `bankedOperationSeconds` accumulates a WITHIN-horizon gap's real
+    // seconds in full — the same accrual money and wear were already reading.
+    // Enlarging such a gap therefore genuinely can push the ordinal (and so
+    // the review) onto a different index, on the SAME calendar with the SAME
+    // number of check-ins. This is "one clock" doing exactly what the ruling
+    // asked for — the review cadence reading the same real elapsed time money
+    // and wear already read — and it reopens a channel a prior round spent
+    // real effort closing to zero. That regression is measured here rather
+    // than hidden: see `management.ts` header §3a's retraction and the
+    // `withinHorizon` family in `EXPECTED_SWEEP` for the size of it across the
+    // whole battery, not just this one schedule.
     const gaps = gapScheduleAt(MANAGEMENT_SWEEP.SEEDS[0], 0);
     const baseTimes = timesOf(gaps);
     const control = managementWiring('condition-gated-prompt-control', 0);
@@ -3560,6 +3605,7 @@ describe('wirings and the composed run', () => {
       run.readings.map((reading) => (reading.reviewOffered ? '1' : '0')).join('');
     const shippedBase = seriesOf(runManagedGym(baseTimes, 'negligent'));
     const controlBase = seriesOf(runManagedGym(baseTimes, 'negligent', control));
+    let shippedDifferences = 0;
     let controlDifferences = 0;
     let enlargements = 0;
     for (const extra of [
@@ -3571,32 +3617,29 @@ describe('wirings and the composed run', () => {
       for (let gapAt = 0; gapAt < gaps.length; gapAt += 1) {
         enlargements += 1;
         const longer = timesOf(moreAbsentBy(gaps, gapAt, extra));
-        expect(seriesOf(runManagedGym(longer, 'negligent')), `+${extra}s at ${gapAt}`).toBe(
-          shippedBase,
-        );
+        if (seriesOf(runManagedGym(longer, 'negligent')) !== shippedBase) {
+          shippedDifferences += 1;
+        }
         if (seriesOf(runManagedGym(longer, 'negligent', control)) !== controlBase) {
           controlDifferences += 1;
         }
       }
     }
     expect(enlargements).toBe(160);
-    // THE CONTROL'S EFFECT SIZE, pinned as a count rather than as "greater
-    // than zero", so a control that stopped moving reports its own size
-    // instead of a bound nobody re-reads. 15 of the 160 enlargements move the
-    // condition-gated review series and 160 of 160 leave the shipped one
-    // byte-identical.
-    //
-    // 15 and not 160, and the reason is worth reading rather than treating as
-    // a weak control: an enlargement only moves the condition-gated series
-    // when it adds BANKED seconds AND the extra wear pushes a crossing over an
-    // index boundary. Enlarging a gap that already exceeds the offline horizon
-    // adds no banked seconds at all — three of the four extras here are past
-    // it — so most enlargements move nothing under either gate. The shipped
-    // claim is the stronger one precisely because it holds for all 160
-    // including the 15.
+    // THE SHIPPED EFFECT SIZE, measured rather than assumed zero. Every one
+    // of these enlargements is within the offline horizon by construction
+    // (`gapScheduleAt`'s own generator — see `MANAGEMENT_SWEEP`), so this is
+    // the real-time-keyed ordinal responding to genuinely more elapsed
+    // operation between two check-ins, on a calendar where the check-in COUNT
+    // never changes.
+    expect(shippedDifferences).toBe(39);
+    // THE CONTROL'S OWN EFFECT SIZE IS UNCHANGED — `condition-gated-prompt-
+    // control` never read `checkInsTaken` at all, so this round's re-keying
+    // could not have moved it, and it did not: still 15 of 160.
     expect(controlDifferences).toBe(15);
     // Non-vacuity on the series itself: it is not all zeros or all ones, so
-    // "byte-identical" is a statement about a series with structure in it.
+    // "byte-identical" (when it held) was a statement about a series with
+    // structure in it, not an empty one.
     expect(shippedBase).toContain('1');
     expect(shippedBase).toContain('0');
   });
@@ -3923,65 +3966,95 @@ describe('the never-punish sweep', () => {
     });
   });
 
-  it('breaks the failure chain: within-horizon failure progression is ZERO on all six policies', () => {
-    // THE ROUND'S BAR, ASSERTED ON THE PINNED CONSTANT so that re-pinning a
-    // row to something friendlier is red rather than quiet.
-    //
-    // `docs/GDD.md` §5.13's wear-basis ruling: "Within-horizon failure
+  it('RETRACTED IN PART, BY HUMAN RULING: within-horizon failure progression was ZERO on all six policies, and the re-keyed ordinal reopens it — pure absence stays ZERO', () => {
+    // THE ROUND'S ORIGINAL BAR, KEPT VERBATIM SO THE RETRACTION IS LEGIBLE.
+    // `docs/GDD.md` §5.13's wear-basis ruling said: "Within-horizon failure
     // progression goes to ZERO on the six-policy sweep, matched-trace
-    // included, with the unfixed non-zero kept runnable as the control."
-    // All three clauses are checked here, in that order.
+    // included, with the unfixed non-zero kept runnable as the control." A
+    // later, more specific human ruling — the one this file's own §3a header
+    // calls "RE-KEYED, BY HUMAN RULING" — asked for the review cadence to be
+    // driven by the same real banked seconds money and wear already read.
+    // Those two rulings are in tension on exactly this family, and the later
+    // one wins by construction: `checkInsTaken` now reads real elapsed
+    // operation time, and this family's whole domain is gap enlargements that
+    // stay under the offline cap — the one case where that reading can move.
+    // Measured, not argued: it moved, and the size is pinned below rather
+    // than hidden behind a passing test.
     const within = EXPECTED_SWEEP.families.withinHorizon;
     const control = EXPECTED_SWEEP.families.withinHorizonConditionGatedControl;
     const engagement = EXPECTED_SWEEP.families.engagement;
+    const pureAbsence = EXPECTED_SWEEP.families.pureAbsence;
 
-    // (1) ZERO, on the family and on every one of the six policies, on all
-    // three failure counters. Not a bound and not a subset of policies.
-    expect(within.all.failureMismatches).toBe(0);
-    expect(within.all.variantPhaseWorse).toBe(0);
-    expect(within.all.matchedTraceFailureMismatches).toBe(0);
+    // (0) WHAT DID NOT BREAK, CHECKED FIRST BECAUSE IT IS THE MORE IMPORTANT
+    // CLAIM. `pureAbsence` enlarges gaps that are ALREADY at or beyond the
+    // offline horizon — genuine, long real absence, the "player simply not
+    // opening the app" case §5.7 names by name. Every such gap's banked
+    // contribution is capped at exactly one window before AND after the
+    // enlargement, so `bankedOperationSeconds` — and therefore the review
+    // ordinal — cannot move at all. This is real ZERO, not a narrowed claim:
+    // long absence still cannot advance a review, a strike, or a phase, by
+    // any amount, on any policy.
+    expect(pureAbsence.all.failureMismatches).toBe(0);
+    expect(pureAbsence.all.variantPhaseWorse).toBe(0);
+    expect(pureAbsence.all.matchedTraceFailureMismatches).toBe(0);
+    expect(pureAbsence.all.conditionMismatches).toBe(0);
+    expect(pureAbsence.all.moneyMismatches).toBe(0);
+
+    // (1) WHAT DID BREAK: `withinHorizon` enlarges a gap that STAYS under the
+    // cap, so its real seconds bank in full both before and after — the same
+    // way they already did for money and wear (allowed) and now also for the
+    // review ordinal (the newly-opened channel). No longer zero on any of the
+    // three failure counters, on the family or on any policy that can strike.
+    expect(within.all.failureMismatches).toBe(1401);
+    expect(within.all.variantPhaseWorse).toBe(582);
+    expect(within.all.matchedTraceFailureMismatches).toBe(224);
     for (const policy of MANAGEMENT_POLICIES) {
-      expect(within.byPolicy[policy].failureMismatches, `withinHorizon/${policy}`).toBe(0);
-      expect(within.byPolicy[policy].variantPhaseWorse, `withinHorizon/${policy}`).toBe(0);
-      expect(within.byPolicy[policy].matchedTraceFailureMismatches, `withinHorizon/${policy}`).toBe(
-        0,
-      );
+      const row = within.byPolicy[policy];
+      if (FAILURE_CLEAN_POLICIES.includes(policy)) {
+        // The three player models that never refuse a standing order still
+        // cannot append a strike, whatever the review's timing does — a
+        // review with nothing behind it moves no failure counter.
+        expect(row.failureMismatches, `withinHorizon/${policy}`).toBe(0);
+        expect(row.variantPhaseWorse, `withinHorizon/${policy}`).toBe(0);
+      } else {
+        expect(row.failureMismatches, `withinHorizon/${policy}`).toBeGreaterThan(0);
+      }
     }
 
-    // (2) MATCHED-TRACE INCLUDED, and the clause is not satisfiable by an
-    // empty matched-trace population: 848 of the 864 pairs realize identical
-    // decision traces, so the zero above is a zero over a real population.
-    // The 16 that diverge are hires, which append no strike here — the
-    // divergence census in `the review's arrival is index-invariant` names
-    // them rather than leaving them as an unexplained remainder.
+    // (2) MATCHED-TRACE POPULATION, still non-empty and still real, though
+    // smaller than before: 598 of 864 pairs (down from 848) realize identical
+    // decision traces. The divergence census in the review-arrival test names
+    // the wider set of decision kinds now involved.
     expect(within.all.matchedTracePairs).toBeGreaterThan(0);
     expect(within.all.matchedTracePairs + within.all.divergentTracePairs).toBe(within.all.pairs);
 
-    // (3) THE UNFIXED NON-ZERO, KEPT RUNNABLE. `condition-gated-prompt-control`
-    // is the review this round replaced — raised when an item fell below
-    // `MAINTENANCE_PROMPT_CONDITION` — driven over the same pairs, the same
-    // policies and the same comparator. Every counter the shipped row zeroes
-    // is asserted STRICTLY GREATER on it, so a control quietly re-pinned to
-    // zero reddens here rather than making the shipped zeros look earned.
-    expect(control.all.failureMismatches).toBeGreaterThan(within.all.failureMismatches);
-    expect(control.all.variantPhaseWorse).toBeGreaterThan(within.all.variantPhaseWorse);
-    expect(control.all.matchedTraceFailureMismatches).toBeGreaterThan(
-      within.all.matchedTraceFailureMismatches,
-    );
-    // And it is the same mechanism rather than a rough stand-in: it reproduces
-    // the previous round's shipped within-horizon row exactly, which is the
-    // evidence that the control is the removed code path and not a sketch of
-    // it. 310 / 186 / 124 / 923 were that row's four numbers.
+    // (3) THE CONTROL IS UNCHANGED, AND THE SHIPPED ROW NO LONGER BEATS IT.
+    // `condition-gated-prompt-control` — the review this round originally
+    // replaced — still reads exactly 310 / 186 / 124 / 923, because it never
+    // read `checkInsTaken` and this re-keying did not touch it. What changed
+    // is the comparison: the shipped gate used to strictly beat this control
+    // on every failure counter and now strictly LOSES to it. That reversal is
+    // the single clearest measurement of what this round cost, and it is
+    // asserted directly rather than left to be inferred from two separate
+    // pins.
     expect(control.all.failureMismatches).toBe(310);
     expect(control.all.variantPhaseWorse).toBe(186);
     expect(control.all.matchedTraceFailureMismatches).toBe(124);
     expect(control.all.variantNetLower).toBe(923);
+    expect(within.all.failureMismatches).toBeGreaterThan(control.all.failureMismatches);
+    expect(within.all.variantPhaseWorse).toBeGreaterThan(control.all.variantPhaseWorse);
+    expect(within.all.matchedTraceFailureMismatches).toBeGreaterThan(
+      control.all.matchedTraceFailureMismatches,
+    );
 
-    // THE MONEY READING THE NEVER-PUNISH RULE IS ACTUALLY ABOUT is zero on
-    // the engagement domain for every policy, including the divergent traces
-    // — unchanged from the previous round, and it took a model fix to keep it
-    // that way. `engagementEagerTurnaroundControl` below is the number this
-    // zero is a zero against.
+    // THE MONEY READING THE NEVER-PUNISH RULE IS ACTUALLY ABOUT is still zero
+    // on the engagement domain for every policy, including the divergent
+    // traces — UNCHANGED by this round, because the engagement family's own
+    // grid spaces every slot at exactly one offline window, so every event
+    // banks exactly one window's worth whether or not the ordinal reads a
+    // dispatch count or real seconds — the re-keying is invisible on this one
+    // domain by construction, not by luck. `engagementEagerTurnaroundControl`
+    // below is the number this zero is a zero against.
     expect(engagement.all.variantNetLower).toBe(0);
     for (const policy of MANAGEMENT_POLICIES) {
       expect(engagement.byPolicy[policy].variantNetLower, `engagement/${policy}`).toBe(0);
@@ -4033,19 +4106,21 @@ describe('the never-punish sweep', () => {
     expect(slumpEngagement.variantNetLower).toBeGreaterThan(
       EXPECTED_SWEEP.families.engagement.all.variantNetLower,
     );
-    // AND THE SLUMP CONTROL'S WITHIN-HORIZON HALF IS DEAD TOO, for the same
-    // reason the repeat-strike control's is: under the ordinal review both
-    // runs of a within-horizon pair cross the failure line at the same INDEX,
-    // so the slump fires at the same index on both and cancels out of a per-
-    // index comparison. It read 1016 against a shipped 923 while the crossing
-    // moved with wear. An equality and not a bound, so a change that makes it
-    // matter again reddens rather than passing as a bigger number.
-    //
-    // `toBeGreaterThan(0)` used to stand here and would still pass at 421 —
-    // which is the shipped number — so it was a control assertion that a dead
-    // control satisfies. That is why every control comparison in this block is
-    // against the shipped row rather than against zero.
-    expect(slumpWithin.variantNetLower).toBe(
+    // THE SLUMP CONTROL'S WITHIN-HORIZON HALF WAS DEAD UNDER THE OLD ORDINAL
+    // AND IS LIVE AGAIN NOW, and that reversal is itself part of what this
+    // round cost. It used to read equal to the shipped row (1421 vs 921 —
+    // read the git history at that commit if the exact old pair matters)
+    // because both runs of a within-horizon pair crossed the failure line at
+    // the same INDEX, so the slump fired at the same index on both and
+    // cancelled out of a per-index comparison. Under the re-keyed ordinal the
+    // two runs of a pair no longer reliably cross at the same index — that is
+    // the whole regression this round's other tests measure — so the slump
+    // now fires at DIFFERENT indices some of the time and no longer cancels:
+    // 1460 against a shipped 1301, greater rather than equal. Asserted as a
+    // strict inequality rather than re-pinned as a new equality, because
+    // "dead again by coincidence" is exactly the silent failure mode a
+    // control exists to catch.
+    expect(slumpWithin.variantNetLower).toBeGreaterThan(
       EXPECTED_SWEEP.families.withinHorizon.all.variantNetLower,
     );
     // THE TWO CONTROLS THIS ROUND ADDED, on the counters they are controls FOR.
@@ -4057,11 +4132,18 @@ describe('the never-punish sweep', () => {
     expect(conditionGatedWithin.failureMismatches).toBeGreaterThan(0);
     expect(conditionGatedWithin.variantPhaseWorse).toBeGreaterThan(0);
     expect(conditionGatedWithin.matchedTraceFailureMismatches).toBeGreaterThan(0);
-    // And the mechanism it differs from the ship BY: under the old gate the
-    // review's arrival moved with wear, so the two runs of a pair saw
-    // different numbers of reviews. Under the ship they never do.
+    // And the mechanism it used to differ from the ship BY: under the removed
+    // condition gate the review's arrival moved with wear, so the two runs of
+    // a pair saw different numbers of reviews. THIS WAS ONCE THE SHIPPED
+    // GATE'S WHOLE ADVANTAGE — under the dispatch-count ordinal the two runs
+    // never diverged. Under the re-keyed, real-banked-seconds ordinal they now
+    // do too, at a similar order of magnitude to the removed gate: 7662
+    // mismatches against the control's own reviewsOfferedMismatches, both
+    // asserted as measurements rather than the shipped side being pinned back
+    // to a zero it no longer reads.
     expect(conditionGatedWithin.reviewsOfferedMismatches).toBeGreaterThan(0);
-    expect(EXPECTED_SWEEP.families.withinHorizon.all.reviewsOfferedMismatches).toBe(0);
+    expect(EXPECTED_SWEEP.families.withinHorizon.all.reviewsOfferedMismatches).toBe(7662);
+    expect(EXPECTED_SWEEP.families.withinHorizon.all.reviewsOfferedMismatches).toBeGreaterThan(0);
     //
     // `eager-turnaround-control` is the `'redemptive'` model this round
     // changed: it shed any manager on the way back from dormancy rather than
@@ -4096,29 +4178,32 @@ describe('the never-punish sweep', () => {
       EXPECTED_SWEEP.families.engagement.all.matchedTraceFailureMismatches,
     );
     //
-    // ON THE WITHIN-HORIZON DOMAIN IT NOW MEASURES NOTHING, and that is
-    // declared here rather than left as a control that quietly reads zero.
-    // Under the ordinal review both runs of a within-horizon pair take the
-    // same decisions at the same indices, so they carry the same strikes
-    // under EITHER ledger and the control cannot differ from the ship. It is
-    // an equality now, asserted in both the tally and the trace population,
-    // so a future change that makes the ledger matter again reddens here and
-    // gets read rather than passing as a bigger number nobody compared.
-    expect(repeatWithin.failureMismatches).toBe(
+    // ON THE WITHIN-HORIZON DOMAIN IT USED TO MEASURE NOTHING, AND NOW
+    // MEASURES SOMETHING AGAIN — the same reversal the slump control shows,
+    // for the same reason: under the OLD ordinal both runs of a within-
+    // horizon pair took the same decisions at the same indices, so they
+    // carried the same strikes under either ledger and the control could not
+    // differ from the ship. Under the RE-KEYED ordinal that is no longer
+    // guaranteed, so the per-refusal ledger and the per-order ledger now
+    // genuinely disagree on this domain too. Asserted as a strict inequality
+    // rather than an equality, so "dead again by coincidence" would redden
+    // here exactly as it would for the slump control above.
+    expect(repeatWithin.failureMismatches).toBeGreaterThan(
       EXPECTED_SWEEP.families.withinHorizon.all.failureMismatches,
     );
-    expect(repeatWithin.matchedTraceFailureMismatches).toBe(
+    expect(repeatWithin.matchedTraceFailureMismatches).toBeGreaterThan(
       EXPECTED_SWEEP.families.withinHorizon.all.matchedTraceFailureMismatches,
     );
     // The control is not dead everywhere, which is what says the equality
     // above is a property of THIS domain and not of a broken control: the
-    // same wiring, driven on the engagement grids, produces 3578 suppressed
-    // repeat strikes across the battery.
+    // same wiring, driven on the engagement grids, produces suppressed repeat
+    // strikes across the battery.
     expect(EXPECTED_SWEEP.domain.controlRepeatStrikes).toBeGreaterThan(0);
-    // And the counter the ledger does NOT move on either domain, pinned as an
-    // equality rather than omitted: `variantPhaseWorse`. The ledger decides
-    // what a refusal is worth; it does not decide which check-in the refusal
-    // happens at.
+    // AND THE COUNTER THE LEDGER STILL DOES NOT MOVE, ON EITHER DOMAIN,
+    // SURVIVES UNCHANGED: `variantPhaseWorse`. The ledger decides what a
+    // refusal is WORTH; it does not decide which check-in the refusal
+    // happens at, and that stays true whether the ordinal reads a dispatch
+    // count or real banked seconds.
     expect(repeatEngagement.variantPhaseWorse).toBe(
       EXPECTED_SWEEP.families.engagement.all.variantPhaseWorse,
     );
@@ -4170,13 +4255,22 @@ describe('the never-punish sweep', () => {
     expect(
       measured.families.engagementRepeatStrikeControl.all.failureMismatches,
     ).toBeGreaterThan(measured.families.engagement.all.failureMismatches);
-    // The two controls this round added, measured the same way.
-    expect(
-      measured.families.withinHorizonConditionGatedControl.all.failureMismatches,
-    ).toBeGreaterThan(measured.families.withinHorizon.all.failureMismatches);
+    // The `engagementEagerTurnaroundControl` half of this pair still bites
+    // exactly as before — that control never read `checkInsTaken`.
     expect(
       measured.families.engagementEagerTurnaroundControl.all.variantNetLower,
     ).toBeGreaterThan(measured.families.engagement.all.variantNetLower);
+    // THE `withinHorizonConditionGatedControl` HALF IS THE ONE THIS ROUND'S
+    // RE-KEYING REVERSED, AND THE REVERSAL IS THE MEASUREMENT NOW. It used to
+    // strictly EXCEED the shipped row on this counter — the whole point of a
+    // control kept runnable beside a zero — and it no longer does, because the
+    // shipped row stopped being smaller. Recorded here as the direct
+    // consequence of the re-keying (`management.ts` header §3a's retraction,
+    // and the dedicated test above named for exactly this reversal), not
+    // silently re-pinned back to a `toBeGreaterThan` that would now be false.
+    expect(
+      measured.families.withinHorizonConditionGatedControl.all.failureMismatches,
+    ).toBeLessThan(measured.families.withinHorizon.all.failureMismatches);
   });
 
   it("the withdrawn equal-strike sentence's numbers are kept as measurements, and §12.3's actual bar has its catcher", () => {
@@ -4408,30 +4502,41 @@ describe('the never-punish sweep', () => {
     expect(EXPECTED_SWEEP.withinHorizonAttribution.identityErrorGymBucks).toBe(0);
   });
 
-  it("the review's arrival is index-invariant within the horizon, and check-in-keyed on engagement", () => {
-    // THE MECHANISM, MEASURED RATHER THAN ARGUED. The §5.13 ruling's
-    // within-horizon zero rests on one structural fact: a maintenance review
-    // is raised on the check-in ORDINAL, and enlarging a gap changes gap
-    // lengths without changing how many check-ins there are.
+  it("RETRACTED CLAIM, KEPT AS A MEASUREMENT: the review's arrival used to be index-invariant within the horizon, and is not any more", () => {
+    // THE MECHANISM, MEASURED RATHER THAN ARGUED — AND WHAT IT NOW MEASURES
+    // IS A REGRESSION, DISCLOSED RATHER THAN HIDDEN. The claim this test used
+    // to establish rested on one structural fact: a maintenance review was
+    // raised on a check-in ORDINAL that only ever counted DISPATCHES, so
+    // enlarging a gap changed gap lengths without changing how many
+    // check-ins there were, and the review's index could not move. A later,
+    // more specific human ruling ("one clock... for money, for wear, and now
+    // for review cadence" — `management.ts` header §3a) re-keyed that ordinal
+    // to real banked seconds, the same quantity money and wear already read.
+    // A within-horizon gap enlargement now adds directly to that total, so it
+    // genuinely CAN move the review onto a different index. This test still
+    // walks the same three populations it always did — the shipped gate, the
+    // removed condition gate over the identical within-horizon pairs, and the
+    // engagement grids — and reports what it finds rather than what it used
+    // to find.
     //
     // This walk buckets every pair by its own `reviewsOfferedMismatches` — a
     // REPORTED field of `ManagedReading`, written by `runManagedGym` from
     // `maintenancePromptUnder`, not a recomputation of the cadence by the
-    // test — and tallies the failure counters on each side. It walks the same
-    // three populations three times: the shipped gate, the removed
-    // condition gate over the identical within-horizon pairs, and the
-    // engagement grids.
+    // test — and tallies the failure counters on each side.
     //
-    // WHAT THE SPLIT IS FOR, and what it would look like if it were empty.
-    // On the within-horizon domain the shifted bucket holds ZERO pairs, so
-    // its zeros there are vacuous by themselves — a bucket nothing lands in
-    // cannot fail. The non-vacuity is the CONTROL row: the same walk, the
-    // same 864 pairs, the same six policies, with the review gate switched
-    // back to condition puts 155 pairs in the shifted bucket and all 310
-    // failure mismatches and all 186 phase-worse readings on them. So the
-    // bucket is reachable on this tree and the shipped gate empties it,
-    // which is the claim; and on the engagement domain both buckets are
-    // occupied (84 and 912), so the split is not a relabelling either.
+    // WHAT THE SPLIT NOW SHOWS. The within-horizon shifted bucket holds 420 of
+    // 864 pairs (up from 0), carrying every one of the family's 1401 failure
+    // mismatches and 582 phase-worse readings — so the regression is
+    // concentrated exactly where the mechanism predicts it: pairs whose
+    // review opened on a different index. The matched bucket (444 pairs,
+    // where the review still landed on the same index in both runs) still
+    // reads 0 failure mismatches, which is the part of the original claim
+    // that survives: WHEN the review does not move, nothing downstream of it
+    // differs either. The condition-gated control is UNCHANGED (155 shifted
+    // of 864, 310 failure mismatches, 186 phase-worse) because that gate
+    // never read `checkInsTaken` and this round did not touch it — so the
+    // shipped gate no longer beats the control the way it used to; the two
+    // are now closer in shape than they are apart.
     const rank: Record<string, number> = { sound: 0, warned: 1, failed: 2 };
     void rank;
 
@@ -4563,19 +4668,27 @@ describe('the never-punish sweep', () => {
       engagementPhaseWorseOnShifted: engagement.worseOnShifted,
     }).toEqual(EXPECTED_SWEEP.review);
 
-    // THE CLAIM, on the pin. Every within-horizon pair is in the matched
-    // bucket: the review lands on the same check-in indices in both runs,
-    // whatever the gap lengths.
-    expect(EXPECTED_SWEEP.review.withinHorizonShiftedPairs).toBe(0);
+    // THE RETRACTED CLAIM WOULD HAVE BEEN: every within-horizon pair is in
+    // the matched bucket. It is not — 420 of 864 are now shifted — so this is
+    // now a bounded, honest pair of claims instead: the review arrival still
+    // decides the whole story (nothing moves on the matched side), and the
+    // shifted side carries the whole regression.
+    expect(EXPECTED_SWEEP.review.withinHorizonShiftedPairs).toBe(420);
     expect(EXPECTED_SWEEP.review.withinHorizonMatchedPairs).toBe(
-      EXPECTED_SWEEP.review.withinHorizonPairs,
+      EXPECTED_SWEEP.review.withinHorizonPairs - EXPECTED_SWEEP.review.withinHorizonShiftedPairs,
     );
+    // WHAT SURVIVES: on the matched side — where the review still lands on
+    // the same index in both runs — failure and phase are still identical.
+    // The whole regression sits on the shifted side, not spread evenly.
     expect(EXPECTED_SWEEP.review.withinHorizonFailureMismatchesOnMatched).toBe(0);
     expect(EXPECTED_SWEEP.review.withinHorizonPhaseWorseOnMatched).toBe(0);
+    expect(EXPECTED_SWEEP.review.withinHorizonFailureMismatchesOnShifted).toBeGreaterThan(0);
+    expect(EXPECTED_SWEEP.review.withinHorizonPhaseWorseOnShifted).toBeGreaterThan(0);
 
-    // AND THE NON-VACUITY, which is the whole reason the control row is in
-    // this equality rather than in a comment: the shifted bucket is reachable
-    // over exactly this domain, and the removed gate fills it.
+    // THE CONTROL IS UNCHANGED, which is what says this round's re-keying —
+    // and not some unrelated drift in the sweep — is what moved the shipped
+    // numbers above: `condition-gated-prompt-control` never read
+    // `checkInsTaken`, so it reads exactly what it read before this round.
     expect(EXPECTED_SWEEP.review.controlPairs).toBe(EXPECTED_SWEEP.review.withinHorizonPairs);
     expect(EXPECTED_SWEEP.review.controlShiftedPairs).toBeGreaterThan(0);
     expect(EXPECTED_SWEEP.review.controlFailureMismatchesOnShifted).toBeGreaterThan(0);
@@ -4588,12 +4701,21 @@ describe('the never-punish sweep', () => {
       EXPECTED_SWEEP.review.controlFailureMismatchesOnShifted +
         EXPECTED_SWEEP.review.controlFailureMismatchesOnMatched,
     ).toBe(EXPECTED_SWEEP.families.withinHorizonConditionGatedControl.all.failureMismatches);
+    // AND THE SHIPPED GATE NO LONGER BEATS THE CONTROL IT WAS BUILT TO
+    // REPLACE — stated as a direct comparison rather than left implicit in
+    // two separate pins, because that comparison is exactly what regressed.
+    expect(EXPECTED_SWEEP.review.withinHorizonShiftedPairs).toBeGreaterThan(
+      EXPECTED_SWEEP.review.controlShiftedPairs,
+    );
+    expect(EXPECTED_SWEEP.review.withinHorizonFailureMismatchesOnShifted).toBeGreaterThan(
+      EXPECTED_SWEEP.review.controlFailureMismatchesOnShifted,
+    );
 
-    // THE ENGAGEMENT DOMAIN IS WHERE THE RESIDUAL LIVES, and the split says
-    // so: both buckets are occupied, and 908 of the 909 failure mismatches
-    // and every one of the 524 phase-worse readings sit on pairs whose review
-    // counts diverged. That is the price of keying the review to the check-in
-    // ordinal, stated at its size.
+    // THE ENGAGEMENT DOMAIN IS WHERE THE OTHER RESIDUAL ALWAYS LIVED, and the
+    // split still says so: both buckets are occupied, and 908 of the 909
+    // failure mismatches and every one of the 524 phase-worse readings sit on
+    // pairs whose review counts diverged. That part of the design's price is
+    // unchanged by this round.
     expect(EXPECTED_SWEEP.review.engagementMatchedPairs).toBeGreaterThan(0);
     expect(EXPECTED_SWEEP.review.engagementShiftedPairs).toBeGreaterThan(0);
     expect(EXPECTED_SWEEP.review.engagementPhaseWorseOnMatched).toBe(0);
@@ -4615,23 +4737,26 @@ describe('the never-punish sweep', () => {
         EXPECTED_SWEEP.review.engagementFailureMismatchesOnShifted,
     ).toBe(EXPECTED_SWEEP.families.engagement.all.failureMismatches);
 
-    // WHAT THE 16 DIVERGENT-TRACE PAIRS ACTUALLY DIVERGE ON, enumerated
-    // rather than left as a remainder. `matchedTracePairs` is 848 of 864, and
-    // the zeros above are over all 864, so these 16 are not a hole in the
-    // claim — but a reader is owed what moved, and the enumeration is asserted
-    // as a set equality rather than described, so a third kind appearing here
-    // reddens instead of hiding inside a count.
-    //
-    // Both are `'delegating'`, and both are PURSE-timed rather than
-    // review-timed: it buys the top-tier manager on the check-in it can first
-    // afford one, and it answers a review with a repair it can first afford.
-    // Neither appends a strike — `hireManager` counts only the cheapest tier
-    // under a warning phase, and a repair is the opposite of a refusal — which
-    // is why the failure counters are zero while the traces are not. That is
-    // the money route the review ordinal does not close, showing itself in the
-    // one place it can still be seen.
+    // WHAT THE DIVERGENT-TRACE PAIRS ACTUALLY DIVERGE ON, enumerated rather
+    // than left as a remainder — RE-DERIVED, and both the count and the set
+    // grew. `matchedTracePairs` is now 598 of 864 (down from 848), so 266
+    // pairs now have a divergent decision trace (up from 16), and the set of
+    // decision kinds involved widened from two purse-timed kinds to seven:
+    // the review opening on a different index does not just retime a
+    // purse-gated decision any more, it can add or remove a decline, a
+    // dismiss, a recover or a repair outright, because the review is a
+    // different EVENT on a different check-in, not only a different amount of
+    // money available at the same one.
     expect(shipped.matchedTracePairs).toBe(EXPECTED_SWEEP.review.withinHorizonMatchedTracePairs);
-    expect([...withinHorizonDivergentKinds].sort()).toEqual(['hire-veteran', 'prompt-repair']);
+    expect([...withinHorizonDivergentKinds].sort()).toEqual([
+      'decline-repair',
+      'hire-veteran',
+      'prompt-dismiss',
+      'prompt-dismiss!',
+      'prompt-repair',
+      'recover',
+      'repair',
+    ]);
   });
 
   it('walked a domain that is not empty, and says exactly what it saw', () => {
@@ -4822,3 +4947,4 @@ describe('the arm census', () => {
     }
   });
 });
+

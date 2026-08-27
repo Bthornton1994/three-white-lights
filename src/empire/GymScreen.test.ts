@@ -87,7 +87,6 @@ import {
   ladderIncomeRatePerHour,
   moveUpLadder,
   nextLadderRung,
-  playerCheckInGapSeconds,
 } from './ladder';
 import { EMPIRE_TUNING } from './empireTuning';
 import {
@@ -202,24 +201,28 @@ function dispatchThrough(state: GymViewState, action: GymViewAction): GymViewSta
 }
 
 /**
- * The same state with enough gym bucks to afford `target`, reached by taking
- * the PLAYER'S OWN check-in over and over rather than by hand-building a
- * purse.
+ * The same state with enough gym bucks to afford `target`, reached by
+ * repeatedly advancing the clock by one whole offline-cap window — the
+ * shipped horizon the real wall-clock catch-up in `AppShell.tsx`'s `GymHost`
+ * banks in full whenever the gap it is fed is at least that long — rather
+ * than by hand-building a purse.
  *
  * Every control this file gates is gated on the shipped transition's own
  * refusal, so a test that wants to press one has to reach a state where the
- * transition succeeds — and the honest way to reach it is the way a player
- * would. `'open-up'` is that way, which is a second reason it exists: before
- * it, the only route to a funded gym anywhere in this repository ran through
- * a control the screen labels "not part of the game".
+ * transition succeeds. `'open up for the day'` used to be that route and was
+ * removed by human ruling (`GymScreen.tsx`'s header) because it minted the
+ * same span on every tap regardless of real elapsed time; `advance-clock` is
+ * the one shipped arm that reaches the same accrual honestly, so it is what
+ * this fixture drives.
  */
 function fundedEnoughFor(state: GymViewState, target: number): GymViewState {
+  const oneWindowSeconds = T.OFFLINE_EARNINGS_CAP_HOURS * T.SECONDS_PER_HOUR;
   let funded = state;
   let guard = 0;
   while (funded.managed.gym.ladder.gymBucks < target) {
-    funded = dispatchThrough(funded, { kind: 'open-up' });
+    funded = dispatchThrough(funded, { kind: 'advance-clock', gapSeconds: oneWindowSeconds });
     guard += 1;
-    expect(guard, 'opening the gym must eventually afford the target').toBeLessThan(2000);
+    expect(guard, 'advancing the clock must eventually afford the target').toBeLessThan(2000);
   }
   return funded;
 }
@@ -637,11 +640,12 @@ describe('the opening screen displays ladder.ts / sessions.ts on every displayed
     // instead of waiting to be pressed.
     expectGatedControl(root, 'gymscreen-move-up', true, 'a cold gym cannot afford a move');
     expect(moveUpLadder(state.managed.gym.ladder).kind).toBe('refused');
-    // The player's own check-in, on the other hand, IS offered from the first
-    // frame — it is the control whose absence made every stage-4 beat
-    // unreachable without touching the dev row.
-    expect(findAllByTestId(root, 'gymscreen-open-up-press').length).toBe(1);
-    expect(findAllByTestId(root, 'gymscreen-open-up-press-unavailable').length).toBe(0);
+    // No tap on this screen advances the clock — the mint that used to live
+    // here ('open up for the day') is gone by human ruling; see
+    // `GymScreen.tsx`'s header. `checkInsTaken` only ever moves from a real
+    // wall-clock catch-up dispatched by `AppShell.tsx`'s `GymHost`, outside
+    // this screen's own controls entirely.
+    expect(findAllByTestId(root, 'gymscreen-open-up-press').length).toBe(0);
   });
 });
 
@@ -1220,80 +1224,38 @@ describe('stage 4: dormancy is reached by refusals and left by a repair investme
 
 
 // ---------------------------------------------------------------------------
-// THE PLAYER'S OWN CHECK-IN — the control this round exists for.
+// THE GYM'S REAL-TIME LOOP — no control on this screen advances the clock.
 //
-// A human played this screen on a real phone and said, in their own words,
-// that they could not open a review. That was structural rather than a matter
-// of taste: `ManagedGym.checkInsTaken` had exactly one writer, reached from
-// exactly one reducer arm, dispatched from exactly one shipped place — the
-// dev clock-skip row this screen labels "not part of the game". Every §5.11
-// stage-4 beat hangs off that counter, so a player who touched no debug
-// control could reach none of them.
-//
-// The tests below are written so that a regression to that state reddens
-// them. The load-bearing one is `reaches a maintenance review without ever
-// touching a control in the dev row`, which collects every testID inside
-// `gymscreen-dev-controls` and asserts the ids it pressed are disjoint from
-// it — so a "fix" that quietly routed the player control back through a dev
-// button, or a future round that deleted the player control and left the
-// screen reachable only through the dev row, fails here rather than passing
-// on the strength of the review opening.
+// A human played the earlier build on a real phone and said, in their own
+// words, that they could not open a review; the fix at the time was a real
+// "open up for the day" control. A second, later human ruling withdrew that
+// control by name — it minted a flat `OFFLINE_EARNINGS_CAP_HOURS` block on
+// every press regardless of real elapsed time, which is the exact mashable
+// shape a human playing the shipped build called out as the bug. Gym Empire
+// mimics an idle game now: `AppShell.tsx`'s `GymHost` drives `advance-clock`
+// itself, from genuine elapsed real time, outside every control this screen
+// draws. These tests drive the loop the way `GymHost` actually does — by
+// dispatching `advance-clock` directly — and assert no testID on this screen
+// can reach it by a press.
 // ---------------------------------------------------------------------------
 
-describe("the player's own check-in reaches the stage-4 loop without the dev row", () => {
-  it('opens for a shift, and the shift is the whole offline window rather than a second knob', () => {
-    // `bankableOfflineSeconds` discards everything past the cap, so a control
-    // that advanced further would quietly throw part of what it earned away.
-    // The relation is asserted rather than assumed — this is what keeps a
-    // retune of the cap from silently making the player's own opening lossy.
-    expect(playerCheckInGapSeconds()).toBe(
-      T.OFFLINE_EARNINGS_CAP_HOURS * T.SECONDS_PER_HOUR,
-    );
-    const opened = dispatchThrough(createGymViewState(), { kind: 'open-up' });
-    const accrual = opened.lastAccrual;
-    expect(accrual).not.toBeNull();
-    expect((accrual as NonNullable<typeof accrual>).secondsElapsed).toBe(playerCheckInGapSeconds());
-    expect((accrual as NonNullable<typeof accrual>).secondsDiscarded).toBe(0);
-    expect((accrual as NonNullable<typeof accrual>).secondsBanked).toBe(playerCheckInGapSeconds());
-    expect((accrual as NonNullable<typeof accrual>).gymBucks).toBeGreaterThan(0);
-  });
-
-  it('the control dispatches open-up, and it is not in the dev row', () => {
-    const state = createGymViewState();
-    const dispatched: GymViewAction[] = [];
-    const root = render(state, dispatched);
-    press(findByTestId(root, 'gymscreen-open-up-press'));
-    expect(dispatched).toEqual([{ kind: 'open-up' }]);
-    const devIds = testIdsUnder(findByTestId(root, 'gymscreen-dev-controls'));
-    expect(devIds.length).toBeGreaterThan(0);
-    expect(devIds).not.toContain('gymscreen-open-up-press');
-    // And the dev row is still there, still labelled for what it is — this
-    // round did not delete an instrument, it stopped the instrument being the
-    // only way in.
-    for (const step of ladderDevTimeSteps()) {
-      expect(devIds).toContain(`gymscreen-advance-${step.seconds}`);
+describe('the gym real-time loop reaches the stage-4 machinery, and nothing on this screen can cause it', () => {
+  it('no testID anywhere on this screen names a mint or a check-in tap', () => {
+    const root = render(createGymViewState(), []);
+    const allIds = testIdsUnder(root);
+    for (const id of allIds) {
+      expect(id).not.toMatch(/open-up/);
     }
   });
 
-  it('reaches a maintenance review without ever touching a control in the dev row', () => {
+  it('advancing the clock by a whole offline window reaches a maintenance review, with no press involved', () => {
     let played = createGymViewState();
-    // The cadence is UNCHANGED by this round, and that is asserted first: the
-    // fix is that a player can take check-ins, not that the first one is
-    // special.
     expect(maintenancePrompt(played.managed).kind).toBe('quiet');
     expect(played.managed.checkInsTaken).toBe(0);
-
-    const pressedIds: string[] = [];
-    const devIdsAtStart = testIdsUnder(findByTestId(render(played, []), 'gymscreen-dev-controls'));
+    const oneWindowSeconds = T.OFFLINE_EARNINGS_CAP_HOURS * T.SECONDS_PER_HOUR;
     for (let shift = 0; shift < T.MAINTENANCE_ORDER_FIRST_CHECK_IN; shift += 1) {
-      const dispatched: GymViewAction[] = [];
-      const root = render(played, dispatched);
-      press(findByTestId(root, 'gymscreen-open-up-press'));
-      pressedIds.push('gymscreen-open-up-press');
-      expect(dispatched.length).toBe(1);
-      played = dispatchThrough(played, dispatched[0] as GymViewAction);
+      played = dispatchThrough(played, { kind: 'advance-clock', gapSeconds: oneWindowSeconds });
     }
-
     expect(played.managed.checkInsTaken).toBe(T.MAINTENANCE_ORDER_FIRST_CHECK_IN);
     const prompt = maintenancePrompt(played.managed);
     expect(prompt.kind).toBe('offered');
@@ -1303,23 +1265,17 @@ describe("the player's own check-in reaches the stage-4 loop without the dev row
     expect(textOf(findByTestId(reviewed, 'gymscreen-prompt-item'))).toContain('maintenance review:');
     expect(findAllByTestId(reviewed, 'gymscreen-prompt-dismiss').length).toBe(1);
     expect(findAllByTestId(reviewed, 'gymscreen-prompt-decline').length).toBe(1);
-    // The disjointness that makes this claim about the PLAYER path: nothing
-    // pressed here is a control the dev row draws.
-    expect(devIdsAtStart.length).toBeGreaterThan(0);
-    for (const id of pressedIds) expect(devIdsAtStart).not.toContain(id);
-    expect(new Set(pressedIds).size).toBe(1);
   });
 
-  it('opening the gym moves condition and money and never the failure ledger', () => {
-    // The §5.7 claim, on the new arm. It holds for the same reason it holds
-    // for the dev arm — both end in the same `managedCheckIn` — and it is
-    // asserted on THIS arm rather than inherited by argument, because a
-    // player-reachable check-in is the one that would matter if it stopped
-    // holding.
+  it('the clock moves condition and money and never the failure ledger', () => {
+    // The §5.7 claim, on the real-time arm. It holds for the same reason it
+    // holds for the dev arm — both end in the same `managedCheckIn` — and is
+    // asserted here because this is the arm a real device actually drives.
     let played = createGymViewState();
     const before = meanCondition(played.managed);
+    const oneWindowSeconds = T.OFFLINE_EARNINGS_CAP_HOURS * T.SECONDS_PER_HOUR;
     for (let shift = 0; shift < T.MAINTENANCE_ORDER_FIRST_CHECK_IN * 3; shift += 1) {
-      played = dispatchThrough(played, { kind: 'open-up' });
+      played = dispatchThrough(played, { kind: 'advance-clock', gapSeconds: oneWindowSeconds });
       expect(played.lastRefusal).toBeNull();
       expect(played.managed.strikes).toEqual([]);
       expect(failurePhase(played.managed)).toBe('sound');
@@ -1329,17 +1285,16 @@ describe("the player's own check-in reaches the stage-4 loop without the dev row
     expect(played.managed.checkInsTaken).toBe(T.MAINTENANCE_ORDER_FIRST_CHECK_IN * 3);
   });
 
-  it('the note over the control reports the real check-in count and the real next review', () => {
+  it('the no-open-review note reports the real check-in count and the real next review, off the clock alone', () => {
     let played = createGymViewState();
+    const oneWindowSeconds = T.OFFLINE_EARNINGS_CAP_HOURS * T.SECONDS_PER_HOUR;
     for (let shift = 0; shift <= T.MAINTENANCE_ORDER_FIRST_CHECK_IN; shift += 1) {
-      const note = textOf(findByTestId(render(played, []), 'gymscreen-open-up-note'));
-      expect(note).toContain(`${played.managed.checkInsTaken} shift(s) opened so far`);
+      const note = textOf(findByTestId(render(played, []), 'gymscreen-prompt'));
       if (maintenancePrompt(played.managed).kind === 'quiet') {
-        expect(note).toContain(`comes up at shift ${orderOpensAt(played.managed)}`);
-      } else {
-        expect(note).toContain('a maintenance review is waiting for you');
+        expect(note).toContain(`${played.managed.checkInsTaken} check-in(s) taken`);
+        expect(note).toContain(`the next review is raised at check-in ${orderOpensAt(played.managed)}`);
       }
-      played = dispatchThrough(played, { kind: 'open-up' });
+      played = dispatchThrough(played, { kind: 'advance-clock', gapSeconds: oneWindowSeconds });
     }
   });
 });

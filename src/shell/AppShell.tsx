@@ -62,7 +62,7 @@
  * building `MEET_LOCAL` itself. Nothing about the route graph changes.
  */
 
-import React, { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -71,6 +71,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { EMPIRE_TUNING } from '../empire/empireTuning';
 import { GymScreen } from '../empire/GymScreen';
 import { createGymViewState, gymViewReduce } from '../empire/ladderView';
 import { LIFT_PALETTE } from '../lift/liftPalette';
@@ -161,17 +162,107 @@ function ShellNav({
 }
 
 /**
- * CROSSING 6: the Gym Empire surface's mount point, and the one place the
- * `useReducer` hook this screen needs lives — outside `src/empire/`, the same
- * rule `ladder-dev.tsx` follows for the web dev harness
- * (`ladderView.tsx`'s own header: "The one stateful hook lives in the dev
- * mount, outside this directory, which is what keeps this file render-only in
- * the checkable sense"). `GymScreen` itself stays a pure function of
- * `{ state, dispatch }`; this component computes nothing and is the only
- * thing in `src/shell/` that reads `src/empire/`.
+ * CROSSING 6, EXTENDED BY THE "KILL THE MINT" RULING: the Gym Empire
+ * surface's mount point, the one place the `useReducer` hook this screen
+ * needs lives — outside `src/empire/`, the same rule `ladder-dev.tsx` follows
+ * for the web dev harness (`ladderView.tsx`'s own header: "The one stateful
+ * hook lives in the dev mount, outside this directory, which is what keeps
+ * this file render-only in the checkable sense") — and, as of this round,
+ * the one place that drives the gym's real-time clock. `GymScreen` itself
+ * stays a pure function of `{ state, dispatch }`; this component computes no
+ * game math (every second it turns into a dispatch is read off `Date.now()`
+ * and handed to the same `advance-clock` action the dev row and the old
+ * mint both already used) and is still the only thing in `src/shell/` that
+ * reads `src/empire/`.
+ *
+ * WHY THIS COMPONENT IS NOW ALWAYS MOUNTED, RATHER THAN MOUNTED ONLY WHILE
+ * `route.surface === 'gym'`. Before this round, leaving the gym surface
+ * unmounted `GymHost` and destroyed its `useReducer` state outright — so
+ * "the gym runs while open and away" was impossible to build honestly: there
+ * was no state left to catch up when the player came back. `AppShell`
+ * (below) now renders this component unconditionally, in a wrapper that is
+ * visually absent — zero size, `pointerEvents: 'none'`, taken out of the
+ * flex flow with `position: 'absolute'` so it cannot disturb the screen that
+ * IS on top — whenever `visible` is false, rather than never rendering it at
+ * all. That is what makes the reducer state (money, condition, the review
+ * ledger, `bankedOperationSeconds`) survive a round trip through `session` or
+ * `meet` and back.
+ *
+ * THE MECHANISM: REAL ELAPSED TIME, READ ON DEMAND, NEVER MINTED. There is no
+ * per-second game-state tick here — CLAUDE.md's "pure logic is separate from
+ * UI" rule and this file's own header rule that it computes no game state
+ * both cut against a `.tsx` file owning a simulation loop. What this
+ * component owns is exactly one thing: a real-time ANCHOR
+ * (`lastAnchorMsRef`, a plain `Date.now()` reading, not React state — writing
+ * it must never itself cause a render) and a function that reads
+ * `Date.now()` again, computes the real gap since the anchor, and — if that
+ * gap is at least one whole tick (`EMPIRE_TUNING.TICK_SECONDS`, the "collapse
+ * t=0 no-ops" guard) — dispatches `advance-clock` with that gap and moves the
+ * anchor forward. `advance-clock` already runs the real accrual, capped
+ * exactly as `bankableOfflineSeconds`/`OFFLINE_EARNINGS_CAP_HOURS` always
+ * specified (`ladder.ts`, `production.ts`); nothing here re-implements or
+ * widens that cap.
+ *
+ * That one function is called from two places, both required by the brief
+ * this round shipped against:
+ *
+ *   1. On mount, and on every transition of `visible` from false to true —
+ *      the effect below re-runs whenever `visible` changes and calls it
+ *      immediately when the new value is `true`. This is what "away" means:
+ *      not a background timer that has to keep running while the screen is
+ *      off, but a correct read of how much real time passed the moment the
+ *      screen is looked at again. Real OS backgrounding (the phone's screen
+ *      actually locking) is explicitly NOT covered by this — there is no
+ *      `AppState` listener here, so a lock-screen absence is invisible until
+ *      the app is foregrounded AND the gym surface is the one on screen at
+ *      that moment. Stated as a declared limit rather than silently claimed:
+ *      "away" here means "navigated to another in-app surface and back",
+ *      which is what GDD §5's rewrite (in the same commit as this file)
+ *      states plainly.
+ *   2. On a real `setInterval`, running only while `visible` is true and
+ *      cleared the moment it becomes false or the component unmounts (which,
+ *      per the point above, should now only happen at all if `AppShell`
+ *      itself unmounts). The interval length is
+ *      `EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS`, a named tunable —
+ *      this is the literal mechanism behind "open gym, no presses, bucks/
+ *      clock have moved": sitting on the screen with the interval running is
+ *      what makes that true, without a single tap.
  */
-function GymHost(): React.ReactElement {
+function GymHost({ visible }: { readonly visible: boolean }): React.ReactElement {
   const [state, dispatch] = useReducer(gymViewReduce, undefined, createGymViewState);
+
+  // A real-time reading, not React state on purpose — see the header above.
+  // Initialised once, at this component's first (and only) mount, which is
+  // now effectively "app launch" rather than "the moment the player opened
+  // the gym", because `GymHost` stays mounted for the whole app run.
+  const lastAnchorMsRef = useRef<number>(Date.now());
+
+  const catchUpOnRealTime = useCallback((): void => {
+    const nowMs = Date.now();
+    const gapSeconds = Math.floor((nowMs - lastAnchorMsRef.current) / 1000);
+    // Collapse a near-zero gap into a no-op: no reducer churn, no zero-value
+    // report noise, matching the "collapse t=0 no-ops" ruling this build
+    // already follows elsewhere. The anchor is NOT moved on this path, so a
+    // sub-tick remainder accumulates toward the next real catch-up rather
+    // than being silently dropped.
+    if (gapSeconds < EMPIRE_TUNING.TICK_SECONDS) return;
+    lastAnchorMsRef.current = nowMs;
+    dispatch({ kind: 'advance-clock', gapSeconds });
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+    // Catch up immediately on becoming visible — including the very first
+    // paint, if `visible` starts `true` — rather than waiting for the first
+    // tick of the interval below.
+    catchUpOnRealTime();
+    const intervalId = setInterval(
+      catchUpOnRealTime,
+      EMPIRE_TUNING.WALL_CLOCK_TICK_INTERVAL_SECONDS * 1000,
+    );
+    return () => clearInterval(intervalId);
+  }, [visible, catchUpOnRealTime]);
+
   return <GymScreen state={state} dispatch={dispatch} />;
 }
 
@@ -317,13 +408,8 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           onCutIn={setCutInLive}
           cutInSearch={search}
         />
-      ) : route.surface === 'gym' ? (
-        // CROSSING 6. No preview, no server port, no cut-in host: Gym Empire's
-        // local reducer state stays local to this component tree (`GymHost`),
-        // pays into no wallet and reads no debug frame — there is no debug query string for it
-        // entry, so `entry` never carries one to hand over.
-        <GymHost />
-      ) : route.surface === 'replay' && entry.replay !== undefined ? (
+      ) : route.surface === 'gym' ? null : route.surface === 'replay' &&
+        entry.replay !== undefined ? (
         <LiftScreen replay={entry.replay} />
       ) : (
         <SessionScreen
@@ -334,6 +420,30 @@ export function AppShell({ search }: AppShellProps): React.ReactElement {
           cutInSearch={search}
         />
       )}
+
+      {/*
+        CROSSING 6, EXTENDED. `GymHost` is ALWAYS mounted now — not rendered
+        conditionally into the slot above — so its reducer state survives a
+        round trip through `session` or `meet` and back; see `GymHost`'s own
+        header for why that is what "the gym runs while open and away"
+        actually requires. No preview, no server port, no cut-in host: Gym
+        Empire's local reducer state stays local to this component tree, pays
+        into no wallet and reads no debug frame — there is no debug query
+        string for it entry, so `entry` never carries one to hand over.
+
+        The wrapper is visually absent whenever the gym is not the surface on
+        top: zero size, `pointerEvents: 'none'`, and taken out of the flex
+        flow with `position: 'absolute'` so a zero-size sibling cannot perturb
+        whichever screen IS laid out above. `GymHost` itself reads `visible`
+        to decide whether to run its real-time catch-up at all — see that
+        component's header.
+      */}
+      <View
+        style={route.surface === 'gym' ? styles.gymVisible : styles.gymHidden}
+        pointerEvents={route.surface === 'gym' ? 'auto' : 'none'}
+      >
+        <GymHost visible={route.surface === 'gym'} />
+      </View>
 
       {affordance === null && gymAffordance === null ? null : (
         <View style={styles.navSlot} pointerEvents="box-none">
@@ -362,6 +472,24 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: LIFT_PALETTE.BACKDROP,
+  },
+  /** `GymHost`'s wrapper while the gym IS the surface on top: fills the slot exactly like every other screen. */
+  gymVisible: {
+    flex: 1,
+  },
+  /**
+   * `GymHost`'s wrapper while the gym is NOT on top. `position: 'absolute'`
+   * takes it out of the flex flow entirely, so its zero size cannot perturb
+   * the sibling screen laid out above it — a plain `{ width: 0, height: 0 }`
+   * inside the same flex column would still reserve a flex basis and could
+   * shift layout depending on platform flex quirks; taking it out of flow
+   * removes that risk rather than relying on it staying zero.
+   */
+  gymHidden: {
+    position: 'absolute',
+    width: 0,
+    height: 0,
+    overflow: 'hidden',
   },
   /**
    * A full-width strip pinned to the bottom, so the pill centres itself without

@@ -50,7 +50,6 @@ import {
   ladderMoveCost,
   moveUpLadder,
   nextLadderRung,
-  playerCheckInGapSeconds,
   unlockedLifts,
 } from './ladder';
 
@@ -403,7 +402,7 @@ export type GymViewRefusal =
   | Extract<PromptResult, { readonly kind: 'no-prompt' }>['kind'];
 
 /**
- * The fifteen things a player can do on this screen — seven from stage 1/2,
+ * The fourteen things a player can do on this screen — six from stage 1/2,
  * GDD §5.13 Phase 1's place/remove, and §5.11 stage 4's six: answer the
  * standing maintenance review, repair an item outright, decline a shown
  * repair, hire a manager, let one go, and bring a dormant gym back.
@@ -415,25 +414,19 @@ export type GymViewRefusal =
  * `advance-clock` — the one arm time drives — appends no strike, because
  * `managedCheckIn` writes none.
  *
- * `'open-up'` IS WHAT PUTS THE STAGE-4 ARMS BELOW WITHIN A PLAYER'S REACH,
- * AND IT IS WHY IT WAS ADDED. (Plain wording on purpose — see
- * `GymScreen.tsx`'s header for the tree-wide capitalised-absolute census this
- * is working around and the disposition that was reported rather than taken.
- * The earlier draft also over-claimed: several arms on this list are already
- * reachable without the dev row, so "the only arm" would have been false as
- * well as census-moving.) The
- * six stage-4 arms are all downstream of `checkInsTaken`, which had exactly
- * one writer (`managedCheckIn`) reached from exactly one arm
- * (`advance-clock`) dispatched from exactly one shipped place: the dev
- * clock-skip row. A human on a phone reported the consequence in their own
- * words — they could not open a review — and the review is what every strike,
- * every dormancy and every recovery hangs off. `'open-up'` is the same
- * transition with the span taken from `playerCheckInGapSeconds` and the
- * control drawn in the game's voice. It appends no strike, for the same
- * reason `advance-clock` does not: both end in `advanceGymClock`.
+ * `'OPEN UP FOR THE DAY' IS GONE, BY HUMAN RULING, AND `advance-clock` IS
+ * NOW THE ONLY WAY IN.` The mint that used to live here fed a flat
+ * `OFFLINE_EARNINGS_CAP_HOURS`-hour block into `advanceGymClock` on every
+ * press, regardless of how much real time had actually passed — a
+ * "check-in" a player could mash for free money, which a human playing the
+ * shipped build called out by name as the bug. Gym Empire mimics an idle
+ * game now: the gym runs on genuine elapsed wall-clock time, computed and
+ * dispatched as `advance-clock` by `AppShell.tsx`'s `GymHost` (outside this
+ * directory, the same seam that already owns the one stateful hook), never
+ * minted by a tap inside this reducer. `advance-clock` still appends no
+ * strike, for the reason stated below.
  */
 export type GymViewAction =
-  | { readonly kind: 'open-up' }
   | { readonly kind: 'advance-clock'; readonly gapSeconds: number }
   | { readonly kind: 'advance-to-next-week' }
   | { readonly kind: 'buy-ladder'; readonly item: LadderEquipmentItem }
@@ -569,15 +562,6 @@ function advanceGymClock(state: GymViewState, gapSeconds: number): GymViewState 
  */
 export function gymViewReduce(state: GymViewState, action: GymViewAction): GymViewState {
   switch (action.kind) {
-    case 'open-up':
-      // The player-taken check-in. It is the SAME transition the dev row
-      // takes — one `managedCheckIn` at a mark this reducer computes — and it
-      // differs only in where the span comes from: `ladder.ts` derives it
-      // from the offline cap, so a player's own opening banks a whole window
-      // and nothing it earns is discarded. Every claim `advance-clock`'s own
-      // note below makes about strikes holds here unchanged and for the same
-      // reason: both arms end in `advanceGymClock`, which appends nothing.
-      return advanceGymClock(state, playerCheckInGapSeconds());
     case 'advance-clock':
       return advanceGymClock(state, action.gapSeconds);
     case 'advance-to-next-week':

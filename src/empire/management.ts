@@ -259,14 +259,16 @@
  * is unanswered — because naming an item is not advancing a strike, and
  * `promptOver` is the one place that choice is made.
  *
- * Why an ordinal closes it, in the mechanism's own terms rather than as a
- * claim about every edit: the within-horizon family enlarges a GAP. Enlarging
- * a gap changes when check-ins happen and never how many have happened, so
- * `checkInsTaken` at index `i` is `i + 1` in both runs of every pair, and the
- * review lands on the same indices. That is measured rather than asserted —
- * `the review series is byte-identical under ANY enlargement of a gap` drives
- * 160 enlargements up to a year long and compares the reported `reviewOffered`
- * series, and 15 of the same 160 move it under the control gate.
+ * WHY AN ORDINAL CLOSED IT, AT THE TIME THIS PARAGRAPH WAS WRITTEN — AND WHY
+ * THAT ARGUMENT NO LONGER HOLDS. THIS IS RETRACTED BY §3g BELOW; READ THAT
+ * SECTION BEFORE TRUSTING ANY "0" IN THIS ONE. The argument was: the
+ * within-horizon family enlarges a GAP, enlarging a gap changes when
+ * check-ins happen and never how many have happened, so `checkInsTaken` at
+ * index `i` was `i + 1` in both runs of every pair regardless of gap length,
+ * and the review landed on the same indices. That was true of the ordinal
+ * this module shipped at the time — a plain dispatch count, `+1` per call —
+ * and it is NOT true of the ordinal this module ships now. §3g explains why
+ * and states the measured cost.
  *
  * ---------------------------------------------------------------------------
  * 3b. What that closed, what it cost, and the half of §5.7 it does NOT close
@@ -554,6 +556,103 @@
  * is no longer here to re-run. The figure has no standing as evidence and is
  * kept as the record of a claim, which is a different thing from a result.
  *
+ * ---------------------------------------------------------------------------
+ * 3g. RE-KEYED, BY HUMAN RULING: real wall-clock time replaces the mint, and
+ * the review ordinal is one of its three uses — §3a's zero is RETRACTED
+ * ---------------------------------------------------------------------------
+ *
+ * A human played the shipped build and named a specific control by name:
+ * "open up for the day" minted a flat `OFFLINE_EARNINGS_CAP_HOURS`-hour block
+ * of banked operation on every press, whatever real time had actually passed
+ * — a tap-to-earn shape, and the exact thing the ruling that followed calls
+ * "the bug". The direction it gave instead, verbatim in spirit: Gym Empire
+ * mimics an idle tycoon now, and ONE mechanism — genuine elapsed wall-clock
+ * time, capped and fractioned exactly as `OFFLINE_EARNINGS_CAP_HOURS` and
+ * `OFFLINE_EARNINGS_FRACTION` already specified — drives money, equipment
+ * wear, AND the maintenance-review cadence. Not three clocks that happen to
+ * agree; one clock, reused three ways.
+ *
+ * Money and wear already read real banked seconds (§1 above; that was true
+ * before this ruling and did not change). What changed is `checkInsTaken`:
+ * it used to be `state.checkInsTaken + 1` on every dispatched check-in,
+ * regardless of the gap's length — a DISPATCH COUNT, blind to real time by
+ * construction, which is exactly what made §3a's zero provable. It is now
+ * `Math.floor(bankedOperationSeconds / REVIEW_ORDINAL_WINDOW_SECONDS)`, where
+ * `bankedOperationSeconds` is the running sum of every check-in's own
+ * `accrual.secondsBanked` — the SAME quantity `withWear` already reads for
+ * condition, at the SAME cap `bankableOfflineSeconds` already applies. See
+ * `ManagedGym.checkInsTaken`'s own docstring for the non-mash property this
+ * buys: a burst of many real-time-adjacent catch-up dispatches (the wall-
+ * clock tick firing repeatedly, or a player rapidly leaving and returning to
+ * the gym surface) cannot advance the ordinal faster than the SUM of real
+ * elapsed time actually allows, because every event's contribution is capped
+ * at one window and the field is a running sum with no other writer. That is
+ * the property that replaces mashability — a real device cannot fabricate
+ * banked seconds by pressing anything, because nothing on the real screen
+ * advances the clock any more (`GymScreen.tsx`'s own header).
+ *
+ * THE COST, MEASURED RATHER THAN ARGUED AWAY. A real-time-keyed ordinal is
+ * sensitive to how much real time elapsed between two check-ins, and that is
+ * precisely what §3a's zero depended on NOT being true. The within-horizon
+ * family enlarges a gap that stays under the offline cap — real seconds bank
+ * in full, both before and after the enlargement — so enlarging such a gap
+ * now genuinely can push the ordinal, and therefore the review, onto a
+ * different check-in index. Measured on this tree, `management.test.ts`'s
+ * `EXPECTED_SWEEP.families.withinHorizon.all` now reads `failureMismatches`
+ * 1401, `variantPhaseWorse` 582, `matchedTraceFailureMismatches` 224 — all
+ * were 0 under the dispatch-count ordinal, and the shipped row NO LONGER
+ * BEATS `withinHorizonConditionGatedControl` (310 / 186 / 124), the control
+ * kept runnable as the number those zeros used to be zero against. The
+ * shipped row is now the LARGER of the two on every one of those three
+ * counters — a genuine reversal, not a smaller win.
+ *
+ * WHAT DID NOT BREAK, AND WHY IT MATTERS MORE THAN WHAT DID. `pureAbsence` —
+ * gaps ALREADY at or beyond the offline horizon, enlarged further; genuine,
+ * long real absence, the "player simply not opening the app" case §5.7 names
+ * by name — reads 0 on every failure counter, unconditionally. Every such
+ * gap's banked contribution is capped at exactly one window whether the real
+ * gap is a day, a week, or a year, so `bankedOperationSeconds` — and
+ * therefore the ordinal — cannot move at all when a gap that was already
+ * beyond the cap grows further. §5.7's core sentence — failure never accrues
+ * from elapsed time or from the player simply not opening the app — holds in
+ * full for genuine absence. What broke is narrower: SHORT, within-cap gap
+ * SIZE now leaks into the review's timing, which is a different and smaller
+ * thing than "being away costs you", though it is real and it is not zero.
+ * The `engagement` family (an extra check-in added to a fixed grid, rather
+ * than a gap enlarged) is untouched by this round for a structural reason
+ * worth stating rather than assuming: that family's grid spaces every slot at
+ * exactly one offline window, so every event banks exactly one window's
+ * worth whether the ordinal reads a dispatch count or real seconds — the
+ * re-keying is invisible there by construction, not by luck.
+ *
+ * WHOSE CALL THIS IS. Two human rulings are now in tension on exactly this
+ * one family, and this module implements the later, more specific one rather
+ * than silently preserving the earlier zero: "one clock... for money, for
+ * wear, and now for review cadence" is unambiguous about what the mechanism
+ * must be, and the within-horizon regression is the direct, predictable
+ * consequence of building it. This paragraph is the disclosure the rule in
+ * CLAUDE.md asks for when a guarantee stops holding — the honest position is
+ * that this trade-off needs a human ruling of its own if the size of the
+ * reopened channel (1401 of 864 pairs' worth of readings, 420 pairs shifted)
+ * turns out to matter more than the tap-to-earn defect it replaces. It was
+ * not this round's authority to decide that; it is this round's obligation to
+ * measure and report it rather than to quietly re-pin the zeros.
+ *
+ * WHAT THE RE-KEYING DID NOT TOUCH. `promptOver`'s condition-based choice of
+ * WHICH item a review names, the per-order ledger (§3a's other half — a
+ * refusal counts once per standing order, not once per press), the three
+ * counted decision shapes (§5.7), and the purse route (§3d) are all exactly
+ * as they were. Only WHEN the ordinal crosses a threshold changed.
+ *
+ * WHAT THE RETRACTION DOES AND DOES NOT SAY. It does not say §3a's original
+ * work was wrong — the argument was correct for the ordinal that existed
+ * when it was written, and the within-horizon zero really was 0 / 0 / 0 under
+ * a dispatch-count ordinal. It says a LATER, more specific ruling changed the
+ * ordinal's own definition in a way that reopens exactly the channel §3a
+ * closed, and that every "0" anywhere above this section describing
+ * within-horizon failure progression is now false and should be read as
+ * history rather than as a current guarantee.
+ *
  * ===========================================================================
  * 4. Dormancy: income collapses, and what "keeps degrading" is read to mean
  * ===========================================================================
@@ -604,18 +703,18 @@
  *     tallies are pinned in full in `management.test.ts`'s
  *     `EXPECTED_SWEEP.families`, per policy as well as in total.
  *
- *     ITS WITHIN-HORIZON HALF NOW MEASURES NOTHING, and that is declared
- *     rather than left as a control quietly agreeing with the ship.
- *     `withinHorizonSlumpControl` reads 421 net-lower readings, which is the
- *     shipped family's number exactly. Under the ordinal review both runs of
- *     a within-horizon pair cross the failure line at the same INDEX, so the
- *     slump fires at the same index on both and cancels out of a per-index
- *     comparison. It used to read 1016 against a shipped 923, and it did so
- *     because the crossing itself moved with wear — the mechanism header §3a
- *     removed. The engagement half is where that control still bites, and
- *     `management.test.ts` asserts the EQUALITY on the within-horizon half
- *     rather than a bound, so a change that makes the slump matter there
- *     again reddens and gets read.
+ *     ITS WITHIN-HORIZON HALF WAS DEAD UNDER THE DISPATCH-COUNT ORDINAL AND
+ *     IS LIVE AGAIN UNDER THE RE-KEYED ONE (§3g) — declared here rather than
+ *     left as a control quietly agreeing with the ship. It used to read 421
+ *     net-lower readings, equal to the shipped family's own number, because
+ *     both runs of a within-horizon pair crossed the failure line at the same
+ *     INDEX under that ordinal, so the slump fired at the same index on both
+ *     and cancelled out of a per-index comparison. Under the re-keyed ordinal
+ *     the two runs no longer reliably cross at the same index — §3g's whole
+ *     regression — so the slump no longer cancels: `withinHorizonSlumpControl`
+ *     now reads 1460 against a shipped 1301, greater rather than equal, and
+ *     `management.test.ts` asserts that as a strict inequality so a return to
+ *     silent cancellation would redden rather than pass as a smaller number.
  *
  *     The earlier mutation figures — 130 against 0 on engagement, 983 against
  *     890 within horizon, matched-trace 337 -> 368 — were taken with the
@@ -667,7 +766,7 @@
 
 import { refuseWith } from './empireCore';
 import { type LadderAccrual, type LadderEquipmentItem } from './ladder';
-import { scrubPrecision } from './production';
+import { offlineBankingHorizonSeconds, scrubPrecision } from './production';
 import {
   type GymState,
   type SessionEquipmentItem,
@@ -739,20 +838,75 @@ export interface ManagedGym {
   /** Prompt dismissals taken so far, against the free allowance. */
   readonly promptDismissals: number;
   /**
+   * Genuine, capped, real-time-derived operation this gym has ever banked —
+   * the running sum of every check-in's own `accrual.secondsBanked`, each
+   * individually capped by `bankableOfflineSeconds`/`offlineBankingHorizonSeconds`
+   * exactly as the accrual it is copied from. Header §3a of this file.
+   *
+   * THIS IS THE ONE CLOCK, RESTATED AS A FIELD RATHER THAN A SENTENCE. The
+   * human ruling behind this round says money, equipment wear and the review
+   * cadence are driven off the same real elapsed wall-clock time, not three
+   * mechanisms that happen to agree. `withWear`'s wear and this field's growth
+   * both read the same `accrual.secondsBanked` from the same check-in; this is
+   * that discipline made a stored quantity instead of an argument repeated at
+   * three call sites.
+   *
+   * What the code guarantees: this field and `checkInsTaken` (below) are
+   * written together, in exactly one expression, in `checkInWithWearBasis` —
+   * every other function in this module carries both forward through an
+   * object spread. Its limit is the same as `checkInsTaken`'s: `ManagedGym` is
+   * a plain interface, so a hand-built fixture can set either field to
+   * anything, and `requireManagedGym` refuses only a non-finite or negative
+   * value.
+   */
+  readonly bankedOperationSeconds: number;
+  /**
    * Check-ins this gym has taken, ever — the ORDINAL the standing repair
    * order's cadence is read off (`orderOpensAt`). Header §3a.
    *
+   * RE-KEYED, BY HUMAN RULING, FROM A DISPATCH COUNT TO A REAL-TIME QUOTIENT.
+   * This integer used to be `state.checkInsTaken + 1` on every dispatched
+   * check-in, regardless of how much real time the check-in actually spanned
+   * — the mashable shape a human playing the shipped build named as the bug
+   * one mechanism up (`GymScreen.tsx`'s header, `ladder.ts`'s removed
+   * `playerCheckInGapSeconds`). It is now
+   * `Math.floor(bankedOperationSeconds / REVIEW_ORDINAL_WINDOW_SECONDS)` —
+   * the same shape of integer, but a quotient of genuinely accumulated real
+   * banked seconds rather than a count of calls.
+   *
    * What the code guarantees, in the mechanism's own terms: `checkInsTaken`
-   * is incremented in exactly one expression, in `checkInWithWearBasis`, and
-   * every other function in this module carries it forward through an object
-   * spread. So a decision cannot advance the review cadence, and `recoverGym`
-   * — which resets `promptDismissals` — does not reset this.
+   * is written in exactly one expression, in `checkInWithWearBasis`, in the
+   * same statement that writes `bankedOperationSeconds` above — so the two
+   * can never diverge — and every other function in this module carries it
+   * forward through an object spread. So a decision cannot advance the review
+   * cadence, and `recoverGym` — which resets `promptDismissals` — does not
+   * reset this.
+   *
+   * THE NON-MASH PROPERTY THIS BUYS, stated as a bound rather than an
+   * absolute. `bankableOfflineSeconds` caps a single check-in's contribution
+   * to `bankedOperationSeconds` at `REVIEW_ORDINAL_WINDOW_SECONDS` exactly
+   * (both are `offlineBankingHorizonSeconds()`), so `Math.floor` of the
+   * running sum can advance by at most +1 per check-in event — but it can
+   * only advance across MANY events, each contributing its own real gap,
+   * bounded by the SUM of what real elapsed time made available across all of
+   * them. A burst of many real-time-adjacent catch-up dispatches (the wall-
+   * clock tick firing, or a player rapidly leaving and returning to the gym
+   * surface) cannot advance this ordinal faster than real elapsed time
+   * actually allows, because every event's contribution is bounded by its own
+   * real gap and the field is a running sum with no other writer. The named
+   * catcher: `checkInsTaken cannot outrun the sum of real elapsed seconds
+   * under a burst of near-zero-gap catch-ups`, which drives many
+   * adjacent-in-time check-ins at a tiny real gap each and asserts the
+   * resulting ordinal is bounded by `Math.floor(totalGapSeconds /
+   * REVIEW_ORDINAL_WINDOW_SECONDS)`, never above it.
    *
    * Its limit, stated because no type reaches past it: `ManagedGym` is a
    * plain interface and a caller can build one with any value it likes, which
-   * is what `management.test.ts`'s fixtures do on purpose.
+   * is what `management.test.ts`'s fixtures do on purpose — including setting
+   * `checkInsTaken` independently of `bankedOperationSeconds`.
    * `requireManagedGym` refuses a non-integer or a negative one and nothing
-   * more. The named catcher for the guarantee above is
+   * more; it does not enforce the quotient relationship on a hand-built
+   * state. The named catcher for the single-writer guarantee above is
    * `only a check-in advances the review ordinal`, which drives every
    * non-check-in export on this module and reads the field back.
    */
@@ -760,6 +914,17 @@ export interface ManagedGym {
   /** Recoveries completed — reported, so a comeback is visible in the state. */
   readonly recoveries: number;
 }
+
+/**
+ * The real-time window one point of the review ordinal represents — the same
+ * horizon `bankableOfflineSeconds` caps a single check-in's contribution at,
+ * so the ordinal's quotient and the accrual's cap can never disagree about
+ * what "one window" means. Not a knob of its own: it is
+ * `offlineBankingHorizonSeconds()` under the shipped policy, named here so
+ * `checkInsTaken`'s docstring and `checkInWithWearBasis`'s body both read the
+ * same value rather than two calls that happen to agree today.
+ */
+const REVIEW_ORDINAL_WINDOW_SECONDS = offlineBankingHorizonSeconds();
 
 // ---------------------------------------------------------------------------
 // Lookups and quotes — every cost computable before the decision (§5.7)
@@ -1162,6 +1327,7 @@ export function createManagedGym(): ManagedGym {
     strikes: Object.freeze([]),
     neglected: Object.freeze([]),
     promptDismissals: 0,
+    bankedOperationSeconds: 0,
     checkInsTaken: 0,
     recoveries: 0,
   });
@@ -1205,6 +1371,11 @@ export function requireManagedGym(state: ManagedGym): ManagedGym {
   if (!Number.isInteger(state.checkInsTaken) || state.checkInsTaken < 0) {
     refuseWith(
       `check-ins taken must be a whole number at or above zero, received ${state.checkInsTaken}`,
+    );
+  }
+  if (!Number.isFinite(state.bankedOperationSeconds) || state.bankedOperationSeconds < 0) {
+    refuseWith(
+      `banked operation seconds must be finite and at or above zero, received ${state.bankedOperationSeconds}`,
     );
   }
   if (!Number.isInteger(state.recoveries) || state.recoveries < 0) {
@@ -1413,12 +1584,18 @@ function checkInWithWearBasis(
   const dormant = failurePhase(state) === 'failed';
   const checkedIn = gymCheckIn(state.gym, atSeconds);
   const accrual = checkedIn.accrual;
-  // The ordinal advances here and nowhere else — one writer, so header §3a's
-  // "keyed to the check-in index" is a code path rather than a convention.
+  // `bankedOperationSeconds` and `checkInsTaken` advance here, together, in
+  // this one expression and nowhere else — one writer for both, so header
+  // §3a's "keyed to real banked operation" is a code path rather than a
+  // convention. `accrual.secondsBanked` is already capped by
+  // `bankableOfflineSeconds` at `REVIEW_ORDINAL_WINDOW_SECONDS`, so the sum
+  // only ever grows by a genuine, capped, real-time-derived amount.
+  const nextBankedOperationSeconds = state.bankedOperationSeconds + accrual.secondsBanked;
   let next: ManagedGym = Object.freeze({
     ...state,
     gym: checkedIn.state,
-    checkInsTaken: state.checkInsTaken + 1,
+    bankedOperationSeconds: nextBankedOperationSeconds,
+    checkInsTaken: Math.floor(nextBankedOperationSeconds / REVIEW_ORDINAL_WINDOW_SECONDS),
   });
 
   // Wear first — §2 of the header says why the multiplier reads after it.
