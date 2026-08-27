@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "press-full-2-2026-08-27T18-31-16-335Z-17059",
   "label": "press-full-2",
   "command": [
@@ -33,19 +33,22 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 4,
-    "okCount": 2,
+    "count": 5,
+    "okCount": 3,
     "errors": [
       {
         "at": "2026-08-27T18:31:36.375Z",
         "why": "Command failed: git -C /home/user/wt-bench-drivers ls-remote --exit-code origin refs/heads/verify-markers/vm"
       }
     ],
-    "lastAttemptIso": "2026-08-27T18:34:16.475Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-27T18:34:20.847Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-27T18:33:19.703Z"
-  }
+    "lastOkIso": "2026-08-27T18:34:20.846Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-27T18:34:19.549Z",
+  "elapsedSeconds": 183.2
 }
