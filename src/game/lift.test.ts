@@ -1540,8 +1540,19 @@ const TOUCH_SWEEP = {
    * now recorded against three separate claims.
    */
   ABANDONED_CRASHES: 24,
-  /** Measured: outcome flips between a controlled touch and an abandoned one. */
-  SOFT_VS_CRASH_FLIPS: 120,
+  /**
+   * Measured: outcome flips between a controlled touch and an abandoned one.
+   *
+   * 120 BEFORE THE 2026-08-27 WORKING-RUNG LEVER AND 160 AFTER, RE-DERIVED
+   * RATHER THAN CARRIED. `LOADS` starts at 0.8, so every load in this sweep is
+   * a working bar and every one of them now carries
+   * `BENCH_WORKING_RUNG_DEMAND_ONSET` on top of the base curve. A crash
+   * multiplies the WHOLE curve through `BENCH_TOUCH_DEMAND_PENALTY`, so a
+   * bigger curve means a bigger crash penalty in absolute terms, and forty more
+   * of the 240 cases change outcome because of it. Nothing here reaches a
+   * warm-up: this sweep contains none.
+   */
+  SOFT_VS_CRASH_FLIPS: 160,
   /** Cases the flip count above is taken over. */
   OUTCOME_CASES: 240,
   /**
@@ -2287,14 +2298,21 @@ const GRIND_SWEEP = {
    * across that band a 3-a-second grind and a 20-a-second one reach the same
    * outcome in the same 40 of 120 cases either way.
    *
-   * SO THIS BLOCK IS NOT WHERE THE RETUNE SHOWS UP, and a reader comparing
-   * commits here will conclude nothing changed. What moved is on the reachable
-   * domain — `REACHABLE_RESCUE`'s RPE 8 rows and the tap rate each rung
-   * demands — and this sweep's own header explains why it cannot see that: its
-   * loads are a hand-written ladder over the top of the range, not the cells
-   * `prescribeSession` emits.
+   * SO THIS BLOCK WAS NOT WHERE THE 2026-08-26 RETUNE SHOWED UP, and a reader
+   * comparing those commits here will conclude nothing changed. What moved then
+   * was on the reachable domain — `REACHABLE_RESCUE`'s RPE 8 rows and the tap
+   * rate each rung demands — and this sweep's own header explains why it could
+   * not see that: its loads are a hand-written ladder over the top of the
+   * range, not the cells `prescribeSession` emits.
+   *
+   * IT IS WHERE THE 2026-08-27 WORKING-RUNG LEVER SHOWS UP, 80 -> 100, AND THE
+   * REASON IS THE SAME FACT READ THE OTHER WAY. Every load in `LOADS` is a
+   * working bar, so every one of them takes the lever, and a sparse grind — one
+   * tap every 20 ticks, 3 a second — is now below the make floor at twenty more
+   * of the 120 cases than it was. The rungs this sweep separates did not move;
+   * the bar they are separating did.
    */
-  MASH_VS_SPARSE_FLIPS: 80,
+  MASH_VS_SPARSE_FLIPS: 100,
   /** Outcome flips between a moderate grind and an unanswered command. */
   MODERATE_VS_NONE_FLIPS: 120,
   /**
@@ -2674,18 +2692,18 @@ const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
   // -0.0025; the boundary at which a quiet rep starts losing the rep is between
   // them. `DEMAND_BASE.bench`'s header holds what that window costs and why it
   // cannot be widened.
-  'session/rpe8/0.8000/slower-than-expected': [120, 40, 40],
-  'session/rpe8/0.8500/as-expected': [160, 60, 60],
-  'session/rpe8/0.8750/crisp': [120, 60, 60],
-  'session/rpe8/0.9000/popping': [120, 40, 40],
-  'session/rpe9/0.8250/slower-than-expected': [160, 100, 60],
-  'session/rpe9/0.8750/as-expected': [160, 120, 100],
-  'session/rpe9/0.9000/crisp': [160, 100, 100],
-  'session/rpe9/0.9250/popping': [160, 100, 100],
+  'session/rpe8/0.8000/slower-than-expected': [160, 100, 60],
+  'session/rpe8/0.8500/as-expected': [160, 120, 100],
+  'session/rpe8/0.8750/crisp': [160, 100, 100],
+  'session/rpe8/0.9000/popping': [160, 100, 100],
+  'session/rpe9/0.8250/slower-than-expected': [160, 160, 120],
+  'session/rpe9/0.8750/as-expected': [160, 160, 160],
+  'session/rpe9/0.9000/crisp': [160, 160, 160],
+  'session/rpe9/0.9250/popping': [160, 160, 120],
   'session/rpe10/0.8750/slower-than-expected': [160, 160, 160],
   'session/rpe10/0.9000/as-expected': [160, 160, 160],
   'session/rpe10/0.9250/crisp': [160, 160, 160],
-  'session/rpe10/0.9500/popping': [160, 160, 120],
+  'session/rpe10/0.9500/popping': [160, 160, 160],
   // --- MEET: the opener fraction and the three jump ladders, at both ends of
   //     the bar-speed range. Attempt 1 is the same load under all three
   //     strategies and answers the same three times, which is the control. ---
@@ -2697,15 +2715,15 @@ const REACHABLE_RESCUE: Readonly<Record<string, RescueRow>> = {
   'meet/standard/att3/rested': [160, 160, 160],
   'meet/aggressive/att1/rested': [160, 160, 160],
   'meet/aggressive/att2/rested': [160, 160, 160],
-  'meet/aggressive/att3/rested': [100, 100, 160],
+  'meet/aggressive/att3/rested': [40, 40, 160],
   'meet/conservative/att1/wrecked': [160, 160, 160],
   'meet/conservative/att2/wrecked': [160, 160, 160],
-  'meet/conservative/att3/wrecked': [160, 160, 160],
+  'meet/conservative/att3/wrecked': [0, 0, 160],
   'meet/standard/att1/wrecked': [160, 160, 160],
-  'meet/standard/att2/wrecked': [160, 160, 160],
-  'meet/standard/att3/wrecked': [100, 100, 160],
+  'meet/standard/att2/wrecked': [60, 60, 160],
+  'meet/standard/att3/wrecked': [0, 0, 160],
   'meet/aggressive/att1/wrecked': [160, 160, 160],
-  'meet/aggressive/att2/wrecked': [160, 160, 160],
+  'meet/aggressive/att2/wrecked': [0, 0, 160],
   // THE CEILING CELL, AND THE ONE ROW WHERE COMING BACK DOES NOT HELP AT ALL.
   // 160 of 160 idle reps stall and NONE is rescued: at that load 18 ticks of
   // silence is past recovering from. Pinned rather than tuned away — a mechanic
@@ -2793,9 +2811,31 @@ const REACHABLE_LADDER = {
    * and `PAIRS_PER_CELL` from 80 to 160 — so these are not comparable to the
    * old numbers cell for cell, and that is said here rather than left for a
    * reader to assume otherwise.
+   *
+   * -------------------------------------------------------------------------
+   * TWO OF THEM WENT DOWN IN THE 2026-08-27 WORKING-RUNG LEVER, 38 -> 35 AND
+   * 29 -> 26, AND A FALLING COUNT HERE IS THE HARD DIRECTION SHOWING UP
+   * -------------------------------------------------------------------------
+   * These count cells where STOPPING AND STARTING AGAIN changes the outcome.
+   * A cell drops out of them when the pause stops being survivable at all —
+   * the idle rep still stalls, and coming back no longer saves it. Four meet
+   * cells crossed that line, and they are the top of the ladder:
+   * `meet/conservative/att3/wrecked`, `meet/standard/att3/wrecked`,
+   * `meet/aggressive/att2/wrecked` and (already there before this lever)
+   * `meet/aggressive/att3/wrecked`. `meet/aggressive/att3/rested` and
+   * `meet/standard/att2/wrecked` are the two that only partly crossed it, at
+   * 40 and 60 of 160.
+   *
+   * SO THE NUMBER TO READ BESIDE THESE IS `CELLS_WHERE_THE_IDLE_REP_STALLS`,
+   * WHICH DID NOT MOVE: 30, exactly the 30 non-warm-up cells. A reader who saw
+   * 38 -> 35 alone would conclude the grind had stopped deciding three cells;
+   * what actually happened is that it decides them harder — the bar stops, and
+   * at the very top of a meet it no longer comes back. That is what the
+   * 2026-08-27 replay asked for and it is a real cost, so it is written down
+   * rather than being left as a number that got smaller.
    */
-  CELLS_WHERE_COMING_BACK_HELPS: 38,
-  CELLS_WHERE_A_REP_IS_SAVED: 29,
+  CELLS_WHERE_COMING_BACK_HELPS: 35,
+  CELLS_WHERE_A_REP_IS_SAVED: 26,
   CELLS_WHERE_THE_IDLE_REP_STALLS: 30,
   /**
    * ...and the cells where none of the three happens.
