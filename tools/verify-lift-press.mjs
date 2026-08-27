@@ -1815,10 +1815,13 @@ const LIFT_LADDER = Object.freeze({
    * grind starts at the command and not at the launch. It is not "mid-ascent",
    * so neither check says that any more.
    *
-   * `GRIND_PAUSE_MS` IS 55 TICKS, from the same sweep's other axis: at 45 ticks
-   * the worst-case stall drops to 16 and at 65 the rescued arm starts failing
-   * at the slower cadences (40 / 0 / 0 at 12t). 55 is the middle of the only
-   * column where both arms hold at every cadence measured.
+   * `GRIND_PAUSE_MS` WAS 55 TICKS, from the same sweep's other axis: at 45
+   * ticks the worst-case stall dropped to 16 and at 65 the rescued arm started
+   * failing at the slower cadences (40 / 0 / 0 at 12t). 55 was the middle of the
+   * only column where both arms held at every cadence measured. PAST TENSE
+   * DELIBERATELY — the section directly below took it to 45, and this sentence
+   * spent a round in the present tense asserting a value the file no longer
+   * shipped, two lines above its own correction.
    *
    * ===========================================================================
    * BOTH SWEPT TABLES ABOVE ARE THE OLD CURVE'S, AND 55 TICKS WENT PAST THE
@@ -1858,6 +1861,63 @@ const LIFT_LADDER = Object.freeze({
    * out from 27t. The worst banded ticks still peak early (24/33/33 at 12t,
    * falling to 3/9/19 by 27t), so 12t remains the widest point in both
    * directions and stays.
+   *
+   * ===========================================================================
+   * RE-SWEPT A THIRD TIME AFTER THE 2026-08-27 WORKING-RUNG LEVER. 45 TICKS
+   * SURVIVES; THE PARAGRAPH ABOVE'S "SEVEN TICKS OF SLACK" DOES NOT
+   * ===========================================================================
+   * THE TABLE IMMEDIATELY ABOVE IS THE 2026-08-26 CURVE'S AND EVERY ROW OF IT
+   * HAS MOVED, so it is corrected here rather than left reading as current —
+   * the same treatment the 55-tick paragraph got, applied before a browser run
+   * rather than after one. `BENCH_WORKING_RUNG_DEMAND_ONSET` adds +0.045 to
+   * bench's ascent demand above the warm-up floor's margin line, and this
+   * probe's cell — RPE 10 at the worst check-in — is as far above that line as
+   * a session gets.
+   *
+   * Same sim, same cell, same schedule, 40 seeds per (pause, cadence),
+   * measured@c548b641. Cadences widened to 3/4/5/6/7 ticks, because the
+   * browser's achieved mean has read as high as 110 ms (6.6 ticks) on this box
+   * and the old sweep's three columns could not see that:
+   *
+   *     pause   worst banded ticks   rescued made (gap 3/4/5/6/7)
+   *      30t     7 / 16 / 17          40 / 40 / 40 /  0 /  0
+   *      38t    21 / 27 / 25          40 / 40 / 40 /  0 /  0
+   *      42t    25 / 33 / 32          40 / 40 / 40 /  0 /  0
+   *      45t    29 / 37 / 39          40 / 40 / 40 /  0 /  0   <- shipped
+   *      48t    33 / 37 / 39          40 / 40 / 40 /  0 /  0
+   *      49t      —                   40 /  0 /  0 /  0 /  0   <- the cliff
+   *      52t    31 / 32 / 31           0 /  0 /  0 /  0 /  0
+   *      55t    30 / 32 / 31           0 /  0 /  0 /  0 /  0
+   *
+   * SO 45 STAYS AND THE SLACK NUMBER CHANGES. The cliff is at 49t, not 52t, so
+   * it is FOUR ticks (67 ms) of slack and not seven (117 ms), and the last
+   * pause that still holds at every one of 3/4/5 is 48t — three ticks (50 ms)
+   * above the shipped value.
+   *
+   * AND THE SENTENCE ABOVE ABOUT WHICH DIRECTION IS SAFE IS BACKWARDS FOR THIS
+   * BOX, WHICH IS WHY THE 50 MS MATTERS. It says under-ticking makes the real
+   * hole shorter than 45 and is therefore safe. EVERY RECORDED RUN OVERSHOOTS
+   * INSTEAD, and there are nine of them rather than an impression —
+   * `paused.realMs` against a 750 ms ask, read off every committed `press.json`
+   * in this file's history that carries one: 762, 765, 766, 767, 771, 772, 772,
+   * 773, 787 ms. That is +12 to +37 ms, never negative once. The worst of the
+   * nine fits inside the 50 ms with 13 ms to spare. That is a real margin and it
+   * is thin; a box slow enough to overshoot by 50 ms turns this pair red about
+   * the app, and the fix then is this constant, not the mechanic.
+   *
+   * THE INSTANT AXIS GAINED SLACK AGAIN AND IS NOT THE RISK. At a 45-tick pause
+   * the abandoned arm is `0` made at every instant from 10t through 40t and
+   * first makes at 50t (40/40/0/0/0) — the edge the last re-sweep put at 40t.
+   * The observed hole opens LATE — `openedAtMs` 215-282 across the same nine
+   * captures against an asked 200, so 13t to 17t rather than 12t — and
+   * 12t/14t/15t/17t/20t all read 40/40/40 at a 45t pause, so the jitter this
+   * box actually produces is inside the box that was swept.
+   *
+   * `GRIND_PAIR_MAX_GAP_MS` IS INDEPENDENTLY CONFIRMED BY THIS TABLE AND WAS
+   * NOT TOUCHED. 83 ms is 5 ticks, and 5 is exactly the slowest cadence whose
+   * rescued column still reads 40 on the new curve — the same edge it named on
+   * the old one. A run slower than that is a NAMED SKIP rather than a red,
+   * which is what the previous capture's two rescue skips were.
    */
   GRIND_HOLE_AT_MS: 200,
   GRIND_PAUSE_MS: 750,
