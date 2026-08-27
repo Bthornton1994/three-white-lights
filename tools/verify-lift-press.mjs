@@ -1815,10 +1815,13 @@ const LIFT_LADDER = Object.freeze({
    * grind starts at the command and not at the launch. It is not "mid-ascent",
    * so neither check says that any more.
    *
-   * `GRIND_PAUSE_MS` IS 55 TICKS, from the same sweep's other axis: at 45 ticks
-   * the worst-case stall drops to 16 and at 65 the rescued arm starts failing
-   * at the slower cadences (40 / 0 / 0 at 12t). 55 is the middle of the only
-   * column where both arms hold at every cadence measured.
+   * `GRIND_PAUSE_MS` WAS 55 TICKS, from the same sweep's other axis: at 45
+   * ticks the worst-case stall dropped to 16 and at 65 the rescued arm started
+   * failing at the slower cadences (40 / 0 / 0 at 12t). 55 was the middle of the
+   * only column where both arms held at every cadence measured. PAST TENSE
+   * DELIBERATELY — the section directly below took it to 45, and this sentence
+   * spent a round in the present tense asserting a value the file no longer
+   * shipped, two lines above its own correction.
    *
    * ===========================================================================
    * BOTH SWEPT TABLES ABOVE ARE THE OLD CURVE'S, AND 55 TICKS WENT PAST THE
@@ -1858,9 +1861,146 @@ const LIFT_LADDER = Object.freeze({
    * out from 27t. The worst banded ticks still peak early (24/33/33 at 12t,
    * falling to 3/9/19 by 27t), so 12t remains the widest point in both
    * directions and stays.
+   *
+   * ===========================================================================
+   * RE-SWEPT A THIRD TIME AFTER THE 2026-08-27 WORKING-RUNG LEVER. 45 TICKS
+   * SURVIVES; THE PARAGRAPH ABOVE'S "SEVEN TICKS OF SLACK" DOES NOT
+   * ===========================================================================
+   * THE TABLE IMMEDIATELY ABOVE IS THE 2026-08-26 CURVE'S AND EVERY ROW OF IT
+   * HAS MOVED, so it is corrected here rather than left reading as current —
+   * the same treatment the 55-tick paragraph got, applied before a browser run
+   * rather than after one. `BENCH_WORKING_RUNG_DEMAND_ONSET` adds +0.045 to
+   * bench's ascent demand above the warm-up floor's margin line, and this
+   * probe's cell — RPE 10 at the worst check-in — is as far above that line as
+   * a session gets.
+   *
+   * Same sim, same cell, same schedule, 40 seeds per (pause, cadence),
+   * measured@c548b641. Cadences widened to 3/4/5/6/7 ticks, because the
+   * browser's achieved mean has read as high as 110 ms (6.6 ticks) on this box
+   * and the old sweep's three columns could not see that:
+   *
+   *     pause   worst banded ticks   rescued made (gap 3/4/5/6/7)
+   *      30t     7 / 16 / 17          40 / 40 / 40 /  0 /  0
+   *      38t    21 / 27 / 25          40 / 40 / 40 /  0 /  0
+   *      42t    25 / 33 / 32          40 / 40 / 40 /  0 /  0
+   *      45t    29 / 37 / 39          40 / 40 / 40 /  0 /  0   <- shipped
+   *      48t    33 / 37 / 39          40 / 40 / 40 /  0 /  0
+   *      49t      —                   40 /  0 /  0 /  0 /  0   <- the cliff
+   *      52t    31 / 32 / 31           0 /  0 /  0 /  0 /  0
+   *      55t    30 / 32 / 31           0 /  0 /  0 /  0 /  0
+   *
+   * THAT TABLE IS SWEPT AT INSTANT 12t ONLY, AND READING A CLIFF OFF IT IS
+   * WRONG — THE CORRECTION IS THE NEXT SECTION AND IT COST THIS FILE A VALUE.
+   * At 12t the first pause that drops a column is 49t. That is a fact about one
+   * instant the browser essentially never produces, because the hole opens LATE:
+   * `openedAtMs` reads 211-311 ms against an asked 200 across every capture this
+   * file has taken, which is 13t to 19t. Swept over THAT band the answer is
+   * different and worse, and it is below.
+   *
+   * WHAT DOES CARRY FROM THIS TABLE is the direction-of-error correction, which
+   * the 2026-08-26 paragraph has backwards. It says under-ticking makes the real
+   * hole shorter than asked and is therefore the safe error. EVERY RECORDED RUN
+   * OVERSHOOTS INSTEAD, and there are ten of them rather than an impression —
+   * `paused.realMs` against a 750 ms ask, read off every `press.json` in this
+   * file's history that carries one: 762, 765, 766, 767, 771, 772, 772, 773,
+   * 787, 794 ms. That is +12 to +44 ms, never negative once.
+   *
+   * ===========================================================================
+   * SWEPT OVER THE INSTANT BAND THE BROWSER REALLY PRODUCES, THE CLIFF IS 46t —
+   * WHICH THE SHIPPED 750 ms ASK WAS ALREADY REACHING. `GRIND_PAUSE_MS` IS NOW
+   * 700 ms
+   * ===========================================================================
+   * 40 seeds per (instant, cadence), instants 12t..18t, cadences 3/4/5 ticks,
+   * measured@ca83deee. `rescued made` out of 40 per cadence, and the worst stall
+   * the hole produces at cadence 3:
+   *
+   *     pause          12t        13t        14t        15t        16t   band
+   *      42t (700ms)  40/40/40  40/40/40  40/40/40  40/40/40  40/40/40  19-25
+   *      45t (750ms)  40/40/40  40/40/40  40/40/40  40/40/40  40/40/40  24-29
+   *      46t (767ms)  40/40/40  40/40/40  40/40/40  40/40/ 0  40/40/40  24-33
+   *      47t (783ms)  40/40/40  40/40/40  40/40/ 0  40/40/ 0  40/40/40  24-33
+   *      48t (800ms)  40/40/40  40/40/ 0  40/40/ 0  40/40/ 0  40/40/40  28-33
+   *
+   * 45t is the last pause clean at every instant and every cadence. 46t is the
+   * cliff, and every failure in it is the FIVE-TICK column.
+   *
+   * THE PROBLEM THAT FIXES: the ask is 750 ms and the REAL hole is 762-794 ms,
+   * so nine of the ten recorded runs opened a hole of 45.7t to 47.6t — at or
+   * past the 46t cliff. They all made anyway, because this box's achieved
+   * cadence is 3-4 ticks and the 3- and 4-tick columns hold to 48t. The pair was
+   * passing on the cadence it happened to get, not on the pause it declared.
+   *
+   * AND THAT MATTERS BECAUSE `GRIND_PAIR_MAX_GAP_MS` DECLARES 5 TICKS LEGAL.
+   * 83 ms is 5 ticks; a run at that cadence is one this instrument claims the
+   * pair for rather than skipping. At a 750 ms ask, such a run lands in a column
+   * the table above shows failing — and it would be reported as the APP failing
+   * to rescue a rep. That is the misattribution this whole block exists to
+   * prevent, one axis over from where it was caught last time.
+   *
+   * SO THE CONSTANT MOVES AND THE CEILING DOES NOT. 700 ms is 42t; plus the
+   * worst overshoot ever recorded (+44 ms) the real hole is 744 ms — 44.6t,
+   * inside the 45t clean zone at every instant and every declared cadence. The
+   * rule a future tuner should re-derive from, rather than this number:
+   *
+   *     ask + worst observed overshoot <= the last pause clean at every
+   *     (instant in the observed `openedAtMs` band, cadence <= GRIND_PAIR_MAX_GAP_MS)
+   *
+   * WHAT IT COSTS is stall depth, and the stall check has room for it: the band
+   * goes from 24-29 ticks to 19-25, while the stage's own reading is SATURATED —
+   * 10140 of 10140 px in the top strip against a 5070 floor. 19 ticks is 317 ms,
+   * which is several recorder frames of a fully-lit band rather than a hair.
+   *
+   * ONE THING THIS DOES NOT CLOSE, AND IT IS WHY THE CEILING WAS LEFT ALONE. On
+   * a genuinely loaded box the overshoot will exceed +44 ms and 700 ms will
+   * reach the cliff too. What protects the pair there is that the two failures
+   * are CORRELATED in the helpful direction: a box slow enough to overshoot
+   * badly is also slow enough to miss the 83 ms cadence ceiling, and a run that
+   * misses it is a named skip rather than a claim. That is an argument, not a
+   * measurement — nobody has driven this on a loaded box — so it is written as
+   * one.
+   *
+   * THE INSTANT ITSELF STAYS AT 200 ms AND GAINED SLACK. At a 45t pause the
+   * abandoned arm is `0` made at every instant from 10t through 40t and first
+   * makes at 50t — the edge the 2026-08-26 sweep put at 40t. Nothing about the
+   * shorter pause moves that arm, which never resumes.
+   *
+   * ---------------------------------------------------------------------------
+   * THE OBSERVED `openedAtMs` BAND IS WIDER THAN 13t-17t. FIVE RUNS AT THE NEW
+   * VALUE READ 211, 218, 223, 295 AND 311 ms
+   * ---------------------------------------------------------------------------
+   * 311 ms is 18.7t, past the 12t-18t grid the table above was swept on, so the
+   * grid was extended rather than the reading rounded down: at a 42t pause the
+   * rescued arm reads 40/40/40 at EVERY instant from 17t to 26t (band falling
+   * 19 -> 3 as the bar climbs past the stick). A late hole is therefore a
+   * shallower stall, not a lost rescue, and 200 ms stays.
+   *
+   * ---------------------------------------------------------------------------
+   * ONE RUN OF FIVE AT THIS VALUE WENT RED IN A WAY NEITHER AXIS EXPLAINS, AND
+   * IT IS RECORDED RATHER THAN RE-RUN AWAY
+   * ---------------------------------------------------------------------------
+   * `press-full-3`: hole opened at 295 ms, ran 711 ms, and the rescued rep
+   * dispatched **6 taps in total** — 3 after resuming — then resolved NO LIFT.
+   * Both arms lost the rep. Every other run at this value dispatched 29-34 and
+   * locked out.
+   *
+   * BOTH MEASUREMENTS ARE KEPT BESIDE EACH OTHER because a threshold moved to
+   * make it stop failing would hide the next real failure at the same site. The
+   * pause was NOT lengthened back, and the 60 ms arms-agreement tolerance was
+   * NOT widened. What can be said structurally is only that the pause is not the
+   * cause: the sim is monotone in it — a shorter hole rescues wherever a longer
+   * one does, checked at every (instant 12..26t, cadence 3/4/5) — so no state of
+   * this constant makes 42t fail where 45t made. What is left is the class this
+   * file already records under the 2026-08-21 lockout work: real browser
+   * dispatch timing, which the pure sim does not model at all.
+   *
+   * THE SEPARATE, MILDER FLAKE, ALSO NOT PAPERED OVER: the pair's comparability
+   * precondition (the two holes agreeing within 60 ms) failed once in five, at
+   * 311 ms against 247 ms. That run's rescued rep DID lock out and its abandoned
+   * rep did not — the pair's subject was fine and its precondition was not,
+   * which is the check reporting honestly rather than a finding about the app.
    */
   GRIND_HOLE_AT_MS: 200,
-  GRIND_PAUSE_MS: 750,
+  GRIND_PAUSE_MS: 700,
 
   /**
    * How many reps this probe will spend trying to walk one kind's full ladder.
