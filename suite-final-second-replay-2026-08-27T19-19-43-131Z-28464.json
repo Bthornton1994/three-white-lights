@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "INCOMPLETE",
+  "status": "PASS",
   "id": "suite-final-second-replay-2026-08-27T19-19-43-131Z-28464",
   "label": "suite-final-second-replay",
   "command": [
@@ -28,14 +28,17 @@
   },
   "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
   "sync": {
-    "count": 6,
-    "okCount": 5,
+    "count": 7,
+    "okCount": 6,
     "errors": [],
-    "lastAttemptIso": "2026-08-27T19:24:43.367Z",
-    "lastReason": "heartbeat",
+    "lastAttemptIso": "2026-08-27T19:25:34.651Z",
+    "lastReason": "final",
     "remote": "origin",
     "ref": "refs/heads/verify-markers/vm",
     "ok": true,
-    "lastOkIso": "2026-08-27T19:23:46.199Z"
-  }
+    "lastOkIso": "2026-08-27T19:24:46.048Z"
+  },
+  "exitCode": 0,
+  "finishedAtIso": "2026-08-27T19:25:34.649Z",
+  "elapsedSeconds": 351.5
 }
