@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "suite-bundle-final2-2026-08-27T08-45-56-659Z-3013",
+  "label": "suite-bundle-final2",
+  "command": [
+    "node",
+    "tools/evidence.mjs",
+    "suite"
+  ],
+  "budgetSeconds": 2400,
+  "startedAtIso": "2026-08-27T08:45:56.659Z",
+  "startedAtMs": 1787820356659,
+  "cwd": "/home/user/three-white-lights",
+  "commit": "9c99aa3ce816bff516f0ed52eb70febc24a12a06",
+  "branch": "claude/agent-config-setup-m2r6ny",
+  "dirty": 1,
+  "dirtyPaths": [
+    ".gauntlet/evidence/suite.txt"
+  ],
+  "runner": {
+    "pid": 3013,
+    "startTick": "1480878",
+    "cmdline": "node tools/watchdog.mjs --budget 2400 --label suite-bundle-final2 -- node tools/evidence.mjs suite",
+    "bootId": "6b9555b0-c9e0-4be0-8304-50832877994e",
+    "bootEpochSeconds": 1787805548,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-27T08:45:56.687Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
