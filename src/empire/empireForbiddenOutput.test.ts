@@ -9564,11 +9564,15 @@ const DRIVE_CENSUS = Object.freeze({
   // 6417384 -> 6417438: the same round, after `VALUE_WALK_MAX_DEPTH` went
   // 16 -> 24 so the walk stopped truncating on that tree. Fifty-four more
   // nodes, which is what the 81 depth cuts were declining to look at.
-  // `STRINGS` and `DISTINCT_STRINGS` did NOT move with it — the nodes past
-  // the old bound carry no string this scan had not already reached by
-  // another path — and that is worth writing down rather than inferring,
-  // because it is the difference between "the cut hid nothing on this tree
-  // today" and "the cut could not hide anything", and only the first is true.
+  // THE SENTENCE THAT USED TO FINISH THIS COMMENT WAS FALSE AND IS CORRECTED
+  // RATHER THAN DELETED. It read: "`STRINGS` and `DISTINCT_STRINGS` did NOT
+  // move with it — the nodes past the old bound carry no string this scan had
+  // not already reached by another path." That was inferred from a run in
+  // which `NODES` failed FIRST and `expect` therefore never evaluated the two
+  // lines below it. `STRINGS` moved by 261 on the next run. The nodes the old
+  // bound was declining to look at DO carry strings, which is the whole reason
+  // a truncating walk is dangerous — and reading a pin as unchanged because
+  // its assertion never ran is the same mistake one level out.
   NODES: 6417438,
   // 15936376 -> 15936430: PLAYTEST 3, re-measured by running the assertion.
   // GDD §5.13 presentation Phase 2: STRINGS re-measured (15936430 ->
@@ -9606,7 +9610,11 @@ const DRIVE_CENSUS = Object.freeze({
   // counts a driven object's KEYS. Read from this pin's own failure value.
   // 29_621_813 -> 29_626_118: S4b's larger element tree, the same reason
   // `NODES` above moved. Read from this pin's own failure value.
-  STRINGS: 29_626_118,
+  // 29_626_118 -> 29_626_379: the deeper walk (`VALUE_WALK_MAX_DEPTH`
+  // 16 -> 24) reaches 261 more strings. Read from this pin's own failure
+  // value, on a run where the `NODES` line above was already green — see that
+  // comment for why the first reading of this number was wrong.
+  STRINGS: 29_626_379,
   // 2546 -> 2549: re-measured by running the assertion below.
   // 2549 -> 2551: PLAYTEST 3, re-measured by running the assertion below.
   // GDD §5.13 presentation Phase 2: DISTINCT_STRINGS re-measured (2551 ->
@@ -9640,7 +9648,11 @@ const DRIVE_CENSUS = Object.freeze({
   // walk had not seen before. Read from this pin's own failure value.
   // 3633 -> 3699: S4b's new player-facing sentences and testIDs reach the
   // drive's scan as distinct strings. Read from this pin's own failure value.
-  DISTINCT_STRINGS: 3699,
+  // 3699 -> 3708: nine more, once `VALUE_WALK_MAX_DEPTH` went 16 -> 24 and
+  // the walk stopped truncating on that tree. Nine DISTINCT strings that no
+  // instrument in this file could see while the bound was 16, which is the
+  // concrete size of what the depth cut was hiding.
+  DISTINCT_STRINGS: 3708,
   DEPTH_CUTS: 0,
   /**
    * Accessors invoked across the whole drive, and PROXIES seen.
@@ -9660,7 +9672,13 @@ const DRIVE_CENSUS = Object.freeze({
   // 140 -> 259: GymScreen's element trees carry the same keyed lists GymView's
   // do (same state, same shop/slot/week-log structure), each with its own
   // react-defined `key` getter.
-  GETTERS_INVOKED: 259,
+  // 259 -> 277: S4b's own keyed lists on the same screen — one row per owned
+  // item in the condition list and one per manager tier, each a keyed child
+  // with react's `key` getter on it, over the three drive states. Still
+  // react's getters and not this directory's, which is what the paragraph
+  // above is about; the number is pinned rather than bounded so a getter from
+  // any other module is a red line.
+  GETTERS_INVOKED: 277,
   PROXIES: 0,
   /**
    * Nullary functions the walk CALLED, how many threw, and how many
@@ -9689,7 +9707,14 @@ const DRIVE_CENSUS = Object.freeze({
    */
   // 120 -> 225: GymScreen's own onPress closures, driven the same way
   // GymView's onClick arrows are.
-  CLOSURES_INVOKED: 225,
+  // 225 -> 252: S4b's own onPress closures on the same screen — the repair
+  // controls, the hire controls and the reopen control — driven the same way,
+  // against the silent dispatch. Read from this pin's own failure value and
+  // deliberately NOT decomposed here: the obvious arithmetic (seven new
+  // controls times three driven screens) gives 21 and the measurement is 27,
+  // so a decomposition written from the obvious arithmetic would have been a
+  // confident wrong sentence. What the extra six are was not established.
+  CLOSURES_INVOKED: 252,
   CLOSURE_THROWS: 0,
   // 2046 -> 2052: GDD §5.13 presentation Phase 1's two new declined closures
   // (FloorGrid's `type` and `dispatch`, embedded in GymScreen's own return),
@@ -9733,7 +9758,12 @@ const DRIVE_CENSUS = Object.freeze({
   // Phase 4: the wider domains produce more met stacks. Read from this
   // pin's own failure value.
   // Stage 4: read from this pin's own failure value.
-  STACKS: 5915,
+  // S4b: 5915 -> 6056, read from this pin's own failure value. Same shape as
+  // every entry above it — the screen's larger driven return trees carry more
+  // Error-shaped `stack` own-properties of the react dev-mode kind, and the
+  // deeper walk reaches more of them. `STACK_FINDINGS` stays at zero, which
+  // is the half of this pair that is about a name rather than about volume.
+  STACKS: 6056,
   STACK_FINDINGS: 0,
   /** Banned-name-equal strings, and every one of them from a ban-list export. */
   BANNED_EQUAL: 7,
