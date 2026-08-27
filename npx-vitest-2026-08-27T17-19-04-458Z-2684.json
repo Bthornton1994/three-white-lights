@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE",
+  "id": "npx-vitest-2026-08-27T17-19-04-458Z-2684",
+  "label": null,
+  "command": [
+    "npx",
+    "vitest",
+    "run"
+  ],
+  "budgetSeconds": 1500,
+  "startedAtIso": "2026-08-27T17:19:04.458Z",
+  "startedAtMs": 1787851144458,
+  "cwd": "/home/user/wt-bench-lever",
+  "commit": "f78da5e9825fa186c7177d8e8e49f96b0d83c70c",
+  "branch": "claude/bench-working-lever",
+  "dirty": 0,
+  "dirtyPaths": [],
+  "runner": {
+    "pid": 2684,
+    "startTick": "1255255",
+    "cmdline": "node tools/watchdog.mjs --budget 1500 -- npx vitest run",
+    "bootId": "fe5437bf-5395-49fb-a965-2135e1b1d539",
+    "bootEpochSeconds": 1787838592,
+    "host": "vm",
+    "platform": "linux",
+    "procAvailable": true
+  },
+  "means": "INCOMPLETE means this verification started and has not written a verdict. If no process is behind it, the run was interrupted and its result is UNKNOWN — not a pass.",
+  "sync": {
+    "count": 1,
+    "okCount": 0,
+    "errors": [],
+    "lastAttemptIso": "2026-08-27T17:19:04.479Z",
+    "lastReason": "start",
+    "remote": "origin",
+    "ref": "refs/heads/verify-markers/vm"
+  }
+}
